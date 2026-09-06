@@ -45,6 +45,17 @@ porque doze blocos servem trinta e quatro encomendas e nenhum deles pertence a
 uma aula em particular. O motivo por extenso está na seção da operação, lá
 embaixo.
 
+A VÍDEO-AULA EM TEXTO É A DÉCIMA NONA PEÇA, E NÃO A DÉCIMA SÉTIMA (TAR-233)
+---------------------------------------------------------------------------
+Cada encomenda passou a ter um segundo texto, a mesma aula contada como numa
+vídeo-aula, e o aluno chega nele por um botão embaixo do capítulo. Ele entra e
+sai por aqui como peça (`videoaula_em_texto`), e não como campo nem como tabela
+nova, porque assim herda de graça o editor, o histórico de versões, a restrição
+de uma por aula e o renderizador de Markdown que as outras já têm.
+
+Ele NÃO entra em `ORDEM_CANONICA`: as 16 são a anatomia que a lei da célula
+declara, e esta peça vive fora da sequência (`Peca.TIPOS_SOB_DEMANDA`).
+
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
 Não há sessão nem cookie: é máquina para máquina, e o Bearer do par
@@ -64,7 +75,9 @@ O VOCABULÁRIO É O DO MODELO, E NÃO UMA SEGUNDA LISTA
 ----------------------------------------------------
 `tipo` de peça e `tipo` de pausa são tipados com o `TextChoices` do próprio
 modelo: o pydantic valida a pertinência, o OpenAPI exportado carrega o `enum`
-com as 18 e as 3 palavras, e nenhum nome é escrito duas vezes.
+com as 19 e as 3 palavras, e nenhum nome é escrito duas vezes. É por isso que a
+`videoaula_em_texto` (TAR-233) passou a entrar e a sair pela porta sem nenhuma
+segunda lista: bastou nascer no `TextChoices`.
 
 O CORPO QUE A PORTA NÃO CONHECE É RECUSADO (`extra="forbid"`)
 -------------------------------------------------------------
@@ -419,12 +432,16 @@ def _aula_inteira(aula: AulaModel) -> dict[str, Any]:
         "aceito_quando": aula.aceito_quando,
         "quiz": aula.quiz,
         "video_url": aula.video_url,
-        # As 16 da anatomia na ordem canônica e depois as duas internas, SEMPRE
-        # as 18: a peça que ainda não foi escrita sai com texto vazio, e o
-        # editor desenha o formulário inteiro desde o primeiro dia.
+        # As 16 da anatomia na ordem canônica, depois as duas internas, depois a
+        # sob demanda: SEMPRE as 19. A peça que ainda não foi escrita sai com
+        # texto vazio, e o editor desenha o formulário inteiro desde o primeiro
+        # dia. A vídeo-aula em texto entra no FIM, e fora da ordem canônica, pelo
+        # motivo escrito em `Peca.TIPOS_SOB_DEMANDA`.
         "pecas": [
             {"tipo": tipo, "texto": textos.get(tipo, "")}
-            for tipo in PecaModel.ORDEM_CANONICA + PecaModel.TIPOS_INTERNOS
+            for tipo in PecaModel.ORDEM_CANONICA
+            + PecaModel.TIPOS_INTERNOS
+            + PecaModel.TIPOS_SOB_DEMANDA
         ],
         "pausas": [
             {
@@ -571,10 +588,16 @@ def list_site_lessons(request, site_id: str):
     summary="Uma aula inteira: os campos, o instrumento, as pecas e as pausas",
     description=(
         "Tudo o que o editor precisa para desenhar o formulario de uma\n"
-        "encomenda. As pecas vem SEMPRE as 18, na ordem canonica das 16 da\n"
-        "anatomia e depois as duas internas (`roteiro`, `guia_do_mentor`),\n"
-        "com texto vazio na que ainda nao foi escrita. As pausas vem na ordem.\n"
-        "`instrumento` e o slug do cartao, ou null.\n"
+        "encomenda. As pecas vem SEMPRE as 19, na ordem canonica das 16 da\n"
+        "anatomia, depois as duas internas (`roteiro`, `guia_do_mentor`) e por\n"
+        "ultimo `videoaula_em_texto`, com texto vazio na que ainda nao foi\n"
+        "escrita. As pausas vem na ordem. `instrumento` e o slug do cartao, ou\n"
+        "null.\n"
+        "\n"
+        "`videoaula_em_texto` NAO E A DECIMA SETIMA PECA DA ANATOMIA: e a mesma\n"
+        "encomenda contada como numa video-aula, e o aluno chega nela por um\n"
+        "botao embaixo do capitulo, num modal, fora da sequencia das 16. Quem a\n"
+        "recebe vazia nao deve desenhar botao nenhum.\n"
         "\n"
         "404 se a aula nao existe nesse site.\n"
         "\n"
@@ -773,10 +796,15 @@ def list_lessons(request, curso: str, site_id: str, parte: ParteDoCurso | None =
     summary="Uma aula de um curso, inteira, conferida contra a parte do endereco",
     description=(
         "Tudo o que o editor e a sala de aula precisam de uma encomenda. As\n"
-        "pecas vem SEMPRE as 18, na ordem canonica das 16 da anatomia e depois\n"
-        "as duas internas (`roteiro`, `guia_do_mentor`), com texto vazio na que\n"
-        "ainda nao foi escrita. As pausas vem na ordem. `instrumento` e o slug\n"
-        "do cartao, ou null.\n"
+        "pecas vem SEMPRE as 19, na ordem canonica das 16 da anatomia, depois\n"
+        "as duas internas (`roteiro`, `guia_do_mentor`) e por ultimo\n"
+        "`videoaula_em_texto`, com texto vazio na que ainda nao foi escrita. As\n"
+        "pausas vem na ordem. `instrumento` e o slug do cartao, ou null.\n"
+        "\n"
+        "`videoaula_em_texto` NAO E A DECIMA SETIMA PECA DA ANATOMIA: e a mesma\n"
+        "encomenda contada como numa video-aula, e o aluno chega nela por um\n"
+        "botao embaixo do capitulo, num modal, fora da sequencia das 16. Quem a\n"
+        "recebe vazia nao deve desenhar botao nenhum.\n"
         "\n"
         "`parte` e opcional e NAO e filtro: e GUARDA. Quando ela vem e nao casa\n"
         "com a parte do bloco desta aula, a resposta e 404 dizendo em que parte\n"

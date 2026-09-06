@@ -110,6 +110,17 @@ ASSUNTO_CONQUISTA = "gamificacao.conquista-concedida"
 ASSUNTO_MARCO = "gamificacao.marco-validado"
 ASSUNTO_DESTAQUE = "gamificacao.destaque-da-semana"
 
+# O SELO DA ESCOLA NO PORTFÓLIO (Rito de Contrato de 06/09/2026, degrau 12 do
+# corredor `CS-PAGES-0001`, critério AC-12). O aluno mandou o portfólio para a
+# fila da escola e esperou um prazo de cinco dias úteis: esta é a carta que
+# fecha essa espera.
+#
+# **Ela aprende a forma ANTES de a célula `pages` publicá-la**, e essa ordem é a
+# mesma lição escrita no bloco [ASSUNTOS] logo acima: uma tela que só aprende o
+# assunto depois é uma tela que mostra "ainda não sabe mostrar" para quem estava
+# esperando resposta.
+ASSUNTO_PORTFOLIO = "pages.portfolio-conferido"
+
 #: Os títulos dos níveis NA PALAVRA DE QUEM LÊ. Mesma forma, e mesmo motivo, do
 #: `SITUACAO_ROTULOS` logo abaixo: um mapa explícito, pequeno, com fallback
 #: fail-open — **slug que não estiver aqui mostra a frase só com o número do
@@ -173,6 +184,21 @@ VALIDADOR_DE_MARCO_FRASES = {
     "monitor": "Quem conferiu foi um monitor da escola.",
     "par": "Quem conferiu foi outro aluno, com a mesma régua de sempre.",
     "sistema": "A conferência foi automática, feita pela própria plataforma.",
+}
+
+#: QUEM da escola conferiu o portfólio. Vocabulário menor que o do marco, e o
+#: contrato explica por quê: portfólio quem confere é sempre gente da escola,
+#: então não existe `par` nem `sistema` aqui. Mesmo desenho, mesmo fallback: sem
+#: o campo, o cartão não diz quem conferiu, e a frase que sobra continua inteira.
+#:
+#: **Hoje a `pages` não manda este campo**, e a razão está no contrato: ela
+#: reconhece a equipe por uma lista de ids e não sabe qual deles é professor.
+#: Este mapa existe porque a tela tem de saber desenhar a carta inteira antes de
+#: alguém publicá-la, e porque voltar aqui custa uma liberação nominal do
+#: mantenedor: a `sugestoes` é célula proibida pelo corredor daquela obra.
+PAPEL_DE_QUEM_CONFERIU_FRASES = {
+    "professor": "Quem olhou foi um professor da escola.",
+    "monitor": "Quem olhou foi um monitor da escola.",
 }
 
 #: As situações de matrícula NA PALAVRA DE QUEM LÊ — o aluno, não o mantenedor.
@@ -623,6 +649,26 @@ def _destaque_para_o_template(item: dict, parametros: dict) -> dict:
     return {"semana": semana}
 
 
+def _portfolio_para_o_template(item: dict, parametros: dict) -> dict:
+    """[PORTFÓLIO] A escola conferiu o portfólio, e o selo saiu.
+
+    Quem chega aqui pediu a conferência e esperou numa fila com prazo, então a
+    frase responde à pergunta que essa pessoa está fazendo há dias.
+
+    O `portfolio_id` **não vai para a tela**, pela mesma razão do `matricula_id`
+    e do `conquista_slug`: é identificador opaco, e o aluno não pode usá-lo para
+    nada. O que ele quer saber está na Prancheta dele, e é para lá que a frase o
+    manda, sem link (a Prancheta mora na célula `pages`, que esta tela não
+    consulta, e um endereço escrito à mão aqui seria a segunda verdade sobre
+    onde ela fica).
+    """
+    return {
+        "papel_frase": PAPEL_DE_QUEM_CONFERIU_FRASES.get(
+            parametros.get("conferido_por_papel") or "", ""
+        )
+    }
+
+
 #: [ASSUNTOS] Assunto → quem desenha o cartão dele. Uma tabela, e não uma escada
 #: de `if`, porque assunto novo passou a ser rotina: foram DOIS em 29/08, e mais
 #: QUATRO em 01/09. A tabela também é o que torna barato o teste que mais
@@ -633,6 +679,7 @@ _DESENHO_DO_CARTAO = {
     ASSUNTO_CONQUISTA: _conquista_para_o_template,
     ASSUNTO_MARCO: _marco_para_o_template,
     ASSUNTO_DESTAQUE: _destaque_para_o_template,
+    ASSUNTO_PORTFOLIO: _portfolio_para_o_template,
 }
 
 

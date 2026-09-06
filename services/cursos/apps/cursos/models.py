@@ -307,12 +307,12 @@ class Aula(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# 5. A PEÇA: as 16 da anatomia, na ordem canônica, mais duas internas
+# 5. A PEÇA: as 16 da anatomia, duas internas e uma sob demanda
 # ---------------------------------------------------------------------------
 
 
 class TipoDePeca(models.TextChoices):
-    """As 16 peças da anatomia, declaradas NA ORDEM CANÔNICA, e as duas internas.
+    """As 16 peças da anatomia NA ORDEM CANÔNICA, as duas internas e a sob demanda.
 
     Mora no módulo, e não dentro de `Peca`, porque o corpo de uma `class Meta`
     aninhada não enxerga os nomes da classe que a contém, e a restrição do
@@ -340,6 +340,7 @@ class TipoDePeca(models.TextChoices):
     )
     ROTEIRO = "roteiro", "Roteiro da aula (interno)"
     GUIA_DO_MENTOR = "guia_do_mentor", "Guia do mentor (interno)"
+    VIDEOAULA_EM_TEXTO = "videoaula_em_texto", "A vídeo-aula, em texto"
 
 
 class Peca(models.Model):
@@ -349,6 +350,8 @@ class Peca(models.Model):
     que o verificador (`checkLesson`, degrau 1.6) confere se estão todas. Mora
     aqui, como tupla, para a tela e o verificador lerem dela e nunca de uma
     segunda lista. `TIPOS_INTERNOS` o aluno nunca vê.
+    `TIPOS_SOB_DEMANDA` o aluno vê, mas fora da sequência (a razão está na
+    tupla).
     """
 
     Tipo = TipoDePeca
@@ -372,6 +375,15 @@ class Peca(models.Model):
         Tipo.DICIONARIO_CARTAO_RESPOSTAS,
     )
     TIPOS_INTERNOS: tuple[str, ...] = (Tipo.ROTEIRO, Tipo.GUIA_DO_MENTOR)
+    # O TERCEIRO CASO, e ele é terceiro de propósito: o aluno VÊ esta peça, mas
+    # não na sequência. Ela é a mesma encomenda contada como numa vídeo-aula, e
+    # chega por um botão embaixo do capítulo, num modal (pedido do mantenedor em
+    # 06/09/2026). Por isso NÃO entra em `ORDEM_CANONICA`: as 16 são a anatomia
+    # que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    # fazê-las virar 17 seria mudar a lei sem rito, além de pôr um texto inteiro
+    # no meio da leitura de quem só quer a aula. Guarda:
+    # `tests/test_modelo_de_conteudo.py::test_a_videoaula_em_texto_fica_fora_da_ordem_canonica`.
+    TIPOS_SOB_DEMANDA: tuple[str, ...] = (Tipo.VIDEOAULA_EM_TEXTO,)
 
     aula = models.ForeignKey(Aula, related_name="pecas", on_delete=models.PROTECT)
     tipo = models.CharField(max_length=30, choices=Tipo.choices)

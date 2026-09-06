@@ -70,6 +70,16 @@ api = NinjaAPI(
         "com o bloco da aula RECUSA com 404 em vez de devolver a aula: um\n"
         "endereco que aponta certo para a aula errada e pior do que um\n"
         "endereco quebrado.\n"
+        "\n"
+        "A VIDEO-AULA EM TEXTO ENTRA DESDE 06/09/2026, e ela e a decima nona\n"
+        "peca, nunca a decima setima. Cada encomenda passou a ter um segundo\n"
+        "texto, a mesma aula contada como numa video-aula, e o aluno chega nele\n"
+        "por um botao embaixo do capitulo, num modal. Vem e vai como PECA\n"
+        "(`videoaula_em_texto`) para herdar o editor, o historico de versoes, a\n"
+        "restricao de uma por aula e a renderizacao em Markdown que as outras ja\n"
+        "tem. Ela fica FORA da sequencia das 16 da anatomia, que e lei da celula\n"
+        "e nao cresce: quem consome esta porta mostra as 16 em ordem e esta uma\n"
+        "so a pedido, e NAO desenha botao quando o texto dela vem vazio.\n"
     ),
     servers=[{"url": "http://cursos:8000/api/cursos"}],
     auth=bearerAuth(),

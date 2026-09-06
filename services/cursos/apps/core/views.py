@@ -486,8 +486,9 @@ def _aula_publicada(curso: Curso, numero: str) -> Aula:
 def _pecas(aula: Aula) -> list[dict]:
     """As 16 peças na ORDEM_CANONICA, renderizadas de Markdown, só as escritas.
 
-    As duas internas (o roteiro e o guia do mentor) NUNCA saem daqui: a lista
-    percorrida é a canônica, e elas não estão nela.
+    As duas internas (o roteiro e o guia do mentor) NUNCA saem daqui, e a
+    vídeo-aula em texto TAMBÉM não: a lista percorrida é a canônica, e nenhuma
+    das três está nela. A vídeo-aula tem caminho próprio, em `_videoaula`.
     """
     por_tipo = {peca.tipo: peca.texto for peca in aula.pecas.all()}
     return [
@@ -499,6 +500,25 @@ def _pecas(aula: Aula) -> list[dict]:
         for tipo in Peca.ORDEM_CANONICA
         if por_tipo.get(tipo, "").strip()
     ]
+
+
+def _videoaula(aula: Aula) -> dict:
+    """A vídeo-aula em texto desta aula, renderizada, ou `html` vazio.
+
+    O vazio é o que APAGA o botão na tela, e é o caso comum por muito tempo: as
+    34 encomendas vão viver um bom tempo sem este texto, e botão que abre um
+    modal vazio é defeito, não paciência.
+
+    O renderizador é o mesmo das outras peças (`para_html`), de propósito: dois
+    renderizadores dariam duas aparências para o mesmo Markdown. E o título do
+    modal sai do rótulo do `TextChoices`, nunca escrito de novo aqui.
+    """
+    peca = aula.pecas.filter(tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO).first()
+    texto = (peca.texto if peca else "").strip()
+    return {
+        "rotulo": TipoDePeca(Peca.Tipo.VIDEOAULA_EM_TEXTO).label,
+        "html": para_html(texto) if texto else "",
+    }
 
 
 _ID_DO_YOUTUBE = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -753,7 +773,8 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
 
 @require_GET
 def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
-    """A aula: as 16 peças, o vídeo com as pausas, o quiz e o lugar do checkpoint.
+    """A aula: as 16 peças, o botão da vídeo-aula em texto, o vídeo com as
+    pausas, o quiz e o lugar do checkpoint.
 
     `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
     que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
@@ -777,6 +798,7 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "aula": aula,
             "estado": Progresso.Estado(progresso.estado).label,
             "pecas": _pecas(aula),
+            "videoaula": _videoaula(aula),
             "video": _video(aula),
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),

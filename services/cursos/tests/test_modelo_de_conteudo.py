@@ -47,6 +47,7 @@ AS_16_PECAS_NA_ORDEM = (
     "dicionario_cartao_respostas",
 )
 AS_2_INTERNAS = ("roteiro", "guia_do_mentor")
+AS_SOB_DEMANDA = ("videoaula_em_texto",)
 
 # O despacho do degrau 1.2, transcrito: letra -> (parte, aulas).
 A_DISTRIBUICAO = {
@@ -252,7 +253,7 @@ def test_a_aula_aponta_para_um_instrumento_ou_para_nenhum(aula):
 
 
 # ---------------------------------------------------------------------------
-# 4. A peça: as 16 da anatomia, na ordem canônica, mais duas internas
+# 4. A peça: as 16 da anatomia, mais duas internas, mais uma sob demanda
 # ---------------------------------------------------------------------------
 
 
@@ -266,10 +267,28 @@ def test_as_duas_internas_ficam_fora_da_ordem_canonica():
     assert not set(Peca.TIPOS_INTERNOS) & set(Peca.ORDEM_CANONICA)
 
 
+def test_a_videoaula_em_texto_fica_fora_da_ordem_canonica():
+    """A ANATOMIA NÃO CRESCEU PARA 17, e este é o guarda que impede que cresça.
+
+    A vídeo-aula em texto é um TERCEIRO caso (`TIPOS_SOB_DEMANDA`): o aluno a vê,
+    mas fora da sequência, por um botão embaixo do capítulo. As 16 são a anatomia
+    que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    mudá-la é Rito, não conveniência de quem estiver passando por aqui.
+    """
+    assert tuple(Peca.TIPOS_SOB_DEMANDA) == AS_SOB_DEMANDA
+    assert len(Peca.ORDEM_CANONICA) == 16
+    assert "videoaula_em_texto" not in Peca.ORDEM_CANONICA
+    assert not set(Peca.TIPOS_SOB_DEMANDA) & set(Peca.ORDEM_CANONICA)
+    assert not set(Peca.TIPOS_SOB_DEMANDA) & set(Peca.TIPOS_INTERNOS)
+
+
 def test_o_vocabulario_de_peca_e_a_ordem_canonica_mais_as_internas():
-    """O `TextChoices` declara as 16 NA ORDEM, e depois as duas internas: a tela
-    que iterar `Peca.Tipo` mostra a anatomia na ordem certa sem segunda lista."""
-    assert tuple(Peca.Tipo.values) == AS_16_PECAS_NA_ORDEM + AS_2_INTERNAS
+    """O `TextChoices` declara as 16 NA ORDEM, depois as duas internas e por
+    último a sob demanda: a tela que iterar `Peca.Tipo` mostra a anatomia na
+    ordem certa sem segunda lista."""
+    assert (
+        tuple(Peca.Tipo.values) == AS_16_PECAS_NA_ORDEM + AS_2_INTERNAS + AS_SOB_DEMANDA
+    )
 
 
 def test_uma_peca_por_tipo_por_aula(aula):
@@ -284,10 +303,22 @@ def test_tipo_de_peca_no_vocabulario_fechado(aula, tipo):
         Peca.objects.create(aula=aula, tipo=tipo, texto="x")
 
 
-def test_uma_aula_recebe_as_18_pecas(aula):
+def test_uma_aula_recebe_as_19_pecas(aula):
     for tipo in Peca.Tipo:
         Peca.objects.create(aula=aula, tipo=tipo, texto=f"# {tipo.label}")
-    assert aula.pecas.count() == 18
+    assert aula.pecas.count() == 19
+
+
+def test_a_videoaula_em_texto_entra_e_sai_do_banco(aula):
+    """O vocabulário FECHADO do banco aprendeu a palavra nova: sem a migração
+    `0007`, este `create` seria IntegrityError com o `TextChoices` já certo."""
+    Peca.objects.create(
+        aula=aula,
+        tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO,
+        texto="Oi, tudo bem? Hoje a gente vai modelar o cubo da vitrine.",
+    )
+    lida = aula.pecas.get(tipo="videoaula_em_texto")
+    assert lida.texto.startswith("Oi, tudo bem?")
 
 
 # ---------------------------------------------------------------------------

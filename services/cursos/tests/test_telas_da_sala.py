@@ -5,7 +5,9 @@ O que este arquivo protege, e por que cada coisa:
 1. **O mapa** mostra as 34 portas em três Partes e doze Blocos, o estado de
    cada uma, e a próxima aberta em destaque.
 2. **A aula** mostra as 16 peças na ORDEM_CANONICA, renderizadas de Markdown,
-   e as duas internas NUNCA aparecem no HTML, nem quando têm texto.
+   e as duas internas NUNCA aparecem no HTML, nem quando têm texto. A
+   vídeo-aula em texto fica FORA dessa sequência: ela chega por um botão logo
+   abaixo do capítulo, e o botão só existe quando a peça tem texto.
 3. **Aula em rascunho é 404**; **porta trancada volta ao mapa** sem conteúdo;
    **abrir** leva `disponivel` a `em_producao`.
 4. **O vídeo** só é embutido quando é YouTube ou Vimeo; qualquer outro é link.
@@ -119,6 +121,98 @@ def test_peca_sem_texto_nao_vira_secao_vazia(aluna, aula_publicada, client):
     )
     assert 'id="peca-drills"' not in corpo
     assert corpo.count('class="peca"') == 15
+
+
+VERBATIM = (
+    "# A vídeo-aula\n\nOi, tudo bem? Hoje a gente vai **modelar o cubo** da vitrine."
+)
+
+
+def escrever_a_videoaula(aula, texto=VERBATIM):
+    return Peca.objects.create(
+        aula=aula, tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO, texto=texto
+    )
+
+
+def test_aula_sem_videoaula_escrita_nao_mostra_o_botao(aluna, aula_publicada, client):
+    """As 34 encomendas vão passar muito tempo sem este texto, e enquanto isso a
+    tela do aluno tem de ficar exatamente como estava: botão que abre um modal
+    vazio é defeito, não paciência."""
+    assert not aula_publicada.pecas.filter(tipo="videoaula_em_texto").exists()
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' not in corpo
+    assert "<dialog" not in corpo
+
+
+def test_videoaula_so_com_espacos_em_branco_tambem_nao_mostra_o_botao(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada, texto="   \n\n  ")
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' not in corpo
+    assert "<dialog" not in corpo
+
+
+def test_aula_com_videoaula_escrita_mostra_o_botao_e_o_texto_renderizado(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' in corpo
+    assert "A vídeo-aula, em texto" in corpo
+    # O MESMO renderizador das outras peças, e não um segundo: o `#` virou
+    # título e o `**` virou <strong>, como em toda peça da anatomia.
+    assert "<h1>A vídeo-aula</h1>" in corpo
+    assert "<strong>modelar o cubo</strong>" in corpo
+
+
+def test_o_botao_da_videoaula_fica_logo_abaixo_das_16_pecas(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    ultima_peca = corpo.index('id="peca-dicionario_cartao_respostas"')
+    botao = corpo.index('id="abrir-videoaula"')
+    video = corpo.index('id="video"')
+    assert ultima_peca < botao < video
+
+
+def test_a_videoaula_nao_entra_na_sequencia_das_16(aluna, aula_publicada, client):
+    """O guarda da ANATOMIA, do lado da tela: com o texto escrito, a sequência
+    que o aluno lê continua tendo 16 seções, e a vídeo-aula não é uma delas."""
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert corpo.count('class="peca"') == 16
+    assert 'id="peca-videoaula_em_texto"' not in corpo
+
+
+def test_o_modal_da_videoaula_fecha_por_x_por_esc_e_por_clique_fora(
+    aluna, aula_publicada, client
+):
+    """As três saídas, e nenhuma biblioteca: o `<dialog>` do próprio navegador dá
+    o Esc e o foco de volta; o "Fechar" e o clique fora são o resto. Sem script,
+    o `:target` do CSS ainda abre e os dois links ainda fecham."""
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert '<dialog class="videoaula" id="videoaula"' in corpo  # Esc e foco
+    assert 'class="videoaula-fechar" href="#abrir-videoaula"' in corpo  # o Fechar
+    assert 'class="videoaula-fundo" href="#abrir-videoaula"' in corpo  # clique fora
+    assert "caixa.showModal()" in corpo
+    assert "botao.focus()" in corpo
+    # Nada de fora: nenhum `<script src=...>` e nenhuma biblioteca.
+    assert "<script src" not in corpo
 
 
 def test_html_dentro_de_uma_peca_chega_escapado_na_pagina(
