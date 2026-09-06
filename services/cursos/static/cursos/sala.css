@@ -276,3 +276,89 @@ label.radio, label.checkbox {
 }
 
 label.radio input, label.checkbox input { width: auto; }
+
+/* A VÍDEO-AULA EM TEXTO: o botão logo abaixo das 16 peças e a sobreposição.
+
+   Duas camadas, nenhuma biblioteca. Sem script, `:target` abre a caixa (o molde
+   da Análise da Caixa); com script ela vira `<dialog>` de verdade e ganha o Esc,
+   o `::backdrop` e o foco de volta. A classe `com-script` desliga o `:target`
+   para os dois caminhos nunca abrirem ao mesmo tempo.
+
+   No celular a caixa rola POR DENTRO (`overflow-y` mais `overscroll-behavior:
+   contain`, que impede a rolagem de vazar para a página) e a página por baixo
+   fica travada enquanto ela está aberta. */
+.abrir-videoaula { margin: 0 0 20px; }
+
+dialog.videoaula {
+  background: none;
+  border: 0;
+  color: var(--tinta);
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  padding: 0;
+  width: 100%;
+}
+
+dialog.videoaula:not(.com-script):target {
+  display: block;
+  inset: 0;
+  position: fixed;
+  z-index: 60;
+}
+
+dialog.videoaula::backdrop { background: rgba(27, 27, 31, .68); }
+
+.videoaula-fundo {
+  background: rgba(27, 27, 31, .68);
+  display: block;
+  inset: 0;
+  position: absolute;
+}
+
+/* Com script quem escurece é o `::backdrop` do navegador, e o fundo de mentira
+   sai da frente: assim o clique fora chega ao próprio `<dialog>`, que é o que o
+   script escuta para fechar. */
+dialog.videoaula.com-script .videoaula-fundo { display: none; }
+
+.videoaula-caixa {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  margin: 4vh auto;
+  max-height: 92vh;
+  max-width: 720px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 24px 24px 32px;
+  position: relative;
+  width: calc(100% - 32px);
+}
+
+.videoaula-topo {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.videoaula-topo h2 { margin: 0; }
+
+.videoaula-fechar {
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--tinta-fraca);
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 12px;
+  text-decoration: none;
+}
+
+.videoaula-fechar:hover, .videoaula-fechar:focus { border-color: var(--marca); color: var(--tinta); }
+
+.videoaula-texto { margin-top: 12px; }
+
+html:has(dialog.videoaula[open]), html:has(dialog.videoaula:not(.com-script):target) {
+  overflow: hidden;
+}
