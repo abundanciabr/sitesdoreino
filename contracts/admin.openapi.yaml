@@ -41,6 +41,18 @@
 # "congelado" e "implementado". CONSEQUENCIA PRATICA: o proximo PR da celula
 # `admin` TEM de ser o da porta de maquina.
 #
+# E PARA ESTA CELULA A ORDEM INVERSA E IMPOSSIVEL, nao apenas cara. A `228` diz
+# que um PR so de `contracts/` e `ci/` nao aciona celula nenhuma, e isso e
+# verdade, mas `celulas.yml` atribui `painel/` e `fila/` a `admin` (as duas
+# entram na imagem dela no build). O registro do livro que o portao de pouso
+# EXIGE a bordo, e os eventos da fila, puxam a `admin` para a matriz do
+# `ci-celula`: `python ci/ci.py --detectar-celulas` responde `admin` para o
+# proprio PR do Rito. Medido em 06/09/2026, no PR #1238, que ficou vermelho por
+# isso e esperou a porta em vez de forcar. Junto veio um segundo buraco, o mesmo
+# que a `pages` topou: `PyYAML` faltava em `services/admin/requirements.txt`, e
+# a maquina de quem desenvolve tem PyYAML global, entao o `make ci` local mente
+# de verde (`armadilhas/096`). O PR da porta leva os dois consertos.
+#
 # UMA OPERACAO SO, E ELA SO LE. Nao ha verbo que promova nem que remova
 # administrador, e a ausencia e decisao: o conjunto de tokens desta casa e
 # plano (`TOKENS_ACEITOS`), entao todo par que ganha o token para ler ganharia
