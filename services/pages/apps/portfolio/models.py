@@ -1,13 +1,14 @@
-"""As quatro tabelas do portfólio do aluno, e a fronteira que elas defendem.
+"""As tabelas do portfólio do aluno, e a fronteira que elas defendem.
 
 Lei: `docs/changespecs/CS-PAGES-0001.md` (critérios AC-02, AC-06, AC-07 e
 AC-13), `docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md` (§4 a casa, §5 a escada,
 §7 o que ninguém pode inventar) e `constituicoes/AGENTS.pages.md` (os
 invariantes desta célula). Este é o degrau 02 da escada.
 
-**Não há tela, não há porta de máquina, não há evento e não há contrato.** Eles
-são os degraus 06, 03 e 12. O que existe aqui é a fundação, e nela três coisas
-que o resto vai poder tratar como verdade:
+Cinco delas são DO ALUNO (o portfólio, a peça, o item de conferência, o estado
+e o pedido de conferência do degrau 11) e duas são o CATÁLOGO da escola, no fim
+do arquivo. Este arquivo nasceu no degrau 02, com a fundação, e nela três coisas
+que o resto pôde tratar como verdade:
 
 1. **Nenhuma chave estrangeira sai do banco desta célula** (critério AC-02).
    O id do aluno e o id do site são texto OPACO: quem sabe quem é a pessoa é a
@@ -18,14 +19,14 @@ que o resto vai poder tratar como verdade:
    nunca no navegador: o AC-06 exige que a marcação atravesse APARELHOS, e
    sessão não atravessa.
 3. **O isolamento por aluno é uma porta só, e ela é o `do_aluno` destes
-   gerenciadores** (critério AC-07). Toda tela dos degraus 07, 08, 10 e 13 lê
-   por ele. Guarda: `tests/test_isolamento_por_aluno.py`, provado por mutação.
+   gerenciadores** (critério AC-07). Toda tela dos degraus 07, 08, 10, 11 e 13
+   lê por ele. Guarda: `tests/test_isolamento_por_aluno.py`, provado por mutação.
 
 POR QUE NENHUMA TABELA FILHA GUARDA `site_id` NEM `aluno_id`
 ------------------------------------------------------------
 A fronteira de site (Lei 9 / [INV-P11]) e a fronteira de aluno moram no
-`Portfolio`, e SÓ nele. `Peca`, `ItemDeConferencia` e `EstadoDoAluno` chegam às
-duas pela chave estrangeira local.
+`Portfolio`, e SÓ nele. `Peca`, `ItemDeConferencia`, `EstadoDoAluno` e
+`PedidoDeConferencia` chegam às duas pela chave estrangeira local.
 
 A alternativa era copiar as colunas para cada filha, e ela tem preço conhecido:
 coluna denormalizada pode MENTIR, e quando mente derruba justamente a trava que
@@ -488,6 +489,207 @@ class EstadoDoAluno(models.Model):
 
     def __str__(self) -> str:
         return f"etapa {self.etapa_atual} de {self.portfolio.aluno_id}"
+
+
+# ---------------------------------------------------------------------------
+# O VOCABULÁRIO DO PEDIDO DE CONFERÊNCIA (degrau 11, critério AC-11)
+# ---------------------------------------------------------------------------
+# As duas listas moram no MÓDULO, e não dentro de `PedidoDeConferencia`, pela
+# mesma razão de linguagem que já pôs `EstadoDoLink` aqui em cima: o corpo de
+# uma `class Meta` aninhada não enxerga os nomes do corpo da classe que a
+# contém, e as restrições do pedido precisam destes valores.
+
+
+class EstadoDoPedido(models.TextChoices):
+    """Onde está o pedido. Três estados, e nenhum deles se chama "recusado".
+
+    **"Em análise" tem nome de espera, e o nome é a decisão.** Um primeiro
+    estado chamado "pendente" ensinaria o aluno a se sentir recusado nos cinco
+    dias em que ninguém fez nada de errado. E "recusado" não existe nesta
+    lista: devolver não é dizer não, é dizer o que falta.
+
+    O rótulo é o que o aluno lê na tela, então ele sai em frase inteira e sem
+    travessão (lei do `ci/travessao.py`).
+    """
+
+    EM_ANALISE = "em_analise", "A escola está olhando o seu portfólio"
+    ACEITO = "aceito", "A escola conferiu o seu portfólio"
+    DEVOLVIDO = "devolvido", "A escola devolveu com o que falta"
+
+
+class MotivoDaDevolucao(models.TextChoices):
+    """As frases que a equipe escolhe ao devolver. Cada uma diz o que fazer.
+
+    Elas saem das quatro regras que a professora escreveu no roteiro
+    (`apps/portfolio/roteiro_da_escola.py`), mais o caso prático de a
+    equipe não conseguir abrir uma peça. São o que o ALUNO lê, então elas
+    são frases inteiras, em português, e sem travessão (lei do
+    `ci/travessao.py`, que mede o rótulo de todo `TextChoices` de célula).
+
+    **Nenhuma delas é uma opinião sobre a obra.** Cada uma aponta uma regra
+    objetiva do roteiro e o que falta para cumpri-la, que é a diferença
+    entre um processo e uma humilhação.
+    """
+
+    POUCOS_TIPOS = (
+        "poucos_tipos",
+        "Faltam tipos de modelo: a escola pede pelo menos 3 tipos "
+        "diferentes entre os que o curso ensina.",
+    )
+    POUCAS_PECAS = (
+        "poucas_pecas",
+        "Faltam peças: a escola pede pelo menos 3 de cada tipo que você "
+        "escolheu, o que dá 9 no mínimo.",
+    )
+    POUCO_HIGH_POLY = (
+        "pouco_high_poly",
+        "A maioria das peças ainda não está em high poly, que é o que a "
+        "escola pede para impressionar o cliente.",
+    )
+    PARECIDA_COM_A_AULA = (
+        "parecida_com_a_aula",
+        "Há peças parecidas demais com o modelo feito na aula. Troque por "
+        "criações suas.",
+    )
+    PECA_QUE_NAO_ABRE = (
+        "peca_que_nao_abre",
+        "A escola não conseguiu abrir o endereço de alguma peça. Guarde a "
+        "peça de novo com o endereço atual dela.",
+    )
+
+
+class PedidoDeConferencia(models.Model):
+    """O aluno pede que a escola olhe o portfólio dele, e o relógio começa a correr.
+
+    Este é o degrau 11 da escada (critério AC-11), e o desenho é COPIADO do
+    molde vivo da fila de marcos (`services/gamificacao`, tela
+    `/conquistas/interno`): mesmos três estados, mesmo prazo em dias úteis,
+    mesma devolução com motivo de lista fechada. Copia-se o PADRÃO entre
+    células, nunca o código (Lei 3), e copiar um desenho que gente de verdade
+    já usou vale mais que inventar um segundo jeito de fazer a mesma coisa.
+
+    **A DEVOLUÇÃO EXIGE MOTIVO, e essa é metade do critério AC-11.** Devolver
+    sem dizer por quê é o que faz um aluno desistir: ele fica sabendo que não
+    foi, e não fica sabendo o que fazer. O banco recusa a linha devolvida sem
+    motivo, e o motivo é uma das frases que a escola escreveu, nunca texto
+    livre. Texto livre vira crítica pessoal, que é exatamente o que a lista
+    fechada existe para impedir.
+
+    **O SELO NÃO MORA AQUI.** Aceitar fecha o pedido e nada mais: o selo
+    "conferido pela escola", o evento e a carta no sininho são o degrau 12, e
+    a coluna que os guarda já existe em `EstadoDoAluno`. Escrever o selo aqui
+    poria a mesma verdade em dois degraus e faria este PR entregar um critério
+    que ele não tem como provar.
+
+    O QUE ESTE MODELO NÃO GUARDA, E É DECISÃO
+    -----------------------------------------
+    - **A prova que o aluno manda.** Na fila de marcos ela existe porque o
+      marco acontece FORA do site; aqui a prova é o portfólio, que já está
+      neste banco e que a equipe abre na tela. Um campo de texto ao lado seria
+      uma segunda descrição da mesma obra, livre para discordar dela.
+    - **Contador de devoluções e escalada para adulto.** Na fila de marcos eles
+      são o anti-anel, e existem porque um COLEGA pode devolver lá. Aqui quem
+      devolve é só a equipe da escola, então não há anel para desfazer.
+    - **Nota, estrela ou classificação.** Proibidas por escrito (plano §7). O
+      resultado de uma conferência é aceito ou devolvido com o que falta, e
+      nunca um número sobre a obra de alguém.
+
+    **A porta do isolamento é a mesma de todo o resto** (`do_aluno`, critério
+    AC-07): o pedido chega ao aluno e ao site pela chave estrangeira do
+    portfólio, e nenhuma cópia de `aluno_id` mora aqui para divergir dele.
+    """
+
+    portfolio = models.ForeignKey(
+        Portfolio, on_delete=models.CASCADE, related_name="pedidos_de_conferencia"
+    )
+
+    estado = models.CharField(
+        max_length=10,
+        choices=EstadoDoPedido.choices,
+        default=EstadoDoPedido.EM_ANALISE,
+    )
+    # QUANDO A ESCOLA PROMETEU RESPONDER, e a coluna é obrigatória: fila sem
+    # prazo é fila que envelhece calada, e o aluno não tem como saber se
+    # esperar mais um dia é normal ou se ele foi esquecido.
+    prazo_ate = models.DateTimeField()
+
+    motivo_da_devolucao = models.CharField(
+        max_length=24, choices=MotivoDaDevolucao.choices, blank=True, default=""
+    )
+    respondido_em = models.DateTimeField(null=True, blank=True)
+    respondido_por = id_da_plataforma()
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    objects = DoPortfolioQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "pedido de conferência"
+        verbose_name_plural = "pedidos de conferência"
+        # A ORDEM DA FILA É REGRA, e ela mora aqui para a tela não poder
+        # discordar: o prazo mais curto em cima. Ordenar por data de criação
+        # mostraria o pedido mais VELHO primeiro, que não é o mais urgente
+        # quando dois prazos diferentes convivem na mesma fila.
+        ordering = ["prazo_ate", "criado_em"]
+        constraints = [
+            # UM pedido esperando por portfólio. Sem esta chave, dois cliques
+            # no mesmo botão (ou duas abas abertas) poriam o mesmo portfólio
+            # duas vezes na fila que uma PESSOA olha, e o prazo viraria ficção.
+            # Parcial de propósito: pedido respondido é história, e o aluno
+            # pode pedir de novo depois de arrumar o que faltava.
+            models.UniqueConstraint(
+                fields=["portfolio"],
+                condition=models.Q(estado="em_analise"),
+                name="um_pedido_de_conferencia_em_analise_por_portfolio",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado__in=[valor for valor, _ in EstadoDoPedido.choices]
+                ),
+                name="o_estado_do_pedido_e_um_dos_tres",
+            ),
+            # O MOTIVO ANDA JUNTO COM A DEVOLUÇÃO, nas duas direções: devolvido
+            # sem motivo é o aluno travado sem saber o que fazer, e motivo sem
+            # devolução é a sobra de uma resposta que alguém trocou depois.
+            # Metade desta restrição deixaria passar o caso que a outra proíbe.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(estado="devolvido") & ~models.Q(motivo_da_devolucao="")
+                )
+                | (~models.Q(estado="devolvido") & models.Q(motivo_da_devolucao="")),
+                name="a_devolucao_tem_motivo",
+            ),
+            # E o motivo é um dos que a escola escreveu. A tela recusa cedo e
+            # com uma frase; esta linha recusa por último e sem frase nenhuma,
+            # que é o mesmo par que a `Peca` já usa nas respostas do aluno.
+            models.CheckConstraint(
+                condition=models.Q(
+                    motivo_da_devolucao__in=[""]
+                    + [valor for valor, _ in MotivoDaDevolucao.choices]
+                ),
+                name="o_motivo_da_devolucao_e_um_dos_da_escola",
+            ),
+            # TODA RESPOSTA TEM DATA E TEM NOME. Sem os dois, a auditoria de
+            # uma conferência contestada não teria o que responder meses
+            # depois, e é a mesma exigência que o selo já faz de si mesmo em
+            # `EstadoDoAluno`.
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado="em_analise",
+                    respondido_em__isnull=True,
+                    respondido_por="",
+                )
+                | (
+                    ~models.Q(estado="em_analise")
+                    & models.Q(respondido_em__isnull=False)
+                    & ~models.Q(respondido_por="")
+                ),
+                name="a_resposta_tem_data_e_quem_respondeu",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"conferência de {self.portfolio.aluno_id}: {self.estado}"
 
 
 # ===========================================================================

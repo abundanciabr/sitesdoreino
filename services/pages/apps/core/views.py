@@ -1,19 +1,20 @@
 """As views da célula `pages` (a casa das Páginas do aluno).
 
-Sete: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
+Dez: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
 de um item da lista de conferência, as três das peças coladas por link (degrau
-08: a estante, o colar de um link novo e a mudança de uma peça que já está lá) e
-a resposta das perguntas da escola sobre uma peça (degrau 10). O que falta
-continua vindo pela escada do `PLANO-PORTFOLIO-DO-ALUNO.md` §5: o pedido de
-conferência e a fila da equipe (11 e 12) e a vitrine em `/estudio/<apelido>`
-(13).
+08: a estante, o colar de um link novo e a mudança de uma peça que já está lá),
+a resposta das perguntas da escola sobre uma peça (degrau 10) e as três da
+conferência (degrau 11: o aluno pedindo, a fila da equipe e a decisão dela). O
+que falta continua vindo pela escada do `PLANO-PORTFOLIO-DO-ALUNO.md` §5: o
+selo (12) e a vitrine em `/estudio/<apelido>` (13).
 
 **Nenhuma view daqui decide quem entra.** Quem decide é a porta
 (`apps/core/porta.py`), fail-CLOSED, e ela vem por último no `MIDDLEWARE`:
-quando uma view desta célula roda, a pessoa já foi reconhecida e a matrícula
-ativa já foi conferida. Espalhar essa decisão por tela faria o critério AC-05
-depender de uma lembrança por arquivo, que é a forma como esse tipo de porta
-morre.
+quando uma view desta célula roda, a pessoa já foi reconhecida, e a régua que
+ela passou (matrícula ativa nas telas do aluno, lista da equipe na fila do
+degrau 11) já foi aplicada. Espalhar essa decisão por tela faria o critério
+AC-05 depender de uma lembrança por arquivo, que é a forma como esse tipo de
+porta morre.
 
 **Nenhuma view daqui escreve um `filter()` por aluno.** O isolamento do critério
 AC-07 tem UMA porta, o `do_aluno` dos gerenciadores de
@@ -32,16 +33,18 @@ from django.conf import settings
 from django.db import models, transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.portfolio import conferencia_do_link, semaforo
+from apps.portfolio import conferencia, conferencia_do_link, semaforo
 from apps.portfolio.models import (
     Acabamento,
     EstadoDoLink,
     EtapaDoRoteiro,
     ItemDeConferencia,
     ItemDoRoteiro,
+    MotivoDaDevolucao,
     ParecidaComAAula,
     Peca,
     Portfolio,
@@ -277,42 +280,89 @@ def estante_de(request, site_id: str) -> list[Peca]:
     )
 
 
-def com_semaforo(pecas: list[Peca]) -> list[Peca]:
+def regras_da_escola() -> dict[str, str]:
+    """`{chave: texto}` do roteiro, lido UMA vez por tela.
+
+    Uma função, e não uma linha solta dentro de cada view, porque as DUAS telas
+    que acendem semáforo (a estante do aluno e a fila da equipe) precisam do
+    mesmo dicionário: uma segunda consulta escrita à mão é a que envelhece
+    sozinha no dia em que a primeira mudar.
+    """
+    return dict(ItemDoRoteiro.objects.values_list("chave", "texto"))
+
+
+def com_semaforo(pecas: list[Peca], regras: dict[str, str]) -> list[Peca]:
     """Cada peça com a cor e a lista do que ainda falta nela (critério AC-10).
 
-    **O roteiro da escola é lido UMA vez**, e não uma consulta por peça: a
-    estante de um aluno aplicado tem dezenas de linhas, e o texto das regras é o
-    mesmo para todas elas.
+    **O roteiro entra por PARÂMETRO**, e não é buscado aqui dentro: a fila da
+    equipe desenha o semáforo de vários portfólios na mesma página, e uma
+    consulta por portfólio leria o texto das regras dezenas de vezes para dar
+    sempre a mesma resposta.
 
     **O semáforo não é guardado em coluna nenhuma**, e é por isso que ele nasce
     aqui a cada abertura de tela. Uma cor gravada envelheceria calada no dia em
     que a escola corrigisse uma regra, e a peça mostraria a conta de ontem.
     """
-    if not pecas:
-        return pecas
-    regras = dict(ItemDoRoteiro.objects.values_list("chave", "texto"))
     for peca in pecas:
         peca.semaforo = semaforo.calcular(peca, regras)
     return pecas
 
 
-def desenhar_estante(request, site_id, *, recusa="", link="", legenda="", status=200):
+def meu_portfolio(request, site_id: str) -> Portfolio | None:
+    """O portfólio deste aluno, ou `None` enquanto ele não guardou nada.
+
+    Sai pela porta única do isolamento (`do_aluno`), como toda leitura desta
+    casa. `None` é o estado normal de quem abriu a estante e ainda não colou
+    peça nenhuma: o portfólio nasce na primeira ESCRITA, e um `GET` que o
+    criasse encheria a tabela com quem só passou por aqui.
+    """
+    return Portfolio.objects.do_aluno(
+        site_id=site_id, aluno_id=request.aluno["id"]
+    ).first()
+
+
+def desenhar_estante(
+    request,
+    site_id,
+    *,
+    recusa="",
+    link="",
+    legenda="",
+    recusa_da_conferencia="",
+    status=200,
+):
     """A tela das peças. `recusa` é a frase que diz por que o link não entrou.
 
     A recusa é DESENHADA no lugar, e não redirecionada: o aluno acabou de colar
     um endereço longo, e mandá-lo para outra página perderia o que ele digitou
-    junto com a explicação.
+    junto com a explicação. `recusa_da_conferencia` é a mesma ideia para o botão
+    de pedir a conferência, e as duas são caixas SEPARADAS de propósito: uma
+    frase sobre o pedido aparecendo no lugar da frase sobre o link mandaria o
+    aluno procurar o erro no formulário errado.
     """
+    portfolio = meu_portfolio(request, site_id) if site_id else None
     return render(
         request,
         "pages/pecas.html",
         {
             "aluno": request.aluno,
-            "pecas": com_semaforo(estante_de(request, site_id)) if site_id else [],
+            "pecas": (
+                com_semaforo(estante_de(request, site_id), regras_da_escola())
+                if site_id
+                else []
+            ),
             "pode_guardar": site_id is not None,
             "recusa": recusa,
             "link_recusado": link,
             "legenda_recusada": legenda,
+            # O PEDIDO DE CONFERÊNCIA (degrau 11): o mais recente, em qualquer
+            # estado. É dele que sai a data prometida enquanto o portfólio está
+            # com a escola, e o motivo por extenso quando ele voltou.
+            "pedido": (
+                conferencia.ultimo_pedido(portfolio) if portfolio is not None else None
+            ),
+            "recusa_da_conferencia": recusa_da_conferencia,
+            "agora": timezone.now(),
             # As respostas que a escola aceita em cada pergunta. Só os VALORES e
             # os rótulos: a pergunta em si é frase que o aluno lê, e ela mora no
             # template, que é superfície medida pelo portão do travessão.
@@ -430,6 +480,14 @@ def mudar_peca(request):
 
     **A peça é encontrada pela porta única do isolamento**, e é isso que impede
     o botão de um aluno de alcançar a peça de outro que tenha o mesmo número.
+
+    **O número da peça é conferido ANTES de virar consulta**, no mesmo molde do
+    `responder_peca` logo abaixo. A primeira versão escrevia
+    `filter(pk=request.POST.get("peca") or 0)`, e um `peca=abc` mandado pelo
+    navegador virava erro 500: o `or 0` só troca o vazio, e o Postgres recusa
+    comparar um número com uma palavra. O certo é 404, porque a estante
+    realmente não tem essa peça, e um 500 aqui acenderia alarme de defeito
+    nosso por causa de um endereço torto de fora.
     """
     site_id = site_atual()
     if site_id is None:
@@ -439,11 +497,15 @@ def mudar_peca(request):
     if acao not in ("subir", "descer", "destacar", "tirar-destaque", "remover"):
         raise Http404(f"a estante não sabe fazer {acao!r}")
 
+    numero = (request.POST.get("peca") or "").strip()
+    if not numero.isdigit():
+        raise Http404(f"a estante não tem a peça {numero!r}")
+
     with transaction.atomic():
         minhas = Peca.objects.do_aluno(
             site_id=site_id, aluno_id=request.aluno["id"]
         ).select_for_update()
-        peca = minhas.filter(pk=request.POST.get("peca") or 0).first()
+        peca = minhas.filter(pk=numero).first()
         if peca is None:
             raise Http404("essa peça não está na sua estante")
 
@@ -543,3 +605,151 @@ def responder_peca(request):
     peca.save(update_fields=[*respostas, "atualizada_em"])
 
     return redirect("pecas")
+
+
+# ===========================================================================
+# A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11)
+# ===========================================================================
+# O aluno manda o portfólio, e uma PESSOA da escola olha. É a fila humana, no
+# molde vivo da fila de marcos (`/conquistas/interno`, célula `gamificacao`):
+# prazo em dias úteis, o mais urgente em cima, aceite em um clique e devolução
+# com motivo de lista fechada. Copia-se o PADRÃO entre células, nunca o código
+# (Lei 3), e a regra em si mora em `apps/portfolio/conferencia.py`.
+#
+# **A porta desta área é a porta da casa**, com outra régua: `/equipe` passa
+# pelo mesmo middleware, que troca a pergunta da matrícula pela lista do env
+# (`apps/core/porta.py`, `PREFIXO_DA_FILA_DA_EQUIPE`). Nenhuma view daqui
+# decide quem entra, e é por isso que estas três não perguntam nada sobre
+# permissão: quando elas rodam, a porta já decidiu.
+#
+# **O SELO NÃO ESTÁ AQUI, e a ausência é a escada.** Aceitar fecha o pedido; o
+# selo "conferido pela escola", o evento e a carta no sininho são o degrau 12
+# (critério AC-12). Adiantá-los entregaria pela metade um critério que este PR
+# não tem como provar.
+
+
+@require_POST
+def pedir_conferencia(request):
+    """O aluno manda o portfólio para a escola olhar.
+
+    **A recusa é desenhada na estante, e não redirecionada**, pelo mesmo motivo
+    da recusa do link: a explicação precisa aparecer ao lado do botão que a
+    provocou. Ela vem com 422, que é *entendi o pedido e não posso atendê-lo*.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    try:
+        conferencia.pedir(meu_portfolio(request, site_id))
+    except conferencia.ConferenciaRecusada as recusa:
+        return desenhar_estante(
+            request, site_id, recusa_da_conferencia=str(recusa), status=422
+        )
+
+    # POST-redirect-GET: sem ele, um F5 depois de pedir repetiria o gesto. Aqui
+    # repetir já seria recusado pela própria regra (o pedido está na fila), e o
+    # padrão fica porque o dia em que um gesto NÃO for idempotente é tarde
+    # demais para lembrar dele.
+    return redirect("pecas")
+
+
+def desenhar_fila(request, site_id, *, recusa="", feito="", status=200):
+    """A tela da equipe: os pedidos esperando, o mais urgente em cima.
+
+    **O semáforo de cada peça aparece aqui também**, calculado do MESMO módulo
+    que o aluno vê na estante dele. Duas contas para a mesma pergunta seriam
+    duas respostas capazes de discordar, e a equipe estaria julgando por um
+    número que o aluno nunca viu.
+
+    Sem `SITE_ID` no env a fila aparece vazia com a explicação, e não quebrada:
+    é a mesma recusa honesta que a Prancheta já faz, e o motivo por extenso está
+    em `site_atual`.
+    """
+    regras = regras_da_escola() if site_id else {}
+    agora = timezone.now()
+    linhas = [
+        {
+            "pedido": pedido,
+            "pecas": com_semaforo(
+                list(pedido.portfolio.pecas.order_by("ordem")), regras
+            ),
+            "atrasado": pedido.prazo_ate < agora,
+        }
+        for pedido in (conferencia.fila_da_equipe(site_id) if site_id else [])
+    ]
+    return render(
+        request,
+        "pages/equipe.html",
+        {
+            "sabe_a_escola": site_id is not None,
+            "linhas": linhas,
+            "motivos": MotivoDaDevolucao.choices,
+            "recusa": recusa,
+            "feito": feito,
+            **de_fora(),
+        },
+        status=status,
+    )
+
+
+@require_GET
+def fila_da_equipe(request):
+    """A fila única da equipe. Quem chega aqui já passou pela porta."""
+    return desenhar_fila(request, site_atual(), feito=request.GET.get("feito", ""))
+
+
+@require_POST
+def decidir(request):
+    """Aceitar, ou devolver dizendo o que falta. Um clique, e nada de texto livre.
+
+    **Quem conferiu sai do SERVIDOR, nunca do formulário.** Um campo escondido
+    com o id de quem decide seria uma etiqueta escrita pelo próprio navegador, e
+    a auditoria de uma conferência contestada passaria a valer o que vale um
+    campo que qualquer um edita. Quem decide é quem a porta reconheceu.
+
+    **O recado de sucesso viaja como CÓDIGO, não como frase.** Uma frase pronta
+    na barra de endereço é uma frase que alguém troca por outra e manda por link
+    a um aluno; o texto mora no template, que é a superfície medida pelo portão
+    do travessão.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return desenhar_fila(request, None, status=503)
+
+    numero = (request.POST.get("pedido") or "").strip()
+    pedido = (
+        conferencia.fila_da_equipe(site_id).filter(pk=numero).first()
+        if numero.isdigit()
+        else None
+    )
+    if pedido is None:
+        return desenhar_fila(
+            request,
+            site_id,
+            recusa=(
+                "Esse pedido não está mais esperando nesta fila. Ou alguém da "
+                "equipe já respondeu, ou ele é de outra escola. Atualize a "
+                "página para ver a fila de agora."
+            ),
+            status=404,
+        )
+
+    gesto = request.POST.get("gesto") or ""
+    try:
+        if gesto == "aceitar":
+            conferencia.aceitar(
+                pedido=pedido, conferido_por=request.membro_da_equipe["id"]
+            )
+        elif gesto == "devolver":
+            conferencia.devolver(
+                pedido=pedido,
+                conferido_por=request.membro_da_equipe["id"],
+                motivo=(request.POST.get("motivo") or "").strip(),
+            )
+        else:
+            raise Http404(f"a fila não sabe fazer {gesto!r}")
+    except conferencia.ConferenciaRecusada as recusa:
+        return desenhar_fila(request, site_id, recusa=str(recusa), status=422)
+
+    return redirect(f"{reverse('equipe')}?feito={gesto}")
