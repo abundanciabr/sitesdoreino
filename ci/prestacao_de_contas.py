@@ -31,6 +31,21 @@ COMO O HARNESS O CHAMA (fiação em .claude/settings.json)
             RECUSA o fim do turno e devolve o stderr ao robô, que precisa
             continuar. É esta recusa que torna impossível arquivar em silêncio.
 
+A SEGUNDA PASSADA (06/09/2026, armadilhas/368)
+-----------------------------------------------
+Depois de uma recusa o robô continua, escreve (ou não) o relatório, e o harness
+chama o Stop DE NOVO, com `stop_hook_active: true`. Esse campo diz só "já houve
+uma recusa neste fim de turno"; não diz se ela foi atendida. A primeira versão
+tratava o campo como prova de desobediência e devolvia exit 1 com "o robô foi
+cobrado e terminou assim mesmo" SEM abrir o transcript. Medido nos transcripts
+de 05 e 06/09/2026: 50 segundas passadas, 50 avisos, e em 32 delas o relatório
+válido estava na tela. O aviso saía também no caminho certo, e um aviso que sai
+sempre é um aviso que ninguém mais lê.
+
+A segunda passada mede o transcript com a MESMA régua da primeira: relatório
+presente e válido, exit 0 em silêncio; ainda faltando, exit 1 com o aviso.
+Nunca exit 2, que prenderia a sessão em laço.
+
 A RÉGUA, e por que ela não é "todo turno"
 ------------------------------------------
 Cobrar prestação de contas em todo turno seria pior que não cobrar nenhuma.
@@ -142,7 +157,8 @@ Uso (fora do harness, para depurar):
     echo '{"prompt":"conserte o login"}' | python ci/prestacao_de_contas.py --plano
 
 Exit codes: 0 permite/cala · 2 RECUSA o fim do turno (só no --contas) ·
-1 não consegui medir (barulhento, nunca silencioso).
+1 não consegui medir, ou segunda passada ainda sem relatório (barulhento,
+nunca silencioso).
 """
 
 from __future__ import annotations
@@ -500,16 +516,11 @@ def molde(faltou_o_plano: bool) -> str:
 
 
 def modo_contas(entrada: dict) -> int:
-    if entrada.get("stop_hook_active"):
-        # Já recusei uma vez neste fim de turno. Recusar de novo prenderia a
-        # sessão em laço. Passo — mas GRITO, para o mantenedor ver que o robô
-        # foi cobrado e não trouxe as contas. (exit 1: barulhento, não bloqueia.)
-        print(
-            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
-            "   O que você tem na tela pode não ser o relatório da tarefa.",
-            file=sys.stderr,
-        )
-        return 1
+    # `stop_hook_active` diz só "já houve uma recusa neste fim de turno". Se ela
+    # foi atendida, só o transcript sabe — e ele é relido com a MESMA régua
+    # (armadilhas/368: a primeira versão gritava sem olhar, e em 32 de 50 vezes
+    # o relatório estava na tela).
+    segunda_passada = bool(entrada.get("stop_hook_active"))
 
     caminho = entrada.get("transcript_path")
     if not caminho:
@@ -532,22 +543,35 @@ def modo_contas(entrada: dict) -> int:
     entradas = ler_transcript(arquivo)
     recusar, motivo, teve_plano = decidir(entradas)
 
-    # Alavanca 3, em SOMBRA: só telemetria, roda sempre que o Stop dispara —
-    # inclusive quando a prestação de contas já foi paga, porque a sessão pode
-    # ter aberto os PRs em série ANTES do relatório. registrar() já é
-    # fail-open (nunca lança), então isto não pode derrubar o exit code que
-    # `decidir()` já calculou.
-    prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
-    if prs_criados >= 2 and despachos_de_verdade == 0:
-        telemetria.registrar(
-            "serie_sem_despacho",
-            {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
-            cwd=entrada.get("cwd"),
-            sessao=entrada.get("session_id"),
-        )
+    # Alavanca 3, em SOMBRA: só telemetria, roda na primeira passada de todo
+    # Stop — inclusive quando a prestação de contas já foi paga, porque a
+    # sessão pode ter aberto os PRs em série ANTES do relatório. A segunda
+    # passada do mesmo fim de turno não conta de novo: a série é uma só.
+    # registrar() já é fail-open (nunca lança), então isto não pode derrubar o
+    # exit code que `decidir()` já calculou.
+    if not segunda_passada:
+        prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
+        if prs_criados >= 2 and despachos_de_verdade == 0:
+            telemetria.registrar(
+                "serie_sem_despacho",
+                {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
+                cwd=entrada.get("cwd"),
+                sessao=entrada.get("session_id"),
+            )
 
     if not recusar:
         return 0
+    if segunda_passada:
+        # Já recusei uma vez neste fim de turno e o relatório continua faltando.
+        # Recusar de novo prenderia a sessão em laço. Passo — mas GRITO, para o
+        # mantenedor ver que o robô foi cobrado e não trouxe as contas.
+        # (exit 1: barulhento, não bloqueia.)
+        print(
+            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
+            "   O que você tem na tela pode não ser o relatório da tarefa.",
+            file=sys.stderr,
+        )
+        return 1
     print(molde(faltou_o_plano=not teve_plano), file=sys.stderr)
     print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
     return 2
