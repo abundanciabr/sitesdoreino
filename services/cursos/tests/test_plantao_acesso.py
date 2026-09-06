@@ -16,7 +16,13 @@ import httpx
 import pytest
 from django.urls import reverse
 
-from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao, url_da_situacao
+from tests.conftest import (
+    ANA,
+    COOKIE,
+    dublar_matricula,
+    dublar_sessao,
+    url_das_matriculas,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -143,7 +149,7 @@ def test_professora_nao_precisa_de_matricula_ativa(
     decide se a professora é reconhecida; a matrícula é assunto do aluno."""
     monkeypatch.setenv("CURSOS_PROFESSORES", ANA["email"])
     dublar_sessao(rede, ANA)
-    rota = rede.get(url_da_situacao(ANA["email"]))
+    rota = rede.get(url_das_matriculas(ANA["email"]))
     rota.mock(side_effect=httpx.ConnectError("alunos caiu"))
     assert _acessar_plantao(client).status_code == 200
 

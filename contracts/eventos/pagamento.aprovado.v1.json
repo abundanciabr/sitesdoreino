@@ -21,6 +21,10 @@
         "amount_cents": { "type": "integer", "minimum": 1 },
         "method": { "enum": ["pix", "card"] },
         "mp_payment_id": { "type": "string" },
+        "product_id": {
+          "type": "string",
+          "description": "O produto que a pessoa comprou, e e o que a matricula guarda para dizer de qual curso ela e aluna (DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]). OPCIONAL e AUSENTE quando o checkout nao informou, nunca string vazia: ausencia e 'nao sei', e string vazia seria 'sei que e nada', que nao existe. Atribuicao, como o site_id: pagamentos ecoa o que veio no metadata da intent e nunca interpreta. Quem consome e responsavel por decidir o que faz sem ele, e nunca por adivinhar."
+        },
         "customer": {
           "type": "object",
           "required": ["email", "name"],
