@@ -66,17 +66,24 @@ logger = logging.getLogger("pages.menu")
 # mesmo nome que `celulas.yml` usa e que a tela `/admin/menu/` oferece.
 CELULA = "pages"
 
-# A chave de página das TRÊS TELAS DA PORTA (o convite, a falta de matrícula e a
-# indisponibilidade). Elas são desenhadas pelo middleware, ANTES de o Django
-# resolver a rota, então `request.resolver_match` ainda é `None` e não há
-# `route` de onde tirar a chave.
+# A rota que as TRÊS TELAS DA PORTA (o convite, a falta de matrícula e a
+# indisponibilidade) usam como chave de página. Elas são desenhadas pelo
+# middleware ANTES de o Django resolver a rota, então `request.resolver_match`
+# ainda é `None` e não há `route` de onde tirar a chave.
 #
-# **Sem esta constante elas ficariam sem menu**, e a mais visitada delas é
-# justamente a primeira página que um visitante desta casa vê. Página sem
-# navegação é o defeito que a `armadilhas/286` existe para impedir; um nome
-# escrito aqui é o que permite ao mantenedor decidir o menu delas na tela
-# `/admin/menu/` como decide o de qualquer outra página.
-ROTA_DA_PORTA = "porta"
+# **Sem esta constante elas ficariam sem menu**, e a mais vista delas é a
+# primeira página que um visitante desta casa encontra. Página sem navegação é o
+# defeito que a `armadilhas/286` existe para impedir.
+#
+# **É a RAIZ desta casa, e não um nome inventado para a porta.** A primeira
+# versão usava `pages/porta`, e ela criava um botão que ninguém conseguiria
+# apertar: a tela `/admin/menu/` monta as opções a partir de
+# `painel/mapa-do-site.json`, e lá `/pages/` é UMA página só, cuja descrição
+# cobre os três desfechos da porta mais o aluno reconhecido. Chave fora do mapa
+# nunca apareceria naquela tela, e regra que o mantenedor não tem como escrever
+# é pior que erro: é silêncio. Com a raiz, o único botão que ele vê manda nas
+# duas caras do mesmo endereço.
+ROTA_DA_RAIZ = ""
 
 # O valor que a `identidade` devolve no campo `papel` para quem está na lista
 # `IDENTIDADE_STAFF_EMAILS` do servidor. As células que desenham o menu comparam
@@ -213,15 +220,16 @@ def _versao_desta_pagina(menu: dict, chave: str) -> str:
 
 
 def _chave_da_pagina(request) -> str:
-    """`pages/<rota>` — e `pages/porta` quando o middleware desenhou a tela.
+    """`pages/<rota>`, e a RAIZ quando foi o middleware que desenhou a tela.
 
     A porta responde ANTES de a rota ser resolvida, então `resolver_match` é
-    `None` nas três telas dela. Devolver `""` ali (o que as células sem porta
-    fazem) deixaria justamente a primeira página desta casa sem menu.
+    `None` nas três telas dela. Desistir ali (o que as células sem porta fazem,
+    porque nelas isso não acontece) deixaria a primeira página desta casa sem
+    menu. Ver `ROTA_DA_RAIZ` para por que a chave é a da raiz.
     """
     casamento = getattr(request, "resolver_match", None)
     if casamento is None or casamento.route is None:
-        return f"{CELULA}/{ROTA_DA_PORTA}"
+        return f"{CELULA}/{ROTA_DA_RAIZ}"
     return f"{CELULA}/{casamento.route}"
 
 

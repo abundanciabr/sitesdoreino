@@ -231,10 +231,19 @@ def test_a_pagina_marcada_sem_menu_nao_mostra_menu(aluna, rede):
     assert BARRA not in texto(abrir(cookie=COOKIE, prefixo=True))
 
 
-def test_a_tela_da_porta_tambem_pode_ser_marcada_sem_menu(env_dos_pares, rede):
-    """A chave `pages/porta` existe para o mantenedor poder decidir o menu das
-    telas da porta como decide o de qualquer outra página."""
-    sem = dict(MENU, pages=[{"page": "pages/porta", "version": ""}])
+def test_o_mesmo_botao_manda_nas_duas_caras_do_endereco(env_dos_pares, rede):
+    """UM botão na tela dele, e ele alcança as duas caras de `/pages/`.
+
+    A tela `/admin/menu/` monta as opções a partir de `painel/mapa-do-site.json`,
+    e lá `/pages/` é uma página só: a mesma entrada descreve os três desfechos da
+    porta e o aluno reconhecido. Por isso a chave das telas da porta é a da raiz,
+    e não um nome próprio, que seria um botão que a tela dele nunca mostraria.
+
+    O par com o guarda de cima é o que dá sentido aos dois: lá a regra apaga o
+    menu do aluno reconhecido, aqui a MESMA regra o apaga para quem ainda não
+    entrou.
+    """
+    sem = dict(MENU, pages=[{"page": "pages/", "version": ""}])
     dublar_catalogo(rede, dict(SITE, menu=sem))
     corpo = texto(abrir(prefixo=True))
     assert "Entre para ver a sua Prancheta" in corpo

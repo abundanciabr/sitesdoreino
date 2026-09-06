@@ -80,7 +80,23 @@ from .views import _auditar
 # A `cursos` entrou em 05/09/2026, com a sala do aluno (degrau 1.8): o mapa das
 # portas e a aula desenham o menu por `apps/core/menu.py` de lá, no molde da
 # `gamificacao`.
-CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao", "admin", "cursos")
+#
+# A `pages` entrou em 06/09/2026, com a Prancheta do aluno (degrau 06 do
+# portfólio), pelo mesmo molde. Ela oferece UMA página, `/pages/`, e esse único
+# botão manda nas duas caras do endereço: a tela de quem foi reconhecido e as
+# três telas de recusa da porta. É de propósito, e está medido no guarda
+# `services/pages/tests/test_menu_do_topo.py`: as telas da porta são desenhadas
+# antes de a rota ser resolvida, e dar a elas uma chave própria criaria um botão
+# que ESTA tela nunca mostraria, porque as opções daqui saem do mapa do site.
+CELULAS_COM_MENU = (
+    "funil",
+    "forum",
+    "sugestoes",
+    "gamificacao",
+    "admin",
+    "cursos",
+    "pages",
+)
 
 # Para quem o item aparece, com o nome que o mantenedor lê. A ordem é a da
 # tela; os códigos são os do contrato.
