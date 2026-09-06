@@ -69,8 +69,8 @@ Dois conjuntos de tokens, dois direitos:
 
 | env da `identidade` | prova | quem tem |
 |---|---|---|
-| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin` |
-| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin` |
+| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin`, `cursos`, `pages` |
+| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin`, `cursos`, `pages` |
 
 O `funil` não vê e-mail por desenho — ele quer um nome para o canto da página.
 
@@ -152,6 +152,17 @@ cookie disputado por um cabeçalho desatualizado por alguns minutos é troca
      `alunos` se a pessoa está matriculada, que é por e-mail; o e-mail nunca é
      guardado nem exibido (a `Pessoa` da célula é espelho por id opaco, e a
      tela só mostra a própria pessoa, [INV-CUR-P1]). É a mesma razão da Caixa.
+   - **`pages` (06/09/2026, degrau 06 da Prancheta do aluno):** pela mesma
+     razão da `cursos`, e por nenhuma outra. A porta de `services/pages` só
+     abre para quem tem matrícula ativa, essa resposta mora na `alunos`
+     (`getStudentStanding`), e a `alunos` a dá por e-mail. O e-mail é usado
+     nessa pergunta e DESCARTADO: esta célula não o guarda em campo nenhum e
+     não o exibe em tela nenhuma (`services/pages/apps/core/porta.py`). Sem o
+     degrau, a resposta completa devolve 403, a Prancheta fica sem o e-mail e
+     fecha para todo mundo, inclusive para aluno matriculado, em silêncio. Os
+     dois lados do par são escritos por
+     `infra/provisionar-pares-da-prancheta.sh`, com o MESMO valor nas duas
+     listas.
 4. A partir do PR 5, sessão da Caixa é a do site: **nenhum código novo na
    `sugestoes` pode escrever `request.session`** (guarda lá) — quem grava o
    cookie `meshcraft_sessao` é só a `identidade`.

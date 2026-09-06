@@ -7,9 +7,12 @@
 # CS-PAGES-0001, degrau 04 da escada do §5).
 #
 # Ele cria o par banco+role isolado e escreve o env real da célula. Só isso.
-# Esta célula ainda não conversa com nenhuma outra por API (a porta que
-# pergunta quem é a pessoa nasce no degrau 06), então não há par de token para
-# abrir; e não pergunta o site ao catálogo, porque `config/settings.py` não lê
+# Ele NÃO abre par de token: os dois pares que a porta do degrau 06 usa
+# (`identidade` e `alunos`) são abertos por
+# `infra/provisionar-pares-da-prancheta.sh`, porque quem autoriza é sempre o
+# provedor, e o valor mora no env DELE. O que este roteiro faz com as quatro
+# chaves é RELER e regravar, para não as apagar ao reescrever o arquivo (passo
+# 2). E ele não pergunta o site ao catálogo, porque `config/settings.py` não lê
 # `SITE_ID`, e roteiro que escreve variável que a célula não lê é configuração
 # inventada (`armadilhas/224`: declare o presente, nunca o roadmap).
 #
@@ -71,6 +74,18 @@ ENV_REF="env/identidade.env"
 # Nome da célula igual a nome da rota, de propósito (plano §4).
 PREFIXO_DE_FABRICA="/pages"
 
+# Os env dos dois provedores da Prancheta. Este roteiro só LÊ os dois: quem
+# escreve neles é `infra/provisionar-pares-da-prancheta.sh`, porque quem
+# autoriza é sempre o provedor.
+ENV_IDENTIDADE="env/identidade.env"
+ENV_ALUNOS="env/alunos.env"
+
+# Os endereços internos saem do `servers:` dos contratos congelados
+# (`contracts/identidade.openapi.yaml`, `contracts/alunos.openapi.yaml`), e não
+# são escolha deste script.
+IDENTIDADE_URL="http://identidade:8000/interno"
+ALUNOS_URL="http://alunos:8000/api/alunos"
+
 # -----------------------------------------------------------------------------
 # 1. ONDE, tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
@@ -84,14 +99,26 @@ cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o 
 #    Sem isto, o dia em que alguém acrescentar uma variável aqui, re-rodar o
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #
-#    E aqui a data é previsível, por três lados: o degrau 06 vai pedir
-#    `IDENTIDADE_API_URL` e `IDENTIDADE_API_TOKEN` a este env (a porta que
-#    pergunta quem é a pessoa), o mesmo degrau vai pedir o par com a `alunos`
-#    (a matrícula ativa), e a tela da equipe do degrau 11 vai pedir um
-#    `TOKENS_ACEITOS_ADMIN`. Cada uma é uma chance de este roteiro apagar o que
-#    não conhece.
+#    A data era previsível, e CHEGOU em 06/09/2026: o degrau 06 pôs a porta de
+#    pé, e ela pede quatro variáveis a este env — `IDENTIDADE_API_URL` e
+#    `IDENTIDADE_API_TOKEN` (a pergunta de quem é a pessoa) e `ALUNOS_API_URL` e
+#    `ALUNOS_API_TOKEN` (a pergunta da matrícula ativa). Elas entram no arquivo
+#    vivo por `infra/provisionar-pares-da-prancheta.sh`, e sem a lista abaixo
+#    aprendê-las este roteiro passaria a PARAR em toda execução na VPS: a
+#    promessa de idempotência do cabeçalho viraria mentira, e o mantenedor
+#    descobriria isso na tela dele.
+#
+#    Aprender uma chave aqui é assumir a obrigação de SABER ESCREVÊ-LA. As
+#    quatro estão no heredoc do passo 4: os endereços são constantes dos
+#    contratos congelados, e os dois tokens são RELIDOS da lista de aceitos de
+#    cada provedor. É o mesmo desenho de `infra/provisionar-cursos.sh`.
+#
+#    O QUE AINDA NÃO ESTÁ NESTA LISTA, e é dito na cara para ninguém descobrir
+#    pela recusa: `TOKENS_ACEITOS_ADMIN`, que a tela da equipe do degrau 11 vai
+#    pedir a este env. Quando ela existir, esta lista e o heredoc ganham a chave
+#    na MESMA edição.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="DATABASE_URL DEBUG DJANGO_SECRET_KEY SCRIPT_NAME"
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
 
 # LITERAL, e não `$ENV_PAGES`, de propósito: quem confere esta trava é um teste
 # que lê o script como TEXTO, e na VPS não há Python nem este repositório para
@@ -130,6 +157,10 @@ gerar_segredo() {
   fi
 }
 
+ler_de() {  # arquivo, chave: devolve o valor limpo, sem comentário nem espaços
+  grep "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '[:space:]'
+}
+
 echo "== 1/3: estado ANTES =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='pages_db'" 2>/dev/null | grep -q 1
 then echo "  banco pages_db ... já existe"; else echo "  banco pages_db ... não existe"; fi
@@ -163,6 +194,28 @@ echo
 # 3. OS SEGREDOS E O BANCO: par isolado, como manda a Lei 2.
 # -----------------------------------------------------------------------------
 echo "== 2/3: banco e senha próprios da célula =="
+
+# ── OS DOIS TOKENS QUE ESTE SCRIPT NÃO INVENTA, e por isso RELÊ ─────────────
+# Reescrever o arquivo inteiro sem estas quatro linhas as apagaria em silêncio,
+# com o container de pé e o deploy verde (`armadilhas/111`). O efeito seria a
+# Prancheta voltar a responder 503 para TODO MUNDO, sem erro em lugar nenhum:
+# fail-closed por falta de valor é indistinguível de fail-closed por decisão, e
+# é isso que torna esta classe de defeito cara.
+#
+# QUEM MANDA É O PROVEDOR, e a direção importa: o valor sai da lista de aceitos
+# do env dele, e não do env desta célula. Alinhar pelo consumidor deixaria uma
+# célula qualquer mudar o que o provedor aceita. Faltando dos dois lados, gero
+# um valor para o arquivo não nascer com linha vazia; ele vale como marcador até
+# `infra/provisionar-pares-da-prancheta.sh` rodar, que é quem abre o par nos
+# DOIS lados de uma vez. É o mesmo desenho de `infra/provisionar-cursos.sh`.
+T_IDENTIDADE="$(ler_de "$ENV_IDENTIDADE" TOKENS_ACEITOS_PAGES)"
+[ -n "$T_IDENTIDADE" ] || T_IDENTIDADE="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_IDENTIDADE} -ge 32 ] || parar "o token do par pages->identidade ficou curto demais. Nada foi alterado."
+
+T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_PAGES)"
+[ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_ALUNOS} -ge 32 ] || parar "o token do par pages->alunos ficou curto demais. Nada foi alterado."
+
 SENHA_DB="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 [ ${#SENHA_DB} -ge 32 ] || parar "a senha do banco ficou curta demais. Nada foi alterado."
@@ -222,6 +275,10 @@ DJANGO_SECRET_KEY=$CHAVE_DJANGO
 DATABASE_URL=postgres://pages_user:$SENHA_DB@postgres:5432/pages_db
 DEBUG=0
 SCRIPT_NAME=$PREFIXO
+IDENTIDADE_API_URL=$IDENTIDADE_URL
+IDENTIDADE_API_TOKEN=$T_IDENTIDADE
+ALUNOS_API_URL=$ALUNOS_URL
+ALUNOS_API_TOKEN=$T_ALUNOS
 ENV
 
 chown --reference="$ENV_REF" "$ENV_PAGES" 2>/dev/null \
@@ -235,11 +292,13 @@ echo "=============================================================="
 echo " PRONTO. O banco das Páginas do aluno existe e o env está"
 echo " escrito, com a chave e a senha geradas aqui dentro."
 echo
-echo " O que NÃO aconteceu ainda, e é o próximo passo do agente:"
-echo " esta célula ainda não está no docker-compose.yml nem no"
-echo " roteador, então ela NÃO está rodando e /pages ainda não"
-echo " responde. Isso entra num PR próprio, depois desta tela"
-echo " (armadilhas/134: o compose de célula nova vai sozinho)."
+echo " O QUE FALTA para a Prancheta abrir, se você ainda não fez:"
+echo " esta tela NÃO liga as duas conversas dela (quem é a pessoa"
+echo " e se a matrícula está ativa). Sem elas, /pages responde"
+echo " 'Não conseguimos conferir o seu acesso agora' para todo"
+echo " mundo. Quem as liga é a outra linha, e ela é uma só:"
 echo
-echo " Nada mais depende de você. Pode mandar esta tela ao agente."
+echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh"
+echo
+echo " Pode mandar esta tela ao agente."
 echo "=============================================================="
