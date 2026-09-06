@@ -323,3 +323,103 @@ class EstadoDoAluno(models.Model):
 
     def __str__(self) -> str:
         return f"etapa {self.etapa_atual} de {self.portfolio.aluno_id}"
+
+
+# ===========================================================================
+# O ROTEIRO DA ESCOLA: o que a Prancheta MOSTRA, e que não é de aluno nenhum
+# ===========================================================================
+# As duas tabelas abaixo nasceram no degrau 07 e guardam o CATÁLOGO: as cinco
+# etapas e os itens de conferência que a escola escreveu. As quatro tabelas de
+# cima guardam o que é DO ALUNO.
+#
+# A divisão é a que faz o critério AC-06 ser barato: o aluno marca uma `chave`,
+# e o texto daquela chave pode ser corrigido pela escola sem tocar em nenhuma
+# marcação. Copiar o texto para dentro da marcação criaria a segunda verdade
+# que o degrau 02 recusou linha a linha.
+#
+# NEM `site_id` NEM `aluno_id` MORAM AQUI, e é decisão: o roteiro é o guia do
+# curso, o mesmo para todo mundo que estuda nesta instalação. Uma cópia por
+# aluno seria o texto da escola replicado em cada portfólio, envelhecendo em
+# silêncio a partir da primeira correção.
+#
+# O TEXTO NÃO SE ESCREVE AQUI. Ele mora em `apps/portfolio/roteiro_da_escola.py`
+# (marcado `ci:texto-publicado`, portanto medido pelo portão do travessão) e é
+# plantado por migração. Este arquivo guarda a FORMA; aquele guarda a palavra.
+
+
+class EtapaDoRoteiro(models.Model):
+    """Uma das cinco etapas do roteiro. São cinco por lei (critério AC-06).
+
+    O banco recusa a sexta, e recusa a etapa zero, pela mesma faixa que
+    `ItemDeConferencia` e `EstadoDoAluno` já obedecem: as três precisam
+    concordar sobre o que é uma etapa, e a única forma de garantir isso é a
+    mesma restrição escrita nas três.
+    """
+
+    numero = models.PositiveSmallIntegerField(unique=True)
+    titulo = models.CharField(max_length=120)
+    resumo = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "etapa do roteiro"
+        verbose_name_plural = "etapas do roteiro"
+        ordering = ["numero"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    numero__gte=PRIMEIRA_ETAPA, numero__lte=ULTIMA_ETAPA
+                ),
+                name="a_etapa_do_roteiro_e_uma_das_cinco",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(titulo=""),
+                name="a_etapa_do_roteiro_tem_titulo",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.numero}. {self.titulo}"
+
+
+class ItemDoRoteiro(models.Model):
+    """Um item da lista de conferência: a frase que o aluno marca.
+
+    **A `chave` é o que liga este catálogo à marcação do aluno**
+    (`ItemDeConferencia.chave`), e ela é única na instalação inteira, não só
+    dentro da etapa. Duas etapas com a mesma chave dariam duas frases diferentes
+    para a mesma marcação, e a tela mostraria a marca no lugar errado sem nada
+    reclamar.
+
+    **Ela nunca muda.** Corrigir o texto é corrigir `texto`; trocar a chave
+    apagaria a marcação de todos os alunos em silêncio.
+    """
+
+    etapa = models.ForeignKey(
+        EtapaDoRoteiro, on_delete=models.CASCADE, related_name="itens"
+    )
+
+    chave = models.CharField(max_length=64, unique=True)
+    texto = models.CharField(max_length=300)
+    ordem = models.PositiveSmallIntegerField()
+
+    class Meta:
+        verbose_name = "item do roteiro"
+        verbose_name_plural = "itens do roteiro"
+        ordering = ["etapa__numero", "ordem"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["etapa", "ordem"],
+                name="um_item_do_roteiro_por_posicao_na_etapa",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(chave=""),
+                name="o_item_do_roteiro_tem_chave",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(texto=""),
+                name="o_item_do_roteiro_tem_texto",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.texto
