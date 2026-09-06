@@ -1,0 +1,17 @@
+{
+  "arquivo": "228-o-repetidor-de-deploy-confere-a-esteira-e-precisa-conferir-a",
+  "id": "TAR-228",
+  "titulo": "O repetidor de deploy confere a esteira, e precisa conferir a CELULA",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste que monta um historico onde a esteira publicou verde mas a celula X nao foi construida, e espera que o repetidor diga REPETIR em vez de NADA; provado por mutacao.",
+  "despacho": "O `ci/rerun_de_deploy.py` decide se um deploy cancelado precisa ser repetido comparando o commit do run com a ULTIMA PUBLICACAO VERDE da esteira `deploy-celula`. Isso erra quando a publicacao verde construiu OUTRA celula.\n\nMEDIDO EM 06/09/2026, e custou uma investigacao: o PR #1201 (celula `cursos`) teve o deploy cancelado por concorrencia. O repetidor respondeu `ja-no-ar=True` e `NADA a repetir`, porque a ultima publicacao verde (`cdc9baee`) contem o commit do run. So que essa publicacao rodou `deploy (admin)` e mais nada: a imagem da celula `cursos` nunca foi reconstruida, e o codigo NAO estava no ar.\n\nA saida crua:\n\n    armadilhas/188: publicado=cdc9baee8d9d · run=f98ee3caee25 · publicado-e-ancestral=False · ja-no-ar=True\n    NADA: o run foi cancelado, mas o commit dele JA esta no ar por deploy-celula\n\nE a medicao que a desmente: nenhum dos 8 runs mais recentes tem job `deploy (cursos)`.\n\nO QUE CONSERTAR: a pergunta `ja esta no ar?` tem de ser POR CELULA. O run tem os jobs (`deploy (<celula>)`), entao da para saber quais celulas cada publicacao levou. A ultima publicacao verde DAQUELA celula e a referencia certa.\n\nCUIDADO COM O FALSO CONSERTO: nao basta olhar os jobs do run cancelado (ele pode ter sido cancelado ANTES de criar job nenhum, que foi exatamente o caso). Descubra as celulas pelos `paths` tocados entre a ultima publicacao daquela celula e o commit do run, do mesmo jeito que `ci/ci.py::celulas_tocadas` faz.\n\nPOR QUE IMPORTA: a armadilhas/188 existe para impedir rollback silencioso, e este furo produz o oposto — codigo mergeado que nunca sobe, com o robo achando que subiu. Falso-verde de instrumento e a doenca que o INV-CI01 veio curar.",
+  "origem": "medido pela maestro em 06/09/2026, no deploy do PR #1201",
+  "criada_em": "2026-09-06"
+}
