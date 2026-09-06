@@ -545,15 +545,40 @@ urlpatterns = [
     # contrato); o padrão `[A-Za-z0-9]+` é a cerca desta ponta, e a segunda está
     # do outro lado, onde aula de outro site é 404 mesmo com o número certo
     # (CONSTITUICAO Lei 9). O slug do instrumento segue a cerca das sequências.
-    path("escola/aulas/", aulas, name="escola_aulas"),
-    re_path(r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$", aula, name="escola_aula"),
+    #
+    # O CURSO E A PARTE VIAJAM NO ENDEREÇO (05/09/2026, TAR-211). Pedido do
+    # mantenedor: "quero que ao compartilhar uma aula o link da mesma seja útil
+    # para o aluno entender exatamente em qual parte do curso ele está". O curso
+    # é o SLUG, resolvido pelo par site+slug do outro lado, e não mais "o
+    # primeiro curso do site", que quebraria calado no dia do segundo curso.
+    #
+    # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
+    # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
+    # expande o grupo opcional em dois endereços e escolhe pelo que você passa
+    # (com `parte`, o longo; sem, o curto). Duplicar cada rota daria oito nomes,
+    # e a metade deles seria escolhida por engano em algum template.
+    # `parte` é `[123]` porque o vocabulário é do contrato (`ParteDoCurso`):
+    # `parte-9` não chega a virar pedido, é 404 aqui na porta.
     re_path(
-        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
+        aulas,
+        name="escola_aulas",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/$",
+        aula,
+        name="escola_aula",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
         aula_salvar,
         name="escola_aula_salvar",
     ),
     re_path(
-        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
         aula_publicar,
         name="escola_aula_publicar",
     ),

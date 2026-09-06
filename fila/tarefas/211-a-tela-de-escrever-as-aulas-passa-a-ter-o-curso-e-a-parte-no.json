@@ -1,0 +1,19 @@
+{
+  "arquivo": "211-a-tela-de-escrever-as-aulas-passa-a-ter-o-curso-e-a-parte-no",
+  "id": "TAR-211",
+  "titulo": "A tela de escrever as aulas passa a ter o curso e a parte no endereco",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: as rotas novas com curso e parte; a tela chamando as operacoes listLessons/getLesson/putLesson/publishLesson da porta (nunca mais as que nao sabem de curso); a lista agrupada por Parte e por bloco na ordem do livro; teste provando que parte que nao casa com a aula RECUSA; suite da admin verde e make ci verde.",
+  "despacho": "A tela do editor de aulas passa a carregar o curso e a parte no endereco: /admin/escola/<curso>/parte-N/aulas/ e /admin/escola/<curso>/parte-N/aulas/<numero>/. Hoje ela e /admin/escola/aulas/ e resolve o curso como \"o primeiro do site\", que quebra no dia do segundo curso. A porta de maquina ja oferece as operacoes com curso e parte desde o PR #1135, e o contrato congelou no #1136: listLessons, getLesson, putLesson e publishLesson em /cursos/{curso}/aulas, todas aceitando parte. A tela passa a chamar essas, e nao mais as antigas (listSiteLessons e companhia). A LISTA ganha as tres Partes como secoes com titulo, e dentro de cada uma os blocos por letra, na ordem do livro: e assim que o aluno e a professora acham a encomenda com o livro aberto ao lado. Endereco sem parte (/admin/escola/<curso>/aulas/) continua valendo e mostra o curso inteiro.",
+  "origem": "decisao do mantenedor em 05/09/2026 sobre o endereco, e a hierarquia do livro trazida por ele",
+  "criada_em": "2026-09-06"
+}
