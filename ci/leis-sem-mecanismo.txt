@@ -14,6 +14,6 @@
 # Formato: <arquivo>::<título da seção>   # por que ainda não tem mecanismo
 
 CONSTITUICAO.md::Lei 7 — Zonas Quentes Nascem Vazias   # nada mede "o mesmo caminho apareceu em três briefs"; exigiria histórico de despachos, que não é versionado
-CLAUDE.md::Como trabalhar com o mantenedor (vale para TODA sessão)   # é sobre COMO falar com uma pessoa (bloco único de colar, janela rotulada, pergunta estruturada); só a régua da pergunta estruturada seria mecanizável, e ainda assim fora do CI
+CLAUDE.md::Como trabalhar com o mantenedor   # é sobre COMO falar com uma pessoa (bloco único de colar, janela rotulada, pergunta estruturada); só a régua da pergunta estruturada seria mecanizável, e ainda assim fora do CI
 CLAUDE.md::Este projeto é para ser feito completo — nunca proponha a versão minimalista   # é uma diretriz de JULGAMENTO sobre escopo; um portão que a medisse teria de opinar sobre ambição, e opinaria errado
-CLAUDE.md::O que você entrega para ele mora no site (desde 05/09/2026)   # é julgamento sobre o FORMATO de uma entrega; um portão teria de adivinhar se um texto qualquer devia ser tela, e adivinharia errado nos dois sentidos
+CLAUDE.md::O que você entrega para ele mora no site   # é julgamento sobre o FORMATO de uma entrega; um portão teria de adivinhar se um texto qualquer devia ser tela, e adivinharia errado nos dois sentidos

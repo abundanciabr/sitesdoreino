@@ -14,6 +14,7 @@ conferir o `--force-with-lease`. Uma trava que devolve sucesso sem conferir nada
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -197,6 +198,67 @@ def test_reserva_ainda_nao_commitada_conta_como_ocupada(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: True)
     assert reservar.alocar_numero(tmp_path, "registro", agora=AGORA) == "003"
+
+
+# ---------------------------------------------------------------------------
+# O RECIBO — a prova local de que este número veio do almoxarife
+# ---------------------------------------------------------------------------
+
+
+def ler_caderninho(tmp_path) -> list[dict]:
+    linhas = []
+    for arquivo in (tmp_path / ".git" / "telemetria-dos-robos").glob("*.jsonl"):
+        for linha in arquivo.read_text(encoding="utf-8").splitlines():
+            if linha.strip():
+                linhas.append(json.loads(linha))
+    return linhas
+
+
+def recibos(tmp_path) -> list[dict]:
+    return [l for l in ler_caderninho(tmp_path) if l["evento"] == "numero_reservado"]
+
+
+def test_alocar_deixa_recibo_no_caderninho(tmp_path, monkeypatch):
+    """Sem recibo, o gancho da lição teria de bater na rede a cada Write — e um
+    gancho que bate na rede é um gancho que alguém desliga."""
+    (tmp_path / ".git").mkdir()
+    preparar_pastas(tmp_path, registros=["20260828-001-a.js"])
+    monkeypatch.setattr(reservar, "refs_existentes", lambda *a, **k: [])
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: True)
+
+    assert reservar.alocar_numero(tmp_path, "registro", agora=AGORA) == "002"
+
+    assert len(recibos(tmp_path)) == 1
+    recibo = recibos(tmp_path)[0]
+    assert recibo["superficie"] == "registro"
+    assert recibo["numero"] == "002"
+    assert recibo["dia"] == "20260828"
+    assert recibo["bancada"] == reservar.bancada(tmp_path)
+
+
+def test_recibo_leva_o_numero_que_GANHOU_nao_o_que_pediu(tmp_path, monkeypatch):
+    """Recibo do número errado é pior que recibo nenhum: ele calaria o gancho
+    justamente no arquivo que colide."""
+    (tmp_path / ".git").mkdir()
+    preparar_pastas(tmp_path, registros=["20260828-001-a.js"])
+    monkeypatch.setattr(reservar, "refs_existentes", lambda *a, **k: [])
+    tentativas = iter([False, True])
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: next(tentativas))
+
+    assert reservar.alocar_numero(tmp_path, "registro", agora=AGORA) == "003"
+    assert [r["numero"] for r in recibos(tmp_path)] == ["003"]
+
+
+def test_recusa_do_servidor_nao_deixa_recibo(tmp_path, monkeypatch):
+    """Perder a corrida não é ganhar número nenhum, e o caderninho não pode
+    dizer o contrário."""
+    (tmp_path / ".git").mkdir()
+    preparar_pastas(tmp_path)
+    monkeypatch.setattr(reservar, "refs_existentes", lambda *a, **k: [])
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: False)
+    with pytest.raises(ErroDeInstrumentacao):
+        reservar.alocar_numero(tmp_path, "registro", agora=AGORA)
+    assert recibos(tmp_path) == []
 
 
 def test_superficie_desconhecida_para_em_vez_de_chutar(tmp_path):
