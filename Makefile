@@ -25,11 +25,12 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas pr
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
 	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
+	@echo "  make pr TITULO=... MENSAGEM=... commit + push + PR + registro embarcado"
 	@echo "  make boletim                    o que o mundo e AGORA (antes de decidir)"
 	@echo "  make reservar SUP=registro      o servidor DA o numero (nao adivinhe)"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
@@ -90,6 +91,14 @@ mergear:        ## make mergear PR=22 — recusa merge com check vermelho
 
 esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
 	bash e2e/esqueleto.sh
+
+pr:             ## make pr TITULO="ci: x" MENSAGEM=m.txt CORPO=c.md ARQUIVOS="a b" DETALHE=d.txt
+	@test -n "$(TITULO)" || { echo "ERROR: informe TITULO=\"<celula>: o que muda, para leigo\""; exit 2; }
+	@test -n "$(MENSAGEM)" || { echo "ERROR: informe MENSAGEM=<arquivo com a mensagem do commit>"; exit 2; }
+	@test -n "$(CORPO)" || { echo "ERROR: informe CORPO=<arquivo com o corpo do PR>"; exit 2; }
+	@test -n "$(ARQUIVOS)" || { echo "ERROR: informe ARQUIVOS=\"caminho1 caminho2\""; exit 2; }
+	@test -n "$(DETALHE)" || { echo "ERROR: informe DETALHE=<arquivo com o que o mantenedor vai ler>"; exit 2; }
+	$(PYTHON) ci/pr.py --titulo "$(TITULO)" --mensagem-arquivo "$(MENSAGEM)" --corpo-arquivo "$(CORPO)" --detalhe-arquivo "$(DETALHE)" $(if $(TIPO),--tipo $(TIPO)) $(if $(GRAVIDADE),--gravidade $(GRAVIDADE)) $(if $(FRENTE),--frente $(FRENTE)) $(if $(EVIDENCIA),--evidencia "$(EVIDENCIA)") $(if $(CONTINUAR),--continuar) --arquivos $(ARQUIVOS)
 
 sessao:         ## make sessao CELULA=quiz TAREFA=fuso-horario [FRASE="..."]
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
