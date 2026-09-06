@@ -61,6 +61,25 @@ tela nova desta casa herda as duas sem tocar em nada (`armadilhas/242` e
   .peca .botoes { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; }
   .colar label { display: block; font-weight: 600; margin: 0 0 .25rem; }
   .colar input { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; }
+  /* O SEMÁFORO DA PEÇA (degrau 10). A cor é o RESUMO da lista, nunca o recado
+     inteiro: a frase e os itens dizem tudo, e a bolinha sai com `aria-hidden`.
+     Verde, amarelo e vermelho ficam escuros o bastante para o tema claro e
+     claros o bastante para o escuro, porque a tela segue o tema de quem abre. */
+  .semaforo { margin: .75rem 0 0; }
+  .semaforo .resumo { margin: 0; font-weight: 600; }
+  .semaforo .luz { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .5rem; background: currentColor; }
+  .luz-verde .luz { color: #2e7d32; }
+  .luz-amarelo .luz { color: #b58900; }
+  .luz-vermelho .luz { color: #c62828; }
+  .semaforo .falta { margin: .4rem 0 0; padding-left: 1.2rem; }
+  .semaforo .falta li { margin: .25rem 0; }
+  .semaforo .falta li.mudar { font-weight: 600; }
+  .semaforo .regra { display: block; font-weight: 400; }
+  .responder { margin: .75rem 0 0; }
+  .responder > summary { cursor: pointer; font-weight: 600; }
+  .responder p { margin: 0 0 .5rem; }
+  .responder label { display: block; font-weight: 600; margin: 0 0 .25rem; }
+  .responder select { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; }
   .barra-do-site { border-bottom: 1px solid rgba(128,128,128,.35); }
   .menu-topo { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: .6rem 1.25rem; font-size: .95rem; }
   .menu-topo a { text-decoration: none; }

@@ -1,11 +1,12 @@
 """As views da célula `pages` (a casa das Páginas do aluno).
 
-Seis: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
-de um item da lista de conferência, e as três das peças coladas por link
-(degrau 08): a estante, o colar de um link novo e a mudança de uma peça que já
-está lá. O que falta continua vindo pela escada do
-`PLANO-PORTFOLIO-DO-ALUNO.md` §5: o semáforo (10), o pedido de conferência e a
-fila da equipe (11 e 12) e a vitrine em `/estudio/<apelido>` (13).
+Sete: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
+de um item da lista de conferência, as três das peças coladas por link (degrau
+08: a estante, o colar de um link novo e a mudança de uma peça que já está lá) e
+a resposta das perguntas da escola sobre uma peça (degrau 10). O que falta
+continua vindo pela escada do `PLANO-PORTFOLIO-DO-ALUNO.md` §5: o pedido de
+conferência e a fila da equipe (11 e 12) e a vitrine em `/estudio/<apelido>`
+(13).
 
 **Nenhuma view daqui decide quem entra.** Quem decide é a porta
 (`apps/core/porta.py`), fail-CLOSED, e ela vem por último no `MIDDLEWARE`:
@@ -34,14 +35,17 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.portfolio import conferencia_do_link
+from apps.portfolio import conferencia_do_link, semaforo
 from apps.portfolio.models import (
+    Acabamento,
     EstadoDoLink,
     EtapaDoRoteiro,
     ItemDeConferencia,
     ItemDoRoteiro,
+    ParecidaComAAula,
     Peca,
     Portfolio,
+    TipoDeModelo,
 )
 from apps.portfolio.roteiro_da_escola import AVISO_DE_RASCUNHO
 
@@ -273,6 +277,25 @@ def estante_de(request, site_id: str) -> list[Peca]:
     )
 
 
+def com_semaforo(pecas: list[Peca]) -> list[Peca]:
+    """Cada peça com a cor e a lista do que ainda falta nela (critério AC-10).
+
+    **O roteiro da escola é lido UMA vez**, e não uma consulta por peça: a
+    estante de um aluno aplicado tem dezenas de linhas, e o texto das regras é o
+    mesmo para todas elas.
+
+    **O semáforo não é guardado em coluna nenhuma**, e é por isso que ele nasce
+    aqui a cada abertura de tela. Uma cor gravada envelheceria calada no dia em
+    que a escola corrigisse uma regra, e a peça mostraria a conta de ontem.
+    """
+    if not pecas:
+        return pecas
+    regras = dict(ItemDoRoteiro.objects.values_list("chave", "texto"))
+    for peca in pecas:
+        peca.semaforo = semaforo.calcular(peca, regras)
+    return pecas
+
+
 def desenhar_estante(request, site_id, *, recusa="", link="", legenda="", status=200):
     """A tela das peças. `recusa` é a frase que diz por que o link não entrou.
 
@@ -285,11 +308,17 @@ def desenhar_estante(request, site_id, *, recusa="", link="", legenda="", status
         "pages/pecas.html",
         {
             "aluno": request.aluno,
-            "pecas": estante_de(request, site_id) if site_id else [],
+            "pecas": com_semaforo(estante_de(request, site_id)) if site_id else [],
             "pode_guardar": site_id is not None,
             "recusa": recusa,
             "link_recusado": link,
             "legenda_recusada": legenda,
+            # As respostas que a escola aceita em cada pergunta. Só os VALORES e
+            # os rótulos: a pergunta em si é frase que o aluno lê, e ela mora no
+            # template, que é superfície medida pelo portão do travessão.
+            "tipos": TipoDeModelo.choices,
+            "acabamentos": Acabamento.choices,
+            "semelhancas": ParecidaComAAula.choices,
             **de_fora(),
         },
         status=status,
@@ -435,5 +464,82 @@ def mudar_peca(request):
                 peca.ordem, vizinha.ordem = vizinha.ordem, peca.ordem
                 vizinha.save(update_fields=["ordem", "atualizada_em"])
                 peca.save(update_fields=["ordem", "atualizada_em"])
+
+    return redirect("pecas")
+
+
+# ===========================================================================
+# AS RESPOSTAS DO ALUNO SOBRE UMA PEÇA (degrau 10, critério AC-10)
+# ===========================================================================
+# O semáforo é calculado SÓ das respostas objetivas do aluno, e é este
+# formulário que as colhe. Ele pergunta o que a professora perguntou, com as
+# palavras dela, e nada além disso.
+#
+# NÃO EXISTE NOTA, ESTRELA NEM CLASSIFICAÇÃO aqui, e a ausência é lei escrita
+# (`PLANO-PORTFOLIO-DO-ALUNO.md` §7). Também não existe nada que tente adivinhar
+# de onde a peça veio: a única fonte destas colunas é a resposta que a pessoa
+# deu, e a máquina não tem opinião sobre a obra dela.
+
+# Cada campo do formulário e o vocabulário que a escola aceita nele. É por esta
+# tabela que a view recusa resposta inventada, e ela é a MESMA lista que o banco
+# guarda nas três restrições da `Peca`: a tela recusa cedo e com uma frase, o
+# banco recusa por último e sem frase nenhuma.
+RESPOSTAS_DA_PECA = {
+    "tipo": TipoDeModelo,
+    "acabamento": Acabamento,
+    "parecida_com_a_aula": ParecidaComAAula,
+}
+
+
+@require_POST
+def responder_peca(request):
+    """O aluno responde as perguntas da escola sobre uma peça.
+
+    **As três respostas viajam juntas, num formulário só com um botão.** Salvar
+    uma de cada vez faria o aluno esperar três recarregamentos de página para
+    apagar um amarelo, e a lista do que falta é justamente o que ele está
+    tentando zerar.
+
+    **Vazio é resposta legítima**, e significa "ainda não respondi". É assim que
+    ele desfaz um clique errado sem precisar de um segundo botão para isso.
+
+    **Resposta que a escola não escreveu é 404**, no mesmo molde da ação
+    desconhecida do `mudar_peca`. Sem essa recusa, um POST gravaria na coluna
+    qualquer palavra, e a tela passaria a mostrar uma resposta que a professora
+    nunca deu como opção.
+
+    **A peça é encontrada pela porta única do isolamento** (`do_aluno`, critério
+    AC-07): é ela que impede o formulário de um aluno de alcançar a peça de
+    outro.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    numero = (request.POST.get("peca") or "").strip()
+    if not numero.isdigit():
+        raise Http404(f"a estante não tem a peça {numero!r}")
+
+    respostas = {}
+    for campo, vocabulario in RESPOSTAS_DA_PECA.items():
+        valor = (request.POST.get(campo) or "").strip()
+        if valor and valor not in vocabulario.values:
+            raise Http404(f"a escola não oferece a resposta {valor!r} em {campo!r}")
+        respostas[campo] = valor
+
+    peca = (
+        Peca.objects.do_aluno(site_id=site_id, aluno_id=request.aluno["id"])
+        .filter(pk=numero)
+        .first()
+    )
+    if peca is None:
+        raise Http404("essa peça não está na sua estante")
+
+    for campo, valor in respostas.items():
+        setattr(peca, campo, valor)
+    # `atualizada_em` entra na lista de propósito: com `update_fields`, o Django
+    # só toca as colunas nomeadas, e um `auto_now` de fora da lista pararia no
+    # tempo sem nada acusar.
+    peca.save(update_fields=[*respostas, "atualizada_em"])
 
     return redirect("pecas")
