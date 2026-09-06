@@ -546,3 +546,121 @@ def test_fila_ausente_nao_vira_nada_em_obra(monkeypatch):
     html = _dentro().get(reverse("mapa_do_site")).content.decode()
     assert "A fila de trabalho não veio nesta versão do site." in html
     assert "Ainda sendo construído" in html
+
+
+# --------------------------------------------------------------------------
+# A HIERARQUIA QUE SE VÊ (06/09/2026)
+#
+# A primeira versão desta tela desenhava uma lista plana e recuava o texto por
+# nível. O mantenedor abriu e disse o que faltava: "quero poder ver onde começa
+# e onde termina cada parte do site, quais são os pais e quais são os filhos".
+#
+# Os guardas abaixo medem as três coisas que passaram a responder isso, e
+# medem no HTML de propósito: o desenho é a entrega aqui, e um teste que só
+# olhasse o contexto passaria com a tela em branco.
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+def test_cada_parte_do_site_e_uma_caixa_com_comeco_e_fim():
+    """Título não delimita nada; borda delimita. Uma caixa por área."""
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    html = resposta.content.decode()
+    assert html.count('class="parte-do-site"') == len(resposta.context["areas"])
+    assert 'class="cabeca-da-parte"' in html
+    # "onde começa" é dito com todas as letras nas partes que começam num
+    # lugar só — a borda da caixa é quem responde "onde termina".
+    assert "começa em" in html
+    administracao = next(
+        a for a in resposta.context["areas"] if a["chave"] == "administracao"
+    )
+    assert administracao["comeca_em"] == "/admin/"
+
+
+@respx.mock
+def test_a_filha_mora_dentro_da_mae_na_marcacao_e_nao_so_recuada():
+    """O aninhamento é REAL: a filha está dentro do bloco da mãe no HTML.
+
+    Recuo por classe deixaria as duas como irmãs na marcação, e nem o galho que
+    abre e fecha nem o trilho do desenho seriam possíveis. Este guarda mede a
+    estrutura, e não a aparência: é ela que sustenta as duas.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    administracao = next(
+        a for a in resposta.context["areas"] if a["chave"] == "administracao"
+    )
+    assert len(administracao["raizes"]) == 1, "a área começa em /admin/ e só"
+    admin = administracao["raizes"][0]
+    assert admin["endereco"] == "/admin/"
+
+    escola = next(f for f in admin["filhas"] if f["endereco"] == "/admin/escola/")
+    alunos = next(
+        f for f in escola["filhas"] if f["endereco"] == "/admin/escola/alunos/"
+    )
+    recusados = next(
+        f for f in alunos["filhas"] if f["endereco"] == "/admin/escola/alunos/recusados"
+    )
+    assert recusados["filhas"] == [], "a folha não tem filhas"
+
+    # E o mesmo aninhamento chega ao HTML: o bloco das filhas existe, e o galho
+    # abre e fecha. Sem os dois, a árvore volta a ser uma lista.
+    html = resposta.content.decode()
+    assert '<details class="ramo" open>' in html, "nenhum galho abre e fecha"
+    assert 'class="filhas"' in html, "nenhum bloco de filhas — não há trilho a desenhar"
+
+
+@respx.mock
+def test_cada_mae_diz_quantas_paginas_moram_dentro_dela():
+    """A resposta à pergunta que o triângulo levanta: o que some se eu fechar?
+
+    A conta é de TODOS os degraus abaixo, não só das filhas diretas: fechar
+    `/admin/escola/` esconde as netas junto, e um número que contasse só as
+    filhas prometeria menos do que o clique tira da tela.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    administracao = next(
+        a for a in resposta.context["areas"] if a["chave"] == "administracao"
+    )
+    admin = administracao["raizes"][0]
+    escola = next(f for f in admin["filhas"] if f["endereco"] == "/admin/escola/")
+    alunos = next(
+        f for f in escola["filhas"] if f["endereco"] == "/admin/escola/alunos/"
+    )
+
+    assert alunos["dentro"] == len(alunos["filhas"]) + sum(
+        f["dentro"] for f in alunos["filhas"]
+    )
+    assert escola["dentro"] > len(escola["filhas"]), (
+        "a conta de `/admin/escola/` ficou nas filhas diretas e esqueceu as "
+        "netas — fechar o galho esconderia mais do que o número promete"
+    )
+    # A soma bate com a área inteira: raiz + tudo o que mora dentro dela.
+    paginas = sum(1 for linha in administracao["linhas"] if not linha["gesto"])
+    assert 1 + admin["dentro"] == paginas
+
+    assert 'class="quantos-dentro"' in resposta.content.decode()
+
+
+@respx.mock
+def test_a_busca_nao_deixa_galho_sem_a_mae_na_arvore_aninhada():
+    """Peneirar e aninhar de novo tem de devolver uma árvore inteira.
+
+    Se a peneira entregasse uma filha sem a mãe, o aninhamento a promoveria a
+    raiz e ela apareceria na tela como se fosse uma parte principal do site —
+    pior que sumir, porque MENTE sobre onde a coisa fica.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    administracao = next(
+        a for a in resposta.context["areas"] if a["chave"] == "administracao"
+    )
+    assert [r["endereco"] for r in administracao["raizes"]] == [
+        "/admin/"
+    ], "a busca promoveu um galho a parte principal do site"
+    admin = administracao["raizes"][0]
+    escola = next(f for f in admin["filhas"] if f["endereco"] == "/admin/escola/")
+    alunos = next(
+        f for f in escola["filhas"] if f["endereco"] == "/admin/escola/alunos/"
+    )
+    assert any(
+        f["endereco"] == "/admin/escola/alunos/recusados" for f in alunos["filhas"]
+    )

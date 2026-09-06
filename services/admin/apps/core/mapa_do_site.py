@@ -340,6 +340,50 @@ def _arvore(itens: list[dict]) -> list[dict]:
     return linhas
 
 
+def _aninhar(linhas: list[dict]) -> list[dict]:
+    """As raízes, com `filhas` dentro de `filhas`, a partir das linhas achatadas.
+
+    **Por que a tela precisa do aninhamento de verdade, e o recuo não bastou.**
+    A primeira versão desenhava uma lista achatada e recuava o texto por nível.
+    O mantenedor abriu e disse, com todas as letras, o que faltava: *"quero
+    poder ver onde começa e onde termina cada parte do site, quais são os pais
+    e quais são os filhos"*. Recuo não responde nada disso — ele sugere. Uma
+    caixa com borda responde onde começa e onde termina; um trilho ligando a
+    mãe às filhas responde de quem é filha.
+
+    Marcação aninhada é o que permite as duas coisas: o `<details>` que abre e
+    fecha um galho inteiro, e o trilho que o CSS desenha ao lado das filhas.
+    Nenhuma das duas se faz com uma lista plana e uma classe de recuo.
+
+    A entrada continua sendo a lista achatada de `_arvore` (já peneirada pela
+    busca, quando há busca), então nada aqui recalcula parentesco: as linhas
+    vêm em ordem de descida, e o nível de cada uma diz onde ela entra. Uma
+    segunda leitura dos endereços seria a segunda definição do mesmo fato.
+    """
+    raizes: list[dict] = []
+    pilha: list[dict] = []
+    for linha in linhas:
+        no = {**linha, "filhas": []}
+        while pilha and pilha[-1]["nivel"] >= no["nivel"]:
+            pilha.pop()
+        (pilha[-1]["filhas"] if pilha else raizes).append(no)
+        pilha.append(no)
+
+    def contar(no: dict) -> int:
+        """Quantas páginas moram dentro deste galho, em todos os degraus.
+
+        É o número que a tela mostra como "N dentro". Ele responde a pergunta
+        que o triângulo de abrir e fechar levanta — "o que some se eu fechar
+        isto?" — e é o que dá tamanho a um galho fechado.
+        """
+        no["dentro"] = sum(1 + contar(filha) for filha in no["filhas"])
+        return no["dentro"]
+
+    for raiz in raizes:
+        contar(raiz)
+    return raizes
+
+
 # ------------------------------------------------------------- o que está em obra
 #
 # A segunda metade do pedido de 06/09/2026: *"quero poder verificar tudo o que
@@ -617,12 +661,22 @@ def mapa_do_site(request):
             )
         if not linhas:
             continue
+        raizes = _aninhar(linhas)
         areas.append(
             {
                 "chave": chave,
                 "titulo": titulo,
                 "explicacao": explicacao,
                 "linhas": linhas,
+                # A árvore que a tela desenha. `linhas` continua ao lado dela
+                # porque é dela que saem as contas e é ela que os guardas leem:
+                # contar percorrendo a árvore daria o mesmo número por um
+                # caminho mais longo.
+                "raizes": raizes,
+                # Por onde esta parte do site COMEÇA, quando começa num lugar
+                # só. É metade da pergunta que ele fez ("onde começa e onde
+                # termina cada parte"); a outra metade é a borda da caixa.
+                "comeca_em": raizes[0]["endereco"] if len(raizes) == 1 else None,
                 # As três contas de uma área são disjuntas e somam o que ela
                 # mostra — é isso que faz o cabeçalho ser conferível de cabeça.
                 "telas": sum(
