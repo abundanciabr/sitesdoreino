@@ -1,0 +1,20 @@
+{
+  "arquivo": "210-a-vacina-do-deploy-passa-a-comparar-celulas-construidas-nao-",
+  "id": "TAR-210",
+  "titulo": "A vacina do deploy passa a comparar celulas construidas, nao so ancestralidade de commit",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [
+    "TAR-209"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste-guarda que reproduz o cenario real de 05-06/09/2026 (deploy cancelado da mensageria no PR #1145, seguido de dois deploys verdes que so tem o job deploy (admin), dos PRs #1146/#1147): com a vacina de hoje o teste prova RECUSAR (decisao 'nao precisa repetir', vermelho antes do conserto); depois do conserto, a vacina passa a exigir que TODAS as celulas que o run cancelado teria construido apareçam com job deploy (<celula>) e conclusao success em algum deploy posterior antes de dispensar o repeat -- se faltar uma, ela repete. Suite de ci/tests verde; make ci verde; evidencia vermelho-verde documentada no PR.",
+  "despacho": "NAO EXECUTAR sem mandato do mantenedor: caminho CODEOWNERS (ci/ e .github/). Catalogado em armadilhas/359 (irma da armadilhas/188 -- e o furo da propria cura). O bug: ci/rerun_de_deploy.py::_decidir_o_cancelado (e a tabela de decisao que a vacina usa) confere se o SHA publicado por um deploy POSTERIOR e ancestral do SHA cancelado, e para por ai. Ancestralidade de commit prova que o deploy posterior contem o codigo; NAO prova que ele CONSTRUIU a celula que o cancelado ia construir -- porque deploy-celula.yml usa matrix dinamica por deteccao de diff (ci/ci.py --detectar-celulas), e celula que o commit novo nao toca nao entra na matrix daquele run. A cura: antes de dispensar o repeat, a vacina precisa saber QUAIS celulas o run cancelado tinha na matrix (job 'detectar' daquele mesmo run) e conferir, em cada deploy posterior candidato a ancestral, se o job deploy (<celula>) existe com conclusao success para CADA uma delas -- nao so a ancestralidade do SHA. Se faltar celula, repetir continua sendo a decisao certa mesmo com SHA jah publicado por outro caminho.",
+  "origem": "armadilhas/359, medicao em producao 05-06/09/2026",
+  "criada_em": "2026-09-06"
+}
