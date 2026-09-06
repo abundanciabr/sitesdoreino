@@ -701,6 +701,7 @@ class SiteResolutionMiddleware:
         # repetida em cada uma, e a próxima view nasceria sem ela.
         request.url_da_caixa = enderecos.url_da_caixa()
         request.url_dos_avisos = enderecos.url_dos_avisos()
+        request.url_da_prancheta = enderecos.url_da_prancheta()
         translation.activate(cfg["idiomas"][codigo]["tag"])  # D2.4: runtime LIGADO
         try:
             resposta = self.get_response(request)
