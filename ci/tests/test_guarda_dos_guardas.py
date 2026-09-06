@@ -737,6 +737,13 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J8",
         "INV-ENC-J9",
         "INV-ENC-J10",
+        # A lei de cursos, matrículas e alunos (06/09/2026): ninguém é aluno do
+        # site, todo mundo é aluno de UM PRODUTO, e a matrícula é o que diz
+        # qual. Liberar sem produto é 422 na porta, e a linha continua
+        # `aguardando`. A metade que ainda não é dele está dita na cara no
+        # próprio invariante: o aviso da compra não carrega o produto (TAR-225),
+        # e por isso ele vale hoje na liberação e não no pagamento.
+        "INV-ALU-C1",
         "INV-CUR-C2",
         # Os três da PORTA da célula `cursos` (05/09/2026, TAR-154, degrau 1.8
         # da escada): P1 nenhuma tela compara alunos, P2 a porta só abre por

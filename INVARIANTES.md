@@ -789,7 +789,7 @@ primeira oportunidade de violá-la.
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
 - **Célula dona:** encomendas
 
-### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Curso
+### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Produto
 - **O quê:** liberar alguém da sala de espera EXIGE dizer em qual curso a pessoa
   está matriculada. `POST /pre-matriculas/{id}/decisao` com `decisao=liberar` e
   sem `product_id` responde 422, com frase em português que diz o que faltou e o
