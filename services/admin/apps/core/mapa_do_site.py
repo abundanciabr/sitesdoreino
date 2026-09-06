@@ -1,4 +1,4 @@
-"""`/admin/mapa/` — o mapa do site inteiro, numa página só.
+"""`/admin/mapa/` — o mapa do site inteiro, em árvore, numa página só.
 
 Pedido do mantenedor em 30/08/2026: *"crie um mapa completo do site no painel do
 admin"*. A plataforma cresceu por partes — o site, o login, o fórum, a Caixa de
@@ -49,6 +49,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET
 
 from .painel import diretorio_do_painel
+from .robos import diretorio_da_fila, onde_isso_mexe
 
 NOME_DO_ARQUIVO = "mapa-do-site.json"
 
@@ -59,36 +60,349 @@ _EMBUTIDO = {
     "style-src": re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNORECASE),
 }
 
-# Os quatro públicos, na ordem em que a página os desenha — de fora para
-# dentro: quem passa na rua, quem é da casa, você, e as máquinas. O vocabulário
-# é o mesmo de `ci/mapa_do_site.py` (que o exige fechado): um valor novo aqui
-# sem lá cairia num grupo inexistente, e a linha sumiria da tela sem erro.
+# Os quatro públicos. O vocabulário é o mesmo de `ci/mapa_do_site.py` (que o
+# exige fechado), e desde 06/09/2026 ele DEIXOU DE SER O EIXO da tela: a página
+# passou a se organizar pela árvore de endereços, e o público virou um selo em
+# cada linha, com esta legenda em cima.
+#
+# Por que o eixo mudou: agrupar por público partia a mesma área do site em
+# quatro lugares distantes — a lista de alunos ficava a oitenta linhas da sala
+# de aula —, e era isso que tornava as 222 linhas impossíveis de auditar.
+#
+# `curto` é o que cabe no selo; `titulo` e `explicacao` são a legenda. Público
+# que não estiver aqui aparece cru no selo, em vez de sumir: nome estranho o
+# dono pergunta, ausência ele nunca percebe.
 GRUPOS = (
     (
         "visitante",
+        "qualquer um",
         "Para quem só visita",
         "Qualquer pessoa do mundo abre, sem entrar em nada.",
     ),
     (
         "aluno",
+        "aluno",
         "Para quem é aluno",
-        "Precisa entrar com a conta — e, em algumas, ter o acesso liberado por você.",
+        "Precisa entrar com a conta, e em algumas ter o acesso liberado por você.",
     ),
     (
         "equipe",
+        "só você",
         "Para você",
         "A área administrativa. Quem não está na sua lista de administradores "
         "recebe “não existe”, e não “você não pode”.",
     ),
     (
         "maquina",
+        "máquina",
         "Só para as máquinas",
         "Ninguém abre à mão: são as portas por onde as partes do site conversam "
         "entre si, e os sinais de vida que o servidor consulta sozinho.",
     ),
 )
 
-CHAVES = frozenset(chave for chave, _, _ in GRUPOS)
+SELO_DO_PUBLICO = {chave: curto for chave, curto, _, _ in GRUPOS}
+
+# ------------------------------------------------------------------ as áreas
+#
+# AS CATEGORIAS PRINCIPAIS DO SITE, na ordem em que a página as desenha: o
+# caminho de quem chega (vitrine, quiz, compra), o que o aluno recebe (sala de
+# aula, portfólio, medalhas, fórum, Caixa, avisos), a sua área, e por último o
+# que só as máquinas usam.
+#
+# Pedido do mantenedor em 06/09/2026: *"crie uma hierarquia das páginas... que
+# as páginas fiquem em grupos como em uma árvore... categorias principais e
+# abaixo delas as sub-categorias, e páginas e sub-páginas"*. Até aqui a tela
+# eram QUATRO listas planas por público, e a maior tinha 106 linhas seguidas:
+# ninguém audita um site assim.
+#
+# O QUE MORA AQUI E O QUE NÃO MORA. Aqui mora só o que uma máquina não sabe: o
+# NOME de cada área, em português, e por onde ela começa. A hierarquia de
+# dentro (sub-categoria, página, sub-página) é CALCULADA do próprio endereço em
+# `_arvore` — `/admin/escola/alunos/recusados` é filho de `/admin/escola/alunos/`
+# porque o endereço diz isso, e não porque alguém digitou. Uma segunda lista de
+# quem-é-filho-de-quem envelheceria em silêncio na primeira rota nova.
+#
+# CADA CAMPO:
+#   chave       o nome curto, usado no HTML e nos testes
+#   titulo      como o dono chamaria a área
+#   explicacao  uma linha, sem jargão: o que se faz aqui
+#   prefixos    por onde os endereços dela começam. O prefixo MAIS LONGO vence,
+#               então `/admin` e `/admin/escola` poderiam coexistir se um dia
+#               fizesse sentido separá-los
+#
+# **Endereço que nenhuma área cobre NÃO some: ele aparece na tela, em voz alta,
+# e reprova o teste-guarda** (`services/admin/tests/test_mapa_do_site.py`).
+# Isso é o que impede esta lista de envelhecer: rota nova exige entrada em
+# `painel/mapa-do-site.json`, o arquivo é da célula `admin`, e a suíte dela roda
+# em todo PR que o toca. Cair num grupo mudo é como um mapa morre.
+AREA_INTERNA = "por-dentro"
+
+AREAS = (
+    (
+        "vitrine",
+        "A vitrine e a porta de entrada",
+        "As páginas que qualquer pessoa do mundo abre, e por onde se entra na conta.",
+        ("/", "/cadastro", "/login", "/leads", "/ver-como", "/entrar"),
+    ),
+    (
+        "quiz",
+        "O quiz",
+        "O teste que a pessoa responde antes de comprar, e a página do resultado.",
+        ("/quiz",),
+    ),
+    (
+        "compra",
+        "A compra",
+        "A tela de pagar, o Pix, o cartão, e as portas por onde o dinheiro é confirmado.",
+        ("/checkout", "/api/checkout", "/api/pagamentos"),
+    ),
+    (
+        "sala",
+        "A sala de aula",
+        "Onde o aluno assiste, entrega a tarefa e recebe o laudo do que fez.",
+        ("/cursos",),
+    ),
+    (
+        "portfolio",
+        "O portfólio do aluno",
+        "A página que o aluno monta para mostrar o trabalho dele ao mundo.",
+        ("/pages",),
+    ),
+    (
+        "conquistas",
+        "Os pontos e as medalhas",
+        "A gamificação da escola: o que o aluno ganha, e o que ele já conquistou.",
+        ("/conquistas",),
+    ),
+    (
+        "forum",
+        "O fórum",
+        "As conversas da turma: as áreas, os assuntos e as respostas.",
+        ("/forum",),
+    ),
+    (
+        "caixa",
+        "A Caixa de Sugestões",
+        "Onde o aluno pede o que quer no site, vota, e acompanha o que virou obra.",
+        ("/forms/sugestoes",),
+    ),
+    (
+        "avisos",
+        "Os avisos no celular",
+        "Ligar e desligar o aviso que chega no telefone do aluno. Não tem tela "
+        "própria: são os dois botões da área do aluno.",
+        ("/avisos",),
+    ),
+    (
+        "administracao",
+        "A sua área de administração",
+        "Tudo o que só você abre: a gestão da escola, a Caixa, o livro, os "
+        "documentos, o placar e o seu painel.",
+        ("/admin",),
+    ),
+    (
+        "documentos",
+        "Os documentos publicados",
+        "Os textos que você escreve no editor e ficam no ar para quem tem o link.",
+        ("/docs",),
+    ),
+    (
+        "mapa-ia",
+        "O mapa para uma IA de fora ler",
+        "As páginas sem porta que existem para outra inteligência artificial "
+        "auditar este sistema quando você pedir uma segunda opinião.",
+        ("/mapa-ia",),
+    ),
+    (
+        "sinais",
+        "Os arquivos e os sinais do site",
+        "Ninguém abre à mão: as imagens e o estilo, o app instalável, o mapa "
+        "para o Google, e os sinais de vida que o servidor consulta sozinho.",
+        (
+            "/static",
+            "/sw.js",
+            "/manifest.webmanifest",
+            "/sitemap.xml",
+            "/healthz",
+            "/google0e78b54775677e95.html",
+            "/alunos",
+        ),
+    ),
+    (
+        AREA_INTERNA,
+        "As partes que trabalham por dentro",
+        "Pedaços do site que a internet não alcança: eles só conversam com as "
+        "outras partes, pela rede de dentro do servidor.",
+        (),
+    ),
+)
+
+
+def _cobre(prefixo: str, endereco: str) -> bool:
+    """`/admin` cobre `/admin/escola/`, e `/` cobre só ele mesmo.
+
+    A comparação é por PEDAÇO de caminho, nunca por texto: sem isso `/forum`
+    engoliria um futuro `/forumzinho`, e a raiz `/` engoliria o site inteiro.
+    """
+    if prefixo == "/":
+        return endereco == "/"
+    return endereco == prefixo or endereco.startswith(prefixo + "/")
+
+
+def area_de(endereco: str) -> str | None:
+    """A área de um endereço, pelo prefixo mais longo. `None` quando nenhuma cobre.
+
+    Devolver `None` é de propósito: a tela mostra o que sobrou numa faixa em voz
+    alta e o teste-guarda reprova o PR. Enfiar o desconhecido numa área qualquer
+    faria a linha sumir de vista sem nada ficar vermelho.
+    """
+    if endereco == "-":
+        return AREA_INTERNA
+    escolhida, tamanho = None, -1
+    for chave, _, _, prefixos in AREAS:
+        for prefixo in prefixos:
+            if _cobre(prefixo, endereco) and len(prefixo) > tamanho:
+                escolhida, tamanho = chave, len(prefixo)
+    return escolhida
+
+
+def _degraus(endereco: str) -> tuple[str, ...]:
+    """Os pedaços do caminho, que é o que decide quem é filho de quem.
+
+    O `$` do fim de uma rota escrita como expressão regular é sinal de "acaba
+    aqui", não pedaço de endereço. Sem tirá-lo, `/admin/documentos/<nome>$` e
+    `/admin/documentos/<nome>/editar$` viram irmãos em vez de mãe e filha, e a
+    árvore desmonta justamente onde ela mais ajuda.
+    """
+    return tuple(pedaco for pedaco in endereco.rstrip("$").split("/") if pedaco)
+
+
+def _arvore(itens: list[dict]) -> list[dict]:
+    """As linhas de uma área, achatadas, cada uma sabendo seu `nivel`.
+
+    **A hierarquia sai do endereço, e de nada mais.** A mãe de uma linha é a
+    PÁGINA cujo caminho é o maior começo do caminho dela. Assim
+    `/admin/escola/alunos/recusados/apagar` acha `/admin/escola/alunos/recusados`
+    sozinho, e uma rota nova entra no lugar certo sem ninguém mexer aqui.
+
+    **Botão não vira galho.** Os gestos (o que acontece ao apertar algo) viram
+    uma fileira de etiquetas dentro da página a que pertencem. Eles são 96 dos
+    222 endereços: como galhos, dobrariam a altura da árvore para responder uma
+    pergunta que ninguém faz olhando o mapa.
+
+    Achatar aqui, em vez de aninhar no HTML, é o que dispensa um template que se
+    inclui a si mesmo: cada linha leva o próprio `nivel`, e o desenho recua.
+    """
+    paginas = [i for i in itens if not i["gesto"]]
+    por_degrau: dict[tuple[str, ...], dict] = {}
+    for pagina in paginas:
+        por_degrau.setdefault(_degraus(pagina["endereco"]), pagina)
+
+    def mae(item: dict) -> dict | None:
+        degraus = _degraus(item["endereco"])
+        for corte in range(len(degraus) - 1, 0, -1):
+            candidata = por_degrau.get(degraus[:corte])
+            if candidata is not None and candidata is not item:
+                return candidata
+        return None
+
+    filhas: dict[int, list[dict]] = {}
+    raizes: list[dict] = []
+    for item in itens:
+        item["gestos"] = []
+        senhora = mae(item)
+        if senhora is None:
+            raizes.append(item)
+        elif item["gesto"]:
+            senhora["gestos"].append(item)
+        else:
+            filhas.setdefault(id(senhora), []).append(item)
+
+    def ordem(item: dict) -> tuple:
+        return (bool(item["gesto"]), item["endereco"])
+
+    linhas: list[dict] = []
+
+    def descer(item: dict, nivel: int) -> None:
+        item["nivel"] = nivel
+        # O recuo do desenho para no quarto degrau. Mais que isso, num celular,
+        # sobra coluna de branco e falta coluna de texto — a linha continua na
+        # árvore, só deixa de recuar mais.
+        item["recuo"] = min(nivel, 4)
+        item["gestos"].sort(key=ordem)
+        linhas.append(item)
+        for filha in sorted(filhas.get(id(item), []), key=ordem):
+            descer(filha, nivel + 1)
+
+    for raiz in sorted(raizes, key=ordem):
+        descer(raiz, 0)
+    return linhas
+
+
+# ------------------------------------------------------------- o que está em obra
+#
+# A segunda metade do pedido de 06/09/2026: *"quero poder verificar tudo o que
+# existe E o que ainda está sendo construído"*. O que existe é a árvore acima;
+# o que está sendo construído é a FILA DE TRABALHO, e ela já viaja nesta imagem
+# (a aba "Os robôs" da gestão da Caixa lê a mesma pasta).
+#
+# **Nada é recalculado aqui.** Os estados saem de `fila_embutida/estados.json`,
+# materializado no build por `ci/fila.py listar --json`, e a tradução do `toca`
+# para lugares que o dono reconhece é a de `robos.py`. Uma segunda régua de "em
+# que pé está" seria a duplicação que o `CLAUDE.md` proíbe.
+#
+# **O limite, dito na cara:** a fila sabe em que CÉLULA a tarefa mexe, e não em
+# que endereço ela vai nascer. Por isso esta seção fica ao lado da árvore, e não
+# dentro dela: pendurar a tarefa num galho exigiria adivinhar qual, e um mapa
+# que adivinha é pior que um mapa que declara o que não sabe.
+EM_ABERTO = ("bloqueada", "reivindicada", "em execução", "na fila")
+
+
+def em_obra() -> dict | None:
+    """As tarefas ainda não terminadas, agrupadas por lugar. `None` sem a fila.
+
+    Fila ausente devolve `None` e a tela diz isso numa linha, em vez de mostrar
+    "nada em obra" — que seria a mentira mais convincente desta seção. O mapa em
+    si continua de pé: a fila é o segundo assunto da página, não o primeiro.
+    """
+    pasta = diretorio_da_fila()
+    if pasta is None:
+        return None
+    try:
+        estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(estados, dict):
+        return None
+
+    por_lugar: dict[str, list[dict]] = {}
+    total = 0
+    for identificador, tarefa in sorted(estados.items()):
+        if not isinstance(tarefa, dict) or tarefa.get("estado") not in EM_ABERTO:
+            continue
+        total += 1
+        cartao = {
+            "id": identificador,
+            "titulo": tarefa.get("titulo", ""),
+            "estado": tarefa.get("estado", ""),
+        }
+        # Uma tarefa que mexe em dois lugares aparece nos dois. A conta do topo
+        # é a de TAREFAS (contadas uma vez), e a de cada lugar é a de tarefas
+        # daquele lugar: as duas respondem perguntas diferentes, e somar as
+        # segundas não dá a primeira de propósito.
+        for lugar in onde_isso_mexe(tarefa.get("toca")) or ["sem lugar declarado"]:
+            por_lugar.setdefault(lugar, []).append(cartao)
+
+    return {
+        "total": total,
+        "lugares": [
+            {"nome": nome, "tarefas": tarefas, "quantas": len(tarefas)}
+            for nome, tarefas in sorted(
+                por_lugar.items(), key=lambda par: (-len(par[1]), par[0])
+            )
+        ],
+    }
 
 
 def arquivo_do_mapa() -> Path | None:
@@ -140,6 +454,9 @@ def _preparar(entrada: dict) -> dict:
         "interno": not publico,
         "celula": entrada.get("celula", ""),
         "para_quem": entrada.get("para_quem", ""),
+        "selo": SELO_DO_PUBLICO.get(
+            entrada.get("para_quem", ""), entrada.get("para_quem", "")
+        ),
         # A luz de "está no ar?". Quem a acende é o NAVEGADOR do dono, pedindo
         # o endereço público de verdade — a prova de fora, do jeito que ele
         # veria. O que pode ser sondado é cercado em `ci/mapa_do_site.py`:
@@ -200,9 +517,45 @@ def _politica(html: bytes) -> str:
     )
 
 
+def _peneirar(linhas: list[dict], procurado: str) -> list[dict]:
+    """A busca, sem quebrar a árvore: quem casa fica, e as mães dele também.
+
+    Uma peneira que jogasse fora as mães devolveria galhos soltos no ar —
+    `apagar` sem `A lista dos recusados` em cima não diz o que apaga. Como as
+    linhas vêm achatadas em ordem de descida, as descendentes de uma linha são
+    exatamente as seguintes com nível maior que o dela, até a próxima irmã.
+    """
+    casa = [
+        _casa(linha, procurado) or any(_casa(g, procurado) for g in linha["gestos"])
+        for linha in linhas
+    ]
+    manter = list(casa)
+    for i in range(len(linhas) - 1, -1, -1):
+        nivel = linhas[i]["nivel"]
+        j = i + 1
+        while j < len(linhas) and linhas[j]["nivel"] > nivel:
+            if manter[j]:
+                manter[i] = True
+                break
+            j += 1
+
+    peneiradas = []
+    for linha, ficou, propria in zip(linhas, manter, casa):
+        if not ficou:
+            continue
+        if not _casa(linha, procurado):
+            # A página entrou pelo que está DENTRO dela: mostre só o que casou,
+            # senão a busca por "apagar" devolveria os sete botões da ideia.
+            achados = [g for g in linha["gestos"] if _casa(g, procurado)]
+            if achados or propria:
+                linha = {**linha, "gestos": achados}
+        peneiradas.append(linha)
+    return peneiradas
+
+
 @require_GET
 def mapa_do_site(request):
-    """A página. Agrupa por público, e separa as páginas dos gestos de botão."""
+    """A página: uma árvore por área do site, e o que ainda está em obra."""
     caminho = arquivo_do_mapa()
     if caminho is None:
         return render(
@@ -230,36 +583,64 @@ def mapa_do_site(request):
     # funcionar exatamente para quem tem script bloqueado. Aqui o endereço
     # `?q=forum` também é COMPARTILHÁVEL e guardável nos favoritos.
     procurado = _sem_acento(request.GET.get("q", "").strip())
-    achados = [e for e in entradas if _casa(e, procurado)] if procurado else entradas
 
-    grupos = []
-    for chave, titulo, explicacao in GRUPOS:
-        do_grupo = [e for e in achados if e["para_quem"] == chave]
-        paginas = [e for e in do_grupo if not e["gesto"]]
-        gestos = [e for e in do_grupo if e["gesto"]]
+    por_area: dict[str, list[dict]] = {}
+    orfas = []
+    for entrada in entradas:
+        chave = area_de(entrada["endereco"])
+        if chave is None:
+            orfas.append(entrada)
+        else:
+            por_area.setdefault(chave, []).append(entrada)
+
+    areas = []
+    achados = 0
+    for chave, titulo, explicacao, _ in AREAS:
+        do_grupo = por_area.get(chave, [])
         if not do_grupo:
             continue
-        grupos.append(
+        linhas = _arvore(do_grupo)
+        if procurado:
+            linhas = _peneirar(linhas, procurado)
+        visiveis = sum(1 + len(linha["gestos"]) for linha in linhas)
+        achados += visiveis
+        if not linhas:
+            continue
+        areas.append(
             {
                 "chave": chave,
                 "titulo": titulo,
                 "explicacao": explicacao,
-                "paginas": paginas,
-                "gestos": gestos,
-                "total": len(do_grupo),
+                "linhas": linhas,
+                # As três contas de uma área são disjuntas e somam o que ela
+                # mostra — é isso que faz o cabeçalho ser conferível de cabeça.
+                "telas": sum(
+                    1
+                    for linha in linhas
+                    if not linha["gesto"] and linha["para_quem"] != "maquina"
+                ),
+                "botoes": sum(len(linha["gestos"]) for linha in linhas)
+                + sum(1 for linha in linhas if linha["gesto"]),
+                "maquina": sum(
+                    1
+                    for linha in linhas
+                    if not linha["gesto"] and linha["para_quem"] == "maquina"
+                ),
+                "visiveis": visiveis,
             }
         )
 
+    obra = em_obra()
     resposta = render(
         request,
         "admin/mapa_do_site.html",
         {
             "admin": request.admin,
-            "grupos": grupos,
+            "areas": areas,
             # O que a pessoa digitou volta para o campo (senão a busca "some" e
             # ela não sabe o que está vendo), e a conta diz de quantos.
             "procurado": request.GET.get("q", "").strip(),
-            "achados": len(achados),
+            "achados": achados,
             "total": len(entradas),
             # As três contas são DISJUNTAS e somam o total — é isso que faz a
             # capa desta página ser conferível de cabeça. A primeira versão
@@ -274,10 +655,13 @@ def mapa_do_site(request):
                 1 for e in entradas if not e["gesto"] and e["para_quem"] == "maquina"
             ),
             "total_internos": sum(1 for e in entradas if e["interno"]),
-            # As entradas que nenhum grupo acolheu. Zero hoje — o vocabulário é
-            # fechado dos dois lados —, e a tela as mostra em voz alta se um dia
-            # não for: linha que some sem erro é a pior forma de perder um fato.
-            "orfas": [e for e in entradas if e["para_quem"] not in CHAVES],
+            "obra": obra,
+            "legenda": GRUPOS,
+            # As entradas que nenhuma área acolheu. Zero hoje, e a tela as
+            # mostra em voz alta se um dia não for: linha que some sem erro é a
+            # pior forma de perder um fato, e é justamente o que este mapa
+            # existe para impedir.
+            "orfas": orfas,
         },
     )
     resposta["Content-Security-Policy"] = _politica(resposta.content)
