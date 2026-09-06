@@ -371,7 +371,7 @@ def test_o_esqueleto_nasce_rascunho_e_sem_nenhum_texto(esqueleto):
     """A ausência é a decisão (`armadilhas/331`): nome de bloco, título de boss,
     pedido, cliente, mínimo, quiz, vídeo e instrumento chegam pela tela."""
     assert (esqueleto.nome, esqueleto.estado, esqueleto.versao) == (
-        "Meshcraft",
+        "Profissional",
         Curso.Estado.RASCUNHO,
         1,
     )
@@ -471,13 +471,28 @@ def test_a_semente_e_por_site(esqueleto):
 
 def test_o_esqueleto_entra_inteiro_ou_nao_entra(db):
     """Uma transação só: se a semeadura tropeça no meio, nada fica pela metade."""
-    # Um bloco pré-existente na ordem 1 com a letra B: o semeador reaproveita a
-    # ordem 1, cria as três primeiras aulas nele, e tropeça em
-    # `uma_letra_por_bloco_por_curso` ao criar a ordem 2. As três aulas não
-    # podem sobrar.
-    curso = Curso.objects.create(site_id=SITE, slug="meshcraft", nome="Meshcraft")
-    Bloco.objects.create(curso=curso, ordem=1, letra="B", parte=1)
-    with pytest.raises(IntegrityError, match="uma_letra_por_bloco_por_curso"):
+    # Uma aula pré-existente ocupando a ordem 0 com um número que o esqueleto
+    # não conhece: o semeador cria o bloco A, tenta criar a E00 na ordem 0 e
+    # tropeça em `uma_ordem_por_aula_por_curso`. Nem o bloco nem os
+    # instrumentos podem sobrar.
+    #
+    # Até 05/09/2026 este teste plantava um BLOCO com a letra errada. Desde que
+    # o semeador passou a RECONCILIAR a estrutura do livro
+    # (`test_semeador_reconcilia_estrutura.py`), aquele plantio deixou de
+    # tropeçar: a letra errada agora é consertada, que é o comportamento que se
+    # quer. O que este teste mede continua sendo a transação única, e por isso
+    # ele passou a tropeçar num campo que a reconciliação NÃO toca.
+    curso = Curso.objects.create(site_id=SITE, slug="profissional", nome="Profissional")
+    # O bloco A já na posição certa, para a reconciliação não ter o que mudar
+    # nele (a letra é limitada a A–L por `letra_de_bloco_entre_a_e_l`).
+    bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
+    # A E32 ocupando a ordem 0, que é da E00. O número precisa ser do
+    # vocabulário fechado (`numero_de_aula_no_vocabulario_fechado`), e o
+    # semeador só chega na E32 no fim: quando chegar, a E00 já terá tropeçado.
+    Aula.objects.create(
+        curso=curso, bloco=bloco, ordem=0, numero="E32", titulo_exibido="Fora do lugar"
+    )
+    with pytest.raises(IntegrityError, match="uma_ordem_por_aula_por_curso"):
         call_command("semear_esqueleto", site=SITE, stdout=StringIO())
-    assert Aula.objects.count() == 0
+    assert Aula.objects.count() == 1, "só a que já estava; nenhuma do esqueleto sobrou"
     assert Instrumento.objects.count() == 0

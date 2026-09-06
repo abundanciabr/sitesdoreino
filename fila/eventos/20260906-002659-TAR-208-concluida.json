@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-002659-TAR-208-concluida",
+  "tarefa": "TAR-208",
+  "evento": "concluida",
+  "quando": "2026-09-06T00:26:59+00:00",
+  "quem": "maestro-livro-20260906",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1150 — COM_BOSS com as 12 encomendas do livro e BANCA_POR_AULA com E10/E21/E32; o semeador reconciliando bloco, ordem, e_boss, banca_nivel e o slug do curso (meshcraft -> profissional); guarda novo test_semeador_reconcilia_estrutura.py com 10 provas, incluindo a de que semear de novo nao toca em obra escrita. Suite da celula 528 passed, black limpo em 66 arquivos. A Bonus fora das Partes fica declarada como divergencia para decisao do mantenedor.",
+  "verificado_em": "2026-09-06"
+}
