@@ -66,6 +66,7 @@ from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
+from apps.core.coortes import coortes
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
@@ -477,6 +478,15 @@ urlpatterns = [
     # seções (`moldura.py`) cresceria sem realidade nova — experimento não é
     # assunto novo da administração, é o que se faz para mover aqueles números.
     path("placar/laboratorio/", laboratorio, name="laboratorio"),
+    # AS COORTES (`apps/core/coortes.py`, 05/09/2026) — quem entrou em cada mês,
+    # e o que a memória da escola sabe sobre cada grupo. É o degrau 10 do plano
+    # do painel de gestão (§6.4), na metade que já tem fonte hoje.
+    #
+    # Sub-rota do placar pela mesma razão das três irmãs acima, e por uma
+    # quarta: esta tela é a BARRA DO MÊS guardada. A barra zera no dia 1, e o
+    # que ela deixa para trás é exatamente uma linha desta tabela. Como seção
+    # própria do menu ela viveria longe do número de que é a memória.
+    path("placar/coortes/", coortes, name="coortes"),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora

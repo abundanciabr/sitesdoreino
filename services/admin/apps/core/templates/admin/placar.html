@@ -272,6 +272,19 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% endif %}
   {% endif %}
 
+  {% comment %}
+  A porta para as coortes (05/09/2026, degrau 10 do plano). Um LINK abaixo do
+  bloco 1, e nunca um bloco novo: a capa tem teto de nove e se recusa a crescer.
+
+  FORA de todos os `if` da contagem, de propósito: as coortes vêm da memória da
+  escola, e não da lista de alunos. Dentro deles, um dia em que a lista de
+  alunos não respondesse levaria embora também o caminho para esta tela, que
+  continua tendo o que mostrar.
+  {% endcomment %}
+  <p class="recado-fraco espaco-abaixo-20">
+    <a href="{% url 'coortes' %}">Ver quem entrou em cada mês, grupo a grupo &rarr;</a>
+  </p>
+
   <h2 class="titulo-de-bloco espaco-20">A direção da semana</h2>
   {% if not cartao_pedidos or not cartao_48h %}
     <p class="aviso borda-vermelha"><b>Um cartão da direção está ausente ou inválido</b>, e sem ele a medida não aparece.</p>
