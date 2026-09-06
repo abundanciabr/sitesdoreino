@@ -72,6 +72,7 @@ from apps.auditoria.models import Registro
 from .aulas import (
     NOME_DA_PECA,
     PECAS,
+    SEQUENCIA,
     CursosClient,
     _endereco,
     _falha,
@@ -83,9 +84,12 @@ from .views import _auditar
 TELA = "admin/escola_sumario.html"
 
 #: As 16 peças da anatomia na ordem em que o sumário as numera, que é a ordem
-#: canônica do contrato. A 17ª e a 18ª (`roteiro`, `guia_do_mentor`) são
-#: internas, o sumário não as tem, e o importador nunca as toca.
-PECAS_NUMERADAS = tuple(tipo for tipo, _, interna in PECAS if not interna)
+#: canônica do contrato. São as da categoria `SEQUENCIA`, e só elas: as duas
+#: internas (`roteiro`, `guia_do_mentor`) e a vídeo-aula em texto ficam de fora,
+#: o sumário não as tem, e o importador nunca as toca. Numerar por exclusão ("as
+#: que não são internas") daria 17 no dia em que uma peça não interna nascesse
+#: fora da anatomia, e foi exatamente o que aconteceu.
+PECAS_NUMERADAS = tuple(t for t, _, categoria in PECAS if categoria == SEQUENCIA)
 
 #: A peça 1 ("O pedido") traz, no sumário, o NOME DO CLIENTE e nada mais ("o
 #: Mentor", "Téo", "o cliente sem nome"). Ela é a única cujo texto próprio não
