@@ -5,7 +5,7 @@
 #
 # POR QUE ELA EXISTE (30/08/2026, TAR-022)
 # ----------------------------------------
-# `armadilhas/INDICE.md`, `armadilhas/GUARDAS.json` e `armadilhas/SINAIS.json`
+# `armadilhas/INDICE.md`, `GUARDAS.json`, `SINAIS.json` e `GATILHOS.json`
 # são GERADOS de `armadilhas/NNN-slug.md` por `ci/indice_de_armadilhas.py`. Até
 # 30/08/2026 os três viajavam no Git — e a lei desta casa MANDA todo robô
 # acrescentar uma armadilha ao fim de cada tarefa. Cada entrada nova reescreve
@@ -85,7 +85,7 @@ done
 # `git ls-files` é a fonte independente: ela enxerga o índice do Git, que é o
 # que viaja no PR, e não a varredura de pasta que o gerador acabou de fazer.
 no_git="$(git ls-files -- \
-  armadilhas/INDICE.md armadilhas/GUARDAS.json armadilhas/SINAIS.json 2>/dev/null)"
+  armadilhas/INDICE.md armadilhas/GUARDAS.json armadilhas/SINAIS.json \n  armadilhas/GATILHOS.json 2>/dev/null)"
 codigo=$?
 if [[ $codigo -ne 0 ]]; then
   echo "❌ ERROR muralha-do-indice: 'git ls-files' não conseguiu inspecionar os gerados (exit $codigo)."
@@ -110,4 +110,4 @@ fi
 
 if [[ $falhou -eq 1 ]]; then exit 1; fi
 echo "✅ Muralha do índice: construiu das entradas, reconstruiu igual byte a byte,"
-echo "   e nenhum dos três gerados está no índice do Git."
+echo "   e nenhum dos gerados está no índice do Git."

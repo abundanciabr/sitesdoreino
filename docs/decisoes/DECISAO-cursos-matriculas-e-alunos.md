@@ -70,7 +70,22 @@ Nenhuma terceira porta nasce sem passar por aqui.
 
 **Toda matrícula que existe hoje passa a apontar para o curso 1.** É o único desfecho verdadeiro: essas pessoas compraram aquele curso, e nenhuma delas comprou o segundo.
 
-Cursos novos ganham o número seguinte. O número é identidade e **não muda**, porque ele entra em matrícula, em pedido de compra e em endereço.
+### O "1" e o "2" são apelidos de conversa, e não identidade no sistema
+
+Medido em 6 de setembro de 2026, depois de escrita a primeira versão desta lei: **número de ordem de curso não existe em lugar nenhum do sistema**. Este parágrafo corrige a versão anterior, que dizia que o número "entra em matrícula, em pedido de compra e em endereço".
+
+O que existe são dois identificadores, e são eles que não mudam:
+
+| onde | o que identifica |
+|---|---|
+| catálogo, matrícula, pedido de compra | um **UUID**, sorteado quando o produto é criado |
+| endereço da sala de aula | o **apelido** do curso (`/cursos/profissional/parte-1/E00`) |
+
+E número de ordem **não vai passar a existir**: ele obrigaria alguém a renumerar o mundo no dia em que um curso saísse do meio da lista, e um número que muda é pior do que nenhum.
+
+Os apelidos de conversa continuam valendo entre nós, porque são como o mantenedor pensa nos cursos, e ele os usou ao pedir isto. Cursos novos ganham o número seguinte **na conversa**. O que a máquina guarda é o UUID e o apelido.
+
+**A mesma lição, pela segunda vez no mesmo dia e na mesma página:** eu escrevi um mecanismo na lei sem medir se ele existia. É irmã da frase sobre a compra, corrigida algumas horas antes, e a régua que faltava é a mesma: ir ver.
 
 ## §6 O que a tela de liberar passa a fazer
 
