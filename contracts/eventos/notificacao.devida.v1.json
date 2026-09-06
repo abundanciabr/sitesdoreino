@@ -70,9 +70,10 @@
             "gamificacao.marco-validado",
             "gamificacao.destaque-da-semana",
             "jornada.passo",
+            "pages.portfolio-conferido",
             "sistema.teste-de-aviso"
           ],
-          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site; os quatro `gamificacao.*` entraram na Sessao B de 30/08/2026 (Rito de Contrato com o mantenedor), e sao as CARTAS DE CELEBRACAO do Sistema de Formacao de Criadores. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu DUAS vezes, e a FORMA do evento nao precisou mudar nenhuma delas: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois. A REGRA DA GAMIFICACAO, que vem junto com os quatro: so BOA NOTICIA vira carta — perder XP, regredir na sequencia ou ter uma marca estornada NAO gera aviso nenhum (lei da celula; maximo 1 por dia, nunca depois das 20h). A REGRA DO 'HORARIO ESCOLAR' SAIU em 31/08/2026: o mantenedor declarou que a escola so tem alunos maiores de 18 anos e nunca tera menores, e a lei da gamificacao foi emendada no mesmo dia (DECISAO-gamificacao.md §9) — um adulto as 14h de terca e exatamente quem se quer alcancar. A DECISAO DE 31/08/2026, no Rito que trouxe `jornada.passo`, e o MODELO HIBRIDO, e a regra de qual forma usar e esta: MENSAGEM DE SERVICO — a que nao pode falhar (`matricula.situacao-alterada` hoje; senha e seguranca amanha) — ganha assunto PROPRIO aqui, com ramo proprio de parametros, e o sininho a monta sozinho nos tres idiomas sem depender de ninguem. MENSAGEM DE INCENTIVO — boas-vindas, 'senti sua falta', e todo passo de sequencia que o mantenedor vai querer ajustar numa terca a noite — viaja como `jornada.passo`, e o texto vem da tela dele na hora de ler. Nas palavras dele: 'servico no contrato, incentivo na minha tela'. `sistema.teste-de-aviso` entrou em 03/09/2026, no Rito de Contrato com o mantenedor presente, e e o unico assunto que NAO descreve um fato do projeto: ele existe para PROVAR O CANAL. Nasceu de um caso real — o botao de ligar os avisos falhava no navegador dele, o servidor estava verde, e nao havia como distinguir 'o aviso nao foi enviado' de 'o aviso foi enviado e nao chegou' sem um envio que a pessoa dispara na hora. Ele CRIA carta no sininho como qualquer outro (escolha do mantenedor no mesmo rito, contra a alternativa de so piscar na tela): assim um teste prova as DUAS metades de uma vez, o sininho e o aparelho, e um teste que nao chega ao celular ainda deixa rastro de que saiu daqui."
+          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site; os quatro `gamificacao.*` entraram na Sessao B de 30/08/2026 (Rito de Contrato com o mantenedor), e sao as CARTAS DE CELEBRACAO do Sistema de Formacao de Criadores. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu DUAS vezes, e a FORMA do evento nao precisou mudar nenhuma delas: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois. A REGRA DA GAMIFICACAO, que vem junto com os quatro: so BOA NOTICIA vira carta — perder XP, regredir na sequencia ou ter uma marca estornada NAO gera aviso nenhum (lei da celula; maximo 1 por dia, nunca depois das 20h). A REGRA DO 'HORARIO ESCOLAR' SAIU em 31/08/2026: o mantenedor declarou que a escola so tem alunos maiores de 18 anos e nunca tera menores, e a lei da gamificacao foi emendada no mesmo dia (DECISAO-gamificacao.md §9) — um adulto as 14h de terca e exatamente quem se quer alcancar. A DECISAO DE 31/08/2026, no Rito que trouxe `jornada.passo`, e o MODELO HIBRIDO, e a regra de qual forma usar e esta: MENSAGEM DE SERVICO — a que nao pode falhar (`matricula.situacao-alterada` hoje; senha e seguranca amanha) — ganha assunto PROPRIO aqui, com ramo proprio de parametros, e o sininho a monta sozinho nos tres idiomas sem depender de ninguem. MENSAGEM DE INCENTIVO — boas-vindas, 'senti sua falta', e todo passo de sequencia que o mantenedor vai querer ajustar numa terca a noite — viaja como `jornada.passo`, e o texto vem da tela dele na hora de ler. Nas palavras dele: 'servico no contrato, incentivo na minha tela'. `sistema.teste-de-aviso` entrou em 03/09/2026, no Rito de Contrato com o mantenedor presente, e e o unico assunto que NAO descreve um fato do projeto: ele existe para PROVAR O CANAL. Nasceu de um caso real — o botao de ligar os avisos falhava no navegador dele, o servidor estava verde, e nao havia como distinguir 'o aviso nao foi enviado' de 'o aviso foi enviado e nao chegou' sem um envio que a pessoa dispara na hora. Ele CRIA carta no sininho como qualquer outro (escolha do mantenedor no mesmo rito, contra a alternativa de so piscar na tela): assim um teste prova as DUAS metades de uma vez, o sininho e o aparelho, e um teste que nao chega ao celular ainda deixa rastro de que saiu daqui. `pages.portfolio-conferido` entrou em 06/09/2026, no Rito de Contrato com o mantenedor presente, e e a carta do SELO DA ESCOLA (degrau 12 de docs/changespecs/CS-PAGES-0001.md, criterio AC-12): o aluno mandou o portfolio para a fila da escola, esperou o prazo de cinco dias uteis, e precisa saber que alguem olhou e disse sim. E MENSAGEM DE SERVICO pela regra hibrida acima, e por isso ganhou assunto proprio: quem espera numa fila com prazo nao pode depender de uma sequencia que o mantenedor edita. No mesmo Rito ele RECUSOU o segundo assunto que a mesma celula pediu, `pages.peca-quebrada`, que avisaria o aluno quando o link de uma peca parasse de responder: a decisao e dele, esta escriturada no evento de cancelamento da TAR-224, e o aluno descobre a peca quebrada abrindo a pagina."
         },
         "parametros": {
           "type": "object",
@@ -506,6 +507,55 @@
                 "additionalProperties": false,
                 "description": "VAZIO, e o vazio e o desenho: um teste nao carrega noticia nenhuma. Quem pediu ja viaja no `ator_id` da carta, e quando ele foi pedido ja viaja no `criado_em` dela — repetir qualquer um dos dois aqui seria a segunda casa do mesmo fato. Continua `additionalProperties: false` como todos os outros: parametro livre e por onde um e-mail entraria de carona.",
                 "properties": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "O SELO DA ESCOLA SAIU (Rito de Contrato de 06/09/2026). A celula `pages` conferiu o portfolio de um aluno que pediu e esperou numa fila com prazo, e esta e a carta que fecha essa espera. Mesma disciplina de todos os ramos de cima, e ela e o motivo de o mantenedor ter aprovado este assunto no formato em que esta: SO ID OPACO E PAPEL viajam. Nem a legenda da peca, nem o link colado pelo aluno, nem o apelido da vitrine, nem o nome de quem conferiu. O que a escola escreve ao DEVOLVER um portfolio tambem nao viaja, e nunca vai viajar por aqui: devolucao nao e boa noticia, e nao gera carta nenhuma.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "pages.portfolio-conferido"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "portfolio_id"
+                ],
+                "properties": {
+                  "portfolio_id": {
+                    "type": "string",
+                    "description": "Id opaco do portfolio na celula `pages` — a mesma chave que a porta de maquina dela ja devolve em `getStudentPortfolio`. Ele existe para quem for reconstruir o historico de uma conferencia contestada, e a tela do aluno NAO o mostra, pela mesma razao do `matricula_id` e do `conquista_slug`: identificador opaco no cartao de um aluno e ruido sobre um dado que ele nao pode usar para nada. A DATA do selo tambem nao viaja: ela e o `occurred_at` do envelope, e uma segunda copia dela aqui seria a segunda verdade sobre o dia que o selo carrega."
+                  },
+                  "conferido_por_papel": {
+                    "type": "string",
+                    "enum": [
+                      "professor",
+                      "monitor"
+                    ],
+                    "description": "COM QUE AUTORIDADE o portfolio foi conferido, no mesmo desenho do `validador_papel` do marco: o ID de quem conferiu nunca viaja (guardar sim, mostrar nao, como o `ator_id` do envelope ja resolve), e o cartao fala do PAPEL, jamais de uma pessoa. Vocabulario menor que o do marco de proposito: quem confere portfolio e sempre gente da escola, entao nao existe `par` nem `sistema` aqui — um selo que o relogio assinasse sozinho nao seria conferencia. OPCIONAL, e a ausencia e o estado de HOJE, nao um descuido: a `pages` reconhece a equipe por uma lista de ids no env (`IDS_DA_EQUIPE`) e nao sabe qual deles e professor e qual e monitor, entao ela emite a carta sem este campo e o sininho simplesmente nao diz quem conferiu. O campo esta aqui porque o sininho tem de saber desenhar a carta INTEIRA antes de alguem publica-la: aprender a forma depois e o que faz o aluno ler 'esta tela ainda nao sabe mostrar'."
+                  }
+                }
               }
             }
           }
