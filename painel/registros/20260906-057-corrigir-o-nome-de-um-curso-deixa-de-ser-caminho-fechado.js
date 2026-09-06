@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260906-055-corrigir-o-nome-de-um-curso-deixa-de-ser-caminho-fechado",
+  arquivo: "20260906-057-corrigir-o-nome-de-um-curso-deixa-de-ser-caminho-fechado",
   tipo: "entrega",
   quando: "2026-09-06",
   titulo: "Corrigir o nome de um curso deixa de ser um caminho fechado",
