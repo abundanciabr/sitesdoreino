@@ -1802,6 +1802,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/coortes/",
+      "endereco": "/admin/placar/coortes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "As coortes",
+      "descricao": "Quem entrou na escola em cada mês, uma linha por mês, separando quem comprou de quem foi liberado, e ao lado o que a plataforma ganhou naquele mesmo mês. A barra do mês zera no dia 1; esta tela guarda as barras que já fecharam.",
+      "observacao": "As duas tabelas nunca se somam: a de cima conta fichas de aluno e a de baixo conta pessoas da plataforma, e não existe hoje como dizer qual pessoa corresponde a qual ficha. Por turma, por canal e a foto ao longo do tempo aparecem escritas, com o motivo de ainda não terem fonte. Degrau 10 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §6.4)."
+    },
+    {
+      "celula": "admin",
       "rota": "reuniao/",
       "endereco": "/admin/reuniao/",
       "alcance": "publico",
