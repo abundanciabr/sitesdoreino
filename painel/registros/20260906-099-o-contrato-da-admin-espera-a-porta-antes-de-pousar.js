@@ -3,7 +3,7 @@
   tipo: "nota",
   quando: "2026-09-06",
   titulo: "O contrato da area administrativa esta pronto, mas so pode entrar depois da porta",
-  detalhe: "O PR #1238 esta vermelho, e de proposito: a area administrativa ainda nao tem a porta que responde a pergunta que o contrato descreve. A maquina recusa congelar uma promessa que ninguem serve.\n\nA ordem certa e inversa: primeiro a porta, depois este contrato. A maestro despacha a porta agora, e este PR fica verde sozinho quando ela entrar.\n\nO contrato em si ja foi provado identico ao que essa porta vai responder. Nada depende de voce.",
+  detalhe: "O PR #1238 esta vermelho de proposito: a area administrativa ainda nao tem a porta que responde a pergunta do contrato, e a maquina recusa congelar promessa que ninguem serve.\n\nA ordem certa e inversa: primeiro a porta, depois o contrato. A maestro despacha a porta agora, e este PR fica verde sozinho quando ela entrar. Nada depende de voce.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1238",
   verificado_em: "2026-09-06",
