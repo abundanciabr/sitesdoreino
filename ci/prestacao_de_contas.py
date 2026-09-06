@@ -152,6 +152,9 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import telemetria  # noqa: E402  (irmão de pasta; o insert acima é o que o permite)
+
 # ---------------------------------------------------------------- a régua ----
 
 # Os seis blocos. Os quatro primeiros são a regra 9 do Padrão, palavra por
@@ -223,6 +226,13 @@ COMANDOS_QUE_MUDAM = (
     (re.compile(r"\bmanage\.py\s+(?:migrate|makemigrations|loaddata)\b"), "banco alterado"),
     (re.compile(r"\bdocker\s+(?:compose\s+)?(?:up|build|run|push)\b"), "container construído ou subido"),
 )
+
+# Alavanca 3 (documentos/alavancas-10x-da-fabrica.md), em SOMBRA: contagem
+# PRÓPRIA e mais específica que COMANDOS_QUE_MUDAM (que já conta PR junto com
+# merge/edit/close/comment como um motivo só — isso continua servindo para
+# decidir SE mudou o mundo). Aqui o interesse é só a CRIAÇÃO, para medir série
+# de PRs sem passar pelo robô `despacho`.
+PR_CRIADO = re.compile(r"\bgh\s+pr\s+create\b")
 
 # Redirecionamento que cria arquivo. `2>&1`, `>/dev/null` e `>$null` são ruído
 # de shell, não escrita — o dígito antes do `>` e os destinos nulos ficam fora.
@@ -327,6 +337,38 @@ def _mudanca_na_entrada(entrada: dict) -> str | None:
                 if not RASCUNHO.search(destino):
                     return f"{nome}: escreveu em {destino}"
     return None
+
+
+def contar_prs_e_despachos(entradas: list[dict]) -> tuple[int, int]:
+    """(quantos `gh pr create`, quantos `Agent` subagent_type="despacho") na
+    SESSÃO INTEIRA — sem recortar pela janela, porque o que a Alavanca 3 mede é
+    o turno que abriu vários PRs em série, não só a fala mais recente.
+
+    Alavanca 3 (`documentos/alavancas-10x-da-fabrica.md`): das 60 sessões mais
+    recentes, só 4 dispararam o robô `despacho`; as demais fizeram os PRs de um
+    pedido em série, na mesma sessão. Esta contagem é o instrumento de medição,
+    em sombra — nasce sem imprimir nada e sem mudar exit code nenhum.
+    """
+    prs = despachos = 0
+    for entrada in entradas:
+        if entrada.get("type") != "assistant":
+            continue
+        conteudo = (entrada.get("message") or {}).get("content")
+        if not isinstance(conteudo, list):
+            continue
+        for bloco in conteudo:
+            if not isinstance(bloco, dict) or bloco.get("type") != "tool_use":
+                continue
+            nome = bloco.get("name") or ""
+            entrada_da_ferramenta = bloco.get("input") if isinstance(bloco.get("input"), dict) else {}
+            if nome in ("Bash", "PowerShell"):
+                comando = str(entrada_da_ferramenta.get("command") or "")
+                if PR_CRIADO.search(comando):
+                    prs += 1
+            elif nome == "Agent":
+                if str(entrada_da_ferramenta.get("subagent_type") or "") == "despacho":
+                    despachos += 1
+    return prs, despachos
 
 
 def _prestou_contas(entrada: dict) -> bool:
@@ -487,7 +529,23 @@ def modo_contas(entrada: dict) -> int:
         )
         return 1
 
-    recusar, motivo, teve_plano = decidir(ler_transcript(arquivo))
+    entradas = ler_transcript(arquivo)
+    recusar, motivo, teve_plano = decidir(entradas)
+
+    # Alavanca 3, em SOMBRA: só telemetria, roda sempre que o Stop dispara —
+    # inclusive quando a prestação de contas já foi paga, porque a sessão pode
+    # ter aberto os PRs em série ANTES do relatório. registrar() já é
+    # fail-open (nunca lança), então isto não pode derrubar o exit code que
+    # `decidir()` já calculou.
+    prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
+    if prs_criados >= 2 and despachos_de_verdade == 0:
+        telemetria.registrar(
+            "serie_sem_despacho",
+            {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
+            cwd=entrada.get("cwd"),
+            sessao=entrada.get("session_id"),
+        )
+
     if not recusar:
         return 0
     print(molde(faltou_o_plano=not teve_plano), file=sys.stderr)
