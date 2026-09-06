@@ -383,6 +383,75 @@ def test_a_busca_traz_a_pagina_de_cima_junto():
 
 
 @respx.mock
+def test_a_busca_nao_leva_junto_botao_que_nao_casou():
+    """A página de cima entra como CAMINHO, e caminho não traz carga.
+
+    Medido em 06/09/2026: buscar "recusado" trazia `/admin/escola/` só para
+    mostrar onde ficam os recusados, e junto vinham "Dar poder de administrador
+    a alguém" e "Tirar o poder de administrador" — dois botões que não têm nada
+    a ver com o que foi procurado.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    procurado = mapa_do_site._sem_acento("recusado")
+    for area in resposta.context["areas"]:
+        for item in area["linhas"]:
+            if mapa_do_site._casa(item, procurado):
+                continue
+            intrusos = [
+                g["titulo"]
+                for g in item["gestos"]
+                if not mapa_do_site._casa(g, procurado)
+            ]
+            assert not intrusos, (
+                f"{item['endereco']} entrou só como caminho e trouxe botões que "
+                f"não casaram: {intrusos}"
+            )
+
+
+@respx.mock
+def test_a_conta_da_busca_conta_quem_casa_e_nao_as_linhas_desenhadas():
+    """ "9 de 222 endereços com recusado" quando só 4 casam é número errado.
+
+    O número é recontado AQUI, do arquivo, sem passar por nenhuma função da
+    tela: um teste que somasse com a mesma conta que a tela usa não teria como
+    discordar dela.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    procurado = mapa_do_site._sem_acento("recusado")
+    do_arquivo = sum(
+        1
+        for e in _arquivo()["enderecos"]
+        if procurado
+        in mapa_do_site._sem_acento(
+            " ".join(
+                str(e.get(campo, "") or "")
+                for campo in (
+                    "titulo",
+                    "descricao",
+                    "endereco",
+                    "observacao",
+                    "exemplo",
+                )
+            )
+        )
+    )
+    assert resposta.context["achados"] == do_arquivo, (
+        f"a capa diz {resposta.context['achados']} e o arquivo tem "
+        f"{do_arquivo} endereços com essa palavra"
+    )
+    desenhadas = sum(
+        1 + len(item["gestos"])
+        for area in resposta.context["areas"]
+        for item in area["linhas"]
+    )
+    assert desenhadas > do_arquivo, (
+        "este teste só tem valor enquanto a busca desenhar MAIS linhas do que "
+        "casam (as páginas de cima); se isso deixar de ser verdade, ele passa "
+        "por acaso"
+    )
+
+
+@respx.mock
 def test_a_area_de_cada_endereco_e_uma_so():
     """Prefixo mais longo vence, e nenhum endereço cai em duas áreas.
 
