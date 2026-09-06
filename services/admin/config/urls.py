@@ -117,6 +117,7 @@ from apps.core.views import (
     healthz,
     visao_geral,
 )
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
@@ -131,6 +132,20 @@ from apps.core.views import (
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
+    # A PORTA DE MAQUINA (06/09/2026), no mesmo endereco que o `forum`, a
+    # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
+    # FICA DEBAIXO do prefixo roteado: `meshcraft.top/admin/interno/...` e
+    # alcancavel pela internet, porque o corte do prefixo e do Django, e nao do
+    # Traefik (`armadilhas/186`). Quem fecha a porta e o Bearer do par, e o
+    # guarda que importa e o teste de 401 em TODAS as operacoes
+    # (`tests/test_porta_de_maquina.py`); a topologia nao fecha nada aqui, e
+    # escrever o contrario neste comentario seria ensinar errado quem chegar
+    # depois.
+    #
+    # O middleware fail-closed desta celula ISENTA este prefixo de proposito
+    # (`apps/core/porta.py`): maquina nao tem cookie para apresentar, e passar
+    # por la trocaria o 401 do contrato por um 302 para a tela de login.
+    path("interno/", api.urls),
     # O PAINEL DO SISTEMA, vivo (`apps/core/painel.py`). A barra final é
     # ESTRUTURAL, não estilo: o HTML pede `manifesto.js` e `registros/*.js` por
     # caminho RELATIVO, e sem ela o navegador os buscaria um nível acima, na

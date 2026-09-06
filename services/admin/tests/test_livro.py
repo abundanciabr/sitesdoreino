@@ -135,10 +135,14 @@ def test_o_livro_nao_tem_nenhuma_rota_publica():
     só poderia ser engano — e este guarda o pega no PR, e não no site.
     """
     isentos = ("docs/", "mapa-ia/")
+    # `getattr` e nao `p.name`: desde 06/09/2026 o urlconf tem uma entrada que
+    # e um `URLResolver` (o `include` da porta de maquina, `path("interno/",
+    # api.urls)`), e resolvedor nao tem `name`. Ler o atributo cru derrubava
+    # este guarda com AttributeError, que e reprovar sem medir nada.
     do_livro = [
         str(p.pattern).lstrip("^")
         for p in get_resolver().url_patterns
-        if (p.name or "").startswith(("livro", "texto"))
+        if (getattr(p, "name", None) or "").startswith(("livro", "texto"))
     ]
     assert do_livro, "as rotas do livro sumiram do urlconf"
     for rota in do_livro:

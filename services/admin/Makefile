@@ -22,8 +22,12 @@ type:
 	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
 
 # [INV-CI01] Quem decide se esta célula tem contrato é ci/manifesto-de-contratos.json,
-# não a presença do arquivo em disco. A `admin` é `not-applicable` (não fornece
-# API a ninguém) — o portão devolve SKIP declarado, nunca silêncio.
+# não a presença do arquivo em disco. Desde 06/09/2026 a `admin` FORNECE uma
+# porta de máquina (`config/api.py`), e o congelamento dela viaja no PR do Rito
+# de Contrato (#1238), que pousa logo depois deste. Enquanto aquela linha do
+# manifesto ainda disser `not-applicable`, o portão devolve SKIP declarado;
+# quando ela virar `required`, este mesmo alvo passa a comparar o congelado com
+# o que `manage.py export_openapi` imprime.
 contrato-check:
 	bash ../../ci/freeze-de-contrato.sh $(CELULA)
 
