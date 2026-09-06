@@ -87,6 +87,11 @@ from apps.core.sequencias import (
     sequencia_publicar,
     sequencias,
 )
+from apps.core.capitulo import (
+    capitulo,
+    capitulo_importar,
+    capitulo_prever,
+)
 from apps.core.sumario import (
     sumario,
     sumario_importar,
@@ -596,6 +601,34 @@ urlpatterns = [
         r"aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
         aula_publicar,
         name="escola_aula_publicar",
+    ),
+    # [CAPITULO] 06/09/2026 (TAR-232) A tela que recebe o capitulo inteiro de
+    # UMA encomenda e o reparte nas 16 pecas dela (`apps/core/capitulo.py`).
+    # Ela mora DENTRO de `aulas/<numero>/`, e nao ao lado como a do sumario,
+    # porque o gesto e de uma encomenda so: o endereco diz qual, e e por esse
+    # numero que a tela recusa o capitulo de outra encomenda.
+    #
+    # `parte-N` opcional pelo mesmo motivo das quatro rotas acima: quem chega
+    # aqui vem do editor da encomenda, e o endereco de la carrega a Parte.
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/$",
+        capitulo,
+        name="escola_capitulo",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/prever$",
+        capitulo_prever,
+        name="escola_capitulo_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/importar$",
+        capitulo_importar,
+        name="escola_capitulo_importar",
     ),
     # [SUMARIO] 06/09/2026 (TAR-213) A tela que enche as 34 encomendas de uma
     # vez, a partir do sumario do livro colado (`apps/core/sumario.py`). Sem
