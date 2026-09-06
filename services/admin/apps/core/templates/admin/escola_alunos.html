@@ -112,6 +112,31 @@
   <p class="nota">Mostrando {{ esperando|length }} de {{ total_esperando }} na fila.</p>
   {% endif %}
 
+  {% comment %}
+  [CURSO] Sem lista de cursos não há liberação possível, e a tela DIZ isso em
+  vez de oferecer um botão que só pode dar erro. Os dois casos são separados de
+  propósito: "o catálogo não respondeu" é problema de configuração, e "não há
+  curso publicado" é o estado normal de uma escola que ainda não abriu nada.
+  Juntá-los mandaria o mantenedor procurar defeito onde não há nenhum.
+  {% endcomment %}
+  {% if nao_consigo_ver_cursos %}
+  <p class="aviso">
+    <b>Ainda não consegui ver a lista de cursos, e sem ela não dá para liberar
+    ninguém.</b>
+    Toda pessoa entra em um curso, e eu não escolho por você. O resto desta tela
+    continua funcionando, e recusar quem está esperando continua possível. O que
+    falta é a senha de par entre esta área e o catálogo, e ela aparece na caixa
+    <b>Precisa de você</b> do painel do sistema.
+  </p>
+  {% elif not cursos %}
+  <p class="aviso">
+    <b>Nenhum curso está publicado, e sem curso não dá para liberar ninguém.</b>
+    Toda pessoa entra em um curso, e a lista está vazia porque nenhum foi
+    publicado ainda. Publique o primeiro e volte aqui: quem está esperando
+    continua esperando, e nada se perde.
+  </p>
+  {% endif %}
+
   {% if nao_consigo_perguntar %}
   <p class="aviso">
     <b>Ainda não consigo perguntar quem está esperando.</b>
@@ -192,7 +217,26 @@
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
         <input type="text" name="motivo" maxlength="500"
                placeholder="Motivo — obrigatório só para recusar">
+        {% comment %}
+        [CURSO] A escolha do curso, obrigatória para liberar
+        (`DECISAO-cursos-matriculas-e-alunos.md` §6). NENHUMA opção nasce
+        escolhida: a primeira tem valor vazio, e com `required` o navegador
+        recusa o envio antes de sair da máquina dele. Um valor padrão faria a
+        escolha errada parecer escolha, e ninguém veria o erro até o aluno
+        abrir a sala e encontrar o curso errado.
+
+        Recusar continua sem curso ao lado, e por isso o botão Recusar sobrevive
+        quando a lista falta: ninguém vira aluno de nada ao ser recusado.
+        {% endcomment %}
+        {% if cursos %}
+        <select name="product_id" required aria-label="Em qual curso essa pessoa entra">
+          <option value="">Escolha o curso...</option>
+          {% for curso in cursos %}
+          <option value="{{ curso.id }}">{{ curso.name }}</option>
+          {% endfor %}
+        </select>
         <button class="sim" name="decisao" value="liberar" type="submit">Liberar</button>
+        {% endif %}
         <button class="nao" name="decisao" value="recusar" type="submit">Recusar</button>
       </form>
     </div>
@@ -261,7 +305,27 @@
         outras telas.
       </p>
       {% endif %}
+      {% comment %}
+      [CURSO] Este formulário cadastra E libera no mesmo clique, então ele pede
+      o curso pelo mesmo motivo do botão Liberar lá em cima. Sem lista, sem
+      botão: cadastrar aqui e não conseguir liberar deixaria a pessoa parada na
+      fila sem que ele tivesse pedido isso.
+      {% endcomment %}
+      {% if cursos %}
+      <label class="rotulo" for="novo-curso">Em qual curso essa pessoa entra</label>
+      <select id="novo-curso" name="product_id" required>
+        <option value="">Escolha o curso...</option>
+        {% for curso in cursos %}
+        <option value="{{ curso.id }}">{{ curso.name }}</option>
+        {% endfor %}
+      </select>
       <button class="sim" type="submit">Cadastrar e liberar</button>
+      {% else %}
+      <p class="nota">
+        Não dá para cadastrar agora, porque cadastrar aqui já libera o acesso e
+        toda pessoa entra em um curso. O aviso lá em cima diz o que falta.
+      </p>
+      {% endif %}
     </form>
   </details>
 
