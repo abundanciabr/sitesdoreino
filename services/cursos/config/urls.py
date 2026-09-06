@@ -80,10 +80,16 @@ urlpatterns = [
     # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
     # mais nada. Vem por último porque `path("")` casa o caminho vazio.
     #
-    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E CONTINUAM RESPONDENDO:
-    # o checkpoint desta escola é POR LINK, e um link já compartilhado que
-    # passasse a dar 404 seria trabalho de aluno perdido. Eles não escolhem
-    # mais "o primeiro curso do site": com um curso só servem esse curso, e
-    # com mais de um pedem para o aluno escolher, em vez de decidir por ele.
+    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E MUDARAM DE CASA
+    # (301, TAR-216): o checkpoint desta escola é POR LINK, e um link já
+    # compartilhado que passasse a dar 404 seria trabalho de aluno perdido.
+    # Mas enquanto os dois endereços servissem a mesma sala com 200, o link
+    # antigo continuaria levando a uma página que não diz em que parte do
+    # curso o aluno está. O 301 ensina o navegador e o buscador de uma vez.
+    #
+    # As duas rotas CONTINUAM existindo porque o 301 tem uma condição: ele só
+    # acontece com UM curso no site. Com dois, o endereço antigo não diz qual
+    # deles o aluno quer, e a tela que PERGUNTA é a resposta certa
+    # (`apps/core/views.py::_curso_unico`).
     path("", mapa, name="mapa"),
 ]

@@ -344,6 +344,36 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     return lista, atual
 
 
+def _curso_unico() -> Curso | None:
+    """O curso deste site quando ele é o ÚNICO; `None` com zero ou com dois.
+
+    É a condição que decide todo 301 desta célula. O endereço antigo não diz
+    QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço muda de
+    casa; com dois, mandá-lo para um deles seria um chute com cara de certeza,
+    e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que PERGUNTA
+    (`_sala`) continua sendo a resposta certa.
+    """
+    site = site_atual()
+    if not site:
+        return None
+    cursos = enderecos.cursos_do_site(site)
+    return cursos[0] if len(cursos) == 1 else None
+
+
+def _a_raiz_mudou_de_casa():
+    """A raiz da célula (`/cursos`) mudada de casa (301) para o mapa do curso.
+
+    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
+    já compartilhado levaria o aluno a uma página que não diz em que parte do
+    curso ele está: o oposto do que o endereço do livro veio fazer. O 301
+    ensina o navegador e o buscador de uma vez (TAR-216).
+    """
+    curso = _curso_unico()
+    if curso is None:
+        return None
+    return HttpResponsePermanentRedirect(reverse("curso", args=[curso.slug]))
+
+
 @require_GET
 def mapa(request, curso: str | None = None):
     """A home de UM curso: as 34 portas, o estado de cada uma, a próxima em
@@ -351,7 +381,15 @@ def mapa(request, curso: str | None = None):
 
     É aqui que a E00 NASCE `disponivel` para quem tem matrícula ativa
     (`progresso.nascer`, inerte a partir da segunda visita).
+
+    O 301 vem ANTES da porta, e de propósito: um 301 é guardado pelo navegador
+    pela URL, sem olhar o cookie, e um redirecionamento que dependesse de quem
+    está olhando mentiria no cache do primeiro visitante em diante.
     """
+    if curso is None:
+        mudou_de_casa = _a_raiz_mudou_de_casa()
+        if mudou_de_casa is not None:
+            return mudou_de_casa
     pessoa, curso, recusa = _sala(request, curso)
     if recusa is not None:
         return recusa
@@ -613,36 +651,55 @@ def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
     return pessoa, curso, aula, progresso, None
 
 
-def _mapa_do_curso_sem_a_barra(numero: str):
-    """O endereço do mapa digitado SEM a barra final, mudado de casa (301).
+def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
+    """O endereço antigo, de UM segmento só, mudado de casa (301).
 
-    A barra final é o que separa as duas famílias de endereço no urlconf
-    (`config/urls.py`), e quem digita o endereço à mão come a barra: sem esta
-    regra, `meshcraft.top/cursos/profissional` cairia em `<str:numero>` e
-    responderia "essa aula não existe" a quem pediu o mapa do curso. O aluno
-    vai digitar este endereço a partir do LIVRO, e uma barra esquecida não
-    pode custar a aula.
+    Um segmento pode ser duas coisas, e as duas mudam de casa. Slug de curso é
+    palavra (`profissional`), número de aula é código (`E00`), e por isso a
+    leitura é sem ambiguidade.
 
-    Só o segmento que é slug de um curso DESTE site muda de casa; o resto
-    segue para a aula, como sempre. Slug de curso é palavra (`profissional`) e
-    número de aula é código (`E00`), e por isso a leitura é sem ambiguidade.
+    **O slug de um curso** é o mapa digitado SEM a barra final. A barra é o que
+    separa as duas famílias de endereço no urlconf (`config/urls.py`), e quem
+    digita o endereço à mão come a barra: sem esta regra,
+    `meshcraft.top/cursos/profissional` cairia em `<str:numero>` e responderia
+    "essa aula não existe" a quem pediu o mapa do curso. O aluno vai digitar
+    este endereço a partir do LIVRO, e uma barra esquecida não pode custar a
+    aula. Este caso não depende de haver um curso só: o slug JÁ diz qual é.
+
+    **O número de uma aula** é o endereço antigo da sala, e ele vira o endereço
+    do livro, com a parte dentro (TAR-216). Aqui a mudança exige um curso único
+    (`_curso_unico`) e uma aula publicada nele: um 301 para um 404 ensinaria ao
+    navegador, de uma vez, um endereço que não serve.
     """
     site = site_atual()
-    if not site or enderecos.curso_do_site(site, numero) is None:
+    if not site:
         return None
-    return HttpResponsePermanentRedirect(reverse("curso", args=[numero]))
+    if enderecos.curso_do_site(site, numero) is not None:
+        return HttpResponsePermanentRedirect(reverse("curso", args=[numero]))
+    curso = _curso_unico()
+    if curso is None:
+        return None
+    try:
+        # O que conta como aula publicada tem UMA definição, e é a que a sala
+        # usa. Repetir o filtro aqui deixaria as duas divergirem no dia em que
+        # uma ganhasse condição nova, e o 301 apontaria para um 404.
+        aula = _aula_publicada(curso, numero)
+    except Http404:
+        return None
+    return HttpResponsePermanentRedirect(_url_da_aula(curso, aula))
 
 
 @require_GET
 def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
     """A aula: as 16 peças, o vídeo com as pausas, o quiz e o lugar do checkpoint.
 
-    `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo.
+    `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
+    que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
     `disponivel` vira `em_producao` na primeira abertura (`progresso.abrir`).
     Aula em rascunho é 404; porta trancada volta ao mapa.
     """
     if curso is None:
-        mudou_de_casa = _mapa_do_curso_sem_a_barra(numero)
+        mudou_de_casa = _o_endereco_de_um_segmento_mudou_de_casa(numero)
         if mudou_de_casa is not None:
             return mudou_de_casa
     pessoa, curso, aula, progresso, recusa = _porta_aberta(

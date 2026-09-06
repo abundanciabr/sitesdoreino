@@ -32,8 +32,10 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
+from django.utils import timezone
+
 from apps.cursos import enderecos
-from apps.cursos.models import Curso
+from apps.cursos.models import Aula, Bloco, Curso
 from tests.conftest import SITE, COOKIE
 
 pytestmark = pytest.mark.django_db
@@ -47,6 +49,28 @@ def corpo_de(resposta) -> str:
     if resposta.streaming:
         return b"".join(resposta.streaming_content).decode("utf-8")
     return resposta.content.decode("utf-8")
+
+
+def um_segundo_curso_com_a_propria_E00() -> Curso:
+    """Um segundo curso no site, com uma E00 PUBLICADA dele também.
+
+    A numeração das encomendas é POR CURSO, e por isso a E00 existe em todos.
+    É esse detalhe que faz o chute doer, e um segundo curso vazio esconderia
+    o defeito: quem chutasse o curso errado não acharia aula nenhuma lá e
+    cairia de volta na tela certa por acidente, com o teste verde.
+    """
+    curso = Curso.objects.create(site_id=SITE, slug="avancado", nome="Avançado")
+    bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
+    Aula.objects.create(
+        curso=curso,
+        bloco=bloco,
+        ordem=0,
+        numero="E00",
+        titulo_exibido="Encomenda 00 do avançado",
+        estado=Aula.Estado.PUBLICADA,
+        publicada_em=timezone.now(),
+    )
+    return curso
 
 
 # ------------------------------------------------- 1. os endereços do livro
@@ -128,9 +152,16 @@ def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
 ):
     """O defeito que esta tarefa cura, medido: até aqui a sala respondia
     `Curso.objects.filter(site_id=site).order_by("id").first()`, e o segundo
-    curso do site nunca apareceria para ninguém."""
-    Curso.objects.create(site_id=SITE, slug="avancado", nome="Avançado")
+    curso do site nunca apareceria para ninguém.
+
+    E é aqui que o 301 PARA: o endereço antigo não diz qual curso o aluno
+    quer, e com dois no site mandá-lo para um deles seria um chute com cara
+    de certeza (o navegador guarda o 301 e nunca mais pergunta). A tela que
+    PERGUNTA é a resposta certa, e ela responde 200.
+    """
+    um_segundo_curso_com_a_propria_E00()
     resposta = abrir(client, reverse("mapa"))
+    assert resposta.status_code == 200
     corpo = corpo_de(resposta)
     assert "Entre. Entregue. Receba." not in corpo
     assert aula_publicada.titulo_exibido not in corpo
@@ -138,21 +169,46 @@ def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
     assert 'href="/avancado/"' in corpo
 
 
-def test_com_um_curso_so_o_endereco_antigo_continua_servindo(aluna, client):
-    """Nenhum link já compartilhado morre: o endereço antigo responde."""
-    resposta = abrir(client, reverse("mapa"))
-    assert resposta.status_code == 200
-    assert "Entre. Entregue. Receba." in corpo_de(resposta)
-
-
-def test_o_endereco_antigo_da_aula_continua_servindo_a_aula(
+def test_com_dois_cursos_no_site_o_endereco_antigo_da_aula_tambem_pergunta(
     aluna, aula_publicada, client
 ):
-    """O checkpoint desta escola é POR LINK: um link de aula já compartilhado
-    que passasse a dar 404 seria trabalho de aluno perdido."""
+    """A mesma parada, no endereço antigo da AULA: com dois cursos no site,
+    `/E00` não sabe de qual curso é a E00, e perguntar é honesto."""
+    um_segundo_curso_com_a_propria_E00()
     resposta = abrir(client, reverse("aula", args=["E00"]))
     assert resposta.status_code == 200
-    assert aula_publicada.titulo_exibido in corpo_de(resposta)
+    corpo = corpo_de(resposta)
+    assert aula_publicada.titulo_exibido not in corpo
+    assert 'href="/profissional/"' in corpo
+    assert 'href="/avancado/"' in corpo
+
+
+def test_com_um_curso_so_o_endereco_antigo_muda_de_casa(aluna, client):
+    """Nenhum link já compartilhado morre, e nenhum deles fica: 301.
+
+    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
+    já compartilhado levaria o aluno a uma página que não diz em que parte do
+    curso ele está, que é exatamente o que o endereço novo veio resolver.
+    """
+    resposta = abrir(client, reverse("mapa"))
+    assert resposta.status_code == 301
+    assert resposta["Location"] == reverse("curso", args=["profissional"])
+    assert abrir(client, resposta["Location"]).status_code == 200
+
+
+def test_o_endereco_antigo_da_aula_muda_de_casa_para_a_parte_certa(
+    aluna, aula_publicada, client
+):
+    """O checkpoint desta escola é POR LINK: o link antigo não morre, ele
+    ENSINA o endereço novo, com a parte do livro dentro."""
+    resposta = abrir(client, reverse("aula", args=["E00"]))
+    assert resposta.status_code == 301
+    assert resposta["Location"] == reverse(
+        "aula-do-curso", args=["profissional", 1, "E00"]
+    )
+    seguida = abrir(client, resposta["Location"])
+    assert seguida.status_code == 200
+    assert aula_publicada.titulo_exibido in corpo_de(seguida)
 
 
 def test_o_endereco_do_curso_sem_a_barra_final_muda_de_casa(aluna, client):
