@@ -1,0 +1,93 @@
+{% comment %}
+A MOLDURA da casa das Páginas do aluno: o esqueleto que TODA tela desta célula
+veste.
+
+Cópia do PADRÃO de `services/cursos/apps/core/templates/cursos/moldura.html`,
+nunca do arquivo (Lei 3).
+
+O TÍTULO usa barra vertical, e não travessão: em `<title>` a risca não é
+pontuação de frase, é separador entre a página e o nome do lugar, e a escolha
+do mantenedor em 30/08/2026 foi a barra.
+
+O ESTILO É EMBUTIDO, e isso é decisão, não pressa. Célula sob `SCRIPT_NAME`
+que serve estático por tag monta endereço da célula errada, e com `DEBUG=0` o
+Django não serve estático: sem rota própria o arquivo vira 404 em produção e SÓ
+lá (`armadilhas/083` e `/102`). O molde vivo dessa rota está em
+`services/cursos` e em `services/forum`, e ela nasce no degrau em que houver CSS
+para servir. Aqui a folha inteira cabe nesta tag, e a mesma escolha que a área
+administrativa já fez (`admin/base.html`) custa zero rota e zero arquivo.
+
+Nenhum endereço desta casa se escreve à mão: é `{% url %}` que carrega o
+prefixo público `/pages` para dentro do caminho (`armadilhas/029` e `/081`). Os
+endereços de OUTRAS células (a entrada, a capa, a biblioteca de documentos e os
+itens do menu do site) vêm do env ou do catálogo, porque `{% url %}` não os
+conhece.
+
+AS DUAS PEÇAS COMUNS DO SITE moram aqui, e é esta moldura que faz "em todas as
+páginas" ser verdade por construção: quem DECIDE é processador de contexto
+(`apps/core/menu.py` e `apps/core/rodape.py`), quem DESENHA é este arquivo, e
+tela nova desta casa herda as duas sem tocar em nada (`armadilhas/242` e
+`/286`).
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Páginas{% endblock %} | Meshcraft Academy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 1rem; }
+  p { margin: 0 0 1rem; }
+  .faixa { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(128,128,128,.35); font-weight: 600; }
+  .entrar a { display: inline-block; padding: .6rem 1.1rem; border: 1px solid currentColor; border-radius: .4rem; text-decoration: none; }
+  .miudo { font-size: .9rem; opacity: .8; }
+  .barra-do-site { border-bottom: 1px solid rgba(128,128,128,.35); }
+  .menu-topo { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: .6rem 1.25rem; font-size: .95rem; }
+  .menu-topo a { text-decoration: none; }
+  .menu-topo a:hover { text-decoration: underline; }
+  .rodape { max-width: 42rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; border-top: 1px solid rgba(128,128,128,.35); font-size: .9rem; }
+  .rodape .marca { font-weight: 600; margin: 0 0 .35rem; }
+  .rodape .descricao { opacity: .8; }
+  .rodape .links { display: flex; flex-wrap: wrap; gap: 1.25rem; margin: 0 0 1rem; }
+  .rodape .direitos { opacity: .7; margin: 0; }
+</style>
+</head>
+<body>
+{% comment %}
+A BARRA DO SITE vem ANTES da faixa desta área, e isso é a decisão do mantenedor
+de 31/08/2026: primeiro o caminho para o site inteiro, depois o nome do lugar
+onde você está. Quem DECIDE o que vai nela é o processador de contexto
+(`apps/core/menu.py`); aqui só se desenha.
+
+Tudo numa linha só, com as tags coladas, pela razão da `armadilhas/033`: solta,
+cada tag põe uma linha em branco a mais na página de quem NÃO tem menu, que é o
+estado normal enquanto o par de credenciais com o catálogo não existir.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+<div class="faixa">{% block faixa %}Páginas{% endblock %}</div>
+<main>{% block conteudo %}{% endblock %}</main>
+{% if rodape %}{% comment %}
+O RODAPÉ (`apps/core/rodape.py`), a mesma peça do site, do fórum e das
+Conquistas, com o mesmo desenho. Quem DECIDE qual rodapé cada página mostra é o
+processador de contexto; aqui só se desenha. Fora do `<main>` de propósito: ele
+não é conteúdo da Prancheta, é assinatura da casa, e leitor de tela o anuncia
+como rodapé por causa da tag.
+
+O bloco de links não tem item para esta casa: toda página que chega aqui já está
+dentro de `/pages`, e um link para onde a pessoa já está é justamente o que o
+mantenedor mandou tirar do menu em 01/09/2026.
+
+As tags de abertura ficam COLADAS no fim da linha anterior (`armadilhas/033`):
+solta, cada uma põe uma linha em branco a mais na página de quem não tem rodapé.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
+</body>
+</html>

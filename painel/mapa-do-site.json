@@ -554,6 +554,16 @@
       "observacao": "A internet alcança este endereço, e isso é o esperado: quem corta o prefixo é o Django, não o roteador. Quem fecha a porta é a senha de par, que hoje não foi dada a ninguém, e por isso a resposta para qualquer pessoa de fora é 'não autorizado'."
     },
     {
+      "celula": "pages",
+      "rota": "",
+      "endereco": "/pages/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A Prancheta do aluno",
+      "descricao": "A porta da casa do portfólio. Quem não entrou vê o convite para entrar; quem entrou sem matrícula ativa recebe a explicação de que a Prancheta só abre para aluno matriculado; e quem entrou com matrícula ativa é reconhecido pelo nome. O roteiro com as etapas, as peças e o link para mandar ao cliente chegam nos próximos degraus da obra.",
+      "observacao": "Enquanto as senhas de par com a identidade e com a alunos não estiverem no servidor, esta página responde a todo mundo que não conseguiu conferir o acesso agora. É de propósito: sem conseguir perguntar quem é a pessoa, a porta fecha em vez de abrir."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
