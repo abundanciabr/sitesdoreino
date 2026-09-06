@@ -3,8 +3,9 @@
 Três conversas, e a divisão de trabalho é lei:
 
 - **a `identidade` prova QUEM É** (`getSessionFull`, a resposta com e-mail);
-- **a `alunos` diz se a pessoa TEM MATRÍCULA** (`getStudentStanding`), e é
-  esta resposta, e só ela, que decide se a sala abre (fail-CLOSED);
+- **a `alunos` diz EM QUE PRODUTOS a pessoa está matriculada**
+  (`listEnrollments`), e é esta resposta, e só ela, que decide se a sala abre
+  (fail-CLOSED);
 - **o `catalogo` entrega o MENU do topo** (`getSiteByHost`), e ele é enfeite
   de navegação: qualquer tropeço vira "sem menu", nunca tela quebrada
   (fail-OPEN).
@@ -142,32 +143,56 @@ class IdentidadeClient:
 
 
 class AlunosClient:
-    """`contracts/alunos.openapi.yaml`, operação `getStudentStanding`.
+    """`contracts/alunos.openapi.yaml`, operação `listEnrollments`.
 
-    A porta única que responde a categoria da pessoa: 200 sempre, nunca 404, e
-    **sem dado pessoal** na resposta. `ALUNOS_API_URL` é o `servers:` do
-    contrato (`http://alunos:8000/api/alunos`) e o caminho da operação é
-    `/alunos/{email}/situacao`: os dois se SOMAM. Sem o segmento `/alunos` do
-    meio a chamada dá 404, o 404 vira `AlunosIndisponivel`, e o fail-closed
-    fecha a sala para TODO MUNDO, com o deploy verde (`armadilhas/111`). Por
-    isso o dublê dos testes confere a URL inteira.
+    **Pergunta as MATRÍCULAS, e não a categoria** (TAR-227). Até 06/09/2026 a
+    pergunta era `getStudentStanding`, que responde uma palavra só: a pessoa é
+    `aluno`, ou não é. Isso bastava enquanto havia um curso, e virou defeito no
+    dia do segundo: aluno é aluno DE UM PRODUTO
+    (`DECISAO-cursos-matriculas-e-alunos.md` §1), e a palavra não diz de qual.
+    Esta operação diz: uma linha por matrícula, cada uma com `site_id` e
+    `product_id`.
+
+    **Nenhuma mudança de contrato foi precisa**: a operação já existia, já
+    devolvia os dois campos, e o `enum` do `status` já contém SÓ os status que
+    valem como acesso — quem está na fila, pausado ou reembolsado não aparece
+    aqui. Filtrar por status desta ponta seria uma segunda lista de permissão,
+    e ela discordaria da primeira no dia em que um status nascesse.
+
+    `ALUNOS_API_URL` é o `servers:` do contrato (`http://alunos:8000/api/alunos`)
+    e o caminho da operação é `/alunos/{email}/matriculas`: os dois se SOMAM.
+    Sem o segmento `/alunos` do meio a chamada dá 404, e o 404 desta porta
+    significa "nenhuma matrícula" — o fail-closed continuaria fechando a sala,
+    mas com a frase errada, e com o deploy verde (`armadilhas/111`). Por isso o
+    dublê dos testes confere a URL inteira.
     """
 
-    def categoria_de(self, email: str) -> str:
-        """`cadastrado` | `na_fila` | `pausado` | `ex_aluno` | `reembolsado` |
-        `aluno`. Nunca inventa: fora do contrato é `AlunosIndisponivel`, e
-        quem trata FECHA a porta."""
+    def matriculas_de(self, email: str) -> list[dict]:
+        """As matrículas ATIVAS desta pessoa, no corpo do contrato.
+
+        Lista vazia quando não há nenhuma: **404 é resposta, não falha.** É o
+        que a porta responde para quem ela não conhece e para quem só está na
+        fila, e traduzi-lo em `AlunosIndisponivel` diria "não consegui
+        conferir" a quem foi conferido e não tem matrícula. As duas fecham a
+        sala; a tela diz frases diferentes, e a frase certa importa.
+
+        Qualquer outra resposta fora do contrato é `AlunosIndisponivel`, e quem
+        trata FECHA a porta.
+        """
         base = exigir("ALUNOS_API_URL").rstrip("/")
         token = exigir("ALUNOS_API_TOKEN")
         try:
             resposta = http().get(
-                f"{base}/alunos/{quote(email, safe='')}/situacao",
+                f"{base}/alunos/{quote(email, safe='')}/matriculas",
                 headers={"Authorization": f"Bearer {token}"},
             )
         except httpx.RequestError as erro:
             raise AlunosIndisponivel(
                 f"não deu para falar com a célula alunos: {erro}"
             ) from erro
+
+        if resposta.status_code == 404:
+            return []
 
         if resposta.status_code != 200:
             raise AlunosIndisponivel(
@@ -181,10 +206,14 @@ class AlunosClient:
                 f"a célula alunos respondeu fora do contrato: {erro}"
             ) from erro
 
-        categoria = corpo.get("categoria") if isinstance(corpo, dict) else None
-        if not isinstance(categoria, str) or not categoria:
-            raise AlunosIndisponivel("a célula alunos respondeu sem `categoria`")
-        return categoria
+        if not isinstance(corpo, list) or not all(
+            isinstance(linha, dict) for linha in corpo
+        ):
+            raise AlunosIndisponivel(
+                "a célula alunos respondeu fora do contrato: esperava uma lista "
+                "de matrículas"
+            )
+        return corpo
 
 
 class CatalogoClient:
