@@ -1616,6 +1616,16 @@
       "descricao": "Responde 'estou de pé' para o servidor. É o único endereço da área que não exige crachá, junto com o mapa para IA e a biblioteca pública."
     },
     {
+      "celula": "admin",
+      "rota": "interno/",
+      "endereco": "/admin/interno/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina da área administrativa",
+      "descricao": "Por onde outra parte do site pergunta se um e-mail é de alguém da equipe da escola. Entra o e-mail, sai só sim ou não: nome, papel e a lista de quem manda nunca saem por aqui. Serve para a permissão de conferir o trabalho do aluno ser calculada de quem você promoveu na tela da escola, em vez de uma segunda lista escrita à mão no servidor.",
+      "observacao": "A internet alcança este endereço, e isso é o esperado: quem corta o prefixo é o Django, não o roteador. Quem fecha a porta é a senha de par, que hoje não foi dada a ninguém, e por isso a resposta para qualquer pessoa de fora é 'não autorizado'. Esta porta só lê: não existe caminho aqui que promova nem que remova alguém da equipe."
+    },
+    {
       "celula": "checkout",
       "rota": "<slug:offer_slug>/",
       "endereco": "/checkout/<slug:offer_slug>/",
