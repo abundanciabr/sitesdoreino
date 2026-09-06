@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-184808-TAR-234-concluida",
+  "tarefa": "TAR-234",
+  "evento": "concluida",
+  "quando": "2026-09-06T18:48:08+00:00",
+  "quem": "despacho-contracts-2026-09-06",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1238 — contrato montado A PARTIR do export do django-ninja (prototipo descartavel fora do repo): congelado identico ao vivo, 85 linhas normalizadas comparadas, e a sonda de autenticacao efetiva concorda ({'POST /administradores/consultar': True} nos dois lados). Muralhas 13/13 PASS com PR_LABELS=contrato; ci/ci.py --apenas testador 2024 passed; ci/travessao.py PASS. Portoes provados por sabotagem: sem a etiqueta 'contrato' a cerca reprova (exit 1); com o arquivo em disco e a celula not-applicable o manifesto da ERROR; renomear e_administrador para e_admin quebra a comparacao. contrato/admin da ERROR de proposito ate a porta de maquina existir (armadilhas/228): o proximo PR da celula admin TEM de ser ela.",
+  "verificado_em": "2026-09-06"
+}
