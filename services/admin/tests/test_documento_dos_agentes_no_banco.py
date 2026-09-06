@@ -28,7 +28,7 @@ _semeadura = importlib.import_module(
 )
 
 NOME = "como-criar-os-agentes-de-ia"
-TITULO = "Como criar os agentes de IA da Meshcraft (setembro de 2026)"
+TITULO = "Os documentos do Meshcraft, lidos contra o que existe"
 FRASE_DO_METODO = "a saída da máquina nunca chega sozinha a ninguém"
 
 BASE = "http://identidade:8000/interno"
