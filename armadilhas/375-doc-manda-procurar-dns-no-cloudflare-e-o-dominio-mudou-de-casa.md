@@ -1,6 +1,15 @@
 ---
+schema_version: 2
+armadilha: 375
+estado: documentada
+degrau: 2
+confianca: alta
+custo_por_queda: medio
+guarda:
+  tipo: nenhum
+  motivo: nenhum portao compara o texto da documentacao com os nameservers reais do dominio, e nao ha como um portao saber que a doc envelheceu. O que existe e a medicao de dois segundos (`nslookup -type=NS <dominio>`) antes de mandar alguem abrir um painel de DNS
 gatilho: infra/provisionar-email.sh, infra/traefik/, DNS de meshcraft.top
-licao: O DNS do meshcraft.top esta na HOSTINGER. A doc que diz Cloudflare fala do dominio ANTIGO (basileiatoutheou.org). Meca os nameservers antes de mandar alguem procurar.
+licao: O DNS do meshcraft.top esta na HOSTINGER (pixel/byte.dns-parking.com). A doc que diz Cloudflare fala do dominio ANTIGO, basileiatoutheou.org. Meca os nameservers antes de mandar alguem procurar.
 ---
 
 # 3.375 A doc manda procurar o DNS no Cloudflare, e o dominio mudou de casa
