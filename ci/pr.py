@@ -164,6 +164,14 @@ def slug_do_titulo(titulo: str) -> str:
     return slug[:60].strip("-") or "registro"
 
 
+def _encurtar(texto: str, limite: int) -> str:
+    """Corta no espaço, nunca no meio da palavra: o assunto de um commit é lido."""
+    if len(texto) <= limite:
+        return texto
+    cortado = texto[:limite].rsplit(" ", 1)[0].rstrip(" ,;:")
+    return cortado or texto[:limite]
+
+
 def derivar_frente(caminhos: list[str]) -> str | None:
     contagem: Counter[str] = Counter()
     for caminho in caminhos:
@@ -413,7 +421,7 @@ def abrir(
     if correr(["git", "diff", "--cached", "--name-only"]).strip():
         correr([
             "git", "commit",
-            "-m", f"painel: {pedido.titulo[:60]} (PR #{numero})",
+            "-m", f"painel: {_encurtar(pedido.titulo, 60)} (PR #{numero})",
             "-m", "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>",
         ])
         correr(["git", "push", "origin", ramo])

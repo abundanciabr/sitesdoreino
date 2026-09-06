@@ -207,6 +207,21 @@ def test_a_frente_sai_dos_caminhos_tocados_quando_ninguem_a_declara():
     assert pr.derivar_frente(["LEIAME.txt"]) is None
 
 
+def test_o_assunto_do_recibo_corta_no_espaco_e_nunca_no_meio_da_palavra(tmp_path):
+    # O caso real: o assunto do PR #1216 saiu "…com o recibo gera (PR #1216)".
+    longo = "ci: do commit ao PR aberto num comando so, com o recibo gerado"
+    assert pr._encurtar("curto", 60) == "curto"
+    assert pr._encurtar(longo, 60) == "ci: do commit ao PR aberto num comando so, com o recibo"
+
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, titulo=longo), rodar=dub, hoje=HOJE)
+    assunto = next(
+        c[c.index("-m") + 1] for c in dub.chamadas if c[:2] == ["git", "commit"] and "-m" in c
+    )
+    assert assunto == "painel: ci: do commit ao PR aberto num comando so, com o recibo (PR #1210)"
+
+
 def test_a_frente_declarada_vence_a_derivada(tmp_path):
     raiz = bancada(tmp_path)
     pr.abrir(raiz, pedido(raiz, frente="curso"), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
