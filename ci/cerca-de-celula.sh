@@ -20,7 +20,11 @@
 #   Depende-de: #N            ordem entre PRs, cobrada por máquina
 #
 # Proibição virou prova. O orçamento de 15 arquivos FICA: ele é barato, mede
-# outra coisa (tamanho de uma mudança revisável) e continua útil.
+# outra coisa (tamanho de uma mudança revisável) e continua útil. Desde o PR
+# #1167 (06/09/2026) o que ele conta é CÓDIGO: a escrituração que a casa OBRIGA
+# cada PR a carregar (`painel/` e `fila/`, a lista de `PASTAS_DE_ESCRITURACAO`
+# em ci/divida_do_livro.py) sai da conta, porque comia o orçamento do trabalho
+# de verdade. Quem mede é ci/orcamento-de-mudanca.sh, não este arquivo.
 #
 # O que este script ainda faz: o Rito de Contrato (RITOS.md §3) — contrato não
 # muda junto com código de célula, e mudança em `contracts/` exige a etiqueta.
