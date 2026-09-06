@@ -5,7 +5,7 @@
   titulo: "Você decidiu: o sininho avisa quando a escola confere o portfólio, e não avisa quando uma peça quebra",
   detalhe: "O sininho tem uma lista fechada de assuntos que ele aceita, e nenhum servia para portfólio. Perguntei se você aprovava acrescentar dois: quando a escola confere o trabalho do aluno, e quando uma peça dele para de abrir.\n\nVocê aprovou só o primeiro. O aluno passa a ser avisado quando a escola confere o trabalho dele. Quando uma peça sai do ar, ele continua descobrindo ao abrir a página, e a tarefa desse segundo aviso foi cancelada.\n\nFalta uma liberação sua para a obra andar: a frase que o aluno lê mora numa parte do sistema que o plano do portfólio proibiu de tocar. É uma linha de texto, e sem ela o aluno receberia um aviso em branco.",
   autoridade: "mantenedor",
-  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1241",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1242",
   verificado_em: "2026-09-06",
   precisa_do_dono: true,
   responde_a: null,
