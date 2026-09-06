@@ -5,7 +5,7 @@ O cenário é o esqueleto semeado pelo caminho da instalação (`call_command`, 
 fixture `esqueleto` do `conftest`): um curso, 12 blocos, 34 aulas sem texto,
 13 instrumentos sem escala. É exatamente o estado em que o editor do Admin
 (degrau 1.5) encontra a célula no primeiro dia, e é contra ele que a porta tem
-de responder inteira: 18 peças vazias, lista vazia de pausas, instrumento nulo.
+de responder inteira: 19 peças vazias, lista vazia de pausas, instrumento nulo.
 
 O que este arquivo NÃO cobre, de propósito: o cadeado (401), que tem arquivo
 próprio (`test_porta_exige_bearer.py`), e o contrato congelado, que é o degrau
@@ -32,7 +32,7 @@ BASE = "/api/cursos"
 
 # O plano §4, transcrito, e não importado do modelo: um teste que importa a
 # resposta do arquivo que ele mede não mede nada.
-AS_18_PECAS_NA_ORDEM = (
+AS_19_PECAS_NA_ORDEM = (
     "pedido",
     "em_jogo",
     "voce_vai_conseguir",
@@ -51,6 +51,7 @@ AS_18_PECAS_NA_ORDEM = (
     "dicionario_cartao_respostas",
     "roteiro",
     "guia_do_mentor",
+    "videoaula_em_texto",
 )
 OS_CAMPOS_DA_LISTA = {
     "numero",
@@ -218,13 +219,13 @@ def test_site_sem_curso_lista_vazio(esqueleto):
 # ---------------------------------------------------------------------------
 
 
-def test_get_devolve_as_16_pecas_na_ordem_canonica_vazias_mais_as_duas_internas(
+def test_get_devolve_as_16_pecas_vazias_mais_as_internas_e_a_de_sob_demanda(
     esqueleto,
 ):
     resposta = pedir(f"/aulas/E00?site_id={SITE}")
     assert resposta.status_code == 200
     aula = corpo(resposta)
-    assert [peca["tipo"] for peca in aula["pecas"]] == list(AS_18_PECAS_NA_ORDEM)
+    assert [peca["tipo"] for peca in aula["pecas"]] == list(AS_19_PECAS_NA_ORDEM)
     assert all(peca["texto"] == "" for peca in aula["pecas"])
     assert aula["pausas"] == []
     assert aula["instrumento"] is None
@@ -239,6 +240,27 @@ def test_get_devolve_as_16_pecas_na_ordem_canonica_vazias_mais_as_duas_internas(
         "nome": "",
         "boss_titulo": "",
     }
+
+
+def test_a_videoaula_em_texto_entra_e_sai_pela_porta(esqueleto):
+    """A peça nova é gravável e legível como qualquer outra, e ela sai por
+    ÚLTIMO: quem consome a porta mostra as 16 em ordem e esta uma a pedido."""
+    verbatim = "Oi, tudo bem? Hoje a gente vai modelar o cubo da vitrine."
+    resposta = gravar(
+        f"/aulas/E00?site_id={SITE}",
+        aula_para_gravar(pecas=[{"tipo": "videoaula_em_texto", "texto": verbatim}]),
+    )
+    assert resposta.status_code == 200
+    aula = corpo(resposta)
+    assert aula["pecas"][-1] == {"tipo": "videoaula_em_texto", "texto": verbatim}
+    de_volta = corpo(pedir(f"/aulas/E00?site_id={SITE}"))
+    assert de_volta["pecas"][-1]["texto"] == verbatim
+    assert (
+        Aula.objects.get(curso=esqueleto, numero="E00")
+        .pecas.get(tipo="videoaula_em_texto")
+        .texto
+        == verbatim
+    )
 
 
 @pytest.mark.parametrize(
@@ -268,7 +290,7 @@ def test_put_grava_os_campos_e_o_instrumento_e_sobe_a_versao(esqueleto):
             "resposta_modelo": "A unidade de medida do Roblox.",
         }
     ]
-    assert [peca["tipo"] for peca in aula["pecas"]] == list(AS_18_PECAS_NA_ORDEM)
+    assert [peca["tipo"] for peca in aula["pecas"]] == list(AS_19_PECAS_NA_ORDEM)
     assert aula["pecas"][0]["texto"] == "# O pedido\n\nUm cubo."
     assert aula["pecas"][16]["texto"] == "Abrir o Blender e mostrar o cubo."
     assert [pausa["ordem"] for pausa in aula["pausas"]] == [1, 2]
@@ -943,7 +965,7 @@ def test_o_vocabulario_de_peca_e_de_pausa_viaja_no_contrato_como_enum():
     """O editor (degrau 1.5) lê os tipos do contrato, e não de uma lista
     própria: a segunda lista é a doença que a lei anti-duplicação proíbe."""
     componentes = exportar()["components"]["schemas"]
-    assert componentes["TipoDePeca"]["enum"] == list(AS_18_PECAS_NA_ORDEM)
+    assert componentes["TipoDePeca"]["enum"] == list(AS_19_PECAS_NA_ORDEM)
     assert componentes["TipoDePausa"]["enum"] == [
         "erro_produtivo",
         "faca_agora",

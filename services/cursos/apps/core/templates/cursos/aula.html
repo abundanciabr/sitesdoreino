@@ -1,7 +1,9 @@
 {% extends "cursos/moldura.html" %}{% comment %}
 A aula: as 16 peças na ordem canônica (as duas internas nunca chegam aqui: a
-view percorre a ORDEM_CANONICA, e elas não estão nela), o vídeo por link (só
-YouTube e Vimeo embutidos; o resto é link), a lista de pausas com um formulário
+view percorre a ORDEM_CANONICA, e elas não estão nela), o botão da vídeo-aula em
+texto logo abaixo delas (só quando essa peça tem texto: botão que abre um modal
+vazio é defeito), o vídeo por link (só YouTube e Vimeo embutidos; o resto é
+link), a lista de pausas com um formulário
 por pausa, o quiz com a resposta-modelo escondida até a pessoa gravar a
 autoavaliação, e o checkpoint (degrau 2.1): o formulário de entrega por link,
 fechado até todas as pausas terem registro ([INV-CUR-P3]) e enquanto a porta
@@ -37,6 +39,50 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {{ peca.html|safe }}
 </section>
 {% endfor %}
+
+{% if videoaula.html %}
+<p class="abrir-videoaula"><a class="botao" id="abrir-videoaula" href="#videoaula">{{ videoaula.rotulo }}</a></p>
+
+<dialog class="videoaula" id="videoaula" aria-labelledby="titulo-da-videoaula">
+  <a class="videoaula-fundo" href="#abrir-videoaula" tabindex="-1" aria-hidden="true"></a>
+  <div class="videoaula-caixa">
+    <div class="videoaula-topo">
+      <h2 id="titulo-da-videoaula">{{ videoaula.rotulo }}</h2>
+      <a class="videoaula-fechar" href="#abrir-videoaula">Fechar</a>
+    </div>
+    <div class="videoaula-texto">{{ videoaula.html|safe }}</div>
+  </div>
+</dialog>
+
+<script>
+/* A sobreposição em duas camadas, e nenhuma delas é biblioteca.
+   SEM SCRIPT o link `#videoaula` vira alvo, e o CSS (`dialog.videoaula:target`)
+   abre a caixa: o "Fechar" e o clique no fundo são links que tiram o alvo. É o molde
+   de sobreposição que a Análise da Caixa já usa nesta casa.
+   COM SCRIPT o mesmo desenho vira `<dialog>` de verdade, e aí o navegador dá de
+   graça o que `:target` não tem: Esc, o `::backdrop`, o resto da página inerte e
+   o foco de volta no botão. A classe `com-script` desliga o caminho do `:target`
+   para os dois nunca abrirem ao mesmo tempo. */
+(function () {
+  var caixa = document.getElementById("videoaula");
+  var botao = document.getElementById("abrir-videoaula");
+  if (!caixa || !botao || typeof caixa.showModal !== "function") { return; }
+  caixa.classList.add("com-script");
+  botao.addEventListener("click", function (evento) {
+    evento.preventDefault();
+    caixa.showModal();
+  });
+  caixa.addEventListener("click", function (evento) {
+    if (evento.target === caixa) { caixa.close(); }
+  });
+  caixa.querySelector(".videoaula-fechar").addEventListener("click", function (evento) {
+    evento.preventDefault();
+    caixa.close();
+  });
+  caixa.addEventListener("close", function () { botao.focus(); });
+})();
+</script>
+{% endif %}
 
 <section class="video" id="video">
   <h2>O vídeo da aula</h2>
