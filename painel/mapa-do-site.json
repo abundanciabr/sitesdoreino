@@ -1208,6 +1208,37 @@
     },
     {
       "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Mandar o capítulo inteiro de uma encomenda",
+      "descricao": "Você cola o capítulo do livro, ou envia o arquivo, e a tela mostra peça por peça o que reconheceu, o que já estava escrito e o que não coube em lugar nenhum. Nada é gravado nesse passo. É a tela irmã da que cola o sumário, um degrau abaixo: o sumário enche as 34 encomendas de uma vez, esta enche as 16 peças de UMA.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E08/capitulo/",
+      "observacao": "As peças são reconhecidas pelo nome do título, e o que não casa nunca é adivinhado: aparece como não reconhecido, com o trecho à vista. O capítulo colado não fica guardado em lugar nenhum do sistema, e peça que já tem texto nunca é sobrescrita."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/prever$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/prever$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Prever o que o capítulo encheria",
+      "descricao": "Não é uma página: é o que acontece ao apertar Prever. Lê o capítulo e devolve a conferência, sem gravar nada."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/importar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/importar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gravar as peças do capítulo",
+      "descricao": "Não é uma página: é o que acontece ao apertar Importar depois de conferir a prévia. Grava as peças reconhecidas na encomenda, sem tocar no que já estava escrito."
+    },
+    {
+      "celula": "admin",
       "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
       "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/$",
       "alcance": "publico",

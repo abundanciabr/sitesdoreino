@@ -857,6 +857,7 @@ def _desenhar_aula(
         "url_da_lista": _endereco("escola_aulas", curso, parte),
         "url_de_salvar": _endereco("escola_aula_salvar", curso, parte, numero),
         "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+        "url_do_capitulo": _endereco("escola_capitulo", curso, parte, numero),
     }
     if desfecho != CursosClient.OK:
         contexto = {
