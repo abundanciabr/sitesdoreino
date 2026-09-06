@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-06",
   titulo: "O projeto mandava voce procurar o DNS numa conta de Cloudflare que nunca existiu",
-  detalhe: "Ligando o e-mail hoje, medi de quem sao os nameservers do meshcraft.top: pixel e byte.dns-parking.com, que sao da HOSTINGER. O projeto dizia Cloudflare em dois lugares do script que liga o e-mail, e um deles e impresso na SUA tela da VPS, no fim do processo. Voce seguiu a instrucao errada e foi procurar onde nao havia nada.\n\nCorrigido para Hostinger, com os nomes reais dos registros (o Brevo nao pede SPF: pede brevo-code, dois DKIM e _dmarc). Toca infra/, caminho protegido, entao o pouso espera o seu aval.",
+  detalhe: "Ligando o e-mail hoje, medi de quem sao os nameservers do meshcraft.top: sao da HOSTINGER, nao do Cloudflare. O script do e-mail dizia Cloudflare em dois lugares, e um deles e impresso na SUA tela da VPS. Voce seguiu a instrucao errada e procurou onde nao havia nada.\n\nCorrigido, com os nomes reais dos registros. Toca infra/, caminho protegido: o pouso espera o seu aval.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1244",
   verificado_em: "2026-09-06",
