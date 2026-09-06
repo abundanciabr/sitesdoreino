@@ -447,10 +447,31 @@ def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
 # ------------------------------------- nunca prender, nunca ficar mudo ----
 
 
-def test_segunda_recusa_no_mesmo_fim_de_turno_nao_prende_a_sessao(tmp_path):
-    proc = _rodar(["--contas"], {"transcript_path": "qualquer", "stop_hook_active": True})
-    assert proc.returncode == 1, proc
+def test_segunda_passada_com_o_relatorio_passa_calada(tmp_path):
+    """`stop_hook_active` diz só "já houve uma recusa neste fim de turno", não
+    "a recusa foi ignorada". A primeira versão do portão tratava o campo como
+    prova de desobediência e gritava sem abrir o transcript: medido nos
+    transcripts de 05 e 06/09/2026, 50 segundas passadas, 50 avisos, e em 32
+    delas o relatório válido estava na tela (armadilhas/368). Este teste
+    nasceu VERMELHO contra ela."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala(CONTAS_COMPLETAS),
+    ], stop_hook_active=True))
+
+
+def test_segunda_passada_sem_o_relatorio_grita_sem_prender(tmp_path):
+    """O par: cobrado, e terminou assim mesmo. exit 1, nunca 2 — recusar de
+    novo prenderia a sessão do mantenedor em laço."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala("Pronto."),
+    ], stop_hook_active=True)
+    assert proc.returncode == 1, (proc.returncode, proc.stdout, proc.stderr)
     assert "cobrado e terminou assim mesmo" in proc.stderr
+    assert "🧾" not in proc.stderr, "a segunda passada não recusa: a recusa já aconteceu"
 
 
 def test_transcript_ausente_grita_e_nao_bloqueia():
@@ -460,9 +481,12 @@ def test_transcript_ausente_grita_e_nao_bloqueia():
 
 
 def test_transcript_inexistente_grita_e_nao_bloqueia():
-    proc = _rodar(["--contas"], {"transcript_path": "/caminho/que/nao/existe.jsonl"})
-    assert proc.returncode == 1, proc
-    assert "não encontrado" in proc.stderr
+    """Nas duas passadas: "não consegui medir" nunca vira silêncio."""
+    for segunda in (False, True):
+        proc = _rodar(["--contas"], {"transcript_path": "/caminho/que/nao/existe.jsonl",
+                                     "stop_hook_active": segunda})
+        assert proc.returncode == 1, (segunda, proc)
+        assert "não encontrado" in proc.stderr
 
 
 def test_json_quebrado_grita_e_nao_bloqueia():
@@ -684,6 +708,20 @@ def test_um_pr_so_nao_dispara_a_medicao(tmp_path):
     ], cwd=str(casa), session_id="sessao-um-pr")
     eventos = telemetria.ler_tudo(casa / ".git")
     assert not any(e.get("evento") == "serie_sem_despacho" for e in eventos)
+
+
+def test_segunda_passada_nao_grava_a_sombra_duas_vezes(tmp_path):
+    """Quando há recusa, o Stop roda duas vezes no mesmo fim de turno. A série
+    de PRs é uma só, e a sombra conta uma vez."""
+    casa = _repo_encenado(tmp_path)
+    entradas = [_humano("faça os dois PRs"), _pr_criado("Bash"),
+                _pr_criado("PowerShell"), _fala("Abertos.")]
+    _decidir(tmp_path, entradas, cwd=str(casa), session_id="sessao-duas-passadas")
+    entradas.append(_fala(CONTAS_COMPLETAS))
+    _decidir(tmp_path, entradas, cwd=str(casa), session_id="sessao-duas-passadas",
+             stop_hook_active=True)
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert sum(e.get("evento") == "serie_sem_despacho" for e in eventos) == 1
 
 
 def test_sombra_nao_muda_o_exit_code(tmp_path):
