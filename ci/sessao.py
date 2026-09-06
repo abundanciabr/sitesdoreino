@@ -1,7 +1,10 @@
-"""BOOTSTRAP DE SESSÃO — os 6 primeiros minutos do RITOS.md §1 em UM comando.
+"""BOOTSTRAP DE SESSÃO — o RITOS.md §1 inteiro em UM comando.
 
-    make sessao CELULA=quiz TAREFA=fuso-horario
-    ==  python ci/sessao.py --celula quiz --tarefa fuso-horario
+    make sessao CELULA=quiz TAREFA=fuso-horario TAR=178
+    ==  python ci/sessao.py --celula quiz --tarefa fuso-horario --tar 178
+
+    make sessao CELULA=ci TAREFA=custo-por-chamada SEM_CONTAINER=1
+    ==  python ci/sessao.py --celula ci --tarefa custo-por-chamada --sem-container
 
 Separação semântica com os irmãos, e é ela que decide o que este arquivo pode
 fazer:
@@ -18,19 +21,36 @@ Postgres por acidente rodando `make doctor`.
 O que ele faz, nesta ordem, e de forma IDEMPOTENTE (rodar duas vezes não
 duplica nada — o que já existe é reusado, e reusar não é falhar):
 
-    1. confere o repositório e a célula
-    2. git fetch origin
-    3. worktree ../wt-<celula>-<tarefa> na branch agent/<celula>/<tarefa>
-    4. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
-    5. pip install -r services/<celula>/requirements.txt
-    6. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
-       DERIVADOS da célula — nunca a 55432 fixa da partida rápida, que em lote
-       faria cinco despachos colidirem no mesmo container
-    7. .env de sessão, fora do worktree, com caminhos absolutos no formato
-       desta máquina (`armadilhas/006`: `/tmp` aqui não é `/tmp`)
-    8. python ci/doctor.py
-    9. baseline: `make ci` da célula
-    e então imprime a Declaração de Abertura do RITOS §1 já preenchida.
+     1. confere o repositório e a célula (ou a ÁREA, com --sem-container)
+     2. git fetch origin
+     3. worktree ../wt-<celula>-<tarefa> na branch agent/<celula>/<tarefa>
+     4. balcão: `ci/fila.py pegar TAR-NNN`, quando --tar vem — e é o PRIMEIRO
+        gesto depois de a pasta existir (`armadilhas/357`), rodado pelo
+        `fila.py` DA BANCADA para o comprovante não nascer órfão no clone
+        principal (`armadilhas/192`)
+     5. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
+        viaja no Git, e num checkout novo simplesmente não existe
+     6. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
+     7. pip install -r services/<celula>/requirements.txt
+     8. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
+        DERIVADOS da célula — nunca a 55432 fixa da partida rápida, que em lote
+        faria cinco despachos colidirem no mesmo container
+     9. .env de sessão, fora do worktree, com caminhos absolutos no formato
+        desta máquina (`armadilhas/006`: `/tmp` aqui não é `/tmp`)
+    10. python ci/doctor.py
+    11. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
+    e então imprime a Declaração de Abertura do RITOS §1 já preenchida, e
+    fecha com `BANCADA PRONTA: <caminho absoluto>` para o robô copiar.
+
+Cada passo diz `PASS` quando termina, e o número `[n/N]` conta os passos DESTA
+execução: pular passo calado seria o robô achar que perdeu algo no caminho.
+
+**`--sem-container` é o caminho de quem não tem célula.** Trabalho em `ci/`,
+`painel/`, `armadilhas/`, `documentos/` ou `fila/` não tem `services/<x>` para
+testar nem Postgres para subir, e esperar por um container que ninguém vai usar
+era justamente o atrito que fazia o robô abrir a bancada à mão. Sem ambiente o
+rito para no passo 5, e a Declaração diz `Baseline: não medido` em vez de
+afirmar um verde que ninguém mediu.
 
 **Fail-closed, e alto.** Qualquer passo que não dê certo PARA o script, diz qual
 passo foi, mostra o comando exato para reproduzir e **não imprime a Declaração**.
@@ -121,6 +141,8 @@ PASSOS = (
     "conferir o repositório e a célula",
     "git fetch origin",
     "worktree da sessão",
+    "balcão: pegar a tarefa da fila",
+    "armadilhas/INDICE.md na bancada",
     "venv FORA do worktree",
     "dependências da célula",
     "serviços em Docker",
@@ -128,6 +150,34 @@ PASSOS = (
     "ci/doctor.py",
     "baseline: make ci da célula",
 )
+
+# Nome, nunca índice. `PASSOS[5]` calado vira o passo errado no dia em que
+# alguém insere um passo no meio — e o erro sairia apontando para o lugar
+# errado, que é pior do que não apontar.
+(
+    P_CONFERIR,
+    P_FETCH,
+    P_WORKTREE,
+    P_BALCAO,
+    P_INDICE,
+    P_VENV,
+    P_DEPS,
+    P_SERVICOS,
+    P_ENV,
+    P_DOCTOR,
+    P_BASELINE,
+) = PASSOS
+
+# Os passos que só existem quando a bancada sobe ambiente. Quem vai mexer em
+# `ci/`, `painel/`, `armadilhas/`, `documentos/` ou `fila/` não tem célula para
+# testar nem container para subir, e esperar 4 minutos por um Postgres que
+# ninguém vai usar é o atrito que fazia o robô abrir a bancada à mão.
+PASSOS_DO_AMBIENTE = (P_VENV, P_DEPS, P_SERVICOS, P_ENV, P_DOCTOR, P_BASELINE)
+
+# `178`, `TAR-178` e `tar-178` são a mesma tarefa. O balcão só conhece a forma
+# canônica, e adivinhar na hora da chamada daria `RECUSADO: tar-178 não existe`
+# para quem digitou certo.
+PADRAO_DA_TAREFA_DA_FILA = re.compile(r"^(?:TAR-)?([0-9]{1,4})$", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +212,7 @@ class ErroDeSessao(Exception):
         linhas = [
             "",
             "=" * 72,
-            f"PAROU POR SEGURANÇA — passo: {self.passo}",
+            f"FAIL — PAROU POR SEGURANÇA — passo: {self.passo}",
             "=" * 72,
             f"Motivo: {self.resumo}",
         ]
@@ -227,6 +277,24 @@ def validar_nome(valor: str, rotulo: str) -> str:
     return valor
 
 
+def normalizar_tarefa_da_fila(valor: str) -> str:
+    """`178`, `TAR-178` ou `tar-178` viram `TAR-178`. O resto recusa AQUI.
+
+    Recusar antes de qualquer efeito é o ponto: um identificador torto só seria
+    descoberto pelo balcão depois de a bancada já existir, e a essa altura o
+    robô já teria uma pasta para remover.
+    """
+    achado = PADRAO_DA_TAREFA_DA_FILA.match((valor or "").strip())
+    if not achado:
+        raise ErroDeSessao(
+            P_CONFERIR,
+            f"--tar='{valor}' não é uma tarefa da fila",
+            detalhe="Formas aceitas: `178`, `TAR-178` ou `tar-178`.\n"
+            "O quadro de agora: python ci/fila.py listar --ao-vivo",
+        )
+    return f"TAR-{int(achado.group(1))}"
+
+
 def celulas_declaradas(raiz: Path) -> list[str]:
     """As células do manifesto, em ordem. Não conseguir ler é ERROR, não lista vazia."""
     manifesto = raiz / "ci" / "manifesto-de-contratos.json"
@@ -266,7 +334,11 @@ def validar_celula(
             "conferir o repositório e a célula",
             f"célula '{celula}' não existe",
             detalhe="Declaradas em ci/manifesto-de-contratos.json:\n"
-            + "\n".join(f"  - {c}" for c in celulas),
+            + "\n".join(f"  - {c}" for c in celulas)
+            + "\n\nSe você vai mexer em `ci/`, `painel/`, `armadilhas/`,\n"
+            "`documentos/` ou `fila/`, não existe célula para testar: rode com\n"
+            "--sem-container (ou `make sessao ... SEM_CONTAINER=1`) e a bancada\n"
+            "nasce sem venv, sem Docker e sem baseline.",
         )
     if raiz is not None and not (raiz / "services" / celula).is_dir():
         raise ErroDeSessao(
@@ -324,6 +396,8 @@ class Plano:
     celula: str
     tarefa: str
     frase: str
+    sobe_ambiente: bool
+    tarefa_da_fila: str
     raiz: Path
     worktree: Path
     branch: str
@@ -338,6 +412,16 @@ class Plano:
     @property
     def banco(self) -> str:
         return f"{self.celula}_db"
+
+    @property
+    def log_do_baseline(self) -> Path:
+        """A saída INTEIRA do baseline, fora do worktree, ao lado do .env."""
+        return self.scratch / f"baseline-{self.celula}.log"
+
+    @property
+    def quem_no_balcao(self) -> str:
+        """Quem está pegando a tarefa, no vocabulário do RITOS §5 peça 1."""
+        return f"despacho-{self.celula}-{self.tarefa}"
 
     @property
     def usa_redis(self) -> bool:
@@ -378,21 +462,51 @@ def derivar_plano(
     celulas: Sequence[str],
     usa_redis: bool,
     frase: str = "",
+    sobe_ambiente: bool = True,
+    tarefa_da_fila: str = "",
     base_de_scratch: Path | None = None,
     porta_postgres: int | None = None,
     porta_redis: int | None = None,
     prefixo: str = "sessao",
 ) -> Plano:
     """Deriva nomes, caminhos e portas. Puro: não toca disco, rede nem Docker."""
-    celula = validar_celula(celula, celulas)
+    # Sem ambiente, o nome não é uma célula: é a ÁREA do trabalho (`ci`,
+    # `painel`, `armadilhas`). Ele continua tendo de servir de branch e de
+    # diretório, mas não precisa estar no manifesto de contratos.
+    celula = (
+        validar_celula(celula, celulas)
+        if sobe_ambiente
+        else validar_nome(celula, "CELULA")
+    )
     tarefa = validar_nome(tarefa, "TAREFA")
     prefixo = validar_nome(prefixo, "PREFIXO")
+    usa_redis = usa_redis and sobe_ambiente
     base = (base_de_scratch or base_de_scratch_padrao()).absolute()
     scratch = base / f"{celula}-{tarefa}"
+    if not sobe_ambiente:
+        return Plano(
+            celula=celula,
+            tarefa=tarefa,
+            frase=frase.strip(),
+            sobe_ambiente=False,
+            tarefa_da_fila=tarefa_da_fila,
+            raiz=raiz,
+            worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
+            branch=f"agent/{celula}/{tarefa}",
+            scratch=scratch,
+            venv=scratch / "venv",
+            arquivo_env=scratch / ".env",
+            postgres="",
+            porta_postgres=0,
+            redis="",
+            porta_redis=0,
+        )
     return Plano(
         celula=celula,
         tarefa=tarefa,
         frase=frase.strip(),
+        sobe_ambiente=True,
+        tarefa_da_fila=tarefa_da_fila,
         raiz=raiz,
         worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
         branch=f"agent/{celula}/{tarefa}",
@@ -417,6 +531,31 @@ def derivar_plano(
             if usa_redis
             else 0
         ),
+    )
+
+
+def passos_do_plano(plano: Plano) -> tuple[str, ...]:
+    """Os passos que ESTA sessão vai rodar, na ordem.
+
+    O contador `[n/N]` sai daqui. Numerar sobre a lista inteira e pular passos
+    calado é a forma barata de o robô achar que perdeu um passo pelo caminho.
+    """
+    passos = [P_CONFERIR, P_FETCH, P_WORKTREE]
+    if plano.tarefa_da_fila:
+        passos.append(P_BALCAO)
+    passos.append(P_INDICE)
+    if plano.sobe_ambiente:
+        passos.extend(PASSOS_DO_AMBIENTE)
+    return tuple(passos)
+
+
+def bancada_pronta(plano: Plano) -> str:
+    """As duas últimas linhas da execução, feitas para o robô copiar."""
+    return "\n".join(
+        [
+            f"RAMO: {plano.branch}",
+            f"BANCADA PRONTA: {plano.worktree}",
+        ]
     )
 
 
@@ -496,10 +635,17 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "") -
         else "Li CONSTITUICAO.md e RITOS.md §1."
     )
     frase = plano.frase or "<uma frase: o que este despacho vai fazer>"
+    # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
+    # mediu. "não medido" com o motivo é honesto; "verde" seria falso-verde.
+    baseline = (
+        f"Baseline: `make ci` da célula {plano.celula} = {resumo}."
+        if resumo
+        else "Baseline: não medido (--sem-container: esta bancada não sobe ambiente)."
+    )
     return (
         f"{primeira} Worktree: {plano.worktree.name}. "
         f"Branch: {plano.branch}. git status: limpo. "
-        f"Baseline: `make ci` da célula {plano.celula} = {resumo}. "
+        f"{baseline} "
         f"Tarefa: {frase}."
     )
 
@@ -513,6 +659,16 @@ def cabecalho(plano: Plano) -> str:
         f"  tarefa        {plano.tarefa}",
         f"  worktree      {plano.worktree}",
         f"  branch        {plano.branch}",
+    ]
+    if plano.tarefa_da_fila:
+        linhas.append(f"  fila          {plano.tarefa_da_fila} (pegar no balcão)")
+    if not plano.sobe_ambiente:
+        linhas += [
+            "  ambiente      NENHUM (--sem-container: sem venv, Docker nem baseline)",
+            "",
+        ]
+        return "\n".join(linhas)
+    linhas += [
         f"  venv          {plano.venv}   (FORA do worktree)",
         f"  .env          {plano.arquivo_env}",
         f"  postgres      {plano.postgres} em localhost:{plano.porta_postgres}",
@@ -669,17 +825,22 @@ class Sessao:
         self._dormir = dormir
         self._log = log
         self._n = 0
+        self._passos = passos_do_plano(plano)
         self._variaveis: dict[str, str] = {}
 
     # -- utilidades ---------------------------------------------------------
 
     def _abrir(self, nome: str) -> str:
         self._n += 1
-        self._log(f"[{self._n}/{len(PASSOS)}] {nome}")
+        self._log(f"[{self._n}/{len(self._passos)}] {nome}")
         return nome
 
     def _nota(self, texto: str) -> None:
         self._log(f"        {texto}")
+
+    def _pass(self, texto: str) -> None:
+        """O veredito do passo, uma vez por passo. O do FAIL é o `render()`."""
+        self._log(f"        PASS  {texto}")
 
     def _exigir(
         self,
@@ -726,7 +887,19 @@ class Sessao:
     # -- os passos ----------------------------------------------------------
 
     def conferir(self) -> None:
-        passo = self._abrir(PASSOS[0])
+        passo = self._abrir(P_CONFERIR)
+        if esta_dentro(self.plano.worktree, self.plano.raiz):
+            raise ErroDeSessao(
+                passo,
+                "o worktree cairia DENTRO do clone principal",
+                detalhe=f"worktree: {self.plano.worktree}\nraiz:     {self.plano.raiz}",
+            )
+        if not self.plano.sobe_ambiente:
+            self._pass(
+                f"área {self.plano.celula} · --sem-container: "
+                "nada de services/, venv ou Docker nesta bancada"
+            )
+            return
         destino = self.plano.raiz / "services" / self.plano.celula
         if not self._existe(destino):
             raise ErroDeSessao(
@@ -743,12 +916,6 @@ class Sessao:
                 detalhe=f"Esperado em:\n  {destino / 'requirements.txt'}\n\n"
                 "Sem ele não há o que instalar no venv da sessão.",
             )
-        if esta_dentro(self.plano.worktree, self.plano.raiz):
-            raise ErroDeSessao(
-                passo,
-                "o worktree cairia DENTRO do clone principal",
-                detalhe=f"worktree: {self.plano.worktree}\nraiz:     {self.plano.raiz}",
-            )
         if esta_dentro(self.plano.venv, self.plano.worktree):
             raise ErroDeSessao(
                 passo,
@@ -756,12 +923,12 @@ class Sessao:
                 detalhe="`armadilhas/008`: o .gitignore das células não lista `.venv/`,\n"
                 "então venv dentro do worktree é risco de commit acidental.",
             )
-        self._nota(
+        self._pass(
             f"célula {self.plano.celula} ok · worktree e venv em lugares distintos"
         )
 
     def buscar(self, git: str) -> None:
-        passo = self._abrir(PASSOS[1])
+        passo = self._abrir(P_FETCH)
         self._exigir(
             passo,
             [git, "-C", str(self.plano.raiz), "fetch", "origin"],
@@ -771,10 +938,10 @@ class Sessao:
             "nasceria de um `origin/main` velho — e um baseline contra main velha\n"
             "não prova nada sobre a main de agora.",
         )
-        self._nota("origin/main atualizado")
+        self._pass("origin/main atualizado")
 
     def preparar_worktree(self, git: str) -> None:
-        passo = self._abrir(PASSOS[2])
+        passo = self._abrir(P_WORKTREE)
         lista = self._exigir(
             passo,
             [git, "-C", str(self.plano.raiz), "worktree", "list", "--porcelain"],
@@ -807,7 +974,7 @@ class Sessao:
                     f"  git -C {self.plano.raiz} worktree remove {self.plano.worktree}",
                     codigo=1,
                 )
-            self._nota("worktree já existia na branch certa — sigo")
+            self._pass(f"a bancada já existia na branch certa: {self.plano.worktree}")
             return
 
         existe_branch = (
@@ -858,12 +1025,117 @@ class Sessao:
                 detalhe=f"Esperado:\n  {self.plano.worktree / '.git'}\n\n"
                 "Exit 0 sem o artefato é exatamente o falso-verde que o INV-CI01 fecha.",
             )
-        self._nota(f"worktree criado em {self.plano.worktree}")
+        self._pass(f"bancada criada em {self.plano.worktree}")
+
+    def pegar_a_tarefa(self) -> None:
+        """Reivindica a tarefa no balcão, de DENTRO da bancada.
+
+        `armadilhas/192`: `ci/fila.py` escreve o comprovante relativo ao
+        repositório em que ELE foi executado. Chamar o `fila.py` do clone
+        principal faria o evento nascer órfão no espelho, com o validador da
+        fila respondendo "válida" sem ele. Por isso o caminho do script é o da
+        bancada, e não o `ci/fila.py` que estamos rodando.
+
+        `armadilhas/357`: e é o PRIMEIRO passo depois de a pasta existir. A
+        trava do balcão é de TAREFA, não de pasta; entre criar a bancada e
+        perguntar quem ganhou existe uma janela, e o que se pode fazer é
+        encurtá-la até o único byte que ela ainda custa: um diretório vazio.
+        """
+        passo = self._abrir(P_BALCAO)
+        tid = self.plano.tarefa_da_fila
+        quem = self.plano.quem_no_balcao
+        comando = [
+            sys.executable,
+            str(self.plano.worktree / "ci" / "fila.py"),
+            "pegar",
+            tid,
+            "--quem",
+            quem,
+        ]
+        saida = self._correr(comando, cwd=self.plano.worktree, timeout=600)
+        if saida.exit_code != 0:
+            raise ErroDeSessao(
+                passo,
+                f"o balcão recusou {tid} — a tarefa NÃO é sua",
+                comando=f'python ci/fila.py pegar {tid} --quem "{quem}"',
+                detalhe=recortar(saida.texto, 2000)
+                + "\n\nA fala acima é do BALCÃO, não deste script. Quase sempre é\n"
+                "outro robô que pegou a tarefa primeiro, ou ela está trancada.\n"
+                "NÃO escreva um byte nesta bancada: pare e reporte à maestro.\n"
+                "A bancada ficou vazia e pode ser removida com:\n"
+                f"  git -C {self.plano.raiz} worktree remove {self.plano.worktree}\n"
+                "O quadro de agora: python ci/fila.py listar --ao-vivo",
+                codigo=1,
+            )
+        self._pass(f"{tid} é sua · o comprovante nasceu na bancada (commite-o no PR)")
+
+    def _exigir_bancada_limpa(self, passo: str, git: str) -> None:
+        """A Declaração afirma `git status: limpo`. Isto é o que MEDE isso.
+
+        Mora fora dos passos porque os dois caminhos precisam dela: o baseline
+        a faz no fim do `make ci`, e a bancada sem ambiente a faz no fim do
+        índice. Afirmar limpeza sem medir é assinar o que não se conferiu.
+        """
+        sujo = self._exigir(
+            passo,
+            [git, "-C", str(self.plano.worktree), "status", "--porcelain"],
+            cwd=self.plano.raiz,
+            timeout=300,
+        ).stdout.strip()
+        if sujo:
+            raise ErroDeSessao(
+                passo,
+                "a bancada NÃO está limpa",
+                comando=f"git -C {self.plano.worktree} status --porcelain",
+                detalhe=recortar(sujo, 2000)
+                + "\n\nA Declaração de Abertura afirma `git status: limpo`. Imprimi-la\n"
+                "com o workspace sujo seria assinar uma coisa que não é verdade.",
+                codigo=1,
+            )
+
+    def gerar_indice(self, git: str) -> None:
+        """Materializa `armadilhas/INDICE.md` DENTRO da bancada.
+
+        O índice, o GUARDAS.json, o SINAIS.json e o GATILHOS.json são gerados e
+        não viajam no Git: num checkout novo eles simplesmente não existem, e a
+        chave de busca da memória de campo é a primeira coisa que o rito manda
+        ler. Gerá-lo no clone principal deixaria a bancada sem ele
+        (`armadilhas/148`).
+        """
+        passo = self._abrir(P_INDICE)
+        alvo = self.plano.worktree / "armadilhas" / "INDICE.md"
+        self._exigir(
+            passo,
+            [
+                sys.executable,
+                str(self.plano.worktree / "ci" / "indice_de_armadilhas.py"),
+            ],
+            cwd=self.plano.worktree,
+            timeout=600,
+            dica="Sem o índice, `armadilhas/INDICE.md` não existe nesta bancada e o\n"
+            "primeiro gesto do rito (ler a entrada que casa com a tarefa) não tem\n"
+            "onde acontecer.",
+        )
+        if not self._existe(alvo):
+            raise ErroDeSessao(
+                passo,
+                "o gerador saiu 0 mas o INDICE.md não apareceu",
+                comando="python ci/indice_de_armadilhas.py",
+                detalhe=f"Esperado:\n  {alvo}\n\n"
+                "Exit 0 sem o artefato é exatamente o falso-verde que o INV-CI01 fecha.",
+            )
+        if not self.plano.sobe_ambiente:
+            # Sem baseline, este é o ÚLTIMO passo do rito: a limpeza que a
+            # Declaração afirma se mede aqui, ou não se mede em lugar nenhum.
+            self._exigir_bancada_limpa(passo, git)
+            self._pass(f"{alvo} materializado · git status: limpo")
+            return
+        self._pass(f"{alvo} materializado (leia a entrada que casa com a sua tarefa)")
 
     def preparar_venv(self) -> None:
-        passo = self._abrir(PASSOS[3])
+        passo = self._abrir(P_VENV)
         if self._existe(self.plano.python_do_venv):
-            self._nota("venv já existia — sigo")
+            self._pass("venv já existia — sigo")
             return
         comando = [sys.executable, "-m", "venv", str(self.plano.venv)]
         self._exigir(passo, comando, cwd=self.plano.raiz, timeout=600)
@@ -874,10 +1146,10 @@ class Sessao:
                 comando=" ".join(comando),
                 detalhe=f"Esperado:\n  {self.plano.python_do_venv}",
             )
-        self._nota(f"venv criado em {self.plano.venv}")
+        self._pass(f"venv criado em {self.plano.venv}")
 
     def instalar(self) -> None:
-        passo = self._abrir(PASSOS[4])
+        passo = self._abrir(P_DEPS)
         comando = [
             str(self.plano.python_do_venv),
             "-m",
@@ -897,7 +1169,7 @@ class Sessao:
             "Este passo é idempotente: rode o mesmo comando de novo depois de\n"
             "resolver, que o pip só instala o que faltar.",
         )
-        self._nota(
+        self._pass(
             f"requirements.txt de {self.plano.celula} + "
             f"{', '.join(FERRAMENTAS_DE_PORTAO)} instalados"
         )
@@ -997,7 +1269,7 @@ class Sessao:
         )
 
     def preparar_servicos(self) -> tuple[int, int]:
-        passo = self._abrir(PASSOS[5])
+        passo = self._abrir(P_SERVICOS)
         docker = self._ferramenta(
             "docker",
             passo,
@@ -1052,10 +1324,18 @@ class Sessao:
                 sonda=["redis-cli", "ping"],
                 esperado="PONG",
             )
+        self._pass(
+            f"{self.plano.postgres} atende em localhost:{porta_pg}"
+            + (
+                f" · {self.plano.redis} em localhost:{porta_redis}"
+                if porta_redis
+                else ""
+            )
+        )
         return porta_pg, porta_redis
 
     def escrever_env(self, porta_pg: int, porta_redis: int) -> None:
-        passo = self._abrir(PASSOS[6])
+        passo = self._abrir(P_ENV)
         self._variaveis = variaveis_de_sessao(
             self.plano, porta_postgres=porta_pg, porta_redis=porta_redis
         )
@@ -1068,10 +1348,10 @@ class Sessao:
                 "não consegui escrever o .env de sessão",
                 detalhe=f"{self.plano.arquivo_env}\n{exc}",
             ) from exc
-        self._nota(f"{len(self._variaveis)} variáveis em {self.plano.arquivo_env}")
+        self._pass(f"{len(self._variaveis)} variáveis em {self.plano.arquivo_env}")
 
     def rodar_doctor(self) -> None:
-        passo = self._abrir(PASSOS[7])
+        passo = self._abrir(P_DOCTOR)
         env = self._ambiente()
         # `armadilhas/014`: portão que roda com o Python ERRADO fica verde e não
         # prova nada. A pergunta que interessa não é "existe um python no venv?",
@@ -1107,10 +1387,10 @@ class Sessao:
             dica="O diagnóstico acima é do `ci/doctor.py`, que é READ-ONLY: ele diz o\n"
             "que falta, e de propósito não conserta.",
         )
-        self._nota("doctor READY")
+        self._pass("doctor READY")
 
     def rodar_baseline(self, git: str) -> str:
-        passo = self._abrir(PASSOS[8])
+        passo = self._abrir(P_BASELINE)
         make = self._ferramenta(
             "make",
             passo,
@@ -1124,12 +1404,21 @@ class Sessao:
             env=self._ambiente(),
             timeout=3600,
         )
+        # O log INTEIRO vai para o disco ANTES do veredito, para existir tanto
+        # no verde quanto no vermelho: o recorte de 4000 caracteres da mensagem
+        # de erro serve para ler na tela, não para investigar.
+        try:
+            self._escrever(self.plano.log_do_baseline, saida.texto)
+            onde_o_log = str(self.plano.log_do_baseline)
+        except OSError as exc:
+            onde_o_log = f"(não consegui gravar o log: {exc})"
         if saida.exit_code in SENTINELAS_DE_INSTRUMENTACAO:
             raise ErroDeSessao(
                 passo,
                 f"o baseline NÃO chegou a rodar (exit {saida.exit_code})",
                 comando=f"make -C {self.plano.celula_no_worktree} ci",
                 detalhe=recortar(saida.texto, 4000)
+                + f"\n\nLog completo: {onde_o_log}"
                 + "\n\nEste resultado não é um FAIL: nada foi provado sobre o código.",
             )
         if saida.exit_code != 0:
@@ -1144,30 +1433,16 @@ class Sessao:
                 "vermelha para esta célula",
                 comando=f"make -C {self.plano.celula_no_worktree} ci",
                 detalhe=recortar(saida.texto, 4000)
+                + f"\n\nLog completo: {onde_o_log}"
                 + "\n\nRITOS.md §1: consertar main quebrada NÃO é escopo de sessão de\n"
                 "feature. Pare e reporte ao mantenedor.",
                 codigo=1,
             )
         resumo = resumo_do_baseline(saida.texto)
-        self._nota(f"make ci verde ({resumo})")
+        self._nota(f"make ci verde ({resumo}) · log completo: {onde_o_log}")
 
-        sujo = self._exigir(
-            passo,
-            [git, "-C", str(self.plano.worktree), "status", "--porcelain"],
-            cwd=self.plano.raiz,
-            timeout=300,
-        ).stdout.strip()
-        if sujo:
-            raise ErroDeSessao(
-                passo,
-                "o worktree NÃO está limpo depois do baseline",
-                comando=f"git -C {self.plano.worktree} status --porcelain",
-                detalhe=recortar(sujo, 2000)
-                + "\n\nA Declaração de Abertura afirma `git status: limpo`. Imprimi-la\n"
-                "com o workspace sujo seria assinar uma coisa que não é verdade.",
-                codigo=1,
-            )
-        self._nota("git status: limpo")
+        self._exigir_bancada_limpa(passo, git)
+        self._pass(f"make ci = {resumo} · git status: limpo · log: {onde_o_log}")
         return resumo
 
     # -- orquestração -------------------------------------------------------
@@ -1175,12 +1450,17 @@ class Sessao:
     def rodar(self) -> str:
         git = self._ferramenta(
             "git",
-            PASSOS[0],
+            P_CONFERIR,
             "Todo o Rito de Abertura é git: fetch, worktree, branch, status.",
         )
         self.conferir()
         self.buscar(git)
         self.preparar_worktree(git)
+        if self.plano.tarefa_da_fila:
+            self.pegar_a_tarefa()
+        self.gerar_indice(git)
+        if not self.plano.sobe_ambiente:
+            return declaracao(self.plano, resumo="")
         self.preparar_venv()
         self.instalar()
         porta_pg, porta_redis = self.preparar_servicos()
@@ -1208,6 +1488,18 @@ def construir_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--frase", default="", help="a frase da Declaração, se já souber"
+    )
+    parser.add_argument(
+        "--tar",
+        default="",
+        metavar="TAR-NNN",
+        help="a tarefa da fila a reivindicar no balcão (aceita 178 ou TAR-178)",
+    )
+    parser.add_argument(
+        "--sem-container",
+        action="store_true",
+        help="bancada sem venv, Docker nem baseline — para quem só toca ci/, "
+        "painel/, armadilhas/, documentos/ ou fila/",
     )
     parser.add_argument(
         "--raiz", default="", help="raiz do clone principal (padrão: descoberta)"
@@ -1244,14 +1536,22 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         celulas = celulas_declaradas(raiz)
-        celula = validar_celula(args.celula, celulas, raiz)
+        tarefa_da_fila = normalizar_tarefa_da_fila(args.tar) if args.tar.strip() else ""
+        if args.sem_container:
+            celula = validar_nome(args.celula, "CELULA")
+            usa_redis = False
+        else:
+            celula = validar_celula(args.celula, celulas, raiz)
+            usa_redis = celula_usa_redis(raiz / "services" / celula)
         plano = derivar_plano(
             celula,
             args.tarefa,
             raiz=raiz,
             celulas=celulas,
-            usa_redis=celula_usa_redis(raiz / "services" / celula),
+            usa_redis=usa_redis,
             frase=args.frase,
+            sobe_ambiente=not args.sem_container,
+            tarefa_da_fila=tarefa_da_fila,
             base_de_scratch=Path(args.scratch) if args.scratch else None,
             porta_postgres=args.porta_postgres,
             porta_redis=args.porta_redis,
@@ -1304,8 +1604,10 @@ def main(argv: list[str] | None = None) -> int:
         print(erro.render())
         return erro.codigo
     print(moldura_da_declaracao(texto))
-    print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
-    print(f"Abra a sessão em {plano.celula_no_worktree}.")
+    if plano.sobe_ambiente:
+        print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
+        print(f"A suíte da célula rodou em {plano.celula_no_worktree}.")
+    print(bancada_pronta(plano))
     return 0
 
 

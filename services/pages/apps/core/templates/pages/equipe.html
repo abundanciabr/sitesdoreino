@@ -1,0 +1,104 @@
+{% extends "pages/moldura.html" %}{% comment %}
+A FILA DA EQUIPE (degrau 11, critério AC-11). Bastidor, não vitrine: quem chega
+aqui é monitor ou professor, e a tela é feita para decidir depressa.
+
+MOLDE: `services/gamificacao/apps/core/templates/gamificacao/interno.html`, a
+fila dos marcos, que gente de verdade já usa. Copia-se o PADRÃO entre células,
+nunca o arquivo (Lei 3), e não se inventa um segundo desenho para a mesma
+tarefa: seriam duas telas para a mesma equipe aprender.
+
+A ORDEM DA FILA É REGRA, e ela não é feita aqui: vem pronta do `ordering` do
+modelo, o prazo mais curto em cima. Um template que ordenasse sozinho seria a
+segunda expressão da mesma regra.
+
+DEVOLVER EXIGE ESCOLHER UM MOTIVO, e é por isso que a lista não tem opção
+vazia. Devolver sem dizer por quê deixa o aluno sabendo que não foi, e sem saber
+o que fazer, que é exatamente o problema que esta obra existe para resolver.
+
+O QUE APARECE DE CADA ALUNO É SÓ O QUE A EQUIPE PRECISA PARA DECIDIR: o id
+opaco, as obras, o semáforo de cada uma e o prazo. Sem e-mail, sem nome real,
+sem telefone. A célula não guarda nenhum dos três (critério AC-14), então não há
+o que vazar aqui.
+
+O SEMÁFORO É O MESMO QUE O ALUNO VÊ, calculado do mesmo módulo. Uma segunda
+conta faria a equipe julgar por um número que o aluno nunca viu.
+
+As tags de formulário ficam coladas numa linha só porque soltas cada uma põe
+espaço em branco entre os botões (`armadilhas/033`).
+{% endcomment %}
+{% block titulo %}Fila da equipe{% endblock %}
+{% block faixa %}Fila da equipe{% endblock %}
+
+{% block conteudo %}
+  <p class="rotulo miudo">Bastidor da escola</p>
+  <h1>Portfólios esperando você</h1>
+  <p>O mais urgente em cima. Aceitar fecha a conferência no nome da pessoa;
+  devolver manda de volta com o que falta, em particular, e o aluno lê o motivo
+  na tela dele.</p>
+
+{% if not sabe_a_escola %}
+  <p class="aviso">Esta instalação ainda não diz de que escola ela é, então a
+  fila não tem como saber quais pedidos são daqui. Nada foi perdido: os pedidos
+  dos alunos continuam guardados e aparecem assim que a escola terminar de
+  ligar esta parte.</p>
+{% else %}
+{% if recusa %}
+  <p class="recusa" role="alert">{{ recusa }}</p>
+{% endif %}
+{% if feito == "aceitar" %}
+  <p class="recado">Conferência aceita. O pedido saiu da fila.</p>
+{% elif feito == "devolver" %}
+  <p class="recado">Devolvido, com o motivo que você escolheu. O aluno lê a
+  frase inteira na tela dele.</p>
+{% endif %}
+
+{% for linha in linhas %}
+    <section class="pedido{% if linha.atrasado %} atrasado{% endif %}">
+      <h2>Portfólio de {{ linha.pedido.portfolio.aluno_id }}</h2>
+      <p class="miudo">Pedido em {{ linha.pedido.criado_em|date:"d/m/Y" }}.
+      {% if linha.atrasado %}<strong>Atrasado desde {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.</strong>{% else %}Responder até {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.{% endif %}</p>
+
+      <ol class="estante">
+{% for peca in linha.pecas %}
+        <li class="peca estado-{{ peca.estado_do_link }}">
+          <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Peça sem legenda" }}</p>
+          <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">{{ peca.link }}</a></p>
+          <p class="miudo estado">{{ peca.get_estado_do_link_display }}.</p>
+          <div class="semaforo luz-{{ peca.semaforo.cor }}">
+            <p class="resumo"><span class="luz" aria-hidden="true"></span>{{ peca.semaforo.resumo }}</p>
+{% if peca.semaforo.pendencias %}
+            <ul class="falta">
+{% for pendencia in peca.semaforo.pendencias %}
+              <li{% if pendencia.precisa_mudar %} class="mudar"{% endif %}>{{ pendencia.o_que_fazer }}</li>
+{% endfor %}
+            </ul>
+{% endif %}
+          </div>
+        </li>
+{% empty %}
+        <li class="peca"><p class="miudo">Este portfólio está sem peças agora.
+        O aluno pode ter tirado todas depois de pedir a conferência.</p></li>
+{% endfor %}
+      </ol>
+
+      <form method="post" action="{% url 'decidir' %}" class="decidir">{% csrf_token %}<input type="hidden" name="pedido" value="{{ linha.pedido.pk }}"><button type="submit" name="gesto" value="aceitar">Aceitar a conferência</button>
+        <p>
+          <label for="motivo-{{ linha.pedido.pk }}">Ou devolver dizendo o que falta</label>
+          <select id="motivo-{{ linha.pedido.pk }}" name="motivo">
+{% for valor, rotulo in motivos %}            <option value="{{ valor }}">{{ rotulo }}</option>
+{% endfor %}          </select>
+        </p>
+        <p><button type="submit" name="gesto" value="devolver">Devolver com esse motivo</button></p>
+      </form>
+    </section>
+{% empty %}
+    <section class="aviso">
+      <h2>Nada esperando</h2>
+      <p>A fila está vazia. Quando um aluno pedir a conferência do portfólio
+      dele, o pedido aparece aqui com a data até quando responder.</p>
+    </section>
+{% endfor %}
+{% endif %}
+
+  <p class="miudo"><a href="{{ url_da_capa }}">Voltar para a página inicial</a></p>
+{% endblock %}

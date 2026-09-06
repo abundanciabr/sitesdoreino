@@ -614,6 +614,36 @@
       "descricao": "Não é uma página: é o que acontece quando o aluno salva as respostas de uma obra dele (de que tipo ela é, se é high poly, se lembra o modelo da aula). São essas respostas que acendem o semáforo da peça. Abrir este endereço no navegador não mostra nada."
     },
     {
+      "celula": "pages",
+      "rota": "pecas/conferir",
+      "endereco": "/pages/pecas/conferir",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Pedir a conferencia da escola",
+      "descricao": "Nao e uma pagina: e o que acontece quando o aluno aperta o botao que manda o portfolio dele para a escola olhar. Abrir este endereco no navegador nao mostra nada."
+    },
+    {
+      "celula": "pages",
+      "rota": "equipe",
+      "endereco": "/pages/equipe",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A fila da conferencia dos portfolios",
+      "descricao": "O bastidor onde a equipe da escola confere os portfolios que os alunos mandam. Cada pedido aparece com as obras do aluno, o que falta em cada uma e a data ate quando responder, o mais urgente em cima. A equipe aceita, ou devolve escolhendo uma das frases que a escola escreveu, e o aluno le essa frase inteira na tela dele.",
+      "observacao": "So abre para quem esta na lista de quem confere, guardada no servidor. Enquanto essa lista nao for escrita, a pagina responde a todo mundo que a pessoa nao esta nela, e os pedidos dos alunos continuam guardados e esperando."
+    },
+    {
+      "celula": "pages",
+      "rota": "equipe/decidir",
+      "endereco": "/pages/equipe/decidir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Aceitar ou devolver a conferencia de um portfolio",
+      "descricao": "Nao e uma pagina: e o que acontece quando alguem da equipe aperta um dos dois botoes de um pedido da fila. Abrir este endereco no navegador nao mostra nada."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",

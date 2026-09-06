@@ -186,3 +186,38 @@ def sem_site_declarado(monkeypatch):
     roteiro e diz, em português, por que a marcação não abre.
     """
     monkeypatch.delenv("SITE_ID", raising=False)
+
+
+# QUEM CONFERE O PORTFÓLIO (degrau 11, critério AC-11). A equipe da escola NÃO
+# é aluno: ela não tem matrícula ativa, e é por isso que as duas fábricas abaixo
+# não dublam a `alunos`. Se alguém puser a fila da equipe atrás da pergunta da
+# matrícula, o dublê de transporte levanta na hora por causa de uma chamada a
+# URL não registrada, e o teste fica vermelho no lugar certo.
+BIA = {
+    "autenticado": True,
+    "id": "p_bia",
+    "email": "bia@exemplo.com",
+    "nome_exibido": "Bia",
+    "papel": "staff",
+}
+
+
+@pytest.fixture
+def da_equipe(env_dos_pares, rede, monkeypatch, db):
+    """Bia, reconhecida pela `identidade` e NA lista de quem confere."""
+    dublar_sessao(rede, BIA)
+    monkeypatch.setenv("IDS_DA_EQUIPE", BIA["id"])
+    return BIA
+
+
+@pytest.fixture
+def fora_da_equipe(env_dos_pares, rede, monkeypatch, db):
+    """A mesma pessoa, com a lista VAZIA: o estado da VPS enquanto ninguém a escreve.
+
+    Fail-closed sem fail-hard: a célula sobe, as telas do aluno respondem, e só
+    a fila fica fechada. Sai do `monkeypatch`, e não do ambiente de quem roda a
+    suíte, para o guarda medir o código em vez do computador.
+    """
+    dublar_sessao(rede, BIA)
+    monkeypatch.delenv("IDS_DA_EQUIPE", raising=False)
+    return BIA

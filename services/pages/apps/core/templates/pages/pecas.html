@@ -33,6 +33,14 @@ AS PERGUNTAS SÃO AS DA PROFESSORA, e as respostas possíveis vêm dos vocabulá
 da `Peca`. Não existe nota, estrela nem classificação nesta tela, e a ausência é
 lei escrita (`PLANO-PORTFOLIO-DO-ALUNO.md` §7).
 
+A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11) fecha a página, e é aqui
+mesmo que ela mora: o aluno acabou de ver o que falta em cada peça, e o botão
+que manda tudo para a escola olhar tem de estar ao lado disso, não noutra tela.
+
+QUANDO O PORTFÓLIO VOLTA, O MOTIVO APARECE POR EXTENSO. Devolver sem dizer por
+quê é o que faz um aluno desistir, e esta é a metade do critério que o texto
+carrega: a frase da devolução diz o que falta E o que fazer.
+
 O FORMULÁRIO VEM ABERTO SÓ ONDE HÁ O QUE RESPONDER, e é `<details>` puro, sem
 uma linha de script. Numa estante de vinte peças, vinte formulários abertos
 fariam o aluno rolar a tela inteira para encontrar a única que ainda pede
@@ -124,6 +132,42 @@ continua a um clique de distância para quem quiser mudar a resposta.
 {% elif pode_guardar %}
   <p class="miudo">Você ainda não guardou nenhuma peça. Abra a imagem que você
   quer mostrar, copie o endereço da barra do navegador e cole no campo acima.</p>
+{% endif %}
+
+{% if pode_guardar %}
+  <section class="conferencia">
+    <h2>A conferência da escola</h2>
+    <p>Quando você achar que o portfólio está pronto, mande para a escola
+    olhar. Uma pessoa da equipe abre as suas peças, compara com o roteiro e
+    responde: ou aceita, ou devolve dizendo o que falta.</p>
+
+{% if recusa_da_conferencia %}
+    <p class="recusa" role="alert">{{ recusa_da_conferencia }}</p>
+{% endif %}
+
+{% if pedido.estado == "em_analise" %}
+    <p class="aviso">O seu portfólio está com a escola desde
+    {{ pedido.criado_em|date:"d/m/Y" }}, e a resposta chega até
+    {{ pedido.prazo_ate|date:"d/m/Y" }}.{% if pedido.prazo_ate < agora %} Essa
+    data já passou, e o seu pedido continua na fila: ele não foi esquecido nem
+    recusado.{% endif %}</p>
+    <p class="miudo">Você pode continuar arrumando as suas peças enquanto
+    espera. A equipe olha o portfólio como ele estiver no dia da conferência.</p>
+{% else %}
+{% if pedido.estado == "devolvido" %}
+    <p class="recusa">A escola devolveu o seu portfólio em
+    {{ pedido.respondido_em|date:"d/m/Y" }}, e este é o motivo:
+    {{ pedido.get_motivo_da_devolucao_display }}</p>
+    <p>Arrume o que falta e peça a conferência de novo. Devolver não é dizer
+    não: é dizer o que ainda falta.</p>
+{% elif pedido.estado == "aceito" %}
+    <p class="aviso">A escola conferiu o seu portfólio em
+    {{ pedido.respondido_em|date:"d/m/Y" }}. Se você acrescentar peças novas,
+    pode pedir uma conferência nova.</p>
+{% endif %}
+    <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir a conferência da escola</button></form>
+{% endif %}
+  </section>
 {% endif %}
 
   <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>

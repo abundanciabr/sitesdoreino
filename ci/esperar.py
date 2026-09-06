@@ -20,7 +20,8 @@ senão o harness mata o esperador antes da linha de morte — silêncio, a doen�
     python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
     python ci/esperar.py --deploy <sha> --teto 20
     python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
-    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro)
+    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro,
+        e o que acorda o robô UMA vez: --e-pousar já implica --so-desfecho)
     python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
 
 ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
@@ -64,6 +65,34 @@ AS TRÊS LINHAS DO CONTRATO
     🔴/✅ desfecho: SEMPRE barulhento — verde, reprovado, teto, ou
        "não consegui medir" (que nunca, jamais, vira verde — INV-CI01)
 
+E DESDE 06/09/2026 AS TRÊS LINHAS SE DIVIDEM EM DOIS CANOS. Todas continuam
+existindo; muda quem escuta cada uma. Sob `--so-desfecho` (que `--e-pousar`
+liga sozinho), só o DESFECHO sai no stdout, numa impressão só; partida,
+batimento e placar vão para o stderr e para o log da espera.
+
+O motivo é dinheiro. Cada linha no stdout de uma espera rodada pelo agente
+vira uma notificação, e cada notificação REENVIA a conversa inteira ao modelo
+(97,7% de toda a entrada da semana era releitura). Medido em 06/09/2026: a
+espera dos checks sozinha custava de 18% a 21,8% da cota semanal, falando a
+cada mudança de placar com o contexto entre 372k e 401k. Um `--e-pousar` que
+acorda o robô cinco vezes cobra cinco releituras para dizer cinco vezes a
+mesma coisa — e o robô só tem o que fazer no fim.
+
+Isto NÃO é a espera muda da `armadilhas/161` voltando. Muda era a espera sem
+voz e sem teto, invisível de fora. O teto continua matando, o desfecho continua
+barulhento, o bastidor continua na tela (stderr) e no
+`~/.sitesdoreino/esperas.jsonl`. Quem não pede a flag segue com a voz de
+sempre, inteira no stdout: `--run`/`--deploy` pelo Monitor não mudaram nada.
+
+E O VERMELHO DIZ A CAUSA, NÃO O NOME (06/09/2026). Um desfecho que dizia só
+"checks REPROVADOS: muralhas" mandava o robô caçar; medido, isso custou 41
+chamadas de mediana em 32 episódios da semana (12% da cota) para achar um texto
+que o CI já tinha impresso. Agora o desfecho vermelho busca o log do job
+(`gh run view --log-failed`, teto de 30 s, UM job), recorta o bloco de falha e
+o casa com `armadilhas/SINAIS.json` pelo MESMO reconhecedor do sino. Tudo aí é
+fail-open: sem log, `gh` que falha ou que demora, o desfecho volta a dizer o de
+sempre. Lição não é muralha — na dúvida ela cala, em vez de recusar.
+
 Exit codes (o dialeto da casa): 0 concluiu verde · 1 concluiu REPROVADO ·
 2 estouro do teto ou medição impossível.
 
@@ -82,6 +111,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -91,6 +121,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import ErroDeInstrumentacao, configurar_saida, executar  # noqa: E402
+
+# O MESMO reconhecedor do sino, importado e nunca copiado: a regra de casar uma
+# saída com o catálogo mora num lugar só. Duplicar a regex aqui criaria duas
+# verdades que envelhecem em sentidos diferentes — a doença do painel com outro
+# nome (CLAUDE.md, lei anti-duplicação).
+from sino_das_armadilhas import (  # noqa: E402
+    TETO_DA_SAIDA,
+    carregar_sinais,
+    reconhecer,
+)
 
 # A marca que `ci/mergear.py` imprime quando o GitHub ainda calcula se o PR tem
 # conflito: é a ÚNICA recusa do portão que se remede, porque é a única que não é
@@ -115,6 +155,7 @@ from espera import (  # noqa: E402
 
 REPO_PADRAO = "abundanciabr/sitesdoreino"
 REGUA = Path(__file__).resolve().parent / "tempos_esperados.json"
+GATILHOS = Path(__file__).resolve().parents[1] / "armadilhas" / "GATILHOS.json"
 LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
@@ -244,14 +285,14 @@ def observar_run(gh: list[str], repo: str, run_id: str) -> Olhada:
     return Olhada(
         pronta=True,
         resumo=f"{nome} terminou '{conclusao}'",
-        dados={"verde": verde, "url": run.get("html_url", "")},
+        dados={"verde": verde, "url": run.get("html_url", ""), "run": str(run_id)},
     )
 
 
 SHA_INTEIRO = 40
 
 
-def resolver_sha_inteiro(valor: str, parser) -> str:
+def resolver_sha_inteiro(valor: str, parser, bastidor=None) -> str:
     """O `head_sha=` da API do GitHub casa por igualdade, nunca por prefixo.
 
     Um sha curto (`40f6f8ae`) devolve ZERO runs, e a espera então repete
@@ -295,7 +336,8 @@ def resolver_sha_inteiro(valor: str, parser) -> str:
     if len(inteiro) != SHA_INTEIRO:
         parser.error(f"git rev-parse devolveu algo que não é um sha: {inteiro!r}")
     if inteiro != valor.lower():
-        print(f"(resolvi {valor} para o sha inteiro {inteiro[:12]}…)", flush=True)
+        print(f"(resolvi {valor} para o sha inteiro {inteiro[:12]}…)",
+              flush=True, file=bastidor or sys.stdout)
     return inteiro
 
 
@@ -324,7 +366,13 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
     nomes = ", ".join(
         f"{Path(str(r.get('path'))).stem} '{r.get('conclusion')}'" for r in deploys
     )
-    return Olhada(pronta=True, resumo=nomes, dados={"verde": verde})
+    caidos = [r for r in deploys if r.get("conclusion") != "success"]
+    return Olhada(
+        pronta=True,
+        resumo=nomes,
+        dados={"verde": verde,
+               "run": str(caidos[0].get("id") or "") if caidos else ""},
+    )
 
 
 def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
@@ -357,10 +405,11 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
     ]
     if ruins:
         nomes = ", ".join(str(c.get("name")) for c in ruins[:4])
+        runs = [r for r in (run_do_check(c) for c in ruins) if r]
         return Olhada(
             pronta=True,
             resumo=f"checks REPROVADOS: {nomes}",
-            dados={"verde": False},
+            dados={"verde": False, "run": runs[0] if runs else ""},
         )
     return Olhada(
         pronta=True,
@@ -416,31 +465,70 @@ def observar_sonda(comando: str) -> Olhada:
 
 class Voz:
     """Imprime o que o mantenedor lê. flush SEMPRE — sem flush, o Monitor
-    não entrega a linha e a espera volta a ser muda."""
+    não entrega a linha e a espera volta a ser muda.
 
-    def __init__(self, dizendo: str, teto_s: float, voz_s: float, regua: dict | None):
+    DOIS CANOS, desde 06/09/2026. Cada linha que sai no stdout de uma espera
+    rodada pelo agente vira uma notificação, e cada notificação REENVIA a
+    conversa inteira ao modelo — 97,7% de toda a entrada da semana era
+    releitura (CLAUDE.md, "O que uma chamada custa"). Medido: a espera dos
+    checks sozinha custava de 18% a 21,8% da cota semanal, falando a cada
+    mudança de placar com o contexto entre 372k e 401k.
+
+    A cura NÃO é calar (armadilhas/161: espera muda foi a doença que este
+    script veio curar). É separar quem escuta:
+
+      desfecho  → stdout, sempre. É o que faz o robô acordar, e ele acorda UMA
+                  vez: verde, reprovado, estouro ou "não consegui medir".
+      bastidor  → stdout como sempre, ou stderr sob `--so-desfecho`. Partida,
+                  batimento e cada mudança de placar continuam existindo,
+                  visíveis na janela e gravados no log da espera.
+
+    Tudo que se fala, nos dois canos, fica em `self.linhas` e viaja para o
+    `registrar_espera`: o que sai do stdout NÃO pode sair da auditoria.
+    """
+
+    def __init__(self, dizendo: str, teto_s: float, voz_s: float,
+                 regua: dict | None, so_desfecho: bool = False):
         self.dizendo = dizendo
         self.teto_s = teto_s
         self.voz_s = voz_s
         self.regua = regua
+        self.so_desfecho = so_desfecho
+        self.linhas: list[str] = []
         self._ultima_fala = 0.0
         self._ultimo_resumo = ""
 
-    def _fala(self, linha: str) -> None:
+    def desfecho(self, linha: str) -> None:
+        """O que o robô precisa ler. stdout, sempre, em UMA impressão."""
+        self.linhas.append(linha)
         print(linha, flush=True)
 
+    def bastidor(self, linha: str) -> None:
+        """Partida, batimento e placar: mudam de cano, nunca somem."""
+        self.linhas.append(linha)
+        print(linha, flush=True,
+              file=sys.stderr if self.so_desfecho else sys.stdout)
+
+    def eco(self, linhas: list[str]) -> str:
+        """O bastidor repetido dentro do desfecho — só quando ele foi ao
+        stderr. Sem esta guarda, quem não pediu `--so-desfecho` leria a mesma
+        coisa duas vezes na mesma tela."""
+        if not (self.so_desfecho and linhas):
+            return ""
+        return "\n" + "\n".join(linhas)
+
     def partida(self, plano: str) -> None:
-        self._fala(
+        self.bastidor(
             f"▶ vou esperar {self.dizendo} · teto {_fmt(self.teto_s)} · "
             f"se estourar: {plano}"
         )
-        self._fala(f"  {frase_da_regua(self.regua)}")
+        self.bastidor(f"  {frase_da_regua(self.regua)}")
 
     def volta(self, v: Volta) -> None:
         agora = time.monotonic()
         if v.erro is not None:
             # falha de medição fala NA HORA — nunca um relógio nu
-            self._fala(
+            self.bastidor(
                 f"⚠ não consegui perguntar ({v.falhas_seguidas}ª vez seguida): "
                 f"{v.erro.resumo}"
             )
@@ -455,7 +543,7 @@ class Voz:
         if acima_do_esperado(self.regua, v.decorrido):
             extra = f" · ACIMA do esperado ({frase_da_regua(self.regua)})"
         carimbo = time.strftime("%H:%M:%S")
-        self._fala(
+        self.bastidor(
             f"⏳ {_fmt(v.decorrido)} de {_fmt(self.teto_s)} · "
             f"{v.olhada.resumo} · conferido às {carimbo}{extra}"
         )
@@ -464,7 +552,8 @@ class Voz:
 
 
 def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
-                     desfecho: str, detalhe: str, regua: str = "") -> None:
+                     desfecho: str, detalhe: str, regua: str = "",
+                     voz: list[str] | None = None) -> None:
     """A casa única do fato "quanto durou esta espera". Nunca derruba a espera.
 
     `regua` é a CHAVE de tempos_esperados.json que esta espera alimenta. Sem
@@ -473,7 +562,12 @@ def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
     `gh pr view`, um `pg_isready`, um `git fetch`) iam todas para a régua do
     `docker-frio`, que teria virado p50 de 2s no lugar dos 90s reais. Medir a
     coisa errada com precisão é como um portão morre — quem declara a régua é
-    quem esperou, no `--regua`."""
+    quem esperou, no `--regua`.
+
+    `voz` é TUDO que a espera falou, nos dois canos. Ele entrou em 06/09/2026
+    junto com o `--so-desfecho`: quando o batimento sai do stdout, este arquivo
+    passa a ser onde ele é lido depois. Tirar o batimento da tela é economia;
+    tirá-lo da auditoria seria voltar à espera muda da `armadilhas/161`."""
     try:
         LOG_DAS_ESPERAS.parent.mkdir(parents=True, exist_ok=True)
         with LOG_DAS_ESPERAS.open("a", encoding="utf-8") as f:
@@ -486,9 +580,135 @@ def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
                 "desfecho": desfecho,
                 "detalhe": detalhe[:300],
                 "regua": regua,
+                "voz": [l[:300] for l in (voz or [])][-LINHAS_DE_VOZ_NO_LOG:],
             }, ensure_ascii=False) + "\n")
     except OSError:
         pass
+
+
+# ------------------------------------------------------- a causa da queda ----
+#
+# Medido em 06/09/2026: em 32 episódios da semana o desfecho vermelho disse só
+# o NOME do check ("checks REPROVADOS: muralhas") e mandou não re-tentar às
+# cegas. Descobrir a causa que o CI já tinha impresso custou 41 chamadas de
+# mediana — 12% da cota semanal gasta relendo a conversa para achar um texto
+# que estava a um `gh run view --log-failed` de distância.
+#
+# Isto é LIÇÃO, não muralha: tudo aqui é fail-open. Sem run, `gh` que falha,
+# `gh` que demora, catálogo ausente ⇒ o desfecho cai para o texto de sempre.
+# Uma muralha que morre calada é defeito; uma lição que cala é só uma lição a
+# menos, e o veredito vermelho continua vermelho.
+
+TETO_DO_LOG_S = float(os.environ.get("ESPERAR_TETO_DO_LOG_S", "30"))
+TETO_DO_BLOCO = 600
+LINHAS_DE_FALHA = 5
+LINHAS_DE_VOZ_NO_LOG = 60
+
+# O cabeçalho que `ci/_nucleo.py` imprime antes do detalhe de cada portão
+# reprovado: `--- FAIL <nome> ------`. É o bloco mais útil que existe no log,
+# porque é o único escrito PARA ser lido por quem vai consertar.
+MARCA_DO_PORTAO = re.compile(r"---\s+(?:FAIL|ERROR)\s+\S+")
+FIM_DO_RELATORIO = re.compile(r"\bRESULTADO\s+(?:PASS|FAIL|ERROR)\b")
+PADRAO_DE_FALHA = re.compile(r"FAIL|ERROR|AssertionError|Error:")
+RUN_NA_URL = re.compile(r"/actions/runs/(\d+)")
+
+# `gh run view --log-failed` carimba cada linha com `<job>\t<passo>\t<ISO>Z `.
+# São ~45 caracteres de ruído por linha: num teto de 600, o carimbo comeria
+# metade da causa. Ele sai do que se MOSTRA; o log cru continua inteiro para o
+# sino casar.
+CARIMBO_DO_GH = re.compile(
+    r"^[^\t\n]*\t[^\t\n]*\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?"
+)
+
+
+def run_do_check(check: dict) -> str:
+    """O id do run por trás de um check do rollup — o `gh pr view` só dá a URL."""
+    url = str(check.get("detailsUrl") or check.get("targetUrl") or "")
+    achado = RUN_NA_URL.search(url)
+    return achado.group(1) if achado else ""
+
+
+def bloco_de_falha(log: str) -> str:
+    """O pedaço do log que diz o que quebrou, com teto de 600 caracteres.
+
+    Preferência absoluta pelo bloco `--- FAIL <portão> ---`: ele é o resumo que
+    a própria casa escreveu. Sem ele (pytest cru, erro de shell), valem as
+    cinco primeiras linhas que acusam falha.
+    """
+    linhas = [CARIMBO_DO_GH.sub("", l).rstrip() for l in log.splitlines()]
+    for i, linha in enumerate(linhas):
+        if MARCA_DO_PORTAO.search(linha):
+            bloco = [linha]
+            for seguinte in linhas[i + 1:]:
+                if MARCA_DO_PORTAO.search(seguinte) or FIM_DO_RELATORIO.search(seguinte):
+                    break
+                if seguinte.strip():
+                    bloco.append(seguinte)
+                if len("\n".join(bloco)) >= TETO_DO_BLOCO:
+                    break
+            return "\n".join(bloco)[:TETO_DO_BLOCO]
+    acusadas = [l for l in linhas if l.strip() and PADRAO_DE_FALHA.search(l)]
+    return "\n".join(acusadas[:LINHAS_DE_FALHA])[:TETO_DO_BLOCO]
+
+
+def licao_da_armadilha(numero: str) -> str:
+    """A `licao:` que a entrada declarou, se declarou. Fail-open."""
+    try:
+        corpo = json.loads(GATILHOS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    for gatilho in corpo.get("gatilhos", []):
+        if str(gatilho.get("armadilha")) == numero and gatilho.get("licao"):
+            return str(gatilho["licao"])
+    return ""
+
+
+def sino_do_log(log: str) -> str:
+    """A armadilha cujo sinal casa este log — a MESMA lógica do sino.
+
+    Casa contra o log INTEIRO, não contra o bloco recortado acima: uma
+    assinatura como `dial tcp …:22: i/o timeout` quase nunca mora numa linha
+    que contenha a palavra FAIL, e peneirar antes de casar calaria o sino
+    justamente onde ele vale mais.
+    """
+    try:
+        achados = reconhecer(log[-TETO_DA_SAIDA:], carregar_sinais())
+    except (OSError, ValueError):
+        return ""
+    if not achados:
+        return ""
+    sinal = achados[0][0]
+    numero = str(sinal["armadilha"])
+    licao = licao_da_armadilha(numero) or str(sinal.get("titulo") or "").strip()
+    return (
+        f"   🔔 isto casa a armadilhas/{numero} (leia {sinal['arquivo']}) — {licao}"
+    )
+
+
+def diagnosticar(gh: list[str], repo: str, run_id: str) -> str:
+    """A causa da reprovação, do log do CI. Texto vazio = não consegui, e aí
+    o desfecho volta a dizer o de sempre."""
+    if not run_id:
+        return ""
+    try:
+        proc = subprocess.run(
+            [*gh, "run", "view", run_id, "--log-failed", "-R", repo],
+            capture_output=True, text=True, timeout=TETO_DO_LOG_S,
+            encoding="utf-8", errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    bloco = bloco_de_falha(proc.stdout or "")
+    if not bloco:
+        return ""
+    partes = [f"   A causa, do log do run {run_id}:"]
+    partes += ["   " + l for l in bloco.splitlines()]
+    sino = sino_do_log(proc.stdout or "")
+    if sino:
+        partes.append(sino)
+    return "\n".join(partes)
 
 
 def pedir_pouso(gh: list[str], repo: str, pr: str) -> str:
@@ -564,6 +784,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--e-pousar", dest="e_pousar", action="store_true",
                    help="ao ficar verde, passa pelo portão (ci/mergear.py --pousar) "
                         "e pede pouso sozinho — só com --checks")
+    p.add_argument("--so-desfecho", dest="so_desfecho", action="store_true",
+                   help="stdout recebe SÓ o desfecho (o robô acorda uma vez); "
+                        "partida e batimento vão para o stderr e para o log. "
+                        "--e-pousar já liga isto sozinho")
     p.add_argument("--regua", help="chave em tempos_esperados.json (senão, deduzo)")
     p.add_argument("--mesmo-assim", dest="mesmo_assim", metavar="MOTIVO",
                    help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
@@ -580,13 +804,18 @@ def main(argv: list[str] | None = None) -> int:
     gh = _gh()
     repo = _repo()
     teto_s = args.teto * 60.0
+    # `--e-pousar` é o caminho automático do rito, e ele existe justamente para
+    # o robô não voltar: calar o bastidor ali é o ganho inteiro. Quem chama
+    # `--run`/`--deploy` na mão pelo Monitor continua com a voz de sempre.
+    so_desfecho = bool(args.so_desfecho or args.e_pousar)
+    bastidor = sys.stderr if so_desfecho else sys.stdout
 
     if args.run:
         chave, rotulo = "deploy-celula", f"o run {args.run} do Actions"
         observar = lambda: observar_run(gh, repo, args.run)  # noqa: E731
         alvo_txt, graca = f"run:{args.run}", None
     elif args.deploy:
-        sha = resolver_sha_inteiro(args.deploy, p)
+        sha = resolver_sha_inteiro(args.deploy, p, bastidor)
         chave, rotulo = "deploy-celula", f"o deploy do commit {sha[:12]}"
         observar = lambda: observar_deploy(gh, repo, sha)  # noqa: E731
         alvo_txt, graca = f"deploy:{sha[:12]}", args.graca
@@ -638,7 +867,7 @@ def main(argv: list[str] | None = None) -> int:
         else "paro e reporto, não fico re-tentando"
     )
 
-    voz = Voz(dizendo, teto_s, args.voz, regua)
+    voz = Voz(dizendo, teto_s, args.voz, regua, so_desfecho)
     voz.partida(plano_z)
     inicio = time.monotonic()
 
@@ -654,52 +883,56 @@ def main(argv: list[str] | None = None) -> int:
         acao = ""
         if args.ao_estourar == "pousar":
             acao = " " + pedir_pouso(gh, repo, str(pr_do_pouso))
-        print(
+        voz.desfecho(
             f"🔴 ESTOUREI o teto de {_fmt(teto_s)} esperando {dizendo}. "
-            f"Parei.{acao}",
-            flush=True,
+            f"Parei.{acao}"
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "estouro", str(falha), chave_da_regua)
+                         "estouro", str(falha), chave_da_regua, voz.linhas)
         return 2
     except GracaVencida as falha:
-        print(
+        voz.desfecho(
             f"🔴 {dizendo}: o alvo nem APARECEU em {_fmt(args.graca)} — "
             "deletado, renomeado, nunca disparou, ou conflito com a main. "
-            "Isso NÃO é fila: parei, investigue.",
-            flush=True,
+            "Isso NÃO é fila: parei, investigue."
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "nao-apareceu", str(falha), chave_da_regua)
+                         "nao-apareceu", str(falha), chave_da_regua, voz.linhas)
         return 2
     except FalhasSeguidas as falha:
         detalhe = falha.erro.resumo if falha.erro else str(falha)
-        print(
+        voz.desfecho(
             f"🔴 não consegui medir {falha.falhas_seguidas} vezes seguidas — "
             f"parei e estou reportando (isso NUNCA é um verde). "
-            f"Última falha: {detalhe}",
-            flush=True,
+            f"Última falha: {detalhe}"
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "falha-de-medicao", detalhe, chave_da_regua)
+                         "falha-de-medicao", detalhe, chave_da_regua, voz.linhas)
         return 2
 
     verde = bool((olhada.dados or {}).get("verde"))
     decorrido = time.monotonic() - inicio
-    if verde:
-        print(f"✅ {dizendo}: {olhada.resumo} · levou {_fmt(decorrido)}.", flush=True)
-    else:
-        print(
+    linha_verde = f"✅ {dizendo}: {olhada.resumo} · levou {_fmt(decorrido)}."
+    if not verde:
+        cabeca = (
             f"🔴 {dizendo}: terminou REPROVADO — {olhada.resumo} · levou "
-            f"{_fmt(decorrido)}. O veredito real está no link do run/PR; "
-            "não re-tente às cegas.",
-            flush=True,
+            f"{_fmt(decorrido)}."
         )
+        causa = diagnosticar(gh, repo, str((olhada.dados or {}).get("run") or ""))
+        voz.desfecho(
+            cabeca + "\n" + causa if causa
+            else cabeca + " O veredito real está no link do run/PR; "
+                          "não re-tente às cegas."
+        )
+    elif not args.e_pousar:
+        voz.desfecho(linha_verde)
+    # verde COM --e-pousar: este desfecho sai na MESMA linha do pouso, logo
+    # abaixo — dois desfechos acordariam o robô duas vezes pelo mesmo fato.
     registrar_espera(alvo_txt, dizendo, teto_s, decorrido,
                      "verde" if verde else "vermelho", olhada.resumo,
-                     chave_da_regua)
+                     chave_da_regua, voz.linhas)
     if verde and args.e_pousar:
-        return pousar_pelo_portao(str(args.checks))
+        return pousar_pelo_portao(str(args.checks), voz, linha_verde)
     return 0 if verde else 1
 
 
@@ -718,15 +951,18 @@ VOLTAS_DE_REMEDICAO = int(os.environ.get("ESPERAR_VOLTAS_DE_REMEDICAO", "6"))
 SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDICOES", "20"))
 
 
-def pousar_pelo_portao(pr: str) -> int:
+def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N --pousar`).
 
     Chamado só no verde, de propósito: vermelho, estouro e medição impossível
     saem antes, pelos caminhos de sempre. O portão continua dono da decisão —
     ele recusa base velha, dívida do livro e registro ausente por conta própria,
     e a recusa dele sai aqui, inteira, para o robô ler. Exit 0 = pouso pedido.
+
+    `linha_verde` é o desfecho da espera, que entra na MESMA linha do pouso:
+    dois desfechos seguidos acordariam o robô duas vezes pelo mesmo fato.
     """
-    print(f"🛬 checks verdes: passo pelo portão e peço pouso do PR {pr}…", flush=True)
+    voz.bastidor(f"🛬 checks verdes: passo pelo portão e peço pouso do PR {pr}…")
     # O portão sai 2 (ERROR) quando o GitHub ainda está recalculando se o PR
     # tem conflito — e isso acontece JUSTAMENTE no segundo em que o último
     # check fica verde, que é quando esta função é chamada. ERROR não é FAIL
@@ -742,10 +978,9 @@ def pousar_pelo_portao(pr: str) -> int:
                 encoding="utf-8", errors="replace",
             )
         except (OSError, subprocess.TimeoutExpired) as erro:
-            print(
-                f"🔴 não consegui rodar o portão para o PR {pr} ({erro}). "
-                f"Faça na mão: python ci/mergear.py {pr} --pousar",
-                flush=True,
+            voz.desfecho(
+                f"{linha_verde} 🔴 não consegui rodar o portão para o PR {pr} "
+                f"({erro}). Faça na mão: python ci/mergear.py {pr} --pousar".strip()
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")
@@ -754,26 +989,29 @@ def pousar_pelo_portao(pr: str) -> int:
         )
         if not recalculando or volta == VOLTAS_DE_REMEDICAO:
             break
-        print(
+        voz.bastidor(
             f"⏳ o portão não conseguiu medir (o GitHub ainda recalcula o PR {pr}); "
-            f"remeço em {SEGUNDOS_ENTRE_REMEDICOES}s ({volta} de {VOLTAS_DE_REMEDICAO})",
-            flush=True,
+            f"remeço em {SEGUNDOS_ENTRE_REMEDICOES}s ({volta} de {VOLTAS_DE_REMEDICAO})"
         )
         time.sleep(SEGUNDOS_ENTRE_REMEDICOES)
-    cauda = [l for l in saida.splitlines() if l.strip()][-12:]
+    cauda = ["   " + l for l in saida.splitlines() if l.strip()][-12:]
     for linha in cauda:
-        print("   " + linha, flush=True)
+        voz.bastidor(linha)
+    prefixo = (linha_verde + " ") if linha_verde else ""
     if proc.returncode == 0:
-        print(
-            f"✅ pedi pouso do PR {pr} pelo portão. A pista assume: atualiza, confere "
-            "e mergeia sozinha, e comenta no PR. Nada mais depende de ninguém aqui.",
-            flush=True,
+        voz.desfecho(
+            f"{prefixo}🛬 pedi pouso do PR {pr} pelo portão. A pista assume: "
+            "atualiza, confere e mergeia sozinha, e comenta no PR. Nada mais "
+            "depende de ninguém aqui."
         )
         return 0
-    print(
-        f"🔴 o portão RECUSOU o pouso do PR {pr} (exit {proc.returncode}) — o motivo "
-        "está nas linhas acima. Conserte e rode de novo; não re-tente às cegas.",
-        flush=True,
+    # A recusa é o desfecho, e desfecho não se sussurra: o motivo do portão vem
+    # junto quando o bastidor foi para o stderr, senão o robô não teria o que ler.
+    voz.desfecho(
+        f"{prefixo}🔴 o portão RECUSOU o pouso do PR {pr} "
+        f"(exit {proc.returncode}) — o motivo é o do portão, abaixo. "
+        "Conserte e rode de novo; não re-tente às cegas."
+        + voz.eco(cauda)
     )
     # A mesma distinção que o portão faz, preservada até aqui: FAIL é sobre o
     # PR e sai 1; ERROR é "não consegui medir" e sai 2, como o estouro do teto.

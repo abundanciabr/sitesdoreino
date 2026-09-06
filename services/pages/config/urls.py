@@ -1,11 +1,14 @@
 from django.urls import path
 
 from apps.core.views import (
+    decidir,
+    fila_da_equipe,
     guardar_peca,
     healthz,
     marcar,
     mudar_peca,
     pecas,
+    pedir_conferencia,
     prancheta,
     responder_peca,
 )
@@ -73,6 +76,18 @@ urlpatterns = [
     # uma ação de um clique só. Juntá-las faria cada botão de subir e descer
     # carregar o formulário inteiro das perguntas.
     path("pecas/responder", responder_peca, name="responder_peca"),
+    # A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11). Três rotas, e a
+    # divisão delas é a divisão de quem as usa: `pecas/conferir` é o botão do
+    # ALUNO, e as duas de `equipe/` são da EQUIPE da escola.
+    #
+    # A separação não é cosmética: é ela que a porta lê. Tudo debaixo de
+    # `equipe` troca a pergunta da matrícula pela lista do env
+    # (`apps/core/porta.py`, `PREFIXO_DA_FILA_DA_EQUIPE`), porque quem confere o
+    # portfólio de um aluno não é aluno. Rota nova da equipe nasce debaixo desse
+    # prefixo, ou ela pede matrícula a um professor e fecha na cara dele.
+    path("pecas/conferir", pedir_conferencia, name="pedir_conferencia"),
+    path("equipe", fila_da_equipe, name="equipe"),
+    path("equipe/decidir", decidir, name="decidir"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
     # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por

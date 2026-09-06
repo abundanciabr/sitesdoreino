@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-165551-TAR-229-bloqueada",
+  "tarefa": "TAR-229",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T16:55:51+00:00",
+  "quem": "despacho-pages-conferencia-0609",
+  "detalhe": "TRAVA: a lista IDS_DA_EQUIPE mora no env da celula pages, e quem a escreve e um roteiro em infra/, caminho CODEOWNERS que o PR do degrau 11 nao tinha mandato para tocar. DESTRAVA: um despacho com mandato para infra/provisionar-equipe-do-portfolio.sh (novo), infra/provisionar-pages.sh e infra/env/pages.env.exemplo, e nada alem desses tres. Enquanto isso a fila abre e diz em portugues que a pessoa nao esta na lista; o aluno continua pedindo a conferencia e o pedido espera guardado. Dois guardas provados por mutacao reprovam quem tentar abrir a fila para todo mundo."
+}

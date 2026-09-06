@@ -173,8 +173,8 @@ degrau ela vira código.
   aquele aluno publicou, e nada mais.
 
   **O isolamento tem UMA porta, e ela nasceu no degrau 02:** o `do_aluno` dos
-  gerenciadores de `apps/portfolio/models.py`. Toda tela dos degraus 07, 08, 10
-  e 13 lê por ela, e nenhuma escreve o próprio `filter` — um vazamento assim não
+  gerenciadores de `apps/portfolio/models.py`. Toda tela dos degraus 07, 08, 10,
+  11 e 13 lê por ela, e nenhuma escreve o próprio `filter` — um vazamento assim não
   é uma tela errada, é a consulta errada repetida em cada tela que vier, e
   espalhá-la faria o AC-07 depender de sete lembranças. Guarda:
   `tests/test_isolamento_por_aluno.py`, provado por mutação (trocar o corpo do
@@ -211,8 +211,14 @@ Registrado para ninguém achar que foi esquecimento:
    objetivas que saem dele (pelo menos 3 tipos, pelo menos 3 peças de cada,
    maioria high poly, não repetir o modelo da aula) são o que o degrau 07 lê do
    banco.
-3. **Quem confere o portfólio na fila da equipe** e com que prazo (degrau 11,
-   pelo molde da tela de marcos).
+3. ~~**Quem confere o portfólio na fila da equipe** e com que prazo.~~
+   **Resolvido no degrau 11**, pelo molde da fila de marcos, como a lei mandava:
+   quem confere é quem está em `IDS_DA_EQUIPE` no env desta célula
+   (`apps/core/equipe.py`, e a lista VAZIA é ninguém), o prazo é de cinco dias
+   ÚTEIS no fuso da escola (`apps/portfolio/conferencia.py`), e a devolução sai
+   de uma lista fechada de frases em português, nunca de texto livre. A porta
+   desta área é a porta da casa, com a régua trocada: `/equipe` não pergunta
+   matrícula, porque quem confere o portfólio de um aluno não é aluno.
 
 ## Estado da construção
 O estado de cada degrau se lê **no balcão** (`python ci/fila.py listar

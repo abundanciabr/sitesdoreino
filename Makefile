@@ -91,7 +91,7 @@ mergear:        ## make mergear PR=22 — recusa merge com check vermelho
 esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
 	bash e2e/esqueleto.sh
 
-sessao:         ## make sessao CELULA=quiz TAREFA=fuso-horario [FRASE="..."]
+sessao:         ## make sessao CELULA=quiz TAREFA=fuso [TAR=178] [SEM_CONTAINER=1] [FRASE="..."]
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
 	@test -n "$(TAREFA)" || { echo "ERROR: informe TAREFA=<slug>"; exit 2; }
-	$(PYTHON) ci/sessao.py --celula $(CELULA) --tarefa $(TAREFA) --frase "$(FRASE)"
+	$(PYTHON) ci/sessao.py --celula $(CELULA) --tarefa $(TAREFA) --frase "$(FRASE)" $(if $(TAR),--tar $(TAR)) $(if $(SEM_CONTAINER),--sem-container)
