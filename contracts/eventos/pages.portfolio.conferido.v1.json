@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pages.portfolio.conferido.v1.json",
+  "title": "pages.portfolio.conferido.v1",
+  "description": "A ESCOLA CONFERIU O PORTFOLIO DE UM ALUNO e o selo saiu. Publicado pela celula `pages` (a casa das Paginas do aluno) no degrau 12 da escada, pelo padrao outbox transacional (INV-P6). Quem consome: a `gamificacao`, que acende o marco 'portfolio' na trilha SEM pagar XP (o marco real vale zero, de proposito; criterio AC-17 e plano secao 7). O nome vive no espaco `pages.portfolio.*` de proposito, porque `portfolio.publicado.v1` ja existe e e da celula `encomendas`, com outro significado (ha peca nova disponivel). Escrito em papel no degrau 03, antes de a celula emiti-lo, para que o degrau 15 se escreva contra o contrato e nao contra o codigo. O SELO VALE PARA O QUE O MONITOR VIU NO DIA: a foto entra por link colado e a escola nao controla o que esta do outro lado dele (plano secao 6.2), entao `occurred_at` e a data que o selo carrega. So IDS OPACOS viajam: nem link, nem legenda, nem apelido, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR, pela operacao `getStudentPortfolio` de contracts/pages.openapi.yaml. Lei: docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md; corredor assinado: docs/changespecs/CS-PAGES-0001.md (criterios AC-12 e AC-17).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "pages.portfolio.conferido"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so, e o marco da trilha nao acende duas vezes."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante da conferencia, e e a data que o selo carrega: ele vale para o que o monitor VIU nesse dia."
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem CONFERIU o portfolio: o monitor da fila da equipe. Nunca e nulo, porque nao existe selo que o relogio assine sozinho, e nunca e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "aluno_id",
+        "portfolio_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma."
+        },
+        "aluno_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do aluno dono do portfolio (a pessoa como a celula `identidade` a conhece). NUNCA e o e-mail."
+        },
+        "portfolio_id": {
+          "type": "string",
+          "description": "Id opaco do portfolio dentro da celula `pages`. E por ele que quem consome volta a perguntar, sem adivinhar. Nunca o apelido da vitrine."
+        }
+      }
+    }
+  }
+}
