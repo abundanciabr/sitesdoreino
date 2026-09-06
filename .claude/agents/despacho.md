@@ -78,19 +78,27 @@ ramo. O portão recusa pouso de PR sem o próprio recibo a bordo
 Antes do push final, confira com os olhos: `git diff --name-only
 origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
-## 7. O pouso
+## 7. O pouso não é seu: devolva o número do PR
 
-Se a sua sessão tiver a ferramenta `Monitor`, arme nela:
+**Você NUNCA arma o pouso automático**, tenha ou não a ferramenta `Monitor`. A
+espera armada dentro da sua sessão morre com ela, e o seu turno acaba em
+segundos: bem antes de os checks ficarem verdes, que é o único instante em que
+aquele comando faria alguma coisa. O resultado é um PR órfão, verde e parado,
+com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
+#1160, que ficou 12h30 assim (`armadilhas/364`).
+
+Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
+devolver o **número do PR** à maestro no relatório final. É ela, cuja sessão
+sobrevive, que arma a espera:
 
 ```bash
-python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR #<N> (<o que é>)" --e-pousar
+# quem roda isto é a MAESTRO, na sessão dela, nunca você:
+python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR #<N>" --e-pousar
 ```
 
-Se não tiver, NÃO fique em laço olhando checks: devolva o número do PR à
-maestro no seu relatório e ela arma a espera. Vermelho, pendente ou ERROR
-nunca vira pedido de pouso: FAIL você conserta (no máximo 2 tentativas, depois
-`git reset --hard <último verde>` e reporte); ERROR é instrumento quebrado e
-não se mexe no código.
+Vermelho, pendente ou ERROR nunca vira pedido de pouso: FAIL você conserta (no
+máximo 2 tentativas, depois `git reset --hard <último verde>` e reporte); ERROR
+é instrumento quebrado e não se mexe no código.
 
 ## 8. O relatório, e nada além dele
 
