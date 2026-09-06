@@ -65,11 +65,28 @@ def reconferir_os_links() -> dict[str, int]:
 
     **Uma peça que estoura não derruba as outras.** Uma obra torta não pode
     parar a vigilância da escola inteira.
+
+    **A lista de quem conferir é lida INTEIRA antes do laço, e são só os
+    números.** Um `iterator()` aqui abriria um cursor no servidor e o manteria
+    aberto durante minutos de conversa com sites de terceiros, dentro de uma
+    transação que o Django precisa segurar para o cursor existir. Aí cada
+    `atomic()` de dentro deixaria de ser transação e viraria um savepoint da de
+    fora: uma peça que estourasse abortaria a transação inteira, e a consulta
+    seguinte morreria com `TransactionManagementError` (`armadilhas/027`) em vez
+    de a varredura continuar. Nada disso apareceria na suíte, porque o
+    `pytest-django` já roda cada teste dentro de uma transação e faz o mesmo
+    savepoint nos dois casos. Uma lista de números inteiros de todas as peças
+    da escola cabe na memória com folga.
     """
     agora = timezone.now()
     placar = {"conferidas": 0, "quebradas": 0, "voltaram": 0}
 
-    for peca in Peca.objects.order_by("pk").iterator():
+    for numero in list(Peca.objects.order_by("pk").values_list("pk", flat=True)):
+        peca = Peca.objects.filter(pk=numero).first()
+        # Sumiu entre a lista e agora: o aluno tirou a peça da estante durante a
+        # varredura. É o desfecho certo, e não um erro para registrar.
+        if peca is None:
+            continue
         try:
             with transaction.atomic():
                 mudou = _anotar(peca, conferencia_do_link.conferir(peca.link), agora)
