@@ -412,8 +412,28 @@
       "endereco": "/cursos/",
       "alcance": "publico",
       "para_quem": "aluno",
-      "titulo": "O mapa das portas do curso",
-      "descricao": "A home do curso: as 34 encomendas em três Partes e doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. Só abre para quem tem matrícula ativa; quem não entrou vê o convite para entrar, e quem entrou sem matrícula recebe a explicação."
+      "titulo": "O mapa das portas (o endereço antigo)",
+      "descricao": "O endereço curto do curso, de antes de o endereço passar a dizer qual curso é. Ele continua respondendo, e sempre vai continuar: o checkpoint desta escola é por link, e um link já compartilhado não pode morrer. Com um curso só, ele serve esse curso; com mais de um, pede para o aluno escolher, em vez de escolher por ele."
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/",
+      "endereco": "/cursos/<slug:curso>/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O mapa das portas de um curso",
+      "descricao": "A home do curso, agrupada como o livro: as 34 encomendas nas três Partes (Fundação, Itens que vendem e Profissional) e nos doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. O curso é o do endereço, resolvido pelo nome dele: endereço de curso que não existe explica e mostra os cursos que existem, nunca serve outro curso no lugar. Só abre para quem tem matrícula ativa.",
+      "exemplo": "/cursos/profissional/"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma aula do curso, com a parte no endereço",
+      "descricao": "A mesma aula de sempre, num endereço que diz sozinho em que curso e em que Parte do livro ela está. É o endereço para compartilhar: o aluno está com o livro em mãos, e o número do endereço é o número da página. A parte é conferida, e não enfeite: parte que não casa com a aula recusa e mostra o caminho certo, porque um endereço que aponta certo para a aula errada é pior do que um endereço quebrado.",
+      "exemplo": "/cursos/profissional/parte-1/E00"
     },
     {
       "celula": "cursos",
@@ -421,8 +441,8 @@
       "endereco": "/cursos/<str:numero>",
       "alcance": "publico",
       "para_quem": "aluno",
-      "titulo": "Uma aula do curso",
-      "descricao": "A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
+      "titulo": "Uma aula do curso (o endereço antigo)",
+      "descricao": "O endereço curto da aula, de antes de o endereço passar a dizer o curso e a Parte. Continua respondendo para não matar nenhum link já compartilhado. A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
       "exemplo": "/cursos/E00"
     },
     {
