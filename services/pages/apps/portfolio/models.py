@@ -41,8 +41,11 @@ O QUE ESTE ARQUIVO NÃO GUARDA, DE PROPÓSITO
   01/09/2026 (plano §6.2). O campo de uma imagem hospedada por nós cabe no mesmo
   modelo no dia em que ele pedir o degrau 09, e é isso que mantém a porta de
   volta barata sem construí-la agora.
-- **O estado do link (quebrado, conferido) e o semáforo da peça.** São os
-  degraus 08 e 10, que os calculam de respostas objetivas que ainda não existem.
+- **O SEMÁFORO em si.** As três colunas de resposta do aluno moram aqui (degrau
+  10), mas a cor e a lista do que falta são CALCULADAS a cada abertura de tela,
+  em `apps/portfolio/semaforo.py`. Guardar a cor numa coluna criaria uma segunda
+  verdade capaz de discordar das respostas que a produziram, no primeiro dia em
+  que a escola corrigisse uma regra.
 - **E-mail, telefone e nome do aluno.** A página pública não os expõe (AC-14), e
   a forma mais simples de nunca expor um dado é não o guardar.
 - **O NOME das cinco etapas.** A lei fixa que são cinco (AC-06); quem escreve o
@@ -92,6 +95,56 @@ class EstadoDoLink(models.TextChoices):
     RESPONDENDO = "respondendo", "O endereço abriu na última conferência"
     QUEBRADO = "quebrado", "O endereço parou de abrir"
     NAO_CONFERIDO = "nao_conferido", "A escola ainda não conseguiu conferir"
+
+
+class TipoDeModelo(models.TextChoices):
+    """De que tipo é a peça. As palavras são da PROFESSORA, não invenção daqui.
+
+    Ela escreveu a lista na etapa 1 do roteiro (`roteiro_da_escola.py`): *"armas,
+    carros, cabelos, acessórios, animais e outros"*. Este é o mesmo conjunto,
+    numa forma que o banco sabe contar, porque prosa não se conta.
+
+    **Vazio significa "o aluno ainda não respondeu"**, e é por isso que a coluna
+    é `blank=True, default=""` em vez de `null=True`: duas formas de "não sei"
+    na mesma coluna é a origem de metade das consultas erradas, e esta casa já
+    tomou essa decisão uma vez em `id_da_plataforma`.
+    """
+
+    ARMAS = "armas", "Armas"
+    CARROS = "carros", "Carros"
+    CABELOS = "cabelos", "Cabelos"
+    ACESSORIOS = "acessorios", "Acessórios"
+    ANIMAIS = "animais", "Animais"
+    OUTRO = "outro", "Outro tipo que o curso ensina"
+
+
+class Acabamento(models.TextChoices):
+    """High poly ou variação mais simples. Regra 3 da professora, nas palavras dela.
+
+    *"O ideal é que sejam high poly... Você também pode criar algumas variações
+    mais simples"*. São essas duas respostas, e não uma escala: escala em peça de
+    aluno viraria nota, e nota é proibida por escrito (plano §7).
+    """
+
+    HIGH_POLY = "high_poly", "High poly, mais detalhada"
+    MAIS_SIMPLES = "mais_simples", "Uma variação mais simples"
+
+
+class ParecidaComAAula(models.TextChoices):
+    """A peça se parece com o modelo feito na aula? Regra 4 da professora.
+
+    **É o ALUNO quem responde, e a máquina não opina.** Nada aqui tenta descobrir
+    de onde a peça veio nem se parece com coisa nenhuma: detecção desse tipo é
+    proibida na obra (plano §7), e a única fonte desta coluna é a resposta que a
+    pessoa deu na tela.
+
+    Duas respostas escritas, e não um `BooleanField(null=True)`, pelo mesmo
+    motivo das duas de cima: com o booleano, "ainda não respondi" e "não se
+    parece" ficariam a um engano de distância uma da outra.
+    """
+
+    NAO = "nao", "Não se parece com o modelo da aula"
+    SIM = "sim", "Se parece com o modelo da aula"
 
 
 class PortfolioQuerySet(models.QuerySet):
@@ -228,6 +281,28 @@ class Peca(models.Model):
     # diferença que muda o que o aluno faz a respeito.
     quebrado_desde = models.DateTimeField(null=True, blank=True)
 
+    # AS RESPOSTAS OBJETIVAS DO ALUNO SOBRE ESTA PEÇA (degrau 10, critério
+    # AC-10). Cada uma responde a UMA regra que a professora escreveu, e o
+    # semáforo é calculado só delas.
+    #
+    # **Vazio é "ainda não respondi", e é o estado em que toda peça nasce**,
+    # inclusive as que já estavam guardadas antes deste degrau. A peça antiga
+    # não vira peça errada por causa de uma pergunta que ninguém tinha feito a
+    # ela: ela aparece com o que falta, que é exatamente o que a tela promete.
+    #
+    # **Nenhuma delas é nota, estrela ou classificação** (plano §7). Elas são a
+    # resposta da pessoa a uma pergunta de sim ou não, e o que a tela faz com
+    # elas é dizer o que ainda falta marcar, nunca quanto a obra vale.
+    tipo = models.CharField(
+        max_length=16, choices=TipoDeModelo.choices, blank=True, default=""
+    )
+    acabamento = models.CharField(
+        max_length=16, choices=Acabamento.choices, blank=True, default=""
+    )
+    parecida_com_a_aula = models.CharField(
+        max_length=8, choices=ParecidaComAAula.choices, blank=True, default=""
+    )
+
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -270,6 +345,29 @@ class Peca(models.Model):
                     & models.Q(quebrado_desde__isnull=True)
                 ),
                 name="a_quebra_e_a_data_dela_andam_juntas",
+            ),
+            # Cada resposta é uma das que a escola escreveu, ou o vazio de quem
+            # ainda não respondeu. Sem estas três, um POST com valor inventado
+            # gravaria uma resposta que nenhuma tela sabe desenhar, e o semáforo
+            # passaria a contar uma pergunta que a professora nunca fez.
+            models.CheckConstraint(
+                condition=models.Q(
+                    tipo__in=[""] + [valor for valor, _ in TipoDeModelo.choices]
+                ),
+                name="o_tipo_da_peca_e_um_dos_da_escola",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    acabamento__in=[""] + [valor for valor, _ in Acabamento.choices]
+                ),
+                name="o_acabamento_da_peca_e_um_dos_dois",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    parecida_com_a_aula__in=[""]
+                    + [valor for valor, _ in ParecidaComAAula.choices]
+                ),
+                name="a_semelhanca_com_a_aula_e_sim_ou_nao",
             ),
         ]
 

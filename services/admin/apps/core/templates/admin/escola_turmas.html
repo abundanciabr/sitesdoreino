@@ -40,6 +40,11 @@
     {% if contagem.recusados %}
     {{ contagem.recusados }} não valeu.
     {% endif %}
+    {% if contagem.curso_nao_vale %}
+    <b>O curso que você escolheu já não está publicado</b>, e por isso
+    {{ contagem.curso_nao_vale }} não entrou. Recarregue esta página e escolha de
+    novo na lista atualizada.
+    {% endif %}
     {% if contagem.nao_deu %}
     <b>{{ contagem.nao_deu }} não deu para saber</b> se foi aplicado. Confira essas pessoas
     na <a href="{% url 'escola_alunos' %}">lista de alunos</a> antes de tentar de novo.
@@ -152,9 +157,47 @@
     </div>
 
     {% if conferencia.prontos or conferencia.sozinhos %}
+    {% comment %}
+    [CURSO] UMA escolha para o lote inteiro, e não uma por linha: esta tela
+    cruza a lista de WhatsApp de UMA turma, e uma turma é de um curso. Uma
+    lista ao lado de cada nome faria o mantenedor repetir dezenas de vezes a
+    mesma escolha para acertar sempre o mesmo valor, e bastaria errar uma para
+    um aluno acordar no curso errado.
+
+    Nada nasce escolhido (§6), e por isso o botão só existe quando há lista: um
+    clique que só pode dar erro é pior que nenhum botão.
+    {% endcomment %}
     <div class="aplicar">
+      {% if cursos %}
+      <label class="rotulo" for="curso-do-lote">Em qual curso essa turma entra</label>
+      <select id="curso-do-lote" name="product_id" required>
+        <option value="">Escolha o curso...</option>
+        {% for curso in cursos %}
+        <option value="{{ curso.id }}">{{ curso.name }}</option>
+        {% endfor %}
+      </select>
       <button class="sim" type="submit">Liberar os marcados</button>
-      <span class="nota">Só quem estiver com a caixinha marcada entra na escola.</span>
+      <span class="nota">
+        Só quem estiver com a caixinha marcada entra na escola, e todo mundo
+        entra no curso escolhido aqui do lado.
+      </span>
+      {% elif nao_consigo_ver_cursos %}
+      <p class="aviso">
+        <b>Ainda não consegui ver a lista de cursos, e sem ela não dá para
+        liberar ninguém.</b>
+        Toda pessoa entra em um curso, e eu não escolho por você. A conferência
+        acima continua valendo. O que falta é a senha de par entre esta área e o
+        catálogo, e ela aparece na caixa <b>Precisa de você</b> do painel do
+        sistema.
+      </p>
+      {% else %}
+      <p class="aviso">
+        <b>Nenhum curso está publicado, e sem curso não dá para liberar
+        ninguém.</b>
+        Publique o primeiro curso no catálogo e volte aqui. A sua lista continua
+        na caixa acima, e ninguém sai da fila enquanto isso.
+      </p>
+      {% endif %}
     </div>
     {% endif %}
   </form>

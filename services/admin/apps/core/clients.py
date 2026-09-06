@@ -453,15 +453,30 @@ class AlunosClient:
     #: mantenedor "não deu certo" quando pode ter dado é como ele acaba
     #: decidindo duas vezes sobre a mesma pessoa.
     NAO_RESPONDEU = "nao_respondeu"
+    #: [INV-ALU-C1] A `alunos` recusou o PRODUTO de uma liberação (06/09/2026).
+    #: Fatia própria do `RECUSADO` porque a tela precisa dizer outra coisa: o
+    #: curso que estava na lista quando a página abriu já não vale, e o gesto
+    #: certo é recarregar e escolher de novo — não procurar defeito de rede.
+    SEM_ESSE_CURSO = "sem_esse_curso"
 
     def decidir(
-        self, alvo: str, decisao: str, decidido_por: str, motivo: str = ""
+        self,
+        alvo: str,
+        decisao: str,
+        decidido_por: str,
+        motivo: str = "",
+        product_id: str = "",
     ) -> "tuple[str, str]":
         """Libera ou recusa quem está na fila. Devolve `(desfecho, detalhe)`.
 
         `detalhe` é curto e para HUMANO — vai para a auditoria e para a tela.
         **Nunca levanta**: quem chama precisa gravar a linha de auditoria
         aconteça o que acontecer.
+
+        `product_id` é OBRIGATÓRIO para liberar desde 06/09/2026
+        ([INV-ALU-C1]): ninguém é aluno do site, todo mundo é aluno de um
+        produto, e a matrícula é o que diz qual. Na recusa ele nem viaja —
+        ninguém vira aluno de nada ao ser recusado.
         """
         config = self._configuracao()
         if config is None:
@@ -471,6 +486,8 @@ class AlunosClient:
         corpo = {"decisao": decisao, "decidido_por": decidido_por}
         if motivo:
             corpo["motivo"] = motivo
+        if product_id:
+            corpo["product_id"] = product_id
 
         try:
             r = http().post(
@@ -491,6 +508,16 @@ class AlunosClient:
             # O caso REAL de duas abas abertas, e o mais provável dos três.
             return self.RECUSADO, "este pedido já tinha sido decidido"
         if r.status_code == 422:
+            # O 422 desta porta deixou de ter uma leitura só em 06/09/2026. Na
+            # recusa ele continua sendo o motivo que faltou; na liberação, é o
+            # produto — e quem sabe qual dos dois foi é esta chamada, que sabe
+            # o que mandou. Adivinhar pelo texto da resposta seria ler prosa
+            # alheia para decidir o que a tela mostra.
+            if decisao == "liberar":
+                return (
+                    self.SEM_ESSE_CURSO,
+                    "o curso escolhido já não vale nesta escola",
+                )
             return self.RECUSADO, "faltou o motivo da recusa"
         logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
@@ -987,6 +1014,55 @@ class CatalogoClient:
             return None
         if not isinstance(corpo, dict) or "id" not in corpo:
             logger.error("menu: resposta com forma inesperada")
+            return None
+        return corpo
+
+    def listar_produtos(self) -> "list[dict] | None":
+        """Os produtos ativos, para a tela em que alguém ESCOLHE um.
+
+        `contracts/catalogo.openapi.yaml`, operação `listProducts` (06/09/2026):
+        só os ativos, em ordem de nome. Ninguém deve ser liberado num produto
+        aposentado, e o catálogo é quem sabe quais ainda estão de pé.
+
+        **Esta célula não guarda cópia da lista** (§7 da
+        `DECISAO-cursos-matriculas-e-alunos.md`): ela pergunta a cada abertura
+        de tela. Duas listas divergiriam no primeiro curso novo, e a que
+        ninguém olha é a que fica errada.
+
+        Devolve `None` quando **não deu para perguntar**, e `[]` quando o
+        catálogo respondeu que não há produto ativo. As duas coisas produzem
+        telas diferentes, e um `{% if %}` sozinho não as distingue.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "cursos: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão no env "
+                "desta célula (par admin→catalogo não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/produtos",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("cursos: o catálogo não respondeu: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("cursos: o catálogo respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
+            logger.error("cursos: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, list):
+            # Um objeto onde a tela espera lista faria o `for` do template
+            # iterar as CHAVES do dicionário, em silêncio.
+            logger.error("cursos: o catálogo respondeu um corpo que não é lista")
             return None
         return corpo
 

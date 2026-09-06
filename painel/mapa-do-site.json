@@ -604,6 +604,16 @@
       "descricao": "Não é uma página: é o que acontece quando o aluno aperta um dos botões de uma obra que ele já guardou. Abrir este endereço no navegador não mostra nada."
     },
     {
+      "celula": "pages",
+      "rota": "pecas/responder",
+      "endereco": "/pages/pecas/responder",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Responder as perguntas da escola sobre uma peça",
+      "descricao": "Não é uma página: é o que acontece quando o aluno salva as respostas de uma obra dele (de que tipo ela é, se é high poly, se lembra o modelo da aula). São essas respostas que acendem o semáforo da peça. Abrir este endereço no navegador não mostra nada."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",

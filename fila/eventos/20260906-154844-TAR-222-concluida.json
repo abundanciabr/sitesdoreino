@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-154844-TAR-222-concluida",
+  "tarefa": "TAR-222",
+  "evento": "concluida",
+  "quando": "2026-09-06T15:48:44+00:00",
+  "quem": "sessao-maestro-cursos-2026-09-06",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/1199 MERGED, em par com o #1178. O bloqueio (o catalogo nao sabia listar) foi desfeito pela maestro em dois degraus: rito de contrato #1186 com listProducts, e o codigo do catalogo no #1190 (freeze PASS identico ao congelado, 587 linhas). Suite da celula admin: 1240 passed em PostgreSQL real, contra linha de base de 1222. black --check 169 arquivos limpos. Muralha do travessao PASS. Previa visual renderizada pelo template real com o contexto real da view, nos tres estados (com a lista, catalogo fora do ar, nenhum curso publicado) e mandada ao mantenedor antes do deploy, como manda a lei de 03/09/2026. As DUAS portas foram fechadas: liberar um a um e liberar a turma pela lista de WhatsApp, esta ultima com uma escolha para o lote inteiro.",
+  "verificado_em": "2026-09-06"
+}
