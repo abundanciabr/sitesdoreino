@@ -13,6 +13,7 @@ Por isso cada teste aqui mutila o texto de um jeito DIFERENTE e exige vermelho:
     seção rebaixada        — continua no arquivo, mas deixa de ser a primeira
     costura apagada        — a conciliação com as leis da casa some
     porta muda             — o texto está lá, mas nenhum caminho leva até ele
+    arquivo engordado      — a lei está inteira, e a história voltou para dentro
 
 E um teste garante o contrário: o aviso de abertura de sessão é DERIVADO do
 `CLAUDE.md`, não uma segunda cópia da lei. Duas cópias divergem, e a sessão
@@ -150,6 +151,22 @@ def test_porta_muda_reprova(tmp_path):
         )
     )
     _falha(relatorio, "as portas apontam para cá")
+
+
+def test_arquivo_acima_do_teto_reprova(tmp_path):
+    """A história voltando para dentro da lei.
+
+    O CLAUDE.md inteiro entra em cada chamada de cada robô. Nenhuma regra some
+    neste cenário — o arquivo só engorda — e é exatamente assim que ele voltou
+    a 60 mil caracteres uma vez: cada lei nova trazendo o próprio porquê.
+    """
+    raiz = _cenario(tmp_path)
+    caminho = raiz / "CLAUDE.md"
+    caminho.write_text(
+        caminho.read_text(encoding="utf-8") + "\n" + "história " * (padrao.TETO_DE_CARACTERES // 8),
+        encoding="utf-8",
+    )
+    _falha(padrao.conferir(raiz), "cabe no teto de contexto")
 
 
 # ---------------------------------------------------------------------------

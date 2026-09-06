@@ -36,7 +36,15 @@ from django.utils import timezone
 
 from apps.cursos import enderecos
 from apps.cursos.models import Aula, Bloco, Curso
-from tests.conftest import SITE, COOKIE
+from tests.conftest import (
+    ANA,
+    COOKIE,
+    PRODUTO_DE_OUTRO_CURSO,
+    PRODUTO_DO_CURSO,
+    SITE,
+    dublar_matricula,
+    dublar_sessao,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -59,7 +67,12 @@ def um_segundo_curso_com_a_propria_E00() -> Curso:
     o defeito: quem chutasse o curso errado não acharia aula nenhuma lá e
     cairia de volta na tela certa por acidente, com o teste verde.
     """
-    curso = Curso.objects.create(site_id=SITE, slug="avancado", nome="Avançado")
+    curso = Curso.objects.create(
+        site_id=SITE,
+        slug="avancado",
+        nome="Avançado",
+        produto_id=PRODUTO_DE_OUTRO_CURSO,
+    )
     bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
     Aula.objects.create(
         curso=curso,
@@ -147,19 +160,35 @@ def test_curso_que_nao_existe_explica_e_nao_serve_o_primeiro(
     assert 'href="/profissional/"' in corpo
 
 
+def matriculada_nos_dois(rede):
+    """Ana com matrícula nos DOIS cursos do site.
+
+    A condição de "não escolha por mim" mudou em 06/09/2026 (TAR-227): ela
+    deixou de ser *o site tem dois cursos* e passou a ser *a PESSOA tem dois*.
+    Oferecer um curso de que ela não é aluna seria a sala convidando para uma
+    porta que ela mesma vai fechar, e é por isso que estes dois cenários
+    precisam da matrícula nos dois.
+    """
+    dublar_sessao(rede, ANA)
+    dublar_matricula(
+        rede, ANA["email"], produtos=[PRODUTO_DO_CURSO, PRODUTO_DE_OUTRO_CURSO]
+    )
+
+
 def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
-    aluna, aula_publicada, client
+    env_dos_pares, rede, aula_publicada, client
 ):
     """O defeito que esta tarefa cura, medido: até aqui a sala respondia
     `Curso.objects.filter(site_id=site).order_by("id").first()`, e o segundo
     curso do site nunca apareceria para ninguém.
 
     E é aqui que o 301 PARA: o endereço antigo não diz qual curso o aluno
-    quer, e com dois no site mandá-lo para um deles seria um chute com cara
-    de certeza (o navegador guarda o 301 e nunca mais pergunta). A tela que
-    PERGUNTA é a resposta certa, e ela responde 200.
+    quer, e com dois deles mandá-lo para um seria um chute com cara de certeza
+    (o navegador guarda o 301 e nunca mais pergunta). A tela que PERGUNTA é a
+    resposta certa, e ela responde 200.
     """
     um_segundo_curso_com_a_propria_E00()
+    matriculada_nos_dois(rede)
     resposta = abrir(client, reverse("mapa"))
     assert resposta.status_code == 200
     corpo = corpo_de(resposta)
@@ -170,11 +199,12 @@ def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
 
 
 def test_com_dois_cursos_no_site_o_endereco_antigo_da_aula_tambem_pergunta(
-    aluna, aula_publicada, client
+    env_dos_pares, rede, aula_publicada, client
 ):
-    """A mesma parada, no endereço antigo da AULA: com dois cursos no site,
+    """A mesma parada, no endereço antigo da AULA: com dois cursos dela,
     `/E00` não sabe de qual curso é a E00, e perguntar é honesto."""
     um_segundo_curso_com_a_propria_E00()
+    matriculada_nos_dois(rede)
     resposta = abrir(client, reverse("aula", args=["E00"]))
     assert resposta.status_code == 200
     corpo = corpo_de(resposta)
