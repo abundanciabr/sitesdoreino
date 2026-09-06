@@ -618,7 +618,7 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
                                 "string",
                                 "null",
                             ],
-                            "description": "O curso em que esta pessoa esta matriculada. OBRIGATORIO quando decisao=liberar (422 sem ele), e ignorado na recusa. E o id do produto no catalogo, que e o dono da lista de cursos: esta celula guarda a referencia, nunca uma copia da lista. [INV-ALU-C1], DECISAO-cursos-matriculas-e-alunos.md.",
+                            "description": "O produto em que esta pessoa esta matriculada: um curso, um livro, o que ela comprou. OBRIGATORIO quando decisao=liberar (422 sem ele), e ignorado na recusa. E o id do produto no catalogo, que e o dono da lista: esta celula guarda a referencia, nunca uma copia. [INV-ALU-C1], DECISAO-cursos-matriculas-e-alunos.md.",
                         },
                     },
                 },
@@ -636,7 +636,7 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
             "description": "Esta linha ja foi decidida — decisao nao se refaz",
         },
         "422": {
-            "description": "Payload invalido, recusa sem motivo, ou liberacao sem curso",
+            "description": "Payload invalido, recusa sem motivo, ou liberacao sem produto",
         },
     },
 }
@@ -645,7 +645,7 @@ DESCRICAO_CRIAR_PRE_MATRICULA = 'A fila de liberacao (DECISAO-fila-de-liberacao.
 
 DESCRICAO_LISTAR_PRE_MATRICULAS = "A UNICA porta que devolve o `whatsapp` (§5 da lei). `esperando_ha_dias`\nvem calculado: uma enxurrada de spam nao pode esconder o aluno de\nverdade que espera ha uma semana.\n"
 
-DESCRICAO_DECIDIR_PRE_MATRICULA = '`liberar` muda o status para `ativa` — e a partir daí a pessoa entra na\nCaixa SEM nenhuma outra mudanca, porque a Caixa ja pergunta "tem\nmatricula que vale?".\n\n`liberar` exige `product_id`, e essa e a mudanca de 06/09/2026\n(DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]): ninguem e aluno\ndo site, todo mundo e aluno de UM curso, e a matricula e o que diz qual.\nSem o curso a resposta e 422, e nada muda. NAO existe valor padrao: um\npadrao faria a escolha errada parecer escolha, e o erro so apareceria\nquando o aluno abrisse a sala e encontrasse o curso errado.\n\nA lista de cursos e do `catalogo`, e esta celula guarda a REFERENCIA e\nnunca a copia. Duas listas de cursos divergiriam no primeiro curso novo.\n\n`recusar` exige `motivo`: sem ele a pessoa espera para sempre e o\nmantenedor nao consegue distinguir "ninguem olhou" de "foi negado". E nao\npede curso: ninguem vira aluno de nada ao ser recusado.\n'
+DESCRICAO_DECIDIR_PRE_MATRICULA = '`liberar` muda o status para `ativa` — e a partir daí a pessoa entra na\nCaixa SEM nenhuma outra mudanca, porque a Caixa ja pergunta "tem\nmatricula que vale?".\n\n`liberar` exige `product_id`, e essa e a mudanca de 06/09/2026\n(DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]): ninguem e aluno\ndo site, todo mundo e aluno de UM PRODUTO, e a matricula e o que diz\nqual. Um curso e um produto; um livro em PDF tambem. Sem o produto a\nresposta e 422, e nada muda. NAO existe valor padrao: um padrao faria\na escolha errada parecer escolha, e o erro so apareceria quando o\naluno abrisse a sala e encontrasse o curso errado.\n\nA lista de produtos e do `catalogo`, e esta celula guarda a REFERENCIA e\nnunca a copia. Duas listas divergiriam no primeiro produto novo.\n\n`recusar` exige `motivo`: sem ele a pessoa espera para sempre e o\nmantenedor nao consegue distinguir "ninguem olhou" de "foi negado". E nao\npede produto: ninguem vira aluno de nada ao ser recusado.\n'
 
 
 def _payload_valido(corpo, obrigatorias, opcionais):
@@ -876,8 +876,8 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
         return JsonResponse(
             {
                 "detail": (
-                    "liberar exige dizer o curso: escolha em qual curso esta "
-                    "pessoa está matriculada e envie o campo product_id"
+                    "liberar exige dizer o produto: escolha em qual curso ou "
+                    "produto esta pessoa está matriculada e envie o campo product_id"
                 )
             },
             status=422,

@@ -25,7 +25,7 @@ from apps.matriculas.services import (
 
 PRE_MATRICULAS = "/api/alunos/pre-matriculas"
 
-# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o curso
+# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o produto
 # (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md`). Aqui vale qualquer
 # texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
 # a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
