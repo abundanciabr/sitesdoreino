@@ -395,6 +395,8 @@ class MundoFalso:
             self.existentes.add(_n(self.plano.worktree / ".git"))
         if "-m venv" in linha:
             self.existentes.add(_n(self.plano.python_do_venv))
+        if "indice_de_armadilhas" in linha:
+            self.existentes.add(_n(self.plano.worktree / "armadilhas" / "INDICE.md"))
         return sessao.Saida(comando, 0, self._stdout(linha), "")
 
     def existe(self, caminho) -> bool:
@@ -445,6 +447,12 @@ class MundoFalso:
             return self.saidas.get("baseline", "6 passed in 1.23s\n✅ quiz: ok")
         if "status --porcelain" in linha:
             return self.saidas.get("porcelain", "")
+        if "fila.py pegar" in linha:
+            return self.saidas.get(
+                "balcao", f"OK {self.plano.tarefa_da_fila} e sua - reserva criada"
+            )
+        if "indice_de_armadilhas" in linha:
+            return "PASS indice-de-armadilhas: INDICE.md regenerado (346 entradas)"
         return ""
 
     # -- montagem -----------------------------------------------------------
@@ -772,3 +780,238 @@ def test_bootstrap_e_alvo_explicito_e_nunca_padrao_de_outro():
     for linha in texto.splitlines():
         if linha.startswith(("ci:", "doctor:", "ajuda:", "muralhas:", "testador:")):
             assert "sessao" not in linha
+
+
+# ---------------------------------------------------------------------------
+# 4. O rito de abertura INTEIRO — balcão, índice, bancada sem ambiente
+#
+# O que estas guardas seguram: o `ci/sessao.py` deixou de ser só "prepare o
+# ambiente" e passou a ser o RITOS.md §1 do começo ao fim. Cada peça nova tem
+# uma forma barata de morrer em silêncio, e é essa forma que está testada aqui:
+# o índice gerado no clone principal em vez da bancada (`armadilhas/148`), o
+# comprovante do balcão nascendo órfão no espelho (`armadilhas/192`), e a
+# janela em que dois robôs escrevem na mesma pasta antes de saber quem perdeu
+# a tarefa (`armadilhas/357`).
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("178", "TAR-178"),
+        ("TAR-178", "TAR-178"),
+        ("tar-178", "TAR-178"),
+        ("7", "TAR-7"),
+    ],
+)
+def test_tar_aceita_as_tres_formas_que_o_robo_digita(entrada, esperado):
+    assert sessao.normalizar_tarefa_da_fila(entrada) == esperado
+
+
+@pytest.mark.parametrize("ruim", ["TAR", "abc", "TAR-", "TAR-1a", "178 179", "-1"])
+def test_tar_que_nao_e_tarefa_da_fila_recusa_antes_de_criar_bancada(ruim):
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        sessao.normalizar_tarefa_da_fila(ruim)
+    assert erro.value.passo == sessao.P_CONFERIR
+
+
+def test_balcao_e_indice_entram_no_rito_e_o_contador_de_passos_nao_mente():
+    plano = plano_de_teste(tarefa_da_fila="TAR-178")
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    juntas = "\n".join(mundo.chamadas)
+    total = len(sessao.passos_do_plano(plano))
+    assert "fila.py pegar TAR-178" in juntas
+    assert "indice_de_armadilhas.py" in juntas
+    assert "[1/%d]" % total in "\n".join(mundo.log)
+    assert "[%d/%d]" % (total, total) in "\n".join(mundo.log)
+
+
+def test_sem_tar_o_balcao_nem_e_procurado():
+    mundo = MundoFalso(plano_de_teste(), falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    assert "fila.py" not in "\n".join(mundo.chamadas)
+
+
+def test_o_indice_e_gerado_DENTRO_da_bancada_e_nunca_no_clone_principal():
+    """`armadilhas/148`: índice gerado no espelho deixa a bancada sem chave de busca."""
+    plano = plano_de_teste()
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    gerador = [c for c in mundo.chamadas if "indice_de_armadilhas.py" in c]
+    assert len(gerador) == 1
+    assert _n(plano.worktree / "ci" / "indice_de_armadilhas.py") in _n(gerador[0])
+    assert _n(plano.raiz / "ci" / "indice_de_armadilhas.py") not in _n(gerador[0])
+
+
+def test_o_balcao_e_chamado_pelo_fila_py_DA_BANCADA_e_nao_do_espelho():
+    """`armadilhas/192`: o `fila.py` do clone principal escreve o evento órfão."""
+    plano = plano_de_teste(tarefa_da_fila="TAR-178")
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    balcao = [c for c in mundo.chamadas if "fila.py pegar" in c]
+    assert len(balcao) == 1
+    assert _n(plano.worktree / "ci" / "fila.py") in _n(balcao[0])
+    assert "--quem" in balcao[0]
+
+
+def test_o_balcao_e_perguntado_ANTES_de_gerar_qualquer_conteudo_na_bancada():
+    """`armadilhas/357`: perder a tarefa depois de escrever é a janela cara."""
+    plano = plano_de_teste(tarefa_da_fila="TAR-178")
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    marcos = [
+        linha
+        for linha in mundo.chamadas
+        if "fila.py pegar" in linha or "indice_de_armadilhas" in linha
+    ]
+    assert "fila.py pegar" in marcos[0]
+
+
+def test_balcao_que_recusa_e_FAIL_com_a_mensagem_DELE_e_para_o_rito():
+    plano = plano_de_teste(tarefa_da_fila="TAR-178")
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1, "fila.py pegar": 1})
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == sessao.P_BALCAO
+    assert erro.value.codigo == 1
+    assert "TAR-178" in erro.value.resumo
+    # a fala crua do balcão viaja junto: quem lê vê o motivo DELE, não o meu
+    assert "falha simulada" in erro.value.detalhe
+    juntas = "\n".join(mundo.chamadas)
+    assert "indice_de_armadilhas" not in juntas
+    assert "-m venv" not in juntas
+    assert "Li CONSTITUICAO.md" not in "\n".join(mundo.log)
+
+
+def test_indice_que_sai_0_sem_produzir_o_arquivo_e_falso_verde_e_e_barrado():
+    plano = plano_de_teste()
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    correr_de_verdade = mundo.correr
+
+    def correr_mudo(comando, **kwargs):
+        linha = " ".join(str(c) for c in comando)
+        if "indice_de_armadilhas" in linha:
+            mundo.chamadas.append(linha)
+            return sessao.Saida([str(c) for c in comando], 0, "", "")
+        return correr_de_verdade(comando, **kwargs)
+
+    mundo.correr = correr_mudo
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == sessao.P_INDICE
+    assert "INDICE.md" in erro.value.detalhe
+
+
+# -- a bancada que não sobe ambiente ---------------------------------------
+
+
+def plano_sem_ambiente(**extra) -> sessao.Plano:
+    extra.setdefault("celula", "ci")
+    return plano_de_teste(sobe_ambiente=False, usa_redis=False, **extra)
+
+
+def test_sem_container_faz_a_bancada_e_o_indice_e_para_por_ali():
+    plano = plano_sem_ambiente()
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    texto = mundo.sessao().rodar()
+    juntas = "\n".join(mundo.chamadas)
+    assert "fetch origin" in juntas
+    assert "worktree add" in juntas
+    assert "indice_de_armadilhas.py" in juntas
+    for proibido in ("-m venv", "pip install", "docker", "doctor.py", "/usr/bin/make"):
+        assert proibido not in juntas, "--sem-container ainda executa " + proibido
+    assert mundo.escritos == {}  # nem o .env de sessão
+    assert "não medido" in texto
+
+
+def test_sem_container_nao_exige_que_a_area_seja_uma_celula_declarada():
+    plano = plano_sem_ambiente(celula="painel", tarefa="divida-do-livro")
+    assert plano.celula == "painel"
+    assert plano.worktree.name == "wt-painel-divida-do-livro"
+    assert plano.branch == "agent/painel/divida-do-livro"
+    assert plano.postgres == ""
+    assert plano.porta_postgres == 0
+
+
+def test_area_que_nao_e_celula_SEM_a_flag_recusa_e_ENSINA_a_flag():
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        sessao.validar_celula("ci", CELULAS)
+    assert "--sem-container" in erro.value.detalhe
+
+
+def test_a_declaracao_sem_ambiente_nao_afirma_baseline_que_ninguem_mediu():
+    texto = sessao.declaracao(plano_sem_ambiente(), resumo="")
+    assert "não medido" in texto
+    assert "passed" not in texto
+
+
+# -- o veredito legível ------------------------------------------------------
+
+
+def test_cada_passo_que_termina_bem_imprime_PASS():
+    plano = plano_de_teste(tarefa_da_fila="TAR-178")
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    passes = [linha for linha in mundo.log if "PASS" in linha]
+    assert len(passes) == len(sessao.passos_do_plano(plano))
+
+
+def test_o_passo_que_reprova_carrega_FAIL_na_cara():
+    erro = sessao.ErroDeSessao("um passo", "deu ruim")
+    assert "FAIL" in erro.render()
+
+
+def test_o_baseline_grava_o_log_completo_e_diz_onde_ele_ficou():
+    plano = plano_de_teste()
+    mundo = MundoFalso(
+        plano,
+        falhar={"rev-parse --verify": 1},
+        baseline="linha demais\n" * 200 + "6 passed in 1.23s",
+    )
+    mundo.sessao().rodar()
+    assert _n(plano.log_do_baseline) in mundo.escritos
+    assert "linha demais" in mundo.escritos[_n(plano.log_do_baseline)]
+    assert any(_n(plano.log_do_baseline) in _n(linha) for linha in mundo.log)
+
+
+def test_a_ultima_linha_e_a_bancada_pronta_com_caminho_absoluto_e_ramo():
+    plano = plano_de_teste()
+    texto = sessao.bancada_pronta(plano)
+    assert texto.splitlines()[-1] == "BANCADA PRONTA: " + str(plano.worktree)
+    assert plano.branch in texto
+    assert plano.worktree.is_absolute()
+
+
+def test_makefile_repassa_a_tarefa_da_fila_e_o_sem_container():
+    texto = (CI.parent / "Makefile").read_text(encoding="utf-8")
+    corpo = texto.split("sessao:", 1)[1].split("\n\n", 1)[0]
+    assert "--tar" in corpo and "$(TAR)" in corpo
+    assert "--sem-container" in corpo and "$(SEM_CONTAINER)" in corpo
+
+
+def test_sem_ambiente_a_bancada_suja_recusa_a_declaracao_de_limpa():
+    """A Declaração afirma `git status: limpo` também sem baseline.
+
+    Sem este passo, `--sem-container` assinaria limpeza que ninguém mediu: a
+    checagem morava dentro do baseline, e o baseline não roda aqui.
+    """
+    plano = plano_sem_ambiente()
+    mundo = MundoFalso(
+        plano,
+        falhar={"rev-parse --verify": 1},
+        porcelain=" M ci/sessao.py",
+    )
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == sessao.P_INDICE
+    assert erro.value.codigo == 1
+    assert "git status: limpo" in erro.value.detalhe
+
+
+def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
+    plano = plano_sem_ambiente()
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    mundo.sessao().rodar()
+    passes = [linha for linha in mundo.log if "PASS" in linha]
+    assert len(passes) == len(sessao.passos_do_plano(plano)) == 4
