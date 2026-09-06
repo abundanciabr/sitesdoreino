@@ -19,11 +19,14 @@ verdade, ou escreve NÃO RODEI"), não a lembrança do espírito dele.
 
 O QUE ELE CONFERE (e o que NÃO confere)
 ---------------------------------------
-Confere que o texto continua **inteiro e primeiro** no `CLAUDE.md`, e que cada
-porta de entrada do projeto aponta para ele: a Constituição (Lei 10), a
-declaração de abertura de sessão (`RITOS.md` §1), o cabeçalho do índice de
-armadilhas que se lê antes de cada tarefa, o molde de despacho do
-`CAMINHO-DOURADO.md`, o mapa do kit e o mapa para IA de fora.
+Confere que o texto continua **inteiro e primeiro** no `CLAUDE.md`; que o
+arquivo inteiro cabe no teto de tamanho (ele entra em cada chamada de cada
+robô, e a história de cada lei mora em
+`docs/decisoes/DECISAO-claude-md-so-lei.md`, não nele); e que cada porta de
+entrada do projeto aponta para ele: a Constituição (Lei 10), a declaração de
+abertura de sessão (`RITOS.md` §1), o cabeçalho do índice de armadilhas que se
+lê antes de cada tarefa, o molde de despacho do `CAMINHO-DOURADO.md`, o mapa
+do kit e o mapa para IA de fora.
 
 NÃO confere — e isto é dito na cara — que alguém tenha OBEDECIDO ao Padrão. Não
 existe portão barato que meça "resolveu o problema real" ou "discordou antes".
@@ -115,6 +118,13 @@ PORTAS = {
     "00-LEIA-PRIMEIRO.md": "**O Padrão de Trabalho, íntegro, na 1ª seção**",
     "painel/ia/01-leis-ritos-e-invariantes.md": "| 10 | O Padrão de Trabalho |",
 }
+
+# O TETO. O CLAUDE.md inteiro entra em cada chamada de cada robô. Em 06/09/2026
+# ele tinha 60 mil caracteres, quase metade história, e custou 421 milhões de
+# tokens em quatro dias (medição do mantenedor). A lei virou "regra, comando,
+# quem faz valer"; o porquê mora em docs/decisoes/DECISAO-claude-md-so-lei.md.
+# Sem teto, cada lei nova traz a própria história de volta, em silêncio.
+TETO_DE_CARACTERES = 20_000
 
 
 def _claude_md(raiz: Path) -> str:
@@ -241,6 +251,20 @@ def conferir(raiz: Path) -> Relatorio:
             "\n".join(f"  - {m}" for m in mudas)
             + "\n\nUm robô entra por uma porta só, e nunca pela mesma. Se a "
             "porta dele emudece, para ele a lei não existe.",
+        )
+    )
+    # 6. O teto. Lei cabe; história não.
+    tamanho = len(texto)
+    relatorio.registrar(
+        Resultado(
+            "cabe no teto de contexto",
+            Estado.PASS if tamanho <= TETO_DE_CARACTERES else Estado.FAIL,
+            f"{tamanho:_} de {TETO_DE_CARACTERES:_} caracteres".replace("_", "."),
+            "Este arquivo é relido em toda chamada de todo robô. Lei nova entra "
+            "como regra + comando + quem faz valer; a história dela (datas, PRs, "
+            "medições, o que custou) vai para "
+            "docs/decisoes/DECISAO-claude-md-so-lei.md. Subir o teto é decisão do "
+            "mantenedor, não de um PR que passava por perto.",
         )
     )
     return relatorio

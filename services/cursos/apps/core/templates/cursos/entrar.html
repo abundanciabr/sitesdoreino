@@ -12,7 +12,13 @@ tela mostra o caminho certo: um endereço que aponta certo para a aula ERRADA é
 pior do que um endereço quebrado, e mandar o aluno adivinhar é o mesmo que não
 responder.
 
-Sete motivos, sete frases, e cada uma diz o que aconteceu E o que fazer.
+E as duas recusas de MATRÍCULA POR CURSO (TAR-227): a pessoa é aluna de outro
+curso desta escola (403), e o curso que ainda não foi ligado a nenhuma compra
+(403). As duas são fechadas de propósito, e a segunda é como todo curso nasce.
+Elas mandam a pessoa a lugares diferentes, e é por isso que são duas: uma diz
+"abra o seu, que é aquele ali", a outra diz "ninguém entra aqui ainda".
+
+Nove motivos, nove frases, e cada uma diz o que aconteceu E o que fazer.
 Uma tela vazia diria "não há nada aqui" a quem devia ver o curso.
 {% endcomment %}
 {% block titulo %}Entrar no curso{% endblock %}
@@ -36,6 +42,33 @@ Uma tela vazia diria "não há nada aqui" a quem devia ver o curso.
   <h1>Não conseguimos conferir sua matrícula agora</h1>
   <p>A parte da escola que responde por isso não respondeu. Nada foi perdido:
   espere alguns instantes e <a href="{{ url_do_mapa }}">tente de novo</a>.</p>
+{% elif motivo == "outro-curso" %}
+  <h1>Este curso não é o seu</h1>
+  {% if cursos %}
+  <p>Você está matriculado nesta escola, mas em outro curso: o endereço que
+  você abriu é de um curso em que a sua matrícula não entra.</p>
+  <p>O seu está aqui:</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+  {% else %}
+  <p>Você está matriculado, e a sua matrícula não é de nenhum curso desta
+  escola. Se você comprou um curso e está vendo isto, fale com a escola pela
+  <a href="{{ url_da_capa }}">página inicial</a>: a compra pode ter chegado sem
+  dizer qual curso é o seu, e a escola resolve isso rápido.</p>
+  {% endif %}
+{% elif motivo == "curso-sem-produto" %}
+  <h1>Este curso ainda não está ligado às matrículas</h1>
+  <p>Ninguém entra aqui ainda, nem por engano: o curso existe, e a escola
+  ainda não disse a qual compra ele corresponde. Não é nada que você tenha
+  feito.</p>
+  <p>Avise a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  {% if cursos %}
+  <p>Os seus cursos continuam abertos:</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+  {% endif %}
 {% elif motivo == "curso-desconhecido" %}
   <h1>Não existe curso com esse endereço</h1>
   <p>O endereço que você abriu pede o curso "{{ slug_pedido }}", e esta escola
