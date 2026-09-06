@@ -7,8 +7,10 @@ custa, se cair:
 
 1. **A lista mostra as 34 e diz quantas estão publicadas.** Sem a contagem, o
    mantenedor abre 34 telas para saber o que os alunos já veem.
-2. **As 18 peças saem NA ORDEM do contrato**, com as duas internas avisadas.
-   Peça fora de ordem é a aula lida na ordem errada pelo aluno.
+2. **As peças saem NA ORDEM do contrato**, cada uma com o aviso da sua
+   categoria: as duas internas ("o aluno nunca vê") e a vídeo-aula em texto ("o
+   aluno vê, mas fora da sequência"). Peça fora de ordem é a aula lida na ordem
+   errada pelo aluno; aviso trocado é a professora escrevendo para quem não é.
 3. **Salvar manda a encomenda INTEIRA** (as chaves obrigatórias do corpo do
    contrato, nem uma a mais) **e mostra a versão nova.** Corpo pela metade é
    422 em toda gravação; sem o número, a pessoa salva e não sabe se pegou.
@@ -242,7 +244,9 @@ def _texto(resposta) -> str:
 
 def _formulario(**troca) -> dict:
     """O formulário do editor preenchido como a professora o mandaria: duas
-    perguntas do quiz, uma pausa, as 18 peças. As linhas vazias ficam vazias."""
+    perguntas do quiz, uma pausa, TODAS as peças que a tela conhece (a lista sai
+    de `editor.PECAS`, então peça nova entra aqui sozinha). As linhas vazias
+    ficam vazias."""
     dados = {
         "pedido": "Um capacete para o cliente Gulliver.",
         "cliente": "Gulliver",
@@ -341,9 +345,27 @@ def test_a_lista_mostra_as_34_encomendas_e_quantas_estao_publicadas():
 @pytest.mark.django_db
 @respx.mock
 def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
-    """As 18 na ordem canônica do contrato, com as duas internas avisadas. O
-    guarda lê o `TipoDePeca` do arquivo congelado: se o contrato mudar por
-    Rito e esta tela não, este teste fica vermelho, e não a aula do aluno."""
+    """Na ordem canônica do contrato, com as duas internas avisadas. O guarda lê
+    o `TipoDePeca` do arquivo congelado: se o contrato ganhar peça por Rito e
+    esta tela não, este teste fica vermelho, e não a aula do aluno.
+
+    POR QUE A COMPARAÇÃO NÃO É MAIS UMA IGUALDADE SIMPLES. No Rito de Contrato,
+    o consumidor entra ANTES do contrato: o PR do contrato roda a suíte desta
+    célula (a `admin` reivindica `painel/` em `celulas.yml`, e o registro do
+    livro de todo PR mora lá), então esta tela precisa já conhecer a peça nova
+    quando o contrato chega. Uma igualdade obriga os dois a entrarem no mesmo
+    instante, o que nenhuma ordem de merge consegue. As duas afirmações abaixo
+    valem nos dois mundos e continuam pegando o caso real:
+
+    - a ordem canônica da tela é a do contrato nas peças que os dois já têm, e é
+      isso que impede uma peça de trocar de lugar em silêncio;
+    - a tela mostra TUDO que o contrato declara, e é isso que reprova quando o
+      contrato ganhou peça e a tela não. Esta é a que o guarda existe para
+      fazer.
+
+    O que ela deixa de pegar, de propósito: peça que a tela mostra e o contrato
+    ainda não declara. É exatamente o intervalo entre este PR e o do contrato.
+    """
     _mock_site()
     _mock_aula()
     _mock_instrumentos()
@@ -353,11 +375,41 @@ def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
     )
 
     na_tela = re.findall(r'name="peca_([a-z_]+)"', html)
-    assert na_tela == _enum_do_contrato("TipoDePeca")
-    assert len(na_tela) == 18
+    do_contrato = _enum_do_contrato("TipoDePeca")
+    # 18: as peças que a tela e o contrato já tinham juntos quando esta prova
+    # foi escrita. É até onde a ORDEM está congelada dos dois lados.
+    assert na_tela[:18] == do_contrato[:18]
+    assert set(do_contrato) - set(na_tela) == set()
     assert html.count("o aluno nunca vê esta peça") == 2
     assert "Ficha do Guia do Mentor" in html and "Roteiro da aula" in html
     assert "E07: Encomenda 07" in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_videoaula_em_texto_tem_campo_proprio_e_aviso_que_nao_e_o_das_internas():
+    """A vídeo-aula é a TERCEIRA categoria de peça, e a tela precisa dizer isso.
+
+    As 16 da anatomia o aluno lê em sequência; as 2 internas ele nunca vê; esta
+    ele VÊ, só que fora da sequência, por um botão embaixo do capítulo. O aviso
+    das internas ("o aluno nunca vê esta peça") diria o contrário da verdade
+    aqui, e a professora escreveria a peça achando que é bastidor. Por isso o
+    aviso é outro, a caixa é outra, e a contagem do aviso interno segue em 2.
+    """
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+
+    html = _texto(
+        _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    )
+
+    assert 'name="peca_videoaula_em_texto"' in html
+    assert "A vídeo-aula, em texto" in html
+    assert "O aluno vê esta peça, mas fora da sequência." in html
+    assert "não é uma das 16 peças do capítulo" in html
+    # O aviso das internas não vazou para ela.
+    assert html.count("o aluno nunca vê esta peça") == 2
 
 
 # ---------------------------------------------------------------------------
