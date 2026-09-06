@@ -55,10 +55,13 @@ A regra geral, para qualquer gancho: **um campo que diz "X já aconteceu" não d
 
 ## Como medir de novo
 
+Da raiz do repositório. A régua é a `decidir()` do próprio gancho, importada, e não uma cópia: medir com régua parecida deu 52 contra 1 no mesmo dia, porque só olhar o veredito aceita relatório sem os blocos e sem a caixinha.
+
 ```bash
 python - <<'EOF'
-import json, glob, os, re, collections
-V = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
+import json, glob, os, sys, collections
+sys.path.insert(0, "ci")
+from prestacao_de_contas import decidir
 c = collections.Counter()
 for a in glob.glob(os.path.expanduser("~/.claude/projects/**/*.jsonl"), recursive=True):
     es = []
@@ -68,15 +71,13 @@ for a in glob.glob(os.path.expanduser("~/.claude/projects/**/*.jsonl"), recursiv
     for i, e in enumerate(es):
         if not isinstance(e, dict) or e.get("type") != "system": continue
         if "cobrado e terminou assim mesmo" not in json.dumps(e.get("hookErrors") or "", ensure_ascii=False): continue
-        t = next(("\n".join(b.get("text", "") for b in (x["message"]["content"]) if isinstance(b, dict) and b.get("type") == "text")
-                  for x in reversed(es[:i]) if isinstance(x, dict) and x.get("type") == "assistant"
-                  and isinstance((x.get("message") or {}).get("content"), list)), "")
-        c["com relatório" if V.search(t) else "sem relatório"] += 1
+        recusar, _, _ = decidir([x for x in es[:i] if isinstance(x, dict) and not x.get("isSidechain")])
+        c["aviso certo (sem relatório)" if recusar else "aviso falso (com relatório)"] += 1
 print(dict(c))
 EOF
 ```
 
-Se "com relatório" for maior que zero depois desta correção, a régua da segunda passada divergiu da primeira: as duas têm de ser a mesma função.
+Em 06/09/2026, antes do conserto: `{'aviso certo': 20, 'aviso falso': 33}` (a tabela acima foi tirada umas horas antes, com 50). Se "aviso falso" voltar a crescer depois desta correção, a régua da segunda passada divergiu da primeira: as duas têm de ser a mesma função.
 
 ## Guarda
 
