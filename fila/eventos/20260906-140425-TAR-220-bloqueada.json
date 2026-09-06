@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-140425-TAR-220-bloqueada",
+  "tarefa": "TAR-220",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T14:04:25+00:00",
+  "quem": "despacho-alunos-curso-na-matricula",
+  "detalhe": "O contrato congelado da celula alunos (contracts/alunos.openapi.yaml) precisa ganhar o campo product_id em decidePreEnrollment, e mudanca de contrato e Rito de Contrato da maestro com o mantenedor presente (armadilhas/243). O codigo esta pronto e provado no PR #1178: 200 testes verdes na celula, 10 sabotagens com 10 vermelhos na assercao, black limpo. O contrato-check reprova de proposito, e o diff exato que o Rito precisa levar ao congelado esta no corpo do PR. Destrava com o Rito de Contrato feito. Segunda coisa a decidir junto: a lei supoe que a compra ja informa o curso, e o evento pagamento.aprovado.v1 nao carrega product_id (armadilhas/363), entao a matricula que nasce da compra continua sem curso ate um segundo Rito, no evento, que e de outra celula."
+}

@@ -211,16 +211,50 @@ def decidir_na_fila(
     decisao: str,
     decidido_por: str,
     motivo: str = "",
+    product_id: str = "",
     destinatario_id: str = "",
 ) -> tuple[Matricula | None, str]:
     """[FILA] Liberar ou recusar quem está na fila.
 
-    Devolve `(linha, "ok")`, `(None, "nao-encontrada")` ou `(None, "ja-decidida")`.
+    Devolve `(linha, "ok")`, `(None, "nao-encontrada")`, `(None, "ja-decidida")`
+    ou `(None, "sem-curso")`.
 
     Só enxerga linhas nascidas na fila (prefixo `pre:` no order_id). Uma matrícula
     PAGA é `nao-encontrada` aqui de propósito: esta porta não é caminho para
     mexer no status de quem comprou — para isso existiria outra, com outro rito.
+
+    [INV-ALU-C1] LIBERAR EXIGE O CURSO, E A RECUSA MORA AQUI
+    --------------------------------------------------------
+    `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` (06/09/2026): ninguém é
+    aluno do site, todo mundo é aluno de UM curso, e a matrícula é o que diz
+    qual. Liberar sem dizer o curso cria a matrícula ativa que obriga a próxima
+    tela a adivinhar, e o palpite mais provável ("o primeiro curso do site") é
+    exatamente o defeito que a lei existe para impedir.
+
+    A recusa mora nesta função, e não só na porta HTTP, porque esta é a ÚNICA
+    passagem por onde uma linha da fila vira `ativa`: um chamador novo dentro da
+    célula herda a exigência sem escolher nada. A checagem de `motivo`, que fica
+    na porta, é de outra natureza — aquela traduz o `required` do payload; esta
+    sustenta um invariante da tabela.
+
+    Ela vem ANTES de procurar a linha, de propósito: "faltou dizer o curso" é
+    verdade sobre o PEDIDO, não sobre a linha, então não depende de a linha
+    existir. E o efeito colateral é bom: um id inexistente com pedido incompleto
+    é respondido sem confirmar se aquele id existe.
+
+    `recusar` não pede curso: ninguém vira aluno, e exigir a escolha de um curso
+    para dizer "não" seria burocracia sem fato por trás. `product_id` mandado
+    junto de uma recusa é ignorado, do mesmo jeito que `motivo` numa liberação.
+
+    O QUE ESTE GUARDA NÃO ALCANÇA, e está dito na cara: a matrícula que nasce do
+    EVENTO de pagamento. `pagamento.aprovado.v1` não carrega `product_id`
+    (`contracts/eventos/`), então `handlers.py` grava `""` — e essa linha nasce
+    `ativa` sem curso sem passar por aqui. Fechar isso é Rito de Contrato no
+    evento, que é de outra célula. Ver [INV-ALU-C1] em `INVARIANTES.md`.
     """
+    if decisao == "liberar" and not product_id:
+        return None, "sem-curso"
+
     with transaction.atomic():
         try:
             linha = (
@@ -243,8 +277,20 @@ def decidir_na_fila(
         linha.decidido_em = timezone.now()
         linha.decidido_por = decidido_por
         linha.motivo_recusa = "" if liberou else motivo
+        # [INV-ALU-C1] O curso entra JUNTO com o status que dá acesso, na mesma
+        # transação e no mesmo `save`: uma segunda escrita depois abriria uma
+        # janela, por menor que fosse, em que a linha está `ativa` sem curso.
+        # Recusa não grava curso — quem foi recusado não é aluno de nada.
+        if liberou:
+            linha.product_id = product_id
         linha.save(
-            update_fields=["status", "decidido_em", "decidido_por", "motivo_recusa"]
+            update_fields=[
+                "status",
+                "decidido_em",
+                "decidido_por",
+                "motivo_recusa",
+                "product_id",
+            ]
         )
 
         # [AVISO] A carta nasce na MESMA transação do fato — é o que a outbox
