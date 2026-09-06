@@ -16,6 +16,7 @@ passaria em todos os testes vermelhos e seria arrancado na primeira urgência.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -740,3 +741,272 @@ def test_sombra_nao_muda_o_exit_code(tmp_path):
     assert any(e.get("evento") == "serie_sem_despacho" for e in eventos), (
         "a sombra tem de ter gravado mesmo com o turno calado"
     )
+
+
+# ------------------------------------------- o molde já vem com os fatos ----
+#
+# 06/09/2026. Medido na semana: 140 emissões de molde e 286 entradas de sistema
+# citando este gancho, em 22 sessões. Cada recusa é uma volta inteira no
+# contexto MEDIANO do relatório (302.996 tokens), que é o momento mais caro da
+# sessão. Quatro dos seis blocos têm os fatos no diff, nos checks e no plano da
+# abertura: a máquina pode preenchê-los, e o robô escreve só o julgamento.
+# Decisão do mantenedor, em pergunta estruturada: "os papéis podem nascer
+# preenchidos pela máquina, com o robô escrevendo só o julgamento".
+
+
+def _uso(nome: str, entrada: dict, identificador: str) -> dict:
+    """Um `tool_use` com id, para poder casar com o resultado dele."""
+    return {"type": "assistant",
+            "message": {"role": "assistant",
+                        "content": [{"type": "tool_use", "id": identificador,
+                                     "name": nome, "input": entrada}]}}
+
+
+def _resultado(identificador: str, texto: str) -> dict:
+    return {"type": "user",
+            "message": {"role": "user",
+                        "content": [{"type": "tool_result",
+                                     "tool_use_id": identificador,
+                                     "content": texto}]}}
+
+
+def _molde_com_fatos(tmp_path: Path, entradas: list[dict] | None,
+                     cwd: Path | None = None, env: dict | None = None):
+    argumentos = ["--molde-com-fatos"]
+    if entradas is not None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text(
+            "\n".join(json.dumps(e, ensure_ascii=False) for e in entradas),
+            encoding="utf-8",
+        )
+        argumentos += ["--transcript", str(transcript)]
+    return subprocess.run(
+        [sys.executable, str(PORTAO), *argumentos],
+        capture_output=True, text=True, timeout=120,
+        encoding="utf-8", errors="replace",
+        cwd=str(cwd) if cwd else None, env=env,
+        stdin=subprocess.DEVNULL,
+    )
+
+
+PLANO_DA_ABERTURA = """## Plano
+
+- [ ] achar o evento repetido no webhook
+- [ ] ignorá-lo, com teste vermelho→verde
+"""
+
+
+def _turno_de_trabalho() -> list[dict]:
+    return [
+        _humano("conserte o webhook"),
+        _fala(PLANO_DA_ABERTURA),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _uso("Bash", {"command": "python -m pytest services/pagamentos -q"}, "t1"),
+        _resultado("t1", "..........\n41 passed in 3.10s"),
+        _ferramenta("Bash", {"command": "git commit -m 'webhook ignora repetido'"}),
+    ]
+
+
+def test_molde_com_fatos_traz_o_checklist_do_plano(tmp_path):
+    """O checklist da abertura volta como estava: quem marca é o robô."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "FATOS DA MÁQUINA" in proc.stdout
+    assert "- [ ] achar o evento repetido no webhook" in proc.stdout
+    assert "- [ ] ignorá-lo, com teste vermelho→verde" in proc.stdout
+    assert "Onde estou" in proc.stdout
+
+
+def test_molde_com_fatos_traz_os_arquivos_e_os_comandos_do_turno(tmp_path):
+    """Sem git por perto, o bloco cai para os Edit/Write do transcript — e os
+    comandos que mudaram o mundo e os que verificaram vêm com a última linha
+    da saída real."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "webhook.py" in proc.stdout
+    assert "commit/push/merge" in proc.stdout
+    assert "pytest" in proc.stdout
+    assert "41 passed" in proc.stdout, "a última linha da saída do teste não veio"
+
+
+def test_o_rodape_do_harness_nao_e_a_saida_do_teste(tmp_path):
+    """O harness pendura "Shell cwd was reset to ..." no fim de toda saída de
+    shell. Sem peneira, a "última linha" de todo comando desta casa seria essa,
+    e o bloco de verificação nasceria inútil (medido na prova de fora)."""
+    entradas = [
+        _humano("rode os testes"),
+        _uso("Bash", {"command": "python -m pytest ci/tests -q"}, "t5"),
+        _resultado("t5", "59 passed in 51.03s" + chr(10) + "Shell cwd was reset to C:/x"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+    ]
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "59 passed in 51.03s" in proc.stdout
+    assert "Shell cwd was reset" not in proc.stdout
+
+
+def test_molde_com_fatos_le_o_diff_de_um_git_de_verdade(tmp_path):
+    """Com bancada de verdade, os arquivos saem do `git diff --numstat` contra
+    origin/main — que é o que a prestação de contas precisa dizer."""
+    casa = tmp_path / "bancada"
+    casa.mkdir()
+    def git(*args):
+        subprocess.run(["git", *args], cwd=str(casa), check=True,
+                       capture_output=True, text=True, timeout=60)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "robo@exemplo.invalido")
+    git("config", "user.name", "robo")
+    (casa / "a.py").write_text("print(1)\n", encoding="utf-8")
+    git("add", "a.py")
+    git("commit", "-qm", "primeiro")
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    (casa / "a.py").write_text("print(1)\nprint(2)\n", encoding="utf-8")
+    (casa / "b.py").write_text("print(3)\n", encoding="utf-8")
+
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=casa)
+    assert proc.returncode == 0, proc.stderr
+    assert "a.py" in proc.stdout
+    assert "b.py" in proc.stdout, "arquivo novo não rastreado ficou de fora"
+
+
+def test_molde_com_fatos_tem_teto_de_linhas(tmp_path):
+    """Uma sessão-maestro tem dezenas de escritas de bancadas diferentes na
+    mesma janela. Molde de sessenta linhas de ruído é molde que ninguém lê:
+    a lista corta nas mais recentes e DIZ quantas ficaram de fora."""
+    entradas = [_humano("faça o lote"), _fala(PLANO_DA_ABERTURA)]
+    for numero in range(40):
+        entradas.append(_ferramenta("Write", {"file_path": f"servico/arquivo{numero}.py"}))
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "arquivo39.py" in proc.stdout, "as mudanças recentes têm de aparecer"
+    assert "arquivo0.py" not in proc.stdout, "a lista não tem teto"
+    assert "outros, mais antigos, no transcript" in proc.stdout
+
+
+def test_molde_com_fatos_sem_pr_no_turno_diz_que_nao_ha_pr(tmp_path):
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "nenhum PR neste turno" in proc.stdout
+
+
+def test_molde_com_fatos_com_o_gh_quebrado_diz_nao_medido_e_nao_trava(tmp_path):
+    """Fail-open: o molde é conveniência, não muralha. Sem `gh` no caminho, o
+    bloco dos checks diz "não medido" com o motivo e o resto do molde sai
+    inteiro. Um molde que travasse seria pior que molde nenhum."""
+    entradas = _turno_de_trabalho() + [
+        _uso("Bash", {"command": "gh pr create --base main --title x --body-file c.md"}, "t9"),
+        _resultado("t9", "https://github.com/abundanciabr/sitesdoreino/pull/1234"),
+    ]
+    sem_caminho = dict(os.environ)
+    sem_caminho["PATH"] = ""
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path, env=sem_caminho)
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "PR #1234" in proc.stdout
+    assert "não medido" in proc.stdout
+    assert "**Veredito:**" in proc.stdout, "o resto do molde tem de sair inteiro"
+
+
+def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
+    """Os quatro blocos de julgamento saem marcados VOCÊ ESCREVE e vazios:
+    máquina nenhuma sabe o que foi cortado, o que depende dele, nem o veredito.
+    Preencher isso por conta própria seria fabricar prestação de contas."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    for titulo in ("**O que foi cortado e por quê**", "**O que eu preciso decidir**",
+                   "**Auditoria de qualidade**", "**Veredito:**"):
+        assert titulo in proc.stdout, f"o molde não trouxe {titulo}"
+    corpo = proc.stdout.split("**O que foi cortado e por quê**", 1)[1]
+    assert corpo.count("VOCÊ ESCREVE") >= 4, corpo
+
+
+def test_molde_com_fatos_sem_transcript_nao_trava(tmp_path):
+    """Transcript inexistente: o molde sai com "não medido" nos blocos que
+    dependiam dele, e exit 0. Fail-open, e dito na cara."""
+    proc = _molde_com_fatos(tmp_path, None, cwd=tmp_path,
+                            env={**os.environ, "USERPROFILE": str(tmp_path),
+                                 "HOME": str(tmp_path)})
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "não medido" in proc.stdout
+    assert "**Veredito:**" in proc.stdout
+
+
+# ------------------------- bloco de julgamento vazio não é prestar contas ----
+
+
+def test_bloco_de_julgamento_vazio_e_recusado(tmp_path):
+    """Título sem uma palavra embaixo é o silêncio de volta, com moldura. Este
+    teste nasceu VERMELHO contra o portão anterior, que só olhava se o título
+    estava escrito."""
+    vazio = CONTAS_COMPLETAS.replace(
+        "**O que foi cortado e por quê** — nada.",
+        "**O que foi cortado e por quê**",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(vazio),
+    ]))
+
+
+def test_bloco_com_o_rotulo_do_molde_intocado_e_recusado(tmp_path):
+    """O molde colado sem preencher: o rótulo "VOCÊ ESCREVE" continua lá."""
+    intocado = CONTAS_COMPLETAS.replace(
+        "**Auditoria de qualidade** — Definição de Pronto 7/7. O crítico atacaria o\n"
+        "retry do provedor, que não tem teste de ponta a ponta.",
+        "**Auditoria de qualidade** — VOCÊ ESCREVE",
+    )
+    assert "VOCÊ ESCREVE" in intocado
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(intocado),
+    ]))
+
+
+def test_veredito_sem_o_porque_e_recusado(tmp_path):
+    """A lei pede "PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê". A
+    palavra sozinha é rótulo, não veredito."""
+    pelado = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** PRONTO",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(pelado),
+    ]))
+
+
+def test_uma_palavra_basta_para_o_bloco(tmp_path):
+    """O par verde: "nada" é resposta legítima e a lei diz isso com todas as
+    letras. Uma régua que exigisse frase ensinaria o robô a encher linguiça."""
+    curto = CONTAS_COMPLETAS.replace(
+        "**O que foi cortado e por quê** — nada.",
+        "**O que foi cortado e por quê**: nada",
+    ).replace(
+        "**O que eu preciso decidir** — nada depende de ninguém, ~8 min até o ar.",
+        "**O que eu preciso decidir**: nada",
+    )
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(curto),
+    ]))
+
+
+def test_a_recusa_ensina_o_molde_com_fatos(tmp_path):
+    proc = _decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala("Pronto."),
+    ])
+    assert proc.returncode == 2
+    assert "--molde-com-fatos" in proc.stderr, (
+        "a recusa não diz que a máquina preenche os fatos"
+    )
+
+
+def test_o_aviso_do_plano_cita_o_molde_com_fatos():
+    proc = _rodar(["--plano"], {"prompt": "conserte o login"})
+    assert proc.returncode == 0
+    assert "--molde-com-fatos" in proc.stdout
