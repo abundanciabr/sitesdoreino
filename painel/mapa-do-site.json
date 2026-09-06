@@ -1086,29 +1086,30 @@
     },
     {
       "celula": "admin",
-      "rota": "escola/aulas/",
-      "endereco": "/admin/escola/aulas/",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
       "alcance": "publico",
       "para_quem": "equipe",
-      "titulo": "As encomendas do curso",
-      "descricao": "A lista das aulas do curso (cada uma é uma encomenda que o aluno entrega), com o estado, a versão e a data de publicação de cada uma, e quantas já estão abertas para os alunos. Embaixo, os instrumentos de avaliação.",
-      "observacao": "Lê e escreve na célula cursos pela porta de máquina, nunca no banco dela e nunca guardando cópia: o texto das aulas é obra não lançada e mora só lá. Sem o par de chaves no servidor, abre dizendo o que falta em vez de mostrar tela vazia."
+      "titulo": "As encomendas de um curso",
+      "descricao": "A lista das aulas de um curso (cada uma é uma encomenda que o aluno entrega), agrupada como o livro: as três Partes como seções e, dentro de cada uma, os blocos por letra. Cada linha traz o estado, a versão e a data de publicação, e o topo diz quantas já estão abertas para os alunos. Embaixo, os instrumentos de avaliação.",
+      "observacao": "O curso vem no endereço, pelo nome curto dele, e a Parte é opcional: sem ela aparece o curso inteiro. Lê e escreve na célula cursos pela porta de máquina, nunca no banco dela e nunca guardando cópia: o texto das aulas é obra não lançada e mora só lá. Sem o par de chaves no servidor, abre dizendo o que falta em vez de mostrar tela vazia.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/"
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/$",
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Uma encomenda por dentro",
       "descricao": "O editor de uma aula: o pedido, o cliente, o instrumento, o \"Aceito quando\", o quiz, o vídeo por link, as 18 peças em Markdown na ordem em que o aluno as lê (as duas internas avisadas), as pausas do vídeo, o botão de salvar e o de publicar.",
-      "exemplo": "/admin/escola/aulas/E07/",
-      "observacao": "O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/",
+      "observacao": "O endereço carrega o curso e a Parte para que o link, ao ser compartilhado, diga em que ponto do livro aquela encomenda está; Parte que não casa com a encomenda recusa e devolve o endereço certo. O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
@@ -1117,8 +1118,8 @@
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,

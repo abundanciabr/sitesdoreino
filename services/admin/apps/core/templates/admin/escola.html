@@ -24,7 +24,7 @@
     existe e o contrato dela congelou (PR #1061), então a tela tem quem a
     responda. O texto das aulas mora lá, e entra SÓ por esta porta.
     {% endcomment %}
-    <a class="botao" href="{% url 'escola_aulas' %}">Escrever as encomendas do curso &rarr;</a>
+    <a class="botao" href="{% url 'escola_aulas' curso=curso_do_editor %}">Escrever as encomendas do curso &rarr;</a>
   </p>
 
   {% comment %}

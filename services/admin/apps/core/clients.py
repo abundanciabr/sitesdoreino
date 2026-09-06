@@ -1642,7 +1642,9 @@ class CursosClient:
 
     Fala só o que está no contrato congelado (`contracts/cursos.openapi.yaml`,
     degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as sete operações do
-    editor. Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
+    editor, e das aulas SEMPRE as que sabem de curso (`listLessons`,
+    `getLesson`, `putLesson`, `publishLesson`, sob `/cursos/{curso}/aulas`).
+    Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
     e o único lugar em que esse texto existe é o banco da `cursos`
@@ -1693,15 +1695,51 @@ class CursosClient:
         token = (os.environ.get("CURSOS_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
 
-    # -- as quatro leituras --------------------------------------------------
-    def aulas(self, site_id: str) -> "tuple[str, list | None]":
-        """`listLessons`: as encomendas deste site, na ordem do aluno."""
-        return self._pedir("get", "aulas", params={"site_id": site_id}, forma=list)
+    def _caminho(self, curso: str, *resto: str) -> str:
+        """As quatro operações da encomenda moram sob o SLUG do curso.
 
-    def aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
-        """`getLesson`: uma encomenda inteira, com as 18 peças e as pausas."""
+        As irmãs sem curso (`listSiteLessons` e companhia) continuam no
+        contrato, e esta célula não as chama mais: elas varrem o site inteiro, e
+        no dia do segundo curso devolveriam as aulas dos dois misturadas, sem
+        nada na resposta que diga de qual curso é cada linha.
+        """
+        return "/".join(["cursos", quote(curso, safe=""), "aulas", *resto])
+
+    def _com_parte(self, site_id: str, parte: "int | None") -> dict:
+        params: dict = {"site_id": site_id}
+        if parte is not None:
+            params["parte"] = int(parte)
+        return params
+
+    # -- as quatro leituras --------------------------------------------------
+    def aulas(
+        self, site_id: str, curso: str, parte: "int | None" = None
+    ) -> "tuple[str, list | None]":
+        """`listLessons`: as encomendas de UM curso, na ordem do aluno.
+
+        `parte` aqui é FILTRO: com ela vem só aquela Parte do livro; sem ela,
+        o curso inteiro. Slug que não existe naquele site é `NAO_EXISTE`.
+        """
         return self._pedir(
-            "get", "aulas/" + quote(numero, safe=""), params={"site_id": site_id}
+            "get",
+            self._caminho(curso),
+            params=self._com_parte(site_id, parte),
+            forma=list,
+        )
+
+    def aula(
+        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
+    ) -> "tuple[str, dict | None]":
+        """`getLesson`: uma encomenda inteira, com as 18 peças e as pausas.
+
+        `parte` aqui NÃO é filtro: é GUARDA. Parte que não casa com o bloco da
+        encomenda é `NAO_EXISTE`, por contrato: um endereço que aponta certo
+        para a encomenda errada é pior do que um endereço quebrado.
+        """
+        return self._pedir(
+            "get",
+            self._caminho(curso, quote(numero, safe="")),
+            params=self._com_parte(site_id, parte),
         )
 
     def instrumentos(self) -> "tuple[str, list | None]":
@@ -1714,27 +1752,37 @@ class CursosClient:
         return self._pedir("get", "instrumentos/" + quote(slug, safe=""))
 
     # -- as três escritas ----------------------------------------------------
-    def gravar_aula(self, site_id: str, numero: str, corpo: dict):
+    def gravar_aula(
+        self,
+        site_id: str,
+        curso: str,
+        numero: str,
+        corpo: dict,
+        parte: "int | None" = None,
+    ):
         """`putLesson`: grava a encomenda INTEIRA; a versão volta incrementada.
 
         Em `RECUSADO` o segundo item é o `detail` do 422 (a lista de erros do
         contrato), e não a aula: é com ele que a tela põe a frase ao lado do
-        campo certo.
+        campo certo. `parte` é o mesmo guarda de `aula`, e vale aqui pelo motivo
+        mais pesado: gravar pela encomenda errada sobrescreveria texto.
         """
         return self._pedir(
             "put",
-            "aulas/" + quote(numero, safe=""),
-            params={"site_id": site_id},
+            self._caminho(curso, quote(numero, safe="")),
+            params=self._com_parte(site_id, parte),
             json=corpo,
         )
 
-    def publicar_aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
+    def publicar_aula(
+        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
+    ) -> "tuple[str, dict | None]":
         """`publishLesson`: estado `publicada`, data de agora, versão inalterada.
         Idempotente do outro lado: publicar o publicado devolve como está."""
         return self._pedir(
             "post",
-            "aulas/" + quote(numero, safe="") + "/publicar",
-            params={"site_id": site_id},
+            self._caminho(curso, quote(numero, safe=""), "publicar"),
+            params=self._com_parte(site_id, parte),
         )
 
     def gravar_instrumento(self, slug: str, corpo: dict):

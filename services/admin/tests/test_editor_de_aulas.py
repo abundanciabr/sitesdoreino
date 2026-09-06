@@ -1,4 +1,4 @@
-"""O editor de encomendas do curso: `/admin/escola/aulas/` (degrau 1.5).
+"""O editor de encomendas do curso: `/admin/escola/<curso>/parte-N/aulas/`.
 
 A `cursos` é dublada pelo `respx` com respostas NO FORMATO DO CONTRATO
 (`contracts/cursos.openapi.yaml`); dois guardas leem o contrato do disco para
@@ -24,6 +24,10 @@ custa, se cair:
    abre com a frase; par recusado: a frase nomeia o par; sem par no ambiente:
    nada vai à rede. Gravar sem resposta nunca vira "salvei".
 9. **Esta célula não guarda nada e a porta continua sendo a porta.**
+10. **O curso e a Parte moram no endereço** (TAR-211): a lista é agrupada nas
+    três Partes e nos blocos do livro, a Parte que não casa com a encomenda
+    recusa com o endereço certo, e a tela nunca chama as operações que varrem o
+    site inteiro sem saber de curso.
 """
 
 import json
@@ -53,6 +57,33 @@ CONTRATO = Path(__file__).resolve().parents[3] / "contracts" / "cursos.openapi.y
 # As 34 encomendas do esqueleto da `cursos`: E00 a E32 e a bônus.
 NUMEROS = [f"E{n:02d}" for n in range(33)] + ["EB"]
 TIPOS = [tipo for tipo, _, _ in editor.PECAS]
+
+# O slug do curso de hoje. Ele viaja no ENDEREÇO da tela e no caminho da porta:
+# é o par site+slug que resolve o curso, nunca "o primeiro curso do site".
+CURSO = "profissional"
+
+# Os 12 blocos do livro, na ordem: letra, parte e as encomendas de cada um. É a
+# mesma estrutura que a `cursos` semeia, e é ela que a lista agrupa na tela para
+# quem está com o livro aberto ao lado.
+BLOCOS = (
+    ("A", 1, ("E00", "E01", "E02")),
+    ("B", 1, ("E03", "E04", "E05")),
+    ("C", 1, ("E06", "E07", "E08")),
+    ("D", 1, ("E09", "E10")),
+    ("E", 2, ("E11", "E12", "E13", "E14")),
+    ("F", 2, ("E15", "E16")),
+    ("G", 2, ("E17", "E18")),
+    ("H", 2, ("E19", "E20", "E21")),
+    ("I", 3, ("E22", "E23", "E24", "E25")),
+    ("J", 3, ("E26", "E27")),
+    ("K", 3, ("E28", "E29", "E30")),
+    ("L", 3, ("E31", "E32", "EB")),
+)
+BLOCO_DA_AULA = {
+    numero: {"letra": letra, "ordem": ordem, "parte": parte}
+    for ordem, (letra, parte, numeros) in enumerate(BLOCOS, start=1)
+    for numero in numeros
+}
 
 
 @pytest.fixture(autouse=True)
@@ -128,7 +159,7 @@ def _linha(numero: str, *, estado="rascunho", versao=1, publicada_em=None) -> di
         "titulo_exibido": (
             "Encomenda Bônus" if numero == "EB" else f"Encomenda {numero[1:]}"
         ),
-        "bloco": {"letra": "A", "ordem": 1, "parte": 1},
+        "bloco": BLOCO_DA_AULA[numero],
         "estado": estado,
         "versao": versao,
         "publicada_em": publicada_em,
@@ -178,7 +209,9 @@ def _instrumento(versao=2) -> dict:
 
 
 def _mock_lista(aulas=None):
-    return respx.get(f"{CURSOS}/aulas", params={"site_id": SITE_ID}).mock(
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas", params={"site_id": SITE_ID}
+    ).mock(
         return_value=httpx.Response(
             200, json=aulas if aulas is not None else [_linha(n) for n in NUMEROS]
         )
@@ -186,9 +219,9 @@ def _mock_lista(aulas=None):
 
 
 def _mock_aula(aula=None, numero="E07"):
-    return respx.get(f"{CURSOS}/aulas/{numero}", params={"site_id": SITE_ID}).mock(
-        return_value=httpx.Response(200, json=aula or _aula(numero))
-    )
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/{numero}", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=aula or _aula(numero)))
 
 
 def _mock_instrumentos():
@@ -287,11 +320,15 @@ def test_a_lista_mostra_as_34_encomendas_e_quantas_estao_publicadas():
     _mock_lista(aulas)
     _mock_instrumentos()
 
-    resposta = _dentro().get(reverse("escola_aulas"))
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO}))
     html = _texto(resposta)
 
     assert resposta.status_code == 200
-    assert re.findall(r'href="/escola/aulas/(E\d\d|EB)/"', html) == NUMEROS
+    # Todo link de encomenda leva o curso E a parte: é o endereço que diz, a
+    # quem o abre, em que ponto do livro ele está.
+    assert re.findall(
+        r'href="/escola/profissional/parte-(\d)/aulas/(E\d\d|EB)/"', html
+    ) == [(str(BLOCO_DA_AULA[n]["parte"]), n) for n in NUMEROS]
     assert "2 de 34" in html
     assert "Encomenda Bônus" in html
     # A data sai no fuso de quem lê (São Paulo), nunca em UTC cru.
@@ -311,7 +348,9 @@ def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
     _mock_aula()
     _mock_instrumentos()
 
-    html = _texto(_dentro().get(reverse("escola_aula", args=["E07"])))
+    html = _texto(
+        _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    )
 
     na_tela = re.findall(r'name="peca_([a-z_]+)"', html)
     assert na_tela == _enum_do_contrato("TipoDePeca")
@@ -322,7 +361,239 @@ def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
 
 
 # ---------------------------------------------------------------------------
-# 2. SALVAR
+# 2. O CURSO E A PARTE NO ENDEREÇO
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+@respx.mock
+def test_a_lista_agrupa_nas_tres_partes_e_nos_blocos_na_ordem_do_livro():
+    """As três Partes como seções, e dentro de cada uma os blocos por letra.
+
+    É assim que a professora acha a encomenda com o livro aberto ao lado da
+    tela. Uma lista corrida de 34 linhas obriga a contar de cabeça em que
+    Parte cada uma cai, que é justamente o que o livro já responde.
+    """
+    _mock_site()
+    _mock_lista()
+    _mock_instrumentos()
+
+    html = _texto(_dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO})))
+
+    esperado = []
+    for parte, romano in ((1, "I"), (2, "II"), (3, "III")):
+        esperado.append(f"Parte {romano}")
+        esperado += [f"Bloco {letra}" for letra, p, _ in BLOCOS if p == parte]
+    assert (
+        re.findall(r'class="[^"]*(?:parte|bloco)-do-livro">([^<]+)<', html) == esperado
+    )
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_endereco_com_a_parte_pede_a_porta_so_aquela_parte():
+    _mock_site()
+    _mock_instrumentos()
+    da_parte = [n for n in NUMEROS if BLOCO_DA_AULA[n]["parte"] == 2]
+    lista = respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas", params={"site_id": SITE_ID, "parte": "2"}
+    ).mock(return_value=httpx.Response(200, json=[_linha(n) for n in da_parte]))
+
+    resposta = _dentro().get(
+        reverse("escola_aulas", kwargs={"curso": CURSO, "parte": "2"})
+    )
+    html = _texto(resposta)
+
+    assert resposta.status_code == 200
+    assert lista.calls.last.request.url.params["parte"] == "2"
+    assert re.findall(r'class="[^"]*(?:parte|bloco)-do-livro">([^<]+)<', html) == [
+        "Parte II",
+        "Bloco E",
+        "Bloco F",
+        "Bloco G",
+        "Bloco H",
+    ]
+    # E o caminho de volta para o curso inteiro continua a um clique.
+    assert 'href="/escola/profissional/aulas/"' in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_parte_que_nao_casa_com_a_encomenda_recusa_e_diz_onde_ela_esta():
+    """Endereço que aponta certo para a encomenda errada é pior que quebrado.
+
+    A porta recusa com 404; a tela pergunta de novo SEM a parte para saber em
+    qual a encomenda está de verdade (o `bloco.parte` do contrato, nunca o
+    texto cru da recusa), e devolve o endereço certo pronto para clicar.
+    """
+    _mock_site()
+    _mock_instrumentos()
+    errada = respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07",
+        params={"site_id": SITE_ID, "parte": "2"},
+    ).mock(
+        return_value=httpx.Response(
+            404,
+            json={
+                "detail": "a aula E07 não está na parte 2 do curso 'profissional': "
+                "ela está na parte 1. Troque a parte do endereço para 1."
+            },
+        )
+    )
+    certa = _mock_aula()
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "parte": "2", "numero": "E07"})
+    )
+    html = _texto(resposta)
+
+    assert resposta.status_code == 404
+    assert errada.call_count == 1 and certa.call_count == 1
+    assert "Essa encomenda não está na Parte II" in html
+    assert "Ela está na <b>Parte I</b>" in html
+    assert 'href="/escola/profissional/parte-1/aulas/E07/"' in html
+    # O recado cru da porta é para o robô, não para quem lê a tela.
+    assert "não está na parte 2 do curso" not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_editor_a_gravacao_e_a_publicacao_levam_o_curso_e_a_parte_a_porta():
+    _mock_site()
+    _mock_instrumentos()
+    caminho = f"{CURSOS}/cursos/{CURSO}/aulas/E07"
+    leitura = respx.get(caminho).mock(return_value=httpx.Response(200, json=_aula()))
+    gravacao = respx.put(caminho).mock(
+        return_value=httpx.Response(200, json=_aula(versao=9))
+    )
+    publicacao = respx.post(f"{caminho}/publicar").mock(
+        return_value=httpx.Response(200, json=_linha("E07", estado="publicada"))
+    )
+
+    cliente = _dentro()
+    endereco = {"curso": CURSO, "parte": "1", "numero": "E07"}
+    cliente.get(reverse("escola_aula", kwargs=endereco))
+    salvou = cliente.post(reverse("escola_aula_salvar", kwargs=endereco), _formulario())
+    publicou = cliente.post(
+        reverse("escola_aula_publicar", kwargs=endereco), {"confirmo": "1"}
+    )
+
+    for rota in (leitura, gravacao, publicacao):
+        assert rota.call_count >= 1
+        params = rota.calls.last.request.url.params
+        assert (params["site_id"], params["parte"]) == (SITE_ID, "1")
+    # E o POST-redirect-GET volta para o endereço com a parte, nunca sem ela.
+    assert salvou["Location"].startswith("/escola/profissional/parte-1/aulas/E07/")
+    assert publicou["Location"].startswith("/escola/profissional/parte-1/aulas/E07/")
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_tela_nunca_chama_as_operacoes_que_nao_sabem_de_curso():
+    """`listSiteLessons` e as três irmãs varrem o site inteiro.
+
+    Com dois cursos no mesmo site elas devolvem as aulas dos dois misturadas,
+    e nenhuma tela consegue dizer de qual curso cada linha é. Este guarda deixa
+    as quatro armadas e prova que nenhuma foi tocada.
+    """
+    _mock_site()
+    _mock_instrumentos()
+    sem_curso = [
+        respx.get(f"{CURSOS}/aulas").mock(return_value=httpx.Response(200, json=[])),
+        respx.get(f"{CURSOS}/aulas/E07").mock(
+            return_value=httpx.Response(200, json=_aula())
+        ),
+        respx.put(f"{CURSOS}/aulas/E07").mock(
+            return_value=httpx.Response(200, json=_aula())
+        ),
+        respx.post(f"{CURSOS}/aulas/E07/publicar").mock(
+            return_value=httpx.Response(200, json=_linha("E07"))
+        ),
+    ]
+    _mock_lista()
+    _mock_aula()
+    respx.put(f"{CURSOS}/cursos/{CURSO}/aulas/E07").mock(
+        return_value=httpx.Response(200, json=_aula())
+    )
+    respx.post(f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar").mock(
+        return_value=httpx.Response(200, json=_linha("E07", estado="publicada"))
+    )
+
+    cliente = _dentro()
+    cliente.get(reverse("escola_aulas", kwargs={"curso": CURSO}))
+    cliente.get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    cliente.post(
+        reverse("escola_aula_salvar", kwargs={"curso": CURSO, "numero": "E07"}),
+        _formulario(),
+    )
+    cliente.post(
+        reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"confirmo": "1"},
+    )
+
+    assert [rota.call_count for rota in sem_curso] == [0, 0, 0, 0]
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_curso_que_nao_existe_naquele_site_e_404_com_a_frase():
+    _mock_site()
+    respx.get(f"{CURSOS}/cursos/oficina/aulas", params={"site_id": SITE_ID}).mock(
+        return_value=httpx.Response(
+            404, json={"detail": "o curso 'oficina' não existe no site 'site-mesh'"}
+        )
+    )
+
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": "oficina"}))
+    html = _texto(resposta)
+
+    assert resposta.status_code == 404
+    assert "Não existe nenhum curso <b>oficina</b> nesta escola." in html
+    assert "site-mesh" not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_parte_sem_encomenda_nenhuma_diz_isso_em_vez_de_tela_vazia():
+    _mock_site()
+    _mock_instrumentos()
+    respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas", params={"site_id": SITE_ID, "parte": "3"}
+    ).mock(return_value=httpx.Response(200, json=[]))
+
+    resposta = _dentro().get(
+        reverse("escola_aulas", kwargs={"curso": CURSO, "parte": "3"})
+    )
+    html = _texto(resposta)
+
+    assert resposta.status_code == 200
+    assert "A Parte III deste curso ainda não tem nenhuma encomenda." in html
+    assert 'href="/escola/profissional/aulas/"' in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_encomenda_fora_das_tres_partes_e_avisada_e_nao_vira_curso_vazio():
+    """Parte fora do vocabulário do contrato não cabe em seção nenhuma.
+
+    A encomenda some das seções, e a tela precisa dizer isso em voz alta. O
+    que ela NÃO pode dizer é que o curso está vazio: ele tem encomenda, e
+    quem lê iria procurar do lado errado.
+    """
+    _mock_site()
+    _mock_instrumentos()
+    torta = _linha("E07")
+    torta["bloco"] = {"letra": "Z", "ordem": 99, "parte": 9}
+    _mock_lista([torta])
+
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO}))
+    html = _texto(resposta)
+
+    assert resposta.status_code == 200
+    assert "1 encomenda(s) não estão em nenhuma das três" in html
+    assert "Este curso ainda não tem nenhuma encomenda." not in html
+
+
+# ---------------------------------------------------------------------------
+# 3. SALVAR
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
@@ -333,12 +604,15 @@ def test_salvar_manda_a_encomenda_inteira_e_mostra_a_versao_nova():
     # acontece só na tela que vem depois, e ela já devolve a versão 8.
     salva = _aula(versao=8)
     _mock_aula(salva)
-    gravacao = respx.put(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
-        return_value=httpx.Response(200, json=salva)
-    )
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=salva))
 
     cliente = _dentro()
-    resposta = cliente.post(reverse("escola_aula_salvar", args=["E07"]), _formulario())
+    resposta = cliente.post(
+        reverse("escola_aula_salvar", kwargs={"curso": CURSO, "numero": "E07"}),
+        _formulario(),
+    )
 
     assert resposta.status_code == 302
     assert gravacao.call_count == 1
@@ -369,7 +643,7 @@ def test_a_recusa_da_porta_vira_frase_ao_lado_do_campo_e_devolve_o_rascunho():
     _mock_site()
     _mock_aula()
     _mock_instrumentos()
-    respx.put(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
+    respx.put(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
         return_value=httpx.Response(
             422,
             json={
@@ -396,7 +670,7 @@ def test_a_recusa_da_porta_vira_frase_ao_lado_do_campo_e_devolve_o_rascunho():
     )
 
     resposta = _dentro().post(
-        reverse("escola_aula_salvar", args=["E07"]),
+        reverse("escola_aula_salvar", kwargs={"curso": CURSO, "numero": "E07"}),
         _formulario(
             pausa_1_segundo="um minuto e meio",
             instrumento="x",
@@ -429,16 +703,16 @@ def test_salvar_com_a_sala_fora_do_ar_devolve_o_rascunho_e_nao_diz_que_salvou():
     """Fail-CLOSED na escrita: "não sei se gravou" é a verdade, e o texto fica
     na tela para tentar de novo, com as listas fechadas inteiras."""
     _mock_site()
-    respx.get(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
+    respx.get(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
         side_effect=httpx.ConnectError("caiu")
     )
     respx.get(f"{CURSOS}/instrumentos").mock(side_effect=httpx.ConnectError("caiu"))
-    respx.put(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
+    respx.put(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
         side_effect=httpx.ConnectError("caiu")
     )
 
     resposta = _dentro().post(
-        reverse("escola_aula_salvar", args=["E07"]),
+        reverse("escola_aula_salvar", kwargs={"curso": CURSO, "numero": "E07"}),
         _formulario(peca_pedido="Este texto não pode se perder."),
     )
     html = _texto(resposta)
@@ -452,7 +726,7 @@ def test_salvar_com_a_sala_fora_do_ar_devolve_o_rascunho_e_nao_diz_que_salvou():
 
 
 # ---------------------------------------------------------------------------
-# 3. PUBLICAR
+# 4. PUBLICAR
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
@@ -465,7 +739,7 @@ def test_publicar_chama_a_porta_e_mostra_a_data():
     # Publicar não lê a aula antes; a tela que vem depois já a lê publicada.
     _mock_aula(publicada)
     publicacao = respx.post(
-        f"{CURSOS}/aulas/E07/publicar", params={"site_id": SITE_ID}
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
     ).mock(
         return_value=httpx.Response(
             200, json=_linha("E07", estado="publicada", versao=3)
@@ -474,7 +748,8 @@ def test_publicar_chama_a_porta_e_mostra_a_data():
 
     cliente = _dentro()
     resposta = cliente.post(
-        reverse("escola_aula_publicar", args=["E07"]), {"confirmo": "1"}
+        reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"confirmo": "1"},
     )
 
     assert resposta.status_code == 302
@@ -493,11 +768,13 @@ def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
     _mock_site()
     _mock_aula()
     _mock_instrumentos()
-    publicacao = respx.post(f"{CURSOS}/aulas/E07/publicar").mock(
+    publicacao = respx.post(f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar").mock(
         return_value=httpx.Response(200, json=_linha("E07", estado="publicada"))
     )
 
-    resposta = _dentro().post(reverse("escola_aula_publicar", args=["E07"]), {})
+    resposta = _dentro().post(
+        reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}), {}
+    )
 
     assert resposta.status_code == 400
     assert publicacao.call_count == 0
@@ -506,7 +783,7 @@ def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
 
 
 # ---------------------------------------------------------------------------
-# 4. O TRAVESSÃO
+# 5. O TRAVESSÃO
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
@@ -517,16 +794,16 @@ def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
         "pedido": "O cliente quer um capacete — fechado.",
         "recall": "Lembre da aula passada – a dos studs.",
     }
-    respx.get(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
+    respx.get(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
         return_value=httpx.Response(200, json=_aula(textos=com_riscas, versao=2))
     )
-    gravacao = respx.put(f"{CURSOS}/aulas/E07", params={"site_id": SITE_ID}).mock(
-        return_value=httpx.Response(200, json=_aula(textos=com_riscas, versao=2))
-    )
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula(textos=com_riscas, versao=2)))
 
     cliente = _dentro()
     resposta = cliente.post(
-        reverse("escola_aula_salvar", args=["E07"]),
+        reverse("escola_aula_salvar", kwargs={"curso": CURSO, "numero": "E07"}),
         _formulario(peca_pedido=com_riscas["pedido"], peca_recall=com_riscas["recall"]),
     )
 
@@ -544,7 +821,7 @@ def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
 
 
 # ---------------------------------------------------------------------------
-# 5. O INSTRUMENTO
+# 6. O INSTRUMENTO
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
@@ -621,16 +898,44 @@ def test_instrumento_com_json_torto_nao_vai_para_a_porta():
     assert 'value="3"' in html
 
 
+@pytest.mark.django_db
+@respx.mock
+def test_a_volta_do_instrumento_leva_a_lista_ate_quando_a_tela_e_um_erro():
+    """O link de voltar é o de cima da tela, e vale nas TRÊS caras dela.
+
+    O instrumento não é de curso nenhum (o contrato não o escopa), então a
+    volta é para a lista do curso por onde se entra. Nas duas telas de erro
+    esse link fica fora de qualquer condição do gabarito: se o endereço não
+    chegar, ele vira `href=""` e recarrega a própria tela do erro.
+    """
+    respx.get(f"{CURSOS}/instrumentos/studs").mock(
+        side_effect=[
+            httpx.Response(404, json={"detail": "não existe"}),
+            httpx.ConnectError("caiu"),
+        ]
+    )
+
+    cliente = _dentro()
+    nao_existe = cliente.get(reverse("escola_instrumento", args=["studs"]))
+    caiu = cliente.get(reverse("escola_instrumento", args=["studs"]))
+
+    assert (nao_existe.status_code, caiu.status_code) == (404, 503)
+    for resposta in (nao_existe, caiu):
+        assert 'href="/escola/profissional/aulas/"' in _texto(resposta)
+
+
 # ---------------------------------------------------------------------------
-# 6. A SALA DE AULA FORA DO AR, EM TRÊS CARAS
+# 7. A SALA DE AULA FORA DO AR, EM TRÊS CARAS
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
 def test_com_a_sala_de_aula_fora_do_ar_a_lista_abre_com_a_frase():
     _mock_site()
-    respx.get(f"{CURSOS}/aulas").mock(side_effect=httpx.ConnectError("caiu"))
+    respx.get(f"{CURSOS}/cursos/{CURSO}/aulas").mock(
+        side_effect=httpx.ConnectError("caiu")
+    )
 
-    resposta = _dentro().get(reverse("escola_aulas"))
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO}))
     html = _texto(resposta)
 
     assert resposta.status_code == 503
@@ -643,11 +948,11 @@ def test_com_a_sala_de_aula_fora_do_ar_a_lista_abre_com_a_frase():
 @respx.mock
 def test_sem_token_aceito_a_tela_diz_que_a_sala_recusou_a_admin():
     _mock_site()
-    respx.get(f"{CURSOS}/aulas").mock(
+    respx.get(f"{CURSOS}/cursos/{CURSO}/aulas").mock(
         return_value=httpx.Response(401, json={"detail": "Unauthorized"})
     )
 
-    resposta = _dentro().get(reverse("escola_aulas"))
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO}))
     html = _texto(resposta)
 
     assert resposta.status_code == 503
@@ -660,9 +965,11 @@ def test_sem_token_aceito_a_tela_diz_que_a_sala_recusou_a_admin():
 def test_sem_o_par_no_ambiente_a_tela_diz_o_que_falta_sem_ir_a_rede(monkeypatch):
     monkeypatch.delenv("CURSOS_API_TOKEN")
     _mock_site()
-    porta = respx.get(f"{CURSOS}/aulas").mock(return_value=httpx.Response(200, json=[]))
+    porta = respx.get(f"{CURSOS}/cursos/{CURSO}/aulas").mock(
+        return_value=httpx.Response(200, json=[])
+    )
 
-    resposta = _dentro().get(reverse("escola_aulas"))
+    resposta = _dentro().get(reverse("escola_aulas", kwargs={"curso": CURSO}))
     html = _texto(resposta)
 
     assert resposta.status_code == 503
@@ -675,18 +982,20 @@ def test_sem_o_par_no_ambiente_a_tela_diz_o_que_falta_sem_ir_a_rede(monkeypatch)
 @respx.mock
 def test_a_encomenda_que_nao_existe_e_404_e_nao_500():
     _mock_site()
-    respx.get(f"{CURSOS}/aulas/E99", params={"site_id": SITE_ID}).mock(
+    respx.get(f"{CURSOS}/cursos/{CURSO}/aulas/E99", params={"site_id": SITE_ID}).mock(
         return_value=httpx.Response(404, json={"detail": "a aula E99 não existe"})
     )
 
-    resposta = _dentro().get(reverse("escola_aula", args=["E99"]))
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E99"})
+    )
 
     assert resposta.status_code == 404
     assert "Essa encomenda não existe" in _texto(resposta)
 
 
 # ---------------------------------------------------------------------------
-# 7. A PORTA CONTINUA SENDO A PORTA
+# 8. A PORTA CONTINUA SENDO A PORTA
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
@@ -694,7 +1003,7 @@ def test_quem_nao_esta_na_lista_nao_ve_o_editor():
     _mock_site()
     porta = _mock_lista()
 
-    resposta = _dentro(DE_FORA).get(reverse("escola_aulas"))
+    resposta = _dentro(DE_FORA).get(reverse("escola_aulas", kwargs={"curso": CURSO}))
 
     assert resposta.status_code == 404
     assert porta.call_count == 0
