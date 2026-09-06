@@ -83,10 +83,19 @@ fi
 # commit; a regra, a recusa que ensina e a escapatória moram em
 # `ci/registro_no_commit.py`. Só o exit 1 dele prende o commit: python
 # ausente ou git engasgado NUNCA viram commit preso — quem faz valer é a porta.
+#
+# A checagem de existência antes da chamada existe porque este arquivo é
+# COMPARTILHADO por todas as bancadas (o `core.hooksPath` aponta o clone
+# principal), enquanto o script vem da árvore de trabalho de cada uma: bancada
+# criada antes do PR que cria o script tem o gancho novo e a árvore velha, e o
+# erro do Python na tela contradiz o que este comentário promete, fazendo robô
+# investigar defeito que não existe.
 # =============================================================================
-python ci/registro_no_commit.py
-codigo_do_degrau=$?
-if [[ "$codigo_do_degrau" -eq 1 ]]; then
-  exit 1
+if [[ -f ci/registro_no_commit.py ]]; then
+  python ci/registro_no_commit.py
+  codigo_do_degrau=$?
+  if [[ "$codigo_do_degrau" -eq 1 ]]; then
+    exit 1
+  fi
 fi
 exit 0
