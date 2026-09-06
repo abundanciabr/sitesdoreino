@@ -23,16 +23,33 @@
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
-0. **A ordem do rito, desde 31/08/2026: abra o PR PRIMEIRO, registre depois —
-   e no MESMO ramo.** O registro de uma entrega embarca no próprio PR que a
-   faz: commite o trabalho, faça `push`, abra o PR, leia o número que o `gh`
-   devolve, e só então escreva o registro citando esse número
-   (`armadilhas/185`). O portão do pouso confere o embarque e recusa PR de
-   entrega sem o próprio recibo a bordo (`ci/mergear.py`); PR que só escritura
-   (`painel/` e/ou `fila/`) é isento. Registro de fato pós-merge (veredito de
-   deploy, incidente) continua sendo PR próprio, só de livro.
-1. Crie **um arquivo novo** em `registros/`, nome `AAAAMMDD-NNN-slug.js`. O
-   `NNN` **se pede ao almoxarife — não se escolhe:**
+0. **O caminho é `make pr`, e ele faz o rito inteiro (desde 06/09/2026).**
+   Commit, push, PR aberto, número pedido ao almoxarife, registro gerado com os
+   11 campos que saem do próprio PR, gerador do painel, e o recibo embarcado num
+   segundo commit no MESMO ramo. Um comando:
+
+   ```bash
+   make pr TITULO="ci: o que muda, para leigo" MENSAGEM=mensagem.txt \
+           CORPO=corpo.md ARQUIVOS="ci/pr.py ci/tests/test_pr.py" DETALHE=detalhe.txt
+   ```
+
+   Ele **recusa** com `detalhe` de menos de 80 caracteres: os 11 campos
+   derivados a máquina preenche, mas a única frase que o mantenedor lê é
+   julgamento de quem fez o trabalho. Falhou no meio? `CONTINUAR=1` relê o
+   estado (commit feito? PR aberto? recibo a bordo?) e pula o que já está
+   pronto. Ele **não arma espera nem pouso**: devolve o número do PR, e quem
+   arma é a maestro (`armadilhas/364`). Contrato completo: `python ci/pr.py --help`.
+
+   **A ordem do rito, desde 31/08/2026: o PR PRIMEIRO, o registro depois — e no
+   MESMO ramo.** É por isso que o `make pr` existe: o registro de uma entrega só
+   pode citar o número do PR depois que o `gh` o devolve (`armadilhas/185`). O
+   portão do pouso confere o embarque e recusa PR de entrega sem o próprio
+   recibo a bordo (`ci/mergear.py`); PR que só escritura (`painel/` e/ou
+   `fila/`) é isento. Registro de fato pós-merge (veredito de deploy, incidente)
+   continua sendo PR próprio, só de livro.
+1. **À mão, quando o `make pr` não serve** (registro pós-merge, resposta a um
+   pedido, correção de rumo): crie **um arquivo novo** em `registros/`, nome
+   `AAAAMMDD-NNN-slug.js`. O `NNN` **se pede ao almoxarife — não se escolhe:**
 
    ```bash
    git fetch origin
@@ -48,6 +65,8 @@
    a pasta, as duas veem o mesmo livre, e o Git junta os dois arquivos sem ter o
    que reclamar (nomes diferentes, hunks diferentes). Medido em 29/08/2026: 82
    números gastos no livro, só 39 pedidos ao almoxarife, três colisões no dia.
+   **Pelo `make pr` esse pedido acontece sozinho**, no passo 6, e nunca duas
+   vezes: era chamado duas vezes na mesma sessão antes de ele existir.
    O `DIA` sai em **UTC de propósito** (`armadilhas/158`); o fallback para
    quando não houver rede está em `armadilhas/179`.
 
