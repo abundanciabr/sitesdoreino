@@ -769,7 +769,13 @@ frase por frase, com o número da linha. A recusa do portão já traz as quatro
 trocas com exemplo, na mesma tela — não é preciso voltar aqui.
 
 **Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` (roda em
-todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`.
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`
+· e, desde 06/09/2026, NA HORA DA ESCRITA: o gancho `PreToolUse` de
+`.claude/settings.json` → `ci/muralha_do_travessao_na_escrita.py` recusa o
+Write/Edit que aumentaria os travessões de um arquivo público, com as quatro
+trocas na própria recusa — o robô reescreve antes de o texto entrar no arquivo,
+não depois de tudo pronto. O que o gancho não vê (escrita por shell, texto já
+no banco) continua com o portão do PR · `ci/tests/test_muralha_do_travessao_na_escrita.py`.
 
 
 ## Depois de todo merge que dispara deploy
