@@ -1,7 +1,7 @@
 """`/admin/escola/<curso>/parte-N/aulas/` — o editor de encomendas do curso,
-onde o mantenedor e a professora escrevem as 34 aulas: as 16 peças, o roteiro e
-a ficha do Guia do Mentor, as pausas, o instrumento cabível, o "Aceito quando",
-o quiz, o vídeo por link, e o botão de publicar.
+onde o mantenedor e a professora escrevem as 34 aulas: as 16 peças, o roteiro,
+a ficha do Guia do Mentor, a vídeo-aula em texto, as pausas, o instrumento
+cabível, o "Aceito quando", o quiz, o vídeo por link, e o botão de publicar.
 
 Degrau 1.5 do `docs/decisoes/PLANO-CELULA-CURSOS.md` (§6, o editor).
 
@@ -104,34 +104,45 @@ INSTRUMENTO = "admin/escola_instrumento.html"
 # ---------------------------------------------------------------------------
 # O DICIONÁRIO DA TELA — os vocabulários fechados do contrato, em português
 # ---------------------------------------------------------------------------
-# As 18 peças NA ORDEM CANÔNICA do contrato (`TipoDePeca`): as 16 da anatomia e
-# as duas internas, que o aluno nunca vê. A tela desenha as peças na ordem em
-# que a porta as devolve (promessa do contrato), e este mapa dá o nome de cada
-# uma; o formulário as devolve nesta mesma ordem. Um tipo que a porta mandar e
-# este mapa não conhecer aparece com o slug cru, que é feio mas honesto.
+# As peças NA ORDEM CANÔNICA do contrato (`TipoDePeca`), cada uma com a sua
+# CATEGORIA. As categorias são TRÊS, e não duas: as 16 da anatomia, que o aluno
+# lê em sequência; as 2 internas, que ele nunca vê; e a vídeo-aula em texto, que
+# ele vê FORA da sequência, por um botão embaixo do capítulo. O terceiro campo
+# era o booleano `interna` e virou o nome da categoria por um motivo só: um
+# booleano sabe dizer duas coisas, e agora são três.
+#
+# A tela desenha as peças na ordem em que a porta as devolve (promessa do
+# contrato), e este mapa dá o nome de cada uma; o formulário as devolve nesta
+# mesma ordem. Um tipo que a porta mandar e este mapa não conhecer aparece com o
+# slug cru, que é feio mas honesto.
 # `tests/test_editor_de_aulas.py` confere que esta ordem é a do contrato.
+SEQUENCIA, INTERNA, SOB_DEMANDA = "sequencia", "interna", "sob_demanda"
 PECAS = (
-    ("pedido", "O pedido", False),
-    ("em_jogo", "O que está em jogo", False),
-    ("voce_vai_conseguir", "Você vai conseguir", False),
-    ("recall", "Recall", False),
-    ("par_de_comparacao", "Par de comparação", False),
-    ("erro_produtivo", "Erro produtivo", False),
-    ("eu_faco", "Eu faço", False),
-    ("nos_fazemos", "Nós fazemos", False),
-    ("voce_faz", "Você faz", False),
-    ("drills", "Drills", False),
-    ("erros_classicos", "Erros clássicos", False),
-    ("regra_do_padrao", "Regra do Padrão", False),
-    ("critica_de_atelier", "Crítica de ateliê", False),
-    ("checkpoint", "Checkpoint", False),
-    ("pagina_do_portfolio", "Página do portfólio", False),
-    ("dicionario_cartao_respostas", "Dicionário, cartão e respostas", False),
-    ("roteiro", "Roteiro da aula", True),
-    ("guia_do_mentor", "Ficha do Guia do Mentor", True),
+    ("pedido", "O pedido", SEQUENCIA),
+    ("em_jogo", "O que está em jogo", SEQUENCIA),
+    ("voce_vai_conseguir", "Você vai conseguir", SEQUENCIA),
+    ("recall", "Recall", SEQUENCIA),
+    ("par_de_comparacao", "Par de comparação", SEQUENCIA),
+    ("erro_produtivo", "Erro produtivo", SEQUENCIA),
+    ("eu_faco", "Eu faço", SEQUENCIA),
+    ("nos_fazemos", "Nós fazemos", SEQUENCIA),
+    ("voce_faz", "Você faz", SEQUENCIA),
+    ("drills", "Drills", SEQUENCIA),
+    ("erros_classicos", "Erros clássicos", SEQUENCIA),
+    ("regra_do_padrao", "Regra do Padrão", SEQUENCIA),
+    ("critica_de_atelier", "Crítica de ateliê", SEQUENCIA),
+    ("checkpoint", "Checkpoint", SEQUENCIA),
+    ("pagina_do_portfolio", "Página do portfólio", SEQUENCIA),
+    ("dicionario_cartao_respostas", "Dicionário, cartão e respostas", SEQUENCIA),
+    ("roteiro", "Roteiro da aula", INTERNA),
+    ("guia_do_mentor", "Ficha do Guia do Mentor", INTERNA),
+    ("videoaula_em_texto", "A vídeo-aula, em texto", SOB_DEMANDA),
 )
 NOME_DA_PECA = {tipo: nome for tipo, nome, _ in PECAS}
-PECAS_INTERNAS = frozenset(tipo for tipo, _, interna in PECAS if interna)
+PECAS_INTERNAS = frozenset(t for t, _, categoria in PECAS if categoria == INTERNA)
+PECAS_SOB_DEMANDA = frozenset(
+    t for t, _, categoria in PECAS if categoria == SOB_DEMANDA
+)
 
 TIPOS_DE_PAUSA = (
     ("erro_produtivo", "Erro produtivo"),
@@ -365,6 +376,7 @@ def _linha_de_peca(tipo: str, texto: str) -> dict:
         "tipo": tipo,
         "nome": NOME_DA_PECA.get(tipo, tipo),
         "interna": tipo in PECAS_INTERNAS,
+        "sob_demanda": tipo in PECAS_SOB_DEMANDA,
         "texto": texto,
         "erro": "",
     }

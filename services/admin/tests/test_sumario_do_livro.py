@@ -263,8 +263,10 @@ def test_as_16_pecas_numeradas_sao_as_do_contrato_na_ordem():
 
     assert list(tela.PECAS_NUMERADAS) == do_contrato[:16]
     # As duas internas ficam de fora: o sumário não as tem, e o importador
-    # nunca as toca.
-    assert do_contrato[16:] == ["roteiro", "guia_do_mentor"]
+    # nunca as toca. A fatia é fechada em 18 de propósito: o contrato pode
+    # ganhar peça depois das duas (a vídeo-aula em texto ganhou), e isso não
+    # muda nada aqui. O que este teste protege é a fronteira do número 16.
+    assert do_contrato[16:18] == ["roteiro", "guia_do_mentor"]
 
 
 # ---------------------------------------------------------------------------
