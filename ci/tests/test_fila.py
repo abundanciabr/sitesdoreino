@@ -678,3 +678,116 @@ def test_validar_DIZ_quando_nao_conseguiu_conferir(tmp_path, monkeypatch, capsys
     )
     assert fila.cmd_validar(tmp_path) == 0
     assert "NÃO CONSEGUI CONFERIR" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# A imutabilidade do arquivo de tarefa — armadilhas/356 (TAR-206)
+#
+# "Nada se edita, corrigir é acrescentar" é lei desde 29/08/2026 e ficou sem
+# ninguém que a fizesse valer até 05/09/2026. Estes testes são os DIFFS DE
+# MENTIRA que o guarda tem de julgar, e eles rodam contra um repositório git de
+# verdade, com base e ramo: o que se está medindo é o diff, e um diff fingido
+# não provaria nada (armadilhas/132).
+#
+# A assimetria, que é o miolo do guarda, está aqui inteira:
+#   tarefa nova .......... passa (criar não é editar)
+#   só o `depende_de` .... passa (o único campo sem conserto append-only)
+#   qualquer outro campo . REPROVA
+#   tarefa apagada ....... REPROVA (apagar e recriar é editar por outra porta)
+# ---------------------------------------------------------------------------
+
+
+def _commitar(repo: Path, mensagem: str) -> None:
+    _git("add", "-A", cwd=repo)
+    _git("commit", "-m", mensagem, cwd=repo)
+
+
+def _reescrever(repo: Path, nome: str, **campos) -> None:
+    caminho = repo / "fila" / "tarefas" / f"{nome}.json"
+    dados = json.loads(caminho.read_text(encoding="utf-8"))
+    dados.update(campos)
+    caminho.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
+
+
+@pytest.fixture()
+def fila_na_base(tmp_path):
+    """Um repo com a TAR-001 já na `main`, e o ramo do agente pronto para mentir."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "teste", cwd=repo)
+    montar(repo, [tarefa(deps=["TAR-009"])])
+    _commitar(repo, "a fila nasce")
+    _git("checkout", "-b", "agent/fila/mentira", cwd=repo)
+    return repo
+
+
+def test_mudar_o_titulo_de_tarefa_existente_REPROVA(fila_na_base):
+    """O caso que mais dói: a tarefa muda debaixo de quem já a pegou."""
+    _reescrever(fila_na_base, "001-exemplo", titulo="Outra coisa completamente")
+    _commitar(fila_na_base, "mentira: o titulo virou outro")
+    problemas = fila.conferir_imutabilidade(fila_na_base, "main")
+    assert len(problemas) == 1
+    assert "titulo" in problemas[0]
+    assert fila.cmd_imutabilidade(fila_na_base, "main") == 1
+
+
+def test_mudar_so_o_depende_de_PASSA(fila_na_base):
+    """A exceção, e a razão dela: nenhum evento conserta uma corrente errada."""
+    _reescrever(fila_na_base, "001-exemplo", depende_de=["TAR-004"])
+    _commitar(fila_na_base, "conserta a corrente")
+    assert fila.conferir_imutabilidade(fila_na_base, "main") == []
+    assert fila.cmd_imutabilidade(fila_na_base, "main") == 0
+
+
+def test_apagar_o_arquivo_da_tarefa_REPROVA(fila_na_base):
+    """Apagar e recriar é editar por outra porta."""
+    (fila_na_base / "fila" / "tarefas" / "001-exemplo.json").unlink()
+    _commitar(fila_na_base, "mentira: some com a tarefa")
+    problemas = fila.conferir_imutabilidade(fila_na_base, "main")
+    assert len(problemas) == 1
+    assert "APAGADO" in problemas[0]
+    assert fila.cmd_imutabilidade(fila_na_base, "main") == 1
+
+
+def test_tarefa_nova_passa_livre(fila_na_base):
+    """Criar não é editar — senão o guarda travaria a fila inteira."""
+    caminho = fila_na_base / "fila" / "tarefas" / "002-outra.json"
+    caminho.write_text(
+        json.dumps(tarefa("002", "outra"), ensure_ascii=False), encoding="utf-8"
+    )
+    _commitar(fila_na_base, "tarefa nova")
+    assert fila.conferir_imutabilidade(fila_na_base, "main") == []
+
+
+def test_renomear_o_arquivo_da_tarefa_REPROVA(fila_na_base):
+    """Renomear é a terceira porta da mesma edição: `--no-renames` a desdobra
+    em remoção mais adição, e a remoção reprova."""
+    tarefas = fila_na_base / "fila" / "tarefas"
+    (tarefas / "001-exemplo.json").rename(tarefas / "001-com-outro-nome.json")
+    _commitar(fila_na_base, "mentira: renomeia a tarefa")
+    problemas = fila.conferir_imutabilidade(fila_na_base, "main")
+    assert any("APAGADO" in p for p in problemas)
+
+
+def test_a_recusa_ENSINA_o_caminho_certo(fila_na_base, capsys):
+    """Recusa que não ensina vira recusa contornada."""
+    _reescrever(fila_na_base, "001-exemplo", despacho="outro despacho qualquer")
+    _commitar(fila_na_base, "mentira: reescreve o despacho")
+    assert fila.cmd_imutabilidade(fila_na_base, "main") == 1
+    saida = capsys.readouterr().out
+    assert "depende_de" in saida
+    assert "fila.py criar" in saida
+    assert "armadilhas/356" in saida
+
+
+def test_sem_repositorio_git_e_ERROR_e_nao_um_OK(tmp_path):
+    """Não medir nunca é passar (RETROSPECTIVA-FASE-D §1)."""
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.cmd_imutabilidade(tmp_path, "main")
+
+
+def test_base_que_nao_existe_e_ERROR(fila_na_base):
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.conferir_imutabilidade(fila_na_base, "uma-base-que-nunca-existiu")
