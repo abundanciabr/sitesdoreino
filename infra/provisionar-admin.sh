@@ -41,6 +41,13 @@
 # O que TEM de ser diferente é o token DESTE par em relação aos outros pares
 # (funil, sugestoes) — o script confere isso no fim.
 #
+# E ESTA CÉLULA TAMBÉM É PROVEDORA, desde 06/09/2026: a `pages` pergunta aqui
+# quem é administrador da escola, para abrir a fila da conferência do portfólio.
+# Quem prova quem chama é `TOKENS_ACEITOS_PAGES`, e este roteiro a RELÊ do
+# arquivo vivo em vez de regerar (o porquê está na trava de deriva, mais
+# abaixo). Quem abre esse par nos dois lados, sem rotacionar nada, é
+# `infra/provisionar-par-do-portfolio-com-a-admin.sh`.
+#
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só
 # nasce se faltar, o env antigo vira `.bak-<epoch>` antes de ser reescrito, e
 # as linhas na identidade são ATUALIZADAS em vez de duplicadas — chave repetida
@@ -51,8 +58,13 @@ set -u
 
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
-cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
-[ -f docker-compose.yml ]  || parar "não achei docker-compose.yml em /opt/plataforma."
+# A pasta da plataforma, com o mesmo nome de variável dos roteiros mais novos
+# desta casa. O padrão continua sendo `/opt/plataforma`, e nada muda para quem
+# roda na VPS; o que ela permite é provar este roteiro numa VPS de mentira, que
+# é a evidência que esta casa exige de quem mexe em provisionamento.
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
+[ -f docker-compose.yml ]  || parar "não achei docker-compose.yml em $RAIZ."
 [ -f env/identidade.env ]  || parar "não achei env/identidade.env — a identidade precisa estar provisionada antes (é dela que eu herdo a lista de quem entra, e é nela que registro o token do par)."
 
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
@@ -86,7 +98,19 @@ esac
 # Por que a lista mora aqui em vez de ser derivada do heredoc: este script roda
 # na VPS, onde não há Python nem a suíte de testes — só shell puro.
 # ---------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+# A OITAVA CHAVE ENTROU EM 06/09/2026, e nela esta célula é o PROVEDOR, não o
+# consumidor. A `pages` passou a perguntar aqui quem é administrador da escola,
+# para abrir a fila da conferência do portfólio (`contracts/admin.openapi.yaml`,
+# operação `isAdministrator`), e quem prova quem chama é `TOKENS_ACEITOS_PAGES`,
+# lida por `config/settings.py`.
+#
+# ELA É A ÚNICA DA LISTA QUE ESTE ROTEIRO NÃO REGERA: o valor é RELIDO do
+# arquivo vivo e regravado igual. Regerar rotacionaria um token em uso, e a fila
+# do portfólio responderia 401 até a `pages` ser reprovisionada. Aprender a
+# chave sem relê-la seria a `armadilhas/111` com outro nome. Ela só nasce aqui
+# quando falta dos dois lados, como marcador, até
+# `infra/provisionar-par-do-portfolio-com-a-admin.sh` alinhar os dois envs.
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -116,6 +140,16 @@ else echo "  env/admin.env ................ não existe"; fi
 if grep -q "^TOKENS_ACEITOS_ADMIN=" env/identidade.env
 then echo "  par admin na identidade ...... já existe (atualizo o valor)"
 else echo "  par admin na identidade ...... não existe"; fi
+# O par em que esta célula é PROVEDORA: quem pergunta é a `pages`, e o valor é
+# RELIDO do arquivo vivo em vez de regerado (ver a lista da trava, lá em cima).
+# Faltando dos dois lados, nasce um marcador, e o roteiro do par o adota.
+if [ -f env/admin.env ]; then T_PAGES="$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)"; else T_PAGES=""; fi
+if [ -n "$T_PAGES" ]
+then echo "  par pages na admin ........... já existe (releio e regravo igual, sem rotacionar)"
+else
+  T_PAGES="$(openssl rand -hex 32)"
+  echo "  par pages na admin ........... não existe (gravo um marcador; quem alinha os dois lados é o roteiro do par)"
+fi
 echo "  lista de admins .............. herdada de env/identidade.env (não digitei nada)"
 echo
 
@@ -151,6 +185,7 @@ SCRIPT_NAME=/admin
 IDENTIDADE_API_URL=http://identidade:8000/interno
 IDENTIDADE_API_TOKEN=$TOKEN_ADMIN
 ADMIN_EMAILS=$STAFF
+TOKENS_ACEITOS_PAGES=$T_PAGES
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -177,7 +212,7 @@ por_linha env/identidade.env TOKENS_COMPLETOS_ADMIN "$TOKEN_ADMIN"
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... OK"; else echo "  banco admin_db ............... FALTANDO"; fi
-echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 7)"
+echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 8)"
 echo "  dono/modo do env ............. $(stat -c '%U:%G %a' env/admin.env) (igual ao identidade.env: $(stat -c '%U:%G %a' env/identidade.env))"
 
 faltou=0
@@ -190,6 +225,14 @@ for chave in IDENTIDADE_API_URL IDENTIDADE_API_TOKEN ADMIN_EMAILS; do
   then echo "  admin.env / $chave ... OK"
   else echo "  admin.env / $chave ... FALTANDO"; faltou=1; fi
 done
+
+# A CONFERÊNCIA nº 1b: o par em que esta célula é PROVEDORA sobreviveu à
+# reescrita, com o MESMO valor que estava no arquivo. Se ele sumir ou mudar, a
+# fila da conferência do portfólio passa a responder 401 para todo mundo, e o
+# sintoma é indistinguível de "ninguém tem permissão" (`armadilhas/111`).
+if [ -n "$T_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$T_PAGES" ]
+then echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK"
+else echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO"; faltou=1; fi
 
 # nº 2: os dois degraus do par, do lado da identidade.
 for chave in TOKENS_ACEITOS_ADMIN TOKENS_COMPLETOS_ADMIN; do
