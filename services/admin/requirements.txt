@@ -18,3 +18,13 @@ black==24.10.0
 # identidade de verdade no ar — e suite que depende de outra celula fica
 # vermelha por motivo alheio.
 respx==0.23.1
+# A porta de MAQUINA (`config/api.py`). Mesma versao das celulas vizinhas de
+# proposito: versoes diferentes do django-ninja emitem OpenAPI com diferencas
+# cosmeticas, e o freeze de contrato compara byte a byte (`armadilhas/071`).
+django-ninja==1.3.0
+# O freeze de contrato importa PyYAML para comparar o congelado com o vivo. Ele
+# entra AQUI, no mesmo PR em que a celula passa a ter contrato: sem esta linha,
+# o `contrato/admin` termina em `ERROR PyYAML indisponivel` no runner, enquanto
+# o `make ci` local fica VERDE porque a maquina de quem desenvolve tem PyYAML
+# global (`armadilhas/096`, a mesma que a `pages` topou).
+PyYAML==6.0.2
