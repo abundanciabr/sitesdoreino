@@ -271,8 +271,28 @@ def test_devolvida_volta_para_a_fila(tmp_path):
 
 
 def test_bloqueada_pelo_evento_carrega_o_motivo(tmp_path):
-    e = estados_de(tmp_path, [tarefa()], [evento(tipo="bloqueada", detalhe="falta decisão do dono")])
-    assert e["TAR-001"] == {"estado": fila.BLOQUEADA, "motivo": "falta decisão do dono", "quem": "sessao-a"}
+    e = estados_de(
+        tmp_path,
+        [tarefa()],
+        [evento(tipo="bloqueada", detalhe="falta decisão do dono", espera="mantenedor")],
+    )
+    assert e["TAR-001"] == {
+        "estado": fila.BLOQUEADA,
+        "motivo": "falta decisão do dono",
+        "quem": "sessao-a",
+        "espera": "mantenedor",
+    }
+
+
+def test_bloqueada_por_evento_antigo_nao_inventa_quem_destrava(tmp_path):
+    """Sem `espera` declarado, o estado sai com None — nunca com 'fila'.
+
+    "Ninguém declarou" e "a fila resolve" são respostas diferentes, e fundi-las
+    esconderia do dono uma parada que talvez fosse dele. Quem cobra a declaração
+    é `cmd_validar`, em todo bloqueio vivo.
+    """
+    e = estados_de(tmp_path, [tarefa()], [evento(tipo="bloqueada", detalhe="travou")])
+    assert e["TAR-001"]["espera"] is None
 
 
 def test_concluida_e_terminal(tmp_path):
@@ -282,7 +302,14 @@ def test_concluida_e_terminal(tmp_path):
 
 def test_dependencia_aberta_bloqueia_por_conta(tmp_path):
     e = estados_de(tmp_path, [tarefa("001", "a"), tarefa("002", "b", deps=["TAR-001"])])
-    assert e["TAR-002"] == {"estado": fila.BLOQUEADA, "motivo": "esperando TAR-001", "quem": None}
+    # `espera` sai calculado como `fila`: esta trava se desfaz sozinha quando a
+    # de cima terminar, e por isso nunca é assunto do mantenedor.
+    assert e["TAR-002"] == {
+        "estado": fila.BLOQUEADA,
+        "motivo": "esperando TAR-001",
+        "quem": None,
+        "espera": fila.ESPERA_A_FILA,
+    }
 
 
 def test_dependencia_concluida_libera(tmp_path):
@@ -399,6 +426,7 @@ def test_bloquear_com_motivo_escreve_o_evento_e_o_estado_calculado_muda(tmp_path
     args = argparse.Namespace(
         tarefa="TAR-001", quem="sessao-a",
         motivo="espera o passo do mantenedor na VPS",
+        espera=fila.ESPERA_O_MANTENEDOR,
     )
     assert fila.cmd_bloquear(tmp_path, args) == 0
     escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-bloqueada.json"))
@@ -423,7 +451,10 @@ def test_bloquear_tarefa_que_ja_terminou_recusa(tmp_path, monkeypatch, capsys):
     )
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
-    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="tarde demais")
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a", motivo="tarde demais",
+        espera=fila.ESPERA_A_FILA,
+    )
     assert fila.cmd_bloquear(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
     assert "já terminou" in capsys.readouterr().out
@@ -437,7 +468,10 @@ def test_bloquear_solta_a_reserva_no_servidor(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     soltas = []
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda raiz, tid: soltas.append(tid))
-    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="a porta não existe")
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a", motivo="a porta não existe",
+        espera=fila.ESPERA_A_FILA,
+    )
     assert fila.cmd_bloquear(tmp_path, args) == 0
     assert soltas == ["TAR-001"]
 
@@ -451,9 +485,151 @@ def test_bloquear_recusa_no_espelho(tmp_path, monkeypatch, capsys):
         fila, "_parar_se_for_o_espelho",
         lambda acao, raiz: f"🧱 RECUSADO: {acao} no clone principal",
     )
-    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="qualquer um")
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a", motivo="qualquer um",
+        espera=fila.ESPERA_A_FILA,
+    )
     assert fila.cmd_bloquear(tmp_path, args) == 1
     assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
+    assert "clone principal" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# QUEM DESTRAVA UMA PARADA — o campo `espera` (06/09/2026)
+#
+# O que estes guardam: que nenhuma tarefa PARADA fique sem dizer quem a tira
+# dali. Sem isso o painel do dono volta a empilhar, no mesmo bloco de urgência,
+# o que espera uma decisão dele e o que espera só a fila andar — que foi
+# exatamente o estado medido em 06/09/2026 (27 paradas, 6 dele).
+# ---------------------------------------------------------------------------
+
+
+def test_parada_sem_dizer_quem_destrava_reprova(tmp_path, capsys):
+    montar(tmp_path, [tarefa()], [evento(tipo="bloqueada", detalhe="travou")])
+    assert fila.cmd_validar(tmp_path) == 1
+    assert "quem destrava" in capsys.readouterr().out
+
+
+def test_parada_que_declarou_quem_destrava_passa(tmp_path):
+    montar(
+        tmp_path,
+        [tarefa()],
+        [evento(tipo="bloqueada", detalhe="travou", espera="mantenedor")],
+    )
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_bloqueio_ja_superado_nao_e_cobrado(tmp_path):
+    """A régua é o estado de HOJE, não uma data de corte no código.
+
+    Os 22 eventos `bloqueada` que a fila já tinha em tarefas que seguiram
+    adiante são história encerrada, e cobrar deles exigiria reescrever evento —
+    que esta fila não faz. O que não pode existir é tarefa PARADA sem dono.
+    """
+    montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(tipo="bloqueada", hora="10:00:00", detalhe="travou"),
+            evento(tipo="devolvida", hora="11:00:00"),
+        ],
+    )
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_dependencia_aberta_nao_precisa_declarar_nada(tmp_path):
+    """Ela já sai calculada como `fila`: ninguém escreveu, ninguém precisa."""
+    montar(tmp_path, [tarefa("001", "a"), tarefa("002", "b", deps=["TAR-001"])])
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_espera_com_valor_inventado_reprova(tmp_path):
+    montar(
+        tmp_path,
+        [tarefa()],
+        [evento(tipo="bloqueada", detalhe="travou", espera="talvez")],
+    )
+    _, _, erros = carregar(tmp_path)
+    assert any("'talvez'" in e for e in erros)
+
+
+def test_espera_fora_de_um_bloqueio_reprova(tmp_path):
+    """Quem destrava só faz sentido para quem está travado."""
+    montar(tmp_path, [tarefa()], [evento(espera="mantenedor")])
+    _, _, erros = carregar(tmp_path)
+    assert any("só existe em evento 'bloqueada'" in e for e in erros)
+
+
+# ---------------------------------------------------------------------------
+# Cancelar: o segundo estado que não tinha verbo (06/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_cancelar_escreve_o_evento_e_o_estado_calculado_muda(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a", motivo="o plano mudou, substituta já criada"
+    )
+    assert fila.cmd_cancelar(tmp_path, args) == 0
+    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-cancelada.json"))
+    assert len(escrito) == 1
+    assert json.loads(escrito[0].read_text(encoding="utf-8"))["detalhe"].startswith("o plano")
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == [], erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CANCELADA
+
+
+def test_cancelar_sem_motivo_recusa(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="   ")
+    assert fila.cmd_cancelar(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
+    assert "sem motivo" in capsys.readouterr().out
+
+
+def test_cancelar_avisa_quem_vai_ficar_preso_para_sempre(tmp_path, monkeypatch, capsys):
+    """Dependência só se destrava CONCLUÍDA: quem dependia da cancelada trava
+    para sempre. Dizer isso antes é o que separa uma decisão de uma surpresa —
+    foi assim que a TAR-060 caiu, em 31/08/2026."""
+    montar(tmp_path, [tarefa("001", "a"), tarefa("002", "b", deps=["TAR-001"])])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="não vai mais ser feita")
+    assert fila.cmd_cancelar(tmp_path, args) == 0
+    assert "TAR-002" in capsys.readouterr().out
+
+
+def test_cancelar_tarefa_que_ja_terminou_recusa(tmp_path, monkeypatch, capsys):
+    montar(
+        tmp_path,
+        [tarefa()],
+        [evento(tipo="concluida", evidencia="https://github.com/x/y/pull/9",
+                verificado_em="2026-08-29")],
+    )
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="tarde demais")
+    assert fila.cmd_cancelar(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
+    assert "já terminou" in capsys.readouterr().out
+
+
+def test_cancelar_recusa_no_espelho(tmp_path, monkeypatch, capsys):
+    """Como `concluir` e `bloquear`: o comprovante nasce na bancada
+    (armadilhas/192), senão o PR viaja sem ele."""
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(
+        fila, "_parar_se_for_o_espelho",
+        lambda acao, raiz: f"🧱 RECUSADO: {acao} no clone principal",
+    )
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="qualquer um")
+    assert fila.cmd_cancelar(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*cancelada*"))
     assert "clone principal" in capsys.readouterr().out
 
 

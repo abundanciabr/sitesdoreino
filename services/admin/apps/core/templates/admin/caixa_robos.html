@@ -91,10 +91,14 @@ não tem sigla (lei do CLAUDE.md).
       .borda-ambar { border-left-color: var(--amarelo); }
       .borda-verde { border-left-color: var(--verde); }
       .borda-cinza { border-left-color: var(--texto-3); }
-      .selo-parou {
-        display: inline-block; font-size: 11px; font-weight: 700;
-        letter-spacing: .04em; color: #0f1115; background: var(--amarelo);
-        border-radius: 6px; padding: 1px 8px; margin-top: 9px;
+
+      /* A LINHA QUE DIZ QUE ALGO É DELE. Mesmo âmbar do grupo que ela anuncia,
+         e some inteira quando não há nada esperando — aviso que fica na tela
+         com o número zero ensina o olho a ignorar o aviso. */
+      .pede-voce {
+        border-left: 4px solid var(--amarelo);
+        background: var(--painel); border-radius: 0 8px 8px 0;
+        padding: 10px 14px; margin: 12px 0 0;
       }
 
       /* O PLACAR: um número por grupo, e cada número leva ao seu grupo. É a
@@ -155,11 +159,20 @@ não tem sigla (lei do CLAUDE.md).
         antes de alguém começar a fazê-lo. Os robôs pegam um de cada vez, e ninguém
         pega o que outro já pegou.
       </p>
-      <p>
-        <b>Você não precisa fazer nada aqui.</b> Esta é a tela de olhar: ela responde
-        em que pé está o trabalho. Para pedir alguma coisa, continue falando comigo
-        na conversa, como sempre.
-      </p>
+      {% if esperando_voce %}
+        <p class="pede-voce">
+          <b>{{ esperando_voce }} dela{{ esperando_voce|pluralize:"s" }} não anda{{ esperando_voce|pluralize:",m" }} sem você.</b>
+          Estão logo abaixo, no primeiro bloco, com o que fazer escrito em cada uma.
+          O resto da página é só para olhar: para pedir ou destravar qualquer coisa,
+          fale comigo na conversa, como sempre.
+        </p>
+      {% else %}
+        <p>
+          <b>Nada aqui depende de você agora.</b> Esta é a tela de olhar: ela responde
+          em que pé está o trabalho. Para pedir alguma coisa, continue falando comigo
+          na conversa, como sempre.
+        </p>
+      {% endif %}
       {% if andamento.terminadas %}
         <p class="ritmo">
           Até agora os robôs terminaram <b>{{ andamento.terminadas }} tarefa{{ andamento.terminadas|pluralize }}</b>
