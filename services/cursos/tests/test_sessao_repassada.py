@@ -69,7 +69,7 @@ def test_identidade_fora_do_ar_a_sala_convida_a_entrar_e_nunca_500(
     env_dos_pares, rede, esqueleto, client
 ):
     rede.get(URL_DA_SESSAO).mock(side_effect=httpx.ConnectError("caiu"))
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 200
     assert "Entre para ver o curso" in resposta.content.decode()
 
@@ -142,7 +142,10 @@ def test_nenhuma_resposta_reescreve_o_cookie_de_sessao_do_site(
     aluna, aula_publicada, client
 ):
     """O guarda de `armadilhas/143`, medido na resposta e não na intenção."""
-    for endereco in (reverse("mapa"), reverse("aula", args=["E00"])):
+    for endereco in (
+        reverse("curso", args=["profissional"]),
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]),
+    ):
         resposta = client.get(endereco, HTTP_COOKIE=COOKIE)
         assert resposta.status_code == 200, endereco
         assert (

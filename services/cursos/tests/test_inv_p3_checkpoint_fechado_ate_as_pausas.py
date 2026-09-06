@@ -76,7 +76,7 @@ def test_aula_sem_pausa_e_verdadeiro(ana_na_e00):
 def test_a_tela_diz_fechado_ate_a_ultima_pausa_e_aberto_depois(
     aluna, aula_publicada, client
 ):
-    endereco = reverse("aula", args=["E00"])
+    endereco = reverse("aula-do-curso", args=["profissional", 1, "E00"])
     corpo = client.get(endereco, HTTP_COOKIE=COOKIE).content.decode()
     assert A_FRASE_DE_FECHADO in corpo
     assert A_FRASE_DE_ABERTO not in corpo
