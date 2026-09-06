@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-115850-TAR-217-bloqueada",
+  "tarefa": "TAR-217",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T11:58:50+00:00",
+  "quem": "despacho-infra-pares-da-prancheta-0609",
+  "detalhe": "ci/ e caminho CODEOWNERS e o mandato do mantenedor de 06/09/2026 autorizava infra/ e so ela. Destrava quando ele der mandato escrito para ci/ num despacho (armadilhas/360)."
+}
