@@ -24,6 +24,17 @@ black==24.10.0
 # de verdade no ar — e suíte que depende de outra célula fica vermelha por
 # motivo alheio.
 respx==0.23.1
+# O freeze de contrato (`ci/contract_freeze.py`, via `make contrato-check`)
+# importa PyYAML para comparar o congelado com o vivo. Ele DEVIA ter entrado no
+# degrau 03, quando `contracts/pages.openapi.yaml` congelou e a linha desta
+# célula no manifesto virou `required`, e não entrou. O buraco ficou invisível
+# por dois dias porque nenhum PR tocou `services/pages/` desde então: a matriz
+# do `ci-celula` só roda a célula que o diff toca, e a máquina de quem
+# desenvolve tem PyYAML global, então o `make ci` local fica VERDE
+# (`armadilhas/096`). Quem topou com ele foi o degrau 06, com a linha crua
+# `contrato/pages ERROR PyYAML indisponível` e `make: *** [contrato-check]
+# Error 2`. Versão igual à das vizinhas de propósito (`armadilhas/071`).
+PyYAML==6.0.2
 # O QUE NÃO ESTÁ AQUI, e é decisão: `huey` e `redis`. A `encomendas` os pinou
 # na gênese porque o tique de um minuto dela vinha dois degraus depois; aqui o
 # primeiro trabalho de fundo é a medição periódica de link quebrado (degrau 08,

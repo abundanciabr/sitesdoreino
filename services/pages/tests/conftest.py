@@ -11,18 +11,94 @@ depois de o arquivo nascer).
 """
 
 from datetime import datetime, timezone as fuso
+from urllib.parse import quote
 
+import httpx
 import pytest
+import respx
 
 from apps.portfolio.models import EstadoDoAluno, ItemDeConferencia, Peca, Portfolio
 
 SITE = "escola-a"
 OUTRO_SITE = "escola-b"
 
+# Os `servers:` dos contratos congelados mais o caminho de cada operação. Ficam
+# aqui, escritos por extenso, porque o dublê EXIGE exatamente estes endereços:
+# um dublê que aceitasse qualquer caminho testaria metade do cliente, e foi
+# assim que um `/alunos` a menos passou por 39 testes verdes no fórum
+# (`armadilhas/111`).
+IDENTIDADE = "http://identidade:8000/interno"
+ALUNOS = "http://alunos:8000/api/alunos"
+URL_DA_SESSAO = f"{IDENTIDADE}/sessao/completa"
+
+# O cookie de sessão do site, OPACO para esta célula: o valor não significa
+# nada aqui, e é isso que o [INV-P12] exige. Quem prova que ele viaja intacto é
+# `tests/test_porta_e_tela_minima.py`.
+COOKIE = "meshcraft_sessao=cookie-opaco-de-ana"
+
+ANA = {
+    "autenticado": True,
+    "id": "p_ana",
+    "email": "ana@exemplo.com",
+    "nome_exibido": "Ana",
+    "papel": "aluno",
+}
+
 
 def agora():
     """O relógio real, nunca um instante escrito à mão (`armadilhas/323`)."""
     return datetime.now(tz=fuso.utc)
+
+
+def url_da_situacao(email: str) -> str:
+    return f"{ALUNOS}/alunos/{quote(email, safe='')}/situacao"
+
+
+@pytest.fixture
+def env_dos_pares(monkeypatch):
+    """Os dois pares provisionados, como o env da VPS os terá.
+
+    Sai do `monkeypatch`, e não do ambiente de quem roda a suíte: com estas
+    variáveis vindas da máquina, os testes de fail-closed mediriam o computador
+    em vez do código.
+    """
+    monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-pages-para-identidade")
+    monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
+    monkeypatch.setenv("ALUNOS_API_TOKEN", "token-pages-para-alunos")
+
+
+@pytest.fixture
+def rede():
+    """O dublê de TRANSPORTE. Chamada a URL não registrada levanta na hora.
+
+    Dublar o transporte, e nunca a função do cliente, é o que faz o cliente de
+    verdade montar a URL de verdade.
+    """
+    with respx.mock(assert_all_called=False) as dublagem:
+        yield dublagem
+
+
+def dublar_sessao(rede, corpo=None, *, status: int = 200):
+    """A `identidade` responde `corpo` (ou só o status) para qualquer cookie."""
+    resposta = httpx.Response(status, json=corpo if corpo is not None else {})
+    return rede.get(URL_DA_SESSAO).mock(return_value=resposta)
+
+
+def dublar_matricula(rede, email: str, categoria: str = "aluno", *, status: int = 200):
+    """A `alunos` responde a categoria desta pessoa, no corpo do contrato."""
+    corpo = {"categoria": categoria, "na_fila": None} if status == 200 else {}
+    return rede.get(url_da_situacao(email)).mock(
+        return_value=httpx.Response(status, json=corpo)
+    )
+
+
+@pytest.fixture
+def aluna(env_dos_pares, rede):
+    """Ana, reconhecida pela `identidade` e com matrícula ativa na `alunos`."""
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"], "aluno")
+    return ANA
 
 
 @pytest.fixture
