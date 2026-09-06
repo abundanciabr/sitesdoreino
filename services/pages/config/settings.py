@@ -176,6 +176,22 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # AS DUAS PEÇAS COMUNS DO SITE, e elas entram aqui, e não como
+                # `{% include %}` por template, porque "em todas as páginas" não
+                # pode depender de alguém lembrar da peça (`armadilhas/242`).
+                # Tela nova desta casa nasce com menu e rodapé sem tocar em
+                # nada: quem DECIDE são estes dois módulos, quem DESENHA é
+                # `pages/moldura.html`.
+                #
+                # Nascem no MESMO PR da primeira tela desta célula por causa da
+                # `armadilhas/286`: em 02/09/2026 as Conquistas passaram um dia
+                # e meio no ar como a única área do site sem as duas peças, e o
+                # guarda do repositório que mede isso
+                # (`ci/tests/test_pecas_comuns_em_toda_celula_publica.py`) lê
+                # justamente estas duas linhas para saber que a peça está
+                # LIGADA. Ele não confere nome de arquivo, e sim a fiação.
+                "apps.core.menu.menu_do_contexto",
+                "apps.core.rodape.rodape_do_contexto",
             ],
         },
     },

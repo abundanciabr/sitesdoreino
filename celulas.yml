@@ -265,7 +265,15 @@ celulas:
     # Quem lê `IDENTIDADE_API_URL` e `ALUNOS_API_URL` é
     # `services/pages/apps/core/clients.py`, e a decisão que elas alimentam mora
     # em `services/pages/apps/core/porta.py`.
-    consome: [alunos, identidade]
+    #
+    # `catalogo` entrou logo depois, no mesmo degrau 06 e pela mesma regra: o
+    # MENU DO TOPO é dado do site, mora no `catalogo`, e a casa das Páginas
+    # mostra o MESMO menu que o fórum, a Caixa e as Conquistas. Ela NÃO ganhou o
+    # CONV-SITE inteiro: pergunta só o menu do host da requisição, com cache, e
+    # cai para "sem menu" em qualquer tropeço, porque um menu é enfeite de
+    # navegação e derrubar a Prancheta por causa dele seria a troca errada. Quem
+    # lê `CATALOGO_API_URL` é `services/pages/apps/core/menu.py`.
+    consome: [alunos, catalogo, identidade]
 
   quiz:
     # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a
