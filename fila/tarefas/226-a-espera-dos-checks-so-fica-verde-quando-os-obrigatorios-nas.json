@@ -1,0 +1,17 @@
+{
+  "arquivo": "226-a-espera-dos-checks-so-fica-verde-quando-os-obrigatorios-nas",
+  "id": "TAR-226",
+  "titulo": "A espera dos checks so fica verde quando os obrigatorios nascerem",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "um teste que encena o PR com 1 check nascido e prova que esperar.py NAO declara verde; e a suite ci/tests verde",
+  "despacho": "O ci/esperar.py --checks declara verde quando todos os checks que EXISTEM completaram. Nos primeiros segundos de um PR existe so um, e a espera pede pouso que o portao recusa em seguida (ERROR checks obrigatorios). Ensine a espera a conhecer a MESMA lista de checks obrigatorios que ci/mergear.py ja usa, e a seguir esperando enquanto algum deles nao tiver nascido. Leia armadilhas/366 e armadilhas/150 (o caso vizinho do zero check, que ja e tratado). Encene a falha no teste antes de consertar.",
+  "origem": "armadilhas/366, achada em 06/09/2026 no PR #1189",
+  "criada_em": "2026-09-06"
+}
