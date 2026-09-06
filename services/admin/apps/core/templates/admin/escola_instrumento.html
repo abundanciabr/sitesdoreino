@@ -21,7 +21,7 @@ EXISTE em admin/base.html ou no <style> abaixo (armadilhas/199).
   .editor .json { min-height: 220px; }
 </style>
 <div class="envolucro">
-  <p><a class="volta" href="{% url 'escola_aulas' %}">&larr; Todas as encomendas e instrumentos</a></p>
+  <p><a class="volta" href="{{ url_da_lista }}">&larr; Todas as encomendas e instrumentos</a></p>
 
   {% if nao_existe %}
   <h1>Esse instrumento não existe</h1>
@@ -90,7 +90,7 @@ EXISTE em admin/base.html ou no <style> abaixo (armadilhas/199).
 
     <div class="gestos-do-editor">
       <button type="submit" class="salvar">Salvar o instrumento (sobe a versão)</button>
-      <a class="volta" href="{% url 'escola_aulas' %}">Cancelar</a>
+      <a class="volta" href="{{ url_da_lista }}">Cancelar</a>
     </div>
   </form>
 
