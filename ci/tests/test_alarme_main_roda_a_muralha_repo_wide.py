@@ -28,8 +28,19 @@ A correção NÃO foi "rodar as três", e a medição é o motivo:
 Este arquivo é a forma executável dessa decisão. Ele existe porque um conserto
 de YAML que ninguém verifica é um conserto que o próximo agente desfaz sem
 ninguém notar — mesmo espírito de `test_workflow_de_deploy_exige_o_portao`. Roda
-de graça no `muralhas` (PR) e no próprio `alarme-main` (push), porque os dois
-chamam `python ci/ci.py --apenas testador` (= `pytest ci/tests`).
+no `muralhas` (PR), que chama `python ci/ci.py --apenas testador`
+(= `pytest ci/tests`).
+
+DESDE 05/09/2026 O ALARME NÃO RODA MAIS A SUÍTE (alavanca 2 das alavancas de
+10x da fábrica, liberada pelo mantenedor). A suíte rodava QUATRO vezes por PR
+sobre o mesmo conteúdo: no `muralhas`, no `espelho-da-main`, na rede do
+Windows e aqui, depois do merge. A `main` tem política estrita (o PR só mergeia
+com a base em dia), então o que o alarme media era exatamente o que o
+`muralhas` do PR já tinha medido. E o portão de deploy ESPERAVA esse alarme
+terminar: 1min18s por deploy, para uma resposta já conhecida. O alarme ficou
+só com a guarda de segredos, a única medição que tem sentido próprio na
+`main` (a árvore inteira, depois do fato). `test_alarme_nao_roda_mais_a_suite`
+é o guarda dessa decisão.
 
 Fail-closed no próprio teste: arquivo ausente, YAML ilegível ou YAML sem os
 steps esperados ⇒ REPROVA. Nunca `skip`, nunca verde por não ter conseguido ler.
@@ -139,12 +150,20 @@ def test_alarme_roda_a_guarda_de_segredos_na_main():
         )
 
 
-def test_alarme_continua_testando_o_testador():
-    """A suíte adversarial (que inclui este arquivo) não pode sumir daqui."""
-    assert "ci/ci.py --apenas testador" in _runs_do_repositorio(), (
-        "o step `python ci/ci.py --apenas testador` sumiu do alarme-main. Ele é "
-        "o que faz ESTE teste rodar no push da `main`; sem ele, a forma do "
-        f"workflow deixa de ser verificada onde importa.{PORQUE}"
+def test_alarme_nao_roda_mais_a_suite():
+    """A suíte roda UMA vez por PR, no `muralhas`; aqui ela seria a repetição.
+
+    Até 05/09/2026 este teste afirmava o contrário. O que mudou não foi a
+    suíte, foi a conta: a `main` tem política estrita, o `muralhas` do PR de
+    origem já mediu este conteúdo, e o portão de deploy confere esse
+    `muralhas`. Rodar de novo aqui só fazia o deploy esperar 1min18s.
+    """
+    assert "ci/ci.py --apenas testador" not in _runs_do_repositorio(), (
+        "o step `python ci/ci.py --apenas testador` voltou ao alarme-main. Ele "
+        "mede o mesmo conteúdo que o `muralhas` do PR de origem já mediu (a "
+        "`main` tem política estrita) e faz todo deploy esperar por ele. Se a "
+        "suíte precisa rodar na `main` por um motivo NOVO, escreva o motivo ao "
+        "lado do step e refaça este teste, não o apague. [INV-CI01]"
     )
 
 

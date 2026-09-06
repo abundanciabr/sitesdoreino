@@ -1,0 +1,17 @@
+{
+  "arquivo": "174-guardar-as-conquistas-de-cada-aluno-os-marcos-dentro-da-medi",
+  "id": "TAR-174",
+  "titulo": "Guardar as conquistas de cada aluno (os marcos) dentro da medicao",
+  "toca": [
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "suite da metricas verde com a contagem antes e depois, prova vermelho-verde por assercao e prova por mutacao de cada guarda novo",
+  "despacho": "Degrau 9 do docs/decisoes/PLANO-PAINEL-DE-GESTAO.md (§6.4), dentro da célula\n`metricas`, e só nela.\n\nHoje a medição guarda FATOS CRUS: cada evento que as células publicam entra na\ntabela `Evento`, imutável. O que falta é a LEITURA que o plano chama de marco:\numa conquista com data, uma pessoa acumula várias, e o painel precisa saber\nquais foram calculadas por máquina e quais alguém assinou à mão.\n\nConstrua em services/metricas/:\n\n1. A tabela `Marco`: quem conquistou, que conquista foi, em que dia (no fuso de\n   São Paulo, pela função `dia_em_sao_paulo` que já existe), qual evento a\n   produziu, e a marca de que é automática. Uma conquista por sujeito por tipo.\n2. A derivação automática, só a partir dos assuntos que a célula JÁ RECEBE\n   (leia `consume_eventos.py` e `contracts/eventos/`). A conquista central é a\n   da vida do aluno (`matricula.situacao-alterada`), e o campo `origem` separa\n   quem comprou de quem foi liberado pela sala de espera.\n3. Uma passada sobre o livro já guardado, para que os fatos que chegaram antes\n   da tabela existir também virem marco.\n4. Os testes, com prova vermelho-verde por asserção (armadilhas/195) e prova\n   por mutação de cada guarda novo.\n\nPROIBIDO tocar `contracts/`: a porta de leitura dos marcos em /api/metricas/ é\nRito de Contrato com o mantenedor presente, e ele não foi autorizado. Este PR\npara no provedor. PROIBIDO tocar `services/admin/` e `painel/cartoes/`. Não\nmexa na restrição da semana: a decisão é do mantenedor.",
+  "origem": "degrau 9 do PLANO-PAINEL-DE-GESTAO.md",
+  "criada_em": "2026-09-05"
+}

@@ -31,6 +31,21 @@ COMO O HARNESS O CHAMA (fiação em .claude/settings.json)
             RECUSA o fim do turno e devolve o stderr ao robô, que precisa
             continuar. É esta recusa que torna impossível arquivar em silêncio.
 
+A SEGUNDA PASSADA (06/09/2026, armadilhas/368)
+-----------------------------------------------
+Depois de uma recusa o robô continua, escreve (ou não) o relatório, e o harness
+chama o Stop DE NOVO, com `stop_hook_active: true`. Esse campo diz só "já houve
+uma recusa neste fim de turno"; não diz se ela foi atendida. A primeira versão
+tratava o campo como prova de desobediência e devolvia exit 1 com "o robô foi
+cobrado e terminou assim mesmo" SEM abrir o transcript. Medido nos transcripts
+de 05 e 06/09/2026: 50 segundas passadas, 50 avisos, e em 32 delas o relatório
+válido estava na tela. O aviso saía também no caminho certo, e um aviso que sai
+sempre é um aviso que ninguém mais lê.
+
+A segunda passada mede o transcript com a MESMA régua da primeira: relatório
+presente e válido, exit 0 em silêncio; ainda faltando, exit 1 com o aviso.
+Nunca exit 2, que prenderia a sessão em laço.
+
 A RÉGUA, e por que ela não é "todo turno"
 ------------------------------------------
 Cobrar prestação de contas em todo turno seria pior que não cobrar nenhuma.
@@ -95,12 +110,31 @@ são a esmagadora maioria — e é indispensável porque o modo automático dest
 harness manda escrever arquivo por heredoc de `Bash`, não pela ferramenta
 `Write`.
 
+O CHECKLIST, e por que ele é cobrado no fecho (05/09/2026, o mesmo dia)
+------------------------------------------------------------------------
+Pedido dele, com as palavras dele: "quero que toda e cada tarefa mostre um
+checklist e um roadmap claro de onde está e o que ainda precisa ser feito ao
+final de cada etapa, fase, parte, executada". O plano em caixinhas da abertura
+sumia da tela depois de vinte chamadas de ferramenta, e ele não sabia se a
+tarefa estava no passo 2 ou no 5.
+
+A lei tem três pontas (CLAUDE.md, "Plano na abertura, contas no fecho"): o
+checklist na abertura, o checklist reimpresso e marcado ao fim de CADA etapa, e
+o checklist no estado final abrindo a prestação de contas. Só a terceira é
+mensurável: "etapa" não existe para a máquina, e um portão que contasse
+reimpressões por chamada de ferramenta cobraria checklist a cada `ls`. Então o
+`Stop` exige a caixinha (`- [x]`/`- [ ]`) DENTRO da prestação de contas, e a
+recusa ensina as três pontas. A ponta do meio fica na lei, no `--plano` e na
+memória do robô — sem mecanismo, e dito aqui para ninguém tomar este portão
+por garantia dela.
+
 O QUE ELE **NÃO** MEDE, dito na cara
 -------------------------------------
 Que a prestação de contas seja VERDADEIRA. Nenhum portão barato mede "isto foi
 mesmo verificado". O que ele torna impossível é o silêncio: os seis blocos
-aparecem, com o veredito PRONTO/NÃO PRONTO em cima da mesa, e quem lê consegue
-cobrar. Mentira escrita é falsificável; ausência não é.
+aparecem, o checklist marcado aparece, o veredito PRONTO/NÃO PRONTO fica em
+cima da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável;
+ausência não é.
 
 Também não mede o PLANO de abertura. O `--plano` o exige, mas exigir é tudo o
 que dá para fazer com honestidade: no Stop o turno já acabou, e bloquear por
@@ -123,7 +157,8 @@ Uso (fora do harness, para depurar):
     echo '{"prompt":"conserte o login"}' | python ci/prestacao_de_contas.py --plano
 
 Exit codes: 0 permite/cala · 2 RECUSA o fim do turno (só no --contas) ·
-1 não consegui medir (barulhento, nunca silencioso).
+1 não consegui medir, ou segunda passada ainda sem relatório (barulhento,
+nunca silencioso).
 """
 
 from __future__ import annotations
@@ -132,6 +167,9 @@ import json
 import re
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import telemetria  # noqa: E402  (irmão de pasta; o insert acima é o que o permite)
 
 # ---------------------------------------------------------------- a régua ----
 
@@ -165,6 +203,15 @@ VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", r
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
 
+# O checklist: uma linha de caixinha, marcada ou não. É o roteiro que ele pediu
+# em 05/09/2026 — o mesmo do plano, no estado final, abrindo a prestação de
+# contas. `- [ ]` também vale: NÃO PRONTO honesto deixa caixa aberta, e um
+# portão que só aceitasse `[x]` ensinaria a marcar o que não foi feito. Só
+# espaço horizontal entre as peças: com `\s` e re.M, `-` numa linha e `[x]` na
+# seguinte casavam (achado do revisor, 05/09/2026).
+CAIXINHA = re.compile(r"^[ \t]*[-*][ \t]*\[(?: |x|X)\][ \t]+\S", re.M)
+CAIXA_ABERTA = re.compile(r"^[ \t]*[-*][ \t]*\[ \][ \t]+\S", re.M)
+
 # ------------------------------------------------- o que muda o mundo ----
 
 FERRAMENTAS_QUE_ESCREVEM = {"Edit", "Write", "NotebookEdit"}
@@ -195,6 +242,13 @@ COMANDOS_QUE_MUDAM = (
     (re.compile(r"\bmanage\.py\s+(?:migrate|makemigrations|loaddata)\b"), "banco alterado"),
     (re.compile(r"\bdocker\s+(?:compose\s+)?(?:up|build|run|push)\b"), "container construído ou subido"),
 )
+
+# Alavanca 3 (documentos/alavancas-10x-da-fabrica.md), em SOMBRA: contagem
+# PRÓPRIA e mais específica que COMANDOS_QUE_MUDAM (que já conta PR junto com
+# merge/edit/close/comment como um motivo só — isso continua servindo para
+# decidir SE mudou o mundo). Aqui o interesse é só a CRIAÇÃO, para medir série
+# de PRs sem passar pelo robô `despacho`.
+PR_CRIADO = re.compile(r"\bgh\s+pr\s+create\b")
 
 # Redirecionamento que cria arquivo. `2>&1`, `>/dev/null` e `>$null` são ruído
 # de shell, não escrita — o dígito antes do `>` e os destinos nulos ficam fora.
@@ -301,6 +355,38 @@ def _mudanca_na_entrada(entrada: dict) -> str | None:
     return None
 
 
+def contar_prs_e_despachos(entradas: list[dict]) -> tuple[int, int]:
+    """(quantos `gh pr create`, quantos `Agent` subagent_type="despacho") na
+    SESSÃO INTEIRA — sem recortar pela janela, porque o que a Alavanca 3 mede é
+    o turno que abriu vários PRs em série, não só a fala mais recente.
+
+    Alavanca 3 (`documentos/alavancas-10x-da-fabrica.md`): das 60 sessões mais
+    recentes, só 4 dispararam o robô `despacho`; as demais fizeram os PRs de um
+    pedido em série, na mesma sessão. Esta contagem é o instrumento de medição,
+    em sombra — nasce sem imprimir nada e sem mudar exit code nenhum.
+    """
+    prs = despachos = 0
+    for entrada in entradas:
+        if entrada.get("type") != "assistant":
+            continue
+        conteudo = (entrada.get("message") or {}).get("content")
+        if not isinstance(conteudo, list):
+            continue
+        for bloco in conteudo:
+            if not isinstance(bloco, dict) or bloco.get("type") != "tool_use":
+                continue
+            nome = bloco.get("name") or ""
+            entrada_da_ferramenta = bloco.get("input") if isinstance(bloco.get("input"), dict) else {}
+            if nome in ("Bash", "PowerShell"):
+                comando = str(entrada_da_ferramenta.get("command") or "")
+                if PR_CRIADO.search(comando):
+                    prs += 1
+            elif nome == "Agent":
+                if str(entrada_da_ferramenta.get("subagent_type") or "") == "despacho":
+                    despachos += 1
+    return prs, despachos
+
+
 def _prestou_contas(entrada: dict) -> bool:
     """Esta fala do robô tem os seis blocos? (cinco títulos + o veredito)"""
     if entrada.get("type") != "assistant":
@@ -314,7 +400,16 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not texto.strip():
         return False
-    return all(t.search(texto) for t in TITULOS) and bool(VEREDITO.search(texto))
+    veredito = VEREDITO.search(texto)
+    if not veredito or not all(t.search(texto) for t in TITULOS):
+        return False
+    if not CAIXINHA.search(texto):
+        return False
+    # PRONTO com caixa aberta é contradição: ou a tarefa acabou, ou sobrou passo.
+    # Sem esta linha o plano de abertura colado no fim, intocado, valia como
+    # roteiro final (achado do revisor, 05/09/2026).
+    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
+    return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -390,6 +485,8 @@ def molde(faltou_o_plano: bool) -> str:
         "",
         "   Escreva AGORA, em português, nesta ordem e sem enfeite:",
         "",
+        "   O checklist do plano no estado final — `- [x]` no que caiu, `- [ ]` no",
+        "   que ficou, com o motivo — e a linha \"Onde estou: passo N de M\".",
     ]
     for titulo, dica in BLOCOS:
         linhas.append(f"   {titulo} — {dica}")
@@ -397,6 +494,8 @@ def molde(faltou_o_plano: bool) -> str:
         "   **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê.",
         "",
         "   Regras que valem dentro do molde:",
+        "   · O checklist é o roteiro que ele pediu: sem caixinha, o relatório não vale.",
+        "   · PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga NÃO PRONTO.",
         "   · Demonstre, não descreva: comando executado + saída real.",
         "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
         "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",
@@ -407,8 +506,8 @@ def molde(faltou_o_plano: bool) -> str:
         linhas += [
             "",
             "   E o plano não apareceu no começo deste turno. Não dá para consertar",
-            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e vai sendo",
-            "   marcado enquanto os passos caem.",
+            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e é",
+            "   reimpresso marcado ao fim de CADA etapa, com onde você está.",
         ]
     return "\n".join(linhas)
 
@@ -417,16 +516,11 @@ def molde(faltou_o_plano: bool) -> str:
 
 
 def modo_contas(entrada: dict) -> int:
-    if entrada.get("stop_hook_active"):
-        # Já recusei uma vez neste fim de turno. Recusar de novo prenderia a
-        # sessão em laço. Passo — mas GRITO, para o mantenedor ver que o robô
-        # foi cobrado e não trouxe as contas. (exit 1: barulhento, não bloqueia.)
-        print(
-            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
-            "   O que você tem na tela pode não ser o relatório da tarefa.",
-            file=sys.stderr,
-        )
-        return 1
+    # `stop_hook_active` diz só "já houve uma recusa neste fim de turno". Se ela
+    # foi atendida, só o transcript sabe — e ele é relido com a MESMA régua
+    # (armadilhas/368: a primeira versão gritava sem olhar, e em 32 de 50 vezes
+    # o relatório estava na tela).
+    segunda_passada = bool(entrada.get("stop_hook_active"))
 
     caminho = entrada.get("transcript_path")
     if not caminho:
@@ -446,22 +540,55 @@ def modo_contas(entrada: dict) -> int:
         )
         return 1
 
-    recusar, motivo, teve_plano = decidir(ler_transcript(arquivo))
+    entradas = ler_transcript(arquivo)
+    recusar, motivo, teve_plano = decidir(entradas)
+
+    # Alavanca 3, em SOMBRA: só telemetria, roda na primeira passada de todo
+    # Stop — inclusive quando a prestação de contas já foi paga, porque a
+    # sessão pode ter aberto os PRs em série ANTES do relatório. A segunda
+    # passada do mesmo fim de turno não conta de novo: a série é uma só.
+    # registrar() já é fail-open (nunca lança), então isto não pode derrubar o
+    # exit code que `decidir()` já calculou.
+    if not segunda_passada:
+        prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
+        if prs_criados >= 2 and despachos_de_verdade == 0:
+            telemetria.registrar(
+                "serie_sem_despacho",
+                {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
+                cwd=entrada.get("cwd"),
+                sessao=entrada.get("session_id"),
+            )
+
     if not recusar:
         return 0
+    if segunda_passada:
+        # Já recusei uma vez neste fim de turno e o relatório continua faltando.
+        # Recusar de novo prenderia a sessão em laço. Passo — mas GRITO, para o
+        # mantenedor ver que o robô foi cobrado e não trouxe as contas.
+        # (exit 1: barulhento, não bloqueia.)
+        print(
+            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
+            "   O que você tem na tela pode não ser o relatório da tarefa.",
+            file=sys.stderr,
+        )
+        return 1
     print(molde(faltou_o_plano=not teve_plano), file=sys.stderr)
     print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
     return 2
 
 
-AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, CONTAS DEPOIS (lei da casa, CLAUDE.md).
+AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, ROTEIRO A CADA ETAPA, CONTAS DEPOIS (lei da casa, CLAUDE.md).
    Se este pedido vai mudar o mundo — editar arquivo, rodar comando que altera
    algo, abrir PR — a PRIMEIRA coisa da sua resposta é o plano em caixinhas
-   ("## Plano — <tarefa>", um "- [ ]" por passo), e ele vai sendo marcado
-   enquanto os passos caem. A ÚLTIMA é a prestação de contas: O que mudou ·
-   O que foi verificado e como · O que foi cortado e por quê · O que eu preciso
-   decidir · Auditoria de qualidade · Veredito PRONTO/NÃO PRONTO.
-   O portão do Stop recusa terminar sem ela — não é sugestão."""
+   ("## Plano — <tarefa>", um "- [ ]" por passo). Ao FIM DE CADA ETAPA,
+   reimprima o checklist inteiro marcado ("- [x]" no que caiu, "- [ ]" no que
+   falta) e a linha "Onde estou: passo N de M", com o próximo passo dito —
+   ele não lê o transcript, e é assim que sabe onde a tarefa está.
+   A ÚLTIMA coisa é a prestação de contas, que começa pelo mesmo checklist no
+   estado final: O que mudou · O que foi verificado e como · O que foi cortado
+   e por quê · O que eu preciso decidir · Auditoria de qualidade · Veredito
+   PRONTO/NÃO PRONTO. O portão do Stop recusa terminar sem ela e sem a
+   caixinha — não é sugestão."""
 
 
 def modo_plano(entrada: dict) -> int:

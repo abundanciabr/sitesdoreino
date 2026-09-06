@@ -3,7 +3,7 @@
 O QUE ENTRA, E O QUE NAO ENTRA DE PROPOSITO
 --------------------------------------------
 Entra o que o plano (`PLANO-CELULA-CURSOS.md` secao 4) ja diz em publico: um
-curso (`meshcraft`, rascunho), os 12 blocos com letra e parte, as 34 aulas so
+curso (`profissional`, rascunho), os 12 blocos com letra e parte, as 34 aulas so
 com numero, ordem, bloco e titulo exibido, e os 13 instrumentos so com slug,
 nome canonico e numero do cartao.
 
@@ -24,9 +24,34 @@ sao do mantenedor. Guarda: `tests/test_inv_c2_conteudo_so_pela_porta.py`.
 IDEMPOTENTE, E QUE NAO PISA EM CIMA DE EDICAO HUMANA
 -----------------------------------------------------
 `get_or_create` pela chave natural (o slug do curso, a ordem do bloco, o numero
-da aula, o slug do instrumento), sem atualizar o que ja existe. Rodar duas vezes
-nao duplica nada; e se ele renomear um titulo pela tela, rodar de novo nao
-desfaz. O esqueleto entra inteiro ou nao entra: a transacao e uma so.
+da aula, o slug do instrumento). Rodar duas vezes nao duplica nada, e o
+esqueleto entra inteiro ou nao entra: a transacao e uma so.
+
+ELE RECONCILIA A ESTRUTURA, E SO A ESTRUTURA (05/09/2026)
+----------------------------------------------------------
+Ate esta data ele nao atualizava NADA do que ja existia, e isso deixava um
+buraco medido: o curso nasceu na VPS em 05/09, e corrigir a receita nao mudava
+o bolo ja assado. Quando a estrutura do livro mudasse, o esqueleto de la ficava
+para tras em silencio.
+
+A partir daqui ele reconcilia, e a fronteira e dura:
+
+  ESTRUTURA (ele escreve):  o slug e o nome do curso, a letra e a parte do
+                            bloco, o bloco e a ordem de cada aula, `e_boss` e
+                            `banca_nivel`. Sao fatos do LIVRO, publicos, e a
+                            fonte deles e este arquivo.
+  OBRA (ele NUNCA toca):    titulo_exibido, pedido, cliente, minimo,
+                            aceito_quando, quiz, video_url, estado, versao,
+                            publicada_em, as pecas, as pausas, o nome do bloco
+                            e o titulo do Boss. Sao do mantenedor e entram pela
+                            tela (`armadilhas/331`, [INV-CUR-C2]).
+
+Guarda: `tests/test_semeador_reconcilia_estrutura.py` escreve obra, roda o
+semeador de novo e prova que a obra continua intacta.
+
+POR QUE NAO E UMA MIGRACAO DE DADOS: alem das razoes acima, o guarda
+`test_nenhuma_migracao_desta_celula_roda_codigo` proibe `RunPython` nesta
+celula, e reconciliar estrutura por migracao seria exatamente isso.
 """
 
 from django.core.management.base import BaseCommand
@@ -34,8 +59,8 @@ from django.db import transaction
 
 from apps.cursos.models import Aula, Bloco, Curso, Instrumento
 
-SLUG_DO_CURSO = "meshcraft"
-NOME_DO_CURSO = "Meshcraft"
+SLUG_DO_CURSO = "profissional"
+NOME_DO_CURSO = "Profissional"
 
 # Os 12 blocos na ordem (1 a 12): letra, parte, e as aulas de cada um. A ordem
 # de cada aula e a posicao dela nesta lista, do zero: E00 e a ordem 0, E32 e a
@@ -54,6 +79,30 @@ BLOCOS = (
     ("K", 3, ("E28", "E29", "E30")),
     ("L", 3, ("E31", "E32", "EB")),
 )
+
+# O BOSS de cada bloco, e ele NAO e "a ultima aula do bloco" (a hierarquia do
+# livro, §3). Escrito na mao, encomenda por encomenda, porque a bonus EB fecha
+# a lista do bloco L sem ser o Boss dele: deduzir "o ultimo" poria o Boss na
+# encomenda errada, e o aluno estara com o livro aberto ao lado da tela.
+COM_BOSS = (
+    "E02",  # bloco A, "O Diorama"
+    "E05",  # bloco B, "O Kit do Aventureiro"
+    "E08",  # bloco C, "O Kit do Aventureiro no jogo"
+    "E10",  # bloco D, a Encomenda da Semana real
+    "E14",  # bloco E, "O Guarda-Roupa"
+    "E16",  # bloco F, "A Garagem"
+    "E18",  # bloco G, "A Vitrine Viva"
+    "E21",  # bloco H, a maior encomenda real
+    "E25",  # bloco I, "A Personagem"
+    "E27",  # bloco J, "A Linha"
+    "E30",  # bloco K, "O Estudio"
+    "E32",  # bloco L, um mes sem uma peca propria
+)
+
+# A BANCA fecha cada Parte, na ultima encomenda dela (a hierarquia do livro,
+# §2): E10 fecha a Parte I, E21 a II, E32 a III. O nivel e o mesmo numero da
+# Parte, e o titulo conferido (Modelador Nivel 1, 2, 3) e da gamificacao.
+BANCA_POR_AULA = {"E10": 1, "E21": 2, "E32": 3}
 
 # Os 13 instrumentos: slug canonico, nome canonico, numero do cartao.
 INSTRUMENTOS = (
@@ -97,11 +146,21 @@ class Command(BaseCommand):
     def handle(self, *args, **opcoes):
         site = opcoes["site"]
 
+        # O curso de antes de 05/09/2026 nasceu com o slug `meshcraft`, quando
+        # ainda nao se sabia que os niveis (basico, profissional, empresario)
+        # seriam CURSOS. Reconciliar aqui, e nao por migracao, e o que mantem o
+        # endereco `/cursos/<curso>/...` honesto sem quebrar o guarda que
+        # proibe codigo em migracao desta celula.
+        renomeados = Curso.objects.filter(site_id=site, slug="meshcraft").update(
+            slug=SLUG_DO_CURSO, nome=NOME_DO_CURSO
+        )
+
         curso, curso_novo = Curso.objects.get_or_create(
             site_id=site, slug=SLUG_DO_CURSO, defaults={"nome": NOME_DO_CURSO}
         )
 
         blocos_novos = aulas_novas = 0
+        estrutura_corrigida = 0
         ordem_da_aula = 0
         for ordem_do_bloco, (letra, parte, numeros) in enumerate(BLOCOS, start=1):
             bloco, novo = Bloco.objects.get_or_create(
@@ -110,17 +169,37 @@ class Command(BaseCommand):
                 defaults={"letra": letra, "parte": parte},
             )
             blocos_novos += novo
+            if not novo and (bloco.letra, bloco.parte) != (letra, parte):
+                bloco.letra, bloco.parte = letra, parte
+                bloco.save(update_fields=["letra", "parte"])
+                estrutura_corrigida += 1
             for numero in numeros:
-                _, novo = Aula.objects.get_or_create(
+                estrutural = {
+                    "bloco": bloco,
+                    "ordem": ordem_da_aula,
+                    "e_boss": numero in COM_BOSS,
+                    "banca_nivel": BANCA_POR_AULA.get(numero),
+                }
+                aula, novo = Aula.objects.get_or_create(
                     curso=curso,
                     numero=numero,
-                    defaults={
-                        "bloco": bloco,
-                        "ordem": ordem_da_aula,
-                        "titulo_exibido": titulo_exibido(numero),
-                    },
+                    defaults={**estrutural, "titulo_exibido": titulo_exibido(numero)},
                 )
                 aulas_novas += novo
+                if not novo:
+                    # SO os quatro campos de `estrutural`. `titulo_exibido` fica
+                    # de fora de proposito: ele e o texto que o aluno le, e uma
+                    # vez escrito pela tela e obra do mantenedor.
+                    mudou = [
+                        campo
+                        for campo, valor in estrutural.items()
+                        if getattr(aula, campo) != valor
+                    ]
+                    if mudou:
+                        for campo in mudou:
+                            setattr(aula, campo, estrutural[campo])
+                        aula.save(update_fields=mudou)
+                        estrutura_corrigida += 1
                 ordem_da_aula += 1
 
         instrumentos_novos = 0
@@ -135,3 +214,12 @@ class Command(BaseCommand):
             f"{blocos_novos} bloco(s) novo(s), {aulas_novas} aula(s) nova(s), "
             f"{instrumentos_novos} instrumento(s) novo(s) (site {site})."
         )
+        if renomeados:
+            self.stdout.write(
+                f"  o curso `meshcraft` passou a se chamar `{SLUG_DO_CURSO}`."
+            )
+        if estrutura_corrigida:
+            self.stdout.write(
+                f"  estrutura do livro reconciliada em {estrutura_corrigida} "
+                "linha(s) que ja existiam; nenhum texto seu foi tocado."
+            )

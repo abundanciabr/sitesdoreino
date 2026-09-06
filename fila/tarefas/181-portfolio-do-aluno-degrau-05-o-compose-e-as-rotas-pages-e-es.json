@@ -1,0 +1,20 @@
+{
+  "arquivo": "181-portfolio-do-aluno-degrau-05-o-compose-e-as-rotas-pages-e-es",
+  "id": "TAR-181",
+  "titulo": "Portfolio do aluno, degrau 05: o compose e as rotas /pages e /estudio no Traefik, com o inventario de rotas no mesmo PR",
+  "toca": [
+    "infra",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-180"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: meshcraft.top/pages e meshcraft.top/estudio respondem em producao e as duas rotas aparecem no inventario de rotas (AC-04), medido de FORA depois do deploy. O deploy-infra verde, conferido por gh run view --json.",
+  "despacho": "# DESPACHO - pages: o compose e as duas rotas (degrau 05 da escada do portfolio)\nCELULA: infra - WORKTREE: wt-compose-e-rota-pages - BRANCH: agent/infra/compose-e-rota-pages\nPADRAO: o Padrao de Trabalho (1a secao do CLAUDE.md) vale nesta tarefa como em todas, inclusive a regra 2 (discorde ANTES, em ate 5 linhas, com UMA alternativa e o trade-off) e a regra 9 (relatorio nos quatro titulos, sem enchimento).\nDECLARACAO DE ABERTURA (RITOS.md secao 1): primeira linha da sua primeira resposta.\n\nANTES DE ESCREVER CODIGO: materialize o indice (python ci/indice_de_armadilhas.py) e abra SO estas armadilhas: 029, 088, 134, 185, 330. Leia constituicoes/AGENTS.pages.md (a lei da casa, com o [INV-P12] e os invariantes da secao 7 do plano), docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md (secoes 4, 5 e 7) e docs/changespecs/CS-PAGES-0001.md, que e o corredor de obra assinado e manda no escopo. Onde este despacho e o corredor divergirem, o corredor vence.\n\nO QUE NINGUEM PODE INVENTAR NESTA OBRA (plano secao 7, e vale em todo degrau): nota, estrela, ranking ou voto popular em portfolio de aluno; deteccao de \"isto foi feito por IA\"; trancar aula ou conteudo atras de check-list, ponto ou nivel; e-mail, telefone ou nome completo na pagina publica (o padrao e privado e o noindex nao e negociavel); guardar a peca em duas celulas; travessao em texto que o aluno le; e marco real pagando XP.\n\nCONTEXTO (ate 5 linhas): o banco ja existe na VPS (degrau 04 e o passo manual do mantenedor). Este degrau poe a casa no ar. So depois dele o deploy-celula da pages para de ser vermelho esperado.\n\nTAREFA: o servico da pages no compose e as DUAS rotas no Traefik, com o inventario de rotas no MESMO PR.\n\nA DECISAO QUE E SUA, e que a genese deixou escrita e em aberto de proposito (services/pages/config/settings.py, secao O PREFIXO): FORCE_SCRIPT_NAME carrega UM prefixo so, e esta celula tem DOIS enderecos publicos, /pages para o aluno logado e /estudio/<apelido> para o link que ele manda ao cliente. As duas mecanicas possiveis, nomeadas para voce nao comecar do zero: (a) SCRIPT_NAME=/pages e o Traefik removendo /estudio com StripPrefix, de modo que a vitrine chegue ao Django na raiz do urlconf; (b) SCRIPT_NAME vazio, os dois prefixos declarados no urlconf e roteados sem remocao. A (b) contraria armadilhas/029 (o urlconf passaria a conhecer o proprio endereco) e por isso NAO e a favorita. Meca, escolha, e escreva o porque no PR.\n\nO inventario de rotas entra NESTE PR, nao no seguinte (AC-04).\n\nNAO construa tela: a tela minima e o degrau 06.\nORCAMENTO: cerca de 3 arquivos. Estourou por coesao legitima: PARE e reporte, nunca esprema arquivos.\n\nDEPLOY: este PR toca infra/ e vai disparar o deploy-infra, e e ele que finalmente poe a pages no ar. Confira o run (gh run view <id> --json status,conclusion), confirme que /pages e /estudio respondem de FORA, e reporte o veredito em texto.\n\nO REGISTRO DO LIVRO EMBARCA NESTE PR, no mesmo ramo, citando o numero dele (armadilhas/185): abra o PR, leia o numero, escreva o registro com menos de 1 KB pela ferramenta de escrita de arquivo (nunca por heredoc), commite os eventos da fila junto, e peca o pouso com UM comando pela ferramenta Monitor: python ci/esperar.py --checks <N> --teto 20 --dizendo \"os checks do PR <N>\" --e-pousar.",
+  "origem": "escada do PLANO-PORTFOLIO-DO-ALUNO.md secao 5 e corredor de obra docs/changespecs/CS-PAGES-0001.md; genese pousada no PR #1117 (TAR-169)",
+  "criada_em": "2026-09-05"
+}

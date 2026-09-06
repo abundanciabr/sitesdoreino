@@ -52,6 +52,7 @@ on:
           - metricas
           - notificacoes
           - pagamentos
+          - pages
           - quiz
           - sugestoes
       alvo:

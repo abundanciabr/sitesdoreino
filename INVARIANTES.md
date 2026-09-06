@@ -150,8 +150,9 @@ primeira oportunidade de violá-la.
   `services/forum/tests/test_inv_forum_nao_assina_sessao.py`,
   `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` e
   `services/encomendas/tests/test_inv_encomendas_nao_assina_sessao.py`,
-  `services/metricas/tests/test_inv_metricas_nao_assina_sessao.py` e
-  `services/cursos/tests/test_inv_cursos_nao_assina_sessao.py` —
+  `services/metricas/tests/test_inv_metricas_nao_assina_sessao.py`,
+  `services/cursos/tests/test_inv_cursos_nao_assina_sessao.py` e
+  `services/pages/tests/test_inv_pages_nao_assina_sessao.py` —
   medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três
@@ -166,7 +167,11 @@ primeira oportunidade de violá-la.
   do primeiro dólar, tela cheia uma vez só — o estado mora no modelo, como
   as celebrações da gamificação) e em `cursos` (04/09/2026; ali são duas, a
   cerimônia do Boss e "o aluno já leu o laudo?", e o estado mora no
-  `Progresso`);
+  `Progresso`) e em `pages` (05/09/2026; ali a tentação é a Prancheta do
+  portfólio, que guarda o que o aluno já marcou na lista de conferência — e o
+  critério AC-06 do `CS-PAGES-0001` exige justamente que essa marcação
+  atravesse aparelhos, coisa que sessão não faz, então o caminho curto
+  reprovaria o próprio critério antes de deslogar a plataforma);
   toda célula futura que consuma sessão herda a mesma obrigação. **No `forum`
   a obrigação pesa mais que o normal:** foi um requisito de login que criou a
   célula (`DECISAO-forum-da-escola.md` §2 — *"logado uma única vez, o site
@@ -784,6 +789,46 @@ primeira oportunidade de violá-la.
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
 - **Célula dona:** encomendas
 
+### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Produto
+- **O quê:** liberar alguém da sala de espera EXIGE dizer em qual curso a pessoa
+  está matriculada. `POST /pre-matriculas/{id}/decisao` com `decisao=liberar` e
+  sem `product_id` responde 422, com frase em português que diz o que faltou e o
+  que fazer, e **nada muda**: a linha continua `aguardando`. Não existe valor
+  padrão. Com o curso, ele é gravado na MESMA transação e no mesmo `save` que
+  põe a linha em `ativa`. `recusar` não pede curso, e curso mandado junto de uma
+  recusa é ignorado: quem foi recusado não é aluno de nada. E a outra metade,
+  que é o que impede a duplicação: **esta célula não tem tabela de cursos** — a
+  lista é do `catalogo`, e a matrícula guarda a referência (`product_id`).
+- **Por quê:** até 6 de setembro de 2026 ser aluno era binário, e enquanto
+  houvesse um curso só isso funcionava por coincidência. No dia do segundo curso,
+  **todo aluno veria o primeiro**, sem erro, sem aviso e sem nenhuma tela
+  quebrada, porque a única resposta possível para "de qual curso é esta pessoa?"
+  seria um palpite. Um valor padrão seria pior do que não ter lista: faria a
+  escolha errada parecer escolha, e ninguém veria o erro até o aluno abrir a sala
+  e encontrar o curso errado. Duas listas de cursos (uma no `catalogo`, outra
+  aqui) divergiriam no primeiro curso novo. Lei:
+  `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §6, §7 e §8.
+- **Teste-Guarda:**
+  `services/alunos/tests/test_inv_alu_c1_a_matricula_diz_o_curso.py` — a recusa
+  com frase em português e efeito zero, o curso em branco recusado igual, a
+  metade positiva (sem a qual "recusar tudo" satisfaria o invariante), a
+  varredura universal com a prova contra verdade vazia, a recusa que não grava
+  curso, o inventário de modelos por igualdade exata, e o acerto das matrículas
+  que já existiam, sempre fabricando primeiro o estado de produção (linha que dá
+  acesso com `product_id` vazio, inclusive pelo caminho real do pagamento).
+  Provado por mutação em 06/09/2026.
+- **O que este invariante NÃO alcança, e está dito na cara:** a matrícula que
+  nasce do EVENTO. `pagamento.aprovado.v1` não carrega `product_id`
+  (`contracts/eventos/pagamento.aprovado.v1.json`), então
+  `apps/matriculas/handlers.py` grava `""` e essa linha nasce `ativa` sem curso
+  sem passar pela decisão da fila. **A lei §3 supõe o contrário** ("quem entra
+  pela compra já informa o curso"), e a suposição vale só para `POST /matriculas`,
+  que é o reprocesso manual. Fechar a metade que falta é Rito de Contrato no
+  evento, e o evento é de outra célula. Enquanto ele não acontece, quem cura o
+  passado é `apontar_o_curso_das_matriculas`, e ele precisa ser rodado de novo
+  depois de cada compra nova.
+- **Célula dona:** alunos
+
 ---
 
 ## Invariantes da própria CI
@@ -934,6 +979,30 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   `Laudo`, sem código novo lá). Provado por mutação em 05/09/2026: acrescentar
   a decisão ao vocabulário do modelo deixa 2 vermelhos entre os dois arquivos;
   acrescentar a palavra a um template do plantão deixa 1 vermelho.
+- **Célula dona:** cursos
+
+### [INV-CUR-L4] Nenhuma Decisão, Data ou Resposta à Pergunta Vem da IA
+- **O quê:** o Assistente de laudo (`apps/cursos/agente.py`) prepara a rubrica,
+  as três forças e a mudança, e NADA além disso: nem `RascunhoDaIA` nem
+  `agente.Sugestao` têm campo de decisão, de data de retorno ou de resposta à
+  pergunta de amanhã de manhã, e a tela volta com os três em branco mesmo
+  quando a IA os responde no JSON dela. Um laudo pedido sem decisão é recusado
+  em vez de a decisão do rascunho preencher o buraco.
+- **Por quê:** o degrau deste agente é H, "só prepara". A decisão, a data e a
+  pergunta são o produto do trabalho da professora, e uma coluna para guardá-los
+  seria o primeiro passo silencioso para a tela mostrá-los já marcados: o degrau
+  que a lei diz que nunca sobe. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 e
+  §9; critério de morte 2 da constituição da célula.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_l4_a_ia_nao_decide.py` — a lista INTEIRA de
+  campos dos dois objetos é fixada (campo novo reprova, chame-se ele como se
+  chamar); a IA responde os três e a tela volta sem decisão marcada, com a data
+  em branco e a caixa desmarcada; o `conteudo` guardado não leva os três; e
+  `emitir` recusa um laudo sem decisão mesmo recebendo um rascunho que a traz
+  escrita. Provado por mutação em 05/09/2026: acrescentar `decisao` ao modelo,
+  com a migração junto, deixa 2 vermelhos; acrescentar `decisao: str = ""` ao
+  fim do dataclass deixa 2; copiar os três para o formulário deixa 1; completar
+  a decisão vazia com a do rascunho deixa 1.
 - **Célula dona:** cursos
 
 ### [INV-CUR-L5] A Rubrica Completa Antes de Qualquer Campo Livre

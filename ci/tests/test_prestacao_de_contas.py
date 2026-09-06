@@ -24,7 +24,14 @@ RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 PORTAO = RAIZ_DO_REPO / "ci" / "prestacao_de_contas.py"
 FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
 
+sys.path.insert(0, str(RAIZ_DO_REPO / "ci"))
+import telemetria  # noqa: E402
+
 CONTAS_COMPLETAS = """Terminei.
+
+- [x] achar o evento repetido no webhook
+- [x] ignorá-lo, com teste vermelho→verde
+Onde estou: passo 2 de 2, acabou.
 
 **O que mudou** — o webhook do Pix passou a ignorar evento repetido.
 
@@ -96,6 +103,8 @@ def _recusa_que_ensina(proc: subprocess.CompletedProcess) -> None:
                       ("**Auditoria de qualidade**", 0)):
         assert titulo in proc.stderr, f"o molde não trouxe {titulo}"
     assert "PRONTO" in proc.stderr
+    # E o roteiro que ele pediu em 05/09/2026: a recusa tem de ensinar a caixinha.
+    assert "- [x]" in proc.stderr and "Onde estou" in proc.stderr
 
 
 def _silencio(proc: subprocess.CompletedProcess) -> None:
@@ -346,6 +355,81 @@ def test_os_mesmos_titulos_soltos_na_prosa_nao_valem(tmp_path):
     ]))
 
 
+def test_relatorio_sem_o_checklist_e_recusado(tmp_path):
+    """Pedido dele em 05/09/2026: "toda e cada tarefa mostre um checklist e um
+    roadmap claro de onde está e o que ainda precisa ser feito". Os seis blocos
+    sem a caixinha eram o relatório de antes, e ele não dizia onde a tarefa
+    parou. Este teste nasceu VERMELHO contra o portão anterior."""
+    sem_checklist = "\n".join(
+        linha for linha in CONTAS_COMPLETAS.splitlines()
+        if not linha.startswith("- [") and not linha.startswith("Onde estou")
+    )
+    assert "- [x]" not in sem_checklist
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(sem_checklist),
+    ]))
+
+
+def test_caixinha_solta_na_prosa_nao_e_checklist(tmp_path):
+    """O par vermelho: `[x]` no meio de uma frase não é linha de checklist."""
+    prosa = (CONTAS_COMPLETAS
+             .replace("- [x] achar o evento repetido no webhook", "achei [x] o evento")
+             .replace("- [x] ignorá-lo, com teste vermelho→verde", "e ignorei [x] com teste"))
+    assert not any(l.startswith("- [") for l in prosa.splitlines())
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(prosa),
+    ]))
+
+
+def test_checklist_com_caixa_aberta_e_aceito(tmp_path):
+    """NÃO PRONTO honesto deixa `- [ ]` na tela. Um portão que só aceitasse
+    `[x]` ensinaria a marcar o que não foi feito — o contrário do roteiro."""
+    honesto = CONTAS_COMPLETAS.replace(
+        "- [x] achar o evento repetido no webhook",
+        "- [ ] achar o evento repetido no webhook (o log de produção não chega aqui)",
+    ).replace(
+        "- [x] ignorá-lo, com teste vermelho→verde",
+        "- [ ] ignorá-lo, com teste vermelho→verde (o teste de ponta a ponta não roda aqui)",
+    ).replace("**Veredito:** PRONTO", "**Veredito:** NÃO PRONTO")
+    assert "- [x]" not in honesto  # senão o teste não prova que `- [ ]` basta
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(honesto),
+    ]))
+
+
+def test_pronto_com_caixa_aberta_e_contradicao_e_e_recusado(tmp_path):
+    """O plano de abertura colado no fim, intocado, com PRONTO embaixo, satisfazia
+    o portão sem o robô ter marcado nada (achado do revisor do PR #1126). Ou a
+    tarefa acabou, ou sobrou passo: as duas coisas juntas não existem."""
+    contraditorio = CONTAS_COMPLETAS.replace(
+        "- [x] ignorá-lo, com teste vermelho→verde",
+        "- [ ] ignorá-lo, com teste vermelho→verde",
+    )
+    assert "**Veredito:** PRONTO" in contraditorio
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(contraditorio),
+    ]))
+
+
+def test_caixinha_quebrada_em_duas_linhas_nao_e_checklist(tmp_path):
+    """`\\s` com re.M atravessava linha: `-` numa linha e `[x]` na outra casavam."""
+    quebrado = CONTAS_COMPLETAS.replace("- [x] achar", "-\n[x] achar") \
+                               .replace("- [x] ignorá-lo", "- [x]\nignorá-lo")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(quebrado),
+    ]))
+
+
 def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
     """NÃO PRONTO é honestidade, não falha. Um portão que só aceitasse PRONTO
     ensinaria o robô a mentir — que é a doença que ele existe para curar."""
@@ -363,10 +447,31 @@ def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
 # ------------------------------------- nunca prender, nunca ficar mudo ----
 
 
-def test_segunda_recusa_no_mesmo_fim_de_turno_nao_prende_a_sessao(tmp_path):
-    proc = _rodar(["--contas"], {"transcript_path": "qualquer", "stop_hook_active": True})
-    assert proc.returncode == 1, proc
+def test_segunda_passada_com_o_relatorio_passa_calada(tmp_path):
+    """`stop_hook_active` diz só "já houve uma recusa neste fim de turno", não
+    "a recusa foi ignorada". A primeira versão do portão tratava o campo como
+    prova de desobediência e gritava sem abrir o transcript: medido nos
+    transcripts de 05 e 06/09/2026, 50 segundas passadas, 50 avisos, e em 32
+    delas o relatório válido estava na tela (armadilhas/368). Este teste
+    nasceu VERMELHO contra ela."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala(CONTAS_COMPLETAS),
+    ], stop_hook_active=True))
+
+
+def test_segunda_passada_sem_o_relatorio_grita_sem_prender(tmp_path):
+    """O par: cobrado, e terminou assim mesmo. exit 1, nunca 2 — recusar de
+    novo prenderia a sessão do mantenedor em laço."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala("Pronto."),
+    ], stop_hook_active=True)
+    assert proc.returncode == 1, (proc.returncode, proc.stdout, proc.stderr)
     assert "cobrado e terminou assim mesmo" in proc.stderr
+    assert "🧾" not in proc.stderr, "a segunda passada não recusa: a recusa já aconteceu"
 
 
 def test_transcript_ausente_grita_e_nao_bloqueia():
@@ -376,9 +481,12 @@ def test_transcript_ausente_grita_e_nao_bloqueia():
 
 
 def test_transcript_inexistente_grita_e_nao_bloqueia():
-    proc = _rodar(["--contas"], {"transcript_path": "/caminho/que/nao/existe.jsonl"})
-    assert proc.returncode == 1, proc
-    assert "não encontrado" in proc.stderr
+    """Nas duas passadas: "não consegui medir" nunca vira silêncio."""
+    for segunda in (False, True):
+        proc = _rodar(["--contas"], {"transcript_path": "/caminho/que/nao/existe.jsonl",
+                                     "stop_hook_active": segunda})
+        assert proc.returncode == 1, (segunda, proc)
+        assert "não encontrado" in proc.stderr
 
 
 def test_json_quebrado_grita_e_nao_bloqueia():
@@ -412,6 +520,8 @@ def test_o_aviso_do_plano_sai_para_pedido_do_mantenedor():
     assert "PLANO PRIMEIRO" in proc.stdout
     assert "- [ ]" in proc.stdout
     assert "Veredito" in proc.stdout
+    # A ponta do meio (05/09/2026) só tem o aviso como mecanismo: ele tem de dizê-la.
+    assert "FIM DE CADA ETAPA" in proc.stdout and "Onde estou" in proc.stdout
 
 
 def test_o_aviso_do_plano_cala_no_acordar_da_maquina():
@@ -532,3 +642,101 @@ def test_a_fala_dele_no_meio_da_espera_nao_perdoa_a_divida(tmp_path):
     entradas += [_humano("deixe assim: só admin pode ver, ler"), _fala("Combinado.")]
     entradas += [_batimento("Deploy na fila"), _fala("Aguardando.")]
     _recusa_que_ensina(_decidir(tmp_path, entradas))
+
+
+# ------------------------------------------- Alavanca 3: série sem despacho ----
+#
+# documentos/alavancas-10x-da-fabrica.md mediu que, das 60 sessões mais
+# recentes, só 4 dispararam o robô `despacho` (16 vezes); as demais fizeram os
+# PRs de um pedido em série, na mesma sessão. Esta contagem nasce em SOMBRA
+# (Sistema Imunológico): só telemetria, nada visível, nada bloqueado — o exit
+# code continua sendo só o que `decidir()` já calculava (provado no fim desta
+# seção pelo caso que já tinha teste próprio, com 2 PRs sem despacho).
+
+
+def _repo_encenado(tmp_path: Path) -> Path:
+    casa = tmp_path / "casa"
+    (casa / ".git").mkdir(parents=True)
+    return casa
+
+
+def _pr_criado(ferramenta: str = "Bash") -> dict:
+    return _ferramenta(ferramenta, {"command": "gh pr create --base main --title x --body y"})
+
+
+def _despacho() -> dict:
+    return _ferramenta("Agent", {"subagent_type": "despacho", "prompt": "brief"})
+
+
+def test_dois_prs_sem_despacho_gravam_a_sombra(tmp_path):
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _pr_criado("Bash"),
+        _fala("PR #1 aberto."),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-serie")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    achados = [e for e in eventos if e.get("evento") == "serie_sem_despacho"]
+    assert len(achados) == 1, "a série de PRs sem despacho deveria ter sido medida"
+    assert achados[0]["prs_criados"] == 2
+    assert achados[0]["despachos"] == 0
+
+
+def test_prs_com_despacho_nao_conta_como_serie(tmp_path):
+    """O turno despachou: não é a série que a Alavanca 3 quer enxergar."""
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _despacho(),
+        _pr_criado("Bash"),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-com-despacho")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert not any(e.get("evento") == "serie_sem_despacho" for e in eventos)
+
+
+def test_um_pr_so_nao_dispara_a_medicao(tmp_path):
+    """O limiar é 2 ou mais: um PR sozinho não é série."""
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça o PR"),
+        _pr_criado("Bash"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-um-pr")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert not any(e.get("evento") == "serie_sem_despacho" for e in eventos)
+
+
+def test_segunda_passada_nao_grava_a_sombra_duas_vezes(tmp_path):
+    """Quando há recusa, o Stop roda duas vezes no mesmo fim de turno. A série
+    de PRs é uma só, e a sombra conta uma vez."""
+    casa = _repo_encenado(tmp_path)
+    entradas = [_humano("faça os dois PRs"), _pr_criado("Bash"),
+                _pr_criado("PowerShell"), _fala("Abertos.")]
+    _decidir(tmp_path, entradas, cwd=str(casa), session_id="sessao-duas-passadas")
+    entradas.append(_fala(CONTAS_COMPLETAS))
+    _decidir(tmp_path, entradas, cwd=str(casa), session_id="sessao-duas-passadas",
+             stop_hook_active=True)
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert sum(e.get("evento") == "serie_sem_despacho" for e in eventos) == 1
+
+
+def test_sombra_nao_muda_o_exit_code(tmp_path):
+    """A sombra é SOMBRA: mesmo com 2 PRs sem despacho, uma sessão que já
+    prestou contas corretamente continua saindo calada (exit 0). Quem decide o
+    exit code continua sendo só `decidir()`."""
+    casa = _repo_encenado(tmp_path)
+    proc = _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _pr_criado("Bash"),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-exit-code")
+    _silencio(proc)
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert any(e.get("evento") == "serie_sem_despacho" for e in eventos), (
+        "a sombra tem de ter gravado mesmo com o turno calado"
+    )

@@ -59,6 +59,10 @@ DONO = "dono@exemplo.com"
 
 TELA = "/escola/alunos/recusados"
 GESTO = "/escola/alunos/reconsiderar"
+# [CURSO] Aceitar mesmo assim LIBERA, e liberar exige o curso desde 06/09/2026
+# ([INV-ALU-C1]). Os testes daqui continuam medindo o gesto de dois passos e a
+# auditoria dele; o que acontece SEM o curso mora em `test_liberar_com_curso.py`.
+CURSO = "prod-primeiros-dolares"
 GESTO_APAGAR = "/escola/alunos/recusados/apagar"
 
 
@@ -322,7 +326,7 @@ def test_aceitar_de_novo_usa_as_duas_portas_que_ja_existem():
     volta = _volta_para_a_fila()
     libera = _liberacao()
 
-    r = _dentro().post(GESTO, {"alvo": "7"})
+    r = _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
 
     assert volta.called and libera.called
     assert r.status_code == 302
@@ -352,6 +356,7 @@ def test_os_dados_reenviados_sao_os_da_alunos_e_nao_os_do_formulario():
             "whatsapp": "(11) 90000-0000",
             "email": "outro@exemplo.com",
             "turma": "turma trocada",
+            "product_id": CURSO,
         },
     )
 
@@ -372,7 +377,7 @@ def test_campo_vazio_nao_viaja_para_nao_apagar_o_que_a_pessoa_escreveu():
     volta = _volta_para_a_fila()
     _liberacao()
 
-    _dentro().post(GESTO, {"alvo": "7"})
+    _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
 
     import json
 
@@ -389,7 +394,7 @@ def test_a_liberacao_que_falha_diz_onde_a_pessoa_ficou():
     _volta_para_a_fila()
     _liberacao(httpx.Response(500))
 
-    r = _dentro().post(GESTO, {"alvo": "7"})
+    r = _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
     assert r["Location"].endswith("?resultado=reconsiderado-na-fila")
 
     html = _texto(_dentro().get(f"{TELA}?resultado=reconsiderado-na-fila"))
@@ -403,7 +408,7 @@ def test_quem_ja_saiu_dos_recusados_recebe_recusa_honesta_e_nada_e_tentado():
     voltar à fila não é registrada aqui de propósito: se a view a chamasse,
     `respx` estouraria."""
     _recusados_respondem([_recusado(id="7")])
-    r = _dentro().post(GESTO, {"alvo": "99"})
+    r = _dentro().post(GESTO, {"alvo": "99", "product_id": CURSO})
     assert r["Location"].endswith("?resultado=reconsiderar-sumiu")
 
 
@@ -415,7 +420,7 @@ def test_quem_ja_e_aluno_ou_foi_reembolsado_nao_volta_pela_fila():
     _recusados_respondem([_recusado()])
     respx.post(FILA).mock(return_value=httpx.Response(409, json={"detail": "já tem"}))
 
-    r = _dentro().post(GESTO, {"alvo": "7"})
+    r = _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
     assert r["Location"].endswith("?resultado=reconsiderar-nao-cabe")
 
     html = _texto(_dentro().get(f"{TELA}?resultado=reconsiderar-nao-cabe"))
@@ -430,7 +435,7 @@ def test_sem_conseguir_ler_a_lista_nada_e_tentado_e_a_tela_avisa():
     respx.get(FILA, params={"status": "recusada"}).mock(
         return_value=httpx.Response(500)
     )
-    r = _dentro().post(GESTO, {"alvo": "7"})
+    r = _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
     assert r["Location"].endswith("?resultado=reconsiderar-nao-deu")
 
 
@@ -444,7 +449,7 @@ def test_formulario_sem_alvo_nao_faz_nada_e_nao_grava_auditoria():
 
 
 def test_sem_sessao_o_gesto_vai_para_o_login():
-    r = Client().post(GESTO, {"alvo": "7"})
+    r = Client().post(GESTO, {"alvo": "7", "product_id": CURSO})
     assert r.status_code == 302
     assert r["Location"].startswith("/entrar/google?next=")
 
@@ -464,7 +469,7 @@ def test_o_gesto_grava_uma_linha_com_verbo_proprio():
     _volta_para_a_fila()
     _liberacao()
 
-    _dentro().post(GESTO, {"alvo": "7"})
+    _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
 
     linha = Registro.objects.get()
     assert linha.acao == Registro.RECONSIDERAR
@@ -481,7 +486,7 @@ def test_a_tentativa_que_falhou_tambem_deixa_linha():
     _recusados_respondem([_recusado()])
     respx.post(FILA).mock(return_value=httpx.Response(409, json={"detail": "já tem"}))
 
-    _dentro().post(GESTO, {"alvo": "7"})
+    _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
 
     linha = Registro.objects.get()
     assert linha.acao == Registro.RECONSIDERAR
@@ -497,7 +502,7 @@ def test_a_auditoria_nao_guarda_pii_de_quem_foi_aceito():
     _volta_para_a_fila()
     _liberacao()
 
-    _dentro().post(GESTO, {"alvo": "7"})
+    _dentro().post(GESTO, {"alvo": "7", "product_id": CURSO})
 
     for linha in Registro.objects.all():
         assert "Ana Paula" not in linha.detalhe

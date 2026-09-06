@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-015957-TAR-215-bloqueada",
+  "tarefa": "TAR-215",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T01:59:57+00:00",
+  "quem": "despacho-pages-porta-0509",
+  "detalhe": "infra/ e caminho CODEOWNERS e o despacho do degrau 06 deu mandato so para pages. Destrava quando o mantenedor autorizar infra/ por escrito num despacho; ate la a porta de /pages/ responde 503 para todo mundo, que e o fail-closed correto e nao um defeito de pages."
+}

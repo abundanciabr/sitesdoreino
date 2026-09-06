@@ -252,7 +252,7 @@ silencioso até a pista devolver o PR.
 
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
 de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
-orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
+orçamento de 15 arquivos de código que decide a arquitetura antes da primeira linha. Cada
 redescoberta custa tokens e uma rodada de teste.
 
 **E leia também, uma vez por sessão, os 8 padrões de
@@ -293,7 +293,29 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
-**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
+**A lição do caminho chega ANTES, sem você procurar (desde 06/09/2026).** As
+duas formas de o catálogo alcançar quem trabalha eram tardias por construção: o
+índice depende de alguém dar Ctrl+F e adivinhar a palavra certa antes de errar,
+e o sino casa a MENSAGEM DE ERRO, que só existe depois da queda. Medido no dia:
+das 339 entradas, 140 tinham assinatura de erro e **nenhuma** tinha como dizer
+"isto vai te morder quando você mexer em tal lugar". Na mesma sessão a
+`armadilhas/179` mordeu um agente que a tinha no disco desde 29/08, porque
+ninguém procura por "número repetido" enquanto está escrevendo um registro.
+
+Agora uma entrada pode declarar, no frontmatter, **`gatilho:`** (os caminhos que
+se toca antes de cair nela) e **`licao:`** (a frase que salva a rodada). O
+gerador compila os dois em `armadilhas/GATILHOS.json` (gerado, como os outros
+três) e o gancho `PreToolUse` entrega a lição no momento da gravação, **uma vez
+por caminho, por sessão** — a segunda escrita passa direto, porque o objetivo é
+ensinar, não impedir. Ao escrever uma entrada nova, pergunte-se: *qual arquivo a
+pessoa está tocando quando isto morde?* Se a resposta for um caminho, ele merece
+um gatilho; se não for, a entrada segue vivendo do índice e do sino.
+
+Ele é **fail-open**, ao contrário das muralhas: catálogo ausente, JSON
+corrompido ou erro interno viram silêncio. Muralha impede e na dúvida recusa;
+lição ensina e na dúvida cala.
+
+**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife) · `ci/licao_do_caminho.py`, ligado como `PreToolUse` em `.claude/settings.json`, com `ci/tests/test_licao_do_caminho.py` (que também reprova gatilho guloso, pela sabotagem contra `CAMINHOS_INOCENTES`). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`; **e nada obriga uma entrada nova a declarar gatilho** — quem esquecer fica só com o índice e o sino, e isso está dito aqui de propósito, porque um portão que exigisse gatilho de toda entrada só produziria gatilho de fachada.
 
 ## Mapa do projeto para IA (desde 27/08/2026)
 
@@ -371,7 +393,7 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
-**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `.githooks/pre-commit` → `ci/registro_no_commit.py` (o mesmo, aqui na máquina e NA HORA do commit: registro novo sem citar PR nenhum, num ramo que entrega, nem chega a virar viagem até a porta — armadilhas/185) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
 
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
 
@@ -556,6 +578,30 @@ Continua valendo mandar **arquivo na conversa** (uma prévia, uma captura) e
 linhas não precisa de página. O que não vale é a entrega definitiva morar fora
 do site.
 
+**O caminho inverso é a mesma lei, e já foi confundido: documento que ELE envia
+é ordem de serviço, não conteúdo para arquivar (desde 06/09/2026).** Aconteceu
+assim: ele mandou três documentos do curso dizendo que eles instruem os robôs a
+construir o que ainda não existe; a sessão leu os três, transformou UM em
+trabalho na fila e publicou o resto como página, e ele teve de corrigir à mão —
+"IMPORTANTISSIMO: o que eu quero não é apenas ENVIAR os documentos para o site"
+(`armadilhas/362`). A pergunta que decide é uma só: **"se eu só guardar isto, o
+que ele pediu passa a existir?"** Texto do livro indo para a Biblioteca: sim,
+guardar É a obra. Documento descrevendo curso, agente, tela ou fluxo que ainda
+não existe: não — e aí o rito é o de obra, sempre:
+
+1. **Inventário**: tudo que o documento diz que precisa EXISTIR (telas, fluxos,
+   agentes, conteúdo, integrações), em lista.
+2. **Diff com a realidade**: o que já está no ar e o que falta — olhando o
+   código e o site, nunca a memória.
+3. **O que falta vira tarefa na fila** (RITOS §5), uma por pedaço independente,
+   citando o documento de origem — a fila sobrevive à sessão; conversa
+   arquivada, não.
+4. **E o despacho começa na mesma sessão**, pela lei "Todo pedido do mantenedor
+   é um lote": tarefa na fila não é adeus, é linha de partida.
+5. **A página com o documento é subproduto** (o mapa do que falta), nunca a
+   entrega. O relatório final diz o que passou a EXISTIR, o que foi despachado
+   e o que só ele pode dar — este último em pergunta estruturada.
+
 **Quem faz valer:** ninguém, mecanicamente — a lei está declarada em
 `ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
 reprovaria trabalho honesto e deixaria o descuido passar.
@@ -581,7 +627,8 @@ Na prática:
   esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
   humana.
 - **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
-  arquivos, Ritos de Contrato, evidência vermelho→verde —
+  arquivos de código (a escrituração obrigatória em `painel/` e `fila/` saiu da
+  conta no PR #1167, de 06/09/2026), Ritos de Contrato, evidência vermelho→verde —
   nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
   responsável de construir algo grande. "Completo" é o destino; a escada de
   PRs é o caminho.
@@ -745,7 +792,13 @@ frase por frase, com o número da linha. A recusa do portão já traz as quatro
 trocas com exemplo, na mesma tela — não é preciso voltar aqui.
 
 **Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` (roda em
-todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`.
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`
+· e, desde 06/09/2026, NA HORA DA ESCRITA: o gancho `PreToolUse` de
+`.claude/settings.json` → `ci/muralha_do_travessao_na_escrita.py` recusa o
+Write/Edit que aumentaria os travessões de um arquivo público, com as quatro
+trocas na própria recusa — o robô reescreve antes de o texto entrar no arquivo,
+não depois de tudo pronto. O que o gancho não vê (escrita por shell, texto já
+no banco) continua com o portão do PR · `ci/tests/test_muralha_do_travessao_na_escrita.py`.
 
 
 ## Depois de todo merge que dispara deploy
@@ -787,7 +840,7 @@ série pela mesma sessão, cada uma esperando seus 10 minutos de pista.
 
 **A regra:** a sessão que recebe um pedido dele É a maestro daquele pedido, sem
 ninguém precisar dizer "toque um lote". Ela divide o pedido em pedaços
-independentes (1 PR = 1 célula, orçamento de 15), dispara um sub-agente por
+independentes (1 PR = 1 célula, orçamento de 15 arquivos de código), dispara um sub-agente por
 pedaço com a ficha `despacho`, em paralelo, e mantém em série só o que depende
 de outro pedaço. Enquanto os checks de cada PR rodam, o `revisor` lê o diff e o
 `escrivao` escreve o registro, a armadilha e o evento da fila. A maestro arma
@@ -810,6 +863,56 @@ maestro, e isso não tem mecanismo: nada no CI vê quantos sub-agentes uma sess�
 disparou. Está dito aqui com todas as letras para ninguém tomar o teste das
 fichas por garantia da regra inteira.
 
+## O que uma chamada custa (desde 06/09/2026)
+
+
+O mantenedor abriu o painel de uso num domingo e perguntou por que 47% da cota
+semanal tinha ido embora em 36 horas, achando que tinha pedido "umas 10 tarefas
+simples". A medição dos transcripts daquele fim de semana:
+
+| | |
+|---|---|
+| tokens consumidos | 4,92 bilhões |
+| chamadas ao modelo | 19.708 |
+| PRs mergeados | 124 |
+| falas dele | 165 |
+
+Ou seja: o trabalho era real, e a cota comprou 124 PRs. O que estava errado não
+era a quantidade de trabalho, era **o preço de cada chamada**. Três números
+explicam:
+
+- **97,7% de toda a entrada é releitura.** Cada comando reenvia a conversa
+  inteira. Rodar um `ls` numa sessão de 250k custa 250k.
+- **3.401 chamadas rodaram com o contexto acima de 400k, e queimaram 38% da
+  semana.** A maior sessão começou em 78k e terminou em 967k, fazendo o mesmo
+  tipo de trabalho o tempo todo, doze vezes mais caro no fim.
+- **53 dos 81 sub-agentes rodaram no modelo mais caro sem ninguém ter
+  escolhido**, porque sub-agente disparado sem `model` HERDA o modelo da
+  maestro. Foi omissão, não decisão.
+
+Decisão dele em 06/09/2026, em pergunta estruturada, nas duas pontas:
+
+**1. O modelo se escolhe, não se herda.** A maestro passa `model: "sonnet"` no
+disparo quando a tarefa é rotina: escrever registro, catalogar armadilha,
+ajustar texto de tela, corrigir teste, redirecionar rota, semear dado, pagar
+dívida de escrituração. Fica no modelo de cima o que decide arquitetura, escreve
+ou muda contrato, e o código novo do produto. **Na dúvida, o de cima:** um PR de
+conserto custa 40 milhões de tokens e apaga a economia de cinco despachos
+baratos.
+
+**2. Conversa que engorda avisa.** Passando de ~300k de contexto, cada comando
+custa o triplo do que custava no começo e entrega a mesma coisa. Dali em diante
+a sessão DIZ isso ao mantenedor, em uma linha, e sugere abrir conversa nova
+dizendo o que levar. Quem decide é ele: a sessão não fecha nada por conta
+própria, porque o histórico na tela é dele, não do robô.
+
+**O que isto NÃO é: corte de escopo.** Os 124 PRs daquele fim de semana eram
+trabalho legítimo e a lei "feito completo" continua inteira, palavra por
+palavra. O que muda é o preço unitário, nunca a ambição. Nenhum robô cita esta
+seção para recomendar fazer menos.
+
+**Quem faz valer:** `ci/tests/test_fichas_de_robo.py` (a ficha que só preenche molde declara o modelo dela, em vez de herdar o mais caro). A escolha do modelo a cada despacho e o aviso da conversa cara são julgamento da maestro e **não têm mecanismo**: nada no CI vê qual modelo uma sessão pediu, nem quanto contexto ela carregava quando rodou um comando. Está dito com todas as letras para ninguém tomar o teste da ficha por garantia da regra inteira.
+
 ## Plano na abertura, contas no fecho (desde 05/09/2026)
 
 
@@ -830,16 +933,30 @@ custava: das 40 sessões mais recentes deste projeto, **24 mudaram o mundo e
 terminaram sem prestar contas**. A maioria. Quem pagava era ele, uma pergunta
 repetida por vez.
 
-**A regra, nas duas pontas:**
+**A regra, nas três pontas:**
 
 1. **Na abertura.** Pedido que vai mudar o mundo (editar arquivo, rodar comando
    que altera algo, abrir PR) começa pelo **plano em caixinhas** — um título
-   `## Plano` e um `- [ ]` por passo — e o checklist vai sendo marcado enquanto
-   os passos caem. Ele é vivo: serve para o mantenedor ver onde a tarefa está
-   sem perguntar, e para o robô não perder metade do escopo no meio do caminho.
-2. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
+   `## Plano` e um `- [ ]` por passo. Ele é vivo: serve para o mantenedor ver
+   onde a tarefa está sem perguntar, e para o robô não perder metade do escopo
+   no meio do caminho.
+2. **Ao fim de cada etapa.** Pedido dele em 05/09/2026, no mesmo dia, com as
+   palavras dele: *"quero que toda e cada tarefa mostre um checklist e um
+   roadmap claro de onde está e o que ainda precisa ser feito ao final de cada
+   etapa, fase, parte, executada"*. O checklist da abertura sumia da tela
+   depois de vinte chamadas de ferramenta, e ele não sabia se a tarefa estava
+   no passo 2 ou no 5. A regra: **cada etapa fechada termina com o checklist
+   inteiro reimpresso e marcado** — `- [x]` no que caiu, `- [ ]` no que falta —
+   e a linha `Onde estou: passo N de M`, com o próximo passo dito. Não é um
+   segundo documento: é o MESMO checklist do plano, atualizado. "Etapa" é um
+   passo do próprio plano; tarefa de um passo só tem uma etapa, e o fecho a
+   cobre.
+3. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
    nesta ordem, e ela é o formato da regra 9 com os dois blocos que ele pediu
-   em 05/09/2026:
+   em 05/09/2026. **Ela começa pelo checklist no estado final** (todo `- [x]`
+   quando PRONTO; o `- [ ]` que sobrou, com o motivo, quando NÃO PRONTO;
+   PRONTO com caixa aberta é contradição, e o portão recusa), e segue com os
+   seis blocos:
 
    - **O que mudou** — fatos, não adjetivos
    - **O que foi verificado e como** — o comando e a saída real, não a promessa
@@ -896,10 +1013,19 @@ de texto (seção "Depois de todo merge que dispara deploy"), sem mecanismo.
 
 **O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
 verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
-torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
-da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável; ausência não
-é. O plano de abertura também só é exigido, nunca bloqueado: no fim do turno ele
-já não tem conserto, e travar o robô por algo irreparável só produz um robô
-travado.
+torna impossível é o SILÊNCIO — os seis blocos aparecem, o checklist marcado
+aparece, o veredito fica em cima da mesa, e quem lê consegue cobrar. Mentira
+escrita é falsificável; ausência não é. O plano de abertura também só é
+exigido, nunca bloqueado: no fim do turno ele já não tem conserto, e travar o
+robô por algo irreparável só produz um robô travado. **O checklist ao fim de
+cada etapa (ponta 2) está na mesma situação, e é dito aqui para ninguém tomar o
+portão do fecho por garantia dele:** "etapa" não existe para a máquina, e um
+portão que contasse reimpressões por chamada de ferramenta cobraria checklist
+a cada `ls`. O que o `Stop` mede é a ponta 3: o relatório final SEM caixinha é
+recusado, PRONTO com `- [ ]` aberta é recusado, e a recusa ensina as três
+pontas. O que ele NÃO distingue é o checklist do plano colado no fim com tudo
+marcado sem que nada tenha sido feito: isso é mentira escrita, falsificável,
+e fica para quem lê. A ponta 2 fica na lei, no aviso de
+abertura (`--plano`) e na memória do robô — sem mecanismo, declarado.
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`.
+**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.

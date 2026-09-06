@@ -1,0 +1,19 @@
+{
+  "arquivo": "223-o-processo-que-roda-a-reconferencia-diaria-dos-links-do-port",
+  "id": "TAR-223",
+  "titulo": "O processo que roda a reconferencia diaria dos links do portfolio",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-184"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: o servico pages-huey esta declarado em infra/docker-compose.yml com command run_huey, o deploy-infra ficou verde, e o run_huey da pages aparece em running na verificacao do deploy.",
+  "despacho": "# DESPACHO - infra: o processo que roda a reconferencia diaria dos links da celula pages\nCELULA: infra - MANDATO EXPLICITO PARA `infra/docker-compose.yml` E NADA ALEM.\n\nDE ONDE ESTA TAREFA VEIO: o degrau 08 do portfolio do aluno (TAR-184) construiu\na reconferencia diaria dos links das pecas, que e a metade do criterio AC-09 do\n`docs/changespecs/CS-PAGES-0001.md`. Ela esta escrita, testada e provada por\nmutacao em `services/pages/apps/portfolio/tasks.py`, registrada como\n`@huey.periodic_task` e servida pelo `config/huey.py` da celula. O que falta e\nUMA COISA SO: o servico que executa `python manage.py run_huey` para a `pages`.\nO robo do degrau 08 nao pode escreve-lo porque `infra/` e caminho CODEOWNERS e o\ndespacho dele nao tinha mandato.\n\nO QUE ISSO CUSTA ENQUANTO NAO FOR FEITO: o link do aluno e conferido no momento\nem que ele e colado (AC-08, no ar), mas nunca mais depois. Um render que sai do\nar um mes adiante continua aparecendo como se estivesse bem, e e exatamente o\nburaco que o §6.2 do `PLANO-PORTFOLIO-DO-ALUNO.md` mandou vigiar quando o\nmantenedor escolheu o link colado.\n\nTAREFA: declarar o servico auxiliar `pages-huey` em `infra/docker-compose.yml`,\nno molde dos que ja existem (`mensageria-huey` e os outros oito `run_huey` do\narquivo), com `env_file: [env/pages.env]` e\n`command: [\"python\", \"manage.py\", \"run_huey\"]`.\n\nO QUE CONFERIR ANTES DE ABRIR O PR, e cada item ja custou uma rodada aqui:\n\n- A imagem da `pages` na `main` PRECISA ter o `run_huey`. Ele vem de\n  `huey.contrib.djhuey` em `INSTALLED_APPS`, que entrou junto com a TAR-184:\n  auxiliar declarado com um `command:` que a imagem nao tem sai do ar como\n  `Unknown command`, e o passo de verificacao do `deploy-infra` exige TODOS os\n  servicos em `running` (`armadilhas/088`, passo 4). Confira que o PR da TAR-184\n  ja pousou.\n- `HUEY_REDIS_URL` precisa existir em `infra/env/pages.env` na VPS. A leitura\n  dela nunca e fail-hard no import (o container web nao morre sem ela), entao a\n  falta so aparece no log do worker. Se a linha nao existir, ela nasce em\n  `infra/provisionar-pages.sh`, que tem trava de deriva: env com variavel que o\n  roteiro nao sabe gerar reprova.\n- O inventario de rotas nao muda: este servico nao serve HTTP nenhum.\n\nTexto sem travessao. O registro do livro embarca no PR, citando o numero dele.",
+  "origem": "divida declarada pela TAR-184 (degrau 08 do portfolio): a reconferencia existe e nao tem quem a execute, e infra/ e caminho CODEOWNERS",
+  "criada_em": "2026-09-06"
+}

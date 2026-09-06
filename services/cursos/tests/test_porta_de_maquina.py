@@ -1,5 +1,5 @@
-"""As cinco operações do editor, medidas pela porta: o que cada uma devolve,
-o que cada uma recusa, e o que cada uma NÃO toca.
+"""As operações do editor, medidas pela porta: o que cada uma devolve, o que
+cada uma recusa, e o que cada uma NÃO toca.
 
 O cenário é o esqueleto semeado pelo caminho da instalação (`call_command`, na
 fixture `esqueleto` do `conftest`): um curso, 12 blocos, 34 aulas sem texto,
@@ -21,7 +21,7 @@ import pytest
 from django.core.management import call_command
 from django.test import Client
 
-from apps.cursos.models import Aula, Instrumento, Pausa
+from apps.cursos.models import Aula, Bloco, Curso, Instrumento, Pausa
 from config.api import api
 from tests.conftest import SITE
 
@@ -63,14 +63,21 @@ OS_CAMPOS_DA_LISTA = {
     "e_boss",
     "banca_nivel",
 }
-AS_SETE_OPERACOES = {
+# As quatro que resolvem a aula pelo SITE (o editor que já está no ar as
+# chama), as quatro que resolvem pelo CURSO e conferem a PARTE (TAR-203), e as
+# três de instrumento.
+AS_ONZE_OPERACOES = {
+    "listSiteLessons",
+    "getSiteLesson",
+    "putSiteLesson",
+    "publishSiteLesson",
     "listLessons",
     "getLesson",
     "putLesson",
+    "publishLesson",
     "listInstruments",
     "getInstrument",
     "putInstrument",
-    "publishLesson",
 }
 
 
@@ -511,6 +518,174 @@ def test_get_instrument_404_para_slug_que_nao_existe(esqueleto):
 
 
 # ---------------------------------------------------------------------------
+# O curso pelo SLUG e a parte conferida (TAR-203, 05/09/2026)
+# ---------------------------------------------------------------------------
+# O que estas provas medem, e a porta antiga não media: um site com DOIS cursos.
+# Enquanto houve um só, "o primeiro do site" e "o curso certo" foram a mesma
+# resposta, e é por isso que o defeito não tinha sintoma.
+
+
+@pytest.fixture
+def dois_cursos(esqueleto):
+    """Um SEGUNDO curso no mesmo site, com uma E00 própria, na parte 3.
+
+    Mesmo número de aula, curso diferente, parte diferente: é o cenário em que
+    "o primeiro curso do site" passa a responder a aula errada, e em que a
+    parte do endereço deixa de ser enfeite.
+    """
+    oficina = Curso.objects.create(site_id=SITE, slug="oficina", nome="Oficina de UGC")
+    bloco = Bloco.objects.create(curso=oficina, ordem=1, letra="A", parte=3)
+    Aula.objects.create(
+        curso=oficina,
+        bloco=bloco,
+        ordem=0,
+        numero="E00",
+        titulo_exibido="Encomenda 00 da oficina",
+    )
+    return oficina
+
+
+def do_curso(caminho: str, curso: str = "profissional", site: str = SITE) -> str:
+    return f"/cursos/{curso}{caminho}?site_id={site}"
+
+
+def test_listar_pelo_slug_devolve_o_curso_daquele_slug_e_nao_o_primeiro(dois_cursos):
+    """`profissional` é o primeiro do site; `oficina` é o segundo. Os dois têm uma
+    E00, e cada endereço devolve a sua."""
+    profissional = corpo(pedir(do_curso("/aulas")))
+    oficina = corpo(pedir(do_curso("/aulas", curso="oficina")))
+    assert len(profissional) == 34
+    assert profissional[0]["titulo_exibido"] == "Encomenda 00"
+    assert [aula["titulo_exibido"] for aula in oficina] == ["Encomenda 00 da oficina"]
+
+
+def test_curso_que_nao_existe_e_404_e_nunca_o_primeiro_do_site(dois_cursos):
+    """O consolo silencioso é o defeito: devolver o primeiro curso do site para
+    quem pediu um slug que não existe."""
+    resposta = pedir(do_curso("/aulas", curso="curso-que-nao-existe"))
+    assert resposta.status_code == 404
+    recado = corpo(resposta)["detail"]
+    assert "'curso-que-nao-existe' não existe no site 'escola-a'" in recado
+    # Em ordem ALFABÉTICA (`_curso` usa `order_by("slug")`), não na ordem em
+    # que foram criados: quem lê o recado procura um nome numa lista, e não a
+    # história do banco.
+    assert "oficina, profissional" in recado
+
+
+def test_o_slug_de_outro_site_nao_atravessa_a_fronteira(esqueleto):
+    """O par é site+slug: o mesmo slug em outro site é outro curso."""
+    resposta = pedir(do_curso("/aulas", site="outra-escola"))
+    assert resposta.status_code == 404
+    assert "este site ainda não tem curso" in corpo(resposta)["detail"]
+
+
+def test_listar_filtra_pela_parte_do_bloco(esqueleto):
+    """As 12 letras se dividem em três partes; a listagem por parte traz só os
+    blocos dela, na mesma ordem."""
+    inteiro = corpo(pedir(do_curso("/aulas")))
+    partes = {
+        parte: corpo(pedir(do_curso("/aulas") + f"&parte={parte}"))
+        for parte in (1, 2, 3)
+    }
+    assert sum(len(aulas) for aulas in partes.values()) == len(inteiro) == 34
+    for parte, aulas in partes.items():
+        assert aulas, f"a parte {parte} veio vazia"
+        assert {aula["bloco"]["parte"] for aula in aulas} == {parte}
+    assert [aula["numero"] for aula in partes[1]] == [
+        aula["numero"] for aula in inteiro if aula["bloco"]["parte"] == 1
+    ]
+
+
+def test_parte_fora_do_vocabulario_e_422(esqueleto):
+    """1, 2 ou 3 são as partes que o banco aceita (`PARTES_DO_CURSO`); a porta
+    recusa a quarta antes de tocar o banco, e não devolve lista vazia."""
+    assert pedir(do_curso("/aulas") + "&parte=4").status_code == 422
+
+
+def test_get_pela_parte_certa_devolve_a_aula_daquele_curso(dois_cursos):
+    """A E00 do `profissional` está na parte 1; a da `oficina`, na parte 3."""
+    profissional = corpo(pedir(do_curso("/aulas/E00") + "&parte=1"))
+    oficina = corpo(pedir(do_curso("/aulas/E00", curso="oficina") + "&parte=3"))
+    assert profissional["titulo_exibido"] == "Encomenda 00"
+    assert profissional["bloco"]["parte"] == 1
+    assert oficina["titulo_exibido"] == "Encomenda 00 da oficina"
+    assert oficina["bloco"]["parte"] == 3
+
+
+def test_get_recusa_quando_a_parte_do_endereco_nao_casa_com_a_aula(esqueleto):
+    """O guarda que o mantenedor comprou junto com o endereço: um endereço que
+    aponta certo para a aula errada é pior do que um endereço quebrado."""
+    resposta = pedir(do_curso("/aulas/E00") + "&parte=2")
+    assert resposta.status_code == 404
+    recado = corpo(resposta)["detail"]
+    assert "a aula E00 não está na parte 2 do curso 'profissional'" in recado
+    assert "ela está na parte 1" in recado
+
+
+def test_get_sem_parte_no_endereco_responde_normalmente(esqueleto):
+    """A parte é opcional: quem não a informa não é recusado."""
+    assert pedir(do_curso("/aulas/E00")).status_code == 200
+
+
+def test_put_recusa_pela_parte_errada_sem_gravar_nada(esqueleto):
+    resposta = gravar(do_curso("/aulas/E00") + "&parte=3", aula_para_gravar())
+    assert resposta.status_code == 404
+    no_banco = Aula.objects.get(curso=esqueleto, numero="E00")
+    assert no_banco.versao == 1
+    assert no_banco.pedido == ""
+    assert no_banco.pecas.count() == 0
+
+
+def test_put_pelo_curso_grava_a_aula_daquele_curso(dois_cursos):
+    resposta = gravar(
+        do_curso("/aulas/E00", curso="oficina") + "&parte=3", aula_para_gravar()
+    )
+    assert resposta.status_code == 200
+    assert corpo(resposta)["versao"] == 2
+    assert Aula.objects.get(curso=dois_cursos, numero="E00").pedido.startswith(
+        "Um cubo"
+    )
+    # O curso vizinho não foi tocado: é a prova de que o slug decidiu.
+    vizinho = Curso.objects.get(site_id=SITE, slug="profissional")
+    assert Aula.objects.get(curso=vizinho, numero="E00").versao == 1
+
+
+def test_publicar_recusa_pela_parte_errada_e_a_aula_continua_rascunho(esqueleto):
+    resposta = Client().post(
+        f"{BASE}{do_curso('/aulas/E00/publicar')}&parte=2",
+        HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
+    )
+    assert resposta.status_code == 404
+    assert Aula.objects.get(curso=esqueleto, numero="E00").estado == "rascunho"
+
+
+def test_publicar_pelo_curso_e_pela_parte_certa_publica(dois_cursos):
+    resposta = Client().post(
+        f"{BASE}{do_curso('/aulas/E00/publicar', curso='oficina')}&parte=3",
+        HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
+    )
+    assert resposta.status_code == 200
+    assert corpo(resposta)["estado"] == "publicada"
+    assert Aula.objects.get(curso=dois_cursos, numero="E00").publicada_em is not None
+
+
+def test_aula_que_nao_existe_naquele_curso_e_404(dois_cursos):
+    """A `oficina` só tem a E00: a E05 existe no site, mas não nela."""
+    resposta = pedir(do_curso("/aulas/E05", curso="oficina"))
+    assert resposta.status_code == 404
+    assert "não existe no curso 'oficina'" in corpo(resposta)["detail"]
+
+
+def test_os_quatro_caminhos_antigos_continuam_respondendo(esqueleto):
+    """O editor do Admin que está no ar chama estes quatro. Quebrá-los é
+    quebrar uma tela em produção, e o contrato congelado não permite."""
+    assert pedir(f"/aulas?site_id={SITE}").status_code == 200
+    assert pedir(f"/aulas/E00?site_id={SITE}").status_code == 200
+    assert gravar(f"/aulas/E00?site_id={SITE}", aula_para_gravar()).status_code == 200
+    assert publicar("E00").status_code == 200
+
+
+# ---------------------------------------------------------------------------
 # export_openapi: o contrato vivo que o degrau 1.4 vai congelar
 # ---------------------------------------------------------------------------
 
@@ -521,14 +696,25 @@ def exportar() -> dict:
     return json.loads(saida.getvalue())
 
 
-def test_export_openapi_traz_as_sete_operacoes_e_nenhuma_a_mais():
+def test_export_openapi_traz_as_onze_operacoes_e_nenhuma_a_mais():
     documento = exportar()
-    ids = {
+    ids = [
         operacao["operationId"]
         for item in documento["paths"].values()
         for operacao in item.values()
-    }
-    assert ids == AS_SETE_OPERACOES
+    ]
+    assert set(ids) == AS_ONZE_OPERACOES
+    # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
+    # documento inválido que o freeze compara sem reclamar: o caminho novo
+    # ficou com o nome canônico, o antigo ganhou o dele.
+    assert len(ids) == len(set(ids))
+
+
+def test_a_parte_viaja_no_contrato_como_enum_de_1_a_3():
+    """O vocabulário da parte sai do modelo (`PARTES_DO_CURSO`), e quem for
+    construir a tela do outro lado o lê do contrato, nunca de uma lista
+    própria."""
+    assert exportar()["components"]["schemas"]["ParteDoCurso"]["enum"] == [1, 2, 3]
 
 
 def test_o_contrato_declara_o_bearer_na_raiz_e_nenhuma_operacao_o_desliga():

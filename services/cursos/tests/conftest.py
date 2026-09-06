@@ -70,15 +70,33 @@ BETO = {
 }
 
 
-def url_da_situacao(email: str) -> str:
-    return f"{ALUNOS}/alunos/{quote(email, safe='')}/situacao"
+# O produto do catálogo a que o curso `profissional` do cenário aponta. É um
+# UUID porque é isso que a matrícula guarda de verdade
+# (`Product.id`), e nunca o apelido do curso: um cenário com o apelido nos dois
+# lados esconderia justamente o erro de comparar apelido com id.
+PRODUTO_DO_CURSO = "6a1f0f2e-0000-4000-8000-000000000001"
+# O produto de OUTRO curso desta mesma escola. É o que faz a pergunta "de qual
+# curso esta pessoa é aluna?" ter duas respostas possíveis.
+PRODUTO_DE_OUTRO_CURSO = "6a1f0f2e-0000-4000-8000-000000000002"
+
+
+def url_das_matriculas(email: str) -> str:
+    return f"{ALUNOS}/alunos/{quote(email, safe='')}/matriculas"
 
 
 @pytest.fixture
 def esqueleto(db):
-    """O curso `meshcraft` do site `escola-a`, com blocos, aulas e instrumentos."""
+    """O curso `profissional` do site `escola-a`, com blocos, aulas e instrumentos.
+
+    O curso já aponta para o produto: o semeador não preenche esse campo (o
+    curso nasce sem produto, e conteúdo nenhum entra por migração), e é o passo
+    do mantenedor que o aponta em produção. O cenário faz aqui o que ele faz lá.
+    """
     call_command("semear_esqueleto", site=SITE, stdout=StringIO())
-    return Curso.objects.get(site_id=SITE, slug="meshcraft")
+    curso = Curso.objects.get(site_id=SITE, slug="profissional")
+    curso.produto_id = PRODUTO_DO_CURSO
+    curso.save(update_fields=["produto_id"])
+    return curso
 
 
 @pytest.fixture
@@ -93,6 +111,10 @@ def env_dos_pares(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
     monkeypatch.delenv("CATALOGO_API_URL", raising=False)
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)
+    # A segunda lista do plantão (05/09/2026). Sai daqui para que a máquina de
+    # quem roda a suíte não decida o veredito: com `ADMIN_EMAILS` no ambiente,
+    # os testes de fail-closed passariam a medir o computador, não o código.
+    monkeypatch.delenv("ADMIN_EMAILS", raising=False)
     menu.limpar_cache()
     yield
     menu.limpar_cache()
@@ -111,10 +133,38 @@ def dublar_sessao(rede, corpo=None, *, status: int = 200):
     return rede.get(URL_DA_SESSAO).mock(return_value=resposta)
 
 
-def dublar_matricula(rede, email: str, categoria: str = "aluno"):
-    """A `alunos` responde a categoria desta pessoa, no corpo do contrato."""
-    return rede.get(url_da_situacao(email)).mock(
-        return_value=httpx.Response(200, json={"categoria": categoria, "na_fila": None})
+def dublar_matricula(
+    rede, email: str, categoria: str = "aluno", *, produtos=None, site: str = SITE
+):
+    """As matrículas desta pessoa, no corpo do contrato de `listEnrollments`.
+
+    `categoria` continua sendo a palavra do cenário, e não um campo da resposta:
+    `aluno` vira uma matrícula ativa por produto pedido (o do curso do cenário,
+    quando não se diz outro); qualquer outra palavra (`cadastrado`, `na_fila`,
+    `pausado`, `ex_aluno`, `reembolsado`) vira o 404 da porta, que é o que ela
+    responde de verdade para quem não tem matrícula ativa nenhuma. Manter a
+    palavra é o que deixa os cenários de quem NÃO entra legíveis: eles dizem por
+    que a pessoa não entra, e não só que a porta devolveu 404.
+    """
+    if categoria != "aluno":
+        return rede.get(url_das_matriculas(email)).mock(
+            return_value=httpx.Response(404, json={"detail": "aluno inexistente"})
+        )
+    lista = [PRODUTO_DO_CURSO] if produtos is None else list(produtos)
+    return rede.get(url_das_matriculas(email)).mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "site_id": site,
+                    "order_id": f"ord-{email}-{ordem}",
+                    "product_id": produto,
+                    "status": "ativa",
+                    "enrolled_at": "2026-09-06T12:00:00+00:00",
+                }
+                for ordem, produto in enumerate(lista)
+            ],
+        )
     )
 
 
@@ -344,3 +394,74 @@ def fio(monkeypatch):
     linha = Fio()
     monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
     return linha
+
+
+# ---------------------------------------------------------------------------
+# A REDE DA ANTHROPIC: cortada para TODA a suíte, e dublada onde é medida
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def sem_anthropic(monkeypatch):
+    """O corte fail-closed da rede do SDK da Anthropic, em TODO teste.
+
+    **São duas bibliotecas de HTTP nesta célula, e o `respx` acima só corta
+    uma.** O `httpx` é por onde a `identidade` e a `alunos` são perguntadas; o
+    `httpx2` é outro pacote, instalado junto com o SDK da Anthropic
+    (`apps/cursos/agente.py`), e nada em `respx` o alcança. Sem este corte, a
+    suíte diria no próprio docstring que não fala com a rede e poderia chamar a
+    API PAGA de verdade, com a chave da máquina de quem rodasse os testes: foi
+    exatamente o que aconteceu no fórum (`armadilhas/288`).
+
+    O corte é no TRANSPORTE, e não em `Client.post`, por dois motivos: o SDK
+    chama `Client.send`, que `post` não intercepta, e cortar no transporte deixa
+    `dublar_a_anthropic` trocar esta mesma função por uma resposta de mentira,
+    exercitando o SDK de verdade, com o request e a leitura da resposta que a
+    produção usa (`armadilhas/061`).
+    """
+    import httpx2
+
+    def recusa(*args, **kwargs):
+        raise httpx2.ConnectError("a suíte da sala de aula não fala com a rede")
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", recusa)
+
+
+def corpo_da_anthropic(objeto, *, stop_reason: str = "end_turn") -> dict:
+    """O JSON que a API da Anthropic devolve, na forma real, com `objeto`
+    dentro do bloco de texto. `objeto` pode ser um dicionário (vira JSON) ou uma
+    string crua, para os testes que provam o que acontece quando ela vem torta."""
+    texto = (
+        objeto if isinstance(objeto, str) else json.dumps(objeto, ensure_ascii=False)
+    )
+    return {
+        "id": "msg_de_teste",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-haiku-4-5-20251001",
+        "stop_reason": stop_reason,
+        "stop_sequence": None,
+        "content": [{"type": "text", "text": texto}],
+        "usage": {"input_tokens": 1200, "output_tokens": 340},
+    }
+
+
+def dublar_a_anthropic(monkeypatch, *, status=200, corpo=None, capturado=None):
+    """Troca o TRANSPORTE do `httpx2`, que é por onde o SDK sai para a rede.
+
+    O `sem_anthropic` acima já cortou esta mesma função; aqui ela é trocada de
+    novo, por uma que responde. O SDK continua montando o request e lendo a
+    resposta como monta e lê em produção, e `capturado` recebe a URL, os
+    cabeçalhos e o CORPO REAL que saiu: é dele que sai a prova de que nome
+    nenhum viajou.
+    """
+    import httpx2
+
+    def falso(self, request):
+        if capturado is not None:
+            capturado["url"] = str(request.url)
+            capturado["headers"] = dict(request.headers)
+            capturado["corpo"] = json.loads(request.content)
+        return httpx2.Response(status, json=corpo or {}, request=request)
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", falso)

@@ -32,11 +32,6 @@ from .clients import (
 
 logger = logging.getLogger(__name__)
 
-# A categoria que a `alunos` devolve para quem tem matrícula ativa
-# (`DECISAO-categorias-de-usuario.md`). Escrita aqui como dado desta célula:
-# um renomeamento silencioso do outro lado aparece como teste vermelho aqui.
-CATEGORIA_ALUNO = "aluno"
-
 
 @dataclass(frozen=True)
 class Ator:
@@ -46,20 +41,41 @@ class Ator:
     `matricula_conferida` separa "perguntei e não é" de "não consegui
     perguntar": as duas fecham a porta, e a tela diz frases diferentes.
 
+    `produtos_matriculados` é o conjunto de produtos em que esta pessoa está
+    matriculada NESTA escola, e é ele que decide QUAL curso a sala serve
+    (`DECISAO-cursos-matriculas-e-alunos.md` §1). `eh_aluno` continua sendo a
+    primeira porta ("tem alguma matrícula ativa?") e este conjunto é a segunda
+    ("tem a DESTE curso?"): as duas fecham, e de novo a tela diz frases
+    diferentes — "você não é aluno" e "você não é aluno DESTE curso" mandam a
+    pessoa a lugares diferentes.
+
+    **Matrícula sem produto não entra no conjunto, e a ausência é a decisão.**
+    A `alunos` ainda cria matrícula paga com `product_id` vazio, porque o aviso
+    da compra não carrega o produto (a lei §3 diz isso na cara, e é a TAR-225).
+    Uma matrícula que não diz de qual produto é não prova acesso a produto
+    nenhum, e tratá-la como coringa abriria TODOS os cursos para ela: seria o
+    defeito que esta mudança existe para matar, com outro nome.
+
     `papel_do_site` é o `papel` que a `identidade` devolve, guardado como VEIO.
     Existe para UMA coisa: a plateia `staff` do menu do topo. Usá-lo para
     liberar qualquer coisa é a violação que a lei da identidade proíbe.
 
-    `eh_professor` é a plateia do plantão (degrau 2.2): a lista
-    `CURSOS_PROFESSORES`, e SÓ ela — não depende de `eh_aluno` nem de
-    `matricula_conferida`, porque a professora não precisa de matrícula para
-    dar laudo. Reconhecer não é autorizar: quem decide se alguém entra no
-    plantão é esta célula, fail-CLOSED.
+    `eh_professor` é a plateia do plantão (degrau 2.2): a união de
+    `CURSOS_PROFESSORES` com `ADMIN_EMAILS`, a MESMA lista que já abre o
+    `/admin/` (decisão do mantenedor em 05/09/2026, com as palavras dele:
+    "qualquer admin do site pode abrir"). Não depende de `eh_aluno` nem de
+    `matricula_conferida`, porque quem dá laudo não precisa de matrícula.
+
+    **Isso não afrouxa "reconhecer não é autorizar", e a diferença é o campo
+    logo acima:** quem autoriza continua sendo uma lista de e-mails decidida
+    DENTRO desta célula, fail-CLOSED, e ela apenas passou a incluir a lista do
+    `/admin/`. `papel_do_site` continua não liberando nada.
     """
 
     pessoa: Pessoa | None
     eh_aluno: bool = False
     matricula_conferida: bool = False
+    produtos_matriculados: frozenset[str] = frozenset()
     papel_do_site: str = ""
     eh_professor: bool = False
 
@@ -94,6 +110,36 @@ def site_atual() -> str | None:
         logger.error("SITE_ID ausente no env: a sala de aula não sabe de que site é")
         return None
     return valor
+
+
+def _produtos_deste_site(matriculas: list[dict]) -> frozenset[str]:
+    """Os produtos das matrículas DESTA escola, sem as que não dizem qual.
+
+    Duas peneiras, e cada uma existe por um motivo próprio:
+
+    **A da escola** ([INV-P11], Lei 9): matrícula de outra escola não abre a
+    sala desta. Sem `SITE_ID` no env não há escola para comparar, e o conjunto
+    sai vazio — a sala já responde por esse caso antes de chegar aqui, e sair
+    vazio é o desfecho fechado de qualquer forma.
+
+    **A do produto vazio**: matrícula que não diz de qual produto é não prova
+    acesso a nenhum. Está escrito por extenso na docstring do `Ator`, e é a
+    metade que a lei §8 diz ainda estar aberta do lado da compra.
+
+    O `status` NÃO é peneirado aqui de propósito: quem já peneirou foi a
+    `alunos`, cujo contrato devolve só os status que valem como acesso. Uma
+    segunda lista de permissão deste lado discordaria da primeira no dia em que
+    um status nascesse, e a que erra é sempre a que ninguém está olhando.
+    """
+    site = site_atual()
+    if not site:
+        return frozenset()
+    return frozenset(
+        produto
+        for matricula in matriculas
+        if (matricula.get("site_id") or "") == site
+        and (produto := (matricula.get("product_id") or "").strip())
+    )
 
 
 def quem_e(request) -> Ator:
@@ -147,17 +193,22 @@ def _resolver(request) -> Ator:
     )
 
     try:
-        categoria = AlunosClient().categoria_de(email)
+        matriculas = AlunosClient().matriculas_de(email)
         conferida = True
     except (AlunosIndisponivel, ConfiguracaoAusente) as erro:
         # FECHA. Não conseguir conferir a matrícula nunca é "pode entrar".
         logger.warning("não deu para conferir a matrícula de %s: %s", pessoa.pk, erro)
-        categoria, conferida = "", False
+        matriculas, conferida = [], False
 
     return Ator(
         pessoa=pessoa,
-        eh_aluno=(categoria == CATEGORIA_ALUNO),
+        eh_aluno=bool(matriculas),
         matricula_conferida=conferida,
+        produtos_matriculados=_produtos_deste_site(matriculas),
         papel_do_site=(corpo.get("papel") or "").strip(),
-        eh_professor=email in _lista_de_emails("CURSOS_PROFESSORES"),
+        # AS DUAS LISTAS, lidas no PONTO DE USO e no mesmo lugar de propósito:
+        # se um dia uma delas mudar de nome, as duas leituras quebram juntas.
+        # Molde: `services/forum/apps/core/sessao.py::email_da_equipe`.
+        eh_professor=email
+        in (_lista_de_emails("CURSOS_PROFESSORES") | _lista_de_emails("ADMIN_EMAILS")),
     )

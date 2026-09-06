@@ -28,7 +28,7 @@ import logging
 from django.db import transaction
 
 from apps.jornadas import motor
-from apps.jornadas.models import EnvioDeCheckpoint, Jornada
+from apps.jornadas.models import EnvioDeCheckpoint, Inscricao, Jornada
 
 from .models import EnvioRegistrado
 from .tasks import enviar_notificacao
@@ -48,6 +48,11 @@ GATILHO_CADASTRO = "identidade.pessoa-cadastrada"
 # de grafia: o nome no FIO, sem a versão.
 GATILHO_DEVOLUCAO = "checkpoint.devolvido"
 EVENTO_ENVIO_RECEBIDO = "envio.recebido"
+
+# O convite para a Prancheta (degrau 17 do portfólio). Mesma regra de grafia: o
+# nome no FIO, sem a versão. O evento chega a CADA aula cuja porta abre; quem
+# separa o marco do progresso comum é `ao_aula_concluida`, logo abaixo.
+GATILHO_BLOCO_FECHADO = "aula.concluida"
 
 # Templates versionados dentro da célula (constituicoes/AGENTS.mensageria.md).
 # TEMPLATES_POR_SITE é o ponto de extensão para override por site_id — vazio
@@ -319,4 +324,64 @@ def ao_checkpoint_devolvido(
             contexto_id=data["aula_id"],
             origem_event_id=event_id,
             motivo="um devolvido novo recomecou a contagem",
+        )
+
+
+def ao_aula_concluida(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
+    """A porta de uma aula abriu: se ela FECHA UM BLOCO, o convite para a
+    Prancheta sai. Se for aula comum, não sai nada.
+
+    ESTA É A LINHA QUE O DEGRAU 17 EXISTE PARA ESCREVER (`CS-PAGES-0001` AC-19).
+    O convite dispara por um fato DECLARADO e nunca por inferência de progresso:
+    a professora assinou o laudo que abriu a porta, e a escola declarou, na
+    estrutura do curso, que aquela aula fecha um Bloco (`e_boss`). Nada aqui
+    conta aulas concluídas, e a proibição é do plano (§3): a plataforma não
+    serve aula e não sabe quantas existem no curso, então "ele já concluiu
+    bastante coisa, deve ter terminado" seria palpite com cara de fato. O
+    palpite manda "monte o seu portfólio" para quem está na terceira aula, e a
+    caixa de entrada em que isso acontece uma vez deixa de ser lida.
+
+    **O convite é UM SÓ.** Um curso com cinco Blocos convidaria cinco vezes para
+    a mesma Prancheta, e a trava parcial do banco não pega isso: ela só impede
+    dois episódios ANDANDO, e o segundo Bloco costuma chegar depois de o
+    primeiro episódio ter concluído. Quem já foi chamado alguma vez não é
+    chamado de novo.
+
+    Sem aluno no `ator_id` ninguém é convidado: o contrato diz que ele nunca é
+    nulo, e inscrever com destinatário vazio abriria um episódio de ninguém e
+    endereçaria a carta ao nada (`armadilhas/255`).
+
+    Jornada desligada não convida ninguém; quem liga é o mantenedor, na tela
+    dele, e quem faz valer é o `motor.inscrever()`.
+    """
+    if not data["e_boss"]:
+        return  # aula comum: progresso, não marco. Nada a declarar.
+
+    site_id = data["site_id"]
+    if not ator_id:
+        log.warning(
+            "aula.concluida %s (site %s, aula %s) chegou sem ator_id: nao sei "
+            "quem fechou o bloco, entao NAO convido ninguem para a Prancheta. "
+            "O contrato manda o aluno no ator_id; se isto se repetir, e defeito "
+            "do produtor",
+            event_id,
+            site_id,
+            data["aula_id"],
+        )
+        return
+
+    for jornada in Jornada.objects.filter(
+        site_id=site_id, gatilho=GATILHO_BLOCO_FECHADO, ativa=True
+    ):
+        if Inscricao.objects.filter(
+            jornada=jornada, site_id=site_id, destinatario_id=ator_id
+        ).exists():
+            continue
+        motor.inscrever(
+            jornada,
+            destinatario_id=ator_id,
+            site_id=site_id,
+            origem_event_id=event_id,
         )

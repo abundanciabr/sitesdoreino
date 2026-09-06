@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-141919-TAR-222-bloqueada",
+  "tarefa": "TAR-222",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T14:19:19+00:00",
+  "quem": "despacho-admin-liberar-com-curso",
+  "detalhe": "O catalogo nao sabe listar produtos, e sem lista nao ha o que escolher. O contrato congelado contracts/catalogo.openapi.yaml tem quatro operacoes de produto/oferta e NENHUMA delas lista: getProduct le UM produto por id, getOffer le UMA oferta por slug. A admin nao tem de onde tirar os ids. Medido: acrescentar GET /produtos a services/catalogo/apps/core/api.py faz o freeze reprovar (FAIL contrato/catalogo e FAIL seguranca/catalogo, GET /produtos congelado ausente), que e a armadilhas/243 funcionando. DESTRAVA: um Rito de Contrato no catalogo acrescentando listProducts, e o codigo do catalogo depois dele. So entao esta tarefa tem de onde ler. CONSEQUENCIA DE SEQUENCIAMENTO: o PR 1178 tambem nao pode pousar sozinho, porque esta tarefa nao pode acompanha-lo. A corrente e de quatro PRs, nao de dois."
+}

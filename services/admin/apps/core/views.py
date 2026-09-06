@@ -29,7 +29,7 @@ from django.conf import settings
 from apps.auditoria.models import Registro
 
 from . import documentos
-from .clients import AlunosClient, IdentidadeClient
+from .clients import AlunosClient, CatalogoClient, IdentidadeClient
 from .models import Administrador
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
@@ -312,7 +312,15 @@ TIPOS_DE_ALUNO = (
 @require_GET
 def escola(request):
     """A porta da escola: daqui se chega aos alunos."""
-    return render(request, "admin/escola.html", {"admin": request.admin})
+    # O import é aqui dentro, e não no topo: `apps/core/aulas.py` importa
+    # `_auditar` DESTE módulo, e um import de módulo a módulo fecharia o ciclo.
+    from .aulas import CURSO_PADRAO
+
+    return render(
+        request,
+        "admin/escola.html",
+        {"admin": request.admin, "curso_do_editor": CURSO_PADRAO},
+    )
 
 
 def tipos_com_contagem(contagens: dict) -> list[dict]:
@@ -665,6 +673,22 @@ def escola_jornada(request):
     )
 
 
+def cursos_para_escolher() -> "tuple[list[dict], bool]":
+    """Os produtos ativos do catálogo, e se não deu para perguntar por eles.
+
+    `DECISAO-cursos-matriculas-e-alunos.md` §6 e §7. As TRÊS telas que liberam
+    alguém precisam do mesmo par, e três leituras à mão divergiriam na primeira
+    borda que alguém corrigisse só de um lado.
+
+    O par é `(lista, nao_consigo_ver)` e não uma lista só porque `[]` com
+    `False` é *"o catálogo respondeu, e não há curso publicado"*, enquanto `[]`
+    com `True` é *"não consegui perguntar"*. São duas telas com frases
+    diferentes, e um `{% if %}` sozinho não as distingue.
+    """
+    produtos = CatalogoClient().listar_produtos()
+    return (produtos or []), produtos is None
+
+
 @require_GET
 def escola_alunos(request):
     """A tela da escola: quem espera, e quem já é aluno.
@@ -697,6 +721,7 @@ def escola_alunos(request):
     estado_pedido = (request.GET.get("estado") or "").strip()
     estado = estado_pedido if estado_pedido in _estados_filtraveis() else ""
     alunos_na_tela = peneirar(alunos, procurado, estado)
+    cursos, sem_catalogo = cursos_para_escolher()
     # A busca vale para as DUAS listas: quem o mantenedor procura pode estar na
     # fila, e uma busca que só olhasse metade da tela deixaria ele concluindo
     # "essa pessoa não existe aqui". O FILTRO de situação não vale para a fila —
@@ -741,6 +766,12 @@ def escola_alunos(request):
             "nao_consigo_ver_alunos": alunos is None,
             "mostrar_escola": len(escolas) > 1,
             "estados": ESTADOS_NA_TELA,
+            # [CURSO] A lista de onde ele ESCOLHE, lida do catálogo a cada
+            # abertura (§7: nenhuma cópia mora aqui). Sem ela não há liberação
+            # possível, e a tela some com o botão em vez de oferecer um clique
+            # que só pode dar 422.
+            "cursos": cursos,
+            "nao_consigo_ver_cursos": sem_catalogo,
             # Quem é administrador NÃO vem da `alunos` — vem da lista desta
             # célula, lida na hora (`DECISAO-gestao-de-alunos` §4). A tela
             # MOSTRA; quem muda é o mantenedor, no servidor.
@@ -845,6 +876,7 @@ def escola_recusados(request):
     # algo que a de lá não casa.
     procurado = (request.GET.get("q") or "").strip()[:120]
     na_tela = peneirar(recusados, procurado)
+    cursos, sem_catalogo = cursos_para_escolher()
 
     return render(
         request,
@@ -864,6 +896,10 @@ def escola_recusados(request):
             # A escola só aparece quando há MAIS DE UMA nesta lista — com uma
             # só, o identificador interno é ruído numa tela feita para leigo.
             "mostrar_escola": len({r.get("site_id") for r in recusados or []}) > 1,
+            # [CURSO] Aceitar mesmo assim também LIBERA, e por isso também pede
+            # o curso — a mesma lista, lida do mesmo dono.
+            "cursos": cursos,
+            "nao_consigo_ver_cursos": sem_catalogo,
             "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
@@ -889,6 +925,16 @@ def escola_reconsiderar(request):
         # Sem auditoria: não houve gesto sobre pessoa nenhuma, e gravar ruído de
         # formulário quebrado só enche o registro que alguém vai precisar ler.
         return HttpResponseRedirect(reverse("escola_recusados"))
+
+    product_id = (request.POST.get("product_id") or "").strip()
+    if not product_id:
+        # [INV-ALU-C1] "Aceitar mesmo assim" também LIBERA, e por isso também
+        # exige o curso. Sem ele nada é tentado: a pessoa continua entre os
+        # recusados, do jeito que estava, em vez de ficar no meio do caminho
+        # entre as duas listas.
+        return HttpResponseRedirect(
+            f"{reverse('escola_recusados')}?resultado=reconsiderar-sem-curso"
+        )
 
     quem = request.admin.get("id") or request.admin.get("email") or "?"
     cliente = AlunosClient()
@@ -951,7 +997,10 @@ def escola_reconsiderar(request):
     # o segundo passo falhar, ela NÃO some — fica esperando em `/escola/alunos/`
     # com o botão Liberar do lado, e o recado abaixo diz exatamente isso.
     liberou, detalhe_da_liberacao = cliente.decidir(
-        alvo=id_da_linha, decisao="liberar", decidido_por=quem
+        alvo=id_da_linha,
+        decisao="liberar",
+        decidido_por=quem,
+        product_id=product_id,
     )
     _anotar(
         liberou,
@@ -1167,6 +1216,25 @@ RECADOS = {
     ),
     "recusado": "Pedido recusado. A pessoa vê o motivo que você escreveu e pode pedir de novo.",
     "sem-motivo": "Para recusar é preciso escrever o motivo — sem ele a pessoa fica esperando sem saber.",
+    # [CURSO] Os três recados da escolha do curso (06/09/2026,
+    # `DECISAO-cursos-matriculas-e-alunos.md` §6).
+    "sem-curso": (
+        "Não liberei: escolha primeiro em qual curso essa pessoa entra. Nada "
+        "vem escolhido de propósito, para ninguém entrar no curso errado sem "
+        "perceber."
+    ),
+    "cadastro-sem-curso": (
+        "Não cadastrei: escolha primeiro em qual curso essa pessoa entra. Os "
+        "dados que você digitou continuam no formulário."
+    ),
+    "reconsiderar-sem-curso": (
+        "Não aceitei: escolha primeiro em qual curso essa pessoa entra. Ela "
+        "continua entre os recusados, do jeito que estava."
+    ),
+    "curso-nao-vale": (
+        "Não liberei: o curso que você escolheu já não está publicado. "
+        "Recarregue esta página e escolha de novo na lista atualizada."
+    ),
     "nao-deu": (
         "Não consegui falar com a parte que guarda os alunos. A decisão PODE ter "
         "sido aplicada mesmo assim — recarregue a lista antes de decidir de novo."
@@ -1248,6 +1316,7 @@ def escola_decidir(request):
     alvo = (request.POST.get("alvo") or "").strip()
     decisao = (request.POST.get("decisao") or "").strip()
     motivo = (request.POST.get("motivo") or "").strip()
+    product_id = (request.POST.get("product_id") or "").strip()
 
     if not alvo or decisao not in (Registro.LIBERAR, Registro.RECUSAR):
         # Sem linha de auditoria: não houve decisão sobre pessoa nenhuma, e
@@ -1261,9 +1330,20 @@ def escola_decidir(request):
         # descobrir isso seria lentidão sem informação nova.
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-motivo")
 
+    if decisao == Registro.LIBERAR and not product_id:
+        # [INV-ALU-C1] Conferido AQUI pelo mesmo motivo do motivo da recusa: a
+        # `alunos` responderia 422, e a frase que o mantenedor precisa ler é
+        # sobre o formulário dele. Sem auditoria: não houve decisão sobre
+        # pessoa nenhuma.
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-curso")
+
     desfecho, detalhe = AlunosClient().decidir(
         alvo=alvo,
         decisao=decisao,
+        # Só na liberação: ninguém vira aluno de nada ao ser recusado, e o
+        # `<select>` é o mesmo dos dois botões — mandar o que ele tiver na
+        # recusa gravaria um produto para uma matrícula que nunca existiu.
+        product_id=product_id if decisao == Registro.LIBERAR else "",
         # A auditoria de quem liberou quem, do lado da `alunos`, é por id de
         # plataforma — o mesmo que a `identidade` devolve. E-mail muda de dono;
         # o id, não.
@@ -1284,6 +1364,10 @@ def escola_decidir(request):
 
     if desfecho == AlunosClient.OK:
         recado = "liberado" if decisao == Registro.LIBERAR else "recusado"
+    elif desfecho == AlunosClient.SEM_ESSE_CURSO:
+        # A lista da tela dele envelheceu entre abrir e clicar. "Não valeu" o
+        # mandaria procurar defeito; esta frase diz o gesto que resolve.
+        recado = "curso-nao-vale"
     elif desfecho == AlunosClient.RECUSADO:
         recado = "nao-valeu"
     else:
@@ -1351,6 +1435,11 @@ CAMPOS_DO_FORMULARIO = ("status", "nome_completo", "whatsapp", "turma", "comprou
 DESFECHO_NA_AUDITORIA = {
     AlunosClient.OK: Registro.OK,
     AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+    # [INV-ALU-C1] Curso recusado é uma RECUSA da `alunos`, e a auditoria não
+    # ganha verbo novo por causa dela: para quem reler o registro daqui a meses,
+    # o que importa é que a decisão não valeu — e o `detalhe` diz por quê. A
+    # separação existe para a TELA, que precisa dizer outro gesto.
+    AlunosClient.SEM_ESSE_CURSO: Registro.RECUSADO_PELA_CELULA,
     AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
 }
 
@@ -1501,6 +1590,16 @@ def escola_cadastrar(request):
             f"{reverse('escola_alunos')}?resultado=cadastro-invalido"
         )
 
+    product_id = (request.POST.get("product_id") or "").strip()
+    if not product_id:
+        # [INV-ALU-C1] Este formulário cadastra E libera no mesmo clique. Sem
+        # curso a liberação daria 422 e a pessoa ficaria na fila sem que ele
+        # tivesse pedido isso — então nem entra na fila. Antes da rede, e sem
+        # auditoria: nada foi tentado do outro lado.
+        return HttpResponseRedirect(
+            f"{reverse('escola_alunos')}?resultado=cadastro-sem-curso"
+        )
+
     quem = request.admin.get("id") or request.admin.get("email") or "?"
     cliente = AlunosClient()
 
@@ -1559,7 +1658,10 @@ def escola_cadastrar(request):
     # Entrou na fila. A liberação é o segundo passo — e se ela falhar, a pessoa
     # NÃO some: fica esperando na mesma tela, com o botão Liberar do lado.
     liberou, detalhe_da_liberacao = cliente.decidir(
-        alvo=id_da_linha, decisao="liberar", decidido_por=quem
+        alvo=id_da_linha,
+        decisao="liberar",
+        decidido_por=quem,
+        product_id=product_id,
     )
 
     Registro.objects.create(
@@ -1687,6 +1789,12 @@ RECADOS_DAS_TURMAS = {
         "Nenhuma pessoa estava marcada — nada foi feito. Marque quem você quer "
         "liberar e clique de novo."
     ),
+    # [CURSO] `DECISAO-cursos-matriculas-e-alunos.md` §6.
+    "sem-curso": (
+        "Escolha o curso em que essa turma entra antes de liberar. Ninguém foi "
+        "liberado. Nada vem escolhido de propósito, para uma turma inteira não "
+        "entrar no curso errado sem ninguém perceber."
+    ),
 }
 
 
@@ -1711,6 +1819,8 @@ def _tela_das_turmas(request, colado="", recado="", contagem=None):
     if numeros and fila is not None:
         conferencia = conferir(numeros, fila, alunos)
 
+    cursos, sem_catalogo = cursos_para_escolher()
+
     return render(
         request,
         "admin/escola_turmas.html",
@@ -1728,6 +1838,12 @@ def _tela_das_turmas(request, colado="", recado="", contagem=None):
             # para liberar, mas a caixa "já é aluno" ficaria mentindo por
             # omissão, e a tela avisa em vez de esconder.
             "nao_consigo_ver_alunos": alunos is None,
+            # [CURSO] UMA escolha para o lote inteiro, e não uma por pessoa:
+            # esta tela cruza a lista de WhatsApp de UMA turma, e uma turma é
+            # de um curso. Uma lista por linha faria o mantenedor repetir a
+            # mesma escolha dezenas de vezes para acertar sempre o mesmo valor.
+            "cursos": cursos,
+            "nao_consigo_ver_cursos": sem_catalogo,
             "recado": RECADOS_DAS_TURMAS.get(recado, ""),
             "contagem": contagem,
         },
@@ -1776,6 +1892,13 @@ def escola_turmas_liberar(request):
     if not pedidos:
         return _tela_das_turmas(request, colado=colado, recado="nada-marcado")
 
+    # [INV-ALU-C1] UMA escolha para o lote inteiro, conferida antes da rede:
+    # sem ela as dezenas de chamadas em paralelo voltariam todas 422, e a tela
+    # contaria uma falha por pessoa em vez de dizer o que faltou.
+    product_id = (request.POST.get("product_id") or "").strip()
+    if not product_id:
+        return _tela_das_turmas(request, colado=colado, recado="sem-curso")
+
     cliente = AlunosClient()
     esperando = cliente.fila(AGUARDANDO)
     if esperando is None:
@@ -1791,7 +1914,10 @@ def escola_turmas_liberar(request):
 
     def liberar(alvo):
         return alvo, cliente.decidir(
-            alvo=alvo, decisao=Registro.LIBERAR, decidido_por=quem
+            alvo=alvo,
+            decisao=Registro.LIBERAR,
+            decidido_por=quem,
+            product_id=product_id,
         )
 
     resultados = []
@@ -1819,6 +1945,12 @@ def escola_turmas_liberar(request):
             1 for _, (d, _m) in resultados if d == AlunosClient.NAO_RESPONDEU
         ),
         "recusados": sum(1 for _, (d, _m) in resultados if d == AlunosClient.RECUSADO),
+        # [CURSO] O lote inteiro compartilha UMA escolha: se o curso não vale,
+        # ninguém sai, e a causa é uma só. Contá-los junto com os "não valeu"
+        # esconderia a única frase que resolve o problema dele.
+        "curso_nao_vale": sum(
+            1 for _, (d, _m) in resultados if d == AlunosClient.SEM_ESSE_CURSO
+        ),
         # Marcados que já não estavam esperando quando o clique chegou — outra
         # aba, ou o F5. Contados à parte porque não são falha: são o sistema
         # dizendo que aquilo já estava feito.

@@ -38,6 +38,11 @@ FILA = f"{ALUNOS}/pre-matriculas"
 MATRICULAS = f"{ALUNOS}/matriculas"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
+# [CURSO] UMA escolha para o lote inteiro, obrigatória desde 06/09/2026
+# ([INV-ALU-C1]): uma turma é de um curso. Os testes daqui continuam medindo a
+# leva (quem sai, quem não sai, a auditoria por pessoa); o que acontece SEM o
+# curso mora em `test_liberar_com_curso.py`.
+CURSO = "prod-primeiros-dolares"
 
 
 @pytest.fixture(autouse=True)
@@ -191,7 +196,8 @@ def test_libera_so_quem_foi_marcado():
     )
     # `p2` não está registrada no respx: uma chamada a ela estoura o teste.
     r = _dentro().post(
-        reverse("escola_turmas_liberar"), {"lista": "11 99999-8888", "alvo": ["p1"]}
+        reverse("escola_turmas_liberar"),
+        {"lista": "11 99999-8888", "alvo": ["p1"], "product_id": CURSO},
     )
     assert decidir.called
     assert "Liberei 1 pessoa" in _texto(r)
@@ -212,7 +218,7 @@ def test_alvo_que_nao_esta_mais_na_fila_nao_vira_chamada():
     _escola_responde([_pessoa("p1", "11 99999-8888")])
     r = _dentro().post(
         reverse("escola_turmas_liberar"),
-        {"lista": "11 99999-8888", "alvo": ["fantasma"]},
+        {"lista": "11 99999-8888", "alvo": ["fantasma"], "product_id": CURSO},
     )
     assert "Liberei 0 pessoa" in _texto(r)
     assert "já não estava na fila" in _texto(r)
@@ -228,7 +234,11 @@ def test_uma_linha_de_auditoria_por_pessoa():
         )
     _dentro().post(
         reverse("escola_turmas_liberar"),
-        {"lista": "11 99999-1111, 11 99999-2222", "alvo": ["p1", "p2"]},
+        {
+            "lista": "11 99999-1111, 11 99999-2222",
+            "alvo": ["p1", "p2"],
+            "product_id": CURSO,
+        },
     )
     linhas = Registro.objects.order_by("alvo")
     assert [l.alvo for l in linhas] == ["p1", "p2"]
@@ -246,7 +256,11 @@ def test_a_falha_de_uma_nao_derruba_a_leva_e_fica_registrada():
     respx.post(f"{FILA}/p2/decisao").mock(return_value=httpx.Response(503))
     r = _dentro().post(
         reverse("escola_turmas_liberar"),
-        {"lista": "11 99999-1111, 11 99999-2222", "alvo": ["p1", "p2"]},
+        {
+            "lista": "11 99999-1111, 11 99999-2222",
+            "alvo": ["p1", "p2"],
+            "product_id": CURSO,
+        },
     )
     corpo = _texto(r)
     assert "Liberei 1 pessoa" in corpo
@@ -270,7 +284,8 @@ def test_depois_de_liberar_a_conferencia_volta_atualizada():
         return_value=httpx.Response(200, json={"status": "ativa"})
     )
     r = _dentro().post(
-        reverse("escola_turmas_liberar"), {"lista": "11 99999-8888", "alvo": ["p1"]}
+        reverse("escola_turmas_liberar"),
+        {"lista": "11 99999-8888", "alvo": ["p1"], "product_id": CURSO},
     )
     assert "Prontos para liberar (0)" in _texto(r)
 

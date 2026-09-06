@@ -1,0 +1,19 @@
+{
+  "arquivo": "201-fechar-tres-dividas-pequenas-do-dia-no-painel-de-gestao-paut",
+  "id": "TAR-201",
+  "titulo": "Fechar tres dividas pequenas do dia no painel de gestao (pauta, licao, veredito do laboratorio)",
+  "toca": [
+    "armadilhas",
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com make ci verde da celula admin, o template da reuniao apontando para o laboratorio via reverse(), a armadilha 353 catalogada e o registro do veredito do deploy do laboratorio",
+  "despacho": "Corrigir a linha falsa da pauta da reuniao (reuniao.html) para apontar via reverse() a tela /admin/placar/laboratorio/ que entrou no PR #1127; catalogar a terceira licao do dia (pytest verde nao e a Definicao de Pronto, o Makefile ci pega o que o pytest sozinho nao pega) como armadilha nova numerada pelo almoxarife; e registrar no livro o veredito do deploy do laboratorio (run 33996389635) com o numero de aprendizados corrigido de 6 para 0. Rodar make ci da celula admin antes de abrir o PR.",
+  "origem": "brief fechado do mantenedor, 05/09/2026",
+  "criada_em": "2026-09-05"
+}

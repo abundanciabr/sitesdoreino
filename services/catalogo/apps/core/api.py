@@ -411,6 +411,35 @@ def get_offer(request, site_id: str, slug: str):
 
 
 @router.get(
+    "/produtos",
+    response=list[Product],
+    operation_id="listProducts",
+    summary="Os produtos ativos, para quem precisa ESCOLHER um",
+    openapi_extra={
+        "responses": {
+            200: {"description": "Os produtos ativos, em ordem de nome"},
+        }
+    },
+)
+def list_products(request):
+    """Quem chama isto precisa MOSTRAR uma lista para alguém escolher.
+
+    Só os ativos, porque a escolha existe para liberar acesso e ninguém deve
+    ser liberado num produto aposentado. Quem já tem uma matrícula apontando
+    para um produto aposentado continua vendo o nome dele por `getProduct`.
+    """
+    return [
+        {
+            "id": str(produto.id),
+            "name": produto.name,
+            "price_cents": produto.price_cents,
+            "active": produto.active,
+        }
+        for produto in ProductModel.objects.filter(active=True).order_by("name")
+    ]
+
+
+@router.get(
     "/produtos/{product_id}",
     response=Product,
     operation_id="getProduct",

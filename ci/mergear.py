@@ -63,6 +63,7 @@ from _nucleo import (  # noqa: E402
 from divida_do_livro import (  # noqa: E402
     EMBARCADO,
     ISENTO,
+    PASTAS_DE_ESCRITURACAO,
     SEM_REGISTRO,
     como_embarcar,
     como_pagar,
@@ -97,6 +98,34 @@ LIMITE_DE_ARQUIVOS = 15
 # e com o mesmo tipo de guarda mecânica contra deriva
 # (`test_padrao_da_lane_bate_com_orcamento_de_mudanca`).
 PADRAO_DA_LANE_TRADUCOES = re.compile(r"^services/[^/]+/traducoes/.+$")
+
+
+def arquivos_de_codigo(arquivos: list[str]) -> list[str]:
+    """O que o orçamento mede: o PR menos a escrituração obrigatória.
+
+    Desde 31/08/2026 todo PR carrega a própria papelada — o registro do livro
+    (sem ele o pouso é recusado), os eventos da fila, o mapa do site. Ninguém
+    pode removê-los, e mesmo assim eles comiam o teto de 15 arquivos do
+    trabalho de verdade. O caso medido é o PR #1161: 19 arquivos, 13 de código
+    e 6 de escrituração, reprovado por um contador que nunca teve a intenção de
+    barrar aquilo. Para vencer o contador, a sessão aplicou a etiqueta
+    `arquitetural` num PR que não é arquitetural, e uma etiqueta que vira senha
+    de contador deixa de significar o que diz.
+
+    A isenção vale SÓ para esses caminhos: 16 arquivos de código continuam
+    reprovando com ou sem escrituração ao lado — se ela salvasse código, o
+    portão teria morrido no mesmo dia.
+
+    As pastas vêm de `PASTAS_DE_ESCRITURACAO`, que já é a definição desta casa
+    para "isto é papelada, não entrega". A mesma constante é lida pelo
+    `ci/orcamento-de-mudanca.sh`: uma segunda lista divergiria da primeira no
+    dia em que alguém mexesse numa só.
+    """
+    return [
+        caminho
+        for caminho in arquivos
+        if not caminho.replace("\\", "/").startswith(PASTAS_DE_ESCRITURACAO)
+    ]
 
 
 def comando_de_merge(numero: int, metodo: str) -> list[str]:
@@ -410,14 +439,26 @@ def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
     """As mesmas regras que as muralhas aplicam, conferidas antes do merge."""
     labels = {rotulo["name"] for rotulo in pr.get("labels") or []}
     arquivos = [f["path"] for f in pr.get("files") or []]
+    # O orçamento mede código; a escrituração obrigatória sai da conta (o porquê
+    # e o caso medido estão em `arquivos_de_codigo`).
+    medidos = arquivos_de_codigo(arquivos)
     resultados: list[Resultado] = []
 
     # A ordem é a mesma do ci/orcamento-de-mudanca.sh, e importa: a label nunca
     # APERTA o portão (dentro do teto passa com ou sem label) e 'arquitetural'
     # passa na frente da lane — inclusive quando as duas vêm juntas.
-    if len(arquivos) <= LIMITE_DE_ARQUIVOS or "arquitetural" in labels:
+    if len(medidos) <= LIMITE_DE_ARQUIVOS or "arquitetural" in labels:
         resultados.append(
-            Resultado("orçamento", Estado.PASS, f"{len(arquivos)} arquivo(s)")
+            Resultado(
+                "orçamento",
+                Estado.PASS,
+                f"{len(medidos)} arquivo(s) de código"
+                + (
+                    f" (+{len(arquivos) - len(medidos)} de escrituração)"
+                    if len(medidos) != len(arquivos)
+                    else ""
+                ),
+            )
         )
     elif "traducoes" in labels:
         # DECISÃO — o MODO dos arquivos não é reconferido aqui, de propósito.
@@ -437,13 +478,13 @@ def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
         # barreira do caminho, não a única.
         # `test_lane_depende_do_modo_conferido_pelas_muralhas` acusa se o .sh
         # perder a conferência de modo em que esta decisão se apoia.
-        intruso = fora_da_lane_traducoes(arquivos)
+        intruso = fora_da_lane_traducoes(medidos)
         if intruso is None:
             resultados.append(
                 Resultado(
                     "orçamento",
                     Estado.PASS,
-                    f"{len(arquivos)} arquivo(s) — lane traducoes, todos em "
+                    f"{len(medidos)} arquivo(s) — lane traducoes, todos em "
                     "services/*/traducoes/",
                 )
             )
@@ -465,11 +506,14 @@ def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
             Resultado(
                 "orçamento",
                 Estado.FAIL,
-                f"{len(arquivos)} arquivos sem a label 'arquitetural'",
-                "É o mesmo limite do ci/orcamento-de-mudanca.sh. Ou o escopo vazou,\n"
-                "ou é mudança estrutural — e aí a label declara isso por escrito.\n"
-                "Lote só de tradução em services/*/traducoes/ tem lane própria: "
-                "label 'traducoes'.",
+                f"{len(medidos)} arquivos de código sem a label 'arquitetural'",
+                "É o mesmo limite do ci/orcamento-de-mudanca.sh, e o que ele conta é\n"
+                "CÓDIGO: a escrituração obrigatória ("
+                + ", ".join(PASTAS_DE_ESCRITURACAO)
+                + ") já saiu da conta.\n"
+                "Ou o escopo vazou, ou é mudança estrutural — e aí a label declara\n"
+                "isso por escrito. Lote só de tradução em services/*/traducoes/ tem\n"
+                "lane própria: label 'traducoes'.",
             )
         )
 

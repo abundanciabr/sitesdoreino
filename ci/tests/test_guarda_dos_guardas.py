@@ -737,6 +737,13 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J8",
         "INV-ENC-J9",
         "INV-ENC-J10",
+        # A lei de cursos, matrículas e alunos (06/09/2026): ninguém é aluno do
+        # site, todo mundo é aluno de UM PRODUTO, e a matrícula é o que diz
+        # qual. Liberar sem produto é 422 na porta, e a linha continua
+        # `aguardando`. A metade que ainda não é dele está dita na cara no
+        # próprio invariante: o aviso da compra não carrega o produto (TAR-225),
+        # e por isso ele vale hoje na liberação e não no pagamento.
+        "INV-ALU-C1",
         "INV-CUR-C2",
         # Os três da PORTA da célula `cursos` (05/09/2026, TAR-154, degrau 1.8
         # da escada): P1 nenhuma tela compara alunos, P2 a porta só abre por
@@ -754,10 +761,14 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # completa (nota+frase) antes de qualquer campo livre, L6 exatamente
         # três forças (nenhuma genérica) e exatamente uma mudança (com aula
         # que existe no curso), L7 a pergunta de amanhã de manhã só aceita
-        # `true`. L4 (nada de decisão/data/pergunta vem da IA) fica para o
-        # degrau 2.3, quando `RascunhoDaIA` ganhar o corpo real.
+        # `true`.
         "INV-CUR-L1",
         "INV-CUR-L2",
+        # L4 chegou no degrau 2.3 (05/09/2026, TAR-157), como esta lista previa:
+        # `RascunhoDaIA` ganhou o corpo real, e com ele a garantia de que nem o
+        # modelo nem o dataclass do agente têm campo de decisão, de data ou de
+        # resposta à pergunta. O agente é degrau H e nunca sobe.
+        "INV-CUR-L4",
         "INV-CUR-L5",
         "INV-CUR-L6",
         "INV-CUR-L7",

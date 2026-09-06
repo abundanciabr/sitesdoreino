@@ -29,6 +29,30 @@ O que a tela faz no lugar: **conta as riscas e mostra as frases**, para o dia em
 que um trecho virar página online. Aviso onde o documento tem recusa, porque as
 duas telas guardam coisas de naturezas diferentes.
 
+## A leitura, e a exceção do travessão que vem com ela (05/09/2026)
+
+O mantenedor pediu uma tela de LEITURA — "parecido com o leitor da Amazon
+Kindle" — e ela é `texto_ler`, ao lado da editorial (`texto_do_livro`) que já
+existia. As duas convivem: uma edita, a outra lê, a mesma obra.
+
+Perguntado se, no dia em que um capítulo virasse página de leitura, o texto
+passaria a valer a régua do `CLAUDE.md` sobre travessão, ele respondeu **"Não,
+o livro é sua voz literal"**. Isto NÃO é mais "a régua vale no dia em que
+publicar" — é uma **exceção PERMANENTE e deliberada** à lei do travessão
+(30/08/2026), valendo só para o conteúdo desta Biblioteca do Livro, porque é a
+voz autoral dele, e não texto de interface. `texto_ler` mostra o corpo sem
+tocar numa risca, do mesmo jeito que `texto_do_livro` sempre mostrou.
+
+## O acesso a quem lê ainda não existe, e é decisão adiada por ELE
+
+Perguntado quem pode ler, ele respondeu: *"quero definir alguns limites para
+isso, por exemplo, quero liberar uma amostra grátis de alguns livros, outros
+serão gratuitos, outros pagos, mas só depois vemos isso; inicialmente todos só
+podem ser vistos pelos admins"*. Por isso `texto_ler`, como toda rota desta
+área, mora atrás da porta de administrador — nasce sem NENHUMA rota pública, e
+sem nenhum campo de acesso (amostra, grátis, pago) na tabela. O dia em que ele
+decidir isso é outra tarefa, e o campo entra então — não antes.
+
 ## O que esta área não tem, e é de propósito
 
 **Nenhuma rota pública.** Nem uma. O repositório deste projeto é público, o
@@ -36,13 +60,20 @@ livro não está lançado, e o texto não viaja no Git — ele existe só no ban
 plataforma. Publicar um capítulo é uma decisão do mantenedor que ainda não foi
 tomada, e o dia em que for, ela vira uma tela nova com o nome disso.
 
-**Nenhum script.** Como no editor de documentos: a política de segurança desta
-área bloqueia script embutido (`armadilhas/199`), e uma tela que é formulário
-não precisa de nenhum.
+**Script só onde a tela de leitura precisa, e nunca por `'unsafe-inline'`.**
+Toda tela editorial desta área continua sem script, como sempre — mas
+`texto_ler` tem os controles de fonte, tema e "onde você parou", e por isso
+sobrescreve o `Content-Security-Policy` com o hash do `<script>` embutido,
+seguindo o mesmo desenho de `painel.py` e `robos.py` (`armadilhas/199`).
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import re
+
+from django.db.models import Prefetch
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -51,7 +82,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from . import documentos, travessao
-from .models import TextoDoLivro, VersaoDoTexto
+from .models import Livro, TextoDoLivro, VersaoDoTexto
 from .views import _auditar
 
 #: Endereços que a própria área do livro usa, e que por isso nenhum texto pode
@@ -59,7 +90,11 @@ from .views import _auditar
 #: motivo: varrer o urlconf em tempo de execução seria uma peça de máquina
 #: inteira para uma pergunta com três respostas. Guarda:
 #: `test_nenhum_endereco_reservado_do_livro_escapa`.
-NOMES_RESERVADOS = frozenset({"novo", "criar", "enviar", "tudo"})
+#:
+#: `"criar-livro"` entrou em 05/09/2026 pelo mesmo motivo de `"novo"`: a rota
+#: literal `livro/criar-livro` vem ANTES da genérica `^livro/(?P<nome>...)$`
+#: no urlconf, e um capítulo com esse nome existiria na lista e nunca abriria.
+NOMES_RESERVADOS = frozenset({"novo", "criar", "enviar", "tudo", "criar-livro"})
 
 #: Quantos arquivos `.md` cabem num envio só, e qual o maior deles.
 #:
@@ -107,6 +142,9 @@ def _do_formulario(request) -> dict:
         # que o navegador inventa, nunca sobre o que ele escreveu.
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
         "ordem": _inteiro(request.POST.get("ordem"), 1000),
+        # O slug do `Livro` escolhido — só faz sentido em `texto_criar`, e
+        # `_livro_do_formulario` é quem resolve isso para um objeto de verdade.
+        "livro": (request.POST.get("livro") or "").strip(),
     }
 
 
@@ -117,13 +155,17 @@ def _inteiro(texto: str, padrao: int) -> int:
         return padrao
 
 
-def _tela(request, rascunho, *, criando, erro="", status=200):
+def _tela(request, rascunho, *, criando, erro="", status=200, livros=None):
     """O formulário, com o que o mantenedor digitou de volta dentro dele.
 
     A recusa devolve o rascunho INTEIRO, pela mesma razão do editor de
     documentos: perder o texto de alguém por causa de uma regra é o caminho
     mais curto para essa pessoa passar a odiar a regra. Aqui pesa mais — o que
     se perderia é obra que não existe em outro lugar.
+
+    `livros` só importa quando `criando=True`: é a lista para o seletor de
+    `Livro` do formulário de texto novo. Editar um texto não muda de que
+    `Livro` ele é, então a tela de editar nunca precisa dela.
     """
     return render(
         request,
@@ -133,6 +175,7 @@ def _tela(request, rascunho, *, criando, erro="", status=200):
             "rascunho": rascunho,
             "criando": criando,
             "erro": erro,
+            "livros": livros or [],
         },
         status=status,
     )
@@ -163,6 +206,89 @@ def _nome_livre(desejado: str) -> str:
         ):
             return tentativa
     return ""
+
+
+def _slug_de_livro_livre(desejado: str) -> str:
+    """Um slug de `Livro` que ninguém está usando. Mesmo desenho de
+    `_nome_livre`, sem lista de reservados: um `Livro` não tem rota própria
+    por endereço, então não existe endereço para ele proteger.
+    """
+    base = desejado or "livro"
+    if not Livro.objects.filter(slug=base).exists():
+        return base
+    for sufixo in range(2, 100):
+        cauda = f"-{sufixo}"
+        tentativa = f"{base[: documentos.LIMITE_DO_NOME - len(cauda)]}{cauda}"
+        if not Livro.objects.filter(slug=tentativa).exists():
+            return tentativa
+    return ""
+
+
+#: O `Livro` que a migração `0012` cria para capítulos órfãos, e o mesmo que
+#: `_livro_do_formulario`/`_livro_padrao_para_upload` criam quando ainda não
+#: existe NENHUM `Livro` no banco. Um nome só, aqui e na migração: dois lugares
+#: inventando "o livro padrão" com nomes diferentes é a Lei 3 (duplicar e
+#: divergir) no lugar mais fácil de esquecer.
+SLUG_DO_LIVRO_PADRAO = "meu-livro"
+TITULO_DO_LIVRO_PADRAO = "Meu livro (edite o título)"
+
+
+def _livro_do_formulario(request) -> tuple[Livro | None, str]:
+    """O `Livro` de um texto novo, resolvido a partir do que o formulário
+    mandou — ou `(None, erro)` quando a escolha não dá para fechar sozinha.
+
+    Três situações, e a régua do mantenedor ("os dois: publicar o meu agora,
+    já preparando para vários depois") decide as três:
+
+    - **um slug veio no POST**: usa aquele `Livro`, ou erro se ele sumiu;
+    - **nenhum `Livro` existe ainda**: cria o padrão na hora — é o mesmo caso
+      da migração `0012`, só que "o banco começou vazio" vira "o mantenedor
+      ainda não criou nenhum" (nome escolhido: o menos disruptivo);
+    - **existe exatamente um `Livro`**: usa ele sem perguntar — é o caso comum
+      enquanto só existir um livro publicado, e o formulário nem mostra o
+      seletor nesse caso (ver `livro_editar.html`);
+    - **existe mais de um, e nenhum veio marcado**: aqui não há como adivinhar
+      qual o mantenedor quis, e a resposta é pedir para escolher.
+    """
+    slug = (request.POST.get("livro") or "").strip()
+    if slug:
+        livro = Livro.objects.filter(slug=slug).first()
+        if livro is None:
+            return None, "Esse livro não existe mais. Escolha outro na lista."
+        return livro, ""
+
+    total = Livro.objects.count()
+    if total == 0:
+        livro = Livro.objects.create(
+            slug=SLUG_DO_LIVRO_PADRAO, titulo=TITULO_DO_LIVRO_PADRAO
+        )
+        return livro, ""
+    if total == 1:
+        return Livro.objects.first(), ""
+    return None, "Escolha em qual livro este texto entra."
+
+
+def _livro_padrao_para_upload() -> Livro:
+    """O `Livro` que recebe os capítulos de um envio de arquivos `.md`.
+
+    O envio em lote continua sendo um formulário GLOBAL, sem seletor de
+    `Livro` — decisão do despacho de 05/09/2026: "não é hora de reformar isso"
+    enquanto só existe um livro publicado. Por isso ele não escolhe: cai
+    sempre no PRIMEIRO `Livro` da lista (ordem do sumário), criando o padrão
+    quando ainda não existe nenhum. No dia em que o mantenedor tiver mais de
+    um livro e quiser mandar arquivos para o segundo, esta tela ganha um
+    seletor — hoje ela não precisa, porque só há um.
+    """
+    livro = Livro.objects.order_by("ordem", "slug").first()
+    if livro is not None:
+        return livro
+    return Livro.objects.create(
+        slug=SLUG_DO_LIVRO_PADRAO, titulo=TITULO_DO_LIVRO_PADRAO
+    )
+
+
+def _livros_disponiveis() -> list:
+    return list(Livro.objects.order_by("ordem", "slug"))
 
 
 def _riscas(texto) -> list:
@@ -205,18 +331,54 @@ def _ler(nome: str) -> TextoDoLivro:
     return texto
 
 
+#: O `<script>` embutido de `livro_ler.html` — os controles de fonte, tema e
+#: "onde você parou". Mesma regex de `painel.py` e `robos.py`, letra por
+#: letra: as três telas hasheiam o mesmo jeito, e divergir aqui seria a Lei 3
+#: (duplicar e divergir) escondida numa expressão regular.
+_SCRIPT_EMBUTIDO = re.compile(
+    rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
+)
+
+
+def _csp(html: bytes) -> str:
+    """O CSP da tela de leitura: hash do `<script>` embutido, nunca
+    `'unsafe-inline'` — o mesmo desenho de `painel.py` e `robos.py`.
+    """
+    hashes = " ".join(
+        "'sha256-"
+        + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode()
+        + "'"
+        for m in _SCRIPT_EMBUTIDO.finditer(html)
+    )
+    return (
+        "default-src 'self'; "
+        f"script-src 'self' {hashes}; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'self'"
+    )
+
+
 # ------------------------------------------------------------------ a lista
 
 
 @require_GET
 def livro(request):
-    """Os textos do livro, na ordem do sumário."""
-    textos = list(TextoDoLivro.objects.order_by("ordem", "nome"))
+    """Os livros, cada um com os capítulos dele na ordem do sumário."""
+    livros = list(
+        Livro.objects.order_by("ordem", "slug").prefetch_related(
+            Prefetch(
+                "capitulos", queryset=TextoDoLivro.objects.order_by("ordem", "nome")
+            )
+        )
+    )
+    textos = [texto for um_livro in livros for texto in um_livro.capitulos.all()]
     return render(
         request,
         "admin/livro.html",
         {
             "admin": request.admin,
+            "livros": livros,
             "textos": textos,
             "palavras_no_total": sum(texto.palavras for texto in textos),
             "recado": request.GET.get("recado", ""),
@@ -227,16 +389,58 @@ def livro(request):
     )
 
 
+# --------------------------------------------------------------- criar livro
+
+
+@require_POST
+def livro_criar_livro(request):
+    """Cria um `Livro` novo, só com o título — o resto se ajusta depois.
+
+    Formulário curto de propósito (só "título"): o mantenedor pediu vários
+    livros no plural, não um segundo formulário para preencher. O slug sai do
+    título pela mesma `documentos.apelido()` que os capítulos já usam.
+    """
+    titulo = (request.POST.get("titulo") or "").strip()
+    if not titulo:
+        return HttpResponseRedirect(f"{reverse('livro')}?recado=livro-sem-titulo")
+
+    slug = _slug_de_livro_livre(documentos.apelido(titulo))
+    if not slug:
+        return HttpResponseRedirect(f"{reverse('livro')}?recado=livro-sem-titulo")
+
+    novo_livro = Livro.objects.create(slug=slug, titulo=titulo)
+    _auditar(
+        request,
+        Registro.CRIAR_LIVRO,
+        novo_livro.slug,
+        Registro.OK,
+        f'criou o livro "{titulo}"',
+    )
+    return HttpResponseRedirect(f"{reverse('livro')}?recado=livro-criado")
+
+
 # ------------------------------------------------------------------- criar
 
 
 @require_GET
 def texto_novo(request):
     """O formulário em branco. Nada é gravado até ele apertar o botão."""
+    livros = _livros_disponiveis()
     return _tela(
         request,
-        {"titulo": "", "nome": "", "corpo": "", "ordem": 1000},
+        {
+            "titulo": "",
+            "nome": "",
+            "corpo": "",
+            "ordem": 1000,
+            # Só um `Livro` existe ⇒ pré-selecionado, e o template esconde o
+            # seletor nesse caso (campo oculto). Zero ou vários ⇒ em branco: o
+            # zero se resolve sozinho ao gravar (`_livro_do_formulario`), e o
+            # "vários" precisa mesmo de uma escolha.
+            "livro": livros[0].slug if len(livros) == 1 else "",
+        },
         criando=True,
+        livros=livros,
     )
 
 
@@ -252,6 +456,18 @@ def texto_criar(request):
             criando=True,
             erro="Escreva um título para este texto, para você o reconhecer na lista.",
             status=422,
+            livros=_livros_disponiveis(),
+        )
+
+    livro_do_texto, erro_do_livro = _livro_do_formulario(request)
+    if erro_do_livro:
+        return _tela(
+            request,
+            rascunho,
+            criando=True,
+            erro=erro_do_livro,
+            status=422,
+            livros=_livros_disponiveis(),
         )
 
     nome = _nome_livre(documentos.apelido(rascunho["nome"] or rascunho["titulo"]))
@@ -265,10 +481,12 @@ def texto_criar(request):
                 "um endereço com letras e números no campo de baixo."
             ),
             status=422,
+            livros=_livros_disponiveis(),
         )
     rascunho["nome"] = nome
 
-    texto = TextoDoLivro.objects.create(**rascunho)
+    campos = {chave: valor for chave, valor in rascunho.items() if chave != "livro"}
+    texto = TextoDoLivro.objects.create(livro=livro_do_texto, **campos)
     _guardar_versao(request, texto, "guardou o texto")
     _auditar(
         request,
@@ -341,6 +559,10 @@ def textos_enviar(request):
     if len(arquivos) > LIMITE_DE_ARQUIVOS:
         return HttpResponseRedirect(f"{reverse('livro')}?recado=arquivos-demais")
 
+    # Um `Livro` só para o lote inteiro: ver `_livro_padrao_para_upload` para
+    # o porquê deste formulário não escolher um.
+    livro_do_lote = _livro_padrao_para_upload()
+
     for arquivo in arquivos:
         nome_do_arquivo = arquivo.name or "sem-nome"
         if not nome_do_arquivo.lower().endswith(EXTENSOES):
@@ -368,7 +590,9 @@ def textos_enviar(request):
             recusados.append(f"{nome_do_arquivo}: não consegui montar um endereço")
             continue
 
-        texto = TextoDoLivro.objects.create(titulo=titulo, nome=nome, corpo=conteudo)
+        texto = TextoDoLivro.objects.create(
+            livro=livro_do_lote, titulo=titulo, nome=nome, corpo=conteudo
+        )
         _guardar_versao(request, texto, f"veio do arquivo {nome_do_arquivo}")
         _auditar(
             request,
@@ -407,6 +631,57 @@ def texto_do_livro(request, nome):
             "recado": request.GET.get("recado", ""),
         },
     )
+
+
+@require_GET
+def texto_ler(request, nome):
+    """A tela de LEITURA de um capítulo — o contraponto de `texto_do_livro`.
+
+    Título, texto formatado, sumário do livro inteiro e navegação para o
+    capítulo anterior/próximo. NÃO mostra o aviso de riscas nem os botões de
+    editar/apagar/histórico: aqueles são gestos de bastidor, e esta tela é
+    para ler. Ver "A leitura, e a exceção do travessão" no cabeçalho deste
+    arquivo — o corpo sai sem tocar numa risca, de propósito.
+    """
+    texto = _ler(nome)
+    capitulos = list(texto.livro.capitulos.order_by("ordem", "nome"))
+    posicao = next((i for i, c in enumerate(capitulos) if c.id == texto.id), None)
+    # `posicao` falso cobre as duas pontas que não têm "anterior": `None`
+    # (capítulo não encontrado na lista — não deveria acontecer, mas não é
+    # motivo para `IndexError`) e `0` (o primeiro capítulo). Se fosse
+    # `posicao is not None` sem excluir o zero, `capitulos[0 - 1]` viraria
+    # `capitulos[-1]` — o ÚLTIMO capítulo aparecendo como "anterior" do
+    # primeiro.
+    anterior = capitulos[posicao - 1] if posicao else None
+    proximo = (
+        capitulos[posicao + 1]
+        if posicao is not None and posicao + 1 < len(capitulos)
+        else None
+    )
+    # Para o "onde você parou" do script embutido: título e endereço de CADA
+    # capítulo do livro, num mapa só — o script nunca chama o servidor, então
+    # tudo que ele pode precisar de mostrar já tem de estar aqui.
+    mapa_de_capitulos = {
+        c.nome: {"titulo": c.titulo, "url": reverse("texto_ler", args=[c.nome])}
+        for c in capitulos
+    }
+
+    resposta = render(
+        request,
+        "admin/livro_ler.html",
+        {
+            "admin": request.admin,
+            "livro_do_texto": texto.livro,
+            "texto": texto,
+            "corpo": documentos.para_html(texto.corpo),
+            "capitulos": capitulos,
+            "anterior": anterior,
+            "proximo": proximo,
+            "mapa_de_capitulos": mapa_de_capitulos,
+        },
+    )
+    resposta["Content-Security-Policy"] = _csp(resposta.content)
+    return resposta
 
 
 @require_GET

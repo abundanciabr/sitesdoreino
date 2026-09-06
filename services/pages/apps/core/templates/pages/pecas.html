@@ -1,0 +1,130 @@
+{% extends "pages/moldura.html" %}{% comment %}
+A ESTANTE (degrau 08): as obras do aluno, na ordem que ele escolheu, com o
+estado de cada link.
+
+A FOTO ENTRA POR LINK COLADO. Não existe campo de arquivo nesta tela, e a
+ausência é decisão do mantenedor de 01/09/2026 (plano §6.2), não esquecimento.
+
+A IMAGEM NÃO É MOSTRADA AQUI, e isso é escolha. Esta página é a bancada onde o
+aluno organiza; puxar dezenas de renders de terceiros a cada visita deixaria a
+tela pesada e ainda faria o navegador dele conversar com todos os sites da
+lista. Quem mostra as obras é a vitrine (degrau 13), que é a página feita para
+ser vista. Aqui o link é um link, e ele abre em aba nova.
+
+MEXER É UM FORMULÁRIO, e não um script. A regra desta casa é que nenhum caminho
+exista só com JavaScript: cada botão é um `<form>` próprio, com um clique só e
+sem segundo botão de salvar.
+
+TIRAR UMA PEÇA É DO ALUNO, E SÓ DELE (critério AC-09). Nenhuma varredura apaga
+obra de ninguém: este botão é o único caminho de saída.
+
+As tags de formulário ficam numa linha só, coladas, porque soltas cada uma põe
+espaço em branco entre os botões (`armadilhas/033`).
+
+O SEMÁFORO E AS PERGUNTAS (degrau 10, critério AC-10) entraram por último em
+cada peça, e a ordem na tela é a do trabalho do aluno: primeiro ele vê o que
+falta, e logo abaixo estão os campos que respondem exatamente aquilo.
+
+A COR NUNCA CARREGA SOZINHA O RECADO. A frase do resumo e a lista dizem tudo o
+que a cor resume, e a bolinha sai com `aria-hidden` porque quem não a enxerga
+não perde nada. Semáforo que só fala por cor é tela que exclui gente.
+
+AS PERGUNTAS SÃO AS DA PROFESSORA, e as respostas possíveis vêm dos vocabulários
+da `Peca`. Não existe nota, estrela nem classificação nesta tela, e a ausência é
+lei escrita (`PLANO-PORTFOLIO-DO-ALUNO.md` §7).
+
+O FORMULÁRIO VEM ABERTO SÓ ONDE HÁ O QUE RESPONDER, e é `<details>` puro, sem
+uma linha de script. Numa estante de vinte peças, vinte formulários abertos
+fariam o aluno rolar a tela inteira para encontrar a única que ainda pede
+alguma coisa. A peça já respondida guarda as perguntas atrás do resumo, e ele
+continua a um clique de distância para quem quiser mudar a resposta.
+{% endcomment %}
+{% block titulo %}Suas peças{% endblock %}
+{% block faixa %}Peças{% endblock %}
+
+{% block conteudo %}
+  <h1>Suas peças</h1>
+  <p>Aqui ficam as obras do seu portfólio, na ordem em que você quer mostrá-las.
+  A imagem continua guardada onde ela já está (no Drive, no ArtStation, onde
+  você preferir): o que fica com a escola é o endereço dela.</p>
+  <p>Em cada peça você encontra o que ainda falta nela, segundo o que a
+  professora pediu no roteiro. Nada aqui é nota nem estrela: são só as suas
+  respostas, e a lista some quando você termina de respondê-las.</p>
+
+{% if not pode_guardar %}
+  <p class="aviso">A escola ainda não terminou de ligar esta página. Volte daqui
+  a pouco para guardar as suas peças.</p>
+{% else %}
+{% if recusa %}
+  <p class="recusa" role="alert">{{ recusa }}</p>
+{% endif %}
+  <form method="post" action="{% url 'guardar_peca' %}" class="colar">{% csrf_token %}
+    <p>
+      <label for="link">Endereço da imagem</label>
+      <input type="url" id="link" name="link" value="{{ link_recusado }}"
+             placeholder="https://" required>
+    </p>
+    <p>
+      <label for="legenda">Legenda (o que é esta peça)</label>
+      <input type="text" id="legenda" name="legenda" maxlength="200"
+             value="{{ legenda_recusada }}">
+    </p>
+    <p><button type="submit">Guardar esta peça</button></p>
+  </form>
+{% endif %}
+
+{% if pecas %}
+  <ol class="estante">
+{% for peca in pecas %}
+    <li class="peca estado-{{ peca.estado_do_link }}">
+      <p class="titulo">{% if peca.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ peca.legenda|default:"Peça sem legenda" }}</p>
+      <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">{{ peca.link }}</a></p>
+      <p class="miudo estado">{{ peca.get_estado_do_link_display }}{% if peca.quebrado_desde %}, desde {{ peca.quebrado_desde|date:"d/m/Y" }}. Abra o endereço no navegador para ver o que houve, e cole o novo aqui embaixo se você mudou a imagem de lugar. Ela continua guardada com a escola até você tirá-la{% endif %}.</p>
+      <p class="botoes">{% if not forloop.first %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="subir">Subir</button></form>{% endif %}{% if not forloop.last %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="descer">Descer</button></form>{% endif %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="{% if peca.destaque %}tirar-destaque{% else %}destacar{% endif %}">{% if peca.destaque %}Tirar o destaque{% else %}Pôr em destaque{% endif %}</button></form><form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="remover">Tirar da estante</button></form></p>
+      <div class="semaforo luz-{{ peca.semaforo.cor }}">
+        <p class="resumo"><span class="luz" aria-hidden="true"></span>{{ peca.semaforo.resumo }}</p>
+{% if peca.semaforo.pendencias %}
+        <ul class="falta">
+{% for pendencia in peca.semaforo.pendencias %}
+          <li{% if pendencia.precisa_mudar %} class="mudar"{% endif %}>{{ pendencia.o_que_fazer }}{% if pendencia.regra %}<span class="miudo regra">A regra da escola: {{ pendencia.regra }}</span>{% endif %}</li>
+{% endfor %}
+        </ul>
+{% endif %}
+      </div>
+      <details class="responder"{% if peca.semaforo.pendencias %} open{% endif %}>
+      <summary>As perguntas da escola sobre esta peça</summary>
+      <form method="post" action="{% url 'responder_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}">
+        <p>
+          <label for="tipo-{{ peca.pk }}">De que tipo é esta peça?</label>
+          <select id="tipo-{{ peca.pk }}" name="tipo">
+            <option value="">Ainda não respondi</option>
+{% for valor, rotulo in tipos %}            <option value="{{ valor }}"{% if peca.tipo == valor %} selected{% endif %}>{{ rotulo }}</option>
+{% endfor %}          </select>
+        </p>
+        <p>
+          <label for="acabamento-{{ peca.pk }}">Ela é high poly ou uma variação mais simples?</label>
+          <select id="acabamento-{{ peca.pk }}" name="acabamento">
+            <option value="">Ainda não respondi</option>
+{% for valor, rotulo in acabamentos %}            <option value="{{ valor }}"{% if peca.acabamento == valor %} selected{% endif %}>{{ rotulo }}</option>
+{% endfor %}          </select>
+        </p>
+        <p>
+          <label for="aula-{{ peca.pk }}">Ela se parece com o modelo que você fez na aula?</label>
+          <select id="aula-{{ peca.pk }}" name="parecida_com_a_aula">
+            <option value="">Ainda não respondi</option>
+{% for valor, rotulo in semelhancas %}            <option value="{{ valor }}"{% if peca.parecida_com_a_aula == valor %} selected{% endif %}>{{ rotulo }}</option>
+{% endfor %}          </select>
+        </p>
+        <p><button type="submit">Salvar as respostas desta peça</button></p>
+      </form>
+      </details>
+    </li>
+{% endfor %}
+  </ol>
+{% elif pode_guardar %}
+  <p class="miudo">Você ainda não guardou nenhuma peça. Abra a imagem que você
+  quer mostrar, copie o endereço da barra do navegador e cole no campo acima.</p>
+{% endif %}
+
+  <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>
+{% endblock %}

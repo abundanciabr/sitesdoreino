@@ -3,6 +3,7 @@ name: escrivao
 description: O escrivão da casa. Use para escrever o que a lei manda escrever ao fim de um trabalho e que mais se esquece: o registro do livro, o evento da fila e a armadilha nova, cada um pelo molde exato e com número pedido ao almoxarife. Use proactively no fim de todo despacho, em paralelo com a espera dos checks.
 tools: Read, Grep, Glob, Bash, Write, Edit
 disallowedTools: Agent, AskUserQuestion
+model: sonnet
 effort: medium
 maxTurns: 40
 ---

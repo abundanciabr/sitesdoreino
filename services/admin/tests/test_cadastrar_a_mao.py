@@ -57,6 +57,12 @@ BOM = {
     "turma": "Turma de agosto",
     "comprou_em": "2026-08-01",
     "site_id": "escola-a",
+    # [CURSO] Obrigatório desde 06/09/2026 ([INV-ALU-C1]): este formulário
+    # cadastra E libera no mesmo clique, e ninguém é aluno do site — todo mundo
+    # é aluno de um produto. O que acontece SEM ele mora em
+    # `test_liberar_com_curso.py`, junto com os outros três caminhos que
+    # liberam; aqui ele é só o campo bem preenchido.
+    "product_id": "prod-primeiros-dolares",
 }
 
 

@@ -477,7 +477,8 @@ primeira versão deste arquivo, e o teste pegou.
        depende de script — a tela do menu explica as tres razoes, e elas valem
        inteiras aqui. */
     .editor { max-width: 780px; }
-    .editor input[type=text], .editor input[type=number], .editor textarea {
+    .editor input[type=text], .editor input[type=number], .editor textarea,
+    .editor select {
       width: 100%; box-sizing: border-box; padding: 10px 12px;
       background: var(--fundo); color: var(--texto);
       border: 1px solid var(--linha); border-radius: 8px; font: inherit;
@@ -606,19 +607,25 @@ primeira versão deste arquivo, e o teste pegou.
        no celular, e não empurra a página inteira de lado: página que rola na
        horizontal esconde texto, e ninguém procura o que não sabe que existe. */
     .rolagem-lateral { overflow-x: auto; }
-    .semanas-do-ciclo { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .semanas-do-ciclo th, .semanas-do-ciclo td {
+    /* A tabela das coortes (05/09/2026) usa as MESMAS regras: é a mesma
+       forma de tabela, com outro conteúdo. Um segundo bloco de CSS igual
+       divergiria no primeiro ajuste feito só de um lado. */
+    .semanas-do-ciclo, .tabela-coortes { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .semanas-do-ciclo th, .semanas-do-ciclo td,
+    .tabela-coortes th, .tabela-coortes td {
       padding: 9px 10px; border-bottom: 1px solid var(--linha);
       text-align: left; white-space: nowrap;
     }
-    .semanas-do-ciclo th { color: var(--texto-2); font-size: 12px; font-weight: 600; }
-    .semanas-do-ciclo .numero { text-align: right; font-variant-numeric: tabular-nums; }
+    .semanas-do-ciclo th, .tabela-coortes th { color: var(--texto-2); font-size: 12px; font-weight: 600; }
+    .semanas-do-ciclo .numero, .tabela-coortes .numero { text-align: right; font-variant-numeric: tabular-nums; }
     .semanas-do-ciclo .acumulada { color: var(--texto-2); }
     /* Onde você está, em três estados. A semana de hoje ganha fundo e borda, e
        não só cor de texto: é a linha que o olho tem de achar sem procurar. */
     .semana.futura td { color: var(--texto-3); }
-    .semana.andando td { background: var(--painel); border-top: 1px solid var(--azul); border-bottom-color: var(--azul); }
-    .semana .agora {
+    /* O mês que ainda está enchendo, na tabela das coortes, é a mesma ideia
+       de "onde você está" da semana corrente: fundo e borda, não só cor. */
+    .semana.andando td, .mes.andando td { background: var(--painel); border-top: 1px solid var(--azul); border-bottom-color: var(--azul); }
+    .semana .agora, .mes .agora {
       margin-left: 8px; padding: 1px 7px; border-radius: 6px;
       background: var(--azul); color: #0f1115; font-size: 11px; font-weight: 700;
     }

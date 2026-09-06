@@ -1,4 +1,4 @@
-"""A direção da semana: o que a casa move na semana e que antecipa a meta.
+"""A direção da semana: o que a casa move na semana, e o que ainda não mede.
 
 Degrau 2 do `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` (§3 bloco 3, §8). É a
 segunda disciplina das 4 Disciplinas da Execução, que os documentos do Scale
@@ -6,15 +6,34 @@ OS mantêm (1 §5; 2 Parte VI §24 a §27): a meta grande é retrovisor; a medid
 de direção é volante, e tem duas propriedades que nenhuma outra tem: **prevê
 a meta** e **pode ser movida esta semana**. Uma ou duas, nunca dez.
 
-## As duas medidas de hoje, e por quê estas
+## A premissa que o mantenedor corrigiu em 05/09/2026
 
-1. **Pedidos de entrada por semana.** É a torneira da meta: ninguém vira
-   aluna sem antes pedir para entrar (a venda acontece fora do site, e a fila
-   é a porta). A meta da semana, quando o mantenedor não fixa uma, é a fatia
-   semanal da linha reta do ciclo (500 em 103 dias ≈ 34 por semana).
-2. **Liberações em até 48 horas.** A parte da jornada que depende SÓ da
-   casa: quem pediu e já comprou espera o mantenedor abrir a fila. Meta: 100%
-   das liberações dos últimos 28 dias em até 2 dias, e ninguém esperando há
+As duas medidas deste módulo nasceram em 03/09/2026 chamando a fila de
+liberação de "pedidos de entrada", e a primeira delas se declarava a torneira
+da meta. As palavras dele, dois dias depois: *"ninguém pede entrada na escola,
+todos entram apenas e unicamente pela matrícula mediante a compra do curso"*, e
+*"os alunos dos quais estamos falando no painel das vendas são de vendas que
+foram efetuadas via checkout"*.
+
+Quem está na fila **já comprou, fora do site, e espera confirmação**. É uma
+sala de espera. As duas contas continuam exatas (o que envelheceu foi o nome),
+e por isso a correção é de texto e de versão de cartão, não de fórmula. O que
+some é a afirmação de que este é o caminho da venda: não é, e o caminho de
+verdade tem dois cartões próprios, `visitas-na-pagina-de-venda-por-semana` e
+`compras-pelo-checkout-por-semana`, ambos apagados enquanto o checkout estiver
+congelado pela decisão dele de 22/08/2026. Quem os lê e os põe na tela é
+`placar.py`; aqui não há conta para eles, porque não há fonte.
+
+## As duas medidas acesas de hoje, e por quê estas
+
+1. **Chegadas à sala de espera, por semana.** Quantas compras feitas fora do
+   site chegaram para confirmação nos últimos 7 dias. A meta da semana, quando
+   o mantenedor não fixa uma, é a fatia semanal da régua do ciclo, e isso vale
+   enquanto toda compra passar por aqui: no dia em que o checkout abrir, quem
+   responde pela semana é o cartão da compra pelo site.
+2. **Confirmações em até 48 horas.** A parte da jornada que depende SÓ da
+   casa: quem já pagou espera o mantenedor confirmar. Meta: 100% das
+   confirmações dos últimos 28 dias em até 2 dias, e ninguém esperando há
    mais que isso agora.
 
 ## Os compromissos da semana
@@ -43,7 +62,7 @@ from pathlib import Path
 from .painel import CANDIDATOS
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, esperado_em
 
-#: Liberar em até 48 horas: o mesmo limiar da restrição.
+#: Confirmar em até 48 horas: o mesmo limiar da restrição.
 DIAS_PARA_LIBERAR = 2
 #: Quantas semanas a tela olha para trás (a sequência).
 SEMANAS_OLHADAS = 4
@@ -61,6 +80,16 @@ _CAMPO = {
         "vence_em_dias",
         "precisa_do_dono",
         "foto",
+        # Os cinco do laboratório (05/09/2026, degrau 12): um experimento é uma
+        # `medicao` que declara a aposta, e o resultado é o registro que a fecha
+        # com um `veredito`. Eles entram aqui, e não num leitor próprio de
+        # `laboratorio.py`, porque o livro tem UM leitor nesta célula: dois
+        # leitores do mesmo arquivo divergem no primeiro campo novo.
+        "problema",
+        "hipotese",
+        "metrica",
+        "guarda",
+        "veredito",
     )
 }
 
@@ -111,6 +140,11 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "vence_em_dias": _campo(texto, "vence_em_dias"),
                 "precisa_do_dono": _campo(texto, "precisa_do_dono") is True,
                 "foto": _campo(texto, "foto"),
+                "problema": _campo(texto, "problema"),
+                "hipotese": _campo(texto, "hipotese"),
+                "metrica": _campo(texto, "metrica"),
+                "guarda": _campo(texto, "guarda"),
+                "veredito": _campo(texto, "veredito"),
             }
         )
     return registros
@@ -174,7 +208,12 @@ def medir_pedidos(
     alunos: list[dict] | None,
     hoje: dt.date,
 ) -> list[int] | None:
-    """Pedidos de entrada por semana, da atual (índice 0) para trás."""
+    """Chegadas à sala de espera por semana, da atual (índice 0) para trás.
+
+    O nome da função e a chave `pedidos` do resultado são anteriores à correção
+    de 05/09/2026 e continuam sendo a chave da foto do livro (`mudancas.py`).
+    Trocá-los é a mesma dívida do nome do arquivo do cartão, declarada lá.
+    """
     if aguardando is None or recusados is None or alunos is None:
         return None
     liberados = [
@@ -196,8 +235,8 @@ def medir_pedidos(
 def medir_liberacoes_em_48h(
     aguardando: list[dict] | None, alunos: list[dict] | None, hoje: dt.date
 ) -> dict | None:
-    """Das liberações dos últimos 28 dias, quantas saíram em até 2 dias; e
-    quantas pessoas esperam há mais que isso agora."""
+    """Das confirmações dos últimos 28 dias, quantas saíram em até 2 dias; e
+    quantas pessoas esperam na sala há mais que isso agora."""
     if aguardando is None or alunos is None:
         return None
     no_prazo = total = 0
@@ -230,7 +269,12 @@ def medir_liberacoes_em_48h(
 def meta_semanal_de_pedidos(
     cartao: dict, meta: dict | None, hoje: dt.date
 ) -> tuple[int | None, bool]:
-    """`(meta, derivada)`: a do cartão, ou a fatia de 7 dias da linha reta do ciclo."""
+    """`(meta, derivada)`: a do cartão, ou a fatia de 7 dias da régua do ciclo.
+
+    Comparar as chegadas à sala de espera com a fatia da meta do ciclo só é
+    honesto enquanto TODA compra passar pela sala. Quando o checkout abrir, a
+    fatia da semana passa a ser cobrada de `compras-pelo-checkout-por-semana`.
+    """
     fixa = cartao.get("meta_semanal")
     if fixa is not None:
         return int(fixa), False

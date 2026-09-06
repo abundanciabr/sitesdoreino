@@ -7,8 +7,8 @@ O que estes guardas protegem:
 2. **As duas estrelas-guia seguram uma à outra** (o par é mútuo).
 3. **Crescimento mês a mês só existe com dois meses fechados** depois da
    partida; antes disso a tela diz "a partir de quando", nunca zero.
-4. **Aprendizados validados contam do livro**: medição que responde a outro
-   registro, desde a partida. Zero contado é zero.
+4. **Aprendizados validados contam o LABORATÓRIO**: experimento fechado com
+   veredito de venceu ou perdeu, desde a partida. Zero contado é zero.
 5. **"Não medi" nunca vira "sem fonte"**: fonte que existe e não respondeu é
    `nao-consigo-medir`.
 """
@@ -89,14 +89,45 @@ def test_crescimento_espera_dois_meses_fechados():
     )
 
 
-def test_aprendizados_validados_contam_do_livro():
-    registros = [
-        {"tipo": "medicao", "responde_a": "x", "quando": "2026-09-10"},
-        {"tipo": "medicao", "responde_a": None, "quando": "2026-09-11"},
-        {"tipo": "medicao", "responde_a": "y", "quando": "2026-08-01"},
-        {"tipo": "nota", "responde_a": "z", "quando": "2026-09-12"},
+def test_aprendizados_validados_contam_experimentos_e_nao_qualquer_resposta():
+    """O 12º conta o LABORATÓRIO, e a regra mora lá (05/09/2026, degrau 12).
+
+    Até essa data a conta era "toda `medicao` com `responde_a` desde a
+    partida", e no livro real ela dava 6: os seis eram vereditos de deploy
+    respondendo a registros de entrega, num livro sem um único experimento. As
+    duas primeiras linhas abaixo são exatamente esse caso, e hoje não contam.
+    """
+    veredito_de_deploy = [
+        {"tipo": "entrega", "arquivo": "x", "quando": "2026-09-09"},
+        {
+            "tipo": "medicao",
+            "arquivo": "x-deploy",
+            "responde_a": "x",
+            "quando": "2026-09-10",
+        },
     ]
-    assert doze.aprendizados_validados(registros, PARTIDA) == 1
+    assert doze.aprendizados_validados(veredito_de_deploy, PARTIDA) == 0
+
+    experimento = [
+        {
+            "tipo": "medicao",
+            "arquivo": "e1",
+            "quando": "2026-09-05",
+            "vence_em_dias": 7,
+            "problema": "ninguém confirma no mesmo dia",
+            "hipotese": "avisar por mensagem corta a espera pela metade",
+            "metrica": "liberacoes-em-48h",
+            "guarda": "se alguém esperar mais de 3 dias, paramos",
+        },
+        {
+            "tipo": "medicao",
+            "arquivo": "e1-fim",
+            "responde_a": "e1",
+            "quando": "2026-09-12",
+            "veredito": "venceu",
+        },
+    ]
+    assert doze.aprendizados_validados(experimento, PARTIDA) == 1
     assert doze.aprendizados_validados([], PARTIDA) == 0
     assert doze.aprendizados_validados(None, PARTIDA) is None
 

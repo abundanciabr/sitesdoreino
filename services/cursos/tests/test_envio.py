@@ -311,7 +311,7 @@ def entregar_pela_tela(client, **campos):
 def test_a_tela_so_mostra_o_formulario_quando_da_para_entregar(
     aluna, aula_publicada, client
 ):
-    aula = reverse("aula", args=["E00"])
+    aula = reverse("aula-do-curso", args=["profissional", 1, "E00"])
     bloco = bloco_do_checkpoint(abrir(client, aula))
     assert "fica fechado até todas as pausas" in bloco
     assert "<form" not in bloco
@@ -341,9 +341,11 @@ def test_entregar_pela_tela_grava_e_a_aula_diz_recebido_em_e_revisao_ate(
 ):
     resposta = entregar_pela_tela(client)
     assert resposta.status_code == 302
-    assert resposta["Location"] == reverse("aula", args=["E00"]) + (
-        "?recado=entregue#checkpoint"
-    )
+    # A volta é para o ENDEREÇO DO LIVRO (TAR-212), mesmo quando o gesto chegou
+    # pelo endereço antigo: é ele que o aluno copia da barra do navegador.
+    assert resposta["Location"] == reverse(
+        "aula-do-curso", args=["profissional", 1, "E00"]
+    ) + ("?recado=entregue#checkpoint")
     assert "meshcraft_sessao" not in resposta.cookies, "reescreveu o cookie do site"
 
     envio = Envio.objects.get()
@@ -354,7 +356,10 @@ def test_entregar_pela_tela_grava_e_a_aula_diz_recebido_em_e_revisao_ate(
     assert envio.readme == README
     assert envio.laudo_do_aluno == {"texto": AUTOAVALIACAO}
 
-    resposta = abrir(client, reverse("aula", args=["E00"]) + "?recado=entregue")
+    resposta = abrir(
+        client,
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]) + "?recado=entregue",
+    )
     assert "meshcraft_sessao" not in resposta.cookies
     corpo = resposta.content.decode("utf-8")
     assert "Recebido. Seu envio entrou na fila de revisão" in corpo
@@ -371,7 +376,9 @@ def test_a_hora_na_tela_e_a_de_sao_paulo(aluna, ana_pronta, client):
     recebido = timezone.localtime(envio.enviado_em)
     prazo = timezone.localtime(envio.prazo_em)
     assert recebido.tzinfo.key == "America/Sao_Paulo"
-    bloco = bloco_do_checkpoint(abrir(client, reverse("aula", args=["E00"])))
+    bloco = bloco_do_checkpoint(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
     assert f"Recebido em {recebido:%d/%m/%Y} às {recebido:%H:%M}." in bloco
     assert f"Revisão até {prazo:%d/%m/%Y} às {prazo:%H:%M}." in bloco
 
@@ -395,7 +402,9 @@ def test_com_instrumento_a_tela_pede_nota_e_frase_por_criterio(
     """A ordem dos critérios é a alfabética do nome (`criterios_de`), nunca a
     ordem em que a escala foi escrita: Acabamento vem antes de Proporção, e por
     isso o índice 0 é Acabamento."""
-    bloco = bloco_do_checkpoint(abrir(client, reverse("aula", args=["E00"])))
+    bloco = bloco_do_checkpoint(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
     assert "Proporção" in bloco and "Acabamento" in bloco
     assert 'name="nota_0"' in bloco and 'name="frase_0"' in bloco
     assert 'name="nota_1"' in bloco and 'name="frase_1"' in bloco
@@ -428,7 +437,9 @@ def test_com_instrumento_a_tela_pede_nota_e_frase_por_criterio(
 def test_devolvida_reabre_o_formulario_como_reenvio(aluna, ana_pronta, client):
     checkpoint.entregar(ana_pronta, **entrega())
     Progresso.objects.filter(pk=ana_pronta.pk).update(estado=Progresso.Estado.DEVOLVIDA)
-    bloco = bloco_do_checkpoint(abrir(client, reverse("aula", args=["E00"])))
+    bloco = bloco_do_checkpoint(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
     assert "Envio 1: Recebido" in bloco
     assert "<form" in bloco
     assert "Este é o envio 2" in bloco
@@ -440,7 +451,9 @@ def test_devolvida_reabre_o_formulario_como_reenvio(aluna, ana_pronta, client):
 def test_o_estouro_registrado_aparece_na_tela(aluna, ana_pronta, client):
     envio = checkpoint.entregar(ana_pronta, **entrega())
     checkpoint.registrar_estouros(envio.prazo_em + timedelta(hours=3))
-    bloco = bloco_do_checkpoint(abrir(client, reverse("aula", args=["E00"])))
+    bloco = bloco_do_checkpoint(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
     assert "O prazo de revisão passou em" in bloco
     assert "continua na fila" in bloco
     assert "<form" not in bloco
@@ -451,7 +464,9 @@ def test_concluida_mostra_o_envio_e_nao_o_formulario(aluna, ana_pronta, client):
     Progresso.objects.filter(pk=ana_pronta.pk).update(
         estado=Progresso.Estado.CONCLUIDA, concluida_em=timezone.now()
     )
-    bloco = bloco_do_checkpoint(abrir(client, reverse("aula", args=["E00"])))
+    bloco = bloco_do_checkpoint(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
     assert "Envio 1" in bloco
     assert "<form" not in bloco
     assert "já está concluída" in bloco

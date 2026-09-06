@@ -40,13 +40,21 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 from django.conf import settings
-from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
+from django.http import (
+    FileResponse,
+    Http404,
+    HttpResponsePermanentRedirect,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from apps.cursos import agente as assistente
+from apps.cursos import enderecos
 from apps.cursos import envio as checkpoint
 from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
@@ -58,6 +66,7 @@ from apps.cursos.models import (
     Pausa,
     Peca,
     Progresso,
+    RascunhoDaIA,
     RegistroDePausa,
     TipoDePeca,
 )
@@ -97,7 +106,17 @@ ESTADOS_COM_A_PESSOA = (
     Progresso.Estado.ENVIADA,
 )
 
-NOMES_DAS_PARTES = {1: "Parte 1", 2: "Parte 2", 3: "Parte 3"}
+# As três Partes do livro, com o título de cada uma (`PLANO-CELULA-CURSOS.md`,
+# Parte 0: as três Partes são Fundação, Itens que vendem e Profissional). O
+# aluno está com o LIVRO ABERTO ao lado da tela, e o mapa precisa dizer as
+# Partes com as palavras que ele tem na mão. O número vem primeiro e em
+# algarismo porque é ele que aparece no endereço da aula (`parte-1`): é assim
+# que a barra do navegador e o sumário do livro se reconhecem.
+NOMES_DAS_PARTES = {
+    1: "Parte 1 · Fundação",
+    2: "Parte 2 · Itens que vendem",
+    3: "Parte 3 · Profissional",
+}
 
 
 @require_GET
@@ -134,26 +153,98 @@ def servir_estatico(request, caminho: str):
 # ---------------------------------------------------------------------------
 # A PORTA DA SALA: quem entra, e em que curso
 # ---------------------------------------------------------------------------
-def _de_fora() -> dict:
-    """Os dois endereços de outras células, que `{% url %}` não conhece."""
+def _de_fora(curso: Curso | None = None) -> dict:
+    """Os dois endereços de outras células, que `{% url %}` não conhece, mais
+    o endereço do mapa DESTE curso, que só a view sabe montar."""
     return {
         "url_de_entrada": settings.URL_DE_ENTRADA,
         "url_da_capa": settings.URL_DA_CAPA,
+        "url_do_mapa": _url_do_mapa(curso),
     }
 
 
-def _recusar(request, motivo: str, *, status: int):
+def _url_do_mapa(curso: Curso | None) -> str:
+    """O mapa das portas: o do curso quando ele é conhecido, o endereço antigo
+    quando não é (uma recusa não tem curso para apontar)."""
+    return reverse("curso", args=[curso.slug]) if curso else reverse("mapa")
+
+
+def _recusar(request, motivo: str, *, status: int, **extra):
     return render(
-        request, "cursos/entrar.html", {"motivo": motivo, **_de_fora()}, status=status
+        request,
+        "cursos/entrar.html",
+        {"motivo": motivo, **_de_fora(), **extra},
+        status=status,
     )
 
 
-def _sala(request):
+def _recusa_de_curso(ator, curso: Curso) -> str:
+    """`""` quando esta pessoa entra NESTE curso; o motivo da recusa quando não.
+
+    A segunda porta da sala (`DECISAO-cursos-matriculas-e-alunos.md` §1): a
+    primeira pergunta se a pessoa é aluna, esta pergunta **de qual curso**.
+    Enquanto havia um curso só, a primeira bastava por coincidência; no dia do
+    segundo, todo aluno do primeiro abriria o segundo digitando o endereço.
+
+    Os dois motivos são separados porque mandam a pessoa a lugares diferentes:
+    `outro-curso` é "abra o seu, que é aquele ali"; `curso-sem-produto` é
+    "ninguém entra aqui ainda, avise a escola".
+
+    **Curso sem produto apontado FECHA, e é como todo curso nasce.** Não é
+    descuido: um curso que não diz de qual produto é não pode ter a matrícula
+    conferida, e nesta célula não conseguir conferir nunca é "pode entrar" (a
+    mesma lei que `apps/core/sessao.py` aplica à `alunos` fora do ar). Curso
+    fechado é problema visível, que aparece na primeira visita e se resolve com
+    `manage.py apontar_o_produto_do_curso`; curso aberto por falta de
+    apontamento é o defeito invisível que esta mudança existe para matar.
+    """
+    if not curso.produto_id:
+        return "curso-sem-produto"
+    if curso.produto_id not in ator.produtos_matriculados:
+        return "outro-curso"
+    return ""
+
+
+def _meus_cursos(ator, site_id: str) -> list[Curso]:
+    """Os cursos deste site em que ESTA pessoa está matriculada.
+
+    A sala não OFERECE curso alheio: uma tela que convida para uma porta que
+    ela mesma vai fechar é pior do que não mostrar nada, porque parece um
+    direito e termina em recusa.
+    """
+    return [
+        curso
+        for curso in enderecos.cursos_do_site(site_id)
+        if not _recusa_de_curso(ator, curso)
+    ]
+
+
+def _cursos_para_escolher(ator, site_id: str) -> list[dict]:
+    """Os cursos DESTA pessoa com o endereço de cada um, para a tela que pede
+    que ela escolha. Sem eles a recusa mandaria a pessoa adivinhar."""
+    return [
+        {
+            "slug": curso.slug,
+            "nome": curso.nome,
+            "url": reverse("curso", args=[curso.slug]),
+        }
+        for curso in _meus_cursos(ator, site_id)
+    ]
+
+
+def _sala(request, slug: str | None = None):
     """`(pessoa, curso, None)` para quem pode entrar; `(None, None, resposta)`
     para quem não pode, com a resposta já pronta.
 
-    Fail-CLOSED na matrícula: `eh_aluno` só é verdadeiro quando a `alunos`
-    respondeu `aluno`. Não conseguir perguntar fecha a porta e diz isso.
+    Fail-CLOSED na matrícula, em DUAS portas: `eh_aluno` diz se a pessoa tem
+    alguma matrícula ativa, e `_recusa_de_curso` diz se ela tem a DESTE curso.
+    Não conseguir perguntar fecha as duas e diz isso.
+
+    O CURSO VEM DO SLUG DO ENDEREÇO, e nunca de "o primeiro do site" (TAR-212).
+    Sem slug (os endereços antigos, que continuam respondendo), a sala serve o
+    curso quando ele é o ÚNICO DA PESSOA e pede para escolher quando não é: com
+    dois cursos, "o primeiro" servia sempre o mesmo e o segundo era invisível
+    para todo mundo, sem erro em lugar nenhum.
     """
     ator = quem_e(request)
     if not ator.autenticado:
@@ -162,24 +253,80 @@ def _sala(request):
         motivo = "sem-matricula" if ator.matricula_conferida else "sem-resposta"
         return None, None, _recusar(request, motivo, status=403)
     site = site_atual()
-    curso = Curso.objects.filter(site_id=site).order_by("id").first() if site else None
-    if curso is None:
+    if not site:
         return None, None, _recusar(request, "sem-curso", status=200)
-    return ator.pessoa, curso, None
+    if slug is not None:
+        curso = enderecos.curso_do_site(site, slug)
+        if curso is None:
+            return (
+                None,
+                None,
+                _recusar(
+                    request,
+                    "curso-desconhecido",
+                    status=404,
+                    slug_pedido=slug,
+                    cursos=_cursos_para_escolher(ator, site),
+                ),
+            )
+        recusa = _recusa_de_curso(ator, curso)
+        if recusa:
+            return (
+                None,
+                None,
+                _recusar(
+                    request,
+                    recusa,
+                    status=403,
+                    cursos=_cursos_para_escolher(ator, site),
+                ),
+            )
+        return ator.pessoa, curso, None
+    if not enderecos.cursos_do_site(site):
+        return None, None, _recusar(request, "sem-curso", status=200)
+    meus = _meus_cursos(ator, site)
+    if len(meus) == 1:
+        return ator.pessoa, meus[0], None
+    if not meus:
+        # Ela é aluna de alguma coisa, e de nenhum curso DESTA escola. A tela
+        # sai sem lista, e a lista vazia é a informação: não há para onde
+        # mandá-la, e por isso a frase manda falar com a escola.
+        return None, None, _recusar(request, "outro-curso", status=403, cursos=[])
+    return (
+        None,
+        None,
+        _recusar(
+            request,
+            "escolha-o-curso",
+            status=200,
+            cursos=_cursos_para_escolher(ator, site),
+        ),
+    )
 
 
-def _voltar_ao_mapa(*, recado: str = ""):
-    endereco = reverse("mapa")
+def _voltar_ao_mapa(curso: Curso, *, recado: str = ""):
+    endereco = _url_do_mapa(curso)
     return HttpResponseRedirect(f"{endereco}?recado={recado}" if recado else endereco)
 
 
-def _voltar_a_aula(numero: str, *, recado: str = "", erro: str = "", ancora: str = ""):
+def _url_da_aula(curso: Curso, aula: Aula) -> str:
+    """O endereço do livro: o curso e a parte, os dois no caminho."""
+    return reverse("aula-do-curso", args=[curso.slug, aula.bloco.parte, aula.numero])
+
+
+def _voltar_a_aula(
+    curso: Curso, aula: Aula, *, recado: str = "", erro: str = "", ancora: str = ""
+):
     """POST-redirect-GET, com o recado por CÓDIGO e o erro por texto.
 
     O erro é texto porque vem da recusa, escrita para gente; o template o
     escapa, como escapa qualquer entrada.
+
+    A volta é sempre para o endereço do livro, mesmo quando o gesto chegou pelo
+    endereço antigo: é o endereço que o aluno vai copiar da barra do navegador
+    e mandar para um colega.
     """
-    endereco = reverse("aula", args=[numero])
+    endereco = _url_da_aula(curso, aula)
     if recado:
         endereco = f"{endereco}?recado={recado}"
     elif erro:
@@ -205,6 +352,9 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         rotulo = Progresso.Estado(estado).label
     return {
         "numero": aula.numero,
+        # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
+        # template teria de adivinhá-la, e o mapa é justamente quem sabe.
+        "parte": aula.bloco.parte,
         "titulo": aula.titulo_exibido,
         "estado": estado,
         "rotulo": rotulo,
@@ -256,14 +406,53 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     return lista, atual
 
 
+def _curso_unico() -> Curso | None:
+    """O curso deste site quando ele é o ÚNICO; `None` com zero ou com dois.
+
+    É a condição que decide todo 301 desta célula. O endereço antigo não diz
+    QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço muda de
+    casa; com dois, mandá-lo para um deles seria um chute com cara de certeza,
+    e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que PERGUNTA
+    (`_sala`) continua sendo a resposta certa.
+    """
+    site = site_atual()
+    if not site:
+        return None
+    cursos = enderecos.cursos_do_site(site)
+    return cursos[0] if len(cursos) == 1 else None
+
+
+def _a_raiz_mudou_de_casa():
+    """A raiz da célula (`/cursos`) mudada de casa (301) para o mapa do curso.
+
+    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
+    já compartilhado levaria o aluno a uma página que não diz em que parte do
+    curso ele está: o oposto do que o endereço do livro veio fazer. O 301
+    ensina o navegador e o buscador de uma vez (TAR-216).
+    """
+    curso = _curso_unico()
+    if curso is None:
+        return None
+    return HttpResponsePermanentRedirect(reverse("curso", args=[curso.slug]))
+
+
 @require_GET
-def mapa(request):
-    """A home do curso: as 34 portas, o estado de cada uma, a próxima em destaque.
+def mapa(request, curso: str | None = None):
+    """A home de UM curso: as 34 portas, o estado de cada uma, a próxima em
+    destaque. `curso` é o slug do endereço; sem ele, é o endereço antigo.
 
     É aqui que a E00 NASCE `disponivel` para quem tem matrícula ativa
     (`progresso.nascer`, inerte a partir da segunda visita).
+
+    O 301 vem ANTES da porta, e de propósito: um 301 é guardado pelo navegador
+    pela URL, sem olhar o cookie, e um redirecionamento que dependesse de quem
+    está olhando mentiria no cache do primeiro visitante em diante.
     """
-    pessoa, curso, recusa = _sala(request)
+    if curso is None:
+        mudou_de_casa = _a_raiz_mudou_de_casa()
+        if mudou_de_casa is not None:
+            return mudou_de_casa
+    pessoa, curso, recusa = _sala(request, curso)
     if recusa is not None:
         return recusa
     portas.nascer(pessoa, curso)
@@ -272,10 +461,11 @@ def mapa(request):
         request,
         "cursos/mapa.html",
         {
+            "curso": curso,
             "partes": partes,
             "atual": atual,
             "recado": RECADOS.get(request.GET.get("recado", "")),
-            **_de_fora(),
+            **_de_fora(curso),
         },
     )
 
@@ -286,7 +476,10 @@ def mapa(request):
 def _aula_publicada(curso: Curso, numero: str) -> Aula:
     """A aula publicada deste curso, ou 404: rascunho não existe para o aluno."""
     return get_object_or_404(
-        Aula, curso=curso, numero=numero, estado=Aula.Estado.PUBLICADA
+        Aula.objects.select_related("bloco"),
+        curso=curso,
+        numero=numero,
+        estado=Aula.Estado.PUBLICADA,
     )
 
 
@@ -481,29 +674,99 @@ def _checkpoint(progresso: Progresso, *, pausas_ok: bool) -> dict:
     }
 
 
-def _porta_aberta(request, numero: str):
+def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
     """A pessoa, o curso, a aula publicada e o progresso NÃO trancado, ou a
-    resposta que recusa (o convite, o 403, o 404 ou a volta ao mapa)."""
-    pessoa, curso, recusa = _sala(request)
+    resposta que recusa (o convite, o 403, o 404, a parte errada ou a volta ao
+    mapa). Devolve `(pessoa, curso, aula, progresso, recusa)`."""
+    pessoa, curso, recusa = _sala(request, slug)
     if recusa is not None:
-        return None, None, None, recusa
+        return None, None, None, None, recusa
     portas.nascer(pessoa, curso)
     aula = _aula_publicada(curso, numero)
+    # A PARTE É GUARDA, E NÃO ENFEITE: um endereço que aponta certo para a aula
+    # ERRADA é pior do que um endereço quebrado, porque o aluno está com o
+    # livro aberto e confia no número. A regra é a MESMA da porta de máquina
+    # (`apps/cursos/enderecos.py`), e a tela diz onde a aula realmente está.
+    errada = enderecos.parte_errada(curso, aula, parte)
+    if errada is not None:
+        return (
+            None,
+            None,
+            None,
+            None,
+            _recusar(
+                request,
+                "parte-errada",
+                status=404,
+                parte_pedida=parte,
+                aula_pedida=aula,
+                url_certa=_url_da_aula(curso, aula),
+                # A faixa desta recusa volta para o mapa DESTE curso: quem
+                # errou a parte já disse qual curso quer.
+                url_do_mapa=_url_do_mapa(curso),
+            ),
+        )
     progresso = portas.progresso_de(pessoa, aula)
     if progresso is None or progresso.estado == Progresso.Estado.TRANCADA:
         # Aula trancada mostra o mapa, não o conteúdo.
-        return None, None, None, _voltar_ao_mapa(recado="trancada")
-    return pessoa, aula, progresso, None
+        return None, None, None, None, _voltar_ao_mapa(curso, recado="trancada")
+    return pessoa, curso, aula, progresso, None
+
+
+def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
+    """O endereço antigo, de UM segmento só, mudado de casa (301).
+
+    Um segmento pode ser duas coisas, e as duas mudam de casa. Slug de curso é
+    palavra (`profissional`), número de aula é código (`E00`), e por isso a
+    leitura é sem ambiguidade.
+
+    **O slug de um curso** é o mapa digitado SEM a barra final. A barra é o que
+    separa as duas famílias de endereço no urlconf (`config/urls.py`), e quem
+    digita o endereço à mão come a barra: sem esta regra,
+    `meshcraft.top/cursos/profissional` cairia em `<str:numero>` e responderia
+    "essa aula não existe" a quem pediu o mapa do curso. O aluno vai digitar
+    este endereço a partir do LIVRO, e uma barra esquecida não pode custar a
+    aula. Este caso não depende de haver um curso só: o slug JÁ diz qual é.
+
+    **O número de uma aula** é o endereço antigo da sala, e ele vira o endereço
+    do livro, com a parte dentro (TAR-216). Aqui a mudança exige um curso único
+    (`_curso_unico`) e uma aula publicada nele: um 301 para um 404 ensinaria ao
+    navegador, de uma vez, um endereço que não serve.
+    """
+    site = site_atual()
+    if not site:
+        return None
+    if enderecos.curso_do_site(site, numero) is not None:
+        return HttpResponsePermanentRedirect(reverse("curso", args=[numero]))
+    curso = _curso_unico()
+    if curso is None:
+        return None
+    try:
+        # O que conta como aula publicada tem UMA definição, e é a que a sala
+        # usa. Repetir o filtro aqui deixaria as duas divergirem no dia em que
+        # uma ganhasse condição nova, e o 301 apontaria para um 404.
+        aula = _aula_publicada(curso, numero)
+    except Http404:
+        return None
+    return HttpResponsePermanentRedirect(_url_da_aula(curso, aula))
 
 
 @require_GET
-def aula(request, numero: str):
+def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
     """A aula: as 16 peças, o vídeo com as pausas, o quiz e o lugar do checkpoint.
 
+    `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
+    que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
     `disponivel` vira `em_producao` na primeira abertura (`progresso.abrir`).
     Aula em rascunho é 404; porta trancada volta ao mapa.
     """
-    pessoa, aula, progresso, recusa = _porta_aberta(request, numero)
+    if curso is None:
+        mudou_de_casa = _o_endereco_de_um_segmento_mudou_de_casa(numero)
+        if mudou_de_casa is not None:
+            return mudou_de_casa
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -525,7 +788,7 @@ def aula(request, numero: str):
             ),
             "recado": RECADOS.get(request.GET.get("recado", "")),
             "erro": request.GET.get("erro", ""),
-            **_de_fora(),
+            **_de_fora(curso),
         },
     )
 
@@ -537,7 +800,7 @@ def registrar_pausa(request, numero: str, ordem: int):
     Padrão POST-redirect-GET: sem ele um F5 repetiria o gesto. Aqui repetir já
     é inerte (uma pausa, um registro, `get_or_create`), mas o padrão fica.
     """
-    pessoa, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -548,7 +811,8 @@ def registrar_pausa(request, numero: str, ordem: int):
         valor = (request.POST.get(f"campo_{indice}") or "").strip()
         if not valor:
             return _voltar_a_aula(
-                numero,
+                curso,
+                aula,
                 erro="Preencha todos os campos da pausa antes de registrar.",
                 ancora=ancora,
             )
@@ -556,7 +820,7 @@ def registrar_pausa(request, numero: str, ordem: int):
     RegistroDePausa.objects.get_or_create(
         pessoa=pessoa, pausa=pausa, defaults={"respostas": respostas}
     )
-    return _voltar_a_aula(numero, recado="pausa-registrada", ancora=ancora)
+    return _voltar_a_aula(curso, aula, recado="pausa-registrada", ancora=ancora)
 
 
 @require_POST
@@ -564,13 +828,16 @@ def gravar_autoavaliacao(request, numero: str):
     """A pessoa responde ao quiz com as próprias palavras; só então a
     resposta-modelo abre. Gravada uma vez: a autoavaliação é o registro do que
     ela sabia ANTES de ver o modelo, e regravar apagaria isso."""
-    pessoa, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
     if (progresso.autoavaliacao or {}).get("respostas"):
         return _voltar_a_aula(
-            numero, erro="A autoavaliação desta aula já foi gravada.", ancora="quiz"
+            curso,
+            aula,
+            erro="A autoavaliação desta aula já foi gravada.",
+            ancora="quiz",
         )
     itens = aula.quiz if isinstance(aula.quiz, list) else []
     respostas = [
@@ -579,7 +846,8 @@ def gravar_autoavaliacao(request, numero: str):
     ]
     if not respostas or not all(respostas):
         return _voltar_a_aula(
-            numero,
+            curso,
+            aula,
             erro="Responda todas as perguntas antes de gravar a autoavaliação.",
             ancora="quiz",
         )
@@ -588,7 +856,7 @@ def gravar_autoavaliacao(request, numero: str):
         "gravada_em": timezone.now().isoformat(),
     }
     progresso.save(update_fields=["autoavaliacao"])
-    return _voltar_a_aula(numero, recado="autoavaliacao-gravada", ancora="quiz")
+    return _voltar_a_aula(curso, aula, recado="autoavaliacao-gravada", ancora="quiz")
 
 
 def _nota(valor: str | None) -> int | None:
@@ -607,7 +875,7 @@ def entregar_checkpoint(request, numero: str):
     formulário e se traduz a recusa em frase. POST-redirect-GET: um F5 depois
     de entregar não entrega de novo, e se entregasse a porta já estaria
     `enviada` e a segunda seria recusada com a frase certa."""
-    pessoa, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -645,8 +913,8 @@ def entregar_checkpoint(request, numero: str):
             laudo_do_aluno=laudo,
         )
     except checkpoint.EnvioRecusado as motivo:
-        return _voltar_a_aula(numero, erro=str(motivo), ancora="checkpoint")
-    return _voltar_a_aula(numero, recado="entregue", ancora="checkpoint")
+        return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="checkpoint")
+    return _voltar_a_aula(curso, aula, recado="entregue", ancora="checkpoint")
 
 
 # ---------------------------------------------------------------------------
@@ -666,7 +934,7 @@ def laudo_recebido(request, numero: str):
     isso o template lê só `laudo.decisao`, `laudo.notas`, `laudo.forcas`,
     `laudo.mudanca` e `laudo.data_de_retorno`: nunca `laudo.avaliador`.
     """
-    pessoa, aula_da_porta, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula_da_porta, progresso, recusa = _porta_aberta(request, numero)
     if recusa is not None:
         return recusa
     envio = checkpoint.ultimo_envio(progresso)
@@ -678,7 +946,7 @@ def laudo_recebido(request, numero: str):
             "aula": aula_da_porta,
             "envio": envio,
             "laudo": laudo_do_envio,
-            **_de_fora(),
+            **_de_fora(curso),
         },
     )
 
@@ -691,6 +959,12 @@ def laudo_recebido(request, numero: str):
 # serviço em todo POST normal; o guarda de [INV-CUR-L6] que prova "2 ou 4 é
 # recusado" chama `apps/cursos/laudo.py::emitir` direto, sem passar por aqui.
 NUMERO_DE_FORCAS = 3
+
+# O valor do botão que pede a sugestão da IA. O outro botão do mesmo formulário
+# emite o laudo, e é ele o padrão: `gesto` ausente EMITE, nunca rascunha, para
+# que nenhum POST antigo ou repetido vire uma chamada paga sem alguém ter
+# clicado no botão que a pede.
+GESTO_DE_RASCUNHAR = "rascunhar"
 
 RECADOS_DO_PLANTAO = {
     "laudo-emitido": "Laudo emitido. O envio saiu da fila de revisão.",
@@ -706,10 +980,11 @@ def _professor(request):
     """`(Ator, None)` para quem entra no plantão; `(None, resposta)` para quem
     não entra, com a resposta pronta.
 
-    Fail-CLOSED por `CURSOS_PROFESSORES`: lista vazia, e-mail fora dela, e
-    identidade fora do ar (que devolve `VISITANTE`, e `eh_professor=False`)
-    dão a MESMA resposta, 403 — nunca 500, e nunca o convite fail-OPEN da sala
-    do aluno: aqui não há "sem saber quem é, então convida a entrar".
+    Fail-CLOSED pela união de `CURSOS_PROFESSORES` com `ADMIN_EMAILS` (as duas
+    listas vazias, e-mail fora das duas, e identidade fora do ar, que devolve
+    `VISITANTE` com `eh_professor=False`) dão a MESMA resposta, 403 — nunca
+    500, e nunca o convite fail-OPEN da sala do aluno: aqui não há "sem saber
+    quem é, então convida a entrar".
     """
     ator = quem_e(request)
     if not ator.eh_professor:
@@ -810,6 +1085,8 @@ def _formulario_do_laudo(
     erro: str = "",
     enviado: dict | None = None,
     status: int = 200,
+    sugestao: assistente.Sugestao | None = None,
+    rascunho_id: str = "",
 ):
     enviado = enviado or {}
     return render(
@@ -822,10 +1099,103 @@ def _formulario_do_laudo(
             "aulas": _aulas_do_curso(envio),
             "erro": erro,
             "enviado": enviado,
+            # A IA aparece na tela em três lugares, e nenhum deles preenche
+            # decisão, data nem a pergunta de amanhã de manhã ([INV-CUR-L4]).
+            "ia_ligada": assistente.ligado(),
+            "sugestao": sugestao,
+            "avisos_da_ia": assistente.avisos_de(sugestao) if sugestao else [],
+            "rascunho_id": rascunho_id,
             **_de_fora(),
         },
         status=status,
     )
+
+
+def _preenchido_pela_ia(sugestao: assistente.Sugestao, envio: Envio, digitado) -> dict:
+    """Os campos do formulário com a sugestão dentro, e o que a professora já
+    tinha digitado por cima.
+
+    **Quem digitou, ganha.** A sugestão preenche só o que está vazio: pedir um
+    rascunho no meio de um laudo meio escrito nunca apaga uma frase que a
+    professora pensou. É a regra inteira, numa frase, e por isso ela é
+    previsível na tela.
+
+    **O que esta função NÃO escreve é [INV-CUR-L4] na prática:** não há
+    `decisao`, não há `data_de_retorno` e não há `sabe_o_que_fazer_amanha` nas
+    chaves montadas aqui. Mesmo que a IA devolva os três no JSON dela (e um
+    modelo prestativo devolve), eles não têm por onde chegar ao formulário: o
+    guarda que prova isso pela tela é `tests/test_inv_l4_a_ia_nao_decide.py`.
+    """
+    campos = {chave: valor for chave, valor in digitado.items()}
+
+    def preencher(chave: str, valor) -> None:
+        if valor and not str(campos.get(chave) or "").strip():
+            campos[chave] = str(valor)
+
+    for indice, criterio in enumerate(checkpoint.criterios_de(envio.aula.instrumento)):
+        item = sugestao.notas.get(criterio.nome)
+        if item:
+            preencher(f"nota_{indice}", item["nota"])
+            preencher(f"frase_{indice}", item["frase"])
+    for indice, forca in enumerate(sugestao.forcas):
+        preencher(f"forca_{indice}", forca)
+    preencher("mudanca_texto", sugestao.mudanca.get("texto", ""))
+    preencher("mudanca_aula", sugestao.mudanca.get("aula_id", ""))
+    return campos
+
+
+def _rascunhar_o_laudo(request, envio: Envio):
+    """Pede ao Assistente de laudo a sugestão e RE-DESENHA o formulário com ela.
+
+    Nunca grava laudo, nunca redireciona: o resultado deste botão é a mesma
+    tela, com os campos pré-preenchidos e marcados "SUGERIDO", e a professora
+    ainda tem tudo a decidir. A falha da IA devolve a mesma tela com a frase do
+    que houve (503, porque quem falhou foi um serviço de fora) e sem perder uma
+    letra do que ela já tinha escrito.
+    """
+    digitado = request.POST
+    try:
+        sugestao = assistente.rascunhar(envio, laudo_anterior=_laudo_anterior_de(envio))
+    except assistente.AgenteIndisponivel as erro:
+        return _formulario_do_laudo(
+            request, envio, erro=str(erro), enviado=digitado, status=503
+        )
+
+    rascunho = RascunhoDaIA.objects.create(
+        envio=envio,
+        conteudo={
+            "notas": sugestao.notas,
+            "forcas": sugestao.forcas,
+            "mudanca": sugestao.mudanca,
+            "reenvio": sugestao.reenvio,
+            "bloco": sugestao.bloco,
+        },
+        modelo=assistente.MODELO,
+        tokens_entrada=sugestao.tokens_de_entrada,
+        tokens_saida=sugestao.tokens_de_saida,
+    )
+    return _formulario_do_laudo(
+        request,
+        envio,
+        enviado=_preenchido_pela_ia(sugestao, envio, digitado),
+        sugestao=sugestao,
+        rascunho_id=str(rascunho.pk),
+    )
+
+
+def _rascunho_deste_envio(request, envio: Envio) -> RascunhoDaIA | None:
+    """O rascunho que a tela mandou de volta no campo escondido, se for DESTE
+    envio.
+
+    O filtro por `envio` não é zelo: o campo vem do navegador, e sem ele um id
+    trocado à mão penduraria a Ficha de Série de um aluno no laudo de outro.
+    Id ausente ou que não é número devolve `None`, e o laudo sai sem rascunho:
+    emitir à mão é o caminho normal desta tela, nunca um erro.
+    """
+    id_do_rascunho = (request.POST.get("rascunho_id") or "").strip()
+    if not id_do_rascunho.isdigit():
+        return None
+    return RascunhoDaIA.objects.filter(pk=id_do_rascunho, envio=envio).first()
 
 
 def _gravar_laudo(request, envio: Envio, avaliador):
@@ -870,10 +1240,16 @@ def _gravar_laudo(request, envio: Envio, avaliador):
             data_de_retorno=data_de_retorno,
             ajuste_feito=ajuste_feito,
             sabe_o_que_fazer_amanha=sabe_o_que_fazer_amanha,
+            rascunho=_rascunho_deste_envio(request, envio),
         )
     except parecer.LaudoRecusado as motivo:
         return _formulario_do_laudo(
-            request, envio, erro=str(motivo), enviado=request.POST, status=422
+            request,
+            envio,
+            erro=str(motivo),
+            enviado=request.POST,
+            status=422,
+            rascunho_id=(request.POST.get("rascunho_id") or "").strip(),
         )
     endereco = reverse("plantao")
     return HttpResponseRedirect(f"{endereco}?recado=laudo-emitido")
@@ -887,6 +1263,12 @@ def plantao_ficha(request, envio_id: int):
     na recusa, RE-DESENHA com o texto digitado preservado e status 422 — ao
     contrário do checkpoint do aluno, este formulário é grande demais para se
     dar ao luxo de um redirect que perde tudo o que a professora escreveu.
+
+    **O mesmo formulário tem dois botões**, e é `gesto` que os separa:
+    "Rascunhar laudo" pede a sugestão ao Assistente de laudo e volta com os
+    campos pré-preenchidos; qualquer outro valor emite. O emitir é o PADRÃO (e
+    não o rascunhar) de propósito: um POST sem `gesto` é o caminho antigo desta
+    tela, e o que ele nunca pode virar por acidente é uma chamada paga.
     """
     ator, recusa = _professor(request)
     if recusa is not None:
@@ -896,5 +1278,7 @@ def plantao_ficha(request, envio_id: int):
         endereco = reverse("plantao")
         return HttpResponseRedirect(f"{endereco}?recado=ja-tem-laudo")
     if request.method == "POST":
+        if request.POST.get("gesto") == GESTO_DE_RASCUNHAR:
+            return _rascunhar_o_laudo(request, envio)
         return _gravar_laudo(request, envio, ator.pessoa)
     return _formulario_do_laudo(request, envio)

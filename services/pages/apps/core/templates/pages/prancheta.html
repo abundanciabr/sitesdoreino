@@ -1,0 +1,76 @@
+{% extends "pages/moldura.html" %}{% comment %}
+A PRANCHETA (degrau 07): as cinco etapas do roteiro, com as listas de
+conferência, e o que este aluno já marcou.
+
+NENHUMA PALAVRA DO ROTEIRO ESTÁ NESTE ARQUIVO. Título, explicação e item saem do
+BANCO (`apps/portfolio/models.py`, catálogo plantado por migração a partir de
+`apps/portfolio/roteiro_da_escola.py`), porque quem escreve o texto é a escola e
+não o robô que desenhou a tela. Guarda:
+`tests/test_a_prancheta.py::test_a_lista_sai_do_banco_e_nao_do_template`, que
+corrige a frase no banco e exige a frase nova aqui. Com o texto cravado neste
+arquivo ele fica vermelho.
+
+O ROTEIRO INTEIRO APARECE SEMPRE, marcado ou não. Trancar a etapa seguinte atrás
+da anterior é proibido por escrito (plano §7): a Prancheta orienta, nunca
+bloqueia.
+
+MARCAR É UM FORMULÁRIO, e não um script. A regra desta casa (herdada do fórum) é
+que nenhum caminho exista só com JavaScript. Cada item é um `<form>` próprio, com
+um botão que já carrega o estado desejado: um clique, sem segundo botão de
+salvar, e sem um formulário único capaz de desmarcar em massa o que o aluno
+acabou de marcar no outro aparelho.
+
+O BOTÃO É UM INTERRUPTOR, e quem diz isso a quem usa leitor de tela é o
+`aria-pressed`, nunca a marca desenhada. A marca leva `aria-hidden` justamente
+para não ser lida duas vezes.
+
+O nome vem da `identidade` e pode chegar vazio (sessão sem `nome_exibido`): a
+saudação é escrita para funcionar nos dois casos.
+
+NÃO HÁ LINK PARA O GUIA LONGO EM `/docs/`, e a ausência é decisão. O texto que a
+professora escreveu para cada etapa já está INTEIRO nesta tela, vindo do banco:
+um link a mais mandaria o aluno para fora para ler o que ele acabou de ler. E
+endereço de outra célula cravado num template apodrece sem alarme nenhum quando
+alguém do outro lado o renomeia (`armadilhas/289`). O caminho para a biblioteca
+continua no rodapé, que é a peça comum da casa e já é conferida.
+{% endcomment %}
+{% block titulo %}Sua Prancheta{% endblock %}
+{% block faixa %}Prancheta{% endblock %}
+
+{% block conteudo %}
+  <h1>Olá{% if aluno.nome %}, {{ aluno.nome }}{% endif %}. Esta é a sua Prancheta.</h1>
+  <p>Este é o roteiro da escola para montar o seu portfólio, em cinco etapas.
+  Leia na ordem e vá marcando o que você já fez. A marcação fica guardada com a
+  escola, então você pode marcar no celular e continuar no computador.</p>
+  <p class="miudo">{{ aviso_de_rascunho }}</p>
+{% if not pode_marcar %}
+  <p class="aviso">A escola ainda não terminou de ligar a marcação desta página.
+  O roteiro abaixo está completo e é o que vale: só as caixas de marcar é que
+  ainda não abriram por aqui.</p>
+{% endif %}
+{% for etapa in etapas %}
+  <section class="etapa" id="etapa-{{ etapa.numero }}">
+    <h2><span class="numero">{{ etapa.numero }}</span> {{ etapa.titulo }}</h2>
+    {{ etapa.resumo|linebreaks }}
+{% if etapa.itens %}
+    <ul class="conferencia">
+{% for item in etapa.itens %}{% comment %}
+As tags do formulário ficam numa linha só, coladas: solta, cada uma põe espaço
+em branco entre a marca e a frase do item (`armadilhas/033`).
+{% endcomment %}      <li>{% if pode_marcar %}<form method="post" action="{% url 'marcar' %}">{% csrf_token %}<input type="hidden" name="marcar" value="{% if item.marcado %}0{% else %}1{% endif %}"><button type="submit" name="chave" value="{{ item.chave }}" aria-pressed="{% if item.marcado %}true{% else %}false{% endif %}"><span class="caixa" aria-hidden="true">{% if item.marcado %}&#10003;{% endif %}</span>{{ item.texto }}</button></form>{% else %}{{ item.texto }}{% endif %}</li>
+{% endfor %}
+    </ul>
+{% endif %}
+  </section>
+{% endfor %}
+{% comment %}
+O CAMINHO PARA A ESTANTE (degrau 08). Ele fica no FIM, depois das cinco etapas,
+porque o roteiro é o que se lê primeiro: guardar peça antes de saber o que entra
+no portfólio é exatamente o travamento que este corredor de obra existe para
+curar. O endereço sai de `{% url %}`, nunca cravado a mão (`armadilhas/029`).
+{% endcomment %}  <p><a href="{% url 'pecas' %}">Guardar as suas peças</a></p>
+  <p class="miudo">É onde você cola o endereço de cada obra, escolhe a ordem e
+  marca as que vão em destaque. A escola confere o endereço na hora e avisa se
+  ele parar de abrir depois.</p>
+  <p class="miudo"><a href="{{ url_da_capa }}">Voltar ao início do site</a></p>
+{% endblock %}

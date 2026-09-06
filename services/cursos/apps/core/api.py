@@ -1,4 +1,4 @@
-"""A porta de MÁQUINA da sala de aula: as sete operações do editor.
+"""A porta de MÁQUINA da sala de aula: as onze operações do editor e da sala.
 
 POR QUE ELA EXISTE
 ------------------
@@ -8,9 +8,24 @@ banco e nunca guardando cópia. Este arquivo é o degrau 1.3 da escada
 (`PLANO-CELULA-CURSOS.md` §10, TAR-150): `listLessons`, `getLesson`,
 `putLesson`, `putInstrument` e `publishLesson`; o degrau 1.3b (TAR-161)
 acrescentou `listInstruments` e `getInstrument`, porque o editor gravava a
-escala de um instrumento sem poder lê-la de volta. O contrato congela no degrau
-1.4 A PARTIR do que `manage.py export_openapi` imprime daqui, nunca de cabeça
-(`armadilhas/243`).
+escala de um instrumento sem poder lê-la de volta. O contrato congela A PARTIR
+do que `manage.py export_openapi` imprime daqui, nunca de cabeça
+(`armadilhas/243`), e a PROSA daqui congela junto (`armadilhas/324`).
+
+O CURSO E A PARTE ENTRARAM NO ENDEREÇO (TAR-203, 05/09/2026)
+-------------------------------------------------------------
+Decisão do mantenedor: o link de uma aula tem de dizer ao aluno em que parte do
+curso ele está. Por isso nasceram quatro operações em `/cursos/{curso}/aulas`,
+que resolvem o curso pelo par site+slug e conferem a parte contra o bloco da
+aula. Elas não substituíram as quatro antigas: `listSiteLessons`,
+`getSiteLesson`, `putSiteLesson` e `publishSiteLesson` continuam respondendo
+como sempre, porque o editor do Admin que está no ar as chama, e trocar o
+endereço dele é outro PR.
+
+O defeito que as novas curam não tinha sintoma: a porta antiga resolve a aula
+pelo SITE, e a sala de aula resolvia o curso com "o primeiro do site". No dia
+em que nascesse um segundo curso, o site inteiro continuaria servindo o
+primeiro, sem erro, sem aviso e sem tela quebrada.
 
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
@@ -55,7 +70,10 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
 
+from apps.cursos import enderecos
+from apps.cursos.models import PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
+from apps.cursos.models import Curso as CursoModel
 from apps.cursos.models import Instrumento as InstrumentoModel
 from apps.cursos.models import Pausa as PausaModel
 from apps.cursos.models import Peca as PecaModel
@@ -68,6 +86,14 @@ router = Router()
 # `TipoDePeca`. Este é DERIVADO do modelo, membro a membro; não é segunda lista.
 TipoDePausa = enum.Enum(
     "TipoDePausa", {membro.name: membro.value for membro in PausaModel.Tipo}, type=str
+)
+
+# As 3 partes em que os 12 blocos se dividem, DERIVADAS de `PARTES_DO_CURSO`
+# (a mesma tupla da restrição `parte_de_bloco_e_1_2_ou_3` do banco): o OpenAPI
+# exportado leva `enum: [1, 2, 3]` no parâmetro, e parte fora do vocabulário é
+# 422 antes de tocar o banco. Não é segunda lista; é o vocabulário do modelo.
+ParteDoCurso = enum.Enum(
+    "ParteDoCurso", {f"PARTE_{parte}": parte for parte in PARTES_DO_CURSO}, type=int
 )
 
 # Os limites das colunas do modelo, repetidos aqui para que o pydantic recuse
@@ -218,6 +244,52 @@ def _aula(site_id: str, numero: str) -> AulaModel:
         raise HttpError(404, f"a aula {numero} não existe no site {site_id}")
 
 
+def _curso(site_id: str, slug: str) -> CursoModel:
+    """O curso pelo PAR site+slug, que é a unicidade do banco
+    (`um_curso_por_slug_por_site`), e NUNCA "o primeiro curso do site".
+
+    A resolução por "o primeiro" é a que esta porta tinha até 05/09/2026: no dia
+    em que nascesse um segundo curso, o site inteiro continuaria servindo o
+    primeiro, sem erro, sem aviso e sem tela quebrada. Slug que não existe é
+    404 com os slugs que existem, nunca o primeiro curso como consolo.
+
+    A conta mora em `apps/cursos/enderecos.py` desde 06/09/2026, porque a sala
+    do aluno passou a precisar dela também (TAR-212). Uma regra, um lugar: um
+    endereço que esta porta recusasse e a sala aceitasse mostraria ao aluno a
+    aula errada com o número certo na barra do navegador.
+    """
+    curso = enderecos.curso_do_site(site_id, slug)
+    if curso is None:
+        raise HttpError(404, enderecos.recado_de_curso_desconhecido(site_id, slug))
+    return curso
+
+
+def _aula_do_curso(
+    curso: CursoModel, numero: str, parte: ParteDoCurso | None
+) -> AulaModel:
+    """A aula daquele curso, e só se a parte pedida CASAR com a do bloco dela.
+
+    O endereço da sala de aula carrega a parte para que o aluno saiba onde está
+    (decisão do mantenedor, 05/09/2026). Um endereço que aponta certo para a
+    aula ERRADA é pior do que um endereço quebrado: se a parte não casa, a
+    resposta é recusa, e a frase diz em que parte a aula realmente está.
+
+    A guarda mora em `apps/cursos/enderecos.py` desde 06/09/2026: a sala do
+    aluno (TAR-212) confere a MESMA parte, e duas cópias da regra divergiriam
+    justamente onde ninguém olha.
+    """
+    try:
+        aula = AulaModel.objects.select_related("bloco", "instrumento").get(
+            curso=curso, numero=numero
+        )
+    except AulaModel.DoesNotExist:
+        raise HttpError(404, f"a aula {numero} não existe no curso '{curso.slug}'")
+    recusa = enderecos.parte_errada(curso, aula, parte)
+    if recusa is not None:
+        raise HttpError(404, recusa)
+    return aula
+
+
 def _instrumento_do_slug(slug: str | None) -> InstrumentoModel | None:
     if slug is None:
         return None
@@ -287,96 +359,13 @@ def _aula_inteira(aula: AulaModel) -> dict[str, Any]:
     }
 
 
-def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
-    return {
-        "slug": instrumento.slug,
-        "nome_canonico": instrumento.nome_canonico,
-        "cartao": instrumento.cartao,
-        "escala": instrumento.escala,
-        "minimo_exercicio": instrumento.minimo_exercicio,
-        "minimo_contrato": instrumento.minimo_contrato,
-        "secao_do_padrao": instrumento.secao_do_padrao,
-        "descritores": instrumento.descritores,
-        "versao": instrumento.versao,
-    }
+def _gravar(aula: AulaModel, payload: AulaParaGravarSchema) -> dict[str, Any]:
+    """O que `putLesson` grava, para os DOIS caminhos: o do site e o do curso.
 
-
-# ---------------------------------------------------------------------------
-# AS SETE OPERAÇÕES
-# ---------------------------------------------------------------------------
-
-
-@router.get(
-    "/aulas",
-    response=list[AulaDaListaSchema],
-    operation_id="listLessons",
-    summary="As aulas do curso de um site, na ordem em que o aluno as encontra",
-    description=(
-        "A lista que o editor mostra como indice: numero, ordem, titulo\n"
-        "exibido, o bloco (letra, ordem, parte), estado, versao, data de\n"
-        "publicacao, se e Boss e o nivel de Banca. NENHUM texto de peca sai\n"
-        "aqui: e listagem, e o texto vem em `getLesson`.\n"
-        "\n"
-        "`site_id` e obrigatorio. Site sem curso responde lista vazia, nao\n"
-        "erro: nao ter curso ainda e um estado, nao uma falha."
-    ),
-)
-def list_lessons(request, site_id: str):
-    aulas = (
-        AulaModel.objects.filter(curso__site_id=site_id)
-        .select_related("bloco")
-        .order_by("ordem")
-    )
-    return [_linha(aula) for aula in aulas]
-
-
-@router.get(
-    "/aulas/{numero}",
-    response=AulaSchema,
-    operation_id="getLesson",
-    summary="Uma aula inteira: os campos, o instrumento, as pecas e as pausas",
-    description=(
-        "Tudo o que o editor precisa para desenhar o formulario de uma\n"
-        "encomenda. As pecas vem SEMPRE as 18, na ordem canonica das 16 da\n"
-        "anatomia e depois as duas internas (`roteiro`, `guia_do_mentor`),\n"
-        "com texto vazio na que ainda nao foi escrita. As pausas vem na ordem.\n"
-        "`instrumento` e o slug do cartao, ou null.\n"
-        "\n"
-        "404 se a aula nao existe nesse site."
-    ),
-)
-def get_lesson(request, numero: str, site_id: str):
-    return _aula_inteira(_aula(site_id, numero))
-
-
-@router.put(
-    "/aulas/{numero}",
-    response=AulaSchema,
-    operation_id="putLesson",
-    summary="Grava uma aula inteira: substitui as pecas e as pausas, sobe a versao",
-    description=(
-        "O corpo e a aula completa, e so o que se edita: pedido, cliente,\n"
-        "instrumento (slug ou null), minimo, aceito_quando (lista de frases),\n"
-        "quiz (lista de {pergunta, resposta_modelo}), video_url, e_boss,\n"
-        "banca_nivel (1, 2, 3 ou null), pecas [{tipo, texto}] e pausas\n"
-        "[{ordem, segundo, tipo, pede, campos}].\n"
-        "\n"
-        "As pecas e as pausas da aula sao SUBSTITUIDAS pelas do corpo, numa\n"
-        "transacao unica: ou entra tudo, ou nao entra nada. A versao sobe 1.\n"
-        "O estado e a data de publicacao NAO mudam: publicar e outro gesto\n"
-        "(`publishLesson`), e editar uma aula publicada a mantem publicada.\n"
-        "\n"
-        "422 se: tipo de peca fora do vocabulario, peca repetida, pausa com\n"
-        "ordem repetida, item do quiz sem pergunta ou sem resposta_modelo,\n"
-        "aceito_quando que nao seja lista de textos, instrumento inexistente,\n"
-        "banca_nivel fora de 1..3, ou qualquer chave que este corpo nao\n"
-        "conheca (numero, estado, versao...). 404 se a aula nao existe.\n"
-        "\n"
-        "Devolve a aula como ficou, no mesmo formato de `getLesson`."
-    ),
-)
-def put_lesson(request, numero: str, site_id: str, payload: AulaParaGravarSchema):
-    aula = _aula(site_id, numero)
+    Mora aqui, e não dentro de um dos dois, porque "o caminho antigo responde
+    exatamente como o novo" precisa ser mecânico e não uma promessa: é o mesmo
+    código, chamado com a aula que cada caminho resolveu.
+    """
     instrumento = _instrumento_do_slug(payload.instrumento)
     with transaction.atomic():
         aula.pedido = payload.pedido
@@ -423,6 +412,124 @@ def put_lesson(request, numero: str, site_id: str, payload: AulaParaGravarSchema
             for pausa in payload.pausas
         )
     return _aula_inteira(aula)
+
+
+def _publicar(aula: AulaModel) -> dict[str, Any]:
+    """O que `publishLesson` faz, para os dois caminhos. Idempotente: publicar o
+    que já está publicado devolve a aula como está, sem mexer na data."""
+    # O invariante C1 ("remissão quebrada não publica") NÃO se valida aqui, e a
+    # ausência é o desenho deste degrau: a conferência é `checkLesson`, degrau
+    # 3.1, e é ali que ela encaixa, ANTES deste `if`, recusando com 422 a aula
+    # cujos desvios o verificador listar.
+    if aula.estado != AulaModel.Estado.PUBLICADA:
+        aula.estado = AulaModel.Estado.PUBLICADA
+        aula.publicada_em = timezone.now()
+        aula.save(update_fields=["estado", "publicada_em"])
+    return _linha(aula)
+
+
+def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
+    return {
+        "slug": instrumento.slug,
+        "nome_canonico": instrumento.nome_canonico,
+        "cartao": instrumento.cartao,
+        "escala": instrumento.escala,
+        "minimo_exercicio": instrumento.minimo_exercicio,
+        "minimo_contrato": instrumento.minimo_contrato,
+        "secao_do_padrao": instrumento.secao_do_padrao,
+        "descritores": instrumento.descritores,
+        "versao": instrumento.versao,
+    }
+
+
+# ---------------------------------------------------------------------------
+# AS SETE OPERAÇÕES
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/aulas",
+    response=list[AulaDaListaSchema],
+    operation_id="listSiteLessons",
+    summary="As aulas do curso de um site, na ordem em que o aluno as encontra",
+    description=(
+        "A lista que o editor mostra como indice: numero, ordem, titulo\n"
+        "exibido, o bloco (letra, ordem, parte), estado, versao, data de\n"
+        "publicacao, se e Boss e o nivel de Banca. NENHUM texto de peca sai\n"
+        "aqui: e listagem, e o texto vem em `getLesson`.\n"
+        "\n"
+        "`site_id` e obrigatorio. Site sem curso responde lista vazia, nao\n"
+        "erro: nao ter curso ainda e um estado, nao uma falha.\n"
+        "\n"
+        "ESTE CAMINHO NAO SABE DE CURSO: ele lista as aulas de TODOS os cursos\n"
+        "do site, e existe porque o editor que ja esta no ar o chama. Quem sabe\n"
+        "de curso e de parte e `listLessons`, em /cursos/{curso}/aulas."
+    ),
+)
+def list_site_lessons(request, site_id: str):
+    aulas = (
+        AulaModel.objects.filter(curso__site_id=site_id)
+        .select_related("bloco")
+        .order_by("ordem")
+    )
+    return [_linha(aula) for aula in aulas]
+
+
+@router.get(
+    "/aulas/{numero}",
+    response=AulaSchema,
+    operation_id="getSiteLesson",
+    summary="Uma aula inteira: os campos, o instrumento, as pecas e as pausas",
+    description=(
+        "Tudo o que o editor precisa para desenhar o formulario de uma\n"
+        "encomenda. As pecas vem SEMPRE as 18, na ordem canonica das 16 da\n"
+        "anatomia e depois as duas internas (`roteiro`, `guia_do_mentor`),\n"
+        "com texto vazio na que ainda nao foi escrita. As pausas vem na ordem.\n"
+        "`instrumento` e o slug do cartao, ou null.\n"
+        "\n"
+        "404 se a aula nao existe nesse site.\n"
+        "\n"
+        "ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do\n"
+        "site inteiro. Quem sabe de curso e de parte e `getLesson`, em\n"
+        "/cursos/{curso}/aulas/{numero}."
+    ),
+)
+def get_site_lesson(request, numero: str, site_id: str):
+    return _aula_inteira(_aula(site_id, numero))
+
+
+@router.put(
+    "/aulas/{numero}",
+    response=AulaSchema,
+    operation_id="putSiteLesson",
+    summary="Grava uma aula inteira: substitui as pecas e as pausas, sobe a versao",
+    description=(
+        "O corpo e a aula completa, e so o que se edita: pedido, cliente,\n"
+        "instrumento (slug ou null), minimo, aceito_quando (lista de frases),\n"
+        "quiz (lista de {pergunta, resposta_modelo}), video_url, e_boss,\n"
+        "banca_nivel (1, 2, 3 ou null), pecas [{tipo, texto}] e pausas\n"
+        "[{ordem, segundo, tipo, pede, campos}].\n"
+        "\n"
+        "As pecas e as pausas da aula sao SUBSTITUIDAS pelas do corpo, numa\n"
+        "transacao unica: ou entra tudo, ou nao entra nada. A versao sobe 1.\n"
+        "O estado e a data de publicacao NAO mudam: publicar e outro gesto\n"
+        "(`publishLesson`), e editar uma aula publicada a mantem publicada.\n"
+        "\n"
+        "422 se: tipo de peca fora do vocabulario, peca repetida, pausa com\n"
+        "ordem repetida, item do quiz sem pergunta ou sem resposta_modelo,\n"
+        "aceito_quando que nao seja lista de textos, instrumento inexistente,\n"
+        "banca_nivel fora de 1..3, ou qualquer chave que este corpo nao\n"
+        "conheca (numero, estado, versao...). 404 se a aula nao existe.\n"
+        "\n"
+        "Devolve a aula como ficou, no mesmo formato de `getSiteLesson`.\n"
+        "\n"
+        "ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do\n"
+        "site inteiro. Quem sabe de curso e de parte e `putLesson`, em\n"
+        "/cursos/{curso}/aulas/{numero}."
+    ),
+)
+def put_site_lesson(request, numero: str, site_id: str, payload: AulaParaGravarSchema):
+    return _gravar(_aula(site_id, numero), payload)
 
 
 @router.get(
@@ -506,7 +613,7 @@ def put_instrument(request, slug: str, payload: InstrumentoParaGravarSchema):
 @router.post(
     "/aulas/{numero}/publicar",
     response=AulaDaListaSchema,
-    operation_id="publishLesson",
+    operation_id="publishSiteLesson",
     summary="Publica uma aula: estado publicada, data de agora, versao inalterada",
     description=(
         "O gesto que abre a aula para a sala de aula (degrau 1.8). Muda o\n"
@@ -514,17 +621,135 @@ def put_instrument(request, slug: str, payload: InstrumentoParaGravarSchema):
         "agora; a versao NAO muda, porque publicar nao edita.\n"
         "\n"
         "Idempotente: publicar o que ja esta publicado devolve a aula como\n"
-        "esta, sem mexer na data. 404 se a aula nao existe."
+        "esta, sem mexer na data. 404 se a aula nao existe.\n"
+        "\n"
+        "ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do\n"
+        "site inteiro. Quem sabe de curso e de parte e `publishLesson`, em\n"
+        "/cursos/{curso}/aulas/{numero}/publicar."
     ),
 )
-def publish_lesson(request, numero: str, site_id: str):
-    aula = _aula(site_id, numero)
-    # O invariante C1 ("remissão quebrada não publica") NÃO se valida aqui, e a
-    # ausência é o desenho deste degrau: a conferência é `checkLesson`, degrau
-    # 3.1, e é ali que ela encaixa, ANTES deste `if`, recusando com 422 a aula
-    # cujos desvios o verificador listar.
-    if aula.estado != AulaModel.Estado.PUBLICADA:
-        aula.estado = AulaModel.Estado.PUBLICADA
-        aula.publicada_em = timezone.now()
-        aula.save(update_fields=["estado", "publicada_em"])
-    return _linha(aula)
+def publish_site_lesson(request, numero: str, site_id: str):
+    return _publicar(_aula(site_id, numero))
+
+
+# ---------------------------------------------------------------------------
+# AS QUATRO OPERAÇÕES QUE SABEM DE CURSO E DE PARTE (05/09/2026)
+# ---------------------------------------------------------------------------
+# O endereço da sala de aula passou a carregar o curso e a parte, para que o
+# link de uma aula diga ao aluno exatamente onde ele está (decisão do
+# mantenedor). Estas quatro são as mesmas quatro de cima, com duas diferenças
+# que são o motivo delas existirem: o curso vem pelo SLUG, e a parte, quando
+# vem, é conferida contra o bloco da aula.
+
+
+@router.get(
+    "/cursos/{curso}/aulas",
+    response=list[AulaDaListaSchema],
+    operation_id="listLessons",
+    summary="As aulas de um curso, pelo slug, na ordem em que o aluno as encontra",
+    description=(
+        "A lista que o editor mostra como indice e que a sala de aula percorre:\n"
+        "numero, ordem, titulo exibido, o bloco (letra, ordem, parte), estado,\n"
+        "versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto\n"
+        "de peca sai aqui: e listagem, e o texto vem em `getLesson`.\n"
+        "\n"
+        "`curso` e o SLUG, resolvido pelo par site+slug, que e a unicidade do\n"
+        "banco. `site_id` continua obrigatorio (uma fabrica, N lojas). Slug que\n"
+        "nao existe naquele site e 404 dizendo quais existem, nunca o primeiro\n"
+        "curso do site como consolo.\n"
+        "\n"
+        "`parte` (1, 2 ou 3) e opcional e filtra pelos blocos daquela parte: e\n"
+        "o mesmo numero que viaja no endereco da sala de aula. Sem `parte`, vem\n"
+        "o curso inteiro. Curso sem aula responde lista vazia, nao erro."
+    ),
+)
+def list_lessons(request, curso: str, site_id: str, parte: ParteDoCurso | None = None):
+    aulas = (
+        AulaModel.objects.filter(curso=_curso(site_id, curso))
+        .select_related("bloco")
+        .order_by("ordem")
+    )
+    if parte is not None:
+        aulas = aulas.filter(bloco__parte=parte)
+    return [_linha(aula) for aula in aulas]
+
+
+@router.get(
+    "/cursos/{curso}/aulas/{numero}",
+    response=AulaSchema,
+    operation_id="getLesson",
+    summary="Uma aula de um curso, inteira, conferida contra a parte do endereco",
+    description=(
+        "Tudo o que o editor e a sala de aula precisam de uma encomenda. As\n"
+        "pecas vem SEMPRE as 18, na ordem canonica das 16 da anatomia e depois\n"
+        "as duas internas (`roteiro`, `guia_do_mentor`), com texto vazio na que\n"
+        "ainda nao foi escrita. As pausas vem na ordem. `instrumento` e o slug\n"
+        "do cartao, ou null.\n"
+        "\n"
+        "`parte` e opcional e NAO e filtro: e GUARDA. Quando ela vem e nao casa\n"
+        "com a parte do bloco desta aula, a resposta e 404 dizendo em que parte\n"
+        "a aula realmente esta, e nunca a aula. Um endereco que aponta certo\n"
+        "para a aula errada e pior do que um endereco quebrado, e o endereco da\n"
+        "sala de aula carrega a parte justamente para o aluno se localizar.\n"
+        "\n"
+        "404 tambem se o curso nao existe naquele site, ou se a aula nao existe\n"
+        "naquele curso."
+    ),
+)
+def get_lesson(
+    request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
+):
+    return _aula_inteira(_aula_do_curso(_curso(site_id, curso), numero, parte))
+
+
+@router.put(
+    "/cursos/{curso}/aulas/{numero}",
+    response=AulaSchema,
+    operation_id="putLesson",
+    summary="Grava uma aula de um curso: substitui as pecas e as pausas, sobe a versao",
+    description=(
+        "O corpo, o que ele recusa e o que ele NAO toca sao exatamente os de\n"
+        "`putSiteLesson`: pedido, cliente, instrumento (slug ou null), minimo,\n"
+        "aceito_quando, quiz, video_url, e_boss, banca_nivel, pecas e pausas;\n"
+        "as pecas e as pausas sao SUBSTITUIDAS numa transacao unica; a versao\n"
+        "sobe 1; estado e data de publicacao nao mudam. E o mesmo codigo, com a\n"
+        "aula resolvida pelo curso.\n"
+        "\n"
+        "`parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o\n"
+        "bloco da aula recusa com 404 ANTES de gravar qualquer coisa, e nada e\n"
+        "escrito. 404 tambem se o curso ou a aula nao existem.\n"
+        "\n"
+        "Devolve a aula como ficou, no mesmo formato de `getLesson`."
+    ),
+)
+def put_lesson(
+    request,
+    curso: str,
+    numero: str,
+    site_id: str,
+    payload: AulaParaGravarSchema,
+    parte: ParteDoCurso | None = None,
+):
+    return _gravar(_aula_do_curso(_curso(site_id, curso), numero, parte), payload)
+
+
+@router.post(
+    "/cursos/{curso}/aulas/{numero}/publicar",
+    response=AulaDaListaSchema,
+    operation_id="publishLesson",
+    summary="Publica uma aula de um curso: estado publicada, data de agora, versao inalterada",
+    description=(
+        "O gesto que abre a aula para a sala de aula. Muda o estado para\n"
+        "`publicada` e carimba `publicada_em` com o instante de agora; a versao\n"
+        "NAO muda, porque publicar nao edita. Idempotente: publicar o que ja\n"
+        "esta publicado devolve a aula como esta, sem mexer na data.\n"
+        "\n"
+        "`parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o\n"
+        "bloco da aula recusa com 404 e a aula continua como estava. 404\n"
+        "tambem se o curso ou a aula nao existem."
+    ),
+)
+def publish_lesson(
+    request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
+):
+    return _publicar(_aula_do_curso(_curso(site_id, curso), numero, parte))

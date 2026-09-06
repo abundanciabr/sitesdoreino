@@ -73,6 +73,17 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% endif %}
 
   {% comment %}
+  O GESTO da linha da memória (degrau 11, 05/09/2026). Não é um bloco novo:
+  é uma linha de texto, e a capa continua com os mesmos nove. Ela sai SEMPRE,
+  em todos os cinco desfechos, porque a tela da confiança é justamente onde se
+  descobre por que a memória não respondeu.
+  {% endcomment %}
+  <p class="recado-fraco">
+    <a href="{% url 'confianca' %}">Dá para acreditar nestes números?</a>
+    Cobertura, frescor e o que chegou quebrado.
+  </p>
+
+  {% comment %}
   A LINHA DO TRABALHO (degrau 19, a volta do grafo causal). Não é um bloco,
   pelo mesmo motivo da linha da memória logo acima: a capa tem teto de nove e
   se recusa a crescer. Aqui a tela responde a segunda pergunta do quinto
@@ -261,6 +272,19 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% endif %}
   {% endif %}
 
+  {% comment %}
+  A porta para as coortes (05/09/2026, degrau 10 do plano). Um LINK abaixo do
+  bloco 1, e nunca um bloco novo: a capa tem teto de nove e se recusa a crescer.
+
+  FORA de todos os `if` da contagem, de propósito: as coortes vêm da memória da
+  escola, e não da lista de alunos. Dentro deles, um dia em que a lista de
+  alunos não respondesse levaria embora também o caminho para esta tela, que
+  continua tendo o que mostrar.
+  {% endcomment %}
+  <p class="recado-fraco espaco-abaixo-20">
+    <a href="{% url 'coortes' %}">Ver quem entrou em cada mês, grupo a grupo &rarr;</a>
+  </p>
+
   <h2 class="titulo-de-bloco espaco-20">A direção da semana</h2>
   {% if not cartao_pedidos or not cartao_48h %}
     <p class="aviso borda-vermelha"><b>Um cartão da direção está ausente ou inválido</b>, e sem ele a medida não aparece.</p>
@@ -270,7 +294,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif not direcao %}
     <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
   {% else %}
-    <p class="recado">O que a casa move nesta semana e que antecipa a meta. Duas medidas, nunca dez.</p>
+    <p class="recado">O que a casa move nesta semana. Duas medidas acesas, nunca dez, e ao lado o caminho da venda, ainda desenhado.</p>
 
     <p class="recado">
       <b>{{ cartao_pedidos.pergunta }}</b>
@@ -290,10 +314,10 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% if direcao.liberacoes.veredito == "nao-consigo-medir" %}
         <span class="rotulo">não consegui medir</span>.
       {% elif direcao.liberacoes.veredito == "sem-liberacoes" %}
-        Nenhuma liberação nos últimos 28 dias e ninguém esperando há mais de 2 dias.
+        Nenhuma confirmação nos últimos 28 dias e ninguém na sala de espera há mais de 2 dias.
       {% else %}
-        {% if direcao.liberacoes.por_cento is not None %}<b>{{ direcao.liberacoes.por_cento }}%</b> das {{ direcao.liberacoes.total }} liberaç{{ direcao.liberacoes.total|pluralize:"ão,ões" }} dos últimos 28 dias saíram em até 48 horas.{% endif %}
-        {% if direcao.liberacoes.esperando_ha_muito %}<b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize:"s" }} esperando há mais de 2 dias agora.{% endif %}
+        {% if direcao.liberacoes.por_cento is not None %}<b>{{ direcao.liberacoes.por_cento }}%</b> das {{ direcao.liberacoes.total }} confirmaç{{ direcao.liberacoes.total|pluralize:"ão,ões" }} dos últimos 28 dias saíram em até 48 horas.{% endif %}
+        {% if direcao.liberacoes.esperando_ha_muito %}<b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize:"s" }} na sala de espera há mais de 2 dias agora.{% endif %}
         {% if direcao.liberacoes.veredito == "cumprida" %}<span class="rotulo">na meta</span>{% else %}<span class="rotulo">abaixo da meta</span> {{ cartao_48h.acao }}{% endif %}
       {% endif %}
     </p>
@@ -313,6 +337,21 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
         {% endfor %}
       </ul>
     {% endif %}
+  {% endif %}
+
+  <h3 class="titulo-da-conta">O caminho da venda, ainda apagado</h3>
+  {% if recusas_do_caminho_da_venda %}
+    <ul class="notas">
+      {% for recusa in recusas_do_caminho_da_venda %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% if caminho_da_venda %}
+    <p class="recado">Ninguém pede entrada na escola: quem chega na sala de espera já comprou fora do site. Estas são as duas medidas do caminho da venda dentro do site, desenhadas agora e sem número até o checkout abrir.</p>
+    <ul class="notas">
+      {% for c in caminho_da_venda %}
+        <li><b>{{ c.pergunta }}</b> <span class="rotulo">sem dados</span> {{ c.sem_fonte_porque }}</li>
+      {% endfor %}
+    </ul>
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
@@ -398,6 +437,21 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       </li>
     {% endfor %}
   </ul>
+  {% comment %}
+  O LABORATÓRIO (05/09/2026, degrau 12) entra AQUI, dentro do bloco dos doze, e
+  não como um nono bloco da capa. Duas razões, e a segunda é a que decide:
+
+  1. O laboratório é a FONTE do décimo segundo número desta lista
+     (aprendizados-validados-no-ciclo). Ele mora ao lado do número que produz.
+  2. A capa tem teto de nove blocos (tests/test_capa.py) e usa oito. Gastar o
+     nono aqui fecharia a porta para sempre, e por uma tela que já tem a casa
+     natural dela dentro deste bloco.
+  {% endcomment %}
+  <p class="recado-fraco">
+    O último dos doze sai do <a href="{% url 'laboratorio' %}">laboratório</a>:
+    as apostas da escola, o que está rodando, o que passou do prazo e o que já
+    ensinou alguma coisa.
+  </p>
   {% endif %}
 
   {% if latencias %}

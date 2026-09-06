@@ -1,0 +1,20 @@
+{
+  "arquivo": "194-a-conferencia-do-windows-sai-do-caminho-do-pr-e-vira-rede-na",
+  "id": "TAR-194",
+  "titulo": "A conferencia do Windows sai do caminho do PR e vira rede na main",
+  "toca": [
+    "ci",
+    ".github",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "run verde do workflow novo na main e um PR cujo muralhas termina sem o job Windows, com o tempo medido por gh run view --json jobs",
+  "despacho": "Tirar o job windows-a-maquina-dos-robos de muralhas.yml e move-lo para .github/workflows/rede-do-windows.yml (push na main, alarme por issue em falha); declarar o workflow novo como conhecido em ci/portao_de_deploy.py; guarda ci/tests/test_rede_do_windows.py; atualizar mencoes textuais em ci/ci.py e ci/tests/test_suite_em_paralelo.py. Mandato do mantenedor para .github e ci (alavanca 1, PR #1119, registro 20260905-075).",
+  "origem": "documento alavancas-10x-da-fabrica, alavanca 1, liberada pelo mantenedor em 05/09/2026",
+  "criada_em": "2026-09-05"
+}

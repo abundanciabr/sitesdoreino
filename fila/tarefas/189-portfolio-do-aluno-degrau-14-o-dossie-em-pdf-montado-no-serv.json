@@ -1,0 +1,19 @@
+{
+  "arquivo": "189-portfolio-do-aluno-degrau-14-o-dossie-em-pdf-montado-no-serv",
+  "id": "TAR-189",
+  "titulo": "Portfolio do aluno, degrau 14: o dossie em PDF montado no servidor, na ordem que o aluno escolheu",
+  "toca": [
+    "pages"
+  ],
+  "depende_de": [
+    "TAR-188"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: o aluno baixa o dossie em PDF montado NO SERVIDOR, com as pecas aprovadas na ordem que ele escolheu (AC-16). O isolamento entre alunos continua verde e a exclusao de peca nao aprovada e provada por MUTACAO.",
+  "despacho": "# DESPACHO - pages: o dossie em PDF (degrau 14 da escada do portfolio)\nCELULA: pages - WORKTREE: wt-dossie-em-pdf - BRANCH: agent/pages/dossie-em-pdf\nPADRAO: o Padrao de Trabalho (1a secao do CLAUDE.md) vale nesta tarefa como em todas, inclusive a regra 2 (discorde ANTES, em ate 5 linhas, com UMA alternativa e o trade-off) e a regra 9 (relatorio nos quatro titulos, sem enchimento).\nDECLARACAO DE ABERTURA (RITOS.md secao 1): primeira linha da sua primeira resposta.\n\nANTES DE ESCREVER CODIGO: materialize o indice (python ci/indice_de_armadilhas.py) e abra SO estas armadilhas: 195, 185, 170. Leia constituicoes/AGENTS.pages.md (a lei da casa, com o [INV-P12] e os invariantes da secao 7 do plano), docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md (secoes 4, 5 e 7) e docs/changespecs/CS-PAGES-0001.md, que e o corredor de obra assinado e manda no escopo. Onde este despacho e o corredor divergirem, o corredor vence.\n\nO QUE NINGUEM PODE INVENTAR NESTA OBRA (plano secao 7, e vale em todo degrau): nota, estrela, ranking ou voto popular em portfolio de aluno; deteccao de \"isto foi feito por IA\"; trancar aula ou conteudo atras de check-list, ponto ou nivel; e-mail, telefone ou nome completo na pagina publica (o padrao e privado e o noindex nao e negociavel); guardar a peca em duas celulas; travessao em texto que o aluno le; e marco real pagando XP.\n\nCONTEXTO (ate 5 linhas): alguns clientes pedem arquivo, nao link. Este degrau da ao aluno o anexo.\n\nTAREFA: o dossie em PDF.\n\n- Montado NO SERVIDOR (AC-16), nao no navegador: o resultado tem de ser o mesmo em qualquer maquina.\n- So as pecas APROVADAS, na ordem que o ALUNO escolheu.\n- A montagem e trabalho pesado e nao roda dentro do ciclo da requisicao ASGI (armadilhas/170).\n- Um aluno nunca baixa o dossie de outro (AC-07).\n- Texto sem travessao: quem le e um cliente pagante.\n\nProve por MUTACAO que peca nao aprovada fica de fora e que um aluno nao alcanca o dossie de outro.\nORCAMENTO: cerca de 7 arquivos. Estourou por coesao legitima: PARE e reporte, nunca esprema arquivos.\n\nDEPLOY: com o degrau 05 ja pousado, o deploy-celula da pages passa a ser veredito de verdade. Confira o run disparado pelo merge (gh run view <id> --json status,conclusion) e reporte o resultado.\n\nO REGISTRO DO LIVRO EMBARCA NESTE PR, no mesmo ramo, citando o numero dele (armadilhas/185): abra o PR, leia o numero, escreva o registro com menos de 1 KB pela ferramenta de escrita de arquivo (nunca por heredoc), commite os eventos da fila junto, e peca o pouso com UM comando pela ferramenta Monitor: python ci/esperar.py --checks <N> --teto 20 --dizendo \"os checks do PR <N>\" --e-pousar.",
+  "origem": "escada do PLANO-PORTFOLIO-DO-ALUNO.md secao 5 e corredor de obra docs/changespecs/CS-PAGES-0001.md; genese pousada no PR #1117 (TAR-169)",
+  "criada_em": "2026-09-05"
+}

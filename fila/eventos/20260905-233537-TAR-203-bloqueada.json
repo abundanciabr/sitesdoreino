@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260905-233537-TAR-203-bloqueada",
+  "tarefa": "TAR-203",
+  "evento": "bloqueada",
+  "quando": "2026-09-05T23:35:37+00:00",
+  "quem": "despacho-cursos-porta-curso-20260905",
+  "detalhe": "PR #1135 pronto e verde em tudo menos no freeze de contrato, que reprova porque a porta ganhou 4 operacoes e contracts/cursos.openapi.yaml esta congelado (armadilhas/243). Destrava com o Rito de Contrato: PR so de contracts/, montado a partir de 'python manage.py export_openapi' deste ramo, com o mantenedor presente. Quando ele mergear, a main entra no ramo e o #1135 fica verde."
+}

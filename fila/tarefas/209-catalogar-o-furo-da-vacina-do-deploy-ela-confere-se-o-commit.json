@@ -1,0 +1,19 @@
+{
+  "arquivo": "209-catalogar-o-furo-da-vacina-do-deploy-ela-confere-se-o-commit",
+  "id": "TAR-209",
+  "titulo": "Catalogar o furo da vacina do deploy: ela confere se o commit chegou, nao se a celula subiu",
+  "toca": [
+    "armadilhas",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com armadilhas/359 nova (o ponto cego medido em producao no PR #1145), a tarefa de conserto registrada no balcao (ci .github, sem mandato), e o registro do livro citando o numero do PR",
+  "despacho": "Medido em 05-06/09/2026: o PR #1145 (mensageria) mergeou e o deploy-celula foi cancelado pela cadeira musical (armadilhas/188). A vacina do deploy acordou e decidiu NAO repetir porque dois deploys posteriores (PRs #1146 e #1147) chegaram verdes e carregam o commit por ancestralidade. Mas nenhum dos dois construiu a celula mensageria: os dois so tem o job deploy (admin). A vacina confere ancestralidade de commit, nao cobertura de celula, e num monorepo de 16 celulas as duas coisas quase nunca coincidem. O codigo da mensageria ficou fora do ar com tres deploys verdes na tela. Catalogar como armadilha nova (irma da 188, o furo da cura dela) e abrir tarefa de conserto no balcao sem executa-la (ci/.github e caminho CODEOWNERS sem mandato hoje).",
+  "origem": "medicao em producao, 05-06/09/2026, PRs #1145/#1146/#1147",
+  "criada_em": "2026-09-06"
+}

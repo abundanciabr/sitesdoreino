@@ -45,9 +45,9 @@ urlpatterns = [
     # e o `<link>` sai de `{% url 'estatico' %}`, nunca de `{% static %}`: as
     # duas tags leem prefixos diferentes (`armadilhas/102`).
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
-    # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES`, fail-closed
-    # (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só reconhece,
-    # nunca autoriza.
+    # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES` ∪ `ADMIN_EMAILS`,
+    # fail-closed (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só
+    # reconhece, nunca autoriza.
     path("plantao", plantao_fila, name="plantao"),
     path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
@@ -65,8 +65,31 @@ urlpatterns = [
     path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
     # O LAUDO RECEBIDO (degrau 2.2): a mesma pessoa da sessão, o mais recente.
     path("<str:numero>/laudo", laudo_recebido, name="laudo-recebido"),
+    # O ENDEREÇO DO LIVRO (TAR-212, 06/09/2026). O aluno tem o livro em mãos
+    # durante o curso, e o link de uma aula precisa dizer, sozinho, em que
+    # parte do curso ele está. O `<curso>` é o SLUG, resolvido pelo par
+    # site+slug em `apps/cursos/enderecos.py` — nunca "o primeiro do site".
+    #
+    # As duas rotas vêm ANTES das antigas porque a antiga da aula
+    # (`<str:numero>`) casa qualquer segmento único, "profissional" incluído.
+    # O `/` no fim de `<slug:curso>/` é o que separa as duas famílias: o mapa
+    # de um curso tem dois segmentos, a aula antiga tem um.
+    path("<slug:curso>/", mapa, name="curso"),
+    path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
     path("<str:numero>", aula, name="aula"),
     # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
     # mais nada. Vem por último porque `path("")` casa o caminho vazio.
+    #
+    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E MUDARAM DE CASA
+    # (301, TAR-216): o checkpoint desta escola é POR LINK, e um link já
+    # compartilhado que passasse a dar 404 seria trabalho de aluno perdido.
+    # Mas enquanto os dois endereços servissem a mesma sala com 200, o link
+    # antigo continuaria levando a uma página que não diz em que parte do
+    # curso o aluno está. O 301 ensina o navegador e o buscador de uma vez.
+    #
+    # As duas rotas CONTINUAM existindo porque o 301 tem uma condição: ele só
+    # acontece com UM curso no site. Com dois, o endereço antigo não diz qual
+    # deles o aluno quer, e a tela que PERGUNTA é a resposta certa
+    # (`apps/core/views.py::_curso_unico`).
     path("", mapa, name="mapa"),
 ]

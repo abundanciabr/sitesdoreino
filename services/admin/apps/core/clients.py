@@ -1,6 +1,7 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
 # Fala SÓ o que está no contrato congelado da identidade
 # (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (Lei 3).
+import datetime as dt
 import logging
 import os
 import time
@@ -452,15 +453,30 @@ class AlunosClient:
     #: mantenedor "não deu certo" quando pode ter dado é como ele acaba
     #: decidindo duas vezes sobre a mesma pessoa.
     NAO_RESPONDEU = "nao_respondeu"
+    #: [INV-ALU-C1] A `alunos` recusou o PRODUTO de uma liberação (06/09/2026).
+    #: Fatia própria do `RECUSADO` porque a tela precisa dizer outra coisa: o
+    #: curso que estava na lista quando a página abriu já não vale, e o gesto
+    #: certo é recarregar e escolher de novo — não procurar defeito de rede.
+    SEM_ESSE_CURSO = "sem_esse_curso"
 
     def decidir(
-        self, alvo: str, decisao: str, decidido_por: str, motivo: str = ""
+        self,
+        alvo: str,
+        decisao: str,
+        decidido_por: str,
+        motivo: str = "",
+        product_id: str = "",
     ) -> "tuple[str, str]":
         """Libera ou recusa quem está na fila. Devolve `(desfecho, detalhe)`.
 
         `detalhe` é curto e para HUMANO — vai para a auditoria e para a tela.
         **Nunca levanta**: quem chama precisa gravar a linha de auditoria
         aconteça o que acontecer.
+
+        `product_id` é OBRIGATÓRIO para liberar desde 06/09/2026
+        ([INV-ALU-C1]): ninguém é aluno do site, todo mundo é aluno de um
+        produto, e a matrícula é o que diz qual. Na recusa ele nem viaja —
+        ninguém vira aluno de nada ao ser recusado.
         """
         config = self._configuracao()
         if config is None:
@@ -470,6 +486,8 @@ class AlunosClient:
         corpo = {"decisao": decisao, "decidido_por": decidido_por}
         if motivo:
             corpo["motivo"] = motivo
+        if product_id:
+            corpo["product_id"] = product_id
 
         try:
             r = http().post(
@@ -490,6 +508,16 @@ class AlunosClient:
             # O caso REAL de duas abas abertas, e o mais provável dos três.
             return self.RECUSADO, "este pedido já tinha sido decidido"
         if r.status_code == 422:
+            # O 422 desta porta deixou de ter uma leitura só em 06/09/2026. Na
+            # recusa ele continua sendo o motivo que faltou; na liberação, é o
+            # produto — e quem sabe qual dos dois foi é esta chamada, que sabe
+            # o que mandou. Adivinhar pelo texto da resposta seria ler prosa
+            # alheia para decidir o que a tela mostra.
+            if decisao == "liberar":
+                return (
+                    self.SEM_ESSE_CURSO,
+                    "o curso escolhido já não vale nesta escola",
+                )
             return self.RECUSADO, "faltou o motivo da recusa"
         logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
@@ -989,6 +1017,55 @@ class CatalogoClient:
             return None
         return corpo
 
+    def listar_produtos(self) -> "list[dict] | None":
+        """Os produtos ativos, para a tela em que alguém ESCOLHE um.
+
+        `contracts/catalogo.openapi.yaml`, operação `listProducts` (06/09/2026):
+        só os ativos, em ordem de nome. Ninguém deve ser liberado num produto
+        aposentado, e o catálogo é quem sabe quais ainda estão de pé.
+
+        **Esta célula não guarda cópia da lista** (§7 da
+        `DECISAO-cursos-matriculas-e-alunos.md`): ela pergunta a cada abertura
+        de tela. Duas listas divergiriam no primeiro curso novo, e a que
+        ninguém olha é a que fica errada.
+
+        Devolve `None` quando **não deu para perguntar**, e `[]` quando o
+        catálogo respondeu que não há produto ativo. As duas coisas produzem
+        telas diferentes, e um `{% if %}` sozinho não as distingue.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "cursos: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão no env "
+                "desta célula (par admin→catalogo não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/produtos",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("cursos: o catálogo não respondeu: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("cursos: o catálogo respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
+            logger.error("cursos: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, list):
+            # Um objeto onde a tela espera lista faria o `for` do template
+            # iterar as CHAVES do dicionário, em silêncio.
+            logger.error("cursos: o catálogo respondeu um corpo que não é lista")
+            return None
+        return corpo
+
     def gravar_menu(self, site_id: str, menu: dict) -> "tuple[str, str]":
         """Grava o documento INTEIRO. Devolve (situação, frase para a tela)."""
         config = self._configuracao()
@@ -1266,6 +1343,12 @@ class MedicaoClient:
     OK = "ok"
     NAO_RESPONDEU = "nao-respondeu"
     SEM_CONFIGURACAO = "sem-configuracao"
+    #: Só a inspeção de UM evento morto usa este: o contrato promete 404 para
+    #: id que não existe, e a tela precisa saber a diferença entre "esse evento
+    #: não existe" (endereço digitado errado, ou fila já limpa) e "a medição
+    #: não respondeu". Achatar os dois num erro só mandaria o mantenedor
+    #: procurar defeito onde não há nenhum.
+    NAO_EXISTE = "nao-existe"
 
     def _configuracao(self) -> "tuple[str, str] | None":
         """Endereço e token do par, ou `None` se o env não os tiver.
@@ -1281,7 +1364,13 @@ class MedicaoClient:
             return None
         return base, token
 
-    def _pedir(self, caminho: str, params: dict) -> "tuple[str, object]":
+    def _pedir(
+        self, caminho: str, params: dict, *, aceita_404: bool = False
+    ) -> "tuple[str, object]":
+        """`aceita_404` é opt-in de propósito: para a cobertura e para a fila,
+        um 404 é a porta fora do lugar, e vira `NAO_RESPONDEU` como qualquer
+        outra resposta estranha. Só quem pede UM evento por id tem um 404 que
+        significa alguma coisa."""
         config = self._configuracao()
         if config is None:
             logger.warning(
@@ -1300,6 +1389,8 @@ class MedicaoClient:
         except httpx.HTTPError as erro:
             logger.error("medicao: a medição não respondeu: %s", erro)
             return self.NAO_RESPONDEU, None
+        if aceita_404 and r.status_code == 404:
+            return self.NAO_EXISTE, None
         if r.status_code != 200:
             logger.error("medicao: a medição respondeu HTTP %s", r.status_code)
             return self.NAO_RESPONDEU, None
@@ -1320,21 +1411,76 @@ class MedicaoClient:
             return self.NAO_RESPONDEU, None
         return self.OK, tipos
 
-    def quebrados(self) -> "tuple[str, int | None]":
-        """Quantos eventos chegaram e não puderam ser afirmados.
+    def conquistas(self, de: "dt.date", ate: "dt.date") -> "tuple[str, list | None]":
+        """`countMilestones`: quantas conquistas de cada tipo, por dia.
 
-        `limite=1` de propósito: o que esta tela usa é o `total`, e a fila de
-        mortos pode ter milhares de linhas num incidente. Pedir a página inteira
-        para mostrar um número seria pagar o pior caso por nada.
+        SEM filtro de tipo nem de sujeito, e é decisão: a porta devolve todas
+        as linhas de uma vez, e quem chama (a tela das coortes) precisa das
+        seis. Pedir uma por uma seriam seis viagens de rede para montar a mesma
+        tabela, e a resposta sairia costurada de seis instantes diferentes.
+
+        A lista NÃO É ESCOPADA POR SITE, e o contrato diz por quê: a tabela de
+        marcos não guarda o site. Quem mostrar estes números tem de dizer que
+        são da plataforma inteira, em vez de deixar o leitor supor uma escola.
         """
-        desfecho, corpo = self._pedir("/eventos-mortos", {"limite": 1})
+        desfecho, corpo = self._pedir(
+            "/marcos/contagens", {"de": de.isoformat(), "ate": ate.isoformat()}
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        linhas = (corpo or {}).get("conquistas")
+        if not isinstance(linhas, list):
+            logger.error("medicao: 'conquistas' fora do contrato: %r", linhas)
+            return self.NAO_RESPONDEU, None
+        return self.OK, linhas
+
+    def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
+        """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.
+
+        `{"total": int, "itens": [...]}`. O `corpo` cru NÃO vem aqui, e não é
+        economia de bytes: o contrato o esconde da lista de propósito, porque
+        um envelope quebrado pode conter o que esta casa não guarda (nome,
+        e-mail, texto de mensagem). Quem precisa ver um corpo pede UM, por
+        `morto`, e aí é inspeção deliberada.
+        """
+        desfecho, corpo = self._pedir("/eventos-mortos", {"limite": limite})
         if desfecho != self.OK:
             return desfecho, None
         total = (corpo or {}).get("total")
-        if not isinstance(total, int):
-            logger.error("medicao: 'total' fora do contrato: %r", total)
+        itens = (corpo or {}).get("itens")
+        if not isinstance(total, int) or not isinstance(itens, list):
+            logger.error("medicao: a fila de mortos veio fora do contrato: %r", corpo)
             return self.NAO_RESPONDEU, None
-        return self.OK, total
+        return self.OK, {"total": total, "itens": itens}
+
+    def morto(self, morto_id: int) -> "tuple[str, dict | None]":
+        """UM evento morto, com o corpo cru: a ação "inspecionar" do plano.
+
+        Devolve `NAO_EXISTE` para id que não existe, e nunca um dicionário
+        vazio: resposta vazia que parece resposta é o pior desfecho possível
+        numa tela onde se decide o que fazer com um fato que se perdeu.
+        """
+        desfecho, corpo = self._pedir(
+            f"/eventos-mortos/{int(morto_id)}", {}, aceita_404=True
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        if not isinstance(corpo, dict) or "corpo" not in corpo:
+            logger.error("medicao: o evento morto veio fora do contrato: %r", corpo)
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
+    def quebrados(self) -> "tuple[str, int | None]":
+        """Quantos eventos chegaram e não puderam ser afirmados.
+
+        `limite=1` de propósito: quem chama é a linha do placar, que usa só o
+        `total`, e a fila pode ter milhares de linhas num incidente. Pedir a
+        página inteira para mostrar um número seria pagar o pior caso por nada.
+        A conferência da forma é a de `mortos`, e não uma segunda: dois lugares
+        decidindo o que é "fora do contrato" divergem no primeiro campo novo.
+        """
+        desfecho, fila = self.mortos(limite=1)
+        return desfecho, None if fila is None else fila["total"]
 
 
 class MensageriaClient:
@@ -1572,7 +1718,9 @@ class CursosClient:
 
     Fala só o que está no contrato congelado (`contracts/cursos.openapi.yaml`,
     degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as sete operações do
-    editor. Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
+    editor, e das aulas SEMPRE as que sabem de curso (`listLessons`,
+    `getLesson`, `putLesson`, `publishLesson`, sob `/cursos/{curso}/aulas`).
+    Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
     e o único lugar em que esse texto existe é o banco da `cursos`
@@ -1623,15 +1771,51 @@ class CursosClient:
         token = (os.environ.get("CURSOS_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
 
-    # -- as quatro leituras --------------------------------------------------
-    def aulas(self, site_id: str) -> "tuple[str, list | None]":
-        """`listLessons`: as encomendas deste site, na ordem do aluno."""
-        return self._pedir("get", "aulas", params={"site_id": site_id}, forma=list)
+    def _caminho(self, curso: str, *resto: str) -> str:
+        """As quatro operações da encomenda moram sob o SLUG do curso.
 
-    def aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
-        """`getLesson`: uma encomenda inteira, com as 18 peças e as pausas."""
+        As irmãs sem curso (`listSiteLessons` e companhia) continuam no
+        contrato, e esta célula não as chama mais: elas varrem o site inteiro, e
+        no dia do segundo curso devolveriam as aulas dos dois misturadas, sem
+        nada na resposta que diga de qual curso é cada linha.
+        """
+        return "/".join(["cursos", quote(curso, safe=""), "aulas", *resto])
+
+    def _com_parte(self, site_id: str, parte: "int | None") -> dict:
+        params: dict = {"site_id": site_id}
+        if parte is not None:
+            params["parte"] = int(parte)
+        return params
+
+    # -- as quatro leituras --------------------------------------------------
+    def aulas(
+        self, site_id: str, curso: str, parte: "int | None" = None
+    ) -> "tuple[str, list | None]":
+        """`listLessons`: as encomendas de UM curso, na ordem do aluno.
+
+        `parte` aqui é FILTRO: com ela vem só aquela Parte do livro; sem ela,
+        o curso inteiro. Slug que não existe naquele site é `NAO_EXISTE`.
+        """
         return self._pedir(
-            "get", "aulas/" + quote(numero, safe=""), params={"site_id": site_id}
+            "get",
+            self._caminho(curso),
+            params=self._com_parte(site_id, parte),
+            forma=list,
+        )
+
+    def aula(
+        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
+    ) -> "tuple[str, dict | None]":
+        """`getLesson`: uma encomenda inteira, com as 18 peças e as pausas.
+
+        `parte` aqui NÃO é filtro: é GUARDA. Parte que não casa com o bloco da
+        encomenda é `NAO_EXISTE`, por contrato: um endereço que aponta certo
+        para a encomenda errada é pior do que um endereço quebrado.
+        """
+        return self._pedir(
+            "get",
+            self._caminho(curso, quote(numero, safe="")),
+            params=self._com_parte(site_id, parte),
         )
 
     def instrumentos(self) -> "tuple[str, list | None]":
@@ -1644,27 +1828,37 @@ class CursosClient:
         return self._pedir("get", "instrumentos/" + quote(slug, safe=""))
 
     # -- as três escritas ----------------------------------------------------
-    def gravar_aula(self, site_id: str, numero: str, corpo: dict):
+    def gravar_aula(
+        self,
+        site_id: str,
+        curso: str,
+        numero: str,
+        corpo: dict,
+        parte: "int | None" = None,
+    ):
         """`putLesson`: grava a encomenda INTEIRA; a versão volta incrementada.
 
         Em `RECUSADO` o segundo item é o `detail` do 422 (a lista de erros do
         contrato), e não a aula: é com ele que a tela põe a frase ao lado do
-        campo certo.
+        campo certo. `parte` é o mesmo guarda de `aula`, e vale aqui pelo motivo
+        mais pesado: gravar pela encomenda errada sobrescreveria texto.
         """
         return self._pedir(
             "put",
-            "aulas/" + quote(numero, safe=""),
-            params={"site_id": site_id},
+            self._caminho(curso, quote(numero, safe="")),
+            params=self._com_parte(site_id, parte),
             json=corpo,
         )
 
-    def publicar_aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
+    def publicar_aula(
+        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
+    ) -> "tuple[str, dict | None]":
         """`publishLesson`: estado `publicada`, data de agora, versão inalterada.
         Idempotente do outro lado: publicar o publicado devolve como está."""
         return self._pedir(
             "post",
-            "aulas/" + quote(numero, safe="") + "/publicar",
-            params={"site_id": site_id},
+            self._caminho(curso, quote(numero, safe=""), "publicar"),
+            params=self._com_parte(site_id, parte),
         )
 
     def gravar_instrumento(self, slug: str, corpo: dict):

@@ -1,9 +1,24 @@
 {% extends "cursos/moldura.html" %}{% comment %}
-A porta da sala, para quem ainda não entra: o visitante (200, convite), quem
-entrou sem matrícula ativa (403), quem entrou e a matrícula não deu para
-conferir (403, e a frase diz que foi isso), e a escola sem curso ligado (200).
+AS RECUSAS DA SALA, cada uma com a sua frase.
 
-Quatro motivos, quatro frases, e cada uma diz o que aconteceu E o que fazer.
+Quem ainda não entra: o visitante (200, convite), quem entrou sem matrícula
+ativa (403), quem entrou e a matrícula não deu para conferir (403, e a frase
+diz que foi isso), e a escola sem curso ligado (200).
+
+E as três recusas de ENDEREÇO, que nasceram com o endereço do livro (TAR-212):
+curso que não existe (404), site com mais de um curso e endereço antigo que não
+diz qual (200), e a parte que não casa com o bloco da aula (404). Nessas três a
+tela mostra o caminho certo: um endereço que aponta certo para a aula ERRADA é
+pior do que um endereço quebrado, e mandar o aluno adivinhar é o mesmo que não
+responder.
+
+E as duas recusas de MATRÍCULA POR CURSO (TAR-227): a pessoa é aluna de outro
+curso desta escola (403), e o curso que ainda não foi ligado a nenhuma compra
+(403). As duas são fechadas de propósito, e a segunda é como todo curso nasce.
+Elas mandam a pessoa a lugares diferentes, e é por isso que são duas: uma diz
+"abra o seu, que é aquele ali", a outra diz "ninguém entra aqui ainda".
+
+Nove motivos, nove frases, e cada uma diz o que aconteceu E o que fazer.
 Uma tela vazia diria "não há nada aqui" a quem devia ver o curso.
 {% endcomment %}
 {% block titulo %}Entrar no curso{% endblock %}
@@ -26,7 +41,60 @@ Uma tela vazia diria "não há nada aqui" a quem devia ver o curso.
 {% elif motivo == "sem-resposta" %}
   <h1>Não conseguimos conferir sua matrícula agora</h1>
   <p>A parte da escola que responde por isso não respondeu. Nada foi perdido:
-  espere alguns instantes e <a href="{% url 'mapa' %}">tente de novo</a>.</p>
+  espere alguns instantes e <a href="{{ url_do_mapa }}">tente de novo</a>.</p>
+{% elif motivo == "outro-curso" %}
+  <h1>Este curso não é o seu</h1>
+  {% if cursos %}
+  <p>Você está matriculado nesta escola, mas em outro curso: o endereço que
+  você abriu é de um curso em que a sua matrícula não entra.</p>
+  <p>O seu está aqui:</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+  {% else %}
+  <p>Você está matriculado, e a sua matrícula não é de nenhum curso desta
+  escola. Se você comprou um curso e está vendo isto, fale com a escola pela
+  <a href="{{ url_da_capa }}">página inicial</a>: a compra pode ter chegado sem
+  dizer qual curso é o seu, e a escola resolve isso rápido.</p>
+  {% endif %}
+{% elif motivo == "curso-sem-produto" %}
+  <h1>Este curso ainda não está ligado às matrículas</h1>
+  <p>Ninguém entra aqui ainda, nem por engano: o curso existe, e a escola
+  ainda não disse a qual compra ele corresponde. Não é nada que você tenha
+  feito.</p>
+  <p>Avise a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  {% if cursos %}
+  <p>Os seus cursos continuam abertos:</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+  {% endif %}
+{% elif motivo == "curso-desconhecido" %}
+  <h1>Não existe curso com esse endereço</h1>
+  <p>O endereço que você abriu pede o curso "{{ slug_pedido }}", e esta escola
+  não tem nenhum curso com esse nome. Pode ser um link antigo, ou uma letra
+  trocada na barra do navegador.</p>
+  {% if cursos %}
+  <p>Os cursos desta escola são:</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+  {% endif %}
+{% elif motivo == "escolha-o-curso" %}
+  <h1>Escolha o seu curso</h1>
+  <p>Esta escola tem mais de um curso, e o endereço que você abriu não diz qual
+  deles você quer. Escolha aqui: o endereço do curso escolhido é o que vale para
+  compartilhar daqui em diante.</p>
+  <ul>
+    {% for curso in cursos %}<li><a href="{{ curso.url }}">{{ curso.nome }}</a></li>{% endfor %}
+  </ul>
+{% elif motivo == "parte-errada" %}
+  <h1>Essa aula não está nessa parte do curso</h1>
+  <p>O endereço que você abriu diz parte {{ parte_pedida }}, mas a
+  {{ aula_pedida.numero }} está na parte {{ aula_pedida.bloco.parte }} do curso.
+  Não abrir a aula por um endereço errado é de propósito: você está com o livro
+  na mão, e o número do endereço precisa ser o mesmo da página.</p>
+  <p class="entrar"><a href="{{ url_certa }}">Abrir a {{ aula_pedida.numero }} na parte {{ aula_pedida.bloco.parte }}</a></p>
 {% else %}
   <h1>O curso ainda não está ligado nesta escola</h1>
   <p>Quando estiver, é aqui que as portas vão aparecer. Volte pela

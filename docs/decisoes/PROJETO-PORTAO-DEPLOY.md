@@ -116,6 +116,13 @@ EXIGIDO_NO_PR = {".github/workflows/muralhas.yml": ("muralhas",)}
 REPROVA = {"failure","timed_out","startup_failure","action_required","neutral","stale"}
 ```
 
+> **Emenda de 05/09/2026 (alavanca 2 das alavancas de 10x da fábrica):** o
+> `alarme-main` saiu de `EXIGIDOS_NO_COMMIT` e passou a `conhecidos`. A `main`
+> tem política estrita, então ele media o mesmo conteúdo que o `muralhas` do PR
+> de origem (que continua exigido) já tinha medido; esperá-lo custava 1min18s
+> por deploy. O raciocínio inteiro está ao lado da constante `ALARME_MAIN` em
+> `ci/portao_de_deploy.py`.
+
 Funções (a implementação segue o relatório; o agente reescreve com liberdade desde
 que preserve ESTA semântica):
 - `gh(caminho)` — `gh api --paginate`, JSON inválido ⇒ ErroDeInstrumentacao.

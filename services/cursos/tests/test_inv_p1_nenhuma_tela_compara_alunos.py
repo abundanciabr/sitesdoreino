@@ -48,6 +48,11 @@ AS_ROTAS_DA_CELULA = {
     "entregar-checkpoint",
     "aula",
     "mapa",
+    # O ENDEREÇO DO LIVRO (TAR-212): o mapa de UM curso e a aula com a parte.
+    # Nenhuma das duas recebe pessoa: o `curso` é o slug do curso e a `parte` é
+    # o número da Parte do livro. A sala continua sendo a de quem a abriu.
+    "curso",
+    "aula-do-curso",
     # O laudo recebido (degrau 2.2, TAR-156): a mesma porta da sessão, sem
     # parâmetro novo — só `numero`, como `aula`.
     "laudo-recebido",
@@ -87,7 +92,12 @@ def duas_pessoas(env_dos_pares, rede, aula_publicada):
 def _telas(client) -> list[tuple[str, str]]:
     """Toda tela GET da célula que renderiza conteúdo, aberta como Ana."""
     telas = []
-    for endereco in (reverse("mapa"), reverse("aula", args=["E00"])):
+    for endereco in (
+        reverse("curso", args=["profissional"]),
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]),
+        reverse("curso", args=["profissional"]),
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]),
+    ):
         resposta = client.get(endereco, HTTP_COOKIE=COOKIE)
         assert resposta.status_code == 200, endereco
         telas.append((endereco, resposta.content.decode()))
@@ -108,7 +118,9 @@ def test_nenhuma_tela_fala_de_outra_pessoa(duas_pessoas, client):
 def test_o_mapa_conta_so_as_portas_da_propria_pessoa(duas_pessoas, client):
     """Beto está em produção na E00; para Ana a E00 nasce disponível, e é
     isso que o mapa dela mostra, não o estado dele."""
-    corpo = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE).content.decode()
+    corpo = client.get(
+        reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE
+    ).content.decode()
     assert ">Disponível<" in corpo
     assert ">Em produção<" not in corpo
 
@@ -116,7 +128,7 @@ def test_o_mapa_conta_so_as_portas_da_propria_pessoa(duas_pessoas, client):
 def test_a_aula_mostra_so_os_registros_da_propria_pessoa(duas_pessoas, client):
     """Beto já registrou a pausa 1; para Ana ela continua com formulário."""
     corpo = client.get(
-        reverse("aula", args=["E00"]), HTTP_COOKIE=COOKIE
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE
     ).content.decode()
     assert 'action="' + reverse("registrar-pausa", args=["E00", 1]) in corpo
     assert "Registrada." not in corpo
@@ -158,11 +170,14 @@ def test_nenhuma_rota_recebe_o_id_de_outra_pessoa():
     """Os parâmetros de rota são a aula, a pausa e o arquivo de estilo; a
     pessoa é sempre a da sessão. `envio_id` (plantão) é a EXCEÇÃO nomeada:
     identifica um ENVIO, nunca uma pessoa por id, e só a professora
-    (`CURSOS_PROFESSORES`, fail-closed) chega a essa rota."""
+    (`CURSOS_PROFESSORES`, fail-closed) chega a essa rota.
+
+    `curso` e `parte` (TAR-212) são o endereço do livro: o slug do curso e o
+    número da Parte. Nenhum dos dois identifica gente."""
     parametros = set()
     for padrao in get_resolver().url_patterns:
         parametros |= set(re.findall(r"<(?:\w+:)?(\w+)>", str(padrao.pattern)))
-    assert parametros == {"numero", "ordem", "caminho", "envio_id"}
+    assert parametros == {"numero", "ordem", "caminho", "envio_id", "curso", "parte"}
 
 
 def test_toda_consulta_de_progresso_nas_views_e_filtrada_pela_pessoa():
