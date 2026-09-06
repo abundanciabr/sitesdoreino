@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-141248-TAR-224-bloqueada",
+  "tarefa": "TAR-224",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T14:12:48+00:00",
+  "quem": "despacho-pages-pecas-por-link-0609",
+  "detalhe": "espera Rito de Contrato com o mantenedor presente para contracts/eventos/notificacao.devida.v1.json; volta a andar com: python ci/fila.py soltar TAR-224"
+}

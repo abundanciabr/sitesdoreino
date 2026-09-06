@@ -7,9 +7,17 @@
 
 ## §1 A regra, em uma frase
 
-**Ninguém é "aluno do site". Todo mundo é aluno DE UM CURSO**, e a matrícula é o que diz qual.
+**Ninguém é "aluno do site". Todo mundo é aluno DE UM PRODUTO**, e a matrícula é o que diz qual.
 
-Uma pessoa pode ter várias matrículas, uma por curso. Liberar alguém sem dizer em qual curso deixa de ser possível.
+Uma pessoa pode ter várias matrículas, uma por produto. Liberar alguém sem dizer qual produto deixa de ser possível.
+
+**Por que "produto" e não "curso"** (emenda do mantenedor, 6 de setembro de 2026, com as palavras dele: *"o aluno é aluno da escola, mas ele está na escola matriculado em algum curso. Ou ele comprou algum produto, seja um PDF ou outro produto, mas ele sempre entra pela via da compra de algo, e daí ao entrar ele já deve estar vinculado a um curso ou produto"*).
+
+Um curso **é** um produto. Um livro em PDF também. A escola vende coisas, e cada coisa vendida é a razão de alguém estar dentro. Escrever a lei em cima de "curso" faria o primeiro produto que não fosse curso quebrar a regra ou virar exceção. Escrever em cima de "produto" cobre os dois casos sem uma linha a mais.
+
+Isso também explica por que o campo no sistema já se chama `product_id`, e não `curso_id`: quem desenhou a célula acertou antes de a lei existir.
+
+**Sempre pela compra.** A porta principal não é a liberação: é a compra. A liberação existe para quem entra pela sala de espera (as turmas anteriores, os convites), e não para criar aluno do nada.
 
 ## §2 Por que isto é lei, e não preferência
 
@@ -23,19 +31,35 @@ Medido no `origin/main` em 6 de setembro de 2026:
 
 - **`Matricula.product_id` já existe** em `services/alunos/apps/matriculas/models.py`, desde a primeira migração da célula.
 - **A restrição de unicidade da fila diz, por escrito, que várias matrículas por pessoa são o normal:** *"para não impedir que a mesma pessoa tenha várias matrículas pagas no mesmo site (que é o normal: um curso cada)"*.
-- **Quem entra pela compra já informa o curso:** `POST /matriculas` exige `product_id` no corpo, e o checkout o manda.
-- **Quem entra pela sala de espera nasce sem curso:** `services.py` cria a linha da fila com `product_id=""`, porque naquele momento ninguém sabia qual curso a pessoa queria.
+- **Quem entra pela sala de espera nasce sem produto:** `services.py` cria a linha da fila com `product_id=""`, porque naquele momento ninguém sabia o que a pessoa queria.
 
-O buraco é um só, e está na terceira linha desta lista.
+### A frase errada que esta lei teve por algumas horas
+
+A versão de 6 de setembro de 2026 dizia: *"quem entra pela compra já informa o curso: `POST /matriculas` exige `product_id` no corpo, e o checkout o manda"*.
+
+**Era falso, e quem mediu foi o robô da TAR-220**, não eu. Eu li a assinatura da operação e não segui quem a chama. A porta real da compra **não é** aquela operação: é o evento `pagamento.aprovado.v1`, e o contrato dele carrega `site_id`, `payment_id`, `order_id`, `amount_cents`, `method`, `mp_payment_id` e `customer`. **Nenhum produto.** O tratador grava `product_id=""`, e a matrícula paga nasce ativa sem produto, sem passar por decisão nenhuma.
+
+Fica escrito porque o erro é instrutivo: **assinatura de função não é caminho de dado.** Só seguir quem chama responde por onde a coisa entra de verdade.
+
+### Os dois buracos, então, e não um
+
+| # | Onde | Estado |
+|---|---|---|
+| 1 | a sala de espera nasce sem produto | fechado pela TAR-220: liberar passa a exigir |
+| 2 | **o aviso da compra não carrega o produto** | **aberto**, e é a TAR-225 |
+
+O segundo é o mais grave dos dois, porque é a porta principal: **é por ela que entra quem paga.**
 
 ## §4 As duas portas de matrícula, e a regra vale nas duas
 
-| Porta | Quem usa | Onde o curso entra |
+| Porta | Quem usa | Onde o produto entra |
 |---|---|---|
-| **A compra** | quem paga pela página de checkout | já vem no pedido, e sempre veio |
-| **A liberação** | quem pede entrada em `/cadastro` e o mantenedor libera | **passa a ser obrigatório escolher na tela**, e é a mudança desta lei |
+| **A compra**, que é a principal | quem paga pela página de checkout | **precisa passar a vir no aviso da compra**, e hoje não vem (TAR-225) |
+| **A liberação** | quem pede entrada em `/cadastro` e o mantenedor libera | **passa a ser obrigatório escolher na tela** (TAR-220) |
 
 Nenhuma terceira porta nasce sem passar por aqui.
+
+**A compra é a porta principal, e a lei se lê nessa ordem.** A liberação existe para quem vem das turmas anteriores e para convite; ela não é o caminho normal de virar aluno. Uma lei que só fechasse a liberação deixaria aberta justamente a porta por onde entra quem paga.
 
 ## §5 Os cursos, e a numeração
 
@@ -52,10 +76,10 @@ Cursos novos ganham o número seguinte. O número é identidade e **não muda**,
 
 Em `/admin/escola/alunos/`, o botão de liberar deixa de ser um botão só. Ele passa a exigir **duas coisas, nesta ordem**:
 
-1. **escolher o curso** (obrigatório, sem valor padrão);
+1. **escolher o produto** (obrigatório, sem valor padrão);
 2. liberar.
 
-**Sem curso escolhido, não libera.** Um valor padrão seria pior do que não ter a lista: ele faria a escolha errada parecer escolha, e ninguém veria o erro até o aluno abrir a sala e encontrar o curso errado.
+**Sem produto escolhido, não libera.** Um valor padrão seria pior do que não ter a lista: ele faria a escolha errada parecer escolha, e ninguém veria o erro até o aluno abrir a sala e encontrar o curso errado.
 
 ## §7 O que isto NÃO faz
 
@@ -66,11 +90,11 @@ Em `/admin/escola/alunos/`, o botão de liberar deixa de ser um botão só. Ele 
 
 ## §8 O invariante
 
-**[INV-ALU-C1] Nenhuma matrícula ativa sem curso.**
+**[INV-ALU-C1] Nenhuma matrícula ativa sem produto.**
 
-- **O quê:** toda matrícula em status que dá acesso aponta para um curso. Liberar sem curso é recusado na porta, não na tela.
-- **Por quê:** matrícula sem curso obriga quem lê a adivinhar, e o palpite mais provável ("o primeiro do site") é exatamente o defeito que esta lei existe para impedir.
-- **Como se prova:** teste que tenta liberar sem curso e espera recusa, provado por mutação.
+- **O quê:** toda matrícula em status que dá acesso aponta para um produto. Liberar sem produto é recusado na porta, não na tela. **O invariante só estará inteiro quando a TAR-225 fechar o caminho da compra**: hoje ele vale na liberação e não vale no pagamento, e isso está dito na cara em vez de escondido atrás de um verde.
+- **Por quê:** matrícula sem produto obriga quem lê a adivinhar, e o palpite mais provável ("o primeiro do site") é exatamente o defeito que esta lei existe para impedir.
+- **Como se prova:** teste que tenta liberar sem produto e espera recusa, provado por mutação.
 
 ## §9 O que acontece quando o terceiro curso nascer
 
@@ -78,4 +102,4 @@ Nada de novo. Ele entra no catálogo, ganha o número seguinte, aparece na lista
 
 ---
 
-*DECISÃO: cursos, matrículas e alunos · 6 de setembro de 2026 · Ninguém é aluno do site: todo mundo é aluno de um curso, e a matrícula é o que diz qual.*
+*DECISÃO: cursos, matrículas e alunos · 6 de setembro de 2026, emendada no mesmo dia · Ninguém é aluno do site: todo mundo é aluno de um PRODUTO, e sempre entra pela compra de algo.*
