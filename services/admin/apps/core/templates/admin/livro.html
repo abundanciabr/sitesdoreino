@@ -1,12 +1,19 @@
 {% extends "admin/base.html" %}
 {% comment %}
-A Biblioteca do Livro. Nada de script: colar um texto e enviar arquivos são dois
-formulários que recarregam a página, como no editor de documentos.
+A Biblioteca do Livro. Nada de script: colar um texto, enviar arquivos e criar
+um livro são três formulários que recarregam a página, como no editor de
+documentos.
 
 O formulário de enviar arquivos é o único desta área administrativa com
 `enctype="multipart/form-data"`, e sem ele o navegador manda só os NOMES dos
 arquivos, sem o conteúdo — falha silenciosa, com a tela dizendo que guardou zero
 textos e ninguém entendendo por quê.
+
+Desde 05/09/2026 os capítulos aparecem AGRUPADOS por `Livro` — um bloco por
+livro, na ordem do sumário dele, com os capítulos daquele livro na ordem deles.
+"Escrever ou colar", "Enviar arquivos" e "Baixar tudo" continuam GLOBAIS (não
+por livro): não é hora de reformar isso, enquanto só existir um livro
+publicado.
 {% endcomment %}
 {% block titulo %}Livro{% endblock %}
 {% block corpo %}
@@ -41,6 +48,12 @@ textos e ninguém entendendo por quê.
     São mais de {{ limite_de_arquivos }} arquivos de uma vez, e eu não guardei
     nenhum. Mande em duas levas.
   </p>
+  {% elif recado == "livro-criado" %}
+  <p class="recado">Livro criado.</p>
+  {% elif recado == "livro-sem-titulo" %}
+  <p class="recado borda-vermelha">
+    Escreva um título para o livro novo.
+  </p>
   {% endif %}
 
   {% if recusados %}
@@ -64,14 +77,22 @@ textos e ninguém entendendo por quê.
     {% endif %}
   </p>
 
-  {% if textos %}
+  {% if livros %}
   <p class="nota espaco-abaixo-20">
-    {{ textos|length }} texto{{ textos|length|pluralize:"s" }},
+    {{ textos|length }} texto{{ textos|length|pluralize:"s" }} em
+    {{ livros|length }} livro{{ livros|length|pluralize:"s" }},
     {{ palavras_no_total }} palavra{{ palavras_no_total|pluralize:"s" }} no total.
   </p>
 
+  {% for livro_da_lista in livros %}
+  <h2 id="livro-{{ livro_da_lista.slug }}"
+      class="titulo-de-lista{% if not forloop.first %} espaco-34{% endif %}">
+    {{ livro_da_lista.titulo }}
+  </h2>
+  {% with capitulos=livro_da_lista.capitulos.all %}
+  {% if capitulos %}
   <div class="cartoes">
-    {% for texto in textos %}
+    {% for texto in capitulos %}
     <div class="cartao">
       <div class="rotulo">{{ texto.titulo }}</div>
       <div class="nota espaco-8">
@@ -79,7 +100,9 @@ textos e ninguém entendendo por quê.
         guardado em {{ texto.atualizado_em|date:"d/m/Y" }}
       </div>
       <div class="nota">
-        <a href="{% url 'texto_do_livro' texto.nome %}">Ler</a>
+        <a href="{% url 'texto_ler' texto.nome %}">Ler</a>
+        &middot;
+        <a href="{% url 'texto_do_livro' texto.nome %}">Bastidor</a>
         &middot;
         <a href="{% url 'texto_editar' texto.nome %}">Editar</a>
         &middot;
@@ -88,6 +111,11 @@ textos e ninguém entendendo por quê.
     </div>
     {% endfor %}
   </div>
+  {% else %}
+  <p class="aviso">Este livro ainda não tem nenhum capítulo.</p>
+  {% endif %}
+  {% endwith %}
+  {% endfor %}
   {% else %}
   <p class="aviso">
     <b>A biblioteca está vazia, e é assim que ela nasce.</b>
@@ -109,6 +137,26 @@ textos e ninguém entendendo por quê.
       {% csrf_token %}
       <input type="file" name="arquivos" multiple accept=".md,.markdown,.txt">
       <button type="submit">Guardar estes arquivos</button>
+    </form>
+  </details>
+
+  {% comment %}
+  [LIVRO] 05/09/2026 — criar um `Livro` novo. Formulário curto de propósito, na
+  própria lista: o mantenedor pediu vários livros, não uma segunda tela para
+  cadastrar um.
+  {% endcomment %}
+  <details class="cadastrar">
+    <summary>Criar um livro novo</summary>
+    <p class="nota">
+      Um livro agrupa capítulos. Comece só pelo título, e o resto (a ordem, os
+      capítulos) você ajusta depois.
+    </p>
+    <form class="decidir" method="post" action="{% url 'livro_criar_livro' %}">
+      {% csrf_token %}
+      <label class="rotulo" for="titulo-do-livro">Título do livro</label>
+      <input id="titulo-do-livro" type="text" name="titulo" maxlength="200"
+             autocomplete="off" required>
+      <button type="submit">Criar livro</button>
     </form>
   </details>
 

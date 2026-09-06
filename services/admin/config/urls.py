@@ -31,11 +31,13 @@ from apps.core.editor_de_documentos import (
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
+    livro_criar_livro,
     texto_apagar,
     texto_baixar,
     texto_criar,
     texto_do_livro,
     texto_editar,
+    texto_ler,
     texto_novo,
     texto_restaurar,
     texto_salvar,
@@ -301,22 +303,30 @@ urlpatterns = [
     # pela porta. Nao ha aqui o par `/docs/` + `/documentos/` das linhas de
     # cima — ha um lado so.
     #
-    # As tres primeiras vem ANTES da generica `^livro/<nome>$` pelo motivo de
+    # As quatro primeiras vem ANTES da generica `^livro/<nome>$` pelo motivo de
     # sempre: um texto chamado "novo" existiria na lista e nunca abriria. A
     # `NOMES_RESERVADOS` do modulo fecha o outro lado, impedindo que ele nasca.
     path("livro/", livro, name="livro"),
     path("livro/novo", texto_novo, name="texto_novo"),
     path("livro/criar", texto_criar, name="texto_criar"),
     path("livro/enviar", textos_enviar, name="textos_enviar"),
+    # [LIVRO] 05/09/2026 — criar um `Livro` novo (o que agrupa capítulos), não
+    # um capítulo. Nome DIFERENTE de `texto_criar` de propósito: as duas telas
+    # criam coisas diferentes, e um nome parecido só confundiria quem lê o
+    # urlconf daqui a meses.
+    path("livro/criar-livro", livro_criar_livro, name="livro_criar_livro"),
     path("livro/tudo.md", livro_baixar_tudo, name="livro_baixar_tudo"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)$", texto_do_livro, name="texto_do_livro"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/editar$", texto_editar, name="texto_editar"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/salvar$", texto_salvar, name="texto_salvar"),
-    # Baixar e LEITURA, e por isso GET. Guardar, editar, restaurar e apagar
-    # mudam o que esta escrito, e por isso sao POST — a mesma regra das rotas
-    # dos documentos, e pelo mesmo motivo: decisao que se aplica por GET e
-    # decisao que um pre-carregador de link toma sozinho.
+    # Baixar, LER e a lista sao LEITURA, e por isso GET. Guardar, editar,
+    # restaurar e apagar mudam o que esta escrito, e por isso sao POST — a
+    # mesma regra das rotas dos documentos, e pelo mesmo motivo: decisao que
+    # se aplica por GET e decisao que um pre-carregador de link toma sozinho.
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/baixar$", texto_baixar, name="texto_baixar"),
+    # [LIVRO] 05/09/2026 — a tela de LEITURA, ao lado da editorial de cima
+    # (`texto_do_livro`). Mesmo padrão de regex, com o verbo "ler" no fim.
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/ler$", texto_ler, name="texto_ler"),
     re_path(
         r"^livro/(?P<nome>[a-z0-9-]+)/restaurar$",
         texto_restaurar,
