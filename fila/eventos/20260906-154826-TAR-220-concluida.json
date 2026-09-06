@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-154826-TAR-220-concluida",
+  "tarefa": "TAR-220",
+  "evento": "concluida",
+  "quando": "2026-09-06T15:48:26+00:00",
+  "quem": "sessao-maestro-cursos-2026-09-06",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/1178 MERGED. O bloqueio era o Rito de Contrato, e a maestro o conduziu: PR #1186 (etiqueta contrato) MERGED, com o congelado montado a partir do OpenAPI exportado das duas celulas. Depois do rito, o freeze da celula alunos voltou a bater: contrato/alunos PASS identico ao congelado (997 linhas), seguranca/alunos PASS 10 operacoes. Suite da celula: 200 passed em PostgreSQL real. O INV-ALU-C1 entrou no registro de invariantes (ci/tests/test_guarda_dos_guardas.py, 47 passed). A prosa da porta foi corrigida de CURSO para PRODUTO junto, porque o mantenedor emendou a lei no mesmo dia e prosa de contrato e pedra.",
+  "verificado_em": "2026-09-06"
+}
