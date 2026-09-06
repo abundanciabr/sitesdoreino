@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-181910-TAR-082-bloqueada",
+  "tarefa": "TAR-082",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T18:19:10+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "O aviso no celular esta pronto e no ar desde 31/08/2026 (PRs #709, #715, #721, #723 e #786). Falta a unica prova que nenhum robo consegue dar: voce receber um aviso de teste num celular de verdade. Instale o app pelo navegador, toque no botao que pede permissao de aviso e conte o que chegou.",
+  "espera": "mantenedor"
+}

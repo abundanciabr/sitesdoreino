@@ -62,29 +62,36 @@ CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
 # coluna serve para quem MOVE cartão; ele não move nenhum, ele quer saber o que
 # parou esperando por ele.
 #
-# Cada grupo carrega quatro coisas para a tela:
+# Cada grupo carrega cinco coisas para a tela:
 #   estado     a chave do dado, vocabulário de CONTRATO de `ci/fila.py` — o
 #              template casa por ela, e ela NUNCA muda por motivo de tela;
+#   espera     só nos parados: qual das duas paradas é esta (`ci/fila.py`,
+#              QUEM_DESTRAVA). Ausente nos demais, que casam só pelo estado;
 #   rotulo     a mesma coisa em português de gente, que é o que se lê;
 #   curto      o rótulo do placar de números lá em cima;
 #   recolhida  nasce dentro de um `details` fechado (história, não pendência).
 #
 # A cor da borda diz AÇÃO EXIGIDA, nunca prioridade (consultoria:
-# desenho-kanban-cores-Gemini).
+# desenho-kanban-cores-Gemini). O âmbar existe num grupo só, e agora é verdade:
+# até 06/09/2026 ele pintava as 27 paradas de uma vez, e SEIS delas eram dele.
 COLUNAS = (
     {
         "estado": "bloqueada",
-        "rotulo": "Pararam no meio do caminho",
-        "curto": "paradas",
-        # A frase é NEUTRA de propósito, e isso custou uma correção no mesmo dia
-        # em que a tela nasceu. A primeira versão dizia "é aqui que costuma
-        # haver algo para você decidir" — e das 11 paradas em 03/09/2026,
-        # NENHUMA esperava o mantenedor: todas esperavam outra tarefa da fila.
-        # A fila não guarda "quem esta parada espera", então a tela não tem como
-        # saber, e inventar um palpite aqui seria uma segunda definição de "o
-        # que espera por você" concorrendo com a que é CALCULADA no livro.
-        # Quem responde essa pergunta é a aba "Quem está esperando".
-        "explicacao": "O que cada uma está esperando fica escrito no cartão: umas esperam outra tarefa terminar, outras esperam uma decisão de gente.",
+        "espera": "mantenedor",
+        "rotulo": "Esperando uma decisão sua",
+        "curto": "esperando VOCÊ",
+        # Esta frase pôde ficar afirmativa porque o dado passou a responder.
+        # A versão anterior era neutra por honestidade: dizia "umas esperam
+        # outra tarefa, outras esperam uma decisão de gente" porque a fila não
+        # guardava a diferença, e chutá-la aqui seria uma segunda definição de
+        # "o que espera por você". A cura não foi escrever melhor: foi o evento
+        # `bloqueada` passar a declarar quem destrava.
+        #
+        # Isto NÃO duplica a aba "Quem está esperando" (`caixa.esperando`): lá
+        # são IDEIAS da Caixa de Sugestões esperando assinatura ou triagem, que
+        # vêm da API da Caixa. Aqui são TAREFAS da fila de trabalho. Duas
+        # perguntas diferentes, duas fontes diferentes, nenhum fato em comum.
+        "explicacao": "Nenhum robô tira estas do lugar: elas dependem de uma autorização, uma decisão ou uma prova que só você pode dar. O que fazer em cada uma está escrito no cartão.",
         "cor": "ambar",
         "recolhida": False,
     },
@@ -111,6 +118,18 @@ COLUNAS = (
         "explicacao": "Prontas para trabalho. Ninguém pegou ainda.",
         "cor": "azul",
         "recolhida": False,
+    },
+    {
+        "estado": "bloqueada",
+        "espera": "fila",
+        "rotulo": "Esperando outra tarefa terminar",
+        "curto": "na corrente",
+        "explicacao": "Cada uma depende de uma tarefa que vem antes dela, e se destrava sozinha quando aquela terminar. Nada aqui é seu.",
+        # Recolhida, e é a mudança que mais muda a tela: em 06/09/2026 eram 13
+        # cartões ocupando o topo com o mesmo âmbar de urgência das que
+        # esperavam por ele. Corrente de trabalho é consulta, não notícia.
+        "cor": "roxo",
+        "recolhida": True,
     },
     {
         "estado": "concluída",
@@ -190,6 +209,32 @@ def onde_isso_mexe(toca) -> list[str]:
         if lugar not in lugares:
             lugares.append(lugar)
     return lugares
+
+
+def e_deste_grupo(dados: dict, grupo: dict) -> bool:
+    """A tarefa cai neste grupo da tela?
+
+    Estado igual basta para cinco dos sete grupos. Os dois de PARADAS dividem o
+    mesmo estado (`bloqueada`) e se separam por `espera`, que `ci/fila.py`
+    calcula: `mantenedor` para quem declarou que só o dono destrava, `fila` para
+    quem espera outra tarefa terminar.
+
+    **Falha para o lado de MOSTRAR.** Uma parada cujo `espera` não é nenhum dos
+    dois — dado de um build antigo, campo que um dia mude de nome — vai para o
+    grupo do mantenedor, e não some. Um cartão a mais no bloco dele custa uma
+    leitura; um cartão que desaparece da única tela que responde "em que pé
+    está" custa uma tarefa esquecida, e ninguém nunca ficaria sabendo. É a mesma
+    regra do `ONDE_ISSO_MEXE` acima, pelo mesmo motivo: o que a tela não
+    reconhece ela mostra, nunca engole.
+    """
+    if dados.get("estado") != grupo["estado"]:
+        return False
+    esperado = grupo.get("espera")
+    if esperado is None:
+        return True
+    if esperado == "mantenedor":
+        return dados.get("espera") != "fila"
+    return dados.get("espera") == esperado
 
 
 _SCRIPT_EMBUTIDO = re.compile(
@@ -351,7 +396,7 @@ def robos(request):
                     "quando": ultima_mexida.get(tid),
                 }
                 for tid, dados in estados.items()
-                if dados.get("estado") == grupo["estado"]
+                if e_deste_grupo(dados, grupo)
             ),
             key=lambda c: c["id"],
             # A história vem do fim para o começo: quem abre as concluídas quer
@@ -360,6 +405,14 @@ def robos(request):
             reverse=grupo["recolhida"],
         )
         colunas.append({**grupo, "cartoes": cartoes})
+
+    # Quantas param a vida dele. Sai daqui, e não de uma contagem no template,
+    # porque é a MESMA lista que o primeiro grupo já montou: contar de novo lá
+    # seria a segunda definição de "o que espera por você" dentro da própria
+    # página, e as duas divergiriam no dia em que o casamento mudasse.
+    esperando_voce = next(
+        (len(c["cartoes"]) for c in colunas if c.get("espera") == "mantenedor"), 0
+    )
 
     # A régua (`ci/tempos_esperados.json`): {"medido_em", "esperas": {chave:
     # {rotulo, p50_s, p90_s, amostra}}}. A regra de honestidade dela viaja para
@@ -383,6 +436,7 @@ def robos(request):
         "admin/caixa_robos.html",
         {
             "colunas": colunas,
+            "esperando_voce": esperando_voce,
             "total": len(estados),
             "andamento": relogio,
             "esperas": _resumo_de_esperas(pasta),
