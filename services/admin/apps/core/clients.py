@@ -1,6 +1,7 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
 # Fala SÓ o que está no contrato congelado da identidade
 # (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (Lei 3).
+import datetime as dt
 import logging
 import os
 import time
@@ -1333,6 +1334,29 @@ class MedicaoClient:
             logger.error("medicao: 'tipos' fora do contrato: %r", tipos)
             return self.NAO_RESPONDEU, None
         return self.OK, tipos
+
+    def conquistas(self, de: "dt.date", ate: "dt.date") -> "tuple[str, list | None]":
+        """`countMilestones`: quantas conquistas de cada tipo, por dia.
+
+        SEM filtro de tipo nem de sujeito, e é decisão: a porta devolve todas
+        as linhas de uma vez, e quem chama (a tela das coortes) precisa das
+        seis. Pedir uma por uma seriam seis viagens de rede para montar a mesma
+        tabela, e a resposta sairia costurada de seis instantes diferentes.
+
+        A lista NÃO É ESCOPADA POR SITE, e o contrato diz por quê: a tabela de
+        marcos não guarda o site. Quem mostrar estes números tem de dizer que
+        são da plataforma inteira, em vez de deixar o leitor supor uma escola.
+        """
+        desfecho, corpo = self._pedir(
+            "/marcos/contagens", {"de": de.isoformat(), "ate": ate.isoformat()}
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        linhas = (corpo or {}).get("conquistas")
+        if not isinstance(linhas, list):
+            logger.error("medicao: 'conquistas' fora do contrato: %r", linhas)
+            return self.NAO_RESPONDEU, None
+        return self.OK, linhas
 
     def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
         """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.
