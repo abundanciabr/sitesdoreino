@@ -1,4 +1,4 @@
-"""A porta de MÁQUINA da sala de aula: as onze operações do editor e da sala.
+"""A porta de MÁQUINA da sala de aula: as doze operações do editor e da sala.
 
 POR QUE ELA EXISTE
 ------------------
@@ -26,6 +26,24 @@ O defeito que as novas curam não tinha sintoma: a porta antiga resolve a aula
 pelo SITE, e a sala de aula resolvia o curso com "o primeiro do site". No dia
 em que nascesse um segundo curso, o site inteiro continuaria servindo o
 primeiro, sem erro, sem aviso e sem tela quebrada.
+
+O TÍTULO E O BLOCO PASSARAM A TER POR ONDE ENTRAR (TAR-221, 06/09/2026)
+-----------------------------------------------------------------------
+A tela que cola o sumário do livro gravava as 16 peças de cada encomenda e
+esbarrava em duas frases que não tinham porta: o título da encomenda e o
+título do Boss de cada bloco.
+
+O título saiu da lista dos proibidos, e é o único dos sete que sai. Número,
+ordem, bloco, estado, versão e data de publicação são ESTRUTURA, fatos
+públicos do livro, e a fonte deles é o semeador; o título é OBRA do
+mantenedor, a frase que o cliente diz na encomenda, e a primeira coisa que o
+aluno lê. Estar na mesma lista era o engano: ele parecia estrutura por ser
+curto e por nascer com o esqueleto.
+
+O bloco ganhou operação própria (`putBlock`) em vez de virar campo da aula,
+porque doze blocos servem trinta e quatro encomendas e nenhum deles pertence a
+uma aula em particular. O motivo por extenso está na seção da operação, lá
+embaixo.
 
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
@@ -62,7 +80,7 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from django.db import transaction
 from django.utils import timezone
@@ -73,6 +91,7 @@ from pydantic import ConfigDict, model_validator
 from apps.cursos import enderecos
 from apps.cursos.models import PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
+from apps.cursos.models import Bloco as BlocoModel
 from apps.cursos.models import Curso as CursoModel
 from apps.cursos.models import Instrumento as InstrumentoModel
 from apps.cursos.models import Pausa as PausaModel
@@ -112,9 +131,21 @@ MAIOR_INTEIRO = 2_147_483_647
 
 
 class BlocoSchema(Schema):
+    """O bloco como ele viaja dentro de toda aula: a estrutura do livro
+    (`letra`, `ordem`, `parte`) e o que o mantenedor escreve nele (`nome` e
+    `boss_titulo`, vazios até alguém os escrever por `putBlock`).
+
+    Os dois de obra entraram aqui em 06/09/2026, e é isto que faz `putBlock`
+    dispensar uma operação de leitura própria: quem grava um bloco o lê de
+    volta na primeira aula dele. Gravar sem poder ler de volta foi o defeito
+    que o degrau 1.3b teve de curar nos instrumentos, com um PR a mais.
+    """
+
     letra: str
     ordem: int
     parte: int
+    nome: str
+    boss_titulo: str
 
 
 class AulaDaListaSchema(Schema):
@@ -181,11 +212,26 @@ class InstrumentoSchema(Schema):
 
 
 class AulaParaGravarSchema(Schema):
-    """O corpo de `putLesson`: só o que se edita. Número, ordem, título, bloco,
-    estado, versão e data de publicação não entram, e mandá-los é 422."""
+    """O corpo de `putLesson`: o que se edita, e o título.
+
+    O TÍTULO MUDOU DE LADO EM 06/09/2026 (TAR-221), e é o único dos sete que
+    muda. Número, ordem, bloco, estado, versão e data de publicação continuam
+    fora, e mandá-los é 422: são ESTRUTURA, fatos do livro, e quem os escreve é
+    o semeador. O `titulo_exibido` estava nessa lista por parecer estrutura, e
+    não é: ele é a frase que o cliente diz na encomenda, obra do mantenedor, e
+    a primeira coisa que o aluno lê. Sem porta para ele, a encomenda ficava
+    "Encomenda 22" onde o livro na mão do aluno diz outra coisa.
+
+    ELE É OPCIONAL, E AUSENTE SIGNIFICA NÃO MEXER. O editor do Admin que já
+    está no ar não manda este campo, e um `PUT` dele não pode apagar o título
+    que a outra tela escreveu. Nulo diz o mesmo que ausente, de propósito:
+    apagar título não é gesto que esta porta ofereça, e por isso título vazio
+    é 422.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
+    titulo_exibido: Annotated[str, Field(min_length=1, max_length=CURTO)] | None = None
     pedido: str
     cliente: str = Field(max_length=CURTO)
     instrumento: str | None
@@ -214,6 +260,25 @@ class AulaParaGravarSchema(Schema):
                 f"pausa com ordem repetida: {', '.join(map(str, repetidas))}"
             )
         return self
+
+
+class BlocoParaGravarSchema(Schema):
+    """O corpo de `putBlock`: o nome do bloco e o título do Boss dele.
+
+    Letra, ordem e parte NÃO entram, pelo mesmo motivo que `cartao` não entra
+    em `putInstrument`: são a estrutura do livro, o semeador é a fonte delas, e
+    mandá-las é 422.
+
+    Os dois campos vêm SEMPRE, e vazio é valor válido: é com ele que os doze
+    blocos nascem, e quem digitou um nome errado precisa poder apagá-lo. É a
+    diferença para o título da aula, onde ausente significa não mexer, porque
+    lá existe uma segunda tela gravando o mesmo campo.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    nome: str = Field(max_length=CURTO)
+    boss_titulo: str = Field(max_length=CURTO)
 
 
 class InstrumentoParaGravarSchema(Schema):
@@ -310,16 +375,22 @@ def _instrumento_do_slug(slug: str | None) -> InstrumentoModel | None:
         )
 
 
+def _bloco(bloco: BlocoModel) -> dict[str, Any]:
+    return {
+        "letra": bloco.letra,
+        "ordem": bloco.ordem,
+        "parte": bloco.parte,
+        "nome": bloco.nome,
+        "boss_titulo": bloco.boss_titulo,
+    }
+
+
 def _linha(aula: AulaModel) -> dict[str, Any]:
     return {
         "numero": aula.numero,
         "ordem": aula.ordem,
         "titulo_exibido": aula.titulo_exibido,
-        "bloco": {
-            "letra": aula.bloco.letra,
-            "ordem": aula.bloco.ordem,
-            "parte": aula.bloco.parte,
-        },
+        "bloco": _bloco(aula.bloco),
         "estado": aula.estado,
         "versao": aula.versao,
         "publicada_em": aula.publicada_em,
@@ -368,6 +439,14 @@ def _gravar(aula: AulaModel, payload: AulaParaGravarSchema) -> dict[str, Any]:
     """
     instrumento = _instrumento_do_slug(payload.instrumento)
     with transaction.atomic():
+        # O título só entra na lista de campos gravados quando VEIO no corpo.
+        # É isto que faz "ausente não apaga" ser mecânico e não uma promessa: o
+        # editor do Admin que está no ar não manda o campo, e o `update_fields`
+        # dele continua sem `titulo_exibido`.
+        campos = []
+        if payload.titulo_exibido is not None:
+            aula.titulo_exibido = payload.titulo_exibido
+            campos.append("titulo_exibido")
         aula.pedido = payload.pedido
         aula.cliente = payload.cliente
         aula.instrumento = instrumento
@@ -381,7 +460,8 @@ def _gravar(aula: AulaModel, payload: AulaParaGravarSchema) -> dict[str, Any]:
         # `estado` e `publicada_em` ficam FORA da lista de propósito: é isto que
         # faz "o PUT não publica nem despublica" ser mecânico.
         aula.save(
-            update_fields=[
+            update_fields=campos
+            + [
                 "pedido",
                 "cliente",
                 "instrumento",
@@ -454,9 +534,9 @@ def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
     summary="As aulas do curso de um site, na ordem em que o aluno as encontra",
     description=(
         "A lista que o editor mostra como indice: numero, ordem, titulo\n"
-        "exibido, o bloco (letra, ordem, parte), estado, versao, data de\n"
-        "publicacao, se e Boss e o nivel de Banca. NENHUM texto de peca sai\n"
-        "aqui: e listagem, e o texto vem em `getLesson`.\n"
+        "exibido, o bloco (letra, ordem, parte, nome e titulo do Boss), estado,\n"
+        "versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto\n"
+        "de peca sai aqui: e listagem, e o texto vem em `getLesson`.\n"
         "\n"
         "`site_id` e obrigatorio. Site sem curso responde lista vazia, nao\n"
         "erro: nao ter curso ainda e um estado, nao uma falha.\n"
@@ -508,7 +588,8 @@ def get_site_lesson(request, numero: str, site_id: str):
         "instrumento (slug ou null), minimo, aceito_quando (lista de frases),\n"
         "quiz (lista de {pergunta, resposta_modelo}), video_url, e_boss,\n"
         "banca_nivel (1, 2, 3 ou null), pecas [{tipo, texto}] e pausas\n"
-        "[{ordem, segundo, tipo, pede, campos}].\n"
+        "[{ordem, segundo, tipo, pede, campos}]. Mais o titulo_exibido, que e\n"
+        "OPCIONAL, e a regra dele esta em `putLesson`, palavra por palavra.\n"
         "\n"
         "As pecas e as pausas da aula sao SUBSTITUIDAS pelas do corpo, numa\n"
         "transacao unica: ou entra tudo, ou nao entra nada. A versao sobe 1.\n"
@@ -518,8 +599,9 @@ def get_site_lesson(request, numero: str, site_id: str):
         "422 se: tipo de peca fora do vocabulario, peca repetida, pausa com\n"
         "ordem repetida, item do quiz sem pergunta ou sem resposta_modelo,\n"
         "aceito_quando que nao seja lista de textos, instrumento inexistente,\n"
-        "banca_nivel fora de 1..3, ou qualquer chave que este corpo nao\n"
-        "conheca (numero, estado, versao...). 404 se a aula nao existe.\n"
+        "banca_nivel fora de 1..3, titulo_exibido vazio ou com mais de 120\n"
+        "letras, ou qualquer chave que este corpo nao conheca (numero, estado,\n"
+        "versao...). 404 se a aula nao existe.\n"
         "\n"
         "Devolve a aula como ficou, no mesmo formato de `getSiteLesson`.\n"
         "\n"
@@ -649,9 +731,10 @@ def publish_site_lesson(request, numero: str, site_id: str):
     summary="As aulas de um curso, pelo slug, na ordem em que o aluno as encontra",
     description=(
         "A lista que o editor mostra como indice e que a sala de aula percorre:\n"
-        "numero, ordem, titulo exibido, o bloco (letra, ordem, parte), estado,\n"
-        "versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto\n"
-        "de peca sai aqui: e listagem, e o texto vem em `getLesson`.\n"
+        "numero, ordem, titulo exibido, o bloco (letra, ordem, parte, nome e\n"
+        "titulo do Boss), estado, versao, data de publicacao, se e Boss e o\n"
+        "nivel de Banca. NENHUM texto de peca sai aqui: e listagem, e o texto\n"
+        "vem em `getLesson`.\n"
         "\n"
         "`curso` e o SLUG, resolvido pelo par site+slug, que e a unicidade do\n"
         "banco. `site_id` continua obrigatorio (uma fabrica, N lojas). Slug que\n"
@@ -715,6 +798,21 @@ def get_lesson(
         "sobe 1; estado e data de publicacao nao mudam. E o mesmo codigo, com a\n"
         "aula resolvida pelo curso.\n"
         "\n"
+        "O TITULO DA ENCOMENDA ENTRA POR AQUI, e ele e o unico dos sete campos\n"
+        "de fora que passou a entrar. Numero, ordem, bloco, estado, versao e\n"
+        "data de publicacao continuam sendo 422: sao ESTRUTURA, fatos publicos\n"
+        "do livro, e quem os escreve e a instalacao do curso. O titulo e OBRA:\n"
+        "e a frase que o cliente diz na encomenda e a primeira coisa que o\n"
+        "aluno le, e sem porta para ele a aula ficava com o nome de esqueleto\n"
+        "(`Encomenda 22`) enquanto o livro na mao do aluno dizia outra coisa.\n"
+        "\n"
+        "`titulo_exibido` e OPCIONAL, e ausente significa NAO MEXER, nunca\n"
+        "esvaziar: ha mais de uma tela gravando esta aula, e a que nao conhece\n"
+        "o campo nao pode apagar o que a outra escreveu. Nulo diz o mesmo que\n"
+        "ausente. Titulo vazio e 422, porque apagar o titulo nao e gesto que\n"
+        "esta porta ofereca: encomenda sem nome nao e um estado do sistema.\n"
+        "O NOME DO BLOCO e o TITULO DO BOSS nao entram aqui; sao `putBlock`.\n"
+        "\n"
         "`parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o\n"
         "bloco da aula recusa com 404 ANTES de gravar qualquer coisa, e nada e\n"
         "escrito. 404 tambem se o curso ou a aula nao existem.\n"
@@ -753,3 +851,72 @@ def publish_lesson(
     request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
 ):
     return _publicar(_aula_do_curso(_curso(site_id, curso), numero, parte))
+
+
+# ---------------------------------------------------------------------------
+# O BLOCO, QUE NÃO É DE NENHUMA AULA EM PARTICULAR (TAR-221, 06/09/2026)
+# ---------------------------------------------------------------------------
+# São doze linhas por curso, e o bloco A é o mesmo para a E00, a E01 e a E02.
+# Por isso `nome` e `boss_titulo` não entraram em `putLesson`: se entrassem,
+# gravar a E00 e depois a E01 escreveria o nome do bloco duas vezes, a última
+# ganharia, e um formulário aberto com o nome antigo apagaria em silêncio o que
+# a outra tela acabara de escrever. E um bloco cujas aulas ninguém tivesse
+# aberto não teria como ser nomeado.
+#
+# Só há a forma que sabe de CURSO: as quatro operações por site existem porque
+# o editor no ar as chama, e nada no ar chama bloco. Um endereço por site ainda
+# teria de escolher entre os cursos do site, que é justamente o defeito que a
+# TAR-203 curou.
+
+
+@router.put(
+    "/cursos/{curso}/blocos/{letra}",
+    response=BlocoSchema,
+    operation_id="putBlock",
+    summary="Grava o nome de um bloco e o titulo do Boss dele",
+    description=(
+        "O bloco tem NOME e TITULO DO BOSS, e os dois sao obra do mantenedor:\n"
+        "nascem vazios e so entram por aqui. O corpo leva os dois SEMPRE, e\n"
+        "texto vazio e valor valido, porque quem digitou errado precisa poder\n"
+        "apagar. Nao ha versao a subir: o bloco nao e versionado.\n"
+        "\n"
+        "E OPERACAO PROPRIA, e nao campo de `putLesson`, porque o bloco nao\n"
+        "pertence a nenhuma aula: sao doze blocos para trinta e quatro\n"
+        "encomendas, e tres aulas dividem o bloco A. Se o nome viajasse no\n"
+        "corpo da aula, gravar duas aulas do mesmo bloco escreveria o nome duas\n"
+        "vezes, a ultima ganharia, e um formulario aberto com o nome antigo\n"
+        "apagaria o que a outra tela escreveu. Um bloco cujas aulas ninguem\n"
+        "abriu tambem nao teria como ser nomeado.\n"
+        "\n"
+        "`letra` e a do bloco, de A a L, e `curso` e o SLUG, resolvido pelo par\n"
+        "site+slug como nas quatro operacoes de aula. Letra, ordem e parte NAO\n"
+        "entram no corpo: sao a estrutura do livro, o semeador e a fonte delas,\n"
+        "e manda-las e 422, do mesmo jeito que `cartao` em `putInstrument`.\n"
+        "\n"
+        "404 se o curso nao existe naquele site, ou se aquela letra nao existe\n"
+        "naquele curso. Devolve o bloco como ficou, no mesmo formato em que ele\n"
+        "ja viaja dentro de cada aula: e por ai que quem grava le de volta o\n"
+        "que gravou, sem uma operacao de leitura so para isso."
+    ),
+)
+def put_block(
+    request, curso: str, letra: str, site_id: str, payload: BlocoParaGravarSchema
+):
+    encontrado = _curso(site_id, curso)
+    try:
+        bloco = BlocoModel.objects.get(curso=encontrado, letra=letra)
+    except BlocoModel.DoesNotExist:
+        letras = ", ".join(
+            BlocoModel.objects.filter(curso=encontrado)
+            .order_by("ordem")
+            .values_list("letra", flat=True)
+        )
+        raise HttpError(
+            404,
+            f"o curso '{encontrado.slug}' não tem o bloco '{letra}'; "
+            f"as letras dele são: {letras}",
+        )
+    bloco.nome = payload.nome
+    bloco.boss_titulo = payload.boss_titulo
+    bloco.save(update_fields=["nome", "boss_titulo"])
+    return _bloco(bloco)

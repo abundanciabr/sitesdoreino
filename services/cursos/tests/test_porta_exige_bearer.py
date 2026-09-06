@@ -8,7 +8,7 @@ mantenedor) passa a responder 200 para o mundo, sem mudar uma linha de
 `infra/` e sem nada no roteador para segurar. É por isso que este arquivo é o
 guarda, e não a topologia.
 
-Três coisas ficam provadas, para cada uma das onze operações: sem token é 401,
+Três coisas ficam provadas, para cada uma das doze operações: sem token é 401,
 com token errado é 401, e com o conjunto de tokens VAZIO (o env ausente) é 401
 mesmo com o token certo. E uma quarta, sobre o próprio guarda: a lista
 percorrida aqui é a lista INTEIRA da porta, medida na fonte; uma operação nova
@@ -50,13 +50,14 @@ CORPO_DO_INSTRUMENTO = {
     "secao_do_padrao": "",
     "descritores": {},
 }
+CORPO_DO_BLOCO = {"nome": "O Diorama", "boss_titulo": "O Diorama"}
 
-# As onze, uma a uma: (operationId, método, caminho, corpo). Os caminhos são os
+# As doze, uma a uma: (operationId, método, caminho, corpo). Os caminhos são os
 # reais, com `site_id`, curso, parte e corpo válido, para que o 401 prove o
 # cadeado e nunca um 404 ou 422 disfarçado. As quatro que sabem de curso entram
 # aqui pelo mesmo motivo que as outras: quem passa pela borda pública é a
 # ROTA, e uma rota nova sem cadeado abre o texto das aulas para o mundo.
-AS_ONZE = [
+AS_DOZE = [
     ("listSiteLessons", "get", f"/aulas?site_id={SITE}", None),
     ("getSiteLesson", "get", f"/aulas/E00?site_id={SITE}", None),
     ("putSiteLesson", "put", f"/aulas/E00?site_id={SITE}", CORPO_DA_AULA),
@@ -83,8 +84,14 @@ AS_ONZE = [
     ("listInstruments", "get", "/instrumentos", None),
     ("getInstrument", "get", "/instrumentos/studs", None),
     ("putInstrument", "put", "/instrumentos/studs", CORPO_DO_INSTRUMENTO),
+    (
+        "putBlock",
+        "put",
+        f"/cursos/profissional/blocos/A?site_id={SITE}",
+        CORPO_DO_BLOCO,
+    ),
 ]
-IDS = [operacao for operacao, *_ in AS_ONZE]
+IDS = [operacao for operacao, *_ in AS_DOZE]
 
 
 @pytest.fixture(autouse=True)
@@ -105,18 +112,18 @@ def chamar(metodo: str, caminho: str, corpo=None, token: str | None = TOKEN):
     )
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_ONZE, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_DOZE, ids=IDS)
 def test_sem_token_e_401(operacao, metodo, caminho, corpo):
     assert chamar(metodo, caminho, corpo, token=None).status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_ONZE, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_DOZE, ids=IDS)
 def test_token_errado_e_401(operacao, metodo, caminho, corpo):
     resposta = chamar(metodo, caminho, corpo, token="token-de-outra-celula")
     assert resposta.status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_ONZE, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_DOZE, ids=IDS)
 def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     settings, operacao, metodo, caminho, corpo
 ):
@@ -129,9 +136,9 @@ def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     assert chamar(metodo, caminho, corpo).status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_ONZE, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_DOZE, ids=IDS)
 def test_o_token_certo_abre_a_porta(esqueleto, operacao, metodo, caminho, corpo):
-    """O cenário tem dente: com o esqueleto semeado e o token do par, as onze
+    """O cenário tem dente: com o esqueleto semeado e o token do par, as doze
     respondem 200. Sem isto, um caminho digitado errado daria 404 sem token e
     401 com token errado, e os três guardas acima ficariam verdes medindo uma
     rota que não existe."""
