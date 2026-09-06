@@ -613,6 +613,13 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
                             ],
                             "description": "OBRIGATORIO quando decisao=recusar (422 sem ele).",
                         },
+                        "product_id": {
+                            "type": [
+                                "string",
+                                "null",
+                            ],
+                            "description": "O curso em que esta pessoa esta matriculada. OBRIGATORIO quando decisao=liberar (422 sem ele), e ignorado na recusa. E o id do produto no catalogo, que e o dono da lista de cursos: esta celula guarda a referencia, nunca uma copia da lista. [INV-ALU-C1], DECISAO-cursos-matriculas-e-alunos.md.",
+                        },
                     },
                 },
             },
@@ -629,7 +636,7 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
             "description": "Esta linha ja foi decidida — decisao nao se refaz",
         },
         "422": {
-            "description": "Payload invalido, ou recusa sem motivo",
+            "description": "Payload invalido, recusa sem motivo, ou liberacao sem curso",
         },
     },
 }
@@ -638,7 +645,7 @@ DESCRICAO_CRIAR_PRE_MATRICULA = 'A fila de liberacao (DECISAO-fila-de-liberacao.
 
 DESCRICAO_LISTAR_PRE_MATRICULAS = "A UNICA porta que devolve o `whatsapp` (§5 da lei). `esperando_ha_dias`\nvem calculado: uma enxurrada de spam nao pode esconder o aluno de\nverdade que espera ha uma semana.\n"
 
-DESCRICAO_DECIDIR_PRE_MATRICULA = '`liberar` muda o status para `ativa` — e a partir daí a pessoa entra na\nCaixa SEM nenhuma outra mudanca, porque a Caixa ja pergunta "tem\nmatricula que vale?".\n\n`recusar` exige `motivo`: sem ele a pessoa espera para sempre e o\nmantenedor nao consegue distinguir "ninguem olhou" de "foi negado".\n'
+DESCRICAO_DECIDIR_PRE_MATRICULA = '`liberar` muda o status para `ativa` — e a partir daí a pessoa entra na\nCaixa SEM nenhuma outra mudanca, porque a Caixa ja pergunta "tem\nmatricula que vale?".\n\n`liberar` exige `product_id`, e essa e a mudanca de 06/09/2026\n(DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]): ninguem e aluno\ndo site, todo mundo e aluno de UM curso, e a matricula e o que diz qual.\nSem o curso a resposta e 422, e nada muda. NAO existe valor padrao: um\npadrao faria a escolha errada parecer escolha, e o erro so apareceria\nquando o aluno abrisse a sala e encontrasse o curso errado.\n\nA lista de cursos e do `catalogo`, e esta celula guarda a REFERENCIA e\nnunca a copia. Duas listas de cursos divergiriam no primeiro curso novo.\n\n`recusar` exige `motivo`: sem ele a pessoa espera para sempre e o\nmantenedor nao consegue distinguir "ninguem olhou" de "foi negado". E nao\npede curso: ninguem vira aluno de nada ao ser recusado.\n'
 
 
 def _payload_valido(corpo, obrigatorias, opcionais):
@@ -832,7 +839,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
     payload, erro = _payload_valido(
         request.body,
         obrigatorias={"decisao", "decidido_por"},
-        opcionais={"motivo"},
+        opcionais={"motivo", "product_id"},
     )
     if erro is not None:
         return erro
@@ -840,6 +847,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
     decisao = payload["decisao"]
     decidido_por = str(payload["decidido_por"]).strip()
     motivo = str(payload.get("motivo") or "").strip()
+    product_id = str(payload.get("product_id") or "").strip()
 
     if decisao not in ("liberar", "recusar"):
         return JsonResponse(
@@ -857,8 +865,23 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
         decisao=decisao,
         decidido_por=decidido_por,
         motivo=motivo,
+        product_id=product_id,
         destinatario_id=_para_quem_avisar(id),
     )
+    if resultado == "sem-curso":
+        # [INV-ALU-C1] A frase diz o que faltou E o que fazer: quem lê este 422
+        # é a tela de liberar do painel, e o mantenedor precisa entender o que
+        # aconteceu sem abrir código. Quem recusa é `decidir_na_fila`, não esta
+        # porta — aqui só se traduz a recusa em HTTP.
+        return JsonResponse(
+            {
+                "detail": (
+                    "liberar exige dizer o curso: escolha em qual curso esta "
+                    "pessoa está matriculada e envie o campo product_id"
+                )
+            },
+            status=422,
+        )
     if resultado == "nao-encontrada":
         return JsonResponse({"detail": "não há linha na fila com este id"}, status=404)
     if resultado == "ja-decidida":

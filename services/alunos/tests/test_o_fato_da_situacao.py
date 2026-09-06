@@ -35,6 +35,12 @@ from apps.matriculas.services import (
 
 pytestmark = pytest.mark.django_db
 
+# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o curso
+# (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md`). Aqui vale qualquer
+# texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
+# a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
+CURSO = "produto-do-curso-1"
+
 CONTRATO = (
     Path(__file__).resolve().parents[3]
     / "contracts"
@@ -109,7 +115,10 @@ def test_quem_pede_entrada_anota_o_fato():
 def test_liberar_anota_o_fato():
     linha = _na_fila()
     decidir_na_fila(
-        id_da_linha=str(linha.pk), decisao="liberar", decidido_por="idt-do-mantenedor"
+        id_da_linha=str(linha.pk),
+        decisao="liberar",
+        decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
     )
     _, fato = _fatos()
     assert fato.payload["situacao_anterior"] == Matricula.STATUS_AGUARDANDO
@@ -194,7 +203,10 @@ def test_o_envelope_casa_com_o_contrato_congelado():
 
     linha = _na_fila()
     decidir_na_fila(
-        id_da_linha=str(linha.pk), decisao="liberar", decidido_por="idt-do-mantenedor"
+        id_da_linha=str(linha.pk),
+        decisao="liberar",
+        decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
     )
     schema = json.loads(CONTRATO.read_text(encoding="utf-8"))
     fatos = _fatos()
@@ -222,7 +234,10 @@ def test_virou_aluno_em_e_nulo_enquanto_ninguem_decidiu_e_preenche_ao_liberar():
     assert nascimento.payload["virou_aluno_em"] is None
 
     decidir_na_fila(
-        id_da_linha=str(linha.pk), decisao="liberar", decidido_por="idt-do-mantenedor"
+        id_da_linha=str(linha.pk),
+        decisao="liberar",
+        decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
     )
     _, liberacao = _fatos()
     assert liberacao.payload["virou_aluno_em"] is not None
@@ -236,6 +251,9 @@ def test_o_ator_vai_no_envelope_e_e_nulo_quando_ninguem_apertou_botao():
 
     linha = _na_fila()
     decidir_na_fila(
-        id_da_linha=str(linha.pk), decisao="liberar", decidido_por="idt-do-mantenedor"
+        id_da_linha=str(linha.pk),
+        decisao="liberar",
+        decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
     )
     assert _fatos()[-1].envelope_extra["ator_id"] == "idt-do-mantenedor"

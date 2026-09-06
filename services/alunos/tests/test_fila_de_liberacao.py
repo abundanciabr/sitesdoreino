@@ -25,6 +25,12 @@ from apps.matriculas.services import (
 
 PRE_MATRICULAS = "/api/alunos/pre-matriculas"
 
+# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o curso
+# (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md`). Aqui vale qualquer
+# texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
+# a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
+CURSO = "produto-do-curso-1"
+
 
 @pytest.fixture
 def token_valido(settings):
@@ -115,7 +121,7 @@ def test_liberar_abre_a_caixa_sem_mais_nenhuma_mudanca(client, auth):
     decisao = post(
         client,
         f"{PRE_MATRICULAS}/{linha.pk}/decisao",
-        {"decisao": "liberar", "decidido_por": "admin-1"},
+        {"decisao": "liberar", "decidido_por": "admin-1", "product_id": CURSO},
         auth,
     )
     assert decisao.status_code == 200
@@ -168,7 +174,7 @@ def test_whatsapp_nunca_sai_por_get_matriculas(client, auth):
     post(
         client,
         f"{PRE_MATRICULAS}/{linha.pk}/decisao",
-        {"decisao": "liberar", "decidido_por": "admin-1"},
+        {"decisao": "liberar", "decidido_por": "admin-1", "product_id": CURSO},
         auth,
     )
 
@@ -524,7 +530,11 @@ def test_liberar_grava_a_auditoria(client, auth):
     resposta = post(
         client,
         f"{PRE_MATRICULAS}/{linha.pk}/decisao",
-        {"decisao": "liberar", "decidido_por": "id-de-plataforma-do-admin"},
+        {
+            "decisao": "liberar",
+            "decidido_por": "id-de-plataforma-do-admin",
+            "product_id": CURSO,
+        },
         auth,
     )
     assert resposta.status_code == 200
@@ -558,7 +568,7 @@ def test_recusar_sem_motivo_e_422(client, auth):
 def test_decisao_nao_se_refaz(client, auth):
     pedir_entrada(client, auth)
     linha = Matricula.objects.get()
-    corpo = {"decisao": "liberar", "decidido_por": "admin-1"}
+    corpo = {"decisao": "liberar", "decidido_por": "admin-1", "product_id": CURSO}
 
     assert (
         post(client, f"{PRE_MATRICULAS}/{linha.pk}/decisao", corpo, auth).status_code
@@ -596,10 +606,18 @@ def test_decisao_sobre_matricula_paga_e_404(client, auth):
 @pytest.mark.django_db
 @pytest.mark.parametrize("id_ruim", ["99999", "nao-e-numero"])
 def test_decisao_em_id_inexistente_e_404(client, auth, id_ruim):
+    """O payload vai COMPLETO de propósito, curso incluído.
+
+    Pedido incompleto responde 422 antes de a linha ser procurada ([INV-ALU-C1],
+    e é a mesma ordem que a conferência de `motivo` já seguia). Sem o curso
+    aqui, este teste passaria a medir "payload incompleto é recusado" em vez de
+    "id inexistente é 404", e o guarda da porta que não alcança quem não está na
+    fila morreria em silêncio.
+    """
     resposta = post(
         client,
         f"{PRE_MATRICULAS}/{id_ruim}/decisao",
-        {"decisao": "liberar", "decidido_por": "admin-1"},
+        {"decisao": "liberar", "decidido_por": "admin-1", "product_id": CURSO},
         auth,
     )
     assert resposta.status_code == 404

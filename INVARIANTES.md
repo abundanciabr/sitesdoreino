@@ -789,6 +789,46 @@ primeira oportunidade de violá-la.
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
 - **Célula dona:** encomendas
 
+### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Curso
+- **O quê:** liberar alguém da sala de espera EXIGE dizer em qual curso a pessoa
+  está matriculada. `POST /pre-matriculas/{id}/decisao` com `decisao=liberar` e
+  sem `product_id` responde 422, com frase em português que diz o que faltou e o
+  que fazer, e **nada muda**: a linha continua `aguardando`. Não existe valor
+  padrão. Com o curso, ele é gravado na MESMA transação e no mesmo `save` que
+  põe a linha em `ativa`. `recusar` não pede curso, e curso mandado junto de uma
+  recusa é ignorado: quem foi recusado não é aluno de nada. E a outra metade,
+  que é o que impede a duplicação: **esta célula não tem tabela de cursos** — a
+  lista é do `catalogo`, e a matrícula guarda a referência (`product_id`).
+- **Por quê:** até 6 de setembro de 2026 ser aluno era binário, e enquanto
+  houvesse um curso só isso funcionava por coincidência. No dia do segundo curso,
+  **todo aluno veria o primeiro**, sem erro, sem aviso e sem nenhuma tela
+  quebrada, porque a única resposta possível para "de qual curso é esta pessoa?"
+  seria um palpite. Um valor padrão seria pior do que não ter lista: faria a
+  escolha errada parecer escolha, e ninguém veria o erro até o aluno abrir a sala
+  e encontrar o curso errado. Duas listas de cursos (uma no `catalogo`, outra
+  aqui) divergiriam no primeiro curso novo. Lei:
+  `docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md` §6, §7 e §8.
+- **Teste-Guarda:**
+  `services/alunos/tests/test_inv_alu_c1_a_matricula_diz_o_curso.py` — a recusa
+  com frase em português e efeito zero, o curso em branco recusado igual, a
+  metade positiva (sem a qual "recusar tudo" satisfaria o invariante), a
+  varredura universal com a prova contra verdade vazia, a recusa que não grava
+  curso, o inventário de modelos por igualdade exata, e o acerto das matrículas
+  que já existiam, sempre fabricando primeiro o estado de produção (linha que dá
+  acesso com `product_id` vazio, inclusive pelo caminho real do pagamento).
+  Provado por mutação em 06/09/2026.
+- **O que este invariante NÃO alcança, e está dito na cara:** a matrícula que
+  nasce do EVENTO. `pagamento.aprovado.v1` não carrega `product_id`
+  (`contracts/eventos/pagamento.aprovado.v1.json`), então
+  `apps/matriculas/handlers.py` grava `""` e essa linha nasce `ativa` sem curso
+  sem passar pela decisão da fila. **A lei §3 supõe o contrário** ("quem entra
+  pela compra já informa o curso"), e a suposição vale só para `POST /matriculas`,
+  que é o reprocesso manual. Fechar a metade que falta é Rito de Contrato no
+  evento, e o evento é de outra célula. Enquanto ele não acontece, quem cura o
+  passado é `apontar_o_curso_das_matriculas`, e ele precisa ser rodado de novo
+  depois de cada compra nova.
+- **Célula dona:** alunos
+
 ---
 
 ## Invariantes da própria CI

@@ -52,6 +52,12 @@ from apps.matriculas.services import (
 
 pytestmark = pytest.mark.django_db
 
+# [INV-ALU-C1] Desde 06/09/2026 liberar exige dizer o curso
+# (`docs/decisoes/DECISAO-cursos-matriculas-e-alunos.md`). Aqui vale qualquer
+# texto opaco: o valor de verdade e um id de produto do `catalogo`, e quem prova
+# a exigencia e `tests/test_inv_alu_c1_a_matricula_diz_o_curso.py`.
+CURSO = "produto-do-curso-1"
+
 IDENTIDADE = "http://identidade:8000/interno"
 PESSOA = "quem.espera@exemplo.test"
 ID_DA_PLATAFORMA = "idt-opaco-abc123"
@@ -124,6 +130,7 @@ def test_liberar_alguem_da_fila_escreve_a_carta():
         id_da_linha=str(linha.pk),
         decisao="liberar",
         decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
         destinatario_id=_para_quem_avisar(str(linha.pk)),
     )
 
@@ -208,6 +215,7 @@ def test_a_identidade_fora_do_ar_libera_do_mesmo_jeito_e_nao_escreve_carta():
         id_da_linha=str(linha.pk),
         decisao="liberar",
         decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
         destinatario_id=_para_quem_avisar(str(linha.pk)),
     )
 
@@ -229,6 +237,7 @@ def test_quem_nunca_entrou_com_o_google_e_liberado_sem_carta():
         id_da_linha=str(linha.pk),
         decisao="liberar",
         decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
         destinatario_id=_para_quem_avisar(str(linha.pk)),
     )
 
@@ -252,6 +261,7 @@ def test_sem_o_par_provisionado_nao_ha_carta_nem_salto_de_rede(monkeypatch):
         id_da_linha=str(linha.pk),
         decisao="liberar",
         decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
         destinatario_id="",
     )
     assert _cartas() == []
@@ -420,6 +430,7 @@ def test_a_carta_nao_leva_nome_email_nem_telefone():
         id_da_linha=str(linha.pk),
         decisao="liberar",
         decidido_por="idt-do-mantenedor",
+        product_id=CURSO,
         destinatario_id=_para_quem_avisar(str(linha.pk)),
     )
 
