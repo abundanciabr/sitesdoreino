@@ -60,6 +60,8 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
     recortar,
 )
+import fila  # noqa: E402
+import telemetria  # noqa: E402
 from divida_do_livro import (  # noqa: E402
     EMBARCADO,
     ISENTO,
@@ -922,6 +924,106 @@ def pedir_pouso(numero: int) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# A SOMBRA DO EVENTO DA FILA (06/09/2026) — a porta vê o que gravaria.
+#
+# A regra e o motivo de ela nascer em sombra estão em `ci/fila.py`, na seção
+# "O EVENTO 'CONCLUÍDA' PELA PORTA DO POUSO". Aqui fica só a fiação: depois do
+# merge CONFIRMADO (nunca do exit do comando que o disparou), a porta lê o
+# diff do PR, pergunta à fila o que gravaria, IMPRIME, e mede.
+#
+# Fail-open de ponta a ponta, ao contrário do resto deste portão: a sombra
+# roda depois de o merge já ter acontecido, e uma exceção aqui transformaria
+# um pouso bem-sucedido em ERROR. Muralha na dúvida recusa; sombra na dúvida
+# cala.
+# ---------------------------------------------------------------------------
+
+MARCA_DA_SOMBRA = "🌓 SOMBRA (evento da fila pela porta)"
+
+
+def _diff_do_pr(raiz: Path, numero: int) -> list[dict[str, Any]]:
+    return json.loads(
+        _gh(
+            ["api", f"repos/{{owner}}/{{repo}}/pulls/{numero}/files?per_page=100"],
+            raiz,
+            f"ler o diff do PR #{numero} para a sombra do evento da fila",
+        )
+    )
+
+
+def sombra_do_evento_da_fila(
+    raiz: Path, pr: dict[str, Any], sha_do_merge: str
+) -> list[dict]:
+    numero = int(pr.get("number") or 0)
+    titulo = str(pr.get("title") or "")
+    corpo = str(pr.get("body") or "")
+    ramo = str(pr.get("headRefName") or "")
+    citadas = fila.tarefas_citadas(f"{titulo}\n{corpo}\n{ramo}")
+    if not citadas:
+        return []  # PR sem tarefa citada: silêncio total, sem nem consultar
+    try:
+        try:
+            remessas = _diff_do_pr(raiz, numero)
+        except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
+            achados = [
+                {
+                    "tarefa": tid,
+                    "desfecho": fila.SOMBRA_SILENCIO,
+                    "motivo": f"não consegui ler o diff do PR ({erro})",
+                    "evento": None,
+                }
+                for tid in dict.fromkeys(citadas)
+            ]
+        else:
+            achados = fila.evento_de_conclusao_em_sombra(
+                raiz,
+                numero=numero,
+                titulo=titulo,
+                corpo=corpo,
+                ramo=ramo,
+                url=str(pr.get("url") or ""),
+                sha_do_merge=sha_do_merge,
+                arquivos_do_diff=remessas,
+            )
+        for achado in achados:
+            _dizer_a_sombra(numero, achado)
+            telemetria.registrar(
+                "evento_da_fila_pela_porta",
+                {
+                    "modo": "sombra",
+                    "pr": numero,
+                    "tarefa": achado["tarefa"],
+                    "desfecho": achado["desfecho"],
+                    "motivo": achado["motivo"],
+                    "arquivo": (achado.get("evento") or {}).get("arquivo", ""),
+                },
+                cwd=str(raiz),
+                sessao=os.environ.get("GITHUB_RUN_ID") or "",
+            )
+        return achados
+    except Exception as erro:  # noqa: BLE001 — sombra na dúvida cala
+        print(f"{MARCA_DA_SOMBRA}: não mediu ({erro.__class__.__name__}: {erro}).")
+        return []
+
+
+def _dizer_a_sombra(numero: int, achado: dict) -> None:
+    tarefa = achado["tarefa"]
+    if achado["desfecho"] == fila.SOMBRA_GERARIA:
+        evento = achado["evento"]
+        print(
+            f"\n{MARCA_DA_SOMBRA}: {tarefa}\n"
+            f"   sombra: eu teria gravado fila/eventos/{evento['arquivo']}.json\n"
+            + json.dumps(evento, ensure_ascii=False, indent=2)
+            + "\n   Nada foi gravado: esta regra nasceu em sombra "
+            "(ci/fila.py, o porquê e o que gradua)."
+        )
+        return
+    if achado["desfecho"] == fila.SOMBRA_JA_EXISTE:
+        print(f"{MARCA_DA_SOMBRA}: {tarefa} já existe, nada a fazer.")
+        return
+    print(f"{MARCA_DA_SOMBRA}: {tarefa} sem evento, {achado['motivo']}.")
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(
@@ -1088,6 +1190,7 @@ def main(argv: list[str] | None = None) -> int:
     quem = (estado_final.get("mergedBy") or {}).get("login", "?")
     sha = (estado_final.get("mergeCommit") or {}).get("oid") or "?"
     print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
+    sombra_do_evento_da_fila(raiz, pr, sha)
     print(
         "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
         "(CLAUDE.md); e acrescente o registro do que aconteceu em "

@@ -16,6 +16,7 @@ essas duas metades precisam ser lidas na mesma tela.
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -174,6 +175,151 @@ def test_cala_fora_de_qualquer_repo(casa, tmp_path: Path):
         encoding="utf-8", timeout=60,
     )
     assert r.returncode == 0
+
+
+# ---------- o segundo olho: o número do registro, em SOMBRA ----------
+#
+# Ensinar não bastou: em 06/09/2026, DEPOIS de a lição do caminho e o guarda de
+# commit pousarem, quatro registros nasceram com número repetido (031, 032, 052
+# e 055). Agora o gancho CONFERE o recibo do almoxarife, e por enquanto só fala:
+# sombra mede a precisão antes de tijolar a escrituração de toda sessão.
+
+REGISTRO = "painel/registros/20260906-052-o-que-aconteceu.js"
+
+
+def escrever_recibo(raiz: Path, numero="052", dia="20260906", bancada=None,
+                    superficie="registro", texto=None):
+    """Um recibo de alocação, como `ci/reservar.py` o deixa no caderninho."""
+    pasta = raiz / ".git" / "telemetria-dos-robos"
+    pasta.mkdir(parents=True, exist_ok=True)
+    linha = texto if texto is not None else json.dumps(
+        {
+            "quando": "2026-09-06T10:00:00+0000",
+            "evento": "numero_reservado",
+            "sessao": "",
+            "superficie": superficie,
+            "numero": numero,
+            "dia": dia,
+            "bancada": os.path.normcase(str(Path(bancada or raiz).resolve())),
+        },
+        ensure_ascii=False,
+    )
+    with (pasta / "almoxarife.jsonl").open("a", encoding="utf-8") as saida:
+        saida.write(linha + "\n")
+
+
+def calar_a_licao(raiz: Path):
+    """Consome a lição do caminho, para sobrar só a sombra na tela."""
+    gravar(raiz, "painel/registros/consome-a-licao.js")
+
+
+def caderninho(raiz: Path) -> list[dict]:
+    linhas = []
+    for arquivo in (raiz / ".git" / "telemetria-dos-robos").glob("*.jsonl"):
+        for linha in arquivo.read_text(encoding="utf-8").splitlines():
+            if linha.strip():
+                try:
+                    linhas.append(json.loads(linha))
+                except ValueError:
+                    continue
+    return linhas
+
+
+def test_sombra_avisa_o_numero_que_ninguem_pediu(casa):
+    escrever_recibo(casa, numero="001")  # a casa já conhece o almoxarife
+    calar_a_licao(casa)
+    r = gravar(casa, REGISTRO)
+    assert r.returncode == 0, "sombra NÃO recusa: ela mede e deixa passar"
+    assert "SOMBRA" in r.stderr
+    assert "20260906-052" in r.stderr
+    assert "ci/reservar.py numero registro" in r.stderr
+
+
+def test_sombra_grava_o_disparo_para_o_termometro(casa):
+    """O disparo entra na MESMA telemetria da muralha em sombra, ou a promoção
+    da regra nunca teria número para se apoiar."""
+    escrever_recibo(casa, numero="001")
+    calar_a_licao(casa)
+    gravar(casa, REGISTRO)
+    disparos = [l for l in caderninho(casa) if l.get("evento") == "regra_disparou"]
+    assert len(disparos) == 1
+    assert disparos[0]["armadilha"] == "179"
+    assert disparos[0]["modo"] == "sombra"
+
+
+def test_numero_com_recibo_desta_bancada_nao_diz_nada(casa):
+    escrever_recibo(casa, numero="052")
+    calar_a_licao(casa)
+    r = gravar(casa, REGISTRO)
+    assert r.returncode == 0 and not r.stderr.strip()
+
+
+def test_recibo_de_outra_bancada_nao_serve(casa, tmp_path: Path):
+    """O caderninho é comum a todos os worktrees da casa: sem a bancada, a
+    reserva da sessão vizinha calaria a sombra da sessão que colidiu."""
+    escrever_recibo(casa, numero="052", bancada=tmp_path / "outra-bancada")
+    calar_a_licao(casa)
+    assert "SOMBRA" in gravar(casa, REGISTRO).stderr
+
+
+def test_recibo_de_outro_dia_nao_serve(casa):
+    escrever_recibo(casa, numero="052", dia="20260905")
+    calar_a_licao(casa)
+    assert "SOMBRA" in gravar(casa, REGISTRO).stderr
+
+
+def test_recibo_de_outra_superficie_nao_serve(casa):
+    escrever_recibo(casa, numero="052", superficie="armadilha")
+    calar_a_licao(casa)
+    assert "SOMBRA" in gravar(casa, REGISTRO).stderr
+
+
+def test_sombra_fala_uma_vez_por_arquivo_na_mesma_sessao(casa):
+    escrever_recibo(casa, numero="001")
+    calar_a_licao(casa)
+    assert "SOMBRA" in gravar(casa, REGISTRO).stderr
+    segunda = gravar(casa, REGISTRO)
+    assert segunda.returncode == 0 and not segunda.stderr.strip()
+
+
+def test_arquivo_fora_dos_registros_nao_muda_nada(casa):
+    escrever_recibo(casa, numero="001")
+    r = gravar(casa, "fila/tarefas/999-x.json")
+    assert r.returncode == 2
+    assert "SOMBRA" not in r.stderr
+    assert "arquivo de tarefa não muda" in r.stderr
+
+
+def test_o_mesmo_nome_em_outra_pasta_nao_diz_nada(casa):
+    """A sombra é do LIVRO, não do molde do nome: uma cópia noutra pasta (uma
+    fotografia, um rascunho) não é registro nenhum, e acusá-la seria o gatilho
+    guloso voltando por dentro do gancho."""
+    escrever_recibo(casa, numero="001")
+    calar_a_licao(casa)
+    (casa / "docs").mkdir()
+    r = gravar(casa, "docs/20260906-052-o-que-aconteceu.js")
+    assert r.returncode == 0 and not r.stderr.strip()
+
+
+def test_nome_que_nao_e_registro_do_livro_passa_calado(casa):
+    escrever_recibo(casa, numero="001")
+    calar_a_licao(casa)
+    r = gravar(casa, "painel/registros/LEIA-ME.js")
+    assert r.returncode == 0 and not r.stderr.strip()
+
+
+def test_caderninho_sem_recibo_nenhum_cala(casa):
+    """Casa recém-clonada não sabe nada sobre alocação, e chute não é medição."""
+    calar_a_licao(casa)
+    r = gravar(casa, REGISTRO)
+    assert r.returncode == 0 and not r.stderr.strip()
+
+
+def test_recibo_corrompido_cala(casa):
+    escrever_recibo(casa, texto="{ isto não é json")
+    calar_a_licao(casa)
+    r = gravar(casa, REGISTRO)
+    assert r.returncode == 0 and not r.stderr.strip()
 
 
 # ---------- o campo `gatilho` no gerador ----------
