@@ -2,6 +2,11 @@
 O mapa das portas: as 34 encomendas em três Partes e doze Blocos, o estado de
 cada porta, e a próxima aberta em destaque (lei §6: "Entre. Entregue. Receba.").
 
+Cada porta aponta para o ENDEREÇO DO LIVRO da aula (`/<curso>/parte-N/<numero>`,
+TAR-212): é ele que o aluno copia da barra do navegador e manda para um colega,
+e é ele que diz, sozinho, em que parte do curso a aula está. A parte de cada
+porta vem pronta da view, junto com o resto da conta.
+
 Só a pessoa da sessão aparece aqui ([INV-CUR-P1]): nenhuma outra porta, nome
 ou número de ninguém. A conta de cada porta (estado, rótulo, se abre) vem
 pronta da view; o template só desenha.
@@ -9,7 +14,7 @@ pronta da view; o template só desenha.
 {% block titulo %}Mapa das portas{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'mapa' %}">Curso</a>
+  <a href="{{ url_do_mapa }}">{{ curso.nome }}</a>
 {% endblock %}
 
 {% block conteudo %}
@@ -20,7 +25,7 @@ pronta da view; o template só desenha.
   <h1>Entre. Entregue. Receba.</h1>
   {% if atual %}
   <p class="passo">Sua porta aberta agora:
-    {% if atual.abre %}<a class="porta-atual" href="{% url 'aula' atual.numero %}">{{ atual.titulo }}</a>{% else %}<strong>{{ atual.titulo }}</strong> (ainda em preparo pela escola){% endif %}
+    {% if atual.abre %}<a class="porta-atual" href="{% url 'aula-do-curso' curso.slug atual.parte atual.numero %}">{{ atual.titulo }}</a>{% else %}<strong>{{ atual.titulo }}</strong> (ainda em preparo pela escola){% endif %}
   </p>
   {% else %}
   <p class="passo">Todas as suas portas estão fechadas por enquanto. Quando a
@@ -37,7 +42,7 @@ pronta da view; o template só desenha.
     <ol class="portas">
       {% for porta in bloco.portas %}
       <li class="porta estado-{{ porta.estado }}{% if porta.atual %} atual{% endif %}">
-        {% if porta.abre %}<a href="{% url 'aula' porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
+        {% if porta.abre %}<a href="{% url 'aula-do-curso' curso.slug porta.parte porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
         <span class="selo">{{ porta.rotulo }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
       </li>
       {% endfor %}

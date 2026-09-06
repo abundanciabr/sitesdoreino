@@ -412,8 +412,28 @@
       "endereco": "/cursos/",
       "alcance": "publico",
       "para_quem": "aluno",
-      "titulo": "O mapa das portas do curso",
-      "descricao": "A home do curso: as 34 encomendas em três Partes e doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. Só abre para quem tem matrícula ativa; quem não entrou vê o convite para entrar, e quem entrou sem matrícula recebe a explicação."
+      "titulo": "O mapa das portas (o endereço antigo)",
+      "descricao": "O endereço curto do curso, de antes de o endereço passar a dizer qual curso é. Ele continua respondendo, e sempre vai continuar: o checkpoint desta escola é por link, e um link já compartilhado não pode morrer. Com um curso só, ele serve esse curso; com mais de um, pede para o aluno escolher, em vez de escolher por ele."
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/",
+      "endereco": "/cursos/<slug:curso>/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O mapa das portas de um curso",
+      "descricao": "A home do curso, agrupada como o livro: as 34 encomendas nas três Partes (Fundação, Itens que vendem e Profissional) e nos doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. O curso é o do endereço, resolvido pelo nome dele: endereço de curso que não existe explica e mostra os cursos que existem, nunca serve outro curso no lugar. Só abre para quem tem matrícula ativa.",
+      "exemplo": "/cursos/profissional/"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma aula do curso, com a parte no endereço",
+      "descricao": "A mesma aula de sempre, num endereço que diz sozinho em que curso e em que Parte do livro ela está. É o endereço para compartilhar: o aluno está com o livro em mãos, e o número do endereço é o número da página. A parte é conferida, e não enfeite: parte que não casa com a aula recusa e mostra o caminho certo, porque um endereço que aponta certo para a aula errada é pior do que um endereço quebrado.",
+      "exemplo": "/cursos/profissional/parte-1/E00"
     },
     {
       "celula": "cursos",
@@ -421,8 +441,8 @@
       "endereco": "/cursos/<str:numero>",
       "alcance": "publico",
       "para_quem": "aluno",
-      "titulo": "Uma aula do curso",
-      "descricao": "A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
+      "titulo": "Uma aula do curso (o endereço antigo)",
+      "descricao": "O endereço curto da aula, de antes de o endereço passar a dizer o curso e a Parte. Continua respondendo para não matar nenhum link já compartilhado. A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
       "exemplo": "/cursos/E00"
     },
     {
@@ -1076,29 +1096,30 @@
     },
     {
       "celula": "admin",
-      "rota": "escola/aulas/",
-      "endereco": "/admin/escola/aulas/",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
       "alcance": "publico",
       "para_quem": "equipe",
-      "titulo": "As encomendas do curso",
-      "descricao": "A lista das aulas do curso (cada uma é uma encomenda que o aluno entrega), com o estado, a versão e a data de publicação de cada uma, e quantas já estão abertas para os alunos. Embaixo, os instrumentos de avaliação.",
-      "observacao": "Lê e escreve na célula cursos pela porta de máquina, nunca no banco dela e nunca guardando cópia: o texto das aulas é obra não lançada e mora só lá. Sem o par de chaves no servidor, abre dizendo o que falta em vez de mostrar tela vazia."
+      "titulo": "As encomendas de um curso",
+      "descricao": "A lista das aulas de um curso (cada uma é uma encomenda que o aluno entrega), agrupada como o livro: as três Partes como seções e, dentro de cada uma, os blocos por letra. Cada linha traz o estado, a versão e a data de publicação, e o topo diz quantas já estão abertas para os alunos. Embaixo, os instrumentos de avaliação.",
+      "observacao": "O curso vem no endereço, pelo nome curto dele, e a Parte é opcional: sem ela aparece o curso inteiro. Lê e escreve na célula cursos pela porta de máquina, nunca no banco dela e nunca guardando cópia: o texto das aulas é obra não lançada e mora só lá. Sem o par de chaves no servidor, abre dizendo o que falta em vez de mostrar tela vazia.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/"
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/$",
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Uma encomenda por dentro",
       "descricao": "O editor de uma aula: o pedido, o cliente, o instrumento, o \"Aceito quando\", o quiz, o vídeo por link, as 18 peças em Markdown na ordem em que o aluno as lê (as duas internas avisadas), as pausas do vídeo, o botão de salvar e o de publicar.",
-      "exemplo": "/admin/escola/aulas/E07/",
-      "observacao": "O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/",
+      "observacao": "O endereço carrega o curso e a Parte para que o link, ao ser compartilhado, diga em que ponto do livro aquela encomenda está; Parte que não casa com a encomenda recusa e devolve o endereço certo. O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
@@ -1107,8 +1128,8 @@
     },
     {
       "celula": "admin",
-      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
-      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
@@ -2029,6 +2050,16 @@
     },
     {
       "celula": "admin",
+      "rota": "livro/criar-livro",
+      "endereco": "/admin/livro/criar-livro",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar um livro novo",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de criar. Um livro agrupa capítulos, e este formulário só pede o título."
+    },
+    {
+      "celula": "admin",
       "rota": "livro/tudo.md",
       "endereco": "/admin/livro/tudo.md",
       "alcance": "publico",
@@ -2044,6 +2075,15 @@
       "para_quem": "equipe",
       "titulo": "Um texto do livro",
       "descricao": "O texto formatado na tela, com o histórico do que já foi escrito nele e o aviso de quantas riscas compridas ele tem."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/ler$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/ler$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Ler um capítulo do livro",
+      "descricao": "A tela de leitura, parecida com um leitor de e-book: o texto formatado, o sumário do livro e a navegação para o capítulo anterior e o próximo. Sem histórico nem botões de editar."
     },
     {
       "celula": "admin",

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.plataforma/eventos/matricula.situacao-alterada.v1.json",
   "title": "matricula.situacao-alterada.v1",
-  "description": "A situacao de uma matricula mudou. E o FATO — um por mudanca, nunca um por pessoa avisada. Quem avisa quem e assunto do evento 'notificacao.devida', que ja existia e continua existindo ao lado deste. POR QUE UM ASSUNTO NOVO, e nao reaproveitar a carta (a pergunta que a armadilhas/293 obriga a fazer antes de abrir o rito): a carta so nasce quando a pessoa GANHA acesso E tem identidade da plataforma (services.py, 'if destinatario_id and ganhou_acesso(...)'). Recusa, suspensao, encerramento e reembolso nao produzem carta nenhuma, e sao justamente as mudancas que o livro de fatos precisa para contar a vida de um aluno ao longo do tempo. As portas existentes NAO compoem o gesto, e por isso o rito e o caminho. Rito de Contrato de 05/09/2026, com o mantenedor presente, no degrau 8 do PLANO-PAINEL-DE-GESTAO.",
+  "description": "A situacao de uma matricula mudou. E o FATO — um por mudanca, nunca um por pessoa avisada. Quem avisa quem e assunto do evento 'notificacao.devida', que ja existia e continua existindo ao lado deste. POR QUE UM ASSUNTO NOVO, e nao reaproveitar a carta (a pergunta que a armadilhas/293 obriga a fazer antes de abrir o rito): a carta so nasce quando a pessoa GANHA acesso E tem identidade da plataforma (services.py, 'if destinatario_id and ganhou_acesso(...)'). Recusa, suspensao, encerramento e reembolso nao produzem carta nenhuma, e sao justamente as mudancas que o livro de fatos precisa para contar a vida de um aluno ao longo do tempo. As portas existentes NAO compoem o gesto, e por isso o rito e o caminho. Rito de Contrato de 05/09/2026, com o mantenedor presente, no degrau 8 do PLANO-PAINEL-DE-GESTAO. EMENDADO EM 06/09/2026, em segundo Rito de Contrato autorizado nominalmente pelo mantenedor, que acrescentou 'turma' e 'pessoa_id' a 'data': os dois sao OPCIONAIS e ficam fora de 'required', entao todo evento ja emitido continua valido e nenhum consumidor de hoje quebra. Entraram porque as coortes do degrau 10 nao conseguiam nem separar os grupos por turma nem ligar a vida de uma matricula as conquistas da mesma pessoa, e 'additionalProperties: false' impede o emissor de publicar campo que este arquivo nao declare.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -100,6 +100,28 @@
             }
           ],
           "description": "O instante em que esta linha passou a ser de uma ALUNA, pela regra que o mantenedor fixou em 03/09/2026: a data da liberacao para quem veio da sala de espera, a da confirmacao do pagamento para quem comprou. NULO enquanto ninguem decidiu (a linha ainda espera na fila). Viaja no evento em vez de o consumidor recalcular porque a regra e da celula dona, e duas derivacoes da mesma data discordariam no primeiro caso de borda. NUNCA e 'comprou_em', que e o que a propria pessoa digita e serve para conferencia."
+        },
+        "turma": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A turma a que a matricula pertencia NO INSTANTE desta mudanca, como a celula 'alunos' a guarda (Matricula.turma). E FOTOGRAFIA, nao o presente: quem le este fato meses depois esta vendo a turma daquele dia, e a linha pode ter sido movida desde entao. Quem quiser a turma de agora pergunta a 'alunos' em 'GET /matriculas'. AUSENTE ou NULO quando a matricula nao tem turma, que e o caso comum de quem compra pelo checkout: turma vazia e 'sem turma', nunca 'nao sei'. Existe porque a coorte por turma era impossivel sem ela (degrau 10 do PLANO-PAINEL-DE-GESTAO, PR #1146): a memoria nunca via este dado, e a tela nasceu com a divisao por turma desenhada e sem numero para mostrar."
+        },
+        "pessoa_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Id da PLATAFORMA de quem esta matricula pertence (a pessoa como a celula 'identidade' a conhece). E EXATAMENTE o mesmo id que ja viaja no 'destinatario_id' de 'notificacao.devida', nao um id novo e nao um segundo jeito de nomear gente. NUNCA e o e-mail (DECISAO-EVO-01 §3). NAO CONFUNDIR COM O 'ator_id' DO ENVELOPE: 'ator_id' e quem CAUSOU a mudanca, e e nulo no caso normal (o pagamento foi aprovado pelo provedor e ninguem apertou botao); este e de quem E a matricula, e continua sendo a mesma pessoa quando ninguem causou nada. Somar os dois como se fossem um so produz contagem errada com cara de precisao. PARA QUE SERVE: e a unica ponte entre a vida do aluno e as conquistas da mesma pessoa. O 'matricula_id' ao lado e opaco e local de proposito (armadilhas/255), entao quem consome este fato guardava marcos com sujeito 'matricula' e nao conseguia liga-los aos marcos de sujeito 'pessoa' que vem do forum; a tela de coortes teve de mostrar as duas metades lado a lado, avisando que nao se somam. AUSENTE ou NULO quando a celula 'alunos' nao conhece a pessoa na plataforma: ela nunca entrou com o Google, a 'identidade' estava fora do ar, ou o par nao esta provisionado. Nulo aqui e 'nao sei quem e', e quem consome trata como 'nao da para ligar este fato a uma pessoa', e nunca cunha um id proprio para preencher o buraco, que e como nasce a pessoa fantasma da armadilhas/255."
         }
       }
     }
