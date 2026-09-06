@@ -212,6 +212,11 @@ class Registro(models.Model):
     EDITAR_TEXTO_LIVRO = "editar_texto_livro"
     RESTAURAR_TEXTO_LIVRO = "restaurar_texto_livro"
     APAGAR_TEXTO_LIVRO = "apagar_texto_livro"
+    # [LIVRO] 05/09/2026: o `Livro` que agrupa capítulos, nascido junto com a
+    # tela de LEITURA. Um verbo só, porque criar é o único gesto que a tela
+    # nova do formulário oferece hoje — não há editar nem apagar um `Livro`
+    # ainda.
+    CRIAR_LIVRO = "criar_livro"
     # [AULAS] 05/09/2026: o editor de encomendas do curso (`/admin/escola/aulas/`,
     # degrau 1.5 do `PLANO-CELULA-CURSOS.md`). Tres verbos, porque as perguntas
     # que se fazem a estas linhas sao tres: "quem mexeu na aula E07, e quando?",
@@ -270,6 +275,7 @@ class Registro(models.Model):
         (EDITAR_TEXTO_LIVRO, "editar um texto do livro"),
         (RESTAURAR_TEXTO_LIVRO, "voltar um texto do livro a uma versao anterior"),
         (APAGAR_TEXTO_LIVRO, "apagar um texto do livro definitivamente"),
+        (CRIAR_LIVRO, "criar um livro novo na biblioteca"),
         (EDITAR_AULA, "gravar uma encomenda do curso"),
         (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),

@@ -2040,6 +2040,16 @@
     },
     {
       "celula": "admin",
+      "rota": "livro/criar-livro",
+      "endereco": "/admin/livro/criar-livro",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar um livro novo",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de criar. Um livro agrupa capítulos, e este formulário só pede o título."
+    },
+    {
+      "celula": "admin",
       "rota": "livro/tudo.md",
       "endereco": "/admin/livro/tudo.md",
       "alcance": "publico",
@@ -2055,6 +2065,15 @@
       "para_quem": "equipe",
       "titulo": "Um texto do livro",
       "descricao": "O texto formatado na tela, com o histórico do que já foi escrito nele e o aviso de quantas riscas compridas ele tem."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/ler$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/ler$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Ler um capítulo do livro",
+      "descricao": "A tela de leitura, parecida com um leitor de e-book: o texto formatado, o sumário do livro e a navegação para o capítulo anterior e o próximo. Sem histórico nem botões de editar."
     },
     {
       "celula": "admin",
