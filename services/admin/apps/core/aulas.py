@@ -38,16 +38,17 @@ o repositório é público, e o único caminho do texto para dentro do sistema �
 esta tela ([INV-CUR-C2], `armadilhas/331`). Nenhuma frase de aula existe em
 arquivo; nenhuma entra por migração.
 
-## O travessão AVISA, e não recusa
+## O TRAVESSÃO NÃO É ASSUNTO DESTA TELA
 
-Decisão do mantenedor em 04/09/2026, para a Biblioteca do Livro, e o plano da
-`cursos` (§6) a estende a este editor: a obra se guarda como ele escreveu. A lei
-do travessão vale na tela do ALUNO, e quem vai cobrá-la antes de publicar é o
-verificador de coerência do degrau 3.1, que ainda não existe. O que esta tela
-faz é o mecanismo de `apps/core/livro.py`: conta as riscas em todas as peças,
-lista as frases com o nome da peça e a linha, e salva mesmo assim. A contagem
-sai na LEITURA (toda vez que o editor abre), e por isso aparece logo depois de
-salvar sem que a tela precise guardar nada entre o POST e o GET.
+Em 06/09/2026 o mantenedor tirou a OBRA dele (o texto das aulas e o do livro) da
+lei do travessão: ela sai como ele escreveu, e nenhuma tela pede reescrita nem
+conta riscas. O porquê está em
+`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`, e a lei mudou no
+`CLAUDE.md` no mesmo PR. Antes desta data havia aqui um contador que listava
+cada frase; num capítulo real ele trazia 67 linhas, e o mantenedor veria essa
+parede 34 vezes, sobre uma regra que não vale neste texto. **Não traga o
+contador de volta**: o guarda que sustenta a ausência é
+`test_o_editor_nao_cobra_travessao_da_obra`.
 
 ## O 422 da porta vira frase ao lado do campo, nunca 500
 
@@ -93,7 +94,6 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
-from . import travessao
 from .clients import CatalogoClient, CursosClient
 from .views import _auditar
 
@@ -531,31 +531,6 @@ def _corpo(rascunho: dict) -> "tuple[dict, dict]":
 
 
 # ---------------------------------------------------------------------------
-# O TRAVESSÃO: conta e lista, nunca recusa
-# ---------------------------------------------------------------------------
-def _riscas(rascunho: dict) -> list:
-    """As frases com risca comprida em todas as peças e nos campos de texto,
-    cada uma dizendo ONDE está. O mesmo instrumento que recusa no editor de
-    documentos, aqui só avisa (ver o cabeçalho)."""
-    achados = []
-    for peca in rascunho["pecas"]:
-        for achado in travessao.problemas(peca["texto"]):
-            achado["onde"] = f"peça \"{peca['nome']}\", linha {achado['linha']}"
-            achados.append(achado)
-    for campo in ("pedido", "cliente", "minimo", "aceito_quando"):
-        for achado in travessao.problemas(rascunho[campo]):
-            achado["onde"] = f"{ROTULO_DO_CAMPO[campo]}, linha {achado['linha']}"
-            achados.append(achado)
-    for item in rascunho["quiz"]:
-        for achado in travessao.problemas(
-            item["pergunta"] + "\n" + item["resposta_modelo"]
-        ):
-            achado["onde"] = f"quiz, pergunta {item['n']}"
-            achados.append(achado)
-    return achados
-
-
-# ---------------------------------------------------------------------------
 # O 422 DA PORTA, TRADUZIDO PARA O CAMPO CERTO
 # ---------------------------------------------------------------------------
 def _frase_do_erro(erro: dict) -> str:
@@ -905,7 +880,6 @@ def _desenhar_aula(
             "aula": _cabecalho(aula),
             "rascunho": rascunho,
             "gerais": gerais or [],
-            "riscas": _riscas(rascunho),
             "instrumentos": [
                 {
                     "slug": str(i.get("slug") or ""),
@@ -1072,7 +1046,6 @@ def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
     na_parte = int(parte) if parte else None
     rascunho = _rascunho_do_formulario(request)
     corpo, enviados = _corpo(rascunho)
-    riscas = len(_riscas(rascunho))
     desfecho, resposta = CursosClient().gravar_aula(
         site["id"], curso, numero, corpo, na_parte
     )
@@ -1084,7 +1057,7 @@ def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
             Registro.EDITAR_AULA,
             numero,
             Registro.OK,
-            f"versao {versao}; {riscas} frase(s) com travessao",
+            f"versao {versao}",
         )
         destino = _endereco("escola_aula", curso, na_parte, numero)
         return HttpResponseRedirect(f"{destino}?recado=salva&versao={versao}")
