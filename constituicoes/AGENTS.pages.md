@@ -98,6 +98,12 @@ degrau ela vira código.
   atravesse APARELHOS, coisa que sessão não faz. O estado mora no MODELO, por
   aluno.
 
+  **Desde o degrau 02 (05/09/2026) esse modelo existe:**
+  `apps/portfolio/models.py`, com a marcação em `ItemDeConferencia`, no banco,
+  por aluno. Guarda:
+  `tests/test_modelo_de_dados.py::test_a_marcacao_atravessa_aparelhos`, que relê
+  do banco em vez de conferir a instância que acabou de gravar.
+
 - **A foto entra por LINK COLADO, e esta célula NUNCA guarda arquivo.**
   Decisão do mantenedor em 01/09/2026 (plano §6.2), tomada com o preço na mão.
   O aluno cola o endereço do render que já está no Drive, no ArtStation ou onde
@@ -130,6 +136,14 @@ degrau ela vira código.
   aparecem para outro, em nenhuma tela e em nenhuma resposta de API
   (critério AC-07). Vale inclusive para a vitrine: o que ela mostra é o que
   aquele aluno publicou, e nada mais.
+
+  **O isolamento tem UMA porta, e ela nasceu no degrau 02:** o `do_aluno` dos
+  gerenciadores de `apps/portfolio/models.py`. Toda tela dos degraus 07, 08, 10
+  e 13 lê por ela, e nenhuma escreve o próprio `filter` — um vazamento assim não
+  é uma tela errada, é a consulta errada repetida em cada tela que vier, e
+  espalhá-la faria o AC-07 depender de sete lembranças. Guarda:
+  `tests/test_isolamento_por_aluno.py`, provado por mutação (trocar o corpo do
+  `do_aluno` por `self.all()` deixa seis testes vermelhos na asserção).
 
 ## O que ninguém pode inventar aqui (plano §7)
 Sete itens, e a lista é fechada:
