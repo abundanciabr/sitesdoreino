@@ -10,7 +10,9 @@ arquivo vira bomba-relógio no dia em que o relógio real a ultrapassar
 depois de o arquivo nascer).
 """
 
+import json
 from datetime import datetime, timezone as fuso
+from unittest import mock
 from urllib.parse import quote
 
 import httpx
@@ -221,3 +223,49 @@ def fora_da_equipe(env_dos_pares, rede, monkeypatch, db):
     dublar_sessao(rede, BIA)
     monkeypatch.delenv("IDS_DA_EQUIPE", raising=False)
     return BIA
+
+
+# ---------------------------------------------------------------------------
+# O FIO: o transporte do relay sob controle do teste (degrau 12)
+# ---------------------------------------------------------------------------
+
+
+class Fio:
+    """O que saiu no `xadd`. O Redis é dublado no TRANSPORTE (`redis.from_url`),
+    pelo mesmo motivo que a `identidade` e a `alunos` são dubladas acima: uma
+    suíte que precisa de container fica vermelha por motivo alheio, e a máquina
+    do mantenedor é Windows. O que se prova é o comportamento do relay e a FORMA
+    do que ele publica. Molde: `services/cursos/tests/conftest.py`."""
+
+    def __init__(self) -> None:
+        self.mensagens: list[tuple[str, dict]] = []
+        self.cliente = mock.Mock()
+        self.cliente.xadd.side_effect = self._xadd
+
+    def _xadd(self, stream: str, campos: dict) -> None:
+        # `json.loads` aqui de propósito: se o relay publicar algo que não é
+        # JSON, o teste morre no ponto exato em vez de comparar strings.
+        self.mensagens.append((stream, json.loads(campos["json"])))
+
+    @property
+    def streams(self) -> list[str]:
+        return [stream for stream, _ in self.mensagens]
+
+    def um_envelope(self, event: str) -> dict:
+        achados = [e for _, e in self.mensagens if e["event"] == event]
+        assert len(achados) == 1, f"esperava 1 {event} no fio, vieram {len(achados)}"
+        return achados[0]
+
+
+@pytest.fixture
+def fio(monkeypatch):
+    """O relay publicando contra o dublê, com `REDIS_STREAMS_URL` presente.
+
+    A variável é montada aqui, e não numa fixture `autouse`, de propósito: o
+    relay a lê NO PONTO DE USO (`armadilhas/097`), e o teste que prova "sem
+    endereço do fio o evento fica pendente" precisa poder tirá-la.
+    """
+    monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis.teste:6379/0")
+    linha = Fio()
+    monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
+    return linha

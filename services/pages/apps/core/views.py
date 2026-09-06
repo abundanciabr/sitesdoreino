@@ -361,6 +361,21 @@ def desenhar_estante(
             "pedido": (
                 conferencia.ultimo_pedido(portfolio) if portfolio is not None else None
             ),
+            # O SELO DA ESCOLA (degrau 12, critério AC-12): a DATA em que o
+            # monitor conferiu, ou `None` enquanto ela não existe.
+            #
+            # Sai do estado do aluno, e nunca do pedido, porque o selo é do
+            # PORTFÓLIO: quem pediu uma conferência nova e recebeu o portfólio
+            # de volta continua tendo o selo da conferência anterior, e ler o
+            # último pedido faria o selo sumir da tela sem nada tê-lo tirado.
+            #
+            # O estado só nasce quando o aluno anda pela primeira vez (degrau
+            # 07), então a ausência é o normal de quem acabou de chegar, e não
+            # um erro. `getattr` com padrão dá conta porque o Django faz a
+            # exceção do acessador reverso herdar de `AttributeError`.
+            "selo_em": getattr(
+                getattr(portfolio, "estado", None), "selo_conferido_em", None
+            ),
             "recusa_da_conferencia": recusa_da_conferencia,
             "agora": timezone.now(),
             # As respostas que a escola aceita em cada pergunta. Só os VALORES e
@@ -622,10 +637,11 @@ def responder_peca(request):
 # decide quem entra, e é por isso que estas três não perguntam nada sobre
 # permissão: quando elas rodam, a porta já decidiu.
 #
-# **O SELO NÃO ESTÁ AQUI, e a ausência é a escada.** Aceitar fecha o pedido; o
-# selo "conferido pela escola", o evento e a carta no sininho são o degrau 12
-# (critério AC-12). Adiantá-los entregaria pela metade um critério que este PR
-# não tem como provar.
+# **O SELO SAI DO ACEITE, e nenhuma view o escreve.** Desde o degrau 12,
+# `conferencia.aceitar` carimba o selo e emite o evento na mesma transação em
+# que fecha o pedido (critério AC-12). Estas views continuam sem saber disso, e
+# é o desenho: a regra tem uma expressão só, e uma tela que carimbasse por
+# fora seria a segunda.
 
 
 @require_POST
