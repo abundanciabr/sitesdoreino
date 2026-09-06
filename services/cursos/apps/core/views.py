@@ -178,16 +178,57 @@ def _recusar(request, motivo: str, *, status: int, **extra):
     )
 
 
-def _cursos_para_escolher(site_id: str) -> list[dict]:
-    """Os cursos deste site com o endereço de cada um, para a tela que pede
-    ao aluno que escolha. Sem eles a recusa mandaria a pessoa adivinhar."""
+def _recusa_de_curso(ator, curso: Curso) -> str:
+    """`""` quando esta pessoa entra NESTE curso; o motivo da recusa quando não.
+
+    A segunda porta da sala (`DECISAO-cursos-matriculas-e-alunos.md` §1): a
+    primeira pergunta se a pessoa é aluna, esta pergunta **de qual curso**.
+    Enquanto havia um curso só, a primeira bastava por coincidência; no dia do
+    segundo, todo aluno do primeiro abriria o segundo digitando o endereço.
+
+    Os dois motivos são separados porque mandam a pessoa a lugares diferentes:
+    `outro-curso` é "abra o seu, que é aquele ali"; `curso-sem-produto` é
+    "ninguém entra aqui ainda, avise a escola".
+
+    **Curso sem produto apontado FECHA, e é como todo curso nasce.** Não é
+    descuido: um curso que não diz de qual produto é não pode ter a matrícula
+    conferida, e nesta célula não conseguir conferir nunca é "pode entrar" (a
+    mesma lei que `apps/core/sessao.py` aplica à `alunos` fora do ar). Curso
+    fechado é problema visível, que aparece na primeira visita e se resolve com
+    `manage.py apontar_o_produto_do_curso`; curso aberto por falta de
+    apontamento é o defeito invisível que esta mudança existe para matar.
+    """
+    if not curso.produto_id:
+        return "curso-sem-produto"
+    if curso.produto_id not in ator.produtos_matriculados:
+        return "outro-curso"
+    return ""
+
+
+def _meus_cursos(ator, site_id: str) -> list[Curso]:
+    """Os cursos deste site em que ESTA pessoa está matriculada.
+
+    A sala não OFERECE curso alheio: uma tela que convida para uma porta que
+    ela mesma vai fechar é pior do que não mostrar nada, porque parece um
+    direito e termina em recusa.
+    """
+    return [
+        curso
+        for curso in enderecos.cursos_do_site(site_id)
+        if not _recusa_de_curso(ator, curso)
+    ]
+
+
+def _cursos_para_escolher(ator, site_id: str) -> list[dict]:
+    """Os cursos DESTA pessoa com o endereço de cada um, para a tela que pede
+    que ela escolha. Sem eles a recusa mandaria a pessoa adivinhar."""
     return [
         {
             "slug": curso.slug,
             "nome": curso.nome,
             "url": reverse("curso", args=[curso.slug]),
         }
-        for curso in enderecos.cursos_do_site(site_id)
+        for curso in _meus_cursos(ator, site_id)
     ]
 
 
@@ -195,12 +236,13 @@ def _sala(request, slug: str | None = None):
     """`(pessoa, curso, None)` para quem pode entrar; `(None, None, resposta)`
     para quem não pode, com a resposta já pronta.
 
-    Fail-CLOSED na matrícula: `eh_aluno` só é verdadeiro quando a `alunos`
-    respondeu `aluno`. Não conseguir perguntar fecha a porta e diz isso.
+    Fail-CLOSED na matrícula, em DUAS portas: `eh_aluno` diz se a pessoa tem
+    alguma matrícula ativa, e `_recusa_de_curso` diz se ela tem a DESTE curso.
+    Não conseguir perguntar fecha as duas e diz isso.
 
     O CURSO VEM DO SLUG DO ENDEREÇO, e nunca de "o primeiro do site" (TAR-212).
     Sem slug (os endereços antigos, que continuam respondendo), a sala serve o
-    curso do site quando ele é ÚNICO e pede para escolher quando não é: com
+    curso quando ele é o ÚNICO DA PESSOA e pede para escolher quando não é: com
     dois cursos, "o primeiro" servia sempre o mesmo e o segundo era invisível
     para todo mundo, sem erro em lugar nenhum.
     """
@@ -224,20 +266,40 @@ def _sala(request, slug: str | None = None):
                     "curso-desconhecido",
                     status=404,
                     slug_pedido=slug,
-                    cursos=_cursos_para_escolher(site),
+                    cursos=_cursos_para_escolher(ator, site),
+                ),
+            )
+        recusa = _recusa_de_curso(ator, curso)
+        if recusa:
+            return (
+                None,
+                None,
+                _recusar(
+                    request,
+                    recusa,
+                    status=403,
+                    cursos=_cursos_para_escolher(ator, site),
                 ),
             )
         return ator.pessoa, curso, None
-    cursos = enderecos.cursos_do_site(site)
-    if len(cursos) == 1:
-        return ator.pessoa, cursos[0], None
-    if not cursos:
+    if not enderecos.cursos_do_site(site):
         return None, None, _recusar(request, "sem-curso", status=200)
+    meus = _meus_cursos(ator, site)
+    if len(meus) == 1:
+        return ator.pessoa, meus[0], None
+    if not meus:
+        # Ela é aluna de alguma coisa, e de nenhum curso DESTA escola. A tela
+        # sai sem lista, e a lista vazia é a informação: não há para onde
+        # mandá-la, e por isso a frase manda falar com a escola.
+        return None, None, _recusar(request, "outro-curso", status=403, cursos=[])
     return (
         None,
         None,
         _recusar(
-            request, "escolha-o-curso", status=200, cursos=_cursos_para_escolher(site)
+            request,
+            "escolha-o-curso",
+            status=200,
+            cursos=_cursos_para_escolher(ator, site),
         ),
     )
 
