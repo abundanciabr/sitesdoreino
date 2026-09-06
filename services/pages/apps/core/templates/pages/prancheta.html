@@ -63,5 +63,14 @@ em branco entre a marca e a frase do item (`armadilhas/033`).
 {% endif %}
   </section>
 {% endfor %}
+{% comment %}
+O CAMINHO PARA A ESTANTE (degrau 08). Ele fica no FIM, depois das cinco etapas,
+porque o roteiro é o que se lê primeiro: guardar peça antes de saber o que entra
+no portfólio é exatamente o travamento que este corredor de obra existe para
+curar. O endereço sai de `{% url %}`, nunca cravado a mão (`armadilhas/029`).
+{% endcomment %}  <p><a href="{% url 'pecas' %}">Guardar as suas peças</a></p>
+  <p class="miudo">É onde você cola o endereço de cada obra, escolhe a ordem e
+  marca as que vão em destaque. A escola confere o endereço na hora e avisa se
+  ele parar de abrir depois.</p>
   <p class="miudo"><a href="{{ url_da_capa }}">Voltar ao início do site</a></p>
 {% endblock %}
