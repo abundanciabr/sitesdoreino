@@ -4,8 +4,12 @@ O que este arquivo protege: (1) a E00 nasce `disponivel` na primeira visita de
 quem tem matrícula, e a segunda visita é inerte; (2) NINGUÉM entra sem
 matrícula: `cadastrado`, `na_fila`, `pausado`, `ex_aluno` e `reembolsado` são
 reconhecidos e recebem 403 com a frase; (3) a `alunos` fora do ar, respondendo
-500, sem `categoria` ou com o env do par ausente é 403 com a frase certa, nunca
-"então pode entrar" e nunca 500; (4) a URL chamada é a do contrato inteiro.
+500, fora do contrato ou com o env do par ausente é 403 com a frase certa,
+nunca "então pode entrar" e nunca 500; (4) a URL chamada é a do contrato
+inteiro.
+
+DE QUAL curso a matrícula é fica em `test_sala_so_do_curso_matriculado.py`:
+aqui a pergunta é se a pessoa entra, lá é em que curso ela entra.
 """
 
 from __future__ import annotations
@@ -18,7 +22,13 @@ from django.urls import reverse
 
 from apps.cursos.models import Pessoa, Progresso
 
-from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao, url_da_situacao
+from tests.conftest import (
+    ANA,
+    COOKIE,
+    dublar_matricula,
+    dublar_sessao,
+    url_das_matriculas,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -80,11 +90,19 @@ def test_visitante_nao_recebe_403_recebe_o_convite(env_dos_pares, esqueleto, cli
 
 # ------------------------------------------------ a alunos fora do ar FECHA
 def _cenarios_de_alunos_fora_do_ar():
+    """O 404 saiu desta lista em 06/09/2026, e a saída é a decisão.
+
+    Na porta antiga (`getStudentStanding`) 404 era resposta fora do contrato:
+    aquela porta responde 200 sempre. Na porta das matrículas o 404 é a
+    resposta LEGÍTIMA de quem não tem matrícula ativa nenhuma, e ele tem teste
+    próprio logo abaixo, com a outra frase. Tratá-lo como falha de rede diria
+    "não consegui conferir" a quem foi conferido e não é aluno.
+    """
     return [
         ("fora do ar", httpx.ConnectError("alunos caiu")),
         ("500", httpx.Response(500)),
-        ("404", httpx.Response(404)),
-        ("sem categoria", httpx.Response(200, json={"x": 1})),
+        ("corpo que não é lista", httpx.Response(200, json={"x": 1})),
+        ("lista com o que não é matrícula", httpx.Response(200, json=["x"])),
         ("200 sem json", httpx.Response(200, text="<html>")),
     ]
 
@@ -98,7 +116,7 @@ def test_alunos_fora_do_ar_e_403_com_frase_em_portugues_e_nunca_entra(
     com 200, a sala passou a abrir para qualquer pessoa logada sempre que a
     célula `alunos` piscar."""
     dublar_sessao(rede, ANA)
-    rota = rede.get(url_da_situacao(ANA["email"]))
+    rota = rede.get(url_das_matriculas(ANA["email"]))
     if isinstance(falha, Exception):
         rota.mock(side_effect=falha)
     else:
@@ -143,10 +161,20 @@ def test_a_url_da_alunos_carrega_o_segmento_do_contrato():
         Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
     ).read_text(encoding="utf-8")
     assert "url: http://alunos:8000/api/alunos" in contrato
-    assert "  /alunos/{email}/situacao:" in contrato
-    assert url_da_situacao("ana@exemplo.com") == (
-        "http://alunos:8000/api/alunos/alunos/ana%40exemplo.com/situacao"
+    assert "  /alunos/{email}/matriculas:" in contrato
+    assert url_das_matriculas("ana@exemplo.com") == (
+        "http://alunos:8000/api/alunos/alunos/ana%40exemplo.com/matriculas"
     )
+
+
+def test_o_contrato_da_alunos_devolve_o_produto_de_cada_matricula():
+    """Prova de FORA do ELO: a sala compara `product_id`, e o contrato congelado
+    tem de prometer esse campo. Se ele sumir do outro lado, este teste cai aqui,
+    e não numa tela em produção abrindo o curso errado."""
+    contrato = (
+        Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
+    ).read_text(encoding="utf-8")
+    assert "required: [site_id, order_id, product_id, status, enrolled_at]" in contrato
 
 
 def test_a_matricula_e_perguntada_pelo_email_e_o_email_nao_e_guardado(
