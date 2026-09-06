@@ -35,10 +35,11 @@ respx==0.23.1
 # `contrato/pages ERROR PyYAML indisponível` e `make: *** [contrato-check]
 # Error 2`. Versão igual à das vizinhas de propósito (`armadilhas/071`).
 PyYAML==6.0.2
-# O QUE NÃO ESTÁ AQUI, e é decisão: `huey` e `redis`. A `encomendas` os pinou
-# na gênese porque o tique de um minuto dela vinha dois degraus depois; aqui o
-# primeiro trabalho de fundo é a medição periódica de link quebrado (degrau 08,
-# critério AC-09), e é o PR dele que os pina — na mesma versão das vizinhas
-# (`huey==2.5.1`, `redis==5.1.1`), que já está decidida pelo `armadilhas/071` e
-# não se reabre. Dependência que ninguém importa é peso que o `pip install` de
-# todo CI paga sem comprar nada.
+# A fila de fundo desta casa, pinada AQUI porque é este degrau que a usa pela
+# primeira vez: a reconferência diária dos links das peças (critério AC-09,
+# `apps/portfolio/tasks.py`). Foi o próprio degrau 02 que deixou escrito, neste
+# arquivo, que o PR do degrau 08 as pinaria, e nas mesmas versões das oito
+# células vizinhas — quatro versões da mesma biblioteca para o mesmo padrão são
+# quatro comportamentos a depurar (`armadilhas/071`).
+huey==2.5.1
+redis==5.1.1

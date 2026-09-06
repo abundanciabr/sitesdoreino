@@ -62,6 +62,7 @@ SEMÂNTICA DE SAÍDA ([INV-CI01], igual ao resto da CI)
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import re
 import subprocess
@@ -85,6 +86,7 @@ PASTA = "armadilhas"
 NOME_DO_INDICE = "INDICE.md"
 NOME_DAS_GUARDAS = "GUARDAS.json"
 NOME_DOS_SINAIS = "SINAIS.json"
+NOME_DOS_GATILHOS = "GATILHOS.json"
 
 RE_TITULO = re.compile(r"^#\s+(.*\S)\s*$")
 RE_ID_NO_TITULO = re.compile(r"^([0-9]+(?:\.[0-9]+)+)\s+(.*)$")
@@ -169,10 +171,44 @@ TIPOS_DE_GUARDA = ("muralha", "sino", "CI", "teste", "vacina", "nenhum")
 CUSTOS = ("alto", "medio", "baixo")
 CHAVES_DO_SCHEMA = {
     "schema_version", "armadilha", "estado", "degrau", "confianca",
-    "guarda", "sinal", "custo_por_queda",
+    "guarda", "sinal", "custo_por_queda", "gatilho", "licao",
 }
 CHAVES_DA_GUARDA = {"tipo", "detector", "dono", "motivo"}
 SINAL_MINIMO = 8
+
+# O GATILHO — a mesma lição, indexada pela INTENÇÃO em vez do sintoma.
+#
+# `sinal` casa a mensagem de erro, então só pode falar DEPOIS da queda: antes
+# dela não existe mensagem nenhuma. Medido em 06/09/2026: das 339 entradas do
+# catálogo, 140 tinham assinatura de erro e ZERO tinham qualquer forma de dizer
+# "isto vai te morder quando você mexer em tal lugar". No mesmo dia a
+# armadilhas/179 mordeu uma sessão que a tinha no repositório desde 29/08. Ela
+# não foi lida porque ninguém procura por "número repetido" enquanto escreve um
+# registro; procura-se depois, quando o CI já reprovou.
+#
+# `gatilho` é o caminho que a pessoa está prestes a tocar; `licao` é a frase que
+# ela precisa ler antes de tocar. Os dois andam juntos: gatilho sem lição manda
+# procurar (e procurar é onde a paciência acaba), lição sem gatilho não chega a
+# ninguém.
+GATILHO_SEGMENTO_MINIMO = 3
+LICAO_MINIMA = 25
+LICAO_MAXIMA = 400
+
+# Caminhos do dia a dia desta casa. Um gatilho que casa QUALQUER um deles
+# interromperia trabalho normal — vira ERROR na geração, não atrito no terminal
+# de quem trabalha. É o CORPUS_FELIZ dos sinais, para caminhos: sabote um
+# gatilho com `*` e a suíte fica vermelha.
+CAMINHOS_INOCENTES = (
+    "CLAUDE.md",
+    "README.md",
+    "ci/travessao.py",
+    "ci/tests/test_travessao.py",
+    "painel/logica.js",
+    "armadilhas/179-numero-do-registro-escolhido-cedo-colide.md",
+    "services/admin/apps/core/views.py",
+    "services/forum/templates/forum/area.html",
+    "docs/decisoes/DECISAO-filosofia-de-escopo.md",
+)
 
 # Saídas benignas do dia a dia desta casa. Um sinal que casa QUALQUER uma delas
 # tocaria o sino em trabalho normal — vira ERROR na geração, não ruído no
@@ -394,6 +430,69 @@ def validar_frontmatter(dados: dict, nome: str, numero: str) -> None:
         )
 
 
+def validar_gatilhos(gatilhos: list, licao: str, nome: str) -> None:
+    """O par gatilho/lição é indivisível, e nenhum gatilho pode ser guloso.
+
+    A régua do padrão não é estética: um gatilho largo (`*`, `services/*`)
+    interromperia trabalho legítimo em toda sessão, e um aviso que atrapalha é
+    desligado por quem trabalha. Por isso ele precisa de pasta, de um segmento
+    literal de verdade, e passa pelo CAMINHOS_INOCENTES.
+    """
+    if gatilhos and not licao:
+        raise ErroDeFrontmatter(
+            f"{nome}: gatilho sem licao",
+            "O gatilho diz QUANDO avisar; a lição é o que a pessoa lê. Sem ela\n"
+            "o aviso manda procurar, e procurar é onde a paciência acaba.",
+        )
+    if licao and not gatilhos:
+        raise ErroDeFrontmatter(
+            f"{nome}: licao sem gatilho",
+            "Lição sem gatilho não chega a ninguém: nada a dispara. Declare em\n"
+            "`gatilho:` o caminho que a pessoa toca antes de cair nesta.",
+        )
+    if licao and not (LICAO_MINIMA <= len(licao) <= LICAO_MAXIMA):
+        raise ErroDeFrontmatter(
+            f"{nome}: licao com {len(licao)} caracteres",
+            f"Entre {LICAO_MINIMA} e {LICAO_MAXIMA}. Curta demais não ensina;\n"
+            "longa demais não é lida na hora em que ela atrapalha.",
+        )
+    for cru in gatilhos:
+        if not isinstance(cru, str) or not cru.strip():
+            raise ErroDeFrontmatter(f"{nome}: gatilho não textual: {cru!r}", "")
+        padrao = cru.strip()
+        if "\\" in padrao:
+            raise ErroDeFrontmatter(
+                f"{nome}: gatilho com barra invertida: {padrao!r}",
+                "Caminho se escreve com `/` aqui, em qualquer sistema: é assim\n"
+                "que o gancho compara, e a barra invertida nunca casaria nada.",
+            )
+        if "/" not in padrao:
+            raise ErroDeFrontmatter(
+                f"{nome}: gatilho sem pasta: {padrao!r}",
+                "Um gatilho é um CAMINHO (`painel/registros/*`), não um nome solto.",
+            )
+        literais = [
+            parte
+            for parte in re.split(r"[*?/\[\]]+", padrao)
+            if len(parte) >= GATILHO_SEGMENTO_MINIMO
+        ]
+        if not literais:
+            raise ErroDeFrontmatter(
+                f"{nome}: gatilho genérico demais: {padrao!r}",
+                f"Ele precisa de ao menos um pedaço literal de "
+                f"{GATILHO_SEGMENTO_MINIMO} letras.\n"
+                "Gatilho largo interrompe trabalho legítimo, e o aviso que\n"
+                "atrapalha é o aviso que alguém desliga.",
+            )
+        for inocente in CAMINHOS_INOCENTES:
+            if fnmatch.fnmatch(inocente, padrao):
+                raise ErroDeFrontmatter(
+                    f"{nome}: o gatilho {padrao!r} casa caminho INOCENTE",
+                    f"Casou: {inocente}\n"
+                    "Aperte o padrão até ele só reconhecer o gesto que morde.",
+                )
+
+
 def validar_sinais(sinais: list, nome: str) -> None:
     for cru in sinais:
         if not isinstance(cru, str):
@@ -485,6 +584,8 @@ class Entrada:
         # arquivo, que só vira arqueologia para quem vier depois.
         self.frontmatter = ler_frontmatter(linhas, self.nome)
         self.sinais: list[str] = []
+        self.gatilhos: list[str] = []
+        self.licao = ""
         if self.frontmatter is not None:
             validar_frontmatter(self.frontmatter, self.nome, self.numero)
             sinal = self.frontmatter.get("sinal")
@@ -493,6 +594,13 @@ class Entrada:
             elif isinstance(sinal, list):
                 self.sinais = [s for s in sinal if s is not None]
             validar_sinais(self.sinais, self.nome)
+            gatilho = self.frontmatter.get("gatilho")
+            if isinstance(gatilho, str):
+                self.gatilhos = [gatilho.strip()]
+            elif isinstance(gatilho, list):
+                self.gatilhos = [g.strip() for g in gatilho if isinstance(g, str)]
+            self.licao = str(self.frontmatter.get("licao") or "").strip()
+            validar_gatilhos(self.gatilhos, self.licao, self.nome)
 
     @property
     def guarda(self) -> dict:
@@ -871,6 +979,31 @@ def montar_sinais(entradas: list[Entrada]) -> str:
     return json.dumps(corpo, ensure_ascii=False, indent=2) + "\n"
 
 
+def montar_gatilhos(entradas: list[Entrada]) -> str:
+    """As lições que o gancho entrega ANTES de o robô tocar num caminho.
+
+    Uma linha por par (armadilha, caminho): quem lê agrupa por caminho, porque
+    o mesmo gesto pode ter mais de uma lição e quem trabalha merece receber as
+    duas de uma vez, não uma interrupção para cada.
+    """
+    corpo = {
+        "versao": 1,
+        "gerado_por": "python ci/indice_de_armadilhas.py",
+        "gatilhos": [
+            {
+                "armadilha": e.numero,
+                "arquivo": f"{PASTA}/{e.nome}",
+                "titulo": e.titulo,
+                "caminho": padrao,
+                "licao": e.licao,
+            }
+            for e in entradas
+            for padrao in e.gatilhos
+        ],
+    }
+    return json.dumps(corpo, ensure_ascii=False, indent=2) + "\n"
+
+
 def rodar(raiz: Path, conferir: bool, com_a_origem: bool = False) -> int:
     entradas = coletar(raiz)
     so_na_origem: list[Entrada] = []
@@ -893,6 +1026,7 @@ def rodar(raiz: Path, conferir: bool, com_a_origem: bool = False) -> int:
         (raiz / PASTA / NOME_DO_INDICE, montar(entradas, so_na_origem)),
         (raiz / PASTA / NOME_DAS_GUARDAS, montar_guardas(entradas)),
         (raiz / PASTA / NOME_DOS_SINAIS, montar_sinais(entradas)),
+        (raiz / PASTA / NOME_DOS_GATILHOS, montar_gatilhos(entradas)),
     ]
 
     if conferir:

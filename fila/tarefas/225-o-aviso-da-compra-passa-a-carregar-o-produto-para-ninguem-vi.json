@@ -1,0 +1,20 @@
+{
+  "arquivo": "225-o-aviso-da-compra-passa-a-carregar-o-produto-para-ninguem-vi",
+  "id": "TAR-225",
+  "titulo": "O aviso da compra passa a carregar o produto, para ninguem virar aluno sem produto",
+  "toca": [
+    "contracts",
+    "alunos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-na-plataforma"
+  ],
+  "evidencia_exigida": "PR mergeado: o evento da compra carregando o produto (aditivo no v1 se couber, .v2.json se nao couber, com o porque escrito); o tratador da alunos gravando product_id; teste provando que compra sem produto nao vira matricula ativa em silencio, com prova por mutacao; suite verde e make ci verde. O Rito de Contrato e da maestro, com o mantenedor presente.",
+  "despacho": "O BURACO MAIS GRAVE da DECISAO-cursos-matriculas-e-alunos.md, e e a porta por onde entra QUEM PAGA. Medido em 06/09/2026 pelo robo da TAR-220 e conferido pela maestro no contrato.\n\nO aviso da compra, contracts/eventos/pagamento.aprovado.v1.json, carrega site_id, payment_id, order_id, amount_cents, method, mp_payment_id e customer. NENHUM PRODUTO. O tratador da celula alunos grava product_id=\"\" e a matricula paga nasce ATIVA sem produto, sem passar por decisao nenhuma.\n\nPalavras do mantenedor em 06/09/2026: \"nao tem como alguem virar aluno sem curso... ele sempre entra pela via da compra de algo, e dai ao entrar ele ja deve estar vinculado a um curso ou produto\".\n\nO QUE FAZER: o evento pagamento.aprovado passa a carregar o produto comprado, e o tratador da alunos passa a grava-lo. Isso e um RITO DE CONTRATO em contracts/eventos, e evento congelado NAO se muda no lugar: breaking em evento nasce .v2.json e o v1 continua sendo emitido ate o ultimo consumidor migrar (RITOS.md §3 item 3). Meça se acrescentar campo OPCIONAL ao v1 e aditivo o bastante para nao exigir v2; se for, prefira isso, e diga por que.\n\nQUEM EMITE o evento e a celula de pagamentos ou a de checkout: descubra qual, e note que pagamentos e checkout sao CAMINHO CODEOWNERS. Sem mandato escrito, PARE e reporte em vez de tocar.\n\nCUIDADO COM O QUE JA ESTA NO BANCO: as matriculas pagas que ja nasceram sem produto nao se consertam por codigo novo (armadilhas/253). O comando apontar_o_curso_das_matriculas, que a TAR-220 criou, e quem as alcanca.",
+  "origem": "medido pelo robo da TAR-220 em 06/09/2026; emenda do mantenedor no mesmo dia: 'ele sempre entra pela via da compra de algo, e dai ao entrar ele ja deve estar vinculado a um curso ou produto'",
+  "criada_em": "2026-09-06"
+}

@@ -1,6 +1,13 @@
 from django.urls import path
 
-from apps.core.views import healthz, marcar, prancheta
+from apps.core.views import (
+    guardar_peca,
+    healthz,
+    marcar,
+    mudar_peca,
+    pecas,
+    prancheta,
+)
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público: quem o aplica é
@@ -47,6 +54,18 @@ urlpatterns = [
     # com a raiz e não com este caminho, mas manter a raiz por último é a regra
     # que impede a próxima rota desta casa de nascer inalcançável.
     path("marcar", marcar, name="marcar"),
+    # A ESTANTE DAS PEÇAS (degrau 08): a lista que o aluno monta colando link,
+    # e as duas escritas dela. As duas são `POST` e só `POST`, pela mesma razão
+    # do `marcar` acima: um `GET` que gravasse seria escrita que o navegador
+    # repete sozinho ao pré-carregar um link.
+    #
+    # `guardar` e `mudar` são portas separadas de propósito. Guardar CONFERE o
+    # endereço na rede antes de gravar (critério AC-08) e pode recusar dizendo
+    # o motivo; mudar mexe no que já está guardado e não toca em rede nenhuma.
+    # Juntá-las numa view só faria a mais barata pagar o preço da mais cara.
+    path("pecas", pecas, name="pecas"),
+    path("pecas/guardar", guardar_peca, name="guardar_peca"),
+    path("pecas/mudar", mudar_peca, name="mudar_peca"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
     # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por

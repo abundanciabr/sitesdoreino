@@ -293,7 +293,29 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
-**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
+**A lição do caminho chega ANTES, sem você procurar (desde 06/09/2026).** As
+duas formas de o catálogo alcançar quem trabalha eram tardias por construção: o
+índice depende de alguém dar Ctrl+F e adivinhar a palavra certa antes de errar,
+e o sino casa a MENSAGEM DE ERRO, que só existe depois da queda. Medido no dia:
+das 339 entradas, 140 tinham assinatura de erro e **nenhuma** tinha como dizer
+"isto vai te morder quando você mexer em tal lugar". Na mesma sessão a
+`armadilhas/179` mordeu um agente que a tinha no disco desde 29/08, porque
+ninguém procura por "número repetido" enquanto está escrevendo um registro.
+
+Agora uma entrada pode declarar, no frontmatter, **`gatilho:`** (os caminhos que
+se toca antes de cair nela) e **`licao:`** (a frase que salva a rodada). O
+gerador compila os dois em `armadilhas/GATILHOS.json` (gerado, como os outros
+três) e o gancho `PreToolUse` entrega a lição no momento da gravação, **uma vez
+por caminho, por sessão** — a segunda escrita passa direto, porque o objetivo é
+ensinar, não impedir. Ao escrever uma entrada nova, pergunte-se: *qual arquivo a
+pessoa está tocando quando isto morde?* Se a resposta for um caminho, ele merece
+um gatilho; se não for, a entrada segue vivendo do índice e do sino.
+
+Ele é **fail-open**, ao contrário das muralhas: catálogo ausente, JSON
+corrompido ou erro interno viram silêncio. Muralha impede e na dúvida recusa;
+lição ensina e na dúvida cala.
+
+**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife) · `ci/licao_do_caminho.py`, ligado como `PreToolUse` em `.claude/settings.json`, com `ci/tests/test_licao_do_caminho.py` (que também reprova gatilho guloso, pela sabotagem contra `CAMINHOS_INOCENTES`). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`; **e nada obriga uma entrada nova a declarar gatilho** — quem esquecer fica só com o índice e o sino, e isso está dito aqui de propósito, porque um portão que exigisse gatilho de toda entrada só produziria gatilho de fachada.
 
 ## Mapa do projeto para IA (desde 27/08/2026)
 
@@ -371,7 +393,7 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
-**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `.githooks/pre-commit` → `ci/registro_no_commit.py` (o mesmo, aqui na máquina e NA HORA do commit: registro novo sem citar PR nenhum, num ramo que entrega, nem chega a virar viagem até a porta — armadilhas/185) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
 
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
 

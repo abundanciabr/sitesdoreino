@@ -13,6 +13,9 @@ sinal:
   - corrente errada
   - o arquivo da tarefa nunca muda depois de criado
   - "nada se edita, corrigir"
+gatilho:
+  - fila/tarefas/*
+licao: arquivo de tarefa NÃO muda depois de criado, e não existe evento que conserte corrente errada. Confira `depende_de` antes de gravar; cancelar e recriar é pior que acertar agora.
 ---
 
 # 356 — Corrente errada na fila: não existe evento que a conserte, e cancelar é pior que editar
