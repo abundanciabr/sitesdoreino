@@ -72,8 +72,8 @@ def test_as_tres_leituras_chegam_a_pagina(banco_de_ontem):
 
     documento = Documento.objects.get(nome=NOME)
     assert documento.titulo == "Os documentos do Meshcraft, lidos contra o que existe"
-    assert "Documento 2 — Antes de como começar" in documento.corpo
-    assert "Documento 3 — Ajustar o que foi escrito" in documento.corpo
+    assert "Documento 2: Antes de como começar" in documento.corpo
+    assert "Documento 3: Ajustar o que foi escrito" in documento.corpo
     assert "De 8 lotes, 6 se distribuem entre células existentes" in documento.corpo
 
 

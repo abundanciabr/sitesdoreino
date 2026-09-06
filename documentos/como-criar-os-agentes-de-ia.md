@@ -19,7 +19,7 @@ Cada documento do projeto Meshcraft, lido inteiro e comparado com o código que 
 | 1 | Como começar a criar os agentes | 6 set 2026 | O método vale inteiro; **um dos sete agentes já está no ar** |
 | 2 | Antes de como começar (onde entra no site) | 6 set 2026 | Superado em dois pontos, e acertou em cheio no terceiro |
 | 3 | Ajustar o que foi escrito ao que já existe | 6 set 2026 | **É o documento que fez o ajuste**: de 8 lotes, 6 já tinham dono |
-| 4–10 | *a chegar* | | |
+| 4 a 10 | *a chegar* | | |
 
 ---
 
@@ -59,7 +59,7 @@ Toda entrega termina com cinco linhas: **RESUMO · LACUNAS · A VERIFICAR · ORI
 
 ---
 
-# Documento 1 — Como começar a criar os agentes
+# Documento 1: Como começar a criar os agentes
 
 ## As três coisas exigidas antes do primeiro agente
 
@@ -118,7 +118,7 @@ O ponto 1 já é lei desta casa por outro caminho: todo guarda que entra no sist
 
 ---
 
-# Documento 2 — Antes de como começar (onde o Meshcraft entra no site)
+# Documento 2: Antes de como começar (onde o Meshcraft entra no site)
 
 Ele diz que o Meshcraft entra como **quatro coisas**, e só uma vira parte nova do site.
 
@@ -143,7 +143,7 @@ Ele viu, com razão, que **"Encomenda" é um capítulo no livro e é o marketpla
 
 ---
 
-# Documento 3 — Ajustar o que foi escrito ao que já existe
+# Documento 3: Ajustar o que foi escrito ao que já existe
 
 **É este o documento que fez o ajuste.** Ele foi olhando lote por lote e perguntando *"isto já tem dono aqui dentro?"*.
 
@@ -186,7 +186,7 @@ A **tabela de colisões de vocabulário**: dez palavras que significam uma coisa
 
 | Palavra | No livro | No site |
 |---|---|---|
-| encomenda | um capítulo (E00–E32) | o marketplace de trabalhos reais |
+| encomenda | um capítulo (E00 a E32) | o marketplace de trabalhos reais |
 | painel | o "Painel do Playbook" | o painel calculado de registros |
 | fila | a fila de revisão de 24 h | a Fila do Primeiro Dólar |
 | Marco | os 6 Marcos de carreira | um selo da gamificação |
