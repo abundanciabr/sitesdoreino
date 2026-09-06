@@ -71,3 +71,9 @@ armadilhas/INDICE.md
 armadilhas/GUARDAS.json
 armadilhas/SINAIS.json
 armadilhas/GATILHOS.json
+
+# O ambiente Python de cada celula, criado na bancada por quem roda a suite.
+# Sem esta linha um `git add services/<celula>` varre milhares de arquivos de
+# biblioteca para dentro do commit — aconteceu em 06/09/2026, 6010 arquivos num
+# PR de dois. O `.venv` e da MAQUINA, nunca do repositorio.
+.venv/
