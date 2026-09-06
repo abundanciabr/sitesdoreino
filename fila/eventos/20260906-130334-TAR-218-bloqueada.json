@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-130334-TAR-218-bloqueada",
+  "tarefa": "TAR-218",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T13:03:34+00:00",
+  "quem": "despacho-pages-prancheta-0609",
+  "detalhe": "TRAVA: a linha SITE_ID mora em infra/provisionar-pages.sh e em infra/env/pages.env.exemplo, caminho CODEOWNERS, e o PR do degrau 07 (TAR-183) nao tinha mandato escrito para toca-lo. DESTRAVA: um despacho com mandato para esses DOIS arquivos, e nada alem deles. Enquanto isso a Prancheta mostra o roteiro inteiro e recusa a marcacao com 503 e explicacao em portugues, com dois guardas provando a recusa; nada e gravado no escuro."
+}

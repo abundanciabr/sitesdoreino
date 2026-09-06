@@ -115,11 +115,19 @@ def test_urlconf_nao_conhece_o_prefixo(client):
     virar 200 com o JSON de saúde, alguém embutiu `/pages` numa rota e a célula
     deixou de ser dona do próprio prefixo por configuração.
 
-    A asserção é `!= 200` e não `== 404` de propósito: quando a porta nascer
-    (degrau 06), esse caminho passará a responder um redirecionamento em vez de
-    404, e o que este guarda precisa provar continua sendo o mesmo — aquele
-    caminho **não entrega a sonda**.
+    A asserção não é `== 404` de propósito: a gênese já sabia que a forma da
+    resposta mudaria quando a porta nascesse (degrau 06), e o que este guarda
+    precisa provar continua sendo o mesmo — aquele caminho **não entrega a
+    sonda**.
+
+    **A porta nasceu em 05/09/2026, e a previsão da gênese errou a forma.** Ela
+    escreveu `status_code != 200`, esperando um redirecionamento para o login.
+    A porta que nasceu não redireciona: ela devolve a página que explica o que
+    aconteceu e o que fazer, com HTTP 200 para quem é visitante (critério
+    AC-05, `apps/core/porta.py`). O caminho continua não entregando a sonda, e
+    é isso que as duas asserções abaixo medem agora, sem depender de qual
+    número a recusa carrega.
     """
     resposta = client.get(f"{PREFIXO}/healthz")
-    assert resposta.status_code != 200
+    assert "application/json" not in resposta["Content-Type"]
     assert b"status" not in resposta.content

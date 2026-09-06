@@ -103,19 +103,24 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    # A porta desta célula ainda NÃO existe — ela nasce no degrau 06, com o
-    # reconhecimento de sessão repassado à `identidade`. Quando nascer, vem por
-    # último (como a da `admin`), e a isenção do `/healthz` compara
-    # `request.path_info`, NUNCA `request.path` (`armadilhas/029`; o guarda já
-    # está plantado em `tests/test_healthz_script_name.py`).
+    # A PORTA, nascida no degrau 06 com o reconhecimento de sessão repassado à
+    # `identidade`. Ela vem por ÚLTIMO (como a da `admin`), porque perguntar
+    # quem é custa uma ida à rede, e não se paga esse preço por requisição que
+    # as camadas de cima já vão recusar.
     #
-    # E ela tem uma segunda isenção a acertar, que nenhuma célula vizinha tem:
-    # `/estudio/<apelido>` é a VITRINE PÚBLICA, para um cliente que nunca vai
-    # entrar na plataforma. A porta fail-closed do critério AC-05 vale para
-    # `/pages`; a vitrine é opt-in do aluno e aberta a quem tem o link
-    # (`noindex` não negociável, plano §7). Uma porta escrita sem essa
-    # distinção fecha a vitrine e a única prova disso seria o cliente do aluno
-    # vendo um pedido de login.
+    # As três isenções e o motivo de cada uma estão em `apps/core/porta.py`, e
+    # todas comparam `request.path_info`, NUNCA `request.path` (`armadilhas/029`;
+    # guarda em `tests/test_healthz_script_name.py`):
+    #
+    #   /healthz   sonda de MÁQUINA, sem cookie para apresentar
+    #   /interno   porta de MÁQUINA, com cadeado próprio (o Bearer do par)
+    #   /estudio   a VITRINE PÚBLICA, para um cliente que nunca vai entrar na
+    #              plataforma. A porta fail-closed do critério AC-05 vale para
+    #              `/pages`; a vitrine é opt-in do aluno e aberta a quem tem o
+    #              link (`noindex` não negociável, plano §7). Uma porta escrita
+    #              sem essa distinção fecha a vitrine, e a única prova disso
+    #              seria o cliente do aluno vendo um pedido de login.
+    "apps.core.porta.PortaDaCasa",
 ]
 
 # ---------------------------------------------------------------------------
@@ -152,6 +157,17 @@ CSRF_COOKIE_NAME = "pages_csrf"
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
 
+# ---------------------------------------------------------------------------
+# OS DOIS ENDEREÇOS QUE NÃO SÃO DESTA CÉLULA
+# ---------------------------------------------------------------------------
+# Para onde mandar quem chega sem sessão, e onde fica a capa do site. Os dois
+# moram em OUTRAS células (`identidade` e `funil`), então `{% url %}` não os
+# conhece. Com PADRÃO, de propósito: `infra/provisionar-pages.sh` não escreve
+# estas chaves, e a trava de deriva dele reprova env com variável que ele não
+# sabe gerar. Molde: `services/cursos/config/settings.py`.
+URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+URL_DA_CAPA = os.environ.get("URL_DA_CAPA", "/")
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -160,6 +176,22 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # AS DUAS PEÇAS COMUNS DO SITE, e elas entram aqui, e não como
+                # `{% include %}` por template, porque "em todas as páginas" não
+                # pode depender de alguém lembrar da peça (`armadilhas/242`).
+                # Tela nova desta casa nasce com menu e rodapé sem tocar em
+                # nada: quem DECIDE são estes dois módulos, quem DESENHA é
+                # `pages/moldura.html`.
+                #
+                # Nascem no MESMO PR da primeira tela desta célula por causa da
+                # `armadilhas/286`: em 02/09/2026 as Conquistas passaram um dia
+                # e meio no ar como a única área do site sem as duas peças, e o
+                # guarda do repositório que mede isso
+                # (`ci/tests/test_pecas_comuns_em_toda_celula_publica.py`) lê
+                # justamente estas duas linhas para saber que a peça está
+                # LIGADA. Ele não confere nome de arquivo, e sim a fiação.
+                "apps.core.menu.menu_do_contexto",
+                "apps.core.rodape.rodape_do_contexto",
             ],
         },
     },

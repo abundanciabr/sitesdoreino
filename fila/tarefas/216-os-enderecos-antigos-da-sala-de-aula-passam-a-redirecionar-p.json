@@ -1,0 +1,19 @@
+{
+  "arquivo": "216-os-enderecos-antigos-da-sala-de-aula-passam-a-redirecionar-p",
+  "id": "TAR-216",
+  "titulo": "Os enderecos antigos da sala de aula passam a redirecionar, para nenhum link de aluno morrer",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: /cursos/ e /cursos/<numero> respondendo 301 para o endereco novo; os 7 testes que usavam o endereco antigo migrados; o caso de dois cursos continuando a PERGUNTAR em vez de chutar, com teste; prova por mutacao (tirar o 301 deixa o teste vermelho na assercao); suite da cursos verde e make ci verde.",
+  "despacho": "Fecha o que sobrou da TAR-212, medido pelo robo dela e nao suposto. O PR #1163 entregou os enderecos novos da sala do aluno e manteve os antigos RESPONDENDO, mas nao os transformou em redirecionamento permanente (301), que era exigencia escrita do despacho. O motivo foi orcamentario: trocar por 301 derruba 7 arquivos de teste que abrem a sala pelos enderecos antigos (test_acesso_pela_matricula, test_envio, test_inv_p1, test_inv_p2, test_inv_p3, test_sessao_repassada, test_telas_da_sala), e com eles o PR fecha em 19 arquivos contra o teto de 15. O robo parou e reportou em vez de espremer arquivos ou se autoconceder etiqueta, que e o comportamento certo.\n\nPOR QUE O 301 IMPORTA: o checkpoint desta escola e POR LINK. Enquanto os dois enderecos servirem a mesma sala com 200, um link antigo compartilhado leva o aluno a uma pagina que nao diz em que parte do curso ele esta, que e exatamente o que o mantenedor pediu ao mudar o endereco. O 301 faz o navegador e o buscador aprenderem o endereco novo de uma vez.\n\nO QUE FAZER: /cursos/ e /cursos/<numero> passam a responder 301 para o endereco novo (/cursos/<curso>/ e /cursos/<curso>/parte-N/<numero>), e os 7 arquivos de teste passam a usar os enderecos novos. Cabe em 13 arquivos: views.py, urls.py, os 7 testes e os 4 de escrituracao.\n\nCUIDADO COM O CASO DE DOIS CURSOS: hoje o endereco antigo, com mais de um curso no site, PEDE ao aluno que escolha em vez de escolher por ele. Um 301 precisa saber para qual curso mandar. Com um curso so, e obvio; com dois, a tela de escolha continua sendo a resposta certa e NAO se redireciona. Nao troque uma pergunta honesta por um chute.\n\nUMA LICAO DO ROBO ANTERIOR, para quem dimensionar despacho nesta casa: o orcamento REAL de codigo e 11 arquivos, nao 15, porque todo PR carrega 4 de escrituracao (a tarefa da fila, o evento de reivindicacao, o de conclusao e o registro do livro).",
+  "origem": "medido pelo robo da TAR-212 em 06/09/2026: o 301 nao coube no teto de 15 arquivos e ele parou e reportou, como o rito manda",
+  "criada_em": "2026-09-06"
+}

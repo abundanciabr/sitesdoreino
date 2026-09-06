@@ -47,14 +47,30 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   @media (max-width: 700px) { .campos-da-aula { grid-template-columns: 1fr; } }
 </style>
 <div class="envolucro">
-  <p><a class="volta" href="{% url 'escola_aulas' %}">&larr; Todas as encomendas</a></p>
+  <p><a class="volta" href="{{ url_da_lista }}">&larr; Todas as encomendas</a></p>
 
+  {% comment %}
+  A ENCOMENDA NÃO ESTÁ AQUI, e há duas razões possíveis. Quando a Parte do
+  endereço não casa com a do bloco da encomenda, a tela já sabe em qual ela
+  está e devolve o endereço certo pronto para clicar: um endereço que aponta
+  certo para a encomenda errada é pior do que um quebrado.
+  {% endcomment %}
   {% if nao_existe %}
+  {% if parte_certa %}
+  <h1>Essa encomenda não está na Parte {{ parte_pedida }}</h1>
+  <p class="aviso borda-amarela">
+    A encomenda <b>{{ numero }}</b> existe neste curso, mas em outro ponto do
+    livro. Ela está na <b>Parte {{ parte_certa }}</b>.
+    <a href="{{ url_da_parte_certa }}">Abrir a encomenda {{ numero }} na Parte {{ parte_certa }} &rarr;</a>
+  </p>
+  {% else %}
   <h1>Essa encomenda não existe</h1>
   <p class="aviso borda-amarela">
-    Não há nenhuma encomenda de número <b>{{ numero }}</b> nesta escola. Talvez o
-    endereço tenha sido copiado errado, ou ela seja de outro site.
+    Não há nenhuma encomenda de número <b>{{ numero }}</b> no curso
+    <b>{{ curso }}</b>. Talvez o endereço tenha sido copiado errado, ou ela seja
+    de outro site.
   </p>
+  {% endif %}
 
   {% elif falha_da_sala and not rascunho %}
   <h1>Encomenda {{ numero }}</h1>
@@ -131,7 +147,7 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </div>
   {% endif %}
 
-  <form method="post" class="editor encomenda" action="{% url 'escola_aula_salvar' numero %}">
+  <form method="post" class="editor encomenda" action="{{ url_de_salvar }}">
     {% csrf_token %}
 
     <h2 class="secao">A encomenda</h2>
@@ -287,7 +303,7 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
 
     <div class="gestos-do-editor">
       <button type="submit" class="salvar">Salvar a encomenda (sobe a versão)</button>
-      <a class="volta" href="{% url 'escola_aulas' %}">Cancelar</a>
+      <a class="volta" href="{{ url_da_lista }}">Cancelar</a>
     </div>
   </form>
 
@@ -306,7 +322,7 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     <b>Publicar para os alunos.</b> Abre esta encomenda na sala de aula, do
     jeito que ela está salva agora (versão {{ aula.versao }}). O texto não muda;
     o que muda é quem vê.
-    <form method="post" action="{% url 'escola_aula_publicar' aula.numero %}">
+    <form method="post" action="{{ url_de_publicar }}">
       {% csrf_token %}
       <label class="marcar"><input type="checkbox" name="confirmo" value="1" required> Sim, quero abrir esta encomenda para os alunos.</label>
       <button type="submit">Publicar esta encomenda</button>

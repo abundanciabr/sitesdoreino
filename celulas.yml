@@ -251,16 +251,29 @@ celulas:
 
   pages:
     caminhos: [services/pages]
-    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
-    # não um esquecimento. A casa das Páginas do aluno vai ler a `identidade`
-    # (quem é a pessoa) e a `alunos` (matrícula ativa), e essas duas linhas
-    # entram no degrau 06 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5), junto
-    # com os clientes que leem `IDENTIDADE_API_URL` e `ALUNOS_API_URL`.
-    # Declará-las HOJE seria declaração órfã, e o varredor reprova por isso,
-    # com razão (`armadilhas/224`): um mapa que promete a mais é tão mentiroso
-    # quanto um que promete a menos. Quem escrever os clientes volta aqui no
-    # mesmo PR — e se esquecer, o varredor cobra pelo outro lado.
-    consome: []
+    # AS DUAS LINHAS ENTRARAM NO DEGRAU 06 (05/09/2026), no MESMO PR do código
+    # que as consome, e não antes: a gênese declarou `consome: []` de propósito,
+    # porque declaração escrita antes do cliente é declaração órfã e o varredor
+    # reprova por isso, com razão (`armadilhas/224`). Um mapa que promete a mais
+    # é tão mentiroso quanto um que promete a menos.
+    #
+    # `identidade`: quem é a pessoa do outro lado do cookie. A casa REPASSA o
+    # cookie e pergunta; nunca o lê e nunca o assina ([INV-P12]).
+    # `alunos`: se essa pessoa tem matrícula ativa. É esta resposta, e só ela,
+    # que abre a Prancheta, e não conseguir perguntar FECHA a porta.
+    #
+    # Quem lê `IDENTIDADE_API_URL` e `ALUNOS_API_URL` é
+    # `services/pages/apps/core/clients.py`, e a decisão que elas alimentam mora
+    # em `services/pages/apps/core/porta.py`.
+    #
+    # `catalogo` entrou logo depois, no mesmo degrau 06 e pela mesma regra: o
+    # MENU DO TOPO é dado do site, mora no `catalogo`, e a casa das Páginas
+    # mostra o MESMO menu que o fórum, a Caixa e as Conquistas. Ela NÃO ganhou o
+    # CONV-SITE inteiro: pergunta só o menu do host da requisição, com cache, e
+    # cai para "sem menu" em qualquer tropeço, porque um menu é enfeite de
+    # navegação e derrubar a Prancheta por causa dele seria a troca errada. Quem
+    # lê `CATALOGO_API_URL` é `services/pages/apps/core/menu.py`.
+    consome: [alunos, catalogo, identidade]
 
   quiz:
     # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a

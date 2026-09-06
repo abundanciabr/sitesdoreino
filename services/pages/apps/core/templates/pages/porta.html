@@ -1,0 +1,50 @@
+{% extends "pages/moldura.html" %}{% comment %}
+A PORTA da casa, para quem ainda não entra. Três motivos, três frases, e cada
+uma diz o que aconteceu E o que fazer (critério AC-05):
+
+  entrar         200  visitante, ou sessão que a identidade não reconheceu
+  sem-matricula  403  entrou, e a matrícula ativa não existe
+  sem-resposta   503  entrou, e não deu para conferir quem é ou a matrícula
+  sem-escola     503  entrou, e esta instalação ainda não declara a escola dela
+
+Uma tela vazia diria "não há nada aqui" a quem devia ver o próprio portfólio.
+
+O QUARTO MOTIVO nasceu no degrau 07 e não vem da porta: vem da view que grava a
+marcação, quando o env desta instalação não traz `SITE_ID`. É a mesma família
+das outras (a parte que responde por isto não está de pé), e por isso mora na
+mesma tela em vez de inventar uma segunda.
+
+Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
+{% endcomment %}
+{% block titulo %}Entrar na Prancheta{% endblock %}
+
+{% block conteudo %}
+{% if motivo == "sem-matricula" %}
+  <h1>Não encontramos uma matrícula ativa no seu nome</h1>
+  <p>Você entrou na escola, mas a Prancheta só abre para quem está matriculado.
+  Se você já é aluno e está vendo isto, fale com a escola pela
+  <a href="{{ url_da_capa }}">página inicial</a>: pode ser um cadastro feito com
+  outro e-mail.</p>
+{% elif motivo == "sem-escola" %}
+  <h1>A escola ainda não terminou de ligar a sua Prancheta</h1>
+  <p>O roteiro já está no ar e você pode lê-lo inteiro, mas a marcação do que
+  você já fez ainda não abriu por aqui. Nada do que você marcar agora seria
+  guardado, então preferimos não guardar pela metade.</p>
+  <p class="miudo">Volte para a <a href="{% url 'prancheta' %}">sua Prancheta</a>
+  e continue lendo. Assim que a escola terminar, a marcação aparece sozinha.</p>
+{% elif motivo == "sem-resposta" %}
+  <h1>Não conseguimos conferir o seu acesso agora</h1>
+  <p>A parte da escola que responde por isso não respondeu. Nada foi perdido:
+  espere alguns instantes e atualize esta página.</p>
+  <p class="miudo">Se continuar assim, avise a escola pela
+  <a href="{{ url_da_capa }}">página inicial</a>.</p>
+{% else %}
+  <h1>Entre para ver a sua Prancheta</h1>
+  <p>A Prancheta é o seu portfólio dentro da escola: o roteiro do que entra em
+  cada peça, a conferência da escola e o link que você manda ao cliente. Por
+  isso ela precisa saber quem você é.</p>
+  <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+  <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy
+  fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+{% endif %}
+{% endblock %}

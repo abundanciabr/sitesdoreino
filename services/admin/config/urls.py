@@ -31,11 +31,13 @@ from apps.core.editor_de_documentos import (
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
+    livro_criar_livro,
     texto_apagar,
     texto_baixar,
     texto_criar,
     texto_do_livro,
     texto_editar,
+    texto_ler,
     texto_novo,
     texto_restaurar,
     texto_salvar,
@@ -84,6 +86,11 @@ from apps.core.sequencias import (
     sequencia_ligar,
     sequencia_publicar,
     sequencias,
+)
+from apps.core.sumario import (
+    sumario,
+    sumario_importar,
+    sumario_prever,
 )
 from apps.core.views import (
     escola,
@@ -301,22 +308,30 @@ urlpatterns = [
     # pela porta. Nao ha aqui o par `/docs/` + `/documentos/` das linhas de
     # cima — ha um lado so.
     #
-    # As tres primeiras vem ANTES da generica `^livro/<nome>$` pelo motivo de
+    # As quatro primeiras vem ANTES da generica `^livro/<nome>$` pelo motivo de
     # sempre: um texto chamado "novo" existiria na lista e nunca abriria. A
     # `NOMES_RESERVADOS` do modulo fecha o outro lado, impedindo que ele nasca.
     path("livro/", livro, name="livro"),
     path("livro/novo", texto_novo, name="texto_novo"),
     path("livro/criar", texto_criar, name="texto_criar"),
     path("livro/enviar", textos_enviar, name="textos_enviar"),
+    # [LIVRO] 05/09/2026 — criar um `Livro` novo (o que agrupa capítulos), não
+    # um capítulo. Nome DIFERENTE de `texto_criar` de propósito: as duas telas
+    # criam coisas diferentes, e um nome parecido só confundiria quem lê o
+    # urlconf daqui a meses.
+    path("livro/criar-livro", livro_criar_livro, name="livro_criar_livro"),
     path("livro/tudo.md", livro_baixar_tudo, name="livro_baixar_tudo"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)$", texto_do_livro, name="texto_do_livro"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/editar$", texto_editar, name="texto_editar"),
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/salvar$", texto_salvar, name="texto_salvar"),
-    # Baixar e LEITURA, e por isso GET. Guardar, editar, restaurar e apagar
-    # mudam o que esta escrito, e por isso sao POST — a mesma regra das rotas
-    # dos documentos, e pelo mesmo motivo: decisao que se aplica por GET e
-    # decisao que um pre-carregador de link toma sozinho.
+    # Baixar, LER e a lista sao LEITURA, e por isso GET. Guardar, editar,
+    # restaurar e apagar mudam o que esta escrito, e por isso sao POST — a
+    # mesma regra das rotas dos documentos, e pelo mesmo motivo: decisao que
+    # se aplica por GET e decisao que um pre-carregador de link toma sozinho.
     re_path(r"^livro/(?P<nome>[a-z0-9-]+)/baixar$", texto_baixar, name="texto_baixar"),
+    # [LIVRO] 05/09/2026 — a tela de LEITURA, ao lado da editorial de cima
+    # (`texto_do_livro`). Mesmo padrão de regex, com o verbo "ler" no fim.
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/ler$", texto_ler, name="texto_ler"),
     re_path(
         r"^livro/(?P<nome>[a-z0-9-]+)/restaurar$",
         texto_restaurar,
@@ -545,17 +560,64 @@ urlpatterns = [
     # contrato); o padrão `[A-Za-z0-9]+` é a cerca desta ponta, e a segunda está
     # do outro lado, onde aula de outro site é 404 mesmo com o número certo
     # (CONSTITUICAO Lei 9). O slug do instrumento segue a cerca das sequências.
-    path("escola/aulas/", aulas, name="escola_aulas"),
-    re_path(r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$", aula, name="escola_aula"),
+    #
+    # O CURSO E A PARTE VIAJAM NO ENDEREÇO (05/09/2026, TAR-211). Pedido do
+    # mantenedor: "quero que ao compartilhar uma aula o link da mesma seja útil
+    # para o aluno entender exatamente em qual parte do curso ele está". O curso
+    # é o SLUG, resolvido pelo par site+slug do outro lado, e não mais "o
+    # primeiro curso do site", que quebraria calado no dia do segundo curso.
+    #
+    # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
+    # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
+    # expande o grupo opcional em dois endereços e escolhe pelo que você passa
+    # (com `parte`, o longo; sem, o curto). Duplicar cada rota daria oito nomes,
+    # e a metade deles seria escolhida por engano em algum template.
+    # `parte` é `[123]` porque o vocabulário é do contrato (`ParteDoCurso`):
+    # `parte-9` não chega a virar pedido, é 404 aqui na porta.
     re_path(
-        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
+        aulas,
+        name="escola_aulas",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/$",
+        aula,
+        name="escola_aula",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
         aula_salvar,
         name="escola_aula_salvar",
     ),
     re_path(
-        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
         aula_publicar,
         name="escola_aula_publicar",
+    ),
+    # [SUMARIO] 06/09/2026 (TAR-213) A tela que enche as 34 encomendas de uma
+    # vez, a partir do sumario do livro colado (`apps/core/sumario.py`). Sem
+    # `parte-N`: o sumario e do curso INTEIRO, e uma Parte sozinha nele nao
+    # existe. Vizinha de `aulas/`, e nao dentro dela: aquela edita UMA
+    # encomenda por vez, esta enche todas de uma vez, e sao gestos diferentes.
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+        sumario,
+        name="escola_sumario",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+        sumario_prever,
+        name="escola_sumario_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+        sumario_importar,
+        name="escola_sumario_importar",
     ),
     re_path(
         r"^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/$",

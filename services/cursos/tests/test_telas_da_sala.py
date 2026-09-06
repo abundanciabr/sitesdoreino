@@ -141,7 +141,8 @@ def test_porta_trancada_volta_ao_mapa_sem_mostrar_o_conteudo(aluna, esqueleto, c
     publicar(esqueleto.aulas.get(numero="E01"))
     resposta = abrir(client, reverse("aula", args=["E01"]))
     assert resposta.status_code == 302
-    assert resposta["Location"] == f"{reverse('mapa')}?recado=trancada"
+    mapa_do_curso = reverse("curso", args=["profissional"])
+    assert resposta["Location"] == f"{mapa_do_curso}?recado=trancada"
     corpo = corpo_de(abrir(client, resposta["Location"]))
     assert "Essa porta ainda está trancada" in corpo
     assert "Texto da peça" not in corpo

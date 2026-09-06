@@ -1,0 +1,17 @@
+{
+  "arquivo": "214-a-turma-e-o-dono-da-matricula-passam-a-viajar-no-fato-da-mud",
+  "id": "TAR-214",
+  "titulo": "A turma e o dono da matricula passam a viajar no fato da mudanca de situacao",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "PR so de contracts/ com a label contrato, mergeado: freeze da alunos e da metricas verdes, ci/contrato_aditivo.py provando que nada foi removido, e os dois campos novos fora de required",
+  "despacho": "RITO DE MUDANCA DE CONTRATO (RITOS.md §3), autorizado nominalmente pelo\nmantenedor em 06/09/2026: acrescente `turma` e `pessoa_id` ao contrato de\nevento `contracts/eventos/matricula.situacao-alterada.v1.json`.\n\nOs dois campos entram em `properties` de `data` e NAO entram em `required`:\no evento continua valido sem eles, e nenhum emissor ou consumidor de hoje\nquebra. Nada removido, nada renomeado, `version` continua 1.\n\nPor que: as coortes (degrau 10, PR #1146) mostram quem entrou em cada mes e\nparam ai. A turma existe na celula `alunos` (campo `turma` da Matricula) mas\nnao viaja no fato, entao a coorte por turma e impossivel. E o fato nao diz de\nquem e a matricula: ele carrega so o `matricula_id`, que o proprio contrato\ndeclara local e inservivel para creditar alguem fora da celula\n(armadilhas/255). Sem essa ponte, os marcos de vida do aluno\n(`sujeito_tipo: matricula`) e os do forum (`sujeito_tipo: pessoa`) nao se\ntraduzem, e a tela teve de mostrar as duas metades lado a lado com um aviso\nde que nao se somam.\n\nPR so de `contracts/` (a cerca reprova contrato misturado com codigo de\ncelula), com a label `contrato`. Prova exigida: freeze da `alunos` e da\n`metricas` verdes, `BASE_REF=origin/main PR_LABELS=contrato python\nci/contrato_aditivo.py`, muralhas, travessao, e a prova por mutacao (um\ncampo novo em `required` reprova em `ci/contrato_aditivo.py`).\n\nO emissor na `alunos`, o consumidor na `metricas` e a tela na `admin` sao\nPRs seguintes, na ordem que o rito manda. Este PR e papel.",
+  "origem": "Rito de Contrato autorizado nominalmente pelo mantenedor em 06/09/2026 (opcao 'Abrir as duas portas que faltam'), para destravar as coortes por turma e a ponte entre matricula e pessoa",
+  "criada_em": "2026-09-06"
+}

@@ -341,9 +341,11 @@ def test_entregar_pela_tela_grava_e_a_aula_diz_recebido_em_e_revisao_ate(
 ):
     resposta = entregar_pela_tela(client)
     assert resposta.status_code == 302
-    assert resposta["Location"] == reverse("aula", args=["E00"]) + (
-        "?recado=entregue#checkpoint"
-    )
+    # A volta é para o ENDEREÇO DO LIVRO (TAR-212), mesmo quando o gesto chegou
+    # pelo endereço antigo: é ele que o aluno copia da barra do navegador.
+    assert resposta["Location"] == reverse(
+        "aula-do-curso", args=["profissional", 1, "E00"]
+    ) + ("?recado=entregue#checkpoint")
     assert "meshcraft_sessao" not in resposta.cookies, "reescreveu o cookie do site"
 
     envio = Envio.objects.get()

@@ -65,8 +65,25 @@ urlpatterns = [
     path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
     # O LAUDO RECEBIDO (degrau 2.2): a mesma pessoa da sessão, o mais recente.
     path("<str:numero>/laudo", laudo_recebido, name="laudo-recebido"),
+    # O ENDEREÇO DO LIVRO (TAR-212, 06/09/2026). O aluno tem o livro em mãos
+    # durante o curso, e o link de uma aula precisa dizer, sozinho, em que
+    # parte do curso ele está. O `<curso>` é o SLUG, resolvido pelo par
+    # site+slug em `apps/cursos/enderecos.py` — nunca "o primeiro do site".
+    #
+    # As duas rotas vêm ANTES das antigas porque a antiga da aula
+    # (`<str:numero>`) casa qualquer segmento único, "profissional" incluído.
+    # O `/` no fim de `<slug:curso>/` é o que separa as duas famílias: o mapa
+    # de um curso tem dois segmentos, a aula antiga tem um.
+    path("<slug:curso>/", mapa, name="curso"),
+    path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
     path("<str:numero>", aula, name="aula"),
     # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
     # mais nada. Vem por último porque `path("")` casa o caminho vazio.
+    #
+    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E CONTINUAM RESPONDENDO:
+    # o checkpoint desta escola é POR LINK, e um link já compartilhado que
+    # passasse a dar 404 seria trabalho de aluno perdido. Eles não escolhem
+    # mais "o primeiro curso do site": com um curso só servem esse curso, e
+    # com mais de um pedem para o aluno escolher, em vez de decidir por ele.
     path("", mapa, name="mapa"),
 ]

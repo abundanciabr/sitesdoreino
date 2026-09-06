@@ -70,6 +70,7 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
 
+from apps.cursos import enderecos
 from apps.cursos.models import PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
 from apps.cursos.models import Curso as CursoModel
@@ -251,23 +252,16 @@ def _curso(site_id: str, slug: str) -> CursoModel:
     em que nascesse um segundo curso, o site inteiro continuaria servindo o
     primeiro, sem erro, sem aviso e sem tela quebrada. Slug que não existe é
     404 com os slugs que existem, nunca o primeiro curso como consolo.
+
+    A conta mora em `apps/cursos/enderecos.py` desde 06/09/2026, porque a sala
+    do aluno passou a precisar dela também (TAR-212). Uma regra, um lugar: um
+    endereço que esta porta recusasse e a sala aceitasse mostraria ao aluno a
+    aula errada com o número certo na barra do navegador.
     """
-    try:
-        return CursoModel.objects.get(site_id=site_id, slug=slug)
-    except CursoModel.DoesNotExist:
-        conhecidos = ", ".join(
-            CursoModel.objects.filter(site_id=site_id)
-            .order_by("slug")
-            .values_list("slug", flat=True)
-        )
-        recado = (
-            f"os cursos deste site são: {conhecidos}"
-            if conhecidos
-            else "este site ainda não tem curso"
-        )
-        raise HttpError(
-            404, f"o curso '{slug}' não existe no site '{site_id}'; {recado}"
-        )
+    curso = enderecos.curso_do_site(site_id, slug)
+    if curso is None:
+        raise HttpError(404, enderecos.recado_de_curso_desconhecido(site_id, slug))
+    return curso
 
 
 def _aula_do_curso(
@@ -279,6 +273,10 @@ def _aula_do_curso(
     (decisão do mantenedor, 05/09/2026). Um endereço que aponta certo para a
     aula ERRADA é pior do que um endereço quebrado: se a parte não casa, a
     resposta é recusa, e a frase diz em que parte a aula realmente está.
+
+    A guarda mora em `apps/cursos/enderecos.py` desde 06/09/2026: a sala do
+    aluno (TAR-212) confere a MESMA parte, e duas cópias da regra divergiriam
+    justamente onde ninguém olha.
     """
     try:
         aula = AulaModel.objects.select_related("bloco", "instrumento").get(
@@ -286,13 +284,9 @@ def _aula_do_curso(
         )
     except AulaModel.DoesNotExist:
         raise HttpError(404, f"a aula {numero} não existe no curso '{curso.slug}'")
-    if parte is not None and aula.bloco.parte != parte:
-        raise HttpError(
-            404,
-            f"a aula {numero} não está na parte {int(parte)} do curso "
-            f"'{curso.slug}': ela está na parte {aula.bloco.parte}. Troque a "
-            f"parte do endereço para {aula.bloco.parte}.",
-        )
+    recusa = enderecos.parte_errada(curso, aula, parte)
+    if recusa is not None:
+        raise HttpError(404, recusa)
     return aula
 
 

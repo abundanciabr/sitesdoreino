@@ -1,8 +1,12 @@
 {% extends "admin/base.html" %}
 {% comment %}
-A LISTA das encomendas do curso: as 34, na ordem em que o aluno as encontra,
-com o estado, a versão e a data de publicação de cada uma; e os 13
-instrumentos, para abrir o cartão de cada um.
+A LISTA das encomendas de UM curso, agrupada como o livro: as três Partes como
+seções, e dentro de cada uma os blocos por letra, na ordem. É assim que se acha
+a encomenda com o livro aberto ao lado da tela.
+
+O curso e a Parte vêm do ENDEREÇO (`/admin/escola/<curso>/parte-N/aulas/`), e
+todo link daqui leva a Parte da própria encomenda: o endereço diz, a quem o
+abrir, em que ponto do curso aquilo está.
 
 Nada aqui é desta célula: tudo vem da `cursos`, pela porta de máquina e pelo
 contrato congelado (docstring de apps/core/aulas.py). Sem script, como as
@@ -21,6 +25,9 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   .encomendas .numero { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
   .encomendas .versao { text-align: right; font-variant-numeric: tabular-nums; }
   .encomendas a { font-weight: 600; }
+  .parte-do-livro { margin: 34px 0 0; font-size: 20px; }
+  .bloco-do-livro { margin: 18px 0 0; font-size: 15px; color: var(--texto-2); font-weight: 600; }
+  .so-esta-parte { margin: 4px 0 0; font-size: 13px; }
 </style>
 <div class="envolucro">
   <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
@@ -38,12 +45,32 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     Recarregue a página em um minuto. Nada mudou por causa disso.
   </p>
 
+  {% elif curso_nao_existe %}
+  <p class="aviso borda-amarela">
+    Não existe nenhum curso <b>{{ curso }}</b> nesta escola.
+    O nome do curso faz parte do endereço desta tela, e talvez ele tenha sido
+    copiado errado. Volte ao painel da escola e entre pelo botão das encomendas.
+  </p>
+
   {% elif falha_da_sala %}
   <p class="aviso borda-vermelha">
     <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
   </p>
 
   {% else %}
+
+  {% if parte %}
+  <p class="espaco-20">
+    Você está vendo <b>só a Parte {{ parte_romano }}</b> deste curso.
+    <a href="{{ url_do_curso_inteiro }}">Ver o curso inteiro &rarr;</a>
+  </p>
+  {% endif %}
+
+  <p class="espaco-20">
+    <a href="{% url 'escola_sumario' curso %}">Colar o sumário do livro &rarr;</a>
+    Enche todas as encomendas de uma vez com o que o sumário traz, sem apagar
+    nada do que você já escreveu.
+  </p>
 
   <div class="cartao">
     <span class="rotulo">Publicadas para os alunos</span>
@@ -58,29 +85,33 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     </p>
   </div>
 
-  {% if aulas %}
-  <div class="rolagem-lateral espaco-20">
+  {% for p in partes %}
+  <h2 class="secao parte-do-livro">Parte {{ p.romano }}</h2>
+  {% if not parte %}
+  <p class="so-esta-parte"><a href="{{ p.endereco }}">Ver só esta Parte &rarr;</a></p>
+  {% endif %}
+  {% for b in p.blocos %}
+  <h3 class="bloco-do-livro">Bloco {{ b.letra }}</h3>
+  <div class="rolagem-lateral">
     <table class="encomendas">
       <thead>
         <tr>
           <th>Nº</th>
           <th>Encomenda</th>
-          <th>Onde fica</th>
           <th>Estado</th>
           <th class="versao">Versão</th>
           <th>Publicada em</th>
         </tr>
       </thead>
       <tbody>
-        {% for a in aulas %}
+        {% for a in b.aulas %}
         <tr>
           <td class="numero">{{ a.numero }}</td>
           <td>
-            <a href="{% url 'escola_aula' a.numero %}">{{ a.titulo_exibido|default:"(sem título ainda)" }}</a>
+            <a href="{{ a.endereco }}">{{ a.titulo_exibido|default:"(sem título ainda)" }}</a>
             {% if a.e_boss %}<span class="mapa-selo">Boss</span>{% endif %}
             {% if a.banca_nivel %}<span class="mapa-selo">Banca {{ a.banca_nivel }}</span>{% endif %}
           </td>
-          <td>{{ a.bloco }}</td>
           <td>
             {% if a.publicada %}
             <span class="luz no-ar">{{ a.estado_rotulo }}</span>
@@ -95,11 +126,37 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
       </tbody>
     </table>
   </div>
+  {% endfor %}
+  {% endfor %}
+
+  {% comment %}
+  A TELA VAZIA se pergunta pela LISTA, e não pelas seções: encomenda que a sala
+  de aula mandar com uma Parte fora do vocabulário não entra em seção nenhuma,
+  e dizer "este curso não tem encomenda" nesse caso mandaria quem lê procurar
+  do lado errado. Quem conta esse caso é o aviso logo abaixo.
+  {% endcomment %}
+  {% if not aulas %}
+  {% if parte %}
+  <p class="aviso espaco-20">
+    <b>A Parte {{ parte_romano }} deste curso ainda não tem nenhuma encomenda.</b>
+    <a href="{{ url_do_curso_inteiro }}">Ver o curso inteiro &rarr;</a>
+  </p>
   {% else %}
   <p class="aviso espaco-20">
-    <b>Esta escola ainda não tem nenhuma encomenda.</b> Elas nascem junto com o
+    <b>Este curso ainda não tem nenhuma encomenda.</b> Elas nascem junto com o
     curso, do lado da sala de aula; quando a primeira existir, ela aparece aqui
     sozinha.
+  </p>
+  {% endif %}
+  {% endif %}
+
+  {% if fora_das_partes %}
+  <p class="aviso borda-amarela espaco-20">
+    <b>{{ fora_das_partes|length }} encomenda(s) não estão em nenhuma das três
+    Partes</b>, e por isso não aparecem nas seções acima:
+    {% for a in fora_das_partes %}<b>{{ a.numero }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    A sala de aula mandou uma Parte que não é 1, 2 nem 3. Nada foi perdido, mas
+    alguém precisa olhar isso do lado da sala de aula.
   </p>
   {% endif %}
 

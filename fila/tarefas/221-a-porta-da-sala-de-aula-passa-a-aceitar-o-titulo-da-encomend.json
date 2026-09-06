@@ -1,0 +1,19 @@
+{
+  "arquivo": "221-a-porta-da-sala-de-aula-passa-a-aceitar-o-titulo-da-encomend",
+  "id": "TAR-221",
+  "titulo": "A porta da sala de aula passa a aceitar o titulo da encomenda e o do Boss",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: putLesson aceitando titulo_exibido, e o bloco (nome e boss_titulo) com forma de gravar; a prosa da porta explicando por que o titulo e o unico dos sete campos estruturais que muda de lado; teste provando que titulo ja escrito nao e sobrescrito; export_openapi com a saida crua; suite da cursos verde. O Rito de Contrato fica para a maestro.",
+  "despacho": "Medido pelo robo da TAR-213 em 06/09/2026, e confirmado no contrato congelado. A tela de colar o sumario grava as 16 pecas de cada encomenda, mas DUAS coisas do sumario nao tem por onde entrar:\n\n1. O TITULO da encomenda (a frase do cliente, tipo \"Bem-vindo ao estudio.\"). O contrato congelado exclui titulo_exibido do corpo de putLesson, com a frase explicita: \"Numero, ordem, titulo, bloco, estado, versao e data de publicacao nao entram, e manda-los e 422\".\n2. O TITULO DO BOSS de cada bloco. O campo boss_titulo existe no modelo da celula cursos e NAO aparece em nenhuma das onze operacoes do contrato.\n\nPOR QUE ISSO IMPORTA MAIS DO QUE PARECE: o titulo e a primeira coisa que o aluno le, e e a frase do cliente que da nome ao capitulo no livro. Sem ele, a aula importada fica \"Encomenda 22\" onde deveria estar \"Quero que ela exista inteira.\". O aluno estara com o livro na mao e vai ver a diferenca na hora.\n\nO QUE FAZER, na celula cursos:\n  - putLesson passa a aceitar o titulo_exibido. Cuidado: o contrato o exclui de proposito, porque numero, ordem e bloco sao estrutura e nao obra. O titulo e o unico dos sete que E obra do mantenedor, e por isso e o unico que muda de lado. Diga isso na prosa da porta, que vira pedra no congelamento (armadilhas/324).\n  - nasce uma operacao para gravar o bloco (nome e boss_titulo), ou putLesson passa a aceita-los. Escolha a forma e explique a escolha; o bloco tem doze linhas e nao pertence a nenhuma aula em particular.\n  - a regra de NUNCA sobrescrever obra escrita continua valendo, e e do lado de quem chama.\n\nESPERE FICAR VERMELHO: o contrato da cursos esta congelado, e mudar a porta reprova o contrato-check (armadilhas/243). Faca o codigo, rode manage.py export_openapi, ponha a saida crua no relatorio e devolva a maestro: o Rito de Contrato e dela, com o mantenedor presente.",
+  "origem": "medido pelo robo da TAR-213 em 06/09/2026: a tela de colar o sumario nao consegue gravar o titulo da encomenda nem o do Boss",
+  "criada_em": "2026-09-06"
+}

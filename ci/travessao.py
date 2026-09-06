@@ -669,6 +669,46 @@ def superficie(raiz: Path) -> list[Path]:
     return sorted(publicos)
 
 
+def pertence_a_superficie(raiz: Path, relativo: Path, texto: str) -> bool:
+    """Este arquivo, com ESTE conteúdo, seria texto público para `superficie`?
+
+    O espelho por-arquivo de `superficie`, para quem precisa decidir ANTES de o
+    arquivo existir no disco: a muralha da escrita
+    (`ci/muralha_do_travessao_na_escrita.py`) recusa o Write/Edit no momento em
+    que o robô tenta gravar, e nesse momento um arquivo novo ainda não está em
+    lugar nenhum para uma varredura de disco encontrar.
+
+    As duas réguas são obrigadas a bater: o teste de equivalência
+    (`ci/tests/test_muralha_do_travessao_na_escrita.py`) compara esta função com
+    `superficie` sobre TODO arquivo do repositório real. Quem mudar uma sem a
+    outra reprova lá, com o caminho divergente na tela.
+    """
+    if _dentro_de_pasta_ignorada(relativo):
+        return False
+    sufixo = relativo.suffix.lower()
+    partes = relativo.parts
+    publico = False
+    if partes[0] == "documentos":
+        publico = sufixo == ".md"
+    elif partes[0] == "services" and len(partes) >= 3:
+        pastas_da_celula = partes[2:-1]
+        if sufixo in (".html", ".htm", ".txt", ".md"):
+            publico = "templates" in pastas_da_celula
+        elif sufixo in (".yaml", ".yml"):
+            publico = "traducoes" in pastas_da_celula
+        elif sufixo == ".py" and relativo.name != "__init__.py":
+            if relativo.parent.name == "commands":
+                publico = True
+            elif "migrations" not in partes[2:]:
+                publico = MARCA_DE_TEXTO_PUBLICO in texto or _define_choices(texto)
+    if not publico:
+        return False
+    caminho_posix = relativo.as_posix()
+    return not any(
+        fnmatch.fnmatch(caminho_posix, padrao) for padrao in _padroes_de_bastidor(raiz)
+    )
+
+
 # ---------------------------------------------------------------------------
 # A contagem.
 # ---------------------------------------------------------------------------

@@ -1,0 +1,19 @@
+{
+  "arquivo": "213-uma-tela-para-colar-o-sumario-do-livro-e-o-curso-ganhar-a-me",
+  "id": "TAR-213",
+  "titulo": "Uma tela para colar o sumario do livro e o curso ganhar a mesma estrutura",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: a tela /admin/escola/<curso>/sumario/ com prever e importar; teste provando que campo ja escrito NAO e sobrescrito (com prova por mutacao); teste do parser contra um sumario de mentira escrito no teste (NUNCA o texto do livro, que e obra nao lancada e o repositorio e publico); a gravacao pela porta de maquina e nao no banco; suite da admin verde e make ci verde.",
+  "despacho": "O mantenedor tem o SUMARIO COMPLETO do livro (966 linhas) e quer a mesma estrutura dentro do curso. O texto e obra NAO LANCADA dele e o repositorio e PUBLICO ([INV-CUR-C2], armadilhas/331): o sumario NAO entra no repositorio, nem como fixture, nem como semente, nem em teste. Ele entra pela TELA, colado por ele, uma vez.\n\nCONSTRUA /admin/escola/<curso>/sumario/: uma area de colar, um botao PREVER e um botao IMPORTAR. Prever le o texto e mostra, aula por aula, o que sera preenchido e o que sera DEIXADO EM PAZ. Importar grava pela porta de maquina (putLesson do contrato congelado), nunca no banco direto.\n\nA REGRA QUE NAO SE NEGOCIA: o importador NUNCA sobrescreve o que ja tem texto. Campo vazio ele preenche; campo escrito ele preserva e diz na previa que preservou. Um importador que apaga o que o mantenedor escreveu e a forma mais rapida de perder meses de trabalho que so existem naquele banco.\n\nO FORMATO, medido no arquivo (o robo le o arquivo na maquina do mantenedor, em sitesdoreino-docs/agentes-de-ia/, e NAO o commita):\n  - cabecalho de Parte: linha ## PARTE <romano> seguida de uma linha em italico com vilao, degraus e titulo conferido;\n  - cabecalho de bloco: linha comecando com tres ou mais caracteres de moldura, a palavra BLOCO, a letra e a lista de encomendas separadas por ponto medio;\n  - cabecalho de encomenda: E<NN> ou EB, ponto medio, e o titulo entre aspas (a frase do cliente), seguido de uma linha indentada com a promessa;\n  - as pecas: numero de 1 a 16, dois espacos, o nome da peca, e o que e proprio dela depois de um travessao; algumas pecas trazem sub-linhas indentadas (as secoes numeradas do Eu faco, as figuras);\n  - insercoes: linhas de moldura com BOSS <letra>, o titulo entre aspas e a medalha; e MARCO #<n>. Sao 12 Bosses e 6 Marcos, ja medidos.\n\nPARA ONDE VAI CADA COISA: titulo entre aspas -> Aula.titulo_exibido; o cliente da peca 1 -> Aula.cliente; o texto proprio de cada peca -> Peca.texto do tipo correspondente, na ordem canonica; o titulo do Boss -> Bloco.boss_titulo. A peca 13 muda de NOME por Parte no livro (Critica de atelier nas Partes I e II, Revisao de estudio na III) e nos dois casos e o MESMO tipo do modelo: mapeie os dois nomes para critica_de_atelier.\n\nO QUE NAO FAZER: nao mexa em contracts/ (congelado), nao mexa em services/cursos/, nao guarde o sumario colado em lugar nenhum (ele e derivado para as aulas e o mantenedor tem o arquivo), e nao invente campo novo no modelo.",
+  "origem": "pedido do mantenedor em 05/09/2026: 'coloquei na pasta o sumario completo do livro, e quero que voce o crie no site para usarmos a mesma estrutura do sumario no curso'",
+  "criada_em": "2026-09-06"
+}

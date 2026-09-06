@@ -1,9 +1,31 @@
-"""`/admin/escola/aulas/` — o editor de encomendas do curso, onde o mantenedor e
-a professora escrevem as 34 aulas: as 16 peças, o roteiro e a ficha do Guia do
-Mentor, as pausas, o instrumento cabível, o "Aceito quando", o quiz, o vídeo
-por link, e o botão de publicar.
+"""`/admin/escola/<curso>/parte-N/aulas/` — o editor de encomendas do curso,
+onde o mantenedor e a professora escrevem as 34 aulas: as 16 peças, o roteiro e
+a ficha do Guia do Mentor, as pausas, o instrumento cabível, o "Aceito quando",
+o quiz, o vídeo por link, e o botão de publicar.
 
 Degrau 1.5 do `docs/decisoes/PLANO-CELULA-CURSOS.md` (§6, o editor).
+
+## O curso e a Parte moram no ENDEREÇO (05/09/2026, TAR-211)
+
+Pedido do mantenedor: *"quero que ao compartilhar uma aula o link da mesma seja
+útil para o aluno entender exatamente em qual parte do curso ele está"*, e
+*"precisamos ajustar o curso ao livro porque o aluno terá o livro em mãos
+durante o curso"*. Daí as duas metades desta tela:
+
+1. **O endereço leva o curso e a Parte.** O curso é o SLUG, e a porta o resolve
+   pelo par site+slug, nunca mais como "o primeiro curso do site" (que serviria
+   o curso errado, calado, no dia do segundo). A Parte é opcional:
+   `/admin/escola/<curso>/aulas/` mostra o curso inteiro. Na lista ela é filtro;
+   no editor é GUARDA, e parte que não casa com o bloco da encomenda é recusa,
+   traduzida aqui no endereço certo pronto para clicar.
+2. **A lista é agrupada como o livro**: as três Partes como seções, e dentro de
+   cada uma os blocos por letra, na ordem. É assim que se acha a encomenda com
+   o livro aberto ao lado da tela.
+
+Das operações da porta, esta tela chama SEMPRE as que sabem de curso
+(`listLessons`, `getLesson`, `putLesson`, `publishLesson`) e nunca as irmãs que
+varrem o site inteiro. O guarda disso é
+`tests/test_editor_de_aulas.py::test_a_tela_nunca_chama_as_operacoes_que_nao_sabem_de_curso`.
 
 ## Onde o dado mora, e por que não aqui
 
@@ -128,6 +150,23 @@ PERGUNTAS_DO_QUIZ = 5
 #: cabem numa aula normal sem virar uma tabela de vinte linhas em branco.
 LINHAS_DE_PAUSA_A_MAIS = 3
 
+#: O curso por onde se ENTRA no editor, vindo do painel da escola.
+#:
+#: O slug viaja no endereço de toda tela daqui, e é o par site+slug que resolve
+#: o curso do outro lado. Este valor existe só porque a porta não tem operação
+#: que LISTE os cursos de um site: para desenhar o primeiro link é preciso um
+#: slug, e hoje há um curso só. No dia do segundo, esta constante vira um
+#: seletor no painel da escola, e nenhuma outra linha desta tela muda, porque o
+#: slug já é dado do endereço em todas elas.
+CURSO_PADRAO = "profissional"
+
+#: As três Partes do livro, com o número que viaja no endereço e o algarismo
+#: romano com que o livro as chama. O mantenedor e a professora leem a tela com
+#: o livro aberto ao lado: o endereço usa `parte-1` (o vocabulário do contrato,
+#: `ParteDoCurso`) e a tela escreve "Parte I", que é o que está impresso.
+PARTES = ((1, "I"), (2, "II"), (3, "III"))
+ROMANO = dict(PARTES)
+
 # Os campos do corpo de `putLesson` e de `putInstrument`, com o nome que a
 # recusa cita. O `loc` de um erro da porta começa por um destes.
 ROTULO_DO_CAMPO = {
@@ -240,9 +279,34 @@ def _site_desta_requisicao(request) -> "dict | None":
     return CatalogoClient().site_por_host(request.get_host().split(":")[0].lower())
 
 
+def _parte_do_bloco(bloco) -> int:
+    """A Parte em que a encomenda está, pelo `bloco` do contrato.
+
+    Zero quando a porta manda algo fora do vocabulário: a tela mostra "Parte ?"
+    em vez de escolher uma Parte por conta própria.
+    """
+    parte = (bloco or {}).get("parte")
+    return parte if parte in ROMANO else 0
+
+
 def _bloco(bloco) -> str:
     bloco = bloco or {}
-    return f"Parte {bloco.get('parte', '?')}, bloco {bloco.get('letra', '?')}"
+    romano = ROMANO.get(_parte_do_bloco(bloco), "?")
+    return f"Parte {romano}, bloco {bloco.get('letra', '?')}"
+
+
+def _endereco(nome: str, curso: str, parte: "int | None", numero: str = "") -> str:
+    """O endereço de uma tela deste editor, com o curso e (quando há) a Parte.
+
+    Um lugar só monta endereço aqui, e é `reverse`: o prefixo `/admin` desta
+    célula mora no env (`armadilhas/029`), e endereço escrito à mão o perderia.
+    """
+    argumentos: dict = {"curso": curso}
+    if parte:
+        argumentos["parte"] = str(parte)
+    if numero:
+        argumentos["numero"] = numero
+    return reverse(nome, kwargs=argumentos)
 
 
 def _cabecalho(aula: dict) -> dict:
@@ -616,17 +680,70 @@ def _sem_site(request, status: int = 503):
     )
 
 
-def _linha_da_lista(aula: dict) -> dict:
-    return _cabecalho(aula) | {
+def _linha_da_lista(aula: dict, curso: str) -> dict:
+    """Uma linha da lista, com o endereço dela já montado.
+
+    O endereço leva SEMPRE a Parte da própria encomenda, mesmo quando a lista
+    aberta é a do curso inteiro: é o link que a professora copia, e ele tem de
+    dizer a quem o abrir em que ponto do livro aquilo está.
+    """
+    bloco = aula.get("bloco") or {}
+    parte = _parte_do_bloco(bloco)
+    cabecalho = _cabecalho(aula)
+    return cabecalho | {
         "ordem": int(aula.get("ordem") or 0),
         "e_boss": bool(aula.get("e_boss")),
         "banca_nivel": aula.get("banca_nivel"),
+        # As três que agrupam: a Parte e a letra dizem em que seção a linha
+        # entra, e a ordem do bloco é a do livro (A a L), não a alfabética.
+        "parte": parte,
+        "letra": str(bloco.get("letra") or "?"),
+        "ordem_do_bloco": int(bloco.get("ordem") or 0),
+        "endereco": _endereco("escola_aula", curso, parte, cabecalho["numero"]),
     }
 
 
-def _desenhar_lista(request, site: dict, *, status: int = 200):
+def _agrupar(linhas: list, curso: str) -> list:
+    """As encomendas nas três Partes do livro, e dentro de cada uma nos blocos.
+
+    A ordem é a do livro: Parte I, II, III; dentro de cada Parte os blocos pela
+    ordem deles (que é a letra, de A a L); dentro de cada bloco a ordem da
+    encomenda. Uma lista corrida de 34 linhas obriga quem está com o livro
+    aberto ao lado a contar de cabeça em que Parte cada uma cai.
+    """
+    partes = []
+    for parte, romano in PARTES:
+        da_parte = sorted(
+            (linha for linha in linhas if linha["parte"] == parte),
+            key=lambda linha: (linha["ordem_do_bloco"], linha["ordem"]),
+        )
+        if not da_parte:
+            continue
+        blocos: list = []
+        for linha in da_parte:
+            if not blocos or blocos[-1]["letra"] != linha["letra"]:
+                blocos.append({"letra": linha["letra"], "aulas": []})
+            blocos[-1]["aulas"].append(linha)
+        partes.append(
+            {
+                "romano": romano,
+                "blocos": blocos,
+                "endereco": _endereco("escola_aulas", curso, parte),
+            }
+        )
+    return partes
+
+
+def _desenhar_lista(request, site: dict, curso: str, parte: "int | None"):
     cliente = CursosClient()
-    desfecho, aulas = cliente.aulas(site["id"])
+    desfecho, aulas = cliente.aulas(site["id"], curso, parte)
+    if desfecho == CursosClient.NAO_EXISTE:
+        return render(
+            request,
+            LISTA,
+            {"admin": request.admin, "curso_nao_existe": True, "curso": curso},
+            status=404,
+        )
     if desfecho != CursosClient.OK:
         return render(
             request,
@@ -634,13 +751,23 @@ def _desenhar_lista(request, site: dict, *, status: int = 200):
             {"admin": request.admin, "falha_da_sala": _falha(desfecho)},
             status=503,
         )
-    linhas = [_linha_da_lista(a) for a in aulas if isinstance(a, dict)]
+    linhas = [_linha_da_lista(a, curso) for a in aulas if isinstance(a, dict)]
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
         LISTA,
         {
             "admin": request.admin,
+            "curso": curso,
+            "parte": parte,
+            "parte_romano": ROMANO.get(parte or 0, ""),
+            "url_do_curso_inteiro": _endereco("escola_aulas", curso, None),
+            "partes": _agrupar(linhas, curso),
+            # O que a porta mandar com Parte fora do vocabulário do contrato
+            # (`ParteDoCurso` é 1, 2 ou 3) não cabe em nenhuma seção e SUMIRIA
+            # da tela em silêncio, com a contagem do topo dizendo outro número.
+            # A tela conta em voz alta em vez de esconder.
+            "fora_das_partes": [linha for linha in linhas if not linha["parte"]],
             "aulas": linhas,
             "publicadas": sum(1 for linha in linhas if linha["publicada"]),
             "instrumentos": [
@@ -655,14 +782,35 @@ def _desenhar_lista(request, site: dict, *, status: int = 200):
             ],
             "instrumentos_lidos": lidos == CursosClient.OK,
         },
-        status=status,
     )
+
+
+def _endereco_certo(cliente, site: dict, curso: str, numero: str) -> "int | None":
+    """A encomenda existe, mas em outra Parte? Devolve a Parte de verdade dela.
+
+    A porta recusa a parte que não casa com um 404 cujo texto diz onde a
+    encomenda está. Ler esse texto seria a tela decorando a frase de outra
+    célula; em vez disso ela pergunta de novo SEM a parte e lê o `bloco.parte`
+    do contrato, que é dado, não prosa. Custa uma ida à porta, e só no caminho
+    do erro, para devolver um endereço certo pronto para clicar em vez de um
+    "não existe" que mandaria a professora procurar sozinha.
+
+    `None` quando a encomenda não existe mesmo, ou quando a porta não respondeu
+    a segunda vez: nos dois casos a tela diz que não achou, e nunca inventa
+    uma Parte.
+    """
+    desfecho, aula = cliente.aula(site["id"], curso, numero)
+    if desfecho != CursosClient.OK:
+        return None
+    return _parte_do_bloco((aula or {}).get("bloco")) or None
 
 
 def _desenhar_aula(
     request,
     site: dict,
+    curso: str,
     numero: str,
+    parte: "int | None" = None,
     *,
     rascunho: "dict | None" = None,
     gerais: "list[str] | None" = None,
@@ -677,22 +825,45 @@ def _desenhar_aula(
     Com `rascunho`, desenha o que a pessoa mandou e a porta recusou, com os
     erros já pendurados nos campos; o cabeçalho (título, estado, versão)
     continua vindo da porta, porque só ela sabe.
+
+    `parte` é a do ENDEREÇO, e ela é guarda dos dois lados: a porta recusa a
+    que não casa com o bloco da encomenda, e esta tela transforma a recusa no
+    endereço certo.
     """
     cliente = CursosClient()
-    desfecho, aula = cliente.aula(site["id"], numero)
+    desfecho, aula = cliente.aula(site["id"], curso, numero, parte)
     if desfecho == CursosClient.NAO_EXISTE:
+        certa = _endereco_certo(cliente, site, curso, numero) if parte else None
         return render(
             request,
             EDITOR,
-            {"admin": request.admin, "nao_existe": True, "numero": numero},
+            {
+                "admin": request.admin,
+                "nao_existe": True,
+                "numero": numero,
+                "curso": curso,
+                "url_da_lista": _endereco("escola_aulas", curso, parte),
+                "parte_pedida": ROMANO.get(parte or 0, ""),
+                "parte_certa": ROMANO.get(certa or 0, ""),
+                "url_da_parte_certa": (
+                    _endereco("escola_aula", curso, certa, numero) if certa else ""
+                ),
+            },
             status=404,
         )
+    contexto_do_lugar = {
+        "curso": curso,
+        "parte": parte,
+        "url_da_lista": _endereco("escola_aulas", curso, parte),
+        "url_de_salvar": _endereco("escola_aula_salvar", curso, parte, numero),
+        "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+    }
     if desfecho != CursosClient.OK:
         contexto = {
             "admin": request.admin,
             "falha_da_sala": _falha(desfecho),
             "numero": numero,
-        }
+        } | contexto_do_lugar
         if rascunho is not None:
             # A porta caiu no meio da edição: o texto NÃO se perde. Ele volta
             # para a tela, sem cabeçalho, e o botão de salvar continua lá. As
@@ -735,7 +906,8 @@ def _desenhar_aula(
             "erro": erro,
             "recado": recado,
             "versao_nova": versao,
-        },
+        }
+        | contexto_do_lugar,
         status=status,
     )
 
@@ -770,12 +942,18 @@ def _desenhar_instrumento(
     versao: int = 0,
     status: int = 200,
 ):
+    # Os instrumentos são de plataforma inteira (o contrato não os escopa por
+    # curso), então esta tela não tem curso próprio: a volta é para a lista do
+    # curso por onde se entra. Ela vai nas TRÊS caras da tela porque o link
+    # mora no alto do gabarito, fora de toda condição: faltando numa delas, a
+    # volta vira `href=""` e recarrega o próprio erro.
+    volta = {"url_da_lista": _endereco("escola_aulas", CURSO_PADRAO, None)}
     desfecho, instrumento = CursosClient().instrumento(slug)
     if desfecho == CursosClient.NAO_EXISTE:
         return render(
             request,
             INSTRUMENTO,
-            {"admin": request.admin, "nao_existe": True, "slug": slug},
+            {"admin": request.admin, "nao_existe": True, "slug": slug} | volta,
             status=404,
         )
     if desfecho != CursosClient.OK:
@@ -783,7 +961,7 @@ def _desenhar_instrumento(
             "admin": request.admin,
             "falha_da_sala": _falha(desfecho),
             "slug": slug,
-        }
+        } | volta
         if rascunho is not None:
             contexto |= {"rascunho": rascunho, "sem_cabecalho": True, "erro": erro}
         return render(request, INSTRUMENTO, contexto, status=503)
@@ -807,7 +985,8 @@ def _desenhar_instrumento(
             "erro": erro,
             "recado": recado,
             "versao_nova": versao,
-        },
+        }
+        | volta,
         status=status,
     )
 
@@ -816,16 +995,20 @@ def _desenhar_instrumento(
 # AS TRÊS VISTAS
 # ---------------------------------------------------------------------------
 @require_GET
-def aulas(request):
-    """A lista das encomendas deste site, e quantas estão publicadas."""
+def aulas(request, curso: str, parte: "str | None" = None):
+    """As encomendas de um curso, e quantas estão publicadas.
+
+    Com `parte` no endereço, só aquela Parte do livro; sem ela, o curso
+    inteiro, com as três Partes como seções.
+    """
     site = _site_desta_requisicao(request)
     if site is None:
         return _sem_site(request)
-    return _desenhar_lista(request, site)
+    return _desenhar_lista(request, site, curso, int(parte) if parte else None)
 
 
 @require_GET
-def aula(request, numero: str):
+def aula(request, curso: str, numero: str, parte: "str | None" = None):
     """Uma encomenda por dentro: o editor. O trabalho está em `_desenhar_aula`."""
     site = _site_desta_requisicao(request)
     if site is None:
@@ -834,7 +1017,9 @@ def aula(request, numero: str):
     return _desenhar_aula(
         request,
         site,
+        curso,
         numero,
+        int(parte) if parte else None,
         recado=request.GET.get("recado", ""),
         versao=int(bruto) if bruto.isdigit() else 0,
     )
@@ -856,7 +1041,7 @@ def instrumento(request, slug: str):
 # OS TRÊS GESTOS
 # ---------------------------------------------------------------------------
 @require_POST
-def aula_salvar(request, numero: str):
+def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
     """Grava a encomenda INTEIRA pela porta; a versão volta incrementada.
 
     Padrão POST-redirect-GET no sucesso, como toda escrita desta área. Na
@@ -871,10 +1056,13 @@ def aula_salvar(request, numero: str):
     if site is None:
         return _sem_site(request)
 
+    na_parte = int(parte) if parte else None
     rascunho = _rascunho_do_formulario(request)
     corpo, enviados = _corpo(rascunho)
     riscas = len(_riscas(rascunho))
-    desfecho, resposta = CursosClient().gravar_aula(site["id"], numero, corpo)
+    desfecho, resposta = CursosClient().gravar_aula(
+        site["id"], curso, numero, corpo, na_parte
+    )
 
     if desfecho == CursosClient.OK:
         versao = int((resposta or {}).get("versao") or 0)
@@ -885,7 +1073,7 @@ def aula_salvar(request, numero: str):
             Registro.OK,
             f"versao {versao}; {riscas} frase(s) com travessao",
         )
-        destino = reverse("escola_aula", args=[numero])
+        destino = _endereco("escola_aula", curso, na_parte, numero)
         return HttpResponseRedirect(f"{destino}?recado=salva&versao={versao}")
 
     if desfecho == CursosClient.RECUSADO:
@@ -900,7 +1088,9 @@ def aula_salvar(request, numero: str):
         return _desenhar_aula(
             request,
             site,
+            curso,
             numero,
+            na_parte,
             rascunho=rascunho,
             gerais=gerais,
             erro="A sala de aula não aceitou a encomenda assim. Nada foi gravado; "
@@ -917,13 +1107,15 @@ def aula_salvar(request, numero: str):
             Registro.RECUSADO_PELA_CELULA,
             "nao existe",
         )
-        return _desenhar_aula(request, site, numero)
+        return _desenhar_aula(request, site, curso, numero, na_parte)
 
     _auditar(request, Registro.EDITAR_AULA, numero, Registro.NAO_RESPONDEU, desfecho)
     return _desenhar_aula(
         request,
         site,
+        curso,
         numero,
+        na_parte,
         rascunho=rascunho,
         erro=f"{_falha(desfecho)['titulo']} Não sei se a encomenda foi gravada; o que "
         "você escreveu continua aqui embaixo. Espere um minuto e salve de novo.",
@@ -932,7 +1124,7 @@ def aula_salvar(request, numero: str):
 
 
 @require_POST
-def aula_publicar(request, numero: str):
+def aula_publicar(request, curso: str, numero: str, parte: "str | None" = None):
     """Abre a encomenda para a sala de aula. Não muda uma letra do texto.
 
     Exige a confirmação de uma linha (a caixa marcada): publicar é o gesto
@@ -942,23 +1134,28 @@ def aula_publicar(request, numero: str):
     site = _site_desta_requisicao(request)
     if site is None:
         return _sem_site(request)
+    na_parte = int(parte) if parte else None
     if request.POST.get("confirmo") != "1":
         return _desenhar_aula(
             request,
             site,
+            curso,
             numero,
+            na_parte,
             erro="Para publicar, marque a caixa de confirmação ao lado do botão. "
             "Nada foi publicado.",
             status=400,
         )
 
-    desfecho, resposta = CursosClient().publicar_aula(site["id"], numero)
+    desfecho, resposta = CursosClient().publicar_aula(
+        site["id"], curso, numero, na_parte
+    )
     if desfecho == CursosClient.OK:
         versao = int((resposta or {}).get("versao") or 0)
         _auditar(
             request, Registro.PUBLICAR_AULA, numero, Registro.OK, f"versao {versao}"
         )
-        destino = reverse("escola_aula", args=[numero])
+        destino = _endereco("escola_aula", curso, na_parte, numero)
         return HttpResponseRedirect(f"{destino}?recado=publicada")
 
     if desfecho == CursosClient.NAO_EXISTE:
@@ -969,7 +1166,7 @@ def aula_publicar(request, numero: str):
             Registro.RECUSADO_PELA_CELULA,
             "nao existe",
         )
-        return _desenhar_aula(request, site, numero)
+        return _desenhar_aula(request, site, curso, numero, na_parte)
     if desfecho == CursosClient.RECUSADO:
         gerais = _pendurar(
             {"erros": {}, "pecas": [], "quiz": [], "pausas": []}, {}, resposta
@@ -984,7 +1181,9 @@ def aula_publicar(request, numero: str):
         return _desenhar_aula(
             request,
             site,
+            curso,
             numero,
+            na_parte,
             gerais=gerais,
             erro="A sala de aula não deixou publicar esta encomenda ainda. Nada mudou.",
             status=422,
@@ -994,7 +1193,9 @@ def aula_publicar(request, numero: str):
     return _desenhar_aula(
         request,
         site,
+        curso,
         numero,
+        na_parte,
         erro=f"{_falha(desfecho)['titulo']} Não sei se a encomenda foi publicada. "
         "Recarregue esta página em um minuto e olhe o estado dela.",
         status=503,

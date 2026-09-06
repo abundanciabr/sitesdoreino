@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 
 from apps.eventos.handlers import (
+    ao_aula_concluida,
     ao_checkpoint_devolvido,
     ao_envio_recebido,
     ao_pagamento_aprovado,
@@ -37,6 +38,11 @@ STREAMS = {
     # MESMO consumidor e pelo mesmo grupo: nada muda no compose.
     "eventos.envio.recebido": ao_envio_recebido,
     "eventos.checkpoint.devolvido": ao_checkpoint_devolvido,
+    # Desde 06/09/2026: a mesma sala de aula, agora pelo marco. A aula concluída
+    # que FECHA UM BLOCO convida o aluno para a Prancheta (degrau 17 do
+    # portfólio); a aula comum não convida ninguém, e é `ao_aula_concluida` que
+    # separa as duas. Mesmo consumidor, mesmo grupo: nada muda no compose.
+    "eventos.aula.concluida": ao_aula_concluida,
 }
 
 # Convenção do LOTE — as 4 células consumidoras usam OS MESMOS nomes e valores
