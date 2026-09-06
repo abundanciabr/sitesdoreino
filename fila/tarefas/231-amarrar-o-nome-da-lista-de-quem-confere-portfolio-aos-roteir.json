@@ -1,0 +1,17 @@
+{
+  "arquivo": "231-amarrar-o-nome-da-lista-de-quem-confere-portfolio-aos-roteir",
+  "id": "TAR-231",
+  "titulo": "Amarrar o nome da lista de quem confere portfolio aos roteiros que a escrevem",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste novo em ci/tests reprova quando o nome da variavel diverge entre services/pages/apps/core/equipe.py e os arquivos de infra, provado por mutacao",
+  "despacho": "CELULA: ci. MANDATO NECESSARIO: caminho CODEOWNERS ci/, so para um arquivo novo\nde teste (ci/tests/test_nome_da_lista_da_equipe.py). Nao mexer em services/ nem\nem infra/.\n\nO BURACO, medido em 06/09/2026 na TAR-229. O nome da variavel que abre a fila da\nconferencia do portfolio, `IDS_DA_EQUIPE`, e hoje uma COPIA CONSCIENTE em quatro\nlugares:\n\n  services/pages/apps/core/equipe.py      (constante VARIAVEL, quem LE)\n  infra/provisionar-equipe-do-portfolio.sh (quem ESCREVE, variavel CHAVE)\n  infra/provisionar-pages.sh               (CHAVES_QUE_EU_GERO e o heredoc)\n  infra/env/pages.env.exemplo              (o molde)\n\nO guarda que existe (ci/tests/test_provisionamento_nao_perde_variavel.py) amarra\nso os tres ultimos entre si. Ninguem amarra o PRIMEIRO aos outros: renomear a\nconstante em `equipe.py` deixa a suite inteira verde, o deploy verde, e a fila\nfechada para todo mundo, porque o roteiro passaria a escrever uma chave que\nninguem le. Copia consciente sem guarda e armadilha com data marcada (a mesma\nlicao que o cabecalho daquele teste ja cita, §5.11).\n\nO QUE FAZER. Um teste novo que le os quatro arquivos como TEXTO (nao importa\nDjango, nao sobe celula) e reprova se o nome divergir: pegue a constante\n`VARIAVEL = \"...\"` de `services/pages/apps/core/equipe.py` e exija que a MESMA\npalavra apareca em `CHAVE=\"...\"` do provisionar-equipe-do-portfolio.sh, na\n`CHAVES_QUE_EU_GERO` e no heredoc do provisionar-pages.sh, e no\ninfra/env/pages.env.exemplo. Fail-closed de instrumentacao ([INV-CI01]): arquivo\nausente ou constante nao encontrada REPROVAM, nunca passam por falta do que\nmedir. Prove o guarda por mutacao (troque o nome num deles em memoria e mostre o\nvermelho).\n\nEVIDENCIA: pytest do arquivo novo verde, mais a saida do vermelho fabricado.",
+  "origem": "TAR-229, despacho-infra-equipe-portfolio-0609",
+  "criada_em": "2026-09-06"
+}
