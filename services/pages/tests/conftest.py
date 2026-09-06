@@ -94,8 +94,14 @@ def dublar_matricula(rede, email: str, categoria: str = "aluno", *, status: int 
 
 
 @pytest.fixture
-def aluna(env_dos_pares, rede):
-    """Ana, reconhecida pela `identidade` e com matrícula ativa na `alunos`."""
+def aluna(env_dos_pares, rede, db):
+    """Ana, reconhecida pela `identidade` e com matrícula ativa na `alunos`.
+
+    **Ela pede o banco desde o degrau 07**, e não por capricho: quem passa pela
+    porta chega na Prancheta, e a Prancheta lê o roteiro da escola do banco. Uma
+    aluna sem `db` só voltaria a passar no dia em que a tela dela parasse de
+    mostrar o roteiro.
+    """
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], "aluno")
     return ANA
@@ -155,3 +161,28 @@ def criar_estado(db):
         return EstadoDoAluno.objects.create(portfolio=portfolio, **campos)
 
     return fabrica
+
+
+# O `site_id` desta instalação, como o env da VPS o terá quando a linha
+# `SITE_ID` for escrita no `infra/provisionar-pages.sh`. Ele NÃO é lido do
+# ambiente de quem roda a suíte: com o valor vindo da máquina, o guarda do
+# caso "sem SITE_ID" mediria o computador em vez do código.
+SITE_DECLARADO = "escola-a"
+
+
+@pytest.fixture
+def site_declarado(monkeypatch):
+    """A instalação sabe de que escola ela é."""
+    monkeypatch.setenv("SITE_ID", SITE_DECLARADO)
+    return SITE_DECLARADO
+
+
+@pytest.fixture
+def sem_site_declarado(monkeypatch):
+    """O estado da VPS de hoje: `provisionar-pages.sh` não escreve `SITE_ID`.
+
+    É o caso que o degrau 07 encontrou e não pôde consertar sozinho (a linha
+    mora em `infra/`, caminho CODEOWNERS). A Prancheta continua mostrando o
+    roteiro e diz, em português, por que a marcação não abre.
+    """
+    monkeypatch.delenv("SITE_ID", raising=False)

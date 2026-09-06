@@ -104,6 +104,41 @@ degrau ela vira código.
   `tests/test_modelo_de_dados.py::test_a_marcacao_atravessa_aparelhos`, que relê
   do banco em vez de conferir a instância que acabou de gravar.
 
+  **E desde o degrau 07 (06/09/2026) a tentação está no ar, e continua vencida:**
+  a Prancheta grava a marcação pelo `POST` de `/pages/marcar`, e nenhuma resposta
+  desta casa escreve `meshcraft_sessao`. Guarda:
+  `tests/test_a_prancheta.py::test_marcar_nao_escreve_o_cookie_de_sessao_do_site`,
+  e o AC-06 propriamente dito em `test_a_marcacao_atravessa_aparelhos` do mesmo
+  arquivo, que pede a tela de um `Client()` NOVO, sem nada guardado além do
+  cookie.
+
+- **O ROTEIRO É DADO, e o texto dele é da ESCOLA** (degrau 07, critério AC-06).
+  As cinco etapas e os itens de conferência moram em `EtapaDoRoteiro` e
+  `ItemDoRoteiro`, no banco desta célula, plantados por migração a partir de
+  `apps/portfolio/roteiro_da_escola.py`, que se declara `ci:texto-publicado` e
+  por isso é medido inteiro pelo portão do travessão. **Nenhuma palavra do
+  roteiro se escreve em template.** O guarda que separa as duas coisas é
+  `tests/test_a_prancheta.py::test_a_lista_sai_do_banco_e_nao_do_template`: ele
+  corrige a frase no banco e exige a frase nova na tela.
+
+  O corredor assinado não permite pedir esse texto à `admin` por HTTP (a lista
+  de contratos permitidos é fechada, `CS-PAGES-0001`), e ler o banco dela seria
+  a Lei 3 quebrada. Por isso o roteiro é desta casa, e o guia longo continua
+  sendo a leitura corrida na biblioteca de documentos.
+
+- **`SITE_ID` é dívida ABERTA desta célula, e a Prancheta se defende sozinha
+  enquanto ela não é paga.** `infra/provisionar-pages.sh` não escreve a
+  variável, e o degrau 07 foi a primeira tela a precisar dela: sem ela não há
+  como dizer de que escola é o portfólio que se vai gravar. A linha mora em
+  `infra/`, caminho CODEOWNERS, e o PR do degrau 07 não tinha mandato para
+  tocá-la. Enquanto faltar, `apps/core/views.py::site_atual()` devolve `None`, a
+  Prancheta MOSTRA o roteiro inteiro e a marcação RECUSA com 503 e explicação em
+  português. **Nunca troque esse `None` por uma cadeia vazia:** gravar com o site
+  em branco põe os alunos de duas escolas do mesmo lado da fronteira no dia em
+  que a segunda chegar, e nenhuma tela quebra para avisar. Guardas:
+  `test_sem_site_id_o_roteiro_aparece_e_a_marcacao_explica_por_que_nao_abre` e
+  `test_sem_site_id_a_marcacao_e_recusada_em_vez_de_gravar_no_escuro`.
+
 - **A foto entra por LINK COLADO, e esta célula NUNCA guarda arquivo.**
   Decisão do mantenedor em 01/09/2026 (plano §6.2), tomada com o preço na mão.
   O aluno cola o endereço do render que já está no Drive, no ArtStation ou onde

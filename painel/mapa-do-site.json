@@ -560,8 +560,18 @@
       "alcance": "publico",
       "para_quem": "aluno",
       "titulo": "A Prancheta do aluno",
-      "descricao": "A porta da casa do portfólio. Quem não entrou vê o convite para entrar; quem entrou sem matrícula ativa recebe a explicação de que a Prancheta só abre para aluno matriculado; e quem entrou com matrícula ativa é reconhecido pelo nome. O roteiro com as etapas, as peças e o link para mandar ao cliente chegam nos próximos degraus da obra.",
-      "observacao": "Enquanto as senhas de par com a identidade e com a alunos não estiverem no servidor, esta página responde a todo mundo que não conseguiu conferir o acesso agora. É de propósito: sem conseguir perguntar quem é a pessoa, a porta fecha em vez de abrir."
+      "descricao": "O roteiro da escola para montar o portfólio, em cinco etapas, com a lista do que conferir em cada uma. O aluno marca o que já fez e a marcação fica guardada com a escola, então ele pode marcar no celular e continuar no computador. Quem não entrou vê o convite para entrar, e quem entrou sem matrícula ativa recebe a explicação de que a Prancheta só abre para aluno matriculado. As peças do portfólio e o link para mandar ao cliente chegam nos próximos degraus da obra.",
+      "observacao": "Enquanto as senhas de par com a identidade e com a alunos não estiverem no servidor, esta página responde a todo mundo que não conseguiu conferir o acesso agora. É de propósito: sem conseguir perguntar quem é a pessoa, a porta fecha em vez de abrir. E enquanto o servidor não disser de que escola esta instalação é, o roteiro aparece inteiro mas a marcação não abre, com a explicação na tela."
+    },
+    {
+      "celula": "pages",
+      "rota": "marcar",
+      "endereco": "/pages/marcar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Marcar um item da lista do portfólio",
+      "descricao": "Não é uma página: é o que acontece quando o aluno aperta um item da lista de conferência da Prancheta. Abrir este endereço no navegador não mostra nada."
     },
     {
       "celula": "gamificacao",

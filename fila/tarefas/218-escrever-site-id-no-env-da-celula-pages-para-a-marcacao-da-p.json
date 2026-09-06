@@ -1,0 +1,19 @@
+{
+  "arquivo": "218-escrever-site-id-no-env-da-celula-pages-para-a-marcacao-da-p",
+  "id": "TAR-218",
+  "titulo": "Escrever SITE_ID no env da celula pages, para a marcacao da Prancheta abrir",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-183"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado que acrescenta SITE_ID a infra/provisionar-pages.sh (com a recusa fail-closed do molde de provisionar-cursos.sh) e a infra/env/pages.env.exemplo; mais o bloco unico de colar entregue ao mantenedor para re-rodar o roteiro na VPS. Fechada de verdade quando o aluno logado marcar um item na Prancheta e a marcacao persistir.",
+  "despacho": "# DESPACHO - infra: escrever SITE_ID no env da celula pages\nCELULA: infra (CAMINHO CODEOWNERS: o despacho JA E o mandato escrito para\n`infra/provisionar-pages.sh` e `infra/env/pages.env.exemplo`, e para NADA ALEM\ndesses dois arquivos)\n\nO QUE TRAVA HOJE. A Prancheta (degrau 07, PR do TAR-183) precisa saber de que\nescola e esta instalacao para gravar a marcacao do aluno: o `Portfolio` tem\n`site_id` e `aluno_id`, e a porta unica do isolamento (`do_aluno`) exige os\ndois. `services/pages/apps/core/views.py::site_atual()` le `SITE_ID` do env, no\nponto de uso. O env da VPS NAO tem essa linha, porque\n`infra/provisionar-pages.sh` nao a escreve, e nao escrever configuracao que a\ncelula ainda nao lia foi decisao consciente da genese (`armadilhas/224`, dito\npor extenso em `infra/env/pages.env.exemplo`, no bloco \"O que NAO mora aqui\").\n\nO EFEITO ENQUANTO NAO SE PAGA, e ele e fail-closed de proposito: a Prancheta\nmostra o roteiro inteiro (a lista orienta, nunca tranca, plano secao 7) e a\nmarcacao responde 503 com a explicacao em portugues. Nada e gravado no escuro.\nNUNCA \"conserte\" isso trocando o `None` de `site_atual()` por cadeia vazia:\ngravar com o site em branco poe os alunos de duas escolas do mesmo lado da\nfronteira no dia em que a segunda chegar, e nenhuma tela quebra para avisar.\nDois guardas ja reprovam essa troca\n(`services/pages/tests/test_a_prancheta.py`, os dois `test_sem_site_id_*`).\n\nO QUE FAZER, e o molde ja existe: `infra/provisionar-cursos.sh` pergunta o site\nao catalogo, extrai o numero, se RECUSA a escrever o env sem ele\n(\"[ -n ... ] || parar ...\") e o inclui em `CHAVES_QUE_EU_GERO`. Copie esse\ndesenho para `infra/provisionar-pages.sh`, e acrescente a linha `SITE_ID` a\n`infra/env/pages.env.exemplo` movendo-a do bloco \"O que NAO mora aqui\" para o\nbloco de configuracao de verdade, com o motivo escrito.\n\nO PASSO MANUAL QUE SOBRA E DO MANTENEDOR, e ele nao e do robo: re-rodar\n`infra/provisionar-pages.sh` dentro da VPS. Entregue como BLOCO UNICO de colar,\nfail-closed, com a janela rotulada (dentro da VPS), e avise que re-rodar ROTACIONA\na chave do Django e a senha do banco desta celula (o proprio roteiro diz isso no\ncabecalho); o portfolio, as pecas e as marcacoes continuam intactos, e a celula\nreinicia.\n\nEVIDENCIA: com a linha escrita e o roteiro re-rodado, o aluno logado marca um\nitem na Prancheta e a marcacao persiste. Ate o passo manual acontecer, a\nevidencia do PR e o env de exemplo mais o roteiro conferidos por leitura.",
+  "origem": "degrau 07 do PLANO-PORTFOLIO-DO-ALUNO (TAR-183): a primeira tela da celula pages a precisar do site_id topou na cerca CODEOWNERS de infra/",
+  "criada_em": "2026-09-06"
+}

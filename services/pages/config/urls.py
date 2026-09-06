@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core.views import healthz, prancheta
+from apps.core.views import healthz, marcar, prancheta
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público: quem o aplica é
@@ -39,8 +39,16 @@ from config.api import api
 urlpatterns = [
     path("healthz", healthz),
     path("interno/", api.urls),
+    # A MARCAÇÃO de um item da lista de conferência (degrau 07). É `POST` e só
+    # `POST`: a view leva `@require_POST`, e um `GET` que gravasse seria escrita
+    # que o navegador repete sozinho ao pré-carregar um link.
+    #
+    # Vem ANTES da raiz pelo mesmo motivo que as duas de cima: `path("")` casa
+    # com a raiz e não com este caminho, mas manter a raiz por último é a regra
+    # que impede a próxima rota desta casa de nascer inalcançável.
+    path("marcar", marcar, name="marcar"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
-    # tela mínima do degrau 06. Ela leva `name=` como toda rota desta casa, e
+    # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por
     # caminho cravado em string (`armadilhas/029` e `/081`).
     #
