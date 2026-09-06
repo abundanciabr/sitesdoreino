@@ -97,6 +97,14 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </p>
   {% endif %}
 
+  {% if url_do_capitulo %}
+  <p class="nota">
+    Já tem o capítulo desta encomenda escrito?
+    <a href="{{ url_do_capitulo }}">Mande o capítulo inteiro de uma vez</a> e
+    ele vira as 16 peças abaixo, sem apagar nada do que você já escreveu.
+  </p>
+  {% endif %}
+
   {% if erro %}
   <p class="aviso borda-vermelha"><b>Não deu para fazer isso.</b> {{ erro }}</p>
   {% endif %}
