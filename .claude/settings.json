@@ -57,6 +57,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import os,sys,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','cobranca_do_checklist.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\"",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
