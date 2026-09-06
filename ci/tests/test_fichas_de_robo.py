@@ -92,6 +92,26 @@ def test_nenhuma_ficha_pergunta_ao_mantenedor_nem_dispara_sub_agentes() -> None:
         assert not vazando, f"{nome}.md: tools permite {', '.join(sorted(vazando))}"
 
 
+def test_o_escrivao_declara_o_modelo_em_vez_de_herdar_o_mais_caro() -> None:
+    """Sub-agente sem `model` herda o da maestro, que é o modelo de cima.
+
+    Em 06/09/2026 a medição mostrou 53 dos 81 sub-agentes de um fim de semana
+    rodando no modelo mais caro sem ninguém ter escolhido (CLAUDE.md, "O que uma
+    chamada custa"). O escrivão preenche molde fixo: registro, evento de fila,
+    armadilha. Herdar o modelo de cima para isso é gasto sem contrapartida.
+    """
+    campos = _frontmatter(FICHAS / "escrivao.md")
+    modelo = campos.get("model", "")
+    assert modelo, (
+        "escrivao.md: sem `model` no frontmatter, herda o modelo da maestro "
+        "(o mais caro) para preencher molde. Declare `model: sonnet`."
+    )
+    assert "opus" not in modelo.lower(), (
+        f"escrivao.md: model={modelo!r}. A ficha que só preenche molde não usa "
+        "o modelo de cima; veja CLAUDE.md, \"O que uma chamada custa\"."
+    )
+
+
 def test_o_revisor_so_le() -> None:
     campos = _frontmatter(FICHAS / "revisor.md")
     permitidas = _lista(campos.get("tools", ""))
