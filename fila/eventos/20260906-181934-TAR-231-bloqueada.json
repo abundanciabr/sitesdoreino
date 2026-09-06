@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-181934-TAR-231-bloqueada",
+  "tarefa": "TAR-231",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T18:19:34+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "Amarrar o nome da lista de quem confere portfolio aos roteiros que a escrevem precisa de um arquivo de teste novo em ci/, pasta protegida: nenhum robo entra nela sem uma autorizacao sua por escrito. Sem a amarra, renomear a lista num lugar e esquecer no outro passa despercebido.",
+  "espera": "mantenedor"
+}

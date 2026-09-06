@@ -23,6 +23,8 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 python ci/fila.py listar --ao-vivo     # o quadro: estados calculados + reservas + PRs
 python ci/fila.py pegar TAR-007 --quem "sessao-<area>-<data>"
 python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
+python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
+python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
 python ci/fila.py concluir TAR-007 --quem "..." --evidencia "https://github.com/.../pull/NNN"
 python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..."
 python ci/fila.py validar              # o que a muralha roda em todo PR
@@ -48,7 +50,8 @@ arquivo fora, `validar` respondia `✅ Fila válida`, exit 0 (`armadilhas/192`).
 
 A cura tem duas peças, com autoridade deliberadamente diferente:
 
-- **`criar`, `pegar` e `concluir` RECUSAM no clone principal** (exit 1) e a
+- **`criar`, `pegar`, `bloquear`, `cancelar` e `concluir` RECUSAM no clone
+  principal** (exit 1) e a
   recusa ensina a ordem certa: worktree primeiro, balcão de dentro dele. Não é
   portão de CI — nenhum PR reprova por isto; é um comando interativo se
   recusando a produzir lixo, e o conserto custa um `git worktree add`. Aviso em
@@ -67,14 +70,72 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
 ## Os estados que o quadro calcula
 
 - **na fila** — existe, ninguém pegou, dependências satisfeitas.
-- **bloqueada** — evento `bloqueada` (com motivo), OU `depende_de` aberta
-  (calculado — ninguém escreve isso).
+- **bloqueada** — evento `bloqueada` (com motivo e `espera`), OU `depende_de`
+  aberta (calculado — ninguém escreve isso, e o `espera` sai `fila`).
 - **reivindicada** — evento `reivindicada` sem devolução posterior, OU reserva
   viva no servidor.
 - **em execução** — há PR ABERTO citando `TAR-NNN` no título ou no ramo
   (só na vista `--ao-vivo`).
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
+
+## Quem destrava uma parada: o campo `espera` (desde 06/09/2026)
+
+"Bloqueada" sempre significou duas coisas incompatíveis no mesmo balde, e quem
+pagava a conta era o painel do dono. Medido em 06/09/2026, quando ele perguntou
+como se atualizava a lista de `/admin/caixa/robos/`: **27 tarefas paradas, todas
+no mesmo bloco âmbar de urgência, e seis delas esperavam uma decisão dele.** Para
+achar essas seis era preciso abrir e ler os 27 cartões, um por um.
+
+Metade da resposta já era calculada e se perdia no caminho: `calcular_estados`
+distingue o bloqueio por DEPENDÊNCIA ABERTA (13 das 27 naquele dia, e ninguém
+precisa fazer nada) do bloqueio por EVENTO ESCRITO. O que não existia era a
+segunda metade: dentro dos escritos, quem destrava.
+
+```bash
+python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera mantenedor
+python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera fila
+```
+
+| No evento | Quer dizer | Onde aparece |
+|---|---|---|
+| `espera: mantenedor` | autorização, decisão ou prova que só o dono pode dar | bloco "Esperando uma decisão sua", aberto, no topo |
+| `espera: fila` | um robô resolve quando a vez dela chegar | bloco "Esperando outra tarefa terminar", fechado |
+| dependência aberta | calculado, ninguém escreve | vira `fila` sozinho |
+
+**`--espera` é obrigatório**, pela mesma lição que o `--move` já deu aqui: campo
+que nasce opcional no balcão nasce vazio. Quem bloqueia sabe, naquele instante,
+se um robô destrava aquilo sozinho — ninguém depois vai saber melhor, e ninguém
+depois volta para preencher.
+
+**Ler isso do texto do `motivo` foi considerado e recusado.** Seria adivinhar por
+palavra ("espera mandato", "só o mantenedor pode") uma resposta que quem bloqueou
+tinha na mão — e `robos.py` já proibia o palpite com todas as letras, porque ele
+nasceria como segunda definição de "o que espera por você". Quem sabe, declara.
+
+**`validar` cobra em todo bloqueio VIVO**, e a régua é o estado de hoje, não uma
+data de corte no código: os 22 eventos `bloqueada` de tarefas que já seguiram
+adiante são história encerrada, e cobrar deles exigiria reescrever evento — que
+esta fila não faz. Na tela, uma parada com `espera` que ela não reconhece cai no
+bloco do mantenedor: falha para o lado de MOSTRAR, porque cartão a mais custa uma
+leitura e cartão que some custa uma tarefa esquecida.
+
+## Cancelar também é um verbo (desde 06/09/2026)
+
+`cancelada` era terminal desde que a fila nasceu, `validar` já exigia `detalhe`
+nele, e o painel já tinha o grupo "Não vão mais ser feitas" — sem nenhuma porta
+para chegar lá. Quem precisasse cancelar escrevia o JSON à mão, que é a porta de
+entrada da `armadilhas/192`. Estado sem verbo não é estado: é um lugar que
+ninguém alcança.
+
+Medido no mesmo dia: oito tarefas (TAR-057 a TAR-065) moravam em `bloqueada` com
+o motivo dizendo "TRANCADA ... substituta já criada". Nunca mais seriam feitas, e
+por falta deste verbo ocupavam o bloco de urgência do painel do dono.
+
+`cancelar` não pede `--espera`, e é isso que importa: cancelada não espera
+ninguém. Ele avisa, antes de escrever, quem depende da tarefa e vai ficar preso
+para sempre — dependência só se destrava CONCLUÍDA, e foi assim que a TAR-060
+caiu junto com a TAR-057 em 31/08/2026.
 
 ## A tarefa que CRIA o que declara: o campo `cria` (desde 30/08/2026)
 
