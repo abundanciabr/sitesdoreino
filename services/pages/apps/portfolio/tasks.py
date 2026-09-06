@@ -1,4 +1,7 @@
-"""A varredura que descobre que um link parou de abrir. Critério AC-09.
+"""Os dois batimentos de fundo desta casa: a varredura dos links e o relay.
+
+A VARREDURA QUE DESCOBRE QUE UM LINK PAROU DE ABRIR (critério AC-09)
+--------------------------------------------------------------------
 
 O mantenedor escolheu o link colado sabendo o preço (plano §6.2): link de aluno
 quebra, e quando quebra o portfólio dele fica com um buraco que a escola não
@@ -37,8 +40,11 @@ deploy acusam. O processo é `python manage.py run_huey`, síncrono.
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 
+import redis
 from django.db import transaction
 from django.utils import timezone
 from huey import crontab
@@ -46,7 +52,7 @@ from huey import crontab
 from config.huey import huey
 
 from . import conferencia_do_link
-from .models import EstadoDoLink, Peca
+from .models import EstadoDoLink, OutboxEvent, Peca
 
 logger = logging.getLogger("pages.tasks")
 
@@ -153,3 +159,107 @@ def _anotar(peca: Peca, veredito, agora) -> str | None:
 def reconferencia_diaria() -> dict[str, int]:
     """O único agendamento desta célula. O worker é `manage.py run_huey`."""
     return reconferir_os_links()
+
+
+# ---------------------------------------------------------------------------
+# O RELAY DA OUTBOX (degrau 12, critério AC-12): o segundo batimento da casa
+# ---------------------------------------------------------------------------
+# Molde: `services/cursos/apps/cursos/tasks.py`, copiado e nunca importado
+# (Lei 3). Não é falta de imaginação: um relay diferente por célula significa
+# um modo de falha diferente por célula para o mesmo problema.
+#
+# **A ORDEM é intocável: publica no fio ANTES de marcar `published_at`.** Se o
+# processo morrer entre as duas escritas, o pior caso é REPUBLICAR, e o
+# transporte é at-least-once de propósito, com o consumidor deduplicando por
+# `event_id` (é o que o contrato do selo promete). A ordem inversa trocaria
+# "republicar" por "perder evento em silêncio".
+#
+# **Nome do fio: `eventos.<nome-do-evento>`, sem versão.** A versão viaja no
+# envelope. Pôr `v1` no nome faria de toda evolução de contrato uma migração de
+# infraestrutura.
+
+# Um lote por passada. Não é otimização: sem teto, uma outbox represada por
+# Redis fora do ar viraria uma transação gigante na primeira volta.
+LOTE = 200
+
+
+def relay_outbox() -> int:
+    """Publica os pendentes em `eventos.<nome>` e marca `published_at`.
+
+    Idempotente e segura de chamar a qualquer momento: linha com
+    `published_at` preenchido é ignorada pelo filtro, então uma segunda passada
+    não republica nada.
+
+    `REDIS_STREAMS_URL` é lida **no ponto de uso**, nunca no import
+    (`armadilhas/097`): o container web importa este módulo pelo autodiscover do
+    djhuey e não pode morrer no boot se a variável faltar, que é exatamente o
+    estado da VPS hoje (`infra/env/pages.env.exemplo` diz, com todas as letras,
+    que quem a entrega é o serviço do relay no compose). Faltando, o `KeyError`
+    estoura só aqui, é engolido pelo `relay_apos_commit` e o evento fica
+    PENDENTE na outbox, nunca perdido.
+    """
+    pendentes = list(
+        OutboxEvent.objects.filter(published_at__isnull=True).order_by("id")[:LOTE]
+    )
+    if not pendentes:
+        return 0
+    cliente = redis.from_url(os.environ["REDIS_STREAMS_URL"])
+    publicados = 0
+    for evento in pendentes:
+        envelope = {
+            "event": evento.event,
+            "version": evento.version,
+            "event_id": str(evento.event_id),
+            "occurred_at": evento.occurred_at.isoformat(),
+            "data": evento.payload,
+        }
+        # As chaves que ESTE evento declara no nível de cima (o `ator_id`). Vêm
+        # de quem emitiu, que é quem conhece o próprio contrato; o relay não
+        # decide nada.
+        #
+        # O `if colisao` não é zelo teatral: um `**extra` solto sobrescreve o
+        # que veio antes, então um `envelope_extra` com a chave `event` ou
+        # `version` trocaria a IDENTIDADE do evento no fio, em silêncio, e o
+        # consumidor errado o receberia. Aqui isso para a publicação.
+        colisao = set(evento.envelope_extra) & set(envelope)
+        if colisao:
+            raise ValueError(
+                f"envelope_extra do evento {evento.event_id} tentou sobrescrever "
+                f"{sorted(colisao)}: o nível de cima do envelope é do relay. "
+                "Campo novo de contrato entra com nome próprio, nunca por cima."
+            )
+        envelope.update(evento.envelope_extra)
+        cliente.xadd(
+            f"eventos.{evento.event}",
+            {"json": json.dumps(envelope, ensure_ascii=False)},
+        )
+        # Marcar SÓ depois do `xadd`: inverter a ordem trocaria "republicar no
+        # pior caso" por "perder evento no pior caso".
+        evento.published_at = timezone.now()
+        evento.save(update_fields=["published_at"])
+        publicados += 1
+    return publicados
+
+
+def relay_apos_commit() -> None:
+    """Registrada com `transaction.on_commit` por quem emite.
+
+    É o que dá latência sub-segundo sem furar a outbox: o publish acontece
+    DEPOIS do commit, então nunca há evento no fio para um fato que não
+    aconteceu.
+
+    Falha aqui (Redis fora do ar, variável ausente) **nunca** perde o evento nem
+    quebra a tela da equipe: o fato segue na outbox com `published_at=None`, e a
+    task periódica abaixo republica. Por isso o `except` largo, que é defensivo
+    por desenho e não descuido.
+    """
+    try:
+        relay_outbox()
+    except Exception:  # noqa: BLE001 - defensivo por design, ver docstring
+        logger.exception("relay_outbox falhou apos commit; evento fica pendente")
+
+
+@huey.periodic_task(crontab(minute="*"))
+def relay_outbox_periodico() -> int:
+    """[RECEITA:R3 v1] A rede de segurança: a cada minuto, o worker republica."""
+    return relay_outbox()

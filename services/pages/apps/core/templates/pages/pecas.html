@@ -145,6 +145,27 @@ continua a um clique de distância para quem quiser mudar a resposta.
     <p class="recusa" role="alert">{{ recusa_da_conferencia }}</p>
 {% endif %}
 
+{% comment %}
+O SELO DA ESCOLA (critério AC-12). Ele sai do estado do aluno, e não do último
+pedido: quem já foi conferido e pediu uma conferência nova continua com o selo
+da anterior, e ler o pedido faria o selo sumir da tela sem nada tê-lo tirado.
+
+O segundo parágrafo é a metade que o corredor exige por escrito. A foto entra
+por link colado e a escola não controla o que está do outro lado dele (plano
+§6.2), então o selo vale para o dia em que o monitor olhou. Um selo que
+prometesse mais seria uma promessa que a escola não pode cumprir, e o aluno
+levaria essa promessa para um cliente pagante.
+{% endcomment %}
+{% if selo_em %}
+    <p class="selo">Selo da escola: uma pessoa da equipe conferiu o seu
+    portfólio em {{ selo_em|date:"d/m/Y" }}.</p>
+    <p class="miudo">O selo vale para o que essa pessoa viu no dia da conferência.
+    Ele não fala do que você mudar depois, e não responde pelos endereços das
+    suas imagens, que ficam em sites que a escola não controla. Trocou ou
+    acrescentou peças? Peça uma conferência nova, e o selo passa a valer para o
+    dia dela.</p>
+{% endif %}
+
 {% if pedido.estado == "em_analise" %}
     <p class="aviso">O seu portfólio está com a escola desde
     {{ pedido.criado_em|date:"d/m/Y" }}, e a resposta chega até
@@ -161,8 +182,7 @@ continua a um clique de distância para quem quiser mudar a resposta.
     <p>Arrume o que falta e peça a conferência de novo. Devolver não é dizer
     não: é dizer o que ainda falta.</p>
 {% elif pedido.estado == "aceito" %}
-    <p class="aviso">A escola conferiu o seu portfólio em
-    {{ pedido.respondido_em|date:"d/m/Y" }}. Se você acrescentar peças novas,
+    <p>A escola disse sim ao seu portfólio. Se você acrescentar peças novas,
     pode pedir uma conferência nova.</p>
 {% endif %}
     <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir a conferência da escola</button></form>

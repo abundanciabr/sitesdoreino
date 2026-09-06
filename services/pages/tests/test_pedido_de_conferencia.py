@@ -191,7 +191,7 @@ def test_o_pedido_respondido_sai_da_fila(portfolio_com_peca):
 
 
 # ---------------------------------------------------------------------------
-# 3. O ACEITE, E O QUE ELE DELIBERADAMENTE NÃO FAZ
+# 3. O ACEITE, QUE DESDE O DEGRAU 12 TAMBÉM CARIMBA O SELO
 # ---------------------------------------------------------------------------
 def test_aceitar_fecha_o_pedido_com_data_e_com_nome(portfolio_com_peca):
     pedido = conferencia.pedir(portfolio_com_peca())
@@ -204,18 +204,23 @@ def test_aceitar_fecha_o_pedido_com_data_e_com_nome(portfolio_com_peca):
     assert pedido.respondido_em is not None
 
 
-def test_aceitar_nao_poe_o_selo_porque_o_selo_e_o_degrau_12(
-    portfolio_com_peca, criar_estado
-):
-    """A escada é a garantia: o selo (AC-12) não sai de um PR que não o prova."""
+def test_aceitar_carimba_o_selo_no_estado_do_aluno(portfolio_com_peca, criar_estado):
+    """Desde o degrau 12, aceitar PÕE o selo (AC-12).
+
+    Até 06/09/2026 este arquivo guardava o contrário, e o contrário era certo
+    enquanto o degrau 12 não existia: o selo não sai de um PR que não tem como
+    prová-lo. O critério inteiro (o evento, a forma dele e o texto que o aluno
+    lê) mora em `tests/test_o_selo_da_escola.py`; o que este guarda mede é só a
+    costura com a fila da equipe.
+    """
     portfolio = portfolio_com_peca()
     estado = criar_estado(portfolio)
 
     conferencia.aceitar(pedido=conferencia.pedir(portfolio), conferido_por=MONITORA)
 
     estado.refresh_from_db()
-    assert estado.selo_conferido_em is None
-    assert estado.selo_conferido_por == ""
+    assert estado.selo_conferido_em is not None
+    assert estado.selo_conferido_por == MONITORA
 
 
 def test_ninguem_confere_o_proprio_portfolio(portfolio_com_peca):
