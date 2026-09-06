@@ -252,7 +252,7 @@ silencioso até a pista devolver o PR.
 
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
 de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
-orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
+orçamento de 15 arquivos de código que decide a arquitetura antes da primeira linha. Cada
 redescoberta custa tokens e uma rodada de teste.
 
 **E leia também, uma vez por sessão, os 8 padrões de
@@ -627,7 +627,8 @@ Na prática:
   esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
   humana.
 - **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
-  arquivos, Ritos de Contrato, evidência vermelho→verde —
+  arquivos de código (a escrituração obrigatória em `painel/` e `fila/` saiu da
+  conta no PR #1167, de 06/09/2026), Ritos de Contrato, evidência vermelho→verde —
   nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
   responsável de construir algo grande. "Completo" é o destino; a escada de
   PRs é o caminho.
@@ -839,7 +840,7 @@ série pela mesma sessão, cada uma esperando seus 10 minutos de pista.
 
 **A regra:** a sessão que recebe um pedido dele É a maestro daquele pedido, sem
 ninguém precisar dizer "toque um lote". Ela divide o pedido em pedaços
-independentes (1 PR = 1 célula, orçamento de 15), dispara um sub-agente por
+independentes (1 PR = 1 célula, orçamento de 15 arquivos de código), dispara um sub-agente por
 pedaço com a ficha `despacho`, em paralelo, e mantém em série só o que depende
 de outro pedaço. Enquanto os checks de cada PR rodam, o `revisor` lê o diff e o
 `escrivao` escreve o registro, a armadilha e o evento da fila. A maestro arma
