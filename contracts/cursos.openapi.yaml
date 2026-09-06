@@ -66,6 +66,14 @@
 # aulas ninguém abriu nunca poderia ser nomeado. Não nasceu `getBlock`: o
 # bloco já volta dentro de cada aula, agora com os dois campos.
 #
+# `nome` e `boss_titulo` NÃO entram em `required` no `BlocoSchema`, e isso é
+# deliberado: campo obrigatório novo num schema que já existia quebra quem
+# consome pelo contrato antigo, e `ci/contrato_aditivo.py` reprova o Rito por
+# isso (`armadilhas/202`, medida aqui em 06/09/2026). O valor emitido não
+# muda, porque o modelo sempre tem os dois; muda o que o contrato EXIGE de
+# quem valida. No corpo de `putBlock` os dois SÃO obrigatórios, e ali pode:
+# `BlocoParaGravarSchema` nasceu neste Rito e não tinha consumidor antes.
+#
 # NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1233, que é o
 # provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
 # entrar na main, e isso é o portão funcionando (`armadilhas/243`).
@@ -805,7 +813,14 @@ components:
         dispensar uma opera\xE7\xE3o de leitura pr\xF3pria: quem grava um bloco o\
         \ l\xEA de\nvolta na primeira aula dele. Gravar sem poder ler de volta foi\
         \ o defeito\nque o degrau 1.3b teve de curar nos instrumentos, com um PR a\
-        \ mais."
+        \ mais.\n\nOS DOIS NOVOS CARREGAM DEFAULT, E ISSO N\xC3O \xC9 DESCUIDO NEM\
+        \ ENFEITE: sem\nele o campo nasce em `required` no documento congelado, e\n\
+        `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigat\xF3rio\n\
+        novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida\n\
+        aqui em 06/09/2026). O valor emitido N\xC3O muda: o modelo sempre tem os\n\
+        dois, com `default=\"\"` no banco. Muda s\xF3 o que o contrato EXIGE de quem\n\
+        valida. N\xE3o tire os defaults para \"deixar igual aos outros tr\xEAs\":\
+        \ os\noutros tr\xEAs nasceram com o contrato, estes chegaram depois."
       properties:
         letra:
           type: string
@@ -814,15 +829,15 @@ components:
         parte:
           type: integer
         nome:
+          default: ''
           type: string
         boss_titulo:
+          default: ''
           type: string
       required:
       - letra
       - ordem
       - parte
-      - nome
-      - boss_titulo
       type: object
     AulaSchema:
       description: 'A aula inteira: a linha da listagem mais o que se edita.'
