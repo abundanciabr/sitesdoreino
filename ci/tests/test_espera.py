@@ -152,7 +152,8 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
            gh_exit: int = 0, mergear_exit: int | None = None,
-           mergear_roteiro: list[dict] | None = None) -> subprocess.CompletedProcess:
+           mergear_roteiro: list[dict] | None = None,
+) -> subprocess.CompletedProcess:
     """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
 
     `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
@@ -536,7 +537,12 @@ def test_o_portao_que_nao_conseguiu_medir_e_remedido_e_o_pouso_sai(tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
     assert chamadas.count("--pousar") == 2, chamadas
-    assert "remeço em" in proc.stdout, "a remedição tem de FALAR, nunca esperar calada"
+    # A remedição é bastidor: desde 06/09/2026 ela fala no stderr sob
+    # `--e-pousar`, para não acordar o robô por um fato que ainda não é
+    # desfecho. Continua PROIBIDO esperar calada — só mudou o cano.
+    assert "remeço em" in proc.stdout + proc.stderr, (
+        "a remedição tem de FALAR, nunca esperar calada"
+    )
     assert "pedi pouso do PR 447 pelo portão" in proc.stdout
 
 
@@ -615,3 +621,114 @@ def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):
     )
     assert proc.returncode == 0
     assert not (tmp_path / "portao-chamado.txt").exists()
+
+
+# ---------------------------------------------------------------------------
+# --so-desfecho: a espera acorda o robô UMA vez (06/09/2026)
+#
+# Cada linha em stdout vira uma notificação que reenvia a conversa inteira ao
+# modelo. Medido em 06/09/2026: a espera dos checks custava de 18% a 21,8% da
+# cota semanal, com o contexto mediano em 372k a 401k no instante da fala.
+# Partida, batimento e placar continuam existindo — mudam de cano (stderr) e
+# ficam guardados no log da espera, que é onde a auditoria os lê.
+# ---------------------------------------------------------------------------
+VERDE_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
+     "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
+]}]
+PENDENTE = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "IN_PROGRESS", "name": "muralhas"},
+]}] * 40
+
+
+def _linhas(texto: str) -> list[str]:
+    return [l for l in texto.splitlines() if l.strip()]
+
+
+def test_so_desfecho_manda_uma_linha_ao_stdout_e_o_batimento_ao_stderr(tmp_path):
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERDE_COM_RUN),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert len(_linhas(proc.stdout)) == 1, (
+        "stdout precisa acordar o robô UMA vez: " + proc.stdout
+    )
+    assert "verdes" in proc.stdout
+    assert "▶ vou esperar" in proc.stderr, "a partida não pode SUMIR, só mudar de cano"
+    assert "⏳" in proc.stderr, "o batimento não pode SUMIR, só mudar de cano"
+    assert "▶ vou esperar" not in proc.stdout
+
+
+def test_sem_a_flag_a_voz_de_hoje_continua_inteira_no_stdout(tmp_path):
+    """Quem usa --run/--deploy pelo Monitor não pode perder nada."""
+    proc = _rodar(
+        ["--run", "9", *RAPIDO],
+        tmp_path,
+        gh_respostas=[{"status": "completed", "conclusion": "success",
+                       "name": "deploy-celula", "html_url": "u"}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "▶ vou esperar" in proc.stdout
+    assert "⏳" in proc.stdout
+    assert "✅" in proc.stdout
+
+
+def test_e_pousar_liga_o_modo_calado_e_o_pouso_cabe_na_mesma_linha(tmp_path):
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=list(VERDE_COM_RUN), mergear_exit=0,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert len(_linhas(proc.stdout)) == 1, (
+        "--e-pousar tem de acordar o robô UMA vez: " + proc.stdout
+    )
+    unica = _linhas(proc.stdout)[0]
+    assert "verdes" in unica, "o desfecho da espera some se não vier junto"
+    assert "pedi pouso do PR 447" in unica
+    assert "Nada mais depende de ninguém" in unica
+    assert "passo pelo portão" in proc.stderr
+
+
+def test_o_portao_que_recusa_conta_o_motivo_no_proprio_desfecho(tmp_path):
+    """Calar o bastidor não pode calar a RECUSA: ela é o desfecho."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=list(VERDE_COM_RUN), mergear_exit=1,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "RECUSOU o pouso do PR 447" in proc.stdout
+    assert "portao de mentira: exit 1" in proc.stdout, (
+        "o motivo do portão ficou só no stderr — o robô não teria o que ler"
+    )
+
+
+def test_o_estouro_do_teto_e_desfecho_e_sai_no_stdout_mesmo_calado(tmp_path):
+    proc = _rodar(
+        ["--checks", "447", "--teto", "0.02", "--intervalo", "0.05", "--so-desfecho"],
+        tmp_path, gh_respostas=list(PENDENTE),
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "ESTOUREI o teto" in proc.stdout
+
+
+def test_a_falha_de_medicao_e_desfecho_e_sai_no_stdout_mesmo_calado(tmp_path):
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERDE_COM_RUN), gh_exit=3,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "não consegui medir" in proc.stdout
+
+
+def test_o_batimento_calado_no_stdout_sobrevive_no_log_da_espera(tmp_path):
+    """armadilhas/161: o que sai do stdout NÃO pode sair da auditoria."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERDE_COM_RUN),
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    bruto = (tmp_path / ".sitesdoreino" / "esperas.jsonl").read_text(encoding="utf-8")
+    linha = json.loads(_linhas(bruto)[0])
+    assert any("vou esperar" in l for l in linha["voz"]), linha
+    assert any("⏳" in l for l in linha["voz"]), linha
