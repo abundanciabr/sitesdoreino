@@ -310,8 +310,20 @@ paths:
         Caixa SEM nenhuma outra mudanca, porque a Caixa ja pergunta "tem
         matricula que vale?".
 
+        `liberar` exige `product_id`, e essa e a mudanca de 06/09/2026
+        (DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]): ninguem e aluno
+        do site, todo mundo e aluno de UM PRODUTO, e a matricula e o que diz
+        qual. Um curso e um produto; um livro em PDF tambem. Sem o produto a
+        resposta e 422, e nada muda. NAO existe valor padrao: um padrao faria
+        a escolha errada parecer escolha, e o erro so apareceria quando o
+        aluno abrisse a sala e encontrasse o curso errado.
+
+        A lista de produtos e do `catalogo`, e esta celula guarda a REFERENCIA e
+        nunca a copia. Duas listas divergiriam no primeiro produto novo.
+
         `recusar` exige `motivo`: sem ele a pessoa espera para sempre e o
-        mantenedor nao consegue distinguir "ninguem olhou" de "foi negado".
+        mantenedor nao consegue distinguir "ninguem olhou" de "foi negado". E nao
+        pede produto: ninguem vira aluno de nada ao ser recusado.
       parameters:
         - name: id
           in: path
@@ -333,11 +345,18 @@ paths:
                 motivo:
                   type: [string, 'null']
                   description: OBRIGATORIO quando decisao=recusar (422 sem ele).
+                product_id:
+                  type: [string, 'null']
+                  description: >-
+                    O produto em que esta pessoa esta matriculada: um curso, um livro, o que ela
+                    comprou. OBRIGATORIO quando decisao=liberar (422 sem ele), e ignorado na recusa.
+                    E o id do produto no catalogo, que e o dono da lista: esta celula guarda a
+                    referencia, nunca uma copia. [INV-ALU-C1], DECISAO-cursos-matriculas-e-alunos.md.
       responses:
         '200': { description: Decidido }
         '404': { description: Nao ha linha na fila com este id }
         '409': { description: Esta linha ja foi decidida — decisao nao se refaz }
-        '422': { description: "Payload invalido, ou recusa sem motivo" }
+        '422': { description: "Payload invalido, recusa sem motivo, ou liberacao sem produto" }
   /pre-matriculas/{id}:
     delete:
       operationId: deleteRejectedPreEnrollment
