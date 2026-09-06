@@ -521,9 +521,7 @@ def test_texto_ler_navega_entre_capitulos_pela_ordem_do_livro():
     nav_meio = _bloco_de_navegacao(
         cliente.get("/livro/meio/ler").content.decode("utf-8")
     )
-    nav_fim = _bloco_de_navegacao(
-        cliente.get("/livro/fim/ler").content.decode("utf-8")
-    )
+    nav_fim = _bloco_de_navegacao(cliente.get("/livro/fim/ler").content.decode("utf-8"))
 
     assert "Início" not in nav_inicio and "Meio" in nav_inicio
     assert "Início" in nav_meio and "Fim" in nav_meio
@@ -618,7 +616,10 @@ def test_com_dois_livros_o_texto_novo_entra_no_livro_escolhido():
 def test_nenhuma_rota_publica_nova_para_a_leitura_ou_para_criar_livro():
     """A régua da tarefa: nada de rota pública nova, nem para ler, nem para
     criar um `Livro`. As duas continuam atrás da mesma porta de sempre."""
-    for metodo, caminho in [("get", "/livro/algum/ler"), ("post", "/livro/criar-livro")]:
+    for metodo, caminho in [
+        ("get", "/livro/algum/ler"),
+        ("post", "/livro/criar-livro"),
+    ]:
         resposta = getattr(Client(), metodo)(caminho, {})
         assert resposta.status_code in (302, 303), caminho
 
