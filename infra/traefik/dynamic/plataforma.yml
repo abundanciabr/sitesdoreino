@@ -312,6 +312,107 @@ http:
       service: cursos
       tls: {}
 
+    pages:
+      # A casa das Paginas do aluno: a Prancheta do portfolio, para quem esta
+      # logado (corredor CS-PAGES-0001; PLANO-PORTFOLIO-DO-ALUNO.md secao 4).
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, pela mesma razao do forum, da
+      # gamificacao e da sala de aula acima: o cookie `meshcraft_sessao` e de
+      # HOST. Aqui isso e ainda mais grave do que nas vizinhas, porque esta
+      # celula NAO assina sessao ([INV-P12]) e depende inteiramente de o
+      # cracha da `identidade` chegar ate ela.
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/pages` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`).
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria o portfolio dos alunos da escola.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: quem
+      # pode ver o que e decidido DENTRO da celula, pela porta fail-closed do
+      # degrau 06 (criterio AC-05). A porta de MAQUINA (`/pages/interno/`)
+      # responde debaixo deste mesmo prefixo e fica alcancavel pela internet a
+      # partir deste merge, porque o corte do prefixo e do Django e nao do
+      # Traefik (`armadilhas/186`). Quem a fecha e o Bearer do par, hoje um
+      # conjunto VAZIO que recusa todo mundo por construcao, e o guarda que
+      # importa e o teste de 401 em
+      # services/pages/tests/test_porta_de_maquina.py (`ci-celula (pages)`
+      # verde no PR #1151). A topologia nao fecha nada aqui, e escrever o
+      # contrario seria ensinar errado quem chegar depois.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/pages`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pages
+      tls: {}
+
+    estudio:
+      # A vitrine publica do aluno: o link que ele manda ao cliente pagante,
+      # `meshcraft.top/estudio/<apelido>` (plano secao 4, criterio AC-13).
+      # MESMO backend de `/pages`, porque e a mesma celula: a peca mora em uma
+      # casa so, e guardar a peca em duas celulas e proibido pelo corredor.
+      #
+      # AQUI ESTA A DECISAO QUE O DEGRAU 05 DEVIA TOMAR, e que a genese deixou
+      # em aberto de proposito (`services/pages/config/settings.py`, secao O
+      # PREFIXO): `FORCE_SCRIPT_NAME` carrega UM prefixo so, e esta casa tem
+      # DOIS enderecos publicos. A escolha: o prefixo e `/pages`, e este
+      # segundo roteador NAO remove nada. O molde nao e invencao deste PR, e
+      # sim o `/docs` e o `/mapa-ia` da celula `admin`, que servem um segundo
+      # prefixo pelo mesmo backend desde 29 e 30/08/2026, e que
+      # `ci/mapa_do_site.py` ja sabe medir (o candidato B do
+      # `alcance_da_rota`).
+      #
+      # A MECANICA DESCARTADA era remover `/estudio` com `StripPrefix`, para a
+      # vitrine chegar ao Django na raiz do urlconf. Medida com o ASGI real
+      # desta celula, com `SCRIPT_NAME=/pages`:
+      #
+      #   COM StripPrefix  /pages/joao  e /estudio/joao  => path_info `/joao`
+      #                    /estudio/healthz => path_info `/healthz`, HTTP 200
+      #   SEM remocao      /pages/joao      => path_info `/joao`
+      #                    /estudio/joao    => path_info `/estudio/joao`
+      #                    /estudio/healthz => HTTP 404
+      #
+      # Com a remocao, os DOIS enderecos publicos chegam ao Django com o MESMO
+      # `path_info`, e a porta fail-closed do degrau 06 fica sem como
+      # distinguir a area do aluno logado da vitrine aberta a quem tem o link:
+      # a informacao nao existe dentro do processo. Isso obrigaria a isentar a
+      # raiz inteira do urlconf, que e a forma fail-OPEN de uma celula cujo
+      # criterio AC-05 e fail-closed. De quebra, a sonda de maquina passaria a
+      # responder 200 debaixo do endereco da vitrine.
+      #
+      # Sem remocao, a vitrine tem namespace proprio (`/estudio/...` no
+      # `path_info`) e a porta a isenta por prefixo nomeado, exatamente como a
+      # `admin` ja faz com `PREFIXO_PUBLICO_DOS_DOCUMENTOS`.
+      #
+      # E ISTO NAO CONTRARIA `armadilhas/029`, que e o que reprova a outra
+      # mecanica nomeada na genese (`SCRIPT_NAME` vazio e os dois prefixos
+      # declarados no urlconf). O que a 029 proibe e o urlconf conhecer o
+      # PROPRIO ponto de montagem: mudar `/pages` continua sendo editar env e
+      # Traefik, sem cirurgia em codigo. `/estudio` nao e ponto de montagem
+      # desta celula, e sim um caminho que o Django serve por extenso, do
+      # mesmo jeito que a `admin` serve `docs/` e `mapa-ia/`.
+      #
+      # `SCRIPT_NAME` fica como o provisionamento ja o escreveu na VPS em
+      # 05/09/2026 (`/pages`, primeira escrita), entao este degrau NAO pendura
+      # nenhum segundo passo manual no mantenedor.
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria a vitrine dos alunos.
+      #
+      # Cadeia `seguranca` (a compartilhada): a vitrine e publica de proposito,
+      # para um cliente que nunca vai entrar na plataforma. Quem decide se ela
+      # existe e o aluno, por opt-in, DENTRO da celula (AC-13), e o `noindex`
+      # sai do Django, nunca daqui.
+      #
+      # Mesma escala do resto: 1 = curinga, 10 = prefixo de pagina, 20 = API,
+      # 100 = webhook amarrado a host.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/estudio`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pages
+      tls: {}
+
     www-meshcraft:
       # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
       # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
@@ -414,3 +515,8 @@ http:
     cursos:
       loadBalancer:
         servers: [ { url: "http://cursos:8000" } ]
+    # Um servico so para os DOIS roteadores (`pages` e `estudio`): e a mesma
+    # celula, e a peca do aluno mora em uma casa so.
+    pages:
+      loadBalancer:
+        servers: [ { url: "http://pages:8000" } ]

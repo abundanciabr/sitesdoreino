@@ -517,21 +517,21 @@
     {
       "celula": "pages",
       "rota": "healthz",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/pages/healthz",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "O sinal de vida das Páginas do aluno",
-      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o portfólio do aluno acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, serão dois, o /pages para o aluno montar o portfólio e o /estudio para o link que ele manda ao cliente."
+      "descricao": "Responde 'estou de pé'. É por aqui que o pipeline sabe se a parte que guarda o portfólio do aluno subiu inteira."
     },
     {
       "celula": "pages",
       "rota": "interno/",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/pages/interno/",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "A porta de máquina do portfólio",
       "descricao": "Por onde outra parte do site pergunta em que etapa do portfólio um aluno está e se a escola já conferiu o trabalho dele. Só responde a quem apresenta a senha de máquina, e nada de conteúdo sai por aqui: nem o link da peça, nem a legenda, nem o nome do aluno.",
-      "observacao": "Hoje ela responde só pela rede interna, porque esta parte do site ainda não tem endereço público. Quando ganhar (o /pages e o /estudio), ela passa a ficar alcançável pela internet debaixo do prefixo, e quem a fecha é a senha de par, não o roteamento."
+      "observacao": "A internet alcança este endereço, e isso é o esperado: quem corta o prefixo é o Django, não o roteador. Quem fecha a porta é a senha de par, que hoje não foi dada a ninguém, e por isso a resposta para qualquer pessoa de fora é 'não autorizado'."
     },
     {
       "celula": "gamificacao",
