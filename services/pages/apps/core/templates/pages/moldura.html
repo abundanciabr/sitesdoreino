@@ -43,6 +43,24 @@ tela nova desta casa herda as duas sem tocar em nada (`armadilhas/242` e
   .faixa { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(128,128,128,.35); font-weight: 600; }
   .entrar a { display: inline-block; padding: .6rem 1.1rem; border: 1px solid currentColor; border-radius: .4rem; text-decoration: none; }
   .miudo { font-size: .9rem; opacity: .8; }
+  /* A RECUSA precisa ser vista antes de tudo: ela aparece quando o aluno acabou
+     de colar um endereço e a peça NÃO entrou, e um parágrafo com a mesma cara
+     do resto da página é lido depois do formulário que ele vai apertar de novo.
+     Cinza translúcido com uma barra na cor do texto, e não um vermelho
+     cravado, porque a tela segue o tema claro ou escuro de quem abre
+     (`color-scheme` no `:root`) e um vermelho fixo some no escuro. */
+  .recusa { padding: .75rem 1rem; border-left: .25rem solid currentColor; background: rgba(128,128,128,.12); }
+  .aviso { padding: .75rem 1rem; background: rgba(128,128,128,.12); }
+  .estante { list-style: none; padding: 0; }
+  .peca { padding: 1rem 0; border-top: 1px solid rgba(128,128,128,.35); }
+  .peca .titulo { font-weight: 600; margin: 0 0 .25rem; }
+  .peca .destaque { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  /* Quebrado precisa PARECER diferente de "está tudo bem" para quem passa o
+     olho, e não só dizer. Peso é o sinal que funciona em qualquer tema. */
+  .peca.estado-quebrado .estado { font-weight: 600; }
+  .peca .botoes { display: flex; flex-wrap: wrap; gap: .5rem; margin: .5rem 0 0; }
+  .colar label { display: block; font-weight: 600; margin: 0 0 .25rem; }
+  .colar input { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; }
   .barra-do-site { border-bottom: 1px solid rgba(128,128,128,.35); }
   .menu-topo { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: .6rem 1.25rem; font-size: .95rem; }
   .menu-topo a { text-decoration: none; }

@@ -1,10 +1,11 @@
 """As views da célula `pages` (a casa das Páginas do aluno).
 
-Três: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07) e a marcação
-de um item da lista de conferência. O que falta continua vindo pela escada do
-`PLANO-PORTFOLIO-DO-ALUNO.md` §5: as peças coladas por link (08), o semáforo
-(10), o pedido de conferência e a fila da equipe (11 e 12) e a vitrine em
-`/estudio/<apelido>` (13).
+Seis: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
+de um item da lista de conferência, e as três das peças coladas por link
+(degrau 08): a estante, o colar de um link novo e a mudança de uma peça que já
+está lá. O que falta continua vindo pela escada do
+`PLANO-PORTFOLIO-DO-ALUNO.md` §5: o semáforo (10), o pedido de conferência e a
+fila da equipe (11 e 12) e a vitrine em `/estudio/<apelido>` (13).
 
 **Nenhuma view daqui decide quem entra.** Quem decide é a porta
 (`apps/core/porta.py`), fail-CLOSED, e ela vem por último no `MIDDLEWARE`:
@@ -27,16 +28,19 @@ import logging
 import os
 
 from django.conf import settings
-from django.db import transaction
+from django.db import models, transaction
 from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.portfolio import conferencia_do_link
 from apps.portfolio.models import (
+    EstadoDoLink,
     EtapaDoRoteiro,
     ItemDeConferencia,
     ItemDoRoteiro,
+    Peca,
     Portfolio,
 )
 from apps.portfolio.roteiro_da_escola import AVISO_DE_RASCUNHO
@@ -87,6 +91,27 @@ def site_atual() -> str | None:
         )
         return None
     return valor
+
+
+def sem_escola(request):
+    """A recusa de gravar quando o env não diz de que escola esta casa é.
+
+    Fail-closed, no mesmo vocabulário que a porta desta casa já usa: 503 é *a
+    parte que responde por isto está incompleta*, e é temporário. Gravar com o
+    site em branco seria pior do que recusar, e o porquê está em `site_atual`.
+
+    Escrita uma vez e usada por toda view que GRAVA: a alternativa era repetir
+    o bloco em cada uma, e regra repetida é regra que diverge na terceira cópia.
+    """
+    resposta = render(
+        request,
+        "pages/porta.html",
+        {"motivo": "sem-escola", **de_fora()},
+        status=503,
+    )
+    resposta["Retry-After"] = "30"
+    resposta["Cache-Control"] = "no-store"
+    return resposta
 
 
 @require_GET
@@ -179,17 +204,7 @@ def marcar(request):
     """
     site_id = site_atual()
     if site_id is None:
-        # Fail-closed, no mesmo vocabulário que a porta desta casa já usa: 503
-        # é *a parte que responde por isto está incompleta*, e é temporário.
-        resposta = render(
-            request,
-            "pages/porta.html",
-            {"motivo": "sem-escola", **de_fora()},
-            status=503,
-        )
-        resposta["Retry-After"] = "30"
-        resposta["Cache-Control"] = "no-store"
-        return resposta
+        return sem_escola(request)
 
     chave = (request.POST.get("chave") or "").strip()
     item = ItemDoRoteiro.objects.filter(chave=chave).select_related("etapa").first()
@@ -228,3 +243,197 @@ def marcar(request):
     # para dentro do endereço, e caminho cravado em string quebra em produção e
     # só lá (`armadilhas/029` e `/081`).
     return redirect("prancheta")
+
+
+# ===========================================================================
+# AS PEÇAS, COLADAS POR LINK (degrau 08, critérios AC-08 e AC-09)
+# ===========================================================================
+# A foto entra por LINK COLADO e nunca hospedada por nós. Decisão do mantenedor
+# de 01/09/2026, informado do preço, e ela não se reabre: não existe envio de
+# arquivo aqui, e o degrau que era isso saiu da escada (plano §6.2).
+#
+# A ESTANTE É TELA PRÓPRIA, e não mais um pedaço da Prancheta. O roteiro das
+# cinco etapas é o que o aluno LÊ; a estante é o que ele MEXE, com um formulário
+# em cada linha. Numa página só, o botão de subir uma peça ficaria a três telas
+# de rolagem do item que ele acabou de marcar.
+
+
+def estante_de(request, site_id: str) -> list[Peca]:
+    """As peças deste aluno, na ordem que ele escolheu.
+
+    Sai pela porta única do isolamento (`do_aluno`), como toda leitura desta
+    casa: um `filter` próprio aqui seria a mesma regra numa segunda expressão,
+    e no dia em que as duas discordassem o vazamento sairia pela que ninguém
+    está medindo (critério AC-07).
+    """
+    return list(
+        Peca.objects.do_aluno(site_id=site_id, aluno_id=request.aluno["id"]).order_by(
+            "ordem"
+        )
+    )
+
+
+def desenhar_estante(request, site_id, *, recusa="", link="", legenda="", status=200):
+    """A tela das peças. `recusa` é a frase que diz por que o link não entrou.
+
+    A recusa é DESENHADA no lugar, e não redirecionada: o aluno acabou de colar
+    um endereço longo, e mandá-lo para outra página perderia o que ele digitou
+    junto com a explicação.
+    """
+    return render(
+        request,
+        "pages/pecas.html",
+        {
+            "aluno": request.aluno,
+            "pecas": estante_de(request, site_id) if site_id else [],
+            "pode_guardar": site_id is not None,
+            "recusa": recusa,
+            "link_recusado": link,
+            "legenda_recusada": legenda,
+            **de_fora(),
+        },
+        status=status,
+    )
+
+
+@require_GET
+def pecas(request):
+    """A estante: as obras do aluno, na ordem dele, com o estado de cada link.
+
+    **Ler não escreve.** O portfólio nasce quando o aluno guarda a primeira
+    peça, e não quando ele abre a página: um `GET` que criasse a linha encheria
+    a tabela com quem só passou por aqui.
+
+    Sem `SITE_ID` no env a estante aparece vazia e o formulário some, com a
+    frase que explica o porquê. O motivo é o mesmo da Prancheta e está por
+    extenso em `site_atual`.
+    """
+    return desenhar_estante(request, site_atual())
+
+
+@require_POST
+def guardar_peca(request):
+    """O aluno cola o endereço, e a Prancheta CONFERE antes de guardar (AC-08).
+
+    **A conferência acontece no momento em que o link é colado**, e não numa
+    varredura de madrugada: o aluno está aqui agora, com o navegador aberto na
+    imagem, e é agora que ele consegue corrigir um endereço privado ou pela
+    metade. Descobrir isso amanhã custaria uma volta que ele não vai dar.
+
+    **Só o "não" que veio do outro lado recusa.** Endereço que respondeu com
+    erro é fato sobre o link dele, e a recusa diz o número e o que fazer.
+    Endereço que não respondeu de jeito nenhum (demorou, não resolveu, conexão
+    morreu) não é a mesma coisa: daqui não dá para separar "o site dele caiu"
+    de "a nossa rede caiu", e recusar seria acusar a obra do aluno por um
+    problema que pode ser nosso. Nesse caso a peça É GUARDADA, marcada como
+    ainda não conferida, e a varredura diária (`apps/portfolio/tasks.py`)
+    resolve depois.
+
+    **A peça nova entra no FIM da estante.** Empurrar as outras para baixo
+    mudaria uma ordem que o aluno montou a mão, sem ele ter pedido.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    link = (request.POST.get("link") or "").strip()
+    legenda = (request.POST.get("legenda") or "").strip()[:200]
+
+    if not link:
+        return desenhar_estante(
+            request,
+            site_id,
+            recusa=(
+                "Cole o endereço da imagem para guardar a peça. Ele é o link "
+                "que aparece na barra do navegador quando você abre a imagem."
+            ),
+            legenda=legenda,
+            status=422,
+        )
+
+    veredito = conferencia_do_link.conferir(link)
+    if veredito.resultado == conferencia_do_link.NAO_RESPONDEU:
+        return desenhar_estante(
+            request,
+            site_id,
+            recusa=f"A peça não foi guardada porque {veredito.motivo}",
+            link=link,
+            legenda=legenda,
+            status=422,
+        )
+
+    agora = timezone.now()
+    with transaction.atomic():
+        portfolio, _ = Portfolio.objects.get_or_create(
+            site_id=site_id, aluno_id=request.aluno["id"]
+        )
+        ultima = portfolio.pecas.aggregate(fim=models.Max("ordem"))["fim"] or 0
+        Peca.objects.create(
+            portfolio=portfolio,
+            link=link,
+            legenda=legenda,
+            ordem=ultima + 1,
+            estado_do_link=(
+                EstadoDoLink.RESPONDENDO
+                if veredito.abriu
+                else EstadoDoLink.NAO_CONFERIDO
+            ),
+            conferido_em=agora,
+        )
+
+    return redirect("pecas")
+
+
+@require_POST
+def mudar_peca(request):
+    """Subir, descer, destacar ou tirar uma peça. Sempre a mando do aluno.
+
+    **A peça só sai daqui quando ELE mandar** (critério AC-09). Nenhuma
+    varredura, nenhuma medição de rede e nenhuma limpeza automática apaga obra
+    de aluno: é a falha que não tem volta, e o guarda que prova isso está em
+    `tests/test_pecas_por_link.py`. Este botão é o único caminho de saída, e
+    ele começa num formulário que a pessoa aperta.
+
+    **A troca de posição é uma TROCA**, e é por isso que a unicidade de `ordem`
+    nasceu `DEFERRED` no degrau 02: as duas peças passam pelo mesmo lugar no
+    meio do caminho, e uma restrição imediata recusaria esse passo, obrigando
+    esta view a inventar uma posição temporária.
+
+    **A peça é encontrada pela porta única do isolamento**, e é isso que impede
+    o botão de um aluno de alcançar a peça de outro que tenha o mesmo número.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    acao = request.POST.get("acao") or ""
+    if acao not in ("subir", "descer", "destacar", "tirar-destaque", "remover"):
+        raise Http404(f"a estante não sabe fazer {acao!r}")
+
+    with transaction.atomic():
+        minhas = Peca.objects.do_aluno(
+            site_id=site_id, aluno_id=request.aluno["id"]
+        ).select_for_update()
+        peca = minhas.filter(pk=request.POST.get("peca") or 0).first()
+        if peca is None:
+            raise Http404("essa peça não está na sua estante")
+
+        if acao == "remover":
+            peca.delete()
+        elif acao in ("destacar", "tirar-destaque"):
+            peca.destaque = acao == "destacar"
+            peca.save(update_fields=["destaque", "atualizada_em"])
+        else:
+            vizinha = (
+                minhas.filter(ordem__lt=peca.ordem).order_by("-ordem").first()
+                if acao == "subir"
+                else minhas.filter(ordem__gt=peca.ordem).order_by("ordem").first()
+            )
+            # Já está na ponta: nada a fazer e nada a explicar. A tela não
+            # mostra o botão nesse caso, e um POST feito a mão não merece erro.
+            if vizinha is not None:
+                peca.ordem, vizinha.ordem = vizinha.ordem, peca.ordem
+                vizinha.save(update_fields=["ordem", "atualizada_em"])
+                peca.save(update_fields=["ordem", "atualizada_em"])
+
+    return redirect("pecas")
