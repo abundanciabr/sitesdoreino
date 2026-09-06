@@ -524,6 +524,16 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o portfólio do aluno acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, serão dois, o /pages para o aluno montar o portfólio e o /estudio para o link que ele manda ao cliente."
     },
     {
+      "celula": "pages",
+      "rota": "interno/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina do portfólio",
+      "descricao": "Por onde outra parte do site pergunta em que etapa do portfólio um aluno está e se a escola já conferiu o trabalho dele. Só responde a quem apresenta a senha de máquina, e nada de conteúdo sai por aqui: nem o link da peça, nem a legenda, nem o nome do aluno.",
+      "observacao": "Hoje ela responde só pela rede interna, porque esta parte do site ainda não tem endereço público. Quando ganhar (o /pages e o /estudio), ela passa a ficar alcançável pela internet debaixo do prefixo, e quem a fecha é a senha de par, não o roteamento."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
