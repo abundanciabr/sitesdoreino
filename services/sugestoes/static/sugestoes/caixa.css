@@ -530,12 +530,12 @@ textarea { resize: vertical; min-height: 72px; }
 .aviso-mudanca .seta-mudanca { color: var(--texto-tenue); margin: 0 2px; }
 .aviso .ficha { margin-bottom: 10px; }
 
-/* [GAMIFICAÇÃO] O selo das quatro cartas de celebração (01/09/2026). Um só para
-   os quatro assuntos, e verde para todos: eles são, por lei da célula de origem,
-   sempre boa notícia, porque perder ponto, regredir ou ter uma marca estornada
-   NÃO gera aviso nenhum. Quatro cores diferentes prometeriam uma distinção que não
-   existe; quem diz qual é a notícia é a palavra dentro do selo ("Nível",
-   "Medalha", "Marco", "Destaque"), não o tom.
+/* [GAMIFICAÇÃO] O selo das cartas de celebração (01/09/2026). Um só para todas,
+   e verde para todas: elas são, por lei da célula de origem, sempre boa notícia,
+   porque perder ponto, regredir ou ter uma marca estornada NÃO gera aviso
+   nenhum. Uma cor por assunto prometeria uma distinção que não existe; quem diz
+   qual é a notícia é a palavra dentro do selo ("Nível", "Medalha", "Marco",
+   "Destaque" e, desde 06/09/2026, "Portfólio"), não o tom.
 
    Discreto de propósito, no mesmo tamanho dos selos de status: a regra de tela
    da gamificação é que o placar nunca fique maior que a obra, e um aviso é ainda

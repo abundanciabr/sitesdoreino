@@ -267,6 +267,51 @@ queryset) — o custo é o mesmo, zero consultas a mais.
           </form>
         {% endif %}
       </article>
+      {% elif aviso.assunto == "pages.portfolio-conferido" %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-celebracao">Portfólio</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <h3 class="aviso-titulo">A escola conferiu o seu portfólio</h3>
+
+        {% comment %}
+        O SELO DA ESCOLA (Rito de Contrato de 06/09/2026, critério AC-12 do
+        corredor CS-PAGES-0001). Quem chega aqui mandou o portfólio para a fila
+        da escola e esperou até cinco dias úteis, então a frase responde à
+        pergunta que essa pessoa está fazendo desde então.
+
+        SEM LINK, como os cinco cartões acima: a Prancheta mora na célula
+        `pages`, que esta tela não consulta, e um endereço escrito à mão aqui
+        seria a segunda verdade sobre onde ela fica.
+
+        A SEGUNDA FRASE NÃO É ENFEITE. O selo vale para o que a pessoa da equipe
+        viu no dia, e não para o que o portfólio for depois: a foto entra por
+        link colado e a escola não controla o que está do outro lado dele. A
+        estante do aluno já diz isso com todas as letras, e um aviso que
+        prometesse mais do que ela seria a promessa errada chegando primeiro.
+
+        A linha do papel só existe quando o parâmetro veio, e hoje ele não vem
+        de ninguém: a `pages` reconhece a equipe por uma lista de ids e não sabe
+        qual deles é professor. Sem ela a frase continua inteira.
+        {% endcomment %}
+        <p class="aviso-mudanca">
+          Uma pessoa da equipe olhou as suas obras e disse sim, e o selo da
+          escola agora é seu.
+          {% if aviso.papel_frase %}{{ aviso.papel_frase }}{% endif %}
+          Ele vale para o que essa pessoa viu no dia da conferência, e aparece
+          na sua Prancheta com a data.
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
       {% elif aviso.assunto == "matricula.situacao-alterada" %}
       <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
         <div class="aviso-topo">
