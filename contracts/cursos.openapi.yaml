@@ -41,9 +41,42 @@
 # exatamente a ambiguidade que o caminho novo apaga. Enquanto houver um curso
 # só, não aparece; o consumidor migra antes do segundo curso nascer.
 #
-# SEGURANÇA: as onze operações exigem Bearer por par (TOKENS_ACEITOS_<PAR>);
+# SEGURANÇA: as doze operações exigem Bearer por par (TOKENS_ACEITOS_<PAR>);
 # a sonda de `ci/contract_freeze.py` confere isso NA FONTE, porque o
 # django-ninja omite `security` de rota sem autenticação em vez de emitir [].
+#
+# O QUE O RITO DE 06/09/2026 ACRESCENTOU, e por quê: o mantenedor tem os
+# textos das 34 encomendas escritos e precisava de por onde enviá-los. A
+# tela que cola o sumário do livro já enchia as peças, mas duas coisas do
+# sumário não tinham por onde entrar: o TÍTULO da encomenda (a frase que o
+# cliente diz, e a primeira coisa que o aluno lê) e o NOME do bloco com o
+# TÍTULO DO BOSS dele.
+#
+# O título saiu da lista dos sete campos que eram 422 no corpo de
+# `putLesson`, e é o único que sai. Os outros seis (número, ordem, bloco,
+# estado, versão e data de publicação) são ESTRUTURA, escrita pela
+# instalação do curso; o título é OBRA do mantenedor. Ele é opcional, e
+# ausente significa não mexer, para que a tela que não o conhece não apague
+# o que a outra escreveu.
+#
+# `putBlock` nasce como operação PRÓPRIA, e não como campo de `putLesson`,
+# porque doze blocos servem trinta e quatro encomendas e três aulas dividem
+# o bloco A: se o nome viajasse no corpo da aula, gravar duas aulas do mesmo
+# bloco escreveria o nome duas vezes com a última ganhando, e um bloco cujas
+# aulas ninguém abriu nunca poderia ser nomeado. Não nasceu `getBlock`: o
+# bloco já volta dentro de cada aula, agora com os dois campos.
+#
+# `nome` e `boss_titulo` NÃO entram em `required` no `BlocoSchema`, e isso é
+# deliberado: campo obrigatório novo num schema que já existia quebra quem
+# consome pelo contrato antigo, e `ci/contrato_aditivo.py` reprova o Rito por
+# isso (`armadilhas/202`, medida aqui em 06/09/2026). O valor emitido não
+# muda, porque o modelo sempre tem os dois; muda o que o contrato EXIGE de
+# quem valida. No corpo de `putBlock` os dois SÃO obrigatórios, e ali pode:
+# `BlocoParaGravarSchema` nasceu neste Rito e não tinha consumidor antes.
+#
+# NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1233, que é o
+# provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
+# entrar na main, e isso é o portão funcionando (`armadilhas/243`).
 # =============================================================================
 openapi: 3.1.0
 info:
@@ -56,7 +89,7 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao onze
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao doze
 
     operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
@@ -66,13 +99,13 @@ info:
 
     `putSiteLesson`, `publishSiteLesson`, vivas porque o editor que ja
 
-    esta no ar as chama) e as tres de instrumento (`listInstruments`,
+    esta no ar as chama), as tres de instrumento (`listInstruments`,
 
-    `getInstrument`, `putInstrument`). Os verificadores (checkLesson)
+    `getInstrument`, `putInstrument`) e a do bloco (`putBlock`). Os
 
-    nascem no degrau 3.1; o placar da fila (getReviewQueue) e o progresso
+    verificadores (checkLesson) nascem no degrau 3.1; o placar da fila
 
-    do aluno (getStudentProgress), no 2.1.
+    (getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.
 
 
     Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).
@@ -83,6 +116,29 @@ info:
     porta e so por ela; nunca por migracao, nunca por arquivo no
 
     repositorio, que e publico.
+
+
+    O TITULO DA ENCOMENDA E O BLOCO ENTRAM DESDE 06/09/2026. Ate essa
+
+    data, sete campos eram 422 no corpo de `putLesson`: numero, ordem,
+
+    titulo, bloco, estado, versao e data de publicacao. O titulo saiu
+
+    dessa lista, e e o unico que sai, porque e o unico dos sete que e OBRA
+
+    e nao ESTRUTURA: os outros seis sao fatos publicos do livro, escritos
+
+    pela instalacao do curso, e o titulo e a frase que o cliente diz na
+
+    encomenda e a primeira coisa que o aluno le. Ele e opcional, e ausente
+
+    significa nao mexer, para que a tela que nao o conhece nao apague o
+
+    que a outra escreveu. O nome do bloco e o titulo do Boss dele entram
+
+    por `putBlock`, que e operacao propria porque doze blocos servem
+
+    trinta e quatro encomendas e nenhum deles e de uma aula so.
 
 
     O `site_id` e obrigatorio em toda operacao de aula (uma fabrica, N
@@ -131,11 +187,11 @@ paths:
                 type: array
       description: 'A lista que o editor mostra como indice: numero, ordem, titulo
 
-        exibido, o bloco (letra, ordem, parte), estado, versao, data de
+        exibido, o bloco (letra, ordem, parte, nome e titulo do Boss), estado,
 
-        publicacao, se e Boss e o nivel de Banca. NENHUM texto de peca sai
+        versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto
 
-        aqui: e listagem, e o texto vem em `getLesson`.
+        de peca sai aqui: e listagem, e o texto vem em `getLesson`.
 
 
         `site_id` e obrigatorio. Site sem curso responde lista vazia, nao
@@ -218,7 +274,9 @@ paths:
 
         banca_nivel (1, 2, 3 ou null), pecas [{tipo, texto}] e pausas
 
-        [{ordem, segundo, tipo, pede, campos}].
+        [{ordem, segundo, tipo, pede, campos}]. Mais o titulo_exibido, que e
+
+        OPCIONAL, e a regra dele esta em `putLesson`, palavra por palavra.
 
 
         As pecas e as pausas da aula sao SUBSTITUIDAS pelas do corpo, numa
@@ -236,9 +294,11 @@ paths:
 
         aceito_quando que nao seja lista de textos, instrumento inexistente,
 
-        banca_nivel fora de 1..3, ou qualquer chave que este corpo nao
+        banca_nivel fora de 1..3, titulo_exibido vazio ou com mais de 120
 
-        conheca (numero, estado, versao...). 404 se a aula nao existe.
+        letras, ou qualquer chave que este corpo nao conheca (numero, estado,
+
+        versao...). 404 se a aula nao existe.
 
 
         Devolve a aula como ficou, no mesmo formato de `getSiteLesson`.
@@ -410,11 +470,13 @@ paths:
                 type: array
       description: 'A lista que o editor mostra como indice e que a sala de aula percorre:
 
-        numero, ordem, titulo exibido, o bloco (letra, ordem, parte), estado,
+        numero, ordem, titulo exibido, o bloco (letra, ordem, parte, nome e
 
-        versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto
+        titulo do Boss), estado, versao, data de publicacao, se e Boss e o
 
-        de peca sai aqui: e listagem, e o texto vem em `getLesson`.
+        nivel de Banca. NENHUM texto de peca sai aqui: e listagem, e o texto
+
+        vem em `getLesson`.
 
 
         `curso` e o SLUG, resolvido pelo par site+slug, que e a unicidade do
@@ -539,6 +601,34 @@ paths:
         aula resolvida pelo curso.
 
 
+        O TITULO DA ENCOMENDA ENTRA POR AQUI, e ele e o unico dos sete campos
+
+        de fora que passou a entrar. Numero, ordem, bloco, estado, versao e
+
+        data de publicacao continuam sendo 422: sao ESTRUTURA, fatos publicos
+
+        do livro, e quem os escreve e a instalacao do curso. O titulo e OBRA:
+
+        e a frase que o cliente diz na encomenda e a primeira coisa que o
+
+        aluno le, e sem porta para ele a aula ficava com o nome de esqueleto
+
+        (`Encomenda 22`) enquanto o livro na mao do aluno dizia outra coisa.
+
+
+        `titulo_exibido` e OPCIONAL, e ausente significa NAO MEXER, nunca
+
+        esvaziar: ha mais de uma tela gravando esta aula, e a que nao conhece
+
+        o campo nao pode apagar o que a outra escreveu. Nulo diz o mesmo que
+
+        ausente. Titulo vazio e 422, porque apagar o titulo nao e gesto que
+
+        esta porta ofereca: encomenda sem nome nao e um estado do sistema.
+
+        O NOME DO BLOCO e o TITULO DO BOSS nao entram aqui; sao `putBlock`.
+
+
         `parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o
 
         bloco da aula recusa com 404 ANTES de gravar qualquer coisa, e nada e
@@ -602,6 +692,79 @@ paths:
         bloco da aula recusa com 404 e a aula continua como estava. 404
 
         tambem se o curso ou a aula nao existem.'
+  /cursos/{curso}/blocos/{letra}:
+    put:
+      operationId: putBlock
+      summary: Grava o nome de um bloco e o titulo do Boss dele
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: letra
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlocoSchema'
+      description: 'O bloco tem NOME e TITULO DO BOSS, e os dois sao obra do mantenedor:
+
+        nascem vazios e so entram por aqui. O corpo leva os dois SEMPRE, e
+
+        texto vazio e valor valido, porque quem digitou errado precisa poder
+
+        apagar. Nao ha versao a subir: o bloco nao e versionado.
+
+
+        E OPERACAO PROPRIA, e nao campo de `putLesson`, porque o bloco nao
+
+        pertence a nenhuma aula: sao doze blocos para trinta e quatro
+
+        encomendas, e tres aulas dividem o bloco A. Se o nome viajasse no
+
+        corpo da aula, gravar duas aulas do mesmo bloco escreveria o nome duas
+
+        vezes, a ultima ganharia, e um formulario aberto com o nome antigo
+
+        apagaria o que a outra tela escreveu. Um bloco cujas aulas ninguem
+
+        abriu tambem nao teria como ser nomeado.
+
+
+        `letra` e a do bloco, de A a L, e `curso` e o SLUG, resolvido pelo par
+
+        site+slug como nas quatro operacoes de aula. Letra, ordem e parte NAO
+
+        entram no corpo: sao a estrutura do livro, o semeador e a fonte delas,
+
+        e manda-las e 422, do mesmo jeito que `cartao` em `putInstrument`.
+
+
+        404 se o curso nao existe naquele site, ou se aquela letra nao existe
+
+        naquele curso. Devolve o bloco como ficou, no mesmo formato em que ele
+
+        ja viaja dentro de cada aula: e por ai que quem grava le de volta o
+
+        que gravou, sem uma operacao de leitura so para isso.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlocoParaGravarSchema'
+        required: true
 components:
   schemas:
     AulaDaListaSchema:
@@ -643,6 +806,21 @@ components:
       - banca_nivel
       type: object
     BlocoSchema:
+      description: "O bloco como ele viaja dentro de toda aula: a estrutura do livro\n\
+        (`letra`, `ordem`, `parte`) e o que o mantenedor escreve nele (`nome` e\n\
+        `boss_titulo`, vazios at\xE9 algu\xE9m os escrever por `putBlock`).\n\nOs\
+        \ dois de obra entraram aqui em 06/09/2026, e \xE9 isto que faz `putBlock`\n\
+        dispensar uma opera\xE7\xE3o de leitura pr\xF3pria: quem grava um bloco o\
+        \ l\xEA de\nvolta na primeira aula dele. Gravar sem poder ler de volta foi\
+        \ o defeito\nque o degrau 1.3b teve de curar nos instrumentos, com um PR a\
+        \ mais.\n\nOS DOIS NOVOS CARREGAM DEFAULT, E ISSO N\xC3O \xC9 DESCUIDO NEM\
+        \ ENFEITE: sem\nele o campo nasce em `required` no documento congelado, e\n\
+        `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigat\xF3rio\n\
+        novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida\n\
+        aqui em 06/09/2026). O valor emitido N\xC3O muda: o modelo sempre tem os\n\
+        dois, com `default=\"\"` no banco. Muda s\xF3 o que o contrato EXIGE de quem\n\
+        valida. N\xE3o tire os defaults para \"deixar igual aos outros tr\xEAs\":\
+        \ os\noutros tr\xEAs nasceram com o contrato, estes chegaram depois."
       properties:
         letra:
           type: string
@@ -650,6 +828,12 @@ components:
           type: integer
         parte:
           type: integer
+        nome:
+          default: ''
+          type: string
+        boss_titulo:
+          default: ''
+          type: string
       required:
       - letra
       - ordem
@@ -810,10 +994,27 @@ components:
       type: string
     AulaParaGravarSchema:
       additionalProperties: false
-      description: "O corpo de `putLesson`: s\xF3 o que se edita. N\xFAmero, ordem,\
-        \ t\xEDtulo, bloco,\nestado, vers\xE3o e data de publica\xE7\xE3o n\xE3o entram,\
-        \ e mand\xE1-los \xE9 422."
+      description: "O corpo de `putLesson`: o que se edita, e o t\xEDtulo.\n\nO T\xCD\
+        TULO MUDOU DE LADO EM 06/09/2026 (TAR-221), e \xE9 o \xFAnico dos sete que\n\
+        muda. N\xFAmero, ordem, bloco, estado, vers\xE3o e data de publica\xE7\xE3\
+        o continuam\nfora, e mand\xE1-los \xE9 422: s\xE3o ESTRUTURA, fatos do livro,\
+        \ e quem os escreve \xE9\no semeador. O `titulo_exibido` estava nessa lista\
+        \ por parecer estrutura, e\nn\xE3o \xE9: ele \xE9 a frase que o cliente diz\
+        \ na encomenda, obra do mantenedor, e\na primeira coisa que o aluno l\xEA\
+        . Sem porta para ele, a encomenda ficava\n\"Encomenda 22\" onde o livro na\
+        \ m\xE3o do aluno diz outra coisa.\n\nELE \xC9 OPCIONAL, E AUSENTE SIGNIFICA\
+        \ N\xC3O MEXER. O editor do Admin que j\xE1\nest\xE1 no ar n\xE3o manda este\
+        \ campo, e um `PUT` dele n\xE3o pode apagar o t\xEDtulo\nque a outra tela\
+        \ escreveu. Nulo diz o mesmo que ausente, de prop\xF3sito:\napagar t\xEDtulo\
+        \ n\xE3o \xE9 gesto que esta porta ofere\xE7a, e por isso t\xEDtulo vazio\n\
+        \xE9 422."
       properties:
+        titulo_exibido:
+          anyOf:
+          - maxLength: 120
+            minLength: 1
+            type: string
+          - type: 'null'
         pedido:
           type: string
         cliente:
@@ -935,6 +1136,27 @@ components:
       - 2
       - 3
       type: integer
+    BlocoParaGravarSchema:
+      additionalProperties: false
+      description: "O corpo de `putBlock`: o nome do bloco e o t\xEDtulo do Boss dele.\n\
+        \nLetra, ordem e parte N\xC3O entram, pelo mesmo motivo que `cartao` n\xE3\
+        o entra\nem `putInstrument`: s\xE3o a estrutura do livro, o semeador \xE9\
+        \ a fonte delas, e\nmand\xE1-las \xE9 422.\n\nOs dois campos v\xEAm SEMPRE,\
+        \ e vazio \xE9 valor v\xE1lido: \xE9 com ele que os doze\nblocos nascem, e\
+        \ quem digitou um nome errado precisa poder apag\xE1-lo. \xC9 a\ndiferen\xE7\
+        a para o t\xEDtulo da aula, onde ausente significa n\xE3o mexer, porque\n\
+        l\xE1 existe uma segunda tela gravando o mesmo campo."
+      properties:
+        nome:
+          maxLength: 120
+          type: string
+        boss_titulo:
+          maxLength: 120
+          type: string
+      required:
+      - nome
+      - boss_titulo
+      type: object
   securitySchemes:
     bearerAuth:
       type: http
