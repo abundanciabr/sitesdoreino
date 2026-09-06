@@ -12,6 +12,16 @@
         ]
       },
       {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_do_travessao_na_escrita.py\"",
+            "timeout": 20
+          }
+        ]
+      },
+      {
         "matcher": "Bash|PowerShell|Monitor",
         "hooks": [
           {

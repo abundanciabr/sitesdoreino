@@ -1,0 +1,19 @@
+{
+  "arquivo": "220-a-matricula-passa-a-dizer-de-qual-curso-o-aluno-e-e-liberar-",
+  "id": "TAR-220",
+  "titulo": "A matricula passa a dizer de qual curso o aluno e, e liberar exige escolher",
+  "toca": [
+    "alunos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-na-plataforma"
+  ],
+  "evidencia_exigida": "PR mergeado: a decisao de liberar exigindo o curso, com 422 e frase em portugues quando falta; [INV-ALU-C1] declarado e provado por mutacao; as matriculas ativas de hoje apontando para o curso 1 (por migracao se a celula permitir, ou por comando de gestao se nao); NENHUMA tabela de cursos dentro da alunos; suite da alunos verde e make ci verde. O Rito de Contrato fica para a maestro.",
+  "despacho": "Executa a DECISAO-cursos-matriculas-e-alunos.md, aprovada pelo mantenedor em 06/09/2026. A lei em uma frase: ninguem e aluno do site, todo mundo e aluno DE UM CURSO, e a matricula e o que diz qual.\n\nO QUE JA EXISTE, medido no origin/main (isto e ligacao, nao construcao): Matricula.product_id existe desde a primeira migracao da celula alunos; a restricao de unicidade da fila diz por escrito que varias matriculas por pessoa sao o normal (\"um curso cada\"); e POST /matriculas, que e a porta da compra, JA exige product_id. O buraco e um so: services.py cria a linha da fila com product_id=\"\" porque naquele momento ninguem sabia qual curso a pessoa queria.\n\nO QUE FAZER NA CELULA alunos:\n  1. A decisao de liberar (POST /pre-matriculas/{id}/decisao) passa a EXIGIR o curso. Sem curso, 422 com frase em portugues. Isso e o invariante [INV-ALU-C1]: nenhuma matricula ativa sem curso.\n  2. Uma migracao de dados NAO serve aqui se a celula proibir RunPython; confira o guarda da celula antes. Se puder, as matriculas ATIVAS de hoje com product_id vazio passam a apontar para o curso 1. Se nao puder, um comando de gestao que o mantenedor roda, no molde de infra/semear-*.sh.\n  3. O contrato da celula muda: e Rito de Contrato, da maestro, com o mantenedor presente. PARE e reporte quando chegar nele; nao toque em contracts/.\n\nCUIDADO QUE VALE A TAREFA INTEIRA: nao crie tabela de cursos dentro da alunos. O catalogo de cursos tem dono e a matricula guarda a REFERENCIA, nunca a copia. Duas listas de cursos divergem no primeiro curso novo, e a lei anti-duplicacao desta casa proibe isso.\n\nO CURSO 1 e \"Primeiros Dolares com Roblox\" e e o de TODOS os alunos de hoje. O CURSO 2 e o do livro, que esta sendo construido na celula cursos com o apelido `profissional`.",
+  "origem": "DECISAO-cursos-matriculas-e-alunos.md, aprovada pelo mantenedor em 06/09/2026",
+  "criada_em": "2026-09-06"
+}
