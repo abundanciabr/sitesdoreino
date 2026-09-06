@@ -541,3 +541,73 @@ aluno, e cada passada tem custo.
 
 O import de `despacho` e `motor` é DENTRO da função: `despacho` importa `tasks`
 (precisa do `relay_apos_commit`), então importá-los no topo fecharia um ciclo.
+
+## A fila de proxima acao nao e uma segunda `condicoes.py`, e a diferenca cabe numa pergunta
+
+**O risco real:** o degrau 15 do `PLANO-PAINEL-DE-GESTAO.md` pede "regra por
+dimensao" e esta celula ja tem um dicionario de regras (`condicoes.py`). Quem
+ler os dois rapido conclui que sao a mesma coisa e constroi um duplicado, que e
+a doenca que esta casa mais combate.
+
+**A pergunta que separa os dois, e ela e curta:**
+
+- `condicoes.py`: *"este PASSO, de uma jornada em que a pessoa JA ENTROU, ainda
+  faz sentido no instante do envio?"* Automacao ja escolhida, resposta binaria.
+- `proxima_acao.py`: *"olhando a pessoa inteira, qual e o proximo gesto e QUEM
+  o faz?"* Nada foi escolhido ainda, e a resposta pode ser justamente **nao
+  automatizar** (a professora fala, ou um robo investiga).
+
+Por isso o roteador nao reimplementa nada: ele le `EstadoDoAluno` (a mesma
+projecao) e chama a regua, e decide um andar acima. Se um dia a resposta for a
+mesma nos dois arquivos, o defeito e no de cima.
+
+## O teto de contato saiu da regua e virou parametro com dono
+
+`regua.TETO_POR_DIA = 1` era numero solto: a lei estava citada no comentario e o
+DONO da decisao, em lugar nenhum. Ele agora mora em `parametros.py`, com dono,
+unidade e motivo, e a regua **le de la** em vez de guardar uma copia (dois
+lugares para o mesmo numero e o mesmo defeito por outro nome).
+
+**A fronteira que evita o proximo engano:** nem todo numero vira parametro.
+`DIAS_DE_SILENCIO_ATE_CHAMAR_GENTE` fica DENTRO da regra, em `proxima_acao.py`,
+porque muda-lo muda a regra, e regra que muda tem de subir de versao. Um limiar
+morando em `parametros.py` mudaria sem passar pela versao, e a promessa "regra
+versionada" do §6.4 do plano viraria prosa.
+
+## "Regra versionada" so e verdade com impressao digital, e a assinatura inclui o CODIGO
+
+Um campo `versao: int` que ninguem e obrigado a mexer e a categoria "garantia sem
+mecanismo" da `RETROSPECTIVA-FASE-D.md`. O que faz a promessa valer e
+`impressao_digital()`: um sha256 sobre slug, versao, executor, as duas frases **e
+o `inspect.getsource` da condicao**, com o par (versao, assinatura) fixado a mao
+em `tests/test_proxima_acao.py`.
+
+**O corpo da condicao entra de proposito.** Uma regra pode mudar inteira sem que
+uma letra das frases mude, e e exatamente essa a mudanca que passa despercebida
+numa revisao apressada. O preco assumido: reformatar o arquivo (um `black` que
+quebre a linha da condicao de outro jeito) tambem derruba o guarda. Isso e
+barulho aceito, porque o silencio do outro lado seria uma regra trocada sem
+ninguem notar.
+
+## O guarda de venda foi provado contra uma regra que NAO existe no codigo
+
+Nao ha regra de venda em `REGRAS`, e nao pode haver hoje (diretiva do mantenedor
+de 22/08/2026, §9 do plano). Ainda assim o guarda "sucesso do aluno antes de
+venda" existe e e testado: a regra de venda vive DENTRO do teste, escrita de
+proposito para casar com qualquer pessoa.
+
+**A razao vale para qualquer guarda desta casa:** guarda testado so contra codigo
+correto nao guarda nada. Este funciona no dia em que alguem escrever a regra
+errada, que e o unico dia em que ele importa. E ele foi provado dos DOIS lados
+por mutacao: trocar a condicao por `if regra.e_de_venda:` (recusar venda sempre)
+tambem derruba um teste, porque um guarda que barra tudo desligaria a fila em
+silencio e passaria como se estivesse certo.
+
+## O sinal de sucesso e "entregou um checkpoint", nao "abriu uma aula"
+
+`teve_resultado_na_escola()` le `EnvioDeCheckpoint`, e a escolha foi deliberada:
+quem abriu a aula e nao entregou nada nao colheu nada, e vender para essa pessoa
+e exatamente o que o guarda existe para impedir. O sinal ainda nao sabe se o
+trabalho foi APROVADO (o laudo e fato da celula `cursos` e nao chega aqui), e
+apertar o sinal um dia so pode REDUZIR o que a fila oferece de venda: e o lado
+seguro da duvida.
