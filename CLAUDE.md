@@ -252,7 +252,7 @@ silencioso até a pista devolver o PR.
 
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
 de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
-orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
+orçamento de 15 arquivos de código que decide a arquitetura antes da primeira linha. Cada
 redescoberta custa tokens e uma rodada de teste.
 
 **E leia também, uma vez por sessão, os 8 padrões de
@@ -627,7 +627,8 @@ Na prática:
   esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
   humana.
 - **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
-  arquivos, Ritos de Contrato, evidência vermelho→verde —
+  arquivos de código (a escrituração obrigatória em `painel/` e `fila/` saiu da
+  conta no PR #1167, de 06/09/2026), Ritos de Contrato, evidência vermelho→verde —
   nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
   responsável de construir algo grande. "Completo" é o destino; a escada de
   PRs é o caminho.
@@ -839,7 +840,7 @@ série pela mesma sessão, cada uma esperando seus 10 minutos de pista.
 
 **A regra:** a sessão que recebe um pedido dele É a maestro daquele pedido, sem
 ninguém precisar dizer "toque um lote". Ela divide o pedido em pedaços
-independentes (1 PR = 1 célula, orçamento de 15), dispara um sub-agente por
+independentes (1 PR = 1 célula, orçamento de 15 arquivos de código), dispara um sub-agente por
 pedaço com a ficha `despacho`, em paralelo, e mantém em série só o que depende
 de outro pedaço. Enquanto os checks de cada PR rodam, o `revisor` lê o diff e o
 `escrivao` escreve o registro, a armadilha e o evento da fila. A maestro arma
@@ -861,6 +862,56 @@ o revisor só lê). A divisão do pedido e o disparo em paralelo são julgamento
 maestro, e isso não tem mecanismo: nada no CI vê quantos sub-agentes uma sessão
 disparou. Está dito aqui com todas as letras para ninguém tomar o teste das
 fichas por garantia da regra inteira.
+
+## O que uma chamada custa (desde 06/09/2026)
+
+
+O mantenedor abriu o painel de uso num domingo e perguntou por que 47% da cota
+semanal tinha ido embora em 36 horas, achando que tinha pedido "umas 10 tarefas
+simples". A medição dos transcripts daquele fim de semana:
+
+| | |
+|---|---|
+| tokens consumidos | 4,92 bilhões |
+| chamadas ao modelo | 19.708 |
+| PRs mergeados | 124 |
+| falas dele | 165 |
+
+Ou seja: o trabalho era real, e a cota comprou 124 PRs. O que estava errado não
+era a quantidade de trabalho, era **o preço de cada chamada**. Três números
+explicam:
+
+- **97,7% de toda a entrada é releitura.** Cada comando reenvia a conversa
+  inteira. Rodar um `ls` numa sessão de 250k custa 250k.
+- **3.401 chamadas rodaram com o contexto acima de 400k, e queimaram 38% da
+  semana.** A maior sessão começou em 78k e terminou em 967k, fazendo o mesmo
+  tipo de trabalho o tempo todo, doze vezes mais caro no fim.
+- **53 dos 81 sub-agentes rodaram no modelo mais caro sem ninguém ter
+  escolhido**, porque sub-agente disparado sem `model` HERDA o modelo da
+  maestro. Foi omissão, não decisão.
+
+Decisão dele em 06/09/2026, em pergunta estruturada, nas duas pontas:
+
+**1. O modelo se escolhe, não se herda.** A maestro passa `model: "sonnet"` no
+disparo quando a tarefa é rotina: escrever registro, catalogar armadilha,
+ajustar texto de tela, corrigir teste, redirecionar rota, semear dado, pagar
+dívida de escrituração. Fica no modelo de cima o que decide arquitetura, escreve
+ou muda contrato, e o código novo do produto. **Na dúvida, o de cima:** um PR de
+conserto custa 40 milhões de tokens e apaga a economia de cinco despachos
+baratos.
+
+**2. Conversa que engorda avisa.** Passando de ~300k de contexto, cada comando
+custa o triplo do que custava no começo e entrega a mesma coisa. Dali em diante
+a sessão DIZ isso ao mantenedor, em uma linha, e sugere abrir conversa nova
+dizendo o que levar. Quem decide é ele: a sessão não fecha nada por conta
+própria, porque o histórico na tela é dele, não do robô.
+
+**O que isto NÃO é: corte de escopo.** Os 124 PRs daquele fim de semana eram
+trabalho legítimo e a lei "feito completo" continua inteira, palavra por
+palavra. O que muda é o preço unitário, nunca a ambição. Nenhum robô cita esta
+seção para recomendar fazer menos.
+
+**Quem faz valer:** `ci/tests/test_fichas_de_robo.py` (a ficha que só preenche molde declara o modelo dela, em vez de herdar o mais caro). A escolha do modelo a cada despacho e o aviso da conversa cara são julgamento da maestro e **não têm mecanismo**: nada no CI vê qual modelo uma sessão pediu, nem quanto contexto ela carregava quando rodou um comando. Está dito com todas as letras para ninguém tomar o teste da ficha por garantia da regra inteira.
 
 ## Plano na abertura, contas no fecho (desde 05/09/2026)
 
