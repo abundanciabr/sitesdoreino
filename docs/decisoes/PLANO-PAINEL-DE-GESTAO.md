@@ -343,9 +343,29 @@ tem fonte ao vivo sobe primeiro para a capa; a célula de medição nasce em
 paralelo, e o que depende dela vem depois.** Itens ❄ estão congelados pela
 decisão de 22/08 e entram desenhados.
 
+**Nesta data, 07/09/2026, 18 dos 20 degraus abaixo já estão no ar** (os
+degraus 0 a 13, mais 15, 16, 17 e 19). Faltam só dois, por motivos diferentes:
+o degrau 14 (a matemática da venda) está congelado desde 22/08/2026, pela
+decisão do mantenedor de não vender ainda no site; e o degrau 18 (integrações
+de fora) espera credenciais e um plano pago que só ele pode contratar. A
+tabela abaixo ainda promete cada degrau no futuro porque assim nasceu em
+03/09/2026 e nunca foi reescrita: quem quiser conferir a verdade de hoje tem
+dois lugares. O código de cada degrau mora quase sempre num arquivo dentro de
+`services/admin/apps/core/` com um nome parecido com o do degrau (o 1 em
+`restricao.py`, o 2 em `direcao.py`, o 3 em `reuniao.py`, o 4 em `doze.py`, o
+5 em `latencias.py`, o 6 em `mudancas.py`, o 10 em `coortes.py`, o 11 em
+`confianca.py`, o 12 em `laboratorio.py`, o 13 em `fechamento.py`, o 16 em
+`analista.py`, o 17 em `talentos.py` e o 19 em `elo.py`); as exceções são o
+degrau 0 (`placar.py`, no mesmo lugar), o degrau 7, que é a própria célula
+`services/metricas/`, o degrau 8, cujo contrato mora em `contracts/eventos/`
+com o emissor dentro da célula `alunos`, o degrau 9, em
+`services/metricas/apps/fatos/marcos.py`, e o degrau 15, em
+`services/mensageria/apps/jornadas/proxima_acao.py`. E cada PR que trouxe um
+degrau ao ar está registrado no livro de ocorrências (`painel/registros/`).
+
 | Degrau | O que nasce | O que já existe | Depende de |
 |---|---|---|---|
-| **0. O placar** | A barra do mês e a meta do ciclo, contadas por `virou_aluno_em`; os cartões com `acao`, `direcao`, `alvo_do_mes`. | **FEITO**: PRs #924 (manhã), #933 e #934 (o rito), #936 (a reforma). | nada |
+| **0. O placar** | A barra do mês e a meta do ciclo, contadas por `virou_aluno_em`; os cartões com `acao`, `direcao`, `alvo_do_mes`. | PRs #924 (manhã), #933 e #934 (o rito), #936 (a reforma). | nada |
 | **1. A restrição desta semana** | O cartão `restricao-da-semana` e o bloco 2 da capa; as taxas cadastro → pedido → liberação medidas ao vivo de `leads` e `alunos`; "suspeita" calculada, "confirmada" por registro. | a jornada, as duas células | 0 |
 | **2. A direção da semana** | Os dois cartões de direção da **sala de espera** (`pedidos-de-entrada-por-semana`, `liberacoes-em-48h`) com a meta da semana e a sequência; o compromisso como registro com `vence_em_dias: 7`; o veredito da semana passada calculado; o bloco 3 da capa. Desde 05/09/2026 eles medem a venda feita FORA do site (quem chega já comprou e espera confirmação), e ao lado deles ficam os dois cartões do caminho da venda, desenhados e sem número enquanto o checkout estiver congelado. | o livro, `leads`, `alunos` | 0 |
 | **3. O modo reunião** | A pauta de segunda em `/admin/reuniao/`, oito passos, que termina escrevendo registros e tarefas pelos caminhos que existem; o atalho na capa. | o livro, a fila | 1, 2 |
@@ -361,8 +381,8 @@ decisão de 22/08 e entram desenhados.
 | **13. O fechamento do ciclo** | A tela do fechamento das 12 semanas: a meta e o porquê; as medidas de direção previram?; **o que paramos de fazer** (registro `decisao` obrigatório: sem ele o ciclo não fecha); a meta seguinte gravada no cartão e no livro; a fase da escola recalculada dos portões (§6.5). **O guarda deste degrau é o teste do laço inteiro** (quinto documento §81): um cenário automatizado que percorre ciclo ativo, meta, medidas de direção, medição, restrição detectada, experimento, semana aberta, tarefa gerada, tarefa executada, semana encerrada, aprendizado registrado e placar atualizado. Os pedaços já são testados; o laço, não. | 3, 10 | 3, 10 |
 | **14. A matemática** ❄ | A razão de receita (taxa, imposto, reembolso, custo variável) e as equações por camada; os oito cartões do placar de doze que dependem de venda acendem. Desenhado agora, aceso só quando o site vender. | contratos de pagamento | 7, e a ordem dele |
 | **15. A fila de próxima ação** | Regra por dimensão, versionada; roteador automação, humano ou robô; tarefas no balcão; "sucesso do aluno antes de venda" como guarda; tetos de contato como parâmetro com dono. | `mensageria/apps/jornadas`, `fila/` | 9, 3 |
-| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum JÁ usa. | **FEITO**: PR #1334 (TAR-250), nas duas telas. O robô nasce desligado enquanto a chave da Anthropic, que já responde no fórum desde 02/09/2026, não chegar em `env/admin.env` na VPS, e a tela diz isso em português. | 5, 11, 12, os três no ar |
-| **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | **FEITO**: PR #1333 (`/admin/placar/talentos/`, os seis passos do laço com o número de cada um; as três contagens entram como `medicao` com o campo `foto`, pelo bloco copiável, e os três cartões nasceram em `painel/cartoes/`). | 13 |
+| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum JÁ usa. | PR #1334 (TAR-250), nas duas telas. O robô nasce desligado enquanto a chave da Anthropic, que já responde no fórum desde 02/09/2026, não chegar em `env/admin.env` na VPS, e a tela diz isso em português. | 5, 11, 12, os três no ar |
+| **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | PR #1333 (`/admin/placar/talentos/`, os seis passos do laço com o número de cada um; as três contagens entram como `medicao` com o campo `foto`, pelo bloco copiável, e os três cartões nasceram em `painel/cartoes/`). | 13 |
 | **18. Integrações de fora** | Gasto de anúncio e alcance por API em vez de digitado; WhatsApp pela API oficial. | nada | credenciais e plano pago: **passo do mantenedor** |
 | **19. O grafo causal** | A tarefa da fila passa a declarar QUE NÚMERO ela move (ou a declarar-se `manutencao`, o `whirlwind` do documento); o painel ganha o caminho de volta, de um número para as tarefas que trabalham nele. O guarda do degrau é o teste do §97 do quinto documento: de uma tarefa se chega ao número, e do número se volta às tarefas. | `fila/`, `ci/fila.py`, `painel/cartoes/`, `painel/logica.js` | 0 (não depende de célula nova nem de venda) |
 

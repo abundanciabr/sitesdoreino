@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-165321-TAR-273-explicada",
+  "tarefa": "TAR-273",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:53:21+00:00",
+  "quem": "medição de 07/09/2026: a tabela do §8 marca 3 degraus como FEITO e 18 estão no ar",
+  "o_que_e": "o documento docs/decisoes/PLANO-PAINEL-DE-GESTAO.md tem uma tabela (§8) com 20 linhas, uma por degrau da entrega; só 3 delas dizem FEITO, mas medindo o codigo hoje 18 dos 20 degraus ja estao no ar (so 2 esperam o dono: venda liberada e credenciais pagas)",
+  "o_que_muda": "quem abrir o plano hoje conclui, errado, que a escada mal comecou; com o parágrafo novo ele ve em uma leitura quantos degraus estao prontos, quais faltam e por que, sem precisar abrir 18 arquivos de codigo para conferir",
+  "exemplo": "é como um cronograma de obra que ainda mostra 'fundacao em andamento' quando a casa ja tem telhado; o pedreiro sabe que esta pronta, mas quem so le o cronograma acha que a obra emperrou",
+  "importancia": 40
+}
