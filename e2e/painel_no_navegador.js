@@ -683,6 +683,10 @@ async function medirEstadosDaArea(navegador, endereco) {
   caso("área direta: aviso recebido aparece junto das tarefas", fila.visivel && fila.texto.indexOf(dados.aviso) !== -1);
   await pagina.click('#vista-area a[href="#prioridades"]');
   await pagina.click('#vista-prioridades a[href="#area/' + AREAS[1].id + '"]');
+  await pagina.waitForFunction(function (nome) {
+    var cab = document.querySelector("#vista-area .bloco > .cab");
+    return cab && cab.textContent.indexOf(nome) === 0;
+  }, AREAS[1].nome);
   caso("outra área não herda tarefas da anterior", await pagina.locator("#vista-area .item:not(.vazio)").count() === 0 &&
     await pagina.locator("#vista-area .vazio").isVisible());
   await pagina.goBack();
