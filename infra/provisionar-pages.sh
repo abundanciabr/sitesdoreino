@@ -9,12 +9,14 @@
 # Ele cria o par banco+role isolado, pergunta ao catálogo de que site é esta
 # instalação e escreve o env real da célula. Só isso.
 #
-# Ele NÃO abre par de token: os TRÊS pares desta casa (`identidade` e `alunos`,
-# na porta do degrau 06, e `catalogo`, no menu do topo) são abertos por
-# `infra/provisionar-pares-da-prancheta.sh`, porque quem autoriza é sempre o
-# provedor, e o valor mora no env DELE. O que este roteiro faz com as seis
-# chaves desses pares é RELER e regravar, para não as apagar ao reescrever o
-# arquivo (passo 2).
+# Ele NÃO abre par de token: os QUATRO pares desta casa (`identidade` e
+# `alunos`, na porta do degrau 06; `catalogo`, no menu do topo; e `admin`, que
+# desde 06/09/2026 responde quem é administrador da escola) são abertos pelos
+# roteiros dos pares, `infra/provisionar-pares-da-prancheta.sh` para os três
+# primeiros e `infra/provisionar-par-do-portfolio-com-a-admin.sh` para o quarto,
+# porque quem autoriza é sempre o provedor e o valor mora no env DELE. O que
+# este roteiro faz com as oito chaves desses pares é RELER e regravar, para não
+# as apagar ao reescrever o arquivo (passo 2).
 #
 # O QUE MUDOU EM 06/09/2026, e por que a ausência de ontem estava certa: até
 # ontem este roteiro não perguntava o site ao catálogo, porque nenhum arquivo
@@ -88,19 +90,24 @@ ENV_REF="env/identidade.env"
 # Nome da célula igual a nome da rota, de propósito (plano §4).
 PREFIXO_DE_FABRICA="/pages"
 
-# Os env dos três provedores desta casa. Este roteiro só LÊ os três: quem
-# escreve neles é `infra/provisionar-pares-da-prancheta.sh`, porque quem
-# autoriza é sempre o provedor.
+# Os env dos quatro provedores desta casa. Este roteiro só LÊ os quatro: quem
+# escreve neles são os roteiros dos pares, porque quem autoriza é sempre o
+# provedor.
 ENV_IDENTIDADE="env/identidade.env"
 ENV_ALUNOS="env/alunos.env"
 ENV_CATALOGO="env/catalogo.env"
+ENV_ADMIN="env/admin.env"
 
 # Os endereços internos saem do `servers:` dos contratos congelados
 # (`contracts/identidade.openapi.yaml`, `contracts/alunos.openapi.yaml`,
-# `contracts/catalogo.openapi.yaml`), e não são escolha deste script.
+# `contracts/catalogo.openapi.yaml`, `contracts/admin.openapi.yaml`), e não são
+# escolha deste script. O da `admin` termina em `/interno` e NÃO leva o `/admin`
+# do `SCRIPT_NAME` dela: aquele prefixo é do caminho público, e aqui a conversa
+# é de container para container, direto na porta 8000 (`armadilhas/029`).
 IDENTIDADE_URL="http://identidade:8000/interno"
 ALUNOS_URL="http://alunos:8000/api/alunos"
 CATALOGO_URL="http://catalogo:8000/api/catalogo"
+ADMIN_URL="http://admin:8000/interno"
 
 # -----------------------------------------------------------------------------
 # 1. ONDE, tudo conferido ANTES de gerar ou escrever coisa nenhuma.
@@ -137,36 +144,46 @@ cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o 
 #    PERGUNTADO ao catálogo no passo 3. É o mesmo desenho de
 #    `infra/provisionar-cursos.sh`.
 #
-#    E A OITAVA CHEGOU COM O DEGRAU 11, com outro nome. O parágrafo que morava
-#    aqui até 06/09/2026 anunciava `TOKENS_ACEITOS_ADMIN`, porque naquele
-#    momento se imaginava a tela da equipe dentro da célula `admin`, falando com
-#    esta por token de máquina. O degrau 11 a construiu DENTRO da `pages`, como
-#    o corredor CS-PAGES-0001 manda (AC-11, `toca: [pages]`), e então não há par
-#    de token nenhum: quem abre a fila da conferência é `IDS_DA_EQUIPE`, a lista
-#    de ids de PESSOAS, lida no ponto de uso por `apps/core/equipe.py`. O palpite
-#    velho fica escrito aqui, corrigido, em vez de apagado: nome de chave futura
-#    é previsão, e previsão erra.
+#    E A OITAVA E A NONA CHEGARAM NO FIM DO MESMO DIA, pelo quarto par desta
+#    casa: `ADMIN_API_URL` e `ADMIN_API_TOKEN`. O mantenedor decidiu em
+#    06/09/2026 que quem confere o portfólio é TODO administrador da escola, e
+#    então a fila da conferência parou de ler uma lista de pessoas e passou a
+#    PERGUNTAR à célula `admin` (`services/pages/apps/core/clients.py`, pelo
+#    contrato congelado `contracts/admin.openapi.yaml`). O endereço é constante
+#    do contrato; o token é RELIDO de `TOKENS_ACEITOS_PAGES` no env da `admin`,
+#    igual aos outros três.
 #
-#    E ELA É A ÚNICA DA LISTA QUE ESTE ROTEIRO NÃO GERA NEM PERGUNTA: ele a
-#    PRESERVA, relendo o arquivo vivo antes de reescrever, como já faz com o
-#    `SCRIPT_NAME`. Quem a escreve é `infra/provisionar-equipe-do-portfolio.sh`,
-#    com o e-mail de quem confere na mão do mantenedor, porque id de pessoa real
-#    só existe no banco de produção e não se inventa. Ausente ou vazia é o estado
-#    de fábrica e é fail-closed correto: ninguém confere portfólio, a fila explica
-#    isso em português, e nada mais na célula muda.
+#    E UMA CHAVE SAIU DA LISTA NO MESMO DIA: `IDS_DA_EQUIPE`, a lista de ids de
+#    pessoas que abria aquela fila. Nenhum arquivo da célula a lê desde a mesma
+#    decisão, e roteiro que escreve chave que ninguém lê é configuração
+#    inventada (`armadilhas/224`). Ela não some em silêncio: está declarada
+#    logo abaixo como APOSENTADA, e o arquivo vivo que ainda a tiver perde a
+#    linha com um aviso na tela, em vez de a trava barrar o roteiro para sempre.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL IDS_DA_EQUIPE SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
+CHAVES_QUE_EU_GERO="ADMIN_API_TOKEN ADMIN_API_URL ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
+
+# AS CHAVES APOSENTADAS: as que este roteiro escreveu um dia e hoje não escreve
+# mais, porque nenhum código da célula as lê. Sem esta lista elas cairiam na
+# trava abaixo, e a trava faria a coisa certa pelo motivo errado: pararia o
+# roteiro para sempre por causa de uma linha morta. Com ela, a linha morta é
+# NOMEADA na tela e deixada de fora da reescrita. Só entra aqui chave cuja morte
+# foi medida no código, nunca chave que "parece não usada".
+CHAVES_APOSENTADAS="IDS_DA_EQUIPE"
 
 # LITERAL, e não `$ENV_PAGES`, de propósito: quem confere esta trava é um teste
 # que lê o script como TEXTO, e na VPS não há Python nem este repositório para
 # interpretar variável. A forma literal é o que torna o guarda possível.
+APOSENTADAS_ACHADAS=""
 if [ -f env/pages.env ]; then
   SOBRANDO=""
   for CHAVE in $(grep -oE '^[A-Z_][A-Z0-9_]*=' "$ENV_PAGES" | tr -d '=' | sort -u); do
     case " $CHAVES_QUE_EU_GERO " in
-      *" $CHAVE "*) : ;;
-      *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+      *" $CHAVE "*) continue ;;
     esac
+    case " $CHAVES_APOSENTADAS " in
+      *" $CHAVE "*) APOSENTADAS_ACHADAS="$APOSENTADAS_ACHADAS $CHAVE"; continue ;;
+    esac
+    SOBRANDO="$SOBRANDO $CHAVE"
   done
   if [ -n "$SOBRANDO" ]; then
     echo "PAROU POR SEGURANÇA: o $ENV_PAGES desta máquina tem variável que eu"
@@ -227,23 +244,16 @@ else
 fi
 echo
 
-# QUEM CONFERE O PORTFÓLIO, preservada do arquivo vivo pelo mesmo motivo do
-# prefixo, e com uma diferença que importa: aqui este roteiro não tem como
-# reconstruir o valor. Ele é uma lista de ids de PESSOAS REAIS, que só existem no
-# banco de produção, e quem a escreve é `infra/provisionar-equipe-do-portfolio.sh`
-# perguntando à `identidade` o id de cada e-mail. Reescrever o arquivo sem esta
-# releitura tiraria a equipe inteira da fila em silêncio, com o container de pé e
-# o deploy verde, que é a `armadilhas/111` em pessoa.
-#
-# VAZIA É NINGUÉM, e é o estado de fábrica: a fila abre e diz, em português, que
-# a pessoa não está na lista de quem confere. O aluno continua podendo pedir a
-# conferência, e o pedido espera guardado.
-EQUIPE="$(ler_de "$ENV_PAGES" IDS_DA_EQUIPE)"
-if [ -n "$EQUIPE" ]; then
-  QUANTOS_DA_EQUIPE=$(printf '%s' "$EQUIPE" | tr ',' '\n' | grep -c .)
-  echo "  quem confere ..... preservado do arquivo vivo: $QUANTOS_DA_EQUIPE pessoa(s)"
+# AS LINHAS MORTAS, ditas na cara antes de sumirem. A reescrita as deixa de
+# fora, e isso é o oposto de apagar em silêncio: a chave está nomeada na lista
+# de aposentadas lá em cima, o motivo está escrito lá, e a tela conta o que
+# aconteceu com ela nesta máquina.
+if [ -n "$APOSENTADAS_ACHADAS" ]; then
+  for CHAVE in $APOSENTADAS_ACHADAS; do
+    echo "  linha aposentada . $CHAVE sai do arquivo (nenhum código da célula a lê desde 06/09/2026)"
+  done
 else
-  echo "  quem confere ..... vazio (ninguém confere portfólio até você rodar o infra/provisionar-equipe-do-portfolio.sh)"
+  echo "  linhas mortas .... nenhuma"
 fi
 echo
 
@@ -325,8 +335,8 @@ echo
 # -----------------------------------------------------------------------------
 echo "== 3/4: banco e senha próprios da célula =="
 
-# ── OS TRÊS TOKENS QUE ESTE SCRIPT NÃO INVENTA, e por isso RELÊ ─────────────
-# Reescrever o arquivo inteiro sem estas seis linhas as apagaria em silêncio,
+# ── OS QUATRO TOKENS QUE ESTE SCRIPT NÃO INVENTA, e por isso RELÊ ───────────
+# Reescrever o arquivo inteiro sem estas oito linhas as apagaria em silêncio,
 # com o container de pé e o deploy verde (`armadilhas/111`). O efeito seria a
 # Prancheta voltar a responder 503 para TODO MUNDO (e o menu do topo a sumir das
 # Páginas do aluno), sem erro em lugar nenhum: fail-closed por falta de valor é
@@ -350,6 +360,14 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_PAGES)"
 T_CATALOGO="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_PAGES)"
 [ -n "$T_CATALOGO" ] || T_CATALOGO="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_CATALOGO} -ge 32 ] || parar "o token do par pages->catalogo ficou curto demais. Nada foi alterado."
+
+# O quarto par, e o único em que o provedor pode nem existir nesta máquina: a
+# `admin` é célula própria, com env próprio, e um `env/admin.env` ausente não é
+# motivo para parar o banco desta aqui. Faltando, o marcador gerado mantém o
+# arquivo sem linha vazia, e o roteiro do par alinha os dois lados depois.
+T_ADMIN="$(ler_de "$ENV_ADMIN" TOKENS_ACEITOS_PAGES)"
+[ -n "$T_ADMIN" ] || T_ADMIN="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_ADMIN} -ge 32 ] || parar "o token do par pages->admin ficou curto demais. Nada foi alterado."
 
 SENHA_DB="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
@@ -416,8 +434,9 @@ ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
 CATALOGO_API_URL=$CATALOGO_URL
 TOKEN_CATALOGO=$T_CATALOGO
+ADMIN_API_URL=$ADMIN_URL
+ADMIN_API_TOKEN=$T_ADMIN
 SITE_ID=$SITE_ID
-IDS_DA_EQUIPE=$EQUIPE
 ENV
 
 chown --reference="$ENV_REF" "$ENV_PAGES" 2>/dev/null \
@@ -440,15 +459,14 @@ echo " agora' para todo mundo. Quem as liga é a outra linha, e ela"
 echo " é uma só:"
 echo
 echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh"
-if [ -z "$EQUIPE" ]; then
-  echo
-  echo " E a fila da conferência do portfólio segue fechada, que é"
-  echo " o estado correto enquanto ninguém tiver sido indicado:"
-  echo " nenhuma pessoa está na lista de quem confere. Quem abre a"
-  echo " fila é esta linha, com o e-mail de quem confere no fim:"
-  echo
-  echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-equipe-do-portfolio.sh -o /tmp/q.sh && bash /tmp/q.sh seu-email@exemplo.com"
-fi
+echo
+echo " E a fila onde se confere o portfólio dos alunos precisa de"
+echo " mais uma, a quarta conversa: quem confere é todo"
+echo " administrador da escola, e quem responde isso é a área"
+echo " administrativa. Sem ela a fila diz que não conseguiu"
+echo " perguntar agora. Esta é a linha:"
+echo
+echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-do-portfolio-com-a-admin.sh -o /tmp/a.sh && bash /tmp/a.sh"
 echo
 echo " Pode mandar esta tela ao agente."
 echo "=============================================================="

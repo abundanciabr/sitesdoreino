@@ -5,7 +5,9 @@
   "toca": [
     "gamificacao"
   ],
-  "depende_de": [],
+  "depende_de": [
+    "TAR-187"
+  ],
   "cria": [],
   "move": [
     "alunos-com-resultado-profissional"

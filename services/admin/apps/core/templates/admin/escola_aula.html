@@ -14,8 +14,8 @@ guarda uma linha (docstring de apps/core/aulas.py). Sem script: cada gesto é
 um POST que recarrega a página, e a política de segurança desta área exige hash
 para script embutido (armadilhas/199).
 
-O travessão AVISA e não recusa: a caixa de riscas é contada do texto que está
-na tela, e o botão de salvar continua onde estava.
+A OBRA DELE saiu da lei do travessão em 06/09/2026: esta tela não conta riscas
+nem pede reescrita. O bloco logo acima do formulário explica por quê.
 
 Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
 (armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
@@ -142,24 +142,15 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   {% endif %}
 
   {% comment %}
-  O TRAVESSÃO AVISA E NÃO RECUSA (decisão do mantenedor, 04/09/2026). A lista é
-  contada do texto que está na tela, com o nome da peça e a linha, para o dia
-  em que a encomenda for publicada: a lei do travessão vale na tela do aluno.
+  AQUI NÃO SE CONTA TRAVESSÃO, E ISSO É DECISÃO, NÃO ESQUECIMENTO. Em
+  06/09/2026 o mantenedor tirou a obra dele (o texto das aulas e o do livro) da
+  lei do travessão: a obra sai como ele escreveu, e nenhuma tela pede reescrita.
+  O porquê está em `docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`.
+  O guarda que sustenta esta ausência é
+  `test_o_editor_nao_cobra_travessao_da_obra`. Antes desta data havia aqui um
+  bloco amarelo listando cada frase; num capítulo real ele trazia 67 linhas, e
+  ele veria essa parede 34 vezes, sobre uma regra que não vale neste texto.
   {% endcomment %}
-  {% if riscas %}
-  <div class="aviso borda-amarela">
-    <b>{{ riscas|length }} frase{{ riscas|length|pluralize }} com travessão.</b>
-    Guardei do jeito que você escreveu. A regra do site é que nenhum texto
-    publicado saia com travessão, então antes de publicar vale reescrever cada
-    uma, trocando por vírgula, parênteses, dois-pontos ou aspas, conforme o
-    papel que a risca fazia na frase.
-    <ul class="riscas">
-      {% for r in riscas %}
-      <li><b>{{ r.onde }}</b> ({{ r.risca }}) <span class="frase">{{ r.frase }}</span></li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
 
   <form method="post" class="editor encomenda" action="{{ url_de_salvar }}">
     {% csrf_token %}
