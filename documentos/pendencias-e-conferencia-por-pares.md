@@ -48,11 +48,13 @@ Só a última tem contador, e no dia em que este plano foi escrito ela marcava
 - **132 desses alunos estão matriculados em "Primeiros Dólares com Roblox"**, que é o curso que ensina o portfólio. Medido no mesmo dia, pela saída do script que gravou as matrículas. Esse é o tamanho máximo da fila de conferência: até 132 portfólios, e hoje só você para conferir.
 
 Esse número mora no sistema, em `/admin/escola/alunos/` e em `/admin/placar/`, e
-é lá que ele se confere. Não se confere em arquivo nenhum do computador: a lista
-antiga de WhatsApp (`turmas.txt`) tem 30 linhas e **não é a matrícula da
-escola**. Este plano nasceu com esse erro dentro (dizia "a escola tem 30
-pessoas", lendo o arquivo velho em vez da tela), o mantenedor corrigiu no mesmo
-dia, e a correção fica escrita aqui para ninguém repetir.
+é lá que ele se confere. **Não se confere em arquivo nenhum do computador.**
+
+Este plano nasceu com esse erro dentro, e ele fica escrito para ninguém repetir:
+a primeira versão dizia *"a escola tem 30 pessoas"*, contando as 30 LINHAS da
+lista antiga de WhatsApp (`turmas.txt`) como se fossem gente. Aquele arquivo tem
+344 números dentro daquelas 30 linhas, e mesmo os 344 não seriam a matrícula da
+escola: ele é a lista de quem foi convidado, não de quem entrou.
 
 Há ainda um sétimo caso, que é uma promessa não cumprida: a lei da escola diz
 que toda publicação pública do fórum passa por moderação humana antes de

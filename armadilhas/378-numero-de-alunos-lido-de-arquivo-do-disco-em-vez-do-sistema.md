@@ -24,10 +24,17 @@ faz a afirmação parecer uma medição. O mantenedor lê, e responde com raiva:
 SISTEMA que mostra que já temos mais de 140 alunos!"*.
 
 Medido em 07/09/2026: a escola tinha **133 alunos ativos e 9 aguardando
-aprovação**, lidos em `/admin/escola/alunos/`. O arquivo dizia 30. O erro não foi
-de 10%, foi de 4 vezes, e ele carregava dois argumentos do plano: "faixas
-visíveis fazem mal numa turma pequena" e "quórum de pares só a partir de ~150
-ativos". Os dois caíram junto com o número.
+aprovação**, lidos em `/admin/escola/alunos/`, e 132 matrículas apontando para o
+curso do portfólio. O erro não foi de 10%, foi de mais de 4 vezes, e ele
+carregava dois argumentos do plano ("faixas visíveis fazem mal numa turma
+pequena" e "quórum de pares só a partir de ~150 ativos"). Os dois caíram junto
+com o número.
+
+**E o erro tinha uma segunda camada, pior que a primeira:** `wc -l` devolveu 30,
+e eu li isso como 30 pessoas. Aquele arquivo tem **344 números distintos dentro
+daquelas 30 linhas** (medido em 02/09/2026, está na memória do projeto). Ou seja,
+nem como fotografia do arquivo o número estava certo: eu contei a unidade errada
+e nem olhei se linha era pessoa.
 
 **Causa:** o robô tem acesso de leitura ao disco e **não tem acesso ao banco de
 produção**. Então, quando precisa de um número da operação, o que está ao alcance
