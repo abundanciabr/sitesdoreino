@@ -367,54 +367,6 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </div>
 
   {% comment %}
-  CONFERIR FIDELIDADE e o segundo conferente, e a diferenca dele para o primeiro
-  cabe numa linha: a coerencia e codigo e olha a encomenda contra ela mesma; a
-  fidelidade e inteligencia artificial e olha cada texto DERIVADO contra a fonte
-  de que ele saiu.
-
-  Sao dois links, e nunca um so que faca as duas: a coerencia sai de graca e na
-  hora, e a fidelidade custa dinheiro e leva minutos. Um botao unico cobraria a
-  cada clique de quem so queria a conferencia barata.
-
-  Ele nunca impede publicar, e por isso a linha da trava nao aparece nesta caixa.
-  {% endcomment %}
-  <div class="conferencia">
-    <b>Conferir fidelidade.</b> Compara o que foi escrito A PARTIR desta
-    encomenda (o roteiro, a ficha do Guia do Mentor, a vídeo-aula em texto e a
-    peça do dicionário, cartão e respostas) com as peças de que esses textos
-    derivam, e aponta onde o sentido mudou: uma regra que virou sugestão, um
-    nome trocado, algo afirmado que a encomenda não diz, um cuidado que ficou de
-    fora. Ele aponta e nunca corrige, e nunca impede publicar.
-    <p class="conserto">Esta conferência usa inteligência artificial. Ela custa
-    alguns centavos por clique, pode levar alguns minutos, e confere a encomenda
-    como ela está salva agora.</p>
-    <p><a href="{{ url_de_conferir_fidelidade }}">Conferir fidelidade desta encomenda</a></p>
-
-    {% if fidelidade %}
-    {% if not fidelidade.lida %}
-    <p class="aviso borda-vermelha">
-      <b>{{ fidelidade.falha.titulo }}</b> {{ fidelidade.falha.explicacao }}
-      Nada mudou na encomenda.
-    </p>
-    {% elif not fidelidade.defeitos %}
-    <p class="aviso feito">
-      <b>Nenhum desvio de fidelidade nesta encomenda.</b> Cada texto derivado
-      bate com a fonte dele, no texto que está salvo agora.
-    </p>
-    {% else %}
-    <ol>
-      {% for desvio in fidelidade.defeitos %}
-      <li>
-        {% if desvio.peca %}<span class="onde">{{ desvio.peca }}:</span> {% endif %}{{ desvio.frase }}
-        <p class="conserto">{{ desvio.o_que_fazer }}</p>
-      </li>
-      {% endfor %}
-    </ol>
-    {% endif %}
-    {% endif %}
-  </div>
-
-  {% comment %}
   PUBLICAR é outro formulário, e outro verbo: salvar sobe a versão e não muda
   o que o aluno vê; publicar não muda uma letra e abre a aula. A caixa de
   confirmação é a "confirmação de uma linha" do desenho: sem script, é o que

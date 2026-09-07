@@ -91,26 +91,6 @@ salvar precisa salvar antes, e a tela diz isso na frase do estado vazio: um
 revisor que conferisse o rascunho diria defeito de um texto que não existe em
 lugar nenhum.
 
-## O botão "Conferir fidelidade" (07/09/2026, degrau 3.2)
-
-O segundo conferente também mora na `cursos`, mas ele é IA: o Guardião de
-fidelidade compara cada peça derivada (o roteiro, a ficha do Guia do Mentor, a
-vídeo-aula em texto e a peça onde mora o Cartão de 1 página) com a fonte de que
-ela deriva, e aponta onde o sentido mudou.
-
-**É outro link, ao lado do primeiro**, e nunca os dois de uma vez: a coerência é
-código e sai de graça; a fidelidade chama a IA, custa dinheiro e demora minutos.
-Um botão só, que fizesse as duas, cobraria a cada clique de quem só queria a
-conferência barata.
-
-**Ele aponta e nunca veta.** Nenhum defeito de fidelidade impede publicar, e por
-isso a linha "Isto impede publicar" não aparece nesta caixa.
-
-**As recusas dele viram FRASE, e a frase é a da `cursos`.** Encomenda sem peça
-derivada escrita, texto maior que o teto e IA fora do ar chegam aqui já
-explicados em português, e esta tela os mostra verbatim pela mesma razão de
-sempre: a regra é da outra célula.
-
 ## Por que é formulário simples, sem script
 
 Cada gesto é um POST que recarrega a página, pelas três razões de sempre: o
@@ -863,7 +843,7 @@ def _desenhar_aula(
     erro: str = "",
     recado: str = "",
     versao: int = 0,
-    conferir: str = "",
+    conferir: bool = False,
     status: int = 200,
 ):
     """O editor de UMA encomenda.
@@ -908,9 +888,6 @@ def _desenhar_aula(
         "url_de_conferir": (
             _endereco("escola_aula", curso, parte, numero) + "?conferir=1"
         ),
-        "url_de_conferir_fidelidade": (
-            _endereco("escola_aula", curso, parte, numero) + "?conferir=fidelidade"
-        ),
     }
     if desfecho != CursosClient.OK:
         contexto = {
@@ -936,14 +913,25 @@ def _desenhar_aula(
 
     if rascunho is None:
         rascunho = _rascunho_da_aula(aula)
-    # A conferência só acontece quando foi PEDIDA, e só a que foi pedida. Rodar
-    # as duas em toda abertura do editor custaria duas idas à porta em cada
-    # visita, e uma delas é paga: a de fidelidade chama a IA.
-    coerencia = fidelidade = None
-    if conferir == "1":
-        coerencia = _conferencia(cliente, site, curso, numero, parte, "coerencia")
-    elif conferir == "fidelidade":
-        fidelidade = _conferencia(cliente, site, curso, numero, parte, "fidelidade")
+    # A conferência só acontece quando foi PEDIDA. Rodá-la em toda abertura do
+    # editor custaria uma ida à porta em cada visita e encheria de aviso a tela
+    # de quem só veio ler a encomenda.
+    coerencia = None
+    if conferir:
+        desfecho_da_conferencia, defeitos = cliente.conferir_aula(
+            site["id"], curso, numero, parte
+        )
+        coerencia = {
+            "lida": desfecho_da_conferencia == CursosClient.OK,
+            "falha": (
+                None
+                if desfecho_da_conferencia == CursosClient.OK
+                else _falha(desfecho_da_conferencia)
+            ),
+            "defeitos": [
+                _defeito(bruto) for bruto in (defeitos or []) if isinstance(bruto, dict)
+            ],
+        }
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
@@ -968,53 +956,10 @@ def _desenhar_aula(
             "recado": recado,
             "versao_nova": versao,
             "coerencia": coerencia,
-            "fidelidade": fidelidade,
         }
         | contexto_do_lugar,
         status=status,
     )
-
-
-def _conferencia(
-    cliente: CursosClient,
-    site: dict,
-    curso: str,
-    numero: str,
-    parte: "int | None",
-    modo: str,
-) -> dict:
-    """Uma conferência pedida, pronta para a tela: o que ela achou, ou por quê não.
-
-    Os dois conferentes cabem na mesma função porque a resposta é a mesma
-    (`list[DefeitoSchema]`) e a tela é a mesma. O que difere é a régua, e a
-    régua é do outro lado.
-
-    `falha` prefere a frase que a `cursos` mandou: ela sabe se faltou a chave da
-    IA, se a encomenda ainda não tem o que conferir ou se o texto passou do
-    teto, e escreveu isso em português para a professora. Só quando não veio
-    frase nenhuma (rede caída, par não provisionado) é que entra a genérica
-    desta tela.
-    """
-    desfecho, resposta = cliente.conferir_aula(
-        site["id"], curso, numero, parte, modo=modo
-    )
-    deu_certo = desfecho == CursosClient.OK
-    return {
-        "lida": deu_certo,
-        "falha": None if deu_certo else _falha_da_conferencia(desfecho, resposta),
-        "defeitos": (
-            [_defeito(bruto) for bruto in resposta if isinstance(bruto, dict)]
-            if deu_certo and isinstance(resposta, list)
-            else []
-        ),
-    }
-
-
-def _falha_da_conferencia(desfecho: str, detalhe) -> dict:
-    """A recusa da sala de aula virada em frase, com a explicação DELA quando veio."""
-    if isinstance(detalhe, str) and detalhe.strip():
-        return {"titulo": detalhe.strip(), "explicacao": ""}
-    return _falha(desfecho)
 
 
 def _rascunho_do_instrumento(instrumento: dict) -> dict:
@@ -1127,7 +1072,7 @@ def aula(request, curso: str, numero: str, parte: "str | None" = None):
         int(parte) if parte else None,
         recado=request.GET.get("recado", ""),
         versao=int(bruto) if bruto.isdigit() else 0,
-        conferir=request.GET.get("conferir", ""),
+        conferir=request.GET.get("conferir") == "1",
     )
 
 
