@@ -609,17 +609,88 @@ services:
   # #1117 a #1151, e o `deploy-celula` dela vem vermelho desde entao de
   # proposito (`armadilhas/088`): e ESTE arquivo que faltava.
   #
-  # SEM PROCESSO AUXILIAR, e a ausencia e o desenho de hoje, nao esquecimento:
-  # esta celula nao tem `management/commands/` nenhum, e o relay dos eventos
-  # `pages.portfolio.*` nasce junto com o degrau que os publicar. Auxiliar
-  # declarado com um `command:` que a imagem ainda nao tem sai do ar como
-  # `Unknown command`, e o passo de verificacao do `deploy-infra` exige TODOS
-  # os servicos declarados em `running`: um so que nao suba derruba a
-  # verificacao da plataforma inteira (`armadilhas/088`, passo 4).
+  # O PROCESSO AUXILIAR DESTA CELULA NASCEU EM 06/09/2026, logo abaixo. Ate
+  # aquele dia este paragrafo dizia que ela nao tinha nenhum, e a ausencia era
+  # o desenho: a celula nao publicava evento e nao tinha trabalho de fundo. O
+  # degrau 08 (a reconferencia diaria dos links) e o degrau 12 (o relay do selo)
+  # mudaram o presente, e a linha entrou atras do codigo que a exige. A condicao
+  # que o paragrafo velho impunha foi MEDIDA antes de este servico entrar:
+  # `python manage.py help` na imagem viva lista `run_huey` em `[djhuey]`, e a
+  # imagem `plataforma-pages:main` foi reconstruida as 20h31 UTC de 06/09/2026,
+  # depois do commit que pos `huey` no `requirements.txt`. Auxiliar declarado
+  # com um `command:` que a imagem nao tem sai do ar como `Unknown command`, e o
+  # passo de verificacao do `deploy-infra` exige TODOS os servicos declarados em
+  # `running`: um so que nao suba derruba a verificacao da plataforma inteira
+  # (`armadilhas/088`, passo 4).
   pages:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
     env_file: [env/pages.env]
+
+  # OS DOIS BATIMENTOS DE FUNDO DA CASA DAS PAGINAS, num processo so
+  # (`services/pages/apps/portfolio/tasks.py`, e o `config/huey.py` da celula
+  # explica por que os dois moram na mesma instancia):
+  #
+  #   1. O RELAY DA OUTBOX (degrau 12, criterio AC-12). A escola confere o
+  #      portfolio, a celula grava `pages.portfolio.conferido` na outbox, e e
+  #      ESTE processo que publica o fato no fio `eventos.pages.portfolio.conferido`.
+  #      Sem ele o fato nao se perde (fica na outbox com `published_at` nulo, e
+  #      ha teste provando), mas nunca chega a quem escuta: o selo da escola
+  #      morria dentro da celula.
+  #   2. A RECONFERENCIA DIARIA DOS LINKS (degrau 08, criterio AC-09). As 7h20
+  #      UTC o worker passa por todas as pecas do portfolio e MARCA quem parou
+  #      de abrir (e desmarca quem voltou). Ela nunca apaga peca.
+  #
+  # A SEGUNDA VEM DE CARONA, E ISSO PRECISA ESTAR ESCRITO. O mantenedor
+  # DISPENSOU a reconferencia diaria em 06/09/2026, as 18h45 UTC, perguntado
+  # numa caixa que descrevia a obra ("nao precisa disso"), e a TAR-223 esta
+  # `cancelada` por decisao dele. Este servico nao a ressuscita nem constroi
+  # nada para ela: o codigo dela ja estava na imagem desde o degrau 08, e
+  # `run_huey` e o worker da instancia UNICA de Huey desta celula, que executa
+  # todas as tarefas periodicas registradas nela. Separar as duas exigiria mexer
+  # em `services/pages`, e `--no-periodic` desligaria junto a rede de seguranca
+  # do relay, que e justamente o que este servico veio entregar. Quem sobe e o
+  # relay; a varredura vem no mesmo processo, sem custo de dinheiro nem de
+  # servico externo, e o efeito visivel dela e a Prancheta do aluno passar a
+  # dizer "o endereco parou de abrir" quando um link morrer. Se ele quiser a
+  # varredura DESLIGADA, isso e um degrau na celula `pages`: a TAR-240 existe,
+  # `bloqueada`, esperando a palavra dele.
+  #
+  # UM SERVICO SO PARA OS DOIS, e nao dois: um segundo processo sobre a mesma
+  # fila executaria as mesmas tarefas periodicas em duplicata.
+  #
+  # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/pages.env`, pela MESMA razao
+  # gravada nos blocos `gamificacao-consumer` e `cursos-relay`: o
+  # provisionamento (`infra/provisionar-pages.sh`) ja rodou na mao do mantenedor
+  # antes de esta celula ter trabalho de fundo, e acrescentar as chaves la agora
+  # custaria um SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha
+  # do banco e a chave do Django) para dois enderecos que nao sao segredo e
+  # valem igual em toda a plataforma. E topologia deste compose, nao
+  # configuracao da celula. O `infra/env/pages.env.exemplo` diz isso por
+  # escrito, para ninguem procurar as chaves la e concluir que sumiram.
+  #
+  # HUEY_REDIS_URL usa o banco 10: os bancos 1 a 9 ja sao de outras celulas
+  # (`infra/env/*.env.exemplo` e os blocos acima), e cada fila Huey precisa do
+  # PROPRIO banco, senao as tarefas de uma celula caem na fila da outra.
+  #
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `pages` e o que impede
+  # este processo de migrar em paralelo com o CMD do servidor HTTP contra o
+  # mesmo banco: um dos dois morreria com IntegrityError.
+  pages-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
+    env_file: [env/pages.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/10
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pages:
+        condition: service_healthy
 
 volumes:
   pgdata: {}

@@ -1,0 +1,17 @@
+{
+  "arquivo": "240-desligar-a-varredura-diaria-dos-links-do-portfolio-se-o-mant",
+  "id": "TAR-240",
+  "titulo": "Desligar a varredura diaria dos links do portfolio, se o mantenedor quiser",
+  "toca": [
+    "pages"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: o worker da celula pages sobe sem a tarefa periodica da varredura diaria registrada (a rede de seguranca do relay continua registrada), com teste que prova as duas coisas.",
+  "despacho": "CELULA: pages. O mantenedor dispensou a reconferencia diaria dos links em 06/09/2026 (TAR-223, cancelada: 'nao precisa disso'). O codigo dela ja estava na imagem desde o degrau 08, e o servico pages-relay, que entrou pelo RELAY do selo, sobe o worker Huey da celula: um worker so executa todas as tarefas periodicas registradas, entao a varredura passou a rodar junto. Separar as duas nao cabe no compose (--no-periodic desligaria tambem a rede de seguranca do relay, que e o motivo do servico), so na celula. ESTA TAREFA SO ANDA SE O MANTENEDOR DISSER QUE QUER A VARREDURA DESLIGADA. Enquanto ele nao disser, ela fica bloqueada: ninguem mexe em codigo que funciona por causa de um palpite sobre a vontade dele.",
+  "origem": "o servico pages-relay (PR do relay do selo, 06/09/2026) sobe o worker Huey da celula, e um worker so executa TODAS as tarefas periodicas registradas: a varredura diaria dispensada pelo mantenedor na TAR-223 passa a rodar de carona",
+  "criada_em": "2026-09-07"
+}
