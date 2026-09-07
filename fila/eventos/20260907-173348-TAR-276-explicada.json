@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-173348-TAR-276-explicada",
+  "tarefa": "TAR-276",
+  "evento": "explicada",
+  "quando": "2026-09-07T17:33:48+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O portao que confere a area de cada registro contra o ramo do robo (PR 1337 e 1352) tem duas promessas escritas no codigo, 'leitura que falha nao fica guardada' e 'o diff e lido uma vez por pouso', que nenhum teste prova: dava para quebrar as duas e a suite continuava verde. E a mensagem para ramo fora das areas conhecidas manda escolher um nome sem dar exemplo.",
+  "o_que_muda": "Sem os testes, um conserto futuro pode fazer a sombra ler um diff vazio depois de um tropeco e calar como se tivesse medido, ou voltar a ler o diff duas vezes por pouso, e ninguem ficaria sabendo. Com a mensagem dando exemplos, o robo conserta o registro sem abrir o arquivo das areas.",
+  "exemplo": "E um alarme de incendio com a etiqueta 'testado' colada, mas que ninguem nunca acionou com fumaca de verdade.",
+  "importancia": 45
+}
