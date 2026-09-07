@@ -14,16 +14,17 @@ classe** (plano §7.1): ela guarda quem já viu esta encomenda, com que desfecho
 em que rodada. Um contador no perfil não saberia responder "esta encomenda,
 especificamente".
 
-**A exceção tem dono e não é deste degrau.** "Salvo em chamada aberta" vale para
-o estado `aberta`, em que todos os elegíveis são avisados e o primeiro que
-aceitar leva (plano §6.4) — e a chamada aberta nasce no degrau 2.5 (TAR-123). O
-motor da fila varre `na_fila` e mais nada, então aqui a regra vale sem exceção;
-o guarda da exceção nasce com ela.
+**A exceção chegou no degrau 2.5, e ela é DADO, não um `if`.** "Salvo em chamada
+aberta" vale para o estado `aberta`, em que todos os elegíveis são avisados e o
+primeiro que aceitar leva (plano §6.4). O motor da fila continua varrendo
+`na_fila` e mais nada — quem carrega a exceção é `gestos.aceitar_a_chamada_aberta`,
+que chama o MESMO `motor.por_que_nao` com a `Vaga` de memória vazia. A última
+seção deste arquivo é o guarda dela.
 """
 
 from datetime import datetime, timedelta, timezone as fuso
 
-from apps.encomendas import motor
+from apps.encomendas import gestos, motor, tique
 from apps.encomendas.models import Encomenda, Oferta
 
 SITE = "escola-a"
@@ -203,3 +204,60 @@ def test_a_razao_da_recusa_tem_o_nome_certo(tres_na_fila, criar_encomenda):
     escolha = motor.escolher(vaga, motor.candidatos_do_banco(SITE), regras, AGORA)
 
     assert escolha.recusas[ana.id] == motor.JA_RECEBEU_ESTA
+
+
+# ---------------------------------------------------------------------------
+# A EXCEÇÃO: "SALVO EM CHAMADA ABERTA"
+# ---------------------------------------------------------------------------
+
+
+def test_quem_passou_pode_levar_a_mesma_encomenda_na_chamada_aberta(
+    tres_na_fila, criar_encomenda
+):
+    """A exceção literal do invariante, e a razão de ela existir.
+
+    Passar não é recusar para sempre: o aluno pode ter passado às 9h por não ter
+    tempo naquela manhã. Vinte e quatro horas depois a encomenda vira chamada
+    aberta justamente porque NINGUÉM a pegou — e proibir quem já a viu seria
+    excluir da última chance exatamente as pessoas que o produto conhece melhor.
+    """
+    ana, _, _ = tres_na_fila
+    encomenda = criar_encomenda()
+    motor.rodar(AGORA, site_id=SITE)
+    _passar(ana)
+    _devolver_a_fila(encomenda, "o aluno passou")
+
+    depois = encomenda.criada_em + timedelta(days=3)
+    tique.rodar(depois, site_id=SITE)
+    encomenda.refresh_from_db()
+    assert encomenda.status == Encomenda.Status.ABERTA
+
+    assert gestos.aceitar_a_chamada_aberta(
+        encomenda.pk, ana.id, depois, site_id=SITE
+    ).feito
+
+    encomenda.refresh_from_db()
+    assert encomenda.aluno_id == ana.id
+
+
+def test_a_excecao_vale_so_na_chamada_aberta(tres_na_fila, criar_encomenda):
+    """A outra metade: na FILA, a memória continua valendo sem exceção nenhuma.
+
+    Sem esta asserção, um código que simplesmente parasse de consultar
+    `ja_ofertada_a` passaria no teste de cima — e o carrossel que o invariante
+    inteiro existe para impedir voltaria pela porta da frente.
+    """
+    ana, bia, _ = tres_na_fila
+    encomenda = criar_encomenda()
+    motor.rodar(AGORA, site_id=SITE)
+    _passar(ana)
+    _devolver_a_fila(encomenda, "o aluno passou")
+
+    motor.rodar(AGORA, site_id=SITE)
+
+    assert (
+        Oferta.objects.get(
+            encomenda=encomenda, resultado=Oferta.Resultado.PENDENTE
+        ).aluno_id
+        == bia.id
+    )
