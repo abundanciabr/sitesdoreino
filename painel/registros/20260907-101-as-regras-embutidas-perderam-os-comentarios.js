@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-101-as-regras-embutidas-perderam-os-comentarios",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "O painel do dono ficou mais leve: as regras que ele embute na página perderam os comentários",
+  detalhe: "A página do painel embute uma cópia inteira das regras (painel/logica.js) para abrir custar só um pedido. Essa cópia carregava 394 linhas de comentário, que só serve para quem lê código, e o navegador ignora do mesmo jeito. Agora o gerador tira essas linhas antes de embutir; o arquivo que fica no repositório não muda.\\n\\nA página tem um teto de 300 KB, e travar nele para a fábrica inteira. Ela estava em 297.241 bytes, a 9.959 do limite. Com o corte, caiu para 268.890 bytes: quase 31 KB de folga a mais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1364",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
