@@ -542,17 +542,26 @@ def test_todo_endereco_interno_sai_com_o_prefixo_publico(
         assert fora == [], f"links sem o prefixo público em {endereco}: {fora}"
 
 
-def test_o_301_do_endereco_antigo_sai_com_o_prefixo_publico(
+def test_o_301_do_endereco_antigo_da_aula_sai_com_o_prefixo_publico(
     aluna, aula_publicada, client, sob_prefixo
 ):
     """`armadilhas/029` e `/081` no cabeçalho `Location`, e não no corpo.
 
     O urlconf desta célula não conhece o prefixo público, e um 301 que
-    mandasse o aluno para `/profissional/` em vez de `/cursos/profissional/`
-    quebraria SÓ em produção: aqui, sem prefixo, o endereço estaria certo.
+    mandasse o aluno para `/profissional/parte-1/E00` em vez de
+    `/cursos/profissional/parte-1/E00` quebraria SÓ em produção: aqui, sem
+    prefixo, o endereço estaria certo. A raiz não entra mais aqui: ela é o
+    catálogo e não redireciona (07/09/2026).
     """
-    assert abrir(client, "/")["Location"] == "/cursos/profissional/"
     assert abrir(client, "/E00")["Location"] == "/cursos/profissional/parte-1/E00"
+
+
+def test_o_botao_do_catalogo_sai_com_o_prefixo_publico(aluna, client, sob_prefixo):
+    """A irmã do teste acima, para o link que substituiu o 301 da raiz: o
+    "Entrar no curso" do catálogo leva a `/cursos/profissional/`."""
+    resposta = abrir(client, "/")
+    assert resposta.status_code == 200
+    assert 'href="/cursos/profissional/"' in corpo_de(resposta)
 
 
 # ------------------------------------------------- 9. o menu e o rodapé
