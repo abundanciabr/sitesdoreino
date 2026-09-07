@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as TREZE operações, o token errado e o conjunto vazio, em vez de
+# cobre as DEZESSETE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",
@@ -30,16 +30,28 @@ api = NinjaAPI(
         "\n"
         "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
         "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
-        "banco e nunca guardando copia (a lei anti-duplicacao). Sao treze\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Sao dezessete\n"
         "operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,\n"
         "`getLesson`, `putLesson`, `publishLesson`), as quatro antigas que\n"
         "resolvem a aula so pelo site (`listSiteLessons`, `getSiteLesson`,\n"
         "`putSiteLesson`, `publishSiteLesson`, vivas porque o editor que ja\n"
         "esta no ar as chama), as tres de instrumento (`listInstruments`,\n"
-        "`getInstrument`, `putInstrument`), a do bloco (`putBlock`) e a do\n"
-        "Revisor de coerencia (`checkLesson`, degrau 3.1). O placar da fila\n"
-        "(getReviewQueue) e o progresso do aluno (getStudentProgress) nascem\n"
-        "no degrau 2.1.\n"
+        "`getInstrument`, `putInstrument`), a do bloco (`putBlock`), a do\n"
+        "Revisor de coerencia (`checkLesson`, degrau 3.1) e as quatro do\n"
+        "CURSO (`listCourses`, `createCourse`, `putCourse`,\n"
+        "`putCourseStructure`). O placar da fila (getReviewQueue) e o\n"
+        "progresso do aluno (getStudentProgress) nascem no degrau 2.1.\n"
+        "\n"
+        "A SALA SERVE VARIOS CURSOS DESDE 07/09/2026, e cada um nasce por esta\n"
+        "porta: `createCourse` cria o curso com o apelido, o nome, a regra de\n"
+        "avanco (`por_laudo`, a do livro, ou `livre`, em que a proxima aula\n"
+        "abre quando o aluno conclui a anterior) e o produto do catalogo a que\n"
+        "ele aponta; `putCourse` altera esses tres; `listCourses` os lista; e\n"
+        "`putCourseStructure` grava os blocos e as aulas de qualquer curso,\n"
+        "reconciliando com o que ja existe do mesmo jeito que o semeador do\n"
+        "livro: escreve estrutura, nunca toca obra, e nao apaga aula por onde\n"
+        "algum aluno ja passou. O texto de cada aula continua entrando so por\n"
+        "`putLesson`.\n"
         "\n"
         "O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao\n"
         "inteligencia artificial: `checkLesson` le uma aula e devolve a lista\n"
