@@ -24,8 +24,8 @@ import divida_do_livro
 import mergear
 from _nucleo import Estado
 
-# O arquivo de mentira tem a forma que `painel/areas.json` terá quando nascer:
-# um nome é reconhecido se estiver em QUALQUER lista `celulas`.
+# O arquivo de mentira tem a forma de `painel/areas.json`: um nome é
+# reconhecido se estiver em QUALQUER lista `celulas`.
 AREAS_DE_MENTIRA = {
     "areas": [
         {
@@ -77,6 +77,20 @@ def test_le_a_area_nas_duas_grafias_que_o_livro_aceita() -> None:
     assert divida_do_livro.areas_dos_registros_embarcados([sem_aspas, com_aspas]) == [
         ("painel/registros/20260907-001-a.js", "ci"),
         ("painel/registros/20260907-002-b.js", "admin"),
+    ]
+
+
+def test_campo_parecido_nao_passa_por_declaracao_de_area() -> None:
+    """O revisor do PR #1337: `"sub-area"` casava como SUFIXO de `area`, e como
+    vem antes no molde o falso positivo vencia o campo verdadeiro. O campo é
+    sempre o primeiro token da linha, então a leitura ancora no começo dela."""
+    remessa = _remessa(
+        "painel/registros/20260907-006-f.js",
+        '+  "sub-area": "vendas",',
+        '+  area: "ci",',
+    )
+    assert divida_do_livro.areas_dos_registros_embarcados([remessa]) == [
+        ("painel/registros/20260907-006-f.js", "ci")
     ]
 
 
@@ -148,104 +162,158 @@ def _pr_com_registro(ramo: str = "agent/ci/area-do-registro") -> dict[str, Any]:
     }
 
 
-def _sombra(
-    monkeypatch, raiz: Path, pr: dict, remessas: list[dict], capsys
-) -> str:
-    monkeypatch.setattr(
-        mergear, "_diff_do_pr", lambda _raiz, _numero: remessas
-    )
-    mergear.sombra_da_area_do_registro(raiz, pr)
+class _DiffDeMentira:
+    """O diff que as sombras leem, sem rede."""
+
+    def __init__(self, remessas: list[dict]) -> None:
+        self.remessas = remessas
+
+    def ler(self, _quem: str) -> list[dict]:
+        return self.remessas
+
+
+def _sombra(raiz: Path, pr: dict, remessas: list[dict], capsys) -> str:
+    mergear.sombra_da_area_do_registro(raiz, pr, _DiffDeMentira(remessas))
     return capsys.readouterr().out
 
 
-def test_sem_areas_json_na_main_a_sombra_diz_que_nao_mediu(
-    monkeypatch, tmp_path, capsys
-) -> None:
-    """O estado de hoje: `painel/areas.json` só nasce no despacho da aba."""
+def test_sem_areas_json_na_main_a_sombra_diz_que_nao_mediu(tmp_path, capsys) -> None:
+    """Fail-open: se o arquivo faltar na main, a sombra não mede e cala."""
     raiz = _raiz_com_areas(tmp_path, areas=None)
     remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro("ci"))]
-    saida = _sombra(monkeypatch, raiz, _pr_com_registro(), remessas, capsys)
-    assert "não medi, painel/areas.json ainda não existe na main." in saida
+    saida = _sombra(raiz, _pr_com_registro(), remessas, capsys)
+    assert "não medi, painel/areas.json não existe na main." in saida
     assert "bate com o ramo" not in saida
 
 
-def test_registro_sem_area_diria_o_que_escrever(monkeypatch, tmp_path, capsys) -> None:
+def test_registro_sem_area_diria_o_que_escrever(tmp_path, capsys) -> None:
+    """O ramo é `agent/ci/...` e `ci` é célula conhecida: aí sim o nome do ramo
+    vira sugestão, porque é um valor que o painel aceita."""
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
     remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro(None))]
-    saida = _sombra(monkeypatch, raiz, _pr_com_registro(), remessas, capsys)
+    saida = _sombra(raiz, _pr_com_registro(), remessas, capsys)
     assert "não declara área" in saida
     assert 'Escreva area: "ci"' in saida
+    assert "não corresponde a nenhuma área" not in saida
 
 
-def test_area_diferente_do_ramo_teria_reprovado(monkeypatch, tmp_path, capsys) -> None:
+def test_ramo_fora_das_areas_conhecidas_nao_sugere_o_nome_do_ramo(
+    tmp_path, capsys
+) -> None:
+    """Sugerir o nome do ramo cru ensinaria um valor que `painel/logica.js`
+    recusa e que mata o build do painel na muralha. Num ramo cujo nome não
+    está em `painel/areas.json`, a sombra manda usar uma célula conhecida."""
+    raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
+    remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro(None))]
+    pr = _pr_com_registro("agent/xyz/uma-tarefa")
+    saida = _sombra(raiz, pr, remessas, capsys)
+    assert 'Escreva area: "xyz"' not in saida
+    assert (
+        "O ramo agent/xyz/ não corresponde a nenhuma área de painel/areas.json"
+        in saida
+    )
+
+
+def test_area_diferente_do_ramo_teria_reprovado(tmp_path, capsys) -> None:
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
     remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro("admin"))]
-    saida = _sombra(monkeypatch, raiz, _pr_com_registro(), remessas, capsys)
+    saida = _sombra(raiz, _pr_com_registro(), remessas, capsys)
     assert 'declara "admin" e o ramo é agent/ci/...: teria reprovado.' in saida
 
 
-def test_area_fora_do_areas_json_teria_reprovado(monkeypatch, tmp_path, capsys) -> None:
-    raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
-    remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro("encomendas"))]
-    pr = _pr_com_registro("agent/encomendas/tabelas")
-    saida = _sombra(monkeypatch, raiz, pr, remessas, capsys)
-    assert 'declara "encomendas", que não está em painel/areas.json' in saida
-    assert "Acrescente lá ou use o nome da célula." in saida
-
-
-def test_area_conferida_diz_que_bate(monkeypatch, tmp_path, capsys) -> None:
+def test_area_conferida_diz_que_bate(tmp_path, capsys) -> None:
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
     remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro("ci"))]
-    saida = _sombra(monkeypatch, raiz, _pr_com_registro(), remessas, capsys)
+    saida = _sombra(raiz, _pr_com_registro(), remessas, capsys)
     assert 'painel/registros/20260907-001-a.js: área "ci" bate com o ramo.' in saida
     assert "reprovado" not in saida
 
 
-def test_ramo_fora_do_padrao_a_sombra_nao_mede(monkeypatch, tmp_path, capsys) -> None:
+def test_ramo_fora_do_padrao_a_sombra_nao_mede(tmp_path, capsys) -> None:
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
     remessas = [_remessa("painel/registros/20260907-001-a.js", *_registro("ci"))]
     pr = _pr_com_registro("conserto-rapido")
-    saida = _sombra(monkeypatch, raiz, pr, remessas, capsys)
+    saida = _sombra(raiz, pr, remessas, capsys)
     assert (
         "não medi, o ramo conserto-rapido não segue agent/<area>/<tarefa>." in saida
     )
 
 
-def test_pr_isento_e_pr_sem_registro_a_bordo_calam(
-    monkeypatch, tmp_path, capsys
-) -> None:
+def test_pr_isento_e_pr_sem_registro_a_bordo_calam(tmp_path, capsys) -> None:
     """Esses dois casos já têm dono em `checar_registro_embarcado`; a sombra
     falar de novo só faria barulho — e nem o diff ela precisa buscar."""
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
 
-    def _diff_proibido(_raiz, _numero):
-        raise AssertionError("a sombra não pode consultar o diff nestes casos")
+    class _DiffProibido:
+        def ler(self, _quem):
+            raise AssertionError("a sombra não pode consultar o diff nestes casos")
 
-    monkeypatch.setattr(mergear, "_diff_do_pr", _diff_proibido)
     isento = _pr_com_registro()
     isento["files"] = [{"path": "painel/registros/20260907-001-a.js"}]
-    mergear.sombra_da_area_do_registro(raiz, isento)
+    mergear.sombra_da_area_do_registro(raiz, isento, _DiffProibido())
     sem_registro = _pr_com_registro()
     sem_registro["files"] = [{"path": "ci/mergear.py"}]
-    mergear.sombra_da_area_do_registro(raiz, sem_registro)
+    mergear.sombra_da_area_do_registro(raiz, sem_registro, _DiffProibido())
     assert "SOMBRA (área do registro)" not in capsys.readouterr().out
 
 
-def test_diff_ilegivel_nao_derruba_o_pouso_ja_consumado(
-    monkeypatch, tmp_path, capsys
-) -> None:
+def test_diff_ilegivel_nao_derruba_o_pouso_ja_consumado(tmp_path, capsys) -> None:
     """Sombra é fail-open de ponta a ponta: ela roda DEPOIS do merge, e uma
     exceção aqui transformaria um pouso bem-sucedido em ERROR."""
     raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
 
-    def _diff_que_quebra(_raiz, _numero):
-        raise mergear.ErroDeInstrumentacao("o gh caiu", "sem rede")
+    class _DiffQueQuebra:
+        def ler(self, _quem):
+            raise mergear.ErroDeInstrumentacao("o gh caiu", "sem rede")
 
-    monkeypatch.setattr(mergear, "_diff_do_pr", _diff_que_quebra)
-    mergear.sombra_da_area_do_registro(raiz, _pr_com_registro())
+    mergear.sombra_da_area_do_registro(raiz, _pr_com_registro(), _DiffQueQuebra())
     saida = capsys.readouterr().out
     assert "não mediu" in saida
     assert "teria reprovado" not in saida
+
+
+def test_falha_de_leitura_na_sombra_da_area_nomeia_a_sombra_da_area(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    """A descrição da leitura era fixa no nome da sombra irmã, então uma falha
+    de rede aqui acusava a outra sombra a quem fosse ler o log.
+
+    Este teste passa pelo `DiffDoPR` de verdade de propósito: um duplo com
+    `ler` próprio não executaria a linha que monta a descrição, e a sabotagem
+    dela passaria verde (`armadilhas/391`)."""
+    raiz = _raiz_com_areas(tmp_path, AREAS_DE_MENTIRA)
+
+    def _gh_que_cai(_argumentos, _raiz, descricao, **_kwargs):
+        # A mesma forma que `_nucleo.executar` dá ao erro: a descrição abre o
+        # resumo, e é por ela que quem lê o log sabe quem estava medindo.
+        raise mergear.ErroDeInstrumentacao(f"{descricao}: exit code 1")
+
+    monkeypatch.setattr(mergear, "_gh", _gh_que_cai)
+    mergear.sombra_da_area_do_registro(
+        raiz, _pr_com_registro(), mergear.DiffDoPR(raiz, 99)
+    )
+    saida = capsys.readouterr().out
+    assert "não mediu" in saida
+    assert "para a sombra da área do registro" in saida
+    assert "sombra do evento da fila" not in saida
+
+
+def test_o_diff_e_lido_uma_vez_por_pouso_e_quem_le_diz_o_proprio_nome(
+    monkeypatch, tmp_path
+) -> None:
+    """Duas sombras, um endpoint: a segunda reaproveita o que a primeira leu."""
+    descricoes: list[str] = []
+
+    def _gh_falso(_argumentos, _raiz, descricao, **_kwargs):
+        descricoes.append(descricao)
+        return json.dumps([_remessa("painel/registros/20260907-001-a.js")])
+
+    monkeypatch.setattr(mergear, "_gh", _gh_falso)
+    diff = mergear.DiffDoPR(tmp_path, 99)
+    primeira = diff.ler("a sombra do evento da fila")
+    segunda = diff.ler("a sombra da área do registro")
+    assert primeira == segunda
+    assert descricoes == ["ler o diff do PR #99 para a sombra do evento da fila"]
 
 
 # ---------------------------------------------------------------------------
