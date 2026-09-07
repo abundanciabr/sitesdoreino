@@ -16,10 +16,6 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
 {% endcomment %}
 {% block titulo %}Cursos{% endblock %}
 
-{% block faixa %}
-  <a href="{% url 'catalogo' %}">Cursos</a>
-{% endblock %}
-
 {% block conteudo %}
 <section class="abertura">
   <h1>Os cursos da Meshcraft Academy</h1>
@@ -49,7 +45,7 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
   <p class="miudo">Você não está matriculado neste curso.</p>
   {% elif curso.situacao == "sem-produto" %}
   <p class="miudo">Este curso ainda não está ligado às matrículas.
-  Ninguém entra aqui ainda.</p>
+  Ninguém entra aqui ainda. Fale com a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
   {% endif %}
   {% if curso.entra %}
   <p class="entrar"><a href="{{ curso.url }}">Entrar no curso</a></p>
