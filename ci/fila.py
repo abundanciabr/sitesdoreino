@@ -9,6 +9,8 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
+    python ci/fila.py explicar TAR-001 --quem "sessao-x" \
+        --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
     python ci/fila.py validar                # fail-closed; roda na muralha
     python ci/fila.py imutabilidade          # nenhuma tarefa que já existia foi editada
 
@@ -67,7 +69,40 @@ from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 # arquivo inválido, não "vocabulário novo" — vocabulário muda por PR, aqui.
 EVENTOS_DE_CICLO = ("reivindicada", "devolvida", "bloqueada")
 EVENTOS_TERMINAIS = ("concluida", "cancelada")
-EVENTOS_VALIDOS = EVENTOS_DE_CICLO + EVENTOS_TERMINAIS
+
+# A EXPLICAÇÃO PARA GENTE — o evento que não é ciclo nem fim (06/09/2026)
+#
+# Medido em 06/09/2026: o mantenedor abriu `/admin/caixa/robos/`, viu 22 tarefas
+# paradas e não entendeu NENHUMA. Os cinco campos que a tarefa tinha (`titulo`,
+# `toca`, `despacho`, `origem`, `evidencia_exigida`) foram escritos por robô para
+# robô, e nos 214 arquivos de tarefa da fila não havia um só campo dirigido a
+# quem paga a conta. Ele pediu duas coisas: o que a tarefa é em português com um
+# exemplo, e um jeito de saber o que vem antes.
+#
+# `explicada` é de uma terceira espécie, de propósito, e é isso que faz o verbo
+# funcionar:
+#   - NÃO é ciclo: não muda o estado calculado. Explicar não pega, não devolve,
+#     não trava. `calcular_estados` só olha `EVENTOS_DE_CICLO` para saber o
+#     último gesto, e por isso a explicação passa por ela sem tocar em nada.
+#   - NÃO é terminal, e é o ÚNICO evento que PODE VIR DEPOIS DO FIM. A regra do
+#     silêncio existe para que ninguém reescreva o que ACONTECEU com a tarefa;
+#     a explicação diz o que a tarefa É, e isso não muda por ela ter terminado.
+#     Uma tarefa concluída que ninguém entende continua ilegível no histórico.
+#   - É o único verbo que PODE REPETIR, e a última vence. É assim que se
+#     conserta um texto ruim: o arquivo da tarefa não se edita (`armadilhas/356`
+#     e o guarda `cmd_imutabilidade`, mais abaixo), então corrigir é
+#     acrescentar, como em todo o resto desta casa.
+EXPLICADA = "explicada"
+
+EVENTOS_VALIDOS = EVENTOS_DE_CICLO + EVENTOS_TERMINAIS + (EXPLICADA,)
+
+# Os quatro campos, e só eles. O contrato é fechado aqui porque a célula `admin`
+# o consome pelo `estados.json` que `listar --json` gera no build: campo novo
+# entra por PR neste arquivo, nunca por invenção num JSON.
+CAMPOS_DA_EXPLICACAO = ("o_que_e", "o_que_muda", "exemplo", "importancia")
+TEXTOS_DA_EXPLICACAO = ("o_que_e", "o_que_muda", "exemplo")
+IMPORTANCIA_MINIMA = 0
+IMPORTANCIA_MAXIMA = 100
 
 # Os estados que `listar` calcula. Ninguém escreve isto em arquivo nenhum.
 NA_FILA = "na fila"
@@ -122,6 +157,12 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "evidencia": str,
     "verificado_em": str,
     "espera": str,
+    # Só em `explicada`, e `carregar_eventos` cobra isso: campo fora do evento a
+    # que pertence é história escrita no lugar errado (a mesma lei do `espera`).
+    "o_que_e": str,
+    "o_que_muda": str,
+    "exemplo": str,
+    "importancia": int,
 }
 
 # QUEM DESTRAVA UMA TAREFA PARADA — o campo que faltava (06/09/2026)
@@ -375,6 +416,36 @@ def _conferir_campos(
             erros.append(f"{nome}: '{campo}' deveria ser {tipo.__name__} ou null")
 
 
+def problemas_da_explicacao(
+    o_que_e: str, o_que_muda: str, exemplo: str, importancia
+) -> list[str]:
+    """O que impede esta explicação de existir, uma frase por problema.
+
+    UMA definição só, de propósito: o balcão a chama em `explicar` e em `criar`
+    (antes de gastar número do almoxarife), e `carregar_eventos` cobra o mesmo
+    contrato no arquivo já gravado. Duas réguas para o mesmo campo divergiriam
+    no primeiro dia em que alguém mexesse numa só.
+    """
+    problemas: list[str] = []
+    for campo, texto in zip(TEXTOS_DA_EXPLICACAO, (o_que_e, o_que_muda, exemplo)):
+        if not str(texto or "").strip():
+            problemas.append(
+                f"'{campo}' está vazio — os três textos são o que ele vai LER na "
+                "tela, e explicação pela metade não explica nada"
+            )
+    if isinstance(importancia, bool) or not isinstance(importancia, int):
+        problemas.append(
+            f"'importancia' precisa ser um número inteiro de {IMPORTANCIA_MINIMA} a "
+            f"{IMPORTANCIA_MAXIMA} (veio {importancia!r})"
+        )
+    elif not IMPORTANCIA_MINIMA <= importancia <= IMPORTANCIA_MAXIMA:
+        problemas.append(
+            f"'importancia' é {importancia}, e a faixa é de {IMPORTANCIA_MINIMA} a "
+            f"{IMPORTANCIA_MAXIMA} — fora dela a ordem da tela deixa de ser comparável"
+        )
+    return problemas
+
+
 def cartoes_do_placar(raiz: Path) -> set[str] | None:
     """Os nomes de `painel/cartoes/`. `None` quando a pasta não existe."""
     pasta = raiz / "painel" / "cartoes"
@@ -543,12 +614,41 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                     f"{nome}: 'espera' é {espera!r}, e só existe "
                     f"{' ou '.join(repr(v) for v in QUEM_DESTRAVA)}"
                 )
+        if tipo == EXPLICADA:
+            faltando = [c for c in CAMPOS_DA_EXPLICACAO if c not in dados]
+            if faltando:
+                erros.append(
+                    f"{nome}: 'explicada' sem {', '.join(repr(c) for c in faltando)} "
+                    "não explica nada — os quatro campos são o contrato"
+                )
+            else:
+                for problema in problemas_da_explicacao(
+                    dados["o_que_e"],
+                    dados["o_que_muda"],
+                    dados["exemplo"],
+                    dados["importancia"],
+                ):
+                    erros.append(f"{nome}: {problema}")
+        else:
+            for campo in CAMPOS_DA_EXPLICACAO:
+                if campo in dados:
+                    erros.append(
+                        f"{nome}: {campo!r} só existe em evento 'explicada' — a "
+                        f"explicação diz o que a tarefa É, e veio em '{tipo}'"
+                    )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
+    # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
+    # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
+    # isso — ela diz o que a tarefa É. Tarefa concluída que ninguém entende
+    # continua ilegível no histórico, e é justamente ali que o mantenedor procura
+    # o que já foi feito.
     fim: dict[str, str] = {}
     for ev in eventos:
         tid = ev.get("tarefa")
+        if ev["evento"] == EXPLICADA:
+            continue
         if tid in fim:
             erros.append(
                 f"{ev['arquivo']}: a tarefa {tid} já terminou ({fim[tid]}) — "
@@ -645,6 +745,22 @@ def calcular_estados(
 
     for tid in tarefas:
         estado_de(tid)
+
+    # A explicação para gente, do ÚLTIMO evento `explicada` — a última vence, e
+    # é assim que se corrige um texto ruim sem editar arquivo nenhum. Sai daqui
+    # e de nenhum outro lugar: `listar --json` só repassa, e é esse JSON que vira
+    # o `estados.json` que a célula `admin` lê no build. Tarefa sem explicação
+    # sai SEM os campos, nunca com texto de desculpa: quem apresenta decide o
+    # que dizer no lugar, e um "sem descrição" escrito aqui seria uma segunda
+    # definição de tela morando no cálculo.
+    for tid, resultado in estados.items():
+        ultima = next(
+            (e for e in reversed(por_tarefa[tid]) if e["evento"] == EXPLICADA), None
+        )
+        if ultima is not None:
+            resultado.update(
+                {c: ultima[c] for c in CAMPOS_DA_EXPLICACAO if c in ultima}
+            )
     return estados
 
 
@@ -711,6 +827,7 @@ def montar_evento(
     evidencia: str | None = None,
     verificado_em: str | None = None,
     espera: str | None = None,
+    explicacao: dict | None = None,
     agora: datetime | None = None,
 ) -> dict:
     """O conteúdo de um evento, sem tocar no disco.
@@ -737,6 +854,8 @@ def montar_evento(
         dados["verificado_em"] = verificado_em
     if espera:
         dados["espera"] = espera
+    if explicacao:
+        dados.update({c: explicacao[c] for c in CAMPOS_DA_EXPLICACAO})
     return dados
 
 
@@ -749,10 +868,11 @@ def _escrever_evento(
     evidencia: str | None = None,
     verificado_em: str | None = None,
     espera: str | None = None,
+    explicacao: dict | None = None,
     agora: datetime | None = None,
 ) -> Path:
     dados = montar_evento(
-        tid, evento, quem, detalhe, evidencia, verificado_em, espera, agora
+        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao, agora
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
@@ -978,6 +1098,20 @@ def cmd_criar(raiz: Path, args) -> int:
         if cartoes and any("não é cartão" in linha for linha in recusa_do_move):
             print(f"Cartões que existem: {', '.join(sorted(cartoes))}")
         return 1
+    # E a explicação para gente, também ANTES do almoxarife: nasceu obrigatória
+    # pela mesma lição que o `--move` e o `--espera` já deram nesta casa — campo
+    # que nasce opcional no balcão nasce vazio, e ninguém volta para preencher.
+    # Quem cria a tarefa é quem sabe, naquele instante, o que ela é.
+    problemas = problemas_da_explicacao(
+        args.o_que_e, args.o_que_muda, args.exemplo, args.importancia
+    )
+    if problemas:
+        for problema in problemas:
+            print(f"RECUSADO: {problema}")
+        print()
+        print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
+        print("quatro campos ela chega lá como um título que ninguém entende.")
+        return 1
     numero = reservar.alocar_numero(raiz, "tarefa")
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
@@ -998,7 +1132,70 @@ def cmd_criar(raiz: Path, args) -> int:
     }
     caminho = pasta / f"{stem}.json"
     _escrever_json(caminho, dados)
+    # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
+    # ele). Separados porque a tarefa é imutável e a explicação se corrige.
+    do_evento = _escrever_evento(
+        raiz,
+        tid,
+        EXPLICADA,
+        args.origem,
+        explicacao={
+            "o_que_e": args.o_que_e,
+            "o_que_muda": args.o_que_muda,
+            "exemplo": args.exemplo,
+            "importancia": args.importancia,
+        },
+    )
     print(f"{tid} criada: {caminho.relative_to(raiz)}")
+    print(f"   explicação: {do_evento.relative_to(raiz)} (commite os DOIS no seu PR)")
+    return 0
+
+
+def cmd_explicar(raiz: Path, args) -> int:
+    """Escreve o evento `explicada` — a tarefa dita em português, para ele.
+
+    Medido em 06/09/2026: ele abriu `/admin/caixa/robos/`, viu 22 tarefas
+    paradas e não entendeu nenhuma. Nenhum dos 214 arquivos de tarefa da fila
+    tinha um campo dirigido a quem paga a conta.
+
+    É o único verbo que PODE REPETIR, e a última explicação vence: o arquivo da
+    tarefa não se edita (`armadilhas/356`), então corrigir um texto ruim é
+    acrescentar outro. E é o único que funciona em tarefa `concluída` ou
+    `cancelada`: a explicação diz o que a tarefa É, não o que aconteceu com ela.
+
+    Recusa no espelho, como todo gesto que escreve: o evento tem de nascer na
+    bancada para embarcar no PR (`armadilhas/192`).
+    """
+    recusa = _parar_se_for_o_espelho("explicar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    problemas = problemas_da_explicacao(
+        args.o_que_e, args.o_que_muda, args.exemplo, args.importancia
+    )
+    if problemas:
+        for problema in problemas:
+            print(f"RECUSADO: {problema}")
+        return 1
+    caminho = _escrever_evento(
+        raiz,
+        tid,
+        EXPLICADA,
+        args.quem,
+        explicacao={
+            "o_que_e": args.o_que_e,
+            "o_que_muda": args.o_que_muda,
+            "exemplo": args.exemplo,
+            "importancia": args.importancia,
+        },
+    )
+    print(f"📖 {tid} explicada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print(f"   importância {args.importancia}: {args.o_que_e}")
     return 0
 
 
@@ -1444,6 +1641,36 @@ def cmd_imutabilidade(raiz: Path, base: str) -> int:
     return 0
 
 
+def _argumentos_da_explicacao(p: argparse.ArgumentParser) -> None:
+    """Os quatro campos, com o mesmo nome e a mesma ajuda em `criar` e em
+    `explicar` — dois textos de ajuda para o mesmo campo já divergiriam aqui."""
+    p.add_argument(
+        "--o-que-e",
+        required=True,
+        help="o que existe hoje, em português de leigo, sem sigla e sem jargão",
+    )
+    p.add_argument(
+        "--o-que-muda",
+        required=True,
+        help="o que essa tarefa muda na vida de quem usa o site, ou o que custa não fazer",
+    )
+    p.add_argument(
+        "--exemplo",
+        required=True,
+        help="um caso concreto ou uma comparação do dia a dia, para a coisa ficar visível",
+    )
+    p.add_argument(
+        "--importancia",
+        required=True,
+        type=int,
+        metavar="0-100",
+        help=(
+            f"o quanto isto pesa hoje, de {IMPORTANCIA_MINIMA} a {IMPORTANCIA_MAXIMA} — "
+            "é o que ordena a tela dele"
+        ),
+    )
+
+
 def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="A fila de trabalho: tarefa registrada, estado calculado, trava no servidor."
@@ -1475,6 +1702,15 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
     p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")
+    _argumentos_da_explicacao(p)
+
+    p = sub.add_parser(
+        "explicar",
+        help="diz em português o que a tarefa é — pode repetir, e a última vence",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    _argumentos_da_explicacao(p)
 
     p = sub.add_parser("listar", help="o quadro, com estados calculados")
     p.add_argument("--ao-vivo", action="store_true", help="soma reservas do servidor e PRs abertos")
@@ -1548,6 +1784,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_cancelar(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
+        if args.acao == "explicar":
+            return cmd_explicar(raiz, args)
         if args.acao == "imutabilidade":
             return cmd_imutabilidade(raiz, args.base)
         return cmd_validar(raiz)
