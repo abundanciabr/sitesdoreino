@@ -1,10 +1,10 @@
-"""O povoado do simulador: cem alunos, trinta encomendas e um relógio de mentira.
+"""O povoado do simulador: cem alunos, trinta projetos e um relógio de mentira.
 
-Este arquivo MONTA o mundo. Ele não julga nada, não decide quem recebe oferta e
-não sabe o que é justiça: quem julga é `test_simulador_de_justica.py`, e quem
-decide é o motor. É a mesma separação do `tests/conftest.py` da célula, e ela
-importa mais ainda aqui: uma fábrica que soubesse a regra faria o simulador
-medir a própria resposta.
+Este arquivo MONTA o mundo. Ele não julga nada, não decide quem recebe oferta, não
+decide quem enxerga o Mural e não sabe o que é justiça: quem julga é
+`test_simulador_de_justica.py`, e quem decide é o motor, o Mural e a negociação. É
+a mesma separação do `tests/conftest.py` da célula, e ela importa mais ainda aqui:
+uma fábrica que soubesse a regra faria o simulador medir a própria resposta.
 
 TUDO É SEMEADO, E A SEMENTE É FIXA
 -----------------------------------
@@ -23,18 +23,39 @@ duas metades da escolha têm motivo:
   resultado da simulação. Começar num instante qualquer faria o placar mudar
   conforme a hora em que a suíte rodasse, e um placar que muda sozinho não pode
   ser conferido contra o piloto de papel.
-- **O DIA é o de amanhã**, e não uma data escrita à mão, por duas razões que se
-  somam. `Oferta.oferecida_em` é `auto_now_add`, e a restrição
-  `oferta_expira_depois_de_oferecida` compara os dois: com um `t_zero` no
-  passado, toda oferta do simulador nasceria já vencida para o banco. E uma data
-  fixa no futuro fica vermelha sozinha no dia em que o calendário a alcança
+- **O DIA é o de amanhã**, e não uma data escrita à mão, porque uma data fixa no
+  futuro fica vermelha sozinha no dia em que o calendário a alcança
   (`armadilhas/323`, medida nesta célula).
 
-`Encomenda.criada_em` também é `auto_now_add`, e é dele que sai o relógio das 24h
-do [INV-ENC-J9]. Por isso a fábrica de encomendas escreve a coluna com o instante
-SIMULADO da chegada, por `update()`: sem isso, uma encomenda da terceira onda
-nasceria com dois dias de fila e viraria chamada aberta no primeiro tique, sem
-nenhum aluno ter tido a chance de vê-la.
+E O RELÓGIO DA MÁQUINA PASSA A SER O RELÓGIO SIMULADO
+------------------------------------------------------
+`relogio_da_maquina` congela `django.utils.timezone.now` no instante simulado, e
+sem ele o degrau 2.13 não seria mensurável. A razão cabe numa frase: **as duas
+pistas contam o tempo de espera a partir de `MudancaDeStatus.em`, que é
+`auto_now_add`.** Enquanto o simulador só encenava a fila, isso não aparecia: as
+idas e vindas internas (`na_fila` para `oferecida` e de volta) não geram marco, e
+o marco inicial cai em `criada_em`, que a fábrica escreve com o instante simulado.
+
+Com a negociação, um projeto VOLTA à pista vindo de `em_negociacao`, e essa volta
+é um marco de verdade. Com o relógio da máquina correndo por fora, esse marco
+nasceria um a nove dias no passado do mundo simulado, e todo projeto devolvido
+viraria chamada aberta (ou iria ao plantão) no primeiro tique seguinte, sem
+ninguém ter tido a chance de vê-lo. O mundo inteiro degeneraria em plantão, e o
+[INV-ENC-J9] e o [INV-ENC-M5] ficariam verdes medindo um artefato.
+
+Congelar o relógio é o que faz `Oferta.oferecida_em`, `ReservaDoMural.pegada_em`,
+`Proposta.criada_em` e `MudancaDeStatus.em` contarem a mesma história que o laço
+da simulação. Nenhum gesto de produção lê `timezone.now()`: todos recebem `agora`
+por argumento, e é por isso que congelar o relógio muda só as colunas de
+carimbo, e nunca uma decisão.
+
+AS DUAS PISTAS NASCEM PELA PORTA DE VERDADE
+--------------------------------------------
+Os projetos nascem por `mural.nascer`, que é a única porta de nascimento da
+célula e a que a Fase 3 vai chamar. É ela que põe o Iniciante na fila e o
+Intermediário e o Avançado no Mural (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1), e é por
+isso que o simulador não informa pista nenhuma: **ninguém escolhe pista**, nem o
+cliente, nem o aluno, nem este arquivo.
 
 TODO MUNDO COMEÇA DISPONÍVEL, DE PROPÓSITO
 -------------------------------------------
@@ -52,7 +73,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from django.conf import settings
+from django.utils import timezone as relogio_do_django
 
+from apps.encomendas import mural
 from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional
 
 # A semente. Trocar este número troca o mundo inteiro; ele existe para que o
@@ -60,7 +83,7 @@ from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional
 SEMENTE = 20260907
 
 QUANTOS_ALUNOS = 100
-QUANTAS_ENCOMENDAS = 30
+QUANTOS_PROJETOS = 40
 
 # Os cem alunos, por faixa. A pirâmide é a da escola de verdade: quase todo mundo
 # acabou de sair do Nível 1, e Nível 3 é raro. `SEM_TITULO` são os perfis que
@@ -72,54 +95,133 @@ NIVEL_1 = 56
 NIVEL_2 = 27
 NIVEL_3 = 9
 
-# As trinta encomendas, por nível, em cada uma das três ondas de chegada.
-# Avançado é o nível que quase ninguém alcança nos primeiros meses, e a fila
-# precisa mostrar o que faz com ele.
+# Os quarenta projetos, por nível, em cada uma das quatro ondas de chegada.
+# Avançado é o nível que quase ninguém alcança nos primeiros meses, e as duas
+# pistas precisam mostrar o que fazem com ele.
+#
+# **Eram trinta em três ondas enquanto só a fila existia**, e cresceram junto com
+# o mundo: com a emenda, metade dos projetos passou a nascer no Mural, e a fila
+# ficou com metade do movimento que tinha. Vinte Iniciantes é o mínimo que ainda
+# faz a fila produzir passes suficientes para o mesmo aluno dizer duas vezes
+# "ainda não me sinto pronto", que é o gatilho da reclassificação (plano §6.11);
+# com quinze, o mecanismo simplesmente não acontecia, e o placar ficava com um
+# zero que ninguém saberia ler.
 POR_ONDA = {
     Encomenda.Nivel.INICIANTE: 5,
     Encomenda.Nivel.INTERMEDIARIO: 3,
     Encomenda.Nivel.AVANCADO: 2,
 }
-ONDAS = 3
+ONDAS = 4
+
+# O cartão de cada nível, DERIVADO da tabela do modelo em vez de escrito de novo.
+# O cartão decide o nível, e o banco recusa o par incoerente
+# (`o_cartao_decide_o_nivel`); uma segunda tabela aqui divergiria da primeira no
+# dia em que um cartão novo entrasse, e o vermelho apareceria no lugar errado.
+CARTAO_DO_NIVEL = {nivel: cartao for cartao, nivel in Encomenda.NIVEL_DO_CARTAO.items()}
+
+# A lista FECHADA de entregáveis que o briefing de cada projeto declara, e da
+# qual toda proposta marca um subconjunto (`PLANO-AREA-DE-NEGOCIACAO.md` §4.1).
+# Uma proposta que saísse desta lista seria recusada por
+# `entregavel_fora_do_briefing`, e o simulador ficaria vermelho por motivo errado.
+ENTREGAVEIS_DO_BRIEFING = ("modelo_3d", "texturas", "arquivo_fonte")
+
+# O PREÇO DE REFERÊNCIA de cada nível, em centavos. **Não é parâmetro da lei**
+# (não há chave para ele no vocabulário do banco, e o mantenedor não o edita numa
+# tela): é a régua do experimento, como o passo e a duração. Ele existe para as
+# propostas terem números plausíveis e para a contraproposta poder cortar sem
+# chegar a zero, que o banco recusaria (`proposta_tem_valor`).
+VALOR_DE_REFERENCIA = {
+    Encomenda.Nivel.INICIANTE: 12_000,
+    Encomenda.Nivel.INTERMEDIARIO: 35_000,
+    Encomenda.Nivel.AVANCADO: 90_000,
+}
+
+
+class RelogioDaMaquina:
+    """O `timezone.now()` do Django, preso ao instante simulado.
+
+    Um objeto com um atributo, e não uma variável de módulo, porque o laço da
+    simulação precisa MOVER o relógio a cada passo e o `monkeypatch` precisa
+    apontar para algo que continue existindo depois de instalado.
+    """
+
+    def __init__(self, agora: datetime):
+        self.agora = agora
 
 
 @dataclass(frozen=True)
 class Temperamento:
-    """Como ESTE aluno se comporta diante de uma oferta, sorteado uma vez só.
+    """Como ESTE aluno se comporta nas duas pistas, sorteado uma vez só.
 
-    Sortear o temperamento por aluno, e não a cada oferta, é o que faz a
-    simulação ter gente dentro dela: existe quem aceita quase sempre, quem passa
-    quase sempre, e quem some. É de gente que some que nascem os três silêncios
-    da pausa automática, e é de gente que passa que nasce a reclassificação.
+    Sortear o temperamento por aluno, e não a cada gesto, é o que faz a simulação
+    ter gente dentro dela: existe quem aceita quase sempre, quem passa quase
+    sempre, e quem some. É de gente que some que nascem os três silêncios da
+    pausa automática, as reservas que vencem e as propostas que caducam; é de
+    gente que passa que nasce a reclassificação.
     """
 
+    # A FILA
     p_aceita: float
     p_passa: float
     motivo_preferido: str
     p_pausa: float
     p_religa: float
     horas_de_trabalho: int
+    # O MURAL E A NEGOCIAÇÃO
+    p_pega_no_mural: float
+    p_propoe: float
+    p_aceita_a_contraproposta: float
+    p_contrapropoe: float
+    p_desiste: float
+    prazo_pedido: int
+
+
+@dataclass(frozen=True)
+class Cliente:
+    """Como o cliente DESTE projeto responde a uma proposta do aluno.
+
+    O cliente é sempre a escola enquanto a origem for `escola` (§1, terceira
+    resposta do mantenedor), mas cada projeto tem uma pessoa diferente do outro
+    lado, e é isso que faz os quatro desfechos da §4.2 aparecerem no mesmo mundo:
+    o que aceita, o que contrapropõe até esgotar as rodadas, o que desiste e o
+    que simplesmente some. É do que some que nasce o [INV-ENC-N7].
+    """
+
+    p_aceita: float
+    p_contrapropoe: float
+    p_desiste: float
 
 
 @dataclass
 class Povoado:
-    """O mundo montado, e as duas coisas que o simulador precisa lembrar dele.
+    """O mundo montado, e as três coisas que o simulador precisa lembrar dele.
 
-    `chegada` guarda o instante SIMULADO em que cada encomenda entrou na fila, e
-    `lugar_na_fila` guarda a `data_entrada_fila` de cada perfil no minuto zero. As
-    duas existem porque o guarda precisa de uma medida INDEPENDENTE do banco: o
-    [INV-ENC-J9] se mede contra a chegada, e o [INV-ENC-J4] se mede contra o
-    lugar original.
+    `chegada` guarda o instante SIMULADO em que cada projeto nasceu,
+    `lugar_na_fila` guarda a `data_entrada_fila` de cada perfil no minuto zero, e
+    `entregas_no_comeco` guarda quantas entregas cada um tinha antes de qualquer
+    coisa acontecer. As três existem porque o guarda precisa de uma medida
+    INDEPENDENTE do banco: o [INV-ENC-J4] se mede contra o lugar original, e a
+    promessa do primeiro dólar se mede contra quem começou em zero.
     """
 
     site_id: str
     t_zero: datetime
+    relogio: RelogioDaMaquina
     sorteio: random.Random
     perfis: list
     temperamentos: dict
-    encomendas: list
+    projetos: list
+    clientes: dict
     chegada: dict
     lugar_na_fila: dict
+    entregas_no_comeco: dict
+    # A letra miúda do briefing e o preço de referência viajam DENTRO do povoado,
+    # e não como constantes que o guarda importaria deste arquivo. O motivo é de
+    # oficina e vale escrever: `tests/conftest.py` e este arquivo têm o mesmo
+    # nome de módulo, e um `import conftest` no guarda pegaria o primeiro que o
+    # pytest tivesse carregado. O mundo entrega o que o mundo montou.
+    entregaveis: tuple
+    referencia: dict
 
 
 @pytest.fixture
@@ -132,10 +234,25 @@ def t_zero():
 
 
 @pytest.fixture
-def povoado(semeado, criar_perfil, criar_encomenda, t_zero):
-    """Cem alunos e trinta encomendas em três ondas, sempre os mesmos.
+def relogio_da_maquina(t_zero, monkeypatch):
+    """Prende `timezone.now()` ao instante simulado durante a rodada inteira.
 
-    Os perfis nascem antes de qualquer encomenda porque é assim que a escola
+    O porquê está no cabeçalho deste arquivo, e ele é o de sempre nesta casa: um
+    relógio que corre por fora faz duas partes do mesmo sistema discordarem sobre
+    quando as coisas aconteceram. O que muda com isto são só as colunas de
+    carimbo (`auto_now_add` e `auto_now`); nenhuma decisão de produção lê o
+    relógio da máquina, porque todas recebem `agora` por argumento.
+    """
+    relogio = RelogioDaMaquina(t_zero)
+    monkeypatch.setattr(relogio_do_django, "now", lambda: relogio.agora)
+    return relogio
+
+
+@pytest.fixture
+def povoado(semeado, criar_perfil, relogio_da_maquina, t_zero):
+    """Cem alunos e trinta projetos em três ondas, sempre os mesmos.
+
+    Os perfis nascem antes de qualquer projeto porque é assim que a escola
     funciona: a turma existe, e o cliente chega depois.
     """
     sorteio = random.Random(SEMENTE)
@@ -168,43 +285,59 @@ def povoado(semeado, criar_perfil, criar_encomenda, t_zero):
         perfis.append(perfil)
         temperamentos[perfil.id] = _temperamento(sorteio)
 
-    encomendas = []
+    projetos = []
+    clientes = {}
     chegada = {}
     for onda in range(ONDAS):
         for minuto, nivel in enumerate(_niveis_da_onda()):
-            # UM MINUTO ENTRE UMA E OUTRA, e o minuto é o que torna esta
-            # simulação reproduzível. O motor varre `na_fila` ordenando só por
-            # `criada_em` (plano §7.4); com dez encomendas no mesmo instante, a
-            # ordem da varredura seria a que o banco devolvesse, e o placar
-            # mudaria a cada rodada mesmo com a semente fixa.
+            # UM MINUTO ENTRE UM E OUTRO, e o minuto é o que torna esta simulação
+            # reproduzível. O motor varre `na_fila` ordenando só por `criada_em`
+            # (plano §7.4) e o Mural lista por `criada_em` (§3.3); com dez
+            # projetos no mesmo instante, a ordem seria a que o banco devolvesse,
+            # e o placar mudaria a cada rodada mesmo com a semente fixa. É também
+            # o que mantém este arquivo longe do empate por UUID que a TAR-255
+            # registrou.
             quando = t_zero + timedelta(days=onda, minutes=minuto)
-            encomenda = criar_encomenda(nivel=nivel)
-            # A coluna é `auto_now_add`, e é dela que sai o relógio das 24h do
-            # [INV-ENC-J9]. Sem esta linha a onda de amanhã nasceria vencida.
-            Encomenda.objects.filter(pk=encomenda.pk).update(criada_em=quando)
-            encomenda.criada_em = quando
-            encomendas.append(encomenda)
-            chegada[encomenda.pk] = quando
-    assert len(encomendas) == QUANTAS_ENCOMENDAS
+            projeto = mural.nascer(
+                site_id=semeado,
+                origem=Encomenda.Origem.ESCOLA,
+                cliente_id=f"cli-{len(projetos):03d}",
+                cartao=CARTAO_DO_NIVEL[nivel],
+                briefing={"entregaveis": list(ENTREGAVEIS_DO_BRIEFING)},
+            )
+            # A coluna é `auto_now_add`, e é dela que sai o marco das 24h do
+            # [INV-ENC-J9] e do [INV-ENC-M5]. Sem esta linha a onda de amanhã
+            # nasceria com dois dias de espera nas costas.
+            Encomenda.objects.filter(pk=projeto.pk).update(criada_em=quando)
+            projeto.criada_em = quando
+            projetos.append(projeto)
+            clientes[projeto.pk] = _cliente(sorteio)
+            chegada[projeto.pk] = quando
+    assert len(projetos) == QUANTOS_PROJETOS
 
     return Povoado(
         site_id=semeado,
         t_zero=t_zero,
+        relogio=relogio_da_maquina,
         sorteio=sorteio,
         perfis=perfis,
         temperamentos=temperamentos,
-        encomendas=encomendas,
+        projetos=projetos,
+        clientes=clientes,
         chegada=chegada,
         lugar_na_fila={p.id: p.data_entrada_fila for p in perfis},
+        entregas_no_comeco={p.id: p.entregas_aprovadas for p in perfis},
+        entregaveis=ENTREGAVEIS_DO_BRIEFING,
+        referencia=dict(VALOR_DE_REFERENCIA),
     )
 
 
 def _niveis_da_onda():
     """Os dez níveis de uma onda, na mesma ordem sempre.
 
-    Intercalados, e não em blocos: dez iniciantes seguidas fariam a fila resolver
-    tudo o que é fácil antes de encostar no que é difícil, e o cenário perderia
-    justamente o embate que interessa.
+    Intercalados, e não em blocos: dez Iniciantes seguidos fariam a fila resolver
+    tudo o que é fácil antes de encostar no que é difícil, e as duas pistas nunca
+    ficariam cheias ao mesmo tempo, que é justamente o embate que interessa.
     """
     restam = dict(POR_ONDA)
     fila = []
@@ -230,6 +363,15 @@ def _entregas_do_titulo(titulo, sorteio):
     três Nível 3 chegaram de fora com caminhada feita: sem eles, o nível avançado
     não teria NINGUÉM elegível, e a janela de abandono do plano §6.1 nunca
     decidiria nada.
+
+    **É esta função que faz o Mural existir neste mundo.** O Mural só mostra a
+    quem já entregou (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1), então uma turma
+    inteira em zero deixaria os quinze projetos Intermediário e Avançado sem
+    ninguém para olhá-los, e os cinco guardas do Mural ficariam verdes numa
+    prateleira vazia. Os que já entregaram são poucos de propósito: é a escassez
+    que faz a memória do Mural (ninguém pega o mesmo projeto duas vezes) esgotar
+    o conjunto de elegíveis, e é aí que o [INV-ENC-M5] tem de decidir alguma
+    coisa.
 
     O SEXTO DE CADA FAIXA É O QUE FAZ O TÍTULO DECIDIR ALGUMA COISA
     ----------------------------------------------------------------
@@ -267,19 +409,26 @@ def _abandonos(titulo, sorteio, t_zero):
 
 
 def _temperamento(sorteio):
-    """Um aluno de verdade: aceita, passa ou some, com pesos próprios.
+    """Um aluno de verdade: aceita, passa, pega, propõe, cede ou some.
 
     Os pesos são POR HORA SIMULADA, e por isso parecem baixos: quem aceita com
     0,20 por hora decide em menos das três horas úteis da oferta na maioria das
-    vezes. **O terceiro caminho é o mais provável de todos, e é de propósito** —
-    silêncio é o desfecho comum de qualquer fila de oportunidade, e é dele que
-    saem as coisas que este simulador precisa ver acontecer: a oferta que vence,
-    a pausa automática dos três silêncios e a encomenda que ninguém pegou em 24h
-    e vira chamada aberta.
+    vezes. **O caminho do silêncio é o mais provável de todos, e é de propósito**,
+    porque silêncio é o desfecho comum de qualquer fila de oportunidade, e é dele
+    que saem as coisas que este simulador precisa ver acontecer: a oferta que
+    vence, a pausa automática dos três silêncios, o projeto que ninguém pegou em
+    24h e vira chamada aberta, a reserva do Mural que caduca e a proposta que
+    morre sem resposta.
     """
     return Temperamento(
         p_aceita=sorteio.uniform(0.015, 0.12),
-        p_passa=sorteio.uniform(0.015, 0.12),
+        # PASSAR É MAIS PROVÁVEL DO QUE ACEITAR, e a diferença tem razão de
+        # experimento: a reclassificação da lei §6.11 exige DOIS "ainda não me
+        # sinto pronto" na MESMA encomenda, e é o único mecanismo do livro de
+        # regras que só aparece quando a mesma peça passa por várias mãos. Com as
+        # duas chances iguais, o mundo produzia cinco passes desse motivo
+        # espalhados por vinte encomendas, e a reclassificação nunca acontecia.
+        p_passa=sorteio.uniform(0.03, 0.22),
         # "Ainda não me sinto pronto" entra duas vezes de propósito: é o único
         # dos quatro com consequência mecânica (a reclassificação do plano
         # §6.11), e um cenário em que ele quase nunca sai nunca a produziria.
@@ -305,4 +454,74 @@ def _temperamento(sorteio):
         # rápido demais, e a fila nunca ficaria apertada — que é exatamente
         # o estado em que os invariantes de justiça correm risco.
         horas_de_trabalho=sorteio.randint(36, 110),
+        # O MURAL. A chance é alta porque o Mural é ATIVO: o projeto fica na
+        # prateleira e é o aluno que vai lá pegar. Com uma chance baixa, os
+        # quinze projetos das duas pistas de cima ficariam parados a simulação
+        # inteira e o relógio da reserva nunca decidiria nada.
+        p_pega_no_mural=sorteio.uniform(0.05, 0.35),
+        # O prazo que este aluno pede, em dias. O banco exige pelo menos um
+        # (`proposta_tem_prazo`), e o teto é o do cartão mais caro da lei §6.6.
+        prazo_pedido=sorteio.randint(2, 14),
+        **_jeito_de_negociar(sorteio, NA_MESA_DO_ALUNO),
+    )
+
+
+# COMO CADA LADO SE PORTA NA MESA, EM TRÊS FEITIOS, e não numa faixa contínua.
+# A primeira versão sorteava cada chance numa faixa, e o mundo saiu sem os
+# desfechos que interessam: com todo mundo respondendo um pouco a cada hora,
+# NENHUMA proposta chegou a vencer em oito dias e NENHUMA negociação esgotou as
+# rodadas — os dois caminhos que o [INV-ENC-N7] e o [INV-ENC-N2] existem para
+# medir. Três feitios com pesos garantem que os quatro desfechos da emenda §4.2
+# aconteçam no mesmo mundo:
+#
+#   `fecha`     responde rápido e aceita: é de onde saem os acordos;
+#   `regateia`  quase nunca aceita e quase sempre contrapõe: é de onde saem as
+#               rodadas esgotadas, que mandam o projeto ao plantão;
+#   `some`      quase não responde: é de onde saem a reserva que caduca, a
+#               proposta que vence e o projeto que volta para o próximo.
+#
+# As chances são POR HORA SIMULADA. A validade da proposta é de 24 horas úteis,
+# que numa janela de 14 horas por dia dá cerca de quarenta passos: uma chance de
+# 0,03 por passo responde em 70% das vezes, e é essa fatia que sobra calada.
+NA_MESA_DO_ALUNO = {
+    "fecha": (0.25, 0.30, 0.03, 0.005),
+    "regateia": (0.25, 0.02, 0.30, 0.010),
+    "some": (0.04, 0.01, 0.01, 0.000),
+}
+NA_MESA_DO_CLIENTE = {
+    "fecha": (0.20, 0.05, 0.005),
+    "regateia": (0.02, 0.25, 0.010),
+    "some": (0.01, 0.01, 0.000),
+}
+
+# Quatro em dez somem, e é o feitio mais comum de propósito: silêncio é o
+# desfecho mais frequente de qualquer negociação de valor baixo, e é dele que
+# saem as três coisas que este simulador precisa ver.
+FEITIOS = ["fecha"] * 3 + ["regateia"] * 3 + ["some"] * 4
+
+
+def _jeito_de_negociar(sorteio, mesa):
+    """As quatro chances do aluno na mesa, pelo feitio sorteado."""
+    p_propoe, p_aceita, p_contrapropoe, p_desiste = mesa[sorteio.choice(FEITIOS)]
+    return {
+        "p_propoe": p_propoe,
+        "p_aceita_a_contraproposta": p_aceita,
+        "p_contrapropoe": p_contrapropoe,
+        "p_desiste": p_desiste,
+    }
+
+
+def _cliente(sorteio):
+    """O outro lado da mesa, sorteado por projeto.
+
+    Os três feitios são os mesmos do aluno, e pela mesma razão. O que mais
+    importa aqui é o `some`: o cliente calado é quem manda o projeto ao plantão
+    em vez de ao próximo aluno, que é o [INV-ENC-N7], e é o único jeito de esse
+    caminho acontecer sem alguém escrevê-lo à mão.
+    """
+    p_aceita, p_contrapropoe, p_desiste = NA_MESA_DO_CLIENTE[sorteio.choice(FEITIOS)]
+    return Cliente(
+        p_aceita=p_aceita,
+        p_contrapropoe=p_contrapropoe,
+        p_desiste=p_desiste,
     )
