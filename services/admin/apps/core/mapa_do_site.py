@@ -170,6 +170,13 @@ AREAS = (
         ("/pages",),
     ),
     (
+        "encomendas",
+        "A Fila do Primeiro Dólar",
+        "Onde o aluno recebe encomenda de verdade, combina o trabalho e entrega: "
+        "o caminho até o primeiro dinheiro dele.",
+        ("/encomendas",),
+    ),
+    (
         "conquistas",
         "Os pontos e as medalhas",
         "A gamificação da escola: o que o aluno ganha, e o que ele já conquistou.",
