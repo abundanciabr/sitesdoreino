@@ -19,12 +19,13 @@
     {% endcomment %}
     <a class="botao" href="{% url 'escola_jornadas' %}">Ver as sequências de mensagens &rarr;</a>
     {% comment %}
-    A porta das encomendas do curso (05/09/2026, degrau 1.5 do
-    PLANO-CELULA-CURSOS.md), pela mesma regra: a porta de máquina da `cursos`
-    existe e o contrato dela congelou (PR #1061), então a tela tem quem a
-    responda. O texto das aulas mora lá, e entra SÓ por esta porta.
+    A porta dos cursos (07/09/2026, TAR-271). Até hoje este botão levava direto
+    ao editor de UM curso, escrito no código: a sala servia um curso só, e criar
+    o segundo exigiria mexer no servidor. O mantenedor decidiu o contrário
+    (`DECISAO-a-sala-serve-varios-cursos.md`), e agora a porta é a LISTA: dela
+    se entra em qualquer curso, e dela nasce cada curso novo.
     {% endcomment %}
-    <a class="botao" href="{% url 'escola_aulas' curso=curso_do_editor %}">Escrever as encomendas do curso &rarr;</a>
+    <a class="botao" href="{% url 'escola_cursos' %}">Cursos &rarr;</a>
   </p>
 
   {% comment %}
@@ -42,8 +43,9 @@
     cada ponto agora. A terceira mostra <b>quem está jogando</b>, por pontos. A
     quarta mostra <b>o que a escola escreve sozinha</b>: as sequências de
     mensagens automáticas, o texto de cada uma, e o que foi barrado. E a quinta
-    é <b>o curso por dentro</b>: cada encomenda que o aluno vai entregar, com
-    as peças, as pausas do vídeo, o quiz e o botão de publicar.
+    é <b>os cursos da escola</b>: quantos existem, quem entra em cada um, como o
+    aluno avança, e por onde se cria um novo. É de lá que você entra no curso
+    por dentro, encomenda por encomenda.
     <br><br>
     Turmas e certificados moram nesta mesma página quando existirem — e
     cada um só aparece depois que a parte do sistema que guarda aquele dado

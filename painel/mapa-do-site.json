@@ -1225,6 +1225,37 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/cursos/",
+      "endereco": "/admin/escola/cursos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Os cursos da escola",
+      "descricao": "A lista dos cursos que a escola tem, e o formulário para criar um novo. Cada curso mostra como o aluno passa de uma aula para a próxima, qual produto a pessoa compra para entrar nele, e quantas aulas já estão abertas para os alunos. Daqui se entra em qualquer curso para escrever as aulas dele.",
+      "observacao": "Até 07/09/2026 a escola servia um curso só, escrito no código, e criar o segundo exigiria mexer no servidor. Lê e escreve na célula cursos e no catálogo pela porta de máquina, nunca no banco delas. Com o catálogo fora do ar a lista continua abrindo e o formulário espera, porque criar um curso passa pelo catálogo dos dois jeitos.",
+      "exemplo": "/admin/escola/cursos/"
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/cursos/criar",
+      "endereco": "/admin/escola/cursos/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar um curso",
+      "descricao": "Não é uma página: é o que acontece ao apertar Criar o curso. Cadastra o produto no catálogo, se você pediu um produto novo, e depois cria o curso na sala de aula. O curso nasce em rascunho, sem nenhuma aula."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/cursos/alterar",
+      "endereco": "/admin/escola/cursos/alterar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Trocar o produto ou a regra de avanço de um curso",
+      "descricao": "Não é uma página: é o que acontece ao apertar Trocar num curso da lista. Trocar o produto muda quem entra no curso daqui para a frente; trocar a regra de avanço muda como a próxima aula abre para todos os alunos dele."
+    },
+    {
+      "celula": "admin",
       "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
       "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/$",
       "alcance": "publico",

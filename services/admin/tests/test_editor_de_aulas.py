@@ -461,8 +461,12 @@ def test_o_endereco_com_a_parte_pede_a_porta_so_aquela_parte():
 
     assert resposta.status_code == 200
     assert lista.calls.last.request.url.params["parte"] == "2"
+    # Sem o cabeçalho "Parte II": a lista filtrada tem UMA Parte só, e desde
+    # 07/09/2026 as seções de Parte só aparecem quando há mais de uma (a sala
+    # serve vários cursos, e as três Partes são o vocabulário do livro). Nada se
+    # perde: o aviso do alto da tela já diz "você está vendo só a Parte II" e
+    # leva ao curso inteiro, e é ele que a linha logo abaixo confere.
     assert re.findall(r'class="[^"]*(?:parte|bloco)-do-livro">([^<]+)<', html) == [
-        "Parte II",
         "Bloco E",
         "Bloco F",
         "Bloco G",
@@ -974,10 +978,12 @@ def test_instrumento_com_json_torto_nao_vai_para_a_porta():
 def test_a_volta_do_instrumento_leva_a_lista_ate_quando_a_tela_e_um_erro():
     """O link de voltar é o de cima da tela, e vale nas TRÊS caras dela.
 
-    O instrumento não é de curso nenhum (o contrato não o escopa), então a
-    volta é para a lista do curso por onde se entra. Nas duas telas de erro
-    esse link fica fora de qualquer condição do gabarito: se o endereço não
-    chegar, ele vira `href=""` e recarrega a própria tela do erro.
+    O instrumento não é de curso nenhum (o contrato não o escopa), então a volta
+    é para a LISTA DE CURSOS. Ela era um curso escrito no código até 07/09/2026,
+    e isso levava ao curso errado em toda escola cujo primeiro curso não se
+    chamasse `profissional`. Nas duas telas de erro esse link fica fora de
+    qualquer condição do gabarito: se o endereço não chegar, ele vira `href=""`
+    e recarrega a própria tela do erro.
     """
     respx.get(f"{CURSOS}/instrumentos/studs").mock(
         side_effect=[
@@ -992,7 +998,7 @@ def test_a_volta_do_instrumento_leva_a_lista_ate_quando_a_tela_e_um_erro():
 
     assert (nao_existe.status_code, caiu.status_code) == (404, 503)
     for resposta in (nao_existe, caiu):
-        assert 'href="/escola/profissional/aulas/"' in _texto(resposta)
+        assert f'href="{reverse("escola_cursos")}"' in _texto(resposta)
 
 
 # ---------------------------------------------------------------------------
