@@ -110,7 +110,7 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao doze
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao treze
 
     operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
@@ -122,11 +122,26 @@ info:
 
     esta no ar as chama), as tres de instrumento (`listInstruments`,
 
-    `getInstrument`, `putInstrument`) e a do bloco (`putBlock`). Os
+    `getInstrument`, `putInstrument`), a do bloco (`putBlock`) e a do
 
-    verificadores (checkLesson) nascem no degrau 3.1; o placar da fila
+    Revisor de coerencia (`checkLesson`, degrau 3.1). O placar da fila
 
-    (getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.
+    (getReviewQueue) e o progresso do aluno (getStudentProgress) nascem
+
+    no degrau 2.1.
+
+
+    O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao
+
+    inteligencia artificial: `checkLesson` le uma aula e devolve a lista
+
+    de defeitos, ja em portugues, sem gravar nada. E as duas operacoes de
+
+    publicar passaram a RECUSAR com 422 a aula cuja peca manda o aluno
+
+    para uma encomenda que nao existe no curso ([INV-CUR-C1]); as outras
+
+    cinco conferencias sao aviso e nao impedem publicar.
 
 
     Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).
@@ -483,6 +498,19 @@ paths:
         esta, sem mexer na data. 404 se a aula nao existe.
 
 
+        422 QUANDO A ENCOMENDA TEM REMISSAO QUEBRADA: uma peca que manda o
+
+        aluno para uma encomenda `E[NN]` que nao existe neste curso impede
+
+        publicar, e o `detail` diz quais numeros sao. E o invariante
+
+        [INV-CUR-C1], e ele vale tambem para a aula JA publicada que ganhou
+
+        a remissao numa edicao posterior. As outras cinco conferencias de
+
+        `checkLesson` sao aviso, e nao impedem publicar.
+
+
         ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do
 
         site inteiro. Quem sabe de curso e de parte e `publishLesson`, em
@@ -747,11 +775,98 @@ paths:
         esta publicado devolve a aula como esta, sem mexer na data.
 
 
+        422 QUANDO A ENCOMENDA TEM REMISSAO QUEBRADA: uma peca que manda o
+
+        aluno para uma encomenda `E[NN]` que nao existe neste curso impede
+
+        publicar, e o `detail` diz quais numeros sao. E o invariante
+
+        [INV-CUR-C1], e ele vale tambem para a aula JA publicada que ganhou
+
+        a remissao numa edicao posterior. As outras cinco conferencias de
+
+        `checkLesson` sao aviso, e nao impedem publicar.
+
+
         `parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o
 
         bloco da aula recusa com 404 e a aula continua como estava. 404
 
         tambem se o curso ou a aula nao existem.'
+  /cursos/{curso}/aulas/{numero}/conferir:
+    get:
+      operationId: checkLesson
+      summary: Confere a coerencia de uma aula e devolve os defeitos, sem gravar nada
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: numero
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: parte
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ParteDoCurso'
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DefeitoSchema'
+                type: array
+      description: 'O Revisor de coerencia: CODIGO, e nao inteligencia artificial.
+        Ele
+
+        aponta e nunca corrige, nao grava nada e nao sobe versao.
+
+
+        As SEIS conferencias sao as do plano da celula: remissao `E[NN]` para
+
+        aula que existe no curso; instrumento e defeito citados pelo nome
+
+        canonico; o mesmo arquivo escrito igual em todas as pecas; a mesma
+
+        contagem com o mesmo numero; o `Aceito quando` da peca `Voce faz`
+
+        igual a lista do checkpoint; e nenhum numero de plataforma no que o
+
+        aluno le.
+
+
+        Cada defeito traz `codigo` (o vocabulario fechado das seis),
+
+        `peca` (o tipo da peca, ou vazio quando o defeito e da aula inteira),
+
+        `alvo` (o pedaco de texto em falta), `frase` e `o_que_fazer`, as duas
+
+        ja em portugues, escritas para quem edita a aula ler direto na tela.
+
+
+        `impede_publicar` e verdadeiro SO na remissao quebrada, que e o
+
+        [INV-CUR-C1]: e o unico defeito que `publishLesson` recusa com 422.
+
+        Os outros cinco sao aviso.
+
+
+        Aula sem defeito responde lista vazia, e nao erro. `parte` e o mesmo
+
+        GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.'
   /cursos/{curso}/blocos/{letra}:
     put:
       operationId: putBlock
@@ -1197,6 +1312,43 @@ components:
       - 2
       - 3
       type: integer
+    DefeitoSchema:
+      description: "Um defeito de coer\xEAncia apontado por `checkLesson` (degrau\
+        \ 3.1).\n\nOs campos s\xE3o os do `apps.cursos.coerencia.Defeito`, e a tradu\xE7\
+        \xE3o para\nportugu\xEAs J\xC1 VEM PRONTA daqui: `frase` diz o que est\xE1\
+        \ errado e\n`o_que_fazer` diz o conserto, as duas escritas para a professora\
+        \ ler. A\ntela do Admin as mostra verbatim, e isso \xE9 de prop\xF3sito: reescrev\xEA\
+        -las l\xE1\namarraria a tela \xE0 reda\xE7\xE3o desta c\xE9lula, que \xE9\
+        \ a dona da regra. \xC9 o mesmo\ndesenho do `value_error` que `putInstrument`\
+        \ j\xE1 devolve.\n\n`peca` \xE9 o tipo da pe\xE7a onde est\xE1 o defeito,\
+        \ ou texto VAZIO quando ele \xE9 da\naula inteira: o mesmo arquivo escrito\
+        \ com dois nomes n\xE3o mora em pe\xE7a\nnenhuma, mora entre elas. `alvo`\
+        \ \xE9 o peda\xE7o de texto em falta, para quem\nfor consertar poder procur\xE1\
+        -lo.\n\n`impede_publicar` \xE9 verdadeiro s\xF3 na remiss\xE3o quebrada, que\
+        \ \xE9 o\n[INV-CUR-C1]. Ele viaja dentro do defeito, e n\xE3o numa segunda\
+        \ lista de\nc\xF3digos que vetam, porque uma segunda lista divergiria da recusa\
+        \ de\n`publishLesson` no primeiro dia em que algu\xE9m mexesse numa das duas."
+      properties:
+        codigo:
+          type: string
+        peca:
+          type: string
+        alvo:
+          type: string
+        frase:
+          type: string
+        o_que_fazer:
+          type: string
+        impede_publicar:
+          type: boolean
+      required:
+      - codigo
+      - peca
+      - alvo
+      - frase
+      - o_que_fazer
+      - impede_publicar
+      type: object
     BlocoParaGravarSchema:
       additionalProperties: false
       description: "O corpo de `putBlock`: o nome do bloco e o t\xEDtulo do Boss dele.\n\
