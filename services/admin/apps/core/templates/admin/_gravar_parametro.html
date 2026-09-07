@@ -1,0 +1,25 @@
+{% comment %}
+O formulário de mudar UM número, usado nos dois blocos da tela (os que ainda não
+têm valor e os que já têm). Um pedaço só, e não duas cópias, pelo motivo de
+sempre: duas cópias divergem na primeira vez que alguém melhorar uma delas, e a
+que ficar para trás é a que o mantenedor vai usar sem saber.
+
+O campo de AUTOR não existe aqui, e a ausência é decisão: quem grava é quem está
+logado nesta área, e a tela preenche isso sozinha. Um campo aberto convidaria a
+escrever o nome de outra pessoa numa tabela que ninguém pode corrigir depois.
+{% endcomment %}
+<form method="post" action="{% url 'parametros_da_fila_mudar' %}" class="forma">
+  {% csrf_token %}
+  <input type="hidden" name="chave" value="{{ item.chave }}">
+  <label>
+    Valor novo
+    <input type="text" name="valor" value="{{ item.valor }}" maxlength="60"
+           autocomplete="off" required>
+  </label>
+  <label class="largo">
+    Por que você está mudando
+    <textarea name="motivo" rows="2" maxlength="500" required
+              placeholder="Escreva aqui o motivo. É o que você vai ler daqui a seis meses para lembrar por que este número é este."></textarea>
+  </label>
+  <button type="submit">Gravar este número</button>
+</form>

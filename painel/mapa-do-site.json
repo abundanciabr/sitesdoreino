@@ -2116,6 +2116,26 @@
     },
     {
       "celula": "admin",
+      "rota": "encomendas/parametros/",
+      "endereco": "/admin/encomendas/parametros/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Os números da Fila do Primeiro Dólar",
+      "descricao": "Um cartão por número que a plataforma obedece: quanto tempo o aluno tem para responder, quantos dias dura cada tipo de produção, quantas rodadas de conversa de preço cada lado tem, e o piso de preço de cada nível. Cada cartão mostra o valor de agora, desde quando ele vale, por que foi mudado e o que ele já foi antes. Os que ainda não têm número aparecem primeiro, com a explicação de que a ausência é uma decisão e não um defeito."
+    },
+    {
+      "celula": "admin",
+      "rota": "encomendas/parametros/mudar",
+      "endereco": "/admin/encomendas/parametros/mudar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gravar um número novo da Fila",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de gravar. Ele nunca reescreve o valor antigo, escreve uma linha nova com o motivo e o seu nome, e ela vale daí em diante. O que já estava combinado com o número antigo continua com ele."
+    },
+    {
+      "celula": "admin",
       "rota": "documentos/novo",
       "endereco": "/admin/documentos/novo",
       "alcance": "publico",

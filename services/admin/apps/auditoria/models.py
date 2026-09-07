@@ -247,6 +247,21 @@ class Registro(models.Model):
     # caminho feliz o `detalhe` guarda o numero do PR, que e o unico jeito de
     # ligar esta linha ao trabalho que ela abriu.
     CANCELAR_TAREFA = "cancelar_tarefa"
+    # [PARAMETROS DA FILA] 07/09/2026, a tela `/admin/encomendas/parametros/`
+    # (degrau 2.14 da `DECISAO-fila-do-primeiro-dolar.md`). UM verbo, e nao dois
+    # como em `ligar_regra`/`desligar_regra`: la os dois estados sao gestos
+    # opostos e a pergunta "desde quando esta regra paga?" so se responde
+    # separando-os. Aqui nao ha dois estados, ha um numero, e o gesto e sempre o
+    # mesmo: acrescentar uma linha nova a um historico.
+    #
+    # E este verbo e METADE do rastro, exatamente como o da economia. A outra
+    # metade mora na celula `encomendas`: la ficam o VALOR novo, o `desde` a
+    # partir do qual ele vale e o motivo escrito, numa tabela append-only com
+    # gatilho no Postgres. O que ESTA linha acrescenta, e que nenhuma outra
+    # guarda, e a tentativa que FALHOU — quando a celula recusa o valor (fora do
+    # tipo, motivo curto demais) nada e escrito la, e sem esta linha o gesto de
+    # mexer na regua da fila nao teria deixado rastro em lugar nenhum.
+    MUDAR_PARAMETRO = "mudar_parametro"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -293,6 +308,7 @@ class Registro(models.Model):
         (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
+        (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
     ]
 
     OK = "ok"
