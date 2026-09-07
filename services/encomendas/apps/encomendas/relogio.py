@@ -285,15 +285,13 @@ def _horas_do_parametro(chave: str, agora: datetime, *, site_id: str) -> timedel
     chave: o `relogio_da_oferta` e o `horas_para_virar_aberta` fazem exatamente a
     mesma coisa com o banco, e duas cópias divergiriam no dia em que uma delas
     ganhasse um cuidado a mais.
+
+    O que ela acrescenta a `Parametro.inteiro_vigente` é só a UNIDADE: ler o
+    número e recusar quando ele não existe é da tabela, e desde o degrau 2.5 há
+    um terceiro leitor de inteiros nesta célula (`gestos.py`, que conta silêncios
+    e passes). Transformar horas em `timedelta` continua sendo do relógio.
     """
-    linha = Parametro.vigente_em(chave, agora, site_id=site_id)
-    if linha is None:
-        raise ParametroAusente(
-            f"site {site_id!r}: sem valor vigente em {agora.isoformat()} para "
-            f"{chave}. Rode `python manage.py semear_parametros --site {site_id}` "
-            "ou confira a data de `desde` das linhas."
-        )
-    return timedelta(hours=int(linha.valor))
+    return timedelta(hours=Parametro.inteiro_vigente(chave, agora, site_id=site_id))
 
 
 def calcular_expiracao(agora: datetime, *, site_id: str) -> datetime:

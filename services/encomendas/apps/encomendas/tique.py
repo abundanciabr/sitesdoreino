@@ -41,24 +41,23 @@ acabou". Trocar 2 com 3 daria uma oferta nova, de três horas, a uma encomenda
 que já devia estar em chamada aberta — e o [INV-ENC-J9] cairia por um minuto a
 cada volta.
 
-O QUE ESTE ARQUIVO **NÃO** FAZ, E O PRÓXIMO DEGRAU FAZ INTEIRO
----------------------------------------------------------------
-**O contador `silencios_consecutivos` NÃO é tocado aqui**, e a ausência é
-deliberada. O plano §7.4 escreve a pausa automática em uma frase só —
-*"expirou; silencios_consecutivos += 1; se == 3 → pausar aluno"* — e as duas
-metades são o mesmo gesto: um contador que cresce e ninguém lê é pior do que
-contador nenhum, porque parece pronto. O degrau 2.5 (TAR-123) traz as duas
-juntas, com o parâmetro `silencios_para_pausa`, o "Você parece estar
-ocupado(a)", o religar sem perder o lugar e o Aceitar/Passar que zera a conta.
-Quem escrever aquele degrau acrescenta o incremento em
-`expirar_ofertas_vencidas` — o único lugar desta célula onde um silêncio
-acontece.
+O SILÊNCIO ACONTECE AQUI, E SÓ AQUI
+------------------------------------
+`expirar_ofertas_vencidas` é o único lugar desta célula onde um silêncio
+acontece: em todos os outros caminhos alguém clicou em alguma coisa. Por isso é
+daqui que sai a contagem da pausa automática (plano §6.3 e §7.4: *"expirou;
+silencios_consecutivos += 1; se == 3 → pausar aluno"*), chegada no degrau 2.5.
 
-Também não são deste degrau: o que a chamada aberta FAZ depois de aberta
-(avisar os elegíveis, o primeiro que aceitar leva), os prazos de produção, o
-abandono, a aprovação tácita e o SLA do revisor. Todos vão pendurar-se neste
-mesmo tique quando chegarem, e é para isso que ele devolve um resumo nomeado em
-vez de `None`.
+**A regra em si não mora neste arquivo, e a separação é de propósito:** quem
+conta e quem pausa é `gestos.contar_o_silencio`, ao lado do `zerar_o_silencio`
+que os gestos do aluno chamam. As duas metades do mesmo contador em arquivos
+diferentes é como um contador aprende a crescer e esquece de zerar.
+
+O QUE ESTE ARQUIVO **NÃO** FAZ
+-------------------------------
+Os prazos de produção, o abandono, a aprovação tácita e o SLA do revisor são as
+Fases 3 e 5. Todos vão pendurar-se neste mesmo tique quando chegarem, e é para
+isso que ele devolve um resumo nomeado em vez de `None`.
 """
 
 from __future__ import annotations
@@ -68,8 +67,14 @@ from datetime import datetime
 
 from django.db import transaction
 
-from . import motor
-from .models import Encomenda, MudancaDeStatus, Oferta, Parametro
+from . import gestos, motor
+from .models import (
+    Encomenda,
+    MudancaDeStatus,
+    Oferta,
+    Parametro,
+    PerfilProfissional,
+)
 from .relogio import prazo_para_virar_aberta
 
 # OS DOIS ESTADOS EM QUE A ENCOMENDA ESTÁ ESPERANDO UM ALUNO DA FILA. O
@@ -145,7 +150,13 @@ def expirar_ofertas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, 
 
     **Silêncio não custa o lugar na fila** ([INV-ENC-J4]): nada aqui escreve em
     `data_entrada_fila`, e o varredor `ast` daquele guarda reprovaria se
-    escrevesse.
+    escrevesse. O que ele custa é uma linha no contador de silêncios
+    consecutivos, e a pausa automática quando a conta chega ao limite da lei §6
+    — as duas coisas na MESMA transação em que a oferta se fecha, para não
+    existir instante nenhum com o silêncio contado e o aluno ainda recebendo
+    ofertas.
+
+    A ordem das travas é a mesma dos gestos do aluno: encomenda, depois perfil.
     """
     vencidas = list(
         Oferta.objects.filter(
@@ -181,7 +192,11 @@ def expirar_ofertas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, 
                 # workers de pé (`armadilhas/319`: mutação que fica verde nem
                 # sempre acusa guarda cego).
                 continue
+            perfil = PerfilProfissional.objects.select_for_update().get(
+                pk=oferta.aluno_id
+            )
             oferta.responder(Oferta.Resultado.EXPIROU, em=agora)
+            gestos.contar_o_silencio(perfil, agora, site_id=site_id)
             if encomenda.status == Encomenda.Status.OFERECIDA:
                 encomenda.mudar_status(
                     Encomenda.Status.NA_FILA, motivo=MOTIVO_DA_EXPIRACAO
