@@ -747,6 +747,27 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-M3",
         "INV-ENC-M4",
         "INV-ENC-M5",
+        # A NEGOCIACAO chegou no degrau 2.12 (07/09/2026, TAR-134): a Proposta,
+        # o Acordo e as rodadas contadas. N1 e o [INV-ENC-S1] cumprido sem ser
+        # enfraquecido (negociar e trocar formularios, nunca conversar); N2 as
+        # rodadas, que impedem a vitoria por cansaco; N3 o congelamento do
+        # combinado, que e o que torna a disputa julgavel; N5 a gratuidade de
+        # negociar, que e o [INV-ENC-J4] na pista nova; N6 uma negociacao viva
+        # por aluno, somando as duas pistas; N7 o cliente fantasma que vai ao
+        # plantao e nunca ao proximo aluno; N8 o prazo que comeca no pagamento.
+        #
+        # N4 SUBSTITUI O [INV-ENC-D13] na ordem dos fatos, e nao na substancia:
+        # continua exigindo confirmacao registrada com autor, e agora exige
+        # tambem o Acordo. O codigo D13 fica APOSENTADO e nunca e reutilizado
+        # para outra coisa.
+        "INV-ENC-N1",
+        "INV-ENC-N2",
+        "INV-ENC-N3",
+        "INV-ENC-N4",
+        "INV-ENC-N5",
+        "INV-ENC-N6",
+        "INV-ENC-N7",
+        "INV-ENC-N8",
         # A lei de cursos, matrículas e alunos (06/09/2026): ninguém é aluno do
         # site, todo mundo é aluno de UM PRODUTO, e a matrícula é o que diz
         # qual. Liberar sem produto é 422 na porta, e a linha continua

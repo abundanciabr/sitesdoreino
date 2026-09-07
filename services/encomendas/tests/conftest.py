@@ -39,6 +39,13 @@ SITE_PADRAO = "escola-a"
 # O cartão decide o nível, e o banco recusa o par errado
 # (`o_cartao_decide_o_nivel`). A tabela mora aqui, e não dentro de cada fábrica,
 # porque duas fábricas a usam e duas cópias divergiriam no primeiro cartão novo.
+# A LISTA FECHADA DE ENTREGÁVEIS que o briefing declara, e da qual toda proposta
+# marca um subconjunto (`PLANO-AREA-DE-NEGOCIACAO.md` §4.1). Mora aqui porque as
+# duas fábricas a escrevem e os guardas da negociação a leem: uma cópia por
+# arquivo divergiria no primeiro entregável novo, e um teste que propusesse algo
+# fora dela ficaria vermelho por motivo errado.
+ENTREGAVEIS_DO_BRIEFING = ["modelo_3d", "texturas", "arquivo_fonte"]
+
 CARTAO_DO_NIVEL = {
     Encomenda.Nivel.INICIANTE: Encomenda.Cartao.ITEM_SIMPLES,
     Encomenda.Nivel.INTERMEDIARIO: Encomenda.Cartao.VESTIVEL_OU_VEICULO,
@@ -115,6 +122,7 @@ def criar_encomenda(db):
         return Encomenda.objects.create(
             site_id=site_id,
             origem=Encomenda.Origem.ESCOLA,
+            briefing={"entregaveis": list(ENTREGAVEIS_DO_BRIEFING)},
             cliente_id=cliente,
             cartao=CARTAO_DO_NIVEL[nivel],
             nivel=nivel,
@@ -161,6 +169,7 @@ def criar_projeto_no_mural(db):
             origem=Encomenda.Origem.ESCOLA,
             cliente_id=cliente,
             cartao=CARTAO_DO_NIVEL[nivel],
+            briefing={"entregaveis": list(ENTREGAVEIS_DO_BRIEFING)},
         )
 
     return fabrica
@@ -211,3 +220,55 @@ def tres_na_fila(semeado, criar_perfil):
         criar_perfil("pes-bia", entrada=agora - timedelta(days=20)),
         criar_perfil("pes-caio", entrada=agora - timedelta(days=10)),
     ]
+
+
+# ---------------------------------------------------------------------------
+# A NEGOCIAÇÃO — o cenário mínimo dos oito guardas N1 a N8 (degrau 2.12)
+# ---------------------------------------------------------------------------
+# O molde é o mesmo das fábricas de cima, e a razão de existirem é a mesma: oito
+# arquivos precisam de "um projeto do Mural, pego por um aluno elegível", e oito
+# cópias garantiriam que sete envelhecessem em silêncio.
+
+
+@pytest.fixture
+def formulario():
+    """Os seis campos de uma proposta, com um valor de cada tipo.
+
+    Devolve um `dict` NOVO a cada chamada, e nunca o mesmo objeto: um guarda que
+    mudasse uma chave contaminaria o seguinte, e o vermelho apareceria no
+    arquivo errado.
+    """
+
+    def fabrica(**mudancas):
+        campos = {
+            "valor_cents": 25_000,
+            "prazo_dias": 5,
+            "entregaveis": list(ENTREGAVEIS_DO_BRIEFING[:2]),
+            "correcoes_inclusas": 1,
+            "justificativa": "modelagem, uv e duas texturas",
+        }
+        campos.update(mudancas)
+        return campos
+
+    return fabrica
+
+
+@pytest.fixture
+def projeto_pego(semeado, dois_no_mural, criar_projeto_no_mural):
+    """Um projeto do Mural já reservado pela Ana, pela porta de verdade.
+
+    Passa por `mural.pegar`, e não por um `create` próprio, pela mesma razão que
+    a fixture `semeado` chama o semeador: um cenário montado por fora provaria a
+    negociação contra um estado que ninguém produz. O que volta é o par (projeto,
+    aluna), porque todo guarda daqui precisa dos dois.
+    """
+    from datetime import datetime, timezone as fuso
+
+    from apps.encomendas import mural as _mural
+
+    ana = dois_no_mural[0]
+    projeto = criar_projeto_no_mural()
+    agora = datetime.now(tz=fuso.utc)
+    assert _mural.pegar(projeto.pk, ana.pk, agora, site_id=SITE_PADRAO).feito
+    projeto.refresh_from_db()
+    return projeto, ana
