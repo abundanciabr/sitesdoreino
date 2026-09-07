@@ -30,10 +30,17 @@ from __future__ import annotations
 
 import logging
 
-from .models import AjudaAceita, ConversaAberta, Pessoa
+from .models import AjudaAceita, Concessao, ConquistaDefinicao, ConversaAberta, Pessoa
 from .motor import _quando, aplicar
+from .validacao import conceder
 
 logger = logging.getLogger(__name__)
+
+#: O marco da trilha que o selo do portfólio acende. O slug é o mesmo que
+#: `semear_economia.CONQUISTAS` planta, e quem impede os dois de divergirem é
+#: `tests/test_o_marco_do_portfolio.py`, que procura no banco a linha semeada
+#: por este nome.
+MARCO_DO_PORTFOLIO = "portfolio-publicado"
 
 
 def _creditar(envelope: dict) -> None:
@@ -254,6 +261,116 @@ def ao_aula_concluida(envelope: dict) -> None:
     _creditar(envelope)
 
 
+# ---------------------------------------------------------------------------
+# O PORTFÓLIO (degrau 15, 06/09/2026) — o selo da escola acende o marco
+# ---------------------------------------------------------------------------
+
+
+def ao_portfolio_conferido(envelope: dict) -> None:
+    """A escola conferiu o portfólio de um aluno, e o marco da trilha acende.
+
+    **ELE VALE ZERO XP, e isso é o coração do produto**, não economia nem
+    esquecimento (`PLANO-PORTFOLIO-DO-ALUNO.md` §7, decisão 7 da Sessão A). Se
+    ser conferido pela escola pagasse pontos, o marco viraria mais um item do
+    andaime e o aluno aprenderia a perseguir o número em vez da coisa. Por isso
+    este handler NÃO chama `_creditar`: ele não passa pelo motor de XP, não toca
+    em regra de pontuação e não move Cristal. O banco fecha a mesma porta por
+    baixo (`marco_real_rende_zero_xp`), e a trava daqui é a de cima: se o slug
+    um dia nomear um andaime, este handler para em vez de creditar por um selo.
+
+    **Quem valida é gente, e o nome dela vem no envelope.** O `ator_id` é o id
+    de plataforma do monitor que conferiu (o contrato o declara obrigatório e
+    nunca nulo), e é ele que fica na auditoria da concessão. Sem esse nome não
+    há resposta para "quem disse que sim?" meses depois, então um envelope sem
+    ator não acende nada.
+
+    **O aluno vem de `data.aluno_id`**, que o contrato descreve como id da
+    PLATAFORMA. Nenhum outro campo serve de segunda tentativa: `portfolio_id` é
+    id local da célula `pages`, e conceder por ele criaria uma pessoa fantasma
+    que nenhuma sessão jamais resolve (`armadilhas/255`).
+
+    **A peça não vem junto, e não deveria.** Link, legenda e apelido ficam na
+    `pages`; a gamificação guarda que o marco aconteceu e nada mais (plano §7:
+    a peça mora numa casa só). Quem precisar do detalhe pergunta à célula na
+    hora de MOSTRAR.
+
+    Idempotente pelo par (pessoa, marco): o mesmo selo reentregue pelo relay
+    acende uma vez só, e o aluno é parabenizado uma vez só.
+    """
+    data = envelope.get("data") or {}
+    site_id = data.get("site_id")
+    aluno_id = data.get("aluno_id")
+    quem_conferiu = envelope.get("ator_id")
+    if not (site_id and aluno_id and quem_conferiu):
+        logger.warning(
+            "selo de portfólio %s chegou sem site, aluno ou quem conferiu: "
+            "não acendo o marco",
+            envelope.get("event_id"),
+        )
+        return
+
+    if quem_conferiu == aluno_id:
+        logger.warning(
+            "selo de portfólio %s diz que o aluno conferiu a si mesmo: não "
+            "acendo o marco. Reconhecimento assinado pela própria pessoa não "
+            "reconhece nada.",
+            envelope.get("event_id"),
+        )
+        return
+
+    marco = ConquistaDefinicao.objects.filter(
+        site_id=site_id, slug=MARCO_DO_PORTFOLIO
+    ).first()
+    if marco is None:
+        logger.warning(
+            "o site %s não tem a conquista %s: rode `semear_economia` nesta "
+            "escola antes de esperar o marco do portfólio acender",
+            site_id,
+            MARCO_DO_PORTFOLIO,
+        )
+        return
+    if marco.classe != ConquistaDefinicao.Classe.MARCO:
+        logger.error(
+            "a conquista %s do site %s é da classe %r, e não `marco`: NÃO "
+            "acendo. Conceder um andaime por este selo pagaria XP por uma "
+            "conferência, e o marco real vale zero de propósito.",
+            MARCO_DO_PORTFOLIO,
+            site_id,
+            marco.classe,
+        )
+        return
+    if not marco.ativa:
+        logger.info(
+            "o marco %s do site %s está desligado: o selo chegou e não acendo "
+            "nada. Ligar uma conquista é decisão do mantenedor, em "
+            "/admin/economia/.",
+            MARCO_DO_PORTFOLIO,
+            site_id,
+        )
+        return
+
+    pessoa, _ = Pessoa.objects.get_or_create(
+        id_da_plataforma=aluno_id,
+        defaults={"email": f"{aluno_id}@desconhecido.invalid"},
+    )
+    _, nova = conceder(
+        pessoa=pessoa,
+        site_id=site_id,
+        conquista=marco,
+        validador_id=quem_conferiu,
+        validador_papel=Concessao.PapelDoValidador.MONITOR,
+        origem_event_id=str(envelope.get("event_id") or ""),
+    )
+    if nova:
+        logger.info(
+            "marco %s aceso para %s no site %s pelo selo da escola (evento %s)",
+            MARCO_DO_PORTFOLIO,
+            aluno_id,
+            site_id,
+            envelope.get("event_id"),
+        )
+
+
 HANDLERS = {
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,
@@ -263,6 +380,7 @@ HANDLERS = {
     "forum.mensagem-criada": ao_forum_mensagem_criada,
     "forum.resposta-aceita": ao_forum_resposta_aceita,
     "aula.concluida": ao_aula_concluida,
+    "pages.portfolio.conferido": ao_portfolio_conferido,
 }
 
 # OS ASSUNTOS QUE CHEGAM E MESMO ASSIM NÃO VIRAM PONTO, declarados aqui porque é
@@ -285,5 +403,10 @@ NAO_CREDITAM = {
         "o contrato do quiz identifica a pessoa por e-mail, e esta célula só "
         "sabe creditar id de plataforma; o caminho é findPersonByEmail, da "
         "identidade, e é degrau próprio"
+    ),
+    "pages.portfolio.conferido": (
+        "o selo da escola acende um MARCO REAL, e marco real vale zero XP de "
+        "propósito; pendurar uma regra de pontuação neste fato não faria número "
+        "nenhum mexer, e o banco recusaria o marco que tentasse pagar"
     ),
 }
