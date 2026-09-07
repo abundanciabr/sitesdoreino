@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-050326-TAR-254-explicada",
+  "tarefa": "TAR-254",
+  "evento": "explicada",
+  "quando": "2026-09-07T05:03:26+00:00",
+  "quem": "defeito medido pelo simulador da TAR-124 (PR #1307) em 07/09/2026: das 30 encomendas simuladas por 8 dias, uma terminou presa em 'aberta' sem elegivel e sem aviso a ninguem; lei de referencia PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md secao 6.4 e PLANO-AREA-DE-NEGOCIACAO.md secao 3.1",
+  "o_que_e": "Quando uma encomenda passa 24 horas na fila sem nenhum aluno aceitar, o sistema ja a transforma em 'chamada aberta': avisa todo mundo que pode fazer aquele tipo de trabalho, e o primeiro que topar leva. Isso funciona quando existe pelo menos um aluno apto. Mas quando NENHUM aluno esta apto ainda para aquele nivel, o que e comum nos primeiros meses da escola, a chamada aberta e feita para ninguem: ela fica pendurada nesse estado e nada mais acontece, para sempre.",
+  "o_que_muda": "A encomenda deixa de poder ficar presa para sempre em chamada aberta. Depois de um tempo, um parametro igual aos outros prazos da fila, se continuar sem ninguem elegivel ou sem ninguem aceitar, ela vai automaticamente para o plantao, do mesmo jeito que a encomenda presa na fila comum ja vai hoje. O cliente que pagou deixa de esperar um retorno que nunca chegaria sozinho, e a escola passa a saber, sem precisar que alguem va caçar manualmente, que existe um pedido sem ninguem para atende-lo.",
+  "exemplo": "No teste com 100 alunos e 30 encomendas rodando 8 dias seguidos (o simulador da TAR-124, PR #1307), uma das 30 encomendas terminou os oito dias inteiros parada em chamada aberta, sem ninguem elegivel, sem nenhum alarme e sem o plantao saber. Na vida real isso e um cliente que pagou e nunca mais ouviu falar do pedido dele.",
+  "importancia": 75
+}
