@@ -255,8 +255,10 @@ def test_se_o_slug_apontar_para_uma_medalha_nada_acende_e_ninguem_ganha_xp():
 
     _entregar(_selo())
 
-    assert Concessao.objects.count() == 0
+    # O XP primeiro, de propósito: é ele que esta prova existe para medir, e uma
+    # asserção de concessão na frente esconderia o crédito quando a trava cair.
     _nada_foi_pago()
+    assert Concessao.objects.count() == 0
 
 
 def test_o_motor_automatico_nunca_acende_um_marco_sozinho():
