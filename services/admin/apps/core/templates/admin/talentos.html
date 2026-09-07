@@ -1,0 +1,141 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A REDE DE TALENTOS (/admin/placar/talentos/, 07/09/2026, degrau 17 do plano do
+painel de gestão). O laço de talentos do Scale OS (documento 2, §45) desenhado
+inteiro, com o número de cada etapa ao lado, e o formulário das três contagens
+que só a escola sabe. As regras moram em apps/core/talentos.py.
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py).
+
+A regra que governa cada `{% if %}` desta tela: AUSÊNCIA DE DADO NUNCA VIRA
+CONCLUSÃO (armadilhas/271). São quatro estados diferentes, e nenhum deles é
+zero: "nunca contado" (a escola ainda não contou), "não consigo olhar" (o livro
+não chegou até esta tela), "sem dados" (o cartão não tem fonte nenhuma, e é ele
+quem diz por quê) e "cartão inválido". Zero só aparece quando alguém contou
+zero.
+{% endcomment %}
+{% block titulo %}A rede de talentos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>A rede de talentos</h1>
+  <p class="subtitulo">
+    O caminho que leva uma aluna da escola até um trabalho num estúdio, desenhado
+    do começo ao fim. Ele gira: quanto mais alunas com trabalho, mais a escola
+    vale, e mais alunas chegam.
+  </p>
+
+  <p class="lei">
+    Três etapas deste caminho acontecem fora do sistema, em conversas que
+    nenhuma tela vê: quantas alunas a escola escolheu, quantos estúdios
+    aceitaram, e quantas alunas de fato começaram um trabalho. Essas três a
+    escola conta e digita aqui embaixo. O resto se mede sozinho.
+  </p>
+
+  {% if laco.livro_ausente %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui olhar as contagens.</b> O livro de ocorrências não chegou
+    até esta tela, então ela não sabe se alguma contagem já foi feita. Isto não
+    é "nenhuma contagem": é a tela sem a fonte. Abra a
+    <a href="{% url 'painel' %}">porta do painel</a> e diga a uma sessão que o
+    livro não está chegando à área administrativa.
+  </p>
+  {% endif %}
+
+  {% if laco.nunca_contadas == 3 and not laco.livro_ausente %}
+  <p class="recado">
+    <b>Primeira vez aqui.</b> Nenhuma das três etapas foi contada ainda, e por
+    isso o caminho aparece com a pergunta no lugar do número. Conte o que já
+    existe hoje, mesmo que seja zero, no formulário do fim da página: é a
+    primeira contagem que dá começo à conta.
+  </p>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-20">O caminho, etapa por etapa</h2>
+  <ul class="notas">
+    {% for passo in laco.passos %}
+    <li>
+      <b>{{ passo.titulo }}</b>
+      {% if passo.estado == "medido" %}
+        <b>{{ passo.valor }}</b>
+        {% if passo.cartao_lido.unidade %}{{ passo.cartao_lido.unidade }}{% endif %}
+        {% if passo.contado_em %}
+          <span class="rotulo">contado por você</span>
+          em {{ passo.contado_em }} (há {{ passo.dias }} dia{{ passo.dias|pluralize:"s" }}).
+          {% if passo.velha %}Esta contagem já passou do prazo do cartão: conte de novo.{% endif %}
+        {% else %}
+          <span class="rotulo">medido agora</span>
+        {% endif %}
+      {% elif passo.estado == "nunca-contado" %}
+        <span class="rotulo">nunca contado</span>
+        Ninguém contou esta etapa ainda. Não é zero: é a pergunta sem resposta.
+      {% elif passo.estado == "nao-consigo-olhar" %}
+        <span class="rotulo">não consigo olhar</span>
+        O livro não chegou, e a última contagem mora nele.
+      {% elif passo.estado == "nao-medi" %}
+        <span class="rotulo">não consigo contar</span>
+        A parte que guarda os alunos não respondeu agora. Recarregue daqui a pouco.
+      {% elif passo.estado == "sem-fonte" %}
+        <span class="rotulo">sem dados</span>
+        {{ passo.cartao_lido.sem_fonte_porque }}
+      {% elif passo.estado == "no-placar" %}
+        <span class="rotulo">no placar</span>
+        Este número já tem fonte e aparece no <a href="{% url 'placar' %}">placar</a>.
+      {% else %}
+        <span class="rotulo">cartão inválido</span>
+        {% for p in passo.problemas %}{{ p }} {% endfor %}
+      {% endif %}
+      <br>{{ passo.porque }}
+      {% if passo.cartao_lido.acao %}<br><b>O gesto:</b> {{ passo.cartao_lido.acao }}{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="recado-fraco">
+    E daqui volta ao começo: aluna com trabalho num estúdio é a melhor
+    propaganda que a escola tem, e é ela que traz a próxima turma.
+  </p>
+
+  <h2 class="titulo-de-bloco espaco-20">Contar as três etapas</h2>
+  <p class="recado">
+    Digite só o que você contou hoje, e deixe vazio o que não contou (vazio não
+    é zero: a contagem anterior continua valendo). O total de cada campo é o
+    total acumulado, e não o que aconteceu esta semana.
+  </p>
+
+  {% if recusas %}
+  <div class="aviso borda-vermelha">
+    <b>Não gravei nada, e nada se perdeu.</b> Corrija abaixo e monte o pedido de novo.
+    <ul class="notas">{% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form class="forma" method="post" action="{% url 'talentos' %}">
+    {% csrf_token %}
+    <label for="talentos">Alunas já selecionadas para a rede, no total</label>
+    <input id="talentos" name="talentos" type="number" min="0" step="1" value="{{ campos.talentos|default:'' }}">
+    <label for="estudios">Estúdios que já aceitaram receber alunas, no total</label>
+    <input id="estudios" name="estudios" type="number" min="0" step="1" value="{{ campos.estudios|default:'' }}">
+    <label for="encaixes">Alunas que já começaram um trabalho num estúdio, no total</label>
+    <input id="encaixes" name="encaixes" type="number" min="0" step="1" value="{{ campos.encaixes|default:'' }}">
+    <button type="submit">Montar o pedido para o robô</button>
+  </form>
+
+  {% if montou %}
+    {% if pedido %}
+      <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
+      <p class="recado-fraco">
+        Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi
+        gravado aqui: o que vale é o que chegar ao livro. Recarregar a página
+        apaga o texto.
+      </p>
+      <textarea class="colar" rows="16" readonly>{{ pedido }}</textarea>
+    {% elif not recusas %}
+      <p class="aviso borda-amarela">
+        <b>Nada para pedir.</b> Preencha ao menos uma das três contagens.
+      </p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

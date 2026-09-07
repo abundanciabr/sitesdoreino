@@ -78,6 +78,7 @@ from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import excluir_tarefa, robos
+from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
     aula_publicar,
@@ -576,6 +577,15 @@ urlpatterns = [
     # `painel/mapa-do-site.json` é `"gesto": false` — o endereço abre no
     # navegador, e é para abrir mesmo (`armadilhas/330`).
     path("placar/fechamento/", fechamento, name="fechamento"),
+    # A REDE DE TALENTOS (`apps/core/talentos.py`, 07/09/2026) — o laço de
+    # talentos do Scale OS desenhado inteiro, e as três contagens que só a
+    # escola sabe (alunas selecionadas, estúdios parceiros, encaixes). É o
+    # degrau 17 do plano do painel de gestão. Sub-rota do placar pela mesma
+    # razão das cinco irmãs acima: o laço termina na estrela-guia "alunos com
+    # resultado profissional", que É um número do placar. Aceita POST, e o
+    # POST não escreve nada (devolve o pedido para o robô), então a entrada
+    # dela no `painel/mapa-do-site.json` é `"gesto": false`.
+    path("placar/talentos/", talentos, name="talentos"),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
