@@ -2284,6 +2284,38 @@
       "gesto": true,
       "titulo": "Apagar um texto do livro",
       "descricao": "Não é uma página: destrói o texto e todo o histórico dele, e pede o endereço digitado para confirmar. Não tem volta, porque este texto não existe em nenhum outro lugar."
+    },
+    {
+      "celula": "pages",
+      "rota": "^estudio/(?P<apelido>[a-z0-9-]+)$",
+      "endereco": "/pages/estudio/(?P<apelido>[a-z0-9-]+)$",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A vitrine que o aluno manda ao cliente",
+      "descricao": "A pagina de portfolio com endereco proprio, montada com as obras que o aluno escolheu e com o selo da escola quando ele existe. Ela so existe se o aluno ligar, e some no instante em que ele desligar. Fica fora dos buscadores de proposito, nao mostra e-mail, telefone nem nome completo, e se imprime em PDF pelo navegador.",
+      "observacao": "Pela internet o endereco e meshcraft.top/estudio/<apelido>: o roteador entrega este caminho a esta celula sem cortar o prefixo. E a unica pagina desta casa que responde sem cracha, porque quem a le e um cliente que nunca vai entrar na plataforma. Apelido desligado e apelido que nunca existiu respondem a mesma coisa, para ninguem descobrir quem tem portfolio."
+    },
+    {
+      "celula": "pages",
+      "rota": "vitrine/publicar",
+      "endereco": "/pages/vitrine/publicar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Publicar a vitrine",
+      "descricao": "Nao e uma pagina: e o que acontece quando o aluno escolhe o apelido e aperta o botao de por o portfolio no ar. Abrir este endereco no navegador nao mostra nada.",
+      "observacao": "A internet alcanca este endereco, e isso e o esperado: quem corta o prefixo e o Django, nao o roteador. Quem fecha a porta e o cracha do aluno com matricula ativa, conferido antes de qualquer escrita."
+    },
+    {
+      "celula": "pages",
+      "rota": "vitrine/despublicar",
+      "endereco": "/pages/vitrine/despublicar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Tirar a vitrine do ar",
+      "descricao": "Nao e uma pagina: e o que acontece quando o aluno aperta o botao de tirar o portfolio do ar. O endereco publico para de responder na hora, e nada do trabalho dele e apagado.",
+      "observacao": "A internet alcanca este endereco, e isso e o esperado: quem corta o prefixo e o Django, nao o roteador. Quem fecha a porta e o cracha do aluno com matricula ativa, conferido antes de qualquer escrita."
     }
   ]
 }
