@@ -1,0 +1,19 @@
+{
+  "arquivo": "256-decidir-o-destino-da-coluna-pista-no-mural-encomendas-ou-ela",
+  "id": "TAR-256",
+  "titulo": "Decidir o destino da coluna pista no Mural (encomendas): ou ela passa a valer para todos os estados e alguem le de verdade, ou ela sai do banco",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-134"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com a decisao tomada e provada por mutacao; se a coluna ficar, o CHECK cobre aberta e existe leitura real dela em producao; se sair, a migracao de remocao aplicada/revertida/reaplicada num PostgreSQL 17 real.",
+  "despacho": "LEIA ANTES: PR #1303 (o Mural, TAR-133, mergeado 07/09/2026 no commit 7cb450f8), armadilhas/INDICE.md (Ctrl+F pela tecnologia), constituicoes/AGENTS.encomendas.md. Esta tarefa depende de TAR-134 (a Proposta e o Acordo) porque ela mexe nos mesmos arquivos e está em construção agora; não comece antes do PR dela pousar, e leia o código dela antes de tocar models.py, mural.py e tique.py, porque os números de linha abaixo podem ter deslocado. ESTA TAREFA MEXE EM MIGRAÇÃO: não pode correr junto com outra tarefa da mesma célula (encomendas) ao mesmo tempo — confira PRs abertos que tocam encomendas antes de começar.\n\nTAREFA: o revisor achou que a coluna pista é escrita e NUNCA lida por código de produção. services/encomendas/apps/encomendas/models.py:704-712 — a coluna é escrita em mural.py:173 e tique.py:278, mas nenhum código de produção a lê. O CHECK no_mural_so_na_pista_do_mural cobre só no_mural/reservada, então o estado em que a coluna mais mentiria (aberta com pista=fila) está descoberto, e a fixture de tests/conftest.py:129-133 produz exatamente esse par, porque deriva a pista de ESTADOS_DO_MURAL_RESERVAVEL, que não contém aberta. Além disso test_maquinas_de_estado.py:379-384 cria os 19 estados com pista=MURAL fixo, fabricando em massa na_fila com pista=mural.\n\nDECISÃO A TOMAR NA TAREFA (escolha uma e execute até o fim, com prova por mutação):\n\n(A) A pista passa a derivar do status por completo, incluindo aberta, e o CHECK cobre os dois sentidos (nenhum estado pode ter uma pista incoerente com seu status, para os 19 estados). Corrija a fixture de tests/conftest.py e o test_maquinas_de_estado.py para não fabricarem pares incoerentes.\n\n(B) A coluna sai do modelo (migração de remoção) e volta no dia em que alguém a ler de verdade. Aplique, reverta e reaplique a migração num PostgreSQL 17 real, e remova as duas escritas (mural.py:173, tique.py:278) e o CHECK, sem deixar coluna morta.\n\nDuas travas de banco em cima de um dado que ninguém consulta é peso sem contrapartida — não é aceitável fechar esta tarefa mantendo a coluna, o CHECK parcial e nenhuma leitura.\n\nProve por mutação depois do verde (armadilhas/195): na opção A, sabote o CHECK novo e confirme vermelho NA ASSERÇÃO ao inserir aberta/pista incoerente; na opção B, confirme que a migração de remoção aplica, reverte e reaplica sem erro.\n\nO registro do livro EMBARCA neste PR, no mesmo ramo, citando o número dele (armadilhas/185): abra o PR, leia o número, escreva o registro, commite, e peça o pouso com python ci/esperar.py --checks N --teto 20 --dizendo \"...\" --e-pousar pela ferramenta Monitor.",
+  "origem": "revisao do PR #1303 (o Mural, TAR-133) por sessao despacho-fila-2026-09-07: setimo problema achado, sobrou sem dono",
+  "criada_em": "2026-09-07"
+}
