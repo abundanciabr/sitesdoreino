@@ -1,8 +1,8 @@
 """As três ações da Caixa, feitas de dentro do Admin (28/08/2026).
 
-Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`. Mover de fase,
-escrever a avaliação e assinar a obra saíram das telas da Caixa e passaram a
-acontecer daqui — pelo contrato, e com as travas todas continuando do outro lado.
+Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`. Mover de fase
+e escrever a avaliação saíram das telas da Caixa e passaram a acontecer daqui,
+pelo contrato, com as travas todas continuando do outro lado.
 
 O que estes guardas protegem:
 
@@ -14,8 +14,9 @@ O que estes guardas protegem:
 3. **A auditoria acontece nos três desfechos.** É o desfecho RECUSADO que
    justifica esta tabela existir: quando a Caixa diz não, nada é escrito lá — sem
    a linha daqui, o gesto não teria deixado rastro em lugar nenhum.
-4. **A assinatura não aparece para quem não assina**, e a tela explica por quê
-   em vez de mostrar um botão morto.
+4. **A assinatura de obra não está mais nesta tela.** Ela saiu em 06/09/2026,
+   junto com a exigência de ChangeSpec que destravava (decisão do mantenedor em
+   pergunta estruturada); o guarda existe para ela não voltar sem querer.
 """
 
 import json
@@ -82,17 +83,12 @@ def uma_ideia(**campos) -> dict:
         "parada_desde": "2026-07-12T10:00:00+00:00",
         "ja_ouviram": True,
         "tem_avaliacao": False,
-        "tem_changespec": False,
         "motivo_da_saida": "",
         "avaliacao": None,
         "arquivada": False,
         "arquivada_em": "",
         "motivo_do_arquivamento": "",
         "apagada": False,
-        # A ficha da assinatura (TAR-023). Vazia por padrão — é assim que a
-        # Caixa responde uma ideia que ninguém assinou. O campo é OPCIONAL no
-        # contrato, e há um guarda para a tela aguentar ele não vir.
-        "changespecs": [],
         # O rastro das correcoes de texto (31/08/2026). Vazio por padrao: e
         # assim que a Caixa responde uma ideia em que ninguem mexeu. Opcional
         # no contrato, e ha guarda para a tela aguentar ele nao vir.
@@ -116,7 +112,6 @@ def a_caixa_conta(ideia=None, **topo):
     respx.get(f"{IDEIAS}/7").mock(return_value=httpx.Response(200, json=corpo))
     lista = {
         "quadro": "Meshcraft",
-        "pode_assinar": True,
         "pessoas_esperando": 176,
         "silencio_medio_em_dias": 14,
         "pessoas_em_silencio_demais": 0,
@@ -162,134 +157,29 @@ def test_a_ideia_que_a_caixa_nao_conta_nao_vira_tela_quebrada():
 
 
 @respx.mock
-def test_quem_nao_assina_ve_a_explicacao_e_nao_um_botao_morto():
-    """Botão desabilitado protege a tela, não a regra — e não ensina nada."""
-    cliente = _dentro()
-    a_caixa_conta(pode_assinar=False)
+def test_a_tela_da_ideia_nao_tem_mais_a_assinatura_de_obra():
+    """A seção saiu em 06/09/2026, e a fase anda sem ela.
 
-    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
-
-    assert reverse("caixa_assinar", args=[7]) not in pagina
-    assert "Só quem está na lista de aprovadores" in pagina
-
-
-@respx.mock
-def test_quem_assina_ve_o_formulario():
+    O mantenedor pediu a tela só com as FASES, e escolheu tirar junto a
+    exigência de ChangeSpec que essa seção destravava — sem isso, "Em
+    desenvolvimento" ficaria trancado sem chave nenhuma. Este guarda existe
+    porque o `FORMATO-CHANGESPEC.md` §5 continua escrito: sem ele, a primeira
+    sessão que o ler devolve o formulário "consertando" a ausência.
+    """
     cliente = _dentro()
     a_caixa_conta()
 
     pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
 
-    assert reverse("caixa_assinar", args=[7]) in pagina
-    assert "Assinar e liberar a obra" in pagina
+    assert "assinatura" not in pagina.lower()
+    assert "ChangeSpec" not in pagina
+    # E o que ele PEDIU continua na tela, no mesmo lugar.
+    assert reverse("caixa_mover", args=[7]) in pagina
+    assert "Mover de fase" in pagina
 
 
 # ---------------------------------------------------------------------------
-# A FICHA da assinatura (TAR-023) — "está assinada?" e "com base em quê?"
-# ---------------------------------------------------------------------------
-#
-# Até 30/08/2026 esta tela conhecia um booleano só. Ela deixava ASSINAR e não
-# deixava CONFERIR o que foi assinado — a última das cinco telas de
-# `/forms/sugestoes/moderacao` sem substituta aqui, e o que travava a
-# aposentadoria delas (TAR-014).
-
-
-def uma_ficha(**campos) -> dict:
-    ficha = {
-        "change_id": "CS-PORTFOLIO-0001",
-        "documento": "docs/changespecs/CS-PORTFOLIO-0001.md",
-        "aprovado_por": "Davi (mantenedor)",
-        "aprovado_em": "2026-08-25",
-        "registrado_por": "Davi",
-        "registrado_em": "2026-08-25T18:30:00+00:00",
-    }
-    ficha.update(campos)
-    return ficha
-
-
-@respx.mock
-def test_a_ficha_da_assinatura_aparece_inteira_na_tela():
-    """Os quatro fatos que só existiam na tela velha da Caixa."""
-    cliente = _dentro()
-    a_caixa_conta(uma_ideia(tem_changespec=True, changespecs=[uma_ficha()]))
-
-    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
-
-    assert "CS-PORTFOLIO-0001" in pagina
-    assert "docs/changespecs/CS-PORTFOLIO-0001.md" in pagina
-    assert "Davi (mantenedor)" in pagina
-    assert "2026-08-25" in pagina
-
-
-@respx.mock
-def test_a_ficha_mostra_TODAS_as_versoes_assinadas():
-    """Escopo que mudou nasce `-v2`; mostrar só a última esconderia a corrente."""
-    cliente = _dentro()
-    a_caixa_conta(
-        uma_ideia(
-            tem_changespec=True,
-            changespecs=[
-                uma_ficha(change_id="CS-PORTFOLIO-0001-v2"),
-                uma_ficha(change_id="CS-PORTFOLIO-0001"),
-            ],
-        )
-    )
-
-    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
-
-    assert "CS-PORTFOLIO-0001-v2" in pagina
-    assert pagina.index("CS-PORTFOLIO-0001-v2") < pagina.rindex("CS-PORTFOLIO-0001")
-
-
-@respx.mock
-def test_o_documento_que_e_URL_vira_link_e_o_caminho_do_repo_nao():
-    """Um `href` relativo levaria a um 404 com cara de link quebrado do Admin."""
-    cliente = _dentro()
-    a_caixa_conta(
-        uma_ideia(
-            tem_changespec=True,
-            changespecs=[uma_ficha(documento="https://exemplo.test/cs-1")],
-        )
-    )
-
-    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
-
-    assert '<a href="https://exemplo.test/cs-1"' in pagina
-
-
-@respx.mock
-def test_quem_assina_continua_podendo_registrar_uma_versao_nova():
-    """Assinada não é o fim: `-v2` existe, e sem esta tela ele fica sem porta.
-
-    A tela velha listava e oferecia o formulário na mesma página; esconder o
-    formulário depois da primeira assinatura tiraria da plataforma a única
-    forma de registrar a versão seguinte no dia em que ela for aposentada.
-    """
-    cliente = _dentro()
-    a_caixa_conta(uma_ideia(tem_changespec=True, changespecs=[uma_ficha()]))
-
-    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
-
-    assert reverse("caixa_assinar", args=[7]) in pagina
-    assert "-v2" in pagina
-
-
-@respx.mock
-def test_a_tela_aguenta_a_ficha_ausente():
-    """`changespecs` é opcional no contrato — a Caixa de ontem não o manda."""
-    cliente = _dentro()
-    corpo = uma_ideia(tem_changespec=True)
-    del corpo["changespecs"]
-    a_caixa_conta(corpo)
-
-    resposta = cliente.get(reverse("caixa_ideia", args=[7]))
-
-    assert resposta.status_code == 200
-    assert "já está assinada" in texto(resposta)
-
-
-# ---------------------------------------------------------------------------
-# As três ações
+# As duas ações
 # ---------------------------------------------------------------------------
 
 
@@ -425,54 +315,6 @@ def test_a_nota_em_branco_continua_valendo_zero():
     assert enviado["notas"] == "só um bilhete"
 
 
-@respx.mock
-def test_assinar_manda_o_documento_e_quem_assinou():
-    cliente = _dentro()
-    a_caixa_conta()
-    escrita = respx.post(f"{IDEIAS}/7/changespec").mock(
-        return_value=httpx.Response(200, json=uma_ideia(tem_changespec=True))
-    )
-
-    cliente.post(
-        reverse("caixa_assinar", args=[7]),
-        {
-            "change_id": "CS-PORTFOLIO-0001",
-            "documento": "docs/changespecs/CS-PORTFOLIO-0001.md",
-            "aprovado_por": "Davi",
-            "aprovado_em": "2026-08-28",
-        },
-    )
-
-    enviado = json.loads(escrita.calls.last.request.content)
-    assert enviado["change_id"] == "CS-PORTFOLIO-0001"
-    assert enviado["aprovado_por"] == "Davi"
-
-
-@respx.mock
-def test_a_recusa_do_aprovador_chega_com_a_frase_da_caixa():
-    """Estar no Admin não dá o direito de assinar — e a Caixa é quem recusa."""
-    cliente = _dentro()
-    a_caixa_conta()
-    respx.post(f"{IDEIAS}/7/changespec").mock(
-        return_value=httpx.Response(
-            403, json={"erro": "Só quem está na lista de aprovadores da Caixa autoriza"}
-        )
-    )
-
-    resposta = cliente.post(
-        reverse("caixa_assinar", args=[7]),
-        {
-            "change_id": "CS-X-0001",
-            "documento": "docs/changespecs/CS-X-0001.md",
-            "aprovado_por": "Alguém",
-            "aprovado_em": "2026-08-28",
-        },
-    )
-
-    assert "erro=" in resposta["Location"]
-    assert "aprovadores" in resposta["Location"]
-
-
 # ---------------------------------------------------------------------------
 # A auditoria — nos TRÊS desfechos
 # ---------------------------------------------------------------------------
@@ -505,24 +347,16 @@ def test_a_acao_RECUSADA_tambem_deixa_rastro():
     """
     cliente = _dentro()
     a_caixa_conta()
-    respx.post(f"{IDEIAS}/7/changespec").mock(
-        return_value=httpx.Response(403, json={"erro": "não é aprovador"})
+    respx.post(f"{IDEIAS}/7/avaliacao").mock(
+        return_value=httpx.Response(422, json={"erro": "nota fora da escala"})
     )
 
-    cliente.post(
-        reverse("caixa_assinar", args=[7]),
-        {
-            "change_id": "CS-X-0001",
-            "documento": "docs/changespecs/CS-X-0001.md",
-            "aprovado_por": "Alguém",
-            "aprovado_em": "2026-08-28",
-        },
-    )
+    cliente.post(reverse("caixa_avaliar", args=[7]), {"impacto_educacional": "3"})
 
     linha = Registro.objects.get()
-    assert linha.acao == Registro.ASSINAR_OBRA
+    assert linha.acao == Registro.AVALIAR_IDEIA
     assert linha.desfecho == Registro.RECUSADO_PELA_CELULA
-    assert "aprovador" in linha.detalhe
+    assert "escala" in linha.detalhe
 
 
 @respx.mock
@@ -543,7 +377,6 @@ def test_a_caixa_fora_do_ar_tambem_deixa_rastro():
     [
         "caixa_mover",
         "caixa_avaliar",
-        "caixa_assinar",
         "caixa_arquivar",
         "caixa_desarquivar",
         "caixa_apagar",
@@ -568,7 +401,6 @@ def _dentro_sem_rede() -> Client:
         "caixa_ideia",
         "caixa_mover",
         "caixa_avaliar",
-        "caixa_assinar",
         "caixa_arquivar",
         "caixa_desarquivar",
         "caixa_apagar",

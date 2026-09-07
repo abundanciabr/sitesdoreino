@@ -23,7 +23,7 @@
           coisas esperando você. É <b>pelo menos</b> isso, porque uma das filas
           não respondeu agora.
         {% else %}
-          coisas esperando você, nas três filas que esta tela já enxerga.
+          coisas esperando você, nas duas filas que esta tela já enxerga.
         {% endif %}
       </p>
     </div>
@@ -72,7 +72,7 @@
 
   {% if not esperando and not mudas %}
     <p class="aviso espaco-20">
-      <b>Você está em dia com as três filas que esta tela enxerga.</b>
+      <b>Você está em dia com as duas filas que esta tela enxerga.</b>
       Nada aqui precisa de você agora.
     </p>
   {% endif %}
@@ -80,7 +80,7 @@
   {% comment %}
   A CONFISSÃO, e ela é obrigatória enquanto a lista não estiver vazia.
 
-  Esta tela nasceu com três das seis filas do site. Uma portaria que enxerga
+  Esta tela enxerga duas das cinco filas do site. Uma portaria que enxerga
   metade e não avisa é pior que portaria nenhuma: ela ensina o mantenedor a
   ler "nada esperando você" como "não há nada", e no dia em que um portfólio
   ficar parado ele não vai saber. As três de baixo entram na conta no degrau 3

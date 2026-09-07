@@ -723,11 +723,6 @@ class CaixaClient:
     def ideias(self, por_email: str = "", com_conversa: bool = False) -> "dict | None":
         """O quadro inteiro com os FATOS de cada ideia, ou `None`.
 
-        `por_email` não filtra nada: ele responde uma pergunta só — *esta pessoa
-        pode assinar?* — e a resposta vem no campo `pode_assinar`. Quem recusa de
-        verdade é a Caixa, na escrita; isto serve para a tela não desenhar um
-        botão que já se sabe que vai ser recusado.
-
         `com_conversa` pede o TEXTO dos comentários de cada ideia (contrato de
         02/09/2026, RITOS §3). Ele é opcional aqui pelo mesmo motivo que é
         opcional lá: a conversa cresce com o uso, e as telas de operação só
@@ -918,11 +913,6 @@ class CaixaClient:
     def avaliar(self, ideia_id: int, *, campos: dict, quem: dict):
         return self._escrever(
             f"/gestao/ideias/{ideia_id}/avaliacao", {**campos, **quem}
-        )
-
-    def registrar_changespec(self, ideia_id: int, *, campos: dict, quem: dict):
-        return self._escrever(
-            f"/gestao/ideias/{ideia_id}/changespec", {**campos, **quem}
         )
 
     def arquivar(self, ideia_id: int, *, motivo: str, quem: dict):
