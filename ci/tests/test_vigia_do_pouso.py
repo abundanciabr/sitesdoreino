@@ -120,15 +120,42 @@ def test_o_verde_se_conta_do_check_e_nao_da_abertura_do_pr():
     assert motivo(antigo) == "recente"
 
 
-def test_a_denuncia_diz_o_numero_as_horas_e_o_comando():
+def test_a_denuncia_diz_o_numero_o_instante_e_o_comando():
     vereditos = vigia_do_pouso.varrer([pr(741, verde_ha=9)], AGORA, DONOS, 6)
     corpo = vigia_do_pouso.corpo_da_denuncia(vereditos, 6)
 
     assert "#741" in corpo
-    assert "9 h" in corpo
+    # AGORA é 07/09 03:00 UTC; nove horas antes é 06/09 18:00 UTC.
+    assert "06/09 18:00 UTC" in corpo
     assert "python ci/mergear.py 741 --pousar" in corpo, (
         "a denúncia precisa trazer o comando pronto: um aviso que não diz o "
         "que fazer vira aviso que ninguém segue"
+    )
+
+
+def test_o_corpo_nao_muda_so_porque_o_relogio_andou():
+    """O quadro só muda quando a LISTA muda — nunca só porque o tempo passou.
+
+    Medido na primeira passagem real (07/09/2026, run 34081787250): com as
+    horas decorridas na tabela, o corpo mudava a cada varredura e a issue era
+    reescrita doze vezes por dia com a mesma notícia. "Reescrevo quando muda"
+    virava "reescrevo sempre", e a promessa quebrava em silêncio.
+    """
+    inventario = [pr(741, verde_ha=9)]
+
+    agora = vigia_do_pouso.corpo_da_denuncia(
+        vigia_do_pouso.varrer(inventario, AGORA, DONOS, 6), 6
+    )
+    tres_horas_depois = vigia_do_pouso.corpo_da_denuncia(
+        vigia_do_pouso.varrer(
+            inventario, AGORA + dt.timedelta(hours=3), DONOS, 6
+        ),
+        6,
+    )
+
+    assert agora == tres_horas_depois, (
+        "o corpo mudou sem a lista mudar — a issue seria reescrita a cada "
+        "passagem do relógio, e o aviso vira ruído"
     )
 
 
@@ -343,6 +370,23 @@ def test_inventario_ilegivel_e_ERROR_nunca_fila_limpa(tmp_path: Path):
     assert "ESQUECIDOS=0" not in saida.stdout, (
         "não conseguir varrer jamais pode ser dito como 'nenhum PR esquecido'"
     )
+
+
+def test_data_ilegivel_vira_frase_e_ERROR_nunca_traceback(tmp_path: Path):
+    """Formato novo do GitHub tem de sair como frase, não como traceback.
+
+    Traceback não diz o que fazer, e quem lê o log de um vigia às 3 da manhã
+    precisa da frase. O exit continua sendo 2 — ERROR, nunca 'está tudo limpo'.
+    """
+    podre = pr(9)
+    for check in podre["statusCheckRollup"]:
+        check["completedAt"] = "ontem de tarde"
+        check.pop("startedAt", None)
+    saida = _rodar(tmp_path, [podre])
+
+    assert saida.returncode == 2, saida.stdout + saida.stderr
+    assert "data ou formato que eu não sei ler" in saida.stdout
+    assert "Traceback" not in saida.stderr
 
 
 def test_sem_repo_e_sem_inventario_e_ERROR():
