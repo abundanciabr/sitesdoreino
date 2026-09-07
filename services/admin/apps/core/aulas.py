@@ -180,16 +180,6 @@ PERGUNTAS_DO_QUIZ = 5
 #: cabem numa aula normal sem virar uma tabela de vinte linhas em branco.
 LINHAS_DE_PAUSA_A_MAIS = 3
 
-#: O curso por onde se ENTRA no editor, vindo do painel da escola.
-#:
-#: O slug viaja no endereço de toda tela daqui, e é o par site+slug que resolve
-#: o curso do outro lado. Este valor existe só porque a porta não tem operação
-#: que LISTE os cursos de um site: para desenhar o primeiro link é preciso um
-#: slug, e hoje há um curso só. No dia do segundo, esta constante vira um
-#: seletor no painel da escola, e nenhuma outra linha desta tela muda, porque o
-#: slug já é dado do endereço em todas elas.
-CURSO_PADRAO = "profissional"
-
 #: As três Partes do livro, com o número que viaja no endereço e o algarismo
 #: romano com que o livro as chama. O mantenedor e a professora leem a tela com
 #: o livro aberto ao lado: o endereço usa `parte-1` (o vocabulário do contrato,
@@ -778,6 +768,7 @@ def _desenhar_lista(request, site: dict, curso: str, parte: "int | None"):
             status=503,
         )
     linhas = [_linha_da_lista(a, curso) for a in aulas if isinstance(a, dict)]
+    partes = _agrupar(linhas, curso)
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
@@ -788,7 +779,13 @@ def _desenhar_lista(request, site: dict, curso: str, parte: "int | None"):
             "parte": parte,
             "parte_romano": ROMANO.get(parte or 0, ""),
             "url_do_curso_inteiro": _endereco("escola_aulas", curso, None),
-            "partes": _agrupar(linhas, curso),
+            "partes": partes,
+            # As seções de Parte só aparecem quando o curso TEM mais de uma. Um
+            # curso novo, todo na Parte I, não ganha um cabeçalho "Parte I" e um
+            # link "ver só esta Parte" que levam à mesma lista que já está na
+            # tela: as três Partes são o vocabulário do livro, não de todo
+            # curso, e a sala serve vários cursos desde 07/09/2026.
+            "varias_partes": len(partes) > 1,
             # O que a porta mandar com Parte fora do vocabulário do contrato
             # (`ParteDoCurso` é 1, 2 ou 3) não cabe em nenhuma seção e SUMIRIA
             # da tela em silêncio, com a contagem do topo dizendo outro número.
@@ -993,11 +990,13 @@ def _desenhar_instrumento(
     status: int = 200,
 ):
     # Os instrumentos são de plataforma inteira (o contrato não os escopa por
-    # curso), então esta tela não tem curso próprio: a volta é para a lista do
-    # curso por onde se entra. Ela vai nas TRÊS caras da tela porque o link
-    # mora no alto do gabarito, fora de toda condição: faltando numa delas, a
-    # volta vira `href=""` e recarrega o próprio erro.
-    volta = {"url_da_lista": _endereco("escola_aulas", CURSO_PADRAO, None)}
+    # curso), então esta tela não tem curso próprio: a volta é para a LISTA DE
+    # CURSOS. Ela era um curso escrito no código até 07/09/2026, e isso levava
+    # ao curso errado em toda escola cujo primeiro curso não se chamasse
+    # `profissional`. Ela vai nas TRÊS caras da tela porque o link mora no alto
+    # do gabarito, fora de toda condição: faltando numa delas, a volta vira
+    # `href=""` e recarrega o próprio erro.
+    volta = {"url_da_lista": reverse("escola_cursos")}
     desfecho, instrumento = CursosClient().instrumento(slug)
     if desfecho == CursosClient.NAO_EXISTE:
         return render(

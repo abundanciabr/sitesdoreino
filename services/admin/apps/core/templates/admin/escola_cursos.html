@@ -1,0 +1,203 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A LISTA dos cursos da escola, e o gesto Novo curso.
+
+Nada aqui é desta célula: os cursos vêm da `cursos` e os produtos do
+`catalogo`, os dois pela porta de máquina e pelo contrato congelado (docstring
+de apps/core/cursos.py). Sem script, como as outras telas da escola: um POST
+por gesto, porque script embutido nesta área exige hash na CSP
+(armadilhas/199).
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+
+O link "Estrutura" (`/admin/escola/<curso>/estrutura/`, a tela de colar os
+módulos e as aulas de um curso) entra na coluna de gestos de cada linha, ao
+lado de "Escrever as aulas", quando a TAR-272 construir aquela tela.
+{% endcomment %}
+{% block titulo %}Os cursos da escola{% endblock %}
+{% block corpo %}
+<style>
+  .curso { padding: 16px 0; border-top: 1px solid var(--linha); }
+  .curso-nome { font-size: 16px; margin: 0; }
+  .curso-apelido { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--texto-3); font-size: 13px; }
+  .curso-fato { margin: 6px 0 0; font-size: 14px; }
+  .curso-fato .rotulo-do-fato { color: var(--texto-2); }
+  .curso-gestos { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .curso-gestos form { display: flex; gap: 6px; align-items: center; }
+  .curso-gestos select { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; padding: 7px 8px; font-family: inherit; font-size: 13px; max-width: 260px; }
+  .curso-gestos button { cursor: pointer; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; padding: 7px 11px; font-family: inherit; font-size: 13px; }
+  .curso-gestos button:hover { border-color: var(--azul); }
+  /* O botao de criar, com a MESMA cara dos de trocar: sao os tres gestos desta
+     tela, e um deles saindo com o botao cru do navegador quebra a leitura. E um
+     modificador de `.forma button`, na gramatica que o base.html ja usa
+     (`.assinar`, `.calado`), e nao uma regra em cima de `.forma button`: aquela
+     mudaria todas as outras telas da area sem teste nenhum vermelho. */
+  .forma button.criar-o-curso {
+    padding: 9px 14px; font: inherit; font-weight: 600;
+    background: var(--painel); color: var(--texto);
+    border: 1px solid var(--linha); border-radius: 8px;
+  }
+  .forma button.criar-o-curso:hover { border-color: var(--azul); }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
+  <h1>Os cursos da escola</h1>
+  <p class="subtitulo">
+    Cada curso é uma sala de aula com as aulas dele, a regra de como o aluno
+    avança e o produto que diz quem entra. Aqui você vê os que existem e cria
+    novos, sem passar por ninguém.
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola são os cursos.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora.
+    Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+
+  {% elif falha_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+  </p>
+
+  {% else %}
+
+  {% if recado %}<p class="aviso feito">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+
+  {% if catalogo_calado %}
+  <p class="aviso borda-amarela">
+    <b>O catálogo não respondeu agora.</b> Os cursos abaixo continuam certos,
+    mas não consegui ler o nome do produto de cada um.
+    Por isso não consigo listar os produtos do catálogo agora, e o formulário de
+    criar um curso novo está esperando.
+    Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+  {% endif %}
+
+  {% for c in cursos %}
+  <div class="curso">
+    <h2 class="curso-nome">{{ c.nome }} <span class="curso-apelido">{{ c.slug }}</span></h2>
+    <p class="curso-fato">
+      <span class="rotulo-do-fato">Como o aluno avança:</span> {{ c.progressao_frase }}
+    </p>
+    <p class="curso-fato">
+      <span class="rotulo-do-fato">Quem entra:</span>
+      {% if c.produto.alerta %}<span class="amarelo">{{ c.produto.frase }}</span>
+      {% else %}{{ c.produto.frase }}{% endif %}
+    </p>
+    <p class="curso-fato">
+      <span class="rotulo-do-fato">Aulas abertas para os alunos:</span>
+      <b>{{ c.aulas_publicadas }} de {{ c.total_de_aulas }}</b>
+      {% if c.total_de_aulas == 0 %}
+      <span class="recado-fraco">este curso ainda não tem nenhuma aula</span>
+      {% endif %}
+    </p>
+    <div class="curso-gestos">
+      <a class="botao" href="{% url 'escola_aulas' curso=c.slug %}">Escrever as aulas &rarr;</a>
+      {% comment %}
+      Dois formulários pequenos, e não um: `putCourse` trata campo ausente como
+      NÃO MEXER, então cada um manda só o campo dele. Um formulário só, com os
+      dois campos, gravaria de novo o que ninguém pediu para trocar.
+      {% endcomment %}
+      {% if not catalogo_calado %}
+      <form method="post" action="{% url 'escola_curso_alterar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="curso" value="{{ c.slug }}">
+        <select name="produto_id" required aria-label="Trocar o produto de {{ c.nome }}">
+          <option value="">Trocar o produto...</option>
+          {% for id, nome in produtos %}
+          <option value="{{ id }}">{{ nome }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Trocar</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{% url 'escola_curso_alterar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="curso" value="{{ c.slug }}">
+        <select name="progressao" required aria-label="Trocar a regra de avanço de {{ c.nome }}">
+          <option value="">Trocar a regra de avanço...</option>
+          {% for valor, frase in progressoes %}
+          <option value="{{ valor }}">{{ frase }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Trocar</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <p class="aviso espaco-20">
+    <b>Esta escola ainda não tem nenhum curso.</b> Crie o primeiro no formulário
+    abaixo: escolha o produto que os alunos compram (ou peça um produto novo com
+    o nome do curso) e diga como o aluno passa de uma aula para a próxima.
+  </p>
+  {% endfor %}
+
+  <h2 class="secao">Novo curso</h2>
+  {% if catalogo_calado %}
+  <p class="aviso">
+    O formulário volta quando o catálogo responder. Criar um curso passa por ele
+    dos dois jeitos (escolhendo um produto que já existe, ou criando um novo),
+    então oferecer o formulário agora seria oferecer um botão que só falha
+    depois de você digitar tudo.
+  </p>
+  {% else %}
+  <p class="subtitulo">
+    O curso nasce em rascunho, sem nenhuma aula. Depois de criá-lo você escreve
+    as aulas e decide quando cada uma abre.
+  </p>
+  <form class="forma" method="post" action="{% url 'escola_curso_criar' %}">
+    {% csrf_token %}
+    <label class="largo">
+      <span class="rotulo">Nome do curso</span>
+      <input type="text" name="nome" maxlength="120" required
+             placeholder="Primeiros Dólares com Roblox"
+             value="{{ rascunho.nome|default:'' }}">
+    </label>
+    <label>
+      <span class="rotulo">Apelido do endereço (opcional)</span>
+      <input type="text" name="apelido" maxlength="64"
+             placeholder="sai do nome, se você deixar vazio"
+             value="{{ rascunho.apelido|default:'' }}">
+    </label>
+    {% comment %}
+    O produto diz QUEM ENTRA no curso. Nenhuma opção nasce escolhida (a primeira
+    tem valor vazio e o `required` recusa o envio antes de sair da máquina
+    dele), pela mesma regra da tela de liberar aluno: um valor padrão faria a
+    escolha errada parecer escolha.
+    {% endcomment %}
+    <label>
+      <span class="rotulo">Quem entra neste curso</span>
+      <select name="produto" required>
+        <option value="">Escolha o curso que a pessoa compra...</option>
+        {% for id, nome in produtos %}
+        <option value="{{ id }}">{{ nome }}</option>
+        {% endfor %}
+        <option value="novo">Criar um produto novo com o nome deste curso</option>
+      </select>
+    </label>
+    <label>
+      <span class="rotulo">Como o aluno passa para a próxima aula</span>
+      <select name="progressao" required>
+        <option value="">Escolha como a próxima aula abre...</option>
+        {% for valor, frase in progressoes %}
+        <option value="{{ valor }}">{{ frase }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="criar-o-curso" type="submit">Criar o curso</button>
+  </form>
+  <p class="aviso espaco-20">
+    <b>A regra de avanço vale para todos os alunos do curso.</b>
+    Com o laudo da professora, a próxima aula só abre depois que ela avalia a
+    entrega. Livre, a próxima abre assim que o próprio aluno conclui a anterior.
+    Em nenhuma das duas a aula abre por data, por pontos ou por pagamento.
+  </p>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

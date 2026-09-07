@@ -317,16 +317,8 @@ TIPOS_DE_ALUNO = (
 
 @require_GET
 def escola(request):
-    """A porta da escola: daqui se chega aos alunos."""
-    # O import é aqui dentro, e não no topo: `apps/core/aulas.py` importa
-    # `_auditar` DESTE módulo, e um import de módulo a módulo fecharia o ciclo.
-    from .aulas import CURSO_PADRAO
-
-    return render(
-        request,
-        "admin/escola.html",
-        {"admin": request.admin, "curso_do_editor": CURSO_PADRAO},
-    )
+    """A porta da escola: daqui se chega aos alunos e aos cursos."""
+    return render(request, "admin/escola.html", {"admin": request.admin})
 
 
 def tipos_com_contagem(contagens: dict) -> list[dict]:

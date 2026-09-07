@@ -85,10 +85,18 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     </p>
   </div>
 
+  {% comment %}
+  As secoes de Parte so aparecem quando o curso TEM mais de uma. A sala serve
+  varios cursos desde 07/09/2026, e as tres Partes sao o vocabulario do LIVRO,
+  nao de todo curso: num curso de uma Parte so, o cabecalho e o link levariam a
+  mesma lista que ja esta na tela.
+  {% endcomment %}
   {% for p in partes %}
+  {% if varias_partes %}
   <h2 class="secao parte-do-livro">Parte {{ p.romano }}</h2>
   {% if not parte %}
   <p class="so-esta-parte"><a href="{{ p.endereco }}">Ver só esta Parte &rarr;</a></p>
+  {% endif %}
   {% endif %}
   {% for b in p.blocos %}
   <h3 class="bloco-do-livro">Bloco {{ b.letra }}</h3>
