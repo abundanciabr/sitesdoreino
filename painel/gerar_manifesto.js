@@ -193,6 +193,20 @@ function comoTextoJS(valor) {
   return JSON.stringify(JSON.stringify(valor)).replace(/</g, "\\u003c");
 }
 
+// As regras (painel/logica.js) entram na página sem as linhas de comentário:
+// quem abre o painel não lê código, e cada linha de `//` é peso contra o
+// orçamento sem servir a ninguém. Só a linha INTEIRA que começa com `//` sai —
+// um `//` no meio (uma URL numa string) fica. O arquivo em disco não muda.
+function semComentarios(texto) {
+  var linhas = texto.split("\n").filter(function (l) { return l.trimStart().indexOf("//") !== 0; });
+  var semVazias = [];
+  linhas.forEach(function (l) {
+    if (l.trim() === "" && semVazias.length && semVazias[semVazias.length - 1].trim() === "") return;
+    semVazias.push(l);
+  });
+  return semVazias.join("\n");
+}
+
 var AVISO = [
   "// =============================================================================",
   "// GERADO por painel/gerar_manifesto.js — NÃO EDITE À MÃO.",
@@ -278,8 +292,9 @@ var FECHA = "<" + "/script>";
 var dados = [
   ABRE,
   "/* GERADO — as regras do painel (painel/logica.js), embutidas para que abrir",
-  "   custe UM pedido. Edite painel/logica.js, nunca este bloco. */",
-  semBOM(logicaFonte).trimEnd(),
+  "   custe UM pedido. Edite painel/logica.js, nunca este bloco. Sem comentários:",
+  "   quem lê aqui não é gente, é o navegador. */",
+  semComentarios(semBOM(logicaFonte)).trimEnd(),
   FECHA,
   ABRE,
   "/* GERADO — o resumo: só o que a capa e o mapa desenham. O passado fica nos",
