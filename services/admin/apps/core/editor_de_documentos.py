@@ -38,6 +38,8 @@ próxima coisa que essa pessoa faria seria procurar como desligá-la.
 
 from __future__ import annotations
 
+from datetime import date
+
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -69,8 +71,22 @@ def _inteiro(texto: str, padrao: int) -> int:
         return padrao
 
 
+def _data(texto: str) -> date | None:
+    """`AAAA-MM-DD` (o formato de `<input type="date">`) ou `None` se não é."""
+    try:
+        return date.fromisoformat((texto or "").strip())
+    except ValueError:
+        return None
+
+
 def _do_formulario(request) -> dict:
-    """O que o formulário mandou, já aparado. Nada de conferência aqui."""
+    """O que o formulário mandou, já aparado. Nada de conferência aqui.
+
+    `verificado_em` e `proxima_verificacao_em` ficam como TEXTO cru — é o que
+    faz o `<input type="date">` reabrir com o mesmo valor quando a tela volta
+    com erro; a conferência e a conversão são de `_erro_de_apendice_vivo` e
+    `_campos_de_apendice_vivo`, abaixo.
+    """
     return {
         "titulo": (request.POST.get("titulo") or "").strip(),
         "nome": (request.POST.get("nome") or "").strip().lower(),
@@ -79,6 +95,54 @@ def _do_formulario(request) -> dict:
         # Caixa não marcada não é enviada pelo navegador: a ausência do campo é
         # o "não". É o que faz `publico` continuar fail-CLOSED do lado da tela.
         "publico": request.POST.get("publico") == "sim",
+        "apendice_vivo": request.POST.get("apendice_vivo") == "sim",
+        "verificado_em": (request.POST.get("verificado_em") or "").strip(),
+        "proxima_verificacao_em": (
+            request.POST.get("proxima_verificacao_em") or ""
+        ).strip(),
+    }
+
+
+def _erro_de_apendice_vivo(rascunho: dict) -> str | None:
+    """A recusa da caixa de apêndice vivo, dita para leigo, ou `None`.
+
+    Documento comum (`apendice_vivo` desmarcado) nunca cai aqui — as duas
+    frases são só para quem marcou a caixa. A ORDEM importa: primeiro conferir
+    se as duas datas existem, só depois se a ordem entre elas está certa —
+    "a próxima antes da última" não faz sentido dizer quando uma delas nem foi
+    escrita.
+    """
+    if not rascunho["apendice_vivo"]:
+        return None
+    verificado = _data(rascunho["verificado_em"])
+    proxima = _data(rascunho["proxima_verificacao_em"])
+    if verificado is None or proxima is None:
+        return (
+            "Um apêndice vivo precisa das duas datas: quando foi verificado e "
+            "quando a verificação vence."
+        )
+    if proxima <= verificado:
+        return "A próxima verificação precisa ser depois da última."
+    return None
+
+
+def _campos_de_apendice_vivo(rascunho: dict) -> dict:
+    """Os três campos do modelo, prontos para `create(**...)` ou `setattr`.
+
+    Chamada só DEPOIS de `_erro_de_apendice_vivo` já ter aprovado o rascunho
+    (ou de `apendice_vivo` estar desmarcado, quando as datas não importam):
+    aqui as datas são convertidas sem checar de novo se são válidas.
+    """
+    if not rascunho["apendice_vivo"]:
+        return {
+            "apendice_vivo": False,
+            "verificado_em": None,
+            "proxima_verificacao_em": None,
+        }
+    return {
+        "apendice_vivo": True,
+        "verificado_em": _data(rascunho["verificado_em"]),
+        "proxima_verificacao_em": _data(rascunho["proxima_verificacao_em"]),
     }
 
 
@@ -128,6 +192,9 @@ def documento_novo(request):
             "corpo": "",
             "ordem": documentos.ORDEM_PADRAO,
             "publico": False,
+            "apendice_vivo": False,
+            "verificado_em": "",
+            "proxima_verificacao_em": "",
         },
         criando=True,
     )
@@ -191,7 +258,18 @@ def documento_criar(request):
     if riscas:
         return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
 
-    documento = Documento.objects.create(**rascunho)
+    erro_apendice = _erro_de_apendice_vivo(rascunho)
+    if erro_apendice:
+        return _tela(request, rascunho, criando=True, erro=erro_apendice, status=422)
+
+    documento = Documento.objects.create(
+        titulo=rascunho["titulo"],
+        nome=nome,
+        corpo=rascunho["corpo"],
+        ordem=rascunho["ordem"],
+        publico=rascunho["publico"],
+        **_campos_de_apendice_vivo(rascunho),
+    )
     _guardar_versao(request, documento, "criou o documento")
     _auditar(
         request,
@@ -222,6 +300,15 @@ def documento_editar(request, nome):
             "corpo": documento.corpo,
             "ordem": documento.ordem,
             "publico": documento.publico,
+            "apendice_vivo": documento.apendice_vivo,
+            "verificado_em": (
+                documento.verificado_em.isoformat() if documento.verificado_em else ""
+            ),
+            "proxima_verificacao_em": (
+                documento.proxima_verificacao_em.isoformat()
+                if documento.proxima_verificacao_em
+                else ""
+            ),
         },
         criando=False,
     )
@@ -257,10 +344,16 @@ def documento_salvar(request, nome):
     if riscas:
         return _tela(request, rascunho, criando=False, riscas=riscas, status=422)
 
+    erro_apendice = _erro_de_apendice_vivo(rascunho)
+    if erro_apendice:
+        return _tela(request, rascunho, criando=False, erro=erro_apendice, status=422)
+
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
     documento.publico = rascunho["publico"]
+    for campo, valor in _campos_de_apendice_vivo(rascunho).items():
+        setattr(documento, campo, valor)
     documento.save()
 
     _guardar_versao(request, documento, "editou o documento")
