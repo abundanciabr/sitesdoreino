@@ -10,11 +10,18 @@ tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
 admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py).
 
 A regra que governa cada `{% if %}` desta tela: AUSÊNCIA DE DADO NUNCA VIRA
-CONCLUSÃO (armadilhas/271). São quatro estados diferentes, e nenhum deles é
+CONCLUSÃO (armadilhas/271). São cinco estados diferentes, e nenhum deles é
 zero: "nunca contado" (a escola ainda não contou), "não consigo olhar" (o livro
-não chegou até esta tela), "sem dados" (o cartão não tem fonte nenhuma, e é ele
-quem diz por quê) e "cartão inválido". Zero só aparece quando alguém contou
-zero.
+não chegou até esta tela), "não consigo contar" (a célula que guarda os alunos
+não respondeu), "sem dados" (o cartão não tem fonte nenhuma, e é ele quem diz
+por quê) e "sem número agora" (o cartão tem fonte e o placar não trouxe o
+número). Zero só aparece quando alguém contou zero.
+
+O caminho sai em COLUNA ÚNICA, com o degrau numerado, e nunca numa grade: a
+única coisa que estas seis peças têm a ensinar é a ORDEM, e numa grade a ordem
+vira posição na tela (o mesmo motivo escrito no bloco `.etapas` de base.html,
+02/09/2026). As etiquetas do formulário saem de DIGITADAS, em talentos.py, para
+que a etiqueta que ele lê e o nome que a recusa cita sejam a mesma frase.
 {% endcomment %}
 {% block titulo %}A rede de talentos{% endblock %}
 {% block corpo %}
@@ -30,8 +37,8 @@ zero.
   <p class="lei">
     Três etapas deste caminho acontecem fora do sistema, em conversas que
     nenhuma tela vê: quantas alunas a escola escolheu, quantos estúdios
-    aceitaram, e quantas alunas de fato começaram um trabalho. Essas três a
-    escola conta e digita aqui embaixo. O resto se mede sozinho.
+    aceitaram, e quantos trabalhos alunas já começaram. Essas três a escola
+    conta e digita aqui embaixo. O resto se mede sozinho.
   </p>
 
   {% if laco.livro_ausente %}
@@ -44,7 +51,7 @@ zero.
   </p>
   {% endif %}
 
-  {% if laco.nunca_contadas == 3 and not laco.livro_ausente %}
+  {% if laco.nunca_contadas == 3 %}
   <p class="recado">
     <b>Primeira vez aqui.</b> Nenhuma das três etapas foi contada ainda, e por
     isso o caminho aparece com a pergunta no lugar do número. Conte o que já
@@ -54,44 +61,52 @@ zero.
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">O caminho, etapa por etapa</h2>
-  <ul class="notas">
+  <div class="etapas">
     {% for passo in laco.passos %}
-    <li>
-      <b>{{ passo.titulo }}</b>
-      {% if passo.estado == "medido" %}
-        <b>{{ passo.valor }}</b>
-        {% if passo.cartao_lido.unidade %}{{ passo.cartao_lido.unidade }}{% endif %}
-        {% if passo.contado_em %}
-          <span class="rotulo">contado por você</span>
-          em {{ passo.contado_em }} (há {{ passo.dias }} dia{{ passo.dias|pluralize:"s" }}).
-          {% if passo.velha %}Esta contagem já passou do prazo do cartão: conte de novo.{% endif %}
+    <section class="etapa">
+      <div class="etapa-topo">
+        <span class="etapa-degrau">{{ forloop.counter }}</span>
+        <h2>{{ passo.titulo }}</h2>
+      </div>
+      <p class="resumo">
+        {% if passo.estado == "medido" %}
+          <b>{{ passo.valor }}</b>
+          {% if passo.cartao_lido.unidade %}{{ passo.cartao_lido.unidade }}{% endif %}
+          {% if passo.contado_em %}
+            <span class="rotulo">contado por você</span>
+            em {{ passo.contado_em|date:"d/m/Y" }} (há {{ passo.dias }} dia{{ passo.dias|pluralize:"s" }}).
+            {% if passo.velha %}Esta contagem já passou do prazo do cartão: conte de novo.{% endif %}
+          {% else %}
+            <span class="rotulo">medido agora</span>
+          {% endif %}
+        {% elif passo.estado == "nunca-contado" %}
+          <span class="rotulo">nunca contado</span>
+          Ninguém contou esta etapa ainda. Não é zero: é a pergunta sem resposta.
+        {% elif passo.estado == "nao-consigo-olhar" %}
+          <span class="rotulo">não consigo olhar</span>
+          O livro não chegou, e a última contagem mora nele.
+        {% elif passo.estado == "nao-medi" %}
+          <span class="rotulo">não consigo contar</span>
+          A parte que guarda os alunos não respondeu agora. Recarregue daqui a pouco.
+        {% elif passo.estado == "sem-numero-agora" %}
+          <span class="rotulo">sem número agora</span>
+          Este número tem fonte, e o placar não o trouxe nesta abertura da
+          página. Recarregue daqui a pouco.
+        {% elif passo.estado == "sem-fonte" %}
+          <span class="rotulo">sem dados</span>
+          {{ passo.cartao_lido.sem_fonte_porque }}
         {% else %}
-          <span class="rotulo">medido agora</span>
+          <span class="rotulo">cartão inválido</span>
+          {% for p in passo.problemas %}{{ p }} {% endfor %}
         {% endif %}
-      {% elif passo.estado == "nunca-contado" %}
-        <span class="rotulo">nunca contado</span>
-        Ninguém contou esta etapa ainda. Não é zero: é a pergunta sem resposta.
-      {% elif passo.estado == "nao-consigo-olhar" %}
-        <span class="rotulo">não consigo olhar</span>
-        O livro não chegou, e a última contagem mora nele.
-      {% elif passo.estado == "nao-medi" %}
-        <span class="rotulo">não consigo contar</span>
-        A parte que guarda os alunos não respondeu agora. Recarregue daqui a pouco.
-      {% elif passo.estado == "sem-fonte" %}
-        <span class="rotulo">sem dados</span>
-        {{ passo.cartao_lido.sem_fonte_porque }}
-      {% elif passo.estado == "no-placar" %}
-        <span class="rotulo">no placar</span>
-        Este número já tem fonte e aparece no <a href="{% url 'placar' %}">placar</a>.
-      {% else %}
-        <span class="rotulo">cartão inválido</span>
-        {% for p in passo.problemas %}{{ p }} {% endfor %}
+      </p>
+      <p class="resumo">{{ passo.porque }}</p>
+      {% if passo.cartao_lido.acao %}
+      <p class="resumo"><b>O gesto:</b> {{ passo.cartao_lido.acao }}</p>
       {% endif %}
-      <br>{{ passo.porque }}
-      {% if passo.cartao_lido.acao %}<br><b>O gesto:</b> {{ passo.cartao_lido.acao }}{% endif %}
-    </li>
+    </section>
     {% endfor %}
-  </ul>
+  </div>
   <p class="recado-fraco">
     E daqui volta ao começo: aluna com trabalho num estúdio é a melhor
     propaganda que a escola tem, e é ela que traz a próxima turma.
@@ -101,7 +116,9 @@ zero.
   <p class="recado">
     Digite só o que você contou hoje, e deixe vazio o que não contou (vazio não
     é zero: a contagem anterior continua valendo). O total de cada campo é o
-    total acumulado, e não o que aconteceu esta semana.
+    total acumulado, e não o que aconteceu esta semana. Nos trabalhos, a mesma
+    aluna em dois trabalhos conta duas vezes: aqui se contam as oportunidades
+    abertas, e quem conta pessoas é a etapa seguinte, a dos resultados.
   </p>
 
   {% if recusas %}
@@ -113,16 +130,15 @@ zero.
 
   <form class="forma" method="post" action="{% url 'talentos' %}">
     {% csrf_token %}
-    <label for="talentos">Alunas já selecionadas para a rede, no total</label>
-    <input id="talentos" name="talentos" type="number" min="0" step="1" value="{{ campos.talentos|default:'' }}">
-    <label for="estudios">Estúdios que já aceitaram receber alunas, no total</label>
-    <input id="estudios" name="estudios" type="number" min="0" step="1" value="{{ campos.estudios|default:'' }}">
-    <label for="encaixes">Alunas que já começaram um trabalho num estúdio, no total</label>
-    <input id="encaixes" name="encaixes" type="number" min="0" step="1" value="{{ campos.encaixes|default:'' }}">
+    {% for campo in digitadas %}
+    <label for="{{ campo.campo }}">{{ campo.rotulo }}, no total
+      <input id="{{ campo.campo }}" name="{{ campo.campo }}" type="number" min="0" step="1" value="{{ campo.valor }}">
+    </label>
+    {% endfor %}
     <button type="submit">Montar o pedido para o robô</button>
   </form>
 
-  {% if montou %}
+  {% if montou and not recusas %}
     {% if pedido %}
       <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
       <p class="recado-fraco">
@@ -130,10 +146,21 @@ zero.
         gravado aqui: o que vale é o que chegar ao livro. Recarregar a página
         apaga o texto.
       </p>
-      <textarea class="colar" rows="16" readonly>{{ pedido }}</textarea>
-    {% elif not recusas %}
+      <textarea class="colar" rows="18" readonly>{{ pedido }}</textarea>
+    {% elif not contou %}
       <p class="aviso borda-amarela">
         <b>Nada para pedir.</b> Preencha ao menos uma das três contagens.
+      </p>
+    {% elif placar_nao_mediu %}
+      <p class="aviso borda-vermelha">
+        <b>Não dá para gravar esta contagem agora.</b> O placar não mediu nada
+        nesta abertura da página, e a contagem da rede precisa viajar junto com
+        os números que ele mede sozinho. Gravada sozinha, ela viraria a foto
+        mais recente do livro sem os outros números, e na segunda-feira
+        seguinte o placar inteiro apareceria sem comparação. Abra o
+        <a href="{% url 'placar' %}">placar</a> e veja o que ele diz que está
+        faltando; com o placar medindo, volte aqui e monte o pedido de novo. Os
+        números que você digitou continuam na tela, e nada se perdeu.
       </p>
     {% endif %}
   {% endif %}

@@ -1,0 +1,17 @@
+{
+  "arquivo": "261-consertar-os-defeitos-que-o-revisor-achou-na-tela-da-rede-de",
+  "id": "TAR-261",
+  "titulo": "Consertar os defeitos que o revisor achou na tela da rede de talentos",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com a suite da celula admin verde e a previa da tela renderizada com dados reais",
+  "despacho": "Conserte os 12 defeitos que o revisor da casa achou na tela /admin/placar/talentos/ (degrau 17), entregue no PR #1333. Celula admin, nenhum caminho CODEOWNERS.\n\nOs principais: a foto do placar nao pode sair pela metade no bloco copiavel (talentos.py:249); POST com um campo valido e outro invalido nao pode recusar e montar o pedido ao mesmo tempo; a fiacao real da foto precisa de teste de view; o cartao encaixes-com-estudio e o rotulo da tela contam coisas diferentes; a data sai em ingles; os seis passos do laco viram grade de 3 colunas e perdem a ordem; a recusa mostra o slug do cartao para leigo; a pasta de registros e lida duas vezes por requisicao; o ramo no-placar e inalcancavel; o bloco nao pede a data de quando; o efeito de lado sobre a comparacao semanal nao esta escrito; e uma condicao morta no template.\n\nProva vermelho para verde por assercao e prova por mutacao depois do verde. Registro nunca se edita: nao toque no 20260907-069.",
+  "origem": "revisao do PR #1333 pelo revisor da casa, 07/09/2026",
+  "criada_em": "2026-09-07"
+}

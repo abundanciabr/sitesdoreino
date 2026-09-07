@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163131-TAR-269-explicada",
+  "tarefa": "TAR-269",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:31+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "A ligacao entre o Admin e o catalogo e congelada de proposito e muda so por cerimonia formal.",
+  "o_que_muda": "Sem ela o Admin nao pode cadastrar produto pela tela.",
+  "exemplo": "O mesmo cartorio da tarefa irma, para o catalogo.",
+  "importancia": 80
+}

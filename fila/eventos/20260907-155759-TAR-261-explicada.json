@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-155759-TAR-261-explicada",
+  "tarefa": "TAR-261",
+  "evento": "explicada",
+  "quando": "2026-09-07T15:57:59+00:00",
+  "quem": "revisao do PR #1333 pelo revisor da casa, 07/09/2026",
+  "o_que_e": "A tela que conta a rede de talentos (alunas em estudios, estudios parceiros) ja esta no ar, mas o bloco que o mantenedor copia pode sair pela metade e a tela mostra data em ingles, nomes internos e os passos fora de ordem.",
+  "o_que_muda": "O mantenedor passa a poder confiar no bloco que copia: ou ele sai inteiro, ou a tela diz que nao da para gravar agora e o que fazer. E ele le a tela em portugues, com os passos na ordem certa.",
+  "exemplo": "Hoje, se o placar nao medir, ele cola um bloco com meia contagem e na segunda seguinte o placar inteiro fica sem comparacao.",
+  "importancia": 55
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-161402-TAR-264-explicada",
+  "tarefa": "TAR-264",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:14:02+00:00",
+  "quem": "revisão do PR #1334 pelo revisor da casa, 07/09/2026: mesma forma de código vista em services/forum/apps/core/agente.py:579-613, não medida",
+  "o_que_e": "No forum, quem responde uma duvida pode apertar 'Gerar resposta' e a IA rascunha o texto. Se a resposta da IA chegar quebrada, a pessoa pode receber a pagina de erro do sistema em vez de uma frase explicando o que houve.",
+  "o_que_muda": "A pessoa passa a ler uma frase em portugues dizendo o que aconteceu e o que fazer, e o rascunho que ela ja tinha digitado nao se perde.",
+  "exemplo": "O mesmo defeito foi medido e consertado no robo analista da area administrativa; o forum tem a mesma forma de codigo e ninguem mediu ainda.",
+  "importancia": 55
+}

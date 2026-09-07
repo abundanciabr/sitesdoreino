@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163117-TAR-266-explicada",
+  "tarefa": "TAR-266",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:17+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "Hoje a sala de aula so conhece um curso, o do livro, e so um comando de terminal cria curso, com a estrutura do livro escrita dentro dele. Nao existe jeito de a area do administrador criar um curso novo nem dizer quais aulas ele tem.",
+  "o_que_muda": "A sala passa a aceitar varios cursos, cada um com o seu produto, a sua regra de avanco e a sua lista de modulos e aulas, tudo pela porta que o Admin usa. E o primeiro passo para os 132 alunos do curso Primeiros Dolares com Roblox terem sala.",
+  "exemplo": "Hoje um aluno do Primeiros Dolares entra no site e le: Este curso nao e o seu. Depois desta tarefa e das seguintes, o administrador cria o curso dele na tela, cola a lista de aulas, e ele entra.",
+  "importancia": 95
+}
