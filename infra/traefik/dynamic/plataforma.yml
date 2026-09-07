@@ -413,6 +413,46 @@ http:
       service: pages
       tls: {}
 
+    encomendas:
+      # A Fila do Primeiro Dolar: o mural das encomendas 3D, a fila do aluno e
+      # o plantao de quem julga (DECISAO-fila-do-primeiro-dolar.md; degrau 2.10
+      # da escada §7, TAR-128). E este roteador que tira a celula do escuro: ate
+      # ele existir, a `encomendas` respondia so pela rede interna do Docker.
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, pela mesma razao do forum, da
+      # gamificacao, da sala de aula e das Paginas acima: o cookie
+      # `meshcraft_sessao` e de HOST, e esta celula depende de repassa-lo a
+      # identidade para saber quem e a pessoa. Em subdominio o cookie nao viaja
+      # e a fila exigiria um segundo login. Esta celula nem assina sessao
+      # ([INV-P12]).
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/encomendas` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`). Mover a area de endereco e
+      # editar esta linha e o env, nunca o `urls.py`.
+      #
+      # DEZ LETRAS, e o tamanho foi escolhido: prefixo de duas ou tres letras
+      # casaria com a FORMA de idioma do roteador de locale, e o inventario de
+      # `ci/tests/test_rotas_sem_forma_de_locale.py` reprovaria — ele entra no
+      # MESMO PR deste roteador (`armadilhas/089`).
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria a fila de encomendas.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: nada
+      # aqui e servido em iframe. Quem pode ver o que e decidido DENTRO da
+      # celula. E a porta de MAQUINA, que responde sob este mesmo prefixo em
+      # `/encomendas/api/encomendas/`, tem cadeado proprio e de DOIS graus —
+      # `TOKENS_ACEITOS_*` deixa ler e `TOKENS_ESCRITA_*` deixa gravar, os dois
+      # vazios por padrao (`armadilhas/186` e `/318`). A topologia nao fecha
+      # nada aqui, e escrever o contrario seria ensinar errado quem chegar
+      # depois.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/encomendas`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: encomendas
+      tls: {}
+
     www-meshcraft:
       # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
       # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
@@ -520,3 +560,6 @@ http:
     pages:
       loadBalancer:
         servers: [ { url: "http://pages:8000" } ]
+    encomendas:
+      loadBalancer:
+        servers: [ { url: "http://encomendas:8000" } ]

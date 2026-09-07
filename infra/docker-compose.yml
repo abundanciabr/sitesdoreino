@@ -692,6 +692,82 @@ services:
       pages:
         condition: service_healthy
 
+  # A Fila do Primeiro Dolar, o marketplace de encomendas 3D
+  # (DECISAO-fila-do-primeiro-dolar.md; degrau 2.10 da escada §7, TAR-128). O
+  # passo manual do mantenedor (infra/provisionar-encomendas.sh) ja rodou na
+  # VPS em 04/09/2026: e o PORTAO deste degrau, e e ele que faz
+  # `env/encomendas.env` existir com `DATABASE_URL`, `SCRIPT_NAME=/encomendas`
+  # e `SITE_ID` antes de o container tentar subir. Sem banco, `DATABASE_URL` e
+  # fail-hard e o container entra em crashloop (`armadilhas/088`, passo 2).
+  #
+  # ORDEM DE ENTREGA: este compose entra sozinho, sem tocar `services/`, pela
+  # mesma razao gravada nos blocos `identidade`, `cursos` e `pages` acima. PR de
+  # celula nova com codigo E compose juntos trava os DOIS deploys no mesmo
+  # commit, e nenhum rerun sai disso porque o vermelho e a cura moram no mesmo
+  # SHA (`armadilhas/134`). O codigo desta celula ja esta na `main` desde os PRs
+  # #946 a #1316, e o `deploy-celula` dela vem vermelho desde entao de proposito
+  # (`armadilhas/088`): e ESTE arquivo que faltava.
+  encomendas:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
+    env_file: [env/encomendas.env]
+
+  # O BATIMENTO DO TIQUE (degrau 2.4, `services/encomendas/config/huey.py`).
+  # De minuto em minuto ele expira oferta vencida, abre a encomenda que esperou
+  # demais na fila e oferece o que sobrou. Sem este servico a fila PARA no
+  # tempo: nada quebra, nenhuma tela reclama, e o relogio de toda oferta fica
+  # parado para sempre — que e o pior modo de falha de uma celula cuja promessa
+  # e "todo formado chega ao primeiro dolar".
+  #
+  # NAO E UM RELAY DE OUTBOX, e a diferenca esta escrita no `config/huey.py` da
+  # celula: nas vizinhas o Huey carrega o trabalho na fila do Redis; aqui ele so
+  # CHAMA, a cada minuto, uma funcao que pergunta ao banco o que esta vencido
+  # AGORA. Nada de estado da fila mora no Redis, entao o Redis cair por seis
+  # horas nao perde nada: a primeira passada quando ele voltar faz o que as seis
+  # perdidas fariam ([INV-ENC-J10], e rodar duas vezes no mesmo minuto e seguro).
+  #
+  # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/encomendas.env`, pela MESMA razao
+  # gravada nos blocos `cursos-relay` e `pages-relay`: o provisionamento ja
+  # rodou na mao do mantenedor, e acrescentar as chaves la agora custaria um
+  # SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha do banco e
+  # a chave do Django) para dois enderecos que nao sao segredo e valem igual em
+  # toda a plataforma. E topologia deste compose, nao configuracao da celula. O
+  # `infra/env/encomendas.env.exemplo` ja diz isso por escrito, para ninguem
+  # procurar as chaves la e concluir que sumiram.
+  #
+  # HUEY_REDIS_URL usa o banco 11: os bancos 1 a 10 ja sao de outras celulas
+  # (`infra/env/*.env.exemplo` e os blocos acima), e cada fila Huey precisa do
+  # PROPRIO banco, senao as tarefas de uma celula caem na fila da outra.
+  # `REDIS_STREAMS_URL` entra ja aqui, no banco 0 como todas: a celula ainda nao
+  # publica evento nenhum, e no dia em que publicar o endereco ja esta posto.
+  #
+  # `run_huey` EXISTE NESTA IMAGEM, e isso foi medido antes de a linha entrar:
+  # `huey==2.5.1` esta em `services/encomendas/requirements.txt` desde o degrau
+  # 2.4 e `huey.contrib.djhuey` esta em INSTALLED_APPS. Auxiliar declarado com um
+  # `command:` que a imagem nao tem sai do ar como `Unknown command`, e o passo
+  # de verificacao do `deploy-infra` exige TODOS os servicos declarados em
+  # `running`: um so que nao suba derruba a verificacao da plataforma inteira
+  # (`armadilhas/088`, passo 4).
+  #
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `encomendas` e o que
+  # impede este processo de migrar em paralelo com o CMD do servidor HTTP contra
+  # o mesmo banco: um dos dois morreria com IntegrityError.
+  encomendas-tique:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
+    env_file: [env/encomendas.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/11
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      encomendas:
+        condition: service_healthy
+
 volumes:
   pgdata: {}
   redisdata: {}

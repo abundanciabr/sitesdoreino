@@ -278,6 +278,19 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # contrário é o que dói, e está fechado: um `PathPrefix(/es)` engoliria
     # `/estudio` junto. Por isso `/estudio` entrou também na prova adversarial
     # lá embaixo, ao lado de `/estatisticas`, que está lá pelo mesmo motivo.
+    # `encomendas` entrou com a Fila do Primeiro Dolar
+    # (`PathPrefix(/encomendas)`, `DECISAO-fila-do-primeiro-dolar.md`, degrau
+    # 2.10, 07/09/2026). Passei pelas duas regras, que e para isto que este
+    # inventario existe:
+    #   A (forma de locale): 10 letras, e a forma exige 2-3. Nao casa. O
+    #     tamanho nao e acaso: `infra/env/encomendas.env.exemplo` ja dizia, em
+    #     04/09/2026, que o prefixo tem dez letras "de proposito", porque um de
+    #     duas casaria com a forma e cairia aqui.
+    #   B (idioma declarado): `infra/sites.json` declara `en`, `es` e `pt-br`,
+    #     e `encomendas` nao esta la nem e codigo de idioma em lingua nenhuma.
+    # E o terceiro olhar, o do prefixo CRU: `/encomendasX` seria engolido por
+    # este roteador. Nao existe rota assim, e quem criar uma vai encontrar esta
+    # linha.
     assert segmentos == {
         "",
         "quiz",
@@ -294,6 +307,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "cursos",
         "pages",
         "estudio",
+        "encomendas",
     }
 
 
@@ -433,6 +447,7 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
         # `infra/sites.json`. Ele tem de PASSAR: a regra B compara segmento
         # inteiro, e reprovar aqui seria o guarda comendo uma rota legítima.
         "/estudio",
+        "/encomendas",
     ],
 )
 def test_aprova_os_prefixos_legitimos_de_hoje(prefixo):

@@ -345,22 +345,49 @@ garantir "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS "$T_ALUNOS" "par encomendas->al
 #    lê o env dele quando (re)nasce.
 #
 #    JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as
-#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome. A
-#    `encomendas` NÃO entra aqui de propósito — ela ainda não existe neste
-#    compose; quem a põe lá é o degrau 2.10, depois desta tela.
+#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
+#
+#    A `encomendas` e o `encomendas-tique` ENTRAM a partir do degrau 2.10
+#    (07/09/2026), que é quem os põe no compose. E entram por necessidade, não
+#    por simetria: este roteiro ROTACIONA a senha do banco, e um container que
+#    não renasce continua apresentando a senha velha a um banco que já trocou a
+#    fechadura.
+#
+#    E o resultado se MEDE. `docker compose up -d` pode derrubar o container e
+#    não subi-lo, e engolir a saída com `2>&1` apaga a única prova disso: em
+#    06/09/2026 uma célula ficou em 502 enquanto o roteiro imprimia PRONTO
+#    (`armadilhas/377`). Aqui a saída do erro é MOSTRADA, o estado é conferido
+#    depois, e "não subiu" nunca sai em tom de rodapé.
 # -----------------------------------------------------------------------------
-for SERVICO in identidade alunos; do
-  if command -v docker >/dev/null 2>&1 && docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
-    if docker compose up -d "$SERVICO" >/dev/null 2>&1; then
-      echo "  recarreguei: $SERVICO"
-    else
-      echo "  (aviso: não consegui recarregar $SERVICO. O arquivo JÁ está certo; o próximo deploy dela relê o env. Avise o agente.)"
-    fi
+CAIDOS=""
+for SERVICO in identidade alunos admin encomendas encomendas-tique; do
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
+    echo "  (nao achei o servico $SERVICO no compose desta maquina. O arquivo JA esta certo; o proximo deploy dele rele o env.)"
+    continue
+  fi
+  SAIDA="$(docker compose up -d "$SERVICO" 2>&1)" || {
+    echo "  ERRO ao recarregar $SERVICO. O docker disse:"
+    printf '    %s
+' "$SAIDA"
+    CAIDOS="$CAIDOS $SERVICO"
+    continue
+  }
+  if docker compose ps --status running --services 2>/dev/null | grep -qx "$SERVICO"; then
+    echo "  recarreguei: $SERVICO"
   else
-    echo "  (aviso: não achei o serviço $SERVICO no compose desta máquina. O arquivo JÁ está certo; o próximo deploy relê o env.)"
+    echo "  ERRO: $SERVICO NAO esta de pe depois da recarga. O docker disse:"
+    printf '    %s
+' "$SAIDA"
+    CAIDOS="$CAIDOS $SERVICO"
   fi
 done
 echo
+if [ -n "$CAIDOS" ]; then
+  echo "PAROU POR SEGURANCA: estas partes do site NAO estao de pe:$CAIDOS"
+  echo "O que aconteceu: os arquivos foram gravados certos, mas o container nao subiu."
+  echo "O que fazer: copie esta tela inteira e mande para o robo. Nao rode de novo as cegas."
+  exit 1
+fi
 
 # -----------------------------------------------------------------------------
 # 8. O QUE FICOU
