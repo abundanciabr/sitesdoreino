@@ -737,6 +737,16 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J8",
         "INV-ENC-J9",
         "INV-ENC-J10",
+        # O Mural chegou no degrau 2.11 (07/09/2026, TAR-133): a segunda pista,
+        # para quem já entregou. M1 mede ELEGIBILIDADE, e não "já entregou",
+        # porque a chamada aberta avisa todo elegível e num projeto Iniciante
+        # isso inclui quem tem zero entregas. M3 é o que impede o Mural de
+        # virar leilão; M4 guarda a ordem única, que é critério de morte.
+        "INV-ENC-M1",
+        "INV-ENC-M2",
+        "INV-ENC-M3",
+        "INV-ENC-M4",
+        "INV-ENC-M5",
         # A lei de cursos, matrículas e alunos (06/09/2026): ninguém é aluno do
         # site, todo mundo é aluno de UM PRODUTO, e a matrícula é o que diz
         # qual. Liberar sem produto é 422 na porta, e a linha continua
