@@ -153,11 +153,15 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 # ------------------------------------------------------------------- a CLI --
 
 
+PR_ABERTO = {"state": "OPEN", "title": "o PR desta bancada", "mergedAt": None}
+
+
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
            gh_exit: int = 0, mergear_exit: int | None = None,
            mergear_roteiro: list[dict] | None = None,
            gh_log: str | None = None,
-           teto_do_log_s: float | None = None) -> subprocess.CompletedProcess:
+           teto_do_log_s: float | None = None,
+           gh_pr: dict | None = None) -> subprocess.CompletedProcess:
     """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
 
     `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
@@ -167,6 +171,11 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     ele o dublê SAI 1 nesse subcomando, que é o caso "o log não veio" — onde o
     desfecho tem de cair para o texto de sempre. O texto `__DEMORA__` faz o
     dublê dormir, para medir o teto do log sem esperar o teto de verdade.
+
+    `gh_pr` é o que a CONFERÊNCIA do PR (a pergunta que antecede o laço)
+    recebe de volta; sem ele, um PR aberto qualquer. Um dicionário com
+    `__erro__` faz o dublê escrever essa linha no stderr e SAIR 1 — é assim que
+    o `gh` de verdade recusa um número que não é PR deste repositório.
 
     `mergear_roteiro` é o mesmo portão de mentira, com uma resposta DIFERENTE
     por chamada: uma lista de `{"exit": int, "saida": str}`. Serve para medir a
@@ -219,6 +228,8 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     if gh_respostas is not None:
         fita = tmp / "fita.json"
         fita.write_text(json.dumps(gh_respostas), encoding="utf-8")
+        ficha = tmp / "ficha-do-pr.json"
+        ficha.write_text(json.dumps(gh_pr or PR_ABERTO), encoding="utf-8")
         log = tmp / "log-do-gh.txt"
         if gh_log is not None:
             log.write_text(gh_log, encoding="utf-8")
@@ -244,6 +255,18 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
             "        codigo = 1\n"
             "    sys.stdout.buffer.write(corpo.encode('utf-8'))\n"
             "    sys.exit(codigo)\n"
+            # A conferência do PR (07/09/2026) é uma pergunta DIFERENTE da
+            # do laço, e o dublê responde a cada uma do seu lugar: lida da
+            # mesma fita, ela comeria a primeira resposta e todo teste daqui
+            # passaria a medir uma volta a menos do que declara.
+            f"ficha = pathlib.Path(r'{ficha}')\n"
+            "if 'state,title,mergedAt' in sys.argv:\n"
+            "    pr = json.loads(ficha.read_text(encoding='utf-8'))\n"
+            "    if '__erro__' in pr:\n"
+            "        print(pr['__erro__'], file=sys.stderr)\n"
+            "        sys.exit(1)\n"
+            "    print(json.dumps(pr))\n"
+            "    sys.exit(0)\n"
             f"fita = pathlib.Path(r'{fita}')\n"
             "respostas = json.loads(fita.read_text(encoding='utf-8'))\n"
             f"if {gh_exit} != 0 or not respostas:\n"
@@ -481,6 +504,80 @@ def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "portao de mentira: exit 1" in proc.stdout, "a recusa do portão tem de sair na voz"
+
+
+# ---------------------------------------------------------------------------
+# O número de --checks/--pouso é um PR daqui, ou a recusa é NA HORA
+# (07/09/2026, TAR-202 — armadilhas/354)
+# ---------------------------------------------------------------------------
+PR_MESCLADO = {"state": "MERGED", "title": "semear a fila e escrever a lei",
+               "mergedAt": "2026-08-14T12:00:00Z"}
+PR_SUMIDO = {"__erro__": "GraphQL: Could not resolve to a PullRequest with the "
+                         "number of 999999. (repository.pullRequest)"}
+
+
+def test_checks_com_pr_mesclado_recusa_na_hora_sem_gastar_tentativa(tmp_path):
+    """O defeito de 05/09/2026, encenado: dois robôs passaram a QUANTIDADE de
+    checks no lugar do número do PR (armadilhas/354). `--checks 6` foi medir o
+    PR #6, mesclado desde os primeiros dias, e queimou as 20 tentativas
+    repetindo "não consegui medir" — frase legítima para condição impossível.
+
+    A fita intocada no fim é a prova dura de que nenhuma tentativa foi gasta.
+    """
+    proc = _rodar(["--checks", "6", *RAPIDO], tmp_path,
+                  gh_respostas=VERDE, gh_pr=PR_MESCLADO)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "MESCLADO" in saida and "2026-08-14" in saida, "diga o estado REAL"
+    assert "semear a fila" in saida, "a recusa precisa mostrar QUE PR é esse"
+    assert "quantidade de checks" in saida, "a recusa precisa ensinar a troca"
+    assert "armadilhas/354" in saida
+    assert "▶ vou esperar" not in proc.stdout, "anunciou espera e depois desistiu"
+    assert json.loads((tmp_path / "fita.json").read_text(encoding="utf-8")) == VERDE, (
+        "a recusa gastou uma volta do laço — ela tem de vir ANTES dele"
+    )
+
+
+def test_checks_com_pr_inexistente_recusa_na_hora_e_ensina(tmp_path):
+    """Um número que não é PR nenhum: a espera nunca poderia terminar."""
+    proc = _rodar(["--checks", "999999", *RAPIDO], tmp_path,
+                  gh_respostas=VERDE, gh_pr=PR_SUMIDO)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "não tem PR com esse número" in saida
+    assert "999999" in saida
+    assert "quantidade de checks" in saida
+    assert "▶ vou esperar" not in proc.stdout
+
+
+def test_checks_de_um_pr_aberto_de_verdade_continua_sendo_medido(tmp_path):
+    """A conferência não pode custar o rito: PR aberto passa e a espera mede."""
+    proc = _rodar(["--checks", "447", *RAPIDO], tmp_path, gh_respostas=VERDE)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "checks verdes" in proc.stdout
+
+
+def test_gh_que_cai_na_conferencia_nao_impede_a_espera(tmp_path):
+    """SABOTAGEM: a conferência é lição, não muralha. Um `gh` que não responde
+    (rede caída, credencial vencida) não pode virar recusa de espera legítima —
+    na dúvida ela cala, e o laço, que é fail-closed, decide sozinho."""
+    proc = _rodar(["--checks", "447", *RAPIDO], tmp_path, gh_respostas=VERDE,
+                  gh_pr={"__erro__": "dial tcp: lookup api.github.com: no such host"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "checks verdes" in proc.stdout
+
+
+def test_pouso_com_pr_inexistente_recusa_na_hora(tmp_path):
+    """`--pouso` exige só que o PR EXISTA, nunca que esteja aberto: o desfecho
+    verde dele É o PR mesclado, e exigir ABERTO recusaria o próprio sucesso."""
+    proc = _rodar(
+        ["--pouso", "999999", *RAPIDO, "--mesmo-assim", "depurando a pista"],
+        tmp_path, gh_respostas=VERDE, gh_pr=PR_SUMIDO,
+    )
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "não tem PR com esse número" in saida
+    assert "▶ vou esperar" not in proc.stdout
 
 
 # ---------------------------------------------------------------------------
