@@ -170,11 +170,14 @@ def _url_do_mapa(curso: Curso | None) -> str:
     return reverse("curso", args=[curso.slug]) if curso else reverse("catalogo")
 
 
-def _recusar(request, motivo: str, *, status: int, **extra):
+def _recusar(request, motivo: str, *, status: int, curso: Curso | None = None, **extra):
+    """A tela de recusa. `curso` é o do endereço quando ele já se resolveu:
+    o link "tente de novo" da recusa `sem-resposta` volta para a página que
+    falhou, e sem o curso ele mandaria a pessoa ao catálogo, que é outra."""
     return render(
         request,
         "cursos/entrar.html",
-        {"motivo": motivo, **_de_fora(), **extra},
+        {"motivo": motivo, **_de_fora(curso), **extra},
         status=status,
     )
 
@@ -248,16 +251,18 @@ def _sala(request, slug: str | None = None):
     para todo mundo, sem erro em lugar nenhum.
     """
     ator = quem_e(request)
+    site = site_atual()
+    # O curso se resolve ANTES da porta só para a recusa saber para onde
+    # apontar; a porta continua fechando antes de qualquer conteúdo dele.
+    curso = enderecos.curso_do_site(site, slug) if site and slug is not None else None
     if not ator.autenticado:
-        return None, None, _recusar(request, "entrar", status=200)
+        return None, None, _recusar(request, "entrar", status=200, curso=curso)
     if not ator.eh_aluno:
         motivo = "sem-matricula" if ator.matricula_conferida else "sem-resposta"
-        return None, None, _recusar(request, motivo, status=403)
-    site = site_atual()
+        return None, None, _recusar(request, motivo, status=403, curso=curso)
     if not site:
         return None, None, _recusar(request, "sem-curso", status=200)
     if slug is not None:
-        curso = enderecos.curso_do_site(site, slug)
         if curso is None:
             return (
                 None,
@@ -459,7 +464,6 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
     else:
         situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
     return {
-        "slug": curso.slug,
         "nome": curso.nome,
         "url": reverse("curso", args=[curso.slug]),
         "aulas_abertas": _aulas_abertas(curso),
@@ -472,16 +476,23 @@ def _aviso_do_catalogo(ator, cartoes: list[dict]) -> str:
     """A frase do topo, ou `""`: o que houve com a matrícula desta pessoa,
     quando houve algo. `sem-sala` é o estado de quem tem matrícula ativa num
     produto que ainda não tem `Curso` neste site: nenhum cartão é dela, e sem
-    a frase a página pareceria dizer que ela não é aluna de nada."""
+    a frase a página pareceria dizer que ela não é aluna de nada.
+
+    Com um curso SEM PRODUTO apontado na tela, o aviso cala: esse curso pode
+    muito bem ser o dela (é como todo curso nasce), o cartão já diz que
+    ninguém entra ali ainda, e duas frases contraditórias na mesma tela são
+    piores do que uma.
+    """
     if not ator.autenticado:
         return ""
     if not ator.matricula_conferida:
         return "sem-resposta"
     if not ator.eh_aluno:
         return "sem-matricula"
-    if not any(cartao["situacao"] == "seu" for cartao in cartoes):
-        return "sem-sala"
-    return ""
+    situacoes = {cartao["situacao"] for cartao in cartoes}
+    if "seu" in situacoes or "sem-produto" in situacoes:
+        return ""
+    return "sem-sala"
 
 
 @require_GET
@@ -823,6 +834,10 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     do livro, com a parte dentro (TAR-216). Aqui a mudança exige um curso único
     (`_curso_unico`) e uma aula publicada nele: um 301 para um 404 ensinaria ao
     navegador, de uma vez, um endereço que não serve.
+
+    O 301 vem ANTES da porta, e de propósito: o navegador guarda um 301 pela
+    URL, sem olhar o cookie, e um redirecionamento que dependesse de quem está
+    olhando mentiria no cache do primeiro visitante em diante.
     """
     site = site_atual()
     if not site:
@@ -848,7 +863,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
     pausas, o quiz e o lugar do checkpoint.
 
     `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
-    que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
+    que muda de casa (301) antes da porta pelo motivo escrito em
+    `_o_endereco_de_um_segmento_mudou_de_casa`.
     `disponivel` vira `em_producao` na primeira abertura (`progresso.abrir`).
     Aula em rascunho é 404; porta trancada volta ao mapa.
     """
