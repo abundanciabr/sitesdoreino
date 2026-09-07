@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015943-TAR-228-explicada",
+  "tarefa": "TAR-228",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:43+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Este e o MESMO defeito da TAR-210, medido de novo em outro dia por outro robo.",
+  "o_que_muda": "Duas tarefas para consertar uma coisa so. E o primeiro caso para o botao de excluir: apagar uma e deixar a outra.",
+  "exemplo": "Medido em 06/09 no trabalho #1201: o robo respondeu que ja estava no ar, e o que estava no ar era outra parte do site.",
+  "importancia": 70
+}

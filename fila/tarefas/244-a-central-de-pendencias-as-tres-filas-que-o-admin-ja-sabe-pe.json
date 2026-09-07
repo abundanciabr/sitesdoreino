@@ -1,0 +1,19 @@
+{
+  "arquivo": "244-a-central-de-pendencias-as-tres-filas-que-o-admin-ja-sabe-pe",
+  "id": "TAR-244",
+  "titulo": "A Central de Pendencias: as tres filas que o Admin ja sabe perguntar, numa tela so",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "latencia-de-decisao",
+    "liberacoes-em-48h"
+  ],
+  "evidencia_exigida": "PR mergeado + deploy-celula admin completed/success lido por gh run view --json + suite da celula admin verde com prova vermelho->verde por assercao nos guardas novos + prova de fora: GET https://meshcraft.top/admin/pendencias/ responde 302 para o login (o cracha vem antes da tela)",
+  "despacho": "DEGRAU 1 de documentos/pendencias-e-conferencia-por-pares.md (plano APROVADO,\nPR #1262, no ar em /admin/documentos/pendencias-e-conferencia-por-pares).\nNAO REABRIR O PLANO.\n\nO PROBLEMA MEDIDO: existem SEIS filas de trabalho espalhadas pelo site e\nnenhuma delas avisa nada. O mantenedor abriu /conquistas/interno em 06/09/2026\ne disse \"que eu nem sabia que isso existia\". Uma fila que ninguem lembra de\nabrir e uma fila que nao existe.\n\nA ENTREGA: /admin/pendencias/ — a portaria. Uma linha por fila, dizendo o que\ne, quantos esperam, ha quanto tempo, e um botao que leva ao lugar onde se\nresolve. A tela nao resolve nada por dentro: cada fila continua morando na\npropria casa, que e onde a regra dela e conferida.\n\nNESTE DEGRAU entram SO as tres filas que o Admin ja sabe perguntar hoje, sem\ncredencial nova nenhuma:\n  1. quem esta aguardando aprovacao   (AlunosClient.fila(\"aguardando\"))\n  2. ideias esperando a assinatura    (CaixaClient.ideias, coluna \"assinar\")\n  3. decisoes paradas no painel       (painel/logica.js::caixaDeEntrada)\n\nA TRAVA QUE NAO SE AFROUXA: \"nao consegui perguntar\" NUNCA vira zero. Um zero\nem \"9 pessoas querem entrar\" faz o mantenedor concluir que ninguem esta\nesperando, e essa e a mentira mais cara que esta tela pode contar. Fail-OPEN\npor linha: a fila que nao responde diz isso e a pagina abre igual.\n\nA TRAVA DA MEIA-VERDADE: a tela conta 3 de 6 filas neste degrau, e tem de DIZER\ncom todas as letras quais ainda nao ve e onde elas moram. Uma portaria que\nparece completa e pior que portaria nenhuma.\n\nO NUMERO DO PAINEL NAO SE RECALCULA EM PYTHON. A regra \"pedido e o que tem\nprecisa_do_dono: true sem resposta\" mora em painel/logica.js::caixaDeEntrada, e\nja custou uma divergencia medida (o Python dizia 6, o painel dizia 7 —\nci/metricas_da_fabrica.py::pedidos_ao_dono conta a historia). A imagem da admin\nnao tem Node. Entao quem conta e o gerador (painel/gerar_manifesto.js, que roda\nno deploy), e a admin so LE o numero embutido em painel.html — os mesmos bytes\nque ela ja serve.\n\nARMADILHAS DESTA TAREFA: 081 (o prefixo de reverse() e valor de THREAD, use\nset_script_prefix com finally) · 097 (env lido no ponto de uso) · 087 ({# nao\ncomenta varias linhas) · o guarda de tests/test_moldura_do_admin.py exige nome\ncurto em moldura.SECOES para toda secao nova · ci/mapa_do_site.py reprova rota\nsem entrada em painel/mapa-do-site.json e vice-versa.\n\nFORA DESTE DEGRAU: a linha com contador no alto de todas as telas (degrau 2),\nas outras tres filas (degrau 3), a conferencia por pares (degrau 4).",
+  "origem": "pedido do mantenedor em 07/09/2026, degrau 1 do plano aprovado no PR 1262",
+  "criada_em": "2026-09-07"
+}

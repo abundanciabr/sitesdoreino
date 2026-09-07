@@ -65,6 +65,7 @@ from apps.core.menu import (
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
+from apps.core.pendencias import pendencias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -180,6 +181,18 @@ urlpatterns = [
     # Barra final pela convenção das outras telas; quem chega sem ela é
     # redirecionado pelo APPEND_SLASH, que já está na cadeia.
     path("mapa/", mapa_do_site, name="mapa_do_site"),
+    # A CENTRAL DE PENDENCIAS (`apps/core/pendencias.py`, 07/09/2026), degrau 1
+    # de `documentos/pendencias-e-conferencia-por-pares.md`. A portaria: tudo
+    # que espera pelo mantenedor numa tela so.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e do menu logo
+    # abaixo: a rota generica `painel/<qualquer coisa>` engoliria qualquer
+    # irmao dela. Esta e uma tela da area, nao uma peca do painel, ainda que
+    # LEIA um numero de dentro dele.
+    #
+    # Barra final pela convencao das outras telas; quem chega sem ela e
+    # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
+    path("pendencias/", pendencias, name="pendencias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.

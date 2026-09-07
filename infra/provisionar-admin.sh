@@ -110,7 +110,23 @@ esac
 # chave sem relê-la seria a `armadilhas/111` com outro nome. Ela só nasce aqui
 # quando falta dos dois lados, como marcador, até
 # `infra/provisionar-par-do-portfolio-com-a-admin.sh` alinhar os dois envs.
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
+#
+# A NONA CHAVE ENTROU EM 06/09/2026, e é a SEGUNDA que este roteiro não gera.
+# `GITHUB_TOKEN_FILA` é a chave do GitHub com que a tela dos robôs grava a
+# exclusão de uma tarefa da fila, e quem a preenche é o mantenedor, na VPS, por
+# `infra/por-a-chave-do-github.sh`. Ela nasce aqui VAZIA de propósito: vazia, o
+# botão de excluir tarefa fica desligado dizendo o que fazer, e nada mais na
+# área administrativa muda.
+#
+# ELA TAMBÉM É RELIDA do arquivo vivo antes da reescrita, pelo motivo do
+# parágrafo acima e por um a mais, que a torna a pior desta lista para se
+# perder: uma chave do GitHub aparece UMA VEZ SÓ na tela de quem a cria. Apagá-la
+# aqui não custaria uma reprovisão, custaria uma ida do mantenedor ao navegador
+# para gerar outra, e o sintoma seria um botão que voltou a ficar desligado sem
+# ninguém ter mexido nele. É a `armadilhas/111` de novo, e é exatamente o defeito
+# que a TAR-172 tem aberto contra o `infra/provisionar-forum.sh`, que escreve a
+# lista de professores vazia sem relê-la. Este roteiro não nasce com ele.
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -150,6 +166,14 @@ else
   T_PAGES="$(openssl rand -hex 32)"
   echo "  par pages na admin ........... não existe (gravo um marcador; quem alinha os dois lados é o roteiro do par)"
 fi
+# A chave do GitHub do botão de excluir tarefa: RELIDA do arquivo vivo, nunca
+# gerada aqui (ver a lista da trava, lá em cima). Vazia é resposta legítima e o
+# roteiro não para por isso: quem a põe é `infra/por-a-chave-do-github.sh`, e
+# sem ela o botão apenas nasce desligado dizendo o que fazer.
+if [ -f env/admin.env ]; then TOKEN_FILA="$(ler_de env/admin.env GITHUB_TOKEN_FILA)"; else TOKEN_FILA=""; fi
+if [ -n "$TOKEN_FILA" ]
+then echo "  chave do GitHub da fila ...... já existe (releio e regravo igual, sem apagar)"
+else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-do-github.sh)"; fi
 echo "  lista de admins .............. herdada de env/identidade.env (não digitei nada)"
 echo
 
@@ -173,7 +197,17 @@ psql_super -c "REVOKE ALL ON DATABASE admin_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 
 umask 077
-[ -f env/admin.env ] && cp -a env/admin.env "env/admin.env.bak-$(date +%s)"
+# A CÓPIA GUARDA O NOME, e não é conveniência: é ela o único registro do que o
+# arquivo dizia ANTES desta execução, e a conferência de preservação lá embaixo
+# compara com ELA. Comparar com a variável que acabou de escrever a linha seria
+# a variável se conferindo a si mesma — apagar a releitura zeraria os dois lados
+# ao mesmo tempo e a conferência ficaria verde apagando a chave, que é
+# exatamente o defeito que ela existe para pegar.
+BAK=""
+if [ -f env/admin.env ]; then
+  BAK="env/admin.env.bak-$(date +%s)"
+  cp -a env/admin.env "$BAK" || parar "não consegui guardar a cópia de segurança de env/admin.env. Nada foi alterado."
+fi
 
 # O molde é infra/env/admin.env.exemplo — se aquele arquivo ganhar variável
 # nova, este bloco precisa ganhar junto, senão a célula sobe sem ela.
@@ -186,6 +220,7 @@ IDENTIDADE_API_URL=http://identidade:8000/interno
 IDENTIDADE_API_TOKEN=$TOKEN_ADMIN
 ADMIN_EMAILS=$STAFF
 TOKENS_ACEITOS_PAGES=$T_PAGES
+GITHUB_TOKEN_FILA=$TOKEN_FILA
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -212,7 +247,7 @@ por_linha env/identidade.env TOKENS_COMPLETOS_ADMIN "$TOKEN_ADMIN"
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... OK"; else echo "  banco admin_db ............... FALTANDO"; fi
-echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 8)"
+echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 9)"
 echo "  dono/modo do env ............. $(stat -c '%U:%G %a' env/admin.env) (igual ao identidade.env: $(stat -c '%U:%G %a' env/identidade.env))"
 
 faltou=0
@@ -233,6 +268,21 @@ done
 if [ -n "$T_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$T_PAGES" ]
 then echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK"
 else echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO"; faltou=1; fi
+
+# A CONFERÊNCIA nº 1c: a chave do GitHub do botão de excluir tarefa sobreviveu
+# à reescrita, com o MESMO valor que estava no arquivo. VAZIA É RESULTADO
+# LEGÍTIMO e não reprova nada, porque quem a põe é
+# `infra/por-a-chave-do-github.sh` e ela pode simplesmente ainda não existir. O
+# que NÃO pode acontecer é ela existir antes e sumir aqui: uma chave do GitHub
+# aparece uma vez só na tela de quem a cria, e o mantenedor teria de gerar
+# outra (`armadilhas/111`, e o defeito que a TAR-172 acusa no fórum).
+if [ -n "$BAK" ]; then ANTES_FILA="$(ler_de "$BAK" GITHUB_TOKEN_FILA)"; else ANTES_FILA=""; fi
+if [ "$(ler_de env/admin.env GITHUB_TOKEN_FILA)" = "$ANTES_FILA" ]
+then
+  if [ -n "$ANTES_FILA" ]
+  then echo "  admin.env / GITHUB_TOKEN_FILA ... OK (preservada, o mesmo valor que estava em $BAK)"
+  else echo "  admin.env / GITHUB_TOKEN_FILA ... vazia, como já estava (o botão de excluir tarefa segue desligado)"; fi
+else echo "  admin.env / GITHUB_TOKEN_FILA ... PERDI A CHAVE QUE ESTAVA AQUI (ela está intacta em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
 
 # nº 2: os dois degraus do par, do lado da identidade.
 for chave in TOKENS_ACEITOS_ADMIN TOKENS_COMPLETOS_ADMIN; do

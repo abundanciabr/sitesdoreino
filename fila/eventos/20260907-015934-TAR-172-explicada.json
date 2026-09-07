@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015934-TAR-172-explicada",
+  "tarefa": "TAR-172",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:34+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando o forum e reinstalado, a lista de quem e professor e gravada vazia por cima da sua, sem aviso nenhum, e a publicacao fica verde como se tudo tivesse dado certo.",
+  "o_que_muda": "Voce escreve a mao quem sao os professores. Na proxima reinstalacao, eles viram alunos comuns no forum e ninguem e avisado. Voce so descobre quando um professor reclamar.",
+  "exemplo": "Voce poe 3 professores na lista hoje. Semana que vem alguem reinstala o forum, e os 3 perdem o cracha em silencio.",
+  "importancia": 88
+}
