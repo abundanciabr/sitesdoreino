@@ -108,7 +108,9 @@ function registroSintetico(base, dia) {
 /** Um painel/ completo, gerado pelo gerador REAL, com N registros sintéticos. */
 function cenario(n) {
   var dir = fs.mkdtempSync(path.join(os.tmpdir(), "painel-navegador-"));
-  ["logica.js", "gerar_manifesto.js", "painel.template.html"].forEach(function (f) {
+  // `areas.json` entra na lista porque o gerador é fail-closed sem ele desde
+  // 07/09/2026: são as áreas do site que a aba Prioridades desenha.
+  ["logica.js", "gerar_manifesto.js", "painel.template.html", "areas.json"].forEach(function (f) {
     fs.copyFileSync(path.join(PAINEL, f), path.join(dir, f));
   });
   fs.mkdirSync(path.join(dir, "registros"));

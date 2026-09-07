@@ -43,6 +43,14 @@ function montarCenario(registros, opcoes) {
     if (opcoes.templateSemMarcador) tpl = tpl.replace("__DADOS_DO_PAINEL__", "");
     fs.writeFileSync(path.join(dir, "painel.template.html"), tpl, "utf8");
   }
+  // As áreas do site viajam com o cenário porque o gerador é fail-closed sem
+  // elas. `areas` troca o conteúdo (para o cenário do arquivo inválido) e
+  // `semAreas` não escreve o arquivo nenhum.
+  if (!opcoes.semAreas) {
+    fs.writeFileSync(path.join(dir, "areas.json"),
+      opcoes.areas !== undefined ? opcoes.areas
+        : fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8"), "utf8");
+  }
   fs.mkdirSync(path.join(dir, "registros"));
   Object.keys(registros).forEach(function (nome) {
     fs.writeFileSync(path.join(dir, "registros", nome), registros[nome], "utf8");
@@ -406,6 +414,69 @@ var filaZero = filaCarimbada(leia(dirZero, "painel.html"));
 caso("livro sem pedido nenhum carimba zero, e não some", !!filaZero && filaZero.quantidade === 0);
 caso("...com a data do mais antigo em null, nunca uma data inventada",
   !!filaZero && filaZero.maisAntigo === null);
+
+// ---------------------------------------------------------------------------
+// AS ÁREAS DO SITE (07/09/2026, a aba Prioridades). Elas viajam com a página
+// porque é delas que a tela tira a ORDEM, o nome que o dono lê e a que área
+// pertence cada fato. E o gerador é FAIL-CLOSED: sem o arquivo, o campo `area`
+// dos registros não teria contra o que ser conferido e a aba desenharia todo
+// mundo em "sem área reconhecida" — uma tela plausível e errada.
+console.log("== as áreas do site viajam na página, e sem elas o gerador PARA ==");
+var dirAreas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dirAreas);
+var htmlAreas = leia(dirAreas, "painel.html");
+var doArquivo = JSON.parse(fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8")).areas;
+// Lida de dentro da página, executando o bloco embutido: prova que ela chega ao
+// navegador como DADO, e não só que o texto aparece em algum lugar do arquivo.
+var vmAreas = require("vm");
+var NL = String.fromCharCode(10);
+var caixaAreas = { window: {}, JSON: JSON };
+try {
+  var corpo = htmlAreas.split("var PAINEL = {")[1].split(NL + "};")[0];
+  vmAreas.runInNewContext("var PAINEL = {" + corpo + NL + "};", caixaAreas, { timeout: 5000 });
+} catch (e) { caixaAreas.PAINEL = null; }
+caso("a página traz PAINEL.areas", !!(caixaAreas.PAINEL && caixaAreas.PAINEL.areas));
+caso("...e é EXATAMENTE o que está em painel/areas.json (um lugar só)",
+  !!caixaAreas.PAINEL && JSON.stringify(caixaAreas.PAINEL.areas) === JSON.stringify(doArquivo));
+caso("...com a ordem do arquivo, que é a ordem da tela",
+  !!caixaAreas.PAINEL && caixaAreas.PAINEL.areas.map(function (a) { return a.id; }).join(",") ===
+    doArquivo.map(function (a) { return a.id; }).join(","));
+
+var dirSemAreas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") }, { semAreas: true });
+var rSemAreas = roda(dirSemAreas);
+caso("sem painel/areas.json o gerador RECUSA construir (exit 2 = ERROR)", rSemAreas.code === 2);
+caso("...dizendo o caminho do arquivo que falta", rSemAreas.out.indexOf("areas.json") !== -1);
+caso("...e NÃO escreve o painel", !existe(dirSemAreas, "painel.html"));
+
+var dirAreasTortas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") },
+  { areas: "{ isto nao e json" });
+caso("areas.json ilegível REPROVA (exit 2 = ERROR)", roda(dirAreasTortas).code === 2);
+
+// Uma célula em duas áreas faria o mesmo trabalho aparecer em dois blocos, e a
+// soma dos blocos deixaria de bater com a contagem do topo.
+var dirAreasRepetidas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") }, {
+  areas: JSON.stringify({ areas: [
+    { id: "a", nome: "A", diz: "x", celulas: ["forum"] },
+    { id: "b", nome: "B", diz: "y", celulas: ["forum"] }
+  ] })
+});
+var rRepetidas = roda(dirAreasRepetidas);
+caso("a mesma célula em duas áreas REPROVA (exit 1)", rRepetidas.code === 1);
+caso("...e diz qual célula", rRepetidas.out.indexOf("forum") !== -1);
+caso("...e NÃO escreve o painel", !existe(dirAreasRepetidas, "painel.html"));
+
+// O campo `area` do registro é conferido contra este arquivo, no gerador, com a
+// mesma logica.js da página: nome inventado não entra no livro.
+var dirAreaBoa = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a", { area: "painel" })
+});
+caso("registro com 'area' de painel/areas.json passa", roda(dirAreaBoa).code === 0);
+var dirAreaMa = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a", { area: "celula-que-nao-existe" })
+});
+var rAreaMa = roda(dirAreaMa);
+caso("registro com 'area' inventada REPROVA (exit 1)", rAreaMa.code === 1);
+caso("...e diz qual nome não existe", rAreaMa.out.indexOf("celula-que-nao-existe") !== -1);
 
 console.log("");
 if (falhas.length) {

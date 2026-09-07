@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-165759-TAR-274-explicada",
+  "tarefa": "TAR-274",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:57:59+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O painel do dono viaja numa pagina so, com teto de 300 KB. Dentro dela vai o arquivo de regras (logica.js) inteiro, com 25 KB de comentarios que so uma pessoa lendo o codigo aproveita; o navegador nao le nada disso. Em 07/09/2026, com a aba Prioridades, a pagina chegou a 290 KB.",
+  "o_que_muda": "No dia em que passar do teto, o gerador se recusa a construir a pagina e a muralha do painel reprova TODO PR do repositorio, nao so o do painel: a fabrica inteira para. A pagina cresce cerca de 0,25 KB por dia e sobram 9,6 KB. Tirar os comentarios da copia embutida devolve uns 25 KB de folga sem mudar regra nenhuma.",
+  "exemplo": "E como uma mala no limite de peso do aviao levando dentro o manual de instrucoes da propria mala. Tira-se o manual da mala, e ele continua na estante em casa.",
+  "importancia": 80
+}
