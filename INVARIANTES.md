@@ -803,6 +803,151 @@ primeira oportunidade de violá-la.
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
 - **Célula dona:** encomendas
 
+### [INV-ENC-M1] O Mural Só Mostra o Que o Aluno é Elegível a Pegar
+- **O quê:** a lista do Mural, para um aluno, contém exatamente os projetos para
+  os quais aquele aluno passa na régua de elegibilidade da lei, e nenhum outro. A
+  régua é ELEGIBILIDADE, e nunca "já entregou": é o mesmo `motor.por_que_nao` que
+  a fila chama, com os mesmos parâmetros lidos do mesmo banco, sobre os estados
+  `no_mural` e `aberta`.
+- **Por quê:** um mural aberto desde o primeiro dia recria o problema que a fila
+  existe para resolver, porque um cliente escolhendo entre dez alunos escolhe o
+  que já tem portfólio, e o aluno sem portfólio nunca começa. A elegibilidade da
+  lei já carrega as entregas (1 no Intermediário, 5 no Avançado), então quem
+  nunca entregou vê um Mural vazio sem que ninguém precise escrever essa frase
+  em lugar nenhum, e continua recebendo trabalho pela fila no mesmo instante. A
+  revisão de 04/09/2026 mora exatamente aqui: a versão anterior dizia "só quem
+  já entregou vê o Mural", e isso contradizia a chamada aberta, que avisa TODOS
+  os elegíveis e, num projeto Iniciante, inclui quem tem zero entregas. Duas
+  regras que se negam viram, na construção, a interpretação de quem codar
+  primeiro. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m1_mural_so_o_que_e_elegivel.py` — o Mural
+  vazio de quem nunca entregou com o par que prova que a fila continua inteira
+  para ele, as duas listas diferentes do mesmo Mural no mesmo instante, o título
+  abaixo do nível que dez entregas não compram, quem pausou e quem trabalha, o
+  projeto já reservado sumindo do Mural de todos, a fronteira de site, a chamada
+  aberta de um projeto Iniciante aparecendo para quem tem zero entregas (o par
+  que separa a régua certa da errada) com a contraprova do nível mínimo, e a
+  varredura universal que compara a lista com a régua do motor em todos os pares
+  (aluno, projeto). Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M2] Projeto Iniciante Só Chega ao Mural Pela Chamada Aberta
+- **O quê:** projeto de nível Iniciante nasce `na_fila`, com `pista=fila`, e
+  nunca senta no Mural reservável. A única porta dele para o Mural é a chamada
+  aberta (`aberta`), que só existe depois de a fila ter tentado por
+  `horas_para_virar_aberta` e falhado; ali ele é mostrado a todos os elegíveis e
+  o primeiro que ACEITAR leva, sem reserva e sem relógio de vez. Projeto
+  Intermediário ou Avançado nasce `no_mural`, com `pista=mural`.
+- **Por quê:** o Iniciante é o único nível que uma pessoa com zero entregas pode
+  fazer, e a fila existe para garantir que ele chegue a essa pessoa, na ordem,
+  sem ninguém escolher. Um Iniciante nascido no Mural passaria por cima disso em
+  silêncio: quem tivesse mais tempo livre o pegaria primeiro, e a promessa do
+  primeiro dólar viraria uma corrida. São três mecanismos de camadas diferentes,
+  e o terceiro é o que quase ninguém lembra: a tabela `mural.PISTA_DE_NASCIMENTO`
+  decide a pista; a máquina de estado não tem seta de `na_fila` para `no_mural` e
+  o gatilho recusa a transição; e o CHECK `iniciante_nunca_no_mural_reservavel`
+  fecha o INSERT, porque **gatilho de transição não vê INSERT** e sem ele uma
+  tela futura, uma migração de dados ou um `psql` de madrugada criariam um
+  Iniciante já no Mural sem violar transição nenhuma. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m2_iniciante_passa_pela_fila.py` — cada
+  nível na pista dele, a assinatura de `nascer` que não aceita pista nem nível, o
+  INSERT recusado pelo banco com o par verde do Intermediário, a pista que não
+  pode mentir, a transição recusada pelo gatilho, a chamada aberta como única
+  porta (com o par que prova que ela estava fechada antes), a pista que muda sem
+  o nível mudar, e a chamada aberta que não se pega com reserva. Provado por
+  mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M3] O Mural Não é Leilão
+- **O quê:** três cláusulas. Nunca existem duas reservas vivas para o mesmo
+  projeto (viva é `pendente` ou `negociando`); vencido o relógio da vez, o
+  projeto volta ao Mural sem dono, para o próximo; e ninguém pega duas vezes o
+  mesmo projeto, nem depois de a reserva vencer. Quem faz as três valerem são
+  dois índices únicos do PostgreSQL: `uma_reserva_viva_por_encomenda` (parcial) e
+  `ninguem_pega_o_mesmo_projeto_duas_vezes` (sem condição).
+- **Por quê:** o mantenedor pediu que os alunos possam PEGAR os projetos, e pegar
+  não é dar lance. Leilão entre alunos da mesma escola é uma corrida para baixo,
+  em que ganha quem cobra menos, e a escola estaria construindo a máquina de
+  rebaixar o próprio preço do próprio aluno; comparar propostas é comparar
+  pessoas, que é o ranking público que continua fora por critério de morte. A
+  trava é do BANCO porque dois alunos tocando "Pegar" no mesmo segundo é o caso
+  comum de um Mural com movimento, e nenhum `if` em Python o resolve: os dois
+  leem `no_mural` antes de qualquer um escrever. A terceira cláusula é a mesma
+  forma do [INV-ENC-J6] na outra pista, e sem ela o mesmo aluno pega, deixa
+  vencer, pega de novo, e o projeto gira sem sair do lugar. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.2 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m3_mural_nao_e_leilao.py` — a vez com
+  relógio, o segundo aluno recusado com razão nomeada, o `INSERT` cru recusado
+  pelo índice parcial, a reserva em negociação que continua viva para a trava (a
+  costura da TAR-134), a devolução ao Mural sem dono, o projeto que volta para o
+  próximo e não para quem o teve, o índice que sobra quando a leitura educada
+  falha, o par que prova que a memória é do PAR (aluno, projeto), a reserva que
+  não ressuscita, o "Pegar" que passa pela mesma régua da lista, e a fronteira de
+  site nos dois níveis. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M4] A Ordem do Mural é Só a Antiguidade do Projeto
+- **O quê:** a lista sai do mais antigo para o mais novo (`criada_em`), e nenhuma
+  outra chave ordena. O `id` é desempate, e não regra: só é consultado quando
+  dois projetos nasceram no mesmo microssegundo.
+- **Por quê:** é a mesma regra de ordem única da fila, e ela é o critério de
+  morte 2 da lei §9. A tentação chega sempre pela porta da frente, com um bom
+  motivo: pôr em cima os projetos que pagam mais "para o aluno ganhar mais", os
+  de prazo curto "para o cliente não esperar", os do nível do aluno "porque é
+  mais relevante". Cada uma dessas é uma régua nova, e a segunda régua é a que
+  ninguém consegue explicar quando um aluno pergunta por que o projeto dele nunca
+  aparece em cima. O desempate por `id` não é uma segunda regra porque nunca
+  decide nada que os termos da lei já não tenham decidido; sem ele, dois cartões
+  empatados trocariam de lugar entre dois carregamentos, conforme a ordem em que
+  o banco devolvesse as linhas. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.3 e §8.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_m4_ordem_unica.py` — o
+  mais antigo primeiro com os projetos criados fora de ordem, o nível que não
+  reordena, o preço de referência que não reordena, a chamada aberta que não fura
+  a fila do Mural, a lista estável entre cinco leituras, e as duas garantias de
+  FORMA por varredura `ast` (um `order_by` só, com exatamente `criada_em` e o
+  desempate `id`, e nenhum nome de chave de prioridade na função). A varredura
+  existe porque um termo novo que empatasse em todos os cenários encenados
+  entraria verde e mentiria no primeiro dia de produção. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M5] Nenhum Projeto Encalha no Mural em Silêncio
+- **O quê:** projeto que passa `horas_para_virar_aberta` (hoje 24h, de PAREDE) no
+  Mural SEM nenhum aluno elegível disponível vai a `para_reclassificar`, com a
+  razão escrita no histórico e sem autor inventado. As duas condições são E, e
+  não OU: com elegível disponível o projeto fica onde está. O marco da espera
+  conta `no_mural` e `reservada` juntos, e é a última entrada vinda de FORA desse
+  par.
+- **Por quê:** nos primeiros meses ninguém terá entrega aprovada, então o Mural
+  nasce sem ninguém para olhá-lo, e um projeto Intermediário ou Avançado aberto
+  nesse período ficaria parado para sempre, sem erro, sem alarme e sem ninguém
+  sabendo. É a doença da `armadilhas/283` na segunda pista, e o dia da
+  inauguração é o cenário que a encena. Mesmo relógio e mesmo destino que a lei
+  já dava à encomenda encalhada na fila (§6.4): o professor decide entre
+  reclassificar, segurar ou avisar o cliente. As duas condições são E porque
+  recolher um projeto que ainda pode ser pego trocaria um encalhe silencioso por
+  uma fila de trabalho inútil na mesa do professor, e o que este invariante
+  impede é o encalhe, e não a espera. E o marco conta os dois estados juntos
+  porque um relógio que reiniciasse a cada reserva vencida nunca chegaria às 24h
+  num Mural com movimento, que é exatamente onde ele mais importa. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8; lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §6.4.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m5_nada_encalha_em_silencio.py` — o dia da
+  inauguração com o par verde de um minuto antes, a razão escrita sem autor, o
+  prazo mudando no banco sem PR, o projeto COM elegível que espera e não vai ao
+  plantão, o elegível que pausa e deixa de contar, o projeto reservado que não é
+  varrido, o marco que não zera na ida e volta do Mural, o projeto devolvido pelo
+  plantão ganhando o prazo inteiro, a ordem dos cinco gestos do tique numa
+  passada só, a segunda passada inerte, e a varredura universal que pergunta ao
+  banco se sobrou alguém encalhado em silêncio. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
 ### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Produto
 - **O quê:** liberar alguém da sala de espera EXIGE dizer em qual curso a pessoa
   está matriculada. `POST /pre-matriculas/{id}/decisao` com `decisao=liberar` e
