@@ -28,6 +28,10 @@
 //   a capa RENDERIZOU       (não é a tela vermelha)
 //   abrir um mês            = +1 pedido, e só
 //   os registros do mês     aparecem na tela
+//   abrir Prioridades       = +1 pedido (fila.json), e só; a vista é SÓ o menu
+//   abrir uma área          = 0 pedido; SÓ o bloco daquela área na tela
+//   tarefa na fila          tem o botão de copiar o prompt; a que espera o
+//                           dono NÃO tem (07/09/2026, uma página por área)
 //
 // Tudo isso com 10, 1.000 e 5.000 registros — é a forma da curva que importa,
 // não o número num tamanho só. O conjunto é NOMINAL de propósito: contagem
@@ -54,6 +58,9 @@ var url = require("url");
 var RAIZ = path.join(__dirname, "..");
 var PAINEL = path.join(RAIZ, "painel");
 var TAMANHOS = [10, 1000, 5000];
+// As áreas REAIS do site: a aba Prioridades desenha um cartão por área, e é
+// contra esta lista que o menu é medido.
+var AREAS = JSON.parse(fs.readFileSync(path.join(PAINEL, "areas.json"), "utf8")).areas;
 
 var falhas = [];
 function caso(nome, cond, detalhe) {
@@ -133,6 +140,29 @@ function cenario(n) {
   return dir;
 }
 
+/** A fila dos robôs como `fila_para_o_painel` (services/admin) a entrega: uma
+ *  tarefa que um robô NOVO pode pegar (com `prompt`) e uma parada esperando o
+ *  dono (sem), as duas na primeira área do site. A forma é a de
+ *  `_tarefa_para_o_painel`, campo a campo, para medir a página real e não um
+ *  dublê (armadilhas/131). */
+var PROMPT_DO_STUB = "Toque a TAR-901 da fila de trabalho.\n\nO despacho inteiro está no arquivo dela.";
+function filaDeMentira() {
+  function tarefa(extra) {
+    var base = { id: null, titulo: null, estado: null, espera: null, situacao: null,
+      para_o_dono: false, importancia: null, selo: { texto: "ninguém classificou esta ainda", classe: "sem-nota" },
+      area: AREAS[0].id, toca: ["admin"], onde: ["a área administrativa"], o_que_muda: null, motivo: null, prompt: null };
+    Object.keys(extra).forEach(function (k) { base[k] = extra[k]; });
+    return base;
+  }
+  return { erro: null, aviso: null, tarefas: [
+    tarefa({ id: "TAR-901", titulo: "Uma tarefa esperando um robô", estado: "na fila",
+      situacao: "Esperando um robô pegar", importancia: 70, selo: { texto: "custa caro hoje", classe: "alta" },
+      o_que_muda: "o painel fica mais claro", prompt: PROMPT_DO_STUB }),
+    tarefa({ id: "TAR-902", titulo: "Uma tarefa parada esperando o dono", estado: "bloqueada", espera: "mantenedor",
+      situacao: "Esperando uma decisão sua", para_o_dono: true, motivo: "aguardando despacho do mantenedor" })
+  ] };
+}
+
 /** Servidor estático mínimo — o modo "pelo site", sem Django no caminho. */
 function servidor(dir) {
   var s = http.createServer(function (req, res) {
@@ -144,10 +174,11 @@ function servidor(dir) {
     // diferente da real, e um 404 inventado pelo teste apareceria como erro de
     // console — medindo o dublê em vez do original (armadilhas/131).
     var caminho = url.parse(req.url).pathname;
-    if (caminho === "/divida.json" || caminho === "/diag.json") {
+    if (caminho === "/divida.json" || caminho === "/diag.json" || caminho === "/fila.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify(caminho === "/divida.json"
         ? { devedores: [] }
+        : caminho === "/fila.json" ? filaDeMentira()
         : { de_pe_ha_segundos: 42, perguntas_a_identidade: 3,
             desfechos: { respondeu: 3, estourou_o_tempo: 0, recusou: 0,
                          fora_do_contrato: 0, sem_configuracao: 0 },
@@ -407,6 +438,76 @@ async function medirMemoria(estado, endereco, base, rotulo) {
     estado.errosPagina.slice(0, 3).join(" | "));
 }
 
+/** Prioridades desde 07/09/2026: a aba é SÓ o menu, cada área tem a sua
+ *  página, e a tarefa que um robô novo pode pegar traz o botão de copiar o
+ *  prompt. Só pelo site: por duplo clique não há fila a buscar. */
+async function medirPrioridades(estado, rotulo) {
+  var pagina = estado.pagina;
+  var antes = estado.pedidos.length;
+  await pagina.evaluate(function () { location.hash = "#prioridades"; });
+  await pagina.waitForTimeout(600);
+
+  var menu = await pagina.evaluate(function () {
+    return {
+      cartoes: document.querySelectorAll("#vista-prioridades .card").length,
+      temSem: !!document.querySelector('#vista-prioridades a.card[href="#area/sem"]'),
+      blocos: document.querySelectorAll("#vista-prioridades .bloco").length,
+      ativa: document.getElementById("vista-prioridades").className.indexOf("ativa") !== -1
+    };
+  });
+  var esperados = AREAS.length + (menu.temSem ? 1 : 0);
+  caso(rotulo + ": Prioridades é SÓ o menu, um cartão por área (" + esperados + ") e ZERO bloco",
+    menu.ativa && menu.cartoes === esperados && menu.blocos === 0,
+    "cartoes=" + menu.cartoes + " blocos=" + menu.blocos + " ativa=" + menu.ativa);
+  var novos = estado.pedidos.slice(antes).map(function (u) { return u.split("/").pop(); });
+  caso(rotulo + ": abrir Prioridades custa EXATAMENTE +1 pedido, o fila.json",
+    JSON.stringify(novos) === JSON.stringify(["fila.json"]), "veio: " + (novos.join(", ") || "(nada)"));
+
+  var depoisDaFila = estado.pedidos.length;
+  await pagina.click("#vista-prioridades .card");
+  await pagina.waitForTimeout(300);
+  var area = await pagina.evaluate(function () {
+    var cab = document.querySelector("#vista-area .bloco > .cab");
+    return {
+      hash: location.hash,
+      ativa: document.getElementById("vista-area").className.indexOf("ativa") !== -1,
+      abaAcesa: !!document.querySelector('.aba.ativa[data-vista="prioridades"]'),
+      blocos: document.querySelectorAll("#vista-area .bloco").length,
+      cab: cab ? cab.textContent : "",
+      tarefas: document.querySelectorAll("#vista-area .item .meta").length,
+      botoes: document.querySelectorAll("#vista-area .tocar").length,
+      prompt: (document.querySelector("#vista-area .prompt-caixa") || {}).textContent || ""
+    };
+  });
+  caso(rotulo + ": clicar no primeiro cartão abre #area/" + AREAS[0].id + ", com a aba Prioridades acesa",
+    area.hash === "#area/" + AREAS[0].id && area.ativa && area.abaAcesa,
+    "hash=" + area.hash + " ativa=" + area.ativa + " aba=" + area.abaAcesa);
+  caso(rotulo + ": a página da área tem EXATAMENTE 1 bloco, com o nome da área no cabeçalho",
+    area.blocos === 1 && area.cab.indexOf(AREAS[0].nome) === 0, "blocos=" + area.blocos + " cab=" + area.cab);
+  caso(rotulo + ": abrir a área NÃO custou pedido novo (a fila já veio)",
+    estado.pedidos.length === depoisDaFila, estado.pedidos.slice(depoisDaFila).join(" | "));
+  caso(rotulo + ": só a tarefa na fila tem o botão de copiar, e o prompt é o da fila",
+    area.tarefas === 2 && area.botoes === 1 && area.prompt === PROMPT_DO_STUB,
+    "tarefas=" + area.tarefas + " botoes=" + area.botoes + " prompt=" + JSON.stringify(area.prompt.slice(0, 40)));
+
+  await pagina.evaluate(function () { location.hash = "#area/nao-existe"; });
+  await pagina.waitForTimeout(200);
+  var perdida = await pagina.evaluate(function () {
+    var volta = document.querySelector("#vista-area .voltar");
+    return {
+      ativa: document.getElementById("vista-area").className.indexOf("ativa") !== -1,
+      texto: document.getElementById("area-bloco").textContent,
+      blocos: document.querySelectorAll("#vista-area .bloco").length,
+      volta: volta ? volta.getAttribute("href") : null
+    };
+  });
+  caso(rotulo + ": área que não existe diz isso em português e oferece a volta, sem erro de página",
+    perdida.ativa && perdida.blocos === 0 && perdida.texto.indexOf("Não existe área") === 0 &&
+      perdida.volta === "#prioridades" && estado.errosPagina.length === 0,
+    "texto=" + JSON.stringify(perdida.texto.slice(0, 50)) + " volta=" + perdida.volta +
+      " erros=" + estado.errosPagina.slice(0, 2).join(" | "));
+}
+
 // ------------------------------------------------------ a prova do próprio corte
 
 /** O corte "nosso × externo" tem de MORDER nos dois sentidos, e ser visto.
@@ -532,6 +633,7 @@ async function principal() {
     // passar por uma decisão consciente, em vez de entrar de carona.
     var estadoHttp = await medir(navegador, endereco, baseHttp, "http · " + n,
       ["divida.json", "diag.json"]);
+    await medirPrioridades(estadoHttp, "http · " + n);
     await medirMemoria(estadoHttp, endereco, baseHttp, "http · " + n);
     await estadoHttp.pagina.close();
     s.servidor.close();
@@ -548,6 +650,7 @@ async function principal() {
   console.log("✅ painel_no_navegador: com 10, 1.000 e 5.000 registros, abrir o painel busca");
   console.log("   NADA por file:// e só as duas medições ao vivo pelo site — nos dois modos, sem");
   console.log("   erro de console e sem erro de página. O custo de abrir não cresce com o livro.");
+  console.log("   Prioridades é só o menu, cada área tem a sua página, e a tarefa na fila tem o botão de copiar.");
   process.exit(0);
 }
 
