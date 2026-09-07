@@ -117,6 +117,26 @@ ALARME_MAIN = ".github/workflows/alarme-main.yml"
 # Quem grita quando ele fica vermelho é a issue do próprio workflow, não este
 # portão.
 VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
+# DECLARADO POR ESCRITO pela mesma regra (TAR-167, 07/09/2026). O vigia do
+# pouso é o segundo workflow desta casa a acordar pelo relógio, e cai na
+# `armadilhas/180` pela mesma porta que o primeiro:
+#
+#   - Ele não mede este commit. Ele mede o INVENTÁRIO de PRs abertos — "o #1216
+#     está verde há dez horas e ninguém pediu pouso" não diz nada sobre se este
+#     código pode ir para produção.
+#   - Ele roda de duas em duas horas na `main`, então o `head_sha` dele é o de
+#     um deploy com frequência muito maior que a do vigia do cadeado, que roda
+#     uma vez por dia. Vermelho e fora daqui, ele barraria a entrega de um
+#     commit que os checks obrigatórios já aprovaram.
+#   - E vermelho nele significa uma coisa só: o vigia ficou CEGO (não conseguiu
+#     varrer os PRs abertos). Cegueira de um inventário não é motivo para
+#     segurar publicação, e o conserto dela é um PR — que precisa da porta
+#     aberta para chegar ao ar.
+#
+# Fora de `exigidos` pelo mesmo par de razões do vigia do cadeado: ele não mede
+# este commit, e exigi-lo faria todo deploy esperar por um run que, na maioria
+# dos SHAs, não existe.
+VIGIA_DO_POUSO = ".github/workflows/vigia-do-pouso.yml"
 # DECLARADA POR ESCRITO pela mesma regra, e pelo caso mais literal dela que este
 # repositório tem (TAR-029, 30/08/2026). A vacina do deploy acorda por
 # `workflow_run` quando um deploy termina `cancelled`, então ela roda NO MESMO
@@ -627,7 +647,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, REDE_DO_WINDOWS, DEPLOY_CELULA, DEPLOY_INFRA}
+        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VIGIA_DO_POUSO, VACINA_DO_DEPLOY, REDE_DO_WINDOWS, DEPLOY_CELULA, DEPLOY_INFRA}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:
