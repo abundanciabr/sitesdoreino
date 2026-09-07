@@ -80,8 +80,14 @@
       ]
     },
     "encomendas": {
-      "freeze": "not-applicable",
-      "reason": "Célula nascida em 03/09/2026 (degrau 2.1 da escada do §7 de docs/decisoes/DECISAO-fila-do-primeiro-dolar.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/encomendas.openapi.yaml; em papel em docs/decisoes/CONTRATO-encomendas-v1-rascunho.md) entra pelo RITOS.md §3 no degrau 2.8, DEPOIS da porta de máquina do degrau 2.7 exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram."
+      "freeze": "required",
+      "frozen": "contracts/encomendas.openapi.yaml",
+      "exportador": [
+        "python",
+        "manage.py",
+        "export_openapi"
+      ],
+      "_nota": "PASSOU DE not-applicable PARA required em 07/09/2026, no degrau 2.8 da escada do §7 de docs/decisoes/DECISAO-fila-do-primeiro-dolar.md, pelo Rito de Contrato (RITOS.md §3). A ordem foi a que armadilhas/228 e 243 provaram: a porta de máquina entrou primeiro, em PR próprio (#1314, config/api.py, apps/core/api.py e manage.py export_openapi), e o congelado nasceu do que ela EXPORTA, nunca escrito à mão. Os dois não podiam vir juntos: ci/cerca-de-celula.sh recusa contracts/ mudando junto com services/. SEIS operações, e TRÊS delas gravam: por isso a célula tem dois graus de crachá (TOKENS_ACEITOS_<PAR> lê, TOKENS_ESCRITA_<PAR> grava, o alto contém o baixo) e a recusa por grau insuficiente é 403, nunca 401 (armadilhas/318). confirmPayment e reportAudit respondem 501 até as Fases 3 e 5; estão declaradas de propósito, para que a entrada da pagamentos e do worker de auditoria não exija outro Rito. O contrato em papel (docs/decisoes/CONTRATO-encomendas-v1-rascunho.md) ficou para trás em três pontos e o código venceu: Parametro.vigente pode ser nulo, PecaAprovada.no_prazo é nulo sem prazo prometido, e SITE_ID ausente é 503."
     },
     "pages": {
       "freeze": "required",
