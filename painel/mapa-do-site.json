@@ -535,6 +535,35 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a Fila do Primeiro Dólar (o marketplace de encomendas 3D) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /encomendas."
     },
     {
+      "celula": "encomendas",
+      "rota": "plantao",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "equipe",
+      "titulo": "Plantao da Fila: dar o nivel de um aluno",
+      "descricao": "A tela em que o professor diz o nivel de cada aluno da Fila do Primeiro Dolar. Enquanto a formacao nao existe, e o professor quem da o titulo, e ele fica registrado com o nome dele e a data.",
+      "observacao": "So abre para quem esta na lista IDS_DO_PLANTAO do env desta celula. Lista vazia fecha a porta para todo mundo, de proposito. O endereco publico nasce com o roteador da celula, no degrau seguinte."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "plantao/titulo",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Registrar o nivel de um aluno",
+      "descricao": "Nao e uma pagina: e o que acontece quando o professor aperta o botao da tela do plantao. Abrir este endereco no navegador nao mostra nada."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "api/encomendas/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta de maquina das encomendas",
+      "descricao": "Por aqui as outras partes do site perguntam os parametros da Fila, em que pe esta a fila de um aluno e quais pecas dele estao aprovadas. Ninguem entra sem cracha, e quem so le nao consegue gravar nada."
+    },
+    {
       "celula": "pages",
       "rota": "healthz",
       "endereco": "/pages/healthz",
