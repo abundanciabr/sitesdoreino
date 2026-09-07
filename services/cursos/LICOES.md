@@ -55,3 +55,20 @@ ser preenchido em linhas que já existem, o caminho é comando de gestão ou o
 semeador — e o motivo é que o valor a gravar quase nunca é conhecível na hora de
 escrever o código (o `product_id` é um UUID sorteado, diferente em cada
 ambiente).
+
+## O catálogo mostra todos os cursos, a porta decide quem entra
+
+**Medido em 07/09/2026:** a raiz da célula (`/cursos/`) respondia 301 para o
+mapa do único curso do site, e o aluno cuja matrícula é de um produto sem
+`Curso` neste site era levado ao curso do livro sem pedir, sem tela que dissesse
+por quê. O mantenedor mandou a raiz virar o catálogo (`apps/core/views.py::
+catalogo`, `tests/test_catalogo_de_cursos.py`).
+
+**A regra:** o catálogo lista TODOS os `Curso` do site (`enderecos.cursos_do_site`)
+e nunca esconde um cartão; quem decide quem entra continua sendo a porta
+(`_recusa_de_curso`), e o cartão só repete a decisão dela para não convidar para
+uma porta que vai fechar. Esconder o curso alheio pareceria "esse curso não
+existe"; oferecê-lo terminaria em 403. Mostrar sem botão, com a frase, é o meio.
+
+**O que fica:** o 301 do endereço antigo de AULA (`/E00`, TAR-216) continua, e
+`_curso_unico` existe só para ele. Só o 301 da raiz morreu.
