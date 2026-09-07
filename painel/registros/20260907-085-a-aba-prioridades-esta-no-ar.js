@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-085-a-aba-prioridades-esta-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "A aba Prioridades do seu painel esta no ar: tudo que esta aberto, por area do site, do mais importante para o menos",
+  detalhe: "O deploy da admin com o PR 1342 (execucao 34145825844) terminou com sucesso. Em /admin/painel/, a aba Prioridades mostra seis areas (Alunos, Cursos, Comunidade, Vendas e encomendas, Seu painel, Infra e fabrica) e, em cada uma, o que so voce decide, o que esta quebrado, o que os robos vao fazer e para onde a area vai. A fila dos robos chega pela rota do PR 1340. Pedido antigo sem area aparece pelo capitulo do livro, marcado, ate ser respondido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34145825844",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
