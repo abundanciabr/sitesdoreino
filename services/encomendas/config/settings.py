@@ -92,6 +92,16 @@ INSTALLED_APPS = [
     # demais na fila vira chamada aberta. **Nenhum timer agendado**: toda a
     # verdade está nas colunas, e por isso a fila sobrevive a reinício, deploy e
     # queda do Redis.
+    #
+    # OS GESTOS DO ALUNO entraram no degrau 2.5 (TAR-123), em
+    # `apps/encomendas/gestos.py`: aceitar, passar com um dos quatro motivos, o
+    # interruptor da fila, e o aceite da chamada aberta (o primeiro elegível que
+    # aceitar leva, com dois aceites simultâneos separados pela trava do banco).
+    # A pausa automática por três silêncios mora aí junto com o que a desfaz —
+    # `silencios_consecutivos` tem um dono só, e um teste de forma reprova quem
+    # escrever na coluna de outro arquivo. Continua sem TELA: a do aluno é a
+    # Fase 4, e o aviso ao professor por três "não me sinto pronto" em 30 dias
+    # espera a outbox de eventos, que esta célula ainda não tem.
     "apps.encomendas",
     # O BATIMENTO do tique, e só isso. Diferente das vizinhas, aqui o Huey não
     # carrega trabalho nenhum na fila do Redis: ele chama, de minuto em minuto,

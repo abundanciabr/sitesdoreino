@@ -270,7 +270,7 @@ def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
     return Resultado("conflitos", Estado.PASS, f"sem conflitos ({status})")
 
 
-def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Um veredito por NOME de check — o da execução mais recente.
 
     POR QUE ISTO EXISTE, medido em 25/08/2026: o mesmo workflow pode rodar mais
@@ -293,6 +293,12 @@ def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]
     **não escolhe a mais nova por palpite**: fica com a de estado PIOR entre as
     empatadas. "Não consegui saber qual é a atual" jamais pode virar "então
     considero a verde" ([INV-CI01]).
+
+    E ESTA É A ÚNICA CÓPIA DA REGRA — o nome não tem underscore porque virou
+    contrato entre dois módulos: `ci/esperar.py --checks` a importa daqui desde
+    07/09/2026, depois de ler o rollup cru e reprovar um PR que este portão
+    aprovava no mesmo segundo (`armadilhas/381`). `ci/tests/test_espera.py`
+    prova que os dois chamam esta MESMA função, nunca duas cópias.
     """
 
     def _gravidade(check: dict[str, Any]) -> int:
@@ -333,7 +339,7 @@ def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
     """O coração do portão: todo check precisa ter concluído e passado."""
-    rollup = _mais_recente_por_nome(pr.get("statusCheckRollup") or [])
+    rollup = mais_recente_por_nome(pr.get("statusCheckRollup") or [])
     if not rollup:
         return [
             Resultado(
