@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-031627-TAR-249-explicada",
+  "tarefa": "TAR-249",
+  "evento": "explicada",
+  "quando": "2026-09-07T03:16:27+00:00",
+  "quem": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 13; pedido do mantenedor em 07/09/2026",
+  "o_que_e": "O ciclo de 12 semanas comecou em 03/09/2026 e fecha em 15/12/2026, com a meta de 1000 compras. Hoje o painel mostra a barra andando, mas nao existe nenhuma tela para o dia em que o ciclo acaba: ninguem responde se a meta bateu, por que bateu, e o que a escola aprendeu.",
+  "o_que_muda": "No dia do fechamento voce abre uma tela e ela responde: a meta bateu ou nao e por que; os sinais da semana previram o resultado; qual e a meta seguinte. E ela obriga a coisa mais dificil de todas, escrever o que a escola PARA de fazer. Sem essa frase o ciclo nao fecha. Sem essa tela, o fim do ciclo passa em branco e o proximo comeca com os mesmos erros.",
+  "exemplo": "15 de dezembro. Voce abre a tela e le: a meta era 1000, chegamos em 640; os pedidos de entrada por semana avisaram em outubro, quando cairam tres semanas seguidas; e a decisao registrada e parar de fazer aula ao vivo aos sabados, que consumiu 40 horas e trouxe 11 alunos. O proximo ciclo comeca sabendo disso.",
+  "importancia": 78
+}
