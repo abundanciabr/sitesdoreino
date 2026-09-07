@@ -14,7 +14,7 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 | O que | Onde | Regra |
 |---|---|---|
 | Uma tarefa | `tarefas/NNN-slug.json` | Um arquivo por tarefa. **Nunca se edita depois de criado** — número vem do almoxarife (`python ci/reservar.py numero tarefa`), id é `TAR-NNN`. |
-| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `concluida` · `cancelada`. Corrigir é acrescentar, nunca editar. |
+| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
 | O estado | **em lugar nenhum** | Calculado, sempre: pela cadeia de eventos + reservas do almoxarife + PRs abertos. Não existe campo `status`. |
 
 ## O balcão — como um robô usa (`ci/fila.py`)
@@ -26,7 +26,8 @@ python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
 python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
 python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
 python ci/fila.py concluir TAR-007 --quem "..." --evidencia "https://github.com/.../pull/NNN"
-python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..."
+python ci/fila.py explicar TAR-007 --quem "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
+python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py validar              # o que a muralha roda em todo PR
 ```
 
@@ -119,6 +120,53 @@ adiante são história encerrada, e cobrar deles exigiria reescrever evento — 
 esta fila não faz. Na tela, uma parada com `espera` que ela não reconhece cai no
 bloco do mantenedor: falha para o lado de MOSTRAR, porque cartão a mais custa uma
 leitura e cartão que some custa uma tarefa esquecida.
+
+## A tarefa dita em português: o verbo `explicar` (desde 06/09/2026)
+
+Medido no dia em que o mantenedor abriu `/admin/caixa/robos/` pela primeira vez:
+**22 tarefas paradas, e ele não entendeu nenhuma.** Os cinco campos que uma tarefa
+tinha (`titulo`, `toca`, `despacho`, `origem`, `evidencia_exigida`) foram escritos
+por robô para robô, e nos 214 arquivos de tarefa não havia um só campo dirigido a
+quem paga a conta. Ele pediu duas coisas, e são as duas que este verbo entrega: o
+que a tarefa é em português com um exemplo, e um jeito de saber o que vem antes.
+
+```bash
+python ci/fila.py explicar TAR-165 --quem "sessao-fila-0609" \
+  --o-que-e "A esteira que publica os trabalhos prontos espera um tempo fixo..." \
+  --o-que-muda "Trabalho pronto e aprovado fica parado sem chegar no site..." \
+  --exemplo "E a esteira do aeroporto parando dois minutos antes da ultima mala." \
+  --importancia 85
+```
+
+| No evento | Quer dizer |
+|---|---|
+| `o_que_e` | o que existe hoje, sem sigla e sem jargão |
+| `o_que_muda` | o que a tarefa muda na vida de quem usa o site, ou o que custa não fazer |
+| `exemplo` | um caso concreto ou uma comparação do dia a dia |
+| `importancia` | inteiro de 0 a 100, e é o que ORDENA a tela dele. Fora da faixa, o balcão recusa |
+
+**`explicar` é o único verbo que pode REPETIR, e a última explicação vence.** É
+assim que se conserta um texto ruim: o arquivo da tarefa não muda depois de criado
+(`armadilhas/356`), então corrigir é acrescentar, como em todo o resto desta casa.
+
+**E é o único que funciona em tarefa `concluída` ou `cancelada`.** É a exceção
+deliberada à regra do silêncio depois do fim, e o motivo cabe numa frase: aquela
+regra existe para que ninguém reescreva o que ACONTECEU com a tarefa, e a
+explicação não conta isso, ela diz o que a tarefa É. Uma tarefa concluída que
+ninguém entende continua ilegível no histórico, que é justamente onde ele procura
+o que já foi feito. Todo evento de CICLO depois do fim continua reprovando.
+
+**`criar` passa a exigir os quatro**, pelas mesmas razões que o `--move` e o
+`--espera` já ensinaram aqui: campo que nasce opcional no balcão nasce vazio, e
+ninguém depois volta para preencher. Quem cria a tarefa sabe, naquele instante, o
+que ela é. Sem os quatro, `criar` recusa ANTES de gastar número do almoxarife, e
+grava os dois arquivos quando passa: o da tarefa e o evento `explicada`.
+
+**Qual é a explicação de uma tarefa tem UMA definição só:** o último evento
+`explicada` dela, lido por `calcular_estados` e entregue por `listar --json` —
+que é o `estados.json` embutido no build da célula `admin`. Tarefa sem explicação
+sai SEM os campos, nunca com texto de desculpa: quem apresenta decide o que dizer
+no lugar, e um "sem descrição" escrito no cálculo seria tela morando na conta.
 
 ## Cancelar também é um verbo (desde 06/09/2026)
 

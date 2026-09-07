@@ -1,0 +1,19 @@
+{
+  "arquivo": "247-sala-de-aula-degrau-3-3-o-cabecalho-de-apendice-vivo-versao-",
+  "id": "TAR-247",
+  "titulo": "Sala de aula, degrau 3.3: o cabecalho de apendice vivo (versao, verificado em, proxima verificacao) e o aviso publico de verificacao vencida na area de documentos",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: o documento marcado como apendice vivo mostra no topo a versao, quando foi verificado e quando vence; passada a data, o proprio documento mostra o aviso de verificacao vencida a quem le, sem tela nova e sem lista propria (o fato sai do documento); teste do antes e do depois da data com o relogio dublado, o estado de documento que nao e apendice vivo (nenhum cabecalho), a suite da admin com os numeros antes e depois, e o veredito do deploy",
+  "despacho": "Lei: docs/decisoes/PLANO-CELULA-CURSOS.md §3.8 e a linha 3 | 3.3 da escada do §10. A area de documentos ja tem texto no banco, editor no Admin e versoes (project_editor_de_documentos): o que falta e o cabecalho de apendice vivo e o aviso de vencimento. Molde: services/admin/apps/core/documentos.py e o renderizador documentos.para_html, que e UM so para as duas telas (a Biblioteca do Livro usa o mesmo) - nao crie um segundo. O travessao: na area de documentos ele RECUSA salvar; na Biblioteca do Livro so avisa. Nao mexa nessa diferenca, ela tem teste que olha as duas telas juntas. Documento novo na semente exige migracao propria (armadilhas/347). Leia services/admin/LICOES.md antes.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md (linha 3 | 3.3), lei aprovada pelo mantenedor em 04/09/2026; e degrau da area de documentos, nao da celula cursos, e por isso nao depende dos capitulos",
+  "criada_em": "2026-09-07"
+}

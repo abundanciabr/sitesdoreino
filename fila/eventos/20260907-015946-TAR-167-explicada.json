@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015946-TAR-167-explicada",
+  "tarefa": "TAR-167",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:46+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Se um robo termina, e aprovado, mas esquece de pedir a publicacao, o trabalho fica parado e nada avisa.",
+  "o_que_muda": "Voce paga pelo trabalho e ele nao chega no site. Um deles ficou cinco dias parado, e so foi fechado quando alguem finalmente perguntou.",
+  "exemplo": "E a encomenda pronta no balcao da loja, sem ninguem para entregar e sem ninguem para reclamar.",
+  "importancia": 55
+}

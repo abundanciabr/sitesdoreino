@@ -1,0 +1,18 @@
+{
+  "arquivo": "241-o-balcao-da-fila-ganha-o-verbo-explicar-para-o-dono-entender",
+  "id": "TAR-241",
+  "titulo": "O balcao da fila ganha o verbo explicar, para o dono entender cada tarefa em portugues",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com o verbo explicar, as 22 explicacoes gravadas pelo balcao e a suite da fila verde",
+  "despacho": "Construa o verbo 'explicar' em ci/fila.py: evento 'explicada' com o_que_e, o_que_muda, exemplo e importancia (0 a 100); criar passa a exigir os quatro; listar --json devolve os campos do ultimo evento explicada; validar confere o contrato. Grave as 22 explicacoes aprovadas pelo mantenedor.",
+  "origem": "pedido do mantenedor em 06/09/2026, depois de abrir /admin/caixa/robos/ e nao entender nenhuma tarefa",
+  "criada_em": "2026-09-07"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015931-TAR-123-explicada",
+  "tarefa": "TAR-123",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:31+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "No mural onde seus alunos vendem modelos 3D, hoje uma encomenda pode ficar parada esperando um aluno que sumiu, sem que ninguem perceba.",
+  "o_que_muda": "O cliente que encomendou desiste e vai embora. Esta tarefa da tres coisas: o sistema pausa sozinho quem ficou em silencio, o aluno pode se declarar indisponivel quando viaja, e a encomenda parada vira chamada aberta para a turma inteira.",
+  "exemplo": "Um cliente encomenda uma espada. O aluno escolhido nao responde ha 3 dias. Hoje o cliente espera no vazio; com isto, no terceiro dia a encomenda abre para todos e alguem pega.",
+  "importancia": 95
+}
