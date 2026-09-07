@@ -1960,7 +1960,12 @@ class CursosClient:
       manda o aluno para uma que não existe. A frase sobe inteira para a tela.
     - **`NAO_RESPONDEU`**: rede, 5xx, corpo fora do contrato. Na escrita isto
       NÃO vira "recusado": a gravação pode ter acontecido do outro lado, e a
-      tela precisa dizer "não sei" em vez de "não valeu".
+      tela precisa dizer "não sei" em vez de "não valeu". No 503 o segundo item
+      é o `detail` da `cursos`, quando ela mandou um: é o caso do Guardião de
+      fidelidade, que explica em português por que a IA não respondeu (falta a
+      chave, a conta bateu no limite, a resposta veio ilegível). Trocar essa
+      frase pela genérica mandaria a professora procurar um problema de rede
+      que não existe.
 
     ## Fail-OPEN na leitura, fail-CLOSED na escrita
 
@@ -1972,6 +1977,13 @@ class CursosClient:
     """
 
     TIMEOUT = 4.0
+    # A conferência de FIDELIDADE é a única operação desta porta que espera por
+    # uma inteligência artificial, e são até quatro comparações em sequência,
+    # cada uma com o teto de 90 segundos da chamada (`agente.TIMEOUT`, do lado
+    # da `cursos`). Com os 4 segundos das outras, a professora leria "a sala de
+    # aula não respondeu" enquanto o pedido dela ainda estava sendo atendido do
+    # outro lado, e a conta seria paga sem ninguém ver o resultado.
+    TIMEOUT_DA_IA = 400.0
     OK = "ok"
     SEM_CONFIGURACAO = "sem_configuracao"
     RECUSOU = "recusou"
@@ -2072,24 +2084,41 @@ class CursosClient:
         )
 
     def conferir_aula(
-        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
-    ) -> "tuple[str, list | None]":
-        """`checkLesson`: os defeitos de coerência da encomenda, ou lista vazia.
+        self,
+        site_id: str,
+        curso: str,
+        numero: str,
+        parte: "int | None" = None,
+        *,
+        modo: str = "coerencia",
+    ) -> "tuple[str, list | str | None]":
+        """`checkLesson`: os defeitos da encomenda, ou lista vazia.
 
-        É LEITURA, e nada é gravado do outro lado: o Revisor aponta e nunca
-        corrige. Lista vazia é a resposta de uma encomenda sem defeito, e não
-        uma falha; quem sabe a diferença é o desfecho, como em toda operação
-        deste cliente.
+        É LEITURA, e nada é gravado do outro lado: os dois conferentes apontam
+        e nunca corrigem. Lista vazia é a resposta de uma encomenda sem defeito,
+        e não uma falha; quem sabe a diferença é o desfecho, como em toda
+        operação deste cliente.
+
+        `modo` escolhe a régua, e o padrão é o de sempre: `coerencia` é código
+        (as seis conferências mecânicas) e `fidelidade` é a IA do Guardião,
+        que compara cada peça derivada com a fonte dela. O parâmetro só viaja
+        quando é `fidelidade`, para que a chamada de coerência continue saindo
+        daqui byte a byte como saía antes do degrau 3.2.
 
         As frases de cada defeito vêm prontas em português da `cursos`, e esta
         célula as mostra verbatim: a regra é de lá, e reescrever a redação dela
-        aqui seria a mesma frase em dois lugares.
+        aqui seria a mesma frase em dois lugares. Isso vale também para as
+        recusas do Guardião (422 sem o que conferir, 503 com a IA fora do ar):
+        elas chegam no segundo item, como texto.
         """
+        pela_ia = modo == "fidelidade"
         return self._pedir(
             "get",
             self._caminho(curso, quote(numero, safe=""), "conferir"),
-            params=self._com_parte(site_id, parte),
+            params=self._com_parte(site_id, parte)
+            | ({"modo": modo} if pela_ia else {}),
             forma=list,
+            timeout=self.TIMEOUT_DA_IA if pela_ia else None,
         )
 
     def instrumentos(self) -> "tuple[str, list | None]":
@@ -2150,8 +2179,9 @@ class CursosClient:
         json=None,
         forma=dict,
         sucesso: "tuple[int, ...]" = (200,),
+        timeout: "float | None" = None,
     ):
-        """Uma ida à porta, com o tratamento que as dez operações compartilham.
+        """Uma ida à porta, com o tratamento que as operações compartilham.
 
         Devolve `(desfecho, corpo)`. Dez cópias do mesmo `try` divergiriam no
         primeiro caso de borda corrigido de um lado só.
@@ -2159,6 +2189,10 @@ class CursosClient:
         `sucesso` existe porque `createCourse` responde **201**, e só ela: o
         padrão continua sendo 200, então nenhuma operação que já rodava muda de
         comportamento por causa desta linha.
+
+        `timeout` ausente é o desta porta, e é o certo para tudo o que a `cursos`
+        responde de cabeça. Só a conferência de fidelidade passa um seu, porque
+        só ela espera por uma IA.
         """
         config = self._configuracao()
         if config is None:
@@ -2175,7 +2209,7 @@ class CursosClient:
                 params=params,
                 json=json,
                 headers={"Authorization": "Bearer " + token},
-                timeout=self.TIMEOUT,
+                timeout=self.TIMEOUT if timeout is None else timeout,
             )
         except httpx.HTTPError as erro:
             logger.error("aulas: a sala de aula não respondeu: %s", erro)
@@ -2200,11 +2234,14 @@ class CursosClient:
                 detalhe = None
             return self.JA_EXISTE, detalhe
         if r.status_code == 422:
-            try:
-                detalhe = r.json().get("detail")
-            except (ValueError, AttributeError):
-                detalhe = None
-            return self.RECUSADO, detalhe
+            return self.RECUSADO, self._detalhe(r)
+        if r.status_code == 503:
+            # A `cursos` diz POR QUE, em português, e a frase dela sobe inteira
+            # para a tela: é o Guardião de fidelidade avisando que a IA não
+            # respondeu. Sem isso, "falta a chave da Anthropic" chegaria à
+            # professora como "a sala de aula não respondeu".
+            logger.error("aulas: a sala de aula respondeu HTTP 503")
+            return self.NAO_RESPONDEU, self._detalhe(r)
         if r.status_code not in sucesso:
             logger.error("aulas: a sala de aula respondeu HTTP %s", r.status_code)
             return self.NAO_RESPONDEU, None
@@ -2219,3 +2256,11 @@ class CursosClient:
             logger.error("aulas: resposta de %s com forma inesperada", caminho)
             return self.NAO_RESPONDEU, None
         return self.OK, corpo
+
+    @staticmethod
+    def _detalhe(r):
+        """O `detail` da recusa, ou `None` quando não veio um legível."""
+        try:
+            return r.json().get("detail")
+        except (ValueError, AttributeError):
+            return None
