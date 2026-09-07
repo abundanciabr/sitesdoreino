@@ -345,6 +345,23 @@ def test_inventario_ilegivel_e_ERROR_nunca_fila_limpa(tmp_path: Path):
     )
 
 
+def test_data_ilegivel_vira_frase_e_ERROR_nunca_traceback(tmp_path: Path):
+    """Formato novo do GitHub tem de sair como frase, não como traceback.
+
+    Traceback não diz o que fazer, e quem lê o log de um vigia às 3 da manhã
+    precisa da frase. O exit continua sendo 2 — ERROR, nunca 'está tudo limpo'.
+    """
+    podre = pr(9)
+    for check in podre["statusCheckRollup"]:
+        check["completedAt"] = "ontem de tarde"
+        check.pop("startedAt", None)
+    saida = _rodar(tmp_path, [podre])
+
+    assert saida.returncode == 2, saida.stdout + saida.stderr
+    assert "data ou formato que eu não sei ler" in saida.stdout
+    assert "Traceback" not in saida.stderr
+
+
 def test_sem_repo_e_sem_inventario_e_ERROR():
     saida = subprocess.run(
         [sys.executable, str(CI / "vigia_do_pouso.py")],
