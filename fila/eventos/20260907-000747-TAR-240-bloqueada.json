@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-000747-TAR-240-bloqueada",
+  "tarefa": "TAR-240",
+  "evento": "bloqueada",
+  "quando": "2026-09-07T00:07:47+00:00",
+  "quem": "despacho-infra-20260906",
+  "detalhe": "so ele decide se a varredura diaria dos links fica ligada, e ele ja disse uma vez que nao precisa dela (TAR-223 cancelada). Volta a andar com: python ci/fila.py soltar TAR-240 --quem <nome>",
+  "espera": "mantenedor"
+}
