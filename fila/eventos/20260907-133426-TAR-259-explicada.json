@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-133426-TAR-259-explicada",
+  "tarefa": "TAR-259",
+  "evento": "explicada",
+  "quando": "2026-09-07T13:34:26+00:00",
+  "quem": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 8; Rito de Contrato cumprido com o mantenedor presente em 07/09/2026, que RECUSOU a pergunta na tela e pediu a origem exata por campanha e criativo",
+  "o_que_e": "Hoje ninguem sabe de onde vem quem pede entrada na escola. O site ja le a marca que um link de anuncio carrega, e a celula de contatos ja guarda essa marca, mas o pedido de entrada nao: ele manda so nome, e-mail e WhatsApp. O anuncio traz a pessoa e a informacao se perde na porta.",
+  "o_que_muda": "Cada pedido de entrada passa a chegar com a origem exata escrita pela maquina: se veio da Meta ou do Google, de qual campanha e de qual criativo. Voce vai poder olhar duas campanhas lado a lado e ver qual trouxe aluna de verdade, nao clique. Nada disso pergunta nada a pessoa: ela nao ve diferenca nenhuma na tela.",
+  "exemplo": "Voce sobe dois criativos da mesma campanha na Meta. Uma semana depois abre o painel: o criativo A trouxe 140 cliques e 3 alunas, o B trouxe 60 cliques e 11 alunas. Voce desliga o A no mesmo dia. Hoje os dois apareceriam como a mesma coisa, ou como nada.",
+  "importancia": 84
+}
