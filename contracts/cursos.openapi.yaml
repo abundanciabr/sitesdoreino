@@ -114,6 +114,15 @@
 # a prosa de `putBlock` e do documento foi reescrita para dizer isso. Nada foi
 # removido nem renomeado: mudança aditiva, provedor primeiro (PR #1349).
 #
+# EMENDA DO MESMO DIA (07/09/2026, segundo Rito): o revisor do PR #1349 mostrou
+# que "nome de bloco só preenche onde está vazio" apagava em silêncio o nome
+# de um bloco cuja letra mudasse de posição. A regra virou: em
+# `putCourseStructure`, `nome` e `boss_titulo` do bloco NULOS ou AUSENTES não
+# mexem no que está gravado; TEXTO grava esse valor (vazio apaga). A estrutura
+# é a fonte dos nomes dos módulos; a obra que nunca se sobrescreve é a das
+# aulas, que casam pelo número. E a conferência de rastro de aluno antes de
+# apagar uma aula passou a acontecer dentro da transação que grava.
+#
 openapi: 3.1.0
 info:
   title: Cursos — API interna
@@ -143,9 +152,15 @@ info:
 
     CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    `putCourseStructure`). O placar da fila (getReviewQueue) e o
+    `putCourseStructure`). O placar da fila
 
-    progresso do aluno (getStudentProgress) nascem no degrau 2.1.
+    (getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA
+
+    NAO EXISTEM nesta porta: o degrau 2.1 pousou sem os dois, e o degrau
+
+    em que eles nascem ainda nao esta marcado. Quem precisar deles hoje
+
+    nao os encontra aqui.
 
 
     A SALA SERVE VARIOS CURSOS DESDE 07/09/2026, e cada um nasce por esta
@@ -256,6 +271,27 @@ info:
     e nao cresce: quem consome esta porta mostra as 16 em ordem e esta uma
 
     so a pedido, e NAO desenha botao quando o texto dela vem vazio.
+
+
+    O GUARDIAO DE FIDELIDADE ENTROU EM 07/09/2026 (degrau 3.2), e ele e
+
+    IA. Ele nao ganhou operacao propria: e o parametro `modo` de
+
+    `checkLesson`, que vale `coerencia` (o padrao, identico ao de antes)
+
+    ou `fidelidade`. Em `fidelidade` ele compara cada peca DERIVADA (o
+
+    roteiro, o guia do mentor, a video-aula em texto e a peca onde mora o
+
+    Cartao de 1 pagina) com a FONTE de que ela deriva, e aponta onde o
+
+    sentido mudou, no mesmo formato de defeito. Ele APONTA E NUNCA VETA:
+
+    `impede_publicar` e sempre falso neste modo. Encomenda sem peca
+
+    derivada escrita e 422, IA fora do ar e 503, e nada e gravado em
+
+    nenhum dos dois casos.
 
     '
 paths:
@@ -849,6 +885,16 @@ paths:
           - $ref: '#/components/schemas/ParteDoCurso'
           - type: 'null'
         required: false
+      - in: query
+        name: modo
+        schema:
+          allOf:
+          - enum:
+            - coerencia
+            - fidelidade
+            type: string
+          default: coerencia
+        required: false
       responses:
         '200':
           description: OK
@@ -894,7 +940,57 @@ paths:
 
         Aula sem defeito responde lista vazia, e nao erro. `parte` e o mesmo
 
-        GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.'
+        GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.
+
+
+        O `modo` ESCOLHE A REGUA, e o padrao e `coerencia`, identico ao que
+
+        esta operacao respondia antes do degrau 3.2.
+
+
+        Em `modo=fidelidade` responde o GUARDIAO DE FIDELIDADE, que e IA, e
+
+        nao codigo. Ele compara cada peca DERIVADA com a FONTE de que ela
+
+        deriva e aponta onde o sentido mudou: o `roteiro` e a
+
+        `videoaula_em_texto` contra as 16 pecas canonicas, o `guia_do_mentor`
+
+        contra o `Aceito quando` mais as pecas `voce_faz` e `checkpoint`, e a
+
+        peca `dicionario_cartao_respostas` (onde mora o Cartao de 1 pagina)
+
+        contra as outras 15. Peca derivada sem texto nao e comparada.
+
+
+        O `codigo` de cada defeito de fidelidade vem de OUTRO vocabulario
+
+        fechado, o dos sete desvios da ficha: `invencao`,
+
+        `regra_virou_sugestao`, `nome_trocado`, `omissao`,
+
+        `sentido_alterado`, `decisao_simplificada` e
+
+        `comparacao_entre_pessoas`. `peca` e a peca DERIVADA, `alvo` e o
+
+        trecho dela, e `frase` traz o trecho da fonte ao lado do trecho da
+
+        saida. `impede_publicar` e SEMPRE falso neste modo: o Guardiao
+
+        aponta, e nunca veta.
+
+
+        422 em `modo=fidelidade` quando a encomenda nao tem nenhuma peca
+
+        derivada escrita, e quando um dos textos passa do teto desta
+
+        conferencia; o `detail` diz o que fazer, em portugues. 503 quando a
+
+        IA nao produziu resposta (chave ausente, chave recusada, limite,
+
+        queda, formato ilegivel), tambem com a frase em portugues. Nada e
+
+        gravado em nenhum dos dois casos.'
   /cursos/{curso}/blocos/{letra}:
     put:
       operationId: putBlock
@@ -1155,24 +1251,47 @@ paths:
 
         do que ja existe; e NUNCA toca obra: pedido, cliente, pecas, pausas,
 
-        quiz, video, estado e versao ficam como estao. O titulo da aula, o
+        quiz, video, estado e versao ficam como estao. As aulas casam pelo
 
-        nome do bloco e o titulo do Boss so entram onde estao VAZIOS; o que a
+        NUMERO, que e estavel: o titulo da aula so entra onde esta VAZIO, o
 
-        tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz quantas
+        que a tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz
 
-        aulas ja existiam e ficaram com a obra intacta.
+        quantas aulas ja existiam e ficaram com a obra intacta.
+
+
+        OS BLOCOS CASAM PELA LETRA, QUE E POSICIONAL, e por isso a estrutura
+
+        e a fonte do nome do bloco e do titulo do Boss: quando nasce um bloco
+
+        na frente, o que era o B vira o C, e o nome tem de vir na estrutura
+
+        nova para acompanha-lo. Cada um dos dois campos tem tres estados.
+
+        Ausente ou nulo: o que esta gravado fica como esta. Texto: passa a
+
+        ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga.
+
+        Mande sempre o nome que a tela mostra, e nenhum bloco perde o nome
+
+        quando muda de letra.
 
 
         Aula que sumiu da estrutura nova e APAGADA so se nenhum aluno passou
 
-        por ela (sem progresso, sem envio, sem registro de pausa). Se algum
+        por ela (sem progresso, sem envio, sem registro de pausa). A
 
-        passou, e 422 nomeando as aulas, e NADA e gravado: a transacao e uma
+        conferencia acontece DENTRO da transacao que apaga, com essas aulas
 
-        so. Bloco que sumiu e apagado depois que as aulas dele mudaram de
+        trancadas: um aluno gravando rastro nelas no mesmo instante e visto,
 
-        bloco ou foram apagadas.
+        e nenhuma aula por onde alguem passou e apagada. Se algum passou, e
+
+        422 nomeando as aulas, e NADA e gravado: a transacao e uma so. Bloco
+
+        que sumiu e apagado depois que as aulas dele mudaram de bloco ou
+
+        foram apagadas.
 
 
         422 tambem, dizendo a linha do problema: letra de bloco repetida,
@@ -1878,9 +1997,17 @@ components:
       additionalProperties: false
       description: 'Um bloco como a estrutura o declara: a letra, a parte (o enum do
 
-        contrato), as aulas na ordem, e os dois textos de obra, que só entram onde
+        contrato), as aulas na ordem, e os dois textos do bloco. A estrutura e a
 
-        o bloco ainda não os tem.'
+        fonte do nome do bloco e do titulo do Boss, porque as letras sao
+
+        posicionais: o bloco que hoje e o A pode virar o B na estrutura nova, e
+
+        o nome tem de viajar com ele. Por isso os dois campos tem tres estados:
+
+        ausente ou nulo NAO MEXE no que esta gravado; texto GRAVA aquele valor;
+
+        texto vazio APAGA.'
       properties:
         letra:
           pattern: ^[A-Z]$
@@ -1888,13 +2015,19 @@ components:
         parte:
           $ref: '#/components/schemas/ParteDoCurso'
         nome:
-          default: ''
-          maxLength: 120
-          type: string
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O nome do bloco. Ausente ou nulo: o nome gravado fica como esta. Texto: passa
+            a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o nome.'
         boss_titulo:
-          default: ''
-          maxLength: 120
-          type: string
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O titulo do Boss do bloco. Ausente ou nulo: o titulo gravado fica como esta. Texto:
+            passa a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o titulo.'
         aulas:
           items:
             $ref: '#/components/schemas/AulaDaEstruturaSchema'
@@ -1921,6 +2054,11 @@ components:
       required:
       - blocos
       type: object
+    ModoDeConferencia:
+      enum:
+      - coerencia
+      - fidelidade
+      type: string
   securitySchemes:
     bearerAuth:
       type: http

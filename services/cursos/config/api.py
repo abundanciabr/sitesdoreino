@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as TREZE operações, o token errado e o conjunto vazio, em vez de
+# cobre as DEZESSETE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",

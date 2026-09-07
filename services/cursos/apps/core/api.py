@@ -1,4 +1,4 @@
-"""A porta de MÁQUINA da sala de aula: as treze operações do editor e da sala.
+"""A porta de MÁQUINA da sala de aula: as dezessete operações do editor e da sala.
 
 POR QUE ELA EXISTE
 ------------------
@@ -56,6 +56,24 @@ de uma por aula e o renderizador de Markdown que as outras já têm.
 Ele NÃO entra em `ORDEM_CANONICA`: as 16 são a anatomia que a lei da célula
 declara, e esta peça vive fora da sequência (`Peca.TIPOS_SOB_DEMANDA`).
 
+A SALA SERVE VÁRIOS CURSOS, E ELES NASCEM POR AQUI (TAR-266, 07/09/2026)
+-------------------------------------------------------------------------
+Decisão do mantenedor (`DECISAO-a-sala-serve-varios-cursos.md`): a sala serve
+quantos cursos a escola vender, cada um com o seu produto, a sua regra de
+avanço e a sua estrutura. Até essa data só o `semear_esqueleto` criava curso,
+e só o do livro. Quatro operações nasceram: `listCourses`, `createCourse`,
+`putCourse` e `putCourseStructure`.
+
+`putCourseStructure` faz pela porta o que o semeador faz para o livro:
+reconcilia ESTRUTURA (bloco, ordem, parte, Boss, Banca) e nunca toca OBRA
+(pedido, cliente, peças, pausas, quiz, vídeo, estado, versão). O título da
+aula só entra onde está VAZIO: obra escrita não se sobrescreve. O nome do
+bloco e o título do Boss são ESTRUTURA (as letras são posicionais, e o nome
+viaja com a posição): nulo não mexe, texto grava, vazio apaga. Aula que some
+da estrutura só é apagada se nenhum aluno passou por ela, conferido dentro da
+transação que apaga; se passou, é 422 com os números, e nada é gravado. O
+texto das aulas continua entrando só por `putLesson` ([INV-CUR-C2] intacto).
+
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
 Não há sessão nem cookie: é máquina para máquina, e o Bearer do par
@@ -98,7 +116,7 @@ segunda lista: bastou nascer no `TextChoices`.
 
 O CORPO QUE A PORTA NÃO CONHECE É RECUSADO (`extra="forbid"`)
 -------------------------------------------------------------
-Os dois corpos de `PUT` recusam chave desconhecida com 422. É o que faz
+Todo corpo de `PUT` e de `POST` recusa chave desconhecida com 422. É o que faz
 "`nome_canonico` e `cartao` não mudam pela porta" ser mecânico, e é o que
 impede um editor de mandar `estado: "publicada"` num `PUT` e acreditar que
 publicou: o que esta porta ignora em silêncio, ela nunca ignora.
@@ -112,14 +130,15 @@ import enum
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import F, Q
 from django.utils import timezone
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
 
 from apps.cursos import coerencia, enderecos, fidelidade
-from apps.cursos.models import PARTES_DO_CURSO
+from apps.cursos.models import PADRAO_DO_NUMERO_DE_AULA, PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
 from apps.cursos.models import Bloco as BlocoModel
 from apps.cursos.models import Curso as CursoModel
@@ -274,6 +293,47 @@ class InstrumentoSchema(Schema):
     versao: int
 
 
+class CursoSchema(Schema):
+    """O curso como a lista do Admin o mostra: a identidade (`slug`, `nome`),
+    o estado, a regra de avanço, o produto do catálogo a que ele aponta (texto
+    vazio enquanto ninguém apontar; curso sem produto fecha a sala) e as duas
+    contagens que dizem se ele já tem o que mostrar a um aluno.
+
+    `progressao` é o `TextChoices` do modelo, e o OpenAPI leva o `enum` com as
+    duas palavras: nenhum nome escrito duas vezes.
+    """
+
+    slug: str
+    nome: str
+    estado: str
+    progressao: CursoModel.Progressao
+    produto_id: str
+    total_de_aulas: int
+    aulas_publicadas: int
+
+
+class BlocoComAulasSchema(BlocoSchema):
+    """Um bloco com as aulas dele, na ordem: é como `putCourseStructure`
+    devolve a estrutura que acabou de gravar. Cada aula sai no formato da
+    listagem (`AulaDaListaSchema`), e por isso carrega o bloco de novo dentro
+    de si: é o preço de um formato só para a aula em toda a porta."""
+
+    aulas: list[AulaDaListaSchema]
+
+
+class EstruturaSchema(Schema):
+    """A resposta de `putCourseStructure`: a estrutura como ficou e as quatro
+    contagens do que a reconciliação fez. `aulas_preservadas` conta as aulas
+    que já existiam e ficaram: a obra delas está intacta, e só bloco, ordem,
+    Boss e Banca foram conferidos."""
+
+    blocos: list[BlocoComAulasSchema]
+    blocos_criados: int
+    aulas_criadas: int
+    aulas_preservadas: int
+    aulas_apagadas: int
+
+
 # ---------------------------------------------------------------------------
 # OS CORPOS DE `PUT`
 # ---------------------------------------------------------------------------
@@ -361,6 +421,130 @@ class InstrumentoParaGravarSchema(Schema):
     minimo_contrato: str = Field(max_length=MEDIO)
     secao_do_padrao: str = Field(max_length=CURTO)
     descritores: dict[str, Any]
+
+
+# ---------------------------------------------------------------------------
+# OS CORPOS DO CURSO E DA ESTRUTURA (TAR-266)
+# ---------------------------------------------------------------------------
+
+
+class CursoParaCriarSchema(Schema):
+    """O corpo de `createCourse`. `slug` é o apelido do endereço
+    (`/cursos/<slug>/`), minúsculas, dígitos e hífen, e é o único campo que
+    nunca muda depois: ele é a identidade do curso no par site+slug.
+    `progressao` nasce `por_laudo` quando não vem; `produto_id` nasce vazio,
+    que significa "ainda não apontado", e curso sem produto fecha a sala."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str = Field(pattern=r"^[a-z0-9-]{1,64}$")
+    nome: str = Field(min_length=1, max_length=CURTO)
+    progressao: CursoModel.Progressao = CursoModel.Progressao.POR_LAUDO
+    produto_id: str = Field("", max_length=64)
+
+
+class CursoParaAlterarSchema(Schema):
+    """O corpo de `putCourse`: os três campos que mudam, todos opcionais, e
+    AUSENTE OU NULO SIGNIFICA NÃO MEXER, a mesma regra do `titulo_exibido` em
+    `putLesson`. `produto_id` vazio é valor válido e desaponta o produto (a
+    sala fecha); é o mesmo gesto do comando `apontar_o_produto_do_curso`, pela
+    porta. Nome vazio é 422: curso sem nome não é um estado do sistema."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    nome: Annotated[str, Field(min_length=1, max_length=CURTO)] | None = None
+    progressao: CursoModel.Progressao | None = None
+    produto_id: Annotated[str, Field(max_length=64)] | None = None
+
+
+class AulaDaEstruturaSchema(Schema):
+    """Uma aula como a estrutura a declara: só o que é ESTRUTURA. `titulo` é a
+    exceção aparente: ele só preenche o título de uma aula que ainda não tem
+    um, e nunca sobrescreve o que a tela escreveu."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    numero: str = Field(pattern=PADRAO_DO_NUMERO_DE_AULA)
+    titulo: str = Field(min_length=1, max_length=CURTO)
+    e_boss: bool = False
+    banca_nivel: Literal[1, 2, 3] | None = None
+
+
+class BlocoDaEstruturaSchema(Schema):
+    """Um bloco como a estrutura o declara: a letra, a parte (o enum do
+    contrato), as aulas na ordem, e os dois textos do bloco. A estrutura e a
+    fonte do nome do bloco e do titulo do Boss, porque as letras sao
+    posicionais: o bloco que hoje e o A pode virar o B na estrutura nova, e
+    o nome tem de viajar com ele. Por isso os dois campos tem tres estados:
+    ausente ou nulo NAO MEXE no que esta gravado; texto GRAVA aquele valor;
+    texto vazio APAGA."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    letra: str = Field(pattern=r"^[A-Z]$")
+    parte: ParteDoCurso
+    nome: str | None = Field(
+        None,
+        max_length=CURTO,
+        description=(
+            "O nome do bloco. Ausente ou nulo: o nome gravado fica como esta. "
+            "Texto: passa a ser este, mesmo que o bloco ja tivesse outro. "
+            "Texto vazio: apaga o nome."
+        ),
+    )
+    boss_titulo: str | None = Field(
+        None,
+        max_length=CURTO,
+        description=(
+            "O titulo do Boss do bloco. Ausente ou nulo: o titulo gravado fica "
+            "como esta. Texto: passa a ser este, mesmo que o bloco ja tivesse "
+            "outro. Texto vazio: apaga o titulo."
+        ),
+    )
+    aulas: list[AulaDaEstruturaSchema]
+
+
+class EstruturaParaGravarSchema(Schema):
+    """O corpo de `putCourseStructure`: os blocos na ordem, cada um com as
+    aulas na ordem. A ordem dos blocos é a posição na lista, de um; a das
+    aulas é a posição no curso inteiro, do zero: exatamente a conta do
+    semeador do livro."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    blocos: list[BlocoDaEstruturaSchema]
+
+    @model_validator(mode="after")
+    def sem_repeticao_e_sem_vazio(self):
+        """Letra repetida e número repetido são as duas unicidades do banco
+        (`uma_letra_por_bloco_por_curso`, `um_numero_por_aula_por_curso`);
+        recusadas aqui viram 422 dizendo a linha, não IntegrityError. Estrutura
+        sem bloco e bloco sem aula também são 422: apagar um curso inteiro não
+        é gesto que esta porta ofereça, e um bloco vazio é um título que
+        nenhum aluno alcança."""
+        if not self.blocos:
+            raise ValueError("a estrutura precisa ter pelo menos um bloco")
+        letras: dict[str, int] = {}
+        numeros: dict[str, str] = {}
+        for posicao, bloco in enumerate(self.blocos, start=1):
+            if bloco.letra in letras:
+                raise ValueError(
+                    f"bloco {posicao}: a letra '{bloco.letra}' repete a do "
+                    f"bloco {letras[bloco.letra]}"
+                )
+            letras[bloco.letra] = posicao
+            if not bloco.aulas:
+                raise ValueError(
+                    f"bloco {posicao} ('{bloco.letra}'): não tem aula nenhuma"
+                )
+            for linha, aula in enumerate(bloco.aulas, start=1):
+                if aula.numero in numeros:
+                    raise ValueError(
+                        f"bloco {posicao} ('{bloco.letra}'), aula {linha}: o "
+                        f"número '{aula.numero}' repete o de {numeros[aula.numero]}"
+                    )
+                numeros[aula.numero] = f"bloco {letras[bloco.letra]} ('{bloco.letra}')"
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -1127,10 +1311,11 @@ def _conferir_a_fidelidade(aula: AulaModel) -> list:
         "apagaria o que a outra tela escreveu. Um bloco cujas aulas ninguem\n"
         "abriu tambem nao teria como ser nomeado.\n"
         "\n"
-        "`letra` e a do bloco, de A a L, e `curso` e o SLUG, resolvido pelo par\n"
+        "`letra` e a do bloco, de A a Z, e `curso` e o SLUG, resolvido pelo par\n"
         "site+slug como nas quatro operacoes de aula. Letra, ordem e parte NAO\n"
-        "entram no corpo: sao a estrutura do livro, o semeador e a fonte delas,\n"
-        "e manda-las e 422, do mesmo jeito que `cartao` em `putInstrument`.\n"
+        "entram no corpo: sao estrutura, a fonte delas e o semeador (no curso\n"
+        "do livro) ou `putCourseStructure` (em qualquer curso), e manda-las e\n"
+        "422, do mesmo jeito que `cartao` em `putInstrument`.\n"
         "\n"
         "404 se o curso nao existe naquele site, ou se aquela letra nao existe\n"
         "naquele curso. Devolve o bloco como ficou, no mesmo formato em que ele\n"
@@ -1159,3 +1344,344 @@ def put_block(
     bloco.boss_titulo = payload.boss_titulo
     bloco.save(update_fields=["nome", "boss_titulo"])
     return _bloco(bloco)
+
+
+# ---------------------------------------------------------------------------
+# O CURSO E A ESTRUTURA DELE (TAR-266, 07/09/2026)
+# ---------------------------------------------------------------------------
+# A sala serve vários cursos, e cada um nasce na tela do Admin, com o seu
+# produto, a sua regra de avanço e a sua estrutura. Estas quatro operações são
+# a porta por onde isso entra. A estrutura do curso do livro continua vindo do
+# semeador; a de qualquer outro curso vem por `putCourseStructure`, que faz a
+# MESMA reconciliação: escreve estrutura, nunca toca obra.
+
+
+def _curso_inteiro(curso: CursoModel) -> dict[str, Any]:
+    aulas = AulaModel.objects.filter(curso=curso)
+    return {
+        "slug": curso.slug,
+        "nome": curso.nome,
+        "estado": curso.estado,
+        "progressao": curso.progressao,
+        "produto_id": curso.produto_id,
+        "total_de_aulas": aulas.count(),
+        "aulas_publicadas": aulas.filter(estado=AulaModel.Estado.PUBLICADA).count(),
+    }
+
+
+def _estrutura(curso: CursoModel) -> list[dict[str, Any]]:
+    aulas_por_bloco: dict[int, list[dict[str, Any]]] = {}
+    for aula in (
+        AulaModel.objects.filter(curso=curso).select_related("bloco").order_by("ordem")
+    ):
+        aulas_por_bloco.setdefault(aula.bloco_id, []).append(_linha(aula))
+    return [
+        {**_bloco(bloco), "aulas": aulas_por_bloco.get(bloco.id, [])}
+        for bloco in BlocoModel.objects.filter(curso=curso).order_by("ordem")
+    ]
+
+
+def _reconciliar_estrutura(
+    curso: CursoModel, payload: EstruturaParaGravarSchema
+) -> dict[str, Any]:
+    """A mesma fronteira do `semear_esqueleto`: cria o que falta, corrige
+    bloco, ordem, parte, `e_boss` e `banca_nivel` do que existe, e não toca em
+    obra. Uma transação só: ou a estrutura inteira entra, ou nada entra, e a
+    conferência do rastro de aluno mora dentro dela.
+
+    O NOME DO BLOCO É ESTRUTURA, O TÍTULO DA AULA É OBRA. As aulas casam pelo
+    número, que é estável, e o título só preenche a que ainda não tem um. Os
+    blocos casam pela letra, que é posicional: o bloco que era o B vira o C
+    quando nasce um na frente, e o nome tem de vir na estrutura nova para
+    acompanhá-lo. Por isso `nome` e `boss_titulo` do bloco são gravados como
+    vieram (nulo não mexe, texto grava, vazio apaga), e a regra antiga, "só
+    onde está vazio", apagava em silêncio o nome de todo bloco que mudava de
+    letra.
+
+    A ORDEM DAS AULAS É ESTACIONADA ANTES DE SER REESCRITA. `uma_ordem_por_aula_
+    por_curso` é conferida linha a linha, e trocar duas aulas de lugar colide
+    na primeira gravação. Todas as aulas do curso sobem para acima do maior
+    valor que a estrutura nova vai usar, e cada uma desce para a posição
+    final: nenhuma gravação encontra outra linha na posição. O bloco não tem
+    essa faixa livre (a ordem é 1..26), e por isso a unicidade dele é adiada
+    para o `COMMIT` (`apps/cursos/models.py`, `Bloco`).
+    """
+    letras_novas = [bloco.letra for bloco in payload.blocos]
+    numeros_novos = [aula.numero for bloco in payload.blocos for aula in bloco.aulas]
+
+    with transaction.atomic():
+        existentes = {
+            aula.numero: aula for aula in AulaModel.objects.filter(curso=curso)
+        }
+        somem = [numero for numero in existentes if numero not in numeros_novos]
+        # O rastro de aluno é o que impede apagar: progresso, envio ou registro
+        # de pausa. A conferência mora DENTRO da transação que apaga, com as
+        # aulas candidatas trancadas: a chave estrangeira do rastro precisa da
+        # linha da aula no COMMIT do aluno, então quem estiver gravando rastro
+        # numa candidata espera a transação acabar, e rastro nenhum fica
+        # apontando para aula apagada. Fora da transação havia uma janela
+        # entre a conferência e o apagar, e a porta morria em 500 dentro dela.
+        candidatas = list(
+            AulaModel.objects.select_for_update().filter(curso=curso, numero__in=somem)
+        )
+        com_aluno = sorted(
+            AulaModel.objects.filter(pk__in=[aula.pk for aula in candidatas])
+            .filter(
+                Q(progressos__isnull=False)
+                | Q(envios__isnull=False)
+                | Q(pausas__registros__isnull=False)
+            )
+            .values_list("numero", flat=True)
+            .distinct()
+        )
+        if com_aluno:
+            raise HttpError(
+                422,
+                f"as aulas {', '.join(com_aluno)} sumiram da estrutura nova, mas "
+                "algum aluno já passou por elas (progresso, envio ou registro de "
+                "pausa) e elas não podem ser apagadas. Devolva-as à estrutura, em "
+                "qualquer bloco e posição, e mande de novo. Nada foi gravado.",
+            )
+
+        maior_ordem = max((aula.ordem for aula in existentes.values()), default=-1)
+        deslocamento = max(maior_ordem, len(numeros_novos)) + 1
+        AulaModel.objects.filter(curso=curso).update(ordem=F("ordem") + deslocamento)
+
+        blocos_por_letra = {
+            bloco.letra: bloco for bloco in BlocoModel.objects.filter(curso=curso)
+        }
+        blocos_criados = 0
+        for posicao, bloco_novo in enumerate(payload.blocos, start=1):
+            bloco = blocos_por_letra.get(bloco_novo.letra)
+            if bloco is None:
+                blocos_por_letra[bloco_novo.letra] = BlocoModel.objects.create(
+                    curso=curso,
+                    ordem=posicao,
+                    letra=bloco_novo.letra,
+                    parte=int(bloco_novo.parte),
+                    nome=bloco_novo.nome or "",
+                    boss_titulo=bloco_novo.boss_titulo or "",
+                )
+                blocos_criados += 1
+                continue
+            bloco.ordem = posicao
+            bloco.parte = int(bloco_novo.parte)
+            campos = ["ordem", "parte"]
+            # A estrutura é a fonte dos dois textos do bloco (as letras são
+            # posicionais, e o nome viaja com a posição): nulo não mexe, texto
+            # grava, e texto vazio apaga.
+            if bloco_novo.nome is not None:
+                bloco.nome = bloco_novo.nome
+                campos.append("nome")
+            if bloco_novo.boss_titulo is not None:
+                bloco.boss_titulo = bloco_novo.boss_titulo
+                campos.append("boss_titulo")
+            bloco.save(update_fields=campos)
+
+        aulas_criadas = aulas_preservadas = 0
+        ordem = 0
+        for bloco_novo in payload.blocos:
+            bloco = blocos_por_letra[bloco_novo.letra]
+            for aula_nova in bloco_novo.aulas:
+                aula = existentes.get(aula_nova.numero)
+                if aula is None:
+                    AulaModel.objects.create(
+                        curso=curso,
+                        bloco=bloco,
+                        ordem=ordem,
+                        numero=aula_nova.numero,
+                        titulo_exibido=aula_nova.titulo,
+                        e_boss=aula_nova.e_boss,
+                        banca_nivel=aula_nova.banca_nivel,
+                    )
+                    aulas_criadas += 1
+                else:
+                    aula.bloco = bloco
+                    aula.ordem = ordem
+                    aula.e_boss = aula_nova.e_boss
+                    aula.banca_nivel = aula_nova.banca_nivel
+                    campos = ["bloco", "ordem", "e_boss", "banca_nivel"]
+                    if not aula.titulo_exibido:
+                        aula.titulo_exibido = aula_nova.titulo
+                        campos.append("titulo_exibido")
+                    aula.save(update_fields=campos)
+                    aulas_preservadas += 1
+                ordem += 1
+
+        apagar = AulaModel.objects.filter(curso=curso, numero__in=somem)
+        PecaModel.objects.filter(aula__in=apagar).delete()
+        PausaModel.objects.filter(aula__in=apagar).delete()
+        apagar.delete()
+        BlocoModel.objects.filter(curso=curso).exclude(letra__in=letras_novas).delete()
+
+    return {
+        "blocos": _estrutura(curso),
+        "blocos_criados": blocos_criados,
+        "aulas_criadas": aulas_criadas,
+        "aulas_preservadas": aulas_preservadas,
+        "aulas_apagadas": len(somem),
+    }
+
+
+@router.get(
+    "/cursos",
+    response=list[CursoSchema],
+    operation_id="listCourses",
+    summary="Os cursos de um site, em ordem de apelido",
+    description=(
+        "A lista que a tela de cursos do Admin mostra: apelido, nome, estado,\n"
+        "regra de avanco, o produto do catalogo a que cada curso aponta (texto\n"
+        "vazio enquanto ninguem apontar) e duas contagens, o total de aulas e\n"
+        "quantas estao publicadas. Em ordem de apelido, que e a ordem em que o\n"
+        "aluno le. Site sem curso responde lista vazia, nao erro.\n"
+        "\n"
+        "`site_id` e obrigatorio (uma fabrica, N lojas): esta celula nao tem\n"
+        "middleware de site, e a porta nao adivinha de qual escola e o curso."
+    ),
+)
+def list_courses(request, site_id: str):
+    return [_curso_inteiro(curso) for curso in enderecos.cursos_do_site(site_id)]
+
+
+@router.post(
+    "/cursos",
+    response={201: CursoSchema},
+    operation_id="createCourse",
+    summary="Cria um curso: apelido, nome, regra de avanco e, se ja houver, o produto",
+    description=(
+        "O gesto Novo curso da tela do Admin. O curso nasce em rascunho, sem\n"
+        "bloco e sem aula: a estrutura entra depois por `putCourseStructure`,\n"
+        "e o texto de cada aula por `putLesson`. Nunca por arquivo, nunca por\n"
+        "migracao ([INV-CUR-C2]).\n"
+        "\n"
+        "`slug` e o apelido do endereco (`/cursos/<slug>/`): minusculas,\n"
+        "digitos e hifen, de 1 a 64 letras, e fora disso e 422. E o unico\n"
+        "campo que nao muda depois, porque e a identidade do curso no par\n"
+        "site+slug. Apelido que ja existe naquele site e 409 com a frase em\n"
+        "portugues; o mesmo apelido em outro site e outro curso.\n"
+        "\n"
+        "`nome` vazio e 422. `progressao` e `por_laudo` (a regra do livro: a\n"
+        "proxima aula abre com o laudo da professora) ou `livre` (a proxima\n"
+        "abre quando o aluno conclui a anterior), e nasce `por_laudo` quando\n"
+        "nao vem. `produto_id` e o id do produto no catalogo, o mesmo que a\n"
+        "matricula guarda; vazio significa ainda nao apontado, e curso sem\n"
+        "produto fecha a sala para todo mundo, de proposito. Chave que a\n"
+        "porta nao conhece e 422.\n"
+        "\n"
+        "Responde 201 com o curso como ficou, no formato de `listCourses`."
+    ),
+)
+def create_course(request, site_id: str, payload: CursoParaCriarSchema):
+    try:
+        with transaction.atomic():
+            curso = CursoModel.objects.create(
+                site_id=site_id,
+                slug=payload.slug,
+                nome=payload.nome,
+                progressao=payload.progressao.value,
+                produto_id=payload.produto_id,
+            )
+    except IntegrityError:
+        # `um_curso_por_slug_por_site`: a unicidade e do banco, e a recusa e
+        # mecanica mesmo com dois pedidos ao mesmo tempo.
+        raise HttpError(
+            409,
+            f"já existe um curso com o apelido '{payload.slug}' no site "
+            f"'{site_id}'. Escolha outro apelido, ou altere aquele curso por "
+            "putCourse.",
+        )
+    return 201, _curso_inteiro(curso)
+
+
+@router.put(
+    "/cursos/{curso}",
+    response=CursoSchema,
+    operation_id="putCourse",
+    summary="Altera o nome, a regra de avanco ou o produto de um curso",
+    description=(
+        "Os tres campos que mudam depois de o curso nascer, todos opcionais:\n"
+        "AUSENTE OU NULO SIGNIFICA NAO MEXER, a mesma regra do `titulo_exibido`\n"
+        "em `putLesson`. Corpo vazio devolve o curso como esta, sem gravar.\n"
+        "\n"
+        "`nome` vazio e 422. `progressao` e `por_laudo` ou `livre`, e trocar a\n"
+        "regra de um curso muda como a proxima aula abre para TODOS os alunos\n"
+        "dele. `produto_id` e o elo com a matricula: troca-lo troca QUEM ENTRA\n"
+        "no curso, e texto vazio desaponta o produto e fecha a sala. E o mesmo\n"
+        "gesto do comando `apontar_o_produto_do_curso`, pela porta; o comando\n"
+        "continua existindo.\n"
+        "\n"
+        "O apelido, o estado e a versao NAO entram, e manda-los e 422: o apelido\n"
+        "e a identidade do curso, e o estado e a versao sao da publicacao.\n"
+        "404 se o curso nao existe naquele site. Devolve o curso como ficou."
+    ),
+)
+def put_course(request, curso: str, site_id: str, payload: CursoParaAlterarSchema):
+    encontrado = _curso(site_id, curso)
+    campos = []
+    if payload.nome is not None:
+        encontrado.nome = payload.nome
+        campos.append("nome")
+    if payload.progressao is not None:
+        encontrado.progressao = payload.progressao.value
+        campos.append("progressao")
+    if payload.produto_id is not None:
+        encontrado.produto_id = payload.produto_id
+        campos.append("produto_id")
+    if campos:
+        encontrado.save(update_fields=campos)
+    return _curso_inteiro(encontrado)
+
+
+@router.put(
+    "/cursos/{curso}/estrutura",
+    response=EstruturaSchema,
+    operation_id="putCourseStructure",
+    summary="Grava a estrutura de um curso: os blocos e as aulas, reconciliando com o que existe",
+    description=(
+        "O gesto Importar da tela de estrutura do Admin. O corpo e a lista de\n"
+        "blocos na ordem, cada um com letra (A a Z), parte (1, 2 ou 3), as\n"
+        "aulas na ordem e, se quiser, o nome do bloco e o titulo do Boss; cada\n"
+        "aula leva numero (de 1 a 3 letras maiusculas ou digitos), titulo, se e\n"
+        "Boss e o nivel de Banca. A ordem dos blocos e a posicao na lista, de\n"
+        "um; a das aulas e a posicao no curso inteiro, do zero.\n"
+        "\n"
+        "RECONCILIA COMO O SEMEADOR DO LIVRO, e a fronteira e a mesma. Cria o\n"
+        "bloco e a aula que faltam; corrige bloco, ordem, parte, Boss e Banca\n"
+        "do que ja existe; e NUNCA toca obra: pedido, cliente, pecas, pausas,\n"
+        "quiz, video, estado e versao ficam como estao. As aulas casam pelo\n"
+        "NUMERO, que e estavel: o titulo da aula so entra onde esta VAZIO, o\n"
+        "que a tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz\n"
+        "quantas aulas ja existiam e ficaram com a obra intacta.\n"
+        "\n"
+        "OS BLOCOS CASAM PELA LETRA, QUE E POSICIONAL, e por isso a estrutura\n"
+        "e a fonte do nome do bloco e do titulo do Boss: quando nasce um bloco\n"
+        "na frente, o que era o B vira o C, e o nome tem de vir na estrutura\n"
+        "nova para acompanha-lo. Cada um dos dois campos tem tres estados.\n"
+        "Ausente ou nulo: o que esta gravado fica como esta. Texto: passa a\n"
+        "ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga.\n"
+        "Mande sempre o nome que a tela mostra, e nenhum bloco perde o nome\n"
+        "quando muda de letra.\n"
+        "\n"
+        "Aula que sumiu da estrutura nova e APAGADA so se nenhum aluno passou\n"
+        "por ela (sem progresso, sem envio, sem registro de pausa). A\n"
+        "conferencia acontece DENTRO da transacao que apaga, com essas aulas\n"
+        "trancadas: um aluno gravando rastro nelas no mesmo instante e visto,\n"
+        "e nenhuma aula por onde alguem passou e apagada. Se algum passou, e\n"
+        "422 nomeando as aulas, e NADA e gravado: a transacao e uma so. Bloco\n"
+        "que sumiu e apagado depois que as aulas dele mudaram de bloco ou\n"
+        "foram apagadas.\n"
+        "\n"
+        "422 tambem, dizendo a linha do problema: letra de bloco repetida,\n"
+        "numero de aula repetido, estrutura sem bloco, bloco sem aula, parte\n"
+        "fora de 1..3, numero fora do padrao, titulo vazio, chave desconhecida.\n"
+        "404 se o curso nao existe naquele site.\n"
+        "\n"
+        "Devolve a estrutura como ficou (os blocos com as aulas, cada aula no\n"
+        "formato da listagem) e as contagens: blocos_criados, aulas_criadas,\n"
+        "aulas_preservadas e aulas_apagadas."
+    ),
+)
+def put_course_structure(
+    request, curso: str, site_id: str, payload: EstruturaParaGravarSchema
+):
+    return _reconciliar_estrutura(_curso(site_id, curso), payload)
