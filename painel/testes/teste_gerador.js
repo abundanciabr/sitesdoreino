@@ -36,6 +36,10 @@ function montarCenario(registros, opcoes) {
     logica = logica.replace(/var ORCAMENTO_RESUMO_BYTES = [^;]+;/,
       "var ORCAMENTO_RESUMO_BYTES = " + opcoes.orcamentoResumo + ";");
   }
+  // Injeta uma linha ANTES da IIFE que abre o arquivo, sem mexer no logica.js
+  // real — só para o teste do TAR-274 provar que um "//" no MEIO de uma linha
+  // (uma URL numa string) sobrevive à limpeza.
+  if (opcoes.logicaExtra) logica = opcoes.logicaExtra + "\n" + logica;
   fs.writeFileSync(path.join(dir, "logica.js"), logica, "utf8");
   fs.copyFileSync(path.join(RAIZ_PAINEL, "gerar_manifesto.js"), path.join(dir, "gerar_manifesto.js"));
   if (!opcoes.semTemplate) {
@@ -65,7 +69,7 @@ function roda(dir, args) {
 function leia(dir, nome) { return fs.readFileSync(path.join(dir, nome), "utf8"); }
 function existe(dir, nome) { return fs.existsSync(path.join(dir, nome)); }
 
-function registroBom(base, extra) {
+function camposDoRegistro(base, extra) {
   var campos = {
     arquivo: base, tipo: "nota", quando: "2026-08-26", titulo: "t", detalhe: "d",
     autoridade: "sessao", evidencia: null, verificado_em: null,
@@ -73,8 +77,11 @@ function registroBom(base, extra) {
     frente: null, vence_em_dias: null
   };
   Object.keys(extra || {}).forEach(function (k) { campos[k] = extra[k]; });
+  return campos;
+}
+function registroBom(base, extra) {
   return "(function(){ (window.REGISTROS = window.REGISTROS || []).push(" +
-    JSON.stringify(campos) + ");})();";
+    JSON.stringify(camposDoRegistro(base, extra)) + ");})();";
 }
 
 console.log("== o caminho verde ==");
@@ -336,6 +343,48 @@ try {
 caso("as ilhas de regras e de dados EXECUTAM", executou);
 caso("...e deixam LOGICA e PAINEL de pé",
   executou && typeof sandbox.window.LOGICA === "object" && typeof sandbox.PAINEL === "object");
+
+// -----------------------------------------------------------------------------
+// TAR-274: o bloco embutido das regras (ilhas[0], acima) viaja SEM as linhas de
+// comentário — quem lê ali é o navegador, não gente, e cada `//` era peso morto
+// contra o orçamento. O arquivo em disco (logica.js) e o que ele CALCULA não
+// podem mudar nem uma vírgula: os dois lados têm de ler a MESMA regra.
+// -----------------------------------------------------------------------------
+console.log("== as regras embutidas viajam SEM os comentários, e continuam a MESMA regra (TAR-274) ==");
+caso("nenhuma linha do bloco embutido começa com // (sem os espaços da frente)",
+  ilhas[0].split("\n").every(function (l) { return l.trimStart().indexOf("//") !== 0; }));
+
+var logicaDoDisco = require(path.join(RAIZ_PAINEL, "logica.js"));
+var LOGICA_EMBUTIDA = sandbox.window.LOGICA;
+caso("o LOGICA embutido expõe EXATAMENTE as mesmas chaves da fonte completa",
+  !!LOGICA_EMBUTIDA &&
+  JSON.stringify(Object.keys(LOGICA_EMBUTIDA).sort()) === JSON.stringify(Object.keys(logicaDoDisco).sort()));
+
+var registrosDoLivro = [camposDoRegistro("20260826-001-a"), camposDoRegistro("20260826-002-b")];
+var areasReais = JSON.parse(fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8")).areas;
+var agoraFixo = new Date("2026-08-30T12:00:00");
+caso("...e prioridades(...) sobre o livro do cenário devolve o MESMO JSON que a cópia completa",
+  JSON.stringify(logicaDoDisco.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)) ===
+  JSON.stringify(LOGICA_EMBUTIDA.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)));
+caso("...e capa(...) sobre o mesmo livro também devolve o MESMO JSON",
+  JSON.stringify(logicaDoDisco.capa(registrosDoLivro, agoraFixo)) ===
+  JSON.stringify(LOGICA_EMBUTIDA.capa(registrosDoLivro, agoraFixo)));
+
+// Um "//" no MEIO de uma linha (uma URL dentro de uma string) não é comentário
+// — só a linha que COMEÇA com "//" sai. painel/logica.js de verdade não tem
+// nenhuma linha assim hoje (`grep -n '"[^"]*//' painel/logica.js`), então o
+// cenário injeta uma para provar a sobrevivência sem depender disso mudar.
+var dirUrl = montarCenario(
+  { "20260826-001-a.js": registroBom("20260826-001-a") },
+  { logicaExtra: 'var URL_DE_EXEMPLO = "veja https://meshcraft.top/admin para mais.";' }
+);
+roda(dirUrl);
+var ilhasUrl = [], achouUrl;
+var reIlhaUrl = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+var htmlUrl = leia(dirUrl, "painel.html");
+while ((achouUrl = reIlhaUrl.exec(htmlUrl))) ilhasUrl.push(achouUrl[1]);
+caso("uma linha com // NO MEIO (uma URL numa string) sobrevive intacta",
+  ilhasUrl[0].indexOf('var URL_DE_EXEMPLO = "veja https://meshcraft.top/admin para mais.";') !== -1);
 
 
 console.log("== o painel declara quanto do orçamento ja ocupa ==");
