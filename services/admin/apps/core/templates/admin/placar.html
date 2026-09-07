@@ -216,6 +216,15 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     <p class="recado-fraco espaco-abaixo-10">
       <a href="{% url 'ciclo' %}">Ver o calendário do ciclo, semana a semana &rarr;</a>
     </p>
+    {% comment %}
+    A porta do FIM da mesma régua (07/09/2026, degrau 13). Ela fica colada no
+    calendário de propósito: as duas leem o mesmo cartão, uma pelo caminho e a
+    outra pelo destino. Sem este link a tela do fechamento seria um endereço
+    que só quem leu o plano saberia existir.
+    {% endcomment %}
+    <p class="recado-fraco espaco-abaixo-10">
+      <a href="{% url 'fechamento' %}">Ver o fechamento do ciclo, e o que a escola para de fazer &rarr;</a>
+    </p>
     <p class="lei">
       <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
       {% if placar.alvo is not None %}

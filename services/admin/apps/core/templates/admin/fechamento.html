@@ -1,0 +1,269 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O FECHAMENTO DO CICLO (/admin/placar/fechamento/, 07/09/2026, degrau 13 do
+plano do painel de gestão). As regras moram em apps/core/fechamento.py.
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` e zero folha própria: todas as
+classes abaixo já existem em admin/base.html, e cor que ninguém declara deixa
+a tela ilegível em silêncio (armadilhas/302, tests/test_toda_cor_usada_tem_dono).
+
+Nenhum `|filtro:variavel` nesta tela: variável ausente no ARGUMENTO de um
+filtro vira 500 (armadilhas/340). Onde há `default`, o argumento é literal.
+
+TRÊS REGRAS governam cada `{% if %}` daqui:
+
+1. O ESTADO "CORRENDO" É O PRINCIPAL, e vai ser por três meses. O ciclo partiu
+   em 03/09/2026 e fecha em 15/12/2026: a tela nasce sem nenhum ciclo fechado.
+   Ela mostra a prévia com os números de hoje e diz o que vai ser perguntado no
+   dia, em vez de guardar tudo atrás de um "ainda não".
+2. AUSÊNCIA DE DADO NUNCA VIRA CONCLUSÃO (armadilhas/271). Livro que não chegou
+   não é "nenhum portão provado"; meta semanal em zero não é "as medidas
+   previram a meta".
+3. A RECUSA É A ALMA DO DEGRAU. Sem "o que a escola para de fazer", não existe
+   pedido nenhum, e a tela diz isso em vermelho, com a lei escrita.
+{% endcomment %}
+{% block titulo %}O fechamento do ciclo{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>O fechamento do ciclo</h1>
+  <p class="subtitulo">
+    O fim das 12 semanas: a meta bateu ou não, as medidas de direção previram
+    isso ou não, o que a escola para de fazer, e qual é a meta seguinte.
+  </p>
+
+  <p class="lei">
+    Um ciclo sem rito de fim vira um número que corre para sempre, e ninguém
+    nunca decide nada por causa dele. Nada aqui é gravado: esta tela monta o
+    pedido para o robô, e o que vale é o que chegar ao livro e ao cartão da meta.
+  </p>
+
+  {% if fechamento.estado == "sem-cartao" %}
+  <p class="aviso borda-vermelha">
+    <b>Não há ciclo para fechar.</b> O cartão da meta está ausente ou inválido,
+    e sem ele não existem partida, alvo nem data de fim. Isto não é "o ciclo
+    terminou": é a tela sem a régua.
+  </p>
+  <ul class="notas">
+    {% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}
+  </ul>
+
+  {% else %}
+
+  {% comment %}1. ONDE O CICLO ESTÁ{% endcomment %}
+  <div class="cartoes espaco-20">
+    <div class="cartao">
+      <div class="rotulo">O ciclo</div>
+      <div class="valor">{% if fechamento.estado == "correndo" %}Correndo{% else %}Terminou{% endif %}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Fecha em</div>
+      <div class="valor">{{ fechamento.ate|date:"d/m/Y" }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Semanas que faltam</div>
+      <div class="valor{% if not fechamento.semanas_restantes %} vazio{% endif %}">{{ fechamento.semanas_restantes }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">A fase da escola</div>
+      <div class="valor{% if not fechamento.fase.fase %} vazio{% endif %}">{% if fechamento.fase.fase %}{{ fechamento.fase.fase }}{% else %}não sei{% endif %}</div>
+    </div>
+  </div>
+
+  {% if fechamento.estado == "correndo" %}
+  <p class="aviso borda-amarela">
+    <b>O ciclo está correndo.</b> Ele começou em {{ fechamento.partida_em|date:"d/m/Y" }},
+    fecha em {{ fechamento.ate|date:"d/m/Y" }}, e faltam
+    {{ fechamento.semanas_restantes }} semana{{ fechamento.semanas_restantes|pluralize:"s" }}
+    ({{ fechamento.dias_restantes }} dia{{ fechamento.dias_restantes|pluralize:"s" }}).
+    Nenhum ciclo foi fechado ainda, e isso é o esperado. O que você lê abaixo é a
+    PRÉVIA, com os números de hoje: é exatamente isto que vai estar aqui no dia
+    do fechamento, e nada abaixo é veredito final.
+  </p>
+  {% else %}
+  <p class="aviso borda-vermelha">
+    <b>O ciclo terminou em {{ fechamento.ate|date:"d/m/Y" }} e ainda não foi fechado.</b>
+    Enquanto ele não for, a escola continua sendo medida por uma régua que já
+    venceu. Feche-o no formulário do fim desta página.
+  </p>
+  {% endif %}
+
+  {% comment %}2. A META BATEU?{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">1. A meta bateu?</h2>
+  {% if fechamento.veredito == "nao-consigo-contar" %}
+  <p class="aviso borda-amarela">
+    <b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu,
+    então não sei quantas pessoas compraram. Isto não é zero: é a pergunta que
+    não chegou. Abra esta tela daqui a pouco.
+  </p>
+  {% elif fechamento.veredito == "sem-alvo" %}
+  <p class="aviso borda-vermelha">
+    <b>O cartão da meta não declara alvo</b>, e sem alvo não existe bateu nem
+    não bateu.
+  </p>
+  {% else %}
+  <p class="recado">
+    Meta: <b>{{ fechamento.resultado.alvo }}</b> pessoas somadas, de
+    {{ fechamento.resultado.partida_em }} até {{ fechamento.resultado.ate }}.
+    Medido até hoje: <b>{{ fechamento.resultado.x }}</b>.
+  </p>
+  {% if fechamento.veredito == "cumprida" %}
+  <p class="aviso borda-amarela"><b>A meta foi cumprida.</b> O número medido alcançou o alvo do ciclo.</p>
+  {% elif fechamento.veredito == "vencida" %}
+  <p class="aviso borda-vermelha">
+    <b>A meta não foi cumprida.</b> O prazo passou e faltaram
+    {{ fechamento.resultado.distancia }} pessoa{{ fechamento.resultado.distancia|pluralize:"s" }}.
+  </p>
+  {% elif fechamento.veredito == "ganhando" %}
+  <p class="recado">
+    <span class="rotulo">ganhando</span> Pela curva do cartão, hoje deveríamos
+    estar em {{ fechamento.resultado.esperado_hoje }}, e estamos em
+    {{ fechamento.resultado.x }}. Veredito parcial: o ciclo ainda não terminou.
+  </p>
+  {% elif fechamento.veredito == "perdendo" %}
+  <p class="recado">
+    <span class="rotulo">perdendo</span> Pela curva do cartão, hoje deveríamos
+    estar em {{ fechamento.resultado.esperado_hoje }}, e estamos em
+    {{ fechamento.resultado.x }}. Veredito parcial: o ciclo ainda não terminou.
+  </p>
+  {% elif fechamento.veredito == "ainda-nao-cobra" %}
+  <p class="aviso borda-amarela">
+    <b>Ainda não existe ganhando nem perdendo.</b> Nesta altura do ciclo a curva
+    do cartão ainda espera zero (são as semanas de aprender a campanha), e a
+    escola fez zero. Dizer "ganhando" aqui seria a tela elogiando quem ainda não
+    foi cobrado de nada. O veredito começa a valer quando a curva começar a
+    pedir venda.
+  </p>
+  {% endif %}
+  <p class="recado-fraco">
+    A régua é a curva de semanas do cartão da meta, a mesma que o placar usa.
+    <a href="{% url 'ciclo' %}">Ver o calendário do ciclo, semana a semana &rarr;</a>
+  </p>
+  <p class="nota">
+    O <b>porquê</b> não sai de conta nenhuma: é você quem escreve, no formulário
+    do fim desta página, e ele viaja para o livro junto com o resultado.
+  </p>
+  {% endif %}
+
+  {% comment %}3. AS MEDIDAS DE DIREÇÃO PREVIRAM?{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">2. As medidas de direção previram a meta?</h2>
+  <p class="recado-fraco">
+    As duas medidas que a casa move toda semana são as chegadas à sala de espera
+    e as confirmações em até 48 horas. A pergunta deste bloco é se elas
+    anunciavam o resultado que veio.
+  </p>
+  {% if fechamento.previsao.veredito == "previram" %}
+  <p class="recado"><span class="rotulo">previram</span> {{ fechamento.previsao.porque }}</p>
+  {% elif fechamento.previsao.veredito == "nao-previram" %}
+  <p class="aviso borda-amarela"><b>Não previram.</b> {{ fechamento.previsao.porque }}</p>
+  {% else %}
+  <p class="aviso borda-amarela">
+    <b>Ainda não dá para saber.</b> {{ fechamento.previsao.porque }}
+    Enquanto for assim, esta linha fica assim mesmo: dizer que as medidas
+    acertaram sem ter o que comparar seria a tela elogiando um resultado que
+    ninguém produziu.
+  </p>
+  {% endif %}
+
+  {% comment %}4. A FASE DA ESCOLA, PELOS PORTÕES{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">3. A fase da escola, calculada dos portões</h2>
+  {% if not fechamento.fase.livro %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui olhar.</b> O livro de ocorrências não chegou até esta tela,
+    então não sei quantos portões foram provados. Isto não é "nenhum portão":
+    é a tela sem a fonte. Abra a <a href="{% url 'painel' %}">porta do painel</a>
+    e diga a uma sessão que o livro não está chegando à área administrativa.
+  </p>
+  {% else %}
+  <p class="recado">
+    <b>{{ fechamento.fase.provados }}</b> de {{ fechamento.fase.total }} portões
+    provados, então a escola está <b>{{ fechamento.fase.fase }}</b>. A fase não é
+    digitada em lugar nenhum: ela é esta contagem. Nenhum provado é achando,
+    todos é escalando, e enquanto faltar um a escola está provando.
+  </p>
+  <ul class="riscas">
+    {% for portao in fechamento.fase.portoes %}
+    <li>
+      <b>{{ portao.nome }}</b>
+      {% if portao.provado %}<span class="selo-verde">provado</span>{% else %}<span class="rotulo">em aberto</span>{% endif %}
+      <span class="nota">{{ portao.prova }}</span>
+      {% if portao.registro %}<span class="nota">Prova conferida em {{ portao.registro.verificado_em }}: {{ portao.registro.titulo }}</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if fechamento.fase.declarados_sem_prova %}
+  <p class="aviso borda-amarela">
+    <b>Declarado não é provado.</b> Estes registros dizem provar um portão e não
+    trazem evidência conferida, então não contam:
+  </p>
+  <ul class="notas">
+    {% for ficha in fechamento.fase.declarados_sem_prova %}
+    <li>{{ ficha.arquivo }} diz provar "{{ ficha.portao }}" e não tem evidência com data de conferência.</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if fechamento.fase.desconhecidos %}
+  <p class="aviso borda-vermelha">
+    <b>Portão com nome que não existe.</b> Estes registros escreveram um portão
+    fora dos oito, e por isso não contam para fase nenhuma. Corrija o nome no
+    livro, por registro novo:
+  </p>
+  <ul class="notas">
+    {% for ficha in fechamento.fase.desconhecidos %}
+    <li>{{ ficha.arquivo }} escreveu "{{ ficha.portao }}".</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% endif %}
+
+  {% comment %}5. O FECHAMENTO PROPRIAMENTE DITO{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">4. Fechar o ciclo</h2>
+  <p class="recado">
+    O fechamento é uma <b>recusa</b> antes de ser um plano. Escreva o que a
+    escola para de fazer, o alvo do próximo ciclo e a data em que ele fecha; o
+    botão monta o pedido para o robô, e é ele que escreve no livro e grava a
+    meta nova no cartão.
+  </p>
+  <form class="forma" method="post" action="{% url 'fechamento' %}">
+    {% csrf_token %}
+    <label for="paramos_de_fazer">O que a escola PARA de fazer (obrigatório)</label>
+    <textarea id="paramos_de_fazer" name="paramos_de_fazer" rows="3" maxlength="1000" placeholder="por exemplo: parar de vender por mensagem uma a uma">{{ campos.paramos_de_fazer|default:'' }}</textarea>
+    <label for="por_que">Por que a meta bateu, ou por que não bateu (opcional)</label>
+    <textarea id="por_que" name="por_que" rows="3" maxlength="1000">{{ campos.por_que|default:'' }}</textarea>
+    <label for="proximo_alvo">O alvo do próximo ciclo, em pessoas (obrigatório)</label>
+    <input id="proximo_alvo" name="proximo_alvo" type="text" maxlength="8" value="{{ campos.proximo_alvo|default:'' }}">
+    <label for="proxima_ate">A data em que o próximo ciclo fecha, como 2027-03-09 (obrigatório)</label>
+    <input id="proxima_ate" name="proxima_ate" type="text" maxlength="10" value="{{ campos.proxima_ate|default:'' }}">
+    <button type="submit">Montar o pedido de fechamento</button>
+  </form>
+
+  {% if montou %}
+    {% if pedido %}
+    <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
+    <p class="recado-fraco">
+      Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi
+      gravado aqui: o que vale é o que chegar ao livro e ao cartão. Recarregar a
+      página apaga o texto.
+    </p>
+    <div class="forma">
+      <textarea rows="20" readonly>{{ pedido }}</textarea>
+    </div>
+    {% else %}
+      {% for ficha in faltando %}
+        {% if ficha.lei %}
+        <p class="aviso borda-vermelha">
+          <b>O ciclo não fecha sem {{ ficha.rotulo }}.</b> {{ ficha.porque }}
+        </p>
+        {% else %}
+        <p class="aviso borda-amarela">
+          <b>Falta {{ ficha.rotulo }}.</b> {{ ficha.porque }}
+        </p>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

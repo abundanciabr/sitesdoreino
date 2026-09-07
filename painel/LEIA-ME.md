@@ -78,7 +78,15 @@
   se_eu_nao_decidir: null,              // o que acontece se isto ficar parado — ou null
   recomendacao: null,                   // o que você sugere, e por quê — ou null
   reversivel: null,                     // true/false SEM aspas ("false" seria verdadeiro em JS) — ou null
-  impacto: null                         // alto | medio | baixo — ou null
+  impacto: null,                        // alto | medio | baixo — ou null
+
+  // O PORTÃO DA FASE DA ESCOLA — opcional, e quase sempre null. Escreva-o só
+  // quando este registro PROVA um dos oito portões que a escola atravessa antes
+  // de escalar. A fase (achando, provando, escalando) é calculada da contagem
+  // dos portões provados, e aparece em /admin/placar/fechamento/.
+  // Exige `evidencia` E `verificado_em`: declarar não é provar, e o gerador
+  // reprova quem escrever o nome fora dos oito.
+  portao: null                          // demanda | conversao | economia | entrega | resultado | retencao | repeticao | escala — ou null
 });})();
 ```
 

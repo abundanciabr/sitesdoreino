@@ -73,6 +73,7 @@ from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
+from apps.core.fechamento import fechamento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
@@ -559,6 +560,22 @@ urlpatterns = [
     # que ela deixa para trás é exatamente uma linha desta tabela. Como seção
     # própria do menu ela viveria longe do número de que é a memória.
     path("placar/coortes/", coortes, name="coortes"),
+    # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
+    # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
+    # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta
+    # seguinte, e a fase da escola calculada dos portões. É o degrau 13 do
+    # plano do painel de gestão.
+    #
+    # Sub-rota do placar pela mesma razão das quatro irmãs acima, e por uma
+    # quinta: esta tela julga o MESMO número da meta grande, no fim do prazo
+    # dele. Como seção própria do menu ela viveria longe do número que fecha, e
+    # o mantenedor teria de aprender que "fechamento" fala do placar.
+    #
+    # Aceita GET e POST, e o POST não escreve nada: ele calcula o pedido para o
+    # robô e devolve, como a reunião de segunda. Por isso a entrada dela no
+    # `painel/mapa-do-site.json` é `"gesto": false` — o endereço abre no
+    # navegador, e é para abrir mesmo (`armadilhas/330`).
+    path("placar/fechamento/", fechamento, name="fechamento"),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
