@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015935-TAR-165-explicada",
+  "tarefa": "TAR-165",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:35+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "A esteira que publica os trabalhos prontos espera um tempo fixo. O teste mais lento passou a demorar mais que esse tempo, entao ela desiste e recomeca, em circulo.",
+  "o_que_muda": "Trabalho pronto e aprovado fica parado sem chegar no site. Medido em 05/09: quatro passagens seguidas sem publicar nada, com tudo verde.",
+  "exemplo": "E a esteira do aeroporto parando de girar dois minutos antes de a ultima mala sair. A mala esta la, ninguem pega.",
+  "importancia": 85
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015958-TAR-007-explicada",
+  "tarefa": "TAR-007",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:58+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Seu computador e o servidor escrevem o fim de cada linha de forma diferente, e o Windows trata Arquivo e arquivo como o mesmo nome. O servidor nao.",
+  "o_que_muda": "E um defeito que so aparece na sua maquina. Ja travou a atualizacao da pasta do seu PC uma vez.",
+  "exemplo": "E o mesmo endereco escrito Rua e RUA: para voce e igual, para o carteiro do outro pais nao e.",
+  "importancia": 20
+}
