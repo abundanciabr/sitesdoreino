@@ -7,11 +7,15 @@ O que estes guardas protegem, e por que cada um existe:
    virando HTTP 500 em toda página, com o deploy verde (`armadilhas/097`).
 2. **Chave vazia é estado honesto.** A tela abre, explica em português que o
    robô está desligado e por quê, e nada quebra.
-3. **Cada motivo de recusa tem a frase dele** (`armadilhas/297`). Os cinco
-   caminhos tristes exigidos pela tarefa (chave ausente, chave recusada, conta
-   no limite, demora, resposta vazia) são cobertos um a um, e um guarda extra
-   prova que as cinco frases são DIFERENTES entre si: duas falhas com a mesma
-   frase mandam esperar por algo que nunca vem.
+3. **Cada motivo de recusa tem a frase dele** (`armadilhas/297`). Cada caminho
+   triste é coberto um a um, e um guarda extra prova que as frases são
+   DIFERENTES entre si: duas falhas com a mesma frase mandam esperar por algo
+   que nunca vem.
+3b. **Nenhuma falha sobe crua até a tela.** HTTP 200 com o corpo cortado no
+   meio, com a forma errada, sem `usage` ou com a página de um proxy dentro
+   virava a página de erro do Django, e o formulário inteiro da reunião se
+   perdia junto. Os quatro cenários foram medidos contra o SDK de verdade e
+   cada um tem o guarda dele aqui.
 4. **O contrato de saída é imposto, não pedido.** Resposta sem evidência, sem
    confiança declarada ou sem alternativa é recusada inteira, com a frase do
    formato. Meia análise num painel de gestão tem a mesma cara de certeza e não
@@ -21,18 +25,23 @@ O que estes guardas protegem, e por que cada um existe:
 6. **As duas telas não escrevem nada**, nem no banco nem no livro: o que sai é
    o bloco para colar numa sessão.
 
-A rede é cortada aqui de dois jeitos, porque são duas bibliotecas: `respx`
-dubla o `httpx` com que a `admin` fala com as células vizinhas, e o transporte
-do `httpx2` (o pacote que vem com o SDK da Anthropic) é trocado à mão. Sem o
-segundo, a suíte diria não falar com a rede e poderia chamar a API paga de
-verdade, com a chave da máquina de quem rodasse os testes (`armadilhas/288`).
+A rede é cortada em dois lugares, porque são duas bibliotecas. O `respx` dubla
+aqui o `httpx` com que a `admin` fala com as células vizinhas. O `httpx2` (o
+pacote que vem com o SDK da Anthropic) é cortado em `tests/conftest.py`, para a
+suíte INTEIRA e nos dois transportes: proteção que depende de o próximo autor
+lembrar de copiar o corte para o arquivo dele não é proteção, e a chave da
+Anthropic está na máquina do mantenedor desde 02/09/2026 (`armadilhas/288`).
+Aqui ficou só o dublê de cada teste, que troca a mesma função por uma resposta
+de mentira.
 """
 
 from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 
+import anthropic
 import httpx
 import httpx2
 import pytest
@@ -72,27 +81,11 @@ def ambiente(settings, monkeypatch):
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-admin")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-admin-alunos")
-    monkeypatch.delenv(analista.VARIAVEL_DA_CHAVE, raising=False)
-    monkeypatch.delenv(analista.VARIAVEL_DO_WORKSPACE, raising=False)
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
     monkeypatch.setattr(placar.timezone, "localdate", lambda: HOJE)
     monkeypatch.setattr(reuniao.timezone, "localdate", lambda: HOJE)
     monkeypatch.setattr(fechamento_.timezone, "localdate", lambda: HOJE)
-
-
-@pytest.fixture(autouse=True)
-def sem_a_rede_do_sdk(monkeypatch):
-    """O `httpx2` não fala com ninguém a menos que o teste dubla o transporte.
-
-    Fail-closed: quem esquecer de dublar recebe uma recusa de conexão, nunca uma
-    chamada de verdade à API paga.
-    """
-
-    def recusa(*args, **kwargs):
-        raise httpx2.ConnectError("a suíte da admin não fala com a rede")
-
-    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", recusa)
 
 
 def dublar_a_anthropic(monkeypatch, *, status=200, corpo=None, capturado=None):
@@ -108,6 +101,23 @@ def dublar_a_anthropic(monkeypatch, *, status=200, corpo=None, capturado=None):
             capturado["headers"] = dict(request.headers)
             capturado["corpo"] = json.loads(request.content)
         return httpx2.Response(status, json=corpo or {}, request=request)
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", falso)
+
+
+def dublar_um_corpo_cru(monkeypatch, conteudo: bytes, *, tipo="application/json"):
+    """Um HTTP 200 com o corpo EXATO, byte a byte, e o `content-type` dito.
+
+    É o único jeito de encenar o que um proxy no caminho faz: cortar o JSON no
+    meio, ou trocar a resposta inteira por uma página de manutenção em HTML.
+    `dublar_a_anthropic` não serve, porque ele sempre serializa um dicionário e
+    o que se quer aqui é justamente um corpo que não é um dicionário válido.
+    """
+
+    def falso(self, request):
+        return httpx2.Response(
+            200, content=conteudo, headers={"content-type": tipo}, request=request
+        )
 
     monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", falso)
 
@@ -179,6 +189,44 @@ def _a_escola_responde():
             ],
         )
     )
+
+
+# ---------------------------------------------------------------------------
+# 0. A REDE CORTADA PARA A SUÍTE INTEIRA, NOS DOIS TRANSPORTES
+# ---------------------------------------------------------------------------
+
+
+def test_a_suite_inteira_esta_sem_a_rede_do_sdk_nos_dois_transportes():
+    """O corte mora no `conftest.py` e alcança quem nunca dublou nada.
+
+    Este teste não dubla o transporte de propósito: ele é o único da suíte que
+    mede o corte de rede em si. Se o corte voltar para dentro deste arquivo, o
+    próximo teste da célula que chamar a API paga não terá proteção nenhuma, e
+    ninguém vai perceber, porque a suíte fica verde e a conta é que cresce
+    (`armadilhas/288`).
+
+    Os DOIS transportes, e não só o síncrono: no dia em que o analista ganhar
+    `AsyncAnthropic` ou streaming, como o fórum já tem, o caminho assíncrono não
+    pode ser uma porta aberta para a rede.
+    """
+    pedido = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+    recado = "a suíte da admin não fala com a rede"
+
+    with pytest.raises(httpx2.ConnectError, match=recado):
+        httpx2.HTTPTransport().handle_request(pedido)
+    with pytest.raises(httpx2.ConnectError, match=recado):
+        httpx2.AsyncHTTPTransport().handle_async_request(pedido)
+
+
+def test_a_suite_inteira_comeca_sem_a_chave_da_anthropic():
+    """Nenhum teste da célula sai para a API paga por herdar a chave da máquina.
+
+    A chave da Anthropic está na máquina do mantenedor desde 02/09/2026, então
+    "não tenho chave aqui" não é mais proteção nenhuma.
+    """
+    assert analista.VARIAVEL_DA_CHAVE not in os.environ
+    assert analista.VARIAVEL_DO_WORKSPACE not in os.environ
+    assert analista.ligado() is False
 
 
 # ---------------------------------------------------------------------------
@@ -274,17 +322,25 @@ def test_resposta_vazia_tem_a_frase_dela(monkeypatch):
     assert _recusa(monkeypatch, corpo=corpo_vazio()) == analista.VEIO_VAZIA
 
 
-def test_as_cinco_frases_dos_caminhos_tristes_sao_diferentes():
+def test_cada_motivo_de_recusa_tem_uma_frase_so_dele():
     """`armadilhas/297`: a mesma frase para duas falhas manda esperar em vão."""
-    cinco = [
+    frases = [
         analista.SEM_CHAVE,
         analista.CHAVE_RECUSADA,
         analista.SEM_SALDO_OU_LIMITE,
         analista.DEMOROU_DEMAIS,
         analista.VEIO_VAZIA,
+        analista.FORA_DO_FORMATO,
+        analista.NAO_SAIU_DAQUI,
+        analista.FALTA_O_WORKSPACE,
+        analista.SEM_CREDITO,
+        analista.PROBLEMA_DELES,
+        analista.RECUSOU_O_PEDIDO.format(codigo=404),
+        analista.RECUSOU,
+        analista.VEIO_CORROMPIDA,
     ]
-    assert len(set(cinco)) == 5
-    for frase in cinco:
+    assert len(set(frases)) == len(frases)
+    for frase in frases:
         assert frase.strip() and frase[-1] in ".!"
 
 
@@ -330,6 +386,151 @@ def test_a_rede_do_servidor_e_a_recusa_deles_sao_frases_diferentes(monkeypatch):
         analista.analisar(momento="reuniao", dossie="x")
     assert str(caiu.value) == analista.NAO_SAIU_DAQUI
     assert analista.NAO_SAIU_DAQUI != analista.PROBLEMA_DELES
+
+
+def test_o_provedor_fora_do_ar_tem_a_frase_dele(monkeypatch):
+    """Qualquer 5xx é problema do lado deles, e a frase diz isso na lata.
+
+    Sem este guarda, trocar a linha do 5xx pela frase genérica do código HTTP
+    deixa a suíte inteira verde, e o mantenedor passa a ler "me avise com o
+    horário" quando a resposta certa é "espere alguns minutos".
+    """
+    frase = _recusa(
+        monkeypatch,
+        status=503,
+        corpo={"type": "error", "error": {"type": "overloaded_error"}},
+    )
+    assert frase == analista.PROBLEMA_DELES
+
+
+def test_uma_recusa_http_sem_motivo_conhecido_carrega_o_codigo(monkeypatch):
+    """404 não é workspace, não é crédito e não é 5xx: sobra a frase geral."""
+    frase = _recusa(
+        monkeypatch,
+        status=404,
+        corpo={"type": "error", "error": {"type": "not_found_error"}},
+    )
+    assert frase == analista.RECUSOU_O_PEDIDO.format(codigo=404)
+    assert "404" in frase, "sem o código, ninguém consegue procurar no log"
+
+
+def test_a_recusa_do_proprio_modelo_tem_a_frase_dela(monkeypatch):
+    """`stop_reason: refusal` é a trava de segurança do modelo, não uma falha."""
+    frase = _recusa(
+        monkeypatch,
+        corpo=corpo_de_resposta(RESPOSTA_INTEIRA, stop_reason="refusal"),
+    )
+    assert frase == analista.RECUSOU
+
+
+# ---------------------------------------------------------------------------
+# 2b. O CORPO QUEBRADO — HTTP 200 que não é uma resposta da Anthropic
+# ---------------------------------------------------------------------------
+# Os quatro cenários abaixo foram MEDIDOS contra o SDK de verdade, em
+# 07/09/2026: antes deste conserto, cada um subia um erro cru até a view e
+# virava a página de erro do Django na cara do mantenedor, com o formulário
+# inteiro da reunião perdido junto.
+
+
+def test_o_corpo_cortado_no_meio_nao_sobe_erro_cru(monkeypatch):
+    """200 com JSON truncado: a conexão morreu depois do cabeçalho."""
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    dublar_um_corpo_cru(monkeypatch, b'{"id": "msg_de_teste", "content": [{"ty')
+    with pytest.raises(analista.AnalistaIndisponivel) as caiu:
+        analista.analisar(momento="reuniao", dossie="x")
+    assert str(caiu.value) == analista.VEIO_CORROMPIDA
+
+
+def test_o_corpo_com_a_forma_errada_nao_sobe_erro_cru(monkeypatch):
+    """200 que é um JSON válido e não é uma mensagem: contrato mudado."""
+    frase = _recusa(
+        monkeypatch,
+        corpo={
+            "id": "msg_de_teste",
+            "type": "message",
+            "role": "assistant",
+            "model": analista.MODELO,
+            "stop_reason": "end_turn",
+            "content": None,
+            "usage": None,
+        },
+    )
+    assert frase == analista.VEIO_CORROMPIDA
+
+
+def test_a_pagina_de_um_proxy_no_caminho_nao_sobe_erro_cru(monkeypatch):
+    """200 com HTML: um portal cativo ou uma página de manutenção respondeu."""
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    dublar_um_corpo_cru(
+        monkeypatch,
+        b"<html><body><h1>502 Bad Gateway</h1></body></html>",
+        tipo="text/html",
+    )
+    with pytest.raises(analista.AnalistaIndisponivel) as caiu:
+        analista.analisar(momento="reuniao", dossie="x")
+    assert str(caiu.value) == analista.VEIO_CORROMPIDA
+
+
+def test_um_erro_do_sdk_que_nao_e_status_nem_conexao_nao_sobe_cru(monkeypatch):
+    """A escada precisa de um degrau final, e este teste é a prova de que precisa.
+
+    `anthropic.APIResponseValidationError` NÃO herda de `APIStatusError` nem de
+    `APIConnectionError`: o `mro` dela é `APIError`, `AnthropicError`,
+    `Exception`. Sem o `except anthropic.APIError` no fim, ela atravessa os seis
+    degraus anteriores e vira a página de erro do Django.
+
+    O dublê aqui é a fronteira do SDK, e não a rede, porque este erro nasce
+    DENTRO do SDK, depois de a resposta ter chegado.
+    """
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    assert not issubclass(
+        anthropic.APIResponseValidationError,
+        (anthropic.APIStatusError, anthropic.APIConnectionError),
+    )
+
+    pedido = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+
+    def o_sdk_recusa(self, *args, **kwargs):
+        raise anthropic.APIResponseValidationError(
+            response=httpx2.Response(200, request=pedido), body=None
+        )
+
+    monkeypatch.setattr(anthropic.resources.Messages, "create", o_sdk_recusa)
+    with pytest.raises(analista.AnalistaIndisponivel) as caiu:
+        analista.analisar(momento="reuniao", dossie="x")
+    assert str(caiu.value) == analista.VEIO_CORROMPIDA
+
+
+def test_uma_analise_boa_nao_se_perde_por_causa_de_uma_linha_de_registro(monkeypatch):
+    """O pior defeito é o que joga fora trabalho que já deu certo.
+
+    A resposta chegou inteira e no formato. Faltar a contagem de tokens é um
+    detalhe do LOG, e log nenhum pode custar ao mantenedor a análise que ele
+    esperou noventa segundos para ler.
+    """
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    corpo = corpo_de_resposta(RESPOSTA_INTEIRA)
+    corpo["usage"] = None
+    dublar_a_anthropic(monkeypatch, corpo=corpo)
+    analise = analista.analisar(momento="reuniao", dossie="x")
+    assert analise.titulo.startswith("Ninguém cobrou")
+    assert analise.confianca == "média"
+
+
+@respx.mock
+def test_o_corpo_quebrado_nao_apaga_a_tela_da_reuniao(monkeypatch):
+    """O caminho inteiro, da cadeira dele: a pauta continua na tela."""
+    _a_escola_responde()
+    monkeypatch.setenv(analista.VARIAVEL_DA_CHAVE, "sk-de-mentira")
+    dublar_um_corpo_cru(monkeypatch, b'{"id": "msg_de_teste", "content": [{"ty')
+    resposta = _dentro().post(
+        reverse("reuniao"), {"acao": "analista", "compromisso1": "Ligar para a fila"}
+    )
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert analista.VEIO_CORROMPIDA[:40] in html
+    assert "8. Os compromissos novos" in html, "a pauta continua inteira"
+    assert "Ligar para a fila" in html, "o que ele digitou continua na tela"
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-161316-TAR-263-explicada",
+  "tarefa": "TAR-263",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:13:16+00:00",
+  "quem": "revisão do PR #1334 pelo revisor da casa, 07/09/2026",
+  "o_que_e": "O robo analista responde a pergunta 'o que eu estou deixando passar?' nas telas de reuniao e de fechamento. Hoje, se a resposta da IA chegar quebrada ou pela metade, a tela some e aparece a pagina de erro do sistema.",
+  "o_que_muda": "O mantenedor passa a ler uma frase em portugues dizendo o que houve, em vez de perder a reuniao inteira numa pagina de erro. E a suite de testes da area administrativa para de poder gastar dinheiro de verdade na maquina dele.",
+  "exemplo": "Ele aperta 'perguntar ao analista' numa segunda de manha, a resposta chega cortada no meio por causa do proxy, e hoje o formulario inteiro da reuniao se perde.",
+  "importancia": 78
+}
