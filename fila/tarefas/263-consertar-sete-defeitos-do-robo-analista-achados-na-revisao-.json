@@ -1,0 +1,17 @@
+{
+  "arquivo": "263-consertar-sete-defeitos-do-robo-analista-achados-na-revisao-",
+  "id": "TAR-263",
+  "titulo": "Consertar sete defeitos do robo analista achados na revisao do PR 1334",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com a suite da celula admin verde, os testes novos provados vermelho antes de verde, e a sabotagem de analista.py linha 342 reprovando a suite",
+  "despacho": "CÉLULA: admin. Nenhum caminho CODEOWNERS.\nArquivos: services/admin/apps/core/analista.py, services/admin/tests/test_analista.py,\nservices/admin/tests/conftest.py.\n\nConserte os sete defeitos que o revisor da casa achou no robô analista (degrau 16),\nentregue no PR #1334 (commit 673ee2e1):\n\nGRUPO A (erro cru na cara do mantenedor). Em analista.py, a escada de except de\nanalisar() não cobre json.decoder.JSONDecodeError (200 com corpo truncado), nem a\nforma inesperada do corpo (TypeError/AttributeError em resposta.stop_reason e em\nresposta.content), nem a falta de usage (uma análise BOA jogada fora por uma linha\nde log). anthropic.APIResponseValidationError não herda de APIStatusError nem de\nAPIConnectionError, então também escapa. Conserto: except anthropic.APIError e\nexcept (ValueError, TypeError, AttributeError) no fim da escada, e usage lido com\ngetattr. Régua: armadilhas/297, cada motivo com a frase dele.\n\nGRUPO B (a suíte pode gastar dinheiro). O corte de rede mora em test_analista.py e\nnão no conftest.py, e só alcança o transporte síncrono. Mova o corte para\nservices/admin/tests/conftest.py como autouse de suíte, no molde de\nservices/forum/tests/conftest.py, cortando também\nhttpx2.AsyncHTTPTransport.handle_async_request, e leve para lá o apagar da chave\npor padrão.\n\nGRUPO C (frases sem guarda). RECUSOU_O_PEDIDO, RECUSOU e PROBLEMA_DELES não têm\nteste. Escreva os três, no molde do _recusa que já existe: status=503, status=404 e\nstop_reason=\"refusal\".\n\nProve vermelho para verde por asserção antes de cada conserto e por mutação depois\ndo verde (sabote analista.py linha 342 e mostre a suíte reprovando). Rode\ncd services/admin && make ci, python ci/travessao.py e\nbash ci/freeze-de-contrato.sh admin.",
+  "origem": "revisão do PR #1334 pelo revisor da casa, 07/09/2026",
+  "criada_em": "2026-09-07"
+}

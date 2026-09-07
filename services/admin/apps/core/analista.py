@@ -49,6 +49,13 @@ resposta fora do formato são SEIS frases diferentes, porque são seis consertos
 diferentes: uma pede a chave na VPS, outra pede uma chave nova, outra pede
 crédito, outra pede paciência, e as duas últimas pedem só tentar de novo.
 
+**Nenhuma falha sobe crua até a tela.** Uma escada de recusas que trata só o
+que a intuição lembra deixa passar o resto, e o resto vira a página de erro do
+Django na cara do mantenedor, com o formulário da reunião perdido junto. Por
+isso a escada termina em dois degraus que não têm nome de sintoma: um pega
+qualquer erro do SDK, e o outro pega corpo ilegível. A leitura da resposta tem
+o `try` dela pelo mesmo motivo (`VEIO_CORROMPIDA`).
+
 ## O que o robô NÃO recebe
 
 Nome, e-mail e telefone de ninguém. O dossiê que viaja é o placar: números,
@@ -164,6 +171,21 @@ RECUSOU_O_PEDIDO = (
 RECUSOU = (
     "O robô analista se recusou a escrever esta análise. Isso acontece quando o "
     "assunto cai nas travas de segurança dele. Peça de novo daqui a pouco."
+)
+#: Frase PRÓPRIA, e não `PROBLEMA_DELES`, e a razão é a régua da `armadilhas/297`.
+#: `PROBLEMA_DELES` afirma "não é a sua chave, nem a sua conta, nem o servidor" e
+#: manda esperar. Aqui a causa mais comum é justamente o servidor: um proxy no
+#: caminho que cortou o corpo da resposta no meio, ou um portal de rede que
+#: respondeu uma página de manutenção no lugar da API. Mandar esperar seria a
+#: mentira exata que aquela armadilha proíbe. Os três motivos que caem nesta
+#: frase (corpo cortado, corpo de outro lugar, contrato da API mudado) ficam
+#: juntos porque, da cadeira do mantenedor, o conserto dos três é o MESMO: pedir
+#: de novo, e avisar se repetir.
+VEIO_CORROMPIDA = (
+    "A resposta chegou, mas veio quebrada: não é o texto da análise. Isso "
+    "costuma ser um pedaço perdido no caminho, ou uma página de outro lugar "
+    "respondendo no lugar da IA. Peça de novo. Se repetir duas ou três vezes, "
+    "me avise com o horário, porque aí não é azar: é a rede do servidor."
 )
 
 
@@ -478,23 +500,54 @@ def analisar(*, momento: str, dossie: str) -> Analise:
             "analista: a Anthropic respondeu HTTP %s (%s)", erro.status_code, erro
         )
         raise AnalistaIndisponivel(_frase_do_status(erro)) from erro
+    except anthropic.APIError as erro:
+        # O último degrau do lado do SDK, e ele NÃO é decorativo:
+        # `APIResponseValidationError` (HTTP 200 cujo corpo não é a mensagem que
+        # a API promete) não herda de `APIStatusError` nem de
+        # `APIConnectionError`, então escaparia dos seis `except` acima e subiria
+        # crua até a view (medido em 07/09/2026).
+        logger.warning("analista: o SDK recusou a resposta (%s)", erro)
+        raise AnalistaIndisponivel(VEIO_CORROMPIDA) from erro
+    except (ValueError, TypeError, AttributeError) as erro:
+        # `json.JSONDecodeError` é subclasse de `ValueError`, e o SDK lê o corpo
+        # FORA do bloco dele que traduz erros de rede: HTTP 200 com o JSON
+        # cortado no meio (proxy que fechou a conexão) chegava aqui como erro
+        # cru, e o mantenedor perdia o formulário inteiro da reunião.
+        logger.warning("analista: corpo de resposta ilegível (%s)", erro)
+        raise AnalistaIndisponivel(VEIO_CORROMPIDA) from erro
 
-    if resposta.stop_reason == "refusal":
-        logger.warning("analista: recusa do modelo")
-        raise AnalistaIndisponivel(RECUSOU)
+    # A LEITURA da resposta tem o try dela porque um HTTP 200 com forma
+    # inesperada (página de portal cativo, contrato da API mudado) faz
+    # `stop_reason` e `content` levantarem `AttributeError` e `TypeError` aqui
+    # fora, longe da escada acima. `AnalistaIndisponivel` é `RuntimeError` e
+    # atravessa este `except` inteira, levando a frase que ela já carrega.
+    try:
+        parada = resposta.stop_reason
+        if parada == "refusal":
+            logger.warning("analista: recusa do modelo")
+            raise AnalistaIndisponivel(RECUSOU)
 
-    texto = "".join(
-        bloco.text for bloco in resposta.content if bloco.type == "text"
-    ).strip()
+        texto = "".join(
+            bloco.text for bloco in resposta.content if bloco.type == "text"
+        ).strip()
+    except (ValueError, TypeError, AttributeError) as erro:
+        logger.warning("analista: resposta 200 com forma inesperada (%s)", erro)
+        raise AnalistaIndisponivel(VEIO_CORROMPIDA) from erro
+
     if not texto:
-        logger.warning("analista: resposta sem texto (stop=%s)", resposta.stop_reason)
+        logger.warning("analista: resposta sem texto (stop=%s)", parada)
         raise AnalistaIndisponivel(VEIO_VAZIA)
 
+    # `getattr` porque a contagem de tokens é LOG, e log nenhum pode custar uma
+    # análise que já deu certo. Resposta sem `usage` fazia esta linha levantar
+    # `AttributeError` depois de o texto ter sido lido inteiro: o erro 500 mais
+    # caro que existe, o que joga fora trabalho concluído.
+    uso = getattr(resposta, "usage", None)
     logger.info(
         "analista: análise de %s letras (entrada %s tokens, saída %s tokens)",
         len(texto),
-        resposta.usage.input_tokens,
-        resposta.usage.output_tokens,
+        getattr(uso, "input_tokens", "não veio"),
+        getattr(uso, "output_tokens", "não veio"),
     )
     return ler_a_resposta(texto)
 
