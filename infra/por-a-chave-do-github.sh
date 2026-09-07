@@ -150,7 +150,10 @@ esac
 # -----------------------------------------------------------------------------
 echo "Perguntando ao GitHub se a chave presta (um segundo)..."
 HTTP="$(printf 'url = "https://api.github.com/repos/%s"\nheader = "Authorization: Bearer %s"\nheader = "Accept: application/vnd.github+json"\nheader = "X-GitHub-Api-Version: 2022-11-28"\nsilent\noutput = "/dev/null"\nwrite-out = "%%{http_code}"\nconnect-timeout = 10\nmax-time = 20\n' "$REPO" "$CHAVE" | curl -K - 2>/dev/null)"
-HTTP="$(printf '%s' "$HTTP" | tr -cd '0-9')"
+# So os digitos, e so os TRES ULTIMOS: o codigo tem sempre tres digitos e o
+# `write-out` o poe no fim. Se algum dia o corpo da resposta escapar para a
+# saida, os numeros dele ficam antes, e a leitura continua certa.
+HTTP="$(printf '%s' "$HTTP" | tr -cd '0-9' | tail -c 3)"
 
 case "$HTTP" in
   200)
