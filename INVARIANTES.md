@@ -1210,6 +1210,33 @@ Os invariantes acima protegem a plataforma. Este protege o INSTRUMENTO que
 verifica os outros — porque um portão que erra para o lado do verde não protege
 coisa alguma, e ainda gasta a confiança de todo mundo.
 
+### [INV-CUR-C1] Nenhuma Aula Publica Com Remissão Para Encomenda Que Não Existe
+- **O quê:** `publishLesson` e `publishSiteLesson` recusam com 422 a aula cuja
+  peça cita uma remissão `E[NN]` que não é o número de nenhuma aula daquele
+  curso, e a recusa nomeia os números. Vale também para a aula JÁ publicada que
+  ganhou a remissão numa edição posterior: a conferência roda ANTES do teste de
+  idempotência, e não depois. As outras cinco conferências do Revisor de
+  coerência (`checkLesson`) são AVISO e nunca impedem publicar.
+- **Por quê:** o curso é uma escada de 34 encomendas e o aluno anda por ela
+  pelas remissões. Uma remissão quebrada publicada manda quem está estudando
+  para uma porta que não existe, e ele não tem como saber se o erro é dele; o
+  editor, por sua vez, não tem como perceber sozinho, porque uma aula com
+  remissão quebrada abre e lê perfeitamente bem. É por isso que a recusa é de
+  PORTA e não de tela: qualquer tela futura a herda sem reescrever a regra. Lei:
+  `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 (a linha "Revisor de coerência":
+  "remissão quebrada **recusa publicar**") e §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_c1_remissao_quebrada_nao_publica.py` — a
+  recusa pelos dois caminhos de publicar, a recusa nomeando todas as remissões,
+  a remissão VÁLIDA que publica normalmente, a aula sem texto que publica, as
+  outras cinco conferências que não vetam, e a aula já publicada que ganhou uma
+  remissão quebrada depois. Provado por mutação em 07/09/2026: trocar a
+  condição da recusa por `False` deixa 4 vermelhos, todos na asserção
+  (`assert 200 == 422`). As seis conferências do verificador têm prova por
+  mutação própria, no arquivo de testes do Revisor de coerência, cada uma com
+  o vermelho medido.
+- **Célula dona:** cursos
+
 ### [INV-CUR-C2] O Conteúdo do Curso Entra Pela Porta de Máquina, Nunca Por Migração
 - **O quê:** nenhuma migração de `services/cursos/apps/cursos/migrations/` roda
   código (nenhum `RunPython`), e o banco recém-migrado não tem `Peca` nenhuma nem

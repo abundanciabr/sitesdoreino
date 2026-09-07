@@ -45,6 +45,12 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   .pausas .medio { width: 150px; }
   .pausas select { width: 100%; padding: 8px 10px; font: inherit; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; }
   .quiz-par { margin-top: 12px; }
+  .conferencia { margin-top: 34px; padding: 16px 18px; border: 1px solid var(--linha); border-radius: 10px; }
+  .conferencia ol { margin: 14px 0 0; padding-left: 20px; }
+  .conferencia li { margin-bottom: 12px; }
+  .conferencia .onde { color: var(--texto-2); font-size: 13px; }
+  .conferencia .conserto { margin: 2px 0 0; color: var(--texto-2); }
+  .conferencia .trava { color: var(--vermelho); font-weight: 600; }
   .publicar { margin-top: 34px; padding: 16px 18px; border: 1px solid var(--amarelo); border-radius: 10px; }
   .publicar.ja { border-color: var(--verde); }
   .publicar label.marcar { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
@@ -317,6 +323,49 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </form>
 
   {% if not sem_cabecalho %}
+  {% comment %}
+  CONFERIR COERÊNCIA é uma PERGUNTA, e por isso é um link e não um formulário:
+  não muda nada, não sobe versão, e pode ser repetida à vontade. O Revisor mora
+  na `cursos` e é código, não inteligência artificial; ele aponta e nunca
+  corrige, e as frases que aparecem aqui vêm prontas de lá, em português.
+
+  Ele confere o que está GRAVADO, não o que está na tela. A frase do bloco diz
+  isso, porque quem acabou de digitar sem salvar leria uma conferência do texto
+  antigo e não teria como saber.
+  {% endcomment %}
+  <div class="conferencia">
+    <b>Conferir coerência.</b> Confere a encomenda como ela está salva e aponta
+    o que não bate: remissão para uma encomenda que não existe, instrumento
+    escrito de dois jeitos, arquivo com dois nomes, número que muda de peça para
+    peça, o &ldquo;Aceito quando&rdquo; diferente do formulário do checkpoint, e
+    número que a plataforma calcula cravado no texto. Ele nunca corrige nada.
+    <p><a href="{{ url_de_conferir }}">Conferir coerência desta encomenda</a></p>
+
+    {% if coerencia %}
+    {% if not coerencia.lida %}
+    <p class="aviso borda-vermelha">
+      <b>{{ coerencia.falha.titulo }}</b> {{ coerencia.falha.explicacao }}
+      Nada mudou na encomenda.
+    </p>
+    {% elif not coerencia.defeitos %}
+    <p class="aviso feito">
+      <b>Nenhum defeito de coerência nesta aula.</b> As seis conferências
+      passaram no texto que está salvo agora.
+    </p>
+    {% else %}
+    <ol>
+      {% for defeito in coerencia.defeitos %}
+      <li>
+        {% if defeito.peca %}<span class="onde">{{ defeito.peca }}:</span> {% endif %}{{ defeito.frase }}
+        {% if defeito.impede_publicar %}<span class="trava">Isto impede publicar.</span>{% endif %}
+        <p class="conserto">{{ defeito.o_que_fazer }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+    {% endif %}
+  </div>
+
   {% comment %}
   PUBLICAR é outro formulário, e outro verbo: salvar sobe a versão e não muda
   o que o aluno vê; publicar não muda uma letra e abre a aula. A caixa de

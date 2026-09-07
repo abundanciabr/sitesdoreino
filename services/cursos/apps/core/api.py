@@ -1,4 +1,4 @@
-"""A porta de MÁQUINA da sala de aula: as doze operações do editor e da sala.
+"""A porta de MÁQUINA da sala de aula: as treze operações do editor e da sala.
 
 POR QUE ELA EXISTE
 ------------------
@@ -59,10 +59,19 @@ declara, e esta peça vive fora da sequência (`Peca.TIPOS_SOB_DEMANDA`).
 O QUE FICA DE FORA, DE PROPÓSITO
 --------------------------------
 Não há sessão nem cookie: é máquina para máquina, e o Bearer do par
-(`apps/core/auth.py`) é o único cadeado. Não há `checkLesson` (degrau 3.1),
-`getReviewQueue` (2.1) nem `getStudentProgress` (1.8). E `publishLesson` NÃO
-valida remissão: o invariante C1 ("remissão quebrada não publica") é do 3.1,
-e o ponto onde ele encaixa está marcado lá embaixo.
+(`apps/core/auth.py`) é o único cadeado. Não há `getReviewQueue` (2.1) nem
+`getStudentProgress` (1.8).
+
+O REVISOR DE COERÊNCIA ENTROU AQUI (TAR-245, degrau 3.1)
+---------------------------------------------------------
+`checkLesson` confere uma aula e devolve a lista de defeitos, cada um já em
+português, e não grava nada: é o agente de degrau A do §7, código e não IA.
+
+E as duas operações de publicar passaram a RECUSAR com 422 a aula cuja peça
+manda o aluno para uma encomenda que não existe no curso. É o [INV-CUR-C1], e
+as outras cinco conferências continuam sendo aviso: o §7 pôs o veto na remissão,
+e só nela. A regra mora em `apps/cursos/coerencia.py`; o ponto onde ela encaixa
+na publicação é `_publicar`.
 
 O SOMBREAMENTO QUE ESTA PORTA NÃO PODE COMER (`armadilhas/020`)
 -----------------------------------------------------------------
@@ -101,7 +110,7 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
 
-from apps.cursos import enderecos
+from apps.cursos import coerencia, enderecos
 from apps.cursos.models import PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
 from apps.cursos.models import Bloco as BlocoModel
@@ -214,6 +223,35 @@ class AulaSchema(AulaDaListaSchema):
     video_url: str
     pecas: list[PecaSchema]
     pausas: list[PausaSchema]
+
+
+class DefeitoSchema(Schema):
+    """Um defeito de coerência apontado por `checkLesson` (degrau 3.1).
+
+    Os campos são os do `apps.cursos.coerencia.Defeito`, e a tradução para
+    português JÁ VEM PRONTA daqui: `frase` diz o que está errado e
+    `o_que_fazer` diz o conserto, as duas escritas para a professora ler. A
+    tela do Admin as mostra verbatim, e isso é de propósito: reescrevê-las lá
+    amarraria a tela à redação desta célula, que é a dona da regra. É o mesmo
+    desenho do `value_error` que `putInstrument` já devolve.
+
+    `peca` é o tipo da peça onde está o defeito, ou texto VAZIO quando ele é da
+    aula inteira: o mesmo arquivo escrito com dois nomes não mora em peça
+    nenhuma, mora entre elas. `alvo` é o pedaço de texto em falta, para quem
+    for consertar poder procurá-lo.
+
+    `impede_publicar` é verdadeiro só na remissão quebrada, que é o
+    [INV-CUR-C1]. Ele viaja dentro do defeito, e não numa segunda lista de
+    códigos que vetam, porque uma segunda lista divergiria da recusa de
+    `publishLesson` no primeiro dia em que alguém mexesse numa das duas.
+    """
+
+    codigo: str
+    peca: str
+    alvo: str
+    frase: str
+    o_que_fazer: str
+    impede_publicar: bool
 
 
 class InstrumentoSchema(Schema):
@@ -522,11 +560,24 @@ def _gravar(aula: AulaModel, payload: AulaParaGravarSchema) -> dict[str, Any]:
 
 def _publicar(aula: AulaModel) -> dict[str, Any]:
     """O que `publishLesson` faz, para os dois caminhos. Idempotente: publicar o
-    que já está publicado devolve a aula como está, sem mexer na data."""
-    # O invariante C1 ("remissão quebrada não publica") NÃO se valida aqui, e a
-    # ausência é o desenho deste degrau: a conferência é `checkLesson`, degrau
-    # 3.1, e é ali que ela encaixa, ANTES deste `if`, recusando com 422 a aula
-    # cujos desvios o verificador listar.
+    que já está publicado devolve a aula como está, sem mexer na data.
+
+    A CONFERÊNCIA VEM ANTES DO `if`, e não depois, de propósito: a aula que já
+    está publicada e ganhou uma remissão quebrada numa edição posterior tem de
+    ser recusada também. Se a checagem viesse depois, a idempotência viraria a
+    porta dos fundos do [INV-CUR-C1], e a aula quebrada passaria calada, com
+    200, só por já estar publicada.
+    """
+    quebradas = coerencia.impedem_publicar(aula)
+    if quebradas:
+        numeros = ", ".join(sorted({defeito.alvo for defeito in quebradas}))
+        raise HttpError(
+            422,
+            f"esta encomenda manda o aluno para {numeros}, que não existe neste "
+            "curso. Troque pelo número da encomenda certa, ou tire a remissão do "
+            "texto. Enquanto ela estiver lá, a encomenda não abre para os alunos; "
+            "o botão Conferir coerência mostra em qual peça ela está.",
+        )
     if aula.estado != AulaModel.Estado.PUBLICADA:
         aula.estado = AulaModel.Estado.PUBLICADA
         aula.publicada_em = timezone.now()
@@ -549,7 +600,7 @@ def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# AS SETE OPERAÇÕES
+# AS OPERAÇÕES
 # ---------------------------------------------------------------------------
 
 
@@ -737,6 +788,13 @@ def put_instrument(request, slug: str, payload: InstrumentoParaGravarSchema):
         "Idempotente: publicar o que ja esta publicado devolve a aula como\n"
         "esta, sem mexer na data. 404 se a aula nao existe.\n"
         "\n"
+        "422 QUANDO A ENCOMENDA TEM REMISSAO QUEBRADA: uma peca que manda o\n"
+        "aluno para uma encomenda `E[NN]` que nao existe neste curso impede\n"
+        "publicar, e o `detail` diz quais numeros sao. E o invariante\n"
+        "[INV-CUR-C1], e ele vale tambem para a aula JA publicada que ganhou\n"
+        "a remissao numa edicao posterior. As outras cinco conferencias de\n"
+        "`checkLesson` sao aviso, e nao impedem publicar.\n"
+        "\n"
         "ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do\n"
         "site inteiro. Quem sabe de curso e de parte e `publishLesson`, em\n"
         "/cursos/{curso}/aulas/{numero}/publicar."
@@ -879,6 +937,13 @@ def put_lesson(
         "NAO muda, porque publicar nao edita. Idempotente: publicar o que ja\n"
         "esta publicado devolve a aula como esta, sem mexer na data.\n"
         "\n"
+        "422 QUANDO A ENCOMENDA TEM REMISSAO QUEBRADA: uma peca que manda o\n"
+        "aluno para uma encomenda `E[NN]` que nao existe neste curso impede\n"
+        "publicar, e o `detail` diz quais numeros sao. E o invariante\n"
+        "[INV-CUR-C1], e ele vale tambem para a aula JA publicada que ganhou\n"
+        "a remissao numa edicao posterior. As outras cinco conferencias de\n"
+        "`checkLesson` sao aviso, e nao impedem publicar.\n"
+        "\n"
         "`parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o\n"
         "bloco da aula recusa com 404 e a aula continua como estava. 404\n"
         "tambem se o curso ou a aula nao existem."
@@ -888,6 +953,65 @@ def publish_lesson(
     request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
 ):
     return _publicar(_aula_do_curso(_curso(site_id, curso), numero, parte))
+
+
+# ---------------------------------------------------------------------------
+# O REVISOR DE COERÊNCIA (TAR-245, degrau 3.1)
+# ---------------------------------------------------------------------------
+# Ele é de LEITURA e não grava nada: confere a aula como ela está gravada e
+# devolve a lista de defeitos. É por isso que é `GET`, e não um `POST` que
+# "roda a conferência": não há nada para rodar nem nada para guardar, e um
+# `POST` faria a tela do Admin precisar de CSRF para fazer uma pergunta.
+#
+# Ele mora só no caminho que sabe de curso. As quatro irmãs sem curso existem
+# porque o editor que está no ar as chama desde antes da TAR-203; esta nasceu
+# depois, e nascer com o defeito que aquelas carregam seria escolhê-lo.
+
+
+@router.get(
+    "/cursos/{curso}/aulas/{numero}/conferir",
+    response=list[DefeitoSchema],
+    operation_id="checkLesson",
+    summary="Confere a coerencia de uma aula e devolve os defeitos, sem gravar nada",
+    description=(
+        "O Revisor de coerencia: CODIGO, e nao inteligencia artificial. Ele\n"
+        "aponta e nunca corrige, nao grava nada e nao sobe versao.\n"
+        "\n"
+        "As SEIS conferencias sao as do plano da celula: remissao `E[NN]` para\n"
+        "aula que existe no curso; instrumento e defeito citados pelo nome\n"
+        "canonico; o mesmo arquivo escrito igual em todas as pecas; a mesma\n"
+        "contagem com o mesmo numero; o `Aceito quando` da peca `Voce faz`\n"
+        "igual a lista do checkpoint; e nenhum numero de plataforma no que o\n"
+        "aluno le.\n"
+        "\n"
+        "Cada defeito traz `codigo` (o vocabulario fechado das seis),\n"
+        "`peca` (o tipo da peca, ou vazio quando o defeito e da aula inteira),\n"
+        "`alvo` (o pedaco de texto em falta), `frase` e `o_que_fazer`, as duas\n"
+        "ja em portugues, escritas para quem edita a aula ler direto na tela.\n"
+        "\n"
+        "`impede_publicar` e verdadeiro SO na remissao quebrada, que e o\n"
+        "[INV-CUR-C1]: e o unico defeito que `publishLesson` recusa com 422.\n"
+        "Os outros cinco sao aviso.\n"
+        "\n"
+        "Aula sem defeito responde lista vazia, e nao erro. `parte` e o mesmo\n"
+        "GUARDA de `getLesson`. 404 se o curso ou a aula nao existem."
+    ),
+)
+def check_lesson(
+    request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
+):
+    aula = _aula_do_curso(_curso(site_id, curso), numero, parte)
+    return [
+        {
+            "codigo": defeito.codigo,
+            "peca": defeito.peca,
+            "alvo": defeito.alvo,
+            "frase": defeito.frase,
+            "o_que_fazer": defeito.o_que_fazer,
+            "impede_publicar": defeito.impede_publicar,
+        }
+        for defeito in coerencia.conferir(aula)
+    ]
 
 
 # ---------------------------------------------------------------------------

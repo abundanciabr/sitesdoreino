@@ -775,6 +775,11 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # próprio invariante: o aviso da compra não carrega o produto (TAR-225),
         # e por isso ele vale hoje na liberação e não no pagamento.
         "INV-ALU-C1",
+        # Os dois do CONTEÚDO da célula `cursos`: C1 (07/09/2026, TAR-245,
+        # degrau 3.1) nenhuma aula publica com remissão para encomenda que não
+        # existe, e C2 o conteúdo entra pela porta de máquina e nunca por
+        # migração.
+        "INV-CUR-C1",
         "INV-CUR-C2",
         # Os três da PORTA da célula `cursos` (05/09/2026, TAR-154, degrau 1.8
         # da escada): P1 nenhuma tela compara alunos, P2 a porta só abre por

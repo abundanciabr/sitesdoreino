@@ -31,6 +31,10 @@ custa, se cair:
     três Partes e nos blocos do livro, a Parte que não casa com a encomenda
     recusa com o endereço certo, e a tela nunca chama as operações que varrem o
     site inteiro sem saber de curso.
+11. **O botão "Conferir coerência" só pergunta quando é pedido**, mostra as
+    frases da `cursos` verbatim com o nome da peça em português, tem estado
+    vazio, e a recusa de publicar do [INV-CUR-C1] chega à tela como frase e não
+    como 500.
 """
 
 import json
@@ -1074,3 +1078,151 @@ def test_quem_nao_esta_na_lista_nao_ve_o_editor():
 
     assert resposta.status_code == 404
     assert porta.call_count == 0
+
+
+# ---------------------------------------------------------------------------
+# 11. O BOTÃO "CONFERIR COERÊNCIA" (TAR-245, degrau 3.1)
+# ---------------------------------------------------------------------------
+# O Revisor mora na `cursos` e é CÓDIGO, não IA. Esta tela só pergunta e mostra,
+# e as três coisas que ela não pode fazer são: perguntar sem ser pedida (uma ida
+# à porta em cada abertura do editor), reescrever a frase da outra célula, e
+# transformar a recusa de publicar num 500.
+
+
+def _mock_conferir(defeitos, numero="E07"):
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/{numero}/conferir", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=defeitos))
+
+
+DEFEITO_DA_REMISSAO = {
+    "codigo": "remissao_quebrada",
+    "peca": "erros_classicos",
+    "alvo": "E99",
+    "frase": "esta peca manda o aluno para a encomenda E99, e E99 nao existe neste curso",
+    "o_que_fazer": "troque pelo numero da encomenda certa, ou tire a remissao.",
+    "impede_publicar": True,
+}
+DEFEITO_SEM_PECA = {
+    "codigo": "nome_de_arquivo_divergente",
+    "peca": "",
+    "alvo": "capacete.blend",
+    "frase": "o mesmo arquivo aparece com nomes diferentes nesta aula",
+    "o_que_fazer": "escolha uma grafia e use a mesma em todas as pecas.",
+    "impede_publicar": False,
+}
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_abrir_o_editor_nao_confere_nada():
+    """Conferir custa uma ida à porta, e quem só veio ler a encomenda não pediu."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir([])
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"})
+    )
+
+    assert resposta.status_code == 200
+    assert conferencia.call_count == 0
+    assert "Conferir coerência desta encomenda" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_conferir_mostra_os_defeitos_com_o_nome_da_peca_em_portugues():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir([DEFEITO_DA_REMISSAO, DEFEITO_SEM_PECA])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "1"},
+        )
+    )
+
+    assert conferencia.call_count == 1
+    # A frase e o conserto saem VERBATIM: a regra é da `cursos`, e reescrevê-los
+    # aqui seria a mesma frase em dois lugares.
+    assert DEFEITO_DA_REMISSAO["frase"] in html
+    assert DEFEITO_DA_REMISSAO["o_que_fazer"] in html
+    # O único trabalho desta tela é dar nome à peça: o slug do contrato
+    # (`erros_classicos`) nunca aparece no defeito, só o nome que o editor usa.
+    assert '<span class="onde">Erros clássicos:</span>' in html
+    assert "Isto impede publicar." in html
+    # Defeito sem peça sai sem endereço, e não com um inventado.
+    assert DEFEITO_SEM_PECA["frase"] in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_encomenda_sem_defeito_tem_estado_vazio():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    _mock_conferir([])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "1"},
+        )
+    )
+
+    assert "Nenhum defeito de coerência nesta aula." in html
+    assert "Isto impede publicar." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_sala_fora_do_ar_na_conferencia_vira_frase_e_nao_500():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/conferir", params={"site_id": SITE_ID}
+    ).mock(side_effect=httpx.ConnectError("sem rede"))
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "1"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert "A sala de aula não respondeu." in html
+    assert "Nada mudou na encomenda." in html
+    # O editor continua na tela: a conferência falhou, a encomenda não sumiu.
+    assert "Um capacete para o cliente Gulliver." in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_recusa_de_publicar_do_inv_c1_chega_a_tela_como_frase():
+    """A `cursos` recusa com 422 e UMA frase, não com a lista de erros de campo.
+    A tela mostra a frase inteira e não perde nada."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    recusa = (
+        "esta encomenda manda o aluno para E99, que não existe neste curso. "
+        "Troque pelo número da encomenda certa, ou tire a remissão do texto."
+    )
+    respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(422, json={"detail": recusa}))
+
+    resposta = _dentro().post(
+        reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"confirmo": "1"},
+    )
+
+    assert resposta.status_code == 422
+    html = _texto(resposta)
+    assert recusa in html
+    assert Registro.objects.filter(acao=Registro.PUBLICAR_AULA).exists()
