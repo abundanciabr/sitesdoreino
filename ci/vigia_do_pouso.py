@@ -443,6 +443,19 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         padroes = caminhos_com_dono(CODEOWNERS.read_text(encoding="utf-8"))
         agora = _instante(args.agora) if args.agora else dt.datetime.now(dt.timezone.utc)
+        # A varredura entra no mesmo `try` porque uma data ilegível vinda do
+        # GitHub estouraria aqui dentro: sem isto, o operador leria um
+        # traceback em vez de uma frase, e traceback não diz o que fazer.
+        try:
+            vereditos = varrer(prs, agora, padroes, args.horas)
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "um PR trouxe data ou formato que eu não sei ler",
+                f"{type(erro).__name__}: {erro}\n"
+                "Rode com `--repo` e olhe a saída crua do `gh pr list --json "
+                "statusCheckRollup` do PR mais recente: o formato mudou, e a\n"
+                "leitura da hora do verde precisa acompanhar.",
+            ) from erro
     except ErroDeInstrumentacao as erro:
         print(f"ERROR vigia-do-pouso: {erro.resumo}")
         if erro.detalhe:
@@ -454,7 +467,6 @@ def main(argv: list[str] | None = None) -> int:
         print("   NÃO varri os PRs abertos. Isto NÃO é um 'nenhum PR esquecido'.")
         return 2
 
-    vereditos = varrer(prs, agora, padroes, args.horas)
     esquecidos = [v for v in vereditos if v.esquecido]
 
     print(f"ESQUECIDOS={len(esquecidos)}")
