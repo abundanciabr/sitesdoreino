@@ -123,3 +123,36 @@ não há nada** (`if site.menu: continue`). A partir do primeiro deploy o dono
 deste dado é o mantenedor, pela tela `/admin/menu/`; uma migração que
 sobrescrevesse apagaria a configuração dele no deploy seguinte. É a mesma regra
 do `get_or_create` dos semeadores, e o `desfazer` também não apaga.
+
+## Cadastrar produto pela porta: por que o 201 sai por `JsonResponse`
+
+07/09/2026, `createProduct`. A porta precisava de dois status no caminho feliz
+(201 quando cria, 200 quando o mesmo cadastro é reenviado), e o jeito óbvio
+(`response={200: Product, 201: Product}`) é justamente o que `armadilhas/021`
+proíbe: valor não nulo ali vira Schema dinâmico que pode vazar para
+`components.schemas` e quebrar o freeze desta célula, que é `required` no
+manifesto. O caminho usado é o da própria armadilha: `response=Product` declara
+a forma do 200, e o 201 sai por `JsonResponse`, que o django-ninja devolve como
+está (`ninja/operation.py::_result_to_response`, primeira linha).
+
+**O que isso cobra, e onde a conta chega:** no caminho do 201 NÃO existe Schema
+filtrando a saída. Todo campo posto no dicionário sai no corpo, inclusive um que
+o contrato não tem. Foi por isso que o teste do 201 confere o conjunto EXATO das
+chaves (`set(corpo) == {"id", "name", "price_cents", "active"}`) em vez de olhar
+campo a campo: é a única guarda contra o `slug`, que é chave interna, vazar para
+o contrato por descuido. A sabotagem que prova essa guarda (acrescentar `slug`
+ao dicionário) só reprova por causa do caminho do 201, e no caminho do 200 ela
+passaria verde, que é `armadilhas/351` acontecendo dentro de uma rota só.
+
+A resposta do 201 e a do 200 vêm do MESMO dicionário, montado uma vez, para que
+as duas não possam divergir no dia em que um campo entrar no contrato.
+
+## Nome divergente é 409, e não renomeação silenciosa
+
+A porta repete as regras do `manage.py criar_curso`, e a mais importante delas é
+a que NÃO parece regra: apelido que já existe com outro nome recusa. Quem
+reenvia um formulário (dois cliques, recarregar a página) não está pedindo para
+renomear curso nenhum, e o nome é o que sai na lista de escolher. Renomear
+continua sendo gesto de quem opera a máquina, pelo comando com `--renomear`, e a
+mensagem do 409 diz isso em português, com o comando pronto: o consumidor não vê
+o código, e uma recusa que não diz para onde ir vira um chamado.
