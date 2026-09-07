@@ -993,6 +993,15 @@ def celulas_do_push(sha: str, raiz: Path | None = None) -> tuple[str, ...]:
     o primeiro pai é o topo anterior da `main`, ou seja, o `github.event.before`
     que o workflow usa. Falha do Git é ERRO DE MEDIÇÃO, nunca lista vazia —
     vazia diria "este push não toca célula nenhuma" e liberaria o desfecho.
+
+    O LIMITE, escrito porque ele erra para o lado errado: um push que levasse
+    VÁRIOS commits ao topo da `main` sem merge commit teria um `before` mais
+    antigo que `sha^`, e esta conta enxergaria só o último — de menos, nunca de
+    mais. Menos célula medida é cobertura mais fácil de satisfazer, ou seja, a
+    borda erra dispensando o rerun. Não é hipótese ociosa nem problema de hoje:
+    toda entrega desta casa entra pela pista, que faz merge commit, e nos 24
+    runs medidos a conta bateu exatamente. Se um dia alguém empurrar direto na
+    `main`, é aqui que se olha.
     """
     codigo, saida = _rodar(["git", "diff", "--name-only", f"{sha}^...{sha}"])
     if codigo != 0:
