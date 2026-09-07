@@ -402,7 +402,7 @@ def test_o_prompt_esta_escrito_no_html_para_quem_nao_tem_area_de_transferencia(
 
 
 @respx.mock
-def test_sem_a_senha_do_github_o_botao_nasce_desligado_e_diz_o_que_fazer(
+def test_sem_a_chave_do_github_o_botao_nasce_desligado_e_diz_como_o_dono_liga_sozinho(
     tmp_path, monkeypatch
 ):
     fila_com_ranking(tmp_path, monkeypatch)
@@ -410,9 +410,15 @@ def test_sem_a_senha_do_github_o_botao_nasce_desligado_e_diz_o_que_fazer(
 
     assert "Excluir (desligado)" in pagina
     assert "disabled" in pagina
-    assert "ponha a GITHUB_TOKEN_FILA no env da admin" in numa_linha(
-        pagina
-    ), "não disse ao dono, com a frase pronta, o que pedir a um robô"
+    linha = numa_linha(pagina)
+    assert "nada está quebrado por isso" in linha, "assustou o dono à toa"
+    assert (
+        "infra/por-a-chave-do-github.sh" in linha
+    ), "não apontou o roteiro com o passo a passo"
+    assert (
+        "github.com/settings/personal-access-tokens/new" in linha
+    ), "não disse onde o dono cria a chave"
+    assert "ponha a" not in linha, "ainda manda o dono decorar jargão para um robô"
     assert "<dialog" not in pagina, "a caixa de confirmação nasceu sem serventia"
 
 
@@ -631,7 +637,23 @@ def test_sem_a_senha_o_gesto_nao_fala_com_o_github_e_diz_o_que_fazer(
     pagina = pagina_sem_estilo(
         _dentro().get(reverse("caixa_robos"), {"resultado": "sem_token"})
     )
-    assert "ponha a GITHUB_TOKEN_FILA no env da admin" in numa_linha(pagina)
+    linha = numa_linha(pagina)
+    # Isolado do resto da página, porque o mesmo carregamento também mostra o
+    # aviso PREVENTIVO do botão desligado (classe "desligado") — são dois
+    # textos distintos, para dois momentos distintos, coexistindo na mesma
+    # tela quando o token falta.
+    desfecho = (
+        re.search(r'<p class="desfecho nao-deu">(.*?)</p>', linha).group(1).strip()
+    )
+    assert desfecho.startswith(
+        "O clique não abriu o pedido no GitHub"
+    ), "o texto do desfecho tem de começar pelo que aconteceu, não pelo estado do botão"
+    assert "tenha vencido" in desfecho, "não avisou que a chave pode ter vencido"
+    assert "ponha (ou troque) a GITHUB_TOKEN_FILA no env da admin" in desfecho
+    assert "infra/por-a-chave-do-github.sh" in desfecho, "não apontou o roteiro"
+    assert (
+        "está cinza porque falta uma chave" not in desfecho
+    ), "repetiu a frase do aviso preventivo, que é de outro momento"
 
 
 @respx.mock

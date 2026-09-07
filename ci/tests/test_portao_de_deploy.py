@@ -598,6 +598,59 @@ def test_a_vacina_esta_em_conhecidos_e_NAO_em_exigidos():
 
 
 # ---------------------------------------------------------------------------
+# O VIGIA DO POUSO é o segundo workflow desta casa a acordar pelo relógio
+# (TAR-167, 07/09/2026), e cai na `armadilhas/180` mais fundo que o primeiro:
+# ele roda de duas em duas horas na `main`, então o `head_sha` dele coincide
+# com o de um deploy o tempo todo — contra uma vez por dia do vigia do cadeado.
+#
+# Vermelho nele significa uma coisa só: ele não conseguiu VARRER os PRs
+# abertos. Cegueira de um inventário não diz nada sobre este commit, e o
+# conserto dela é um PR — que precisa da porta aberta para chegar ao ar.
+#
+# O mesmo trio que os outros dois exigem: a isenção existe · a isenção é
+# estreita · a declaração está na fonte. O terceiro é o que importa: os dois
+# primeiros montam `conhecidos` à mão e continuariam verdes se alguém apagasse
+# a declaração de `ci/portao_de_deploy.py`.
+# ---------------------------------------------------------------------------
+VIGIA_DO_POUSO = ".github/workflows/vigia-do-pouso.yml"
+
+
+def test_vigia_do_pouso_cego_nao_barra_o_deploy():
+    import portao_de_deploy as pd
+
+    runs = [run_(1, VIGIA_DO_POUSO, conclusao="failure")]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_POUSO}
+    assert pd.vermelhos_nao_previstos(runs, conhecidos).estado is not pd.Estado.FAIL
+
+
+def test_a_isencao_do_vigia_do_pouso_e_estreita_e_nao_um_buraco():
+    """Sozinha, a prova de cima passaria com a regra inteira desligada."""
+    import portao_de_deploy as pd
+
+    runs = [
+        run_(1, VIGIA_DO_POUSO, conclusao="failure"),
+        run_(2, ".github/workflows/inventado.yml", conclusao="failure"),
+    ]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_POUSO}
+    resultado = pd.vermelhos_nao_previstos(runs, conhecidos)
+    assert resultado.estado is pd.Estado.FAIL
+    assert "inventado.yml" in resultado.detalhe
+    assert "vigia-do-pouso" not in resultado.detalhe
+
+
+def test_o_vigia_do_pouso_esta_em_conhecidos_e_NAO_em_exigidos():
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    assert "VIGIA_DO_POUSO" in _linha_dos_conhecidos(), (
+        "sem esta declaração, um vigia cego tranca a porta por dentro "
+        "(armadilhas/180) — e ele roda de 2 em 2 horas no mesmo SHA do deploy"
+    )
+    assert "VIGIA_DO_POUSO: (" not in fonte, (
+        "exigi-lo faria todo deploy esperar por um run do relógio que, na "
+        "maioria dos SHAs, nem existe"
+    )
+
+
+# ---------------------------------------------------------------------------
 # UMA ESTEIRA DE DEPLOY NÃO TRANCA A OUTRA — TAR-041 (30/08/2026).
 #
 # `deploy-celula` e `deploy-infra` nascem no MESMO SHA sempre que um PR de

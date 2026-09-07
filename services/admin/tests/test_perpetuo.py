@@ -258,3 +258,195 @@ def test_a_tela_nao_traz_estilo_na_marcacao():
     varre na célula inteira; esta é a mesma régua, apontada para esta tela."""
     caminho = Path(perpetuo.__file__).parent / "templates" / "admin" / "perpetuo.html"
     assert not re.search(r"\sstyle=", caminho.read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------------------
+# O VEREDITO DE CADA PEÇA (07/09/2026)
+# ---------------------------------------------------------------------------
+# 7. **"Não respondeu" nunca vira "zero".** É a espinha desta tela: fila vazia
+#    é uma máquina saudável, e célula muda é uma tela que não sabe de nada. Os
+#    dois pintados da mesma cor mandariam o mantenedor comemorar um silêncio.
+# 8. **Peça sem fonte não ganha número.** Ela diz o que falta construir. Um
+#    palpite numa tela de decisão é pior que a ausência do número.
+# 9. **O estado vem ESCRITO.** Cor sozinha exclui quem não distingue verde de
+#    vermelho, e a casa já decidiu isso na `.luz` das portas principais.
+
+
+def test_sequencia_desligada_e_parada():
+    """A peça que faz o perpétuo ser perpétuo, desligada, é o achado mais caro
+    desta tela: uma sequência desligada não avisa ninguém de que está, e o
+    silêncio se parece com "está tudo bem"."""
+    veredito = perpetuo._aquecer({"jornadas": [{"slug": "a", "ativa": False}]})
+    assert veredito["estado"] == perpetuo.PARADA
+    assert "DESLIGADAS" in veredito["frase"]
+
+
+def test_sequencia_ligada_e_girando():
+    veredito = perpetuo._aquecer(
+        {"jornadas": [{"slug": "a", "ativa": True}, {"slug": "b", "ativa": False}]}
+    )
+    assert veredito["estado"] == perpetuo.GIRANDO
+    assert "1 de 2" in veredito["frase"]
+
+
+def test_celula_muda_nunca_vira_zero():
+    """O guarda principal deste bloco.
+
+    `None` é "não consegui perguntar" e `[]` é "perguntei, e não há nada".
+    Achatados no mesmo veredito, uma célula fora do ar apareceria como uma
+    máquina vazia — e o mantenedor iria consertar o que não está quebrado.
+    """
+    for ler, mudo, vazio in (
+        (perpetuo._aquecer, None, {"jornadas": []}),
+        (perpetuo._decidir, None, []),
+        (perpetuo._entregar, None, []),
+    ):
+        assert (
+            ler(mudo)["estado"] == perpetuo.NAO_RESPONDEU
+        ), f"{ler.__name__}: célula muda precisa dizer que não respondeu"
+        assert (
+            ler(vazio)["estado"] != perpetuo.NAO_RESPONDEU
+        ), f"{ler.__name__}: lista vazia é uma resposta, e não um silêncio"
+
+
+def test_fila_vazia_e_girando_e_espera_longa_e_parada():
+    """O veredito olha a ESPERA, e não o tamanho da fila: dez pedidos de ontem
+    é uma máquina movimentada, e um pedido de cinco dias é alguém desistindo."""
+    assert perpetuo._decidir([])["estado"] == perpetuo.GIRANDO
+    de_hoje = [{"esperando_ha_dias": 0}, {"esperando_ha_dias": 1}]
+    assert perpetuo._decidir(de_hoje)["estado"] == perpetuo.GIRANDO
+    parado = de_hoje + [
+        {"esperando_ha_dias": perpetuo.DIAS_DE_ESPERA_QUE_VIRAM_GARGALO}
+    ]
+    veredito = perpetuo._decidir(parado)
+    assert veredito["estado"] == perpetuo.PARADA
+    assert "esperando por você" in veredito["frase"]
+
+
+def test_a_peca_que_faz_o_perpetuo_oferece_o_interruptor_dela():
+    """A peça "Aquecer" se descreve como "as mensagens saem sozinhas", e por
+    quatro dias não ofereceu a porta onde essas mensagens se ligam e se
+    desligam: o dono lia a promessa sem ter como agir sobre ela.
+
+    O endereço é o da tela das sequências. Este guarda não o nomeia (nome de
+    tela vem do mapa, nunca do código), só exige que a peça o cite.
+    """
+    aquecer = next(e for e in perpetuo.ETAPAS if e["chave"] == "aquecer")
+    assert "/admin/escola/jornadas/" in aquecer["portas"], (
+        "a peça que define o lançamento perpétuo precisa oferecer o "
+        "interruptor das sequências de mensagens"
+    )
+
+
+def test_peca_sem_fonte_diz_o_motivo_e_nao_inventa_numero(monkeypatch):
+    """Duas peças a casa ainda não sabe medir, e elas declaram isso.
+
+    O molde é o `ETAPAS` de `restricao.py`: a ausência de um número é um fato,
+    e fato se declara. O que não pode é a peça mostrar um veredito de leitura
+    que ninguém leu.
+    """
+    _sem_rede(monkeypatch)
+    sem_fonte = [e for e in perpetuo.ETAPAS if e.get("sem_fonte_porque")]
+    assert sem_fonte, "alguma peça precisa declarar que a casa não a mede"
+    for etapa in sem_fonte:
+        assert etapa["chave"] not in perpetuo.vereditos(None), (
+            f"a peça {etapa['chave']} não tem fonte: ela não pode receber "
+            "veredito de leitura"
+        )
+    montadas = perpetuo.etapas_com_portas(_mapa(), perpetuo.vereditos(None))
+    for etapa in montadas:
+        if etapa.get("sem_fonte_porque"):
+            assert etapa["veredito"]["estado"] == perpetuo.SEM_FONTE
+            assert etapa["veredito"]["frase"] == etapa["sem_fonte_porque"]
+
+
+def test_a_peca_de_medir_le_do_placar_em_vez_de_contar_sozinha():
+    """Quantas passagens do funil têm fonte é um fato que já mora em
+    `restricao.ETAPAS`, e é de lá que esta peça o lê.
+
+    Uma contagem própria aqui divergiria da tela do placar no dia em que uma
+    fonte nova nascesse, e o mantenedor leria a que abrisse primeiro sem saber
+    que a outra discorda.
+    """
+    from apps.core.restricao import ETAPAS as PASSAGENS
+
+    com_fonte = sum(1 for p in PASSAGENS if p.get("fonte"))
+    frase = perpetuo._medir()["frase"]
+    assert str(len(PASSAGENS)) in frase and str(com_fonte) in frase, (
+        f"a frase precisa citar os números do placar ({com_fonte} de "
+        f"{len(PASSAGENS)}), e disse: {frase}"
+    )
+
+
+def _sem_rede(monkeypatch, respostas=None):
+    """As três células, respondidas sem sair da máquina.
+
+    `None` em qualquer uma é o silêncio dela, que é o caso que mais importa
+    provar: em teste, uma célula que "não respondeu" é o estado normal, e a
+    página precisa abrir assim mesmo.
+    """
+    padrao = {"aquecer": None, "decidir": None, "entregar": None}
+    monkeypatch.setattr(
+        perpetuo, "_perguntar_a_todas", lambda site_id: {**padrao, **(respostas or {})}
+    )
+    monkeypatch.setattr(perpetuo, "site_de", lambda request: "site-de-teste")
+
+
+@respx.mock
+def test_o_estado_de_cada_peca_aparece_escrito_e_nao_so_colorido(monkeypatch):
+    """Cor sozinha exclui quem não distingue verde de vermelho.
+
+    A casa já decidiu isso na `.luz` das portas principais, e esta tela reusa
+    aquela regra: a palavra do estado sai no HTML, e a cor é o reforço.
+    """
+    _sem_rede(
+        monkeypatch,
+        {
+            "aquecer": {"jornadas": [{"slug": "a", "ativa": True}]},
+            "decidir": [],
+            "entregar": [{"pessoa_id": "p1"}],
+        },
+    )
+    html = _dentro().get(reverse("perpetuo")).content.decode()
+    # A palavra tem de estar DEPOIS do `>`, no texto que a pessoa lê. Procurá-la
+    # no HTML inteiro seria um guarda que mente: `class="luz girando"` já contém
+    # "girando", e o teste passaria com a tela mostrando só uma bolinha colorida.
+    # Foi o que aconteceu na primeira versão deste guarda, e a sabotagem pegou.
+    assert re.search(
+        r'class="luz girando"[^>]*>\s*girando', html
+    ), "o estado precisa estar ESCRITO no texto, e não só na classe da cor"
+    assert re.search(
+        r'class="luz sem-fonte"[^>]*>\s*a casa não mede', html
+    ), "a peça sem fonte precisa dizer isso por extenso"
+
+
+@respx.mock
+def test_celula_fora_do_ar_nao_derruba_a_pagina(monkeypatch):
+    """Uma tela de operação que não abre é inútil justamente no dia em que
+    você precisa dela. Com as três células mudas, a página continua 200, as
+    seis peças continuam lá, e cada uma diz que não deu para perguntar."""
+    _sem_rede(monkeypatch)
+    resposta = _dentro().get(reverse("perpetuo"))
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    for etapa in perpetuo.ETAPAS:
+        assert etapa["nome"] in html
+    assert "não consegui perguntar" in html
+
+
+@respx.mock
+def test_sem_saber_o_site_a_tela_abre_e_as_outras_pecas_continuam(monkeypatch):
+    """As sequências são por site: sem saber de qual perguntar, aquela peça
+    fica sem resposta. As outras não dependem do site, e continuam valendo."""
+    monkeypatch.setattr(perpetuo, "site_de", lambda request: None)
+    monkeypatch.setattr(
+        perpetuo.MensageriaClient,
+        "jornadas",
+        lambda self, site_id: pytest.fail("sem site, não se pergunta às sequências"),
+    )
+    monkeypatch.setattr(perpetuo.AlunosClient, "fila", lambda self, status: [])
+    monkeypatch.setattr(perpetuo.GamificacaoClient, "quadro", lambda self: [])
+    resposta = _dentro().get(reverse("perpetuo"))
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert "a fila de entrada está vazia" in html

@@ -1,0 +1,17 @@
+{
+  "arquivo": "252-o-molde-da-prestacao-de-contas-entrega-ao-robo-os-fatos-de-o",
+  "id": "TAR-252",
+  "titulo": "O molde da prestacao de contas entrega ao robo os fatos de OUTRA sessao",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: o molde le SO o transcript da sessao que o chamou e, quando nao souber de qual sessao e, RECUSA em vez de chutar o mais recente. Teste-guarda encenando duas sessoes com transcripts distintos, provando que nenhum fato da sessao B aparece no molde da sessao A (checklist, comandos, saidas de teste e numero de PR). Prova por MUTACAO: sem o conserto, vermelho. make ci verde.",
+  "despacho": "Medido duas vezes em 07/09/2026, na sessao da TAR-204, na bancada `wt-ci-espera-cancelada`. `python ci/prestacao_de_contas.py --molde-com-fatos` devolveu, nas DUAS chamadas, o checklist e os comandos de OUTRA sessao viva na mesma maquina, e em cada chamada uma sessao diferente:\n\n  1a chamada: checklist da TAR-226, comandos com `cd .../wt-ci-espera-obrigatorios`, e a linha \"nenhum PR neste turno\" com o PR #1280 ja aberto por esta sessao.\n  2a chamada: checklist da TAR-210 (passos 1 a 9, PR #1287 marcado), e Edit/Write em `.../wt-ci-vacina-por-celula/ci/rerun_de_deploy.py` e `armadilhas/383`.\n\nSo o bloco \"O que mudou\" estava certo, e por acidente: ele sai de `git diff --numstat`, que usa a pasta de onde o comando roda. Todo o resto (checklist, comandos que mudaram o mundo, saidas de teste, PR do turno) vem da leitura de um transcript escolhido pelo criterio errado - o mais recente da maquina, e nao o da sessao que chamou.\n\nPOR QUE ISTO E GRAVE, e nao um incomodo. Este molde existe para o robo nao inventar fato. Entregando-lhe o checklist, os numeros de teste e o numero de PR de OUTRA sessao, ele produz exatamente a falha que veio impedir: um relatorio confiante feito de fatos que nao sao do turno. Numa casa com dezenas de sessoes na mesma pasta, o robo que confia no molde conta ao mantenedor o trabalho de outro robo como se fosse o seu. O mantenedor ja corrigiu essa falha quatro vezes (nao afirmar diagnostico sem medir), e aqui a propria ferramenta a produz.\n\nCONSERTO. O molde tem de saber QUAL transcript e o dele. Olhe como `ci/prestacao_de_contas.py` acha o transcript hoje (o gancho `Stop` recebe a identidade da sessao do harness; o `--molde-com-fatos`, rodado a mao, aparentemente nao). Duas saidas possiveis, e a escolha e de quem construir:\n\n  a) o molde recebe a identidade da sessao (variavel de ambiente ou argumento) e le SO aquele transcript;\n  b) na duvida, ele RECUSA: fail-closed, dizendo \"nao sei de qual sessao sou\" e ensinando como dizer. Molde vazio e honesto; molde com fatos de outro e mentira com cara de medicao.\n\nA opcao (b) vale mesmo que a (a) seja construida: sempre que a identidade nao vier, a resposta e recusar, nunca chutar o transcript mais recente ([INV-CI01]).\n\nPROVA POR MUTACAO: um teste que encena DUAS sessoes com transcripts distintos e conferindo que o molde da sessao A nunca traz um fato da sessao B - nem checklist, nem comando, nem PR. Sem o conserto, vermelho.",
+  "origem": "medido pela sessao da TAR-204 em 07/09/2026, ao montar o proprio relatorio final",
+  "criada_em": "2026-09-07"
+}

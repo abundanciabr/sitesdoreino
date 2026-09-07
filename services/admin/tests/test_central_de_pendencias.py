@@ -16,7 +16,7 @@ impediriam:
    e apresentar como "20 coisas esperando você" é a mesma mentira do zero,
    disfarçada de precisão. A tela tem de dizer "pelo menos".
 
-3. **A confissão sumindo.** Este degrau enxerga três das seis filas do site.
+3. **A confissão sumindo.** Este degrau enxerga duas das cinco filas do site.
    Uma portaria que enxerga metade e não avisa ensina o mantenedor a confiar
    num "nada esperando" que ela não pode sustentar.
 
@@ -58,7 +58,6 @@ ALUNOS = "http://alunos:8000/api/alunos"
 FILA_DE_ENTRADA = f"{ALUNOS}/pre-matriculas"
 LISTA_DE_ALUNOS = f"{ALUNOS}/matriculas"
 CAIXA = "http://sugestoes:8000/interno"
-IDEIAS = f"{CAIXA}/gestao/ideias"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 DE_FORA = "estranho@exemplo.com"
@@ -119,51 +118,12 @@ def _quem_espera(quantos: int, esperando_ha_dias: int = 3) -> list[dict]:
     ]
 
 
-def _ideia(id_: int, **campos) -> dict:
-    base = {
-        "id": id_,
-        "titulo": "Página pública com os meus projetos",
-        "problema": "Meus projetos ficam parados no computador.",
-        "solucao_proposta": "",
-        "categoria": "Plataforma",
-        "status": "planejado",
-        "votos": 218,
-        "comentarios": 31,
-        "pessoas": 176,
-        "autor": "Larissa M.",
-        "criada_em": "2026-07-12T10:00:00+00:00",
-        "parada_desde": "2026-07-12T10:00:00+00:00",
-        "ja_ouviram": False,
-        "tem_avaliacao": True,
-        # `False` é o que põe a ideia na coluna "Esperando você assinar":
-        # aprovada, sem documento de obra assinado (`caixa._coluna_de`).
-        "tem_changespec": False,
-        "motivo_da_saida": "",
-        "avaliacao": None,
-    }
-    base.update(campos)
-    return base
-
-
-def _todos_respondem(fila=None, ideias=None):
-    """As três fontes de pé. O painel vem do disco, materializado pelo conftest."""
+def _todos_respondem(fila=None):
+    """As duas fontes de pé. O painel vem do disco, materializado pelo conftest."""
     respx.get(FILA_DE_ENTRADA).mock(
         return_value=httpx.Response(200, json=_quem_espera(9) if fila is None else fila)
     )
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(IDEIAS).mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "quadro": "Meshcraft",
-                "pode_assinar": True,
-                "pessoas_esperando": 0,
-                "silencio_medio_em_dias": None,
-                "pessoas_em_silencio_demais": 0,
-                "ideias": [_ideia(1)] if ideias is None else ideias,
-            },
-        )
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -184,17 +144,35 @@ def test_para_quem_nao_e_da_casa_a_central_nao_existe():
 
 
 # ---------------------------------------------------------------------------
-# 2. As três filas na tela, com a idade de cada uma
+# 2. As duas filas na tela, com a idade de cada uma
 # ---------------------------------------------------------------------------
 @respx.mock
-def test_as_tres_filas_aparecem_com_quantidade_e_idade():
+def test_as_duas_filas_aparecem_com_quantidade_e_idade():
     _todos_respondem()
     html = _texto(_dentro().get(TELA))
 
     assert "9 · Pessoas querendo entrar na escola" in html
     assert "A mais antiga espera há 3 dias." in html
-    assert "1 · Ideias esperando a sua assinatura" in html
     assert "Decisões suas paradas no painel do sistema" in html
+
+
+@respx.mock
+def test_a_fila_da_assinatura_nao_existe_mais_na_portaria():
+    """Ela saiu em 06/09/2026, junto com a assinatura de obra da Caixa.
+
+    Sem este guarda a linha volta de boa-fé na primeira sessão que ler o
+    cabeçalho antigo deste arquivo — e voltaria como um 0 eterno, porque uma
+    ideia em "Planejado" não espera mais por ninguém.
+    """
+    _todos_respondem()
+    html = _texto(_dentro().get(TELA))
+
+    # Medido pelo TÍTULO da fila e pelo LINK dela, que são as duas formas em
+    # que a linha voltaria à tela. O nome "Caixa de Sugestões" sozinho não
+    # serve de asserção aqui: ele vive também num comentário do CSS da
+    # moldura, que é de outro assunto e viaja em toda tela do Admin.
+    assert "Ideias esperando a sua assinatura" not in html
+    assert reverse("caixa_esperando") not in html
 
 
 @respx.mock
@@ -202,35 +180,18 @@ def test_cada_linha_leva_ao_lugar_onde_a_coisa_se_resolve():
     """A portaria não resolve nada por dentro: ela é uma porta, e a porta abre.
 
     Medido pelo DESTINO, e não pela presença do texto: uma tela que listasse as
-    três filas sem link nenhum passaria num teste de texto e seria inútil.
+    filas sem link nenhum passaria num teste de texto e seria inútil.
     """
     _todos_respondem()
     html = _texto(_dentro().get(TELA))
 
     for rotulo, rota in (
         ("Pessoas querendo entrar na escola", "escola_alunos"),
-        ("Ideias esperando a sua assinatura", "caixa_esperando"),
         ("Decisões suas paradas no painel do sistema", "painel"),
     ):
         ate = html.index(rotulo)
         inicio = html.rindex('href="', 0, ate) + len('href="')
         assert html[inicio : html.index('"', inicio)] == reverse(rota), rotulo
-
-
-@respx.mock
-def test_a_ideia_que_espera_um_ROBO_nao_entra_na_conta_dele():
-    """Só a coluna "Esperando você assinar" é dele.
-
-    Uma ideia já assinada espera um robô pegar, e listá-la aqui encheria a
-    portaria de trabalho que não é do mantenedor. A diferença entre as duas é
-    UM campo (`tem_changespec`), e é justamente por ser sutil que ela precisa
-    de guarda.
-    """
-    _todos_respondem(ideias=[_ideia(1, tem_changespec=True)])
-    html = _texto(_dentro().get(TELA))
-
-    assert "Ideias esperando a sua assinatura" not in html
-    assert "a Caixa de Sugestões" in html  # aparece como "nada esperando aqui"
 
 
 # ---------------------------------------------------------------------------
@@ -247,19 +208,6 @@ def test_com_a_alunos_muda_a_tela_diz_isso_e_NAO_mostra_zero():
     """
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(IDEIAS).mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "quadro": "Meshcraft",
-                "pode_assinar": True,
-                "pessoas_esperando": 0,
-                "silencio_medio_em_dias": None,
-                "pessoas_em_silencio_demais": 0,
-                "ideias": [],
-            },
-        )
-    )
     html = _texto(_dentro().get(TELA))
 
     assert "Não deu para perguntar a a lista de alunos agora." in html
@@ -268,27 +216,9 @@ def test_com_a_alunos_muda_a_tela_diz_isso_e_NAO_mostra_zero():
 
 
 @respx.mock
-def test_com_a_caixa_muda_a_tela_diz_isso_e_a_pagina_abre_igual():
-    """Fail-OPEN por LINHA: uma fila muda não derruba as outras duas."""
-    respx.get(FILA_DE_ENTRADA).mock(
-        return_value=httpx.Response(200, json=_quem_espera(9))
-    )
-    respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(IDEIAS).mock(return_value=httpx.Response(503))
-
-    resposta = _dentro().get(TELA)
-    html = _texto(resposta)
-
-    assert resposta.status_code == 200
-    assert "Não deu para perguntar a a Caixa de Sugestões agora." in html
-    assert "9 · Pessoas querendo entrar na escola" in html
-
-
-@respx.mock
 def test_sem_o_par_de_tokens_a_tela_tambem_abre(monkeypatch):
     """Enquanto o par não estiver no env da VPS, a área abre e a tela avisa."""
     monkeypatch.delenv("ALUNOS_API_URL", raising=False)
-    monkeypatch.delenv("SUGESTOES_API_URL", raising=False)
 
     resposta = _dentro().get(TELA)
 
@@ -303,16 +233,13 @@ def test_com_uma_fila_muda_o_total_vira_um_PISO_e_nao_uma_conta_fechada():
     O guarda mede as duas frases porque elas são a mesma tela em dois estados,
     e trocar uma pela outra é a regressão provável.
     """
-    respx.get(FILA_DE_ENTRADA).mock(
-        return_value=httpx.Response(200, json=_quem_espera(9))
-    )
+    respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(IDEIAS).mock(return_value=httpx.Response(503))
 
     html = _texto(_dentro().get(TELA))
 
     assert "É <b>pelo menos</b> isso" in html
-    assert "nas três filas que esta tela já enxerga" not in html
+    assert "nas duas filas que esta tela já enxerga" not in html
 
 
 @respx.mock
@@ -321,7 +248,7 @@ def test_com_tudo_respondendo_o_total_e_a_soma_e_a_tela_diz_que_e_fechada():
     _todos_respondem()
     html = _texto(_dentro().get(TELA))
 
-    assert "nas três filas que esta tela já enxerga" in html
+    assert "nas duas filas que esta tela já enxerga" in html
     assert "É <b>pelo menos</b> isso" not in html
 
 
@@ -334,19 +261,6 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
     """
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(200, json=[]))
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(IDEIAS).mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "quadro": "Meshcraft",
-                "pode_assinar": True,
-                "pessoas_esperando": 0,
-                "silencio_medio_em_dias": None,
-                "pessoas_em_silencio_demais": 0,
-                "ideias": [],
-            },
-        )
-    )
     html = _texto(_dentro().get(TELA))
 
     assert "Nada esperando você em:" in html

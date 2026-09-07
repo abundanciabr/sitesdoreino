@@ -108,14 +108,6 @@ SCRIPTS = [
         "env/gamificacao.env",
         "infra/env/gamificacao.env.exemplo",
     ),
-    # A sétima da família (04/09/2026, provisionamento das encomendas). Entrou
-    # aqui no MESMO PR do script, pelo motivo escrito acima — e nesta célula a
-    # data é a mais previsível de toda a lista: a escada da
-    # `DECISAO-fila-do-primeiro-dolar.md` §7 tem os degraus 2.2 a 2.14 pela
-    # frente, e TRÊS deles já sabem o nome da variável que vão pedir a este env
-    # (`TOKENS_ACEITOS_ADMIN` no degrau 2.14, `REDIS_STREAMS_URL` quando o relay
-    # nascer, e a lista do plantão na Fase 7). Cada uma é uma chance de o script
-    # apagar o que não conhece.
     # A oitava da família (04/09/2026, provisionamento da medição). Entrou aqui
     # no MESMO PR do script, pelo motivo escrito acima. Este é o env mais curto
     # da plataforma (três chaves), e é justamente por isso que a trava importa:
@@ -128,6 +120,17 @@ SCRIPTS = [
         "env/metricas.env",
         "infra/env/metricas.env.exemplo",
     ),
+    # A sétima da família (04/09/2026, provisionamento das encomendas). Entrou
+    # aqui no MESMO PR do script, pelo motivo escrito acima — e nesta célula a
+    # previsão se cumpriu em três dias, que é o valor da lista estar escrita.
+    # Em 04/09 este comentário nomeava TRÊS variáveis que a escada ia pedir ao
+    # env; em 07/09, no degrau 2.10, DUAS chegaram: `TOKENS_ACEITOS_ADMIN` e
+    # `TOKENS_ESCRITA_ADMIN`, os dois graus de crachá da tela dos parâmetros do
+    # dono. Elas entraram gerada e listadas na mesma edição, e não apagadas em
+    # silêncio — que é exatamente o desfecho que esta lista existe para trocar.
+    # Continuam por vir a lista do plantão (Fase 7) e, se um dia sair do
+    # compose, `REDIS_STREAMS_URL`. O guarda dos dois lados desse par está no
+    # fim deste arquivo.
     (
         "infra/provisionar-encomendas.sh",
         "env/encomendas.env",
@@ -185,17 +188,15 @@ def _texto(caminho: str) -> str:
 
 def _chaves_do_heredoc(fonte: str, script: str, env: str) -> set[str]:
     """As chaves que o `cat > <env> <<ENV … ENV` realmente escreve."""
-    abertura = re.search(
-        rf"cat > {re.escape(env)} <<(\w+)\n", fonte
-    )
+    abertura = re.search(rf"cat > {re.escape(env)} <<(\w+)\n", fonte)
     assert abertura, (
         f"não achei o heredoc `cat > {env} <<…` em {script}. Se a forma de "
         "escrever o env mudou, este guarda precisa aprender a nova — não o "
         "apague, ensine-o."
     )
-    fim = re.search(rf"^{abertura.group(1)}$", fonte[abertura.end():], re.MULTILINE)
+    fim = re.search(rf"^{abertura.group(1)}$", fonte[abertura.end() :], re.MULTILINE)
     assert fim, f"heredoc de {script} aberto e não fechado."
-    corpo = fonte[abertura.end(): abertura.end() + fim.start()]
+    corpo = fonte[abertura.end() : abertura.end() + fim.start()]
     chaves = set(RE_CHAVE.findall(corpo))
     assert chaves, f"o heredoc de {script} não escreve chave nenhuma."
     return chaves
@@ -263,13 +264,13 @@ def test_a_trava_de_deriva_existe_e_para_o_script(script, env, molde):
     alguém poderia apagar o bloco `if` e o teste acima continuaria verde.
     """
     fonte = _texto(script)
-    assert f"if [ -f {env} ]; then" in fonte, (
-        f"{script}: não achei o `if [ -f {env} ]` da trava de deriva."
-    )
+    assert (
+        f"if [ -f {env} ]; then" in fonte
+    ), f"{script}: não achei o `if [ -f {env} ]` da trava de deriva."
     assert "SOBRANDO" in fonte, f"{script}: a trava não acumula as chaves que sobram."
-    assert "PAROU POR SEGURANÇA" in fonte, (
-        f"{script}: a trava não fala a língua fail-closed da casa."
-    )
+    assert (
+        "PAROU POR SEGURANÇA" in fonte
+    ), f"{script}: a trava não fala a língua fail-closed da casa."
     assert re.search(r"^\s*exit 1$", fonte, re.MULTILINE), (
         f"{script}: a trava não sai com código de erro — avisar e continuar "
         "escrevendo por cima seria pior que não avisar."
@@ -319,4 +320,70 @@ def test_o_caso_real_que_originou_este_guarda_esta_fechado():
         "isso foi de propósito, ele precisa saber GERAR o token do par — que "
         "hoje pertence ao provisionar-identidade.sh — e a trava de deriva e "
         "este teste precisam ser atualizados juntos."
+    )
+
+
+def test_o_par_admin_com_as_encomendas_nasce_com_os_dois_graus_e_os_dois_lados():
+    """O crachá que a tela dos parâmetros do dono usa, nos DOIS envs.
+
+    A porta de máquina da `encomendas` lê dois conjuntos, e não um
+    (`services/encomendas/config/settings.py`, e a razão está na
+    `armadilhas/318`): `TOKENS_ACEITOS_<PAR>` deixa LER e `TOKENS_ESCRITA_<PAR>`
+    deixa GRAVAR. Env ausente é conjunto vazio, que é 401 para todo mundo —
+    fail-closed correto, e invisível: a célula sobe, o `/healthz` responde, o
+    deploy fica verde e só a tela do dono nasce sem funcionar, com um 401 que
+    nada explica.
+
+    Quem alinha os dois lados é `infra/provisionar-par-dos-parametros.sh`, e não
+    o roteiro que provisiona a célula: um roteiro que roda todo dia não é o
+    lugar de gerar credencial de outro par, porque o valor novo ficaria de um
+    lado só. Este guarda cobra as quatro escritas nos dois arquivos, com o
+    MESMO valor, e cobra que o roteiro da célula PRESERVE o que já existe.
+    """
+    par = _texto("infra/provisionar-par-dos-parametros.sh")
+
+    escritas = (
+        ("$ENV_ENCOMENDAS", "TOKENS_ACEITOS_ADMIN"),
+        ("$ENV_ENCOMENDAS", "TOKENS_ESCRITA_ADMIN"),
+        ("$ENV_ADMIN", "ENCOMENDAS_API_TOKEN"),
+        ("$ENV_ADMIN", "ENCOMENDAS_API_TOKEN_ESCRITA"),
+    )
+    for arquivo, chave in escritas:
+        linha = 'garantir "%s" %s "$T_PAR"' % (arquivo, chave)
+        assert linha in par, (
+            f"{chave} não é escrita com o MESMO valor ($T_PAR) que as outras "
+            "três. Token de par tem dois lados, e valores diferentes fazem um "
+            "grau recusar sem que nada explique por quê."
+        )
+
+    assert (
+        'garantir "$ENV_ADMIN" ENCOMENDAS_API_URL ' in par
+    ), "sem o endereço, a `admin` tem o crachá e não sabe a que porta bater."
+
+    celula = _texto("infra/provisionar-encomendas.sh")
+    for chave, origem in (
+        ("TOKENS_ACEITOS_ADMIN", "$T_ADMIN_LE"),
+        ("TOKENS_ESCRITA_ADMIN", "$T_ADMIN_GRAVA"),
+    ):
+        assert f"{chave}={origem}" in celula, (
+            f"o roteiro da célula reescreve o env inteiro e perderia {chave}. "
+            "Ele tem de RELER o valor vivo e regravá-lo igual (`armadilhas/111`)."
+        )
+
+    do_molde_admin = set(RE_CHAVE.findall(_texto("infra/env/admin.env.exemplo")))
+    assert {
+        "ENCOMENDAS_API_URL",
+        "ENCOMENDAS_API_TOKEN",
+        "ENCOMENDAS_API_TOKEN_ESCRITA",
+    } <= do_molde_admin, (
+        "o molde da `admin` não declara o par com as encomendas, e quem for "
+        "montar a máquina do zero não saberia que ele existe."
+    )
+
+    do_molde_enc = set(RE_CHAVE.findall(_texto("infra/env/encomendas.env.exemplo")))
+    assert {
+        "TOKENS_ACEITOS_ADMIN",
+        "TOKENS_ESCRITA_ADMIN",
+    } <= do_molde_enc, (
+        "o molde das `encomendas` não declara os dois graus do par com a admin."
     )

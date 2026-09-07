@@ -723,11 +723,6 @@ class CaixaClient:
     def ideias(self, por_email: str = "", com_conversa: bool = False) -> "dict | None":
         """O quadro inteiro com os FATOS de cada ideia, ou `None`.
 
-        `por_email` não filtra nada: ele responde uma pergunta só — *esta pessoa
-        pode assinar?* — e a resposta vem no campo `pode_assinar`. Quem recusa de
-        verdade é a Caixa, na escrita; isto serve para a tela não desenhar um
-        botão que já se sabe que vai ser recusado.
-
         `com_conversa` pede o TEXTO dos comentários de cada ideia (contrato de
         02/09/2026, RITOS §3). Ele é opcional aqui pelo mesmo motivo que é
         opcional lá: a conversa cresce com o uso, e as telas de operação só
@@ -918,11 +913,6 @@ class CaixaClient:
     def avaliar(self, ideia_id: int, *, campos: dict, quem: dict):
         return self._escrever(
             f"/gestao/ideias/{ideia_id}/avaliacao", {**campos, **quem}
-        )
-
-    def registrar_changespec(self, ideia_id: int, *, campos: dict, quem: dict):
-        return self._escrever(
-            f"/gestao/ideias/{ideia_id}/changespec", {**campos, **quem}
         )
 
     def arquivar(self, ideia_id: int, *, motivo: str, quem: dict):
@@ -1250,6 +1240,171 @@ class GamificacaoClient:
             return self.RECUSADO, f"essa {rotulo} não existe nesta escola"
         logger.error("economia: a mudança respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a gamificação respondeu com erro"
+
+
+class EncomendasClient:
+    """A régua da Fila do Primeiro Dólar — os números que o motor obedece.
+
+    Fala só o que a porta de máquina da `encomendas` expõe (`getParameters` e
+    `setParameter`, em `services/encomendas/apps/core/api.py`). Nunca lê o banco
+    dela (Lei 3), e **nunca guarda uma cópia** de parâmetro nenhum aqui: o valor
+    de um parâmetro é dado da `encomendas`, e o mesmo fato em dois lugares é a
+    lei anti-duplicação do `CLAUDE.md` sendo quebrada. No dia em que os dois
+    discordassem, esta tela mostraria um prazo e o aluno cumpriria outro.
+
+    **Ela existe porque a lei da célula chama de critério de morte 5 o dia em
+    que mudar um destes números exigir PR de código**
+    (`DECISAO-fila-do-primeiro-dolar.md` §3.8, e §9 do
+    `PLANO-AREA-DE-NEGOCIACAO.md`). Enquanto trocar o relógio da oferta
+    dependesse de um robô editar o semeador e esperar uma publicação, a régua
+    era código com aparência de dado.
+
+    DOIS PARES DE CHAVES, E O SEGUNDO NÃO É ENFEITE (`armadilhas/318`)
+    -----------------------------------------------------------------
+    A porta do outro lado tem dois graus: `TOKENS_ACEITOS_ADMIN` lê e
+    `TOKENS_ESCRITA_ADMIN` grava, e o alto contém o baixo. Este cliente guarda
+    os dois valores em variáveis separadas (`ENCOMENDAS_API_TOKEN` e
+    `ENCOMENDAS_API_TOKEN_ESCRITA`) porque ler a régua e MUDAR a régua da fila
+    inteira não podem ser o mesmo poder. Grau insuficiente volta 403 de lá, e
+    esta classe o traduz numa frase que diz o que fazer.
+
+    **Fail-OPEN na leitura, fail-CLOSED na escrita**, como na
+    `GamificacaoClient` e pelo mesmo motivo: uma tela de operação que não abre é
+    inútil justamente quando você precisa dela, e dizer "gravei" sem ter gravado
+    é pior que recusar.
+
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
+    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, motivo curto
+    #: demais, autor vazio, ou chave fora do vocabulário fechado.
+    RECUSADO = "recusado"
+    #: O par tem o crachá de LEITURA e pediu para gravar. Nome próprio, e não um
+    #: `RECUSADO` reaproveitado, porque a cura é outra e é um passo do
+    #: mantenedor dentro do servidor: não adianta ele corrigir o que digitou.
+    SEM_GRAU_DE_ESCRITA = "sem_grau_de_escrita"
+    #: Não deu para saber: rede, configuração ausente, 5xx, corpo fora do
+    #: contrato. Separado de `RECUSADO` porque "não deu certo" quando pode ter
+    #: dado faria o mantenedor gravar o mesmo valor de novo — e nesta tabela
+    #: gravar duas vezes são duas LINHAS de histórico, nunca uma sobrescrita.
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _endereco(self) -> str:
+        return (os.environ.get("ENCOMENDAS_API_URL") or "").strip().rstrip("/")
+
+    def _para_ler(self) -> "tuple[str, str] | None":
+        base = self._endereco()
+        token = (os.environ.get("ENCOMENDAS_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def _para_gravar(self) -> "tuple[str, str] | None":
+        base = self._endereco()
+        token = (os.environ.get("ENCOMENDAS_API_TOKEN_ESCRITA") or "").strip()
+        return (base, token) if base and token else None
+
+    def parametros(self) -> "list | None":
+        """O vocabulário fechado INTEIRO, com o valor de agora e o histórico.
+
+        `None` = não deu para perguntar. Chave que ainda não tem linha nenhuma
+        vem com `vigente` nulo, e isso não é falha: o piso de preço por nível
+        nasceu de propósito sem número (`PLANO-AREA-DE-NEGOCIACAO.md` §7 e §9).
+        Uma chave sem valor precisa aparecer na tela, ou o mantenedor não tem
+        por onde gravar o primeiro.
+        """
+        config = self._para_ler()
+        if config is None:
+            logger.warning(
+                "parametros: ENCOMENDAS_API_URL/ENCOMENDAS_API_TOKEN ainda não "
+                "estão no env desta célula (par admin→encomendas não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/parametros",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("parametros: as encomendas não responderam: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("parametros: as encomendas responderam HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("parametros: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, list):
+            logger.error("parametros: resposta com forma inesperada")
+            return None
+        return corpo
+
+    def mudar(
+        self, chave: str, valor: str, motivo: str, quem: str
+    ) -> "tuple[str, str]":
+        """Acrescenta uma linha nova ao histórico da chave. Devolve (situação, frase).
+
+        **Nunca reescreve a linha que está valendo**, e isso não é promessa deste
+        arquivo: o `UPDATE` é recusado por gatilho no PostgreSQL do outro lado. O
+        que este método decide é só o que o mantenedor lê quando a célula recusa.
+        """
+        config = self._para_gravar()
+        if config is None:
+            return (
+                self.SEM_GRAU_DE_ESCRITA,
+                "esta área ainda não tem permissão para GRAVAR na Fila do "
+                "Primeiro Dólar, só para ler. Falta um passo seu dentro do "
+                "servidor, que está no relatório do robô que construiu esta "
+                "tela (o roteiro chama-se provisionar-par-dos-parametros). Nada "
+                "foi mudado, e a lista continua sendo a verdade.",
+            )
+        base, token = config
+        try:
+            r = http().put(
+                f"{base}/parametros/{quote(chave, safe='')}",
+                json={"valor": valor, "motivo": motivo, "quem": quem},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("parametros: não deu para gravar %s: %s", chave, erro)
+            return self.NAO_RESPONDEU, "a Fila do Primeiro Dólar não respondeu"
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 403:
+            return (
+                self.SEM_GRAU_DE_ESCRITA,
+                "a Fila do Primeiro Dólar reconheceu esta área, e não deixou "
+                "gravar: o crachá que está no servidor é o de LEITURA. O roteiro "
+                "provisionar-par-dos-parametros, rodado dentro do servidor, "
+                "resolve isso. Nada foi mudado.",
+            )
+        if r.status_code == 404:
+            return self.RECUSADO, "esse número não existe na Fila do Primeiro Dólar"
+        if r.status_code == 400:
+            return self.RECUSADO, self._recusa_em_portugues(r)
+        logger.error("parametros: a gravação respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a Fila do Primeiro Dólar respondeu com erro"
+
+    def _recusa_em_portugues(self, resposta) -> str:
+        """A frase que a própria célula escreveu, ou uma nossa se o corpo vier torto.
+
+        A `encomendas` escreve as recusas dela em português e elas são
+        acionáveis ("use HH:MM", "escreva o motivo com pelo menos 15
+        caracteres"). Reescrevê-las aqui criaria duas versões da mesma regra, e a
+        daqui envelheceria calada no primeiro tipo novo de chave.
+        """
+        try:
+            corpo = resposta.json()
+        except ValueError:
+            corpo = None
+        detalhe = corpo.get("detail") if isinstance(corpo, dict) else None
+        return str(detalhe) if detalhe else "o valor não foi aceito"
 
 
 class NotificacoesClient:

@@ -1,13 +1,14 @@
 ---
 schema_version: 2
 armadilha: 366
-estado: documentada
-degrau: 2
+estado: guardada
+degrau: 3
 confianca: alta
 custo_por_queda: baixo
 guarda:
-  tipo: nenhum
-  motivo: o `ci/esperar.py --checks` mede "todos os que EXISTEM completaram" e não tem, hoje, a lista de checks obrigatórios que o `ci/mergear.py` exige — são dois julgamentos do mesmo fato, e só o segundo é completo. Fechar o buraco é ensinar a espera a esperar os obrigatórios NASCEREM (a lista já está no portão), e isso é conserto em `ci/`, caminho CODEOWNERS. Enquanto ele não existir, o que segura é o próprio portão recusar o pouso — nenhum PR entra por causa desta falha, só se perde o pedido
+  tipo: teste
+  dono: ci/tests/test_espera.py
+  motivo: desde a TAR-141 (07/09/2026) o `ci/esperar.py --checks` faz as MESMAS duas perguntas do portão antes de dizer verde, com a lista de obrigatórios IMPORTADA de `ci/mergear.py`, nunca copiada. Sem os obrigatórios no rollup o alvo não apareceu e a graça mata a espera; com o PR em conflito ela para na hora e ensina o `git merge origin/main`. Provado por mutação: arrancada a pergunta, o teste devolve o falso-verde do #1020 e o pedido de pouso
 sinal:
   - `todos os 1 checks verdes`
   - `ERROR checks obrigat[óo]rios`
@@ -50,24 +51,20 @@ portão recusou, que é o desenho funcionando: a espera é conveniência, o port
 O caso vizinho JÁ era tratado: a espera reconhece **zero** checks e aponta a
 `armadilhas/150` (conflito com a main). O buraco é o "poucos", não o "nenhum".
 
-**Solução, hoje.** Se a espera devolver verde em menos de meio minuto, ou citar
-um número de checks menor que o normal do repositório (sete, em 09/2026), NÃO
-trate como verde: confira quantos existem e arme de novo.
+**Solução definitiva, feita na TAR-141 em 07/09/2026.** `ci/esperar.py` deixou
+de ter julgamento próprio: antes de qualquer verde ele faz as duas perguntas do
+portão, na ordem do `--conferir`.
 
-```bash
-gh pr checks <N>                    # quantos nasceram até agora
-gh run list --branch <ramo> --limit 10 --json name,status,conclusion
-```
+1. *O PR conflita com a base?* `CONFLICTING` para a espera na hora, com o que
+   fazer escrito no desfecho (`git fetch origin && git merge origin/main`), em
+   vez de esperar checks que não vão nascer (`armadilhas/198`).
+2. *Os obrigatórios existem?* A lista é **importada** de `ci/mergear.py`, nunca
+   copiada — copiada, um check obrigatório novo lá nasceria invisível aqui.
+   Faltando algum, o alvo NÃO apareceu: a graça mata a espera nomeando o que
+   falta, e o pouso nunca é pedido.
 
-Com todos nascidos, a mesma espera de sempre resolve, e o pouso sai:
-
-```bash
-python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
-```
-
-**Solução definitiva** (registrada na fila): ensinar `ci/esperar.py` a esperar
-os checks OBRIGATÓRIOS nascerem, usando a mesma lista que o `ci/mergear.py` já
-conhece. Enquanto forem dois julgamentos separados do mesmo fato, eles vão
-divergir de novo — é a Classe do "falso-verde por universo incompleto", a mesma
-que já mordeu esta casa no H13 (os greens históricos do deploy-celula) e na
-regra de nunca ler veredito de run pelo exit de um pipe.
+Era a Classe do "falso-verde por universo incompleto", a mesma que já mordeu
+esta casa no H13 (os greens históricos do deploy-celula) e na regra de nunca ler
+veredito de run pelo exit de um pipe. Enquanto foram dois julgamentos separados
+do mesmo fato, divergiram duas vezes em três dias (#1020 e #1189); agora é um
+julgamento só, com o teste de mutação em `ci/tests/test_espera.py`.

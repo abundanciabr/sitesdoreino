@@ -528,11 +528,41 @@
     {
       "celula": "encomendas",
       "rota": "healthz",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/encomendas/healthz",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "O sinal de vida das encomendas",
-      "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a Fila do Primeiro Dólar (o marketplace de encomendas 3D) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /encomendas."
+      "descricao": "Responde 'estou de pé' para quem pergunta. É por aqui que a máquina confere, a cada poucos segundos, se a Fila do Primeiro Dólar (o marketplace de encomendas 3D) continua no ar."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "plantao",
+      "endereco": "/encomendas/plantao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Plantão da Fila: dar o nível de um aluno",
+      "descricao": "A tela em que o professor diz o nível de cada aluno da Fila do Primeiro Dólar. Enquanto a formação não existe, é o professor quem dá o título, e ele fica registrado com o nome dele e a data.",
+      "observacao": "Só abre para quem está na lista IDS_DO_PLANTAO do env desta célula. Lista vazia fecha a porta para todo mundo, de propósito."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "plantao/titulo",
+      "endereco": "/encomendas/plantao/titulo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Registrar o nível de um aluno",
+      "descricao": "Não é uma página: é o que acontece quando o professor aperta o botão da tela do plantão. Abrir este endereço no navegador não mostra nada.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "api/encomendas/",
+      "endereco": "/encomendas/api/encomendas/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina das encomendas",
+      "descricao": "Por aqui as outras partes do site perguntam os parâmetros da Fila, em que pé está a fila de um aluno e quais peças dele estão aprovadas. Ninguém entra sem crachá, e quem só lê não consegue gravar nada.",
+      "observacao": "Fica debaixo do endereço público, e é o crachá que a fecha, não a topologia: sem token, toda chamada leva 401."
     },
     {
       "celula": "pages",
@@ -999,7 +1029,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "Pendencias: tudo que esta esperando por voce",
-      "descricao": "A portaria da area administrativa. Uma linha por fila de trabalho, dizendo quantas coisas esperam por voce, ha quanto tempo a mais antiga espera, e levando ao lugar onde aquilo se resolve. Nasceu em 07/09/2026 porque o trabalho parado morava em seis enderecos diferentes e nenhum deles avisava nada. Neste degrau ela conta tres filas (quem quer entrar na escola, as ideias esperando assinatura e as decisoes paradas no painel do sistema) e DIZ na tela quais ainda nao conta. Fila que nao responde aparece como 'nao consegui perguntar', nunca como zero."
+      "descricao": "A portaria da area administrativa. Uma linha por fila de trabalho, dizendo quantas coisas esperam por voce, ha quanto tempo a mais antiga espera, e levando ao lugar onde aquilo se resolve. Nasceu em 07/09/2026 porque o trabalho parado morava em seis enderecos diferentes e nenhum deles avisava nada. Neste degrau ela conta duas filas (quem quer entrar na escola e as decisoes paradas no painel do sistema) e DIZ na tela quais ainda nao conta. Fila que nao responde aparece como 'nao consegui perguntar', nunca como zero."
     },
     {
       "celula": "admin",
@@ -1578,16 +1608,6 @@
     },
     {
       "celula": "admin",
-      "rota": "caixa/ideia/<int:ideia_id>/assinatura",
-      "endereco": "/admin/caixa/ideia/<int:ideia_id>/assinatura",
-      "alcance": "publico",
-      "para_quem": "equipe",
-      "gesto": true,
-      "titulo": "Assinar a obra",
-      "descricao": "O gesto que libera um robô a construir aquela ideia. É o único botão da área que manda trabalho de verdade acontecer."
-    },
-    {
-      "celula": "admin",
       "rota": "caixa/ideia/<int:ideia_id>/arquivar",
       "endereco": "/admin/caixa/ideia/<int:ideia_id>/arquivar",
       "alcance": "publico",
@@ -2094,6 +2114,26 @@
       "gesto": true,
       "titulo": "Ligar ou desligar um degrau da escada",
       "descricao": "O gesto de um clique na terceira parte da tela da economia. Não é uma página, e não paga nada a ninguém: o degrau é a régua que dá nome ao esforço que o aluno já tem."
+    },
+    {
+      "celula": "admin",
+      "rota": "encomendas/parametros/",
+      "endereco": "/admin/encomendas/parametros/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Os números da Fila do Primeiro Dólar",
+      "descricao": "Um cartão por número que a plataforma obedece: quanto tempo o aluno tem para responder, quantos dias dura cada tipo de produção, quantas rodadas de conversa de preço cada lado tem, e o piso de preço de cada nível. Cada cartão mostra o valor de agora, desde quando ele vale, por que foi mudado e o que ele já foi antes. Os que ainda não têm número aparecem primeiro, com a explicação de que a ausência é uma decisão e não um defeito."
+    },
+    {
+      "celula": "admin",
+      "rota": "encomendas/parametros/mudar",
+      "endereco": "/admin/encomendas/parametros/mudar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Gravar um número novo da Fila",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de gravar. Ele nunca reescreve o valor antigo, escreve uma linha nova com o motivo e o seu nome, e ela vale daí em diante. O que já estava combinado com o número antigo continua com ele."
     },
     {
       "celula": "admin",

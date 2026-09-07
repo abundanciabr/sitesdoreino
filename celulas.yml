@@ -99,11 +99,26 @@ celulas:
     # INV-CUR-C2). O editor /admin/escola/aulas/ le e grava pela porta de
     # maquina dela, pelo contrato congelado no Rito de 05/09/2026 (PR #1061),
     # e nunca guarda copia de uma linha aqui.
+    # `encomendas` desde 07/09/2026: os NUMEROS que a Fila do Primeiro Dolar
+    # obedece (o relogio da oferta, os prazos de producao, as rodadas de
+    # negociacao, o piso de preco por nivel) sao dado daquela celula e moram la,
+    # com historico por linha nova. A tela /admin/encomendas/parametros/ le e
+    # grava pela porta de maquina, nunca no banco dela, e nunca guardando uma
+    # copia aqui: seria o mesmo fato em dois lugares, e no dia em que os dois
+    # discordassem esta tela mostraria um prazo e o aluno cumpriria outro.
+    #
+    # Ela existe porque a lei daquela celula chama de criterio de morte 5 o dia
+    # em que mudar um destes numeros passar a exigir PR de codigo (§3.8 e §9).
+    #
+    # Sao DOIS graus do mesmo par (TOKENS_ACEITOS_ADMIN le, TOKENS_ESCRITA_ADMIN
+    # grava), e o de escrita ja contem o de leitura: ler a regua e MUDAR a regua
+    # da fila inteira nao podem ser o mesmo poder (`armadilhas/318`).
     consome:
       [
         alunos,
         catalogo,
         cursos,
+        encomendas,
         gamificacao,
         identidade,
         mensageria,
@@ -142,16 +157,19 @@ celulas:
 
   encomendas:
     caminhos: [services/encomendas]
-    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
-    # não um esquecimento. A lei prevê `consome: [alunos, identidade]`
-    # (`DECISAO-fila-do-primeiro-dolar.md` §4), e essas linhas entram no
-    # degrau 2.7 da escada, junto com os clientes que leem
-    # `IDENTIDADE_API_URL` e `ALUNOS_API_URL`. Declará-las HOJE seria
-    # declaração órfã, e o varredor reprova por isso, com razão
-    # (`armadilhas/224`): um mapa que promete a mais é tão mentiroso quanto
-    # um que promete a menos. Quem escrever os clientes volta aqui no mesmo
-    # PR — e se esquecer, o varredor cobra pelo outro lado.
-    consome: []
+    # O degrau 2.7 chegou, e com ele os dois clientes: `apps/core/sessao.py`
+    # lê `IDENTIDADE_API_URL` (quem é o dono do cookie, e o id opaco de quem
+    # tem um e-mail) e `ALUNOS_API_URL` (a categoria da pessoa na escola). As
+    # duas linhas entram no MESMO PR dos clientes, nunca antes: até aqui,
+    # `consome: []` era a declaração honesta, e declarar o roadmap teria sido
+    # declaração órfã (`armadilhas/224`).
+    #
+    # Quem pergunta é a tela do plantão: a `alunos` diz se a pessoa é aluna de
+    # verdade antes de o título de Banca abrir a Fila para ela, e a
+    # `identidade` traduz o e-mail no id opaco em que o perfil se pendura. A
+    # porta de máquina não consome nenhuma das duas: lá o Bearer diz quem
+    # chama, e cookie não chega.
+    consome: [alunos, identidade]
 
   forum:
     caminhos: [services/forum]

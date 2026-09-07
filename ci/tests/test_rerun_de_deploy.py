@@ -28,6 +28,7 @@ O que estes testes protegem, e por quê cada um existe:
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -999,3 +1000,383 @@ def test_o_failed_do_cancelado_continua_sendo_decidido_pela_TABELA(monkeypatch):
 
     assert falso.comandos[0] == ["gh", "run", "rerun", "1"]
     assert falso.comandos[1] == ["gh", "run", "rerun", "2", "--failed"]
+
+
+# --------- ancestralidade não é cobertura: a célula (armadilhas/359) ---------
+#
+# O FURO DA PRÓPRIA CURA. A 188 ensinou a vacina a perguntar "o que está
+# publicado contém o SHA deste run?" — e essa pergunta é de RUN, enquanto a
+# doença é de CÉLULA. O `deploy-celula` monta a matrix por DETECÇÃO DE DIFF
+# (`ci/ci.py --detectar-celulas`), então um deploy verde mais novo carrega o
+# commit do run doente por dentro e ainda assim não constrói a célula dele,
+# porque o push daquele deploy não tocou os arquivos dela.
+#
+# MEDIDO em 05-06/09/2026, com os números reais (armadilhas/359):
+#
+#   PR #1145 (mensageria)  sha 497f0cb9  -> deploy-celula CANCELADO
+#     -> a vacina decidiu NÃO repetir, e saiu verde
+#   PR #1146  sha 37b05b7c  -> deploy VERDE — jobs: detectar, portao, deploy (admin)
+#   PR #1147  sha 24aeb1c3  -> deploy VERDE — jobs: detectar, portao, deploy (admin)
+#   git merge-base --is-ancestor 497f0cb9 37b05b7c  ->  SIM
+#
+# Os dois verdes contêm o commit da `mensageria` e NENHUM dos dois tem o job
+# `deploy (mensageria)`. A célula nunca subiu, e três telas verdes disseram ao
+# mantenedor que estava tudo certo — o falso-verde da RETROSPECTIVA-FASE-D §1
+# dentro do mecanismo que existe para impedir falso-verde.
+#
+# As histórias abaixo põem `celulas_sem_publicacao` por `setattr`, e não no
+# construtor, pela mesma razão da TAR-029 (armadilhas/195): assim elas falam o
+# vocabulário do código ANTIGO, e o vermelho cai na ASSERÇÃO — "a vacina
+# dispensou o rerun sem olhar a célula" — em vez de num `TypeError` que só
+# provaria que o teste é novo.
+
+
+def _ja_publicado(sem_publicacao, **kwargs) -> vacina.Fatos:
+    """O SHA deste run JÁ está contido no que a esteira publicou.
+
+    É o ramo em que a vacina dizia "nada a repetir" desde a TAR-017 — e é o
+    único em que a cobertura de célula pode mudar a decisão: nos outros, ou ela
+    já repete, ou já para por divergência de histórico.
+    """
+    fatos = _cancelado(publicado_e_ancestral=False, head_ja_publicado=True, **kwargs)
+    fatos.celulas_sem_publicacao = sem_publicacao
+    return fatos
+
+
+def test_o_sha_ja_publicado_com_a_CELULA_de_fora_ainda_se_repete():
+    """O cenário exato de 05-06/09/2026: o commit chegou, a célula não."""
+    decisao = vacina.decidir(_ja_publicado(("mensageria",)))
+    assert decisao.acao == "repetir", (
+        "o commit está contido num deploy verde mais novo, mas nenhum deploy "
+        "construiu a `mensageria` desde então: dispensar o rerun aqui deixa a "
+        "célula fora do ar em silêncio (armadilhas/359)"
+    )
+    assert decisao.codigo == 0
+
+
+def test_o_motivo_NOMEIA_a_celula_que_ficou_de_fora():
+    """Sem o nome, quem lê o log não tem como conferir a decisão.
+
+    Foi exatamente a frase genérica — "o commit dele JÁ está no ar" — que fez o
+    desfecho parecer certo por um dia inteiro.
+    """
+    motivo = vacina.decidir(_ja_publicado(("mensageria",))).motivo
+    assert "mensageria" in motivo
+    assert "359" in motivo
+
+
+def test_o_sha_ja_publicado_com_TODAS_as_celulas_cobertas_nao_se_repete():
+    """A correção é ESTREITA: ela não pode virar "repete sempre".
+
+    Quando cada célula daquele push já tem um `deploy (<célula>)` verde, o
+    merge ESTÁ no ar, e repetir republicaria um mundo mais velho — o rollback
+    silencioso que a 188 proíbe.
+    """
+    decisao = vacina.decidir(_ja_publicado(()))
+    assert decisao.acao == "nada"
+    assert decisao.codigo == 0
+    assert "JÁ está no ar" in decisao.motivo
+
+
+def test_sem_saber_as_celulas_e_ERROR_e_nao_um_veredito_otimista():
+    """'Não medi' nunca vira 'já está no ar' (INV-CI01).
+
+    Este ramo devolvia 0 e silêncio. Devolver 0 sem ter medido a cobertura é
+    exatamente o desfecho que escondeu a `mensageria` — e um ERROR aqui vira
+    issue, que é alguém olhando.
+    """
+    decisao = vacina.decidir(_ja_publicado(None))
+    assert decisao.acao == "nada"
+    assert decisao.codigo == 2
+    assert "célula" in decisao.motivo
+
+
+def test_o_failure_por_timeout_atravessa_o_MESMO_portao_da_celula():
+    """Os dois jeitos de não chegar ao ar passam pela mesma pergunta.
+
+    O `failure` da 127 usa o mesmo `_a_republicacao_avanca` desde a TAR-041.
+    Se a cobertura de célula valesse só para o cancelado, a metade do gatilho
+    que acorda no vermelho continuaria dispensando o rerun sem olhar a célula.
+    """
+    fatos = _timeout(publicado_e_ancestral=False, head_ja_publicado=True)
+    fatos.celulas_sem_publicacao = ("pages",)
+    decisao = vacina.decidir(fatos)
+    assert decisao.acao == "repetir"
+    assert "pages" in decisao.motivo
+
+
+def test_a_regra_de_parada_vale_TAMBEM_quando_falta_celula():
+    """A vacina não pode girar para sempre atrás de uma célula que não sobe.
+
+    O caminho da `armadilhas/359` devolve `None` de `_a_republicacao_avanca` —
+    "pode repetir" — e quem conta as tentativas é o CHAMADOR. Isso funciona, e
+    é frágil de um jeito específico: se alguém um dia devolvesse a decisão de
+    repetir de dentro do próprio portão, para deixar a mensagem mais direta, o
+    contador ficaria fora do caminho e a vacina repetiria a cada gatilho, sem
+    fim. É o mesmo desenho que a TAR-029 já teve de consertar uma vez, quando
+    `MAXIMO_DE_TENTATIVAS` contava só em memória.
+
+    Medido antes de existir este guarda: com `tentativas_feitas=3` a decisão já
+    era `parar`/1. Ele congela isso.
+    """
+    decisao = vacina.decidir(_ja_publicado(("mensageria",), tentativas_feitas=3))
+    assert decisao.acao == "parar"
+    assert decisao.codigo == 1
+    assert decisao.pendencia, (
+        "quem para precisa deixar o texto que alcança o mantenedor: um deploy "
+        "que não chega ao ar não pode morrer no log de uma sessão encerrada"
+    )
+
+
+def test_o_repetir_por_ancestralidade_NAO_fala_de_celula():
+    """O caso-base da 188 não pode ganhar uma frase que não é dele.
+
+    Sem esta prova, bastaria escrever o texto da célula em todo `repetir` para
+    o teste de cima passar, e a vacina passaria a explicar o desfecho errado.
+    """
+    motivo = vacina.decidir(_cancelado()).motivo
+    assert "só AVANÇA" in motivo
+    assert "359" not in motivo
+
+
+# ----- as medições da cobertura, contra o mapa e o Actions de verdade -----
+
+
+def test_a_celula_sai_do_NOME_do_job_da_matrix():
+    """`deploy (mensageria)` é a única pista que a API dá.
+
+    Os `outputs` do job `detectar` não são expostos pelo `gh run view`, e um
+    run expulso da vaga de pendente morre sem job nenhum — o nome do job é o
+    que sobra, e ele carrega a célula porque a matrix se chama `celula`.
+    """
+    assert vacina.celula_do_job("deploy (mensageria)") == "mensageria"
+    assert vacina.celula_do_job("deploy (admin)") == "admin"
+    assert vacina.celula_do_job("detectar") == ""
+    assert vacina.celula_do_job("portao-de-deploy") == ""
+    assert vacina.celula_do_job("sincronizar") == "", (
+        "o job do deploy-infra não é célula: contá-lo faria a vacina exigir a "
+        "publicação de uma célula que aquela esteira nem constrói"
+    )
+
+
+def test_as_celulas_do_push_saem_do_MESMO_mapa_que_o_deploy_usa(monkeypatch):
+    """Nenhum fato mora em dois lugares (CLAUDE.md).
+
+    A matrix do `deploy-celula` vem de `celulas.yml` via
+    `mapa_de_celulas.celulas_do_diff`. Se a vacina tivesse a própria tabela de
+    caminhos, bastaria alguém mover uma pasta para as duas discordarem sobre
+    qual célula um merge toca — e a discordância decidiria um deploy.
+    """
+    monkeypatch.setattr(
+        vacina, "_rodar",
+        lambda *a, **k: (0, "services/mensageria/app.py\npainel/registros/x.js\n"),
+    )
+    assert vacina.celulas_do_push("a" * 40) == ("admin", "mensageria"), (
+        "`painel/` pertence à célula `admin` pelo mapa — é a mesma conta que o "
+        "job `detectar` faz no deploy"
+    )
+
+
+def test_o_git_que_falha_e_ERRO_de_medicao_e_nao_lista_vazia(monkeypatch):
+    """Lista vazia diria "este push não toca célula nenhuma" — e liberaria."""
+    monkeypatch.setattr(vacina, "_rodar", lambda *a, **k: (128, "bad object"))
+    with pytest.raises(vacina.ErroDeMedicao):
+        vacina.celulas_do_push("a" * 40)
+
+
+def test_a_cobertura_conta_o_que_o_PROPRIO_run_doente_publicou(monkeypatch):
+    """Célula que o run doente subiu antes de morrer não falta a ninguém.
+
+    Foi o que aconteceu no run 34001330286 depois do redisparo à mão:
+    `deploy (mensageria)` verde e `deploy (admin)` vermelho no MESMO run.
+    Exigir que ela apareça num deploy POSTERIOR mandaria a vacina repetir um
+    deploy que ninguém está esperando.
+    """
+    doente = "a" * 40
+    monkeypatch.setattr(
+        vacina, "_rodar",
+        lambda *a, **k: (0, json.dumps([{"databaseId": 1, "headSha": doente}])),
+    )
+    monkeypatch.setattr(vacina, "e_ancestral", lambda anterior, posterior: True)
+    monkeypatch.setattr(
+        vacina, "jobs_do_run",
+        lambda run: [{"name": "deploy (mensageria)", "conclusion": "success"},
+                     {"name": "deploy (admin)", "conclusion": "failure"}],
+    )
+
+    faltam = vacina.celulas_sem_publicacao(doente, ("admin", "mensageria"))
+
+    assert faltam == ("admin",)
+
+
+def test_o_deploy_posterior_que_nao_construiu_a_celula_NAO_a_cobre(monkeypatch):
+    """A prova do incidente inteiro, na medição e não só na tabela."""
+    doente = "a" * 40
+    monkeypatch.setattr(
+        vacina, "_rodar",
+        lambda *a, **k: (0, json.dumps([
+            {"databaseId": 2, "headSha": "b" * 40},   # o verde do PR #1146
+            {"databaseId": 1, "headSha": doente},     # o cancelado do PR #1145
+        ])),
+    )
+    monkeypatch.setattr(vacina, "e_ancestral", lambda anterior, posterior: True)
+    monkeypatch.setattr(
+        vacina, "jobs_do_run",
+        lambda run: ([{"name": "deploy (admin)", "conclusion": "success"}]
+                     if run == "2" else []),
+    )
+
+    faltam = vacina.celulas_sem_publicacao(doente, ("admin", "mensageria"))
+
+    assert faltam == ("mensageria",), (
+        "o verde mais novo publicou só a `admin`; a `mensageria` continua no "
+        "chão, e é isso que a ancestralidade do commit não enxerga"
+    )
+
+
+def test_a_cobertura_para_de_perguntar_assim_que_nada_falta(monkeypatch):
+    """Cada run custa uma chamada de rede; 30 delas por cancelamento é abuso."""
+    olhados: list[str] = []
+    monkeypatch.setattr(
+        vacina, "_rodar",
+        lambda *a, **k: (0, json.dumps(
+            [{"databaseId": n, "headSha": f"{n}" * 40} for n in range(1, 6)]
+        )),
+    )
+    monkeypatch.setattr(vacina, "e_ancestral", lambda anterior, posterior: True)
+
+    def _jobs(run):
+        olhados.append(run)
+        return [{"name": "deploy (admin)", "conclusion": "success"}]
+
+    monkeypatch.setattr(vacina, "jobs_do_run", _jobs)
+
+    assert vacina.celulas_sem_publicacao("a" * 40, ("admin",)) == ()
+    assert olhados == ["1"], f"olhou runs demais: {olhados}"
+
+
+# ------------------- o fio entre a colheita e a decisão ---------------------
+
+
+def test_a_colheita_PERGUNTA_pelo_sha_e_pela_esteira_DESTE_run(monkeypatch):
+    """Sem este fio, a tabela decidiria certo sobre um campo sempre vazio.
+
+    A asserção é sobre o que o CÓDIGO PERGUNTOU, não sobre o que o dublê
+    respondeu. Conferir o valor devolvido por um dublê montado neste mesmo
+    bloco deixaria o teste verde mesmo se a colheita chutasse a resposta sem
+    passar por lugar nenhum (`RETROSPECTIVA-FASE-D` §1) — e as duas perguntas
+    são justamente onde a TAR-029 já errou uma vez: medir o SHA de outro run,
+    ou a esteira errada, devolve a resposta de outra pergunta com cara de
+    certeza.
+    """
+    _sem_rede(monkeypatch, [])
+    perguntas: dict[str, object] = {}
+
+    def _push(sha, *a, **k):
+        perguntas["push"] = sha
+        return ("mensageria",)
+
+    def _cobertura(sha, alvo, workflow=None, *a, **k):
+        perguntas["cobertura"] = (sha, alvo, workflow)
+        return ("mensageria",)
+
+    monkeypatch.setattr(vacina, "celulas_do_push", _push)
+    monkeypatch.setattr(vacina, "celulas_sem_publicacao", _cobertura)
+    fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
+                         event="push", head_sha="a" * 40)
+    fatos.workflow = "deploy-celula"
+
+    vacina._colher_a_ancestralidade(fatos)
+
+    assert perguntas["push"] == "a" * 40, "a matrix medida tem de ser a DESTE run"
+    assert perguntas["cobertura"] == ("a" * 40, ("mensageria",), "deploy-celula.yml"), (
+        "a cobertura se mede contra o SHA deste run, com as células que ESTE "
+        "push precisava publicar, na esteira DESTE run (TAR-029)"
+    )
+    assert fatos.celulas_sem_publicacao == ("mensageria",)
+
+
+@pytest.mark.parametrize(
+    "esteira, celulas_esperadas, perguntas_esperadas",
+    [("deploy-celula", ("mensageria",), 1), ("deploy-infra", (), 0)],
+)
+def test_so_a_esteira_das_CELULAS_exige_cobertura(
+    monkeypatch, esteira: str, celulas_esperadas: tuple, perguntas_esperadas: int
+):
+    """O vazio do `deploy-infra` precisa vir da REGRA, não do cenário.
+
+    O `deploy-infra` publica o compose da VPS, não imagem de célula. Ele dispara
+    em `infra/**`, e todo PR deste projeto carrega um registro em `painel/**`,
+    que o mapa atribui à `admin` — medir cobertura de célula ali faria a vacina
+    exigir uma publicação da `admin` para liberar uma sincronização de
+    infraestrutura. É a TAR-029 outra vez: duas esteiras que publicam coisas
+    diferentes.
+
+    A mesma história roda DUAS vezes, mudando só a esteira. Uma asserção de
+    ausência sozinha ficaria verde por qualquer motivo — um dublê que nunca é
+    chamado, um ramo que nem foi alcançado (`armadilhas/266`). A linha do
+    `deploy-celula` é o controle: ela prova que este cenário SABE produzir
+    células, então o vazio da outra linha só pode vir da regra.
+    """
+    _sem_rede(monkeypatch, [])
+    perguntas: list[str] = []
+
+    def _push(sha, *a, **k):
+        perguntas.append(sha)
+        return ("mensageria",)
+
+    monkeypatch.setattr(vacina, "celulas_do_push", _push)
+    monkeypatch.setattr(
+        vacina, "celulas_sem_publicacao", lambda *a, **k: ("mensageria",)
+    )
+    fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
+                         event="push", head_sha="a" * 40)
+    fatos.workflow = esteira
+
+    vacina._colher_a_ancestralidade(fatos)
+
+    assert fatos.head_ja_publicado is True, (
+        "o cenário precisa CHEGAR ao ramo que decide, senão o vazio abaixo é "
+        "verdade por vacuidade e não prova regra nenhuma"
+    )
+    assert fatos.celulas_sem_publicacao == celulas_esperadas
+    assert len(perguntas) == perguntas_esperadas, (
+        "a esteira que não publica célula não pode nem gastar a medição"
+    )
+
+
+def test_a_medicao_que_estoura_vira_NAO_MEDI_e_nao_cobertura_completa(monkeypatch):
+    """Fail-closed na borda: um `gh` que falha não pode liberar o desfecho."""
+    perguntou: list[str] = []
+    _sem_rede(monkeypatch, perguntou)
+
+    def _estoura(*a, **k):
+        raise vacina.ErroDeMedicao("gh run list falhou")
+
+    monkeypatch.setattr(vacina, "celulas_do_push", _estoura)
+    fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
+                         event="push", head_sha="a" * 40)
+    fatos.workflow = "deploy-celula"
+
+    vacina._colher_a_ancestralidade(fatos)
+
+    assert fatos.celulas_sem_publicacao is None
+    assert vacina.decidir(fatos).codigo == 2
+
+
+def test_a_entrada_359_declara_ESTE_arquivo_como_sua_guarda():
+    """A entrada dizia "não construída aqui — TAR-210". Agora existe mecanismo.
+
+    Guarda contra a Classe 8 da RETROSPECTIVA-FASE-D: lição escrita que
+    envelhece apontando para uma tarefa que já foi feita.
+    """
+    entrada = (CI.parent / "armadilhas"
+               / "359-vacina-confere-ancestralidade-de-commit-nao-cobertura-de-celula.md")
+    texto = entrada.read_text(encoding="utf-8")
+    assert "test_rerun_de_deploy.py" in texto, (
+        "a entrada precisa apontar para o guarda que a mantém viva"
+    )
+    assert "não construída aqui" not in texto, (
+        "a solução foi construída na TAR-210: a entrada não pode continuar "
+        "dizendo que ninguém a mecanizou"
+    )
