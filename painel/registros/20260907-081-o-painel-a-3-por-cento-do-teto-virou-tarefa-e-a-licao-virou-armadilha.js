@@ -3,7 +3,7 @@
   tipo: "nota",
   quando: "2026-09-07",
   titulo: "A pagina do painel chegou a 97% do teto de tamanho: virou tarefa na fila (TAR-274), com o conserto ja desenhado",
-  detalhe: "A aba Prioridades (PR 1342) levou a pagina do painel a 290,4 KB de um teto de 300 KB. Ao passar do teto, o gerador se recusa a construir e a muralha reprova todo PR da casa. Medido: 25,2 KB sao linhas de comentario do arquivo de regras, que o navegador nao le. A TAR-274 (importancia 80) manda o gerador embutir as regras sem os comentarios, com guarda de equivalencia; o arquivo-fonte fica intacto. Este registro fica ambar ate a TAR-274 terminar: quem a fechar responde a ele. No mesmo PR nasceu a armadilha 391: guarda de ordenacao precisa de cenario em que o desempate contradiga a regra. PR 1345.",
+  detalhe: "A aba Prioridades (PR 1342) levou a pagina a 290,4 KB de um teto de 300 KB. Ao passar do teto, o gerador se recusa a construir e a muralha reprova todo PR da casa. Medido: 25,2 KB sao comentarios do arquivo de regras, que o navegador nao le. A TAR-274 manda embutir as regras sem os comentarios, com guarda de equivalencia. Fica ambar ate a TAR-274 terminar: quem a fechar responde a este registro. No mesmo PR nasceu a armadilha 391 (cenario de ordenacao). PR 1345.",
   autoridade: "sessao",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1345",
   verificado_em: "2026-09-07",
