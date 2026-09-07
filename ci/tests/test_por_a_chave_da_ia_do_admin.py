@@ -12,7 +12,17 @@ pior tipo de tempo que este projeto tem: o dele, no terminal, sem saber o que
 fazer com a tela. Por isso este guarda **roda o roteiro de verdade**, contra
 uma plataforma de mentira em `tmp_path`, em vez de afirmar coisas sobre o texto
 dele. É irmão de `ci/tests/test_por_a_chave_da_ia.py`, que faz o mesmo com o
-roteiro do fórum, e mede sete promessas:
+roteiro do fórum.
+
+O roteiro roda contra um DOCKER DE MENTIRA, e essa é a diferença que faz esta
+suíte medir a metade que importa. Até 07/09/2026 a plataforma de mentira não
+tinha o serviço `admin` no compose, então todos os casos saíam pela porta do
+"não há o que recarregar": recarregar a célula, conferir a chave dentro do
+container e o próprio `PRONTO` nunca eram executados por teste nenhum. Medido:
+apagando as 84 linhas finais do roteiro, a suíte continuava verde. É a metade
+que roda na VPS do mantenedor, e era a metade sem guarda.
+
+Ele mede oito promessas:
 
 1. **A chave NUNCA aparece na tela** (`armadilhas/090`). É o print de tela que o
    mantenedor manda ao agente para provar que funcionou que faz um segredo mudar
@@ -27,7 +37,12 @@ roteiro do fórum, e mede sete promessas:
    da ordem de leitura.
 5. **O resto do `admin.env` sobrevive inteiro** (`armadilhas/111`).
 6. **Env sem quebra de linha no fim não gruda a chave no último valor.**
-7. **O que ele escreve, o `provisionar-admin.sh` sabe preservar.** Esta é a
+7. **Só existe PRONTO com a chave dentro do container.** Recarregar que falhou,
+   container que não renasceu, chave que não chegou, chave do mesmo tamanho e
+   outro conteúdo, e pergunta sem resposta: os cinco terminam em
+   `PAROU POR SEGURANÇA` e código diferente de zero. Uma tela nunca diz PRONTO
+   e PAROU ao mesmo tempo.
+8. **O que ele escreve, o `provisionar-admin.sh` sabe preservar.** Esta é a
    promessa que nenhum dos dois arquivos consegue cumprir sozinho: aquele
    roteiro reescreve o `admin.env` INTEIRO e **para** diante de variável que não
    conhece. Ensinado pela metade, ele apagaria a chave e o robô analista ficaria
@@ -54,9 +69,20 @@ PROVISIONAMENTO = RAIZ / "infra" / "provisionar-admin.sh"
 # Uma chave de mentira com a FORMA da real, e um workspace de mentira.
 CHAVE = "sk-ant-api03-" + "N0tAr3alK3y" * 6
 OUTRA_CHAVE = "sk-ant-api03-" + "S3gundaCh4v3" * 5
+# Do MESMO tamanho da `CHAVE` e com outro conteúdo. Duas chaves da Anthropic
+# criadas na mesma conta têm o mesmo comprimento, e é por isso que o tamanho
+# não serve de prova de que a chave certa chegou ao container.
+CHAVE_DO_MESMO_TAMANHO = "sk-ant-api03-" + "0utr4Ch4v3X" * 6
 WORKSPACE = "wrkspc_de_teste"
 
-# O `admin.env` como o `provisionar-admin.sh` o escreve.
+# As duas variáveis que ESTE roteiro escreve, e nenhuma outra.
+VARIAVEIS_DO_ROTEIRO = {"ANTHROPIC_API_KEY", "ANTHROPIC_WORKSPACE_ID"}
+
+# O `admin.env` como o `provisionar-admin.sh` o escreve HOJE — as onze linhas,
+# com as duas da IA nascendo VAZIAS. Uma máquina recém-provisionada é assim
+# desde o PR #1332, e um fixture com as nove linhas antigas mediria um mundo
+# que não existe mais: nele as duas variáveis apareceriam como "novas" e a
+# asserção de que o roteiro não escreve mais nada passaria por sorte.
 ADMIN_ENV = (
     "DJANGO_SECRET_KEY=x\n"
     "DATABASE_URL=postgres://admin_user:senha@postgres:5432/admin_db\n"
@@ -67,6 +93,8 @@ ADMIN_ENV = (
     "ADMIN_EMAILS=dono@exemplo.com\n"
     "TOKENS_ACEITOS_PAGES=def456\n"
     "GITHUB_TOKEN_FILA=github_pat_naoereal\n"
+    "ANTHROPIC_API_KEY=\n"
+    "ANTHROPIC_WORKSPACE_ID=\n"
 )
 
 
@@ -109,21 +137,107 @@ def _plataforma(
     return raiz
 
 
-def _rodar(raiz: Path) -> subprocess.CompletedProcess:
+# O docker de mentira. Sem ele, `docker compose config --services` responderia
+# o que a máquina de quem roda a suíte tiver a dizer: com docker instalado, uma
+# coisa; sem docker, outra; e a metade do roteiro que recarrega a célula e
+# confere a chave DENTRO do container nunca rodaria em teste nenhum. É essa
+# metade que roda na VPS do mantenedor.
+#
+# Ele guarda estado em arquivos, e é isso que o faz medir em vez de afirmar: o
+# `up` só troca o id do container e só recarrega a chave quando de fato dá
+# certo. Um `up` que falha deixa o container ANTIGO de pé, com a chave antiga —
+# que é exatamente o desfecho que o roteiro precisa recusar.
+DOCKER_DE_MENTIRA = r"""#!/usr/bin/env bash
+[ "${1:-}" = "compose" ] || exit 0
+shift
+case "${1:-}" in
+  config)
+    printf '%s\n' ${DOCKER_FALSO_SERVICOS:-admin}
+    exit "${DOCKER_FALSO_CONFIG:-0}"
+    ;;
+  ps)
+    case " $* " in
+      *" -q "*) cat "$DOCKER_FALSO_ESTADO/id" ;;
+      *) printf 'NAME    IMAGE   STATUS\nadmin   admin   %s\n' "$(cat "$DOCKER_FALSO_ESTADO/estado")" ;;
+    esac
+    exit 0
+    ;;
+  up)
+    if [ "${DOCKER_FALSO_UP:-0}" -ne 0 ]; then
+      printf 'dependency failed to start: container plataforma-admin-1 is unhealthy\n' >&2
+      exit "${DOCKER_FALSO_UP}"
+    fi
+    if [ "${DOCKER_FALSO_RECRIA:-1}" -eq 1 ]; then
+      printf 'id-depois-%s\n' "$$" > "$DOCKER_FALSO_ESTADO/id"
+      if [ "${DOCKER_FALSO_CHAVE_FIXA+definida}" = "definida" ]; then
+        printf '%s' "$DOCKER_FALSO_CHAVE_FIXA" > "$DOCKER_FALSO_ESTADO/chave"
+      else
+        grep '^ANTHROPIC_API_KEY=' "$DOCKER_FALSO_ENV" | head -1 | cut -d= -f2- \
+          | tr -d '\r\n' > "$DOCKER_FALSO_ESTADO/chave"
+      fi
+    fi
+    printf 'Container plataforma-admin-1  Started\n'
+    exit 0
+    ;;
+  exec)
+    if [ "${DOCKER_FALSO_EXEC:-0}" -ne 0 ]; then
+      printf 'service "admin" is not running\n' >&2
+      exit "${DOCKER_FALSO_EXEC}"
+    fi
+    ANTHROPIC_API_KEY="$(cat "$DOCKER_FALSO_ESTADO/chave")" sh -c "${!#}"
+    exit $?
+    ;;
+esac
+exit 0
+"""
+
+
+def _docker(tmp_path: Path, raiz: Path, **ajustes: str) -> dict:
+    """Instala o docker de mentira e devolve o ambiente que o roteiro vê.
+
+    Sem ajuste nenhum ele é um docker que FUNCIONA: tem o serviço `admin`,
+    recria o container, e o container passa a ler o `admin.env` recém-escrito.
+    """
+    pasta = tmp_path / "docker-de-mentira"
+    pasta.mkdir(exist_ok=True)
+    executavel = pasta / "docker"
+    # Bytes, e não `write_text`: num Windows o modo texto trocaria cada quebra
+    # de linha por CRLF e o `bash` recusaria o roteiro com "\r: command not
+    # found", que é um erro que não se parece nada com a sua causa.
+    executavel.write_bytes(DOCKER_DE_MENTIRA.encode("utf-8"))
+    executavel.chmod(0o755)
+
+    estado = tmp_path / "estado-do-container"
+    estado.mkdir(exist_ok=True)
+    (estado / "id").write_text("id-antes\n", encoding="utf-8")
+    (estado / "estado").write_text("Up 3 minutes\n", encoding="utf-8")
+    # O container começa SEM a chave: é o mundo antes deste roteiro rodar.
+    (estado / "chave").write_text("", encoding="utf-8")
+
+    ambiente = dict(
+        os.environ,
+        PATH=str(pasta) + os.pathsep + os.environ.get("PATH", ""),
+        PLATAFORMA_DIR=str(raiz),
+        DOCKER_FALSO_ESTADO=str(estado),
+        DOCKER_FALSO_ENV=str(raiz / "env" / "admin.env"),
+    )
+    ambiente.update(ajustes)
+    return ambiente
+
+
+def _rodar(raiz: Path, ambiente: dict | None = None) -> subprocess.CompletedProcess:
     """Roda o roteiro SEM ARGUMENTO e com a entrada de teclado FECHADA.
 
     A entrada vazia não é detalhe do teste: é a asserção de que ele não pergunta
     nada. Um `read` que aparecesse aqui receberia fim-de-arquivo, e o roteiro
     gravaria valor vazio ou travaria — os dois desfechos reprovam.
 
-    A plataforma de mentira não tem serviço `admin` no compose, e isso é de
-    propósito: o roteiro tem um caminho declarado para quando não há o que
-    recarregar (grava o arquivo, avisa que não recarregou, e sai com 0). É o
-    mesmo caminho que rodaria numa VPS onde o docker mudou de nome, e ele
-    precisa ser o caminho testado. Assim o guarda não depende de haver docker na
-    máquina que roda a suíte.
+    Sem ambiente dito, ele roda contra um docker de mentira que FUNCIONA, e
+    assim cada caso desta suíte atravessa o roteiro inteiro, até a conferência
+    feita dentro do container.
     """
-    ambiente = dict(os.environ, PLATAFORMA_DIR=str(raiz))
+    if ambiente is None:
+        ambiente = _docker(raiz.parent, raiz)
     return subprocess.run(
         [_bash(), str(SCRIPT)],
         input="",
@@ -264,7 +378,16 @@ def test_sem_a_area_administrativa_provisionada_ele_para(tmp_path):
     [
         (None, "a linha da chave não existe no fórum"),
         ("", "a linha existe e está vazia (o fórum ainda não recebeu a chave)"),
-        ("sk-ant chave com espaço", "colada junto com outra coisa"),
+        # Sem acento nenhum, de propósito. Um caso escrito como "chave com
+        # espaço" reprovava pelo `ç` e não pelo espaço, e nesse disfarce a
+        # conferência podia acontecer DEPOIS de o roteiro apagar os espaços
+        # sozinho: aí ele gravava `sk-ant-api03-AAABBB` e dizia que estava tudo
+        # certo. O que se mede aqui é o valor CRU do arquivo.
+        ("sk-ant-api03-AAA BBB", "colada junto com outra coisa, com espaço no meio"),
+        (
+            "sk-ant-api03-AAA#comentario",
+            "o que parece comentário é parte do valor, e o resto seria truncado",
+        ),
         ("sk-ant-'; rm -rf /", "caractere que não é de chave"),
     ],
 )
@@ -296,7 +419,7 @@ def test_carregado_com_source_ele_recusa(tmp_path):
     )
     assert "PAROU POR SEGURANÇA" in r.stdout
     assert "AINDA_VIVO" in r.stdout, "o `return` não pode derrubar a sessão."
-    assert _valor(raiz, "ANTHROPIC_API_KEY") is None
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == "", "recusou e mesmo assim gravou."
 
 
 # ---------------------------------------------------------------------------
@@ -375,7 +498,237 @@ def test_a_copia_de_seguranca_nasce_antes_de_qualquer_edicao(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 4. OS DOIS ROTEIROS DO MESMO ENV, CONFERIDOS UM CONTRA O OUTRO
+# 4. A METADE QUE RODA NA VPS: RECARREGAR E CONFERIR DENTRO DO CONTAINER
+# ---------------------------------------------------------------------------
+# Escrever o arquivo é o passo fácil. O que decide se o robô analista fala ou
+# fica mudo é o container renascer e LER a chave, e é essa metade que o
+# mantenedor vê na tela. Cada caso aqui mede o CÓDIGO DE SAÍDA de verdade: um
+# roteiro que termina em zero é um roteiro que disse "deu certo".
+
+
+def _um_veredito_so(r) -> str:
+    """A tela nunca pode dizer duas coisas opostas para um leigo.
+
+    O roteiro tem TRÊS desfechos, e nenhum deles se mistura com outro:
+    `== PRONTO ==` com código 0, `(aviso: ...)` com código 0, e
+    `PAROU POR SEGURANÇA` com código 1.
+    """
+    tela = r.stdout + r.stderr
+    assert not ("== PRONTO ==" in tela and "PAROU POR SEGURANÇA" in tela), (
+        "a mesma tela disse PRONTO e PAROU POR SEGURANÇA. O mantenedor é leigo "
+        "em terminal: duas frases com veredito oposto na mesma tela fazem ele "
+        "escolher a que preferir ler."
+    )
+    if r.returncode == 0:
+        assert "PAROU POR SEGURANÇA" not in tela, "parou e mesmo assim saiu com 0."
+    else:
+        assert "== PRONTO ==" not in tela, "disse PRONTO e saiu com erro."
+        assert "PAROU POR SEGURANÇA" in tela, (
+            "saiu com erro sem dizer ao mantenedor o que houve e o que fazer."
+        )
+    return tela
+
+
+def test_o_caminho_bom_leva_a_chave_ate_dentro_do_container(tmp_path):
+    """O único desfecho verde: o container renasceu e leu a chave certa."""
+    raiz = _plataforma(tmp_path, workspace=WORKSPACE)
+
+    r = _rodar(raiz)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode == 0, tela
+    assert "== PRONTO ==" in tela
+    assert CHAVE not in tela
+
+
+def test_recarregar_que_falhou_nunca_vira_pronto(tmp_path):
+    """`docker compose up` recusando deixa o container ANTIGO de pé, e o `ps`
+    continua dizendo "Up". Ler só o `ps` é ler o container errado.
+
+    O container de mentira já está com a chave CERTA dentro, de propósito: sem
+    isso, quem recusaria seria a conferência da chave, e o código de saída do
+    `up` poderia ser jogado fora sem nenhum teste perceber. Aqui só ele pode
+    recusar, e recusar é o certo: o docker acabou de dizer que a célula não
+    subiu, e a área administrativa pode estar fora do ar neste momento.
+    """
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_UP="1")
+    (tmp_path / "estado-do-container" / "estado").write_text(
+        "Up 4 minutes (unhealthy)\n", encoding="utf-8"
+    )
+    (tmp_path / "estado-do-container" / "chave").write_text(CHAVE, encoding="utf-8")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+    assert "dependency failed to start" in tela, (
+        "o que o docker respondeu tem de aparecer na tela: é a única pista do "
+        "que houve, e o mantenedor manda essa tela ao agente."
+    )
+
+
+def test_container_que_nao_foi_recriado_diz_isso_ao_mantenedor(tmp_path):
+    """`up` pode devolver zero sem tocar em nada. Aí a chave está no arquivo e
+    fora do processo, e comparar o id antes e depois é a única medição que
+    distingue "recriado" de "nunca foi tocado" — que são dois problemas
+    diferentes, com conserto diferente, e chegariam ao agente com a mesma cara.
+    """
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_RECRIA="0")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+    assert "renasceu quando eu recarreguei? NAO" in tela, (
+        "a tela não disse a causa que o roteiro tinha medido."
+    )
+
+
+def test_container_que_renasceu_e_caiu_nunca_vira_pronto(tmp_path):
+    """O `--wait` pode ser satisfeito e o container morrer logo depois. Aí o
+    `docker compose ps` não diz "Up", e não dizer "Up" é a área administrativa
+    fora do ar neste momento."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz)
+    (tmp_path / "estado-do-container" / "estado").write_text(
+        "Exited (1) 2 seconds ago\n", encoding="utf-8"
+    )
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+
+
+def test_sem_o_sha256sum_desta_maquina_ele_nao_finge_que_conferiu(tmp_path):
+    """O resumo é a prova. Sem o programa que o calcula não há prova nenhuma, e
+    a ausência de prova nunca vira PRONTO."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz)
+    quebrado = tmp_path / "docker-de-mentira" / "sha256sum"
+    quebrado.write_bytes(b"#!/usr/bin/env bash\nexit 1\n")
+    quebrado.chmod(0o755)
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+    assert "sha256sum" in tela, "a mensagem tem de dizer o que faltou."
+
+
+def test_chave_que_nao_chegou_dentro_do_container_nunca_vira_pronto(tmp_path):
+    """O defeito mais caro que este roteiro já teve: o container leu zero
+    caracteres, a tela imprimiu um AVISO de rodapé e o roteiro terminou com
+    código 0. O mantenedor conclui que o robô analista está ligado."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_CHAVE_FIXA="")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+
+
+def test_chave_do_mesmo_tamanho_e_de_outro_conteudo_nunca_vira_pronto(tmp_path):
+    """Rodar de novo para acompanhar uma troca de chave é o caso NORMAL, e é
+    justamente nele que as duas chaves têm o mesmo comprimento."""
+    assert len(CHAVE_DO_MESMO_TAMANHO) == len(CHAVE), "o caso perdeu o sentido."
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_CHAVE_FIXA=CHAVE_DO_MESMO_TAMANHO)
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+    assert CHAVE not in tela and CHAVE_DO_MESMO_TAMANHO not in tela, (
+        "a conferência por resumo não pode virar um jeito novo de a chave "
+        "aparecer na tela (`armadilhas/090`)."
+    )
+    assert "renasceu quando eu recarreguei? sim" in tela, (
+        "aqui o container RENASCEU e mesmo assim leu outra chave. Confundir "
+        "isso com 'nem renasceu' manda o agente consertar a coisa errada."
+    )
+
+
+def test_conferencia_que_nao_pode_ser_feita_nunca_vira_pronto(tmp_path):
+    """Não conseguir perguntar ao container não é o mesmo que a resposta ser
+    boa. Um `exec` que falha é uma pergunta sem resposta."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_EXEC="1")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+
+
+def test_compose_ilegivel_nao_vira_diagnostico_falso(tmp_path):
+    """`docker compose config` também falha quando um `env_file` citado no
+    compose está faltando. Traduzir isso para "o serviço admin não está no
+    docker-compose.yml" é mandar o mantenedor procurar o problema errado."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_CONFIG="1")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode != 0, tela
+    assert "nao esta no docker-compose.yml" not in tela, (
+        "o roteiro afirmou uma causa que não mediu."
+    )
+
+
+def test_sem_o_servico_admin_no_compose_ele_avisa_e_o_arquivo_fica_certo(tmp_path):
+    """O desfecho amarelo, e ele é legítimo: não há o que recarregar, o arquivo
+    já está certo, e o próximo deploy relê o env sozinho."""
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_SERVICOS="postgres forum")
+
+    r = _rodar(raiz, ambiente)
+
+    tela = _um_veredito_so(r)
+    assert r.returncode == 0, tela
+    assert "aviso" in tela
+    assert "== PRONTO ==" not in tela, (
+        "sem recarregar não há como conferir dentro do container, e sem "
+        "conferir não há PRONTO."
+    )
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == CHAVE
+
+
+def test_o_arquivo_temporario_com_a_chave_nao_sobrevive_a_uma_interrupcao(tmp_path):
+    """`armadilhas/090`: entre a escrita e a troca existe um arquivo com a
+    chave dentro, em `env/`. Um Ctrl-C ali deixaria o segredo na máquina com um
+    nome que nenhuma mensagem cita, e nenhuma execução seguinte o apagaria."""
+    fonte = SCRIPT.read_text(encoding="utf-8")
+    assert re.search(r"^trap .*rm -f .*NOVO.* EXIT INT TERM", fonte, re.MULTILINE), (
+        "o arquivo temporário que carrega a chave não tem `trap`."
+    )
+    # E medido: o roteiro interrompido não deixa o arquivo para trás.
+    raiz = _plataforma(tmp_path)
+    ambiente = _docker(tmp_path, raiz, DOCKER_FALSO_EXEC="1")
+    _rodar(raiz, ambiente)
+    assert not list((raiz / "env").glob("admin.env.novo-*"))
+
+
+def test_a_prova_de_fora_nao_pergunta_a_producao(tmp_path):
+    """Um `curl` fixo para `https://meshcraft.top` mede PRODUÇÃO, rode o
+    roteiro onde rodar. Chamar isso de prova do que acabou de ser feito numa
+    outra máquina é medir o vizinho e assinar embaixo."""
+    fonte = SCRIPT.read_text(encoding="utf-8")
+    codigo = "\n".join(
+        linha for linha in fonte.splitlines() if not linha.lstrip().startswith("#")
+    )
+    assert "meshcraft.top" not in codigo, (
+        "o roteiro voltou a medir um endereço fixo. O que prova esta mudança é "
+        "o container desta máquina, medido por dentro."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 5. OS DOIS ROTEIROS DO MESMO ENV, CONFERIDOS UM CONTRA O OUTRO
 # ---------------------------------------------------------------------------
 # Esta é a promessa que nenhum dos dois arquivos cumpre sozinho, e ela é medida
 # do que o roteiro REALMENTE escreveu, não do que o texto dele diz escrever.
@@ -399,12 +752,20 @@ def test_o_provisionamento_sabe_de_tudo_que_este_roteiro_escreve(tmp_path):
             re.MULTILINE,
         )
     )
-    escritas = depois - antes
-    assert escritas == {"ANTHROPIC_API_KEY", "ANTHROPIC_WORKSPACE_ID"}, (
-        "o roteiro mudou o que escreve no env. Ensine os dois lados na mesma "
-        "edição, ou o provisionamento vai parar (ou apagar) na próxima vez."
+    assert depois == antes, (
+        "o roteiro mudou o conjunto de variáveis do env. Ensine os dois lados "
+        "na mesma edição, ou o provisionamento vai parar (ou apagar) na "
+        "próxima vez."
     )
+    # A máquina recém-provisionada nasce com as duas linhas VAZIAS, então o que
+    # prova o trabalho não é uma variável nova: é o VALOR delas e o fato de
+    # cada uma aparecer uma vez só.
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == CHAVE
+    assert _valor(raiz, "ANTHROPIC_WORKSPACE_ID") == WORKSPACE
+    assert _quantas(raiz, "ANTHROPIC_API_KEY") == 1
+    assert _quantas(raiz, "ANTHROPIC_WORKSPACE_ID") == 1
 
+    escritas = VARIAVEIS_DO_ROTEIRO
     fonte = PROVISIONAMENTO.read_text(encoding="utf-8")
     achado = re.search(r'^CHAVES_QUE_EU_GERO="([^"]*)"', fonte, re.MULTILINE)
     assert achado, "`provisionar-admin.sh` não declara `CHAVES_QUE_EU_GERO`."

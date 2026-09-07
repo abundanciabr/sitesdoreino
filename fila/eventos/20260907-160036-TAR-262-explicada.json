@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-160036-TAR-262-explicada",
+  "tarefa": "TAR-262",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:00:36+00:00",
+  "quem": "revisão do PR #1332 pelo revisor da casa, 07/09/2026",
+  "o_que_e": "O roteiro que o mantenedor cola na VPS para levar a chave da inteligencia artificial do forum ate a area administrativa. Hoje ele escreve PRONTO, ou termina calado com sucesso, em quatro situacoes em que a chave nao chegou ao seu destino.",
+  "o_que_muda": "O mantenedor passa a confiar na tela: ou ela diz PRONTO porque a chave chegou mesmo, conferida por dentro do container, ou ela para e diz o que fazer. Sem isso ele liga o robo analista achando que esta ligado, e a proxima tela que ele abrir vai estar quebrada sem ele saber por que.",
+  "exemplo": "É como o recibo do caixa eletronico dizer que o dinheiro saiu quando a gaveta nao abriu.",
+  "importancia": 82
+}

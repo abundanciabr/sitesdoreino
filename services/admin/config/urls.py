@@ -16,6 +16,7 @@ from apps.core.caixa import (
     travessia,
 )
 from apps.core.divida import divida_json
+from apps.core.fila_do_painel import fila_json
 from apps.core.editor_de_documentos import (
     documento_apagar,
     documento_arquivar,
@@ -175,6 +176,11 @@ urlpatterns = [
     # identidade, quantas estourou o tempo, quantas ela recusou, e a latência.
     # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
     path("painel/diag.json", diag_json, name="painel_diag"),
+    # Pelo mesmo motivo das duas linhas acima: a fila dos robôs chegando à aba
+    # "Prioridades" (`apps/core/fila_do_painel.py`, 07/09/2026) — medição do que
+    # o build já materializou, não arquivo em disco; a rota genérica abaixo
+    # responderia 404 por ela.
+    path("painel/fila.json", fila_json, name="painel_fila"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
     # O MAPA DO SITE (`apps/core/mapa_do_site.py`, 30/08/2026) — todo endereço
     # que a plataforma tem, numa página só, em português.
