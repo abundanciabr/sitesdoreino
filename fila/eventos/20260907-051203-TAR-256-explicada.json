@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-051203-TAR-256-explicada",
+  "tarefa": "TAR-256",
+  "evento": "explicada",
+  "quando": "2026-09-07T05:12:03+00:00",
+  "quem": "revisao do PR #1303 (o Mural, TAR-133) por sessao despacho-fila-2026-09-07: setimo problema achado, sobrou sem dono",
+  "o_que_e": "quando o Mural entrou no ar, o codigo passou a escrever numa coluna do banco chamada pista, que diz se um projeto veio da fila normal ou do Mural. So que ninguem no sistema hoje LE essa coluna: ela e escrita e fica parada, e a trava que deveria garantir que ela nunca minta so cobre metade dos casos",
+  "o_que_muda": "sem decidir isto, o banco carrega um dado que custa manutencao (duas travas para lembrar, uma migracao a mais) sem trazer nenhum beneficio, porque ninguem usa a informacao; e o caso mais perigoso (projeto na fila com a etiqueta do Mural) passa batido pela trava porque ela nao olha para ele",
+  "exemplo": "e como uma placa de sinalizacao pendurada numa parede que nenhum corredor passa: custa manutencao (pintar, trocar quando cai) e ninguem nunca olha para ela; ou ela serve para alguma coisa e passa a apontar para o lugar certo, ou ela sai da parede",
+  "importancia": 40
+}

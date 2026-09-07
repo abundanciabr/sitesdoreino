@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-051147-TAR-255-explicada",
+  "tarefa": "TAR-255",
+  "evento": "explicada",
+  "quando": "2026-09-07T05:11:47+00:00",
+  "quem": "revisao do PR #1303 (o Mural, TAR-133) por sessao despacho-fila-2026-09-07: nove problemas achados, quatro ja tinham dono, seis sobraram e viram esta tarefa",
+  "o_que_e": "o Mural (a tela onde o aluno pega um projeto de nivel intermediario ou avancado) acabou de entrar no ar, mas quem revisou o codigo depois do merge achou seis problemas que ninguem tinha visto: um teste que falha de vez em quando no computador do proprio mantenedor, um ponto onde uma correcao aparentemente obvia na verdade quebraria a negociacao no meio, um comentario no codigo que promete uma protecao que nao existe de verdade, uma mensagem de erro que diz ao aluno a coisa errada, dois testes que provam a si mesmos em vez de provar a regra, e uma tela que faz consultas demais ao banco a cada vez que abre",
+  "o_que_muda": "sem consertar: o teste que falha sozinho vai continuar confundindo quem tenta rodar a suite no proprio computador; o ponto fragil da reserva pode devolver ao Mural um projeto que ja tem proposta em andamento, o que e dinheiro e confianca do aluno em jogo; o aluno pode ver uma mensagem de erro errada bem na hora de tentar pegar um projeto; e a tela do Mural fica lenta a medida que crescem os projetos, porque cada abertura faz uma consulta ao banco por projeto na lista",
+  "exemplo": "e como uma prateleira de loja com a etiqueta de preco errada em seis produtos: ninguem percebeu na inauguracao, mas o primeiro cliente que tentar comprar um deles vai levar um susto, e o dono so descobre quando alguem reclama",
+  "importancia": 70
+}
