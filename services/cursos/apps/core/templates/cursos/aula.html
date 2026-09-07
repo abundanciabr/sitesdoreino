@@ -18,7 +18,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% block titulo %}{{ aula.titulo_exibido }}{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'mapa' %}">Mapa das portas</a>
+  <a href="{{ url_do_mapa }}">Mapa das portas</a>
   <span class="onde">{{ aula.titulo_exibido }}</span>
 {% endblock %}
 

@@ -14,6 +14,7 @@
 | `painel.html` | **GERADO** por `gerar_manifesto.js`: o template + as regras + o resumo, num arquivo só. Abrir o painel é **UM pedido**. Não guarda dado próprio: tudo é calculado dos registros. **Não mora no Git** desde 28/08/2026 — quem o constrói é a integração. | Só o gerador — e só a integração commita nada disso (ela não commita: constrói). |
 | `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
 | `livro-AAAAMM.js` | **GERADO**, um por mês. O conteúdo dos registros daquele mês, buscado só quando você abre a Memória. Mês fechado nunca mais é reescrito. **Não mora no Git** desde 28/08/2026. | Só o gerador. Nunca à mão. |
+| `areas.json` | **As seis áreas do site nas palavras do dono**, e que nomes de célula e de ramo pertencem a cada uma. Um lugar só: a aba Prioridades, a rota `fila.json` da área administrativa e o portão do pouso leem daqui. A ordem da lista é a ordem da tela; uma célula pertence a UMA área (o gerador reprova se aparecer em duas). | Por PR, com teste-guarda. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
 | `abrir-o-painel.cmd` | **Dois cliques** para ver o painel nesta máquina: monta os artefatos a partir do livro e abre a página. Fail-closed — sem Node, ele manda você para o painel do site em vez de abrir algo velho. | Por PR. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página) e monta `painel.html` + os meses. `--conferir` só confere (para CI). O nome ficou do tempo em que ele só escrevia um manifesto. | Por PR. |
@@ -70,6 +71,11 @@
   gravidade: "info",                    // vermelho | ambar | info | verde
   frente: null,                         // etiqueta do capítulo do "Meu mapa": site | comunidade | curso | vender | fabrica
                                         // (obrigatória em "frente" e em "rumo"; opcional e recomendada no resto)
+  area: null,                           // em que parte do SITE isto mexe: o NOME DO RAMO em que você trabalhou
+                                        // (o "painel" de agent/painel/aba-prioridades). Tem de ser um dos nomes
+                                        // de painel/areas.json; inventado, o gerador recusa. Opcional, e
+                                        // recomendado em TODO registro novo: é ele que põe o fato na área certa
+                                        // da aba Prioridades. Sem ele, a tela cai na `frente` e diz que caiu.
   vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
 
   // OS QUATRO DA DECISÃO — só fazem sentido com `precisa_do_dono: true`, e são
@@ -127,6 +133,18 @@
   nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
   A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
   ver, não para reordenar a fila pelas suas costas.
+- **Prioridades por área do site (07/09/2026):** a aba 🎯 mostra tudo que está
+  aberto agrupado pelas seis áreas de `painel/areas.json` (Alunos, Cursos,
+  Comunidade, Vendas, Seu painel, Infra e fábrica) e, dentro de cada uma, em
+  quatro grupos: o que só ele decide, o que está quebrado, a fila dos robôs e os
+  rumos com prazo. As áreas moram num arquivo só, lido por três leitores (esta
+  página, a rota `fila.json` da área administrativa e o portão do pouso), porque
+  o mesmo nome escrito em três lugares divergiria sozinho. **Um fato, um lugar:**
+  o pedido que também é âmbar aparece em "Decidir" e some de "Quebrado" na mesma
+  área, e as contagens do topo saem da mesma estrutura que desenha os blocos,
+  nunca de uma segunda contagem. O que a página não reconhece vai para "sem área
+  reconhecida", nunca some. A fila dos robôs é buscada uma vez, ao abrir a aba;
+  aberto por duplo clique, a tela diz que ela só chega pelo site.
 - **O tanque à vista:** a aba Operação mostra quanto o painel já ocupa dos tetos
   (página e resumo), em barra e em porcentagem. O teto sozinho só se manifesta no
   dia em que o gerador se recusa a construir — e aí o dono descobre pelo tranco.

@@ -162,6 +162,48 @@ h3 {
 
 .convite .entrar { margin: 22px 0 10px; }
 
+/* O catálogo: um cartão por curso, na mesma linguagem das portas. Só o botão
+   de entrar tem cor forte, porque é a única coisa que pede um clique. */
+.curso {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  padding: 28px 24px;
+}
+
+.curso h2 {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.curso .selo {
+  background: var(--verde-fraco);
+  border-radius: 999px;
+  color: var(--verde);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 1px 10px;
+}
+
+.curso .aulas { color: var(--tinta-fraca); margin: 0 0 8px; }
+
+.curso .entrar { margin: 16px 0 0; }
+
+.curso .entrar a {
+  background: var(--marca);
+  border-radius: 10px;
+  color: #fff;
+  display: inline-block;
+  font-weight: 600;
+  padding: 10px 18px;
+  text-decoration: none;
+}
+
+.curso.situacao-nao-e-seu, .curso.situacao-sem-produto { color: var(--tinta-fraca); }
+
 /* O vídeo embutido, na proporção de tela larga. */
 .quadro {
   aspect-ratio: 16 / 9;
