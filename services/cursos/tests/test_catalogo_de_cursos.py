@@ -166,7 +166,12 @@ def test_o_curso_sem_produto_apontado_diz_que_ninguem_entra(
     dublar_matricula(rede, ANA["email"])
     corpo = corpo_de(a_raiz(client))
     assert "ainda não está ligado às matrículas" in corpo
+    assert "Fale com a escola" in corpo
     assert O_BOTAO not in corpo
+    # O aviso do topo cala: esse curso pode ser o dela, e o cartão já explicou.
+    # Com as duas frases, a tela diria "não tem sala" e "tem sala, mas está
+    # fechada" uma embaixo da outra.
+    assert A_FRASE_SEM_SALA not in corpo
 
 
 def test_com_a_alunos_fora_do_ar_o_aviso_explica_e_nenhum_cartao_convida(
@@ -191,6 +196,72 @@ def test_com_a_alunos_fora_do_ar_o_aviso_explica_e_nenhum_cartao_convida(
     assert O_BOTAO not in corpo
     assert 'href="/profissional/"' not in corpo
     assert A_FRASE_DE_CURSO_ALHEIO not in corpo
+
+
+def test_o_site_sem_configurar_diz_que_nao_ha_curso_em_vez_de_quebrar(
+    env_dos_pares, rede, esqueleto, client, monkeypatch
+):
+    """Sem `SITE_ID` no env a célula não sabe de que escola é: o catálogo sai
+    vazio com a frase, e não com um erro 500 nem com o curso de outro site."""
+    monkeypatch.delenv("SITE_ID")
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"])
+    resposta = a_raiz(client)
+    assert resposta.status_code == 200
+    corpo = corpo_de(resposta)
+    assert A_FRASE_SEM_CURSO in corpo
+    assert cartoes(corpo) == 0
+
+
+def test_a_recusa_sem_resposta_no_curso_tenta_de_novo_no_mesmo_curso(
+    env_dos_pares, rede, esqueleto, client
+):
+    """Efeito colateral do catálogo, e a guarda dele: o "tente de novo" da
+    recusa `sem-resposta` aponta para a página que falhou. Antes do catálogo a
+    raiz era o próprio curso; agora é outra página, e mandar a pessoa para lá
+    seria trocar "tente de novo" por "vá para outro lugar"."""
+    dublar_sessao(rede, ANA)
+    rede.get(url_das_matriculas(ANA["email"])).mock(
+        side_effect=httpx.ConnectError("alunos caiu")
+    )
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 403
+    corpo = corpo_de(resposta)
+    assert "tente de novo" in corpo
+    assert 'href="/profissional/">tente de novo' in corpo
+
+
+def test_o_site_sem_configurar_diz_que_nao_ha_curso_em_vez_de_quebrar(
+    env_dos_pares, rede, esqueleto, client, monkeypatch
+):
+    """Sem `SITE_ID` no env a célula não sabe de que escola é: o catálogo sai
+    vazio com a frase, e não com um erro 500 nem com o curso de outro site."""
+    monkeypatch.delenv("SITE_ID")
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"])
+    resposta = a_raiz(client)
+    assert resposta.status_code == 200
+    corpo = corpo_de(resposta)
+    assert A_FRASE_SEM_CURSO in corpo
+    assert cartoes(corpo) == 0
+
+
+def test_a_recusa_sem_resposta_no_curso_tenta_de_novo_no_mesmo_curso(
+    env_dos_pares, rede, esqueleto, client
+):
+    """Efeito colateral do catálogo, e a guarda dele: o "tente de novo" da
+    recusa `sem-resposta` aponta para a página que falhou. Antes do catálogo a
+    raiz era o próprio curso; agora é outra página, e mandar a pessoa para lá
+    seria trocar "tente de novo" por "vá para outro lugar"."""
+    dublar_sessao(rede, ANA)
+    rede.get(url_das_matriculas(ANA["email"])).mock(
+        side_effect=httpx.ConnectError("alunos caiu")
+    )
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 403
+    corpo = corpo_de(resposta)
+    assert "tente de novo" in corpo
+    assert 'href="/profissional/">tente de novo' in corpo
 
 
 def test_a_escola_sem_curso_diz_isso_em_vez_de_uma_pagina_vazia(
