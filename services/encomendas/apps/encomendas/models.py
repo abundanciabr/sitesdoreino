@@ -1615,6 +1615,20 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
     # banco: sem esta linha, o mantenedor não conseguiria gravar o piso nem
     # quando o tivesse. Enquanto não houver linha, `negociacao.aviso_de_piso`
     # não avisa nada, e NUNCA bloqueia — bloquear seria decidir pelo aluno.
+    # A JANELA DA ESTIMATIVA DE ESPERA (degrau 2.7). Quantos dias de historico a
+    # conta de `apps/encomendas/espera.py` olha para medir o ritmo de encomendas
+    # do nivel de uma pessoa. Ela e parametro, e nao numero em codigo, pela mesma
+    # razao que todas as outras: a lei 3.8 nao abre excecao para "so um numero
+    # pequeno", e o guarda de constante magica de
+    # `tests/test_parametros_sao_dado.py` mede isso a cada PR.
+    #
+    # Janela curta demais devolve `null` na primeira semana morna; longa demais
+    # promete o ritmo do mes passado para a fila de hoje. Trinta dias e o mesmo
+    # tamanho que a `janela_dos_passes` ja usa, e o mantenedor muda por tela.
+    "janela_do_ritmo_da_espera": (
+        "dias",
+        "Dias de historico que a estimativa de espera olha",
+    ),
     "piso_por_nivel.iniciante": ("centavos", "Piso sugerido do nível iniciante"),
     "piso_por_nivel.intermediario": (
         "centavos",
