@@ -87,14 +87,17 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 #
-#    E aqui a data é a mais previsível de todas: a escada desta célula tem os
-#    degraus 2.2 a 2.14 pela frente, e três deles já sabem o nome da variável
-#    que vão pedir a este env — `TOKENS_ACEITOS_ADMIN` (a tela dos parâmetros
-#    do dono, degrau 2.14), `REDIS_STREAMS_URL` (o relay de eventos) e a lista
-#    de quem é do plantão (Fase 7). Cada uma é uma chance de o script apagar o
-#    que não conhece.
+#    A data era previsível e CHEGOU: o degrau 2.14 (07/09/2026) trouxe
+#    `TOKENS_ACEITOS_ADMIN` e `TOKENS_ESCRITA_ADMIN`, os dois graus do par com a
+#    tela `/admin/encomendas/parametros/`. Elas entram na lista abaixo e no
+#    heredoc, RELIDAS do arquivo vivo e regravadas iguais — nunca geradas aqui,
+#    porque quem alinha os dois lados do par é `provisionar-par-dos-parametros.sh`
+#    (`armadilhas/111`, o mesmo desenho de `TOKENS_ACEITOS_PAGES` no
+#    `provisionar-admin.sh`). Ainda faltam `REDIS_STREAMS_URL` (o relay de
+#    eventos) e a lista de quem é do plantão (Fase 7): cada uma é uma chance de
+#    o script apagar o que não conhece.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKENS_ACEITOS_ADMIN TOKENS_ESCRITA_ADMIN"
 
 # LITERAL, e não `$ENV_ENCOMENDAS`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script como
@@ -227,6 +230,21 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS)"
 [ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ALUNOS} -ge 32 ] || parar "o token do par encomendas->alunos ficou curto demais. Nada foi alterado."
 
+# OS DOIS GRAUS DO PAR COM A TELA DOS PARÂMETROS: RELIDOS do arquivo vivo, nunca
+# gerados aqui (ver a lista da trava, lá em cima). Quem alinha os dois lados é
+# `infra/provisionar-par-dos-parametros.sh`, e um roteiro que provisiona a
+# célula todo dia não é o lugar de gerar a credencial de outro par: o valor novo
+# ficaria de um lado só e a tela do dono levaria 401 sem nada explicando.
+# VAZIAS é resposta legítima e o roteiro não para por isso — sem elas a célula
+# sobe igual e só a tela do dono diz, em português, o que falta.
+if [ -f env/encomendas.env ]; then
+  T_ADMIN_LE="$(ler_de "$ENV_ENCOMENDAS" TOKENS_ACEITOS_ADMIN)"
+  T_ADMIN_GRAVA="$(ler_de "$ENV_ENCOMENDAS" TOKENS_ESCRITA_ADMIN)"
+else
+  T_ADMIN_LE=""
+  T_ADMIN_GRAVA=""
+fi
+
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
@@ -265,6 +283,8 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
+TOKENS_ACEITOS_ADMIN=$T_ADMIN_LE
+TOKENS_ESCRITA_ADMIN=$T_ADMIN_GRAVA
 ENV
 
 chown --reference="$ENV_REF" "$ENV_ENCOMENDAS" 2>/dev/null \
