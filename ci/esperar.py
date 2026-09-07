@@ -142,7 +142,10 @@ from sino_das_armadilhas import (  # noqa: E402
 # travessia cp1252 → utf-8 no Windows (a remedição nasceu inerte na única
 # máquina onde roda), e reescrever a mensagem lá mataria a remedição aqui sem
 # nenhum teste ficar vermelho. `armadilhas/328`.
-from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
+from mergear import (  # noqa: E402
+    MOTIVO_GITHUB_AINDA_CALCULANDO,
+    obrigatorios_faltando,
+)
 from espera import (  # noqa: E402
     FalhasSeguidas,
     GracaVencida,
@@ -410,6 +413,24 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
             pronta=True,
             resumo=f"checks REPROVADOS: {nomes}",
             dados={"verde": False, "run": runs[0] if runs else ""},
+        )
+    # Nada pendente e nada reprovado ainda NÃO é verde: falta saber se o
+    # universo está completo. Nos primeiros segundos de um PR o GitHub criou um
+    # check e ainda não criou os demais, e a espera antiga declarava verde ali —
+    # depois o portão recusava o pouso que ela mesma pedira (`armadilhas/366`).
+    # Quem responde é a lista do PRÓPRIO portão: dois julgamentos do mesmo fato
+    # divergiriam de novo. Enquanto um obrigatório não nasce o alvo NÃO
+    # APARECEU, e é a graça que decide quando isso deixa de ser fila e vira
+    # workflow renomeado, desabilitado, ou conflito com a main (armadilhas/150).
+    faltando = obrigatorios_faltando(rollup)
+    if faltando:
+        return Olhada(
+            pronta=False,
+            apareceu=False,
+            resumo=(
+                "o PR ainda está nascendo, sem sinal de "
+                + ", ".join(faltando)
+            ),
         )
     return Olhada(
         pronta=True,
@@ -891,10 +912,12 @@ def main(argv: list[str] | None = None) -> int:
                          "estouro", str(falha), chave_da_regua, voz.linhas)
         return 2
     except GracaVencida as falha:
+        visto = falha.olhada.resumo if falha.olhada else ""
         voz.desfecho(
             f"🔴 {dizendo}: o alvo nem APARECEU em {_fmt(args.graca)} — "
             "deletado, renomeado, nunca disparou, ou conflito com a main. "
             "Isso NÃO é fila: parei, investigue."
+            + (f" Última olhada: {visto}." if visto else "")
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
                          "nao-apareceu", str(falha), chave_da_regua, voz.linhas)

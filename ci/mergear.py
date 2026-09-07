@@ -270,6 +270,28 @@ def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
     return Resultado("conflitos", Estado.PASS, f"sem conflitos ({status})")
 
 
+def nome_do_check(check: dict[str, Any]) -> str:
+    """Como o GitHub nomeia um check: CheckRun usa `name`, StatusContext usa
+    `context`. Um nome lido de dois jeitos diferentes é um check invisível."""
+    return check.get("name") or check.get("context") or "(sem nome)"
+
+
+def obrigatorios_faltando(rollup: list[dict[str, Any]]) -> list[str]:
+    """Os `CHECKS_OBRIGATORIOS` que ainda NÃO NASCERAM neste PR.
+
+    Isto é a pergunta inteira — "o universo de checks está completo?" —, e ela
+    existe aqui, uma vez, porque o portão não é o único que precisa fazê-la. A
+    `ci/esperar.py --checks` chamava a pergunta menor ("sobrou algum
+    pendente?"), e nos primeiros segundos de um PR, com um check nascido
+    e os demais por nascer, a resposta honesta à pergunta menor era "nenhum": ela declarava
+    verde e pedia um pouso que este portão recusava em seguida
+    (`armadilhas/366`, PR #1189). Dois julgamentos do mesmo fato divergem no
+    primeiro dia em que alguém mexe num só, então há um julgamento só.
+    """
+    vistos = {nome_do_check(c) for c in rollup}
+    return [c for c in CHECKS_OBRIGATORIOS if c not in vistos]
+
+
 def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Um veredito por NOME de check — o da execução mais recente.
 
@@ -315,7 +337,7 @@ def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]
 
     por_nome: dict[str, dict[str, Any]] = {}
     for check in rollup:
-        nome = check.get("name") or check.get("context") or "(sem nome)"
+        nome = nome_do_check(check)
         atual = por_nome.get(nome)
         if atual is None:
             por_nome[nome] = check
@@ -348,10 +370,8 @@ def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
         ]
 
     resultados: list[Resultado] = []
-    vistos: set[str] = set()
     for check in rollup:
-        nome = check.get("name") or check.get("context") or "(sem nome)"
-        vistos.add(nome)
+        nome = nome_do_check(check)
         status = (check.get("status") or "").upper()
         # CheckRun usa `conclusion`; StatusContext usa `state`.
         conclusao = (check.get("conclusion") or check.get("state") or "").upper()
@@ -408,7 +428,7 @@ def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
                 )
             )
 
-    faltando = [c for c in CHECKS_OBRIGATORIOS if c not in vistos]
+    faltando = obrigatorios_faltando(rollup)
     if faltando:
         resultados.append(
             Resultado(

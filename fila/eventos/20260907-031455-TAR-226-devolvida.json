@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260907-031455-TAR-226-devolvida",
+  "tarefa": "TAR-226",
+  "evento": "devolvida",
+  "quando": "2026-09-07T03:14:55+00:00",
+  "quem": "sessao-ci-espera-obrigatorios",
+  "detalhe": "a bancada que reivindicou as 03:01 UTC morreu sem escrever uma linha: sem processo vivo, sem ramo com codigo, sem transcript. Devolvida para ser retomada agora"
+}

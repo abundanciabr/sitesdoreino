@@ -33,7 +33,10 @@ from espera import (  # noqa: E402
     vigiar,
 )
 from esperar import ESPERAS_QUE_NAO_DEVIAM_EXISTIR  # noqa: E402
-from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
+from mergear import (  # noqa: E402
+    CHECKS_OBRIGATORIOS,
+    MOTIVO_GITHUB_AINDA_CALCULANDO,
+)
 
 ESPERAR = RAIZ_DO_REPO / "ci" / "esperar.py"
 
@@ -259,6 +262,18 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     )
 
 
+# Um PR de verdade nasce com vários checks (sete, contados no PR #1273 em
+# 07/09/2026), e todo obrigatório do portão está entre eles. Montar as cenas verdes A PARTIR dessa lista é o que impede uma
+# fixture de voltar a descrever o universo de um check só que a `armadilhas/366`
+# custou — e faz o obrigatório novo aparecer aqui no dia em que alguém o
+# acrescentar lá, em vez de no dia em que um PR pousar sem ele.
+def _todos_verdes(**extra) -> list[dict]:
+    return [
+        {"status": "COMPLETED", "conclusion": "SUCCESS", "name": nome, **extra}
+        for nome in CHECKS_OBRIGATORIOS
+    ]
+
+
 def test_autoteste_fala_as_tres_linhas_e_morre_no_teto(tmp_path):
     proc = _rodar(["--autoteste"], tmp_path)
     assert proc.returncode == 0, proc.stderr
@@ -341,9 +356,7 @@ def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
     proc = _rodar(
         ["--checks", "447", "--teto", "1", "--intervalo", "0.05"],
         tmp_path,
-        gh_respostas=[{"state": "OPEN", "statusCheckRollup": [
-            {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
-        ]}],
+        gh_respostas=[{"state": "OPEN", "statusCheckRollup": _todos_verdes()}],
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "verdes" in proc.stdout
@@ -430,9 +443,7 @@ def test_regua_ausente_diz_nao_sei_nunca_inventa_numero(tmp_path):
 # ---------------------------------------------------------------------------
 # --e-pousar: o caminho inteiro num comando (03/09/2026)
 # ---------------------------------------------------------------------------
-VERDE = [{"state": "OPEN", "statusCheckRollup": [
-    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
-]}]
+VERDE = [{"state": "OPEN", "statusCheckRollup": _todos_verdes()}]
 VERMELHO = [{"state": "OPEN", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas"},
 ]}]
@@ -467,6 +478,48 @@ def test_checks_reprovados_com_e_pousar_nunca_chamam_o_portao(tmp_path):
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert not (tmp_path / "portao-chamado.txt").exists(), "chamou o portão no vermelho"
     assert "REPROVADO" in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# Verde exige o universo COMPLETO de checks obrigatórios (armadilhas/366)
+# ---------------------------------------------------------------------------
+# Nos primeiros segundos de um PR o GitHub já criou UM check e ainda não criou
+# os demais. A espera antiga perguntava "sobrou algum pendente?", ouvia
+# "nenhum" e declarava verde sobre um universo de um — depois o portão recusava
+# o pouso que ela mesma acabara de pedir. Quem responde agora é a lista do
+# portão, e enquanto um obrigatório não nascer a espera continua esperando.
+NASCENDO = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+]}] * 40
+
+
+def test_um_obrigatorio_por_nascer_nunca_e_verde_e_nunca_pede_pouso(tmp_path):
+    """A cena do PR #1189: `muralhas` verde, `ci-celula-gate` ainda não existe."""
+    proc = _rodar(
+        ["--checks", "1189", *RAPIDO, "--graca", "2", "--e-pousar"],
+        tmp_path, gh_respostas=list(NASCENDO), mergear_exit=0,
+    )
+    saida = proc.stdout + proc.stderr
+    assert "todos os 1 checks verdes" not in saida, "declarou verde sobre um universo de um"
+    assert proc.returncode == 2, saida
+    assert not (tmp_path / "portao-chamado.txt").exists(), "pediu pouso que o portão recusaria"
+    # O obrigatório que nunca nasce é o caso da graça: workflow renomeado,
+    # desabilitado, ou conflito com a main. O desfecho tem de dizer QUAL faltou
+    # — mandar investigar sem dizer o quê é a espera muda de outra maneira.
+    assert "nem APARECEU" in saida, saida
+    assert "ci-celula-gate" in saida, "não disse QUAL obrigatório ainda falta"
+
+
+def test_o_obrigatorio_que_nasce_no_meio_da_espera_fecha_o_verde(tmp_path):
+    """E quando o retardatário nasce verde, a espera fecha e o pouso sai — a
+    cura não pode ter trocado o falso-verde por uma espera que nunca termina."""
+    proc = _rodar(
+        ["--checks", "1189", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=[NASCENDO[0], VERDE[0]], mergear_exit=0,
+    )
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 0, saida
+    assert (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8") == "1189 --pousar"
 
 
 def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
@@ -662,10 +715,9 @@ def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):
 # Partida, batimento e placar continuam existindo — mudam de cano (stderr) e
 # ficam guardados no log da espera, que é onde a auditoria os lê.
 # ---------------------------------------------------------------------------
-VERDE_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
-    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
-     "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
-]}]
+VERDE_COM_RUN = [{"state": "OPEN", "statusCheckRollup": _todos_verdes(
+    detailsUrl="https://github.com/dona/loja/actions/runs/8899/job/1"
+)}]
 VERMELHO_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas",
      "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},

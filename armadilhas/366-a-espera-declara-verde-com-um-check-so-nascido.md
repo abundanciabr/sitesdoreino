@@ -1,13 +1,14 @@
 ---
 schema_version: 2
 armadilha: 366
-estado: documentada
+estado: guardada
 degrau: 2
 confianca: alta
 custo_por_queda: baixo
 guarda:
-  tipo: nenhum
-  motivo: o `ci/esperar.py --checks` mede "todos os que EXISTEM completaram" e não tem, hoje, a lista de checks obrigatórios que o `ci/mergear.py` exige — são dois julgamentos do mesmo fato, e só o segundo é completo. Fechar o buraco é ensinar a espera a esperar os obrigatórios NASCEREM (a lista já está no portão), e isso é conserto em `ci/`, caminho CODEOWNERS. Enquanto ele não existir, o que segura é o próprio portão recusar o pouso — nenhum PR entra por causa desta falha, só se perde o pedido
+  tipo: teste
+  detector: ci/tests/test_espera.py::test_um_obrigatorio_por_nascer_nunca_e_verde_e_nunca_pede_pouso
+  motivo: a espera deixou de fazer a pergunta menor. Quem responde "o universo de checks está completo?" é `obrigatorios_faltando()`, uma peça só, em `ci/mergear.py`, chamada pelo portão E pela espera, e as cenas verdes do teste são montadas a partir de `CHECKS_OBRIGATORIOS` — um obrigatório novo aparece nelas no dia em que for acrescentado lá, não no dia em que um PR pedir pouso sem ele
 sinal:
   - `todos os 1 checks verdes`
   - `ERROR checks obrigat[óo]rios`
@@ -50,24 +51,25 @@ portão recusou, que é o desenho funcionando: a espera é conveniência, o port
 O caso vizinho JÁ era tratado: a espera reconhece **zero** checks e aponta a
 `armadilhas/150` (conflito com a main). O buraco é o "poucos", não o "nenhum".
 
-**Solução, hoje.** Se a espera devolver verde em menos de meio minuto, ou citar
-um número de checks menor que o normal do repositório (sete, em 09/2026), NÃO
-trate como verde: confira quantos existem e arme de novo.
-
-```bash
-gh pr checks <N>                    # quantos nasceram até agora
-gh run list --branch <ramo> --limit 10 --json name,status,conclusion
-```
-
-Com todos nascidos, a mesma espera de sempre resolve, e o pouso sai:
+**Solução.** Feita em 07/09/2026 (TAR-226): a pergunta virou uma peça só.
+`obrigatorios_faltando(rollup)` mora em `ci/mergear.py`, ao lado da lista que
+ela lê, e é chamada pelos DOIS — o portão, para recusar o merge, e a espera,
+para continuar esperando. Enquanto um obrigatório não nasce, a espera trata o
+alvo como AINDA NÃO APARECIDO: é a graça (5 min) que decide quando isso deixa de
+ser fila e vira workflow renomeado, desabilitado ou conflito com a main
+(`armadilhas/150`), e o desfecho diz QUAL check faltou. O comando do rito não
+mudou, e agora ele basta:
 
 ```bash
 python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
 ```
 
-**Solução definitiva** (registrada na fila): ensinar `ci/esperar.py` a esperar
-os checks OBRIGATÓRIOS nascerem, usando a mesma lista que o `ci/mergear.py` já
-conhece. Enquanto forem dois julgamentos separados do mesmo fato, eles vão
-divergir de novo — é a Classe do "falso-verde por universo incompleto", a mesma
-que já mordeu esta casa no H13 (os greens históricos do deploy-celula) e na
-regra de nunca ler veredito de run pelo exit de um pipe.
+**O que se fazia antes da cura, e não é mais preciso:** desconfiar do verde que
+chegava em menos de meio minuto, contar os checks nascidos com `gh pr checks <N>`
+e armar a espera outra vez.
+
+**A classe, que continua valendo.** Dois julgamentos separados do mesmo fato
+divergem no primeiro dia em que alguém mexe num só. É o falso-verde por universo
+incompleto, a mesma classe que já mordeu esta casa no H13 (os greens históricos
+do `deploy-celula`) e na regra de nunca ler veredito de run pelo exit de um pipe.
+A cura, sempre, é a pergunta morar em um lugar só.
