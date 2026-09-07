@@ -361,7 +361,7 @@ decisão de 22/08 e entram desenhados.
 | **13. O fechamento do ciclo** | A tela do fechamento das 12 semanas: a meta e o porquê; as medidas de direção previram?; **o que paramos de fazer** (registro `decisao` obrigatório: sem ele o ciclo não fecha); a meta seguinte gravada no cartão e no livro; a fase da escola recalculada dos portões (§6.5). **O guarda deste degrau é o teste do laço inteiro** (quinto documento §81): um cenário automatizado que percorre ciclo ativo, meta, medidas de direção, medição, restrição detectada, experimento, semana aberta, tarefa gerada, tarefa executada, semana encerrada, aprendizado registrado e placar atualizado. Os pedaços já são testados; o laço, não. | 3, 10 | 3, 10 |
 | **14. A matemática** ❄ | A razão de receita (taxa, imposto, reembolso, custo variável) e as equações por camada; os oito cartões do placar de doze que dependem de venda acendem. Desenhado agora, aceso só quando o site vender. | contratos de pagamento | 7, e a ordem dele |
 | **15. A fila de próxima ação** | Regra por dimensão, versionada; roteador automação, humano ou robô; tarefas no balcão; "sucesso do aluno antes de venda" como guarda; tetos de contato como parâmetro com dono. | `mensageria/apps/jornadas`, `fila/` | 9, 3 |
-| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum vai usar. | o livro, a chave da Anthropic (pendência dele) | 5, 11, 12 |
+| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum JÁ usa. | o livro; a chave da Anthropic, que **já existe e responde em produção desde 02/09/2026** (não é pendência dele; ver §10 item 5) | 5, 11, 12 — **os três no ar, então este degrau está LIVRE: TAR-250** |
 | **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | nada | 13 |
 | **18. Integrações de fora** | Gasto de anúncio e alcance por API em vez de digitado; WhatsApp pela API oficial. | nada | credenciais e plano pago: **passo do mantenedor** |
 | **19. O grafo causal** | A tarefa da fila passa a declarar QUE NÚMERO ela move (ou a declarar-se `manutencao`, o `whirlwind` do documento); o painel ganha o caminho de volta, de um número para as tarefas que trabalham nele. O guarda do degrau é o teste do §97 do quinto documento: de uma tarefa se chega ao número, e do número se volta às tarefas. | `fila/`, `ci/fila.py`, `painel/cartoes/`, `painel/logica.js` | 0 (não depende de célula nova nem de venda) |
@@ -406,15 +406,36 @@ número só e vira uma cabine na primeira semana.
 Cada item vira registro de `pendencia` no PR do degrau que o exige, e a caixa
 "precisa de você" o cobra. Nenhum é bloqueio dos degraus 1 a 6.
 
+**ESTA LISTA NÃO É A FONTE, e quem a ler precisa saber disso** (`armadilhas/388`,
+escrita depois que ela custou um pedido à toa ao mantenedor em 07/09/2026). A
+fonte do que espera por ele é o LIVRO: registro `pendencia` com
+`precisa_do_dono: true`, que se fecha sozinho quando chega a `resposta`. Esta
+lista aqui não se fecha sozinha, e por isso envelhece. **Antes de pedir
+qualquer coisa dela a ele, confira no livro se ele já fez:**
+`grep -rli "<a coisa>" painel/registros/`.
+
 1. **A meta do mês fixada à mão**, quando quiser (`alvo_do_mes` no cartão
    `compras-no-mes`); até lá a tela deriva da linha reta (setembro: 131;
    outubro: 151).
 2. **O nome definitivo da célula de medição** (nome de trabalho `metricas`).
    Degrau 7.
 3. **A restrição confirmada**, toda semana, por registro. Degrau 1.
-4. **"Como você conheceu a escola?"** no pedido de entrada é Rito de Contrato:
-   sessão com ele presente. Degrau 8.
-5. **A chave da Anthropic** (já pendente para o fórum). Degrau 16.
+4. ~~**"Como você conheceu a escola?"** no pedido de entrada~~ **MORTO, e não
+   volta.** Ele recusou em 05/09/2026 (a pergunta pertence ao checkout, que está
+   congelado) e reafirmou em 07/09: *"a pessoa nunca irá responder nada"*. Na
+   mesma sessão fechou também o substituto: o tráfego pago chega pela página de
+   venda, que responde 404, então **a Meta e o Google seguem contando campanha e
+   criativo, e o site não constrói medição de origem agora** (registro
+   `20260907-057`). O cartão `vindos-por-indicacao` só acende com um programa de
+   indicação em que cada aluna tenha o próprio link.
+5. ~~**A chave da Anthropic**~~ **JÁ FOI FEITA em 02/09/2026, não peça de
+   novo.** Registros `20260902-046` (o script imprimiu `== PRONTO ==` na VPS),
+   `20260902-048` (a IA respondeu de verdade, três `POST` com 200 em produção) e
+   `20260905-090` (a chave chegou também à célula `cursos`). Esta linha passou
+   cinco dias mentindo e escondeu que **o degrau 16 estava livre**. O que falta
+   para ele é de máquina, não do mantenedor: levar a mesma chave de
+   `env/forum.env` para `env/admin.env`, no molde de
+   `infra/abrir-a-sala-de-aula.sh`. Tarefa **TAR-250**.
 6. **A API oficial do WhatsApp** e as credenciais de anúncio. Degrau 18.
 7. **A ordem de vender**, que descongela o degrau 14. Sem prazo, por decisão dele.
 8. **A professora como leitora do painel** (com os mesmos poderes, ou só
