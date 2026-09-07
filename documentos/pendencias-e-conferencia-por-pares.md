@@ -45,6 +45,7 @@ Só a última tem contador, e no dia em que este plano foi escrito ela marcava
 - **133 alunos ativos**, que é quem tem acesso à área de alunos agora.
 - **9 pessoas aguardando aprovação** neste momento, ou seja, a primeira linha da Central já tem trabalho de verdade esperando.
 - 4 recusados, e zero pausados, ex-alunos ou reembolsados.
+- **132 desses alunos estão matriculados em "Primeiros Dólares com Roblox"**, que é o curso que ensina o portfólio. Medido no mesmo dia, pela saída do script que gravou as matrículas. Esse é o tamanho máximo da fila de conferência: até 132 portfólios, e hoje só você para conferir.
 
 Esse número mora no sistema, em `/admin/escola/alunos/` e em `/admin/placar/`, e
 é lá que ele se confere. Não se confere em arquivo nenhum do computador: a lista
