@@ -11,7 +11,9 @@ porta.
 (a MESMA pasta que `apps.core.robos` já serve) e traduz com as MESMAS funções
 que `robos.py` já tem: `e_deste_grupo`/`COLUNAS` decidem a situação,
 `importancia_declarada`/`selo_da_importancia` decidem o selo,
-`onde_isso_mexe`/`area_do_toca` decidem o lugar. Reescrever qualquer uma delas
+`onde_isso_mexe`/`area_do_toca` decidem o lugar, e `prompt_para_tocar` escreve
+o pedido que o dono cola no Claude Code (só na tarefa que um robô NOVO pode
+pegar: nas outras o campo vem `None`). Reescrever qualquer uma delas
 aqui seria a segunda definição que a lei anti-duplicação do `CLAUDE.md` proíbe
 — as duas divergiriam no primeiro caso de borda (`armadilhas/379`).
 
@@ -82,6 +84,14 @@ def _tarefa_para_o_painel(tarefa_id: str, dados: dict, celula_para_area: dict) -
         "onde": robos.onde_isso_mexe(toca),
         "o_que_muda": dados.get("o_que_muda"),
         "motivo": dados.get("motivo"),
+        # `ranqueada` marca o único grupo em que tocar faz sentido (o "na fila"
+        # de `robos.COLUNAS`). Nos demais um robô já está com a tarefa, ou ela
+        # espera o dono: o prompt abriria uma segunda sessão no mesmo trabalho.
+        "prompt": (
+            robos.prompt_para_tocar(tarefa_id, toca)
+            if grupo and grupo.get("ranqueada")
+            else None
+        ),
     }
 
 
