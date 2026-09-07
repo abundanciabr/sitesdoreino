@@ -142,7 +142,13 @@ from sino_das_armadilhas import (  # noqa: E402
 # travessia cp1252 → utf-8 no Windows (a remedição nasceu inerte na única
 # máquina onde roda), e reescrever a mensagem lá mataria a remedição aqui sem
 # nenhum teste ficar vermelho. `armadilhas/328`.
+#
+# `CHECKS_OBRIGATORIOS` vem pelo mesmo motivo (07/09/2026): a lista de checks
+# que TÊM de existir em todo PR é uma só, e ela mora no portão. Copiada aqui,
+# um check obrigatório novo lá nasceria invisível para a espera — e a espera
+# voltaria a chamar de verde um PR que o portão recusa.
 from mergear import (  # noqa: E402
+    CHECKS_OBRIGATORIOS,
     MOTIVO_GITHUB_AINDA_CALCULANDO,
     mais_recente_por_nome,
 )
@@ -379,10 +385,48 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
 
 
 def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
+    """As DUAS perguntas do portão antes de qualquer verde (07/09/2026).
+
+    Até esta data esta função dizia "todos os N checks verdes" quando todos os
+    checks QUE EXISTIAM NAQUELE INSTANTE estavam verdes — e num PR em conflito
+    isso é verdade e é inútil. O GitHub só monta o merge ref (a fusão hipotética
+    do PR com a base) quando não há conflito, e sem ele NENHUM workflow de
+    `pull_request` nasce: os obrigatórios não ficam pendentes, eles não existem.
+    Sobram os de `pull_request_target`, que rodam a partir da base e ficam
+    verdes na hora (`armadilhas/198`).
+
+    Medido no PR #1020 em 04/09/2026: "todos os 1 checks verdes · levou 16s", e
+    em seguida o pedido de pouso. Quem salvou a rodada foi `ci/mergear.py`, que
+    é independente e mede outra coisa — o falso-verde estava aqui, no caminho
+    crítico, na única medição que muitos despachos olham.
+
+    A cura é fail-closed e são as mesmas duas perguntas do `--conferir`, nesta
+    ordem: o PR conflita com a base? os checks obrigatórios existem? Ausência de
+    evidência não é evidência de sucesso (INV-CI01).
+    """
     dados = _gh_json(
-        gh, ["pr", "view", pr, "--json", "statusCheckRollup,state", "-R", repo]
+        gh,
+        ["pr", "view", pr, "--json", "statusCheckRollup,mergeable", "-R", repo],
     )
-    bruto = dados.get("statusCheckRollup") if isinstance(dados, dict) else None
+    if not isinstance(dados, dict):
+        dados = {}
+    # Pergunta 1. Só `CONFLICTING` para aqui, e de propósito: é o único valor
+    # que significa "conflita". `UNKNOWN` é o GitHub ainda calculando, e quem
+    # decide sobre ele é o portão, que já remede seis vezes antes de desistir —
+    # transformá-lo em espera aqui inventaria um segundo lugar para o mesmo PR
+    # morrer, com menos informação.
+    if str(dados.get("mergeable") or "").upper() == "CONFLICTING":
+        return Olhada(
+            pronta=True,
+            resumo=(
+                f"o PR {pr} CONFLITA com a base, e a saída é `git fetch origin "
+                "&& git merge origin/main`: sem merge ref nenhum workflow de "
+                "pull_request nasce, e os checks obrigatórios NUNCA vão aparecer "
+                "(armadilhas/198)"
+            ),
+            dados={"verde": False},
+        )
+    bruto = dados.get("statusCheckRollup")
     if not isinstance(bruto, list) or not bruto:
         # armadilhas/150: "no checks reported" quase sempre é conflito com a main
         return Olhada(
@@ -419,6 +463,22 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
             pronta=True,
             resumo=f"checks REPROVADOS: {nomes}",
             dados={"verde": False, "run": runs[0] if runs else ""},
+        )
+    # Pergunta 2. Verde do que existe não é verde: um PR cujo workflow foi
+    # renomeado, desabilitado ou nem disparou tem exatamente esta cara. Enquanto
+    # o obrigatório não aparece o alvo NÃO apareceu, e é a graça que mata a
+    # espera — com a frase que já ensina o que investigar, em vez do teto mudo.
+    vistos = {str(c.get("name") or c.get("context") or "") for c in rollup}
+    faltando = [c for c in CHECKS_OBRIGATORIOS if c not in vistos]
+    if faltando:
+        return Olhada(
+            pronta=False,
+            apareceu=False,
+            resumo=(
+                f"os checks que existem no PR {pr} estão todos verdes e não "
+                "bastam, porque os OBRIGATÓRIOS não reportaram: "
+                + ", ".join(faltando)
+            ),
         )
     return Olhada(
         pronta=True,
@@ -900,10 +960,18 @@ def main(argv: list[str] | None = None) -> int:
                          "estouro", str(falha), chave_da_regua, voz.linhas)
         return 2
     except GracaVencida as falha:
+        # A graça só morre com o alvo INCOMPLETO, e a última olhada é a única
+        # coisa que sabe o QUE faltava — o obrigatório que não nasceu, o run de
+        # deploy que não apareceu. Sob `--so-desfecho` (que o `--e-pousar` liga
+        # sozinho) esta é a ÚNICA linha que chega ao stdout: sem o que foi
+        # visto, ela manda investigar sem dizer o quê, e quem lê volta ao `gh`
+        # para descobrir um nome que a espera já tinha na mão.
+        visto = falha.olhada.resumo if falha.olhada else ""
         voz.desfecho(
             f"🔴 {dizendo}: o alvo nem APARECEU em {_fmt(args.graca)} — "
             "deletado, renomeado, nunca disparou, ou conflito com a main. "
             "Isso NÃO é fila: parei, investigue."
+            + (f" Última olhada: {visto}." if visto else "")
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
                          "nao-apareceu", str(falha), chave_da_regua, voz.linhas)

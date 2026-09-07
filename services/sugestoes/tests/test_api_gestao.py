@@ -213,10 +213,16 @@ def test_nao_planejado_sem_justificativa_e_recusado(
     assert Sugestao.objects.get(pk=sugestao.pk).status == Sugestao.Status.EM_ANALISE
 
 
-def test_o_corredor_do_changespec_continua_barrando(
+def test_a_fase_anda_sem_assinatura_pelo_contrato(
     client, db, par_autorizado, caixa, sugestao
 ):
-    """[INV-SUG10] pelo contrato: sem assinatura, não vira obra."""
+    """A trava do ChangeSpec saiu em 06/09/2026: `planejado` vira obra direto.
+
+    Medido também aqui, e não só na porta da equipe, porque este é o caminho
+    que o Admin percorre — e era exatamente ele que devolvia 422 com a frase do
+    corredor. Os outros degraus estão em
+    `test_a_fase_anda_sem_assinatura.py`.
+    """
     caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
 
     resposta = escrever(
@@ -230,9 +236,11 @@ def test_o_corredor_do_changespec_continua_barrando(
         },
     )
 
-    assert resposta.status_code == 422
-    assert "ChangeSpec" in resposta.json()["erro"]
-    assert Sugestao.objects.get(pk=sugestao.pk).status == Sugestao.Status.PLANEJADO
+    assert resposta.status_code == 200, resposta.content
+    assert (
+        Sugestao.objects.get(pk=sugestao.pk).status
+        == Sugestao.Status.EM_DESENVOLVIMENTO
+    )
 
 
 def test_estar_no_admin_nao_da_o_direito_de_assinar(
