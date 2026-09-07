@@ -1,0 +1,85 @@
+{% comment %}
+O ROBÔ ANALISTA (degrau 16 do plano do painel de gestão), incluído pelas duas
+telas que o usam: a reunião de segunda e o fechamento do ciclo. As regras moram
+em apps/core/analista.py; aqui só se mostra o que ele devolveu.
+
+Um arquivo só, e não um pedaço copiado em cada tela: duas cópias divergiriam no
+primeiro conserto, e o conserto iria só para a que quem mexesse estivesse
+olhando.
+
+O formulário nasce sem `action`, e por isso posta na PRÓPRIA página que o
+incluiu. É o que deixa este pedaço servir as duas telas sem receber parâmetro
+nenhum de quem o inclui.
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` e zero classe nova: todas as
+usadas aqui já existem em admin/base.html (armadilhas/302).
+
+TRÊS REGRAS governam este pedaço:
+
+1. CHAVE VAZIA É ESTADO HONESTO. Desligado, o bloco continua na tela, diz que o
+   robô existe, e explica em português o que falta. Um botão que some sem dizer
+   por quê ensina que a funcionalidade não existe.
+2. CADA RECUSA TEM A FRASE DELA (armadilhas/297). A frase vem pronta do Python,
+   e esta tela nunca a resume nem a troca por "deu erro".
+3. A ANÁLISE NUNCA VIRA VERDADE. O que aparece é o que uma IA afirmou, com a
+   evidência e a confiança dela do lado, e a tela diz isso com todas as letras.
+   O que vale continua sendo o que chegar ao livro.
+{% endcomment %}
+
+<h2 class="titulo-de-bloco espaco-34">O robô analista: o que estou deixando passar?</h2>
+
+{% if not analista.ligado %}
+  <p class="aviso borda-amarela">
+    <b>O robô analista está desligado.</b> {{ analista.porque_desligado }}
+  </p>
+{% else %}
+  <p class="recado">
+    Ele lê os mesmos números desta tela e responde uma coisa só: o que passa
+    despercebido. A resposta vem com a evidência, a confiança dele e as outras
+    leituras possíveis. Nada é gravado aqui: o que sai é um pedido para colar
+    numa sessão, e o que vale é o que chegar ao livro.
+  </p>
+  <form class="forma" method="post">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="analista">
+    <button type="submit">Perguntar ao robô analista</button>
+  </form>
+{% endif %}
+
+{% if analista.recusa %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui perguntar ao robô.</b> {{ analista.recusa }}
+  </p>
+{% endif %}
+
+{% if analista.analise %}
+  <h3 class="titulo-da-conta espaco-20">{{ analista.analise.titulo }}</h3>
+  <p class="recado">{{ analista.analise.afirmacao }}</p>
+  <ul class="notas">
+    <li><b>A evidência:</b> {{ analista.analise.evidencia }}</li>
+    <li><b>Confiança do robô:</b> {{ analista.analise.confianca }}</li>
+    <li><b>Próximo passo:</b> {{ analista.analise.proximo_passo }}</li>
+  </ul>
+  <p class="recado-fraco">Outras leituras possíveis dos mesmos números:</p>
+  <ul class="notas">
+    {% for alternativa in analista.analise.alternativas %}
+    <li>{{ alternativa }}</li>
+    {% endfor %}
+  </ul>
+  {% if analista.analise.precisa_do_dono %}
+  <p class="aviso borda-amarela">
+    <b>Isto pede uma decisão sua.</b> Se você mandar registrar, ele entra na sua
+    Central de Pendências e fica lá até você responder.
+  </p>
+  {% endif %}
+  <p class="recado-fraco">
+    Quem escreveu o texto acima foi uma IA, lendo os números desta tela. Confira
+    a evidência contra o painel antes de mandar registrar: número que não está
+    aqui não entra no livro. Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa
+    sessão. Recarregar a página apaga o texto.
+  </p>
+  <div class="forma">
+    <textarea rows="18" readonly>{{ analista.pedido }}</textarea>
+  </div>
+{% endif %}

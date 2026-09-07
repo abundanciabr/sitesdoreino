@@ -34,6 +34,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from . import analista as analista_
 from .placar import montar_o_placar, site_de
 
 #: Os oito passos da pauta, na ordem do Scale OS 1.1 §98 a §105, traduzidos.
@@ -136,12 +137,23 @@ def montar_o_pedido(campos: dict, hoje, foto: str | None = None) -> str | None:
 
 @require_http_methods(["GET", "POST"])
 def reuniao(request):
-    """A pauta guiada. GET mostra os oito passos; POST devolve o pedido para o robô."""
+    """A pauta guiada. GET mostra os oito passos; POST devolve o pedido para o robô.
+
+    **Dois botões, um POST, e o `acao` separa os dois.** O de sempre monta o
+    pedido dos compromissos; o do analista (degrau 16) pergunta ao robô o que a
+    semana está deixando passar. Um POST sem `acao` continua caindo no primeiro,
+    que é o que o botão antigo manda.
+    """
     hoje = timezone.localdate()
     contexto = montar_o_placar(hoje, site_de(request))
     campos = request.POST if request.method == "POST" else {}
+    pediram_o_analista = campos.get("acao") == analista_.ACAO
     foto = (contexto.get("mudancas") or {}).get("foto_de_hoje")
-    pedido = montar_o_pedido(campos, hoje, foto) if request.method == "POST" else None
+    pedido = (
+        montar_o_pedido(campos, hoje, foto)
+        if request.method == "POST" and not pediram_o_analista
+        else None
+    )
     return render(
         request,
         "admin/reuniao.html",
@@ -151,7 +163,17 @@ def reuniao(request):
             "passos": PASSOS,
             "campos": campos,
             "pedido": pedido,
-            "montou": request.method == "POST",
+            "montou": request.method == "POST" and not pediram_o_analista,
             "vence_em_dias": VENCE_EM_DIAS,
+            "analista": analista_.para_a_tela(
+                momento="reuniao",
+                dossie=(
+                    analista_.dossie_da_reuniao(contexto, hoje)
+                    if pediram_o_analista
+                    else ""
+                ),
+                hoje=hoje,
+                pediram=pediram_o_analista,
+            ),
         },
     )
