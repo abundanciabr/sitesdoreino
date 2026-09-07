@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-079-cadastrar-curso-sem-terminal",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "O sistema já sabe cadastrar um curso sem abrir o terminal",
+  detalhe: "Até hoje um curso novo só nascia por um comando rodado na VPS. O catálogo passou a saber cadastrar sozinho, a peça que faltava para a tela \"Novo curso\" do Admin nascer.\n\nCadastrar duas vezes o mesmo curso não cria dois, então a tela pode ser reenviada sem medo. Apelido já usado por um curso de OUTRO nome é recusado sem alterar nada: renomear é decisão de quem opera.\n\nA tela ainda não existe. TAR-267.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1343",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "curso",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
