@@ -216,9 +216,13 @@ def registro_embarcado(
 # onde o painel dizia 7 (`armadilhas/379`).
 #
 # `area: null` é o molde não preenchido: quem lê recebe `None` e trata igual a
-# campo ausente. O `\b` antes de `area` impede que `minha_area:` passe por
-# declaração.
-_CAMPO_AREA = re.compile(r'"?\barea"?\s*:\s*(?:"([^"]*)"|null)')
+# campo ausente.
+#
+# A leitura ANCORA no começo da linha do diff (`^\+`), porque no molde o campo é
+# sempre o primeiro token da linha. Sem a âncora, `"sub-area": "vendas"` casava
+# como sufixo de `area` e, por vir antes no molde, o falso positivo vencia o
+# campo verdadeiro que vinha depois (achado do revisor do PR #1337).
+_CAMPO_AREA = re.compile(r'^\+\s*"?area"?\s*:\s*(?:"([^"]*)"|null)')
 
 # O ramo de um robô é `agent/<area>/<tarefa>` (CLAUDE.md). Só ele diz a área.
 _RAMO_DE_AGENTE = re.compile(r"agent/([^/]+)/.+")
@@ -246,7 +250,7 @@ def areas_dos_registros_embarcados(
         for linha in (remessa.get("patch") or "").splitlines():
             if not linha.startswith("+"):
                 continue
-            achado = _CAMPO_AREA.search(linha)
+            achado = _CAMPO_AREA.match(linha)
             if achado:
                 area = achado.group(1) or None
                 break
