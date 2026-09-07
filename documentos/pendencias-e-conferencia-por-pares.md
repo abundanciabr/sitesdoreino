@@ -39,6 +39,20 @@ avisando nada:
 Só a última tem contador, e no dia em que este plano foi escrito ela marcava
 **85 pedidos parados esperando você**.
 
+**E o tamanho da escola, que é o que decide se isso urge.** Lido em
+`/admin/escola/alunos/` em 07/09/2026:
+
+- **133 alunos ativos**, que é quem tem acesso à área de alunos agora.
+- **9 pessoas aguardando aprovação** neste momento, ou seja, a primeira linha da Central já tem trabalho de verdade esperando.
+- 4 recusados, e zero pausados, ex-alunos ou reembolsados.
+
+Esse número mora no sistema, em `/admin/escola/alunos/` e em `/admin/placar/`, e
+é lá que ele se confere. Não se confere em arquivo nenhum do computador: a lista
+antiga de WhatsApp (`turmas.txt`) tem 30 linhas e **não é a matrícula da
+escola**. Este plano nasceu com esse erro dentro (dizia "a escola tem 30
+pessoas", lendo o arquivo velho em vez da tela), o mantenedor corrigiu no mesmo
+dia, e a correção fica escrita aqui para ninguém repetir.
+
 Há ainda um sétimo caso, que é uma promessa não cumprida: a lei da escola diz
 que toda publicação pública do fórum passa por moderação humana antes de
 aparecer. O estado "Esperando aprovação" existe no banco do fórum, e **nenhuma
@@ -63,11 +77,13 @@ Clicando, você chega em `/admin/pendencias/`, e vê isto:
 
 > **Esperando você**
 >
-> **2 pessoas querem entrar na escola.** A mais antiga pediu há 3 dias. `Abrir`
+> **9 pessoas querem entrar na escola.** A mais antiga pediu há 3 dias. `Abrir`
 >
-> **1 portfólio pedindo conferência.** Dois colegas já conferiram e disseram que está de acordo. `Abrir`
+> **1 portfólio pedindo conferência.** Nenhum colega olhou ainda, e ele espera há 2 dias. `Abrir`
 >
 > **1 prova de marco.** "Primeiros dólares", com prazo até 09/09. Este marco envolve dinheiro, então só você fecha. `Abrir`
+>
+> **3 portfólios foram aceitos por colegas esta semana. 1 foi sorteado para você conferir.** `Abrir`
 >
 > **Nada esperando em:** laudos de aula, Caixa de Sugestões.
 >
@@ -128,19 +144,30 @@ O que sobra para o colega conferir são **artefatos públicos**: coisas que
 qualquer um pode abrir e julgar sem invadir a vida de ninguém. Que é exatamente
 o portfólio.
 
-**Segunda: faixas visíveis fazem mal a uma escola de 30 pessoas.** Você
-descreveu Faixa Branca, Azul e Preta. A lei desta casa decidiu o contrário, e o
-motivo cabe em uma frase: **quem confere não é um troféu.** O poder de conferir é
-uma função técnica, discreta e revogável, sem contador público e sem selo no
-perfil. Faixa visível transforma "eu ajudo" em "eu sou mais que você", e numa
-turma de trinta pessoas que se conhecem pelo WhatsApp isso vira política em uma
-semana. A escola tem 30 nomes na lista, não três mil.
+**Segunda: o poder de conferir não vira faixa visível.** Você descreveu Faixa
+Branca, Azul e Preta. A lei desta casa decidiu o contrário, e o motivo cabe em
+uma frase: **quem confere não é um troféu.** O poder de conferir é uma função
+técnica, discreta e revogável, sem contador público e sem selo no perfil. O
+motivo não é tamanho de turma, é o que a faixa faz com a cabeça de quem a usa:
+ela transforma "eu ajudo" em "eu sou mais que você", e a partir daí as pessoas
+conferem para subir, não para conferir bem. O poder existe, é real e é
+revogável. Ele só não é exibido.
 
-**Terceira: quórum e votação ficam para quando houver gente.** A lei já reserva
-"quórum de pares" para a fase de cerca de 150 alunos ativos por semana, e proíbe
-por escrito voto popular decidindo mérito. Com 30 pessoas, votação não mede
-qualidade: mede quem tem mais amigos. O que entra agora é o degrau anterior, e
-ele é suficiente.
+**Terceira: quórum sim, votação não, e a diferença não é de tamanho.** A lei
+proíbe por escrito voto popular decidindo mérito ("Escolha da Galera"), e essa
+proibição continua. Mas o que você pediu **não é isso**: dois colegas marcando
+uma lista de itens objetivos ("tem 3 tipos de modelo?", "tem 3 peças de cada?")
+não é gosto, é conferência. Ninguém está votando se a obra é bonita.
+
+Aqui eu preciso corrigir uma coisa que escrevi antes. Na primeira versão deste
+plano eu disse que quórum devia esperar a escola crescer, e apoiei isso num
+arquivo velho no meu disco (`turmas.txt`, a lista antiga de WhatsApp) em vez de
+olhar o sistema. **O mantenedor corrigiu em 07/09/2026 abrindo a própria tela:
+133 alunos ativos.** O argumento de população caiu, e ele não fazia falta: o que
+sustenta a conferência por pares aqui é o critério ser objetivo, não a escola ser
+grande ou pequena. Com 133 pessoas dentro, aliás, ela deixa de ser conveniência e
+vira necessidade: uma fila de conferência que só você atende não atravessa esse
+número.
 
 ### Onde o colega confere: o portfólio
 
@@ -188,7 +215,7 @@ amizade e contra implicância, e ela custa uma linha de código.
 Dois colegas conferem, cada um sem saber do outro. A partir daí, uma de quatro
 coisas:
 
-- **Os dois concordam que está de acordo:** o portfólio sobe na sua fila já marcado como "2 colegas conferiram e disseram que está de acordo", e você fecha em um clique. Ou fecha sozinho, sem você, se for essa a sua decisão (seção 6).
+- **Os dois concordam que está de acordo:** o portfólio é aceito na hora, sem passar por você, e o marco "Portfólio no ar" acende no nome do aluno. Foi a sua decisão de 06/09/2026, e a seção 6 explica o que ela obriga.
 - **Os dois concordam que falta:** o aluno recebe o que falta, com as frases da professora, em particular, e pode mandar de novo.
 - **Eles discordam:** vai para você, sem nenhum dos dois saber que discordaram.
 - **Duas devoluções de colegas:** o pedido sai do caminho dos colegas para sempre e passa a ser seu. Essa trava já está construída.
@@ -202,7 +229,8 @@ que dizem "já construída" são código que já roda hoje.
 - **O nome do dono não aparece na conferência.** Impede aprovar o amigo e reprovar o desafeto.
 - **Teto de 3 conferências por semana.** Impede que uma conta invadida, ou uma pessoa com raiva, aprove a turma inteira numa tarde.
 - **Quem conferiu fica gravado, para sempre.** Faz a pergunta "quem disse que sim?" ter resposta daqui a um ano.
-- **O sistema marca quando A confere B e B confere A.** É o combinado entre dois amigos, o ataque mais provável numa turma de 30.
+- **O sistema marca quando A confere B e B confere A.** É o combinado entre dois amigos, o ataque mais provável de todos. Quem for apontado por ela cai na amostra semanal sempre, sem sorteio.
+- **A amostra semanal:** parte do que os colegas aceitaram sozinhos volta para você conferir. Obrigatória por causa da sua decisão da seção 6, e explicada lá.
 - **Duas devoluções de colega escalam para a escola.** Impede um grupo combinar de recusar o trabalho de alguém. Já construída.
 - **Devolver só com motivo de uma lista fechada.** Impede a devolução virar crítica pessoal. Já construída.
 - **Marco de dinheiro nunca passa por colega.** Impede vazar print de pagamento, e elimina o conflito de quem confere ser concorrente. Já construída, dentro do banco de dados.
@@ -219,8 +247,8 @@ coisa sozinho.
 1. A Central de Pendências com o que o Admin já sabe: alunos esperando, ideias da Caixa, pedidos do painel. Já vale no primeiro dia, sem depender de ninguém.
 2. A linha no alto de todas as telas do Admin, com o contador.
 3. As outras filas entram na conta: portfólio, marcos e laudos passam a responder a pergunta "quantos estão esperando?".
-4. A conferência por pares no portfólio: quem pode conferir, a tela sem nome, o teto semanal, o registro de quem conferiu.
-5. A vigilância do combinado: a marca de quando duas pessoas conferem uma à outra, visível só para você.
+4. A conferência por pares no portfólio: quem pode conferir, a tela sem nome, o teto semanal, o registro de quem conferiu, **e a amostra semanal na Central**. A amostra vai junto, e não depois, porque nesta decisão ela é o único lugar onde um adulto ainda olha (seção 6).
+5. A vigilância do combinado: a marca de quando duas pessoas conferem uma à outra, visível só para você, alimentando a amostra.
 6. A tela onde você desfaz uma conferência e tira o poder de alguém.
 
 Do degrau 3 sai um passo seu no servidor, de uma linha, para o Admin poder
@@ -229,29 +257,58 @@ perguntar ao fórum. As outras três partes já têm a credencial.
 **O fórum não entra nesta obra.** A moderação prometida e não construída é uma
 tarefa própria, e misturá-la aqui dobraria o tamanho de tudo.
 
-## 6. O que depende de você
+## 6. As duas decisões que você tomou, e o que elas obrigam
 
-Duas decisões, e as duas são suas porque definem o contrato social da escola,
-não a engenharia.
+Perguntadas e respondidas em 06/09/2026. As duas definem o contrato social da
+escola, não a engenharia, e por isso eram suas.
 
-**Primeira: quem ganha o poder de conferir?** A recomendação é *quem já teve o
-próprio portfólio conferido e aceito pela escola*. É automático (você não
-escolhe ninguém, não há favorecido), é justo (só confere quem já passou pela
-régua) e prova competência (a pessoa entendeu o critério porque ele foi aplicado
-nela).
+### Quem ganha o poder de conferir
 
-**Segunda: o que o atestado de dois colegas vale?** A recomendação é *os dois
-colegas preparam e você assina em um clique*. Você continua sendo quem afirma o
-que a escola afirma, e o trabalho pesado (abrir os links, contar as peças, olhar
-os tipos) já vem feito. Com 30 alunos, o custo disso para você é de minutos por
-semana, e a escola não abre mão da própria palavra enquanto ainda é pequena.
+**Sua decisão: quem já teve o próprio portfólio conferido e aceito pela escola.**
+
+É automático (você não escolhe ninguém, não há favorecido), é justo (só confere
+quem já passou pela régua) e prova competência (a pessoa entendeu o critério
+porque ele foi aplicado nela).
+
+Isso tem uma consequência de partida que é preciso dizer: **no primeiro dia
+ninguém pode conferir**, porque ninguém foi conferido ainda. Os primeiros
+portfólios são seus, um por um, e a partir daí o círculo cresce sozinho. Não é
+defeito, é a única forma honesta de começar: o primeiro conferente tem que ter
+sido conferido por alguém.
+
+Com 133 alunos ativos, isso merece um número na sua frente: se trinta pessoas
+pedirem conferência na primeira semana, as trinta caem no seu colo. A saída não
+é abrir exceção, é ordem de chegada, e a Central de Pendências passa a mostrar
+quantos ainda estão na partida a frio. Cada portfólio que você aceita nessa fase
+vira um conferente novo, então a fila encolhe sozinha e depressa: depois de dez
+aceitos, dez pessoas passam a poder conferir as outras.
+
+### O que o atestado de dois colegas vale
+
+**Sua decisão: dois colegas de acordo fecham sozinhos, sem passar por você.**
+
+Eu havia recomendado o contrário (colegas preparam, você assina em um clique).
+Você leu o custo e escolheu assim mesmo, e o plano é este. Fica escrito o que
+essa escolha muda, para não ser descoberto depois:
+
+- **A escola passa a afirmar coisas que nenhum adulto da escola olhou.** Quando um portfólio é aceito, o site diz "a escola conferiu" e acende um marco. Nessa decisão, quem conferiu foram dois alunos.
+- **Desfazer é mais caro que segurar.** Tirar um marco já concedido de alguém é um gesto que magoa, e ele existe (seção 4), mas ninguém quer usá-lo.
+- **A auditoria por amostra deixa de ser opcional e vira peça obrigatória.** No desenho que eu recomendei ela seria um extra; nesta, ela é o único lugar onde um adulto ainda olha. Sem ela, a conferência não tem fundo.
+
+Por isso este plano ganhou uma peça que não teria de outro jeito, e ela entra
+**no mesmo degrau** da conferência por pares, nunca depois:
+
+> **A amostra semanal.** Toda semana, o sistema sorteia parte dos portfólios aceitos por colegas e põe na Central de Pendências: *"3 portfólios foram aceitos por colegas esta semana. 1 foi sorteado para você conferir."* São minutos, e é o que mantém a palavra da escola de pé.
+
+E o sorteio não é honesto por acaso: **quem foi apontado pela vigilância do
+combinado (seção 4) entra na amostra sempre**, nunca por sorte.
 
 ## 7. O que este plano recusa, por escrito
 
 Para não voltar depois disfarçado de novidade:
 
 - **Faixas visíveis, selos de conferente, ranking de quem mais confere.** Quem confere não é troféu.
-- **Votação e quórum aberto.** Só a partir de cerca de 150 alunos ativos por semana.
+- **Voto popular decidindo mérito** ("Escolha da Galera"), proibido por escrito na lei. Conferir uma lista de itens objetivos não é isso, e continua valendo.
 - **Convite e apadrinhamento.** Aqui ninguém entra por indicação: entra por compra. É um mecanismo bonito para um problema que esta escola não tem.
 - **Colega vendo evidência de dinheiro.** Trancado no banco, e fica.
 - **Um contador do que fez cada aluno na tela do próprio aluno.** A lei proíbe pontos de personalidade, e "quantas vezes você ajudou" é o vizinho perigoso deles.
