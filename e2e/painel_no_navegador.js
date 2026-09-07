@@ -30,8 +30,13 @@
 //   os registros do mês     aparecem na tela
 //   abrir Prioridades       = +1 pedido (fila.json), e só; a vista é SÓ o menu
 //   abrir uma área          = 0 pedido; SÓ o bloco daquela área na tela
+//   abrir uma área DIRETO   pelo endereço = +1 pedido (fila.json), e só, com a
+//                           fila dentro; se a fila falha, a página diz isso
+//   #area e #area/          são "nenhuma área escolhida", com a volta
 //   tarefa na fila          tem o botão de copiar o prompt; a que espera o
 //                           dono NÃO tem (07/09/2026, uma página por área)
+//   o clique de copiar      copia EXATAMENTE o prompt; sem área de
+//                           transferência, ou negada, abre o texto para selecionar
 //
 // Tudo isso com 10, 1.000 e 5.000 registros — é a forma da curva que importa,
 // não o número num tamanho só. O conjunto é NOMINAL de propósito: contagem
@@ -163,8 +168,10 @@ function filaDeMentira() {
   ] };
 }
 
-/** Servidor estático mínimo — o modo "pelo site", sem Django no caminho. */
-function servidor(dir) {
+/** Servidor estático mínimo — o modo "pelo site", sem Django no caminho.
+ *  Com `filaQuebrada`, o /fila.json responde 500: o caminho em que a fila
+ *  dos robôs não chega e a página tem de dizer isso. */
+function servidor(dir, filaQuebrada) {
   var s = http.createServer(function (req, res) {
     var alvo = path.join(dir, decodeURIComponent(url.parse(req.url).pathname));
     if (alvo.slice(-1) === path.sep || req.url === "/") alvo = path.join(dir, "painel.html");
@@ -174,6 +181,11 @@ function servidor(dir) {
     // diferente da real, e um 404 inventado pelo teste apareceria como erro de
     // console — medindo o dublê em vez do original (armadilhas/131).
     var caminho = url.parse(req.url).pathname;
+    if (caminho === "/fila.json" && filaQuebrada) {
+      res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("a fila caiu");
+      return;
+    }
     if (caminho === "/divida.json" || caminho === "/diag.json" || caminho === "/fila.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify(caminho === "/divida.json"
@@ -336,7 +348,9 @@ function erroDaNossaPagina(mensagem) {
   return true;   // sem origem e sem relato de rede legível, o dono é nosso
 }
 
-async function medir(navegador, endereco, base, rotulo, esperados) {
+/** Abre a página NUMA ABA NOVA escutando o que ela pede e o que ela quebra:
+ *  a metade de toda medição, inclusive a de um endereço com `#` dentro. */
+async function abrir(navegador, endereco, base) {
   var pagina = await navegador.newPage();
   var pedidos = [];
   var errosConsole = [];
@@ -359,10 +373,28 @@ async function medir(navegador, endereco, base, rotulo, esperados) {
   await pagina.goto(endereco, { waitUntil: "load", timeout: 60000 });
   await pagina.waitForTimeout(300);
 
-  // A página em si é o primeiro pedido. Tudo além dela é sub-recurso.
-  var subPedidos = pedidos.filter(function (u) {
-    return u !== endereco && u.replace(/\/$/, "") !== endereco.replace(/\/$/, "");
-  });
+  // A página em si é o primeiro pedido (o navegador não manda o `#`). Tudo
+  // além dela é sub-recurso.
+  var propria = endereco.split("#")[0].replace(/\/$/, "");
+  var subPedidos = pedidos.filter(function (u) { return u.replace(/\/$/, "") !== propria; });
+  return { pagina: pagina, pedidos: pedidos, errosConsole: errosConsole,
+    errosExternos: errosExternos, errosPagina: errosPagina, subPedidos: subPedidos };
+}
+
+/** Os nomes dos sub-pedidos, relativos à base e em ordem, para comparar de
+ *  forma nominal. */
+function nomesDosPedidos(subPedidos, base) {
+  return subPedidos.map(function (u) { return u.slice(base.length).replace(/^\//, ""); }).sort();
+}
+
+async function medir(navegador, endereco, base, rotulo, esperados) {
+  var aberta = await abrir(navegador, endereco, base);
+  var pagina = aberta.pagina;
+  var pedidos = aberta.pedidos;
+  var errosConsole = aberta.errosConsole;
+  var errosExternos = aberta.errosExternos;
+  var errosPagina = aberta.errosPagina;
+  var subPedidos = aberta.subPedidos;
 
   var telaErroVisivel = await pagina.evaluate(function () {
     var t = document.getElementById("tela-erro");
@@ -395,7 +427,7 @@ async function medir(navegador, endereco, base, rotulo, esperados) {
   // tinha. O que se afirma aqui é NOMINAL: exatamente estes sub-pedidos, e mais
   // nenhum. Um pedido novo (por mais inofensivo que pareça) tem de passar por
   // uma decisão consciente, não entrar de carona.
-  var nomes = subPedidos.map(function (u) { return u.slice(base.length).replace(/^\//, ""); }).sort();
+  var nomes = nomesDosPedidos(subPedidos, base);
   var esperado = esperados.slice().sort();
   caso(rotulo + ": abrir o painel busca EXATAMENTE " +
       (esperado.length ? esperado.join(", ") : "nada"),
@@ -490,22 +522,180 @@ async function medirPrioridades(estado, rotulo) {
     area.tarefas === 2 && area.botoes === 1 && area.prompt === PROMPT_DO_STUB,
     "tarefas=" + area.tarefas + " botoes=" + area.botoes + " prompt=" + JSON.stringify(area.prompt.slice(0, 40)));
 
-  await pagina.evaluate(function () { location.hash = "#area/nao-existe"; });
+  // O clique, nos três caminhos. A área de transferência é controlada ANTES de
+  // cada clique, e entre um e outro a página volta ao menu e reabre a área:
+  // o botão e a caixa nascem limpos, sem herdar o estado do clique anterior.
+  var TEXTO_COPIADO = "copiado, é só colar no Claude Code";
+  var TEXTO_NAO_COPIOU = "não consegui copiar sozinho, selecione o texto abaixo";
+  async function clicarEmCopiar(areaDeTransferencia) {
+    await pagina.evaluate(function () { location.hash = "#prioridades"; });
+    await pagina.waitForTimeout(100);
+    await pagina.evaluate(function (h) { location.hash = h; }, "#area/" + AREAS[0].id);
+    await pagina.waitForTimeout(100);
+    await pagina.evaluate(areaDeTransferencia);
+    await pagina.click("#vista-area .tocar");
+    await pagina.waitForTimeout(200);
+    return pagina.evaluate(function () {
+      var botao = document.querySelector("#vista-area .tocar");
+      var caixa = document.querySelector("#vista-area .prompt-caixa");
+      return { botao: botao.textContent, caixaOculta: caixa.hidden, caixa: caixa.textContent,
+        copiado: window.__copiado };
+    });
+  }
+  var copiou = await clicarEmCopiar(function () {
+    window.__copiado = null;
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: function (t) { window.__copiado = t; return Promise.resolve(); } } });
+  });
+  caso(rotulo + ": copiar deu certo: o botão confirma, a caixa segue escondida e foi EXATAMENTE o prompt",
+    copiou.botao === TEXTO_COPIADO && copiou.caixaOculta === true && copiou.copiado === PROMPT_DO_STUB,
+    "botao=" + JSON.stringify(copiou.botao) + " oculta=" + copiou.caixaOculta +
+      " copiado=" + JSON.stringify(String(copiou.copiado).slice(0, 40)));
+  var negado = await clicarEmCopiar(function () {
+    window.__copiado = null;
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+      writeText: function () { return Promise.reject(new Error("negado")); } } });
+  });
+  caso(rotulo + ": copiar NEGADO pelo navegador: a caixa abre com o prompt exato e o botão pede para selecionar",
+    negado.botao === TEXTO_NAO_COPIOU && negado.caixaOculta === false && negado.caixa === PROMPT_DO_STUB,
+    "botao=" + JSON.stringify(negado.botao) + " oculta=" + negado.caixaOculta);
+  var semNada = await clicarEmCopiar(function () {
+    window.__copiado = null;
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
+  });
+  caso(rotulo + ": SEM área de transferência: o mesmo caminho da falha, sem erro de página",
+    semNada.botao === TEXTO_NAO_COPIOU && semNada.caixaOculta === false && semNada.caixa === PROMPT_DO_STUB &&
+      semNada.copiado === null && estado.errosPagina.length === 0,
+    "botao=" + JSON.stringify(semNada.botao) + " oculta=" + semNada.caixaOculta +
+      " erros=" + estado.errosPagina.slice(0, 2).join(" | "));
+
+  // Nome que não existe, nome nenhum (#area) e nome vazio (#area/): os três
+  // dizem em português o que houve e oferecem a volta, sem aspas vazias.
+  async function areaPerdida(hash, inicio) {
+    await pagina.evaluate(function (h) { location.hash = h; }, hash);
+    await pagina.waitForTimeout(200);
+    var perdida = await pagina.evaluate(function () {
+      var volta = document.querySelector("#vista-area .voltar");
+      return {
+        ativa: document.getElementById("vista-area").className.indexOf("ativa") !== -1,
+        texto: document.getElementById("area-bloco").textContent,
+        blocos: document.querySelectorAll("#vista-area .bloco").length,
+        volta: volta ? volta.getAttribute("href") : null
+      };
+    });
+    caso(rotulo + ": " + hash + " diz \"" + inicio + "\" e oferece a volta, sem erro de página",
+      perdida.ativa && perdida.blocos === 0 && perdida.texto.indexOf(inicio) === 0 &&
+        perdida.texto.indexOf("\u201c\u201d") === -1 && perdida.volta === "#prioridades" && estado.errosPagina.length === 0,
+      "texto=" + JSON.stringify(perdida.texto.slice(0, 50)) + " volta=" + perdida.volta +
+        " erros=" + estado.errosPagina.slice(0, 2).join(" | "));
+  }
+  await areaPerdida("#area/nao-existe", "Não existe área");
+  await areaPerdida("#area", "Nenhuma área foi escolhida");
+  await areaPerdida("#area/", "Nenhuma área foi escolhida");
+}
+
+/** O estado da fila é um elemento só, visível na aba Prioridades e na página
+ *  de cada área, escondido nas outras vistas. Roda DENTRO da página. */
+function estadoDaFilaNaTela() {
+  var f = document.getElementById("pri-fila");
+  return { visivel: !!(f && f.offsetParent !== null), ruim: !!(f && f.className.indexOf("ruim") !== -1),
+    texto: f ? f.textContent : "" };
+}
+
+/** Por duplo clique não há fila a buscar, e a página de área tem de DIZER
+ *  isso: sem a linha, ele veria só os itens do livro e acharia que é tudo. */
+async function medirAreaPorArquivo(estado, rotulo) {
+  var pagina = estado.pagina;
+  var antes = estado.pedidos.length;
+  await pagina.evaluate(function (h) { location.hash = h; }, "#area/" + AREAS[0].id);
   await pagina.waitForTimeout(200);
-  var perdida = await pagina.evaluate(function () {
-    var volta = document.querySelector("#vista-area .voltar");
+  var fila = await pagina.evaluate(estadoDaFilaNaTela);
+  caso(rotulo + ": a página de área diz que a fila só chega pelo site, e não pediu nada",
+    fila.visivel && fila.texto.indexOf("só chega pelo site") !== -1 && estado.pedidos.length === antes,
+    "visivel=" + fila.visivel + " texto=" + JSON.stringify(fila.texto.slice(0, 50)) +
+      " pedidos=" + estado.pedidos.slice(antes).join(" | "));
+}
+
+/** A página de uma área aberta DIRETO pelo endereço, numa aba nova, sem passar
+ *  por Prioridades: é o link que ele guarda. Custa o mesmo que abrir a aba
+ *  (+1 pedido, o fila.json) e chega com a fila dentro; quando a fila falha, a
+ *  página diz isso em vez de listar menos tarefas em silêncio. */
+async function medirAreaDireta(navegador, endereco, base, rotulo, esperadosDaAbertura, filaQuebrada) {
+  var aberta = await abrir(navegador, endereco + "#area/" + AREAS[0].id, base);
+  await aberta.pagina.waitForTimeout(600);
+  var nomes = nomesDosPedidos(aberta.subPedidos, base);
+  var esperado = esperadosDaAbertura.concat(["fila.json"]).sort();
+  var tela = await aberta.pagina.evaluate(function () {
+    var f = document.getElementById("pri-fila");
     return {
       ativa: document.getElementById("vista-area").className.indexOf("ativa") !== -1,
-      texto: document.getElementById("area-bloco").textContent,
       blocos: document.querySelectorAll("#vista-area .bloco").length,
-      volta: volta ? volta.getAttribute("href") : null
+      tarefas: document.querySelectorAll("#vista-area .item .meta").length,
+      botoes: document.querySelectorAll("#vista-area .tocar").length,
+      fila: { visivel: !!(f && f.offsetParent !== null), ruim: !!(f && f.className.indexOf("ruim") !== -1),
+        texto: f ? f.textContent : "" }
     };
   });
-  caso(rotulo + ": área que não existe diz isso em português e oferece a volta, sem erro de página",
-    perdida.ativa && perdida.blocos === 0 && perdida.texto.indexOf("Não existe área") === 0 &&
-      perdida.volta === "#prioridades" && estado.errosPagina.length === 0,
-    "texto=" + JSON.stringify(perdida.texto.slice(0, 50)) + " volta=" + perdida.volta +
-      " erros=" + estado.errosPagina.slice(0, 2).join(" | "));
+  var qual = filaQuebrada ? " (fila quebrada)" : "";
+  caso(rotulo + ": abrir a área DIRETO pelo endereço" + qual + " custa EXATAMENTE +1 pedido além da abertura, o fila.json",
+    JSON.stringify(nomes) === JSON.stringify(esperado), "veio: " + (nomes.join(", ") || "(nada)"));
+  if (filaQuebrada) {
+    caso(rotulo + ": com a fila quebrada, a página de área AVISA a falha e ainda mostra o bloco da área",
+      tela.ativa && tela.blocos === 1 && tela.fila.visivel && tela.fila.ruim &&
+        tela.fila.texto.indexOf("Não consegui buscar a fila dos robôs") === 0 &&
+        tela.fila.texto.indexOf("só as tarefas dos robôs faltam") !== -1 &&
+        tela.fila.texto.indexOf("Recarregue a página para tentar novamente") !== -1 && tela.botoes === 0,
+      "blocos=" + tela.blocos + " visivel=" + tela.fila.visivel + " ruim=" + tela.fila.ruim +
+        " texto=" + JSON.stringify(tela.fila.texto.slice(0, 60)));
+    // O 500 é relatado pelo navegador no console; é o único erro que se espera aqui.
+    var alheios = aberta.errosConsole.filter(function (t) { return t.indexOf("500") === -1; });
+    caso(rotulo + ": com a fila quebrada, nenhum erro de página e nenhum erro de console além do 500",
+      aberta.errosPagina.length === 0 && alheios.length === 0,
+      alheios.concat(aberta.errosPagina).slice(0, 3).join(" | "));
+  } else {
+    caso(rotulo + ": aberta direto, a área já vem com as 2 tarefas da fila, o botão de copiar e a linha da fila visível",
+      tela.ativa && tela.blocos === 1 && tela.tarefas === 2 && tela.botoes === 1 &&
+        tela.fila.visivel && !tela.fila.ruim && tela.fila.texto.indexOf("2 tarefa(s) abertas") === 0,
+      "blocos=" + tela.blocos + " tarefas=" + tela.tarefas + " botoes=" + tela.botoes +
+        " visivel=" + tela.fila.visivel + " texto=" + JSON.stringify(tela.fila.texto.slice(0, 50)));
+    caso(rotulo + ": aberta direto, ZERO erro de página e ZERO erro de console",
+      aberta.errosPagina.length === 0 && aberta.errosConsole.length === 0,
+      aberta.errosConsole.concat(aberta.errosPagina).slice(0, 3).join(" | "));
+  }
+  await aberta.pagina.close();
+}
+
+async function medirEstadosDaArea(navegador, endereco) {
+  var pagina = await navegador.newPage();
+  var liberar;
+  var resposta = new Promise(function (ok) { liberar = ok; });
+  await pagina.route("**/fila.json", async function (rota) {
+    await rota.fulfill({ json: await resposta });
+  });
+  await pagina.goto(endereco + "#area/" + AREAS[0].id);
+  var fila = await pagina.evaluate(estadoDaFilaNaTela);
+  caso("área direta: carregamento da fila fica visível", fila.visivel && fila.texto.indexOf("buscando a fila") === 0);
+  var dados = filaDeMentira();
+  dados.aviso = "Uma tarefa não pôde ser lida.";
+  liberar(dados);
+  await pagina.waitForFunction(function () { return document.querySelector("#pri-fila .fila-aviso"); });
+  fila = await pagina.evaluate(estadoDaFilaNaTela);
+  caso("área direta: aviso recebido aparece junto das tarefas", fila.visivel && fila.texto.indexOf(dados.aviso) !== -1);
+  await pagina.click('#vista-area a[href="#prioridades"]');
+  await pagina.click('#vista-prioridades a[href="#area/' + AREAS[1].id + '"]');
+  caso("outra área não herda tarefas da anterior", await pagina.locator("#vista-area .item:not(.vazio)").count() === 0 &&
+    await pagina.locator("#vista-area .vazio").isVisible());
+  await pagina.goBack();
+  caso("voltar do navegador recupera o menu", await pagina.locator("#vista-prioridades").isVisible());
+  await pagina.goBack();
+  caso("voltar de novo recupera a área com suas tarefas", await pagina.locator("#vista-area .item .meta").count() === 2);
+  await pagina.unroute("**/fila.json");
+  await pagina.route("**/fila.json", function (rota) { return rota.fulfill({ json: { erro: "Não foi possível ler a fila." } }); });
+  await pagina.reload();
+  await pagina.waitForFunction(function () { return document.getElementById("pri-fila").className.indexOf("ruim") !== -1; });
+  fila = await pagina.evaluate(estadoDaFilaNaTela);
+  caso("erro informado pelo servidor oferece recuperação na área", fila.visivel && fila.ruim && fila.texto.indexOf("Recarregue a página para tentar novamente") !== -1);
+  await pagina.close();
 }
 
 // ------------------------------------------------------ a prova do próprio corte
@@ -616,6 +806,7 @@ async function principal() {
     // Duplo clique: NADA além da própria página. Nem a medição da dívida —
     // sem servidor não há a quem perguntar, e a página sabe disso.
     var estadoArquivo = await medir(navegador, arquivo, baseArquivo, "file:// · " + n, []);
+    await medirAreaPorArquivo(estadoArquivo, "file:// · " + n);
     await medirMemoria(estadoArquivo, arquivo, baseArquivo, "file:// · " + n);
     await estadoArquivo.pagina.close();
 
@@ -636,7 +827,16 @@ async function principal() {
     await medirPrioridades(estadoHttp, "http · " + n);
     await medirMemoria(estadoHttp, endereco, baseHttp, "http · " + n);
     await estadoHttp.pagina.close();
+    await medirAreaDireta(navegador, endereco, baseHttp, "http · " + n, ["divida.json", "diag.json"], false);
+    if (n === TAMANHOS[0]) await medirEstadosDaArea(navegador, endereco);
     s.servidor.close();
+
+    // O mesmo endereço direto com a fila caída: a página tem de dizer.
+    var quebrado = await servidor(dir, true);
+    var enderecoQuebrado = "http://127.0.0.1:" + quebrado.porta + "/painel.html";
+    await medirAreaDireta(navegador, enderecoQuebrado, "http://127.0.0.1:" + quebrado.porta + "/",
+      "http · " + n, ["divida.json", "diag.json"], true);
+    quebrado.servidor.close();
   }
 
   await navegador.close();
@@ -650,7 +850,8 @@ async function principal() {
   console.log("✅ painel_no_navegador: com 10, 1.000 e 5.000 registros, abrir o painel busca");
   console.log("   NADA por file:// e só as duas medições ao vivo pelo site — nos dois modos, sem");
   console.log("   erro de console e sem erro de página. O custo de abrir não cresce com o livro.");
-  console.log("   Prioridades é só o menu, cada área tem a sua página, e a tarefa na fila tem o botão de copiar.");
+  console.log("   Prioridades é só o menu, cada área tem a sua página (também aberta direto pelo endereço,");
+  console.log("   com o estado da fila à vista), e o botão de copiar o prompt copia exatamente o prompt.");
   process.exit(0);
 }
 

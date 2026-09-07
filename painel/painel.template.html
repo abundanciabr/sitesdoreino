@@ -275,9 +275,11 @@
     <div id="mapa-resumo"></div>
     <div id="mapa-capitulos"></div>
   </section>
+  <!-- O estado da fila dos robôs vale para a aba Prioridades E para a página
+       de cada área: um elemento só, mostrado por mostraVista() nas duas. -->
+  <div class="fila-estado" id="pri-fila" hidden></div>
   <section class="vista" id="vista-prioridades">
     <p class="sub">Cada área do site tem a <b>sua própria página</b>: escolha uma abaixo e veja só o que está aberto nela, por tipo (o que só você decide, o que está quebrado, o que os robôs vão fazer, e para onde a área vai). Os números de cada cartão são os de hoje. Como tudo aqui, é calculado dos registros e da fila dos robôs, e nada disto é digitado à mão.</p>
-    <div class="fila-estado" id="pri-fila"></div>
     <div class="faixa" id="pri-faixa"></div>
   </section>
   <section class="vista" id="vista-area">
@@ -868,6 +870,10 @@ try {
     var p = prioridades();
     var lugar = document.getElementById("area-bloco");
     lugar.textContent = "";
+    if (!id) {
+      lugar.appendChild(el("p", "sub", "Nenhuma área foi escolhida. Volte para a lista e escolha uma das áreas do site."));
+      return;
+    }
     var a = p.areas.concat([p.semArea]).filter(function (x) { return (x.id || "sem") === id; })[0];
     if (!a) {
       lugar.appendChild(el("p", "sub", "Não existe área com o nome “" + id +
@@ -891,11 +897,17 @@ try {
     });
     lugar.appendChild(bloco);
   }
+  // O nome da área no endereço: #area/<id>. Fora de uma página de área é null;
+  // #area e #area/ valem "" (nenhuma escolhida), nunca uma vista por si.
+  function areaDoEndereco() {
+    var alvo = (location.hash || "").slice(1);
+    return alvo === "area" || alvo.indexOf("area/") === 0 ? alvo.slice(5) : null;
+  }
   // Quando a fila chega: o menu sempre, e a página de área se for ela que está na tela.
   function desenharPrioridades() {
     desenharMenuDasAreas();
-    var alvo = (location.hash || "").slice(1);
-    if (alvo.indexOf("area/") === 0) desenharArea(alvo.slice(5));
+    var area = areaDoEndereco();
+    if (area !== null) desenharArea(area);
   }
   function estadoDaFila(texto, ruim, aviso) {
     var f = document.getElementById("pri-fila");
@@ -918,7 +930,7 @@ try {
     fetch("fila.json", { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("o servidor respondeu " + r.status); return r.json(); })
       .then(function (d) {
-        if (d.erro) { estadoDaFila(d.erro, true); return; }
+        if (d.erro) { estadoDaFila(d.erro + " Recarregue a página para tentar novamente.", true); return; }
         tarefasDaFila = d.tarefas || [];
         prioridadesDeHoje = null;
         estadoDaFila(tarefasDaFila.length
@@ -928,7 +940,7 @@ try {
       })
       .catch(function (e) {
         estadoDaFila("Não consegui buscar a fila dos robôs (" + e.message +
-          "). Os pedidos e alertas acima continuam valendo.", true);
+          "). Os pedidos, alertas e rumos do livro continuam valendo; só as tarefas dos robôs faltam. Recarregue a página para tentar novamente.", true);
       });
   }
   estadoDaFila("A fila dos robôs é buscada quando você abre esta aba.");
@@ -1453,7 +1465,7 @@ try {
   function mostraVista() {
     var alvo = (location.hash || "#capa").slice(1);
     // A página de uma área (#area/<id>) mora dentro da aba Prioridades.
-    var area = alvo.indexOf("area/") === 0 ? alvo.slice(5) : null;
+    var area = areaDoEndereco();
     if (area !== null) alvo = "area";
     if (VISTAS.indexOf(alvo) === -1) alvo = "capa";
     VISTAS.forEach(function (v) {
@@ -1463,6 +1475,7 @@ try {
     Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {
       aEl.className = "aba" + (aEl.getAttribute("data-vista") === aba ? " ativa" : "");
     });
+    document.getElementById("pri-fila").hidden = aba !== "prioridades";
     if (area !== null) desenharArea(area);
     if (aba === "prioridades") buscarAFila();
   }
