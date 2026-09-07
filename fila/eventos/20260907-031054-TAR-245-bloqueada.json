@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-031054-TAR-245-bloqueada",
+  "tarefa": "TAR-245",
+  "evento": "bloqueada",
+  "quando": "2026-09-07T03:10:54+00:00",
+  "quem": "despacho-cursos-20260907",
+  "detalhe": "o codigo esta pronto e o PR 1276 aberto (https://github.com/abundanciabr/sitesdoreino/pull/1276); o que trava e o Rito de Contrato (RITOS §3): a porta viva ganhou a operacao checkLesson e o contracts/cursos.openapi.yaml congelado ainda nao a tem, entao o contract_freeze fica vermelho. Destrava a maestro, conduzindo o Rito com o export que esta no corpo do PR; depois disso o PR pousa e a tarefa se conclui.",
+  "espera": "fila"
+}
