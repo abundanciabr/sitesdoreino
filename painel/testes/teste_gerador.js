@@ -364,9 +364,11 @@ var registrosDoLivro = [camposDoRegistro("20260826-001-a"), camposDoRegistro("20
 var areasReais = JSON.parse(fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8")).areas;
 var agoraFixo = new Date("2026-08-30T12:00:00");
 caso("...e prioridades(...) sobre o livro do cenário devolve o MESMO JSON que a cópia completa",
+  !!LOGICA_EMBUTIDA &&
   JSON.stringify(logicaDoDisco.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)) ===
   JSON.stringify(LOGICA_EMBUTIDA.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)));
 caso("...e capa(...) sobre o mesmo livro também devolve o MESMO JSON",
+  !!LOGICA_EMBUTIDA &&
   JSON.stringify(logicaDoDisco.capa(registrosDoLivro, agoraFixo)) ===
   JSON.stringify(LOGICA_EMBUTIDA.capa(registrosDoLivro, agoraFixo)));
 
@@ -384,6 +386,7 @@ var reIlhaUrl = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
 var htmlUrl = leia(dirUrl, "painel.html");
 while ((achouUrl = reIlhaUrl.exec(htmlUrl))) ilhasUrl.push(achouUrl[1]);
 caso("uma linha com // NO MEIO (uma URL numa string) sobrevive intacta",
+  !!ilhasUrl[0] &&
   ilhasUrl[0].indexOf('var URL_DE_EXEMPLO = "veja https://meshcraft.top/admin para mais.";') !== -1);
 
 

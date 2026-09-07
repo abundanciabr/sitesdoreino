@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-07",
   titulo: "O painel do dono ficou mais leve: as regras que ele embute na página perderam os comentários",
-  detalhe: "A página do painel embute uma cópia inteira das regras (painel/logica.js) para abrir custar só um pedido. Essa cópia carregava 394 linhas de comentário, que só serve para quem lê código, e o navegador ignora do mesmo jeito. Agora o gerador tira essas linhas antes de embutir; o arquivo que fica no repositório não muda.\\n\\nA página tem um teto de 300 KB, e travar nele para a fábrica inteira. Ela estava em 297.241 bytes, a 9.959 do limite. Com o corte, caiu para 268.890 bytes: quase 31 KB de folga a mais.",
+  detalhe: "O gerador agora tira as linhas de comentário ao embutir as regras na página do painel; o arquivo painel/logica.js em disco não muda. A página caiu de 297.241 para 268.890 bytes.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1364",
   verificado_em: "2026-09-07",
