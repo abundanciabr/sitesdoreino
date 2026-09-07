@@ -348,6 +348,7 @@ def documento_salvar(request, nome):
     if erro_apendice:
         return _tela(request, rascunho, criando=False, erro=erro_apendice, status=422)
 
+    era_apendice_vivo = documento.apendice_vivo
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
@@ -356,7 +357,17 @@ def documento_salvar(request, nome):
         setattr(documento, campo, valor)
     documento.save()
 
-    _guardar_versao(request, documento, "editou o documento")
+    # O histórico é a única memória de quando o carimbo ligou ou desligou: as
+    # datas não entram na linha de versão (o carimbo não é texto), então o gesto
+    # é o que resta para contar essa história. Editar sem mexer no carimbo
+    # continua sendo "editou o documento".
+    if documento.apendice_vivo and not era_apendice_vivo:
+        gesto = "marcou como apêndice vivo"
+    elif era_apendice_vivo and not documento.apendice_vivo:
+        gesto = "desmarcou o apêndice vivo"
+    else:
+        gesto = "editou o documento"
+    _guardar_versao(request, documento, gesto)
     _auditar(
         request,
         Registro.EDITAR_DOCUMENTO,
