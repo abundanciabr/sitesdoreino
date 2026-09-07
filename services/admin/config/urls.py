@@ -5,7 +5,6 @@ from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
 from apps.core.caixa import (
     apagar_ideia,
     arquivar_ideia,
-    assinar_obra,
     avaliar_ideia,
     corrigir_ideia,
     desarquivar_ideia,
@@ -456,7 +455,6 @@ urlpatterns = [
     path("caixa/ideia/<int:ideia_id>/", ideia, name="caixa_ideia"),
     path("caixa/ideia/<int:ideia_id>/fase", mover_ideia, name="caixa_mover"),
     path("caixa/ideia/<int:ideia_id>/avaliacao", avaliar_ideia, name="caixa_avaliar"),
-    path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
     # [ARQUIVAR] `DECISAO-arquivar-ideia.md` (29/08/2026): some do quadro do
     # aluno, nada se perde no banco. Mesma gramática das três de cima — POST,
     # redireciona de volta para a ideia dizendo o que aconteceu.

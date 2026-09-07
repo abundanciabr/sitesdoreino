@@ -44,11 +44,7 @@ from django.db import transaction
 from django.http import HttpResponseForbidden
 
 from apps.sugestoes import eventos
-from apps.sugestoes.models import (
-    CorredorAusente,
-    HistoricoStatus,
-    Sugestao,
-)
+from apps.sugestoes.models import HistoricoStatus, Sugestao
 from apps.sugestoes.tasks import relay_apos_commit
 
 from .avisos import avisar_os_interessados, ids_de_plataforma
@@ -85,26 +81,6 @@ EXIGEM_JUSTIFICATIVA = frozenset({Sugestao.Status.NAO_PLANEJADO})
 SEM_CRACHA = (
     "Esta parte da Caixa é da equipe. Sua sessão está aberta, mas o seu e-mail "
     "não está na lista de quem modera."
-)
-
-# [INV-SUG10] A frase que a trava do ChangeSpec diz — uma só, e agora ela
-# atravessa a fronteira: a recusa do contrato a devolve inteira ao Admin
-# (`Recusa`), que a mostra à pessoa. Duas cópias divergiriam no primeiro ajuste,
-# e a que ninguém testa é a que fica errada.
-#
-# Ela diz o CAMINHO, e não só o "não": erro que não ensina o que fazer custa uma
-# rodada de investigação a quem o lê. **Ela não aponta para nenhuma tela** — nem
-# por endereço, nem por "aqui embaixo": até 30/08/2026 apontava para o botão da
-# tela de `/moderacao` desta célula, que foi aposentada (TAR-023), e uma frase
-# que descreve a tela de OUTRA célula envelhece no dia em que ela mudar de
-# layout. Ela descreve o FATO que falta; onde clicar é de quem desenha a tela.
-SEM_CORREDOR = (
-    "Esta ideia está em “Planejado” e ainda não tem ChangeSpec aprovado "
-    "registrado — por isso ela não vai para “Em desenvolvimento”. O corredor "
-    "existe para que uma ideia aprovada nunca vire um prompt aberto do tipo "
-    "“implemente isso” (FORMATO-CHANGESPEC.md §5). O caminho: escreva o "
-    "ChangeSpec em docs/changespecs/, colha a aprovação humana e registre a "
-    "assinatura de obra desta ideia — é ela que destrava a passagem."
 )
 
 
@@ -151,14 +127,6 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
     [INVARIANTE 3] A justificativa é conferida **antes** de abrir a transação:
     recusa não precisa de rollback.
 
-    [INVARIANTE 4 — INV-SUG10, EVO-40] `planejado → em_desenvolvimento` só
-    acontece com ChangeSpec aprovado registrado. A conferência aqui é a que
-    produz a frase; a que produz a IMPOSSIBILIDADE está dois degraus abaixo
-    (`Sugestao.save()` e o trigger `sugestoes_exige_changespec`). A corrida
-    entre o `sugestao.status` lido pela view e o estado real do banco é
-    resolvida pelo degrau 2, que relê o status DENTRO da transação, depois do
-    `select_for_update`.
-
     Repare no que NÃO está aqui: nenhum caminho de correção. `HistoricoStatus`
     é append-only nos três degraus do EVO-11 (instância, queryset e trigger no
     Postgres) — corrigir é registrar de novo, e é isso que uma segunda chamada
@@ -176,24 +144,6 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             "Para marcar como “Não planejado” é preciso escrever o porquê — "
             "quem sugeriu vai ler essa justificativa (spec §10)."
         )
-
-    # [INV-SUG10] A trava do ChangeSpec, degrau 1 de 3 — o ponto de
-    # estrangulamento. Aqui ela não acrescenta poder nenhum ao que o
-    # `Sugestao.save()` já impõe (degrau 2) e o trigger do Postgres impõe
-    # abaixo dele (degrau 3): o que ela acrescenta é a FRASE. Sem esta linha, a
-    # recusa chegaria à equipe como um erro de servidor no meio de um POST, e
-    # não como uma página dizendo o que fazer em seguida.
-    #
-    # Conferida ANTES de abrir a transação, como a justificativa acima: recusa
-    # não precisa de rollback. E lida pelo gerente relacionado
-    # (`sugestao.changespecs`), não por um import de `apps/core/changespecs.py`
-    # — que importa `exige_staff` DESTE arquivo, e o par viraria um ciclo.
-    if (
-        status_novo == Sugestao.Status.EM_DESENVOLVIMENTO
-        and sugestao.status == Sugestao.Status.PLANEJADO
-        and not sugestao.changespecs.exists()
-    ):
-        raise CorredorAusente(SEM_CORREDOR)
 
     with transaction.atomic():
         travada = (
