@@ -128,6 +128,7 @@ class Veredito:
     horas_de_verde: float | None = None
     caminho_com_dono: str | None = None
     detalhe: str = ""
+    verde_em: str | None = None
 
     @property
     def esquecido(self) -> bool:
@@ -214,9 +215,14 @@ def julgar(
     dono = caminho_com_dono(arquivos, padroes)
 
     def veredito(
-        motivo: str, horas_de_verde: float | None = None, detalhe: str = ""
+        motivo: str,
+        horas_de_verde: float | None = None,
+        detalhe: str = "",
+        verde_em: str | None = None,
     ) -> Veredito:
-        return Veredito(numero, titulo, url, motivo, horas_de_verde, dono, detalhe)
+        return Veredito(
+            numero, titulo, url, motivo, horas_de_verde, dono, detalhe, verde_em
+        )
 
     if pr.get("isDraft"):
         return veredito("rascunho")
@@ -246,8 +252,8 @@ def julgar(
 
     horas_de_verde = (agora - _instante(marca)).total_seconds() / 3600
     if horas_de_verde < horas:
-        return veredito("recente", horas_de_verde)
-    return veredito(ESQUECIDO, horas_de_verde)
+        return veredito("recente", horas_de_verde, verde_em=marca)
+    return veredito(ESQUECIDO, horas_de_verde, verde_em=marca)
 
 
 def varrer(
@@ -271,8 +277,16 @@ def varrer(
 # passagem, e está certo para eles: cada passagem é um incidente novo. Aqui a
 # passagem é um INVENTÁRIO, de duas em duas horas. Comentar 12 vezes por dia a
 # mesma lista transformaria o aviso em ruído, e ruído se ignora — que é o mesmo
-# que não avisar. Por isso o corpo é REESCRITO a cada varredura, e a issue se
-# FECHA sozinha quando não sobra ninguém esquecido.
+# que não avisar. Por isso o corpo é REESCRITO quando muda, e a issue se FECHA
+# sozinha quando não sobra ninguém esquecido.
+#
+# A COLUNA DIZ O INSTANTE, NÃO AS HORAS DECORRIDAS, e isso é o que faz o
+# "quando muda" ser verdade. Medido em 07/09/2026, nas duas primeiras passagens
+# reais: com "verde há 11 h" na tabela, o corpo muda sozinho a cada varredura,
+# porque o número anda com o relógio — e aí "reescrevo quando muda" vira
+# "reescrevo sempre", que é a promessa quebrada em silêncio. "verde desde 06/09
+# 16:51 UTC" é estável enquanto a lista for a mesma, e ainda é mais útil para
+# quem lê: não fica velho entre escrever e ler.
 #
 # ONDE A DENÚNCIA NÃO VAI, e por quê. O despacho da TAR-167 ofereceu um segundo
 # caminho — registro no livro com `precisa_do_dono: true` — para o PR que toca
@@ -286,6 +300,11 @@ def varrer(
 # fecha o PR, ou se a pergunta é mesmo do dono — e aí ela vai pelo caminho
 # normal de todo pedido.
 # ---------------------------------------------------------------------------
+def _em_portugues(marca: str | None) -> str:
+    """`2026-09-06T16:51:47Z` vira `06/09 16:51 UTC`."""
+    return _instante(marca).strftime("%d/%m %H:%M UTC") if marca else "não sei"
+
+
 def corpo_da_denuncia(vereditos: list[Veredito], horas: int) -> str:
     """O texto da issue. Diz o fato, o custo já pago e o comando de cada caso."""
     esquecidos = [v for v in vereditos if v.esquecido]
@@ -305,14 +324,14 @@ def corpo_da_denuncia(vereditos: list[Veredito], horas: int) -> str:
         "a pedido do mantenedor — a pergunta chegou a ele com cinco dias de "
         "atraso.",
         "",
-        "| PR | verde há | precisa de mandato | título |",
+        "| PR | verde desde | precisa de mandato | título |",
         "|---|---|---|---|",
     ]
     for v in esquecidos:
         mandato = f"sim (`{v.caminho_com_dono}`)" if v.caminho_com_dono else "não"
         titulo = v.titulo.replace("|", "\\|")
         linhas.append(
-            f"| #{v.numero} | {v.horas_de_verde:.0f} h | {mandato} | {titulo} |"
+            f"| #{v.numero} | {_em_portugues(v.verde_em)} | {mandato} | {titulo} |"
         )
     linhas += [
         "",

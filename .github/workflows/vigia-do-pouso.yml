@@ -97,13 +97,20 @@ jobs:
                 # Reescrever o corpo, não comentar: doze passagens por dia
                 # comentando a mesma lista viram ruído, e ruído se ignora — que
                 # é o mesmo que não avisar. E só reescrever quando MUDOU, para
-                # que a issue só notifique quem a segue se houver notícia.
-                # O `tr -d '\r'` existe porque o GitHub devolve o corpo com
-                # fim de linha do Windows, e a comparação crua acusaria
-                # diferença em todo run.
-                gh issue view "$EXISTENTE" --json body --jq .body \
-                  | tr -d '\r' > corpo-atual.md
-                if diff -q corpo-atual.md denuncia.md >/dev/null; then
+                # que o histórico da issue conte alguma coisa.
+                #
+                # AS DUAS NORMALIZAÇÕES SÃO MEDIDAS, não precaução:
+                #   `tr -d '\r'` — o GitHub devolve o corpo com fim de linha do
+                #   Windows.
+                #   `$( )` — o `--jq .body` acrescenta UMA quebra no fim, que o
+                #   arquivo escrito pelo vigia não tem. Medido na primeira
+                #   passagem real (07/09/2026, run 34081787250): a lista era
+                #   idêntica e a issue foi reescrita assim mesmo, só por essa
+                #   quebra. Substituição de comando come as quebras finais dos
+                #   dois lados, então a comparação passa a ser do conteúdo.
+                ATUAL="$(gh issue view "$EXISTENTE" --json body --jq .body | tr -d '\r')"
+                NOVO="$(cat denuncia.md)"
+                if [ "$ATUAL" = "$NOVO" ]; then
                   echo "Issue #$EXISTENTE já diz exatamente isto — não reescrevo."
                 else
                   gh issue edit "$EXISTENTE" --body-file denuncia.md
