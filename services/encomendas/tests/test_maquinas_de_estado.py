@@ -59,14 +59,28 @@ def perfil(db):
 
 # O padrão é `NA_FILA` desde 04/09/2026, e a troca acompanha o modelo: a
 # encomenda nasce numa pista, não no caixa (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
-def cria_encomenda(status=Encomenda.Status.NA_FILA):
+# O cartão decide o nível, e desde o Mural (TAR-133) o nível também decide onde
+# a encomenda pode estar: o banco recusa um projeto Iniciante `no_mural` ou
+# `reservada` (`iniciante_nunca_no_mural_reservavel`, [INV-ENC-M2]) e recusa
+# qualquer um dos dois fora da pista do Mural. Por isso a fábrica aceita o
+# cartão e deriva as duas colunas.
+PISTA_DO_STATUS = {
+    Encomenda.Status.NO_MURAL: Encomenda.Pista.MURAL,
+    Encomenda.Status.RESERVADA: Encomenda.Pista.MURAL,
+}
+
+
+def cria_encomenda(
+    status=Encomenda.Status.NA_FILA, cartao=Encomenda.Cartao.ITEM_SIMPLES, pista=None
+):
     return Encomenda.objects.create(
         site_id=SITE,
         origem=Encomenda.Origem.ESCOLA,
         cliente_id="cli-1",
-        cartao=Encomenda.Cartao.ITEM_SIMPLES,
-        nivel=Encomenda.Nivel.INICIANTE,
+        cartao=cartao,
+        nivel=Encomenda.NIVEL_DO_CARTAO[cartao],
         status=status,
+        pista=pista or PISTA_DO_STATUS.get(status, Encomenda.Pista.FILA),
     )
 
 
@@ -290,7 +304,13 @@ def test_a_linha_do_mural_anda_inteira(db):
         "aguardando_pagamento",
         "em_producao",
     ]
-    encomenda = cria_encomenda(Encomenda.Status.NO_MURAL)
+    # VESTÍVEL, e não item simples: quem nasce no Mural é projeto de nível
+    # Intermediário ou Avançado, porque a elegibilidade da lei já exige 1 e 5
+    # entregas aprovadas para eles. Um Iniciante aqui é o [INV-ENC-M2], e o
+    # banco o recusa.
+    encomenda = cria_encomenda(
+        Encomenda.Status.NO_MURAL, cartao=Encomenda.Cartao.VESTIVEL_OU_VEICULO
+    )
     for passo in caminho:
         encomenda.mudar_status(passo, ator_id="prof-1")
     encomenda.refresh_from_db()
@@ -349,7 +369,19 @@ def test_o_python_e_o_postgres_concordam_em_todos_os_pares(db):
         # Uma linha NOVA por estado de partida. O gatilho e `BEFORE UPDATE`, e
         # o INSERT nao passa por ele: preparar o estado de partida por `update`
         # seria pedir ao gatilho que permitisse justamente o que ele recusa.
-        encomenda = cria_encomenda(de)
+        #
+        # VESTIVEL E PISTA DO MURAL nos 19 estados, e a escolha e do que este
+        # teste mede: aqui a pergunta e "o gatilho e o dicionario concordam?", e
+        # so ela. Um projeto Iniciante seria recusado nos pares que chegam a
+        # `no_mural` pelo CHECK `iniciante_nunca_no_mural_reservavel`
+        # ([INV-ENC-M2]) e a recusa entraria na conta como divergencia do
+        # gatilho, que e outra regra. As duas travas do Mural tem guarda
+        # proprio: `tests/test_inv_m2_iniciante_passa_pela_fila.py`.
+        encomenda = cria_encomenda(
+            de,
+            cartao=Encomenda.Cartao.VESTIVEL_OU_VEICULO,
+            pista=Encomenda.Pista.MURAL,
+        )
         for para in ESTADOS_DE_ENCOMENDA:
             if de == para:
                 continue

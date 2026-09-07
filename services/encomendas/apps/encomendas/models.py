@@ -235,6 +235,19 @@ TRANSICOES_DA_ENCOMENDA = {
     for estado, destinos in _LINHA_PRINCIPAL.items()
 }
 
+# Os dois estados do Mural reservável, que são a prateleira e a mão que pegou.
+# O projeto pinga entre eles enquanto procura aluno (está `no_mural`, alguém
+# pega e ele fica `reservada`, o relógio vence e ele volta a `no_mural`),
+# exatamente como pinga entre `na_fila` e `oferecida` na outra pista.
+#
+# **`aberta` NÃO está aqui, e a ausência é o desenho inteiro do [INV-ENC-M2].**
+# O projeto Iniciante nasce na fila e chega ao Mural pela chamada aberta, em que
+# o primeiro elegível que aceitar leva, sem reserva, sem vez e sem relógio de
+# três horas. Se `aberta` entrasse nesta lista, um único aluno poderia trancar
+# por três horas um projeto que a fila já não conseguiu colocar em vinte e
+# quatro, e quem pagaria a conta é o cliente.
+ESTADOS_DO_MURAL_RESERVAVEL = frozenset({"no_mural", "reservada"})
+
 
 # ---------------------------------------------------------------------------
 # 1. QUEM É A PESSOA — o espelho, nunca a fonte da verdade
@@ -672,6 +685,32 @@ class Encomenda(models.Model):
                 condition=models.Q(origem__in=["fila", "direto", "escola"]),
                 name="origem_no_vocabulario_fechado",
             ),
+            # [INV-ENC-M2] NO BANCO: projeto Iniciante nunca senta no Mural
+            # reservável. Ele nasce na fila, porque é ela que garante o primeiro
+            # trabalho de quem nunca entregou, e a única porta dele para o Mural
+            # é a chamada aberta, que é o estado `aberta`
+            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1).
+            #
+            # A máquina de estado já ajuda: `na_fila` não tem seta para
+            # `no_mural`, e o gatilho do PostgreSQL recusa a transição. Mas
+            # gatilho de transição não vê INSERT, e é por isso que esta linha
+            # existe: sem ela, uma tela futura, uma migração de dados ou um
+            # `psql` de madrugada criariam um Iniciante já `no_mural`, pulando a
+            # fila inteira sem violar transição nenhuma.
+            models.CheckConstraint(
+                condition=~models.Q(nivel="iniciante")
+                | ~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL)),
+                name="iniciante_nunca_no_mural_reservavel",
+            ),
+            # A coluna `pista` não pode mentir sobre onde o projeto está sendo
+            # mostrado. Um projeto `no_mural` com `pista=fila` seria lido de dois
+            # jeitos por dois pedaços de código (a tela do aluno e a varredura do
+            # plantão), e o segundo a ler é o que erra.
+            models.CheckConstraint(
+                condition=~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL))
+                | models.Q(pista="mural"),
+                name="no_mural_so_na_pista_do_mural",
+            ),
             # O cartão decide o nível. Escrito como as três combinações
             # possíveis, porque `CheckConstraint` não chama função Python: é a
             # tabela `NIVEL_DO_CARTAO` no idioma do banco.
@@ -968,7 +1007,161 @@ class Oferta(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# 5. OS PARÂMETROS — dado, com histórico por linha nova, nunca UPDATE
+# 5. A RESERVA DO MURAL — a vez de quem pegou, e a prova de que não é leilão
+# ---------------------------------------------------------------------------
+
+
+class ReservaDoMural(models.Model):
+    """Um aluno pegou um projeto no Mural e ganhou a vez, com relógio.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.2. É a gêmea da `Oferta` na outra
+    pista, e a diferença entre as duas é quem escolheu: na fila, a plataforma
+    oferece ao próximo da vez; no Mural, o aluno pega. O resto é igual, e de
+    propósito, porque as duas respondem à mesma pergunta de auditoria ("quem
+    teve este projeto, quando, e o que aconteceu").
+
+    O MURAL NÃO É LEILÃO, E QUEM FAZ ISSO VALER É O BANCO
+    ------------------------------------------------------
+    *"Nunca existem duas propostas vivas para o mesmo projeto"* (§3.2). A trava
+    é um índice único PARCIAL sobre `encomenda`, e ela é parcial porque as
+    reservas mortas se acumulam de propósito: são elas a memória de quem já
+    teve o projeto. Nenhum `if` em Python resolveria a corrida de dois alunos
+    tocando "Pegar" no mesmo segundo, que é justamente o segundo em que um
+    Mural de verdade é disputado.
+
+    E A SEGUNDA TRAVA É A QUE SURPREENDE
+    -------------------------------------
+    `Unique(encomenda, aluno)`, sem condição nenhuma: **ninguém pega duas vezes
+    o mesmo projeto**, nem depois de a reserva vencer. É a mesma forma do
+    [INV-ENC-J6] na outra pista, e sem ela o projeto giraria sem sair do lugar
+    (o mesmo aluno pega, deixa vencer, pega de novo). A regra também é lida
+    pelo caminho educado, em `mural.vaga_de`, para o aluno receber uma frase em
+    vez de um `IntegrityError`; o índice é o que sobra quando alguém esquece.
+
+    O RELÓGIO PARA NA PRIMEIRA PROPOSTA, E ESSE É O ESTADO `negociando`
+    -------------------------------------------------------------------
+    As 3 horas úteis são para o aluno olhar o briefing e propor, e só até isso
+    (§3.2). Assim que ele propõe, o relógio da reserva PARA e quem manda passam
+    a ser os relógios da negociação, que duram 24 horas úteis por rodada. Sem
+    essa passagem de bastão os dois números do §9 se contradiziam: a reserva
+    venceria no meio da primeira rodada, e o projeto voltaria ao Mural com uma
+    proposta de pé.
+
+    **Quem escreve `negociando` é a TAR-134**, no mesmo gesto que cria a
+    primeira `Proposta`. O estado nasce aqui porque a trava de "uma reserva
+    viva" precisa saber, desde já, que uma reserva em negociação continua VIVA
+    (o projeto não voltou ao Mural) — e um estado que chegasse depois faria o
+    índice parcial mudar de significado num PR que ninguém ia ler duas vezes.
+    """
+
+    class Resultado(models.TextChoices):
+        PENDENTE = "pendente", "A vez está de pé, e o relógio corre"
+        NEGOCIANDO = "negociando", "A primeira proposta chegou, e o relógio parou"
+        EXPIROU = "expirou", "O relógio venceu sem proposta"
+
+    # Reserva fechada é PEDRA, como a oferta: `negociando` não volta a
+    # `pendente` (o relógio não ressuscita) e `expirou` não vira nada. É o que
+    # permite auditar o Mural meses depois sem perguntar a ninguém.
+    TRANSICOES: dict[str, frozenset[str]] = {
+        Resultado.PENDENTE: frozenset({Resultado.NEGOCIANDO, Resultado.EXPIROU}),
+        Resultado.NEGOCIANDO: frozenset(),
+        Resultado.EXPIROU: frozenset(),
+    }
+
+    # As duas em que o projeto NÃO está de volta na prateleira. É esta lista que
+    # o índice único parcial usa, e é ela que define "reserva viva".
+    VIVAS = (Resultado.PENDENTE, Resultado.NEGOCIANDO)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    encomenda = models.ForeignKey(
+        Encomenda, related_name="reservas_do_mural", on_delete=models.PROTECT
+    )
+    aluno = models.ForeignKey(
+        PerfilProfissional, related_name="reservas_do_mural", on_delete=models.PROTECT
+    )
+
+    pegada_em = models.DateTimeField(auto_now_add=True)
+    # Calculado com a MESMA janela de horas úteis da oferta ([INV-ENC-J8]): o
+    # relógio corre das 8h às 22h de São Paulo e congela fora dela. A conta é do
+    # `relogio.calcular_expiracao_da_reserva`; a tabela só guarda o instante que
+    # ela devolveu.
+    expira_em = models.DateTimeField()
+
+    resultado = models.CharField(
+        max_length=10, choices=Resultado.choices, default=Resultado.PENDENTE
+    )
+    respondida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "reserva do mural"
+        verbose_name_plural = "reservas do mural"
+        ordering = ["-pegada_em"]
+        indexes = [
+            # A varredura do tique: as reservas pendentes já vencidas.
+            models.Index(
+                fields=["resultado", "expira_em"], name="enc_reservas_a_expirar"
+            ),
+        ]
+        constraints = [
+            # [INV-ENC-M3], primeira metade: o Mural não é leilão. Índice único
+            # PARCIAL, porque as reservas mortas se acumulam de propósito.
+            models.UniqueConstraint(
+                fields=["encomenda"],
+                condition=models.Q(resultado__in=["pendente", "negociando"]),
+                name="uma_reserva_viva_por_encomenda",
+            ),
+            # [INV-ENC-M3], segunda metade: o projeto que voltou ao Mural não
+            # volta para quem já o teve. Sem condição: vale para sempre.
+            models.UniqueConstraint(
+                fields=["encomenda", "aluno"],
+                name="ninguem_pega_o_mesmo_projeto_duas_vezes",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(resultado__in=["pendente", "negociando", "expirou"]),
+                name="resultado_de_reserva_no_vocabulario_fechado",
+            ),
+            # Pendente é a única sem data de resposta, como na `Oferta`. Sem esta
+            # trava, uma reserva "expirou" sem `respondida_em` faria a auditoria
+            # do Mural responder "não sei quando" para o gesto que decide de
+            # quem era a vez.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(resultado="pendente", respondida_em=None)
+                    | (
+                        ~models.Q(resultado="pendente")
+                        & models.Q(respondida_em__isnull=False)
+                    )
+                ),
+                name="reserva_respondida_tem_data",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(expira_em__gt=models.F("pegada_em")),
+                name="reserva_expira_depois_de_pegada",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.encomenda_id} <- {self.aluno_id} ({self.resultado})"
+
+    def pode_ir_para(self, resultado: str) -> bool:
+        return resultado in self.TRANSICOES.get(self.resultado, frozenset())
+
+    def responder(self, resultado: str, *, em):
+        """Fecha a reserva, ou recusa com `TransicaoProibida`."""
+        if not self.pode_ir_para(resultado):
+            raise TransicaoProibida(
+                f"reserva {self.pk}: {self.resultado} nao vai para {resultado}. "
+                f"As transicoes permitidas sao {sorted(self.TRANSICOES[self.resultado])}."
+            )
+        self.resultado = resultado
+        self.respondida_em = em
+        self.save(update_fields=["resultado", "respondida_em"])
+        return self
+
+
+# ---------------------------------------------------------------------------
+# 6. OS PARÂMETROS — dado, com histórico por linha nova, nunca UPDATE
 # ---------------------------------------------------------------------------
 
 # O VOCABULÁRIO FECHADO das chaves, com o tipo de cada uma (lei §6; os tipos são
@@ -1044,6 +1237,27 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
     "pausa_por_segundo_abandono": (
         "dias",
         "Pausa depois do segundo abandono na janela",
+    ),
+    # A 28ª chave, e a primeira que não vem da lei §6: ela vem do §9 do
+    # `PLANO-AREA-DE-NEGOCIACAO.md`, a emenda que o mantenedor aprovou em
+    # 04/09/2026. Mesmo relógio de horas úteis do `relogio_da_oferta`, medido
+    # pela MESMA janela: a reserva do Mural também não corre enquanto o aluno
+    # dorme.
+    #
+    # As outras chaves do §9 daquele plano (as rodadas, a validade da proposta,
+    # o piso por nível e o limite da justificativa) NÃO entram aqui: são da
+    # negociação, que é a TAR-134. Chave que ninguém lê é configuração morta, e
+    # o vocabulário desta tabela é fechado justamente para isso não acontecer.
+    #
+    # E `entregas_para_ver_o_mural`, que o §9 também lista, não entra NUNCA: a
+    # revisão de 04/09/2026 do próprio plano (§3.1) trocou "só quem já entregou
+    # vê o Mural" por "o Mural mostra o que o aluno é ELEGÍVEL a pegar", e a
+    # elegibilidade já carrega as entregas por nível. Semear aquela chave seria
+    # criar uma SEGUNDA régua de elegibilidade ao lado da do motor, e duas
+    # réguas divergem no primeiro parâmetro que mudar.
+    "relogio_da_reserva_no_mural": (
+        "horas",
+        "Horas úteis que o aluno tem para propor depois de pegar no Mural",
     ),
 }
 
