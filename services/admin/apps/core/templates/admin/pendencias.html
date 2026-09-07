@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Pendências{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Pendências</h1>
+  <p class="subtitulo">Tudo que está esperando por você, num lugar só. Cada linha
+  leva para onde a coisa se resolve.</p>
+
+  {% comment %}
+  O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"
+  de 44 pixels no alto da tela, e um contador zerado todo dia é o que ensina
+  alguém a ignorar o contador — foi o defeito que este plano existe para curar.
+
+  E quando alguma fila não respondeu, o número vira PISO ("pelo menos"), nunca
+  a conta fechada: somar o que se sabe e apresentar como total é a mesma
+  mentira do zero, só que disfarçada de precisão.
+  {% endcomment %}
+  {% if esperando %}
+    <div class="hero">
+      <div class="hero-numero">{{ total }}</div>
+      <p class="hero-nota">
+        {% if total_e_um_piso %}
+          coisas esperando você. É <b>pelo menos</b> isso, porque uma das filas
+          não respondeu agora.
+        {% else %}
+          coisas esperando você, nas três filas que esta tela já enxerga.
+        {% endif %}
+      </p>
+    </div>
+
+    {% for fila in esperando %}
+      <a class="cartao porta espaco-abaixo-10" href="{{ fila.href }}">
+        <div class="rotulo">{{ fila.quantidade }} · {{ fila.titulo }} &rarr;</div>
+        <div class="valor">
+          {% if fila.espera_ha == 0 %}
+            A mais antiga chegou hoje.
+          {% elif fila.espera_ha == 1 %}
+            A mais antiga espera desde ontem.
+          {% elif fila.espera_ha %}
+            A mais antiga espera há {{ fila.espera_ha }} dias.
+          {% endif %}
+        </div>
+        <div class="nota">{{ fila.o_que_e }}</div>
+      </a>
+    {% endfor %}
+  {% endif %}
+
+  {% comment %}
+  A FILA CALADA tem linha própria, com borda vermelha, e vem depois do que há
+  para fazer. Ela NÃO é uma linha com zero: `apps/core/pendencias.py` mantém
+  "não consegui perguntar" e "não há ninguém" em listas separadas justamente
+  porque zero é falso em template, e um `{% if fila.quantidade %}` juntaria as
+  duas — o dia em que a `alunos` caísse, a tela diria que ninguém está
+  esperando aprovação.
+  {% endcomment %}
+  {% for fila in mudas %}
+    <p class="aviso calado">
+      <b>Não deu para perguntar a {{ fila.onde_mora }} agora.</b>
+      Então não sei quantas coisas estão esperando você ali, e prefiro dizer
+      isso a mostrar um zero. Recarregue esta página daqui a pouco; se
+      continuar assim, abra
+      <a href="{{ fila.href }}">{{ fila.titulo|lower }}</a> direto.
+    </p>
+  {% endfor %}
+
+  {% if vazias %}
+    <p class="aviso espaco-20">
+      <b>Nada esperando você em:</b>
+      {% for fila in vazias %}{{ fila.onde_mora }}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    </p>
+  {% endif %}
+
+  {% if not esperando and not mudas %}
+    <p class="aviso espaco-20">
+      <b>Você está em dia com as três filas que esta tela enxerga.</b>
+      Nada aqui precisa de você agora.
+    </p>
+  {% endif %}
+
+  {% comment %}
+  A CONFISSÃO, e ela é obrigatória enquanto a lista não estiver vazia.
+
+  Esta tela nasceu com três das seis filas do site. Uma portaria que enxerga
+  metade e não avisa é pior que portaria nenhuma: ela ensina o mantenedor a
+  ler "nada esperando você" como "não há nada", e no dia em que um portfólio
+  ficar parado ele não vai saber. As três de baixo entram na conta no degrau 3
+  do plano; quando entrarem, este bloco some sozinho, porque
+  `FILAS_QUE_AINDA_NAO_VEJO` fica vazia.
+  {% endcomment %}
+  {% if ainda_nao_vejo %}
+    <h2 class="titulo-de-bloco">O que esta tela ainda não conta</h2>
+    <p class="aviso">
+      Estas filas existem e podem ter coisa esperando, mas ainda não sei
+      perguntar a elas. Enquanto isso, elas se abrem à mão:
+      {% for nome, endereco in ainda_nao_vejo %}
+        <br><a href="{{ endereco }}">{{ nome }}</a>, em <code>{{ endereco }}</code>
+      {% endfor %}
+    </p>
+  {% endif %}
+</div>
+{% endblock %}
