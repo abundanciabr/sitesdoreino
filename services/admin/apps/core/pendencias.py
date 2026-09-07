@@ -15,12 +15,17 @@ continua morando na própria casa, que é onde a regra dela é conferida. Aqui s
 se pergunta *"quantos estão esperando aí, e o mais antigo é de quando?"*, e se
 oferece a porta.
 
-## Três filas neste degrau, e a tela DIZ que são três
+## Duas filas neste degrau, e a tela DIZ que são duas
 
 O degrau 1 traz só o que esta célula já sabe perguntar hoje, sem credencial
-nova nenhuma: quem quer entrar na escola, as ideias esperando assinatura, e as
-decisões paradas no painel do sistema. As outras três (portfólios, marcos,
-laudos) chegam no degrau 3.
+nova nenhuma: quem quer entrar na escola e as decisões paradas no painel do
+sistema. As outras três (portfólios, marcos, laudos) chegam no degrau 3.
+
+Eram TRÊS até 06/09/2026: a terceira era "ideias esperando a sua assinatura",
+e ela saiu no dia em que o mantenedor mandou tirar a assinatura de obra da
+Caixa. Uma ideia em "Planejado" não espera mais por ninguém — ela já pode
+começar —, e uma linha que mostrasse 0 para sempre é exatamente o tipo de
+ruído que ensina alguém a ignorar esta tela.
 
 Uma portaria que enxerga metade das filas e não avisa é pior que portaria
 nenhuma: ela ensina o mantenedor a confiar num "nada esperando você" que não é
@@ -33,7 +38,7 @@ zero na linha de quem quer entrar faria o mantenedor concluir que ninguém está
 esperando aprovação, e deixar nove pessoas de fora por causa de um tempo
 estourado na rede. Um "não sei" mostrado como 0 é o falso-verde de produto da
 `RETROSPECTIVA-FASE-D.md` §1, e a célula inteira já o paga com `None`
-(`views.contar_a_escola`, `AlunosClient`, `CaixaClient`).
+(`views.contar_a_escola` e `AlunosClient`).
 
 Aqui `Fila.quantidade is None` significa *não consegui perguntar*, e o template
 tem de distinguir os dois casos por listas separadas, nunca por um `{% if %}`
@@ -69,8 +74,8 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
-from .caixa import _coluna_de, _dias
-from .clients import AlunosClient, CaixaClient
+from .caixa import _dias
+from .clients import AlunosClient
 from .painel import diretorio_do_painel
 
 # O carimbo que o gerador do painel deixa na página, em forma rígida e numa
@@ -143,42 +148,6 @@ def quem_quer_entrar(cliente: AlunosClient, agora: datetime) -> Fila:
     )
 
 
-def ideias_esperando_assinatura(cliente: CaixaClient, agora: datetime) -> Fila:
-    """As ideias da Caixa paradas na coluna que espera por ELE.
-
-    **Só a coluna `assinar`**, e a escolha é o assunto desta função: das seis
-    colunas da travessia (`caixa.COLUNAS`), essa é a única cujo nome, escrito
-    pela própria Caixa, é *"Esperando você assinar"*. As outras esperam por um
-    robô, pela equipe, ou já estão entregues. Pô-las aqui encheria a portaria
-    de trabalho que não é dele, e é assim que se ensina alguém a ignorar uma
-    tela.
-
-    A coluna sai de `caixa._coluna_de`, a MESMA função que desenha o quadro em
-    `/admin/caixa/esperando/`. Uma segunda regra de "de quem é a vez" faria as
-    duas telas discordarem sem ninguém perceber.
-    """
-    quadro = cliente.ideias()
-    if quadro is None:
-        esperando = None
-    else:
-        esperando = [i for i in quadro["ideias"] if _coluna_de(i) == "assinar"]
-    return Fila(
-        titulo="Ideias esperando a sua assinatura",
-        quantidade=None if esperando is None else len(esperando),
-        espera_ha=(
-            _mais_antiga([i.get("parada_desde", "") for i in esperando], agora)
-            if esperando
-            else None
-        ),
-        href=reverse("caixa_esperando"),
-        o_que_e=(
-            "Ideias de alunos já aprovadas pela equipe, sem o documento de obra "
-            "assinado. Nenhum robô pode começar antes disso."
-        ),
-        onde_mora="a Caixa de Sugestões",
-    )
-
-
 def decisoes_paradas_no_painel(agora: datetime) -> Fila:
     """As decisões que os robôs pediram a você e ninguém respondeu.
 
@@ -213,11 +182,10 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
 
 @require_GET
 def pendencias(request):
-    """A portaria. Abre sempre, mesmo com as três filas mudas."""
+    """A portaria. Abre sempre, mesmo com as duas filas mudas."""
     agora = datetime.now(tz.utc)
     filas = [
         quem_quer_entrar(AlunosClient(), agora),
-        ideias_esperando_assinatura(CaixaClient(), agora),
         decisoes_paradas_no_painel(agora),
     ]
     esperando = [f for f in filas if f.quantidade]
