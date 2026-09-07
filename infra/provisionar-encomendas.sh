@@ -2,7 +2,9 @@
 # =============================================================================
 # PROVISIONAR A CÉLULA `encomendas` NA VPS — o passo do mantenedor.
 # Cria o par banco+role isolado, descobre o site no catálogo, escreve o env real
-# da célula e abre os DOIS pares de conversa que ela precisa (identidade, alunos).
+# da célula e abre os TRÊS pares de conversa dela: ela pergunta à identidade quem
+# é a pessoa, pergunta à alunos se a pessoa é aluna, e RESPONDE à admin, que é
+# quem muda os números da Fila na tela do dono.
 #
 # COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-encomendas.sh -o /tmp/e.sh && bash /tmp/e.sh meshcraft.top
@@ -34,11 +36,12 @@
 # é PERGUNTADO ao catálogo (nunca chutado, nunca digitado pelo mantenedor), e
 # zero sites ativos ou site ambíguo PARAM antes de qualquer criação.
 #
-# ELE RECARREGA DUAS CÉLULAS no fim (`identidade` e `alunos`), e precisa: as
-# chaves novas são escritas nos ARQUIVOS de env, e um container só relê o env
-# dele quando renasce. Sem essas recargas a célula sobe e leva 401 ao perguntar
-# quem é a pessoa, com o deploy verde. São segundos, e ninguém é deslogado (a
-# sessão vive no banco, não na memória do processo).
+# ELE RECARREGA AS CÉLULAS TOCADAS no fim (`identidade`, `alunos`, `admin` e a
+# própria `encomendas`), e precisa: as chaves novas são escritas nos ARQUIVOS de
+# env, e um container só relê o env dele quando renasce. Sem essas recargas a
+# célula sobe e leva 401 ao perguntar quem é a pessoa, com o deploy verde. São
+# segundos, e ninguém é deslogado (a sessão vive no banco, não na memória do
+# processo).
 #
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só nasce
 # se faltar, os tokens dos pares são REAPROVEITADOS se já existirem, e o env
@@ -62,6 +65,9 @@ RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_ENCOMENDAS="env/encomendas.env"
 ENV_IDENTIDADE="env/identidade.env"
 ENV_ALUNOS="env/alunos.env"
+# A `admin` é o único par em que esta célula é a PROVEDORA: quem chama é a tela
+# dos parâmetros do dono, e quem responde é a porta de máquina daqui.
+ENV_ADMIN="env/admin.env"
 # A referência de dono/permissão: um env que JÁ funciona nesta máquina.
 ENV_REF="$ENV_IDENTIDADE"
 
@@ -69,13 +75,14 @@ ENV_REF="$ENV_IDENTIDADE"
 # escolha deste script.
 IDENTIDADE_URL="http://identidade:8000/interno"
 ALUNOS_URL="http://alunos:8000/api/alunos"
+ENCOMENDAS_URL="http://encomendas:8000/api/encomendas"
 
 # -----------------------------------------------------------------------------
 # 1. ONDE — tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…, nunca PS C:\\>)"
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ."
-for arquivo in "$ENV_IDENTIDADE" "$ENV_ALUNOS"; do
+for arquivo in "$ENV_IDENTIDADE" "$ENV_ALUNOS" "$ENV_ADMIN"; do
   [ -f "$arquivo" ] || parar "não achei $RAIZ/$arquivo — as encomendas precisam conversar com essa célula, e ela não está provisionada aqui. Nada foi criado, nada foi alterado."
   [ -w "$arquivo" ] || parar "não consigo escrever em $RAIZ/$arquivo — rode como root ou como o dono dos env. Nada foi alterado."
 done
@@ -87,14 +94,16 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 #
-#    E aqui a data é a mais previsível de todas: a escada desta célula tem os
-#    degraus 2.2 a 2.14 pela frente, e três deles já sabem o nome da variável
-#    que vão pedir a este env — `TOKENS_ACEITOS_ADMIN` (a tela dos parâmetros
-#    do dono, degrau 2.14), `REDIS_STREAMS_URL` (o relay de eventos) e a lista
-#    de quem é do plantão (Fase 7). Cada uma é uma chance de o script apagar o
-#    que não conhece.
+#    E a data era a mais previsível de todas: em 04/09/2026 este bloco já
+#    nomeava as três variáveis que a escada ia pedir a este env. DUAS delas
+#    chegaram em 07/09/2026, no degrau 2.10 — `TOKENS_ACEITOS_ADMIN` e
+#    `TOKENS_ESCRITA_ADMIN`, os dois graus de crachá da tela dos parâmetros do
+#    dono (`armadilhas/318`) —, e este script passou a gerá-las em vez de
+#    apagá-las. Sobram a lista de quem é do plantão (Fase 7) e, se um dia sair
+#    do compose, `REDIS_STREAMS_URL` (hoje ela é topologia do compose, no
+#    serviço `encomendas-tique`).
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKENS_ACEITOS_ADMIN TOKENS_ESCRITA_ADMIN"
 
 # LITERAL, e não `$ENV_ENCOMENDAS`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script como
@@ -227,6 +236,14 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS)"
 [ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ALUNOS} -ge 32 ] || parar "o token do par encomendas->alunos ficou curto demais. Nada foi alterado."
 
+# O par admin->encomendas é o único em que esta célula RESPONDE, e por isso o
+# valor é relido do env da `admin` (que este script só acrescenta) e não do env
+# das encomendas (que ele reescreve inteiro): assim, num dia em que este arquivo
+# for regravado do zero, a conversa que já funciona continua funcionando.
+T_ADMIN="$(ler_de "$ENV_ADMIN" ENCOMENDAS_API_TOKEN)"
+[ -n "$T_ADMIN" ] || T_ADMIN="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_ADMIN} -ge 32 ] || parar "o token do par admin->encomendas ficou curto demais. Nada foi alterado."
+
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
@@ -265,6 +282,8 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
+TOKENS_ACEITOS_ADMIN=$T_ADMIN
+TOKENS_ESCRITA_ADMIN=$T_ADMIN
 ENV
 
 chown --reference="$ENV_REF" "$ENV_ENCOMENDAS" 2>/dev/null \
@@ -319,17 +338,33 @@ garantir() {  # arquivo, chave, valor, cabeçalho
 garantir "$ENV_IDENTIDADE" TOKENS_ACEITOS_ENCOMENDAS "$T_IDENTIDADE" "par encomendas->identidade: as encomendas perguntam quem e a pessoa"
 garantir "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS "$T_ALUNOS" "par encomendas->alunos: as encomendas perguntam se a pessoa e aluna"
 
+# O terceiro par vai na MAO CONTRARIA: aqui quem responde e a encomendas, e quem
+# chama e a tela dos parametros do dono. Por isso o token sai no env da admin
+# como ENCOMENDAS_API_TOKEN, e no env das encomendas como os DOIS graus de
+# cracha (`armadilhas/318`), com o mesmo valor. O endereco sai do `servers:` do
+# contrato congelado desta celula, e nao e escolha deste script.
+garantir "$ENV_ADMIN" ENCOMENDAS_API_URL "$ENCOMENDAS_URL" "par admin->encomendas: o dono muda os numeros da Fila na tela dele"
+garantir "$ENV_ADMIN" ENCOMENDAS_API_TOKEN "$T_ADMIN" "par admin->encomendas: o dono muda os numeros da Fila na tela dele"
+
 # -----------------------------------------------------------------------------
 # 7. RECARREGAR OS PARES — sem isto, a célula sobe e leva 401 nas duas
 #    perguntas. As chaves acima foram escritas nos ARQUIVOS, e um container só
 #    lê o env dele quando (re)nasce.
 #
 #    JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as
-#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome. A
-#    `encomendas` NÃO entra aqui de propósito — ela ainda não existe neste
-#    compose; quem a põe lá é o degrau 2.10, depois desta tela.
+#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
+#
+#    A `encomendas` E O TIQUE DELA ENTRARAM NESTA LISTA EM 07/09/2026, e a
+#    ausência deles era certa até ali: a célula não existia no compose desta
+#    máquina, e quem a pôs lá foi o degrau 2.10. Agora ela existe, e deixá-los
+#    de fora seria pior que não recarregar nada, porque este roteiro ROTACIONA
+#    a senha do banco: um container que não renasce continua apresentando a
+#    senha velha a um banco que já mudou a fechadura.
+#
+#    Quem não estiver no compose desta máquina é PULADO com aviso, e não é
+#    erro: o script continua rodando numa VPS que ainda não recebeu a entrega.
 # -----------------------------------------------------------------------------
-for SERVICO in identidade alunos; do
+for SERVICO in identidade alunos admin encomendas encomendas-tique; do
   if command -v docker >/dev/null 2>&1 && docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
     if docker compose up -d "$SERVICO" >/dev/null 2>&1; then
       echo "  recarreguei: $SERVICO"
@@ -348,10 +383,11 @@ echo
 echo "== estado DEPOIS =="
 echo "  banco encomendas_db .... pronto, fechado ao público"
 echo "  $ENV_ENCOMENDAS ... escrito, com SITE_ID preenchido"
-echo "  pares abertos .......... encomendas->identidade, encomendas->alunos"
+echo "  pares abertos .......... encomendas->identidade, encomendas->alunos, admin->encomendas"
 for arq in $MEXIDOS; do echo "  tocado ................. $arq (cópia em $arq.bak-provisionar-encomendas)"; done
 echo
 echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
-echo "As Encomendas ainda NÃO estão no ar: falta a entrega que as põe no"
-echo "docker-compose e no roteador, em /encomendas. O robô faz essa parte"
-echo "sozinho, depois desta tela."
+echo "As Encomendas respondem em https://meshcraft.top/encomendas desde"
+echo "07/09/2026. Se a linha 'recarreguei: encomendas' apareceu acima, a"
+echo "célula já está de pé com estas chaves; se ela não apareceu, esta"
+echo "máquina ainda não recebeu a entrega do compose, e o próximo deploy resolve."

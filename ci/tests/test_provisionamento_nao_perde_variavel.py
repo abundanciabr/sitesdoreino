@@ -108,14 +108,6 @@ SCRIPTS = [
         "env/gamificacao.env",
         "infra/env/gamificacao.env.exemplo",
     ),
-    # A sétima da família (04/09/2026, provisionamento das encomendas). Entrou
-    # aqui no MESMO PR do script, pelo motivo escrito acima — e nesta célula a
-    # data é a mais previsível de toda a lista: a escada da
-    # `DECISAO-fila-do-primeiro-dolar.md` §7 tem os degraus 2.2 a 2.14 pela
-    # frente, e TRÊS deles já sabem o nome da variável que vão pedir a este env
-    # (`TOKENS_ACEITOS_ADMIN` no degrau 2.14, `REDIS_STREAMS_URL` quando o relay
-    # nascer, e a lista do plantão na Fase 7). Cada uma é uma chance de o script
-    # apagar o que não conhece.
     # A oitava da família (04/09/2026, provisionamento da medição). Entrou aqui
     # no MESMO PR do script, pelo motivo escrito acima. Este é o env mais curto
     # da plataforma (três chaves), e é justamente por isso que a trava importa:
@@ -128,6 +120,17 @@ SCRIPTS = [
         "env/metricas.env",
         "infra/env/metricas.env.exemplo",
     ),
+    # A sétima da família (04/09/2026, provisionamento das encomendas). Entrou
+    # aqui no MESMO PR do script, pelo motivo escrito acima — e nesta célula a
+    # previsão se cumpriu em três dias, que é o valor da lista estar escrita.
+    # Em 04/09 este comentário nomeava TRÊS variáveis que a escada ia pedir ao
+    # env; em 07/09, no degrau 2.10, DUAS chegaram: `TOKENS_ACEITOS_ADMIN` e
+    # `TOKENS_ESCRITA_ADMIN`, os dois graus de crachá da tela dos parâmetros do
+    # dono. Elas entraram gerada e listadas na mesma edição, e não apagadas em
+    # silêncio — que é exatamente o desfecho que esta lista existe para trocar.
+    # Continuam por vir a lista do plantão (Fase 7) e, se um dia sair do
+    # compose, `REDIS_STREAMS_URL`. O guarda dos dois lados desse par está no
+    # fim deste arquivo.
     (
         "infra/provisionar-encomendas.sh",
         "env/encomendas.env",
@@ -319,4 +322,59 @@ def test_o_caso_real_que_originou_este_guarda_esta_fechado():
         "isso foi de propósito, ele precisa saber GERAR o token do par — que "
         "hoje pertence ao provisionar-identidade.sh — e a trava de deriva e "
         "este teste precisam ser atualizados juntos."
+    )
+
+
+def test_o_par_admin_com_as_encomendas_nasce_com_os_dois_graus_e_os_dois_lados():
+    """O crachá que a tela dos parâmetros do dono vai usar, nos DOIS envs.
+
+    A porta de máquina da `encomendas` lê dois conjuntos, e não um
+    (`services/encomendas/config/settings.py`, e a razão está na
+    `armadilhas/318`): `TOKENS_ACEITOS_<PAR>` deixa LER e `TOKENS_ESCRITA_<PAR>`
+    deixa GRAVAR. Env ausente é conjunto vazio, que é 401 para todo mundo —
+    fail-closed correto, e invisível: a célula sobe, o `/healthz` responde, o
+    deploy fica verde e só a tela do dono nasce sem funcionar, com um 401 que
+    nada explica.
+
+    A trava de deriva acima garante que o script não APAGUE uma variável que
+    alguém pôs à mão. Ela não garante que a variável exista, e é isso que este
+    guarda cobra — nos dois lados, porque token de par tem dois lados: o valor
+    que a `encomendas` aceita precisa ser o MESMO que a `admin` apresenta.
+    """
+    fonte = _texto("infra/provisionar-encomendas.sh")
+    heredoc = _chaves_do_heredoc(
+        fonte, "infra/provisionar-encomendas.sh", "env/encomendas.env"
+    )
+
+    assert {"TOKENS_ACEITOS_ADMIN", "TOKENS_ESCRITA_ADMIN"} <= heredoc, (
+        "o env das encomendas nasceria sem o crachá da `admin`, e a tela dos "
+        "parâmetros do dono levaria 401 com tudo verde (`armadilhas/318`)."
+    )
+
+    for chave in ("TOKENS_ACEITOS_ADMIN", "TOKENS_ESCRITA_ADMIN"):
+        assert re.search(rf"^{chave}=\$T_ADMIN$", fonte, re.MULTILINE), (
+            f"{chave} tem de receber o MESMO valor (`$T_ADMIN`) que o outro "
+            "grau e que o lado da `admin`. Dois valores diferentes fazem um "
+            "dos dois graus recusar sem que nada explique por quê."
+        )
+
+    assert re.search(
+        r'^garantir "\$ENV_ADMIN" ENCOMENDAS_API_TOKEN "\$T_ADMIN"',
+        fonte,
+        re.MULTILINE,
+    ), (
+        "o outro lado do par não é escrito: a `encomendas` aceitaria um token "
+        "que a `admin` não tem. É a mesma forma das linhas que abrem os pares "
+        "com a identidade e com a alunos, logo acima dela no script."
+    )
+    assert re.search(
+        r'^garantir "\$ENV_ADMIN" ENCOMENDAS_API_URL ', fonte, re.MULTILINE
+    ), (
+        "sem o endereço, a `admin` tem o crachá e não sabe a que porta bater."
+    )
+
+    do_molde_admin = set(RE_CHAVE.findall(_texto("infra/env/admin.env.exemplo")))
+    assert {"ENCOMENDAS_API_URL", "ENCOMENDAS_API_TOKEN"} <= do_molde_admin, (
+        "quem for provisionar a `admin` do zero não saberia que ela precisa "
+        "destas duas para falar com a Fila."
     )
