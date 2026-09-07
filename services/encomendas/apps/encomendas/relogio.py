@@ -294,6 +294,24 @@ def _horas_do_parametro(chave: str, agora: datetime, *, site_id: str) -> timedel
     return timedelta(hours=Parametro.inteiro_vigente(chave, agora, site_id=site_id))
 
 
+def _vence_em_horas_uteis(chave: str, agora: datetime, *, site_id: str) -> datetime:
+    """Quando vence, em horas úteis, o prazo que a `chave` mede, contado de `agora`.
+
+    Duas leituras do banco, as duas fail-closed e as duas no valor vigente em
+    `agora`: quantas horas úteis (a `chave`) e quais são as horas úteis
+    (`janela_inicio`, `janela_fim`).
+
+    Uma definição só porque os dois relógios de vez desta célula fazem
+    exatamente a mesma coisa e diferem só na chave: o da OFERTA, na fila, e o da
+    RESERVA, no Mural. Duas cópias divergiriam no primeiro dia em que uma delas
+    ganhasse um cuidado a mais, e a divergência apareceria como "o aluno perdeu
+    a vez dormindo" numa das pistas e não na outra.
+    """
+    duracao = _horas_do_parametro(chave, agora, site_id=site_id)
+    janela = Janela.do_banco(agora, site_id=site_id)
+    return somar_horas_uteis(agora, duracao, janela)
+
+
 def calcular_expiracao(agora: datetime, *, site_id: str) -> datetime:
     """Quando expira a oferta feita em `agora`. A costura que o motor recebe.
 
@@ -302,14 +320,31 @@ def calcular_expiracao(agora: datetime, *, site_id: str) -> datetime:
     de propósito: o motor a recebe como argumento
     (`rodar(..., calcular_expiracao=...)`), e é isso que fez a troca ser uma
     linha em vez de uma cirurgia no meio da varredura.
-
-    Duas leituras do banco, as duas fail-closed e as duas no valor vigente em
-    `agora`: quantas horas úteis (`relogio_da_oferta`) e quais são as horas
-    úteis (`janela_inicio`, `janela_fim`).
     """
-    duracao = _horas_do_parametro("relogio_da_oferta", agora, site_id=site_id)
-    janela = Janela.do_banco(agora, site_id=site_id)
-    return somar_horas_uteis(agora, duracao, janela)
+    return _vence_em_horas_uteis("relogio_da_oferta", agora, site_id=site_id)
+
+
+def calcular_expiracao_da_reserva(agora: datetime, *, site_id: str) -> datetime:
+    """Quando vence a vez de quem pegou um projeto no Mural em `agora`.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.2 e §9
+    (`relogio_da_reserva_no_mural`, três horas úteis).
+
+    **É o MESMO relógio de horas úteis da oferta, e isso é decisão, e não
+    preguiça.** As três horas da reserva existem pela mesma razão que as três da
+    oferta: são o tempo de a pessoa olhar o briefing e responder. Se o relógio
+    do Mural corresse de madrugada, o aluno que pegasse um projeto às 21h o
+    perderia dormindo, e a pista nova teria uma justiça diferente da pista
+    velha sem ninguém ter decidido isso.
+
+    **E ele para na primeira proposta.** Este relógio mede só a primeira perna,
+    do "Pegar" ao "Propor"; a partir da proposta quem manda são os relógios da
+    negociação, de 24 horas úteis por rodada (§4.2). Sem essa passagem de
+    bastão, a reserva venceria no meio da primeira rodada e o projeto voltaria
+    ao Mural com uma proposta de pé. Quem passa o bastão é a TAR-134, fechando
+    a reserva em `negociando`.
+    """
+    return _vence_em_horas_uteis("relogio_da_reserva_no_mural", agora, site_id=site_id)
 
 
 def prazo_para_virar_aberta(agora: datetime, *, site_id: str) -> timedelta:
