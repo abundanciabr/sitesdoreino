@@ -703,6 +703,14 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     trabalho = elo_.trabalho_por_cartao(a_fila)
     declaracao = elo_.resumo_da_declaracao(a_fila)
 
+    # FORA do `if meta`, e devolvido no contexto: o livro é caro de ler (uma
+    # varredura de `painel/registros/`, com um `read_text` por arquivo) e as
+    # telas que montam o placar E olham o livro pagariam essa conta duas vezes
+    # na mesma requisição. Quem quiser os registros já lidos os pega daqui, e
+    # `None` continua querendo dizer "o livro não chegou até esta imagem" para
+    # todo mundo, nunca "nenhum registro" (`armadilhas/271`).
+    registros = dir_.ler_registros()
+
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
@@ -712,7 +720,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         alunos = cliente.alunos()
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
-        registros = dir_.ler_registros()
         contagem = contar_compras(alunos, partida_em, hoje)
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
@@ -770,6 +777,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
 
     return {
         "medicao": med_.a_memoria(site_id, timezone.now()),
+        "registros": registros,
         "mudancas": mudancas,
         "latencias": latencias,
         "doze": os_doze,

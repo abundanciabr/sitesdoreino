@@ -58,6 +58,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from . import analista as analista_
 from .direcao import ler_registros
 from .placar import montar_o_placar, site_de
 
@@ -457,9 +458,9 @@ def fechamento(request):
         hoje=hoje,
     )
     campos = request.POST if request.method == "POST" else {}
-    pedido, faltando = (
-        montar_o_pedido(campos, dados, hoje) if request.method == "POST" else (None, [])
-    )
+    pediram_o_analista = campos.get("acao") == analista_.ACAO
+    fechar = request.method == "POST" and not pediram_o_analista
+    pedido, faltando = montar_o_pedido(campos, dados, hoje) if fechar else (None, [])
     return render(
         request,
         "admin/fechamento.html",
@@ -468,9 +469,19 @@ def fechamento(request):
             "recusas": contexto["recusas"],
             "fechamento": dados,
             "campos": campos,
-            "montou": request.method == "POST",
+            "montou": fechar,
             "pedido": pedido,
             "faltando": faltando,
             "hoje": hoje,
+            "analista": analista_.para_a_tela(
+                momento="fechamento",
+                dossie=(
+                    analista_.dossie_do_fechamento(dados, contexto, hoje)
+                    if pediram_o_analista
+                    else ""
+                ),
+                hoje=hoje,
+                pediram=pediram_o_analista,
+            ),
         },
     )
