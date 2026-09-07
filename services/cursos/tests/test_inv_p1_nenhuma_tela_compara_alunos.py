@@ -47,7 +47,10 @@ AS_ROTAS_DA_CELULA = {
     # que todas as rotas acima já respeitam.
     "entregar-checkpoint",
     "aula",
-    "mapa",
+    # O CATÁLOGO (07/09/2026): a raiz da célula lista CURSOS, nunca pessoas.
+    # Um cartão por `Curso` do site, e a situação de cada um é a da pessoa da
+    # sessão. É o lugar do antigo `mapa` sem slug, que redirecionava.
+    "catalogo",
     # O ENDEREÇO DO LIVRO (TAR-212): o mapa de UM curso e a aula com a parte.
     # Nenhuma das duas recebe pessoa: o `curso` é o slug do curso e a `parte` é
     # o número da Parte do livro. A sala continua sendo a de quem a abriu.

@@ -208,6 +208,62 @@ def registro_embarcado(
     return SEM_CITACAO
 
 
+# Como o registro declara em que ÁREA do site o trabalho aconteceu — o campo
+# `area` do molde (`painel/LEIA-ME.md`), que alimenta a aba "Prioridades" do
+# painel do dono. As duas grafias que o livro aceita contam: `area: "ci"` e
+# `"area": "ci"`. Cobrar uma só já custou caro aqui — em 29/08/2026 um regex
+# que ignorava a forma com aspas deixou de contar pedidos, e o Python dizia 6
+# onde o painel dizia 7 (`armadilhas/379`).
+#
+# `area: null` é o molde não preenchido: quem lê recebe `None` e trata igual a
+# campo ausente.
+#
+# A leitura ANCORA no começo da linha do diff (`^\+`), porque no molde o campo é
+# sempre o primeiro token da linha. Sem a âncora, `"sub-area": "vendas"` casava
+# como sufixo de `area` e, por vir antes no molde, o falso positivo vencia o
+# campo verdadeiro que vinha depois (achado do revisor do PR #1337).
+_CAMPO_AREA = re.compile(r'^\+\s*"?area"?\s*:\s*(?:"([^"]*)"|null)')
+
+# O ramo de um robô é `agent/<area>/<tarefa>` (CLAUDE.md). Só ele diz a área.
+_RAMO_DE_AGENTE = re.compile(r"agent/([^/]+)/.+")
+
+
+def areas_dos_registros_embarcados(
+    remessas: list[dict[str, Any]],
+) -> list[tuple[str, str | None]]:
+    """Para cada registro que viaja no PR, a área que ele declara — ou `None`.
+
+    `remessas` é o diff por arquivo como o GitHub devolve, o mesmo que
+    `registro_embarcado` consome, e pela mesma razão: a pista NUNCA faz checkout
+    do código do PR (`pouso.yml`, `armadilhas/190`), então o registro embarcado
+    não existe no disco de quem confere.
+
+    Só linhas ADICIONADAS contam. Uma `area` em linha removida seria um registro
+    saindo do livro, e registro não se apaga (`painel/LEIA-ME.md`).
+    """
+    achados: list[tuple[str, str | None]] = []
+    for remessa in remessas:
+        caminho = (remessa.get("filename") or "").replace("\\", "/")
+        if not caminho.startswith(PASTA_DO_LIVRO) or not caminho.endswith(".js"):
+            continue
+        area: str | None = None
+        for linha in (remessa.get("patch") or "").splitlines():
+            if not linha.startswith("+"):
+                continue
+            achado = _CAMPO_AREA.match(linha)
+            if achado:
+                area = achado.group(1) or None
+                break
+        achados.append((caminho, area))
+    return achados
+
+
+def area_do_ramo(head_ref: str | None) -> str | None:
+    """`agent/<area>/<tarefa>` → `<area>`; ramo fora do padrão → `None`."""
+    achado = _RAMO_DE_AGENTE.fullmatch((head_ref or "").replace("\\", "/"))
+    return achado.group(1) if achado else None
+
+
 def como_embarcar(numero: int, veredito: str) -> str:
     """A recusa que ensina o caminho — os dois passos, com os comandos."""
     if veredito == SEM_CITACAO:

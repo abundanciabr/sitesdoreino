@@ -175,27 +175,27 @@ def matriculada_nos_dois(rede):
     )
 
 
-def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
+def test_com_dois_cursos_dela_o_catalogo_oferece_os_dois(
     env_dos_pares, rede, aula_publicada, client
 ):
-    """O defeito que esta tarefa cura, medido: até aqui a sala respondia
+    """O defeito que a TAR-212 curou, medido: até ela a sala respondia
     `Curso.objects.filter(site_id=site).order_by("id").first()`, e o segundo
     curso do site nunca apareceria para ninguém.
 
-    E é aqui que o 301 PARA: o endereço antigo não diz qual curso o aluno
-    quer, e com dois deles mandá-lo para um seria um chute com cara de certeza
-    (o navegador guarda o 301 e nunca mais pergunta). A tela que PERGUNTA é a
-    resposta certa, e ela responde 200.
+    A raiz é o CATÁLOGO (decisão do mantenedor de 07/09/2026): com dois
+    cursos dela, os dois cartões saem com botão, e ela escolhe. Nenhum deles
+    é servido no lugar do outro.
     """
     um_segundo_curso_com_a_propria_E00()
     matriculada_nos_dois(rede)
-    resposta = abrir(client, reverse("mapa"))
+    resposta = abrir(client, reverse("catalogo"))
     assert resposta.status_code == 200
     corpo = corpo_de(resposta)
     assert "Entre. Entregue. Receba." not in corpo
     assert aula_publicada.titulo_exibido not in corpo
     assert 'href="/profissional/"' in corpo
     assert 'href="/avancado/"' in corpo
+    assert corpo.count("Entrar no curso") == 2
 
 
 def test_com_dois_cursos_no_site_o_endereco_antigo_da_aula_tambem_pergunta(
@@ -213,17 +213,18 @@ def test_com_dois_cursos_no_site_o_endereco_antigo_da_aula_tambem_pergunta(
     assert 'href="/avancado/"' in corpo
 
 
-def test_com_um_curso_so_o_endereco_antigo_muda_de_casa(aluna, client):
-    """Nenhum link já compartilhado morre, e nenhum deles fica: 301.
-
-    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
-    já compartilhado levaria o aluno a uma página que não diz em que parte do
-    curso ele está, que é exatamente o que o endereço novo veio resolver.
+def test_com_um_curso_so_a_raiz_mostra_o_catalogo_e_nunca_redireciona(aluna, client):
+    """A raiz respondia 301 para o mapa do único curso (TAR-216), e o
+    mantenedor mandou parar em 07/09/2026: quem abre `/cursos/` vê o catálogo
+    com o cartão do curso e entra por ele. O link antigo de AULA continua
+    mudando de casa (abaixo); só o da raiz deixou de mudar.
     """
-    resposta = abrir(client, reverse("mapa"))
-    assert resposta.status_code == 301
-    assert resposta["Location"] == reverse("curso", args=["profissional"])
-    assert abrir(client, resposta["Location"]).status_code == 200
+    resposta = abrir(client, reverse("catalogo"))
+    assert resposta.status_code == 200
+    assert "Location" not in resposta
+    corpo = corpo_de(resposta)
+    assert 'href="/profissional/"' in corpo
+    assert "Entre. Entregue. Receba." not in corpo
 
 
 def test_o_endereco_antigo_da_aula_muda_de_casa_para_a_parte_certa(

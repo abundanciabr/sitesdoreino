@@ -59,7 +59,7 @@ main {
   padding: 32px 20px 64px;
 }
 
-section, .cabecalho-da-aula {
+section, .cabecalho-da-aula, .curso {
   background: var(--caixa);
   border: 1px solid var(--borda);
   border-radius: 14px;
@@ -132,7 +132,7 @@ h3 {
 
 .porta .fechada { color: var(--tinta-fraca); }
 
-.porta .selo, .pausa .selo, .checkpoint .selo {
+.porta .selo, .pausa .selo, .checkpoint .selo, .curso .selo {
   background: var(--marca-fraca);
   border-radius: 999px;
   color: var(--tinta);
@@ -140,7 +140,7 @@ h3 {
   padding: 1px 10px;
 }
 
-.porta.estado-concluida .selo { background: var(--verde-fraco); color: var(--verde); }
+.porta.estado-concluida .selo, .curso .selo { background: var(--verde-fraco); color: var(--verde); }
 .porta.estado-trancada .selo { background: var(--papel); color: var(--tinta-fraca); }
 .porta.atual { background: var(--marca-fraca); border-radius: 8px; padding-left: 8px; }
 
@@ -150,7 +150,7 @@ h3 {
   font-weight: 700;
 }
 
-.porta-atual, .botao, .convite .entrar a {
+.porta-atual, .botao, .convite .entrar a, .curso .entrar a {
   background: var(--marca);
   border-radius: 10px;
   color: #fff;
@@ -161,6 +161,21 @@ h3 {
 }
 
 .convite .entrar { margin: 22px 0 10px; }
+
+/* O catálogo: um cartão por curso, na mesma linguagem das portas. A caixa,
+   o selo e o botão são as regras da sala, acima; aqui só o que é do cartão. */
+.curso h2 {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.curso .aulas { color: var(--tinta-fraca); margin: 0 0 8px; }
+
+.curso .entrar { margin: 16px 0 0; }
+
+.curso.situacao-nao-e-seu, .curso.situacao-sem-produto { color: var(--tinta-fraca); }
 
 /* O vídeo embutido, na proporção de tela larga. */
 .quadro {

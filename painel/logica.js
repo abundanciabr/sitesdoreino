@@ -70,9 +70,14 @@
   // Devolve lista de erros (vazia = válido). ERROR nunca vira PASS: quem chamar
   // com erros não-vazios NÃO pode renderizar como se estivesse tudo bem.
   // ---------------------------------------------------------------------------
-  function validarRegistros(registros) {
+  // `areas` (07/09/2026, a aba Prioridades) é a lista de painel/areas.json: é ela
+  // que diz se o campo `area` de um registro existe. Sem ela, `area` preenchida
+  // vira ERRO em vez de passar — não conferir não é aprovar, e um nome inventado
+  // poria o fato na parte errada do site.
+  function validarRegistros(registros, areas) {
     var erros = [];
     if (!Array.isArray(registros)) return ["REGISTROS não é uma lista — os arquivos de registro carregaram?"];
+    var celulasConhecidas = areas ? mapaDeCelulas(areas) : null;
     var vistos = {};
     registros.forEach(function (r, i) {
       var nome = (r && r.arquivo) ? r.arquivo : ("registro na posição " + i);
@@ -93,6 +98,19 @@
       // tem de ser uma das cinco, senão o fato cai num capítulo que não existe.
       if (r.frente != null && FRENTES.indexOf(r.frente) === -1) {
         erros.push(nome + ": 'frente' desconhecida '" + r.frente + "' — as cinco são: " + FRENTES.join(", "));
+      }
+      // A ÁREA é o nome do ramo em que o robô trabalhou (`agent/<area>/...`): em
+      // que parte do SITE o fato mexe, pergunta que a frente não responde.
+      // Opcional (registro antigo não a tem e não se edita); se vier, tem de
+      // estar em painel/areas.json, senão o fato cai numa área que não existe.
+      if (r.area != null) {
+        if (typeof r.area !== "string" || r.area.trim() === "") {
+          erros.push(nome + ": 'area' precisa ser o nome do ramo (texto), ou null");
+        } else if (!celulasConhecidas) {
+          erros.push(nome + ": não consigo conferir a área '" + r.area + "' sem painel/areas.json — quem valida precisa passar as áreas");
+        } else if (!celulasConhecidas[r.area]) {
+          erros.push(nome + ": 'area' desconhecida '" + r.area + "' — o nome tem de estar em painel/areas.json (é o nome do ramo, como em agent/" + r.area + "/...)");
+        }
       }
       // 'rumo' = para onde esta frente vai. Sem frente ele não tem capítulo onde
       // morar; e rumo NUNCA é verde, porque verde é prova conferida e ninguém
@@ -459,6 +477,164 @@
   }
 
   // ---------------------------------------------------------------------------
+  // PRIORIDADES POR ÁREA (07/09/2026) — "o que eu faço primeiro, e em que parte
+  // do site isso mexe". A capa ordena por idade e o Meu mapa agrupa pelos cinco
+  // capítulos do livro; nenhuma das duas responde essa pergunta. Aqui os MESMOS
+  // fatos são recortados por área do site (painel/areas.json) e, dentro dela,
+  // por tipo. As tarefas vêm de fora (a fila dos robôs, buscada pela página)
+  // porque não moram no livro; sem elas os grupos de registro continuam de pé.
+  // ---------------------------------------------------------------------------
+
+  // Registro sem `area` cai na frente dele. É aproximação, a tela a marca como
+  // tal, e existe para os registros escritos antes do campo, que não se editam.
+  var AREA_DA_FRENTE = { fabrica: "fabrica", curso: "cursos", site: "alunos", comunidade: "comunidade", vender: "vendas" };
+  var RANK_IMPACTO = { alto: 0, medio: 1, baixo: 2 };
+  // A MESMA escala do selo da fila (alta ≡ alto), para pedido e tarefa caberem
+  // na mesma lista. Os limiares que produzem o selo moram na fila e NÃO se
+  // reimplementam aqui: duas definições de "custa caro" divergem sozinhas
+  // (`armadilhas/379`).
+  var RANK_SELO = { alta: 0, media: 1, baixa: 2, "sem-nota": 3 };
+  var SEM_AREA = { id: null, nome: "❓ Sem área reconhecida", diz: "ninguém disse em que parte do site isto mexe" };
+
+  function mapaDeCelulas(areas) {
+    var m = {};
+    (areas || []).forEach(function (a) {
+      if (a && Array.isArray(a.celulas)) a.celulas.forEach(function (c) { m[c] = a.id; });
+    });
+    return m;
+  }
+
+  // Ids únicos, campos presentes, e cada célula em UMA área só: sem isso o mesmo
+  // trabalho apareceria em dois blocos, e a contagem do topo não fecharia com a
+  // soma deles.
+  function validarAreas(areas) {
+    var erros = [];
+    if (!Array.isArray(areas)) return ["painel/areas.json: 'areas' precisa ser uma lista"];
+    if (!areas.length) return ["painel/areas.json: a lista de áreas está vazia"];
+    var ids = {}, dona = {};
+    areas.forEach(function (a, i) {
+      var nome = (a && a.id) ? a.id : ("área na posição " + i);
+      ["id", "nome", "diz"].forEach(function (campo) {
+        if (!a || typeof a[campo] !== "string" || a[campo].trim() === "") {
+          erros.push(nome + ": campo '" + campo + "' ausente ou vazio");
+        }
+      });
+      if (!a) return;
+      if (ids[a.id]) erros.push(nome + ": id repetido — duas áreas com o mesmo id");
+      ids[a.id] = true;
+      if (!Array.isArray(a.celulas) || !a.celulas.length) {
+        erros.push(nome + ": 'celulas' precisa ser uma lista com ao menos um nome de célula ou de ramo");
+        return;
+      }
+      a.celulas.forEach(function (c) {
+        if (typeof c !== "string" || c.trim() === "") { erros.push(nome + ": nome de célula vazio"); return; }
+        if (dona[c]) {
+          erros.push("a célula '" + c + "' aparece em duas áreas ('" + dona[c] + "' e '" + a.id +
+            "') — cada nome pertence a uma só, senão o mesmo trabalho apareceria em dois lugares da tela");
+        } else { dona[c] = a.id; }
+      });
+    });
+    return erros;
+  }
+
+  // Compara chaves de ordenação (listas de números e textos), campo a campo.
+  function porOrdem(a, b) {
+    for (var i = 0; i < Math.max(a.ordem.length, b.ordem.length); i++) {
+      var x = a.ordem[i], y = b.ordem[i];
+      if (x === y) continue;
+      return x < y ? -1 : 1;
+    }
+    return 0;
+  }
+
+  function prioridades(registros, agora, prontos, areas, tarefas) {
+    areas = areas || [];
+    tarefas = tarefas || [];
+    var deCelula = mapaDeCelulas(areas);
+    var resp = respondidos(registros, prontos);
+    var caixa = caixaDeEntrada(registros, agora, prontos);
+    var naCaixa = {};
+    caixa.forEach(function (x) { naCaixa[x.registro.arquivo] = true; });
+
+    function areaDoRegistro(r) {
+      if (r.area && deCelula[r.area]) return { id: deCelula[r.area], pelaFrente: false };
+      if (r.frente && AREA_DA_FRENTE[r.frente]) return { id: AREA_DA_FRENTE[r.frente], pelaFrente: true };
+      return { id: null, pelaFrente: false };
+    }
+
+    var itens = [];
+    // DECIDIR: pedidos do livro e tarefas paradas à espera dele, na mesma lista
+    // e na mesma escala. No empate, o registro vem antes, e o mais velho antes.
+    caixa.forEach(function (x) {
+      var r = x.registro, a = areaDoRegistro(r);
+      var peso = RANK_IMPACTO[r.impacto] == null ? 3 : RANK_IMPACTO[r.impacto];
+      itens.push({
+        grupo: "decidir", especie: "pedido", area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: x.aguardandoDias, cor: "gold",
+        ordem: [peso, 0, -x.aguardandoDias, r.arquivo]
+      });
+    });
+    // ALERTA: vermelho e âmbar sem conserto, MENOS o que já está na caixa. Um
+    // fato, um lugar: o pedido que também é âmbar mora só em Decidir.
+    problemasAbertos(registros, prontos).forEach(function (r) {
+      if (naCaixa[r.arquivo]) return;
+      var a = areaDoRegistro(r), d = diasEntre(r.quando, agora);
+      itens.push({
+        grupo: "alerta", especie: "alerta", area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: d, cor: r.gravidade === "vermelho" ? "red" : "gold",
+        ordem: [r.gravidade === "vermelho" ? 0 : 1, -d, r.arquivo]
+      });
+    });
+    // RUMOS E PROMESSAS. Compromisso vencido vira bolinha vermelha: o prazo é
+    // contado contra o relógio de quem abre a página, nunca congelado no build.
+    registros.forEach(function (r) {
+      if (r.tipo !== "rumo" && r.tipo !== "compromisso") return;
+      if (resp[r.arquivo]) return;
+      var a = areaDoRegistro(r), d = diasEntre(r.quando, agora);
+      var vence = r.vence_em_dias != null ? (r.vence_em_dias - d) : null;
+      itens.push({
+        grupo: "rumo", especie: r.tipo, area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: d, venceEm: vence,
+        cor: (vence != null && vence < 0) ? "red" : "blue",
+        ordem: [r.tipo === "compromisso" ? 0 : 1, d, r.arquivo]
+      });
+    });
+    // A FILA DOS ROBÔS: a área e o selo já vêm resolvidos por quem serve a fila.
+    tarefas.forEach(function (t) {
+      var paraODono = t.para_o_dono === true;
+      var classe = (t.selo && t.selo.classe) || "sem-nota";
+      var rank = RANK_SELO[classe] == null ? 3 : RANK_SELO[classe];
+      var peso = typeof t.importancia === "number" ? t.importancia : 0;
+      itens.push({
+        grupo: paraODono ? "decidir" : "robos", especie: "tarefa",
+        area: t.area || null, pelaFrente: false, tarefa: t,
+        cor: paraODono ? "gold" : (t.estado === "na fila" ? "blue" : "roxo"),
+        ordem: paraODono ? [rank, 1, 0, t.id] : [rank, -peso, t.id]
+      });
+    });
+
+    function areaVazia(a) {
+      return { id: a.id, nome: a.nome, diz: a.diz, total: 0,
+        grupos: { decidir: [], alerta: [], robos: [], rumo: [] } };
+    }
+    // TODAS as áreas aparecem, mesmo vazias: área que some se leria como "não
+    // existe", e não como "nada pendente hoje".
+    var saida = areas.map(areaVazia);
+    var porId = {};
+    saida.forEach(function (a) { porId[a.id] = a; });
+    var sem = areaVazia(SEM_AREA);
+    itens.forEach(function (i) {
+      var destino = porId[i.area] || sem;
+      destino.grupos[i.grupo].push(i);
+      destino.total++;
+    });
+    saida.concat([sem]).forEach(function (a) {
+      Object.keys(a.grupos).forEach(function (g) { a.grupos[g].sort(porOrdem); });
+    });
+    return { areas: saida, semArea: sem };
+  }
+
+  // ---------------------------------------------------------------------------
   // Frescor COMPUTADO (nunca escrito): para cada registro com vence_em_dias,
   // compara com o agora. E o frescor do livro inteiro: o registro mais recente
   // de todos — se o livro está parado há muito, a capa inteira se denuncia.
@@ -696,6 +872,10 @@
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
     "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
     "frente", "vence_em_dias",
+    // A ÁREA vem no corte: sem ela, o registro que viaja só como título cairia
+    // em "sem área reconhecida" na aba Prioridades, e a tela mostraria o fato na
+    // parte errada do site tendo a resposta escrita no livro.
+    "area",
     // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
@@ -820,6 +1000,8 @@
     montarResumo: montarResumo,
     confianca: confianca,
     validarRegistros: validarRegistros,
+    validarAreas: validarAreas,
+    prioridades: prioridades,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,
     mudancasRecentes: mudancasRecentes,

@@ -20,6 +20,8 @@ clone principal. Cada papel tem molde, e o molde vence qualquer estilo seu.
   nome sem `.js`. Tipos: `decisao | pendencia | resposta | entrega | incidente
   | medicao | frente | rumo | nota`. Autoridade: `mantenedor | github | sonda |
   rito | sessao`. Frente: `site | comunidade | curso | vender | fabrica`.
+- `area` é o nome do ramo em que o trabalho aconteceu (`agent/<area>/...`), um
+  dos nomes de `painel/areas.json`; o portão do pouso já confere, em sombra.
 - Menos de 1 KB. Título para leigo, sem sigla, citando o número do PR.
   `evidencia` é a URL do PR (ou do run) e `verificado_em` é o dia em que a
   prova foi conferida; `gravidade: "verde"` só com os dois.

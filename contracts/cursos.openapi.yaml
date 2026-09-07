@@ -99,9 +99,33 @@
 # provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
 # entrar na main (`armadilhas/243`).
 # =============================================================================
+#
+# O QUE O RITO DE 07/09/2026 ACRESCENTOU, e por quê: decisão do mantenedor,
+# com as palavras dele: "quero criar uma estrutura que sirva para vários
+# cursos e não apenas para um único curso, de modo que seja fácil de criar
+# outros cursos depois" (docs/decisoes/DECISAO-a-sala-serve-varios-cursos.md).
+# Nasceram quatro operações: `listCourses` (os cursos do site), `createCourse`
+# (um curso novo, com o produto e a regra de progressão), `putCourse` (trocar
+# nome, produto ou regra; ausente é não mexer) e `putCourseStructure` (a
+# estrutura inteira, blocos e aulas, reconciliada numa transação e sem tocar
+# obra). `Curso.progressao` é dado do curso: `por_laudo` (o padrão, o do livro)
+# ou `livre` (a próxima aula abre quando o aluno conclui a anterior). Os
+# números de aula deixaram de ser só E00..E32 e EB, os blocos vão de A a Z, e
+# a prosa de `putBlock` e do documento foi reescrita para dizer isso. Nada foi
+# removido nem renomeado: mudança aditiva, provedor primeiro (PR #1349).
+#
+# EMENDA DO MESMO DIA (07/09/2026, segundo Rito): o revisor do PR #1349 mostrou
+# que "nome de bloco só preenche onde está vazio" apagava em silêncio o nome
+# de um bloco cuja letra mudasse de posição. A regra virou: em
+# `putCourseStructure`, `nome` e `boss_titulo` do bloco NULOS ou AUSENTES não
+# mexem no que está gravado; TEXTO grava esse valor (vazio apaga). A estrutura
+# é a fonte dos nomes dos módulos; a obra que nunca se sobrescreve é a das
+# aulas, que casam pelo número. E a conferência de rastro de aluno antes de
+# apagar uma aula passou a acontecer dentro da transação que grava.
+#
 openapi: 3.1.0
 info:
-  title: "Cursos \u2014 API interna"
+  title: Cursos — API interna
   version: 1.0.0
   description: 'Superficie de MAQUINA da sala de aula da Meshcraft.
 
@@ -110,7 +134,7 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao treze
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao dezessete
 
     operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
@@ -122,13 +146,36 @@ info:
 
     esta no ar as chama), as tres de instrumento (`listInstruments`,
 
-    `getInstrument`, `putInstrument`), a do bloco (`putBlock`) e a do
+    `getInstrument`, `putInstrument`), a do bloco (`putBlock`), a do
 
-    Revisor de coerencia (`checkLesson`, degrau 3.1). O placar da fila
+    Revisor de coerencia (`checkLesson`, degrau 3.1) e as quatro do
 
-    (getReviewQueue) e o progresso do aluno (getStudentProgress) nascem
+    CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    no degrau 2.1.
+    `putCourseStructure`). O placar da fila (getReviewQueue) e o
+
+    progresso do aluno (getStudentProgress) nascem no degrau 2.1.
+
+
+    A SALA SERVE VARIOS CURSOS DESDE 07/09/2026, e cada um nasce por esta
+
+    porta: `createCourse` cria o curso com o apelido, o nome, a regra de
+
+    avanco (`por_laudo`, a do livro, ou `livre`, em que a proxima aula
+
+    abre quando o aluno conclui a anterior) e o produto do catalogo a que
+
+    ele aponta; `putCourse` altera esses tres; `listCourses` os lista; e
+
+    `putCourseStructure` grava os blocos e as aulas de qualquer curso,
+
+    reconciliando com o que ja existe do mesmo jeito que o semeador do
+
+    livro: escreve estrutura, nunca toca obra, e nao apaga aula por onde
+
+    algum aluno ja passou. O texto de cada aula continua entrando so por
+
+    `putLesson`.
 
 
     O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao
@@ -394,8 +441,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/InstrumentoSchema'
                 type: array
-      description: 'A lista que o editor usa para escolher o instrumento cabivel de
-        uma
+      description: 'A lista que o editor usa para escolher o instrumento cabivel de uma
 
         aula e para abrir a tela de cada cartao. Os instrumentos sao de
 
@@ -421,14 +467,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InstrumentoSchema'
-      description: 'O que `putInstrument` grava, lido de volta: escala, minimos, secao
-        do
+      description: 'O que `putInstrument` grava, lido de volta: escala, minimos, secao do
 
         Padrao, descritores e a versao vigente. 404 se o slug nao existe.'
     put:
       operationId: putInstrument
-      summary: Grava a escala, os minimos, a secao do padrao e os descritores de um
-        instrumento
+      summary: Grava a escala, os minimos, a secao do padrao e os descritores de um instrumento
       parameters:
       - in: path
         name: slug
@@ -442,8 +486,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InstrumentoSchema'
-      description: 'Os instrumentos sao de plataforma inteira (os 13 cartoes sao os
-        mesmos
+      description: 'Os instrumentos sao de plataforma inteira (os 13 cartoes sao os mesmos
 
         em toda escola), por isso nao ha `site_id` aqui. O corpo leva escala
 
@@ -485,8 +528,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AulaDaListaSchema'
-      description: 'O gesto que abre a aula para a sala de aula (degrau 1.8). Muda
-        o
+      description: 'O gesto que abre a aula para a sala de aula (degrau 1.8). Muda o
 
         estado para `publicada` e carimba `publicada_em` com o instante de
 
@@ -606,8 +648,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AulaSchema'
-      description: 'Tudo o que o editor e a sala de aula precisam de uma encomenda.
-        As
+      description: 'Tudo o que o editor e a sala de aula precisam de uma encomenda. As
 
         pecas vem SEMPRE as 19, na ordem canonica das 16 da anatomia, depois
 
@@ -643,8 +684,7 @@ paths:
         naquele curso.'
     put:
       operationId: putLesson
-      summary: 'Grava uma aula de um curso: substitui as pecas e as pausas, sobe a
-        versao'
+      summary: 'Grava uma aula de um curso: substitui as pecas e as pausas, sobe a versao'
       parameters:
       - in: path
         name: curso
@@ -675,8 +715,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AulaSchema'
-      description: 'O corpo, o que ele recusa e o que ele NAO toca sao exatamente
-        os de
+      description: 'O corpo, o que ele recusa e o que ele NAO toca sao exatamente os de
 
         `putSiteLesson`: pedido, cliente, instrumento (slug ou null), minimo,
 
@@ -734,8 +773,7 @@ paths:
   /cursos/{curso}/aulas/{numero}/publicar:
     post:
       operationId: publishLesson
-      summary: 'Publica uma aula de um curso: estado publicada, data de agora, versao
-        inalterada'
+      summary: 'Publica uma aula de um curso: estado publicada, data de agora, versao inalterada'
       parameters:
       - in: path
         name: curso
@@ -829,8 +867,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/DefeitoSchema'
                 type: array
-      description: 'O Revisor de coerencia: CODIGO, e nao inteligencia artificial.
-        Ele
+      description: 'O Revisor de coerencia: CODIGO, e nao inteligencia artificial. Ele
 
         aponta e nunca corrige, nao grava nada e nao sobe versao.
 
@@ -918,13 +955,15 @@ paths:
         abriu tambem nao teria como ser nomeado.
 
 
-        `letra` e a do bloco, de A a L, e `curso` e o SLUG, resolvido pelo par
+        `letra` e a do bloco, de A a Z, e `curso` e o SLUG, resolvido pelo par
 
         site+slug como nas quatro operacoes de aula. Letra, ordem e parte NAO
 
-        entram no corpo: sao a estrutura do livro, o semeador e a fonte delas,
+        entram no corpo: sao estrutura, a fonte delas e o semeador (no curso
 
-        e manda-las e 422, do mesmo jeito que `cartao` em `putInstrument`.
+        do livro) ou `putCourseStructure` (em qualquer curso), e manda-las e
+
+        422, do mesmo jeito que `cartao` em `putInstrument`.
 
 
         404 se o curso nao existe naquele site, ou se aquela letra nao existe
@@ -940,11 +979,258 @@ paths:
             schema:
               $ref: '#/components/schemas/BlocoParaGravarSchema'
         required: true
+  /cursos:
+    get:
+      operationId: listCourses
+      summary: Os cursos de um site, em ordem de apelido
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/CursoSchema'
+                type: array
+      description: 'A lista que a tela de cursos do Admin mostra: apelido, nome, estado,
+
+        regra de avanco, o produto do catalogo a que cada curso aponta (texto
+
+        vazio enquanto ninguem apontar) e duas contagens, o total de aulas e
+
+        quantas estao publicadas. Em ordem de apelido, que e a ordem em que o
+
+        aluno le. Site sem curso responde lista vazia, nao erro.
+
+
+        `site_id` e obrigatorio (uma fabrica, N lojas): esta celula nao tem
+
+        middleware de site, e a porta nao adivinha de qual escola e o curso.'
+    post:
+      operationId: createCourse
+      summary: 'Cria um curso: apelido, nome, regra de avanco e, se ja houver, o produto'
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CursoSchema'
+      description: 'O gesto Novo curso da tela do Admin. O curso nasce em rascunho, sem
+
+        bloco e sem aula: a estrutura entra depois por `putCourseStructure`,
+
+        e o texto de cada aula por `putLesson`. Nunca por arquivo, nunca por
+
+        migracao ([INV-CUR-C2]).
+
+
+        `slug` e o apelido do endereco (`/cursos/<slug>/`): minusculas,
+
+        digitos e hifen, de 1 a 64 letras, e fora disso e 422. E o unico
+
+        campo que nao muda depois, porque e a identidade do curso no par
+
+        site+slug. Apelido que ja existe naquele site e 409 com a frase em
+
+        portugues; o mesmo apelido em outro site e outro curso.
+
+
+        `nome` vazio e 422. `progressao` e `por_laudo` (a regra do livro: a
+
+        proxima aula abre com o laudo da professora) ou `livre` (a proxima
+
+        abre quando o aluno conclui a anterior), e nasce `por_laudo` quando
+
+        nao vem. `produto_id` e o id do produto no catalogo, o mesmo que a
+
+        matricula guarda; vazio significa ainda nao apontado, e curso sem
+
+        produto fecha a sala para todo mundo, de proposito. Chave que a
+
+        porta nao conhece e 422.
+
+
+        Responde 201 com o curso como ficou, no formato de `listCourses`.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CursoParaCriarSchema'
+        required: true
+  /cursos/{curso}:
+    put:
+      operationId: putCourse
+      summary: Altera o nome, a regra de avanco ou o produto de um curso
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CursoSchema'
+      description: 'Os tres campos que mudam depois de o curso nascer, todos opcionais:
+
+        AUSENTE OU NULO SIGNIFICA NAO MEXER, a mesma regra do `titulo_exibido`
+
+        em `putLesson`. Corpo vazio devolve o curso como esta, sem gravar.
+
+
+        `nome` vazio e 422. `progressao` e `por_laudo` ou `livre`, e trocar a
+
+        regra de um curso muda como a proxima aula abre para TODOS os alunos
+
+        dele. `produto_id` e o elo com a matricula: troca-lo troca QUEM ENTRA
+
+        no curso, e texto vazio desaponta o produto e fecha a sala. E o mesmo
+
+        gesto do comando `apontar_o_produto_do_curso`, pela porta; o comando
+
+        continua existindo.
+
+
+        O apelido, o estado e a versao NAO entram, e manda-los e 422: o apelido
+
+        e a identidade do curso, e o estado e a versao sao da publicacao.
+
+        404 se o curso nao existe naquele site. Devolve o curso como ficou.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CursoParaAlterarSchema'
+        required: true
+  /cursos/{curso}/estrutura:
+    put:
+      operationId: putCourseStructure
+      summary: 'Grava a estrutura de um curso: os blocos e as aulas, reconciliando com o que existe'
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstruturaSchema'
+      description: 'O gesto Importar da tela de estrutura do Admin. O corpo e a lista de
+
+        blocos na ordem, cada um com letra (A a Z), parte (1, 2 ou 3), as
+
+        aulas na ordem e, se quiser, o nome do bloco e o titulo do Boss; cada
+
+        aula leva numero (de 1 a 3 letras maiusculas ou digitos), titulo, se e
+
+        Boss e o nivel de Banca. A ordem dos blocos e a posicao na lista, de
+
+        um; a das aulas e a posicao no curso inteiro, do zero.
+
+
+        RECONCILIA COMO O SEMEADOR DO LIVRO, e a fronteira e a mesma. Cria o
+
+        bloco e a aula que faltam; corrige bloco, ordem, parte, Boss e Banca
+
+        do que ja existe; e NUNCA toca obra: pedido, cliente, pecas, pausas,
+
+        quiz, video, estado e versao ficam como estao. As aulas casam pelo
+
+        NUMERO, que e estavel: o titulo da aula so entra onde esta VAZIO, o
+
+        que a tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz
+
+        quantas aulas ja existiam e ficaram com a obra intacta.
+
+
+        OS BLOCOS CASAM PELA LETRA, QUE E POSICIONAL, e por isso a estrutura
+
+        e a fonte do nome do bloco e do titulo do Boss: quando nasce um bloco
+
+        na frente, o que era o B vira o C, e o nome tem de vir na estrutura
+
+        nova para acompanha-lo. Cada um dos dois campos tem tres estados.
+
+        Ausente ou nulo: o que esta gravado fica como esta. Texto: passa a
+
+        ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga.
+
+        Mande sempre o nome que a tela mostra, e nenhum bloco perde o nome
+
+        quando muda de letra.
+
+
+        Aula que sumiu da estrutura nova e APAGADA so se nenhum aluno passou
+
+        por ela (sem progresso, sem envio, sem registro de pausa). A
+
+        conferencia acontece DENTRO da transacao que apaga, com essas aulas
+
+        trancadas: um aluno gravando rastro nelas no mesmo instante e visto,
+
+        e nenhuma aula por onde alguem passou e apagada. Se algum passou, e
+
+        422 nomeando as aulas, e NADA e gravado: a transacao e uma so. Bloco
+
+        que sumiu e apagado depois que as aulas dele mudaram de bloco ou
+
+        foram apagadas.
+
+
+        422 tambem, dizendo a linha do problema: letra de bloco repetida,
+
+        numero de aula repetido, estrutura sem bloco, bloco sem aula, parte
+
+        fora de 1..3, numero fora do padrao, titulo vazio, chave desconhecida.
+
+        404 se o curso nao existe naquele site.
+
+
+        Devolve a estrutura como ficou (os blocos com as aulas, cada aula no
+
+        formato da listagem) e as contagens: blocos_criados, aulas_criadas,
+
+        aulas_preservadas e aulas_apagadas.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstruturaParaGravarSchema'
+        required: true
 components:
   schemas:
     AulaDaListaSchema:
-      description: "A linha da listagem: o que o editor mostra no \xEDndice, sem texto\
-        \ de pe\xE7a."
+      description: 'A linha da listagem: o que o editor mostra no índice, sem texto de peça.'
       properties:
         numero:
           type: string
@@ -981,21 +1267,37 @@ components:
       - banca_nivel
       type: object
     BlocoSchema:
-      description: "O bloco como ele viaja dentro de toda aula: a estrutura do livro\n\
-        (`letra`, `ordem`, `parte`) e o que o mantenedor escreve nele (`nome` e\n\
-        `boss_titulo`, vazios at\xE9 algu\xE9m os escrever por `putBlock`).\n\nOs\
-        \ dois de obra entraram aqui em 06/09/2026, e \xE9 isto que faz `putBlock`\n\
-        dispensar uma opera\xE7\xE3o de leitura pr\xF3pria: quem grava um bloco o\
-        \ l\xEA de\nvolta na primeira aula dele. Gravar sem poder ler de volta foi\
-        \ o defeito\nque o degrau 1.3b teve de curar nos instrumentos, com um PR a\
-        \ mais.\n\nOS DOIS NOVOS CARREGAM DEFAULT, E ISSO N\xC3O \xC9 DESCUIDO NEM\
-        \ ENFEITE: sem\nele o campo nasce em `required` no documento congelado, e\n\
-        `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigat\xF3rio\n\
-        novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida\n\
-        aqui em 06/09/2026). O valor emitido N\xC3O muda: o modelo sempre tem os\n\
-        dois, com `default=\"\"` no banco. Muda s\xF3 o que o contrato EXIGE de quem\n\
-        valida. N\xE3o tire os defaults para \"deixar igual aos outros tr\xEAs\":\
-        \ os\noutros tr\xEAs nasceram com o contrato, estes chegaram depois."
+      description: 'O bloco como ele viaja dentro de toda aula: a estrutura do livro
+
+        (`letra`, `ordem`, `parte`) e o que o mantenedor escreve nele (`nome` e
+
+        `boss_titulo`, vazios até alguém os escrever por `putBlock`).
+
+
+        Os dois de obra entraram aqui em 06/09/2026, e é isto que faz `putBlock`
+
+        dispensar uma operação de leitura própria: quem grava um bloco o lê de
+
+        volta na primeira aula dele. Gravar sem poder ler de volta foi o defeito
+
+        que o degrau 1.3b teve de curar nos instrumentos, com um PR a mais.
+
+
+        OS DOIS NOVOS CARREGAM DEFAULT, E ISSO NÃO É DESCUIDO NEM ENFEITE: sem
+
+        ele o campo nasce em `required` no documento congelado, e
+
+        `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigatório
+
+        novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida
+
+        aqui em 06/09/2026). O valor emitido NÃO muda: o modelo sempre tem os
+
+        dois, com `default=""` no banco. Muda só o que o contrato EXIGE de quem
+
+        valida. Não tire os defaults para "deixar igual aos outros três": os
+
+        outros três nasceram com o contrato, estes chegaram depois.'
       properties:
         letra:
           type: string
@@ -1142,11 +1444,14 @@ components:
       - cerimonia
       type: string
     TipoDePeca:
-      description: "As 16 pe\xE7as da anatomia NA ORDEM CAN\xD4NICA, as duas internas\
-        \ e a sob demanda.\n\nMora no m\xF3dulo, e n\xE3o dentro de `Peca`, porque\
-        \ o corpo de uma `class Meta`\naninhada n\xE3o enxerga os nomes da classe\
-        \ que a cont\xE9m, e a restri\xE7\xE3o do\nbanco precisa deste vocabul\xE1\
-        rio. `Peca.Tipo` \xE9 este mesmo objeto."
+      description: 'As 16 peças da anatomia NA ORDEM CANÔNICA, as duas internas e a sob demanda.
+
+
+        Mora no módulo, e não dentro de `Peca`, porque o corpo de uma `class Meta`
+
+        aninhada não enxerga os nomes da classe que a contém, e a restrição do
+
+        banco precisa deste vocabulário. `Peca.Tipo` é este mesmo objeto.'
       enum:
       - pedido
       - em_jogo
@@ -1170,20 +1475,33 @@ components:
       type: string
     AulaParaGravarSchema:
       additionalProperties: false
-      description: "O corpo de `putLesson`: o que se edita, e o t\xEDtulo.\n\nO T\xCD\
-        TULO MUDOU DE LADO EM 06/09/2026 (TAR-221), e \xE9 o \xFAnico dos sete que\n\
-        muda. N\xFAmero, ordem, bloco, estado, vers\xE3o e data de publica\xE7\xE3\
-        o continuam\nfora, e mand\xE1-los \xE9 422: s\xE3o ESTRUTURA, fatos do livro,\
-        \ e quem os escreve \xE9\no semeador. O `titulo_exibido` estava nessa lista\
-        \ por parecer estrutura, e\nn\xE3o \xE9: ele \xE9 a frase que o cliente diz\
-        \ na encomenda, obra do mantenedor, e\na primeira coisa que o aluno l\xEA\
-        . Sem porta para ele, a encomenda ficava\n\"Encomenda 22\" onde o livro na\
-        \ m\xE3o do aluno diz outra coisa.\n\nELE \xC9 OPCIONAL, E AUSENTE SIGNIFICA\
-        \ N\xC3O MEXER. O editor do Admin que j\xE1\nest\xE1 no ar n\xE3o manda este\
-        \ campo, e um `PUT` dele n\xE3o pode apagar o t\xEDtulo\nque a outra tela\
-        \ escreveu. Nulo diz o mesmo que ausente, de prop\xF3sito:\napagar t\xEDtulo\
-        \ n\xE3o \xE9 gesto que esta porta ofere\xE7a, e por isso t\xEDtulo vazio\n\
-        \xE9 422."
+      description: 'O corpo de `putLesson`: o que se edita, e o título.
+
+
+        O TÍTULO MUDOU DE LADO EM 06/09/2026 (TAR-221), e é o único dos sete que
+
+        muda. Número, ordem, bloco, estado, versão e data de publicação continuam
+
+        fora, e mandá-los é 422: são ESTRUTURA, fatos do livro, e quem os escreve é
+
+        o semeador. O `titulo_exibido` estava nessa lista por parecer estrutura, e
+
+        não é: ele é a frase que o cliente diz na encomenda, obra do mantenedor, e
+
+        a primeira coisa que o aluno lê. Sem porta para ele, a encomenda ficava
+
+        "Encomenda 22" onde o livro na mão do aluno diz outra coisa.
+
+
+        ELE É OPCIONAL, E AUSENTE SIGNIFICA NÃO MEXER. O editor do Admin que já
+
+        está no ar não manda este campo, e um `PUT` dele não pode apagar o título
+
+        que a outra tela escreveu. Nulo diz o mesmo que ausente, de propósito:
+
+        apagar título não é gesto que esta porta ofereça, e por isso título vazio
+
+        é 422.'
       properties:
         titulo_exibido:
           anyOf:
@@ -1280,9 +1598,11 @@ components:
       type: object
     InstrumentoParaGravarSchema:
       additionalProperties: false
-      description: "O corpo de `putInstrument`: a escala, os m\xEDnimos, a se\xE7\xE3\
-        o e os\ndescritores. `nome_canonico` e `cartao` s\xE3o da lei, n\xE3o do editor:\
-        \ v\xEAm no\ncorpo, \xE9 422."
+      description: 'O corpo de `putInstrument`: a escala, os mínimos, a seção e os
+
+        descritores. `nome_canonico` e `cartao` são da lei, não do editor: vêm no
+
+        corpo, é 422.'
       properties:
         escala:
           additionalProperties: true
@@ -1313,21 +1633,38 @@ components:
       - 3
       type: integer
     DefeitoSchema:
-      description: "Um defeito de coer\xEAncia apontado por `checkLesson` (degrau\
-        \ 3.1).\n\nOs campos s\xE3o os do `apps.cursos.coerencia.Defeito`, e a tradu\xE7\
-        \xE3o para\nportugu\xEAs J\xC1 VEM PRONTA daqui: `frase` diz o que est\xE1\
-        \ errado e\n`o_que_fazer` diz o conserto, as duas escritas para a professora\
-        \ ler. A\ntela do Admin as mostra verbatim, e isso \xE9 de prop\xF3sito: reescrev\xEA\
-        -las l\xE1\namarraria a tela \xE0 reda\xE7\xE3o desta c\xE9lula, que \xE9\
-        \ a dona da regra. \xC9 o mesmo\ndesenho do `value_error` que `putInstrument`\
-        \ j\xE1 devolve.\n\n`peca` \xE9 o tipo da pe\xE7a onde est\xE1 o defeito,\
-        \ ou texto VAZIO quando ele \xE9 da\naula inteira: o mesmo arquivo escrito\
-        \ com dois nomes n\xE3o mora em pe\xE7a\nnenhuma, mora entre elas. `alvo`\
-        \ \xE9 o peda\xE7o de texto em falta, para quem\nfor consertar poder procur\xE1\
-        -lo.\n\n`impede_publicar` \xE9 verdadeiro s\xF3 na remiss\xE3o quebrada, que\
-        \ \xE9 o\n[INV-CUR-C1]. Ele viaja dentro do defeito, e n\xE3o numa segunda\
-        \ lista de\nc\xF3digos que vetam, porque uma segunda lista divergiria da recusa\
-        \ de\n`publishLesson` no primeiro dia em que algu\xE9m mexesse numa das duas."
+      description: 'Um defeito de coerência apontado por `checkLesson` (degrau 3.1).
+
+
+        Os campos são os do `apps.cursos.coerencia.Defeito`, e a tradução para
+
+        português JÁ VEM PRONTA daqui: `frase` diz o que está errado e
+
+        `o_que_fazer` diz o conserto, as duas escritas para a professora ler. A
+
+        tela do Admin as mostra verbatim, e isso é de propósito: reescrevê-las lá
+
+        amarraria a tela à redação desta célula, que é a dona da regra. É o mesmo
+
+        desenho do `value_error` que `putInstrument` já devolve.
+
+
+        `peca` é o tipo da peça onde está o defeito, ou texto VAZIO quando ele é da
+
+        aula inteira: o mesmo arquivo escrito com dois nomes não mora em peça
+
+        nenhuma, mora entre elas. `alvo` é o pedaço de texto em falta, para quem
+
+        for consertar poder procurá-lo.
+
+
+        `impede_publicar` é verdadeiro só na remissão quebrada, que é o
+
+        [INV-CUR-C1]. Ele viaja dentro do defeito, e não numa segunda lista de
+
+        códigos que vetam, porque uma segunda lista divergiria da recusa de
+
+        `publishLesson` no primeiro dia em que alguém mexesse numa das duas.'
       properties:
         codigo:
           type: string
@@ -1351,14 +1688,23 @@ components:
       type: object
     BlocoParaGravarSchema:
       additionalProperties: false
-      description: "O corpo de `putBlock`: o nome do bloco e o t\xEDtulo do Boss dele.\n\
-        \nLetra, ordem e parte N\xC3O entram, pelo mesmo motivo que `cartao` n\xE3\
-        o entra\nem `putInstrument`: s\xE3o a estrutura do livro, o semeador \xE9\
-        \ a fonte delas, e\nmand\xE1-las \xE9 422.\n\nOs dois campos v\xEAm SEMPRE,\
-        \ e vazio \xE9 valor v\xE1lido: \xE9 com ele que os doze\nblocos nascem, e\
-        \ quem digitou um nome errado precisa poder apag\xE1-lo. \xC9 a\ndiferen\xE7\
-        a para o t\xEDtulo da aula, onde ausente significa n\xE3o mexer, porque\n\
-        l\xE1 existe uma segunda tela gravando o mesmo campo."
+      description: 'O corpo de `putBlock`: o nome do bloco e o título do Boss dele.
+
+
+        Letra, ordem e parte NÃO entram, pelo mesmo motivo que `cartao` não entra
+
+        em `putInstrument`: são a estrutura do livro, o semeador é a fonte delas, e
+
+        mandá-las é 422.
+
+
+        Os dois campos vêm SEMPRE, e vazio é valor válido: é com ele que os doze
+
+        blocos nascem, e quem digitou um nome errado precisa poder apagá-lo. É a
+
+        diferença para o título da aula, onde ausente significa não mexer, porque
+
+        lá existe uma segunda tela gravando o mesmo campo.'
       properties:
         nome:
           maxLength: 120
@@ -1369,6 +1715,257 @@ components:
       required:
       - nome
       - boss_titulo
+      type: object
+    CursoSchema:
+      description: 'O curso como a lista do Admin o mostra: a identidade (`slug`, `nome`),
+
+        o estado, a regra de avanço, o produto do catálogo a que ele aponta (texto
+
+        vazio enquanto ninguém apontar; curso sem produto fecha a sala) e as duas
+
+        contagens que dizem se ele já tem o que mostrar a um aluno.
+
+
+        `progressao` é o `TextChoices` do modelo, e o OpenAPI leva o `enum` com as
+
+        duas palavras: nenhum nome escrito duas vezes.'
+      properties:
+        slug:
+          type: string
+        nome:
+          type: string
+        estado:
+          type: string
+        progressao:
+          $ref: '#/components/schemas/Progressao'
+        produto_id:
+          type: string
+        total_de_aulas:
+          type: integer
+        aulas_publicadas:
+          type: integer
+      required:
+      - slug
+      - nome
+      - estado
+      - progressao
+      - produto_id
+      - total_de_aulas
+      - aulas_publicadas
+      type: object
+    Progressao:
+      enum:
+      - por_laudo
+      - livre
+      type: string
+    CursoParaCriarSchema:
+      additionalProperties: false
+      description: 'O corpo de `createCourse`. `slug` é o apelido do endereço
+
+        (`/cursos/<slug>/`), minúsculas, dígitos e hífen, e é o único campo que
+
+        nunca muda depois: ele é a identidade do curso no par site+slug.
+
+        `progressao` nasce `por_laudo` quando não vem; `produto_id` nasce vazio,
+
+        que significa "ainda não apontado", e curso sem produto fecha a sala.'
+      properties:
+        slug:
+          pattern: ^[a-z0-9-]{1,64}$
+          type: string
+        nome:
+          maxLength: 120
+          minLength: 1
+          type: string
+        progressao:
+          allOf:
+          - $ref: '#/components/schemas/Progressao'
+          default: por_laudo
+        produto_id:
+          default: ''
+          maxLength: 64
+          type: string
+      required:
+      - slug
+      - nome
+      type: object
+    CursoParaAlterarSchema:
+      additionalProperties: false
+      description: 'O corpo de `putCourse`: os três campos que mudam, todos opcionais, e
+
+        AUSENTE OU NULO SIGNIFICA NÃO MEXER, a mesma regra do `titulo_exibido` em
+
+        `putLesson`. `produto_id` vazio é valor válido e desaponta o produto (a
+
+        sala fecha); é o mesmo gesto do comando `apontar_o_produto_do_curso`, pela
+
+        porta. Nome vazio é 422: curso sem nome não é um estado do sistema.'
+      properties:
+        nome:
+          anyOf:
+          - maxLength: 120
+            minLength: 1
+            type: string
+          - type: 'null'
+        progressao:
+          anyOf:
+          - $ref: '#/components/schemas/Progressao'
+          - type: 'null'
+        produto_id:
+          anyOf:
+          - maxLength: 64
+            type: string
+          - type: 'null'
+      type: object
+    BlocoComAulasSchema:
+      description: 'Um bloco com as aulas dele, na ordem: é como `putCourseStructure`
+
+        devolve a estrutura que acabou de gravar. Cada aula sai no formato da
+
+        listagem (`AulaDaListaSchema`), e por isso carrega o bloco de novo dentro
+
+        de si: é o preço de um formato só para a aula em toda a porta.'
+      properties:
+        letra:
+          type: string
+        ordem:
+          type: integer
+        parte:
+          type: integer
+        nome:
+          default: ''
+          type: string
+        boss_titulo:
+          default: ''
+          type: string
+        aulas:
+          items:
+            $ref: '#/components/schemas/AulaDaListaSchema'
+          type: array
+      required:
+      - letra
+      - ordem
+      - parte
+      - aulas
+      type: object
+    EstruturaSchema:
+      description: 'A resposta de `putCourseStructure`: a estrutura como ficou e as quatro
+
+        contagens do que a reconciliação fez. `aulas_preservadas` conta as aulas
+
+        que já existiam e ficaram: a obra delas está intacta, e só bloco, ordem,
+
+        Boss e Banca foram conferidos.'
+      properties:
+        blocos:
+          items:
+            $ref: '#/components/schemas/BlocoComAulasSchema'
+          type: array
+        blocos_criados:
+          type: integer
+        aulas_criadas:
+          type: integer
+        aulas_preservadas:
+          type: integer
+        aulas_apagadas:
+          type: integer
+      required:
+      - blocos
+      - blocos_criados
+      - aulas_criadas
+      - aulas_preservadas
+      - aulas_apagadas
+      type: object
+    AulaDaEstruturaSchema:
+      additionalProperties: false
+      description: 'Uma aula como a estrutura a declara: só o que é ESTRUTURA. `titulo` é a
+
+        exceção aparente: ele só preenche o título de uma aula que ainda não tem
+
+        um, e nunca sobrescreve o que a tela escreveu.'
+      properties:
+        numero:
+          pattern: ^[A-Z0-9]{1,3}$
+          type: string
+        titulo:
+          maxLength: 120
+          minLength: 1
+          type: string
+        e_boss:
+          default: false
+          type: boolean
+        banca_nivel:
+          anyOf:
+          - enum:
+            - 1
+            - 2
+            - 3
+            type: integer
+          - type: 'null'
+      required:
+      - numero
+      - titulo
+      type: object
+    BlocoDaEstruturaSchema:
+      additionalProperties: false
+      description: 'Um bloco como a estrutura o declara: a letra, a parte (o enum do
+
+        contrato), as aulas na ordem, e os dois textos do bloco. A estrutura e a
+
+        fonte do nome do bloco e do titulo do Boss, porque as letras sao
+
+        posicionais: o bloco que hoje e o A pode virar o B na estrutura nova, e
+
+        o nome tem de viajar com ele. Por isso os dois campos tem tres estados:
+
+        ausente ou nulo NAO MEXE no que esta gravado; texto GRAVA aquele valor;
+
+        texto vazio APAGA.'
+      properties:
+        letra:
+          pattern: ^[A-Z]$
+          type: string
+        parte:
+          $ref: '#/components/schemas/ParteDoCurso'
+        nome:
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O nome do bloco. Ausente ou nulo: o nome gravado fica como esta. Texto: passa
+            a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o nome.'
+        boss_titulo:
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O titulo do Boss do bloco. Ausente ou nulo: o titulo gravado fica como esta. Texto:
+            passa a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o titulo.'
+        aulas:
+          items:
+            $ref: '#/components/schemas/AulaDaEstruturaSchema'
+          type: array
+      required:
+      - letra
+      - parte
+      - aulas
+      type: object
+    EstruturaParaGravarSchema:
+      additionalProperties: false
+      description: 'O corpo de `putCourseStructure`: os blocos na ordem, cada um com as
+
+        aulas na ordem. A ordem dos blocos é a posição na lista, de um; a das
+
+        aulas é a posição no curso inteiro, do zero: exatamente a conta do
+
+        semeador do livro.'
+      properties:
+        blocos:
+          items:
+            $ref: '#/components/schemas/BlocoDaEstruturaSchema'
+          type: array
+      required:
+      - blocos
       type: object
   securitySchemes:
     bearerAuth:

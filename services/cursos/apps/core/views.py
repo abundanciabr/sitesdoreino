@@ -1,5 +1,6 @@
-"""As telas da sala de aula: o mapa das portas, a aula, e os três gestos (a
-pausa, a autoavaliação e, desde o degrau 2.1, a entrega do checkpoint).
+"""As telas da sala de aula: o catálogo dos cursos, o mapa das portas, a
+aula, e os três gestos (a pausa, a autoavaliação e, desde o degrau 2.1, a
+entrega do checkpoint).
 
 QUEM ENTRA, E QUEM DECIDE
 -------------------------
@@ -164,16 +165,19 @@ def _de_fora(curso: Curso | None = None) -> dict:
 
 
 def _url_do_mapa(curso: Curso | None) -> str:
-    """O mapa das portas: o do curso quando ele é conhecido, o endereço antigo
-    quando não é (uma recusa não tem curso para apontar)."""
-    return reverse("curso", args=[curso.slug]) if curso else reverse("mapa")
+    """O mapa das portas: o do curso quando ele é conhecido, o catálogo quando
+    não é (uma recusa não tem curso para apontar, e o catálogo os mostra)."""
+    return reverse("curso", args=[curso.slug]) if curso else reverse("catalogo")
 
 
-def _recusar(request, motivo: str, *, status: int, **extra):
+def _recusar(request, motivo: str, *, status: int, curso: Curso | None = None, **extra):
+    """A tela de recusa. `curso` é o do endereço quando ele já se resolveu:
+    o link "tente de novo" da recusa `sem-resposta` volta para a página que
+    falhou, e sem o curso ele mandaria a pessoa ao catálogo, que é outra."""
     return render(
         request,
         "cursos/entrar.html",
-        {"motivo": motivo, **_de_fora(), **extra},
+        {"motivo": motivo, **_de_fora(curso), **extra},
         status=status,
     )
 
@@ -247,16 +251,18 @@ def _sala(request, slug: str | None = None):
     para todo mundo, sem erro em lugar nenhum.
     """
     ator = quem_e(request)
+    site = site_atual()
+    # O curso se resolve ANTES da porta só para a recusa saber para onde
+    # apontar; a porta continua fechando antes de qualquer conteúdo dele.
+    curso = enderecos.curso_do_site(site, slug) if site and slug is not None else None
     if not ator.autenticado:
-        return None, None, _recusar(request, "entrar", status=200)
+        return None, None, _recusar(request, "entrar", status=200, curso=curso)
     if not ator.eh_aluno:
         motivo = "sem-matricula" if ator.matricula_conferida else "sem-resposta"
-        return None, None, _recusar(request, motivo, status=403)
-    site = site_atual()
+        return None, None, _recusar(request, motivo, status=403, curso=curso)
     if not site:
         return None, None, _recusar(request, "sem-curso", status=200)
     if slug is not None:
-        curso = enderecos.curso_do_site(site, slug)
         if curso is None:
             return (
                 None,
@@ -409,11 +415,12 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
 def _curso_unico() -> Curso | None:
     """O curso deste site quando ele é o ÚNICO; `None` com zero ou com dois.
 
-    É a condição que decide todo 301 desta célula. O endereço antigo não diz
-    QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço muda de
-    casa; com dois, mandá-lo para um deles seria um chute com cara de certeza,
-    e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que PERGUNTA
-    (`_sala`) continua sendo a resposta certa.
+    É a condição do 301 do endereço antigo de AULA (`/E00`). O endereço não
+    diz QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço
+    muda de casa; com dois, mandá-lo para um deles seria um chute com cara de
+    certeza, e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que
+    PERGUNTA (`_sala`) continua sendo a resposta certa. A raiz da célula não
+    passa mais por aqui: ela é o catálogo (`catalogo`) e nunca redireciona.
     """
     site = site_atual()
     if not site:
@@ -422,36 +429,111 @@ def _curso_unico() -> Curso | None:
     return cursos[0] if len(cursos) == 1 else None
 
 
-def _a_raiz_mudou_de_casa():
-    """A raiz da célula (`/cursos`) mudada de casa (301) para o mapa do curso.
+# ---------------------------------------------------------------------------
+# O CATÁLOGO: a raiz da célula mostra os cursos, e a porta de cada um decide
+# ---------------------------------------------------------------------------
+# A situação de um cartão para a pessoa da sessão, e se o botão de entrar
+# aparece. As chaves de `situacao` são as do template `cursos/catalogo.html`.
+SITUACAO_DA_RECUSA = {
+    "": "seu",
+    "outro-curso": "nao-e-seu",
+    "curso-sem-produto": "sem-produto",
+}
 
-    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
-    já compartilhado levaria o aluno a uma página que não diz em que parte do
-    curso ele está: o oposto do que o endereço do livro veio fazer. O 301
-    ensina o navegador e o buscador de uma vez (TAR-216).
+
+def _aulas_abertas(curso: Curso) -> int:
+    """Quantas aulas deste curso o aluno pode abrir: só as publicadas, o mesmo
+    filtro de `_aula_publicada`. Rascunho não existe para o aluno."""
+    return curso.aulas.filter(estado=Aula.Estado.PUBLICADA).count()
+
+
+def _cartao_do_catalogo(ator, curso: Curso) -> dict:
+    """Um curso do site, visto pela pessoa da sessão.
+
+    O catálogo MOSTRA todos os cursos; quem decide quem entra é a porta
+    (`_recusa_de_curso`), e o cartão só repete a decisão dela, para que a
+    página não convide para uma porta que vai fechar. O visitante ganha o
+    botão: a porta pede login, e esse é o caminho honesto. Quem entrou e cuja
+    matrícula não deu para conferir não ganha botão nenhum, porque nesta
+    célula não conseguir conferir nunca é "pode entrar".
     """
-    curso = _curso_unico()
-    if curso is None:
-        return None
-    return HttpResponsePermanentRedirect(reverse("curso", args=[curso.slug]))
+    if not ator.autenticado:
+        situacao = "visitante"
+    elif not ator.matricula_conferida:
+        situacao = "sem-resposta"
+    else:
+        situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
+    return {
+        "nome": curso.nome,
+        "url": reverse("curso", args=[curso.slug]),
+        "aulas_abertas": _aulas_abertas(curso),
+        "entra": situacao in ("visitante", "seu"),
+        "situacao": situacao,
+    }
+
+
+def _aviso_do_catalogo(ator, cartoes: list[dict]) -> str:
+    """A frase do topo, ou `""`: o que houve com a matrícula desta pessoa,
+    quando houve algo. `sem-sala` é o estado de quem tem matrícula ativa num
+    produto que ainda não tem `Curso` neste site: nenhum cartão é dela, e sem
+    a frase a página pareceria dizer que ela não é aluna de nada.
+
+    Com um curso SEM PRODUTO apontado na tela, o aviso cala: esse curso pode
+    muito bem ser o dela (é como todo curso nasce), o cartão já diz que
+    ninguém entra ali ainda, e duas frases contraditórias na mesma tela são
+    piores do que uma.
+    """
+    if not ator.autenticado:
+        return ""
+    if not ator.matricula_conferida:
+        return "sem-resposta"
+    if not ator.eh_aluno:
+        return "sem-matricula"
+    situacoes = {cartao["situacao"] for cartao in cartoes}
+    if "seu" in situacoes or "sem-produto" in situacoes:
+        return ""
+    return "sem-sala"
 
 
 @require_GET
-def mapa(request, curso: str | None = None):
+def catalogo(request):
+    """A raiz da célula (`/cursos/`): um cartão por curso do site, cada um
+    com o link para o próprio endereço. Sempre 200, nunca 301.
+
+    Até 07/09/2026 a raiz respondia 301 para o mapa do curso quando ele era o
+    único do site (TAR-216), e o mantenedor mandou parar, com as palavras dele:
+    *"mostre um catalogo ou uma landing page com os cursos que existem no site
+    e ao clicar nos cursos a pessoa entre no curso"*. O aluno cuja matrícula
+    ainda não tem sala era levado ao curso do livro sem pedir, e nenhuma tela
+    dizia por quê. O 301 do link antigo de AULA (`/E00`) continua: é o link
+    de checkpoint já compartilhado.
+    """
+    ator = quem_e(request)
+    site = site_atual()
+    cartoes = [
+        _cartao_do_catalogo(ator, curso)
+        for curso in (enderecos.cursos_do_site(site) if site else [])
+    ]
+    return render(
+        request,
+        "cursos/catalogo.html",
+        {
+            "cursos": cartoes,
+            "aviso": _aviso_do_catalogo(ator, cartoes),
+            "visitante": not ator.autenticado,
+            **_de_fora(),
+        },
+    )
+
+
+@require_GET
+def mapa(request, curso: str):
     """A home de UM curso: as 34 portas, o estado de cada uma, a próxima em
-    destaque. `curso` é o slug do endereço; sem ele, é o endereço antigo.
+    destaque. `curso` é o slug do endereço, sempre.
 
     É aqui que a E00 NASCE `disponivel` para quem tem matrícula ativa
     (`progresso.nascer`, inerte a partir da segunda visita).
-
-    O 301 vem ANTES da porta, e de propósito: um 301 é guardado pelo navegador
-    pela URL, sem olhar o cookie, e um redirecionamento que dependesse de quem
-    está olhando mentiria no cache do primeiro visitante em diante.
     """
-    if curso is None:
-        mudou_de_casa = _a_raiz_mudou_de_casa()
-        if mudou_de_casa is not None:
-            return mudou_de_casa
     pessoa, curso, recusa = _sala(request, curso)
     if recusa is not None:
         return recusa
@@ -752,6 +834,10 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     do livro, com a parte dentro (TAR-216). Aqui a mudança exige um curso único
     (`_curso_unico`) e uma aula publicada nele: um 301 para um 404 ensinaria ao
     navegador, de uma vez, um endereço que não serve.
+
+    O 301 vem ANTES da porta, e de propósito: o navegador guarda um 301 pela
+    URL, sem olhar o cookie, e um redirecionamento que dependesse de quem está
+    olhando mentiria no cache do primeiro visitante em diante.
     """
     site = site_atual()
     if not site:
@@ -777,7 +863,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
     pausas, o quiz e o lugar do checkpoint.
 
     `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
-    que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
+    que muda de casa (301) antes da porta pelo motivo escrito em
+    `_o_endereco_de_um_segmento_mudou_de_casa`.
     `disponivel` vira `em_producao` na primeira abertura (`progresso.abrir`).
     Aula em rascunho é 404; porta trancada volta ao mapa.
     """

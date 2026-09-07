@@ -1069,6 +1069,15 @@
     },
     {
       "celula": "admin",
+      "rota": "painel/fila.json",
+      "endereco": "/admin/painel/fila.json",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A fila dos robôs, para o seu painel",
+      "descricao": "O que os robôs estão fazendo agora e o que só você decide, por área do site. O painel os lê sozinho."
+    },
+    {
+      "celula": "admin",
       "rota": "^painel/(?P<path>.+)$",
       "endereco": "/admin/painel/(?P<path>.+)$",
       "exemplo": "/admin/painel/logica.js",

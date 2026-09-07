@@ -1,0 +1,61 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+O CATÁLOGO: a raiz da célula, um cartão por curso do site.
+
+Decisão do mantenedor de 07/09/2026: `/cursos/` mostra os cursos que existem e
+a pessoa entra em cada um pelo próprio endereço; nada de redirecionar sozinho.
+
+O catálogo MOSTRA todos os cursos; quem decide quem entra é a porta de cada
+um, e a `situacao` de cada cartão (calculada na view, `catalogo`) só repete a
+decisão dela: `visitante` e `seu` ganham o botão; `nao-e-seu` e `sem-produto`
+ganham a frase e nenhum botão; `sem-resposta` não ganha nada, porque o aviso do
+topo já explicou. Só a pessoa da sessão aparece aqui ([INV-CUR-P1]): o
+catálogo lista cursos, nunca gente.
+
+Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
+(`armadilhas/029` e `/081`).
+{% endcomment %}
+{% block titulo %}Cursos{% endblock %}
+
+{% block conteudo %}
+<section class="abertura">
+  <h1>Os cursos da Meshcraft Academy</h1>
+  <p class="passo">Cada curso tem a sua sala de aula. Escolha o seu e entre.</p>
+  {% if visitante %}
+  <p class="miudo">Já é aluno? <a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+  {% endif %}
+  {% if aviso == "sem-resposta" %}
+  <p class="erro">Não conseguimos conferir sua matrícula agora.
+  A parte da escola que responde por isso não respondeu.
+  Espere alguns instantes e abra esta página de novo.</p>
+  {% elif aviso == "sem-matricula" %}
+  <p class="erro">Você entrou na escola, mas não encontramos uma matrícula ativa no seu nome.
+  Se você já é aluno, fale com a escola pela <a href="{{ url_da_capa }}">página inicial</a>:
+  pode ser um cadastro com outro e-mail.</p>
+  {% elif aviso == "sem-sala" %}
+  <p class="recado">A sua matrícula é de um curso que ainda não tem sala de aula neste site.
+  A escola avisa quando ela abrir.</p>
+  {% endif %}
+</section>
+
+{% for curso in cursos %}
+<article class="curso situacao-{{ curso.situacao }}">
+  <h2>{{ curso.nome }}{% if curso.situacao == "seu" %} <span class="selo">Seu curso</span>{% endif %}</h2>
+  <p class="aulas">{% if curso.aulas_abertas == 0 %}Nenhuma aula aberta ainda{% elif curso.aulas_abertas == 1 %}1 aula aberta{% else %}{{ curso.aulas_abertas }} aulas abertas{% endif %}</p>
+  {% if curso.situacao == "nao-e-seu" %}
+  <p class="miudo">Você não está matriculado neste curso.</p>
+  {% elif curso.situacao == "sem-produto" %}
+  <p class="miudo">Este curso ainda não está ligado às matrículas.
+  Ninguém entra aqui ainda. Fale com a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  {% endif %}
+  {% if curso.entra %}
+  <p class="entrar"><a href="{{ curso.url }}">Entrar no curso</a></p>
+  {% endif %}
+</article>
+{% empty %}
+<section class="convite">
+  <h2>Esta escola ainda não tem curso ligado.</h2>
+  <p>Quando tiver, é aqui que ele aparece.
+  Volte pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
+</section>
+{% endfor %}
+{% endblock %}
