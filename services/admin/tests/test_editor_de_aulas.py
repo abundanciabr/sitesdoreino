@@ -35,6 +35,11 @@ custa, se cair:
     frases da `cursos` verbatim com o nome da peça em português, tem estado
     vazio, e a recusa de publicar do [INV-CUR-C1] chega à tela como frase e não
     como 500.
+12. **O botão "Conferir fidelidade" é o segundo conferente, e ele é IA e é
+    PAGO.** Um gesto, uma conferência: pedir a fidelidade não paga também a
+    coerência, e abrir o editor não paga nenhuma das duas. As recusas dele (sem
+    o que conferir, IA fora do ar) chegam à tela com a frase da `cursos`, e
+    nunca como 500 nem como "nenhum desvio".
 """
 
 import json
@@ -46,6 +51,7 @@ import pytest
 import respx
 from django.test import Client
 from django.urls import reverse
+from django.utils.html import escape
 
 from apps.auditoria.models import Registro
 from apps.core import aulas as editor
@@ -1205,6 +1211,159 @@ def test_a_sala_fora_do_ar_na_conferencia_vira_frase_e_nao_500():
     assert "Nada mudou na encomenda." in html
     # O editor continua na tela: a conferência falhou, a encomenda não sumiu.
     assert "Um capacete para o cliente Gulliver." in html
+
+
+# ---------------------------------------------------------------------------
+# O GUARDIAO DE FIDELIDADE (TAR-246, degrau 3.2) tambem mora na `cursos`, e
+# tambem e IA. Esta tela pergunta pelo `modo`, mostra o que voltou e NUNCA
+# transforma uma recusa dele em 500. As tres coisas que ela nao pode fazer sao
+# as mesmas do Revisor, mais uma: perguntar sem ser pedida custaria uma chamada
+# PAGA em cada abertura do editor.
+
+
+def _mock_conferir_fidelidade(resposta, *, status: int = 200, numero: str = "E07"):
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/{numero}/conferir",
+        params={"site_id": SITE_ID, "modo": "fidelidade"},
+    ).mock(return_value=httpx.Response(status, json=resposta))
+
+
+DESVIO_DE_FIDELIDADE = {
+    "codigo": "regra_virou_sugestao",
+    "peca": "roteiro",
+    "alvo": "tente cumprir o comprimento",
+    "frase": (
+        "Na fonte: 'o pilar nao se alonga'. No roteiro: 'tente cumprir o "
+        "comprimento'."
+    ),
+    "o_que_fazer": (
+        "Volte às 16 peças desta encomenda e confira o trecho da fonte. Quem "
+        "decide o que fica é você: este agente aponta e nunca reescreve."
+    ),
+    "impede_publicar": False,
+}
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_abrir_o_editor_nao_confere_fidelidade():
+    """A conferência de fidelidade é PAGA. Rodá-la em cada abertura do editor
+    cobraria de quem só veio ler a encomenda."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir_fidelidade([DESVIO_DE_FIDELIDADE])
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"})
+    )
+
+    assert resposta.status_code == 200
+    assert conferencia.call_count == 0
+    assert "Conferir fidelidade desta encomenda" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_conferir_fidelidade_mostra_os_desvios_com_o_nome_da_peca_em_portugues():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    # A rota da fidelidade nasce PRIMEIRO de propósito: o dublê casa por
+    # subconjunto de parâmetros, e a rota da coerência (só `site_id`) casaria
+    # também o pedido que leva `modo`, escondendo qual das duas foi chamada.
+    conferencia = _mock_conferir_fidelidade([DESVIO_DE_FIDELIDADE])
+    coerencia = _mock_conferir([DEFEITO_DA_REMISSAO])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "fidelidade"},
+        )
+    )
+
+    assert conferencia.call_count == 1
+    # Um gesto, uma conferência: pedir a fidelidade não paga também a coerência.
+    assert coerencia.call_count == 0
+    # `escape` porque a frase do Guardião cita os dois trechos entre aspas
+    # simples, e o template as escapa: a comparação com o texto cru diria que a
+    # frase sumiu justamente quando ela apareceu inteira e segura.
+    assert escape(DESVIO_DE_FIDELIDADE["frase"]) in html
+    assert escape(DESVIO_DE_FIDELIDADE["o_que_fazer"]) in html
+    assert '<span class="onde">Roteiro da aula:</span>' in html
+    # O Guardião aponta e nunca veta: a linha da trava não existe nesta caixa.
+    assert "Isto impede publicar." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_encomenda_fiel_tem_estado_vazio_proprio():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    _mock_conferir_fidelidade([])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "fidelidade"},
+        )
+    )
+
+    assert "Nenhum desvio de fidelidade nesta encomenda." in html
+    assert "Nenhum defeito de coerência nesta aula." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_ia_fora_do_ar_vira_a_frase_da_sala_de_aula_e_nao_500():
+    """A `cursos` diz POR QUE em português, e a frase dela sobe inteira: dizer
+    "a sala de aula não respondeu" mandaria a professora procurar um problema de
+    rede que não existe."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    sem_chave = (
+        "A IA ainda não está ligada neste servidor. Falta a chave de acesso da "
+        "Anthropic no arquivo de configuração da sala de aula."
+    )
+    _mock_conferir_fidelidade({"detail": sem_chave}, status=503)
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "fidelidade"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert sem_chave in html
+    assert "Nada mudou na encomenda." in html
+    assert "Um capacete para o cliente Gulliver." in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_nada_a_conferir_vira_frase_e_nunca_lista_vazia():
+    """422 é "esta encomenda não tem o que comparar", e não "está tudo certo".
+    Cair no estado vazio aqui seria a máquina aprovando um texto que não leu."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    nada = (
+        "Nada para conferir: esta encomenda ainda não tem roteiro, guia do "
+        "mentor nem vídeo-aula escrita."
+    )
+    _mock_conferir_fidelidade({"detail": nada}, status=422)
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "fidelidade"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert nada in html
+    assert "Nenhum desvio de fidelidade nesta encomenda." not in html
 
 
 @pytest.mark.django_db
