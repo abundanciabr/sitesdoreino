@@ -1,4 +1,4 @@
-"""Semeia os 27 parametros da Fila do Primeiro Dolar, com os valores da lei.
+"""Semeia os parametros da Fila do Primeiro Dolar, com os valores da lei.
 
 O UNICO LUGAR DA CELULA ONDE UM NUMERO DA LEI SECAO 6 APARECE
 --------------------------------------------------------------
@@ -93,6 +93,29 @@ VALORES_INICIAIS = {
     # 04/09/2026. Tres HORAS UTEIS para o aluno que pegou um projeto no Mural
     # olhar o briefing e propor.
     "relogio_da_reserva_no_mural": "3",
+    # As tres da NEGOCIACAO (paragrafo 9 do PLANO-AREA-DE-NEGOCIACAO.md, degrau
+    # 2.12): tres rodadas para cada lado, vinte e quatro HORAS UTEIS de validade
+    # por proposta, e quinhentos caracteres de justificativa.
+    "rodadas_de_negociacao": "3",
+    "validade_da_proposta": "24",
+    "limite_da_justificativa": "500",
+}
+
+# AS CHAVES QUE NASCEM SEM VALOR, DE PROPOSITO. O piso por nivel sai do piloto
+# de papel, que e onde os primeiros precos reais vao aparecer (paragrafo 7 e 9
+# do PLANO-AREA-DE-NEGOCIACAO.md); chutar um numero agora seria inventa-lo para
+# depois defende-lo. A chave existe no catalogo porque o vocabulario e fechado
+# no banco e sem ela o mantenedor nao conseguiria gravar o piso nem quando o
+# tivesse.
+#
+# ELA E DECLARADA AQUI, e nao simplesmente esquecida, porque a conferencia
+# abaixo falha ALTO quando o catalogo e a semente discordam: sem esta lista, a
+# ausencia proposital seria indistinguivel de um valor esquecido, que e
+# exatamente o que aquela conferencia existe para pegar.
+SEM_VALOR_INICIAL = {
+    "piso_por_nivel.iniciante",
+    "piso_por_nivel.intermediario",
+    "piso_por_nivel.avancado",
 }
 
 
@@ -116,8 +139,11 @@ class Command(BaseCommand):
         # 26 chaves e declarar sucesso. Uma chave nova no catalogo sem valor
         # inicial deixaria o motor lendo `None` para ela, e o `None` viraria um
         # padrao inventado no primeiro `or` que alguem escrevesse.
-        faltando = sorted(set(CHAVES_DE_PARAMETRO) - set(VALORES_INICIAIS))
+        faltando = sorted(
+            set(CHAVES_DE_PARAMETRO) - set(VALORES_INICIAIS) - SEM_VALOR_INICIAL
+        )
         sobrando = sorted(set(VALORES_INICIAIS) - set(CHAVES_DE_PARAMETRO))
+        sobrando += sorted(SEM_VALOR_INICIAL - set(CHAVES_DE_PARAMETRO))
         if faltando or sobrando:
             raise SystemExit(
                 "PAROU POR SEGURANCA: o catalogo de chaves e a semente "
