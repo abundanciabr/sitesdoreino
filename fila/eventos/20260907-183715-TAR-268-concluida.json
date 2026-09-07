@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-183715-TAR-268-concluida",
+  "tarefa": "TAR-268",
+  "evento": "concluida",
+  "quando": "2026-09-07T18:37:15+00:00",
+  "quem": "maestro-lote-cursos-20260907",
+  "evidencia": "Rito de Contrato da sala em dois PRs so de contracts/, etiqueta contrato: https://github.com/abundanciabr/sitesdoreino/pull/1351 MERGED (as quatro operacoes de curso) e https://github.com/abundanciabr/sitesdoreino/pull/1359 MERGED (a emenda do mesmo dia: nome do bloco vem da estrutura). Freeze com o congelado e o codigo na mesma arvore: contrato/cursos PASS identico ao congelado (1616 linhas), seguranca PASS (17 operacoes). O codigo da porta (PR 1349) pousou na main dentro do PR 1357 (MERGED), com o freeze verde",
+  "verificado_em": "2026-09-07"
+}
