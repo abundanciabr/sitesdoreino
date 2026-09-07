@@ -67,9 +67,11 @@ e só o do livro. Quatro operações nasceram: `listCourses`, `createCourse`,
 `putCourseStructure` faz pela porta o que o semeador faz para o livro:
 reconcilia ESTRUTURA (bloco, ordem, parte, Boss, Banca) e nunca toca OBRA
 (pedido, cliente, peças, pausas, quiz, vídeo, estado, versão). O título da
-aula, o nome do bloco e o título do Boss só entram onde estão VAZIOS: obra
-escrita não se sobrescreve. Aula que some da estrutura só é apagada se nenhum
-aluno passou por ela; se passou, é 422 com os números, e nada é gravado. O
+aula só entra onde está VAZIO: obra escrita não se sobrescreve. O nome do
+bloco e o título do Boss são ESTRUTURA (as letras são posicionais, e o nome
+viaja com a posição): nulo não mexe, texto grava, vazio apaga. Aula que some
+da estrutura só é apagada se nenhum aluno passou por ela, conferido dentro da
+transação que apaga; se passou, é 422 com os números, e nada é gravado. O
 texto das aulas continua entrando só por `putLesson` ([INV-CUR-C2] intacto).
 
 O QUE FICA DE FORA, DE PROPÓSITO
@@ -462,15 +464,35 @@ class AulaDaEstruturaSchema(Schema):
 
 class BlocoDaEstruturaSchema(Schema):
     """Um bloco como a estrutura o declara: a letra, a parte (o enum do
-    contrato), as aulas na ordem, e os dois textos de obra, que só entram onde
-    o bloco ainda não os tem."""
+    contrato), as aulas na ordem, e os dois textos do bloco. A estrutura e a
+    fonte do nome do bloco e do titulo do Boss, porque as letras sao
+    posicionais: o bloco que hoje e o A pode virar o B na estrutura nova, e
+    o nome tem de viajar com ele. Por isso os dois campos tem tres estados:
+    ausente ou nulo NAO MEXE no que esta gravado; texto GRAVA aquele valor;
+    texto vazio APAGA."""
 
     model_config = ConfigDict(extra="forbid")
 
     letra: str = Field(pattern=r"^[A-Z]$")
     parte: ParteDoCurso
-    nome: str = Field("", max_length=CURTO)
-    boss_titulo: str = Field("", max_length=CURTO)
+    nome: str | None = Field(
+        None,
+        max_length=CURTO,
+        description=(
+            "O nome do bloco. Ausente ou nulo: o nome gravado fica como esta. "
+            "Texto: passa a ser este, mesmo que o bloco ja tivesse outro. "
+            "Texto vazio: apaga o nome."
+        ),
+    )
+    boss_titulo: str | None = Field(
+        None,
+        max_length=CURTO,
+        description=(
+            "O titulo do Boss do bloco. Ausente ou nulo: o titulo gravado fica "
+            "como esta. Texto: passa a ser este, mesmo que o bloco ja tivesse "
+            "outro. Texto vazio: apaga o titulo."
+        ),
+    )
     aulas: list[AulaDaEstruturaSchema]
 
 
@@ -1286,7 +1308,17 @@ def _reconciliar_estrutura(
 ) -> dict[str, Any]:
     """A mesma fronteira do `semear_esqueleto`: cria o que falta, corrige
     bloco, ordem, parte, `e_boss` e `banca_nivel` do que existe, e não toca em
-    obra. Uma transação só: ou a estrutura inteira entra, ou nada entra.
+    obra. Uma transação só: ou a estrutura inteira entra, ou nada entra, e a
+    conferência do rastro de aluno mora dentro dela.
+
+    O NOME DO BLOCO É ESTRUTURA, O TÍTULO DA AULA É OBRA. As aulas casam pelo
+    número, que é estável, e o título só preenche a que ainda não tem um. Os
+    blocos casam pela letra, que é posicional: o bloco que era o B vira o C
+    quando nasce um na frente, e o nome tem de vir na estrutura nova para
+    acompanhá-lo. Por isso `nome` e `boss_titulo` do bloco são gravados como
+    vieram (nulo não mexe, texto grava, vazio apaga), e a regra antiga, "só
+    onde está vazio", apagava em silêncio o nome de todo bloco que mudava de
+    letra.
 
     A ORDEM DAS AULAS É ESTACIONADA ANTES DE SER REESCRITA. `uma_ordem_por_aula_
     por_curso` é conferida linha a linha, e trocar duas aulas de lugar colide
@@ -1298,30 +1330,41 @@ def _reconciliar_estrutura(
     """
     letras_novas = [bloco.letra for bloco in payload.blocos]
     numeros_novos = [aula.numero for bloco in payload.blocos for aula in bloco.aulas]
-    existentes = {aula.numero: aula for aula in AulaModel.objects.filter(curso=curso)}
-    somem = [numero for numero in existentes if numero not in numeros_novos]
-    # O rastro de aluno é o que impede apagar: progresso, envio ou registro
-    # de pausa. Apagar uma aula por onde alguém passou apagaria o caminho dele.
-    com_aluno = sorted(
-        AulaModel.objects.filter(curso=curso, numero__in=somem)
-        .filter(
-            Q(progressos__isnull=False)
-            | Q(envios__isnull=False)
-            | Q(pausas__registros__isnull=False)
-        )
-        .values_list("numero", flat=True)
-        .distinct()
-    )
-    if com_aluno:
-        raise HttpError(
-            422,
-            f"as aulas {', '.join(com_aluno)} sumiram da estrutura nova, mas "
-            "algum aluno já passou por elas (progresso, envio ou registro de "
-            "pausa) e elas não podem ser apagadas. Devolva-as à estrutura, em "
-            "qualquer bloco e posição, e mande de novo. Nada foi gravado.",
-        )
 
     with transaction.atomic():
+        existentes = {
+            aula.numero: aula for aula in AulaModel.objects.filter(curso=curso)
+        }
+        somem = [numero for numero in existentes if numero not in numeros_novos]
+        # O rastro de aluno é o que impede apagar: progresso, envio ou registro
+        # de pausa. A conferência mora DENTRO da transação que apaga, com as
+        # aulas candidatas trancadas: a chave estrangeira do rastro precisa da
+        # linha da aula no COMMIT do aluno, então quem estiver gravando rastro
+        # numa candidata espera a transação acabar, e rastro nenhum fica
+        # apontando para aula apagada. Fora da transação havia uma janela
+        # entre a conferência e o apagar, e a porta morria em 500 dentro dela.
+        candidatas = list(
+            AulaModel.objects.select_for_update().filter(curso=curso, numero__in=somem)
+        )
+        com_aluno = sorted(
+            AulaModel.objects.filter(pk__in=[aula.pk for aula in candidatas])
+            .filter(
+                Q(progressos__isnull=False)
+                | Q(envios__isnull=False)
+                | Q(pausas__registros__isnull=False)
+            )
+            .values_list("numero", flat=True)
+            .distinct()
+        )
+        if com_aluno:
+            raise HttpError(
+                422,
+                f"as aulas {', '.join(com_aluno)} sumiram da estrutura nova, mas "
+                "algum aluno já passou por elas (progresso, envio ou registro de "
+                "pausa) e elas não podem ser apagadas. Devolva-as à estrutura, em "
+                "qualquer bloco e posição, e mande de novo. Nada foi gravado.",
+            )
+
         maior_ordem = max((aula.ordem for aula in existentes.values()), default=-1)
         deslocamento = max(maior_ordem, len(numeros_novos)) + 1
         AulaModel.objects.filter(curso=curso).update(ordem=F("ordem") + deslocamento)
@@ -1338,19 +1381,21 @@ def _reconciliar_estrutura(
                     ordem=posicao,
                     letra=bloco_novo.letra,
                     parte=int(bloco_novo.parte),
-                    nome=bloco_novo.nome,
-                    boss_titulo=bloco_novo.boss_titulo,
+                    nome=bloco_novo.nome or "",
+                    boss_titulo=bloco_novo.boss_titulo or "",
                 )
                 blocos_criados += 1
                 continue
             bloco.ordem = posicao
             bloco.parte = int(bloco_novo.parte)
             campos = ["ordem", "parte"]
-            # Os dois textos de obra só entram onde o bloco ainda não os tem.
-            if not bloco.nome and bloco_novo.nome:
+            # A estrutura é a fonte dos dois textos do bloco (as letras são
+            # posicionais, e o nome viaja com a posição): nulo não mexe, texto
+            # grava, e texto vazio apaga.
+            if bloco_novo.nome is not None:
                 bloco.nome = bloco_novo.nome
                 campos.append("nome")
-            if not bloco.boss_titulo and bloco_novo.boss_titulo:
+            if bloco_novo.boss_titulo is not None:
                 bloco.boss_titulo = bloco_novo.boss_titulo
                 campos.append("boss_titulo")
             bloco.save(update_fields=campos)
@@ -1525,16 +1570,28 @@ def put_course(request, curso: str, site_id: str, payload: CursoParaAlterarSchem
         "RECONCILIA COMO O SEMEADOR DO LIVRO, e a fronteira e a mesma. Cria o\n"
         "bloco e a aula que faltam; corrige bloco, ordem, parte, Boss e Banca\n"
         "do que ja existe; e NUNCA toca obra: pedido, cliente, pecas, pausas,\n"
-        "quiz, video, estado e versao ficam como estao. O titulo da aula, o\n"
-        "nome do bloco e o titulo do Boss so entram onde estao VAZIOS; o que a\n"
-        "tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz quantas\n"
-        "aulas ja existiam e ficaram com a obra intacta.\n"
+        "quiz, video, estado e versao ficam como estao. As aulas casam pelo\n"
+        "NUMERO, que e estavel: o titulo da aula so entra onde esta VAZIO, o\n"
+        "que a tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz\n"
+        "quantas aulas ja existiam e ficaram com a obra intacta.\n"
+        "\n"
+        "OS BLOCOS CASAM PELA LETRA, QUE E POSICIONAL, e por isso a estrutura\n"
+        "e a fonte do nome do bloco e do titulo do Boss: quando nasce um bloco\n"
+        "na frente, o que era o B vira o C, e o nome tem de vir na estrutura\n"
+        "nova para acompanha-lo. Cada um dos dois campos tem tres estados.\n"
+        "Ausente ou nulo: o que esta gravado fica como esta. Texto: passa a\n"
+        "ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga.\n"
+        "Mande sempre o nome que a tela mostra, e nenhum bloco perde o nome\n"
+        "quando muda de letra.\n"
         "\n"
         "Aula que sumiu da estrutura nova e APAGADA so se nenhum aluno passou\n"
-        "por ela (sem progresso, sem envio, sem registro de pausa). Se algum\n"
-        "passou, e 422 nomeando as aulas, e NADA e gravado: a transacao e uma\n"
-        "so. Bloco que sumiu e apagado depois que as aulas dele mudaram de\n"
-        "bloco ou foram apagadas.\n"
+        "por ela (sem progresso, sem envio, sem registro de pausa). A\n"
+        "conferencia acontece DENTRO da transacao que apaga, com essas aulas\n"
+        "trancadas: um aluno gravando rastro nelas no mesmo instante e visto,\n"
+        "e nenhuma aula por onde alguem passou e apagada. Se algum passou, e\n"
+        "422 nomeando as aulas, e NADA e gravado: a transacao e uma so. Bloco\n"
+        "que sumiu e apagado depois que as aulas dele mudaram de bloco ou\n"
+        "foram apagadas.\n"
         "\n"
         "422 tambem, dizendo a linha do problema: letra de bloco repetida,\n"
         "numero de aula repetido, estrutura sem bloco, bloco sem aula, parte\n"

@@ -4,20 +4,26 @@ porta reconcilia como o semeador do livro: escreve estrutura, nunca toca obra.
 A fronteira medida aqui é a mesma de `test_semeador_reconcilia_estrutura.py`:
 
     ESTRUTURA (a porta escreve)  →  bloco, ordem, parte, `e_boss`,
-                                    `banca_nivel`; e o título, o nome do bloco
-                                    e o título do Boss SÓ onde estão vazios.
+                                    `banca_nivel`; o nome do bloco e o título
+                                    do Boss (nulo não mexe, texto grava, vazio
+                                    apaga); e o título da aula SÓ onde está
+                                    vazio.
     OBRA (a porta nunca toca)    →  pedido, cliente, peças, pausas, quiz,
                                     vídeo, estado, versão. [INV-CUR-C2].
 
 E a regra que o semeador não precisava ter: aula que some da estrutura só é
-apagada se nenhum aluno passou por ela; se passou, é 422 e nada é gravado.
+apagada se nenhum aluno passou por ela; se passou, é 422 e nada é gravado. A
+conferência mora dentro da transação que apaga, e um aluno gravando rastro na
+mesma hora é visto (o teste com a segunda conexão prova isso).
 """
 
 from __future__ import annotations
 
 import json
+from threading import Event, Thread
 
 import pytest
+from django.db import IntegrityError, connection, connections
 from django.test import Client
 
 from apps.cursos.models import (
@@ -300,29 +306,126 @@ def test_o_titulo_so_preenche_a_aula_que_ainda_nao_tem_um(roblox):
     assert Aula.objects.get(curso=roblox, numero="1").titulo_exibido == "Bem-vindo"
 
 
-def test_o_nome_do_bloco_e_o_titulo_do_boss_so_preenchem_onde_estao_vazios(roblox):
-    gravar(ESTRUTURA)
-    Bloco.objects.filter(curso=roblox, letra="A").update(nome="Escrito pela tela")
-    Bloco.objects.filter(curso=roblox, letra="B").update(boss_titulo="")
-    nova = {
+# ---------------------------------------------------------------------------
+# o nome do bloco e o título do Boss são ESTRUTURA: nulo não mexe, texto
+# grava, vazio apaga
+# ---------------------------------------------------------------------------
+
+
+def _com_os_textos(nome, boss_titulo):
+    """A estrutura de sempre, com `nome` e `boss_titulo` nos dois blocos
+    valendo o que o teste mandar: `None` viaja como nulo no JSON."""
+    return {
         "blocos": [
             {
                 "letra": "A",
                 "parte": 1,
-                "nome": "Outro nome",
+                "nome": nome,
+                "boss_titulo": boss_titulo,
                 "aulas": [aula("1"), aula("2")],
             },
             {
                 "letra": "B",
                 "parte": 2,
-                "boss_titulo": "Boss novo",
+                "nome": nome,
+                "boss_titulo": boss_titulo,
                 "aulas": [aula("3")],
             },
         ]
     }
-    gravar(nova)
-    assert Bloco.objects.get(curso=roblox, letra="A").nome == "Escrito pela tela"
-    assert Bloco.objects.get(curso=roblox, letra="B").boss_titulo == "Boss novo"
+
+
+def _textos_dos_blocos(curso) -> dict[str, tuple[str, str]]:
+    return {
+        b.letra: (b.nome, b.boss_titulo)
+        for b in Bloco.objects.filter(curso=curso).order_by("letra")
+    }
+
+
+def test_nome_e_boss_ausentes_ou_nulos_nao_mexem_no_que_esta_gravado(roblox):
+    gravar(ESTRUTURA)
+    Bloco.objects.filter(curso=roblox, letra="A").update(
+        nome="Escrito pela tela", boss_titulo="Boss da tela"
+    )
+    sem_os_campos = {
+        "blocos": [
+            {"letra": "A", "parte": 1, "aulas": [aula("1"), aula("2")]},
+            {"letra": "B", "parte": 2, "aulas": [aula("3")]},
+        ]
+    }
+    assert gravar(sem_os_campos).status_code == 200
+    assert gravar(_com_os_textos(None, None)).status_code == 200
+    assert _textos_dos_blocos(roblox) == {
+        "A": ("Escrito pela tela", "Boss da tela"),
+        "B": ("", "A Primeira Venda"),
+    }
+
+
+def test_nome_e_boss_com_texto_sobrescrevem_o_que_a_tela_escreveu(roblox):
+    gravar(ESTRUTURA)
+    Bloco.objects.filter(curso=roblox, letra="A").update(nome="Escrito pela tela")
+    assert (
+        gravar(_com_os_textos("Nome da estrutura", "Boss da estrutura")).status_code
+        == 200
+    )
+    assert _textos_dos_blocos(roblox) == {
+        "A": ("Nome da estrutura", "Boss da estrutura"),
+        "B": ("Nome da estrutura", "Boss da estrutura"),
+    }
+
+
+def test_nome_e_boss_vazios_apagam(roblox):
+    gravar(ESTRUTURA)
+    assert _textos_dos_blocos(roblox)["A"][0] == "Começando"
+    assert gravar(_com_os_textos("", "")).status_code == 200
+    assert _textos_dos_blocos(roblox) == {"A": ("", ""), "B": ("", "")}
+
+
+def test_bloco_que_muda_de_letra_leva_o_nome_que_veio_na_estrutura(roblox):
+    """As letras são posicionais: nasce um bloco na frente, o A vira B e o B
+    vira C. A tela de colar manda os nomes nas linhas de módulo, e cada bloco
+    fica com o nome da posição nova. Nenhum nome escrito some em silêncio: os
+    três continuam no banco, cada um no bloco certo."""
+    gravar(ESTRUTURA)
+    Bloco.objects.filter(curso=roblox, letra="A").update(nome="Escrito pela tela")
+    Bloco.objects.filter(curso=roblox, letra="B").update(boss_titulo="Boss da tela")
+    nova = {
+        "blocos": [
+            {"letra": "A", "parte": 1, "nome": "Introdução", "aulas": [aula("0")]},
+            {
+                "letra": "B",
+                "parte": 1,
+                "nome": "Escrito pela tela",
+                "boss_titulo": "",
+                "aulas": [aula("1"), aula("2")],
+            },
+            {
+                "letra": "C",
+                "parte": 2,
+                "nome": "",
+                "boss_titulo": "Boss da tela",
+                "aulas": [aula("3")],
+            },
+        ]
+    }
+    dados = corpo(gravar(nova))
+    assert {k: dados[k] for k in AS_CONTAGENS} == {
+        "blocos_criados": 1,
+        "aulas_criadas": 1,
+        "aulas_preservadas": 3,
+        "aulas_apagadas": 0,
+    }
+    assert _textos_dos_blocos(roblox) == {
+        "A": ("Introdução", ""),
+        "B": ("Escrito pela tela", ""),
+        "C": ("", "Boss da tela"),
+    }
+    assert estrutura_no_banco(roblox) == [
+        ("A", 1, 1, "0", 0),
+        ("B", 2, 1, "1", 1),
+        ("B", 2, 1, "2", 2),
+        ("C", 3, 2, "3", 3),
+    ]
 
 
 def test_troca_dois_blocos_e_duas_aulas_de_lugar_numa_transacao_so(roblox):
@@ -409,6 +512,82 @@ def test_aula_com_envio_de_aluno_tambem_nao_e_apagada(roblox):
     assert resposta.status_code == 422
     assert "as aulas 2 sumiram" in corpo(resposta)["detail"]
     assert Aula.objects.filter(curso=roblox).count() == 3
+
+
+@pytest.mark.django_db(transaction=True)
+def test_enquanto_a_porta_tranca_as_aulas_o_rastro_do_aluno_espera(roblox):
+    """A corrida que a conferência FORA da transação deixava aberta: entre o
+    SELECT do rastro e o DELETE, um aluno começava a aula 3, e a aula era
+    apagada assim mesmo (ou a porta morria em 500 na chave estrangeira).
+
+    A prova é por uma SEGUNDA CONEXÃO, de verdade. A porta é pausada logo
+    depois de trancar as aulas candidatas (`select_for_update`); o aluno
+    grava o progresso na aula 3 e tenta fechar a gravação; o COMMIT dele
+    ESPERA, porque a chave estrangeira precisa da linha trancada. Quando a
+    porta termina, a aula já não existe e a gravação do aluno é recusada pelo
+    banco: em nenhum instante existe rastro apontando para aula apagada, e a
+    porta nunca responde 500 por isso. Sem a tranca, a porta não emite o
+    `FOR UPDATE`, a pausa nunca acontece e o teste reprova ali."""
+    gravar(ESTRUTURA)
+    ana = Pessoa.objects.create(id_da_plataforma="p_ana", nome_exibido="Ana")
+    aula_3 = Aula.objects.get(curso=roblox, numero="3")
+    so_o_a = {"blocos": [{"letra": "A", "parte": 1, "aulas": [aula("1"), aula("2")]}]}
+    trancou, pode_seguir = Event(), Event()
+    resposta: list = []
+    recusa_do_aluno: list = []
+
+    def porta_pausada_depois_da_tranca(execute, sql, params, many, context):
+        resultado = execute(sql, params, many, context)
+        if "FOR UPDATE" in sql:
+            trancou.set()
+            pode_seguir.wait(timeout=10)
+        return resultado
+
+    def a_porta_grava():
+        try:
+            with connection.execute_wrapper(porta_pausada_depois_da_tranca):
+                resposta.append(gravar(so_o_a))
+        except Exception as estouro:  # a porta morreu: o teste diz o nome
+            resposta.append(estouro)
+        finally:
+            connection.close()
+
+    def o_aluno_comeca_a_aula_3():
+        # Conexão criada à parte, não por apelido novo em `connections`: o
+        # Django proíbe, no teste, apelido que a classe não declara.
+        aluno = connections.create_connection("default")
+        aluno.set_autocommit(False)
+        try:
+            with aluno.cursor() as cursor:
+                cursor.execute(
+                    f"INSERT INTO {Progresso._meta.db_table} (pessoa_id, aula_id, "
+                    "estado, autoavaliacao, cerimonia_pendente, laudo_lido) "
+                    "VALUES (%s, %s, 'em_producao', %s::jsonb, false, false)",
+                    [ana.pk, aula_3.pk, "{}"],
+                )
+            aluno.commit()
+        except IntegrityError as recusa:
+            recusa_do_aluno.append(recusa)
+        finally:
+            aluno.close()
+
+    porta = Thread(target=a_porta_grava)
+    porta.start()
+    assert trancou.wait(timeout=10), "a porta não trancou as aulas candidatas"
+    aluno = Thread(target=o_aluno_comeca_a_aula_3)
+    aluno.start()
+    aluno.join(timeout=2)
+    assert aluno.is_alive(), "a gravação do aluno tinha de esperar a porta"
+    pode_seguir.set()
+    porta.join(timeout=20)
+    aluno.join(timeout=20)
+    assert not porta.is_alive() and not aluno.is_alive()
+
+    assert not isinstance(resposta[0], Exception), repr(resposta[0])
+    assert resposta[0].status_code == 200
+    assert not Aula.objects.filter(pk=aula_3.pk).exists()
+    assert len(recusa_do_aluno) == 1, "o banco tinha de recusar o rastro órfão"
+    assert Progresso.objects.filter(aula_id=aula_3.pk).count() == 0
 
 
 def test_a_aula_com_aluno_pode_mudar_de_bloco_e_de_posicao(roblox):

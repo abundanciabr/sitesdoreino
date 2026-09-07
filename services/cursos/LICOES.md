@@ -92,3 +92,49 @@ fica vermelho pelo motivo errado (`armadilhas/226`). Os casos que provam a
 restrição são os que CABEM na coluna e violam a regra (`"e00"`, `"E-1"`,
 `"A 1"`, `""`); o tamanho é recusado com 422 pela porta, pelo `pattern` do
 corpo, que é onde ele deve ser recusado.
+
+## A conferência que decide apagar mora dentro da transação que apaga, e tranca a linha
+
+**Medido em 07/09/2026, na revisão do PR #1349.** A primeira versão de
+`putCourseStructure` conferia o rastro de aluno (progresso, envio, registro de
+pausa) das aulas que sumiram ANTES de abrir o `transaction.atomic()`. Entre o
+SELECT e o DELETE havia uma janela, e um aluno começando a aula nessa janela
+matava a porta em 500 (`ProtectedError`), nunca em 422.
+
+O conserto é a conferência DENTRO do `atomic()`, com `select_for_update()` nas
+aulas candidatas. O que a tranca compra não é o óbvio, e vale saber antes de
+escrever o teste: **as chaves estrangeiras que o Django cria no Postgres são
+`DEFERRABLE INITIALLY DEFERRED`**, então o INSERT do rastro NÃO segura a linha
+da aula; só o COMMIT do aluno pede `FOR KEY SHARE` nela. Com a aula trancada
+pela porta, o COMMIT do aluno espera a porta terminar, e o banco recusa o rastro
+que apontaria para aula apagada. Um INSERT aberto do aluno não bloqueia a porta,
+e um teste que espera isso reprova pelo motivo errado (aconteceu aqui).
+
+**A prova honesta** (`test_enquanto_a_porta_tranca_as_aulas_o_rastro_do_aluno_espera`)
+usa uma segunda conexão de verdade (`connections.create_connection("default")`,
+porque apelido novo em `connections` é proibido pela classe de teste), pausa a
+porta logo depois do `FOR UPDATE` com `connection.execute_wrapper`, e mede que o
+COMMIT do aluno fica esperando. Duas sabotagens a derrubam: tirar o
+`select_for_update()` (a pausa nunca acontece) e pôr a conferência numa
+transação própria antes da que grava (a porta morre em `ProtectedError`).
+
+**Duas condições do teste:** `@pytest.mark.django_db(transaction=True)`, porque
+a segunda conexão só vê o que foi commitado; e `select_for_update()` não aceita
+`.distinct()` nem os `LEFT JOIN` da conferência, então tranque as candidatas
+numa consulta simples e confira o rastro por `pk__in` numa segunda.
+
+## O nome do bloco é estrutura, o título da aula é obra
+
+**Decisão da maestro em 07/09/2026, na mesma revisão.** As aulas casam pelo
+NÚMERO, que é estável, e por isso `titulo_exibido` só preenche onde está vazio.
+Os blocos casam pela LETRA, que é posicional: nasce um bloco na frente e o B
+vira C. Com a regra "só preenche onde está vazio" para o nome do bloco, o bloco
+que mudava de letra era apagado com o nome que a pessoa escreveu e o novo
+nascia vazio, em silêncio.
+
+Regra desde o PR #1349: em `BlocoDaEstruturaSchema`, `nome` e `boss_titulo` são
+`str | None = None`. **Nulo ou ausente não mexe; texto grava; texto vazio
+apaga.** A tela de colar traz os nomes nas linhas de módulo e manda o que
+mostra, então nenhum bloco perde o nome ao mudar de letra. A prosa da porta e
+dos dois campos diz exatamente isso, porque ela vira pedra no contrato
+(`armadilhas/324`).
