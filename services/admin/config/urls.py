@@ -50,6 +50,7 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.cursos import escola_curso_alterar, escola_curso_criar, escola_cursos
 from apps.core.escola_pontos import escola_pontos
 from apps.core.parametros_da_fila import (
     parametros_da_fila,
@@ -657,6 +658,24 @@ urlpatterns = [
     # é o SLUG, resolvido pelo par site+slug do outro lado, e não mais "o
     # primeiro curso do site", que quebraria calado no dia do segundo curso.
     #
+    # [CURSOS] 07/09/2026 (TAR-271) A lista dos cursos da escola e o gesto
+    # Novo curso (`apps/core/cursos.py`), da
+    # `DECISAO-a-sala-serve-varios-cursos.md`. Ela vem ANTES das rotas do editor
+    # porque é por aqui que se entra nelas: até hoje o editor entrava por um
+    # curso escrito no código, e criar o segundo exigiria mexer no servidor.
+    #
+    # `escola/cursos/` não colide com `escola/<curso>/...`: aquelas exigem um
+    # sufixo (`aulas/`, `sumario/`), e esta termina aqui. Um curso apelidado
+    # `cursos` continua tendo as telas dele em `escola/cursos/aulas/`.
+    #
+    # Dois gestos, dois POST, porque script embutido nesta área exige hash na
+    # CSP (`armadilhas/199`). Trocar o produto e trocar a regra de avanço são o
+    # MESMO gesto para a porta (`putCourse`, campo ausente é não mexer), e por
+    # isso uma rota só: são dois formulários pequenos, cada um mandando o campo
+    # dele.
+    path("escola/cursos/", escola_cursos, name="escola_cursos"),
+    path("escola/cursos/criar", escola_curso_criar, name="escola_curso_criar"),
+    path("escola/cursos/alterar", escola_curso_alterar, name="escola_curso_alterar"),
     # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
     # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
     # expande o grupo opcional em dois endereços e escolhe pelo que você passa

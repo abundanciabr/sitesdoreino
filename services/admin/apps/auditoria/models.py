@@ -234,6 +234,19 @@ class Registro(models.Model):
     EDITAR_AULA = "editar_aula"
     PUBLICAR_AULA = "publicar_aula"
     EDITAR_INSTRUMENTO = "editar_instrumento"
+    # [CURSOS] 07/09/2026: a sala passou a servir varios cursos, e criar um
+    # virou gesto da tela (`DECISAO-a-sala-serve-varios-cursos.md`). Dois verbos
+    # proprios, e nao um `editar_aula` reaproveitado: aquele fala do TEXTO de
+    # uma encomenda, e estes falam do curso inteiro. Trocar o produto de um
+    # curso troca QUEM ENTRA nele, e trocar a regra de avanco muda como a
+    # proxima aula abre para todos os alunos dele: sao os dois gestos desta area
+    # que mexem na vida de uma turma inteira de uma vez, e quem ler esta tabela
+    # em meses precisa distinguir os dois de "gravei um texto".
+    #
+    # O `detalhe` guarda QUAIS campos mudaram, nunca os valores, pela regra do
+    # `LICOES.md` (28/08/2026).
+    CRIAR_CURSO = "criar_curso"
+    EDITAR_CURSO = "editar_curso"
     # [FILA] 06/09/2026: o botao de excluir da aba "Os robos"
     # (`/admin/caixa/robos/`). Verbo proprio, e o alvo dele nao e uma pessoa nem
     # um texto: e um pedido de TRABALHO. Tirar um da fila e o unico gesto desta
@@ -307,6 +320,8 @@ class Registro(models.Model):
         (EDITAR_AULA, "gravar uma encomenda do curso"),
         (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
+        (CRIAR_CURSO, "criar um curso novo na escola"),
+        (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
     ]

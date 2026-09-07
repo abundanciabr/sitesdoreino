@@ -266,3 +266,32 @@ tela é (`.peca-da-aula`).
 A mesma revisão achou, no mesmo template, o caso da `armadilhas/340`: uma
 variável opcional como ARGUMENTO de filtro (`numero|default:aula.numero`) é
 500 no ramo em que ela falta. Só o teste do caminho triste apanha as duas.
+
+## Um gesto que atravessa DUAS portas precisa da frase da metade (07/09/2026)
+
+A tela de cursos (`/admin/escola/cursos/`) cria um curso e, quando o produto é
+novo, cadastra o produto no `catalogo` antes de criar o curso na `cursos`. São
+duas células, duas transações, e nenhuma das duas sabe da outra: **existe um
+estado em que a primeira valeu e a segunda não**, e ele não é raro (basta a
+`cursos` reiniciar entre as duas idas).
+
+O reflexo de sempre — mostrar a recusa da segunda porta e limpar o formulário —
+deixaria o mantenedor sem saber se pode apertar de novo. Ele apertaria, e a
+pergunta seria "isto vai criar um segundo produto igual?".
+
+**A regra que fica: quando o gesto atravessa duas portas, a tela do erro tem de
+dizer o que a PRIMEIRA já fez, e se reenviar é seguro.** Aqui é, porque
+`createProduct` é idempotente pelo apelido (mesmo apelido e mesmo nome
+respondem 200 com o que já existe), e é isso que a frase diz com todas as
+letras. Sem a idempotência do outro lado, a saída certa seria a ordem inversa
+ou uma tela de conserto, nunca "tente de novo e torça".
+
+E a ordem das duas não é simétrica: o produto primeiro. Um curso apontando para
+um produto que não nasceu fecha a sala para todo mundo, em silêncio; um produto
+sem curso não faz mal a ninguém e é reaproveitado no reenvio. Quem escrever o
+próximo gesto de duas portas nesta área escolhe a ordem por essa pergunta:
+**qual das duas metades, sobrando sozinha, faz menos estrago?**
+
+O guarda é
+`tests/test_escola_cursos.py::test_produto_criado_e_curso_recusado_manda_apertar_de_novo`,
+provado por mutação: apagar a frase da metade o deixa vermelho.

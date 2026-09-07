@@ -960,6 +960,10 @@ class CatalogoClient:
     TIMEOUT = 4.0
     OK = "ok"
     RECUSADO = "recusado"
+    # 409 de `createProduct`: o apelido já é de um produto de OUTRO nome, e nada
+    # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
+    # outro apelido) e não de quem opera a máquina.
+    JA_EXISTE = "ja_existe"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1055,6 +1059,57 @@ class CatalogoClient:
             logger.error("cursos: o catálogo respondeu um corpo que não é lista")
             return None
         return corpo
+
+    def criar_produto(self, slug: str, nome: str) -> "tuple[str, dict | str]":
+        """`createProduct`: cadastra um produto (um curso é um produto).
+
+        É a única ESCRITA de catálogo que não é o menu, e ela existe porque
+        "fácil de criar um curso" não combina com um bloco de colar no servidor
+        a cada curso novo (`DECISAO-a-sala-serve-varios-cursos.md` §3.5).
+
+        **A porta é idempotente pelo apelido**, e é isso que torna seguro
+        reenviar o formulário: mesmo apelido com o mesmo nome responde 200 com
+        o produto que já existe, sem duplicar. Apelido já usado por um produto
+        de OUTRO nome é `JA_EXISTE`, e aí nada foi alterado do outro lado.
+
+        Devolve `(desfecho, produto)` no caminho feliz e `(desfecho, frase)` nos
+        outros: a frase é a do catálogo, mostrada verbatim, porque a regra é de
+        lá e reescrevê-la aqui daria duas redações para o mesmo não.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/produtos",
+                json={"slug": slug, "name": nome},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("cursos: não deu para criar o produto: %s", erro)
+            return self.NAO_RESPONDEU, "o catálogo não respondeu"
+        if r.status_code in (200, 201):
+            try:
+                corpo = r.json()
+            except ValueError as erro:
+                # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
+                logger.error("cursos: resposta fora do contrato: %s", erro)
+                return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+            if not isinstance(corpo, dict) or not str(corpo.get("id") or ""):
+                logger.error("cursos: o produto criado voltou sem id")
+                return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+            return self.OK, corpo
+        if r.status_code in (409, 422):
+            try:
+                frase = str(r.json().get("detail", "")).strip()
+            except ValueError:
+                frase = ""
+            desfecho = self.JA_EXISTE if r.status_code == 409 else self.RECUSADO
+            return desfecho, frase or "o catálogo recusou, sem dizer o motivo"
+        logger.error("cursos: criar produto respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "o catálogo não respondeu"
 
     def gravar_menu(self, site_id: str, menu: dict) -> "tuple[str, str]":
         """Grava o documento INTEIRO. Devolve (situação, frase para a tela)."""
@@ -1922,6 +1977,11 @@ class CursosClient:
     RECUSOU = "recusou"
     NAO_EXISTE = "nao_existe"
     RECUSADO = "recusado"
+    # 409 de `createCourse`: já existe um curso com este apelido NESTE site, e
+    # nada foi criado. O apelido é a identidade do curso e não muda depois, por
+    # contrato, então a saída é escolher outro — e isso é decisão do mantenedor,
+    # não conserto de máquina.
+    JA_EXISTE = "ja_existe"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1944,6 +2004,41 @@ class CursosClient:
         if parte is not None:
             params["parte"] = int(parte)
         return params
+
+    # -- as tres operacoes do CURSO ------------------------------------------
+    def cursos(self, site_id: str) -> "tuple[str, list | None]":
+        """`listCourses`: os cursos deste site, em ordem de apelido.
+
+        Site sem curso nenhum responde lista vazia, e isso é resposta, não
+        falha: quem sabe a diferença é o desfecho, como em toda operação daqui.
+        """
+        return self._pedir("get", "cursos", params={"site_id": site_id}, forma=list)
+
+    def criar_curso(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
+        """`createCourse`: o gesto Novo curso, com apelido, nome, regra e produto.
+
+        Responde 201, e não 200, porque o curso nasce aqui. Apelido repetido
+        naquele site é `JA_EXISTE` (409), e nada foi criado do outro lado.
+        """
+        return self._pedir(
+            "post", "cursos", params={"site_id": site_id}, json=corpo, sucesso=(201,)
+        )
+
+    def alterar_curso(
+        self, site_id: str, curso: str, corpo: dict
+    ) -> "tuple[str, dict | None]":
+        """`putCourse`: nome, regra de avanço ou produto. Ausente é NÃO MEXER.
+
+        Por isso o corpo daqui leva só o que a tela quis trocar: mandar um campo
+        com o valor de hoje seria gravar de novo o que ninguém pediu, e mandar
+        `produto_id` vazio por engano desapontaria o produto e fecharia a sala.
+        """
+        return self._pedir(
+            "put",
+            "cursos/" + quote(curso, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
 
     # -- as quatro leituras --------------------------------------------------
     def aulas(
@@ -2046,11 +2141,24 @@ class CursosClient:
         recusa com 422 se forem."""
         return self._pedir("put", "instrumentos/" + quote(slug, safe=""), json=corpo)
 
-    def _pedir(self, metodo: str, caminho: str, *, params=None, json=None, forma=dict):
-        """Uma ida à porta, com o tratamento que as sete operações compartilham.
+    def _pedir(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        params=None,
+        json=None,
+        forma=dict,
+        sucesso: "tuple[int, ...]" = (200,),
+    ):
+        """Uma ida à porta, com o tratamento que as dez operações compartilham.
 
-        Devolve `(desfecho, corpo)`. Sete cópias do mesmo `try` divergiriam no
+        Devolve `(desfecho, corpo)`. Dez cópias do mesmo `try` divergiriam no
         primeiro caso de borda corrigido de um lado só.
+
+        `sucesso` existe porque `createCourse` responde **201**, e só ela: o
+        padrão continua sendo 200, então nenhuma operação que já rodava muda de
+        comportamento por causa desta linha.
         """
         config = self._configuracao()
         if config is None:
@@ -2082,13 +2190,22 @@ class CursosClient:
             return self.RECUSOU, None
         if r.status_code == 404:
             return self.NAO_EXISTE, None
+        if r.status_code == 409:
+            # Nenhuma operação desta porta respondia 409 antes de `createCourse`
+            # existir, então este ramo não muda nada do que já rodava: ele dá
+            # nome próprio ao "já existe" em vez de deixá-lo virar "não sei".
+            try:
+                detalhe = r.json().get("detail")
+            except (ValueError, AttributeError):
+                detalhe = None
+            return self.JA_EXISTE, detalhe
         if r.status_code == 422:
             try:
                 detalhe = r.json().get("detail")
             except (ValueError, AttributeError):
                 detalhe = None
             return self.RECUSADO, detalhe
-        if r.status_code != 200:
+        if r.status_code not in sucesso:
             logger.error("aulas: a sala de aula respondeu HTTP %s", r.status_code)
             return self.NAO_RESPONDEU, None
 
