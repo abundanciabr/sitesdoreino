@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as DOZE operações, o token errado e o conjunto vazio, em vez de
+# cobre as TREZE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",
@@ -30,15 +30,23 @@ api = NinjaAPI(
         "\n"
         "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
         "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
-        "banco e nunca guardando copia (a lei anti-duplicacao). Sao doze\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Sao treze\n"
         "operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,\n"
         "`getLesson`, `putLesson`, `publishLesson`), as quatro antigas que\n"
         "resolvem a aula so pelo site (`listSiteLessons`, `getSiteLesson`,\n"
         "`putSiteLesson`, `publishSiteLesson`, vivas porque o editor que ja\n"
         "esta no ar as chama), as tres de instrumento (`listInstruments`,\n"
-        "`getInstrument`, `putInstrument`) e a do bloco (`putBlock`). Os\n"
-        "verificadores (checkLesson) nascem no degrau 3.1; o placar da fila\n"
-        "(getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.\n"
+        "`getInstrument`, `putInstrument`), a do bloco (`putBlock`) e a do\n"
+        "Revisor de coerencia (`checkLesson`, degrau 3.1). O placar da fila\n"
+        "(getReviewQueue) e o progresso do aluno (getStudentProgress) nascem\n"
+        "no degrau 2.1.\n"
+        "\n"
+        "O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao\n"
+        "inteligencia artificial: `checkLesson` le uma aula e devolve a lista\n"
+        "de defeitos, ja em portugues, sem gravar nada. E as duas operacoes de\n"
+        "publicar passaram a RECUSAR com 422 a aula cuja peca manda o aluno\n"
+        "para uma encomenda que nao existe no curso ([INV-CUR-C1]); as outras\n"
+        "cinco conferencias sao aviso e nao impedem publicar.\n"
         "\n"
         "Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).\n"
         "\n"

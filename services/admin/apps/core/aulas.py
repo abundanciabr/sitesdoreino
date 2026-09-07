@@ -72,6 +72,25 @@ A `cursos` não assina sessão. O crachá que vale é o desta área, que a porta
 no ponto de uso, `armadilhas/097`) prova só QUEM CHAMA. Mesmo desenho de
 `/admin/economia/` e `/admin/escola/jornadas/`.
 
+## O botão "Conferir coerência" (07/09/2026, degrau 3.1)
+
+O Revisor de coerência mora na `cursos` e é CÓDIGO, não inteligência
+artificial: ele lê a encomenda como ela está GRAVADA e devolve os defeitos, já
+em português. Esta tela só mostra o que ele respondeu, e mostra verbatim: a
+regra é da outra célula, e reescrever a redação dela aqui seria a mesma frase
+em dois lugares.
+
+**É um link, e não um formulário**, porque conferir é uma PERGUNTA: não muda
+nada, não sobe versão e pode ser repetida à vontade. O endereço fica
+`?conferir=1`, o que dá de graça uma coisa que um botão de POST não daria: a
+professora pode recarregar a página, ou mandar o link para alguém, e a
+conferência aparece igual.
+
+**Ele confere o que está GRAVADO, não o que está na tela.** Quem editou sem
+salvar precisa salvar antes, e a tela diz isso na frase do estado vazio: um
+revisor que conferisse o rascunho diria defeito de um texto que não existe em
+lugar nenhum.
+
 ## Por que é formulário simples, sem script
 
 Cada gesto é um POST que recarrega a página, pelas três razões de sempre: o
@@ -318,6 +337,26 @@ def _endereco(nome: str, curso: str, parte: "int | None", numero: str = "") -> s
     if numero:
         argumentos["numero"] = numero
     return reverse(nome, kwargs=argumentos)
+
+
+def _defeito(bruto: dict) -> dict:
+    """Um defeito do `checkLesson`, pronto para a tela.
+
+    O único trabalho desta função é dar NOME à peça: a porta manda o slug
+    (`erros_classicos`) e o editor inteiro chama aquilo de "Erros clássicos".
+    A frase e o conserto passam intactos, e é de propósito.
+
+    Defeito sem peça (o mesmo arquivo escrito de dois jeitos não mora em peça
+    nenhuma, mora entre elas) sai com o nome vazio, e a tela o mostra sem
+    endereço em vez de inventar um.
+    """
+    tipo = str(bruto.get("peca") or "")
+    return {
+        "peca": NOME_DA_PECA.get(tipo, tipo),
+        "frase": str(bruto.get("frase") or ""),
+        "o_que_fazer": str(bruto.get("o_que_fazer") or ""),
+        "impede_publicar": bool(bruto.get("impede_publicar")),
+    }
 
 
 def _cabecalho(aula: dict) -> dict:
@@ -804,6 +843,7 @@ def _desenhar_aula(
     erro: str = "",
     recado: str = "",
     versao: int = 0,
+    conferir: bool = False,
     status: int = 200,
 ):
     """O editor de UMA encomenda.
@@ -845,6 +885,9 @@ def _desenhar_aula(
         "url_de_salvar": _endereco("escola_aula_salvar", curso, parte, numero),
         "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
         "url_do_capitulo": _endereco("escola_capitulo", curso, parte, numero),
+        "url_de_conferir": (
+            _endereco("escola_aula", curso, parte, numero) + "?conferir=1"
+        ),
     }
     if desfecho != CursosClient.OK:
         contexto = {
@@ -870,6 +913,25 @@ def _desenhar_aula(
 
     if rascunho is None:
         rascunho = _rascunho_da_aula(aula)
+    # A conferência só acontece quando foi PEDIDA. Rodá-la em toda abertura do
+    # editor custaria uma ida à porta em cada visita e encheria de aviso a tela
+    # de quem só veio ler a encomenda.
+    coerencia = None
+    if conferir:
+        desfecho_da_conferencia, defeitos = cliente.conferir_aula(
+            site["id"], curso, numero, parte
+        )
+        coerencia = {
+            "lida": desfecho_da_conferencia == CursosClient.OK,
+            "falha": (
+                None
+                if desfecho_da_conferencia == CursosClient.OK
+                else _falha(desfecho_da_conferencia)
+            ),
+            "defeitos": [
+                _defeito(bruto) for bruto in (defeitos or []) if isinstance(bruto, dict)
+            ],
+        }
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
@@ -893,6 +955,7 @@ def _desenhar_aula(
             "erro": erro,
             "recado": recado,
             "versao_nova": versao,
+            "coerencia": coerencia,
         }
         | contexto_do_lugar,
         status=status,
@@ -1009,6 +1072,7 @@ def aula(request, curso: str, numero: str, parte: "str | None" = None):
         int(parte) if parte else None,
         recado=request.GET.get("recado", ""),
         versao=int(bruto) if bruto.isdigit() else 0,
+        conferir=request.GET.get("conferir") == "1",
     )
 
 

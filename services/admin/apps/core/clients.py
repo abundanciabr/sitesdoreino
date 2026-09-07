@@ -1717,9 +1717,9 @@ class CursosClient:
     """A sala de aula: as encomendas do curso e os instrumentos de avaliação.
 
     Fala só o que está no contrato congelado (`contracts/cursos.openapi.yaml`,
-    degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as sete operações do
-    editor, e das aulas SEMPRE as que sabem de curso (`listLessons`,
-    `getLesson`, `putLesson`, `publishLesson`, sob `/cursos/{curso}/aulas`).
+    degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as operações do editor,
+    e das aulas SEMPRE as que sabem de curso (`listLessons`, `getLesson`,
+    `putLesson`, `publishLesson`, `checkLesson`, sob `/cursos/{curso}/aulas`).
     Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
@@ -1745,6 +1745,9 @@ class CursosClient:
     - **`RECUSADO`** (422): a `cursos` leu o corpo e recusou, e o segundo item
       é o `detail` do contrato, com a lista de erros campo por campo. Quem o
       traduz para português, ao lado de cada campo, é `apps/core/aulas.py`.
+      Desde 07/09/2026 `publicar_aula` também devolve `RECUSADO`, e aí o
+      `detail` é UMA FRASE, não uma lista: é o [INV-CUR-C1], a encomenda que
+      manda o aluno para uma que não existe. A frase sobe inteira para a tela.
     - **`NAO_RESPONDEU`**: rede, 5xx, corpo fora do contrato. Na escrita isto
       NÃO vira "recusado": a gravação pode ter acontecido do outro lado, e a
       tela precisa dizer "não sei" em vez de "não valeu".
@@ -1816,6 +1819,27 @@ class CursosClient:
             "get",
             self._caminho(curso, quote(numero, safe="")),
             params=self._com_parte(site_id, parte),
+        )
+
+    def conferir_aula(
+        self, site_id: str, curso: str, numero: str, parte: "int | None" = None
+    ) -> "tuple[str, list | None]":
+        """`checkLesson`: os defeitos de coerência da encomenda, ou lista vazia.
+
+        É LEITURA, e nada é gravado do outro lado: o Revisor aponta e nunca
+        corrige. Lista vazia é a resposta de uma encomenda sem defeito, e não
+        uma falha; quem sabe a diferença é o desfecho, como em toda operação
+        deste cliente.
+
+        As frases de cada defeito vêm prontas em português da `cursos`, e esta
+        célula as mostra verbatim: a regra é de lá, e reescrever a redação dela
+        aqui seria a mesma frase em dois lugares.
+        """
+        return self._pedir(
+            "get",
+            self._caminho(curso, quote(numero, safe=""), "conferir"),
+            params=self._com_parte(site_id, parte),
+            forma=list,
         )
 
     def instrumentos(self) -> "tuple[str, list | None]":
