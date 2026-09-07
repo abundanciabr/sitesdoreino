@@ -1,12 +1,13 @@
 """As views da célula `pages` (a casa das Páginas do aluno).
 
-Dez: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
+Treze: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
 de um item da lista de conferência, as três das peças coladas por link (degrau
 08: a estante, o colar de um link novo e a mudança de uma peça que já está lá),
-a resposta das perguntas da escola sobre uma peça (degrau 10) e as três da
-conferência (degrau 11: o aluno pedindo, a fila da equipe e a decisão dela). O
-que falta continua vindo pela escada do `PLANO-PORTFOLIO-DO-ALUNO.md` §5: o
-selo (12) e a vitrine em `/estudio/<apelido>` (13).
+a resposta das perguntas da escola sobre uma peça (degrau 10), as três da
+conferência (degrau 11: o aluno pedindo, a fila da equipe e a decisão dela) e as
+três da vitrine (degrau 13: a página pública em `/estudio/<apelido>`, e o ligar
+e o desligar dela na estante do aluno). O que falta continua vindo pela escada
+do `PLANO-PORTFOLIO-DO-ALUNO.md` §5, a começar pelo dossiê em PDF (14).
 
 **Nenhuma view daqui decide quem entra.** Quem decide é a porta
 (`apps/core/porta.py`), fail-CLOSED, e ela vem por último no `MIDDLEWARE`:
@@ -37,7 +38,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.portfolio import conferencia, conferencia_do_link, semaforo
+from apps.portfolio import conferencia, conferencia_do_link, semaforo, vitrine
 from apps.portfolio.models import (
     Acabamento,
     EstadoDoLink,
@@ -329,16 +330,18 @@ def desenhar_estante(
     link="",
     legenda="",
     recusa_da_conferencia="",
+    recusa_da_vitrine="",
     status=200,
 ):
     """A tela das peças. `recusa` é a frase que diz por que o link não entrou.
 
     A recusa é DESENHADA no lugar, e não redirecionada: o aluno acabou de colar
     um endereço longo, e mandá-lo para outra página perderia o que ele digitou
-    junto com a explicação. `recusa_da_conferencia` é a mesma ideia para o botão
-    de pedir a conferência, e as duas são caixas SEPARADAS de propósito: uma
-    frase sobre o pedido aparecendo no lugar da frase sobre o link mandaria o
-    aluno procurar o erro no formulário errado.
+    junto com a explicação. `recusa_da_conferencia` e `recusa_da_vitrine` são a
+    mesma ideia para o botão de pedir a conferência e para o endereço da
+    vitrine, e as três são caixas SEPARADAS de propósito: uma frase sobre o
+    apelido aparecendo no lugar da frase sobre o link mandaria o aluno procurar
+    o erro no formulário errado.
     """
     portfolio = meu_portfolio(request, site_id) if site_id else None
     return render(
@@ -377,6 +380,25 @@ def desenhar_estante(
                 getattr(portfolio, "estado", None), "selo_conferido_em", None
             ),
             "recusa_da_conferencia": recusa_da_conferencia,
+            # A VITRINE (degrau 13, critério AC-13): o interruptor do aluno, o
+            # apelido que ele escolheu e o endereço inteiro para ele copiar e
+            # mandar ao cliente.
+            #
+            # **O endereço é montado com `build_absolute_uri`, e nunca com
+            # `{% url %}`**: `reverse()` acrescenta o prefixo da área do aluno e
+            # devolveria `/pages/estudio/ana`, um SEGUNDO endereço para a mesma
+            # página, que é o erro que a `admin` mediu de fora em 29/08/2026
+            # (`armadilhas/102`). O porquê inteiro está em `apps/portfolio/
+            # vitrine.py`, e o guarda é
+            # `test_o_endereco_que_o_aluno_copia_nao_leva_o_prefixo_da_area_dele`.
+            "vitrine_publicada": bool(portfolio and portfolio.vitrine_publicada),
+            "apelido": portfolio.apelido if portfolio else "",
+            "endereco_da_vitrine": (
+                request.build_absolute_uri(vitrine.endereco(portfolio.apelido))
+                if portfolio and portfolio.apelido
+                else ""
+            ),
+            "recusa_da_vitrine": recusa_da_vitrine,
             "agora": timezone.now(),
             # As respostas que a escola aceita em cada pergunta. Só os VALORES e
             # os rótulos: a pergunta em si é frase que o aluno lê, e ela mora no
@@ -769,3 +791,150 @@ def decidir(request):
         return desenhar_fila(request, site_id, recusa=str(recusa), status=422)
 
     return redirect(f"{reverse('equipe')}?feito={gesto}")
+
+
+# ---------------------------------------------------------------------------
+# A VITRINE PÚBLICA (degrau 13, critérios AC-13, AC-14 e AC-15)
+# ---------------------------------------------------------------------------
+# Três views, e a divisão delas é a divisão de quem as usa: `vitrine_publica` é
+# a página do CLIENTE do aluno, e as duas de `vitrine/` são o interruptor do
+# ALUNO, na estante dele.
+#
+# A primeira é a ÚNICA desta casa que responde sem passar pela porta
+# fail-closed (`apps/core/porta.py`, `PREFIXO_PUBLICO_DA_VITRINE`), e a regra
+# dela mora em `apps/portfolio/vitrine.py`, com o porquê de cada decisão.
+
+#: A política de conteúdo da página pública (critério AC-14), e ela é uma
+#: DECISÃO de segurança, não um enfeite de cabeçalho.
+#:
+#: Esta é a única tela desta plataforma que exibe imagem de domínio de terceiro,
+#: porque a foto entra por link colado (plano §6.2). O risco que isso abre é
+#: conteúdo de fora dentro de uma página nossa, e o que o torna controlado é
+#: esta lista: nada carrega de lugar nenhum (`default-src 'none'`), EXCETO
+#: imagem, e imagem só por `https`, que é o mesmo endereço que a conferência do
+#: degrau 08 já exige do aluno na hora de colar.
+#:
+#: `style-src 'unsafe-inline'` porque a folha desta casa é embutida na página
+#: (o motivo está em `pages/moldura.html`: célula sob `SCRIPT_NAME` que serve
+#: estático por tag monta endereço da célula errada, `armadilhas/083` e `/102`).
+#: Estilo embutido com `script-src 'none'` ao lado não abre caminho de execução.
+#:
+#: `frame-ancestors 'none'` impede que a vitrine seja emoldurada dentro de outro
+#: site, que é como o trabalho de um aluno viraria conteúdo de outra pessoa.
+POLITICA_DE_CONTEUDO = (
+    "default-src 'none'; img-src https:; style-src 'unsafe-inline'; "
+    "script-src 'none'; frame-ancestors 'none'; base-uri 'none'; "
+    "form-action 'none'"
+)
+
+#: O `noindex` do critério AC-13, que não é negociável (plano §7). Sai também na
+#: `<meta>` da página: o cabeçalho serve a quem lê só a resposta, e a meta serve
+#: ao buscador que já baixou o HTML. Um dos dois sozinho deixa metade dos
+#: caminhos aberta.
+FORA_DOS_BUSCADORES = "noindex, nofollow, noarchive"
+
+
+def _sem_rastro(resposta):
+    """Os três cabeçalhos que toda resposta da vitrine leva, publicada ou não.
+
+    `no-store` é o que faz "despublicar é imediato" ser verdade fora do nosso
+    servidor: sem ele, uma cópia guardada no navegador do cliente continuaria
+    mostrando obras que o aluno acabou de tirar do ar.
+
+    Eles vão nas DUAS respostas, e não só na página publicada, porque a página
+    de fora do ar também não pode ser indexada nem guardada: um buscador que
+    tivesse guardado o 404 de ontem mostraria "não existe" no dia em que o aluno
+    publicasse.
+    """
+    resposta["Content-Security-Policy"] = POLITICA_DE_CONTEUDO
+    resposta["X-Robots-Tag"] = FORA_DOS_BUSCADORES
+    resposta["Cache-Control"] = "no-store"
+    return resposta
+
+
+@require_GET
+def vitrine_publica(request, apelido: str):
+    """A página que o aluno manda ao cliente pagante.
+
+    **Ela não pergunta quem é ninguém.** Não há cookie, não há ida à
+    `identidade` nem à `alunos`, e é por isso que ela continua abrindo quando as
+    duas estão fora do ar: quem a lê nunca vai entrar na plataforma (AC-13).
+
+    **404 é a única recusa, e ela é a mesma para todos os casos.** Apelido que
+    nunca existiu, aluno que não ligou a vitrine, aluno que desligou agora e
+    escola diferente saem por aqui com a mesma resposta. Um 403 para o segundo
+    caso confirmaria a quem tentou no escuro que aquele apelido existe, e o
+    endereço é justamente o que o aluno escolhe e divulga.
+
+    **Sem `SITE_ID` no env não há página.** A fronteira de escola entra na
+    consulta (Lei 9), e servir a primeira linha que o banco devolvesse poria os
+    alunos de duas escolas do mesmo lado dela no dia em que a segunda chegasse.
+    A dívida é a mesma da Prancheta, e está por extenso em `site_atual`.
+    """
+    site_id = site_atual()
+    portfolio = vitrine.publicada(site_id=site_id, apelido=apelido) if site_id else None
+    if portfolio is None:
+        return _sem_rastro(render(request, "pages/vitrine-fora-do-ar.html", status=404))
+
+    return _sem_rastro(
+        render(
+            request,
+            "pages/vitrine.html",
+            {
+                "apelido": portfolio.apelido,
+                "obras": vitrine.obras(portfolio),
+                # O SELO DA ESCOLA (AC-12) é o que mais vale para quem contrata,
+                # e ele sai do estado do aluno, nunca do último pedido, pelo
+                # mesmo motivo escrito na estante. `getattr` com padrão dá conta
+                # porque o estado só nasce quando o aluno anda pela primeira vez.
+                "selo_em": getattr(
+                    getattr(portfolio, "estado", None), "selo_conferido_em", None
+                ),
+                "url_da_capa": settings.URL_DA_CAPA,
+            },
+        )
+    )
+
+
+@require_POST
+def publicar_vitrine(request):
+    """O aluno liga a vitrine, com o endereço que ele escolheu.
+
+    O mesmo botão TROCA o endereço de quem já publicou, e a tela avisa, antes,
+    que o link antigo para de funcionar: são o mesmo gesto para o aluno, e duas
+    rotas fariam a estante ter dois formulários idênticos lado a lado.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    try:
+        vitrine.publicar(
+            site_id=site_id,
+            aluno_id=request.aluno["id"],
+            texto=(request.POST.get("apelido") or ""),
+        )
+    except vitrine.VitrineRecusada as recusa:
+        return desenhar_estante(
+            request, site_id, recusa_da_vitrine=str(recusa), status=422
+        )
+
+    return redirect("pecas")
+
+
+@require_POST
+def despublicar_vitrine(request):
+    """O aluno tira a página do ar. No pedido seguinte ela já não existe.
+
+    Quem nunca publicou nada não tem o que desligar, e a estante volta como
+    estava: um erro aqui seria falar de um estado que a tela não mostra.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    portfolio = meu_portfolio(request, site_id)
+    if portfolio is not None:
+        vitrine.despublicar(portfolio)
+
+    return redirect("pecas")

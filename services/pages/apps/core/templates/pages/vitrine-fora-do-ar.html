@@ -1,0 +1,46 @@
+{% comment %}
+A ÚNICA RECUSA da vitrine pública, e ela responde por QUATRO casos de uma vez
+(degrau 13, critério AC-13): o apelido que nunca existiu, o aluno que nunca
+ligou a vitrine, o aluno que desligou agora há pouco e a escola diferente.
+
+É a mesma página para os quatro, byte por byte, e é isso que ela existe para
+garantir. Uma página diferente para "existe mas está desligada" seria um 403
+disfarçado: ela responderia, a quem tentou endereços no escuro, a pergunta
+*este apelido existe?* Guarda:
+`tests/test_a_vitrine_publica.py::test_a_vitrine_desligada_responde_o_MESMO_que_o_apelido_que_nunca_existiu`.
+
+**Nenhuma variável entra aqui, e a ausência é a defesa.** Uma frase montada com
+o apelido pedido devolveria ao visitante o que ele escreveu na barra, e o texto
+não tem nada a dizer sobre um endereço que a página não confirma nem nega.
+
+Ela NÃO veste a moldura da casa pelo mesmo motivo da vitrine: quem chega aqui é
+alguém de fora, com um link na mão, e o menu da área do aluno não é resposta
+para ele. O que ela oferece é o caminho para a escola, que é a única coisa útil
+que se pode dizer a quem abriu um endereço que não está no ar.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Página não encontrada | Meshcraft Academy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 34rem; margin: 0 auto; padding: 4rem 1.25rem; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 1rem; }
+  p { margin: 0 0 1rem; }
+  .miudo { font-size: .9rem; opacity: .8; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Não há nenhuma página neste endereço</h1>
+  <p>O portfólio que você procura não está no ar. Ou o endereço veio com alguma
+  letra trocada, ou quem o enviou tirou a página do ar.</p>
+  <p class="miudo">Se alguém mandou este link para você, peça o endereço de
+  novo. Quem publica escolhe a hora de mostrar e a hora de guardar, e isso vale
+  em qualquer momento.</p>
+</main>
+</body>
+</html>

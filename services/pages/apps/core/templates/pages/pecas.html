@@ -188,6 +188,71 @@ levaria essa promessa para um cliente pagante.
     <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir a conferência da escola</button></form>
 {% endif %}
   </section>
+
+{% comment %}
+A VITRINE (degrau 13, critério AC-13). Ela fecha a página de propósito: é o
+último passo do caminho do aluno, depois de guardar as peças e de mandar o
+portfólio para a escola olhar.
+
+O PADRÃO É PRIVADO, e a tela diz isso com todas as letras antes de qualquer
+botão. Enquanto ele não publicar, não existe página nenhuma para ninguém, e essa
+é a frase que ele precisa ler para confiar no que vai fazer.
+
+O ENDEREÇO APARECE INTEIRO, para copiar e colar no chat, e ele não sai de uma
+tag de url: a vitrine não mora sob o prefixo da área do aluno, e o motivo está
+por extenso em `apps/portfolio/vitrine.py`.
+
+TROCAR O ENDEREÇO É O MESMO BOTÃO DE PUBLICAR, e o aviso de que o link antigo
+para de funcionar vem ANTES dele, e não depois. Quem já mandou o link a um
+cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
+{% endcomment %}
+  <section class="conferencia">
+    <h2>A sua vitrine</h2>
+    <p>A vitrine é a página pronta que você manda ao cliente. Ela mostra as suas
+    peças, o seu apelido e o selo da escola, e nada mais: nem o seu e-mail, nem
+    o seu telefone, nem o seu nome. Ela também fica fora dos buscadores, então
+    só chega nela quem tem o link.</p>
+
+{% if recusa_da_vitrine %}
+    <p class="recusa" role="alert">{{ recusa_da_vitrine }}</p>
+{% endif %}
+
+{% if vitrine_publicada %}
+    <p class="selo">A sua vitrine está no ar neste endereço:</p>
+    <p><a href="{{ endereco_da_vitrine }}" target="_blank" rel="noopener">{{ endereco_da_vitrine }}</a></p>
+    <p class="miudo">Copie esse endereço e mande para quem você quiser. Tudo o
+    que você mudar aqui aparece lá na mesma hora.</p>
+    <form method="post" action="{% url 'despublicar_vitrine' %}">{% csrf_token %}<button type="submit">Tirar a vitrine do ar</button></form>
+    <p class="miudo">Tirar do ar é na hora: quem abrir o link deixa de ver a
+    página no mesmo instante. O endereço continua guardado com você, e volta a
+    funcionar quando você publicar de novo.</p>
+    <details class="responder">
+      <summary>Trocar o endereço da minha vitrine</summary>
+      <p class="miudo">Se você trocar, o endereço de agora para de funcionar, e
+      quem já tem o link antigo passa a ver uma página que não existe.</p>
+      <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
+        <p>
+          <label for="apelido-novo">Endereço novo</label>
+          <input type="text" id="apelido-novo" name="apelido" value="{{ apelido }}" maxlength="48" required>
+        </p>
+        <p><button type="submit">Trocar o endereço</button></p>
+      </form>
+    </details>
+{% else %}
+    <p>Enquanto você não publicar, não existe página nenhuma: ninguém consegue
+    ver as suas peças por fora da escola. Escolha o final do endereço e publique
+    quando quiser.</p>
+    <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
+      <p>
+        <label for="apelido">O final do endereço</label>
+        <input type="text" id="apelido" name="apelido" value="{{ apelido }}" maxlength="48" placeholder="ana-3d" required>
+      </p>
+      <p class="miudo">Use letras e números, por exemplo o seu nome ou o nome do
+      seu estúdio. O endereço fica assim: meshcraft.top/estudio/ana-3d</p>
+      <p><button type="submit">Publicar a minha vitrine</button></p>
+    </form>
+{% endif %}
+  </section>
 {% endif %}
 
   <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>
