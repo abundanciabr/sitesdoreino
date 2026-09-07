@@ -170,6 +170,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # O MAPA DAS CÉLULAS É YAML (TAR-210). Desde a `armadilhas/359` a vacina
+      # pergunta a `celulas.yml` quais células o push doente precisava publicar,
+      # e sem o leitor essa medição não conclui — o que é fail-closed e correto
+      # (ERROR, issue), mas seria uma issue por cancelamento, todo dia, sobre um
+      # `pip install` que falta. É a mesma linha que o `deploy-celula` já tem
+      # antes do job `detectar`, pela mesma razão.
+      - name: Leitor do mapa das células
+        run: python -m pip install --quiet pyyaml
       - name: A vacina decide e, se for o caso, repete
         id: vacina
         env:

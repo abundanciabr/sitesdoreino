@@ -207,28 +207,32 @@ primeira oportunidade de violá-la.
   contraste, sem o qual tudo isso ficaria verde numa porta que barra todo mundo).
 - **Célula dona:** sugestoes
 
-### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
-- **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
-  existir um ChangeSpec **aprovado** registrado referenciando aquela sugestão
-  (`docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md` §5 e a última linha da §8 da
-  `ESPECIFICACAO-CELULA.md`). Quem registra é só quem está em
+### [INV-SUG10] O registro do ChangeSpec é append-only e só o aprovador o escreve
+- **O quê:** quem registra um ChangeSpec aprovado é só quem está em
   `SUGESTOES_APROVADORES` — lista **fail-closed**: ausente ou vazia ⇒ ninguém
-  aprova ⇒ nada entra em desenvolvimento. Estar em `SUGESTOES_STAFF_EMAILS` não
-  basta: moderar e autorizar desenvolvimento são dois papéis. O registro é
-  append-only, como o histórico de status.
-- **Por quê:** o corredor existe para que uma ideia aprovada **nunca** vire um
-  prompt aberto do tipo "implemente isso" para um agente. Sem ele, o passo em que
-  se decide escopo, células proibidas e critérios de aceitação é justamente o que
-  desaparece sob pressa — e o agente escreve o próprio mandato. Fail-closed no
-  aprovador pelo mesmo motivo: "não sei quem pode aprovar" não pode virar "então
-  pode qualquer um".
+  registra. Estar em `SUGESTOES_STAFF_EMAILS` não basta: moderar e autorizar são
+  dois papéis. O registro é append-only nos três degraus, como o histórico de
+  status: nem edição, nem remoção, nem por `psql`.
+- **A EXIGÊNCIA foi revogada em 06/09/2026, e isto é metade do invariante.**
+  Até essa data `PLANEJADO → EM_DESENVOLVIMENTO` pedia um ChangeSpec registrado,
+  em três degraus (`registrar_mudanca_de_status`, `Sugestao.save()` e o trigger
+  `sugestoes_exige_changespec`). O mantenedor mandou tirar a trava junto com a
+  tela de assinatura do Admin, em pergunta estruturada, com o motivo medido na
+  hora: nenhum workflow, nenhum robô e nenhuma tarefa da fila leem
+  `em_desenvolvimento` — a trava guardava um rótulo de roadmap, não um gatilho de
+  máquina. A migration `0014_a_fase_anda_sem_assinatura` derrubou o trigger, e
+  reaplicar o `reverse_sql` dela o traz de volta.
+- **Por quê:** o que sobrou protege a AUDITORIA, e não mais a passagem. A
+  pergunta "com base em quê esta obra foi autorizada, e por quem?" continua tendo
+  resposta única e imutável para tudo o que já foi assinado. Fail-closed no
+  aprovador pelo motivo de sempre: "não sei quem pode aprovar" não pode virar
+  "então pode qualquer um".
 - **Teste-Guarda:**
-  `services/sugestoes/tests/test_inv_changespec_trava_o_desenvolvimento.py` —
-  a trava reprovando nos três degraus (ponto de estrangulamento, `Sugestao.save()`
-  e o trigger `sugestoes_exige_changespec` do Postgres, que pega `QuerySet.update()`
-  e SQL cru), passando com ChangeSpec registrado, sem quebrar as outras transições,
-  e o registro recusando edição e remoção. O portão do aprovador (lista ausente,
-  lista vazia, staff sem mandato) está em `services/sugestoes/tests/test_changespecs.py`.
+  `services/sugestoes/tests/test_a_fase_anda_sem_assinatura.py` — os três
+  degraus que saíram, medidos pelo caminho por onde cada um recusava (a porta da
+  equipe, o `save()`, o SQL cru), e o registro continuando a recusar edição e
+  remoção. O portão do aprovador (lista ausente, lista vazia, staff sem mandato)
+  está em `services/sugestoes/tests/test_changespecs.py`.
 - **Célula dona:** sugestoes
 
 ### [INV-P13] A Porta da Área Administrativa é Fail-CLOSED
