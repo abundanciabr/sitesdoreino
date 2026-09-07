@@ -235,6 +235,19 @@ TRANSICOES_DA_ENCOMENDA = {
     for estado, destinos in _LINHA_PRINCIPAL.items()
 }
 
+# Os dois estados do Mural reservável, que são a prateleira e a mão que pegou.
+# O projeto pinga entre eles enquanto procura aluno (está `no_mural`, alguém
+# pega e ele fica `reservada`, o relógio vence e ele volta a `no_mural`),
+# exatamente como pinga entre `na_fila` e `oferecida` na outra pista.
+#
+# **`aberta` NÃO está aqui, e a ausência é o desenho inteiro do [INV-ENC-M2].**
+# O projeto Iniciante nasce na fila e chega ao Mural pela chamada aberta, em que
+# o primeiro elegível que aceitar leva, sem reserva, sem vez e sem relógio de
+# três horas. Se `aberta` entrasse nesta lista, um único aluno poderia trancar
+# por três horas um projeto que a fila já não conseguiu colocar em vinte e
+# quatro, e quem pagaria a conta é o cliente.
+ESTADOS_DO_MURAL_RESERVAVEL = frozenset({"no_mural", "reservada"})
+
 
 # ---------------------------------------------------------------------------
 # 1. QUEM É A PESSOA — o espelho, nunca a fonte da verdade
@@ -672,6 +685,32 @@ class Encomenda(models.Model):
                 condition=models.Q(origem__in=["fila", "direto", "escola"]),
                 name="origem_no_vocabulario_fechado",
             ),
+            # [INV-ENC-M2] NO BANCO: projeto Iniciante nunca senta no Mural
+            # reservável. Ele nasce na fila, porque é ela que garante o primeiro
+            # trabalho de quem nunca entregou, e a única porta dele para o Mural
+            # é a chamada aberta, que é o estado `aberta`
+            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1).
+            #
+            # A máquina de estado já ajuda: `na_fila` não tem seta para
+            # `no_mural`, e o gatilho do PostgreSQL recusa a transição. Mas
+            # gatilho de transição não vê INSERT, e é por isso que esta linha
+            # existe: sem ela, uma tela futura, uma migração de dados ou um
+            # `psql` de madrugada criariam um Iniciante já `no_mural`, pulando a
+            # fila inteira sem violar transição nenhuma.
+            models.CheckConstraint(
+                condition=~models.Q(nivel="iniciante")
+                | ~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL)),
+                name="iniciante_nunca_no_mural_reservavel",
+            ),
+            # A coluna `pista` não pode mentir sobre onde o projeto está sendo
+            # mostrado. Um projeto `no_mural` com `pista=fila` seria lido de dois
+            # jeitos por dois pedaços de código (a tela do aluno e a varredura do
+            # plantão), e o segundo a ler é o que erra.
+            models.CheckConstraint(
+                condition=~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL))
+                | models.Q(pista="mural"),
+                name="no_mural_so_na_pista_do_mural",
+            ),
             # O cartão decide o nível. Escrito como as três combinações
             # possíveis, porque `CheckConstraint` não chama função Python: é a
             # tabela `NIVEL_DO_CARTAO` no idioma do banco.
@@ -719,6 +758,19 @@ class Encomenda(models.Model):
             # O prazo prometido é o de produção MAIS o dia de revisão: nunca
             # antes. Prometer ao cliente uma data anterior à do trabalho é o
             # atraso que ninguém consegue explicar depois.
+            # [INV-ENC-N6], a metade que vale ANTES da primeira proposta: um
+            # aluno nunca tem dois projetos em negociação ao mesmo tempo,
+            # somando as duas pistas. A trava gêmea da `Proposta`
+            # (`uma_proposta_viva_por_aluno`) só existe depois que alguém
+            # propõe; entre o aceite e a primeira proposta é esta linha que
+            # segura, e sem ela o aluno acumularia negociações que não pode
+            # cumprir. Índice PARCIAL, porque as encomendas que já saíram da
+            # negociação são o histórico dele.
+            models.UniqueConstraint(
+                fields=["aluno"],
+                condition=models.Q(status="em_negociacao"),
+                name="uma_negociacao_viva_por_aluno",
+            ),
             models.CheckConstraint(
                 condition=models.Q(prazo_prometido_ate__isnull=True)
                 | models.Q(prazo_producao_ate__isnull=True)
@@ -968,7 +1020,488 @@ class Oferta(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# 5. OS PARÂMETROS — dado, com histórico por linha nova, nunca UPDATE
+# 5. A RESERVA DO MURAL — a vez de quem pegou, e a prova de que não é leilão
+# ---------------------------------------------------------------------------
+
+
+class ReservaDoMural(models.Model):
+    """Um aluno pegou um projeto no Mural e ganhou a vez, com relógio.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.2. É a gêmea da `Oferta` na outra
+    pista, e a diferença entre as duas é quem escolheu: na fila, a plataforma
+    oferece ao próximo da vez; no Mural, o aluno pega. O resto é igual, e de
+    propósito, porque as duas respondem à mesma pergunta de auditoria ("quem
+    teve este projeto, quando, e o que aconteceu").
+
+    O MURAL NÃO É LEILÃO, E QUEM FAZ ISSO VALER É O BANCO
+    ------------------------------------------------------
+    *"Nunca existem duas propostas vivas para o mesmo projeto"* (§3.2). A trava
+    é um índice único PARCIAL sobre `encomenda`, e ela é parcial porque as
+    reservas mortas se acumulam de propósito: são elas a memória de quem já
+    teve o projeto. Nenhum `if` em Python resolveria a corrida de dois alunos
+    tocando "Pegar" no mesmo segundo, que é justamente o segundo em que um
+    Mural de verdade é disputado.
+
+    E A SEGUNDA TRAVA É A QUE SURPREENDE
+    -------------------------------------
+    `Unique(encomenda, aluno)`, sem condição nenhuma: **ninguém pega duas vezes
+    o mesmo projeto**, nem depois de a reserva vencer. É a mesma forma do
+    [INV-ENC-J6] na outra pista, e sem ela o projeto giraria sem sair do lugar
+    (o mesmo aluno pega, deixa vencer, pega de novo). A regra também é lida
+    pelo caminho educado, em `mural.vaga_de`, para o aluno receber uma frase em
+    vez de um `IntegrityError`; o índice é o que sobra quando alguém esquece.
+
+    O RELÓGIO PARA NA PRIMEIRA PROPOSTA, E ESSE É O ESTADO `negociando`
+    -------------------------------------------------------------------
+    As 3 horas úteis são para o aluno olhar o briefing e propor, e só até isso
+    (§3.2). Assim que ele propõe, o relógio da reserva PARA e quem manda passam
+    a ser os relógios da negociação, que duram 24 horas úteis por rodada. Sem
+    essa passagem de bastão os dois números do §9 se contradiziam: a reserva
+    venceria no meio da primeira rodada, e o projeto voltaria ao Mural com uma
+    proposta de pé.
+
+    **Quem escreve `negociando` é a TAR-134**, no mesmo gesto que cria a
+    primeira `Proposta`. O estado nasce aqui porque a trava de "uma reserva
+    viva" precisa saber, desde já, que uma reserva em negociação continua VIVA
+    (o projeto não voltou ao Mural) — e um estado que chegasse depois faria o
+    índice parcial mudar de significado num PR que ninguém ia ler duas vezes.
+    """
+
+    class Resultado(models.TextChoices):
+        PENDENTE = "pendente", "A vez está de pé, e o relógio corre"
+        NEGOCIANDO = "negociando", "A primeira proposta chegou, e o relógio parou"
+        EXPIROU = "expirou", "O relógio venceu sem proposta"
+
+    # Reserva fechada é PEDRA, como a oferta: `negociando` não volta a
+    # `pendente` (o relógio não ressuscita) e `expirou` não vira nada. É o que
+    # permite auditar o Mural meses depois sem perguntar a ninguém.
+    TRANSICOES: dict[str, frozenset[str]] = {
+        Resultado.PENDENTE: frozenset({Resultado.NEGOCIANDO, Resultado.EXPIROU}),
+        Resultado.NEGOCIANDO: frozenset(),
+        Resultado.EXPIROU: frozenset(),
+    }
+
+    # As duas em que o projeto NÃO está de volta na prateleira. É esta lista que
+    # o índice único parcial usa, e é ela que define "reserva viva".
+    VIVAS = (Resultado.PENDENTE, Resultado.NEGOCIANDO)
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    encomenda = models.ForeignKey(
+        Encomenda, related_name="reservas_do_mural", on_delete=models.PROTECT
+    )
+    aluno = models.ForeignKey(
+        PerfilProfissional, related_name="reservas_do_mural", on_delete=models.PROTECT
+    )
+
+    pegada_em = models.DateTimeField(auto_now_add=True)
+    # Calculado com a MESMA janela de horas úteis da oferta ([INV-ENC-J8]): o
+    # relógio corre das 8h às 22h de São Paulo e congela fora dela. A conta é do
+    # `relogio.calcular_expiracao_da_reserva`; a tabela só guarda o instante que
+    # ela devolveu.
+    expira_em = models.DateTimeField()
+
+    resultado = models.CharField(
+        max_length=10, choices=Resultado.choices, default=Resultado.PENDENTE
+    )
+    respondida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "reserva do mural"
+        verbose_name_plural = "reservas do mural"
+        ordering = ["-pegada_em"]
+        indexes = [
+            # A varredura do tique: as reservas pendentes já vencidas.
+            models.Index(
+                fields=["resultado", "expira_em"], name="enc_reservas_a_expirar"
+            ),
+        ]
+        constraints = [
+            # [INV-ENC-M3], primeira metade: o Mural não é leilão. Índice único
+            # PARCIAL, porque as reservas mortas se acumulam de propósito.
+            models.UniqueConstraint(
+                fields=["encomenda"],
+                condition=models.Q(resultado__in=["pendente", "negociando"]),
+                name="uma_reserva_viva_por_encomenda",
+            ),
+            # [INV-ENC-M3], segunda metade: o projeto que voltou ao Mural não
+            # volta para quem já o teve. Sem condição: vale para sempre.
+            models.UniqueConstraint(
+                fields=["encomenda", "aluno"],
+                name="ninguem_pega_o_mesmo_projeto_duas_vezes",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(resultado__in=["pendente", "negociando", "expirou"]),
+                name="resultado_de_reserva_no_vocabulario_fechado",
+            ),
+            # Pendente é a única sem data de resposta, como na `Oferta`. Sem esta
+            # trava, uma reserva "expirou" sem `respondida_em` faria a auditoria
+            # do Mural responder "não sei quando" para o gesto que decide de
+            # quem era a vez.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(resultado="pendente", respondida_em=None)
+                    | (
+                        ~models.Q(resultado="pendente")
+                        & models.Q(respondida_em__isnull=False)
+                    )
+                ),
+                name="reserva_respondida_tem_data",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(expira_em__gt=models.F("pegada_em")),
+                name="reserva_expira_depois_de_pegada",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.encomenda_id} <- {self.aluno_id} ({self.resultado})"
+
+    def pode_ir_para(self, resultado: str) -> bool:
+        return resultado in self.TRANSICOES.get(self.resultado, frozenset())
+
+    def responder(self, resultado: str, *, em):
+        """Fecha a reserva, ou recusa com `TransicaoProibida`."""
+        if not self.pode_ir_para(resultado):
+            raise TransicaoProibida(
+                f"reserva {self.pk}: {self.resultado} nao vai para {resultado}. "
+                f"As transicoes permitidas sao {sorted(self.TRANSICOES[self.resultado])}."
+            )
+        self.resultado = resultado
+        self.respondida_em = em
+        self.save(update_fields=["resultado", "respondida_em"])
+        return self
+
+
+# ---------------------------------------------------------------------------
+# 6. A PROPOSTA — o formulário que vai e volta, e nunca uma caixa de mensagem
+# ---------------------------------------------------------------------------
+
+
+class Proposta(models.Model):
+    """Uma rodada da negociação: valor, prazo, entregáveis, correções e o porquê.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.1 (os seis campos), §4.2 (as
+    rodadas e a validade) e §8 (os invariantes N1 a N8). Este é o degrau 2.12 da
+    escada (TAR-134).
+
+    NEGOCIAR NÃO É CONVERSAR, E ESSA FRASE É O DESENHO INTEIRO
+    -----------------------------------------------------------
+    O [INV-ENC-S1] continua valendo e não foi revogado: *não existe texto livre
+    trocado entre cliente e aluno fora dos campos estruturados, e todos são
+    visíveis ao plantão.* A saída não foi enfraquecer o invariante, e sim
+    perceber que negociar é TROCAR PROPOSTAS. Por isso esta tabela tem seis
+    campos de negócio e nenhum a mais: não há caixa de mensagem, não há anexo,
+    não há resposta fora deles. `justificativa` é o único campo de texto, ele é
+    curto por parâmetro (`limite_da_justificativa`) e o plantão o lê inteiro.
+
+    Um campo de texto novo aqui é o [INV-ENC-N1] caindo, e o guarda daquele
+    invariante mede a LISTA de campos desta classe justamente para que ele caia
+    vermelho em vez de cair em produção.
+
+    A CONTRAPROPOSTA TEM A MESMA FORMA, E POR ISSO É A MESMA TABELA
+    ---------------------------------------------------------------
+    `de_quem` diz quem preencheu o formulário. Duas tabelas (uma de proposta e
+    uma de contraproposta) seriam a mesma coisa escrita duas vezes, e a segunda
+    envelheceria em silêncio no primeiro campo novo. Quem propõe PRIMEIRO é
+    sempre o aluno, de propósito (§4.2): quem põe preço em trabalho é quem vai
+    fazê-lo, e isso evita a âncora baixa, que é o jeito clássico de o comprador
+    definir o preço antes de o profissional falar.
+
+    AS RODADAS SÃO CONTADAS PELO BANCO, E NÃO POR UM `if`
+    -----------------------------------------------------
+    `uma_rodada_por_lado_por_projeto` é o [INV-ENC-N2] em índice: o mesmo lado
+    não escreve duas vezes a mesma rodada, nem por corrida, nem por uma tela
+    futura com dois cliques. O TETO (o parâmetro `rodadas_de_negociacao`) é lido
+    em `negociacao.propor`, porque ele muda sem PR e um `CHECK` com número
+    dentro seria a constante mágica que a lei §3.8 proíbe.
+
+    E AS DUAS TRAVAS DE "UMA SÓ VIVA"
+    ----------------------------------
+    `uma_proposta_viva_por_encomenda` é a metade do [INV-ENC-M3] que continua
+    valendo aqui: nunca existem duas propostas de pé para o mesmo projeto.
+    `uma_proposta_viva_por_aluno` é a segunda metade do [INV-ENC-N6], e ela vale
+    somando as duas pistas porque a coluna `aluno` não sabe de onde o projeto
+    veio. As duas são PARCIAIS: as propostas mortas se acumulam de propósito,
+    porque são elas o histórico da negociação que a mediação vai ler.
+    """
+
+    class DeQuem(models.TextChoices):
+        ALUNO = "aluno", "O aluno, que vai fazer o trabalho"
+        CLIENTE = "cliente", "O cliente, que pediu o trabalho"
+
+    class Resultado(models.TextChoices):
+        PENDENTE = "pendente", "De pé, esperando o outro lado"
+        ACEITA = "aceita", "O outro lado aceitou, e nasceu o Acordo"
+        SUPERADA = "superada", "O outro lado respondeu com uma contraproposta"
+        RECUSADA = "recusada", "Recusada sem contraproposta: as rodadas acabaram"
+        EXPIROU = "expirou", "A validade venceu sem resposta"
+        RETIRADA = "retirada", "Quem propôs desistiu antes da resposta"
+
+    # Proposta fechada é PEDRA, como a oferta e a reserva: nada volta a
+    # `pendente`. É o que permite a mediação de daqui a seis meses reconstruir a
+    # negociação inteira sem perguntar a ninguém.
+    TRANSICOES: dict[str, frozenset[str]] = {
+        Resultado.PENDENTE: frozenset(
+            {
+                Resultado.ACEITA,
+                Resultado.SUPERADA,
+                Resultado.RECUSADA,
+                Resultado.EXPIROU,
+                Resultado.RETIRADA,
+            }
+        ),
+        Resultado.ACEITA: frozenset(),
+        Resultado.SUPERADA: frozenset(),
+        Resultado.RECUSADA: frozenset(),
+        Resultado.EXPIROU: frozenset(),
+        Resultado.RETIRADA: frozenset(),
+    }
+
+    # A única em que a proposta ainda está de pé. É esta lista que os dois
+    # índices parciais usam, e é ela que define "negociação viva".
+    VIVAS = (Resultado.PENDENTE,)
+
+    # OS SEIS CAMPOS DA §4.1, E NENHUM A MAIS. A lista mora aqui, e não dentro
+    # do guarda, porque é ela que a tela do plantão (Fase 7) desenha: uma
+    # segunda lista no teste seria a segunda régua que diverge no primeiro campo
+    # novo.
+    CAMPOS_DO_FORMULARIO = (
+        "valor_cents",
+        "prazo_dias",
+        "entregaveis",
+        "correcoes_inclusas",
+        "justificativa",
+        "valida_ate",
+    )
+
+    # Os quatro que o Acordo CONGELA na encomenda ([INV-ENC-N3]). São quatro e
+    # não seis: a justificativa é o porquê da rodada, e não o combinado, e a
+    # validade morre no instante em que alguém aceita.
+    CAMPOS_QUE_O_ACORDO_CONGELA = (
+        "valor_cents",
+        "prazo_dias",
+        "entregaveis",
+        "correcoes_inclusas",
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    encomenda = models.ForeignKey(
+        Encomenda, related_name="propostas", on_delete=models.PROTECT
+    )
+    # O ALUNO DA NEGOCIAÇÃO, mesmo na proposta preenchida pelo cliente. A coluna
+    # é denormalizada de propósito: sem ela, "uma negociação viva por aluno"
+    # ([INV-ENC-N6]) precisaria atravessar a chave estrangeira até a encomenda,
+    # e `UniqueConstraint` não atravessa relação nenhuma (`armadilhas/274`).
+    aluno = models.ForeignKey(
+        PerfilProfissional, related_name="propostas", on_delete=models.PROTECT
+    )
+
+    de_quem = models.CharField(max_length=7, choices=DeQuem.choices)
+    # A rodada DESTE LADO, contada a partir de 1. O aluno e o cliente têm
+    # contadores próprios porque o parâmetro da lei é "3 por lado" (§4.2).
+    rodada = models.PositiveSmallIntegerField(default=1)
+
+    # CENTAVOS, INTEIRO, NUNCA `float`. Dinheiro em ponto flutuante é a soma que
+    # fecha errado no relatório do fim do mês, e o erro só aparece quando já há
+    # dinheiro de gente de verdade dentro.
+    valor_cents = models.PositiveIntegerField()
+    prazo_dias = models.PositiveSmallIntegerField()
+    # A lista fechada que veio do briefing. `JSONField` pela mesma razão do
+    # `briefing`: a letra miúda de cada cartão é diferente e muda sem migração.
+    entregaveis = models.JSONField(default=list, blank=True)
+    correcoes_inclusas = models.PositiveSmallIntegerField()
+    # O ÚNICO CAMPO DE TEXTO DA NEGOCIAÇÃO, e ele é curto por parâmetro. O
+    # limite não é `max_length` porque `limite_da_justificativa` muda sem PR
+    # (lei §3.8): quem o faz valer é `negociacao.propor`, que recusa com razão
+    # nomeada antes de gravar.
+    justificativa = models.TextField(blank=True, default="")
+    # Quando esta proposta vence, em horas ÚTEIS, no mesmo relógio da oferta e
+    # da reserva. A conta é de `relogio.calcular_validade_da_proposta`.
+    valida_ate = models.DateTimeField()
+
+    criada_em = models.DateTimeField(auto_now_add=True)
+    resultado = models.CharField(
+        max_length=8, choices=Resultado.choices, default=Resultado.PENDENTE
+    )
+    respondida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "proposta"
+        verbose_name_plural = "propostas"
+        ordering = ["encomenda", "criada_em"]
+        indexes = [
+            # A varredura do tique: as propostas de pé já vencidas.
+            models.Index(
+                fields=["resultado", "valida_ate"], name="enc_propostas_a_expirar"
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["id", "site_id"], name="uniq_proposta_id_com_site"
+            ),
+            # [INV-ENC-M3] na negociação: nunca duas propostas vivas para o
+            # mesmo projeto. Parcial, porque as mortas são o histórico.
+            models.UniqueConstraint(
+                fields=["encomenda"],
+                condition=models.Q(resultado="pendente"),
+                name="uma_proposta_viva_por_encomenda",
+            ),
+            # [INV-ENC-N6]: um aluno nunca tem duas negociações vivas, somando
+            # as duas pistas. A coluna `aluno` não sabe de que pista o projeto
+            # veio, e é isso que faz esta linha valer nas duas.
+            models.UniqueConstraint(
+                fields=["aluno"],
+                condition=models.Q(resultado="pendente"),
+                name="uma_proposta_viva_por_aluno",
+            ),
+            # [INV-ENC-N2] no banco: o mesmo lado não escreve duas vezes a mesma
+            # rodada. O TETO é parâmetro e mora em `negociacao.propor`; o que o
+            # banco garante é que a contagem não pule nem repita.
+            models.UniqueConstraint(
+                fields=["encomenda", "de_quem", "rodada"],
+                name="uma_rodada_por_lado_por_projeto",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(de_quem__in=["aluno", "cliente"]),
+                name="lado_da_proposta_no_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    resultado__in=[
+                        "pendente",
+                        "aceita",
+                        "superada",
+                        "recusada",
+                        "expirou",
+                        "retirada",
+                    ]
+                ),
+                name="resultado_de_proposta_no_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(rodada__gte=1), name="rodada_comeca_em_um"
+            ),
+            # Proposta de valor zero não é proposta: é o formulário enviado em
+            # branco, e ele viraria um acordo de trabalho de graça.
+            models.CheckConstraint(
+                condition=models.Q(valor_cents__gt=0), name="proposta_tem_valor"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(prazo_dias__gte=1), name="proposta_tem_prazo"
+            ),
+            # Pendente é a única sem data de resposta, como na `Oferta` e na
+            # `ReservaDoMural`. Sem esta trava, uma proposta "expirou" sem data
+            # faria a mediação responder "não sei quando".
+            models.CheckConstraint(
+                condition=(
+                    models.Q(resultado="pendente", respondida_em=None)
+                    | (
+                        ~models.Q(resultado="pendente")
+                        & models.Q(respondida_em__isnull=False)
+                    )
+                ),
+                name="proposta_respondida_tem_data",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.encomenda_id} {self.de_quem} r{self.rodada} ({self.resultado})"
+
+    def pode_ir_para(self, resultado: str) -> bool:
+        return resultado in self.TRANSICOES.get(self.resultado, frozenset())
+
+    def responder(self, resultado: str, *, em):
+        """Fecha a proposta, ou recusa com `TransicaoProibida`."""
+        if not self.pode_ir_para(resultado):
+            raise TransicaoProibida(
+                f"proposta {self.pk}: {self.resultado} nao vai para {resultado}. "
+                f"As transicoes permitidas sao {sorted(self.TRANSICOES[self.resultado])}."
+            )
+        self.resultado = resultado
+        self.respondida_em = em
+        self.save(update_fields=["resultado", "respondida_em"])
+        return self
+
+    @property
+    def o_outro_lado(self) -> str:
+        """Quem tem de responder a esta proposta. Uma definição só, e não um `if` por chamada."""
+        return (
+            self.DeQuem.CLIENTE
+            if self.de_quem == self.DeQuem.ALUNO
+            else self.DeQuem.ALUNO
+        )
+
+
+# ---------------------------------------------------------------------------
+# 7. O ACORDO — o instante em que o combinado virou pedra, e quem o assinou
+# ---------------------------------------------------------------------------
+
+
+class Acordo(models.Model):
+    """A aceitação de uma proposta: quem aceitou, quando, e qual formulário virou lei.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3 e §7 (o registro de quem
+    decidiu). É o documento que torna a disputa JULGÁVEL: sem ele, "não é o que
+    eu pedi" é palavra contra palavra; com ele, o plantão compara a entrega com
+    um formulário que os dois lados aceitaram.
+
+    **ESTA TABELA NÃO GUARDA VALOR, PRAZO, ENTREGÁVEIS NEM CORREÇÕES**, e a
+    ausência é a lei da casa: nenhum fato mora em dois lugares. Os quatro
+    números do combinado moram na `Proposta` aceita (o formulário) e,
+    congelados, nas colunas `acordo_*` da `Encomenda`, de onde a produção, o
+    prazo e a mediação os leem. Uma terceira cópia aqui seria a que diverge no
+    primeiro dia de mediação. O que esta tabela acrescenta é o que não existe em
+    lugar nenhum: **o ATO**, com autor e data.
+
+    O autor é obrigatório, e é o §7 em coluna. Enquanto a única origem for
+    `escola`, quem abre o projeto, quem aceita a proposta do aluno e quem media
+    a disputa é a mesma equipe; isso não impede o piloto de rodar, e o que faz a
+    diferença ficar visível depois é justamente o registro de quem decidiu.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    encomenda = models.OneToOneField(
+        Encomenda, related_name="acordo", on_delete=models.PROTECT
+    )
+    proposta = models.OneToOneField(
+        Proposta, related_name="acordo", on_delete=models.PROTECT
+    )
+    aluno = models.ForeignKey(
+        PerfilProfissional, related_name="acordos", on_delete=models.PROTECT
+    )
+
+    # Quem ACEITOU, e por isso o lado oposto ao da proposta aceita.
+    de_quem = models.CharField(max_length=7, choices=Proposta.DeQuem.choices)
+    aceito_por = id_da_plataforma()
+    aceito_em = models.DateTimeField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "acordo"
+        verbose_name_plural = "acordos"
+        ordering = ["-aceito_em"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(de_quem__in=["aluno", "cliente"]),
+                name="lado_do_acordo_no_vocabulario_fechado",
+            ),
+            # O §7 em uma linha: aceitação sem autor não é aceitação. Vazio aqui
+            # faria a auditoria do piloto responder "alguém aceitou" para a
+            # pergunta que ela existe para responder.
+            models.CheckConstraint(
+                condition=~models.Q(aceito_por=""), name="acordo_tem_quem_aceitou"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"acordo de {self.encomenda_id} por {self.aceito_por}"
+
+
+# ---------------------------------------------------------------------------
+# 8. OS PARÂMETROS — dado, com histórico por linha nova, nunca UPDATE
 # ---------------------------------------------------------------------------
 
 # O VOCABULÁRIO FECHADO das chaves, com o tipo de cada uma (lei §6; os tipos são
@@ -1045,6 +1578,63 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
         "dias",
         "Pausa depois do segundo abandono na janela",
     ),
+    # A 28ª chave, e a primeira que não vem da lei §6: ela vem do §9 do
+    # `PLANO-AREA-DE-NEGOCIACAO.md`, a emenda que o mantenedor aprovou em
+    # 04/09/2026. Mesmo relógio de horas úteis do `relogio_da_oferta`, medido
+    # pela MESMA janela: a reserva do Mural também não corre enquanto o aluno
+    # dorme.
+    #
+    # As outras chaves do §9 daquele plano (as rodadas, a validade da proposta,
+    # o piso por nível e o limite da justificativa) NÃO entram aqui: são da
+    # negociação, que é a TAR-134. Chave que ninguém lê é configuração morta, e
+    # o vocabulário desta tabela é fechado justamente para isso não acontecer.
+    #
+    # E `entregas_para_ver_o_mural`, que o §9 também lista, não entra NUNCA: a
+    # revisão de 04/09/2026 do próprio plano (§3.1) trocou "só quem já entregou
+    # vê o Mural" por "o Mural mostra o que o aluno é ELEGÍVEL a pegar", e a
+    # elegibilidade já carrega as entregas por nível. Semear aquela chave seria
+    # criar uma SEGUNDA régua de elegibilidade ao lado da do motor, e duas
+    # réguas divergem no primeiro parâmetro que mudar.
+    "relogio_da_reserva_no_mural": (
+        "horas",
+        "Horas úteis que o aluno tem para propor depois de pegar no Mural",
+    ),
+    # AS SEIS CHAVES DA NEGOCIAÇÃO (§9 do `PLANO-AREA-DE-NEGOCIACAO.md`,
+    # degrau 2.12). Entram aqui porque agora existe quem as leia: sem leitor,
+    # chave é configuração morta, e é para isso que este vocabulário é fechado.
+    "rodadas_de_negociacao": ("inteiro", "Rodadas de proposta que cada lado tem"),
+    "validade_da_proposta": ("horas", "Horas úteis que uma proposta fica de pé"),
+    "limite_da_justificativa": (
+        "inteiro",
+        "Caracteres da justificativa de uma proposta",
+    ),
+    # O PISO POR NÍVEL NASCE SEM NÚMERO, E A AUSÊNCIA É DECISÃO (§7 e §9). Ele
+    # sai do piloto de papel, que é onde os primeiros preços reais vão
+    # aparecer; chutar um agora seria inventar um número para depois
+    # defendê-lo. A chave existe desde já porque o vocabulário é fechado no
+    # banco: sem esta linha, o mantenedor não conseguiria gravar o piso nem
+    # quando o tivesse. Enquanto não houver linha, `negociacao.aviso_de_piso`
+    # não avisa nada, e NUNCA bloqueia — bloquear seria decidir pelo aluno.
+    # A JANELA DA ESTIMATIVA DE ESPERA (degrau 2.7). Quantos dias de historico a
+    # conta de `apps/encomendas/espera.py` olha para medir o ritmo de encomendas
+    # do nivel de uma pessoa. Ela e parametro, e nao numero em codigo, pela mesma
+    # razao que todas as outras: a lei 3.8 nao abre excecao para "so um numero
+    # pequeno", e o guarda de constante magica de
+    # `tests/test_parametros_sao_dado.py` mede isso a cada PR.
+    #
+    # Janela curta demais devolve `null` na primeira semana morna; longa demais
+    # promete o ritmo do mes passado para a fila de hoje. Trinta dias e o mesmo
+    # tamanho que a `janela_dos_passes` ja usa, e o mantenedor muda por tela.
+    "janela_do_ritmo_da_espera": (
+        "dias",
+        "Dias de historico que a estimativa de espera olha",
+    ),
+    "piso_por_nivel.iniciante": ("centavos", "Piso sugerido do nível iniciante"),
+    "piso_por_nivel.intermediario": (
+        "centavos",
+        "Piso sugerido do nível intermediário",
+    ),
+    "piso_por_nivel.avancado": ("centavos", "Piso sugerido do nível avançado"),
 }
 
 # O tamanho mínimo do motivo, do `MudancaDeParametro` do contrato em papel. Não é
@@ -1157,3 +1747,26 @@ class Parametro(models.Model):
             .order_by("-desde")
             .first()
         )
+
+    @classmethod
+    def inteiro_vigente(cls, chave: str, agora, *, site_id: str) -> int:
+        """O valor INTEIRO que vale em `agora`, ou a recusa fail-closed.
+
+        Uma definição só para "leia este número da lei §6, e recuse se ele não
+        estiver no banco". Três módulos precisam disso (`relogio.py` conta horas,
+        `gestos.py` conta silêncios e passes), e uma cópia por módulo divergiria
+        no primeiro dia em que uma delas ganhasse um cuidado a mais — inclusive
+        na mensagem de conserto, que é a parte que alguém vai ler às três da
+        manhã.
+
+        Devolver um padrão embutido em vez de levantar seria a constante mágica
+        que a lei §3.8 proíbe, e ainda esconderia uma semeadura que não rodou.
+        """
+        linha = cls.vigente_em(chave, agora, site_id=site_id)
+        if linha is None:
+            raise ParametroAusente(
+                f"site {site_id!r}: sem valor vigente em {agora.isoformat()} para "
+                f"{chave}. Rode `python manage.py semear_parametros --site {site_id}` "
+                "ou confira a data de `desde` das linhas."
+            )
+        return int(linha.valor)

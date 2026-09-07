@@ -7,7 +7,7 @@ teste-guarda lê cada chave do banco e reprova constante mágica no motor."*
 
 Este arquivo é esse teste-guarda, e ele tem três dentes:
 
-1. **`test_a_semente_grava_os_27_valores_da_lei`** lê cada chave DO BANCO depois
+1. **`test_a_semente_grava_os_28_valores`** lê cada chave DO BANCO depois
    de rodar a semente, e compara com a tabela da lei transcrita aqui. É a prova
    de fora: se a semente errar um valor, quem discorda é o teste, não o autor.
 2. **`test_mudar_um_parametro_e_acrescentar_uma_linha`** e os dois irmãos
@@ -39,7 +39,8 @@ AGORA = datetime(2026, 9, 4, 12, 0, tzinfo=fuso.utc)
 # A tabela da lei §6, transcrita AQUI, de propósito, e não importada do
 # semeador: um teste que importa a resposta do arquivo que ele mede não mede
 # nada. As 19 linhas da lei viram 27 chaves porque várias juntam duas ou três
-# chaves numa célula só ("janela_inicio / janela_fim").
+# chaves numa célula só ("janela_inicio / janela_fim"); a 28ª vem do §9 do
+# `PLANO-AREA-DE-NEGOCIACAO.md`.
 A_LEI_SECAO_6 = {
     "relogio_da_oferta": "3",
     "janela_inicio": "08:00",
@@ -68,6 +69,40 @@ A_LEI_SECAO_6 = {
     "entregas_para_nivel_avancado": "5",
     "janela_sem_abandono": "90",
     "pausa_por_segundo_abandono": "30",
+    # A 28ª, e a única que não vem da lei §6: ela vem do §9 do
+    # `PLANO-AREA-DE-NEGOCIACAO.md`, a emenda que o mantenedor aprovou em
+    # 04/09/2026 e que trouxe o Mural. Transcrita aqui pela mesma razão que as
+    # outras 27: um teste que importa a resposta do arquivo que ele mede não
+    # mede nada.
+    "relogio_da_reserva_no_mural": "3",
+    # As tres da NEGOCIACAO, do mesmo §9, que chegaram com o degrau 2.12
+    # (TAR-134): tres rodadas para cada lado, vinte e quatro horas uteis de
+    # validade por proposta, e quinhentos caracteres de justificativa.
+    "rodadas_de_negociacao": "3",
+    "validade_da_proposta": "24",
+    "limite_da_justificativa": "500",
+    # A 32a, do degrau 2.7: quantos dias de historico a estimativa de espera
+    # olha para medir o ritmo de encomendas de um nivel
+    # (`apps/encomendas/espera.py`). Ela e parametro, e nao numero em codigo,
+    # porque o guarda de constante magica deste arquivo reprova numero solto na
+    # celula, e reprovou este quando ele nasceu assim.
+    "janela_do_ritmo_da_espera": "30",
+}
+
+# AS CHAVES QUE EXISTEM NO CATALOGO E NAO TEM VALOR, DE PROPOSITO. O piso por
+# nivel sai do piloto de papel, que e onde os primeiros precos reais vao
+# aparecer (§7 e §9 do `PLANO-AREA-DE-NEGOCIACAO.md`); chutar um numero agora
+# seria inventa-lo para depois defende-lo. A chave existe porque o vocabulario e
+# fechado no banco, e sem ela o mantenedor nao conseguiria gravar o piso nem
+# quando o tivesse.
+#
+# ELAS SAO MEDIDAS AQUI, e nao esquecidas: um guarda que so contasse as chaves
+# semeadas nao distinguiria a ausencia proposital de um valor esquecido, que e
+# exatamente o que este arquivo existe para pegar.
+O_PISO_NASCE_SEM_NUMERO = {
+    "piso_por_nivel.iniciante",
+    "piso_por_nivel.intermediario",
+    "piso_por_nivel.avancado",
 }
 
 CELULA = Path(__file__).resolve().parent.parent
@@ -90,19 +125,36 @@ def semear(site=SITE):
 # ---------------------------------------------------------------------------
 
 
-def test_o_catalogo_tem_as_27_chaves_da_lei():
+def test_o_catalogo_tem_as_35_chaves():
     """Chave a mais ou a menos reprova aqui, antes de o motor ler `None`."""
-    assert sorted(CHAVES_DE_PARAMETRO) == sorted(A_LEI_SECAO_6)
-    assert len(CHAVES_DE_PARAMETRO) == 27
+    assert sorted(CHAVES_DE_PARAMETRO) == sorted(
+        set(A_LEI_SECAO_6) | O_PISO_NASCE_SEM_NUMERO
+    )
+    assert len(CHAVES_DE_PARAMETRO) == 35
 
 
-def test_a_semente_grava_os_27_valores_da_lei(db):
+def test_a_semente_grava_os_32_valores(db):
     """A prova de fora: cada chave é LIDA DO BANCO e comparada com a lei."""
     semear()
     do_banco = dict(
         Parametro.objects.filter(site_id=SITE).values_list("chave", "valor")
     )
     assert do_banco == A_LEI_SECAO_6
+
+
+def test_o_piso_por_nivel_nasce_sem_linha_nenhuma(db):
+    """O §9 em um guarda: a chave existe, e o número não.
+
+    Sem esta asserção, semear um piso inventado passaria despercebido, e o
+    número que ninguém decidiu viraria o número que todo mundo defende. Quem
+    lê o piso (`negociacao.aviso_de_piso`) devolve `None` enquanto não houver
+    linha, e nenhum caminho da célula bloqueia proposta por causa dele.
+    """
+    semear()
+    assert not Parametro.objects.filter(
+        site_id=SITE, chave__in=sorted(O_PISO_NASCE_SEM_NUMERO)
+    ).exists()
+    assert O_PISO_NASCE_SEM_NUMERO <= set(CHAVES_DE_PARAMETRO)
 
 
 def test_toda_linha_semeada_diz_desde_quando_e_por_que(db):
@@ -344,7 +396,7 @@ def test_nenhuma_constante_magica_no_codigo_da_celula():
     assert achados == [], (
         "número solto no código desta célula: "
         + "; ".join(achados)
-        + ". Os 27 parâmetros da lei §6 são DADO (lei §3.8): leia o valor "
+        + ". Os parâmetros desta célula são DADO (lei §3.8): leia o valor "
         "vigente com `Parametro.vigente_em(chave, agora, site_id=...)`. Se o "
         "número não for parâmetro nenhum, ele ainda assim não é constante de "
         "módulo: passe-o como argumento, ou reabra a decisão (critério de "

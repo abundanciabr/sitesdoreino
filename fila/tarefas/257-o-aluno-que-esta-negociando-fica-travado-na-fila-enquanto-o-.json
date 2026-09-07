@@ -1,0 +1,19 @@
+{
+  "arquivo": "257-o-aluno-que-esta-negociando-fica-travado-na-fila-enquanto-o-",
+  "id": "TAR-257",
+  "titulo": "O aluno que esta negociando fica travado na fila enquanto o cliente pensa",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-134"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: aluno em negociacao deixa de ser marcado trabalhando em gestos.py, e o motor passa a conhecer a negociacao viva para nao oferecer um segundo projeto a ele. Guarda provado por mutacao mostrando que, sem a segunda peca, o motor oferece duas vezes. Os dez invariantes J1 a J10 verdes e o simulador da fila verde.",
+  "despacho": "DIVERGENCIA ENTRE O PLANO APROVADO E O CODIGO, devolvida pelo robo da TAR-134 (PR #1312) em 07/09/2026, e nao resolvida por ele de proposito, por tocar arquivos de outro degrau.\n\nO QUE O PLANO MANDA. O paragrafo 4.2 do docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md diz, com todas as letras: \"negociar NAO conta como trabalhando para o [INV-ENC-J7]. A diferenca importa: trabalhando e quem tem encomenda aceita e prazo correndo. Quem esta negociando ainda nao tem trabalho nenhum, e trava-lo na fila por dias porque um cliente esta pensando seria punir o aluno pela demora do outro lado. O que a regra acima impede e so a SEGUNDA negociacao simultanea.\"\n\nO QUE O CODIGO FAZ HOJE. gestos.aceitar (construido na TAR-123) marca o aluno como `trabalhando` no instante em que ele entra em negociacao. Enquanto o cliente pensa, o aluno esta fora da fila e nao consegue nem usar o proprio interruptor de pausa.\n\nO QUE JA FOI CURADO, e nao se refaz. O robo da TAR-134 construiu o INV-ENC-N6 pelo mecanismo que o invariante pede (dois indices unicos parciais no PostgreSQL) e curou a injustica concreta que o paragrafo 4.2 descreve: quando a negociacao morre, o aluno volta a `disponivel` na mesma transacao, sem perder o lugar na fila. Confira isso antes de mexer em qualquer coisa.\n\nO QUE FALTA, e por que e delicado. Para o comportamento literal do plano, o aluno em negociacao precisa ficar `disponivel` para efeito de posicao na fila, mas continuar sem receber oferta nova. Mudar so o gestos.aceitar NAO basta e cria defeito pior: o motor passaria a oferecer um segundo projeto a quem ja negocia, violando o proprio N6. Entao o conserto e em duas pecas, no mesmo PR:\n1. gestos.py: o aluno em negociacao deixa de ser marcado `trabalhando`.\n2. motor.Candidato e motor.por_que_nao: passam a conhecer a negociacao viva (a mesma forma que motor.candidatos_do_banco ja usa para com_oferta_pendente), para que o motor nao ofereca a quem esta negociando.\nMais os testes dos degraus que encostam nisso.\n\nCONFIRA OS NUMEROS DE LINHA CONTRA O CODIGO REAL antes de agir: a TAR-134 e a TAR-255 mexem nesses arquivos e as linhas andam.\n\nOs dez invariantes de justica J1 a J10 continuam inteiros e sem excecao. O simulador da fila (services/encomendas/tests/simulador/) roda 100 alunos e 30 encomendas e confere os dez em todo instante: rode-o depois do conserto e confira que segue verde.",
+  "origem": "divergencia devolvida pelo robo da TAR-134 (PR #1312) em 07/09/2026, entre o paragrafo 4.2 do PLANO-AREA-DE-NEGOCIACAO.md e o gestos.aceitar da TAR-123",
+  "criada_em": "2026-09-07"
+}

@@ -207,28 +207,32 @@ primeira oportunidade de violá-la.
   contraste, sem o qual tudo isso ficaria verde numa porta que barra todo mundo).
 - **Célula dona:** sugestoes
 
-### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
-- **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
-  existir um ChangeSpec **aprovado** registrado referenciando aquela sugestão
-  (`docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md` §5 e a última linha da §8 da
-  `ESPECIFICACAO-CELULA.md`). Quem registra é só quem está em
+### [INV-SUG10] O registro do ChangeSpec é append-only e só o aprovador o escreve
+- **O quê:** quem registra um ChangeSpec aprovado é só quem está em
   `SUGESTOES_APROVADORES` — lista **fail-closed**: ausente ou vazia ⇒ ninguém
-  aprova ⇒ nada entra em desenvolvimento. Estar em `SUGESTOES_STAFF_EMAILS` não
-  basta: moderar e autorizar desenvolvimento são dois papéis. O registro é
-  append-only, como o histórico de status.
-- **Por quê:** o corredor existe para que uma ideia aprovada **nunca** vire um
-  prompt aberto do tipo "implemente isso" para um agente. Sem ele, o passo em que
-  se decide escopo, células proibidas e critérios de aceitação é justamente o que
-  desaparece sob pressa — e o agente escreve o próprio mandato. Fail-closed no
-  aprovador pelo mesmo motivo: "não sei quem pode aprovar" não pode virar "então
-  pode qualquer um".
+  registra. Estar em `SUGESTOES_STAFF_EMAILS` não basta: moderar e autorizar são
+  dois papéis. O registro é append-only nos três degraus, como o histórico de
+  status: nem edição, nem remoção, nem por `psql`.
+- **A EXIGÊNCIA foi revogada em 06/09/2026, e isto é metade do invariante.**
+  Até essa data `PLANEJADO → EM_DESENVOLVIMENTO` pedia um ChangeSpec registrado,
+  em três degraus (`registrar_mudanca_de_status`, `Sugestao.save()` e o trigger
+  `sugestoes_exige_changespec`). O mantenedor mandou tirar a trava junto com a
+  tela de assinatura do Admin, em pergunta estruturada, com o motivo medido na
+  hora: nenhum workflow, nenhum robô e nenhuma tarefa da fila leem
+  `em_desenvolvimento` — a trava guardava um rótulo de roadmap, não um gatilho de
+  máquina. A migration `0014_a_fase_anda_sem_assinatura` derrubou o trigger, e
+  reaplicar o `reverse_sql` dela o traz de volta.
+- **Por quê:** o que sobrou protege a AUDITORIA, e não mais a passagem. A
+  pergunta "com base em quê esta obra foi autorizada, e por quem?" continua tendo
+  resposta única e imutável para tudo o que já foi assinado. Fail-closed no
+  aprovador pelo motivo de sempre: "não sei quem pode aprovar" não pode virar
+  "então pode qualquer um".
 - **Teste-Guarda:**
-  `services/sugestoes/tests/test_inv_changespec_trava_o_desenvolvimento.py` —
-  a trava reprovando nos três degraus (ponto de estrangulamento, `Sugestao.save()`
-  e o trigger `sugestoes_exige_changespec` do Postgres, que pega `QuerySet.update()`
-  e SQL cru), passando com ChangeSpec registrado, sem quebrar as outras transições,
-  e o registro recusando edição e remoção. O portão do aprovador (lista ausente,
-  lista vazia, staff sem mandato) está em `services/sugestoes/tests/test_changespecs.py`.
+  `services/sugestoes/tests/test_a_fase_anda_sem_assinatura.py` — os três
+  degraus que saíram, medidos pelo caminho por onde cada um recusava (a porta da
+  equipe, o `save()`, o SQL cru), e o registro continuando a recusar edição e
+  remoção. O portão do aprovador (lista ausente, lista vazia, staff sem mandato)
+  está em `services/sugestoes/tests/test_changespecs.py`.
 - **Célula dona:** sugestoes
 
 ### [INV-P13] A Porta da Área Administrativa é Fail-CLOSED
@@ -801,6 +805,361 @@ primeira oportunidade de violá-la.
   numa passada só. A forma (nenhum agendamento por oferta, um batimento na
   célula, e o varredor provado contra código que agenda) está em
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M1] O Mural Só Mostra o Que o Aluno é Elegível a Pegar
+- **O quê:** a lista do Mural, para um aluno, contém exatamente os projetos para
+  os quais aquele aluno passa na régua de elegibilidade da lei, e nenhum outro. A
+  régua é ELEGIBILIDADE, e nunca "já entregou": é o mesmo `motor.por_que_nao` que
+  a fila chama, com os mesmos parâmetros lidos do mesmo banco, sobre os estados
+  `no_mural` e `aberta`.
+- **Por quê:** um mural aberto desde o primeiro dia recria o problema que a fila
+  existe para resolver, porque um cliente escolhendo entre dez alunos escolhe o
+  que já tem portfólio, e o aluno sem portfólio nunca começa. A elegibilidade da
+  lei já carrega as entregas (1 no Intermediário, 5 no Avançado), então quem
+  nunca entregou vê um Mural vazio sem que ninguém precise escrever essa frase
+  em lugar nenhum, e continua recebendo trabalho pela fila no mesmo instante. A
+  revisão de 04/09/2026 mora exatamente aqui: a versão anterior dizia "só quem
+  já entregou vê o Mural", e isso contradizia a chamada aberta, que avisa TODOS
+  os elegíveis e, num projeto Iniciante, inclui quem tem zero entregas. Duas
+  regras que se negam viram, na construção, a interpretação de quem codar
+  primeiro. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m1_mural_so_o_que_e_elegivel.py` — o Mural
+  vazio de quem nunca entregou com o par que prova que a fila continua inteira
+  para ele, as duas listas diferentes do mesmo Mural no mesmo instante, o título
+  abaixo do nível que dez entregas não compram, quem pausou e quem trabalha, o
+  projeto já reservado sumindo do Mural de todos, a fronteira de site, a chamada
+  aberta de um projeto Iniciante aparecendo para quem tem zero entregas (o par
+  que separa a régua certa da errada) com a contraprova do nível mínimo, e a
+  varredura universal que compara a lista com a régua do motor em todos os pares
+  (aluno, projeto). Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M2] Projeto Iniciante Só Chega ao Mural Pela Chamada Aberta
+- **O quê:** projeto de nível Iniciante nasce `na_fila`, com `pista=fila`, e
+  nunca senta no Mural reservável. A única porta dele para o Mural é a chamada
+  aberta (`aberta`), que só existe depois de a fila ter tentado por
+  `horas_para_virar_aberta` e falhado; ali ele é mostrado a todos os elegíveis e
+  o primeiro que ACEITAR leva, sem reserva e sem relógio de vez. Projeto
+  Intermediário ou Avançado nasce `no_mural`, com `pista=mural`.
+- **Por quê:** o Iniciante é o único nível que uma pessoa com zero entregas pode
+  fazer, e a fila existe para garantir que ele chegue a essa pessoa, na ordem,
+  sem ninguém escolher. Um Iniciante nascido no Mural passaria por cima disso em
+  silêncio: quem tivesse mais tempo livre o pegaria primeiro, e a promessa do
+  primeiro dólar viraria uma corrida. São três mecanismos de camadas diferentes,
+  e o terceiro é o que quase ninguém lembra: a tabela `mural.PISTA_DE_NASCIMENTO`
+  decide a pista; a máquina de estado não tem seta de `na_fila` para `no_mural` e
+  o gatilho recusa a transição; e o CHECK `iniciante_nunca_no_mural_reservavel`
+  fecha o INSERT, porque **gatilho de transição não vê INSERT** e sem ele uma
+  tela futura, uma migração de dados ou um `psql` de madrugada criariam um
+  Iniciante já no Mural sem violar transição nenhuma. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m2_iniciante_passa_pela_fila.py` — cada
+  nível na pista dele, a assinatura de `nascer` que não aceita pista nem nível, o
+  INSERT recusado pelo banco com o par verde do Intermediário, a pista que não
+  pode mentir, a transição recusada pelo gatilho, a chamada aberta como única
+  porta (com o par que prova que ela estava fechada antes), a pista que muda sem
+  o nível mudar, e a chamada aberta que não se pega com reserva. Provado por
+  mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M3] O Mural Não é Leilão
+- **O quê:** três cláusulas. Nunca existem duas reservas vivas para o mesmo
+  projeto (viva é `pendente` ou `negociando`); vencido o relógio da vez, o
+  projeto volta ao Mural sem dono, para o próximo; e ninguém pega duas vezes o
+  mesmo projeto, nem depois de a reserva vencer. Quem faz as três valerem são
+  dois índices únicos do PostgreSQL: `uma_reserva_viva_por_encomenda` (parcial) e
+  `ninguem_pega_o_mesmo_projeto_duas_vezes` (sem condição).
+- **Por quê:** o mantenedor pediu que os alunos possam PEGAR os projetos, e pegar
+  não é dar lance. Leilão entre alunos da mesma escola é uma corrida para baixo,
+  em que ganha quem cobra menos, e a escola estaria construindo a máquina de
+  rebaixar o próprio preço do próprio aluno; comparar propostas é comparar
+  pessoas, que é o ranking público que continua fora por critério de morte. A
+  trava é do BANCO porque dois alunos tocando "Pegar" no mesmo segundo é o caso
+  comum de um Mural com movimento, e nenhum `if` em Python o resolve: os dois
+  leem `no_mural` antes de qualquer um escrever. A terceira cláusula é a mesma
+  forma do [INV-ENC-J6] na outra pista, e sem ela o mesmo aluno pega, deixa
+  vencer, pega de novo, e o projeto gira sem sair do lugar. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.2 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m3_mural_nao_e_leilao.py` — a vez com
+  relógio, o segundo aluno recusado com razão nomeada, o `INSERT` cru recusado
+  pelo índice parcial, a reserva em negociação que continua viva para a trava (a
+  costura da TAR-134), a devolução ao Mural sem dono, o projeto que volta para o
+  próximo e não para quem o teve, o índice que sobra quando a leitura educada
+  falha, o par que prova que a memória é do PAR (aluno, projeto), a reserva que
+  não ressuscita, o "Pegar" que passa pela mesma régua da lista, e a fronteira de
+  site nos dois níveis. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M4] A Ordem do Mural é Só a Antiguidade do Projeto
+- **O quê:** a lista sai do mais antigo para o mais novo (`criada_em`), e nenhuma
+  outra chave ordena. O `id` é desempate, e não regra: só é consultado quando
+  dois projetos nasceram no mesmo microssegundo.
+- **Por quê:** é a mesma regra de ordem única da fila, e ela é o critério de
+  morte 2 da lei §9. A tentação chega sempre pela porta da frente, com um bom
+  motivo: pôr em cima os projetos que pagam mais "para o aluno ganhar mais", os
+  de prazo curto "para o cliente não esperar", os do nível do aluno "porque é
+  mais relevante". Cada uma dessas é uma régua nova, e a segunda régua é a que
+  ninguém consegue explicar quando um aluno pergunta por que o projeto dele nunca
+  aparece em cima. O desempate por `id` não é uma segunda regra porque nunca
+  decide nada que os termos da lei já não tenham decidido; sem ele, dois cartões
+  empatados trocariam de lugar entre dois carregamentos, conforme a ordem em que
+  o banco devolvesse as linhas. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.3 e §8.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_m4_ordem_unica.py` — o
+  mais antigo primeiro com os projetos criados fora de ordem, o nível que não
+  reordena, o preço de referência que não reordena, a chamada aberta que não fura
+  a fila do Mural, a lista estável entre cinco leituras, e as duas garantias de
+  FORMA por varredura `ast` (um `order_by` só, com exatamente `criada_em` e o
+  desempate `id`, e nenhum nome de chave de prioridade na função). A varredura
+  existe porque um termo novo que empatasse em todos os cenários encenados
+  entraria verde e mentiria no primeiro dia de produção. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-M5] Nenhum Projeto Encalha no Mural em Silêncio
+- **O quê:** projeto que passa `horas_para_virar_aberta` (hoje 24h, de PAREDE) no
+  Mural SEM nenhum aluno elegível disponível vai a `para_reclassificar`, com a
+  razão escrita no histórico e sem autor inventado. As duas condições são E, e
+  não OU: com elegível disponível o projeto fica onde está. O marco da espera
+  conta `no_mural` e `reservada` juntos, e é a última entrada vinda de FORA desse
+  par.
+- **Por quê:** nos primeiros meses ninguém terá entrega aprovada, então o Mural
+  nasce sem ninguém para olhá-lo, e um projeto Intermediário ou Avançado aberto
+  nesse período ficaria parado para sempre, sem erro, sem alarme e sem ninguém
+  sabendo. É a doença da `armadilhas/283` na segunda pista, e o dia da
+  inauguração é o cenário que a encena. Mesmo relógio e mesmo destino que a lei
+  já dava à encomenda encalhada na fila (§6.4): o professor decide entre
+  reclassificar, segurar ou avisar o cliente. As duas condições são E porque
+  recolher um projeto que ainda pode ser pego trocaria um encalhe silencioso por
+  uma fila de trabalho inútil na mesa do professor, e o que este invariante
+  impede é o encalhe, e não a espera. E o marco conta os dois estados juntos
+  porque um relógio que reiniciasse a cada reserva vencida nunca chegaria às 24h
+  num Mural com movimento, que é exatamente onde ele mais importa. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §3.1 e §8; lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §6.4.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_m5_nada_encalha_em_silencio.py` — o dia da
+  inauguração com o par verde de um minuto antes, a razão escrita sem autor, o
+  prazo mudando no banco sem PR, o projeto COM elegível que espera e não vai ao
+  plantão, o elegível que pausa e deixa de contar, o projeto reservado que não é
+  varrido, o marco que não zera na ida e volta do Mural, o projeto devolvido pelo
+  plantão ganhando o prazo inteiro, a ordem dos cinco gestos do tique numa
+  passada só, a segunda passada inerte, e a varredura universal que pergunta ao
+  banco se sobrou alguém encalhado em silêncio. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N1] Nenhum Texto Livre Entre Cliente e Aluno
+- **O quê:** a negociação inteira acontece por FORMULÁRIO. A `Proposta` tem seis
+  campos de negócio (`valor_cents`, `prazo_dias`, `entregaveis`,
+  `correcoes_inclusas`, `justificativa`, `valida_ate`) e nenhum a mais; a
+  contraproposta é o mesmo formulário preenchido pelo outro lado.
+  `justificativa` é o único campo de texto, é limitado pelo parâmetro
+  `limite_da_justificativa`, e `entregaveis` só aceita itens que o briefing
+  declarou. Todas as rodadas, inclusive as mortas, são visíveis ao plantão por
+  `negociacao.para_o_plantao`.
+- **Por quê:** reforça o [INV-ENC-S1], que NÃO foi revogado. O mantenedor
+  liberou a negociação em tudo, e o caminho fácil seria abrir uma caixa de
+  mensagem e enfraquecer o invariante de segurança. A saída foi outra: negociar
+  não é conversar, negociar é trocar propostas. Sem esta regra, a plataforma
+  vira canal de contato entre cliente e aluno, o combinado sai do sistema, e a
+  mediação de uma disputa passa a depender de uma conversa que ninguém guardou.
+  O guarda mede a FORMA da tabela, e não só o comportamento, porque um campo
+  `mensagem` acrescentado hoje e usado no PR seguinte derrubaria o invariante
+  sem nenhum vermelho pelo caminho. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §4.1 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_n1_negociacao_sem_texto_livre.py` — a lista
+  exata de campos das duas tabelas, o único `TextField` da negociação, a peneira
+  por nome contra `mensagem`/`anexo`/`comentario`, o limite da justificativa
+  medido nas duas bordas, o limite mudando no banco sem PR, o entregável fora do
+  briefing recusado, e a leitura do plantão com todas as rodadas e todos os
+  campos. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N2] As Rodadas São Contadas, e Nunca Há Negociação Eterna
+- **O quê:** cada lado tem `rodadas_de_negociacao` propostas (hoje 3). Esgotadas
+  sem acordo, o projeto vai a `para_reclassificar`, com a razão escrita no
+  histórico e sem autor inventado. O banco recusa a mesma rodada duas vezes do
+  mesmo lado (`uma_rodada_por_lado_por_projeto`); o TETO é parâmetro e mora em
+  `negociacao.propor`, nunca num `CHECK`. Quem propõe primeiro é sempre o ALUNO,
+  e ninguém responde à própria proposta.
+- **Por quê:** negociação sem fim é o formato em que o lado com mais tempo e
+  mais experiência ganha por cansaço (§7, trava 3), e numa escola em que o
+  cliente é a própria escola o lado com mais tempo nunca é o aluno. A ordem
+  também é desenho: quem põe preço em trabalho é quem vai fazê-lo, e deixar o
+  cliente abrir com um número é a âncora baixa, o jeito clássico de o comprador
+  definir o preço antes de o profissional falar. O teto é DADO e não código
+  porque ele muda sem PR (lei §3.8), e um número dentro de um `CHECK` seria a
+  constante mágica que o critério de morte 5 proíbe. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §4.2, §7 e §8.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_n2_rodadas_contadas.py` —
+  o cliente recusado na primeira palavra, ninguém respondendo a si mesmo, as seis
+  rodadas cheias e a sétima que manda o projeto ao plantão, o teto mudado no
+  banco sem PR, a prova universal de que o laço PARA sozinho, e o índice que
+  recusa a rodada repetida quando a leitura educada falha. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N3] O Acordo Congela Valor, Prazo, Entregáveis e Correções
+- **O quê:** aceitar a proposta de pé cria o `Acordo` (com quem aceitou e
+  quando) e grava os quatro números nas colunas `acordo_*` da `Encomenda`.
+  Depois disso eles não mudam: o gatilho `encomendas_o_acordo_e_pedra` recusa o
+  `UPDATE` de qualquer um dos quatro, e de `acordado_em`, sempre que
+  `acordado_em` já estiver preenchido e o estado não for `em_mediacao`. Ninguém
+  aceita a própria proposta, e aceitação sem autor é recusada pelo banco
+  (`acordo_tem_quem_aceitou`).
+- **Por quê:** é o que torna a disputa JULGÁVEL. Sem o congelamento, uma
+  reclamação de "não é o que eu pedi" é palavra contra palavra; com ele, o
+  plantão compara a entrega com um formulário que os dois lados aceitaram. A
+  trava é do PostgreSQL, e não de disciplina de quem escreve tela, porque o
+  caminho mais curto de qualquer tela futura é um `save()` que passa por cima
+  das quatro colunas, e o efeito só apareceria numa mediação, meses depois. A
+  exceção de `em_mediacao` é o "só por mediação, com autor e motivo registrados"
+  do plano deixando de ser uma frase num documento: quem guarda o autor e o
+  motivo é a linha de `MudancaDeStatus` da transição, que já é append-only por
+  gatilho. O autor obrigatório é o §7 em coluna: enquanto quem compra e quem
+  julga é a mesma equipe, o que faz a diferença ficar visível é o registro de
+  quem decidiu. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3, §7 e §8.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_n3_acordo_congela.py` —
+  os quatro campos congelados e iguais aos da proposta aceita, o autor e a data
+  do acordo, o aceite sem autor recusado pelo gesto e pelo banco, ninguém
+  aceitando a própria proposta, o `UPDATE` cru recusado coluna por coluna (as
+  quatro mais a data), o par verde da encomenda sem acordo que muda à vontade, a
+  mediação que muda com autor e motivo no histórico, e a mediação sem autor ou
+  sem motivo recusada. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N4] Nenhuma Produção Sem Acordo e Sem Pagamento Confirmado
+- **O quê:** `negociacao.comecar_a_producao` exige as duas coisas, e recusa cada
+  uma com nome próprio (`sem_acordo`, `sem_pagamento_confirmado`): um `Acordo`
+  fechado e a confirmação de pagamento registrada com autor e data. A
+  confirmação de hoje é o plantão declarando "pago pela escola"
+  (`confirmar_pagamento_pela_escola`), e o banco já exige autor e data
+  (`confirmacao_de_pagamento_tem_autor_e_data`) e só admite `plantao` para a
+  origem `escola`.
+- **Por quê:** **substitui o [INV-ENC-D13] na ordem dos fatos, e não na
+  substância** — continua exigindo confirmação registrada com autor, e agora
+  exige também o Acordo. **O código D13 fica reservado e APOSENTADO, e nunca é
+  reutilizado para outra coisa.** A mudança de ordem é a §5 do plano: até
+  04/09/2026 pagar era a porta de entrada da encomenda, porque o preço vinha da
+  tabela; com a negociação, o valor só existe depois do Acordo, e não se cobra
+  um valor que ainda não foi combinado. E não há uma linha de cobrança em lugar
+  nenhum: a trava de 22/08/2026 continua de pé e o mantenedor a reafirmou em
+  04/09/2026 ("só a escola por enquanto"). Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §5 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_n4_producao_so_com_acordo_e_pagamento.py` —
+  a produção recusada sem acordo, recusada com acordo e sem pagamento, o caixa
+  recusado antes do acordo, a confirmação sem autor recusada pelo gesto e pelo
+  banco, o caminho completo até `em_producao`, e a varredura que reprova
+  qualquer biblioteca de cobrança entrando na célula. Provado por mutação em
+  07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N5] Negociar é Gratuito: Nada Disso Muda o Lugar na Fila
+- **O quê:** propor, ser recusado, deixar a proposta vencer e desistir NÃO
+  alteram `data_entrada_fila`. O aluno perde o projeto e mais nada, e volta a
+  `disponivel` no mesmo instante em que a negociação morre. Nenhuma função de
+  `negociacao.py` escreve aquela coluna, e uma varredura `ast` mede isso nas
+  três formas de gravá-la.
+- **Por quê:** é a mesma regra do [INV-ENC-J4] ("só o abandono muda o lugar")
+  levada à pista nova, e sem ela o aluno aprenderia a não negociar: cada
+  proposta feita custaria posição, e a fila premiaria quem não tentasse. A
+  segunda metade é a que dói quando falta: aceitar uma oferta marca o aluno como
+  "trabalhando" (é da TAR-123, e o [INV-ENC-J7] depende disso), e sem a
+  DESMARCAÇÃO um cliente que sumisse deixaria o aluno fora da fila para sempre,
+  por uma demora que não foi dele. A varredura existe porque um caminho novo
+  escrito daqui a três meses não estaria em cenário nenhum encenado hoje.
+  Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8; lei
+  `DECISAO-fila-do-primeiro-dolar.md` §5.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_n5_negociar_e_gratis.py`
+  — a varredura `ast` do arquivo da negociação com o par vermelho que prova que
+  ela enxerga, os quatro gestos encenados com a coluna medida antes e depois, e
+  a negociação que morre devolvendo o aluno às ofertas sem mexer no lugar dele.
+  Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N6] Um Aluno Nunca Tem Duas Negociações Vivas
+- **O quê:** somando as duas pistas. São duas travas do banco, e as duas são
+  parciais: `uma_negociacao_viva_por_aluno` na `Encomenda` (vale enquanto o
+  status é `em_negociacao`) e `uma_proposta_viva_por_aluno` na `Proposta` (vale
+  enquanto o resultado é `pendente`). A negociação encerrada não conta, e o
+  aluno pode negociar de novo no minuto seguinte.
+- **Por quê:** é a mesma forma do [INV-ENC-J2] (uma oferta pendente por aluno), e
+  precisa ser dita à parte porque negociar não é o mesmo que estar trabalhando.
+  Sem ela, o aluno fecha cinco acordos e descobre que tem cinco encomendas,
+  contra a regra "uma por vez" da lei §6.5. **O que a regra impede é só a
+  SEGUNDA negociação simultânea**, e não a vida do aluno na fila: travá-lo
+  porque um cliente está pensando há três dias seria puni-lo pela demora do
+  outro lado, e é o [INV-ENC-N5] que garante o contrário. São DUAS travas porque
+  entre o aceite e o primeiro formulário não existe `Proposta` nenhuma, e uma
+  trava só na tabela de propostas deixaria essa janela aberta. A coluna `aluno`
+  da `Proposta` é denormalizada justamente para isto: `UniqueConstraint` não
+  atravessa chave estrangeira (`armadilhas/274`). Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_n6_uma_negociacao_por_aluno.py` — o
+  `UPDATE` cru recusado pela trava da encomenda, o `INSERT` recusado pela trava
+  da proposta, o par verde que prova que os índices são parciais (a negociação
+  que acabou não conta), e a regra medida com uma negociação do Mural e uma da
+  fila. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N7] Proposta Vencida por Silêncio do Cliente Vai ao Plantão
+- **O quê:** o destino de uma proposta que vence depende de QUEM ficou calado.
+  Calou o CLIENTE (a proposta de pé era do aluno): o projeto vai a
+  `para_reclassificar`, **nunca para outro aluno**. Calou o ALUNO (a proposta de
+  pé era do cliente): o projeto volta à pista de origem, sem dono, para o
+  próximo. Nos dois casos a proposta se fecha como `expirou`, o histórico guarda
+  a razão e nenhum autor é inventado.
+- **Por quê:** mandar ao próximo aluno o projeto de um cliente que sumiu faria
+  cada aluno da fila gastar a própria vez num cliente fantasma, um depois do
+  outro, e nenhum deles saberia por quê: a fila inteira desce, cada um perde a
+  vez, e a métrica de silêncio da plataforma culpa os alunos por uma ausência
+  que é do outro lado. Um cliente que sumiu é problema do plantão, e não fila de
+  espera para decepcionar gente. O caso oposto é justo pela mesma razão: quem
+  sumiu foi quem ia fazer o trabalho, e o projeto tem de voltar à prateleira. A
+  pista de devolução vem do NÍVEL, e não da coluna `pista`, quando os dois
+  discordam: um projeto Iniciante que chegou pela chamada aberta volta à FILA, e
+  nunca ao Mural reservável, que é o [INV-ENC-M2]. Produto:
+  `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_n7_cliente_calado_vai_ao_plantao.py` — o
+  cliente calado mandando o projeto ao plantão sem autor inventado, a passada
+  inteira do tique provando que ele não aparece na lista de nenhum aluno nem
+  vira oferta, o aluno calado devolvendo o projeto ao Mural, o projeto Iniciante
+  que volta à fila e não ao Mural, a segunda passada inerte, e a expiração
+  saindo dentro do tique completo. Provado por mutação em 07/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-N8] O Prazo do Acordo Começa na Confirmação do Pagamento
+- **O quê:** `prazo_producao_ate` = `pagamento_confirmado_em` mais
+  `acordo_prazo_dias`, nunca `acordado_em` mais o prazo; e
+  `prazo_prometido_ate` = o de produção mais `dias_de_revisao_no_prazo_prometido`
+  (lei §6.6). A janela do pedido de extensão passa a ser a MENOR entre a metade
+  do prazo combinado e o `extensao_pedida_ate_horas_antes` da lei
+  (`relogio.limite_para_pedir_extensao`).
+- **Por quê:** entre o Acordo e a confirmação há uma espera que não é do aluno:
+  hoje é o plantão registrando "pago pela escola", amanhã será o webhook. Se um
+  deles demorar três dias, um prazo negociado de sete vira quatro, e o aluno é
+  cobrado por um atraso que ele não causou. E a extensão precisa acompanhar o
+  prazo porque a regra antiga ("até 24h antes") nasceu de prazos de 3, 7 e 14
+  dias vindos da tabela: com prazo negociado, um aluno pode combinar 1 dia, e aí
+  a janela de 24 horas simplesmente não existiria. O que se compara é a
+  ANTECEDÊNCIA, e é por isso que prazo longo continua com a regra que a lei já
+  tinha e prazo curto ganha janela. Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3
+  e §8.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_n8_prazo_comeca_no_pagamento.py` — três
+  dias de espera do caixa que não viram três dias a menos de trabalho, o prazo
+  prometido igual ao de produção mais o dia de revisão, o prazo ACORDADO mandando
+  no lugar do prazo do cartão, a janela de 24h mantida no prazo longo, a de 12h
+  no prazo de um dia, e a antecedência da lei mudando no banco sem PR. Provado
+  por mutação em 07/09/2026.
 - **Célula dona:** encomendas
 
 ### [INV-ALU-C1] Nenhuma Matrícula Ativa Sem Produto

@@ -285,15 +285,31 @@ def _horas_do_parametro(chave: str, agora: datetime, *, site_id: str) -> timedel
     chave: o `relogio_da_oferta` e o `horas_para_virar_aberta` fazem exatamente a
     mesma coisa com o banco, e duas cópias divergiriam no dia em que uma delas
     ganhasse um cuidado a mais.
+
+    O que ela acrescenta a `Parametro.inteiro_vigente` é só a UNIDADE: ler o
+    número e recusar quando ele não existe é da tabela, e desde o degrau 2.5 há
+    um terceiro leitor de inteiros nesta célula (`gestos.py`, que conta silêncios
+    e passes). Transformar horas em `timedelta` continua sendo do relógio.
     """
-    linha = Parametro.vigente_em(chave, agora, site_id=site_id)
-    if linha is None:
-        raise ParametroAusente(
-            f"site {site_id!r}: sem valor vigente em {agora.isoformat()} para "
-            f"{chave}. Rode `python manage.py semear_parametros --site {site_id}` "
-            "ou confira a data de `desde` das linhas."
-        )
-    return timedelta(hours=int(linha.valor))
+    return timedelta(hours=Parametro.inteiro_vigente(chave, agora, site_id=site_id))
+
+
+def _vence_em_horas_uteis(chave: str, agora: datetime, *, site_id: str) -> datetime:
+    """Quando vence, em horas úteis, o prazo que a `chave` mede, contado de `agora`.
+
+    Duas leituras do banco, as duas fail-closed e as duas no valor vigente em
+    `agora`: quantas horas úteis (a `chave`) e quais são as horas úteis
+    (`janela_inicio`, `janela_fim`).
+
+    Uma definição só porque os dois relógios de vez desta célula fazem
+    exatamente a mesma coisa e diferem só na chave: o da OFERTA, na fila, e o da
+    RESERVA, no Mural. Duas cópias divergiriam no primeiro dia em que uma delas
+    ganhasse um cuidado a mais, e a divergência apareceria como "o aluno perdeu
+    a vez dormindo" numa das pistas e não na outra.
+    """
+    duracao = _horas_do_parametro(chave, agora, site_id=site_id)
+    janela = Janela.do_banco(agora, site_id=site_id)
+    return somar_horas_uteis(agora, duracao, janela)
 
 
 def calcular_expiracao(agora: datetime, *, site_id: str) -> datetime:
@@ -304,14 +320,81 @@ def calcular_expiracao(agora: datetime, *, site_id: str) -> datetime:
     de propósito: o motor a recebe como argumento
     (`rodar(..., calcular_expiracao=...)`), e é isso que fez a troca ser uma
     linha em vez de uma cirurgia no meio da varredura.
-
-    Duas leituras do banco, as duas fail-closed e as duas no valor vigente em
-    `agora`: quantas horas úteis (`relogio_da_oferta`) e quais são as horas
-    úteis (`janela_inicio`, `janela_fim`).
     """
-    duracao = _horas_do_parametro("relogio_da_oferta", agora, site_id=site_id)
-    janela = Janela.do_banco(agora, site_id=site_id)
-    return somar_horas_uteis(agora, duracao, janela)
+    return _vence_em_horas_uteis("relogio_da_oferta", agora, site_id=site_id)
+
+
+def calcular_expiracao_da_reserva(agora: datetime, *, site_id: str) -> datetime:
+    """Quando vence a vez de quem pegou um projeto no Mural em `agora`.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §3.2 e §9
+    (`relogio_da_reserva_no_mural`, três horas úteis).
+
+    **É o MESMO relógio de horas úteis da oferta, e isso é decisão, e não
+    preguiça.** As três horas da reserva existem pela mesma razão que as três da
+    oferta: são o tempo de a pessoa olhar o briefing e responder. Se o relógio
+    do Mural corresse de madrugada, o aluno que pegasse um projeto às 21h o
+    perderia dormindo, e a pista nova teria uma justiça diferente da pista
+    velha sem ninguém ter decidido isso.
+
+    **E ele para na primeira proposta.** Este relógio mede só a primeira perna,
+    do "Pegar" ao "Propor"; a partir da proposta quem manda são os relógios da
+    negociação, de 24 horas úteis por rodada (§4.2). Sem essa passagem de
+    bastão, a reserva venceria no meio da primeira rodada e o projeto voltaria
+    ao Mural com uma proposta de pé. Quem passa o bastão é a TAR-134, fechando
+    a reserva em `negociando`.
+    """
+    return _vence_em_horas_uteis("relogio_da_reserva_no_mural", agora, site_id=site_id)
+
+
+def calcular_validade_da_proposta(agora: datetime, *, site_id: str) -> datetime:
+    """Ate quando fica de pe a proposta feita em `agora`. O relogio da negociacao.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2 e §9 (`validade_da_proposta`,
+    24 horas uteis).
+
+    **E o MESMO relogio de horas uteis da oferta e da reserva**, e o plano pede
+    isso com todas as letras: *"no mesmo relogio de horas uteis que a lei ja
+    definiu para a oferta"*. Um segundo relogio aqui daria a negociacao uma
+    justica diferente da fila sem ninguem ter decidido isso, e a diferenca
+    apareceria como "o aluno perdeu o projeto dormindo" em uma das pistas e nao
+    na outra.
+
+    Terceiro chamador de `_vence_em_horas_uteis`, e nenhuma linha de conta nova:
+    o que muda entre os tres relogios de vez desta celula e so a CHAVE.
+    """
+    return _vence_em_horas_uteis("validade_da_proposta", agora, site_id=site_id)
+
+
+def limite_para_pedir_extensao(
+    prazo_final: datetime, prazo_dias: int, agora: datetime, *, site_id: str
+) -> datetime:
+    """Ate quando o aluno pode pedir a extensao de um prazo ACORDADO ([INV-ENC-N8]).
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.3, ultimo paragrafo. A lei da
+    metade de baixo (§6.6) da uma extensao pedida *"ate 24h antes do prazo"*, e
+    ela nasceu de prazos de 3, 7 e 14 dias, que vinham da tabela. Com prazo
+    NEGOCIADO, um aluno pode combinar 1 dia, e nesse caso a janela de 24 horas
+    simplesmente nao existe: o pedido teria de ser feito antes de o prazo
+    comecar.
+
+    Entao a antecedencia e a MENOR das duas: metade do prazo combinado, ou o
+    `extensao_pedida_ate_horas_antes` da lei. O que se compara e a
+    ANTECEDENCIA, e nao o instante, e essa e a leitura que faz a segunda frase
+    do plano ser verdade (*"prazo curto continua tendo janela, e prazo longo
+    continua com a regra que a lei ja tinha"*): com 7 dias, o menor entre 3,5
+    dias e 24 horas e 24 horas, e a regra antiga fica de pe; com 1 dia, o menor
+    e 12 horas, e a janela existe.
+
+    Horas de PAREDE, e nao uteis, porque o prazo do acordo tambem e de parede
+    (dias corridos, como a lei ja define). Contar a antecedencia em horas uteis
+    faria o limite andar para tras dentro de um prazo que nao anda.
+    """
+    da_lei = _horas_do_parametro(
+        "extensao_pedida_ate_horas_antes", agora, site_id=site_id
+    )
+    metade_do_combinado = timedelta(days=prazo_dias) / 2
+    return prazo_final - min(da_lei, metade_do_combinado)
 
 
 def prazo_para_virar_aberta(agora: datetime, *, site_id: str) -> timedelta:

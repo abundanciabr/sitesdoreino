@@ -40,15 +40,14 @@ from apps.auditoria.models import Registro
 from .clients import CaixaClient
 from .views import _auditar
 
-# As seis colunas da travessia, na ordem em que uma ideia as atravessa. Elas NÃO
-# são os seis estados: dois deles partem em dois, porque é a partição que
+# As cinco colunas da travessia, na ordem em que uma ideia as atravessa. Elas
+# NÃO são os cinco estados: "Em análise" parte em dois, porque é a partição que
 # responde "de quem é a vez" — "ninguém leu" é diferente de "a equipe está
-# lendo", e "esperando você assinar" é diferente de "assinada, pode começar".
+# lendo".
 COLUNAS = (
     ("chegando", "Chegando", "Ninguém da equipe leu ainda."),
     ("lendo", "A equipe está lendo", "Já tem avaliação interna escrita."),
-    ("assinar", "Esperando você assinar", "Aprovada, sem documento de obra assinado."),
-    ("pode-comecar", "Pode começar", "Assinada. Esperando um robô pegar."),
+    ("pode-comecar", "Pode começar", "Aprovada. Esperando um robô pegar."),
     ("construindo", "Robô construindo", "Alguém está com a mão nisto agora."),
     ("no-ar", "No ar", "Entregue."),
 )
@@ -115,7 +114,7 @@ def _coluna_de(ideia) -> str:
     if status == "implementado":
         return "no-ar"
     if status == "planejado":
-        return "pode-comecar" if ideia.get("tem_changespec") else "assinar"
+        return "pode-comecar"
     if status == "em_analise":
         return "lendo" if ideia.get("tem_avaliacao") else "chegando"
     return "fora-do-trilho"
@@ -135,9 +134,7 @@ def esperando(ideias) -> list:
     """
     pendentes = []
     for ideia in ideias:
-        if ideia["coluna"] == "assinar":
-            pendentes.append({**ideia, "motivo": "assinatura"})
-        elif (
+        if (
             ideia["coluna"] == "chegando"
             and ideia["parada_ha"] >= DIAS_ATE_A_ANALISE_ENVELHECER
         ):
@@ -175,7 +172,6 @@ def mesa(request):
             "total": len(decisoes),
             "em_obra": em_obra,
             "no_ar": no_ar,
-            "pode_assinar": quadro.get("pode_assinar", False),
             "dias_ate_envelhecer": DIAS_ATE_A_ANALISE_ENVELHECER,
             "na_mesa": len(decisoes),
         },
@@ -245,15 +241,14 @@ def travessia(request):
 
 DIAS_DE_SILENCIO_DEMAIS = 30
 
-# As cinco etapas em que uma ideia em aberto pode estar, ditas como FRASE: elas
+# As quatro etapas em que uma ideia em aberto pode estar, ditas como FRASE: elas
 # completam o título "de onde vem a espera" no mapa do lado direito da tela, e é
 # por isso que começam em minúscula e explicam em vez de nomear.
 MOTIVOS = (
-    ("assinar", "esperando você assinar"),
     ("chegando", "ninguém da equipe olhou ainda"),
     ("construindo", "robô construindo"),
     ("lendo", "na fila, andando normal"),
-    ("pode-comecar", "assinada, esperando um robô"),
+    ("pode-comecar", "aprovada, esperando um robô"),
 )
 
 # As MESMAS etapas com o nome curto que a aba da travessia já usa, e não a frase
@@ -494,7 +489,6 @@ def ideia(request, ideia_id: int):
         {
             "ideia": enriquecida,
             "fases": FASES,
-            "pode_assinar": quadro.get("pode_assinar", False),
             # O número da etiqueta da aba: a MESMA função das outras telas.
             "na_mesa": len(esperando(_enriquecer(quadro.get("ideias", []), agora))),
             "recado": request.GET.get("recado", ""),
@@ -600,26 +594,6 @@ def avaliar_ideia(request, ideia_id: int):
         Registro.AVALIAR_IDEIA,
         lambda: CaixaClient().avaliar(ideia_id, campos=campos, quem=_quem(request)),
         "Avaliação guardada. O aluno não vê nada disto.",
-    )
-
-
-@require_POST
-def assinar_obra(request, ideia_id: int):
-    campos = {
-        "change_id": (request.POST.get("change_id") or "").strip(),
-        "documento": (request.POST.get("documento") or "").strip(),
-        "aprovado_por": (request.POST.get("aprovado_por") or "").strip(),
-        "aprovado_em": (request.POST.get("aprovado_em") or "").strip(),
-    }
-    return _agir(
-        request,
-        ideia_id,
-        Registro.ASSINAR_OBRA,
-        lambda: CaixaClient().registrar_changespec(
-            ideia_id, campos=campos, quem=_quem(request)
-        ),
-        "Assinado. A ideia já pode entrar em construção.",
-        alvo_extra=f":{campos['change_id']}",
     )
 
 
@@ -882,13 +856,12 @@ def exportar(request):
 def _email(request) -> str:
     """O e-mail de quem está olhando — a porta já o resolveu pela `identidade`.
 
-    Serve para UMA pergunta: esta pessoa pode assinar? A Caixa responde, e a tela
-    usa a resposta para não desenhar um botão que já se sabe que será recusado. A
-    recusa de verdade continua acontecendo lá, na escrita.
+    Vai à Caixa como `por_email` na leitura do quadro, que é o parâmetro pelo
+    qual ela diz o que aquela pessoa pode fazer.
 
     `request.admin` está garantido em toda view não isenta (o middleware o
     monta), mas o `.get` com default existe para o caso de alguém chamar esta
-    função de um caminho isento um dia — e "não sei o e-mail" tem de virar "não
-    pode assinar", nunca um estouro.
+    função de um caminho isento um dia: "não sei o e-mail" tem de virar uma
+    pergunta sem dono, nunca um estouro.
     """
     return (getattr(request, "admin", None) or {}).get("email") or ""

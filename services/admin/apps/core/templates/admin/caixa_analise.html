@@ -151,16 +151,6 @@ copiado e mandado para alguém.
       aluno escreveu, sem sair da página.
     </p>
 
-    {% if esperando_assinatura %}
-      <p class="aviso calado">
-        <b>O topo do quadro trava em você:</b>
-        {{ esperando_assinatura|length }} ideia{{ esperando_assinatura|pluralize }} aprovada{{ esperando_assinatura|pluralize }}
-        espera{{ esperando_assinatura|pluralize:",m" }} a sua assinatura
-        ({% for i in esperando_assinatura %}<a class="n-ideia" href="#ideia-{{ i.id }}">{{ i.id }}</a>{% if not forloop.last %} {% endif %}{% endfor %}).
-        Enquanto isso não acontece, nenhum robô pode começar a obra.
-      </p>
-    {% endif %}
-
     <div class="painel-mesas">
       {% for mesa in mesas %}
         <div class="mesa-cartao{% if mesa.chave == 'voce' %} sua{% endif %}">
@@ -179,7 +169,7 @@ copiado e mandado para alguém.
         preciso” são leitura de gente, escritos em 05/09/2026; tudo o mais vem vivo da Caixa.</p>
 
       {% for ideia in ideias %}
-        <article class="ficha{% if ideia.coluna == 'assinar' %} sua{% endif %}" id="ficha-{{ ideia.id }}">
+        <article class="ficha" id="ficha-{{ ideia.id }}">
           <div class="ficha-topo">
             <span class="posto">Nº {{ ideia.posicao }}</span>
             <h3><a href="#ideia-{{ ideia.id }}">{{ ideia.titulo }}</a></h3>
@@ -191,7 +181,7 @@ copiado e mandado para alguém.
           <div class="etiquetas">
             <span class="etiqueta">ideia {{ ideia.id }}</span>
             <span class="etiqueta">{{ ideia.categoria }}</span>
-            <span class="etiqueta{% if ideia.coluna == 'assinar' %} atencao{% endif %}">{{ ideia.etapa }}</span>
+            <span class="etiqueta">{{ ideia.etapa }}</span>
             {% if ideia.mesa_rotulo %}<span class="etiqueta{% if ideia.mesa == 'voce' %} atencao{% endif %}">{{ ideia.mesa_rotulo }}</span>{% endif %}
             {% if ideia.em_obra %}<span class="etiqueta andando">já está em obra</span>{% endif %}
             {% if ideia.ja_existe %}<span class="etiqueta atencao">confira: pode já existir</span>{% endif %}
