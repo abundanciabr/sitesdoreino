@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-069-a-rede-de-talentos-saiu-do-cinza",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "A escola agora enxerga o caminho da aluna ate um trabalho num estudio",
+  detalhe: "Nasceu /admin/placar/talentos/: as seis etapas do caminho, com o numero de cada uma ao lado. Tres etapas acontecem fora do sistema (alunas escolhidas, estudios parceiros, alunas que comecaram um trabalho) e voce digita a contagem na propria tela; ela nao grava nada e devolve um bloco para colar numa sessao, que vira registro do livro. Etapa nao contada diz 'nunca contado', que nao e zero.\n\nDegrau 17 de docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, destravado pelo degrau 13. Tres cartoes novos em painel/cartoes/; nenhum banco novo. TAR-260.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1333",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
