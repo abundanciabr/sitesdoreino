@@ -118,6 +118,9 @@ def doc_publico(request, nome):
             # Ver `documentos.PREFIXO_PUBLICO`: aqui o endereço NÃO sai de
             # `{% url %}`, porque as páginas públicas não moram sob `/admin`.
             "prefixo_publico": documentos.PREFIXO_PUBLICO,
+            "cabecalho": documentos.cabecalho_de_apendice(
+                documento, timezone.localdate()
+            ),
         },
     )
 
@@ -169,6 +172,9 @@ def documento_admin(request, nome):
             # que ele mesmo escreve; qualquer outra coisa na querystring nao
             # imprime nada.
             "recado": request.GET.get("recado", ""),
+            "cabecalho": documentos.cabecalho_de_apendice(
+                documento, timezone.localdate()
+            ),
         },
     )
 

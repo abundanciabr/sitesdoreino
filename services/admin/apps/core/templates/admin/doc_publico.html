@@ -10,9 +10,35 @@ chega nesta linha já como `&lt;script&gt;` — texto, nunca tag. Guarda:
 
 Se um dia alguém trocar o renderizador por um que não escape, é este `|safe`
 que vira o buraco — e é por isso que a explicação mora coladinha nele.
+
+O CABEÇALHO DE APÊNDICE VIVO (TAR-247): as DUAS regras, `.apendice-vivo` e
+`.apendice-vivo.vencido`, moram aqui, embutidas, e não em `base_publico.html`
+(fora do orçamento deste degrau). Reaproveitam só as três variáveis que aquela
+folha já declara (`--linha`, `--texto-2`, `--azul`) — nenhuma cor nova: o
+estado em dia é o mesmo cinza discreto de borda tracejada que a área
+administrativa usa para `.aviso`; o vencido troca só para borda sólida e
+negrito, sem trocar de cor.
 {% endcomment %}
 {% block titulo %}{{ documento.titulo }}{% endblock %}
 {% block conteudo %}
+  {% if cabecalho %}
+  <style>
+    .apendice-vivo {
+      border: 1px dashed var(--linha); border-radius: 10px;
+      padding: 10px 16px; margin-bottom: 20px;
+      color: var(--texto-2); font-size: 14px;
+    }
+    .apendice-vivo p { margin: 0; }
+    .apendice-vivo.vencido {
+      border-style: solid; border-color: var(--azul); color: var(--texto);
+    }
+    .apendice-vivo .aviso-vencido { margin-top: 6px; font-weight: 600; }
+  </style>
+  <div class="apendice-vivo{% if cabecalho.vencido %} vencido{% endif %}">
+    <p>{{ cabecalho.texto }}</p>
+    {% if cabecalho.vencido %}<p class="aviso-vencido">{{ cabecalho.aviso }}</p>{% endif %}
+  </div>
+  {% endif %}
   <a class="volta" href="{{ prefixo_publico }}/">&larr; Todos os documentos</a>
   {{ corpo|safe }}
 {% endblock %}
