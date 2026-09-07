@@ -126,7 +126,25 @@ esac
 # ninguém ter mexido nele. É a `armadilhas/111` de novo, e é exatamente o defeito
 # que a TAR-172 tem aberto contra o `infra/provisionar-forum.sh`, que escreve a
 # lista de professores vazia sem relê-la. Este roteiro não nasce com ele.
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
+#
+# A DÉCIMA E A DÉCIMA PRIMEIRA CHAVES ENTRARAM EM 07/09/2026, e são a TERCEIRA e
+# a QUARTA que este roteiro não gera. `ANTHROPIC_API_KEY` e
+# `ANTHROPIC_WORKSPACE_ID` são a chave da IA (e o workspace dela) com que o robô
+# analista do painel de gestão lê o livro de ocorrências e escreve o que está
+# vendo. Elas não nascem aqui: são COPIADAS de `env/forum.env`, onde o
+# mantenedor colou a chave uma vez em 02/09/2026, por
+# `infra/por-a-chave-da-ia-do-admin.sh`.
+#
+# ELAS TAMBÉM SÃO RELIDAS do arquivo vivo antes da reescrita, e sem isso este
+# roteiro teria dois defeitos de uma vez: PARARIA a cada execução acusando duas
+# variáveis que não sabe gerar (a trava logo abaixo), e, ensinado pela metade,
+# apagaria a chave da IA da área administrativa, deixando o robô analista mudo
+# com o deploy verde. É a `armadilhas/111` pela terceira vez neste arquivo.
+#
+# VAZIAS SÃO RESULTADO LEGÍTIMO, como a chave do GitHub: sem elas o robô
+# analista fica desligado dizendo o que fazer, e nada mais na área
+# administrativa muda.
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -174,6 +192,21 @@ if [ -f env/admin.env ]; then TOKEN_FILA="$(ler_de env/admin.env GITHUB_TOKEN_FI
 if [ -n "$TOKEN_FILA" ]
 then echo "  chave do GitHub da fila ...... já existe (releio e regravo igual, sem apagar)"
 else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-do-github.sh)"; fi
+# A chave da IA do robô analista e o workspace dela: RELIDAS do arquivo vivo,
+# nunca geradas aqui (ver a lista da trava, lá em cima). Vazias são resposta
+# legítima e o roteiro não para por isso: quem as copia do fórum para cá é
+# `infra/por-a-chave-da-ia-do-admin.sh`, e sem elas o robô analista apenas nasce
+# desligado dizendo o que fazer.
+if [ -f env/admin.env ]; then
+  CHAVE_IA="$(ler_de env/admin.env ANTHROPIC_API_KEY)"
+  WORKSPACE_IA="$(ler_de env/admin.env ANTHROPIC_WORKSPACE_ID)"
+else
+  CHAVE_IA=""
+  WORKSPACE_IA=""
+fi
+if [ -n "$CHAVE_IA" ]
+then echo "  chave da IA do analista ...... já existe (releio e regravo igual, sem apagar)"
+else echo "  chave da IA do analista ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-da-ia-do-admin.sh)"; fi
 echo "  lista de admins .............. herdada de env/identidade.env (não digitei nada)"
 echo
 
@@ -221,6 +254,8 @@ IDENTIDADE_API_TOKEN=$TOKEN_ADMIN
 ADMIN_EMAILS=$STAFF
 TOKENS_ACEITOS_PAGES=$T_PAGES
 GITHUB_TOKEN_FILA=$TOKEN_FILA
+ANTHROPIC_API_KEY=$CHAVE_IA
+ANTHROPIC_WORKSPACE_ID=$WORKSPACE_IA
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -247,7 +282,7 @@ por_linha env/identidade.env TOKENS_COMPLETOS_ADMIN "$TOKEN_ADMIN"
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... OK"; else echo "  banco admin_db ............... FALTANDO"; fi
-echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 9)"
+echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 11)"
 echo "  dono/modo do env ............. $(stat -c '%U:%G %a' env/admin.env) (igual ao identidade.env: $(stat -c '%U:%G %a' env/identidade.env))"
 
 faltou=0
@@ -283,6 +318,23 @@ then
   then echo "  admin.env / GITHUB_TOKEN_FILA ... OK (preservada, o mesmo valor que estava em $BAK)"
   else echo "  admin.env / GITHUB_TOKEN_FILA ... vazia, como já estava (o botão de excluir tarefa segue desligado)"; fi
 else echo "  admin.env / GITHUB_TOKEN_FILA ... PERDI A CHAVE QUE ESTAVA AQUI (ela está intacta em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
+
+# A CONFERÊNCIA nº 1d: a chave da IA do robô analista e o workspace dela
+# sobreviveram à reescrita, com o MESMO valor que estava no arquivo. VAZIAS SÃO
+# RESULTADO LEGÍTIMO e não reprovam nada, porque quem as põe é
+# `infra/por-a-chave-da-ia-do-admin.sh` e elas podem simplesmente ainda não
+# existir. O que NÃO pode acontecer é existirem antes e sumirem aqui: o robô
+# analista ficaria mudo em produção com o deploy verde, e o sintoma seria
+# indistinguível de "a IA está fora do ar" (`armadilhas/111`).
+for chave in ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID; do
+  if [ -n "$BAK" ]; then ANTES_IA="$(ler_de "$BAK" "$chave")"; else ANTES_IA=""; fi
+  if [ "$(ler_de env/admin.env "$chave")" = "$ANTES_IA" ]
+  then
+    if [ -n "$ANTES_IA" ]
+    then echo "  admin.env / $chave ... OK (preservada, o mesmo valor que estava em $BAK)"
+    else echo "  admin.env / $chave ... vazia, como já estava (o robô analista segue desligado)"; fi
+  else echo "  admin.env / $chave ... PERDI O VALOR QUE ESTAVA AQUI (ele está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
+done
 
 # nº 2: os dois degraus do par, do lado da identidade.
 for chave in TOKENS_ACEITOS_ADMIN TOKENS_COMPLETOS_ADMIN; do
