@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015938-TAR-226-explicada",
+  "tarefa": "TAR-226",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:38+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Nos primeiros segundos de um trabalho existe um teste so. O vigia olha, ve um teste verde e anuncia que esta tudo aprovado.",
+  "o_que_muda": "Ele pede a publicacao, o portao recusa, e a rodada inteira se perde. Aconteceu hoje.",
+  "exemplo": "E contar os alunos da sala quando so um entrou e dizer que a turma toda chegou.",
+  "importancia": 80
+}

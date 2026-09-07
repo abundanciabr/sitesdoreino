@@ -1151,3 +1151,223 @@ def test_diff_que_nao_e_evento_da_fila_e_ignorado():
         {"filename": "fila/eventos/z.json", "patch": "-" + de_verdade},
     ]
     assert fila.eventos_no_diff(lixo) == []
+
+
+# ---------------------------------------------------------------------------
+# O VERBO `explicar` — a fila em português do mantenedor (06/09/2026)
+#
+# Encenados de verdade: cada guarda daqui foi visto REPROVANDO antes de o
+# código existir, e provado por sabotagem depois do verde.
+# ---------------------------------------------------------------------------
+
+
+def explicacao(**sobrescreve):
+    dados = {
+        "o_que_e": "A esteira que publica os trabalhos prontos espera um tempo fixo.",
+        "o_que_muda": "Trabalho pronto fica parado sem chegar no site.",
+        "exemplo": "É a esteira do aeroporto parando antes de a última mala sair.",
+        "importancia": 85,
+    }
+    dados.update(sobrescreve)
+    return dados
+
+
+def args_de_explicar(tid="TAR-001", quem="sessao-a", **sobrescreve):
+    return argparse.Namespace(tarefa=tid, quem=quem, **explicacao(**sobrescreve))
+
+
+def args_de_criar(**sobrescreve):
+    dados = {
+        "titulo": "uma tarefa",
+        "toca": ["ci"],
+        "depende_de": [],
+        "cria": [],
+        "move": ["manutencao"],
+        "evidencia_exigida": "um PR",
+        "despacho": "faça",
+        "despacho_arquivo": "",
+        "origem": "teste",
+        **explicacao(),
+    }
+    dados.update(sobrescreve)
+    return argparse.Namespace(**dados)
+
+
+def test_explicar_grava_o_evento_com_os_quatro_campos(tmp_path, monkeypatch):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    assert fila.cmd_explicar(raiz, args_de_explicar()) == 0
+    escritos = list((raiz / "fila" / "eventos").glob("*.json"))
+    assert len(escritos) == 1
+    dados = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert dados["evento"] == "explicada"
+    assert dados["importancia"] == 85
+    assert dados["o_que_e"].startswith("A esteira")
+    assert "-TAR-001-explicada" in dados["arquivo"]
+
+
+def test_importancia_fora_de_0_a_100_e_RECUSADA_no_balcao(tmp_path, monkeypatch, capsys):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    for fora in (101, -1, 1000):
+        assert fila.cmd_explicar(raiz, args_de_explicar(importancia=fora)) == 1
+    assert "0 a 100" in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*.json"))
+
+
+def test_explicacao_com_texto_vazio_e_RECUSADA_no_balcao(tmp_path, monkeypatch, capsys):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    for campo in ("o_que_e", "o_que_muda", "exemplo"):
+        assert fila.cmd_explicar(raiz, args_de_explicar(**{campo: "   "})) == 1
+        assert campo in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*.json"))
+
+
+def test_explicar_tarefa_que_nao_existe_e_RECUSADO(tmp_path, monkeypatch):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    assert fila.cmd_explicar(raiz, args_de_explicar(tid="TAR-777")) == 1
+
+
+def test_explicar_recusa_no_espelho_como_todo_gesto_que_escreve(espelho_e_bancada):
+    principal, _ = espelho_e_bancada
+    assert fila.cmd_explicar(principal, args_de_explicar()) == 1
+    assert not list((principal / "fila" / "eventos").glob("*.json"))
+
+
+def test_a_ULTIMA_explicacao_vence_e_e_assim_que_se_corrige(tmp_path):
+    """Explicar é o único verbo que repete: o arquivo da tarefa não se edita
+    (armadilhas/356), então texto ruim se conserta acrescentando."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(tipo="explicada", hora="10:00:00", **explicacao(o_que_e="texto ruim")),
+            evento(
+                tipo="explicada",
+                hora="12:00:00",
+                **explicacao(o_que_e="texto bom", importancia=42),
+            ),
+        ],
+    )
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["o_que_e"] == "texto bom"
+    assert estado["importancia"] == 42
+
+
+def test_explicar_tarefa_JA_TERMINADA_e_permitido(tmp_path):
+    """A exceção deliberada à regra do silêncio: a explicação descreve o que a
+    tarefa É, não o que aconteceu com ela."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(
+                tipo="concluida",
+                hora="10:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+            evento(tipo="explicada", hora="12:00:00", **explicacao()),
+        ],
+    )
+    _, _, erros = carregar(raiz)
+    assert erros == []
+
+
+def test_evento_de_CICLO_depois_do_fim_continua_reprovando(tmp_path):
+    """A exceção é só do `explicada` — a regra do silêncio segue de pé."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(
+                tipo="concluida",
+                hora="10:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+            evento(tipo="reivindicada", hora="12:00:00"),
+        ],
+    )
+    _, _, erros = carregar(raiz)
+    assert any("já terminou" in e for e in erros)
+
+
+def test_a_explicacao_NAO_muda_o_estado_calculado(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada", **explicacao())])
+    tarefas, eventos, _ = carregar(raiz)
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.NA_FILA
+
+
+def test_tarefa_SEM_explicacao_vem_sem_os_campos_nunca_com_desculpa(tmp_path):
+    """Ausente, não vazio: quem apresenta decide o que dizer no lugar."""
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, _ = carregar(raiz)
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert not any(c in estado for c in fila.CAMPOS_DA_EXPLICACAO)
+
+
+def test_listar_json_entrega_a_explicacao_junto_do_estado(tmp_path, capsys):
+    """É este JSON que vira o `estados.json` que a célula admin lê no build."""
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada", **explicacao())])
+    fila.cmd_listar(raiz, argparse.Namespace(ao_vivo=False, json=True))
+    visao = json.loads(capsys.readouterr().out)["TAR-001"]
+    assert visao["estado"] == fila.NA_FILA
+    assert visao["titulo"] == "Uma tarefa de exemplo"
+    assert visao["importancia"] == 85
+    assert visao["exemplo"].startswith("É a esteira")
+
+
+def test_validar_reprova_explicada_sem_os_campos(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada")])
+    _, _, erros = carregar(raiz)
+    assert any("o_que_e" in e for e in erros)
+
+
+def test_validar_reprova_importancia_fora_da_faixa_e_que_nao_e_inteira(tmp_path):
+    for valor in (101, -5, "85", 85.5, True):
+        raiz = montar(
+            tmp_path / str(valor).replace(".", "_"),
+            [tarefa()],
+            [evento(tipo="explicada", **explicacao(importancia=valor))],
+        )
+        _, _, erros = carregar(raiz)
+        assert any("importancia" in e for e in erros), valor
+
+
+def test_campo_de_explicacao_em_evento_que_nao_e_explicada_REPROVA(tmp_path):
+    """Mesma lei do `espera`: campo fora do evento a que pertence é história
+    escrita no lugar errado, e vira segunda definição no dia seguinte."""
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="reivindicada", importancia=90)])
+    _, _, erros = carregar(raiz)
+    assert any("importancia" in e for e in erros)
+
+
+def test_criar_SEM_explicacao_recusa_ANTES_de_gastar_numero(tmp_path, monkeypatch, capsys):
+    """Campo que nasce opcional no balcão nasce vazio — a lição do `--move`."""
+    montar(tmp_path, [])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+
+    def nunca(*a, **k):
+        raise AssertionError("não deveria ter pedido número sem a explicação")
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    assert fila.cmd_criar(tmp_path, args_de_criar(exemplo="   ")) == 1
+    assert "exemplo" in capsys.readouterr().out
+    assert fila.cmd_criar(tmp_path, args_de_criar(importancia=101)) == 1
+    assert "0 a 100" in capsys.readouterr().out
+    assert not list((tmp_path / "fila" / "tarefas").glob("*.json"))
+
+
+def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
+    montar(tmp_path, [])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == []
+    assert fila.calcular_estados(tarefas, eventos)["TAR-099"]["importancia"] == 85
