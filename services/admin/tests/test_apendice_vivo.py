@@ -36,7 +36,7 @@ from django.db import IntegrityError, transaction
 from django.test import Client
 
 from apps.core import views as vistas
-from apps.core.models import Documento
+from apps.core.models import Documento, VersaoDoDocumento
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -304,3 +304,97 @@ def test_documento_arquivado_continua_404_no_publico_mesmo_apendice_vivo():
 def test_documento_privado_continua_404_no_publico_mesmo_apendice_vivo():
     _apendice("privadoav", publico=False)
     assert Client().get("/docs/privadoav").status_code == 404
+
+
+# ------------------------------- 7. criar já como apêndice vivo (revisor do #1354)
+
+
+def _criar(**campos):
+    corpo = {
+        "titulo": "Nascido vivo",
+        "nome": "nascidovivo",
+        "corpo": "c",
+        "ordem": "10",
+    }
+    corpo.update(campos)
+    return _dentro().post("/documentos/criar", corpo)
+
+
+@respx.mock
+def test_criar_recusa_apendice_vivo_sem_as_duas_datas():
+    resposta = _criar(apendice_vivo="sim")
+    assert resposta.status_code == 422
+    assert (
+        "Um apêndice vivo precisa das duas datas: quando foi verificado e "
+        "quando a verificação vence."
+    ) in resposta.content.decode()
+    assert not Documento.objects.filter(nome="nascidovivo").exists()
+
+
+@respx.mock
+def test_criar_recusa_a_proxima_verificacao_nao_depois_da_ultima():
+    resposta = _criar(
+        apendice_vivo="sim",
+        verificado_em="2026-09-10",
+        proxima_verificacao_em="2026-09-10",
+    )
+    assert resposta.status_code == 422
+    assert (
+        "A próxima verificação precisa ser depois da última."
+        in resposta.content.decode()
+    )
+    assert not Documento.objects.filter(nome="nascidovivo").exists()
+
+
+@respx.mock
+def test_criar_aceita_apendice_vivo_com_as_datas_certas():
+    resposta = _criar(
+        apendice_vivo="sim",
+        verificado_em="2026-08-01",
+        proxima_verificacao_em="2026-09-10",
+    )
+    assert resposta.status_code == 302
+    documento = Documento.objects.get(nome="nascidovivo")
+    assert documento.apendice_vivo is True
+    assert documento.verificado_em == dt.date(2026, 8, 1)
+    assert documento.proxima_verificacao_em == dt.date(2026, 9, 10)
+
+
+# ------------------------- 8. o histórico conta quando o carimbo ligou e desligou
+
+
+def _salvar(nome, **campos):
+    corpo = {"titulo": "X", "corpo": "c", "ordem": "10"}
+    corpo.update(campos)
+    return _dentro().post(f"/documentos/{nome}/salvar", corpo)
+
+
+@respx.mock
+def test_marcar_como_apendice_vivo_fica_no_historico_com_esse_nome():
+    Documento.objects.create(nome="ligou", titulo="X", corpo="c")
+    _salvar(
+        "ligou",
+        apendice_vivo="sim",
+        verificado_em="2026-08-01",
+        proxima_verificacao_em="2026-09-10",
+    )
+    assert VersaoDoDocumento.objects.get().gesto == "marcou como apêndice vivo"
+
+
+@respx.mock
+def test_desmarcar_o_apendice_vivo_fica_no_historico_com_esse_nome():
+    _apendice("desligou")
+    _salvar("desligou")
+    assert VersaoDoDocumento.objects.get().gesto == "desmarcou o apêndice vivo"
+
+
+@respx.mock
+def test_editar_sem_mexer_no_carimbo_continua_sendo_editou_o_documento():
+    _apendice("mesmo")
+    _salvar(
+        "mesmo",
+        apendice_vivo="sim",
+        verificado_em="2026-08-01",
+        proxima_verificacao_em="2026-09-10",
+    )
+    assert VersaoDoDocumento.objects.get().gesto == "editou o documento"

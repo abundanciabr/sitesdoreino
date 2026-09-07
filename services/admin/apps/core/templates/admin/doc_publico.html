@@ -13,11 +13,13 @@ que vira o buraco — e é por isso que a explicação mora coladinha nele.
 
 O CABEÇALHO DE APÊNDICE VIVO (TAR-247): as DUAS regras, `.apendice-vivo` e
 `.apendice-vivo.vencido`, moram aqui, embutidas, e não em `base_publico.html`
-(fora do orçamento deste degrau). Reaproveitam só as três variáveis que aquela
-folha já declara (`--linha`, `--texto-2`, `--azul`) — nenhuma cor nova: o
-estado em dia é o mesmo cinza discreto de borda tracejada que a área
-administrativa usa para `.aviso`; o vencido troca só para borda sólida e
-negrito, sem trocar de cor.
+(fora do orçamento daquele degrau). A folha pública declara seis variáveis e
+nenhuma delas é cor de alerta; a única cor forte, `--azul`, é a de TODO link da
+página, e o revisor do PR #1354 mostrou que um aviso azul aqui fica com cara de
+link. Por isso o vencido não usa cor nenhuma: ele troca a borda tracejada por
+uma sólida, na cor do texto, e a frase do aviso sai em negrito. É menos
+gritante que o vermelho da área administrativa, e é o máximo que esta folha
+permite sem inventar cor.
 {% endcomment %}
 {% block titulo %}{{ documento.titulo }}{% endblock %}
 {% block conteudo %}
@@ -30,7 +32,7 @@ negrito, sem trocar de cor.
     }
     .apendice-vivo p { margin: 0; }
     .apendice-vivo.vencido {
-      border-style: solid; border-color: var(--azul); color: var(--texto);
+      border-style: solid; border-color: var(--texto); color: var(--texto);
     }
     .apendice-vivo .aviso-vencido { margin-top: 6px; font-weight: 600; }
   </style>
