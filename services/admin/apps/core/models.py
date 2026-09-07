@@ -130,10 +130,41 @@ class Documento(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
+    # O CABEÇALHO DE APÊNDICE VIVO (TAR-247, degrau 3.3 do
+    # `PLANO-CELULA-CURSOS.md` §3.8). FAIL-CLOSED: `default=False` é o mesmo
+    # desenho de `publico` acima — um documento comum não ganha cabeçalho
+    # nenhum, e virar apêndice vivo exige um gesto de propósito no editor.
+    #
+    # As datas ficam NULAS para quem não é apêndice vivo — não há pergunta
+    # "verificado quando?" para um documento comum. A borda de escrita (o
+    # editor) exige as duas quando a caixa é marcada, e o `CheckConstraint`
+    # abaixo é a segunda tranca: recusa a gravação direta pelo modelo, por
+    # fora do editor, que é o caminho que `armadilhas/079` ensina a fechar.
+    apendice_vivo = models.BooleanField(default=False)
+    verificado_em = models.DateField(null=True, blank=True)
+    proxima_verificacao_em = models.DateField(null=True, blank=True)
+
     class Meta:
         # A pergunta que a área pública faz a cada visita: os que estão no ar,
         # na ordem da lista.
         indexes = [models.Index(fields=["publico", "arquivado", "ordem"])]
+        constraints = [
+            # Documento comum (apendice_vivo=False) passa livre, com as duas
+            # datas do jeito que estiverem. Apêndice vivo EXIGE as duas datas
+            # preenchidas, e a próxima verificação sempre DEPOIS da última —
+            # a mesma regra que `editor_de_documentos.py` já recusa na tela,
+            # aqui como segunda tranca contra escrita direta pelo modelo.
+            models.CheckConstraint(
+                condition=models.Q(apendice_vivo=False)
+                | (
+                    models.Q(apendice_vivo=True)
+                    & models.Q(verificado_em__isnull=False)
+                    & models.Q(proxima_verificacao_em__isnull=False)
+                    & models.Q(proxima_verificacao_em__gt=models.F("verificado_em"))
+                ),
+                name="apendice_vivo_exige_datas_coerentes",
+            ),
+        ]
 
     @property
     def no_ar(self) -> bool:

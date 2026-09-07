@@ -123,6 +123,28 @@ renderizador escapa antes de formatar (documentos.para_html).
       administra.
     </p>
 
+    <label class="marcar espaco-20">
+      <input type="checkbox" name="apendice_vivo" value="sim" id="apendice_vivo"
+             {% if rascunho.apendice_vivo %}checked{% endif %}>
+      <span>Este documento é um apêndice vivo</span>
+    </label>
+    <p class="nota">
+      Mostra no topo, para quem lê, a versão, quando foi verificado e quando a
+      verificação vence. Passada a data, o próprio documento avisa que a
+      verificação venceu.
+    </p>
+
+    <label class="rotulo" for="verificado_em">Verificado em</label>
+    <input type="date" id="verificado_em" name="verificado_em"
+           value="{{ rascunho.verificado_em }}">
+
+    <label class="rotulo" for="proxima_verificacao_em">Próxima verificação em</label>
+    <input type="date" id="proxima_verificacao_em" name="proxima_verificacao_em"
+           value="{{ rascunho.proxima_verificacao_em }}">
+    <p class="nota">
+      As duas datas só valem se a caixa acima estiver marcada.
+    </p>
+
     <div class="gestos-do-editor">
       <button type="submit" class="salvar">
         {% if criando %}Criar o documento{% else %}Salvar{% endif %}

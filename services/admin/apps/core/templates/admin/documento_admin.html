@@ -32,6 +32,18 @@ um dia alguém vai ler só um deles.
     <a class="botao" href="{% url 'documento_versoes' documento.nome %}">Ver o histórico</a>
   </p>
 
+  {% if cabecalho %}
+  {% comment %}
+  `.aviso` e `.aviso.calado` já existem em `base.html` — nenhuma cor nova
+  aqui: em dia é o mesmo cinza discreto de todo `.aviso`; vencido troca para a
+  borda sólida vermelha que `.calado` já usa noutra tela desta célula.
+  {% endcomment %}
+  <p class="aviso espaco-abaixo-20{% if cabecalho.vencido %} calado{% endif %}">
+    {{ cabecalho.texto }}
+    {% if cabecalho.vencido %}<br><b>{{ cabecalho.aviso }}</b>{% endif %}
+  </p>
+  {% endif %}
+
   <p class="aviso espaco-abaixo-20">
     {% if documento.arquivado %}
     <b>Este documento está ARQUIVADO.</b> Ele saiu do site e não abre para
