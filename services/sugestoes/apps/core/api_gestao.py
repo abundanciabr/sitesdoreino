@@ -58,7 +58,6 @@ from apps.sugestoes.eventos import AtorSemIdDaPlataforma
 from apps.sugestoes.models import (
     AvaliacaoInterna,
     ChangeSpecAprovado,
-    CorredorAusente,
     HistoricoStatus,
     Sugestao,
 )
@@ -652,9 +651,8 @@ def _quem(payload: QuemAge):
     summary="Move a ideia de fase, com histórico e avisos",
     description=(
         "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
-        "transação, a plateia inteira recebe aviso, 'não planejado' exige "
-        "justificativa e 'planejado → em desenvolvimento' exige ChangeSpec "
-        "aprovado registrado. Recusa 422 com a frase que ensina o caminho."
+        "transação, a plateia inteira recebe aviso e 'não planejado' exige "
+        "justificativa. Recusa 422 com a frase que ensina o caminho."
     ),
 )
 def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
@@ -675,8 +673,6 @@ def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
                 "sugeriu vai ler essa frase."
             )
         }
-    except CorredorAusente as recusa:
-        return 422, {"erro": str(recusa)}
     except AtorSemIdDaPlataforma:
         # [INV-SUG12] O fato não pode ser afirmado sem quem o afirmou. Recusa
         # legível em vez de 500: o caminho existe e é curto — a pessoa entra uma
