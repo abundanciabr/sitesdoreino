@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-07",
   titulo: "Prioridades virou um menu, e cada área do site ganhou a própria página",
-  detalhe: "Você pediu: várias coisas misturadas na mesma tela não dá para entender. A aba Prioridades agora mostra só os cartões das áreas; clicar num cartão abre a página daquela área sozinha, com o link de volta. Em cada tarefa que um robô novo pode pegar há o botão de copiar o prompt para colar no Claude Code; tarefa já com robô, ou parada esperando você, não tem o botão. Página gerada com 300.258 bytes, abaixo do teto.",
+  detalhe: "A aba Prioridades agora mostra só os cartões das áreas; clicar num cartão abre a página daquela área sozinha, com o link de volta. Em cada tarefa que um robô novo pode pegar há o botão de copiar o prompt para colar no Claude Code; tarefa já com robô, ou parada esperando você, não tem o botão. Página gerada: 300.258 bytes, abaixo do teto.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1365 (teste Python vermelho e depois verde; navegador 21/21 PASS; 3 mutações reprovam)",
   verificado_em: "2026-09-07",
