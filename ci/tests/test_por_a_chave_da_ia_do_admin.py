@@ -607,9 +607,11 @@ def test_sem_o_sha256sum_desta_maquina_ele_nao_finge_que_conferiu(tmp_path):
     a ausência de prova nunca vira PRONTO."""
     raiz = _plataforma(tmp_path)
     ambiente = _docker(tmp_path, raiz)
-    quebrado = tmp_path / "docker-de-mentira" / "sha256sum"
-    quebrado.write_bytes(b"#!/usr/bin/env bash\nexit 1\n")
-    quebrado.chmod(0o755)
+    # O Git Bash antepõe /usr/bin ao PATH herdado do Windows. A função
+    # carregada pelo próprio Bash intercepta o cálculo também nessa máquina.
+    falha_sha256sum = tmp_path / "falha-sha256sum.bash"
+    falha_sha256sum.write_bytes(b"sha256sum() { return 1; }\n")
+    ambiente["BASH_ENV"] = str(falha_sha256sum)
 
     r = _rodar(raiz, ambiente)
 
