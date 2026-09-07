@@ -359,9 +359,11 @@ não tem sigla (lei do CLAUDE.md).
               nunca saberia que o gesto existe.
               {% endcomment %}
               <p class="desligado">
-                O botão de excluir está cinza porque falta a senha que deixa o site abrir
-                um pedido no GitHub. Avise um robô com estas palavras: "ponha a
-                {{ variavel_do_token }} no env da admin".
+                O botão de excluir está cinza porque falta uma chave, e nada está
+                quebrado por isso. Você mesmo liga o botão: crie a chave em
+                https://github.com/settings/personal-access-tokens/new e depois cole
+                uma linha na janela da VPS. O roteiro infra/por-a-chave-do-github.sh
+                tem o passo a passo escrito dentro, com os 7 passos do navegador.
               </p>
             {% endif %}
             <div class="cartoes-robo">
