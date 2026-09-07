@@ -650,9 +650,14 @@ def _quem(payload: QuemAge):
     operation_id="setIdeaStatus",
     summary="Move a ideia de fase, com histórico e avisos",
     description=(
+        # A frase do ChangeSpec continua aqui porque este texto É o contrato
+        # congelado (`contracts/sugestoes.openapi.yaml`), e emendá-lo é Rito
+        # §3 com o mantenedor presente — nunca de dentro da célula. A trava
+        # saiu em 06/09/2026; esta linha some na próxima emenda do contrato.
         "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
-        "transação, a plateia inteira recebe aviso e 'não planejado' exige "
-        "justificativa. Recusa 422 com a frase que ensina o caminho."
+        "transação, a plateia inteira recebe aviso, 'não planejado' exige "
+        "justificativa e 'planejado → em desenvolvimento' exige ChangeSpec "
+        "aprovado registrado. Recusa 422 com a frase que ensina o caminho."
     ),
 )
 def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
