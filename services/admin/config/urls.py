@@ -50,6 +50,10 @@ from apps.core.economia import (
     economia_mudar_degrau,
 )
 from apps.core.escola_pontos import escola_pontos
+from apps.core.parametros_da_fila import (
+    parametros_da_fila,
+    parametros_da_fila_mudar,
+)
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -227,6 +231,22 @@ urlpatterns = [
     # no navegador do mantenedor com o servidor verde, e nao havia como saber
     # de qual lado sem entrar na VPS. Duas rotas, na mesma gramatica da
     # economia: a tela e o gesto.
+    # OS NUMEROS DA FILA DO PRIMEIRO DOLAR (`apps/core/parametros_da_fila.py`,
+    # 07/09/2026, degrau 2.14 da `DECISAO-fila-do-primeiro-dolar.md`). A tela
+    # existe pela MESMA razao da economia logo acima: a lei daquela celula
+    # (§3.8 e §9) chama de CRITERIO DE MORTE 5 o dia em que mudar um destes
+    # numeros passar a exigir PR de codigo. Duas rotas, na mesma gramatica da
+    # economia e do menu: a tela e o gesto.
+    path(
+        "encomendas/parametros/",
+        parametros_da_fila,
+        name="parametros_da_fila",
+    ),
+    path(
+        "encomendas/parametros/mudar",
+        parametros_da_fila_mudar,
+        name="parametros_da_fila_mudar",
+    ),
     path("avisos/", avisos, name="avisos"),
     path("avisos/testar", avisos_testar, name="avisos_testar"),
     # A segunda metade da mesma tela (01/09/2026): as medalhas e os marcos. Rota
