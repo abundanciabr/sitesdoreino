@@ -104,6 +104,33 @@ caso("veredito fora de 'medicao' REPROVA",
     arquivo: "20260905-902-resultado", tipo: "nota",
     responde_a: "20260905-901-experimento", veredito: "venceu"
   })]).length > 0);
+// O PORTÃO da fase da escola (degrau 13). A fase é calculada da contagem dos
+// portões provados, então nome fora do vocabulário não contaria para fase
+// nenhuma e ninguém saberia; e declarar sem prova conferida promoveria a escola
+// por opinião de quem escreveu o registro.
+function portao(sobre) {
+  var base = {
+    arquivo: "20260907-903-portao", tipo: "medicao", portao: "demanda",
+    evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/999",
+    verificado_em: "2026-09-07"
+  };
+  Object.keys(sobre || {}).forEach(function (k) { base[k] = sobre[k]; });
+  return reg(base);
+}
+caso("portão com nome dos oito, evidência e data conferida passa",
+  LOGICA.validarRegistros([portao({})]).length === 0);
+caso("portão com nome fora dos oito REPROVA",
+  LOGICA.validarRegistros([portao({ portao: "converssao" })]).length > 0);
+caso("portão sem evidencia REPROVA (declarar não é provar)",
+  LOGICA.validarRegistros([portao({ evidencia: null })]).length > 0);
+caso("portão sem verificado_em REPROVA (prova não conferida não é prova)",
+  LOGICA.validarRegistros([portao({ verificado_em: null })]).length > 0);
+caso("registro comum, sem portao, continua passando",
+  LOGICA.validarRegistros([reg({ tipo: "nota" })]).length === 0);
+caso("os oito portões são oito, e cada nome é chave de código",
+  LOGICA.PORTOES.length === 8 && LOGICA.PORTOES.every(function (p) {
+    return /^[a-z]+$/.test(p);
+  }));
 // Número repetido no mesmo dia: a corrida entre sessões paralelas (26/08/2026,
 // quatro colisões em um dia, entre três sessões). O nome completo continua
 // único — o que se perde é o número como referência.

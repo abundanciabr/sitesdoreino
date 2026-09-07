@@ -90,6 +90,14 @@ _CAMPO = {
         "metrica",
         "guarda",
         "veredito",
+        # Os três do fechamento (07/09/2026, degrau 13): `portao` diz qual dos
+        # oito portões da fase da escola o registro prova, e os dois seguintes
+        # são a PROVA que o plano exige (§6.5). Declarar sem provar não conta,
+        # e quem faz essa conta é `fechamento.portoes`. Entram aqui pelo mesmo
+        # motivo dos cinco de cima: o livro tem UM leitor nesta célula.
+        "portao",
+        "evidencia",
+        "verificado_em",
     )
 }
 
@@ -145,6 +153,9 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "metrica": _campo(texto, "metrica"),
                 "guarda": _campo(texto, "guarda"),
                 "veredito": _campo(texto, "veredito"),
+                "portao": _campo(texto, "portao"),
+                "evidencia": _campo(texto, "evidencia"),
+                "verificado_em": _campo(texto, "verificado_em"),
             }
         )
     return registros

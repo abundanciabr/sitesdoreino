@@ -2046,6 +2046,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/fechamento/",
+      "endereco": "/admin/placar/fechamento/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O fechamento do ciclo",
+      "descricao": "O fim das 12 semanas, em quatro perguntas: a meta bateu ou não, as duas medidas da semana previram isso ou não, o que a escola PARA de fazer, e qual é a meta seguinte. No fim, o pedido para o robô, que escreve tudo no livro e grava a meta nova no cartão.",
+      "observacao": "O ciclo não fecha sem a decisão do que a escola para de fazer: sem ela a tela não monta pedido nenhum. A fase da escola (achando, provando, escalando) é calculada dos portões provados no livro, nunca digitada. Enquanto o ciclo estiver correndo, a tela mostra a prévia com os números de hoje e diz que nada ali é veredito final. Degrau 13 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §8)."
+    },
+    {
+      "celula": "admin",
       "rota": "reuniao/",
       "endereco": "/admin/reuniao/",
       "alcance": "publico",

@@ -35,6 +35,11 @@
   // impede "meio que deu certo" de virar uma categoria nova em silêncio.
   var CAMPOS_DO_EXPERIMENTO = ["problema", "hipotese", "metrica", "guarda"];
   var VEREDITOS = ["venceu", "perdeu", "nao-deu-para-saber"];
+  // OS PORTÕES (degrau 13): os oito que uma escola atravessa antes de escalar.
+  // A fase (achando, provando, escalando) é calculada da contagem dos provados,
+  // nunca digitada, e por isso o nome de cada um é vocabulário fechado.
+  var PORTOES = ["demanda", "conversao", "economia", "entrega", "resultado",
+    "retencao", "repeticao", "escala"];
   var FORMATO_DA_METRICA = /^[a-z0-9-]+$/;
   // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
   // primeiro, depois o produto, e vender por último — que é também a ordem em
@@ -173,6 +178,24 @@
         if (!r.responde_a) {
           erros.push(nome + ": 'veredito' sem 'responde_a' não fecha experimento nenhum — " +
             "o resultado é um registro NOVO que aponta para o experimento");
+        }
+      }
+      // O PORTÃO da fase da escola (degrau 13). A fase é CALCULADA dos portões
+      // provados, e por isso o nome do portão não pode ser texto livre: um
+      // "converssão" escrito com dois esses não contaria para fase nenhuma e
+      // ninguém saberia. Vocabulário fechado aqui, na escrita, pelo mesmo
+      // desenho de `veredito`: o livro é JavaScript, a tela é Python, e um dos
+      // dois lados impõe as palavras.
+      if (r.portao !== undefined && r.portao !== null) {
+        if (PORTOES.indexOf(r.portao) === -1) {
+          erros.push(nome + ": 'portao' desconhecido '" + r.portao + "' — os oito são: " + PORTOES.join(", "));
+        }
+        // Declarar não é provar. Mesma lei do verde, logo abaixo, e pelo mesmo
+        // motivo: portão sem prova conferida promoveria a escola de fase por
+        // opinião de quem escreveu o registro.
+        if (!r.evidencia || !r.verificado_em) {
+          erros.push(nome + ": 'portao' exige evidencia E verificado_em — " +
+            "portão sem prova conferida não muda a fase da escola");
         }
       }
       if (r.arquivo) {
@@ -788,6 +811,7 @@
     IMPACTOS: IMPACTOS,
     CAMPOS_DO_EXPERIMENTO: CAMPOS_DO_EXPERIMENTO,
     VEREDITOS: VEREDITOS,
+    PORTOES: PORTOES,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
