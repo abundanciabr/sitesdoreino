@@ -46,11 +46,12 @@ O QUE AINDA NÃO É DESTE DEGRAU, E TEM DONO
   no `tique.py` — não aqui. O motor varre `na_fila` e OFERECE; quem olha o
   relógio é o tique, que roda antes dele a cada minuto. Encomenda sem ninguém
   elegível continua ficando ONDE ESTÁ, com desfecho nomeado, até o prazo da fila
-  vencer. O que a chamada aberta FAZ depois de aberta (avisar os elegíveis, o
-  primeiro que aceitar leva, e o "salvo em chamada aberta" do [INV-ENC-J6]) é o
-  degrau 2.5.
-- **A pausa automática por três silêncios**, o interruptor do aluno e o passar
-  com motivo são o degrau 2.5 (TAR-123). O motor só LÊ `disponibilidade`.
+  vencer.
+- **Os gestos do aluno** (aceitar, passar com motivo, o interruptor) e o que a
+  chamada aberta FAZ depois de aberta chegaram no degrau 2.5, em `gestos.py`. O
+  motor continua só LENDO `disponibilidade`, e a chamada aberta continua sem
+  régua própria: ela chama `por_que_nao` daqui com a memória do [INV-ENC-J6]
+  vazia, que é a exceção "salvo em chamada aberta" escrita como dado.
 - **Os eventos** (`encomenda.oferecida.v1` e irmãos) saem por outbox
   transacional, e a tabela de outbox desta célula ainda não existe.
 - **O Mural** é a outra pista (`PLANO-AREA-DE-NEGOCIACAO.md`, TAR-133): o motor

@@ -1157,3 +1157,26 @@ class Parametro(models.Model):
             .order_by("-desde")
             .first()
         )
+
+    @classmethod
+    def inteiro_vigente(cls, chave: str, agora, *, site_id: str) -> int:
+        """O valor INTEIRO que vale em `agora`, ou a recusa fail-closed.
+
+        Uma definição só para "leia este número da lei §6, e recuse se ele não
+        estiver no banco". Três módulos precisam disso (`relogio.py` conta horas,
+        `gestos.py` conta silêncios e passes), e uma cópia por módulo divergiria
+        no primeiro dia em que uma delas ganhasse um cuidado a mais — inclusive
+        na mensagem de conserto, que é a parte que alguém vai ler às três da
+        manhã.
+
+        Devolver um padrão embutido em vez de levantar seria a constante mágica
+        que a lei §3.8 proíbe, e ainda esconderia uma semeadura que não rodou.
+        """
+        linha = cls.vigente_em(chave, agora, site_id=site_id)
+        if linha is None:
+            raise ParametroAusente(
+                f"site {site_id!r}: sem valor vigente em {agora.isoformat()} para "
+                f"{chave}. Rode `python manage.py semear_parametros --site {site_id}` "
+                "ou confira a data de `desde` das linhas."
+            )
+        return int(linha.valor)

@@ -9,8 +9,8 @@ produção:
 - **Não existe agendamento por oferta**, e isso é medido por FORMA — a única
   garantia que continua valendo para o código que o degrau 2.5 ainda vai
   escrever.
-- **A fronteira com o degrau 2.5 está escrita como teste**, para ninguém a
-  atravessar sem ver.
+- **O contador de silêncios tem um dono só**, e isso é medido por FORMA: o
+  tique NOTA o silêncio, e quem sabe o que fazer com ele é `gestos.py`.
 """
 
 import ast
@@ -329,29 +329,102 @@ def test_o_varredor_enxerga_o_agendamento_que_ele_procura():
 
 
 # ---------------------------------------------------------------------------
-# 4. A FRONTEIRA COM O DEGRAU 2.5, ESCRITA COMO TESTE
+# 4. O CONTADOR DE SILÊNCIOS TEM UM DONO SÓ
 # ---------------------------------------------------------------------------
 
+CONTADOR = "silencios_consecutivos"
+# O único arquivo da célula onde a coluna pode ser escrita. `gestos.py` guarda as
+# DUAS metades do contador — o que o enche (`contar_o_silencio`, chamado daqui) e
+# o que o zera (`zerar_o_silencio`, chamado por aceitar, passar e religar).
+QUEM_MEXE_NO_CONTADOR = {"gestos.py"}
 
-def test_o_silencio_ainda_nao_conta_para_a_pausa_automatica(
+
+class _VarredorDoContador(ast.NodeVisitor):
+    """As mesmas três formas de gravar que o guarda do [INV-ENC-J4] enxerga."""
+
+    def __init__(self):
+        self.achados: list[int] = []
+
+    def visit_Assign(self, no):
+        for alvo in no.targets:
+            if isinstance(alvo, ast.Attribute) and alvo.attr == CONTADOR:
+                self.achados.append(no.lineno)
+        self.generic_visit(no)
+
+    def visit_AugAssign(self, no):
+        alvo = no.target
+        if isinstance(alvo, ast.Attribute) and alvo.attr == CONTADOR:
+            self.achados.append(no.lineno)
+        self.generic_visit(no)
+
+    def visit_Call(self, no):
+        nome = getattr(no.func, "attr", None) or getattr(no.func, "id", None)
+        for chave in no.keywords:
+            if chave.arg == CONTADOR and nome in {"create", "update", "bulk_update"}:
+                self.achados.append(no.lineno)
+            if chave.arg == "update_fields" and nome == "save":
+                for item in getattr(chave.value, "elts", []):
+                    if isinstance(item, ast.Constant) and item.value == CONTADOR:
+                        self.achados.append(no.lineno)
+        self.generic_visit(no)
+
+
+def test_so_um_arquivo_da_celula_escreve_no_contador_de_silencios():
+    """As duas metades do contador moram juntas, ou uma delas envelhece sozinha.
+
+    O perigo tem forma conhecida: o gesto novo (o abandono, a mediação, o aceite
+    de uma proposta) é escrito num arquivo novo, cresce ou zera o contador ali
+    mesmo, e a regra passa a viver em dois lugares. Meses depois um deles esquece
+    de zerar, e o aluno é pausado por "estar ocupado" no dia em que mais
+    respondeu — sem erro, sem log, sem alarme.
+
+    Vermelho aqui quer dizer: leve a escrita para `gestos.py`, ao lado da outra
+    metade, e chame de onde o gesto acontece.
+    """
+    fora = []
+    for caminho in sorted((CELULA / "apps").rglob("*.py")):
+        if "migrations" in caminho.parts or caminho.name in QUEM_MEXE_NO_CONTADOR:
+            continue
+        varredor = _VarredorDoContador()
+        varredor.visit(ast.parse(caminho.read_text(encoding="utf-8")))
+        fora += [f"{caminho.relative_to(CELULA)}:{linha}" for linha in varredor.achados]
+
+    assert fora == [], (
+        f"escrita em `{CONTADOR}` fora de {sorted(QUEM_MEXE_NO_CONTADOR)}: "
+        + "; ".join(fora)
+        + ". O contador da pausa automática tem as duas metades no mesmo arquivo "
+        "(plano §6.3): quem o enche e quem o zera. Chame "
+        "`gestos.contar_o_silencio` ou `gestos.zerar_o_silencio` em vez de "
+        "escrever na coluna."
+    )
+
+
+def test_o_varredor_do_contador_enxerga_as_quatro_formas_de_gravar():
+    """O guarda que não morde é indistinguível do guarda desligado."""
+    codigo = "\n".join(
+        [
+            "def mexe():",
+            "    perfil.silencios_consecutivos = 0",
+            "    perfil.silencios_consecutivos += 1",
+            "    Perfil.objects.update(silencios_consecutivos=0)",
+            "    perfil.save(update_fields=['silencios_consecutivos'])",
+        ]
+    )
+    varredor = _VarredorDoContador()
+    varredor.visit(ast.parse(codigo))
+
+    assert len(varredor.achados) == 4
+
+
+def test_o_tique_conta_o_silencio_pelo_dono_do_contador(
     semeado, criar_perfil, criar_encomenda
 ):
-    """A fronteira deste degrau, medida — e ela é uma AUSÊNCIA declarada.
+    """A fronteira do degrau 2.4, agora atravessada: o silêncio conta.
 
-    O plano §7.4 escreve a pausa automática em uma frase: *"expirou;
-    silencios_consecutivos += 1; se == 3 → pausar aluno"*. As duas metades são o
-    mesmo gesto, e o degrau 2.4 não faz nenhuma: um contador que cresce e
-    ninguém lê é pior do que contador nenhum, porque parece pronto — e a próxima
-    sessão, vendo o número subir, acreditaria que só falta o `if`.
-
-    **Este teste é para o degrau 2.5 (TAR-123) apagar**, e essa é a função dele.
-    Quem escrever a pausa acrescenta o incremento em `expirar_ofertas_vencidas`
-    (o único lugar desta célula onde um silêncio acontece), troca este guarda
-    pelo da contagem, e o diff mostra a fronteira sendo atravessada de
-    propósito.
-
-    O que NÃO muda quando isso acontecer: o lugar na fila ([INV-ENC-J4], com
-    varredor `ast` próprio). Silêncio e pausa nunca custam a vez.
+    Até a TAR-123 este arquivo media a AUSÊNCIA (`silencios_consecutivos == 0`
+    depois de uma expiração), e o teste existia para o degrau 2.5 apagar. Ele foi
+    apagado aqui, e o que sobra é a outra ponta da mesma medição: uma oferta que
+    vence é um silêncio a mais, contado na mesma passada, sem custar o lugar.
     """
     encomenda = criar_encomenda()
     nasceu = encomenda.criada_em
@@ -362,6 +435,6 @@ def test_o_silencio_ainda_nao_conta_para_a_pausa_automatica(
     tique.rodar(oferta.expira_em, site_id=SITE)
 
     aluno.refresh_from_db()
-    assert aluno.silencios_consecutivos == 0
+    assert aluno.silencios_consecutivos == 1
     assert aluno.disponibilidade == PerfilProfissional.Disponibilidade.DISPONIVEL
     assert aluno.data_entrada_fila == nasceu - timedelta(days=30)
