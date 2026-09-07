@@ -66,9 +66,9 @@ OS_CAMPOS_DA_LISTA = {
 }
 # As quatro que resolvem a aula pelo SITE (o editor que já está no ar as
 # chama), as quatro que resolvem pelo CURSO e conferem a PARTE (TAR-203), as
-# três de instrumento, a do bloco (TAR-221) e a do Revisor de coerência
-# (TAR-245, degrau 3.1).
-AS_TREZE_OPERACOES = {
+# três de instrumento, a do bloco (TAR-221), a do Revisor de coerência
+# (TAR-245, degrau 3.1) e as quatro do CURSO (TAR-266).
+AS_DEZESSETE_OPERACOES = {
     "listSiteLessons",
     "getSiteLesson",
     "putSiteLesson",
@@ -82,6 +82,10 @@ AS_TREZE_OPERACOES = {
     "putInstrument",
     "putBlock",
     "checkLesson",
+    "listCourses",
+    "createCourse",
+    "putCourse",
+    "putCourseStructure",
 }
 # O bloco viaja dentro de toda aula, e desde a TAR-221 ele leva o que o
 # mantenedor escreve: é assim que quem grava por `putBlock` lê de volta o que
@@ -915,14 +919,14 @@ def exportar() -> dict:
     return json.loads(saida.getvalue())
 
 
-def test_export_openapi_traz_as_treze_operacoes_e_nenhuma_a_mais():
+def test_export_openapi_traz_as_dezessete_operacoes_e_nenhuma_a_mais():
     documento = exportar()
     ids = [
         operacao["operationId"]
         for item in documento["paths"].values()
         for operacao in item.values()
     ]
-    assert set(ids) == AS_TREZE_OPERACOES
+    assert set(ids) == AS_DEZESSETE_OPERACOES
     # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
     # documento inválido que o freeze compara sem reclamar: o caminho novo
     # ficou com o nome canônico, o antigo ganhou o dele.
