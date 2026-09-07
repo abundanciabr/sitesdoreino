@@ -423,6 +423,19 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <li><b>{{ e.cartao.pergunta }}</b> <span class="rotulo">sem dados</span> {{ e.cartao.sem_fonte_porque }}</li>
     {% endfor %}
   </ul>
+  {% comment %}
+  A REDE DE TALENTOS (07/09/2026, degrau 17) entra AQUI, dentro do bloco das
+  estrelas-guia, e não como um bloco novo da capa. A razão é a mesma do
+  laboratório mais abaixo: o laço de talentos TERMINA na primeira estrela
+  ("alunos com resultado profissional"), então ele mora ao lado do número que
+  pretende mover. E a capa tem teto de nove blocos (tests/test_capa.py), que já
+  usa nove: bloco novo aqui derrubaria o guarda.
+  {% endcomment %}
+  <p class="recado-fraco">
+    O caminho que faz a primeira estrela subir tem nome e tem tela:
+    <a href="{% url 'talentos' %}">a rede de talentos</a>, com as alunas
+    escolhidas, os estúdios parceiros e as alunas que já começaram um trabalho.
+  </p>
   {% endif %}
 
   {% if doze %}

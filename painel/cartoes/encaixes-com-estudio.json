@@ -1,0 +1,22 @@
+{
+  "nome": "encaixes-com-estudio",
+  "tipo": "resultado",
+  "andar": 1,
+  "pergunta": "Quantas alunas já foram encaixadas num estúdio?",
+  "definicao": "Um encaixe é uma aluna da rede que começou um trabalho com um estúdio parceiro, pago ou combinado. Uma apresentação que não virou trabalho não é encaixe, e a mesma aluna em dois trabalhos conta duas vezes.",
+  "formula": "a contagem que a escola digita na tela da rede de talentos, gravada no livro como medição",
+  "fonte": "o livro de ocorrências (painel/registros/): a última medição digitada com este nome, lida pela admin em apps/core/talentos.py",
+  "autoridade": "mantenedor",
+  "dono": "mantenedor",
+  "frequencia": "quando muda; a escola redigita a contagem na tela da rede de talentos",
+  "direcao": "subir",
+  "unidade": "encaixes",
+  "par": "alunos-com-resultado-profissional",
+  "acao": "Estúdios parceiros subindo e encaixes parados: o combinado existe no papel e não na prática. O gesto é levar UM nome a UM estúdio nesta semana, e perguntar o que faltou.",
+  "frescor_maximo": 30,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-07",
+  "_por_que": "Quarto passo do laço de talentos (Scale OS 2 §45), degrau 17 do PLANO-PAINEL-DE-GESTAO.md. O par é a estrela-guia de valor: encaixe que não vira trabalho pago e reconhecido não é resultado, é agenda cheia."
+}
