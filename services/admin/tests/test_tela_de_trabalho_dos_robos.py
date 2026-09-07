@@ -402,7 +402,7 @@ def test_o_prompt_esta_escrito_no_html_para_quem_nao_tem_area_de_transferencia(
 
 
 @respx.mock
-def test_sem_a_senha_do_github_o_botao_nasce_desligado_e_diz_o_que_fazer(
+def test_sem_a_chave_do_github_o_botao_nasce_desligado_e_diz_como_o_dono_liga_sozinho(
     tmp_path, monkeypatch
 ):
     fila_com_ranking(tmp_path, monkeypatch)
@@ -410,9 +410,15 @@ def test_sem_a_senha_do_github_o_botao_nasce_desligado_e_diz_o_que_fazer(
 
     assert "Excluir (desligado)" in pagina
     assert "disabled" in pagina
-    assert "ponha a GITHUB_TOKEN_FILA no env da admin" in numa_linha(
-        pagina
-    ), "não disse ao dono, com a frase pronta, o que pedir a um robô"
+    linha = numa_linha(pagina)
+    assert "nada está quebrado por isso" in linha, "assustou o dono à toa"
+    assert (
+        "infra/por-a-chave-do-github.sh" in linha
+    ), "não apontou o roteiro com o passo a passo"
+    assert (
+        "github.com/settings/personal-access-tokens/new" in linha
+    ), "não disse onde o dono cria a chave"
+    assert "ponha a" not in linha, "ainda manda o dono decorar jargão para um robô"
     assert "<dialog" not in pagina, "a caixa de confirmação nasceu sem serventia"
 
 
