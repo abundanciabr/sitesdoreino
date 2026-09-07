@@ -1,0 +1,17 @@
+{
+  "arquivo": "274-a-pagina-do-painel-esta-a-3-do-teto-de-tamanho-e-ao-encostar",
+  "id": "TAR-274",
+  "titulo": "A pagina do painel esta a 3% do teto de tamanho, e ao encostar o gerador para todo PR da casa",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "saida de node painel/gerar_manifesto.js antes e depois (KB da pagina), bash ci/muralha-do-painel.sh verde e o check painel-no-navegador verde no PR",
+  "despacho": "Em painel/gerar_manifesto.js, ao embutir logica.js na pagina, remover as linhas que sao so comentario (// ...) e os blocos /* */ que nao estejam dentro de string; NUNCA tocar o arquivo painel/logica.js, que continua inteiro no repositorio. Guardar em painel/testes/teste_gerador.js: (1) a pagina embute menos bytes que o arquivo; (2) a LOGICA carregada da pagina calcula o mesmo resumo e a mesma capa que o logica.js do disco, no livro real; (3) determinismo mantido (mesmo livro, mesmos bytes). Medir com node painel/gerar_manifesto.js antes e depois e escrever os dois numeros no registro. Medido em 07/09/2026: logica.js tem 47,7 KB, dos quais 25,2 KB sao linhas de comentario.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-07"
+}

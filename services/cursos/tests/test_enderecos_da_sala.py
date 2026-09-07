@@ -175,10 +175,10 @@ def matriculada_nos_dois(rede):
     )
 
 
-def test_com_dois_cursos_no_site_o_endereco_antigo_nao_escolhe_por_voce(
+def test_com_dois_cursos_dela_o_catalogo_oferece_os_dois(
     env_dos_pares, rede, aula_publicada, client
 ):
-    """O defeito que esta tarefa cura, medido: até aqui a sala respondia
+    """O defeito que a TAR-212 curou, medido: até ela a sala respondia
     `Curso.objects.filter(site_id=site).order_by("id").first()`, e o segundo
     curso do site nunca apareceria para ninguém.
 

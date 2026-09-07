@@ -67,6 +67,8 @@ from divida_do_livro import (  # noqa: E402
     ISENTO,
     PASTAS_DE_ESCRITURACAO,
     SEM_REGISTRO,
+    area_do_ramo,
+    areas_dos_registros_embarcados,
     como_embarcar,
     como_pagar,
     divida,
@@ -947,18 +949,43 @@ def pedir_pouso(numero: int) -> int:
 MARCA_DA_SOMBRA = "🌓 SOMBRA (evento da fila pela porta)"
 
 
-def _diff_do_pr(raiz: Path, numero: int) -> list[dict[str, Any]]:
-    return json.loads(
-        _gh(
-            ["api", f"repos/{{owner}}/{{repo}}/pulls/{numero}/files?per_page=100"],
-            raiz,
-            f"ler o diff do PR #{numero} para a sombra do evento da fila",
-        )
-    )
+class DiffDoPR:
+    """O diff do PR, lido do `gh` UMA vez por pouso e reaproveitado.
+
+    Duas sombras rodam depois do mesmo merge, e as duas precisam do mesmo
+    endpoint. Antes, cada uma chamava por conta própria (duas viagens de rede
+    idênticas), e a descrição da leitura era fixa no nome da PRIMEIRA sombra,
+    então uma falha de rede na segunda acusava a sombra errada. Aqui quem lê
+    diz o próprio nome, e a leitura bem-sucedida fica guardada para a seguinte.
+
+    Leitura que falha não fica guardada: a sombra que tropeçou cala (fail-open,
+    ela roda depois de o merge já ter acontecido) e a seguinte tenta por conta
+    própria, com o nome dela na descrição.
+    """
+
+    def __init__(self, raiz: Path, numero: int) -> None:
+        self._raiz = raiz
+        self._numero = numero
+        self._remessas: list[dict[str, Any]] | None = None
+
+    def ler(self, quem: str) -> list[dict[str, Any]]:
+        if self._remessas is None:
+            self._remessas = json.loads(
+                _gh(
+                    [
+                        "api",
+                        f"repos/{{owner}}/{{repo}}/pulls/{self._numero}"
+                        "/files?per_page=100",
+                    ],
+                    self._raiz,
+                    f"ler o diff do PR #{self._numero} para {quem}",
+                )
+            )
+        return self._remessas
 
 
 def sombra_do_evento_da_fila(
-    raiz: Path, pr: dict[str, Any], sha_do_merge: str
+    raiz: Path, pr: dict[str, Any], sha_do_merge: str, diff: DiffDoPR
 ) -> list[dict]:
     numero = int(pr.get("number") or 0)
     titulo = str(pr.get("title") or "")
@@ -969,7 +996,7 @@ def sombra_do_evento_da_fila(
         return []  # PR sem tarefa citada: silêncio total, sem nem consultar
     try:
         try:
-            remessas = _diff_do_pr(raiz, numero)
+            remessas = diff.ler("a sombra do evento da fila")
         except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
             achados = [
                 {
@@ -1028,6 +1055,147 @@ def _dizer_a_sombra(numero: int, achado: dict) -> None:
         print(f"{MARCA_DA_SOMBRA}: {tarefa} já existe, nada a fazer.")
         return
     print(f"{MARCA_DA_SOMBRA}: {tarefa} sem evento, {achado['motivo']}.")
+
+
+# ---------------------------------------------------------------------------
+# A SOMBRA DA ÁREA DO REGISTRO (07/09/2026) — a porta confere o que o painel
+# vai precisar.
+#
+# O painel do dono ganha uma aba "Prioridades" por área do site, e ela se
+# calcula do campo `area` do registro (`painel/LEIA-ME.md`), cujo valor é o
+# nome do ramo em que o robô trabalhou. Campo que nasce sem portão nasce vazio
+# ou errado, e a porta do pouso é a única hora em que ainda existe alguém para
+# consertar com um commit (`armadilhas/185`, `248`).
+#
+# Nasce em SOMBRA, pela lei do Sistema Imunológico (o cabeçalho de
+# `ci/muralha_das_armadilhas.py`): ela DIZ o que teria feito e NUNCA muda o
+# veredito. Vira reprovação num PR futuro, com o relatório do `ci/termometro.py`
+# na mão. Fail-open de ponta a ponta, como a sombra irmã: ela roda depois de o
+# merge já ter acontecido, e uma exceção aqui transformaria um pouso
+# bem-sucedido em ERROR.
+#
+# `painel/areas.json` é lido da RAIZ do checkout, ou seja, da `main`
+# (`armadilhas/190`): é a árvore que a pista julga. Se o arquivo faltar na
+# main, a sombra diz que não mediu e cala.
+#
+# Ela mede só o que o painel NÃO mede. Área que não está em `areas.json` já tem
+# dono antes daqui: `painel/logica.js` recusa o registro, `painel/gerar_manifesto.js`
+# mata o build fail-closed e a muralha do painel reprova o PR, que então nunca
+# fica verde nem chega ao pouso. Repetir esse julgamento aqui seria um desfecho
+# que nenhum pouso alcança.
+# ---------------------------------------------------------------------------
+
+MARCA_DA_SOMBRA_DA_AREA = "🌓 SOMBRA (área do registro)"
+
+SEM_AREA = "sem-area"
+AREA_DIFERENTE_DO_RAMO = "area-diferente-do-ramo"
+AREA_CONFERE = "confere"
+
+
+def _celulas_conhecidas(raiz: Path) -> set[str] | None:
+    """Os nomes de célula de `painel/areas.json`, ou `None` se ele não existe.
+
+    Um nome vale se estiver em QUALQUER lista `celulas`: as áreas são o
+    agrupamento que o dono lê, e cada célula mora em uma delas.
+    """
+    arquivo = raiz / "painel" / "areas.json"
+    if not arquivo.exists():
+        return None
+    dados = json.loads(arquivo.read_text(encoding="utf-8"))
+    return {
+        str(celula)
+        for area in dados.get("areas") or []
+        for celula in area.get("celulas") or []
+    }
+
+
+def sombra_da_area_do_registro(raiz: Path, pr: dict[str, Any], diff: DiffDoPR) -> None:
+    numero = int(pr.get("number") or 0)
+    arquivos = [f["path"] for f in pr.get("files") or []]
+    # Estes dois casos já têm dono em `checar_registro_embarcado`. A sombra
+    # falar de novo só faria barulho — e nem o diff ela precisa buscar.
+    if registro_embarcado(numero, arquivos, []) in (ISENTO, SEM_REGISTRO):
+        return
+    try:
+        celulas = _celulas_conhecidas(raiz)
+        if celulas is None:
+            print(
+                f"{MARCA_DA_SOMBRA_DA_AREA}: não medi, painel/areas.json não "
+                "existe na main."
+            )
+            return
+        ramo = str(pr.get("headRefName") or "")
+        area_esperada = area_do_ramo(ramo)
+        if area_esperada is None:
+            print(
+                f"{MARCA_DA_SOMBRA_DA_AREA}: não medi, o ramo {ramo} não segue "
+                "agent/<area>/<tarefa>."
+            )
+            return
+        remessas = diff.ler("a sombra da área do registro")
+        for arquivo, area in areas_dos_registros_embarcados(remessas):
+            desfecho = _desfecho_da_area(area, area_esperada)
+            _dizer_a_area(arquivo, area, area_esperada, desfecho, celulas)
+            telemetria.registrar(
+                "area_do_registro_pela_porta",
+                {
+                    "modo": "sombra",
+                    "pr": numero,
+                    "arquivo": arquivo,
+                    "area": area or "",
+                    "area_do_ramo": area_esperada,
+                    "desfecho": desfecho,
+                },
+                cwd=str(raiz),
+                sessao=os.environ.get("GITHUB_RUN_ID") or "",
+            )
+    except Exception as erro:  # noqa: BLE001 — sombra na dúvida cala
+        print(
+            f"{MARCA_DA_SOMBRA_DA_AREA}: não mediu "
+            f"({erro.__class__.__name__}: {erro})."
+        )
+
+
+def _desfecho_da_area(area: str | None, area_esperada: str) -> str:
+    if area is None:
+        return SEM_AREA
+    if area != area_esperada:
+        return AREA_DIFERENTE_DO_RAMO
+    return AREA_CONFERE
+
+
+def _dizer_a_area(
+    arquivo: str,
+    area: str | None,
+    area_esperada: str,
+    desfecho: str,
+    celulas: set[str],
+) -> None:
+    if desfecho == SEM_AREA:
+        # O nome do ramo só vira sugestão quando ele mesmo é uma célula
+        # conhecida. Sugerir um nome que não está em `painel/areas.json`
+        # ensinaria ao próximo robô um valor que `painel/logica.js` recusa e
+        # que mata o build do painel na muralha.
+        if area_esperada in celulas:
+            conserto = f'Escreva area: "{area_esperada}" (o nome do seu ramo).'
+        else:
+            conserto = (
+                f"O ramo agent/{area_esperada}/ não corresponde a nenhuma área "
+                "de painel/areas.json: escreva area: com o nome de uma célula "
+                "que esteja lá."
+            )
+        print(
+            f"{MARCA_DA_SOMBRA_DA_AREA}: {arquivo} não declara área. Quando a "
+            f"regra valer, isto reprovaria. {conserto}"
+        )
+        return
+    if desfecho == AREA_DIFERENTE_DO_RAMO:
+        print(
+            f'{MARCA_DA_SOMBRA_DA_AREA}: {arquivo} declara "{area}" e o ramo é '
+            f"agent/{area_esperada}/...: teria reprovado."
+        )
+        return
+    print(f'{MARCA_DA_SOMBRA_DA_AREA}: {arquivo}: área "{area}" bate com o ramo.')
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1196,7 +1364,9 @@ def main(argv: list[str] | None = None) -> int:
     quem = (estado_final.get("mergedBy") or {}).get("login", "?")
     sha = (estado_final.get("mergeCommit") or {}).get("oid") or "?"
     print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
-    sombra_do_evento_da_fila(raiz, pr, sha)
+    diff = DiffDoPR(raiz, args.pr)
+    sombra_do_evento_da_fila(raiz, pr, sha, diff)
+    sombra_da_area_do_registro(raiz, pr, diff)
     print(
         "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
         "(CLAUDE.md); e acrescente o registro do que aconteceu em "

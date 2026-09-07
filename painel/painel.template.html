@@ -24,6 +24,7 @@
     --red:#E2705A; --red-dim:#3E2620;
     --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
     --cinza:#8296A2; --cinza-dim:rgba(130,150,162,.12);
+    --roxo:#A98BFF;
     --radius:14px;
   }
   *{box-sizing:border-box;}
@@ -89,6 +90,37 @@
   .selo.naoprov{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
   .selo.velho{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
   .selo.idade{border:1px solid var(--gold); color:var(--gold); background:var(--gold-dim);}
+
+  /* Prioridades — um cartão por área do site no topo, um bloco por área abaixo */
+  .faixa{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:10px; margin:0 0 18px;}
+  .card{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2);
+    padding:12px 14px; color:var(--text); text-align:left; width:100%; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; font-size:14px;}
+  .card:hover{border-color:var(--gold);}
+  .card b{font-family:'Space Grotesk',sans-serif; font-size:15px; display:block; margin-bottom:4px;}
+  .card .n{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-2); line-height:1.7;}
+  .card .n em{font-style:normal; color:var(--gold);}
+  .card .n em.zero{color:var(--text-3);}
+  .cab .diz{font-family:'IBM Plex Sans',sans-serif; font-weight:400; font-size:12.5px;
+    color:var(--text-3); margin-left:auto; text-align:right;}
+  .grupo{padding:10px 18px 4px; border-top:1px solid var(--line-soft); display:flex; gap:10px;
+    align-items:baseline; flex-wrap:wrap; font-family:'Space Grotesk',sans-serif; font-weight:700;
+    font-size:13.5px; color:var(--text-2);}
+  .grupo .cont{font-family:'IBM Plex Mono',monospace; font-size:11px; border-radius:20px; padding:1px 8px;
+    border:1px solid var(--line-soft); color:var(--text-3); font-weight:400;}
+  .grupo .diz{font-weight:400; font-size:12px; color:var(--text-3);}
+  .grupo.g-decidir{color:var(--gold);} .grupo.g-alerta{color:var(--red);} .grupo.g-robos{color:var(--blue);}
+  .item .pos{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-right:8px;}
+  .item .det b{color:var(--text-2); font-weight:600;}
+  .item.vazio{color:var(--text-3); font-style:italic;}
+  .origem{display:inline-block; font-size:10.5px; border:1px dashed var(--line-soft); border-radius:10px;
+    padding:0 6px; color:var(--text-3); margin-left:6px;}
+  .grav.gold{background:var(--gold);} .grav.red{background:var(--red);}
+  .grav.blue{background:var(--blue);} .grav.roxo{background:var(--roxo);}
+  .fila-estado{border:1px dashed var(--line-soft); border-radius:10px; padding:10px 14px; margin:0 0 14px;
+    font-size:13.5px; color:var(--text-3); line-height:1.65;}
+  .fila-estado.ruim{border-style:solid; border-color:var(--red); color:var(--text-2); background:var(--red-dim);}
+  .fila-aviso{margin-top:4px; color:var(--text-3);}
 
   /* Meu mapa — um capítulo por frente, na ordem da narrativa do Roadmap */
   #mapa-resumo{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2);
@@ -219,6 +251,7 @@
   <nav class="abas">
     <a class="aba" data-vista="capa" href="#capa">🔔 Capa</a>
     <a class="aba" data-vista="mapa" href="#mapa">🗺️ Meu mapa</a>
+    <a class="aba" data-vista="prioridades" href="#prioridades">🎯 Prioridades</a>
     <a class="aba" data-vista="operacao" href="#operacao">⚙️ Operação</a>
     <a class="aba" data-vista="memoria" href="#memoria">📚 Memória</a>
     <!-- Caminho RELATIVO de proposito: online, `../` a partir de
@@ -233,6 +266,12 @@
     <p class="sub">O caminho do projeto em cinco capítulos: <b>onde cada frente está</b> e <b>para onde ela vai</b>. Como tudo aqui, é calculado dos registros — capítulo sem rumo registrado diz que não sabe, em vez de inventar.</p>
     <div id="mapa-resumo"></div>
     <div id="mapa-capitulos"></div>
+  </section>
+  <section class="vista" id="vista-prioridades">
+    <p class="sub">Tudo que está aberto, <b>por área do site</b>, e dentro de cada área <b>por tipo</b>: o que só você decide, o que está quebrado, o que os robôs vão fazer, e para onde a área vai. Em cada lista, o mais importante vem primeiro. Como tudo aqui, é calculado dos registros e da fila dos robôs, e nada disto é digitado à mão.</p>
+    <div class="fila-estado" id="pri-fila"></div>
+    <div class="faixa" id="pri-faixa"></div>
+    <div id="pri-areas"></div>
   </section>
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
@@ -679,6 +718,167 @@ try {
 
     elCaps.appendChild(box);
   });
+
+  // ---------- Prioridades: o que fazer primeiro, por área do site ----------
+  // Agrupar e ordenar é de LOGICA.prioridades (testada em Node); aqui só se
+  // desenha. Os registros nascem com a página; a fila dos robôs é buscada uma
+  // vez, ao abrir a aba, e quando chega a estrutura é recalculada inteira, para
+  // a contagem do topo bater com a soma dos blocos.
+  var AREAS_DO_SITE = PAINEL.areas || [];
+  var GRUPOS_DA_AREA = [
+    { id: "decidir", nome: "Decidir (só você)", diz: "Cada uma trava alguma coisa. Os robôs não tiram do lugar." },
+    { id: "alerta", nome: "Quebrado ou em alerta", diz: "Vermelho e âmbar sem registro de conserto." },
+    { id: "robos", nome: "Na fila dos robôs", diz: "Da que mais custa hoje para a que menos custa." },
+    { id: "rumo", nome: "Rumos e promessas", diz: "Para onde esta área vai, e o que foi prometido com prazo." }
+  ];
+  var tarefasDaFila = [];
+  function emDias(n) { return n + " dia" + (n === 1 ? "" : "s"); }
+  function corta(texto, teto) {
+    texto = String(texto == null ? "" : texto);
+    return texto.length > teto ? texto.slice(0, teto - 1) + "…" : texto;
+  }
+  function metaDePrioridade(i) {
+    var r = i.registro, t = i.tarefa;
+    if (i.especie === "pedido") {
+      return "espera há " + emDias(i.dias) + " · " +
+        (r.impacto === "alto" ? "peso alto" : r.impacto === "medio" ? "peso médio"
+          : r.impacto === "baixo" ? "peso baixo" : "peso: não sei") +
+        (r.reversivel === false ? " · NÃO dá para desfazer" : r.reversivel === true ? " · dá para desfazer" : "") +
+        " · pedido " + r.arquivo;
+    }
+    if (i.especie === "alerta") {
+      return (r.gravidade === "vermelho" ? "vermelho" : "âmbar") + " · aberto há " + emDias(i.dias) +
+        " · " + r.tipo + " " + r.arquivo;
+    }
+    if (i.especie === "tarefa") {
+      var selo = t.selo || {};
+      return t.id + " · " + (selo.texto || "ninguém classificou esta ainda") +
+        (typeof t.importancia === "number" ? " (" + t.importancia + ")" : "") + " · " +
+        (t.para_o_dono === true ? "parada: só você destrava" : (t.situacao || t.estado || "sem situação declarada")) +
+        ((t.onde && t.onde.length) ? " · mexe em: " + t.onde.join(", ") : "");
+    }
+    return (i.especie === "compromisso" ? "compromisso" : "rumo") + " registrado há " + emDias(i.dias) +
+      (i.venceEm == null ? " · sem prazo"
+        : i.venceEm < 0 ? " · VENCEU há " + emDias(-i.venceEm) : " · vence em " + emDias(i.venceEm)) +
+      " · " + r.arquivo;
+  }
+  function detalhesDePrioridade(i) {
+    var linhas = [];
+    if (i.especie === "pedido") {
+      if (i.registro.se_eu_nao_decidir) linhas.push(["Se você não decidir", i.registro.se_eu_nao_decidir]);
+      if (i.registro.recomendacao) linhas.push(["Recomendação", i.registro.recomendacao]);
+    } else if (i.especie === "tarefa") {
+      if (i.tarefa.para_o_dono === true) {
+        if (i.tarefa.motivo) linhas.push(["Por que parou", i.tarefa.motivo]);
+      } else if (i.tarefa.o_que_muda) {
+        linhas.push(["O que muda", i.tarefa.o_que_muda]);
+      }
+    }
+    return linhas;
+  }
+  function itemDePrioridade(i, posicao) {
+    var it = el("div", "item");
+    var t = el("div", "t");
+    t.appendChild(el("span", "grav " + i.cor));
+    t.appendChild(el("span", "pos", "#" + posicao));
+    t.appendChild(document.createTextNode(i.tarefa ? i.tarefa.titulo : i.registro.titulo));
+    // Área tirada da frente é aproximação, e é dita: esconder isso faria um
+    // palpite parecer um fato.
+    if (i.pelaFrente) t.appendChild(el("span", "origem", "área pelo capítulo do livro"));
+    it.appendChild(t);
+    it.appendChild(el("div", "meta", metaDePrioridade(i)));
+    detalhesDePrioridade(i).forEach(function (linha) {
+      var d = el("div", "det");
+      d.appendChild(el("b", null, linha[0] + ": "));
+      d.appendChild(document.createTextNode(corta(linha[1], 180)));
+      it.appendChild(d);
+    });
+    return it;
+  }
+  function desenharPrioridades() {
+    var p = LOGICA.prioridades(REGS, AGORA, PRONTOS, AREAS_DO_SITE, tarefasDaFila);
+    // "Sem área reconhecida" só aparece com gente dentro: vazio, seria uma
+    // acusação permanente sem nada a fazer nela.
+    var lista = p.areas.concat(p.semArea.total ? [p.semArea] : []);
+    var faixa = document.getElementById("pri-faixa");
+    var blocos = document.getElementById("pri-areas");
+    faixa.textContent = "";
+    blocos.textContent = "";
+    lista.forEach(function (a) {
+      // A contagem sai da MESMA estrutura que desenha os blocos: recontar aqui
+      // criaria dois números para o mesmo fato.
+      var cartao = el("button", "card");
+      cartao.type = "button";
+      cartao.appendChild(el("b", null, a.nome));
+      var n = el("div", "n");
+      [["decidir", " para você decidir · "], ["alerta", " em alerta"],
+        ["robos", " na fila dos robôs · "], ["rumo", " rumos"]].forEach(function (par, k) {
+        var quantos = a.grupos[par[0]].length;
+        n.appendChild(el("em", quantos ? null : "zero", String(quantos)));
+        n.appendChild(document.createTextNode(par[1]));
+        if (k === 1) n.appendChild(el("br"));
+      });
+      cartao.appendChild(n);
+      cartao.onclick = function () {
+        var alvo = document.getElementById("area-" + (a.id || "sem"));
+        if (alvo && alvo.scrollIntoView) alvo.scrollIntoView();
+      };
+      faixa.appendChild(cartao);
+
+      var bloco = el("div", "bloco");
+      bloco.id = "area-" + (a.id || "sem");
+      var cab = el("div", "cab", a.nome);
+      cab.appendChild(el("span", "cont", String(a.total)));
+      cab.appendChild(el("span", "diz", a.diz));
+      bloco.appendChild(cab);
+      if (!a.total) bloco.appendChild(el("div", "item vazio", "Nada pendente nesta área hoje."));
+      GRUPOS_DA_AREA.forEach(function (g) {
+        var itens = a.grupos[g.id];
+        if (!itens.length) return;
+        var cabG = el("div", "grupo g-" + g.id, g.nome);
+        cabG.appendChild(el("span", "cont", String(itens.length)));
+        cabG.appendChild(el("span", "diz", g.diz));
+        bloco.appendChild(cabG);
+        itens.forEach(function (i, k) { bloco.appendChild(itemDePrioridade(i, k + 1)); });
+      });
+      blocos.appendChild(bloco);
+    });
+  }
+  function estadoDaFila(texto, ruim, aviso) {
+    var f = document.getElementById("pri-fila");
+    f.className = "fila-estado" + (ruim ? " ruim" : "");
+    f.textContent = texto;
+    if (aviso) f.appendChild(el("div", "fila-aviso", aviso));
+  }
+  // Um pedido só, na primeira abertura da aba, e nenhum temporizador: a mesma
+  // disciplina da Memória. Por duplo clique não há servidor a quem perguntar, e
+  // a tela diz isso em vez de tentar e colher erro (o cuidado de medirDivida).
+  var filaJaBuscada = false;
+  function buscarAFila() {
+    if (filaJaBuscada) return;
+    filaJaBuscada = true;
+    if (CONTEXTO.local || !window.fetch) {
+      estadoDaFila("A fila dos robôs só chega pelo site: abra meshcraft.top/admin/painel/ e clique em Prioridades.");
+      return;
+    }
+    estadoDaFila("buscando a fila dos robôs…");
+    fetch("fila.json", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("o servidor respondeu " + r.status); return r.json(); })
+      .then(function (d) {
+        if (d.erro) { estadoDaFila(d.erro, true); return; }
+        tarefasDaFila = d.tarefas || [];
+        estadoDaFila(tarefasDaFila.length
+          ? tarefasDaFila.length + " tarefa(s) abertas na fila dos robôs, lidas agora."
+          : "Nenhuma tarefa aberta na fila dos robôs.", false, d.aviso || null);
+        desenharPrioridades();
+      })
+      .catch(function (e) {
+        estadoDaFila("Não consegui buscar a fila dos robôs (" + e.message +
+          "). Os pedidos e alertas acima continuam valendo.", true);
+      });
+  }
+  estadoDaFila("A fila dos robôs é buscada quando você abre esta aba.");
+  desenharPrioridades();
 
   // ---------- o placar (cabine escura) ----------
   var nCaixa = LOGICA.caixaDeEntrada(REGS, AGORA, PRONTOS).length;
@@ -1195,15 +1395,17 @@ try {
   rod.appendChild(document.createTextNode(". Página aberta às " + AGORA.toLocaleTimeString("pt-BR") + " de " + AGORA.toLocaleDateString("pt-BR") + " — todo frescor foi comparado com este relógio."));
 
   // ---------- abas ----------
+  var VISTAS = ["capa", "mapa", "prioridades", "operacao", "memoria"];
   function mostraVista() {
     var alvo = (location.hash || "#capa").slice(1);
-    if (["capa", "mapa", "operacao", "memoria"].indexOf(alvo) === -1) alvo = "capa";
-    ["capa", "mapa", "operacao", "memoria"].forEach(function (v) {
+    if (VISTAS.indexOf(alvo) === -1) alvo = "capa";
+    VISTAS.forEach(function (v) {
       document.getElementById("vista-" + v).className = "vista" + (v === alvo ? " ativa" : "");
     });
     Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {
       aEl.className = "aba" + (aEl.getAttribute("data-vista") === alvo ? " ativa" : "");
     });
+    if (alvo === "prioridades") buscarAFila();
   }
   window.addEventListener("hashchange", mostraVista);
   mostraVista();
