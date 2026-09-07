@@ -67,7 +67,7 @@ from datetime import datetime
 
 from django.db import transaction
 
-from . import gestos, motor, mural
+from . import gestos, motor, mural, negociacao
 from .models import (
     Encomenda,
     ESTADOS_DO_MURAL_RESERVAVEL,
@@ -75,6 +75,7 @@ from .models import (
     Oferta,
     Parametro,
     PerfilProfissional,
+    Proposta,
     ReservaDoMural,
 )
 from .relogio import prazo_para_virar_aberta
@@ -103,6 +104,7 @@ class Tique:
 
     ofertas_expiradas: tuple[object, ...] = ()
     reservas_expiradas: tuple[object, ...] = ()
+    propostas_expiradas: tuple[object, ...] = ()
     encomendas_abertas: tuple[object, ...] = ()
     projetos_ao_plantao: tuple[object, ...] = ()
     rodada: motor.Rodada = field(default_factory=motor.Rodada)
@@ -339,6 +341,69 @@ def expirar_reservas_vencidas(agora: datetime, *, site_id: str) -> tuple[object,
     return tuple(fechadas)
 
 
+def expirar_propostas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, ...]:
+    """Fecha como `expirou` toda proposta de pé cuja validade já venceu.
+
+    Produto: `PLANO-AREA-DE-NEGOCIACAO.md` §4.2. **O destino depende de quem
+    ficou calado, e essa distinção não é detalhe:**
+
+    - **calou o CLIENTE** (recebeu a proposta do aluno e não respondeu): o
+      projeto vai ao PLANTÃO, nunca para outro aluno ([INV-ENC-N7]). Mandá-lo ao
+      próximo faria cada aluno da fila gastar a própria vez num cliente
+      fantasma, um depois do outro, e nenhum deles saberia por quê.
+    - **calou o ALUNO** (recebeu a contraproposta e não respondeu): o projeto
+      volta à pista de origem, para o próximo. Ele perde este projeto e nada
+      mais: nenhuma linha daqui toca `data_entrada_fila` ([INV-ENC-N5]).
+
+    `valida_ate <= agora`: o instante exato do vencimento já conta como vencido,
+    a mesma convenção de borda da oferta e da reserva. Sem uma convenção única,
+    o minuto do vencimento pertenceria aos dois lados.
+
+    **O silêncio do aluno aqui NÃO conta para a pausa automática**, e a ausência
+    de `gestos.contar_o_silencio` nesta função é deliberada: aquele contador
+    mede silêncio diante de uma OFERTA (lei §6.3, três silêncios pausam o
+    aluno), e o degrau que o criou o mediu contra a `Oferta`. Somar a negociação
+    ali mudaria a régua de uma pausa que a lei já definiu, e isso é decisão do
+    mantenedor, não efeito colateral de um degrau novo.
+
+    A ordem das travas é a de sempre: encomenda, depois a proposta.
+    """
+    vencidas = list(
+        Proposta.objects.filter(
+            site_id=site_id,
+            resultado=Proposta.Resultado.PENDENTE,
+            valida_ate__lte=agora,
+        )
+        .order_by("valida_ate", "id")
+        .values_list("pk", "encomenda_id")
+    )
+
+    fechadas: list[object] = []
+    for proposta_id, encomenda_id in vencidas:
+        with transaction.atomic():
+            projeto = Encomenda.objects.select_for_update().get(pk=encomenda_id)
+            proposta = Proposta.objects.get(pk=proposta_id)
+            if proposta.resultado != Proposta.Resultado.PENDENTE:
+                # A outra passada chegou primeiro, ou alguém respondeu entre a
+                # leitura e a trava. Não é erro: é a corrida sendo perdida, e
+                # vale aqui a mesma observação dos dois gestos de cima. Quem dá
+                # a idempotência da passada seguinte é o FILTRO da consulta
+                # (`armadilhas/319`).
+                continue
+            proposta.responder(Proposta.Resultado.EXPIROU, em=agora)
+            if projeto.status == Encomenda.Status.EM_NEGOCIACAO:
+                if proposta.de_quem == Proposta.DeQuem.ALUNO:
+                    negociacao.mandar_ao_plantao(
+                        projeto, negociacao.MOTIVO_DO_CLIENTE_CALADO
+                    )
+                else:
+                    negociacao.devolver_a_pista(
+                        projeto, negociacao.MOTIVO_DO_ALUNO_CALADO
+                    )
+            fechadas.append(proposta_id)
+    return tuple(fechadas)
+
+
 def mandar_ao_plantao_o_que_ninguem_pode_pegar(
     agora: datetime, *, site_id: str
 ) -> tuple[object, ...]:
@@ -402,15 +467,22 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
 
     1. **Expirar** as ofertas vencidas (a encomenda volta a `na_fila`).
     2. **Expirar** as reservas vencidas (o projeto volta ao Mural).
-    3. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
-    4. **Mandar ao plantão** o que encalhou no Mural ([INV-ENC-M5]).
-    5. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
+    3. **Expirar** as propostas vencidas (o projeto volta à pista, ou vai ao
+       plantão, conforme quem ficou calado).
+    4. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
+    5. **Mandar ao plantão** o que encalhou no Mural ([INV-ENC-M5]).
+    6. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
 
-    O 2 vem antes do 4 pela mesma razão que o 1 vem antes do 3: o projeto cuja
+    O 2 vem antes do 5 pela mesma razão que o 1 vem antes do 4: o projeto cuja
     reserva acabou de vencer volta à prateleira NESTA passada, e é nesta passada
     que ele tem de ser julgado. Com a ordem trocada, um projeto sem elegível
     ficaria um tique inteiro escondido dentro de `reservada`, e o [INV-ENC-M5]
     cairia por um minuto a cada volta.
+
+    E o 3 vem antes dos dois pela mesma razão outra vez: a negociação que morreu
+    devolve o projeto à fila ou ao Mural agora, e quem acabou de voltar tem de
+    ser oferecido nesta passada, e não na seguinte. O aluno solto por ela também
+    volta a `disponivel` a tempo de o motor o enxergar.
 
     Chamar duas vezes seguidas com o mesmo estado não muda nada na segunda
     ([INV-ENC-J10]): cada gesto filtra pelo que ainda está pendente, e o que já
@@ -419,12 +491,14 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     """
     expiradas = expirar_ofertas_vencidas(agora, site_id=site_id)
     reservas = expirar_reservas_vencidas(agora, site_id=site_id)
+    propostas = expirar_propostas_vencidas(agora, site_id=site_id)
     abertas = abrir_o_que_esperou_demais(agora, site_id=site_id)
     ao_plantao = mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=site_id)
     rodada = motor.rodar(agora, site_id=site_id)
     return Tique(
         ofertas_expiradas=expiradas,
         reservas_expiradas=reservas,
+        propostas_expiradas=propostas,
         encomendas_abertas=abertas,
         projetos_ao_plantao=ao_plantao,
         rodada=rodada,
