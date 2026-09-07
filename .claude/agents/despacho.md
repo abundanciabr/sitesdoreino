@@ -70,7 +70,8 @@ gh pr create --base main --title "<celula>: <o que muda, para leigo>" --body-fil
 
 Leia o número que o `gh` devolveu. O registro do livro (`painel/registros/`,
 molde em `painel/LEIA-ME.md`, número por `python ci/reservar.py numero registro`,
-menos de 1 KB, `evidencia` citando o PR) e o evento da fila (`python ci/fila.py
+menos de 1 KB, `evidencia` citando o PR, e `area: "<o nome do seu ramo>"`, um dos
+nomes de `painel/areas.json`) e o evento da fila (`python ci/fila.py
 concluir TAR-NNN --quem ... --evidencia <URL do PR>`) entram num commit no MESMO
 ramo. O portão recusa pouso de PR sem o próprio recibo a bordo
 (`armadilhas/185`, `248`). PR que toca só `painel/` ou `fila/` é isento.

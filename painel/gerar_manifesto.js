@@ -52,6 +52,7 @@ var PASTA = path.join(AQUI, "registros");
 var TEMPLATE = path.join(AQUI, "painel.template.html");
 var SAIDA_PAGINA = path.join(AQUI, "painel.html");
 var ARQUIVO_LOGICA = path.join(AQUI, "logica.js");
+var ARQUIVO_AREAS = path.join(AQUI, "areas.json");
 var LOGICA = require(path.join(AQUI, "logica.js"));
 var PADRAO_NOME = /^\d{8}-\d{3}-[a-z0-9-]+$/;
 
@@ -64,6 +65,27 @@ function falha(msgs) {
 }
 
 if (!fs.existsSync(PASTA)) erro("a pasta " + PASTA + " não existe. Isto NÃO é um livro vazio válido.");
+
+// -----------------------------------------------------------------------------
+// AS ÁREAS DO SITE (07/09/2026) — painel/areas.json, lido por três leitores: por
+// este gerador, pela rota fila.json da área administrativa e pelo portão do
+// pouso. FAIL-CLOSED de propósito: sem o arquivo, o campo `area` de um registro
+// não teria contra o que ser conferido e a aba Prioridades desenharia todo mundo
+// em "sem área reconhecida" — uma tela plausível e errada. Recusar é mais barato.
+// -----------------------------------------------------------------------------
+var AREAS;
+try { AREAS = JSON.parse(semBOM(fs.readFileSync(ARQUIVO_AREAS, "utf8"))).areas; }
+catch (e) {
+  erro("não consegui ler as áreas do site em " + ARQUIVO_AREAS + " (" + e.message +
+    "). Sem elas o painel não sabe em que parte do site cada fato mexe, e nada é escrito.");
+}
+var errosDeArea = LOGICA.validarAreas(AREAS);
+if (errosDeArea.length) {
+  console.error("❌ FAIL gerar_manifesto — " + ARQUIVO_AREAS + " está inválido:");
+  errosDeArea.forEach(function (m) { console.error("   - " + m); });
+  console.error("   Nada foi escrito. Conserte o arquivo das áreas; não contorne.");
+  process.exit(1);
+}
 
 var nomes;
 try { nomes = fs.readdirSync(PASTA).filter(function (n) { return n.slice(-3) === ".js"; }).sort(); }
@@ -99,7 +121,7 @@ nomes.forEach(function (nome) {
 });
 
 // A MESMA validação da página. Um contrato, dois guardiões, zero divergência.
-problemas = problemas.concat(LOGICA.validarRegistros(registros));
+problemas = problemas.concat(LOGICA.validarRegistros(registros, AREAS));
 if (problemas.length) falha(problemas);
 
 // -----------------------------------------------------------------------------
@@ -275,6 +297,9 @@ var dados = [
   "  orcamento: { resumoBytes: " + bytesResumo + ", resumoTeto: " + LOGICA.ORCAMENTO_RESUMO_BYTES +
     ", paginaBytes: __TAMANHO__, paginaTeto: " + LOGICA.ORCAMENTO_PAINEL_BYTES + " },",
   "  livro: { total: " + registros.length + ", meses: " + JSON.stringify(declaracaoDosMeses) + " },",
+  // As áreas do site viajam com a página: é delas que a aba Prioridades tira a
+  // ORDEM da tela, o nome que o dono lê e a que área pertence cada registro.
+  "  areas: JSON.parse(" + comoTextoJS(AREAS) + "),",
   // A fila do mantenedor, em UMA linha de forma rígida: quem a lê de fora é a
   // Central de Pendências da área administrativa, que não executa JavaScript.
   // `maisAntigoQuando` é a data do pedido mais velho ainda sem resposta, e
