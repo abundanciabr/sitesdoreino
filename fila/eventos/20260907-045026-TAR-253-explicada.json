@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-045026-TAR-253-explicada",
+  "tarefa": "TAR-253",
+  "evento": "explicada",
+  "quando": "2026-09-07T04:50:26+00:00",
+  "quem": "medido em 07/09/2026: run 34083102312 (job muralhas, 1m35s no Linux da esteira) contra 5664s (94 min) da mesma suite em serie no Windows do mantenedor, dentro do teto de 900s de ci/ci.py",
+  "o_que_e": "Quando um robo termina uma tarefa, ele roda um comando chamado make ci para provar que nada quebrou. Esse comando tem um cronometro embutido: se a checagem toda nao acabar em 15 minutos, ele desiste e avisa ERRO, mesmo sem saber se estava tudo certo ou nao.",
+  "o_que_muda": "Hoje, no computador onde os robos trabalham, essa mesma checagem esta levando quase 1h e meia, dez vezes mais que o cronometro permite. Ela SEMPRE estoura o tempo e SEMPRE avisa erro, mesmo quando o trabalho do robo esta perfeito. Isso destroi a prova que a casa pede em toda tarefa: ou o robo perde 1h30 para receber um erro que nao diz nada sobre o trabalho dele, ou passa a ignorar essa exigencia.",
+  "exemplo": "E como pedir para alguem provar que chegou na hora usando um cronometro de forno que so conta ate 15 minutos, numa viagem que sempre leva 1h30. Nao importa se a pessoa chegou cedo ou atrasada: o cronometro sempre vai apitar antes, e ninguem nunca vai saber se ela chegou na hora.",
+  "importancia": 65
+}
