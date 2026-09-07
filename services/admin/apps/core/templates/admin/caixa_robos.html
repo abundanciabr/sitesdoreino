@@ -275,9 +275,11 @@ não tem sigla (lei do CLAUDE.md).
       </p>
     {% elif resultado == "sem_token" %}
       <p class="desfecho nao-deu">
-        O botão está desligado porque falta a senha que deixa o site abrir um pedido
-        no GitHub. Avise um robô com estas palavras: "ponha a {{ variavel_do_token }}
-        no env da admin".
+        O clique não abriu o pedido no GitHub, porque a chave {{ variavel_do_token }}
+        não está no env da admin agora. Ela pode nunca ter sido posta, mas o mais
+        provável, se o botão funcionava antes e parou agora, é que ela tenha vencido.
+        Avise um robô com estas palavras: "ponha (ou troque) a {{ variavel_do_token }}
+        no env da admin". O roteiro é o mesmo dos dois casos, criar ou trocar: infra/por-a-chave-do-github.sh.
       </p>
     {% elif resultado == "github_recusou" %}
       <p class="desfecho nao-deu">

@@ -88,6 +88,11 @@ VALORES_INICIAIS = {
     "entregas_para_nivel_avancado": "5",
     "janela_sem_abandono": "90",
     "pausa_por_segundo_abandono": "30",
+    # A 28a chave, e a unica que nao vem da lei secao 6: ela vem do paragrafo 9
+    # do PLANO-AREA-DE-NEGOCIACAO.md, a emenda que o mantenedor aprovou em
+    # 04/09/2026. Tres HORAS UTEIS para o aluno que pegou um projeto no Mural
+    # olhar o briefing e propor.
+    "relogio_da_reserva_no_mural": "3",
 }
 
 

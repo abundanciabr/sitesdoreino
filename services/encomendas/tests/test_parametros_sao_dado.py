@@ -7,7 +7,7 @@ teste-guarda lê cada chave do banco e reprova constante mágica no motor."*
 
 Este arquivo é esse teste-guarda, e ele tem três dentes:
 
-1. **`test_a_semente_grava_os_27_valores_da_lei`** lê cada chave DO BANCO depois
+1. **`test_a_semente_grava_os_28_valores`** lê cada chave DO BANCO depois
    de rodar a semente, e compara com a tabela da lei transcrita aqui. É a prova
    de fora: se a semente errar um valor, quem discorda é o teste, não o autor.
 2. **`test_mudar_um_parametro_e_acrescentar_uma_linha`** e os dois irmãos
@@ -39,7 +39,8 @@ AGORA = datetime(2026, 9, 4, 12, 0, tzinfo=fuso.utc)
 # A tabela da lei §6, transcrita AQUI, de propósito, e não importada do
 # semeador: um teste que importa a resposta do arquivo que ele mede não mede
 # nada. As 19 linhas da lei viram 27 chaves porque várias juntam duas ou três
-# chaves numa célula só ("janela_inicio / janela_fim").
+# chaves numa célula só ("janela_inicio / janela_fim"); a 28ª vem do §9 do
+# `PLANO-AREA-DE-NEGOCIACAO.md`.
 A_LEI_SECAO_6 = {
     "relogio_da_oferta": "3",
     "janela_inicio": "08:00",
@@ -68,6 +69,12 @@ A_LEI_SECAO_6 = {
     "entregas_para_nivel_avancado": "5",
     "janela_sem_abandono": "90",
     "pausa_por_segundo_abandono": "30",
+    # A 28ª, e a única que não vem da lei §6: ela vem do §9 do
+    # `PLANO-AREA-DE-NEGOCIACAO.md`, a emenda que o mantenedor aprovou em
+    # 04/09/2026 e que trouxe o Mural. Transcrita aqui pela mesma razão que as
+    # outras 27: um teste que importa a resposta do arquivo que ele mede não
+    # mede nada.
+    "relogio_da_reserva_no_mural": "3",
 }
 
 CELULA = Path(__file__).resolve().parent.parent
@@ -90,13 +97,13 @@ def semear(site=SITE):
 # ---------------------------------------------------------------------------
 
 
-def test_o_catalogo_tem_as_27_chaves_da_lei():
+def test_o_catalogo_tem_as_28_chaves():
     """Chave a mais ou a menos reprova aqui, antes de o motor ler `None`."""
     assert sorted(CHAVES_DE_PARAMETRO) == sorted(A_LEI_SECAO_6)
-    assert len(CHAVES_DE_PARAMETRO) == 27
+    assert len(CHAVES_DE_PARAMETRO) == 28
 
 
-def test_a_semente_grava_os_27_valores_da_lei(db):
+def test_a_semente_grava_os_28_valores(db):
     """A prova de fora: cada chave é LIDA DO BANCO e comparada com a lei."""
     semear()
     do_banco = dict(
@@ -344,7 +351,7 @@ def test_nenhuma_constante_magica_no_codigo_da_celula():
     assert achados == [], (
         "número solto no código desta célula: "
         + "; ".join(achados)
-        + ". Os 27 parâmetros da lei §6 são DADO (lei §3.8): leia o valor "
+        + ". Os parâmetros desta célula são DADO (lei §3.8): leia o valor "
         "vigente com `Parametro.vigente_em(chave, agora, site_id=...)`. Se o "
         "número não for parâmetro nenhum, ele ainda assim não é constante de "
         "módulo: passe-o como argumento, ou reabra a decisão (critério de "
