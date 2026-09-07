@@ -2040,8 +2040,6 @@ class CursosClient:
             json=corpo,
         )
 
-        return params
-
     # -- as quatro leituras --------------------------------------------------
     def aulas(
         self, site_id: str, curso: str, parte: "int | None" = None

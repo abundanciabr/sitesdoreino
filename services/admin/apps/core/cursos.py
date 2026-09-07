@@ -82,9 +82,11 @@ PROGRESSAO = {
 }
 
 #: `slug` é `^[a-z0-9-]{1,64}$` no contrato de `createCourse` e no de
-#: `createProduct`. O corte acontece aqui para que o apelido gerado do nome não
-#: vire 422 lá — e o apelido digitado fora da forma também é recusado aqui, com
-#: frase própria, em vez de virar a recusa genérica da outra célula.
+#: `createProduct`. Todo apelido, gerado do nome ou digitado, passa por
+#: `apelido_de` antes de chegar às portas: vira minúsculo, sem acento, com
+#: hífens e no máximo este tamanho. Ninguém é recusado por ter digitado
+#: "Modelagem 3D": o que a tela recusa, com frase própria, é só o apelido que
+#: fica vazio depois da limpeza, porque esse a porta recusaria com 422 genérico.
 TETO_DO_APELIDO = 64
 
 
@@ -346,7 +348,7 @@ def escola_curso_criar(request):
         },
     )
     return _depois_de_criar(
-        request, site, desfecho, criado, rascunho, apelido, nome, escolha
+        request, site, desfecho, criado, rascunho, apelido, nome, escolha, produto_id
     )
 
 
@@ -365,11 +367,19 @@ def _metade_feita(nome: str, escolha: str) -> str:
     )
 
 
-def _depois_de_criar(request, site, desfecho, criado, rascunho, apelido, nome, escolha):
+def _rastro_do_produto(escolha: str, produto_id: str) -> str:
+    """O que a auditoria guarda sobre o produto: o id que ficou ligado ao curso
+    (é ele que a matrícula compara), e se nasceu neste envio ou já existia."""
+    origem = "criado neste envio" if escolha == "novo" else "escolhido na lista"
+    return f"produto_id: {produto_id or 'nenhum'} ({origem})"
+
+
+def _depois_de_criar(
+    request, site, desfecho, criado, rascunho, apelido, nome, escolha, produto_id
+):
+    rastro = _rastro_do_produto(escolha, produto_id)
     if desfecho == CursosClient.OK:
-        _auditar(
-            request, Registro.CRIAR_CURSO, apelido, Registro.OK, f"produto: {escolha}"
-        )
+        _auditar(request, Registro.CRIAR_CURSO, apelido, Registro.OK, rastro)
         criado_nome = str((criado or {}).get("nome") or nome)
         return _desenhar(
             request,
@@ -390,7 +400,7 @@ def _depois_de_criar(request, site, desfecho, criado, rascunho, apelido, nome, e
             if desfecho in (CursosClient.RECUSADO, CursosClient.JA_EXISTE)
             else Registro.NAO_RESPONDEU
         ),
-        f"produto: {escolha}; desfecho: {desfecho}",
+        f"{rastro}; desfecho: {desfecho}",
     )
     metade = _metade_feita(nome, escolha)
     if desfecho == CursosClient.JA_EXISTE:
