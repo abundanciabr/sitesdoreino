@@ -73,6 +73,14 @@ as outras cinco conferências continuam sendo aviso: o §7 pôs o veto na remiss
 e só nela. A regra mora em `apps/cursos/coerencia.py`; o ponto onde ela encaixa
 na publicação é `_publicar`.
 
+O GUARDIÃO DE FIDELIDADE ENTROU COMO PARÂMETRO (TAR-246, degrau 3.2)
+---------------------------------------------------------------------
+O segundo conferente é IA, e não ganhou operação nova: `checkLesson` ganhou o
+parâmetro opcional `modo`. Ele responde a mesma pergunta, na mesma resposta e
+para a mesma tela; o que muda é a régua. A razão por extenso está na seção da
+operação. A regra mora em `apps/cursos/fidelidade.py`, e continuam sendo TREZE
+operações.
+
 O SOMBREAMENTO QUE ESTA PORTA NÃO PODE COMER (`armadilhas/020`)
 -----------------------------------------------------------------
 Um `ninja.Schema` com o MESMO nome de um model Django, no mesmo arquivo,
@@ -110,7 +118,7 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
 
-from apps.cursos import coerencia, enderecos
+from apps.cursos import coerencia, enderecos, fidelidade
 from apps.cursos.models import PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
 from apps.cursos.models import Bloco as BlocoModel
@@ -956,7 +964,7 @@ def publish_lesson(
 
 
 # ---------------------------------------------------------------------------
-# O REVISOR DE COERÊNCIA (TAR-245, degrau 3.1)
+# OS DOIS CONFERENTES DA ENCOMENDA (TAR-245, degrau 3.1; TAR-246, degrau 3.2)
 # ---------------------------------------------------------------------------
 # Ele é de LEITURA e não grava nada: confere a aula como ela está gravada e
 # devolve a lista de defeitos. É por isso que é `GET`, e não um `POST` que
@@ -966,6 +974,23 @@ def publish_lesson(
 # Ele mora só no caminho que sabe de curso. As quatro irmãs sem curso existem
 # porque o editor que está no ar as chama desde antes da TAR-203; esta nasceu
 # depois, e nascer com o defeito que aquelas carregam seria escolhê-lo.
+#
+# O `modo` É PARÂMETRO, E NÃO OPERAÇÃO NOVA (degrau 3.2, TAR-246)
+# ---------------------------------------------------------------------
+# O Guardião de fidelidade responde a MESMA pergunta que o Revisor de
+# coerência ("o que está errado nesta encomenda?"), com a mesma resposta
+# (`list[DefeitoSchema]`) e para a mesma tela. O que muda é a régua: o Revisor
+# compara a encomenda com ela mesma, por código; o Guardião compara cada peça
+# derivada com a fonte dela, por IA.
+#
+# Uma segunda operação teria de repetir o endereço, a resolução do curso, o
+# guarda da parte e o formato da resposta, e o dia em que uma das quatro coisas
+# mudasse, mudaria em um lugar só. `modo` é opcional e o padrão é `coerencia`:
+# quem chamava antes deste degrau continua recebendo, byte a byte, o que
+# recebia. Modo fora dos dois é 422 do ninja, antes de tocar o banco.
+class ModoDeConferencia(str, enum.Enum):
+    COERENCIA = "coerencia"
+    FIDELIDADE = "fidelidade"
 
 
 @router.get(
@@ -994,13 +1019,49 @@ def publish_lesson(
         "Os outros cinco sao aviso.\n"
         "\n"
         "Aula sem defeito responde lista vazia, e nao erro. `parte` e o mesmo\n"
-        "GUARDA de `getLesson`. 404 se o curso ou a aula nao existem."
+        "GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.\n"
+        "\n"
+        "O `modo` ESCOLHE A REGUA, e o padrao e `coerencia`, identico ao que\n"
+        "esta operacao respondia antes do degrau 3.2.\n"
+        "\n"
+        "Em `modo=fidelidade` responde o GUARDIAO DE FIDELIDADE, que e IA, e\n"
+        "nao codigo. Ele compara cada peca DERIVADA com a FONTE de que ela\n"
+        "deriva e aponta onde o sentido mudou: o `roteiro` e a\n"
+        "`videoaula_em_texto` contra as 16 pecas canonicas, o `guia_do_mentor`\n"
+        "contra o `Aceito quando` mais as pecas `voce_faz` e `checkpoint`, e a\n"
+        "peca `dicionario_cartao_respostas` (onde mora o Cartao de 1 pagina)\n"
+        "contra as outras 15. Peca derivada sem texto nao e comparada.\n"
+        "\n"
+        "O `codigo` de cada defeito de fidelidade vem de OUTRO vocabulario\n"
+        "fechado, o dos sete desvios da ficha: `invencao`,\n"
+        "`regra_virou_sugestao`, `nome_trocado`, `omissao`,\n"
+        "`sentido_alterado`, `decisao_simplificada` e\n"
+        "`comparacao_entre_pessoas`. `peca` e a peca DERIVADA, `alvo` e o\n"
+        "trecho dela, e `frase` traz o trecho da fonte ao lado do trecho da\n"
+        "saida. `impede_publicar` e SEMPRE falso neste modo: o Guardiao\n"
+        "aponta, e nunca veta.\n"
+        "\n"
+        "422 em `modo=fidelidade` quando a encomenda nao tem nenhuma peca\n"
+        "derivada escrita, e quando um dos textos passa do teto desta\n"
+        "conferencia; o `detail` diz o que fazer, em portugues. 503 quando a\n"
+        "IA nao produziu resposta (chave ausente, chave recusada, limite,\n"
+        "queda, formato ilegivel), tambem com a frase em portugues. Nada e\n"
+        "gravado em nenhum dos dois casos."
     ),
 )
 def check_lesson(
-    request, curso: str, numero: str, site_id: str, parte: ParteDoCurso | None = None
+    request,
+    curso: str,
+    numero: str,
+    site_id: str,
+    parte: ParteDoCurso | None = None,
+    modo: ModoDeConferencia = ModoDeConferencia.COERENCIA,
 ):
     aula = _aula_do_curso(_curso(site_id, curso), numero, parte)
+    if modo is ModoDeConferencia.FIDELIDADE:
+        defeitos = _conferir_a_fidelidade(aula)
+    else:
+        defeitos = coerencia.conferir(aula)
     return [
         {
             "codigo": defeito.codigo,
@@ -1010,8 +1071,25 @@ def check_lesson(
             "o_que_fazer": defeito.o_que_fazer,
             "impede_publicar": defeito.impede_publicar,
         }
-        for defeito in coerencia.conferir(aula)
+        for defeito in defeitos
     ]
+
+
+def _conferir_a_fidelidade(aula: AulaModel) -> list:
+    """O Guardião, com as duas recusas dele traduzidas em HTTP.
+
+    A separação é de responsabilidade, e não de gosto: o domínio sabe o que
+    houve e diz isso em português; só aqui se sabe que "a encomenda não tem o
+    que conferir" é 422 (o pedido está bem formado, o dado é que não dá) e que
+    "a IA não respondeu" é 503 (tente de novo mais tarde). A frase viaja
+    intacta nos dois casos, porque quem a lê é a professora, na tela do editor.
+    """
+    try:
+        return fidelidade.conferir(aula)
+    except fidelidade.ConferenciaImpossivel as motivo:
+        raise HttpError(422, str(motivo)) from motivo
+    except fidelidade.AgenteIndisponivel as motivo:
+        raise HttpError(503, str(motivo)) from motivo
 
 
 # ---------------------------------------------------------------------------
