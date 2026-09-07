@@ -1491,6 +1491,16 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/robos/excluir",
+      "endereco": "/admin/caixa/robos/excluir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Excluir uma tarefa da fila dos robôs",
+      "descricao": "Não é uma página: tira uma tarefa da fila de trabalho dos robôs, para ela não ser mais feita, e volta para o quadro."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/exportar/",
       "endereco": "/admin/caixa/exportar/",
       "alcance": "publico",
