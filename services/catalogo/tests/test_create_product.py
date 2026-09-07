@@ -137,3 +137,14 @@ def test_sem_credencial_nenhum_produto_nasce(client, token_valido):
 
     assert resposta.status_code == 401
     assert Product.objects.count() == 0
+
+
+def test_com_credencial_errada_nenhum_produto_nasce(client, token_valido):
+    """Chave presente mas desconhecida é o mesmo 401 de chave ausente: a porta
+    não distingue os dois para fora, e nada nasce em nenhum dos casos."""
+    resposta = _cadastrar(
+        client, "token-que-ninguem-cadastrou", slug="invasor", name="Curso do Invasor"
+    )
+
+    assert resposta.status_code == 401
+    assert Product.objects.count() == 0
