@@ -17,6 +17,26 @@
 #   O prompt tem de comecar com `deploy@srv...` ou `root@srv...`. Se comecar
 #   com `PS C:\>`, voce esta no seu computador e este roteiro nao e para la.
 #
+# ELE TERMINA DE TRES JEITOS, e de nenhum outro. Quem cola isto e leigo em
+# terminal, e uma tela que diz duas coisas ao mesmo tempo faz a pessoa escolher
+# a que preferir ler:
+#
+#   1. `== PRONTO ==`. A chave chegou DENTRO do container, conferida por
+#      resumo. E o unico verde, e so ele quer dizer que o robo analista pode
+#      falar.
+#   2. `(aviso: ...)`. Nao havia o que recarregar nesta maquina (sem docker, ou
+#      sem o servico `admin` no compose). O arquivo ficou certo e o proximo
+#      deploy rele o env sozinho. Nao e falha, e nao e PRONTO.
+#   3. `PAROU POR SEGURANÇA: ...`. Qualquer outra coisa, e a frase seguinte diz
+#      o que fazer. TUDO que nao provou que a chave chegou cai aqui: o docker
+#      recusando, o container que nao renasceu, e o container que renasceu com
+#      outra chave dentro.
+#
+# NAO EXISTE "PRONTO com ressalva". Ate 07/09/2026 existia: quando a chave nao
+# chegava ao container, este roteiro imprimia um AVISO de rodape e terminava
+# como se tivesse dado certo. O mantenedor ia ligar um robo que estava
+# desligado, e a tela seguinte quebraria sem ele saber por que.
+#
 # ELE NAO PERGUNTA NADA, e essa e a decisao que da forma ao arquivo. A chave JA
 # EXISTE nesta maquina desde 02/09/2026: o mantenedor a colou uma vez, em
 # `env/forum.env`, pelo `infra/por-a-chave-da-ia-do-forum.sh`. Pedir de novo o
@@ -71,8 +91,22 @@ ENV_REF="env/identidade.env"
 # fixa: muda-la aqui sem mudar o filtro la embaixo deixaria duas.
 MARCA="# escrito por infra/por-a-chave-da-ia-do-admin.sh"
 
-ler_de() {  # arquivo, chave: devolve o valor limpo, sem comentario nem espacos
-  grep "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '[:space:]'
+# O valor EXATAMENTE como esta no arquivo, do primeiro "=" para a frente.
+#
+# SEM LIMPEZA NENHUMA, e a ausencia e o conserto: a versao anterior apagava
+# espacos e cortava o que viesse depois de um "#" ANTES de conferir os
+# caracteres, e assim a conferencia aprovava o que ela mesma tinha acabado de
+# arrumar. Uma chave colada como `sk-ant-api03-AAA BBB` era gravada como
+# `sk-ant-api03-AAABBB` e o roteiro dizia que estava tudo certo, com uma chave
+# que a Anthropic recusa. Valor sujo aqui vira recusa la embaixo, nunca
+# conserto silencioso.
+#
+# O unico corte e o retorno de carro de um arquivo salvo no Windows: aquilo e
+# fim de linha, e nao parte do valor.
+ler_valor() {  # arquivo, chave
+  local linha
+  linha="$(grep "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2-)"
+  printf '%s' "${linha%$'\r'}"
 }
 
 # -----------------------------------------------------------------------------
@@ -94,7 +128,7 @@ cd "$RAIZ" 2>/dev/null || parar "nao achei $RAIZ. Voce esta na VPS certa? O come
 # -----------------------------------------------------------------------------
 echo "== 1/4: lendo o que esta maquina ja sabe =="
 
-CHAVE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_API_KEY)"
+CHAVE_DA_IA="$(ler_valor "$ENV_FORUM" ANTHROPIC_API_KEY)"
 [ -n "$CHAVE_DA_IA" ] || parar "o ANTHROPIC_API_KEY de $RAIZ/$ENV_FORUM esta vazio, e e de la que eu copio a chave da IA. Rode primeiro: curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/por-a-chave-da-ia-do-forum.sh -o /tmp/ia.sh && bash /tmp/ia.sh, e depois este de novo. Nada foi alterado."
 # So letras, numeros, hifen e sublinhado. Nao e frescura de formato: e o que
 # garante que o valor entra no arquivo como uma linha so, sem virar comentario
@@ -108,7 +142,7 @@ esac
 # assim desde 02/09/2026. So a chave nova, ligada a identidade de quem a criou,
 # e recusada sem ele, com HTTP 400. A LINHA nasce mesmo vazia, de proposito: e
 # ela que deixa trocar de chave sem herdar o workspace da anterior.
-WORKSPACE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_WORKSPACE_ID)"
+WORKSPACE_DA_IA="$(ler_valor "$ENV_FORUM" ANTHROPIC_WORKSPACE_ID)"
 case "$WORKSPACE_DA_IA" in
   *[!A-Za-z0-9_-]*) parar "o ANTHROPIC_WORKSPACE_ID de $ENV_FORUM tem um caractere estranho. Confira aquele arquivo. Nada foi alterado." ;;
 esac
@@ -121,7 +155,7 @@ if [ -n "$WORKSPACE_DA_IA" ]; then
 else
   echo "  workspace da IA ........... vazio (e o normal para chave de workspace)"
 fi
-if [ "$(ler_de "$ENV_ADMIN" ANTHROPIC_API_KEY)" = "$CHAVE_DA_IA" ]; then
+if [ "$(ler_valor "$ENV_ADMIN" ANTHROPIC_API_KEY)" = "$CHAVE_DA_IA" ]; then
   echo "  na area administrativa .... a mesma chave ja esta la (vou reescrever igual e recarregar)"
 else
   echo "  na area administrativa .... ainda nao esta la (vou levar)"
@@ -144,6 +178,12 @@ umask 077
 cp -a "$ENV_ADMIN" "$ENV_ADMIN.bak-$(date +%s)" || parar "nao consegui guardar a copia de seguranca de $ENV_ADMIN. Nada foi alterado."
 
 NOVO="$ENV_ADMIN.novo-$$"
+# ESTE ARQUIVO CARREGA A CHAVE DENTRO. Entre a escrita dele e a troca existem
+# alguns segundos, e um Ctrl-C ali deixaria o segredo em $RAIZ/env/ com um nome
+# que nenhuma mensagem cita: ninguem procuraria, e nenhuma execucao seguinte o
+# apagaria (`armadilhas/090`). O `trap` fecha essa janela em qualquer saida,
+# inclusive nas que este roteiro nao escolheu.
+trap 'rm -f "$NOVO"' EXIT INT TERM
 # Dois filtros em vez de um so com alternancia: o segundo e `-xF`, texto fixo e
 # linha inteira, e assim a MARCA nao precisa ser escapada como expressao. Um
 # ponto sem escape numa expressao casa qualquer caractere, e e assim que um
@@ -154,7 +194,7 @@ grep -vE '^(ANTHROPIC_API_KEY|ANTHROPIC_WORKSPACE_ID)=' "$ENV_ADMIN" \
 # tem DATABASE_URL e ADMIN_EMAILS. Escrever por cima com um arquivo vazio seria
 # o pior desfecho possivel (a area administrativa inteira sairia do ar), entao
 # eu paro antes.
-[ -s "$NOVO" ] || { rm -f "$NOVO"; parar "a reescrita de $ENV_ADMIN saiu vazia, e eu nao escrevo por cima assim. NADA foi alterado; ha copia intacta em $ENV_ADMIN.bak-*."; }
+[ -s "$NOVO" ] || parar "a reescrita de $ENV_ADMIN saiu vazia, e eu nao escrevo por cima assim. NADA foi alterado; ha copia intacta em $ENV_ADMIN.bak-*."
 
 # NAO HA GUARDA DE QUEBRA DE LINHA AQUI, e a ausencia e medida, nao esquecida.
 # Um `admin.env` que termine sem quebra de linha grudaria a primeira linha nova
@@ -168,13 +208,13 @@ grep -vE '^(ANTHROPIC_API_KEY|ANTHROPIC_WORKSPACE_ID)=' "$ENV_ADMIN" \
   printf '%s\n' "$MARCA"
   printf 'ANTHROPIC_API_KEY=%s\n' "$CHAVE_DA_IA"
   printf 'ANTHROPIC_WORKSPACE_ID=%s\n' "$WORKSPACE_DA_IA"
-} >> "$NOVO" || { rm -f "$NOVO"; parar "nao consegui escrever em $RAIZ. Nada foi alterado."; }
+} >> "$NOVO" || parar "nao consegui escrever em $RAIZ. Nada foi alterado."
 
 # `cat >` e nao `mv`, de proposito: assim o arquivo mantem o mesmo inode, e com
 # ele o dono e a permissao que ja funcionavam. Um `mv` traria dono e modo do
 # arquivo temporario (root:root, rodando como root) e o usuario `deploy`, que e
 # quem o pipeline usa, deixaria de ler o env (`armadilhas/091`).
-cat "$NOVO" > "$ENV_ADMIN" || { rm -f "$NOVO"; parar "a escrita de $ENV_ADMIN falhou no meio. Ha copia intacta em $ENV_ADMIN.bak-*: recupere-a com cp e mande esta tela ao agente."; }
+cat "$NOVO" > "$ENV_ADMIN" || parar "a escrita de $ENV_ADMIN falhou no meio. Ha copia intacta em $ENV_ADMIN.bak-*: recupere-a com cp e mande esta tela ao agente."
 rm -f "$NOVO"
 
 # A conferencia do dono, mesmo assim: se o arquivo ja estava com dono errado
@@ -199,17 +239,51 @@ echo
 # -----------------------------------------------------------------------------
 echo "== 3/4: recarregando a area administrativa para ela reler o env =="
 
-# OS DOIS CAMINHOS DECLARADOS de nao ter o que recarregar. Nenhum deles e uma
-# falha: o arquivo JA esta certo, e o proximo deploy da area administrativa rele
-# o env sozinho. Parar aqui faria o mantenedor achar que perdeu o trabalho.
+# O CAMINHO DECLARADO de nao ter o que recarregar, e ele nao e falha nenhuma: o
+# arquivo JA esta certo, e o proximo deploy da area administrativa rele o env
+# sozinho. Parar aqui faria o mantenedor achar que perdeu o trabalho.
 if ! command -v docker >/dev/null 2>&1; then
   echo "  (aviso: nao achei o docker nesta maquina. O arquivo JA esta certo; o proximo deploy da area administrativa rele o env. Avise o agente.)"
   exit 0
 fi
-if ! docker compose config --services 2>/dev/null | grep -qx admin; then
+
+# O texto de conserto que serve a TODAS as recusas daqui para baixo: a partir
+# deste ponto as linhas ja estao gravadas, e o que pode dar errado e sempre a
+# area administrativa nao ter voltado.
+COMO_LEVANTAR="A chave JA esta gravada e certa, e ha copia do env anterior em
+$RAIZ/$ENV_ADMIN.bak-*, entao nao rode este roteiro de novo por causa dela.
+
+COLE ESTA LINHA AQUI MESMO, nesta janela da VPS, para levantar de volta:
+
+  cd $RAIZ && docker compose up -d admin; docker compose ps admin
+
+Se depois disso ela continuar fora do ar, mande esta tela inteira ao agente."
+
+# `config` falha por muito mais do que servico ausente: basta um `env_file`
+# citado no compose estar faltando. Traduzir QUALQUER falha dele para "o
+# servico admin nao esta no docker-compose.yml" seria afirmar uma causa que
+# ninguem mediu, e mandar o mantenedor procurar o problema errado.
+SERVICOS="$(docker compose config --services 2>&1)"
+CODIGO_CONFIG=$?
+[ "$CODIGO_CONFIG" -eq 0 ] || parar "o docker nao conseguiu ler o docker-compose.yml desta maquina (codigo $CODIGO_CONFIG), e assim eu nao sei nem se a area administrativa esta declarada nele.
+
+A chave JA esta gravada em $RAIZ/$ENV_ADMIN e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*, entao nao rode este roteiro de novo por causa dela.
+
+O que o docker respondeu:
+$(printf '%s\n' "$SERVICOS" | sed 's/^/    /')
+
+Mande esta tela ao agente."
+
+if ! printf '%s\n' "$SERVICOS" | grep -qx admin; then
   echo "  (aviso: o servico 'admin' nao esta no docker-compose.yml desta maquina. O arquivo JA esta certo; o proximo deploy da area administrativa rele o env. Avise o agente.)"
   exit 0
 fi
+
+# O ID DO CONTAINER ANTES, porque e a unica medicao que distingue "recriado" de
+# "nunca foi tocado". Um `up` que falha no meio deixa o container ANTIGO
+# rodando, e ai o `docker compose ps` continua dizendo "Up" com a maior calma:
+# quem le so o "Up" esta lendo o container errado, com o env antigo dentro.
+ID_ANTES="$(docker compose ps -q admin 2>/dev/null | tr -d '[:space:]')"
 
 # A SAIDA DE ERRO NUNCA VAI PARA O LIXO AQUI (`armadilhas/377`). Em 06/09/2026
 # um roteiro desta casa recarregou duas celulas com `>/dev/null 2>&1`, o comando
@@ -222,75 +296,108 @@ fi
 SAIDA_UP="$(docker compose up -d --force-recreate --wait --wait-timeout 180 admin 2>&1)"
 CODIGO_UP=$?
 
-# E O QUE VALE E O ESTADO MEDIDO, nao o codigo de saida do `up`: sair zero nao e
-# prova de container de pe.
+# O CODIGO DE SAIDA NAO SE JOGA FORA. Ele e a unica coisa que sabe a diferenca
+# entre "recriei" e "tentei recriar e o container novo nem passou no exame de
+# saude"; nos dois casos o `ps` pode dizer "Up".
+[ "$CODIGO_UP" -eq 0 ] || parar "eu pedi ao docker para recarregar a area administrativa e ele recusou (codigo $CODIGO_UP). Ela pode estar fora do ar NESTE MOMENTO, e isso precisa de conserto.
+
+$COMO_LEVANTAR
+
+O que o docker respondeu:
+$(printf '%s\n' "$SAIDA_UP" | sed 's/^/    /')"
+
+# O id de DEPOIS. Ele nao veta sozinho, e a decisao e deliberada: se o
+# container nao renasceu mas ja estava com a chave certa dentro, esta tudo bem
+# de verdade, e recusar quem esta certo e o pior defeito que um roteiro de
+# colar pode ter. O que ele faz e transformar uma chave errada la dentro em
+# diagnostico: "nao renasceu" e "renasceu e mesmo assim leu outra coisa" sao
+# dois problemas diferentes, com conserto diferente, e sem esta medicao os dois
+# chegariam ao agente com a mesma cara.
+ID_DEPOIS="$(docker compose ps -q admin 2>/dev/null | tr -d '[:space:]')"
+if [ "$ID_DEPOIS" = "$ID_ANTES" ]; then
+  RENASCEU="NAO: o container e exatamente o mesmo de antes, e um container so le o env quando renasce"
+else
+  RENASCEU="sim, este container e outro"
+fi
+
 ESTADO="$(docker compose ps admin 2>&1)"
-NO_AR=0
 case "$ESTADO" in
-  *[Uu]p*) NO_AR=1 ;;
+  *[Uu]p*) ;;
+  *) parar "eu recarreguei a area administrativa e ela NAO voltou de pe. Ela esta fora do ar NESTE MOMENTO.
+
+$COMO_LEVANTAR
+
+O que o docker respondeu:
+$(printf '%s\n' "$ESTADO" | sed 's/^/    /')" ;;
 esac
 
-if [ "$NO_AR" -eq 1 ]; then
-  echo "  recarreguei a area administrativa, e conferi que ela voltou de pe:"
-  printf '%s\n' "$ESTADO" | sed 's/^/    /'
-else
-  echo
-  echo "PAROU POR SEGURANÇA: eu recarreguei a area administrativa e ela NAO"
-  echo "voltou de pe. Isso quer dizer que https://meshcraft.top/admin/ esta fora"
-  echo "do ar NESTE MOMENTO, e nao e um aviso de rodape: precisa de conserto."
-  echo
-  echo "A chave JA esta gravada e certa, e ha copia do env anterior em"
-  echo "$ENV_ADMIN.bak-*, entao nao rode este roteiro de novo por causa dela."
-  echo
-  echo "COLE ESTA LINHA AQUI MESMO, nesta janela da VPS, para levantar de volta:"
-  echo
-  echo "  cd $RAIZ && docker compose up -d admin; docker compose ps admin"
-  echo
-  echo "Se depois disso ela continuar fora do ar, mande esta tela inteira ao agente."
-  echo
-  echo "O que o docker respondeu (codigo $CODIGO_UP):"
-  printf '%s\n' "$SAIDA_UP" | sed 's/^/    /'
-  exit 1
-fi
+echo "  recarreguei a area administrativa, e conferi que ela voltou de pe:"
+printf '%s\n' "$ESTADO" | sed 's/^/    /'
 echo
 
 # -----------------------------------------------------------------------------
-# 5. A PROVA, medida DE FORA do que cada passo disse ter feito. "O comando
-#    devolveu zero" nao e evidencia de nada: o arquivo estar certo e o processo
-#    estar com ele sao duas coisas diferentes, e a segunda e a que vale.
+# 5. A PROVA, medida DE DENTRO do container. "O comando devolveu zero" nao e
+#    evidencia de nada: o arquivo estar certo e o processo estar com ele sao
+#    duas coisas diferentes, e a segunda e a que vale.
+#
+#    NAO HA `curl` PARA A INTERNET AQUI, e a ausencia e conserto: um endereco
+#    fixo mede o site de PRODUCAO, rode este roteiro na maquina que rodar, e
+#    chamar isso de prova do que acabou de acontecer aqui e medir o vizinho e
+#    assinar embaixo.
 # -----------------------------------------------------------------------------
 echo "== 4/4: conferindo =="
 
-# A prova de fora que o mantenedor enxerga: o site respondendo pela porta
-# publica. Um container "Up" que devolve 502 na borda continua sendo uma pagina
-# quebrada.
-if command -v curl >/dev/null 2>&1; then
-  SAUDE="$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 10 --max-time 20 https://meshcraft.top/admin/healthz 2>/dev/null)"
-  case "$SAUDE" in
-    200) echo "  a area administrativa responde de fora (https://meshcraft.top/admin/healthz devolveu 200)" ;;
-    "")  echo "  (nao consegui perguntar de fora se o site responde. Abra https://meshcraft.top/admin/ no navegador para conferir com os olhos.)" ;;
-    *)   echo "  ATENCAO: de dentro ela esta de pe, mas https://meshcraft.top/admin/healthz devolveu $SAUDE em vez de 200. Espere um minuto (ela pode estar acabando de subir), abra https://meshcraft.top/admin/ no navegador, e se continuar errado mande esta tela ao agente." ;;
-  esac
-fi
+# POR RESUMO, e nao por tamanho. Duas chaves da mesma conta da Anthropic tem o
+# mesmo comprimento, e acompanhar uma troca de chave e o caso NORMAL deste
+# roteiro: medindo tamanho, a chave velha ainda no processo passaria por chave
+# nova sem ninguem perceber. O resumo distingue as duas e continua sem mostrar
+# segredo nenhum, porque doze caracteres de um sha256 nao voltam a ser a chave.
+RESUMO_ESPERADO="$(printf %s "$CHAVE_DA_IA" | sha256sum 2>/dev/null | cut -c1-12)"
+[ -n "$RESUMO_ESPERADO" ] || parar "nao consegui calcular o resumo da chave nesta maquina (faltou o programa sha256sum), e sem ele eu nao tenho como provar que a chave certa chegou ao container. As linhas JA estao gravadas em $RAIZ/$ENV_ADMIN. Mande esta tela ao agente."
+MEDIDA_ESPERADA="$RESUMO_ESPERADO:${#CHAVE_DA_IA}"
 
-# A conferencia e de PRESENCA, DENTRO do container, e o valor nunca aparece: um
-# `printenv` imprimiria a chave inteira na tela, que e exatamente o que este
-# roteiro existe para evitar.
-LIDA="$(docker compose exec -T admin sh -c 'printf %s "${ANTHROPIC_API_KEY:-}" | wc -c' 2>/dev/null | tr -d '[:space:]')"
+# O comando que roda LA DENTRO nao carrega valor nenhum, so o NOME da variavel:
+# o segredo nunca passa pelo argv do docker (`armadilhas/090`). Vem de la o
+# resumo e a contagem, e e a contagem que separa "nao chegou nada" de "chegou
+# outra coisa" na hora de dizer ao mantenedor o que houve.
+MEDIDA_LIDA="$(docker compose exec -T admin sh -c 'printf %s "${ANTHROPIC_API_KEY:-}" | sha256sum | cut -c1-12; printf ":"; printf %s "${ANTHROPIC_API_KEY:-}" | wc -c' 2>&1 | tr -d '[:space:]')"
+
+# A FORMA DA RESPOSTA E CONFERIDA, e nao so o conteudo dela. Qualquer coisa que
+# nao seja doze digitos de resumo, dois-pontos e um numero e uma resposta que
+# eu nao entendi (o container recusou a pergunta, faltou o sha256sum na imagem
+# dele, o docker reclamou de outra coisa), e resposta que eu nao entendi NAO
+# vira diagnostico: vira o texto cru na tela, para o agente ler.
+DOZE_DO_RESUMO='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+case "$MEDIDA_LIDA" in
+  "$MEDIDA_ESPERADA") ;;
+  $DOZE_DO_RESUMO:0)
+    parar "gravei a chave e a area administrativa voltou de pe, MAS A CHAVE NAO CHEGOU LA DENTRO: o container leu uma chave vazia. O robo analista do painel continua desligado, e nao adianta abrir a tela dele.
+
+O container renasceu quando eu recarreguei? $RENASCEU.
+
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente." ;;
+  $DOZE_DO_RESUMO:[1-9]*)
+    parar "gravei a chave e a area administrativa voltou de pe, MAS DENTRO DELA HA UMA CHAVE DIFERENTE da que esta no forum. E o que acontece quando o container nao releu o arquivo: ele continua com a chave de antes, que pode ate ter o mesmo tamanho.
+
+O container renasceu quando eu recarreguei? $RENASCEU.
+
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente." ;;
+  *)
+    parar "gravei a chave e a area administrativa voltou de pe, mas nao consegui perguntar a ela o que leu, entao nao posso dizer que esta pronto.
+
+O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em $RAIZ/$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente.
+
+O que veio de dentro do container:
+    $MEDIDA_LIDA" ;;
+esac
+
+echo "== PRONTO =="
+echo "A area administrativa esta com a chave da IA, e eu conferi isso DENTRO do"
+echo "container: a chave que esta rodando la e exatamente a mesma que esta no"
+echo "forum, nao so uma do mesmo tamanho."
 echo
-if [ "$LIDA" = "${#CHAVE_DA_IA}" ]; then
-  echo "== PRONTO =="
-  echo "A area administrativa esta com a chave da IA, e eu conferi isso de dentro"
-  echo "do container: chegaram os mesmos ${LIDA} caracteres que estao no forum."
-  echo
-  echo "E a mesma chave e a mesma conta que o forum ja usa desde 02/09/2026, e o"
-  echo "que voce paga por ela continua sendo so o uso."
-  echo
-  echo "Rodar esta mesma linha de novo e seguro, e e o jeito de a area"
-  echo "administrativa acompanhar uma troca de chave que voce faca no forum."
-else
-  echo "AVISO: gravei a chave e recarreguei a area administrativa, mas nao consegui"
-  echo "confirmar de dentro do container (li '${LIDA}' e esperava '${#CHAVE_DA_IA}')."
-  echo "O arquivo $RAIZ/$ENV_ADMIN esta certo e ha copia do anterior em"
-  echo "$ENV_ADMIN.bak-*. Nao rode nada por conta disso: mande esta tela ao agente."
-fi
+echo "E a mesma chave e a mesma conta que o forum ja usa desde 02/09/2026, e o"
+echo "que voce paga por ela continua sendo so o uso."
+echo
+echo "Rodar esta mesma linha de novo e seguro, e e o jeito de a area"
+echo "administrativa acompanhar uma troca de chave que voce faca no forum."
