@@ -999,7 +999,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "Pendencias: tudo que esta esperando por voce",
-      "descricao": "A portaria da area administrativa. Uma linha por fila de trabalho, dizendo quantas coisas esperam por voce, ha quanto tempo a mais antiga espera, e levando ao lugar onde aquilo se resolve. Nasceu em 07/09/2026 porque o trabalho parado morava em seis enderecos diferentes e nenhum deles avisava nada. Neste degrau ela conta tres filas (quem quer entrar na escola, as ideias esperando assinatura e as decisoes paradas no painel do sistema) e DIZ na tela quais ainda nao conta. Fila que nao responde aparece como 'nao consegui perguntar', nunca como zero."
+      "descricao": "A portaria da area administrativa. Uma linha por fila de trabalho, dizendo quantas coisas esperam por voce, ha quanto tempo a mais antiga espera, e levando ao lugar onde aquilo se resolve. Nasceu em 07/09/2026 porque o trabalho parado morava em seis enderecos diferentes e nenhum deles avisava nada. Neste degrau ela conta duas filas (quem quer entrar na escola e as decisoes paradas no painel do sistema) e DIZ na tela quais ainda nao conta. Fila que nao responde aparece como 'nao consegui perguntar', nunca como zero."
     },
     {
       "celula": "admin",
@@ -1575,16 +1575,6 @@
       "gesto": true,
       "titulo": "Guardar a avaliação da ideia",
       "descricao": "O que acontece ao salvar o quanto aquela ideia custa e o quanto vale."
-    },
-    {
-      "celula": "admin",
-      "rota": "caixa/ideia/<int:ideia_id>/assinatura",
-      "endereco": "/admin/caixa/ideia/<int:ideia_id>/assinatura",
-      "alcance": "publico",
-      "para_quem": "equipe",
-      "gesto": true,
-      "titulo": "Assinar a obra",
-      "descricao": "O gesto que libera um robô a construir aquela ideia. É o único botão da área que manda trabalho de verdade acontecer."
     },
     {
       "celula": "admin",

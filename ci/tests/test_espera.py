@@ -558,6 +558,13 @@ def test_sem_os_checks_obrigatorios_a_espera_nao_declara_verde(tmp_path):
             f"o batimento não nomeou o obrigatório que falta ({obrigatorio}): "
             + proc.stderr
         )
+        # E no DESFECHO também: com `--e-pousar` o batimento vai para o stderr,
+        # e sobra esta única linha no stdout — a que o robô lê e repassa. Sem o
+        # nome aqui, ela manda investigar sem dizer o quê.
+        assert obrigatorio in proc.stdout, (
+            f"o desfecho não nomeou o obrigatório que falta ({obrigatorio}): "
+            + proc.stdout
+        )
 
 
 def test_a_lista_de_obrigatorios_e_a_do_portao_importada_nunca_copiada():

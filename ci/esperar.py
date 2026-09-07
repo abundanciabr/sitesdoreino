@@ -960,10 +960,18 @@ def main(argv: list[str] | None = None) -> int:
                          "estouro", str(falha), chave_da_regua, voz.linhas)
         return 2
     except GracaVencida as falha:
+        # A graça só morre com o alvo INCOMPLETO, e a última olhada é a única
+        # coisa que sabe o QUE faltava — o obrigatório que não nasceu, o run de
+        # deploy que não apareceu. Sob `--so-desfecho` (que o `--e-pousar` liga
+        # sozinho) esta é a ÚNICA linha que chega ao stdout: sem o que foi
+        # visto, ela manda investigar sem dizer o quê, e quem lê volta ao `gh`
+        # para descobrir um nome que a espera já tinha na mão.
+        visto = falha.olhada.resumo if falha.olhada else ""
         voz.desfecho(
             f"🔴 {dizendo}: o alvo nem APARECEU em {_fmt(args.graca)} — "
             "deletado, renomeado, nunca disparou, ou conflito com a main. "
             "Isso NÃO é fila: parei, investigue."
+            + (f" Última olhada: {visto}." if visto else "")
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
                          "nao-apareceu", str(falha), chave_da_regua, voz.linhas)
