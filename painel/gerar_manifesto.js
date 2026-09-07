@@ -131,6 +131,26 @@ var resumo = LOGICA.montarResumo(registros);
 if (resumo.erro) falha([resumo.erro]);
 
 // -----------------------------------------------------------------------------
+// A FILA DELE, contada AQUI — e contada por `caixaDeEntrada`, que é a mesma
+// função que desenha a caixa "Precisa de você" na tela do mantenedor.
+//
+// Para que serve: a Central de Pendências (`/admin/pendencias/`) precisa dizer
+// quantas decisões estão paradas esperando por ele. A imagem da célula `admin`
+// não tem Node, e recontar isso em Python seria uma SEGUNDA definição de
+// "pedido sem resposta" — divergência que esta casa já mediu uma vez, com o
+// Python dizendo 6 e o painel dizendo 7
+// (`ci/metricas_da_fabrica.py::pedidos_ao_dono` conta o episódio). Aqui a
+// conta é uma só, e a área administrativa apenas LÊ o número desta página.
+//
+// E ISTO PODE VIAJAR EMBUTIDO SEM FOSSILIZAR NADA, apesar da regra do bloco
+// abaixo: o filtro de `caixaDeEntrada` não olha data nenhuma, e a ordem que
+// ela devolve é por `aguardandoDias` decrescente, que para QUALQUER instante
+// fixo é a mesma ordem de `quando` crescente. Por isso a sentinela de
+// `montarResumo` serve, e a IDADE em dias continua sendo contada no navegador
+// de quem abre, nunca aqui.
+var pedidosDoDono = LOGICA.caixaDeEntrada(registros, new Date("2000-01-01T12:00:00"));
+
+// -----------------------------------------------------------------------------
 // O PASSADO, em arquivos por mês. A chave é a data do NOME do arquivo (que é o
 // id, estável e único), e não o campo `quando` — um registro pode narrar um fato
 // antigo, e mudar de gaveta depois quebraria a promessa de que mês fechado nunca
@@ -255,6 +275,12 @@ var dados = [
   "  orcamento: { resumoBytes: " + bytesResumo + ", resumoTeto: " + LOGICA.ORCAMENTO_RESUMO_BYTES +
     ", paginaBytes: __TAMANHO__, paginaTeto: " + LOGICA.ORCAMENTO_PAINEL_BYTES + " },",
   "  livro: { total: " + registros.length + ", meses: " + JSON.stringify(declaracaoDosMeses) + " },",
+  // A fila do mantenedor, em UMA linha de forma rígida: quem a lê de fora é a
+  // Central de Pendências da área administrativa, que não executa JavaScript.
+  // `maisAntigoQuando` é a data do pedido mais velho ainda sem resposta, e
+  // `null` quando não há nenhum — nunca uma data inventada.
+  "  pedidosDoDono: { quantidade: " + pedidosDoDono.length + ", maisAntigoQuando: " +
+    JSON.stringify(pedidosDoDono.length ? pedidosDoDono[0].registro.quando : null) + " },",
   "  resumo: JSON.parse(" + comoTextoJS({
     respondidos: resumo.respondidos,
     registros: resumo.registros,

@@ -353,6 +353,60 @@ caso("...e os dois tetos, para a barra ter denominador",
 caso("o marcador de largura fixa nao sobrou na pagina",
   htmlO.indexOf("__TAMANHO__") === -1);
 
+// -----------------------------------------------------------------------------
+// A FILA DELE, CARIMBADA NA PÁGINA (07/09/2026, degrau 1 da Central de
+// Pendências). A área administrativa lê este número de fora, sem executar
+// JavaScript, para dizer quantas decisões estão paradas esperando o
+// mantenedor. Por isso a propriedade travada aqui não é "o campo existe": é
+// que ele CONTA a mesma coisa que a caixa "Precisa de você" da tela dele, e
+// que ele REAGE — pedido respondido sai da conta.
+//
+// Sem o segundo caso, um gerador que carimbasse `quantidade: 0` para sempre
+// passaria neste arquivo, e a Central diria "nada esperando você" com a caixa
+// dele cheia. É a mentira mais cara que esta tela pode contar.
+// -----------------------------------------------------------------------------
+console.log("== a página carimba a fila do mantenedor, para quem não roda JavaScript ==");
+function filaCarimbada(html) {
+  var m = /pedidosDoDono: \{ quantidade: (\d+), maisAntigoQuando: (null|"[^"]*") \}/.exec(html);
+  return m ? { quantidade: parseInt(m[1], 10), maisAntigo: JSON.parse(m[2]) } : null;
+}
+
+var dirFila = montarCenario({
+  "20260826-001-pede.js": registroBom("20260826-001-pede", { precisa_do_dono: true, quando: "2026-08-26" }),
+  "20260827-001-pede.js": registroBom("20260827-001-pede", { precisa_do_dono: true, quando: "2026-08-27" }),
+  "20260828-001-calado.js": registroBom("20260828-001-calado")
+});
+roda(dirFila);
+var filaDois = filaCarimbada(leia(dirFila, "painel.html"));
+caso("a página carimba a fila em forma legível de fora", !!filaDois);
+caso("...e conta SÓ os pedidos que precisam dele (2 de 3 registros)",
+  !!filaDois && filaDois.quantidade === 2);
+caso("...dizendo a data do mais antigo, que é de onde sai 'espera há N dias'",
+  !!filaDois && filaDois.maisAntigo === "2026-08-26");
+
+// O MESMO livro, com o pedido mais velho respondido: a conta tem de cair para
+// 1 e o mais antigo tem de virar o outro. É a prova de que o número é
+// calculado pela regra do painel, e não um contador de campos `true`.
+var dirResp = montarCenario({
+  "20260826-001-pede.js": registroBom("20260826-001-pede", { precisa_do_dono: true, quando: "2026-08-26" }),
+  "20260827-001-pede.js": registroBom("20260827-001-pede", { precisa_do_dono: true, quando: "2026-08-27" }),
+  "20260829-001-responde.js": registroBom("20260829-001-responde", { responde_a: "20260826-001-pede" })
+});
+roda(dirResp);
+var filaUm = filaCarimbada(leia(dirResp, "painel.html"));
+caso("pedido respondido SAI da conta (2 vira 1)", !!filaUm && filaUm.quantidade === 1);
+caso("...e o mais antigo passa a ser o que sobrou",
+  !!filaUm && filaUm.maisAntigo === "2026-08-27");
+
+// Livro sem nenhum pedido aberto: zero é um resultado legítimo, e a data é
+// nula em vez de uma data inventada.
+var dirZero = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dirZero);
+var filaZero = filaCarimbada(leia(dirZero, "painel.html"));
+caso("livro sem pedido nenhum carimba zero, e não some", !!filaZero && filaZero.quantidade === 0);
+caso("...com a data do mais antigo em null, nunca uma data inventada",
+  !!filaZero && filaZero.maisAntigo === null);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");

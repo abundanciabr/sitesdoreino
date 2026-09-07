@@ -87,6 +87,11 @@ from django.utils import timezone
 #     comentário de `visao_geral.html`.
 SECOES = (
     ("visao_geral", "Visão geral"),
+    # "Pendências", e vem logo depois da capa (07/09/2026): é a tela que diz o
+    # que espera por ele, e um item de "o que fazer agora" no fim de uma lista
+    # de treze é um item que ninguém vê. O nome é o da própria tela, e não
+    # "Fila" ou "Caixa de entrada", que já significam outra coisa nesta casa.
+    ("pendencias", "Pendências"),
     ("escola", "Escola"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),

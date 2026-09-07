@@ -889,3 +889,70 @@ def test_o_bloco_de_falha_tem_teto_de_600_caracteres():
     assert TETO_DO_BLOCO == 600
     gordo = "\n".join("ERROR linha %d " % i + "x" * 200 for i in range(50))
     assert len(bloco_de_falha(gordo)) <= TETO_DO_BLOCO
+
+
+# ---------------------------------------------------------------------------
+# Um veredito por NOME de check — a espera não pode discordar do portão
+# (TAR-204, medido no PR #1136 em 05/09/2026)
+# ---------------------------------------------------------------------------
+# Fechar e reabrir o PR é a receita da `armadilhas/077` para a etiqueta que o
+# workflow não enxerga. Ela funciona e deixa rastro: a execução antiga fica
+# CANCELLED pendurada no rollup, ao lado da nova que passou. Lendo o rollup
+# cru, a espera anunciava "checks REPROVADOS" no mesmo segundo em que
+# `gh pr checks` dizia `pass` e `ci/mergear.py --pousar` — a fonte de direito —
+# aprovava o pouso. Falso vermelho num portão ensina a ignorar o portão.
+REABERTO = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
+     "startedAt": "2026-09-05T23:44:14Z"},
+    {"status": "COMPLETED", "conclusion": "CANCELLED",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:05Z"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:14Z"},
+]}]
+
+# A mesma dupla com as horas trocadas: a execução CANCELADA é a ATUAL. Sem
+# este par, um conserto preguiçoso ("ignore o que estiver CANCELLED") passaria
+# no teste de cima e deixaria a espera cega para o cancelamento de verdade.
+CANCELADO_DE_VERDADE = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:05Z"},
+    {"status": "COMPLETED", "conclusion": "CANCELLED",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:14Z"},
+]}]
+
+
+def test_execucao_cancelada_do_pr_reaberto_nao_reprova_o_que_esta_verde(tmp_path):
+    """O caso medido no #1136: 3 entradas, 2 nomes, e o PR está verde."""
+    proc = _rodar(
+        ["--checks", "1136", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=REABERTO, mergear_exit=0,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "REPROVADO" not in proc.stdout, "falso vermelho: a cancelada é a velha"
+    assert "todos os 2 checks verdes" in proc.stdout, (
+        "o número também não pode mentir: são 2 checks, não 3 execuções"
+    )
+    chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
+    assert chamado == "1136 --pousar", chamado
+
+
+def test_execucao_cancelada_que_e_a_ATUAL_continua_reprovando(tmp_path):
+    """O outro lado da mesma regra: cancelar por último é vermelho, e vermelho
+    nunca vira pedido de pouso."""
+    proc = _rodar(
+        ["--checks", "1136", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=CANCELADO_DE_VERDADE, mergear_exit=0,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "REPROVADO" in proc.stdout
+    assert not (tmp_path / "portao-chamado.txt").exists(), "chamou o portão no vermelho"
+
+
+def test_a_espera_e_o_portao_usam_a_MESMA_funcao_nunca_duas_copias():
+    """Duas leituras do mesmo fato é o defeito. Uma cópia da regra aqui
+    divergiria da do portão no dia em que alguém mexesse numa só — o mesmo
+    desenho das duas vacinas de deploy (`armadilhas/127`)."""
+    import esperar
+    import mergear
+
+    assert esperar.mais_recente_por_nome is mergear.mais_recente_por_nome

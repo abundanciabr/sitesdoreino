@@ -472,12 +472,19 @@ primeira oportunidade de violá-la.
   (`cristal_positivo_nunca_vem_de_compra`) e débito só existe como compra de
   cosmético com o recibo junto (`cristal_negativo_so_com_referencia_de_compra`) —
   o que também torna a moeda intransferível na prática, porque uma “gorjeta”
-  precisaria de uma porta de saída que não existe. Somam-se a isso quatro
+  precisaria de uma porta de saída que não existe. Somam-se a isso três
   ausências de forma: nenhum campo nomeia instrumento de pagamento (cartão,
-  boleto, Pix, gateway, fatura), nenhum campo que CARREGUE valor nomeia dinheiro
-  real, nenhum módulo importa SDK de cobrança, e a proteção de sequência não tem
-  tipo de item que a represente — o escudo é 1 por mês, automático e grátis,
-  dentro da `Sequencia`.
+  boleto, Pix, gateway, fatura), nenhum módulo importa SDK de cobrança, e a
+  proteção de sequência não tem tipo de item que a represente — o escudo é 1 por
+  mês, automático e grátis, dentro da `Sequencia`.
+  **Eram quatro até 06/09/2026.** A quarta proibia que um campo portador de
+  valor nomeasse dinheiro (real, dólar, centavo, preço). Ela mirava o dinheiro
+  ENTRANDO na economia do jogo e barrava, por tabela, o dinheiro que o aluno
+  GANHA no mundo real — o que impedia a escada de marcos de guardar QUANTO
+  alguém faturou. O mantenedor exerceu o critério de morte nº 6, reabriu o §3.1 e
+  decidiu o alcance: toda quantia, em qualquer tabela da célula. O invariante
+  mantém a promessa do próprio título (nada ali se COMPRA); o que ele deixou de
+  ter é a defesa pelo NOME do campo.
 - **Por quê:** a escola vende formação, e quem paga por ela não pode descobrir
   depois que o progresso do filho, do colega ou o dele próprio também estava à
   venda. (Esta justificativa dizia “o público é criança” até 30/08/2026; a escola
@@ -491,15 +498,22 @@ primeira oportunidade de violá-la.
   `DECISAO-gamificacao.md` §3.1 e §8 (“nenhum item, moeda, proteção ou vantagem se
   compra”). Cristal comprável ou transferível é o critério de morte nº 2 da célula,
   e este guarda precisar de exceção é o nº 6: nos dois casos a resposta certa é
-  parar e reabrir a decisão com o mantenedor, nunca afrouxar o teste.
+  parar e reabrir a decisão com o mantenedor, nunca afrouxar o teste. **Foi o que
+  aconteceu em 06/09/2026**, e o registro está aí para o caso de alguém confundir
+  o precedente: a sessão parou, perguntou, e a frente caiu por decisão dele —
+  nenhum agente pode repetir esse corte por conta própria.
 - **Teste-Guarda:**
   `services/gamificacao/tests/test_inv_economia_nada_por_dinheiro_real.py` — as
-  quatro frentes de forma (campo com nome de instrumento de pagamento, campo
-  portador de valor com nome de dinheiro, escolha declarada, import de cobrança)
-  mais as recusas do banco provadas até em SQL cru, o caminho feliz que impede um
-  banco que recusa TUDO de passar por engano, e a ausência do escudo na loja.
-  Provado por mutação em 30/08/2026: `ItemCosmetico.preco_em_reais` e a remoção da
-  restrição `cristal_positivo_nunca_vem_de_compra` deixam o guarda vermelho.
+  três frentes de forma (campo com nome de instrumento de pagamento, escolha
+  declarada, import de cobrança) mais as recusas do banco provadas até em SQL
+  cru, o caminho feliz que impede um banco que recusa TUDO de passar por engano,
+  e a ausência do escudo na loja. O detector de pagamento tem prova adversarial
+  própria (`aceita_cartao` e `pix_do_aluno` mordidos, `pixel_do_avatar` não),
+  porque uma frente que só olha os campos existentes passaria sem nunca provar
+  que morde. Provado por mutação em 30/08/2026: a remoção da restrição
+  `cristal_positivo_nunca_vem_de_compra` deixa o guarda vermelho.
+  `ItemCosmetico.preco_em_reais` também deixava, até a emenda de 06/09/2026 —
+  hoje não deixa mais, e é isso que a emenda significa na prática.
 - **Célula dona:** gamificacao
 
 ### [INV-GAM2] Cosmético é Só Estética

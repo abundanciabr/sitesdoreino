@@ -16,10 +16,13 @@ A lei §3 promete três coisas ao aluno e à família dele. Promessa em document
 apodrece (`docs/decisoes/RETROSPECTIVA-FASE-D.md` §2); por isso cada uma tem um
 mecanismo neste arquivo, e um teste que reprova a publicação:
 
-1. **Nada por dinheiro real.** Nenhum campo desta célula guarda dinheiro, e a
-   forma como um Cristal NASCE é vocabulário fechado, conferido pelo
-   PostgreSQL: `origem_de_cristal_no_vocabulario_fechado` +
-   `cristal_positivo_nunca_vem_de_compra`. Guarda:
+1. **Nada aqui se COMPRA com dinheiro real.** A forma como um Cristal NASCE é
+   vocabulário fechado, conferido pelo PostgreSQL:
+   `origem_de_cristal_no_vocabulario_fechado` +
+   `cristal_positivo_nunca_vem_de_compra`. Desde 06/09/2026, por decisão do
+   mantenedor, um campo daqui PODE carregar quantia: é assim que a escada de
+   marcos guarda quanto o aluno faturou fora da escola. O que continua proibido
+   é nomear meio de cobrança e importar SDK de pagamento. Guarda:
    `tests/test_inv_economia_nada_por_dinheiro_real.py` [INV-GAM1].
 2. **Cosmético é só estética.** `ItemCosmetico` tem quatro tipos, todos
    visuais, e o banco recusa um quinto (`tipo_de_cosmetico_e_so_estetica`).
@@ -574,11 +577,13 @@ class ItemCosmetico(models.Model):
     sequência é a mecânica que transforma um aluno em cliente ansioso, e ela
     está vetada por escrito.
 
-    **`custo_em_cristais` não tem irmão em dinheiro**, e o guarda
-    `tests/test_inv_economia_nada_por_dinheiro_real.py` afirma que nenhum campo
-    desta célula nomeia dinheiro real. O sazonal volta todo ano e **não tem
-    cronômetro**: item-relâmpago com contagem regressiva é o padrão de urgência
-    vetado pelo ECA Digital.
+    **`custo_em_cristais` não tem irmão em dinheiro**, e desde 06/09/2026 quem
+    garante isso não é mais o nome do campo: a frente do guarda que reprovava um
+    `preco_em_reais` caiu por decisão do mantenedor, e o que impede esta loja de
+    aceitar dinheiro passou a ser o banco (Cristal não nasce de compra) mais
+    esta linha, lida por quem vier mexer aqui. O sazonal volta todo ano e **não
+    tem cronômetro**: item-relâmpago com contagem regressiva é o padrão de
+    urgência vetado pelo ECA Digital.
     """
 
     class Tipo(models.TextChoices):

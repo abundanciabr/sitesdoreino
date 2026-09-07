@@ -1,0 +1,241 @@
+# apps/core/pendencias.py — a Central de Pendências
+"""`/admin/pendencias/` — a portaria: tudo que espera pelo mantenedor, numa tela.
+
+Plano aprovado: `documentos/pendencias-e-conferencia-por-pares.md`, degrau 1.
+
+## O problema, medido
+
+Em 06/09/2026 o mantenedor abriu `/conquistas/interno` e disse *"que eu nem
+sabia que isso existia"*. Não era memória fraca: era desenho. O trabalho que
+espera por ele mora em SEIS endereços diferentes, nenhum deles avisa nada, e
+uma fila que alguém precisa lembrar de abrir é uma fila que não existe.
+
+Esta tela não resolve nada por dentro, e isso é a decisão central: cada fila
+continua morando na própria casa, que é onde a regra dela é conferida. Aqui só
+se pergunta *"quantos estão esperando aí, e o mais antigo é de quando?"*, e se
+oferece a porta.
+
+## Três filas neste degrau, e a tela DIZ que são três
+
+O degrau 1 traz só o que esta célula já sabe perguntar hoje, sem credencial
+nova nenhuma: quem quer entrar na escola, as ideias esperando assinatura, e as
+decisões paradas no painel do sistema. As outras três (portfólios, marcos,
+laudos) chegam no degrau 3.
+
+Uma portaria que enxerga metade das filas e não avisa é pior que portaria
+nenhuma: ela ensina o mantenedor a confiar num "nada esperando você" que não é
+verdade. Por isso `FILAS_QUE_AINDA_NAO_VEJO` existe e vai para a tela.
+
+## "Não consegui perguntar" NUNCA vira zero
+
+É a regra mais dura deste arquivo, e a única cujo custo se mede em pessoas: um
+zero na linha de quem quer entrar faria o mantenedor concluir que ninguém está
+esperando aprovação, e deixar nove pessoas de fora por causa de um tempo
+estourado na rede. Um "não sei" mostrado como 0 é o falso-verde de produto da
+`RETROSPECTIVA-FASE-D.md` §1, e a célula inteira já o paga com `None`
+(`views.contar_a_escola`, `AlunosClient`, `CaixaClient`).
+
+Aqui `Fila.quantidade is None` significa *não consegui perguntar*, e o template
+tem de distinguir os dois casos por listas separadas, nunca por um `{% if %}`
+cru: zero é falso em template, e um zero legítimo cairia no ramo do "não sei".
+
+## Fail-OPEN por linha, e não pela página
+
+A fila que não responde perde a própria linha, e as outras duas continuam
+valendo. Uma tela de operação que não abre é inútil justamente no dia em que
+alguém precisa dela.
+
+## O número do painel não se recalcula aqui, e isso é lei
+
+"Quantas decisões estão paradas" é uma REGRA (`precisa_do_dono: true` sem um
+registro que responda), e ela mora em `painel/logica.js::caixaDeEntrada`, a
+mesma função que desenha a caixa "Precisa de você" na tela dele. Escrever essa
+regra de novo em Python já custou uma divergência medida nesta casa: o Python
+dizia 6 e o painel dizia 7 (`ci/metricas_da_fabrica.py::pedidos_ao_dono` conta
+o episódio inteiro).
+
+A imagem desta célula não tem Node. Então quem conta é o gerador do painel, no
+deploy, e aqui só se LÊ o número que ele carimbou em `painel.html`, os mesmos
+bytes que `apps/core/painel.py` já serve. Uma conta, um lugar.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from datetime import datetime, timezone as tz
+
+from django.shortcuts import render
+from django.urls import reverse
+from django.views.decorators.http import require_GET
+
+from .caixa import _coluna_de, _dias
+from .clients import AlunosClient, CaixaClient
+from .painel import diretorio_do_painel
+
+# O carimbo que o gerador do painel deixa na página, em forma rígida e numa
+# linha só (`painel/gerar_manifesto.js`). Ler por padrão, em vez de executar o
+# JavaScript, é o que permite a esta célula viver sem Node. Guarda dos dois
+# lados: `painel/testes/teste_gerador.js` prova que o carimbo é a fila de
+# verdade, e `tests/test_central_de_pendencias.py` prova que este padrão casa
+# com a página REAL que o gerador produz.
+_CARIMBO_DA_FILA = re.compile(
+    r'pedidosDoDono: \{ quantidade: (\d+), maisAntigoQuando: (null|"[^"]*") \}'
+)
+
+# As filas que este degrau ainda NÃO enxerga, com o endereço de cada uma. Elas
+# entram na tela por escrito: sem isso, "nada esperando você" seria uma frase
+# que a tela não tem como sustentar. Saem daqui uma a uma no degrau 3, e a
+# lista vazia é o sinal de que a portaria ficou completa.
+FILAS_QUE_AINDA_NAO_VEJO = (
+    ("Portfólios pedindo conferência", "/pages/equipe"),
+    ("Provas de marco enviadas pelos alunos", "/conquistas/interno"),
+    ("Checkpoints de aula esperando laudo", "/cursos/plantao"),
+)
+
+
+@dataclass(frozen=True)
+class Fila:
+    """Uma linha da portaria.
+
+    `quantidade is None` é *não consegui perguntar*, e nunca zero. `espera_ha`
+    é em dias, e só existe quando há alguém esperando de verdade.
+    """
+
+    titulo: str
+    quantidade: "int | None"
+    espera_ha: "int | None"
+    href: str
+    o_que_e: str
+    onde_mora: str
+
+
+def _mais_antiga(datas: list, agora: datetime) -> "int | None":
+    """Há quantos dias espera o mais velho da lista, ou `None` se ela é vazia.
+
+    Reusa `caixa._dias`, que já resolve as duas bordas que mordem aqui: data
+    sem fuso (comparar um instante ingênuo com um consciente estoura
+    `TypeError` e derrubaria a página inteira por causa de um campo mal
+    formado) e data no futuro, que acontece de verdade quando um relógio está
+    fora de hora.
+    """
+    dias = [_dias(quando, agora) for quando in datas if quando]
+    return max(dias) if dias else None
+
+
+def quem_quer_entrar(cliente: AlunosClient, agora: datetime) -> Fila:
+    """Quem pediu para entrar na escola e ainda não teve resposta.
+
+    A `alunos` já conta há quantos dias cada pessoa espera
+    (`esperando_ha_dias`, do contrato), e este módulo não reconta: a idade é
+    dela, que é quem tem a data de verdade.
+    """
+    fila = cliente.fila("aguardando")
+    return Fila(
+        titulo="Pessoas querendo entrar na escola",
+        quantidade=None if fila is None else len(fila),
+        espera_ha=(
+            max((p.get("esperando_ha_dias") or 0) for p in fila) if fila else None
+        ),
+        href=reverse("escola_alunos"),
+        o_que_e="Alguém pediu entrada e fica sem acesso a nada até você liberar.",
+        onde_mora="a lista de alunos",
+    )
+
+
+def ideias_esperando_assinatura(cliente: CaixaClient, agora: datetime) -> Fila:
+    """As ideias da Caixa paradas na coluna que espera por ELE.
+
+    **Só a coluna `assinar`**, e a escolha é o assunto desta função: das seis
+    colunas da travessia (`caixa.COLUNAS`), essa é a única cujo nome, escrito
+    pela própria Caixa, é *"Esperando você assinar"*. As outras esperam por um
+    robô, pela equipe, ou já estão entregues. Pô-las aqui encheria a portaria
+    de trabalho que não é dele, e é assim que se ensina alguém a ignorar uma
+    tela.
+
+    A coluna sai de `caixa._coluna_de`, a MESMA função que desenha o quadro em
+    `/admin/caixa/esperando/`. Uma segunda regra de "de quem é a vez" faria as
+    duas telas discordarem sem ninguém perceber.
+    """
+    quadro = cliente.ideias()
+    if quadro is None:
+        esperando = None
+    else:
+        esperando = [i for i in quadro["ideias"] if _coluna_de(i) == "assinar"]
+    return Fila(
+        titulo="Ideias esperando a sua assinatura",
+        quantidade=None if esperando is None else len(esperando),
+        espera_ha=(
+            _mais_antiga([i.get("parada_desde", "") for i in esperando], agora)
+            if esperando
+            else None
+        ),
+        href=reverse("caixa_esperando"),
+        o_que_e=(
+            "Ideias de alunos já aprovadas pela equipe, sem o documento de obra "
+            "assinado. Nenhum robô pode começar antes disso."
+        ),
+        onde_mora="a Caixa de Sugestões",
+    )
+
+
+def decisoes_paradas_no_painel(agora: datetime) -> Fila:
+    """As decisões que os robôs pediram a você e ninguém respondeu.
+
+    Lida do carimbo que o gerador do painel deixa em `painel.html`. O porquê de
+    a conta não ser refeita aqui está no cabeçalho deste arquivo.
+
+    Sem painel na imagem, ou com uma página que este padrão não reconhece, a
+    linha diz "não consegui perguntar" em vez de zero. Um zero aqui afirmaria
+    que ele está em dia com os robôs, que é o contrário do que se sabe.
+    """
+    pasta = diretorio_do_painel()
+    achado = None
+    if pasta is not None:
+        achado = _CARIMBO_DA_FILA.search(
+            (pasta / "painel.html").read_text(encoding="utf-8")
+        )
+    mais_antigo = achado.group(2).strip('"') if achado else "null"
+    return Fila(
+        titulo="Decisões suas paradas no painel do sistema",
+        quantidade=int(achado.group(1)) if achado else None,
+        espera_ha=(
+            _mais_antiga([mais_antigo], agora) if mais_antigo != "null" else None
+        ),
+        href=reverse("painel"),
+        o_que_e=(
+            "Perguntas que os robôs fizeram a você durante a construção da "
+            "plataforma e ficaram sem resposta. Cada uma trava alguma coisa."
+        ),
+        onde_mora="o painel do sistema",
+    )
+
+
+@require_GET
+def pendencias(request):
+    """A portaria. Abre sempre, mesmo com as três filas mudas."""
+    agora = datetime.now(tz.utc)
+    filas = [
+        quem_quer_entrar(AlunosClient(), agora),
+        ideias_esperando_assinatura(CaixaClient(), agora),
+        decisoes_paradas_no_painel(agora),
+    ]
+    esperando = [f for f in filas if f.quantidade]
+    return render(
+        request,
+        "admin/pendencias.html",
+        {
+            "admin": request.admin,
+            "esperando": esperando,
+            # Vazias e mudas viajam separadas porque são frases diferentes na
+            # tela: "não há nada aqui" e "não deu para perguntar" só se parecem
+            # de dentro do código.
+            "vazias": [f for f in filas if f.quantidade == 0],
+            "mudas": [f for f in filas if f.quantidade is None],
+            "total": sum(f.quantidade for f in esperando),
+            # `any`, e não `all`: com UMA fila muda o total já é um piso, e
+            # apresentá-lo como conta fechada seria a mesma mentira do zero.
+            "total_e_um_piso": any(f.quantidade is None for f in filas),
+            "ainda_nao_vejo": FILAS_QUE_AINDA_NAO_VEJO,
+        },
+    )

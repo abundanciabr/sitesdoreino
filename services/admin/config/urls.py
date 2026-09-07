@@ -64,6 +64,7 @@ from apps.core.menu import (
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
+from apps.core.pendencias import pendencias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -71,7 +72,7 @@ from apps.core.coortes import coortes
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
-from apps.core.robos import robos
+from apps.core.robos import excluir_tarefa, robos
 from apps.core.aulas import (
     aula,
     aula_publicar,
@@ -179,6 +180,18 @@ urlpatterns = [
     # Barra final pela convenção das outras telas; quem chega sem ela é
     # redirecionado pelo APPEND_SLASH, que já está na cadeia.
     path("mapa/", mapa_do_site, name="mapa_do_site"),
+    # A CENTRAL DE PENDENCIAS (`apps/core/pendencias.py`, 07/09/2026), degrau 1
+    # de `documentos/pendencias-e-conferencia-por-pares.md`. A portaria: tudo
+    # que espera pelo mantenedor numa tela so.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e do menu logo
+    # abaixo: a rota generica `painel/<qualquer coisa>` engoliria qualquer
+    # irmao dela. Esta e uma tela da area, nao uma peca do painel, ainda que
+    # LEIA um numero de dentro dele.
+    #
+    # Barra final pela convencao das outras telas; quem chega sem ela e
+    # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
+    path("pendencias/", pendencias, name="pendencias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.
@@ -408,6 +421,12 @@ urlpatterns = [
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
+    # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
+    # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
+    # e é conferido contra o formato antes de virar nome de ramo
+    # (`armadilhas/047`): endereço nenhum desta rota carrega dado de formulário.
+    path("caixa/robos/excluir", excluir_tarefa, name="caixa_robos_excluir"),
     # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
     # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
     # análise das sugestões e o robô esbarrou no que o livro já registrava em
