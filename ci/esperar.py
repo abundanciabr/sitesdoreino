@@ -93,6 +93,18 @@ o casa com `armadilhas/SINAIS.json` pelo MESMO reconhecedor do sino. Tudo aí é
 fail-open: sem log, `gh` que falha ou que demora, o desfecho volta a dizer o de
 sempre. Lição não é muralha — na dúvida ela cala, em vez de recusar.
 
+E DESDE 07/09/2026 O NÚMERO SE CONFERE ANTES DE ESPERAR. `--checks`/`--pouso`
+recebem o NÚMERO DO PR, mas `--checks` também se lê como "quantos checks": em
+05/09/2026 dois robôs, sem saber um do outro, passaram a CONTAGEM (6 e 13), e o
+instrumento foi medir os PRs #6 e #13, mesclados desde agosto e alheios à
+tarefa. Cada um queimou as 20 tentativas repetindo "não consegui medir" — frase
+legítima para uma condição impossível, a mesma doença do sha curto em
+`resolver_sha_inteiro` (armadilhas/354). Agora uma pergunta ao `gh`, antes da
+partida da voz, recusa NA HORA o número que não é PR deste repositório — e, no
+`--checks`, o que não está ABERTO —, nomeando o PR que o número achou de
+verdade. É lição, não muralha: `gh` mudo (rede, credencial) a deixa CALADA, e o
+laço, fail-closed, segue decidindo sozinho.
+
 Exit codes (o dialeto da casa): 0 concluiu verde · 1 concluiu REPROVADO ·
 2 estouro do teto ou medição impossível.
 
@@ -372,6 +384,80 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
         resumo=nomes,
         dados={"verde": verde,
                "run": str(caidos[0].get("id") or "") if caidos else ""},
+    )
+
+
+# O que o `gh` responde quando o número não é um PR deste repositório. A
+# conferência só RECUSA quando reconhece uma destas: qualquer outra falha (rede,
+# credencial, `gh` ausente) a deixa calada e a espera segue. Ela é lição, não
+# muralha — impedir a espera legítima toda vez que o GitHub tossir seria pior
+# que a doença, e o laço continua fail-closed por conta própria.
+NAO_E_UM_PR_DAQUI = (
+    "could not resolve to a pullrequest",
+    "no pull requests found",
+)
+
+
+def conferir_o_pr(gh: list[str], repo: str, pr: str, flag: str, parser) -> None:
+    """O número é um PR daqui? E, no `--checks`, um PR ABERTO?
+
+    Medido em 05/09/2026 (armadilhas/354): dois robôs, sem saber um do outro,
+    passaram a QUANTIDADE de checks no lugar do número do PR. `--checks 6` foi
+    medir o PR #6, mesclado desde os primeiros dias do repositório, e
+    `--checks 13` o PR #13, mesclado desde agosto. O instrumento é fail-closed e
+    não pousou nada, mas cada um queimou as 20 tentativas ouvindo "não consegui
+    medir" — a frase certa para uma condição que jamais seria satisfeita.
+
+    A cura é perguntar uma vez, antes da partida da voz, e recusar na cara
+    dizendo QUE PR o número achou. Vem depois das recusas baratas de propósito:
+    é a única checagem daqui que custa uma ida ao GitHub.
+
+    `--pouso` exige só que o PR EXISTA, nunca que esteja aberto: o desfecho
+    verde dele É o PR mesclado, e exigir ABERTO ali recusaria o próprio sucesso.
+    """
+    licao = (
+        f"O que --{flag} quer é o NÚMERO DO PR — o que o `gh pr create` "
+        "devolveu, o que está na URL dele —, nunca uma CONTAGEM: a quantidade "
+        "de checks que o PR tem, por exemplo. Em 05/09/2026 dois robôs "
+        "trocaram uma coisa pela outra no mesmo dia, e cada um queimou o teto "
+        "inteiro medindo um PR alheio (armadilhas/354).\n\n"
+        "  O número do SEU PR:  gh pr view --json number -q .number   "
+        "(de dentro do ramo dele)"
+    )
+    try:
+        dados = _gh_json(
+            gh, ["pr", "view", str(pr), "--json", "state,title,mergedAt", "-R", repo]
+        )
+    except ErroDeInstrumentacao as erro:
+        if not any(m in f"{erro.resumo}\n{erro.detalhe}".lower() for m in NAO_E_UM_PR_DAQUI):
+            return
+        parser.error(
+            f"--{flag} recebeu {pr}, e o repositório {repo} não tem PR com esse "
+            "número.\n\n"
+            "Recuso agora, sem gastar uma tentativa sequer: esperar por um PR "
+            'que não existe nunca termina — o laço repetiria "não consegui '
+            'medir" até o teto morrer.\n\n' + licao
+        )
+
+    if flag != "checks" or not isinstance(dados, dict):
+        return
+    estado = str(dados.get("state") or "").upper()
+    if estado not in ("MERGED", "CLOSED"):
+        return
+    quando = str(dados.get("mergedAt") or "")[:10]
+    real = (
+        "está MESCLADO" + (f" desde {quando}" if quando else "")
+        if estado == "MERGED"
+        else "está FECHADO sem ter sido mesclado"
+    )
+    titulo = str(dados.get("title") or "").strip()
+    parser.error(
+        f"--checks recebeu {pr}, e o PR {pr} de {repo} NÃO está aberto: {real}"
+        + (f' ("{titulo}")' if titulo else "")
+        + ".\n\n"
+        "Recuso agora, sem gastar uma tentativa sequer: os checks de um PR que "
+        'já fechou não viram pouso nenhum — o laço repetiria "não consegui '
+        'medir" até o teto morrer.\n\n' + licao
     )
 
 
@@ -861,6 +947,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.e_pousar and not args.checks:
         p.error("--e-pousar só faz sentido com --checks <PR>: é ao ficarem verdes "
                 "os checks que o portão é chamado e o pouso pedido")
+    # O NÚMERO É UM PR DAQUI? (07/09/2026, TAR-202 — armadilhas/354.) Aqui, e
+    # não mais cedo, porque é a única checagem que custa uma ida ao GitHub; e
+    # aqui, e não mais tarde, porque anunciar "vou esperar" e desistir em
+    # seguida ensina o oposto do que a lei quer — a mesma ordem da recusa acima.
+    if args.checks or args.pouso:
+        conferir_o_pr(gh, repo, args.checks or args.pouso,
+                      "checks" if args.checks else "pouso", p)
     plano_z = (
         f"peço pouso do PR {pr_do_pouso} e sigo"
         if args.ao_estourar == "pousar"
