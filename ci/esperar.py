@@ -415,10 +415,10 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
         return Olhada(
             pronta=True,
             resumo=(
-                f"o PR {pr} CONFLITA com a base, e nesse estado nenhum workflow "
-                "de pull_request nasce: os checks obrigatórios NUNCA vão aparecer "
-                "(armadilhas/198). Resolva na bancada e empurre — "
-                "git fetch origin && git merge origin/main"
+                f"o PR {pr} CONFLITA com a base, e a saída é `git fetch origin "
+                "&& git merge origin/main`: sem merge ref nenhum workflow de "
+                "pull_request nasce, e os checks obrigatórios NUNCA vão aparecer "
+                "(armadilhas/198)"
             ),
             dados={"verde": False},
         )
@@ -465,9 +465,9 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
             pronta=False,
             apareceu=False,
             resumo=(
-                f"os {len(rollup)} checks do PR {pr} estão verdes, mas os "
-                f"OBRIGATÓRIOS não reportaram: {', '.join(faltando)} — isso não "
-                "é verde, é medição que não aconteceu"
+                f"os checks que existem no PR {pr} estão todos verdes e não "
+                "bastam, porque os OBRIGATÓRIOS não reportaram: "
+                + ", ".join(faltando)
             ),
         )
     return Olhada(
