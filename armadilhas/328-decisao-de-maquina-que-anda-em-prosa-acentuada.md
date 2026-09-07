@@ -8,7 +8,7 @@ custo_por_queda: alto
 guarda:
   tipo: teste
   detector: ci/tests/test_utf8_na_fronteira.py
-  motivo: são quatro guardas para quatro modos de morte distintos - a porta parar de pôr UTF-8 no ambiente, a ferramenta nova não passar pela porta, a marca ganhar acento, e as duas pontas divergirem; e um job windows-latest em muralhas.yml como rede para o que ninguém pensou em reproduzir
+  motivo: são quatro guardas para quatro modos de morte distintos - a porta parar de pôr UTF-8 no ambiente, a ferramenta nova não passar pela porta, a marca ganhar acento, e as duas pontas divergirem; e um job windows-latest em .github/workflows/rede-do-windows.yml como rede para o que ninguém pensou em reproduzir
 sinal:
   - "[a-zA-Z]\\ufffd[a-zA-Z]"
 ---
@@ -100,11 +100,22 @@ sem mecanismo).
    frase. A mensagem em português continua lá, inteira, e agora pode ser
    reescrita à vontade sem quebrar nada.
 
-3. **A cegueira acabou.** Um job `windows-latest` no `muralhas.yml` roda a
-   mesma suíte no sistema onde os robôs de fato trabalham. Custo zero
-   (repositório público), em paralelo com os outros: não muda o relógio do PR.
-   Ele bloqueia o pouso do mesmo jeito, porque `ci/mergear.py` avalia todos os
-   checks do rollup, não uma lista fixa.
+3. **A cegueira acabou.** Um job `windows-latest` roda a mesma suíte no
+   sistema onde os robôs de fato trabalham. Custo zero (repositório público).
+
+   **Onde ele mora, e por que não é onde esta entrada dizia.** Ele nasceu aqui
+   dentro do `muralhas.yml`, rodando em todo PR, e durou horas nesse lugar: em
+   04/09/2026 o commit `65cad846` o mudou para
+   `.github/workflows/rede-do-windows.yml`, que roda **na `main`, depois de cada
+   merge**. O motivo está medido no cabeçalho do próprio arquivo — no Windows a
+   suíte levava 9min11s contra 2min15s dos outros jobs, e o relógio de um PR é o
+   job mais lento, não a soma: a espera saltou de 1min36s para 14min17s.
+
+   **A consequência, que esta entrada afirmava ao contrário até 07/09/2026:** ele
+   **não bloqueia o pouso**, porque roda depois dele. Quando reprova, o job
+   `alarme` do mesmo arquivo abre (ou atualiza) uma issue apontando o commit e a
+   execução. A rede continua existindo; ela pega o defeito minutos depois do
+   merge, não antes.
 
 **Prova.** `ci/tests/test_utf8_na_fronteira.py` (5 guardas) e
 `test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252` em
