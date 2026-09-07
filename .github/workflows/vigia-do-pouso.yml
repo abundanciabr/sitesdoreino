@@ -1,0 +1,134 @@
+# =============================================================================
+# VIGIA DO POUSO — quem percebe que ninguém pediu pouso.
+#
+# O DEFEITO QUE ELE FECHA (TAR-167, medido em 05/09/2026): o PR #741 passou
+# CINCO DIAS aberto e verde, com zero comentários da pista. Não foi a pista que
+# falhou — ela nunca foi chamada. Ninguém pediu pouso, e ninguém percebeu que
+# ninguém tinha pedido. O raciocínio inteiro, e a régua de cada dispensa, moram
+# em `ci/vigia_do_pouso.py`.
+#
+# POR QUE ELE PRECISA DE UM RELÓGIO. É o segundo workflow desta casa a acordar
+# pelo tempo, e pelo mesmo motivo do primeiro: o evento que ele vigia é uma
+# AUSÊNCIA. Um PR que ninguém pediu para pousar não dispara nada — o silêncio
+# não tem gatilho. Todo o resto aqui acorda em push, PR ou conclusão de check,
+# e nenhum desses eventos acontece quando a doença é justamente não acontecer
+# nada.
+#
+# DE DUAS EM DUAS HORAS, e não uma vez por dia como o vigia do cadeado: lá a
+# régua tem 21 dias de folga; aqui o custo medido foi de cinco dias, e o
+# despacho pede "algumas horas, não dias". Com a paciência em 6 h, um PR
+# esquecido é denunciado em 6 a 8 h depois de ficar verde.
+#
+# O QUE ELE NÃO É: um portão. Ele não impede nada, não roda em PR e não mergeia
+# nada — denuncia, e quem olhar decide. Pedir pouso sozinho seria pior que o
+# defeito: um PR verde e parado pode ser trabalho pronto, trabalho em curso ou
+# trabalho que não deve entrar (o #741 acabou FECHADO a pedido do mantenedor).
+# O vigia não sabe qual dos três é, e agir sem saber mergearia o terceiro.
+#
+# VERMELHO AQUI SIGNIFICA UMA COISA SÓ: **o vigia ficou cego.** Achar PRs
+# esquecidos é o trabalho dele, não uma falha dele — sai na issue, que é onde a
+# ação está. Se ele concluísse `failure` toda vez que achasse alguém, a aba
+# Actions ganharia doze vermelhos por dia numa condição rotineira, e vermelho
+# rotineiro é vermelho que se aprende a ignorar. Fica vermelho quando não
+# consegue VARRER, que é a única coisa aqui que exige gente.
+# =============================================================================
+name: vigia-do-pouso
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+# Grupo PRÓPRIO, nunca o `deploy`: naquele grupo o GitHub guarda um único run
+# pendente e CANCELA o anterior quando chega outro (armadilhas/173) — um vigia
+# cancelado em silêncio é pior que vigia nenhum, porque parece que rodou.
+concurrency:
+  group: vigia-do-pouso
+  cancel-in-progress: false
+jobs:
+  vigiar:
+    name: varrer os PRs abertos e denunciar o que ninguém pediu para pousar
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Sem `pip install`: o vigia usa só a biblioteca padrão e o `gh` que já
+      # vem no runner. Foi escolha, não acaso — um vigia que depende do
+      # registro de pacotes ganha um modo de falha novo justamente no dia em
+      # que ele precisa funcionar.
+      - name: Varrer, e abrir, reescrever ou fechar a issue
+        env:
+          # `github.token` PURO, e nunca `secrets.X || github.token`: aquele
+          # `||` não é plano B, é o PAT sombreando o único token que recebe as
+          # permissões deste bloco (`armadilhas/279`). Aqui o token do job
+          # basta — o vigia lê PRs e escreve issue, e não abre PR nenhum.
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # O veredito vem do EXIT do vigia, capturado direto — nunca do exit
+          # de um cano, que é sempre o do último comando da linha.
+          CODIGO=0
+          python ci/vigia_do_pouso.py --repo "$REPO" --corpo denuncia.md || CODIGO=$?
+
+          EXISTENTE="$(gh issue list --label pouso-esquecido --state open \
+            --json number --jq '.[0].number // empty')"
+
+          case "$CODIGO" in
+            0)
+              if [ -n "$EXISTENTE" ]; then
+                gh issue close "$EXISTENTE" --comment \
+                  "Nenhum PR verde sem pedido de pouso. Esta issue é quadro, não diário: ela se fecha sozinha quando o quadro esvazia."
+                echo "Issue #$EXISTENTE fechada — a fila voltou a andar."
+              else
+                echo "Nenhum PR esquecido, nenhuma issue aberta. Nada a fazer."
+              fi
+              ;;
+            3)
+              if [ -n "$EXISTENTE" ]; then
+                # Reescrever o corpo, não comentar: doze passagens por dia
+                # comentando a mesma lista viram ruído, e ruído se ignora — que
+                # é o mesmo que não avisar. E só reescrever quando MUDOU, para
+                # que a issue só notifique quem a segue se houver notícia.
+                # O `tr -d '\r'` existe porque o GitHub devolve o corpo com
+                # fim de linha do Windows, e a comparação crua acusaria
+                # diferença em todo run.
+                gh issue view "$EXISTENTE" --json body --jq .body \
+                  | tr -d '\r' > corpo-atual.md
+                if diff -q corpo-atual.md denuncia.md >/dev/null; then
+                  echo "Issue #$EXISTENTE já diz exatamente isto — não reescrevo."
+                else
+                  gh issue edit "$EXISTENTE" --body-file denuncia.md
+                  echo "Issue #$EXISTENTE atualizada com o quadro de agora."
+                fi
+              else
+                # A label pode não existir ainda. `|| true` aqui esconderia
+                # "não consegui criar" junto com "já existe", então a pergunta
+                # é feita de forma explícita.
+                if ! gh label list --json name --jq '.[].name' | grep -qx pouso-esquecido; then
+                  gh label create pouso-esquecido \
+                    --color FBCA04 \
+                    --description "PR verde e parado que ninguém pediu para pousar"
+                fi
+                gh issue create \
+                  --label pouso-esquecido \
+                  --title "Pouso esquecido: PR verde que ninguém pediu para pousar" \
+                  --body-file denuncia.md
+              fi
+              ;;
+            *)
+              echo "🧱 PAROU POR SEGURANÇA: o vigia não conseguiu varrer os PRs (exit $CODIGO)."
+              echo "   Isto NÃO é 'nenhum PR esquecido' — é 'não consegui olhar'."
+              echo "   A saída acima diz o que impediu a medição. Reproduza com:"
+              echo "     python ci/vigia_do_pouso.py --repo $REPO"
+              exit "$CODIGO"
+              ;;
+          esac
