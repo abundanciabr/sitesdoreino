@@ -637,7 +637,23 @@ def test_sem_a_senha_o_gesto_nao_fala_com_o_github_e_diz_o_que_fazer(
     pagina = pagina_sem_estilo(
         _dentro().get(reverse("caixa_robos"), {"resultado": "sem_token"})
     )
-    assert "ponha a GITHUB_TOKEN_FILA no env da admin" in numa_linha(pagina)
+    linha = numa_linha(pagina)
+    # Isolado do resto da página, porque o mesmo carregamento também mostra o
+    # aviso PREVENTIVO do botão desligado (classe "desligado") — são dois
+    # textos distintos, para dois momentos distintos, coexistindo na mesma
+    # tela quando o token falta.
+    desfecho = (
+        re.search(r'<p class="desfecho nao-deu">(.*?)</p>', linha).group(1).strip()
+    )
+    assert desfecho.startswith(
+        "O clique não abriu o pedido no GitHub"
+    ), "o texto do desfecho tem de começar pelo que aconteceu, não pelo estado do botão"
+    assert "tenha vencido" in desfecho, "não avisou que a chave pode ter vencido"
+    assert "ponha (ou troque) a GITHUB_TOKEN_FILA no env da admin" in desfecho
+    assert "infra/por-a-chave-do-github.sh" in desfecho, "não apontou o roteiro"
+    assert (
+        "está cinza porque falta uma chave" not in desfecho
+    ), "repetiu a frase do aviso preventivo, que é de outro momento"
 
 
 @respx.mock
