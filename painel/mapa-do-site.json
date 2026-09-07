@@ -2316,6 +2316,16 @@
       "titulo": "Tirar a vitrine do ar",
       "descricao": "Nao e uma pagina: e o que acontece quando o aluno aperta o botao de tirar o portfolio do ar. O endereco publico para de responder na hora, e nada do trabalho dele e apagado.",
       "observacao": "A internet alcanca este endereco, e isso e o esperado: quem corta o prefixo e o Django, nao o roteador. Quem fecha a porta e o cracha do aluno com matricula ativa, conferido antes de qualquer escrita."
+    },
+    {
+      "celula": "pages",
+      "rota": "dossie",
+      "endereco": "/pages/dossie",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Baixar o dossie do portfolio em PDF",
+      "descricao": "Nao e uma pagina de ler: abrir este endereco baixa um arquivo. E o portfolio do aluno em PDF, montado no nosso servidor com as mesmas obras da vitrine, na mesma ordem, com o selo da escola quando ele existe. Serve para o aluno anexar num e-mail, imprimir ou levar a uma reuniao, e cada obra abre no endereco dela com um clique.",
+      "observacao": "So o proprio aluno baixa o dele: o arquivo desce atras da porta da area do aluno, e nunca do endereco publico da vitrine. Como a vitrine, ele nao leva e-mail, telefone nem nome, so o apelido e as obras. Aluno que ainda nao guardou obra nenhuma recebe a explicacao na tela, e nao um arquivo vazio."
     }
   ]
 }

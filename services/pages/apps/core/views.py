@@ -1,13 +1,13 @@
 """As views da célula `pages` (a casa das Páginas do aluno).
 
-Treze: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a marcação
-de um item da lista de conferência, as três das peças coladas por link (degrau
-08: a estante, o colar de um link novo e a mudança de uma peça que já está lá),
-a resposta das perguntas da escola sobre uma peça (degrau 10), as três da
-conferência (degrau 11: o aluno pedindo, a fila da equipe e a decisão dela) e as
-três da vitrine (degrau 13: a página pública em `/estudio/<apelido>`, e o ligar
-e o desligar dela na estante do aluno). O que falta continua vindo pela escada
-do `PLANO-PORTFOLIO-DO-ALUNO.md` §5, a começar pelo dossiê em PDF (14).
+Catorze: a sonda, a Prancheta (o roteiro das cinco etapas, degrau 07), a
+marcação de um item da lista de conferência, as três das peças coladas por link
+(degrau 08: a estante, o colar de um link novo e a mudança de uma peça que já
+está lá), a resposta das perguntas da escola sobre uma peça (degrau 10), as três
+da conferência (degrau 11: o aluno pedindo, a fila da equipe e a decisão dela),
+as três da vitrine (degrau 13: a página pública em `/estudio/<apelido>`, e o
+ligar e o desligar dela na estante do aluno) e o dossiê em PDF (degrau 14), que
+fecha a escada do `PLANO-PORTFOLIO-DO-ALUNO.md` §5 dentro desta célula.
 
 **Nenhuma view daqui decide quem entra.** Quem decide é a porta
 (`apps/core/porta.py`), fail-CLOSED, e ela vem por último no `MIDDLEWARE`:
@@ -32,13 +32,19 @@ import os
 
 from django.conf import settings
 from django.db import models, transaction
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.portfolio import conferencia, conferencia_do_link, semaforo, vitrine
+from apps.portfolio import (
+    conferencia,
+    conferencia_do_link,
+    dossie,
+    semaforo,
+    vitrine,
+)
 from apps.portfolio.models import (
     Acabamento,
     EstadoDoLink,
@@ -331,17 +337,18 @@ def desenhar_estante(
     legenda="",
     recusa_da_conferencia="",
     recusa_da_vitrine="",
+    recusa_do_dossie="",
     status=200,
 ):
     """A tela das peças. `recusa` é a frase que diz por que o link não entrou.
 
     A recusa é DESENHADA no lugar, e não redirecionada: o aluno acabou de colar
     um endereço longo, e mandá-lo para outra página perderia o que ele digitou
-    junto com a explicação. `recusa_da_conferencia` e `recusa_da_vitrine` são a
-    mesma ideia para o botão de pedir a conferência e para o endereço da
-    vitrine, e as três são caixas SEPARADAS de propósito: uma frase sobre o
-    apelido aparecendo no lugar da frase sobre o link mandaria o aluno procurar
-    o erro no formulário errado.
+    junto com a explicação. `recusa_da_conferencia`, `recusa_da_vitrine` e
+    `recusa_do_dossie` são a mesma ideia para o botão de pedir a conferência,
+    para o endereço da vitrine e para o arquivo do degrau 14, e as quatro são
+    caixas SEPARADAS de propósito: uma frase sobre o apelido aparecendo no lugar
+    da frase sobre o link mandaria o aluno procurar o erro no formulário errado.
     """
     portfolio = meu_portfolio(request, site_id) if site_id else None
     return render(
@@ -399,6 +406,7 @@ def desenhar_estante(
                 else ""
             ),
             "recusa_da_vitrine": recusa_da_vitrine,
+            "recusa_do_dossie": recusa_do_dossie,
             "agora": timezone.now(),
             # As respostas que a escola aceita em cada pergunta. Só os VALORES e
             # os rótulos: a pergunta em si é frase que o aluno lê, e ela mora no
@@ -938,3 +946,70 @@ def despublicar_vitrine(request):
         vitrine.despublicar(portfolio)
 
     return redirect("pecas")
+
+
+# ---------------------------------------------------------------------------
+# O DOSSIÊ EM PDF (degrau 14, critério AC-16)
+# ---------------------------------------------------------------------------
+# Uma view só, e ela é do ALUNO LOGADO. A régua não foi escolhida aqui: o
+# critério AC-16 diz "o aluno baixa", e o despacho deste degrau repete que um
+# aluno nunca baixa o dossiê de outro (AC-07). Quem quer mostrar a obra ao
+# mundo já tem a vitrine do degrau 13, que é pública por opt-in; o arquivo é a
+# mesma obra na mão de quem a fez, para ele anexar onde quiser.
+#
+# Por isso ela mora sob o prefixo da área do aluno e NÃO entra na isenção da
+# porta (`apps/core/porta.py`): a matrícula ativa é conferida antes de esta
+# função rodar, e o portfólio sai pela porta única do isolamento.
+
+
+@require_GET
+def baixar_dossie(request):
+    """O arquivo que o aluno anexa num e-mail, imprime ou leva a uma reunião.
+
+    **As obras são as MESMAS da vitrine, e saem da MESMA consulta**
+    (`vitrine.obras`). O cliente do aluno costuma receber os dois, o link e o
+    anexo, e uma obra a mais num deles seria a escola desmentindo o próprio
+    aluno na frente de quem paga.
+
+    **Estante vazia não vira arquivo vazio.** Um PDF com o título e nenhuma obra
+    anexado a um e-mail para um cliente seria pior do que não existir botão
+    nenhum, então a tela volta com a frase que diz o que fazer.
+
+    **Sem `SITE_ID` no env não há arquivo**, pelo mesmo motivo das telas que
+    gravam: sem saber de que escola é esta instalação não dá para dizer de quem
+    é o portfólio, e servir a primeira linha do banco seria pior que recusar. O
+    porquê inteiro está em `site_atual`.
+    """
+    site_id = site_atual()
+    if site_id is None:
+        return sem_escola(request)
+
+    portfolio = meu_portfolio(request, site_id)
+    obras = vitrine.obras(portfolio) if portfolio is not None else []
+    if not obras:
+        return desenhar_estante(
+            request, site_id, recusa_do_dossie=dossie.SEM_OBRAS, status=422
+        )
+
+    resposta = HttpResponse(
+        dossie.montar(
+            apelido=portfolio.apelido,
+            # O SELO (AC-12) sai do estado do aluno, e nunca do último pedido,
+            # pelo mesmo motivo escrito na estante e na vitrine: quem pediu uma
+            # conferência nova continua com o selo da anterior.
+            selo_em=getattr(
+                getattr(portfolio, "estado", None), "selo_conferido_em", None
+            ),
+            obras=obras,
+        ),
+        content_type="application/pdf",
+    )
+    # `attachment` porque o dossiê existe para virar arquivo na máquina do
+    # aluno: aberto dentro do navegador, ele voltaria a ser uma página, que é o
+    # que a vitrine já é.
+    resposta["Content-Disposition"] = (
+        f'attachment; filename="{dossie.nome_do_arquivo(portfolio.apelido)}"'
+    )
+    # O arquivo é do aluno logado: nenhum cache no caminho guarda cópia dele.
+    resposta["Cache-Control"] = "no-store"
+    return resposta

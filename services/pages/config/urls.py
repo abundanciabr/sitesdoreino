@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.views import (
+    baixar_dossie,
     decidir,
     despublicar_vitrine,
     fila_da_equipe,
@@ -123,6 +124,15 @@ urlpatterns = [
     # formulário.
     path("vitrine/publicar", publicar_vitrine, name="publicar_vitrine"),
     path("vitrine/despublicar", despublicar_vitrine, name="despublicar_vitrine"),
+    # O DOSSIÊ EM PDF (degrau 14, critério AC-16), e ele é do ALUNO LOGADO: o
+    # arquivo desce sob o prefixo da área dele, atrás da porta fail-closed, e
+    # nunca do endereço público da vitrine. Quem quer mostrar a obra ao mundo já
+    # tem `/estudio/<apelido>`; este endereço é o do dono da obra.
+    #
+    # É `GET`, e por isso NÃO leva `"gesto": true` no mapa do site
+    # (`armadilhas/330`): abrir este endereço no navegador entrega o arquivo,
+    # que é exatamente o que o aluno espera de um botão de baixar.
+    path("dossie", baixar_dossie, name="dossie"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
     # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por

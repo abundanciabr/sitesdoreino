@@ -253,6 +253,33 @@ cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
     </form>
 {% endif %}
   </section>
+
+{% comment %}
+O DOSSIÊ EM PDF (degrau 14, critério AC-16), e ele fecha a página porque é o
+último passo do caminho: guardar as peças, mandar para a escola olhar, publicar
+a vitrine, e sair daqui com o arquivo na mão.
+
+É UM LINK, e não um formulário. Baixar não muda nada no servidor, então a rota
+é `GET` e o navegador faz o resto sozinho, sem uma linha de script e sem POST.
+
+O TEXTO DIZ O QUE O ARQUIVO TEM E O QUE ELE NÃO TEM, porque quem vai anexá-lo a
+um e-mail para um cliente precisa saber disso antes de mandar, e não depois.
+{% endcomment %}
+  <section class="conferencia">
+    <h2>O seu dossiê</h2>
+    <p>O dossiê é o arquivo do seu portfólio, pronto para anexar num e-mail,
+    imprimir ou levar a uma reunião. Ele traz as mesmas obras da sua vitrine, na
+    mesma ordem, e o selo da escola quando você já tiver o seu. Cada obra abre
+    no endereço dela com um clique.</p>
+    <p class="miudo">Assim como a vitrine, o arquivo não leva o seu e-mail, o
+    seu telefone nem o seu nome: só o seu apelido e as suas obras.</p>
+
+{% if recusa_do_dossie %}
+    <p class="recusa" role="alert">{{ recusa_do_dossie }}</p>
+{% endif %}
+
+    <p><a href="{% url 'dossie' %}">Baixar o meu dossiê em PDF</a></p>
+  </section>
 {% endif %}
 
   <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>
