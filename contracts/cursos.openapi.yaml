@@ -114,6 +114,15 @@
 # a prosa de `putBlock` e do documento foi reescrita para dizer isso. Nada foi
 # removido nem renomeado: mudança aditiva, provedor primeiro (PR #1349).
 #
+# EMENDA DO MESMO DIA (07/09/2026, segundo Rito): o revisor do PR #1349 mostrou
+# que "nome de bloco só preenche onde está vazio" apagava em silêncio o nome
+# de um bloco cuja letra mudasse de posição. A regra virou: em
+# `putCourseStructure`, `nome` e `boss_titulo` do bloco NULOS ou AUSENTES não
+# mexem no que está gravado; TEXTO grava esse valor (vazio apaga). A estrutura
+# é a fonte dos nomes dos módulos; a obra que nunca se sobrescreve é a das
+# aulas, que casam pelo número. E a conferência de rastro de aluno antes de
+# apagar uma aula passou a acontecer dentro da transação que grava.
+#
 openapi: 3.1.0
 info:
   title: Cursos — API interna
@@ -1155,24 +1164,47 @@ paths:
 
         do que ja existe; e NUNCA toca obra: pedido, cliente, pecas, pausas,
 
-        quiz, video, estado e versao ficam como estao. O titulo da aula, o
+        quiz, video, estado e versao ficam como estao. As aulas casam pelo
 
-        nome do bloco e o titulo do Boss so entram onde estao VAZIOS; o que a
+        NUMERO, que e estavel: o titulo da aula so entra onde esta VAZIO, o
 
-        tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz quantas
+        que a tela ja escreveu nao se sobrescreve, e `aulas_preservadas` diz
 
-        aulas ja existiam e ficaram com a obra intacta.
+        quantas aulas ja existiam e ficaram com a obra intacta.
+
+
+        OS BLOCOS CASAM PELA LETRA, QUE E POSICIONAL, e por isso a estrutura
+
+        e a fonte do nome do bloco e do titulo do Boss: quando nasce um bloco
+
+        na frente, o que era o B vira o C, e o nome tem de vir na estrutura
+
+        nova para acompanha-lo. Cada um dos dois campos tem tres estados.
+
+        Ausente ou nulo: o que esta gravado fica como esta. Texto: passa a
+
+        ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga.
+
+        Mande sempre o nome que a tela mostra, e nenhum bloco perde o nome
+
+        quando muda de letra.
 
 
         Aula que sumiu da estrutura nova e APAGADA so se nenhum aluno passou
 
-        por ela (sem progresso, sem envio, sem registro de pausa). Se algum
+        por ela (sem progresso, sem envio, sem registro de pausa). A
 
-        passou, e 422 nomeando as aulas, e NADA e gravado: a transacao e uma
+        conferencia acontece DENTRO da transacao que apaga, com essas aulas
 
-        so. Bloco que sumiu e apagado depois que as aulas dele mudaram de
+        trancadas: um aluno gravando rastro nelas no mesmo instante e visto,
 
-        bloco ou foram apagadas.
+        e nenhuma aula por onde alguem passou e apagada. Se algum passou, e
+
+        422 nomeando as aulas, e NADA e gravado: a transacao e uma so. Bloco
+
+        que sumiu e apagado depois que as aulas dele mudaram de bloco ou
+
+        foram apagadas.
 
 
         422 tambem, dizendo a linha do problema: letra de bloco repetida,
@@ -1878,9 +1910,17 @@ components:
       additionalProperties: false
       description: 'Um bloco como a estrutura o declara: a letra, a parte (o enum do
 
-        contrato), as aulas na ordem, e os dois textos de obra, que só entram onde
+        contrato), as aulas na ordem, e os dois textos do bloco. A estrutura e a
 
-        o bloco ainda não os tem.'
+        fonte do nome do bloco e do titulo do Boss, porque as letras sao
+
+        posicionais: o bloco que hoje e o A pode virar o B na estrutura nova, e
+
+        o nome tem de viajar com ele. Por isso os dois campos tem tres estados:
+
+        ausente ou nulo NAO MEXE no que esta gravado; texto GRAVA aquele valor;
+
+        texto vazio APAGA.'
       properties:
         letra:
           pattern: ^[A-Z]$
@@ -1888,13 +1928,19 @@ components:
         parte:
           $ref: '#/components/schemas/ParteDoCurso'
         nome:
-          default: ''
-          maxLength: 120
-          type: string
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O nome do bloco. Ausente ou nulo: o nome gravado fica como esta. Texto: passa
+            a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o nome.'
         boss_titulo:
-          default: ''
-          maxLength: 120
-          type: string
+          anyOf:
+          - maxLength: 120
+            type: string
+          - type: 'null'
+          description: 'O titulo do Boss do bloco. Ausente ou nulo: o titulo gravado fica como esta. Texto:
+            passa a ser este, mesmo que o bloco ja tivesse outro. Texto vazio: apaga o titulo.'
         aulas:
           items:
             $ref: '#/components/schemas/AulaDaEstruturaSchema'
