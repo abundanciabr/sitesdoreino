@@ -2063,7 +2063,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "A rede de talentos",
-      "descricao": "O caminho que leva uma aluna da escola até um trabalho num estúdio, desenhado do começo ao fim, com o número de cada etapa ao lado. Três etapas acontecem fora do sistema (alunas escolhidas, estúdios parceiros, alunas que começaram um trabalho) e a escola digita a contagem delas aqui.",
+      "descricao": "O caminho que leva uma aluna da escola até um trabalho num estúdio, desenhado do começo ao fim, com o número de cada etapa ao lado. Três etapas acontecem fora do sistema (alunas escolhidas, estúdios parceiros, trabalhos já começados) e a escola digita a contagem delas aqui. Nos trabalhos, a mesma aluna em dois trabalhos conta duas vezes, como o cartão `encaixes-com-estudio` define.",
       "observacao": "A tela não grava nada: ela devolve um bloco de texto para colar numa sessão de robô, e a contagem vira registro do livro (tipo medicao, campo foto), como a reunião de segunda. Etapa sem contagem diz 'nunca contado', que não é zero. Degrau 17 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §8)."
     },
     {
