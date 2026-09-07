@@ -234,6 +234,19 @@ class Registro(models.Model):
     EDITAR_AULA = "editar_aula"
     PUBLICAR_AULA = "publicar_aula"
     EDITAR_INSTRUMENTO = "editar_instrumento"
+    # [FILA] 06/09/2026: o botao de excluir da aba "Os robos"
+    # (`/admin/caixa/robos/`). Verbo proprio, e o alvo dele nao e uma pessoa nem
+    # um texto: e um pedido de TRABALHO. Tirar um da fila e o unico gesto desta
+    # area que o outro lado nunca desfaz — `cancelada` e terminal, e a fila
+    # recusa qualquer evento depois de um terminal.
+    #
+    # A razao mais forte para esta linha existir e o desfecho RECUSADO. O gesto
+    # nao escreve no banco de ninguem: ele abre um PR no GitHub. Quando o GitHub
+    # diz nao (sem senha, ramo ja existente, internet caida), nada e escrito em
+    # lugar nenhum, e sem esta linha a tentativa nao teria deixado rastro. No
+    # caminho feliz o `detalhe` guarda o numero do PR, que e o unico jeito de
+    # ligar esta linha ao trabalho que ela abriu.
+    CANCELAR_TAREFA = "cancelar_tarefa"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -279,6 +292,7 @@ class Registro(models.Model):
         (EDITAR_AULA, "gravar uma encomenda do curso"),
         (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
+        (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
     ]
 
     OK = "ok"

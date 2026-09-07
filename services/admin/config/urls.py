@@ -72,7 +72,7 @@ from apps.core.coortes import coortes
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
-from apps.core.robos import robos
+from apps.core.robos import excluir_tarefa, robos
 from apps.core.aulas import (
     aula,
     aula_publicar,
@@ -409,6 +409,12 @@ urlpatterns = [
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
+    # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
+    # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
+    # e é conferido contra o formato antes de virar nome de ramo
+    # (`armadilhas/047`): endereço nenhum desta rota carrega dado de formulário.
+    path("caixa/robos/excluir", excluir_tarefa, name="caixa_robos_excluir"),
     # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
     # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
     # análise das sugestões e o robô esbarrou no que o livro já registrava em
