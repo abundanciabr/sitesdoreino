@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-07",
   titulo: "Voce autorizou, e a sala de aula passou a declarar o Guardiao de fidelidade no contrato",
-  detalhe: "Rito de Contrato com voce presente, autorizando em seu nome por caixa de pergunta. A conferencia da aula ganhou o modo fidelidade, opcional; sem ele, tudo responde como antes. Nenhuma operacao nasceu nem sumiu: continuam dezessete. O congelado foi emendado sobre o de hoje (o Rito dos varios cursos), com o serializador provado antes. TAR-246.",
+  detalhe: "Rito de Contrato com voce presente, autorizando em seu nome por caixa de pergunta. A conferencia da aula ganhou o modo fidelidade, opcional; sem ele, tudo responde como antes. Nenhuma operacao nasceu nem sumiu: continuam dezessete. TAR-246.",
   autoridade: "mantenedor",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1360 (so contracts/cursos.openapi.yaml, etiqueta contrato; portao aditivo PASS, nada removido; 17 operacoes antes e depois)",
   verificado_em: "2026-09-07",
