@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-172203-TAR-275-explicada",
+  "tarefa": "TAR-275",
+  "evento": "explicada",
+  "quando": "2026-09-07T17:22:03+00:00",
+  "quem": "revisor do PR 1341 em 07/09/2026, lista de 8 pontos entregue depois do pouso",
+  "o_que_e": "O catalogo em /cursos/ esta no ar desde o PR 1341. O revisor da casa leu o codigo depois do pouso e achou duas telas erradas e seis descuidos: o aviso do topo dizia que o aluno nao tem sala enquanto o cartao logo abaixo dizia que a sala existe mas esta fechada; o link tente de novo mandava a pessoa para o catalogo em vez de recarregar a pagina que falhou; uma frase nao dizia o que fazer; e havia copia de estilo, chave morta, bloco repetido, nome de teste enganoso e uma nota que apontava para um paragrafo apagado.",
+  "o_que_muda": "Quem abre o catalogo com um curso ainda nao ligado a compra le uma frase so, com o que fazer. Quem ve a recusa sem resposta clica em tente de novo e volta para a mesma pagina. O codigo fica menor e sem dizer duas vezes a mesma coisa.",
+  "exemplo": "E como um cartaz na porta dizendo fechado para reforma e, logo acima, outro dizendo esta loja nao existe: a pessoa nao sabe em qual acreditar.",
+  "importancia": 60
+}
