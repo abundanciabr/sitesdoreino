@@ -154,7 +154,10 @@ from sino_das_armadilhas import (  # noqa: E402
 # travessia cp1252 → utf-8 no Windows (a remedição nasceu inerte na única
 # máquina onde roda), e reescrever a mensagem lá mataria a remedição aqui sem
 # nenhum teste ficar vermelho. `armadilhas/328`.
-from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
+from mergear import (  # noqa: E402
+    MOTIVO_GITHUB_AINDA_CALCULANDO,
+    mais_recente_por_nome,
+)
 from espera import (  # noqa: E402
     FalhasSeguidas,
     GracaVencida,
@@ -465,8 +468,8 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
     dados = _gh_json(
         gh, ["pr", "view", pr, "--json", "statusCheckRollup,state", "-R", repo]
     )
-    rollup = dados.get("statusCheckRollup") if isinstance(dados, dict) else None
-    if not isinstance(rollup, list) or not rollup:
+    bruto = dados.get("statusCheckRollup") if isinstance(dados, dict) else None
+    if not isinstance(bruto, list) or not bruto:
         # armadilhas/150: "no checks reported" quase sempre é conflito com a main
         return Olhada(
             pronta=False,
@@ -476,6 +479,12 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
                 "é conflito com a main (armadilhas/150), não fila"
             ),
         )
+    # O rollup traz uma entrada por EXECUÇÃO, não por check: um PR fechado e
+    # reaberto (a receita da `armadilhas/077`) deixa a execução CANCELLED velha
+    # ao lado da SUCCESS nova, e lendo cru esta espera reprovava o que o portão
+    # aprovava no mesmo segundo. A regra é a do portão, importada e nunca
+    # copiada, para os dois não poderem discordar — `armadilhas/381`.
+    rollup = mais_recente_por_nome(bruto)
     pendentes = [
         c for c in rollup if str(c.get("status", "")).upper() != "COMPLETED"
     ]
