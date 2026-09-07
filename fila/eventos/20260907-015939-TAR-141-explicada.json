@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015939-TAR-141-explicada",
+  "tarefa": "TAR-141",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:39+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando dois robos mexem no mesmo arquivo, os trabalhos entram em conflito. Nesse caso nenhum teste chega a rodar, e o vigia le a ausencia de reprovacao como aprovacao.",
+  "o_que_muda": "Mais uma rodada perdida por trabalho. Quem salva hoje e o portao seguinte, que recusa, e e por isso que nada errado entrou no site.",
+  "exemplo": "E o professor dizendo que ninguem errou a prova, quando na verdade ninguem entregou a prova.",
+  "importancia": 78
+}

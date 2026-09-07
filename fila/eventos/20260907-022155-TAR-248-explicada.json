@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-022155-TAR-248-explicada",
+  "tarefa": "TAR-248",
+  "evento": "explicada",
+  "quando": "2026-09-07T02:21:55+00:00",
+  "quem": "achado pelo robo do PR #1267 em 06/09/2026, fora do escopo dele; escriturado pela celula fila",
+  "o_que_e": "O servidor da area administrativa guarda uma senha secreta compartilhada com a pagina de portfolios dos alunos. Toda vez que um roteiro de manutencao roda, ele reescreve o arquivo dessa senha do zero e devia conferir se ela continuou a mesma depois. Mas a conferencia de hoje compara a senha nova com ela mesma, nunca com o que existia antes da reescrita.",
+  "o_que_muda": "Se um dia a releitura da senha antiga falhar, por um defeito em outro lugar do roteiro, o sistema hoje gera uma senha nova sem avisar ninguem, e a conferencia aprova essa troca como se nada tivesse acontecido, porque esta comparando a senha nova com ela mesma. A pagina de portfolios para de funcionar para todo mundo, sem aviso, e o sintoma parece falta de permissao, nao troca de senha. Corrigindo, a conferencia passa a comparar com a copia de seguranca do arquivo antigo, que e a unica prova real de qual era a senha antes.",
+  "exemplo": "E como o segredo de uma casa que so o dono e a vizinha conhecem: se numa reforma o pedreiro trocar a fechadura sem querer, so um bilhete escrito antes da reforma prova qual era a senha certa. Perguntar se a senha bate com a senha que acabei de trocar sempre vai dizer que sim, mesmo com a fechadura errada.",
+  "importancia": 60
+}

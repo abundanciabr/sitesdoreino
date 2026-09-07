@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015956-TAR-012-explicada",
+  "tarefa": "TAR-012",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:56+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "A lista dos programas necessarios existe escrita, mas ninguem confere se eles estao instalados antes de comecar.",
+  "o_que_muda": "O robo falha no meio da tarefa com um erro confuso, em vez de avisar antes de comecar.",
+  "exemplo": "E descobrir que faltou fermento depois de misturar a massa toda.",
+  "importancia": 25
+}
