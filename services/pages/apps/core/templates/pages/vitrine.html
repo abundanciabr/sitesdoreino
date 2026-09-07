@@ -1,0 +1,104 @@
+{% comment %}
+A VITRINE PÚBLICA (degrau 13, critérios AC-13, AC-14 e AC-15): a página que o
+aluno manda ao CLIENTE dele.
+
+ELA NÃO VESTE A MOLDURA DA CASA, e isso é decisão. `pages/moldura.html` carrega
+o menu do site e a faixa da área do aluno, feitos para quem está DENTRO da
+escola; quem abre esta página é um cliente pagante que nunca vai entrar na
+plataforma, e para ele aqueles caminhos são convites para sair do portfólio que
+ele veio ver. O que fica da escola é a assinatura no fim, que é o que interessa
+a quem contrata: a obra tem uma escola por trás.
+
+O ESTILO É EMBUTIDO pelo mesmo motivo da moldura: célula sob `SCRIPT_NAME` que
+serve estático por tag monta endereço da célula errada, e com `DEBUG=0` o Django
+não serve estático (`armadilhas/083` e `/102`). A política de conteúdo desta
+página (`apps/core/views.py`, `POLITICA_DE_CONTEUDO`) permite o estilo embutido
+e proíbe script, inclusive o nosso.
+
+A IMAGEM VEM DE UM SITE QUE A ESCOLA NÃO CONTROLA, porque a foto entra por link
+colado (plano §6.2). É a única tela desta plataforma assim, e o que torna o
+risco controlado é a política de conteúdo, que só deixa entrar imagem, e só por
+`https`.
+
+NADA DE `loading="lazy"` AQUI. Numa página feita para ser impressa, a imagem que
+o navegador guarda para depois é a imagem que não aparece no PDF, e o AC-15 diz
+que o navegador salva sozinho.
+
+O `noindex` SAI NOS DOIS LUGARES: nesta `<meta>` e no cabeçalho `X-Robots-Tag`
+da resposta. Ele não é negociável (plano §7), e cada um dos dois pega um caminho
+diferente de quem varre a internet.
+
+NADA IDENTIFICA A PESSOA. Só o apelido que ela escolheu, as obras e o selo. Nem
+e-mail, nem telefone, nem nome completo, nem o id do aluno (critério AC-14).
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Portfólio de {{ apelido }} | Meshcraft Academy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 .25rem; }
+  p { margin: 0 0 1rem; }
+  .miudo { font-size: .9rem; opacity: .8; }
+  .selo { padding: .75rem 1rem; border-left: .25rem solid currentColor; background: rgba(128,128,128,.12); }
+  .obras { list-style: none; padding: 0; margin: 2.5rem 0 0; }
+  .obra { margin: 0 0 3rem; }
+  .obra img { display: block; width: 100%; height: auto; border-radius: .4rem; background: rgba(128,128,128,.12); }
+  .obra .legenda { font-weight: 600; margin: .6rem 0 0; }
+  .obra .destaque { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  .vazio { padding: .75rem 1rem; background: rgba(128,128,128,.12); }
+  .assinatura { max-width: 46rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; border-top: 1px solid rgba(128,128,128,.35); font-size: .9rem; }
+  /* A VERSÃO DE IMPRESSÃO (critério AC-15): o navegador salva sozinho, sem
+     botão e sem uma linha de script. Fundo branco e texto preto porque quem
+     imprime uma página em tema escuro gasta tinta e recebe obra ilegível; a
+     obra e a legenda dela nunca se separam entre duas folhas; e o endereço de
+     cada imagem aparece por extenso, porque num papel o link não é clicável e
+     sem ele a peça vira uma foto sem procedência. */
+  @media print {
+    :root { color-scheme: light; }
+    body { background: #fff; color: #000; }
+    main { max-width: none; padding: 0; }
+    .obra { break-inside: avoid; page-break-inside: avoid; margin: 0 0 1.5rem; }
+    .obra img { max-height: 15cm; width: auto; }
+    .obra .endereco { display: block; }
+    .assinatura { border-top: 1px solid #999; }
+  }
+  .obra .endereco { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ apelido }}</h1>
+  <p class="miudo">Portfólio de modelagem 3D.</p>
+
+{% if selo_em %}
+  <p class="selo">Conferido pela escola em {{ selo_em|date:"d/m/Y" }}.</p>
+  <p class="miudo">Uma pessoa da equipe da Meshcraft Academy abriu estas obras e
+  conferiu o portfólio nessa data. O selo vale para o que ela viu no dia.</p>
+{% endif %}
+
+{% if obras %}
+  <ol class="obras">
+{% for obra in obras %}
+    <li class="obra">
+      <a href="{{ obra.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ obra.link }}" alt="{{ obra.legenda|default:"Obra do portfólio" }}"></a>
+      <p class="legenda">{% if obra.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ obra.legenda|default:"Obra sem legenda" }}</p>
+      <p class="miudo endereco">{{ obra.link }}</p>
+    </li>
+{% endfor %}
+  </ol>
+{% else %}
+  <p class="vazio">Este portfólio ainda não tem obras publicadas. Volte daqui a
+  pouco: as peças aparecem aqui assim que o autor as guardar.</p>
+{% endif %}
+</main>
+<footer class="assinatura">
+  <p class="miudo">Portfólio publicado na <a href="{{ url_da_capa }}">Meshcraft
+  Academy</a>, a escola de modelagem 3D para Roblox.</p>
+</footer>
+</body>
+</html>

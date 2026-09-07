@@ -181,18 +181,63 @@ def test_o_estilo_do_rodape_chega_junto_com_a_pagina(aluna):
 # ---------------------------------------------------------------------------
 # 4. A moldura, a casa onde a peça comum mora
 # ---------------------------------------------------------------------------
+# AS DUAS TELAS QUE NÃO VESTEM A MOLDURA, e a lista é FECHADA (degrau 13).
+#
+# A moldura é a casa do aluno LOGADO: ela carrega o menu do site, a faixa da
+# área e o rodapé com os caminhos de volta para dentro da escola. As duas telas
+# da vitrine pública falam com outra pessoa, o cliente pagante do aluno, que
+# nunca vai entrar na plataforma (critério AC-13): para ele aquele menu é um
+# convite para sair do portfólio que ele veio ver, e a faixa "Páginas" é o nome
+# de um lugar onde ele não está.
+#
+# **E a exceção não é de gosto: a vitrine precisa de um `<head>` que a moldura
+# não tem.** O `noindex` do critério AC-13 sai numa `<meta>` própria, e a versão
+# de impressão do AC-15 é uma folha `@media print` que só faz sentido numa página
+# de obras. Vesti-la aqui obrigaria a moldura de TODA a casa a ganhar blocos para
+# injetar as duas coisas por causa de uma tela.
+#
+# A lista é conferida por igualdade EXATA, e não por "tela cujo nome começa com
+# vitrine": é essa igualdade que impede a exceção de virar porta aberta. Tela
+# nova solta continua reprovando, e quem quiser entrar aqui escreve o nome e o
+# motivo.
+TELAS_SEM_MOLDURA = {"vitrine.html", "vitrine-fora-do-ar.html"}
+
+
+def test_a_lista_de_telas_sem_moldura_nao_guarda_nome_de_tela_que_morreu():
+    """A isenção acima só vale enquanto as telas dela existirem.
+
+    Sem isto, o nome de uma tela apagada continuaria na lista, e a próxima tela
+    que nascesse com esse nome herdaria uma isenção que ninguém decidiu para ela.
+    """
+    pasta = Path(core.__file__).parent / "templates" / "pages"
+    existem = {p.name for p in pasta.glob("*.html")}
+
+    fantasmas = sorted(TELAS_SEM_MOLDURA - existem)
+
+    assert not fantasmas, (
+        f"estes nomes estão isentos da moldura e não existem mais: {fantasmas}. "
+        f"Tire-os de `TELAS_SEM_MOLDURA`: isenção sem dono é isenção esperando "
+        f"uma tela nova para herdá-la."
+    )
+
+
 def test_todas_as_telas_vestem_a_mesma_moldura():
     """Tela solta nasce sem menu e sem rodapé, e nada fica vermelho.
 
     A varredura lê a PASTA, e não uma lista: tela nova que nascer com o próprio
-    `<html>` reprova aqui, e a mensagem diz o que fazer (`armadilhas/242`).
+    `<html>` reprova aqui, e a mensagem diz o que fazer (`armadilhas/242`). As
+    únicas isentas são as duas da vitrine pública, nomeadas em
+    `TELAS_SEM_MOLDURA` com o motivo por extenso.
     """
     pasta = Path(core.__file__).parent / "templates" / "pages"
     telas = sorted(p for p in pasta.glob("*.html") if p.name != "moldura.html")
     assert telas, "a varredura não encontrou tela nenhuma — isto é falha de medição"
 
     soltas = [
-        p.name for p in telas if "{% extends" not in p.read_text(encoding="utf-8")
+        p.name
+        for p in telas
+        if "{% extends" not in p.read_text(encoding="utf-8")
+        and p.name not in TELAS_SEM_MOLDURA
     ]
     assert not soltas, (
         f"estas telas não vestem a moldura: {soltas}. Toda tela desta célula "

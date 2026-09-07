@@ -57,6 +57,8 @@ import logging
 from django.http import HttpResponse
 from django.shortcuts import render
 
+from apps.portfolio import vitrine
+
 from .clients import (
     AdminIndisponivel,
     AlunosClient,
@@ -114,7 +116,13 @@ PREFIXO_DA_PORTA_DE_MAQUINA = "/interno"
 #: NÃO remover esse prefixo no Traefik, justamente para que esta porta tivesse
 #: como distinguir os dois endereços públicos da casa
 #: (`infra/traefik/dynamic/plataforma.yml`, roteador `estudio`).
-PREFIXO_PUBLICO_DA_VITRINE = "/estudio"
+#:
+#: **A cadeia vem do módulo da vitrine, e não se escreve de novo aqui** (degrau
+#: 13). O mesmo prefixo governa três coisas: o que esta porta isenta, a rota que
+#: o urlconf serve e o endereço que o aluno copia da estante. Duas cópias livres
+#: para divergir fechariam a vitrine na cara do cliente dele, ou deixariam esta
+#: isenção apontando para um caminho que não existe mais.
+PREFIXO_PUBLICO_DA_VITRINE = vitrine.PREFIXO_PUBLICO
 
 #: A FILA DA EQUIPE, e ela NÃO é isenta: é a mesma porta, com outra pergunta.
 #:
