@@ -152,9 +152,15 @@ info:
 
     CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    `putCourseStructure`). O placar da fila (getReviewQueue) e o
+    `putCourseStructure`). O placar da fila
 
-    progresso do aluno (getStudentProgress) nascem no degrau 2.1.
+    (getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA
+
+    NAO EXISTEM nesta porta: o degrau 2.1 pousou sem os dois, e o degrau
+
+    em que eles nascem ainda nao esta marcado. Quem precisar deles hoje
+
+    nao os encontra aqui.
 
 
     A SALA SERVE VARIOS CURSOS DESDE 07/09/2026, e cada um nasce por esta
@@ -265,6 +271,27 @@ info:
     e nao cresce: quem consome esta porta mostra as 16 em ordem e esta uma
 
     so a pedido, e NAO desenha botao quando o texto dela vem vazio.
+
+
+    O GUARDIAO DE FIDELIDADE ENTROU EM 07/09/2026 (degrau 3.2), e ele e
+
+    IA. Ele nao ganhou operacao propria: e o parametro `modo` de
+
+    `checkLesson`, que vale `coerencia` (o padrao, identico ao de antes)
+
+    ou `fidelidade`. Em `fidelidade` ele compara cada peca DERIVADA (o
+
+    roteiro, o guia do mentor, a video-aula em texto e a peca onde mora o
+
+    Cartao de 1 pagina) com a FONTE de que ela deriva, e aponta onde o
+
+    sentido mudou, no mesmo formato de defeito. Ele APONTA E NUNCA VETA:
+
+    `impede_publicar` e sempre falso neste modo. Encomenda sem peca
+
+    derivada escrita e 422, IA fora do ar e 503, e nada e gravado em
+
+    nenhum dos dois casos.
 
     '
 paths:
@@ -858,6 +885,16 @@ paths:
           - $ref: '#/components/schemas/ParteDoCurso'
           - type: 'null'
         required: false
+      - in: query
+        name: modo
+        schema:
+          allOf:
+          - enum:
+            - coerencia
+            - fidelidade
+            type: string
+          default: coerencia
+        required: false
       responses:
         '200':
           description: OK
@@ -903,7 +940,57 @@ paths:
 
         Aula sem defeito responde lista vazia, e nao erro. `parte` e o mesmo
 
-        GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.'
+        GUARDA de `getLesson`. 404 se o curso ou a aula nao existem.
+
+
+        O `modo` ESCOLHE A REGUA, e o padrao e `coerencia`, identico ao que
+
+        esta operacao respondia antes do degrau 3.2.
+
+
+        Em `modo=fidelidade` responde o GUARDIAO DE FIDELIDADE, que e IA, e
+
+        nao codigo. Ele compara cada peca DERIVADA com a FONTE de que ela
+
+        deriva e aponta onde o sentido mudou: o `roteiro` e a
+
+        `videoaula_em_texto` contra as 16 pecas canonicas, o `guia_do_mentor`
+
+        contra o `Aceito quando` mais as pecas `voce_faz` e `checkpoint`, e a
+
+        peca `dicionario_cartao_respostas` (onde mora o Cartao de 1 pagina)
+
+        contra as outras 15. Peca derivada sem texto nao e comparada.
+
+
+        O `codigo` de cada defeito de fidelidade vem de OUTRO vocabulario
+
+        fechado, o dos sete desvios da ficha: `invencao`,
+
+        `regra_virou_sugestao`, `nome_trocado`, `omissao`,
+
+        `sentido_alterado`, `decisao_simplificada` e
+
+        `comparacao_entre_pessoas`. `peca` e a peca DERIVADA, `alvo` e o
+
+        trecho dela, e `frase` traz o trecho da fonte ao lado do trecho da
+
+        saida. `impede_publicar` e SEMPRE falso neste modo: o Guardiao
+
+        aponta, e nunca veta.
+
+
+        422 em `modo=fidelidade` quando a encomenda nao tem nenhuma peca
+
+        derivada escrita, e quando um dos textos passa do teto desta
+
+        conferencia; o `detail` diz o que fazer, em portugues. 503 quando a
+
+        IA nao produziu resposta (chave ausente, chave recusada, limite,
+
+        queda, formato ilegivel), tambem com a frase em portugues. Nada e
+
+        gravado em nenhum dos dois casos.'
   /cursos/{curso}/blocos/{letra}:
     put:
       operationId: putBlock
@@ -1967,6 +2054,11 @@ components:
       required:
       - blocos
       type: object
+    ModoDeConferencia:
+      enum:
+      - coerencia
+      - fidelidade
+      type: string
   securitySchemes:
     bearerAuth:
       type: http
