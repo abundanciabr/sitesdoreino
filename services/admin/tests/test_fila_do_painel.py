@@ -15,6 +15,11 @@ O que estes guardas protegem:
 5. **Sempre 200, como `divida.json`** — fila ausente é `erro` no corpo, nunca
    um painel inteiro quebrado.
 6. **A porta protege esta rota como qualquer outra** desta célula.
+7. **`prompt` só vem em tarefa que um robô NOVO pode pegar** ("na fila"), e é
+   a MESMA frase de `robos.prompt_para_tocar`. Tarefa que um robô já toca, ou
+   que espera o dono, chega com `prompt: None`: colar o prompt dela abriria
+   uma segunda sessão no mesmo trabalho, o que já custou pagar duas vezes
+   (05/09/2026).
 """
 
 import json
@@ -137,6 +142,16 @@ ESTADOS_DE_MENTIRA = {
         "titulo": "A corrente destrava sozinha",
         "toca": ["admin"],
     },
+    "TAR-006": {
+        "estado": "reivindicada",
+        "titulo": "Um robô já está com ela",
+        "toca": ["admin"],
+    },
+    "TAR-007": {
+        "estado": "em execução",
+        "titulo": "Já mandou o trabalho",
+        "toca": ["admin"],
+    },
 }
 
 
@@ -160,6 +175,8 @@ def test_so_as_tarefas_abertas_aparecem_na_forma_do_contrato(tmp_path, monkeypat
         "TAR-003",
         "TAR-004",
         "TAR-005",
+        "TAR-006",
+        "TAR-007",
     ], "concluída/cancelada vazaram, ou a ordem não é por id"
 
     por_id = {t["id"]: t for t in dados["tarefas"]}
@@ -213,6 +230,27 @@ def test_selo_e_importancia_vem_de_robos_py_sem_reimplementar_limiares(
 
     assert por_id["TAR-101"]["importancia"] is None
     assert por_id["TAR-101"]["selo"]["classe"] == "sem-nota"
+
+
+@respx.mock
+def test_o_prompt_de_tocar_so_vem_na_tarefa_que_um_robo_novo_pode_pegar(
+    tmp_path, monkeypatch
+):
+    fila_de_mentira(tmp_path, monkeypatch, ESTADOS_DE_MENTIRA)
+    painel_de_mentira(tmp_path, monkeypatch, AREAS_DE_MENTIRA)
+
+    dados = json.loads(_dentro().get(reverse("painel_fila")).content)
+    por_id = {t["id"]: t for t in dados["tarefas"]}
+
+    # A frase é a de robos.py, chamada e não colada: se ela mudar lá, o painel
+    # muda junto sem ninguém lembrar de nada (armadilhas/379).
+    assert por_id["TAR-003"]["prompt"] == robos.prompt_para_tocar(
+        "TAR-003", ["encomendas"]
+    )
+    for parada in ("TAR-004", "TAR-006", "TAR-007"):
+        assert (
+            por_id[parada]["prompt"] is None
+        ), f"{parada} não está na fila: o prompt abriria uma segunda sessão"
 
 
 # ──────────────────────────────────────────────────────── 2. resolução de área
