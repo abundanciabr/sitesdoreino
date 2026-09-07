@@ -993,6 +993,16 @@
     },
     {
       "celula": "admin",
+      "rota": "pendencias/",
+      "endereco": "/admin/pendencias/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Pendencias: tudo que esta esperando por voce",
+      "descricao": "A portaria da area administrativa. Uma linha por fila de trabalho, dizendo quantas coisas esperam por voce, ha quanto tempo a mais antiga espera, e levando ao lugar onde aquilo se resolve. Nasceu em 07/09/2026 porque o trabalho parado morava em seis enderecos diferentes e nenhum deles avisava nada. Neste degrau ela conta tres filas (quem quer entrar na escola, as ideias esperando assinatura e as decisoes paradas no painel do sistema) e DIZ na tela quais ainda nao conta. Fila que nao responde aparece como 'nao consegui perguntar', nunca como zero."
+    },
+    {
+      "celula": "admin",
       "rota": "mapa/",
       "endereco": "/admin/mapa/",
       "alcance": "publico",

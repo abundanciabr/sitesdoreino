@@ -29,6 +29,25 @@
   {% endcomment %}
   <h2 class="titulo-de-bloco">Os painéis</h2>
   <div class="cartoes">
+    {% comment %}
+    A PRIMEIRA porta da grade, e ela é a única que não é um lugar para olhar: é
+    a lista do que espera por você (07/09/2026, degrau 1 de
+    documentos/pendencias-e-conferencia-por-pares.md).
+
+    Vem na frente das outras porque foi exatamente por vir depois que uma fila
+    inteira ficou invisível: em 06/09/2026 o mantenedor abriu a fila de marcos
+    e disse "que eu nem sabia que isso existia". Uma fila que alguém precisa
+    lembrar de abrir é uma fila que não existe, e a cura de um esquecimento não
+    pode morar no fim de uma lista de onze cartões.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'pendencias' %}">
+      <div class="rotulo">Ver o que está esperando você &rarr;</div>
+      <div class="nota">
+        As filas do site num lugar só: quem quer entrar na escola, o que espera
+        a sua assinatura e as decisões paradas. Cada linha diz há quanto tempo
+        espera e leva para onde se resolve.
+      </div>
+    </a>
     <a class="cartao porta" href="{% url 'painel' %}">
       <div class="rotulo">Abrir o painel do sistema &rarr;</div>
       <div class="nota">
