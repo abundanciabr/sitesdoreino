@@ -684,6 +684,174 @@ var pedidosAMais = muitosPedidos.length - (TETO_CAIXA + 2);
 caso("passado o teto, cada pedido a mais pesa um título e não um parágrafo",
   (pesoCheioCaixa - pesoBaseCaixa) / pedidosAMais < 800);
 
+// ===========================================================================
+// PRIORIDADES POR ÁREA (07/09/2026) — o recorte que responde "o que eu faço
+// primeiro, e em que parte do site isso mexe".
+//
+// Os casos travam o que a vista precisa ser: ela agrupa pela ÁREA declarada,
+// cai na frente do livro quando não há área, deixa em "sem área reconhecida"
+// quem ninguém reconheceu, ordena cada grupo pela regra combinada, não mostra o
+// mesmo fato em dois grupos, e mostra TODAS as áreas mesmo vazias.
+console.log("== prioridades por área ==");
+
+var AREAS_TESTE = [
+  { id: "alunos", nome: "🎓 Alunos", diz: "cadastro e login", celulas: ["alunos", "identidade"] },
+  { id: "comunidade", nome: "📮 Comunidade", diz: "fórum", celulas: ["forum"] },
+  { id: "fabrica", nome: "🏭 Infra e fábrica", diz: "esteira", celulas: ["ci", "infra"] }
+];
+caso("as áreas de exemplo passam na validação", LOGICA.validarAreas(AREAS_TESTE).length === 0);
+caso("célula em DUAS áreas REPROVA (o mesmo trabalho apareceria em dois blocos)",
+  LOGICA.validarAreas([
+    { id: "a", nome: "A", diz: "x", celulas: ["forum"] },
+    { id: "b", nome: "B", diz: "y", celulas: ["forum"] }
+  ]).length > 0);
+caso("id repetido REPROVA", LOGICA.validarAreas([
+  { id: "a", nome: "A", diz: "x", celulas: ["forum"] },
+  { id: "a", nome: "A2", diz: "y", celulas: ["ci"] }
+]).length > 0);
+caso("área sem 'diz' REPROVA", LOGICA.validarAreas([{ id: "a", nome: "A", celulas: ["forum"] }]).length > 0);
+caso("área sem célula nenhuma REPROVA", LOGICA.validarAreas([{ id: "a", nome: "A", diz: "x", celulas: [] }]).length > 0);
+caso("lista de áreas vazia REPROVA", LOGICA.validarAreas([]).length > 0);
+caso("o painel/areas.json de verdade passa na própria validação",
+  LOGICA.validarAreas(require(path.join(__dirname, "..", "areas.json")).areas).length === 0);
+
+// A validação do campo `area` do registro: nome de painel/areas.json passa,
+// inventado reprova, e SEM as áreas em mãos a resposta é ERRO — não conferir
+// não é aprovar.
+caso("registro com 'area' conhecida passa",
+  LOGICA.validarRegistros([reg({ area: "identidade" })], AREAS_TESTE).length === 0);
+caso("registro com 'area' inventada REPROVA",
+  LOGICA.validarRegistros([reg({ area: "nao-existe" })], AREAS_TESTE).length > 0);
+caso("registro sem 'area' passa (os registros antigos não a têm, e não se editam)",
+  LOGICA.validarRegistros([reg({})], AREAS_TESTE).length === 0);
+caso("'area' preenchida SEM as áreas em mãos é ERRO, nunca um passe livre",
+  LOGICA.validarRegistros([reg({ area: "identidade" })]).length > 0);
+caso("...e sem 'area' a validação sem áreas continua passando",
+  LOGICA.validarRegistros([reg({})]).length === 0);
+
+var HOJE = new Date("2026-09-07T12:00:00");
+var livroPri = [
+  reg({ arquivo: "20260901-001-pedido-medio", tipo: "pendencia", quando: "2026-09-01", titulo: "pedido medio",
+    precisa_do_dono: true, impacto: "medio", area: "identidade" }),
+  reg({ arquivo: "20260902-001-pedido-alto", tipo: "pendencia", quando: "2026-09-02", titulo: "pedido alto",
+    precisa_do_dono: true, impacto: "alto", area: "alunos" }),
+  reg({ arquivo: "20260903-001-incidente", tipo: "incidente", quando: "2026-09-03", titulo: "quebrou",
+    gravidade: "vermelho", area: "forum" }),
+  reg({ arquivo: "20260904-001-ambar", tipo: "incidente", quando: "2026-09-04", titulo: "meio quebrado",
+    gravidade: "ambar", area: "forum" }),
+  // Pedido QUE TAMBÉM é âmbar: um fato, um lugar. Ele mora em Decidir, e sai
+  // do grupo de alertas da mesma área.
+  reg({ arquivo: "20260905-001-pedido-ambar", tipo: "incidente", quando: "2026-09-05",
+    titulo: "pedido que também é alerta", gravidade: "ambar", precisa_do_dono: true,
+    impacto: "baixo", area: "ci" }),
+  reg({ arquivo: "20260906-001-rumo", tipo: "rumo", quando: "2026-09-06", titulo: "para onde vamos",
+    gravidade: "info", frente: "comunidade" }),
+  reg({ arquivo: "20260901-002-compromisso", tipo: "compromisso", quando: "2026-09-01",
+    titulo: "prometido para segunda", gravidade: "info", vence_em_dias: 2, area: "ci" }),
+  reg({ arquivo: "20260903-002-orfao", tipo: "incidente", quando: "2026-09-03",
+    titulo: "ninguém sabe onde isto mexe", gravidade: "vermelho" })
+];
+var tarefasPri = [
+  // Os ids estão em ordem CONTRÁRIA à do peso de propósito: ordenados por id
+  // (que é o desempate, e o que um sort ingênuo entregaria de graça), eles
+  // sairiam ao contrário. Sem isso, apagar a regra de ordem passaria verde.
+  { id: "TAR-001", titulo: "tarefa que pode esperar", estado: "na fila", situacao: "Esperando um robô pegar",
+    para_o_dono: false, importancia: 10, selo: { texto: "pode esperar", classe: "baixa" }, area: "alunos",
+    onde: ["o cadastro dos alunos"], o_que_muda: "detalhe pequeno" },
+  { id: "TAR-002", titulo: "tarefa importante", estado: "na fila", situacao: "Esperando um robô pegar",
+    para_o_dono: false, importancia: 85, selo: { texto: "custa caro hoje", classe: "alta" }, area: "alunos",
+    onde: ["o cadastro dos alunos"], o_que_muda: "o aluno passa a ver o portfólio" },
+  // Mesmo selo que a TAR-002, e mais importante: é ela que prova que a
+  // importância desempata dentro da classe.
+  { id: "TAR-005", titulo: "a que mais custa hoje", estado: "reivindicada", situacao: "Um robô pegou, está com ela agora",
+    para_o_dono: false, importancia: 95, selo: { texto: "custa caro hoje", classe: "alta" }, area: "alunos",
+    onde: ["o cadastro dos alunos"], o_que_muda: "muda a página que vende" },
+  { id: "TAR-003", titulo: "parada esperando você", estado: "bloqueada", situacao: "Parada: só você destrava",
+    para_o_dono: true, importancia: 50, selo: { texto: "importa", classe: "media" }, area: "alunos",
+    onde: ["o cadastro dos alunos"], motivo: "falta a chave do serviço de e-mail" },
+  { id: "TAR-004", titulo: "tarefa de área que ninguém reconhece", estado: "na fila",
+    situacao: "Esperando um robô pegar", para_o_dono: false, importancia: 30,
+    selo: { texto: "pode esperar", classe: "baixa" }, area: null, onde: [] }
+];
+var pri = LOGICA.prioridades(livroPri, HOJE, null, AREAS_TESTE, tarefasPri);
+var porArea = {};
+pri.areas.forEach(function (a) { porArea[a.id] = a; });
+
+caso("TODAS as áreas aparecem, na ordem do arquivo, mesmo as vazias",
+  pri.areas.map(function (a) { return a.id; }).join(",") === "alunos,comunidade,fabrica");
+caso("o registro vai para a área que ele DECLARA",
+  porArea.alunos.grupos.decidir.filter(function (i) { return i.especie === "pedido"; })
+    .map(function (i) { return i.registro.arquivo; }).join(",") ===
+  "20260902-001-pedido-alto,20260901-001-pedido-medio");
+caso("...e o pedido de peso ALTO vem antes do médio, mesmo sendo mais novo",
+  porArea.alunos.grupos.decidir[0].registro.arquivo === "20260902-001-pedido-alto");
+caso("pedido e tarefa parada moram na MESMA lista de Decidir, na mesma escala de peso",
+  porArea.alunos.grupos.decidir.length === 3 &&
+  porArea.alunos.grupos.decidir[2].especie === "tarefa" &&
+  porArea.alunos.grupos.decidir[2].tarefa.id === "TAR-003");
+// A tarefa de peso 'media' empata com o pedido de impacto 'medio', e no empate
+// o registro vem primeiro. É a única regra de desempate combinada, e ela
+// precisa de caso próprio: sem ela a ordem ficaria à mercê do sort.
+caso("...e no empate de peso o registro vem antes da tarefa",
+  porArea.alunos.grupos.decidir[1].especie === "pedido" &&
+  porArea.alunos.grupos.decidir[1].registro.arquivo === "20260901-001-pedido-medio");
+caso("a tarefa que só ele destrava NÃO aparece na fila dos robôs",
+  porArea.alunos.grupos.robos.every(function (i) { return i.tarefa.id !== "TAR-003"; }));
+caso("a fila dos robôs vem da que mais custa hoje para a que menos custa",
+  porArea.alunos.grupos.robos.map(function (i) { return i.tarefa.id; }).join(",") === "TAR-005,TAR-002,TAR-001");
+caso("alerta vermelho vem antes do âmbar",
+  porArea.comunidade.grupos.alerta.map(function (i) { return i.registro.arquivo; }).join(",") ===
+  "20260903-001-incidente,20260904-001-ambar");
+caso("UM FATO, UM LUGAR: o pedido que também é âmbar mora só em Decidir",
+  porArea.fabrica.grupos.decidir.length === 1 && porArea.fabrica.grupos.alerta.length === 0);
+caso("compromisso vencido é dito como vencido, contado com o relógio de quem abre",
+  porArea.fabrica.grupos.rumo.length === 1 &&
+  porArea.fabrica.grupos.rumo[0].especie === "compromisso" &&
+  porArea.fabrica.grupos.rumo[0].venceEm < 0);
+caso("sem 'area', a frente do livro serve de aproximação, e ela é MARCADA como tal",
+  porArea.comunidade.grupos.rumo.length === 1 &&
+  porArea.comunidade.grupos.rumo[0].pelaFrente === true);
+caso("sem área e sem frente, o fato vai para 'sem área reconhecida' e NUNCA some",
+  pri.semArea.grupos.alerta.length === 1 &&
+  pri.semArea.grupos.alerta[0].registro.arquivo === "20260903-002-orfao");
+caso("tarefa sem área também cai lá, e não se perde",
+  pri.semArea.grupos.robos.length === 1 && pri.semArea.grupos.robos[0].tarefa.id === "TAR-004");
+caso("a contagem da área é a soma dos grupos dela (a faixa do topo lê daqui)",
+  pri.areas.concat([pri.semArea]).every(function (a) {
+    return a.total === a.grupos.decidir.length + a.grupos.alerta.length +
+      a.grupos.robos.length + a.grupos.rumo.length;
+  }));
+caso("nenhum fato do livro nem da fila se perde no caminho",
+  pri.areas.concat([pri.semArea]).reduce(function (n, a) { return n + a.total; }, 0) === 13);
+caso("sem a fila dos robôs, os grupos de registro continuam de pé",
+  LOGICA.prioridades(livroPri, HOJE, null, AREAS_TESTE, []).areas[0].grupos.decidir.length === 2);
+
+// A ÁREA SOBREVIVE AO CORTE DO RESUMO. Um pedido antigo viaja só como título, e
+// sem `area` em CAMPOS_DO_TITULO ele reapareceria em "sem área reconhecida" — a
+// tela mostraria o fato na parte errada do site tendo a resposta escrita no
+// livro. O livro deste caso é MAIOR que RECENTES_NO_RESUMO de propósito
+// (`armadilhas/317`): com menos de 30 registros, todo registro entra pela porta
+// dos recentes e a mutação passaria verde.
+var pedidoVelho = muitosPedidos[0].arquivo;
+var comArea = muitosPedidos.map(function (r) {
+  var copia = {};
+  Object.keys(r).forEach(function (k) { copia[k] = r[k]; });
+  copia.area = "identidade";
+  return copia;
+}).concat(enchimento);
+var resumoComArea = LOGICA.montarResumo(comArea);
+var noResumoComArea = {};
+resumoComArea.registros.forEach(function (r) { noResumoComArea[r.arquivo] = r; });
+caso("o pedido cortado viaja só como título (o cenário exercita o corte)",
+  noResumoComArea[pedidoVelho]._so_titulo === true);
+caso("...e a ÁREA dele sobrevive ao corte",
+  noResumoComArea[pedidoVelho].area === "identidade");
+caso("...então a aba Prioridades desenha o pedido cortado na área certa, e não em 'sem área'",
+  LOGICA.prioridades(resumoComArea.registros, HOJE, resumoComArea.respondidos, AREAS_TESTE, [])
+    .areas[0].grupos.decidir.some(function (i) { return i.registro.arquivo === pedidoVelho; }) &&
+  !LOGICA.prioridades(resumoComArea.registros, HOJE, resumoComArea.respondidos, AREAS_TESTE, [])
+    .semArea.grupos.decidir.some(function (i) { return i.registro.arquivo === pedidoVelho; }));
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");
