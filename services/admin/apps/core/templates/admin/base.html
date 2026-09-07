@@ -708,6 +708,17 @@ primeira versão deste arquivo, e o teste pegou.
        VISÍVEL, e não escondido, porque sumir em silêncio é a pior forma de
        perder um fato. Guarda: tests/test_perpetuo.py. */
     .portas .faltando { color: var(--vermelho); font-weight: 600; }
+    /* O VEREDITO de uma peça da máquina (07/09/2026). Reusa a `.luz` das portas
+       principais, e pelo mesmo princípio: o estado vem ESCRITO, e a cor é só o
+       reforço. A frase ao lado carrega o número, porque "parada" sem "3 delas
+       há mais de 2 dias" não diz o que fazer a seguir. */
+    .veredito { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; }
+    .veredito .luz { margin-top: 0; flex: none; }
+    .luz.girando { color: var(--verde); border-color: var(--verde); }
+    .luz.girando::before { background: var(--verde); }
+    .luz.parada { color: var(--vermelho); border-color: var(--vermelho); }
+    .luz.parada::before { background: var(--vermelho); }
+    .veredito-frase { color: var(--texto); font-size: 14px; flex: 1 1 260px; }
 
     /* --- o calendário do ciclo (04/09/2026) -------------------------------
        Uma tabela de 14 linhas por 7 colunas. Ela rola DENTRO da própria caixa

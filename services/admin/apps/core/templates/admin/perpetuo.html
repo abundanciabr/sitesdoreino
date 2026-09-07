@@ -11,6 +11,13 @@ impede a volta dele para a marcação é tests/test_estilo_nao_volta_para_a_marc
 
 O nome e a explicação de cada porta NÃO estão escritos aqui: vêm de
 painel/mapa-do-site.json, pela view. Ver o porquê em apps/core/perpetuo.py.
+
+O VEREDITO de cada peça também vem pronto da view, e o que este molde decide é
+só a PALAVRA em português de cada estado (o vocabulário fechado é girando,
+parada, sem-fonte e nao-respondeu). Mesmo desenho de economia.py: a leitura
+manda o slug, nunca a frase pronta. O estado vira classe do mesmo nome, e a
+palavra aparece ESCRITA, e não só colorida: quem não distingue verde de
+vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
 {% endcomment %}
 {% block titulo %}Lançamento perpétuo{% endblock %}
 {% block corpo %}
@@ -49,6 +56,17 @@ painel/mapa-do-site.json, pela view. Ver o porquê em apps/core/perpetuo.py.
         <span class="etapa-degrau">{{ forloop.counter }}</span>
         <h2>{{ etapa.nome }}</h2>
       </div>
+      {% if etapa.veredito %}
+      <p class="veredito">
+        <span class="luz {{ etapa.veredito.estado }}">
+          {% if etapa.veredito.estado == "girando" %}girando
+          {% elif etapa.veredito.estado == "parada" %}parada
+          {% elif etapa.veredito.estado == "sem-fonte" %}a casa não mede
+          {% else %}não consegui perguntar{% endif %}
+        </span>
+        <span class="veredito-frase">{{ etapa.veredito.frase }}</span>
+      </p>
+      {% endif %}
       <p class="pergunta">{{ etapa.pergunta }}</p>
       <p class="resumo">{{ etapa.resumo }}</p>
       <ul class="portas">
@@ -89,10 +107,11 @@ painel/mapa-do-site.json, pela view. Ver o porquê em apps/core/perpetuo.py.
   O que está pronto se lê no livro, calculado, em /admin/painel/.
   {% endcomment %}
   <p class="aviso espaco-28">
-    <b>Esta área começa com uma página só, e é de propósito.</b>
-    Ela é a planta da máquina: serve para você e eu combinarmos, olhando o mesmo
-    desenho, qual peça ganha painel primeiro. Cada painel novo entra aqui como
-    uma página vizinha desta.
+    <b>Cada peça diz o estado dela, e nenhuma inventa número.</b>
+    Quatro peças conseguem responder hoje, porque existe quem guarde o dado
+    delas. As duas primeiras dizem "a casa não mede" com o motivo: antes da
+    tela precisa nascer a fonte, e mostrar um palpite no lugar seria pior que o
+    silêncio. Cada painel novo desta área entra como uma página vizinha desta.
   </p>
 </div>
 {% endblock %}
