@@ -99,6 +99,10 @@ VALORES_INICIAIS = {
     "rodadas_de_negociacao": "3",
     "validade_da_proposta": "24",
     "limite_da_justificativa": "500",
+    # A JANELA DA ESTIMATIVA DE ESPERA (degrau 2.7): trinta dias de historico
+    # para medir o ritmo de encomendas de um nivel. Mesmo tamanho da
+    # `janela_dos_passes`, e o mantenedor muda por tela.
+    "janela_do_ritmo_da_espera": "30",
 }
 
 # AS CHAVES QUE NASCEM SEM VALOR, DE PROPOSITO. O piso por nivel sai do piloto

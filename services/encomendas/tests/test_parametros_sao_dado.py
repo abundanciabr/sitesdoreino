@@ -81,6 +81,12 @@ A_LEI_SECAO_6 = {
     "rodadas_de_negociacao": "3",
     "validade_da_proposta": "24",
     "limite_da_justificativa": "500",
+    # A 32a, do degrau 2.7: quantos dias de historico a estimativa de espera
+    # olha para medir o ritmo de encomendas de um nivel
+    # (`apps/encomendas/espera.py`). Ela e parametro, e nao numero em codigo,
+    # porque o guarda de constante magica deste arquivo reprova numero solto na
+    # celula, e reprovou este quando ele nasceu assim.
+    "janela_do_ritmo_da_espera": "30",
 }
 
 # AS CHAVES QUE EXISTEM NO CATALOGO E NAO TEM VALOR, DE PROPOSITO. O piso por
@@ -119,15 +125,15 @@ def semear(site=SITE):
 # ---------------------------------------------------------------------------
 
 
-def test_o_catalogo_tem_as_34_chaves():
+def test_o_catalogo_tem_as_35_chaves():
     """Chave a mais ou a menos reprova aqui, antes de o motor ler `None`."""
     assert sorted(CHAVES_DE_PARAMETRO) == sorted(
         set(A_LEI_SECAO_6) | O_PISO_NASCE_SEM_NUMERO
     )
-    assert len(CHAVES_DE_PARAMETRO) == 34
+    assert len(CHAVES_DE_PARAMETRO) == 35
 
 
-def test_a_semente_grava_os_31_valores(db):
+def test_a_semente_grava_os_32_valores(db):
     """A prova de fora: cada chave é LIDA DO BANCO e comparada com a lei."""
     semear()
     do_banco = dict(
