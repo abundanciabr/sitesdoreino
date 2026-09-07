@@ -1105,6 +1105,29 @@ def test_o_failure_por_timeout_atravessa_o_MESMO_portao_da_celula():
     assert "pages" in decisao.motivo
 
 
+def test_a_regra_de_parada_vale_TAMBEM_quando_falta_celula():
+    """A vacina não pode girar para sempre atrás de uma célula que não sobe.
+
+    O caminho da `armadilhas/359` devolve `None` de `_a_republicacao_avanca` —
+    "pode repetir" — e quem conta as tentativas é o CHAMADOR. Isso funciona, e
+    é frágil de um jeito específico: se alguém um dia devolvesse a decisão de
+    repetir de dentro do próprio portão, para deixar a mensagem mais direta, o
+    contador ficaria fora do caminho e a vacina repetiria a cada gatilho, sem
+    fim. É o mesmo desenho que a TAR-029 já teve de consertar uma vez, quando
+    `MAXIMO_DE_TENTATIVAS` contava só em memória.
+
+    Medido antes de existir este guarda: com `tentativas_feitas=3` a decisão já
+    era `parar`/1. Ele congela isso.
+    """
+    decisao = vacina.decidir(_ja_publicado(("mensageria",), tentativas_feitas=3))
+    assert decisao.acao == "parar"
+    assert decisao.codigo == 1
+    assert decisao.pendencia, (
+        "quem para precisa deixar o texto que alcança o mantenedor: um deploy "
+        "que não chega ao ar não pode morrer no log de uma sessão encerrada"
+    )
+
+
 def test_o_repetir_por_ancestralidade_NAO_fala_de_celula():
     """O caso-base da 188 não pode ganhar uma frase que não é dele.
 
@@ -1235,45 +1258,91 @@ def test_a_cobertura_para_de_perguntar_assim_que_nada_falta(monkeypatch):
 # ------------------- o fio entre a colheita e a decisão ---------------------
 
 
-def test_a_colheita_do_deploy_CELULA_mede_a_cobertura(monkeypatch):
-    """Sem este fio, a tabela decidiria certo sobre um campo sempre vazio."""
-    perguntou: list[str] = []
-    _sem_rede(monkeypatch, perguntou)
-    monkeypatch.setattr(vacina, "celulas_do_push", lambda *a, **k: ("mensageria",))
-    monkeypatch.setattr(
-        vacina, "celulas_sem_publicacao", lambda *a, **k: ("mensageria",)
-    )
+def test_a_colheita_PERGUNTA_pelo_sha_e_pela_esteira_DESTE_run(monkeypatch):
+    """Sem este fio, a tabela decidiria certo sobre um campo sempre vazio.
+
+    A asserção é sobre o que o CÓDIGO PERGUNTOU, não sobre o que o dublê
+    respondeu. Conferir o valor devolvido por um dublê montado neste mesmo
+    bloco deixaria o teste verde mesmo se a colheita chutasse a resposta sem
+    passar por lugar nenhum (`RETROSPECTIVA-FASE-D` §1) — e as duas perguntas
+    são justamente onde a TAR-029 já errou uma vez: medir o SHA de outro run,
+    ou a esteira errada, devolve a resposta de outra pergunta com cara de
+    certeza.
+    """
+    _sem_rede(monkeypatch, [])
+    perguntas: dict[str, object] = {}
+
+    def _push(sha, *a, **k):
+        perguntas["push"] = sha
+        return ("mensageria",)
+
+    def _cobertura(sha, alvo, workflow=None, *a, **k):
+        perguntas["cobertura"] = (sha, alvo, workflow)
+        return ("mensageria",)
+
+    monkeypatch.setattr(vacina, "celulas_do_push", _push)
+    monkeypatch.setattr(vacina, "celulas_sem_publicacao", _cobertura)
     fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
                          event="push", head_sha="a" * 40)
     fatos.workflow = "deploy-celula"
 
     vacina._colher_a_ancestralidade(fatos)
 
+    assert perguntas["push"] == "a" * 40, "a matrix medida tem de ser a DESTE run"
+    assert perguntas["cobertura"] == ("a" * 40, ("mensageria",), "deploy-celula.yml"), (
+        "a cobertura se mede contra o SHA deste run, com as células que ESTE "
+        "push precisava publicar, na esteira DESTE run (TAR-029)"
+    )
     assert fatos.celulas_sem_publicacao == ("mensageria",)
 
 
-def test_a_colheita_do_deploy_INFRA_nao_exige_celula_nenhuma(monkeypatch):
-    """O `deploy-infra` publica o compose da VPS, não imagem de célula.
+@pytest.mark.parametrize(
+    "esteira, celulas_esperadas, perguntas_esperadas",
+    [("deploy-celula", ("mensageria",), 1), ("deploy-infra", (), 0)],
+)
+def test_so_a_esteira_das_CELULAS_exige_cobertura(
+    monkeypatch, esteira: str, celulas_esperadas: tuple, perguntas_esperadas: int
+):
+    """O vazio do `deploy-infra` precisa vir da REGRA, não do cenário.
 
-    Ele dispara em `infra/**` e todo PR carrega um registro em `painel/**`, que
-    o mapa atribui à `admin`. Medir a cobertura de célula ali faria a vacina
+    O `deploy-infra` publica o compose da VPS, não imagem de célula. Ele dispara
+    em `infra/**`, e todo PR deste projeto carrega um registro em `painel/**`,
+    que o mapa atribui à `admin` — medir cobertura de célula ali faria a vacina
     exigir uma publicação da `admin` para liberar uma sincronização de
-    infraestrutura — duas esteiras diferentes outra vez (TAR-029).
+    infraestrutura. É a TAR-029 outra vez: duas esteiras que publicam coisas
+    diferentes.
+
+    A mesma história roda DUAS vezes, mudando só a esteira. Uma asserção de
+    ausência sozinha ficaria verde por qualquer motivo — um dublê que nunca é
+    chamado, um ramo que nem foi alcançado (`armadilhas/266`). A linha do
+    `deploy-celula` é o controle: ela prova que este cenário SABE produzir
+    células, então o vazio da outra linha só pode vir da regra.
     """
-    perguntou: list[str] = []
-    _sem_rede(monkeypatch, perguntou)
+    _sem_rede(monkeypatch, [])
+    perguntas: list[str] = []
 
-    def _nunca(*a, **k):
-        raise AssertionError("o deploy-infra não constrói célula")
+    def _push(sha, *a, **k):
+        perguntas.append(sha)
+        return ("mensageria",)
 
-    monkeypatch.setattr(vacina, "celulas_do_push", _nunca)
+    monkeypatch.setattr(vacina, "celulas_do_push", _push)
+    monkeypatch.setattr(
+        vacina, "celulas_sem_publicacao", lambda *a, **k: ("mensageria",)
+    )
     fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
                          event="push", head_sha="a" * 40)
-    fatos.workflow = "deploy-infra"
+    fatos.workflow = esteira
 
     vacina._colher_a_ancestralidade(fatos)
 
-    assert fatos.celulas_sem_publicacao == ()
+    assert fatos.head_ja_publicado is True, (
+        "o cenário precisa CHEGAR ao ramo que decide, senão o vazio abaixo é "
+        "verdade por vacuidade e não prova regra nenhuma"
+    )
+    assert fatos.celulas_sem_publicacao == celulas_esperadas
+    assert len(perguntas) == perguntas_esperadas, (
+        "a esteira que não publica célula não pode nem gastar a medição"
+    )
 
 
 def test_a_medicao_que_estoura_vira_NAO_MEDI_e_nao_cobertura_completa(monkeypatch):

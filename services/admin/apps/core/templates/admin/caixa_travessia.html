@@ -51,7 +51,7 @@ que toca sempre não é alarme.
         <b>Onde está entupido hoje.</b>
         A coluna <b>{{ gargalo.titulo }}</b> é a que segura mais tempo: o que está lá está parado há
         {{ gargalo.parada_media }} dia{{ gargalo.parada_media|pluralize:"s" }} em média{% if gargalo.mais_velha %}, e a mais antiga há {{ gargalo.mais_velha }}{% endif %}.
-        {% if gargalo.chave == 'assinar' %}Nada nessa coluna anda sem uma assinatura — é o único degrau que nenhum robô passa por ninguém.{% else %}{{ gargalo.explicacao }}{% endif %}
+        {{ gargalo.explicacao }}
       </div>
     {% endif %}
 
