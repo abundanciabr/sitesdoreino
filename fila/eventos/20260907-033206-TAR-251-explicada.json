@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-033206-TAR-251-explicada",
+  "tarefa": "TAR-251",
+  "evento": "explicada",
+  "quando": "2026-09-07T03:32:06+00:00",
+  "quem": "achado da TAR-172, medido linha a linha nos dois scripts em 06/09/2026",
+  "o_que_e": "Na VPS ha dois roteiros que mexem no mesmo arquivo de configuracao da sala de aula. Um deles escreve tres informacoes que o outro nao conhece. Quando o segundo roda depois do primeiro, ele encontra essas tres sobras, entende que reescrever o arquivo apagaria coisa que ele nao sabe recriar, e para sem fazer nada.",
+  "o_que_muda": "O cabecalho daquele roteiro promete que rodar de novo e seguro, e essa promessa deixou de ser verdade: depois do primeiro par aberto, ele nunca mais roda. Ninguem perde dado, porque ele para antes de escrever, mas quem precisar reinstalar ou consertar a sala de aula na VPS bate numa parede.",
+  "exemplo": "E a chave reserva que para de girar depois que o chaveiro troca a fechadura: nada foi roubado, e voce fica do lado de fora mesmo assim.",
+  "importancia": 55
+}
