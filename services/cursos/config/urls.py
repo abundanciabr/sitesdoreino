@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.views import (
     aula,
+    catalogo,
     entregar_checkpoint,
     gravar_autoavaliacao,
     healthz,
@@ -76,20 +77,25 @@ urlpatterns = [
     # de um curso tem dois segmentos, a aula antiga tem um.
     path("<slug:curso>/", mapa, name="curso"),
     path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
-    path("<str:numero>", aula, name="aula"),
-    # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
-    # mais nada. Vem por último porque `path("")` casa o caminho vazio.
+    # O ENDEREÇO ANTIGO DA AULA (`/E00`) MUDOU DE CASA (301, TAR-216): o
+    # checkpoint desta escola é POR LINK, e um link já compartilhado que
+    # passasse a dar 404 seria trabalho de aluno perdido. Mas enquanto os dois
+    # endereços servissem a mesma sala com 200, o link antigo continuaria
+    # levando a uma página que não diz em que parte do curso o aluno está. O
+    # 301 ensina o navegador e o buscador de uma vez.
     #
-    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E MUDARAM DE CASA
-    # (301, TAR-216): o checkpoint desta escola é POR LINK, e um link já
-    # compartilhado que passasse a dar 404 seria trabalho de aluno perdido.
-    # Mas enquanto os dois endereços servissem a mesma sala com 200, o link
-    # antigo continuaria levando a uma página que não diz em que parte do
-    # curso o aluno está. O 301 ensina o navegador e o buscador de uma vez.
-    #
-    # As duas rotas CONTINUAM existindo porque o 301 tem uma condição: ele só
+    # A rota CONTINUA existindo porque o 301 tem uma condição: ele só
     # acontece com UM curso no site. Com dois, o endereço antigo não diz qual
     # deles o aluno quer, e a tela que PERGUNTA é a resposta certa
     # (`apps/core/views.py::_curso_unico`).
-    path("", mapa, name="mapa"),
+    path("<str:numero>", aula, name="aula"),
+    # O CATÁLOGO, e ele é a raiz da célula: `meshcraft.top/cursos` sem mais
+    # nada. Vem por último porque `path("")` casa o caminho vazio.
+    #
+    # A raiz NUNCA redireciona (decisão do mantenedor de 07/09/2026). Até
+    # então ela respondia 301 para o mapa do único curso, e o aluno cuja
+    # matrícula ainda não tem sala era levado ao curso do livro sem pedir. O
+    # catálogo mostra um cartão por curso, com o link para o endereço de cada
+    # um, e a porta de cada curso decide quem entra.
+    path("", catalogo, name="catalogo"),
 ]
