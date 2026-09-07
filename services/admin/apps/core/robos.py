@@ -22,15 +22,38 @@ do último deploy, e a página DIZ isso (carimbo de geração à vista); o que �
 de agora (reservas do almoxarife, PRs abertos) o navegador do dono pergunta
 direto ao GitHub — o repositório é público de propósito, zero backend novo.
 
+## O que esta tela FAZ, desde 06/09/2026
+
+Ela deixou de ser só de olhar. O mantenedor abriu a página, viu 22 tarefas
+paradas e disse que não entendia nenhuma: todo campo do cartão tinha sido
+escrito por robô para robô. Quatro peças entraram, e três delas são CONTA, não
+dado novo.
+
+| A peça | De onde vem |
+|---|---|
+| A explicação (três parágrafos) | da fila: `o_que_e`, `o_que_muda`, `exemplo` |
+| O selo e a ordem | da fila: `importancia`, um inteiro de 0 a 100 |
+| A posição (#1, #2, …) | CALCULADA aqui, a cada visita |
+| O prompt de tocar a tarefa | CALCULADO do `id` e do `toca` |
+
+A posição nunca se guarda, e o motivo decide o desenho: ela muda sozinha quando
+uma tarefa entra ou sai da fila, e um campo `posicao` seria a segunda definição
+de "o que é mais importante", mentindo no dia seguinte.
+
+A quarta peça é o botão de excluir, e ele não apaga nada aqui: abre um PR no
+GitHub com o evento `cancelada` da fila (`fila_no_github.py`), e quem mergeia é
+a pista. A tela nunca escreve na `main`.
+
 ## O CSP desta rota
 
 A porta manda `script-src 'self'` em toda resposta (`porta.py`, via
-`setdefault` — resposta que traz o próprio CSP vence). Esta página tem uma
-ilha de script embutida (o bloco "ao vivo"), então o CSP dela declara o hash
-da ilha — o MESMO desenho de `painel.py`, e pelo mesmo motivo: `'unsafe-inline'`
-nunca entra. A diferença única: `connect-src` inclui `https://api.github.com`,
-senão o navegador bloquearia a pergunta ao GitHub e o bloco "ao vivo" morreria
-em silêncio (falha silenciosa é a pior — RETROSPECTIVA-FASE-D §1).
+`setdefault` — resposta que traz o próprio CSP vence). Esta página tem DUAS
+ilhas de script embutidas (o bloco "ao vivo" e os gestos dos dois botões),
+então o CSP dela declara o hash de cada uma — o MESMO desenho de `painel.py`, e
+pelo mesmo motivo: `'unsafe-inline'` nunca entra. A diferença única:
+`connect-src` inclui `https://api.github.com`, senão o navegador bloquearia a
+pergunta ao GitHub e o bloco "ao vivo" morreria em silêncio (falha silenciosa é
+a pior — RETROSPECTIVA-FASE-D §1).
 """
 
 import base64
@@ -38,11 +61,29 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from urllib.parse import quote
 
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_POST
+
+from apps.auditoria.models import Registro
+
+from . import fila_no_github
+from .views import _auditar
 
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
+
+# O vocabulário de identificador da fila (`ci/fila.py`, `RE_ID`). Está aqui
+# porque a cerca da célula impede importar `ci/` — e porque um `TAR-NNN` que
+# chega de um formulário é DADO, e dado que vai virar nome de ramo se confere
+# ANTES de ser usado (`armadilhas/047`).
+RE_ID_DA_TAREFA = re.compile(r"^TAR-\d{3,}$")
+
+# O teto do motivo da exclusão. Ele viaja para um repositório público e fica
+# para sempre no lugar da tarefa: é uma frase, não um documento.
+MOTIVO_NO_MAXIMO = 500
 
 # Em produção só a primeira existe (o deploy embute); num checkout, nenhuma —
 # e a página diz que a fila não veio, em vez de fingir fila vazia. Não há
@@ -115,9 +156,14 @@ COLUNAS = (
         "estado": "na fila",
         "rotulo": "Esperando um robô pegar",
         "curto": "esperando um robô",
-        "explicacao": "Prontas para trabalho. Ninguém pegou ainda.",
+        "explicacao": "Prontas para trabalho, da que mais custa hoje para a que menos custa. Ninguém pegou nenhuma ainda.",
         "cor": "azul",
         "recolhida": False,
+        # O ÚNICO GRUPO RANQUEADO, e o único com os dois botões (06/09/2026).
+        # Posição, selo e o prompt de tocar só fazem sentido no que espera
+        # trabalho: ordenar por importância o que um robô já pegou, ou o que já
+        # terminou, seria uma ordem que não muda decisão nenhuma.
+        "ranqueada": True,
     },
     {
         "estado": "bloqueada",
@@ -196,19 +242,114 @@ ONDE_ISSO_MEXE = {
 }
 
 
-def onde_isso_mexe(toca) -> list[str]:
-    """Os lugares de uma tarefa, traduzidos, sem repetir e em ordem estável.
+def area_do_toca(nome) -> str:
+    """`services/funil` e `funil` são a mesma área; `RITOS.md` é a raiz.
 
-    `services/funil` e `funil` são o mesmo lugar para quem lê — o `toca` aceita
-    as duas formas, e sem o corte a tela mostraria o lugar duas vezes.
+    O `toca` aceita as duas formas, e as duas leituras desta página (o lugar em
+    português e o mandato do prompt) precisam da MESMA normalização — duas
+    cópias dela divergiriam no primeiro conserto.
     """
+    return str(nome).rsplit("/", 1)[-1].removesuffix(".md")
+
+
+def onde_isso_mexe(toca) -> list[str]:
+    """Os lugares de uma tarefa, traduzidos, sem repetir e em ordem estável."""
     lugares = []
     for nome in toca or []:
-        curto = str(nome).rsplit("/", 1)[-1].removesuffix(".md")
-        lugar = ONDE_ISSO_MEXE.get(curto, curto)
+        lugar = ONDE_ISSO_MEXE.get(area_do_toca(nome), area_do_toca(nome))
         if lugar not in lugares:
             lugares.append(lugar)
     return lugares
+
+
+# OS CAMINHOS QUE SÓ SE TOCA COM MANDATO ESCRITO (`CLAUDE.md`, CODEOWNERS). Um
+# robô que pegar uma tarefa daqui vai PARAR na primeira linha se o pedido não
+# disser, com todas as letras, que ele tem autorização — então o prompt que o
+# dono copia já leva a autorização junto. Sem isso o botão entregaria um pedido
+# que morre no primeiro minuto.
+CAMINHOS_PROTEGIDOS = ("ci", ".github", "infra", "contracts", "pagamentos", "checkout")
+
+
+def caminhos_protegidos(toca) -> list[str]:
+    """Quais áreas desta tarefa são CODEOWNERS, na ordem em que ela as declara."""
+    achados = []
+    for nome in toca or []:
+        area = area_do_toca(nome)
+        if area in CAMINHOS_PROTEGIDOS and area not in achados:
+            achados.append(area)
+    return achados
+
+
+def prompt_para_tocar(tarefa: str, toca) -> str:
+    """O pedido pronto que o dono cola no Claude Code — CALCULADO, zero dado novo.
+
+    Ele nasceu de um pedido de 06/09/2026: a tela dizia o que estava parado e
+    não dava jeito nenhum de destravar. "Fale comigo na conversa" obriga o dono
+    a redigir, de cabeça, um pedido que precisa citar o número da tarefa, o
+    caminho do despacho e o mandato — e ele é leigo, então na prática nada
+    andava. Isto é o mesmo pedido, já escrito.
+
+    Tudo aqui sai do que a fila já sabe (o id e o `toca`): nenhum campo novo
+    nasce para alimentar este botão.
+    """
+    protegidos = caminhos_protegidos(toca)
+    if len(protegidos) == 1:
+        mandato = f"\nVocê tem meu mandato para o caminho protegido: {protegidos[0]}."
+    elif protegidos:
+        mandato = (
+            "\nVocê tem meu mandato para os caminhos protegidos: "
+            f"{', '.join(protegidos)}."
+        )
+    else:
+        mandato = ""
+    return (
+        f"Toque a {tarefa} da fila de trabalho.\n\n"
+        "O despacho inteiro está no arquivo dela em fila/tarefas/: leia antes de "
+        f"começar.{mandato}\n\n"
+        "Faça o rito completo da casa: bancada própria, pegar no balcão, PR com o "
+        "registro embarcado, e pouso automático quando os checks fecharem."
+    )
+
+
+# A IMPORTÂNCIA, e as duas faixas que a viram selo. O número (0 a 100) é
+# DECLARADO na fila pelo evento `explicada` — esta tela nunca o calcula, nunca o
+# guarda e nunca o corrige. O que ela calcula é a POSIÇÃO (#1, #2, …), e por um
+# motivo que decide o desenho: a posição muda sozinha quando uma tarefa entra ou
+# sai da fila, e guardá-la seria a segunda definição que o cabeçalho proíbe.
+IMPORTANCIA_MAXIMA = 100
+CUSTA_CARO = 70
+IMPORTA = 40
+
+
+def importancia_declarada(dados: dict):
+    """O 0-100 que a fila declarou, ou `None` quando ninguém classificou.
+
+    **Falha aberto, como todo o resto desta página**: valor de outro tipo ou
+    fora da faixa vira "ninguém classificou", que é a verdade legível — e a
+    tarefa vai para o fim da lista em vez de sumir dela. `bool` é `int` em
+    Python, e `True` viraria importância 1: por isso ele é recusado à parte.
+    """
+    valor = dados.get("importancia")
+    if isinstance(valor, bool) or not isinstance(valor, int):
+        return None
+    if not 0 <= valor <= IMPORTANCIA_MAXIMA:
+        return None
+    return valor
+
+
+def selo_da_importancia(valor) -> dict:
+    """A mesma faixa, dita em português — o que o dono lê no lugar do número.
+
+    O número cru não decide nada para quem não o escreveu: "82" não responde
+    "eu devo mandar tocar esta hoje?". As três frases respondem.
+    """
+    if valor is None:
+        return {"texto": "ninguém classificou esta ainda", "classe": "sem-nota"}
+    if valor >= CUSTA_CARO:
+        return {"texto": "custa caro hoje", "classe": "alta"}
+    if valor >= IMPORTA:
+        return {"texto": "importa", "classe": "media"}
+    return {"texto": "pode esperar", "classe": "baixa"}
 
 
 def e_deste_grupo(dados: dict, grupo: dict) -> bool:
@@ -394,6 +535,10 @@ def robos(request):
                     **dados,
                     "onde": onde_isso_mexe(dados.get("toca")),
                     "quando": ultima_mexida.get(tid),
+                    # Sobrescreve o cru que veio dos dados de propósito: o que a
+                    # tela usa é o valor já conferido, e nunca dois valores com
+                    # o mesmo nome dentro do mesmo dicionário.
+                    "importancia": importancia_declarada(dados),
                 }
                 for tid, dados in estados.items()
                 if e_deste_grupo(dados, grupo)
@@ -404,6 +549,23 @@ def robos(request):
             # abertos (o que ainda pede trabalho) seguem na ordem de chegada.
             reverse=grupo["recolhida"],
         )
+        if grupo.get("ranqueada"):
+            # O RANKING. A ordem é a importância declarada, do maior para o
+            # menor; quem ninguém classificou vai para o fim (e não para o
+            # começo com nota zero, que seria inventar uma nota). O id desempata,
+            # para que dois cartões de mesma importância não troquem de lugar a
+            # cada publicação.
+            cartoes.sort(
+                key=lambda c: (
+                    c["importancia"] is None,
+                    -(c["importancia"] or 0),
+                    c["id"],
+                )
+            )
+            for posicao, cartao in enumerate(cartoes, start=1):
+                cartao["posicao"] = posicao
+                cartao["selo"] = selo_da_importancia(cartao["importancia"])
+                cartao["prompt"] = prompt_para_tocar(cartao["id"], cartao.get("toca"))
         colunas.append({**grupo, "cartoes": cartoes})
 
     # Quantas param a vida dele. Sai daqui, e não de uma contagem no template,
@@ -442,7 +604,93 @@ def robos(request):
             "esperas": _resumo_de_esperas(pasta),
             "regua": linhas_da_regua,
             "regua_medida_em": regua.get("medido_em"),
+            "repositorio": fila_no_github.REPOSITORIO,
+            "pode_excluir": fila_no_github.esta_ligado(),
+            "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
+            # O desfecho do último clique no botão de excluir (padrão
+            # POST-redirect-GET, como toda escrita desta área). O número do PR
+            # só passa se for mesmo um número: ele veio de um servidor de fora,
+            # e a página monta o endereço dele a partir do repositório que ela
+            # já conhece, em vez de ecoar uma URL que alguém respondeu.
+            "resultado": request.GET.get("resultado", ""),
+            "recado": request.GET.get("recado", "")[:200],
+            "tarefa_do_resultado": (
+                request.GET.get("tarefa", "")
+                if RE_ID_DA_TAREFA.match(request.GET.get("tarefa", ""))
+                else ""
+            ),
+            "pr": (
+                (request.GET.get("pr", "") or "").strip()
+                if (request.GET.get("pr", "") or "").strip().isdigit()
+                else ""
+            ),
         },
     )
     resposta["Content-Security-Policy"] = _csp(resposta.content)
     return resposta
+
+
+def _de_volta_ao_quadro(resultado: str, **extras) -> HttpResponseRedirect:
+    partes = [f"resultado={quote(resultado)}"]
+    partes += [f"{chave}={quote(str(valor))}" for chave, valor in extras.items()]
+    return HttpResponseRedirect(f"{reverse('caixa_robos')}?{'&'.join(partes)}")
+
+
+@require_POST
+def excluir_tarefa(request):
+    """Tira uma tarefa da fila para sempre, pela única porta que existe: um PR.
+
+    **Esta view não apaga nada.** Ela pede ao GitHub um PR com um arquivo novo
+    em `fila/eventos/` (o evento `cancelada`), e quem mergeia é a pista, como em
+    todo PR desta casa. A tela nunca escreve na `main` — e é por isso que a
+    resposta fala em pedido aberto e em cerca de 8 minutos.
+
+    Cada desfecho vira uma linha de auditoria, inclusive os recusados: quando o
+    GitHub diz não, nada é escrito em lugar nenhum, e sem esta linha o gesto não
+    teria deixado rastro.
+    """
+    tarefa = (request.POST.get("tarefa") or "").strip()
+    motivo = (request.POST.get("motivo") or "").strip()
+    # `alvo` tem 64 no banco, e um id recusado pode ser qualquer coisa que
+    # alguém tenha mandado: o corte é do tamanho da coluna, não um palpite.
+    alvo = tarefa[:64]
+
+    def anotar(desfecho, detalhe):
+        _auditar(request, Registro.CANCELAR_TAREFA, alvo, desfecho, detalhe)
+
+    if not RE_ID_DA_TAREFA.match(tarefa):
+        anotar(Registro.RECUSADO_PELA_CELULA, "id fora do formato TAR-NNN")
+        return _de_volta_ao_quadro("nao_existe")
+    if not motivo:
+        anotar(Registro.RECUSADO_PELA_CELULA, "sem motivo")
+        return _de_volta_ao_quadro("sem_motivo", tarefa=tarefa)
+    if len(motivo) > MOTIVO_NO_MAXIMO:
+        anotar(Registro.RECUSADO_PELA_CELULA, "motivo longo demais")
+        return _de_volta_ao_quadro("motivo_longo", tarefa=tarefa)
+
+    pasta = diretorio_da_fila()
+    if pasta is None:
+        anotar(Registro.NAO_RESPONDEU, "a fila não veio nesta imagem")
+        return _de_volta_ao_quadro("sem_fila", tarefa=tarefa)
+    dados = (_ler_json(pasta / "estados.json") or {}).get(tarefa)
+    if dados is None:
+        anotar(Registro.RECUSADO_PELA_CELULA, "não existe na fila")
+        return _de_volta_ao_quadro("nao_existe")
+    # Depois do fim, silêncio: a fila recusa evento posterior a um terminal, e
+    # recusar aqui evita abrir um PR que a muralha reprovaria.
+    if dados.get("estado") in ("concluída", "cancelada"):
+        anotar(Registro.RECUSADO_PELA_CELULA, f"já terminou ({dados.get('estado')})")
+        return _de_volta_ao_quadro("ja_terminou", tarefa=tarefa)
+
+    desfecho, detalhe = fila_no_github.abrir_pr_de_cancelamento(
+        tarefa=tarefa, titulo=str(dados.get("titulo") or tarefa), motivo=motivo
+    )
+    if desfecho == fila_no_github.SEM_TOKEN:
+        anotar(Registro.NAO_RESPONDEU, "sem a senha do GitHub nesta imagem")
+        return _de_volta_ao_quadro("sem_token", tarefa=tarefa)
+    if desfecho != fila_no_github.OK:
+        anotar(Registro.NAO_RESPONDEU, detalhe)
+        return _de_volta_ao_quadro("github_recusou", tarefa=tarefa, recado=detalhe)
+
+    anotar(Registro.OK, f"PR #{detalhe}: {motivo}")
+    return _de_volta_ao_quadro("pedido_aberto", tarefa=tarefa, pr=detalhe)

@@ -1,7 +1,7 @@
 {% comment %}
-UM CARTÃO DE TAREFA da aba "Os robôs". Um arquivo só, incluído pelos seis
-grupos — a mesma lei de `_caixa_abas.html`: peça repetida em seis lugares vira
-seis versões que divergem no primeiro conserto.
+UM CARTÃO DE TAREFA da aba "Os robôs". Um arquivo só, incluído pelos sete
+grupos, e a mesma lei de `_caixa_abas.html`: peça repetida em sete lugares vira
+sete versões que divergem no primeiro conserto.
 
 A ORDEM DENTRO DO CARTÃO é o conserto de 03/09/2026, e ela é deliberada: o
 TÍTULO vem primeiro, grande e na cor cheia. Até esta data o cartão abria pelo
@@ -12,25 +12,54 @@ diz do que se trata. Código e área viraram etiquetas DEPOIS do título.
 E na SEGUNDA passada do mesmo dia, quando ele disse que precisava "de uma
 página melhor para entender isso", as etiquetas se separaram em duas classes:
 
-- **as que ele lê** — ONDE a tarefa mexe, em lugares que ele reconhece ("as
-  páginas que vendem", "os pontos e as medalhas"), e QUANDO ela se mexeu pela
-  última vez. Antes o lugar era o nome técnico da célula (`ci`, `mensageria`,
+- **as que ele lê** (ONDE a tarefa mexe, em lugares que ele reconhece, como "as
+  páginas que vendem" e "os pontos e as medalhas", e QUANDO ela se mexeu pela
+  última vez). Antes o lugar era o nome técnico da célula (`ci`, `mensageria`,
   `.github`) e a data não existia em lugar nenhum: dava para ver 76 tarefas
   prontas sem saber se eram de ontem ou de um mês atrás.
-- **as que ele quase nunca lê** — o código `TAR-NNN` e o nome da sessão do
-  robô. Continuam na tela, apagadas: são o que ele cita quando precisa falar de
-  uma tarefa comigo, então tirar seria pior. Só deixaram de ser a primeira
+- **as que ele quase nunca lê** (o código `TAR-NNN` e o nome da sessão do
+  robô). Continuam na tela, apagadas: são o que ele cita quando precisa falar
+  de uma tarefa comigo, então tirar seria pior. Só deixaram de ser a primeira
   coisa que o olho encontra.
 
-Numa PARADA, `quem` é quem escreveu o bloqueio, e não quem está com a tarefa —
+## A TERCEIRA passada (06/09/2026): o cartão passou a EXPLICAR e a AGIR
+
+Ele abriu a página, viu 22 tarefas paradas e disse que não entendia nenhuma. O
+motivo não era a tela: era que todo campo do cartão foi escrito por robô para
+robô. Ele pediu quatro coisas, e as quatro entraram aqui.
+
+1. **A explicação em três parágrafos**, com os dados vindos da própria fila
+   (`o_que_e`, `o_que_muda`, `exemplo`, escritos pelo evento `explicada`).
+   Tarefa que ninguém explicou DIZ isso, e nunca deixa um espaço em branco: um
+   buraco silencioso seria lido como "esta aqui é simples".
+
+   Com uma exceção medida na prévia deste mesmo dia, e ela vale a pena contar.
+   Nos grupos RECOLHIDOS (a corrente da fila, as concluídas, as canceladas) a
+   linha não aparece. Com a fila de verdade ela saía 199 vezes numa página só,
+   e a maioria era história já fechada, que não pede explicação de ninguém.
+   Aviso repetido duzentas vezes ensina o olho a pular a página inteira, que é
+   exatamente o defeito que esta tela veio consertar.
+2. **A posição e o selo**, calculados por `robos.py` a partir da `importancia`
+   que a fila declara. A posição não se guarda em lugar nenhum: ela muda
+   sozinha quando uma tarefa entra ou sai da fila.
+3. **O prompt pronto para tocar a tarefa**, calculado do id e do `toca`. Ele
+   fica escrito no HTML, dentro de um `pre` fechado, e o script só o copia. Sem
+   área de transferência, o gesto ABRE a caixa e o texto continua ali para
+   selecionar: falha que some é a pior de todas (RETROSPECTIVA-FASE-D §1).
+4. **O botão de excluir**, que não apaga nada: ele abre um pedido no GitHub.
+
+Os quatro só aparecem no grupo "Esperando um robô pegar" (`ranqueada`, em
+`robos.py`), com uma exceção, a explicação, que aparece em todos. Ranquear o
+que um robô já pegou, ou o que já terminou, seria uma ordem que não muda
+decisão nenhuma.
+
+O `motivo` também sai do cartão nesse grupo, e só nele: ali ele diz sempre
+"ninguém pegou ainda", que é exatamente o que o título do grupo acabou de
+dizer. Nos outros grupos ele é a única coisa que conta a história.
+
+Numa PARADA, `quem` é quem escreveu o bloqueio, e não quem está com a tarefa,
 por isso a etiqueta troca de rótulo ali. "robô: sessao-x" num cartão que espera
 uma decisão dele diria que alguém está trabalhando nele agora, que é o oposto.
-
-Saiu daqui em 06/09/2026 o selo âmbar "PAROU". Ele nasceu quando as paradas
-eram um bloco só e misturado; com o quadro separado em "Esperando uma decisão
-sua" e "Esperando outra tarefa terminar", o selo só repetia, em maiúsculas e em
-cor de alarme, o que o título do grupo acabara de dizer — e repetia igual na
-corrente da fila, que não é alarme nenhum.
 
 O `motivo` das concluídas é o endereço do trabalho que a fechou; `urlize`
 transforma em link clicável, porque um endereço só de texto obriga o
@@ -38,7 +67,22 @@ mantenedor a selecionar e copiar à mão.
 {% endcomment %}
 <div class="cartao-robo borda-{{ coluna.cor }}" data-tarefa="{{ cartao.id }}">
   <span class="agora">🔒 um robô reservou esta tarefa neste minuto</span>
+  {% if cartao.posicao %}
+    <div class="cabeca">
+      <span class="posicao">#{{ cartao.posicao }}</span>
+      <span class="selo {{ cartao.selo.classe }}">{{ cartao.selo.texto }}</span>
+    </div>
+  {% endif %}
   <b>{{ cartao.titulo }}</b>
+  {% if cartao.o_que_e or cartao.o_que_muda or cartao.exemplo %}
+    <div class="explicacao">
+      {% if cartao.o_que_e %}<p><span class="rotulo">O que é.</span> {{ cartao.o_que_e }}</p>{% endif %}
+      {% if cartao.o_que_muda %}<p><span class="rotulo">O que muda para você.</span> {{ cartao.o_que_muda }}</p>{% endif %}
+      {% if cartao.exemplo %}<p class="exemplo">{{ cartao.exemplo }}</p>{% endif %}
+    </div>
+  {% elif not coluna.recolhida %}
+    <p class="sem-explicacao">Ninguém explicou esta tarefa ainda, então o título acima é tudo o que existe sobre ela.</p>
+  {% endif %}
   <div class="etiquetas">
     {% if cartao.onde %}<span class="etiqueta">onde: {{ cartao.onde|join:", " }}</span>{% endif %}
     {% if cartao.quando %}<span class="etiqueta">mexeu pela última vez em {{ cartao.quando|slice:"8:10" }}/{{ cartao.quando|slice:"5:7" }}</span>{% endif %}
@@ -47,7 +91,18 @@ mantenedor a selecionar e copiar à mão.
   </div>
   {% if coluna.estado == "bloqueada" %}
     <div class="motivo">{% if cartao.motivo %}{{ cartao.motivo|urlize }}{% else %}Ninguém escreveu o motivo desta parada.{% endif %}</div>
-  {% elif cartao.motivo %}
+  {% elif cartao.motivo and not coluna.ranqueada %}
     <div class="motivo">{{ cartao.motivo|urlize }}</div>
+  {% endif %}
+  {% if cartao.prompt %}
+    <div class="acoes">
+      <button type="button" class="tocar" data-prompt="prompt-{{ cartao.id }}">Copiar o prompt para tocar aqui</button>
+      {% if pode_excluir %}
+        <button type="button" class="excluir" data-tarefa="{{ cartao.id }}" data-titulo="{{ cartao.titulo }}">Excluir</button>
+      {% else %}
+        <button type="button" class="excluir" disabled>Excluir (desligado)</button>
+      {% endif %}
+    </div>
+    <pre class="prompt-caixa" id="prompt-{{ cartao.id }}">{{ cartao.prompt }}</pre>
   {% endif %}
 </div>

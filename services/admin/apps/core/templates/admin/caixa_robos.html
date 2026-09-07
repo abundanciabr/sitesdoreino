@@ -86,6 +86,84 @@ não tem sigla (lei do CLAUDE.md).
         display: block; font-size: 12px; font-weight: 700;
         color: var(--amarelo); margin-bottom: 6px;
       }
+
+      /* ── O RANKING, A EXPLICAÇÃO E OS DOIS BOTÕES (06/09/2026) ────────────
+         Toda cor daqui é NOME DA CASA, sem valor de reserva inventado: foi
+         exatamente um `var(--cartao, #fff)` que deixou esta tela ilegível em
+         03/09, e `tests/test_toda_cor_usada_tem_dono.py` agora reprova quem
+         repetir a ideia. */
+      .cartao-robo .cabeca { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+      .cartao-robo .posicao { font-size: 12px; font-weight: 700; color: var(--texto-3); min-width: 26px; }
+      .cartao-robo .selo {
+        font-size: 11px; font-weight: 600; letter-spacing: .04em;
+        border-radius: 6px; padding: 1px 8px; text-transform: uppercase;
+      }
+      .cartao-robo .selo.alta { color: var(--vermelho); border: 1px solid var(--vermelho); }
+      .cartao-robo .selo.media { color: var(--amarelo); border: 1px solid var(--amarelo); }
+      .cartao-robo .selo.baixa { color: var(--texto-3); border: 1px solid var(--linha); }
+      /* Tracejado: a ausência de nota se vê de longe, e não se confunde com
+         uma nota baixa que alguém escolheu. */
+      .cartao-robo .selo.sem-nota { color: var(--texto-3); border: 1px dashed var(--linha); }
+
+      .cartao-robo .explicacao { font-size: 13.5px; color: var(--texto-2); margin: 10px 0 0; max-width: 72ch; }
+      .cartao-robo .explicacao p { margin: 0 0 6px; }
+      .cartao-robo .explicacao .rotulo { color: var(--texto); font-weight: 600; }
+      .cartao-robo .explicacao .exemplo { color: var(--texto-3); font-style: italic; }
+      .cartao-robo .sem-explicacao { font-size: 13px; color: var(--texto-3); font-style: italic; margin: 10px 0 0; }
+
+      .cartao-robo .acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .cartao-robo .acoes button {
+        font: inherit; font-size: 13px; cursor: pointer; border-radius: 8px;
+        padding: 6px 12px; background: transparent; color: var(--texto-2);
+        border: 1px solid var(--linha);
+      }
+      .cartao-robo .acoes button.tocar { color: var(--azul); border-color: var(--azul); }
+      .cartao-robo .acoes button.copiado { color: var(--verde); border-color: var(--verde); }
+      .cartao-robo .acoes button.excluir:hover:enabled { color: var(--vermelho); border-color: var(--vermelho); }
+      .cartao-robo .acoes button:disabled { color: var(--texto-3); cursor: not-allowed; }
+      /* O prompt JÁ está no HTML, fechado. Abrir é trocar a classe, nunca
+         escrever texto pelo script: sem área de transferência, o gesto revela
+         o que já estava aqui, e nada se perde em silêncio. */
+      .cartao-robo .prompt-caixa { display: none; }
+      .cartao-robo .prompt-caixa.a-mostra {
+        display: block; margin: 10px 0 0; padding: 10px 12px;
+        background: var(--fundo); border: 1px dashed var(--linha); border-radius: 8px;
+        font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+        color: var(--texto-2); white-space: pre-wrap;
+      }
+
+      /* A CONFIRMAÇÃO DE EXCLUIR. `dialog` nativo: ele já prende o teclado
+         dentro da caixa e fecha no Esc, e nada disso precisa de script. */
+      dialog.confirmar-exclusao {
+        background: var(--painel); color: var(--texto);
+        border: 1px solid var(--linha); border-radius: 12px;
+        padding: 20px; max-width: 460px; line-height: 1.5;
+      }
+      dialog.confirmar-exclusao::backdrop { background: rgba(0, 0, 0, .6); }
+      dialog.confirmar-exclusao h2 { font-size: 16px; margin: 0 0 10px; }
+      dialog.confirmar-exclusao p { font-size: 13.5px; color: var(--texto-2); margin: 0 0 12px; }
+      dialog.confirmar-exclusao label { display: block; font-size: 13px; margin-bottom: 4px; }
+      dialog.confirmar-exclusao input {
+        width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
+        background: var(--fundo); color: var(--texto);
+        border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 14px;
+      }
+      dialog.confirmar-exclusao .botoes { display: flex; gap: 8px; justify-content: flex-end; }
+      dialog.confirmar-exclusao button {
+        font: inherit; font-size: 13px; cursor: pointer; border-radius: 8px;
+        padding: 6px 12px; background: transparent; color: var(--texto-2);
+        border: 1px solid var(--linha);
+      }
+      dialog.confirmar-exclusao button.confirma { color: var(--vermelho); border-color: var(--vermelho); }
+
+      /* O DESFECHO DO ÚLTIMO CLIQUE. Verde quando o pedido foi aberto, âmbar
+         quando não deu: o dono precisa saber, de relance, se o gesto pegou. */
+      .desfecho { border-left: 4px solid var(--linha); background: var(--painel);
+        border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 16px 0; font-size: 14px; }
+      .desfecho.deu-certo { border-left-color: var(--verde); }
+      .desfecho.nao-deu { border-left-color: var(--amarelo); }
+      .desligado { font-size: 13px; color: var(--amarelo); margin: 0 0 12px; }
+
       .borda-azul { border-left-color: #2f6fd0; }
       .borda-roxo { border-left-color: #7a4fc0; }
       .borda-ambar { border-left-color: var(--amarelo); }
@@ -153,6 +231,61 @@ não tem sigla (lei do CLAUDE.md).
     </style>
 
     <h1>Os robôs</h1>
+
+    {% comment %}
+    O DESFECHO DO ÚLTIMO CLIQUE no botão de excluir (padrão POST-redirect-GET,
+    como toda escrita desta área). Cada recusa diz o que aconteceu E o que
+    fazer: mensagem que só informa deixa o dono olhando para a tela sem saída.
+    O endereço do PR é montado aqui, do repositório que a página já conhece,
+    com um número que a view conferiu ser número. Nada que veio de fora é
+    ecoado como link.
+    {% endcomment %}
+    {% if resultado == "pedido_aberto" %}
+      <p class="desfecho deu-certo">
+        <b>Pedido aberto.</b> O trabalho nº {{ pr }} tira a {{ tarefa_do_resultado }} da fila.
+        Quem publica é a esteira, e ela costuma levar uns 8 minutos.
+        <a href="https://github.com/{{ repositorio }}/pull/{{ pr }}" target="_blank" rel="noopener">abrir o nº {{ pr }}</a>
+      </p>
+    {% elif resultado == "sem_motivo" %}
+      <p class="desfecho nao-deu">
+        Não excluí a {{ tarefa_do_resultado }} porque faltou o motivo. Ele é o que fica
+        no lugar da tarefa para sempre, então clique em Excluir de novo e escreva
+        por que ela não vai mais ser feita.
+      </p>
+    {% elif resultado == "motivo_longo" %}
+      <p class="desfecho nao-deu">
+        O motivo passou de 500 letras. Ele precisa caber numa frase, porque é o que
+        alguém vai ler daqui a meses no lugar da tarefa. Encurte e tente de novo.
+      </p>
+    {% elif resultado == "nao_existe" %}
+      <p class="desfecho nao-deu">
+        Essa tarefa não está na fila desta publicação. Recarregue a página, porque a
+        lista pode ter mudado desde que você a abriu.
+      </p>
+    {% elif resultado == "ja_terminou" %}
+      <p class="desfecho nao-deu">
+        A {{ tarefa_do_resultado }} já terminou, e a fila não aceita nenhum
+        acontecimento depois do fim. Não há o que excluir.
+      </p>
+    {% elif resultado == "sem_fila" %}
+      <p class="desfecho nao-deu">
+        A fila não veio nesta imagem do site, então não deu para conferir a tarefa
+        antes de excluí-la. Avise um robô com estas palavras: "a fila embutida não
+        chegou na imagem da admin".
+      </p>
+    {% elif resultado == "sem_token" %}
+      <p class="desfecho nao-deu">
+        O botão está desligado porque falta a senha que deixa o site abrir um pedido
+        no GitHub. Avise um robô com estas palavras: "ponha a {{ variavel_do_token }}
+        no env da admin".
+      </p>
+    {% elif resultado == "github_recusou" %}
+      <p class="desfecho nao-deu">
+        Não deu para abrir o pedido, porque {{ recado }} Tente de novo daqui a pouco;
+        se repetir, avise um robô com esta frase inteira.
+      </p>
+    {% endif %}
+
     <div class="o-que-e-isto">
       <p>
         <b>Cada cartão desta página é um pedaço de trabalho no seu site</b>, escrito
@@ -187,7 +320,7 @@ não tem sigla (lei do CLAUDE.md).
       da última publicação do site.
     </p>
 
-    <section class="ao-vivo-caixa">
+    <section class="ao-vivo-caixa" data-repo="{{ repositorio }}">
       <h2>Agora, neste minuto</h2>
       <p id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
       <ul class="ao-vivo" id="ao-vivo-lista"></ul>
@@ -218,6 +351,19 @@ não tem sigla (lei do CLAUDE.md).
           {% else %}
             <h2>{{ coluna.rotulo }} <span class="aba-conta">{{ coluna.cartoes|length }}</span></h2>
             <p class="explica">{{ coluna.explicacao }}</p>
+            {% if coluna.ranqueada and not pode_excluir %}
+              {% comment %}
+              O botão DESLIGADO se explica uma vez, aqui, e não em cada cartão:
+              a mesma frase repetida vinte vezes vira ruído e ensina o olho a
+              pular a página inteira. Escondê-lo seria pior ainda, porque o dono
+              nunca saberia que o gesto existe.
+              {% endcomment %}
+              <p class="desligado">
+                O botão de excluir está cinza porque falta a senha que deixa o site abrir
+                um pedido no GitHub. Avise um robô com estas palavras: "ponha a
+                {{ variavel_do_token }} no env da admin".
+              </p>
+            {% endif %}
             <div class="cartoes-robo">
               {% for cartao in coluna.cartoes %}{% include "admin/_cartao_robo.html" %}{% endfor %}
             </div>
@@ -292,7 +438,10 @@ não tem sigla (lei do CLAUDE.md).
     <script>
       (function () {
         "use strict";
-        var REPO = "abundanciabr/sitesdoreino";
+        // O nome do repositório mora em `robos.py` e chega por atributo. Uma
+        // segunda cópia aqui dentro divergiria no primeiro dia em que alguém
+        // mexesse numa só.
+        var REPO = document.querySelector(".ao-vivo-caixa").dataset.repo;
         var estado = document.getElementById("ao-vivo-estado");
         var lista = document.getElementById("ao-vivo-lista");
 
@@ -353,6 +502,95 @@ não tem sigla (lei do CLAUDE.md).
             ? "É isto que o GitHub respondeu neste minuto:"
             : "Neste minuto não há reserva viva nem trabalho aberto — nenhum robô está com a mão na massa agora.";
         }).catch(falhou);
+      })();
+    </script>
+
+    {% if pode_excluir %}
+      {% comment %}
+      A CAIXA DE CONFIRMAÇÃO, uma só para a página inteira: o script só troca o
+      nome da tarefa dentro dela. Uma por cartão seriam vinte formulários
+      iguais no HTML.
+
+      O formulário é de verdade, com `method="post"` e o carimbo de CSRF, e o
+      `TAR-NNN` viaja num campo escondido: o endereço da rota é fixo e não
+      carrega nada digitado (`armadilhas/047`). O `required`
+      do motivo é a primeira barreira, e a view recusa vazio de novo do lado de
+      cá, porque barreira que só existe no navegador não é barreira.
+      {% endcomment %}
+      <dialog class="confirmar-exclusao" id="confirmar-exclusao">
+        <form method="post" action="{% url 'caixa_robos_excluir' %}">
+          {% csrf_token %}
+          <h2>Excluir esta tarefa para sempre?</h2>
+          <p id="qual-tarefa"></p>
+          <p>
+            A tarefa some da fila e não volta. O histórico dela fica guardado, mas
+            ninguém vai fazê-la. Se você mudar de ideia depois, ela precisa nascer de novo.
+          </p>
+          <input type="hidden" name="tarefa" id="campo-da-tarefa">
+          <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
+          <input id="motivo-da-exclusao" name="motivo" maxlength="500" autocomplete="off" required>
+          <div class="botoes">
+            <button type="button" id="deixar-na-fila">Deixar na fila</button>
+            <button type="submit" class="confirma">Sim, excluir</button>
+          </div>
+        </form>
+      </dialog>
+    {% endif %}
+
+    <script>
+      (function () {
+        "use strict";
+        var quadro = document.querySelector(".envolucro");
+        var caixa = document.getElementById("confirmar-exclusao");
+
+        quadro.addEventListener("click", function (evento) {
+          var botao = evento.target.closest("button");
+          if (!botao) { return; }
+
+          if (botao.classList.contains("tocar")) {
+            var prompt = document.getElementById(botao.dataset.prompt);
+            // A caixa ABRE sempre, tenha a cópia dado certo ou não: sem área de
+            // transferência (navegador antigo, permissão negada, página sem
+            // HTTPS), o texto continua na tela para ele selecionar. Falha que
+            // some sem dizer nada é a pior de todas.
+            prompt.classList.add("a-mostra");
+            var avisar = function (texto, deuCerto) {
+              botao.textContent = texto;
+              if (deuCerto) { botao.classList.add("copiado"); }
+            };
+            var voltarAoNormal = function () {
+              window.setTimeout(function () {
+                botao.textContent = "Copiar o prompt para tocar aqui";
+                botao.classList.remove("copiado");
+              }, 5000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(prompt.textContent).then(function () {
+                avisar("copiado, é só colar no Claude Code", true);
+                voltarAoNormal();
+              }).catch(function () {
+                avisar("não consegui copiar sozinho, selecione o texto abaixo", false);
+              });
+            } else {
+              avisar("não consegui copiar sozinho, selecione o texto abaixo", false);
+            }
+            return;
+          }
+
+          if (botao.classList.contains("excluir") && !botao.disabled && caixa) {
+            document.getElementById("qual-tarefa").textContent =
+              "“" + botao.dataset.titulo + "” (" + botao.dataset.tarefa + ")";
+            document.getElementById("campo-da-tarefa").value = botao.dataset.tarefa;
+            document.getElementById("motivo-da-exclusao").value = "";
+            caixa.showModal();
+          }
+        });
+
+        if (caixa) {
+          document.getElementById("deixar-na-fila").addEventListener("click", function () {
+            caixa.close();
+          });
+        }
       })();
     </script>
   {% endif %}
