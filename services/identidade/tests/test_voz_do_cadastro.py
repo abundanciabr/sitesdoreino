@@ -22,11 +22,15 @@ e-mail, nem provedor.
 """
 
 import json
+import zipfile
 import uuid
+from importlib.metadata import version
+from pathlib import Path
 
 import pytest
 from django.db import transaction
 
+import outbox_relay
 from apps.core import sessao as ses
 from apps.core.views import site_seguro
 from apps.identidade import eventos
@@ -34,6 +38,22 @@ from apps.identidade.models import Identidade, OutboxEvent
 from apps.identidade.tasks import relay_outbox
 
 SITE = "site-mesh"
+RAIZ = Path(__file__).resolve().parents[3]
+PACOTE = RAIZ / "packages" / "outbox-relay"
+WHEEL = (
+    RAIZ / "services" / "identidade" / "vendor" / "outbox_relay-0.3.0-py3-none-any.whl"
+)
+
+
+def test_wheel_de_identidade_corresponde_ao_fonte_do_pacote():
+    with zipfile.ZipFile(WHEEL) as wheel:
+        relay_na_wheel = wheel.read("outbox_relay/relay.py").decode()
+        init_na_wheel = wheel.read("outbox_relay/__init__.py").decode()
+
+    assert relay_na_wheel == (PACOTE / "src" / "outbox_relay" / "relay.py").read_text()
+    assert (
+        init_na_wheel == (PACOTE / "src" / "outbox_relay" / "__init__.py").read_text()
+    )
 
 
 @pytest.mark.django_db
@@ -123,6 +143,9 @@ def redis_dublado(monkeypatch):
 
 @pytest.mark.django_db
 def test_o_relay_publica_no_stream_do_evento(redis_dublado):
+    assert version("outbox-relay") == "0.3.0"
+    assert outbox_relay.publicar_pendentes.__module__ == "outbox_relay.relay"
+
     with transaction.atomic():
         eventos.pessoa_cadastrada(site_id=SITE, pessoa_id="idt-1")
 
