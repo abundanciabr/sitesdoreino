@@ -28,7 +28,9 @@
    Declare em `validacao.json` os comandos de validação aplicáveis como listas
    de argumentos. O comando os executa sem shell, antes do push, numa
    bancada temporária isolada do commit entregue. Arquivos locais sem commit
-   e arquivos ignorados da bancada de trabalho não entram nessa validação:
+   e arquivos ignorados da bancada de trabalho não entram nessa validação.
+   Os argumentos usam caminhos relativos; apenas o executável pode ter
+   caminho absoluto:
 
    ```json
    {"comandos": [["python", "-m", "pytest", "ci/tests", "-q"]]}
@@ -42,7 +44,10 @@
 
    A validação ausente, inválida ou com falha impede o fechamento. O recibo
    cita a árvore e o commit validados; mudanças de código posteriores exigem
-   nova validação. O gerador confere o recibo e o comando confirma no GitHub
+   nova validação. Após embarcar recibo e eventos, os comandos rodam novamente
+   no SHA final isolado. A prova final fica no caderno privado, vinculada a
+   esse SHA, sem gerar outro commit. O gerador confere o recibo e o comando
+   confirma no GitHub
    o SHA entregue. Os logs de stdout, stderr e falha ficam sanitizados em
    uma pasta privada dentro do `.git`, com revisão e tentativa. O resumo
    informa o caminho para inspeção; os logs não são publicados no recibo.

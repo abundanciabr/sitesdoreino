@@ -16,6 +16,8 @@ import sys
 import unicodedata
 import uuid
 import tempfile
+import subprocess
+import os
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -114,25 +116,35 @@ class Pedido:
 
 
 def _sanitizar(texto: str) -> str:
-    return re.sub(r"(?i)((?:password|senha|token|secret|api_key)\s*[:=]\s*)([^\s]+)",
-                  r"\1<REDIGIDO>", telemetria.redigir(texto))
+    texto = texto.replace('\\"', '"').replace("\\'", "'")
+    return re.sub(
+        r"(?i)((?:[\"']?)(?:password|senha|token|access_token|secret|api_key|authorization)[\"']?\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)",
+        r"\1<REDIGIDO>", telemetria.redigir(texto),
+    )
 
 
 def rodar(comando: list[str], raiz: Path, *, log: Path | None = None) -> str:
+    if log is None:
+        return executar(comando, cwd=raiz, descricao=f"rodar `{' '.join(comando)}`", timeout=300).stdout
+    cabecalho = f"Comando: {json.dumps(comando)}\n"
+    ambiente = {**os.environ, "PYTHONPATH": str(raiz), "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     try:
-        resultado = executar(
-            comando, cwd=raiz, descricao="executar validação" if log else f"rodar `{' '.join(comando)}`",
-            env_extra={"PYTHONPATH": str(raiz)} if log else None, timeout=300,
-        )
-    except ErroDeInstrumentacao as erro:
-        if log:
-            log.write_text(_sanitizar(f"Comando: {json.dumps(comando)}\n{erro.resumo}\n{erro.detalhe or ''}"), encoding="utf-8")
-        raise
-    if log:
-        texto = f"Comando: {json.dumps(comando)}\nExit: {resultado.exit_code}\nSTDOUT:\n{resultado.stdout}\nSTDERR:\n{resultado.stderr}"
-        log.write_text(_sanitizar(texto), encoding="utf-8")
-        return resultado.stdout + "\n" + resultado.stderr
-    return resultado.stdout
+        resultado = subprocess.run(comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        partes = [cabecalho, f"ERROR: {type(erro).__name__}\n"]
+        for nome in ("stdout", "stderr"):
+            valor = getattr(erro, nome, None) or ""
+            if isinstance(valor, bytes):
+                valor = valor.decode("utf-8", errors="replace")
+            partes.append(f"{nome}:\n{valor}\n")
+        log.write_text(_sanitizar("".join(partes)), encoding="utf-8")
+        raise ErroDeInstrumentacao("a validação não pôde executar", f"Confira o executável, o prazo de 300 segundos e o log privado {log}.") from erro
+    texto = f"{cabecalho}Exit: {resultado.returncode}\nSTDOUT:\n{resultado.stdout}\nSTDERR:\n{resultado.stderr}"
+    log.write_text(_sanitizar(texto), encoding="utf-8")
+    if resultado.returncode != 0:
+        raise ErroDeInstrumentacao(f"validação: exit {resultado.returncode}", f"Leia o log privado {log} e corrija a causa antes de retomar.")
+    return resultado.stdout + "\n" + resultado.stderr
 
 
 # ------------------------------------------------------------ as derivações --
@@ -277,7 +289,7 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
                 "(`armadilhas/070` e `093`). Nada foi gravado.",
             )
     for texto in (pedido.titulo, pedido.detalhe, Path(pedido.corpo_arquivo).read_text(encoding="utf-8"), Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")):
-        if telemetria.redigir(texto) != texto or re.search(r"(?i)(?:password|senha|token|secret|api_key)\s*[:=]\s*[^\s]{8,}", texto):
+        if _sanitizar(texto) != texto:
             raise ParouPorSeguranca("texto contém possível segredo", "Remova credenciais do texto; forneça segredos somente pelo ambiente apropriado.")
     mensagem = Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")
     if COAUTOR not in mensagem:
@@ -332,6 +344,12 @@ def _hash_git(valor: str) -> str:
 
 
 def _validar(raiz, commit, rodar, comandos, dizer):
+    for comando in comandos:
+        for argumento in comando[1:]:
+            valor = argumento.split("=", 1)[1] if argumento.startswith("-") and "=" in argumento else argumento
+            caminho = Path(valor)
+            if caminho.is_absolute() or ".." in caminho.parts:
+                raise ParouPorSeguranca("validação aponta para fora da revisão isolada", "Use caminhos relativos à revisão nos argumentos. Caminho absoluto é permitido somente para o interpretador ou executável.")
     privado = telemetria.dir_git_comum(raiz)
     if privado is None:
         raise ErroDeInstrumentacao("não achei a pasta privada das provas", "Confira a bancada antes de validar.")
@@ -503,8 +521,22 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     alterados = set(correr(["git", "diff", "--name-only", commit, "HEAD"]).splitlines())
     if alterados - {relativo, *eventos} or correr(["git", "diff", "HEAD", "--name-only"]).strip():
         raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
-    correr(["git", "push", "origin", ramo])
     entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
+    try:
+        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer)
+    except ErroDeInstrumentacao:
+        telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, **correlacao)
+        raise
+    if (_hash_git(correr(["git", "rev-parse", "HEAD"])) != entregue
+            or correr(["git", "diff", "HEAD", "--name-only"]).strip()):
+        raise ParouPorSeguranca("revisão mudou durante a prova final", "Confira o diff e valide novamente antes de publicar.")
+    telemetria.registrar("validacao_pr", {
+        "commit": entregue, "branch": ramo, "tentativa": tentativa,
+        "saidas_sha256": provas_finais, "resultado": "concluido", "pr": numero,
+        "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
+    }, cwd=str(raiz), sessao=tentativa)
+    telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
+    correr(["git", "push", "origin", ramo])
     remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state"]))
     if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
         raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")

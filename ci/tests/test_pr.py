@@ -536,14 +536,16 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
         pr.abrir(raiz, pedido(raiz, detalhe='x'*1100), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
 
 
-def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch):
+@pytest.mark.parametrize('tarefa_aberta', ['TAR-001','agent/ci/make-pr'])
+def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aberta):
     raiz = bancada(tmp_path)
     fases = []
-    monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', 'TAR-001'))
+    monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
     pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
-    assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('fechamento','concluido')]
+    assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('validacao','concluido'), ('fechamento','concluido')]
     assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
+    assert {d['tarefa'] for f,r,d in fases} == {tarefa_aberta}
     assert fases[-1][2]['pr'] == 1210
     assert fases[-1][2]['commit'] == 'b'*40
 
@@ -581,7 +583,8 @@ def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
         pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)
 
 @pytest.mark.parametrize('ignorado', [False, True])
-def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado):
+@pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
+def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo):
     import subprocess
     origem = tmp_path/'origem'
     subprocess.run(['git','init',str(origem)],check=True,capture_output=True)
@@ -594,21 +597,28 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado):
     git('commit','-m','base')
     raiz=tmp_path/'bancada'
     git('worktree','add','-b','agent/ci/prova',str(raiz))
-    (raiz/'check.py').write_text('import necessario\nprint(necessario.valor)\n',encoding='utf-8')
+    (raiz/'check.py').write_text('import necessario\ndef test_entregue():\n    assert necessario.valor == 42\n',encoding='utf-8')
     (raiz/'necessario.py').write_text('valor = 42\n',encoding='utf-8')
     (tmp_path/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
     (tmp_path/'corpo.md').write_text('Teste isolado.',encoding='utf-8')
-    (tmp_path/'validacao.json').write_text(json.dumps({'comandos':[[sys.executable,'check.py']]}),encoding='utf-8')
+    comando = [sys.executable,'check.py'] if alvo == 'relativo' else [sys.executable,str(raiz/'check.py')]
+    if alvo == 'pytest_absoluto':
+        comando = [sys.executable,'-m','pytest',str(raiz/'check.py'),'-q']
+    (tmp_path/'validacao.json').write_text(json.dumps({'comandos':[comando]}),encoding='utf-8')
     entrada=pr.Pedido(titulo='ci: prova',mensagem_arquivo=tmp_path/'mensagem.txt',corpo_arquivo=tmp_path/'corpo.md',validacao_arquivo=tmp_path/'validacao.json',arquivos=['check.py'],detalhe=DETALHE)
     def executar(comando, cwd, **opcoes):
         assert comando[:2] != ['git','push'], 'publicaria código dependente de arquivo não entregue'
         return pr.rodar(comando,cwd,**opcoes)
-    with pytest.raises(pr.ErroDeInstrumentacao,match='não aprovada') as erro:
+    with pytest.raises((pr.ErroDeInstrumentacao,pr.ParouPorSeguranca)) as erro:
         pr.abrir(raiz,entrada,rodar=executar)
-    assert 'log privado' in erro.value.detalhe
     logs=list((origem/'.git'/pr.telemetria.PASTA/'validacoes-pr').rglob('*.log'))
-    assert len(logs)==1
-    assert 'ModuleNotFoundError' in logs[0].read_text(encoding='utf-8')
+    if alvo == 'relativo':
+        assert 'log privado' in erro.value.detalhe
+        assert len(logs)==1
+        assert 'ModuleNotFoundError' in logs[0].read_text(encoding='utf-8')
+    else:
+        assert 'fora da revisão' in str(erro.value)
+        assert not logs
     assert (raiz/'necessario.py').exists()
     assert len(git('worktree','list','--porcelain').split('worktree '))-1 == 2
 
@@ -622,8 +632,10 @@ def test_log_privado_preserva_stdout_stderr_e_redige_segredos(tmp_path):
     assert '<REDIGIDO>' in texto
     assert 'segredo12345' not in texto
     with pytest.raises(pr.ErroDeInstrumentacao):
-        pr.rodar([sys.executable,'-c',"import sys;print('falha conferida',file=sys.stderr);sys.exit(1)"],tmp_path,log=log)
+        pr.rodar([sys.executable,'-c',"import sys;print('inicio conferido'+'x'*12000+'falha conferida',file=sys.stderr);sys.exit(1)"],tmp_path,log=log)
     assert 'falha conferida' in log.read_text(encoding='utf-8')
+    assert 'inicio conferido' in log.read_text(encoding='utf-8')
+    assert 'x'*12000 in log.read_text(encoding='utf-8')
 
 
 def test_metadado_invalido_nao_bloqueia_e_tarefa_e_herdada(tmp_path,monkeypatch):
@@ -636,3 +648,42 @@ def test_metadado_invalido_nao_bloqueia_e_tarefa_e_herdada(tmp_path,monkeypatch)
     forjado={**valido,'tarefa':'TAR-999','quando':'2026-09-09T02:00:00+00:00'}
     monkeypatch.setattr(pr.telemetria,'ler_tudo',lambda *a:[invalido,valido,forjado])
     assert pr._tentativa_da_abertura(raiz,ramo)==('abertura123','TAR-123')
+
+@pytest.mark.parametrize('prefixo', ['', '--arquivo='])
+def test_argumento_absoluto_original_e_recusado(tmp_path, prefixo):
+    raiz=bancada(tmp_path)
+    comandos=[[sys.executable,prefixo+str(raiz/'check.py')]]
+    with pytest.raises(pr.ParouPorSeguranca,match='fora da revisão'):
+        pr._validar(raiz,'a'*40,Duble(RESPOSTAS_FELIZES),comandos,lambda *a:None)
+
+
+@pytest.mark.parametrize('canal',['stdout','stderr'])
+def test_json_com_credencial_nao_vaza_no_log(tmp_path,canal):
+    log=tmp_path/'prova.log'
+    comando=[sys.executable,'-c',f"import json,sys;print(json.dumps(dict(token='SEGREDO_DE_TESTE_123')),file=sys.{canal})"]
+    pr.rodar(comando,tmp_path,log=log)
+    assert 'SEGREDO_DE_TESTE_123' not in log.read_text(encoding='utf-8')
+    assert '<REDIGIDO>' in log.read_text(encoding='utf-8')
+
+
+def test_prova_final_avalia_o_sha_com_recibo_e_impede_sucesso(tmp_path):
+    raiz=bancada(tmp_path)
+    dub=Duble(RESPOSTAS_FELIZES)
+    final=False
+    revisoes=[]
+    def executar(comando, cwd, **opcoes):
+        nonlocal final
+        if comando[:3]==['git','commit','-m']:
+            final=True
+        if comando==['git','rev-parse','HEAD'] and final:
+            return 'c'*40
+        if comando[:3]==['git','worktree','add']:
+            revisoes.append(comando[-1])
+        if comando==['pytest','ci/tests'] and final:
+            raise pr.ErroDeInstrumentacao('recibo final inválido','o teste da revisão entregue reprovou')
+        return dub(comando,cwd,**opcoes)
+    with pytest.raises(pr.ErroDeInstrumentacao,match='não aprovada'):
+        pr.abrir(raiz,pedido(raiz),rodar=executar,hoje=HOJE)
+    assert revisoes==['b'*40,'c'*40]
+    assert not dub.pediu('git push origin')
+    assert not dub.pediu('gh pr view')
