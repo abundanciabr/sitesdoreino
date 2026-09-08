@@ -177,3 +177,145 @@ def test_comprovante_alheio_ou_modificado_nao_e_ignorado(tmp_path):
     with pytest.raises(sessao.ErroDeSessao):
         mundo.sessao().rodar()
     assert caminho.read_bytes() == original
+
+
+@pytest.fixture
+def bancada_git_real(repo, tmp_path):
+    import subprocess
+    from pathlib import Path
+
+    def git(onde, *argumentos):
+        return subprocess.run(
+            ["git", "-C", str(onde), *argumentos],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    raiz = repo.raiz
+    repo.declarar({"falsa": {}})
+    (raiz / "armadilhas").mkdir()
+    for pasta in ("contracts", "services", "armadilhas"):
+        (raiz / pasta / ".gitkeep").write_text("", encoding="utf-8")
+    (raiz / "preservado.txt").write_text("Trabalho preexistente", encoding="utf-8")
+    (raiz / ".gitignore").write_text(
+        "armadilhas/INDICE.md\n__pycache__/\n", encoding="utf-8"
+    )
+    for nome in (
+        "sessao.py",
+        "_nucleo.py",
+        "licao_do_caminho.py",
+        "sino_das_armadilhas.py",
+        "telemetria.py",
+        "muralha_pasta_compartilhada.py",
+    ):
+        (raiz / "ci" / nome).write_bytes(
+            (Path(sessao.__file__).parent / nome).read_bytes()
+        )
+    (raiz / "ci/boletim.py").write_text(
+        "def coletar(raiz): return None\ndef montar(dados): return 'Boletim isolado do teste'\n",
+        encoding="utf-8",
+    )
+    (raiz / "ci/indice_de_armadilhas.py").write_text(
+        "from pathlib import Path\nPath('armadilhas/INDICE.md').write_text('Indice da bancada', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    git(raiz, "init", "-b", "main")
+    git(raiz, "config", "user.name", "Teste de retomada")
+    git(raiz, "config", "user.email", "teste@example.invalid")
+    git(raiz, "add", ".")
+    git(raiz, "commit", "-m", "Base do teste")
+    remoto = tmp_path / "origin.git"
+    subprocess.run(
+        ["git", "clone", "--bare", str(raiz), str(remoto)],
+        check=True,
+        capture_output=True,
+    )
+    git(raiz, "remote", "add", "origin", str(remoto))
+    git(raiz, "fetch", "origin")
+    bancada = raiz.parent / "wt-ci-retomada"
+    git(raiz, "worktree", "add", str(bancada), "-b", "agent/ci/retomada", "origin/main")
+    return raiz, bancada, git
+
+
+def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
+    bancada_git_real, tmp_path
+):
+    import subprocess
+    import sys
+
+    raiz, bancada, git = bancada_git_real
+    argumentos = [
+        "--celula",
+        "ci",
+        "--tarefa",
+        "retomada",
+        "--sem-container",
+        "--scratch",
+        str(tmp_path / "scratch"),
+    ]
+
+    def abrir():
+        return subprocess.run(
+            [sys.executable, "ci/sessao.py", *argumentos],
+            cwd=bancada,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+
+    antes = (
+        git(bancada, "rev-parse", "HEAD"),
+        git(raiz, "worktree", "list", "--porcelain"),
+        (bancada / "preservado.txt").read_bytes(),
+    )
+    primeira = abrir()
+    assert primeira.returncode == 0, primeira.stdout + primeira.stderr
+    segunda = abrir()
+    assert segunda.returncode == 0, segunda.stdout + segunda.stderr
+    depois = (
+        git(bancada, "rev-parse", "HEAD"),
+        git(raiz, "worktree", "list", "--porcelain"),
+        (bancada / "preservado.txt").read_bytes(),
+    )
+    assert antes == depois
+    assert git(bancada, "status", "--porcelain") == ""
+    pendente = bancada / "trabalho-nao-commitado.txt"
+    pendente.write_bytes(b"nao apagar")
+    interrompida = abrir()
+    assert interrompida.returncode == 1, interrompida.stdout + interrompida.stderr
+    assert pendente.read_bytes() == b"nao apagar"
+    assert git(bancada, "rev-parse", "HEAD") == antes[0]
+
+
+def test_resolver_clone_nao_permite_bancada_dentro_do_principal(bancada_git_real):
+    from dataclasses import replace
+
+    raiz, bancada, _ = bancada_git_real
+    assert sessao.raiz_do_clone(bancada) == raiz
+    assert sessao.raiz_do_clone(raiz) == raiz
+    plano = plano_de_teste(raiz=raiz, sobe_ambiente=False)
+    plano = replace(plano, worktree=raiz / "bancada-interna")
+    with pytest.raises(sessao.ErroDeSessao, match="DENTRO"):
+        sessao.Sessao(plano).conferir()
+
+
+@pytest.mark.parametrize("modo", ["falha", "vazio", "bancada-como-principal"])
+def test_resolver_clone_recusa_git_inconclusivo_sem_alterar_arquivos(
+    bancada_git_real, monkeypatch, modo
+):
+    from _nucleo import ErroDeInstrumentacao
+
+    raiz, bancada, git = bancada_git_real
+    antes = git(raiz, "worktree", "list", "--porcelain")
+    resposta = sessao.Saida(
+        [],
+        2 if modo == "falha" else 0,
+        f"worktree {bancada.as_posix()}\n" if modo == "bancada-como-principal" else "",
+        "",
+    )
+    monkeypatch.setattr(sessao, "correr_de_verdade", lambda *a, **k: resposta)
+    with pytest.raises(ErroDeInstrumentacao):
+        sessao.raiz_do_clone(bancada)
+    assert git(raiz, "worktree", "list", "--porcelain") == antes
