@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260908-089-resposta-dublê-do-docker-fiel",
+  arquivo: "20260908-089-resposta-duble-do-docker-fiel",
   tipo: "resposta",
   quando: "2026-09-08",
   titulo: "O teste do Docker falso agora mede o caminho de falha real",
