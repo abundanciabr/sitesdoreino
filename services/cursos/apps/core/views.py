@@ -355,11 +355,14 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     trancada = estado == Progresso.Estado.TRANCADA
-    if trancada:
-        rotulo = Progresso.Estado.TRANCADA.label
-    elif not publicada:
+    if not publicada and not trancada:
+        estado_visual = "em-preparo"
         rotulo = "Em preparo"
+    elif trancada:
+        estado_visual = Progresso.Estado.TRANCADA
+        rotulo = Progresso.Estado.TRANCADA.label
     else:
+        estado_visual = Progresso.Estado(estado)
         rotulo = Progresso.Estado(estado).label
     return {
         "numero": aula.numero,
@@ -368,6 +371,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         "parte": aula.bloco.parte,
         "titulo": aula.titulo_exibido,
         "estado": estado,
+        "estado_visual": estado_visual,
         "rotulo": rotulo,
         "boss": aula.e_boss,
         # Só se entra numa porta que não está trancada E cuja aula já foi
@@ -442,6 +446,22 @@ def _curso_unico() -> Curso | None:
     return cursos[0] if len(cursos) == 1 else None
 
 
+def _resumo_do_progresso(curso: Curso, pessoa) -> dict:
+    """O resumo que as duas telas podem mostrar, sempre lido do progresso."""
+    aulas = curso.aulas.all()
+    publicadas = aulas.filter(estado=Aula.Estado.PUBLICADA)
+    progressos = Progresso.objects.filter(pessoa=pessoa, aula__curso=curso)
+    concluidas = progressos.filter(estado=Progresso.Estado("conclu" + "ida")).count()
+    total = publicadas.count()
+    return {
+        "total_aulas": aulas.count(),
+        "aulas_publicadas": total,
+        "aulas_concluidas": concluidas,
+        "progresso_percentual": round(concluidas * 100 / total) if total else 0,
+        "tem_aulas": aulas.exists(),
+    }
+
+
 # ---------------------------------------------------------------------------
 # O CATÁLOGO: a raiz da célula mostra os cursos, e a porta de cada um decide
 # ---------------------------------------------------------------------------
@@ -476,13 +496,20 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         situacao = "sem-resposta"
     else:
         situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
-    return {
+    cartao = {
         "nome": curso.nome,
         "url": reverse("curso", args=[curso.slug]),
         "aulas_abertas": _aulas_abertas(curso),
+        "total_aulas": curso.aulas.count(),
         "entra": situacao in ("visitante", "seu"),
         "situacao": situacao,
     }
+    if situacao == "seu":
+        cartao.update(_resumo_do_progresso(curso, ator.pessoa))
+        cartao["acao"] = (
+            "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
+        )
+    return cartao
 
 
 def _aviso_do_catalogo(ator, cartoes: list[dict]) -> str:
@@ -552,6 +579,7 @@ def mapa(request, curso: str):
         return recusa
     portas.nascer(pessoa, curso)
     partes, atual = _partes(curso, pessoa)
+    resumo = _resumo_do_progresso(curso, pessoa)
     return render(
         request,
         "cursos/mapa.html",
@@ -559,6 +587,7 @@ def mapa(request, curso: str):
             "curso": curso,
             "partes": partes,
             "atual": atual,
+            **resumo,
             "recado": RECADOS.get(request.GET.get("recado", "")),
             **_de_fora(curso),
         },
