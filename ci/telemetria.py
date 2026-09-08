@@ -28,10 +28,12 @@ vazando daqui viraria recusa de TODO comando.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 PASTA = "telemetria-dos-robos"
@@ -123,22 +125,81 @@ def registrar(evento: str, dados: dict, cwd: str | None = None,
         return None  # fail-open: medir é conselho, nunca pode travar a casa
 
 
-def ler_tudo(raiz_git: Path) -> list[dict]:
+def ler_tudo(raiz_git: Path, cobertura: dict | None = None) -> list[dict]:
     """Todas as linhas de todas as sessões. Linha corrompida é pulada, não fatal."""
     eventos: list[dict] = []
+    if cobertura is not None:
+        cobertura.update(arquivos=0, arquivos_ilegiveis=0, linhas_invalidas=0)
     pasta = raiz_git / PASTA
     if not pasta.is_dir():
         return eventos
     for arquivo in sorted(pasta.glob("*.jsonl")):
+        if cobertura is not None:
+            cobertura["arquivos"] += 1
         try:
             for linha in arquivo.read_text(encoding="utf-8", errors="replace").splitlines():
                 linha = linha.strip()
                 if not linha:
                     continue
                 try:
-                    eventos.append(json.loads(linha))
+                    evento = json.loads(linha)
+                    if not isinstance(evento, dict):
+                        raise ValueError("evento não é objeto")
+                    eventos.append(evento)
                 except Exception:
+                    if cobertura is not None:
+                        cobertura["linhas_invalidas"] += 1
                     continue
         except Exception:
+            if cobertura is not None:
+                cobertura["arquivos_ilegiveis"] += 1
             continue
     return eventos
+
+
+FASES = ("abertura", "contexto", "execucao", "validacao", "fechamento",
+         "revisao", "integracao", "publicacao")
+RESULTADOS = ("iniciado", "concluido", "falhou", "nao_executado", "verificado")
+
+
+def registrar_fase(fase: str, resultado: str, *, tarefa: str, tentativa: str,
+                   branch: str, commit: str, pr: int | None = None,
+                   contexto_bytes: int | None = None,
+                   cwd: str | None = None) -> Path | None:
+    """Observação local, nunca prova de aprovação: sem texto, comando ou segredo.
+
+    A tentativa vem da entrada operacional, não deste medidor. O mesmo fato
+    repetido tem a mesma identidade; outra tentativa ou revisão é outro fato.
+    contexto_bytes conta UTF-8 efetivamente emitido, jamais estima tokens.
+    """
+    try:
+        dados = dict(tarefa=tarefa, tentativa=tentativa, branch=branch, commit=commit,
+                     pr=pr, fase=fase, resultado=resultado, contexto_bytes=contexto_bytes)
+        dados["id"] = identidade_fase(dados)
+        if dados["id"] is None:
+            return None
+        dados["quando"] = datetime.now(timezone.utc).isoformat()
+        return registrar("fase_operacional", dados, cwd=cwd, sessao=tentativa)
+    except Exception:
+        return None
+
+
+def identidade_fase(dados: dict) -> str | None:
+    """Identidade e campos aceitos são os mesmos na escrita e na leitura."""
+    if dados.get("fase") not in FASES or dados.get("resultado") not in RESULTADOS:
+        return None
+    for campo in ("tarefa", "tentativa", "branch"):
+        valor = dados.get(campo)
+        if not isinstance(valor, str) or not re.fullmatch(r"[A-Za-z0-9_./-]{1,160}", valor):
+            return None
+        if redigir(valor) != valor:
+            return None
+    commit = dados.get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"(?:[a-f0-9]{40}|[a-f0-9]{64})", commit):
+        return None
+    for campo in ("pr", "contexto_bytes"):
+        valor = dados.get(campo)
+        if valor is not None and (type(valor) is not int or valor < (1 if campo == "pr" else 0)):
+            return None
+    campos = ("tarefa", "tentativa", "branch", "commit", "pr", "fase", "resultado", "contexto_bytes")
+    return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
