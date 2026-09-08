@@ -204,7 +204,15 @@ def test_falha_do_reinicio_deixa_o_script_com_erro(tmp_path):
     binarios = tmp_path / "bin"
     binarios.mkdir()
     docker = binarios / "docker"
-    docker.write_text("#!/usr/bin/env bash\nexit 37\n", encoding="utf-8")
+    docker.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [ "$1 $2 $3" = "compose config --services" ]; then\n'
+        "  printf '%s\\n' funil notificacoes notificacoes-consumer\n"
+        "  exit 0\n"
+        "fi\n"
+        "exit 37\n",
+        encoding="utf-8",
+    )
     docker.chmod(0o755)
 
     resultado = _rodar(
