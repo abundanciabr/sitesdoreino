@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from apps.core.views import (
     aula,
     catalogo,
+    concluir_aula,
     entregar_checkpoint,
     gravar_autoavaliacao,
     healthz,
@@ -64,6 +65,9 @@ urlpatterns = [
     ),
     # O CHECKPOINT (degrau 2.1): o aluno entrega por link, e volta para a aula.
     path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
+    # CONCLUIR A AULA (TAR-270): só no curso de progressão livre, o aluno
+    # conclui com um gesto e a seguinte abre. No curso por laudo a rota recusa.
+    path("<str:numero>/concluir", concluir_aula, name="concluir-aula"),
     # O LAUDO RECEBIDO (degrau 2.2): a mesma pessoa da sessão, o mais recente.
     path("<str:numero>/laudo", laudo_recebido, name="laudo-recebido"),
     # O ENDEREÇO DO LIVRO (TAR-212, 06/09/2026). O aluno tem o livro em mãos
@@ -77,6 +81,26 @@ urlpatterns = [
     # de um curso tem dois segmentos, a aula antiga tem um.
     path("<slug:curso>/", mapa, name="curso"),
     path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+        registrar_pausa,
+        name="registrar-pausa-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+        gravar_autoavaliacao,
+        name="gravar-autoavaliacao-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+        entregar_checkpoint,
+        name="entregar-checkpoint-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+        concluir_aula,
+        name="concluir-aula-do-curso",
+    ),
     # O ENDEREÇO ANTIGO DA AULA (`/E00`) MUDOU DE CASA (301, TAR-216): o
     # checkpoint desta escola é POR LINK, e um link já compartilhado que
     # passasse a dar 404 seria trabalho de aluno perdido. Mas enquanto os dois

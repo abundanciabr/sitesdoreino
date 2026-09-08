@@ -1,6 +1,6 @@
 """As telas da sala de aula: o catálogo dos cursos, o mapa das portas, a
-aula, e os três gestos (a pausa, a autoavaliação e, desde o degrau 2.1, a
-entrega do checkpoint).
+aula, e os quatro gestos (a pausa, a autoavaliação, a entrega do checkpoint no
+curso por laudo e, no curso de progressão livre, concluir a aula).
 
 QUEM ENTRA, E QUEM DECIDE
 -------------------------
@@ -91,6 +91,8 @@ RECADOS = {
         "Recebido. Seu envio entrou na fila de revisão: o laudo chega em até "
         "24 horas."
     ),
+    "aula-concluida": "Aula concluída. A próxima está aberta.",
+    "ultima-concluida": "Aula concluída. Era a última.",
 }
 
 # As prévias que o formulário do checkpoint sugere, na ordem da lei §3.12
@@ -118,6 +120,9 @@ NOMES_DAS_PARTES = {
     2: "Parte 2 · Itens que vendem",
     3: "Parte 3 · Profissional",
 }
+# O curso do LIVRO, o único cujas Partes têm esses nomes: os outros cursos
+# dizem só "Parte N", e com uma parte só o mapa nem escreve o cabeçalho.
+CURSO_DO_LIVRO = "profissional"
 
 
 @require_GET
@@ -389,7 +394,7 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
             atual = porta
         parte = partes.setdefault(
             aula.bloco.parte,
-            {"nome": NOMES_DAS_PARTES.get(aula.bloco.parte, ""), "blocos": {}},
+            {"nome": _nome_da_parte(curso, aula.bloco.parte), "blocos": {}},
         )
         bloco = parte["blocos"].setdefault(
             aula.bloco.ordem,
@@ -410,6 +415,14 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
         for _, parte in sorted(partes.items())
     ]
     return lista, atual
+
+
+def _nome_da_parte(curso: Curso, parte: int) -> str:
+    """O cabeçalho da Parte no mapa: o nome do livro no curso do livro, e
+    "Parte N" em qualquer outro."""
+    if curso.slug == CURSO_DO_LIVRO:
+        return NOMES_DAS_PARTES.get(parte, f"Parte {parte}")
+    return f"Parte {parte}"
 
 
 def _curso_unico() -> Curso | None:
@@ -776,6 +789,21 @@ def _checkpoint(progresso: Progresso, *, pausas_ok: bool) -> dict:
     }
 
 
+def _conclusao(progresso: Progresso, *, pausas_ok: bool) -> dict:
+    """O bloco de concluir a aula, SÓ no curso de progressão livre: o botão, ou
+    o porquê de ele não estar ali. `feita` se lê pelo carimbo da hora, que o
+    banco só deixa existir na porta concluída: esta tela não conhece o valor do
+    estado de propósito ([INV-CUR-P2], "nenhuma view grava")."""
+    return {
+        "feita": progresso.concluida_em is not None,
+        "fechado_por": "" if pausas_ok else portas.SO_COM_AS_PAUSAS,
+    }
+
+
+def _e_livre(curso: Curso) -> bool:
+    return curso.progressao == Curso.Progressao.LIVRE
+
+
 def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
     """A pessoa, o curso, a aula publicada e o progresso NÃO trancado, ou a
     resposta que recusa (o convite, o 403, o 404, a parte errada ou a volta ao
@@ -878,6 +906,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
+    pausas_ok = portas.pausas_registradas(progresso)
+    livre = _e_livre(curso)
     return render(
         request,
         "cursos/aula.html",
@@ -889,8 +919,13 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "video": _video(aula),
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
-            "checkpoint": _checkpoint(
-                progresso, pausas_ok=portas.pausas_registradas(progresso)
+            # Um curso tem UMA das duas seções: o checkpoint (por laudo) ou o
+            # botão de concluir (livre). A outra chega `None` e não se desenha.
+            "checkpoint": (
+                None if livre else _checkpoint(progresso, pausas_ok=pausas_ok)
+            ),
+            "conclusao": (
+                _conclusao(progresso, pausas_ok=pausas_ok) if livre else None
             ),
             "aceito_quando": (
                 aula.aceito_quando if isinstance(aula.aceito_quando, list) else []
@@ -903,13 +938,17 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
 
 
 @require_POST
-def registrar_pausa(request, numero: str, ordem: int):
+def registrar_pausa(
+    request, numero: str, ordem: int, curso: str | None = None, parte: int | None = None
+):
     """O vídeo parou no segundo marcado, a pessoa escreveu: nasce o registro.
 
     Padrão POST-redirect-GET: sem ele um F5 repetiria o gesto. Aqui repetir já
     é inerte (uma pausa, um registro, `get_or_create`), mas o padrão fica.
     """
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -933,11 +972,15 @@ def registrar_pausa(request, numero: str, ordem: int):
 
 
 @require_POST
-def gravar_autoavaliacao(request, numero: str):
+def gravar_autoavaliacao(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
     """A pessoa responde ao quiz com as próprias palavras; só então a
     resposta-modelo abre. Gravada uma vez: a autoavaliação é o registro do que
     ela sabia ANTES de ver o modelo, e regravar apagaria isso."""
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -978,16 +1021,24 @@ def _nota(valor: str | None) -> int | None:
 
 
 @require_POST
-def entregar_checkpoint(request, numero: str):
+def entregar_checkpoint(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
     """O aluno entrega o checkpoint por link: nasce o `Envio` na fila de 24
     horas (degrau 2.1). Toda regra mora em `envio.entregar`; aqui só se lê o
     formulário e se traduz a recusa em frase. POST-redirect-GET: um F5 depois
     de entregar não entrega de novo, e se entregasse a porta já estaria
     `enviada` e a segunda seria recusada com a frase certa."""
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
+    if _e_livre(curso):
+        return _voltar_a_aula(
+            curso, aula, erro=portas.SO_NO_CURSO_LIVRE, ancora="concluir"
+        )
     links = [
         {
             "rotulo": checkpoint.ROTULO_DO_ARQUIVO,
@@ -1024,6 +1075,32 @@ def entregar_checkpoint(request, numero: str):
     except checkpoint.EnvioRecusado as motivo:
         return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="checkpoint")
     return _voltar_a_aula(curso, aula, recado="entregue", ancora="checkpoint")
+
+
+@require_POST
+def concluir_aula(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
+    """No curso de progressão LIVRE, o aluno conclui a aula com um gesto e a
+    seguinte abre na hora (`DECISAO-a-sala-serve-varios-cursos.md` §2). Toda
+    regra mora em `progresso.concluir_por_gesto` (o curso é livre, as pausas
+    estão registradas, a porta não está trancada); aqui só se traduz a recusa
+    em frase. POST-redirect-GET de volta ao MAPA, que é onde a porta nova
+    aparece; um F5 ali não conclui nada de novo."""
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
+    if recusa is not None:
+        return recusa
+    portas.abrir(progresso)
+    try:
+        portas.concluir_por_gesto(progresso)
+    except portas.PortaRecusada as motivo:
+        return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="concluir")
+    tem_proxima = portas.proxima_de(aula) is not None
+    return _voltar_ao_mapa(
+        curso, recado="aula-concluida" if tem_proxima else "ultima-concluida"
+    )
 
 
 # ---------------------------------------------------------------------------
