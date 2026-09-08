@@ -286,7 +286,7 @@ def test_declaracao_traz_todas_as_pecas_que_o_RITOS_1_exige():
     texto = sessao.declaracao(
         plano, resumo="6 passed", constituicao_da_celula="constituicoes/AGENTS.quiz.md"
     )
-    assert texto.startswith("Li CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
+    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "Worktree: wt-quiz-fuso-horario." in texto
     assert "Branch: agent/quiz/fuso-horario." in texto
     assert "git status: limpo." in texto
@@ -298,12 +298,12 @@ def test_declaracao_traz_todas_as_pecas_que_o_RITOS_1_exige():
 def test_declaracao_sem_constituicao_de_celula_cita_o_RITOS():
     plano = plano_de_teste(celula="identidade")
     texto = sessao.declaracao(plano, resumo="verde")
-    assert texto.startswith("Li CONSTITUICAO.md e RITOS.md §1.")
+    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e RITOS.md §1.")
 
 
 def test_declaracao_sem_frase_deixa_um_buraco_visivel_em_vez_de_inventar():
     texto = sessao.declaracao(plano_de_teste(), resumo="verde")
-    assert "<uma frase" in texto
+    assert "não informada; complete o brief" in texto
 
 
 @pytest.mark.parametrize(
@@ -472,7 +472,7 @@ class MundoFalso:
 def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     mundo = MundoFalso(plano_de_teste(), falhar={"rev-parse --verify": 1})
     texto = mundo.sessao().rodar()
-    assert texto.startswith("Li CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
+    assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "6 passed" in texto
     juntas = "\n".join(mundo.chamadas)
     assert "fetch origin" in juntas

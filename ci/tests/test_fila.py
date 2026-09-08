@@ -334,6 +334,7 @@ def test_pr_aberto_conta_como_em_execucao(tmp_path):
 
 
 def sem_rede(monkeypatch, reservas=frozenset(), prs=None):
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: False)
     monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: set(reservas))
     monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: dict(prs or {}))
 
