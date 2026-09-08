@@ -17,7 +17,7 @@ httpx==0.28.1
 # roda como `periodic_task` do Huey. Mesmas versões EXATAS das outras células
 # que já fazem isto — versão divergente da mesma biblioteca para o mesmo padrão
 # é comportamento a mais para depurar (`armadilhas/071`).
-services/identidade/vendor/outbox_relay-0.3.0-py3-none-any.whl
+services/identidade/vendor/outbox_relay-0.3.1-py3-none-any.whl
 huey==2.5.1
 redis==5.1.1
 pytest==8.3.4
