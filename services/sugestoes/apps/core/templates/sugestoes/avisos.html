@@ -414,17 +414,3 @@ queryset) — o custo é o mesmo, zero consultas a mais.
   </div>
 {% endif %}
 {% endblock %}
-
-{% block inspetor %}
-<aside class="inspetor">
-  <p class="identificacao">Como isto funciona</p>
-  <h2>Você é avisado, sempre</h2>
-  <p class="meta" style="margin-bottom:14px">
-    Toda vez que a equipe mexe no status de uma ideia que você criou, votou ou
-    comentou, o recado nasce aqui, junto com a mudança, nunca depois dela. Cada
-    aviso diz de onde veio, e quando a resposta for "não vamos fazer" o motivo
-    vem escrito junto: é regra da casa.
-  </p>
-  <a class="botao principal" href="{% url 'quadro' %}#roadmap">Ver o roadmap</a>
-</aside>
-{% endblock %}
