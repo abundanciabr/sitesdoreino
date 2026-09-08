@@ -14,9 +14,10 @@ fazer:
     sessao  ->  "prepare o ambiente para o trabalho começar"  (ESCREVE)
 
 O `ci/doctor.py` continua sendo o único diagnóstico, e continua não consertando
-nada. Este script é o **único** lugar do repositório que cria worktree, venv e
-container — e ele nunca é o comportamento padrão de outro alvo: ninguém sobe um
-Postgres por acidente rodando `make doctor`.
+nada. Este script cria a bancada persistente de trabalho, venv e container.
+A validação do fechamento pode criar worktrees efêmeros isolados. A preparação
+nunca é o comportamento padrão de outro alvo: ninguém sobe um Postgres por
+acidente rodando `make doctor`.
 
 O que ele faz, nesta ordem, e de forma IDEMPOTENTE (rodar duas vezes não
 duplica nada — o que já existe é reusado, e reusar não é falhar):
