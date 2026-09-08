@@ -1,15 +1,15 @@
 ---
 schema_version: 2
 armadilha: 407
-estado: documentada
+estado: guardada
 degrau: 2
 confianca: alta
 custo_por_queda: alto
 gatilho:
   - ci/pr.py
 guarda:
-  tipo: nenhum
-  motivo: a auditoria identificou a lacuna; nenhum guarda foi acrescentado nesta escrituração
+  tipo: CI
+  motivo: ci/pr.py confere commit, árvore e fontes rastreadas antes e depois de cada comando de validação
 sinal: 'validacao isolada aprova depois de o comando trocar HEAD'
 licao: 'Isolar o checkout nao prova a revisao executada. Confira commit e arvore antes e depois de cada comando; alteracao invalida a evidencia atribuida ao SHA original.'
 ---
@@ -22,4 +22,4 @@ licao: 'Isolar o checkout nao prova a revisao executada. Confira commit e arvore
 
 **Licao.** A evidencia deve vincular commit e arvore observados antes e depois de cada comando. Uma mudanca de revisao invalida a prova, mesmo com testes verdes.
 
-**Limite da constatacao.** O caso foi reproduzido em validacao local de `ci/pr.py`. Nao demonstra contorno dos checks do GitHub, merge indevido ou alteracao em producao. Esta entrada registra o achado, sem declarar a correcao implementada.
+**Limite da constatacao.** O caso foi reproduzido em validacao local de `ci/pr.py`. Nao demonstra contorno dos checks do GitHub, merge indevido ou alteracao em producao. A regressao local cobre a revisao correta, a troca de revisao, a alteracao de fonte e a retomada sem reutilizar prova invalidada.
