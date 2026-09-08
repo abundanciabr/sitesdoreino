@@ -1504,6 +1504,21 @@ class Sessao:
 # ---------------------------------------------------------------------------
 
 
+def caminhos_da_tarefa(tarefa: dict, celulas: Sequence[str]) -> list[str]:
+    """A fila aceita nomes de área/célula em toca e caminhos em toca/cria."""
+    caminhos = []
+    for campo in ("toca", "cria"):
+        for valor in tarefa.get(campo) or []:
+            caminho = valor.strip().replace("\\", "/")
+            if caminho in celulas:
+                caminho = f"services/{caminho}/"
+            elif PADRAO_DE_NOME.fullmatch(caminho):
+                caminho += "/"
+            if caminho not in caminhos:
+                caminhos.append(caminho)
+    return caminhos
+
+
 def contexto_direcionado(
     raiz: Path, *, objetivo: str, caminhos: Sequence[str], sintoma: str = "",
     aceite: Sequence[str] = (), restricoes: Sequence[str] = (),
@@ -1522,7 +1537,8 @@ def contexto_direcionado(
                                  f"services/{partes[1]}/LICOES.md"])
         alvo = raiz / caminho
         if alvo.resolve().is_relative_to(raiz.resolve()):
-            for pasta in [alvo.parent, *alvo.parents]:
+            inicio = alvo if alvo.is_dir() else alvo.parent
+            for pasta in [inicio, *inicio.parents]:
                 if not pasta.is_relative_to(raiz) or pasta == raiz:
                     break
                 lei = pasta / "AGENTS.md"
@@ -1689,6 +1705,7 @@ def main(argv: list[str] | None = None) -> int:
     caminhos = args.caminho or [f"services/{celula}/" if plano.sobe_ambiente else f"{celula}/"]
     def contexto(onde):
         objetivo, aceite, origem = args.frase, args.aceite, []
+        caminhos_do_contexto = caminhos
         limitacao = ""
         if tarefa_da_fila:
             from fila import carregar_tarefas
@@ -1699,9 +1716,11 @@ def main(argv: list[str] | None = None) -> int:
                 objetivo = objetivo or tarefa["titulo"]
                 aceite = aceite or [tarefa["evidencia_exigida"]]
                 origem = [f"fila/tarefas/{tarefa['arquivo']}.json"]
+                if not args.caminho:
+                    caminhos_do_contexto = caminhos_da_tarefa(tarefa, celulas) or caminhos
             else:
                 limitacao = "\nLimitação: tarefa da fila indisponível ou inválida; confira o brief original."
-        return contexto_direcionado(onde, objetivo=objetivo, caminhos=caminhos,
+        return contexto_direcionado(onde, objetivo=objetivo, caminhos=caminhos_do_contexto,
             sintoma=args.sintoma, aceite=aceite, restricoes=args.restricao,
             decisoes=[*args.decisao, *origem], limite=args.limite_contexto) + limitacao
     tentativa = uuid.uuid4().hex

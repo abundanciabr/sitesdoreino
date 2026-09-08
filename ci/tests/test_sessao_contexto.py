@@ -137,3 +137,82 @@ def test_metrica_conta_apenas_resposta_emitida(monkeypatch, capsys):
         == 0
     )
     assert medidas[0]["contexto_bytes"] == len(capsys.readouterr().out.encode("utf-8"))
+
+
+@pytest.mark.parametrize("alvo", ["ci/", "ci", "ci/tests/", "ci/tests/novo.py"])
+def test_instrucoes_do_diretorio_alvo_e_dos_ancestrais(memoria, alvo):
+    (memoria / "ci/tests").mkdir(parents=True)
+    (memoria / "ci/AGENTS.md").write_text("Lei da CI", encoding="utf-8")
+    (memoria / "ci/tests/AGENTS.md").write_text("Lei dos testes", encoding="utf-8")
+    texto = sessao.contexto_direcionado(
+        memoria, objetivo="Conferir leis", caminhos=[alvo]
+    )
+    leituras = next(
+        linha
+        for linha in texto.splitlines()
+        if linha.startswith("Leituras obrigatórias:")
+    )
+    assert "ci/AGENTS.md" in leituras
+    if alvo.startswith("ci/tests"):
+        assert "ci/tests/AGENTS.md" in leituras
+    assert leituras.count("ci/AGENTS.md") == 1
+
+
+@pytest.mark.parametrize("explicito", [False, True])
+def test_contexto_da_fila_recupera_toca_cria_e_respeita_override(
+    memoria, monkeypatch, capsys, explicito
+):
+    import fila
+
+    tarefa = {
+        "arquivo": "277-contexto",
+        "titulo": "Retomar abertura",
+        "evidencia_exigida": "Reexecução segura",
+        "toca": ["ci/sessao.py"],
+        "cria": ["painel/registros/*"],
+        "move": ["cartao-de-fabrica"],
+    }
+    monkeypatch.setattr(sessao, "raiz_declarada", lambda p: memoria)
+    monkeypatch.setattr(sessao, "celulas_declaradas", lambda p: ["identidade"])
+    monkeypatch.setattr(sessao, "medir_fase", lambda *a, **k: None)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *a: {"TAR-277": tarefa})
+    argumentos = [
+        "--raiz",
+        str(memoria),
+        "--celula",
+        "ci",
+        "--tarefa",
+        "contexto",
+        "--sem-container",
+        "--contexto",
+        "--tar",
+        "277",
+        "--sintoma",
+        "git status limpo sem ninguem ter medido",
+    ]
+    if explicito:
+        argumentos += ["--caminho", "ci/override.py"]
+    assert sessao.main(argumentos) == 0
+    saida = capsys.readouterr().out
+    assert "Lição 373:" in saida
+    if explicito:
+        assert "Caminhos: ci/override.py" in saida
+        assert "Lição 179:" not in saida
+    else:
+        assert "Caminhos: ci/sessao.py, painel/registros/*" in saida
+        assert "Lição 179:" in saida
+    assert "cartao-de-fabrica" not in saida
+
+
+def test_areas_e_celulas_da_fila_viram_caminhos_sem_alterar_glob():
+    tarefa = {
+        "toca": ["ci", "identidade", "AGENTS.md"],
+        "cria": ["painel/registros/*", "ci"],
+        "move": ["cartao-de-fabrica"],
+    }
+    assert sessao.caminhos_da_tarefa(tarefa, ["identidade"]) == [
+        "ci/",
+        "services/identidade/",
+        "AGENTS.md",
+        "painel/registros/*",
+    ]
