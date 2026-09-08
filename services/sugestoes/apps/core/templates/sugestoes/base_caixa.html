@@ -116,18 +116,21 @@ ocupa a largura toda; o `wrap` e a bancada desta area.
         PREGUIÇOSA — o `{% templatetag openblock %} with {% templatetag closeblock %}` a resolve UMA vez, senão o
         template pagaria duas consultas para escrever o mesmo número duas vezes.
 
+        O destino da lista é a central única do site, fora do prefixo da Caixa.
+        A Caixa continua calculando o contador para não perder o aviso enquanto
+        a pessoa navega aqui, mas não mantém uma segunda tela de leitura.
+
         Duas amarras de guarda nesta linha, e as duas custam uma explicação:
 
-        * o `href` sai LIMPO (`{% templatetag openblock %} url 'avisos' {% templatetag closeblock %}`, sem query
-          nenhuma): `test_o_link_do_sino_na_moldura_leva_o_prefixo` compara a
-          string inteira `href="…/avisos"`;
+        * o `href` é o endereço público da central (`/notificacoes`), sem o
+          prefixo da Caixa: é uma rota de outra célula;
         * o nome acessível é `avisos (N)`, em minúsculas, porque é assim que
-          `test_o_sino_de_toda_pagina_conta_so_os_meus` mede a contagem por
-          pessoa. O número TAMBÉM sai desenhado, no `.contador` ao lado do
-          sino — o guarda mede o dado, e quem olha a tela vê o mesmo dado.
+        `test_o_sino_de_toda_pagina_conta_so_os_meus` mede a contagem por
+        pessoa. O número TAMBÉM sai desenhado, no `.contador` ao lado do
+        sino — o guarda mede o dado, e quem olha a tela vê o mesmo dado.
         {% endcomment %}
         {% with nao_lidos=avisos_nao_lidos %}
-          <a href="{% url 'avisos' %}" title="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" aria-label="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" class="{% if request.resolver_match.url_name == 'avisos' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-sino"/></svg>{% if nao_lidos %}<span class="contador" aria-hidden="true">{{ nao_lidos }}</span>{% endif %}</a>
+          <a href="/notificacoes" title="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" aria-label="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}"><svg aria-hidden="true"><use href="#i-sino"/></svg>{% if nao_lidos %}<span class="contador" aria-hidden="true">{{ nao_lidos }}</span>{% endif %}</a>
         {% endwith %}
         {% comment %}
         "Meu impacto" (V1.2) — o lugar que o protótipo reservou no pé do trilho
