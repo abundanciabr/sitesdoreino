@@ -1,0 +1,17 @@
+{
+  "arquivo": "282-executar-cenario-controlado-da-medicao-da-fase-4",
+  "id": "TAR-282",
+  "titulo": "Executar cenário controlado da medição da Fase 4",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pytest dos testes controlados da análise e do registro da Fase 4, com saída PASS e declaração explícita de que a amostra é sintética e não operacional",
+  "despacho": "Execute somente os testes controlados existentes da medição da Fase 4: python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py -q. Confirme os cenários de ausência, repetição, retomada, falha, dado ausente, incompatibilidade, revisão divergente e vinte pares sintéticos. Não registre os fixtures no caderno privado real e não use os resultados para declarar ganho, amostra operacional ou autorização de expansão. Se o teste falhar, registre a saída e corrija o instrumento antes de repetir.",
+  "origem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "criada_em": "2026-09-08"
+}
