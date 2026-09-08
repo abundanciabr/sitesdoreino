@@ -41,14 +41,18 @@ SITE = "site-mesh"
 RAIZ = Path(__file__).resolve().parents[3]
 PACOTE = RAIZ / "packages" / "outbox-relay"
 WHEEL = (
-    RAIZ / "services" / "identidade" / "vendor" / "outbox_relay-0.3.0-py3-none-any.whl"
+    RAIZ / "services" / "identidade" / "vendor" / "outbox_relay-0.3.1-py3-none-any.whl"
 )
 
 
 def test_wheel_de_identidade_corresponde_ao_fonte_do_pacote():
     with zipfile.ZipFile(WHEEL) as wheel:
-        relay_na_wheel = wheel.read("outbox_relay/relay.py").decode()
-        init_na_wheel = wheel.read("outbox_relay/__init__.py").decode()
+        relay_na_wheel = (
+            wheel.read("outbox_relay/relay.py").decode().replace("\r\n", "\n")
+        )
+        init_na_wheel = (
+            wheel.read("outbox_relay/__init__.py").decode().replace("\r\n", "\n")
+        )
 
     assert relay_na_wheel == (PACOTE / "src" / "outbox_relay" / "relay.py").read_text()
     assert (
@@ -143,7 +147,7 @@ def redis_dublado(monkeypatch):
 
 @pytest.mark.django_db
 def test_o_relay_publica_no_stream_do_evento(redis_dublado):
-    assert version("outbox-relay") == "0.3.0"
+    assert version("outbox-relay") == "0.3.1"
     assert outbox_relay.publicar_pendentes.__module__ == "outbox_relay.relay"
 
     with transaction.atomic():
