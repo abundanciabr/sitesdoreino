@@ -111,6 +111,8 @@ services:
       HUEY_REDIS_URL: redis://redis:6379/12
       REDIS_STREAMS_URL: redis://redis:6379/0
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_started
 
