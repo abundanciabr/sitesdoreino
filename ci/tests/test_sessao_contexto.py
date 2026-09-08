@@ -16,6 +16,20 @@ def memoria(tmp_path):
     (tmp_path / "armadilhas/SINAIS.json").write_text(
         montar_sinais(entradas), encoding="utf-8"
     )
+    for relativo in (
+        "CLAUDE.md",
+        "CONSTITUICAO.md",
+        "RITOS.md",
+        "armadilhas/INDICE.md",
+        "docs/decisoes/RETROSPECTIVA-FASE-D.md",
+        "constituicoes/AGENTS.identidade.md",
+        "services/identidade/LICOES.md",
+    ):
+        origem = raiz / relativo
+        if origem.is_file():
+            destino = tmp_path / relativo
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            destino.write_bytes(origem.read_bytes())
     return tmp_path
 
 
@@ -30,7 +44,7 @@ def test_contexto_real_por_caminho_sintoma_e_multiplos_alvos(memoria):
     assert "179" in texto
     assert "373" in texto
     assert "Reexecucao segura" in texto
-    assert "AGENTS.md" in texto and "CONSTITUICAO.md" in texto
+    assert "CLAUDE.md" in texto and "CONSTITUICAO.md" in texto
     assert "RETROSPECTIVA-FASE-D.md" in texto
     assert "Não dispensa" in texto
     assert "painel/registros/20260908-001-teste.js" in texto
@@ -216,3 +230,59 @@ def test_areas_e_celulas_da_fila_viram_caminhos_sem_alterar_glob():
         "AGENTS.md",
         "painel/registros/*",
     ]
+
+
+@pytest.mark.parametrize(
+    "globais", [("CLAUDE.md",), ("AGENTS.md",), ("CLAUDE.md", "AGENTS.md"), ()]
+)
+def test_leituras_globais_correspondem_aos_arquivos_do_checkout(memoria, globais):
+    for nome in ("CLAUDE.md", "AGENTS.md"):
+        alvo = memoria / nome
+        if alvo.exists():
+            alvo.unlink()
+    for nome in globais:
+        (memoria / nome).write_text("Instruções da sessão", encoding="utf-8")
+    texto = sessao.contexto_direcionado(
+        memoria, objetivo="Ler leis", caminhos=["ci/sessao.py"]
+    )
+    leituras = next(
+        linha
+        for linha in texto.splitlines()
+        if linha.startswith("Leituras obrigatórias:")
+    )
+    for nome in ("CLAUDE.md", "AGENTS.md"):
+        assert (nome in leituras) == (nome in globais)
+    if not globais:
+        assert "Limitação: nenhuma instrução global" in texto
+
+
+def test_fontes_da_celula_ausentes_nao_sao_prometidas_como_leituras(memoria):
+    texto = sessao.contexto_direcionado(
+        memoria,
+        objetivo="Conferir célula",
+        caminhos=["services/inexistente/apps/core/views.py"],
+    )
+    leituras = next(
+        linha
+        for linha in texto.splitlines()
+        if linha.startswith("Leituras obrigatórias:")
+    )
+    assert "constituicoes/AGENTS.inexistente.md" not in leituras
+    assert "services/inexistente/LICOES.md" not in leituras
+    assert "Limitação: fontes de leitura ausentes" in texto
+
+
+def test_checkout_real_inclui_fonte_canonica_do_padrao():
+    raiz = Path(__file__).resolve().parents[2]
+    assert (raiz / "CLAUDE.md").is_file()
+    texto = sessao.contexto_direcionado(
+        raiz, objetivo="Conferir abertura", caminhos=["ci/sessao.py"]
+    )
+    leituras = next(
+        linha
+        for linha in texto.splitlines()
+        if linha.startswith("Leituras obrigatórias:")
+    )
+    assert "CLAUDE.md" in leituras
+    for nome in leituras.removeprefix("Leituras obrigatórias: ").split(", "):
+        assert (raiz / nome).is_file(), nome
