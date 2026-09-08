@@ -494,9 +494,10 @@ def test_o_aviso_de_portfolio_diz_o_que_aconteceu_e_onde_ver_a_data(
 ):
     configuracao = _configuracao_do_sw(client, idioma)
 
-    assert configuracao["textos"]["pages.portfolio-conferido"] == FRASES_DO_PORTFOLIO[
-        idioma
-    ]
+    assert (
+        configuracao["textos"]["pages.portfolio-conferido"]
+        == FRASES_DO_PORTFOLIO[idioma]
+    )
 
 
 def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
