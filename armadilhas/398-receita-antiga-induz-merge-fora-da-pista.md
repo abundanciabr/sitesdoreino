@@ -10,7 +10,8 @@ guarda:
   dono: ci/tests/test_fichas_de_robo.py
   detector: test_receitas_operacionais_seguem_as_emendas_da_constituicao
 sinal: 'receita de agente induz merge reservado'
-gatilho: ['RUNBOOK-LOTES.md', '.claude/agents/*', 'PLAYBOOK.md']
+gatilho:
+  - .claude/agents/*
 licao: 'Confira as emendas da CONSTITUICAO e o comando real; só a pista mergeia, e a abertura é ci/sessao.py. Cópias locais não rastreadas precisam ser conferidas separadamente.'
 ---
 
