@@ -1,0 +1,179 @@
+{% extends "admin/base.html" %}
+{% comment %}
+COLAR OS MÓDULOS E AS AULAS de um curso, e o curso ganhar o esqueleto inteiro.
+
+Uma área de colar e dois botões. PREVER mostra o que aconteceria e não grava
+nada; IMPORTAR manda a estrutura inteira numa ida só a `putCourseStructure`,
+que reconcilia dentro de UMA transação (docstring de apps/core/estrutura.py).
+
+Esta tela NÃO GUARDA o texto colado: ele volta para a caixa dentro da própria
+página. Sem uma linha de script: a política de segurança desta área exige hash
+na CSP para script embutido (armadilhas/199), e um POST por gesto dispensa
+qualquer um.
+
+Toda frase que um teste procura fica INTEIRA numa linha só (armadilhas/394):
+quebrada em duas, ela some do `assert` sem ninguém ficar vermelho.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+{% endcomment %}
+{% block titulo %}Os módulos e as aulas do curso{% endblock %}
+{% block corpo %}
+<style>
+  .caixa-da-estrutura { width: 100%; min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+  .dois-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .molde { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; white-space: pre; overflow-x: auto; background: var(--painel); border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; margin: 8px 0 0; }
+  .modulo-lido { border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .modulo-lido > h3 { margin: 0; font-size: 15px; }
+  .modulo-lido .de-maquina { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--texto-3); font-size: 13px; }
+  .aula-lida { margin: 8px 0 0; font-size: 13px; }
+  .aula-lida .numero-da-aula { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+  .aula-lida .destino { color: var(--texto-2); }
+  .aula-lida .trocado { display: block; color: var(--texto-3); }
+  .erro-de-linha { margin: 8px 0 0; font-size: 14px; }
+  .erro-de-linha .onde { font-weight: 600; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola_cursos' %}">&larr; Os cursos da escola</a></p>
+  <h1>Os módulos e as aulas do curso</h1>
+  <p class="subtitulo">
+    Escreva aqui a lista dos módulos do curso e das aulas de cada um, e o curso ganha esse esqueleto de uma vez. Depois você entra em cada aula e escreve o conteúdo dela.
+    <b>O que você já escreveu nunca é apagado</b>: o nome que você deu a uma aula pela tela de escrever continua valendo, e a prévia mostra qual fica.
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola é este curso.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora. Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-amarela">{{ erro }}</p>
+  {% endif %}
+
+  {% if falha_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+    {% if nao_sei_se_gravou %}
+    Por isso <b>não sei dizer se a estrutura entrou</b>. Recarregue esta página em um minuto e aperte Prever: a prévia mostra como o curso está de verdade.
+    {% else %}
+    Nada foi gravado, e o texto que você colou continua na caixa abaixo.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if recusa_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>A sala de aula não aceitou esta estrutura:</b> {{ recusa_da_sala }}
+    <br><b>Nada foi gravado, nem em parte:</b> a sala grava tudo de uma vez ou não grava nada. Corrija o texto abaixo e aperte Importar de novo.
+  </p>
+  {% endif %}
+
+  {% if erros %}
+  <div class="aviso borda-amarela">
+    <b>Não gravei nada: há {{ erros|length }} problema(s) no texto colado.</b> Corrija e aperte o botão de novo.
+    {% for e in erros %}
+    <p class="erro-de-linha"><span class="onde">Linha {{ e.linha }}:</span> {{ e.frase }}</p>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" class="forma" action="{{ url_de_prever }}">
+    {% csrf_token %}
+    <label for="estrutura"><b>Os módulos e as aulas</b></label>
+    <textarea id="estrutura" name="estrutura" class="caixa-da-estrutura" rows="16" spellcheck="false">{{ colado }}</textarea>
+    <div class="dois-botoes">
+      <button type="submit" class="botao">Prever (não grava nada)</button>
+      <button type="submit" class="botao" formaction="{{ url_de_importar }}">Importar para o curso</button>
+    </div>
+    <p class="nota">
+      Comece sempre pelo <b>Prever</b>: ele mostra, aula por aula, o que vai ser criado, o que fica como está e o que some, sem tocar em nada.
+    </p>
+  </form>
+
+  {% if importou %}
+  <p class="aviso feito espaco-20">
+    <b>A estrutura do curso foi gravada.</b>
+    {{ blocos_criados }} módulo(s) novo(s), {{ criadas }} aula(s) criada(s), {{ preservadas }} aula(s) que já existiam e ficaram com o conteúdo intacto, {{ apagadas }} aula(s) apagada(s).
+    <br><a href="{{ url_das_aulas }}">Escrever as aulas agora &rarr;</a>
+  </p>
+  {% endif %}
+
+  {% if previu or importou or recusa_da_sala %}
+  <div class="cartao espaco-20">
+    <span class="rotulo">O que o texto colado traz</span>
+    <div class="valor"><b>{{ total_de_modulos }} módulo(s) e {{ total_de_aulas }} aula(s)</b></div>
+    <p class="nota">
+      {{ a_criar }} aula(s) {% if importou %}não existiam{% else %}ainda não existem{% endif %} no curso &middot; {{ a_preservar }} já {% if importou %}tinham{% else %}têm{% endif %} um nome escrito por você e {% if importou %}ficaram{% else %}ficam{% endif %} com ele.
+    </p>
+  </div>
+
+  {% if a_apagar %}
+  <p class="aviso borda-amarela">
+    <b>{{ a_apagar|length }} aula(s) do curso não {% if importou %}estavam{% else %}estão{% endif %} nesta lista e {% if importou %}sumiram{% else %}vão sumir{% endif %}:</b>
+    {% for a in a_apagar %}<b>{{ a.numero }}</b>{% if a.titulo %} ({{ a.titulo }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}.
+    Aula por onde algum aluno já passou não é apagada: a sala recusa a importação inteira e diz o nome dela, e aí nada é gravado. Para manter uma aula, acrescente a linha dela ao texto acima.
+  </p>
+  {% endif %}
+
+  <h2 class="secao">Módulo por módulo</h2>
+  {% for m in modulos %}
+  <div class="modulo-lido">
+    <h3><span class="de-maquina">Parte {{ m.parte }}, módulo {{ m.letra }}</span> &middot; {{ m.nome }}</h3>
+    {% if m.boss_titulo %}
+    <p class="aula-lida"><span class="destino">Título do Boss deste módulo:</span> {{ m.boss_titulo }}</p>
+    {% endif %}
+    {% for a in m.aulas %}
+    <p class="aula-lida">
+      <span class="numero-da-aula">{{ a.numero }}</span> {{ a.titulo_que_fica }}
+      {% if a.e_boss %}<span class="mapa-selo">Boss</span>{% endif %}
+      {% if a.acao == "criar" %}
+      <span class="destino">&middot; {% if importou %}criada agora{% else %}vai ser criada{% endif %}</span>
+      {% elif a.acao == "preencher" %}
+      <span class="destino">&middot; já existe e {% if importou %}estava{% else %}está{% endif %} sem nome, então {% if importou %}recebeu{% else %}recebe{% endif %} este</span>
+      {% else %}
+      <span class="destino">&middot; já existe, e o nome que você escreveu {% if importou %}ficou{% else %}fica{% endif %} como está</span>
+      <span class="trocado">no texto colado você escreveu: {{ a.titulo }}</span>
+      {% endif %}
+    </p>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% if not previu and not importou %}
+  <h2 class="secao">Como escrever a lista</h2>
+  <p class="subtitulo">
+    Uma linha por módulo, começando com <b>#</b>, e uma linha por aula, começando pelo número dela. Linha em branco não atrapalha. O exemplo abaixo é para copiar e mexer.
+  </p>
+  <p class="molde"># Módulo 1: Comece por aqui
+01 Boas-vindas ao curso
+02 Instale o programa
+
+# Módulo 2: Seu primeiro modelo | Boss: A Cadeira
+03 Blocagem
+04 O acabamento
+05 A Cadeira do ateliê [boss]
+
+## Parte 2
+# Módulo 3: Vender no Roblox
+06 A sua loja</p>
+  <p class="nota">
+    O que vem depois do <b>#</b> é o nome do módulo, e ele aparece para o aluno. Os módulos ficam na ordem em que você os escreve.
+  </p>
+  <p class="nota">
+    O número da aula tem no máximo três letras ou algarismos, e é por ele que a aula é reconhecida: mudando o nome dela, o conteúdo continua no lugar.
+  </p>
+  <p class="nota">
+    <b>[boss]</b> no fim da linha marca a aula que fecha o módulo. O título do Boss é opcional e vai na linha do módulo, depois de <b>| Boss:</b>.
+  </p>
+  <p class="nota">
+    <b>## Parte 2</b> (ou <b>## Parte 3</b>) abre uma Parte nova: os módulos escritos abaixo dela pertencem a essa Parte. Sem nenhuma linha dessas, o curso inteiro fica na Parte 1.
+  </p>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

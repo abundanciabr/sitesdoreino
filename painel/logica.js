@@ -547,6 +547,23 @@
     return 0;
   }
 
+  // O roteamento é conservador: Luna só atende uma operação que o próprio
+  // texto declara mecânica e limitada por regra. Sem as duas provas, Terra
+  // recebe a tarefa cotidiana, pois adivinhar a natureza do trabalho custa
+  // mais do que usar o modelo geral.
+  function modeloParaTarefa(tarefa) {
+    tarefa = tarefa || {};
+    var texto = [tarefa.titulo, tarefa.o_que_muda, tarefa.prompt]
+      .concat(Array.isArray(tarefa.onde) ? tarefa.onde : [])
+      .filter(function (parte) { return typeof parte === "string"; })
+      .join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    var eMecanica = /\b(extrac(?:ao|oes)|classificac(?:ao|oes)|formatac(?:ao|oes)|(?:alterac(?:ao|oes)|trabalh(?:o|os)|operac(?:ao|oes)) mecanic(?:a|as|o|os))\b/.test(texto);
+    var regraDeclarada = /\b(regra clara|regra (?:ja )?(?:definida|escrita)|criterio (?:ja )?definido|formato (?:ja )?definido)\b/.test(texto);
+    return eMecanica && regraDeclarada
+      ? { modelo: "Luna", raciocinio: "Low" }
+      : { modelo: "Terra", raciocinio: "Low" };
+  }
+
   function prioridades(registros, agora, prontos, areas, tarefas) {
     areas = areas || [];
     tarefas = tarefas || [];
@@ -1001,6 +1018,7 @@
     confianca: confianca,
     validarRegistros: validarRegistros,
     validarAreas: validarAreas,
+    modeloParaTarefa: modeloParaTarefa,
     prioridades: prioridades,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,

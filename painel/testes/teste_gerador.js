@@ -343,6 +343,8 @@ try {
 caso("as ilhas de regras e de dados EXECUTAM", executou);
 caso("...e deixam LOGICA e PAINEL de pé",
   executou && typeof sandbox.window.LOGICA === "object" && typeof sandbox.PAINEL === "object");
+caso("a página gerada traz a indicação do modelo antes da cópia do prompt",
+  htmlGerado.indexOf("modelo-indicado") !== -1 && htmlGerado.indexOf("modeloParaTarefa") !== -1);
 
 // -----------------------------------------------------------------------------
 // TAR-274: o bloco embutido das regras (ilhas[0], acima) viaja SEM as linhas de

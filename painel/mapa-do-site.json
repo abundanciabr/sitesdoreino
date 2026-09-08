@@ -1374,6 +1374,37 @@
     },
     {
       "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Os módulos e as aulas do curso",
+      "descricao": "Uma área de colar e dois botões. Escreva a lista dos módulos do curso e das aulas de cada um, num texto simples, e o curso ganha esse esqueleto de uma vez. É por aqui que um curso recém-criado, que nasce sem nenhuma aula, passa a ter aulas para escrever. Prever mostra o que aconteceria, aula por aula, sem gravar nada.",
+      "observacao": "O nome que você já escreveu numa aula nunca é sobrescrito, e o conteúdo dela nunca é tocado: esta tela mexe só no esqueleto. Aula que sumir da lista é apagada, e aula por onde algum aluno passou a sala se recusa a apagar. Grava na célula cursos pela porta de máquina, nunca no banco dela.",
+      "exemplo": "/admin/escola/profissional/estrutura/"
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Prever o que a lista de módulos faria",
+      "descricao": "Não é uma página: é o que acontece ao apertar Prever. Lê o texto colado, compara com as aulas que o curso já tem e mostra o que seria criado, o que ficaria como está e o que sumiria. Nada é gravado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Importar os módulos e as aulas para o curso",
+      "descricao": "Não é uma página: é o que acontece ao apertar Importar. Grava o esqueleto inteiro numa ida só, e a sala de aula reconcilia tudo de uma vez: ou a estrutura inteira entra, ou nada entra."
+    },
+    {
+      "celula": "admin",
       "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
       "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/$",
       "alcance": "publico",

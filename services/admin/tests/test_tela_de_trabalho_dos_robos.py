@@ -374,6 +374,14 @@ def test_o_prompt_da_mandato_nominal_em_caminho_codeowners():
     dois = robos.prompt_para_tocar("TAR-101", ["ci", "services/checkout", "alunos"])
     assert "meu mandato para os caminhos protegidos: ci, checkout." in dois
     assert "alunos" not in dois.split("mandato")[1].split("\n")[0]
+    for instrucao in (
+        "bancada própria",
+        "índice de armadilhas",
+        "teste que nasce vermelho",
+        "registro do painel",
+        "Não faça o pouso automático",
+    ):
+        assert instrucao in dois
 
 
 def test_os_caminhos_protegidos_saem_normalizados_e_sem_repetir():
