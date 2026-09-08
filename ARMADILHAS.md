@@ -12,16 +12,14 @@ tarefa, isso pertence aqui.
 
 ## Como usar (agente) — a regra nova, em uma frase
 
-**Leia o `armadilhas/INDICE.md` e abra SÓ a entrada que casa com a sua tarefa.**
-Ler a pasta inteira desfaz o motivo de ela existir.
+**Use o contexto direcionado da abertura por caminho e sintoma e abra as origens.**
+As regras globais, as dos caminhos e os oito padrões da Retrospectiva continuam obrigatórios.
 
-1. **Antes de codar:** o §2 abaixo (partida rápida) e o `armadilhas/INDICE.md` —
-   uma linha por armadilha, com a **mensagem de erro crua** como chave. Dê um
-   Ctrl+F pela tecnologia que vai tocar (`django-ninja`, `importlinter`, `respx`,
-   `middleware`, `mypy`…) e abra o que casar. Nada mais.
-2. **Quando bater de frente com algo:** procure a mensagem de erro **crua** no
-   índice. As entradas começam pelo **sintoma** justamente para serem encontradas
-   assim.
+1. **Antes de codar:** siga o §2 abaixo, confira o contexto emitido, suas origens,
+   ausências e truncamento; abra as entradas do brief e as recuperadas.
+2. **Quando bater de frente com algo:** refine `--caminho`/`--sintoma` em
+   `ci/sessao.py --contexto`, amplie `--limite-contexto` ou, para aprofundamento,
+   consulte `armadilhas/INDICE.md`. As entradas começam pelo sintoma concreto.
 3. **Ao terminar o despacho — isto não é opcional:** crie **um arquivo novo**,
    `armadilhas/NNN-slug.md`, no formato
    `Sintoma → Causa → Solução → Origem`, e rode
@@ -55,7 +53,7 @@ Ler a pasta inteira desfaz o motivo de ela existir.
 | `CONSTITUICAO.md` + `constituicoes/` | agentes | o que é **proibido** |
 | `CAMINHO-DOURADO.md` | agentes | como fazer **certo** (receitas) |
 | `INVARIANTES.md` | agentes | o que **não pode quebrar** |
-| **`armadilhas/INDICE.md`** | **todo agente, qualquer célula** | o mapa do que a **realidade cobrou** — uma linha por armadilha |
+| **`armadilhas/INDICE.md`** | **quem precisar de aprofundamento** | o mapa do que a **realidade cobrou** — uma linha por armadilha |
 | **`armadilhas/NNN-slug.md`** | o agente que o índice mandar abrir | a armadilha em si (sintoma → causa → solução → origem) |
 | **`ARMADILHAS.md`** (este) | todo agente | a regra de uso acima + a partida rápida (§2) |
 | `ARMADILHAS-OPERACAO.md` | **maestro de lote, quem mergeia, o humano** | §1 precisa-de-você · como se mergeia · painéis · §9 dívidas abertas |
@@ -82,45 +80,21 @@ preciso de você), é um registro em `painel/registros/`.**
 ## §2 — Partida rápida (os 6 primeiros minutos de qualquer sessão)
 
 ```bash
-# 1. Worktree próprio (RITOS.md §1) — nunca trabalhe no clone principal
-git -C <raiz> fetch origin
-git -C <raiz> worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
-
-# 2. Docker JÁ — os DOIS instrumentos, em background, enquanto você lê a constituição.
-#    O `ci-celula.yml` declara postgres E redis; célula que fala com o fio (Huey,
-#    Streams) reprova o baseline com "Redis real inacessível" se só o banco subir.
-docker run -d --name <celula>-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
-  -e POSTGRES_DB=<celula>_db -p 55432:5432 postgres:17
-docker run -d --name plataforma-redis -p 6379:6379 redis:7   # um só atende todas
-
-# 3. Ambiente da sessão — o CI exporta SETE variáveis (`.github/workflows/ci-celula.yml`,
-#    bloco `env:`); estas são as mesmas, com os endereços locais. Faltar uma é
-#    `ImproperlyConfigured` no import, e isso é ERROR de instrumento, não teste vermelho.
-export PYTHONUTF8=1
-export DJANGO_SECRET_KEY="ci-apenas-nunca-em-producao"
-export DATABASE_URL="postgres://dev:dev@localhost:55432/<celula>_db"
-export REDIS_STREAMS_URL="redis://localhost:6379/0"
-export HUEY_REDIS_URL="redis://localhost:6379/1"
-# Só `pagamentos` LÊ as duas de baixo — mas `mypy` importa config.settings, e o
-# fail-hard do INV-P10 mora lá: ausente, a célula nem chega a rodar teste.
-export MP_ACCESS_TOKEN="TEST-ci-0000000000000000-000000-fake000000000000000000000000000-000000000"
-export MP_WEBHOOK_SECRET="ci-apenas-nunca-em-producao-webhook-secret"
-
-# 4. Baseline VERDE antes de tocar qualquer arquivo (RITOS.md §1)
-cd ../wt-<celula>-<tarefa>/services/<celula>
-make ci
+make sessao CELULA=<celula> TAREFA=<slug>
+# Sem make: python ci/sessao.py --celula <celula> --tarefa <slug>
 ```
 
-Se o baseline não estiver verde: **pare e reporte**. Consertar main quebrada não é
-escopo de sessão de feature.
+O RITOS §1 é a entrada canônica: cria ou retoma a bancada, prepara os serviços
+exigidos pela célula, mede o baseline e emite contexto. Confira o log e a
+Declaração antes de editar; não repita a preparação manual.
+Área sem serviço usa `SEM_CONTAINER=1` ou `--sem-container`; nesse caso o
+baseline fica não medido e você roda os testes dos alvos antes de editar.
+FAIL herdado: pare e reporte. ERROR de Docker, dependências ou conexão: corrija
+o ambiente informado pela abertura e repita a mesma entrada, preservando a bancada.
 
-**Mas separe FAIL de ERROR antes de parar** ([INV-CI01]): baseline que reprova com
-*"Redis real inacessível"*, `ImproperlyConfigured` ou `connection refused` é
-**instrumento ausente na sua máquina** — suba o que falta no passo 2 e meça de novo.
-"Pare e reporte" existe para `main` quebrada, não para container que você ainda não
-subiu. Em 25/08/2026 a leitura literal desta seção quase abortou oito despachos por
-um Redis que esta partida rápida nunca tinha mandado subir — a lista acima nasceu
-dessa medição (`armadilhas/119`).
+**Antecedente histórico (25/08/2026):** a leitura literal de "pare e reporte"
+quase abortou oito despachos por Redis ausente na antiga receita manual.
+`armadilhas/119` conserva o caso; a abertura agora prepara os instrumentos.
 
 **Planeje a divisão ANTES de escrever código.** O orçamento de 15 arquivos é portão
 mecânico (§5.1). Uma célula nova com modelo + migrations + clientes + middleware +

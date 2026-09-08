@@ -139,9 +139,11 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
 
 ## §6 — Fechamento (é parte do lote, não epílogo)
 
-1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`): um
-   registro NOVO por PR, por deploy e por incidente da janela — sem perguntar antes
-   (CLAUDE.md), seguido de `node painel/gerar_manifesto.js`. Registro nunca se edita:
+1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`):
+   `make pr` já reserva e embarca recibo, evento e metadados do fechamento;
+   não repita esses efeitos nem convoque escrivão para duplicá-los. Julgamento
+   de lições, deploy e incidente da janela continuam exigindo registro NOVO,
+   validado com `node painel/gerar_manifesto.js`. Registro nunca se edita:
    correção ou resposta é outro registro, com `responde_a`.
 2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
    a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
@@ -154,7 +156,7 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
 
 | Despacho | Célula | PR | Portão | Merge | Deploy | Resultado em 1 frase |
 |---|---|---|---|---|---|---|
-| ... | ... | #N | PASS | ✅ agente | run verde | ... |
+| ... | ... | #N | PASS | ✅ pista | run verde | ... |
 
 ## §7 — O que NUNCA entra num lote / o que fica com o humano
 

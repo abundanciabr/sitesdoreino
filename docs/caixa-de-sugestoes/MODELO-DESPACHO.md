@@ -17,17 +17,19 @@
 # DESPACHO — EVO-NN: <título curto, em linguagem de resultado>
 
 > **Copie tudo abaixo da linha e cole para o agente.**
-> Criado em <data> · Lote <N> do PLANO-MESTRE · merge: **agente** (Lei 4)
+> Criado em <data> · Lote <N> do PLANO-MESTRE · merge: **pista** (emenda da Lei 4)
 > *— se tocar caminho CODEOWNERS, escreva aqui o mandato e a obrigação de
 > anúncio nominal no relatório final.*
 
 ÁREA: `services/<celula>/` *(ou `infra/`, `.github/`…)* · WORKTREE: `wt-<celula>-<tarefa>`
 
-ANTES: leia `ARMADILHAS.md` §2 (partida rápida) + `armadilhas/INDICE.md` (abra só as
-entradas que casarem com esta tarefa), `services/<celula>/LICOES.md` (se existir),
+ANTES: `make sessao CELULA=<celula> TAREFA=<slug>` (RITOS §1) e contexto direcionado
+por caminho e sintoma; abra as origens e `services/<celula>/LICOES.md` (se existir).
+Para aprofundamento, refine a busca ou consulte `armadilhas/INDICE.md`.
+Leia também
 <documentos específicos desta tarefa — só os necessários; agente afogado em
 documentação erra mais (RUNBOOK §3.3)>. Declaração de abertura (RITOS §1) e
-baseline `make ci` VERDE antes de tocar qualquer arquivo.
+baseline emitido pela abertura VERDE antes de tocar qualquer arquivo.
 
 ## CONTEXTO
 
@@ -98,12 +100,13 @@ pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
 - [ ] `make ci` verde no worktree — cole inteiro
 - [ ] *cada critério de aceitação, verificável objetivamente*
 - [ ] *evidência vermelho→verde do teste-guarda novo (mostre-o falhando antes do fix)*
-- [ ] Lição registrada (`ARMADILHAS.md` se serve a qualquer célula; `LICOES.md` da célula se não)
+- [ ] Lição nova registrada em `armadilhas/NNN-slug.md` ou `LICOES.md` da célula, quando aprendida
+- [ ] Fechamento por `make pr` conforme `painel/LEIA-ME.md`, com validação, recibo e eventos embarcados; não repetir manualmente
 
 **Depois do merge (a maestro confere):**
-- [ ] PR mergeado por `python ci/mergear.py <N> --confirmo <N>` (state=MERGED conferido)
+- [ ] PR encaminhado pela maestro e mergeado pela pista (emenda da Lei 4); `gh pr view <N> --json state,mergeCommit` conferido
 - [ ] Se disparou deploy: veredito REAL por `gh run view <id> --json status,conclusion`
-- [ ] `ANDAMENTO.md` + painel atualizados na mesma resposta
+- [ ] Fatos posteriores registrados no livro, sem duplicar o recibo de `make pr`
 
 ## PROTOCOLO DE STATUS (como reportar)
 
