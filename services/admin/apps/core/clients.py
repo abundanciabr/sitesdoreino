@@ -2135,6 +2135,25 @@ class CursosClient:
             params=self._com_parte(site_id, parte),
         )
 
+    def gravar_estrutura(self, site_id: str, curso: str, corpo: dict):
+        """`putCourseStructure`: os blocos e as aulas do curso, reconciliados.
+
+        Uma ida só, e do outro lado uma transação só: ou a estrutura inteira
+        entra, ou nada entra. Por isso o `RECUSADO` (422) daqui é o único
+        desfecho em que a tela pode afirmar que nada foi gravado, e o `detail`
+        dele traz o motivo pronto em português (a aula por onde um aluno passou,
+        ou a linha do problema), que a tela mostra verbatim.
+
+        Não passa por `_caminho`: aquele monta o endereço das aulas
+        (`cursos/<curso>/aulas/...`), e a estrutura é irmã dele, não filha.
+        """
+        return self._pedir(
+            "put",
+            "cursos/" + quote(curso, safe="") + "/estrutura",
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
     def gravar_instrumento(self, slug: str, corpo: dict):
         """`putInstrument`: a escala, os mínimos, a seção e os descritores.
         `nome_canonico` e `cartao` nunca vão no corpo: são da lei, e a porta
