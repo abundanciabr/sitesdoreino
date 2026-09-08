@@ -132,6 +132,10 @@ def bash() -> str:
 
 
 def _rodar(bash: str, tmp_path: Path, script: str, **ambiente: str) -> str:
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci" / "tempos_esperados.json").write_bytes(
+        (RAIZ / "ci" / "tempos_esperados.json").read_bytes()
+    )
     alvo = tmp_path / "passagem.sh"
     alvo.write_text(script, encoding="utf-8", newline="\n")
     proc = subprocess.run(
