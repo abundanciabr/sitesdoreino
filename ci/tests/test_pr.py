@@ -699,3 +699,164 @@ def test_aspas_escapadas_normais_nao_sao_tratadas_como_segredo(tmp_path):
     texto=DETALHE+r' Exemplo de texto com \"nome\" preservado.'
     assert pr._sanitizar(texto)==texto
     pr._conferir_o_pedido(raiz,pedido(raiz,detalhe=texto))
+
+
+@pytest.mark.parametrize('prazo', [1, 1800, 7200, None])
+def test_prazo_do_json_chega_as_duas_provas(tmp_path, prazo):
+    raiz = bancada(tmp_path)
+    dados = {'comandos': [['pytest', 'ci/tests']]}
+    if prazo is not None:
+        dados['prazo_segundos'] = prazo
+    (raiz/'validacao.json').write_text(json.dumps(dados), encoding='utf-8')
+    recebidos = []
+    dub = Duble(RESPOSTAS_FELIZES)
+    def executar(comando, cwd, **opcoes):
+        if 'log' in opcoes:
+            recebidos.append(opcoes.get('prazo_segundos'))
+        else:
+            assert 'prazo_segundos' not in opcoes
+        return dub(comando, cwd, **opcoes)
+    pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert recebidos == [prazo or 900, prazo or 900]
+
+
+@pytest.mark.parametrize('prazo', [None, True, False, 0, -1, 7201, 1.5, 900.0, '900', '', float('nan'), float('inf'), -float('inf'), [], {}])
+def test_prazo_invalido_recusa_antes_de_efeitos(tmp_path, prazo):
+    raiz = bancada(tmp_path)
+    (raiz/'validacao.json').write_text(json.dumps({'comandos': [['pytest']], 'prazo_segundos': prazo}), encoding='utf-8')
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match='prazo_segundos'):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.chamadas
+
+
+def test_timeout_e_reprovacao_tem_resultados_distintos(tmp_path):
+    log = tmp_path/'prova.log'
+    with pytest.raises(pr.ValidacaoReprovada, match='exit 7'):
+        pr.rodar([sys.executable, '-c', 'raise SystemExit(7)'], tmp_path, log=log, prazo_segundos=1)
+    assert 'FAIL' in log.read_text(encoding='utf-8')
+    assert 'TIMEOUT' not in log.read_text(encoding='utf-8')
+    assert 'ok' in pr.rodar([sys.executable, '-c', "print('ok')"], tmp_path, log=log, prazo_segundos=1)
+    assert 'PASS' in log.read_text(encoding='utf-8')
+
+
+@pytest.mark.parametrize('prova_expirada', [1, 2])
+def test_retomada_apos_timeout_exige_duas_novas_provas(tmp_path, prova_expirada):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    quantidade = 0
+    def executar(comando, cwd, **opcoes):
+        nonlocal quantidade
+        if 'log' in opcoes:
+            quantidade += 1
+            if quantidade == prova_expirada:
+                raise pr.PrazoDeValidacaoExcedido('TIMEOUT', 'Retome com nova validação.')
+        return dub(comando, cwd, **opcoes)
+    mensagens = []
+    with pytest.raises(pr.PrazoDeValidacaoExcedido):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE, dizer=mensagens.append)
+    assert not dub.pediu('git push origin')
+    if prova_expirada == 1:
+        assert not dub.pediu('gh pr create')
+        assert not list((raiz/'painel/registros').glob('*.js'))
+    segunda = Duble({**RESPOSTAS_FELIZES, 'gh pr list': json.dumps([{'number': 1210, 'url': URL_DO_PR}])})
+    pr.abrir(raiz, pedido(raiz, continuar=True), rodar=segunda, hoje=HOJE)
+    assert segunda.linhas.count('pytest ci/tests') == 2
+    assert not segunda.pediu('gh pr create')
+    assert len(list((raiz/'painel/registros').glob('*.js'))) == 1
+
+
+@pytest.mark.parametrize('pai_encerra', [False, True])
+@pytest.mark.parametrize('nova_sessao', [False, True])
+def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao):
+    import os
+    import signal
+    import subprocess
+    import time
+    script = tmp_path/'processos.py'
+    script.write_text('''import os, pathlib, subprocess, sys, time
+profundidade = int(sys.argv[1])
+pathlib.Path(f"pid-{profundidade}").write_text(str(os.getpid()))
+print(f"iniciado {profundidade}", flush=True)
+print("saída íntegra " + "x"*12000, flush=True)
+if profundidade:
+    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3]], start_new_session=sys.argv[3] == "nova")
+if profundidade == 2 and sys.argv[2] == "sair":
+    sys.exit(0)
+print("token=SEGREDO_CONTROLADO", file=sys.stderr, flush=True)
+time.sleep(60)
+''', encoding='utf-8')
+    def vivo(pid):
+        if os.name == 'nt':
+            import ctypes
+            from ctypes import wintypes
+            api = ctypes.WinDLL('kernel32', use_last_error=True)
+            api.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+            api.OpenProcess.restype = wintypes.HANDLE
+            api.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+            api.CloseHandle.argtypes = [wintypes.HANDLE]
+            handle = api.OpenProcess(0x100000, False, pid)
+            if not handle:
+                return False
+            try:
+                return api.WaitForSingleObject(handle, 0) == 258
+            finally:
+                api.CloseHandle(handle)
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        estado = Path(f'/proc/{pid}/stat')
+        return not estado.exists() or estado.read_text().split(') ')[1][0] != 'Z'
+    log = tmp_path/'timeout.log'
+    try:
+        with pytest.raises(pr.PrazoDeValidacaoExcedido, match='TIMEOUT'):
+            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma'], tmp_path, log=log, prazo_segundos=2)
+        pids = [int(p.read_text()) for p in tmp_path.glob('pid-*')]
+        assert len(pids) == 3, 'pai, filho e neto precisam ter executado'
+        limite = time.monotonic() + 3
+        while any(vivo(pid) for pid in pids) and time.monotonic() < limite:
+            time.sleep(.05)
+        assert not any(vivo(pid) for pid in pids), 'validação deixou processos órfãos'
+        texto = log.read_text(encoding='utf-8')
+        assert 'TIMEOUT' in texto and 'iniciado 0' in texto
+        assert 'saída íntegra ' + 'x'*12000 in texto
+        assert '<REDIGIDO>' in texto and 'SEGREDO_CONTROLADO' not in texto
+        assert 'PASS' not in texto
+    finally:
+        for arquivo in tmp_path.glob('pid-*'):
+            pid = int(arquivo.read_text())
+            if vivo(pid):
+                if os.name == 'nt':
+                    subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], capture_output=True)
+                else:
+                    os.kill(pid, signal.SIGKILL)
+
+
+def test_instrumento_inexistente_preserva_error(tmp_path):
+    log = tmp_path/'error.log'
+    with pytest.raises(pr.ErroDeInstrumentacao, match='não pôde executar'):
+        pr.rodar(['executavel-inexistente-f1-03'], tmp_path, log=log, prazo_segundos=1)
+    texto = log.read_text(encoding='utf-8')
+    assert 'ERROR' in texto and 'PASS' not in texto
+
+
+
+
+@pytest.mark.parametrize('erro,codigo,resultado', [
+    (pr.ValidacaoReprovada, 1, 'FAIL'),
+    (pr.PrazoDeValidacaoExcedido, 2, 'TIMEOUT'),
+])
+def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro, codigo, resultado):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, 'raiz_do_repo', lambda: raiz)
+    def reprovar(*args, **kwargs):
+        raise erro(resultado, 'Leia o log e retome com nova prova.')
+    monkeypatch.setattr(pr, 'abrir', reprovar)
+    retorno = pr.main([
+        '--titulo', 'ci: prazo', '--mensagem-arquivo', str(raiz/'mensagem.txt'),
+        '--corpo-arquivo', str(raiz/'corpo.md'), '--arquivos', 'ci/pr.py',
+        '--detalhe', DETALHE, '--validacao-arquivo', str(raiz/'validacao.json'),
+    ])
+    assert retorno == codigo
+    assert resultado in capsys.readouterr().out

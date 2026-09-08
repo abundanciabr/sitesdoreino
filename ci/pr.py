@@ -81,6 +81,15 @@ FRENTE_POR_CAMINHO = (
 MINIMO_DO_DETALHE = 80
 
 COAUTOR = "Co-Authored-By"
+PRAZO_VALIDACAO_PADRAO = 900
+
+
+class PrazoDeValidacaoExcedido(ErroDeInstrumentacao):
+    """A prova ficou incompleta e precisa ser executada novamente."""
+
+
+class ValidacaoReprovada(ErroDeInstrumentacao):
+    """O comando terminou e devolveu um código diferente de zero."""
 
 
 class ParouPorSeguranca(Exception):
@@ -126,28 +135,77 @@ def _sanitizar(texto: str) -> str:
     )
 
 
-def rodar(comando: list[str], raiz: Path, *, log: Path | None = None) -> str:
+def _conferir_prazo(valor):
+    if type(valor) is not int or not 1 <= valor <= 7200:
+        raise ParouPorSeguranca(
+            "prazo_segundos inválido; validação NÃO EXECUTADA",
+            "Use um inteiro de 1 a 7200 no JSON de validação; omita o campo para usar 900 segundos por comando.",
+        )
+    return valor
+
+
+def rodar(comando: list[str], raiz: Path, *, log: Path | None = None,
+          prazo_segundos: int = PRAZO_VALIDACAO_PADRAO) -> str:
     if log is None:
         return executar(comando, cwd=raiz, descricao=f"rodar `{' '.join(comando)}`", timeout=300).stdout
-    cabecalho = f"Comando: {json.dumps(comando)}\n"
+    _conferir_prazo(prazo_segundos)
+    cabecalho = f"Comando: {json.dumps(comando)}\nPrazo por comando: {prazo_segundos}s\nInício UTC: {datetime.now(timezone.utc).isoformat()}\n"
     ambiente = {**os.environ, "PYTHONPATH": str(raiz), "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
+    processo = grupo = None
+    expirou = False
+    stdout = stderr = ''
+    def encerrar():
+        if grupo is not None:
+            grupo.encerrar()
     try:
-        resultado = subprocess.run(comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
-                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+        if os.name == 'nt':
+            from pr_processos_windows import GrupoWindows
+            grupo = GrupoWindows()
+        else:
+            from pr_processos_linux import GrupoLinux
+            grupo = GrupoLinux()
+        try:
+            processo = subprocess.Popen(
+                comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                text=True, encoding='utf-8', errors='replace',
+                creationflags=0x00000004 if os.name == 'nt' else 0,
+                start_new_session=os.name != 'nt',
+            )
+            if grupo is not None:
+                grupo.associar_e_iniciar(processo)
+            try:
+                stdout, stderr = processo.communicate(timeout=prazo_segundos)
+            except subprocess.TimeoutExpired as erro:
+                expirou = True
+                stdout, stderr = erro.stdout or '', erro.stderr or ''
+                encerrar()
+                stdout, stderr = processo.communicate(timeout=10)
+        finally:
+            try:
+                encerrar()
+            finally:
+                if processo is not None:
+                    if processo.poll() is None:
+                        processo.kill()
+                    processo.wait(timeout=10)
     except (OSError, subprocess.TimeoutExpired) as erro:
-        partes = [cabecalho, f"ERROR: {type(erro).__name__}\n"]
+        partes = [cabecalho, f"ERROR: {type(erro).__name__}: {erro}\n"]
         for nome in ("stdout", "stderr"):
-            valor = getattr(erro, nome, None) or ""
+            valor = getattr(erro, nome, None) or (stdout if nome == 'stdout' else stderr)
             if isinstance(valor, bytes):
                 valor = valor.decode("utf-8", errors="replace")
             partes.append(f"{nome}:\n{valor}\n")
         log.write_text(_sanitizar("".join(partes)), encoding="utf-8")
-        raise ErroDeInstrumentacao("a validação não pôde executar", f"Confira o executável, o prazo de 300 segundos e o log privado {log}.") from erro
-    texto = f"{cabecalho}Exit: {resultado.returncode}\nSTDOUT:\n{resultado.stdout}\nSTDERR:\n{resultado.stderr}"
+        raise ErroDeInstrumentacao("a validação não pôde executar ou encerrar seus processos", _sanitizar(f"{erro}\nConfira o executável, as permissões do sistema e o log privado {log}; execute uma nova validação.")) from erro
+    estado = 'TIMEOUT' if expirou else ('PASS' if processo.returncode == 0 else 'FAIL')
+    texto = f"{cabecalho}Fim UTC: {datetime.now(timezone.utc).isoformat()}\nResultado: {estado}\nExit: {processo.returncode}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
     log.write_text(_sanitizar(texto), encoding="utf-8")
-    if resultado.returncode != 0:
-        raise ErroDeInstrumentacao(f"validação: exit {resultado.returncode}", f"Leia o log privado {log} e corrija a causa antes de retomar.")
-    return resultado.stdout + "\n" + resultado.stderr
+    if expirou:
+        raise PrazoDeValidacaoExcedido(f"validação não aprovada: TIMEOUT após {prazo_segundos}s", f"Leia o log privado {log}; ajuste prazo_segundos no JSON se necessário e retome. A prova incompleta não será reutilizada.")
+    if processo.returncode != 0:
+        raise ValidacaoReprovada(f"validação não aprovada: exit {processo.returncode}", f"Leia o log privado {log} e corrija a causa antes de retomar.")
+    return stdout + "\n" + stderr
 
 
 # ------------------------------------------------------------ as derivações --
@@ -321,7 +379,7 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
         )
 
 
-def _comandos_de_validacao(pedido: Pedido) -> list[list[str]]:
+def _configuracao_de_validacao(pedido: Pedido) -> tuple[list[list[str]], int]:
     try:
         dados = json.loads(Path(pedido.validacao_arquivo).read_text(encoding="utf-8"))
         comandos = dados["comandos"]
@@ -331,7 +389,7 @@ def _comandos_de_validacao(pedido: Pedido) -> list[list[str]]:
             for c in comandos
         ):
             raise ValueError("comandos inválidos")
-        return comandos
+        return comandos, _conferir_prazo(dados.get('prazo_segundos', PRAZO_VALIDACAO_PADRAO))
     except (OSError, TypeError, ValueError, KeyError) as erro:
         raise ParouPorSeguranca(
             "validação obrigatória ausente ou inválida; NÃO EXECUTADA",
@@ -346,7 +404,7 @@ def _hash_git(valor: str) -> str:
     return valor
 
 
-def _validar(raiz, commit, rodar, comandos, dizer):
+def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACAO_PADRAO):
     for comando in comandos:
         for argumento in comando[1:]:
             valor = argumento.split("=", 1)[1] if argumento.startswith("-") and "=" in argumento else argumento
@@ -366,7 +424,9 @@ def _validar(raiz, commit, rodar, comandos, dizer):
             for indice, comando in enumerate(comandos, 1):
                 log = logs / f"{indice}.log"
                 try:
-                    saida = rodar(comando, isolada, log=log)
+                    saida = rodar(comando, isolada, log=log, prazo_segundos=prazo_segundos)
+                except (PrazoDeValidacaoExcedido, ValidacaoReprovada):
+                    raise
                 except ErroDeInstrumentacao as erro:
                     raise ErroDeInstrumentacao(
                         f"validação {indice} não aprovada",
@@ -436,7 +496,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     hoje = hoje or datetime.now(timezone.utc).date()
     correr = lambda comando: rodar(comando, raiz)
     _conferir_o_pedido(raiz, pedido)
-    comandos = _comandos_de_validacao(pedido)
+    comandos, prazo_segundos = _configuracao_de_validacao(pedido)
     ramo = correr(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
     if not ramo.startswith("agent/"):
         raise ParouPorSeguranca("ramo incompatível", "Use agent/<área>/<tarefa> na sua bancada.")
@@ -462,7 +522,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])) != arvore:
         raise ParouPorSeguranca("commit diverge da árvore validada", "Confira os hooks e valide novamente o commit efetivamente entregue.")
     try:
-        provas = _validar(raiz, commit, rodar, comandos, dizer)
+        provas = _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos)
     except ErroDeInstrumentacao:
         telemetria.registrar_fase("validacao", "falhou", commit=commit, **correlacao)
         raise
@@ -526,7 +586,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
     entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     try:
-        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer)
+        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos)
     except ErroDeInstrumentacao:
         telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, **correlacao)
         raise
@@ -656,6 +716,9 @@ def main(argv: list[str] | None = None) -> int:
         print("\nFAIL o rito não seguiu")
         print(f"\nPAROU POR SEGURANÇA: {recusa.resumo}\n")
         print(telemetria.redigir(recusa.o_que_fazer))
+        return 1
+    except ValidacaoReprovada as erro:
+        print(f"\nFAIL {erro.resumo}\n{erro.detalhe}")
         return 1
     except ErroDeInstrumentacao as erro:
         print("\nFAIL o rito parou no meio")
