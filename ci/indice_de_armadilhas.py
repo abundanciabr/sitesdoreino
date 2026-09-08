@@ -115,7 +115,12 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > viabilidade sem ler a config). É curto, e existe porque conhecer os casos não
 > impede repetir a classe — em 48h uma sessão repetiu duas falhas já catalogadas.
 
-> **Como usar:** dê Ctrl+F pela **mensagem de erro crua** que você está vendo (ou
+> **Consulta de aprofundamento:** a abertura (`ci/sessao.py`) já emite contexto
+> direcionado por caminho e sintoma, com origens e limitações. Este índice completo
+> continua disponível quando necessário ou solicitado; não é leitura padrão.
+> Nenhuma regra exclusiva mora aqui: Padrão e reservas estão no `CLAUDE.md`,
+> os oito padrões na Retrospectiva e as entradas individuais são suas origens.
+> **Como usar nesta consulta:** dê Ctrl+F pela **mensagem de erro crua** que você está vendo (ou
 > pela tecnologia: `django-ninja`, `respx`, `middleware`, `mypy`, `traefik`,
 > `stash`…). Achou a linha? Abra **só aquele arquivo**. Ler a pasta inteira
 > desfaz o motivo de ela existir.
