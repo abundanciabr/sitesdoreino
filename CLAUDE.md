@@ -174,11 +174,12 @@ linha "nada depende de ninguém, ~8 min".
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-A memória de campo (sintoma → causa → solução) mora em `armadilhas/`, uma
-entrada por arquivo. Leia `armadilhas/INDICE.md` e abra SÓ a entrada que casa
-com a sua tarefa; numa célula, o `services/<celula>/LICOES.md`; uma vez por sessão, os 8 padrões de
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. O índice é gerado e não viaja no
-Git; se faltar: `python ci/indice_de_armadilhas.py`.
+Use o contexto direcionado da abertura (`ci/sessao.py`) por caminho e sintoma.
+Confira origens, ausências e truncamento; abra as entradas citadas e recuperadas,
+`services/<celula>/LICOES.md` e, uma vez por sessão, os 8 padrões de
+`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho continuam
+obrigatórias. Para aprofundamento: `--caminho`/`--sintoma`, `--limite-contexto`
+ou `armadilhas/INDICE.md` (gerado fora do Git por `python ci/indice_de_armadilhas.py`).
 
 **Ao terminar, acrescente o que aprendeu:** arquivo novo `armadilhas/NNN-slug.md`
 com o `NNN` pedido ao almoxarife (`python ci/reservar.py numero armadilha`), e
@@ -212,9 +213,9 @@ independentes (prefira uma célula por PR; CONSTITUICAO Lei 2 exige as suítes
 de todas as tocadas; teto de 15 arquivos, fora `painel/` e `fila/`), dispara
 um sub-agente por pedaço com a ficha `despacho`,
 em paralelo, e mantém em série só o que depende de outro pedaço. Enquanto os
-checks rodam, o `revisor` lê o diff e o `escrivao` escreve registro, armadilha
-e evento da fila. A maestro arma uma espera por PR, consolida um placar só e é
-a única que fala com ele. Antes de despachar, olhe os PRs abertos.
+checks rodam, o `revisor` lê o diff. `make pr` reserva e embarca recibo e eventos;
+não repita esses efeitos com o `escrivao`, que julga lições e fatos adicionais.
+A maestro arma a espera, consolida o placar e fala com ele. Confira PRs abertos.
 
 As fichas em `.claude/agents/` carregam o rito; o brief leva SÓ a tarefa e as
 armadilhas dela. Sub-agente nunca pergunta ao mantenedor nem dispara outro

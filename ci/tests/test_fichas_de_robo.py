@@ -194,3 +194,46 @@ def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
         texto = (RAIZ / nome).read_text(encoding='utf-8')
         assert 'reset --hard' not in texto, f'{nome}: a parada não pode apagar trabalho'
         assert 'preserve os arquivos e commits' in texto, f'{nome}: a parada precisa preservar a bancada'
+
+
+# Fontes operacionais, incluindo moldes que voltam a virar instruções.
+# 00-LEIA-PRIMEIRO é história declarada no PLAYBOOK; RUNBOOK §9 é retrospectiva.
+FONTES_DE_CONTEXTO = (
+    "CLAUDE.md", "ARMADILHAS.md", "PLAYBOOK.md", "CAMINHO-DOURADO.md",
+    ".claude/agents/despacho.md", "docs/decisoes/RETROSPECTIVA-FASE-D.md",
+    "docs/caixa-de-sugestoes/MODELO-DESPACHO.md",
+    "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
+)
+
+
+def test_fontes_ativas_usam_contexto_e_indice_so_para_aprofundamento():
+    for nome in FONTES_DE_CONTEXTO:
+        texto = (RAIZ / nome).read_text(encoding="utf-8")
+        assert "contexto direcionado" in texto.lower(), nome
+        assert "aprofundamento" in texto.lower(), nome
+        normalizado = re.sub(r"[\s`*>]+", " ", texto.lower())
+        for proibido in (
+            r"leia (?:o )?armadilhas/indice\.md",
+            r"ler armadilhas/indice\.md",
+            r"armadilhas/indice\.md \| sempre",
+            r"antes:.*?\+ armadilhas/indice\.md",
+            r"depois deste arquivo e do armadilhas/indice\.md",
+        ):
+            assert not re.search(proibido, normalizado), (nome, proibido)
+
+
+def test_escrivao_nao_repete_fechamento_automatizado():
+    for nome in ("CLAUDE.md", "RUNBOOK-LOTES.md", ".claude/agents/escrivao.md"):
+        texto = (RAIZ / nome).read_text(encoding="utf-8").split("## §9", 1)[0]
+        assert "make pr" in texto and "não repita" in texto.lower(), nome
+    ficha = (FICHAS / "escrivao.md").read_text(encoding="utf-8")
+    assert "Use proactively no fim de todo despacho" not in ficha
+
+
+def test_receitas_ativas_nao_reconstroem_abertura_nem_merge():
+    for nome in ("ARMADILHAS.md", "RITOS.md", "docs/despachos/DESPACHO-PARTE-DO-SITE.md",
+                 "docs/caixa-de-sugestoes/MODELO-DESPACHO.md"):
+        texto = (RAIZ / nome).read_text(encoding="utf-8")
+        assert "git worktree add" not in texto, nome
+        assert not re.search(r"python ci/mergear\.py[^`\n]*--confirmo", texto), nome
+        assert "make sessao" in texto, nome

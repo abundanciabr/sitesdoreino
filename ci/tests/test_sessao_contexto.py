@@ -286,3 +286,31 @@ def test_checkout_real_inclui_fonte_canonica_do_padrao():
     assert "CLAUDE.md" in leituras
     for nome in leituras.removeprefix("Leituras obrigatórias: ").split(", "):
         assert (raiz / nome).is_file(), nome
+
+
+def test_indice_e_aprofundamento_sem_leitura_integral_no_contexto(memoria, monkeypatch):
+    indice = memoria / "armadilhas/INDICE.md"
+    indice.write_text("CONTEUDO INTEGRAL SENTINELA", encoding="utf-8")
+    ler = Path.read_text
+
+    def sem_indice(caminho, *args, **kwargs):
+        assert caminho != indice, "A abertura carregou o índice integral"
+        return ler(caminho, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", sem_indice)
+    texto = sessao.contexto_direcionado(memoria, objetivo="Contexto", caminhos=["ci/sessao.py"])
+    obrigatorias = next(l for l in texto.splitlines() if l.startswith("Leituras obrigatórias:"))
+    assert "INDICE.md" not in obrigatorias
+    assert "CONTEUDO INTEGRAL SENTINELA" not in texto
+    assert "Aprofundamento:" in texto and "armadilhas/INDICE.md" in texto
+    for nome in ("CLAUDE.md", "CONSTITUICAO.md", "RITOS.md", "RETROSPECTIVA-FASE-D.md"):
+        assert nome in obrigatorias
+
+
+def test_indice_ausente_nao_impede_busca_e_informa_como_aprofundar(memoria):
+    (memoria / "armadilhas/INDICE.md").unlink(missing_ok=True)
+    texto = sessao.contexto_direcionado(memoria, objetivo="Recibo", caminhos=["painel/registros/teste.js"])
+    assert "Lição 179:" in texto
+    assert "Índice de aprofundamento ausente" in texto
+    assert "python ci/indice_de_armadilhas.py" in texto
+    assert not any("INDICE.md" in l for l in texto.splitlines() if l.startswith("Limitação: fontes de leitura"))

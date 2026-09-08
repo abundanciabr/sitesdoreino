@@ -1,8 +1,8 @@
 # RETROSPECTIVA DA FASE D — os padrões que se repetem
 
 > **Para quem:** todo agente que for trabalhar neste repositório, em qualquer
-> célula, em qualquer fase. **Leia depois** do `PLAYBOOK.md` e do
-> `armadilhas/INDICE.md`, **antes** de escrever código.
+> célula, em qualquer fase. Leia estes padrões antes de escrever código,
+> uma vez por sessão. O contexto direcionado mantém esta leitura transversal.
 >
 > **O que este documento NÃO é:** não é lista de bugs (isso é `armadilhas/`,
 > uma entrada por sintoma), não é lei (`CONSTITUICAO.md`), não é receita
@@ -130,8 +130,10 @@ despacho** — por isso virou índice + uma entrada por arquivo. E o teto de **1
 arquivos por PR** é portão mecânico: ele decide a divisão do trabalho **antes** da
 primeira linha.
 
-**A regra:** leia o `INDICE.md` e abra **só** a entrada que casa com a sua tarefa
-— ler a pasta inteira desfaz o motivo de ela existir. Conte os arquivos no papel
+**A regra vigente (Fase 1, 08/09/2026):** use o contexto direcionado por caminho
+ou sintoma e abra as origens recuperadas e citadas. Para aprofundamento,
+`armadilhas/INDICE.md` continua disponível. Ler a pasta inteira desfaz o motivo
+de ela existir. A adoção do índice em 23/08/2026 acima é o antecedente histórico. Conte os arquivos no papel
 antes de codar; se estourar 15, divida o despacho **e diga isso na primeira
 resposta**, não no fim.
 

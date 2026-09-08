@@ -63,7 +63,9 @@ acelerar, nunca para recomendar esperar**.
 
 ### Passo 1 — leituras (dieta de contexto; leia SEMPRE do `origin/main` — o espelho local envelhece sem avisar)
 
-1. `armadilhas/INDICE.md` → abra **só** as entradas que casam com a tarefa.
+1. Contexto direcionado por caminho e sintoma na abertura: confira origens e limitações
+   e abra as entradas do brief e as recuperadas. Para aprofundamento, refine a busca
+   ou consulte `armadilhas/INDICE.md`.
 2. Os 8 títulos de `docs/decisoes/RETROSPECTIVA-FASE-D.md` (30 segundos).
 3. `CAMINHO-DOURADO.md`: §0 a §3 + **R6** (página/tela nova) + **R12**
    (idiomas) — e R1/R2 apenas se a parte precisar de endpoint novo ou de dado
@@ -82,30 +84,31 @@ públicas): **replique o padrão em cada célula** (Lei 7 — copie o padrão,
 nunca importe o arquivo de outra célula), de preferência um PR por célula, e
 declare a escada de PRs na primeira resposta.
 
-### Passo 3 — registre a tarefa no balcão da fila
+### Passo 3: bancada e baseline
 
 ```bash
-python ci/fila.py listar --ao-vivo     # já existe TAR aberta para esta parte? PEGUE-A em vez de criar
+make sessao CELULA=<celula> TAREFA=<parte> TAR=TAR-NNN
+```
+
+Consulte `python ci/fila.py listar --ao-vivo` para identificar tarefa existente.
+Omita `TAR` se ainda não houver tarefa. A abertura cria a bancada antes de pegar
+no balcão e emite baseline e contexto (RITOS §1). Entre no caminho informado,
+confira a Declaração e o log antes de editar. Falha herdada exige parar e reportar.
+Recusa de reserva exige conferir o dono; não force nem apague a bancada.
+
+### Passo 4: registre tarefa nova, quando necessária
+
+Se a consulta não encontrou tarefa, crie-a DENTRO da bancada:
+
+```bash
 python ci/fila.py criar --titulo "<a parte, em uma linha para leigo>" \
   --move <cartao do placar, ou manutencao> \
   --toca <celula> --evidencia-exigida "URL do PR mergeado + a parte visível no site" \
   --origem "despacho do mantenedor (super prompt de parte do site)"
-python ci/fila.py pegar TAR-NNN --quem "sessao-<celula>-<AAAAMMDD>"
 ```
 
-Recusa do servidor ao pegar = outra sessão já está nela: **não é erro, é a
-trava funcionando** — pare e conte ao mantenedor qual robô já está com ela.
-
-### Passo 4 — bancada e baseline
-
-```bash
-git fetch origin
-git worktree add ../wt-<celula>-<parte> -b agent/<celula>/<parte> origin/main
-```
-
-Declaração de abertura na primeira resposta (RITOS §1) e baseline `make ci` da
-célula **verde antes de tocar qualquer arquivo** — vermelho: pare e reporte;
-consertar a main não é escopo deste despacho.
+Repita a abertura do passo 3 com o número retornado em `TAR`, para reivindicar
+pela mesma entrada. A retomada preserva arquivos e estado da bancada.
 
 ### Passo 5 — as regras duras de toda parte visível do site
 
@@ -147,18 +150,15 @@ consertar a main não é escopo deste despacho.
 
 1. PR pequeno (teto 15 arquivos; estourou = escada de PRs, declarada desde o
    início), título em PT no padrão `feat(<celula>): …`.
-2. `python ci/mergear.py <N> --conferir` → tudo verde →
-   `python ci/mergear.py <N> --pousar` **e siga** — quem mergeia é a pista;
-   não fique vigiando checks.
-3. Registro no livro (`painel/registros/`, molde em `painel/LEIA-ME.md`,
-   número pedido ao almoxarife `ci/reservar.py numero registro`, evidência =
-   URL do PR): de preferência **no próprio PR do trabalho**; fato que só nasce
-   depois do merge (ex.: "está no ar", conferido) é registro novo depois.
-4. Merge confirmado (`gh pr view <N> --json state,mergeCommit`) tocando
-   `services/**` ou `painel/**` ⇒ conferir o run de deploy, com voz e teto:
-   `python ci/esperar.py --run <id> --teto 20 --dizendo "o deploy da <celula>"`
-   pela ferramenta Monitor.
-5. `python ci/fila.py concluir TAR-NNN --quem … --evidencia <URL do PR>`.
+2. Feche por `make pr` conforme `painel/LEIA-ME.md`, informando os comandos de
+   validação e `TAR=TAR-NNN`. O comando reserva e embarca recibo, eventos e
+   metadados no próprio PR; não repita esses efeitos manualmente.
+3. O despacho devolve o PR à maestro; só ela arma a espera de checks e encaminha
+   à pista pelo RUNBOOK §5. Revisão de código continua obrigatória.
+4. A maestro confere o merge por `gh pr view <N> --json state,mergeCommit`.
+   Tocando `services/**` ou `painel/**`, confere o run de deploy pelo Monitor:
+   `python ci/esperar.py --run <id> --teto 20 --dizendo "o deploy da <celula>"`.
+5. Fato posterior, como deploy e verificação pública, exige registro novo no livro.
 6. Aprendeu algo que vai morder o próximo robô? `armadilhas/NNN-slug.md` novo
    + `make indice` (arquivo NOVO, nunca append). O que só o mantenedor resolve:
    registro tipo `pendencia` com `precisa_do_dono: true` + texto claro no
