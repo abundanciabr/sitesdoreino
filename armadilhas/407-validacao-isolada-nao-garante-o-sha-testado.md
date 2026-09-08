@@ -2,7 +2,7 @@
 schema_version: 2
 armadilha: 407
 estado: documentada
-degrau: 3
+degrau: 2
 confianca: alta
 custo_por_queda: alto
 gatilho:
