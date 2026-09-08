@@ -219,7 +219,6 @@ if [ -n "$MEXIDOS" ]; then
     echo "Nada foi perdido: os dois lados do par estao gravados e conferidos."
     echo "Rode a linha abaixo e me mande a saida:"
     echo "  cd $RAIZ && docker compose up -d --force-recreate notificacoes notificacoes-consumer admin"
-    exit 1
   fi
 else
   echo "Nada a fazer: os dois lados ja estavam ligados."
