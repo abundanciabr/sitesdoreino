@@ -15,6 +15,7 @@ import re
 import sys
 import unicodedata
 import uuid
+import tempfile
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -112,16 +113,26 @@ class Pedido:
 # ---------------------------------------------------------------- a costura --
 
 
-def rodar(comando: list[str], raiz: Path) -> str:
-    """A ÚNICA porta para o mundo: git, gh, node e o almoxarife passam por aqui.
+def _sanitizar(texto: str) -> str:
+    return re.sub(r"(?i)((?:password|senha|token|secret|api_key)\s*[:=]\s*)([^\s]+)",
+                  r"\1<REDIGIDO>", telemetria.redigir(texto))
 
-    Uma costura só é o que permite o teste substituir os quatro de uma vez, sem
-    rede — e é o que garante que o veredito venha do exit do comando, nunca de
-    um `| tail` pendurado (a regra §5.10 desta casa).
-    """
-    return executar(
-        comando, cwd=raiz, descricao=f"rodar `{' '.join(comando)}`", timeout=300
-    ).stdout
+
+def rodar(comando: list[str], raiz: Path, *, log: Path | None = None) -> str:
+    try:
+        resultado = executar(
+            comando, cwd=raiz, descricao="executar validação" if log else f"rodar `{' '.join(comando)}`",
+            env_extra={"PYTHONPATH": str(raiz)} if log else None, timeout=300,
+        )
+    except ErroDeInstrumentacao as erro:
+        if log:
+            log.write_text(_sanitizar(f"Comando: {json.dumps(comando)}\n{erro.resumo}\n{erro.detalhe or ''}"), encoding="utf-8")
+        raise
+    if log:
+        texto = f"Comando: {json.dumps(comando)}\nExit: {resultado.exit_code}\nSTDOUT:\n{resultado.stdout}\nSTDERR:\n{resultado.stderr}"
+        log.write_text(_sanitizar(texto), encoding="utf-8")
+        return resultado.stdout + "\n" + resultado.stderr
+    return resultado.stdout
 
 
 # ------------------------------------------------------------ as derivações --
@@ -320,18 +331,36 @@ def _hash_git(valor: str) -> str:
     return valor
 
 
-def _validar(correr, comandos, dizer):
+def _validar(raiz, commit, rodar, comandos, dizer):
+    privado = telemetria.dir_git_comum(raiz)
+    if privado is None:
+        raise ErroDeInstrumentacao("não achei a pasta privada das provas", "Confira a bancada antes de validar.")
+    logs = privado / telemetria.PASTA / "validacoes-pr" / commit / uuid.uuid4().hex
+    logs.mkdir(parents=True)
     provas = []
-    for indice, comando in enumerate(comandos, 1):
+    with tempfile.TemporaryDirectory(prefix="validacao-pr-") as temporario:
+        isolada = Path(temporario).resolve() / "arvore"
+        rodar(["git", "worktree", "add", "--detach", str(isolada), commit], raiz)
         try:
-            saida = correr(comando)
-        except ErroDeInstrumentacao as erro:
-            raise ErroDeInstrumentacao(
-                f"validação {indice} não aprovada",
-                "O comando falhou ou não pôde executar. Confira o comando localmente e retome; nenhum resultado foi aprovado.",
-            ) from erro
-        provas.append(hashlib.sha256(saida.encode("utf-8")).hexdigest())
-        dizer(f"PASS validação {indice}: exit 0; saída identificada por SHA-256")
+            for indice, comando in enumerate(comandos, 1):
+                log = logs / f"{indice}.log"
+                try:
+                    saida = rodar(comando, isolada, log=log)
+                except ErroDeInstrumentacao as erro:
+                    raise ErroDeInstrumentacao(
+                        f"validação {indice} não aprovada",
+                        f"O comando falhou ou não pôde executar. Leia o log privado {log} e retome; nenhum resultado foi aprovado.",
+                    ) from erro
+                provas.append(hashlib.sha256(saida.encode("utf-8")).hexdigest())
+                dizer(f"PASS validação {indice}: exit 0; log privado {log}")
+            if rodar(["git", "diff", "HEAD", "--name-only"], isolada).strip():
+                raise ParouPorSeguranca("a validação alterou o código isolado", "Confira os logs privados e valide a revisão final sem modificar fontes durante a prova.")
+        finally:
+            # O caminho nasce neste processo dentro do diretório temporário.
+            # Só esta árvore descartável pode ser removida, inclusive na falha.
+            if not isolada.is_relative_to(Path(temporario).resolve()):
+                raise ErroDeInstrumentacao("limpeza fora da pasta temporária recusada", "Confira a bancada de validação.")
+            rodar(["git", "worktree", "remove", "--force", str(isolada)], raiz)
     return provas
 
 
@@ -357,12 +386,28 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
 
 
 def _tentativa_da_abertura(raiz, ramo):
-    pasta = telemetria.dir_git_comum(raiz)
-    eventos = telemetria.ler_tudo(pasta) if pasta else []
-    candidatos = [e for e in eventos if e.get("evento") == "fase_operacional"
-                  and e.get("branch") == ramo and e.get("fase") in ("abertura", "fechamento")
-                  and telemetria.identidade_fase(e) is not None]
-    return max(candidatos, key=lambda e: e.get("quando", ""))["tentativa"] if candidatos else uuid.uuid4().hex
+    try:
+        pasta = telemetria.dir_git_comum(raiz)
+        eventos = telemetria.ler_tudo(pasta) if pasta else []
+        candidatos = []
+        for evento in eventos:
+            identidade = telemetria.identidade_fase(evento)
+            if (not identidade or evento.get("id") != identidade or evento.get("branch") != ramo
+                    or evento.get("fase") not in ("abertura", "fechamento")):
+                continue
+            try:
+                quando = datetime.fromisoformat(evento["quando"])
+                if quando.tzinfo is None:
+                    continue
+            except (ValueError, TypeError, KeyError):
+                continue
+            candidatos.append((quando, evento))
+        if candidatos:
+            evento = max(candidatos, key=lambda item: item[0])[1]
+            return evento["tentativa"], evento["tarefa"]
+    except Exception:
+        pass  # Métrica ausente ou inválida não substitui as provas obrigatórias.
+    return uuid.uuid4().hex, ramo.split('/')[-1]
 
 
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
@@ -377,8 +422,8 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     sujo = correr(["git", "status", "--porcelain"]).strip()
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
-    tentativa = _tentativa_da_abertura(raiz, ramo)
-    correlacao = dict(tarefa=pedido.tarefa or ramo.split('/')[-1], tentativa=tentativa,
+    tentativa, tarefa_da_abertura = _tentativa_da_abertura(raiz, ramo)
+    correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     telemetria.registrar_fase("fechamento", "iniciado", commit=inicial, **correlacao)
@@ -390,18 +435,18 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if correr(["git", "diff", "--name-only"]).strip():
         raise ParouPorSeguranca("mudanças fora do índice", "Inclua os arquivos da entrega ou preserve o trabalho em outra bancada antes de validar.")
     arvore = _hash_git(correr(["git", "write-tree"]))
-    try:
-        provas = _validar(correr, comandos, dizer)
-    except ErroDeInstrumentacao:
-        telemetria.registrar_fase("validacao", "falhou", commit=inicial, **correlacao)
-        raise
-    if correr(["git", "diff", "--name-only"]).strip() or _hash_git(correr(["git", "write-tree"])) != arvore:
-        raise ParouPorSeguranca("a validação alterou a árvore", "Confira o diff e execute novamente a validação do conteúdo final.")
     if correr(["git", "diff", "--cached", "--name-only"]).strip():
         correr(["git", "commit", "-F", str(pedido.mensagem_arquivo)])
     commit = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     if _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])) != arvore:
         raise ParouPorSeguranca("commit diverge da árvore validada", "Confira os hooks e valide novamente o commit efetivamente entregue.")
+    try:
+        provas = _validar(raiz, commit, rodar, comandos, dizer)
+    except ErroDeInstrumentacao:
+        telemetria.registrar_fase("validacao", "falhou", commit=commit, **correlacao)
+        raise
+    if correr(["git", "diff", "--name-only"]).strip() or _hash_git(correr(["git", "write-tree"])) != arvore:
+        raise ParouPorSeguranca("a validação alterou a árvore", "Confira o diff e execute novamente a validação do conteúdo final.")
     telemetria.registrar("validacao_pr", {
         "arvore": arvore, "commit": commit, "branch": ramo,
         "tentativa": tentativa, "saidas_sha256": provas,

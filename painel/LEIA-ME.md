@@ -26,7 +26,9 @@
 
 0. **O caminho é `make pr`, continuando a implementação do PR #1216.**
    Declare em `validacao.json` os comandos de validação aplicáveis como listas
-   de argumentos. O comando os executa sem shell, antes do push:
+   de argumentos. O comando os executa sem shell, antes do push, numa
+   bancada temporária isolada do commit entregue. Arquivos locais sem commit
+   e arquivos ignorados da bancada de trabalho não entram nessa validação:
 
    ```json
    {"comandos": [["python", "-m", "pytest", "ci/tests", "-q"]]}
@@ -41,7 +43,9 @@
    A validação ausente, inválida ou com falha impede o fechamento. O recibo
    cita a árvore e o commit validados; mudanças de código posteriores exigem
    nova validação. O gerador confere o recibo e o comando confirma no GitHub
-   o SHA entregue. Logs de testes e comandos não são publicados no recibo.
+   o SHA entregue. Os logs de stdout, stderr e falha ficam sanitizados em
+   uma pasta privada dentro do `.git`, com revisão e tentativa. O resumo
+   informa o caminho para inspeção; os logs não são publicados no recibo.
    O `detalhe` continua sendo julgamento de quem fez o trabalho, com mínimo
    de 80 caracteres; o recibo completo deve ocupar menos de 1 KB.
 

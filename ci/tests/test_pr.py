@@ -46,7 +46,7 @@ class Duble:
         self.explode_em: str | None = None
         self.recibo_preparado = False
 
-    def __call__(self, comando: list[str], raiz: Path | None = None) -> str:
+    def __call__(self, comando: list[str], raiz: Path | None = None, **opcoes) -> str:
         self.chamadas.append(list(comando))
         linha = " ".join(comando)
         if self.explode_em and self.explode_em in linha:
@@ -539,7 +539,7 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
 def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch):
     raiz = bancada(tmp_path)
     fases = []
-    monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: 'tentativa-abertura')
+    monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', 'TAR-001'))
     monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
     pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
     assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('fechamento','concluido')]
@@ -552,7 +552,7 @@ def test_validacao_muda_indice_e_expira_prova(tmp_path):
     raiz = bancada(tmp_path)
     dub = Duble(RESPOSTAS_FELIZES)
     chamadas = 0
-    def rodar(comando, raiz):
+    def rodar(comando, raiz, **opcoes):
         nonlocal chamadas
         if comando == ['git','write-tree']:
             chamadas += 1
@@ -560,7 +560,7 @@ def test_validacao_muda_indice_e_expira_prova(tmp_path):
         return dub(comando,raiz)
     with pytest.raises(pr.ParouPorSeguranca, match='alterou a árvore'):
         pr.abrir(raiz, pedido(raiz), rodar=rodar, hoje=HOJE)
-    assert not dub.pediu('git commit')
+    assert not dub.pediu('git push')
 
 
 def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
@@ -579,3 +579,60 @@ def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
     evento['evidencia'] = URL_DO_PR+'0'
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
         pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)
+
+@pytest.mark.parametrize('ignorado', [False, True])
+def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado):
+    import subprocess
+    origem = tmp_path/'origem'
+    subprocess.run(['git','init',str(origem)],check=True,capture_output=True)
+    def git(*args, cwd=origem):
+        return subprocess.run(['git',*args],cwd=cwd,check=True,capture_output=True,text=True).stdout.strip()
+    git('config','user.name','Teste')
+    git('config','user.email','teste@example.com')
+    (origem/'.gitignore').write_text('necessario.py\n' if ignorado else '',encoding='utf-8')
+    git('add','.gitignore')
+    git('commit','-m','base')
+    raiz=tmp_path/'bancada'
+    git('worktree','add','-b','agent/ci/prova',str(raiz))
+    (raiz/'check.py').write_text('import necessario\nprint(necessario.valor)\n',encoding='utf-8')
+    (raiz/'necessario.py').write_text('valor = 42\n',encoding='utf-8')
+    (tmp_path/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
+    (tmp_path/'corpo.md').write_text('Teste isolado.',encoding='utf-8')
+    (tmp_path/'validacao.json').write_text(json.dumps({'comandos':[[sys.executable,'check.py']]}),encoding='utf-8')
+    entrada=pr.Pedido(titulo='ci: prova',mensagem_arquivo=tmp_path/'mensagem.txt',corpo_arquivo=tmp_path/'corpo.md',validacao_arquivo=tmp_path/'validacao.json',arquivos=['check.py'],detalhe=DETALHE)
+    def executar(comando, cwd, **opcoes):
+        assert comando[:2] != ['git','push'], 'publicaria código dependente de arquivo não entregue'
+        return pr.rodar(comando,cwd,**opcoes)
+    with pytest.raises(pr.ErroDeInstrumentacao,match='não aprovada') as erro:
+        pr.abrir(raiz,entrada,rodar=executar)
+    assert 'log privado' in erro.value.detalhe
+    logs=list((origem/'.git'/pr.telemetria.PASTA/'validacoes-pr').rglob('*.log'))
+    assert len(logs)==1
+    assert 'ModuleNotFoundError' in logs[0].read_text(encoding='utf-8')
+    assert (raiz/'necessario.py').exists()
+    assert len(git('worktree','list','--porcelain').split('worktree '))-1 == 2
+
+
+def test_log_privado_preserva_stdout_stderr_e_redige_segredos(tmp_path):
+    log=tmp_path/'prova.log'
+    pr.rodar([sys.executable,'-c',"import sys;print('saida conferida');print('token=segredo12345',file=sys.stderr)"],tmp_path,log=log)
+    texto=log.read_text(encoding='utf-8')
+    assert 'saida conferida' in texto
+    assert 'STDERR' in texto
+    assert '<REDIGIDO>' in texto
+    assert 'segredo12345' not in texto
+    with pytest.raises(pr.ErroDeInstrumentacao):
+        pr.rodar([sys.executable,'-c',"import sys;print('falha conferida',file=sys.stderr);sys.exit(1)"],tmp_path,log=log)
+    assert 'falha conferida' in log.read_text(encoding='utf-8')
+
+
+def test_metadado_invalido_nao_bloqueia_e_tarefa_e_herdada(tmp_path,monkeypatch):
+    raiz=bancada(tmp_path)
+    ramo='agent/ci/prova'
+    valido=dict(tarefa='TAR-123',tentativa='abertura123',branch=ramo,commit='a'*40,pr=None,fase='abertura',resultado='concluido',contexto_bytes=None)
+    valido['id']=pr.telemetria.identidade_fase(valido)
+    valido['quando']='2026-09-08T02:00:00+00:00'
+    invalido={**valido,'quando':None}
+    forjado={**valido,'tarefa':'TAR-999','quando':'2026-09-09T02:00:00+00:00'}
+    monkeypatch.setattr(pr.telemetria,'ler_tudo',lambda *a:[invalido,valido,forjado])
+    assert pr._tentativa_da_abertura(raiz,ramo)==('abertura123','TAR-123')
