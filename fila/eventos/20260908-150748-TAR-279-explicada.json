@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-150748-TAR-279-explicada",
+  "tarefa": "TAR-279",
+  "evento": "explicada",
+  "quando": "2026-09-08T15:07:48+00:00",
+  "quem": "Retomada da Fase 2 em 2026-09-08",
+  "o_que_e": "A publicacao sem rebuild existe no codigo, mas precisa de um teste real com mudanca somente de dados depois do merge.",
+  "o_que_muda": "Prova que livro e fila chegam ao ar sem reconstruir a aplicacao admin.",
+  "exemplo": "Como trocar um cartaz na vitrine sem fechar a loja para obra.",
+  "importancia": 80
+}
