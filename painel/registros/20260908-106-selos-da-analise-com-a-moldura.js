@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-106-selos-da-analise-com-a-moldura",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "Os selos da análise passaram a respeitar a moldura",
+  detalhe: "O incidente foi corrigido no PR #1105, que já foi incorporado. Os nomes de estilo da análise foram isolados dos nomes da moldura do painel, e um teste impede que a colisão volte a quebrar os selos ou a régua de votos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1105",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260905-062-os-selos-da-analise-brigavam-com-a-moldura",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
