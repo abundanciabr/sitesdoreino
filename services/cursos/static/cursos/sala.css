@@ -13,6 +13,8 @@
   --verde-fraco: #e6f4ec;
   --vermelho: #a52a2a;
   --vermelho-fraco: #fbe9e9;
+  --amarelo: #9a6200;
+  --amarelo-fraco: #fff3d6;
 }
 
 * { box-sizing: border-box; }
@@ -55,8 +57,8 @@ body {
 
 main {
   margin: 0 auto;
-  max-width: 720px;
-  padding: 32px 20px 64px;
+  max-width: 960px;
+  padding: 48px 24px 72px;
 }
 
 section, .cabecalho-da-aula, .curso {
@@ -66,6 +68,70 @@ section, .cabecalho-da-aula, .curso {
   margin-bottom: 20px;
   padding: 28px 24px;
 }
+
+.abertura {
+  background: transparent;
+  border: 0;
+  padding: 0 4px 12px;
+}
+
+.abertura h1 { max-width: 680px; }
+
+.curso {
+  box-shadow: 0 8px 24px rgba(27, 27, 31, .05);
+}
+
+.curso-topo, .progresso-topo {
+  align-items: flex-start;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.curso-topo .rotulo { margin-bottom: 4px; }
+
+.percentual {
+  color: var(--marca);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.barra-progresso {
+  background: var(--borda);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.barra-progresso span {
+  background: var(--marca);
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+}
+
+.progresso-legenda, .progresso-curso p { color: var(--tinta-fraca); font-size: 14px; margin: 8px 0 0; }
+
+.capa-curso {
+  align-items: end;
+  background: var(--tinta);
+  border: 0;
+  color: #fff;
+  display: grid;
+  gap: 32px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, .6fr);
+  padding: 36px;
+}
+
+.capa-curso .rotulo, .capa-curso .passo { color: #d8d5e0; }
+.capa-curso h1 { margin-top: 6px; }
+.progresso-curso { min-width: 0; }
+.progresso-curso .progresso-topo { color: #fff; }
+.capa-curso .barra-progresso { background: #4a4853; margin-top: 12px; }
+.capa-curso .barra-progresso span { background: #b9a9ff; }
+
+.proxima-porta { border-color: var(--marca); }
+.proxima-porta h2 { font-size: 24px; }
 
 .rotulo {
   color: var(--tinta-fraca);
@@ -142,6 +208,8 @@ h3 {
 
 .porta.estado-concluida .selo, .curso .selo { background: var(--verde-fraco); color: var(--verde); }
 .porta.estado-trancada .selo { background: var(--papel); color: var(--tinta-fraca); }
+.porta.estado-em-preparo .selo { background: var(--amarelo-fraco); color: var(--amarelo); }
+.porta.boss { border-left: 3px solid var(--marca); padding-left: 10px; }
 .porta.atual { background: var(--marca-fraca); border-radius: 8px; padding-left: 8px; }
 
 .porta .boss {
@@ -172,6 +240,7 @@ h3 {
 }
 
 .curso .aulas { color: var(--tinta-fraca); margin: 0 0 8px; }
+ .estado-conteudo { color: var(--amarelo); font-size: 14px; margin: 0; }
 
 .curso .entrar { margin: 16px 0 0; }
 
@@ -267,6 +336,15 @@ button {
 }
 
 .rodape .direitos { margin: 12px 0 0; }
+
+@media (max-width: 680px) {
+  main { padding: 32px 16px 56px; }
+  section, .cabecalho-da-aula, .curso { padding: 22px 18px; }
+  .capa-curso { display: block; padding: 26px 22px; }
+  .progresso-curso { margin-top: 28px; }
+  .porta { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  .porta a, .porta .fechada { flex: 1 1 100%; }
+}
 
 /* O plantão: a fila de revisão e o formulário do laudo. */
 .item-da-fila.vencido { border-color: var(--vermelho); }
