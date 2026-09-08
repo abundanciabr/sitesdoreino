@@ -24,16 +24,50 @@
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
-0. **A ordem do rito, desde 31/08/2026: abra o PR PRIMEIRO, registre depois —
-   e no MESMO ramo.** O registro de uma entrega embarca no próprio PR que a
-   faz: commite o trabalho, faça `push`, abra o PR, leia o número que o `gh`
-   devolve, e só então escreva o registro citando esse número
-   (`armadilhas/185`). O portão do pouso confere o embarque e recusa PR de
-   entrega sem o próprio recibo a bordo (`ci/mergear.py`); PR que só escritura
-   (`painel/` e/ou `fila/`) é isento. Registro de fato pós-merge (veredito de
-   deploy, incidente) continua sendo PR próprio, só de livro.
-1. Crie **um arquivo novo** em `registros/`, nome `AAAAMMDD-NNN-slug.js`. O
-   `NNN` **se pede ao almoxarife — não se escolhe:**
+0. **O caminho é `make pr`, continuando a implementação do PR #1216.**
+   Declare em `validacao.json` os comandos de validação aplicáveis como listas
+   de argumentos. O comando os executa sem shell, antes do push:
+
+   ```json
+   {"comandos": [["python", "-m", "pytest", "ci/tests", "-q"]]}
+   ```
+
+   ```bash
+   make pr TITULO="ci: o que muda, para leigo" MENSAGEM=mensagem.txt \
+           CORPO=corpo.md ARQUIVOS="ci/pr.py ci/tests/test_pr.py" \
+           DETALHE=detalhe.txt VALIDACAO=validacao.json
+   ```
+
+   A validação ausente, inválida ou com falha impede o fechamento. O recibo
+   cita a árvore e o commit validados; mudanças de código posteriores exigem
+   nova validação. O gerador confere o recibo e o comando confirma no GitHub
+   o SHA entregue. Logs de testes e comandos não são publicados no recibo.
+   O `detalhe` continua sendo julgamento de quem fez o trabalho, com mínimo
+   de 80 caracteres; o recibo completo deve ocupar menos de 1 KB.
+
+   Preparação concluída, validação local e PR aberto são estados distintos.
+   Revisão, integração e publicação permanecem não verificadas neste comando.
+   Ele devolve o número à maestro, sem armar espera ou pouso.
+
+   `CONTINUAR=1` retoma commits existentes. Toda execução consulta o PR pelo
+   ramo, recupera o recibo compatível e reexecuta a validação. A reserva usa
+   uma identidade estável e grava número e chave no mesmo push atômico:
+   resposta remota perdida não autoriza repetir uma reserva nova. A data da
+   reserva original também é preservada. `TAR=TAR-NNN`, quando aplicável,
+   conclui a tarefa pela fila existente e embarca todos os seus eventos;
+   encerramento por outro fato impede a retomada. Nenhum desses estados
+   declara publicação. Interface: `python ci/pr.py --help`.
+
+   **A ordem do rito, desde 31/08/2026: o PR PRIMEIRO, o registro depois — e no
+   MESMO ramo.** É por isso que o `make pr` existe: o registro de uma entrega só
+   pode citar o número do PR depois que o `gh` o devolve (`armadilhas/185`). O
+   portão do pouso confere o embarque e recusa PR de entrega sem o próprio
+   recibo a bordo (`ci/mergear.py`); PR que só escritura (`painel/` e/ou
+   `fila/`) é isento. Registro de fato pós-merge (veredito de deploy, incidente)
+   continua sendo PR próprio, só de livro.
+1. **À mão, quando o `make pr` não serve** (registro pós-merge, resposta a um
+   pedido, correção de rumo): crie **um arquivo novo** em `registros/`, nome
+   `AAAAMMDD-NNN-slug.js`. O `NNN` **se pede ao almoxarife — não se escolhe:**
 
    ```bash
    git fetch origin
@@ -49,6 +83,7 @@
    a pasta, as duas veem o mesmo livre, e o Git junta os dois arquivos sem ter o
    que reclamar (nomes diferentes, hunks diferentes). Medido em 29/08/2026: 82
    números gastos no livro, só 39 pedidos ao almoxarife, três colisões no dia.
+   **Pelo `make pr` esse pedido acontece sozinho**, no passo 6, com identidade estável para retomar a mesma operação.
    O `DIA` sai em **UTC de propósito** (`armadilhas/158`); o fallback para
    quando não houver rede está em `armadilhas/179`.
 
