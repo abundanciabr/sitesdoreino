@@ -206,6 +206,16 @@ VEIO_VAZIA = (
     "A IA respondeu, mas veio sem texto nenhum. Tente de novo, e se repetir, "
     "escreva a orientação de outro jeito."
 )
+RESPOSTA_INVALIDA = (
+    "A IA respondeu, mas os dados vieram fora do formato que o fórum aceita. "
+    "Não é falta de internet, da chave nem de crédito. Me avise com o horário "
+    "para eu conferir o log. Nada mudou nesta conversa."
+)
+RESPOSTA_QUEBRADA = (
+    "A resposta da IA chegou incompleta ou como uma página da internet, e o "
+    "fórum não conseguiu lê-la. Não mexa na chave. Me avise com o horário para "
+    "eu conferir o log. Nada mudou nesta conversa."
+)
 
 
 class AgenteIndisponivel(RuntimeError):
@@ -512,6 +522,12 @@ def _traduzindo_a_falha():
             "agente: a Anthropic respondeu HTTP %s (%s)", erro.status_code, erro
         )
         raise AgenteIndisponivel(_frase_do_status(erro)) from erro
+    except anthropic.APIError as erro:
+        logger.warning("agente: a Anthropic respondeu com dados inválidos (%s)", erro)
+        raise AgenteIndisponivel(RESPOSTA_INVALIDA) from erro
+    except (ValueError, TypeError, AttributeError) as erro:
+        logger.warning("agente: a resposta da Anthropic chegou quebrada (%s)", erro)
+        raise AgenteIndisponivel(RESPOSTA_QUEBRADA) from erro
 
 
 def rascunhar_ao_vivo(
@@ -581,33 +597,36 @@ def rascunhar(
             **_pedido(area_nome, titulo, falas, orientacao)
         )
 
-    if resposta.stop_reason == "refusal":
-        detalhe = getattr(resposta, "stop_details", None)
-        logger.warning(
-            "agente: recusa do modelo (%s)", getattr(detalhe, "category", None)
+        if resposta.stop_reason == "refusal":
+            detalhe = getattr(resposta, "stop_details", None)
+            logger.warning(
+                "agente: recusa do modelo (%s)", getattr(detalhe, "category", None)
+            )
+            raise AgenteIndisponivel(RECUSOU)
+
+        texto = "".join(
+            bloco.text for bloco in resposta.content if bloco.type == "text"
+        ).strip()
+        if not texto:
+            # Acontece de verdade: com o pensamento adaptativo ligado, um teto de
+            # saída pequeno demais pode ser gasto inteiro antes da primeira letra da
+            # resposta. Devolver string vazia para a tela seria um rascunho em
+            # branco apagando o que a pessoa tinha digitado.
+            logger.warning("agente: resposta sem texto (stop=%s)", resposta.stop_reason)
+            raise AgenteIndisponivel(VEIO_VAZIA)
+
+        uso = getattr(resposta, "usage", None)
+        tokens_de_entrada = getattr(uso, "input_tokens", 0) or 0
+        tokens_de_saida = getattr(uso, "output_tokens", 0) or 0
+        logger.info(
+            "agente: rascunho de %s letras (entrada %s tokens, saída %s tokens)",
+            len(texto),
+            tokens_de_entrada,
+            tokens_de_saida,
         )
-        raise AgenteIndisponivel(RECUSOU)
-
-    texto = "".join(
-        bloco.text for bloco in resposta.content if bloco.type == "text"
-    ).strip()
-    if not texto:
-        # Acontece de verdade: com o pensamento adaptativo ligado, um teto de
-        # saída pequeno demais pode ser gasto inteiro antes da primeira letra da
-        # resposta. Devolver string vazia para a tela seria um rascunho em
-        # branco apagando o que a pessoa tinha digitado.
-        logger.warning("agente: resposta sem texto (stop=%s)", resposta.stop_reason)
-        raise AgenteIndisponivel(VEIO_VAZIA)
-
-    logger.info(
-        "agente: rascunho de %s letras (entrada %s tokens, saída %s tokens)",
-        len(texto),
-        resposta.usage.input_tokens,
-        resposta.usage.output_tokens,
-    )
-    return Rascunho(
-        texto=texto,
-        cortado=resposta.stop_reason == "max_tokens",
-        tokens_de_entrada=resposta.usage.input_tokens,
-        tokens_de_saida=resposta.usage.output_tokens,
-    )
+        return Rascunho(
+            texto=texto,
+            cortado=resposta.stop_reason == "max_tokens",
+            tokens_de_entrada=tokens_de_entrada,
+            tokens_de_saida=tokens_de_saida,
+        )
