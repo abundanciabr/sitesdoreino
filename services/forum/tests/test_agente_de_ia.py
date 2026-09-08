@@ -606,24 +606,40 @@ def test_resposta_http_200_quebrada_nao_escapa_crua(
     assert "Espere" not in frase
 
 
-def test_erro_de_validacao_do_sdk_nao_escapa_cru():
-    resposta = httpx2.Response(
+def test_erro_de_validacao_do_sdk_preserva_a_tela(env, monkeypatch, conversa):
+    resposta_do_sdk = httpx2.Response(
         200,
         request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"),
     )
-    erro = anthropic.APIResponseValidationError(response=resposta, body={})
+    erro = anthropic.APIResponseValidationError(response=resposta_do_sdk, body={})
     assert not isinstance(
         erro, (anthropic.APIStatusError, anthropic.APIConnectionError)
     )
 
-    with pytest.raises(agente.AgenteIndisponivel) as falha:
-        with agente._traduzindo_a_falha():
+    class Mensagens:
+        def create(self, **pedido):
             raise erro
 
-    frase = str(falha.value)
-    assert "fora do formato que o fórum aceita" in frase
-    assert "Não é falta de internet, da chave nem de crédito" in frase
-    assert "Espere" not in frase
+    class Cliente:
+        messages = Mensagens()
+
+    monkeypatch.setattr(agente, "_cliente", Cliente)
+    como_dono(monkeypatch)
+
+    resposta = gerar(Client(), conversa, orientacao="")
+    pagina = resposta.content.decode()
+
+    assert resposta.status_code == 503
+    assert "fora do formato que o fórum aceita" in pagina
+    assert "Não é falta de internet, da chave nem de crédito" in pagina
+    assert "Espere" not in pagina
+    assert "Travei no Studio" in pagina
+    marca = 'action="' + reverse("responder", args=[conversa.pk]) + '"'
+    assert marca in pagina
+    formulario = pagina[
+        pagina.index(marca) : pagina.index("</form>", pagina.index(marca))
+    ]
+    assert 'id="texto" name="texto"' in formulario
 
 
 def test_resposta_boa_sem_usage_nao_e_descartada(env, monkeypatch):
@@ -1005,6 +1021,50 @@ def test_ao_vivo_manda_o_texto_em_pedacos_separados(env, monkeypatch, conversa):
     textos = [q["t"] for q in lidos if "t" in q]
     assert textos == ["Escale ", "o UV ", "antes de pintar."]
     assert "".join(textos) == "Escale o UV antes de pintar."
+
+
+def test_ao_vivo_sem_usage_preserva_o_texto_e_zera_os_contadores(env, monkeypatch):
+    class Fluxo:
+        text_stream = iter(["Resposta íntegra."])
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, tipo, erro, rastreio):
+            return False
+
+        def get_final_message(self):
+            class Final:
+                stop_reason = "end_turn"
+                usage = None
+
+            return Final()
+
+    class Mensagens:
+        def stream(self, **pedido):
+            return Fluxo()
+
+    class Cliente:
+        messages = Mensagens()
+
+    monkeypatch.setattr(agente, "_cliente", Cliente)
+    recibo = {}
+
+    partes = list(
+        agente.rascunhar_ao_vivo(
+            area_nome="Dúvidas gerais",
+            titulo="A textura estica",
+            falas=[("Aluno", "Como arrumo o UV?")],
+            recibo=recibo,
+        )
+    )
+
+    assert partes == ["Resposta íntegra."]
+    assert recibo == {
+        "cortado": False,
+        "tokens_de_entrada": 0,
+        "tokens_de_saida": 0,
+    }
 
 
 def test_ao_vivo_termina_avisando_quem_vai_publicar(env, monkeypatch, conversa):

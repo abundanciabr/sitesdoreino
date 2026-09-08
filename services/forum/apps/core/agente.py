@@ -565,15 +565,18 @@ def rascunhar_ao_vivo(
                 yield pedaco
             final = fluxo.get_final_message()
 
+    uso = getattr(final, "usage", None)
+    tokens_de_entrada = getattr(uso, "input_tokens", 0) or 0
+    tokens_de_saida = getattr(uso, "output_tokens", 0) or 0
     if recibo is not None:
         recibo["cortado"] = final.stop_reason == "max_tokens"
-        recibo["tokens_de_entrada"] = final.usage.input_tokens
-        recibo["tokens_de_saida"] = final.usage.output_tokens
+        recibo["tokens_de_entrada"] = tokens_de_entrada
+        recibo["tokens_de_saida"] = tokens_de_saida
 
     logger.info(
         "agente: rascunho ao vivo (entrada %s tokens, saída %s tokens)",
-        final.usage.input_tokens,
-        final.usage.output_tokens,
+        tokens_de_entrada,
+        tokens_de_saida,
     )
 
 
