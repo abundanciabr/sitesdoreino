@@ -577,32 +577,6 @@ def _ultima_linha(texto: str) -> str:
     return linhas[-1][:200]
 
 
-def _slug_do_caminho(caminho: Path) -> str:
-    return re.sub(r"[^A-Za-z0-9]+", "-", str(caminho))
-
-
-def achar_transcript(cwd: Path) -> tuple[Path | None, str]:
-    """(o transcript desta sessão, ou None e o motivo de não achar).
-
-    O harness guarda um `.jsonl` por sessão em `~/.claude/projects/<slug do
-    cwd>/`. Quando o robô roda de uma bancada (`wt-*`), o slug não casa com o da
-    sessão, que nasceu no clone principal: aí a busca cai para o `.jsonl` mais
-    recente de todas as pastas, que é o desta sessão viva. É melhor esforço, e
-    `--transcript` existe para quando não for.
-    """
-    raiz = Path.home() / ".claude" / "projects"
-    if not raiz.is_dir():
-        return None, f"não existe a pasta de transcripts ({raiz})"
-    alvo = _slug_do_caminho(cwd)
-    pastas = [p for p in raiz.iterdir() if p.is_dir() and alvo.startswith(p.name)]
-    if not pastas:
-        pastas = [p for p in raiz.iterdir() if p.is_dir()]
-    arquivos = [a for p in pastas for a in p.glob("*.jsonl")]
-    if not arquivos:
-        return None, f"nenhum transcript em {raiz}"
-    return max(arquivos, key=lambda a: a.stat().st_mtime), ""
-
-
 def linhas_do_plano(entradas: list[dict], comeco: int) -> list[str]:
     """As caixinhas do plano, como o robô as deixou. Quem marca é ele."""
     for entrada in reversed(entradas[comeco:]):
@@ -816,23 +790,29 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
 
 
 def modo_molde_com_fatos(argumentos: list[str]) -> int:
-    cwd = Path.cwd()
     caminho: Path | None = None
-    motivo = ""
     if "--transcript" in argumentos:
         posicao = argumentos.index("--transcript")
         if posicao + 1 < len(argumentos):
             caminho = Path(argumentos[posicao + 1])
     if caminho is None:
-        caminho, motivo = achar_transcript(cwd)
-    entradas: list[dict] = []
-    if caminho is None:
-        motivo = motivo or "não achei o transcript desta sessão"
-    elif not caminho.exists():
-        motivo, caminho = f"o transcript {caminho} não existe", None
-    else:
-        entradas = ler_transcript(caminho)
-    print(molde_com_fatos(entradas, cwd, motivo))
+        print(
+            "🧾 MOLDE COM FATOS RECUSADO: não sei de qual sessão sou.\n"
+            "   Informe o transcript desta sessão explicitamente com:\n"
+            "   python ci/prestacao_de_contas.py --molde-com-fatos "
+            "--transcript <caminho>\n"
+            "   Não escolhi o transcript mais recente da máquina.",
+            file=sys.stderr,
+        )
+        return 2
+    if not caminho.exists():
+        print(
+            f"🧾 MOLDE COM FATOS RECUSADO: o transcript informado não existe: {caminho}\n"
+            "   Confira o caminho da sessão e rode o comando de novo.",
+            file=sys.stderr,
+        )
+        return 2
+    print(molde_com_fatos(ler_transcript(caminho), Path.cwd(), ""))
     return 0
 
 
@@ -887,7 +867,10 @@ def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
     return True, ultima_mudanca[1], _teve_plano(entradas, inicio_da_janela(entradas))
 
 
-def molde(faltou_o_plano: bool) -> str:
+def molde(faltou_o_plano: bool, transcript: str | None = None) -> str:
+    comando_molde = "python ci/prestacao_de_contas.py --molde-com-fatos"
+    if transcript:
+        comando_molde += f' --transcript "{transcript}"'
     linhas = [
         "🧾 PRESTAÇÃO DE CONTAS: há trabalho feito nesta sessão sem relatório nenhum.",
         "",
@@ -897,7 +880,7 @@ def molde(faltou_o_plano: bool) -> str:
         "",
         "   Os fatos você NÃO escreve de cabeça. Rode primeiro:",
         "",
-        "       python ci/prestacao_de_contas.py --molde-com-fatos",
+        f"       {comando_molde}",
         "",
         "   Ele devolve o molde com o checklist do seu plano, os arquivos tocados,",
         "   os comandos rodados e os checks do PR já preenchidos. O que sobra para",
@@ -993,7 +976,7 @@ def modo_contas(entrada: dict) -> int:
             file=sys.stderr,
         )
         return 1
-    print(molde(faltou_o_plano=not teve_plano), file=sys.stderr)
+    print(molde(faltou_o_plano=not teve_plano, transcript=str(arquivo)), file=sys.stderr)
     print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
     return 2
 
@@ -1011,8 +994,9 @@ AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, ROTEIRO A CADA ETAPA, CONTAS DEPOIS (le
    PRONTO/NÃO PRONTO. O portão do Stop recusa terminar sem ela e sem a
    caixinha — não é sugestão.
    Antes de escrever o fecho, rode `python ci/prestacao_de_contas.py
-   --molde-com-fatos`: ele já traz o checklist, os arquivos, os comandos e os
-   checks preenchidos, e sobra para você só o julgamento."""
+   --molde-com-fatos --transcript <caminho-da-sessao>`: ele já traz o checklist,
+   os arquivos, os comandos e os checks preenchidos. Sem identidade explícita,
+   o comando recusa escolher o transcript mais recente da máquina."""
 
 
 def modo_plano(entrada: dict) -> int:
