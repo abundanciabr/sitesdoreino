@@ -39,7 +39,10 @@ ATRIBUTOS_DE_COMPARABILIDADE = (
     "tipo", "complexidade", "natureza", "componentes",
     "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
 )
-FONTES_SINTETICAS = ("teste", "test", "fixture", "sintetic")
+FONTES_SINTETICAS = frozenset({
+    "telemetria-de-teste", "telemetria-de-test", "fixture", "sintetico",
+    "sintetica", "sintética", "sintéticos", "sintéticas",
+})
 CAMPOS_DE_IDENTIDADE_DA_TAREFA = (
     "tarefa", "tentativa", "branch", "commit", "piloto", "condicao",
     "tipo", "complexidade", "natureza", "componentes",
@@ -145,7 +148,7 @@ def _evento_valido(evento: object) -> bool:
 
 def _eh_sintetico(evento: dict) -> bool:
     fonte = str(evento.get("fonte") or "").casefold()
-    return any(marcador in fonte for marcador in FONTES_SINTETICAS)
+    return fonte in FONTES_SINTETICAS
 
 
 def _esta_incompleto(evento: dict) -> bool:
