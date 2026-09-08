@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-161-deploy-gamificacao-confirmado",
+  tipo: "nota",
+  quando: "2026-09-08",
+  titulo: "Deploy da ativação da gamificação confirmado",
+  detalhe: "Depois do merge do PR #1443, o deploy da administração terminou com sucesso. A área Comunidade do painel ao vivo mostra 0 e informa que não há pendências hoje. A conferência também encontrou a etiqueta de nível no fórum e o quadrinho de progresso na home.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1443; https://github.com/abundanciabr/sitesdoreino/actions/runs/34291762718; https://meshcraft.top/admin/painel/#area/comunidade; https://meshcraft.top/forum/t/11; https://meshcraft.top/. Deploy confirmado com status completed e conclusão success no commit d733d9f685b6b533f08227c8e8c0c0ff4b8f07c7. No painel ao vivo, Comunidade mostra 0 e informa que não há pendências. No fórum, a conversa mostra 'Nv 2 · Aprendiz de Ateliê'. Na home, a conta mostra 'Nível 1' e 'Faltam 50 pontos para o nível 2'.",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();
