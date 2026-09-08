@@ -307,3 +307,49 @@ def test_intencao_ganha_leva_prazo_dentro(tmp_path, monkeypatch):
     )
     assert ganhou is True
     assert corpos[0]["expira_em"] > corpos[0]["criado_em"]
+
+def test_reserva_com_chave_recupera_numero_sem_alocar(tmp_path, monkeypatch):
+    monkeypatch.setattr(reservar, 'numero_da_chave', lambda *a: {'numero': '008', 'dia': '20260828'})
+    monkeypatch.setattr(reservar, 'numeros_em_uso', lambda *a: pytest.fail('não deve alocar de novo'))
+    assert reservar.alocar_numero(tmp_path, 'registro', AGORA, chave='a'*64) == '008'
+
+
+def test_reserva_com_chave_e_numero_sao_atomicos(tmp_path, monkeypatch):
+    monkeypatch.setattr(reservar, 'numero_da_chave', lambda *a: None)
+    monkeypatch.setattr(reservar, 'numeros_em_uso', lambda *a: set())
+    vistos = []
+    monkeypatch.setattr(reservar, 'criar_ref_atomica', lambda *a, **kw: vistos.append((a,kw)) or True)
+    assert reservar.alocar_numero(tmp_path, 'registro', AGORA, chave='a'*64, com_dia=True) == '20260828-001'
+    assert vistos[0][1]['ref_chave'] == 'refs/chaves-numero/registro/' + 'a'*64
+    assert vistos[0][0][2]['chave'] == 'a'*64
+
+def test_push_atomico_perdido_recupera_numero_real_sem_rede(tmp_path, monkeypatch):
+    remoto = tmp_path / 'servidor.git'
+    raiz = tmp_path / 'bancada'
+    subprocess.run(['git', 'init', '--bare', str(remoto)], check=True, capture_output=True)
+    subprocess.run(['git', 'init', str(raiz)], check=True, capture_output=True)
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=raiz, check=True, capture_output=True, text=True).stdout
+    git('config', 'user.name', 'Teste')
+    git('config', 'user.email', 'teste@example.com')
+    (raiz/'painel/registros').mkdir(parents=True)
+    (raiz/'inicial').write_text('base',encoding='utf-8')
+    git('add','inicial')
+    git('commit','-m','base')
+    git('remote','add','origin',str(remoto))
+    original = reservar._git
+    def perdeu_resposta(raiz, args):
+        resultado = original(raiz, args)
+        assert resultado.returncode == 0
+        assert '--atomic' in args
+        return Saida(1, stderr='conexão interrompida após envio')
+    monkeypatch.setattr(reservar, '_git', perdeu_resposta)
+    with pytest.raises(ErroDeInstrumentacao):
+        reservar.alocar_numero(raiz, 'registro', AGORA, chave='d'*64)
+    monkeypatch.setattr(reservar, '_git', original)
+    amanha = AGORA.replace(day=29)
+    assert reservar.alocar_numero(raiz, 'registro', amanha, chave='d'*64, com_dia=True) == '20260828-001'
+    assert reservar.alocar_numero(raiz, 'registro', amanha, chave='d'*64) == '001'
+    refs = git('ls-remote','origin').splitlines()
+    assert len(refs) == 2
+    assert sum('refs/numeros/registro/' in linha for linha in refs) == 1
