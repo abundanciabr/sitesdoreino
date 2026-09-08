@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import yaml
+
 
 RAIZ = Path(__file__).resolve().parents[2]
 WORKFLOW = RAIZ / ".github" / "workflows" / "canario-fase-3-outbox.yml"
@@ -40,11 +42,20 @@ def test_script_falha_fechado_e_prova_os_processos_executores():
 
 
 def test_compose_declara_relay_periodico_da_identidade():
-    texto = COMPOSE.read_text(encoding="utf-8")
+    compose = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+    servicos = compose["services"]
+    identidade = servicos["identidade"]
+    relay = servicos["identidade-relay"]
 
-    assert "\n  identidade-relay:" in texto
-    assert "image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}" in texto
-    assert "HUEY_REDIS_URL: redis://redis:6379/12" in texto
-    assert "REDIS_STREAMS_URL: redis://redis:6379/0" in texto
-    assert "postgres:\n        condition: service_healthy\n      redis:" in texto
-    assert 'command: ["python", "manage.py", "run_huey"]' in texto
+    assert identidade["depends_on"]["postgres"]["condition"] == "service_healthy"
+    assert identidade["depends_on"]["redis"]["condition"] == "service_started"
+    assert identidade["environment"]["HUEY_REDIS_URL"] == "redis://redis:6379/12"
+    assert identidade["environment"]["REDIS_STREAMS_URL"] == "redis://redis:6379/0"
+
+    assert relay["image"] == "ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}"
+    assert relay["command"] == ["python", "manage.py", "run_huey"]
+    assert relay["environment"]["HUEY_REDIS_URL"] == "redis://redis:6379/12"
+    assert relay["environment"]["REDIS_STREAMS_URL"] == "redis://redis:6379/0"
+    assert relay["depends_on"]["postgres"]["condition"] == "service_healthy"
+    assert relay["depends_on"]["redis"]["condition"] == "service_started"
+    assert relay["depends_on"]["identidade"]["condition"] == "service_healthy"
