@@ -12,9 +12,8 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
 (armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
 <style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
 
-O link "Estrutura" (`/admin/escola/<curso>/estrutura/`, a tela de colar os
-módulos e as aulas de um curso) entra na coluna de gestos de cada linha, ao
-lado de "Escrever as aulas", quando a TAR-272 construir aquela tela.
+Toda frase que um teste procura fica INTEIRA numa linha só (armadilhas/394):
+quebrada em duas, ela some do `assert` sem ninguém ficar vermelho.
 {% endcomment %}
 {% block titulo %}Os cursos da escola{% endblock %}
 {% block corpo %}
@@ -97,6 +96,7 @@ lado de "Escrever as aulas", quando a TAR-272 construir aquela tela.
     </p>
     <div class="curso-gestos">
       <a class="botao" href="{% url 'escola_aulas' curso=c.slug %}">Escrever as aulas &rarr;</a>
+      <a class="botao" href="{% url 'escola_estrutura' curso=c.slug %}">Módulos e aulas &rarr;</a>
       {% comment %}
       Dois formulários pequenos, e não um: `putCourse` trata campo ausente como
       NÃO MEXER, então cada um manda só o campo dele. Um formulário só, com os

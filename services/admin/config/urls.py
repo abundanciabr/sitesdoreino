@@ -100,6 +100,7 @@ from apps.core.capitulo import (
     capitulo_importar,
     capitulo_prever,
 )
+from apps.core.estrutura import estrutura, estrutura_importar, estrutura_prever
 from apps.core.sumario import (
     sumario,
     sumario_importar,
@@ -741,6 +742,35 @@ urlpatterns = [
     # encomenda por vez, esta enche todas de uma vez, e sao gestos diferentes.
     # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
     # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    # [ESTRUTURA] 07/09/2026 (TAR-272) A tela que da a um curso a lista dos
+    # modulos e das aulas dele, colada num texto simples
+    # (`apps/core/estrutura.py`), da `DECISAO-a-sala-serve-varios-cursos.md`
+    # §4. Um curso novo nasce sem uma aula sequer, e sem esta tela enche-lo
+    # exigiria um bloco de colar no servidor.
+    #
+    # Vizinha de `sumario/`, e pelo mesmo motivo: as duas enchem o curso
+    # INTEIRO de uma vez, e nenhuma das duas leva `parte-N` porque uma Parte
+    # sozinha nao e uma estrutura. A diferenca entre elas e o que enchem: esta
+    # cria o ESQUELETO (modulos e aulas), aquela enche o TEXTO das encomendas
+    # que ja existem.
+    #
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+        estrutura,
+        name="escola_estrutura",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+        estrutura_prever,
+        name="escola_estrutura_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+        estrutura_importar,
+        name="escola_estrutura_importar",
+    ),
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
         sumario,

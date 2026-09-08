@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-002-a-estrutura-do-curso-entra-pela-tela",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "O Admin ganhou a tela de colar os modulos e as aulas de um curso",
+  detalhe: "O PR 1371 cria a tela /admin/escola/slug-do-curso/estrutura/. Ela recebe um texto simples, mostra a previa sem gravar, importa pela porta putCourseStructure e desenha a recusa da sala quando alguma aula nao pode sumir. A lista de cursos ganhou o link Modulos e aulas.\n\nO texto colado nao fica guardado no Admin. O que fica e a estrutura gravada na sala de aula.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1371",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
