@@ -86,6 +86,7 @@ def _aluno(**campos) -> dict:
         "comprou_em": None,
         "status": "ativa",
         "origem": "liberado",
+        "product_id": "curso-um",
         "criada_em": "2026-08-20T10:00:00Z",
     }
     corpo.update(campos)
@@ -404,6 +405,95 @@ def test_ex_aluno_e_o_unico_caminho_para_tirar_o_acesso():
 
     assert "Ex-aluno — perde o acesso, e a ficha continua aqui" in html
     assert "Apagar" not in _sem_estilo(html).split("Nenhuma ficha se apaga por aqui")[0]
+
+
+@respx.mock
+def test_a_tela_mostra_um_checkbox_por_curso_e_marca_o_ativo(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"id": "curso-um", "name": "Curso um"},
+                {"id": "curso-dois", "name": "Curso dois"},
+            ],
+        )
+    )
+    _tela_responde([_aluno(status="ativa", product_id="curso-um")])
+    html = _dentro().get("/escola/alunos/").content.decode()
+    assert html.count('name="curso"') == 2
+    assert 'value="curso-um"' in html and 'value="curso-dois"' in html
+    assert re.search(r'value="curso-um"\s+checked', html)
+
+
+def test_sincronizar_cursos_pausa_ativa_reativa_pausada_e_cria_nova(monkeypatch):
+    from apps.core.clients import AlunosClient
+
+    cliente = AlunosClient()
+    chamadas = []
+    monkeypatch.setattr(
+        cliente,
+        "matricular_aluno",
+        lambda **kwargs: chamadas.append(("criar", kwargs["product_id"]))
+        or (cliente.OK, ""),
+    )
+    monkeypatch.setattr(
+        cliente,
+        "atualizar_aluno",
+        lambda **kwargs: chamadas.append(
+            ("alterar", kwargs["alvo"], kwargs["mudancas"]["status"])
+        )
+        or (cliente.OK, ""),
+    )
+    desfecho, _ = cliente.sincronizar_cursos(
+        site_id="escola-a",
+        email="aluno@exemplo.com",
+        nome="Aluno Exemplo",
+        matriculas=[
+            {"id": "1", "product_id": "curso-um", "status": "ativa"},
+            {"id": "2", "product_id": "curso-dois", "status": "suspensa"},
+        ],
+        cursos_marcados=["curso-dois", "curso-tres"],
+        decidido_por="dono",
+    )
+    assert desfecho == cliente.OK
+    assert ("alterar", "2", "ativa") in chamadas
+    assert ("alterar", "1", "suspensa") in chamadas
+    assert ("criar", "curso-tres") in chamadas
+
+
+@respx.mock
+def test_salvar_cursos_cria_o_novo_e_persiste_os_dados(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"id": "curso-um", "name": "Curso um"},
+                {"id": "curso-dois", "name": "Curso dois"},
+            ],
+        )
+    )
+    _tela_responde([_aluno(product_id="curso-um")])
+    patch_route = respx.patch(f"{ALUNOS}/matriculas/{ALVO}").mock(
+        return_value=httpx.Response(200, json=_aluno())
+    )
+    post_route = respx.post(f"{ALUNOS}/matriculas").mock(
+        return_value=httpx.Response(201, json={"id": "novo"})
+    )
+    resposta = _dentro().post(
+        reverse("escola_aluno_salvar"),
+        {
+            "alvo": ALVO,
+            "pessoa_email": "aluno@exemplo.com",
+            "curso": ["curso-um", "curso-dois"],
+        },
+    )
+    assert resposta["Location"].endswith("?resultado=salvo")
+    assert post_route.called
+    assert not patch_route.called
 
 
 RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)

@@ -5,6 +5,7 @@ import datetime as dt
 import logging
 import os
 import time
+import uuid
 from urllib.parse import quote
 
 import httpx
@@ -678,6 +679,78 @@ class AlunosClient:
             return self.RECUSADO, "não havia nada para mudar, ou um campo veio errado"
         logger.error("gestao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+    def matricular_aluno(
+        self, *, site_id: str, email: str, nome: str, product_id: str
+    ) -> "tuple[str, str]":
+        """Cria uma matrícula administrativa idempotente para um curso."""
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+        order_id = "admin:" + str(
+            uuid.uuid5(uuid.NAMESPACE_URL, f"{site_id}:{email}:{product_id}")
+        )
+        try:
+            r = http().post(
+                f"{base}/matriculas",
+                json={
+                    "site_id": site_id,
+                    "order_id": order_id,
+                    "product_id": product_id,
+                    "customer": {"email": email, "name": nome},
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError:
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+        if r.status_code in (200, 201):
+            return self.OK, ""
+        if r.status_code == 422:
+            return self.RECUSADO, "o curso ou os dados da pessoa foram recusados"
+        logger.error("matricular: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+    def sincronizar_cursos(
+        self,
+        *,
+        site_id: str,
+        email: str,
+        nome: str,
+        matriculas: list[dict],
+        cursos_marcados: list[str],
+        decidido_por: str,
+    ) -> "tuple[str, str]":
+        """Faz a seleção da tela coincidir com as matrículas da pessoa."""
+        por_curso = {str(m.get("product_id")): m for m in matriculas}
+        marcados = set(cursos_marcados)
+        for product_id in sorted(marcados):
+            matricula = por_curso.get(product_id)
+            if matricula is None:
+                desfecho, detalhe = self.matricular_aluno(
+                    site_id=site_id, email=email, nome=nome, product_id=product_id
+                )
+            elif matricula.get("status") == "suspensa":
+                desfecho, detalhe = self.atualizar_aluno(
+                    alvo=str(matricula["id"]),
+                    mudancas={"status": "ativa"},
+                    decidido_por=decidido_por,
+                )
+            else:
+                continue
+            if desfecho != self.OK:
+                return desfecho, detalhe
+        for product_id, matricula in por_curso.items():
+            if product_id not in marcados and matricula.get("status") == "ativa":
+                desfecho, detalhe = self.atualizar_aluno(
+                    alvo=str(matricula["id"]),
+                    mudancas={"status": "suspensa"},
+                    decidido_por=decidido_por,
+                )
+                if desfecho != self.OK:
+                    return desfecho, detalhe
+        return self.OK, ""
 
     # NAO existe metodo para apagar uma ficha, e a ausencia e a lei:
     # `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026). O metodo que morava aqui
