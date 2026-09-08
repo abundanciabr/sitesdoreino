@@ -221,4 +221,4 @@ def test_falha_do_reinicio_deixa_o_script_com_erro(tmp_path):
     )
 
     assert resultado.returncode != 0
-    assert "reinicio das celulas FALHOU" in resultado.stdout
+    assert "não consegui recarregar" in resultado.stdout
