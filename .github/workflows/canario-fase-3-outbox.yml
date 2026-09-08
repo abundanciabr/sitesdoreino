@@ -1,0 +1,56 @@
+name: canario-fase-3-outbox
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: "Digite sim para criar as marcas canario da Fase 3 em producao"
+        required: true
+        default: "nao"
+        type: choice
+        options:
+          - "nao"
+          - "sim"
+
+permissions:
+  contents: read
+
+jobs:
+  canario:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      CONFIRMAR: ${{ inputs.confirmar }}
+      CANARIO_F3_RUN_ID: ${{ github.run_id }}
+      CANARIO_F3_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Conferir script fechado
+        shell: bash
+        run: |
+          test -f infra/canario-fase-3-outbox.sh
+          bash -n infra/canario-fase-3-outbox.sh
+
+      - name: Rodar canario na VPS
+        id: canario
+        uses: appleboy/ssh-action@v1
+        env:
+          CONFIRMAR: ${{ env.CONFIRMAR }}
+          CANARIO_F3_RUN_ID: ${{ env.CANARIO_F3_RUN_ID }}
+          CANARIO_F3_SHA: ${{ env.CANARIO_F3_SHA }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_path: infra/canario-fase-3-outbox.sh
+          envs: CONFIRMAR,CANARIO_F3_RUN_ID,CANARIO_F3_SHA
+          capture_stdout: true
+          command_timeout: 6m
+
+      - name: Provar fechamento do canario
+        env:
+          SAIDA: ${{ steps.canario.outputs.stdout }}
+        shell: bash
+        run: |
+          grep -F "PRONTO: canario F3 outbox publicado em alunos e identidade" <<<"$SAIDA"
