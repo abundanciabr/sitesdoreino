@@ -92,19 +92,30 @@ def test_sino_aparece_com_a_contagem_quando_configurado(
     assert NOME in conteudo  # o nome continua aparecendo, do lado do sino
 
 
-def test_sino_aponta_para_a_tela_de_avisos_da_caixa(
+def test_sino_aponta_para_a_tela_unica_de_notificacoes(
     client, logado, notificacoes_configurada
 ):
-    """A URL REAL (`services/sugestoes/config/urls.py`, rota `avisos`, sob o
-    prefixo público `/forms/sugestoes/`) — não `request.url_da_caixa` (a raiz
-    da Caixa, o quadro, outra página)."""
+    """O sino leva à página única de notificações, no idioma atual."""
     logado.get(RESUMO).mock(return_value=httpx.Response(200, json={"nao_lidas": 1}))
 
     conteudo = client.get(
         caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
 
-    assert 'href="/forms/sugestoes/avisos"' in conteudo
+    assert f'href="{caminho_mesh("pt-br", "/notificacoes")}"' in conteudo
+
+
+def test_o_endereco_antigo_do_sino_vira_a_pagina_nova(
+    client, logado, notificacoes_configurada, monkeypatch
+):
+    logado.get(RESUMO).mock(return_value=httpx.Response(200, json={"nao_lidas": 1}))
+    monkeypatch.setenv("URL_DOS_AVISOS", "/forms/sugestoes/avisos")
+
+    conteudo = client.get(
+        caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert f'href="{caminho_mesh("pt-br", "/notificacoes")}"' in conteudo
 
 
 def test_o_endereco_dos_avisos_vem_do_ambiente(
