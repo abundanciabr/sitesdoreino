@@ -839,6 +839,19 @@ caso("extração com regra já definida recebe Luna com raciocínio Low",
     o_que_muda: "Extrair o texto seguindo a regra já definida no formato.",
     onde: ["a lista de aulas"]
   }).raciocinio === "Low");
+caso("trabalho mecânico com regra clara recebe Luna",
+  LOGICA.modeloParaTarefa({
+    titulo: "Trabalho mecânico na lista de aulas",
+    o_que_muda: "Aplicar a regra clara de nomes.",
+    onde: ["a lista de aulas"]
+  }).modelo === "Luna");
+
+caso("operação mecânica com regra clara recebe Luna",
+  LOGICA.modeloParaTarefa({
+    titulo: "Operação mecânica na lista de aulas",
+    o_que_muda: "Aplicar a regra clara de nomes.",
+    onde: ["a lista de aulas"]
+  }).modelo === "Luna");
 caso("correção delimitada recebe Terra com raciocínio Low",
   LOGICA.modeloParaTarefa({
     titulo: "Corrigir o formulário de entrada",

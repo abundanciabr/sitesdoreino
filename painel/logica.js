@@ -557,7 +557,7 @@
       .concat(Array.isArray(tarefa.onde) ? tarefa.onde : [])
       .filter(function (parte) { return typeof parte === "string"; })
       .join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    var eMecanica = /\b(extrac(?:ao|oes)|classificac(?:ao|oes)|formatac(?:ao|oes)|alterac(?:ao|oes) mecanic(?:a|as))\b/.test(texto);
+    var eMecanica = /\b(extrac(?:ao|oes)|classificac(?:ao|oes)|formatac(?:ao|oes)|(?:alterac(?:ao|oes)|trabalh(?:o|os)|operac(?:ao|oes)) mecanic(?:a|as|o|os))\b/.test(texto);
     var regraDeclarada = /\b(regra clara|regra (?:ja )?(?:definida|escrita)|criterio (?:ja )?definido|formato (?:ja )?definido)\b/.test(texto);
     return eMecanica && regraDeclarada
       ? { modelo: "Luna", raciocinio: "Low" }
