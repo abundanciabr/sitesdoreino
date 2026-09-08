@@ -1,4 +1,5 @@
 ---
+schema_version: 2
 gatilho: "A tela do curso não mostra nenhum Boss"
 licao: "O mapa já desenha a marcação e_boss, mas o conteúdo existente precisa ter exatamente um desafio escolhido por módulo. A escolha deve ser aplicada por comando idempotente, com falha sem gravação quando algum título não existir."
 ---
