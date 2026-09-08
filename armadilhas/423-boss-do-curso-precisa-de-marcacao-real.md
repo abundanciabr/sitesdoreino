@@ -5,7 +5,9 @@ estado: guardada
 degrau: 3
 confianca: alta
 custo_por_queda: medio
-gatilho: "A tela do curso não mostra nenhum Boss"
+gatilho:
+  - services/cursos/apps/core/templates/cursos/mapa.html
+  - services/cursos/apps/cursos/management/commands/marcar_bosses_primeiros_dolares.py
 guarda:
   tipo: CI
   dono: services/cursos/tests/test_marcar_bosses_primeiros_dolares.py
