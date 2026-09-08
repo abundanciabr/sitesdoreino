@@ -169,15 +169,16 @@ def auditar_fichas(raiz: Path) -> list[str]:
         campos = _frontmatter(caminho)
         modelo = campos.get("model", "").strip()
         nome = campos.get("name") or caminho.stem
+        relativo = caminho.relative_to(raiz).as_posix()
         if nome in {"revisor", "escrivao"} and not modelo:
-            falhas.append(f"{caminho.relative_to(raiz)}: {nome} precisa declarar model")
+            falhas.append(f"{relativo}: {nome} precisa declarar model")
         if nome in {"revisor", "escrivao"} and "opus" in modelo.lower():
             falhas.append(
-                f"{caminho.relative_to(raiz)}: {nome} não usa modelo de topo para rito fechado"
+                f"{relativo}: {nome} não usa modelo de topo para rito fechado"
             )
         if nome == "despacho" and not modelo and "modelo_recomendado" not in texto:
             falhas.append(
-                f"{caminho.relative_to(raiz)}: despacho sem model só é aceito se o brief declarar modelo_recomendado"
+                f"{relativo}: despacho sem model só é aceito se o brief declarar modelo_recomendado"
             )
     return falhas
 

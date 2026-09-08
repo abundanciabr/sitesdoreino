@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from ci._nucleo import ErroDeInstrumentacao
-from ci.economia_da_fabrica import (
+from _nucleo import ErroDeInstrumentacao
+from economia_da_fabrica import (
     MODELO_ROTINA,
     MODELO_TOPO,
     auditar_fichas,
