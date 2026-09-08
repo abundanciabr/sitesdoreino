@@ -333,6 +333,14 @@ def test_a_pagina_de_avisos_fala_a_lingua_do_quadro(dentro, aviso):
     assert 'rel="stylesheet"' in corpo
 
 
+def test_a_pagina_de_avisos_nao_mostra_o_painel_explicativo(dentro, aviso):
+    corpo = dentro.client.get(reverse("avisos")).content.decode()
+
+    assert "Como isto funciona" not in corpo
+    assert "Você é avisado, sempre" not in corpo
+    assert "Ver o roadmap" not in corpo
+
+
 def test_o_aviso_leva_para_a_ideia_e_o_lido_some_da_lista_de_nao_lidos(dentro, aviso):
     """O cartão é caminho, não recado morto: dele se chega à ideia.
 
