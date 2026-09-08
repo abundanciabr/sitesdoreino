@@ -132,7 +132,7 @@ h3 {
 
 .porta .fechada { color: var(--tinta-fraca); }
 
-.porta .selo, .pausa .selo, .checkpoint .selo, .curso .selo {
+.porta .selo, .pausa .selo, .checkpoint .selo, .concluir .selo, .curso .selo {
   background: var(--marca-fraca);
   border-radius: 999px;
   color: var(--tinta);
@@ -200,7 +200,7 @@ h3 {
 
 .pausa.registrada { border-color: var(--verde); }
 
-.checkpoint .selo.fechado { background: var(--papel); color: var(--tinta-fraca); }
+.checkpoint .selo.fechado, .concluir .selo.fechado { background: var(--papel); color: var(--tinta-fraca); }
 
 label { display: block; font-weight: 600; margin: 12px 0; }
 
