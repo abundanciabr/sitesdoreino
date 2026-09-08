@@ -107,7 +107,8 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    29/08/2026):** aberto o PR, o próprio agente conclui, sem pedir nem esperar o
    humano — mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
    embarca** (desde 31/08/2026): leia o número que o `gh` devolveu ao abrir o
-   PR, escreva o registro do livro citando-o e commite NO MESMO RAMO
+   PR: `make pr` valida, reserva e embarca o registro e os eventos NO MESMO RAMO.
+   Não duplique a escrituração; confira os efeitos informados pelo comando
    (`armadilhas/185` prescreveu a ordem; `armadilhas/248` mediu o preço de não
    tê-la). O portão confere o embarque e recusa pouso sem ele — PR que só
    escritura (`painel/` e/ou `fila/`) é isento.
@@ -337,10 +338,8 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    (TAR-018; a antiga fazia o comprovante nascer órfão, `armadilhas/192`):
 
    ```bash
-   git fetch origin
-   git worktree add ../wt-<area>-<tarefa> -b agent/<area>/<tarefa> origin/main
-   cd ../wt-<area>-<tarefa>
-   python ci/fila.py pegar TAR-NNN --quem "sessao-<area>-<data>"
+   make sessao CELULA=<area> TAREFA=<slug> TAR=TAR-NNN SEM_CONTAINER=1
+   # Para célula com serviço, omita SEM_CONTAINER=1 (RITOS §1).
    ```
 
    Quem chega segundo recebe recusa DO SERVIDOR na hora — isso não é erro, é a
@@ -353,7 +352,7 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    principal, ele nasce onde ninguém commita, o PR viaja sem ele e o histórico
    de quem pegou o trabalho some. Por isso `pegar`, `criar` e `concluir`
    **recusam no espelho** desde 30/08/2026, com a recusa ensinando estas
-   quatro linhas; `listar`, `validar` e `soltar` continuam livres lá (devolver
+   entradas de abertura; `listar`, `validar` e `soltar` continuam livres lá (devolver
    tarefa presa é gesto de emergência, e emergência não espera worktree).
 2. **Trabalho novo que um despacho descobre vira tarefa registrada**
    (`python ci/fila.py criar ...`, número do almoxarife) — nunca item de

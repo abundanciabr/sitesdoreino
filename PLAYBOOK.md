@@ -25,8 +25,8 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 
 | Documento | Leia quando | O que resolve |
 |---|---|---|
-| **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Manda você para o índice. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
-| **`armadilhas/INDICE.md`** | **Sempre, junto com o de cima.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
+| **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Explica o contexto direcionado e o aprofundamento. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
+| **`armadilhas/INDICE.md`** | **Para aprofundamento após o contexto direcionado.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
 | `ARMADILHAS-OPERACAO.md` | Maestro de lote, quem vai mergear, quem fala com o humano. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
 | `docs/historico/RESOLVIDAS.md` | Só quando precisar do histórico de um item já encerrado. | Armadilhas resolvidas — fora da dieta de um despacho normal. |
 | `CLAUDE.md` | Sempre (Claude Code lê sozinho; outras ferramentas, leia à mão). | Instruções de operação específicas deste harness — painel obrigatório, etc. |
@@ -39,12 +39,12 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 | `02-RED-TEAM.md` | Fase E (atual). | Os 15 golpes de graduação — o rito ainda não fechou. |
 | `services/<celula>/LICOES.md` | Ao tocar UMA célula. | Decisões e armadilhas só daquela célula (se existir). |
 | `RUNBOOK-FASE-D.md` | Ao rodar, depurar ou estender o esqueleto que anda. | Manual operacional do que a Fase D entregou (comandos, pendências herdadas). |
-| **`docs/decisoes/RETROSPECTIVA-FASE-D.md`** | **Depois deste arquivo e do `armadilhas/INDICE.md`, antes de escrever código.** | Os **8 padrões que atravessam** as 67 armadilhas — o andar de cima do catálogo (falso-verde, garantia sem mecanismo, prova de fora, fail-closed na borda, humano no caminho crítico, contexto é orçamento, sessões paralelas, viabilidade sem ler config). Existe porque conhecer os casos não impede repetir a categoria. |
+| **`docs/decisoes/RETROSPECTIVA-FASE-D.md`** | **Antes de escrever código, uma vez por sessão.** | Os **8 padrões que atravessam** as 67 armadilhas — o andar de cima do catálogo (falso-verde, garantia sem mecanismo, prova de fora, fail-closed na borda, humano no caminho crítico, contexto é orçamento, sessões paralelas, viabilidade sem ler config). Existe porque conhecer os casos não impede repetir a categoria. |
 | `00-LEIA-PRIMEIRO.md`, `01-BRIEF-FASE-0.md`, `PROMPTS-INICIAIS.md` | Só para entender a HISTÓRIA (como o kit nasceu). | Framing original de bootstrapping — a Fase 0 já fechou; não descreve o estado atual. |
 | `arquivos/*.html` | **Provavelmente você não consegue ler isto.** | Painéis para o humano (não-técnico). `arquivos/` está no `.gitignore` — não existe dentro de um worktree de célula. Se você é root window e consegue ver, é conveniência, nunca fonte de lei. |
 
 **Ordem de leitura para uma sessão nova, root window, sem tarefa ainda definida:**
-este arquivo → `ARMADILHAS.md` (§2 partida rápida) + `armadilhas/INDICE.md` →
+este arquivo → `ARMADILHAS.md` (§2 abertura e contexto direcionado) →
 `docs/decisoes/RETROSPECTIVA-FASE-D.md` (os 8 padrões — leitura curta, evita
 repetir a CATEGORIA de erro que o catálogo já cobre caso a caso) →
 `ARMADILHAS-OPERACAO.md` §1 → `CONSTITUICAO.md` → `RITOS.md` §1 →
@@ -225,12 +225,12 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
 ## 9. Antes de abrir a boca — checklist dos primeiros 5 minutos
 
 1. Este arquivo, inteiro.
-2. `ARMADILHAS.md` §2 (partida rápida) + `armadilhas/INDICE.md` (o mapa das
-   armadilhas — abra só o que casar); `ARMADILHAS-OPERACAO.md` §1 se for maestro
+2. `ARMADILHAS.md` §2 (abertura e contexto direcionado); abra as origens
+   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 se for maestro
    de lote ou for mergear (o que só o humano resolve).
 3. Se a tarefa já é conhecida: `constituicoes/AGENTS.<celula>.md` +
    `services/<celula>/LICOES.md` (se existir).
-4. Rode o baseline (`make ci`) ANTES de tocar qualquer arquivo. Vermelho ⇒
+4. Confira o baseline emitido pela abertura ANTES de tocar qualquer arquivo. Vermelho ⇒
    pare e reporte.
 5. Se não há tarefa definida ainda: rode os comandos da §2 acima para saber
    de fato onde o projeto parou, e pergunte ao humano em vez de assumir.

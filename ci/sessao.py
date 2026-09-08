@@ -1533,7 +1533,7 @@ def contexto_direcionado(
     if not globais:
         limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
                        "confira o checkout e as instruções da sessão antes de editar.")
-    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
+    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md",
                   "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
@@ -1563,6 +1563,9 @@ def contexto_direcionado(
               "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
               "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias."]
     linhas.extend(limites)
+    if not (raiz / "armadilhas/INDICE.md").is_file():
+        linhas.append("Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
+                      "python ci/indice_de_armadilhas.py quando precisar da consulta integral.")
     achados = {}
     for caminho in caminhos:
         try:

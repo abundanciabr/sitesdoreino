@@ -40,9 +40,10 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
 
 ## 3. Construa dentro da cerca
 
-- Leia `armadilhas/INDICE.md` e abra SÓ as entradas que o brief citou ou que
-  casam com a tecnologia que vai tocar. Ler tudo desfaz o motivo do índice.
-- Recupere o pacote pelos alvos e pelo sintoma: `python ci/sessao.py --contexto
+- Confira o contexto direcionado emitido pela abertura e abra as entradas
+  citadas no brief e recuperadas. Para aprofundamento, consulte as origens ou
+  `armadilhas/INDICE.md`; o índice integral não é leitura padrão.
+- Se os alvos ou o sintoma exigirem nova busca: `python ci/sessao.py --contexto
   --sem-container --raiz . --celula <area> --tarefa <slug> --caminho <arquivo> --sintoma "<erro>"`.
   Repita `--caminho` para múltiplos alvos e informe `--aceite`, `--restricao`
   e `--decisao` conforme o brief. Confira origens, ausências e truncamento;

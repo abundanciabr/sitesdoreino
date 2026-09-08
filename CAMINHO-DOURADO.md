@@ -12,9 +12,9 @@
 `celula-template/` (projeto `config/`, apps em `apps/`).
 
 **A memória de campo segue a mesma dieta, desde 23/08/2026.** `ARMADILHAS.md` deixou
-de ser um monólito: cada armadilha é um arquivo em `armadilhas/`, e a regra é **ler
-`armadilhas/INDICE.md` e abrir SÓ a entrada que casa com a sua tarefa** (Ctrl+F pela
-mensagem de erro crua). O que é do humano — §1 precisa-de-você, como se mergeia,
+de ser um monólito: cada armadilha é um arquivo em `armadilhas/`. O contexto direcionado
+na abertura recupera por caminho e sintoma; abra as origens e confira limitações.
+Para aprofundamento, refine a busca ou consulte `armadilhas/INDICE.md`. O que é do humano — §1 precisa-de-você, como se mergeia,
 painéis, §9 dívidas abertas — está fora dessa dieta, em `ARMADILHAS-OPERACAO.md`;
 o que já foi resolvido, em `docs/historico/RESOLVIDAS.md`. **Armadilha nova ao
 terminar o despacho é arquivo NOVO** (`armadilhas/NNN-slug.md`) + `make indice`,
@@ -54,8 +54,8 @@ CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
 PADRÃO: o Padrão de Trabalho (1ª seção do CLAUDE.md) vale nesta tarefa como em
   todas — inclusive a regra 2 (discorde ANTES, em ≤5 linhas, com UMA alternativa
   e o trade-off) e a regra 9 (relatório em 4 títulos, sem enchimento).
-ANTES: ARMADILHAS.md §2 (raiz) + armadilhas/INDICE.md — abra SÓ as entradas que
-  casam com esta tarefa — + services/<celula>/LICOES.md, se existir. Ao terminar,
+ANTES: abertura pelo RITOS §1 + contexto direcionado pelos ALVOS e sintoma;
+  abra as entradas citadas e recuperadas + services/<celula>/LICOES.md, se existir. Ao terminar,
   acrescente o que aprendeu como ARQUIVO NOVO em armadilhas/NNN-slug.md + `make
   indice`; o que só o mantenedor resolve vai na tabela §1 do
   ARMADILHAS-OPERACAO.md E no seu relatório final.
