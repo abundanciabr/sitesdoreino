@@ -112,14 +112,14 @@ Dizer "CI verde" quando você só rodou local é a mesma família de erro que es
 documento inteiro combate. Ver a tabela de escopo em `INVARIANTES.md` ([INV-CI01]).
 **Origem:** PR #22.
 
-### 5.9 Como se mergeia aqui: o agente, pelo portão — nunca pelo site
+### 5.9 Como se integra aqui: pedido à pista pelo portão
 
 **Contexto:** desde 26/08/2026 o botão verde do site só destrava com `muralhas` e
 `ci-celula-gate` verdes (§1, H3 — antes disso ele funcionava com tudo vermelho). Isso
 é o cinto por cima; o caminho continua sendo o portão, porque o botão não confere
-identidade de PR nem registra nada. E desde 22/08/2026 **mergear é trabalho do
-agente** (Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`): não se pede ao
-humano, não se espera janela de atenção.
+identidade de PR nem registra nada. A emenda de 29/08/2026 da CONSTITUICAO
+Lei 4, registro `20260829-006`, atribui o merge à pista. O agente pede pouso;
+ninguém espera uma janela de atenção do mantenedor.
 **O que já custou:** em 19/08/2026 o PR #21 foi mergeado no lugar do #20 — números
 parecidos, recomendações opostas, e nada na tela dizia qual era qual. E a espera
 pelo merge humano custava **mediana 22 min, média 264 min por PR** (medido —
@@ -128,14 +128,13 @@ PLANO-10X, Alavanca 1): era o maior gargalo do projeto inteiro.
 
 ```bash
 python ci/mergear.py 22 --conferir    # os checks acabaram? tudo verde?
-python ci/mergear.py 22 --confirmo 22 # mergeia e confere state=MERGED no GitHub
+python ci/mergear.py 22 --pousar     # encaminha à pista; não declara merge
 ```
 
 Ele mostra **número e título em destaque**, consulta o estado real de cada check e
-recusa se algo não estiver verde. O `--confirmo` exige REPETIR o número do PR — não
-é "s/n", porque o erro que já aconteceu foi de identidade, não de intenção (sem
-`--confirmo`, a pergunta interativa de digitar o número continua existindo, para
-uso humano). Semântica [INV-CI01]: reprovou = `FAIL` (1), não consegui consultar =
+recusa conforme RITOS.md §2, inclusive a exceção explícita de base velha que
+a pista atualiza e testa novamente. `--confirmo` é recusado fora da pista.
+Semântica [INV-CI01]: reprovou = `FAIL` (1), não consegui consultar =
 `ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem
 check é indistinguível de um PR cujos workflows não dispararam. Depois do merge o
 próprio script confere `state=MERGED` — mas o painel e o veredito do run de deploy

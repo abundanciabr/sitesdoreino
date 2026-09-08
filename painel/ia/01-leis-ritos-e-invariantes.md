@@ -40,9 +40,9 @@ nunca vence os documentos abaixo, na ordem:
 | Lei | Nome | O que garante |
 |---|---|---|
 | 1 | Escada da Imposição | Toda regra sobe de esperança → documento → processo → portão mecânico → impossibilidade física. Prosa nova sem mecanismo é "dívida de mecanização". |
-| 2 | As Quatro Muralhas | (1) **Execução** — 1 processo/porta por célula atrás do Traefik; (2) **Dados** — 1 database + 1 role Postgres por célula, cruzar dá `permission denied`; (3) **Código** — 1 sessão = 1 célula = 1 worktree, cercado por `ci/cerca-de-celula.sh`; (4) **Contrato** — só HTTP versionado (`contracts/*.openapi.yaml`, congelado) ou eventos versionados. |
+| 2 | As Quatro Muralhas | (1) **Execução**: 1 processo/porta por célula; (2) **Dados**: database e role isolados; (3) **Código**: worktree por sessão, orçamento de 15 arquivos, matriz de testes de todas as células tocadas (Onda 5, 29/08/2026); (4) **Contrato**: HTTP e eventos versionados, sem acesso ao código ou banco alheio. |
 | 3 | Os Três Pecados e a Virtude | Pecados: importar código de outra célula, ler/escrever banco alheio, duplicar-e-divergir comportamento. Virtude: copiar **dados** (snapshot), nunca comportamento. |
-| 4 | Separação de Poderes | Quem escreve não certifica — CI certifica. **Merge é trabalho do agente** desde 22/08/2026, via `ci/mergear.py` (motivo: gargalo medido de mediana 22min/média 264min por merge esperando humano; GitHub também proíbe autoaprovação de PR próprio com 1 só colaborador). Em caminhos CODEOWNERS, virou "mandato do despacho + anúncio nominal", não bloqueio técnico. |
+| 4 | Separação de Poderes | CI certifica. A emenda de 29/08/2026, registro `20260829-006`, atribui o merge à pista; o agente pede pouso por `ci/mergear.py`. Caminhos CODEOWNERS exigem mandato e anúncio nominal. Revisão independente continua necessária; PR aberto não significa integração nem publicação. |
 | 5 | A Lei das 2h da Manhã | Emergência = rollback, nunca hotfix. **Agentes não têm chave SSH da VPS** — "não é proibição, é inexistência". |
 | 6 | Evidência Falsificável, Não Prosa | "Eu arrumei" não é aceito. Todo trabalho em invariante mostra saída crua de teste-guarda vermelho→verde. |
 | 7 | Zonas Quentes Nascem Vazias | Nenhum arquivo "que toda rota toca"; cada célula tem seus próprios settings/urls/templates/static. Exceção deliberada: `services/pagamentos/core/` (congelado, somente-leitura). |
@@ -57,7 +57,7 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
 ## RITOS.md — os quatro ritos obrigatórios
 
 - **§1 Abertura de sessão (worktree por agente).** Cada sessão nasce em
-  `git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa>`.
+  `make sessao CELULA=<celula> TAREFA=<slug>`, equivalente a `ci/sessao.py`.
   Exige declaração na 1ª linha da 1ª resposta (docs lidos, worktree, branch,
   `git status`, baseline `make ci`). Desde 26/08/2026 isto tem **muralha
   mecânica**: `ci/muralha_pasta_compartilhada.py` (via hooks) recusa qualquer
@@ -68,10 +68,11 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   Caminho Dourado — ler tudo é desperdício, não zelo.
 - **§2 Catraca verde + anti-thrashing** (4 peças): (0) toda mudança nasce em
   branch; (1) todo estado verde vira commit imediato (nunca `git add -A`
-  cego); (2) 2 tentativas falhas seguidas ⇒ `git reset --hard` ao último verde
-  e reportar, em vez de insistir às cegas; (3) testes-guarda são intocáveis;
-  (4) o "fecho da catraca" é o merge pelo agente via `ci/mergear.py <PR>
-  --conferir` e depois `--confirmo <PR>`.
+  cego); (2) 2 tentativas falhas seguidas ⇒ pare, preserve os arquivos e commits
+  e reporte o diagnóstico; (3) testes-guarda são intocáveis;
+  (4) o fecho da catraca é o pedido de pouso após recibo e revisão. A maestro
+  espera os checks com `ci/esperar.py --checks <PR> --teto 20 --e-pousar` e
+  confere a etiqueta. Só a pista executa `--confirmo` e verifica o merge.
 - **§3 Mudança de contrato.** É rito, nunca decisão de uma sessão sozinha —
   exige sessão de arquitetura com o mantenedor presente. PR só toca
   `contracts/` com label `contrato`; o provedor muda primeiro com

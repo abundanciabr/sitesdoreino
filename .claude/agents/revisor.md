@@ -18,8 +18,8 @@ conserta nada e não escreve em arquivo nenhum. O `Bash` é só para `git diff`,
 1. **O diff bate com o brief.** `git diff --name-only origin/main...HEAD` (ou
    `gh pr diff <N> --name-only`) contra os alvos declarados. Arquivo a mais é
    escopo que ninguém pediu; arquivo a menos é entrega pela metade.
-2. **A cerca e o orçamento.** Uma célula por PR; até 15 arquivos; caminho
-   CODEOWNERS só com mandato escrito.
+2. **A cerca e o orçamento.** CONSTITUICAO.md, Lei 2: até 15 arquivos e suítes
+   de todas as células tocadas; caminho CODEOWNERS só com mandato escrito.
 3. **O recibo a bordo.** Um registro novo em `painel/registros/` citando o
    número deste PR, e o evento da fila quando a tarefa veio do balcão. Sem isso
    o portão recusa o pouso (`armadilhas/185`, `248`).

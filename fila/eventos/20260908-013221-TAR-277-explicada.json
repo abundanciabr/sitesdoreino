@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-013221-TAR-277-explicada",
+  "tarefa": "TAR-277",
+  "evento": "explicada",
+  "quando": "2026-09-08T01:32:21+00:00",
+  "quem": "Missão do mantenedor: implementar Fase 1 e realizar auditoria final, 07/09/2026",
+  "o_que_e": "O percurso que os agentes usam para executar e entregar uma tarefa.",
+  "o_que_muda": "Preparação e fechamento retomáveis, contexto pertinente e evidências sem contagem duplicada.",
+  "exemplo": "Uma interrupção retoma a mesma tarefa e o mesmo PR sem declarar testes antigos como aprovação.",
+  "importancia": 90
+}

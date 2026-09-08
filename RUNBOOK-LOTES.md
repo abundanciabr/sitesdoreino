@@ -33,7 +33,7 @@ Variações que funcionam igual:
 - `...um lote menor (3 despachos)` (gasta a franquia mais devagar)
 - `...só o canário` (1 despacho, para ver a esteira rodar de ponta a ponta)
 
-Só isso. A sessão monta, dispara, vigia, **mergeia** e te reporta no fim. As únicas
+Só isso. A sessão monta, dispara, revisa, pede pouso e te reporta no fim. As únicas
 coisas que podem voltar para você são as do §7 (segredos, VPS, contrato) — e virão
 como **um bloco único de colar, com a janela rotulada** (CLAUDE.md).
 
@@ -46,12 +46,13 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 
 **1 lote = N despachos em PARALELO + 1 janela de merge serial no fim.**
 
-- Cada despacho em célula/área **distinta** (a cerca 1 PR = 1 célula é a proteção
-  real — CONSTITUICAO Lei 2.3); cada um em worktree próprio (RITOS §1).
+- Cada despacho tem alvos distintos e worktree próprio (RITOS §1). Prefira
+  uma célula por PR; CONSTITUICAO Lei 2.3 permite mais de uma, com as suítes
+  de todas as tocadas. O orçamento de 15 arquivos continua.
 - Duas tarefas na MESMA célula não rodam em paralelo: viram **fila interna**
   (uma atrás da outra, no mesmo agente ou em agentes sucessivos).
-- Os merges saem **serial, um a um, pelo portão** (RITOS §2 peça 4) — executados
-  pela maestro, nunca pedidos ao humano.
+- Os merges saem **serial, um a um, pela pista** (RITOS §2 peça 4). A maestro
+  encaminha o PR revisado e confere o resultado observado.
 
 ## §2 — Montagem (antes de disparar qualquer agente)
 
@@ -59,7 +60,7 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
    "Precisa de você" — que é CALCULADA dos registros, não uma lista mantida) >
    PLANO-10X (ondas). O pedido dele é o **mandato** —
    inclusive para os caminhos CODEOWNERS que o lote tocar (Lei 4).
-2. **Recorte pela cerca:** 1 PR = 1 célula. Conte os arquivos de cada despacho NO
+2. **Recorte por responsabilidade:** prefira uma célula por PR. Conte os arquivos NO
    PAPEL antes de escrever o brief (orçamento de 15 é portão mecânico — ARMADILHAS §5.1).
 3. **Brief fechado por despacho** (template em CAMINHO-DOURADO §2, que já
    carrega a linha do Padrão de Trabalho): célula, arquivos-
@@ -103,17 +104,23 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   sobrevivem, nunca se descarta a alheia.
 - **Agente parado ≠ lote parado.** A maestro segue com os demais e volta ao parado.
 - **Regra de parada vale dentro do lote:** 2 correções consecutivas falharam ⇒ o
-  agente faz `git reset --hard <último-verde>` e reporta (RITOS §2.2). A maestro
-  decide: re-briefar com diagnóstico melhor OU tirar o despacho do lote.
+  agente para. Nesse ponto, preserve os arquivos e commits e reporte o
+  diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
+  retira do lote.
 
-## §5 — A janela de merge (serial, um a um, na ordem do §3)
+## §5 — Encaminhamento à pista (na ordem do §3)
 
 Para cada PR verde, na ordem canário → comuns → dinheiro:
 
 ```bash
-python ci/mergear.py <N> --conferir     # os checks acabaram? tudo verde?
-python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
+python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
 ```
+
+Quem arma a espera é a maestro, pelo Monitor disponível. Confira a etiqueta
+`pousar` antes de encerrar; uma espera encerrada sem etiqueta não encaminhou
+nada. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+`20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
+PR aberto, revisão aprovada, integração e publicação são estados distintos.
 
 - Vermelho, pendente, ausente ou ERROR ⇒ **não mergeia**: conserta ou fica fora do
   lote. O botão do site não é caminho (Lei 4).
@@ -1012,6 +1019,6 @@ ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar c
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
-CLAUDE.md (merge pelo agente; deploy pós-merge), CAMINHO-DOURADO.md §2 (template de
+CLAUDE.md (pedido de pouso; deploy pós-merge), CAMINHO-DOURADO.md §2 (template de
 brief), PLANO-10X (Alavancas 1, 2 e 5; anti-metas), ARMADILHAS-OPERACAO.md (§5.9 — como
 se mergeia) e `armadilhas/` (§5.10, §7.6, §8.1 — abra pelo `armadilhas/INDICE.md`).*

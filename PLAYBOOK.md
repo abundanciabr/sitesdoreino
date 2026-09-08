@@ -90,40 +90,12 @@ prova a ausência do trabalho** — prova apenas que o certificado não foi
 emitido. As duas coisas precisam ser fechadas, e confundi-las custa refazer
 trabalho que já existe.
 
-**Gap conhecido, aberto, BLOQUEADO (não é bug para "consertar", e não é escolha):**
-não existe branch protection nativa do GitHub neste repositório —
-`gh api .../branches/main/protection` responde `403 "Upgrade to GitHub Pro or
-make this repository public"`.
-
-> **Não recomende "assine o GitHub Pro".** Atualizado em 21/08/2026: o cartão do
-> mantenedor **não é aceito pelo GitHub** e não há outra forma de pagamento —
-> a porta está fechada por impossibilidade, não por decisão de custo. Quatro
-> consultorias externas independentes recomendaram exatamente isso sem saber
-> da restrição; o conselho é morto. As saídas vivas estão em
-> `docs/decisoes/SINTESE-E-PLANO.md` §1 — a imediata é um **portão no workflow
-> de deploy** (consultar `check-runs` do commit e abortar se não estiver verde:
-> não protege a `main`, mas protege a VPS e o cliente, que é onde dói).
-
-Consequências diretas para qualquer agente:
-
-- Push direto na `main` **não é bloqueado pelo GitHub** — só por
-  `.githooks/pre-push` (`core.hooksPath`), que vale só nesta máquina/clone.
-- "Require review from Code Owners" **não está ativo** — `.github/CODEOWNERS`
-  existe mas é só sugestão de revisor até essa opção ser ligada.
-- A mitigação real hoje: `python ci/mergear.py <PR>` (recusa mergear PR com
-  check vermelho, quando o merge sai do terminal) + workflow `alarme-main`
-  (abre issue se a `main` quebrar DEPOIS do fato — alarme, não portão).
-- **Nunca trate um merge ou um push como seguro só porque "o GitHub deixou"** —
-  deixar passar é o comportamento esperado enquanto este item não for resolvido.
-  Detalhe completo: `ARMADILHAS-OPERACAO.md` §1 item H3, `INVARIANTES.md` (seção
-  "A cadeia de merge não está fechada").
-
-**Atrito H6, resolvido em 22/08/2026:** `ci/mergear.py` não usa mais `--yes`
-(o `gh` 2.97.0 desta máquina não tem a flag) e ganhou o caminho não-interativo
-`--confirmo <N>`, com conferência `state=MERGED` embutida — o comando que o
-script imprime voltou a ser o comando que funciona. E, desde a mesma data,
-**mergear é trabalho do agente** (Lei 4; RITOS.md §2 peça 4):
-`python ci/mergear.py <N> --confirmo <N>`, nunca o botão do site.
+**Proteção e integração:** o estado histórico acima não autoriza operações.
+RITOS.md §2 registra a proteção da `main` e o comando para conferir as regras
+no servidor. A emenda de 29/08/2026 da CONSTITUICAO Lei 4 atribui o merge à
+pista: o agente usa `python ci/mergear.py <N> --pousar`; `--confirmo` é
+reservado à pista. Siga RITOS.md §2 para os checks, recibo e encaminhamento,
+e CLAUDE.md para o veredito do deploy. Falha ao consultar não é aprovação.
 
 ## 3. As 8 células
 
@@ -138,13 +110,9 @@ script imprime voltou a ser o comando que funciona. E, desde a mesma data,
 | `quiz` | Fluxo de perguntas, pontuação server-side, emite `quiz.completado.v1` | `quiz_db` | auto (CI verde) | ✅ Fase D — PR #28 (resolução de site LOCAL, decisão aceita — ver `services/quiz/LICOES.md`) |
 | `funil` | Vitrine/landing mínima, stateless, preserva UTM até o checkout | sem banco (stateless) | auto (CI verde) | ✅ Fase D — PR #30 |
 
-Nenhuma área tem merge humano desde 22/08/2026
-(`docs/decisoes/DECISAO-merge-pelo-agente.md`): o agente mergeia tudo pelo portão
-(`ci/mergear.py`), inclusive `contracts/`, `infra/`, `ci/`, `.github/` e os
-arquivos de raiz que são lei (`CONSTITUICAO.md`, `INVARIANTES.md`, `RITOS.md`,
-`CAMINHO-DOURADO.md`) — nesses caminhos CODEOWNERS, só com mandato do despacho e
-com anúncio nominal no relatório (Lei 4). O `.github/CODEOWNERS` virou mapa de
-jurisdição (diz onde o anúncio é obrigatório), não trava.
+A coluna de merge da tabela é histórica. A operação vigente é a pista,
+conforme CONSTITUICAO Lei 4 e RITOS.md §2. Caminhos CODEOWNERS continuam
+exigindo mandato do despacho e anúncio nominal dos merges observados.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 
@@ -153,11 +121,13 @@ jurisdição (diz onde o anúncio é obrigatório), não trava.
 > como N delas rodam juntas e como a janela de merge fecha o lote.
 
 ```bash
-git fetch origin
-git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
-cd ../wt-<celula>-<tarefa>/services/<celula>
-make ci   # baseline PRECISA estar verde antes de tocar qualquer arquivo
+make sessao CELULA=<celula> TAREFA=<slug>
 ```
+
+Sem make: `python ci/sessao.py --celula <celula> --tarefa <slug>`. Entre na
+bancada informada e confira o baseline e o caminho do log. A retomada usa a
+mesma entrada. Para tarefa da fila e área sem serviço, siga RITOS.md §1;
+`--sem-container` não mede baseline, portanto rode os testes dos alvos.
 
 **Primeira linha da primeira resposta do agente** (obrigatória):
 > "Li `CONSTITUICAO.md` e `constituicoes/AGENTS.<celula>.md`. Worktree:
@@ -169,15 +139,15 @@ quebrada não é escopo de sessão de feature.
 
 Regras de anti-thrashing que valem sempre (RITOS.md §2): commit a cada estado
 verde (nunca `git add -A`); duas tentativas de correção falharam ⇒
-`git reset --hard <último-verde>` e reporte — a terceira tentativa é onde
-nascem labirintos; teste-guarda é intocável (nunca deletar/afrouxar para
-passar — se parecer errado, PARE e reporte).
+pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
+terceira tentativa sem novo despacho. Teste-guarda é intocável (nunca
+deletar ou afrouxar para passar; se parecer errado, PARE e reporte).
 
 ## 5. As leis que não se discute (CONSTITUICAO.md, resumo)
 
 - **4 muralhas:** execução (1 processo/porta por célula), dados (1 database +
   1 role Postgres por célula — cruzar é `permission denied`, não "proibido"),
-  código (1 sessão = 1 célula = 1 worktree), contrato (só HTTP versionado ou
+  código (1 sessão = 1 worktree; suítes das células tocadas), contrato (só HTTP versionado ou
   evento versionado entre células).
 - **3 pecados:** importar código de outra célula; ler/escrever banco de outra
   célula; duplicar-e-divergir comportamento. Virtude: copiar dados (snapshot).

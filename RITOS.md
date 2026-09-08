@@ -19,11 +19,17 @@ só, com as duas suítes verdes. Se ele sair em PRs encadeados, declare a ordem 
 `Depende-de: #N` na descrição: o portão cobra.
 
 ```bash
-# Na raiz do clone principal (você, ou o script de despacho):
-git fetch origin
-git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
-cd ../wt-<celula>-<tarefa>/services/<celula>    # ⟵ a sessão do agente ABRE AQUI
+# Na raiz: escolha uma das entradas equivalentes.
+make sessao CELULA=<celula> TAREFA=<slug>
+python ci/sessao.py --celula <celula> --tarefa <slug>
 ```
+
+Entre no caminho absoluto informado. Acrescente `TAR=<numero>` ou
+`--tar <numero>` se houver tarefa da fila; a abertura reivindica depois de
+criar a bancada. Área sem serviço usa `SEM_CONTAINER=1` ou `--sem-container`:
+nesse caso o baseline fica não medido e os testes dos alvos são necessários.
+Repita a mesma entrada para retomar, sem apagar a bancada. Os logs completos
+ficam no caminho que a abertura informa; a declaração só descreve o observado.
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
@@ -91,8 +97,8 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
    revise `git diff --cached --name-only` antes de commitar.
 2. **Regra de parada:** DUAS tentativas consecutivas de correção falharam ⇒
-   `git reset --hard <último-verde>` ⇒ reportar com diagnóstico. A terceira tentativa
-   é onde nascem labirintos — ela não existe neste reino.
+   pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
+   terceira tentativa sem novo despacho.
 3. **Intocabilidade dos testes:** proibido deletar, desativar, comentar ou afrouxar
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não

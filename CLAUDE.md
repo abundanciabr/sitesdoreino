@@ -195,7 +195,7 @@ mãos (instalar, plano pago, permissão): registro `pendencia` com
 Na pasta principal, nunca edite nem mude o estado do git. Crie a sua bancada:
 
 ```bash
-git fetch origin && git worktree add ../wt-<area>-<tarefa> -b agent/<area>/<tarefa> origin/main
+python ci/sessao.py --celula <area> --tarefa <slug> --sem-container
 ```
 
 No principal ficam livres leituras, `git fetch`, `git worktree` e `gh`; com a
@@ -208,8 +208,9 @@ quando é seguro.
 ## Todo pedido do mantenedor é um lote
 
 A sessão que recebe um pedido dele É a maestro. Ela divide o pedido em pedaços
-independentes (1 PR = 1 célula, orçamento de 15 arquivos de código; `painel/`
-e `fila/` não contam), dispara um sub-agente por pedaço com a ficha `despacho`,
+independentes (prefira uma célula por PR; CONSTITUICAO Lei 2 exige as suítes
+de todas as tocadas; teto de 15 arquivos, fora `painel/` e `fila/`), dispara
+um sub-agente por pedaço com a ficha `despacho`,
 em paralelo, e mantém em série só o que depende de outro pedaço. Enquanto os
 checks rodam, o `revisor` lê o diff e o `escrivao` escreve registro, armadilha
 e evento da fila. A maestro arma uma espera por PR, consolida um placar só e é
