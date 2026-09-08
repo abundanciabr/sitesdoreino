@@ -49,6 +49,8 @@ class Duble:
     def __call__(self, comando: list[str], raiz: Path | None = None, **opcoes) -> str:
         self.chamadas.append(list(comando))
         linha = " ".join(comando)
+        if comando[:3] == ["git", "status", "--porcelain=v1"]:
+            return ""
         if self.explode_em and self.explode_em in linha:
             raise pr.ErroDeInstrumentacao(
                 f"o comando falhou: {linha}", "exit 1\n(saída do dublê)"
@@ -621,6 +623,102 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo)
         assert not logs
     assert (raiz/'necessario.py').exists()
     assert len(git('worktree','list','--porcelain').split('worktree '))-1 == 2
+
+
+def _repositorio_de_validacao(tmp_path):
+    import subprocess
+
+    origem = tmp_path / "origem-407"
+    subprocess.run(["git", "init", str(origem)], check=True, capture_output=True)
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=origem, check=True,
+                              capture_output=True, text=True).stdout.strip()
+    git("config", "user.name", "Teste")
+    git("config", "user.email", "teste@example.com")
+    (origem / "fonte.py").write_text("valor = 1\n", encoding="utf-8")
+    (origem / "troca.py").write_text(
+        "import subprocess, sys\n"
+        "subprocess.run(['git', 'checkout', '--detach', sys.argv[1]], check=True)\n",
+        encoding="utf-8",
+    )
+    git("add", ".")
+    git("commit", "-m", "bom")
+    correto = git("rev-parse", "HEAD")
+    (origem / "fonte.py").write_text("valor = 2\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "outra revisao")
+    outro = git("rev-parse", "HEAD")
+    raiz = tmp_path / "bancada-407"
+    git("worktree", "add", "-b", "agent/ci/prova-407", str(raiz), correto)
+    return origem, raiz, correto, outro
+
+
+def test_validacao_407_aceita_revisao_correta_e_arquivos_temporarios(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+    provas = pr._validar(
+        raiz, correto, pr.rodar,
+        [[sys.executable, "-c", "from pathlib import Path; p=Path('temp.txt'); p.write_text('ok'); assert p.read_text() == 'ok'"]],
+        lambda *_: None,
+    )
+
+    assert len(provas) == 1
+
+
+def test_validacao_407_recusa_troca_de_revisao_mesmo_com_exit_zero(tmp_path):
+    _, raiz, correto, outro = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="trocou a revisão"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "troca.py", outro]],
+            lambda *_: None,
+        )
+
+
+def test_validacao_407_recusa_alteracao_de_fonte_rastreada(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="alterou fontes rastreadas"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "-c", "from pathlib import Path; Path('fonte.py').write_text('quebrado')"]],
+            lambda *_: None,
+        )
+
+
+def test_validacao_407_recusa_fonte_nao_rastreada_de_injecao(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "-c", "from pathlib import Path; Path('conftest.py').write_text('')"]],
+            lambda *_: None,
+        )
+
+
+def test_retomada_407_nao_reutiliza_prova_invalidada(tmp_path):
+    raiz = bancada(tmp_path)
+    primeira = Duble(RESPOSTAS_FELIZES)
+    mutou = False
+
+    def executar_primeira(comando, cwd, **opcoes):
+        nonlocal mutou
+        if comando == ["pytest", "ci/tests"] and "log" in opcoes:
+            mutou = True
+            return "passo verde\n"
+        if comando == ["git", "rev-parse", "HEAD"] and mutou and cwd != raiz:
+            return "c" * 40
+        return primeira(comando, cwd, **opcoes)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="trocou a revisão"):
+        pr.abrir(raiz, pedido(raiz), rodar=executar_primeira, hoje=HOJE)
+
+    segunda = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, continuar=True), rodar=segunda, hoje=HOJE)
+
+    assert segunda.linhas.count("pytest ci/tests") == 2
+    assert segunda.pediu("git worktree add")
 
 
 def test_log_privado_preserva_stdout_stderr_e_redige_segredos(tmp_path):
