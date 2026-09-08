@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-005-a-tela-de-estrutura-do-admin-esta-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "A tela de colar estrutura do curso passou pelo deploy",
+  detalhe: "O PR 1371 foi mergeado e o deploy-celula 34173301227 terminou com sucesso. A celula admin subiu com a tela que cola os modulos e as aulas de um curso, e com o link Modulos e aulas na lista de cursos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34173301227",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-002-a-estrutura-do-curso-entra-pela-tela",
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
