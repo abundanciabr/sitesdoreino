@@ -9,13 +9,12 @@ tarefa real já autorizada. A avaliação comparativa continua inconclusiva,
 porque existe uma observação depois, nenhuma observação antes, nenhum par e
 nenhuma auditoria independente dos resultados.
 
-Na abertura desta retomada, a saída era `instrumentacao: parcial` porque os
-2.445 eventos encontrados eram históricos de outras fases e não havia nenhum
-registro `tarefa_medida`. Isso não significava erro de leitura, nem ausência
-de trabalho no projeto. Significava que o instrumento não tinha uma unidade
-Fase 4 reconhecida. Depois da execução de TAR-280, a saída passou a
-`instrumentacao: implementada`: uma fonte operacional escreveu duas
-observações da mesma tentativa e o analisador consolidou uma tarefa real.
+Na abertura desta retomada, a saída confundia instrumentação implementada com
+amostra disponível. A distinção agora é explícita: `instrumentacao:
+implementada` informa que o caminho escreve e lê a unidade Fase 4;
+`amostra_disponivel` informa se há observações reais elegíveis. Depois da
+execução de TAR-280, há uma tarefa real reconhecida, mas a avaliação continua
+inconclusiva por não haver condição antes nem par válido.
 
 O cenário controlado da TAR-282 continua fora da produtividade operacional.
 Os seus 17 testes verdes comprovam as regras do analisador, mas não entram no
@@ -26,34 +25,34 @@ caderno privado e não formam amostra.
 Fontes consultadas:
 
 - `ci/telemetria.py`, leitor e registrador do instrumento;
-- `.git/telemetria-dos-robos/*.jsonl`, 190 arquivos privados;
-- `ci/analise_fase4.py`, revisão da análise `fase4-2026-09-08-1`;
+- `.git/telemetria-dos-robos/*.jsonl`, 199 arquivos privados;
+- `ci/analise_fase4.py`, revisão da análise `fase4-2026-09-08-2`;
 - protocolo em `docs/decisoes/PROTOCOLO-FASE4-MEDICAO.md`;
 - fila, reserva e evento de execução da TAR-280;
 - testes focais do analisador, do registrador e do percurso.
 
-Período considerado: 2026-08-30T01:41:24Z a 2026-09-08T20:15:47Z.
+Período considerado: 2026-08-30T01:41:24Z a 2026-09-08T21:28:34Z.
 Revisão do instrumento registrada na tarefa: `bbe1036d0f8fb5b3e434fe36bc57ab7eee2f810e`.
 Hash da entrada usada na análise: `44cef42c07ac6c5e8325cab0e512a71aa8bd56e722f9df9b9dc4619d8bf9025c`.
 
 | Categoria | Quantidade | Interpretação |
 |---|---:|---|
-| Registros encontrados | 2.447 | Todas as linhas legíveis do caderno privado |
+| Registros encontrados | 2.519 | Todas as linhas legíveis do caderno privado |
 | Registros `tarefa_medida` | 2 | Abertura e fechamento da mesma TAR-280 |
 | Tarefas consolidadas | 1 | A repetição não virou tarefa nova |
 | Sintéticos excluídos | 0 na fonte real | O teste que prova a exclusão passou; fixture não entra no caderno |
 | Reais reconhecidos | 2 registros, 1 tarefa | Fonte `registro-operacional-autorizado` |
 | Reais inelegíveis pelo protocolo | 0 | Nenhum registro real foi rejeitado por elegibilidade |
-| Reais incompletos | 1 | A observação inicial pendente não tinha resultado final |
+| Reais incompletos | 0 | O estado pendente é válido quando o início existe e o fim ainda não existe |
 | Erros de leitura | 0 | 0 arquivos ilegíveis e 0 linhas inválidas |
 | Erros de correlação ou validação | 0 | Nenhum `tarefa_medida` real foi recusado por identidade |
-| Históricos de outras fases ou formatos | 2.445 | Não carregam o contrato completo da Fase 4 |
+| Históricos de outras fases ou formatos | 2.517 | Não carregam o contrato completo da Fase 4 |
 
 O diagnóstico diferencia os cinco casos pedidos. Não houve caso A de caderno
 vazio: houve leitura de histórico. O caso B foi demonstrado nos testes, com a
-fonte sintética excluída antes da amostra. Os casos C e E foram zero. O caso D
-ocorreu uma vez na abertura pendente e foi preservado como tentativa da mesma
-tarefa, sem preencher dados ausentes.
+fonte sintética excluída antes da amostra. Os casos C e E foram zero. A abertura
+pendente foi preservada como tentativa da mesma tarefa, e as métricas ausentes
+ficaram nulas sem virar zero.
 
 ## C. Tarefa real acompanhada
 
@@ -90,7 +89,7 @@ conclusão de benefício e preserva o custo desconhecido.
 |---|---|---|---|
 | F4-01 Prontidão dos pilotos | parcial | Fases 1, 2 e 3 têm revisões e publicações históricas identificadas | jornada comparável por piloto |
 | F4-02 Instrumentação | atendido para coleta ponta a ponta | TAR-280 reconhecida e consolidada; fonte e revisão aparecem no relatório | mais tarefas operacionais |
-| F4-03 Protocolo | atendido | protocolo congelado antes da análise, revisão `fase4-2026-09-08-1` | nenhuma |
+| F4-03 Protocolo | atendido | protocolo congelado antes da análise, revisão `fase4-2026-09-08-2` | nenhuma |
 | F4-04 Identidade e deduplicação | atendido neste caso | 2 tentativas observadas, 1 tarefa consolidada, retomada preservada | repetir em outras tarefas |
 | F4-05 Amostra e cálculo | parcial | Fase 1: depois 1, antes 0, pares 0; Fases 2 e 3: 0 | 20 por condição e 10 pares válidos |
 | F4-06 Qualidade e segurança | parcial | testes cobrem ausência, falha, dado ausente e violação | observações operacionais completas |
@@ -125,7 +124,7 @@ de base fictícia.
 O custo da implementação e validação foi mantido separado da produtividade:
 
 - TAR-282 ficou fora da amostra operacional;
-- os 63 testes focais desta retomada registram a validação do instrumento,
+- os testes focais desta retomada registram a validação do instrumento,
   não ganho de piloto;
 - a TAR-280 é identificada como coleta operacional autorizada, não como
   comparação de eficiência geral;
@@ -160,16 +159,17 @@ comparativos fica para quando houver dados suficientes.
 ## I. Comandos e saídas reais
 
 ```text
-python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_metricas_percurso.py -q
-63 passed in 0.56s
+python -m pytest ci/tests/test_pr.py ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_fila.py ci/tests/test_sessao.py -q
+339 passed in 79.40s
 
 python ci/registrar_tarefa_fase4.py --manifesto medicao-tar280.json
 PASS tarefa registrada: id=c4902a38e2edd7578518281be355ebd3a0fb17d5420eae5b0e5b8de53043a92a
 
 python ci/analise_fase4.py --local
 instrumentacao: implementada
+amostra_disponivel: disponível
 avaliacao: inconclusiva
-registros_encontrados: 2447
+registros_encontrados: 2519
 registros_tarefa_medida: 2
 tarefas_validas: 1
 tentativas_validas: 2
