@@ -25,13 +25,14 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas economia
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
 	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
 	@echo "  make boletim                    o que o mundo e AGORA (antes de decidir)"
 	@echo "  make reservar SUP=registro      o servidor DA o numero (nao adivinhe)"
+	@echo "  make economia TIPO=x OBJETIVO=\"...\" ALVO=arquivo   gera brief curto"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
 	@echo "  make ci                a mudanca respeita as invariantes?"
 	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
@@ -76,6 +77,12 @@ reservar:       ## make reservar SUP=registro — o servidor DA o numero (nao ad
 
 reservas:       ## o que esta reservado agora, lido do servidor
 	$(PYTHON) ci/reservar.py listar
+
+economia:       ## make economia TIPO=revisao OBJETIVO="..." ALVO=ci/x.py [ARMADILHA=367]
+	@test -n "$(TIPO)" || { echo "ERROR: informe TIPO=arquitetura|produto|contrato|revisao|escrita|diagnostico|teste|texto|espera"; exit 2; }
+	@test -n "$(OBJETIVO)" || { echo "ERROR: informe OBJETIVO=\"o trabalho em uma frase\""; exit 2; }
+	@test -n "$(ALVO)" || { echo "ERROR: informe ALVO=<arquivo>"; exit 2; }
+	$(PYTHON) ci/economia_da_fabrica.py brief --tipo $(TIPO) --objetivo "$(OBJETIVO)" --alvo "$(ALVO)" $(if $(ARMADILHA),--armadilha $(ARMADILHA))
 
 indice:         ## regenera armadilhas/INDICE.md (rode ao criar uma entrada nova)
 	$(PYTHON) ci/indice_de_armadilhas.py

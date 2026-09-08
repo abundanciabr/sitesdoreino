@@ -5,11 +5,14 @@ texto logo abaixo delas (só quando essa peça tem texto: botão que abre um mod
 vazio é defeito), o vídeo por link (só YouTube e Vimeo embutidos; o resto é
 link), a lista de pausas com um formulário
 por pausa, o quiz com a resposta-modelo escondida até a pessoa gravar a
-autoavaliação, e o checkpoint (degrau 2.1): o formulário de entrega por link,
-fechado até todas as pausas terem registro ([INV-CUR-P3]) e enquanto a porta
-não está em produção ou devolvida; depois de entregar, "recebido em, revisão
-até" e nada de formulário até o laudo devolver. Quem decide tudo isso é a
-view, em `checkpoint`; aqui só se desenha.
+autoavaliação, e o fim da aula, que depende da regra do curso: no curso por
+laudo, o checkpoint (degrau 2.1), o formulário de entrega por link, fechado até
+todas as pausas terem registro ([INV-CUR-P3]) e enquanto a porta não está em
+produção ou devolvida; depois de entregar, "recebido em, revisão até" e nada
+de formulário até o laudo devolver. No curso de progressão livre (TAR-270),
+o botão "Concluir esta aula", fechado pela mesma regra das pausas. Um curso
+tem UMA das duas seções; a outra chega vazia e não se desenha. Quem decide
+tudo isso é a view, em `checkpoint` e `conclusao`; aqui só se desenha.
 
 Formulário normal com melhoria progressiva: nenhum caminho existe só com
 script. O HTML das peças vem do renderizador da casa (`apps/core/markdown.py`),
@@ -110,7 +113,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
     {% for resposta in pausa.registro %}<dt>{{ resposta.nome }}</dt><dd>{{ resposta.texto }}</dd>{% endfor %}
   </dl>
   {% else %}
-  <form method="post" action="{% url 'registrar-pausa' aula.numero pausa.ordem %}">
+  <form method="post" action="{% url 'registrar-pausa-do-curso' aula.curso.slug aula.bloco.parte aula.numero pausa.ordem %}">
     {% csrf_token %}
     {% for campo in pausa.campos %}
     <label>{{ campo.nome }}
@@ -140,7 +143,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% else %}
   <p class="miudo">Responda com as suas palavras. A resposta-modelo só abre depois
   que você gravar, para a autoavaliação valer.</p>
-  <form method="post" action="{% url 'gravar-autoavaliacao' aula.numero %}">
+  <form method="post" action="{% url 'gravar-autoavaliacao-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
     <ol class="perguntas">
       {% for item in quiz.perguntas %}
@@ -157,7 +160,21 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 </section>
 {% endif %}
 
-<section class="checkpoint" id="checkpoint">
+{% if conclusao %}<section class="concluir" id="concluir">
+  <h2>Concluir a aula</h2>
+  {% if conclusao.feita %}
+  <p class="selo">Aula concluída.</p>
+  {% elif conclusao.fechado_por %}
+  <p class="selo fechado">{{ conclusao.fechado_por }}</p>
+  {% else %}
+  <p class="selo">Todas as pausas desta aula estão registradas.</p>
+  <p>Terminou? Conclua a aula, e a próxima abre na hora.</p>
+  <form method="post" action="{% url 'concluir-aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
+    {% csrf_token %}
+    <button type="submit">Concluir esta aula</button>
+  </form>
+  {% endif %}
+</section>{% endif %}{% if checkpoint %}<section class="checkpoint" id="checkpoint">
   <h2>Checkpoint</h2>
   {% if aceito_quando %}
   <p>A encomenda está aceita quando:</p>
@@ -184,7 +201,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% else %}
   <p>Entregue por link: a plataforma não recebe arquivo. Suba o arquivo e as prévias onde você quiser e cole os endereços aqui.</p>
   {% endif %}
-  <form method="post" action="{% url 'entregar-checkpoint' aula.numero %}">
+  <form method="post" action="{% url 'entregar-checkpoint-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
     <h3>Os links</h3>
     <label>Arquivo (obrigatório)
@@ -231,5 +248,5 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% elif checkpoint.fechado_por %}
   <p class="selo fechado">{{ checkpoint.fechado_por }}</p>
   {% endif %}
-</section>
+</section>{% endif %}
 {% endblock %}

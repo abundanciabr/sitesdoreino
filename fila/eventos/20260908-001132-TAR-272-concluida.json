@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260908-001132-TAR-272-concluida",
+  "tarefa": "TAR-272",
+  "evento": "concluida",
+  "quando": "2026-09-08T00:11:32+00:00",
+  "quem": "maestro-lote-cursos-20260907",
+  "evidencia": "PR em preparo: /admin/escola/<curso>/estrutura/ com caixa de colar, Prever sem gravar, Importar pela porta putCourseStructure, parser com linha do erro, recusa 422 em portugues, link na lista de cursos e auditoria propria. Teste focado: 41 passed.",
+  "verificado_em": "2026-09-08"
+}

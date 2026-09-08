@@ -247,6 +247,18 @@ class Registro(models.Model):
     # `LICOES.md` (28/08/2026).
     CRIAR_CURSO = "criar_curso"
     EDITAR_CURSO = "editar_curso"
+    # [ESTRUTURA] 07/09/2026 (TAR-272): a tela que da ao curso a lista dos
+    # modulos e das aulas dele, colada de uma vez. Verbo PROPRIO, e nao um
+    # `editar_curso` reaproveitado: aquele troca o produto ou a regra de
+    # avanco, e este cria (e pode APAGAR) as aulas por onde a turma inteira
+    # passa. E o unico gesto desta area que apaga aula, e quem ler esta tabela
+    # em meses precisa achar essas linhas sem interpretar detalhe.
+    #
+    # O `detalhe` guarda QUANTOS modulos e aulas foram mandados e as contagens
+    # que a porta devolveu, NUNCA os nomes: o nome de cada aula e obra do
+    # mantenedor, e obra nao entra numa tabela append-only (`LICOES.md`,
+    # 28/08/2026).
+    IMPORTAR_ESTRUTURA = "importar_estrutura"
     # [FILA] 06/09/2026: o botao de excluir da aba "Os robos"
     # (`/admin/caixa/robos/`). Verbo proprio, e o alvo dele nao e uma pessoa nem
     # um texto: e um pedido de TRABALHO. Tirar um da fila e o unico gesto desta
@@ -322,6 +334,7 @@ class Registro(models.Model):
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
         (CRIAR_CURSO, "criar um curso novo na escola"),
         (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
+        (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
     ]

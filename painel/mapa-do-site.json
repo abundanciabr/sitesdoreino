@@ -437,6 +437,50 @@
     },
     {
       "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Registrar uma pausa da aula pelo endereço completo",
+      "descricao": "O mesmo gesto de registrar uma pausa, agora no endereço que diz curso e Parte. Não é uma página: quem registra volta para a aula certa, sem depender de haver um único curso no site.",
+      "exemplo": "/cursos/profissional/parte-1/E00/pausas/1"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Gravar a autoavaliacao pelo endereço completo",
+      "descricao": "O mesmo gesto de gravar o quiz, agora no endereço que diz curso e Parte. Não é uma página: quem grava volta para a aula certa, e o endereço antigo continua só para compatibilidade.",
+      "exemplo": "/cursos/profissional/parte-1/E00/autoavaliacao"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Entregar o checkpoint pelo endereço completo",
+      "descricao": "O mesmo gesto de entregar o trabalho por link, agora no endereço que diz curso e Parte. Em curso livre, a própria sala recusa esta entrega e mostra que a aula conclui pelo botão.",
+      "exemplo": "/cursos/profissional/parte-1/E00/checkpoint"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Concluir uma aula em curso livre",
+      "descricao": "O gesto do curso de progressao livre: depois das pausas registradas, o aluno conclui a aula e a proxima abre. No curso por laudo, a rota recusa em portugues.",
+      "exemplo": "/cursos/roblox/parte-1/1/concluir"
+    },
+    {
+      "celula": "cursos",
       "rota": "<str:numero>",
       "endereco": "/cursos/<str:numero>",
       "alcance": "publico",
@@ -477,6 +521,17 @@
       "titulo": "Entregar o checkpoint da aula",
       "descricao": "O gesto de entregar o trabalho por link: o arquivo, as prévias, o README do pacote e a autoavaliação. Não é uma página: quem entrega volta para a aula, no checkpoint, com 'recebido em, revisão até'. Só abre depois de todas as pausas registradas, e só enquanto a aula aceita entrega (em produção, ou devolvida para reenviar).",
       "exemplo": "/cursos/E00/checkpoint"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<str:numero>/concluir",
+      "endereco": "/cursos/<str:numero>/concluir",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Concluir uma aula pelo endereço antigo",
+      "descricao": "O gesto de concluir aula em curso livre no endereço curto antigo. Continua existindo por compatibilidade, mas com mais de um curso o endereço completo, com curso e Parte, é o caminho que a tela usa.",
+      "exemplo": "/cursos/1/concluir"
     },
     {
       "celula": "cursos",
@@ -1316,6 +1371,37 @@
       "gesto": true,
       "titulo": "Gravar as peças do capítulo",
       "descricao": "Não é uma página: é o que acontece ao apertar Importar depois de conferir a prévia. Grava as peças reconhecidas na encomenda, sem tocar no que já estava escrito."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Os módulos e as aulas do curso",
+      "descricao": "Uma área de colar e dois botões. Escreva a lista dos módulos do curso e das aulas de cada um, num texto simples, e o curso ganha esse esqueleto de uma vez. É por aqui que um curso recém-criado, que nasce sem nenhuma aula, passa a ter aulas para escrever. Prever mostra o que aconteceria, aula por aula, sem gravar nada.",
+      "observacao": "O nome que você já escreveu numa aula nunca é sobrescrito, e o conteúdo dela nunca é tocado: esta tela mexe só no esqueleto. Aula que sumir da lista é apagada, e aula por onde algum aluno passou a sala se recusa a apagar. Grava na célula cursos pela porta de máquina, nunca no banco dela.",
+      "exemplo": "/admin/escola/profissional/estrutura/"
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Prever o que a lista de módulos faria",
+      "descricao": "Não é uma página: é o que acontece ao apertar Prever. Lê o texto colado, compara com as aulas que o curso já tem e mostra o que seria criado, o que ficaria como está e o que sumiria. Nada é gravado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Importar os módulos e as aulas para o curso",
+      "descricao": "Não é uma página: é o que acontece ao apertar Importar. Grava o esqueleto inteiro numa ida só, e a sala de aula reconcilia tudo de uma vez: ou a estrutura inteira entra, ou nada entra."
     },
     {
       "celula": "admin",

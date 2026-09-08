@@ -41,11 +41,16 @@ pytestmark = pytest.mark.django_db
 AS_ROTAS_DA_CELULA = {
     "estatico",
     "registrar-pausa",
+    "registrar-pausa-do-curso",
     "gravar-autoavaliacao",
+    "gravar-autoavaliacao-do-curso",
     # O checkpoint (degrau 2.1, TAR-155): o aluno entrega por link, sempre a
     # PORTA da própria sessão (`_porta_aberta`) — o mesmo filtro por pessoa
     # que todas as rotas acima já respeitam.
     "entregar-checkpoint",
+    "entregar-checkpoint-do-curso",
+    "concluir-aula",
+    "concluir-aula-do-curso",
     "aula",
     # O CATÁLOGO (07/09/2026): a raiz da célula lista CURSOS, nunca pessoas.
     # Um cartão por `Curso` do site, e a situação de cada um é a da pessoa da
@@ -133,7 +138,11 @@ def test_a_aula_mostra_so_os_registros_da_propria_pessoa(duas_pessoas, client):
     corpo = client.get(
         reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE
     ).content.decode()
-    assert 'action="' + reverse("registrar-pausa", args=["E00", 1]) in corpo
+    assert (
+        'action="'
+        + reverse("registrar-pausa-do-curso", args=["profissional", 1, "E00", 1])
+        in corpo
+    )
     assert "Registrada." not in corpo
 
 

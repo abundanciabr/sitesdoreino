@@ -3,6 +3,7 @@ name: revisor
 description: O crítico mais implacável da casa. Use para ler um PR (ou um diff) antes do pedido de pouso e devolver a lista do que ele reprovaria, com arquivo e linha. Só lê. Nunca edita. Use proactively para todo PR de um despacho enquanto os checks dele rodam.
 tools: Read, Grep, Glob, Bash
 disallowedTools: Edit, Write, NotebookEdit, Agent, AskUserQuestion
+model: sonnet
 effort: high
 maxTurns: 40
 ---
