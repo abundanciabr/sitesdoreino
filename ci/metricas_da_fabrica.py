@@ -69,6 +69,135 @@ ETIQUETA_DE_POUSO = "pousar"
 TETO_DA_AMOSTRA = 40
 
 
+# Claude Code persiste Message.usage por bloco da mesma mensagem. Os snapshots
+# são cumulativos: https://platform.claude.com/docs/en/build-with-claude/streaming
+# input_tokens exclui os dois caches; cache_creation e iterations são detalhes,
+# não parcelas adicionais. A consolidação não audita cobrança nem assinatura.
+CAMPOS_USO = {
+    "entrada_nova": "input_tokens", "leitura_cache": "cache_read_input_tokens",
+    "escrita_cache": "cache_creation_input_tokens", "saida": "output_tokens",
+}
+
+
+def consolidar_uso(arquivos: list[Path]) -> dict:
+    """Reconstrói uso Claude Code por origem/sessão/mensagem/modelo, sem texto.
+
+    Caminho não participa da identidade: uma exportação sobreposta é a mesma
+    origem. Formatos incrementais, SSE cru e outras origens não são somados.
+    As somas são apenas da parcela conhecida; cobertura é por campo/mensagem.
+    """
+    mensagens = {}
+    ferramentas = set()
+    cobertura = dict(arquivos=0, arquivos_ilegiveis=0, linhas_invalidas=0,
+                    registros=0, snapshots_consolidados=0, sem_identidade=0,
+                    incompativeis=0, campos_invalidos=0, ferramentas_sem_id=0)
+    for arquivo in sorted({Path(p).resolve() for p in arquivos}):
+        cobertura["arquivos"] += 1
+        try:
+            with arquivo.open(encoding="utf-8-sig") as entrada:
+                for linha in entrada:
+                    if not linha.strip():
+                        continue
+                    try:
+                        evento = json.loads(linha)
+                    except ValueError:
+                        cobertura["linhas_invalidas"] += 1
+                        continue
+                    if not isinstance(evento, dict):
+                        cobertura["linhas_invalidas"] += 1
+                        continue
+                    mensagem = evento.get("message")
+                    if not isinstance(mensagem, dict) or mensagem.get("role") != "assistant":
+                        if "usage" in evento or evento.get("type") in ("message_start", "message_delta", "event_msg"):
+                            cobertura["incompativeis"] += 1
+                        continue
+                    cobertura["registros"] += 1
+                    if evento.get("type") != "assistant" or evento.get("usage_mode", "cumulative") != "cumulative":
+                        cobertura["incompativeis"] += 1
+                        continue
+                    chave = ("claude-code", evento.get("sessionId"), mensagem.get("id"), mensagem.get("model"))
+                    if not all(isinstance(v, str) and v for v in chave):
+                        cobertura["sem_identidade"] += 1
+                        continue
+                    if chave in mensagens:
+                        cobertura["snapshots_consolidados"] += 1
+                    uso = mensagens.setdefault(chave, {c: None for c in CAMPOS_USO})
+                    bruto = mensagem.get("usage")
+                    if not isinstance(bruto, dict):
+                        cobertura["campos_invalidos"] += 1
+                        bruto = {}
+                    for campo, origem in CAMPOS_USO.items():
+                        valor = bruto.get(origem)
+                        if valor is None:
+                            continue
+                        if type(valor) is not int or valor < 0:
+                            cobertura["campos_invalidos"] += 1
+                            continue
+                        uso[campo] = max(uso[campo], valor) if uso[campo] is not None else valor
+                    conteudo = mensagem.get("content")
+                    if isinstance(conteudo, list):
+                        for bloco in conteudo:
+                            if not isinstance(bloco, dict) or bloco.get("type") != "tool_use":
+                                continue
+                            if not isinstance(bloco.get("id"), str) or not bloco["id"]:
+                                cobertura["ferramentas_sem_id"] += 1
+                                continue
+                            ferramentas.add((chave[0], chave[1], bloco["id"]))
+        except (OSError, UnicodeError):
+            cobertura["arquivos_ilegiveis"] += 1
+    tokens = {}
+    cobertura["campos"] = {}
+    for campo in CAMPOS_USO:
+        valores = [m[campo] for m in mensagens.values() if m[campo] is not None]
+        tokens[campo] = sum(valores) if valores else None
+        cobertura["campos"][campo] = dict(conhecidas=len(valores), mensagens=len(mensagens))
+    cobertura["incompleta"] = not mensagens or any(
+        cobertura[c] for c in ("arquivos_ilegiveis", "linhas_invalidas", "sem_identidade",
+                              "incompativeis", "campos_invalidos", "ferramentas_sem_id")
+    ) or any(c["conhecidas"] < len(mensagens) for c in cobertura["campos"].values())
+    return dict(metodo="reconstrução de snapshots cumulativos; não audita cobrança",
+                mensagens=len(mensagens), chamadas_modelo=None,
+                ferramentas=len(ferramentas), tokens=tokens, cobertura=cobertura)
+
+
+def consolidar_percurso(eventos: list[dict]) -> dict:
+    """Observações distintas por tentativa e revisão, sem inferir aprovação."""
+    from telemetria import FASES, identidade_fase
+
+    unicos = {}
+    invalidos = 0
+    antigos = 0
+    campos = ("quando", "tarefa", "tentativa", "branch", "commit", "pr", "fase",
+              "resultado", "contexto_bytes")
+    for evento in eventos:
+        if not isinstance(evento, dict) or evento.get("evento") != "fase_operacional":
+            antigos += 1
+            continue
+        identidade = identidade_fase(evento)
+        if identidade is None or identidade != evento.get("id"):
+            invalidos += 1
+            continue
+        try:
+            quando = _quando(evento["quando"])
+            if quando.tzinfo is None:
+                raise ValueError("timestamp sem fuso")
+        except (ValueError, TypeError, KeyError):
+            invalidos += 1
+            continue
+        linha = {c: evento.get(c) for c in campos}
+        linha["quando"] = quando.astimezone(timezone.utc).isoformat()
+        anterior = unicos.get(evento["id"])
+        if anterior is None or linha["quando"] < anterior["quando"]:
+            unicos[evento["id"]] = linha
+    linhas = sorted(unicos.values(), key=lambda e: (e["quando"], e["tarefa"], e["tentativa"], e["fase"], e["resultado"]))
+    return dict(tarefas=len({e["tarefa"] for e in linhas}),
+                tentativas=len({(e["tarefa"], e["tentativa"]) for e in linhas}),
+                eventos=linhas,
+                publicacoes_verificadas=sum(e["fase"] == "publicacao" and e["resultado"] == "verificado" for e in linhas),
+                cobertura=dict(eventos_invalidos=invalidos, eventos_sem_correlacao=antigos,
+                               fases_ausentes=[f for f in FASES if not any(e["fase"] == f for e in linhas)]))
+
+
 def _gh_json(args: list[str], raiz: Path, descricao: str):
     """Consulta o GitHub e devolve JSON — ou levanta. Nunca devolve [] por erro.
 
@@ -338,13 +467,28 @@ def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(description="Métricas da fábrica (Onda 6)")
     parser.add_argument("--dias", type=int, default=DIAS_PADRAO)
+    parser.add_argument("--local", action="store_true", help="percurso observado no Git comum, sem consultar GitHub")
+    parser.add_argument("--transcricoes", nargs="+", type=Path,
+                        help="JSONL Claude Code locais; consolida somente metadados de uso")
     args = parser.parse_args(argv)
     if args.dias < 1:
         print("ERROR: --dias precisa ser >= 1.")
         return 2
     try:
         raiz = raiz_do_repo()
-        print(montar(coletar(raiz, args.dias)))
+        if args.local or args.transcricoes:
+            from telemetria import dir_git_comum, ler_tudo
+            git = dir_git_comum(raiz)
+            leitura = {}
+            eventos = ler_tudo(git, cobertura=leitura) if git else []
+            dados = {"percurso": consolidar_percurso(eventos)}
+            dados["percurso"]["cobertura"]["git_disponivel"] = git is not None
+            dados["percurso"]["cobertura"]["leitura"] = leitura
+            if args.transcricoes:
+                dados["uso"] = consolidar_uso(args.transcricoes)
+            print(json.dumps(dados, ensure_ascii=False, indent=2))
+        else:
+            print(montar(coletar(raiz, args.dias)))
     except ErroDeInstrumentacao as erro:
         print("\nPAROU POR SEGURANÇA — as métricas NÃO foram impressas.\n")
         print(f"  {erro.resumo}")
