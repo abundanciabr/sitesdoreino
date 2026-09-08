@@ -21,6 +21,14 @@ def _sha256(caminho: Path) -> str:
     return digest.hexdigest()
 
 
+def _inventario_real(caminho: Path) -> set[str]:
+    return {
+        arquivo.relative_to(caminho).as_posix()
+        for arquivo in caminho.rglob("*")
+        if arquivo.is_file() and arquivo.name != "admin-dados.json"
+    }
+
+
 def _exige_manifesto(caminho: Path) -> bool:
     normalizado = str(caminho).replace("\\", "/")
     return normalizado.startswith("/opt/plataforma/admin-dados/")
@@ -44,15 +52,17 @@ def _manifesto_valido(caminho: Path, tipo: str | None) -> bool:
     arquivos = integridade.get("arquivos")
     if not isinstance(arquivos, dict) or not arquivos:
         return False
+    inventario_declarado = set()
     for relativo, esperado in arquivos.items():
         if not isinstance(relativo, str) or relativo.startswith("/"):
             return False
         if ".." in Path(relativo).parts:
             return False
+        inventario_declarado.add(relativo)
         arquivo = caminho / relativo
         if not arquivo.is_file() or _sha256(arquivo) != esperado:
             return False
-    return True
+    return _inventario_real(caminho) == inventario_declarado
 
 
 def selecionar_dados(

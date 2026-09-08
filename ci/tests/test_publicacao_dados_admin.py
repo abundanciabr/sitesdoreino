@@ -84,6 +84,18 @@ def test_publicador_recusa_arquivo_com_hash_quebrado(tmp_path):
         )
 
 
+def test_publicador_recusa_arquivo_fora_do_manifesto(tmp_path):
+    payload = _payload_painel(tmp_path / "payload")
+    (payload / "registros" / "20260908-999-extra.js").write_text(
+        "export default {}", encoding="utf-8"
+    )
+
+    with pytest.raises(PublicacaoInvalida, match="arquivo fora do manifesto"):
+        decidir_publicacao(
+            payload, tmp_path / "ativo", tipo="painel", sha="abc123", run_number=10
+        )
+
+
 def test_publicador_recusa_conteudo_incompleto_mesmo_com_manifesto(tmp_path):
     payload = tmp_path / "payload"
     payload.mkdir()
@@ -143,6 +155,19 @@ def test_leitor_da_admin_pula_formato_incompativel(tmp_path):
     assert (
         selecionar_dados(
             (ruim, bom), tipo="painel", arquivos_obrigatorios=("painel.html",)
+        )
+        == bom
+    )
+
+
+def test_leitor_da_admin_pula_payload_com_arquivo_fora_do_manifesto(tmp_path):
+    ruim = _payload_fila(tmp_path / "ruim")
+    bom = _payload_fila(tmp_path / "bom")
+    (ruim / "eventos" / "extra.json").write_text("{}", encoding="utf-8")
+
+    assert (
+        selecionar_dados(
+            (ruim, bom), tipo="fila", arquivos_obrigatorios=("estados.json",)
         )
         == bom
     )

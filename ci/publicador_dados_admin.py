@@ -23,6 +23,14 @@ def _sha256(caminho: Path) -> str:
     return digest.hexdigest()
 
 
+def _inventario_real(pasta: Path) -> set[str]:
+    return {
+        caminho.relative_to(pasta).as_posix()
+        for caminho in pasta.rglob("*")
+        if caminho.is_file() and caminho.name != "admin-dados.json"
+    }
+
+
 def _ler_manifesto(pasta: Path) -> dict:
     try:
         dados = json.loads((pasta / "admin-dados.json").read_text(encoding="utf-8"))
@@ -56,12 +64,14 @@ def _validar_manifesto(pasta: Path, *, tipo: str, sha: str, run_number: int) -> 
     arquivos = integridade.get("arquivos")
     if not isinstance(arquivos, dict) or not arquivos:
         raise PublicacaoInvalida("manifesto sem lista de arquivos")
+    inventario_declarado = set()
 
     for relativo, esperado in sorted(arquivos.items()):
         if not isinstance(relativo, str) or relativo.startswith("/"):
             raise PublicacaoInvalida(f"caminho invalido no manifesto: {relativo!r}")
         if ".." in Path(relativo).parts:
             raise PublicacaoInvalida(f"caminho invalido no manifesto: {relativo!r}")
+        inventario_declarado.add(relativo)
         caminho = pasta / relativo
         if not caminho.is_file():
             raise PublicacaoInvalida(
@@ -72,6 +82,11 @@ def _validar_manifesto(pasta: Path, *, tipo: str, sha: str, run_number: int) -> 
             raise PublicacaoInvalida(
                 f"integridade quebrada em {relativo}: {medido} != {esperado}"
             )
+    extras = _inventario_real(pasta) - inventario_declarado
+    if extras:
+        raise PublicacaoInvalida(
+            "arquivo fora do manifesto: " + ", ".join(sorted(extras)[:3])
+        )
     return manifesto
 
 
