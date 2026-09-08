@@ -218,7 +218,18 @@ jobs:
           # existe para uma passagem não virar refém de um check pendurado; o
           # orçamento, para cinco voltas lentas não segurarem o grupo de
           # concorrência por meia hora.
-          TETO_DA_ESPERA=420
+          # A régua é a fonte do p90 dos checks, não um número digitado no
+          # workflow. Duas vezes o p90 absorve a variação do runner Windows e
+          # o arredondamento deixa o teto legível em minutos inteiros.
+          P90_DOS_CHECKS=$(python -c 'import json; valor=json.load(open("ci/tempos_esperados.json", encoding="utf-8"))["esperas"]["checks"]["p90_s"]; print(valor if isinstance(valor, int) and valor > 0 else "")')
+          case "$P90_DOS_CHECKS" in
+            ""|*[!0-9]*)
+              echo "ERROR: a régua de checks não tem p90 inteiro positivo; a espera não foi armada."
+              exit 1 ;;
+          esac
+          FATOR_DE_FOLGA=2
+          TETO_DA_ESPERA=$(( ((P90_DOS_CHECKS * FATOR_DE_FOLGA) + 59) / 60 * 60 ))
+          echo "Régua dos checks: p90=${P90_DOS_CHECKS}s; folga=${FATOR_DE_FOLGA}x; teto=${TETO_DA_ESPERA}s."
           esperas_restantes=2
 
           # O TETO DO REVISOR (ver o cabeçalho, decisão 6). Medido na máquina do
