@@ -143,6 +143,13 @@ CAMPOS_OPCIONAIS_DA_TAREFA = {
     "notas": str,
     "cria": list,
     "move": list,
+    "medicao_fase4": dict,
+}
+
+CAMPOS_DA_MEDICAO_FASE4 = {
+    "piloto", "condicao", "tipo", "complexidade", "natureza", "componentes",
+    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+    "revisao_instrumento",
 }
 
 CAMPOS_DO_EVENTO = {
@@ -491,6 +498,32 @@ def _conferir_move(nome: str, move: list, raiz: Path, erros: list[str]) -> None:
             )
 
 
+def _conferir_medicao_fase4(nome: str, medicao: object, erros: list[str]) -> None:
+    if medicao is None:
+        return
+    if not isinstance(medicao, dict):
+        erros.append(f"{nome}: 'medicao_fase4' deveria ser objeto")
+        return
+    ausentes = sorted(CAMPOS_DA_MEDICAO_FASE4 - set(medicao))
+    extras = sorted(set(medicao) - CAMPOS_DA_MEDICAO_FASE4 - {"par_id"})
+    if ausentes:
+        erros.append(f"{nome}: 'medicao_fase4' sem campos: {', '.join(ausentes)}")
+    if extras:
+        erros.append(f"{nome}: 'medicao_fase4' com campos desconhecidos: {', '.join(extras)}")
+    for campo in CAMPOS_DA_MEDICAO_FASE4:
+        if campo in medicao and (not isinstance(medicao[campo], str) or not medicao[campo].strip()):
+            erros.append(f"{nome}: 'medicao_fase4.{campo}' precisa ser texto não vazio")
+    if medicao.get("piloto") not in ("fase1", "fase2", "fase3"):
+        erros.append(f"{nome}: 'medicao_fase4.piloto' precisa ser fase1, fase2 ou fase3")
+    if medicao.get("condicao") not in ("antes", "depois"):
+        erros.append(f"{nome}: 'medicao_fase4.condicao' precisa ser antes ou depois")
+    revisao = medicao.get("revisao_instrumento")
+    if not isinstance(revisao, str) or not re.fullmatch(r"[a-f0-9]{40}", revisao):
+        erros.append(f"{nome}: 'medicao_fase4.revisao_instrumento' precisa ser SHA-1 hexadecimal")
+    if "par_id" in medicao and medicao["par_id"] is not None and not isinstance(medicao["par_id"], str):
+        erros.append(f"{nome}: 'medicao_fase4.par_id' precisa ser texto ou null")
+
+
 def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
     """Todas as tarefas, validadas uma a uma. Erro entra em `erros`, não explode."""
     pasta = pasta_tarefas(raiz)
@@ -530,6 +563,7 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
         move = dados.get("move")
         if isinstance(move, list):
             _conferir_move(nome, move, raiz, erros)
+        _conferir_medicao_fase4(nome, dados.get("medicao_fase4"), erros)
         criada = dados.get("criada_em")
         if isinstance(criada, str) and not RE_DATA.match(criada):
             erros.append(f"{nome}: 'criada_em' precisa ser AAAA-MM-DD")

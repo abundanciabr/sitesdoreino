@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-113-a-chave-da-ia-aguarda-vps",
+  tipo: "nota",
+  quando: "2026-09-08",
+  titulo: "A chave da IA aguarda a execução do mantenedor na VPS",
+  detalhe: "A área sem reconhecida tem uma única pendência aberta. O código já foi corrigido no PR 1338, mas a pendência só fecha depois que o mantenedor executar o roteiro na VPS e trouxer a saída real. Sem essa prova, o robô analista continua sem confirmação de que recebeu a chave.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: null,
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

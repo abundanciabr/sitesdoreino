@@ -32,6 +32,7 @@ o `gh` e o `ci/mergear.py` trocados por dublês. O que se afirma é o desfecho:
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -121,6 +122,10 @@ def bash() -> str:
 
 
 def _rodar(bash: str, tmp_path: Path, script: str) -> str:
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci" / "tempos_esperados.json").write_bytes(
+        (RAIZ / "ci" / "tempos_esperados.json").read_bytes()
+    )
     alvo = tmp_path / "passagem.sh"
     alvo.write_text(script, encoding="utf-8")
     proc = subprocess.run(
@@ -201,6 +206,54 @@ def test_o_pr_que_a_pista_ATUALIZOU_pousa_na_MESMA_passagem(bash, tmp_path):
     assert "Passagem encerrada: 2 PR(s) pousado(s)." in saida, saida
 
 
+def test_checks_acima_do_teto_antigo_ainda_pousam_com_teto_da_regua(bash, tmp_path):
+    """Um conjunto lento, acima de 420s, não volta à fila por número fixo."""
+    p90 = json.loads((RAIZ / "ci" / "tempos_esperados.json").read_text(encoding="utf-8"))[
+        "esperas"
+    ]["checks"]["p90_s"]
+    teto = ((p90 * 2 + 59) // 60) * 60
+    assert teto > 420
+    script = _preparar(_script_da_fila())
+    script = script.replace(
+        'FILA="100 101"\nMERGEADOS=""',
+        'FILA="100"\nMERGEADOS=""\nCHECK_ELAPSED=0\n'
+        'sleep() { CHECK_ELAPSED=$((CHECK_ELAPSED + ${1:-0})); }\n'
+        f'python() {{ if [ "${{1:-}}" = "-c" ]; then echo {p90}; else command python "$@"; fi; }}',
+    )
+    script = script.replace(
+        '  echo "   [gh $*]"\n  return 0',
+        '  if [ "${2:-}" = "checks" ]; then\n'
+        '    if [ "$CHECK_ELAPSED" -lt 460 ]; then echo 1; else echo 0; fi\n'
+        '    return 0\n'
+        '  fi\n'
+        '  echo "   [gh $*]"\n  return 0',
+    )
+    script = script.replace(
+        '    if [ "$alvo" = "100" ]; then',
+        '    if [ "$alvo" = "100" ] && [ -z "${JA_ATUALIZEI_100:-}" ]; then',
+    )
+    script = script.replace(
+        '  echo "   [gh $*]"\n  return 0',
+        '  case "$*" in *update-branch*100*) JA_ATUALIZEI_100=sim ;; esac\n'
+        '  echo "   [gh $*]"\n  return 0',
+        1,
+    )
+    saida = _rodar(bash, tmp_path, script)
+
+    assert f"teto={teto}s" in saida, saida
+    assert "PR #100 POUSOU." in saida, (
+        "um check de 480s acima do teto antigo não pousou com a régua nova.\n\n"
+        + saida
+    )
+
+
+def test_teto_da_espera_le_o_p90_da_regua_viva():
+    script = _script_da_fila()
+    assert "ci/tempos_esperados.json" in script
+    assert "P90_DOS_CHECKS" in script
+    assert "TETO_DA_ESPERA=420" not in script
+
+
 def test_a_espera_tem_teto_e_orcamento_declarados(bash, tmp_path):
     """Espera sem teto é a armadilha 161 desta casa, e ela vale aqui também.
 
@@ -242,6 +295,10 @@ def test_merge_que_falha_nao_derruba_a_fila_MAS_deixa_a_passagem_vermelha(
     script = script.replace(
         '  MERGEADOS="$MERGEADOS $alvo"\n  echo "   [merge de verdade do #$alvo]"\n  return 0',
         '  echo "   [o merge do #$alvo NAO se completou]"\n  return 1',
+    )
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci" / "tempos_esperados.json").write_bytes(
+        (RAIZ / "ci" / "tempos_esperados.json").read_bytes()
     )
     alvo = tmp_path / "passagem.sh"
     alvo.write_text(script, encoding="utf-8")
