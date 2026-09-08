@@ -51,7 +51,7 @@ paths:
                 items:
                   type: object
                   additionalProperties: false
-                  required: [id, site_id, email, nome_completo, whatsapp, turma, comprou_em, status, origem, criada_em]
+                  required: [id, site_id, email, nome_completo, whatsapp, turma, comprou_em, status, origem, product_id, criada_em]
                   properties:
                     id: { type: string }
                     site_id: { type: string }
@@ -61,9 +61,10 @@ paths:
                     turma: { type: [string, 'null'] }
                     comprou_em: { type: [string, 'null'], format: date }
                     status: { type: string, enum: [ativa, suspensa, encerrada, reembolsada] }
+                    product_id: { type: string }
                     origem:
                       type: string
-                      enum: [comprou, liberado]
+                      enum: [comprou, liberado, administrativo]
                       description: |
                         DERIVADO da proveniencia da linha, nunca de um campo proprio:
                         `liberado` e quem entrou pela fila (o pedido sintetico `pre:`),
