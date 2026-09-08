@@ -687,3 +687,15 @@ def test_prova_final_avalia_o_sha_com_recibo_e_impede_sucesso(tmp_path):
     assert revisoes==['b'*40,'c'*40]
     assert not dub.pediu('git push origin')
     assert not dub.pediu('gh pr view')
+
+
+def test_authorization_bearer_nao_deixa_o_token_visivel():
+    for texto in ['Authorization: Bearer SEGREDO_DE_TESTE_123', '{"Authorization":"Bearer SEGREDO_DE_TESTE_123"}']:
+        assert 'SEGREDO_DE_TESTE_123' not in pr._sanitizar(texto)
+
+
+def test_aspas_escapadas_normais_nao_sao_tratadas_como_segredo(tmp_path):
+    raiz=bancada(tmp_path)
+    texto=DETALHE+r' Exemplo de texto com \"nome\" preservado.'
+    assert pr._sanitizar(texto)==texto
+    pr._conferir_o_pedido(raiz,pedido(raiz,detalhe=texto))

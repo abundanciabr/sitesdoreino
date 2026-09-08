@@ -116,9 +116,12 @@ class Pedido:
 
 
 def _sanitizar(texto: str) -> str:
-    texto = texto.replace('\\"', '"').replace("\\'", "'")
+    texto = re.sub(
+        r"""(?i)((?:\\?["'])?authorization(?:\\?["'])?\s*[:=]\s*)(?:\\?["'])?(?:Bearer|Basic)\s+[^\s"'\\,;}]+(?:\\?["'])?""",
+        r"\1<REDIGIDO>", texto,
+    )
     return re.sub(
-        r"(?i)((?:[\"']?)(?:password|senha|token|access_token|secret|api_key|authorization)[\"']?\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)",
+        r"""(?i)((?:\\?["'])?(?:password|senha|token|access_token|secret|api_key|authorization)(?:\\?["'])?\s*[:=]\s*)(?:\\".*?\\"|\\'.*?\\'|"[^"]*"|'[^']*'|[^\s,;]+)""",
         r"\1<REDIGIDO>", telemetria.redigir(texto),
     )
 
