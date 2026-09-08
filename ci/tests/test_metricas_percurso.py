@@ -185,3 +185,49 @@ def test_escrita_recusa_segredo_em_identificador(tmp_path):
     assert telemetria.registrar_fase("abertura", "iniciado", tarefa="TAR-1", tentativa="s1",
         branch="ghp_" + "a" * 36, commit="a" * 40, cwd=str(tmp_path)) is None
     assert telemetria.ler_tudo(tmp_path / ".git") == []
+
+
+@pytest.mark.parametrize("quando", [None, 0, [], {}])
+def test_timestamp_de_tipo_invalido_nao_descarta_evento_valido(tmp_path, quando):
+    (tmp_path / ".git").mkdir()
+    telemetria.registrar_fase("validacao", "concluido", tarefa="TAR-1", tentativa="s1",
+        branch="agent/ci/teste", commit="a" * 40, cwd=str(tmp_path))
+    valido = telemetria.ler_tudo(tmp_path / ".git")[0]
+    invalido = dict(valido, quando=quando)
+    r = metricas.consolidar_percurso([invalido, valido])
+    assert r["cobertura"]["eventos_invalidos"] == 1
+    assert len(r["eventos"]) == 1
+
+
+@pytest.mark.parametrize("conteudo", [None, 0, {}, "", [None]])
+def test_conteudo_desconhecido_nao_vira_zero_ferramentas(tmp_path, conteudo):
+    e = mensagem(input_tokens=1, output_tokens=1, cache_read_input_tokens=0,
+                 cache_creation_input_tokens=0)
+    e["message"]["content"] = conteudo
+    p = arquivo(tmp_path, "a.jsonl", [e])
+    r = metricas.consolidar_uso([p])
+    assert r["ferramentas"] is None
+    assert r["cobertura"]["ferramentas"] == {"mensagens_observadas": 0, "mensagens": 1,
+                                               "incompleta": True}
+    assert r["cobertura"]["incompleta"] is True
+
+
+def test_conteudo_ausente_e_lista_vazia_mantem_cobertura_parcial(tmp_path):
+    ausente = mensagem()
+    del ausente["message"]["content"]
+    vazio = mensagem("m2")
+    p = arquivo(tmp_path, "a.jsonl", [ausente, vazio])
+    r = metricas.consolidar_uso([p])
+    assert r["ferramentas"] == 0
+    assert r["cobertura"]["ferramentas"] == {"mensagens_observadas": 1, "mensagens": 2,
+                                               "incompleta": True}
+
+
+def test_eventos_simultaneos_tem_ordem_reproduzivel(tmp_path):
+    (tmp_path / ".git").mkdir()
+    for commit in ("a" * 40, "b" * 40):
+        telemetria.registrar_fase("validacao", "concluido", tarefa="TAR-1", tentativa="s1",
+            branch="agent/ci/teste", commit=commit, cwd=str(tmp_path))
+    eventos = telemetria.ler_tudo(tmp_path / ".git")
+    eventos[1]["quando"] = eventos[0]["quando"]
+    assert metricas.consolidar_percurso(eventos) == metricas.consolidar_percurso(eventos[::-1])

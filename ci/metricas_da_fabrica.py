@@ -88,9 +88,11 @@ def consolidar_uso(arquivos: list[Path]) -> dict:
     """
     mensagens = {}
     ferramentas = set()
+    conteudos_observados = set()
     cobertura = dict(arquivos=0, arquivos_ilegiveis=0, linhas_invalidas=0,
                     registros=0, snapshots_consolidados=0, sem_identidade=0,
-                    incompativeis=0, campos_invalidos=0, ferramentas_sem_id=0)
+                    incompativeis=0, campos_invalidos=0, ferramentas_sem_id=0,
+                    conteudos_invalidos=0)
     for arquivo in sorted({Path(p).resolve() for p in arquivos}):
         cobertura["arquivos"] += 1
         try:
@@ -136,6 +138,10 @@ def consolidar_uso(arquivos: list[Path]) -> dict:
                         uso[campo] = max(uso[campo], valor) if uso[campo] is not None else valor
                     conteudo = mensagem.get("content")
                     if isinstance(conteudo, list):
+                        if all(isinstance(b, dict) and isinstance(b.get("type"), str) for b in conteudo):
+                            conteudos_observados.add(chave)
+                        else:
+                            cobertura["conteudos_invalidos"] += 1
                         for bloco in conteudo:
                             if not isinstance(bloco, dict) or bloco.get("type") != "tool_use":
                                 continue
@@ -143,6 +149,8 @@ def consolidar_uso(arquivos: list[Path]) -> dict:
                                 cobertura["ferramentas_sem_id"] += 1
                                 continue
                             ferramentas.add((chave[0], chave[1], bloco["id"]))
+                    else:
+                        cobertura["conteudos_invalidos"] += 1
         except (OSError, UnicodeError):
             cobertura["arquivos_ilegiveis"] += 1
     tokens = {}
@@ -151,13 +159,19 @@ def consolidar_uso(arquivos: list[Path]) -> dict:
         valores = [m[campo] for m in mensagens.values() if m[campo] is not None]
         tokens[campo] = sum(valores) if valores else None
         cobertura["campos"][campo] = dict(conhecidas=len(valores), mensagens=len(mensagens))
-    cobertura["incompleta"] = not mensagens or any(
+    cobertura["ferramentas"] = dict(
+        mensagens_observadas=len(conteudos_observados), mensagens=len(mensagens),
+        incompleta=not mensagens or len(conteudos_observados) < len(mensagens)
+        or bool(cobertura["conteudos_invalidos"] or cobertura["ferramentas_sem_id"]),
+    )
+    cobertura["incompleta"] = cobertura["ferramentas"]["incompleta"] or any(
         cobertura[c] for c in ("arquivos_ilegiveis", "linhas_invalidas", "sem_identidade",
                               "incompativeis", "campos_invalidos", "ferramentas_sem_id")
     ) or any(c["conhecidas"] < len(mensagens) for c in cobertura["campos"].values())
     return dict(metodo="reconstrução de snapshots cumulativos; não audita cobrança",
                 mensagens=len(mensagens), chamadas_modelo=None,
-                ferramentas=len(ferramentas), tokens=tokens, cobertura=cobertura)
+                ferramentas=len(ferramentas) if conteudos_observados or ferramentas else None,
+                tokens=tokens, cobertura=cobertura)
 
 
 def consolidar_percurso(eventos: list[dict]) -> dict:
@@ -178,6 +192,8 @@ def consolidar_percurso(eventos: list[dict]) -> dict:
             invalidos += 1
             continue
         try:
+            if not isinstance(evento.get("quando"), str):
+                raise ValueError("timestamp não é texto")
             quando = _quando(evento["quando"])
             if quando.tzinfo is None:
                 raise ValueError("timestamp sem fuso")
@@ -189,7 +205,7 @@ def consolidar_percurso(eventos: list[dict]) -> dict:
         anterior = unicos.get(evento["id"])
         if anterior is None or linha["quando"] < anterior["quando"]:
             unicos[evento["id"]] = linha
-    linhas = sorted(unicos.values(), key=lambda e: (e["quando"], e["tarefa"], e["tentativa"], e["fase"], e["resultado"]))
+    linhas = sorted(unicos.values(), key=lambda e: (e["quando"], e["tarefa"], e["tentativa"], e["fase"], e["resultado"], identidade_fase(e)))
     return dict(tarefas=len({e["tarefa"] for e in linhas}),
                 tentativas=len({(e["tarefa"], e["tentativa"]) for e in linhas}),
                 eventos=linhas,
