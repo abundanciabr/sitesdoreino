@@ -826,6 +826,50 @@ caso("nenhum fato do livro nem da fila se perde no caminho",
 caso("sem a fila dos robôs, os grupos de registro continuam de pé",
   LOGICA.prioridades(livroPri, HOJE, null, AREAS_TESTE, []).areas[0].grupos.decidir.length === 2);
 
+// Luna só entra quando a tarefa declara o serviço mecânico E a regra que o
+// limita. Um indício isolado cai em Terra, pois não autoriza adivinhação.
+caso("extração com regra já definida recebe Luna com raciocínio Low",
+  LOGICA.modeloParaTarefa({
+    titulo: "Extração dos nomes das aulas",
+    o_que_muda: "Extrair o texto seguindo a regra já definida no formato.",
+    onde: ["a lista de aulas"]
+  }).modelo === "Luna" &&
+  LOGICA.modeloParaTarefa({
+    titulo: "Extração dos nomes das aulas",
+    o_que_muda: "Extrair o texto seguindo a regra já definida no formato.",
+    onde: ["a lista de aulas"]
+  }).raciocinio === "Low");
+caso("trabalho mecânico com regra clara recebe Luna",
+  LOGICA.modeloParaTarefa({
+    titulo: "Trabalho mecânico na lista de aulas",
+    o_que_muda: "Aplicar a regra clara de nomes.",
+    onde: ["a lista de aulas"]
+  }).modelo === "Luna");
+
+caso("operação mecânica com regra clara recebe Luna",
+  LOGICA.modeloParaTarefa({
+    titulo: "Operação mecânica na lista de aulas",
+    o_que_muda: "Aplicar a regra clara de nomes.",
+    onde: ["a lista de aulas"]
+  }).modelo === "Luna");
+caso("correção delimitada recebe Terra com raciocínio Low",
+  LOGICA.modeloParaTarefa({
+    titulo: "Corrigir o formulário de entrada",
+    o_que_muda: "A pessoa volta a receber a mensagem de erro certa.",
+    onde: ["o cadastro"]
+  }).modelo === "Terra" &&
+  LOGICA.modeloParaTarefa({
+    titulo: "Corrigir o formulário de entrada",
+    o_que_muda: "A pessoa volta a receber a mensagem de erro certa.",
+    onde: ["o cadastro"]
+  }).raciocinio === "Low");
+caso("formatação sem regra declarada é ambígua e recebe Terra",
+  LOGICA.modeloParaTarefa({
+    titulo: "Formatação da lista de cursos",
+    o_que_muda: "A lista fica legível.",
+    onde: ["os cursos"]
+  }).modelo === "Terra");
+
 // A ÁREA SOBREVIVE AO CORTE DO RESUMO. Um pedido antigo viaja só como título, e
 // sem `area` em CAMPOS_DO_TITULO ele reapareceria em "sem área reconhecida" — a
 // tela mostraria o fato na parte errada do site tendo a resposta escrita no
