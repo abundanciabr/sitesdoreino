@@ -22,8 +22,16 @@ jobs:
     env:
       CONFIRMAR: ${{ inputs.confirmar }}
       CANARIO_F3_RUN_ID: ${{ github.run_id }}
+      CANARIO_F3_RUN_ATTEMPT: ${{ github.run_attempt }}
       CANARIO_F3_SHA: ${{ github.sha }}
     steps:
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "PAROU POR SEGURANCA: rode este canario somente pela branch main."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - name: Conferir script fechado
@@ -38,13 +46,14 @@ jobs:
         env:
           CONFIRMAR: ${{ env.CONFIRMAR }}
           CANARIO_F3_RUN_ID: ${{ env.CANARIO_F3_RUN_ID }}
+          CANARIO_F3_RUN_ATTEMPT: ${{ env.CANARIO_F3_RUN_ATTEMPT }}
           CANARIO_F3_SHA: ${{ env.CANARIO_F3_SHA }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script_path: infra/canario-fase-3-outbox.sh
-          envs: CONFIRMAR,CANARIO_F3_RUN_ID,CANARIO_F3_SHA
+          envs: CONFIRMAR,CANARIO_F3_RUN_ID,CANARIO_F3_RUN_ATTEMPT,CANARIO_F3_SHA
           capture_stdout: true
           command_timeout: 6m
 
