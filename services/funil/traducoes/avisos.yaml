@@ -105,6 +105,18 @@ js:
     pt-br: "Sua sugestão teve uma novidade."
     es: "Tu sugerencia tuvo una novedad."
 
+  portfolio_titulo:
+    _fonte: "d90526"
+    en: "Your portfolio was checked"
+    pt-br: "Seu portfólio foi conferido"
+    es: "Tu portafolio fue revisado"
+
+  portfolio_corpo:
+    _fonte: "7dd010"
+    en: "The school checked your portfolio. Open your notices to see when."
+    pt-br: "A escola conferiu seu portfólio. Abra os avisos para ver quando."
+    es: "La escuela revisó tu portafolio. Abre tus avisos para ver cuándo."
+
   teste_titulo:
     _fonte: "00057d"
     en: "Meshcraft"
