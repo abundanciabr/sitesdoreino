@@ -919,15 +919,41 @@ def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
     assert corpo.count("VOCÊ ESCREVE") >= 4, corpo
 
 
-def test_molde_com_fatos_sem_transcript_nao_trava(tmp_path):
-    """Transcript inexistente: o molde sai com "não medido" nos blocos que
-    dependiam dele, e exit 0. Fail-open, e dito na cara."""
+def test_molde_com_fatos_sem_identidade_recusa_escolher_transcript(tmp_path):
+    """Sem identidade, escolher o transcript mais recente seria fato alheio."""
     proc = _molde_com_fatos(tmp_path, None, cwd=tmp_path,
                             env={**os.environ, "USERPROFILE": str(tmp_path),
                                  "HOME": str(tmp_path)})
+    assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
+    assert "não sei de qual sessão" in proc.stderr
+    assert "Não escolhi o transcript mais recente" in proc.stderr
+
+
+def test_molde_com_fatos_le_somente_o_transcript_informado(tmp_path):
+    sessao_a = tmp_path / "sessao-a.jsonl"
+    sessao_b = tmp_path / "sessao-b.jsonl"
+    sessao_a.write_text(
+        "\n".join(json.dumps(e, ensure_ascii=False) for e in [
+            _humano("sessão A"),
+            _ferramenta("Edit", {"file_path": "fato-da-sessao-A.txt"}),
+        ]),
+        encoding="utf-8",
+    )
+    sessao_b.write_text(
+        "\n".join(json.dumps(e, ensure_ascii=False) for e in [
+            _humano("sessão B"),
+            _ferramenta("Edit", {"file_path": "fato-da-sessao-B.txt"}),
+        ]),
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [sys.executable, str(PORTAO), "--molde-com-fatos", "--transcript", str(sessao_a)],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=120,
+        encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
+    )
     assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
-    assert "não medido" in proc.stdout
-    assert "**Veredito:**" in proc.stdout
+    assert "fato-da-sessao-A.txt" in proc.stdout
+    assert "fato-da-sessao-B.txt" not in proc.stdout
 
 
 # ------------------------- bloco de julgamento vazio não é prestar contas ----
