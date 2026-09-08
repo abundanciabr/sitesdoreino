@@ -64,6 +64,35 @@
     },
     {
       "celula": "funil",
+      "rota": "notificacoes",
+      "endereco": "/notificacoes",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A central de notificações",
+      "descricao": "O lugar único onde a pessoa encontra os avisos que recebeu nas áreas do Meshcraft, acompanha o que já leu e marca o restante como lido."
+    },
+    {
+      "celula": "funil",
+      "rota": "notificacoes/marcar-todas",
+      "endereco": "/notificacoes/marcar-todas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Marcar todas as notificações como lidas",
+      "descricao": "Não é uma página: é o que acontece quando a pessoa pede para limpar de uma vez os avisos ainda não lidos."
+    },
+    {
+      "celula": "funil",
+      "rota": "notificacoes/<str:aviso_id>/lida",
+      "endereco": "/notificacoes/<str:aviso_id>/lida",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Marcar uma notificação como lida",
+      "descricao": "Não é uma página: é o que acontece quando a pessoa termina de ler um aviso específico."
+    },
+    {
+      "celula": "funil",
       "rota": "cadastro",
       "endereco": "/cadastro",
       "alcance": "publico",
