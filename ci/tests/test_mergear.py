@@ -15,6 +15,7 @@ nada errado, então pode" é o falso positivo original em outra roupa.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,40 @@ def _pr(**alteracoes: Any) -> dict[str, Any]:
 
 def _pior(resultados) -> Estado:
     return max((r.estado for r in resultados), key=lambda e: e.gravidade)
+
+
+def _git(raiz: Path, *args: str) -> str:
+    processo = subprocess.run(
+        ["git", *args],
+        cwd=str(raiz),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    )
+    return processo.stdout.strip()
+
+
+def test_o_portao_recusa_julgar_o_livro_de_arvore_atrasada(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "teste@exemplo.invalid")
+    _git(repo, "config", "user.name", "Teste")
+    (repo / "fato.txt").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", "fato.txt")
+    _git(repo, "commit", "-qm", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    (repo / "fato.txt").write_text("main avançou\n", encoding="utf-8")
+    _git(repo, "commit", "-qam", "main avançou")
+    _git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+    _git(repo, "reset", "--hard", base)
+
+    resultado = mergear.checar_frescor_do_livro(repo)
+
+    assert resultado.estado is Estado.ERROR
+    assert "1 commit(s) atrás de origin/main" in resultado.resumo
+    assert "Arme a espera de uma bancada em dia" in resultado.detalhe
 
 
 # ---------------------------------------------------------------------------
