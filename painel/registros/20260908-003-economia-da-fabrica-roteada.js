@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-003-economia-da-fabrica-roteada",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "A fábrica ganhou roteador de custo por tarefa",
+  detalhe: "Foi criado um comando de economia que classifica o trabalho, recomenda modelo e esforço, compila brief curto com só as armadilhas citadas e audita fichas de robô contra herança cara. A fachada make economia chama o mesmo comando.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1373",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
