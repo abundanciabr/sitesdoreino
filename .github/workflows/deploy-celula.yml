@@ -60,7 +60,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       celulas: ${{ steps.d.outputs.celulas }}
+      celulas_imagem: ${{ steps.d.outputs.celulas_imagem }}
       n: ${{ steps.d.outputs.n }}
+      n_imagem: ${{ steps.d.outputs.n_imagem }}
+      painel_dados: ${{ steps.d.outputs.painel_dados }}
+      fila_dados: ${{ steps.d.outputs.fila_dados }}
       # [INV-CI01] Carimbo de que a detecção CONCLUIU (mesma semântica do
       # ci-celula): sem ele, "nenhuma célula tocada" e "não consegui medir"
       # seriam indistinguíveis para o job de deploy.
@@ -111,10 +115,35 @@ jobs:
           # deploy PARA. Publicar numa ordem que ninguém escolheu foi
           # exatamente o defeito que esta linha existe para fechar.
           JSON="$(python ci/ordem_de_publicacao.py "$JSON")"
+          ALTERADOS="$(git diff --name-only "$BASE" HEAD)"
+          PAINEL_DADOS=false
+          FILA_DADOS=false
+          SOMENTE_DADOS_ADMIN=false
+          if printf '%s\n' "$ALTERADOS" | grep -q '^painel/'; then
+            PAINEL_DADOS=true
+          fi
+          if printf '%s\n' "$ALTERADOS" | grep -q '^fila/'; then
+            FILA_DADOS=true
+          fi
+          OUTROS="$(printf '%s\n' "$ALTERADOS" | awk '$0 !~ /^(painel|fila)\// { print }')"
+          if { [ "$PAINEL_DADOS" = true ] || [ "$FILA_DADOS" = true ]; } && [ -z "$OUTROS" ]; then
+            SOMENTE_DADOS_ADMIN=true
+          fi
+          if [ "$SOMENTE_DADOS_ADMIN" = true ]; then
+            JSON_IMAGEM='[]'
+          else
+            JSON_IMAGEM="$JSON"
+          fi
           echo "celulas=$JSON" >> "$GITHUB_OUTPUT"
+          echo "celulas_imagem=$JSON_IMAGEM" >> "$GITHUB_OUTPUT"
           echo "n=$(jq -n --argjson c "$JSON" '$c|length')" >> "$GITHUB_OUTPUT"
+          echo "n_imagem=$(jq -n --argjson c "$JSON_IMAGEM" '$c|length')" >> "$GITHUB_OUTPUT"
+          echo "painel_dados=$PAINEL_DADOS" >> "$GITHUB_OUTPUT"
+          echo "fila_dados=$FILA_DADOS" >> "$GITHUB_OUTPUT"
           echo "deteccao=ok" >> "$GITHUB_OUTPUT"
           echo "Células tocadas: $JSON"
+          echo "Células com imagem: $JSON_IMAGEM"
+          echo "Dados admin: painel=$PAINEL_DADOS fila=$FILA_DADOS"
 
   portao:
     name: portao-de-deploy
@@ -143,6 +172,117 @@ jobs:
       - name: Portão de deploy (0 = verde provado · 1 = reprovado · 2 = não mediu)
         run: python ci/portao_de_deploy.py
 
+  publicar-dados-admin:
+    needs: [detectar, portao]
+    if: >-
+      needs.portao.result == 'success' &&
+      needs.detectar.result == 'success' &&
+      needs.detectar.outputs.deteccao == 'ok' &&
+      (needs.detectar.outputs.painel_dados == 'true' || needs.detectar.outputs.fila_dados == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preparar dados do painel
+        if: needs.detectar.outputs.painel_dados == 'true'
+        run: |
+          set -eu
+          python ci/preparar_dados_admin.py painel \
+            --saida admin-dados-payload/painel \
+            --sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-number "${{ github.run_number }}"
+          cp ci/publicador_dados_admin.py admin-dados-payload/publicador_dados_admin.py
+      - name: Enviar dados do painel para staging na VPS
+        if: needs.detectar.outputs.painel_dados == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "admin-dados-payload/painel,admin-dados-payload/publicador_dados_admin.py"
+          target: /opt/plataforma/admin-dados.new/${{ github.sha }}
+          strip_components: 1
+          rm: true
+      - name: Publicar dados do painel na VPS
+        id: publicar_painel
+        if: needs.detectar.outputs.painel_dados == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: ADMIN_DADOS_TIPO,ADMIN_DADOS_SHA,ADMIN_DADOS_RUN_NUMBER
+          capture_stdout: true
+          script_path: infra/publicar-dados-admin-na-vps.sh
+        env:
+          ADMIN_DADOS_TIPO: painel
+          ADMIN_DADOS_SHA: ${{ github.sha }}
+          ADMIN_DADOS_RUN_NUMBER: ${{ github.run_number }}
+      - name: Provar que os dados do painel foram ativados
+        if: needs.detectar.outputs.painel_dados == 'true'
+        env:
+          SAIDA: ${{ steps.publicar_painel.outputs.stdout }}
+        run: |
+          set -eu
+          if printf '%s' "$SAIDA" | grep -Eq 'ADMIN-DADOS-(PUBLICADOS|ANTIGO-IGNORADO): tipo=painel'; then
+            echo "dados do painel validados pela VPS"
+          else
+            echo "PAROU: a publicação do painel não deixou sentinela."
+            exit 1
+          fi
+      - name: Preparar dados da fila
+        if: needs.detectar.outputs.fila_dados == 'true'
+        run: |
+          set -eu
+          python ci/preparar_dados_admin.py fila \
+            --saida admin-dados-payload/fila \
+            --sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-number "${{ github.run_number }}"
+          cp ci/publicador_dados_admin.py admin-dados-payload/publicador_dados_admin.py
+      - name: Enviar dados da fila para staging na VPS
+        if: needs.detectar.outputs.fila_dados == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "admin-dados-payload/fila,admin-dados-payload/publicador_dados_admin.py"
+          target: /opt/plataforma/admin-dados.new/${{ github.sha }}
+          strip_components: 1
+      - name: Publicar dados da fila na VPS
+        id: publicar_fila
+        if: needs.detectar.outputs.fila_dados == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: ADMIN_DADOS_TIPO,ADMIN_DADOS_SHA,ADMIN_DADOS_RUN_NUMBER
+          capture_stdout: true
+          script_path: infra/publicar-dados-admin-na-vps.sh
+        env:
+          ADMIN_DADOS_TIPO: fila
+          ADMIN_DADOS_SHA: ${{ github.sha }}
+          ADMIN_DADOS_RUN_NUMBER: ${{ github.run_number }}
+      - name: Provar que os dados da fila foram ativados
+        if: needs.detectar.outputs.fila_dados == 'true'
+        env:
+          SAIDA: ${{ steps.publicar_fila.outputs.stdout }}
+        run: |
+          set -eu
+          if printf '%s' "$SAIDA" | grep -Eq 'ADMIN-DADOS-(PUBLICADOS|ANTIGO-IGNORADO): tipo=fila'; then
+            echo "dados da fila validados pela VPS"
+          else
+            echo "PAROU: a publicação da fila não deixou sentinela."
+            exit 1
+          fi
+
   deploy:
     needs: [detectar, portao]
     # Explícito de propósito; NUNCA always()/failure(): deploy só existe com o
@@ -151,7 +291,7 @@ jobs:
       needs.portao.result == 'success' &&
       needs.detectar.result == 'success' &&
       needs.detectar.outputs.deteccao == 'ok' &&
-      needs.detectar.outputs.celulas != '[]'
+      needs.detectar.outputs.celulas_imagem != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -159,7 +299,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        celula: ${{ fromJSON(needs.detectar.outputs.celulas) }}
+        celula: ${{ fromJSON(needs.detectar.outputs.celulas_imagem) }}
     steps:
       # `fetch-depth: 0` NÃO é zelo: a reversão automática (Onda 4, fatia 2)
       # anda para trás no histórico desta célula para achar a última imagem
@@ -175,40 +315,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Embutir o painel do dono no contexto do build (só a célula admin)
+      - name: Embutir a regra da dívida do livro no contexto do build (só a célula admin)
         if: matrix.celula == 'admin'
         run: |
           set -eu
-          # O contexto do build é `services/admin`, que não alcança `painel/`
-          # na raiz. A cópia entra aqui, e o `COPY . .` do Dockerfile a leva
-          # para a imagem; `services/admin/.gitignore` garante que ela nunca
-          # seja commitada (seriam dois livros no repositório).
-          #
-          # Fail-CLOSED de propósito: sem `set -eu` e sem esta conferência, uma
-          # pasta ausente viraria uma imagem publicada em que o painel
-          # simplesmente não existe — e o deploy ficaria VERDE. É a forma exata
-          # do falso-verde que a RETROSPECTIVA-FASE-D lista como padrão 1.
-          test -d painel/registros || { echo "PAROU: painel/registros/ nao existe"; exit 1; }
-          #
-          # A MATERIALIZACAO — este job e o ESCRITOR UNICO dos artefatos do
-          # painel (Onda 3, 28/08/2026). painel.html e livro-AAAAMM.js nao
-          # moram mais no Git: eram a colisao diaria entre robos, porque todo
-          # registro novo reescrevia os dois arquivos inteiros. Quem os
-          # constroi e a integracao — aqui, e na muralha de cada PR.
-          #
-          # Fail-CLOSED duas vezes: o gerador so escreve se TODOS os registros
-          # forem validos (senao sai 1 ou 2, e o `set -e` para o job), e a
-          # conferencia abaixo garante que a pagina existe de verdade antes de
-          # a imagem ser construida. Deploy que publica um painel ausente
-          # ficaria verde, e essa e a forma exata do falso-verde que a
-          # RETROSPECTIVA-FASE-D lista como padrao 1.
-          command -v node >/dev/null 2>&1 || { echo "PAROU: node nao esta disponivel para montar o painel"; exit 1; }
-          node painel/gerar_manifesto.js
-          test -f painel/painel.html || { echo "PAROU: o gerador terminou e painel/painel.html nao existe"; exit 1; }
-          ls painel/livro-*.js >/dev/null 2>&1 || { echo "PAROU: nenhum arquivo de mes foi gerado"; exit 1; }
-          rm -rf services/admin/painel_embutido
-          cp -R painel services/admin/painel_embutido
-          echo "painel embutido: $(ls services/admin/painel_embutido/registros | wc -l) registros"
           # A REGRA da dívida do livro viaja junto — o MESMO arquivo que a porta
           # do merge usa (`ci/mergear.py`). A célula mede a dívida ao vivo para
           # a tela do dono; reimplementar a regra aqui dentro daria dois números
@@ -219,28 +329,25 @@ jobs:
           mkdir -p services/admin/regra_do_livro
           cp ci/divida_do_livro.py services/admin/regra_do_livro/
           echo "regra da divida embutida"
-      - name: Embutir a fila de trabalho no contexto do build (só a célula admin)
+      - name: Embutir snapshot de segurança dos dados admin no build (só a célula admin)
         if: matrix.celula == 'admin'
         run: |
           set -eu
-          # A aba "Os robôs" é calculada da fila (fila/LEIA-ME.md). O quadro é
-          # MATERIALIZADO aqui — escritor único, o mesmo desenho do painel: a
-          # célula serve estados prontos, nunca recalcula (recalcular seria uma
-          # segunda definição de "em que pé está", e as duas divergiriam).
-          #
-          # Fail-CLOSED: `ci/fila.py listar` valida a fila inteira antes de
-          # escrever (sai 2 se inválida, e o `set -e` para o job). Fila ausente
-          # numa imagem publicada seria o falso-verde padrão 1 da retrospectiva.
-          test -d fila/tarefas || { echo "PAROU: fila/tarefas/ nao existe"; exit 1; }
-          rm -rf services/admin/fila_embutida
-          mkdir -p services/admin/fila_embutida
-          cp -R fila/. services/admin/fila_embutida/
-          python ci/fila.py listar --json > services/admin/fila_embutida/estados.json
-          test -s services/admin/fila_embutida/estados.json || { echo "PAROU: estados.json saiu vazio"; exit 1; }
-          # A régua viva das esperas viaja junto — a aba a mostra ao lado do
-          # resumo curado dos estouros (fila/esperas/, exportado do diário).
-          cp ci/tempos_esperados.json services/admin/fila_embutida/regua.json
-          echo "fila embutida: $(ls services/admin/fila_embutida/tarefas | wc -l) tarefas"
+          # Fallback da MIGRACAO INICIAL. A publicação normal de painel/fila
+          # mora no job `publicar-dados-admin` e não reconstrói imagem. Este
+          # snapshot só protege a janela em que a imagem nova chega antes de o
+          # compose montar `/opt/plataforma/admin-dados`.
+          python ci/preparar_dados_admin.py painel \
+            --saida services/admin/painel_embutido \
+            --sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-number "${{ github.run_number }}"
+          python ci/preparar_dados_admin.py fila \
+            --saida services/admin/fila_embutida \
+            --sha "${{ github.sha }}" \
+            --run-id "${{ github.run_id }}" \
+            --run-number "${{ github.run_number }}"
+          echo "snapshot admin: painel e fila embutidos como fallback"
       - name: Embutir os documentos do site no contexto do build (só a célula admin)
         if: matrix.celula == 'admin'
         run: |

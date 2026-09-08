@@ -10,10 +10,10 @@ do plano de 29/08/2026 — desenho em
 
 | O quê | De onde | Quem escreveu |
 |---|---|---|
-| O quadro (estados) | `fila_embutida/estados.json` | `ci/fila.py listar --json`, no build (escritor único) |
-| As tarefas/eventos | `fila_embutida/tarefas|eventos/` | os robôs, por PR |
-| A régua das esperas | `fila_embutida/regua.json` | `ci/medir_tempos.py` (a régua viva) |
-| Os estouros | `fila_embutida/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
+| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py listar --json`, no publicador (escritor único) |
+| As tarefas/eventos | `admin-dados/fila_ativo/tarefas|eventos/` | os robôs, por PR |
+| A régua das esperas | `admin-dados/fila_ativo/regua.json` | `ci/medir_tempos.py` (a régua viva) |
+| Os estouros | `admin-dados/fila_ativo/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
 | Ao vivo (reservas/PRs) | api.github.com, DO NAVEGADOR | o servidor do GitHub |
 
 Recalcular estados aqui seria a segunda definição de "em que pé está" — a
@@ -71,6 +71,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from . import fila_no_github
+from .admin_dados import PASTA_DADOS_FILA_ATIVO, selecionar_dados
 from .views import _auditar
 
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
@@ -85,12 +86,13 @@ RE_ID_DA_TAREFA = re.compile(r"^TAR-\d{3,}$")
 # para sempre no lugar da tarefa: é uma frase, não um documento.
 MOTIVO_NO_MAXIMO = 500
 
-# Em produção só a primeira existe (o deploy embute); num checkout, nenhuma —
-# e a página diz que a fila não veio, em vez de fingir fila vazia. Não há
-# fallback para `<repo>/fila/` de propósito: os ESTADOS são materializados no
-# build (`estados.json`), e um fallback que recalculasse aqui seria a segunda
-# definição que o cabeçalho proíbe.
-CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
+# Em produção a fonte é a versão publicada; num checkout a cópia embutida ou a
+# fila da raiz mantêm a suíte legível sem rebuild de imagem.
+CANDIDATOS = (
+    PASTA_DADOS_FILA_ATIVO,
+    RAIZ_DA_CELULA / "fila_embutida",
+    RAIZ_DA_CELULA.parent.parent / "fila",
+)
 
 # OS GRUPOS DO QUADRO, na ordem em que aparecem na tela — e a ordem é POR
 # URGÊNCIA PARA O MANTENEDOR, não a ordem do fluxo de trabalho. O que pode
@@ -399,10 +401,9 @@ _SCRIPT_EMBUTIDO = re.compile(
 
 
 def diretorio_da_fila() -> Path | None:
-    for candidato in CANDIDATOS:
-        if (candidato / "estados.json").is_file():
-            return candidato
-    return None
+    return selecionar_dados(
+        CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
+    )
 
 
 def _ler_json(caminho: Path):

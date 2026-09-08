@@ -105,6 +105,9 @@ rm -rf traefik
 mv traefik.new traefik
 mv -f sites.json.new sites.json
 mv -f sincronizar_sites.py.new sincronizar_sites.py
+mkdir -p admin-dados
+touch admin-dados/.permissao-deploy-teste
+rm -f admin-dados/.permissao-deploy-teste
 docker compose up -d
 
 # O traefik monta ./traefik por bind mount, e bind mount prende o

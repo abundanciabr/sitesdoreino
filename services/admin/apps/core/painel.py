@@ -13,11 +13,11 @@ que compara byte a byte.
 
 | Onde                         | Caminho                    | Quem põe lá                    |
 |------------------------------|----------------------------|--------------------------------|
-| Imagem de produção           | `/app/painel_embutido/`    | o `deploy-celula` copia para o contexto do build |
+| Produção                     | `/opt/plataforma/admin-dados/painel_ativo` | o publicador de dados valida e troca o ponteiro |
 | Checkout do repositório      | `<repo>/painel/`           | já está lá (é a pasta viva)    |
 
-A cópia é gitignorada de propósito (`services/admin/.gitignore`): commitá-la
-criaria no repositório duas pastas com os mesmos registros — exatamente a
+O snapshot local é gitignorado de propósito (`services/admin/.gitignore`):
+commitá-lo criaria no repositório duas pastas com os mesmos registros, a
 duplicação que este arquivo evita servindo, e não copiando.
 
 **Se a pasta não vier, a página DIZ isso** (`painel_ausente.html`, 500) em vez
@@ -53,6 +53,8 @@ from django.shortcuts import render
 from django.views.decorators.http import require_safe
 from django.views.static import serve as serve_do_django
 
+from .admin_dados import PASTA_DADOS_PAINEL_ATIVO, selecionar_dados
+
 # `apps/core/painel.py` → `apps/core` → `apps` → a raiz da célula (`/app` na
 # imagem, `services/admin` num checkout).
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
@@ -61,6 +63,7 @@ RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 # Se um dia as duas existirem na mesma máquina (alguém rodou a cópia local), a
 # embutida vence — é a que produção serve, e teste que mede outra coisa mente.
 CANDIDATOS = (
+    PASTA_DADOS_PAINEL_ATIVO,
     RAIZ_DA_CELULA / "painel_embutido",
     RAIZ_DA_CELULA.parent.parent / "painel",
 )
@@ -78,10 +81,9 @@ _SCRIPT_EMBUTIDO = re.compile(
 
 def diretorio_do_painel() -> Path | None:
     """A pasta do painel, ou `None` se ela não veio nesta imagem."""
-    for candidato in CANDIDATOS:
-        if (candidato / "painel.html").is_file():
-            return candidato
-    return None
+    return selecionar_dados(
+        CANDIDATOS, tipo="painel", arquivos_obrigatorios=("painel.html",)
+    )
 
 
 def _politica_de_seguranca(html: bytes) -> str:

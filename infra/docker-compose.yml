@@ -153,6 +153,8 @@ services:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-admin:${ADMIN_TAG:-main}
     env_file: [env/admin.env]
+    volumes:
+      - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
 
   quiz:
     <<: *celula
