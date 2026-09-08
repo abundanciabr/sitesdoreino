@@ -1528,12 +1528,17 @@ def contexto_direcionado(
     from licao_do_caminho import licoes_do_caminho
     from sino_das_armadilhas import carregar_sinais, reconhecer, resumo_da_armadilha
 
-    obrigatorias = ["AGENTS.md", "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
-                    "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
+    globais = [nome for nome in ("CLAUDE.md", "AGENTS.md") if (raiz / nome).is_file()]
+    limites = []
+    if not globais:
+        limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
+                       "confira o checkout e as instruções da sessão antes de editar.")
+    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
+                  "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
         if len(partes) > 1 and partes[0] == "services":
-            obrigatorias.extend([f"constituicoes/AGENTS.{partes[1]}.md",
+            candidatas.extend([f"constituicoes/AGENTS.{partes[1]}.md",
                                  f"services/{partes[1]}/LICOES.md"])
         alvo = raiz / caminho
         if alvo.resolve().is_relative_to(raiz.resolve()):
@@ -1543,7 +1548,13 @@ def contexto_direcionado(
                     break
                 lei = pasta / "AGENTS.md"
                 if lei.is_file():
-                    obrigatorias.append(lei.relative_to(raiz).as_posix())
+                    candidatas.append(lei.relative_to(raiz).as_posix())
+    candidatas = list(dict.fromkeys(candidatas))
+    obrigatorias = [nome for nome in candidatas if (raiz / nome).is_file()]
+    ausentes = [nome for nome in candidatas if nome not in obrigatorias]
+    if ausentes:
+        limites.append("Limitação: fontes de leitura ausentes neste checkout: " + ", ".join(ausentes)
+                       + ". Confira o checkout antes de assumir que a preparação está completa.")
     linhas = ["CONTEXTO DIRECIONADO", f"Objetivo: {objetivo or 'não informado; complete o brief antes de editar'}",
               "Aceite: " + ("; ".join(aceite) or "não informado; confira o brief da tarefa"),
               "Caminhos: " + ", ".join(caminhos),
@@ -1551,6 +1562,7 @@ def contexto_direcionado(
               "Decisões do brief: " + ("; ".join(decisoes) or "não informadas; consulte as fontes abaixo"),
               "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
               "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias."]
+    linhas.extend(limites)
     achados = {}
     for caminho in caminhos:
         try:
