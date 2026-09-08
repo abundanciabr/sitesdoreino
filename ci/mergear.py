@@ -602,6 +602,44 @@ def checar_registro_embarcado(raiz: Path, pr: dict[str, Any]) -> Resultado:
     )
 
 
+def checar_frescor_do_livro(raiz: Path) -> Resultado:
+    """Impede cobrar o livro local quando a árvore não acompanha a main."""
+    try:
+        medicao = executar(
+            ["git", "rev-list", "--count", "HEAD..origin/main"],
+            cwd=raiz,
+            descricao="conferir o frescor do livro contra origin/main",
+            exigir_stdout=True,
+        ).stdout.strip()
+    except ErroDeInstrumentacao as erro:
+        return Resultado(
+            "frescor do livro",
+            Estado.ERROR,
+            "não consegui confirmar se a árvore está em dia com origin/main",
+            f"{erro.detalhe}\n\nArme a espera de uma bancada em dia com `origin/main` "
+            "antes de julgar o livro.",
+        )
+    if not re.fullmatch(r"[0-9]+", medicao):
+        return Resultado(
+            "frescor do livro",
+            Estado.ERROR,
+            "a medição do atraso da árvore devolveu um valor inválido",
+            f"git rev-list devolveu {medicao!r}. Arme a espera de uma bancada em "
+            "dia com `origin/main` antes de julgar o livro.",
+        )
+    atraso = int(medicao)
+    if atraso:
+        return Resultado(
+            "frescor do livro",
+            Estado.ERROR,
+            f"a árvore está {atraso} commit(s) atrás de origin/main",
+            "O portão não julgou a dívida porque o livro local pode estar velho. "
+            "Arme a espera de uma bancada em dia com `origin/main` antes de "
+            "julgar o livro.",
+        )
+    return Resultado("frescor do livro", Estado.PASS, "árvore em dia com origin/main")
+
+
 def checar_divida_do_livro(raiz: Path, pr: dict[str, Any]) -> Resultado:
     """A rede de segurança pós-merge — a regra em `ci/divida_do_livro.py`.
 
@@ -758,7 +796,10 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
     for r in checar_dependencias(raiz_real, pr):
         relatorio.registrar(r)
     relatorio.registrar(checar_registro_embarcado(raiz_real, pr))
-    relatorio.registrar(checar_divida_do_livro(raiz_real, pr))
+    frescor = checar_frescor_do_livro(raiz_real)
+    relatorio.registrar(frescor)
+    if frescor.estado is Estado.PASS:
+        relatorio.registrar(checar_divida_do_livro(raiz_real, pr))
     return relatorio, pr
 
 
