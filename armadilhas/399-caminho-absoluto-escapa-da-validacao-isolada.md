@@ -39,6 +39,8 @@ guardando logs privados sanitizados fora da árvore entregue.
 
 ## Evidência
 
-PR #1377, `ci/tests/test_pr.py::test_argumento_absoluto_original_e_recusado`:
-reprodução com Git real e variantes de argumento. Auditoria independente aprovou
-os 113 testes focais; a suíte composta posterior passou 2333 testes.
+PR #1377, `ci/tests/test_pr.py`: o teste
+`test_validacao_real_nao_usa_modulo_fora_da_revisao` usa Git real;
+`test_argumento_absoluto_original_e_recusado` usa dublê nas variantes de argumento.
+Auditoria independente aprovou os 113 testes focais; a suíte composta posterior
+passou 2333 testes.
