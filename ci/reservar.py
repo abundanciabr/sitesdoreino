@@ -57,6 +57,7 @@ Exit codes: 0 alocado/reservado · 1 recusado (já é de outro) · 2 ERROR.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import os
@@ -370,6 +371,33 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None, *,
     )
 
 
+def identidade_da_bancada(raiz: Path) -> str:
+    """Identidade da bancada sem publicar o caminho local no servidor."""
+    return hashlib.sha256(bancada(raiz).encode("utf-8")).hexdigest()
+
+
+def confirmar_intencao(raiz: Path, chave: str) -> bool:
+    """Confere posse e validade na referência remota; nunca usa recibo velho."""
+    ref = f"{NS_RESERVA}/{chave}"
+    leitura = executar(["git", "ls-remote", "origin", ref], cwd=raiz,
+                       descricao="conferir a reserva existente no servidor").stdout.strip()
+    if not leitura:
+        return False
+    sha = leitura.split()[0]
+    executar(["git", "fetch", "--no-tags", "origin", sha], cwd=raiz,
+             descricao="ler o comprovante remoto da reserva")
+    mensagem = executar(["git", "show", "-s", "--format=%B", sha], cwd=raiz,
+                        descricao="conferir o dono da reserva").stdout
+    try:
+        corpo = json.loads(mensagem)
+        expira = datetime.fromisoformat(corpo.get("expira_em", ""))
+        return (corpo.get("tipo") == "intencao" and corpo.get("chave") == chave
+                and corpo.get("dono") == identidade_da_bancada(raiz)
+                and expira > datetime.now(timezone.utc))
+    except (ValueError, TypeError, AttributeError):
+        return False
+
+
 def reservar_intencao(
     raiz: Path,
     chave: str,
@@ -391,6 +419,7 @@ def reservar_intencao(
         ref,
         {
             "tipo": "intencao",
+            "dono": identidade_da_bancada(raiz),
             "chave": chave,
             "objetivo": objetivo,
             "criado_em": agora.isoformat(),

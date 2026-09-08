@@ -14,9 +14,10 @@ fazer:
     sessao  ->  "prepare o ambiente para o trabalho começar"  (ESCREVE)
 
 O `ci/doctor.py` continua sendo o único diagnóstico, e continua não consertando
-nada. Este script é o **único** lugar do repositório que cria worktree, venv e
-container — e ele nunca é o comportamento padrão de outro alvo: ninguém sobe um
-Postgres por acidente rodando `make doctor`.
+nada. Este script cria a bancada persistente de trabalho, venv e container.
+A validação do fechamento pode criar worktrees efêmeros isolados. A preparação
+nunca é o comportamento padrão de outro alvo: ninguém sobe um Postgres por
+acidente rodando `make doctor`.
 
 O que ele faz, nesta ordem, e de forma IDEMPOTENTE (rodar duas vezes não
 duplica nada — o que já existe é reusado, e reusar não é falhar):
@@ -78,6 +79,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
@@ -627,14 +629,14 @@ def resumo_do_baseline(saida: str) -> str:
     return achados[-1] if achados else "verde"
 
 
-def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "") -> str:
+def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", estado_git: str = "limpo") -> str:
     """A Declaração de Abertura do RITOS §1, em UMA linha, pronta para colar."""
     primeira = (
-        f"Li CONSTITUICAO.md e {constituicao_da_celula}."
+        f"Leituras exigidas: CONSTITUICAO.md e {constituicao_da_celula}."
         if constituicao_da_celula
-        else "Li CONSTITUICAO.md e RITOS.md §1."
+        else "Leituras exigidas: CONSTITUICAO.md e RITOS.md §1."
     )
-    frase = plano.frase or "<uma frase: o que este despacho vai fazer>"
+    frase = plano.frase or "não informada; complete o brief antes de editar"
     # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
     # mediu. "não medido" com o motivo é honesto; "verde" seria falso-verde.
     baseline = (
@@ -644,7 +646,7 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "") -
     )
     return (
         f"{primeira} Worktree: {plano.worktree.name}. "
-        f"Branch: {plano.branch}. git status: limpo. "
+        f"Branch: {plano.branch}. git status: {estado_git}. "
         f"{baseline} "
         f"Tarefa: {frase}."
     )
@@ -825,6 +827,7 @@ class Sessao:
         self._dormir = dormir
         self._log = log
         self._n = 0
+        self._estado_git = "não medido"
         self._passos = passos_do_plano(plano)
         self._variaveis: dict[str, str] = {}
 
@@ -964,14 +967,14 @@ class Sessao:
                 cwd=self.plano.raiz,
                 timeout=120,
             ).stdout.strip()
-            if atual and atual != self.plano.branch:
+            if atual != self.plano.branch:
                 raise ErroDeSessao(
                     passo,
                     f"o worktree existe, mas está na branch '{atual}'",
                     detalhe=f"Esperada: {self.plano.branch}\nWorktree: {self.plano.worktree}\n\n"
                     "Reusar um worktree de OUTRA tarefa misturaria dois despachos.\n"
-                    "Escolha outra TAREFA, ou remova o worktree que você mesmo criou:\n"
-                    f"  git -C {self.plano.raiz} worktree remove {self.plano.worktree}",
+                    "Escolha outra TAREFA ou confira a branch e o trabalho existente.\n"
+                    "Nenhum arquivo foi removido ou alterado por esta conferência.",
                     codigo=1,
                 )
             self._pass(f"a bancada já existia na branch certa: {self.plano.worktree}")
@@ -1062,8 +1065,7 @@ class Sessao:
                 + "\n\nA fala acima é do BALCÃO, não deste script. Quase sempre é\n"
                 "outro robô que pegou a tarefa primeiro, ou ela está trancada.\n"
                 "NÃO escreva um byte nesta bancada: pare e reporte à maestro.\n"
-                "A bancada ficou vazia e pode ser removida com:\n"
-                f"  git -C {self.plano.raiz} worktree remove {self.plano.worktree}\n"
+                "A bancada e o trabalho preexistente foram preservados.\n"
                 "O quadro de agora: python ci/fila.py listar --ao-vivo",
                 codigo=1,
             )
@@ -1082,14 +1084,38 @@ class Sessao:
             cwd=self.plano.raiz,
             timeout=300,
         ).stdout.strip()
+        self._estado_git = "limpo"
+        if sujo and self.plano.tarefa_da_fila:
+            proprios = True
+            for linha in sujo.splitlines():
+                relativo = linha[3:]
+                try:
+                    if linha[:2] not in {"??", "A "} or not relativo.startswith("fila/eventos/") or ".." in Path(relativo).parts:
+                        proprios = False
+                        break
+                    evento = json.loads((self.plano.worktree / relativo).read_text(encoding="utf-8"))
+                    if not (evento.get("tarefa") == self.plano.tarefa_da_fila
+                            and evento.get("quem") == self.plano.quem_no_balcao
+                            and evento.get("evento") == "reivindicada"):
+                        proprios = False
+                        break
+                except (OSError, ValueError, AttributeError):
+                    proprios = False
+                    break
+            if proprios:
+                self._estado_git = "comprovante da reivindicação pendente de commit"
+                return
         if sujo:
+            self._estado_git = "alterações preexistentes preservadas"
             raise ErroDeSessao(
                 passo,
                 "a bancada NÃO está limpa",
                 comando=f"git -C {self.plano.worktree} status --porcelain",
                 detalhe=recortar(sujo, 2000)
                 + "\n\nA Declaração de Abertura afirma `git status: limpo`. Imprimi-la\n"
-                "com o workspace sujo seria assinar uma coisa que não é verdade.",
+                "com o workspace sujo seria assinar uma coisa que não é verdade.\n"
+                "Seu trabalho foi preservado. Revise e commite as alterações antes\n"
+                "de repetir a abertura; não remova a bancada para destravar.",
                 codigo=1,
             )
 
@@ -1128,7 +1154,7 @@ class Sessao:
             # Sem baseline, este é o ÚLTIMO passo do rito: a limpeza que a
             # Declaração afirma se mede aqui, ou não se mede em lugar nenhum.
             self._exigir_bancada_limpa(passo, git)
-            self._pass(f"{alvo} materializado · git status: limpo")
+            self._pass(f"{alvo} materializado · git status: {self._estado_git}")
             return
         self._pass(f"{alvo} materializado (leia a entrada que casa com a sua tarefa)")
 
@@ -1442,7 +1468,7 @@ class Sessao:
         self._nota(f"make ci verde ({resumo}) · log completo: {onde_o_log}")
 
         self._exigir_bancada_limpa(passo, git)
-        self._pass(f"make ci = {resumo} · git status: limpo · log: {onde_o_log}")
+        self._pass(f"make ci = {resumo} · git status: {self._estado_git} · log: {onde_o_log}")
         return resumo
 
     # -- orquestração -------------------------------------------------------
@@ -1460,7 +1486,7 @@ class Sessao:
             self.pegar_a_tarefa()
         self.gerar_indice(git)
         if not self.plano.sobe_ambiente:
-            return declaracao(self.plano, resumo="")
+            return declaracao(self.plano, resumo="", estado_git=self._estado_git)
         self.preparar_venv()
         self.instalar()
         porta_pg, porta_redis = self.preparar_servicos()
@@ -1471,11 +1497,119 @@ class Sessao:
         if not self._existe(self.plano.worktree / constituicao):
             constituicao = ""
         return declaracao(
-            self.plano, resumo=resumo, constituicao_da_celula=constituicao
+            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git
         )
 
 
 # ---------------------------------------------------------------------------
+
+
+def caminhos_da_tarefa(tarefa: dict, celulas: Sequence[str]) -> list[str]:
+    """A fila aceita nomes de área/célula em toca e caminhos em toca/cria."""
+    caminhos = []
+    for campo in ("toca", "cria"):
+        for valor in tarefa.get(campo) or []:
+            caminho = valor.strip().replace("\\", "/")
+            if caminho in celulas:
+                caminho = f"services/{caminho}/"
+            elif PADRAO_DE_NOME.fullmatch(caminho):
+                caminho += "/"
+            if caminho not in caminhos:
+                caminhos.append(caminho)
+    return caminhos
+
+
+def contexto_direcionado(
+    raiz: Path, *, objetivo: str, caminhos: Sequence[str], sintoma: str = "",
+    aceite: Sequence[str] = (), restricoes: Sequence[str] = (),
+    decisoes: Sequence[str] = (), limite: int = 8,
+) -> str:
+    """Consulta os mesmos gatilhos e sinais dos ganchos, sem catálogo próprio."""
+    from licao_do_caminho import licoes_do_caminho
+    from sino_das_armadilhas import carregar_sinais, reconhecer, resumo_da_armadilha
+
+    obrigatorias = ["AGENTS.md", "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
+                    "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
+    for caminho in caminhos:
+        partes = Path(caminho.replace("\\", "/")).parts
+        if len(partes) > 1 and partes[0] == "services":
+            obrigatorias.extend([f"constituicoes/AGENTS.{partes[1]}.md",
+                                 f"services/{partes[1]}/LICOES.md"])
+        alvo = raiz / caminho
+        if alvo.resolve().is_relative_to(raiz.resolve()):
+            inicio = alvo if alvo.is_dir() else alvo.parent
+            for pasta in [inicio, *inicio.parents]:
+                if not pasta.is_relative_to(raiz) or pasta == raiz:
+                    break
+                lei = pasta / "AGENTS.md"
+                if lei.is_file():
+                    obrigatorias.append(lei.relative_to(raiz).as_posix())
+    linhas = ["CONTEXTO DIRECIONADO", f"Objetivo: {objetivo or 'não informado; complete o brief antes de editar'}",
+              "Aceite: " + ("; ".join(aceite) or "não informado; confira o brief da tarefa"),
+              "Caminhos: " + ", ".join(caminhos),
+              "Restrições do brief: " + ("; ".join(restricoes) or "consulte as instruções obrigatórias"),
+              "Decisões do brief: " + ("; ".join(decisoes) or "não informadas; consulte as fontes abaixo"),
+              "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
+              "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias."]
+    achados = {}
+    for caminho in caminhos:
+        try:
+            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
+            for item in itens:
+                achados.setdefault(item["armadilha"], item)
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
+            break
+    if sintoma:
+        try:
+            # O sino limita toques por comando. Consultar cada assinatura mantém
+            # a correspondência dele e permite contar o truncamento desta resposta.
+            for sinal in carregar_sinais(raiz / "armadilhas/SINAIS.json"):
+                for item, _ in reconhecer(sintoma, [sinal]):
+                    achados.setdefault(item["armadilha"], item)
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append("Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py.")
+    if not achados:
+        linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
+    for item in list(achados.values())[:limite]:
+        arquivo = item["arquivo"]
+        linhas.append(f"Lição {item['armadilha']}: {item['titulo']} (origem: {arquivo})")
+        resumo = resumo_da_armadilha(raiz / arquivo, arquivo, item.get("licao", ""))
+        if resumo:
+            linhas.append(resumo)
+        else:
+            linhas.append("Limitação: resumo indisponível; leia a origem completa.")
+    if len(achados) > limite:
+        linhas.append(f"Truncado: {limite} de {len(achados)} lições. Amplie com --limite-contexto {len(achados)}.")
+    linhas.append("Aprofundamento: arquivos de origem, armadilhas/INDICE.md e docs/decisoes/. "
+                  "Refine --caminho/--sintoma ou amplie --limite-contexto; o histórico completo continua no repositório.")
+    return "\n".join(linhas)
+
+
+def medir_fase(plano: Plano, tentativa: str, fase: str, resultado: str, *, contexto_bytes=None, checkout: Path | None = None) -> None:
+    """A mesma telemetria da casa; ausência de medição nunca vira zero."""
+    try:
+        from telemetria import registrar_fase
+        onde = checkout or (plano.worktree if (plano.worktree / ".git").exists() else plano.raiz)
+        saida = correr_de_verdade(["git", "-C", str(onde), "rev-parse", "HEAD"])
+        commit = saida.stdout.strip() if saida.exit_code == 0 else None
+        branch = correr_de_verdade(["git", "-C", str(onde), "rev-parse", "--abbrev-ref", "HEAD"])
+        gravado = registrar_fase(fase, resultado, tarefa=plano.tarefa_da_fila or plano.branch,
+            tentativa=tentativa, branch=branch.stdout.strip() if branch.exit_code == 0 else None, commit=commit,
+            contexto_bytes=contexto_bytes, cwd=str(onde))
+        if gravado is None:
+            print("Medição de eficiência indisponível; cobertura incompleta nesta tentativa.")
+    except Exception:  # noqa: BLE001 - instrumentação não autoriza nem impede a operação
+        print("Medição de eficiência indisponível; os resultados operacionais continuam separados.")
+
+
+def emitir_contexto(plano: Plano, tentativa: str, pacote: str, *, checkout=None) -> None:
+    """Emite e conta os mesmos bytes, inclusive no Windows, sem converter linhas."""
+    dados = (pacote + "\n").encode("utf-8")
+    sys.stdout.flush()
+    sys.stdout.buffer.write(dados)
+    sys.stdout.buffer.flush()
+    medir_fase(plano, tentativa, "contexto", "concluido", contexto_bytes=len(dados), checkout=checkout)
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -1523,6 +1657,13 @@ def construir_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="só mostra o plano — não cria worktree, venv nem container",
     )
+    parser.add_argument("--contexto", action="store_true", help="só recupera contexto no checkout indicado, sem preparar ambiente")
+    parser.add_argument("--caminho", action="append", default=[], help="caminho afetado, repetível")
+    parser.add_argument("--sintoma", default="", help="sintoma para a busca existente por sinal")
+    parser.add_argument("--aceite", action="append", default=[], help="critério de aceite do brief, repetível")
+    parser.add_argument("--restricao", action="append", default=[], help="restrição do brief, repetível")
+    parser.add_argument("--decisao", action="append", default=[], help="referência de decisão do brief, repetível")
+    parser.add_argument("--limite-contexto", type=int, default=8, choices=range(1, 101), metavar="1..100", help="limite de lições retornadas")
     return parser
 
 
@@ -1561,10 +1702,38 @@ def main(argv: list[str] | None = None) -> int:
         print(erro.render())
         return erro.codigo
 
+    caminhos = args.caminho or [f"services/{celula}/" if plano.sobe_ambiente else f"{celula}/"]
+    def contexto(onde):
+        objetivo, aceite, origem = args.frase, args.aceite, []
+        caminhos_do_contexto = caminhos
+        limitacao = ""
+        if tarefa_da_fila:
+            from fila import carregar_tarefas
+            erros = []
+            tarefas = carregar_tarefas(onde, erros)
+            tarefa = tarefas.get(tarefa_da_fila)
+            if tarefa and not erros:
+                objetivo = objetivo or tarefa["titulo"]
+                aceite = aceite or [tarefa["evidencia_exigida"]]
+                origem = [f"fila/tarefas/{tarefa['arquivo']}.json"]
+                if not args.caminho:
+                    caminhos_do_contexto = caminhos_da_tarefa(tarefa, celulas) or caminhos
+            else:
+                limitacao = "\nLimitação: tarefa da fila indisponível ou inválida; confira o brief original."
+        return contexto_direcionado(onde, objetivo=objetivo, caminhos=caminhos_do_contexto,
+            sintoma=args.sintoma, aceite=aceite, restricoes=args.restricao,
+            decisoes=[*args.decisao, *origem], limite=args.limite_contexto) + limitacao
+    tentativa = uuid.uuid4().hex
+    if args.contexto:
+        pacote = contexto(raiz)
+        emitir_contexto(plano, tentativa, pacote, checkout=raiz)
+        return 0
     print(cabecalho(plano))
     if args.conferir:
         print("--conferir: nada foi criado. Tire a flag para executar o plano acima.")
         return 0
+
+    medir_fase(plano, tentativa, "abertura", "iniciado")
 
     # O ARAUTO — Onda 1 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md, contra a Classe 8
     # (mapa velho). Vem ANTES de qualquer trabalho e é fail-closed: sem saber
@@ -1598,15 +1767,26 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    detalhes = []
+    log_abertura = plano.scratch / f"abertura-{tentativa}.log"
     try:
-        texto = Sessao(plano).rodar()
+        texto = Sessao(plano, log=detalhes.append).rodar()
     except ErroDeSessao as erro:
+        escrever_de_verdade(log_abertura, "\n".join(detalhes + [erro.render()]))
         print(erro.render())
+        print(f"Log detalhado: {log_abertura}")
+        medir_fase(plano, tentativa, "abertura", "falhou")
         return erro.codigo
+    escrever_de_verdade(log_abertura, "\n".join(detalhes))
+    print(f"Preparação concluída; log detalhado: {log_abertura}")
+    medir_fase(plano, tentativa, "abertura", "concluido")
     print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print(f"A suíte da célula rodou em {plano.celula_no_worktree}.")
+    pacote = contexto(plano.worktree)
+    emitir_contexto(plano, tentativa, pacote)
+    print("Próxima ação autorizada: conferir as leituras obrigatórias e executar o brief; revisão, integração e publicação não foram realizadas.")
     print(bancada_pronta(plano))
     return 0
 
