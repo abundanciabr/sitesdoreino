@@ -81,6 +81,7 @@ import tempfile
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -1618,6 +1619,32 @@ def medir_fase(plano: Plano, tentativa: str, fase: str, resultado: str, *, conte
         print("Medição de eficiência indisponível; os resultados operacionais continuam separados.")
 
 
+def medir_tarefa_fase4(plano: Plano, tentativa: str, *, estado: str,
+                       inicio: str, fim: str | None, pr: int | None,
+                       commit: str | None = None, branch: str | None = None) -> None:
+    if not plano.tarefa_da_fila:
+        return
+    try:
+        import registrar_tarefa_fase4
+
+        checkout = plano.worktree
+        if commit is None:
+            commit_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "HEAD"])
+            commit = commit_resultado.stdout.strip() if commit_resultado.exit_code == 0 else ""
+        if branch is None:
+            branch_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "--abbrev-ref", "HEAD"])
+            branch = branch_resultado.stdout.strip() if branch_resultado.exit_code == 0 else ""
+        registrou = registrar_tarefa_fase4.registrar_execucao_fase4(
+            checkout, tarefa=plano.tarefa_da_fila, tentativa=tentativa,
+            branch=branch, commit=commit, estado=estado, inicio=inicio,
+            fim=fim, pr=pr,
+        )
+        if not registrou and registrar_tarefa_fase4.classificacao_da_tarefa(checkout, plano.tarefa_da_fila):
+            print("Medição Fase 4 indisponível; confira o caderno privado e repita a coleta.")
+    except Exception:
+        print("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
+
+
 def emitir_contexto(plano: Plano, tentativa: str, pacote: str, *, checkout=None) -> None:
     """Emite e conta os mesmos bytes, inclusive no Windows, sem converter linhas."""
     dados = (pacote + "\n").encode("utf-8")
@@ -1819,6 +1846,11 @@ def main(argv: list[str] | None = None) -> int:
     escrever_de_verdade(log_abertura, "\n".join(detalhes))
     print(f"Preparação concluída; log detalhado: {log_abertura}")
     medir_fase(plano, tentativa, "abertura", "concluido")
+    inicio_fase4 = datetime.now(timezone.utc).isoformat()
+    medir_tarefa_fase4(
+        plano, tentativa, estado="pendente", inicio=inicio_fase4,
+        fim=None, pr=None,
+    )
     print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")

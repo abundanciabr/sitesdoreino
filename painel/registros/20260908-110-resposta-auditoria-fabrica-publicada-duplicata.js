@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-110-resposta-auditoria-fabrica-publicada-duplicata",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "O registro duplicado da auditoria também foi fechado",
+  detalhe: "O mesmo PR #1401 e o mesmo deploy 34269707941 comprovam a publicação da auditoria independente. Este registro responde à segunda ocorrência do alerta, preservando a história append-only e sem declarar a expansão da Fase 4 liberada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1401 e https://github.com/abundanciabr/sitesdoreino/actions/runs/34269707941",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-069-painel-registrar-auditoria-independente-da-fabrica",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

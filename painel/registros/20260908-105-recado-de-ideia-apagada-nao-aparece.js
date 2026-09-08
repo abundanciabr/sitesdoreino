@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-105-recado-de-ideia-apagada-nao-aparece",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "O recado de ideia apagada deixou de aparecer",
+  detalhe: "O incidente foi corrigido no PR #678, que já foi incorporado. A Caixa de Sugestões apaga o aviso ligado à ideia junto com ela, e a tela de avisos ignora recados de ideias apagadas. Ideias arquivadas e avisos de outros assuntos continuam preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/678",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260831-010-voce-achou-o-recado-que-sobrou-de-uma-ideia-apagada",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "sugestoes",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
