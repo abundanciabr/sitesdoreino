@@ -99,7 +99,7 @@ def bancada(tmp_path: Path, principal: bool = False) -> Path:
     if principal:
         (raiz / ".git").mkdir()
     else:
-        (raiz / ".git").write_text("gitdir: /algum/lugar\n", encoding="utf-8")
+        (raiz / ".git").write_text(f"gitdir: {tmp_path / 'git-privado'}\n", encoding="utf-8")
     (raiz / "mensagem.txt").write_text(
         f"ci: o comando que abre o PR\n\nMuda o mundo.\n\n{COAUTOR}\n", encoding="utf-8"
     )
@@ -534,3 +534,48 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
     raiz = bancada(tmp_path)
     with pytest.raises(pr.ParouPorSeguranca, match='1 KB'):
         pr.abrir(raiz, pedido(raiz, detalhe='x'*1100), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
+
+
+def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    fases = []
+    monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: 'tentativa-abertura')
+    monkeypatch.setattr(pr.telemetria, 'registrar_fase', lambda fase, resultado, **dados: fases.append((fase, resultado, dados)))
+    pr.abrir(raiz, pedido(raiz), rodar=Duble(RESPOSTAS_FELIZES), hoje=HOJE)
+    assert [(f,r) for f,r,d in fases] == [('fechamento','iniciado'), ('validacao','concluido'), ('fechamento','concluido')]
+    assert {d['tentativa'] for f,r,d in fases} == {'tentativa-abertura'}
+    assert fases[-1][2]['pr'] == 1210
+    assert fases[-1][2]['commit'] == 'b'*40
+
+
+def test_validacao_muda_indice_e_expira_prova(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    chamadas = 0
+    def rodar(comando, raiz):
+        nonlocal chamadas
+        if comando == ['git','write-tree']:
+            chamadas += 1
+            return ('a' if chamadas == 1 else 'c')*40
+        return dub(comando,raiz)
+    with pytest.raises(pr.ParouPorSeguranca, match='alterou a árvore'):
+        pr.abrir(raiz, pedido(raiz), rodar=rodar, hoje=HOJE)
+    assert not dub.pediu('git commit')
+
+
+def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    (raiz/'fila/eventos').mkdir(parents=True)
+    tarefa = 'TAR-001'
+    evento = {'tarefa':tarefa, 'evento':'concluida','evidencia':URL_DO_PR}
+    caminho = raiz/'fila/eventos/concluida.json'
+    caminho.write_text(json.dumps(evento),encoding='utf-8')
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
+    dub = Duble()
+    assert pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR) == ['fila/eventos/concluida.json']
+    assert not dub.chamadas
+    evento['evidencia'] = URL_DO_PR+'0'
+    with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
+        pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)

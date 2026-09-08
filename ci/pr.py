@@ -14,6 +14,7 @@ import json
 import re
 import sys
 import unicodedata
+import uuid
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -355,6 +356,15 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
     return arquivos
 
 
+def _tentativa_da_abertura(raiz, ramo):
+    pasta = telemetria.dir_git_comum(raiz)
+    eventos = telemetria.ler_tudo(pasta) if pasta else []
+    candidatos = [e for e in eventos if e.get("evento") == "fase_operacional"
+                  and e.get("branch") == ramo and e.get("fase") in ("abertura", "fechamento")
+                  and telemetria.identidade_fase(e) is not None]
+    return max(candidatos, key=lambda e: e.get("quando", ""))["tentativa"] if candidatos else uuid.uuid4().hex
+
+
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
     raiz = Path(raiz)
     hoje = hoje or datetime.now(timezone.utc).date()
@@ -367,6 +377,11 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     sujo = correr(["git", "status", "--porcelain"]).strip()
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
+    tentativa = _tentativa_da_abertura(raiz, ramo)
+    correlacao = dict(tarefa=pedido.tarefa or ramo.split('/')[-1], tentativa=tentativa,
+                     branch=ramo, cwd=str(raiz))
+    inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
+    telemetria.registrar_fase("fechamento", "iniciado", commit=inicial, **correlacao)
     dizer(f"PASS preparação concluída: {ramo}")
     preparados = correr(["git", "diff", "--cached", "--name-only"]).splitlines()
     if set(preparados) - set(pedido.arquivos):
@@ -375,7 +390,11 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if correr(["git", "diff", "--name-only"]).strip():
         raise ParouPorSeguranca("mudanças fora do índice", "Inclua os arquivos da entrega ou preserve o trabalho em outra bancada antes de validar.")
     arvore = _hash_git(correr(["git", "write-tree"]))
-    provas = _validar(correr, comandos, dizer)
+    try:
+        provas = _validar(correr, comandos, dizer)
+    except ErroDeInstrumentacao:
+        telemetria.registrar_fase("validacao", "falhou", commit=inicial, **correlacao)
+        raise
     if correr(["git", "diff", "--name-only"]).strip() or _hash_git(correr(["git", "write-tree"])) != arvore:
         raise ParouPorSeguranca("a validação alterou a árvore", "Confira o diff e execute novamente a validação do conteúdo final.")
     if correr(["git", "diff", "--cached", "--name-only"]).strip():
@@ -383,6 +402,13 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     commit = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     if _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])) != arvore:
         raise ParouPorSeguranca("commit diverge da árvore validada", "Confira os hooks e valide novamente o commit efetivamente entregue.")
+    telemetria.registrar("validacao_pr", {
+        "arvore": arvore, "commit": commit, "branch": ramo,
+        "tentativa": tentativa, "saidas_sha256": provas,
+        "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
+        "resultado": "concluido",
+    }, cwd=str(raiz), sessao=tentativa)
+    telemetria.registrar_fase("validacao", "concluido", commit=commit, **correlacao)
     correr(["git", "push", "-u", "origin", ramo])
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
@@ -437,6 +463,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state"]))
     if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
         raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
+    telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
     dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
     dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
     final = f"PR {numero} aberto com recibo: {url}; devolva à maestro para revisão e espera."
@@ -480,7 +507,7 @@ def _registro_que_cita(raiz: Path, numero: int, arvore: str | None = None) -> Pa
     pasta = raiz / "painel" / "registros"
     if not pasta.is_dir():
         return None
-    for arquivo in sorted(pasta.glob("*.js")):
+    for arquivo in sorted(pasta.glob("*.js"), reverse=True):
         texto = arquivo.read_text(encoding="utf-8", errors="replace")
         try:
             campos = campos_lidos(texto)
@@ -552,13 +579,17 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except ErroDeInstrumentacao as erro:
         print("\nFAIL o rito parou no meio")
-        print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n")
+        print(f"\nPAROU POR SEGURANÇA: {telemetria.redigir(erro.resumo)}\n")
         if erro.detalhe:
             print(telemetria.redigir(erro.detalhe))
         print(
             "\nO que já foi feito continua feito. Conserte a causa e rode de novo com\n"
             "`--continuar`: ele relê o estado (commit? PR? registro?) e pula o pronto."
         )
+        return 2
+    except (OSError, ValueError, TypeError, KeyError) as erro:
+        print(f"ERROR fechamento: resposta ou arquivo inválido ({type(erro).__name__}).")
+        print("Confira os arquivos de entrada e o acesso remoto; retome com --continuar. Nenhuma aprovação foi declarada.")
         return 2
 
 
