@@ -112,6 +112,27 @@ def test_o_escrivao_declara_o_modelo_em_vez_de_herdar_o_mais_caro() -> None:
     )
 
 
+def test_o_revisor_declara_modelo_de_rotina() -> None:
+    campos = _frontmatter(FICHAS / "revisor.md")
+    modelo = campos.get("model", "")
+    assert modelo, "revisor.md: sem `model`, herda o modelo da maestro para ler diff."
+    assert "opus" not in modelo.lower(), (
+        f"revisor.md: model={modelo!r}. Revisão de checklist fechado começa em "
+        "modelo de rotina; risco semântico volta para a maestro."
+    )
+
+
+def test_o_despacho_sem_model_exige_brief_roteado() -> None:
+    texto = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+    campos = _frontmatter(FICHAS / "despacho.md")
+    if campos.get("model"):
+        return
+    assert "modelo_recomendado" in texto, (
+        "despacho.md: se a ficha não fixa `model`, ela precisa exigir "
+        "`modelo_recomendado` no brief. Herdar modelo caro não é decisão."
+    )
+
+
 def test_o_revisor_so_le() -> None:
     campos = _frontmatter(FICHAS / "revisor.md")
     permitidas = _lista(campos.get("tools", ""))
