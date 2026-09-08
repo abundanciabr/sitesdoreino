@@ -60,12 +60,12 @@ def _plataforma(tmp_path: Path, sementes=None) -> Path:
     return raiz
 
 
-def _rodar(raiz: Path) -> subprocess.CompletedProcess:
+def _rodar(raiz: Path, ambiente_extra=None) -> subprocess.CompletedProcess:
     assert SCRIPT.is_file(), (
         f"{SCRIPT} não existe. Este guarda não tem o que medir, e isso não é um "
         "OK — [INV-CI01]."
     )
-    ambiente = {**os.environ, "PLATAFORMA_DIR": str(raiz)}
+    ambiente = {**os.environ, "PLATAFORMA_DIR": str(raiz), **(ambiente_extra or {})}
     # O CAMINHO COMPLETO do bash, nunca a palavra solta: no Windows do
     # mantenedor, `bash` sem caminho encontra o do WSL, que não enxerga estes
     # arquivos e devolve um erro que não tem nada a ver com o script. Mesma
@@ -134,11 +134,16 @@ def test_a_chave_gravada_e_um_par_de_verdade(tmp_path):
         ),
         ec.SECP256R1(),
     )
-    derivada = base64.urlsafe_b64encode(
-        privada.public_key().public_bytes(
-            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+    derivada = (
+        base64.urlsafe_b64encode(
+            privada.public_key().public_bytes(
+                serialization.Encoding.X962,
+                serialization.PublicFormat.UncompressedPoint,
+            )
         )
-    ).decode().rstrip("=")
+        .decode()
+        .rstrip("=")
+    )
 
     assert derivada == _valor(raiz, "notificacoes.env", "VAPID_PUBLIC_KEY")
 
@@ -191,3 +196,21 @@ def test_para_quando_a_pasta_nao_e_a_plataforma(tmp_path):
 
     assert resultado.returncode != 0
     assert "PAROU POR SEGURANÇA" in resultado.stdout
+
+
+@bash_ausente
+def test_falha_do_reinicio_deixa_o_script_com_erro(tmp_path):
+    raiz = _plataforma(tmp_path)
+    binarios = tmp_path / "bin"
+    binarios.mkdir()
+    docker = binarios / "docker"
+    docker.write_text("#!/usr/bin/env bash\nexit 37\n", encoding="utf-8")
+    docker.chmod(0o755)
+
+    resultado = _rodar(
+        raiz,
+        {"PATH": f"{binarios}:{os.environ['PATH']}"},
+    )
+
+    assert resultado.returncode != 0
+    assert "reinicio das celulas FALHOU" in resultado.stdout
