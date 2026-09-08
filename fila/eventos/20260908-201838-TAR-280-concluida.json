@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260908-201838-TAR-280-concluida",
+  "tarefa": "TAR-280",
+  "evento": "concluida",
+  "quando": "2026-09-08T20:18:38+00:00",
+  "quem": "sessao-ci-retomar-fase4-coleta-real",
+  "evidencia": "TAR-280: python ci/registrar_tarefa_fase4.py PASS; python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_metricas_percurso.py -q PASS 63; python ci/analise_fase4.py --local reconhece 2 registros, consolida 1 tarefa, Fase 1 depois=1 antes=0 pares=0, avaliacao inconclusiva; docs/decisoes/RELATORIO-FASE4-MEDICAO.md atualizada",
+  "verificado_em": "2026-09-08"
+}
