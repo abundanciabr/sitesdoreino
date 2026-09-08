@@ -1528,12 +1528,17 @@ def contexto_direcionado(
     from licao_do_caminho import licoes_do_caminho
     from sino_das_armadilhas import carregar_sinais, reconhecer, resumo_da_armadilha
 
-    obrigatorias = ["AGENTS.md", "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
-                    "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
+    globais = [nome for nome in ("CLAUDE.md", "AGENTS.md") if (raiz / nome).is_file()]
+    limites = []
+    if not globais:
+        limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
+                       "confira o checkout e as instruções da sessão antes de editar.")
+    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md", "armadilhas/INDICE.md",
+                  "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
         if len(partes) > 1 and partes[0] == "services":
-            obrigatorias.extend([f"constituicoes/AGENTS.{partes[1]}.md",
+            candidatas.extend([f"constituicoes/AGENTS.{partes[1]}.md",
                                  f"services/{partes[1]}/LICOES.md"])
         alvo = raiz / caminho
         if alvo.resolve().is_relative_to(raiz.resolve()):
@@ -1543,7 +1548,13 @@ def contexto_direcionado(
                     break
                 lei = pasta / "AGENTS.md"
                 if lei.is_file():
-                    obrigatorias.append(lei.relative_to(raiz).as_posix())
+                    candidatas.append(lei.relative_to(raiz).as_posix())
+    candidatas = list(dict.fromkeys(candidatas))
+    obrigatorias = [nome for nome in candidatas if (raiz / nome).is_file()]
+    ausentes = [nome for nome in candidatas if nome not in obrigatorias]
+    if ausentes:
+        limites.append("Limitação: fontes de leitura ausentes neste checkout: " + ", ".join(ausentes)
+                       + ". Confira o checkout antes de assumir que a preparação está completa.")
     linhas = ["CONTEXTO DIRECIONADO", f"Objetivo: {objetivo or 'não informado; complete o brief antes de editar'}",
               "Aceite: " + ("; ".join(aceite) or "não informado; confira o brief da tarefa"),
               "Caminhos: " + ", ".join(caminhos),
@@ -1551,6 +1562,7 @@ def contexto_direcionado(
               "Decisões do brief: " + ("; ".join(decisoes) or "não informadas; consulte as fontes abaixo"),
               "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
               "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias."]
+    linhas.extend(limites)
     achados = {}
     for caminho in caminhos:
         try:
@@ -1667,11 +1679,35 @@ def construir_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def raiz_do_clone(checkout: Path) -> Path:
+    """A abertura usa o clone principal mesmo quando parte de uma bancada."""
+    if not (checkout / ".git").is_file():
+        return checkout
+    comando = ["git", "-C", str(checkout), "worktree", "list", "--porcelain"]
+    saida = correr_de_verdade(comando)
+    bancadas = [linha.removeprefix("worktree ") for linha in saida.stdout.splitlines()
+                if linha.startswith("worktree ")]
+    if saida.exit_code != 0 or not bancadas:
+        raise ErroDeInstrumentacao(
+            "não consegui localizar o clone principal desta bancada",
+            "Confira git worktree list --porcelain antes de repetir a abertura. "
+            "Nenhum arquivo foi alterado pela conferência.")
+    principal = raiz_declarada(Path(bancadas[0]))
+    if not (principal / ".git").is_dir():
+        raise ErroDeInstrumentacao(
+            "o Git não apontou um clone principal reconhecível",
+            "Confira os vínculos das bancadas com git worktree list --porcelain. "
+            "Não remova a bancada para corrigir o vínculo.")
+    return principal
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     args = construir_parser().parse_args(argv)
     try:
         raiz = raiz_declarada(Path(args.raiz)) if args.raiz else raiz_do_repo()
+        if not args.contexto:
+            raiz = raiz_do_clone(raiz)
     except ErroDeInstrumentacao as erro:
         print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n\n{erro.detalhe}")
         return 2
