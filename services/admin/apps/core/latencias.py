@@ -28,15 +28,17 @@ import json
 from pathlib import Path
 from statistics import median
 
+from .admin_dados import PASTA_DADOS_FILA_ATIVO, selecionar_dados
 from .placar import dia_em_sao_paulo
 
 #: `apps/core/latencias.py` → `apps/core` → `apps` → a raiz da célula.
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 
-#: A fila: embutida na imagem (produção) ou a do repositório (checkout, teste).
+#: A fila: publicada na VPS ou a do repositório (checkout, teste).
 #: Só `tarefas/` e `eventos/`, que são arquivos crus; os ESTADOS materializados
-#: continuam sendo só da embutida (`robos.py`).
+#: continuam sendo do publicador (`robos.py`).
 CANDIDATOS_DA_FILA = (
+    PASTA_DADOS_FILA_ATIVO,
     RAIZ_DA_CELULA / "fila_embutida",
     RAIZ_DA_CELULA.parent.parent / "fila",
 )
@@ -47,10 +49,11 @@ DIAS_PARADA = 7
 
 
 def diretorio_da_fila() -> Path | None:
-    for candidato in CANDIDATOS_DA_FILA:
-        if (candidato / "tarefas").is_dir() and (candidato / "eventos").is_dir():
-            return candidato
-    return None
+    return selecionar_dados(
+        CANDIDATOS_DA_FILA,
+        tipo="fila",
+        diretorios_obrigatorios=("tarefas", "eventos"),
+    )
 
 
 def _data(texto: object) -> dt.date | None:

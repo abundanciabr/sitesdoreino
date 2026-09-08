@@ -474,7 +474,7 @@ def test_workflow_de_deploy_exige_o_portao():
         "needs.portao.result == 'success'",
         "needs.detectar.result == 'success'",
         "needs.detectar.outputs.deteccao == 'ok'",
-        "needs.detectar.outputs.celulas != '[]'",
+        "needs.detectar.outputs.celulas_imagem != '[]'",
     ):
         assert trecho in cond, f"condição do deploy perdeu: {trecho}"
 
@@ -677,8 +677,15 @@ def _conhecidos_de_verdade() -> set:
     """A lista REAL da fonte, não uma cópia — senão o teste prova outra coisa."""
     import portao_de_deploy as pd
 
-    return {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_CADEADO,
-            pd.VACINA_DO_DEPLOY, pd.DEPLOY_CELULA, pd.DEPLOY_INFRA}
+    return {
+        CI_CELULA,
+        ALARME,
+        MURALHAS,
+        pd.VIGIA_DO_CADEADO,
+        pd.VACINA_DO_DEPLOY,
+        pd.DEPLOY_CELULA,
+        pd.DEPLOY_INFRA,
+    }
 
 
 def _a_irma_vermelha_nao_barra(esteira: str) -> None:

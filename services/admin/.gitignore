@@ -4,10 +4,10 @@ __pycache__/
 staticfiles/
 .env.dev
 
-# A cópia do painel do dono que o deploy embute no contexto do build
-# (`apps/core/painel.py`). NÃO se commita: duas pastas com os mesmos registros
-# dentro do repositório seria exatamente a duplicação que o CLAUDE.md proíbe —
-# a célula SERVE o painel, não guarda uma cópia dele.
+# O snapshot de segurança do painel, embutido só quando a imagem da admin muda.
+# A publicação normal mora em /opt/plataforma/admin-dados e não reconstrói
+# imagem. NÃO se commita: duas pastas com os mesmos registros dentro do
+# repositório seria exatamente a duplicação que o CLAUDE.md proíbe.
 painel_embutido/
 
 # A regra da dívida do livro (`ci/divida_do_livro.py`), embutida pelo mesmo
@@ -15,9 +15,8 @@ painel_embutido/
 # versionada aqui viraria a segunda definição de "contado".
 regra_do_livro/
 
-# A fila de trabalho (`fila/`) + estados materializados, embutidos pelo deploy
-# para a aba "Os robôs" (`apps/core/robos.py`). Mesma lei das duas de cima: a
-# fonte é `fila/` na raiz; cópia versionada aqui seria a segunda casa do fato.
+# O snapshot de segurança da fila, pelo mesmo motivo do painel. A fonte viva é
+# o publicador de dados; cópia versionada aqui seria a segunda casa do fato.
 fila_embutida/
 
 # A área de documentos (`documentos/`), embutida pelo mesmo passo do deploy

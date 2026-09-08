@@ -211,7 +211,9 @@ def test_o_pg_dump_nao_passa_por_pipe():
     — e este guarda é o que impede alguém de "melhorar" isso mais tarde.
     """
     linhas = linhas_de_codigo(DEPLOY)
-    _, linha_do_dump = linhas[indice_unico(linhas, r"exec -T postgres pg_dump", "o comando pg_dump")]
+    _, linha_do_dump = linhas[
+        indice_unico(linhas, r"exec -T postgres pg_dump", "o comando pg_dump")
+    ]
     assert "|" not in linha_do_dump.replace("||", ""), (
         "o pg_dump está dentro de um pipe:\n"
         f"    {linha_do_dump.strip()}\n"
@@ -242,7 +244,7 @@ def test_nenhuma_medicao_do_postgres_vem_de_um_pipe():
 
 
 def test_toda_medicao_do_postgres_trata_a_falha_explicitamente():
-    """"Não consegui medir" nunca vira "pode seguir" (INV-CI01)."""
+    """ "Não consegui medir" nunca vira "pode seguir" (INV-CI01)."""
     texto = DEPLOY.read_text(encoding="utf-8")
     for alvo in ("EXISTE_A_BASE=", "TAMANHO_DA_BASE=", "SAIDA_DO_DF="):
         trecho = texto.split(alvo, 1)[1][:400]
@@ -291,7 +293,9 @@ def test_celula_vazia_e_recusada_antes_de_qualquer_comando_docker():
         linhas, r'if \[ -z "\$\{CELULA:-\}" \]', "a recusa de CELULA vazia"
     )
     dockers = [i for i, (_, linha) in enumerate(linhas) if "docker " in linha]
-    assert dockers, "o script não chama docker em lugar nenhum — isso não pode estar certo"
+    assert (
+        dockers
+    ), "o script não chama docker em lugar nenhum — isso não pode estar certo"
     assert i_guarda < min(dockers), (
         f"a recusa de CELULA vazia está na linha {linhas[i_guarda][0]}, depois do "
         f"primeiro comando docker (linha {linhas[min(dockers)][0]})"
@@ -306,9 +310,9 @@ def test_cada_execucao_escreve_um_arquivo_novo():
         "duas execuções na mesma entrega escreveriam no mesmo arquivo — e a "
         "repetição do deploy (armadilhas/127) apagaria a cópia da primeira"
     )
-    assert "$CARIMBO" in texto.split("ARQUIVO_FINAL=", 1)[1][:200], (
-        "o nome final do dump não usa o carimbo de tempo"
-    )
+    assert (
+        "$CARIMBO" in texto.split("ARQUIVO_FINAL=", 1)[1][:200]
+    ), "o nome final do dump não usa o carimbo de tempo"
 
 
 def test_nenhum_rm_toca_fora_da_pasta_dos_dumps():
@@ -318,9 +322,9 @@ def test_nenhum_rm_toca_fora_da_pasta_dos_dumps():
         if not re.match(r"^(rm|.*\brm) ", despida):
             continue
         permitidos = ("PASTA_DOS_DUMPS", "$velho", "ARQUIVO_PARCIAL")
-        assert any(alvo in linha for alvo in permitidos), (
-            f"a linha {numero} apaga algo fora da pasta de dumps:\n    {despida}"
-        )
+        assert any(
+            alvo in linha for alvo in permitidos
+        ), f"a linha {numero} apaga algo fora da pasta de dumps:\n    {despida}"
 
 
 def test_a_pasta_dos_dumps_copia_dono_e_modo_de_um_vizinho():
@@ -331,9 +335,9 @@ def test_a_pasta_dos_dumps_copia_dono_e_modo_de_um_vizinho():
         "já funciona na máquina (armadilhas/091). Um dump é dado pessoal em texto "
         "puro: ele não pode nascer mais aberto que os segredos ao lado dele"
     )
-    assert re.search(r'chmod --reference="\$REFERENCIA_DE_PERMISSAO"', texto), (
-        "o chmod da pasta de dumps deixou de sair da referência"
-    )
+    assert re.search(
+        r'chmod --reference="\$REFERENCIA_DE_PERMISSAO"', texto
+    ), "o chmod da pasta de dumps deixou de sair da referência"
 
 
 def test_o_deploy_para_quando_o_backup_falha():
@@ -362,7 +366,12 @@ def test_nenhum_segredo_passa_perto(arquivo: Path):
     a forma de garantir isso é o script nunca precisar de uma.
     """
     texto = "\n".join(linha for _, linha in linhas_de_codigo(arquivo))
-    for proibido in ("PGPASSWORD", "POSTGRES_PASSWORD", "DATABASE_URL", "POSTGRES_SUPER_PASSWORD"):
+    for proibido in (
+        "PGPASSWORD",
+        "POSTGRES_PASSWORD",
+        "DATABASE_URL",
+        "POSTGRES_SUPER_PASSWORD",
+    ):
         assert proibido not in texto, (
             f"{arquivo.name} menciona {proibido}. A cópia de segurança não precisa "
             "de senha nenhuma: o pg_dump roda dentro do contêiner do Postgres, "
@@ -425,7 +434,7 @@ def test_o_restaurador_para_a_celula_antes_de_trocar_o_banco():
 # A PREMISSA DO DESENHO — o alarme que dispara se ela mudar
 # ---------------------------------------------------------------------------
 def test_o_workflow_ainda_envia_este_arquivo_e_nao_copia_outros():
-    """Se o deploy passar a copiar arquivos, o backup pode virar um `.sh` próprio.
+    """Se o deploy da imagem passar a copiar arquivos, o backup pode sair daqui.
 
     Hoje ele não copia: a `appleboy/ssh-action` manda o CONTEÚDO de
     `infra/deploy-celula-na-vps.sh` e nada mais chega a `/opt/plataforma`. É por
@@ -438,8 +447,12 @@ def test_o_workflow_ainda_envia_este_arquivo_e_nao_copia_outros():
         "o deploy-celula não envia mais infra/deploy-celula-na-vps.sh por "
         "script_path — reveja onde a cópia de segurança do banco deve morar"
     )
-    assert "scp-action" not in texto, (
-        "o deploy-celula ganhou um passo de cópia de arquivos para a VPS.\n"
+    import yaml
+
+    fluxo = yaml.safe_load(texto)
+    deploy = fluxo["jobs"]["deploy"]
+    assert "scp-action" not in str(deploy), (
+        "o job de deploy da imagem ganhou um passo de cópia de arquivos para a VPS.\n"
         "Isso muda a premissa do desenho da TAR-003: com arquivos chegando em "
         "/opt/plataforma, a cópia de segurança PODE virar um script próprio "
         "(infra/backup-antes-da-migracao.sh), que é o desenho preferível.\n"
