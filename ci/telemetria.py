@@ -160,6 +160,15 @@ def ler_tudo(raiz_git: Path, cobertura: dict | None = None) -> list[dict]:
 FASES = ("abertura", "contexto", "execucao", "validacao", "fechamento",
          "revisao", "integracao", "publicacao")
 RESULTADOS = ("iniciado", "concluido", "falhou", "nao_executado", "verificado")
+PILOTOS = ("fase1", "fase2", "fase3")
+CONDICOES = ("antes", "depois")
+ESTADOS_DA_TAREFA = ("concluida", "falhou", "pendente", "abandonada")
+METRICAS_DA_TAREFA = (
+    "chamadas_modelo", "chamadas_ferramenta", "runner_minutos",
+    "retentativas", "correcoes_revisao", "reaberturas", "minutos_adocao",
+    "minutos_manutencao", "defeitos_escapados", "violacoes_seguranca",
+    "contexto_bytes",
+)
 
 
 def registrar_fase(fase: str, resultado: str, *, tarefa: str, tentativa: str,
@@ -203,3 +212,89 @@ def identidade_fase(dados: dict) -> str | None:
             return None
     campos = ("tarefa", "tentativa", "branch", "commit", "pr", "fase", "resultado", "contexto_bytes")
     return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
+
+
+def identidade_tarefa(dados: dict) -> str | None:
+    """Identifica uma observação final de tarefa sem contar a tarefa duas vezes."""
+    if dados.get("evento") != "tarefa_medida":
+        return None
+    if dados.get("piloto") not in PILOTOS or dados.get("condicao") not in CONDICOES:
+        return None
+    if dados.get("estado") not in ESTADOS_DA_TAREFA:
+        return None
+    for campo in ("tarefa", "tentativa", "branch", "tipo", "complexidade", "fonte"):
+        valor = dados.get(campo)
+        if not isinstance(valor, str) or not (1 <= len(valor) <= 160):
+            return None
+        if redigir(valor) != valor or "\n" in valor or "\r" in valor:
+            return None
+    commit = dados.get("commit")
+    if not isinstance(commit, str) or not re.fullmatch(r"(?:[a-f0-9]{40}|[a-f0-9]{64})", commit):
+        return None
+    pr = dados.get("pr")
+    if pr is not None and (type(pr) is not int or pr < 1):
+        return None
+    revisao_instrumento = dados.get("revisao_instrumento")
+    if not isinstance(revisao_instrumento, str) or not re.fullmatch(r"[a-f0-9]{40}", revisao_instrumento):
+        return None
+    par_id = dados.get("par_id")
+    if par_id is not None and (not isinstance(par_id, str) or not re.fullmatch(r"[A-Za-z0-9_./-]{1,160}", par_id)):
+        return None
+    for campo in ("natureza", "componentes", "fronteiras_integracao", "migracao", "risco", "escopo_publicacao"):
+        valor = dados.get(campo)
+        if not isinstance(valor, str) or not valor:
+            return None
+    for campo in ("inicio", "fim"):
+        valor = dados.get(campo)
+        if valor is not None and not isinstance(valor, str):
+            return None
+    metricas = dados.get("metricas")
+    if not isinstance(metricas, dict):
+        return None
+    permitidas = set(METRICAS_DA_TAREFA)
+    if set(metricas) - permitidas:
+        return None
+    for valor in metricas.values():
+        if valor is not None and (type(valor) not in (int, float) or valor < 0):
+            return None
+    campos = (
+        "tarefa", "tentativa", "branch", "commit", "pr", "piloto", "condicao",
+        "par_id", "tipo", "complexidade", "natureza", "componentes",
+        "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+        "revisao_instrumento", "inicio", "fim", "estado", "fonte", "metricas",
+    )
+    return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
+
+
+def registrar_tarefa(*, tarefa: str, tentativa: str, branch: str, commit: str,
+                     piloto: str, condicao: str, tipo: str, complexidade: str,
+                     natureza: str, componentes: str, fronteiras_integracao: str,
+                     migracao: str, risco: str, escopo_publicacao: str,
+                     revisao_instrumento: str, estado: str, fonte: str,
+                     metricas: dict, inicio: str | None = None,
+                     fim: str | None = None, par_id: str | None = None,
+                     pr: int | None = None, cwd: str | None = None,
+                     sessao: str | None = None) -> Path | None:
+    """Registra uma tarefa comparável no mesmo caderninho privado da Fase 1.
+
+    Campos ausentes continuam ausentes. Em particular, nenhuma métrica recebe
+    zero por padrão, porque zero é uma observação e não um sinônimo de não sei.
+    """
+    try:
+        dados = dict(
+            evento="tarefa_medida", tarefa=tarefa, tentativa=tentativa,
+            branch=branch, commit=commit, pr=pr, piloto=piloto,
+            condicao=condicao, par_id=par_id, tipo=tipo,
+            complexidade=complexidade, natureza=natureza,
+            componentes=componentes, fronteiras_integracao=fronteiras_integracao,
+            migracao=migracao, risco=risco, escopo_publicacao=escopo_publicacao,
+            revisao_instrumento=revisao_instrumento, inicio=inicio, fim=fim,
+            estado=estado, fonte=fonte, metricas=metricas,
+        )
+        dados["id"] = identidade_tarefa(dados)
+        if dados["id"] is None:
+            return None
+        dados["quando"] = datetime.now(timezone.utc).isoformat()
+        return registrar("tarefa_medida", dados, cwd=cwd, sessao=sessao or tentativa)
+    except Exception:
+        return None
