@@ -1,6 +1,8 @@
 {% extends "cursos/moldura.html" %}{% comment %}
-O mapa das portas: as 34 encomendas em três Partes e doze Blocos, o estado de
-cada porta, e a próxima aberta em destaque (lei §6: "Entre. Entregue. Receba.").
+O mapa das portas: as aulas do curso em Partes e Blocos, o estado de cada
+porta, e a próxima aberta em destaque (lei §6: "Entre. Entregue. Receba."). No
+livro são 34 encomendas em três Partes e doze Blocos, com os nomes das Partes;
+outro curso diz "Parte N", e com uma Parte só o cabeçalho dela nem aparece.
 
 Cada porta aponta para o ENDEREÇO DO LIVRO da aula (`/<curso>/parte-N/<numero>`,
 TAR-212): é ele que o aluno copia da barra do navegador e manda para um colega,
@@ -35,7 +37,7 @@ pronta da view; o template só desenha.
 
 {% for parte in partes %}
 <section class="parte">
-  <h2>{{ parte.nome }}</h2>
+  {% if partes|length > 1 %}<h2>{{ parte.nome }}</h2>{% endif %}
   {% for bloco in parte.blocos %}
   <div class="bloco">
     <h3>{{ bloco.nome }}</h3>

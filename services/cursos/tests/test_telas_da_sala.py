@@ -345,8 +345,20 @@ def test_cada_pausa_tem_o_segundo_e_um_formulario_proprio(
     )
     assert "Pausa 1 aos 1:30" in corpo
     assert "Pausa 2 aos 4:00" in corpo
-    assert corpo.count('action="' + reverse("registrar-pausa", args=["E00", 1])) == 1
-    assert corpo.count('action="' + reverse("registrar-pausa", args=["E00", 2])) == 1
+    assert (
+        corpo.count(
+            'action="'
+            + reverse("registrar-pausa-do-curso", args=["profissional", 1, "E00", 1])
+        )
+        == 1
+    )
+    assert (
+        corpo.count(
+            'action="'
+            + reverse("registrar-pausa-do-curso", args=["profissional", 1, "E00", 2])
+        )
+        == 1
+    )
     assert 'name="campo_0"' in corpo and 'name="campo_1"' in corpo
 
 
@@ -482,7 +494,10 @@ def test_o_checkpoint_tem_o_formulario_de_entrega_por_link(aluna, ana_pronta, cl
     )
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
-    assert f'action="{reverse("entregar-checkpoint", args=["E00"])}"' in checkpoint
+    assert (
+        f'action="{reverse("entregar-checkpoint-do-curso", args=["profissional", 1, "E00"])}"'
+        in checkpoint
+    )
     assert 'name="arquivo"' in checkpoint
     assert ">Entregar<" in checkpoint
     assert "as arestas estão suaves" in checkpoint

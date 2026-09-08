@@ -151,6 +151,7 @@ function cenario(n) {
  *  `_tarefa_para_o_painel`, campo a campo, para medir a página real e não um
  *  dublê (armadilhas/131). */
 var PROMPT_DO_STUB = "Toque a TAR-901 da fila de trabalho.\n\nO despacho inteiro está no arquivo dela.";
+var DESTINO_DO_STUB = "Terra · raciocínio Low";
 function filaDeMentira() {
   function tarefa(extra) {
     var base = { id: null, titulo: null, estado: null, espera: null, situacao: null,
@@ -163,6 +164,9 @@ function filaDeMentira() {
     tarefa({ id: "TAR-901", titulo: "Uma tarefa esperando um robô", estado: "na fila",
       situacao: "Esperando um robô pegar", importancia: 70, selo: { texto: "custa caro hoje", classe: "alta" },
       o_que_muda: "o painel fica mais claro", prompt: PROMPT_DO_STUB }),
+    tarefa({ id: "TAR-903", titulo: "Uma tarefa com prompt vazio", estado: "na fila",
+      situacao: "Esperando um robô pegar", importancia: 20, selo: { texto: "pode esperar", classe: "baixa" },
+      o_que_muda: "a fila continua visível", prompt: "" }),
     tarefa({ id: "TAR-902", titulo: "Uma tarefa parada esperando o dono", estado: "bloqueada", espera: "mantenedor",
       situacao: "Esperando uma decisão sua", para_o_dono: true, motivo: "aguardando despacho do mantenedor" })
   ] };
@@ -508,6 +512,10 @@ async function medirPrioridades(estado, rotulo) {
       cab: cab ? cab.textContent : "",
       tarefas: document.querySelectorAll("#vista-area .item .meta").length,
       botoes: document.querySelectorAll("#vista-area .tocar").length,
+      destino: (document.querySelector("#vista-area .modelo-indicado") || {}).textContent || "",
+      promptInvalido: Array.prototype.some.call(document.querySelectorAll("#vista-area .item .det"), function (d) {
+        return d.textContent.indexOf("O prompt desta tarefa não está disponível") === 0;
+      }),
       prompt: (document.querySelector("#vista-area .prompt-caixa") || {}).textContent || ""
     };
   });
@@ -518,9 +526,11 @@ async function medirPrioridades(estado, rotulo) {
     area.blocos === 1 && area.cab.indexOf(AREAS[0].nome) === 0, "blocos=" + area.blocos + " cab=" + area.cab);
   caso(rotulo + ": abrir a área NÃO custou pedido novo (a fila já veio)",
     estado.pedidos.length === depoisDaFila, estado.pedidos.slice(depoisDaFila).join(" | "));
-  caso(rotulo + ": só a tarefa na fila tem o botão de copiar, e o prompt é o da fila",
-    area.tarefas === 2 && area.botoes === 1 && area.prompt === PROMPT_DO_STUB,
-    "tarefas=" + area.tarefas + " botoes=" + area.botoes + " prompt=" + JSON.stringify(area.prompt.slice(0, 40)));
+  caso(rotulo + ": só a tarefa com prompt válido mostra Terra Low antes do botão, e prompt vazio explica a falha",
+    area.tarefas === 3 && area.botoes === 1 && area.destino === DESTINO_DO_STUB && area.promptInvalido &&
+      area.prompt === "Use o modelo Terra com raciocínio Low.\n\n" + PROMPT_DO_STUB,
+    "tarefas=" + area.tarefas + " botoes=" + area.botoes + " invalido=" + area.promptInvalido + " destino=" + JSON.stringify(area.destino) +
+      " prompt=" + JSON.stringify(area.prompt.slice(0, 40)));
 
   // O clique, nos três caminhos. A área de transferência é controlada ANTES de
   // cada clique, e entre um e outro a página volta ao menu e reabre a área:
@@ -547,8 +557,9 @@ async function medirPrioridades(estado, rotulo) {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
       writeText: function (t) { window.__copiado = t; return Promise.resolve(); } } });
   });
-  caso(rotulo + ": copiar deu certo: o botão confirma, a caixa segue escondida e foi EXATAMENTE o prompt",
-    copiou.botao === TEXTO_COPIADO && copiou.caixaOculta === true && copiou.copiado === PROMPT_DO_STUB,
+  caso(rotulo + ": copiar deu certo: o botão confirma, a caixa segue escondida e foi EXATAMENTE o prompt com destino",
+    copiou.botao === TEXTO_COPIADO && copiou.caixaOculta === true &&
+      copiou.copiado === "Use o modelo Terra com raciocínio Low.\n\n" + PROMPT_DO_STUB,
     "botao=" + JSON.stringify(copiou.botao) + " oculta=" + copiou.caixaOculta +
       " copiado=" + JSON.stringify(String(copiou.copiado).slice(0, 40)));
   var negado = await clicarEmCopiar(function () {
@@ -556,15 +567,17 @@ async function medirPrioridades(estado, rotulo) {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
       writeText: function () { return Promise.reject(new Error("negado")); } } });
   });
-  caso(rotulo + ": copiar NEGADO pelo navegador: a caixa abre com o prompt exato e o botão pede para selecionar",
-    negado.botao === TEXTO_NAO_COPIOU && negado.caixaOculta === false && negado.caixa === PROMPT_DO_STUB,
+  caso(rotulo + ": copiar NEGADO pelo navegador: a caixa abre com o prompt completo e o botão pede para selecionar",
+    negado.botao === TEXTO_NAO_COPIOU && negado.caixaOculta === false &&
+      negado.caixa === "Use o modelo Terra com raciocínio Low.\n\n" + PROMPT_DO_STUB,
     "botao=" + JSON.stringify(negado.botao) + " oculta=" + negado.caixaOculta);
   var semNada = await clicarEmCopiar(function () {
     window.__copiado = null;
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: undefined });
   });
   caso(rotulo + ": SEM área de transferência: o mesmo caminho da falha, sem erro de página",
-    semNada.botao === TEXTO_NAO_COPIOU && semNada.caixaOculta === false && semNada.caixa === PROMPT_DO_STUB &&
+    semNada.botao === TEXTO_NAO_COPIOU && semNada.caixaOculta === false &&
+      semNada.caixa === "Use o modelo Terra com raciocínio Low.\n\n" + PROMPT_DO_STUB &&
       semNada.copiado === null && estado.errosPagina.length === 0,
     "botao=" + JSON.stringify(semNada.botao) + " oculta=" + semNada.caixaOculta +
       " erros=" + estado.errosPagina.slice(0, 2).join(" | "));
@@ -653,9 +666,9 @@ async function medirAreaDireta(navegador, endereco, base, rotulo, esperadosDaAbe
       aberta.errosPagina.length === 0 && alheios.length === 0,
       alheios.concat(aberta.errosPagina).slice(0, 3).join(" | "));
   } else {
-    caso(rotulo + ": aberta direto, a área já vem com as 2 tarefas da fila, o botão de copiar e a linha da fila visível",
-      tela.ativa && tela.blocos === 1 && tela.tarefas === 2 && tela.botoes === 1 &&
-        tela.fila.visivel && !tela.fila.ruim && tela.fila.texto.indexOf("2 tarefa(s) abertas") === 0,
+    caso(rotulo + ": aberta direto, a área já vem com as 3 tarefas da fila, o botão de copiar e a linha da fila visível",
+      tela.ativa && tela.blocos === 1 && tela.tarefas === 3 && tela.botoes === 1 &&
+        tela.fila.visivel && !tela.fila.ruim && tela.fila.texto.indexOf("3 tarefa(s) abertas") === 0,
       "blocos=" + tela.blocos + " tarefas=" + tela.tarefas + " botoes=" + tela.botoes +
         " visivel=" + tela.fila.visivel + " texto=" + JSON.stringify(tela.fila.texto.slice(0, 50)));
     caso(rotulo + ": aberta direto, ZERO erro de página e ZERO erro de console",
@@ -692,7 +705,7 @@ async function medirEstadosDaArea(navegador, endereco) {
   await pagina.goBack();
   caso("voltar do navegador recupera o menu", await pagina.locator("#vista-prioridades").isVisible());
   await pagina.goBack();
-  caso("voltar de novo recupera a área com suas tarefas", await pagina.locator("#vista-area .item .meta").count() === 2);
+  caso("voltar de novo recupera a área com suas tarefas", await pagina.locator("#vista-area .item .meta").count() === 3);
   await pagina.unroute("**/fila.json");
   await pagina.route("**/fila.json", function (rota) { return rota.fulfill({ json: { erro: "Não foi possível ler a fila." } }); });
   await pagina.reload();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-001-a-progressao-livre-entra-na-sala",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "A sala ganhou o gesto de concluir aula em curso livre",
+  detalhe: "O PR 1372 faz a sala respeitar a regra de avanco escolhida no curso. Curso livre mostra o botao Concluir esta aula, exige as pausas registradas, conclui a aula, abre a proxima e nao mostra checkpoint. Curso por laudo continua pelo laudo, e recusa o gesto em portugues.\n\nA mudanca tambem deixa o mapa de curso com uma unica Parte sem cabecalho de Parte, e mantem os nomes especiais das Partes so no curso do livro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1372",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
