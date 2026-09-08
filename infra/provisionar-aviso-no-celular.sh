@@ -195,6 +195,7 @@ if command -v docker >/dev/null 2>&1; then
       echo "  recarreguei:$ALVOS"
     else
       echo "  (aviso: não consegui recarregar$ALVOS — os arquivos JÁ estão certos; o próximo deploy relê o env de qualquer forma. Avise o agente.)"
+      exit 1
     fi
   else
     echo "  (aviso: não achei os serviços no compose desta máquina — o próximo deploy relê o env.)"
