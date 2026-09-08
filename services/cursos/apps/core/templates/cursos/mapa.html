@@ -22,16 +22,33 @@ pronta da view; o template só desenha.
 {% block conteudo %}
 {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
 
-<section class="abertura">
-  <p class="rotulo">Sua sala de aula</p>
-  <h1>Entre. Entregue. Receba.</h1>
+<section class="capa-curso">
+  <div>
+    <p class="rotulo">Sua sala de aula</p>
+    <h1>{{ curso.nome }}</h1>
+    <p class="passo">Entre. Entregue. Receba. Uma entrega por vez, com a próxima porta sempre à vista.</p>
+  </div>
+  {% if aulas_publicadas %}
+  <div class="progresso-curso">
+    <div class="progresso-topo"><span>Seu progresso</span><strong>{{ progresso_percentual }}%</strong></div>
+    <div class="barra-progresso" role="progressbar" aria-label="Progresso do curso" aria-valuenow="{{ progresso_percentual }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ progresso_percentual }}%"></span></div>
+    <p>{{ aulas_concluidas }} de {{ aulas_publicadas }} aulas concluídas</p>
+  </div>
+  {% endif %}
+</section>
+
+<section class="proxima-porta">
+  <p class="rotulo">Próximo passo</p>
   {% if atual %}
-  <p class="passo">Sua porta aberta agora:
+  <h2>{{ atual.titulo }}</h2>
+  <p class="passo">Sua porta aberta agora: {% if atual.abre %}esta é a próxima entrega.{% else %}esta aula está em preparo pela escola.{% endif %}</p>
     {% if atual.abre %}<a class="porta-atual" href="{% url 'aula-do-curso' curso.slug atual.parte atual.numero %}">{{ atual.titulo }}</a>{% else %}<strong>{{ atual.titulo }}</strong> (ainda em preparo pela escola){% endif %}
-  </p>
+  {% elif not tem_aulas %}
+  <h2>O caminho está sendo montado</h2>
+  <p class="passo">Este curso ainda não tem aulas cadastradas. Volte quando a escola publicar a primeira porta.</p>
   {% else %}
-  <p class="passo">Todas as suas portas estão fechadas por enquanto. Quando a
-  escola abrir a primeira, ela aparece aqui em destaque.</p>
+  <h2>Todas as portas estão fechadas</h2>
+  <p class="passo">Nenhuma aula está aberta para você agora. Quando a escola liberar a próxima etapa, ela aparecerá aqui.</p>
   {% endif %}
 </section>
 
@@ -43,7 +60,7 @@ pronta da view; o template só desenha.
     <h3>{{ bloco.nome }}</h3>
     <ol class="portas">
       {% for porta in bloco.portas %}
-      <li class="porta estado-{{ porta.estado }}{% if porta.atual %} atual{% endif %}">
+      <li class="porta estado-{{ porta.estado_visual }}{% if porta.atual %} atual{% endif %}{% if porta.boss %} boss{% endif %}">
         {% if porta.abre %}<a href="{% url 'aula-do-curso' curso.slug porta.parte porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
         <span class="selo">{{ porta.rotulo }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
       </li>
