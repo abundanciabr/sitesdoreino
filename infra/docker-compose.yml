@@ -97,12 +97,41 @@ services:
         condition: service_started
 
   # O login do site (DECISAO-celula-de-identidade, 25/08/2026): Google, cookie
-  # de sessão e a resposta "quem é o dono desta sessão?". Sem auxiliar — não
-  # publica evento e não tem worker.
+  # de sessão e a resposta "quem é o dono desta sessão?".
+  #
+  # A célula ganhou voz em 31/08/2026: a cunhagem publica
+  # `identidade.pessoa-cadastrada` na outbox e tenta empurrar ao Redis depois do
+  # commit. As duas variáveis abaixo são topologia deste compose, não segredo de
+  # célula, como nos relays de `cursos`, `pages` e `encomendas`.
   identidade:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/12
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_started
+
+  # A rede de segurança da outbox da `identidade`: se o publish depois do commit
+  # falhar, este worker recolhe a linha pendente no próximo tique. Banco 12
+  # porque os bancos 1 a 11 já são filas Huey de outras células neste compose.
+  identidade-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
+    env_file: [env/identidade.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/12
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      identidade:
+        condition: service_healthy
 
   # ORDEM DE ENTREGA — a lição que este bloco custou, escrita onde o próximo
   # agente vai olhar. Uma célula NOVA cujo PR traz o código E este compose
