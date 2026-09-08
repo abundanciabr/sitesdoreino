@@ -40,6 +40,7 @@ def _payload_painel(pasta: Path, *, sha="abc123", run_number=10) -> Path:
         "export default {}", encoding="utf-8"
     )
     (pasta / "painel.html").write_text("<html></html>", encoding="utf-8")
+    (pasta / "livro-202609.js").write_text("export default []", encoding="utf-8")
     escrever_manifesto(
         pasta, tipo="painel", sha=sha, run_id="run-id", run_number=run_number
     )
@@ -108,6 +109,19 @@ def test_publicador_recusa_conteudo_incompleto_mesmo_com_manifesto(tmp_path):
     with pytest.raises(PublicacaoInvalida, match="fila sem tarefas JSON"):
         decidir_publicacao(
             payload, tmp_path / "ativo", tipo="fila", sha="abc123", run_number=10
+        )
+
+
+def test_publicador_recusa_painel_sem_livro_mensal(tmp_path):
+    payload = _payload_painel(tmp_path / "payload")
+    (payload / "livro-202609.js").unlink()
+    escrever_manifesto(
+        payload, tipo="painel", sha="abc123", run_id="run-id", run_number=10
+    )
+
+    with pytest.raises(PublicacaoInvalida, match="painel sem livro mensal JS"):
+        decidir_publicacao(
+            payload, tmp_path / "ativo", tipo="painel", sha="abc123", run_number=10
         )
 
 
@@ -183,3 +197,12 @@ def test_script_de_vps_troca_ponteiro_e_nao_reinicia_admin():
     assert "docker compose" not in script
     assert "docker build" not in script
     assert "ADMIN-DADOS-PUBLICADOS:" in script
+
+
+def test_deploy_infra_prepara_admin_dados_antes_do_compose_up():
+    script = (RAIZ / "infra" / "sincronizar-infra-na-vps.sh").read_text(
+        encoding="utf-8"
+    )
+    preparo = script.index("mkdir -p admin-dados")
+    assert preparo < script.index("docker compose up -d")
+    assert "touch admin-dados/.permissao-deploy-teste" in script

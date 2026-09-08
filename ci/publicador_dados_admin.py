@@ -97,6 +97,8 @@ def _validar_conteudo(pasta: Path, tipo: str) -> None:
         registros = pasta / "registros"
         if not registros.is_dir() or not list(registros.glob("*.js")):
             raise PublicacaoInvalida("painel sem registros JS")
+        if not list(pasta.glob("livro-*.js")):
+            raise PublicacaoInvalida("painel sem livro mensal JS")
         return
 
     if not (pasta / "estados.json").is_file():
