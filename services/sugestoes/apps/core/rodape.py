@@ -84,6 +84,7 @@ ROTAS_SEM_PAGINA = frozenset({"estatico"})
 # casa, a mudança do lado da Caixa é esta linha.
 URL_DO_SITE = "/"
 URL_DOS_DOCUMENTOS = "/docs/"
+URL_DAS_NOTIFICACOES = "/notificacoes"
 
 
 def enderecos_de_outras_celulas() -> set:
@@ -104,7 +105,7 @@ def enderecos_de_outras_celulas() -> set:
     que alguém mexesse num deles — e o guarda passaria a reprovar o link certo,
     ou a deixar passar o errado.
     """
-    return {URL_DO_SITE, URL_DOS_DOCUMENTOS}
+    return {URL_DO_SITE, URL_DOS_DOCUMENTOS, URL_DAS_NOTIFICACOES}
 
 
 def variante_da_rota(nome_da_rota: "str | None") -> "str | None":
