@@ -6,8 +6,9 @@ Data da análise: 2026-09-08
 
 **Estado global: NÃO PRONTA.** A coleta operacional foi demonstrada em uma
 tarefa real já autorizada. A avaliação comparativa continua inconclusiva,
-porque existe uma observação depois, nenhuma observação antes, nenhum par e
-nenhuma auditoria independente dos resultados.
+porque existe uma observação depois, nenhuma observação antes e nenhum par.
+A auditoria independente da entrada atual foi concluída e confirmou essa
+limitação.
 
 Na abertura desta retomada, a saída confundia instrumentação implementada com
 amostra disponível. A distinção agora é explícita: `instrumentacao:
@@ -28,7 +29,9 @@ Fontes consultadas:
 - `.git/telemetria-dos-robos/*.jsonl`, 199 arquivos privados;
 - `ci/analise_fase4.py`, revisão da análise `fase4-2026-09-08-2`;
 - protocolo em `docs/decisoes/PROTOCOLO-FASE4-MEDICAO.md`;
+- parecer em `docs/decisoes/AUDITORIA-INDEPENDENTE-FASE4-20260908.md`;
 - fila, reserva e evento de execução da TAR-280;
+- PR #1420, auditoria independente da entrada atual;
 - testes focais do analisador, do registrador e do percurso.
 
 Período considerado: 2026-08-30T01:41:24Z a 2026-09-08T21:28:34Z.
@@ -97,7 +100,7 @@ conclusão de benefício e preserva o custo desconhecido.
 | F4-08 Comparabilidade | parcial | Fase 1 e condição depois reconhecidas; nenhuma comparação formada | condição antes e atributos comparáveis |
 | F4-09 Não executar sem liberação | atendido | nenhum consumidor novo alterado ou expandido | manter bloqueio |
 | F4-10 Condição de entrada | não liberada | não há benefício comparativo nem qualidade operacional completa | amostra, qualidade, recuperação e auditoria |
-| F4-11 Auditoria | pendente | autoauditoria do método e dos testes realizada | revisor independente precisa recalcular esta entrada |
+| F4-11 Auditoria | atendido para a entrada atual | parecer independente reproduziu a análise, conferiu o hash e retestou os critérios | auditar novamente após novas observações |
 | F4-12 Separação de implementação, execução e publicação | atendido no relatório, parcial no ciclo | custos desconhecidos não viraram zero; publicação não foi alegada | revisão, PR e publicação do relatório |
 
 ## E. Amostra por piloto e condição
@@ -142,19 +145,25 @@ não tem erro de arquivo, correlação ou validação.
 
 Não permitem concluir ganho, regressão, economia, comparabilidade, linha de
 base, custo completo ou expansão. Não há 20 observações em cada condição, 10
-pares, qualidade operacional completa ou auditoria independente dos resultados.
+pares ou qualidade operacional completa. A auditoria independente confirmou
+essa conclusão.
 
-## H. Auditoria no momento adequado
+## H. Auditoria independente
 
-A autoauditoria conferiu a separação do sintético, a identidade, a
-deduplicação, a retomada, a ausência de tempo, a ausência de custo, a decisão
-sem amostra e o hash da entrada. A execução foi feita no mesmo contexto da
-implementação e não vale como independência.
+O parecer de `TAR-281` foi executado em contexto e bancada separados da coleta,
+reproduziu a análise, recalculou os resultados principais, conferiu o hash da
+entrada e verificou as exclusões. O PR #1420 foi incorporado com checks verdes
+e o deploy `34283078065` terminou com `completed/success`.
 
-TAR-281 continua bloqueada pela fila até a coleta de TAR-280. O revisor
-independente pode auditar agora a instrumentação, as exclusões, a tarefa real,
-o protocolo, as fontes e os critérios. A auditoria dos resultados
-comparativos fica para quando houver dados suficientes.
+Os achados independentes confirmam três bloqueios médios: amostra insuficiente,
+qualidade e custo incompletos, e percurso sem prova de publicação. Também
+confirmam que a fonte sintética não contaminou a amostra e que a retomada da
+TAR-280 não duplicou a tarefa.
+
+TAR-281 está concluída como auditoria da entrada atual. Ela não libera
+expansão, não cria amostra artificial e não transforma ausência em zero. Novas
+observações exigem nova análise e nova auditoria antes de qualquer decisão de
+expansão.
 
 ## I. Comandos e saídas reais
 
@@ -185,11 +194,12 @@ entrada_sha256: 44cef42c07ac6c5e8325cab0e512a71aa8bd56e722f9df9b9dc4619d8bf9025c
    fechamento, sem usar TAR-282 como produtividade.
 2. Formar condições antes e depois comparáveis, com custo completo e qualidade
    observada.
-3. Desbloquear TAR-281 somente para auditoria independente da entrada real e
-   da análise reproduzida.
+3. Manter a expansão bloqueada e repetir a auditoria depois de novas
+   observações reais comparáveis.
 4. Recalcular a análise antes de qualquer decisão de expansão.
 
 ## Conclusão global
 
-**NÃO PRONTA.** A coleta operacional foi demonstrada neste caso. A avaliação
-comparativa ainda está em andamento e não há ganho comprovado.
+**NÃO PRONTA.** A coleta operacional foi demonstrada neste caso e a auditoria
+independente foi concluída. A avaliação comparativa ainda está em andamento e
+não há ganho comprovado.
