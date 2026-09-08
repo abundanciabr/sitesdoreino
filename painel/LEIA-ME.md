@@ -49,8 +49,14 @@
    O log distingue `PASS` (exit zero), `FAIL` (exit não zero), `TIMEOUT`
    (prazo excedido) e `ERROR` (instrumento ou encerramento indisponível),
    preservando stdout e stderr sanitizados, prazo e horários UTC. Ao exceder
-   o prazo, o runner encerra o grupo de processos no POSIX e o Job Object no
-   Windows, incluindo filhos e netos. A validação não aprova resultado
+   o prazo, o runner encerra os descendentes no Linux e o Job Object no
+   Windows, incluindo filhos e netos. No Linux, adota órfãos antes de iniciar
+   o comando e recolhe os descendentes mesmo após nova sessão (`setsid`) ou
+   saída antecipada do pai. Restaura o estado de adoção ao fim e recusa um
+   processo com filhos preexistentes ou outra validação concorrente. Execute
+   `ci/pr.py` em processo separado se essa recusa aparecer. A contenção foi
+   exercitada em Windows e Linux; outros sistemas são recusados explicitamente.
+   A validação não aprova resultado
    incompleto. A retomada com `CONTINUAR=1` repete as provas da revisão isolada
    e do SHA final; ela não reutiliza uma aprovação anterior para dispensá-las.
 

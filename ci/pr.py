@@ -18,7 +18,6 @@ import uuid
 import tempfile
 import subprocess
 import os
-import signal
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -158,15 +157,13 @@ def rodar(comando: list[str], raiz: Path, *, log: Path | None = None,
     def encerrar():
         if grupo is not None:
             grupo.encerrar()
-        elif processo is not None:
-            try:
-                os.killpg(processo.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
     try:
         if os.name == 'nt':
             from pr_processos_windows import GrupoWindows
             grupo = GrupoWindows()
+        else:
+            from pr_processos_linux import GrupoLinux
+            grupo = GrupoLinux()
         try:
             processo = subprocess.Popen(
                 comando, cwd=raiz, env=ambiente, stdin=subprocess.DEVNULL,
@@ -193,14 +190,14 @@ def rodar(comando: list[str], raiz: Path, *, log: Path | None = None,
                         processo.kill()
                     processo.wait(timeout=10)
     except (OSError, subprocess.TimeoutExpired) as erro:
-        partes = [cabecalho, f"ERROR: {type(erro).__name__}\n"]
+        partes = [cabecalho, f"ERROR: {type(erro).__name__}: {erro}\n"]
         for nome in ("stdout", "stderr"):
             valor = getattr(erro, nome, None) or (stdout if nome == 'stdout' else stderr)
             if isinstance(valor, bytes):
                 valor = valor.decode("utf-8", errors="replace")
             partes.append(f"{nome}:\n{valor}\n")
         log.write_text(_sanitizar("".join(partes)), encoding="utf-8")
-        raise ErroDeInstrumentacao("a validação não pôde executar ou encerrar seus processos", f"Confira o executável, as permissões do sistema e o log privado {log}; execute uma nova validação.") from erro
+        raise ErroDeInstrumentacao("a validação não pôde executar ou encerrar seus processos", _sanitizar(f"{erro}\nConfira o executável, as permissões do sistema e o log privado {log}; execute uma nova validação.")) from erro
     estado = 'TIMEOUT' if expirou else ('PASS' if processo.returncode == 0 else 'FAIL')
     texto = f"{cabecalho}Fim UTC: {datetime.now(timezone.utc).isoformat()}\nResultado: {estado}\nExit: {processo.returncode}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
     log.write_text(_sanitizar(texto), encoding="utf-8")
