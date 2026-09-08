@@ -506,7 +506,9 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
     }
     if situacao == "seu":
         cartao.update(_resumo_do_progresso(curso, ator.pessoa))
-        cartao["acao"] = "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
+        cartao["acao"] = (
+            "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
+        )
     return cartao
 
 
