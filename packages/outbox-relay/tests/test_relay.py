@@ -1,4 +1,6 @@
 import json
+import sys
+import types
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,9 +17,15 @@ from outbox_relay import (
 class ConsultaFake:
     def __init__(self, eventos):
         self.eventos = eventos
+        self.db = None
+        self.bloqueio = None
 
     def order_by(self, campo):
         assert campo == "id"
+        return self
+
+    def select_for_update(self, **opcoes):
+        self.bloqueio = opcoes
         return self
 
     def __getitem__(self, item):
@@ -125,3 +133,52 @@ def test_recusa_envelope_extra_sobrescrevendo_campo_protegido():
 
     with pytest.raises(EnvelopeProtegidoSobrescrito):
         montar_envelope(evento)
+
+
+def test_trava_pendentes_com_skip_locked_quando_o_banco_permite(monkeypatch):
+    evento = EventoFake(id=1)
+    consulta = ConsultaFake([evento])
+    consulta.db = "default"
+
+    class GerenteComConsulta:
+        def filter(self, **filtros):
+            assert filtros == {"published_at__isnull": True}
+            return consulta
+
+    class ModeloComConsulta:
+        objects = GerenteComConsulta()
+
+    class Recursos:
+        has_select_for_update_skip_locked = True
+        has_select_for_update = True
+
+    class Conexao:
+        features = Recursos()
+
+    class Transacao:
+        def __enter__(self):
+            return None
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    modulo_django = types.ModuleType("django")
+    modulo_db = types.ModuleType("django.db")
+    modulo_db.connections = {"default": Conexao()}
+    modulo_db.transaction = types.SimpleNamespace(atomic=lambda using: Transacao())
+    modulo_django.db = modulo_db
+    monkeypatch.setitem(sys.modules, "django", modulo_django)
+    monkeypatch.setitem(sys.modules, "django.db", modulo_db)
+    monkeypatch.setattr("redis.from_url", lambda url: RedisFake())
+
+    assert (
+        publicar_pendentes(
+            modelo=ModeloComConsulta,
+            redis_url="redis://localhost:6379/0",
+            agora=lambda: datetime.now(timezone.utc),
+            lote=200,
+        )
+        == 1
+    )
+
+    assert consulta.bloqueio == {"skip_locked": True}
