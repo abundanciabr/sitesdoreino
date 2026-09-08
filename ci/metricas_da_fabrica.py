@@ -174,6 +174,61 @@ def consolidar_uso(arquivos: list[Path]) -> dict:
                 tokens=tokens, cobertura=cobertura)
 
 
+def cobertura_das_fases(eventos: list[dict]) -> dict:
+    from telemetria import FASES
+
+    cobertura = {}
+    for fase in FASES:
+        observados = [dict(e, quando=quando) for e in eventos if e["fase"] == fase
+                      for quando in e["observado_em"]]
+        recentes = []
+        if observados:
+            ultimo = max(e["quando"] for e in observados)
+            recentes = [e for e in observados if e["quando"] == ultimo]
+        resultados = {e["resultado"] for e in recentes}
+        cobertura[fase] = dict(
+            estado=next(iter(resultados)) if len(resultados) == 1 else
+                   "inconclusivo" if resultados else "sem_evidencia",
+            resultados_observados=sorted({e["resultado"] for e in observados}),
+            evidencias=[dict(commit=e["commit"], pr=e["pr"], quando=e["quando"],
+                            resultado=e["resultado"]) for e in observados],
+        )
+    return cobertura
+
+
+def cobertura_das_tentativas(eventos: list[dict]) -> list[dict]:
+    grupos = {}
+    for evento in eventos:
+        chave = tuple(evento[c] for c in ("tarefa", "tentativa", "branch"))
+        grupos.setdefault(chave, []).append(evento)
+    tentativas = []
+    for (tarefa, tentativa, branch), linhas in sorted(grupos.items()):
+        fases = cobertura_das_fases(linhas)
+        fechamento = fases["fechamento"]
+        ultimo_fechamento = max((e["quando"] for e in fechamento["evidencias"]), default="")
+        entregas = {(e["commit"], e["pr"]) for e in fechamento["evidencias"]
+                    if e["quando"] == ultimo_fechamento}
+        commit, pr = next(iter(entregas)) if len(entregas) == 1 else (None, None)
+        prova = [e for e in linhas if e["commit"] == commit and e["pr"] == pr]
+        validacao = cobertura_das_fases(prova)["validacao"]
+        ultimo_teste = max((e["quando"] for e in fases["validacao"]["evidencias"]), default="")
+        completo = (all(fases[f]["estado"] == "concluido" for f in ("abertura", "contexto", "execucao"))
+                    and fechamento["estado"] == "concluido" and pr is not None
+                    and validacao["estado"] == "concluido"
+                    and fases["validacao"]["estado"] == "concluido"
+                    and all(e["commit"] == commit for e in fases["validacao"]["evidencias"]
+                            if e["quando"] == ultimo_teste)
+                    and all(e["commit"] == commit for e in linhas
+                            if max(e["observado_em"]) > ultimo_fechamento))
+        tentativas.append(dict(
+            tarefa=tarefa, tentativa=tentativa, branch=branch, fases=fases,
+            revisao_entregue=commit, pr=pr, percurso_local_concluido=completo,
+            revisoes=[dict(commit=c, fases=cobertura_das_fases([e for e in linhas if e["commit"] == c]))
+                      for c in sorted({e["commit"] for e in linhas})],
+        ))
+    return tentativas
+
+
 def consolidar_percurso(eventos: list[dict]) -> dict:
     """Observações distintas por tentativa e revisão, sem inferir aprovação."""
     from telemetria import FASES, identidade_fase
@@ -202,15 +257,22 @@ def consolidar_percurso(eventos: list[dict]) -> dict:
             continue
         linha = {c: evento.get(c) for c in campos}
         linha["quando"] = quando.astimezone(timezone.utc).isoformat()
-        anterior = unicos.get(evento["id"])
-        if anterior is None or linha["quando"] < anterior["quando"]:
-            unicos[evento["id"]] = linha
+        anterior = unicos.setdefault(evento["id"], dict(linha, observado_em=[]))
+        anterior["observado_em"] = sorted(set(anterior["observado_em"]) | {linha["quando"]})
+        anterior["quando"] = anterior["observado_em"][0]
     linhas = sorted(unicos.values(), key=lambda e: (e["quando"], e["tarefa"], e["tentativa"], e["fase"], e["resultado"], identidade_fase(e)))
+    entregas = []
+    for pr, commit in sorted({(e["pr"], e["commit"]) for e in linhas if e["pr"] is not None}):
+        vinculados = [e for e in linhas if e["pr"] == pr and e["commit"] == commit]
+        entregas.append(dict(pr=pr, commit=commit, fases=cobertura_das_fases(vinculados),
+            origens=[dict(tarefa=t, tentativa=s, branch=b) for t, s, b in sorted({
+                (e["tarefa"], e["tentativa"], e["branch"]) for e in vinculados})]))
     return dict(tarefas=len({e["tarefa"] for e in linhas}),
-                tentativas=len({(e["tarefa"], e["tentativa"]) for e in linhas}),
+                tentativas=len({(e["tarefa"], e["tentativa"], e["branch"]) for e in linhas}),
                 eventos=linhas,
+                por_tentativa=cobertura_das_tentativas(linhas), por_entrega=entregas,
                 publicacoes_verificadas=sum(e["fase"] == "publicacao" and e["resultado"] == "verificado" for e in linhas),
-                cobertura=dict(eventos_invalidos=invalidos, eventos_sem_correlacao=antigos,
+                cobertura=dict(escopo="presenca_global", eventos_invalidos=invalidos, eventos_sem_correlacao=antigos,
                                fases_ausentes=[f for f in FASES if not any(e["fase"] == f for e in linhas)]))
 
 
