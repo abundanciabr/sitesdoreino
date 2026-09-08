@@ -14,27 +14,30 @@ cd /opt/plataforma || parar "nao encontrei /opt/plataforma na VPS."
 docker compose version >/dev/null 2>&1 || parar "docker compose nao respondeu na VPS."
 
 RUN_ID="${CANARIO_F3_RUN_ID:-manual}"
+RUN_ATTEMPT="${CANARIO_F3_RUN_ATTEMPT:-1}"
 SHA="${CANARIO_F3_SHA:-sem-sha}"
 SHA_CURTO="$(printf '%s' "$SHA" | cut -c1-12)"
+MARCA="${RUN_ID}-${RUN_ATTEMPT}"
 SITE_ID="canario-fase-3"
-EMAIL_IDENTIDADE="canario-fase-3-identidade-${RUN_ID}@meshcraft.top"
-EMAIL_ALUNOS="canario-fase-3-alunos-${RUN_ID}@meshcraft.top"
-ORDER_ID="canario-fase-3:${RUN_ID}:${SHA_CURTO}"
+EMAIL_IDENTIDADE="canario-fase-3-identidade-${MARCA}@meshcraft.top"
+EMAIL_ALUNOS="canario-fase-3-alunos-${MARCA}@meshcraft.top"
+ORDER_ID="canario-fase-3:${MARCA}:${SHA_CURTO}"
 PRODUCT_ID="canario-fase-3"
 
 echo "== alvo =="
 echo "run_id=$RUN_ID"
+echo "run_attempt=$RUN_ATTEMPT"
 echo "sha=$SHA_CURTO"
 echo "site_id=$SITE_ID"
 echo
 
-for servico in redis identidade identidade-relay alunos alunos-relay; do
+for servico in redis identidade identidade-relay alunos alunos-relay alunos-consumer; do
   docker compose config --services 2>/dev/null | grep -qx "$servico" || parar "servico $servico nao existe no compose implantado."
   docker compose ps --status running --services 2>/dev/null | grep -qx "$servico" || parar "servico $servico nao esta running na VPS."
 done
 
 echo "== pacote outbox-relay nos processos executores =="
-for servico in identidade identidade-relay alunos alunos-relay; do
+for servico in identidade identidade-relay alunos alunos-relay alunos-consumer; do
   saida="$(docker compose exec -T "$servico" python - <<'PY'
 from importlib.metadata import version
 import outbox_relay
@@ -116,6 +119,8 @@ evento = (
 )
 if evento is None:
     raise SystemExit("evento_alunos=ausente")
+if not criada:
+    raise SystemExit("matricula_canario_ja_existia")
 print(f"matricula_id={matricula.id}")
 print(f"matricula_criada={criada}")
 print(f"event_id={evento.event_id}")
@@ -126,6 +131,64 @@ PY
 printf '%s\n' "$ALUNOS_SAIDA"
 ALUNOS_EVENT_ID="$(printf '%s\n' "$ALUNOS_SAIDA" | awk -F= '$1=="event_id"{print $2; exit}')"
 [ -n "$ALUNOS_EVENT_ID" ] || parar "nao consegui ler o event_id de alunos."
+echo
+
+echo "== pendencia controlada identidade-relay =="
+IDENTIDADE_RELAY_SAIDA="$(docker compose exec -T \
+  -e CANARIO_IDENTIDADE_EVENT_ID="$IDENTIDADE_EVENT_ID" \
+  -e CANARIO_SITE_ID="$SITE_ID" \
+  identidade python manage.py shell <<'PY'
+import os
+
+from django.db import transaction
+
+from apps.identidade import eventos
+from apps.identidade.models import OutboxEvent
+
+origem = OutboxEvent.objects.get(event_id=os.environ["CANARIO_IDENTIDADE_EVENT_ID"])
+with transaction.atomic():
+    pendente = eventos.pessoa_cadastrada(
+        site_id=os.environ["CANARIO_SITE_ID"],
+        pessoa_id=origem.payload["pessoa_id"],
+    )
+if pendente.published_at is not None:
+    raise SystemExit("pendencia_identidade_ja_publicada")
+print(f"event_id={pendente.event_id}")
+print(f"event_version={pendente.version}")
+PY
+)" || parar "nao consegui criar pendencia controlada para identidade-relay."
+printf '%s\n' "$IDENTIDADE_RELAY_SAIDA"
+IDENTIDADE_RELAY_EVENT_ID="$(printf '%s\n' "$IDENTIDADE_RELAY_SAIDA" | awk -F= '$1=="event_id"{print $2; exit}')"
+[ -n "$IDENTIDADE_RELAY_EVENT_ID" ] || parar "nao consegui ler o event_id pendente da identidade."
+echo
+
+echo "== pendencia controlada alunos-relay =="
+ALUNOS_RELAY_SAIDA="$(docker compose exec -T \
+  -e CANARIO_ALUNOS_EVENT_ID="$ALUNOS_EVENT_ID" \
+  alunos python manage.py shell <<'PY'
+import os
+
+from django.db import transaction
+
+from apps.matriculas import eventos
+from apps.matriculas.models import OutboxEvent
+
+origem = OutboxEvent.objects.get(event_id=os.environ["CANARIO_ALUNOS_EVENT_ID"])
+with transaction.atomic():
+    pendente = eventos.emitir(
+        "matricula.situacao-alterada",
+        dict(origem.payload),
+        envelope_extra={"ator_id": "canario-fase-3-relay"},
+    )
+if pendente.published_at is not None:
+    raise SystemExit("pendencia_alunos_ja_publicada")
+print(f"event_id={pendente.event_id}")
+print(f"event_version={pendente.version}")
+PY
+)" || parar "nao consegui criar pendencia controlada para alunos-relay."
+printf '%s\n' "$ALUNOS_RELAY_SAIDA"
+ALUNOS_RELAY_EVENT_ID="$(printf '%s\n' "$ALUNOS_RELAY_SAIDA" | awk -F= '$1=="event_id"{print $2; exit}')"
+[ -n "$ALUNOS_RELAY_EVENT_ID" ] || parar "nao consegui ler o event_id pendente de alunos."
 echo
 
 aguardar_evento() {
@@ -182,5 +245,13 @@ echo "== publicacao alunos =="
 aguardar_evento alunos "matricula.situacao-alterada" "$ALUNOS_EVENT_ID" || parar "alunos nao publicou o canario no Redis."
 echo
 
+echo "== publicacao identidade-relay =="
+aguardar_evento identidade "identidade.pessoa-cadastrada" "$IDENTIDADE_RELAY_EVENT_ID" || parar "identidade-relay nao publicou a pendencia controlada no Redis."
+echo
+
+echo "== publicacao alunos-relay =="
+aguardar_evento alunos "matricula.situacao-alterada" "$ALUNOS_RELAY_EVENT_ID" || parar "alunos-relay nao publicou a pendencia controlada no Redis."
+echo
+
 echo "PRONTO: canario F3 outbox publicado em alunos e identidade"
-echo "evidencia=run:$RUN_ID sha:$SHA_CURTO identidade_event_id:$IDENTIDADE_EVENT_ID alunos_event_id:$ALUNOS_EVENT_ID"
+echo "evidencia=run:$RUN_ID tentativa:$RUN_ATTEMPT sha:$SHA_CURTO identidade_event_id:$IDENTIDADE_EVENT_ID alunos_event_id:$ALUNOS_EVENT_ID identidade_relay_event_id:$IDENTIDADE_RELAY_EVENT_ID alunos_relay_event_id:$ALUNOS_RELAY_EVENT_ID"
