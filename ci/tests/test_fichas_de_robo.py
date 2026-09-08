@@ -25,6 +25,7 @@ diz isso com todas as letras.
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 RAIZ = Path(__file__).resolve().parents[2]
 FICHAS = RAIZ / ".claude" / "agents"
@@ -144,3 +145,41 @@ def test_o_revisor_so_le() -> None:
     assert FERRAMENTAS_DE_ESCRITA <= negadas, (
         f"revisor.md: disallowedTools precisa negar {sorted(FERRAMENTAS_DE_ESCRITA - negadas)}"
     )
+
+
+def test_receitas_operacionais_seguem_as_emendas_da_constituicao() -> None:
+    for nome in ("RUNBOOK-LOTES.md", "PLAYBOOK.md", "ARMADILHAS-OPERACAO.md"):
+        texto = (RAIZ / nome).read_text(encoding="utf-8")
+        if nome == "RUNBOOK-LOTES.md":
+            texto = texto.split("## §9", 1)[0]
+        for linha in texto.splitlines():
+            assert not re.search(r"python ci/mergear\.py[^`\n]*--confirmo", linha), (
+                f"{nome}: receita de agente induz merge reservado à pista: {linha}"
+            )
+    for nome in ("despacho", "revisor"):
+        texto = (FICHAS / f"{nome}.md").read_text(encoding="utf-8")
+        assert "CONSTITUICAO.md" in texto and "Lei 2" in texto
+        assert "1 PR = 1 célula" not in texto
+        assert "Uma célula por PR;" not in texto
+
+
+def test_ficha_de_abertura_usa_o_bootstrap_e_preserva_a_regua() -> None:
+    texto = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+    abertura = texto.split("## 1.", 1)[1].split("## 3.", 1)[0]
+    assert "make sessao" in abertura
+    assert "ci/sessao.py" in abertura
+    assert "git worktree add" not in abertura
+    assert "ci/fila.py pegar" not in abertura
+    assert "não medido" in abertura
+    assert "armadilhas/INDICE.md" in texto
+    assert "Padrão de Trabalho" in texto
+
+
+def test_ficha_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
+    texto = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+    fechamento = texto.split("## 6.", 1)[1].split("## 7.", 1)[0]
+    assert "make pr" in fechamento and "VALIDACAO=" in fechamento
+    assert "CONTINUAR=1" in fechamento and "--continuar" in fechamento
+    assert "gh pr create" not in fechamento
+    assert "revisão de código" in fechamento
+    assert "não se equivalem" in fechamento

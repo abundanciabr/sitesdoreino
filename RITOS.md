@@ -19,11 +19,17 @@ só, com as duas suítes verdes. Se ele sair em PRs encadeados, declare a ordem 
 `Depende-de: #N` na descrição: o portão cobra.
 
 ```bash
-# Na raiz do clone principal (você, ou o script de despacho):
-git fetch origin
-git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
-cd ../wt-<celula>-<tarefa>/services/<celula>    # ⟵ a sessão do agente ABRE AQUI
+# Na raiz: escolha uma das entradas equivalentes.
+make sessao CELULA=<celula> TAREFA=<slug>
+python ci/sessao.py --celula <celula> --tarefa <slug>
 ```
+
+Entre no caminho absoluto informado. Acrescente `TAR=<numero>` ou
+`--tar <numero>` se houver tarefa da fila; a abertura reivindica depois de
+criar a bancada. Área sem serviço usa `SEM_CONTAINER=1` ou `--sem-container`:
+nesse caso o baseline fica não medido e os testes dos alvos são necessários.
+Repita a mesma entrada para retomar, sem apagar a bancada. Os logs completos
+ficam no caminho que a abertura informa; a declaração só descreve o observado.
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 

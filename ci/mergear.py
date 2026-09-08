@@ -12,15 +12,13 @@ virou redundante: ele confere ANTES de disparar (em vez de deixar o GitHub
 recusar depois), exige repetir o número do PR, distingue FAIL de ERROR, e é o
 caminho que o rito registra. O cinto é o ruleset; a catraca é este script.
 
-    python ci/mergear.py 22               # confere e pergunta antes de mergear
     python ci/mergear.py 22 --conferir    # só confere, nunca mergeia
-    python ci/mergear.py 22 --confirmo 22 # confere e mergeia sem prompt
+    python ci/mergear.py 22 --pousar      # solicita integração pela pista
 
-Desde 22/08/2026 **mergear é trabalho do agente** (Lei 4 da CONSTITUICAO.md;
-decisão e motivos em docs/decisoes/DECISAO-merge-pelo-agente.md). O caminho
-normal é `--confirmo`, que exige REPETIR o número do PR: o erro real que já
-aconteceu foi de identidade (mergear o PR errado), não de intenção, e a
-repetição é a mesma defesa que a versão interativa sempre teve.
+Desde a emenda de 29/08/2026 da CONSTITUICAO.md, Lei 4 (registro
+20260829-006), o agente pede pouso e só a pista mergeia. `--confirmo` exige
+repetir o número do PR e é recusado fora do ambiente da pista. A maestro
+confere a revisão independente e os checks antes do encaminhamento.
 
 [INV-CI01] Vale a mesma semântica dos outros portões:
 
