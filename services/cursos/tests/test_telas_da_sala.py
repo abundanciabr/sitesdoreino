@@ -494,7 +494,10 @@ def test_o_checkpoint_tem_o_formulario_de_entrega_por_link(aluna, ana_pronta, cl
     )
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
-    assert f'action="{reverse("entregar-checkpoint", args=["E00"])}"' in checkpoint
+    assert (
+        f'action="{reverse("entregar-checkpoint-do-curso", args=["profissional", 1, "E00"])}"'
+        in checkpoint
+    )
     assert 'name="arquivo"' in checkpoint
     assert ">Entregar<" in checkpoint
     assert "as arestas estão suaves" in checkpoint
