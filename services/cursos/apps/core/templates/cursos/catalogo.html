@@ -40,7 +40,8 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
 {% for curso in cursos %}
 <article class="curso situacao-{{ curso.situacao }}">
   <h2>{{ curso.nome }}{% if curso.situacao == "seu" %} <span class="selo">Seu curso</span>{% endif %}</h2>
-  <p class="aulas">{% if curso.aulas_abertas == 0 %}Nenhuma aula aberta ainda{% elif curso.aulas_abertas == 1 %}1 aula aberta{% else %}{{ curso.aulas_abertas }} aulas abertas{% endif %}</p>
+  <p class="aulas">{% if not curso.tem_aulas %}Sala em preparação: ainda não há aulas.{% elif curso.aulas_abertas == 0 %}Aulas em preparo. Nenhuma aula aberta ainda.{% elif curso.aulas_abertas == 1 %}1 aula aberta{% else %}{{ curso.aulas_abertas }} aulas abertas{% endif %}</p>
+  {% if curso.aulas_em_preparo and curso.aulas_abertas %}<p class="miudo">{{ curso.aulas_em_preparo }} {% if curso.aulas_em_preparo == 1 %}aula está{% else %}aulas estão{% endif %} em preparo pela escola.</p>{% endif %}
   {% if curso.situacao == "nao-e-seu" %}
   <p class="miudo">Você não está matriculado neste curso.</p>
   {% elif curso.situacao == "sem-produto" %}

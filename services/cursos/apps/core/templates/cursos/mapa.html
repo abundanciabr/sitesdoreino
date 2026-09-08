@@ -25,13 +25,16 @@ pronta da view; o template só desenha.
 <section class="abertura">
   <p class="rotulo">Sua sala de aula</p>
   <h1>Entre. Entregue. Receba.</h1>
-  {% if atual %}
+  {% if not partes %}
+  <p class="passo">Este curso ainda não tem aulas. A escola está preparando a sala.</p>
+  {% elif atual %}
   <p class="passo">Sua porta aberta agora:
     {% if atual.abre %}<a class="porta-atual" href="{% url 'aula-do-curso' curso.slug atual.parte atual.numero %}">{{ atual.titulo }}</a>{% else %}<strong>{{ atual.titulo }}</strong> (ainda em preparo pela escola){% endif %}
   </p>
   {% else %}
-  <p class="passo">Todas as suas portas estão fechadas por enquanto. Quando a
-  escola abrir a primeira, ela aparece aqui em destaque.</p>
+  <p class="passo">Nenhuma aula está aberta para você agora. As aulas em preparo
+  aparecem abaixo; quando a escola publicar uma e sua porta abrir, ela aparece
+  aqui em destaque.</p>
   {% endif %}
 </section>
 
@@ -45,7 +48,8 @@ pronta da view; o template só desenha.
       {% for porta in bloco.portas %}
       <li class="porta estado-{{ porta.estado }}{% if porta.atual %} atual{% endif %}">
         {% if porta.abre %}<a href="{% url 'aula-do-curso' curso.slug porta.parte porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
-        <span class="selo">{{ porta.rotulo }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
+        <span class="selo">{{ porta.rotulo }}</span>
+        <span class="miudo">{{ porta.explicacao }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
       </li>
       {% endfor %}
     </ol>
