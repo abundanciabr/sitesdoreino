@@ -43,7 +43,7 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
 - Leia `armadilhas/INDICE.md` e abra SÓ as entradas que o brief citou ou que
   casam com a tecnologia que vai tocar. Ler tudo desfaz o motivo do índice.
 - Recupere o pacote pelos alvos e pelo sintoma: `python ci/sessao.py --contexto
-  --raiz . --celula <area> --tarefa <slug> --caminho <arquivo> --sintoma "<erro>"`.
+  --sem-container --raiz . --celula <area> --tarefa <slug> --caminho <arquivo> --sintoma "<erro>"`.
   Repita `--caminho` para múltiplos alvos e informe `--aceite`, `--restricao`
   e `--decisao` conforme o brief. Confira origens, ausências e truncamento;
   amplie com `--limite-contexto` quando necessário. Confirme pessoalmente as

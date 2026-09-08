@@ -173,6 +173,8 @@ def test_ficha_de_abertura_usa_o_bootstrap_e_preserva_a_regua() -> None:
     assert "não medido" in abertura
     assert "armadilhas/INDICE.md" in texto
     assert "Padrão de Trabalho" in texto
+    receita_contexto = texto.split("--contexto", 1)[1].split("`", 1)[0]
+    assert "--sem-container" in receita_contexto
 
 
 def test_ficha_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
