@@ -1679,11 +1679,35 @@ def construir_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def raiz_do_clone(checkout: Path) -> Path:
+    """A abertura usa o clone principal mesmo quando parte de uma bancada."""
+    if not (checkout / ".git").is_file():
+        return checkout
+    comando = ["git", "-C", str(checkout), "worktree", "list", "--porcelain"]
+    saida = correr_de_verdade(comando)
+    bancadas = [linha.removeprefix("worktree ") for linha in saida.stdout.splitlines()
+                if linha.startswith("worktree ")]
+    if saida.exit_code != 0 or not bancadas:
+        raise ErroDeInstrumentacao(
+            "não consegui localizar o clone principal desta bancada",
+            "Confira git worktree list --porcelain antes de repetir a abertura. "
+            "Nenhum arquivo foi alterado pela conferência.")
+    principal = raiz_declarada(Path(bancadas[0]))
+    if not (principal / ".git").is_dir():
+        raise ErroDeInstrumentacao(
+            "o Git não apontou um clone principal reconhecível",
+            "Confira os vínculos das bancadas com git worktree list --porcelain. "
+            "Não remova a bancada para corrigir o vínculo.")
+    return principal
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     args = construir_parser().parse_args(argv)
     try:
         raiz = raiz_declarada(Path(args.raiz)) if args.raiz else raiz_do_repo()
+        if not args.contexto:
+            raiz = raiz_do_clone(raiz)
     except ErroDeInstrumentacao as erro:
         print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n\n{erro.detalhe}")
         return 2
