@@ -1243,6 +1243,16 @@ def cmd_pegar(raiz: Path, args) -> int:
     reservas = reservas_no_servidor(raiz)
     prs = prs_citando_tarefas(raiz)
     estado = calcular_estados(tarefas, eventos, reservas, prs)[tid]
+    if estado["estado"] == REIVINDICADA and tid in reservas:
+        cadeia = [ev for ev in eventos if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_DE_CICLO]
+        ultimo = cadeia[-1] if cadeia else None
+        coerente = ultimo is None or (ultimo["evento"] == "reivindicada" and ultimo.get("quem") == args.quem)
+        if coerente and reservar.confirmar_intencao(raiz, f"{PREFIXO_DA_RESERVA}{tid}"):
+            if ultimo is None:
+                _escrever_evento(raiz, tid, "reivindicada", args.quem)
+            print(f"PASS {tid}: reserva própria conferida no servidor; reivindicação retomada.")
+            print(tarefas[tid]["despacho"])
+            return 0
     if estado["estado"] != NA_FILA:
         print(f"RECUSADO: {tid} está '{estado['estado']}'" + (f" ({estado['motivo']})" if estado["motivo"] else "") + ".")
         print("Só tarefa NA FILA se pega. Veja o quadro: python ci/fila.py listar --ao-vivo")
