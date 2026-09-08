@@ -10,7 +10,7 @@ guarda:
   tipo: CI
   dono: services/cursos/tests/test_marcar_bosses_primeiros_dolares.py
   detector: 'o comando não marca exatamente um Boss em cada módulo'
- sinal: "o mapa do curso não mostra nenhum desafio principal"
+  motivo: "o mapa do curso não mostra nenhum desafio principal"
 licao: "O mapa já desenha a marcação e_boss, mas o conteúdo existente precisa ter exatamente um desafio escolhido por módulo. A escolha deve ser aplicada por comando idempotente, com falha sem gravação quando algum título não existir."
 ---
 
