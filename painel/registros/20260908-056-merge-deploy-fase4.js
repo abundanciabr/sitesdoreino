@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-056-merge-deploy-fase4",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "O instrumento da Fase 4 foi integrado e publicado pelo caminho real",
+  detalhe: "PR #1393 foi integrado no commit 4fae69d4395d76c87f6ba4ef68ca2bef8d61ba1c. O deploy-celula do admin terminou success no run 34263732285, após 2min51s. Esta prova confirma publicação do instrumento, não ganho de eficiência nem expansão dos pilotos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1393 e https://github.com/abundanciabr/sitesdoreino/actions/runs/34263732285",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
