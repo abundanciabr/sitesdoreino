@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-119-a-chave-da-ia-chegou-ao-admin",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "A chave da IA chegou ao painel e foi conferida no container",
+  detalhe: "O mantenedor executou o roteiro na VPS. A área administrativa voltou saudável e a conferência dentro do container confirmou que a chave em uso é exatamente a mesma do fórum. A pendência original está encerrada.",
+  autoridade: "mantenedor",
+  evidencia: "saída do roteiro na VPS enviada pelo mantenedor em 2026-09-08",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260907-074-a-chave-da-ia-avisa-se-nao-chegou",
+  gravidade: "verde",
+  frente: null,
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
