@@ -231,3 +231,122 @@ def test_eventos_simultaneos_tem_ordem_reproduzivel(tmp_path):
     eventos = telemetria.ler_tudo(tmp_path / ".git")
     eventos[1]["quando"] = eventos[0]["quando"]
     assert metricas.consolidar_percurso(eventos) == metricas.consolidar_percurso(eventos[::-1])
+
+
+def fase(fase, resultado="concluido", tarefa="TAR-1", tentativa="s1", commit="a" * 40,
+         pr=None, quando="2026-09-08T00:00:00Z"):
+    evento = dict(evento="fase_operacional", tarefa=tarefa, tentativa=tentativa,
+                  branch="agent/ci/teste", commit=commit, pr=pr, fase=fase,
+                  resultado=resultado, quando=quando, contexto_bytes=None)
+    evento["id"] = telemetria.identidade_fase(evento)
+    return evento
+
+
+def test_cobertura_global_nao_completa_tarefas_distintas():
+    eventos = [fase(f) for f in ("abertura", "contexto")]
+    eventos += [fase(f, tarefa="TAR-2", pr=20) for f in ("execucao", "validacao", "fechamento")]
+    r = metricas.consolidar_percurso(eventos)
+    assert r["cobertura"]["escopo"] == "presenca_global"
+    assert len(r["por_tentativa"]) == 2
+    assert all(not p["percurso_local_concluido"] for p in r["por_tentativa"])
+
+
+def test_tentativas_e_revisoes_nao_emprestam_aprovacao():
+    eventos = [fase(f) for f in ("abertura", "contexto", "execucao", "validacao")]
+    eventos += [fase("fechamento", tentativa="s2", pr=20)]
+    assert len(metricas.consolidar_percurso(eventos)["por_tentativa"]) == 2
+    assert all(not p["percurso_local_concluido"] for p in metricas.consolidar_percurso(eventos)["por_tentativa"])
+    eventos[-1] = fase("fechamento", commit="b" * 40, pr=20)
+    p = metricas.consolidar_percurso(eventos)["por_tentativa"][0]
+    assert not p["percurso_local_concluido"]
+    assert len(p["revisoes"]) == 2
+
+
+def test_percurso_individual_exige_prova_da_revisao_entregue():
+    eventos = [fase(f) for f in ("abertura", "contexto", "execucao")]
+    eventos += [fase(f, commit="b" * 40, pr=20) for f in ("validacao", "fechamento")]
+    r = metricas.consolidar_percurso(eventos)
+    p = r["por_tentativa"][0]
+    assert p["percurso_local_concluido"]
+    assert p["revisao_entregue"] == "b" * 40
+    assert p["pr"] == 20
+    assert p["fases"]["publicacao"]["estado"] == "sem_evidencia"
+    assert metricas.consolidar_percurso(eventos * 2) == r
+
+
+@pytest.mark.parametrize("resultado", ["iniciado", "falhou", "nao_executado"])
+def test_estado_observado_nao_e_aprovacao(resultado):
+    eventos = [fase(f) for f in ("abertura", "contexto", "execucao")]
+    eventos += [fase("validacao", resultado, pr=20), fase("fechamento", pr=20)]
+    p = metricas.consolidar_percurso(eventos)["por_tentativa"][0]
+    assert p["fases"]["validacao"]["estado"] == resultado
+    assert not p["percurso_local_concluido"]
+
+
+def test_nova_falha_e_timestamps_empatados_nao_sao_sucesso():
+    eventos = [fase(f, pr=20) for f in telemetria.FASES[:5]]
+    eventos.append(fase("validacao", "falhou", pr=20, quando="2026-09-08T00:01:00Z"))
+    p = metricas.consolidar_percurso(eventos)["por_tentativa"][0]
+    assert not p["percurso_local_concluido"]
+    assert p["fases"]["validacao"]["resultados_observados"] == ["concluido", "falhou"]
+    eventos[-1]["quando"] = eventos[0]["quando"]
+    assert metricas.consolidar_percurso(eventos)["por_tentativa"][0]["fases"]["validacao"]["estado"] == "inconclusivo"
+
+
+def test_integracao_publicacao_sao_correlacionadas_por_pr_e_revisao():
+    eventos = [fase("fechamento", pr=20),
+               fase("integracao", "verificado", tarefa="pista", tentativa="run1", pr=20),
+               fase("publicacao", "verificado", tarefa="sonda", tentativa="run2", pr=20),
+               fase("publicacao", "verificado", tarefa="sonda", tentativa="run3", pr=20, commit="b" * 40)]
+    r = metricas.consolidar_percurso(eventos)
+    assert len(r["por_tentativa"]) == 4
+    assert len(r["por_entrega"]) == 2
+    entrega = next(e for e in r["por_entrega"] if e["commit"] == "a" * 40)
+    assert entrega["fases"]["publicacao"]["estado"] == "verificado"
+    assert len(entrega["origens"]) == 3
+    local = next(p for p in r["por_tentativa"] if p["tarefa"] == "TAR-1")
+    assert local["fases"]["publicacao"]["estado"] == "sem_evidencia"
+
+
+def test_validacao_mais_recente_de_outro_commit_nao_aprova_entrega_antiga():
+    eventos = [fase(f, pr=20) for f in telemetria.FASES[:5]]
+    eventos.append(fase("validacao", commit="b" * 40, pr=20, quando="2026-09-08T00:01:00Z"))
+    eventos.append(fase("fechamento", pr=20, quando="2026-09-08T00:02:00Z"))
+    assert not metricas.consolidar_percurso(eventos)["por_tentativa"][0]["percurso_local_concluido"]
+
+
+def test_branch_distingue_namespace_da_tentativa():
+    evento = fase("validacao")
+    outro = dict(evento, branch="agent/ci/outro")
+    outro["id"] = telemetria.identidade_fase(outro)
+    r = metricas.consolidar_percurso([evento, outro])
+    assert r["tentativas"] == len(r["por_tentativa"]) == 2
+
+
+def test_reinicio_de_fechamento_na_mesma_identidade_nao_fica_concluido():
+    eventos = [fase(f, pr=20) for f in telemetria.FASES[:4]]
+    eventos += [fase("fechamento", "iniciado", pr=20, quando="2026-09-08T00:01:00Z"),
+                fase("fechamento", pr=20, quando="2026-09-08T00:02:00Z"),
+                fase("fechamento", "iniciado", pr=20, quando="2026-09-08T00:03:00Z")]
+    r = metricas.consolidar_percurso(eventos)
+    assert not r["por_tentativa"][0]["percurso_local_concluido"]
+    assert r["por_tentativa"][0]["fases"]["fechamento"]["estado"] == "iniciado"
+    assert len(r["eventos"]) == 6
+    assert metricas.consolidar_percurso(eventos * 2) == r
+
+
+def test_revalidacao_observada_apos_falha_preserva_transicoes():
+    eventos = [fase(f, pr=20) for f in telemetria.FASES[:5]]
+    eventos += [fase("validacao", "falhou", pr=20, quando="2026-09-08T00:01:00Z"),
+                fase("validacao", pr=20, quando="2026-09-08T00:02:00Z"),
+                fase("fechamento", pr=20, quando="2026-09-08T00:03:00Z")]
+    r = metricas.consolidar_percurso(eventos)
+    assert r["por_tentativa"][0]["percurso_local_concluido"]
+    validacao = next(e for e in r["eventos"] if e["fase"] == "validacao" and e["resultado"] == "concluido")
+    assert validacao["observado_em"] == ["2026-09-08T00:00:00+00:00", "2026-09-08T00:02:00+00:00"]
+    assert metricas.consolidar_percurso(eventos[::-1]) == r
+
+
+def test_fechamento_sem_pr_nao_completa_percurso():
+    eventos = [fase(f) for f in telemetria.FASES[:5]]
+    assert not metricas.consolidar_percurso(eventos)["por_tentativa"][0]["percurso_local_concluido"]
