@@ -139,9 +139,9 @@ quebrada não é escopo de sessão de feature.
 
 Regras de anti-thrashing que valem sempre (RITOS.md §2): commit a cada estado
 verde (nunca `git add -A`); duas tentativas de correção falharam ⇒
-`git reset --hard <último-verde>` e reporte — a terceira tentativa é onde
-nascem labirintos; teste-guarda é intocável (nunca deletar/afrouxar para
-passar — se parecer errado, PARE e reporte).
+pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
+terceira tentativa sem novo despacho. Teste-guarda é intocável (nunca
+deletar ou afrouxar para passar; se parecer errado, PARE e reporte).
 
 ## 5. As leis que não se discute (CONSTITUICAO.md, resumo)
 

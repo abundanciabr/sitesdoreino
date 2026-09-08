@@ -111,9 +111,9 @@ sobrevive, que arma a espera:
 python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR #<N>" --e-pousar
 ```
 
-Vermelho, pendente ou ERROR nunca vira pedido de pouso: FAIL você conserta (no
-máximo 2 tentativas, depois `git reset --hard <último verde>` e reporte); ERROR
-é instrumento quebrado e não se mexe no código.
+Vermelho, pendente ou ERROR nunca vira pedido de pouso: FAIL você conserta
+no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits
+e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no código.
 
 ## 8. O relatório, e nada além dele
 

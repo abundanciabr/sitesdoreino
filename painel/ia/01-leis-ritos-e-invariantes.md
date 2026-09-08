@@ -68,8 +68,8 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   Caminho Dourado — ler tudo é desperdício, não zelo.
 - **§2 Catraca verde + anti-thrashing** (4 peças): (0) toda mudança nasce em
   branch; (1) todo estado verde vira commit imediato (nunca `git add -A`
-  cego); (2) 2 tentativas falhas seguidas ⇒ `git reset --hard` ao último verde
-  e reportar, em vez de insistir às cegas; (3) testes-guarda são intocáveis;
+  cego); (2) 2 tentativas falhas seguidas ⇒ pare, preserve os arquivos e commits
+  e reporte o diagnóstico; (3) testes-guarda são intocáveis;
   (4) o fecho da catraca é o pedido de pouso após recibo e revisão. A maestro
   espera os checks com `ci/esperar.py --checks <PR> --teto 20 --e-pousar` e
   confere a etiqueta. Só a pista executa `--confirmo` e verifica o merge.

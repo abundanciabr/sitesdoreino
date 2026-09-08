@@ -97,8 +97,8 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
    revise `git diff --cached --name-only` antes de commitar.
 2. **Regra de parada:** DUAS tentativas consecutivas de correção falharam ⇒
-   `git reset --hard <último-verde>` ⇒ reportar com diagnóstico. A terceira tentativa
-   é onde nascem labirintos — ela não existe neste reino.
+   pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
+   terceira tentativa sem novo despacho.
 3. **Intocabilidade dos testes:** proibido deletar, desativar, comentar ou afrouxar
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não

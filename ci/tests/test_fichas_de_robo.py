@@ -185,3 +185,12 @@ def test_ficha_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
     assert "gh pr create" not in fechamento
     assert "revisão de código" in fechamento
     assert "não se equivalem" in fechamento
+
+
+def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
+    arquivos = ('RITOS.md', 'PLAYBOOK.md', 'RUNBOOK-LOTES.md',
+                '.claude/agents/despacho.md', 'painel/ia/01-leis-ritos-e-invariantes.md')
+    for nome in arquivos:
+        texto = (RAIZ / nome).read_text(encoding='utf-8')
+        assert 'reset --hard' not in texto, f'{nome}: a parada não pode apagar trabalho'
+        assert 'preserve os arquivos e commits' in texto, f'{nome}: a parada precisa preservar a bancada'

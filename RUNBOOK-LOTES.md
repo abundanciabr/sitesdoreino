@@ -104,8 +104,9 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   sobrevivem, nunca se descarta a alheia.
 - **Agente parado ≠ lote parado.** A maestro segue com os demais e volta ao parado.
 - **Regra de parada vale dentro do lote:** 2 correções consecutivas falharam ⇒ o
-  agente faz `git reset --hard <último-verde>` e reporta (RITOS §2.2). A maestro
-  decide: re-briefar com diagnóstico melhor OU tirar o despacho do lote.
+  agente para. Nesse ponto, preserve os arquivos e commits e reporte o
+  diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
+  retira do lote.
 
 ## §5 — Encaminhamento à pista (na ordem do §3)
 
