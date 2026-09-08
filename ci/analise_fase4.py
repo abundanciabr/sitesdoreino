@@ -14,6 +14,7 @@ import json
 import random
 import statistics
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,6 +38,13 @@ METRICAS_DE_RECURSO = METRICAS_DE_CUSTO + ("contexto_bytes",)
 ATRIBUTOS_DE_COMPARABILIDADE = (
     "tipo", "complexidade", "natureza", "componentes",
     "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+)
+FONTES_SINTETICAS = ("teste", "test", "fixture", "sintetic")
+CAMPOS_DE_IDENTIDADE_DA_TAREFA = (
+    "tarefa", "tentativa", "branch", "commit", "piloto", "condicao",
+    "tipo", "complexidade", "natureza", "componentes",
+    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+    "revisao_instrumento", "estado", "fonte", "metricas", "inicio", "fim",
 )
 
 
@@ -133,6 +141,75 @@ def _evento_valido(evento: object) -> bool:
         return False
     return all(_instante(evento.get(campo)) is not None
                for campo in ("inicio", "fim") if evento.get(campo) is not None)
+
+
+def _eh_sintetico(evento: dict) -> bool:
+    fonte = str(evento.get("fonte") or "").casefold()
+    return any(marcador in fonte for marcador in FONTES_SINTETICAS)
+
+
+def _esta_incompleto(evento: dict) -> bool:
+    if any(campo not in evento or evento[campo] is None
+           for campo in CAMPOS_DE_IDENTIDADE_DA_TAREFA):
+        return True
+    if evento.get("estado") != "pendente" and evento.get("fim") is None:
+        return True
+    return any(evento.get(campo) is not None and _instante(evento.get(campo)) is None
+               for campo in ("inicio", "fim"))
+
+
+def _periodo(eventos: list[dict]) -> dict:
+    instantes = [_instante(evento.get("quando")) for evento in eventos]
+    instantes = [instante for instante in instantes if instante is not None]
+    if not instantes:
+        return {"inicio": None, "fim": None}
+    return {
+        "inicio": min(instantes).astimezone(timezone.utc).isoformat(),
+        "fim": max(instantes).astimezone(timezone.utc).isoformat(),
+    }
+
+
+def _diagnostico_da_entrada(eventos: list[dict]) -> dict:
+    registros = [evento for evento in eventos
+                 if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"]
+    validos = [evento for evento in registros if _evento_valido(evento)]
+    sinteticos = [evento for evento in validos if _eh_sintetico(evento)]
+    reais_validos = [evento for evento in validos if not _eh_sintetico(evento)]
+    incompletos = [evento for evento in registros
+                   if not _eh_sintetico(evento) and _esta_incompleto(evento)]
+    erros_validacao = [evento for evento in registros
+                       if not _evento_valido(evento) and not _esta_incompleto(evento)]
+    fontes = sorted({str(evento.get("fonte")) for evento in registros if evento.get("fonte")})
+    revisoes = sorted({str(evento.get("revisao_instrumento"))
+                       for evento in registros if evento.get("revisao_instrumento")})
+    motivos = Counter()
+    if sinteticos:
+        motivos["sintetico"] = len(sinteticos)
+    if incompletos:
+        motivos["real_incompleto"] = len(incompletos)
+    if erros_validacao:
+        motivos["erro_de_validacao_ou_correlacao"] = len(erros_validacao)
+    return {
+        "periodo_considerado": _periodo(eventos),
+        "revisao_da_analise": REVISAO_DA_ANALISE,
+        "revisoes_dos_registros": revisoes,
+        "fontes_consultadas": [
+            "ci/telemetria.py",
+            ".git/telemetria-dos-robos/*.jsonl",
+        ],
+        "fontes_de_tarefas": fontes,
+        "registros_encontrados": len(eventos),
+        "registros_tarefa_medida": len(registros),
+        "registros_sinteticos_excluidos": len(sinteticos),
+        "registros_reais_reconhecidos": len(reais_validos),
+        "registros_reais_inelegiveis": 0,
+        "registros_reais_incompletos": len(incompletos),
+        "erros_de_leitura_correlacao_validacao": 0,
+        "registros_com_erro_de_validacao_ou_correlacao": len(erros_validacao),
+        "registros_historicos_ou_de_outras_fases": len(eventos) - len(registros),
+        "motivos_de_rejeicao": dict(sorted(motivos.items())),
+        "nota_inelegibilidade": "Inelegibilidade comparativa aparece por piloto em exclusoes; nenhum registro real foi rejeitado nesta leitura.",
+    }
 
 
 def _soma_conhecida(eventos: list[dict], metrica: str) -> dict:
@@ -296,12 +373,15 @@ def analisar(eventos: list[dict]) -> dict:
     validos = {}
     invalidos = 0
     antigos = 0
+    diagnostico = _diagnostico_da_entrada(eventos)
     for evento in eventos:
         if not isinstance(evento, dict) or evento.get("evento") != "tarefa_medida":
             antigos += 1
             continue
         if not _evento_valido(evento):
             invalidos += 1
+            continue
+        if _eh_sintetico(evento):
             continue
         validos[evento["id"]] = evento
     tarefas = _agrupar_tentativas(list(validos.values()))
@@ -319,6 +399,7 @@ def analisar(eventos: list[dict]) -> dict:
             "eventos_antigos_ou_de_outras_fases": antigos,
             "deduplicacao": "id da tarefa medida, sem contar repetição como nova tarefa",
         },
+        "diagnostico_da_entrada": diagnostico,
         "pilotos": pilotos,
         "historico_do_percurso": {
             "tarefas": percurso_historico["tarefas"],
@@ -350,6 +431,12 @@ def main(argv: list[str] | None = None) -> int:
     eventos = ler_tudo(git, cobertura=cobertura)
     saida = analisar(eventos)
     saida["leitura"] = cobertura
+    diagnostico = saida["diagnostico_da_entrada"]
+    erros_de_leitura = cobertura["arquivos_ilegiveis"] + cobertura["linhas_invalidas"]
+    diagnostico["erros_de_leitura"] = erros_de_leitura
+    diagnostico["erros_de_leitura_correlacao_validacao"] = (
+        erros_de_leitura + diagnostico["registros_com_erro_de_validacao_ou_correlacao"]
+    )
     print(json.dumps(saida, ensure_ascii=False, indent=2))
     return 0
 

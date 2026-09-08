@@ -12,7 +12,7 @@ import telemetria  # noqa: E402
 
 
 def tarefa(condicao, numero, *, piloto="fase3", estado="concluida", minutos=30,
-           par=True, metricas=None):
+           par=True, metricas=None, fonte="registro-operacional-autorizado"):
     inicio = datetime(2026, 9, 1, tzinfo=timezone.utc) + timedelta(days=numero)
     fim = inicio + timedelta(minutes=minutos) if minutos is not None else None
     dados = {
@@ -26,7 +26,7 @@ def tarefa(condicao, numero, *, piloto="fase3", estado="concluida", minutos=30,
         "risco": "medio", "escopo_publicacao": "publicacao-verificada",
         "revisao_instrumento": "b" * 40,
         "inicio": inicio.isoformat(), "fim": fim.isoformat() if fim else None,
-        "estado": estado, "fonte": "telemetria-de-teste",
+        "estado": estado, "fonte": fonte,
         "metricas": metricas if metricas is not None else {
             "chamadas_modelo": 1, "chamadas_ferramenta": 2, "runner_minutos": 3,
             "retentativas": 0, "correcoes_revisao": 0, "reaberturas": 0,
@@ -43,6 +43,35 @@ def test_sem_tarefas_medidas_nao_declara_ganho():
     assert resultado["instrumentacao"] == "parcial"
     assert resultado["avaliacao"] == "em coleta"
     assert all(p["resultado"] == "não avaliável" for p in resultado["pilotos"].values())
+
+
+def test_sintetico_e_excluido_e_fica_explicado_no_diagnostico():
+    resultado = analise.analisar([tarefa("depois", 1, fonte="telemetria-de-teste")])
+
+    assert resultado["observacoes"]["tarefas_validas"] == 0
+    diagnostico = resultado["diagnostico_da_entrada"]
+    assert diagnostico["registros_encontrados"] == 1
+    assert diagnostico["registros_tarefa_medida"] == 1
+    assert diagnostico["registros_sinteticos_excluidos"] == 1
+    assert diagnostico["registros_reais_reconhecidos"] == 0
+    assert diagnostico["motivos_de_rejeicao"] == {"sintetico": 1}
+
+
+def test_diagnostico_separa_incompleto_de_erro_de_correlacao():
+    incompleto = tarefa("depois", 1)
+    del incompleto["fim"]
+    erro = tarefa("depois", 2)
+    erro["id"] = "0" * 64
+
+    diagnostico = analise.analisar([incompleto, erro])["diagnostico_da_entrada"]
+
+    assert diagnostico["registros_reais_incompletos"] == 1
+    assert diagnostico["registros_com_erro_de_validacao_ou_correlacao"] == 1
+    assert diagnostico["registros_reais_inelegiveis"] == 0
+    assert diagnostico["motivos_de_rejeicao"] == {
+        "erro_de_validacao_ou_correlacao": 1,
+        "real_incompleto": 1,
+    }
 
 
 def test_repeticao_nao_inflama_a_amostra_e_fase_antiga_e_ignorada():
