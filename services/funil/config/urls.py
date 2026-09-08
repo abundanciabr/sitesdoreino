@@ -8,7 +8,10 @@ from apps.core.views import (
     healthz,
     landing,
     ligar_avisos,
+    marcar_notificacao_lida,
+    marcar_todas_notificacoes_lidas,
     manifesto_do_app,
+    notificacoes,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -48,6 +51,17 @@ urlpatterns = [
     # template em vez de montá-lo.
     path("avisos/ligar", ligar_avisos, name="ligar_avisos"),
     path("avisos/desligar", desligar_avisos, name="desligar_avisos"),
+    path("notificacoes", notificacoes, name="notificacoes"),
+    path(
+        "notificacoes/marcar-todas",
+        marcar_todas_notificacoes_lidas,
+        name="marcar_todas_notificacoes_lidas",
+    ),
+    path(
+        "notificacoes/<str:aviso_id>/lida",
+        marcar_notificacao_lida,
+        name="marcar_notificacao_lida",
+    ),
     path("cadastro", cadastro, name="cadastro"),  # PLANO-I18N fase 2
     # A previa da equipe ("ver como", 02/09/2026). Localizada como as
     # outras paginas da celula: a tarja e os rotulos sao texto de tela, e
