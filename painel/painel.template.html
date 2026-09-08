@@ -101,6 +101,14 @@
   .card .n{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-2); line-height:1.7;}
   .card .n em{font-style:normal; color:var(--gold);}
   .card .n em.zero{color:var(--text-3);}
+  a.card{display:block; text-decoration:none; color:inherit;}
+  .voltar{display:inline-block; margin:0 0 14px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;}
+  .acoes{margin-top:8px;}
+  .tocar{font-family:'IBM Plex Sans',sans-serif; font-size:13px; border:1px solid var(--blue); color:var(--blue);
+    background:none; border-radius:20px; padding:5px 12px; cursor:pointer;}
+  .tocar:hover{background:var(--panel-2);}
+  .prompt-caixa{margin:8px 0 0; padding:10px 12px; border:1px dashed var(--line-soft); border-radius:10px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; white-space:pre-wrap; color:var(--text-2);}
   .cab .diz{font-family:'IBM Plex Sans',sans-serif; font-weight:400; font-size:12.5px;
     color:var(--text-3); margin-left:auto; text-align:right;}
   .grupo{padding:10px 18px 4px; border-top:1px solid var(--line-soft); display:flex; gap:10px;
@@ -267,11 +275,16 @@
     <div id="mapa-resumo"></div>
     <div id="mapa-capitulos"></div>
   </section>
+  <!-- O estado da fila dos robôs vale para a aba Prioridades E para a página
+       de cada área: um elemento só, mostrado por mostraVista() nas duas. -->
+  <div class="fila-estado" id="pri-fila" hidden></div>
   <section class="vista" id="vista-prioridades">
-    <p class="sub">Tudo que está aberto, <b>por área do site</b>, e dentro de cada área <b>por tipo</b>: o que só você decide, o que está quebrado, o que os robôs vão fazer, e para onde a área vai. Em cada lista, o mais importante vem primeiro. Como tudo aqui, é calculado dos registros e da fila dos robôs, e nada disto é digitado à mão.</p>
-    <div class="fila-estado" id="pri-fila"></div>
+    <p class="sub">Cada área do site tem a <b>sua própria página</b>: escolha uma abaixo e veja só o que está aberto nela, por tipo (o que só você decide, o que está quebrado, o que os robôs vão fazer, e para onde a área vai). Os números de cada cartão são os de hoje. Como tudo aqui, é calculado dos registros e da fila dos robôs, e nada disto é digitado à mão.</p>
     <div class="faixa" id="pri-faixa"></div>
-    <div id="pri-areas"></div>
+  </section>
+  <section class="vista" id="vista-area">
+    <a class="voltar" href="#prioridades">← Todas as áreas</a>
+    <div id="area-bloco"></div>
   </section>
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
@@ -793,22 +806,53 @@ try {
       d.appendChild(document.createTextNode(corta(linha[1], 180)));
       it.appendChild(d);
     });
+    // Só a tarefa que um robô NOVO pode pegar traz prompt (quem serve a fila
+    // decide): colar o de uma que já está com um robô abriria uma segunda
+    // sessão no mesmo trabalho.
+    if (i.tarefa && i.tarefa.prompt) it.appendChild(acoesDeTocar(i.tarefa.prompt));
     return it;
   }
-  function desenharPrioridades() {
-    var p = LOGICA.prioridades(REGS, AGORA, PRONTOS, AREAS_DO_SITE, tarefasDaFila);
+  var FRASE_DE_TOCAR = "Copiar o prompt para tocar aqui";
+  function acoesDeTocar(prompt) {
+    var acoes = el("div", "acoes");
+    var botao = el("button", "tocar", FRASE_DE_TOCAR);
+    botao.type = "button";
+    var caixa = el("pre", "prompt-caixa", prompt);
+    caixa.hidden = true;
+    // A falha nunca some: sem área de transferência, o texto abre para ele
+    // selecionar (RETROSPECTIVA-FASE-D §1).
+    function naoCopiou() {
+      caixa.hidden = false;
+      botao.textContent = "não consegui copiar sozinho, selecione o texto abaixo";
+    }
+    botao.addEventListener("click", function () {
+      if (!(navigator.clipboard && navigator.clipboard.writeText)) { naoCopiou(); return; }
+      navigator.clipboard.writeText(caixa.textContent).then(function () {
+        botao.textContent = "copiado, é só colar no Claude Code";
+        window.setTimeout(function () { botao.textContent = FRASE_DE_TOCAR; }, 5000);
+      }, naoCopiou);
+    });
+    acoes.appendChild(botao);
+    acoes.appendChild(caixa);
+    return acoes;
+  }
+  // Uma estrutura só por estado (registros + fila): o menu e a página de cada
+  // área leem dela. Recalcular em cada um criaria dois números para o mesmo fato.
+  var prioridadesDeHoje = null;
+  function prioridades() {
+    if (!prioridadesDeHoje) prioridadesDeHoje = LOGICA.prioridades(REGS, AGORA, PRONTOS, AREAS_DO_SITE, tarefasDaFila);
+    return prioridadesDeHoje;
+  }
+  function desenharMenuDasAreas() {
+    var p = prioridades();
     // "Sem área reconhecida" só aparece com gente dentro: vazio, seria uma
     // acusação permanente sem nada a fazer nela.
     var lista = p.areas.concat(p.semArea.total ? [p.semArea] : []);
     var faixa = document.getElementById("pri-faixa");
-    var blocos = document.getElementById("pri-areas");
     faixa.textContent = "";
-    blocos.textContent = "";
     lista.forEach(function (a) {
-      // A contagem sai da MESMA estrutura que desenha os blocos: recontar aqui
-      // criaria dois números para o mesmo fato.
-      var cartao = el("button", "card");
-      cartao.type = "button";
+      var cartao = el("a", "card");
+      cartao.href = "#area/" + (a.id || "sem");
       cartao.appendChild(el("b", null, a.nome));
       var n = el("div", "n");
       [["decidir", " para você decidir · "], ["alerta", " em alerta"],
@@ -819,30 +863,51 @@ try {
         if (k === 1) n.appendChild(el("br"));
       });
       cartao.appendChild(n);
-      cartao.onclick = function () {
-        var alvo = document.getElementById("area-" + (a.id || "sem"));
-        if (alvo && alvo.scrollIntoView) alvo.scrollIntoView();
-      };
       faixa.appendChild(cartao);
-
-      var bloco = el("div", "bloco");
-      bloco.id = "area-" + (a.id || "sem");
-      var cab = el("div", "cab", a.nome);
-      cab.appendChild(el("span", "cont", String(a.total)));
-      cab.appendChild(el("span", "diz", a.diz));
-      bloco.appendChild(cab);
-      if (!a.total) bloco.appendChild(el("div", "item vazio", "Nada pendente nesta área hoje."));
-      GRUPOS_DA_AREA.forEach(function (g) {
-        var itens = a.grupos[g.id];
-        if (!itens.length) return;
-        var cabG = el("div", "grupo g-" + g.id, g.nome);
-        cabG.appendChild(el("span", "cont", String(itens.length)));
-        cabG.appendChild(el("span", "diz", g.diz));
-        bloco.appendChild(cabG);
-        itens.forEach(function (i, k) { bloco.appendChild(itemDePrioridade(i, k + 1)); });
-      });
-      blocos.appendChild(bloco);
     });
+  }
+  function desenharArea(id) {
+    var p = prioridades();
+    var lugar = document.getElementById("area-bloco");
+    lugar.textContent = "";
+    if (!id) {
+      lugar.appendChild(el("p", "sub", "Nenhuma área foi escolhida. Volte para a lista e escolha uma das áreas do site."));
+      return;
+    }
+    var a = p.areas.concat([p.semArea]).filter(function (x) { return (x.id || "sem") === id; })[0];
+    if (!a) {
+      lugar.appendChild(el("p", "sub", "Não existe área com o nome “" + id +
+        "”. Volte para a lista e escolha uma das áreas do site."));
+      return;
+    }
+    var bloco = el("div", "bloco");
+    var cab = el("div", "cab", a.nome);
+    cab.appendChild(el("span", "cont", String(a.total)));
+    cab.appendChild(el("span", "diz", a.diz));
+    bloco.appendChild(cab);
+    if (!a.total) bloco.appendChild(el("div", "item vazio", "Nada pendente nesta área hoje."));
+    GRUPOS_DA_AREA.forEach(function (g) {
+      var itens = a.grupos[g.id];
+      if (!itens.length) return;
+      var cabG = el("div", "grupo g-" + g.id, g.nome);
+      cabG.appendChild(el("span", "cont", String(itens.length)));
+      cabG.appendChild(el("span", "diz", g.diz));
+      bloco.appendChild(cabG);
+      itens.forEach(function (i, k) { bloco.appendChild(itemDePrioridade(i, k + 1)); });
+    });
+    lugar.appendChild(bloco);
+  }
+  // O nome da área no endereço: #area/<id>. Fora de uma página de área é null;
+  // #area e #area/ valem "" (nenhuma escolhida), nunca uma vista por si.
+  function areaDoEndereco() {
+    var alvo = (location.hash || "").slice(1);
+    return alvo === "area" || alvo.indexOf("area/") === 0 ? alvo.slice(5) : null;
+  }
+  // Quando a fila chega: o menu sempre, e a página de área se for ela que está na tela.
+  function desenharPrioridades() {
+    desenharMenuDasAreas();
+    var area = areaDoEndereco();
+    if (area !== null) desenharArea(area);
   }
   function estadoDaFila(texto, ruim, aviso) {
     var f = document.getElementById("pri-fila");
@@ -865,8 +930,9 @@ try {
     fetch("fila.json", { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("o servidor respondeu " + r.status); return r.json(); })
       .then(function (d) {
-        if (d.erro) { estadoDaFila(d.erro, true); return; }
+        if (d.erro) { estadoDaFila(d.erro + " Recarregue a página para tentar novamente.", true); return; }
         tarefasDaFila = d.tarefas || [];
+        prioridadesDeHoje = null;
         estadoDaFila(tarefasDaFila.length
           ? tarefasDaFila.length + " tarefa(s) abertas na fila dos robôs, lidas agora."
           : "Nenhuma tarefa aberta na fila dos robôs.", false, d.aviso || null);
@@ -874,11 +940,11 @@ try {
       })
       .catch(function (e) {
         estadoDaFila("Não consegui buscar a fila dos robôs (" + e.message +
-          "). Os pedidos e alertas acima continuam valendo.", true);
+          "). Os pedidos, alertas e rumos do livro continuam valendo; só as tarefas dos robôs faltam. Recarregue a página para tentar novamente.", true);
       });
   }
   estadoDaFila("A fila dos robôs é buscada quando você abre esta aba.");
-  desenharPrioridades();
+  desenharMenuDasAreas();
 
   // ---------- o placar (cabine escura) ----------
   var nCaixa = LOGICA.caixaDeEntrada(REGS, AGORA, PRONTOS).length;
@@ -1395,17 +1461,23 @@ try {
   rod.appendChild(document.createTextNode(". Página aberta às " + AGORA.toLocaleTimeString("pt-BR") + " de " + AGORA.toLocaleDateString("pt-BR") + " — todo frescor foi comparado com este relógio."));
 
   // ---------- abas ----------
-  var VISTAS = ["capa", "mapa", "prioridades", "operacao", "memoria"];
+  var VISTAS = ["capa", "mapa", "prioridades", "area", "operacao", "memoria"];
   function mostraVista() {
     var alvo = (location.hash || "#capa").slice(1);
+    // A página de uma área (#area/<id>) mora dentro da aba Prioridades.
+    var area = areaDoEndereco();
+    if (area !== null) alvo = "area";
     if (VISTAS.indexOf(alvo) === -1) alvo = "capa";
     VISTAS.forEach(function (v) {
       document.getElementById("vista-" + v).className = "vista" + (v === alvo ? " ativa" : "");
     });
+    var aba = alvo === "area" ? "prioridades" : alvo;
     Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {
-      aEl.className = "aba" + (aEl.getAttribute("data-vista") === alvo ? " ativa" : "");
+      aEl.className = "aba" + (aEl.getAttribute("data-vista") === aba ? " ativa" : "");
     });
-    if (alvo === "prioridades") buscarAFila();
+    document.getElementById("pri-fila").hidden = aba !== "prioridades";
+    if (area !== null) desenharArea(area);
+    if (aba === "prioridades") buscarAFila();
   }
   window.addEventListener("hashchange", mostraVista);
   mostraVista();

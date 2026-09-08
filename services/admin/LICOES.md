@@ -295,3 +295,11 @@ próximo gesto de duas portas nesta área escolhe a ordem por essa pergunta:
 O guarda é
 `tests/test_escola_cursos.py::test_produto_criado_e_curso_recusado_manda_apertar_de_novo`,
 provado por mutação: apagar a frase da metade o deixa vermelho.
+
+## Link direto de área também inicia a fila (07/09/2026, PR 1365)
+
+O painel busca a fila na primeira abertura de Prioridades. Uma área aberta
+por `#area/alunos` também pertence a essa aba: iniciar a busca apenas quando
+a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
+precisa aparecer na área durante carregamento, aviso e falha. O teste real
+do navegador cobre a entrada direta, a volta ao menu e a troca de área.

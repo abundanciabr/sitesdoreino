@@ -56,6 +56,89 @@ semeador — e o motivo é que o valor a gravar quase nunca é conhecível na ho
 escrever o código (o `product_id` é um UUID sorteado, diferente em cada
 ambiente).
 
+## Reordenar linhas com posição única: a aula estaciona, o bloco adia
+
+**Medido em 07/09/2026, na TAR-266.** `putCourseStructure` reordena blocos e
+aulas em lugar, e as duas tabelas têm `Unique(curso, ordem)`. Trocar dois de
+posição (A vai para 2, B vai para 1) colide na PRIMEIRA gravação quando o banco
+confere linha a linha: a suíte acusa `IntegrityError` em
+`uma_ordem_por_aula_por_curso` no meio da transação, e nada do que vem depois
+importa.
+
+Há duas saídas, e cada tabela desta célula usa a que a faixa dela permite:
+
+| tabela | faixa da ordem | saída |
+|---|---|---|
+| `Aula` | aberta (0..32767) | **estacionar**: todas sobem para acima do maior valor que a estrutura nova vai usar (`update(ordem=F("ordem") + deslocamento)`), e cada uma desce para a posição final; nenhuma gravação encontra outra linha na posição |
+| `Bloco` | fechada (1..26) | **adiar**: `UniqueConstraint(..., deferrable=DEFERRED)`, e o banco confere no `COMMIT` |
+
+**Por que não adiar as duas:** o semeador do livro e
+`test_o_esqueleto_entra_inteiro_ou_nao_entra` dependem de a colisão da AULA
+estourar NA LINHA, dentro de `call_command`; adiada, ela só apareceria no
+`COMMIT`, que um teste nunca dá, e a prova da transação única viraria verde de
+mentira (`armadilhas/358`). **Por que não estacionar as duas:** a ordem do
+bloco não tem valor legal fora de 1..26, e com 26 blocos usados não sobra vaga.
+
+Quem prova a recusa de uma restrição adiada força a conferência com
+`connection.check_constraints()` dentro do `pytest.raises`
+(`test_uma_ordem_por_bloco_por_curso`): sem isso o teste passa sabotado.
+
+## O `max_length` da coluna não é o guarda, e o teste não pode medi-lo
+
+`Aula.numero` tem `max_length=3` e `Bloco.letra` tem `max_length=1`. Um caso de
+teste com `"1234"` ou `"AA"` reprova com `DataError: value too long`, ANTES de a
+`CheckConstraint` ser avaliada, e o `pytest.raises(IntegrityError, match=...)`
+fica vermelho pelo motivo errado (`armadilhas/226`). Os casos que provam a
+restrição são os que CABEM na coluna e violam a regra (`"e00"`, `"E-1"`,
+`"A 1"`, `""`); o tamanho é recusado com 422 pela porta, pelo `pattern` do
+corpo, que é onde ele deve ser recusado.
+
+## A conferência que decide apagar mora dentro da transação que apaga, e tranca a linha
+
+**Medido em 07/09/2026, na revisão do PR #1349.** A primeira versão de
+`putCourseStructure` conferia o rastro de aluno (progresso, envio, registro de
+pausa) das aulas que sumiram ANTES de abrir o `transaction.atomic()`. Entre o
+SELECT e o DELETE havia uma janela, e um aluno começando a aula nessa janela
+matava a porta em 500 (`ProtectedError`), nunca em 422.
+
+O conserto é a conferência DENTRO do `atomic()`, com `select_for_update()` nas
+aulas candidatas. O que a tranca compra não é o óbvio, e vale saber antes de
+escrever o teste: **as chaves estrangeiras que o Django cria no Postgres são
+`DEFERRABLE INITIALLY DEFERRED`**, então o INSERT do rastro NÃO segura a linha
+da aula; só o COMMIT do aluno pede `FOR KEY SHARE` nela. Com a aula trancada
+pela porta, o COMMIT do aluno espera a porta terminar, e o banco recusa o rastro
+que apontaria para aula apagada. Um INSERT aberto do aluno não bloqueia a porta,
+e um teste que espera isso reprova pelo motivo errado (aconteceu aqui).
+
+**A prova honesta** (`test_enquanto_a_porta_tranca_as_aulas_o_rastro_do_aluno_espera`)
+usa uma segunda conexão de verdade (`connections.create_connection("default")`,
+porque apelido novo em `connections` é proibido pela classe de teste), pausa a
+porta logo depois do `FOR UPDATE` com `connection.execute_wrapper`, e mede que o
+COMMIT do aluno fica esperando. Duas sabotagens a derrubam: tirar o
+`select_for_update()` (a pausa nunca acontece) e pôr a conferência numa
+transação própria antes da que grava (a porta morre em `ProtectedError`).
+
+**Duas condições do teste:** `@pytest.mark.django_db(transaction=True)`, porque
+a segunda conexão só vê o que foi commitado; e `select_for_update()` não aceita
+`.distinct()` nem os `LEFT JOIN` da conferência, então tranque as candidatas
+numa consulta simples e confira o rastro por `pk__in` numa segunda.
+
+## O nome do bloco é estrutura, o título da aula é obra
+
+**Decisão da maestro em 07/09/2026, na mesma revisão.** As aulas casam pelo
+NÚMERO, que é estável, e por isso `titulo_exibido` só preenche onde está vazio.
+Os blocos casam pela LETRA, que é posicional: nasce um bloco na frente e o B
+vira C. Com a regra "só preenche onde está vazio" para o nome do bloco, o bloco
+que mudava de letra era apagado com o nome que a pessoa escreveu e o novo
+nascia vazio, em silêncio.
+
+Regra desde o PR #1349: em `BlocoDaEstruturaSchema`, `nome` e `boss_titulo` são
+`str | None = None`. **Nulo ou ausente não mexe; texto grava; texto vazio
+apaga.** A tela de colar traz os nomes nas linhas de módulo e manda o que
+mostra, então nenhum bloco perde o nome ao mudar de letra. A prosa da porta e
+dos dois campos diz exatamente isso, porque ela vira pedra no contrato
+(`armadilhas/324`).
+
 ## O catálogo mostra todos os cursos, a porta decide quem entra
 
 **Medido em 07/09/2026:** a raiz da célula (`/cursos/`) respondia 301 para o
