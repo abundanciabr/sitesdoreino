@@ -86,12 +86,11 @@ def test_todo_link_da_pagina_de_avisos_leva_o_prefixo(dentro_sob_prefixo, aviso)
     )
 
 
-def test_o_link_do_sino_na_moldura_leva_o_prefixo(dentro_sob_prefixo, sugestao):
-    """O sino aparece em TODA página (context processor): se ele saísse sem
-    prefixo, quebraria em todas de uma vez."""
+def test_o_link_do_sino_na_moldura_leva_a_central_do_site(dentro_sob_prefixo, sugestao):
+    """O sino da Caixa aponta para a central única, fora do prefixo da Caixa."""
     corpo = dentro_sob_prefixo.client.get("/").content.decode()
 
-    assert f'href="{PREFIXO}/avisos"' in corpo, corpo[:400]
+    assert 'href="/notificacoes"' in corpo, corpo[:400]
 
 
 def test_o_redirecionamento_depois_de_marcar_como_lido_leva_o_prefixo(
