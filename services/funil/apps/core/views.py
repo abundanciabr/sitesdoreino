@@ -541,6 +541,7 @@ def manifesto_do_app(request):
 # frase daqui é verdadeira sozinha, sem depender de dado que talvez não venha.
 TEXTOS_DO_AVISO = {
     "sugestao.status-alterado": "sugestao",
+    "pages.portfolio-conferido": "portfolio",
     # O aviso de teste (Rito de Contrato de 03/09/2026): a pessoa clicou em
     # "Mandar um aviso de teste para mim" em /admin/avisos/, e este e o texto
     # que a tela do celular mostra. So existe para provar o canal, entao a
