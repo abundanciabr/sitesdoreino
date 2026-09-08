@@ -196,10 +196,10 @@ AREAS = (
     ),
     (
         "avisos",
-        "Os avisos no celular",
-        "Ligar e desligar o aviso que chega no telefone do aluno. Não tem tela "
-        "própria: são os dois botões da área do aluno.",
-        ("/avisos",),
+        "Os avisos do aluno",
+        "A central de notificações e os controles para ligar ou desligar o aviso "
+        "que chega no telefone do aluno.",
+        ("/avisos", "/notificacoes"),
     ),
     (
         "administracao",
