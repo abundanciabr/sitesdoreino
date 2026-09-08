@@ -6,119 +6,132 @@ publico-para-ia: true
 
 ## Veredito deste retrato
 
-**PARCIAL.** O contexto foi integrado e seu deploy concluiu; cobertura individual tem PR e validações isoladas. A revisão de prazo 041ddea25e6bc938a2025699f89eecb377ee4a25 está REPROVADA pelo achado alto de processo Linux sobrevivente ao timeout. Há correção local e reteste do implementador, mas o achado permanece aberto até reteste independente. Este documento não declara a Fase 1 concluída. Integração das demais correções, parecer final e publicação deste pacote permanecem pendentes. Ganho de eficiência não comprovado.
+**PARCIAL.** F1-01 e F1-02 foram atendidos no alcance da instalação inspecionada. F1-03 e F1-04 têm código aprovado, duas validações amplas reais e retomada conferida de forma independente. F1-03 foi integrado e seu deploy concluiu com sucesso. Os três achados de código foram corrigidos e retestados. F1-05 ainda depende da revisão deste documento e da última validação da revisão que o embarca; F1-06 depende das integrações e verificações de publicação restantes. A Fase 1 não está concluída. Ganho de eficiência não comprovado.
 
-Este é um retrato da auditoria em 08/09/2026, vinculado às revisões abaixo, e não uma nova fonte de estado operacional. PRs, runs e livro de ocorrências continuam sendo as fontes dos estados vivos. Uma conclusão posterior exige nova prova e atualização explícita do retrato; a existência deste arquivo não comprova seu deploy.
+Este é um retrato da revisão em 08/09/2026, depois das provas e dos snapshots de 05:08:19 UTC, preparado sobre ef1d5d3b3fd267e0afe6333cd103b33dc0996c9a. Não é uma fonte nova de estado operacional. Os [PRs 1382](https://github.com/abundanciabr/sitesdoreino/pull/1382) e [1383](https://github.com/abundanciabr/sitesdoreino/pull/1383), seus runs e o livro de ocorrências registram os estados posteriores. O arquivo não afirma ter verificado o próprio deploy. A prova pública posterior será registrada no corpo do PR e no livro, evitando uma sequência de documentos que precisam comprovar a própria publicação.
 
-A missão corretiva atual é a autoridade para F1-01 a F1-06. As emendas das Leis 2 e 4 da CONSTITUICAO orientam abrangência de células e integração pela pista. Os documentos históricos permanecem preservados.
+A missão corretiva atual e as emendas das Leis 2 e 4 da CONSTITUICAO são a autoridade deste trabalho, com mandato expresso para ci/. Documentos históricos foram preservados como história, sem se tornarem receitas ativas.
 
 ## Revisões e alcance
 
-| Parte | Revisão examinada | Limite da prova |
+| Parte | Revisão | Prova e limite |
 |---|---|---|
-| Base integrada | 87365d3234fdb2ea3543986d80ba196ba36f36f3 | Estado anterior ao complemento |
-| Contexto e instruções, código | d24e0aac0af7c661ccb14026642690ec40a8049d | 15 arquivos de código e receitas |
-| Contexto e instruções, com recibo | fbc4520cea95e1316a2143b52ebf22d13effa1ae | [PR 1381](https://github.com/abundanciabr/sitesdoreino/pull/1381); diferença posterior ao código: somente recibo de 977 bytes |
-| Prazo de validação, revisão reprovada | 041ddea25e6bc938a2025699f89eecb377ee4a25 | Achado alto confirmado: filho Linux que chama setsid sobrevive ao timeout. Suíte ampla anterior passou, mas não detectou esse caso; fechamento recusou árvore alterada antes do push |
-| Prazo, correção do achado alto | 0d69aaf5723d5d3ede5f85ccb7e5cf60a9ca8302 | Novo módulo ci/pr_processos_linux.py; commit de 04:43:11 UTC; Windows: 90 passaram e 5 específicos de Linux foram pulados; Linux com --init: 34 passaram; reteste independente pendente |
-| Cobertura individual, código | edf0a808f295c02d69a009597a24d0a5b55097e5 | [PR 1382](https://github.com/abundanciabr/sitesdoreino/pull/1382); três validações isoladas com exit 0 |
-| Cobertura individual, com recibo | 1b35c92f11cadbaada291c96db9d2447d3bf1481 | Mesmas três validações isoladas com exit 0; PR aberto e ramo remoto conferidos |
-| Integração do contexto | ffedbd7c083f893e7e3e3201f32a6acc0ae75b9c | PR 1381 MERGED; deploy 34187392935 completed/success |
-| Composição local de contexto e métricas | f78baea846829c7bfded19551c22fb8d7a54364e | Merge local de origin/main; não equivale à integração do PR 1382 na main |
+| Base anterior ao complemento | 87365d3234fdb2ea3543986d80ba196ba36f36f3 | Não recebe aprovação retroativa das correções |
+| Contexto e receitas, código | d24e0aac0af7c661ccb14026642690ec40a8049d | 15 arquivos de código e receitas |
+| Contexto com recibo | fbc4520cea95e1316a2143b52ebf22d13effa1ae | [PR 1381](https://github.com/abundanciabr/sitesdoreino/pull/1381), recibo de 977 bytes, validação isolada repetida |
+| Contexto integrado | ffedbd7c083f893e7e3e3201f32a6acc0ae75b9c | PR 1381 MERGED; [deploy 34187392935](https://github.com/abundanciabr/sitesdoreino/actions/runs/34187392935) completed/success; CLI integrado executado |
+| Prazo, revisão rejeitada | 041ddea25e6bc938a2025699f89eecb377ee4a25 | Suíte ampla passou, mas filho Linux com setsid sobreviveu ao timeout no ensaio independente; fechamento recusou árvore alterada antes do push |
+| Prazo corrigido, runtime aprovado | 0d69aaf5723d5d3ede5f85ccb7e5cf60a9ca8302 | Commit 04:43:11 UTC; achado ALTO encerrado pelo revisor após reprodução real Windows/Linux |
+| Cobertura individual, código e recibo iniciais | edf0a808f295c02d69a009597a24d0a5b55097e5 e 1b35c92f11cadbaada291c96db9d2447d3bf1481 | Três validações isoladas com exit 0 em cada SHA; PR 1382 aberto |
+| Composição do piloto de abertura e execução | f78baea846829c7bfded19551c22fb8d7a54364e | Contexto integrado à bancada; abertura real e 97 testes; não é merge de PR 1382 na main |
+| Composição da primeira ampla | 0a804da6c86a48eacda5367181a4e3d65311eb0f | 2382 passaram e 5 foram pulados; 454.44s; revisão holística independente |
+| Composição com recibo, segunda ampla e retomadas | 4b256066f5f9d365b551558b4330eacfb932b029 | 2382 passaram e 5 foram pulados; 376.90s; duas retomadas com provas novas no mesmo SHA |
+| Prazo com organização final dos testes | a38efecbe05c73ca60a75c1c07023f70b7eb1095 | PR 1383 revisado; 55 corpos de testes idênticos por AST, armadilha 401 e recibos 032/034; runtime idêntico a 0d69aaf5 |
+| Composição local depois dessa organização | ef1d5d3b3fd267e0afe6333cd103b33dc0996c9a | As duas amplas são dos SHAs acima. A composição posterior não muda o runtime testado; o último fechamento focal e a revisão do documento permanecem separados |
+
+A catraca de CI apontou falso positivo na organização dos testes de processos. A correção moveu os corpos existentes para dois arquivos específicos; a comparação AST de 55 corpos foi revisada independentemente. Nenhum controle foi removido. A pista atualizou o ramo do PR 1383 após a revisão a38efecb: a diferença informada pela maestro contém exatamente os 16 arquivos do PR 1381 já presentes na composição testada. Os sete checks ficaram verdes novamente e a pista integrou o PR 1383 em 075d3b469e5b5f08bfd6aa824e70c5aad404a6be. A maestro confirmou MERGED por gh pr view e o [deploy 34189715598](https://github.com/abundanciabr/sitesdoreino/actions/runs/34189715598) por gh run view: status completed, conclusion success e headSha 075d3b469e5b5f08bfd6aa824e70c5aad404a6be. Os registros 035 e 036 distinguem integração e deploy. O PR 1382 permanece aberto.
+
+As alterações posteriores às amplas foram a organização de testes com corpos preservados, a lição 401, recibos e este retrato documental. Não se atribuem aos SHAs das amplas os bytes de um documento escrito depois. A validação final da revisão que o embarcará é responsabilidade do fechamento seguinte.
+
+A atualização da bancada com origin/main após o merge 075d3b46 não mudou o conteúdo de runtime testado. O clone principal foi atualizado por fast-forward até 075d3b46, e a maestro conferiu novamente os três SHA256 das instruções locais, todos preservados. Esse deploy não comprova a publicação da versão final deste documento.
 
 ## Matriz F1-01 a F1-06
 
-| ID | Problema confirmado | Correção ou prova vigente | Estado neste retrato |
-|---|---|---|---|
-| F1-01 | Pacote, ficha e receitas ainda exigiam índice integral | Índice virou aprofundamento; recuperação por caminho e sintoma preserva leis, origens, ausência e truncamento; 245 testes e pilotos reais; 17 mutações | PR 1381 integrado em ffedbd7c; deploy 34187392935 completed/success; comportamento web não inferido do deploy |
-| F1-02 | Receitas manuais, escrivão redundante e cópias locais contraditórias | Fontes rastreadas conciliadas; três instruções locais ajustadas com backup e hashes; reserva e recibo ficam no make pr; merge é da pista | Alterações demonstradas; parecer do conjunto final pendente |
-| F1-03 | Prazo fixo de 300 segundos podia interromper suíte maior | JSON existente aceita prazo_segundos inteiro de 1 a 7200; padrão de 900 por comando; timeout distinto de falha; encerramento de descendentes e retomada testados em Windows e Linux | 041ddea2 reprovado pelo achado alto de setsid; correção 0d69aaf5 tem 90 testes Windows e 34 Linux verdes; reteste independente e ampla final pendentes |
-| F1-04 | Presença global de fases podia parecer completude de tarefa | Consolidação por tarefa, tentativa, ramo e revisão; observações sucessivas preservadas; publicação correlacionada por PR e revisão sem transplantar a fase para a sessão local | PR 1382 aberto; 61 testes e duas verificações do gerador com exit 0 nas duas revisões isoladas; composição local teve 97 testes; integração pendente |
-| F1-05 | Aprovação narrada não bastava para auditoria externa | Este pacote apresenta matriz, quinze respostas, revisões, comandos, trechos reais e links públicos; revisão separada identificada abaixo | Parecer independente final e publicação do pacote pendentes |
-| F1-06 | Integração, deploy e comportamento publicado estavam misturados | Cinco PRs anteriores e seus deploys foram conferidos; mapa público comparado por bytes; correções atuais mantêm estados separados | Histórico e integração/deploy do PR 1381 comprovados; PR 1382 aberto; demais integração e publicação pendentes |
-
-## As quinze perguntas obrigatórias
-
-1. **O percurso foi automatizado ou apenas mudou etapas manuais de lugar?** Abertura usa ci/sessao.py; fechamento usa ci/pr.py. O piloto do PR 1381 criou ou retomou a bancada, emitiu contexto, validou duas revisões isoladas e embarcou o recibo. A retomada reexecutou as provas e manteve um PR e um recibo. As receitas antigas de preparação e escrituração foram retiradas das fontes ativas identificadas. Na composição local f78baea8 houve abertura real e execução de 97 testes. A instrumentação da execução usou explicitamente registrar_fase, API existente, sem afirmar que veio de um hook automático. Fechamento e retomada dessa composição ainda precisam de conferência.
-
-2. **Alguma ferramenta ou função existente foi duplicada?** As correções se concentram em ci/sessao.py, ci/pr.py e consolidar_percurso(), sem novo executor externo, orquestrador, painel ou fila. O encerramento de processos pertence ao runner existente, com correção Linux extraída para ci/pr_processos_linux.py após achado do revisor; sua revisão final ainda está pendente. O pacote público usa a rota de planos já implantada.
-
-3. **As contradições foram resolvidas por autoridade rastreável?** Sim, no alcance inspecionado: missão corretiva de 08/09/2026 e emendas da CONSTITUICAO Leis 2 e 4. Uma célula por PR é preferência com suítes de todas as tocadas, e só a pista executa merge. Arquivos locais foram ajustados separadamente, sem serem apresentados como efeito do PR.
-
-4. **Alguma instrução ativa ainda exige o procedimento antigo?** Os testes do PR 1381 percorrem oito fontes de contexto, três de escrituração e quatro receitas de abertura; a obrigação conhecida foi retirada. AGENTS.md e duas fichas Codex locais foram corrigidos com manifesto. 00-LEIA-PRIMEIRO é história declarada pelo PLAYBOOK; RUNBOOK §9 conserva relatos históricos. Isso não certifica máquinas ou instruções que não foram inspecionadas, nem substitui o parecer final do conjunto.
-
-5. **O contexto direcionado pode omitir regras obrigatórias?** Não houve dispensa das leis: o pacote continua indicando CLAUDE/AGENTS presentes, CONSTITUICAO, RITOS, Retrospectiva, Constituição da célula, LICOES e AGENTS dos caminhos. Fontes ausentes são avisadas. Um teste impede ler o índice sentinela e exige leis no pacote; outros conferem gatilho transversal, múltiplos alvos e regra real 394. Uma lista de referências não prova que um agente leu os documentos.
-
-6. **A telemetria distingue mensagens, ferramentas, tarefas e tentativas?** Os mecanismos existentes de uso permanecem; o complemento distingue namespace da tarefa, tentativa, ramo, revisão e entrega. A presença global é identificada como presença_global, sem equivaler à completude individual. Os testes focais passaram; a regressão ampla da versão corrigida permanece pendente.
-
-7. **A deduplicação ou agregação pode produzir contagens incorretas?** Foram reproduzidos dois falsos resultados quando uma identidade reaparecia: reinício após conclusão parecia concluído, e nova aprovação após falha parecia falha. A correção preserva observado_em e avalia as observações mais recentes. Eventos repetidos, tarefas e tentativas distintas são testados; as seis mutações de cobertura reprovaram. Não se declara impossibilidade universal de defeito.
-
-8. **O fechamento aceita prova ausente, antiga ou de outra revisão?** O mecanismo exige configuração de validação, executa em worktree isolado do commit, recusa caminhos absolutos de scripts e confere a revisão final após recibo. Timeout não produz aprovação e exige nova validação. O PR 1381 provou o mesmo SHA no GitHub; 041ddea2 passou numa suíte ampla, porém foi reprovado pelo teste independente de filho Linux com setsid. A correção local posterior não herda aquela aprovação e aguarda nova validação e revisão.
-
-9. **A retomada pode duplicar efeitos?** O piloto real de contexto concluiu com um PR e um recibo de 977 bytes após --continuar. A reserva usa identidade estável, e o comando consulta o PR e os eventos existentes. Os pilotos reais usam a identidade do ramo, sem TAR, para não encerrar TAR-278 antes de concluir a missão. Retomada deve medir deduplicação de eventos lógicos da telemetria, reserva, recibo e PR. Evento da fila é coberto por testes controlados existentes; não será inventado um encerramento real apenas para preencher a prova. Testes controlados do prazo exigem duas novas provas após timeout.
-
-10. **Existe caminho que contorne revisão ou permissões?** A correção retira --confirmo do molde de agente e mantém a pista como integradora. Não foi criado bypass de autenticação. O GET anônimo da área administrativa retorna login; isso não foi tratado como sucesso da tela. Revisão independente permanece uma obrigação separada do comando de fechamento.
-
-11. **As mudanças invadiram as fases 2 ou 3?** O diff declarado cobre contexto, instruções, prazo do fechamento, cobertura de métricas e evidências. Não separa publicação de registros, não cria outbox compartilhado e não altera arquitetura de células, bancos, infraestrutura ou seleção de modelos.
-
-12. **Algum teste ou controle foi enfraquecido?** Os controles de revisão, baseline, erro de instrumento, reserva, recibo e integração permanecem. A ampliação de prazo tem teto finito e entrada validada; não fragmenta a suíte. O teto de CLAUDE acusou a primeira redação, e somente o texto adicionado foi condensado para respeitá-lo. Mutações foram restauradas. A conclusão global depende da revisão do diff consolidado e da suíte final.
-
-13. **Logs e recibos expõem informações sensíveis?** Este pacote publica somente revisões, comandos, hashes, resultados e conteúdo sanitizado. Não publica transcrições de sessão, cookies, credenciais, caminhos pessoais ou conteúdo de backups globais. O PR 1381 contém as saídas necessárias, e seu corpo foi relido integralmente. Constantes dos testes de segredo são dados artificiais, não credenciais; os logs integrais privados não são copiados indiscriminadamente.
-
-14. **As alegações de eficiência têm medição válida?** Há tempos reais de testes e bytes emitidos pelos pilotos. Não há vinte tarefas comparáveis nem linha de base retroativa adequada para comprovar ganho global. Bytes não foram convertidos em tokens, e deduplicação não foi chamada de economia de consumo. Ganho de eficiência: não comprovado.
-
-15. **Um agente novo consegue executar o fluxo pela documentação atual?** O piloto do PR 1381 executou abertura e contexto reais, e o fechamento com retomada concluiu. Na composição local f78baea8, abertura real e 97 testes de contexto/métricas passaram. As fontes conhecidas e três instruções locais foram alinhadas. Ainda falta encerrar a auditoria independente e a execução composta das correções; portanto, este retrato não certifica o fluxo consolidado para qualquer nova sessão.
-
-## Provas executadas e comandos
-
-Ambiente do contexto: Windows 11, Python 3.12.10. Provas completas do contexto estão no [corpo público do PR 1381](https://github.com/abundanciabr/sitesdoreino/pull/1381), inclusive comandos, horários UTC, vermelho, mutações e saídas dos pilotos.
-
-| Comando ou ensaio real | Revisão | Resultado |
+| ID | Critério e resultado observado | Estado da revisão |
 |---|---|---|
-| python -m pytest ci/tests/test_sessao.py ci/tests/test_sessao_contexto.py ci/tests/test_sessao_retomada.py ci/tests/test_fichas_de_robo.py ci/tests/test_indice_de_armadilhas.py -q | Base 87365d32, antes das edições | 182 passed in 13.90s |
-| python -m pytest ci/tests/test_sessao_contexto.py ci/tests/test_fichas_de_robo.py -q | Novos guardas antes da correção | 5 failed, 31 passed in 3.95s |
-| Suíte ampliada de contexto, comando abaixo, em worktree isolado | fbc4520cea95e1316a2143b52ebf22d13effa1ae | 245 passed in 23.39s |
-| python ci/indice_de_armadilhas.py | Mesmo SHA isolado | PASS, 375 entradas |
-| python ci/travessao.py | Mesmo SHA isolado | PASS, 167 arquivos inspecionados; dívida herdada estável |
-| python -m pytest ci/tests/test_pr.py -q | 041ddea25e6bc938a2025699f89eecb377ee4a25, Windows | 88 passed in 11.34s |
-| Seleção Linux de prazo, timeout e instrumento, comando abaixo | Mesmo código, montagem somente leitura | 27 passed, 61 deselected in 8.52s |
-| python -m pytest ci/tests -q -n 4 | Base anterior ao fix de prazo | 2334 passed in 457.98s; NÃO é prova da revisão corrigida |
-| Mesmo comando amplo pelo ci/pr.py, prazo_segundos 1800 | 041ddea25e6bc938a2025699f89eecb377ee4a25 | 2362 passed in 373.23s; início 04:28:36.504439 UTC e fim 04:34:50.435382 UTC, informado pelo implementador. Fechamento recusou árvore alterada antes do push. Essa revisão está reprovada pelo achado alto independente |
-| Seleção Linux posterior com docker run --init | 0d69aaf5723d5d3ede5f85ccb7e5cf60a9ca8302 | 34 passed, 61 deselected in 12.19s; reteste independente pendente |
-| python -m pytest ci/tests/test_pr.py -q, Windows corrigido | Mesmo SHA 0d69aaf5 | 90 passed, 5 skipped in 16.35s; cinco casos declaradamente específicos de adoção de órfãos no Linux |
-| Três validações do PR 1382: suíte de métricas, node painel/gerar_manifesto.js, node painel/gerar_manifesto.js --conferir | edf0a808 e 1b35c92f isolados | Cada comando terminou com exit 0 nas duas revisões; suíte com 61 testes |
-| python -m pytest ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py ci/tests/test_sessao_contexto.py ci/tests/test_fichas_de_robo.py -q | f78baea846829c7bfded19551c22fb8d7a54364e | 97 passed in 3.85s; processo completo medido em 4.625s |
-| python -m pytest ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py -q | Bancada de métricas, hashes abaixo | Baseline 48 passed in 9.16s; após correções 61 passed in 2.02s e 2.33s, informado pela maestro |
-| Reexecuções separadas do revisor | Métricas e guardas adicionais na bancada | 60 passed in 2.03s e 61 passed in 2.27s, informado pelo revisor à maestro |
+| F1-01 | Índice integral deixou de ser obrigatório nas fontes ativas rastreadas. Contexto mantém leis globais, de célula e dos caminhos, origem, ausência e truncamento; índice continua aprofundamento. Vermelho, 245 testes verdes, 17 mutações e pilotos reais | ATENDIDO no alcance inspecionado; PR 1381 integrado e deploy conferido |
+| F1-02 | Receitas de abertura e fechamento usam os instrumentos existentes; escrivão não é obrigatório para repetir reserva e recibo. Três instruções locais foram alinhadas, com hashes e backups privados; CLI integrado foi executado | ATENDIDO no alcance de capacidade e instalação inspecionada; não houve novo agente TOML nem verificação de hot reload ou hooks |
+| F1-03 | JSON existente aceita prazo_segundos inteiro de 1 a 7200, padrão 900 por comando. Timeout é distinto de falha e encerra descendentes Windows/Linux; correção de setsid foi reproduzida e aprovada independentemente | ATENDIDO na revisão; amplas compostas concluídas; PR 1383 integrado em 075d3b46 e deploy 34189715598 completed/success |
+| F1-04 | Cobertura é individual por tarefa, tentativa, ramo e revisão. Observações preservam transições; ausência não vira dispensa. Piloto e retomada mantiveram 14 fatos, um PR, reservas e bytes dos dois recibos prévios, com provas novas | CÓDIGO E PILOTO APROVADOS pelo revisor; integração do PR 1382 pendente |
+| F1-05 | Pacote sanitizado contém matriz, quinze respostas reais atribuídas ao revisor, SHAs, comandos, resultados, trechos de logs e hashes | Documento atualizado; última validação e revisão de seu diff pendentes |
+| F1-06 | Integração, deploy e comportamento publicado são estados separados. Cinco entregas históricas, seus deploys e bytes de um mapa público foram conferidos; PRs 1381 e 1383 integrados, com deploys conferidos | Integração de PR 1382 e publicação aplicável pendentes; não há conclusão global |
 
-Suíte ampliada de contexto realmente executada:
+## As quinze respostas do revisor independente
+
+Parecer de **/root/auditoria, papel revisor**, em recurso de colaboração separado do implementador. A revisão holística examinou 0a804da6 sobre a base 87365d32 e executou 187 testes com 5 skips em 39.19s. A atualização posterior leu os seis logs das amplas, conferiu os hashes e aprovou a retomada em 4b256066, recalculando eventos brutos, saída do CLI e snapshots. As respostas abaixo são a síntese atribuída desse parecer real, transmitido pela maestro, com os limites mantidos.
+
+1. **O percurso foi automatizado ou apenas mudou etapas manuais de lugar?** Abertura e fechamento executam efeitos pelos instrumentos existentes. O piloto de execução foi medido por chamada explícita à API registrar_fase; isso não prova um hook automático.
+
+2. **Alguma ferramenta ou função existente foi duplicada?** Não foi criado orquestrador, fila ou executor externo. A contenção de processos Windows/Linux pertence ao runner de fechamento existente.
+
+3. **As contradições foram resolvidas por autoridade rastreável?** A missão corretiva e as emendas das Leis 2 e 4 orientaram as alterações, com mandato expresso para ci/.
+
+4. **Alguma instrução ativa ainda exige o procedimento antigo?** As fontes ativas rastreadas e as três cópias locais inspecionadas foram alinhadas. A história foi preservada como história, sem impor a receita antiga. A conclusão não certifica outras instalações.
+
+5. **O contexto direcionado pode omitir regras obrigatórias?** Leis globais, de célula e AGENTS ancestrais continuam obrigatórios. Ausência e truncamento têm aviso. A presença dessas referências não prova a leitura efetiva pelo agente.
+
+6. **A telemetria distingue mensagens, ferramentas, tarefas e tentativas?** Uso de mensagens e ferramentas permanece separado; fases são correlacionadas por tarefa, tentativa, ramo e commit. Presença global não equivale a completude individual.
+
+7. **A deduplicação ou agregação pode produzir contagens incorretas?** Uma duplicação exata não conta como fato novo; observações preservam transições. Os dois achados de repetição temporal de F1-04 foram corrigidos e retestados. A retomada real confirmou a distinção entre fatos e observações.
+
+8. **O fechamento aceita prova ausente, antiga ou de outra revisão?** Validação ocorre em commit isolado e se repete após o recibo. Prova antiga ou ausente não libera o fechamento. Prazo, timeout e estado de erro de instrumento são tratados separadamente.
+
+9. **A retomada pode duplicar efeitos?** O comando consulta PR, reserva, recibo e eventos e exige provas novas. A retomada em 4b256066 foi aprovada independentemente: fatos, reservas e recibos permaneceram estáveis; duas provas foram acrescentadas. Os dois recibos já existiam para revisões diferentes. TAR-278 coordena a missão e não foi encerrada artificialmente pelo piloto.
+
+10. **Existe caminho que contorne revisão ou permissões?** Não foi observado bypass de revisão, merge ou autenticação. A pista continua responsável pela integração.
+
+11. **As mudanças invadiram as fases 2 ou 3?** O diff não invade a arquitetura prevista para essas fases. As correções permanecem no complemento da Fase 1.
+
+12. **Algum teste ou controle foi enfraquecido?** Os controles foram preservados; o prazo configurável é finito. Houve crescimento de cobertura e sabotagens detectadas. A organização posterior conservou 55 corpos de testes por comparação AST, sem afrouxar a catraca.
+
+13. **Logs e recibos expõem informações sensíveis?** O revisor leu fontes, saídas e recibos e retestou a sanitização; não viu segredo nem transcrição. O pacote publica recortes, hashes e comandos sanitizados. Logs privados e backups globais não são publicados integralmente.
+
+14. **As alegações de eficiência têm medição válida?** Não há alegação de ganho comprovado. Tempo local de teste e bytes de contexto não foram convertidos em tokens, economia de consumo ou ganho global.
+
+15. **Um agente novo consegue executar o fluxo pela documentação atual?** Receitas e CLI executáveis são coerentes com os arquivos inspecionados. Não foi instanciado novo agente a partir do TOML nem verificado hot reload. A tentativa de criar um agente novo foi recusada pelo limite de threads; nenhum agente nasceu. O revisor interpretou o aceite como capacidade do fluxo, sem uma ordem explícita de instanciar novo agente.
+
+O revisor encerrou os achados de F1-03 e F1-04. Seu estado global continua PARCIAL por evidência documental final e publicação pendentes, não por achado de código aberto. Não aplicável exige declaração e justificativa; ausência de evento permanece ausência de evidência.
+
+## Provas focais, baseline e mutações
+
+Ambiente principal: Windows 11, Python 3.12.10. As provas Linux usaram Docker com montagem somente leitura, rede desabilitada e a imagem já disponível identificada abaixo. Os cinco skips Windows são casos explicitamente Linux de adoção de órfãos, cobertos no ensaio Linux correspondente. Uma seleção -k não transforma casos excluídos em aprovados.
+
+O [corpo público do PR 1381](https://github.com/abundanciabr/sitesdoreino/pull/1381) contém os comandos, horários UTC, saídas e 17 mutações de contexto, relidos após publicação. As provas seguintes registram o comportamento observado, não somente nomes de testes.
+
+| Ensaio | Revisão e comando | Saída real |
+|---|---|---|
+| Baseline de contexto | Base 87365d32, pytest em test_sessao, test_sessao_contexto, test_sessao_retomada, test_fichas_de_robo e test_indice_de_armadilhas | 182 passed in 13.90s |
+| Guardas novos antes da correção | python -m pytest ci/tests/test_sessao_contexto.py ci/tests/test_fichas_de_robo.py -q | 5 failed, 31 passed in 3.95s |
+| Contexto corrigido isolado | fbc4520c, suíte ampliada abaixo | 245 passed in 23.39s |
+| Prazo antes da correção | Guardas novos contra a versão anterior | 24 failed, 60 deselected in 0.79s |
+| Baseline amplo anterior às correções | python -m pytest ci/tests -q -n 4 | 2334 passed in 457.98s; não aprova a versão corrigida |
+| Ampla intermediária reprovada depois | 041ddea2, mesmo comando pelo runner com prazo 1800; 04:28:36.504439 a 04:34:50.435382 UTC | 2362 passed in 373.23s; achado setsid posterior impede aprovar essa revisão |
+| Prazo corrigido, implementador Windows | 0d69aaf5, python -m pytest ci/tests/test_pr.py -q | 90 passed, 5 skipped in 16.35s |
+| Prazo corrigido, implementador Linux | 0d69aaf5, comando Docker final abaixo | 34 passed, 61 deselected in 12.19s |
+| Prazo corrigido, revisor Windows | Mesmo runtime, pytest focal | 90 passed, 5 skipped in 25.92s |
+| Prazo corrigido, revisor Linux | Docker --init; reprodução de setsid e seleção focal | 34 passed, 61 deselected in 17.48s; TIMEOUT, filho morto e recolhido, sem /proc/PID |
+| Métricas, baseline e correção | python -m pytest ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py -q | Baseline 48 passed in 9.16s; correção 61 passed in 2.02s e 2.33s |
+| Métricas, revisor separado | Mesmo comando e guardas adicionais | 60 passed in 2.03s e 61 passed in 2.27s |
+| Piloto composto | f78baea8, métricas, contexto e fichas | 97 passed in 3.85s; processo completo 4.625s |
+| Revisão holística independente | 0a804da6, métricas, prazo, contexto e fichas | 187 passed, 5 skipped in 39.19s |
+
+Suíte ampliada de contexto executada, além da geração do índice e da verificação de travessão:
 
 ```text
 python -m pytest ci/tests/test_sessao.py ci/tests/test_sessao_contexto.py ci/tests/test_sessao_retomada.py ci/tests/test_fichas_de_robo.py ci/tests/test_indice_de_armadilhas.py ci/tests/test_indice_com_a_origem.py ci/tests/test_padrao_de_trabalho.py ci/tests/test_licao_do_caminho.py -q
+python ci/indice_de_armadilhas.py
+python ci/travessao.py
 ```
 
-Seleção Linux realmente executada, com o caminho pessoal da montagem substituído por BANCADA nas evidências públicas:
+Índice: PASS, 375 entradas. Travessão: PASS, 167 arquivos inspecionados e dívida herdada estável. O primeiro texto adicional de CLAUDE excedeu o teto, chegando a 20.221 caracteres; foi condensado para respeitar o teto, preservando o controle.
+
+Comando Linux final executado, com somente o caminho pessoal substituído por BANCADA:
 
 ```text
-docker run --rm --network none --mount "type=bind,source=BANCADA,target=/repo,readonly" --workdir /repo --entrypoint python ghcr.io/abundanciabr/plataforma-checkout:14be60c6359b9c7c9a37242822c36bf319c01cba -m pytest ci/tests/test_pr.py -q -k "prazo or timeout or instrumento" -p no:cacheprovider
+docker run --rm --init --network none --mount "type=bind,source=BANCADA,target=/repo,readonly" --workdir /repo --entrypoint python ghcr.io/abundanciabr/plataforma-checkout:14be60c6359b9c7c9a37242822c36bf319c01cba -m pytest ci/tests/test_pr.py -q -k "prazo or timeout or instrumento or linux" -p no:cacheprovider
 ```
 
-O comando Linux acima descreve o ensaio inicial. O reteste posterior acrescentou --init ao docker run para impedir que o processo pytest assumisse PID 1 e mascarasse a adoção de filhos; o seletor também incluiu or linux para cobrir os cinco casos específicos. A imagem de checkout foi usada como ambiente Linux já disponível; isso não é teste da célula de pagamentos ou mudança no produto checkout. Datas sem carimbo interno em logs não são convertidas em horários exatos de execução. O baseline amplo tem início/fim reconstruídos pela sessão; somente seu resultado e a duração impressa são tratados como saída direta do teste.
+--init impede que pytest seja PID 1 e mascare a adoção de órfãos. O ensaio inicial de 27 testes em 8.52s e os 88 testes Windows em 11.34s pertencem à correção anterior ao achado setsid. Não são reapresentados como aprovação do runtime final. O baseline amplo não tinha horário embutido no log; seu horário reconstruído não é tratado como medição exata.
 
-## Achados e mutações
+## Três achados independentes corrigidos
 
-Revisão independente foi executada por /root/auditoria, papel revisor, em recurso separado de colaboração. Não é troca de persona do implementador. A análise do estado consolidado ainda aguarda as revisões finais; os resultados abaixo são os achados focais comunicados pela maestro e pelo implementador. O achado alto de processo Linux continua aberto; o verde do implementador não o fecha.
-
-| Achado | Reprodução e local | Correção e reteste | Estado |
+| Achado | Reprodução real | Correção e reteste | Estado |
 |---|---|---|---|
-| Reabertura aparecia concluída | consolidar_percurso(): fechamento iniciado às 00:01, concluído às 00:02 e reiniciado às 00:03 retornava concluído | Últimas observações preservadas; test_reinicio_de_fechamento_na_mesma_identidade_nao_fica_concluido | Corrigido na bancada; severidade final ainda não informada |
-| Nova aprovação permanecia falha | Validação concluída às 00:00, falhou às 00:01, concluída às 00:02 retornava falha | observado_em preserva transições; test_revalidacao_observada_apos_falha_preserva_transicoes | Corrigido na bancada; severidade final ainda não informada |
-| Filho Linux com setsid sobrevive ao timeout | ALTO, confirmado por /root/auditoria em 041ddea2; teste de descendente fora do grupo original | Novo ci/pr_processos_linux.py usa subreaper, adoção e recolhimento de gerações; 34 testes Linux com --init passaram no implementador | ABERTO até reteste independente e revisão congelada |
-| Índice obrigatório | Obrigatórias continham armadilhas/INDICE.md e receitas repetiam a ordem | Cinco novos guardas nasceram vermelhos; 245 testes verdes | Corrigido no PR 1381 |
-| Teto de instrução excedido | Primeira redação de CLAUDE atingiu 20.221 caracteres para teto de 20.000 | Condensado somente texto adicionado; teste do Padrão passou | Corrigido no PR 1381 |
-| Leitura remota ainda não confirmava o SHA | Primeiro fechamento do PR 1381 recusou ao conferir remoto | gh pr view e git ls-remote confirmaram OPEN e SHA final; --continuar revalidou e concluiu | Resolvido, sem novo recibo |
+| F1-04: reabertura parecia concluída | Fechamento iniciado às 00:01, concluído às 00:02 e reiniciado às 00:03 retornava concluído | consolidar_percurso preserva últimas observações; guarda test_reinicio_de_fechamento_na_mesma_identidade_nao_fica_concluido, mutação e reteste independente | ENCERRADO |
+| F1-04: nova aprovação permanecia falha | Validação concluída às 00:00, falhou às 00:01 e concluída às 00:02 retornava falha | observado_em preserva transições; guarda test_revalidacao_observada_apos_falha_preserva_transicoes e reteste independente | ENCERRADO |
+| F1-03, ALTO: filho Linux com setsid escapava do timeout | Revisor confirmou processo vivo fora do grupo original em 041ddea2 | ci/pr_processos_linux.py usa subreaper para adotar, encerrar e recolher gerações, restaura estado e recusa preexistência, concorrência e /proc indisponível; revisor reproduziu TIMEOUT em 0d69aaf5 sem filho sobrevivente | ENCERRADO em 0d69aaf5 |
 
-Trechos reais da evidência, em vez de apenas nomes de testes:
+Recortes reais preservam o que falhou:
 
 ```text
 Contexto antes da correção:
@@ -130,22 +143,18 @@ assert not r["por_tentativa"][0]["percurso_local_concluido"]
 E assert not True
 2 failed, 42 deselected in 0.13s
 
-Mutação de publicação transplantada para a sessão:
+Mutação de publicação importada:
 assert local["fases"]["publicacao"]["estado"] == "sem_evidencia"
 E AssertionError: assert 'verificado' == 'sem_evidencia'
 1 failed, 43 deselected in 0.13s
 
-Prazo antes da correção:
-24 failed, 60 deselected in 0.79s
-
-Prazo depois da correção, Windows:
-88 passed in 11.34s
-
-Prazo depois da correção, Linux:
-27 passed, 61 deselected in 8.52s
+Defeito real Linux antes da correção final:
+FAILED ci/tests/test_pr.py::test_timeout_encerra_filhos_e_netos_reais[True-False]
+FAILED ci/tests/test_pr.py::test_timeout_encerra_filhos_e_netos_reais[True-True]
+2 failed, 2 passed, 86 deselected in 32.42s
 ```
 
-As saídas acima são recortes identificados; o recorte abreviado de contexto não se apresenta como log integral. As mutações são ensaios controlados, com sabotagem restaurada. Diferentemente delas, o filho Linux que chama setsid foi um defeito real da revisão 041ddea2, ainda com fechamento de achado pendente. Os resultados antigos de Linux e suas sete mutações não cobriam esse novo caso.
+O primeiro recorte é abreviado, não um log integral. As sabotagens abaixo foram restauradas; o achado setsid foi defeito real, distinto das mutações deliberadas.
 
 | Grupo de mutação | Resultado real |
 |---|---|
@@ -164,28 +173,129 @@ As saídas acima são recortes identificados; o recorte abreviado de contexto n�
 | Prazo: grupo de processos POSIX | exit 1; 2 failed, 86 deselected in 27.53s |
 | Contexto e receitas | 17 de 17 mutações detectadas com exit 1; detalhes no PR 1381 |
 
-## Percurso operacional observado
+Mutações adicionais Linux da correção 0d69aaf5:
 
-No PR 1381, a abertura real inicialmente recusou bancada suja e preservou os arquivos. Depois do commit, a mesma entrada concluiu com exit 0. Como os alvos não são serviço, --sem-container declarou baseline não medido; testes dos caminhos foram executados separadamente.
+| Guarda sabotado | Resultado real |
+|---|---|
+| adocao | exit 1; 4 failed, 91 deselected in 52.60s |
+| encerramento | exit 1; 4 failed, 91 deselected in 11.42s |
+| restauracao | exit 1; 1 failed, 1 passed, 93 deselected in 3.51s |
+| preexistente | exit 1; 1 failed, 94 deselected in 3.45s |
+| concorrencia | exit 1; 2 failed, 93 deselected in 4.38s |
+| proc | exit 1; 1 failed, 94 deselected in 2.93s |
 
-```text
-python ci/sessao.py --celula ci --tarefa contexto-correcao-f1 --sem-container --frase "Corrigir instruções e contexto da Fase 1" --caminho ci/sessao.py --caminho painel/registros/teste.js --sintoma "git status limpo sem ninguem ter medido" --aceite "Índice apenas para aprofundamento"
+## Duas validações amplas reais pelo runner
+
+A configuração existente de validação escolheu prazo_segundos: 1800 e três comandos. ci/pr.py executou cada revisão em worktree isolado, repetindo a validação após embarcar o recibo:
+
+```json
+{"prazo_segundos":1800,"comandos":[["python","-m","pytest","ci/tests","-q","-n","4"],["node","painel/gerar_manifesto.js"],["node","painel/gerar_manifesto.js","--conferir"]]}
 ```
 
-O pacote emitiu como obrigatórias CLAUDE.md, CONSTITUICAO.md, RITOS.md e docs/decisoes/RETROSPECTIVA-FASE-D.md. O índice apareceu somente como aprofundamento. Os quatro pilotos de contexto produziram: múltiplos alvos, 5.623 bytes e lições 179/373; vazio, 689 bytes com ausência explícita; limite 1, 2.291 bytes e truncamento; limite 100, 3.837 bytes sem truncamento. Essas medidas pertencem a consultas diferentes, não constituem antes/depois comparável.
+Os seis logs foram lidos integralmente na preparação deste retrato e pelo revisor. Seus hashes foram conferidos com os arquivos originais. A tabela e os recortes publicados omitem caminhos pessoais e linhas repetidas de progresso; os SHA256 identificam os logs originais completos. Datas abaixo são UTC em 08/09/2026.
 
-O fechamento executou índice, suíte ampliada e travessão na revisão do código e na revisão com recibo. A retomada --continuar terminou com:
+| Revisão e comando | Início UTC | Fim UTC | Resultado real | SHA256 do log integral |
+|---|---|---|---|---|
+| 0a804da6, pytest amplo | 2026-09-08T04:48:48.445381+00:00 | 2026-09-08T04:56:23.785558+00:00 | 2382 passed, 5 skipped in 454.44s (0:07:34); exit 0 | be9cd7609be7fe13ca9044b55dd29a4e3910d2d44a0820c0572151a6b728de61 |
+| 0a804da6, node gerar_manifesto.js | 2026-09-08T04:56:23.785558+00:00 | 2026-09-08T04:56:24.953196+00:00 | PASS, exit 0; 1089 registros válidos, 2 meses; exit 0 | adf8531834464c96f77580eb3474e3809fe00a251380ad7c1f5bed11b08c2895 |
+| 0a804da6, node gerar_manifesto.js --conferir | 2026-09-08T04:56:24.953196+00:00 | 2026-09-08T04:56:25.897890+00:00 | PASS, exit 0; 1089 registros válidos, 2 meses; exit 0 | 3a6eca22450e2f0b1e3b71c929d5a6bd636686374b802988aae65b16ded9d1dd |
+| 4b256066, pytest amplo | 2026-09-08T04:56:38.823774+00:00 | 2026-09-08T05:02:56.407189+00:00 | 2382 passed, 5 skipped in 376.90s (0:06:16); exit 0 | df57565c89bde126ad41b40009729f05c8b9baff27b17d88a5f4e659e6518930 |
+| 4b256066, node gerar_manifesto.js | 2026-09-08T05:02:56.408191+00:00 | 2026-09-08T05:02:57.367741+00:00 | PASS, exit 0; 1090 registros válidos, 2 meses; exit 0 | 602b3eb2f0e8bbdd400ae93072ddfd1970434a0f2a40a3c224b473c34f53df44 |
+| 4b256066, node gerar_manifesto.js --conferir | 2026-09-08T05:02:57.367741+00:00 | 2026-09-08T05:02:58.291877+00:00 | PASS, exit 0; 1090 registros válidos, 2 meses; exit 0 | b166ba41d7d74847ccd8862573e8abe796183ed3a647902dec0569ea987ae5b6 |
+
+Recortes dos logs amplos, com STDERR vazio nas seis execuções:
+
+```text
+0a804da6:
+Prazo por comando: 1800s
+Resultado: PASS
+Exit: 0
+2382 passed, 5 skipped in 454.44s (0:07:34)
+
+4b256066:
+Prazo por comando: 1800s
+Resultado: PASS
+Exit: 0
+2382 passed, 5 skipped in 376.90s (0:06:16)
+```
+
+O runner recusou confirmar imediatamente o SHA remoto após a segunda ampla. Consultas posteriores por gh pr view e git ls-remote confirmaram 4b256066. A retomada revalidou e concluiu; a recusa original não foi reclassificada retroativamente como sucesso.
+
+## Piloto e retomada correlacionados
+
+Abertura real em f78baea8, iniciada em 04:41:41.845486 UTC, exit 0 em 6.953s:
+
+```text
+python ci/sessao.py --celula ci --tarefa complemento-f1 --sem-container --frase "Concluir e comprovar a cobertura individual da primeira fase" --caminho ci/metricas_da_fabrica.py --caminho ci/pr.py --aceite "Abertura, contexto, execução, validação, fechamento e retomada correlacionados sem duplicação"
+```
+
+Execução real em f78baea8, iniciada em 04:42:48.540331 UTC, exit 0 em 4.625s:
+
+```text
+python -m pytest ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py ci/tests/test_sessao_contexto.py ci/tests/test_fichas_de_robo.py -q
+97 passed in 3.85s
+```
+
+A execução foi envolvida explicitamente pela API existente registrar_fase; não foi observada automaticamente por hook. A tarefa e o ramo do piloto são agent/ci/complemento-f1, e a tentativa é 5199ca31faa045dfba4186644a239dd2. TAR-278 é a coordenação da missão: o piloto não passa TAR ao fechamento e não encerra artificialmente a tarefa. Eventos da fila são cobertos pelos testes controlados existentes, não por uma conclusão real inventada para a auditoria.
+
+As duas retomadas usaram ci/pr.py --continuar com os arquivos de mensagem, corpo, detalhe e validação existentes e a lista explícita de arquivos de F1-04 e seus registros. Em cada retomada, o runner consultou o PR 1382 e executou duas passagens dos três comandos abaixo, todas em 4b256066:
+
+```text
+python -m pytest ci/tests/test_metricas_percurso.py ci/tests/test_metricas_da_fabrica.py ci/tests/test_pr.py ci/tests/test_sessao_contexto.py ci/tests/test_fichas_de_robo.py -q
+node painel/gerar_manifesto.js
+node painel/gerar_manifesto.js --conferir
+```
+
+| Retomada e passagem | Janela UTC dos três comandos | Resultado pytest | Geração e conferência |
+|---|---|---|---|
+| 1, primeira | 05:04:21.844073 a 05:04:41.382068 | 187 passed, 5 skipped in 16.73s | PASS, exit 0 em ambos |
+| 1, segunda | 05:04:49.210266 a 05:05:09.452745 | 187 passed, 5 skipped in 17.47s | PASS, exit 0 em ambos |
+| 2, primeira | 05:06:14.963787 a 05:06:34.575583 | 187 passed, 5 skipped in 16.67s | PASS, exit 0 em ambos |
+| 2, segunda | 05:06:42.286947 a 05:07:01.755788 | 187 passed, 5 skipped in 16.70s | PASS, exit 0 em ambos |
+
+Os seis logs da segunda retomada foram conferidos independentemente pelo revisor, incluindo os resultados 16.67s e 16.70s. As duas saídas finais do runner foram:
 
 ```text
 PASS validação local concluída; recibo embarcado e revisão remota conferida
 Revisão: não verificada. Integração: não verificada. Publicação: não verificada.
-PR 1381 aberto com recibo: https://github.com/abundanciabr/sitesdoreino/pull/1381
-exit 0
+PR 1382 aberto com recibo: https://github.com/abundanciabr/sitesdoreino/pull/1382; devolva à maestro para revisão e espera.
 ```
 
-O texto abreviado acima conserva a separação de estados da saída. Um único recibo novo foi contado, e gh pr view confirmou OPEN com fbc4520cea95e1316a2143b52ebf22d13effa1ae. A correlação completa da composição com a revisão final do prazo continua pendente e não é inferida do conjunto global de eventos. Não se exige encerrar uma tarefa real para provar a fila: o piloto permanece sem TAR, e os efeitos da fila são exercitados em testes controlados.
+Essa saída é a declaração do runner naquele instante; não substitui a revisão independente registrada posteriormente neste retrato. Os snapshots de 05:06:11.153197 e 05:08:19.760156 UTC foram comparados pelo script conferir_retomada.py e por reexecução somente leitura das comparações nesta preparação. O revisor recalculou também os dados brutos e o CLI. Resultado sanitizado:
+
+```json
+{
+  "resultado": "PASS",
+  "revisao": "4b256066f5f9d365b551558b4330eacfb932b029",
+  "tentativa": "5199ca31faa045dfba4186644a239dd2",
+  "pr": 1382,
+  "prs": 1,
+  "recibos": 2,
+  "nota_recibos": "Dois fatos prévios de revisões diferentes, edf0a808 e 0a804da6; nenhum novo na retomada.",
+  "eventos_logicos": 14,
+  "observacoes_antes": 15,
+  "observacoes_depois": 19,
+  "novas_provas": 2,
+  "reservas_inalteradas": true,
+  "recibos_bytes_inalterados": true,
+  "percurso_local_concluido": true,
+  "tentativa_anterior_preservada_incompleta": true
+}
+```
+
+A comparação usa tarefa, tentativa, branch, commit, PR, fase, resultado e contexto_bytes para definir cada fato. Houve 14 fatos antes e depois, 15 para 19 observações e 6 para 8 provas. A tentativa 5199ca31faa045dfba4186644a239dd2 ficou completa localmente, correlacionada a 4b256066 e PR 1382. A tentativa anterior 0dc74cc82b7e40a9afd2810a61789ff3 permaneceu incompleta; suas lacunas não foram preenchidas pelos eventos da outra tentativa.
+
+Os dois recibos são fatos legítimos anteriores de revisões diferentes, edf0a808 e 0a804da6. Nenhum recibo foi criado pela repetição. Seus bytes e referências de reserva permaneceram iguais:
+
+| Recibo | SHA256 dos bytes | Commit da referência de reserva |
+|---|---|---|
+| 20260908-031-ci-separa-a-cobertura-de-cada-tentativa.js | cc5960e94ee36002b42a7ace0a8297d4d1f92bc0b36ecf76d35c09b2a5e919e1 | 234270675fa0a503cb1dd49e68006d79279acf75 |
+| 20260908-033-ci-separa-a-cobertura-de-cada-tentativa.js | 8eb7503ab35c50ab6902c3c9a33e8423b6d72a377c45be4aa0c2a17fbe091deb | d9cc903aac7897303056e6919de201b63d258136 |
+
+No piloto anterior do PR 1381, bancada suja foi recusada com os arquivos preservados; após commit, a abertura concluiu. A retomada produziu um PR e um recibo de 977 bytes. Os contextos de múltiplos alvos, vazio, truncado e ampliado emitiram 5.623, 689, 2.291 e 3.837 bytes, respectivamente. São consultas diferentes, sem equivalência com ganho de eficiência. A ausência explícita e o truncamento foram observados, com lições 179/373 no caso de múltiplos alvos.
 
 ## Instruções locais e origem das regras
+
 
 CLAUDE.md e .claude/agents são rastreados. A Constituição rege as leis; RITOS, RUNBOOK, PLAYBOOK, ARMADILHAS, CAMINHO-DOURADO e os moldes são receitas. ci/sessao.py recupera contexto; ci/indice_de_armadilhas.py gera arquivos ignorados, que continuam acessíveis para aprofundamento.
 
@@ -199,14 +309,17 @@ A instalação local foi inspecionada pela maestro. AGENTS.md recebeu ajustes na
 
 Os hashes foram relidos e comparados aos três arquivos locais. Após conferir árvore rastreada e índice limpos, a maestro atualizou o clone principal por fast-forward até ffedbd7c e verificou a preservação dessas três instruções locais. Um hash identifica os bytes; não substitui a inspeção que a maestro realizou. Estes ajustes não viajam no Git e não certificam outras instalações.
 
-Hashes registrados na preparação de métricas, posteriormente commitada em edf0a808:
 
-| Arquivo | SHA256 |
-|---|---|
-| ci/metricas_da_fabrica.py | e29c9c4c74478874f4e5f8bf941405629cc67393703cef25e460bdd741634ca8 |
-| ci/tests/test_metricas_percurso.py | 2178eb2a74f792ea3002d8b61232f9c95380398eab21c532dd3364abc5f6072c |
+A prova integrada posterior foi executada de verdade no clone principal ffedbd7c, com exit 0:
+
+```text
+python ci/sessao.py --contexto --celula ci --tarefa contexto-integrado-f1 --sem-container --caminho ci/sessao.py --sintoma "leitura integral"
+```
+
+A saída exigiu CLAUDE.md, AGENTS.md, CONSTITUICAO.md, RITOS.md e Retrospectiva; declarou explicitamente não ter recuperado lições e apresentou o índice em Aprofundamento. Isso comprova CLI integrado e inclusão de AGENTS local. Arquivos locais e CLI foram inspecionados; não houve prova de hot reload, hooks ou instanciação de um novo agente com o TOML. A tentativa de nova instanciação foi recusada por limite de threads e não criou agente. Também não há prova de tela administrativa ou autenticação nessa execução.
 
 ## Entregas anteriores: integração e deploy conferidos
+
 
 Consulta estruturada registrada em 08/09/2026 às 04:23:40 UTC por gh pr view e gh run view. MERGED e success abaixo pertencem aos PRs históricos; não são aprovação automática das correções atuais.
 
@@ -220,120 +333,20 @@ Consulta estruturada registrada em 08/09/2026 às 04:23:40 UTC por gh pr view e 
 
 A prova pública histórica foi somente do [mapa de leis e ritos](https://meshcraft.top/mapa-ia/01-leis-ritos-e-invariantes.md): HTTP 200, 15.742 bytes, iguais ao git show da revisão 87365d3234fdb2ea3543986d80ba196ba36f36f3; SHA256 1fea72228b9ebcaa2434e7fe65a1dd980a478e1bf3646c0d83f36de0fde28302. Isso não comprova o conteúdo de documentos privados nem de recibos na tela administrativa.
 
-## Publicação e limitações de acesso
+## Publicação aplicável e limites de acesso
 
-Este arquivo usa a rota existente /mapa-ia/planos/AUDITORIA-COMPLEMENTO-FASE1.md. docs/decisoes já é embutido na imagem de admin pelo deploy-celula. Nenhuma nova rota, regra de autenticação ou fonte de estado foi criada. A marca publico-para-ia é uma declaração explícita para publicar somente este conteúdo sanitizado.
+Este conteúdo usa o canal existente [plano de auditoria para IA](https://meshcraft.top/mapa-ia/planos/AUDITORIA-COMPLEMENTO-FASE1.md). O link é o destino esperado; seu GET final ainda não foi verificado neste retrato. A marca publico-para-ia: true está nos primeiros 2048 caracteres. O deploy-celula já embute docs/decisoes na imagem de admin, e planos_para_ia.py serve os documentos autorizados. A rota, autenticação e fontes de estado existentes permanecem responsáveis pela entrega.
 
-Em 08/09/2026 às 04:27:45 UTC, /mapa-ia/planos/ respondeu 200, text/plain, 1.737 bytes. /admin/documentos/ e /admin/documentos/novo responderam 302 para login. O inventário de navegador disponível estava vazio. Não houve escrita pelo editor nem desvio de autenticação.
+Em 08/09/2026 às 04:27:45 UTC, /mapa-ia/planos/ respondeu 200, text/plain, 1.737 bytes. /admin/documentos/ e /admin/documentos/novo responderam 302 para login. O inventário de navegador disponível estava vazio. Não houve escrita pelo editor nem desvio de autenticação. O editor administrativo armazena documentos no banco, com histórico próprio; o pacote Git usa a publicação de planos já existente.
 
-Verificação ainda exigida após integração deste pacote: GET anônimo do endereço .md, presença no índice e comparação de bytes com git show do commit integrado. O deploy deve ser conferido pelo status/conclusion do run correspondente. Para ci/, a publicação é no Git: conferir os arquivos do SHA integrado e executar o CLI nessa revisão. Para o painel administrativo, comprovar os recibos exige leitura autenticada da tela e do livro mensal; sem essa leitura, o comportamento publicado permanece não verificado.
+Após a integração, a verificação deste artefato deve conferir status/conclusion do deploy, GET anônimo do endereço .md, presença no índice e bytes comparados com git show do commit integrado. Esse resultado posterior será registrado no corpo do PR 1382 e no livro, sem uma alegação circular de autoverificação dentro do próprio documento.
 
-## Uso do fluxo e limites restantes
+Para ci/, a entrega de código é no Git: conferir os arquivos do SHA integrado e executar o CLI nessa revisão. Para recibos mostrados no painel administrativo, confirmar deploy não basta: a prova aplicável exige leitura autenticada da tela e do livro mensal. Redirecionamento de login é limite de acesso, não publicação verificada; o mapa público não substitui essa tela. Nenhuma exceção de autenticação foi aberta.
 
-Abertura: make sessao CELULA=<celula> TAREFA=<slug>, com TAR quando existir tarefa da fila. Contexto adicional: ci/sessao.py --contexto, com os caminhos e o sintoma. Fechamento: make pr com TITULO, MENSAGEM, CORPO, ARQUIVOS, DETALHE e VALIDACAO; CONTINUAR=1 retoma. Os arquivos de entrada seguem painel/LEIA-ME.md.
+## O que permanece pendente neste retrato
 
-Na correção de prazo, o mesmo JSON de validação aceita prazo_segundos. O valor deve ser inteiro entre 1 e 7200; a ausência escolhe 900 por comando. A execução ampla atual escolheu 1800. TIMEOUT mantém a prova incompleta e exige reexecução; não autoriza recibo de sucesso nem reutilização silenciosa.
+F1-05 aguarda commit/SHA do retrato, último fechamento focal e revisão independente do diff documental. F1-06 aguarda confirmação das integrações restantes, deploys aplicáveis e comportamento publicado com provas próprias. O PR 1383 já está integrado em 075d3b46 com deploy com sucesso confirmado; PR 1382 permanece aberto. O código aprovado e as provas amplas/retomadas não encerram sozinhos a Fase 1.
 
-Pendências obrigatórias deste retrato: reteste independente do achado alto Linux, validação ampla da revisão corrigida 0d69aaf5, revisão do estado composto, retomada correlacionada, integração das correções restantes pela pista e publicação aplicável verificada. Não aplicável exige declaração e justificativa; ausência de evento não recebe essa classificação automaticamente. Eficiência continua não comprovada por falta de amostra comparável.
+Abertura continua por make sessao; contexto adicional por ci/sessao.py --contexto; fechamento por make pr; CONTINUAR=1 retoma consultando os efeitos anteriores e exigindo validação atual. O mesmo JSON configura prazo_segundos entre 1 e 7200, padrão 900 por comando; as amplas escolheram 1800. TIMEOUT mantém a prova incompleta e exige reexecução.
 
-
-## Atualização operacional da composição
-
-PR 1381 está MERGED em ffedbd7c083f893e7e3e3201f32a6acc0ae75b9c. O [deploy 34187392935](https://github.com/abundanciabr/sitesdoreino/actions/runs/34187392935) retornou completed/success, conforme consulta da maestro. Isso comprova integração e execução do deploy, sem substituir uma prova da tela administrativa.
-
-PR 1382 foi aberto com código edf0a808f295c02d69a009597a24d0a5b55097e5 e recibo 1b35c92f11cadbaada291c96db9d2447d3bf1481. As três validações isoladas passaram em ambos. A primeira confirmação remota recusou declarar sucesso; a consulta seguinte por gh pr view e git ls-remote confirmou a revisão exata. Essa consulta posterior é evidência remota, sem reclassificar retroativamente a recusa como PASS do comando.
-
-O merge local de contexto em f78baea846829c7bfded19551c22fb8d7a54364e permitiu o piloto abaixo. É composição local, não merge do PR 1382 na main.
-
-```json
-{
-  "comando": [
-    "python",
-    "ci/sessao.py",
-    "--celula",
-    "ci",
-    "--tarefa",
-    "complemento-f1",
-    "--sem-container",
-    "--frase",
-    "Concluir e comprovar a cobertura individual da primeira fase",
-    "--caminho",
-    "ci/metricas_da_fabrica.py",
-    "--caminho",
-    "ci/pr.py",
-    "--aceite",
-    "Abertura, contexto, execução, validação, fechamento e retomada correlacionados sem duplicação"
-  ],
-  "inicio_utc": "2026-09-08T04:41:41.845486+00:00",
-  "segundos": 6.953,
-  "exit_code": 0,
-  "revisao": "f78baea846829c7bfded19551c22fb8d7a54364e"
-}
-```
-
-```json
-{
-  "comando": [
-    "python",
-    "-m",
-    "pytest",
-    "ci/tests/test_metricas_percurso.py",
-    "ci/tests/test_metricas_da_fabrica.py",
-    "ci/tests/test_sessao_contexto.py",
-    "ci/tests/test_fichas_de_robo.py",
-    "-q"
-  ],
-  "inicio_utc": "2026-09-08T04:42:48.540331+00:00",
-  "segundos": 4.625,
-  "exit_code": 0,
-  "revisao": "f78baea846829c7bfded19551c22fb8d7a54364e",
-  "tentativa": "5199ca31faa045dfba4186644a239dd2",
-  "tarefa": "agent/ci/complemento-f1",
-  "branch": "agent/ci/complemento-f1",
-  "instrumentacao": "API existente registrar_fase ao redor do comando real; não foi hook automático"
-}
-```
-
-Saída real da execução:
-
-```text
-........................................................................ [ 74%]
-.........................                                                [100%]
-97 passed in 3.85s
-```
-
-A tentativa 5199ca31faa045dfba4186644a239dd2 pertence à tarefa e ramo agent/ci/complemento-f1. A instrumentação explicitamente envolveu o comando real com a API existente registrar_fase; não foi observação automática de hook. A abertura iniciou em 04:41:41.845486 UTC e concluiu em 6.953 segundos; a execução iniciou em 04:42:48.540331 UTC e concluiu em 4.625 segundos. Ambos retornaram exit 0.
-
-TAR-278 continua aberta para a missão completa. O piloto não passa TAR ao fechamento e não produz conclusão artificial na fila. A prova de retomada deve conferir eventos lógicos da telemetria, reserva, recibo e PR, enquanto os eventos de fila permanecem no alcance dos testes controlados existentes.
-
-Evidência do caso Linux que mudou o parecer:
-
-```text
-FAILED ci/tests/test_pr.py::test_timeout_encerra_filhos_e_netos_reais[True-False]
-FAILED ci/tests/test_pr.py::test_timeout_encerra_filhos_e_netos_reais[True-True]
-2 failed, 2 passed, 86 deselected in 32.42s
-
-Reteste do implementador, com docker --init:
-34 passed, 61 deselected in 12.58s
-```
-
-A correção Linux adota e encerra gerações de descendentes por subreaper, restaura o estado anterior e recusa filhos preexistentes ou concorrência. Essa descrição é da implementação em revisão. O SHA corrigido foi congelado em 0d69aaf5723d5d3ede5f85ccb7e5cf60a9ca8302. O reteste independente e a suíte ampla dessa revisão ainda não foram apresentados, portanto o achado ALTO permanece aberto.
-
-Mutações adicionais da correção Linux 0d69aaf5, todas restauradas pelo implementador:
-
-| Guarda sabotado | Resultado real |
-|---|---|
-| adocao | exit 1; 4 failed, 91 deselected in 52.60s |
-| encerramento | exit 1; 4 failed, 91 deselected in 11.42s |
-| restauracao | exit 1; 1 failed, 1 passed, 93 deselected in 3.51s |
-| preexistente | exit 1; 1 failed, 94 deselected in 3.45s |
-| concorrencia | exit 1; 2 failed, 93 deselected in 4.38s |
-| proc | exit 1; 1 failed, 94 deselected in 2.93s |
-
-A ampla final será medida na composição pelo runner corrigido. Não foi executada nem aprovada neste retrato. As 61 exclusões da seleção Linux são seleção explícita por -k; não são 61 aprovações. Os cinco skips Windows correspondem a casos declarados de adoção de órfãos Linux e foram cobertos na execução Linux correspondente.
-
-Comando Linux final confirmado pelo implementador para o resultado de 34 testes em 12.19 segundos, com somente o caminho pessoal substituído por BANCADA:
-
-```text
-docker run --rm --init --network none --mount "type=bind,source=BANCADA,target=/repo,readonly" --workdir /repo --entrypoint python ghcr.io/abundanciabr/plataforma-checkout:14be60c6359b9c7c9a37242822c36bf319c01cba -m pytest ci/tests/test_pr.py -q -k "prazo or timeout or instrumento or linux" -p no:cacheprovider
-```
+Não aplicável requer declaração justificada. Ausência de evidência não recebe esse estado por inferência. Eficiência permanece não comprovada porque não há amostra de tarefas comparáveis nem linha de base adequada para ganho global.
