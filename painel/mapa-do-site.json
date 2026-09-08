@@ -437,6 +437,50 @@
     },
     {
       "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Registrar uma pausa da aula pelo endereço completo",
+      "descricao": "O mesmo gesto de registrar uma pausa, agora no endereço que diz curso e Parte. Não é uma página: quem registra volta para a aula certa, sem depender de haver um único curso no site.",
+      "exemplo": "/cursos/profissional/parte-1/E00/pausas/1"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Gravar a autoavaliacao pelo endereço completo",
+      "descricao": "O mesmo gesto de gravar o quiz, agora no endereço que diz curso e Parte. Não é uma página: quem grava volta para a aula certa, e o endereço antigo continua só para compatibilidade.",
+      "exemplo": "/cursos/profissional/parte-1/E00/autoavaliacao"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Entregar o checkpoint pelo endereço completo",
+      "descricao": "O mesmo gesto de entregar o trabalho por link, agora no endereço que diz curso e Parte. Em curso livre, a própria sala recusa esta entrega e mostra que a aula conclui pelo botão.",
+      "exemplo": "/cursos/profissional/parte-1/E00/checkpoint"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+      "endereco": "/cursos/<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Concluir uma aula em curso livre",
+      "descricao": "O gesto do curso de progressao livre: depois das pausas registradas, o aluno conclui a aula e a proxima abre. No curso por laudo, a rota recusa em portugues.",
+      "exemplo": "/cursos/roblox/parte-1/1/concluir"
+    },
+    {
+      "celula": "cursos",
       "rota": "<str:numero>",
       "endereco": "/cursos/<str:numero>",
       "alcance": "publico",
@@ -477,6 +521,17 @@
       "titulo": "Entregar o checkpoint da aula",
       "descricao": "O gesto de entregar o trabalho por link: o arquivo, as prévias, o README do pacote e a autoavaliação. Não é uma página: quem entrega volta para a aula, no checkpoint, com 'recebido em, revisão até'. Só abre depois de todas as pausas registradas, e só enquanto a aula aceita entrega (em produção, ou devolvida para reenviar).",
       "exemplo": "/cursos/E00/checkpoint"
+    },
+    {
+      "celula": "cursos",
+      "rota": "<str:numero>/concluir",
+      "endereco": "/cursos/<str:numero>/concluir",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Concluir uma aula pelo endereço antigo",
+      "descricao": "O gesto de concluir aula em curso livre no endereço curto antigo. Continua existindo por compatibilidade, mas com mais de um curso o endereço completo, com curso e Parte, é o caminho que a tela usa.",
+      "exemplo": "/cursos/1/concluir"
     },
     {
       "celula": "cursos",
