@@ -83,7 +83,7 @@ RESPOSTAS_FELIZES = {
     "write-tree": "a" * 40,
     "rev-parse HEAD^{tree}": "a" * 40,
     "rev-parse HEAD": "b" * 40,
-    "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN"}),
+        "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
     "rev-parse --abbrev-ref": "agent/ci/make-pr\n",
     "status --porcelain": " M ci/pr.py\n?? ci/tests/test_pr.py\n",
     "diff --cached --name-only": "ci/pr.py\n",
@@ -435,6 +435,29 @@ def test_pr_existente_e_consultado_sem_continuar(tmp_path):
     dub = Duble({**RESPOSTAS_FELIZES, 'gh pr list': json.dumps([{'number': 1210, 'url': URL_DO_PR}])})
     assert pr._achar_ou_abrir_o_pr(lambda c: dub(c), pedido(bancada(tmp_path)), 'agent/ci/make-pr') == (1210, URL_DO_PR)
     assert not dub.pediu('gh pr create')
+
+
+def test_pr_draft_vira_pronto_depois_da_validacao_final(tmp_path):
+    raiz = bancada(tmp_path)
+    class DraftDuble(Duble):
+        def __init__(self):
+            super().__init__(RESPOSTAS_FELIZES)
+            self.views = 0
+
+        def __call__(self, comando, raiz=None, **opcoes):
+            if comando[:3] == ["gh", "pr", "view"]:
+                self.views += 1
+                self.chamadas.append(list(comando))
+                return json.dumps({
+                    "headRefOid": "b" * 40,
+                    "state": "OPEN",
+                    "isDraft": self.views == 1,
+                })
+            return super().__call__(comando, raiz, **opcoes)
+
+    dub = DraftDuble()
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert dub.pediu("gh pr ready 1210")
 
 @pytest.mark.parametrize('onde', ['pytest ci/tests', 'gh pr list', 'gh pr view'])
 def test_falha_de_validacao_ou_rede_nunca_imprime_sucesso(tmp_path, capsys, onde):
