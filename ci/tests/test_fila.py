@@ -89,6 +89,23 @@ def test_fila_valida_passa(tmp_path):
     assert fila.cmd_validar(tmp_path) == 0
 
 
+def test_fila_recusa_classificacao_fase4_fora_do_contrato(tmp_path):
+    medicao = {
+        "piloto": "piloto-desconhecido", "condicao": "depois",
+        "tipo": "correcao", "complexidade": "media", "natureza": "codigo",
+        "componentes": "ci", "fronteiras_integracao": "nenhuma",
+        "migracao": "nao", "risco": "baixo", "escopo_publicacao": "sem-publicacao",
+        "revisao_instrumento": "nao-e-sha",
+    }
+    montar(tmp_path, [tarefa(medicao_fase4=medicao)], [evento()])
+
+    tarefas, _, erros = carregar(tmp_path)
+
+    assert "TAR-001" in tarefas
+    assert any("medicao_fase4.piloto" in erro for erro in erros)
+    assert any("medicao_fase4.revisao_instrumento" in erro for erro in erros)
+
+
 def test_fila_vazia_e_valida(tmp_path):
     montar(tmp_path, com_pasta_de_eventos=False)
     assert fila.cmd_validar(tmp_path) == 0
