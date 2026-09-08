@@ -355,12 +355,18 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     trancada = estado == Progresso.Estado.TRANCADA
-    if trancada:
-        rotulo = Progresso.Estado.TRANCADA.label
-    elif not publicada:
+    if not publicada:
         rotulo = "Em preparo"
+        explicacao = (
+            "A escola está preparando esta aula. Quando ela for publicada e "
+            "a sua porta estiver aberta, você poderá entrar."
+        )
+    elif trancada:
+        rotulo = Progresso.Estado.TRANCADA.label
+        explicacao = "Conclua a aula anterior para abrir esta porta."
     else:
         rotulo = Progresso.Estado(estado).label
+        explicacao = "Aula aberta para você."
     return {
         "numero": aula.numero,
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
@@ -369,6 +375,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         "titulo": aula.titulo_exibido,
         "estado": estado,
         "rotulo": rotulo,
+        "explicacao": explicacao,
         "boss": aula.e_boss,
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
@@ -390,7 +397,7 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     atual = None
     for aula in curso.aulas.select_related("bloco").order_by("ordem"):
         porta = _porta(aula, por_aula.get(aula.id))
-        if atual is None and porta["estado"] in ESTADOS_COM_A_PESSOA:
+        if atual is None and porta["abre"] and porta["estado"] in ESTADOS_COM_A_PESSOA:
             atual = porta
         parte = partes.setdefault(
             aula.bloco.parte,
@@ -476,10 +483,13 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         situacao = "sem-resposta"
     else:
         situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
+    aulas = curso.aulas.all()
     return {
         "nome": curso.nome,
         "url": reverse("curso", args=[curso.slug]),
         "aulas_abertas": _aulas_abertas(curso),
+        "aulas_em_preparo": aulas.filter(estado=Aula.Estado.RASCUNHO).count(),
+        "tem_aulas": aulas.exists(),
         "entra": situacao in ("visitante", "seu"),
         "situacao": situacao,
     }

@@ -29,6 +29,7 @@ import re
 import httpx
 import pytest
 from django.urls import clear_script_prefix, reverse, set_script_prefix
+from django.utils import timezone
 
 from apps.core import menu as motor_do_menu
 from apps.cursos import progresso as portas
@@ -88,7 +89,34 @@ def test_a_porta_aberta_em_rascunho_e_dita_como_em_preparo(aluna, client):
 def test_o_mapa_mostra_o_estado_de_cada_porta(aluna, aula_publicada, client):
     corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
     assert ">Disponível<" in corpo
-    assert corpo.count(">Trancada<") == 33
+    assert corpo.count(">Em preparo<") == 33
+
+
+def test_aula_publicada_e_trancada_explica_que_falta_concluir_a_anterior(
+    aluna, esqueleto, client
+):
+    publicar(esqueleto.aulas.get(numero="E01"))
+    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
+    assert "Conclua a aula anterior para abrir esta porta." in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E01"]) not in corpo
+
+
+def test_aula_publicada_e_disponivel_diz_que_esta_aberta(
+    aluna, aula_publicada, client
+):
+    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
+    assert "Aula aberta para você." in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E00"]) in corpo
+
+
+def test_aula_publicada_e_concluida_mostra_concluida(aluna, aula_publicada, client):
+    abrir(client, reverse("curso", args=["profissional"]))
+    Progresso.objects.filter(aula=aula_publicada).update(
+        estado=Progresso.Estado.CONCLUIDA, concluida_em=timezone.now()
+    )
+    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
+    assert "estado-concluida" in corpo
+    assert ">Concluída<" in corpo
 
 
 # ---------------------------------------------------------------- 2. a aula
