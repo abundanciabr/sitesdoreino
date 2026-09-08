@@ -36,6 +36,30 @@
    {"comandos": [["python", "-m", "pytest", "ci/tests", "-q"]]}
    ```
 
+   Cada comando tem prazo padrão de **900 segundos**, também na prova do SHA
+   final. Esse limite finito comporta a suíte ampla medida em 377,78 segundos,
+   com margem para variação do ambiente. Para ajustar, acrescente ao mesmo
+   JSON `"prazo_segundos": 1800`. O valor explícito vence o padrão; não há
+   outra fonte de configuração. Aceita somente inteiro de **1 a 7200 segundos**
+   (teto de duas horas por comando). Zero, negativos, decimais, strings,
+   booleanos, null e valores não finitos são recusados antes de gravar.
+   O prazo vale separadamente para cada comando, não para o fechamento inteiro;
+   comandos operacionais de Git e GitHub continuam com limite de 300 segundos.
+
+   O log distingue `PASS` (exit zero), `FAIL` (exit não zero), `TIMEOUT`
+   (prazo excedido) e `ERROR` (instrumento ou encerramento indisponível),
+   preservando stdout e stderr sanitizados, prazo e horários UTC. Ao exceder
+   o prazo, o runner encerra os descendentes no Linux e o Job Object no
+   Windows, incluindo filhos e netos. No Linux, adota órfãos antes de iniciar
+   o comando e recolhe os descendentes mesmo após nova sessão (`setsid`) ou
+   saída antecipada do pai. Restaura o estado de adoção ao fim e recusa um
+   processo com filhos preexistentes ou outra validação concorrente. Execute
+   `ci/pr.py` em processo separado se essa recusa aparecer. A contenção foi
+   exercitada em Windows e Linux; outros sistemas são recusados explicitamente.
+   A validação não aprova resultado
+   incompleto. A retomada com `CONTINUAR=1` repete as provas da revisão isolada
+   e do SHA final; ela não reutiliza uma aprovação anterior para dispensá-las.
+
    ```bash
    make pr TITULO="ci: o que muda, para leigo" MENSAGEM=mensagem.txt \
            CORPO=corpo.md ARQUIVOS="ci/pr.py ci/tests/test_pr.py" \
