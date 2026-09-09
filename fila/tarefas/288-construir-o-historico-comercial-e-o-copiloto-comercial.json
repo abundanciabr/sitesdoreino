@@ -1,0 +1,25 @@
+{
+  "arquivo": "288-construir-o-historico-comercial-e-o-copiloto-comercial",
+  "id": "TAR-288",
+  "titulo": "Construir o histórico comercial e o Copiloto Comercial",
+  "toca": [
+    "leads",
+    "funil",
+    "mensageria",
+    "admin",
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-283",
+    "TAR-285"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo",
+    "pedidos-que-viraram-alunas"
+  ],
+  "evidencia_exigida": "PRs fatiados por contrato e célula com histórico único do contato, pontuação explicável baseada em interesse explícito, próxima ação e transferência humana; prova real do canal antes de marcar envio; WhatsApp oficial continua na TAR-080 e só começa com decisão do mantenedor.",
+  "despacho": "Construa o histórico comercial e o Copiloto Comercial sem duplicar a TAR-080. A pontuação usa interesse explícito e histórico, explica cada ponto e sugere a próxima ação. Toda conversa pode ser transferida para uma pessoa; o copiloto sempre se identifica como automação. O WhatsApp oficial continua na TAR-080, condicionado à decisão já exigida. Antes de qualquer canal ser considerado pronto, saneie o stub em tasks.py e o legado que pode marcar envio sem transporte; enviada exige prova do provedor. Fatie primeiro contratos e células.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; WhatsApp existente em TAR-080",
+  "criada_em": "2026-09-09"
+}
