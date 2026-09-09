@@ -17,12 +17,17 @@ mensagem na conversa, AO VIVO, enquanto o agente segue trabalhando (medido em
 um Bash é 10 min). O `timeout_ms` do Monitor deve ser MAIOR que o teto daqui,
 senão o harness mata o esperador antes da linha de morte — silêncio, a doença.
 
-    python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
-    python ci/esperar.py --deploy <sha> --teto 20
-    python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
-    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro,
+    python ci/esperar.py --run 33210 --dizendo "o deploy da admin"
+    python ci/esperar.py --deploy <sha>
+    python ci/esperar.py --checks 447   (uma vez, antes do --pousar)
+    python ci/esperar.py --checks 447 --e-pousar   (o caminho inteiro,
         e o que acorda o robô UMA vez: --e-pousar já implica --so-desfecho)
-    python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
+    python ci/esperar.py --sonda "docker info" --regua docker-frio
+
+Sem `--teto`, o prazo é calculado da régua viva: duas vezes o p90 quando há
+amostra suficiente, ou uma vez e meia o p50 quando ainda há pouca amostra,
+sempre arredondado para minuto inteiro. `--teto` continua disponível para uma
+sonda local que ainda não tem régua.
 
 ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
 manda ter são o veredito do deploy (CLAUDE.md) e a conclusão dos checks UMA VEZ
@@ -122,6 +127,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -180,6 +186,8 @@ GATILHOS = Path(__file__).resolve().parents[1] / "armadilhas" / "GATILHOS.json"
 LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
+FATOR_DE_FOLGA_DO_TETO = 2.0
+ARREDONDAMENTO_DO_TETO_S = 60.0
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
 
 # As esperas que a lei manda NÃO existir (RITOS.md §2 peça 6: "a melhor espera
@@ -290,6 +298,24 @@ def acima_do_esperado(regua: dict | None, decorrido: float) -> bool:
     p90 = regua.get("p90_s") if amostra >= AMOSTRA_MINIMA else None
     limite = p90 or (regua.get("p50_s") or 0) * 1.5
     return bool(limite) and decorrido > limite
+
+
+def teto_da_regua(regua: dict | None) -> float | None:
+    """Calcula um teto em segundos a partir da régua, sem inventar prazo."""
+    if not regua:
+        return None
+    try:
+        p50 = float(regua.get("p50_s") or 0)
+        p90 = float(regua.get("p90_s") or 0)
+        amostra = int(regua.get("amostra") or 0)
+    except (TypeError, ValueError):
+        return None
+    if p50 <= 0:
+        return None
+    base = p90 if amostra >= AMOSTRA_MINIMA and p90 > 0 else p50 * 1.5
+    return math.ceil(
+        base * FATOR_DE_FOLGA_DO_TETO / ARREDONDAMENTO_DO_TETO_S
+    ) * ARREDONDAMENTO_DO_TETO_S
 
 
 # ------------------------------------------------------------ observadores ----
@@ -924,7 +950,7 @@ def main(argv: list[str] | None = None) -> int:
     alvo.add_argument("--autoteste", action="store_true",
                       help="prova viva de que a espera fala e morre no teto")
     p.add_argument("--teto", type=float, metavar="MIN",
-                   help="teto em MINUTOS — obrigatório; ao estourar, a espera MORRE")
+                   help="teto manual em MINUTOS; sem ele, calculo pela régua viva")
     p.add_argument("--dizendo", default="", help="o que estou esperando, para leigo")
     p.add_argument("--voz", type=float, default=60.0,
                    help="segundos entre batimentos falados (padrão 60)")
@@ -952,13 +978,8 @@ def main(argv: list[str] | None = None) -> int:
         return autoteste()
     if not (args.run or args.deploy or args.checks or args.pouso or args.sonda):
         p.error("diga O QUE esperar: --run/--deploy/--checks/--pouso/--sonda")
-    if args.teto is None or args.teto <= 0:
-        p.error("--teto <minutos> é obrigatório — espera sem teto é a doença "
-                "que este script existe para curar (armadilhas/161)")
-
     gh = _gh()
     repo = _repo()
-    teto_s = args.teto * 60.0
     # `--e-pousar` é o caminho automático do rito, e ele existe justamente para
     # o robô não voltar: calar o bastidor ali é o ganho inteiro. Quem chama
     # `--run`/`--deploy` na mão pelo Monitor continua com a voz de sempre.
@@ -990,6 +1011,19 @@ def main(argv: list[str] | None = None) -> int:
     dizendo = args.dizendo or rotulo
     chave_da_regua = args.regua or chave
     regua = carregar_regua(chave_da_regua)
+    if args.teto is not None:
+        if args.teto <= 0:
+            p.error("--teto precisa ser maior que zero")
+        teto_s = args.teto * 60.0
+    else:
+        teto_s = teto_da_regua(regua)
+        if teto_s is None:
+            p.error(
+                f"não consegui calcular o teto pela régua {chave_da_regua!r}. "
+                "Use --teto <minutos> para uma espera sem medição, ou "
+                "--regua <chave> quando existir uma entrada válida em "
+                "ci/tempos_esperados.json."
+            )
     pr_do_pouso = args.pr or args.checks or args.pouso
 
     # A ESPERA QUE NÃO DEVIA EXISTIR (31/08/2026) — ver o cabeçalho. A recusa
