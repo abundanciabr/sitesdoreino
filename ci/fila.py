@@ -902,8 +902,15 @@ def rotular_orfaos(
 ) -> list[Path]:
     """Registra reivindicações sem reserva viva nem PR aberto, sem apagar nada."""
     ultimos = _ultimos_ciclos(eventos)
+    terminais = {
+        evento["tarefa"]
+        for evento in _em_ordem(eventos)
+        if evento.get("evento") in EVENTOS_TERMINAIS
+    }
     escritos: list[Path] = []
     for tid in sorted(tarefas):
+        if tid in terminais:
+            continue
         ultimo = ultimos.get(tid)
         if not ultimo or ultimo["evento"] != "reivindicada":
             continue
