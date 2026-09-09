@@ -35,7 +35,7 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
 )
 import telemetria
-from mandato_publicacao import PublicacaoRecusada, REPOSITORIO, conferir_envio
+from mandato_publicacao import PublicacaoRecusada, REPOSITORIO, conferir_envio, conferir_textos
 from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 # O vocabulário do livro. Copiado de `painel/logica.js` de propósito: o
@@ -354,6 +354,10 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
     for texto in (pedido.titulo, pedido.detalhe, Path(pedido.corpo_arquivo).read_text(encoding="utf-8"), Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")):
         if _sanitizar(texto) != texto:
             raise ParouPorSeguranca("texto contém possível segredo", "Remova credenciais do texto; forneça segredos somente pelo ambiente apropriado.")
+        try:
+            conferir_textos(texto)
+        except PublicacaoRecusada as erro:
+            raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
     mensagem = Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")
     if COAUTOR not in mensagem:
         raise ParouPorSeguranca(

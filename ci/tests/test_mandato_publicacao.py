@@ -151,3 +151,31 @@ def test_destino_e_reconferido_no_push_do_recibo(tmp_path):
     pushes = [c for c in git.chamadas if c[:2] == ["git", "push"]]
     assert len(pushes) == 1
     assert "--no-follow-tags" in pushes[0]
+
+
+@pytest.mark.parametrize("existente", [False, True])
+@pytest.mark.parametrize("campo", ["titulo", "corpo_arquivo", "detalhe", "mensagem_arquivo"])
+@pytest.mark.parametrize("familia", ["github", "pagamento", "openai"])
+def test_textos_fora_do_git_sao_conferidos_antes_de_publicar(tmp_path, existente, campo, familia):
+    import test_pr
+    import pr
+    credencial = {"github": "gh" + "o_" + "X" * 36,
+                  "pagamento": "APP_" + "USR-" + "X" * 32,
+                  "openai": "s" + "k-" + "X" * 32}[familia]
+    raiz = test_pr.bancada(tmp_path)
+    entrada = test_pr.pedido(raiz)
+    if campo.endswith("_arquivo"):
+        arquivo = getattr(entrada, campo)
+        arquivo.write_text(arquivo.read_text(encoding="utf-8") + "\n" + credencial, encoding="utf-8")
+    else:
+        setattr(entrada, campo, getattr(entrada, campo) + " " + credencial)
+    respostas = dict(test_pr.RESPOSTAS_FELIZES)
+    if existente:
+        respostas["gh pr list"] = json.dumps([{"number": 1210, "url": test_pr.URL_DO_PR}])
+    git = test_pr.Duble(respostas)
+    with pytest.raises(pr.ParouPorSeguranca, match="mandato") as erro:
+        pr.abrir(raiz, entrada, rodar=git, hoje=test_pr.HOJE)
+    assert credencial not in str(erro.value)
+    assert not git.pediu("git push")
+    assert not git.pediu("gh pr create")
+    assert not git.pediu("gh pr edit")
