@@ -115,8 +115,9 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
     <textarea id="decisoes" name="decisoes" rows="3" maxlength="1000">{{ campos.decisoes|default:'' }}</textarea>
     <label for="aprendemos">O que aprendemos (opcional)</label>
     <textarea id="aprendemos" name="aprendemos" rows="2" maxlength="600">{{ campos.aprendemos|default:'' }}</textarea>
-    {% if mudancas.foto_de_hoje %}
+    {% if foto_da_pauta %}
     <label><input type="checkbox" name="tirar_foto" value="sim" {% if not montou or campos.tirar_foto %}checked{% endif %}> Tirar a foto da semana (o placar de hoje vira memória, e na próxima segunda o bloco "o que mudou" compara com ela)</label>
+    <p class="recado-fraco">Este pedido mantém a foto registrada quando você abriu a pauta.</p>
     {% endif %}
     <button type="submit">Salvar pedido privado</button>
   </form>

@@ -6,17 +6,23 @@
   <h1>{{ documento.titulo }}</h1>
   <p class="subtitulo">Pedido privado salvo. Reabrir este endereço retoma o mesmo pedido. A execução automática está desativada.</p>
   <p class="recado-fraco">Documento {{ documento.id }}, versão {{ versao.id }}, salva por {{ versao.salvo_por }}. A pauta virou texto; revise aqui o pedido completo, incluindo a data e a foto originais.</p>
-  {% if erro_pedido %}<p class="aviso borda-vermelha" role="alert">{{ erro_pedido }}</p><p class="recado"><a href="{% url 'pedido_reuniao' identidade=identidade %}">Reabrir a versão salva para comparar</a></p>{% endif %}
+  {% if erro_pedido %}<p class="aviso borda-vermelha" role="alert">{{ erro_pedido }}</p>{% endif %}
   <h2 class="titulo-de-bloco">1. Revise o texto privado</h2>
-  <form class="editor" method="post">
+  <form id="revisao-pedido" class="editor" method="post">
     {% csrf_token %}
-    <input type="hidden" name="acao" value="salvar">
     <input type="hidden" name="versao" value="{{ versao_editada }}">
     <label for="texto">Texto do pedido</label>
     <textarea id="texto" name="texto" rows="18" maxlength="50000" required>{{ texto }}</textarea>
     <p class="recado-fraco">Salvar uma alteração cria outra versão e exige nova autorização. O pedido mantém a mesma identidade.</p>
-    <button class="salvar" type="submit">Salvar revisão privada</button>
+    <button class="salvar" type="submit" name="acao" value="salvar">Salvar revisão privada</button>
   </form>
+  {% if erro_pedido %}
+    <div class="editor">
+      <label for="texto-salvo">Versão {{ versao.id }} salva no documento, para comparar com seu rascunho acima</label>
+      <textarea id="texto-salvo" rows="12" readonly>{{ versao.corpo }}</textarea>
+      <p class="recado"><a href="{% url 'pedido_reuniao' identidade=identidade %}" target="_blank" rel="noopener">Abrir a versão salva em outra aba para revisar e autorizar, mantendo este rascunho</a></p>
+    </div>
+  {% endif %}
   <h2 class="titulo-de-bloco">2. Autorize a versão salva</h2>
   <p class="aviso borda-amarela">Ao levar o pedido à sessão do robô, a tarefa e os registros serão publicados no repositório público abundanciabr/sitesdoreino. Retire dados privados antes de autorizar.</p>
   {% if envelope %}
@@ -26,13 +32,11 @@
     <div class="editor"><label for="envelope">Pedido identificado para copiar</label>
     <textarea id="envelope" class="colar" rows="15" readonly>{{ envelope }}</textarea></div>
   {% else %}
-    <form class="editor" method="post">
-      {% csrf_token %}
-      <input type="hidden" name="acao" value="autorizar">
-      <input type="hidden" name="versao" value="{{ versao.id }}">
-      <label><input type="checkbox" name="publicacao_publica" value="sim" required> Li o texto salvo e autorizo publicar esta versão como tarefa e registros no repositório público.</label>
-      <button class="salvar" type="submit">Autorizar a versão {{ versao.id }}</button>
-    </form>
+    <div class="editor">
+      <label><input type="checkbox" form="revisao-pedido" name="publicacao_publica" value="sim" {% if not pode_autorizar %}disabled{% endif %}> Li o texto acima e autorizo publicar esta versão como tarefa e registros no repositório público.</label>
+      <p class="recado-fraco">Autorizar confere o texto do campo de revisão. Se você o alterou, salve a revisão antes de autorizar.</p>
+      <button class="salvar" type="submit" form="revisao-pedido" name="acao" value="autorizar" {% if not pode_autorizar %}disabled{% endif %}>Autorizar a versão {{ versao_editada }}</button>
+    </div>
   {% endif %}
   <h2 class="titulo-de-bloco">3. Confira o recebimento da mesma tarefa</h2>
   <p class="recado"><a href="{% url 'pedido_reuniao' identidade=identidade %}?conferir=1">Consultar recebimento no repositório</a></p>

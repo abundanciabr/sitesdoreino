@@ -407,3 +407,8 @@ os dois blobs no commit fixado do ramo vencedor, com GET limitado. A comparaçã
 versão divergente ou resposta parcial não viram recebimento. A cópia publicada
 é outra prova, no contexto de dados da requisição; conclusão legada continua
 sendo conclusão registrada, com resultado dos itens ainda não conferido.
+
+
+### Reunião: texto conferido e integração comprovada
+
+O gesto de autorizar precisa enviar o texto visível junto da versão: uma tela de conflito pode preservar o rascunho perdedor enquanto o banco já contém outro texto. Compare ambos sob o bloqueio da transação, preserve o rascunho e mostre a versão salva para recuperar. A foto da pauta vem do formulário original assinado também nas respostas de erro, sem depender do placar disponível no retry. PR com nome de ramo igual não prova integração: confira os artefatos nos commits do PR e do merge e o merge na história da main. Se essa prova faltar, conserve apenas o recebimento já conferido.
