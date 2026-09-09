@@ -539,10 +539,6 @@ class Encomenda(models.Model):
         INTERMEDIARIO = "intermediario", "Intermediário"
         AVANCADO = "avancado", "Avançado"
 
-    class Pista(models.TextChoices):
-        FILA = "fila", "Na fila (a plataforma escolhe o aluno)"
-        MURAL = "mural", "No Mural (o aluno pega)"
-
     class Confirmacao(models.TextChoices):
         WEBHOOK = "webhook", "Confirmado pelo webhook da célula de pagamentos"
         PLANTAO = "plantao", "Declarado pago pelo plantão (a escola é a cliente)"
@@ -585,15 +581,12 @@ class Encomenda(models.Model):
     site_id = id_do_site()
 
     origem = models.CharField(max_length=8, choices=Origem.choices)
-    # POR ONDE ESTA ENCOMENDA CHEGA AO ALUNO. O nível decide a pista
-    # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1): Iniciante nasce na fila, porque é
-    # ela que garante o primeiro trabalho de quem nunca entregou; Intermediário
-    # e Avançado nascem no Mural, porque a elegibilidade da lei já exige 1 e 5
-    # entregas aprovadas para eles. É coluna, e não conta derivada do nível,
-    # porque a chamada aberta MOVE um projeto Iniciante para o Mural sem mudar
-    # o nível dele — e quem pergunta "onde este projeto está sendo mostrado?"
-    # precisa de uma resposta, não de uma regra para reexecutar.
-    pista = models.CharField(max_length=6, choices=Pista.choices, default=Pista.FILA)
+    # O nível decide por onde a encomenda chega ao aluno
+    # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1): Iniciante nasce na fila;
+    # Intermediário e Avançado nascem no Mural. A chamada aberta é o único caso
+    # em que um Iniciante fica visível no Mural, e o status `aberta` já carrega
+    # essa informação. Uma segunda coluna para repetir a rota criaria duas
+    # fontes de verdade.
     cliente_id = id_da_plataforma()
     cartao = models.CharField(max_length=20, choices=Cartao.choices)
     nivel = models.CharField(max_length=14, choices=Nivel.choices)
@@ -701,15 +694,6 @@ class Encomenda(models.Model):
                 condition=~models.Q(nivel="iniciante")
                 | ~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL)),
                 name="iniciante_nunca_no_mural_reservavel",
-            ),
-            # A coluna `pista` não pode mentir sobre onde o projeto está sendo
-            # mostrado. Um projeto `no_mural` com `pista=fila` seria lido de dois
-            # jeitos por dois pedaços de código (a tela do aluno e a varredura do
-            # plantão), e o segundo a ler é o que erra.
-            models.CheckConstraint(
-                condition=~models.Q(status__in=sorted(ESTADOS_DO_MURAL_RESERVAVEL))
-                | models.Q(pista="mural"),
-                name="no_mural_so_na_pista_do_mural",
             ),
             # O cartão decide o nível. Escrito como as três combinações
             # possíveis, porque `CheckConstraint` não chama função Python: é a

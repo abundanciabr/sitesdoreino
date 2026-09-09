@@ -110,17 +110,17 @@ MOTIVO_SEM_ELEGIVEL_NO_MURAL = (
     "esperou o prazo no mural sem nenhum aluno elegivel disponivel"
 )
 
-# A pista e o estado em que cada nível nasce. É a regra 2 e a regra 3 escritas
-# como DADO, e não como um `if`: uma tabela de três linhas cabe numa tela, é
-# lida por quem revisa em cinco segundos, e não tem ramo escondido.
+# O estado em que cada nível nasce. É a regra 2 e a regra 3 escritas como DADO,
+# e não como um `if`: uma tabela de três linhas cabe numa tela, é lida por quem
+# revisa em cinco segundos, e não tem ramo escondido.
 #
 # O cartão decide o nível (o banco faz valer, `o_cartao_decide_o_nivel`), e o
-# nível decide a pista. Ninguém escolhe pista: nem o cliente, que sequer sabe
-# que existem duas (§3.4), nem o aluno.
-PISTA_DE_NASCIMENTO: dict[str, tuple[str, str]] = {
-    Encomenda.Nivel.INICIANTE: (Encomenda.Pista.FILA, Encomenda.Status.NA_FILA),
-    Encomenda.Nivel.INTERMEDIARIO: (Encomenda.Pista.MURAL, Encomenda.Status.NO_MURAL),
-    Encomenda.Nivel.AVANCADO: (Encomenda.Pista.MURAL, Encomenda.Status.NO_MURAL),
+# nível decide o estado inicial. Ninguém escolhe rota: nem o cliente, que sequer
+# sabe que existem duas (§3.4), nem o aluno.
+STATUS_DE_NASCIMENTO: dict[str, str] = {
+    Encomenda.Nivel.INICIANTE: Encomenda.Status.NA_FILA,
+    Encomenda.Nivel.INTERMEDIARIO: Encomenda.Status.NO_MURAL,
+    Encomenda.Nivel.AVANCADO: Encomenda.Status.NO_MURAL,
 }
 
 # O QUE O MURAL MOSTRA. Dois estados, e os dois querem dizer "este projeto está
@@ -150,12 +150,12 @@ def nascer(
     briefing: dict | None = None,
     autorizacao_portfolio: bool = False,
 ) -> Encomenda:
-    """Cria a encomenda já na pista que o nível dela manda.
+    """Cria a encomenda já no estado que o nível dela manda.
 
     É a ÚNICA porta de nascimento desta célula, e é ela que a Fase 3 vai chamar
     quando o cliente descrever o projeto. Existir como função, e não como um
     `Encomenda.objects.create` espalhado por quem tiver pressa, é o que faz a
-    regra de pista ser uma coisa só: uma segunda porta divergiria da primeira no
+    regra de rota ser uma coisa só: uma segunda porta divergiria da primeira no
     dia em que o plano mudasse, e ninguém saberia qual das duas estava certa.
 
     O nível não é argumento de propósito: **o cartão decide o nível**, sempre
@@ -164,14 +164,13 @@ def nascer(
     entende. Aqui a incoerência é impossível de escrever.
     """
     nivel = Encomenda.NIVEL_DO_CARTAO[cartao]
-    pista, status = PISTA_DE_NASCIMENTO[nivel]
+    status = STATUS_DE_NASCIMENTO[nivel]
     return Encomenda.objects.create(
         site_id=site_id,
         origem=origem,
         cliente_id=cliente_id,
         cartao=cartao,
         nivel=nivel,
-        pista=pista,
         status=status,
         briefing=briefing or {},
         autorizacao_portfolio=autorizacao_portfolio,

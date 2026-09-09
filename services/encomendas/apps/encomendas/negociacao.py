@@ -208,21 +208,16 @@ def aviso_de_piso(
 
 
 def volta_para(projeto: Encomenda) -> str:
-    """A pista de origem deste projeto: `na_fila` ou `no_mural`.
+    """Calcula o destino de retorno a partir do nível da encomenda.
 
-    O nível decide, e não a coluna `pista`, quando os dois discordam: um projeto
-    Iniciante que chegou ao Mural pela chamada aberta tem `pista=mural`, e
-    devolvê-lo a `no_mural` seria pô-lo na prateleira reservável, que é
-    exatamente o que o [INV-ENC-M2] proíbe (e o banco recusa,
-    `iniciante_nunca_no_mural_reservavel`). A fila é a casa dele.
+    Iniciante sempre retorna à fila, inclusive depois de uma chamada aberta.
+    Intermediário e Avançado sempre retornam ao Mural. O nível é a única fonte
+    necessária porque a chamada aberta é o único desvio de rota, e o status já
+    o registra.
     """
     if projeto.nivel == Encomenda.Nivel.INICIANTE:
         return Encomenda.Status.NA_FILA
-    return (
-        Encomenda.Status.NO_MURAL
-        if projeto.pista == Encomenda.Pista.MURAL
-        else Encomenda.Status.NA_FILA
-    )
+    return Encomenda.Status.NO_MURAL
 
 
 def _soltar_o_aluno(projeto: Encomenda) -> None:
@@ -247,21 +242,9 @@ def _soltar_o_aluno(projeto: Encomenda) -> None:
 
 
 def devolver_a_pista(projeto: Encomenda, motivo: str) -> None:
-    """O ALUNO calou ou desistiu: o projeto volta à pista de origem, para o próximo.
-
-    Ele não perde o lugar na fila, mas perde este projeto (§4.2). A coluna
-    `pista` volta a dizer a verdade junto com o status, porque um projeto
-    `na_fila` com `pista=mural` seria lido de dois jeitos por dois pedaços de
-    código, e o segundo a ler é o que erra.
-    """
+    """O ALUNO calou ou desistiu: o projeto volta à rota de origem."""
     destino = volta_para(projeto)
     _soltar_o_aluno(projeto)
-    projeto.pista = (
-        Encomenda.Pista.MURAL
-        if destino == Encomenda.Status.NO_MURAL
-        else Encomenda.Pista.FILA
-    )
-    projeto.save(update_fields=["pista", "atualizada_em"])
     projeto.mudar_status(destino, motivo=motivo)
 
 
