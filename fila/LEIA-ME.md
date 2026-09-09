@@ -14,7 +14,7 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 | O que | Onde | Regra |
 |---|---|---|
 | Uma tarefa | `tarefas/NNN-slug.json` | Um arquivo por tarefa. **Nunca se edita depois de criado** — número vem do almoxarife (`python ci/reservar.py numero tarefa`), id é `TAR-NNN`. |
-| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `reivindicacao_expirada` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
+| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `reivindicacao_expirada` · `submetida` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
 | O estado | **em lugar nenhum** | Calculado, sempre: pela cadeia de eventos + reservas do almoxarife + PRs abertos. Não existe campo `status`. |
 
 ## O balcão — como um robô usa (`ci/fila.py`)
@@ -26,6 +26,7 @@ python ci/fila.py zelar --quem "zelador-da-fila"
 python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
 python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
 python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
+python ci/fila.py submeter TAR-007 --quem "..." --pr "https://github.com/abundanciabr/sitesdoreino/pull/NNN" --revisao <SHA> --arvore <SHA>
 python ci/fila.py concluir TAR-007 --quem "..." --evidencia "https://github.com/.../pull/NNN"
 python ci/fila.py explicar TAR-007 --quem "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
@@ -46,8 +47,37 @@ ficou sem reserva viva e sem PR aberto recebe o acontecimento
 remota continuam intactos para auditoria. O acontecimento é a etiqueta; não
 existe limpeza destrutiva.
 
-**`concluir` exige evidência.** Sem prova (URL de PR, saída crua de teste), o
-balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
+**Submissão não é conclusão.** `make pr` recupera a TAR da abertura, do ramo,
+do título, do corpo ou da reivindicação do ramo e confere o cadastro antes
+de publicar. Identidades conflitantes ou ausentes na fila recusam com o
+comando para corrigir. Tentativa é uma execução da mesma tarefa. Sessões
+legadas sem acompanhamento continuam aceitas quando sua abertura registrada
+aponta para uma revisão anterior ao protocolo de submissão. Abertura nova,
+proveniência ausente ou revisão ilegível exige vincular a TAR existente antes
+de publicar. Não se cria cadastro paralelo.
+
+`submeter` grava `pr` (URL completa), `revisao` (commit do código validado) e
+`arvore` (árvore daquele commit) em evento novo. O recibo do painel carrega a
+mesma `tarefa` e `relacao: "comentario"`, sem declarar resolução. Retomar a
+mesma entrega não repete o evento. Revisão nova do mesmo PR gera outra
+submissão; trocar para outro PR exige conferir a entrega existente.
+
+A revisão precede o commit do recibo para evitar autorreferência. A prova final
+mede o SHA entregue novamente; o reconciliador deve conferir a árvore da revisão,
+sua relação com o HEAD revisado e a ausência de alterações de código posteriores.
+Alterações apenas nos recibos e eventos não exigem outra submissão.
+
+Soltar a reserva de uma entrega submetida preserva seu vínculo e não libera
+a tarefa nem seus dependentes. O zelador consulta também o PR persistido,
+incluindo os estados fechado e integrado. Falha de consulta interrompe a
+operação; PR integrado sem prova do aceite permanece aguardando comprovação.
+Nenhum PR fechado devolve automaticamente trabalho submetido à fila.
+
+**`concluir` exige evidência.** Para tarefas submetidas, texto livre e URL de
+PR não bastam: o balcão recusa e encaminha à reconciliação da entrega com a
+prova do aceite. Essa reconciliação é uma etapa posterior; submissão, integração
+e publicação são fatos diferentes. O caminho legado sem submissão mantém sua
+validação de evidência. Sem prova, o balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
 `concluida` sem `evidencia` + `verificado_em`.
 
 **O comprovante nasce na bancada, nunca no espelho** (desde 30/08/2026,
@@ -85,8 +115,11 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
   viva no servidor.
 - **na fila novamente** — evento `reivindicacao_expirada`, quando a reserva
   venceu e não há PR aberto.
-- **em execução** — há PR ABERTO citando `TAR-NNN` no título ou no ramo
-  (só na vista `--ao-vivo`).
+- **em execução**: há evento `submetida` com PR, revisão e árvore validados,
+  ou PR aberto citando `TAR-NNN` na vista `--ao-vivo`. A submissão mantém o
+  vocabulário que os leitores atuais reconhecem. Seu motivo diz que falta
+  comprovar o aceite; a reserva pode terminar e os dependentes continuam
+  bloqueados. O evento distingue a fase sem criar outro estado público.
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
 
