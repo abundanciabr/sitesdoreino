@@ -82,6 +82,7 @@ MINIMO_DO_DETALHE = 80
 
 COAUTOR = "Co-Authored-By"
 PRAZO_VALIDACAO_PADRAO = 900
+PROTOCOLO_SUBMISSAO = 1
 
 
 class PrazoDeValidacaoExcedido(ErroDeInstrumentacao):
@@ -564,7 +565,7 @@ def _fechar_medicao_fase4(raiz: Path, tarefa: str | None, tentativa: str,
     return registrou
 
 
-def _tentativa_da_abertura(raiz, ramo):
+def _fases_da_abertura(raiz, ramo):
     try:
         pasta = telemetria.dir_git_comum(raiz)
         eventos = telemetria.ler_tudo(pasta) if pasta else []
@@ -581,16 +582,31 @@ def _tentativa_da_abertura(raiz, ramo):
             except (ValueError, TypeError, KeyError):
                 continue
             candidatos.append((quando, evento))
-        if candidatos:
-            evento = max(candidatos, key=lambda item: item[0])[1]
-            return evento["tentativa"], evento["tarefa"]
+        return candidatos
     except Exception:
-        pass  # Métrica ausente ou inválida não substitui as provas obrigatórias.
+        return []
+
+
+def _tentativa_da_abertura(raiz, ramo):
+    candidatos = _fases_da_abertura(raiz, ramo)
+    if candidatos:
+        evento = max(candidatos, key=lambda item: item[0])[1]
+        return evento["tentativa"], evento["tarefa"]
     return uuid.uuid4().hex, ramo.split('/')[-1]
 
 
-def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura):
-    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas
+def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+    aberturas = [item for item in _fases_da_abertura(raiz, ramo)
+                 if item[1]["fase"] == "abertura" and item[1]["resultado"] == "concluido"]
+    if not aberturas:
+        return False
+    primeira = min(aberturas, key=lambda item: item[0])[1]
+    codigo = correr(["git", "show", primeira["commit"] + ":ci/pr.py"])
+    return bool(codigo.strip()) and not re.search(r"^PROTOCOLO_SUBMISSAO\s*=", codigo, re.M)
+
+
+def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
+    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas, calcular_estados, CONCLUIDA, CANCELADA, NA_FILA
     candidatos = set()
     if pedido.tarefa:
         if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
@@ -601,14 +617,21 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura):
     erros = []
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
-    candidatos.update(e["tarefa"] for e in eventos
-                      if e.get("quem") == ramo and e.get("evento") in ("reivindicada", "submetida"))
+    estados = calcular_estados(tarefas, eventos)
+    candidatos.update(tid for tid, estado in estados.items()
+                      if estado.get("quem") == ramo and estado["estado"] not in (CONCLUIDA, CANCELADA, NA_FILA))
     if not candidatos:
         candidatos.update(tarefas_citadas(ramo + " " + pedido.titulo))
     if not candidatos:
         candidatos.update(tarefas_citadas(pedido.corpo_arquivo.read_text(encoding="utf-8")))
     if not candidatos:
-        return None  # Sessões legadas sem acompanhamento continuam válidas.
+        if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+            return None
+        raise ParouPorSeguranca(
+            "tarefa não identificada para esta sessão",
+            "Consulte python ci/fila.py listar e vincule a TAR existente com --tarefa. "
+            "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
+        )
     if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
         raise ParouPorSeguranca(
             "tarefa ausente, ambígua ou fila inválida",
@@ -630,7 +653,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
     tentativa, tarefa_da_abertura = _tentativa_da_abertura(raiz, ramo)
-    pedido.tarefa = _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura)
+    pedido.tarefa = _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr)
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))

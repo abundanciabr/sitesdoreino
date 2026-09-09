@@ -51,7 +51,10 @@ existe limpeza destrutiva.
 do título, do corpo ou da reivindicação do ramo e confere o cadastro antes
 de publicar. Identidades conflitantes ou ausentes na fila recusam com o
 comando para corrigir. Tentativa é uma execução da mesma tarefa. Sessões
-legadas sem acompanhamento continuam aceitas; não se cria cadastro paralelo.
+legadas sem acompanhamento continuam aceitas quando sua abertura registrada
+aponta para uma revisão anterior ao protocolo de submissão. Abertura nova,
+proveniência ausente ou revisão ilegível exige vincular a TAR existente antes
+de publicar. Não se cria cadastro paralelo.
 
 `submeter` grava `pr` (URL completa), `revisao` (commit do código validado) e
 `arvore` (árvore daquele commit) em evento novo. O recibo do painel carrega a
