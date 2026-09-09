@@ -73,6 +73,29 @@ def baixa_comprovada(resposta: dict, alerta: dict) -> bool:
     return not prs or bool(prs & prs_citados(resposta.get("evidencia")))
 
 
+def complementos_comprovados(registros: dict[str, dict]) -> dict[str, str]:
+    candidatos, ambiguos = {}, set()
+    for r in registros.values():
+        if r.get("relacao") != "complemento":
+            continue
+        origem, destino = r.get("responde_a"), r.get("ocorrencia")
+        if not isinstance(origem, str) or not isinstance(destino, str):
+            continue
+        alvo, principal = registros.get(origem), registros.get(destino)
+        if not alvo or not principal or len({r.get("arquivo"), origem, destino}) != 3:
+            continue
+        if (alvo.get("relacao") and alvo.get("responde_a")) or (principal.get("relacao") and principal.get("responde_a")):
+            continue
+        if r.get("precisa_do_dono") or r.get("gravidade") != "info" or (alvo.get("tarefa") and r.get("tarefa") != alvo["tarefa"]):
+            continue
+        if not prova_posterior(r, alvo) or not prova_posterior(r, principal):
+            continue
+        if origem in candidatos and candidatos[origem] != destino:
+            ambiguos.add(origem)
+        candidatos[origem] = destino
+    return {origem: destino for origem, destino in candidatos.items() if origem not in ambiguos and destino not in candidatos and origem not in candidatos.values()}
+
+
 def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]:
     entregas = {ident: r for ident, r in registros.items() if entrega_em_alerta(r)}
     baixados = {
@@ -82,6 +105,7 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
         and (ident not in novos or r.get("relacao") == "resolucao")
         and baixa_comprovada(r, entregas[r["responde_a"]])
     }
+    complementos = complementos_comprovados(registros)
     problemas = []
     for ident in sorted(novos):
         registro = registros[ident]
@@ -104,6 +128,11 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
             problemas.append(f"{ident}: responde_a precisa ser um identificador em texto ou null; use uma baixa por alerta.")
             continue
         alvo = registros.get(alvo_id)
+        if relacao == "complemento":
+            destino = registro.get("ocorrencia")
+            principal = registros.get(destino) if isinstance(destino, str) else None
+            if not alvo or not principal or complementos.get(alvo_id) != destino or complementos_comprovados({alvo_id: alvo, destino: principal, ident: registro}).get(alvo_id) != destino or not prova_posterior(registro, alvo) or not prova_posterior(registro, principal) or registro.get("gravidade") != "info" or registro.get("precisa_do_dono"):
+                problemas.append(f"{ident}: complemento sem vínculo comprovado; indique alvo e canônico distintos existentes, prova dos dois e elimine ciclos ou ambiguidades.")
         if relacao == "historico":
             if alvo_id is not None or registro.get("tipo") != "incidente" or registro.get("precisa_do_dono") or registro.get("gravidade") != "verde" or not prova_posterior(registro, registro):
                 problemas.append(f"{ident}: historico sem prova ou com alvo; use incidente verde comprovado sem responde_a, ou resolucao para encerrar ocorrência existente.")
@@ -115,7 +144,7 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
             continue
         prs = prs_citados(registro.get("evidencia"))
         for alerta_id, alerta in sorted(entregas.items()):
-            if alerta_id == ident or alerta_id in baixados:
+            if alerta_id == ident or alerta_id in baixados or (alerta_id in complementos and complementos[alerta_id] in baixados):
                 continue
             if prs & prs_citados(alerta.get("evidencia")):
                 problemas.append(

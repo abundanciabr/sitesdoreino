@@ -389,3 +389,21 @@ ocorrência não prova a entrega que ficou aberta.
 - ❌ Escrever HTML dentro de `titulo`/`detalhe` (a página insere como texto).
 - ❌ Criar lista/estado em qualquer outro lugar e "sincronizar depois" — é
   exatamente a doença que este diretório existe para curar.
+
+### Fatos da mesma ocorrência
+
+Um fato adicional não resolve a obrigação principal. Acrescente uma nota `info`
+com `relacao: "complemento"`, `responde_a` igual ao arquivo do fato adicional e
+`ocorrencia` igual ao arquivo canônico. Informe `evidencia` que demonstre a
+identidade da obrigação e `verificado_em` posterior aos dois fatos; se o alvo
+tiver `tarefa`, repita-a. Os dois arquivos devem existir e ser distintos do
+vínculo. Ciclos, cadeias e destinos contraditórios são recusados.
+
+O alerta passa a contar pela ocorrência canônica. Seu botão **Histórico desta
+ocorrência** abre os fatos adicionais, as tentativas e as provas dos vínculos,
+mesmo quando pertencem a meses diferentes. A obrigação canônica só se encerra
+com resolução comprovada própria. Nunca agrupe por título ou por PR citado.
+
+Uma classificação histórica sem obrigação futura também exige uma resolução
+explícita do registro antigo, com prova e detalhe de que se trata de revisão
+administrativa. Isso não declara um conserto novo nem apaga um dever existente.

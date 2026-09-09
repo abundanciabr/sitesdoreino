@@ -74,7 +74,7 @@
   // que diz se o campo `area` de um registro existe. Sem ela, `area` preenchida
   // vira ERRO em vez de passar — não conferir não é aprovar, e um nome inventado
   // poria o fato na parte errada do site.
-  var RELACOES = ["comentario", "decisao", "resolucao", "historico"];
+  var RELACOES = ["comentario", "decisao", "resolucao", "historico", "complemento"];
 
   function instante(s) {
     if (typeof s !== "string") return NaN;
@@ -117,6 +117,38 @@
     return r.relacao === "decisao" && alvo.precisa_do_dono === true &&
       r.autoridade === "mantenedor" && (r.tipo === "decisao" || r.tipo === "resposta") &&
       (!alvo.tarefa || r.tarefa === alvo.tarefa) && provaPosterior(r, alvo);
+  }
+
+  function complementosComprovados(registros) {
+    var porId = {}, candidatos = {}, ambiguos = {};
+    registros.forEach(function (r) { if (r) porId[r.arquivo] = r; });
+    registros.forEach(function (r) {
+      if (!r || r.relacao !== "complemento" || typeof r.responde_a !== "string" || typeof r.ocorrencia !== "string") return;
+      var alvo = porId[r.responde_a], principal = porId[r.ocorrencia];
+      if (!alvo || !principal || r.arquivo === alvo.arquivo || r.arquivo === principal.arquivo ||
+          alvo.arquivo === principal.arquivo || (alvo.relacao && alvo.responde_a) ||
+          (principal.relacao && principal.responde_a) || r.precisa_do_dono ||
+          r.gravidade !== "info" || (alvo.tarefa && r.tarefa !== alvo.tarefa) ||
+          !provaPosterior(r, alvo) || !provaPosterior(r, principal)) return;
+      if (candidatos[alvo.arquivo] && candidatos[alvo.arquivo] !== principal.arquivo) ambiguos[alvo.arquivo] = true;
+      candidatos[alvo.arquivo] = principal.arquivo;
+    });
+    var validos = {};
+    Object.keys(candidatos).forEach(function (id) {
+      // Um canônico também reclassificado cria cadeia: exige corrigir os vínculos.
+      if (!ambiguos[id] && !candidatos[candidatos[id]] && !Object.keys(candidatos).some(function (origem) { return candidatos[origem] === id; })) validos[id] = candidatos[id];
+    });
+    return validos;
+  }
+
+  function idsDaOcorrencia(registros, id, prontos) {
+    var complementos = prontos ? (prontos._complementos || {}) : complementosComprovados(registros);
+    var principal = complementos[id] || id, ids = {};
+    if (prontos && prontos._historicos && prontos._historicos[principal]) return prontos._historicos[principal].slice();
+    ids[principal] = true;
+    Object.keys(complementos).forEach(function (origem) { if (complementos[origem] === principal) ids[origem] = true; });
+    registros.forEach(function (r) { if (ids[r.responde_a]) ids[r.arquivo] = true; });
+    return Object.keys(ids);
   }
 
   function validarRegistros(registros, areas) {
@@ -361,6 +393,12 @@
       if (r.relacao === "decisao" && !decisaoComprovada(r, alvo)) erros.push(r.arquivo + ": decisao exige pedido ao dono, resposta ou decisao do mantenedor e prova conferida a partir do pedido");
       if (r.relacao === "comentario" && r.precisa_do_dono) erros.push(r.arquivo + ": comentário não abre outro pedido; escreva uma ocorrência nova para a nova decisão");
     });
+    var complementos = complementosComprovados(registros);
+    registros.forEach(function (r) {
+      if (!r) return;
+      if (r.ocorrencia != null && (r.relacao !== "complemento" || typeof r.ocorrencia !== "string" || !r.ocorrencia.trim())) erros.push(r.arquivo + ": ocorrencia só aceita identificador canônico em complemento");
+      if (r.relacao === "complemento" && (complementos[r.responde_a] !== r.ocorrencia || complementosComprovados([porId[r.responde_a], porId[r.ocorrencia], r])[r.responde_a] !== r.ocorrencia || !provaPosterior(r, porId[r.responde_a] || {}) || !provaPosterior(r, porId[r.ocorrencia] || {}) || r.gravidade !== "info" || r.precisa_do_dono)) erros.push(r.arquivo + ": complemento exige dois fatos distintos existentes, prova de ambos e vínculo sem cadeia, ciclo ou ambiguidade; indique a ocorrência canônica");
+    });
     // responde_a precisa apontar para OUTRO registro, que exista.
     registros.forEach(function (r) {
       if (!r || !r.responde_a) return;
@@ -469,10 +507,11 @@
   // cumprido não é um problema aberto — seria alarme aceso o tempo todo.)
   function problemasAbertos(registros, prontos) {
     var resp = respondidos(registros, prontos);
+    var complementos = prontos ? (prontos._complementos || {}) : complementosComprovados(registros);
     return registros.filter(function (r) {
       return (r.gravidade === "vermelho" || r.gravidade === "ambar") &&
         !(r.relacao != null && typeof r.responde_a === "string") &&
-        resp[r.arquivo] !== "resolucao" && !resolucaoComprovada(resp[r.arquivo], r) &&
+        !complementos[r.arquivo] && resp[r.arquivo] !== "resolucao" && !resolucaoComprovada(resp[r.arquivo], r) &&
         r.tipo !== "pendencia" && r.tipo !== "frente" && r.tipo !== "rumo";
     }).sort(function (a, b) { return a.gravidade === "vermelho" ? -1 : 1; });
   }
@@ -967,7 +1006,7 @@
   // até hoje ele viajava para dentro do DOM para nunca ser lido. Quem quiser o
   // texto inteiro abre a Memória, e aí o mês carrega.
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
-    "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade", "relacao", "tarefa",
+    "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade", "relacao", "tarefa", "ocorrencia",
     "frente", "vence_em_dias",
     // A ÁREA vem no corte: sem ela, o registro que viaja só como título cairia
     // em "sem área reconhecida" na aba Prioridades, e a tela mostraria o fato na
@@ -1073,9 +1112,15 @@
       respondidosIds[k] = resolucaoComprovada(prontos[k], originais[k]) ? "resolucao" : "decisao";
     });
 
+    var historicos = {};
+    var complementosResumo = complementosComprovados(registros);
+    Object.keys(complementosResumo).forEach(function (id) {
+      var principal = complementosResumo[id];
+      historicos[principal] = idsDaOcorrencia(registros, principal);
+    });
     return {
       erro: null,
-      respondidos: respondidosIds,
+      respondidos: Object.assign(respondidosIds, {_complementos: complementosResumo, _historicos: historicos}),
       // Contado sobre o livro INTEIRO, aqui, e não no navegador: lá só existe o
       // recorte, e "6 de 24" viraria um número errado com cara de certo.
       confianca: confianca(registros),
@@ -1089,6 +1134,8 @@
 
   var LOGICA = {
     resolucaoComprovada: resolucaoComprovada,
+    complementosComprovados: complementosComprovados,
+    idsDaOcorrencia: idsDaOcorrencia,
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     IMPACTOS: IMPACTOS,

@@ -971,6 +971,33 @@ caso("falha técnica continua visível em alertas, fora das decisões",
 caso("pedido antigo ambíguo não some por texto técnico ou idade",
   separacao.grupos.decidir.length === 1 && separacao.grupos.decidir[0].registro.arquivo === legadoAmbiguo.arquivo);
 
+var exemplosComplemento = require("./casos_resolucao.json");
+var fatoComplementar = reg(Object.assign({}, exemplosComplemento.alvo));
+var canonico = reg({arquivo: "principal", gravidade: "ambar", quando: "2026-09-09T16:00:00Z"});
+var vinculo = reg({arquivo: "vinculo", relacao: "complemento", responde_a: "ocorrencia", ocorrencia: "principal",
+  tarefa: "TAR-292", gravidade: "info", evidencia: "Auditoria dos dois fatos confirma a mesma obrigação.", verificado_em: "2026-09-09T17:00:00Z"});
+exemplosComplemento.complementos.forEach(function (c) {
+  var resposta = Object.assign({}, vinculo, c.resposta);
+  var livro = [fatoComplementar, canonico, resposta];
+  caso("complemento: " + c.nome, !!LOGICA.complementosComprovados(livro)[fatoComplementar.arquivo] === c.esperado);
+});
+var livroComplementar = [fatoComplementar, canonico, vinculo];
+caso("complemento preserva uma obrigação canônica", LOGICA.problemasAbertos(livroComplementar).map(function(r){return r.arquivo;}).join() === "principal");
+caso("complemento não responde pedido humano", LOGICA.caixaDeEntrada([Object.assign({}, fatoComplementar, {precisa_do_dono:true}), canonico, vinculo], HOJE).length === 1);
+caso("histórico conserva fato e vínculo", LOGICA.idsDaOcorrencia(livroComplementar, "principal").sort().join() === "ocorrencia,principal,vinculo");
+var invalido = Object.assign({}, vinculo, {arquivo:"ultimo", evidencia:"", ocorrencia:"inexistente"});
+caso("último complemento inválido não substitui vínculo comprovado", LOGICA.complementosComprovados(livroComplementar.concat(invalido)).ocorrencia === "principal");
+caso("ciclo não suprime obrigações", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(Object.assign({}, vinculo, {arquivo:"volta", responde_a:"principal", ocorrencia:"ocorrencia", tarefa:null})))).length === 0);
+var resumoComplementar = LOGICA.montarResumo(livroComplementar);
+caso("resumo conserva obrigação canônica", LOGICA.problemasAbertos(resumoComplementar.registros, resumoComplementar.respondidos).map(function(r){return r.arquivo;}).join() === "principal");
+
+caso("histórico completo viaja mesmo sem seus fatos no resumo", LOGICA.idsDaOcorrencia([], "principal", resumoComplementar.respondidos).sort().join() === "ocorrencia,principal,vinculo");
+var terceiro = reg({arquivo:"terceiro", gravidade:"ambar", quando:"2026-09-09"});
+var segundoVinculo = Object.assign({}, vinculo, {arquivo:"outrovinculo", ocorrencia:"terceiro"});
+caso("destinos contraditórios são recusados", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(terceiro,segundoVinculo))).length === 0);
+segundoVinculo.responde_a = "principal"; segundoVinculo.tarefa = null;
+caso("cadeia não aplica vínculos pela metade", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(terceiro,segundoVinculo))).length === 0);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

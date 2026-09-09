@@ -270,3 +270,34 @@ def test_pedido_historico_incompleto_nao_bloqueia_novo_alerta_tecnico():
 def test_pedido_novo_com_data_antiga_nao_escapa_do_portao():
     registro = {"precisa_do_dono": True, "quando": "2020-01-01"}
     assert guarda.conferir_registros({"novo": registro}, {"novo"})
+
+
+@pytest.mark.parametrize("caso", EXEMPLOS["complementos"], ids=lambda c: c["nome"])
+def test_complemento_mesmos_exemplos_javascript(caso):
+    alvo = dict(EXEMPLOS["alvo"])
+    principal = dict(ALERTA, arquivo="principal", quando="2026-09-09T16:00:00Z")
+    resposta = dict(EXEMPLOS["resposta"], arquivo="vinculo", relacao="complemento", ocorrencia="principal", gravidade="info", verificado_em="2026-09-09T17:00:00Z")
+    resposta.update(caso["resposta"])
+    registros = {r["arquivo"]: r for r in [alvo, principal, resposta]}
+    assert bool(guarda.complementos_comprovados(registros).get("ocorrencia")) is caso["esperado"]
+    assert bool(guarda.conferir_registros(registros, {"vinculo"})) is not caso["esperado"]
+
+
+def test_complemento_ciclico_e_ultimo_invalido_nao_apagam_fatos():
+    registros = {"a": dict(ALERTA, arquivo="a"), "b": dict(ALERTA, arquivo="b")}
+    vinculo = dict(VERDE, arquivo="v", relacao="complemento", gravidade="info", responde_a="a", ocorrencia="b")
+    registros["v"] = vinculo
+    assert guarda.complementos_comprovados(registros) == {"a": "b"}
+    registros["ruim"] = dict(vinculo, arquivo="ruim", evidencia="", ocorrencia="ausente")
+    assert guarda.complementos_comprovados(registros) == {"a": "b"}
+    registros["volta"] = dict(vinculo, arquivo="volta", responde_a="b", ocorrencia="a")
+    assert guarda.complementos_comprovados(registros) == {}
+
+
+def test_cadeia_e_destinos_ambiguos_nao_produzem_efeito_parcial():
+    registros = {i: dict(ALERTA, arquivo=i) for i in ["a", "b", "c"]}
+    registros["v"] = dict(VERDE, arquivo="v", relacao="complemento", gravidade="info", responde_a="a", ocorrencia="b")
+    registros["w"] = dict(registros["v"], arquivo="w", ocorrencia="c")
+    assert guarda.complementos_comprovados(registros) == {}
+    registros["w"]["responde_a"] = "b"
+    assert guarda.complementos_comprovados(registros) == {}

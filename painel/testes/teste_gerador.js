@@ -571,6 +571,28 @@ caso("pedido antigo informa a ausência da justificativa sem desaparecer",
 caso("pedido antigo informa a ausência de próximo passo sem desaparecer",
   fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não registra um próximo passo claro."; }));
 
+var fonteHistorico = templateDecisao.slice(templateDecisao.indexOf("  function carregarOcorrencia"), templateDecisao.indexOf("  // Os nomes"));
+var carregamentos = [], contextoHistorico = {
+  LOGICA: require("../logica.js"), REGS: [],
+  PRONTOS: {_complementos: {"20260801-001-fato":"20260801-002-principal"},
+    _historicos: {"20260801-002-principal":["20260801-001-fato", "20260801-002-principal", "20260909-001-vinculo"]}},
+  itemRegistro: function(r,opts) { return {id:r.arquivo,semHistorico:opts.semHistorico}; },
+  carregarMes: function(mes,ok,falhou) {carregamentos.push({mes:mes,ok:ok,falhou:falhou});}
+};
+require("vm").runInNewContext(fonteHistorico, contextoHistorico);
+var destinoHistorico = {textContent:"",filhos:[],appendChild:function(f){this.filhos.push(f);}}, botaoHistorico={};
+contextoHistorico.carregarOcorrencia("20260801-002-principal", destinoHistorico, botaoHistorico);
+caso("histórico busca os meses do vínculo fora do resumo", carregamentos.map(function(c){return c.mes;}).sort().join() === "2026-08,2026-09");
+caso("histórico avisa enquanto carrega", botaoHistorico.disabled && destinoHistorico.textContent.indexOf("Carregando") !== -1);
+carregamentos[0].ok([{arquivo:"20260801-001-fato",quando:"2026-08-01"},{arquivo:"20260801-002-principal",quando:"2026-08-01"}]);
+carregamentos[1].ok([{arquivo:"20260909-001-vinculo",quando:"2026-09-09"}]);
+caso("histórico exibe os dois fatos e a prova do vínculo", destinoHistorico.filhos.length === 3 && destinoHistorico.filhos.every(function(f){return f.semHistorico;}));
+carregamentos = [];
+contextoHistorico.carregarOcorrencia("20260801-002-principal", destinoHistorico, botaoHistorico);
+carregamentos[0].falhou("D", "O mês não carregou.");
+carregamentos[1].ok([]);
+caso("erro do histórico mantém aviso e permite repetir", !botaoHistorico.disabled && destinoHistorico.textContent.indexOf("tentar novamente") !== -1);
+
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");
   process.exit(1);
