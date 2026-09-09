@@ -1535,8 +1535,17 @@ def escola_aluno_salvar(request):
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
     if todas is not None:
         desfecho, detalhe = AlunosClient.OK, ""
+
+    def pessoa_mudou(campo, valor):
+        atual = pessoa.get(campo)
+        if campo == "comprou_em":
+            return valor != atual
+        return valor != str(atual or "")
+
     mudancas_da_pessoa = {
-        campo: valor for campo, valor in mudancas.items() if campo != "status"
+        campo: valor
+        for campo, valor in mudancas.items()
+        if campo != "status" and pessoa_mudou(campo, valor)
     }
     status_pedido = mudancas.get("status") or ""
     status_atual = str(pessoa.get("status") or "")
