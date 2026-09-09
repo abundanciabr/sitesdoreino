@@ -1492,7 +1492,7 @@ def test_submissao_persistida_nao_libera_tarefa_nem_dependencia(fim_reserva):
     if fim_reserva:
         eventos.append(evento(tipo=fim_reserva, hora="12:00:00"))
     estados = fila.calcular_estados(tarefas, eventos)
-    assert estados["TAR-001"]["estado"] == "aguardando comprovação"
+    assert estados["TAR-001"]["estado"] == "em execução"
     assert estados["TAR-001"]["pr"] == URL_SUBMISSAO
     assert estados["TAR-001"]["revisao"] == "a" * 40
     assert estados["TAR-002"]["estado"] == fila.BLOQUEADA
@@ -1543,7 +1543,7 @@ def test_soltar_reserva_submetida_preserva_vinculo_sem_evento_de_devolucao(tmp_p
     assert not list((tmp_path / "fila/eventos").glob("*devolvida*"))
     tarefas, eventos, erros = carregar(tmp_path)
     assert not erros
-    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == "aguardando comprovação"
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == "em execução"
 
 
 def test_submeter_persiste_antes_de_soltar_e_retomada_nao_duplica(tmp_path, monkeypatch):
@@ -1570,7 +1570,7 @@ def test_url_de_pr_nao_conclui_submissao_sem_prova_do_aceite(tmp_path, monkeypat
 
 
 
-@pytest.mark.parametrize("hora,esperado", [("10:30:00", "aguardando comprovação"), ("12:00:00", "bloqueada")])
+@pytest.mark.parametrize("hora,esperado", [("10:30:00", "em execução"), ("12:00:00", "bloqueada")])
 def test_submissao_supera_bloqueio_anterior_e_preserva_bloqueio_posterior(hora, esperado):
     cadeia = sorted([evento(), evento(tipo="bloqueada", hora=hora, detalhe="aguarda correção", espera="fila"), submissao()], key=lambda e: e["quando"])
     estado = fila.calcular_estados({"TAR-001": tarefa()}, cadeia)["TAR-001"]
@@ -1602,3 +1602,31 @@ def test_submeter_recusa_vinculo_invalido_ou_outra_entrega_sem_efeitos(tmp_path,
     args = argparse.Namespace(**{"tarefa": "TAR-001", "quem": "sessao-a", "pr": URL_SUBMISSAO, "revisao": "a" * 40, "arvore": "b" * 40, **mudanca})
     assert fila.cmd_submeter(tmp_path, args) == 1
     assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+
+def test_submissao_publicada_continua_visivel_nos_grupos_atuais_do_admin(tmp_path, capsys):
+    import ast
+
+    consumidor = Path(__file__).resolve().parents[2] / "services/admin/apps/core/robos.py"
+    fonte = ast.parse(consumidor.read_text(encoding="utf-8"))
+    nos = [no for no in fonte.body
+           if (isinstance(no, ast.Assign) and any(isinstance(alvo, ast.Name) and alvo.id == "COLUNAS" for alvo in no.targets))
+           or (isinstance(no, ast.FunctionDef) and no.name == "e_deste_grupo")]
+    assert len(nos) == 2
+    leitura = {}
+    exec(compile(ast.Module(body=nos, type_ignores=[]), str(consumidor), "exec"), leitura)
+    montar(tmp_path, [tarefa(), tarefa("002", deps=["TAR-001"])], [evento(), submissao()])
+    assert fila.cmd_listar(tmp_path, argparse.Namespace(ao_vivo=False, json=True)) == 0
+    estados = json.loads(capsys.readouterr().out)
+    cartao = estados["TAR-001"]
+    grupos = [g for g in leitura["COLUNAS"] if leitura["e_deste_grupo"](cartao, g)]
+    assert len(grupos) == 1, "a tarefa submetida sumiu dos grupos que a tela usa"
+    assert grupos[0]["estado"] == "em execução"
+    assert not grupos[0]["recolhida"]
+    assert cartao["motivo"] == "Entrega submetida; falta comprovar o aceite da tarefa."
+    assert cartao["pr"] == URL_SUBMISSAO
+    assert cartao["revisao"] == "a" * 40
+    assert cartao["arvore"] == "b" * 40
+    assert estados["TAR-002"]["estado"] == fila.BLOQUEADA
+    assert all(dados["estado"] != fila.CONCLUIDA for dados in estados.values())

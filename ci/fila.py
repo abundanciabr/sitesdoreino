@@ -109,7 +109,6 @@ IMPORTANCIA_MAXIMA = 100
 NA_FILA = "na fila"
 REIVINDICADA = "reivindicada"
 EM_EXECUCAO = "em execução"
-AGUARDANDO_COMPROVACAO = "aguardando comprovação"
 BLOQUEADA = "bloqueada"
 CONCLUIDA = "concluída"
 CANCELADA = "cancelada"
@@ -773,7 +772,7 @@ def calcular_estados(
             return resultado
         if submetida:
             resultado = {
-                "estado": AGUARDANDO_COMPROVACAO,
+                "estado": EM_EXECUCAO,
                 "motivo": "Entrega submetida; falta comprovar o aceite da tarefa.",
                 "quem": submetida["quem"],
                 **{campo: submetida[campo] for campo in ("pr", "revisao", "arvore")},

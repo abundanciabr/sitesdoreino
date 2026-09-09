@@ -115,10 +115,11 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
   viva no servidor.
 - **na fila novamente** — evento `reivindicacao_expirada`, quando a reserva
   venceu e não há PR aberto.
-- **em execução** — há PR ABERTO citando `TAR-NNN` no título ou no ramo
-  (só na vista `--ao-vivo`).
-- **aguardando comprovação**: há evento `submetida` com PR e revisão validados.
-  A reserva pode terminar, e os dependentes continuam bloqueados.
+- **em execução**: há evento `submetida` com PR, revisão e árvore validados,
+  ou PR aberto citando `TAR-NNN` na vista `--ao-vivo`. A submissão mantém o
+  vocabulário que os leitores atuais reconhecem. Seu motivo diz que falta
+  comprovar o aceite; a reserva pode terminar e os dependentes continuam
+  bloqueados. O evento distingue a fase sem criar outro estado público.
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
 
