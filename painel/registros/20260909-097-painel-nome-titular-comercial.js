@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-097-painel-nome-titular-comercial",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "painel: nome do titular comercial",
+  detalhe: "Maria foi identificada como titular de Comercial e Relacionamento.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit a88b46553791a8707e9391b56804fcc3bb0b281a; árvore f30236b1d6e6d99e8926cdb4c296e4b081f96ae3; 9 testes e auditoria comprovada.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "decisão",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "vender",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();
