@@ -12,9 +12,7 @@ em vez do `Aviso` local — `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3. O
 `Aviso` local CONTINUA sendo escrito (`apps/core/avisos.py::avisar_os_interessados`),
 como rede de segurança da transição; só a LEITURA mudou de casa.
 
-**A regra de falha desta página é a OPOSTA do sino no trilho.** O sino
-(`base_caixa.html`) fica em silêncio se a caixa central cair — decoração em
-toda página, não pode derrubar nenhuma. Esta página **É** a função dela:
+Esta página **É** a função dela:
 se `ver_avisos()` não conseguiu buscar os dados, `falha` chega `True` no
 contexto e a página abre com uma frase clara em vez de fingir "zero avisos"
 — os dois estados nunca compartilham o mesmo visual
@@ -38,9 +36,6 @@ de antes (`status_novo`, `vinculo`, `nota`, `criado_em`, `lido_em`, `id`).
 Três amarras que não podem cair na vestimenta, e continuam valendo
 byte-a-byte com a fonte de dado nova:
 
-* **o número do sino continua sendo o do trilho** (`base_caixa.html`), com o
-  nome acessível `avisos (N)` em minúsculas — `test_o_sino_de_toda_pagina_conta_so_os_meus`
-  o mede assim, e ele NÃO se afrouxa para caber em HTML novo;
 * **a data sai `d/m/Y H:i`**, formato cravado, nunca o `{{ … }}` nu: o padrão do
   Django sai no locale do processo (`en-us`) e a hora vem do `TIME_ZONE` de
   `config/settings.py` (armadilhas/099) — `criado_em`/`lido_em` chegam da API

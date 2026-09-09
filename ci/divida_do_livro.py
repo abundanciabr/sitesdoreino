@@ -248,8 +248,6 @@ def areas_dos_registros_embarcados(
             continue
         area: str | None = None
         for linha in (remessa.get("patch") or "").splitlines():
-            if not linha.startswith("+"):
-                continue
             achado = _CAMPO_AREA.match(linha)
             if achado:
                 area = achado.group(1) or None
