@@ -14,6 +14,8 @@ FUNCOES = {
     "comercial-relacionamento",
 }
 
+UNIDADE_CAMPOS_OBRIGATORIOS = ("finalidade", "resultado_acompanhado", "fonte", "evidencia")
+
 
 def carregar(raiz: Path) -> dict:
     return json.loads((raiz / "painel" / "responsabilidades.json").read_text(encoding="utf-8"))
@@ -61,6 +63,9 @@ def auditar(raiz: Path) -> list[str]:
         if not funcao.get("substituto"):
             erros.append(f"{identificador}: substituto ausente")
     for unidade in registro.get("unidades", []):
+        for campo in UNIDADE_CAMPOS_OBRIGATORIOS:
+            if not unidade.get(campo):
+                erros.append(f"{unidade.get('id', 'sem id')}: campo obrigatório ausente: {campo}")
         erros.extend(f"{unidade['id']}: {erro}" for erro in validar_entrega(raiz, unidade["id"]))
     return sorted(set(erros))
 

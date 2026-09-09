@@ -3,6 +3,7 @@ from pathlib import Path
 
 import responsabilidades
 import medir_esforco
+import fila
 
 
 def escrever_registro(tmp_path: Path, registro: dict) -> Path:
@@ -76,3 +77,18 @@ def test_medicao_de_esforco_distingue_teste_de_trabalho_real(tmp_path):
     )
     assert medir_esforco.validar(tmp_path) == []
     assert medir_esforco.resumo(tmp_path)["produtividade_comprovada"] is False
+
+
+def test_tarefa_nova_sem_responsabilidade_e_reconhecida_como_invalida():
+    assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-09"}) is True
+    assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-08"}) is False
+
+
+def test_medicao_real_incompleta_e_recusada(tmp_path):
+    (tmp_path / "painel" / "medicoes").mkdir(parents=True)
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text(
+        json.dumps({"observacoes": [{"id": "real-invalido", "natureza": "operacao", "situacao_dado": "real", "casos": "muitos"}]}),
+        encoding="utf-8",
+    )
+    erros = medir_esforco.validar(tmp_path)
+    assert any("real-invalido: casos precisa ser inteiro" in erro for erro in erros)

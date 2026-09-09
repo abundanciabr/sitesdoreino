@@ -12,6 +12,8 @@ CAMPOS = {
     "minutos_revisao", "minutos_retrabalho", "excecoes", "qualidade", "reaberturas",
     "prazo", "periodo", "condicoes", "situacao_dado",
 }
+SITUACOES = {"teste", "real"}
+NATUREZAS = {"teste", "operacao", "melhoria", "manutencao"}
 
 
 def carregar(raiz: Path) -> dict:
@@ -23,10 +25,29 @@ def validar(raiz: Path) -> list[str]:
     erros = []
     observacoes = dados.get("observacoes", [])
     for observacao in observacoes:
+        identificador = observacao.get("id")
+        if not isinstance(identificador, str) or not identificador.strip():
+            erros.append("observação sem identificador")
+            identificador = "sem id"
         faltantes = CAMPOS - set(observacao)
-        erros.extend(f"{observacao.get('id', 'sem id')}: falta {campo}" for campo in sorted(faltantes))
-        if observacao.get("situacao_dado") == "real" and observacao.get("casos", 0) <= 0:
-            erros.append(f"{observacao['id']}: dado real precisa de pelo menos um caso")
+        erros.extend(f"{identificador}: falta {campo}" for campo in sorted(faltantes))
+        if observacao.get("natureza") not in NATUREZAS:
+            erros.append(f"{identificador}: natureza inválida")
+        situacao = observacao.get("situacao_dado")
+        if situacao not in SITUACOES:
+            erros.append(f"{identificador}: situacao_dado precisa ser teste ou real")
+        casos = observacao.get("casos")
+        if not isinstance(casos, int) or isinstance(casos, bool) or casos < 0:
+            erros.append(f"{identificador}: casos precisa ser inteiro não negativo")
+        if situacao == "real" and isinstance(casos, int) and casos <= 0:
+            erros.append(f"{identificador}: dado real precisa de pelo menos um caso")
+        if observacao.get("situacao_dado") == "real":
+            for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho"):
+                valor = observacao.get(campo)
+                if not isinstance(valor, (int, float)) or valor < 0:
+                    erros.append(f"{identificador}: {campo} precisa ser número não negativo")
+            if not isinstance(observacao.get("minutos_referencia"), (int, float)) or observacao.get("minutos_referencia", 0) <= 0:
+                erros.append(f"{identificador}: minutos_referencia precisa ser maior que zero")
         if observacao.get("situacao_dado") == "teste" and observacao.get("qualidade") != "não avaliada; dado de teste":
             erros.append(f"{observacao['id']}: teste precisa declarar que não mede qualidade real")
     return erros
@@ -35,11 +56,18 @@ def validar(raiz: Path) -> list[str]:
 def resumo(raiz: Path) -> dict:
     dados = carregar(raiz)
     reais = [item for item in dados.get("observacoes", []) if item.get("situacao_dado") == "real"]
+    economias = []
+    for item in reais:
+        referencia = item.get("minutos_referencia", 0)
+        if referencia > 0:
+            trabalho_humano = sum(item.get(campo, 0) for campo in ("minutos_humanos", "minutos_revisao", "minutos_retrabalho"))
+            economias.append((referencia - trabalho_humano) / referencia * 100)
     return {
         "coleta": "iniciada" if dados.get("coleta_iniciada_em") else "não iniciada",
         "linha_de_base": dados.get("situacao_linha_de_base", "indisponível"),
         "observacoes_reais": len(reais),
-        "produtividade_comprovada": bool(reais),
+        "economia_media_percentual": sum(economias) / len(economias) if economias else None,
+        "produtividade_comprovada": bool(dados.get("produtividade_comprovada", False) and economias),
     }
 
 

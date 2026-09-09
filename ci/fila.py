@@ -1264,6 +1264,19 @@ def cmd_criar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
+    responsabilidade = (args.responsabilidade or "").strip()
+    if not responsabilidade:
+        print("RECUSADO: tarefa nova precisa declarar uma responsabilidade.")
+        print("Informe --responsabilidade com uma unidade cadastrada.")
+        return 1
+    _, problemas_responsabilidade = responsabilidades.resolver_unidade(
+        responsabilidades.carregar(raiz), responsabilidade
+    )
+    if problemas_responsabilidade:
+        print("RECUSADO: responsabilidade não cadastrada.")
+        for problema in problemas_responsabilidade:
+            print(f"   - {problema}")
+        return 1
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -1675,8 +1688,15 @@ def cmd_concluir(raiz: Path, args) -> int:
         print("RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro.")
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
-    if "responsabilidade" in tarefas[tid]:
-        problemas = responsabilidades.validar_entrega(raiz, tarefas[tid]["responsabilidade"])
+    tarefa = tarefas[tid]
+    responsabilidade = tarefa.get("responsabilidade")
+    responsabilidade_nova_ausente = tarefa_exige_responsabilidade(tarefa) and not responsabilidade
+    if responsabilidade_nova_ausente:
+        print("RECUSADO: tarefa nova sem responsabilidade declarada.")
+        print("Cadastre uma unidade de responsabilidade antes de concluir.")
+        return 1
+    if responsabilidade:
+        problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
         if problemas:
             print("RECUSADO: a entrega nova não pode ser concluída sem responsabilidade comprovada.")
             for problema in problemas:
@@ -1694,6 +1714,11 @@ def cmd_concluir(raiz: Path, args) -> int:
     )
     print(f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
     return 0
+
+
+def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
+    """Tarefas criadas após a guarda precisam declarar a unidade titular."""
+    return tarefa.get("criada_em", "") >= "2026-09-09"
 
 
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:

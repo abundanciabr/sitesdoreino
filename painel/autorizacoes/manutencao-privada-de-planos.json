@@ -5,8 +5,7 @@
   "pode": [
     "Consolidar fases, critérios, dependências, tarefas e lacunas no mesmo documento privado.",
     "Salvar a atualização mantendo o endereço e o acesso privado já existentes.",
-    "Corrigir inconsistências de rastreabilidade entre o documento, a fila, os registros e as fontes aprovadas.",
-    "Registrar a operação no livro e deixar a evidência verificável para a próxima sessão."
+    "Registrar que a operação foi concluída no livro, conforme o rito obrigatório."
   ],
   "nao_pode": [
     "Publicar, tornar público ou alterar a permissão do documento.",
