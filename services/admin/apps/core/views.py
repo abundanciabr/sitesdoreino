@@ -1533,6 +1533,9 @@ def escola_aluno_salvar(request):
         pessoa = matriculas[0] if matriculas else {}
     if todas is not None and not matriculas:
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+    mudancas_da_pessoa = {
+        campo: valor for campo, valor in mudancas.items() if campo != "status"
+    }
     if todas is not None:
         desfecho, detalhe = cliente.sincronizar_cursos(
             site_id=pessoa.get("site_id") or "",
@@ -1542,12 +1545,13 @@ def escola_aluno_salvar(request):
             cursos_marcados=cursos_marcados,
             decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
         )
-    if desfecho == AlunosClient.OK and mudancas:
+    if desfecho == AlunosClient.OK and mudancas_da_pessoa:
         desfecho, detalhe = cliente.atualizar_aluno(
             alvo=alvo,
-            mudancas=mudancas,
+            mudancas=mudancas_da_pessoa,
             decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
         )
+    mudancas.pop("status", None)
     mudancas["cursos"] = ", ".join(cursos_marcados) or "nenhum"
 
     Registro.objects.create(
