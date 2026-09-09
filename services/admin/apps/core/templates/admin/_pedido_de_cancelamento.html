@@ -1,0 +1,58 @@
+    {% if resultado == "revisao" %}
+      <p class="desfecho deu-certo"><b>Pedido recebido, em revisão.</b> O evento da {{ tarefa_do_resultado }} está no PR nº {{ pr }}. A integração e a aplicação ainda precisam ser conferidas.
+        <a href="https://github.com/{{ repositorio }}/pull/{{ pr }}" target="_blank" rel="noopener">Abrir o PR nº {{ pr }}</a>
+      </p>
+    {% elif resultado == "integrado" %}
+      <p class="desfecho deu-certo"><b>Pedido integrado.</b> O PR nº {{ pr }} foi integrado.
+        {% if aplicacao_conferida %}O cancelamento e o evento original estão presentes nesta versão da fila.{% else %}A aplicação do cancelamento nesta versão da fila ainda não foi confirmada. Consulte novamente após a publicação.{% endif %}
+        <a href="https://github.com/{{ repositorio }}/pull/{{ pr }}" target="_blank" rel="noopener">Abrir o PR nº {{ pr }}</a>
+      </p>
+    {% elif resultado == "recebido" %}
+      <p class="desfecho deu-certo"><b>Pedido recebido no ramo.</b> O motivo da {{ tarefa_do_resultado }} está gravado. Ainda não recebi confirmação do PR. {{ recado }}{% if not recado %} Consulte ou repita o pedido para completar as etapas faltantes.{% endif %}</p>
+    {% elif resultado == "incerto" %}
+      <p class="desfecho nao-deu"><b>Não recebi confirmação de todas as etapas.</b> {{ recado }} O rascunho enviado continua no formulário abaixo. Repetir consulta o que já foi gravado antes de continuar.</p>
+    {% elif resultado == "conflito" %}
+      <p class="desfecho nao-deu"><b>Este pedido precisa de conferência.</b> {{ recado }} O conteúdo existente foi preservado. Peça a um robô para conferir a mesma tarefa antes de continuar.</p>
+    {% elif resultado == "sem_pedido" %}
+      <p class="desfecho nao-deu">Não encontrei um evento ou PR confirmado para a {{ tarefa_do_resultado }} nesta consulta. {{ recado }} Para enviar o pedido, confira o motivo e confirme abaixo.</p>
+    {% elif resultado == "sem_motivo" %}
+      <p class="desfecho nao-deu">
+        Não excluí a {{ tarefa_do_resultado }} porque faltou o motivo. Ele é o que fica
+        no lugar da tarefa para sempre, então clique em Excluir de novo e escreva
+        por que ela não vai mais ser feita.
+      </p>
+    {% elif resultado == "motivo_longo" %}
+      <p class="desfecho nao-deu">
+        O motivo passou de 500 letras. Ele precisa caber numa frase, porque é o que
+        alguém vai ler daqui a meses no lugar da tarefa. Encurte e tente de novo.
+      </p>
+    {% elif resultado == "nao_existe" %}
+      <p class="desfecho nao-deu">
+        Essa tarefa não está na fila desta publicação. Recarregue a página, porque a
+        lista pode ter mudado desde que você a abriu.
+      </p>
+    {% elif resultado == "ja_terminou" %}
+      <p class="desfecho nao-deu">
+        A {{ tarefa_do_resultado }} já terminou, e a fila não aceita nenhum
+        acontecimento depois do fim. Não há o que excluir.
+      </p>
+    {% elif resultado == "sem_fila" %}
+      <p class="desfecho nao-deu">
+        A fila não veio nesta imagem do site, então não deu para conferir a tarefa
+        antes de excluí-la. Avise um robô com estas palavras: "a fila embutida não
+        chegou na imagem da admin".
+      </p>
+    {% elif resultado == "sem_token" %}
+      <p class="desfecho nao-deu">
+        O clique não abriu o pedido no GitHub, porque a chave {{ variavel_do_token }}
+        não está no env da admin agora. Ela pode nunca ter sido posta, mas o mais
+        provável, se o botão funcionava antes e parou agora, é que ela tenha vencido.
+        Avise um robô com estas palavras: "ponha (ou troque) a {{ variavel_do_token }}
+        no env da admin". O roteiro é o mesmo dos dois casos, criar ou trocar: infra/por-a-chave-do-github.sh.
+      </p>
+    {% endif %}
+
+    {% if tarefa_do_resultado and resultado %}
+      <p><a href="{% url 'caixa_robos' %}?pedido={{ tarefa_do_resultado }}">Conferir novamente o pedido da {{ tarefa_do_resultado }}</a></p>
+    {% endif %}
+

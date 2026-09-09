@@ -374,3 +374,18 @@ Não há cache entre requisições. Uma otimização futura precisa usar a
 identidade da release concreta e preservar o aviso da alternativa; cachear
 o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
 arquivos dentro da release continua sendo responsabilidade do publicador.
+
+
+### Um ramo não comprova um pedido de cancelamento
+
+A criação de uma referência pode persistir antes de a resposta chegar. Um código 422
+não comprova PR aberto e um timeout não comprova ausência de gravação. A tela
+confere o ramo, o evento e o PR da mesma TAR antes de continuar. O evento entra
+em um commit e o ramo avança sem force; uma corrida relê o vencedor. Motivo,
+data e bytes já gravados permanecem intactos, e divergência pede conferência.
+
+O resultado do POST conserva o rascunho no HTML, sem texto livre em URL nem
+sessão nova. A consulta posterior recebe só a TAR e reconstrói o estado no
+GitHub; parâmetros resultado/pr não são prova. PR integrado só confirma a
+aplicação quando a fila selecionada contém o estado cancelado e os bytes do
+evento original. O motivo público é anunciado no gesto de confirmação.
