@@ -14,6 +14,7 @@ O que se prova aqui, na ordem do que custou caro:
 from __future__ import annotations
 
 import json
+import math
 import os
 import subprocess
 import sys
@@ -32,7 +33,10 @@ from espera import (  # noqa: E402
     TetoVencido,
     vigiar,
 )
-from esperar import ESPERAS_QUE_NAO_DEVIAM_EXISTIR  # noqa: E402
+from esperar import (  # noqa: E402
+    ESPERAS_QUE_NAO_DEVIAM_EXISTIR,
+    REGUA,
+)
 from mergear import (  # noqa: E402
     CHECKS_OBRIGATORIOS,
     MOTIVO_GITHUB_AINDA_CALCULANDO,
@@ -293,11 +297,30 @@ def test_autoteste_fala_as_tres_linhas_e_morre_no_teto(tmp_path):
     assert "ESTOUREI o teto" in proc.stdout
 
 
-def test_sem_teto_a_cli_recusa_e_ensina(tmp_path):
-    proc = _rodar(["--run", "123"], tmp_path)
+def test_sem_teto_sem_regua_recusa_e_ensina(tmp_path):
+    proc = _rodar(["--sonda", "exit 0"], tmp_path)
     assert proc.returncode != 0
-    assert "teto" in (proc.stderr + proc.stdout)
-    assert "armadilhas/161" in (proc.stderr + proc.stdout)
+    saida = proc.stderr + proc.stdout
+    assert "teto" in saida
+    assert "--regua" in saida
+
+
+def test_sem_teto_da_cli_usa_o_teto_da_regua_viva(tmp_path):
+    dados = json.loads(REGUA.read_text(encoding="utf-8"))
+    entrada = dados["esperas"]["deploy-celula"]
+    base = entrada["p90_s"] if entrada["amostra"] >= 20 else entrada["p50_s"] * 1.5
+    esperado = math.ceil(base * 2 / 60) * 60
+    proc = _rodar(
+        ["--run", "9", "--intervalo", "0.05"],
+        tmp_path,
+        gh_respostas=[{"status": "completed", "conclusion": "success",
+                       "name": "deploy-celula", "html_url": "u"}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"teto {int(esperado // 60)}min" in proc.stdout
+    log = tmp_path / ".sitesdoreino" / "esperas.jsonl"
+    linha = json.loads(log.read_text(encoding="utf-8").strip().splitlines()[-1])
+    assert linha["teto_s"] == esperado
 
 
 @pytest.mark.parametrize("alvo", sorted(ESPERAS_QUE_NAO_DEVIAM_EXISTIR))
