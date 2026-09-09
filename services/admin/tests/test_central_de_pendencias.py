@@ -40,6 +40,7 @@ isso que prova que a tela não sai para a rede por conta própria, porque
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone as tz
+import hashlib
 import json
 from pathlib import Path
 
@@ -50,6 +51,7 @@ from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from apps.core import moldura
+from apps.core import admin_dados, painel
 from apps.core import robos
 from apps.core import pendencias as central
 from apps.core.painel import diretorio_do_painel
@@ -142,6 +144,277 @@ def carimbar_painel(tmp_path, monkeypatch, vinculos):
         encoding="utf-8",
     )
     monkeypatch.setattr(central, "diretorio_do_painel", lambda: pasta)
+
+
+def carimbar_vinculos_em_arquivo(
+    tmp_path, monkeypatch, *, mudar_fonte=None, mudar_dados=None
+):
+    carimbo = "abcdef123456"
+    dados = {
+        "carimbo": carimbo,
+        "quantidade": 2,
+        "vinculos": [
+            {"arquivo": "a", "tarefa": "TAR-701"},
+            {"arquivo": "b", "tarefa": None},
+        ],
+    }
+    dados.update(mudar_dados or {})
+    conteudo = (json.dumps(dados, ensure_ascii=False) + "\n").encode("utf-8")
+    fonte = {
+        "arquivo": "paginas/pedidos-do-dono.json",
+        "carimbo": carimbo,
+        "quantidade": 2,
+        "sha256": hashlib.sha256(conteudo).hexdigest(),
+    }
+    fonte.update(mudar_fonte or {})
+    carimbar_painel(tmp_path, monkeypatch, [])
+    pasta = tmp_path / "painel"
+    (pasta / "paginas").mkdir()
+    (pasta / "paginas/pedidos-do-dono.json").write_bytes(conteudo)
+    pagina = pasta / "painel.html"
+    pagina.write_text(
+        'var PAINEL = {\n  carimbo: "'
+        + carimbo
+        + '",\n'
+        + pagina.read_text(encoding="utf-8")
+        + "pedidosDoDonoVinculosFonte: "
+        + json.dumps(fonte)
+        + ",\n};",
+        encoding="utf-8",
+    )
+    return pasta
+
+
+def test_vinculos_externos_completos_conferidos_retiram_so_tar_explicita(
+    tmp_path, monkeypatch
+):
+    carimbar_vinculos_em_arquivo(tmp_path, monkeypatch)
+    fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.quantidade == 2
+    assert fila.tarefas == frozenset({"TAR-701"})
+
+
+def test_vinculos_permanecem_na_pasta_concreta_fixada_pela_resposta(
+    tmp_path, monkeypatch
+):
+    primeira = tmp_path / "primeira"
+    segunda = tmp_path / "segunda"
+    primeira.mkdir()
+    segunda.mkdir()
+    pasta_a = carimbar_vinculos_em_arquivo(primeira, monkeypatch)
+    pasta_b = carimbar_vinculos_em_arquivo(
+        segunda,
+        monkeypatch,
+        mudar_dados={
+            "vinculos": [
+                {"arquivo": "a", "tarefa": "TAR-999"},
+                {"arquivo": "b", "tarefa": None},
+            ]
+        },
+    )
+    monkeypatch.setattr(central, "diretorio_do_painel", diretorio_do_painel)
+    monkeypatch.setattr(painel, "CANDIDATOS", (pasta_a,))
+    with admin_dados.dados_da_resposta():
+        assert diretorio_do_painel() == pasta_a.resolve()
+        monkeypatch.setattr(painel, "CANDIDATOS", (pasta_b,))
+        fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.tarefas == frozenset({"TAR-701"})
+
+
+@pytest.mark.parametrize("dentro", [False, True])
+def test_vinculos_nao_seguem_diretorio_redirecionado(tmp_path, monkeypatch, dentro):
+    from tests.test_versao_dos_dados_admin import apontar, retirar_ponteiro
+
+    pasta = carimbar_vinculos_em_arquivo(tmp_path, monkeypatch)
+    alvo = (pasta if dentro else tmp_path) / "outra-publicacao"
+    (pasta / "paginas").rename(alvo)
+    ponteiro = pasta / "paginas"
+    apontar(alvo, ponteiro)
+    try:
+        fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+        assert fila.quantidade == 2
+        assert fila.tarefas is None
+    finally:
+        retirar_ponteiro(ponteiro)
+
+
+def test_caminho_malicioso_e_recusado_antes_de_abrir_bytes(tmp_path, monkeypatch):
+    pasta = carimbar_vinculos_em_arquivo(
+        tmp_path, monkeypatch, mudar_fonte={"arquivo": "../roubado.json"}
+    )
+    (pasta.parent / "roubado.json").write_bytes(
+        (pasta / "paginas/pedidos-do-dono.json").read_bytes()
+    )
+
+    def leitura_proibida(caminho):
+        pytest.fail(f"Leu bytes depois de receber caminho proibido: {caminho}")
+
+    monkeypatch.setattr(Path, "read_bytes", leitura_proibida)
+    assert central.decisoes_paradas_no_painel(datetime.now(tz.utc)).tarefas is None
+
+
+def test_nome_alternativo_mesmo_dentro_da_pasta_nao_e_o_artefato_contratado(
+    tmp_path, monkeypatch
+):
+    pasta = carimbar_vinculos_em_arquivo(
+        tmp_path, monkeypatch, mudar_fonte={"arquivo": "paginas/outro.json"}
+    )
+    (pasta / "paginas/outro.json").write_bytes(
+        (pasta / "paginas/pedidos-do-dono.json").read_bytes()
+    )
+    assert central.decisoes_paradas_no_painel(datetime.now(tz.utc)).tarefas is None
+
+
+@pytest.mark.parametrize("conteudo", [b"{", b"[]", b"null", b"\xff"])
+def test_arquivo_ilegivel_mesmo_com_hash_coerente_preserva_contagem(
+    tmp_path, monkeypatch, conteudo
+):
+    pasta = carimbar_vinculos_em_arquivo(tmp_path, monkeypatch)
+    arquivo = pasta / "paginas/pedidos-do-dono.json"
+    anterior = hashlib.sha256(arquivo.read_bytes()).hexdigest()
+    arquivo.write_bytes(conteudo)
+    html = pasta / "painel.html"
+    html.write_text(
+        html.read_text(encoding="utf-8").replace(
+            anterior, hashlib.sha256(conteudo).hexdigest()
+        ),
+        encoding="utf-8",
+    )
+    fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.quantidade == 2 and fila.tarefas is None
+
+
+def test_descritor_nulo_conserva_leitura_inline_integral(tmp_path, monkeypatch):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": "TAR-701"}, {"arquivo": "b", "tarefa": None}],
+    )
+    html = tmp_path / "painel/painel.html"
+    html.write_text(
+        html.read_text(encoding="utf-8") + "pedidosDoDonoVinculosFonte: null,\n",
+        encoding="utf-8",
+    )
+    assert central.decisoes_paradas_no_painel(
+        datetime.now(tz.utc)
+    ).tarefas == frozenset({"TAR-701"})
+
+
+@pytest.mark.parametrize(
+    "linha",
+    [
+        "pedidosDoDonoVinculosFonte: null\n",
+        "pedidosDoDonoVinculosFonte: null,\npedidosDoDonoVinculosFonte: null,\n",
+        "pedidosDoDonoVinculosFonte: quebrado,\n",
+    ],
+)
+def test_descritor_malformado_nao_vira_inline_legado(tmp_path, monkeypatch, linha):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": "TAR-701"}, {"arquivo": "b", "tarefa": None}],
+    )
+    html = tmp_path / "painel/painel.html"
+    html.write_text(html.read_text(encoding="utf-8") + linha, encoding="utf-8")
+    fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.quantidade == 2 and fila.tarefas is None
+
+
+@pytest.mark.parametrize(
+    "fonte",
+    [
+        {"arquivo": "../pedidos-do-dono.json"},
+        {"arquivo": "/pedidos-do-dono.json"},
+        {"arquivo": "C:\\fora.json"},
+        {"arquivo": "paginas\\pedidos-do-dono.json"},
+        {"arquivo": "paginas/../pedidos-do-dono.json"},
+        {"arquivo": "https://exemplo.com/pedidos.json"},
+        {"arquivo": None},
+        {"carimbo": "000000000000"},
+        {"carimbo": 123},
+        {"quantidade": True},
+        {"quantidade": 2.0},
+        {"quantidade": "2"},
+        {"quantidade": 1},
+        {"sha256": "0" * 64},
+        {"sha256": None},
+        {"sha256": 123},
+    ],
+)
+def test_descritor_invalido_nao_deduplica_nem_apaga_a_contagem(
+    tmp_path, monkeypatch, fonte
+):
+    carimbar_vinculos_em_arquivo(tmp_path, monkeypatch, mudar_fonte=fonte)
+    fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.quantidade == 2
+    assert fila.tarefas is None
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [
+        {"carimbo": "000000000000"},
+        {"quantidade": True},
+        {"quantidade": 2.0},
+        {"quantidade": 1},
+        {"vinculos": [{"arquivo": "a", "tarefa": "TAR-701"}]},
+        {
+            "vinculos": [
+                {"arquivo": "a", "tarefa": 701},
+                {"arquivo": "b", "tarefa": None},
+            ]
+        },
+    ],
+)
+def test_arquivo_incoerente_mesmo_com_hash_valido_nao_deduplica(
+    tmp_path, monkeypatch, dados
+):
+    carimbar_vinculos_em_arquivo(tmp_path, monkeypatch, mudar_dados=dados)
+    fila = central.decisoes_paradas_no_painel(datetime.now(tz.utc))
+    assert fila.quantidade == 2
+    assert fila.tarefas is None
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "falha", ["ausente", "alterado", "html_outra_versao", "inline_parcial"]
+)
+def test_arquivo_de_vinculos_invalido_preserva_assuntos_sem_inventar_total(
+    tmp_path, monkeypatch, falha
+):
+    pasta = carimbar_vinculos_em_arquivo(tmp_path, monkeypatch)
+    arquivo = pasta / "paginas/pedidos-do-dono.json"
+    html = pasta / "painel.html"
+    if falha == "ausente":
+        arquivo.unlink()
+    elif falha == "alterado":
+        arquivo.write_text("{}", encoding="utf-8")
+    else:
+        texto = html.read_text(encoding="utf-8")
+        if falha == "html_outra_versao":
+            texto = texto.replace('carimbo: "abcdef123456"', 'carimbo: "000000000000"')
+        else:
+            texto = texto.replace(
+                "pedidosDoDonoVinculos: []",
+                'pedidosDoDonoVinculos: [{"arquivo":"a","tarefa":"TAR-701"}]',
+            )
+        html.write_text(texto, encoding="utf-8")
+    (tmp_path / "estados.json").write_text(
+        json.dumps(
+            {
+                tid: {"estado": "bloqueada", "espera": "mantenedor"}
+                for tid in ("TAR-701", "TAR-702")
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
+    _todos_respondem([])
+    texto = _texto(_dentro().get(TELA))
+    assert "2 · Decisões suas paradas" in texto
+    assert "2 · Tarefas esperando uma decisão sua" in texto
+    assert "Total de assuntos desconhecido" in texto
+    assert 'class="hero-numero"' not in texto
 
 
 @respx.mock
