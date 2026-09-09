@@ -457,7 +457,7 @@ não tem sigla (lei do CLAUDE.md).
         var ultimaLeitura = null;
 
         function falhou() {
-          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou limite de consultas). " +
+          estado.textContent = "Não consegui atualizar a leitura do GitHub (consulta ou resposta inválida). " +
             (ultimaLeitura ? "A lista conserva a última leitura, que pode ter mudado. " : "Ainda não há uma leitura válida. ") +
             "Volte a esta aba daqui a cinco minutos ou abra os trabalhos direto no GitHub. " +
             "O quadro abaixo continua sendo o retrato da última publicação.";
@@ -474,7 +474,7 @@ não tem sigla (lei do CLAUDE.md).
             a.textContent = rotuloDoLink;
             li.appendChild(a);
           }
-          lista.appendChild(li);
+          return li;
         }
 
         function consultar(caminho) {
@@ -485,8 +485,15 @@ não tem sigla (lei do CLAUDE.md).
             var parcial = /rel="next"/.test(r.headers.get("Link") || "");
             return r.json().then(function (itens) {
               if (!Array.isArray(itens) || itens.some(function (i) {
-                return !i || typeof i !== "object" || (caminho.indexOf("matching-refs") !== -1
-                  ? typeof i.ref !== "string" : !Number.isInteger(i.number) || i.number <= 0);
+                if (!i || typeof i !== "object" || Array.isArray(i)) { return true; }
+                if (caminho.indexOf("matching-refs") !== -1) {
+                  return typeof i.ref !== "string" || !/^refs\/reservas\/tarefa-TAR-\d{3,}$/.test(i.ref) || /\s/.test(i.ref);
+                }
+                return !Number.isSafeInteger(i.number) || i.number <= 0 ||
+                  (i.title != null && typeof i.title !== "string") ||
+                  (i.draft != null && typeof i.draft !== "boolean") ||
+                  (i.head != null && (typeof i.head !== "object" || Array.isArray(i.head) ||
+                    (i.head.ref != null && typeof i.head.ref !== "string")));
               })) {
                 throw new Error("resposta inválida");
               }
@@ -507,20 +514,14 @@ não tem sigla (lei do CLAUDE.md).
           ]).then(function (respostas) {
             var reservas = respostas[0].itens;
             var prs = respostas[1].itens;
-            lista.replaceChildren();
-            document.querySelectorAll(".reservada-agora").forEach(function (cartao) {
-              cartao.classList.remove("reservada-agora");
-            });
+            var novasLinhas = [];
+            var marcacoes = [];
             reservas.forEach(function (ref) {
-              var casado = (ref.ref || "").match(/^refs\/reservas\/tarefa-(TAR-\d{3,})$/);
-              if (!casado) { return; }
-              var id = casado[1];
-              linha("🔒 " + id + ": reserva registrada; atividade atual não comprovada.");
+              var id = ref.ref.slice("refs/reservas/tarefa-".length);
+              novasLinhas.push(linha("🔒 " + id + ": reserva registrada; atividade atual não comprovada."));
               var cartao = document.querySelector('[data-tarefa="' + id + '"]');
               if (cartao) {
-                cartao.classList.add("reservada-agora");
-                var etiqueta = cartao.querySelector(".agora");
-                if (etiqueta) { etiqueta.textContent = "🔒 reserva encontrada na última consulta"; }
+                marcacoes.push({cartao: cartao, etiqueta: cartao.querySelector(".agora")});
               }
             });
             prs.forEach(function (pr) {
@@ -528,19 +529,29 @@ não tem sigla (lei do CLAUDE.md).
               var casado = texto.match(/TAR-\d{3,}/);
               var fase = pr.draft === true ? "rascunho, em preparação" :
                 pr.draft === false ? "entrega aberta, aceite ainda não comprovado" : "fase não informada pelo GitHub";
-              linha("⚙ " + (casado ? casado[0] + ": " : "") + fase + ": " +
+              novasLinhas.push(linha("⚙ " + (casado ? casado[0] + ": " : "") + fase + ": " +
                 (pr.title || "(sem título)") + " ",
-                Number.isInteger(pr.number) && pr.number > 0 ? "https://github.com/" + REPO + "/pull/" + pr.number : null,
-                "abrir o nº " + pr.number);
+                "https://github.com/" + REPO + "/pull/" + pr.number,
+                "abrir o nº " + pr.number));
             });
-            ultimaLeitura = new Date();
-            carimbo.textContent = "Última leitura: " + ultimaLeitura.toLocaleString("pt-BR") +
+            var leitura = new Date();
+            var novoCarimbo = "Última leitura: " + leitura.toLocaleString("pt-BR") +
               ". Renovação ao voltar à aba, no máximo a cada cinco minutos.";
-            estado.textContent = respostas.some(function (r) { return r.parcial; })
+            var novoEstado = respostas.some(function (r) { return r.parcial; })
               ? "Leitura parcial: " + prs.length + " trabalhos e " + reservas.length +
                 " reservas recebidos. Há limite ou outra página; estes números não são o total. Abra a lista completa no GitHub."
               : reservas.length || prs.length ? "Reservas e trabalhos encontrados nesta leitura. Os testes e o aceite precisam de conferência." :
                 "Nenhuma reserva ou entrega aberta foi encontrada nesta leitura. Isso não comprova ausência de trabalho.";
+            var marcacoesAnteriores = document.querySelectorAll(".reservada-agora");
+            lista.replaceChildren.apply(lista, novasLinhas);
+            marcacoesAnteriores.forEach(function (cartao) { cartao.classList.remove("reservada-agora"); });
+            marcacoes.forEach(function (marcacao) {
+              marcacao.cartao.classList.add("reservada-agora");
+              if (marcacao.etiqueta) { marcacao.etiqueta.textContent = "🔒 reserva encontrada na última consulta"; }
+            });
+            ultimaLeitura = leitura;
+            carimbo.textContent = novoCarimbo;
+            estado.textContent = novoEstado;
           }).catch(falhou).finally(function () { emConsulta = false; });
         }
         window.addEventListener("focus", atualizar);
