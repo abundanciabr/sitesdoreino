@@ -1,4 +1,4 @@
-"""O simulador do mundo inteiro: as duas pistas rodam dias a fio e os 23 invariantes ficam de pé.
+"""O simulador do mundo inteiro: as duas pistas rodam dias a fio e os 24 invariantes ficam de pé.
 
 Lei: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` §5 (os dez invariantes de
 justiça) e §6 (os parâmetros). Emenda:
@@ -11,7 +11,7 @@ Este é o degrau 2.13 da escada. No degrau 2.6 este arquivo rodava cem alunos
 contra a FILA; agora ele roda o mundo inteiro: alunos com zero, uma e cinco
 entregas aprovadas, projetos dos três níveis, as duas pistas ao mesmo tempo,
 reservas do Mural que caducam, propostas aceitas, recusadas e vencidas, e rodadas
-de negociação que se esgotam. Os vinte e três guardas de `tests/test_inv_*.py`
+de negociação que se esgotam. Os vinte e quatro guardas de `tests/test_inv_*.py`
 medem cada invariante isolado, num cenário de duas ou três pessoas montado à mão.
 Este arquivo mede outra coisa, e é por isso que ele existe: **cem alunos e trinta
 projetos se atropelando durante dias**, com gente aceitando, passando, sumindo,
@@ -20,7 +20,7 @@ injustiça que nenhum cenário de três pessoas produz teria de aparecer.
 
 A ASSERÇÃO É POR PASSO, NUNCA POR RESULTADO FINAL
 --------------------------------------------------
-Os vinte e três são conferidos DUAS vezes por hora simulada: depois do tique
+Os vinte e quatro são conferidos DUAS vezes por hora simulada: depois do tique
 (quando o sistema já reagiu ao relógio) e depois dos gestos das pessoas. Um
 simulador que só olhasse o estado final seria quase inútil: a fila pode passar
 por um minuto com duas ofertas pendentes para o mesmo aluno e chegar limpa ao
@@ -65,7 +65,7 @@ O PLACAR
 --------
 Sai em texto no fim, para ser lido por gente e conferido contra o piloto de papel
 da Fase 1. Ele também é asserção: um simulador em que ninguém aceita, ninguém
-pega, ninguém propõe e ninguém some passaria nos vinte e três invariantes sem
+pega, ninguém propõe e ninguém some passaria nos vinte e quatro invariantes sem
 provar nada, e as asserções do fim do arquivo existem para que esse verde vazio
 seja impossível.
 """
@@ -266,6 +266,7 @@ class Regua:
     janela_sem_abandono: timedelta
     relogio_da_oferta: timedelta
     prazo_da_fila: timedelta
+    prazo_da_chamada_aberta: timedelta
     rodadas: int
     limite_da_justificativa: int
     dias_de_revisao: int
@@ -293,6 +294,7 @@ class Regua:
             janela_sem_abandono=timedelta(days=numero("janela_sem_abandono")),
             relogio_da_oferta=horas("relogio_da_oferta"),
             prazo_da_fila=horas("horas_para_virar_aberta"),
+            prazo_da_chamada_aberta=horas("horas_para_escalar_chamada_aberta"),
             rodadas=numero("rodadas_de_negociacao"),
             limite_da_justificativa=numero("limite_da_justificativa"),
             dias_de_revisao=numero("dias_de_revisao_no_prazo_prometido"),
@@ -405,12 +407,10 @@ def quem_ve_no_mural(projeto, perfis, memoria, com_oferta, regua, agora):
 # que vale zero (os presos por motivo NOVO) continua sendo o guarda de verdade.
 # Afrouxar o teto até o vermelho sumir esconderia, junto com o buraco conhecido,
 # todo buraco novo que aparecesse depois dele.
-PRESO_EM_CHAMADA_ABERTA = "chamada aberta sem ninguem que aceite (TAR-254)"
 PRESO_EM_NEGOCIACAO_SEM_PROPOSTA = "em negociacao e ninguem propos (achado aqui)"
 PRESO_NA_PRATELEIRA_COM_ELEGIVEL = "no mural com elegivel que nao pega (por desenho)"
 
 BURACOS_DECLARADOS = (
-    PRESO_EM_CHAMADA_ABERTA,
     PRESO_EM_NEGOCIACAO_SEM_PROPOSTA,
     PRESO_NA_PRATELEIRA_COM_ELEGIVEL,
 )
@@ -419,10 +419,6 @@ BURACOS_DECLARADOS = (
 def por_que_esta_preso(projeto, tem_proposta_de_pe, tem_elegivel):
     """O nome do buraco em que este projeto caiu, ou `""` se ele é novidade.
 
-    - **`aberta`**: a chamada aberta não tem relógio nenhum no código de hoje. O
-      tique não a varre, nada a devolve à fila e nada a manda ao plantão; se
-      ninguém elegível aceitar, ela fica ali para sempre. Foi a TAR-124 que mediu
-      isto, e está registrado na TAR-254.
     - **`em_negociacao` sem proposta**: quem aceita uma oferta da FILA (ou uma
       chamada aberta) cai em `em_negociacao` na hora, e o relógio da reserva, que
       é do Mural, não cobre esse caso. Se o aluno nunca preencher o primeiro
@@ -434,8 +430,6 @@ def por_que_esta_preso(projeto, tem_proposta_de_pe, tem_elegivel):
       pego."* Retirá-lo da prateleira seria recolher o que a prateleira ainda
       pode vender.
     """
-    if projeto.status == Encomenda.Status.ABERTA:
-        return PRESO_EM_CHAMADA_ABERTA
     if projeto.status == Encomenda.Status.EM_NEGOCIACAO and not tem_proposta_de_pe:
         return PRESO_EM_NEGOCIACAO_SEM_PROPOSTA
     if projeto.status == Encomenda.Status.NO_MURAL and tem_elegivel:
@@ -620,9 +614,9 @@ class Placar:
 
 @dataclass(frozen=True)
 class Instantaneo:
-    """Tudo o que os vinte e três guardas precisam ver, num retrato só.
+    """Tudo o que os vinte e quatro guardas precisam ver, num retrato só.
 
-    Existe por coerência antes de por custo: os vinte e três se medem duas vezes
+    Existe por coerência antes de por custo: os vinte e quatro se medem duas vezes
     por hora simulada, e cada um lendo o banco por conta própria veria retratos
     ligeiramente diferentes do mesmo instante. Um retrato só é uma verdade só.
     """
@@ -1603,6 +1597,14 @@ def conferir_que_nada_fica_preso(retrato, agora, memoria, placar, regua):
         if projeto.status not in ESPERAS:
             continue
         parado_ha = agora - memoria.parado_desde[projeto.pk]
+        if projeto.status == Encomenda.Status.ABERTA:
+            assert parado_ha < regua.prazo_da_chamada_aberta, (
+                f"[INV-ENC-J11] quebrado em {agora.isoformat()}: a chamada "
+                f"aberta {projeto.pk} esta sem aceite ha {parado_ha}, e o "
+                f"prazo historico e {regua.prazo_da_chamada_aberta}. O tique "
+                "tinha de manda-la ao plantao."
+            )
+            continue
         if parado_ha <= TETO_PARADO:
             continue
         motivo = por_que_esta_preso(
@@ -1755,17 +1757,17 @@ def _conferir_que_o_cliente_calado_foi_ao_plantao(retrato, batida, agora):
 # ---------------------------------------------------------------------------
 
 
-def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_tres_invariantes_cai(
+def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
     povoado, capsys
 ):
-    """O portão do degrau 2.13: dias de fila e de Mural cheios, e os 23 de pé.
+    """O portão do degrau 2.13: dias de fila e de Mural cheios, e os 24 de pé.
 
     O laço é o do plano §7.4 mais o da emenda §4.2: a cada hora simulada o tique
     expira ofertas, reservas e propostas, abre o que esperou demais, manda ao
     plantão o que encalhou e oferece o que sobrou; depois a produção anda, o
     caixa registra, os alunos respondem, pegam, propõem e cedem, o cliente
     responde, alguém tenta a chamada aberta, o interruptor gira e quem terminou
-    volta com uma entrega a mais. Entre uma coisa e outra, os vinte e três.
+    volta com uma entrega a mais. Entre uma coisa e outra, os vinte e quatro.
     """
     site = povoado.site_id
     regua = Regua.do_banco(povoado.t_zero, site_id=site)
@@ -1919,7 +1921,7 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_tres_invariantes_cai(
 
     # O SIMULADOR PRECISA TER ACONTECIDO. Sem estas linhas, um mundo em que
     # ninguém recebe, ninguém pega, ninguém propõe e ninguém some passaria nos
-    # vinte e três invariantes sem provar nada — o verde vazio que a
+    # vinte e quatro invariantes sem provar nada — o verde vazio que a
     # `armadilhas/132` descreve.
     # Os pisos são a METADE do que esta semente produz, e não o número exato: o
     # que eles guardam é "o mecanismo aconteceu", não "aconteceu tantas vezes".
@@ -1964,19 +1966,8 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_tres_invariantes_cai(
     # motivo que não esteja declarado.
     assert placar.presos.get("", 0) == 0, texto
 
-    # OS DOIS ACHADOS DESTA TAREFA, ASSERIDOS COMO AINDA EXISTENTES. As duas
-    # linhas abaixo parecem estranhas, e a estranheza é o ponto: elas exigem que
-    # o defeito CONTINUE aparecendo, e ficam vermelhas no dia em que ele for
-    # consertado.
-    #
-    # A alternativa era pior. Um defeito descrito só em prosa vira comentário
-    # velho: seis meses depois ninguém sabe se ele ainda existe, e a exceção que
-    # o simulador abre para ele vira exceção permanente para um problema que já
-    # não há. Com estas duas linhas, quem tapar o buraco é obrigado a passar por
-    # aqui e trocar a contagem pela asserção de verdade
-    # (`alunos_com_duas_negociacoes == 0` e nenhum estouro cru), no mesmo PR do
-    # conserto. É o mesmo raciocínio do `BURACOS_DECLARADOS`, aplicado ao que
-    # esta tarefa descobriu.
+    # O defeito de negociação continua declarado até a TAR-258, que é o despacho
+    # responsável por transformá-lo em recusa nomeada e guarda de elegibilidade.
     assert placar.alunos_com_duas_negociacoes, (
         "O buraco do Mural que nao tranca o aluno NAO apareceu nesta rodada. Se "
         "ele foi consertado, troque esta linha pela asserção de verdade do "

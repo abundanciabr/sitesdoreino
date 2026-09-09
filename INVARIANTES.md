@@ -807,6 +807,21 @@ primeira oportunidade de violá-la.
   `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
 - **Célula dona:** encomendas
 
+### [INV-ENC-J11] Chamada Aberta Sem Aceite Vai ao Plantão
+- **O quê:** uma encomenda em `aberta` que não recebeu aceite não passa de
+  `horas_para_escalar_chamada_aberta` sem ir a `para_reclassificar`. O tique de
+  um minuto mede a espera desde a entrada em `aberta`, e a mudança de status
+  deixa a decisão para o plantão.
+- **Por quê:** a chamada aberta já avisou todos os elegíveis. Sem este segundo
+  limite, uma encomenda sem elegível ou sem aceite fica presa no único estado
+  que dependia de um clique de aluno, e o cliente e o plantão não sabem que ela
+  parou.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j11_chamada_aberta_tem_fim.py` — o par de
+  um minuto antes e no prazo, a leitura do valor histórico e a segunda passada
+  inerte. Provado por mutação nesta tarefa.
+- **Célula dona:** encomendas
+
 ### [INV-ENC-M1] O Mural Só Mostra o Que o Aluno é Elegível a Pegar
 - **O quê:** a lista do Mural, para um aluno, contém exatamente os projetos para
   os quais aquele aluno passa na régua de elegibilidade da lei, e nenhum outro. A
