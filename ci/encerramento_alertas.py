@@ -1,16 +1,15 @@
 """Recusa conclusões novas que deixam a entrega do mesmo PR em alerta.
 
 O livro continua imutável. A dívida histórica não bloqueia outro trabalho:
-só registros novos são examinados. Pedidos ao dono precisam dizer por que
-a decisão é exclusiva dele e como decidir, além de declarar impacto. O vínculo
-continua sendo responde_a, escalar, compartilhado pelo painel e pelo admin.
+só registros novos são examinados. Pedidos ao dono precisam explicar a decisão.
+O vínculo usa responde_a escalar e relacao explícita. Comentário não encerra ocorrência.
 """
 
 from __future__ import annotations
 
 import os
 import re
-from datetime import date
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -39,29 +38,87 @@ def prs_citados(evidencia: object) -> set[tuple[str, str, int]]:
 
 
 def entrega_em_alerta(registro: dict) -> bool:
-    return registro.get("tipo") == "entrega" and registro.get("gravidade") in ("ambar", "vermelho")
+    return (registro.get("tipo") == "entrega" and registro.get("gravidade") in ("ambar", "vermelho")
+            and not (registro.get("relacao") is not None and isinstance(registro.get("responde_a"), str)))
+
+
+def prova_posterior(resposta: dict, alerta: dict) -> bool:
+    if not isinstance(resposta.get("evidencia"), str) or not resposta["evidencia"].strip():
+        return False
+    formato = r"\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?"
+    if any(not isinstance(valor, str) or not re.fullmatch(formato, valor) for valor in (resposta.get("verificado_em"), alerta.get("quando"))):
+        return False
+    try:
+        conferida = datetime.fromisoformat(resposta.get("verificado_em") or "")
+        fato = datetime.fromisoformat(alerta.get("quando") or "")
+        conferida = conferida.replace(tzinfo=timezone.utc) if conferida.tzinfo is None else conferida
+        fato = fato.replace(tzinfo=timezone.utc) if fato.tzinfo is None else fato
+        return conferida >= fato
+    except (ValueError, TypeError):
+        return False
 
 
 def baixa_comprovada(resposta: dict, alerta: dict) -> bool:
-    if resposta.get("gravidade") != "verde" or not str(resposta.get("evidencia") or "").strip():
+    """Espelho independente de LOGICA.resolucaoComprovada, com exemplos comuns."""
+    if resposta.get("arquivo") == alerta.get("arquivo") or resposta.get("responde_a") != alerta.get("arquivo") or (alerta.get("relacao") and alerta.get("responde_a")) or not prova_posterior(resposta, alerta):
         return False
-    try:
-        if date.fromisoformat(resposta.get("verificado_em") or "") < date.fromisoformat(alerta["quando"]):
-            return False
-    except (ValueError, TypeError, KeyError):
+    if resposta.get("relacao") not in (None, "resolucao"):
         return False
-    prs = prs_citados(alerta.get("evidencia"))
+    if alerta.get("tarefa") and resposta.get("tarefa") != alerta["tarefa"]:
+        return False
+    legado_conferido = resposta.get("relacao") is None and resposta.get("tipo") == "resposta" and resposta.get("gravidade") == "info"
+    if resposta.get("gravidade") != "verde" and not legado_conferido:
+        return False
+    prs = prs_citados(alerta.get("evidencia")) if resposta.get("relacao") is None and alerta.get("tipo") == "entrega" else set()
     return not prs or bool(prs & prs_citados(resposta.get("evidencia")))
 
 
+def decisao_comprovada(resposta: dict | None, alvo: dict | None) -> bool:
+    """Uma resposta humana encerra a pergunta, sem atestar correção técnica."""
+    if not resposta or not alvo or resposta.get("arquivo") == alvo.get("arquivo") or resposta.get("responde_a") != alvo.get("arquivo") or (alvo.get("relacao") and alvo.get("responde_a")):
+        return False
+    return (
+        resposta.get("relacao") == "decisao" and alvo.get("precisa_do_dono") is True
+        and resposta.get("autoridade") == "mantenedor"
+        and resposta.get("tipo") in ("decisao", "resposta")
+        and (not alvo.get("tarefa") or resposta.get("tarefa") == alvo["tarefa"])
+        and prova_posterior(resposta, alvo)
+    )
+
+
+def complementos_comprovados(registros: dict[str, dict]) -> dict[str, str]:
+    candidatos, ambiguos = {}, set()
+    for r in registros.values():
+        if r.get("relacao") != "complemento":
+            continue
+        origem, destino = r.get("responde_a"), r.get("ocorrencia")
+        if not isinstance(origem, str) or not isinstance(destino, str):
+            continue
+        alvo, principal = registros.get(origem), registros.get(destino)
+        if not alvo or not principal or len({r.get("arquivo"), origem, destino}) != 3:
+            continue
+        if (alvo.get("relacao") and alvo.get("responde_a")) or (principal.get("relacao") and principal.get("responde_a")):
+            continue
+        if r.get("precisa_do_dono") or r.get("gravidade") != "info" or (alvo.get("tarefa") and r.get("tarefa") != alvo["tarefa"]):
+            continue
+        if not prova_posterior(r, alvo) or not prova_posterior(r, principal):
+            continue
+        if origem in candidatos and candidatos[origem] != destino:
+            ambiguos.add(origem)
+        candidatos[origem] = destino
+    return {origem: destino for origem, destino in candidatos.items() if origem not in ambiguos and destino not in candidatos and origem not in candidatos.values()}
+
+
 def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]:
-    alertas = {ident: r for ident, r in registros.items() if entrega_em_alerta(r)}
+    entregas = {ident: r for ident, r in registros.items() if entrega_em_alerta(r)}
     baixados = {
-        r.get("responde_a") for r in registros.values()
+        r.get("responde_a") for ident, r in registros.items()
         if isinstance(r.get("responde_a"), str)
-        and r["responde_a"] in alertas
-        and baixa_comprovada(r, alertas[r["responde_a"]])
+        and r["responde_a"] in entregas
+        and (ident not in novos or r.get("relacao") == "resolucao")
+        and baixa_comprovada(r, entregas[r["responde_a"]])
     }
+    complementos = complementos_comprovados(registros)
     problemas = []
     for ident in sorted(novos):
         registro = registros[ident]
@@ -78,26 +135,39 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
                 problemas.append(f"{ident}: pedido novo exige reversivel true ou false; veja painel/LEIA-ME.md.")
             if registro.get("impacto") not in ("alto", "medio", "baixo"):
                 problemas.append(f"{ident}: pedido novo exige impacto alto, medio ou baixo; veja painel/LEIA-ME.md.")
-        alvo = registro.get("responde_a")
-        if alvo is not None and not isinstance(alvo, str):
+        alvo_id = registro.get("responde_a")
+        relacao = registro.get("relacao")
+        if alvo_id is not None and not isinstance(alvo_id, str):
             problemas.append(f"{ident}: responde_a precisa ser um identificador em texto ou null; use uma baixa por alerta.")
             continue
-        if isinstance(alvo, str) and alvo in alertas and not baixa_comprovada(registro, alertas[alvo]):
-            problemas.append(
-                f"{ident}: baixa de {alvo} sem prova. Use gravidade verde, verificado_em "
-                "a partir do alerta e evidencia citando o PR da entrega e a conferência realizada."
-            )
-        if registro.get("gravidade") != "verde":
+        alvo = registros.get(alvo_id)
+        if relacao == "complemento":
+            destino = registro.get("ocorrencia")
+            principal = registros.get(destino) if isinstance(destino, str) else None
+            if not alvo or not principal or complementos.get(alvo_id) != destino or complementos_comprovados({alvo_id: alvo, destino: principal, ident: registro}).get(alvo_id) != destino or not prova_posterior(registro, alvo) or not prova_posterior(registro, principal) or registro.get("gravidade") != "info" or registro.get("precisa_do_dono"):
+                problemas.append(f"{ident}: complemento sem vínculo comprovado; indique alvo e canônico distintos existentes, prova dos dois e elimine ciclos ou ambiguidades.")
+        if relacao == "historico":
+            if alvo_id is not None or registro.get("tipo") != "incidente" or registro.get("precisa_do_dono") or registro.get("gravidade") != "verde" or not prova_posterior(registro, registro):
+                problemas.append(f"{ident}: historico sem prova ou com alvo; use incidente verde comprovado sem responde_a, ou resolucao para encerrar ocorrência existente.")
+        if relacao == "decisao" and not decisao_comprovada(registro, alvo):
+            problemas.append(f"{ident}: decisão sem prova do pedido; indique o alvo original, autoridade mantenedor, tipo resposta ou decisao, mesma tarefa e evidencia conferida a partir do pedido.")
+        if relacao == "resolucao" and (not alvo or not baixa_comprovada(registro, alvo)):
+            problemas.append(f"{ident}: baixa de {alvo_id} sem prova. Use gravidade verde, a mesma tarefa, verificado_em a partir do alerta e evidencia do PR da entrega e da conferência realizada.")
+        if alvo and relacao is None and (alvo.get("precisa_do_dono") or baixa_comprovada(registro, alvo)):
+            problemas.append(f"{ident}: resposta nova exige relacao comentario, decisao ou resolucao; o adaptador legado não autoriza novos encerramentos implícitos.")
+        # A resolução tipada já foi conferida pelo alvo. URL compartilhada não
+        # transforma outras ocorrências em parte desse aceite.
+        if relacao is not None or registro.get("gravidade") != "verde":
             continue
         prs = prs_citados(registro.get("evidencia"))
-        for alerta_id, alerta in sorted(alertas.items()):
-            if alerta_id == ident or alerta_id in baixados:
+        for alerta_id, alerta in sorted(entregas.items()):
+            if alerta_id == ident or alerta_id in baixados or (alerta_id in complementos and complementos[alerta_id] in baixados):
                 continue
             if prs & prs_citados(alerta.get("evidencia")):
                 problemas.append(
                     f"{ident}: conclusão verde deixa {alerta_id} em alerta. "
                     f'Acrescente no mesmo PR uma baixa com responde_a: "{alerta_id}", '
-                    "gravidade verde, evidencia do PR e da conferência, e verificado_em. "
+                    'relacao: "resolucao", gravidade verde, evidencia do PR e da conferência, e verificado_em. '
                     "O próprio registro de conclusão pode ser essa baixa. "
                     "Preserve o registro anterior; molde em painel/LEIA-ME.md."
                 )

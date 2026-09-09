@@ -197,11 +197,57 @@ caso("vence_em_dias como TEXTO '10' REPROVA",
 caso("evidencia em branco REPROVA (evidência vazia não é evidência)",
   LOGICA.validarRegistros([reg({ evidencia: "   " })]).length > 0);
 
+var exemplosResolucao = require("./casos_resolucao.json");
+exemplosResolucao.casos.forEach(function (c) {
+  caso("prova compartilhada: " + c.nome, LOGICA.resolucaoComprovada(
+    Object.assign({}, exemplosResolucao.resposta, c.resposta), Object.assign({}, exemplosResolucao.alvo, c.alvo)) === c.esperado);
+});
+
+console.log("== vínculo explícito e resolução comprovada ==");
+var ocorrencia = reg({arquivo: "20260909-901-ocorrencia", tipo: "incidente", gravidade: "vermelho", tarefa: "TAR-292"});
+var comentario = reg({arquivo: "20260909-902-comentario", relacao: "comentario", responde_a: ocorrencia.arquivo, tarefa: "TAR-292"});
+var resolucao = reg({arquivo: "20260909-903-resolucao", relacao: "resolucao", responde_a: ocorrencia.arquivo,
+  tarefa: "TAR-292", gravidade: "verde", evidencia: "Conferência pública: resultado esperado medido.", verificado_em: "2026-08-26"});
+caso("comentário informativo não apaga incidente vermelho", LOGICA.problemasAbertos([ocorrencia, comentario]).length === 1);
+caso("nota legada informativa não é resolução", LOGICA.problemasAbertos([ocorrencia, Object.assign({}, comentario, {relacao: undefined})]).length === 1);
+caso("resolução comprovada fecha a ocorrência", LOGICA.problemasAbertos([ocorrencia, resolucao]).length === 0);
+caso("comentário posterior não desfaz prova anterior", LOGICA.problemasAbertos([ocorrencia, resolucao, comentario]).length === 0);
+caso("tentativas da mesma ocorrência contam uma obrigação", LOGICA.problemasAbertos([ocorrencia, Object.assign({}, comentario, {gravidade: "ambar"})]).length === 1);
+caso("títulos iguais não agrupam ocorrências distintas", LOGICA.problemasAbertos([ocorrencia, Object.assign({}, ocorrencia, {arquivo: "20260909-904-outra"})]).length === 2);
+[ {evidencia: null}, {verificado_em: null}, {verificado_em: "2026-08-25"}, {gravidade: "info"}, {tarefa: "TAR-293"} ].forEach(function (m) {
+  var invalida = Object.assign({}, resolucao, m);
+  caso("resolução inválida mantém alerta: " + JSON.stringify(m), LOGICA.problemasAbertos([ocorrencia, invalida]).length === 1);
+  caso("resolução inválida reprova contrato: " + JSON.stringify(m), LOGICA.validarRegistros([ocorrencia, invalida]).length > 0);
+});
+var historico = Object.assign({}, ocorrencia, {relacao: "historico", gravidade: "verde", evidencia: "Incidente e correção conferidos.", verificado_em: "2026-08-26"});
+caso("incidente histórico comprovado não abre alerta", LOGICA.validarRegistros([historico]).length === 0 && LOGICA.problemasAbertos([historico]).length === 0);
+caso("histórico sem prova reprova", LOGICA.validarRegistros([Object.assign({}, historico, {evidencia: null})]).length > 0);
+[{tipo: "nota"}, {gravidade: "ambar"}, {precisa_do_dono: true}, {verificado_em: "2026-08-25"}].forEach(function (m) {
+  caso("histórico exige incidente resolvido: " + JSON.stringify(m), LOGICA.validarRegistros([Object.assign({}, historico, m)]).length > 0);
+});
+caso("resolução sem alvo reprova", LOGICA.validarRegistros([Object.assign({}, resolucao, {responde_a: null})]).length > 0);
+caso("comentário com pedido próprio reprova", LOGICA.validarRegistros([ocorrencia, Object.assign({}, comentario, {precisa_do_dono: true})]).length > 0);
+caso("comentário com tarefa diferente reprova", LOGICA.validarRegistros([ocorrencia, Object.assign({}, comentario, {tarefa: "TAR-293"})]).length > 0);
+caso("tentativa não vira raiz de outra tentativa", LOGICA.validarRegistros([ocorrencia, comentario, Object.assign({}, comentario, {arquivo: "20260909-907-tentativa", responde_a: comentario.arquivo})]).length > 0);
+caso("histórico não dá baixa em outra ocorrência", LOGICA.validarRegistros([ocorrencia, Object.assign({}, historico, {arquivo: "20260909-905-historia", responde_a: ocorrencia.arquivo})]).length > 0);
+caso("relação desconhecida reprova", LOGICA.validarRegistros([ocorrencia, Object.assign({}, comentario, {relacao: "qualquer"})]).length > 0);
+caso("tarefa malformada reprova", LOGICA.validarRegistros([reg({tarefa: "292"})]).length > 0);
+caso("responde_a em lista reprova", LOGICA.validarRegistros([ocorrencia, Object.assign({}, comentario, {responde_a: [ocorrencia.arquivo]})]).length > 0);
+var decisaoAlvo = reg({arquivo: "20260909-906-pedido", precisa_do_dono: true});
+var decisaoDono = Object.assign({}, comentario, {responde_a: decisaoAlvo.arquivo, relacao: "decisao", tipo: "resposta", autoridade: "mantenedor", evidencia: "Decisão registrada na sessão.", verificado_em: "2026-08-26"});
+caso("comentário não responde decisão", LOGICA.caixaDeEntrada([decisaoAlvo, Object.assign({}, comentario, {responde_a: decisaoAlvo.arquivo})], AGORA).length === 1);
+caso("decisão explícita comprovada fecha pedido", LOGICA.caixaDeEntrada([decisaoAlvo, decisaoDono], AGORA).length === 0);
+caso("decisão por sessão não substitui o mantenedor", LOGICA.validarRegistros([decisaoAlvo, Object.assign({}, decisaoDono, {autoridade: "sessao"})]).length > 0);
+caso("decisão não encerra incidente que pede decisão", LOGICA.problemasAbertos([Object.assign({}, ocorrencia, {precisa_do_dono: true}), Object.assign({}, decisaoDono, {responde_a: ocorrencia.arquivo})]).length === 1);
+caso("decisão âmbar da ocorrência não duplica o alerta", LOGICA.problemasAbertos([Object.assign({}, ocorrencia, {precisa_do_dono: true}), Object.assign({}, decisaoDono, {responde_a: ocorrencia.arquivo, gravidade: "ambar"})]).length === 1);
+var resumoVinculos = LOGICA.montarResumo([ocorrencia, resolucao, comentario]);
+caso("resumo preserva resolução da ocorrência", LOGICA.problemasAbertos(resumoVinculos.registros, resumoVinculos.respondidos).length === 0);
+
 console.log("== problemas e mudanças ==");
 var incendio = reg({ arquivo: "20260826-003-incendio", tipo: "incidente", gravidade: "vermelho" });
 caso("incidente vermelho sem resposta está em 'problemas abertos'",
   LOGICA.problemasAbertos([incendio]).length === 1);
-var apagado = reg({ arquivo: "20260826-004-apagado", tipo: "resposta", responde_a: "20260826-003-incendio" });
+var apagado = reg({ arquivo: "20260826-004-apagado", tipo: "resposta", responde_a: "20260826-003-incendio", gravidade: "verde", evidencia: "Correção conferida", verificado_em: "2026-08-26" });
 caso("incidente respondido SAI de problemas abertos",
   LOGICA.problemasAbertos([incendio, apagado]).length === 0);
 caso("frente âmbar NÃO vira 'problema aberto' (frente tem bloco próprio — um fato, uma casa)",
@@ -925,9 +971,57 @@ caso("falha técnica continua visível em alertas, fora das decisões",
 caso("pedido antigo ambíguo não some por texto técnico ou idade",
   separacao.grupos.decidir.length === 1 && separacao.grupos.decidir[0].registro.arquivo === legadoAmbiguo.arquivo);
 
+var exemplosComplemento = require("./casos_resolucao.json");
+var fatoComplementar = reg(Object.assign({}, exemplosComplemento.alvo));
+var canonico = reg({arquivo: "principal", gravidade: "ambar", quando: "2026-09-09T16:00:00Z"});
+var vinculo = reg({arquivo: "vinculo", relacao: "complemento", responde_a: "ocorrencia", ocorrencia: "principal",
+  tarefa: "TAR-292", gravidade: "info", evidencia: "Auditoria dos dois fatos confirma a mesma obrigação.", verificado_em: "2026-09-09T17:00:00Z"});
+exemplosComplemento.complementos.forEach(function (c) {
+  var resposta = Object.assign({}, vinculo, c.resposta);
+  var livro = [fatoComplementar, canonico, resposta];
+  caso("complemento: " + c.nome, !!LOGICA.complementosComprovados(livro)[fatoComplementar.arquivo] === c.esperado);
+});
+var livroComplementar = [fatoComplementar, canonico, vinculo];
+caso("complemento preserva uma obrigação canônica", LOGICA.problemasAbertos(livroComplementar).map(function(r){return r.arquivo;}).join() === "principal");
+caso("complemento não responde pedido humano", LOGICA.caixaDeEntrada([Object.assign({}, fatoComplementar, {precisa_do_dono:true}), canonico, vinculo], HOJE).length === 1);
+caso("histórico conserva fato e vínculo", LOGICA.idsDaOcorrencia(livroComplementar, "principal").sort().join() === "ocorrencia,principal,vinculo");
+var invalido = Object.assign({}, vinculo, {arquivo:"ultimo", evidencia:"", ocorrencia:"inexistente"});
+caso("último complemento inválido não substitui vínculo comprovado", LOGICA.complementosComprovados(livroComplementar.concat(invalido)).ocorrencia === "principal");
+caso("ciclo não suprime obrigações", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(Object.assign({}, vinculo, {arquivo:"volta", responde_a:"principal", ocorrencia:"ocorrencia", tarefa:null})))).length === 0);
+var resumoComplementar = LOGICA.montarResumo(livroComplementar);
+caso("resumo conserva obrigação canônica", LOGICA.problemasAbertos(resumoComplementar.registros, resumoComplementar.respondidos).map(function(r){return r.arquivo;}).join() === "principal");
+
+caso("histórico completo viaja mesmo sem seus fatos no resumo", LOGICA.idsDaOcorrencia([], "principal", resumoComplementar.respondidos).sort().join() === "ocorrencia,principal,vinculo");
+var terceiro = reg({arquivo:"terceiro", gravidade:"ambar", quando:"2026-09-09"});
+var segundoVinculo = Object.assign({}, vinculo, {arquivo:"outrovinculo", ocorrencia:"terceiro"});
+caso("destinos contraditórios são recusados", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(terceiro,segundoVinculo))).length === 0);
+segundoVinculo.responde_a = "principal"; segundoVinculo.tarefa = null;
+caso("cadeia não aplica vínculos pela metade", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(terceiro,segundoVinculo))).length === 0);
+
+["TAR-292", "TAR-294"].forEach(function(tarefaResidual) {
+  var alvo = reg({arquivo:"alvo-tipado",tipo:"entrega",gravidade:"ambar",tarefa:"TAR-292",evidencia:"https://github.com/abundanciabr/sitesdoreino/pull/1496"});
+  var residual = Object.assign({}, alvo, {arquivo:"residual-tipado",tarefa:tarefaResidual});
+  var baixa = Object.assign({}, alvo, {arquivo:"baixa-tipada",gravidade:"verde",relacao:"resolucao",responde_a:alvo.arquivo,verificado_em:alvo.quando});
+  caso("resolução tipada preserva residual do mesmo PR em " + tarefaResidual,
+    LOGICA.problemasAbertos([alvo,residual,baixa]).map(function(r){return r.arquivo;}).join() === residual.arquivo);
+});
+
+exemplosResolucao.decisoes.forEach(function(c) {
+  var pedido = reg(Object.assign({}, exemplosResolucao.pedido, c.alvo));
+  var resposta = reg(Object.assign({}, exemplosResolucao.decisao, c.resposta));
+  caso("decisão compartilhada: " + c.nome, LOGICA.decisaoComprovada(resposta,pedido) === c.esperado);
+  if (resposta.relacao === "decisao") caso("decisão não corrige incidente: " + c.nome, !LOGICA.resolucaoComprovada(resposta,pedido));
+});
+caso("decisão sem alvo não tem prova", !LOGICA.decisaoComprovada(exemplosResolucao.decisao,null));
+caso("decisão sem registro não tem prova", !LOGICA.decisaoComprovada(null,exemplosResolucao.pedido));
+var perguntaIncidente = reg(Object.assign({}, exemplosResolucao.pedido));
+var respostaHumana = reg(Object.assign({}, exemplosResolucao.decisao));
+caso("decisão humana encerra pergunta sem resolver incidente", LOGICA.caixaDeEntrada([perguntaIncidente,respostaHumana],HOJE).length === 0 && LOGICA.problemasAbertos([perguntaIncidente,respostaHumana]).length === 1);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");
   process.exit(1);
 }
+require("./teste_resolucao_livro.js");
 console.log("✅ teste_logica: todos os casos passaram.");

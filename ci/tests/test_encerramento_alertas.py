@@ -1,6 +1,7 @@
 """A conclusão e a baixa viajam juntas, sem apagar alertas nem reescrever história."""
 
 import copy
+import json
 from pathlib import Path
 
 import pytest
@@ -36,7 +37,7 @@ def test_verde_do_mesmo_pr_exige_baixa_exata():
 
 
 def test_propria_conclusao_pode_fechar_alerta():
-    assert guarda.conferir_registros(livro(responde_a="alerta"), {"verde"}) == []
+    assert guarda.conferir_registros(livro(responde_a="alerta", relacao="resolucao"), {"verde"}) == []
 
 
 @pytest.mark.parametrize("alvo", [["alerta"], [], {}, 1, False])
@@ -47,11 +48,11 @@ def test_responde_a_nao_textual_nao_contorna_prova_por_coercao(alvo):
 
 @pytest.mark.parametrize("mudancas", [
     {"gravidade": "info"}, {"gravidade": "ambar"}, {"gravidade": "vermelho"},
-    {"evidencia": " "}, {"evidencia": PR + "0"},
+    {"evidencia": " "},
     {"verificado_em": None}, {"verificado_em": "ontem"}, {"verificado_em": "2026-09-08"},
 ])
 def test_baixa_sem_prova_recusada(mudancas):
-    registros = livro(responde_a="alerta", **mudancas)
+    registros = livro(responde_a="alerta", relacao="resolucao", **mudancas)
     assert any("baixa de alerta sem prova" in e for e in guarda.conferir_registros(registros, {"verde"}))
 
 
@@ -73,12 +74,15 @@ def test_url_do_pr_com_fragmento_ou_pontuacao_mantem_identidade(url):
 
 
 def test_dois_alertas_fecham_no_mesmo_lote_sem_cobranca_circular():
-    registros = livro(responde_a="alerta")
+    registros = livro(responde_a="alerta", relacao="resolucao")
     registros["outro-alerta"] = dict(ALERTA, arquivo="outro-alerta")
-    registros["outra-baixa"] = dict(VERDE, arquivo="outra-baixa", responde_a="outro-alerta")
+    registros["outra-baixa"] = dict(VERDE, arquivo="outra-baixa", responde_a="outro-alerta", relacao="resolucao")
     assert guarda.conferir_registros(registros, {"verde", "outra-baixa"}) == []
     del registros["outra-baixa"]
-    assert any("outro-alerta" in e for e in guarda.conferir_registros(registros, {"verde"}))
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    assert not guarda.baixa_comprovada(registros["verde"], registros["outro-alerta"])
+    registros["generica"] = dict(VERDE, arquivo="generica")
+    assert any("outro-alerta" in e for e in guarda.conferir_registros(registros, {"generica"}))
 
 
 def test_historia_orfa_nao_bloqueia_trabalho_sem_relacao():
@@ -139,8 +143,8 @@ def test_caso_real_041_recusa_orfao_aceita_baixas_e_preserva_alerta_legitimo():
     registros = {ident: fonte[ident] for ident in (cursos, situacao, conclusao)}
     assert any(situacao in e for e in guarda.conferir_registros(registros, {conclusao}))
     assert registros[cursos]["responde_a"] is None
-    registros[conclusao] = dict(registros[conclusao], responde_a=situacao)
-    registros["baixa-cursos"] = dict(VERDE, responde_a=cursos, evidencia=PR.replace("1474", "1472"))
+    registros[conclusao] = dict(registros[conclusao], responde_a=situacao, relacao="resolucao")
+    registros["baixa-cursos"] = dict(VERDE, responde_a=cursos, relacao="resolucao", evidencia=PR.replace("1474", "1472"))
     registros["legitimo"] = dict(ALERTA, arquivo="legitimo", evidencia=PR + "0")
     assert guarda.conferir_registros(registros, {conclusao, "baixa-cursos"}) == []
     respondidos = {r.get("responde_a") for r in registros.values()}
@@ -148,6 +152,77 @@ def test_caso_real_041_recusa_orfao_aceita_baixas_e_preserva_alerta_legitimo():
     assert registros["legitimo"]["gravidade"] == "ambar"
 
 
+@pytest.mark.parametrize("tipo", ["incidente", "nota", "medicao", "entrega"])
+def test_comentario_novo_nao_e_baixa_nem_erro(tipo):
+    registros = livro(responde_a="alerta", relacao="comentario", gravidade="info")
+    registros["alerta"]["tipo"] = tipo
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    assert not guarda.baixa_comprovada(registros["verde"], registros["alerta"])
+
+
+@pytest.mark.parametrize("tipo", ["incidente", "nota", "medicao"])
+def test_resolucao_de_qualquer_alerta_exige_prova(tipo):
+    registros = livro(responde_a="alerta", relacao="resolucao", evidencia=" ")
+    registros["alerta"]["tipo"] = tipo
+    assert any("sem prova" in e for e in guarda.conferir_registros(registros, {"verde"}))
+
+
+def test_prova_da_tarefa_errada_nao_fecha_ocorrencia():
+    registros = livro(responde_a="alerta", relacao="resolucao", tarefa="TAR-293")
+    registros["alerta"]["tarefa"] = "TAR-292"
+    assert not guarda.baixa_comprovada(registros["verde"], registros["alerta"])
+    assert guarda.conferir_registros(registros, {"verde"})
+
+
+@pytest.mark.parametrize("verificado,esperado", [
+    ("2026-09-09T14:59:59Z", False), ("2026-09-09T15:00:00Z", True),
+    ("2026-09-09T12:00:00-03:00", True), ("2026-09-09", False),
+])
+def test_ordem_temporal_preserva_hora_e_fuso(verificado, esperado):
+    registros = livro(responde_a="alerta", relacao="resolucao", verificado_em=verificado)
+    registros["alerta"]["quando"] = "2026-09-09T15:00:00Z"
+    assert guarda.baixa_comprovada(registros["verde"], registros["alerta"]) is esperado
+
+
+def test_historico_comprovado_sem_alvo_nao_abre_obrigacao():
+    historico = dict(VERDE, tipo="incidente", relacao="historico")
+    assert guarda.conferir_registros({"verde": historico}, {"verde"}) == []
+    historico["evidencia"] = None
+    assert guarda.conferir_registros({"verde": historico}, {"verde"})
+
+
+def test_historico_nao_esconde_obrigacao_existente():
+    registros = livro(responde_a="alerta", tipo="incidente", relacao="historico")
+    assert guarda.conferir_registros(registros, {"verde"})
+    assert not guarda.baixa_comprovada(registros["verde"], registros["alerta"])
+
+
+def test_relacao_explicita_impede_adaptador_legado_no_registro_novo():
+    registros = livro(responde_a="alerta")
+    assert any("resposta nova exige relacao" in e for e in guarda.conferir_registros(registros, {"verde"}))
+    assert guarda.conferir_registros(registros, set()) == []
+
+
+def test_verde_comentario_nao_quita_entrega_nem_afirma_conclusao():
+    registros = livro(relacao="comentario")
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    registros["outro"] = dict(VERDE, arquivo="outro")
+    assert guarda.conferir_registros(registros, {"outro"})
+
+
+EXEMPLOS = json.loads((Path(__file__).resolve().parents[2] / "painel/testes/casos_resolucao.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("caso", EXEMPLOS["casos"], ids=lambda c: c["nome"])
+def test_mesmos_exemplos_da_logica_javascript(caso):
+    assert guarda.baixa_comprovada(dict(EXEMPLOS["resposta"], **caso["resposta"]), dict(EXEMPLOS["alvo"], **caso["alvo"])) is caso["esperado"]
+
+
+
+def test_tentativa_de_entrega_nao_cria_outra_obrigacao():
+    registros = livro(responde_a="alerta", relacao="resolucao")
+    registros["tentativa"] = dict(ALERTA, arquivo="tentativa", relacao="comentario", responde_a="alerta")
+    assert guarda.conferir_registros(registros, {"verde", "tentativa"}) == []
 PEDIDO = {
     "arquivo": "pedido", "precisa_do_dono": True, "gravidade": "info",
     "porque_so_voce": "A contratação cria uma despesa que só você pode autorizar.",
@@ -198,3 +273,63 @@ def test_pedido_historico_incompleto_nao_bloqueia_novo_alerta_tecnico():
 def test_pedido_novo_com_data_antiga_nao_escapa_do_portao():
     registro = {"precisa_do_dono": True, "quando": "2020-01-01"}
     assert guarda.conferir_registros({"novo": registro}, {"novo"})
+
+
+@pytest.mark.parametrize("caso", EXEMPLOS["complementos"], ids=lambda c: c["nome"])
+def test_complemento_mesmos_exemplos_javascript(caso):
+    alvo = dict(EXEMPLOS["alvo"])
+    principal = dict(ALERTA, arquivo="principal", quando="2026-09-09T16:00:00Z")
+    resposta = dict(EXEMPLOS["resposta"], arquivo="vinculo", relacao="complemento", ocorrencia="principal", gravidade="info", verificado_em="2026-09-09T17:00:00Z")
+    resposta.update(caso["resposta"])
+    registros = {r["arquivo"]: r for r in [alvo, principal, resposta]}
+    assert bool(guarda.complementos_comprovados(registros).get("ocorrencia")) is caso["esperado"]
+    assert bool(guarda.conferir_registros(registros, {"vinculo"})) is not caso["esperado"]
+
+
+def test_complemento_ciclico_e_ultimo_invalido_nao_apagam_fatos():
+    registros = {"a": dict(ALERTA, arquivo="a"), "b": dict(ALERTA, arquivo="b")}
+    vinculo = dict(VERDE, arquivo="v", relacao="complemento", gravidade="info", responde_a="a", ocorrencia="b")
+    registros["v"] = vinculo
+    assert guarda.complementos_comprovados(registros) == {"a": "b"}
+    registros["ruim"] = dict(vinculo, arquivo="ruim", evidencia="", ocorrencia="ausente")
+    assert guarda.complementos_comprovados(registros) == {"a": "b"}
+    registros["volta"] = dict(vinculo, arquivo="volta", responde_a="b", ocorrencia="a")
+    assert guarda.complementos_comprovados(registros) == {}
+
+
+def test_cadeia_e_destinos_ambiguos_nao_produzem_efeito_parcial():
+    registros = {i: dict(ALERTA, arquivo=i) for i in ["a", "b", "c"]}
+    registros["v"] = dict(VERDE, arquivo="v", relacao="complemento", gravidade="info", responde_a="a", ocorrencia="b")
+    registros["w"] = dict(registros["v"], arquivo="w", ocorrencia="c")
+    assert guarda.complementos_comprovados(registros) == {}
+    registros["w"]["responde_a"] = "b"
+    assert guarda.complementos_comprovados(registros) == {}
+
+
+@pytest.mark.parametrize("outra_tarefa", ["TAR-292", "TAR-294"])
+def test_resolucao_tipificada_nao_cobra_nem_fecha_outro_alvo_do_mesmo_pr(outra_tarefa):
+    registros = livro(responde_a="alerta", relacao="resolucao", tarefa="TAR-292")
+    registros["alerta"]["tarefa"] = "TAR-292"
+    registros["residual"] = dict(ALERTA, arquivo="residual", tarefa=outra_tarefa)
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    assert guarda.baixa_comprovada(registros["verde"], registros["alerta"])
+    assert not guarda.baixa_comprovada(registros["verde"], registros["residual"])
+    registros["generica"] = dict(VERDE, arquivo="generica")
+    assert any("residual" in erro for erro in guarda.conferir_registros(registros, {"generica"}))
+
+
+@pytest.mark.parametrize("caso", EXEMPLOS["decisoes"], ids=lambda c: c["nome"])
+def test_decisao_comprovada_mesmos_exemplos_javascript(caso):
+    alvo = dict(EXEMPLOS["pedido"], **caso["alvo"])
+    resposta = dict(EXEMPLOS["decisao"], **caso["resposta"])
+    assert guarda.decisao_comprovada(resposta, alvo) is caso["esperado"]
+    if resposta["relacao"] == "decisao":
+        assert not guarda.baixa_comprovada(resposta, alvo)
+        registros = {alvo["arquivo"]: alvo, resposta["arquivo"]: resposta}
+        erros = guarda.conferir_registros(registros, {resposta["arquivo"]})
+        assert bool(erros) is not caso["esperado"]
+
+
+def test_decisao_sem_registro_ou_alvo_nao_tem_prova():
+    assert not guarda.decisao_comprovada(None, EXEMPLOS["pedido"])
+    assert not guarda.decisao_comprovada(EXEMPLOS["decisao"], None)

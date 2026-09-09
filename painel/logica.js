@@ -74,6 +74,85 @@
   // que diz se o campo `area` de um registro existe. Sem ela, `area` preenchida
   // vira ERRO em vez de passar — não conferir não é aprovar, e um nome inventado
   // poria o fato na parte errada do site.
+  var RELACOES = ["comentario", "decisao", "resolucao", "historico", "complemento"];
+
+  function instante(s) {
+    if (typeof s !== "string") return NaN;
+    var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2}))?$/.exec(s);
+    if (!m || +m[2] < 1 || +m[2] > 12 || +m[3] < 1 ||
+        +m[3] > new Date(Date.UTC(+m[1], +m[2], 0)).getUTCDate() ||
+        +m[4] > 23 || +m[5] > 59 || +m[6] > 59) return NaN;
+    return Date.parse(s.length === 10 ? s + "T00:00:00Z" : s);
+  }
+
+  function provaPosterior(r, alvo) {
+    return typeof r.evidencia === "string" && r.evidencia.trim() !== "" &&
+      isFinite(instante(r.verificado_em)) && isFinite(instante(alvo.quando)) &&
+      instante(r.verificado_em) >= instante(alvo.quando);
+  }
+
+  function prsCitados(texto) {
+    return (String(texto || "").match(/https?:\/\/[^\s<>"']+/g) || []).map(function (url) {
+      var m = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/([1-9][0-9]*)(?:\/(?:files|commits|checks))?\/?(?:[?#].*)?$/i.exec(url.replace(/[.,;:)]+$/, ""));
+      return m ? (m[1] + "/" + m[2]).toLowerCase() + "/" + m[3] : null;
+    }).filter(Boolean);
+  }
+
+  function resolucaoComprovada(r, alvo) {
+    if (!r || !alvo || r.arquivo === alvo.arquivo || r.responde_a !== alvo.arquivo ||
+        (alvo.relacao && alvo.responde_a) || !provaPosterior(r, alvo)) return false;
+    if (r.relacao != null && r.relacao !== "resolucao") return false;
+    if (alvo.tarefa && r.tarefa !== alvo.tarefa) return false;
+    // Adaptador do livro imutável: respostas de conferência anteriores usavam info.
+    var legadoConferido = r.relacao == null && r.tipo === "resposta" && r.gravidade === "info";
+    if (r.gravidade !== "verde" && !legadoConferido) return false;
+    if (r.relacao == null && alvo.tipo === "entrega") {
+      var prs = prsCitados(alvo.evidencia), prova = prsCitados(r.evidencia);
+      if (prs.length && !prs.some(function (pr) { return prova.indexOf(pr) !== -1; })) return false;
+    }
+    return true;
+  }
+
+  function decisaoComprovada(r, alvo) {
+    if (!r || !alvo || r.arquivo === alvo.arquivo || r.responde_a !== alvo.arquivo ||
+        (alvo.relacao && alvo.responde_a)) return false;
+    return r.relacao === "decisao" && alvo.precisa_do_dono === true &&
+      r.autoridade === "mantenedor" && (r.tipo === "decisao" || r.tipo === "resposta") &&
+      (!alvo.tarefa || r.tarefa === alvo.tarefa) && provaPosterior(r, alvo);
+  }
+
+  function complementosComprovados(registros) {
+    var porId = {}, candidatos = {}, ambiguos = {};
+    registros.forEach(function (r) { if (r) porId[r.arquivo] = r; });
+    registros.forEach(function (r) {
+      if (!r || r.relacao !== "complemento" || typeof r.responde_a !== "string" || typeof r.ocorrencia !== "string") return;
+      var alvo = porId[r.responde_a], principal = porId[r.ocorrencia];
+      if (!alvo || !principal || r.arquivo === alvo.arquivo || r.arquivo === principal.arquivo ||
+          alvo.arquivo === principal.arquivo || (alvo.relacao && alvo.responde_a) ||
+          (principal.relacao && principal.responde_a) || r.precisa_do_dono ||
+          r.gravidade !== "info" || (alvo.tarefa && r.tarefa !== alvo.tarefa) ||
+          !provaPosterior(r, alvo) || !provaPosterior(r, principal)) return;
+      if (candidatos[alvo.arquivo] && candidatos[alvo.arquivo] !== principal.arquivo) ambiguos[alvo.arquivo] = true;
+      candidatos[alvo.arquivo] = principal.arquivo;
+    });
+    var validos = {};
+    Object.keys(candidatos).forEach(function (id) {
+      // Um canônico também reclassificado cria cadeia: exige corrigir os vínculos.
+      if (!ambiguos[id] && !candidatos[candidatos[id]] && !Object.keys(candidatos).some(function (origem) { return candidatos[origem] === id; })) validos[id] = candidatos[id];
+    });
+    return validos;
+  }
+
+  function idsDaOcorrencia(registros, id, prontos) {
+    var complementos = prontos ? (prontos._complementos || {}) : complementosComprovados(registros);
+    var principal = complementos[id] || id, ids = {};
+    if (prontos && prontos._historicos && prontos._historicos[principal]) return prontos._historicos[principal].slice();
+    ids[principal] = true;
+    Object.keys(complementos).forEach(function (origem) { if (complementos[origem] === principal) ids[origem] = true; });
+    registros.forEach(function (r) { if (ids[r.responde_a]) ids[r.arquivo] = true; });
+    return Object.keys(ids);
+  }
+
   function validarRegistros(registros, areas) {
     var erros = [];
     if (!Array.isArray(registros)) return ["REGISTROS não é uma lista — os arquivos de registro carregaram?"];
@@ -92,6 +171,13 @@
       if (r.autoridade && AUTORIDADES.indexOf(r.autoridade) === -1) erros.push(nome + ": autoridade desconhecida '" + r.autoridade + "'");
       if (r.quando && !ehDataValida(r.quando)) erros.push(nome + ": 'quando' não é data válida: " + r.quando);
       if (r.verificado_em != null && !ehDataValida(r.verificado_em)) erros.push(nome + ": 'verificado_em' não é data válida");
+      if (r.relacao != null && RELACOES.indexOf(r.relacao) === -1) erros.push(nome + ": relacao desconhecida; use " + RELACOES.join(", "));
+      if (r.tarefa != null && (typeof r.tarefa !== "string" || !/^TAR-[0-9]{3,}$/.test(r.tarefa))) erros.push(nome + ": tarefa precisa ser TAR-NNN; copie o identificador da fila");
+      if (r.responde_a != null && (typeof r.responde_a !== "string" || !r.responde_a.trim())) erros.push(nome + ": responde_a precisa ser um identificador em texto ou null; use o arquivo exato do alvo");
+      if (r.relacao === "historico" && (r.tipo !== "incidente" || r.responde_a != null || r.precisa_do_dono || r.gravidade !== "verde" || !provaPosterior(r, r))) {
+        erros.push(nome + ": historico exige incidente verde com evidencia e verificado_em a partir do fato, sem responde_a nem pedido ao dono; para fechar ocorrência existente use resolucao");
+      }
+      if ((r.relacao === "resolucao" || r.relacao === "decisao") && !r.responde_a) erros.push(nome + ": " + r.relacao + " exige responde_a; indique a ocorrência que este fato encerra");
       if (r.tipo === "frente" && FRENTES.indexOf(r.frente) === -1) erros.push(nome + ": tipo 'frente' exige frente entre: " + FRENTES.join(", "));
       // A frente virou ETIQUETA de qualquer registro (vista "Meu mapa"): é ela que
       // diz em qual capítulo do mapa o fato aparece. Opcional — mas, se vier,
@@ -297,6 +383,24 @@
           "mas 'precisa_do_dono' é false — ele nunca apareceria na caixa, e o texto se perderia");
       }
     });
+    var porId = {};
+    registros.forEach(function (r) { if (r && r.arquivo) porId[r.arquivo] = r; });
+    registros.forEach(function (r) {
+      if (!r || !r.relacao || !r.responde_a || typeof r.responde_a !== "string") return;
+      var alvo = porId[r.responde_a];
+      if (!alvo) return;
+      if (alvo.relacao && alvo.responde_a) erros.push(r.arquivo + ": aponte responde_a para a ocorrência original, não para comentário ou tentativa");
+      if (alvo.tarefa && r.tarefa !== alvo.tarefa) erros.push(r.arquivo + ": tarefa difere da ocorrência; use " + alvo.tarefa);
+      if (r.relacao === "resolucao" && !resolucaoComprovada(r, alvo)) erros.push(r.arquivo + ": resolucao exige verde, evidencia da ocorrência e verificado_em a partir do fato; confira a prova antes de encerrar");
+      if (r.relacao === "decisao" && !decisaoComprovada(r, alvo)) erros.push(r.arquivo + ": decisao exige pedido ao dono, resposta ou decisao do mantenedor e prova conferida a partir do pedido");
+      if (r.relacao === "comentario" && r.precisa_do_dono) erros.push(r.arquivo + ": comentário não abre outro pedido; escreva uma ocorrência nova para a nova decisão");
+    });
+    var complementos = complementosComprovados(registros);
+    registros.forEach(function (r) {
+      if (!r) return;
+      if (r.ocorrencia != null && (r.relacao !== "complemento" || typeof r.ocorrencia !== "string" || !r.ocorrencia.trim())) erros.push(r.arquivo + ": ocorrencia só aceita identificador canônico em complemento");
+      if (r.relacao === "complemento" && (complementos[r.responde_a] !== r.ocorrencia || complementosComprovados([porId[r.responde_a], porId[r.ocorrencia], r])[r.responde_a] !== r.ocorrencia || !provaPosterior(r, porId[r.responde_a] || {}) || !provaPosterior(r, porId[r.ocorrencia] || {}) || r.gravidade !== "info" || r.precisa_do_dono)) erros.push(r.arquivo + ": complemento exige dois fatos distintos existentes, prova de ambos e vínculo sem cadeia, ciclo ou ambiguidade; indique a ocorrência canônica");
+    });
     // responde_a precisa apontar para OUTRO registro, que exista.
     registros.forEach(function (r) {
       if (!r || !r.responde_a) return;
@@ -369,7 +473,16 @@
   function respondidos(registros, prontos) {
     if (prontos) return prontos;
     var resp = {};
-    registros.forEach(function (r) { if (r.responde_a) resp[r.responde_a] = r; });
+    var porId = {};
+    registros.forEach(function (r) { porId[r.arquivo] = r; });
+    registros.forEach(function (r) {
+      var alvo = porId[r.responde_a];
+      if (!alvo || typeof r.responde_a !== "string") return;
+      var resolve = resolucaoComprovada(r, alvo);
+      // Sem relação explícita, preserva a interpretação das decisões legadas.
+      if (!resolve && r.relacao != null && !decisaoComprovada(r, alvo)) return;
+      if (!resp[r.responde_a] || resolve || !resolucaoComprovada(resp[r.responde_a], alvo)) resp[r.responde_a] = r;
+    });
     return resp;
   }
 
@@ -396,9 +509,12 @@
   // cumprido não é um problema aberto — seria alarme aceso o tempo todo.)
   function problemasAbertos(registros, prontos) {
     var resp = respondidos(registros, prontos);
+    var complementos = prontos ? (prontos._complementos || {}) : complementosComprovados(registros);
     return registros.filter(function (r) {
       return (r.gravidade === "vermelho" || r.gravidade === "ambar") &&
-        !resp[r.arquivo] && r.tipo !== "pendencia" && r.tipo !== "frente" && r.tipo !== "rumo";
+        !(r.relacao != null && typeof r.responde_a === "string") &&
+        !complementos[r.arquivo] && resp[r.arquivo] !== "resolucao" && !resolucaoComprovada(resp[r.arquivo], r) &&
+        r.tipo !== "pendencia" && r.tipo !== "frente" && r.tipo !== "rumo";
     }).sort(function (a, b) { return a.gravidade === "vermelho" ? -1 : 1; });
   }
 
@@ -892,7 +1008,7 @@
   // até hoje ele viajava para dentro do DOM para nunca ser lido. Quem quiser o
   // texto inteiro abre a Memória, e aí o mês carrega.
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
-    "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
+    "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade", "relacao", "tarefa", "ocorrencia",
     "frente", "vence_em_dias",
     // A ÁREA vem no corte: sem ela, o registro que viaja só como título cairia
     // em "sem área reconhecida" na aba Prioridades, e a tela mostraria o fato na
@@ -992,11 +1108,21 @@
     // O mapa de respostas viaja calculado sobre o livro INTEIRO: sem ele, um
     // pedido cuja resposta ficou fora do resumo voltaria a aparecer como aberto.
     var respondidosIds = {};
-    Object.keys(prontos).forEach(function (k) { respondidosIds[k] = true; });
+    var originais = {};
+    registros.forEach(function (r) { originais[r.arquivo] = r; });
+    Object.keys(prontos).forEach(function (k) {
+      respondidosIds[k] = resolucaoComprovada(prontos[k], originais[k]) ? "resolucao" : "decisao";
+    });
 
+    var historicos = {};
+    var complementosResumo = complementosComprovados(registros);
+    Object.keys(complementosResumo).forEach(function (id) {
+      var principal = complementosResumo[id];
+      historicos[principal] = idsDaOcorrencia(registros, principal);
+    });
     return {
       erro: null,
-      respondidos: respondidosIds,
+      respondidos: Object.assign(respondidosIds, {_complementos: complementosResumo, _historicos: historicos}),
       // Contado sobre o livro INTEIRO, aqui, e não no navegador: lá só existe o
       // recorte, e "6 de 24" viraria um número errado com cara de certo.
       confianca: confianca(registros),
@@ -1009,6 +1135,10 @@
   }
 
   var LOGICA = {
+    resolucaoComprovada: resolucaoComprovada,
+    decisaoComprovada: decisaoComprovada,
+    complementosComprovados: complementosComprovados,
+    idsDaOcorrencia: idsDaOcorrencia,
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     IMPACTOS: IMPACTOS,

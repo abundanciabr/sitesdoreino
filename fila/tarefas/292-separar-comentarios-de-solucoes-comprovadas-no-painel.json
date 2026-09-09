@@ -1,0 +1,18 @@
+{
+  "arquivo": "292-separar-comentarios-de-solucoes-comprovadas-no-painel",
+  "id": "TAR-292",
+  "titulo": "Separar comentários de soluções comprovadas no painel",
+  "toca": [
+    "painel",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes vermelho verde, mutações e comparação dos alertas e decisões com o livro real.",
+  "despacho": "Distinguir comentário, resposta de decisão, resolução comprovada e incidente histórico por contrato aditivo. Preservar registros imutáveis e proteger a baixa específica das entregas.",
+  "origem": "Reforma do painel autorizada pelo mantenedor em 09/09/2026",
+  "criada_em": "2026-09-09"
+}

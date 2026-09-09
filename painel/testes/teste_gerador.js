@@ -469,6 +469,37 @@ caso("livro sem pedido nenhum carimba zero, e não some", !!filaZero && filaZero
 caso("...com a data do mais antigo em null, nunca uma data inventada",
   !!filaZero && filaZero.maisAntigo === null);
 
+function vinculosCarimbados(html) {
+  var linha = /^  pedidosDoDonoVinculos: (\[[^\r\n]*\]),$/m.exec(html);
+  return linha ? JSON.parse(linha[1]) : null;
+}
+caso("vínculos vazios preservam carimbo de zero", JSON.stringify(vinculosCarimbados(leia(dirZero, "painel.html"))) === "[]");
+var idEscapado = "20260827-002-legado";
+var entradasVinculos = {}, registrosVinculos = [
+  camposDoRegistro("20260826-001-pedido", {precisa_do_dono:true, tarefa:"TAR-292"}),
+  camposDoRegistro(idEscapado, {precisa_do_dono:true, quando:"2026-08-27"}),
+  camposDoRegistro("20260826-003-respondido", {precisa_do_dono:true}),
+  camposDoRegistro("20260828-001-resposta", {responde_a:"20260826-003-respondido"})
+];
+registrosVinculos.forEach(function(r) { entradasVinculos[r.arquivo + ".js"] = registroBom(r.arquivo, r); });
+var dirVinculos = montarCenario(entradasVinculos);
+caso("gerador aceita pedido com TAR e legado", roda(dirVinculos).code === 0);
+var htmlVinculos = leia(dirVinculos, "painel.html"), vinculos = vinculosCarimbados(htmlVinculos);
+var esperadosVinculos = require("../logica.js").caixaDeEntrada(registrosVinculos, new Date()).map(function(p) {
+  return {arquivo:p.registro.arquivo, tarefa:p.registro.tarefa || null};
+});
+caso("IDs e tarefas do carimbo seguem exatamente caixaDeEntrada", JSON.stringify(vinculos) === JSON.stringify(esperadosVinculos));
+caso("quantidade e vínculos carimbados são coerentes", !!vinculos && filaCarimbada(htmlVinculos).quantidade === vinculos.length);
+caso("legado conserva tarefa nula", !!vinculos && vinculos.some(function(v){return v.arquivo === idEscapado && v.tarefa === null;}));
+var linhaProdutora = fs.readFileSync(path.join(RAIZ_PAINEL,"gerar_manifesto.js"),"utf8").split("\n").filter(function(l){return l.indexOf('"  pedidosDoDonoVinculos: ') !== -1;})[0];
+var idComEscape = 'aspas" e barra\\ e </script>';
+var linhaEscapada = linhaProdutora ? require("vm").runInNewContext(linhaProdutora.trim().replace(/,$/, ""), {
+  pedidosDoDono:[{registro:{arquivo:idComEscape}}]
+}) : "";
+var voltaDoEscape = vinculosCarimbados(linhaEscapada);
+caso("string escapada conserva identidade e não fecha script", !!voltaDoEscape && voltaDoEscape[0].arquivo === idComEscape && linhaEscapada.indexOf("</script>") === -1);
+
+
 // ---------------------------------------------------------------------------
 // AS ÁREAS DO SITE (07/09/2026, a aba Prioridades). Elas viajam com a página
 // porque é delas que a tela tira a ORDEM, o nome que o dono lê e a que área
@@ -570,6 +601,28 @@ caso("pedido antigo informa a ausência da justificativa sem desaparecer",
   fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não explica por que esta decisão depende só de você."; }));
 caso("pedido antigo informa a ausência de próximo passo sem desaparecer",
   fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não registra um próximo passo claro."; }));
+
+var fonteHistorico = templateDecisao.slice(templateDecisao.indexOf("  function carregarOcorrencia"), templateDecisao.indexOf("  // Os nomes"));
+var carregamentos = [], contextoHistorico = {
+  LOGICA: require("../logica.js"), REGS: [],
+  PRONTOS: {_complementos: {"20260801-001-fato":"20260801-002-principal"},
+    _historicos: {"20260801-002-principal":["20260801-001-fato", "20260801-002-principal", "20260909-001-vinculo"]}},
+  itemRegistro: function(r,opts) { return {id:r.arquivo,semHistorico:opts.semHistorico}; },
+  carregarMes: function(mes,ok,falhou) {carregamentos.push({mes:mes,ok:ok,falhou:falhou});}
+};
+require("vm").runInNewContext(fonteHistorico, contextoHistorico);
+var destinoHistorico = {textContent:"",filhos:[],appendChild:function(f){this.filhos.push(f);}}, botaoHistorico={};
+contextoHistorico.carregarOcorrencia("20260801-002-principal", destinoHistorico, botaoHistorico);
+caso("histórico busca os meses do vínculo fora do resumo", carregamentos.map(function(c){return c.mes;}).sort().join() === "2026-08,2026-09");
+caso("histórico avisa enquanto carrega", botaoHistorico.disabled && destinoHistorico.textContent.indexOf("Carregando") !== -1);
+carregamentos[0].ok([{arquivo:"20260801-001-fato",quando:"2026-08-01"},{arquivo:"20260801-002-principal",quando:"2026-08-01"}]);
+carregamentos[1].ok([{arquivo:"20260909-001-vinculo",quando:"2026-09-09"}]);
+caso("histórico exibe os dois fatos e a prova do vínculo", destinoHistorico.filhos.length === 3 && destinoHistorico.filhos.every(function(f){return f.semHistorico;}));
+carregamentos = [];
+contextoHistorico.carregarOcorrencia("20260801-002-principal", destinoHistorico, botaoHistorico);
+carregamentos[0].falhou("D", "O mês não carregou.");
+carregamentos[1].ok([]);
+caso("erro do histórico mantém aviso e permite repetir", !botaoHistorico.disabled && destinoHistorico.textContent.indexOf("tentar novamente") !== -1);
 
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");

@@ -321,6 +321,7 @@ var dados = [
   // `null` quando não há nenhum — nunca uma data inventada.
   "  pedidosDoDono: { quantidade: " + pedidosDoDono.length + ", maisAntigoQuando: " +
     JSON.stringify(pedidosDoDono.length ? pedidosDoDono[0].registro.quando : null) + " },",
+  "  pedidosDoDonoVinculos: " + JSON.stringify(pedidosDoDono.map(function (pedido) { return {arquivo: pedido.registro.arquivo, tarefa: pedido.registro.tarefa || null}; })).replace(/</g, "\\u003c") + ",",
   "  resumo: JSON.parse(" + comoTextoJS({
     respondidos: resumo.respondidos,
     registros: resumo.registros,

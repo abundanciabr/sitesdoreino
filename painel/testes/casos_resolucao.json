@@ -1,0 +1,607 @@
+{
+  "alvo": {
+    "arquivo": "ocorrencia",
+    "tipo": "incidente",
+    "gravidade": "vermelho",
+    "quando": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+  },
+  "resposta": {
+    "arquivo": "resolucao",
+    "tipo": "medicao",
+    "relacao": "resolucao",
+    "gravidade": "verde",
+    "responde_a": "ocorrencia",
+    "quando": "2026-09-09T15:00:00Z",
+    "verificado_em": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "ConferÃªncia pÃºblica com resultado registrado."
+  },
+  "casos": [
+    {
+      "nome": "resoluÃ§Ã£o explÃ­cita comprovada",
+      "esperado": true,
+      "alvo": {},
+      "resposta": {}
+    },
+    {
+      "nome": "relacao=comentario",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "relacao": "comentario"
+      }
+    },
+    {
+      "nome": "relacao=decisao",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "relacao": "decisao"
+      }
+    },
+    {
+      "nome": "relacao=historico",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "relacao": "historico"
+      }
+    },
+    {
+      "nome": "evidencia= ",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "evidencia": " "
+      }
+    },
+    {
+      "nome": "evidencia=3",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "evidencia": 3
+      }
+    },
+    {
+      "nome": "verificado_em=None",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": null
+      }
+    },
+    {
+      "nome": "verificado_em=2026-09-09T14:59:59Z",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T14:59:59Z"
+      }
+    },
+    {
+      "nome": "verificado_em=2026-09-09",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09"
+      }
+    },
+    {
+      "nome": "verificado_em=2026-09-09T15:00:00",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T15:00:00"
+      }
+    },
+    {
+      "nome": "verificado_em=2026-02-30",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-02-30"
+      }
+    },
+    {
+      "nome": "verificado_em=2026-09-09T24:00:00Z",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T24:00:00Z"
+      }
+    },
+    {
+      "nome": "gravidade=info",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "gravidade": "info"
+      }
+    },
+    {
+      "nome": "tarefa=TAR-293",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "tarefa": "TAR-293"
+      }
+    },
+    {
+      "nome": "tarefa=None",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "tarefa": null
+      }
+    },
+    {
+      "nome": "responde_a=outro",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "responde_a": "outro"
+      }
+    },
+    {
+      "nome": "responde_a=['ocorrencia']",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "responde_a": [
+          "ocorrencia"
+        ]
+      }
+    },
+    {
+      "nome": "arquivo=ocorrencia",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "arquivo": "ocorrencia"
+      }
+    },
+    {
+      "nome": "horÃ¡rio com fuso equivalente",
+      "esperado": true,
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T12:00:00-03:00"
+      }
+    },
+    {
+      "nome": "resoluÃ§Ã£o aponta tentativa em vez da raiz",
+      "esperado": false,
+      "alvo": {
+        "relacao": "comentario",
+        "responde_a": "outro"
+      },
+      "resposta": {}
+    },
+    {
+      "nome": "decisÃ£o legada nÃ£o Ã© conserto",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "tipo": "decisao",
+        "relacao": null,
+        "gravidade": "ambar"
+      }
+    },
+    {
+      "nome": "nota info legada nÃ£o Ã© conserto",
+      "esperado": false,
+      "alvo": {},
+      "resposta": {
+        "tipo": "nota",
+        "relacao": null,
+        "gravidade": "info"
+      }
+    },
+    {
+      "nome": "resposta de conferÃªncia info legada",
+      "esperado": true,
+      "alvo": {},
+      "resposta": {
+        "tipo": "resposta",
+        "relacao": null,
+        "gravidade": "info"
+      }
+    },
+    {
+      "nome": "legado: entrega exige PR especÃ­fico",
+      "esperado": false,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/1474",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/1474/files",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474/files"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/1474/checks",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474/checks"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/1474#issuecomment-123",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474#issuecomment-123"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/14740",
+      "esperado": false,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/14740"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/outro/pull/1474",
+      "esperado": false,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/outro/pull/1474"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com.evil/abundanciabr/sitesdoreino/pull/1474",
+      "esperado": false,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com.evil/abundanciabr/sitesdoreino/pull/1474"
+      }
+    },
+    {
+      "nome": "legado: entrega com https://github.com/abundanciabr/sitesdoreino/pull/1474/inventado",
+      "esperado": false,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "relacao": null,
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474/inventado"
+      }
+    },
+    {
+      "nome": "PR corretivo distinto",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1500; publicaÃ§Ã£o conferida"
+      }
+    },
+    {
+      "nome": "aÃ§Ã£o na VPS",
+      "esperado": true,
+      "alvo": {
+        "tipo": "entrega"
+      },
+      "resposta": {
+        "evidencia": "SaÃ­da do comando recebido do mantenedor e endpoint pÃºblico conferido"
+      }
+    },
+    {
+      "nome": "mesmo PR e mesma tarefa não identificam outro alvo",
+      "alvo": {
+        "arquivo": "outro-alvo"
+      },
+      "resposta": {
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "mesmo PR em tarefa diferente não identifica outro alvo",
+      "alvo": {
+        "arquivo": "outro-alvo",
+        "tarefa": "TAR-294"
+      },
+      "resposta": {
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+      },
+      "esperado": false
+    }
+  ],
+  "complementos": [
+    {
+      "nome": "vínculo comprovado",
+      "resposta": {},
+      "esperado": true
+    },
+    {
+      "nome": "canônico inexistente",
+      "resposta": {
+        "ocorrencia": "ausente"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "canônico é o alvo",
+      "resposta": {
+        "ocorrencia": "ocorrencia"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "canônico é o vínculo",
+      "resposta": {
+        "ocorrencia": "vinculo"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "alvo inexistente",
+      "resposta": {
+        "responde_a": "ausente"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova vazia",
+      "resposta": {
+        "evidencia": " "
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova anterior ao canônico",
+      "resposta": {
+        "verificado_em": "2026-09-09T15:00:00Z"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "data inválida",
+      "resposta": {
+        "verificado_em": "2026-02-30"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "tarefa alheia",
+      "resposta": {
+        "tarefa": "TAR-999"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "pedido novo disfarçado",
+      "resposta": {
+        "precisa_do_dono": true
+      },
+      "esperado": false
+    }
+  ],
+  "pedido": {
+    "arquivo": "ocorrencia",
+    "tipo": "incidente",
+    "gravidade": "vermelho",
+    "quando": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474",
+    "precisa_do_dono": true
+  },
+  "decisao": {
+    "arquivo": "resolucao",
+    "tipo": "resposta",
+    "relacao": "decisao",
+    "gravidade": "info",
+    "responde_a": "ocorrencia",
+    "quando": "2026-09-09T15:00:00Z",
+    "verificado_em": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "ConferÃªncia pÃºblica com resultado registrado.",
+    "autoridade": "mantenedor"
+  },
+  "decisoes": [
+    {
+      "nome": "decisão humana comprovada",
+      "alvo": {},
+      "resposta": {},
+      "esperado": true
+    },
+    {
+      "nome": "tipo decisão também responde",
+      "alvo": {},
+      "resposta": {
+        "tipo": "decisao"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "fuso equivalente conserva decisão",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T12:00:00-03:00"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "decisão verde não é resolução técnica",
+      "alvo": {},
+      "resposta": {
+        "gravidade": "verde"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "alvo não pede decisão",
+      "alvo": {
+        "precisa_do_dono": false
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "outro alvo",
+      "alvo": {
+        "arquivo": "outro"
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "alvo é tentativa",
+      "alvo": {
+        "relacao": "comentario",
+        "responde_a": "original"
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "sem alvo explícito",
+      "alvo": {},
+      "resposta": {
+        "responde_a": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "autorreferência",
+      "alvo": {},
+      "resposta": {
+        "arquivo": "ocorrencia"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "autoridade sem mandato",
+      "alvo": {},
+      "resposta": {
+        "autoridade": "github"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "tipo medição não decide",
+      "alvo": {},
+      "resposta": {
+        "tipo": "medicao"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "comentário não decide",
+      "alvo": {},
+      "resposta": {
+        "relacao": "comentario"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "resolução não é decisão",
+      "alvo": {},
+      "resposta": {
+        "relacao": "resolucao"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova vazia",
+      "alvo": {},
+      "resposta": {
+        "evidencia": " "
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova ausente",
+      "alvo": {},
+      "resposta": {
+        "evidencia": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova anterior ao pedido",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T14:59:59Z"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "instante sem fuso",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T15:00:00"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "TAR diferente",
+      "alvo": {},
+      "resposta": {
+        "tarefa": "TAR-294"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "TAR ausente",
+      "alvo": {},
+      "resposta": {
+        "tarefa": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "pedido legado sem TAR",
+      "alvo": {
+        "tarefa": null
+      },
+      "resposta": {
+        "tarefa": null
+      },
+      "esperado": true
+    }
+  ]
+}

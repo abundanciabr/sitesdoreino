@@ -87,8 +87,9 @@
    uma identidade estável e grava número e chave no mesmo push atômico:
    resposta remota perdida não autoriza repetir uma reserva nova. A data da
    reserva original também é preservada. `TAR=TAR-NNN`, quando aplicável,
-   conclui a tarefa pela fila existente e embarca todos os seus eventos;
-   encerramento por outro fato impede a retomada. Nenhum desses estados
+   registra a submissão do trabalho na fila, vinculando PR, revisão e árvore
+   validados, e embarca os eventos; a conclusão aguarda a comprovação do resultado.
+   Encerramento por outro fato impede a retomada. Nenhum desses estados
    declara publicação. Interface: `python ci/pr.py --help`.
 
    **A ordem do rito, desde 31/08/2026: o PR PRIMEIRO, o registro depois — e no
@@ -102,10 +103,12 @@
    validado localmente usa `info`; ele não prova publicação. Use `ambar` ou
    `vermelho` quando a entrega ainda exigir uma ação, pois essas cores abrem
    alerta no painel. Confirmado o resultado, a baixa faz parte da conclusão:
-   o registro novo aponta `responde_a` para o identificador exato da entrega,
-   com `gravidade: "verde"`, `evidencia` citando a URL completa do PR no GitHub
-   e a conferência realizada,
-   e `verificado_em` a partir da data do alerta. Se houver dois alertas,
+   o registro novo declara `relacao: "resolucao"` e aponta `responde_a` para
+   o identificador exato da entrega, com `gravidade: "verde"`, `evidencia`
+   da correção conferida e `verificado_em` a partir do instante do alerta.
+   Se o alerta tem `tarefa`, a resolução repete a mesma TAR. A prova pode
+   citar um PR corretivo posterior ou uma ação conferida na VPS; não precisa
+   repetir o PR original. O vínculo é o identificador da ocorrência. Se houver dois alertas,
    escreva uma baixa específica para cada um no mesmo PR; não apague o passado.
 
    A muralha do painel executa `python ci/encerramento_alertas.py` e recusa
@@ -154,7 +157,9 @@
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/999",  // ou null
   verificado_em: "2026-08-26",          // quando a EVIDÊNCIA foi conferida — ou null (vira "não comprovado")
   precisa_do_dono: false,               // true = entra na caixa de entrada até existir resposta
-  responde_a: null,                     // arquivo de outro registro que este fecha — ou null
+  responde_a: null,                     // identificador exato da ocorrência relacionada, ou null
+  relacao: null,                        // comentario | decisao | resolucao | historico; explicação abaixo
+  tarefa: null,                         // TAR-NNN do trabalho na fila; a relação repete a TAR do alvo
   gravidade: "info",                    // vermelho | ambar | info | verde
   frente: null,                         // etiqueta do capítulo do "Meu mapa": site | comunidade | curso | vender | fabrica
                                         // (obrigatória em "frente" e em "rumo"; opcional e recomendada no resto)
@@ -194,11 +199,63 @@
    Se você tentar forçá-los para dentro do commit, `.githooks/pre-commit` barra;
    se passar, `ci/verificar_painel.py` reprova na muralha.
 
+## Comentário, decisão e resolução
+
+`responde_a` identifica uma ocorrência original. Vários fatos ou tentativas
+podem apontar para a mesma ocorrência; `relacao` explica o efeito de cada um.
+Os textos e títulos nunca decidem agrupamento nem encerramento.
+
+| `relacao` | O que registra | O que exige | Efeito |
+|---|---|---|---|
+| `comentario` | Acompanhamento, tentativa ou recibo de submissão | `responde_a` quando acompanha uma ocorrência; mesma `tarefa` do alvo quando presente | Preserva o histórico. Não fecha a ocorrência nem duplica sua contagem. Um comentário sem alvo é um fato independente. |
+| `decisao` | Resposta à pergunta feita ao dono | Alvo com `precisa_do_dono: true`, tipo `resposta` ou `decisao`, autoridade `mantenedor`, `evidencia` e `verificado_em` a partir do pedido | Fecha a pergunta; não prova que o incidente foi corrigido. |
+| `resolucao` | Resultado comprovado da ocorrência | `responde_a` exato, verde, `evidencia` conferida, data a partir do fato e mesma tarefa quando o alvo a tem | Fecha a obrigação identificada. Não encerra outra que cite o mesmo PR. |
+| `historico` | Incidente que já estava resolvido quando foi registrado | Tipo `incidente`, verde, prova e data a partir do fato, sem `responde_a` nem pedido ao dono | Preserva a memória sem abrir alerta artificial. Para fechar registro existente, use `resolucao`. |
+
+Uma nova decisão ou tentativa aponta diretamente para a ocorrência original,
+nunca para outra tentativa. Um novo pedido ao dono nasce em uma ocorrência
+própria. Datas com hora devem incluir fuso; uma data sem hora significa início
+daquele dia em UTC, sem tolerância de um dia para baixar alertas.
+
+Exemplo de resolução de um incidente já registrado:
+
+```js
+relacao: "resolucao",
+responde_a: "20260909-001-incidente",
+tarefa: "TAR-292", // quando esta é a tarefa do alvo
+gravidade: "verde",
+evidencia: "Conferência da correção e seu resultado, com a referência verificável.",
+verificado_em: "2026-09-09T15:00:00Z"
+```
+
+O campo `evidencia` é uma declaração auditável, não uma consulta automática à
+produção. O portão comprova a presença, o vínculo e a ordem temporal; cabe a
+quem escreve conferir a prova. Citar vários PRs num comentário não prova
+várias soluções.
+
+**Adaptador do livro imutável, apenas para registros sem `relacao`:** a caixa
+do dono conserva a leitura antiga dos seus `responde_a`, sem reabrir em massa
+as decisões já registradas. Para alertas, exige-se prova e data posterior,
+mais verde ou o tipo `resposta` com cor `info` que os antigos registros de
+conferência usavam. Em entregas legadas, a prova deve citar um PR presente no
+alvo. Nota informativa não resolve incidente. Essa interpretação não reescreve
+arquivo algum. Resposta nova que encerraria pela interpretação legada é
+recusada pela muralha: declare a relação explícita.
+
+O resumo transporta os vereditos `decisao` e `resolucao` calculados sobre o
+livro inteiro, para que uma resposta omitida do recorte não reabra o alvo.
+As funções `LOGICA.resolucaoComprovada(resposta, alvo)` e
+`ci/encerramento_alertas.py:baixa_comprovada` verificam os mesmos exemplos de
+`painel/testes/casos_resolucao.json`. A proteção das entregas permanece: uma
+conclusão verde sem relação explícita, citando PR com entrega em alerta,
+exige a baixa específica dessa entrega. Uma resolução explícita de outra
+ocorrência não prova a entrega que ficou aberta.
+
 ## As regras que a lógica impõe (não são convenção — são código com teste)
 
-- **Caixa de entrada calculada:** pendência = registro `precisa_do_dono: true`
-  sem nenhum outro registro com `responde_a` apontando para ele. Uma lista
-  calculada não consegue esquecer um pedido.
+- **Caixa de entrada calculada:** pedido = registro `precisa_do_dono: true`
+  sem decisão ou resolução explícita comprovada. Comentário não responde
+  ao pedido. A leitura dos pedidos legados está descrita abaixo.
 - **Verde é conquistado:** `gravidade: "verde"` exige `evidencia` E
   `verificado_em`. Sem prova conferida, o gerador reprova. Relato sem evidência
   aparece como "não comprovado", nunca como verde.
@@ -332,3 +389,34 @@
 - ❌ Escrever HTML dentro de `titulo`/`detalhe` (a página insere como texto).
 - ❌ Criar lista/estado em qualquer outro lugar e "sincronizar depois" — é
   exatamente a doença que este diretório existe para curar.
+
+### Fatos da mesma ocorrência
+
+Um fato adicional não resolve a obrigação principal. Acrescente uma nota `info`
+com `relacao: "complemento"`, `responde_a` igual ao arquivo do fato adicional e
+`ocorrencia` igual ao arquivo canônico. Informe `evidencia` que demonstre a
+identidade da obrigação e `verificado_em` posterior aos dois fatos; se o alvo
+tiver `tarefa`, repita-a. Os dois arquivos devem existir e ser distintos do
+vínculo. Ciclos, cadeias e destinos contraditórios são recusados.
+
+O alerta passa a contar pela ocorrência canônica. Seu botão **Histórico desta
+ocorrência** abre os fatos adicionais, as tentativas e as provas dos vínculos,
+mesmo quando pertencem a meses diferentes. A obrigação canônica só se encerra
+com resolução comprovada própria. Nunca agrupe por título ou por PR citado.
+
+Uma classificação histórica sem obrigação futura também exige uma resolução
+explícita do registro antigo, com prova e detalhe de que se trata de revisão
+administrativa. Isso não declara um conserto novo nem apaga um dever existente.
+
+A resolução tipada confere somente a ocorrência indicada em `responde_a`.
+Outra obrigação que cite o mesmo PR permanece aberta, inclusive se pertencer
+à mesma tarefa. A conclusão da tarefa exige conferir suas obrigações restantes;
+a URL compartilhada não demonstra esse aceite. Conclusões verdes genéricas,
+sem `relacao`, continuam submetidas à guarda das entregas que citam o mesmo PR.
+
+Para conferir uma decisão, use `LOGICA.decisaoComprovada(resposta, alvo)` ou
+`ci.encerramento_alertas.decisao_comprovada(resposta, alvo)`. O contrato exige
+alvo original explícito com `precisa_do_dono: true`, autoridade `mantenedor`,
+tipo `resposta` ou `decisao`, `relacao: "decisao"`, a mesma TAR quando existente,
+e prova conferida a partir do pedido. A decisão encerra a pergunta humana;
+`baixa_comprovada` continua recusando tratá-la como resolução de incidente.

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-141028-TAR-292-explicada",
+  "tarefa": "TAR-292",
+  "evento": "explicada",
+  "quando": "2026-09-09T14:10:28+00:00",
+  "quem": "Reforma do painel autorizada pelo mantenedor em 09/09/2026",
+  "o_que_e": "Um comentário hoje pode apagar um incidente vermelho da lista de problemas.",
+  "o_que_muda": "Os problemas continuam visíveis até existir solução comprovada e tentativas da mesma ocorrência não duplicam a conta.",
+  "exemplo": "Uma nota de acompanhamento não apaga um incidente; a conferência da correção o encerra.",
+  "importancia": 95
+}

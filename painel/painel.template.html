@@ -529,7 +529,45 @@ try {
     // a dizer", que é falso.
     if (r._so_titulo) t.appendChild(el("span", "selo sotitulo", "texto na Memória"));
     if (r.detalhe && !opts.semDetalhe) it.appendChild(el("div", "det", r.detalhe));
+    if (!opts.semHistorico) {
+      var vinculos = (PRONTOS && PRONTOS._complementos) || {};
+      var principal = vinculos[r.arquivo] || r.arquivo;
+      if (Object.keys(vinculos).some(function (id) { return vinculos[id] === principal; })) {
+        var botao = el("button", "mes", "Histórico desta ocorrência");
+        var historia = el("div", "historico-ocorrencia");
+        botao.type = "button";
+        botao.onclick = function () { carregarOcorrencia(principal, historia, botao); };
+        it.appendChild(botao); it.appendChild(historia);
+      }
+    }
     return it;
+  }
+
+  function carregarOcorrencia(principal, destino, botao) {
+    var ids = LOGICA.idsDaOcorrencia(REGS, principal, PRONTOS);
+    var meses = {};
+    ids.forEach(function (id) { meses[id.slice(0, 4) + "-" + id.slice(4, 6)] = true; });
+    // Os vínculos novos podem estar em outro mês que os fatos antigos.
+    REGS.forEach(function (r) { if (r.ocorrencia === principal) meses[r.quando.slice(0, 7)] = true; });
+    botao.disabled = true; destino.textContent = "Carregando os fatos desta ocorrência…";
+    var faltam = Object.keys(meses).length, todos = [], erro = false;
+    Object.keys(meses).forEach(function (mes) {
+      carregarMes(mes, function (regs) {
+        if (erro) return;
+        todos = todos.concat(regs); faltam -= 1;
+        if (faltam) return;
+        var relacionados = LOGICA.idsDaOcorrencia(todos, principal, PRONTOS);
+        var fatos = todos.filter(function (r) { return relacionados.indexOf(r.arquivo) !== -1; });
+        destino.textContent = "";
+        fatos.sort(function (a, b) { return a.quando.localeCompare(b.quando); }).forEach(function (r) {
+          destino.appendChild(itemRegistro(r, {semHistorico: true}));
+        });
+        if (!fatos.length) destino.textContent = "Os fatos não chegaram. Recarregue o painel para conferir o livro.";
+      }, function (classe, motivo) {
+        erro = true; botao.disabled = false;
+        destino.textContent = motivo + " Clique em Histórico desta ocorrência para tentar novamente.";
+      });
+    });
   }
   // Os nomes que o dono lê, num lugar só — a capa e o Meu mapa usam os mesmos.
   var NOMES_FRENTE = {
