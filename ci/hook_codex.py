@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from _nucleo import configurar_saida
+
 CI = Path(__file__).resolve().parent
 
 
@@ -73,6 +75,7 @@ def decidir(dados: dict) -> int:
 
 
 def main() -> int:
+    configurar_saida()
     evento = sys.argv[1] if len(sys.argv) == 2 else ""
     try:
         dados = json.loads(sys.stdin.buffer.read().decode("utf-8-sig"))

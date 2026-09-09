@@ -233,3 +233,17 @@ def test_launcher_posix_sem_python_fecha(tmp_path):
     r = subprocess.run([BASH, "-c", comando], env={**os.environ, "PATH": str(fakebin)},
                        capture_output=True, text=True, encoding="utf-8")
     assert r.returncode == 2, r.stderr
+
+def test_dispatcher_preserva_acentos_e_emoji_em_console_cp1252(bancada):
+    import os
+    import subprocess
+    ambiente = dict(os.environ)
+    ambiente.pop("PYTHONUTF8", None)
+    ambiente["PYTHONIOENCODING"] = "cp1252"
+    r = subprocess.run([sys.executable, str(RAIZ / "ci/hook_codex.py"), "UserPromptSubmit"],
+        input=json.dumps({"hook_event_name": "UserPromptSubmit", "prompt": "Corrija a página.", "cwd": str(bancada)}),
+        env=ambiente, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    assert r.returncode == 0, r.stderr
+    contexto = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert "📋" in contexto and "não" in contexto
+    assert "\ufffd" not in contexto
