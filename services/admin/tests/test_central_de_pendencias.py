@@ -70,6 +70,11 @@ TELA = "/pendencias/"
 def test_central_inclui_a_decisao_humana_da_fila_sem_trabalho_tecnico(
     tmp_path, monkeypatch
 ):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": None}, {"arquivo": "b", "tarefa": None}],
+    )
     pasta = tmp_path / "fila"
     pasta.mkdir()
     (pasta / "estados.json").write_text(
@@ -100,7 +105,17 @@ def test_central_inclui_a_decisao_humana_da_fila_sem_trabalho_tecnico(
 
 
 @respx.mock
-@pytest.mark.parametrize("conteudo", [None, "{", "[]", '{"TAR-001": null}'])
+@pytest.mark.parametrize(
+    "conteudo",
+    [
+        None,
+        "{",
+        "[]",
+        '{"TAR-001": null}',
+        '{"TAR-001": {"estado": "estado-inventado"}}',
+        '{"errada": {"estado": "na fila"}}',
+    ],
+)
 def test_fila_de_trabalho_indisponivel_na_central_nao_e_zero(
     tmp_path, monkeypatch, conteudo
 ):
@@ -182,6 +197,11 @@ def test_vinculos_ausentes_ou_invalidos_preservam_linhas_sem_inventar_total(
 
 @respx.mock
 def test_parada_sem_responsavel_nao_inventa_decisao_humana(tmp_path, monkeypatch):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": None}, {"arquivo": "b", "tarefa": None}],
+    )
     (tmp_path / "estados.json").write_text(
         json.dumps(
             {
