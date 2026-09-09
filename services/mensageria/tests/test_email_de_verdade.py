@@ -155,9 +155,11 @@ def test_a_carta_recusada_tambem_nao_marca_a_linha(
     assert envio.status != "enviado"
 
 
-def test_tres_recusas_do_provedor_abrem_o_disjuntor(monkeypatch):
+def test_tres_recusas_do_provedor_abrem_o_disjuntor(monkeypatch, settings):
     from apps.eventos.models import JanelaDeCapacidade
 
+    settings.EMAIL_HOST = "smtp.example.com"
+    settings.DEFAULT_FROM_EMAIL = "escola@example.com"
     monkeypatch.setattr("apps.eventos.tasks.send_mail", lambda **kwargs: 0)
     for numero in range(3):
         envio = EnvioRegistrado.objects.create(
