@@ -1229,6 +1229,47 @@ def test_a_porta_diz_em_sombra_o_evento_que_gravaria(monkeypatch, tmp_path, caps
     assert _eventos_no_disco(raiz) == antes, "sombra que grava deixou de ser sombra"
 
 
+def test_o_main_abre_o_diff_uma_vez_para_as_duas_sombras(
+    monkeypatch, tmp_path
+):
+    """A coordenação real do pouso deve compartilhar um único leitor de diff."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    (raiz / "painel").mkdir(parents=True, exist_ok=True)
+    (raiz / "painel" / "areas.json").write_text(
+        '{"areas": [{"celulas": ["ci", "infra", ".github"]}]}',
+        encoding="utf-8",
+    )
+    pr = _pr(
+        title="ci: o evento pela porta (TAR-001)",
+        body="atende a TAR-001",
+        headRefName="agent/ci/area-do-registro",
+        files=[
+            {"path": "ci/mergear.py"},
+            {"path": "painel/registros/20260907-001-a.js"},
+        ],
+    )
+    remessas = [
+        {
+            "filename": "painel/registros/20260907-001-a.js",
+            "patch": '+  area: "ci",',
+        }
+    ]
+    chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), pr))
+    monkeypatch.setattr(
+        mergear, "_gh", _gh_de_mentira(chamadas, remessas=remessas)
+    )
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    consultas = [
+        chamada
+        for chamada in chamadas
+        if chamada and chamada[0] == "api" and "/pulls/99/files" in chamada[1]
+    ]
+    assert len(consultas) == 1
+
+
 def test_a_sombra_nao_roda_se_o_merge_nao_aconteceu(monkeypatch, tmp_path, capsys):
     """Evento de conclusão sem merge seria mentira escrita no livro da fila."""
     raiz = _fila_com_tarefa_reivindicada(tmp_path)
