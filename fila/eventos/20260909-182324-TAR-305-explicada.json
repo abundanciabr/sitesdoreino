@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-182324-TAR-305-explicada",
+  "tarefa": "TAR-305",
+  "evento": "explicada",
+  "quando": "2026-09-09T18:23:24+00:00",
+  "quem": "Pedido do mantenedor em 09/09/2026: nunca mais pedir clique para reexecutar check técnico; incidente PR1502 run34385324742.",
+  "o_que_e": "Uma falha de rede na preparação do navegador interrompe os testes e foi devolvida ao dono como pedido de clique.",
+  "o_que_muda": "A preparação tenta se recuperar com limite; diagnóstico técnico e reexecução ficam com o robô.",
+  "exemplo": "O índice de pacotes falhou uma vez. O próprio processo tenta de novo antes de começar o teste do painel.",
+  "importancia": 90
+}

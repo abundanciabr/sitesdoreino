@@ -1036,9 +1036,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         causa = diagnosticar(gh, repo, str((olhada.dados or {}).get("run") or ""))
         voz.desfecho(
-            cabeca + "\n" + causa if causa
-            else cabeca + " O veredito real está no link do run/PR; "
-                          "não re-tente às cegas."
+            (cabeca + "\n" + causa if causa
+             else cabeca + " O veredito real está no link do run/PR; "
+                           "não re-tente às cegas.")
+            + "\n   A maestro deve diagnosticar o job reprovado. Se comprovar falha "
+              "transitória de preparação, ela reexecuta somente esse job com "
+              "gh run rerun <run> --job <job>, no máximo duas vezes, e confere "
+              "o novo veredito. Falha de teste exige correção; não peça ao mantenedor "
+              "para clicar em reexecutar."
         )
     elif not args.e_pousar:
         voz.desfecho(linha_verde)
@@ -1096,7 +1101,9 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
         except (OSError, subprocess.TimeoutExpired) as erro:
             voz.desfecho(
                 f"{linha_verde} 🔴 não consegui rodar o portão para o PR {pr} "
-                f"({erro}). Faça na mão: python ci/mergear.py {pr} --pousar".strip()
+                f"({erro}). A maestro deve conferir o efeito remoto e corrigir o instrumento "
+                f"antes de retomar python ci/mergear.py {pr} --pousar; "
+                "não peça ao mantenedor para executar esse comando.".strip()
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")

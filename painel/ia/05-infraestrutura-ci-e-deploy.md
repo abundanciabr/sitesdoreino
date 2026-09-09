@@ -114,6 +114,8 @@ devolve ERROR, nunca PASS.
 |---|---|---|
 | `_nucleo.py` | núcleo | `Estado`/`Resultado`/`Relatorio`, resolução fail-closed da raiz do repo, execução de subprocesso onde qualquer anomalia vira erro de instrumentação |
 | `ci.py` | orquestração | Runner canônico local (`python ci/ci.py`); agrega freeze + muralhas + guardas + testador + `make ci` opcional de uma célula |
+| `instalar_navegador.py` | preparação do CI | Instala Playwright pinado e Chromium no Ubuntu; repete apenas falhas transitórias, até três tentativas por etapa com prazo, preservando reprovação de integridade e sem repetir testes |
+| `esperar.py` | espera | Mede checks e deploys com prazo; desfecho vermelho devolve diagnóstico e eventual reexecução técnica à maestro |
 | `cerca-de-celula.sh` | muralha/PR | "1 PR = 1 célula": reprova diff tocando `services/` de mais de uma célula; exige label `contrato` se `contracts/` mudar |
 | `orcamento-de-mudanca.sh` | muralha/PR | Teto de 15 arquivos por PR (label `arquitetural` libera; lane `traducoes` libera lotes restritos a dado) |
 | `guarda-de-segredos.sh` | muralha/PR + alarme | `git grep` na árvore inteira por credencial de produção do Mercado Pago e cabeçalho de chave privada; confere que arquivos-molde mantêm `TROQUE_` |
