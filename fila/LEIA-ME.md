@@ -14,7 +14,7 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 | O que | Onde | Regra |
 |---|---|---|
 | Uma tarefa | `tarefas/NNN-slug.json` | Um arquivo por tarefa. **Nunca se edita depois de criado** — número vem do almoxarife (`python ci/reservar.py numero tarefa`), id é `TAR-NNN`. |
-| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
+| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `reivindicacao_expirada` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
 | O estado | **em lugar nenhum** | Calculado, sempre: pela cadeia de eventos + reservas do almoxarife + PRs abertos. Não existe campo `status`. |
 
 ## O balcão — como um robô usa (`ci/fila.py`)
@@ -22,6 +22,7 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 ```
 python ci/fila.py listar --ao-vivo     # o quadro: estados calculados + reservas + PRs
 python ci/fila.py pegar TAR-007 --quem "sessao-<area>-<data>"
+python ci/fila.py zelar --quem "zelador-da-fila"
 python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
 python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
 python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
@@ -37,6 +38,13 @@ SERVIDOR, na hora, e a reserva expira sozinha em 3 horas se a sessão morrer.
 O evento gravado em `eventos/` é o registro durável; a referência é a trava em
 tempo real. Os dois viajam por caminhos diferentes de propósito: a referência
 vale AGORA, o evento vale para sempre (entra no PR do trabalho).
+
+**O zelador não apaga trabalho.** Antes de uma aquisição, e também pelo comando
+`zelar`, a fila confere a validade das reservas. Uma tarefa cuja reivindicação
+ficou sem reserva viva e sem PR aberto recebe o acontecimento
+`reivindicacao_expirada` e volta para `na fila`. O ramo, o PR e a referência
+remota continuam intactos para auditoria. O acontecimento é a etiqueta; não
+existe limpeza destrutiva.
 
 **`concluir` exige evidência.** Sem prova (URL de PR, saída crua de teste), o
 balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
@@ -75,6 +83,8 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
   aberta (calculado — ninguém escreve isso, e o `espera` sai `fila`).
 - **reivindicada** — evento `reivindicada` sem devolução posterior, OU reserva
   viva no servidor.
+- **na fila novamente** — evento `reivindicacao_expirada`, quando a reserva
+  venceu e não há PR aberto.
 - **em execução** — há PR ABERTO citando `TAR-NNN` no título ou no ramo
   (só na vista `--ao-vivo`).
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:

@@ -5,6 +5,7 @@
         --despacho "..." [--depende-de TAR-001] [--origem "..."]
     python ci/fila.py listar [--ao-vivo]     # estados calculados; --ao-vivo soma reservas e PRs
     python ci/fila.py pegar TAR-001 --quem "sessao-x"    # trava no servidor + evento
+    python ci/fila.py zelar --quem "zelador-da-fila"    # rotula reivindicações órfãs
     python ci/fila.py soltar TAR-001 --quem "sessao-x"   # devolve à fila
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
@@ -67,7 +68,7 @@ from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 # O ciclo de vida inteiro. Fechado de propósito: evento fora desta lista é
 # arquivo inválido, não "vocabulário novo" — vocabulário muda por PR, aqui.
-EVENTOS_DE_CICLO = ("reivindicada", "devolvida", "bloqueada")
+EVENTOS_DE_CICLO = ("reivindicada", "devolvida", "bloqueada", "reivindicacao_expirada")
 EVENTOS_TERMINAIS = ("concluida", "cancelada")
 
 # A EXPLICAÇÃO PARA GENTE — o evento que não é ciclo nem fim (06/09/2026)
@@ -634,7 +635,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                 )
             if not RE_DATA.match(str(dados.get("verificado_em") or "")):
                 erros.append(f"{nome}: concluída exige 'verificado_em' (AAAA-MM-DD)")
-        if tipo in ("bloqueada", "cancelada") and not str(dados.get("detalhe") or "").strip():
+        if tipo in ("bloqueada", "cancelada", "reivindicacao_expirada") and not str(dados.get("detalhe") or "").strip():
             erros.append(f"{nome}: '{tipo}' sem 'detalhe' não conta a história — diga o motivo")
         espera = dados.get("espera")
         if espera is not None:
@@ -745,6 +746,14 @@ def calcular_estados(
             }
             estados[tid] = resultado
             return resultado
+        if ultimo_ciclo is not None and ultimo_ciclo["evento"] == "reivindicacao_expirada":
+            resultado = {
+                "estado": NA_FILA,
+                "motivo": ultimo_ciclo.get("detalhe") or "reivindicação expirada",
+                "quem": ultimo_ciclo.get("quem"),
+            }
+            estados[tid] = resultado
+            return resultado
         reivindicada = (
             ultimo_ciclo is not None and ultimo_ciclo["evento"] == "reivindicada"
         ) or tid in reservas_ativas
@@ -804,11 +813,50 @@ def calcular_estados(
 
 
 def reservas_no_servidor(raiz: Path) -> set[str]:
-    """Ids de tarefa com referência viva em refs/reservas/tarefa-*."""
+    """Ids de tarefa com referência NÃO vencida em refs/reservas/tarefa-*."""
     ativos: set[str] = set()
     for ref in reservar.refs_existentes(raiz, reservar.NS_RESERVA):
         cauda = ref.rsplit("/", 1)[-1]
-        if cauda.startswith(PREFIXO_DA_RESERVA):
+        if not cauda.startswith(PREFIXO_DA_RESERVA):
+            continue
+        leitura = reservar.executar(
+            ["git", "ls-remote", "origin", ref],
+            cwd=raiz,
+            descricao="ler a validade da reserva da tarefa",
+        ).stdout.strip()
+        partes = leitura.split()
+        if len(partes) != 2 or partes[1] != ref or not re.fullmatch(r"[0-9a-f]{40}", partes[0]):
+            raise ErroDeInstrumentacao(
+                "resposta da reserva inválida",
+                f"Não consegui conferir {ref}. Sem saber se a reserva está viva, não libero a tarefa.",
+            )
+        sha = partes[0]
+        reservar.executar(
+            ["git", "fetch", "--no-tags", "origin", sha],
+            cwd=raiz,
+            descricao="ler o comprovante da reserva da tarefa",
+        )
+        corpo = reservar.executar(
+            ["git", "show", "-s", "--format=%B", sha],
+            cwd=raiz,
+            descricao="conferir a validade da reserva da tarefa",
+        ).stdout
+        try:
+            dados = json.loads(corpo)
+            expira = datetime.fromisoformat(str(dados["expira_em"]))
+            if dados.get("tipo") != "intencao" or dados.get("chave") != cauda:
+                raise ValueError("identidade incompatível")
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "reserva de tarefa incompatível",
+                f"O comprovante remoto {ref} não tem formato confiável. Não libero a tarefa.",
+            ) from erro
+        if expira.tzinfo is None:
+            raise ErroDeInstrumentacao(
+                "reserva de tarefa incompatível",
+                f"O comprovante remoto {ref} não informa fuso horário na expiração.",
+            )
+        if expira > datetime.now(timezone.utc):
             ativos.add(cauda[len(PREFIXO_DA_RESERVA):])
     return ativos
 
@@ -834,6 +882,46 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
         for tid in tarefas_citadas(texto):
             achados.setdefault(tid, f"PR #{pr['number']}")
     return achados
+
+
+def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
+    ultimos: dict[str, dict] = {}
+    for evento in _em_ordem(eventos):
+        if evento.get("evento") in EVENTOS_DE_CICLO:
+            ultimos[evento["tarefa"]] = evento
+    return ultimos
+
+
+def rotular_orfaos(
+    raiz: Path,
+    tarefas: dict[str, dict],
+    eventos: list[dict],
+    reservas: set[str],
+    prs: dict[str, str],
+    quem: str,
+) -> list[Path]:
+    """Registra reivindicações sem reserva viva nem PR aberto, sem apagar nada."""
+    ultimos = _ultimos_ciclos(eventos)
+    escritos: list[Path] = []
+    for tid in sorted(tarefas):
+        ultimo = ultimos.get(tid)
+        if not ultimo or ultimo["evento"] != "reivindicada":
+            continue
+        if tid in reservas or tid in prs:
+            continue
+        escritos.append(
+            _escrever_evento(
+                raiz,
+                tid,
+                "reivindicacao_expirada",
+                quem,
+                detalhe=(
+                    "reivindicação órfã: a reserva venceu e não há PR aberto. "
+                    "A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+                ),
+            )
+        )
+    return escritos
 
 
 # ---------------------------------------------------------------------------
@@ -1262,6 +1350,25 @@ def cmd_listar(raiz: Path, args) -> int:
     return 0
 
 
+def cmd_zelar(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("zelar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    reservas = reservas_no_servidor(raiz)
+    prs = prs_citando_tarefas(raiz)
+    escritos = rotular_orfaos(raiz, tarefas, eventos, reservas, prs, args.quem)
+    if not escritos:
+        print("✅ Zelador: nenhuma reivindicação órfã encontrada.")
+        return 0
+    print(f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s).")
+    for caminho in escritos:
+        print(f"   {caminho.relative_to(raiz)}")
+    print("Nenhum ramo, PR ou reserva foi apagado. Commite os eventos no PR desta bancada.")
+    return 0
+
+
 def cmd_pegar(raiz: Path, args) -> int:
     # Antes de tudo — antes até de ler a fila e de tocar no servidor: se a
     # pasta é o espelho, o comprovante nasceria órfão (armadilhas/192).
@@ -1276,6 +1383,12 @@ def cmd_pegar(raiz: Path, args) -> int:
         return 1
     reservas = reservas_no_servidor(raiz)
     prs = prs_citando_tarefas(raiz)
+    escritos = rotular_orfaos(raiz, tarefas, eventos, reservas, prs, args.quem)
+    if escritos:
+        eventos = _carregar_ou_parar(raiz)[1]
+        print(f"🏷️  Zelador: {len(escritos)} reivindicação(ões) órfã(s) rotulada(s) antes da aquisição.")
+        for caminho in escritos:
+            print(f"   {caminho.relative_to(raiz)}")
     estado = calcular_estados(tarefas, eventos, reservas, prs)[tid]
     if estado["estado"] == REIVINDICADA and tid in reservas:
         cadeia = [ev for ev in eventos if ev.get("tarefa") == tid and ev.get("evento") in EVENTOS_DE_CICLO]
@@ -1764,6 +1877,9 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True, help="quem está pegando (ex.: sessao-fila-2908)")
 
+    p = sub.add_parser("zelar", help="rotula reivindicações órfãs sem apagar ramos ou PRs")
+    p.add_argument("--quem", required=True, help="quem registrou a varredura")
+
     p = sub.add_parser("soltar", help="devolve a tarefa à fila")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
@@ -1818,6 +1934,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_criar(raiz, args)
         if args.acao == "listar":
             return cmd_listar(raiz, args)
+        if args.acao == "zelar":
+            return cmd_zelar(raiz, args)
         if args.acao == "pegar":
             return cmd_pegar(raiz, args)
         if args.acao == "soltar":
