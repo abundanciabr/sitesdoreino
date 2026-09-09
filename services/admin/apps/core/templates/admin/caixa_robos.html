@@ -301,6 +301,8 @@ não tem sigla (lei do CLAUDE.md).
           O resto da página é só para olhar: para pedir ou destravar qualquer coisa,
           fale comigo na conversa, como sempre.
         </p>
+      {% elif sem_responsavel %}
+        <p>Há tarefas sem responsável informado. O robô precisa classificar quem destrava antes de afirmar se dependem de você.</p>
       {% else %}
         <p>
           <b>Nada aqui depende de você agora.</b> Esta é a tela de olhar: ela responde
@@ -317,15 +319,17 @@ não tem sigla (lei do CLAUDE.md).
       {% endif %}
     </div>
     <p class="carimbo espaco-abaixo-20">
-      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo é de
-      agora, perguntada ao GitHub pelo seu navegador; o quadro depois dela é o retrato
+      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo traz a
+      consulta ao GitHub feita pelo seu navegador; o quadro depois dela é o retrato
       da última publicação do site.
     </p>
 
     <section class="ao-vivo-caixa" data-repo="{{ repositorio }}">
-      <h2>Agora, neste minuto</h2>
-      <p id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
+      <h2>Consulta ao GitHub</h2>
+      <p id="ao-vivo-estado" role="status">Consultando reservas e trabalhos abertos…</p>
+      <p id="ao-vivo-carimbo">Ainda sem leitura. A consulta se renova ao voltar a esta aba, no máximo uma vez a cada cinco minutos.</p>
       <ul class="ao-vivo" id="ao-vivo-lista"></ul>
+      <p><a href="https://github.com/{{ repositorio }}/pulls" target="_blank" rel="noopener">Ver todos os trabalhos no GitHub</a></p>
     </section>
 
     <div class="placar-robos">
@@ -448,11 +452,16 @@ não tem sigla (lei do CLAUDE.md).
         var REPO = document.querySelector(".ao-vivo-caixa").dataset.repo;
         var estado = document.getElementById("ao-vivo-estado");
         var lista = document.getElementById("ao-vivo-lista");
+        var carimbo = document.getElementById("ao-vivo-carimbo");
+        var ultimaTentativa = null;
+        var emConsulta = false;
+        var ultimaLeitura = null;
 
         function falhou() {
-          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou ele " +
-            "limitou as perguntas desta hora). O quadro abaixo continua valendo: é o retrato " +
-            "do último deploy.";
+          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou limite de consultas). " +
+            (ultimaLeitura ? "A lista conserva a última leitura, que pode ter mudado. " : "Ainda não há uma leitura válida. ") +
+            "Volte a esta aba daqui a cinco minutos ou abra os trabalhos direto no GitHub. " +
+            "O quadro abaixo continua sendo o retrato da última publicação.";
         }
 
         function linha(texto, endereco, rotuloDoLink) {
@@ -469,43 +478,75 @@ não tem sigla (lei do CLAUDE.md).
           lista.appendChild(li);
         }
 
-        Promise.all([
-          fetch("https://api.github.com/repos/" + REPO + "/git/matching-refs/reservas%2Ftarefa-").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          }),
-          fetch("https://api.github.com/repos/" + REPO + "/pulls?state=open&per_page=100").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          })
-        ]).then(function (respostas) {
-          var reservas = respostas[0] || [];
-          var prs = respostas[1] || [];
-          var vivos = 0;
-
-          reservas.forEach(function (ref) {
-            var id = (ref.ref || "").split("tarefa-").pop();
-            if (!id) { return; }
-            vivos++;
-            linha("🔒 " + id + ": um robô reservou esta tarefa e está com ela agora.");
-            var cartao = document.querySelector('[data-tarefa="' + id + '"]');
-            if (cartao) { cartao.classList.add("reservada-agora"); }
+        function consultar(caminho) {
+          return fetch("https://api.github.com/repos/" + REPO + caminho, {
+            signal: AbortSignal.timeout(15000)
+          }).then(function (r) {
+            if (!r.ok) { throw new Error(r.status); }
+            var parcial = /rel="next"/.test(r.headers.get("Link") || "");
+            return r.json().then(function (itens) {
+              if (!Array.isArray(itens) || itens.some(function (i) {
+                return !i || typeof i !== "object" || (caminho.indexOf("matching-refs") !== -1
+                  ? typeof i.ref !== "string" : !Number.isInteger(i.number) || i.number <= 0);
+              })) {
+                throw new Error("resposta inválida");
+              }
+              return {itens: itens, parcial: parcial || itens.length >= 100};
+            });
           });
+        }
 
-          prs.forEach(function (pr) {
-            var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
-            var casado = texto.match(/TAR-\d{3,}/);
-            vivos++;
-            linha(
-              "⚙ " + (casado ? casado[0] + ": " : "") + "trabalho pronto esperando conferência: " +
+        function atualizar() {
+          if (document.hidden || emConsulta ||
+              (ultimaTentativa !== null && Date.now() - ultimaTentativa < 300000)) { return; }
+          ultimaTentativa = Date.now();
+          emConsulta = true;
+          estado.textContent = "Consultando reservas e trabalhos abertos…";
+          Promise.all([
+            consultar("/git/matching-refs/reservas%2Ftarefa-"),
+            consultar("/pulls?state=open&per_page=100")
+          ]).then(function (respostas) {
+            var reservas = respostas[0].itens;
+            var prs = respostas[1].itens;
+            lista.replaceChildren();
+            document.querySelectorAll(".reservada-agora").forEach(function (cartao) {
+              cartao.classList.remove("reservada-agora");
+            });
+            reservas.forEach(function (ref) {
+              var casado = (ref.ref || "").match(/^refs\/reservas\/tarefa-(TAR-\d{3,})$/);
+              if (!casado) { return; }
+              var id = casado[1];
+              linha("🔒 " + id + ": reserva registrada; atividade atual não comprovada.");
+              var cartao = document.querySelector('[data-tarefa="' + id + '"]');
+              if (cartao) {
+                cartao.classList.add("reservada-agora");
+                var etiqueta = cartao.querySelector(".agora");
+                if (etiqueta) { etiqueta.textContent = "🔒 reserva encontrada na última consulta"; }
+              }
+            });
+            prs.forEach(function (pr) {
+              var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
+              var casado = texto.match(/TAR-\d{3,}/);
+              var fase = pr.draft === true ? "rascunho, em preparação" :
+                pr.draft === false ? "entrega aberta, aceite ainda não comprovado" : "fase não informada pelo GitHub";
+              linha("⚙ " + (casado ? casado[0] + ": " : "") + fase + ": " +
                 (pr.title || "(sem título)") + " ",
-              pr.html_url,
-              "abrir o nº " + pr.number
-            );
-          });
-
-          estado.textContent = vivos
-            ? "É isto que o GitHub respondeu neste minuto:"
-            : "Neste minuto não há reserva viva nem trabalho aberto — nenhum robô está com a mão na massa agora.";
-        }).catch(falhou);
+                Number.isInteger(pr.number) && pr.number > 0 ? "https://github.com/" + REPO + "/pull/" + pr.number : null,
+                "abrir o nº " + pr.number);
+            });
+            ultimaLeitura = new Date();
+            carimbo.textContent = "Última leitura: " + ultimaLeitura.toLocaleString("pt-BR") +
+              ". Renovação ao voltar à aba, no máximo a cada cinco minutos.";
+            estado.textContent = respostas.some(function (r) { return r.parcial; })
+              ? "Leitura parcial: " + prs.length + " trabalhos e " + reservas.length +
+                " reservas recebidos. Há limite ou outra página; estes números não são o total. Abra a lista completa no GitHub."
+              : reservas.length || prs.length ? "Reservas e trabalhos encontrados nesta leitura. Os testes e o aceite precisam de conferência." :
+                "Nenhuma reserva ou entrega aberta foi encontrada nesta leitura. Isso não comprova ausência de trabalho.";
+          }).catch(falhou).finally(function () { emConsulta = false; });
+        }
+        window.addEventListener("focus", atualizar);
+        document.addEventListener("visibilitychange", atualizar);
+        atualizar();
       })();
     </script>
 
