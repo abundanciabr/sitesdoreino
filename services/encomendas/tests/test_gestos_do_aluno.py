@@ -240,9 +240,7 @@ def test_apertar_duas_vezes_o_mesmo_botao_nao_e_erro_e_diz_por_que(
     )
 
 
-def test_quem_esta_negociando_pode_usar_o_interruptor(
-    tres_na_fila, criar_encomenda
-):
+def test_quem_esta_negociando_pode_usar_o_interruptor(tres_na_fila, criar_encomenda):
     """Negociar mantém a disponibilidade, então o aluno pode pausar e religar."""
     ana, _, _ = tres_na_fila
     _, oferta = _oferecer(criar_encomenda)

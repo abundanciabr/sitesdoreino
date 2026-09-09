@@ -349,7 +349,14 @@ def lugar_na_ordem(perfil):
 
 
 def a_alocacao_que_a_lei_manda(
-    perfis, na_fila, com_oferta, quem_ja_viu, regua, agora, *, com_negociacao=frozenset()
+    perfis,
+    na_fila,
+    com_oferta,
+    quem_ja_viu,
+    regua,
+    agora,
+    *,
+    com_negociacao=frozenset(),
 ):
     """A rodada inteira da FILA, calculada por fora do motor. O oráculo do [INV-ENC-J3].
 
