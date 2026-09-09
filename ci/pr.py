@@ -16,6 +16,7 @@ import sys
 import unicodedata
 import uuid
 import tempfile
+import time
 import subprocess
 import os
 from collections import Counter
@@ -82,6 +83,7 @@ MINIMO_DO_DETALHE = 80
 
 COAUTOR = "Co-Authored-By"
 PRAZO_VALIDACAO_PADRAO = 900
+PROTOCOLO_SUBMISSAO = 1
 
 
 class PrazoDeValidacaoExcedido(ErroDeInstrumentacao):
@@ -258,6 +260,7 @@ def montar_campos(
     frente: str | None,
     evidencia_extra: str,
     area: str | None = None,
+    tarefa: str | None = None,
 ) -> dict:
     """Os 14 campos do molde: 11 derivados do PR, 1 de julgamento, 2 de opção."""
     evidencia = url_do_pr
@@ -275,6 +278,8 @@ def montar_campos(
         "verificado_em": iso,
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": tarefa,
         "gravidade": gravidade,
         "frente": frente,
         "area": area,
@@ -497,7 +502,7 @@ def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACA
     return provas
 
 
-def _concluir_fila(raiz, correr, tarefa, ramo, url):
+def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
     if tarefa is None:
         return []
     from fila import carregar_tarefas, carregar_eventos
@@ -510,7 +515,13 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
     if finais and not any(e.get("evidencia") == url and e["evento"] == "concluida" for e in finais):
         raise ParouPorSeguranca("tarefa já encerrada por outro fato", "Confira a cadeia da fila; não sobrescreva o encerramento.")
     if not finais:
-        correr([sys.executable, "ci/fila.py", "concluir", tarefa, "--quem", ramo, "--evidencia", url])
+        anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
+        if anterior and anterior.get("pr") == url:
+            diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
+            if all(c.startswith(("painel/registros/", "fila/eventos/")) for c in diferenca):
+                revisao, arvore = anterior["revisao"], anterior["arvore"]
+        correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
+                "--pr", url, "--revisao", revisao, "--arvore", arvore])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:
@@ -555,7 +566,7 @@ def _fechar_medicao_fase4(raiz: Path, tarefa: str | None, tentativa: str,
     return registrou
 
 
-def _tentativa_da_abertura(raiz, ramo):
+def _fases_da_abertura(raiz, ramo):
     try:
         pasta = telemetria.dir_git_comum(raiz)
         eventos = telemetria.ler_tudo(pasta) if pasta else []
@@ -572,12 +583,84 @@ def _tentativa_da_abertura(raiz, ramo):
             except (ValueError, TypeError, KeyError):
                 continue
             candidatos.append((quando, evento))
-        if candidatos:
-            evento = max(candidatos, key=lambda item: item[0])[1]
-            return evento["tentativa"], evento["tarefa"]
+        return candidatos
     except Exception:
-        pass  # Métrica ausente ou inválida não substitui as provas obrigatórias.
+        return []
+
+
+def _tentativa_da_abertura(raiz, ramo):
+    candidatos = _fases_da_abertura(raiz, ramo)
+    if candidatos:
+        evento = max(candidatos, key=lambda item: item[0])[1]
+        return evento["tentativa"], evento["tarefa"]
     return uuid.uuid4().hex, ramo.split('/')[-1]
+
+
+def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+    aberturas = [item for item in _fases_da_abertura(raiz, ramo)
+                 if item[1]["fase"] == "abertura" and item[1]["resultado"] == "concluido"]
+    if not aberturas:
+        return False
+    primeira = min(aberturas, key=lambda item: item[0])[1]
+    codigo = correr(["git", "show", primeira["commit"] + ":ci/pr.py"])
+    return bool(codigo.strip()) and not re.search(r"^PROTOCOLO_SUBMISSAO\s*=", codigo, re.M)
+
+
+def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
+    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas, calcular_estados, CONCLUIDA, CANCELADA, NA_FILA
+    candidatos = set()
+    if pedido.tarefa:
+        if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
+            raise ParouPorSeguranca("tarefa inválida", "Informe --tarefa TAR-NNN da fila existente.")
+        candidatos.add(pedido.tarefa)
+    if re.fullmatch(r"TAR-\d{3,}", tarefa_da_abertura):
+        candidatos.add(tarefa_da_abertura)
+    erros = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    estados = calcular_estados(tarefas, eventos)
+    candidatos.update(tid for tid, estado in estados.items()
+                      if estado.get("quem") == ramo and estado["estado"] not in (CONCLUIDA, CANCELADA, NA_FILA))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(ramo + " " + pedido.titulo))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(pedido.corpo_arquivo.read_text(encoding="utf-8")))
+    if not candidatos:
+        if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+            return None
+        raise ParouPorSeguranca(
+            "tarefa não identificada para esta sessão",
+            "Consulte python ci/fila.py listar e vincule a TAR existente com --tarefa. "
+            "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
+        )
+    if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
+        raise ParouPorSeguranca(
+            "tarefa ausente, ambígua ou fila inválida",
+            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com --tarefa antes de publicar.",
+        )
+    return candidatos.pop()
+
+
+def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
+    for tentativa in range(3):
+        try:
+            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "consulta final do PR inválida",
+                "Confira gh pr view; nenhuma revisão remota foi aprovada.",
+            ) from erro
+        if (isinstance(remoto, dict) and remoto.get("headRefOid") == entregue
+                and remoto.get("state") == "OPEN" and type(remoto.get("isDraft")) is bool
+                and (not exigir_pronto or remoto["isDraft"] is False)):
+            return remoto
+        if tentativa < 2:
+            time.sleep(2)
+    raise ParouPorSeguranca(
+        "PR remoto não confirma a revisão entregue após 3 consultas",
+        f"Confira gh pr view {numero}: exijo SHA {entregue}, estado OPEN e rascunho conferido. "
+        "Nenhuma revisão anterior foi aprovada; os commits e recibos foram preservados.",
+    )
 
 
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
@@ -593,6 +676,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
     tentativa, tarefa_da_abertura = _tentativa_da_abertura(raiz, ramo)
+    pedido.tarefa = _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr)
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
@@ -651,7 +735,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         campos = montar_campos(
             arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
             url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
-            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1],
+            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
             evidencia_extra=f"Validação local: árvore {arvore}; commit {commit}; {len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas.",
         )
         texto = renderizar(campos)
@@ -660,7 +744,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
         destino.write_text(texto, encoding="utf-8")
-    eventos = _concluir_fila(raiz, correr, pedido.tarefa, ramo, url)
+    eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
     correr(["node", "painel/gerar_manifesto.js"])
     relativo = destino.relative_to(raiz).as_posix()
     correr(["git", "add", "--", relativo, *eventos])
@@ -690,14 +774,10 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
     correr(["git", "push", "origin", ramo])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
-        raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
-    if remoto.get("isDraft") is True:
+    remoto = _conferir_revisao_remota(correr, numero, entregue)
+    if remoto["isDraft"]:
         correr(["gh", "pr", "ready", str(numero)])
-        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN" or remoto.get("isDraft") is True:
-        raise ParouPorSeguranca("PR remoto continua em rascunho", "Confira gh pr view e torne o PR pronto antes de pedir pouso.")
+        _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
@@ -774,7 +854,7 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--gravidade", default="info", help=f"um de: {', '.join(GRAVIDADES)}")
     p.add_argument("--frente", default=None, help=f"um de: {', '.join(FRENTES)}")
     p.add_argument("--validacao-arquivo", type=Path, required=True)
-    p.add_argument("--tarefa", help="TAR-NNN da fila; conclui e embarca os eventos")
+    p.add_argument("--tarefa", help="TAR-NNN da fila; submete a entrega e embarca seus eventos")
     p.add_argument("--evidencia", default="", help="a prova que soma à URL do PR")
     p.add_argument("--continuar", action="store_true", help="relê o estado e pula o feito")
     return p
