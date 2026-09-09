@@ -475,7 +475,7 @@ def test_falha_de_validacao_ou_rede_nunca_imprime_sucesso(tmp_path, capsys, onde
 
 def test_revisao_remota_antiga_recusa(tmp_path):
     raiz = bancada(tmp_path)
-    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN'})})
+    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN', 'isDraft': False})})
     with pytest.raises(pr.ParouPorSeguranca, match='revisão entregue'):
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
 
@@ -983,3 +983,36 @@ def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro
     ])
     assert retorno == codigo
     assert resultado in capsys.readouterr().out
+
+
+def test_confirmacao_remota_atrasada_nao_refaz_validacao(tmp_path):
+    class GitComAtraso(Duble):
+        consultas = 0
+        def __call__(self, comando, raiz=None, **opcoes):
+            if comando[:3] == ["gh", "pr", "view"]:
+                self.consultas += 1
+                if self.consultas == 1:
+                    self.chamadas.append(comando)
+                    return json.dumps({"headRefOid": "a" * 40, "state": "OPEN", "isDraft": False})
+            return super().__call__(comando, raiz, **opcoes)
+    raiz = bancada(tmp_path)
+    git = GitComAtraso(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)
+    assert git.consultas == 2
+    assert len([c for c in git.chamadas if c[0] == "pytest"]) == 2
+
+
+def test_confirmacao_remota_divergente_permanece_recusada(tmp_path):
+    raiz = bancada(tmp_path)
+    git = Duble({**RESPOSTAS_FELIZES, "gh pr view": json.dumps({"headRefOid": "c" * 40, "state": "OPEN", "isDraft": False})})
+    with pytest.raises(pr.ParouPorSeguranca, match="confirma"):
+        pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)
+    assert not git.pediu("gh pr ready")
+    assert len([c for c in git.chamadas if c[:3] == ["gh", "pr", "view"]]) == 3
+
+
+def test_confirmacao_remota_sem_estado_de_rascunho_e_erro(tmp_path):
+    raiz = bancada(tmp_path)
+    git = Duble({**RESPOSTAS_FELIZES, "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN"})})
+    with pytest.raises(pr.ErroDeInstrumentacao, match="incompleto"):
+        pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)

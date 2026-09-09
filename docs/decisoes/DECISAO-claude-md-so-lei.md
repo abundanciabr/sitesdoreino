@@ -1031,3 +1031,10 @@ do executor. Acompanhamento após a sessão exige autorização específica,
 criação confirmada pela ferramenta nativa e encerramento ao concluir o lote.
 A antiga frase obrigatória de prazo de oito minutos foi retirada porque
 um pedido de pouso não prova integração nem publicação.
+
+
+O mesmo lote reproduziu leitura atrasada do SHA pelo GitHub logo após o push
+nos PRs 1489 e 1492: a consulta seguinte confirmou o commit já enviado, mas
+o rito exigia executar todas as provas novamente. O fechamento agora repete
+somente a confirmação remota, com três consultas e espera curta limitada;
+SHA ainda divergente, PR fechado ou estado incompleto nunca vira sucesso.

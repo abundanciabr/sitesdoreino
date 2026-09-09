@@ -18,6 +18,7 @@ import uuid
 import tempfile
 import subprocess
 import os
+import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -581,6 +582,24 @@ def _tentativa_da_abertura(raiz, ramo):
     return uuid.uuid4().hex, ramo.split('/')[-1]
 
 
+def _confirmar_pr_entregue(correr, numero, commit, *, pronto=False):
+    for tentativa in range(3):
+        try:
+            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO,
+                                        "--json", "headRefOid,state,isDraft"]))
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao("confirmação remota inválida", "Confira o acesso GitHub; não reutilize uma resposta incompleta.") from erro
+        if not isinstance(remoto, dict) or type(remoto.get("isDraft")) is not bool:
+            raise ErroDeInstrumentacao("estado remoto incompleto", "Confira gh pr view antes de retomar o fechamento.")
+        if remoto.get("state") != "OPEN":
+            break
+        if remoto.get("headRefOid") == commit and (not pronto or remoto["isDraft"] is False):
+            return remoto
+        if tentativa < 2:
+            time.sleep(tentativa + 1)
+    raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira SHA, estado e rascunho no GitHub; a publicação não foi declarada concluída.")
+
+
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
     raiz = Path(raiz)
     hoje = hoje or datetime.now(timezone.utc).date()
@@ -699,14 +718,10 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     except PublicacaoRecusada as erro:
         raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
     correr(["git", "push", "origin", ramo, "--no-follow-tags"])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO, "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
-        raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
-    if remoto.get("isDraft") is True:
+    remoto = _confirmar_pr_entregue(correr, numero, entregue)
+    if remoto["isDraft"]:
         correr(["gh", "pr", "ready", str(numero), "--repo", REPOSITORIO])
-        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO, "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN" or remoto.get("isDraft") is True:
-        raise ParouPorSeguranca("PR remoto continua em rascunho", "Confira gh pr view e torne o PR pronto antes de pedir pouso.")
+        _confirmar_pr_entregue(correr, numero, entregue, pronto=True)
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
