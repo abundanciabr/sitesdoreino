@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-052-tar-256-publicada-e-fechada",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "A TAR-256 foi publicada e fechada na fila",
+  detalhe: "A remoção da coluna pista chegou à produção pelo PR #1482, com o deploy da célula encomendas concluído com sucesso no run 34349313472. A conclusão da TAR-256 foi publicada na fila pelo PR #1485, mergeado no commit e2d4c625406152c9be6abc24ebc5b575f2632624, e o deploy dos dados da fila terminou com sucesso no run 34350438319.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1485",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
