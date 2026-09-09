@@ -241,6 +241,7 @@ def bancada_git_real(repo, tmp_path):
 def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     bancada_git_real, tmp_path
 ):
+    import os
     import subprocess
     import sys
 
@@ -254,11 +255,34 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
         "--scratch",
         str(tmp_path / "scratch"),
     ]
+    binario = tmp_path / "bin"
+    binario.mkdir()
+    estado_pr = tmp_path / "pr-aberto"
+    (binario / "gh").write_text(
+        "#!/bin/sh\n"
+        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
+        f"if [ \"$2\" = \"create\" ]; then touch \"{estado_pr}\"; echo 'https://github.com/abundanciabr/sitesdoreino/pull/91'; exit 0; fi\n"
+        "if [ \"$2\" = \"view\" ]; then echo '{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}'; exit 0; fi\n",
+        encoding="utf-8",
+    )
+    (binario / "gh").chmod(0o755)
+    (binario / "gh.cmd").write_text(
+        "@echo off\n"
+        "if \"%2\"==\"list\" (\n"
+        f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
+        "  exit /b 0\n"
+        ")\n"
+        f"if \"%2\"==\"create\" (echo x > \"{estado_pr}\" & echo https://github.com/abundanciabr/sitesdoreino/pull/91 & exit /b 0)\n"
+        "if \"%2\"==\"view\" (echo {\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"} & exit /b 0)\n",
+        encoding="utf-8",
+    )
+    ambiente = {**os.environ, "PATH": str(binario) + os.pathsep + os.environ.get("PATH", "")}
 
     def abrir():
         return subprocess.run(
             [sys.executable, "ci/sessao.py", *argumentos],
             cwd=bancada,
+            env=ambiente,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -272,6 +296,8 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     )
     primeira = abrir()
     assert primeira.returncode == 0, primeira.stdout + primeira.stderr
+    primeiro_head = git(bancada, "rev-parse", "HEAD")
+    assert primeiro_head != antes[0]
     segunda = abrir()
     assert segunda.returncode == 0, segunda.stdout + segunda.stderr
     depois = (
@@ -279,14 +305,17 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
         git(raiz, "worktree", "list", "--porcelain"),
         (bancada / "preservado.txt").read_bytes(),
     )
-    assert antes == depois
+    assert depois[0] == primeiro_head
+    assert depois[1].count("worktree ") == antes[1].count("worktree ")
+    assert "branch refs/heads/main" in depois[1]
+    assert "branch refs/heads/agent/ci/retomada" in depois[1]
     assert git(bancada, "status", "--porcelain") == ""
     pendente = bancada / "trabalho-nao-commitado.txt"
     pendente.write_bytes(b"nao apagar")
     interrompida = abrir()
     assert interrompida.returncode == 1, interrompida.stdout + interrompida.stderr
     assert pendente.read_bytes() == b"nao apagar"
-    assert git(bancada, "rev-parse", "HEAD") == antes[0]
+    assert git(bancada, "rev-parse", "HEAD") == primeiro_head
 
 
 def test_resolver_clone_nao_permite_bancada_dentro_do_principal(bancada_git_real):
