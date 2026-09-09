@@ -48,6 +48,9 @@ class Command(BaseCommand):
         Aula.objects.filter(pk__in=[aula.pk for aula in selecionadas]).update(
             e_boss=True
         )
+        nomes = ", ".join(aula.titulo_exibido for aula in selecionadas)
         self.stdout.write(
-            self.style.SUCCESS(f"{len(selecionadas)} Bosses marcados em {curso.nome}.")
+            self.style.SUCCESS(
+                f"{len(selecionadas)} Bosses marcados em {curso.nome}: {nomes}."
+            )
         )
