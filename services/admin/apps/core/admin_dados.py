@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -33,6 +35,33 @@ class DadosAdmin:
     origem: str
     condicao: str
     motivo: str | None
+
+
+@dataclass
+class _DadosDaResposta:
+    selecoes: dict[str | None, DadosAdmin | None] = field(default_factory=dict)
+    identidade: tuple | None = None
+
+
+_DADOS_DA_RESPOSTA: ContextVar[_DadosDaResposta | None] = ContextVar(
+    "dados_admin_da_resposta", default=None
+)
+
+
+@contextmanager
+def dados_da_resposta():
+    """Uma seleção por resposta, isolada e descartada inclusive se houver erro."""
+    token = _DADOS_DA_RESPOSTA.set(_DadosDaResposta())
+    try:
+        yield
+    finally:
+        _DADOS_DA_RESPOSTA.reset(token)
+
+
+def _identidade(dados: DadosAdmin) -> tuple:
+    if dados.sha:
+        return ("publicacao", dados.sha, dados.run_id, dados.run_number)
+    return ("legado", dados.pasta.parent)
 
 
 class _DadosInvalidos(ValueError):
@@ -140,12 +169,13 @@ def _conferir_manifesto(
     return origem
 
 
-def selecionar_dados(
+def _selecionar_dados(
     candidatos: tuple[Path, ...],
     *,
     tipo: str | None = None,
     arquivos_obrigatorios: tuple[str, ...] = (),
     diretorios_obrigatorios: tuple[str, ...] = (),
+    identidade: tuple | None = None,
 ) -> DadosAdmin | None:
     """Valida e retorna a versão concreta, com a razão de qualquer alternativa."""
     motivo = None
@@ -173,17 +203,53 @@ def selecionar_dados(
                 or "A cópia preferencial dos dados não está disponível para leitura."
             )
             continue
-        identidade = publicacao or {}
-        return DadosAdmin(
+        identificacao = publicacao or {}
+        selecionado = DadosAdmin(
             pasta=pasta,
-            sha=identidade.get("sha"),
-            run_id=identidade.get("run_id"),
-            run_number=identidade.get("run_number"),
-            gerado_em=identidade.get("gerado_em"),
+            sha=identificacao.get("sha"),
+            run_id=identificacao.get("run_id"),
+            run_number=identificacao.get("run_number"),
+            gerado_em=identificacao.get("gerado_em"),
             origem=origem,
             condicao=(
                 "alternativa" if motivo else "verificada" if publicacao else "legado"
             ),
             motivo=motivo,
         )
+        if identidade is not None and _identidade(selecionado) != identidade:
+            motivo = motivo or "Os dados disponíveis pertencem a outra revisão."
+            continue
+        return selecionado
     return None
+
+
+def selecionar_dados(
+    candidatos: tuple[Path, ...],
+    *,
+    tipo: str | None = None,
+    arquivos_obrigatorios: tuple[str, ...] = (),
+    diretorios_obrigatorios: tuple[str, ...] = (),
+) -> DadosAdmin | None:
+    """Fixa a revisão da resposta e nunca troca um pacote já escolhido."""
+    contexto = _DADOS_DA_RESPOSTA.get()
+    if contexto is not None and tipo in contexto.selecoes:
+        dados = contexto.selecoes[tipo]
+        if dados is None:
+            return None
+        if not all((dados.pasta / nome).is_file() for nome in arquivos_obrigatorios):
+            return None
+        if not all((dados.pasta / nome).is_dir() for nome in diretorios_obrigatorios):
+            return None
+        return dados
+    dados = _selecionar_dados(
+        candidatos,
+        tipo=tipo,
+        arquivos_obrigatorios=arquivos_obrigatorios,
+        diretorios_obrigatorios=diretorios_obrigatorios,
+        identidade=contexto.identidade if contexto is not None else None,
+    )
+    if contexto is not None:
+        contexto.selecoes[tipo] = dados
+        if dados is not None and contexto.identidade is None:
+            contexto.identidade = _identidade(dados)
+    return dados
