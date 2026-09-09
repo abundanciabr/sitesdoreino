@@ -287,6 +287,67 @@ def test_devolvida_volta_para_a_fila(tmp_path):
     assert estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]["estado"] == fila.NA_FILA
 
 
+def test_reivindicacao_expirada_volta_para_a_fila_com_a_marca_da_causa(tmp_path):
+    eventos = [
+        evento(hora="10:00:00"),
+        evento(
+            tipo="reivindicacao_expirada",
+            hora="11:00:00",
+            detalhe="a reserva venceu e não havia PR aberto",
+        ),
+    ]
+    estado = estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]
+    assert estado["estado"] == fila.NA_FILA
+    assert estado["motivo"] == "a reserva venceu e não havia PR aberto"
+
+
+def test_zelador_rotula_reivindicacao_sem_reserva_e_sem_pr_sem_apagar(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={}, quem="zelador-de-teste"
+    )
+
+    assert len(escritos) == 1
+    assert "reivindicacao_expirada" in escritos[0].name
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["estado"] == fila.NA_FILA
+    assert "nenhum ramo ou PR foi apagado" in estado["motivo"]
+
+
+def test_zelador_preserva_reivindicacao_que_tem_pr_aberto(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={"TAR-001": "PR #77"}, quem="zelador-de-teste"
+    )
+
+    assert escritos == []
+    assert len(list((raiz / "fila" / "eventos").glob("*reivindicacao_expirada*"))) == 0
+
+
+def test_pegar_roda_o_zelador_antes_de_travar_a_proxima_tarefa(tmp_path, monkeypatch):
+    raiz = montar(
+        tmp_path,
+        [tarefa("001", "antiga"), tarefa("002", "nova")],
+        [evento("TAR-001")],
+    )
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+
+    args = argparse.Namespace(tarefa="TAR-002", quem="sessao-nova")
+    assert fila.cmd_pegar(raiz, args) == 0
+
+    assert len(list((raiz / "fila" / "eventos").glob("*TAR-001-reivindicacao_expirada.json"))) == 1
+    assert len(list((raiz / "fila" / "eventos").glob("*TAR-002-reivindicada.json"))) == 1
+
+
 def test_bloqueada_pelo_evento_carrega_o_motivo(tmp_path):
     e = estados_de(
         tmp_path,
