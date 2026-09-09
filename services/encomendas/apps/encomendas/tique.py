@@ -495,6 +495,9 @@ def mandar_ao_plantao_o_que_ninguem_pode_pegar(
         .order_by("criada_em", "id")
         .values_list("pk", flat=True)
     )
+    reservas_por_encomenda = mural._reservas_por_encomenda(
+        na_prateleira, site_id=site_id
+    )
 
     ao_plantao: list[object] = []
     for encomenda_id in na_prateleira:
@@ -507,7 +510,9 @@ def mandar_ao_plantao_o_que_ninguem_pode_pegar(
                 < prazo
             ):
                 continue
-            if mural.tem_elegivel_disponivel(projeto, candidatos, regras, agora):
+            if mural.tem_elegivel_disponivel(
+                projeto, candidatos, regras, agora, reservas_por_encomenda
+            ):
                 continue
             projeto.mudar_status(
                 Encomenda.Status.PARA_RECLASSIFICAR,

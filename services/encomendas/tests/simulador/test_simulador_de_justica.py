@@ -109,29 +109,9 @@ QUANTOS_OLHAM_CADA_CARTAO = 3
 # por isso que este nome existe em vez de uma string vazia.
 O_PLANTAO = "plantao-1"
 
-# A TRAVA QUE HOJE ESTOURA EM VEZ DE RECUSAR, achada por este simulador em
-# 07/09/2026 e descrita aqui inteira porque ela é um defeito de produção, e não
-# um detalhe do teste.
-#
-# **O cenário:** o aluno pega um projeto no Mural e ganha a vez. `mural.pegar`
-# não o marca como "trabalhando" e não consulta negociação nenhuma. A instância
-# de `Candidato` que o Mural monta só conhece a `Oferta`; a fila já consulta a
-# negociação viva. Com a vez na mão e ainda `disponivel`, o mesmo aluno recebe
-# uma oferta da fila e a aceita,
-# ou pega um segundo cartão da prateleira. No instante em que o SEGUNDO projeto
-# tenta ir para `em_negociacao`, o índice `uma_negociacao_viva_por_aluno` cumpre
-# o [INV-ENC-N6] e recusa a linha.
-#
-# **O estrago:** a recusa vem como `IntegrityError` cru. Em `negociacao.propor`,
-# o `mudar_status` para `em_negociacao` fica FORA do savepoint que trata o
-# `IntegrityError` da `Proposta`, e em `gestos.aceitar` não há savepoint nenhum.
-# O invariante fica de pé (nada errado é gravado), e o aluno leva um erro de
-# servidor em vez da frase que a célula sabe escrever
-# (`JA_NEGOCIA_OUTRO_PROJETO`).
-#
-# O simulador CONTA cada estouro em vez de desviar dele: desviar seria o mundo
-# fingindo que o botão não existe. O consertar é de outra tarefa, porque a porta
-# de máquina está sendo construída nestes mesmos arquivos.
+# A trava de uma negociação viva por aluno é verificada por comportamento no
+# simulador: nenhum aluno pode terminar um passo com dois projetos nas mãos, e
+# nenhum gesto pode deixar escapar a IntegrityError desta regra.
 TRAVA_DA_SEGUNDA_NEGOCIACAO = "uma_negociacao_viva_por_aluno"
 
 
@@ -399,7 +379,9 @@ def a_alocacao_que_a_lei_manda(
     return esperada
 
 
-def quem_ve_no_mural(projeto, perfis, memoria, com_oferta, regua, agora):
+def quem_ve_no_mural(
+    projeto, perfis, memoria, com_oferta, regua, agora, *, com_negociacao=frozenset()
+):
     """Quem enxerga ESTE projeto na prateleira, pela emenda §3.1. O oráculo do M1.
 
     A memória do Mural são as RESERVAS, e não as ofertas, e a diferença é
@@ -419,6 +401,7 @@ def quem_ve_no_mural(projeto, perfis, memoria, com_oferta, regua, agora):
             com_oferta,
             regua,
             agora,
+            com_negociacao=com_negociacao,
         )
     ]
 
@@ -991,13 +974,24 @@ def conferir_o_mural(
         (p for p in retrato.projetos if p.status in VISIVEIS_NO_MURAL),
         key=lambda projeto: povoado.chegada[projeto.pk],
     )
+    com_negociacao = {
+        projeto.aluno_id
+        for projeto in retrato.projetos
+        if projeto.aluno_id is not None and projeto.status in NEGOCIACAO_VIVA
+    }
     for salto in (1, 37):
         perfil = retrato.perfis[(passo * salto) % len(retrato.perfis)]
         esperada = [
             projeto.pk
             for projeto in na_prateleira
             if quem_ve_no_mural(
-                projeto, [perfil], memoria, retrato.com_oferta, regua, agora
+                projeto,
+                [perfil],
+                memoria,
+                retrato.com_oferta,
+                regua,
+                agora,
+                com_negociacao=com_negociacao,
             )
         ]
         vista = [p.pk for p in mural.listar(perfil.id, agora, site_id=site)]
@@ -1029,7 +1023,17 @@ def conferir_o_mural(
         if esperou < regua.prazo_da_fila:
             continue
         aptos = quem_ve_no_mural(
-            projeto, retrato.perfis, memoria, retrato.com_oferta, regua, agora
+            projeto,
+            retrato.perfis,
+            memoria,
+            retrato.com_oferta,
+            regua,
+            agora,
+            com_negociacao={
+                outro.aluno_id
+                for outro in retrato.projetos
+                if outro.aluno_id is not None and outro.status in NEGOCIACAO_VIVA
+            },
         )
         assert aptos, (
             f"[INV-ENC-M5] quebrado em {agora.isoformat()}: o projeto "
@@ -2000,17 +2004,5 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
     # motivo que não esteja declarado.
     assert placar.presos.get("", 0) == 0, texto
 
-    # O defeito de negociação continua declarado até a TAR-258, que é o despacho
-    # responsável por transformá-lo em recusa nomeada e guarda de elegibilidade.
-    assert placar.alunos_com_duas_negociacoes, (
-        "O buraco do Mural que nao tranca o aluno NAO apareceu nesta rodada. Se "
-        "ele foi consertado, troque esta linha pela asserção de verdade do "
-        "[INV-ENC-N6] em `conferir_a_negociacao` (nenhum aluno com duas "
-        "negociacoes vivas) e apague a excecao que ela abre." + f"\n{texto}"
-    )
-    assert placar.estouros_da_segunda_negociacao, (
-        "Nenhum `IntegrityError` cru da trava `uma_negociacao_viva_por_aluno` "
-        "apareceu nesta rodada. Se o gesto passou a recusar com frase nomeada, "
-        "apague `apesar_do_estouro` e as chamadas que o usam: o simulador nao "
-        "precisa mais engolir nada." + f"\n{texto}"
-    )
+    assert not placar.alunos_com_duas_negociacoes, texto
+    assert placar.estouros_da_segunda_negociacao == 0, texto
