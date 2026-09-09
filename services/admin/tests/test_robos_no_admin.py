@@ -52,17 +52,48 @@ def test_entrega_submetida_continua_visivel_sem_aceite(tmp_path, monkeypatch):
     assert "Entrega submetida; falta comprovar o aceite" in html
     assert "Trabalho em andamento, com aceite ainda não comprovado" in html
     assert "O trabalho já está pronto" not in html
-    assert "<summary>Já terminaram" not in html
+    assert "<summary>Conclusões registradas" not in html
 
 
 @respx.mock
-@pytest.mark.parametrize("conteudo", ["{", "[]", '{"TAR-001": null}'])
+@pytest.mark.parametrize(
+    "conteudo",
+    [
+        "{",
+        "[]",
+        '{"TAR-001": null}',
+        '{"TAR-001": {"estado": "estado-inventado"}}',
+        '{"errada": {"estado": "na fila"}}',
+    ],
+)
 def test_fila_ilegivel_nao_vira_zero(tmp_path, monkeypatch, conteudo):
     pasta = fila_de_mentira(tmp_path, monkeypatch)
     (pasta / "estados.json").write_text(conteudo, encoding="utf-8")
     resposta = _dentro().get(reverse("caixa_robos"))
     assert resposta.status_code == 500
     assert "Nada aqui depende de você agora" not in texto(resposta)
+
+
+@respx.mock
+def test_conclusao_registrada_nao_afirma_aceite_e_nao_repete_tarefa(
+    tmp_path, monkeypatch
+):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "eventos/20260903-110000-TAR-001-concluida.json").write_text(
+        json.dumps(
+            {
+                "tarefa": "TAR-001",
+                "evento": "concluida",
+                "quando": "2026-09-03T12:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert robos.andamento(pasta)["terminadas"] == 3
+    html = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+    assert "Conclusões registradas" in html
+    assert "conclusões registradas" in html
+    assert "Já terminaram, com prova conferida" not in html
 
 
 @respx.mock
@@ -342,7 +373,7 @@ def test_o_de_agora_vem_antes_do_retrato(tmp_path, monkeypatch):
     ao_vivo = pagina.find("Consulta ao GitHub")
     e_dele = pagina.find("Esperando uma decisão sua")
     corrente = pagina.find("Esperando outra tarefa terminar")
-    ja_terminaram = pagina.find("Já terminaram")
+    ja_terminaram = pagina.find("Conclusões registradas")
 
     assert ao_vivo != -1 and e_dele != -1 and corrente != -1 and ja_terminaram != -1
     assert ao_vivo < e_dele, "o que é de agora ficou abaixo do retrato do deploy"
@@ -365,7 +396,9 @@ def test_a_historia_nasce_fechada_e_o_que_pede_gente_nasce_aberto(
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     # A história fica ATRÁS de um clique: o rótulo dela é o próprio `summary`.
-    assert "<summary>Já terminaram" in pagina, "a história voltou a nascer aberta"
+    assert (
+        "<summary>Conclusões registradas" in pagina
+    ), "a história voltou a nascer aberta"
     assert "<details open" not in pagina
     # E o que só ELE destrava NUNCA fica atrás de um clique.
     assert "<h2>Esperando uma decisão sua" in pagina
@@ -429,7 +462,7 @@ def test_fila_ausente_se_declara_nunca_finge_vazio(tmp_path, monkeypatch):
     resposta = _dentro().get(reverse("caixa_robos"))
 
     assert resposta.status_code == 500
-    assert "não veio nesta imagem" in texto(resposta)
+    assert "dados estão ausentes ou inválidos" in texto(resposta)
 
 
 @respx.mock
