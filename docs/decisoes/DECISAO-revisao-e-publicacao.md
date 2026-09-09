@@ -50,7 +50,10 @@ Exit 2 significa erro de instrumento. `acao` contém o próximo gesto da maestro
 Falha e ausência de publicação mantêm `terminal: false`.
 
 A publicação exige todos os workflows disparados pelos caminhos do diff,
-lidos dos YAMLs da main. Só valem runs de push na main com SHA exato. Para
+lidos dos YAMLs vigentes no SHA avaliado pela API de conteúdo do GitHub.
+Antes da separação dos dados admin, a imagem admin comprova também painel
+e fila; jobs criados depois não são exigidos retroativamente. Só valem
+runs de push na main com SHA exato. Para
 cada workflow vale o run mais recente, inclusive reprovação; cancelled e
 skipped não aprovam. Resposta truncada é erro de instrumento. Cada run
 precisa provar os jobs exigidos: deploy da célula, sincronização de infra,
@@ -98,7 +101,8 @@ adicionar a declaração ao corpo depois da revisão sem pedir avaliação nova.
 O revisor julga se a mudança corrige a causa observada.
 
 A exceção só aceita runs FAILURE vigentes, jobs de célula identificados,
-arquivos de código da própria célula falha e cobertura de todas as células
+arquivos de código da própria célula falha ou seu Dockerfile/requirements.txt
+na raiz do serviço, usados pelo build real, e cobertura de todas as células
 que a nova publicação precisa recuperar. Recibo, consumidor, teste isolado,
 run inexistente e publicação ainda em curso não abrem essa passagem. Falhas
 múltiplas não tratadas continuam bloqueando. Checks e SHA revisado continuam

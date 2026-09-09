@@ -7,6 +7,7 @@ nunca de um arquivo de status paralelo ao livro de ocorrências.
 from __future__ import annotations
 
 import fnmatch
+import base64
 import json
 import re
 from pathlib import Path
@@ -48,11 +49,27 @@ def ler_pr(raiz: Path, numero: int) -> dict:
                 files=[{"path": a["filename"]} for a in arquivos])
 
 
-def caminhos_dos_deploys(raiz: Path) -> dict[str, list[str]]:
+def workflows_dos_deploys(raiz: Path, sha: str | None = None) -> dict[str, dict]:
     import yaml
     resultado = {}
     for workflow in DEPLOYS:
-        dado = yaml.safe_load((raiz / workflow).read_text(encoding="utf-8"))
+        if sha is None:
+            texto = (raiz / workflow).read_text(encoding="utf-8")
+        else:
+            dado = _api(raiz, f"contents/{workflow}?ref={sha}")
+            if not isinstance(dado, dict) or dado.get("encoding") != "base64":
+                raise ErroDeInstrumentacao("workflow histórico não foi medido", workflow)
+            texto = base64.b64decode(dado["content"]).decode("utf-8")
+        dado = yaml.safe_load(texto)
+        if not isinstance(dado, dict) or not isinstance(dado.get("jobs"), dict):
+            raise ErroDeInstrumentacao("workflow sem definição dos jobs", workflow)
+        resultado[workflow] = dado
+    return resultado
+
+
+def caminhos_dos_deploys(raiz: Path, definicoes: dict | None = None) -> dict[str, list[str]]:
+    resultado = {}
+    for workflow, dado in (definicoes if definicoes is not None else workflows_dos_deploys(raiz)).items():
         gatilhos = dado.get("on") or dado.get(True)
         caminhos = gatilhos["push"]["paths"]
         if not isinstance(caminhos, list) or not caminhos or any(
@@ -63,16 +80,21 @@ def caminhos_dos_deploys(raiz: Path) -> dict[str, list[str]]:
     return resultado
 
 
-def jobs_exigidos(workflow: str, arquivos: list[str], celulas: list[str]) -> list[str]:
+def jobs_exigidos(workflow: str, arquivos: list[str], celulas: list[str], definicao: dict) -> list[str]:
+    jobs = definicao["jobs"]
+    chaves = {"portao", "sincronizar"} if workflow == DEPLOYS[1] else {"detectar", "portao", "deploy"}
+    if not chaves <= jobs.keys():
+        raise ErroDeInstrumentacao("jobs históricos de publicação não reconhecidos", workflow)
     if workflow == DEPLOYS[1]:
-        return ["portao-de-deploy", "sincronizar"]
-    nomes = ["detectar", "portao-de-deploy"]
+        return [jobs[n].get("name", n) for n in ["portao", "sincronizar"]]
+    nomes = [jobs[n].get("name", n) for n in ["detectar", "portao"]]
+    dados_separados = "publicar-dados-admin" in jobs
     dados_admin = any(a.startswith(("painel/", "fila/")) for a in arquivos)
-    if dados_admin:
-        nomes.append("publicar-dados-admin")
-    somente_dados = bool(arquivos) and all(a.startswith(("painel/", "fila/")) for a in arquivos)
+    if dados_admin and dados_separados:
+        nomes.append(jobs["publicar-dados-admin"].get("name", "publicar-dados-admin"))
+    somente_dados = dados_separados and bool(arquivos) and all(a.startswith(("painel/", "fila/")) for a in arquivos)
     if not somente_dados:
-        nomes.extend(f"deploy ({c})" for c in celulas)
+        nomes.extend(f"{jobs['deploy'].get('name', 'deploy')} ({c})" for c in celulas)
     return nomes
 
 
@@ -89,7 +111,8 @@ def consultar_jobs(raiz: Path, run: dict) -> list[dict]:
 def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
         raise ErroDeInstrumentacao("SHA integrado ausente ou incompleto; confira o merge")
-    exigidos = [w for w, padroes in caminhos_dos_deploys(raiz).items()
+    definicoes = workflows_dos_deploys(raiz, sha)
+    exigidos = [w for w, padroes in caminhos_dos_deploys(raiz, definicoes).items()
                 if any(fnmatch.fnmatchcase(a, p) for a in arquivos for p in padroes)]
     celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(raiz))
     base = dict(sha_integrado=sha, celulas=celulas, workflows=exigidos, runs=[])
@@ -111,7 +134,7 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
                          url=r.get("html_url")) for r in escolhidos if r]
     cobertura_incompleta = False
     for registro in base["runs"]:
-        registro["jobs_exigidos"] = jobs_exigidos(registro["workflow"], arquivos, celulas)
+        registro["jobs_exigidos"] = jobs_exigidos(registro["workflow"], arquivos, celulas, definicoes[registro["workflow"]])
         registro["jobs"] = consultar_jobs(raiz, registro)
         por_nome = {j["name"]: j for j in registro["jobs"]}
         registro["jobs_sem_prova"] = [n for n in registro["jobs_exigidos"]
@@ -276,7 +299,8 @@ def correcao_da_publicacao(raiz: Path, pr: dict, publicacao: dict) -> bool:
         if celula not in mapa or not any(
             a.startswith(f"services/{celula}/") and "/tests/" not in a
             and not Path(a).name.startswith("test_")
-            and Path(a).suffix in {".py", ".html", ".js", ".css", ".sh"}
+            and (Path(a).suffix in {".py", ".html", ".js", ".css", ".sh"}
+                 or a in {f"services/{celula}/Dockerfile", f"services/{celula}/requirements.txt"})
             for a in arquivos
         ):
             return False

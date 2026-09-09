@@ -1,6 +1,8 @@
 """Estado remoto exato, sem equiparar merge à publicação."""
 from pathlib import Path
 import pytest
+import base64
+import yaml
 import estado_da_entrega as entrega
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -14,8 +16,14 @@ def run(path=CELULA, **mudancas):
     dados.update(mudancas)
     return dados
 
+def conteudo_workflow(caminho):
+    arquivo = caminho.removeprefix("contents/").split("?",1)[0]
+    return dict(encoding="base64",content=base64.b64encode((RAIZ/arquivo).read_bytes()).decode())
+
 def medir(monkeypatch, runs, arquivos=None):
     def api(raiz, caminho, **kw):
+        if caminho.startswith("contents/"):
+            return conteudo_workflow(caminho)
         if "/jobs?" in caminho:
             numero = int(caminho.split("/")[2])
             atual = next(r for r in runs if r["id"] == numero)
@@ -51,7 +59,7 @@ def test_sem_gatilho_nao_inventa_deploy(monkeypatch):
 
 def test_merge_com_deploy_ausente_nao_e_terminal(monkeypatch):
     monkeypatch.setattr(entrega, "ler_pr", lambda *a: dict(number=99,state="MERGED",mergeCommit={"oid":SHA},headRefOid=SHA,files=[{"path":"services/quiz/app.py"}]))
-    monkeypatch.setattr(entrega, "_api", lambda *a: {"workflow_runs":[]})
+    monkeypatch.setattr(entrega, "_api", lambda raiz,caminho: conteudo_workflow(caminho) if caminho.startswith("contents/") else {"workflow_runs":[]})
     estado = entrega.consultar_entrega(RAIZ,99)
     assert estado["estado"] == "AGUARDANDO_PUBLICACAO"
     assert estado["terminal"] is False
@@ -129,7 +137,7 @@ def test_cli_consulta_uma_vez_sem_espera(monkeypatch, capsys):
 
 def test_resposta_truncada_nao_aprova(monkeypatch):
     from _nucleo import ErroDeInstrumentacao
-    monkeypatch.setattr(entrega,"_api",lambda *a: dict(total_count=101,workflow_runs=[run()]))
+    monkeypatch.setattr(entrega,"_api",lambda raiz,caminho: conteudo_workflow(caminho) if caminho.startswith("contents/") else dict(total_count=101,workflow_runs=[run()]))
     with pytest.raises(ErroDeInstrumentacao,match="truncada"):
         entrega.consultar_publicacao(RAIZ,SHA,["services/quiz/app.py"])
 
@@ -276,3 +284,58 @@ def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte)
     monkeypatch.setattr(entrega,"consultar_publicacao",lambda raiz,sha,arquivos: dict(terminal=sha==SHA,estado="PUBLICADO" if sha==SHA else "FALHA_PUBLICACAO",sha_integrado=sha))
     bloqueios=entrega.publicacoes_anteriores(RAIZ,["services/admin/app.py"])
     assert [b["sha_integrado"] for b in bloqueios] == [imagem]
+
+
+@pytest.mark.parametrize("arquivo,esperado", [("painel/registros/a.js","PUBLICADO"),("painel/registros/a.js","FALHA_PUBLICACAO"),("docs/decisoes/plano.md","SEM_PUBLICACAO")])
+def test_publicacao_usa_workflow_vigente_no_sha(monkeypatch, arquivo, esperado):
+    consultas = []
+    def api(raiz,caminho,**kw):
+        consultas.append(caminho)
+        if caminho.startswith("contents/"):
+            atual = conteudo_workflow(caminho)
+            dado = yaml.safe_load(base64.b64decode(atual["content"]))
+            if CELULA in caminho:
+                dado["jobs"].pop("publicar-dados-admin")
+                dado[True]["push"]["paths"] = ["services/**","painel/**","fila/**"]
+            return dict(encoding="base64",content=base64.b64encode(yaml.safe_dump(dado).encode()).decode())
+        if "/jobs?" in caminho:
+            return dict(jobs=[dict(name=n,status="completed",conclusion="success") for n in (["detectar","portao-de-deploy"] if esperado=="FALHA_PUBLICACAO" else ["detectar","portao-de-deploy","deploy (admin)"])])
+        return dict(workflow_runs=[run()])
+    monkeypatch.setattr(entrega,"_api",api)
+    resultado = entrega.consultar_publicacao(RAIZ,SHA,[arquivo])
+    assert resultado["estado"] == esperado
+    assert len([c for c in consultas if c.startswith("contents/") and c.endswith("?ref="+SHA)]) == 2
+    if esperado == "PUBLICADO":
+        assert "publicar-dados-admin" not in resultado["runs"][0]["jobs_exigidos"]
+        assert "deploy (admin)" in resultado["runs"][0]["jobs_exigidos"]
+
+
+@pytest.mark.parametrize("arquivo", ["Dockerfile","requirements.txt"])
+def test_recuperacao_aceita_insumos_reais_da_imagem(monkeypatch,arquivo):
+    falha=dict(estado="FALHA_PUBLICACAO",celulas=["quiz"],runs=[dict(id=10,conclusion="failure",jobs=[dict(name="deploy (quiz)",conclusion="failure")])])
+    pr=dict(body="Corrige-publicacao: 10",files=[{"path":"services/quiz/"+arquivo}])
+    assert entrega.correcao_da_publicacao(RAIZ,pr,falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(pr,body="Corrige-publicacao: 11"),falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(pr,files=[{"path":"services/quiz/tests/"+arquivo}]),falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(pr,files=[{"path":"services/quiz/exemplo/"+arquivo}]),falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(pr,files=[{"path":"services/admin/"+arquivo}]),falha)
+
+
+@pytest.mark.parametrize("defeito", ["encoding","sem_jobs","jobs_desconhecidos"])
+def test_workflow_historico_invalido_e_erro_de_instrumento(monkeypatch, defeito):
+    from _nucleo import ErroDeInstrumentacao
+    def api(raiz,caminho,**kw):
+        if not caminho.startswith("contents/"):
+            return dict(workflow_runs=[run()])
+        dado = conteudo_workflow(caminho)
+        if defeito == "encoding": return dict(dado,encoding="none")
+        conteudo = yaml.safe_load(base64.b64decode(dado["content"]))
+        if defeito == "sem_jobs": conteudo.pop("jobs")
+        else: conteudo["jobs"] = {}
+        return dict(dado,content=base64.b64encode(yaml.safe_dump(conteudo).encode()).decode())
+    monkeypatch.setattr(entrega,"_api",api)
+    with pytest.raises(ErroDeInstrumentacao):
+        if defeito == "jobs_desconhecidos":
+            entrega.consultar_publicacao(RAIZ,SHA,["services/quiz/app.py"])
+        else:
+            entrega.workflows_dos_deploys(RAIZ,SHA)
