@@ -141,7 +141,11 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
         pessoa = na_fila.get(chave)
         if pessoa is not None:
             prontos.append(
-                {"numero": numero, "numero_formatado": formatar(numero), "pessoa": pessoa}
+                {
+                    "numero": numero,
+                    "numero_formatado": formatar(numero),
+                    "pessoa": pessoa,
+                }
             )
             casadas.add(pessoa["id"])
             continue
@@ -149,7 +153,11 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
         aluno = ja_alunos.get(chave)
         if aluno is not None:
             ja_dentro.append(
-                {"numero": numero, "numero_formatado": formatar(numero), "pessoa": aluno}
+                {
+                    "numero": numero,
+                    "numero_formatado": formatar(numero),
+                    "pessoa": aluno,
+                }
             )
             continue
 
@@ -207,10 +215,14 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
             # O número da lista que PARECE ser esta pessoa, ou `None`. É o que
             # a tela mostra ao lado da caixinha desmarcada.
             "talvez_o_numero": sugestao_para.get(pessoa["id"]),
-            "talvez_o_numero_formatado": formatar(sugestao_para.get(pessoa["id"]) or ""),
+            "talvez_o_numero_formatado": formatar(
+                sugestao_para.get(pessoa["id"]) or ""
+            ),
             "numeros_parecidos": [
                 formatar(n)
-                for n in numeros_por_final.get(final_curto_de(pessoa.get("whatsapp") or ""), [])
+                for n in numeros_por_final.get(
+                    final_curto_de(pessoa.get("whatsapp") or ""), []
+                )
                 if n != sugestao_para.get(pessoa["id"])
             ],
         }

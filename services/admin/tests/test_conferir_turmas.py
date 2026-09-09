@@ -99,7 +99,9 @@ class TestASugestao:
         )
         assert [p["pessoa"]["nome_completo"] for p in r["prontos"]] == ["Ana"]
         assert r["sozinhos"] == []
-        assert [s["numero"] for s in r["sem_par"]] == ["11 99999-8888"], "o outro número não pode sumir"
+        assert [s["numero"] for s in r["sem_par"]] == [
+            "11 99999-8888"
+        ], "o outro número não pode sumir"
 
     def test_dois_numeros_sugerindo_a_mesma_pessoa_nao_somem(self):
         r = conferir(
@@ -109,7 +111,9 @@ class TestASugestao:
         )
         assert len(r["sozinhos"]) == 1
         assert r["sozinhos"][0]["talvez_o_numero"] == "11 99999-8888"
-        assert [s["numero"] for s in r["sem_par"]] == ["31 99999-8888"], "o segundo volta a ser 'não achei'"
+        assert [s["numero"] for s in r["sem_par"]] == [
+            "31 99999-8888"
+        ], "o segundo volta a ser 'não achei'"
 
     def test_ultimos_quatro_listam_candidatos_para_o_numero_sem_par(self):
         r = conferir(
