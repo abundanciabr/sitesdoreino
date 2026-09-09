@@ -88,6 +88,24 @@ def test_teto_sem_timeout_explicito_compara_com_o_padrao_de_2min():
     _recusa_que_ensina(proc)
 
 
+def test_teto_calculado_da_regua_tambem_cabe_na_janela():
+    proc = _decidir("Bash", {
+        "command": "python ci/esperar.py --run 9",
+        "timeout": 300000,
+    })
+    _recusa_que_ensina(proc)
+    assert "10 min" in proc.stderr
+
+
+def test_teto_calculado_da_regua_passa_com_folga():
+    proc = _decidir("Monitor", {
+        "command": "python ci/esperar.py --run 9",
+        "timeout_ms": 700000,
+        "persistent": False,
+    })
+    assert proc.returncode == 0, proc.stderr
+
+
 # ------------------------------------------------- regra 3: espera muda ----
 
 
