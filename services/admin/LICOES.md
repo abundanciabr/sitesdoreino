@@ -353,6 +353,13 @@ continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
 resposta antes de substituir linhas e classes, preserve a última leitura em
 erro e declare paginação sem apresentar a primeira página como total.
 
+Validar só o número do PR não protege os campos usados para montar a linha.
+Título, referência do ramo, fase e referência da reserva também precisam de
+tipo e formato conferidos. Monte linhas, marcações e carimbo fora do DOM;
+só substitua a leitura depois que a preparação inteira terminar. A regressão
+injeta um item ruim entre bons e interrompe uma montagem válida: em ambos os
+casos, inclusive na repetição, preserva nós, classes, etiquetas e horário.
+
  A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
  próprio, pois ausência de classificação não é decisão humana. O produtor do
  livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
