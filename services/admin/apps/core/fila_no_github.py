@@ -535,6 +535,38 @@ class _RecebimentoReuniao:
             )
         return conteudo.replace(b"\r\n", b"\n")
 
+    def conferir_integracao(self, pr, revisao, origem, artefatos):
+        head = _sha(pr["head"]["sha"])
+        merge = _sha(pr["merge_commit_sha"])
+        if origem == "ramo" and head != revisao:
+            raise _SemConfirmacao("O PR aponta para outra revisão do ramo.")
+        for sha in dict.fromkeys((head, merge)):
+            if sha == revisao:
+                continue
+            fila = self.subarvore(self.arvore(sha), "fila")
+            for pasta in ("tarefas", "eventos"):
+                entradas = self.subarvore(fila, pasta)
+                for caminho, esperado in artefatos:
+                    if not caminho.startswith("fila/" + pasta + "/"):
+                        continue
+                    nome = caminho.rsplit("/", 1)[1]
+                    item = next((e for e in entradas if e["path"] == nome), None)
+                    if item is None or self.blob(item) != esperado:
+                        raise _SemConfirmacao(
+                            "O commit do PR ou da integração não confirma os mesmos artefatos."
+                        )
+        main = revisao if origem == "main" else self.ref("heads/" + RAMO_BASE)
+        if main != merge:
+            comparacao = self.get(f"/compare/{main}...{merge}")
+            if (
+                comparacao.get("status") != "behind"
+                or comparacao["base_commit"]["sha"] != main
+                or comparacao["merge_base_commit"]["sha"] != merge
+            ):
+                raise _SemConfirmacao(
+                    "O commit da integração não foi confirmado na história da main."
+                )
+
     def conferir(self):
         import unicodedata
 
@@ -651,6 +683,7 @@ class _RecebimentoReuniao:
                 "Mais de um PR pode corresponder ao ramo. Confira o pedido original."
             )
         pr_numero, integrado = None, False
+        detalhe_integracao = ""
         if prs:
             pr = prs[0]
             if (
@@ -665,7 +698,21 @@ class _RecebimentoReuniao:
                     "O PR não pertence à origem da tarefa. Confira o ramo original."
                 )
             pr_numero = pr["number"]
-            integrado = bool(pr.get("merged_at")) and pr["state"] == "closed"
+            if pr.get("merged_at") and pr["state"] == "closed":
+                try:
+                    self.conferir_integracao(pr, sha, origem, artefatos)
+                    integrado = True
+                    detalhe_integracao = " Integração confirmada na história da main, com os mesmos artefatos no PR e no commit integrado."
+                except (
+                    _Conflito,
+                    _SemConfirmacao,
+                    httpx.HTTPError,
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                ):
+                    detalhe_integracao = " A integração não foi confirmada. Consulte novamente ou peça ao robô para conferir o PR e a main."
         inicio = ""
         inicios = [
             e
@@ -695,7 +742,8 @@ class _RecebimentoReuniao:
             inicio = max(inicio, dado["quando"])
         return ReciboReuniao(
             "integrado" if integrado else "recebido",
-            f"Pedido recebido na {origem}, com tarefa e explicação conferidas na mesma revisão. Integração não comprova publicação ou aplicação.",
+            f"Pedido recebido na {origem}, com tarefa e explicação conferidas na mesma revisão. Integração não comprova publicação ou aplicação."
+            + detalhe_integracao,
             self.tarefa,
             ramo,
             sha,

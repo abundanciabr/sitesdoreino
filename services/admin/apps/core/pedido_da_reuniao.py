@@ -250,13 +250,19 @@ def envelope_autorizado(doc, versao):
     return None
 
 
-def autorizar(nome, esperada, admin):
+def autorizar(nome, esperada, admin, *, texto_exibido):
     with transaction.atomic():
         doc = Documento.objects.select_for_update().get(nome=nome)
         versao = doc.versoes.filter(pk=esperada).first()
         if versao is None or not vigente(doc, versao):
             raise ConflitoDoPedido(
                 "A versão mudou. Leia o texto atual e autorize novamente a versão que deseja enviar."
+            )
+        if not isinstance(texto_exibido, str) or texto_exibido.replace(
+            "\r\n", "\n"
+        ) != versao.corpo.replace("\r\n", "\n"):
+            raise ConflitoDoPedido(
+                "O texto enviado não corresponde à versão salva. Seu rascunho continua abaixo; salve a revisão ou reabra a versão salva antes de autorizar."
             )
         dados = envelope(doc, versao)
         if envelope_autorizado(doc, versao):

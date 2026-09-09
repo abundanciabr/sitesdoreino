@@ -75,8 +75,11 @@ def test_edicao_exige_versao_e_retry_reaproveita_efeito():
 def test_autorizacao_explicita_da_versao_exata_e_idempotente():
     doc, versao = criar()
     assert pedidos.envelope_autorizado(doc, versao) is None
-    primeiro = pedidos.autorizar(doc.nome, versao.pk, DONO)
-    assert pedidos.autorizar(doc.nome, versao.pk, DONO).pk == primeiro.pk
+    primeiro = pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo)
+    assert (
+        pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo).pk
+        == primeiro.pk
+    )
     envelope = pedidos.envelope_autorizado(doc, versao)
     assert envelope["pedido"]["documento"] == doc.pk
     assert envelope["pedido"]["versao"] == versao.pk
@@ -90,13 +93,13 @@ def test_autorizacao_explicita_da_versao_exata_e_idempotente():
     assert pedidos.envelope_autorizado(doc, nova) is None
     assert pedidos.envelope_autorizado(doc, versao) is None
     with pytest.raises(pedidos.ConflitoDoPedido):
-        pedidos.autorizar(doc.nome, versao.pk, DONO)
+        pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo)
 
 
 @pytest.mark.parametrize("alteracao", ["corpo", "salvo_por", "documento"])
 def test_versao_adulterada_nao_herda_autorizacao(alteracao):
     doc, versao = criar()
-    pedidos.autorizar(doc.nome, versao.pk, DONO)
+    pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo)
     valores = {
         "corpo": "Adulterado",
         "salvo_por": "outra@exemplo.com",
@@ -119,7 +122,7 @@ def test_edicao_e_autorizacao_revertem_se_auditoria_falha():
         with pytest.raises(DatabaseError):
             pedidos.editar(doc.nome, versao.pk, "Texto novo", DONO)
         with pytest.raises(DatabaseError):
-            pedidos.autorizar(doc.nome, versao.pk, DONO)
+            pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo)
     doc.refresh_from_db()
     assert doc.corpo == versao.corpo and doc.versoes.count() == 1
     assert pedidos.envelope_autorizado(doc, versao) is None
@@ -376,7 +379,12 @@ def test_tela_salvar_reabrir_autorizar_sem_enviar(monkeypatch):
     assert (
         cliente.post(
             resposta.url,
-            {"acao": "autorizar", "versao": versao, "publicacao_publica": "sim"},
+            {
+                "acao": "autorizar",
+                "versao": versao,
+                "publicacao_publica": "sim",
+                "texto": pagina.context["texto"],
+            },
         ).status_code
         == 302
     )
@@ -462,7 +470,7 @@ def test_migracao_de_autorizacao_so_muda_estado_e_preserva_append_only():
     assert isinstance(migracao.operations[0], SeparateDatabaseAndState)
     assert migracao.operations[0].database_operations == []
     doc, versao = criar()
-    registro = pedidos.autorizar(doc.nome, versao.pk, DONO)
+    registro = pedidos.autorizar(doc.nome, versao.pk, DONO, texto_exibido=versao.corpo)
     with pytest.raises(DatabaseError), transaction.atomic():
         Registro.objects.filter(pk=registro.pk).update(detalhe="adulteração")
 
@@ -627,3 +635,282 @@ def test_snapshot_nao_aceita_booleano_ou_decimal_como_identidade(
     (tmp_path / "estados.json").write_text(json.dumps(estado), encoding="utf-8")
     monkeypatch.setattr(reuniao.robos, "diretorio_da_fila", lambda: tmp_path)
     assert reuniao._publicado(dados, None).get("erro") is True
+
+
+@respx.mock
+def test_conflito_so_autoriza_apos_reabrir_e_conferir_o_texto_vencedor():
+    _a_escola_responde()
+    cliente = _dentro()
+    doc, anterior = criar()
+    atual = pedidos.editar(doc.nome, anterior.pk, "SEGREDO VENCEDOR NAO EXIBIDO", DONO)
+    url = reverse(
+        "pedido_reuniao", kwargs={"identidade": doc.nome.removeprefix(pedidos.PREFIXO)}
+    )
+    perdedor = "TEXTO PERDEDOR EXIBIDO"
+    resposta = cliente.post(
+        url, {"acao": "salvar", "versao": anterior.pk, "texto": perdedor}
+    )
+    assert resposta.status_code == 409
+    assert perdedor in resposta.content.decode()
+    assert atual.corpo in resposta.content.decode()
+    assert 'id="texto-salvo"' in resposta.content.decode()
+    for versao in (anterior.pk, atual.pk):
+        tentativa = cliente.post(
+            url,
+            {
+                "acao": "autorizar",
+                "versao": versao,
+                "texto": perdedor,
+                "publicacao_publica": "sim",
+            },
+        )
+        assert tentativa.status_code == 409
+    assert not Registro.objects.filter(
+        acao=Registro.AUTORIZAR_PEDIDO, alvo=doc.nome
+    ).exists()
+    assert doc.versoes.count() == 2
+    pagina = cliente.get(url)
+    assert pagina.context["texto"] == atual.corpo
+    assert (
+        cliente.post(
+            url,
+            {
+                "acao": "autorizar",
+                "versao": atual.pk,
+                "texto": pagina.context["texto"],
+                "publicacao_publica": "sim",
+            },
+        ).status_code
+        == 302
+    )
+    assert (
+        json.loads(cliente.get(url).context["envelope"])["tarefa"]["despacho"]
+        == atual.corpo
+    )
+
+
+@respx.mock
+@pytest.mark.parametrize("texto", ["Edicao ainda nao salva", None])
+def test_autorizacao_nao_aceita_edicao_nao_salva_ou_texto_ausente(texto):
+    _a_escola_responde()
+    cliente = _dentro()
+    doc, versao = criar()
+    url = reverse(
+        "pedido_reuniao", kwargs={"identidade": doc.nome.removeprefix(pedidos.PREFIXO)}
+    )
+    post = {"acao": "autorizar", "versao": versao.pk, "publicacao_publica": "sim"}
+    if texto is not None:
+        post["texto"] = texto
+    resposta = cliente.post(url, post)
+    assert resposta.status_code == 409
+    if texto:
+        assert texto in resposta.content.decode()
+    assert doc.versoes.count() == 1
+    assert not Registro.objects.filter(
+        acao=Registro.AUTORIZAR_PEDIDO, alvo=doc.nome
+    ).exists()
+
+
+@respx.mock
+def test_autorizacao_com_resposta_perdida_retoma_so_o_mesmo_texto():
+    _a_escola_responde()
+    cliente = _dentro()
+    doc, versao = criar()
+    url = reverse(
+        "pedido_reuniao", kwargs={"identidade": doc.nome.removeprefix(pedidos.PREFIXO)}
+    )
+    post = {
+        "acao": "autorizar",
+        "versao": versao.pk,
+        "texto": versao.corpo,
+        "publicacao_publica": "sim",
+    }
+    autorizar = pedidos.autorizar
+
+    def perder_resposta(*args, **kwargs):
+        autorizar(*args, **kwargs)
+        raise DatabaseError("resposta perdida ficticia")
+
+    with patch.object(pedidos, "autorizar", side_effect=perder_resposta):
+        resposta = cliente.post(url, post)
+    assert resposta.status_code == 503
+    assert resposta.context["texto"] == versao.corpo
+    assert cliente.post(url, post).status_code == 302
+    assert (
+        Registro.objects.filter(acao=Registro.AUTORIZAR_PEDIDO, alvo=doc.nome).count()
+        == 1
+    )
+    atual = pedidos.editar(doc.nome, versao.pk, "Vencedor apos resposta perdida", DONO)
+    assert cliente.post(url, post).status_code == 409
+    assert pedidos.envelope_autorizado(doc, atual) is None
+    assert doc.versoes.count() == 2
+
+
+@respx.mock
+@pytest.mark.parametrize("selecionada", [True, False])
+def test_retry_sem_placar_preserva_foto_data_texto_e_selecao_originais(
+    monkeypatch, selecionada
+):
+    from html.parser import HTMLParser
+
+    class Formulario(HTMLParser):
+        foto = False
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            if tag == "input" and attrs.get("name") == "tirar_foto":
+                self.foto = "checked" in attrs
+
+    _a_escola_responde()
+    cliente = _dentro()
+    url = reverse("reuniao")
+    monkeypatch.setattr(reuniao.timezone, "localdate", lambda: HOJE)
+    monkeypatch.setattr(
+        reuniao,
+        "montar_o_placar",
+        lambda *a: {"mudancas": {"foto_de_hoje": "alunos=3"}},
+    )
+    formulario = cliente.get(url).context["formulario"]
+    post = {"formulario": formulario, "decisoes": "Decisao a preservar"}
+    if selecionada:
+        post["tirar_foto"] = "sim"
+    monkeypatch.setattr(
+        reuniao.timezone, "localdate", lambda: HOJE + dt.timedelta(days=1)
+    )
+    monkeypatch.setattr(
+        reuniao, "montar_o_placar", lambda *a: {"recusas": ["meta ausente"]}
+    )
+    with patch.object(
+        Registro.objects, "create", side_effect=DatabaseError("falha ficticia")
+    ):
+        erro = cliente.post(url, post)
+    assert erro.status_code == 503
+    assert erro.context["formulario"] == formulario
+    assert 'name="tirar_foto"' in erro.content.decode()
+    assert (
+        "Este pedido mantém a foto registrada quando você abriu a pauta."
+        in erro.content.decode()
+    )
+    assert "alunos=3" not in erro.content.decode()
+    campos = Formulario()
+    campos.feed(erro.content.decode())
+    assert campos.foto == selecionada
+    retry = {
+        "formulario": erro.context["formulario"],
+        "decisoes": erro.context["campos"]["decisoes"],
+    }
+    if campos.foto:
+        retry["tirar_foto"] = "sim"
+    retorno = cliente.post(url, retry)
+    assert retorno.status_code == 302
+    salvo = Documento.objects.get(nome__startswith=pedidos.PREFIXO)
+    esperado = reuniao.montar_o_pedido(post, HOJE, "alunos=3")
+    assert salvo.corpo == esperado
+    assert salvo.versoes.count() == 1
+    assert ("alunos=3" in salvo.corpo) == selecionada
+
+
+def fonte_integrada(fonte, apagado=False):
+    from copy import deepcopy
+
+    respostas = fonte[2]
+    head = "4" * 40 if apagado else "b" * 40
+    respostas["/pulls"] = [
+        {
+            "number": 123,
+            "html_url": "https://github.com/abundanciabr/sitesdoreino/pull/123",
+            "state": "closed",
+            "merged_at": "2026-09-09T15:00:00Z",
+            "merge_commit_sha": "3" * 40,
+            "head": {
+                "ref": "agent/painel/reuniao",
+                "sha": head,
+                "repo": {"full_name": "abundanciabr/sitesdoreino"},
+            },
+            "base": {"ref": "main", "repo": {"full_name": "abundanciabr/sitesdoreino"}},
+        }
+    ]
+    respostas["/git/ref/heads/main"] = {
+        "ref": "refs/heads/main",
+        "object": {"type": "commit", "sha": "5" * 40},
+    }
+    for sha in ("3", "4", "5"):
+        respostas["/git/trees/" + sha * 40] = deepcopy(
+            respostas["/git/trees/" + "b" * 40]
+        )
+    respostas["/compare/" + "5" * 40 + "..." + "3" * 40] = {
+        "status": "behind",
+        "base_commit": {"sha": "5" * 40},
+        "merge_base_commit": {"sha": "3" * 40},
+    }
+    if apagado:
+        respostas["/git/ref/heads/agent/painel/reuniao"] = httpx.Response(404)
+    return respostas
+
+
+@pytest.mark.parametrize("apagado", [False, True])
+def test_integracao_comprova_artefatos_no_pr_merge_e_historia_da_main(
+    fonte_remota, monkeypatch, apagado
+):
+    fonte_integrada(fonte_remota, apagado)
+    recibo = consultar(fonte_remota, monkeypatch)
+    assert recibo.estado == "integrado" and recibo.pr == 123
+    assert recibo.revisao == ("5" if apagado else "b") * 40
+    assert len(recibo.artefatos) == 2
+
+
+@pytest.mark.parametrize(
+    "defeito",
+    [
+        "head",
+        "merge_sem_artefatos",
+        "main_ausente",
+        "historia",
+        "base",
+        "ancestral",
+        "head_apagado_sem_artefatos",
+        "merge_bytes",
+        "head_apagado_bytes",
+    ],
+)
+def test_pr_com_mesmo_ramo_nao_promove_recibo_sem_prova_da_integracao(
+    fonte_remota, monkeypatch, defeito
+):
+    respostas = fonte_integrada(fonte_remota, defeito.startswith("head_apagado"))
+    comparacao = respostas["/compare/" + "5" * 40 + "..." + "3" * 40]
+    if defeito == "head":
+        respostas["/pulls"][0]["head"]["sha"] = "4" * 40
+    if defeito == "merge_sem_artefatos":
+        respostas["/git/trees/" + "3" * 40]["tree"] = []
+    if defeito == "head_apagado_sem_artefatos":
+        respostas["/git/trees/" + "4" * 40]["tree"] = []
+    if defeito in ("merge_bytes", "head_apagado_bytes"):
+        from copy import deepcopy
+
+        sha = "4" if defeito == "head_apagado_bytes" else "3"
+        respostas["/git/trees/" + sha * 40]["tree"][0]["sha"] = "8" * 40
+        respostas["/git/trees/" + "8" * 40] = deepcopy(
+            respostas["/git/trees/" + "c" * 40]
+        )
+        respostas["/git/trees/" + "8" * 40]["tree"][0]["sha"] = "9" * 40
+        respostas["/git/trees/" + "9" * 40] = deepcopy(
+            respostas["/git/trees/" + "d" * 40]
+        )
+        respostas["/git/trees/" + "9" * 40]["tree"][0]["sha"] = "2" * 40
+        respostas["/git/blobs/" + "2" * 40] = {
+            "sha": "2" * 40,
+            "encoding": "base64",
+            "content": base64.b64encode(b"outro pedido").decode(),
+        }
+    if defeito == "main_ausente":
+        respostas["/git/ref/heads/main"] = httpx.Response(503)
+    if defeito == "historia":
+        comparacao["status"] = "diverged"
+    if defeito == "base":
+        comparacao["base_commit"]["sha"] = "6" * 40
+    if defeito == "ancestral":
+        comparacao["merge_base_commit"]["sha"] = "6" * 40
+    recibo = consultar(fonte_remota, monkeypatch)
+    assert recibo.estado == "recebido"
+    assert "integração não foi confirmada" in recibo.detalhe.lower()
+    assert len(recibo.artefatos) == 2 and recibo.pr == 123

@@ -136,6 +136,7 @@ def reuniao(request):
     pediram_o_analista = campos.get("acao") == analista_.ACAO
     erro, status = "", 200
     formulario = campos.get("formulario", "")
+    original = None
     if request.method == "POST" and not pediram_o_analista:
         try:
             original = signing.loads(formulario, salt="reuniao-pauta")
@@ -158,6 +159,7 @@ def reuniao(request):
                     400,
                 )
                 formulario = ""
+                original = None
         except DatabaseError:
             erro, status = (
                 "Não consegui confirmar a gravação. Seu texto continua abaixo; repita Salvar pedido privado para recuperar o mesmo pedido.",
@@ -165,6 +167,8 @@ def reuniao(request):
             )
     contexto = montar_o_placar(hoje, site_de(request))
     foto = (contexto.get("mudancas") or {}).get("foto_de_hoje")
+    if original is not None:
+        foto = original["foto"]
     if not formulario:
         formulario = _formulario(hoje, foto, request.admin)
     return render(
@@ -176,6 +180,7 @@ def reuniao(request):
             "passos": PASSOS,
             "campos": campos,
             "formulario": formulario,
+            "foto_da_pauta": foto,
             "erro_pedido": erro,
             "pedidos_salvos": Documento.objects.filter(
                 nome__startswith=pedidos.PREFIXO, publico=False, arquivado=False
@@ -291,7 +296,12 @@ def pedido_reuniao(request, identidade):
             elif (
                 acao == "autorizar" and request.POST.get("publicacao_publica") == "sim"
             ):
-                pedidos.autorizar(doc.nome, esperada, request.admin)
+                pedidos.autorizar(
+                    doc.nome,
+                    esperada,
+                    request.admin,
+                    texto_exibido=request.POST.get("texto"),
+                )
             else:
                 raise pedidos.ConflitoDoPedido(
                     "Para autorizar, leia o texto e confirme que a tarefa e os registros serão públicos."
@@ -324,6 +334,8 @@ def pedido_reuniao(request, identidade):
             "identidade": identidade,
             "texto": texto,
             "versao_editada": versao_editada,
+            "pode_autorizar": str(versao_editada) == str(versao.pk)
+            and texto.replace("\r\n", "\n") == versao.corpo.replace("\r\n", "\n"),
             "erro_pedido": erro,
             "recibo": recibo,
             "publicado": publicado,
