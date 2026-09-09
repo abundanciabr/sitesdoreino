@@ -364,6 +364,15 @@ def test_o_aviso_leva_para_a_ideia_e_o_lido_some_da_lista_de_nao_lidos(dentro, a
     assert aviso.sugestao.titulo in depois, "o aviso lido sumiu da lista"
 
 
+def test_o_sino_continua_contando_no_trilho_da_propria_pagina_de_avisos(dentro, aviso):
+    """A página de avisos permanece funcional sem duplicar o sino."""
+    corpo = dentro.client.get(reverse("avisos")).content.decode()
+
+    assert 'class="avisos"' in corpo
+    assert 'use href="#i-sino"' not in corpo
+    assert 'href="/notificacoes"' not in corpo
+
+
 def test_quem_nao_entrou_nao_alcanca_o_rosto(client, sugestao):
     """O rosto não afrouxou nada: continua valendo que a Caixa é de quem tem
     matrícula, inclusive para só olhar (`DECISAO-EVO-01` §2)."""

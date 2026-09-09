@@ -97,6 +97,17 @@ def test_a_contagem_de_nao_lidos_e_de_quem_esta_na_sessao(dentro, outra_pessoa, 
     assert contar_nao_lidos(ator_de(outra_pessoa)) == 0
 
 
+def test_o_sino_de_toda_pagina_conta_so_os_meus(dentro, outra_pessoa, aviso):
+    """A moldura não renderiza mais o sino em nenhuma sessão."""
+    meu = dentro.client.get(reverse("quadro")).content.decode()
+    dela = outra_pessoa.client.get(reverse("quadro")).content.decode()
+
+    assert 'use href="#i-sino"' not in meu
+    assert 'use href="#i-sino"' not in dela
+    assert 'href="/notificacoes"' not in meu
+    assert 'href="/notificacoes"' not in dela
+
+
 # ---------------------------------------------------------------------------
 # Escrever
 # ---------------------------------------------------------------------------
