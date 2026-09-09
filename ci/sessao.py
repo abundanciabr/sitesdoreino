@@ -29,17 +29,19 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
         gesto depois de a pasta existir (`armadilhas/357`), rodado pelo
         `fila.py` DA BANCADA para o comprovante não nascer órfão no clone
         principal (`armadilhas/192`)
-     5. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
+     5. abre e confere um PR em rascunho no primeiro minuto, antes do código,
+        para anunciar a intenção e impedir trabalho duplicado invisível
+     6. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
         viaja no Git, e num checkout novo simplesmente não existe
-     6. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
-     7. pip install -r services/<celula>/requirements.txt
-     8. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
+     7. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
+     8. pip install -r services/<celula>/requirements.txt
+     9. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
         DERIVADOS da célula — nunca a 55432 fixa da partida rápida, que em lote
         faria cinco despachos colidirem no mesmo container
-     9. .env de sessão, fora do worktree, com caminhos absolutos no formato
+    10. .env de sessão, fora do worktree, com caminhos absolutos no formato
         desta máquina (`armadilhas/006`: `/tmp` aqui não é `/tmp`)
-    10. python ci/doctor.py
-    11. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
+    11. python ci/doctor.py
+    12. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
     e então imprime a Declaração de Abertura do RITOS §1 já preenchida, e
     fecha com `BANCADA PRONTA: <caminho absoluto>` para o robô copiar.
 
@@ -145,6 +147,7 @@ PASSOS = (
     "git fetch origin",
     "worktree da sessão",
     "balcão: pegar a tarefa da fila",
+    "PR em rascunho como anúncio",
     "armadilhas/INDICE.md na bancada",
     "venv FORA do worktree",
     "dependências da célula",
@@ -162,6 +165,7 @@ PASSOS = (
     P_FETCH,
     P_WORKTREE,
     P_BALCAO,
+    P_ANUNCIO,
     P_INDICE,
     P_VENV,
     P_DEPS,
@@ -546,6 +550,7 @@ def passos_do_plano(plano: Plano) -> tuple[str, ...]:
     passos = [P_CONFERIR, P_FETCH, P_WORKTREE]
     if plano.tarefa_da_fila:
         passos.append(P_BALCAO)
+    passos.append(P_ANUNCIO)
     passos.append(P_INDICE)
     if plano.sobe_ambiente:
         passos.extend(PASSOS_DO_AMBIENTE)
@@ -1072,6 +1077,136 @@ class Sessao:
             )
         self._pass(f"{tid} é sua · o comprovante nasceu na bancada (commite-o no PR)")
 
+    def anunciar_pr(self, gh: str) -> None:
+        """Publica a intenção antes de o agente começar a construir.
+
+        O primeiro commit é vazio quando não há comprovante da fila. Quando há,
+        ele embarca só o evento que o balcão acabou de criar. Assim o PR existe
+        antes do código, sem transformar alterações do agente em anúncio.
+        """
+        passo = self._abrir(P_ANUNCIO)
+        titulo = f"rascunho: {self.plano.frase or self.plano.tarefa_da_fila or self.plano.tarefa}"
+        corpo = (
+            "# Trabalho em andamento\n\n"
+            "Este PR foi aberto como rascunho no início da sessão para anunciar "
+            "quem está trabalhando e evitar trabalho duplicado.\n\n"
+            f"Área: {self.plano.celula}\n"
+            f"Ramo: {self.plano.branch}\n"
+            f"Tarefa: {self.plano.tarefa_da_fila or self.plano.tarefa}\n\n"
+            "A revisão só será solicitada depois da implementação e da validação."
+        )
+        corpo_arquivo = self.plano.scratch / f"anuncio-{self.plano.tarefa}.md"
+        self._escrever(corpo_arquivo, corpo)
+        consulta = self._correr(
+            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
+             "--json", "number,url,state,isDraft"],
+            cwd=self.plano.worktree,
+            timeout=120,
+        )
+        try:
+            prs = json.loads(consulta.stdout or "")
+        except (TypeError, ValueError) as erro:
+            raise ErroDeSessao(
+                passo,
+                "a consulta de PR devolveu JSON inválido",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira o acesso ao GitHub e repita a abertura. Nenhum anúncio foi declarado.",
+            ) from erro
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise ErroDeSessao(
+                passo,
+                "o ramo tem zero ou mais de um PR aberto de forma inconclusiva",
+                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
+                detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
+            )
+        if prs:
+            numero = prs[0].get("number")
+            if not isinstance(numero, int):
+                raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
+            if prs[0].get("state", "OPEN") != "OPEN":
+                raise ErroDeSessao(
+                    passo,
+                    f"o ramo já tem o PR fechado #{numero}",
+                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
+                )
+            self._pass(f"PR #{numero} já anuncia esta sessão")
+            return
+
+        status = self._correr(
+            ["git", "status", "--porcelain=v1"], cwd=self.plano.worktree, timeout=120
+        )
+        linhas = [linha for linha in status.stdout.splitlines() if linha.strip()]
+        eventos = []
+        if self.plano.tarefa_da_fila:
+            eventos = [
+                linha[3:]
+                for linha in linhas
+                if linha[3:].replace("\\", "/").startswith("fila/eventos/")
+                and self.plano.tarefa_da_fila in linha
+            ]
+        permitidos = set(eventos)
+        alheios = set(linhas) - {f"?? {caminho}" for caminho in permitidos}
+        if alheios:
+            raise ErroDeSessao(
+                passo,
+                "a bancada tem alterações antes do anúncio",
+                detalhe="Preserve o trabalho existente e abra uma nova sessão; o anúncio não vai incluí-lo.\n"
+                + "\n".join(sorted(alheios)),
+            )
+        if eventos:
+            self._exigir(
+                passo,
+                ["git", "add", "--", *eventos],
+                cwd=self.plano.worktree,
+                timeout=120,
+            )
+        else:
+            adiante = self._correr(
+                ["git", "rev-list", "--count", f"origin/main..{self.plano.branch}"],
+                cwd=self.plano.worktree,
+                timeout=120,
+            )
+            if adiante.stdout.strip() == "0":
+                self._exigir(
+                    passo,
+                    ["git", "commit", "--allow-empty", "-m", "chore: anunciar intenção da sessão",
+                     "-m", "Co-Authored-By: Codex <noreply@openai.com>"],
+                    cwd=self.plano.worktree,
+                    timeout=120,
+                )
+        self._exigir(
+            passo,
+            ["git", "push", "-u", "origin", self.plano.branch],
+            cwd=self.plano.worktree,
+            timeout=600,
+        )
+        criado = self._exigir(
+            passo,
+            [gh, "pr", "create", "--draft", "--base", "main", "--head", self.plano.branch,
+             "--title", titulo, "--body-file", str(corpo_arquivo)],
+            cwd=self.plano.worktree,
+            timeout=120,
+        )
+        achado = re.search(r"https://\S*?/pull/(\d+)", criado.stdout)
+        if not achado:
+            raise ErroDeSessao(
+                passo,
+                "o GitHub não devolveu a URL do PR draft",
+                detalhe="Confira gh pr list e repita a abertura. Sem URL, o anúncio não foi comprovado.",
+            )
+        conferido = self._correr(
+            [gh, "pr", "view", achado.group(1), "--json", "state,isDraft,headRefOid"],
+            cwd=self.plano.worktree,
+            timeout=120,
+        )
+        try:
+            estado = json.loads(conferido.stdout or "")
+        except (TypeError, ValueError) as erro:
+            raise ErroDeSessao(passo, "a conferência do PR draft devolveu JSON inválido", detalhe="Confira gh pr view e repita.") from erro
+        if estado.get("state") != "OPEN" or estado.get("isDraft") is not True:
+            raise ErroDeSessao(passo, "o GitHub não confirmou um PR aberto em rascunho", detalhe="Confira gh pr view e corrija o estado antes de trabalhar.")
+        self._pass(f"PR draft #{achado.group(1)} aberto e conferido")
+
     def _exigir_bancada_limpa(self, passo: str, git: str) -> None:
         """A Declaração afirma `git status: limpo`. Isto é o que MEDE isso.
 
@@ -1485,6 +1620,12 @@ class Sessao:
         self.preparar_worktree(git)
         if self.plano.tarefa_da_fila:
             self.pegar_a_tarefa()
+        gh = self._ferramenta(
+            "gh",
+            P_ANUNCIO,
+            "O anúncio precisa criar e conferir um PR draft antes do código.",
+        )
+        self.anunciar_pr(gh)
         self.gerar_indice(git)
         if not self.plano.sobe_ambiente:
             return declaracao(self.plano, resumo="", estado_git=self._estado_git)
