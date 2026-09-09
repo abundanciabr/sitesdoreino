@@ -131,6 +131,26 @@ EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
 EMAIL_WEBHOOK_TOKEN = os.environ.get("EMAIL_WEBHOOK_TOKEN", "")
+EMAIL_SUPPRESSIONS_SINCRONIZADAS = (
+    os.environ.get("EMAIL_SUPPRESSIONS_SINCRONIZADAS", "0") == "1"
+)
+
+
+def limite_de_email(nome: str) -> int | None:
+    valor = os.environ.get(nome, "").strip()
+    if not valor:
+        return None
+    try:
+        limite = int(valor)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{nome} deve ser um inteiro positivo") from exc
+    if limite <= 0:
+        raise ImproperlyConfigured(f"{nome} deve ser um inteiro positivo")
+    return limite
+
+
+EMAIL_MAX_EMAILS_POR_MINUTO = limite_de_email("EMAIL_MAX_EMAILS_POR_MINUTO")
+EMAIL_MAX_EMAILS_POR_HORA = limite_de_email("EMAIL_MAX_EMAILS_POR_HORA")
 
 # djhuey lê `settings.HUEY`. Precisa ser a MESMA instância que as tasks decoram
 # (config/huey.py) — uma instância nova aqui criaria uma SEGUNDA fila: o handler

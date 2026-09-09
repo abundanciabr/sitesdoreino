@@ -6,13 +6,13 @@ import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
 
 from .models import JanelaDeCapacidade
 
-MAX_EMAILS_POR_MINUTO = 60
-MAX_EMAILS_POR_HORA = 1000
 MAX_FALHAS_ATE_DISJUNTOR = 3
 TEMPO_DO_DISJUNTOR = timedelta(minutes=5)
 BACKOFF_BASE = 30
@@ -25,6 +25,10 @@ class CapacidadeDoProvedor(RuntimeError):
     def __init__(self, motivo: str, atraso: float):
         super().__init__(motivo)
         self.atraso = max(1, int(atraso))
+
+
+class CapacidadeNaoConfigurada(ImproperlyConfigured):
+    """A conta do provedor ainda não informou seus limites contratados."""
 
 
 @dataclass(frozen=True)
@@ -47,9 +51,21 @@ def _segundos_ate(instante: datetime, agora: datetime) -> float:
     return max(1, (instante - agora).total_seconds())
 
 
+def _limites_configurados() -> tuple[int, int]:
+    minuto = settings.EMAIL_MAX_EMAILS_POR_MINUTO
+    hora = settings.EMAIL_MAX_EMAILS_POR_HORA
+    if minuto is None or hora is None:
+        raise CapacidadeNaoConfigurada(
+            "EMAIL_MAX_EMAILS_POR_MINUTO e EMAIL_MAX_EMAILS_POR_HORA ausentes; "
+            "informe os limites contratados do provedor antes de enviar"
+        )
+    return minuto, hora
+
+
 def reservar_envio(agora: datetime | None = None) -> ReservaDeEnvio:
     """Reserva uma vaga de e-mail sem permitir corrida entre trabalhadores."""
 
+    limite_por_minuto, limite_por_hora = _limites_configurados()
     agora = agora or timezone.now()
     minuto = agora.replace(second=0, microsecond=0)
     hora = agora.replace(minute=0, second=0, microsecond=0)
@@ -73,13 +89,13 @@ def reservar_envio(agora: datetime | None = None) -> ReservaDeEnvio:
                 "disjuntor do provedor aberto após falhas consecutivas",
                 _segundos_ate(estado.disjuntor_ate, agora) + _jitter(),
             )
-        if estado.envios_no_minuto >= MAX_EMAILS_POR_MINUTO:
+        if estado.envios_no_minuto >= limite_por_minuto:
             proximo = minuto + timedelta(minutes=1)
             raise CapacidadeDoProvedor(
                 "teto de e-mails por minuto atingido",
                 _segundos_ate(proximo, agora) + _jitter(),
             )
-        if estado.envios_na_hora >= MAX_EMAILS_POR_HORA:
+        if estado.envios_na_hora >= limite_por_hora:
             proximo = hora + timedelta(hours=1)
             raise CapacidadeDoProvedor(
                 "teto de e-mails por hora atingido",

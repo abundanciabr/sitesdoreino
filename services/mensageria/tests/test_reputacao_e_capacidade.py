@@ -8,11 +8,14 @@ from django.utils import timezone
 
 from apps.eventos.capacidade import (
     CapacidadeDoProvedor,
+    CapacidadeNaoConfigurada,
+    atraso_com_backoff,
     registrar_falha,
     reservar_envio,
 )
 from apps.eventos.models import EnderecoDeEmail, EnvioRegistrado, JanelaDeCapacidade
 from apps.eventos.tasks import (
+    enviar_notificacao,
     marcar_email_como_bloqueado,
     processar_envio,
 )
@@ -86,8 +89,20 @@ def test_webhook_do_provedor_exige_token_e_marca_complaint(settings):
     }
 
 
-def test_teto_por_minuto_recusa_o_segundo_envio(monkeypatch):
-    monkeypatch.setattr("apps.eventos.capacidade.MAX_EMAILS_POR_MINUTO", 1)
+def test_webhook_nao_transform_soft_bounce_em_bloqueio(settings):
+    settings.EMAIL_WEBHOOK_TOKEN = "segredo-do-provedor"
+    resposta = Client().post(
+        "/webhooks/email",
+        data=json.dumps({"event": "soft_bounce", "email": "aluna@example.com"}),
+        content_type="application/json",
+        HTTP_X_WEBHOOK_TOKEN="segredo-do-provedor",
+    )
+    assert resposta.status_code == 202
+    assert not EnderecoDeEmail.objects.exists()
+
+
+def test_teto_por_minuto_recusa_o_segundo_envio(settings):
+    settings.EMAIL_MAX_EMAILS_POR_MINUTO = 1
     agora = timezone.now().replace(second=10, microsecond=0)
     reservar_envio(agora)
 
@@ -99,8 +114,24 @@ def test_teto_por_minuto_recusa_o_segundo_envio(monkeypatch):
     assert estado.envios_no_minuto == 1
 
 
+def test_teto_por_hora_reseta_na_virada(settings):
+    settings.EMAIL_MAX_EMAILS_POR_HORA = 1
+    inicio = timezone.now().replace(minute=10, second=10, microsecond=0)
+    reservar_envio(inicio)
+
+    with pytest.raises(CapacidadeDoProvedor, match="por hora"):
+        reservar_envio(inicio.replace(minute=20))
+
+    reservar_envio(inicio + timedelta(hours=1))
+
+
+def test_limite_ausente_falha_fechado(settings):
+    settings.EMAIL_MAX_EMAILS_POR_MINUTO = None
+    with pytest.raises(CapacidadeNaoConfigurada, match="limites contratados"):
+        reservar_envio()
+
+
 def test_tres_falhas_abrem_disjuntor_e_tem_backoff_com_jitter(monkeypatch):
-    monkeypatch.setattr("apps.eventos.capacidade.MAX_FALHAS_ATE_DISJUNTOR", 3)
     agora = timezone.now()
     registrar_falha(agora)
     registrar_falha(agora)
@@ -110,3 +141,29 @@ def test_tres_falhas_abrem_disjuntor_e_tem_backoff_com_jitter(monkeypatch):
         reservar_envio(agora)
 
     assert erro.value.atraso >= int(timedelta(minutes=5).total_seconds())
+
+
+def test_backoff_tem_jitter_e_cresce_ate_o_teto(monkeypatch):
+    monkeypatch.setattr("apps.eventos.capacidade._jitter", lambda: 2)
+    assert atraso_com_backoff(1) == 32
+    assert atraso_com_backoff(2) == 62
+    assert atraso_com_backoff(99) == 902
+
+
+def test_limite_de_capacidade_reagenda_sem_consumir_retry(monkeypatch):
+    agendamentos = []
+    erro = CapacidadeDoProvedor("teto atingido", 47)
+
+    def capacidade_indisponivel(*args, **kwargs):
+        raise erro
+
+    monkeypatch.setattr("apps.eventos.tasks.processar_envio", capacidade_indisponivel)
+    monkeypatch.setattr(
+        enviar_notificacao,
+        "schedule",
+        lambda **kwargs: agendamentos.append(kwargs),
+    )
+
+    enviar_notificacao.call_local(123)
+
+    assert agendamentos == [{"args": (123,), "delay": 47}]

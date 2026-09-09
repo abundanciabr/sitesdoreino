@@ -13,6 +13,18 @@ from django.views.decorators.http import require_POST
 from .tasks import marcar_email_como_bloqueado
 
 
+EVENTOS_PERMANENTES = {
+    "hard_bounce",
+    "hardbounce",
+    "invalid",
+    "invalid_email",
+    "blocked",
+    "spam",
+    "complaint",
+}
+EVENTOS_TRANSITORIOS = {"soft_bounce", "softbounce", "deferred"}
+
+
 @csrf_exempt
 @require_POST
 def webhook_email(request):
@@ -33,19 +45,21 @@ def webhook_email(request):
         )
 
     email = payload.get("email")
-    evento = str(payload.get("event", "")).lower()
+    evento = str(payload.get("event", "")).lower().replace("-", "_")
     if not isinstance(email, str) or not email.strip():
         return JsonResponse(
             {"erro": "email ausente; envie o endereco declarado pelo provedor"},
             status=400,
         )
-    if "complaint" in evento or "spam" in evento:
-        motivo = "reclamacao"
-    elif "bounce" in evento or "blocked" in evento:
-        motivo = "devolucao"
-    else:
+    if evento in EVENTOS_TRANSITORIOS:
+        return JsonResponse({"ignorado": evento, "motivo": "transitorio"}, status=202)
+    if evento not in EVENTOS_PERMANENTES:
         return JsonResponse(
-            {"erro": "evento ignorado; use bounce ou complaint"}, status=400
+            {
+                "erro": "evento ignorado; envie hard_bounce, invalid_email, blocked ou spam"
+            },
+            status=400,
         )
+    motivo = "reclamacao" if evento in {"spam", "complaint"} else "devolucao"
     bloqueio = marcar_email_como_bloqueado(email, motivo)
     return JsonResponse({"bloqueado": bloqueio.email, "motivo": bloqueio.motivo})
