@@ -4,26 +4,34 @@
   "funcoes": {
     "estrategia-conteudo": {
       "nome": "Estratégia e Conteúdo",
-      "pessoa": null,
+      "pessoa": "Arameu",
       "substituto": null,
+      "sem_substituto": true,
+      "escalonamento": "titular e, se indisponível, mantenedor",
       "alçada": "Aprova posicionamento, promessa, preço, prioridade e publicação de conteúdo. Não aprova gasto nem operação técnica."
     },
     "operacoes-trafego": {
       "nome": "Operações e Tráfego",
-      "pessoa": null,
+      "pessoa": "Ryan",
       "substituto": null,
+      "sem_substituto": true,
+      "escalonamento": "titular e, se indisponível, mantenedor",
       "alçada": "Executa operação técnica dentro de política aprovada. Escala gasto, acesso, reembolso e alteração de produção para aprovação."
     },
     "ensino-comunidade": {
       "nome": "Ensino e Comunidade",
-      "pessoa": null,
+      "pessoa": "Lívia",
       "substituto": null,
+      "sem_substituto": true,
+      "escalonamento": "titular e, se indisponível, mantenedor",
       "alçada": "Decide avaliação, qualidade pedagógica, moderação e exceções de ensino. Não transforma rascunho de IA em decisão humana."
     },
     "comercial-relacionamento": {
       "nome": "Comercial e Relacionamento",
-      "pessoa": null,
+      "pessoa": "Secretária, nome não informado",
       "substituto": null,
+      "sem_substituto": true,
+      "escalonamento": "titular e, se indisponível, mantenedor",
       "alçada": "Acompanha oportunidades e compradores até o desfecho. Não aprova desconto excepcional nem execução financeira."
     }
   },
@@ -33,7 +41,7 @@
     {"id": "financas-e-conciliacao", "tipo": "rotina", "finalidade": "Acompanhar recebimentos, taxas, reembolsos, contestações e despesas", "titular_funcao": "operacoes-trafego", "pessoa": null, "substituto": null, "fonte": "services/pagamentos e registros financeiros existentes", "acompanhamento": "conciliação periódica e revisão mensal de economia e caixa", "prepara": "Operações e Tráfego", "executa": "Operações e Tráfego ou fornecedor designado", "aprova": "titular da política ou gasto", "excecoes": "divergência, obrigação fiscal e gasto fora do limite", "autoridade": "não cria sistema contábil nem autoriza gasto sem política", "evidencia": "conciliação, decisão e encaminhamento do desfecho"},
     {"id": "ensino-e-avaliacao", "tipo": "processo", "finalidade": "Entregar aulas, avaliações, devolutivas, portfólios e comunidade com qualidade", "titular_funcao": "ensino-comunidade", "pessoa": null, "substituto": null, "fonte": "services/cursos, forum e encomendas", "acompanhamento": "revisão semanal de dúvidas e mensal de qualidade, coortes e capacidade", "prepara": "Ensino e Comunidade", "executa": "Ensino e Comunidade", "aprova": "Ensino e Comunidade", "excecoes": "fonte pedagógica ausente, avaliação ou selo exigem decisão humana", "autoridade": "não publica resposta humana em nome da IA", "evidencia": "fonte versionada, devolutiva e resolução ou encaminhamento"},
     {"id": "relacionamento-e-acesso", "tipo": "processo", "finalidade": "Acompanhar lead, comprador ou aluno até a próxima ação e o desfecho", "titular_funcao": "comercial-relacionamento", "pessoa": null, "substituto": null, "fonte": "services/leads, funil e alunos", "acompanhamento": "cada caso ativo tem próxima ação, prazo e prova de resolução", "prepara": "Comercial e Relacionamento", "executa": "Comercial e Relacionamento; Operações corrige a falha técnica vinculada", "aprova": "Comercial dentro da oferta; Operações em política financeira", "excecoes": "acesso não confirmado, reembolso, desconto ou promessa fora da política", "autoridade": "não encerra por publicação técnica sem confirmar o resultado da pessoa", "evidencia": "histórico, próxima ação e confirmação do desfecho"},
-    {"id": "continuidade-operacional", "tipo": "rotina", "finalidade": "Retomar a operação após ausência, falha de fornecedor ou incidente", "titular_funcao": "operacoes-trafego", "pessoa": null, "substituto": null, "fonte": "RITOS.md, workflows de deploy e backups", "acompanhamento": "revisão mensal de cobertura, vencimentos, restauração e concentração de carga", "prepara": "Operações e Tráfego", "executa": "substituto aceito ou fornecedor", "aprova": "titular da função", "excecoes": "ausência sem aceite, domínio, certificado, serviço essencial ou restauração sem prova", "autoridade": "não declara capacidade só por existir titular", "evidencia": "procedimento exercitado e restauração observada"},
+    {"id": "continuidade-operacional", "tipo": "rotina", "finalidade": "Retomar a operação após ausência, falha de fornecedor ou incidente", "titular_funcao": "operacoes-trafego", "pessoa": null, "substituto": null, "fonte": "RITOS.md, workflows de deploy e backups", "acompanhamento": "revisão mensal de cobertura, vencimentos, restauração e concentração de carga", "prepara": "Operações e Tráfego", "executa": "titular da função; agente de IA somente executa tarefas autorizadas, sem substituir titular", "aprova": "titular da função", "excecoes": "ausência sem aceite, domínio, certificado, serviço essencial ou restauração sem prova", "autoridade": "não declara capacidade só por existir titular", "evidencia": "procedimento exercitado e restauração observada"},
     {"id": "escala-do-ciclo", "tipo": "melhoria", "finalidade": "Escolher a prioridade do ciclo e aprender com a intervenção", "titular_funcao": "estrategia-conteudo", "pessoa": null, "substituto": null, "fonte": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, painel/cartoes e painel/registros", "acompanhamento": "semanal para compromissos e medidas; mensal para economia e qualidade; ciclo de 12 semanas", "prepara": "Estratégia e Conteúdo", "executa": "função responsável pelo compromisso", "aprova": "Estratégia e Conteúdo", "excecoes": "gargalo não confirmado, dado imaturo ou proteção violada", "autoridade": "não inventa alvo nem declara gargalo econômico sem evidência", "evidencia": "objetivo, MCI, hipótese, medida, resultado e decisão"},
     {"id": "medicao-de-esforco", "tipo": "rotina", "finalidade": "Medir minutos humanos antes e depois da automação elegível", "titular_funcao": "operacoes-trafego", "pessoa": null, "substituto": null, "fonte": "painel/medicoes/esforco.json", "acompanhamento": "registro por rotina e caso comparável, com revisão mensal da maturidade", "prepara": "Operações e Tráfego", "executa": "pessoa que realizou o trabalho", "aprova": "titular da função", "excecoes": "caso não comparável, dado de teste ou qualidade não medida", "autoridade": "não converte ausência de medição em zero nem em economia", "evidencia": "minutos, revisão, retrabalho, exceções, qualidade e período"}
   ]

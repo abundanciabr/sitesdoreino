@@ -92,3 +92,19 @@ def test_medicao_real_incompleta_e_recusada(tmp_path):
     )
     erros = medir_esforco.validar(tmp_path)
     assert any("real-invalido: casos precisa ser inteiro" in erro for erro in erros)
+
+
+def test_resumo_de_esforco_pesa_casos_pelo_tempo_de_referencia(tmp_path):
+    (tmp_path / "painel" / "medicoes").mkdir(parents=True)
+    observacao = {
+        "id": "real", "natureza": "operacao", "rotina": "x", "casos": 2,
+        "minutos_referencia": 100, "minutos_humanos": 50, "minutos_revisao": 0,
+        "minutos_retrabalho": 0, "excecoes": 0, "qualidade": "confirmada",
+        "reaberturas": 0, "prazo": "cumprido", "periodo": "hoje",
+        "condicoes": "fixture", "situacao_dado": "real",
+    }
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text(
+        json.dumps({"produtividade_comprovada": True, "observacoes": [observacao]}),
+        encoding="utf-8",
+    )
+    assert medir_esforco.resumo(tmp_path)["economia_media_percentual"] == 50.0

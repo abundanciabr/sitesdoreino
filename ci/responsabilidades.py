@@ -14,7 +14,7 @@ FUNCOES = {
     "comercial-relacionamento",
 }
 
-UNIDADE_CAMPOS_OBRIGATORIOS = ("finalidade", "resultado_acompanhado", "fonte", "evidencia")
+UNIDADE_CAMPOS_OBRIGATORIOS = ("finalidade", "acompanhamento", "fonte", "evidencia")
 
 
 def carregar(raiz: Path) -> dict:
@@ -47,7 +47,7 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
     funcao = registro["funcoes"].get(unidade["titular_funcao"], {})
     if not funcao.get("pessoa"):
         erros.append(f"função {unidade['titular_funcao']} não tem pessoa ocupante")
-    if not funcao.get("substituto"):
+    if not funcao.get("substituto") and not funcao.get("sem_substituto"):
         erros.append(f"função {unidade['titular_funcao']} não tem substituto aceito")
     return erros
 
@@ -60,7 +60,7 @@ def auditar(raiz: Path) -> list[str]:
     for identificador, funcao in registro.get("funcoes", {}).items():
         if not funcao.get("pessoa"):
             erros.append(f"{identificador}: pessoa ocupante ausente")
-        if not funcao.get("substituto"):
+        if not funcao.get("substituto") and not funcao.get("sem_substituto"):
             erros.append(f"{identificador}: substituto ausente")
     for unidade in registro.get("unidades", []):
         for campo in UNIDADE_CAMPOS_OBRIGATORIOS:

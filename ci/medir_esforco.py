@@ -56,18 +56,21 @@ def validar(raiz: Path) -> list[str]:
 def resumo(raiz: Path) -> dict:
     dados = carregar(raiz)
     reais = [item for item in dados.get("observacoes", []) if item.get("situacao_dado") == "real"]
-    economias = []
+    referencia_total = 0
+    trabalho_total = 0
     for item in reais:
         referencia = item.get("minutos_referencia", 0)
         if referencia > 0:
             trabalho_humano = sum(item.get(campo, 0) for campo in ("minutos_humanos", "minutos_revisao", "minutos_retrabalho"))
-            economias.append((referencia - trabalho_humano) / referencia * 100)
+            referencia_total += referencia
+            trabalho_total += trabalho_humano
+    economia_media = ((referencia_total - trabalho_total) / referencia_total * 100) if referencia_total else None
     return {
         "coleta": "iniciada" if dados.get("coleta_iniciada_em") else "não iniciada",
         "linha_de_base": dados.get("situacao_linha_de_base", "indisponível"),
         "observacoes_reais": len(reais),
-        "economia_media_percentual": sum(economias) / len(economias) if economias else None,
-        "produtividade_comprovada": bool(dados.get("produtividade_comprovada", False) and economias),
+        "economia_media_percentual": economia_media,
+        "produtividade_comprovada": bool(dados.get("produtividade_comprovada", False) and referencia_total),
     }
 
 
