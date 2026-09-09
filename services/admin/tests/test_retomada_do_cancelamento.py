@@ -329,3 +329,64 @@ def test_id_invalido_nao_chega_ao_transporte(github, tarefa):
     resultado = fila.abrir_pr_de_cancelamento(tarefa, "fictícia", MOTIVO)
     assert resultado.estado == "conflito"
     assert not github.chamadas
+
+
+def test_pagina_incompleta_nao_confirma_pedido_nem_continua(github, monkeypatch):
+    responder = github.responder
+
+    def com_proxima_pagina(request):
+        resposta = responder(request)
+        resposta.headers["Link"] = (
+            '<https://api.github.com/repos/abundanciabr/sitesdoreino/pulls?page=2>; rel="next"'
+        )
+        return resposta
+
+    monkeypatch.setattr(github, "responder", com_proxima_pagina)
+    resultado = enviar()
+    assert resultado.estado == "conflito"
+    assert "mais de uma página" in resultado.detalhe
+    assert [chave[0] for chave, _ in github.chamadas] == ["GET"]
+    assert github.ramo is None and not github.prs and not github.arquivos
+
+
+def test_encoding_incompativel_recusa_antes_de_continuar(github, monkeypatch):
+    github.falhar = ("POST", "/pulls")
+    assert enviar().estado == "recebido"
+    antes = dict(github.arquivos)
+    chamadas_antes = len(github.chamadas)
+    responder = github.responder
+
+    def encoding_divergente(request):
+        resposta = responder(request)
+        if "/contents/" in request.url.path:
+            dado = resposta.json()
+            dado["encoding"] = "none"
+            return httpx.Response(200, json=dado)
+        return resposta
+
+    monkeypatch.setattr(github, "responder", encoding_divergente)
+    resultado = enviar()
+    assert resultado.estado == "conflito"
+    assert "arquivo esperado" in resultado.detalhe
+    assert all(chave[0] == "GET" for chave, _ in github.chamadas[chamadas_antes:])
+    assert github.arquivos == antes and not github.prs
+
+
+def test_ref_de_outro_ramo_com_sha_valido_recusa_sem_escrever(github, monkeypatch):
+    github.ramo = MAIN
+    responder = github.responder
+
+    def ref_divergente(request):
+        resposta = responder(request)
+        if request.url.path.endswith("/git/ref/heads/" + RAMO):
+            dado = resposta.json()
+            dado["ref"] = "refs/heads/outro-ramo"
+            return httpx.Response(200, json=dado)
+        return resposta
+
+    monkeypatch.setattr(github, "responder", ref_divergente)
+    resultado = enviar()
+    assert resultado.estado == "conflito"
+    assert "não pertence ao ramo" in resultado.detalhe
+    assert all(chave[0] == "GET" for chave, _ in github.chamadas)
+    assert github.ramo == MAIN and not github.prs and not github.arquivos
