@@ -335,7 +335,7 @@ def test_nenhum_projeto_do_mural_passa_do_prazo_sem_elegivel_e_sem_ninguem_saber
     agora = novo.criada_em + prazo(novo.criada_em)
     Encomenda.objects.filter(pk=novo.pk).update(criada_em=agora)
 
-    ao_plantao = tique.mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=SITE)
+    ao_plantao = tique.rodar(agora, site_id=SITE).projetos_ao_plantao
     assert set(ao_plantao) == {projeto.pk for projeto in velhos}
 
     for projeto in velhos:
