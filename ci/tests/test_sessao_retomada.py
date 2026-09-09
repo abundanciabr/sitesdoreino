@@ -195,6 +195,9 @@ def bancada_git_real(repo, tmp_path):
     raiz = repo.raiz
     repo.declarar({"falsa": {}})
     (raiz / "armadilhas").mkdir()
+    (raiz / ".githooks").mkdir()
+    (raiz / ".githooks" / "pre-commit").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    (raiz / ".githooks" / "pre-push").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     for pasta in ("contracts", "services", "armadilhas"):
         (raiz / pasta / ".gitkeep").write_text("", encoding="utf-8")
     (raiz / "preservado.txt").write_text("Trabalho preexistente", encoding="utf-8")
@@ -223,6 +226,7 @@ def bancada_git_real(repo, tmp_path):
     git(raiz, "init", "-b", "main")
     git(raiz, "config", "user.name", "Teste de retomada")
     git(raiz, "config", "user.email", "teste@example.invalid")
+    git(raiz, "config", "core.hooksPath", ".githooks")
     git(raiz, "add", ".")
     git(raiz, "commit", "-m", "Base do teste")
     remoto = tmp_path / "origin.git"
