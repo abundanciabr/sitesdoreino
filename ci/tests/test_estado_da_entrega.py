@@ -172,7 +172,7 @@ def test_recuperacao_nao_dispensa_publicacao_pendente():
 
 
 def test_sucessor_precisa_ancestralidade_e_job_real(monkeypatch):
-    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
+    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],workflows=[CELULA],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
     sucessor=run(id=11,head_sha="b"*40)
     nome="deploy (quiz)"
     def api(raiz,caminho,**kw):
@@ -186,6 +186,9 @@ def test_sucessor_precisa_ancestralidade_e_job_real(monkeypatch):
     assert resultado["estado"] == "PUBLICADO"
     assert resultado["sha_integrado"] == SHA
     assert resultado["publicacoes"][0]["sha"] == "b"*40
+    pendente["workflows"].append(INFRA)
+    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+    pendente["workflows"].remove(INFRA)
     nome="deploy (admin)"
     assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
     nome="deploy (quiz)"
@@ -207,7 +210,7 @@ def test_recuperacao_rejeita_id_extra_que_nao_e_falha_vigente(monkeypatch):
 
 
 def test_sucessor_mais_recente_falho_nao_recua_para_verde_antigo(monkeypatch):
-    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
+    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],workflows=[CELULA],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
     def api(raiz,caminho,**kw):
         if "compare/" in caminho: return dict(status="ahead")
         if "/jobs?" in caminho:
@@ -222,3 +225,16 @@ def test_correcao_da_infra_exige_caminho_que_a_publica():
     falha=dict(estado="FALHA_PUBLICACAO",celulas=[],runs=[dict(id=20,workflow=INFRA,conclusion="failure",jobs=[dict(name="sincronizar",conclusion="failure")])])
     assert entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 20",files=[{"path":"infra/docker-compose.yml"}]),falha)
     assert not entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 20",files=[{"path":"painel/registros/a.js"}]),falha)
+
+
+def test_cli_erro_inesperado_preserva_contrato_json(monkeypatch, capsys):
+    import json
+    import esperar
+    def falhar(*args):
+        raise RuntimeError("resposta remota incompatível")
+    monkeypatch.setattr(entrega,"consultar_entrega",falhar)
+    assert esperar.main(["--entrega","99"]) == 2
+    estado = json.loads(capsys.readouterr().out)
+    assert estado["estado"] == "ERROR"
+    assert estado["terminal"] is False
+    assert "Corrija a consulta" in estado["acao"]

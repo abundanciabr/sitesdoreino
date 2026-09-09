@@ -882,7 +882,7 @@ def main(argv: list[str] | None = None) -> int:
             estado = consultar_entrega(raiz_do_repo(), args.entrega)
             print(json.dumps(estado, ensure_ascii=False))
             return 0 if estado["estado"] in {"PUBLICADO", "SEM_PUBLICACAO"} else 1
-        except (ErroDeInstrumentacao, OSError, ValueError, KeyError, TypeError) as erro:
+        except Exception as erro:
             print(json.dumps(dict(pr=args.entrega, estado="ERROR", terminal=False,
                                   acao="Corrija a consulta antes de decidir: " + str(erro)), ensure_ascii=False))
             return 2

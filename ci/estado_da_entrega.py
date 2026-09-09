@@ -262,6 +262,8 @@ def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
 
     if publicacao.get("estado") != "FALHA_PUBLICACAO" or not publicacao.get("runs"):
         return publicacao
+    if {r["workflow"] for r in publicacao["runs"]} != set(publicacao.get("workflows", [])):
+        return publicacao
     provas = []
     comparacoes = {}
     for original in publicacao["runs"]:
