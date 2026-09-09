@@ -14,11 +14,17 @@ produção:
 """
 
 import ast
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as fuso
 from pathlib import Path
 
-from apps.encomendas import motor, tasks, tique
-from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional
+from apps.encomendas import motor, negociacao, tasks, tique
+from apps.encomendas.models import (
+    Encomenda,
+    Oferta,
+    PerfilProfissional,
+    Proposta,
+    ReservaDoMural,
+)
 from config.huey import huey
 
 SITE = "escola-a"
@@ -132,6 +138,34 @@ def test_uma_encomenda_travada_nao_segura_as_de_tras(
 
     assert resultado.rodada.desfechos[dificil.pk] == motor.SEM_ELEGIVEL
     assert resultado.rodada.desfechos[facil.pk] == motor.OFERECIDA
+
+
+def test_reserva_em_negociacao_nao_expira_como_pendente(projeto_pego, formulario):
+    """A primeira proposta passa o relógio da reserva para a negociação."""
+    projeto, aluno = projeto_pego
+    agora = datetime.now(tz=fuso.utc)
+    assert negociacao.propor(
+        projeto.pk,
+        agora,
+        site_id=SITE,
+        de_quem=Proposta.DeQuem.ALUNO,
+        **formulario(),
+    ).feito
+
+    reserva = ReservaDoMural.objects.get(encomenda=projeto)
+    assert reserva.resultado == ReservaDoMural.Resultado.NEGOCIANDO
+    assert (
+        tique.expirar_reservas_vencidas(
+            reserva.expira_em + timedelta(days=1), site_id=SITE
+        )
+        == ()
+    )
+
+    reserva.refresh_from_db()
+    projeto.refresh_from_db()
+    assert reserva.resultado == ReservaDoMural.Resultado.NEGOCIANDO
+    assert projeto.status == Encomenda.Status.EM_NEGOCIACAO
+    assert projeto.aluno_id == aluno.id
 
 
 # ---------------------------------------------------------------------------

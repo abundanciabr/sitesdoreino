@@ -34,9 +34,11 @@ exatamente onde ele mais importa. É a mesma escolha, pela mesma razão, do
 
 from datetime import datetime, timedelta, timezone as fuso
 
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
 from apps.encomendas import mural, tique
 from apps.encomendas.models import (
-    ESTADOS_DO_MURAL_RESERVAVEL,
     Encomenda,
     MudancaDeStatus,
     Parametro,
@@ -318,12 +320,11 @@ def test_a_segunda_passada_do_tique_nao_mexe_em_nada(semeado, criar_projeto_no_m
 def test_nenhum_projeto_do_mural_passa_do_prazo_sem_elegivel_e_sem_ninguem_saber(
     semeado, criar_perfil, criar_projeto_no_mural
 ):
-    """A propriedade inteira, varrida sobre o banco depois da passada.
+    """Os níveis, as entregas e as idades do cenário definem o destino esperado.
 
-    Não é o mesmo que os testes de cima: eles montam UM cenário e olham UM
-    projeto. Esta asserção pergunta ao banco, depois do tique, se sobrou alguém
-    encalhado em silêncio, e é ela que pegaria o caminho que ninguém pensou em
-    encenar.
+    A asserção não usa o marco nem a lista de estados do tique, que são parte da
+    implementação medida. Ela verifica diretamente os dois projetos que deveriam
+    ir ao plantão e o projeto novo que deveria permanecer no Mural.
     """
     criar_perfil("pes-so-nivel-1", entrada=AGORA - timedelta(days=40), entregas=0)
     velhos = [
@@ -334,22 +335,29 @@ def test_nenhum_projeto_do_mural_passa_do_prazo_sem_elegivel_e_sem_ninguem_saber
     agora = novo.criada_em + prazo(novo.criada_em)
     Encomenda.objects.filter(pk=novo.pk).update(criada_em=agora)
 
-    tique.rodar(agora, site_id=SITE)
-
-    parados = Encomenda.objects.filter(
-        site_id=SITE, status__in=ESTADOS_DO_MURAL_RESERVAVEL
-    )
-    for projeto in parados:
-        esperando_ha = agora - tique.entrou_na_espera_em(
-            projeto, ESTADOS_DO_MURAL_RESERVAVEL
-        )
-        assert esperando_ha < prazo(agora), (
-            f"o projeto {projeto.pk} esperou {esperando_ha} no Mural sem "
-            "ninguem elegivel e sem ninguem saber"
-        )
+    ao_plantao = tique.mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=SITE)
+    assert set(ao_plantao) == {projeto.pk for projeto in velhos}
 
     for projeto in velhos:
         projeto.refresh_from_db()
         assert projeto.status == Encomenda.Status.PARA_RECLASSIFICAR
     novo.refresh_from_db()
     assert novo.status == Encomenda.Status.NO_MURAL
+
+
+def test_varredura_do_mural_carrega_as_reservas_em_uma_consulta(
+    semeado, criar_projeto_no_mural
+):
+    """A varredura não faz um SELECT de reserva por projeto."""
+    projetos = [criar_projeto_no_mural(cliente=f"cli-{numero}") for numero in range(3)]
+    agora = projetos[0].criada_em + prazo(projetos[0].criada_em)
+
+    with CaptureQueriesContext(connection) as consultas:
+        tique.mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=SITE)
+
+    reservas = [
+        consulta
+        for consulta in consultas
+        if "encomendas_reservadomural" in consulta["sql"].lower()
+    ]
+    assert len(reservas) == 1

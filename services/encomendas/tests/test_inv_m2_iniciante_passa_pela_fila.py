@@ -227,6 +227,6 @@ def test_o_iniciante_em_chamada_aberta_nao_se_pega_com_reserva(
     desfecho = mural.pegar(projeto.pk, ze.id, depois, site_id=SITE)
 
     assert not desfecho.feito
-    assert desfecho.razao == mural.NAO_ESTA_NO_MURAL
+    assert desfecho.razao == "e_chamada_aberta_use_aceitar"
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.ABERTA

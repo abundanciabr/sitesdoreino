@@ -25,8 +25,11 @@ régua o proibiu de olhar.
 
 from datetime import datetime, timedelta, timezone as fuso
 
-from apps.encomendas import motor, mural, tique
-from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
+from apps.encomendas import motor, mural, negociacao, tique
+from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional, Proposta
 
 SITE = "escola-a"
 AGORA = datetime.now(tz=fuso.utc)
@@ -232,36 +235,64 @@ def test_a_chamada_aberta_continua_respeitando_o_nivel_minimo(
 def test_nenhum_aluno_ve_projeto_que_o_motor_recusaria(
     dois_no_mural, criar_perfil, criar_projeto_no_mural, criar_encomenda
 ):
-    """A propriedade inteira, medida contra a régua da fila, aluno por aluno.
+    """A lista bate com a expectativa derivada do cenário, aluno por aluno.
 
-    O guarda não reimplementa a elegibilidade: ele pergunta ao MESMO
-    `motor.por_que_nao` que o Mural chama, e exige que a lista e a régua digam
-    a mesma coisa para todos os pares (aluno, projeto) do site. Um teste que
-    recalculasse a régua mediria a si mesmo.
+    Os títulos, as entregas e os níveis criados acima definem os três conjuntos
+    esperados. A expectativa não chama o Mural nem o motor, para que o guarda
+    continue vermelho se a peneira de produção for removida ou afrouxada.
     """
     ana, bru = dois_no_mural
     ze = criar_perfil("pes-ze", entrada=AGORA - timedelta(days=5))
-    criar_projeto_no_mural(nivel=Encomenda.Nivel.INTERMEDIARIO)
-    criar_projeto_no_mural(nivel=Encomenda.Nivel.AVANCADO, cliente="cli-2")
+    intermediario = criar_projeto_no_mural(nivel=Encomenda.Nivel.INTERMEDIARIO)
+    avancado = criar_projeto_no_mural(nivel=Encomenda.Nivel.AVANCADO, cliente="cli-2")
     da_fila = criar_encomenda()
     tique.rodar(da_fila.criada_em + timedelta(days=2), site_id=SITE)
 
-    regras = motor.Regras.do_banco(AGORA, site_id=SITE)
-    projetos = list(
-        Encomenda.objects.filter(
-            site_id=SITE, status__in=mural.ESTADOS_VISIVEIS_NO_MURAL
-        )
-    )
-    assert projetos, "o cenário precisa ter projeto no Mural para medir alguma coisa"
-
+    esperados = {
+        ana.id: {intermediario.pk, da_fila.pk},
+        bru.id: {intermediario.pk, avancado.pk, da_fila.pk},
+        ze.id: {da_fila.pk},
+    }
     for perfil in (ana, bru, ze):
-        perfil.refresh_from_db()
-        vistos = {p.pk for p in mural.listar(perfil.id, AGORA, site_id=SITE)}
-        for projeto in projetos:
-            recusa = motor.por_que_nao(
-                mural.vaga_de(projeto), mural._candidato(perfil), regras, AGORA
-            )
-            assert (projeto.pk in vistos) is (recusa == ""), (
-                f"perfil {perfil.id} e projeto {projeto.pk}: a lista diz "
-                f"{projeto.pk in vistos} e a régua diz {recusa or 'elegivel'}"
-            )
+        assert {
+            p.pk for p in mural.listar(perfil.id, AGORA, site_id=SITE)
+        } == esperados[perfil.id]
+
+
+def test_listar_carrega_as_reservas_do_mural_em_uma_consulta(
+    dois_no_mural, criar_projeto_no_mural
+):
+    """A lista não faz um SELECT de reserva por cartão exibido."""
+    ana, _ = dois_no_mural
+    for numero in range(3):
+        criar_projeto_no_mural(cliente=f"cli-{numero}")
+
+    with CaptureQueriesContext(connection) as consultas:
+        mural.listar(ana.id, AGORA, site_id=SITE)
+
+    reservas = [
+        consulta
+        for consulta in consultas
+        if "encomendas_reservadomural" in consulta["sql"].lower()
+    ]
+    assert len(reservas) == 1
+
+
+def test_aluno_em_negociacao_viva_nao_ve_outro_projeto_do_mural(
+    projeto_pego, formulario, criar_projeto_no_mural
+):
+    """N6 também vale quando a negociação começou pela pista do Mural."""
+    projeto, aluno = projeto_pego
+    outro = criar_projeto_no_mural(cliente="cli-outro")
+    agora = datetime.now(tz=fuso.utc)
+
+    assert negociacao.propor(
+        projeto.pk,
+        agora,
+        site_id=SITE,
+        de_quem=Proposta.DeQuem.ALUNO,
+        **formulario(),
+    ).feito
+
+    assert mural.listar(aluno.id, agora, site_id=SITE) == ()
+    assert outro.status == Encomenda.Status.NO_MURAL
