@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-073-painel-publicado-com-quatro-pedidos-do-dono",
+  tipo: "nota",
+  quando: "2026-09-09",
+  titulo: "Painel publicado com quatro pedidos do dono",
+  detalhe: "Integração e publicação conferidas. A tela mostra quatro pedidos e os campos Por que só você e Próximo passo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1492. Merge 97b7fb9991c4bf7f818495a2fddc8293b9a5ce5b. Run34368738826 completed/success; jobs publicar-dados-admin e deploy (admin) success. /admin/painel/ conferido no navegador em 09/09/2026 12:15 BRT.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
