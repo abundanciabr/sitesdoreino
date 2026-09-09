@@ -43,6 +43,11 @@ def webhook_email(request):
         return JsonResponse(
             {"erro": "corpo invalido; envie JSON com email e event"}, status=400
         )
+    if not isinstance(payload, dict):
+        return JsonResponse(
+            {"erro": "corpo invalido; envie um objeto JSON com email e event"},
+            status=400,
+        )
 
     email = payload.get("email")
     evento = str(payload.get("event", "")).lower().replace("-", "_")

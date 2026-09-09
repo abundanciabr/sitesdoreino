@@ -15,6 +15,8 @@ from apps.eventos.capacidade import (
 )
 from apps.eventos.models import EnderecoDeEmail, EnvioRegistrado, JanelaDeCapacidade
 from apps.eventos.tasks import (
+    EmailBloqueado,
+    enviar_email,
     enviar_notificacao,
     marcar_email_como_bloqueado,
     processar_envio,
@@ -44,6 +46,21 @@ def test_devolucao_bloqueia_o_endereco_e_nao_chama_o_provedor(settings):
 
     with patch("apps.eventos.tasks.send_mail") as enviar:
         processar_envio(envio.id)
+
+    envio.refresh_from_db()
+    assert envio.status == "falhou"
+    assert "nenhum envio sera tentado" in envio.resultado
+    enviar.assert_not_called()
+
+
+def test_bloqueio_global_alcanca_envio_criado_depois_e_caminho_direto():
+    marcar_email_como_bloqueado("cliente@example.com", "devolucao")
+    envio = _envio("depois-do-bloqueio")
+
+    with patch("apps.eventos.tasks.send_mail") as enviar:
+        processar_envio(envio.id)
+        with pytest.raises(EmailBloqueado):
+            enviar_email("cliente@example.com", "Assunto", "Corpo")
 
     envio.refresh_from_db()
     assert envio.status == "falhou"
@@ -101,6 +118,20 @@ def test_webhook_nao_transform_soft_bounce_em_bloqueio(settings):
     assert not EnderecoDeEmail.objects.exists()
 
 
+@pytest.mark.parametrize("corpo", ["[]", "null"])
+def test_webhook_recusa_json_que_nao_e_objeto(settings, corpo):
+    settings.EMAIL_WEBHOOK_TOKEN = "segredo-do-provedor"
+    resposta = Client().post(
+        "/webhooks/email",
+        data=corpo,
+        content_type="application/json",
+        HTTP_X_WEBHOOK_TOKEN="segredo-do-provedor",
+    )
+
+    assert resposta.status_code == 400
+    assert "objeto JSON" in resposta.json()["erro"]
+
+
 def test_teto_por_minuto_recusa_o_segundo_envio(settings):
     settings.EMAIL_MAX_EMAILS_POR_MINUTO = 1
     agora = timezone.now().replace(second=10, microsecond=0)
@@ -123,6 +154,38 @@ def test_teto_por_hora_reseta_na_virada(settings):
         reservar_envio(inicio.replace(minute=20))
 
     reservar_envio(inicio + timedelta(hours=1))
+
+
+def test_janela_nao_regride_com_chamada_atrasada(settings):
+    settings.EMAIL_MAX_EMAILS_POR_MINUTO = 1
+    inicio = timezone.now().replace(second=10, microsecond=0)
+    reservar_envio(inicio)
+    reservar_envio(inicio + timedelta(minutes=1))
+
+    with pytest.raises(CapacidadeDoProvedor, match="por minuto"):
+        reservar_envio(inicio)
+
+    estado = JanelaDeCapacidade.objects.get(chave="email")
+    assert estado.minuto_em == (inicio + timedelta(minutes=1)).replace(
+        second=0, microsecond=0
+    )
+
+
+def test_espera_por_capacidade_nao_consume_tentativa(monkeypatch):
+    envio = _envio("capacidade")
+    erro = CapacidadeDoProvedor("teto atingido", 47)
+
+    def capacidade_indisponivel():
+        raise erro
+
+    monkeypatch.setattr("apps.eventos.tasks.reservar_envio", capacidade_indisponivel)
+
+    with pytest.raises(CapacidadeDoProvedor):
+        processar_envio(envio.id)
+
+    envio.refresh_from_db()
+    assert envio.tentativas == 0
+    assert envio.resultado == "teto atingido"
 
 
 def test_limite_ausente_falha_fechado(settings):
@@ -153,6 +216,7 @@ def test_backoff_tem_jitter_e_cresce_ate_o_teto(monkeypatch):
 def test_limite_de_capacidade_reagenda_sem_consumir_retry(monkeypatch):
     agendamentos = []
     erro = CapacidadeDoProvedor("teto atingido", 47)
+    tarefa = type("Tarefa", (), {"retries": 1})()
 
     def capacidade_indisponivel(*args, **kwargs):
         raise erro
@@ -164,6 +228,6 @@ def test_limite_de_capacidade_reagenda_sem_consumir_retry(monkeypatch):
         lambda **kwargs: agendamentos.append(kwargs),
     )
 
-    enviar_notificacao.call_local(123)
+    enviar_notificacao.call_local(123, task=tarefa)
 
-    assert agendamentos == [{"args": (123,), "delay": 47}]
+    assert agendamentos == [{"args": (123,), "delay": 47, "retries": 1}]

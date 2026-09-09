@@ -66,23 +66,30 @@ def reservar_envio(agora: datetime | None = None) -> ReservaDeEnvio:
     """Reserva uma vaga de e-mail sem permitir corrida entre trabalhadores."""
 
     limite_por_minuto, limite_por_hora = _limites_configurados()
-    agora = agora or timezone.now()
-    minuto = agora.replace(second=0, microsecond=0)
-    hora = agora.replace(minute=0, second=0, microsecond=0)
+    instante_solicitado = agora
     with transaction.atomic():
+        instante_do_estado = timezone.now()
         estado, _ = JanelaDeCapacidade.objects.select_for_update().get_or_create(
             chave="email",
             defaults={
-                "minuto_em": minuto,
-                "hora_em": hora,
+                "minuto_em": instante_do_estado.replace(second=0, microsecond=0),
+                "hora_em": instante_do_estado.replace(
+                    minute=0, second=0, microsecond=0
+                ),
             },
         )
-        if estado.minuto_em != minuto:
+        agora = instante_solicitado or timezone.now()
+        minuto = agora.replace(second=0, microsecond=0)
+        hora = agora.replace(minute=0, second=0, microsecond=0)
+        if estado.minuto_em < minuto:
             estado.minuto_em = minuto
             estado.envios_no_minuto = 0
-        if estado.hora_em != hora:
+        if estado.hora_em < hora:
             estado.hora_em = hora
             estado.envios_na_hora = 0
+
+        minuto_da_janela = estado.minuto_em
+        hora_da_janela = estado.hora_em
 
         if estado.disjuntor_ate and estado.disjuntor_ate > agora:
             raise CapacidadeDoProvedor(
@@ -90,13 +97,13 @@ def reservar_envio(agora: datetime | None = None) -> ReservaDeEnvio:
                 _segundos_ate(estado.disjuntor_ate, agora) + _jitter(),
             )
         if estado.envios_no_minuto >= limite_por_minuto:
-            proximo = minuto + timedelta(minutes=1)
+            proximo = minuto_da_janela + timedelta(minutes=1)
             raise CapacidadeDoProvedor(
                 "teto de e-mails por minuto atingido",
                 _segundos_ate(proximo, agora) + _jitter(),
             )
         if estado.envios_na_hora >= limite_por_hora:
-            proximo = hora + timedelta(hours=1)
+            proximo = hora_da_janela + timedelta(hours=1)
             raise CapacidadeDoProvedor(
                 "teto de e-mails por hora atingido",
                 _segundos_ate(proximo, agora) + _jitter(),

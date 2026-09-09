@@ -132,6 +132,11 @@ def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     """
     destinatario = _email_normalizado(destinatario)
     with _bloqueio_do_endereco(destinatario):
+        if not settings.EMAIL_WEBHOOK_TOKEN:
+            raise EmailNaoConfigurado(
+                "EMAIL_WEBHOOK_TOKEN ausente; configure a rota autenticada de "
+                "webhook do provedor antes de enviar"
+            )
         if EnderecoDeEmail.objects.filter(email=destinatario).exists():
             raise EmailBloqueado(
                 f"endereco {destinatario} esta bloqueado por devolucao ou reclamacao; nenhum envio sera tentado"
@@ -191,6 +196,7 @@ def processar_envio(envio_id: int, task=None) -> None:
     )
     erro = None
     erro_do_provedor = False
+    contar_tentativa = True
     with bloqueio:
         envio.refresh_from_db()
         if envio.status == "enviado" or (
@@ -218,8 +224,10 @@ def processar_envio(envio_id: int, task=None) -> None:
             envio.save(update_fields=["status", "tentativas", "resultado"])
             return
         except (CapacidadeDoProvedor, CapacidadeNaoConfigurada) as exc:
-            if isinstance(exc, CapacidadeDoProvedor) and task is not None:
-                task.retry_delay = exc.atraso
+            if isinstance(exc, CapacidadeDoProvedor):
+                contar_tentativa = False
+                if task is not None:
+                    task.retry_delay = exc.atraso
             erro = exc
         except EmailNaoConfigurado as exc:
             erro = exc
@@ -229,6 +237,7 @@ def processar_envio(envio_id: int, task=None) -> None:
             TimeoutError,
             ConnectionError,
             OSError,
+            EnvioRecusado,
         ) as exc:
             erro = exc
             erro_do_provedor = envio.canal == "email"
@@ -242,11 +251,13 @@ def processar_envio(envio_id: int, task=None) -> None:
             envio.resultado = "ok"
             envio.save(update_fields=["status", "tentativas", "resultado"])
             return
+        if erro is not None:
+            if contar_tentativa:
+                envio.tentativas += 1
+            envio.resultado = str(erro)[:500]
+            envio.save(update_fields=["tentativas", "resultado"])
     if erro_do_provedor:
         registrar_falha()
-    envio.tentativas += 1
-    envio.resultado = str(erro)[:500]
-    envio.save(update_fields=["tentativas", "resultado"])
     raise erro
 
 
@@ -256,4 +267,5 @@ def enviar_notificacao(envio_id: int, task=None) -> None:
     try:
         processar_envio(envio_id, task=task)
     except CapacidadeDoProvedor as exc:
-        enviar_notificacao.schedule(args=(envio_id,), delay=exc.atraso)
+        retries = task.retries if task is not None else 5
+        enviar_notificacao.schedule(args=(envio_id,), delay=exc.atraso, retries=retries)

@@ -98,6 +98,16 @@ def test_sem_provedor_configurado_levanta_com_nome_proprio(settings):
         enviar_email("aluna@example.com", "Bem-vinda!", "corpo")
 
 
+def test_sem_webhook_configurado_nao_envia_mesmo_com_smtp(settings, monkeypatch):
+    settings.EMAIL_HOST = "smtp-relay.brevo.com"
+    settings.DEFAULT_FROM_EMAIL = "escola@meshcraft.top"
+    settings.EMAIL_WEBHOOK_TOKEN = ""
+    monkeypatch.setattr("apps.eventos.tasks.send_mail", lambda **kwargs: 1)
+
+    with pytest.raises(EmailNaoConfigurado, match="EMAIL_WEBHOOK_TOKEN"):
+        enviar_email("aluna@example.com", "Bem-vinda!", "corpo")
+
+
 def test_sem_provedor_a_linha_NAO_vira_enviado(envio, settings):
     """O GUARDA QUE CARREGA ESTE ARQUIVO — e o falso-verde que existia.
 
@@ -143,3 +153,26 @@ def test_a_carta_recusada_tambem_nao_marca_a_linha(
 
     envio.refresh_from_db()
     assert envio.status != "enviado"
+
+
+def test_tres_recusas_do_provedor_abrem_o_disjuntor(monkeypatch):
+    from apps.eventos.models import JanelaDeCapacidade
+
+    monkeypatch.setattr("apps.eventos.tasks.send_mail", lambda **kwargs: 0)
+    for numero in range(3):
+        envio = EnvioRegistrado.objects.create(
+            event="pagamento.aprovado",
+            site_id="site-abc",
+            order_id=f"order-recusado-{numero}",
+            tipo="boas_vindas",
+            canal="email",
+            destinatario=f"aluna-{numero}@example.com",
+            assunto="Bem-vinda!",
+            corpo="Sua matricula foi liberada.",
+        )
+        with pytest.raises(EnvioRecusado):
+            processar_envio(envio.id)
+
+    estado = JanelaDeCapacidade.objects.get(chave="email")
+    assert estado.falhas_consecutivas == 3
+    assert estado.disjuntor_ate is not None
