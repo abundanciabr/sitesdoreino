@@ -130,7 +130,7 @@ def arquivos_de_codigo(arquivos: list[str]) -> list[str]:
     ]
 
 
-def comando_de_merge(numero: int, metodo: str) -> list[str]:
+def comando_de_merge(numero: int, metodo: str, sha: str | None = None) -> list[str]:
     """Argumentos do `gh` para o merge — SEM `--yes`.
 
     O `gh` desta máquina (2.97.0) não tem a flag `--yes` em `pr merge`, e o
@@ -140,7 +140,9 @@ def comando_de_merge(numero: int, metodo: str) -> list[str]:
     sem TTY o `gh` mergeia direto, sem prompt — comprovado no merge do PR #35.
     `test_comando_de_merge_nao_usa_yes` impede a flag de voltar.
     """
-    return ["pr", "merge", str(numero), f"--{metodo}"]
+    return ["pr", "merge", str(numero), f"--{metodo}"] + (
+        ["--match-head-commit", sha] if sha else []
+    )
 
 
 def _gh(
@@ -167,7 +169,7 @@ def _gh(
 def carregar_pr(raiz: Path, numero: int) -> dict[str, Any]:
     campos = (
         "number,title,body,state,isDraft,mergeable,mergeStateStatus,baseRefName,"
-        "headRefName,labels,files,commits,author,url,statusCheckRollup"
+        "headRefName,headRefOid,labels,files,commits,author,url,statusCheckRollup"
     )
     saida = _gh(
         ["pr", "view", str(numero), "--json", campos],
@@ -778,6 +780,49 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
     return resultados
 
 
+def checar_publicacoes_anteriores(raiz: Path, pr: dict) -> list[Resultado]:
+    from estado_da_entrega import publicacoes_anteriores, consultar_entrega, correcao_da_publicacao, correcoes_declaradas
+
+    try:
+        pendentes = publicacoes_anteriores(raiz, [a["path"] for a in pr.get("files", [])])
+        for numero in dependencias_declaradas(pr):
+            entrega = consultar_entrega(raiz, numero)
+            if entrega.get("sha_integrado") and not entrega["terminal"]:
+                pendentes.append(entrega)
+        declaradas = set(correcoes_declaradas(pr))
+        falhas_reais = {r["id"] for e in pendentes if e["estado"] == "FALHA_PUBLICACAO"
+                        for r in e.get("runs", []) if r.get("conclusion") == "failure"}
+        if declaradas - falhas_reais:
+            return [Resultado("recuperação de publicação", Estado.FAIL,
+                              "Corrige-publicacao cita run que não é falha vigente",
+                              "Retire a declaração obsoleta e peça nova revisão do contexto de recuperação.")]
+        return [Resultado("publicação anterior", Estado.FAIL if e["estado"] == "FALHA_PUBLICACAO" else Estado.ERROR,
+                          e["estado"] + " em " + e["sha_integrado"], e["acao"])
+                for e in pendentes if not correcao_da_publicacao(raiz, pr, e)]
+    except (ErroDeInstrumentacao, OSError, ValueError, KeyError, TypeError) as erro:
+        return [Resultado("publicação anterior", Estado.ERROR,
+                          "não consegui conferir as publicações anteriores", str(erro))]
+
+
+def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
+    from revisor_de_pouso import avaliar_atestado
+    from estado_da_entrega import correcoes_declaradas
+
+    try:
+        paginas = json.loads(_gh(
+            ["api", f"repos/{{owner}}/{{repo}}/issues/{pr['number']}/comments",
+             "--paginate", "--slurp"], raiz, "ler o atestado independente"))
+        if not isinstance(paginas, list) or any(not isinstance(p, list) for p in paginas):
+            raise ValueError("comentários sem páginas completas")
+        comentarios = [c for pagina in paginas for c in pagina]
+        if any(not isinstance(c, dict) for c in comentarios):
+            raise ValueError("comentário inválido")
+        return avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
+    except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
+        return Resultado("revisão independente", Estado.ERROR,
+                         "não consegui medir a revisão independente", str(erro))
+
+
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
     relatorio = Relatorio(f"MERGE GUARDADO — PR #{numero}")
     try:
@@ -787,6 +832,9 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
         relatorio.registrar(Resultado.de_erro("consulta", erro))
         return relatorio, {}
 
+    relatorio.registrar(checar_revisao_independente(raiz_real, pr))
+    for r in checar_publicacoes_anteriores(raiz_real, pr):
+        relatorio.registrar(r)
     relatorio.registrar(checar_estado(pr))
     relatorio.registrar(checar_mergeabilidade(pr))
     for r in checar_checks(pr):
@@ -908,6 +956,9 @@ def motivos_da_recusa(relatorio: Relatorio) -> list[str]:
         for r in relatorio.resultados
     ):
         codigos.append(MOTIVO_BASE_VELHA)
+    if any(r.nome == "revisão independente" and r.estado is not Estado.PASS
+           for r in relatorio.resultados):
+        codigos.append("REVISAO-NECESSARIA")
     return codigos
 
 
@@ -962,10 +1013,10 @@ def pedir_pouso(numero: int) -> int:
         "   confere pelo MESMO portão que você acabou de rodar, e mergeia. Se a\n"
         "   base envelhecer no meio, o problema é dela — ela tem paciência.\n"
         "\n"
-        "   Você NÃO precisa esperar. Siga para a próxima tarefa: a pista\n"
+        "   Você NÃO precisa esperar em laço. A maestro acompanha: a pista\n"
         "   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando).\n"
         "\n"
-        f"   Acompanhar: gh pr view {numero} --json state,labels\n"
+        f"   Acompanhar: python ci/esperar.py --entrega {numero}\n"
         f"   Desistir:   gh pr edit {numero} --remove-label {ETIQUETA_DE_POUSO}"
     )
     return 0
@@ -1371,7 +1422,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         raiz = raiz_do_repo()
         saida = _gh(
-            comando_de_merge(args.pr, args.metodo),
+            comando_de_merge(args.pr, args.metodo, pr["headRefOid"]),
             raiz,
             f"mergear o PR #{args.pr}",
             exigir_stdout=False,
