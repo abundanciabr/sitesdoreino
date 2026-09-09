@@ -1134,6 +1134,19 @@ def test_acao_no_infinitivo_torna_falha_externa_acionavel(tmp_path):
     ]))
 
 
+def test_acompanhar_pela_pista_torna_falha_externa_acionavel(tmp_path):
+    claro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O GitHub Actions falhou; ação: acompanhar "
+        "pela pista.",
+    )
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(claro),
+    ]))
+
+
 def test_uma_palavra_basta_para_o_bloco(tmp_path):
     """O par verde: "nada" é resposta legítima e a lei diz isso com todas as
     letras. Uma régua que exigisse frase ensinaria o robô a encher linguiça."""

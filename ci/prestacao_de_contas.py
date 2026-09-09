@@ -216,7 +216,8 @@ ACAO_DO_BLOQUEIO_EXTERNO = re.compile(
     r"n[aã]o\s+fa[çc]a\s+\w+|fa[çc]a\s+\w+|"
     r"rode\s+\w+|rodar\s+\w+|reexecute\s+\w+|reexecutar\s+\w+|rerun\s+\w+|"
     r"aguarde\s+\w+|aguardar\s+\w+|espere\s+\w+|esperar\s+\w+|"
-    r"acompanhe\s+\w+|acompanha\s+\w+|recheque\s+\w+|rechecar\s+\w+"
+    r"acompanhe\s+\w+|acompanha\s+\w+|acompanhar\s+\w+|"
+    r"recheque\s+\w+|rechecar\s+\w+"
     r")\b",
     re.I,
 )
