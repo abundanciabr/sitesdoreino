@@ -1533,25 +1533,46 @@ def escola_aluno_salvar(request):
         pessoa = matriculas[0] if matriculas else {}
     if todas is not None and not matriculas:
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+    if todas is not None:
+        desfecho, detalhe = AlunosClient.OK, ""
     mudancas_da_pessoa = {
         campo: valor for campo, valor in mudancas.items() if campo != "status"
     }
+    status_pedido = mudancas.get("status") or ""
+    status_atual = str(pessoa.get("status") or "")
+    status_mudou = bool(status_pedido and status_pedido != status_atual)
+    if todas is not None and status_mudou:
+        for matricula in matriculas:
+            desfecho, detalhe = cliente.atualizar_aluno(
+                alvo=str(matricula.get("id") or ""),
+                mudancas={"status": status_pedido},
+                decidido_por=request.admin.get("id")
+                or request.admin.get("email")
+                or "?",
+            )
+            if desfecho != AlunosClient.OK:
+                break
+            matricula["status"] = status_pedido
     if todas is not None:
-        desfecho, detalhe = cliente.sincronizar_cursos(
-            site_id=pessoa.get("site_id") or "",
-            email=pessoa.get("email") or "",
-            nome=mudancas.get("nome_completo") or pessoa.get("nome_completo") or "",
-            matriculas=matriculas,
-            cursos_marcados=cursos_marcados,
-            decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
-        )
+        if desfecho == AlunosClient.OK:
+            desfecho, detalhe = cliente.sincronizar_cursos(
+                site_id=pessoa.get("site_id") or "",
+                email=pessoa.get("email") or "",
+                nome=mudancas.get("nome_completo") or pessoa.get("nome_completo") or "",
+                matriculas=matriculas,
+                cursos_marcados=cursos_marcados,
+                decidido_por=request.admin.get("id")
+                or request.admin.get("email")
+                or "?",
+            )
     if desfecho == AlunosClient.OK and mudancas_da_pessoa:
         desfecho, detalhe = cliente.atualizar_aluno(
             alvo=alvo,
             mudancas=mudancas_da_pessoa,
             decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
         )
-    mudancas.pop("status", None)
+    if not status_mudou:
+        mudancas.pop("status", None)
     mudancas["cursos"] = ", ".join(cursos_marcados) or "nenhum"
 
     Registro.objects.create(

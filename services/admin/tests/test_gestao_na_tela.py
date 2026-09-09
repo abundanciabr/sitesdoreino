@@ -523,6 +523,33 @@ def test_salvar_cursos_nao_reativa_o_curso_desmarcado(monkeypatch):
     assert json.loads(patch_route.calls.last.request.read())["status"] == "suspensa"
 
 
+@respx.mock
+def test_salvar_cursos_aplica_situacao_antes_da_selecao(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(200, json=[{"id": "curso-um", "name": "Curso um"}])
+    )
+    _tela_responde([_aluno(status="ativa", product_id="curso-um")])
+    patch_route = respx.patch(f"{ALUNOS}/matriculas/{ALVO}").mock(
+        return_value=httpx.Response(200, json=_aluno(status="encerrada"))
+    )
+
+    resposta = _dentro().post(
+        reverse("escola_aluno_salvar"),
+        {
+            "alvo": ALVO,
+            "pessoa_email": "aluno@exemplo.com",
+            "status": "encerrada",
+            "curso": ["curso-um"],
+        },
+    )
+
+    assert resposta["Location"].endswith("?resultado=salvo")
+    assert patch_route.call_count == 1
+    assert json.loads(patch_route.calls.last.request.read())["status"] == "encerrada"
+
+
 RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)
 
 
