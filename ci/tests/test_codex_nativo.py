@@ -247,3 +247,14 @@ def test_dispatcher_preserva_acentos_e_emoji_em_console_cp1252(bancada):
     contexto = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "📋" in contexto and "não" in contexto
     assert "\ufffd" not in contexto
+
+
+def test_revisor_confere_mutacoes_do_despacho_sem_ordens_de_escrita():
+    import re
+    import tomllib
+    ficha = tomllib.loads((RAIZ / ".codex/agents/revisor.toml").read_text(encoding="utf-8"))
+    instrucoes = ficha["developer_instructions"]
+    prova = instrucoes.split("4. **A prova.**", 1)[1].split("5. **Todo estado tratado.**", 1)[0]
+    assert "fornecidas pelo despacho" in prova
+    assert "mutação" in prova
+    assert not re.search(r"\b(sabote|comente|rode|execute|desfaça)\b|git\s+checkout", prova, re.I)
