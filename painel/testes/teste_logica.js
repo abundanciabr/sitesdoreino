@@ -896,6 +896,35 @@ caso("...então a aba Prioridades desenha o pedido cortado na área certa, e nã
   !LOGICA.prioridades(resumoComArea.registros, HOJE, resumoComArea.respondidos, AREAS_TESTE, [])
     .semArea.grupos.decidir.some(function (i) { return i.registro.arquivo === pedidoVelho; }));
 
+["porque_so_voce", "proximo_passo"].forEach(function (campo) {
+  ["", "  ", 1, false, []].forEach(function (valor) {
+    var pedido = reg({precisa_do_dono: true}); pedido[campo] = valor;
+    caso(campo + " inválido é recusado: " + JSON.stringify(valor), LOGICA.validarRegistros([pedido]).length > 0);
+  });
+  var tecnico = reg({}); tecnico[campo] = "Uma decisão concreta";
+  caso(campo + " não desaparece em registro marcado como técnico", LOGICA.validarRegistros([tecnico]).length > 0);
+});
+var decisoesComPasso = comArea.map(function (r) {
+  return Object.assign({}, r, r.precisa_do_dono ? {
+    porque_so_voce: "Só você pode autorizar a despesa.",
+    proximo_passo: "Aprovar ou recusar a contratação."
+  } : {});
+});
+var resumoComPasso = LOGICA.montarResumo(decisoesComPasso);
+var pedidoComPasso = resumoComPasso.registros.filter(function (r) { return r.arquivo === pedidoVelho; })[0];
+caso("justificativa exclusiva do dono sobrevive ao corte do resumo",
+  pedidoComPasso._so_titulo && pedidoComPasso.porque_so_voce === "Só você pode autorizar a despesa.");
+caso("próximo passo da decisão sobrevive ao corte do resumo",
+  pedidoComPasso._so_titulo && pedidoComPasso.proximo_passo === "Aprovar ou recusar a contratação.");
+var tecnicoVisivel = reg({arquivo: "20260909-998-tecnico", gravidade: "vermelho", area: "identidade"});
+var legadoAmbiguo = reg({arquivo: "20200101-998-legado", quando: "2020-01-01", precisa_do_dono: true,
+  titulo: "O teste falhou e o serviço precisa de atenção", area: "identidade"});
+var separacao = LOGICA.prioridades([tecnicoVisivel, legadoAmbiguo], HOJE, null, AREAS_TESTE, []).areas[0];
+caso("falha técnica continua visível em alertas, fora das decisões",
+  separacao.grupos.alerta.length === 1 && separacao.grupos.alerta[0].registro.arquivo === tecnicoVisivel.arquivo);
+caso("pedido antigo ambíguo não some por texto técnico ou idade",
+  separacao.grupos.decidir.length === 1 && separacao.grupos.decidir[0].registro.arquivo === legadoAmbiguo.arquivo);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

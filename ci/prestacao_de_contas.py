@@ -286,6 +286,62 @@ def _texto_do_bloco(bloco: object) -> str:
     return ""
 
 
+def _entrada_codex(entrada: dict) -> dict | None:
+    """Normaliza os eventos response_item e item_completed do transcript nativo."""
+    payload = entrada.get("payload") or {}
+    if entrada.get("type") == "event_msg":
+        if payload.get("type") != "item_completed":
+            return None
+        item = payload.get("item") or {}
+        if item.get("type") == "FileChange":
+            if item.get("status") not in {"completed", "Completed"}:
+                return None
+            return {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Write", "input": {"file_path": caminho}}
+                for caminho in (item.get("changes") or {})
+            ]}}
+        if item.get("type") == "CommandExecution":
+            return {"type": "assistant", "message": {"content": [{
+                "type": "tool_use", "name": "Bash",
+                "input": {"command": item.get("command") or ""}, "id": item.get("id")
+            }]}}
+        return None
+    if entrada.get("type") != "response_item":
+        return None
+    tipo = payload.get("type")
+    if tipo == "message" and payload.get("role") in {"user", "assistant"}:
+        papel = payload["role"]
+        conteudo = [{"type": "text", "text": bloco.get("text", "")}
+                    for bloco in payload.get("content", [])
+                    if isinstance(bloco, dict) and bloco.get("type") in {"input_text", "output_text"}]
+        return {"type": papel, "origin": {"kind": "human" if papel == "user" else "assistant"},
+                "message": {"content": conteudo}}
+    if tipo in {"function_call", "custom_tool_call"}:
+        nome = payload.get("name", "").rsplit(".", 1)[-1]
+        bruto = payload.get("arguments") if tipo == "function_call" else payload.get("input")
+        try:
+            argumentos = json.loads(bruto) if isinstance(bruto, str) else bruto
+        except json.JSONDecodeError:
+            argumentos = {"command": bruto}
+        if not isinstance(argumentos, dict):
+            argumentos = {}
+        if nome == "apply_patch":
+            nome, argumentos = "Write", {"file_path": "(apply_patch)"}
+        elif nome in {"exec_command", "shell_command"}:
+            nome, argumentos = "Bash", {"command": argumentos.get("cmd") or argumentos.get("command") or ""}
+        elif nome == "spawn_agent":
+            nome, argumentos = "Agent", {"subagent_type": argumentos.get("agent_type") or "despacho"}
+        return {"type": "assistant", "message": {"content": [{
+            "type": "tool_use", "name": nome, "input": argumentos, "id": payload.get("call_id")
+        }]}}
+    if tipo in {"function_call_output", "custom_tool_call_output"}:
+        return {"type": "user", "message": {"content": [{
+            "type": "tool_result", "tool_use_id": payload.get("call_id"),
+            "content": payload.get("output") or ""
+        }]}}
+    return None
+
+
 def ler_transcript(caminho: Path) -> list[dict]:
     """As entradas do transcript, sem as de sub-agente.
 
@@ -303,7 +359,12 @@ def ler_transcript(caminho: Path) -> list[dict]:
         except json.JSONDecodeError:
             continue  # linha meio-escrita no fim do arquivo: o resto ainda serve
         if isinstance(entrada, dict) and not entrada.get("isSidechain"):
-            entradas.append(entrada)
+            if entrada.get("type") in {"response_item", "event_msg"}:
+                normalizada = _entrada_codex(entrada)
+                if normalizada is not None:
+                    entradas.append(normalizada)
+            else:
+                entradas.append(entrada)
     return entradas
 
 

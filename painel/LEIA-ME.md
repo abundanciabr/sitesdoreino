@@ -165,9 +165,10 @@
                                         // da aba Prioridades. Sem ele, a tela cai na `frente` e diz que caiu.
   vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
 
-  // OS QUATRO DA DECISÃO — só fazem sentido com `precisa_do_dono: true`, e são
-  // OPCIONAIS. Sem eles a ficha na tela diz "não sei", que é honesto e cobra
-  // quem escreveu o pedido. Com eles, o dono decide sem reconstruir o contexto.
+  // DECISÃO: os seis campos são obrigatórios em pedidos NOVOS ao dono.
+  // Registros antigos continuam imutáveis e visíveis até resposta explícita.
+  porque_so_voce: null,                 // por que esta decisão só pode ser dele
+  proximo_passo: null,                  // ação concreta para ele aprovar, recusar ou executar
   se_eu_nao_decidir: null,              // o que acontece se isto ficar parado — ou null
   recomendacao: null,                   // o que você sugere, e por quê — ou null
   reversivel: null,                     // true/false SEM aspas ("false" seria verdadeiro em JS) — ou null
@@ -214,12 +215,25 @@
   congeladas de propósito (registro mergeado não se edita); um terceiro
   registro *nesses* números, porém, ainda reprova — a tolerância guarda o
   tamanho do par herdado, não uma licença permanente.
-- **Pedido chega decidível, ou diz que não sabe:** a caixa "Precisa de você"
-  mostra, para cada pedido, o que acontece se ele ficar parado, a recomendação,
-  se dá para voltar atrás e o peso. Campo ausente aparece como "não sei" —
-  nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
-  A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
-  ver, não para reordenar a fila pelas suas costas.
+- **Pedido novo chega decidível:** `precisa_do_dono: true` cabe quando falta
+  uma decisão exclusiva do mantenedor, como autorizar despesa, fornecer segredo,
+  destruir dados, definir produto ou ampliar acesso. O título nomeia a decisão;
+  `porque_so_voce` explica a exclusividade, `proximo_passo` diz o gesto concreto,
+  `se_eu_nao_decidir` registra a consequência de esperar e `recomendacao` traz a
+  sugestão com motivo. `reversivel` é booleano e `impacto` é alto, medio ou baixo.
+  `ci/encerramento_alertas.py`, já executado na muralha, exige os seis campos
+  apenas em IDs novos contra `BASE_REF`. Escrever uma data antiga não dispensa o portão.
+  O julgamento de que só ele pode decidir continua sendo da maestro; texto
+  preenchido não prova exclusividade. A máquina confere presença e tipos.
+- **Falha técnica é trabalho dos robôs:** erro de teste, ferramenta ou publicação
+  reparável dentro do pedido usa `precisa_do_dono: false`, `gravidade: "ambar"`
+  ou `"vermelho"`, diagnóstico e próximo passo do robô em `detalhe`. Continua
+  visível nos alertas e em Prioridades. A recusa do portão se corrige no próprio
+  PR, sem criar automaticamente outro pedido ao mantenedor.
+- **Histórico não some por adivinhação:** pedido antigo incompleto continua na
+  caixa, com ausência explícita. Nem idade nem palavras do texto o encerram.
+  Correção exige registro novo com `responde_a` e evidência conferida; a baixa
+  não apaga o original. A ordem dos pedidos continua por idade.
 - **Prioridades por área do site (07/09/2026):** a aba 🎯 mostra tudo que está
   aberto agrupado pelas seis áreas de `painel/areas.json` (Alunos, Cursos,
   Comunidade, Vendas, Seu painel, Infra e fábrica) e, dentro de cada uma, em
