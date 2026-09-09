@@ -33,9 +33,7 @@ def test_marca_um_boss_por_modulo():
             bloco=bloco,
             ordem=ordem * 10 + 2,
             numero=f"{ordem}B",
-            titulo_exibido=(
-                "SALVANDO PROJETOS E NAVEGACAO!" if ordem == 2 else titulo
-            ),
+            titulo_exibido=("SALVANDO PROJETOS E NAVEGACAO!" if ordem == 2 else titulo),
         )
 
     call_command("marcar_bosses_primeiros_dolares", stdout=StringIO())
