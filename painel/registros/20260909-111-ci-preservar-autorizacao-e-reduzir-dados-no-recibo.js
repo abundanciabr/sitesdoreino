@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-111-ci-preservar-autorizacao-e-reduzir-dados-no-recibo",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "ci: preservar autorização e reduzir dados no recibo",
+  detalhe: "Manual do recibo exige resultado técnico e conferência da autorização existente. Padrão de Trabalho validado; 11 testes passaram. Permissões do aplicativo preservadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1507. Validação local: árvore bb0a53ed9bf0e65b45284d1b0afd70e04ab7111b; commit 2ae93abd4ec82201cb8be207cd6de6d85100935c; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-306",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
