@@ -10,7 +10,9 @@ from django.test import RequestFactory
 from apps.core import admin_dados, direcao, painel, placar
 
 
-def pacote(pasta, *, sha="a" * 40, run=10, texto="VERSAO-A"):
+def pacote(
+    pasta, *, sha="a" * 40, run=10, texto="VERSAO-A", tipo="painel", extras=None
+):
     pasta.mkdir()
     (pasta / "registros").mkdir()
     (pasta / "cartoes").mkdir()
@@ -20,9 +22,11 @@ def pacote(pasta, *, sha="a" * 40, run=10, texto="VERSAO-A"):
     (pasta / "painel.html").write_text(
         f"<!doctype html><html><body>{texto}</body></html>", encoding="utf-8"
     )
+    for nome, conteudo in (extras or {}).items():
+        (pasta / nome).write_text(json.dumps(conteudo), encoding="utf-8")
     manifesto = {
         "formato": "admin-dados.v1",
-        "tipo": "painel",
+        "tipo": tipo,
         "origem": {
             "sha": sha,
             "run_id": str(run * 100),
@@ -226,3 +230,230 @@ def test_sem_copia_valida_a_pagina_explica_a_falha(tmp_path, monkeypatch):
     )
     assert resposta["X-Admin-Dados-Condicao"] == "indisponivel"
     assert resposta["Cache-Control"] == "no-store"
+
+
+def test_resposta_composta_fixa_a_versao_e_a_proxima_requisicao_ve_a_nova(
+    tmp_path, monkeypatch
+):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    primeira = pacote(tmp_path / "release-a")
+    segunda = pacote(tmp_path / "release-b", sha="b" * 40)
+    ponteiro = tmp_path / "painel_ativo"
+    apontar(primeira, ponteiro)
+    monkeypatch.setattr(painel, "CANDIDATOS", (ponteiro,))
+    chamadas = []
+
+    def montar(request):
+        cartoes = placar.diretorio_dos_cartoes()
+        if not chamadas:
+            retirar_ponteiro(ponteiro)
+            apontar(segunda, ponteiro)
+        registros = direcao.diretorio_dos_registros()
+        chamadas.append((cartoes.parent, registros.parent))
+        return HttpResponse("ok")
+
+    porta = PortaAdministrativa(montar)
+    try:
+        porta(RequestFactory().get("/healthz"))
+        porta(RequestFactory().get("/healthz"))
+        assert chamadas == [(primeira, primeira), (segunda, segunda)]
+    finally:
+        retirar_ponteiro(ponteiro)
+
+
+def test_requisicoes_concorrentes_nao_compartilham_selecao(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    primeira = pacote(tmp_path / "release-a")
+    segunda = pacote(tmp_path / "release-b", sha="b" * 40)
+    ponteiro = tmp_path / "painel_ativo"
+    apontar(primeira, ponteiro)
+    monkeypatch.setattr(painel, "CANDIDATOS", (ponteiro,))
+    selecionou = Event()
+    terminou_segunda = Event()
+
+    def montar(request):
+        inicio = painel.diretorio_do_painel()
+        if request.GET.get("primeira"):
+            selecionou.set()
+            assert terminou_segunda.wait(10)
+        else:
+            terminou_segunda.set()
+        fim = direcao.diretorio_dos_registros().parent
+        return HttpResponse(f"{inicio.name}/{fim.name}")
+
+    porta = PortaAdministrativa(montar)
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            resposta_a = pool.submit(porta, RequestFactory().get("/healthz?primeira=1"))
+            assert selecionou.wait(10)
+            retirar_ponteiro(ponteiro)
+            apontar(segunda, ponteiro)
+            resposta_b = pool.submit(porta, RequestFactory().get("/healthz"))
+            assert resposta_b.result(timeout=10).content == b"release-b/release-b"
+            assert resposta_a.result(timeout=10).content == b"release-a/release-a"
+    finally:
+        terminou_segunda.set()
+        retirar_ponteiro(ponteiro)
+
+
+@pytest.mark.parametrize("saida", ["excecao", "recusa"])
+def test_porta_descarta_selecao_apos_excecao_ou_recusa(tmp_path, monkeypatch, saida):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    primeira = pacote(tmp_path / "release-a")
+    segunda = pacote(tmp_path / "release-b", sha="b" * 40)
+    monkeypatch.setattr(painel, "CANDIDATOS", (primeira,))
+
+    def interromper(request):
+        assert painel.diretorio_do_painel() == primeira
+        if saida == "excecao":
+            raise ValueError("interrompida")
+        return HttpResponse(status=302)
+
+    porta = PortaAdministrativa(interromper)
+    if saida == "recusa":
+        monkeypatch.setattr(porta, "_para_o_login", interromper)
+        assert porta(RequestFactory().get("/painel/")).status_code == 302
+    else:
+        with pytest.raises(ValueError, match="interrompida"):
+            porta(RequestFactory().get("/healthz"))
+    monkeypatch.setattr(painel, "CANDIDATOS", (segunda,))
+    assert painel.diretorio_do_painel() == segunda
+
+
+def test_artefato_ausente_na_versao_fixada_nao_troca_de_pacote(tmp_path):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    primeira = pacote(tmp_path / "release-a")
+    segunda = pacote(
+        tmp_path / "release-b", sha="a" * 40, extras={"livro-ausente.js": {}}
+    )
+
+    def montar(request):
+        selecionado = admin_dados.selecionar_dados((primeira,), tipo="painel")
+        assert selecionado.pasta == primeira
+        assert (
+            admin_dados.selecionar_dados(
+                (segunda,), tipo="painel", arquivos_obrigatorios=("livro-ausente.js",)
+            )
+            is None
+        )
+        assert admin_dados.selecionar_dados((segunda,), tipo="painel") == selecionado
+        return HttpResponse("ok")
+
+    PortaAdministrativa(montar)(RequestFactory().get("/healthz"))
+
+
+def test_indisponibilidade_fica_fixada_ate_o_fim_da_resposta(tmp_path):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    pasta = pacote(tmp_path / "release")
+
+    def montar(request):
+        assert (
+            admin_dados.selecionar_dados((tmp_path / "ausente",), tipo="painel") is None
+        )
+        assert admin_dados.selecionar_dados((pasta,), tipo="painel") is None
+        return HttpResponse("ok")
+
+    PortaAdministrativa(montar)(RequestFactory().get("/healthz"))
+    assert admin_dados.selecionar_dados((pasta,), tipo="painel").pasta == pasta
+
+
+@pytest.mark.parametrize("tem_copia_compativel", [True, False])
+def test_fila_json_nao_mistura_revisoes_quando_o_ponteiro_do_painel_muda(
+    tmp_path, monkeypatch, tem_copia_compativel
+):
+    from apps.core import fila_do_painel, robos
+    from apps.core.porta import PortaAdministrativa
+
+    estados = {
+        "TAR-001": {"estado": "na fila", "titulo": "Tarefa A", "toca": ["admin"]}
+    }
+    fila_a = pacote(tmp_path / "fila-a", tipo="fila", extras={"estados.json": estados})
+    areas_a = {"areas": [{"id": "area-a", "celulas": ["admin"]}]}
+    areas_b = {"areas": [{"id": "area-b", "celulas": ["admin"]}]}
+    painel_a = pacote(tmp_path / "painel-a", extras={"areas.json": areas_a})
+    painel_b = pacote(
+        tmp_path / "painel-b", sha="b" * 40, extras={"areas.json": areas_b}
+    )
+    ponteiro = tmp_path / "painel_ativo"
+    apontar(painel_a, ponteiro)
+    monkeypatch.setattr(robos, "CANDIDATOS", (fila_a,))
+    monkeypatch.setattr(
+        painel,
+        "CANDIDATOS",
+        (ponteiro, painel_a) if tem_copia_compativel else (ponteiro,),
+    )
+    leitor = robos.diretorio_da_fila
+
+    def ler_fila_e_trocar():
+        resultado = leitor()
+        retirar_ponteiro(ponteiro)
+        apontar(painel_b, ponteiro)
+        return resultado
+
+    monkeypatch.setattr(robos, "diretorio_da_fila", ler_fila_e_trocar)
+    try:
+        resposta = PortaAdministrativa(fila_do_painel.fila_json)(
+            RequestFactory().get("/healthz")
+        )
+        dados = json.loads(resposta.content)
+        assert dados["erro"] is None
+        assert dados["tarefas"][0]["titulo"] == "Tarefa A"
+        if tem_copia_compativel:
+            assert dados["tarefas"][0]["area"] == "area-a"
+            assert dados["aviso"] is None
+        else:
+            assert dados["tarefas"][0]["area"] is None
+            assert dados["aviso"]
+        assert "area-b" not in resposta.content.decode()
+    finally:
+        retirar_ponteiro(ponteiro)
+
+
+def test_artefato_de_diretorio_ausente_nao_troca_a_fila_fixada(tmp_path):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    primeira = pacote(tmp_path / "fila-a", tipo="fila")
+    segunda = pacote(tmp_path / "fila-b", tipo="fila")
+    (segunda / "eventos").mkdir()
+
+    def montar(request):
+        assert admin_dados.selecionar_dados((primeira,), tipo="fila").pasta == primeira
+        assert (
+            admin_dados.selecionar_dados(
+                (segunda,), tipo="fila", diretorios_obrigatorios=("eventos",)
+            )
+            is None
+        )
+        return HttpResponse("ok")
+
+    PortaAdministrativa(montar)(RequestFactory().get("/healthz"))
+
+
+def test_mesma_revisao_em_execucoes_distintas_nao_e_a_mesma_publicacao(tmp_path):
+    from django.http import HttpResponse
+    from apps.core.porta import PortaAdministrativa
+
+    painel_a = pacote(tmp_path / "painel-a", run=10)
+    fila_b = pacote(tmp_path / "fila-b", run=11, tipo="fila")
+
+    def montar(request):
+        assert (
+            admin_dados.selecionar_dados((painel_a,), tipo="painel").pasta == painel_a
+        )
+        assert admin_dados.selecionar_dados((fila_b,), tipo="fila") is None
+        return HttpResponse("ok")
+
+    PortaAdministrativa(montar)(RequestFactory().get("/healthz"))

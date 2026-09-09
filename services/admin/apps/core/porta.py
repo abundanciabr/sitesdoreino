@@ -38,6 +38,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from . import medidor
+from .admin_dados import dados_da_resposta
 from .clients import IdentidadeClient, IdentidadeIndisponivel
 from .models import Administrador
 
@@ -231,6 +232,10 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
+        with dados_da_resposta():
+            return self._responder(request)
+
+    def _responder(self, request):
         if _sob_a_porta_de_maquina(request.path_info):
             # A porta de MAQUINA tem cadeado proprio (o Bearer) e nao usa a
             # moldura de navegador: sai sem CSP e sem `Cache-Control` de tela,

@@ -340,7 +340,17 @@ entram nesses cabeçalhos ou avisos. A alternativa não cria registro, pedido ou
 incidente. `verificada` significa que identidade e arquivos conferiram; não
 afirma que a revisão é a mais recente do repositório.
 
-Não há cache nesta seleção. Uma otimização futura precisa usar a identidade
-da release concreta e preservar o aviso da alternativa; cachear o nome do
-ponteiro congelaria a publicação vista. A imutabilidade dos arquivos dentro
-da release continua sendo responsabilidade do publicador.
+`PortaAdministrativa` abre um contexto por requisição e o descarta em
+`finally`, inclusive em recusa ou exceção. A primeira seleção fixa a revisão;
+cada tipo fixa sua pasta concreta ou sua indisponibilidade. Outro consumidor
+não troca de pacote para encontrar um artefato ausente. Painel e fila só se
+combinam na mesma revisão e execução; no legado, precisam pertencer à mesma
+raiz local.
+Sem uma cópia compatível, a fonte fica indisponível e a tela mantém o aviso
+que já trata a ausência. O publicador atual tem dois ponteiros independentes:
+a publicação conjunta e atômica ainda precisa ser implementada.
+
+Não há cache entre requisições. Uma otimização futura precisa usar a
+identidade da release concreta e preservar o aviso da alternativa; cachear
+o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
+arquivos dentro da release continua sendo responsabilidade do publicador.
