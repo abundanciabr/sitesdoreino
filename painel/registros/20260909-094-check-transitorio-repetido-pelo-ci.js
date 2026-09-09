@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-094-check-transitorio-repetido-pelo-ci",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "O CI passou a repetir sozinho falhas transitórias do navegador",
+  detalhe: "O workflow do painel tenta instalar o Chromium três vezes e limpa os índices APT temporários entre tentativas. O mantenedor não precisa mais clicar em reexecutar por falha transitória de infraestrutura.",
+  autoridade: "sessao",
+  evidencia: "Teste da guarda automática passou; YAML do workflow válido; PR https://github.com/abundanciabr/sitesdoreino/pull/1502.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: "entrega"
+});})();
