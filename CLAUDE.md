@@ -383,13 +383,6 @@ em PT-BR, sempre.**
   resposta livre?" Se ele fechar a caixa sem responder, é "não agora": pare e
   não repita. Em lote, quem pergunta é só a maestro, numa pergunta só.
 
-Quando uma etapa terminar e ainda houver trabalho que dependa dele, a fala que
-fica na tela também precisa mostrar, no começo do bloco de decisão, `🔶 AÇÃO
-NECESSÁRIA DO MANTENEDOR`, seguido de `Faça agora:` com uma ação concreta e
-`Quando você fizer isso:` com o próximo efeito. Ele não precisa inventar
-"Continue" nem procurar a ação no transcript. Se nada depender dele, a fala
-deve dizer isso explicitamente.
-
 ## Plano na abertura, contas no fecho
 
 1. **Na abertura.** Pedido que muda o mundo começa por `## Plano`, um `- [ ]`
@@ -401,9 +394,8 @@ deve dizer isso explicitamente.
    - **O que mudou** — fatos, não adjetivos
    - **O que foi verificado e como** — o comando e a saída real
    - **O que foi cortado e por quê** — "nada" é resposta
-   - **O que eu preciso decidir** — ou a linha dizendo que nada depende dele;
-     havendo pendência, o bloco visual `🔶 AÇÃO NECESSÁRIA DO MANTENEDOR`,
-     `Faça agora:` e `Quando você fizer isso:`
+   - **O que eu preciso decidir** — nada depende dele, ou bloco visual `🔶 AÇÃO
+     NECESSÁRIA DO MANTENEDOR` com `Faça agora:` e `Quando você fizer isso:`
    - **Auditoria de qualidade** — a regra 6 item a item, e o que a regra 8 atacaria
    - **Veredito:** PRONTO ou NÃO PRONTO, com uma linha do porquê
 
