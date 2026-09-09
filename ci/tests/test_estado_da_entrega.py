@@ -99,6 +99,7 @@ def test_historia_de_celula_e_provedor_e_medida_antes_de_liberar(monkeypatch):
             [("loja",("vendas",)),("vendas",()),("quiz",())]}
     monkeypatch.setattr(entrega.mapa_de_celulas,"carregar",lambda *a: mapa)
     monkeypatch.setattr(entrega,"caminhos_dos_deploys",lambda *a: {CELULA:["services/**"],INFRA:["infra/traefik/**"]})
+    monkeypatch.setattr(entrega,"_api",lambda *a,**kw: dict(workflow_runs=[]))
     vistos=[]
     def executar(args,**kw):
         vistos.append(args)
@@ -238,3 +239,40 @@ def test_cli_erro_inesperado_preserva_contrato_json(monkeypatch, capsys):
     assert estado["estado"] == "ERROR"
     assert estado["terminal"] is False
     assert "Corrija a consulta" in estado["acao"]
+
+
+@pytest.mark.parametrize("fonte", ["job", "caminho", "pagina"])
+def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+    imagem = "b" * 40
+    mapa = {"admin": Celula("admin",("services/admin","painel"),())}
+    monkeypatch.setattr(entrega.mapa_de_celulas,"carregar",lambda *a: mapa)
+    monkeypatch.setattr(entrega,"caminhos_dos_deploys",lambda *a: {CELULA:["services/**","painel/**"],INFRA:["infra/traefik/**"]})
+    def executar(args,**kw):
+        if args[1] == "rev-parse":
+            return SimpleNamespace(stdout="false" if "--is-shallow-repository" in args else SHA)
+        if args[1] == "log":
+            return SimpleNamespace(stdout=SHA if "painel" in args else imagem if fonte=="caminho" and "services/admin" in args else "")
+        if args[1] == "diff":
+            return SimpleNamespace(stdout="painel/registros/a.js" if args[-1]==SHA else "services/admin/app.py")
+        return SimpleNamespace(stdout="")
+    monkeypatch.setattr(entrega,"executar",executar)
+    paginas = set()
+    def api(raiz,caminho,**kw):
+        runs = [run(id=11),run(head_sha=imagem,conclusion="failure")]
+        if fonte == "caminho": return dict(workflow_runs=[])
+        if fonte == "pagina":
+            pagina = int(caminho.rsplit("page=",1)[1])
+            assert pagina not in paginas, "repetiu a mesma página"
+            paginas.add(pagina)
+            runs = runs[pagina-1:pagina]
+        return dict(workflow_runs=runs)
+    if fonte == "pagina":
+        import rerun_de_deploy
+        monkeypatch.setattr(rerun_de_deploy,"RUNS_OLHADOS_ATRAS",1)
+    monkeypatch.setattr(entrega,"_api",api)
+    monkeypatch.setattr(entrega,"consultar_jobs",lambda raiz,r: [dict(name="publicar-dados-admin" if r["id"]==11 else "deploy (admin)",status="completed",conclusion="success" if r["id"]==11 else "failure")])
+    monkeypatch.setattr(entrega,"consultar_publicacao",lambda raiz,sha,arquivos: dict(terminal=sha==SHA,estado="PUBLICADO" if sha==SHA else "FALHA_PUBLICACAO",sha_integrado=sha))
+    bloqueios=entrega.publicacoes_anteriores(RAIZ,["services/admin/app.py"])
+    assert [b["sha_integrado"] for b in bloqueios] == [imagem]

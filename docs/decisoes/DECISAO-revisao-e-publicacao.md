@@ -70,7 +70,10 @@ concluída nem baixa de alerta. Essas provas pertencem ao reconciliador da entre
 
 Antes de cada merge, o portão atualiza a referência main e consulta o último
 commit first-parent que tocou cada célula e seus provedores transitivos,
-conforme `celulas.yml`. Confere também a última publicação da infraestrutura;
+conforme `celulas.yml`. Preserva os caminhos de imagem separados dos dados e
+consulta o último job de cada célula, paginando o histórico até encontrá-lo
+ou chegar ao fim. Dados admin verdes não apagam uma imagem falha. Confere
+também a última publicação da infraestrutura;
 entrega de infraestrutura exige as células. Dependência explícita por PR
 exige a publicação do SHA daquele PR, além do merge.
 

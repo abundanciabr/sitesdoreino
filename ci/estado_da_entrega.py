@@ -186,12 +186,39 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
         raise ErroDeInstrumentacao("histórico raso não prova a última publicação; use fetch-depth: 0")
     referencia = git("rev-parse", "origin/main")
     grupos = [mapa[c].caminhos for c in sorted(requeridas)]
+    grupos.extend(tuple(p for p in mapa[c].caminhos if p.rstrip("/") not in {"painel", "fila"})
+                  for c in sorted(requeridas))
+    grupos = [g for g in grupos if g]
     grupos.append(tuple(p.replace("/**", "") for p in infra))
     shas = set()
     for caminhos in grupos:
         sha = git("log", "--first-parent", "-1", "--format=%H", referencia, "--", *caminhos)
         if sha:
             shas.add(sha)
+    # Dados recentes não apagam a última tentativa da imagem da mesma célula.
+    from rerun_de_deploy import RUNS_OLHADOS_ATRAS
+    faltam = {f"deploy ({c})" for c in requeridas}
+    if "admin" in requeridas:
+        faltam.add("publicar-dados-admin")
+    pagina = 1
+    while faltam:
+        resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}&page={pagina}")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("histórico de jobs ausente; imagem e dados não foram conferidos")
+        runs = resposta["workflow_runs"]
+        for run in sorted(runs, key=lambda r: r["id"], reverse=True):
+            if run.get("path") != DEPLOYS[0] or run.get("event") != "push" or run.get("head_branch") != "main":
+                continue
+            nomes = {j["name"] for j in consultar_jobs(raiz, run) if j.get("conclusion") != "skipped"}
+            encontrados = faltam & nomes
+            if encontrados:
+                shas.add(run["head_sha"])
+                faltam -= encontrados
+            if not faltam:
+                break
+        if len(runs) < RUNS_OLHADOS_ATRAS:
+            break
+        pagina += 1
     resultados = []
     for sha in sorted(shas):
         alterados = git("diff", "--name-only", sha + "^", sha).splitlines()
