@@ -1089,3 +1089,61 @@ def test_tar_explicita_ignora_posse_historica_encerrada(tmp_path, monkeypatch, u
     dub = Duble(RESPOSTAS_FELIZES)
     pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
     assert dub.pediu("ci/fila.py submeter TAR-001")
+
+
+
+def test_propagacao_do_sha_reconsulta_sem_repetir_recibo_ou_validacao(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": ("c" if len(consultas) == 1 else "b") * 40,
+                               "state": "OPEN", "isDraft": False})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 2
+    assert sum("reservar.py numero registro" in linha for linha in dub.linhas) == 1
+    assert sum("worktree add --detach" in linha for linha in dub.linhas) == 2
+    assert len(list((raiz / "painel/registros").glob("*.js"))) == 1
+
+
+@pytest.mark.parametrize("remoto", [
+    {"headRefOid": "c" * 40, "state": "OPEN", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "CLOSED", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "OPEN"},
+])
+def test_propagacao_esgota_consultas_sem_aprovar_revisao_ou_estado_errados(tmp_path, monkeypatch, remoto):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps(remoto)
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ParouPorSeguranca, match="após 3 consultas"):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert len(consultas) == 3
+    assert not dub.pediu("gh pr ready")
+
+
+def test_propagacao_de_ready_exige_estado_final_confirmado(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": len(consultas) < 3})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 3
+    assert sum("gh pr ready" in linha for linha in dub.linhas) == 1

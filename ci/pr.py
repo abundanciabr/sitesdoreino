@@ -16,6 +16,7 @@ import sys
 import unicodedata
 import uuid
 import tempfile
+import time
 import subprocess
 import os
 from collections import Counter
@@ -640,6 +641,28 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
     return candidatos.pop()
 
 
+def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
+    for tentativa in range(3):
+        try:
+            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "consulta final do PR inválida",
+                "Confira gh pr view; nenhuma revisão remota foi aprovada.",
+            ) from erro
+        if (isinstance(remoto, dict) and remoto.get("headRefOid") == entregue
+                and remoto.get("state") == "OPEN" and type(remoto.get("isDraft")) is bool
+                and (not exigir_pronto or remoto["isDraft"] is False)):
+            return remoto
+        if tentativa < 2:
+            time.sleep(2)
+    raise ParouPorSeguranca(
+        "PR remoto não confirma a revisão entregue após 3 consultas",
+        f"Confira gh pr view {numero}: exijo SHA {entregue}, estado OPEN e rascunho conferido. "
+        "Nenhuma revisão anterior foi aprovada; os commits e recibos foram preservados.",
+    )
+
+
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
     raiz = Path(raiz)
     hoje = hoje or datetime.now(timezone.utc).date()
@@ -751,14 +774,10 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
     correr(["git", "push", "origin", ramo])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
-        raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
-    if remoto.get("isDraft") is True:
+    remoto = _conferir_revisao_remota(correr, numero, entregue)
+    if remoto["isDraft"]:
         correr(["gh", "pr", "ready", str(numero)])
-        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN" or remoto.get("isDraft") is True:
-        raise ParouPorSeguranca("PR remoto continua em rascunho", "Confira gh pr view e torne o PR pronto antes de pedir pouso.")
+        _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
