@@ -98,6 +98,25 @@
    recibo a bordo (`ci/mergear.py`); PR que só escritura (`painel/` e/ou
    `fila/`) é isento. Registro de fato pós-merge (veredito de deploy, incidente)
    continua sendo PR próprio, só de livro.
+   **A cor descreve o estado que continua aberto.** Um recibo de trabalho
+   validado localmente usa `info`; ele não prova publicação. Use `ambar` ou
+   `vermelho` quando a entrega ainda exigir uma ação, pois essas cores abrem
+   alerta no painel. Confirmado o resultado, a baixa faz parte da conclusão:
+   o registro novo aponta `responde_a` para o identificador exato da entrega,
+   com `gravidade: "verde"`, `evidencia` citando a URL completa do PR no GitHub
+   e a conferência realizada,
+   e `verificado_em` a partir da data do alerta. Se houver dois alertas,
+   escreva uma baixa específica para cada um no mesmo PR; não apague o passado.
+
+   A muralha do painel executa `python ci/encerramento_alertas.py` e recusa
+   uma conclusão verde nova que cite um PR com entrega em alerta sem baixa
+   comprovada. Ela também recusa baixa nova sem prova. A recusa só lê o livro,
+   não cria pendência e ensina a corrigir o próprio PR. A comparação usa
+   `BASE_REF` (padrão `origin/main`); base ou instrumento indisponível é ERROR.
+   Alertas antigos sem relação com a conclusão nova não bloqueiam outro trabalho.
+   O portão confere vínculos e evidência declarada; não consulta a produção
+   nem certifica a verdade do relatório PRONTO na conversa.
+
 1. **À mão, quando o `make pr` não serve** (registro pós-merge, resposta a um
    pedido, correção de rumo): crie **um arquivo novo** em `registros/`, nome
    `AAAAMMDD-NNN-slug.js`. O `NNN` **se pede ao almoxarife — não se escolhe:**
