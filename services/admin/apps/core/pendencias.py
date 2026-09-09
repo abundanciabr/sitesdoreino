@@ -68,6 +68,7 @@ bytes que `apps/core/painel.py` já serve. Uma conta, um lugar.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -92,6 +93,10 @@ _CARIMBO_DA_FILA = re.compile(
     r'pedidosDoDono: \{ quantidade: (\d+), maisAntigoQuando: (null|"[^"]*") \}'
 )
 _VINCULOS_DA_FILA = re.compile(r"pedidosDoDonoVinculos:\s*(\[[^\n]*\])\s*[,\n]")
+_FONTE_DOS_VINCULOS = re.compile(
+    r"^\s*pedidosDoDonoVinculosFonte: ([^\r\n]*),\s*$", re.M
+)
+_CARIMBO_DO_LIVRO = re.compile(r'var PAINEL = \{\s+carimbo: "([a-f0-9]{12})",')
 
 # As filas que este degrau ainda NÃO enxerga, com o endereço de cada uma. Elas
 # entram na tela por escrito: sem isso, "nada esperando você" seria uma frase
@@ -155,6 +160,38 @@ def quem_quer_entrar(cliente: AlunosClient, agora: datetime) -> Fila:
     )
 
 
+def _vinculos_do_arquivo(pasta, html: str, fonte: dict, quantidade: int):
+    """Lê o conjunto completo da mesma pasta concreta e confere seus bytes."""
+    carimbo = _CARIMBO_DO_LIVRO.search(html)
+    if (
+        not isinstance(fonte, dict)
+        or fonte.get("arquivo") != "paginas/pedidos-do-dono.json"
+        or not carimbo
+        or fonte.get("carimbo") != carimbo.group(1)
+        or type(fonte.get("quantidade")) is not int
+        or fonte["quantidade"] != quantidade
+        or not isinstance(fonte.get("sha256"), str)
+        or not re.fullmatch(r"[a-f0-9]{64}", fonte["sha256"])
+    ):
+        raise ValueError("Descritor dos vínculos ausente ou incoerente.")
+    raiz = pasta.resolve(strict=True)
+    arquivo = raiz / fonte["arquivo"]
+    if arquivo.resolve(strict=True) != arquivo:
+        raise ValueError("O arquivo de vínculos saiu da publicação selecionada.")
+    conteudo = arquivo.read_bytes()
+    if hashlib.sha256(conteudo).hexdigest() != fonte["sha256"]:
+        raise ValueError("A integridade dos vínculos não foi confirmada.")
+    dados = json.loads(conteudo)
+    if (
+        not isinstance(dados, dict)
+        or dados.get("carimbo") != carimbo.group(1)
+        or type(dados.get("quantidade")) is not int
+        or dados["quantidade"] != quantidade
+    ):
+        raise ValueError("O arquivo de vínculos pertence a outro retrato.")
+    return dados.get("vinculos")
+
+
 def decisoes_paradas_no_painel(agora: datetime) -> Fila:
     """As decisões que os robôs pediram a você e ninguém respondeu.
 
@@ -174,6 +211,16 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
             achado = _CARIMBO_DA_FILA.search(html)
             campo = _VINCULOS_DA_FILA.search(html)
             dados = json.loads(campo.group(1)) if campo else None
+            fontes = _FONTE_DOS_VINCULOS.findall(html)
+            if len(fontes) > 1 or (
+                "pedidosDoDonoVinculosFonte:" in html and not fontes
+            ):
+                raise ValueError("Descritor dos vínculos inválido.")
+            fonte = json.loads(fontes[0]) if fontes else None
+            if fonte is not None:
+                if dados != [] or not achado:
+                    raise ValueError("Vínculos externos exigem o conjunto integral.")
+                dados = _vinculos_do_arquivo(pasta, html, fonte, int(achado.group(1)))
             if (
                 isinstance(dados, list)
                 and achado
@@ -191,7 +238,7 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
                 )
             ):
                 vinculos = frozenset(v["tarefa"] for v in dados if v.get("tarefa"))
-        except (OSError, ValueError):
+        except (OSError, ValueError, RuntimeError):
             pass
     mais_antigo = achado.group(2).strip('"') if achado else "null"
     return Fila(
