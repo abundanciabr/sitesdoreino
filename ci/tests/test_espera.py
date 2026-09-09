@@ -503,7 +503,8 @@ def test_checks_verdes_com_e_pousar_chamam_o_portao_e_pedem_pouso(tmp_path):
     chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
     assert chamado == "447 --pousar", chamado
     assert "pedi pouso do PR 447 pelo portão" in proc.stdout
-    assert "Nada mais depende de ninguém" in proc.stdout
+    assert "publicação ainda não foram comprovadas" in proc.stdout
+    assert "--entrega 447" in proc.stdout
 
 
 def test_checks_reprovados_com_e_pousar_nunca_chamam_o_portao(tmp_path):
@@ -937,7 +938,8 @@ def test_e_pousar_liga_o_modo_calado_e_o_pouso_cabe_na_mesma_linha(tmp_path):
     unica = _linhas(proc.stdout)[0]
     assert "verdes" in unica, "o desfecho da espera some se não vier junto"
     assert "pedi pouso do PR 447" in unica
-    assert "Nada mais depende de ninguém" in unica
+    assert "publicação ainda não foram comprovadas" in unica
+    assert "--entrega 447" in unica
     assert "passo pelo portão" in proc.stderr
 
 

@@ -157,6 +157,7 @@ def _pr_com_registro(ramo: str = "agent/ci/area-do-registro") -> dict[str, Any]:
         "body": "",
         "url": "https://example.invalid/pr/99",
         "headRefName": ramo,
+        "headRefOid": "a" * 40,
         "files": [
             {"path": "ci/mergear.py"},
             {"path": "painel/registros/20260907-001-a.js"},

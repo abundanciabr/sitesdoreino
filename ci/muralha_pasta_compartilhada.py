@@ -536,6 +536,19 @@ def decidir(dados: dict) -> str | None:
     entrada = dados.get("tool_input") or {}
     cwd = dados.get("cwd") or "."
 
+    if ferramenta == "apply_patch":
+        try:
+            from patch_codex import ler_patch
+            for alteracao in ler_patch(dados):
+                for alvo in {alteracao.origem, alteracao.destino}:
+                    motivo = decidir({**dados, "tool_name": "Write",
+                                      "tool_input": {"file_path": str(alvo)}})
+                    if motivo:
+                        return motivo
+        except Exception as erro:
+            return f"🧱 Patch não medido: {erro}. Corrija o pedido antes de gravar."
+        return None
+
     if ferramenta in FERRAMENTAS_DE_EDICAO:
         caminho_cru = entrada.get(FERRAMENTAS_DE_EDICAO[ferramenta])
         if not caminho_cru:

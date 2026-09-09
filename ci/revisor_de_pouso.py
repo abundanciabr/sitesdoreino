@@ -1,87 +1,19 @@
-"""O REVISOR DE POUSO — um par de olhos com contexto fresco, no instante do merge.
+"""Revisão independente no SHA final e scanner consultivo do diff.
 
-Recomendação **B11** do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`
-("revisor-robô no pouso é o substituto mais próximo do revisor humano
-ausente"), tarefa TAR-006, despachada pelo mantenedor em 02/09/2026.
+`avaliar_atestado` é o portão usado pelo merge. O comentário da maestro
+registra a avaliação real de outra tarefa, sem autenticar o runtime nem
+oferecer assinatura criptográfica. IDs diferentes sozinhos não provam
+independência: a maestro responde pela procedência e pelo conteúdo.
 
-    python ci/revisor_de_pouso.py 123              # revisa e imprime
-    python ci/revisor_de_pouso.py 123 --comentar   # revisa e comenta no PR
-    python ci/revisor_de_pouso.py 0 --diff-de x.patch   # sem tocar no GitHub
-
-O BURACO QUE ISTO FECHA, e ele é MEDIDO
-=======================================
-Nos lotes de 01/09/2026, **seis falsos-verdes** foram encontrados em código que
-já estava verde. Nenhum deles pelo CI: todos por mutação deliberada feita pelo
-próprio autor, depois do verde (`armadilhas/264` a `269` e `272`). Todos da
-mesma família:
-
-    a asserção tinha mais de uma causa suficiente,
-    então o teste passava pelo motivo errado.
-
-Nenhum guarda deste repositório pega essa classe, e não é descuido: ela é
-**invisível a quem só olha "passou ou não passou"**. O teste existe, tem nome
-descritivo, tem docstring, cobre a linha e fica verde — e continua verde com a
-regra que ele deveria proteger arrancada do código. A cobertura de linhas é
-idêntica nas duas versões, porque as duas *executam* o mesmo trecho
-(`armadilhas/267`).
-
-O que falta não é mais um portão binário: é alguém LENDO o diff com contexto
-fresco e perguntando "quantos caminhos independentes produzem esse vazio?".
-Este programa é esse alguém.
-
-TRÊS DECISÕES DE DESENHO, E O PORQUÊ DE CADA UMA
-================================================
-
-1. ELE OPINA, NÃO REPROVA — e por isso o exit code é SEMPRE 0.
-   Um revisor que barra vira portão sem apelação num fluxo onde não há humano
-   para desempatar, e esta casa já mediu o custo disso: *"portão que reprova
-   quem está certo ensina a ser contornado"* (lição 7 do Lote 9). As heurísticas
-   aqui são bem-intencionadas e vão errar; errar custando um comentário é
-   barato, errar travando a esteira da casa inteira não é. Se um dia ele passar
-   a barrar, isso é decisão do mantenedor, com data — não de quem escreve
-   código.
-
-2. FAIL-OPEN, E ISTO É OBRIGATÓRIO.
-   Revisor que não conseguiu rodar **não segura o pouso** e **não fabrica
-   veredito**: ele diz `NAO-REVISADO` e sai de cena. A distinção FAIL contra
-   ERROR vale aqui como em todo lugar desta casa ([INV-CI01]) — só que, como
-   ele não tem poder de recusa, os dois desaguam em exit 0. O que NUNCA pode
-   acontecer é "não consegui medir" chegar disfarçado de "está limpo": por isso
-   `NAO-REVISADO` é um veredito escrito, não um silêncio.
-
-3. ELE NUNCA EXECUTA O CÓDIGO DO PR — só LÊ o texto do diff.
-   A pista roda com a `PISTA_TOKEN`, que tem poder de merge. Rodar código vindo
-   de um PR ali dentro seria entregar esse poder a qualquer um que abra um PR —
-   e o repositório é público. Este programa só chama `gh pr diff` e olha o
-   texto. Sem `import`, sem `exec`, sem checkout do ramo. É a mesma razão pela
-   qual a pista faz `checkout ref: main` (decisão 2 do cabeçalho do
-   `pouso.yml`).
-
-O QUE ELE PROCURA, EM ORDEM DE VALOR
-====================================
-Só coisas que NENHUMA máquina desta casa já diz. Estilo, formatação, travessão,
-orçamento de arquivos, catraca de testes e contrato já têm portão próprio —
-revisor que repete o que a máquina já disse ensina a ser ignorado.
-
-    D1  asserção de ausência com mais de uma causa suficiente  (armadilhas/266)
-    D2  filtro provado por um lado só do filtro                (armadilhas/267)
-    D3  a asserção mede o dublê, não o código
-    D4  guarda novo que nunca foi visto reprovando  (RETROSPECTIVA-FASE-D §1)
-
-A LINHA QUE QUEM AGE SOBRE O VEREDITO LÊ
-========================================
-Última linha da saída, sempre ASCII, no mesmo molde do `MOTIVO-DA-RECUSA:` do
-`ci/mergear.py` e pelo mesmo motivo (roteador não pode depender de prosa
-acentuada atravessando YAML, shell e locale de executor):
-
-    REVISOR-DE-POUSO: LIMPO
-    REVISOR-DE-POUSO: ACHADOS 3
-    REVISOR-DE-POUSO: NAO-REVISADO
+A CLI continua sendo apenas o scanner de quatro heurísticas. LIMPO e
+NAO-REVISADO do scanner não aprovam o atestado exigido pelo portão.
+O scanner lê o diff, nunca executa código do PR com a credencial da pista.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import tempfile
@@ -92,10 +24,59 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
+    Estado,
+    Resultado,
     configurar_saida,
     executar,
     raiz_do_repo,
 )
+
+MARCA_ATESTADO = "<!-- revisao-independente:v1 -->"
+ASSOCIACOES_CONFIAVEIS = {"OWNER", "MEMBER", "COLLABORATOR"}
+
+
+def avaliar_atestado(sha: str, comentarios: list[dict], *, correcoes: list[int] | None = None) -> Resultado:
+    """O último atestado confiável prevalece, inclusive quando inválido."""
+    def recusar(motivo):
+        return Resultado("revisão independente", Estado.FAIL, motivo,
+                         "Nova revisão necessária: a maestro deve conferir uma avaliação "
+                         "independente do SHA final e publicar novo atestado. "
+                         "Nunca copie uma aprovação para outro SHA.")
+
+    candidatos = [c for c in comentarios
+                  if c.get("author_association") in ASSOCIACOES_CONFIAVEIS
+                  and MARCA_ATESTADO in (c.get("body") or "")]
+    if not candidatos:
+        return recusar("atestado independente ausente")
+    ultimo = max(candidatos, key=lambda c: int(c.get("id") or 0))
+    corpo = ultimo.get("body") or ""
+    try:
+        if not corpo.startswith(MARCA_ATESTADO):
+            return recusar("atestado com marcador fora do início")
+        dado = json.loads(corpo[len(MARCA_ATESTADO):].strip())
+    except (ValueError, TypeError):
+        return recusar("atestado independente malformado")
+    campos = ("sha", "despacho", "revisor", "maestro", "veredito", "resumo", "evidencia")
+    if not isinstance(dado, dict) or any(
+        not isinstance(dado.get(c), str) or not dado[c].strip() for c in campos
+    ):
+        return recusar("atestado sem identidade, resumo ou evidência")
+    if not re.fullmatch(r"[0-9a-f]{40}", sha or "") or dado["sha"] != sha:
+        return recusar("o SHA final mudou ou não foi revisado")
+    identidades = {dado[c].strip() for c in ("despacho", "revisor", "maestro")}
+    if len(identidades) != 3:
+        return recusar("despacho, revisor e maestro precisam ser tarefas distintas")
+    if dado["veredito"] != "APROVADO":
+        return recusar("revisão reprovada ou sem aprovação: " + dado["resumo"])
+    if correcoes:
+        declaradas = dado.get("corrige_publicacao")
+        if not isinstance(declaradas, list) or any(type(n) is not int for n in declaradas) or sorted(set(declaradas)) != sorted(correcoes):
+            return recusar("a recuperação declarada não está na avaliação independente")
+    return Resultado("revisão independente", Estado.PASS,
+                     "atestado aprovado para " + sha,
+                     f"Comentário {ultimo.get('id')}; revisor {dado['revisor']}. "
+                     + dado["evidencia"])
+
 
 # A linha de código estável. Ver o fim do docstring.
 MARCA = "REVISOR-DE-POUSO:"
@@ -581,15 +562,14 @@ def revisar(patch: str) -> list[Achado]:
 # =============================================================================
 
 ABERTURA = (
-    "🔍 **revisor de pouso** — li o diff deste PR com contexto fresco, no "
-    "instante do merge, procurando a família que os portões desta casa não "
-    "pegam: **asserção com mais de uma causa suficiente**, o falso-verde que "
-    "aparece seis vezes nas `armadilhas/264` a `272`."
+    "🔍 **varredura consultiva do diff**: quatro heurísticas procuraram "
+    "sinais de falso-verde. Este comentário não é uma avaliação de agente "
+    "independente e não aprova o pouso."
 )
 
 RODAPE = (
-    "*Isto é opinião, não reprovação: o pouso segue normalmente. A prova de "
-    "verdade continua sendo a sua — arranque a regra que cada guarda protege e "
+    "*Isto é opinião, não reprovação. O atestado independente continua "
+    "obrigatório no SHA final. Arranque a regra que cada guarda protege e "
     "confira que o vermelho diz o NOME do teste que caiu, senão foi outro guarda "
     "que respondeu (`armadilhas/268`).*"
 )
@@ -615,8 +595,8 @@ def comentario(numero: int, achados: list[Achado]) -> str:
     partes = [
         ABERTURA,
         "",
-        f"**{len(achados)} ponto(s) para olhar** — opinião, não reprovação: o "
-        "pouso segue.",
+        f"**{len(achados)} ponto(s) para olhar**: opinião, não reprovação. "
+        "O atestado independente continua obrigatório.",
         "",
     ]
     for indice, achado in enumerate(mostrados, start=1):
@@ -751,8 +731,8 @@ def _desistir(motivo: str) -> int:
     print("")
     print(f"NÃO REVISEI ESTE PR — {motivo}")
     print(
-        "O pouso segue normalmente: este revisor OPINA, não reprova. "
-        "Ninguém fica esperando por ele."
+        "Este scanner OPINA, não reprova. O atestado independente continua "
+        "obrigatório para o pouso."
     )
     print(f"{MARCA} {NAO_REVISADO}")
     return 0

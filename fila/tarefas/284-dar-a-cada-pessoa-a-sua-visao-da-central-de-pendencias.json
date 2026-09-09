@@ -1,0 +1,22 @@
+{
+  "arquivo": "284-dar-a-cada-pessoa-a-sua-visao-da-central-de-pendencias",
+  "id": "TAR-284",
+  "titulo": "Dar a cada pessoa a sua visão da Central de Pendências",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-283"
+  ],
+  "cria": [],
+  "move": [
+    "latencia-de-decisao",
+    "liberacoes-em-48h"
+  ],
+  "evidencia_exigida": "PRs fatiados por célula com quatro visões da Central, contadores das filas reais incluindo alunos, decisões, portfólios, marcos e checkpoints, estados de erro e desconhecido, e testes que recusam no servidor cada ação sem permissão.",
+  "despacho": "Amplie a Central entregue na TAR-244. Crie quatro visões, Estratégia, Operações, Ensino e Comercial, conforme o mapa aprovado na TAR-283. Leia contagens nas casas das filas e não copie dados nem transforme falha em zero. Toda ação precisa de permissão conferida no servidor, além do botão. Antes de implementar, fatie por contratos e células; contrato novo viaja em PR próprio. A conclusão exige contadores integrados e medidos de alunos, decisões, portfólios, marcos e checkpoints. Indisponível é estado de falha em execução, nunca substituto para a fonte que falta; fonte ou contrato ausente vira tarefa filha dependente antes do fecho.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; amplia TAR-244 concluída",
+  "criada_em": "2026-09-09"
+}

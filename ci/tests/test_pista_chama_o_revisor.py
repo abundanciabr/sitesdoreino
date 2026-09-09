@@ -294,3 +294,13 @@ def test_o_revisor_que_a_pista_chama_existe_de_verdade():
     a pista chamando um fantasma — e o fail-open esconderia a falta para
     sempre, que é o preço de ser fail-open."""
     assert (RAIZ / "ci" / "revisor_de_pouso.py").is_file()
+
+
+def test_pista_consulta_publicacao_depois_do_merge_sem_chamar_de_pronto(bash,tmp_path):
+    revisor = _revisor_duble(tmp_path,'exit 0\n')
+    script = _preparar(_script_da_fila(),revisor)
+    script = script.replace('python ci/esperar.py --entrega "$alvo"',
+                            'echo "PUBLICACAO-CONSULTADA: $alvo"')
+    saida = _rodar(bash,tmp_path,script)
+    assert saida.index("ORDEM: merge #200") < saida.index("PUBLICACAO-CONSULTADA: 200")
+    assert "Publicação ainda precisa de prova" in saida
