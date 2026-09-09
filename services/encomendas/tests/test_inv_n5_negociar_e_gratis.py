@@ -145,10 +145,9 @@ def test_a_negociacao_que_morre_devolve_o_aluno_as_ofertas(
 ):
     """A outra metade de "negociar é gratuito", e a que dói quando falta.
 
-    Um cliente que some deixaria o aluno marcado como "trabalhando" para sempre,
-    fora da fila, por uma demora que não foi dele. Aceitar uma oferta continua
-    marcando o aluno (é da TAR-123, e o [INV-ENC-J7] depende disso); o que este
-    degrau acrescenta é a DESMARCAÇÃO quando a negociação morre.
+    Um cliente que some não pode deixar o aluno fora da fila por uma demora que
+    não foi dele. A negociação viva já não muda a disponibilidade, e a morte da
+    negociação conserva o lugar para a próxima oferta.
     """
     from apps.encomendas import gestos, motor
 
@@ -161,7 +160,7 @@ def test_a_negociacao_que_morre_devolve_o_aluno_as_ofertas(
     assert rodada.quantas_ofertas == 1
     assert gestos.aceitar(rodada.ofertas_criadas[0], zeca.pk, agora, site_id=SITE).feito
     zeca.refresh_from_db()
-    assert zeca.disponibilidade == PerfilProfissional.Disponibilidade.TRABALHANDO
+    assert zeca.disponibilidade == PerfilProfissional.Disponibilidade.DISPONIVEL
 
     assert negociacao.propor(
         encomenda.pk,

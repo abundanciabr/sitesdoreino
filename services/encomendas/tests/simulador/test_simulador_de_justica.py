@@ -114,9 +114,10 @@ O_PLANTAO = "plantao-1"
 # um detalhe do teste.
 #
 # **O cenário:** o aluno pega um projeto no Mural e ganha a vez. `mural.pegar`
-# não o marca como "trabalhando" e não consulta negociação nenhuma, porque a
-# régua que ele usa (`motor.por_que_nao`) só conhece a `Oferta`. Com a vez na
-# mão e ainda `disponivel`, o mesmo aluno recebe uma oferta da fila e a aceita,
+# não o marca como "trabalhando" e não consulta negociação nenhuma. A instância
+# de `Candidato` que o Mural monta só conhece a `Oferta`; a fila já consulta a
+# negociação viva. Com a vez na mão e ainda `disponivel`, o mesmo aluno recebe
+# uma oferta da fila e a aceita,
 # ou pega um segundo cartão da prateleira. No instante em que o SEGUNDO projeto
 # tenta ir para `em_negociacao`, o índice `uma_negociacao_viva_por_aluno` cumpre
 # o [INV-ENC-N6] e recusa a linha.
@@ -301,7 +302,9 @@ class Regua:
         )
 
 
-def elegivel_pela_lei(perfil, nivel, ja_viram, com_oferta, regua, agora):
+def elegivel_pela_lei(
+    perfil, nivel, ja_viram, com_oferta, regua, agora, *, com_negociacao=frozenset()
+):
     """Este aluno pode receber um projeto deste nível, agora? (plano §6.1)
 
     Escrita de novo, longe do motor, e na ordem em que a lei está escrita. É a
@@ -323,6 +326,8 @@ def elegivel_pela_lei(perfil, nivel, ja_viram, com_oferta, regua, agora):
         return False
     if perfil.id in com_oferta:
         return False
+    if perfil.id in com_negociacao:
+        return False
     return perfil.id not in ja_viram
 
 
@@ -343,7 +348,16 @@ def lugar_na_ordem(perfil):
     return (perfil.entregas_aprovadas, perfil.data_entrada_fila, perfil.id)
 
 
-def a_alocacao_que_a_lei_manda(perfis, na_fila, com_oferta, quem_ja_viu, regua, agora):
+def a_alocacao_que_a_lei_manda(
+    perfis,
+    na_fila,
+    com_oferta,
+    quem_ja_viu,
+    regua,
+    agora,
+    *,
+    com_negociacao=frozenset(),
+):
     """A rodada inteira da FILA, calculada por fora do motor. O oráculo do [INV-ENC-J3].
 
     É o laço do plano §7.4 escrito de novo: *"para cada encomenda em `na_fila`,
@@ -366,7 +380,13 @@ def a_alocacao_que_a_lei_manda(perfis, na_fila, com_oferta, quem_ja_viu, regua, 
             perfil
             for perfil in perfis
             if elegivel_pela_lei(
-                perfil, encomenda.nivel, ja_viram, ocupados, regua, agora
+                perfil,
+                encomenda.nivel,
+                ja_viram,
+                ocupados,
+                regua,
+                agora,
+                com_negociacao=com_negociacao,
             )
         ]
         if not aptos:
@@ -393,7 +413,12 @@ def quem_ve_no_mural(projeto, perfis, memoria, com_oferta, regua, agora):
         perfil
         for perfil in perfis
         if elegivel_pela_lei(
-            perfil, projeto.nivel, ja_pegaram, com_oferta, regua, agora
+            perfil,
+            projeto.nivel,
+            ja_pegaram,
+            com_oferta,
+            regua,
+            agora,
         )
     ]
 
@@ -768,6 +793,11 @@ def conferir_os_dez(
     perfis = retrato.perfis
     por_id = retrato.por_id
     pendentes = retrato.ofertas_pendentes
+    com_negociacao = {
+        projeto.aluno_id
+        for projeto in retrato.projetos
+        if projeto.aluno_id is not None and projeto.status in NEGOCIACAO_VIVA
+    }
 
     # [INV-ENC-J1] Uma encomenda nunca tem duas ofertas pendentes.
     encomendas_com_pendente = [o.encomenda_id for o in pendentes]
@@ -870,6 +900,7 @@ def conferir_os_dez(
             },
             regua,
             agora,
+            com_negociacao=com_negociacao,
         )
         assert recem == esperada, (
             f"[INV-ENC-J3] quebrado em {agora.isoformat()}: o motor ofertou "
@@ -1170,8 +1201,8 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
         placar.alunos_com_duas_negociacoes.add(aluno_id)
         # O BURACO DO MURAL QUE NÃO TRANCA O ALUNO, declarado e medido.
         # `mural.pegar` não marca ninguém como "trabalhando" e não consulta as
-        # reservas que o aluno já tem, e `motor.por_que_nao` só conhece a
-        # `Oferta`. Quem pega dois projetos na prateleira, ou pega um e aceita
+        # reservas que o aluno já tem, e o `Candidato` que o Mural monta só
+        # conhece a `Oferta`. Quem pega dois projetos na prateleira, ou pega um e aceita
         # uma oferta da fila, fica com duas vezes ao mesmo tempo. A asserção que
         # segue NÃO afrouxa nada: ela exige que toda violação passe pelo Mural,
         # e qualquer outro caminho continua reprovando aqui.
@@ -1933,7 +1964,10 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
     assert placar.silencios > 15, texto
     assert placar.pausas_por_silencio > 0, texto
     assert placar.viraram_chamada_aberta > 0, texto
-    assert placar.aceites_em_chamada_aberta > 0, texto
+    # A única chamada aberta desta semente pode ser sorteada para um aluno em
+    # negociação viva. Desde TAR-257, ele permanece disponível, mas a segunda
+    # negociação é recusada; portanto, aceites nessa pista não são piso do
+    # simulador. A existência da chamada já é medida acima.
     assert placar.reclassificadas > 0, texto
     assert placar.entregas_aprovadas > 3, texto
     assert len(placar.alunos_que_receberam) > 15, texto

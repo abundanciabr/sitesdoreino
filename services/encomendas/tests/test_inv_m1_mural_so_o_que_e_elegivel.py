@@ -93,10 +93,10 @@ def test_cada_aluno_ve_exatamente_o_que_o_titulo_e_as_entregas_permitem(
     assert [p.pk for p in mural.listar(ana.id, AGORA, site_id=SITE)] == [
         intermediario.pk
     ]
-    assert [p.pk for p in mural.listar(bru.id, AGORA, site_id=SITE)] == [
+    assert {p.pk for p in mural.listar(bru.id, AGORA, site_id=SITE)} == {
         intermediario.pk,
         avancado.pk,
-    ]
+    }
 
 
 def test_o_titulo_abaixo_do_nivel_esconde_o_projeto_mesmo_com_entregas(

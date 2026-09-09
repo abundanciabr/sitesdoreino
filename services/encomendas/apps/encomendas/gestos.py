@@ -13,7 +13,7 @@ tem quatro gestos e mais nada:
 
 | Gesto | O que muda |
 |---|---|
-| **Aceitar** | a encomenda vai para a negociação, o aluno vira "trabalhando" |
+| **Aceitar** | a encomenda vai para a negociação, o aluno mantém sua disponibilidade |
 | **Passar** | com um dos quatro motivos; a encomenda volta à fila, ou vai ao plantão |
 | **Pausar** | o interruptor desligado: sai das ofertas, **mantém o lugar** |
 | **Voltar à fila** | o interruptor religado, no MESMO lugar de antes |
@@ -222,7 +222,7 @@ def _travar_a_oferta(oferta_id, perfil_id, *, site_id: str):
 
 @transaction.atomic
 def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
-    """O aluno aceita a oferta: a encomenda vai negociar, e ele vira "trabalhando".
+    """O aluno aceita a oferta: a encomenda vai negociar, sem travar o aluno.
 
     **Aceitar deixou de ser começar a produzir**: com a negociação que o
     mantenedor liberou em 04/09/2026, o valor e o prazo só existem depois do
@@ -230,9 +230,8 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     (`PLANO-AREA-DE-NEGOCIACAO.md` §5; a máquina de estado já dizia isso desde a
     TAR-140). O que a negociação FAZ a partir daí é o degrau 2.12.
 
-    O aluno vira "trabalhando" no mesmo gesto (plano §7.2), e é isso que faz
-    [INV-ENC-J7] valer sem ninguém precisar lembrar: quem está negociando não
-    recebe a oferta seguinte, e a regra "uma por vez" (§6.5) sai de graça.
+    O aluno continua disponível no mesmo gesto. O motor consulta a negociação
+    viva para impedir a oferta seguinte, sem punir o aluno pela espera do cliente.
 
     **A corrida com o relógio é resolvida pela trava, não por uma comparação.**
     Um aceite que chega no mesmo segundo em que o tique expira a oferta não é
@@ -256,7 +255,6 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
         ator_id=perfil.pessoa_id,
         motivo=MOTIVO_DO_ACEITE,
     )
-    perfil.mudar_disponibilidade(PerfilProfissional.Disponibilidade.TRABALHANDO)
     zerar_o_silencio(perfil)
     return Desfecho(feito=True, encomenda_em=encomenda.status)
 
