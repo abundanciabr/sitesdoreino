@@ -14,7 +14,7 @@ venha ele de uma tela futura, de uma migração de dados ou de um `psql` de
 madrugada.
 """
 
-from datetime import datetime, timezone as fuso
+from datetime import datetime, timedelta, timezone as fuso
 
 import pytest
 from django.db import IntegrityError, connection, transaction
@@ -219,7 +219,7 @@ def test_a_mediacao_muda_o_combinado_com_autor_e_motivo(projeto_pego, formulario
 
     feito = negociacao.mudar_por_mediacao(
         projeto.pk,
-        _agora(),
+        projeto.acordado_em + timedelta(microseconds=1),
         site_id=SITE,
         quem="prof-1",
         motivo="o cliente pediu uma peca a mais e os dois lados concordaram",

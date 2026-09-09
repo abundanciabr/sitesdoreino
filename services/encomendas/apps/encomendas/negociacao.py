@@ -58,7 +58,7 @@ from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
 
-from .gestos import Desfecho
+from .gestos import JA_NEGOCIA_OUTRO_PROJETO, Desfecho
 from .models import (
     Acordo,
     Encomenda,
@@ -82,7 +82,6 @@ ENTREGAVEL_FORA_DO_BRIEFING = "entregavel_fora_do_briefing"
 SEM_PROPOSTA_DE_PE = "sem_proposta_de_pe"
 SEM_ACORDO = "sem_acordo"
 SEM_PAGAMENTO_CONFIRMADO = "sem_pagamento_confirmado"
-JA_NEGOCIA_OUTRO_PROJETO = "ja_negocia_outro_projeto"
 SEM_AUTOR = "sem_autor"
 SEM_MOTIVO = "sem_motivo"
 
@@ -98,6 +97,9 @@ MOTIVO_DO_CLIENTE_CALADO = (
 )
 MOTIVO_DO_ALUNO_CALADO = (
     "a contraproposta venceu sem resposta do aluno: volta a pista de origem"
+)
+MOTIVO_DA_NEGOCIACAO_SEM_PROPOSTA = (
+    "a negociacao venceu sem primeira proposta: vai ao plantao"
 )
 MOTIVO_DA_DESISTENCIA_DO_ALUNO = "o aluno desistiu da negociacao: volta a pista"
 MOTIVO_DA_DESISTENCIA_DO_CLIENTE = "o cliente desistiu da negociacao: vai ao plantao"
@@ -377,27 +379,30 @@ def propor(
             feito=False, razao=RODADAS_ESGOTADAS, encomenda_em=projeto.status
         )
 
-    if de_pe is not None:
-        de_pe.responder(Proposta.Resultado.SUPERADA, em=agora)
-
-    if projeto.status == Encomenda.Status.RESERVADA:
-        reserva = (
-            ReservaDoMural.objects.select_for_update()
-            .filter(encomenda=projeto, resultado=ReservaDoMural.Resultado.PENDENTE)
-            .first()
-        )
-        if reserva is not None:
-            reserva.responder(ReservaDoMural.Resultado.NEGOCIANDO, em=agora)
-        projeto.mudar_status(
-            Encomenda.Status.EM_NEGOCIACAO,
-            ator_id=perfil.pessoa_id,
-            motivo=MOTIVO_DA_PRIMEIRA_PROPOSTA,
-        )
-
     try:
         # Savepoint próprio: um `IntegrityError` engolido sem ele quebraria a
         # transação inteira, inclusive o que já foi gravado (`armadilhas/027`).
         with transaction.atomic():
+            if de_pe is not None:
+                de_pe.responder(Proposta.Resultado.SUPERADA, em=agora)
+
+            if projeto.status == Encomenda.Status.RESERVADA:
+                reserva = (
+                    ReservaDoMural.objects.select_for_update()
+                    .filter(
+                        encomenda=projeto,
+                        resultado=ReservaDoMural.Resultado.PENDENTE,
+                    )
+                    .first()
+                )
+                if reserva is not None:
+                    reserva.responder(ReservaDoMural.Resultado.NEGOCIANDO, em=agora)
+                projeto.mudar_status(
+                    Encomenda.Status.EM_NEGOCIACAO,
+                    ator_id=perfil.pessoa_id,
+                    motivo=MOTIVO_DA_PRIMEIRA_PROPOSTA,
+                )
+
             Proposta.objects.create(
                 site_id=site_id,
                 encomenda=projeto,
@@ -411,11 +416,20 @@ def propor(
                 justificativa=justificativa,
                 valida_ate=calcular_validade_da_proposta(agora, site_id=site_id),
             )
-    except IntegrityError:
+    except IntegrityError as erro:
+        if not any(
+            nome in str(erro)
+            for nome in (
+                "uma_negociacao_viva_por_aluno",
+                "uma_proposta_viva_por_aluno",
+            )
+        ):
+            raise
         # O índice `uma_proposta_viva_por_aluno` é a trava que sobra quando a
         # leitura educada falha ([INV-ENC-N6]): o aluno já tem outra negociação
         # de pé, somando as duas pistas. É a mesma forma de `mural.pegar`, e
         # pela mesma razão: uma frase nomeada em vez de um `IntegrityError`.
+        projeto.refresh_from_db(fields=["status"])
         return Desfecho(
             feito=False, razao=JA_NEGOCIA_OUTRO_PROJETO, encomenda_em=projeto.status
         )

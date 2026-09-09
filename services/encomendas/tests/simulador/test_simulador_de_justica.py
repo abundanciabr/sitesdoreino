@@ -73,8 +73,6 @@ seja impossível.
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from django.db import IntegrityError
-
 from apps.encomendas import gestos, mural, negociacao, relogio, tique
 from apps.encomendas.models import (
     ESTADOS_DO_MURAL_RESERVAVEL,
@@ -112,28 +110,11 @@ O_PLANTAO = "plantao-1"
 # A trava de uma negociação viva por aluno é verificada por comportamento no
 # simulador: nenhum aluno pode terminar um passo com dois projetos nas mãos, e
 # nenhum gesto pode deixar escapar a IntegrityError desta regra.
-TRAVA_DA_SEGUNDA_NEGOCIACAO = "uma_negociacao_viva_por_aluno"
 
 
-def apesar_do_estouro(placar, chamada):
-    """Chama o gesto e conta o estouro conhecido, deixando qualquer outro subir.
-
-    O filtro é pelo NOME do índice, e não pelo tipo da exceção: um
-    `IntegrityError` de qualquer outra trava continua derrubando a simulação, que
-    é o comportamento que se quer. Engolir a família inteira transformaria este
-    simulador num teste que passa por cima de tudo o que o banco recusa.
-
-    Os gestos desta célula são `@transaction.atomic`, então o que estourou já foi
-    desfeito até o ponto de entrada quando esta linha executa: o mundo continua
-    coerente, e o passo seguinte lê o banco de novo.
-    """
-    try:
-        return chamada()
-    except IntegrityError as erro:
-        if TRAVA_DA_SEGUNDA_NEGOCIACAO not in str(erro):
-            raise
-        placar.estouros_da_segunda_negociacao += 1
-        return gestos.Desfecho(feito=False, razao=TRAVA_DA_SEGUNDA_NEGOCIACAO)
+def apesar_do_estouro(_placar, chamada):
+    """Executa o gesto; a segunda negociação precisa ser recusada antes do banco."""
+    return chamada()
 
 
 # ---------------------------------------------------------------------------
@@ -415,13 +396,9 @@ def quem_ve_no_mural(
 # que vale zero (os presos por motivo NOVO) continua sendo o guarda de verdade.
 # Afrouxar o teto até o vermelho sumir esconderia, junto com o buraco conhecido,
 # todo buraco novo que aparecesse depois dele.
-PRESO_EM_NEGOCIACAO_SEM_PROPOSTA = "em negociacao e ninguem propos (achado aqui)"
 PRESO_NA_PRATELEIRA_COM_ELEGIVEL = "no mural com elegivel que nao pega (por desenho)"
 
-BURACOS_DECLARADOS = (
-    PRESO_EM_NEGOCIACAO_SEM_PROPOSTA,
-    PRESO_NA_PRATELEIRA_COM_ELEGIVEL,
-)
+BURACOS_DECLARADOS = (PRESO_NA_PRATELEIRA_COM_ELEGIVEL,)
 
 
 def por_que_esta_preso(projeto, tem_proposta_de_pe, tem_elegivel):
@@ -438,8 +415,6 @@ def por_que_esta_preso(projeto, tem_proposta_de_pe, tem_elegivel):
       pego."* Retirá-lo da prateleira seria recolher o que a prateleira ainda
       pode vender.
     """
-    if projeto.status == Encomenda.Status.EM_NEGOCIACAO and not tem_proposta_de_pe:
-        return PRESO_EM_NEGOCIACAO_SEM_PROPOSTA
     if projeto.status == Encomenda.Status.NO_MURAL and tem_elegivel:
         return PRESO_NA_PRATELEIRA_COM_ELEGIVEL
     return ""
@@ -492,8 +467,6 @@ class Placar:
     # AS DUAS PROPRIEDADES E O QUE ELAS ENCONTRARAM
     presos: dict = field(default_factory=dict)
     zerados_servidos: set = field(default_factory=set)
-    alunos_com_duas_negociacoes: set = field(default_factory=set)
-    estouros_da_segunda_negociacao: int = 0
 
     @property
     def total_de_passes(self):
@@ -597,16 +570,6 @@ class Placar:
         for buraco in BURACOS_DECLARADOS:
             linhas.append(_linha(buraco, self.presos.get(buraco, 0), recuo=6))
         linhas += [
-            _linha(
-                "Alunos com duas negociacoes vivas",
-                len(self.alunos_com_duas_negociacoes),
-                recuo=4,
-            ),
-            _linha(
-                "Estouros crus da trava da segunda negociacao",
-                self.estouros_da_segunda_negociacao,
-                recuo=4,
-            ),
             "",
             "  No fim: "
             + ", ".join(f"{quantos} {estado}" for estado, quantos in contagem),
@@ -1202,20 +1165,11 @@ def conferir_a_negociacao(povoado, retrato, agora, memoria, regua, placar):
     for aluno_id, quais in nas_maos.items():
         if len(quais) == 1:
             continue
-        placar.alunos_com_duas_negociacoes.add(aluno_id)
-        # O BURACO DO MURAL QUE NÃO TRANCA O ALUNO, declarado e medido.
-        # `mural.pegar` não marca ninguém como "trabalhando" e não consulta as
-        # reservas que o aluno já tem, e o `Candidato` que o Mural monta só
-        # conhece a `Oferta`. Quem pega dois projetos na prateleira, ou pega um e aceita
-        # uma oferta da fila, fica com duas vezes ao mesmo tempo. A asserção que
-        # segue NÃO afrouxa nada: ela exige que toda violação passe pelo Mural,
-        # e qualquer outro caminho continua reprovando aqui.
-        pelo_mural = [p for p in quais if p.pista == Encomenda.Pista.MURAL]
-        assert pelo_mural, (
+        assert False, (
             f"[INV-ENC-N6] quebrado em {agora.isoformat()}: o perfil {aluno_id} "
             f"tem {len(quais)} negociacoes vivas "
-            f"({[p.pk for p in quais]}) e NENHUMA delas veio do Mural. Este e um "
-            "caminho novo, e nao o buraco de o Mural nao trancar o aluno."
+            f"({[p.pk for p in quais]}). A segunda negociação deveria ter sido "
+            "recusada antes de chegar ao simulador."
         )
 
 
@@ -1967,11 +1921,6 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
     assert placar.total_de_passes > 5, texto
     assert placar.silencios > 15, texto
     assert placar.pausas_por_silencio > 0, texto
-    assert placar.viraram_chamada_aberta > 0, texto
-    # A única chamada aberta desta semente pode ser sorteada para um aluno em
-    # negociação viva. Desde TAR-257, ele permanece disponível, mas a segunda
-    # negociação é recusada; portanto, aceites nessa pista não são piso do
-    # simulador. A existência da chamada já é medida acima.
     assert placar.reclassificadas > 0, texto
     assert placar.entregas_aprovadas > 3, texto
     assert len(placar.alunos_que_receberam) > 15, texto
@@ -2003,6 +1952,3 @@ def test_as_duas_pistas_rodam_e_nenhum_dos_vinte_e_quatro_invariantes_cai(
     # PROPRIEDADE 2, a metade que reprova: nenhum projeto ficou preso por um
     # motivo que não esteja declarado.
     assert placar.presos.get("", 0) == 0, texto
-
-    assert not placar.alunos_com_duas_negociacoes, texto
-    assert placar.estouros_da_segunda_negociacao == 0, texto

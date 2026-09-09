@@ -73,7 +73,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from . import motor
 from .models import Encomenda, Oferta, Parametro, PerfilProfissional
@@ -91,6 +91,7 @@ NAO_E_SUA = "nao_e_sua"
 MOTIVO_FORA_DOS_QUATRO = "motivo_fora_dos_quatro"
 NAO_ESTA_ABERTA = "nao_esta_aberta"
 JA_FOI_LEVADA = "ja_foi_levada"
+JA_NEGOCIA_OUTRO_PROJETO = "ja_negocia_outro_projeto"
 JA_ESTA_PAUSADO = "ja_esta_pausado"
 JA_ESTA_DISPONIVEL = "ja_esta_disponivel"
 ESTA_TRABALHANDO = "esta_trabalhando"
@@ -247,14 +248,25 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     if perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:
         return Desfecho(feito=False, razao=motor.NAO_ESTA_DISPONIVEL)
 
-    oferta.responder(Oferta.Resultado.ACEITA, em=agora)
-    encomenda.aluno = perfil
-    encomenda.save(update_fields=["aluno", "atualizada_em"])
-    encomenda.mudar_status(
-        Encomenda.Status.EM_NEGOCIACAO,
-        ator_id=perfil.pessoa_id,
-        motivo=MOTIVO_DO_ACEITE,
-    )
+    try:
+        with transaction.atomic():
+            oferta.responder(Oferta.Resultado.ACEITA, em=agora)
+            encomenda.aluno = perfil
+            encomenda.save(update_fields=["aluno", "atualizada_em"])
+            encomenda.mudar_status(
+                Encomenda.Status.EM_NEGOCIACAO,
+                ator_id=perfil.pessoa_id,
+                motivo=MOTIVO_DO_ACEITE,
+            )
+    except IntegrityError as erro:
+        if "uma_negociacao_viva_por_aluno" not in str(erro):
+            raise
+        encomenda.refresh_from_db(fields=["status", "aluno"])
+        return Desfecho(
+            feito=False,
+            razao=JA_NEGOCIA_OUTRO_PROJETO,
+            encomenda_em=encomenda.status,
+        )
     zerar_o_silencio(perfil)
     return Desfecho(feito=True, encomenda_em=encomenda.status)
 
@@ -391,6 +403,11 @@ def aceitar_a_chamada_aberta(
             aluno=perfil, resultado=Oferta.Resultado.PENDENTE
         ).exists(),
         abandonos=tuple(perfil.abandonos or ()),
+        tem_negociacao_viva=Encomenda.objects.filter(
+            site_id=perfil.site_id,
+            aluno=perfil,
+            status__in=motor.ESTADOS_DE_NEGOCIACAO_VIVA,
+        ).exists(),
     )
     razao = motor.por_que_nao(vaga, candidato, regras, agora)
     if razao:
