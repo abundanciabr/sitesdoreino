@@ -8,9 +8,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from uuid import UUID
 
-from django.db import IntegrityError, transaction
+from django.db import (
+    IntegrityError,
+    OperationalError,
+    connection,
+    connections,
+    transaction,
+)
 
 from apps.auditoria.models import Registro
 from .models import Documento, VersaoDoDocumento
@@ -28,6 +35,14 @@ CAMPOS = (
 
 class ConflitoDoPedido(ValueError):
     pass
+
+
+def _pode_repetir_lock(erro, tentativa):
+    return (
+        connection.vendor == "sqlite"
+        and "locked" in str(erro).lower()
+        and tentativa < 4
+    )
 
 
 def nome_do_pedido(identidade):
@@ -144,31 +159,43 @@ def salvar_inicial(identidade, campos, hoje, foto, admin):
         )
     impressao = _hash(formulario)
     # A chave única decide a primeira corrida. A perdedora relê só após o rollback.
-    try:
-        with transaction.atomic():
-            existente = Documento.objects.select_for_update().filter(nome=nome).first()
-            if existente:
-                return _repeticao_inicial(existente, impressao, admin)
-            texto = montar_o_pedido(formulario, hoje, foto)
-            if not texto:
-                raise ConflitoDoPedido(
-                    "Nada para pedir. Preencha um item ou marque a foto da semana."
+    for tentativa in range(5):
+        try:
+            with transaction.atomic():
+                existente = (
+                    Documento.objects.select_for_update().filter(nome=nome).first()
                 )
-            doc = Documento.objects.create(
-                nome=nome,
-                titulo=f"Pedido da Reunião de {hoje:%d/%m/%Y}",
-                corpo=texto,
-                publico=False,
-            )
-            versao = _versao(doc, admin, "criou na Reunião")
-            _auditar(doc, versao, admin, Registro.CRIAR_DOCUMENTO, formulario=impressao)
-            return doc, versao
-    except IntegrityError:
-        with transaction.atomic():
-            existente = Documento.objects.select_for_update().filter(nome=nome).first()
-            if existente is None:
+                if existente:
+                    return _repeticao_inicial(existente, impressao, admin)
+                texto = montar_o_pedido(formulario, hoje, foto)
+                if not texto:
+                    raise ConflitoDoPedido(
+                        "Nada para pedir. Preencha um item ou marque a foto da semana."
+                    )
+                doc = Documento.objects.create(
+                    nome=nome,
+                    titulo=f"Pedido da Reunião de {hoje:%d/%m/%Y}",
+                    corpo=texto,
+                    publico=False,
+                )
+                versao = _versao(doc, admin, "criou na Reunião")
+                _auditar(
+                    doc, versao, admin, Registro.CRIAR_DOCUMENTO, formulario=impressao
+                )
+                return doc, versao
+        except IntegrityError:
+            with transaction.atomic():
+                existente = (
+                    Documento.objects.select_for_update().filter(nome=nome).first()
+                )
+                if existente is None:
+                    raise
+                return _repeticao_inicial(existente, impressao, admin)
+        except OperationalError as erro:
+            if not _pode_repetir_lock(erro, tentativa):
                 raise
-            return _repeticao_inicial(existente, impressao, admin)
+            connections.close_all()
+            time.sleep(0.01)
 
 
 def editar(nome, esperada, texto, admin):
@@ -176,34 +203,41 @@ def editar(nome, esperada, texto, admin):
         raise ConflitoDoPedido(
             "O texto precisa conter o pedido e ter até 50 mil caracteres. Corrija o campo e salve novamente."
         )
-    with transaction.atomic():
-        doc = Documento.objects.select_for_update().get(nome=nome)
-        ultima = doc.versoes.order_by("-pk").first()
-        if not ultima or not vigente(doc, ultima):
-            raise ConflitoDoPedido(
-                "O documento mudou fora da Reunião. Confira o histórico antes de continuar."
-            )
-        for registro, gesto in _registros(doc, Registro.EDITAR_DOCUMENTO):
-            if (
-                gesto.get("anterior") == esperada
-                and gesto.get("versao") == ultima.pk
-                and gesto.get("texto_sha256") == _hash(texto)
-                and texto == ultima.corpo
-                and registro.quem_email == admin["email"]
-                and registro.quem_id == (admin.get("id") or "")
-            ):
-                return ultima
-        if ultima.pk != esperada:
-            raise ConflitoDoPedido(
-                "Outra edição já foi salva. Seu texto continua abaixo; reabra o pedido para comparar as versões."
-            )
-        if texto == ultima.corpo:
-            return ultima
-        doc.corpo = texto
-        doc.save(update_fields=["corpo", "atualizado_em"])
-        nova = _versao(doc, admin, "editou na Reunião")
-        _auditar(doc, nova, admin, Registro.EDITAR_DOCUMENTO, anterior=esperada)
-        return nova
+    for tentativa in range(5):
+        try:
+            with transaction.atomic():
+                doc = Documento.objects.select_for_update().get(nome=nome)
+                ultima = doc.versoes.order_by("-pk").first()
+                if not ultima or not vigente(doc, ultima):
+                    raise ConflitoDoPedido(
+                        "O documento mudou fora da Reunião. Confira o histórico antes de continuar."
+                    )
+                for registro, gesto in _registros(doc, Registro.EDITAR_DOCUMENTO):
+                    if (
+                        gesto.get("anterior") == esperada
+                        and gesto.get("versao") == ultima.pk
+                        and gesto.get("texto_sha256") == _hash(texto)
+                        and texto == ultima.corpo
+                        and registro.quem_email == admin["email"]
+                        and registro.quem_id == (admin.get("id") or "")
+                    ):
+                        return ultima
+                if ultima.pk != esperada:
+                    raise ConflitoDoPedido(
+                        "Outra edição já foi salva. Seu texto continua abaixo; reabra o pedido para comparar as versões."
+                    )
+                if texto == ultima.corpo:
+                    return ultima
+                doc.corpo = texto
+                doc.save(update_fields=["corpo", "atualizado_em"])
+                nova = _versao(doc, admin, "editou na Reunião")
+                _auditar(doc, nova, admin, Registro.EDITAR_DOCUMENTO, anterior=esperada)
+                return nova
+        except OperationalError as erro:
+            if not _pode_repetir_lock(erro, tentativa):
+                raise
+            connections.close_all()
+            time.sleep(0.01)
 
 
 def envelope(doc, versao):

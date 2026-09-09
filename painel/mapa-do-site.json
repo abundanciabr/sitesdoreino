@@ -2234,6 +2234,17 @@
     },
     {
       "celula": "admin",
+      "rota": "reuniao/pedidos/<uuid:identidade>/",
+      "endereco": "/admin/reuniao/pedidos/<uuid:identidade>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Conferir e autorizar o pedido da reunião",
+      "descricao": "A tela de um pedido específico da reunião, com o texto conferido, a origem e o estado da autorização. Ela preserva a leitura para que o mantenedor possa retomar o mesmo pedido depois de uma interrupção.",
+      "observacao": "O endereço é uma página de conferência e não libera nada por si só. A autorização só vale quando o texto conferido e a identificação do pedido permanecem vinculados."
+    },
+    {
+      "celula": "admin",
       "rota": "avisos/",
       "endereco": "/admin/avisos/",
       "alcance": "publico",
