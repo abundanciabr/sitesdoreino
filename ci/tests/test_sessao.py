@@ -380,6 +380,8 @@ class MundoFalso:
             _n(plano.raiz / "services" / plano.celula),
             _n(plano.raiz / "services" / plano.celula / "requirements.txt"),
             _n(plano.worktree / "constituicoes" / f"AGENTS.{plano.celula}.md"),
+            _n(plano.raiz / ".githooks" / "pre-commit"),
+            _n(plano.raiz / ".githooks" / "pre-push"),
         }
 
     # -- as quatro injeções ------------------------------------------------
@@ -429,6 +431,8 @@ class MundoFalso:
             return '{"state":"OPEN","isDraft":true,"headRefOid":"abc"}'
         if "worktree list" in linha:
             return self.saidas.get("worktree_list", "")
+        if "config --get core.hooksPath" in linha:
+            return self.saidas.get("hooks_path", str(self.plano.raiz / ".githooks"))
         if "rev-parse --abbrev-ref" in linha:
             return self.saidas.get("branch_atual", self.plano.branch)
         if "docker info" in linha:
@@ -493,6 +497,34 @@ def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     assert "docker run -d --name sessao-quiz-redis" in juntas
     assert "ci/doctor.py" in juntas
     assert _n(mundo.plano.arquivo_env) in mundo.escritos
+
+
+def test_pre_voo_recusa_ferramenta_ausente_antes_de_criar_bancada():
+    mundo = MundoFalso(plano_de_teste(), sem_ferramenta=("gh",))
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == "conferir o repositório e a célula"
+    assert "`gh` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
+
+
+def test_pre_voo_recusa_hooks_nao_instalados_antes_de_criar_bancada():
+    mundo = MundoFalso(
+        plano_de_teste(),
+        hooks_path="",
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="hooks versionados não estão instalados"):
+        mundo.sessao().rodar()
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
+
+
+def test_pre_voo_recusa_hook_versionado_ausente():
+    plano = plano_de_teste()
+    mundo = MundoFalso(plano)
+    mundo.existentes.remove(_n(plano.raiz / ".githooks" / "pre-push"))
+    with pytest.raises(sessao.ErroDeSessao, match="há hook versionado ausente"):
+        mundo.sessao().rodar()
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_segunda_execucao_nao_recria_nada_idempotencia():
@@ -667,7 +699,8 @@ def test_docker_ausente_do_PATH_para_com_instrucao_em_vez_de_seguir():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert "`docker` não está no PATH" in erro.value.resumo
+    assert "`docker` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_make_ausente_para_no_baseline_e_nao_finge_verde():
@@ -676,8 +709,9 @@ def test_make_ausente_para_no_baseline_e_nao_finge_verde():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert erro.value.passo == "baseline: make ci da célula"
-    assert "não medir não é medir verde" in erro.value.detalhe
+    assert erro.value.passo == "conferir o repositório e a célula"
+    assert "`make` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_python_do_PATH_fora_do_venv_e_barrado_armadilha_014():

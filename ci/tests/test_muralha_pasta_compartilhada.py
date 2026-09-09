@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+import muralha_pasta_compartilhada as muralha
+
 RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 MURALHA = RAIZ_DO_REPO / "ci" / "muralha_pasta_compartilhada.py"
 FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
@@ -482,6 +484,28 @@ def test_arvore_suja_nao_e_tocada_e_o_aviso_diz_por_que(tmp_path):
     assert "NÃO COMMITADO" in r.stdout
     assert "armadilhas/135" in r.stdout
     assert _sha(raiz) == antes, "mexeu numa pasta com trabalho nao salvo"
+
+
+def test_arvore_com_fim_de_linha_invisivel_diz_o_que_corrigir(tmp_path, monkeypatch):
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3)
+    original = muralha.subprocess.run
+
+    def git_simulado(comando, *args, **kwargs):
+        if comando[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(comando, 0, " M CLAUDE.md\n", "")
+        if comando[-2:] == ["diff", "--name-only"]:
+            return subprocess.CompletedProcess(comando, 0, "", "")
+        if comando[-3:] == ["diff", "--cached", "--name-only"]:
+            return subprocess.CompletedProcess(comando, 0, "", "")
+        return original(comando, *args, **kwargs)
+
+    monkeypatch.setattr(muralha.subprocess, "run", git_simulado)
+    mensagem = muralha.atualizar_o_espelho(raiz, 3)
+
+    assert mensagem is not None
+    assert "caixa ou fim de linha" in mensagem
+    assert "CLAUDE.md" in mensagem
+    assert "NÃO COMMITADO" not in mensagem
 
 
 def test_ramo_que_nao_e_main_nao_e_tocado(tmp_path):

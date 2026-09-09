@@ -332,6 +332,31 @@ def test_zelador_preserva_reivindicacao_que_tem_pr_aberto(tmp_path):
     assert len(list((raiz / "fila" / "eventos").glob("*reivindicacao_expirada*"))) == 0
 
 
+def test_zelador_nao_rotula_tarefa_terminal(tmp_path):
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(),
+            evento(
+                tipo="concluida",
+                hora="11:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+        ],
+    )
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={}, quem="zelador-de-teste"
+    )
+
+    assert escritos == []
+    assert not list((raiz / "fila" / "eventos").glob("*reivindicacao_expirada*"))
+
+
 def test_pegar_roda_o_zelador_antes_de_travar_a_proxima_tarefa(tmp_path, monkeypatch):
     raiz = montar(
         tmp_path,
