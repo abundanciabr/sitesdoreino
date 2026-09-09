@@ -399,9 +399,10 @@ _SCRIPT_EMBUTIDO = re.compile(
 
 
 def diretorio_da_fila() -> Path | None:
-    return selecionar_dados(
+    dados = selecionar_dados(
         CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
     )
+    return dados.pasta if dados else None
 
 
 def _ler_json(caminho: Path):
