@@ -334,16 +334,10 @@ def abrir_o_que_esperou_demais(agora: datetime, *, site_id: str) -> tuple[object
             ).first()
             if viva is not None:
                 viva.responder(Oferta.Resultado.CANCELADA, em=agora)
-            # A CHAMADA ABERTA MOVE O PROJETO PARA O MURAL, e a coluna `pista`
-            # passa a dizer isso. É a exceção do [INV-ENC-M2] escrita como dado:
-            # o projeto Iniciante que a fila não colocou em 24h aparece no Mural
+            # O projeto Iniciante que a fila não colocou em 24h aparece no Mural
             # para todos os elegíveis, inclusive quem tem zero entregas
-            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1). O NÍVEL não muda, e é por
-            # isso que a pista é coluna e não conta derivada: quem pergunta
-            # "onde este projeto está sendo mostrado?" precisa de uma resposta,
-            # e não de uma regra para reexecutar.
-            encomenda.pista = Encomenda.Pista.MURAL
-            encomenda.save(update_fields=["pista", "atualizada_em"])
+            # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1). O status `aberta` já é a
+            # fonte de verdade dessa mudança de rota.
             encomenda.mudar_status(Encomenda.Status.ABERTA, motivo=MOTIVO_DA_ABERTURA)
             abertas.append(encomenda_id)
     return tuple(abertas)
