@@ -343,3 +343,18 @@ Não há cache entre requisições. Uma otimização futura precisa usar a
 identidade da release concreta e preservar o aviso da alternativa; cachear
 o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
 arquivos dentro da release continua sendo responsabilidade do publicador.
+
+## Reserva, rascunho e submissão não comprovam aceite (09/09/2026)
+
+A aba dos robôs recebe estados materializados e uma consulta separada ao
+GitHub. Reserva identifica posse; rascunho identifica preparação; PR aberto
+não comprova testes, aceite ou publicação. O carimbo da consulta precisa
+continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
+resposta antes de substituir linhas e classes, preserve a última leitura em
+erro e declare paginação sem apresentar a primeira página como total.
+
+ A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
+ próprio, pois ausência de classificação não é decisão humana. O produtor do
+ livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
+ declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
+ continuam visíveis e o total de assuntos fica desconhecido.

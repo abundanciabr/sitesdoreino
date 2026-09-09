@@ -3,8 +3,8 @@
 {% block corpo %}
 <div class="envolucro">
   <h1>Pendências</h1>
-  <p class="subtitulo">Tudo que está esperando por você, num lugar só. Cada linha
-  leva para onde a coisa se resolve.</p>
+  <p class="subtitulo">Decisões que esperam por você, nas três fontes consultadas.
+  Cada linha leva para onde a coisa se resolve. A cobertura ainda é parcial.</p>
 
   {% comment %}
   O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"
@@ -16,17 +16,20 @@
   mentira do zero, só que disfarçada de precisão.
   {% endcomment %}
   {% if esperando %}
+    {% if total is not None %}
     <div class="hero">
       <div class="hero-numero">{{ total }}</div>
       <p class="hero-nota">
         {% if total_e_um_piso %}
-          coisas esperando você. É <b>pelo menos</b> isso, porque uma das filas
-          não respondeu agora.
+          ocorrências identificadas. É <b>pelo menos</b> isso, porque há fonte
+          indisponível ou tarefa com responsável desconhecido.
         {% else %}
-          coisas esperando você, nas duas filas que esta tela já enxerga.
+          ocorrências identificadas nas três fontes consultadas.
         {% endif %}
+        Total parcial: as filas ainda não integradas estão listadas abaixo.
       </p>
     </div>
+    {% endif %}
 
     {% for fila in esperando %}
       <a class="cartao porta espaco-abaixo-10" href="{{ fila.href }}">
@@ -43,6 +46,21 @@
         <div class="nota">{{ fila.o_que_e }}</div>
       </a>
     {% endfor %}
+  {% endif %}
+
+  {% if vinculos_ausentes %}
+    <p class="aviso calado"><b>Total de assuntos desconhecido.</b>
+      Os vínculos entre livro e tarefas não vieram nesta leitura ou estão inválidos.
+      As linhas continuam disponíveis, mas podem repetir o mesmo assunto.
+      Peça ao robô para conferir a publicação dos dados.</p>
+  {% else %}
+    <p class="carimbo">Tarefas vinculadas no livro aparecem uma vez na contagem.
+      Registros sem vínculo de tarefa conservam a própria identidade; não há como
+      associá-los a uma tarefa só pelo título.</p>
+  {% endif %}
+  {% if sem_responsavel %}
+    <p class="aviso">Há {{ sem_responsavel }} tarefa{{ sem_responsavel|pluralize }} com responsável ainda não informado.
+      O robô precisa classificar quem destrava. <a href="{% url 'caixa_robos' %}">Ver as tarefas</a>.</p>
   {% endif %}
 
   {% comment %}
@@ -70,17 +88,17 @@
     </p>
   {% endif %}
 
-  {% if not esperando and not mudas %}
+  {% if not esperando and not mudas and not sem_responsavel and not vinculos_ausentes %}
     <p class="aviso espaco-20">
-      <b>Você está em dia com as duas filas que esta tela enxerga.</b>
-      Nada aqui precisa de você agora.
+      <b>Nenhuma decisão pendente foi encontrada nas três fontes consultadas.</b>
+      As filas ainda não integradas continuam fora desta conta.
     </p>
   {% endif %}
 
   {% comment %}
   A CONFISSÃO, e ela é obrigatória enquanto a lista não estiver vazia.
 
-  Esta tela enxerga duas das cinco filas do site. Uma portaria que enxerga
+  Esta tela enxerga três fontes. Uma portaria que enxerga
   metade e não avisa é pior que portaria nenhuma: ela ensina o mantenedor a
   ler "nada esperando você" como "não há nada", e no dia em que um portfólio
   ficar parado ele não vai saber. As três de baixo entram na conta no degrau 3

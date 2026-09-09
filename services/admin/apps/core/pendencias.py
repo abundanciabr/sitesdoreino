@@ -15,11 +15,13 @@ continua morando na própria casa, que é onde a regra dela é conferida. Aqui s
 se pergunta *"quantos estão esperando aí, e o mais antigo é de quando?"*, e se
 oferece a porta.
 
-## Duas filas neste degrau, e a tela DIZ que são duas
+## Três fontes, com cobertura declarada
 
-O degrau 1 traz só o que esta célula já sabe perguntar hoje, sem credencial
-nova nenhuma: quem quer entrar na escola e as decisões paradas no painel do
-sistema. As outras três (portfólios, marcos, laudos) chegam no degrau 3.
+Esta célula consulta quem quer entrar na escola, as decisões do livro e as
+tarefas bloqueadas pelo mantenedor. Portfólios, marcos e laudos continuam
+fora da contagem, declarados na tela. A classificação das tarefas é a mesma
+dos robôs. Vínculos explícitos publicados pelo livro retiram a repetição
+entre livro e fila; sem vínculos não existe um total confiável de assuntos.
 
 Eram TRÊS até 06/09/2026: a terceira era "ideias esperando a sua assinatura",
 e ela saiu no dia em que o mantenedor mandou tirar a assinatura de obra da
@@ -66,6 +68,7 @@ bytes que `apps/core/painel.py` já serve. Uma conta, um lugar.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone as tz
@@ -74,6 +77,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
 
+from . import robos
 from .caixa import _dias
 from .clients import AlunosClient
 from .painel import diretorio_do_painel
@@ -87,6 +91,7 @@ from .painel import diretorio_do_painel
 _CARIMBO_DA_FILA = re.compile(
     r'pedidosDoDono: \{ quantidade: (\d+), maisAntigoQuando: (null|"[^"]*") \}'
 )
+_VINCULOS_DA_FILA = re.compile(r"pedidosDoDonoVinculos:\s*(\[[^\n]*\])\s*[,\n]")
 
 # As filas que este degrau ainda NÃO enxerga, com o endereço de cada uma. Elas
 # entram na tela por escrito: sem isso, "nada esperando você" seria uma frase
@@ -113,6 +118,8 @@ class Fila:
     href: str
     o_que_e: str
     onde_mora: str
+    tarefas: frozenset[str] | None = None
+    sem_responsavel: int = 0
 
 
 def _mais_antiga(datas: list, agora: datetime) -> "int | None":
@@ -160,10 +167,32 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
     """
     pasta = diretorio_do_painel()
     achado = None
+    vinculos = None
     if pasta is not None:
-        achado = _CARIMBO_DA_FILA.search(
-            (pasta / "painel.html").read_text(encoding="utf-8")
-        )
+        try:
+            html = (pasta / "painel.html").read_text(encoding="utf-8")
+            achado = _CARIMBO_DA_FILA.search(html)
+            campo = _VINCULOS_DA_FILA.search(html)
+            dados = json.loads(campo.group(1)) if campo else None
+            if (
+                isinstance(dados, list)
+                and achado
+                and len(dados) == int(achado.group(1))
+                and all(
+                    isinstance(v, dict)
+                    and isinstance(v.get("arquivo"), str)
+                    and v["arquivo"]
+                    and (
+                        v.get("tarefa") is None
+                        or isinstance(v["tarefa"], str)
+                        and robos.RE_ID_DA_TAREFA.fullmatch(v["tarefa"])
+                    )
+                    for v in dados
+                )
+            ):
+                vinculos = frozenset(v["tarefa"] for v in dados if v.get("tarefa"))
+        except (OSError, ValueError):
+            pass
     mais_antigo = achado.group(2).strip('"') if achado else "null"
     return Fila(
         titulo="Decisões suas paradas no painel do sistema",
@@ -177,18 +206,51 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
             "plataforma e ficaram sem resposta. Cada uma trava alguma coisa."
         ),
         onde_mora="o painel do sistema",
+        tarefas=vinculos,
+    )
+
+
+def decisoes_paradas_na_fila(agora: datetime, ja_no_painel: frozenset[str]) -> Fila:
+    """Reutiliza o grupo dos robôs e retira só vínculos explícitos do livro."""
+    pasta = robos.diretorio_da_fila()
+    estados = robos.ler_estados(pasta)
+    grupo = next(g for g in robos.COLUNAS if g.get("espera") == "mantenedor")
+    tarefas = (
+        None
+        if estados is None
+        else {
+            tid
+            for tid, dados in estados.items()
+            if tid not in ja_no_painel and robos.e_deste_grupo(dados, grupo)
+        }
+    )
+    datas = robos.andamento(pasta)["ultima_mexida"] if tarefas else {}
+    return Fila(
+        titulo="Tarefas esperando uma decisão sua",
+        quantidade=len(tarefas) if tarefas is not None else None,
+        espera_ha=_mais_antiga([datas.get(tid) for tid in tarefas or ()], agora),
+        href=reverse("caixa_robos"),
+        o_que_e="O motivo e o próximo passo ficam no cartão da tarefa. Assuntos já vinculados no painel aparecem só na linha do painel.",
+        onde_mora="a fila de trabalho",
+        sem_responsavel=sum(
+            robos.e_deste_grupo(d, {"estado": "bloqueada", "espera": "desconhecida"})
+            for d in (estados or {}).values()
+        ),
     )
 
 
 @require_GET
 def pendencias(request):
-    """A portaria. Abre sempre, mesmo com as duas filas mudas."""
+    """A portaria preserva as fontes disponíveis quando outra não responde."""
     agora = datetime.now(tz.utc)
+    painel = decisoes_paradas_no_painel(agora)
     filas = [
         quem_quer_entrar(AlunosClient(), agora),
-        decisoes_paradas_no_painel(agora),
+        painel,
+        decisoes_paradas_na_fila(agora, painel.tarefas or frozenset()),
     ]
     esperando = [f for f in filas if f.quantidade]
+    sem_responsavel = sum(f.sem_responsavel for f in filas)
     return render(
         request,
         "admin/pendencias.html",
@@ -198,12 +260,19 @@ def pendencias(request):
             # Vazias e mudas viajam separadas porque são frases diferentes na
             # tela: "não há nada aqui" e "não deu para perguntar" só se parecem
             # de dentro do código.
-            "vazias": [f for f in filas if f.quantidade == 0],
+            "vazias": [f for f in filas if f.quantidade == 0 and not f.sem_responsavel],
             "mudas": [f for f in filas if f.quantidade is None],
-            "total": sum(f.quantidade for f in esperando),
+            "total": (
+                sum(f.quantidade for f in esperando)
+                if painel.tarefas is not None
+                else None
+            ),
+            "vinculos_ausentes": painel.tarefas is None,
+            "sem_responsavel": sem_responsavel,
             # `any`, e não `all`: com UMA fila muda o total já é um piso, e
             # apresentá-lo como conta fechada seria a mesma mentira do zero.
-            "total_e_um_piso": any(f.quantidade is None for f in filas),
+            "total_e_um_piso": any(f.quantidade is None for f in filas)
+            or bool(sem_responsavel),
             "ainda_nao_vejo": FILAS_QUE_AINDA_NAO_VEJO,
         },
     )
