@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-122-separacao-pr1506-robos",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: separar estados de entrega dos robôs do PR 1506",
+  detalhe: "A entrega dos estados de entrega e aceite da Central e da aba de robôs foi separada do lote grande do PR 1506 em um ramo próprio com oito arquivos de código.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1511. O ramo foi criado a partir de origin/main e passou na separação local.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();
