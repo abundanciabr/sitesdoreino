@@ -1,0 +1,168 @@
+"""Consulta revisão, integração e publicação; não agenda nem publica nada.
+
+A pista usa o mesmo leitor para impedir que uma célula ou seu consumidor
+avance antes da publicação anterior. Estado é derivado do Git e do GitHub,
+nunca de um arquivo de status paralelo ao livro de ocorrências.
+"""
+from __future__ import annotations
+
+import fnmatch
+import json
+import re
+from pathlib import Path
+
+import mapa_de_celulas
+from _nucleo import ErroDeInstrumentacao, Estado, executar
+from revisor_de_pouso import avaliar_atestado
+
+DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
+
+
+def _api(raiz: Path, caminho: str, *, paginas=False):
+    args = ["gh", "api", "repos/{owner}/{repo}/" + caminho]
+    if paginas:
+        args += ["--paginate", "--slurp"]
+    saida = executar(args, cwd=raiz, descricao="consultar " + caminho,
+                     exigir_stdout=True).stdout
+    try:
+        dados = json.loads(saida)
+        if paginas:
+            if not isinstance(dados, list) or any(not isinstance(p, list) for p in dados):
+                raise ValueError("resposta paginada incompleta")
+            return [item for pagina in dados for item in pagina]
+        return dados
+    except (ValueError, TypeError) as exc:
+        raise ErroDeInstrumentacao("GitHub devolveu uma medição inválida", str(exc)) from exc
+
+
+def ler_pr(raiz: Path, numero: int) -> dict:
+    dado = _api(raiz, f"pulls/{numero}")
+    arquivos = _api(raiz, f"pulls/{numero}/files", paginas=True)
+    if not isinstance(dado, dict) or not isinstance(arquivos, list):
+        raise ErroDeInstrumentacao("PR ou arquivos ausentes na resposta do GitHub")
+    return dict(number=numero, state="MERGED" if dado.get("merged") else str(dado.get("state", "")).upper(),
+                headRefOid=(dado.get("head") or {}).get("sha"),
+                mergeCommit={"oid": dado.get("merge_commit_sha")},
+                labels=dado.get("labels") or [], isDraft=dado.get("draft"),
+                body=dado.get("body"), url=dado.get("html_url"),
+                files=[{"path": a["filename"]} for a in arquivos])
+
+
+def caminhos_dos_deploys(raiz: Path) -> dict[str, list[str]]:
+    import yaml
+    resultado = {}
+    for workflow in DEPLOYS:
+        dado = yaml.safe_load((raiz / workflow).read_text(encoding="utf-8"))
+        gatilhos = dado.get("on") or dado.get(True)
+        caminhos = gatilhos["push"]["paths"]
+        if not isinstance(caminhos, list) or not caminhos or any(
+            not isinstance(p, str) or p.startswith("!") for p in caminhos
+        ):
+            raise ErroDeInstrumentacao("gatilhos de publicação não reconhecidos", workflow)
+        resultado[workflow] = caminhos
+    return resultado
+
+
+def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
+    if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
+        raise ErroDeInstrumentacao("SHA integrado ausente ou incompleto; confira o merge")
+    exigidos = [w for w, padroes in caminhos_dos_deploys(raiz).items()
+                if any(fnmatch.fnmatchcase(a, p) for a in arquivos for p in padroes)]
+    celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(raiz))
+    base = dict(sha_integrado=sha, celulas=celulas, workflows=exigidos, runs=[])
+    if not exigidos:
+        return dict(base, estado="SEM_PUBLICACAO", terminal=True, acao="Integração concluída; este diff não dispara publicação.")
+    resposta = _api(raiz, f"actions/runs?head_sha={sha}&per_page=100")
+    if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+        raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
+    # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
+    if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
+        raise ErroDeInstrumentacao("lista de publicações truncada; confira os runs do SHA")
+    runs = [r for r in resposta["workflow_runs"] if r.get("head_sha") == sha
+            and r.get("head_branch") == "main" and r.get("event") == "push"]
+    escolhidos = [max((r for r in runs if r.get("path") == w),
+                     key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
+                  for w in exigidos]
+    base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha,
+                         status=r.get("status"), conclusion=r.get("conclusion"),
+                         url=r.get("html_url")) for r in escolhidos if r]
+    caidos = [r for r in escolhidos if r and r.get("status") == "completed"
+              and r.get("conclusion") != "success"]
+    if caidos:
+        run = caidos[0]
+        return dict(base, estado="FALHA_PUBLICACAO", terminal=False,
+                    acao=f"Maestro: leia gh run view {run['id']} --log-failed; corrija a causa "
+                         f"ou reexecute gh run rerun {run['id']} --failed e confira este SHA novamente.")
+    if any(r is None or r.get("status") != "completed" for r in escolhidos):
+        return dict(base, estado="AGUARDANDO_PUBLICACAO", terminal=False,
+                    acao="Maestro: acompanhe pelo heartbeat nativo até todos os workflows exigidos concluírem; ausência não é sucesso.")
+    return dict(base, estado="PUBLICADO", terminal=True,
+                acao="Publicação comprovada nos runs deste SHA; registre o veredito no livro.")
+
+
+def consultar_entrega(raiz: Path, numero: int) -> dict:
+    pr = ler_pr(raiz, numero)
+    base = dict(pr=numero, sha_atual=pr.get("headRefOid"), terminal=False)
+    if pr["state"] == "MERGED":
+        publicacao = consultar_publicacao(raiz, (pr.get("mergeCommit") or {}).get("oid"),
+                                        [a["path"] for a in pr["files"]])
+        return dict(base, **publicacao)
+    if pr["state"] == "CLOSED":
+        return dict(base, estado="ENCERRADO_SEM_INTEGRAR", terminal=True,
+                    acao="PR encerrado sem integração; a entrega não foi publicada.")
+    comentarios = _api(raiz, f"issues/{numero}/comments", paginas=True)
+    revisao = avaliar_atestado(pr.get("headRefOid") or "", comentarios)
+    if revisao.estado is not Estado.PASS:
+        return dict(base, estado="REVISAO_NECESSARIA", acao=revisao.resumo + ". " + revisao.detalhe)
+    if pr.get("isDraft"):
+        return dict(base, estado="RASCUNHO", acao="Despacho: conclua a validação e o recibo pelo rito do PR.")
+    etiquetas = {l.get("name") for l in pr.get("labels", [])}
+    if "pousar" in etiquetas:
+        return dict(base, estado="AGUARDANDO_INTEGRACAO",
+                    acao="Maestro: mantenha o acompanhamento nativo; etiqueta não prova integração nem publicação.")
+    return dict(base, estado="POUSO_NAO_SOLICITADO_OU_RECUSADO",
+                acao=f"Maestro: execute python ci/mergear.py {numero} --conferir e corrija o diagnóstico antes de pedir pouso.")
+
+
+def celulas_requeridas(arquivos: list[str], mapa: dict) -> set[str]:
+    requeridas = set(mapa_de_celulas.celulas_do_diff(arquivos, mapa))
+    pendentes = list(requeridas)
+    while pendentes:
+        for provedor in mapa[pendentes.pop()].consome:
+            if provedor not in requeridas:
+                requeridas.add(provedor)
+                pendentes.append(provedor)
+    return requeridas
+
+
+def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
+    mapa = mapa_de_celulas.carregar(raiz)
+    requeridas = celulas_requeridas(arquivos, mapa)
+    gatilhos = caminhos_dos_deploys(raiz)
+    infra = gatilhos[DEPLOYS[1]]
+    toca_infra = any(fnmatch.fnmatchcase(a, p) for a in arquivos for p in infra)
+    if toca_infra:
+        requeridas = set(mapa)
+    if not requeridas and not toca_infra:
+        return []
+    executar(["git", "fetch", "origin", "main"], cwd=raiz,
+             descricao="atualizar a referência publicada antes de conferir a fila")
+    def git(*args):
+        return executar(["git", *args], cwd=raiz, descricao="ler histórico de publicação").stdout.strip()
+    if git("rev-parse", "--is-shallow-repository") != "false":
+        raise ErroDeInstrumentacao("histórico raso não prova a última publicação; use fetch-depth: 0")
+    referencia = git("rev-parse", "origin/main")
+    grupos = [mapa[c].caminhos for c in sorted(requeridas)]
+    grupos.append(tuple(p.replace("/**", "") for p in infra))
+    shas = set()
+    for caminhos in grupos:
+        sha = git("log", "--first-parent", "-1", "--format=%H", referencia, "--", *caminhos)
+        if sha:
+            shas.add(sha)
+    resultados = []
+    for sha in sorted(shas):
+        alterados = git("diff", "--name-only", sha + "^", sha).splitlines()
+        resultado = consultar_publicacao(raiz, sha, alterados)
+        if not resultado["terminal"]:
+            resultados.append(resultado)
+    return resultados
