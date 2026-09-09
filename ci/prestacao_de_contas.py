@@ -200,6 +200,19 @@ TITULOS = tuple(
 # O separador é frouxo de propósito (dois-pontos, asterisco, travessão, hífen):
 # a régua é o veredito estar escrito, não a pontuação escolhida para escrevê-lo.
 VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
+VEREDITO_COM_BLOQUEIO_EXTERNO = re.compile(
+    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+)\b.{0,120}"
+    r"\b(?:extern[ao]|infraestrutura|provedor|github|google|actions)\b|"
+    r"\b(?:extern[ao]|infraestrutura|provedor|github|google|actions)\b.{0,120}"
+    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+)\b",
+    re.I | re.S,
+)
+ACAO_DO_BLOQUEIO_EXTERNO = re.compile(
+    r"\b(?:fa[çc]a|rode|reexecute|rerun|aguarde|espere|n[aã]o\s+fa[çc]a|"
+    r"n[aã]o\s+precisa|nada\s+depende|depende\s+de\s+ningu[eé]m|pista|"
+    r"monitor|acompanha|rechec\w+|quando)\b",
+    re.I,
+)
 
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
@@ -475,7 +488,10 @@ def _prestou_contas(entrada: dict) -> bool:
             return False
         if indice in JULGAMENTO and not _tem_substancia(_corpo_apos(texto, achado.end())):
             return False
-    if not _tem_substancia(_corpo_apos(texto, veredito.end())):
+    corpo_do_veredito = _corpo_apos(texto, veredito.end())
+    if not _tem_substancia(corpo_do_veredito):
+        return False
+    if not _veredito_externo_e_acionavel(veredito, corpo_do_veredito):
         return False
     if not CAIXINHA.search(texto):
         return False
@@ -484,6 +500,21 @@ def _prestou_contas(entrada: dict) -> bool:
     # roteiro final (achado do revisor, 05/09/2026).
     pronto_de_verdade = not veredito.group(1).lower().startswith("n")
     return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
+
+
+def _veredito_externo_e_acionavel(veredito: re.Match[str], corpo: str) -> bool:
+    """NÃO PRONTO por falha externa precisa dizer a consequência operacional.
+
+    "Falha externa de infraestrutura" é tecnicamente plausível e humanamente
+    inútil: não diz se o mantenedor corrige algo, espera, ou se a pista já está
+    cuidando. O veredito é a linha que ele lê primeiro, então a ação não pode
+    morar só num bloco anterior.
+    """
+    if not veredito.group(1).lower().startswith("n"):
+        return True
+    if not VEREDITO_COM_BLOQUEIO_EXTERNO.search(corpo):
+        return True
+    return bool(ACAO_DO_BLOQUEIO_EXTERNO.search(corpo))
 
 
 def _corpo_apos(texto: str, comeco: int) -> str:

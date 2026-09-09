@@ -1003,6 +1003,37 @@ def test_veredito_sem_o_porque_e_recusado(tmp_path):
     ]))
 
 
+def test_veredito_nao_pronto_por_falha_externa_sem_acao_e_recusado(tmp_path):
+    """A frase da captura do mantenedor era verdadeira e opaca: não dizia se ele
+    tinha de mexer na infraestrutura, esperar alguém, reexecutar algo ou só
+    não fazer merge. O veredito é a linha que ele lê primeiro."""
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O PR está correto, mas o check do navegador "
+        "continua vermelho por falha externa de infraestrutura.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
+def test_veredito_nao_pronto_por_falha_externa_com_acao_e_aceito(tmp_path):
+    claro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O check do navegador está vermelho por "
+        "Hash Sum mismatch no repositório externo do Google; você não precisa "
+        "mexer na infraestrutura agora, quando o provedor estabilizar rode "
+        "`painel-no-navegador` no PR.",
+    )
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(claro),
+    ]))
+
+
 def test_uma_palavra_basta_para_o_bloco(tmp_path):
     """O par verde: "nada" é resposta legítima e a lei diz isso com todas as
     letras. Uma régua que exigisse frase ensinaria o robô a encher linguiça."""
