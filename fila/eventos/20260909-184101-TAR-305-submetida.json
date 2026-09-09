@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260909-184101-TAR-305-submetida",
+  "tarefa": "TAR-305",
+  "evento": "submetida",
+  "quando": "2026-09-09T18:41:01+00:00",
+  "quem": "agent/ci/recuperacao-instalacao-navegador",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1505",
+  "revisao": "32d1f911405d266a5fb1c30b5f8168eb7356bc14",
+  "arvore": "995b84f22a9ee23db024ff249412ac0abc57947a"
+}
