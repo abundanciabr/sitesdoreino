@@ -325,3 +325,11 @@ próprio, pois ausência de classificação não é decisão humana. O produtor 
 livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
 declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
 continuam visíveis e o total de assuntos fica desconhecido.
+Quando os vínculos completos saem do HTML, `pedidosDoDonoVinculosFonte`
+identifica o JSON local por nome, carimbo do livro, quantidade e SHA-256 dos
+bytes. A Central lê esse arquivo na mesma pasta concreta já fixada pela
+resposta; não seleciona outra publicação para buscar o que faltou. Caminho
+redirecionado, hash ou carimbo divergente, contagem incoerente e mistura com
+array inline são cobertura desconhecida, nunca deduplicação parcial. O hash
+não substitui a conferência do conteúdo: bytes íntegros ainda podem carregar
+quantidade ou carimbo de outro retrato.
