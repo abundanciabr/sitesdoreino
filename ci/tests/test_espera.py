@@ -1177,3 +1177,32 @@ def test_a_espera_e_o_portao_usam_a_MESMA_funcao_nunca_duas_copias():
     import mergear
 
     assert esperar.mais_recente_por_nome is mergear.mais_recente_por_nome
+
+
+@pytest.mark.parametrize("log", [None, LOG_DO_PORTAO])
+def test_reprovacao_mantem_recuperacao_tecnica_com_o_robo(tmp_path, log):
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN), gh_log=log,
+    )
+    assert proc.returncode == 1
+    assert "A maestro" in proc.stdout
+    assert "gh run rerun" in proc.stdout
+    assert "--job" in proc.stdout
+    assert "não peça ao mantenedor" in proc.stdout
+
+
+@pytest.mark.parametrize("erro", [OSError("programa ausente"), subprocess.TimeoutExpired("portao", 300)])
+def test_portao_indisponivel_devolve_operacao_a_maestro(monkeypatch, capsys, erro):
+    import esperar
+
+    def falhar(*args, **kwargs):
+        raise erro
+
+    monkeypatch.setattr(esperar.subprocess, "run", falhar)
+    voz = esperar.Voz("checks", 60, 1, None)
+    assert esperar.pousar_pelo_portao("1502", voz) == 2
+    saida = capsys.readouterr().out
+    assert "A maestro" in saida
+    assert "não peça ao mantenedor" in saida
+    assert "Faça na mão" not in saida

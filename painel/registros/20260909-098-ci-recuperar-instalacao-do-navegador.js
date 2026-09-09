@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-098-ci-recuperar-instalacao-do-navegador",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "ci: recuperar instalação do navegador",
+  detalhe: "Recuperação limitada da instalação, sem repetir testes. 46 testes verdes, nove mutações e 13 muralhas PASS. Rerun do PR #1502: success, sem merge.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1505. Validação local: árvore 995b84f22a9ee23db024ff249412ac0abc57947a; commit 32d1f911405d266a5fb1c30b5f8168eb7356bc14; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-305",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

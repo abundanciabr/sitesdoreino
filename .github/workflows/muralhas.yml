@@ -147,18 +147,13 @@ jobs:
   painel-no-navegador:
     name: painel-no-navegador
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # Versão PINADA, como toda dependência desta casa (`armadilhas/071`):
-      # quatro versões da mesma biblioteca para o mesmo padrão são quatro
-      # comportamentos a depurar. `--no-save` porque o repositório não tem
-      # package.json e não vai ganhar um por causa de um teste.
       - name: Instalar o navegador
-        run: |
-          npm install --no-save playwright@1.62.1
-          npx playwright install --with-deps chromium
+        run: python ci/instalar_navegador.py
       - name: O painel num navegador de verdade (orçamento de amplificação)
         run: node e2e/painel_no_navegador.js
