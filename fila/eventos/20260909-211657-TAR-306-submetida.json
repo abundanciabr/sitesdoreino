@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260909-211657-TAR-306-submetida",
+  "tarefa": "TAR-306",
+  "evento": "submetida",
+  "quando": "2026-09-09T21:16:57+00:00",
+  "quem": "agent/ci/recibo-sem-reautorizar",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1507",
+  "revisao": "418dc9e6cc3da0b22caea0b60426e9d7c4f466b2",
+  "arvore": "28be540a406d576f29fb604d442ac5732b0040ad"
+}

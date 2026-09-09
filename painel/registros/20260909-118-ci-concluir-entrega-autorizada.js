@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-118-ci-concluir-entrega-autorizada",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "ci: concluir entrega autorizada",
+  detalhe: "Autorização preservada. Ancestralidade local e consultas paralelas mantêm cobertura e erros.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1507. Validação local: árvore 28be540a406d576f29fb604d442ac5732b0040ad; commit 418dc9e6cc3da0b22caea0b60426e9d7c4f466b2; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-306",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
