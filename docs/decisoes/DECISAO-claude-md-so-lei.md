@@ -997,3 +997,22 @@ abertura (`--plano`) e na memória do robô — sem mecanismo, declarado.
 
 **Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.
 
+### Recibo técnico e continuidade da autorização, 09/09/2026
+
+O complemento ao PR #1491 detalha em `painel/LEIA-ME.md` como fechar uma
+entrega dentro da autorização já concedida. O recibo acrescenta um commit,
+mas essa etapa mecânica não muda, por si só, a finalidade, o destino ou a
+exposição autorizados. Limites explícitos por ação ou commit permanecem;
+as validações e a revisão técnica do novo SHA também permanecem.
+
+O resultado técnico pode ser registrado sem reproduzir o conteúdo privado
+tratado pela tarefa. Por isso o manual orienta a conferir título, detalhe e
+evidência pública antes do envio, usando resultado, testes e referência
+verificável. A sanitização automática dos logs não julga a confidencialidade
+do texto escrito pelo autor.
+
+A conferência do consentimento e do conteúdo é julgamento do agente, sem
+novo portão neste complemento. Os testes do Padrão verificam a integridade
+das regras existentes, não o comportamento da revisão automática do
+aplicativo. Uma recusa externa exige alternativa materialmente mais segura
+ou decisão específica pela maestro; as permissões do aplicativo permanecem.
