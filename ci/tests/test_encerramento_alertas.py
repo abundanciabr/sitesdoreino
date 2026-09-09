@@ -146,3 +146,55 @@ def test_caso_real_041_recusa_orfao_aceita_baixas_e_preserva_alerta_legitimo():
     respondidos = {r.get("responde_a") for r in registros.values()}
     assert "legitimo" not in respondidos
     assert registros["legitimo"]["gravidade"] == "ambar"
+
+
+PEDIDO = {
+    "arquivo": "pedido", "precisa_do_dono": True, "gravidade": "info",
+    "porque_so_voce": "A contratação cria uma despesa que só você pode autorizar.",
+    "proximo_passo": "Autorizar ou recusar a contratação pelo valor apresentado.",
+    "se_eu_nao_decidir": "O serviço atual continua funcionando com a capacidade atual.",
+    "recomendacao": "Manter o serviço atual, pois atende à demanda medida.",
+    "reversivel": False, "impacto": "alto",
+}
+
+
+def test_novo_pedido_completo_passa_sem_mudar_o_livro():
+    registros = {"pedido": copy.deepcopy(PEDIDO)}
+    antes = copy.deepcopy(registros)
+    assert guarda.conferir_registros(registros, {"pedido"}) == []
+    assert registros == antes
+
+
+@pytest.mark.parametrize("campo", [
+    "porque_so_voce", "proximo_passo", "se_eu_nao_decidir", "recomendacao",
+])
+@pytest.mark.parametrize("valor", [None, "", "  ", False, [], {}])
+def test_novo_pedido_exige_cada_texto_e_ensina_corrigir(campo, valor):
+    registro = dict(PEDIDO, **{campo: valor})
+    erros = guarda.conferir_registros({"pedido": registro}, {"pedido"})
+    assert any(campo in e and "painel/LEIA-ME.md" in e for e in erros)
+
+
+@pytest.mark.parametrize("campo,valor", [
+    ("reversivel", None), ("reversivel", "false"), ("reversivel", 0),
+    ("impacto", None), ("impacto", "urgente"),
+])
+def test_novo_pedido_exige_reversibilidade_e_impacto(campo, valor):
+    erros = guarda.conferir_registros({"pedido": dict(PEDIDO, **{campo: valor})}, {"pedido"})
+    assert any(campo in e for e in erros)
+
+
+def test_pedido_historico_incompleto_nao_bloqueia_novo_alerta_tecnico():
+    registros = {
+        "antigo": {"precisa_do_dono": True},
+        "tecnico": {"precisa_do_dono": False, "gravidade": "vermelho",
+                    "detalhe": "O teste falhou; o robô corrigirá a validação da entrada."},
+    }
+    antes = copy.deepcopy(registros)
+    assert guarda.conferir_registros(registros, {"tecnico"}) == []
+    assert registros == antes
+
+
+def test_pedido_novo_com_data_antiga_nao_escapa_do_portao():
+    registro = {"precisa_do_dono": True, "quando": "2020-01-01"}
+    assert guarda.conferir_registros({"novo": registro}, {"novo"})
