@@ -209,8 +209,8 @@ VEREDITO_COM_BLOQUEIO_EXTERNO = re.compile(
 )
 ACAO_DO_BLOQUEIO_EXTERNO = re.compile(
     r"\b(?:fa[çc]a|rode|reexecute|rerun|aguarde|espere|n[aã]o\s+fa[çc]a|"
-    r"n[aã]o\s+precisa|nada\s+depende|depende\s+de\s+ningu[eé]m|pista|"
-    r"monitor|acompanha|rechec\w+)\b",
+    r"n[aã]o\s+precisa|nada\s+depende|depende\s+de\s+ningu[eé]m|"
+    r"acompanhe|acompanha|rechec\w+)\b",
     re.I,
 )
 

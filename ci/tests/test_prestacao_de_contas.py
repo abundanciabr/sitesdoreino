@@ -1032,6 +1032,31 @@ def test_quando_sozinho_nao_torna_falha_externa_acionavel(tmp_path):
     ]))
 
 
+def test_pista_sozinha_nao_torna_falha_externa_acionavel(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O check ficou vermelho na pista por falha "
+        "externa.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
+def test_monitor_sozinho_nao_torna_falha_externa_acionavel(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O monitor viu falha externa no GitHub.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
 def test_veredito_nao_pronto_por_falha_externa_com_acao_e_aceito(tmp_path):
     claro = CONTAS_COMPLETAS.replace(
         "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
