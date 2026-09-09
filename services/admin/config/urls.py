@@ -78,7 +78,7 @@ from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
-from apps.core.reuniao import reuniao
+from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.talentos import talentos
 from apps.core.aulas import (
@@ -595,6 +595,7 @@ urlpatterns = [
     # dela no `painel/mapa-do-site.json` é `"gesto": false`.
     path("placar/talentos/", talentos, name="talentos"),
     path("reuniao/", reuniao, name="reuniao"),
+    path("reuniao/pedidos/<uuid:identidade>/", pedido_reuniao, name="pedido_reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
