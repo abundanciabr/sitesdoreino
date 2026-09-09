@@ -190,9 +190,9 @@ COLUNAS = (
     },
     {
         "estado": "concluída",
-        "rotulo": "Já terminaram, com prova conferida",
-        "curto": "já terminaram",
-        "explicacao": "Cada uma traz o endereço do trabalho que a fechou. Clique para ver.",
+        "rotulo": "Conclusões registradas",
+        "curto": "conclusão registrada",
+        "explicacao": "A fila registrou a conclusão destas tarefas. Cada cartão traz o motivo e a referência disponíveis; este histórico não verifica novamente o aceite nem a publicação.",
         "cor": "verde",
         "recolhida": True,
     },
@@ -414,9 +414,13 @@ def _ler_json(caminho: Path):
 def ler_estados(pasta: Path | None) -> dict | None:
     """A ausência ou corrupção do retrato não é uma fila vazia."""
     estados = _ler_json(pasta / "estados.json") if pasta else None
+    conhecidos = {grupo["estado"] for grupo in COLUNAS}
     if not isinstance(estados, dict) or any(
-        not isinstance(dados, dict) or not isinstance(dados.get("estado"), str)
-        for dados in estados.values()
+        not RE_ID_DA_TAREFA.fullmatch(tid)
+        or not isinstance(dados, dict)
+        or not isinstance(dados.get("estado"), str)
+        or dados.get("estado") not in conhecidos
+        for tid, dados in estados.items()
     ):
         return None
     return estados
@@ -451,6 +455,7 @@ def andamento(pasta: Path) -> dict:
     """
     ultima_mexida: dict[str, str] = {}
     terminadas_por_dia: dict[str, int] = {}
+    conclusoes_registradas = set()
 
     for arquivo in sorted((pasta / "eventos").glob("*.json")):
         evento = _ler_json(arquivo)
@@ -463,7 +468,8 @@ def andamento(pasta: Path) -> dict:
         # Os arquivos vêm ordenados por nome, e o nome COMEÇA pelo carimbo de
         # tempo — então o último a passar por aqui é mesmo o mais recente.
         ultima_mexida[tarefa] = dia
-        if evento.get("evento") == "concluida":
+        if evento.get("evento") == "concluida" and tarefa not in conclusoes_registradas:
+            conclusoes_registradas.add(tarefa)
             terminadas_por_dia[dia] = terminadas_por_dia.get(dia, 0) + 1
 
     dias = sorted(terminadas_por_dia)

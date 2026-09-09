@@ -49,10 +49,9 @@ não tem sigla (lei do CLAUDE.md).
   {% if fila_ausente %}
     <h1>Os robôs</h1>
     <p class="aviso espaco-16">
-      A fila de trabalho não veio nesta imagem. Isso não significa que não há
-      trabalho — significa que esta parte quebrou. O quadro vivo mora no
-      repositório (<code>fila/</code>); avise um robô com estas palavras:
-      "a fila embutida não chegou na imagem da admin".
+      Não consegui ler a fila desta publicação: os dados estão ausentes ou inválidos.
+      Isso não significa que não há trabalho. Peça a um robô para conferir a
+      exportação de <code>fila/estados.json</code> e a publicação dos dados da admin.
     </p>
   {% else %}
     {% include "admin/_caixa_abas.html" %}
@@ -312,8 +311,8 @@ não tem sigla (lei do CLAUDE.md).
       {% endif %}
       {% if andamento.terminadas %}
         <p class="ritmo">
-          Até agora os robôs terminaram <b>{{ andamento.terminadas }} tarefa{{ andamento.terminadas|pluralize }}</b>
-          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} de trabalho,
+          Há <b>{{ andamento.terminadas }} conclusões registradas</b>
+          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} do histórico,
           uma média de <b>{{ andamento.por_dia }} por dia</b>.
         </p>
       {% endif %}
