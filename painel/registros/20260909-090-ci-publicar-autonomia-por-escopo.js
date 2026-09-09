@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-090-ci-publicar-autonomia-por-escopo",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "ci: publicar autonomia por escopo",
+  detalhe: "Publicação confere destino e histórico. Regras reservam decisões de risco ao dono; explicação na biblioteca interna.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1491. Validação local: árvore 021d87675a14eb631f743431262debe07f9d95f6; commit 6f678cdf3d521a149ec5c7d43ac29026fd10dfe0; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "governanca",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
