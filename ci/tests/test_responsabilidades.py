@@ -26,8 +26,12 @@ def registro_completo() -> dict:
                 "titular_funcao": "ensino-comunidade",
                 "pessoa": None,
                 "substituto": None,
+                "finalidade": "entregar",
+                "acompanhamento": "revisar",
+                "fonte": "fonte",
+                "evidencia": "prova",
             },
-            {"id": "aula", "herda_de": "curso"},
+            {"id": "aula", "herda_de": "curso", "finalidade": "entregar", "acompanhamento": "revisar", "fonte": "fonte", "evidencia": "prova"},
         ],
     }
 
@@ -69,7 +73,7 @@ def test_medicao_de_esforco_distingue_teste_de_trabalho_real(tmp_path):
             "observacoes": [{
                 "id": "fixture", "natureza": "teste", "rotina": "x", "casos": 1,
                 "minutos_referencia": 1, "minutos_humanos": 1, "minutos_revisao": 0,
-                "minutos_retrabalho": 0, "excecoes": 0, "qualidade": "não avaliada; dado de teste",
+                "minutos_retrabalho": 0, "minutos_excecoes": 0, "minutos_manutencao": 0, "excecoes": 0, "qualidade": "não avaliada; dado de teste",
                 "reaberturas": None, "prazo": "teste", "periodo": "hoje",
                 "condicoes": "fixture", "situacao_dado": "teste",
             }],
@@ -82,6 +86,7 @@ def test_medicao_de_esforco_distingue_teste_de_trabalho_real(tmp_path):
 def test_tarefa_nova_sem_responsabilidade_e_reconhecida_como_invalida():
     assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-09"}) is True
     assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-08"}) is False
+    assert fila.normalizar_responsabilidade("  ensino-comunidade  ") == "ensino-comunidade"
 
 
 def test_medicao_real_incompleta_e_recusada(tmp_path):
@@ -99,12 +104,23 @@ def test_resumo_de_esforco_pesa_casos_pelo_tempo_de_referencia(tmp_path):
     observacao = {
         "id": "real", "natureza": "operacao", "rotina": "x", "casos": 2,
         "minutos_referencia": 100, "minutos_humanos": 50, "minutos_revisao": 0,
-        "minutos_retrabalho": 0, "excecoes": 0, "qualidade": "confirmada",
+        "minutos_retrabalho": 0, "minutos_excecoes": 10, "minutos_manutencao": 0, "excecoes": 1, "qualidade": "confirmada",
         "reaberturas": 0, "prazo": "cumprido", "periodo": "hoje",
         "condicoes": "fixture", "situacao_dado": "real",
     }
+    segunda = {**observacao, "id": "real-2", "casos": 20, "minutos_referencia": 20, "minutos_humanos": 0, "minutos_excecoes": 0}
     (tmp_path / "painel" / "medicoes" / "esforco.json").write_text(
-        json.dumps({"produtividade_comprovada": True, "observacoes": [observacao]}),
+        json.dumps({"produtividade_comprovada": True, "observacoes": [observacao, segunda]}),
         encoding="utf-8",
     )
     assert medir_esforco.resumo(tmp_path)["economia_media_percentual"] == 50.0
+
+
+def test_ia_nao_pode_ser_titular_ou_substituta(tmp_path):
+    registro = registro_completo()
+    registro["funcoes"]["ensino-comunidade"]["pessoa"] = "agente de IA"
+    registro["funcoes"]["ensino-comunidade"]["substituto"] = "IA"
+    raiz = escrever_registro(tmp_path, registro)
+    erros = responsabilidades.validar_entrega(raiz, "curso")
+    assert any("não pode ter IA como pessoa ocupante" in erro for erro in erros)
+    assert any("não pode ter IA como substituto" in erro for erro in erros)

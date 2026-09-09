@@ -1259,12 +1259,16 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     return tarefas, eventos
 
 
+def normalizar_responsabilidade(valor: object) -> str:
+    return valor.strip() if isinstance(valor, str) else ""
+
+
 def cmd_criar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("criar", raiz)
     if recusa:
         print(recusa)
         return 1
-    responsabilidade = (args.responsabilidade or "").strip()
+    responsabilidade = normalizar_responsabilidade(args.responsabilidade)
     if not responsabilidade:
         print("RECUSADO: tarefa nova precisa declarar uma responsabilidade.")
         print("Informe --responsabilidade com uma unidade cadastrada.")
@@ -1332,8 +1336,8 @@ def cmd_criar(raiz: Path, args) -> int:
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
-    if getattr(args, "responsabilidade", ""):
-        dados["responsabilidade"] = args.responsabilidade
+    if responsabilidade:
+        dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
     _escrever_json(caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
@@ -1689,7 +1693,7 @@ def cmd_concluir(raiz: Path, args) -> int:
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
     tarefa = tarefas[tid]
-    responsabilidade = tarefa.get("responsabilidade")
+    responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade"))
     responsabilidade_nova_ausente = tarefa_exige_responsabilidade(tarefa) and not responsabilidade
     if responsabilidade_nova_ausente:
         print("RECUSADO: tarefa nova sem responsabilidade declarada.")

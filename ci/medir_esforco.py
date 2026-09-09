@@ -9,7 +9,7 @@ from pathlib import Path
 
 CAMPOS = {
     "id", "natureza", "rotina", "casos", "minutos_referencia", "minutos_humanos",
-    "minutos_revisao", "minutos_retrabalho", "excecoes", "qualidade", "reaberturas",
+    "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao", "excecoes", "qualidade", "reaberturas",
     "prazo", "periodo", "condicoes", "situacao_dado",
 }
 SITUACOES = {"teste", "real"}
@@ -42,7 +42,7 @@ def validar(raiz: Path) -> list[str]:
         if situacao == "real" and isinstance(casos, int) and casos <= 0:
             erros.append(f"{identificador}: dado real precisa de pelo menos um caso")
         if observacao.get("situacao_dado") == "real":
-            for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho"):
+            for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"):
                 valor = observacao.get(campo)
                 if not isinstance(valor, (int, float)) or valor < 0:
                     erros.append(f"{identificador}: {campo} precisa ser número não negativo")
@@ -61,7 +61,7 @@ def resumo(raiz: Path) -> dict:
     for item in reais:
         referencia = item.get("minutos_referencia", 0)
         if referencia > 0:
-            trabalho_humano = sum(item.get(campo, 0) for campo in ("minutos_humanos", "minutos_revisao", "minutos_retrabalho"))
+            trabalho_humano = sum(item.get(campo, 0) for campo in ("minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"))
             referencia_total += referencia
             trabalho_total += trabalho_humano
     economia_media = ((referencia_total - trabalho_total) / referencia_total * 100) if referencia_total else None
