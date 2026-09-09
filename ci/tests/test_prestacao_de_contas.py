@@ -1069,6 +1069,43 @@ def test_quebrou_no_github_actions_sem_acao_e_recusado(tmp_path):
     ]))
 
 
+def test_falhou_no_github_actions_sem_acao_e_recusado(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O check falhou no GitHub Actions.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
+def test_sem_dizer_o_que_fazer_nao_e_acao(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O GitHub Actions falhou sem dizer o que "
+        "fazer.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
+def test_rechecagem_sozinha_nao_e_acao(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. A rechecagem quebrou no GitHub Actions.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
 def test_veredito_nao_pronto_por_falha_externa_com_acao_e_aceito(tmp_path):
     claro = CONTAS_COMPLETAS.replace(
         "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
