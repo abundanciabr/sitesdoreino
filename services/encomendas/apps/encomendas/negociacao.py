@@ -416,7 +416,15 @@ def propor(
                 justificativa=justificativa,
                 valida_ate=calcular_validade_da_proposta(agora, site_id=site_id),
             )
-    except IntegrityError:
+    except IntegrityError as erro:
+        if not any(
+            nome in str(erro)
+            for nome in (
+                "uma_negociacao_viva_por_aluno",
+                "uma_proposta_viva_por_aluno",
+            )
+        ):
+            raise
         # O índice `uma_proposta_viva_por_aluno` é a trava que sobra quando a
         # leitura educada falha ([INV-ENC-N6]): o aluno já tem outra negociação
         # de pé, somando as duas pistas. É a mesma forma de `mural.pegar`, e

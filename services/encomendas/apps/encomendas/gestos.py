@@ -258,7 +258,9 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
                 ator_id=perfil.pessoa_id,
                 motivo=MOTIVO_DO_ACEITE,
             )
-    except IntegrityError:
+    except IntegrityError as erro:
+        if "uma_negociacao_viva_por_aluno" not in str(erro):
+            raise
         encomenda.refresh_from_db(fields=["status", "aluno"])
         return Desfecho(
             feito=False,

@@ -258,9 +258,8 @@ def test_negociacao_sem_primeira_proposta_vai_ao_plantao_no_relogio_util(
     ).em
     vencimento = relogio.calcular_validade_da_proposta(entrou_em, site_id=SITE)
 
-    assert tique.expirar_negociacoes_sem_proposta(vencimento, site_id=SITE) == (
-        projeto.pk,
-    )
+    passada = tique.rodar(vencimento, site_id=SITE)
+    assert passada.projetos_ao_plantao == (projeto.pk,)
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.PARA_RECLASSIFICAR
     assert projeto.aluno_id is None
