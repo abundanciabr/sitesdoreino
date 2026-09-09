@@ -6,11 +6,12 @@ degrau: 1
 confianca: alta
 custo_por_queda: alto
 gatilho:
-  - clone principal com alterações locais
-  - múltiplas tarefas no mesmo diretório
-  - PR com mais de 15 arquivos de código
-  - gh api rate limit exceeded
-  - acesso negado em pytest tmp_path
+  - .git/
+  - ci/sessao.py
+  - ci/orcamento-de-mudanca.sh
+  - armadilhas/
+  - services/admin/
+  - .venv/tmp/
 guarda:
   tipo: nenhum
   detector: ci/sessao.py
