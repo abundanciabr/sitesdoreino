@@ -1,0 +1,20 @@
+{
+  "arquivo": "283-definir-quem-responde-por-cada-frente-e-quem-assume-quando-e",
+  "id": "TAR-283",
+  "titulo": "Definir quem responde por cada frente e quem assume quando essa pessoa falta",
+  "toca": [
+    "admin",
+    "painel",
+    "contracts",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PRs separados com inventário aprovado de responsabilidades atuais e futuras, titular e substituto por frente, casos sem dono ou com dois donos nomeados, contratos necessários pactuados no rito próprio e tarefas filhas por célula antes de qualquer implementação.",
+  "despacho": "Comece pelo mapa, não pelo produto. Leia o plano privado https://meshcraft.top/admin/documentos/equipe-quatro-copilotos e confronte-o com código, contratos e telas atuais. Para Estratégia, Operações, Ensino e Comercial, relacione pessoa titular, substituta, ativo ou processo sob sua guarda e cada ação que pode executar. Trate dono ausente e ambíguo como falha visível. Não mude contrato neste PR. Registre e encadeie PRs de contrato por célula com o mantenedor presente, e só depois abra as fatias de implementação, respeitando 15 arquivos e testes de cada célula.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos, análise confirmada em 09/09/2026",
+  "criada_em": "2026-09-09"
+}
