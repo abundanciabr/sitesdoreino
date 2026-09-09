@@ -648,7 +648,13 @@ def resumo_do_baseline(saida: str) -> str:
     return achados[-1] if achados else "verde"
 
 
-def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", estado_git: str = "limpo") -> str:
+def declaracao(
+    plano: Plano,
+    *,
+    resumo: str,
+    constituicao_da_celula: str = "",
+    estado_git: str = "limpo",
+) -> str:
     """A Declaração de Abertura do RITOS §1, em UMA linha, pronta para colar."""
     primeira = (
         f"Leituras exigidas: CONSTITUICAO.md e {constituicao_da_celula}."
@@ -943,7 +949,9 @@ class Sessao:
         pasta_hooks = Path(hooks_path)
         if not pasta_hooks.is_absolute():
             pasta_hooks = self.plano.raiz / pasta_hooks
-        faltando = [nome for nome in GANCHOS_VERSIONADOS if not self._existe(pasta_hooks / nome)]
+        faltando = [
+            nome for nome in GANCHOS_VERSIONADOS if not self._existe(pasta_hooks / nome)
+        ]
         if faltando:
             raise ErroDeSessao(
                 passo,
@@ -1169,8 +1177,17 @@ class Sessao:
         corpo_arquivo = self.plano.scratch / f"anuncio-{self.plano.tarefa}.md"
         self._escrever(corpo_arquivo, corpo)
         consulta = self._correr(
-            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
-             "--json", "number,url,state,isDraft"],
+            [
+                gh,
+                "pr",
+                "list",
+                "--head",
+                self.plano.branch,
+                "--state",
+                "all",
+                "--json",
+                "number,url,state,isDraft",
+            ],
             cwd=self.plano.worktree,
             timeout=120,
         )
@@ -1193,7 +1210,11 @@ class Sessao:
         if prs:
             numero = prs[0].get("number")
             if not isinstance(numero, int):
-                raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
+                raise ErroDeSessao(
+                    passo,
+                    "o PR existente não tem número válido",
+                    detalhe="Confira gh pr list e repita.",
+                )
             if prs[0].get("state", "OPEN") != "OPEN":
                 raise ErroDeSessao(
                     passo,
@@ -1240,8 +1261,15 @@ class Sessao:
             if adiante.stdout.strip() == "0":
                 self._exigir(
                     passo,
-                    ["git", "commit", "--allow-empty", "-m", "chore: anunciar intenção da sessão",
-                     "-m", "Co-Authored-By: Codex <noreply@openai.com>"],
+                    [
+                        "git",
+                        "commit",
+                        "--allow-empty",
+                        "-m",
+                        "chore: anunciar intenção da sessão",
+                        "-m",
+                        "Co-Authored-By: Codex <noreply@openai.com>",
+                    ],
                     cwd=self.plano.worktree,
                     timeout=120,
                 )
@@ -1253,8 +1281,20 @@ class Sessao:
         )
         criado = self._exigir(
             passo,
-            [gh, "pr", "create", "--draft", "--base", "main", "--head", self.plano.branch,
-             "--title", titulo, "--body-file", str(corpo_arquivo)],
+            [
+                gh,
+                "pr",
+                "create",
+                "--draft",
+                "--base",
+                "main",
+                "--head",
+                self.plano.branch,
+                "--title",
+                titulo,
+                "--body-file",
+                str(corpo_arquivo),
+            ],
             cwd=self.plano.worktree,
             timeout=120,
         )
@@ -1273,9 +1313,17 @@ class Sessao:
         try:
             estado = json.loads(conferido.stdout or "")
         except (TypeError, ValueError) as erro:
-            raise ErroDeSessao(passo, "a conferência do PR draft devolveu JSON inválido", detalhe="Confira gh pr view e repita.") from erro
+            raise ErroDeSessao(
+                passo,
+                "a conferência do PR draft devolveu JSON inválido",
+                detalhe="Confira gh pr view e repita.",
+            ) from erro
         if estado.get("state") != "OPEN" or estado.get("isDraft") is not True:
-            raise ErroDeSessao(passo, "o GitHub não confirmou um PR aberto em rascunho", detalhe="Confira gh pr view e corrija o estado antes de trabalhar.")
+            raise ErroDeSessao(
+                passo,
+                "o GitHub não confirmou um PR aberto em rascunho",
+                detalhe="Confira gh pr view e corrija o estado antes de trabalhar.",
+            )
         self._pass(f"PR draft #{achado.group(1)} aberto e conferido")
 
     def _exigir_bancada_limpa(self, passo: str, git: str) -> None:
@@ -1297,13 +1345,21 @@ class Sessao:
             for linha in sujo.splitlines():
                 relativo = linha[3:]
                 try:
-                    if linha[:2] not in {"??", "A "} or not relativo.startswith("fila/eventos/") or ".." in Path(relativo).parts:
+                    if (
+                        linha[:2] not in {"??", "A "}
+                        or not relativo.startswith("fila/eventos/")
+                        or ".." in Path(relativo).parts
+                    ):
                         proprios = False
                         break
-                    evento = json.loads((self.plano.worktree / relativo).read_text(encoding="utf-8"))
-                    if not (evento.get("tarefa") == self.plano.tarefa_da_fila
-                            and evento.get("quem") == self.plano.quem_no_balcao
-                            and evento.get("evento") == "reivindicada"):
+                    evento = json.loads(
+                        (self.plano.worktree / relativo).read_text(encoding="utf-8")
+                    )
+                    if not (
+                        evento.get("tarefa") == self.plano.tarefa_da_fila
+                        and evento.get("quem") == self.plano.quem_no_balcao
+                        and evento.get("evento") == "reivindicada"
+                    ):
                         proprios = False
                         break
                 except (OSError, ValueError, AttributeError):
@@ -1675,7 +1731,9 @@ class Sessao:
         self._nota(f"make ci verde ({resumo}) · log completo: {onde_o_log}")
 
         self._exigir_bancada_limpa(passo, git)
-        self._pass(f"make ci = {resumo} · git status: {self._estado_git} · log: {onde_o_log}")
+        self._pass(
+            f"make ci = {resumo} · git status: {self._estado_git} · log: {onde_o_log}"
+        )
         return resumo
 
     # -- orquestração -------------------------------------------------------
@@ -1703,7 +1761,10 @@ class Sessao:
         if not self._existe(self.plano.worktree / constituicao):
             constituicao = ""
         return declaracao(
-            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git
+            self.plano,
+            resumo=resumo,
+            constituicao_da_celula=constituicao,
+            estado_git=self._estado_git,
         )
 
 
@@ -1726,9 +1787,15 @@ def caminhos_da_tarefa(tarefa: dict, celulas: Sequence[str]) -> list[str]:
 
 
 def contexto_direcionado(
-    raiz: Path, *, objetivo: str, caminhos: Sequence[str], sintoma: str = "",
-    aceite: Sequence[str] = (), restricoes: Sequence[str] = (),
-    decisoes: Sequence[str] = (), limite: int = 8,
+    raiz: Path,
+    *,
+    objetivo: str,
+    caminhos: Sequence[str],
+    sintoma: str = "",
+    aceite: Sequence[str] = (),
+    restricoes: Sequence[str] = (),
+    decisoes: Sequence[str] = (),
+    limite: int = 8,
 ) -> str:
     """Consulta os mesmos gatilhos e sinais dos ganchos, sem catálogo próprio."""
     from licao_do_caminho import licoes_do_caminho
@@ -1737,15 +1804,25 @@ def contexto_direcionado(
     globais = [nome for nome in ("CLAUDE.md", "AGENTS.md") if (raiz / nome).is_file()]
     limites = []
     if not globais:
-        limites.append("Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
-                       "confira o checkout e as instruções da sessão antes de editar.")
-    candidatas = [*globais, "CONSTITUICAO.md", "RITOS.md",
-                  "docs/decisoes/RETROSPECTIVA-FASE-D.md"]
+        limites.append(
+            "Limitação: nenhuma instrução global AGENTS.md ou CLAUDE.md encontrada; "
+            "confira o checkout e as instruções da sessão antes de editar."
+        )
+    candidatas = [
+        *globais,
+        "CONSTITUICAO.md",
+        "RITOS.md",
+        "docs/decisoes/RETROSPECTIVA-FASE-D.md",
+    ]
     for caminho in caminhos:
         partes = Path(caminho.replace("\\", "/")).parts
         if len(partes) > 1 and partes[0] == "services":
-            candidatas.extend([f"constituicoes/AGENTS.{partes[1]}.md",
-                                 f"services/{partes[1]}/LICOES.md"])
+            candidatas.extend(
+                [
+                    f"constituicoes/AGENTS.{partes[1]}.md",
+                    f"services/{partes[1]}/LICOES.md",
+                ]
+            )
         alvo = raiz / caminho
         if alvo.resolve().is_relative_to(raiz.resolve()):
             inicio = alvo if alvo.is_dir() else alvo.parent
@@ -1759,74 +1836,131 @@ def contexto_direcionado(
     obrigatorias = [nome for nome in candidatas if (raiz / nome).is_file()]
     ausentes = [nome for nome in candidatas if nome not in obrigatorias]
     if ausentes:
-        limites.append("Limitação: fontes de leitura ausentes neste checkout: " + ", ".join(ausentes)
-                       + ". Confira o checkout antes de assumir que a preparação está completa.")
-    linhas = ["CONTEXTO DIRECIONADO", f"Objetivo: {objetivo or 'não informado; complete o brief antes de editar'}",
-              "Aceite: " + ("; ".join(aceite) or "não informado; confira o brief da tarefa"),
-              "Caminhos: " + ", ".join(caminhos),
-              "Restrições do brief: " + ("; ".join(restricoes) or "consulte as instruções obrigatórias"),
-              "Decisões do brief: " + ("; ".join(decisoes) or "não informadas; consulte as fontes abaixo"),
-              "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
-              "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias."]
+        limites.append(
+            "Limitação: fontes de leitura ausentes neste checkout: "
+            + ", ".join(ausentes)
+            + ". Confira o checkout antes de assumir que a preparação está completa."
+        )
+    linhas = [
+        "CONTEXTO DIRECIONADO",
+        f"Objetivo: {objetivo or 'não informado; complete o brief antes de editar'}",
+        "Aceite: " + ("; ".join(aceite) or "não informado; confira o brief da tarefa"),
+        "Caminhos: " + ", ".join(caminhos),
+        "Restrições do brief: "
+        + ("; ".join(restricoes) or "consulte as instruções obrigatórias"),
+        "Decisões do brief: "
+        + ("; ".join(decisoes) or "não informadas; consulte as fontes abaixo"),
+        "Leituras obrigatórias: " + ", ".join(dict.fromkeys(obrigatorias)),
+        "Não dispensa regras globais, segurança, governança nem as leituras obrigatórias.",
+    ]
     linhas.extend(limites)
     if not (raiz / "armadilhas/INDICE.md").is_file():
-        linhas.append("Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
-                      "python ci/indice_de_armadilhas.py quando precisar da consulta integral.")
+        linhas.append(
+            "Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
+            "python ci/indice_de_armadilhas.py quando precisar da consulta integral."
+        )
     achados = {}
+    if sintoma:
+        try:
+            # O sino limita toques por comando. Consultar cada assinatura mantém
+            # a correspondência dele e deixa o sintoma explícito antes dos toques
+            # genéricos dos caminhos.
+            for sinal in carregar_sinais(raiz / "armadilhas/SINAIS.json"):
+                for item, _ in reconhecer(sintoma, [sinal]):
+                    achados.setdefault(item["armadilha"], item)
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append(
+                "Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py."
+            )
     for caminho in caminhos:
         try:
             _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
             for item in itens:
                 achados.setdefault(item["armadilha"], item)
         except (OSError, ValueError, TypeError, KeyError):
-            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
+            linhas.append(
+                "Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py."
+            )
             break
-    if sintoma:
-        try:
-            # O sino limita toques por comando. Consultar cada assinatura mantém
-            # a correspondência dele e permite contar o truncamento desta resposta.
-            for sinal in carregar_sinais(raiz / "armadilhas/SINAIS.json"):
-                for item, _ in reconhecer(sintoma, [sinal]):
-                    achados.setdefault(item["armadilha"], item)
-        except (OSError, ValueError, TypeError, KeyError):
-            linhas.append("Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py.")
     if not achados:
-        linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
+        linhas.append(
+            "Nenhuma lição recuperada; isso não significa ausência de restrições."
+        )
     for item in list(achados.values())[:limite]:
         arquivo = item["arquivo"]
-        linhas.append(f"Lição {item['armadilha']}: {item['titulo']} (origem: {arquivo})")
+        linhas.append(
+            f"Lição {item['armadilha']}: {item['titulo']} (origem: {arquivo})"
+        )
         resumo = resumo_da_armadilha(raiz / arquivo, arquivo, item.get("licao", ""))
         if resumo:
             linhas.append(resumo)
         else:
             linhas.append("Limitação: resumo indisponível; leia a origem completa.")
     if len(achados) > limite:
-        linhas.append(f"Truncado: {limite} de {len(achados)} lições. Amplie com --limite-contexto {len(achados)}.")
-    linhas.append("Aprofundamento: arquivos de origem, armadilhas/INDICE.md e docs/decisoes/. "
-                  "Refine --caminho/--sintoma ou amplie --limite-contexto; o histórico completo continua no repositório.")
+        linhas.append(
+            f"Truncado: {limite} de {len(achados)} lições. Amplie com --limite-contexto {len(achados)}."
+        )
+    linhas.append(
+        "Aprofundamento: arquivos de origem, armadilhas/INDICE.md e docs/decisoes/. "
+        "Refine --caminho/--sintoma ou amplie --limite-contexto; o histórico completo continua no repositório."
+    )
     return "\n".join(linhas)
 
 
-def medir_fase(plano: Plano, tentativa: str, fase: str, resultado: str, *, contexto_bytes=None, checkout: Path | None = None) -> None:
+def medir_fase(
+    plano: Plano,
+    tentativa: str,
+    fase: str,
+    resultado: str,
+    *,
+    contexto_bytes=None,
+    checkout: Path | None = None,
+) -> None:
     """A mesma telemetria da casa; ausência de medição nunca vira zero."""
     try:
         from telemetria import registrar_fase
-        onde = checkout or (plano.worktree if (plano.worktree / ".git").exists() else plano.raiz)
+
+        onde = checkout or (
+            plano.worktree if (plano.worktree / ".git").exists() else plano.raiz
+        )
         saida = correr_de_verdade(["git", "-C", str(onde), "rev-parse", "HEAD"])
         commit = saida.stdout.strip() if saida.exit_code == 0 else None
-        branch = correr_de_verdade(["git", "-C", str(onde), "rev-parse", "--abbrev-ref", "HEAD"])
-        gravado = registrar_fase(fase, resultado, tarefa=plano.tarefa_da_fila or plano.branch,
-            tentativa=tentativa, branch=branch.stdout.strip() if branch.exit_code == 0 else None, commit=commit,
-            contexto_bytes=contexto_bytes, cwd=str(onde))
+        branch = correr_de_verdade(
+            ["git", "-C", str(onde), "rev-parse", "--abbrev-ref", "HEAD"]
+        )
+        gravado = registrar_fase(
+            fase,
+            resultado,
+            tarefa=plano.tarefa_da_fila or plano.branch,
+            tentativa=tentativa,
+            branch=branch.stdout.strip() if branch.exit_code == 0 else None,
+            commit=commit,
+            contexto_bytes=contexto_bytes,
+            cwd=str(onde),
+        )
         if gravado is None:
-            print("Medição de eficiência indisponível; cobertura incompleta nesta tentativa.")
-    except Exception:  # noqa: BLE001 - instrumentação não autoriza nem impede a operação
-        print("Medição de eficiência indisponível; os resultados operacionais continuam separados.")
+            print(
+                "Medição de eficiência indisponível; cobertura incompleta nesta tentativa."
+            )
+    except (
+        Exception
+    ):  # noqa: BLE001 - instrumentação não autoriza nem impede a operação
+        print(
+            "Medição de eficiência indisponível; os resultados operacionais continuam separados."
+        )
 
 
-def medir_tarefa_fase4(plano: Plano, tentativa: str, *, estado: str,
-                       inicio: str, fim: str | None, pr: int | None,
-                       commit: str | None = None, branch: str | None = None) -> None:
+def medir_tarefa_fase4(
+    plano: Plano,
+    tentativa: str,
+    *,
+    estado: str,
+    inicio: str,
+    fim: str | None,
+    pr: int | None,
+    commit: str | None = None,
+    branch: str | None = None,
+) -> None:
     if not plano.tarefa_da_fila:
         return
     try:
@@ -1834,29 +1968,62 @@ def medir_tarefa_fase4(plano: Plano, tentativa: str, *, estado: str,
 
         checkout = plano.worktree
         if commit is None:
-            commit_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "HEAD"])
-            commit = commit_resultado.stdout.strip() if commit_resultado.exit_code == 0 else ""
+            commit_resultado = correr_de_verdade(
+                ["git", "-C", str(checkout), "rev-parse", "HEAD"]
+            )
+            commit = (
+                commit_resultado.stdout.strip()
+                if commit_resultado.exit_code == 0
+                else ""
+            )
         if branch is None:
-            branch_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "--abbrev-ref", "HEAD"])
-            branch = branch_resultado.stdout.strip() if branch_resultado.exit_code == 0 else ""
+            branch_resultado = correr_de_verdade(
+                ["git", "-C", str(checkout), "rev-parse", "--abbrev-ref", "HEAD"]
+            )
+            branch = (
+                branch_resultado.stdout.strip()
+                if branch_resultado.exit_code == 0
+                else ""
+            )
         registrou = registrar_tarefa_fase4.registrar_execucao_fase4(
-            checkout, tarefa=plano.tarefa_da_fila, tentativa=tentativa,
-            branch=branch, commit=commit, estado=estado, inicio=inicio,
-            fim=fim, pr=pr,
+            checkout,
+            tarefa=plano.tarefa_da_fila,
+            tentativa=tentativa,
+            branch=branch,
+            commit=commit,
+            estado=estado,
+            inicio=inicio,
+            fim=fim,
+            pr=pr,
         )
-        if not registrou and registrar_tarefa_fase4.classificacao_da_tarefa(checkout, plano.tarefa_da_fila):
-            print("Medição Fase 4 indisponível; confira o caderno privado e repita a coleta.")
+        if not registrou and registrar_tarefa_fase4.classificacao_da_tarefa(
+            checkout, plano.tarefa_da_fila
+        ):
+            print(
+                "Medição Fase 4 indisponível; confira o caderno privado e repita a coleta."
+            )
     except Exception:
-        print("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
+        print(
+            "Medição Fase 4 indisponível; os resultados operacionais continuam separados."
+        )
 
 
-def emitir_contexto(plano: Plano, tentativa: str, pacote: str, *, checkout=None) -> None:
+def emitir_contexto(
+    plano: Plano, tentativa: str, pacote: str, *, checkout=None
+) -> None:
     """Emite e conta os mesmos bytes, inclusive no Windows, sem converter linhas."""
     dados = (pacote + "\n").encode("utf-8")
     sys.stdout.flush()
     sys.stdout.buffer.write(dados)
     sys.stdout.buffer.flush()
-    medir_fase(plano, tentativa, "contexto", "concluido", contexto_bytes=len(dados), checkout=checkout)
+    medir_fase(
+        plano,
+        tentativa,
+        "contexto",
+        "concluido",
+        contexto_bytes=len(dados),
+        checkout=checkout,
+    )
 
 
 def construir_parser() -> argparse.ArgumentParser:
@@ -1904,13 +2071,40 @@ def construir_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="só mostra o plano — não cria worktree, venv nem container",
     )
-    parser.add_argument("--contexto", action="store_true", help="só recupera contexto no checkout indicado, sem preparar ambiente")
-    parser.add_argument("--caminho", action="append", default=[], help="caminho afetado, repetível")
-    parser.add_argument("--sintoma", default="", help="sintoma para a busca existente por sinal")
-    parser.add_argument("--aceite", action="append", default=[], help="critério de aceite do brief, repetível")
-    parser.add_argument("--restricao", action="append", default=[], help="restrição do brief, repetível")
-    parser.add_argument("--decisao", action="append", default=[], help="referência de decisão do brief, repetível")
-    parser.add_argument("--limite-contexto", type=int, default=8, choices=range(1, 101), metavar="1..100", help="limite de lições retornadas")
+    parser.add_argument(
+        "--contexto",
+        action="store_true",
+        help="só recupera contexto no checkout indicado, sem preparar ambiente",
+    )
+    parser.add_argument(
+        "--caminho", action="append", default=[], help="caminho afetado, repetível"
+    )
+    parser.add_argument(
+        "--sintoma", default="", help="sintoma para a busca existente por sinal"
+    )
+    parser.add_argument(
+        "--aceite",
+        action="append",
+        default=[],
+        help="critério de aceite do brief, repetível",
+    )
+    parser.add_argument(
+        "--restricao", action="append", default=[], help="restrição do brief, repetível"
+    )
+    parser.add_argument(
+        "--decisao",
+        action="append",
+        default=[],
+        help="referência de decisão do brief, repetível",
+    )
+    parser.add_argument(
+        "--limite-contexto",
+        type=int,
+        default=8,
+        choices=range(1, 101),
+        metavar="1..100",
+        help="limite de lições retornadas",
+    )
     return parser
 
 
@@ -1920,19 +2114,24 @@ def raiz_do_clone(checkout: Path) -> Path:
         return checkout
     comando = ["git", "-C", str(checkout), "worktree", "list", "--porcelain"]
     saida = correr_de_verdade(comando)
-    bancadas = [linha.removeprefix("worktree ") for linha in saida.stdout.splitlines()
-                if linha.startswith("worktree ")]
+    bancadas = [
+        linha.removeprefix("worktree ")
+        for linha in saida.stdout.splitlines()
+        if linha.startswith("worktree ")
+    ]
     if saida.exit_code != 0 or not bancadas:
         raise ErroDeInstrumentacao(
             "não consegui localizar o clone principal desta bancada",
             "Confira git worktree list --porcelain antes de repetir a abertura. "
-            "Nenhum arquivo foi alterado pela conferência.")
+            "Nenhum arquivo foi alterado pela conferência.",
+        )
     principal = raiz_declarada(Path(bancadas[0]))
     if not (principal / ".git").is_dir():
         raise ErroDeInstrumentacao(
             "o Git não apontou um clone principal reconhecível",
             "Confira os vínculos das bancadas com git worktree list --porcelain. "
-            "Não remova a bancada para corrigir o vínculo.")
+            "Não remova a bancada para corrigir o vínculo.",
+        )
     return principal
 
 
@@ -1973,13 +2172,17 @@ def main(argv: list[str] | None = None) -> int:
         print(erro.render())
         return erro.codigo
 
-    caminhos = args.caminho or [f"services/{celula}/" if plano.sobe_ambiente else f"{celula}/"]
+    caminhos = args.caminho or [
+        f"services/{celula}/" if plano.sobe_ambiente else f"{celula}/"
+    ]
+
     def contexto(onde):
         objetivo, aceite, origem = args.frase, args.aceite, []
         caminhos_do_contexto = caminhos
         limitacao = ""
         if tarefa_da_fila:
             from fila import carregar_tarefas
+
             erros = []
             tarefas = carregar_tarefas(onde, erros)
             tarefa = tarefas.get(tarefa_da_fila)
@@ -1988,12 +2191,25 @@ def main(argv: list[str] | None = None) -> int:
                 aceite = aceite or [tarefa["evidencia_exigida"]]
                 origem = [f"fila/tarefas/{tarefa['arquivo']}.json"]
                 if not args.caminho:
-                    caminhos_do_contexto = caminhos_da_tarefa(tarefa, celulas) or caminhos
+                    caminhos_do_contexto = (
+                        caminhos_da_tarefa(tarefa, celulas) or caminhos
+                    )
             else:
                 limitacao = "\nLimitação: tarefa da fila indisponível ou inválida; confira o brief original."
-        return contexto_direcionado(onde, objetivo=objetivo, caminhos=caminhos_do_contexto,
-            sintoma=args.sintoma, aceite=aceite, restricoes=args.restricao,
-            decisoes=[*args.decisao, *origem], limite=args.limite_contexto) + limitacao
+        return (
+            contexto_direcionado(
+                onde,
+                objetivo=objetivo,
+                caminhos=caminhos_do_contexto,
+                sintoma=args.sintoma,
+                aceite=aceite,
+                restricoes=args.restricao,
+                decisoes=[*args.decisao, *origem],
+                limite=args.limite_contexto,
+            )
+            + limitacao
+        )
+
     tentativa = uuid.uuid4().hex
     if args.contexto:
         pacote = contexto(raiz)
@@ -2053,8 +2269,12 @@ def main(argv: list[str] | None = None) -> int:
     medir_fase(plano, tentativa, "abertura", "concluido")
     inicio_fase4 = datetime.now(timezone.utc).isoformat()
     medir_tarefa_fase4(
-        plano, tentativa, estado="pendente", inicio=inicio_fase4,
-        fim=None, pr=None,
+        plano,
+        tentativa,
+        estado="pendente",
+        inicio=inicio_fase4,
+        fim=None,
+        pr=None,
     )
     print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
@@ -2062,7 +2282,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"A suíte da célula rodou em {plano.celula_no_worktree}.")
     pacote = contexto(plano.worktree)
     emitir_contexto(plano, tentativa, pacote)
-    print("Próxima ação autorizada: conferir as leituras obrigatórias e executar o brief; revisão, integração e publicação não foram realizadas.")
+    print(
+        "Próxima ação autorizada: conferir as leituras obrigatórias e executar o brief; revisão, integração e publicação não foram realizadas."
+    )
     print(bancada_pronta(plano))
     return 0
 
