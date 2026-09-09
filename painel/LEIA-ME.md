@@ -407,3 +407,9 @@ com resolução comprovada própria. Nunca agrupe por título ou por PR citado.
 Uma classificação histórica sem obrigação futura também exige uma resolução
 explícita do registro antigo, com prova e detalhe de que se trata de revisão
 administrativa. Isso não declara um conserto novo nem apaga um dever existente.
+
+A resolução tipada confere somente a ocorrência indicada em `responde_a`.
+Outra obrigação que cite o mesmo PR permanece aberta, inclusive se pertencer
+à mesma tarefa. A conclusão da tarefa exige conferir suas obrigações restantes;
+a URL compartilhada não demonstra esse aceite. Conclusões verdes genéricas,
+sem `relacao`, continuam submetidas à guarda das entregas que citam o mesmo PR.

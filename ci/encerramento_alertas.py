@@ -140,7 +140,9 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
             problemas.append(f"{ident}: baixa de {alvo_id} sem prova. Use gravidade verde, a mesma tarefa, verificado_em a partir do alerta e evidencia do PR da entrega e da conferência realizada.")
         if alvo and relacao is None and (alvo.get("precisa_do_dono") or baixa_comprovada(registro, alvo)):
             problemas.append(f"{ident}: resposta nova exige relacao comentario, decisao ou resolucao; o adaptador legado não autoriza novos encerramentos implícitos.")
-        if relacao not in (None, "resolucao") or registro.get("gravidade") != "verde":
+        # A resolução tipada já foi conferida pelo alvo. URL compartilhada não
+        # transforma outras ocorrências em parte desse aceite.
+        if relacao is not None or registro.get("gravidade") != "verde":
             continue
         prs = prs_citados(registro.get("evidencia"))
         for alerta_id, alerta in sorted(entregas.items()):

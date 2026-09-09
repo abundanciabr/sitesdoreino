@@ -79,7 +79,10 @@ def test_dois_alertas_fecham_no_mesmo_lote_sem_cobranca_circular():
     registros["outra-baixa"] = dict(VERDE, arquivo="outra-baixa", responde_a="outro-alerta", relacao="resolucao")
     assert guarda.conferir_registros(registros, {"verde", "outra-baixa"}) == []
     del registros["outra-baixa"]
-    assert any("outro-alerta" in e for e in guarda.conferir_registros(registros, {"verde"}))
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    assert not guarda.baixa_comprovada(registros["verde"], registros["outro-alerta"])
+    registros["generica"] = dict(VERDE, arquivo="generica")
+    assert any("outro-alerta" in e for e in guarda.conferir_registros(registros, {"generica"}))
 
 
 def test_historia_orfa_nao_bloqueia_trabalho_sem_relacao():
@@ -301,3 +304,15 @@ def test_cadeia_e_destinos_ambiguos_nao_produzem_efeito_parcial():
     assert guarda.complementos_comprovados(registros) == {}
     registros["w"]["responde_a"] = "b"
     assert guarda.complementos_comprovados(registros) == {}
+
+
+@pytest.mark.parametrize("outra_tarefa", ["TAR-292", "TAR-294"])
+def test_resolucao_tipificada_nao_cobra_nem_fecha_outro_alvo_do_mesmo_pr(outra_tarefa):
+    registros = livro(responde_a="alerta", relacao="resolucao", tarefa="TAR-292")
+    registros["alerta"]["tarefa"] = "TAR-292"
+    registros["residual"] = dict(ALERTA, arquivo="residual", tarefa=outra_tarefa)
+    assert guarda.conferir_registros(registros, {"verde"}) == []
+    assert guarda.baixa_comprovada(registros["verde"], registros["alerta"])
+    assert not guarda.baixa_comprovada(registros["verde"], registros["residual"])
+    registros["generica"] = dict(VERDE, arquivo="generica")
+    assert any("residual" in erro for erro in guarda.conferir_registros(registros, {"generica"}))

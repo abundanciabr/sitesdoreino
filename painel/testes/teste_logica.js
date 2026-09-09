@@ -998,6 +998,14 @@ caso("destinos contraditórios são recusados", Object.keys(LOGICA.complementosC
 segundoVinculo.responde_a = "principal"; segundoVinculo.tarefa = null;
 caso("cadeia não aplica vínculos pela metade", Object.keys(LOGICA.complementosComprovados(livroComplementar.concat(terceiro,segundoVinculo))).length === 0);
 
+["TAR-292", "TAR-294"].forEach(function(tarefaResidual) {
+  var alvo = reg({arquivo:"alvo-tipado",tipo:"entrega",gravidade:"ambar",tarefa:"TAR-292",evidencia:"https://github.com/abundanciabr/sitesdoreino/pull/1496"});
+  var residual = Object.assign({}, alvo, {arquivo:"residual-tipado",tarefa:tarefaResidual});
+  var baixa = Object.assign({}, alvo, {arquivo:"baixa-tipada",gravidade:"verde",relacao:"resolucao",responde_a:alvo.arquivo,verificado_em:alvo.quando});
+  caso("resolução tipada preserva residual do mesmo PR em " + tarefaResidual,
+    LOGICA.problemasAbertos([alvo,residual,baixa]).map(function(r){return r.arquivo;}).join() === residual.arquivo);
+});
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

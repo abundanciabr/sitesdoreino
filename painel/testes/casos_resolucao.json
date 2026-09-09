@@ -327,6 +327,27 @@
       "resposta": {
         "evidencia": "SaÃ­da do comando recebido do mantenedor e endpoint pÃºblico conferido"
       }
+    },
+    {
+      "nome": "mesmo PR e mesma tarefa não identificam outro alvo",
+      "alvo": {
+        "arquivo": "outro-alvo"
+      },
+      "resposta": {
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "mesmo PR em tarefa diferente não identifica outro alvo",
+      "alvo": {
+        "arquivo": "outro-alvo",
+        "tarefa": "TAR-294"
+      },
+      "resposta": {
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474"
+      },
+      "esperado": false
     }
   ],
   "complementos": [
