@@ -170,7 +170,7 @@ preciso decidir", com a caixa aberta junto; e, quando nada depende dele, informe
 Leia o contexto direcionado de `ci/sessao.py`: origens, ausências, truncamento
 e entradas citadas/recuperadas; `services/<celula>/LICOES.md`; e, uma vez por
 sessão, os 8 padrões de `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais
-e por caminho são obrigatórias. Aprofunde por `--caminho`/`--sintoma`,
+e por caminho são obrigatórias. Para aprofundamento: use `--caminho`/`--sintoma`,
 `--limite-contexto` ou `armadilhas/INDICE.md`, gerado fora do Git por
 `python ci/indice_de_armadilhas.py`.
 
