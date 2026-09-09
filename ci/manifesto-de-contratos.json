@@ -33,7 +33,6 @@
   ],
   "celulas": {
     "admin": {
-      "freeze": "not-applicable",
       "freeze": "required",
       "frozen": "contracts/admin.openapi.yaml",
       "exportador": [
