@@ -49,11 +49,12 @@ DIAS_PARADA = 7
 
 
 def diretorio_da_fila() -> Path | None:
-    return selecionar_dados(
+    dados = selecionar_dados(
         CANDIDATOS_DA_FILA,
         tipo="fila",
         diretorios_obrigatorios=("tarefas", "eventos"),
     )
+    return dados.pasta if dados else None
 
 
 def _data(texto: object) -> dt.date | None:
