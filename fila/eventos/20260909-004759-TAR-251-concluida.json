@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-004759-TAR-251-concluida",
+  "tarefa": "TAR-251",
+  "evento": "concluida",
+  "quando": "2026-09-09T00:47:59+00:00",
+  "quem": "agent/infra/destravar-reprovisionamento-da-sala",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1451",
+  "verificado_em": "2026-09-09"
+}

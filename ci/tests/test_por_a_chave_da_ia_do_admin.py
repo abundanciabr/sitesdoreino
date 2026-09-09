@@ -786,3 +786,72 @@ def test_o_provisionamento_sabe_de_tudo_que_este_roteiro_escreve(tmp_path):
             "o sintoma seria o robô analista mudo com o deploy verde "
             "(`armadilhas/111`)."
         )
+
+
+def test_conferencia_pages_compara_com_a_copia_anterior_e_morde_a_sabotagem(tmp_path):
+    """A releitura quebrada não pode aprovar uma rotação silenciosa."""
+    fonte = PROVISIONAMENTO.read_text(encoding="utf-8")
+    inicio = fonte.index(
+        'if [ -n "$BAK" ]; then ANTES_PAGES=', fonte.index("CONFERÊNCIA nº 1b")
+    )
+    fim = fonte.index("\n# A CONFERÊNCIA nº 1c", inicio)
+    bloco = fonte[inicio:fim]
+    assert 'ANTES_PAGES="$(ler_de "$BAK" TOKENS_ACEITOS_PAGES)"' in bloco
+    assert '"$ANTES_PAGES"' in bloco
+
+    def rodar(bloco_shell, *, bak: str, vivo: str, pages: str):
+        comando = (
+            ["wsl.exe", "-d", "docker-desktop", "--", "sh", "-s"]
+            if os.name == "nt"
+            else ["sh", "-s"]
+        )
+        script = (
+            "set -u\n"
+            "AMBIENTE=$(mktemp -d)\n"
+            "trap 'rm -rf \"$AMBIENTE\"' EXIT\n"
+            "mkdir -p \"$AMBIENTE/env\"\n"
+            f"printf '%s\\n' 'TOKENS_ACEITOS_PAGES={vivo}' > \"$AMBIENTE/env/admin.env\"\n"
+            + (
+                f"printf '%s\\n' 'TOKENS_ACEITOS_PAGES={bak}' > \"$AMBIENTE/env/admin.env.bak-1\"\n"
+                if bak
+                else ""
+            )
+            + "cd \"$AMBIENTE\"\n"
+            + "ler_de() { grep \"^$2=\" \"$1\" | head -1 | cut -d= -f2-; }\n"
+            + f"BAK={'env/admin.env.bak-1' if bak else ''}\n"
+            + f"T_PAGES={pages}\n"
+            + "faltou=0\n"
+            + bloco_shell
+            + "\nexit \"$faltou\"\n"
+        )
+        resultado = subprocess.run(
+            comando, input=script.encode(), capture_output=True
+        )
+        return subprocess.CompletedProcess(
+            resultado.args,
+            resultado.returncode,
+            resultado.stdout.decode(),
+            resultado.stderr.decode(),
+        )
+
+    assert rodar(
+        bloco, bak="token-antigo", vivo="token-antigo", pages="token-antigo"
+    ).returncode == 0
+    sabotagem = rodar(bloco, bak="token-antigo", vivo="token-novo", pages="token-novo")
+    assert sabotagem.returncode == 1
+    assert "FALTANDO" in sabotagem.stdout
+
+    bloco_antigo = (
+        'if [ -n "$T_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$T_PAGES" ]\n'
+        'then echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK"\n'
+        'else echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO"; faltou=1; fi'
+    )
+    falso_verde = rodar(
+        bloco_antigo, bak="token-antigo", vivo="token-novo", pages="token-novo"
+    )
+    assert falso_verde.returncode == 0
+    assert "OK" in falso_verde.stdout
+
+    primeira_execucao = rodar(bloco, bak="", vivo="token-novo", pages="token-novo")
+    assert primeira_execucao.returncode == 0
+    assert "não havia valor anterior" in primeira_execucao.stdout

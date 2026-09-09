@@ -215,6 +215,7 @@
       <form class="decidir" method="post" action="{% url 'escola_decidir' %}">
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <input type="hidden" name="pessoa_email" value="{{ pessoa.email }}">
         <input type="text" name="motivo" maxlength="500"
                placeholder="Motivo — obrigatório só para recusar">
         {% comment %}
@@ -366,7 +367,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">
-        {% if pessoa.origem == "liberado" %}Você liberou{% else %}Comprou pelo site{% endif %}
+        {% if pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Você liberou{% endif %}
         {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
         {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
         &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>
@@ -392,6 +393,23 @@
         <label class="rotulo" for="compra-{{ pessoa.id }}">Quando comprou</label>
         <input id="compra-{{ pessoa.id }}" type="date" name="comprou_em"
                value="{{ pessoa.comprou_em|default_if_none:'' }}">
+        <fieldset class="cursos-do-aluno">
+          <legend class="rotulo">Cursos matriculados</legend>
+          {% if cursos %}
+            {% for curso in cursos %}
+            <label>
+              <input type="checkbox" name="curso" value="{{ curso.id }}"
+                     {% if curso.id in pessoa.cursos_marcados %}checked{% endif %}>
+              {{ curso.name }}
+            </label>
+            {% endfor %}
+            <p class="nota">Marcar matricula ou reativa. Desmarcar pausa o acesso.</p>
+          {% elif nao_consigo_ver_cursos %}
+            <p class="aviso">Não consegui carregar os cursos. Tente novamente antes de salvar.</p>
+          {% else %}
+            <p class="nota">Ainda não há cursos disponíveis para marcar.</p>
+          {% endif %}
+        </fieldset>
         <button class="sim" type="submit">Salvar</button>
       </form>
 
