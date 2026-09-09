@@ -366,6 +366,16 @@ def test_o_prompt_cita_a_tarefa_e_manda_ler_o_despacho():
     assert "mandato" not in texto, "inventou mandato para caminho que não é protegido"
 
 
+def test_o_prompt_preserva_a_tarefa_e_submete_sem_confundir_com_aceite():
+    texto = robos.prompt_para_tocar("TAR-100", ["admin"])
+    assert "--tar TAR-100" in texto
+    assert "TAR=TAR-100" in texto
+    assert "submeter TAR-100" in texto
+    assert "--revisao" in texto and "--arvore" in texto
+    assert "aceite" in texto
+    assert "Conclua a tarefa no balcão com a URL do PR" not in texto
+
+
 def test_o_prompt_da_mandato_nominal_em_caminho_codeowners():
     """Sem esta frase o robô PARA na primeira linha, e o botão entrega nada."""
     um = robos.prompt_para_tocar("TAR-102", ["ci"])

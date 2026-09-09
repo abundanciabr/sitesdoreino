@@ -303,3 +303,18 @@ por `#area/alunos` também pertence a essa aba: iniciar a busca apenas quando
 a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
 precisa aparecer na área durante carregamento, aviso e falha. O teste real
 do navegador cobre a entrada direta, a volta ao menu e a troca de área.
+
+## Reserva, rascunho e submissão não comprovam aceite (09/09/2026)
+
+A aba dos robôs recebe estados materializados e uma consulta separada ao
+GitHub. Reserva identifica posse; rascunho identifica preparação; PR aberto
+não comprova testes, aceite ou publicação. O carimbo da consulta precisa
+continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
+resposta antes de substituir linhas e classes, preserve a última leitura em
+erro e declare paginação sem apresentar a primeira página como total.
+
+A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
+próprio, pois ausência de classificação não é decisão humana. O produtor do
+livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
+declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
+continuam visíveis e o total de assuntos fica desconhecido.

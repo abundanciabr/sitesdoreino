@@ -40,6 +40,7 @@ isso que prova que a tela não sai para a rede por conta própria, porque
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone as tz
+import json
 from pathlib import Path
 
 import httpx
@@ -49,6 +50,7 @@ from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from apps.core import moldura
+from apps.core import robos
 from apps.core import pendencias as central
 from apps.core.painel import diretorio_do_painel
 
@@ -62,6 +64,137 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 DE_FORA = "estranho@exemplo.com"
 TELA = "/pendencias/"
+
+
+@respx.mock
+def test_central_inclui_a_decisao_humana_da_fila_sem_trabalho_tecnico(
+    tmp_path, monkeypatch
+):
+    pasta = tmp_path / "fila"
+    pasta.mkdir()
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-701": {
+                    "estado": "bloqueada",
+                    "espera": "mantenedor",
+                    "titulo": "Escolher destino",
+                    "motivo": "Falta sua decisão",
+                },
+                "TAR-702": {
+                    "estado": "bloqueada",
+                    "espera": "fila",
+                    "titulo": "Esperar outra tarefa",
+                },
+                "TAR-703": {"estado": "em execução", "titulo": "Submetida sem aceite"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "1 · Tarefas esperando uma decisão sua" in html
+    assert reverse("caixa_robos") in html
+    assert "três fontes" in html
+
+
+@respx.mock
+@pytest.mark.parametrize("conteudo", [None, "{", "[]", '{"TAR-001": null}'])
+def test_fila_de_trabalho_indisponivel_na_central_nao_e_zero(
+    tmp_path, monkeypatch, conteudo
+):
+    if conteudo is not None:
+        (tmp_path / "estados.json").write_text(conteudo, encoding="utf-8")
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "Não deu para perguntar a a fila de trabalho agora" in html
+    assert "0 · Tarefas" not in html
+    assert "Você está em dia" not in html
+
+
+def carimbar_painel(tmp_path, monkeypatch, vinculos):
+    pasta = tmp_path / "painel"
+    pasta.mkdir(exist_ok=True)
+    (pasta / "painel.html").write_text(
+        'pedidosDoDono: { quantidade: 2, maisAntigoQuando: "2026-09-01" },\n'
+        + (
+            "pedidosDoDonoVinculos: " + json.dumps(vinculos) + ",\n"
+            if vinculos is not None
+            else ""
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(central, "diretorio_do_painel", lambda: pasta)
+
+
+@respx.mock
+def test_o_mesmo_assunto_no_livro_e_na_fila_conta_uma_vez(tmp_path, monkeypatch):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [
+            {"arquivo": "20260909-001", "tarefa": "TAR-701"},
+            {"arquivo": "20260909-002", "tarefa": None},
+        ],
+    )
+    (tmp_path / "estados.json").write_text(
+        json.dumps(
+            {
+                tid: {
+                    "estado": "bloqueada",
+                    "espera": "mantenedor",
+                    "titulo": "Mesmo título",
+                }
+                for tid in ["TAR-701", "TAR-702"]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert '<div class="hero-numero">3</div>' in html
+    assert "1 · Tarefas esperando uma decisão sua" in html
+    assert "2 · Decisões suas paradas" in html
+    assert "Total parcial" in html
+    assert "Registros sem vínculo de tarefa" in html
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "vinculos",
+    [None, [], [{"arquivo": "a", "tarefa": 123}, {"arquivo": "b", "tarefa": None}]],
+)
+def test_vinculos_ausentes_ou_invalidos_preservam_linhas_sem_inventar_total(
+    tmp_path, monkeypatch, vinculos
+):
+    carimbar_painel(tmp_path, monkeypatch, vinculos)
+    (tmp_path / "estados.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "2 · Decisões suas paradas" in html
+    assert 'class="hero-numero"' not in html
+    assert "Total de assuntos desconhecido" in html
+
+
+@respx.mock
+def test_parada_sem_responsavel_nao_inventa_decisao_humana(tmp_path, monkeypatch):
+    (tmp_path / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-701": {"estado": "bloqueada", "titulo": "Quem destrava?"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "1 · Tarefas esperando uma decisão sua" not in html
+    assert "responsável ainda não informado" in html
 
 
 @pytest.fixture(autouse=True)
@@ -227,12 +360,19 @@ def test_sem_o_par_de_tokens_a_tela_tambem_abre(monkeypatch):
 
 
 @respx.mock
-def test_com_uma_fila_muda_o_total_vira_um_PISO_e_nao_uma_conta_fechada():
+def test_com_uma_fila_muda_o_total_vira_um_PISO_e_nao_uma_conta_fechada(
+    tmp_path, monkeypatch
+):
     """Somar o que se sabe e chamar de total é a mentira do zero, com precisão.
 
     O guarda mede as duas frases porque elas são a mesma tela em dois estados,
     e trocar uma pela outra é a regressão provável.
     """
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": None}, {"arquivo": "b", "tarefa": None}],
+    )
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
 
@@ -243,12 +383,21 @@ def test_com_uma_fila_muda_o_total_vira_um_PISO_e_nao_uma_conta_fechada():
 
 
 @respx.mock
-def test_com_tudo_respondendo_o_total_e_a_soma_e_a_tela_diz_que_e_fechada():
-    """A contraprova do guarda de cima: sem fila muda, nada de "pelo menos"."""
+def test_com_tudo_respondendo_o_total_ainda_declara_as_fontes_nao_integradas(
+    tmp_path, monkeypatch
+):
+    carimbar_painel(
+        tmp_path,
+        monkeypatch,
+        [{"arquivo": "a", "tarefa": None}, {"arquivo": "b", "tarefa": None}],
+    )
+    (tmp_path / "estados.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
     _todos_respondem()
     html = _texto(_dentro().get(TELA))
 
-    assert "nas duas filas que esta tela já enxerga" in html
+    assert "nas três fontes consultadas" in html
+    assert "Total parcial" in html
     assert "É <b>pelo menos</b> isso" not in html
 
 

@@ -17,6 +17,8 @@ O que estes guardas protegem:
 
 import json
 import re
+import shutil
+import subprocess
 
 import httpx
 import pytest
@@ -25,6 +27,127 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.core import robos
+
+
+@respx.mock
+def test_entrega_submetida_continua_visivel_sem_aceite(tmp_path, monkeypatch):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-293": {
+                    "estado": "em execução",
+                    "titulo": "Conferir o aceite",
+                    "motivo": "Entrega submetida; falta comprovar o aceite da tarefa.",
+                    "pr": "https://github.com/x/y/pull/1494",
+                    "revisao": "a" * 40,
+                    "arvore": "b" * 40,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    html = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+    assert 'data-tarefa="TAR-293"' in html
+    assert "Entrega submetida; falta comprovar o aceite" in html
+    assert "Trabalho em andamento, com aceite ainda não comprovado" in html
+    assert "O trabalho já está pronto" not in html
+    assert "<summary>Já terminaram" not in html
+
+
+@respx.mock
+@pytest.mark.parametrize("conteudo", ["{", "[]", '{"TAR-001": null}'])
+def test_fila_ilegivel_nao_vira_zero(tmp_path, monkeypatch, conteudo):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(conteudo, encoding="utf-8")
+    resposta = _dentro().get(reverse("caixa_robos"))
+    assert resposta.status_code == 500
+    assert "Nada aqui depende de você agora" not in texto(resposta)
+
+
+@respx.mock
+def test_ao_vivo_renova_sem_duplicar_e_declara_rascunho_falha_e_limite(
+    tmp_path, monkeypatch
+):
+    """Executa o script da resposta autenticada com o DOM e relógio controlados."""
+    fila_de_mentira(tmp_path, monkeypatch)
+    resposta = _dentro().get(reverse("caixa_robos"))
+    scripts = re.findall(r"<script>(.*?)</script>", texto(resposta), re.S)
+    script = next(s for s in scripts if "api.github.com/repos/" in s)
+    programa = r"""
+const vm = require("node:vm"), assert = require("node:assert/strict");
+const fs = require("node:fs");
+const fonte = JSON.parse(fs.readFileSync(0, "utf8"));
+function elemento() {
+  return {textContent: "", children: [], dataset: {}, querySelector() {return null;},
+    appendChild(e) {this.children.push(e); return e;},
+    replaceChildren(...e) {this.children = e;},
+    classList: {valores: new Set(), add(c) {this.valores.add(c);}, remove(c) {this.valores.delete(c);}}};
+}
+const estado = elemento(), lista = elemento(), carimbo = elemento(), cartao = elemento();
+const eventos = {}, eventosJanela = {}, timers = [];
+const doc = {visibilityState: "visible", hidden: false,
+  getElementById(id) {return {"ao-vivo-estado": estado, "ao-vivo-lista": lista, "ao-vivo-carimbo": carimbo}[id];},
+  querySelector(s) {return s === ".ao-vivo-caixa" ? {dataset: {repo: "x/y"}} : cartao;},
+  querySelectorAll() {return [cartao];}, createElement: elemento,
+  createTextNode(t) {return {textContent: t};},
+  addEventListener(n, f) {eventos[n] = f;}};
+let agora = 1000000, chamadas = 0, falha = false, incompleta = false;
+let reservas = [{ref: "refs/reservas/tarefa-TAR-002"}];
+let prs = [{number: 1, draft: true, title: "TAR-002 desenho", html_url: "https://github.com/x/y/pull/1"},
+ {number: 2, draft: false, title: "TAR-003 revisão", html_url: "https://github.com/x/y/pull/2"}];
+const contexto = {document: doc, window: {addEventListener(n,f) {eventosJanela[n]=f;},
+ setTimeout(f, ms) {timers.push({f, ms});}, setInterval(f, ms) {timers.push({f, ms});}},
+ Date: class extends Date {constructor(...a) {super(...(a.length ? a : [agora]));} static now() {return agora;}},
+ AbortSignal, setTimeout, clearTimeout,
+ fetch: async url => {chamadas++; if(falha && url.includes("/pulls?")) throw Error("offline");
+ return {ok: true, headers: {get() {return incompleta ? '<https://api.github.com/repos/x/y/pulls?page=2>; rel="next"' : null;}},
+ json: async () => url.includes("matching-refs") ? reservas : prs};}};
+vm.runInNewContext(fonte, contexto);
+const texto = e => e.textContent + (e.children || []).map(texto).join("");
+const ciclo = () => new Promise(resolve => setImmediate(resolve));
+(async () => {
+ await ciclo();
+ assert.match(texto(lista), /rascunho/i);
+ assert.doesNotMatch(texto(lista), /trabalho pronto/i);
+ assert.match(texto(lista), /aceite.*não comprovado/i);
+ assert.ok(cartao.classList.valores.has("reservada-agora"));
+ assert.equal(chamadas, 2);
+ const primeiroCarimbo = carimbo.textContent;
+ assert.ok(eventosJanela.focus); assert.ok(eventos.visibilitychange);
+ eventosJanela.focus(); eventos.visibilitychange(); await ciclo(); assert.equal(chamadas, 2);
+ agora += 301000; reservas = []; prs = [prs[1]];
+ eventosJanela.focus(); eventos.visibilitychange(); await ciclo();
+ assert.equal(chamadas, 4); assert.equal(lista.children.length, 1);
+ assert.notEqual(carimbo.textContent, primeiroCarimbo);
+ assert.ok(!cartao.classList.valores.has("reservada-agora"));
+ assert.doesNotMatch(texto(lista), /rascunho/i);
+ const anterior = texto(lista); falha = true; agora += 301000;
+ eventos.visibilitychange(); await ciclo();
+ assert.equal(texto(lista), anterior); assert.match(estado.textContent, /não consegui/i);
+ assert.match(estado.textContent, /anterior|última/i);
+ falha = false; agora += 301000; reservas = [{ref: 7}];
+ eventos.visibilitychange(); await ciclo();
+ assert.equal(texto(lista), anterior); assert.match(estado.textContent, /não consegui/i);
+ reservas = [];
+ falha = false; incompleta = true; agora += 301000;
+ prs = Array.from({length:100}, (_, n) => ({number: n+1, title:"Trabalho "+n, draft:false}));
+ eventosJanela.focus(); await ciclo();
+ assert.match(estado.textContent, /parcial|primeir/i);
+ assert.equal(lista.children.length, 100);
+ assert.match(carimbo.textContent, /leitura|consult/i);
+ console.log("PASS: draft, aceite, foco, visibilidade, limite, erro e ausência de duplicação");
+})().catch(e => {console.error(e); process.exitCode = 1;});
+"""
+    resultado = subprocess.run(
+        [shutil.which("node"), "-e", programa],
+        input=json.dumps(script),
+        text=True,
+        capture_output=True,
+        timeout=30,
+    )
+    assert resultado.returncode == 0, resultado.stdout + resultado.stderr
+
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -216,7 +339,7 @@ def test_o_de_agora_vem_antes_do_retrato(tmp_path, monkeypatch):
     fila_de_mentira(tmp_path, monkeypatch)
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
-    ao_vivo = pagina.find("Agora, neste minuto")
+    ao_vivo = pagina.find("Consulta ao GitHub")
     e_dele = pagina.find("Esperando uma decisão sua")
     corrente = pagina.find("Esperando outra tarefa terminar")
     ja_terminaram = pagina.find("Já terminaram")
@@ -261,7 +384,7 @@ def test_a_tela_fala_portugues_e_nao_o_vocabulario_da_fila(tmp_path, monkeypatch
     fila_de_mentira(tmp_path, monkeypatch)
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
-    assert "Um robô pegou, e está com ela agora" in pagina
+    assert "Tarefa reservada por um robô" in pagina
     # `infra` é nome de pasta; o que ele lê é o lugar.
     assert "onde: a fábrica (ferramenta dos robôs)" in pagina
     assert "reivindicada" not in pagina
@@ -424,14 +547,10 @@ def test_as_duas_paradas_nao_moram_no_mesmo_bloco(tmp_path, monkeypatch):
 
 
 @respx.mock
-def test_parada_sem_dizer_quem_destrava_aparece_no_bloco_dele(tmp_path, monkeypatch):
-    """Falha para o lado de MOSTRAR, nunca de esconder.
-
-    Um `espera` que a tela não reconhece — dado de um build antigo, campo que um
-    dia mude de nome — vai para o bloco do mantenedor. Um cartão a mais ali
-    custa uma leitura; um cartão que some da única tela que responde "em que pé
-    está" custa uma tarefa esquecida, e ninguém ficaria sabendo.
-    """
+def test_parada_sem_dizer_quem_destrava_aparece_sem_inventar_responsavel(
+    tmp_path, monkeypatch
+):
+    """A parada continua visível; falta de classificação não é decisão humana."""
     pasta = fila_de_mentira(tmp_path, monkeypatch)
     (pasta / "estados.json").write_text(
         json.dumps(
@@ -451,7 +570,10 @@ def test_parada_sem_dizer_quem_destrava_aparece_no_bloco_dele(tmp_path, monkeypa
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     assert "A parada sem dono declarado" in pagina, "a tarefa sumiu da tela"
-    assert pagina.find("Esperando uma decisão sua") < pagina.find(
+    assert "Responsável pela parada ainda não informado" in pagina
+    assert "Esperando uma decisão sua" not in pagina
+    assert "Nada aqui depende de você agora" not in pagina
+    assert pagina.find("Responsável pela parada ainda não informado") < pagina.find(
         "A parada sem dono declarado"
     )
 
@@ -500,9 +622,12 @@ def test_o_grupo_certo_para_cada_parada():
     assert not robos.e_deste_grupo(dele, grupo_corrente)
     assert robos.e_deste_grupo(corrente, grupo_corrente)
     assert not robos.e_deste_grupo(corrente, grupo_dele)
-    # O desconhecido cai com ele, e em lugar nenhum além disso.
-    assert robos.e_deste_grupo(sem_dono, grupo_dele)
+    # O desconhecido tem grupo próprio, sem inventar um responsável.
+    assert not robos.e_deste_grupo(sem_dono, grupo_dele)
     assert not robos.e_deste_grupo(sem_dono, grupo_corrente)
+    assert robos.e_deste_grupo(
+        sem_dono, {"estado": "bloqueada", "espera": "desconhecida"}
+    )
     # Estado diferente nunca casa, com ou sem `espera`.
     assert not robos.e_deste_grupo(dele, grupo_terminadas)
     assert robos.e_deste_grupo({"estado": "concluída"}, grupo_terminadas)
