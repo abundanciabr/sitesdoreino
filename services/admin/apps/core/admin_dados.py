@@ -1,9 +1,14 @@
-"""Dados publicados para a area admin, fora da imagem da aplicacao."""
+"""Seleção de uma versão concreta dos dados publicados para a área admin."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 
@@ -11,6 +16,56 @@ FORMATO_DADOS_ADMIN = "admin-dados.v1"
 PASTA_DADOS_ADMIN = Path("/opt/plataforma/admin-dados")
 PASTA_DADOS_PAINEL_ATIVO = PASTA_DADOS_ADMIN / "painel_ativo"
 PASTA_DADOS_FILA_ATIVO = PASTA_DADOS_ADMIN / "fila_ativo"
+
+
+@dataclass(frozen=True)
+class DadosAdmin:
+    """Pasta fixada e identidade conferida; `sha=None` identifica o legado.
+
+    `origem` distingue publicacao, embutido e checkout. `condicao` é verificada,
+    alternativa ou legado. O motivo da alternativa nunca contém caminhos.
+    Esta seleção não afirma que a revisão é a mais recente do repositório.
+    """
+
+    pasta: Path
+    sha: str | None
+    run_id: str | None
+    run_number: int | None
+    gerado_em: str | None
+    origem: str
+    condicao: str
+    motivo: str | None
+
+
+@dataclass
+class _DadosDaResposta:
+    selecoes: dict[str | None, DadosAdmin | None] = field(default_factory=dict)
+    identidade: tuple | None = None
+
+
+_DADOS_DA_RESPOSTA: ContextVar[_DadosDaResposta | None] = ContextVar(
+    "dados_admin_da_resposta", default=None
+)
+
+
+@contextmanager
+def dados_da_resposta():
+    """Uma seleção por resposta, isolada e descartada inclusive se houver erro."""
+    token = _DADOS_DA_RESPOSTA.set(_DadosDaResposta())
+    try:
+        yield
+    finally:
+        _DADOS_DA_RESPOSTA.reset(token)
+
+
+def _identidade(dados: DadosAdmin) -> tuple:
+    if dados.sha:
+        return ("publicacao", dados.sha, dados.run_id, dados.run_number)
+    return ("legado", dados.pasta.parent)
+
+
+class _DadosInvalidos(ValueError):
+    pass
 
 
 def _sha256(caminho: Path) -> str:
@@ -29,40 +84,143 @@ def _inventario_real(caminho: Path) -> set[str]:
     }
 
 
-def _exige_manifesto(caminho: Path) -> bool:
-    normalizado = str(caminho).replace("\\", "/")
-    return normalizado.startswith("/opt/plataforma/admin-dados/")
+def _origem(candidato: Path) -> str:
+    if candidato.absolute().is_relative_to(PASTA_DADOS_ADMIN.absolute()):
+        return "publicacao"
+    if candidato.name in {"painel_embutido", "fila_embutida"}:
+        return "embutido"
+    return "checkout"
 
 
-def _manifesto_valido(caminho: Path, tipo: str | None) -> bool:
+def _conferir_origem(origem: object) -> dict:
+    erro = "A identificação da publicação está ausente ou inválida."
+    if not isinstance(origem, dict):
+        raise _DadosInvalidos(erro)
+    sha = origem.get("sha")
+    run_id = origem.get("run_id")
+    numero = origem.get("run_number")
+    gerado = origem.get("gerado_em")
+    if (
+        not isinstance(sha, str)
+        or not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha)
+        or not isinstance(run_id, str)
+        or not re.fullmatch(r"[1-9][0-9]*", run_id)
+        or type(numero) is not int
+        or numero < 1
+        or not isinstance(gerado, str)
+    ):
+        raise _DadosInvalidos(erro)
+    try:
+        data = datetime.fromisoformat(gerado)
+    except ValueError as exc:
+        raise _DadosInvalidos(erro) from exc
+    if data.tzinfo is None:
+        raise _DadosInvalidos(erro)
+    return origem
+
+
+def _conferir_manifesto(
+    caminho: Path, tipo: str | None, *, exigido: bool
+) -> dict | None:
     manifesto = caminho / "admin-dados.json"
     if not manifesto.is_file():
-        return not _exige_manifesto(caminho)
+        if exigido:
+            raise _DadosInvalidos(
+                "A publicação não trouxe sua identificação e integridade."
+            )
+        return None
     try:
         dados = json.loads(manifesto.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-    if dados.get("formato") != FORMATO_DADOS_ADMIN:
-        return False
-    if tipo is not None and dados.get("tipo") != tipo:
-        return False
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise _DadosInvalidos(
+            "A identificação da publicação não pôde ser lida."
+        ) from exc
+    if (
+        not isinstance(dados, dict)
+        or dados.get("formato") != FORMATO_DADOS_ADMIN
+        or (tipo is not None and dados.get("tipo") != tipo)
+    ):
+        raise _DadosInvalidos(
+            "O formato da publicação é incompatível com esta versão do sistema."
+        )
+    origem = _conferir_origem(dados.get("origem"))
     integridade = dados.get("integridade")
+    erro = "A integridade dos arquivos da publicação não foi confirmada."
     if not isinstance(integridade, dict) or integridade.get("algoritmo") != "sha256":
-        return False
+        raise _DadosInvalidos(erro)
     arquivos = integridade.get("arquivos")
     if not isinstance(arquivos, dict) or not arquivos:
-        return False
-    inventario_declarado = set()
+        raise _DadosInvalidos(erro)
     for relativo, esperado in arquivos.items():
-        if not isinstance(relativo, str) or relativo.startswith("/"):
-            return False
-        if ".." in Path(relativo).parts:
-            return False
-        inventario_declarado.add(relativo)
+        if (
+            not isinstance(relativo, str)
+            or relativo.startswith("/")
+            or Path(relativo).is_absolute()
+            or ".." in Path(relativo).parts
+            or "\\" in relativo
+            or ":" in relativo
+        ):
+            raise _DadosInvalidos(erro)
         arquivo = caminho / relativo
         if not arquivo.is_file() or _sha256(arquivo) != esperado:
-            return False
-    return _inventario_real(caminho) == inventario_declarado
+            raise _DadosInvalidos(erro)
+    if _inventario_real(caminho) != set(arquivos):
+        raise _DadosInvalidos(erro)
+    return origem
+
+
+def _selecionar_dados(
+    candidatos: tuple[Path, ...],
+    *,
+    tipo: str | None = None,
+    arquivos_obrigatorios: tuple[str, ...] = (),
+    diretorios_obrigatorios: tuple[str, ...] = (),
+    identidade: tuple | None = None,
+) -> DadosAdmin | None:
+    """Valida e retorna a versão concreta, com a razão de qualquer alternativa."""
+    motivo = None
+    for candidato in candidatos:
+        origem = _origem(candidato)
+        try:
+            pasta = candidato.resolve(strict=True)
+            if not pasta.is_dir():
+                raise _DadosInvalidos(
+                    "A cópia preferencial dos dados não está disponível."
+                )
+            if not all(
+                (pasta / nome).is_file() for nome in arquivos_obrigatorios
+            ) or not all((pasta / nome).is_dir() for nome in diretorios_obrigatorios):
+                raise _DadosInvalidos("A cópia preferencial dos dados está incompleta.")
+            publicacao = _conferir_manifesto(
+                pasta, tipo, exigido=origem == "publicacao"
+            )
+        except _DadosInvalidos as exc:
+            motivo = motivo or str(exc)
+            continue
+        except (OSError, RuntimeError):
+            motivo = (
+                motivo
+                or "A cópia preferencial dos dados não está disponível para leitura."
+            )
+            continue
+        identificacao = publicacao or {}
+        selecionado = DadosAdmin(
+            pasta=pasta,
+            sha=identificacao.get("sha"),
+            run_id=identificacao.get("run_id"),
+            run_number=identificacao.get("run_number"),
+            gerado_em=identificacao.get("gerado_em"),
+            origem=origem,
+            condicao=(
+                "alternativa" if motivo else "verificada" if publicacao else "legado"
+            ),
+            motivo=motivo,
+        )
+        if identidade is not None and _identidade(selecionado) != identidade:
+            motivo = motivo or "Os dados disponíveis pertencem a outra revisão."
+            continue
+        return selecionado
+    return None
 
 
 def selecionar_dados(
@@ -71,16 +229,27 @@ def selecionar_dados(
     tipo: str | None = None,
     arquivos_obrigatorios: tuple[str, ...] = (),
     diretorios_obrigatorios: tuple[str, ...] = (),
-) -> Path | None:
-    """Retorna o primeiro diretorio de dados compativel, ou None."""
-    for candidato in candidatos:
-        if not candidato.is_dir():
-            continue
-        if not all((candidato / nome).is_file() for nome in arquivos_obrigatorios):
-            continue
-        if not all((candidato / nome).is_dir() for nome in diretorios_obrigatorios):
-            continue
-        if not _manifesto_valido(candidato, tipo):
-            continue
-        return candidato
-    return None
+) -> DadosAdmin | None:
+    """Fixa a revisão da resposta e nunca troca um pacote já escolhido."""
+    contexto = _DADOS_DA_RESPOSTA.get()
+    if contexto is not None and tipo in contexto.selecoes:
+        dados = contexto.selecoes[tipo]
+        if dados is None:
+            return None
+        if not all((dados.pasta / nome).is_file() for nome in arquivos_obrigatorios):
+            return None
+        if not all((dados.pasta / nome).is_dir() for nome in diretorios_obrigatorios):
+            return None
+        return dados
+    dados = _selecionar_dados(
+        candidatos,
+        tipo=tipo,
+        arquivos_obrigatorios=arquivos_obrigatorios,
+        diretorios_obrigatorios=diretorios_obrigatorios,
+        identidade=contexto.identidade if contexto is not None else None,
+    )
+    if contexto is not None:
+        contexto.selecoes[tipo] = dados
+        if dados is not None and contexto.identidade is None:
+            contexto.identidade = _identidade(dados)
+    return dados

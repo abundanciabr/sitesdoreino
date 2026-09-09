@@ -303,3 +303,74 @@ por `#area/alunos` também pertence a essa aba: iniciar a busca apenas quando
 a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
 precisa aparecer na área durante carregamento, aviso e falha. O teste real
 do navegador cobre a entrada direta, a volta ao menu e a troca de área.
+
+## Reserva, rascunho e submissão não comprovam aceite (09/09/2026)
+
+A aba dos robôs recebe estados materializados e uma consulta separada ao
+GitHub. Reserva identifica posse; rascunho identifica preparação; PR aberto
+não comprova testes, aceite ou publicação. O carimbo da consulta precisa
+continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
+resposta antes de substituir linhas e classes, preserve a última leitura em
+erro e declare paginação sem apresentar a primeira página como total.
+
+Validar só o número do PR não protege os campos usados para montar a linha.
+Título, referência do ramo, fase e referência da reserva também precisam de
+tipo e formato conferidos. Monte linhas, marcações e carimbo fora do DOM;
+só substitua a leitura depois que a preparação inteira terminar. A regressão
+injeta um item ruim entre bons e interrompe uma montagem válida: em ambos os
+casos, inclusive na repetição, preserva nós, classes, etiquetas e horário.
+
+A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
+próprio, pois ausência de classificação não é decisão humana. O produtor do
+livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
+declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
+continuam visíveis e o total de assuntos fica desconhecido.
+
+Quando os vínculos completos saem do HTML, `pedidosDoDonoVinculosFonte`
+identifica o JSON local por nome, carimbo do livro, quantidade e SHA-256 dos
+bytes. A Central lê esse arquivo na mesma pasta concreta já fixada pela
+resposta; não seleciona outra publicação para buscar o que faltou. Caminho
+redirecionado, hash ou carimbo divergente, contagem incoerente e mistura com
+array inline são cobertura desconhecida, nunca deduplicação parcial. O hash
+não substitui a conferência do conteúdo: bytes íntegros ainda podem carregar
+quantidade ou carimbo de outro retrato.
+
+## A versão dos dados fica presa antes de conferir e ler (09/09/2026, TAR-291)
+
+Resolver o ponteiro depois de conferir os hashes permite validar uma versão e
+servir outra. `admin_dados.selecionar_dados` resolve primeiro e devolve um
+`DadosAdmin` imutável: `pasta` concreta, `sha`, `run_id`, `run_number`,
+`gerado_em`, `origem`, `condicao` e `motivo`. Os leitores de registros e cartões
+usam a mesma seleção do painel; os adaptadores antigos devolvem apenas essa
+pasta concreta. A prova troca um ponteiro real durante a conferência e exige
+que a resposta continue na versão que foi conferida.
+
+`origem` distingue `publicacao`, `embutido` e `checkout`. `condicao` distingue
+`verificada`, `alternativa` e `legado`; `sha` ausente identifica legado mesmo
+quando ele é a alternativa. Pacote com manifesto exige revisão completa,
+identificação e número da execução, data com fuso e integridade. Ausência de
+manifesto só é aceita fora da pasta de publicações, como legado explícito.
+
+O HTML e os arquivos do painel respondem com `X-Admin-Dados-Sha`,
+`X-Admin-Dados-Run`, `X-Admin-Dados-Origem` e `X-Admin-Dados-Condicao`. Revisão ou
+execução desconhecida é `desconhecida`; nenhuma cópia válida é `indisponivel`
+na página de erro. A página acrescenta somente a identificação e o aviso da
+alternativa, sem mudar os bytes que calculam o livro. Caminhos locais nunca
+entram nesses cabeçalhos ou avisos. A alternativa não cria registro, pedido ou
+incidente. `verificada` significa que identidade e arquivos conferiram; não
+afirma que a revisão é a mais recente do repositório.
+
+`PortaAdministrativa` abre um contexto por requisição e o descarta em
+`finally`, inclusive em recusa ou exceção. A primeira seleção fixa a revisão;
+cada tipo fixa sua pasta concreta ou sua indisponibilidade. Outro consumidor
+não troca de pacote para encontrar um artefato ausente. Painel e fila só se
+combinam na mesma revisão e execução; no legado, precisam pertencer à mesma
+raiz local.
+Sem uma cópia compatível, a fonte fica indisponível e a tela mantém o aviso
+que já trata a ausência. O publicador atual tem dois ponteiros independentes:
+a publicação conjunta e atômica ainda precisa ser implementada.
+
+Não há cache entre requisições. Uma otimização futura precisa usar a
+identidade da release concreta e preservar o aviso da alternativa; cachear
+o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
+arquivos dentro da release continua sendo responsabilidade do publicador.

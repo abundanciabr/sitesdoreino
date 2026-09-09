@@ -24,7 +24,7 @@ import respx
 from django.test import Client
 from django.urls import reverse
 
-from apps.core import mapa_do_site, robos
+from apps.core import mapa_do_site, painel, robos
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -504,6 +504,12 @@ def _fila_de_mentira(tmp_path, monkeypatch):
         ),
         encoding="utf-8",
     )
+    mapa_original = mapa_do_site.arquivo_do_mapa()
+    painel_local = tmp_path / "painel_embutido"
+    painel_local.mkdir()
+    (painel_local / "painel.html").write_text("<html></html>", encoding="utf-8")
+    (painel_local / "mapa-do-site.json").write_bytes(mapa_original.read_bytes())
+    monkeypatch.setattr(painel, "CANDIDATOS", (painel_local,))
     monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
 
 

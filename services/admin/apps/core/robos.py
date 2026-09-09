@@ -139,18 +139,27 @@ COLUNAS = (
         "recolhida": False,
     },
     {
+        "estado": "bloqueada",
+        "espera": "desconhecida",
+        "rotulo": "Responsável pela parada ainda não informado",
+        "curto": "falta classificar",
+        "explicacao": "O robô precisa registrar quem destrava e o próximo passo. Estas tarefas continuam visíveis, mas ainda não sabemos se dependem de você.",
+        "cor": "roxo",
+        "recolhida": False,
+    },
+    {
         "estado": "em execução",
-        "rotulo": "O trabalho já está pronto, esperando conferência",
-        "curto": "na conferência",
-        "explicacao": "Um robô mandou o trabalho e a esteira está conferindo. Ninguém precisa fazer nada.",
+        "rotulo": "Trabalho em andamento, com aceite ainda não comprovado",
+        "curto": "aguardando aceite",
+        "explicacao": "O motivo de cada cartão informa o último passo registrado. Entrega submetida continua aqui até a comprovação do aceite. O robô deve conferir a entrega e registrar a prova.",
         "cor": "roxo",
         "recolhida": False,
     },
     {
         "estado": "reivindicada",
-        "rotulo": "Um robô pegou, e está com ela agora",
-        "curto": "com um robô agora",
-        "explicacao": "Reservou no servidor para nenhum outro robô pisar em cima, e ainda não mandou o trabalho.",
+        "rotulo": "Tarefa reservada por um robô",
+        "curto": "reserva registrada",
+        "explicacao": "Há uma reserva registrada. Ela identifica quem pegou a tarefa; não comprova atividade neste instante nem entrega pronta.",
         "cor": "roxo",
         "recolhida": False,
     },
@@ -181,9 +190,9 @@ COLUNAS = (
     },
     {
         "estado": "concluída",
-        "rotulo": "Já terminaram, com prova conferida",
-        "curto": "já terminaram",
-        "explicacao": "Cada uma traz o endereço do trabalho que a fechou. Clique para ver.",
+        "rotulo": "Conclusões registradas",
+        "curto": "conclusão registrada",
+        "explicacao": "A fila registrou a conclusão destas tarefas. Cada cartão traz o motivo e a referência disponíveis; este histórico não verifica novamente o aceite nem a publicação.",
         "cor": "verde",
         "recolhida": True,
     },
@@ -310,8 +319,9 @@ def prompt_para_tocar(tarefa: str, toca) -> str:
         "para pousar. Leia o despacho completo no arquivo dela em fila/tarefas/ "
         f"antes de começar.{mandato}\n\n"
         "Trabalhe numa bancada própria criada de origin/main, nunca no clone "
-        "principal. Na bancada, gere o índice de armadilhas e reivindique esta "
-        "tarefa no balcão antes de editar. Leia AGENTS.md, as armadilhas citadas no "
+        f"principal. Abra a sessão com ci/sessao.py e --tar {tarefa}, preservando "
+        "a mesma tarefa em todos os eventos. Na bancada, consulte o contexto "
+        "direcionado e o índice de armadilhas. Leia AGENTS.md, as armadilhas citadas no "
         "despacho e a lição da célula. Preserve mudanças alheias.\n\n"
         "Antes de escrever, rode a suíte da célula. Depois, siga os alvos e limites "
         "do despacho, escreva o teste que nasce vermelho, deixe-o verde e sabote "
@@ -319,10 +329,12 @@ def prompt_para_tocar(tarefa: str, toca) -> str:
         "português correto e sem travessão. Se depender de decisão do dono, segredo, "
         "dinheiro ou VPS, bloqueie a tarefa no balcão com o motivo e registre que "
         "precisa do dono.\n\n"
-        "Com a suíte verde, faça a revisão e o passe de remoção. Commite, envie o "
-        "ramo, abra o PR e leia o número. Reserve e embarque no mesmo ramo o "
-        "registro do painel citando o PR, com a área do ramo e a evidência. Conclua "
-        "a tarefa no balcão com a URL do PR. Não faça o pouso automático e não fique "
+        "Com a suíte verde, faça a revisão e o passe de remoção. Use make pr "
+        f"com TAR={tarefa} para embarcar o registro do painel e os eventos. "
+        f"A entrega usa ci/fila.py submeter {tarefa}, com --quem, --pr, "
+        "--revisao e --arvore da validação. Abrir ou integrar o PR não conclui "
+        "a tarefa: falta comprovar o aceite e registrar a baixa com evidência. "
+        "Não faça o pouso automático e não fique "
         "esperando checks: devolva à maestro o número do PR, o ramo, os testes "
         "rodados e qualquer bloqueio."
     )
@@ -370,28 +382,14 @@ def selo_da_importancia(valor) -> dict:
 
 
 def e_deste_grupo(dados: dict, grupo: dict) -> bool:
-    """A tarefa cai neste grupo da tela?
-
-    Estado igual basta para cinco dos sete grupos. Os dois de PARADAS dividem o
-    mesmo estado (`bloqueada`) e se separam por `espera`, que `ci/fila.py`
-    calcula: `mantenedor` para quem declarou que só o dono destrava, `fila` para
-    quem espera outra tarefa terminar.
-
-    **Falha para o lado de MOSTRAR.** Uma parada cujo `espera` não é nenhum dos
-    dois — dado de um build antigo, campo que um dia mude de nome — vai para o
-    grupo do mantenedor, e não some. Um cartão a mais no bloco dele custa uma
-    leitura; um cartão que desaparece da única tela que responde "em que pé
-    está" custa uma tarefa esquecida, e ninguém nunca ficaria sabendo. É a mesma
-    regra do `ONDE_ISSO_MEXE` acima, pelo mesmo motivo: o que a tela não
-    reconhece ela mostra, nunca engole.
-    """
+    """Usa a classificação da fila; responsável ausente fica visível à parte."""
     if dados.get("estado") != grupo["estado"]:
         return False
     esperado = grupo.get("espera")
     if esperado is None:
         return True
-    if esperado == "mantenedor":
-        return dados.get("espera") != "fila"
+    if esperado == "desconhecida":
+        return dados.get("espera") not in ("fila", "mantenedor")
     return dados.get("espera") == esperado
 
 
@@ -401,9 +399,10 @@ _SCRIPT_EMBUTIDO = re.compile(
 
 
 def diretorio_da_fila() -> Path | None:
-    return selecionar_dados(
+    dados = selecionar_dados(
         CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
     )
+    return dados.pasta if dados else None
 
 
 def _ler_json(caminho: Path):
@@ -411,6 +410,21 @@ def _ler_json(caminho: Path):
         return json.loads(caminho.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
+
+
+def ler_estados(pasta: Path | None) -> dict | None:
+    """A ausência ou corrupção do retrato não é uma fila vazia."""
+    estados = _ler_json(pasta / "estados.json") if pasta else None
+    conhecidos = {grupo["estado"] for grupo in COLUNAS}
+    if not isinstance(estados, dict) or any(
+        not RE_ID_DA_TAREFA.fullmatch(tid)
+        or not isinstance(dados, dict)
+        or not isinstance(dados.get("estado"), str)
+        or dados.get("estado") not in conhecidos
+        for tid, dados in estados.items()
+    ):
+        return None
+    return estados
 
 
 def _resumo_de_esperas(pasta: Path):
@@ -442,6 +456,7 @@ def andamento(pasta: Path) -> dict:
     """
     ultima_mexida: dict[str, str] = {}
     terminadas_por_dia: dict[str, int] = {}
+    conclusoes_registradas = set()
 
     for arquivo in sorted((pasta / "eventos").glob("*.json")):
         evento = _ler_json(arquivo)
@@ -454,7 +469,8 @@ def andamento(pasta: Path) -> dict:
         # Os arquivos vêm ordenados por nome, e o nome COMEÇA pelo carimbo de
         # tempo — então o último a passar por aqui é mesmo o mais recente.
         ultima_mexida[tarefa] = dia
-        if evento.get("evento") == "concluida":
+        if evento.get("evento") == "concluida" and tarefa not in conclusoes_registradas:
+            conclusoes_registradas.add(tarefa)
             terminadas_por_dia[dia] = terminadas_por_dia.get(dia, 0) + 1
 
     dias = sorted(terminadas_por_dia)
@@ -529,7 +545,8 @@ def _csp(html: bytes) -> str:
 @require_GET
 def robos(request):
     pasta = diretorio_da_fila()
-    if pasta is None:
+    estados = ler_estados(pasta)
+    if estados is None:
         # Mesma lei do painel ausente: a página DIZ que a fila não veio (500),
         # nunca finge fila vazia — "não há trabalho" seria mentira.
         resposta = render(
@@ -538,7 +555,6 @@ def robos(request):
         resposta["Content-Security-Policy"] = _csp(resposta.content)
         return resposta
 
-    estados = _ler_json(pasta / "estados.json") or {}
     relogio = andamento(pasta)
     ultima_mexida = relogio["ultima_mexida"]
 
@@ -615,6 +631,9 @@ def robos(request):
         {
             "colunas": colunas,
             "esperando_voce": esperando_voce,
+            "sem_responsavel": next(
+                len(c["cartoes"]) for c in colunas if c.get("espera") == "desconhecida"
+            ),
             "total": len(estados),
             "andamento": relogio,
             "esperas": _resumo_de_esperas(pasta),

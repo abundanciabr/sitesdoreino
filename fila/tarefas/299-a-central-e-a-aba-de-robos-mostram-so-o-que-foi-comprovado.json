@@ -1,0 +1,17 @@
+{
+  "arquivo": "299-a-central-e-a-aba-de-robos-mostram-so-o-que-foi-comprovado",
+  "id": "TAR-299",
+  "titulo": "A Central e a aba de robôs mostram só o que foi comprovado",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Regressões vermelho para verde e mutações, Django autenticado com CSP no Chrome, fontes ausentes e listas parciais declaradas, entrega submetida sem conclusão inventada.",
+  "despacho": "Torne as telas administrativas de robôs e pendências confiáveis usando as fontes existentes. Diferencie reserva, execução, entrega submetida e conclusão registrada sem inferir aceite por PR ou merge. Preserve a identidade da tarefa no prompt e use o rito de submissão e aceite. Inclua tarefas bloqueadas pelo mantenedor na Central reutilizando a classificação da fila. Desconte apenas vínculos explícitos por TAR produzidos pelo livro; registros distintos do livro permanecem fatos distintos. Ausência de fonte ou vínculo e paginação nunca viram total conhecido. Valide o retorno inteiro e monte a atualização antes de alterar DOM, classes ou horário; renove por foco com intervalo de cinco minutos. Prove regressões vermelho para verde, mutações e resposta real do Django autenticada com CSP no Chrome. Posse: robos.py, pendencias.py, templates caixa_robos.html e pendencias.html, seus três arquivos de testes e LICOES da célula admin. Não alterar leitor, fila, publicador nem fontes do painel. Depende dos PRs 1493 e 1496. Não criar agendamento nem inferir entrega concluída por submissão. modelo_recomendado: modelo-de-cima(gpt-6-astra); esforco_recomendado: high; teto_de_contexto: 180000. Ficha gerada por economia_da_fabrica.py brief --tipo produto --celula admin e fornecida pela maestro.",
+  "origem": "Pedido do mantenedor de painel administrativo confiável; fatia admin atribuída pela maestro, dependente dos PRs 1493 e 1496.",
+  "criada_em": "2026-09-09"
+}
