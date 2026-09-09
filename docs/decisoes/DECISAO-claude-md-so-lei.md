@@ -1014,5 +1014,7 @@ do texto escrito pelo autor.
 A conferência do consentimento e do conteúdo é julgamento do agente, sem
 novo portão neste complemento. Os testes do Padrão verificam a integridade
 das regras existentes, não o comportamento da revisão automática do
-aplicativo. Uma recusa externa exige alternativa materialmente mais segura
-ou decisão específica pela maestro; as permissões do aplicativo permanecem.
+aplicativo. Evidência adicional de autorização e conteúdo pode fundamentar
+reavaliação pela mesma proteção; a recusa permanece até nova aprovação.
+Sem essa prova, cabe alternativa materialmente mais segura ou decisão
+específica pela maestro. As permissões do aplicativo permanecem.

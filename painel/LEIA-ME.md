@@ -96,7 +96,10 @@
    finalidade, destino ou exposição exige autorização específica. Novo SHA
    continua exigindo as validações e a revisão técnica previstas no rito.
 
-   Uma recusa da revisão automática do aplicativo continua valendo. Prepare
+   Uma recusa da revisão automática do aplicativo continua valendo. Confira
+   se a autorização existente e o conteúdo final foram apresentados à revisão.
+   Evidência adicional pode fundamentar reavaliação da mesma ação; a recusa
+   permanece até nova aprovação. Prepare
    uma alternativa materialmente mais segura que resolva o motivo da recusa;
    se não houver, devolva à maestro a ação, o motivo e a decisão específica
    necessária. Não repita a mesma ação por outro caminho para contornar a

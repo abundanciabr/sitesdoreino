@@ -2,6 +2,7 @@
 from pathlib import Path
 import pytest
 import base64
+import subprocess
 import yaml
 import estado_da_entrega as entrega
 
@@ -180,33 +181,135 @@ def test_recuperacao_nao_dispensa_publicacao_pendente():
     assert not entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 10",files=[{"path":"services/quiz/app.py"}]),dict(estado="AGUARDANDO_PUBLICACAO",celulas=["quiz"],runs=[dict(id=10,conclusion="failure",jobs=[dict(name="deploy (quiz)",conclusion="failure")])]))
 
 
-def test_sucessor_precisa_ancestralidade_e_job_real(monkeypatch):
-    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],workflows=[CELULA],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
-    sucessor=run(id=11,head_sha="b"*40)
-    nome="deploy (quiz)"
-    def api(raiz,caminho,**kw):
-        if "compare/" in caminho:
-            return dict(status="ahead")
+@pytest.fixture
+def historico_git(tmp_path):
+    remoto = tmp_path / "origem"
+    remoto.mkdir()
+    def git(raiz, *args):
+        return subprocess.run(["git", *args], cwd=raiz, check=True,
+                              capture_output=True, text=True).stdout.strip()
+    git(remoto, "init", "-b", "main")
+    def commit(mensagem="Commit do cenário"):
+        git(remoto, "-c", "user.name=Teste", "-c", "user.email=teste@example.invalid",
+            "commit", "--allow-empty", "-m", mensagem)
+        return git(remoto, "rev-parse", "HEAD")
+    base = commit()
+    anterior = commit()
+    sucessor = commit()
+    git(remoto, "checkout", "-b", "divergente", base)
+    divergente = commit("Ramo divergente")
+    git(remoto, "checkout", "main")
+    local = tmp_path / "local"
+    git(tmp_path, "clone", str(remoto), str(local))
+    return dict(raiz=local, remoto=remoto, anterior=anterior, sucessor=sucessor,
+                divergente=divergente, git=git, commit=commit)
+
+
+def cenario_sucessor(monkeypatch, historico, **mudancas):
+    anterior = historico["anterior"]
+    pendente = dict(estado="FALHA_PUBLICACAO", terminal=False, sha_integrado=anterior,
+                    celulas=["quiz"], workflows=[CELULA], runs=[dict(id=10,
+                    workflow=CELULA, sha=anterior, status="completed", conclusion="cancelled",
+                    jobs_exigidos=["detectar", "portao-de-deploy", "deploy (quiz)"], jobs=[])])
+    sucessor = run(id=11, head_sha=historico["sucessor"], **mudancas)
+    consultas = []
+    def api(raiz, caminho, **kw):
+        consultas.append(caminho)
+        assert "compare/" not in caminho, "ancestralidade ainda usa REST compare"
         if "/jobs?" in caminho:
-            return dict(jobs=[dict(name=n,status="completed",conclusion="success") for n in ["detectar","portao-de-deploy",nome]])
+            return dict(jobs=[dict(name=n, status="completed", conclusion="success")
+                             for n in ["detectar", "portao-de-deploy", "deploy (quiz)"]])
         return dict(workflow_runs=[sucessor])
-    monkeypatch.setattr(entrega,"_api",api)
-    resultado=entrega.comprovar_sucessores(RAIZ,pendente)
+    monkeypatch.setattr(entrega, "_api", api)
+    return pendente, sucessor, consultas
+
+
+def test_sucessor_precisa_ancestralidade_e_job_real(monkeypatch, historico_git):
+    h = historico_git
+    pendente, sucessor, consultas = cenario_sucessor(monkeypatch, h)
+    resultado = entrega.comprovar_sucessores(h["raiz"], pendente)
     assert resultado["estado"] == "PUBLICADO"
-    assert resultado["sha_integrado"] == SHA
-    assert resultado["publicacoes"][0]["sha"] == "b"*40
+    assert resultado["sha_integrado"] == h["anterior"]
+    assert resultado["publicacoes"][0]["sha"] == h["sucessor"]
+    assert any("/jobs?" in c for c in consultas)
     pendente["workflows"].append(INFRA)
-    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+    assert entrega.comprovar_sucessores(h["raiz"], pendente)["estado"] == "FALHA_PUBLICACAO"
     pendente["workflows"].remove(INFRA)
-    nome="deploy (admin)"
-    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
-    nome="deploy (quiz)"
-    def sem_ancestralidade(raiz,caminho,**kw):
-        if "compare/" in caminho:
-            return dict(status="diverged")
-        return api(raiz,caminho,**kw)
-    monkeypatch.setattr(entrega,"_api",sem_ancestralidade)
-    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+    sucessor["head_sha"] = h["divergente"]
+    consultas.clear()
+    assert entrega.comprovar_sucessores(h["raiz"], pendente)["estado"] == "FALHA_PUBLICACAO"
+    assert not any("/jobs?" in c for c in consultas)
+    sucessor["head_sha"] = h["anterior"]
+    assert entrega.comprovar_sucessores(h["raiz"], pendente)["estado"] == "PUBLICADO"
+    monkeypatch.setattr(entrega, "consultar_jobs", lambda *a: [dict(name=n,
+                        status="completed", conclusion="success")
+                        for n in ["detectar", "portao-de-deploy", "deploy (admin)"]])
+    assert entrega.comprovar_sucessores(h["raiz"], pendente)["estado"] == "FALHA_PUBLICACAO"
+
+
+@pytest.mark.parametrize("ausente", ["anterior", "sucessor"])
+def test_sha_ausente_permanece_erro_apos_sincronizar(monkeypatch, historico_git, ausente):
+    h = historico_git
+    h[ausente] = "f" * 40
+    pendente, _, _ = cenario_sucessor(monkeypatch, h)
+    executar = entrega.executar
+    buscas = []
+    def medir(args, **kw):
+        if args[:2] == ["git", "fetch"]:
+            buscas.append(args)
+            assert len(buscas) == 1, "sincronização repetida para commit ausente"
+        return executar(args, **kw)
+    monkeypatch.setattr(entrega, "executar", medir)
+    with pytest.raises(entrega.ErroDeInstrumentacao, match="commit"):
+        entrega.comprovar_sucessores(h["raiz"], pendente)
+    assert len(buscas) == 1
+
+
+def test_consulta_direta_sincroniza_sha_novo_uma_vez(monkeypatch, historico_git):
+    h = historico_git
+    h["sucessor"] = h["commit"]()
+    pendente, _, _ = cenario_sucessor(monkeypatch, h)
+    monkeypatch.setattr(entrega, "ler_pr", lambda *a: dict(state="MERGED", headRefOid=h["anterior"],
+                        mergeCommit={"oid": h["anterior"]}, files=[]))
+    monkeypatch.setattr(entrega, "consultar_publicacao", lambda *a: pendente)
+    executar = entrega.executar
+    buscas = []
+    def medir(args, **kw):
+        if args[:2] == ["git", "fetch"]:
+            buscas.append(args)
+        return executar(args, **kw)
+    monkeypatch.setattr(entrega, "executar", medir)
+    assert entrega.consultar_entrega(h["raiz"], 99)["estado"] == "PUBLICADO"
+    assert len(buscas) == 1
+    assert entrega.consultar_entrega(h["raiz"], 99)["estado"] == "PUBLICADO"
+    assert len(buscas) == 1
+
+
+def test_historico_raso_nao_prova_ancestralidade(monkeypatch, historico_git, tmp_path):
+    h = historico_git
+    raso = tmp_path / "raso"
+    h["git"](tmp_path, "clone", "--depth=1", h["remoto"].as_uri(), str(raso))
+    pendente, _, _ = cenario_sucessor(monkeypatch, h)
+    with pytest.raises(entrega.ErroDeInstrumentacao, match="raso"):
+        entrega.comprovar_sucessores(raso, pendente)
+
+
+@pytest.mark.parametrize("defeito", ["exit", "ausente", "timeout"])
+def test_instrumento_de_ancestralidade_quebrado_e_erro(monkeypatch, historico_git, defeito):
+    h = historico_git
+    pendente, _, _ = cenario_sucessor(monkeypatch, h)
+    rodar = subprocess.run
+    def falhar(args, **kw):
+        if args[:2] == ["git", "merge-base"]:
+            if defeito == "ausente":
+                raise FileNotFoundError("git indisponível")
+            if defeito == "timeout":
+                raise subprocess.TimeoutExpired(args, 30)
+            return subprocess.CompletedProcess(args, 128, "", "objeto corrompido")
+        return rodar(args, **kw)
+    monkeypatch.setattr(subprocess, "run", falhar)
+    with pytest.raises(entrega.ErroDeInstrumentacao):
+        entrega.comprovar_sucessores(h["raiz"], pendente)
 
 
 def test_recuperacao_rejeita_id_extra_que_nao_e_falha_vigente(monkeypatch):
@@ -218,16 +321,16 @@ def test_recuperacao_rejeita_id_extra_que_nao_e_falha_vigente(monkeypatch):
     assert any(r.estado is Estado.FAIL for r in mergear.checar_publicacoes_anteriores(RAIZ,pr))
 
 
-def test_sucessor_mais_recente_falho_nao_recua_para_verde_antigo(monkeypatch):
-    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],workflows=[CELULA],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
+def test_sucessor_mais_recente_falho_nao_recua_para_verde_antigo(monkeypatch, historico_git):
+    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=historico_git["anterior"],celulas=["quiz"],workflows=[CELULA],runs=[dict(id=10,workflow=CELULA,sha=historico_git["anterior"],status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
     def api(raiz,caminho,**kw):
-        if "compare/" in caminho: return dict(status="ahead")
+        assert "compare/" not in caminho
         if "/jobs?" in caminho:
             ruim="/12/" in caminho
             return dict(jobs=[dict(name=n,status="completed",conclusion="failure" if ruim and n=="deploy (quiz)" else "success") for n in ["detectar","portao-de-deploy","deploy (quiz)"]])
-        return dict(workflow_runs=[run(id=12,head_sha="c"*40,conclusion="failure"),run(id=11,head_sha="b"*40)])
+        return dict(workflow_runs=[run(id=12,head_sha=historico_git["sucessor"],conclusion="failure"),run(id=11,head_sha=historico_git["anterior"])])
     monkeypatch.setattr(entrega,"_api",api)
-    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+    assert entrega.comprovar_sucessores(historico_git["raiz"],pendente)["estado"] == "FALHA_PUBLICACAO"
 
 
 def test_correcao_da_infra_exige_caminho_que_a_publica():
@@ -339,3 +442,109 @@ def test_workflow_historico_invalido_e_erro_de_instrumento(monkeypatch, defeito)
             entrega.consultar_publicacao(RAIZ,SHA,["services/quiz/app.py"])
         else:
             entrega.workflows_dos_deploys(RAIZ,SHA)
+
+
+@pytest.mark.parametrize("falha", [False, True])
+def test_jobs_em_paralelo_preservam_ordem_e_erro(monkeypatch, falha):
+    from threading import Barrier, Event
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+    mapa = {"quiz": Celula("quiz", ("services/quiz",), ())}
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: mapa)
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {CELULA: ["services/**"], INFRA: ["infra/**"]})
+    def git(args, **kw):
+        if args[1] == "rev-parse":
+            return SimpleNamespace(stdout="false" if "--is-shallow-repository" in args else SHA)
+        if args[1] == "diff":
+            return SimpleNamespace(stdout="services/quiz/app.py")
+        return SimpleNamespace(stdout="")
+    monkeypatch.setattr(entrega, "executar", git)
+    runs = [run(id=i, head_sha=str(i) * 40) for i in [1, 2, 3, 4]]
+    monkeypatch.setattr(entrega, "_api", lambda *a, **kw: dict(workflow_runs=runs))
+    barreira = Barrier(4, timeout=5)
+    antigo_pronto = Event()
+    def jobs(raiz, run):
+        barreira.wait()
+        if run["id"] == 4:
+            assert antigo_pronto.wait(5), "consulta antiga não executou em paralelo"
+            if falha:
+                raise entrega.ErroDeInstrumentacao("consulta de jobs indisponível")
+        else:
+            antigo_pronto.set()
+        return [dict(name="deploy (quiz)", conclusion="failure" if run["id"] == 4 else "success")]
+    monkeypatch.setattr(entrega, "consultar_jobs", jobs)
+    medidos = []
+    def publicacao(raiz, sha, arquivos):
+        medidos.append(sha)
+        return dict(estado="FALHA_PUBLICACAO", terminal=False, sha_integrado=sha)
+    monkeypatch.setattr(entrega, "consultar_publicacao", publicacao)
+    if falha:
+        with pytest.raises(entrega.ErroDeInstrumentacao, match="consulta de jobs"):
+            entrega.publicacoes_anteriores(RAIZ, ["services/quiz/app.py"])
+        assert not medidos
+    else:
+        bloqueios = entrega.publicacoes_anteriores(RAIZ, ["services/quiz/app.py"])
+        assert medidos == ["4" * 40]
+        assert bloqueios[0]["sha_integrado"] == "4" * 40
+
+
+def test_commit_original_invalido_nao_chega_ao_git(monkeypatch, historico_git):
+    pendente, _, _ = cenario_sucessor(monkeypatch, historico_git)
+    pendente["sha_integrado"] = "HEAD"
+    monkeypatch.setattr(entrega, "executar", lambda *a, **kw: pytest.fail("SHA inválido chegou ao Git"))
+    with pytest.raises(entrega.ErroDeInstrumentacao, match="commit original inválido"):
+        entrega.comprovar_sucessores(historico_git["raiz"], pendente)
+
+
+@pytest.mark.parametrize("defeito", ["exit", "truncado", "tipo"])
+def test_medicao_dos_commits_invalida_e_erro(monkeypatch, historico_git, defeito):
+    pendente, _, _ = cenario_sucessor(monkeypatch, historico_git)
+    rodar = subprocess.run
+    def corromper(args, **kw):
+        if args[:2] == ["git", "cat-file"]:
+            return subprocess.CompletedProcess(args, 128 if defeito == "exit" else 0,
+                    "commit\n" if defeito == "truncado" else "commit\ncommit\n" if defeito == "exit" else "blob\ncommit\n", "falha de leitura")
+        return rodar(args, **kw)
+    monkeypatch.setattr(subprocess, "run", corromper)
+    executar = entrega.executar
+    def sem_busca(args, **kw):
+        assert args[:2] != ["git", "fetch"], "instrumento quebrado tentou buscar commits"
+        return executar(args, **kw)
+    monkeypatch.setattr(entrega, "executar", sem_busca)
+    with pytest.raises(entrega.ErroDeInstrumentacao):
+        entrega.comprovar_sucessores(historico_git["raiz"], pendente)
+
+
+@pytest.mark.parametrize("conclusao,esperado", [("success", "PUBLICADO"), ("failure", "FALHA_PUBLICACAO")])
+def test_runs_agendados_nao_ocultam_publicacao_por_push(monkeypatch, conclusao, esperado):
+    agendados = [run(id=i, event="schedule" if i % 2 else "workflow_run") for i in range(100, 200)]
+    relevantes = [run(id=10), run(INFRA, id=20, conclusion=conclusao)]
+    consultas = []
+    def api(raiz, caminho, **kw):
+        if caminho.startswith("contents/"):
+            return conteudo_workflow(caminho)
+        if "/jobs?" in caminho:
+            return dict(jobs=[dict(name=n, status="completed", conclusion="success")
+                             for n in ["detectar", "portao-de-deploy", "deploy (quiz)", "sincronizar"]])
+        consultas.append(caminho)
+        if "event=push" in caminho and "branch=main" in caminho:
+            return dict(total_count=2, workflow_runs=relevantes)
+        return dict(total_count=148, workflow_runs=agendados)
+    monkeypatch.setattr(entrega, "_api", api)
+    resultado = entrega.consultar_publicacao(RAIZ, SHA, ["services/quiz/app.py", "infra/docker-compose.yml"])
+    assert resultado["estado"] == esperado
+    assert len(consultas) == 1
+    assert "head_sha=" + SHA in consultas[0]
+    assert {r["workflow"] for r in resultado["runs"]} == {CELULA, INFRA}
+
+
+def test_lista_filtrada_truncada_continua_erro(monkeypatch):
+    def api(raiz, caminho, **kw):
+        if caminho.startswith("contents/"):
+            return conteudo_workflow(caminho)
+        assert "event=push" in caminho and "branch=main" in caminho
+        assert "/jobs?" not in caminho
+        return dict(total_count=101, workflow_runs=[run(id=i) for i in range(100, 200)])
+    monkeypatch.setattr(entrega, "_api", api)
+    with pytest.raises(entrega.ErroDeInstrumentacao, match="truncada"):
+        entrega.consultar_publicacao(RAIZ, SHA, ["services/quiz/app.py"])
