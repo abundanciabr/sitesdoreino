@@ -23,4 +23,4 @@ variação mecânica da divergência real.
 
 A divergência real continua parando tudo antes de gravar, mas a mensagem precisa
 mostrar as aulas encontradas no módulo. Sem essa lista, a próxima sessão fica
-cego diante da produção e repete o mesmo deploy para descobrir a mesma ausência.
+cega diante da produção e repete o mesmo deploy para descobrir a mesma ausência.
