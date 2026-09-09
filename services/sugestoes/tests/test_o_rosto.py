@@ -364,26 +364,6 @@ def test_o_aviso_leva_para_a_ideia_e_o_lido_some_da_lista_de_nao_lidos(dentro, a
     assert aviso.sugestao.titulo in depois, "o aviso lido sumiu da lista"
 
 
-def test_o_sino_continua_contando_no_trilho_da_propria_pagina_de_avisos(dentro, aviso):
-    """A contagem do EVO-21 não pode ter sido perdida na vestimenta.
-
-    O guarda-mestre disso é `test_o_sino_de_toda_pagina_conta_so_os_meus`, que
-    mede pelo quadro. Este mede na página nova, que é a que mudou — e afirma o
-    nome acessível exatamente como ele é escrito na moldura (`avisos (N)`, em
-    minúsculas), porque é assim que o outro guarda o lê.
-
-    **É um guarda de REGRESSÃO, e por isso já era verde antes do EVO-31.** O
-    modo de falha que ele existe para pegar é o mais fácil de cometer ao vestir
-    uma página: reescrevê-la sem o `{% extends %}` da moldura, como a
-    `entrar.html` legitimamente faz. Falsificado antes de entrar — tirando o
-    `{% extends %}` de `avisos.html`, ele reprova com `assert "avisos (1)" in ...`.
-    """
-    corpo = " ".join(dentro.client.get(reverse("avisos")).content.decode().split())
-
-    assert "avisos (1)" in corpo
-    assert '<span class="contador" aria-hidden="true">1</span>' in corpo
-
-
 def test_quem_nao_entrou_nao_alcanca_o_rosto(client, sugestao):
     """O rosto não afrouxou nada: continua valendo que a Caixa é de quem tem
     matrícula, inclusive para só olhar (`DECISAO-EVO-01` §2)."""

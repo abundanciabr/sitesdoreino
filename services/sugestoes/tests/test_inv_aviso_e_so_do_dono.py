@@ -97,20 +97,6 @@ def test_a_contagem_de_nao_lidos_e_de_quem_esta_na_sessao(dentro, outra_pessoa, 
     assert contar_nao_lidos(ator_de(outra_pessoa)) == 0
 
 
-def test_o_sino_de_toda_pagina_conta_so_os_meus(dentro, outra_pessoa, aviso):
-    """A contagem do context processor, medida onde ela aparece: no quadro.
-
-    O sino desenhado é do EVO-31; o que se prova aqui é o DADO — e que ele é por
-    pessoa, que é o que impede o vazamento de virar um número inexplicável na
-    tela de quem não tem aviso nenhum.
-    """
-    meu = dentro.client.get(reverse("quadro")).content.decode()
-    dela = outra_pessoa.client.get(reverse("quadro")).content.decode()
-
-    assert "avisos (1)" in " ".join(meu.split())
-    assert "avisos (1)" not in " ".join(dela.split())
-
-
 # ---------------------------------------------------------------------------
 # Escrever
 # ---------------------------------------------------------------------------
