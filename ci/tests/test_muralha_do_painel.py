@@ -19,6 +19,7 @@ muralha — reprovar lá reprova aqui.
 from __future__ import annotations
 
 import shutil
+import json
 import subprocess
 from pathlib import Path
 
@@ -68,7 +69,7 @@ def _copia_com_git(tmp_path: Path) -> Path:
     raiz = _copia_painel(tmp_path)
     shutil.copy(RAIZ / ".gitignore", raiz / ".gitignore")
     (raiz / "ci").mkdir(exist_ok=True)
-    for arquivo in ("verificar_painel.py", "_nucleo.py"):
+    for arquivo in ("verificar_painel.py", "encerramento_alertas.py", "_nucleo.py"):
         shutil.copy(RAIZ / "ci" / arquivo, raiz / "ci" / arquivo)
     for marca in MARCAS_DA_RAIZ:
         alvo = raiz / marca
@@ -83,6 +84,7 @@ def _copia_com_git(tmp_path: Path) -> Path:
         ["git", "config", "user.name", "teste"],
         ["git", "add", "-A"],
         ["git", "commit", "-q", "-m", "cenário"],
+        ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
     ):
         subprocess.run(comando, cwd=str(raiz), check=True, capture_output=True, timeout=120)
     return raiz
@@ -91,6 +93,37 @@ def _copia_com_git(tmp_path: Path) -> Path:
 def test_passa_no_repositorio_real() -> None:
     proc = _roda(RAIZ)
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+@pytest.mark.parametrize("resposta", [None, ["20260910-997-entrega-do-cenario"]])
+def test_conclusao_verde_sem_baixar_entrega_e_recusada(tmp_path: Path, resposta) -> None:
+    raiz = _copia_com_git(tmp_path)
+    alerta = {
+        "arquivo": "20260910-997-entrega-do-cenario", "tipo": "entrega", "quando": "2026-09-10",
+        "titulo": "Correção aguarda publicação", "detalhe": "Correção validada aguarda publicação.",
+        "autoridade": "github", "evidencia": "https://github.com/exemplo/cenario/pull/999",
+        "verificado_em": "2026-09-10", "precisa_do_dono": False, "responde_a": None,
+        "gravidade": "ambar", "frente": None, "vence_em_dias": None,
+    }
+
+    def gravar(campos):
+        registro = raiz / "painel/registros" / (campos["arquivo"] + ".js")
+        registro.write_text(
+            "(window.REGISTROS = window.REGISTROS || []).push(" + json.dumps(campos) + ");\n",
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", str(registro)], cwd=raiz, check=True, capture_output=True)
+
+    gravar(alerta)
+    subprocess.run(["git", "commit", "-qm", "entrega anterior"], cwd=raiz, check=True, capture_output=True)
+    subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=raiz, check=True, capture_output=True)
+    gravar(dict(
+        alerta, arquivo="20260910-998-conclusao-sem-baixa", tipo="medicao",
+        gravidade="verde" if resposta is None else "info", responde_a=resposta,
+    ))
+    proc = _roda(raiz)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert (alerta["arquivo"] if resposta is None else "identificador em texto ou null") in proc.stdout
 
 
 def test_registro_novo_e_MATERIALIZADO_e_nao_reprovado(tmp_path: Path) -> None:
