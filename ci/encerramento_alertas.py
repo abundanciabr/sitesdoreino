@@ -1,8 +1,8 @@
 """Recusa conclusões novas que deixam a entrega do mesmo PR em alerta.
 
 O livro continua imutável. A dívida histórica não bloqueia outro trabalho:
-só um registro novo que afirma sucesso ou dá baixa é examinado. O vínculo
-usa responde_a escalar e relacao explícita. Comentário não encerra ocorrência.
+só registros novos são examinados. Pedidos ao dono precisam explicar a decisão.
+O vínculo usa responde_a escalar e relacao explícita. Comentário não encerra ocorrência.
 """
 
 from __future__ import annotations
@@ -85,6 +85,19 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
     problemas = []
     for ident in sorted(novos):
         registro = registros[ident]
+        if registro.get("precisa_do_dono") is True:
+            for campo in ("porque_so_voce", "proximo_passo", "se_eu_nao_decidir", "recomendacao"):
+                valor = registro.get(campo)
+                if not isinstance(valor, str) or not valor.strip():
+                    problemas.append(
+                        f"{ident}: pedido novo ao dono exige {campo} com texto claro. "
+                        "Preencha conforme painel/LEIA-ME.md. Falha técnica reparável pelo robô "
+                        "é alerta com precisa_do_dono false e diagnóstico no detalhe."
+                    )
+            if type(registro.get("reversivel")) is not bool:
+                problemas.append(f"{ident}: pedido novo exige reversivel true ou false; veja painel/LEIA-ME.md.")
+            if registro.get("impacto") not in ("alto", "medio", "baixo"):
+                problemas.append(f"{ident}: pedido novo exige impacto alto, medio ou baixo; veja painel/LEIA-ME.md.")
         alvo_id = registro.get("responde_a")
         relacao = registro.get("relacao")
         if alvo_id is not None and not isinstance(alvo_id, str):
@@ -148,7 +161,7 @@ def main() -> int:
     if problemas:
         print("FAIL encerramento-alertas:\n" + "\n".join(problemas))
         return 1
-    print("PASS encerramento-alertas: conclusões novas não deixam entregas relacionadas sem baixa comprovada.")
+    print("PASS encerramento-alertas: pedidos novos completos; conclusões novas não deixam entregas relacionadas sem baixa comprovada.")
     return 0
 
 

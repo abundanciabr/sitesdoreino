@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-058-fila-aguardar-comprovacao-da-entrega-tar-293",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "fila: aguardar comprovação da entrega (TAR-293)",
+  detalhe: "A fila preserva o PR e a revisão após soltar a reserva. Abrir uma entrega não conclui a tarefa nem libera dependências.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1494. Validação local: árvore eaa7ebccd91ab3234e1e0c29890d47a03e9cdc58; commit 0cca2e3dc27edcd249afd1fe3419874b9518a3d4; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-293",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

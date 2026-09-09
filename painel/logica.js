@@ -322,6 +322,11 @@
       // mesma família do `precisa_do_dono` escrito com aspas, que fazia um
       // pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
       // ---------------------------------------------------------------------
+      ["porque_so_voce", "proximo_passo"].forEach(function (campo) {
+        if (r[campo] != null && (typeof r[campo] !== "string" || !r[campo].trim() || r.precisa_do_dono !== true)) {
+          erros.push(nome + ": '" + campo + "' exige texto com conteúdo e precisa_do_dono true; confira painel/LEIA-ME.md");
+        }
+      });
       if (r.se_eu_nao_decidir != null && (typeof r.se_eu_nao_decidir !== "string" || r.se_eu_nao_decidir.trim() === "")) {
         erros.push(nome + ": 'se_eu_nao_decidir' precisa ser texto com conteúdo, ou null");
       }
@@ -971,7 +976,8 @@
     // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
-    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
+    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto",
+    "porque_so_voce", "proximo_passo"];
   // Os campos do EXPERIMENTO ficam de fora desta lista de propósito (05/09/2026,
   // degrau 12). O painel do dono não desenha o laboratório em canto nenhum — a
   // tela dele é `/admin/placar/laboratorio/`, e ela lê os registros de origem,
