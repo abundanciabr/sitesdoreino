@@ -50,7 +50,7 @@ forças de casamento é a única coisa que separa uma da outra.
 
 from __future__ import annotations
 
-from .telefone import chave_de, sufixo_de
+from .telefone import chave_de, final_curto_de, formatar, sufixo_de
 
 
 def _indexar(pessoas: "list[dict]") -> "tuple[dict, dict, set]":
@@ -90,6 +90,24 @@ def _indexar(pessoas: "list[dict]") -> "tuple[dict, dict, set]":
     return por_chave, por_sufixo, sufixos_ambiguos
 
 
+def _por_final_curto(pessoas: "list[dict]") -> dict:
+    indice: "dict[str, list[dict]]" = {}
+    for pessoa in pessoas:
+        final = final_curto_de(pessoa.get("whatsapp") or "")
+        if final:
+            indice.setdefault(final, []).append(pessoa)
+    return indice
+
+
+def _numeros_por_final_curto(numeros: "list[str]") -> dict:
+    indice: "dict[str, list[str]]" = {}
+    for numero in numeros:
+        final = final_curto_de(numero)
+        if final:
+            indice.setdefault(final, []).append(numero)
+    return indice
+
+
 def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> dict:
     """Cruza os números colados com a fila e com quem já é aluno.
 
@@ -102,6 +120,8 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
 
     na_fila, fila_por_sufixo, sufixos_ambiguos = _indexar(fila)
     ja_alunos, _, _ = _indexar(alunos)
+    pessoas_por_final = _por_final_curto(fila + alunos)
+    numeros_por_final = _numeros_por_final_curto(numeros)
 
     prontos: "list[dict]" = []
     ja_dentro: "list[dict]" = []
@@ -120,13 +140,17 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
 
         pessoa = na_fila.get(chave)
         if pessoa is not None:
-            prontos.append({"numero": numero, "pessoa": pessoa})
+            prontos.append(
+                {"numero": numero, "numero_formatado": formatar(numero), "pessoa": pessoa}
+            )
             casadas.add(pessoa["id"])
             continue
 
         aluno = ja_alunos.get(chave)
         if aluno is not None:
-            ja_dentro.append({"numero": numero, "pessoa": aluno})
+            ja_dentro.append(
+                {"numero": numero, "numero_formatado": formatar(numero), "pessoa": aluno}
+            )
             continue
 
         # Não casou exato em lugar nenhum. Sobra a sugestão — e ela só vale
@@ -155,7 +179,27 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
             else:
                 sugestao_para[talvez["id"]] = numero
 
-        sem_par.append({"numero": numero, "talvez": talvez})
+        parecidos = []
+        for pessoa_parecida in pessoas_por_final.get(final_curto_de(numero), []):
+            if talvez is not None and pessoa_parecida["id"] == talvez["id"]:
+                continue
+            parecidos.append(
+                {
+                    "nome": pessoa_parecida.get("nome_completo") or "",
+                    "email": pessoa_parecida.get("email") or "",
+                    "whatsapp": formatar(pessoa_parecida.get("whatsapp") or ""),
+                    "status": pessoa_parecida.get("status") or "",
+                }
+            )
+
+        sem_par.append(
+            {
+                "numero": numero,
+                "numero_formatado": formatar(numero),
+                "talvez": talvez,
+                "parecidos": parecidos,
+            }
+        )
 
     sozinhos = [
         {
@@ -163,6 +207,12 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
             # O número da lista que PARECE ser esta pessoa, ou `None`. É o que
             # a tela mostra ao lado da caixinha desmarcada.
             "talvez_o_numero": sugestao_para.get(pessoa["id"]),
+            "talvez_o_numero_formatado": formatar(sugestao_para.get(pessoa["id"]) or ""),
+            "numeros_parecidos": [
+                formatar(n)
+                for n in numeros_por_final.get(final_curto_de(pessoa.get("whatsapp") or ""), [])
+                if n != sugestao_para.get(pessoa["id"])
+            ],
         }
         for pessoa in fila
         if pessoa["id"] not in casadas
@@ -175,7 +225,7 @@ def conferir(numeros: "list[str]", fila: "list[dict]", alunos: "list[dict]") -> 
         # Só os que não viraram sugestão de ninguém: um número que aparece como
         # "talvez seja a Maria" já está na tela, e repeti-lo aqui faria o
         # mantenedor contá-lo duas vezes.
-        "sem_par": [s["numero"] for s in sem_par if s["talvez"] is None],
+        "sem_par": [s for s in sem_par if s["talvez"] is None],
         "total_colado": len(numeros),
         "total_na_fila": len(fila),
     }

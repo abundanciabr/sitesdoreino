@@ -26,6 +26,7 @@ class TestOCasoNormal:
             alunos=[],
         )
         assert [p["pessoa"]["nome_completo"] for p in r["prontos"]] == ["Maria"]
+        assert r["prontos"][0]["numero_formatado"] == "(11) 99999-8888"
         assert r["sozinhos"] == []
         assert r["sem_par"] == []
 
@@ -39,7 +40,8 @@ class TestOCasoNormal:
 
     def test_numero_da_lista_sem_ninguem_no_site_fica_marcado(self):
         r = conferir(numeros=["11 99999-8888"], fila=[], alunos=[])
-        assert r["sem_par"] == ["11 99999-8888"]
+        assert [s["numero"] for s in r["sem_par"]] == ["11 99999-8888"]
+        assert r["sem_par"][0]["numero_formatado"] == "(11) 99999-8888"
         assert r["prontos"] == []
 
 
@@ -54,6 +56,7 @@ class TestQuemJaEAluno:
         )
         assert r["sem_par"] == [], "ele sairia procurando por quem já está dentro"
         assert [j["pessoa"]["nome_completo"] for j in r["ja_dentro"]] == ["Já Liberada"]
+        assert r["ja_dentro"][0]["numero_formatado"] == "(11) 99999-8888"
 
     def test_e_nao_entra_na_lista_de_liberar(self):
         r = conferir(
@@ -75,6 +78,7 @@ class TestASugestao:
         )
         assert r["prontos"] == [], "isto liberaria a pessoa errada"
         assert r["sozinhos"][0]["talvez_o_numero"] == "11 99999-8888"
+        assert r["sozinhos"][0]["talvez_o_numero_formatado"] == "(11) 99999-8888"
         assert r["sem_par"] == [], "o número já aparece ao lado dela"
 
     def test_sufixo_que_serve_para_duas_pessoas_nao_sugere_nada(self):
@@ -84,7 +88,7 @@ class TestASugestao:
             alunos=[],
         )
         assert all(s["talvez_o_numero"] is None for s in r["sozinhos"])
-        assert r["sem_par"] == ["11 99999-8888"]
+        assert [s["numero"] for s in r["sem_par"]] == ["11 99999-8888"]
 
     def test_o_exato_ganha_do_palpite(self):
         # Dois números; um casa exato com a Ana, o outro só "parece" a Ana.
@@ -95,7 +99,7 @@ class TestASugestao:
         )
         assert [p["pessoa"]["nome_completo"] for p in r["prontos"]] == ["Ana"]
         assert r["sozinhos"] == []
-        assert r["sem_par"] == ["11 99999-8888"], "o outro número não pode sumir"
+        assert [s["numero"] for s in r["sem_par"]] == ["11 99999-8888"], "o outro número não pode sumir"
 
     def test_dois_numeros_sugerindo_a_mesma_pessoa_nao_somem(self):
         r = conferir(
@@ -105,7 +109,29 @@ class TestASugestao:
         )
         assert len(r["sozinhos"]) == 1
         assert r["sozinhos"][0]["talvez_o_numero"] == "11 99999-8888"
-        assert r["sem_par"] == ["31 99999-8888"], "o segundo volta a ser 'não achei'"
+        assert [s["numero"] for s in r["sem_par"]] == ["31 99999-8888"], "o segundo volta a ser 'não achei'"
+
+    def test_ultimos_quatro_listam_candidatos_para_o_numero_sem_par(self):
+        r = conferir(
+            numeros=["11 99999-8888"],
+            fila=[na_fila("1", "21 97777-8888", "Fila Parecida")],
+            alunos=[na_fila("9", "31 96666-8888", "Aluno Parecido")],
+        )
+        assert [p["nome"] for p in r["sem_par"][0]["parecidos"]] == [
+            "Fila Parecida",
+            "Aluno Parecido",
+        ]
+
+    def test_ultimos_quatro_listam_numeros_parecidos_para_quem_esta_na_fila(self):
+        r = conferir(
+            numeros=["11 90000-1234", "21 91111-1234"],
+            fila=[na_fila("1", "31 92222-1234", "Fila Parecida")],
+            alunos=[],
+        )
+        assert r["sozinhos"][0]["numeros_parecidos"] == [
+            "(11) 90000-1234",
+            "(21) 91111-1234",
+        ]
 
 
 class TestNinguemSomeENinguemDuplica:
@@ -123,7 +149,7 @@ class TestNinguemSomeENinguemDuplica:
 
         da_lista = [p["numero"] for p in r["prontos"]]
         da_lista += [j["numero"] for j in r["ja_dentro"]]
-        da_lista += r["sem_par"]
+        da_lista += [s["numero"] for s in r["sem_par"]]
         da_lista += [
             s["talvez_o_numero"] for s in r["sozinhos"] if s["talvez_o_numero"]
         ]
