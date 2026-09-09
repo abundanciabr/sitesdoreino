@@ -80,6 +80,7 @@ from .models import (
     ReservaDoMural,
 )
 from .relogio import (
+    calcular_validade_da_proposta,
     prazo_para_escalar_chamada_aberta,
     prazo_para_virar_aberta,
 )
@@ -236,6 +237,51 @@ def expirar_ofertas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, 
                 )
             fechadas.append(oferta_id)
     return tuple(fechadas)
+
+
+def entrou_na_negociacao_em(encomenda: Encomenda) -> datetime:
+    """Desde quando esta encomenda está em negociação, para o relógio inicial."""
+    entrada = (
+        MudancaDeStatus.objects.filter(
+            encomenda=encomenda, para=Encomenda.Status.EM_NEGOCIACAO
+        )
+        .order_by("-em", "-id")
+        .first()
+    )
+    return entrada.em if entrada else encomenda.criada_em
+
+
+def expirar_negociacoes_sem_proposta(
+    agora: datetime, *, site_id: str
+) -> tuple[object, ...]:
+    """Manda ao plantão a negociação que venceu sem a primeira proposta."""
+    com_proposta_de_pe = Proposta.objects.filter(
+        site_id=site_id, resultado=Proposta.Resultado.PENDENTE
+    ).values_list("encomenda_id", flat=True)
+    candidatas = Encomenda.objects.filter(
+        site_id=site_id, status=Encomenda.Status.EM_NEGOCIACAO
+    ).exclude(pk__in=com_proposta_de_pe)
+
+    expiradas: list[object] = []
+    for encomenda_id in candidatas.order_by("criada_em", "id").values_list(
+        "pk", flat=True
+    ):
+        with transaction.atomic():
+            projeto = Encomenda.objects.select_for_update().get(pk=encomenda_id)
+            if projeto.status != Encomenda.Status.EM_NEGOCIACAO:
+                continue
+            if Proposta.objects.filter(
+                encomenda=projeto, resultado=Proposta.Resultado.PENDENTE
+            ).exists():
+                continue
+            entrou_em = entrou_na_negociacao_em(projeto)
+            if calcular_validade_da_proposta(entrou_em, site_id=site_id) > agora:
+                continue
+            negociacao.mandar_ao_plantao(
+                projeto, negociacao.MOTIVO_DA_NEGOCIACAO_SEM_PROPOSTA
+            )
+            expiradas.append(encomenda_id)
+    return tuple(expiradas)
 
 
 def abrir_o_que_esperou_demais(agora: datetime, *, site_id: str) -> tuple[object, ...]:
@@ -557,10 +603,13 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     expiradas = expirar_ofertas_vencidas(agora, site_id=site_id)
     reservas = expirar_reservas_vencidas(agora, site_id=site_id)
     propostas = expirar_propostas_vencidas(agora, site_id=site_id)
+    sem_proposta = expirar_negociacoes_sem_proposta(agora, site_id=site_id)
     chamadas_escaladas = escalar_chamadas_abertas_sem_aceite(agora, site_id=site_id)
     abertas = abrir_o_que_esperou_demais(agora, site_id=site_id)
-    ao_plantao = chamadas_escaladas + mandar_ao_plantao_o_que_ninguem_pode_pegar(
-        agora, site_id=site_id
+    ao_plantao = (
+        sem_proposta
+        + chamadas_escaladas
+        + mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=site_id)
     )
     rodada = motor.rodar(agora, site_id=site_id)
     return Tique(

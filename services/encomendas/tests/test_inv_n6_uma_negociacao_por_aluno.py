@@ -24,8 +24,8 @@ from datetime import datetime, timedelta, timezone as fuso
 import pytest
 from django.db import IntegrityError, connection, transaction
 
-from apps.encomendas import negociacao
-from apps.encomendas.models import Encomenda, Proposta
+from apps.encomendas import gestos, negociacao, relogio, tique
+from apps.encomendas.models import Encomenda, MudancaDeStatus, Oferta, Proposta
 
 SITE = "escola-a"
 
@@ -168,3 +168,102 @@ def test_a_negociacao_viva_conta_as_duas_pistas(
                     "status = 'em_negociacao' WHERE id = %s",
                     [ana.pk, str(da_fila.pk)],
                 )
+
+
+def test_aceitar_recusa_a_segunda_negociacao_com_razao_nomeada(
+    projeto_pego, criar_encomenda, formulario
+):
+    projeto, ana = projeto_pego
+    agora = _agora()
+    assert negociacao.propor(
+        projeto.pk,
+        agora,
+        site_id=SITE,
+        de_quem=Proposta.DeQuem.ALUNO,
+        **formulario(),
+    ).feito
+
+    outro = criar_encomenda(status=Encomenda.Status.OFERECIDA)
+    oferta = Oferta.objects.create(
+        site_id=SITE,
+        encomenda=outro,
+        aluno=ana,
+        expira_em=relogio.calcular_expiracao(agora, site_id=SITE),
+    )
+
+    desfecho = gestos.aceitar(oferta.pk, ana.pk, agora, site_id=SITE)
+
+    assert not desfecho.feito
+    assert desfecho.razao == gestos.JA_NEGOCIA_OUTRO_PROJETO
+    assert desfecho.encomenda_em == Encomenda.Status.OFERECIDA
+    outro.refresh_from_db()
+    oferta.refresh_from_db()
+    assert outro.status == Encomenda.Status.OFERECIDA
+    assert outro.aluno_id is None
+    assert oferta.resultado == Oferta.Resultado.PENDENTE
+
+
+def test_propor_recusa_a_segunda_negociacao_sem_quebrar_a_transacao(
+    projeto_pego, criar_projeto_no_mural, formulario
+):
+    projeto, ana = projeto_pego
+    agora = _agora()
+    assert negociacao.propor(
+        projeto.pk,
+        agora,
+        site_id=SITE,
+        de_quem=Proposta.DeQuem.ALUNO,
+        **formulario(),
+    ).feito
+
+    outro = criar_projeto_no_mural(cliente="cli-2")
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE encomendas_encomenda SET aluno_id = %s, status = 'reservada' "
+            "WHERE id = %s",
+            [ana.pk, str(outro.pk)],
+        )
+
+    desfecho = negociacao.propor(
+        outro.pk,
+        agora,
+        site_id=SITE,
+        de_quem=Proposta.DeQuem.ALUNO,
+        **formulario(),
+    )
+
+    assert not desfecho.feito
+    assert desfecho.razao == negociacao.JA_NEGOCIA_OUTRO_PROJETO
+    outro.refresh_from_db()
+    assert outro.status == Encomenda.Status.RESERVADA
+    assert not Proposta.objects.filter(encomenda=outro).exists()
+
+
+def test_negociacao_sem_primeira_proposta_vai_ao_plantao_no_relogio_util(
+    semeado, criar_perfil, criar_encomenda
+):
+    agora = _agora()
+    ana = criar_perfil("pes-sem-proposta", entrada=agora - timedelta(days=5))
+    projeto = criar_encomenda(status=Encomenda.Status.OFERECIDA)
+    oferta = Oferta.objects.create(
+        site_id=SITE,
+        encomenda=projeto,
+        aluno=ana,
+        expira_em=relogio.calcular_expiracao(agora, site_id=SITE),
+    )
+    assert gestos.aceitar(oferta.pk, ana.pk, agora, site_id=SITE).feito
+
+    entrou_em = MudancaDeStatus.objects.get(
+        encomenda=projeto, para=Encomenda.Status.EM_NEGOCIACAO
+    ).em
+    vencimento = relogio.calcular_validade_da_proposta(entrou_em, site_id=SITE)
+
+    assert tique.expirar_negociacoes_sem_proposta(vencimento, site_id=SITE) == (
+        projeto.pk,
+    )
+    projeto.refresh_from_db()
+    assert projeto.status == Encomenda.Status.PARA_RECLASSIFICAR
+    assert projeto.aluno_id is None
+    assert projeto.historico.latest("em").motivo == (
+        negociacao.MOTIVO_DA_NEGOCIACAO_SEM_PROPOSTA
+    )
