@@ -131,6 +131,19 @@ TOKEN_FALSO_DO_MERCADO_PAGO = (
 # da tarefa de ninguém.
 FERRAMENTAS_DE_PORTAO = ("PyYAML==6.0.2",)
 
+# O código desta sessão é versionado, mas estas peças vivem na máquina. Elas
+# são conferidas antes do primeiro efeito para que uma sessão não crie uma
+# bancada que já sabe que não conseguirá usar.
+FERRAMENTAS_LOCAIS = {
+    "git": "cria worktrees, atualiza origin/main e mede a limpeza da bancada",
+    "gh": "lê o boletim e abre o PR draft exigido pelo rito",
+}
+FERRAMENTAS_LOCAIS_COM_AMBIENTE = {
+    "docker": "sobe e sonda os serviços da sessão",
+    "make": "roda o baseline da célula",
+}
+GANCHOS_VERSIONADOS = ("pre-commit", "pre-push")
+
 # Um único padrão que satisfaz os TRÊS consumidores do nome ao mesmo tempo:
 # nome de branch do git, nome de container do Docker e nome de diretório. Vale
 # recusar antes de agir — meio worktree criado é pior que nenhum.
@@ -885,6 +898,64 @@ class Sessao:
             )
         return caminho
 
+    def conferir_pecas_locais(self) -> dict[str, str]:
+        """Confere ferramentas e hooks locais antes de criar qualquer estado."""
+        passo = P_CONFERIR
+        ferramentas = dict(FERRAMENTAS_LOCAIS)
+        if self.plano.sobe_ambiente:
+            ferramentas.update(FERRAMENTAS_LOCAIS_COM_AMBIENTE)
+        encontrados = {}
+        ausentes = []
+        for nome, para_que in ferramentas.items():
+            caminho = self._localizar(nome)
+            if caminho is None:
+                ausentes.append(f"`{nome}` não está no PATH: {para_que}")
+            else:
+                encontrados[nome] = caminho
+        if ausentes:
+            raise ErroDeSessao(
+                passo,
+                "há ferramenta local necessária ausente",
+                detalhe=(
+                    "Resolva a instalação indicada e repita a abertura.\n\n"
+                    + "\n".join(f"  - {item}" for item in ausentes)
+                ),
+            )
+
+        git = encontrados["git"]
+        config = self._correr(
+            [git, "-C", str(self.plano.raiz), "config", "--get", "core.hooksPath"],
+            cwd=self.plano.raiz,
+            timeout=120,
+        )
+        hooks_path = config.stdout.strip()
+        if config.exit_code != 0 or not hooks_path:
+            raise ErroDeSessao(
+                passo,
+                "os hooks versionados não estão instalados neste checkout",
+                comando=f"{git} -C {self.plano.raiz} config --get core.hooksPath",
+                detalhe=(
+                    "O Git não apontou para os hooks versionados. Instale-os com:\n"
+                    f"  git -C {self.plano.raiz} config core.hooksPath .githooks\n\n"
+                    "Depois repita a abertura da sessão."
+                ),
+            )
+        pasta_hooks = Path(hooks_path)
+        if not pasta_hooks.is_absolute():
+            pasta_hooks = self.plano.raiz / pasta_hooks
+        faltando = [nome for nome in GANCHOS_VERSIONADOS if not self._existe(pasta_hooks / nome)]
+        if faltando:
+            raise ErroDeSessao(
+                passo,
+                "há hook versionado ausente",
+                detalhe=(
+                    f"Pasta configurada: {pasta_hooks}\n"
+                    + "\n".join(f"  - {pasta_hooks / nome}" for nome in faltando)
+                    + "\n\nRestaure os hooks versionados e repita a abertura."
+                ),
+            )
+        return encontrados
+
     def _ambiente(self) -> dict[str, str]:
         env = dict(os.environ)
         env.update(self._variaveis)
@@ -1610,21 +1681,14 @@ class Sessao:
     # -- orquestração -------------------------------------------------------
 
     def rodar(self) -> str:
-        git = self._ferramenta(
-            "git",
-            P_CONFERIR,
-            "Todo o Rito de Abertura é git: fetch, worktree, branch, status.",
-        )
+        ferramentas = self.conferir_pecas_locais()
+        git = ferramentas["git"]
         self.conferir()
         self.buscar(git)
         self.preparar_worktree(git)
         if self.plano.tarefa_da_fila:
             self.pegar_a_tarefa()
-        gh = self._ferramenta(
-            "gh",
-            P_ANUNCIO,
-            "O anúncio precisa criar e conferir um PR draft antes do código.",
-        )
+        gh = ferramentas["gh"]
         self.anunciar_pr(gh)
         self.gerar_indice(git)
         if not self.plano.sobe_ambiente:
