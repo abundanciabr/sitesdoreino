@@ -72,3 +72,9 @@ def test_conferir_exige_publicacao_anterior_mesmo_com_revisao_aprovada(monkeypat
     relatorio,_=mergear.conferir(99,tmp_path)
     assert relatorio.estado is Estado.FAIL
     assert any(r.resumo == "run reprovado" for r in relatorio.resultados)
+
+
+def test_declaracao_corretiva_precisa_estar_no_atestado_revisado():
+    assert revisor.avaliar_atestado(SHA,[comentario()],correcoes=[10]).estado is Estado.FAIL
+    assert revisor.avaliar_atestado(SHA,[comentario(corrige_publicacao=[10])],correcoes=[10]).estado is Estado.PASS
+    assert revisor.avaliar_atestado(SHA,[comentario(corrige_publicacao=[11])],correcoes=[10]).estado is Estado.FAIL

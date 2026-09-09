@@ -52,7 +52,19 @@ Falha e ausência de publicação mantêm `terminal: false`.
 A publicação exige todos os workflows disparados pelos caminhos do diff,
 lidos dos YAMLs da main. Só valem runs de push na main com SHA exato. Para
 cada workflow vale o run mais recente, inclusive reprovação; cancelled e
-skipped não aprovam. Resposta truncada é erro de instrumento.
+skipped não aprovam. Resposta truncada é erro de instrumento. Cada run
+precisa provar os jobs exigidos: deploy da célula, sincronização de infra,
+ou publicar-dados-admin para dados do painel/fila. Dados isolados não
+exigem imagem admin; alteração da imagem não é comprovada pelo publicador
+de dados. Os portões de detecção e publicação também precisam ter concluído.
+
+Um run posterior só recupera a entrega quando o GitHub confirma que seu SHA
+contém o original e o job da mesma publicação concluiu verde. A consulta usa
+o limite de histórico já adotado pela vacina `rerun_de_deploy.py`; prova não
+encontrada mantém a pendência. A evidência `publicacoes` separa SHA integrado,
+SHA publicado, run e job. Um job mais recente reprovado não é encoberto por
+um verde anterior. `terminal` é técnico: não comprova aceite funcional, tarefa
+concluída nem baixa de alerta. Essas provas pertencem ao reconciliador da entrega.
 
 ## Ordem e continuidade
 
@@ -73,3 +85,26 @@ SHA muda e encaminha falhas ao despacho. A publicação ainda precisa de registr
 no livro após o veredito. A consulta e o pedido de pouso não fazem esse registro
 nem autorizam novas tarefas da fila. Prazos das esperas existentes continuam
 vindo da régua viva de `ci/tempos_esperados.json`.
+
+## Recuperação sem esconder falhas
+
+Um PR que corrige a própria falha declara `Corrige-publicacao: RUN_ID` no
+corpo; múltiplos runs usam IDs separados por vírgula. O atestado independente
+precisa conter `"corrige_publicacao": [RUN_ID]` com a mesma lista. Isso impede
+adicionar a declaração ao corpo depois da revisão sem pedir avaliação nova.
+O revisor julga se a mudança corrige a causa observada.
+
+A exceção só aceita runs FAILURE vigentes, jobs de célula identificados,
+arquivos de código da própria célula falha e cobertura de todas as células
+que a nova publicação precisa recuperar. Recibo, consumidor, teste isolado,
+run inexistente e publicação ainda em curso não abrem essa passagem. Falhas
+múltiplas não tratadas continuam bloqueando. Checks e SHA revisado continuam
+obrigatórios. Falha de sincronização de infra exige alteração em caminho que
+dispara deploy-infra. Jobs sem célula ou publicação identificada não recebem
+exceção automática. Falha de instrumento pede diagnóstico, nunca alteração cega.
+
+Rollback saudável comprovado por run e imagem restaura o serviço, mas não
+entrega o código que falhou. Registre a restauração e mantenha a publicação
+pendente até recuperação comprovada. A última alteração do código não é
+uma sonda da imagem que está rodando; esta consulta não declara saúde atual
+da VPS nem substitui a prova funcional.

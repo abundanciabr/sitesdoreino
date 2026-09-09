@@ -63,6 +63,29 @@ def caminhos_dos_deploys(raiz: Path) -> dict[str, list[str]]:
     return resultado
 
 
+def jobs_exigidos(workflow: str, arquivos: list[str], celulas: list[str]) -> list[str]:
+    if workflow == DEPLOYS[1]:
+        return ["portao-de-deploy", "sincronizar"]
+    nomes = ["detectar", "portao-de-deploy"]
+    dados_admin = any(a.startswith(("painel/", "fila/")) for a in arquivos)
+    if dados_admin:
+        nomes.append("publicar-dados-admin")
+    somente_dados = bool(arquivos) and all(a.startswith(("painel/", "fila/")) for a in arquivos)
+    if not somente_dados:
+        nomes.extend(f"deploy ({c})" for c in celulas)
+    return nomes
+
+
+def consultar_jobs(raiz: Path, run: dict) -> list[dict]:
+    dados = _api(raiz, f"actions/runs/{run['id']}/jobs?filter=latest&per_page=100")
+    if not isinstance(dados, dict) or not isinstance(dados.get("jobs"), list):
+        raise ErroDeInstrumentacao("GitHub não devolveu os jobs da publicação")
+    if dados.get("total_count", len(dados["jobs"])) > len(dados["jobs"]):
+        raise ErroDeInstrumentacao("jobs de publicação truncados; não há prova de cobertura")
+    return [dict(id=j.get("id"), name=j.get("name"), status=j.get("status"),
+                 conclusion=j.get("conclusion"), url=j.get("html_url")) for j in dados["jobs"]]
+
+
 def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
         raise ErroDeInstrumentacao("SHA integrado ausente ou incompleto; confira o merge")
@@ -86,10 +109,20 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha,
                          status=r.get("status"), conclusion=r.get("conclusion"),
                          url=r.get("html_url")) for r in escolhidos if r]
+    cobertura_incompleta = False
+    for registro in base["runs"]:
+        registro["jobs_exigidos"] = jobs_exigidos(registro["workflow"], arquivos, celulas)
+        registro["jobs"] = consultar_jobs(raiz, registro)
+        por_nome = {j["name"]: j for j in registro["jobs"]}
+        registro["jobs_sem_prova"] = [n for n in registro["jobs_exigidos"]
+                                     if por_nome.get(n, {}).get("conclusion") != "success"
+                                     or por_nome.get(n, {}).get("status") != "completed"]
+        if registro["status"] == "completed" and registro["jobs_sem_prova"]:
+            cobertura_incompleta = True
     caidos = [r for r in escolhidos if r and r.get("status") == "completed"
               and r.get("conclusion") != "success"]
-    if caidos:
-        run = caidos[0]
+    if caidos or cobertura_incompleta:
+        run = caidos[0] if caidos else next(r for r in base["runs"] if r["jobs_sem_prova"])
         return dict(base, estado="FALHA_PUBLICACAO", terminal=False,
                     acao=f"Maestro: leia gh run view {run['id']} --log-failed; corrija a causa "
                          f"ou reexecute gh run rerun {run['id']} --failed e confira este SHA novamente.")
@@ -106,12 +139,12 @@ def consultar_entrega(raiz: Path, numero: int) -> dict:
     if pr["state"] == "MERGED":
         publicacao = consultar_publicacao(raiz, (pr.get("mergeCommit") or {}).get("oid"),
                                         [a["path"] for a in pr["files"]])
-        return dict(base, **publicacao)
+        return dict(base, **comprovar_sucessores(raiz, publicacao))
     if pr["state"] == "CLOSED":
         return dict(base, estado="ENCERRADO_SEM_INTEGRAR", terminal=True,
                     acao="PR encerrado sem integração; a entrega não foi publicada.")
     comentarios = _api(raiz, f"issues/{numero}/comments", paginas=True)
-    revisao = avaliar_atestado(pr.get("headRefOid") or "", comentarios)
+    revisao = avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
     if revisao.estado is not Estado.PASS:
         return dict(base, estado="REVISAO_NECESSARIA", acao=revisao.resumo + ". " + revisao.detalhe)
     if pr.get("isDraft"):
@@ -162,7 +195,125 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
     resultados = []
     for sha in sorted(shas):
         alterados = git("diff", "--name-only", sha + "^", sha).splitlines()
-        resultado = consultar_publicacao(raiz, sha, alterados)
+        resultado = comprovar_sucessores(raiz, consultar_publicacao(raiz, sha, alterados))
         if not resultado["terminal"]:
             resultados.append(resultado)
     return resultados
+
+
+def correcoes_declaradas(pr: dict) -> list[int]:
+    linhas = re.findall(r"^\s*Corrige-publicacao:\s*([^\r\n]*)$", pr.get("body") or "", re.I | re.M)
+    numeros = set()
+    for linha in linhas:
+        if not re.fullmatch(r"[1-9][0-9]*(?:\s*,\s*[1-9][0-9]*)*", linha.strip()):
+            raise ErroDeInstrumentacao("Corrige-publicacao exige IDs de runs separados por vírgula")
+        numeros.update(int(n.strip()) for n in linha.split(","))
+    return sorted(numeros)
+
+
+def correcao_da_publicacao(raiz: Path, pr: dict, publicacao: dict) -> bool:
+    """Elegibilidade mecânica; o revisor independente julga a correção real."""
+    from rerun_de_deploy import celula_do_job
+
+    if publicacao["estado"] != "FALHA_PUBLICACAO":
+        return False
+    declaradas = set(correcoes_declaradas(pr))
+    falhos = [r for r in publicacao.get("runs", []) if r.get("conclusion") == "failure"]
+    if not falhos or any(r["id"] not in declaradas for r in falhos):
+        return False
+    celulas_falhas = set()
+    for run in falhos:
+        jobs_falhos = [j for j in run.get("jobs", []) if j.get("conclusion") == "failure"]
+        if not jobs_falhos:
+            return False
+        for job in jobs_falhos:
+            celula = celula_do_job(job.get("name") or "")
+            if job.get("name") == "publicar-dados-admin":
+                celula = "admin"
+            if job.get("name") == "sincronizar" and run.get("workflow") == DEPLOYS[1]:
+                celula = "infra"
+            if not celula:
+                return False
+            celulas_falhas.add(celula)
+    arquivos = [a["path"] for a in pr.get("files", [])]
+    mapa = mapa_de_celulas.carregar(raiz)
+    tocadas = set(mapa_de_celulas.celulas_do_diff(arquivos, mapa))
+    if not set(publicacao.get("celulas", [])) <= tocadas:
+        return False
+    for celula in celulas_falhas:
+        if celula == "infra":
+            gatilhos = caminhos_dos_deploys(raiz)[DEPLOYS[1]]
+            if not any(fnmatch.fnmatchcase(a, p) for a in arquivos for p in gatilhos):
+                return False
+            continue
+        if celula not in mapa or not any(
+            a.startswith(f"services/{celula}/") and "/tests/" not in a
+            and not Path(a).name.startswith("test_")
+            and Path(a).suffix in {".py", ".html", ".js", ".css", ".sh"}
+            for a in arquivos
+        ):
+            return False
+    return True
+
+
+def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
+    """Cobertura posterior é provada por job e ancestralidade, nunca só pelo SHA."""
+    from rerun_de_deploy import RUNS_OLHADOS_ATRAS
+
+    if publicacao.get("estado") != "FALHA_PUBLICACAO" or not publicacao.get("runs"):
+        return publicacao
+    provas = []
+    comparacoes = {}
+    for original in publicacao["runs"]:
+        if original.get("status") != "completed":
+            return publicacao
+        exigidos = set(original.get("jobs_exigidos", [])) - {"detectar", "portao-de-deploy"}
+        if not exigidos:
+            return publicacao
+        workflow = original["workflow"]
+        resposta = _api(raiz, f"actions/workflows/{Path(workflow).name}/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("GitHub não devolveu o histórico de cobertura por célula")
+        candidatos = sorted((r for r in resposta["workflow_runs"]
+                             if r.get("id", 0) > original["id"] and r.get("path") == workflow
+                             and r.get("event") == "push" and r.get("head_branch") == "main"),
+                            key=lambda r: r["id"], reverse=True)
+        vistos = set()
+        provados = set()
+        for candidato in candidatos:
+            sha = candidato.get("head_sha")
+            if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
+                continue
+            if sha not in comparacoes:
+                comparacoes[sha] = _api(raiz, f"compare/{publicacao['sha_integrado']}...{sha}").get("status")
+            if comparacoes[sha] not in {"ahead", "identical"}:
+                continue
+            jobs = consultar_jobs(raiz, candidato)
+            por_nome = {j["name"]: j for j in jobs}
+            portoes = {"portao-de-deploy"} | ({"detectar"} if workflow == DEPLOYS[0] else set())
+            for nome in exigidos - vistos:
+                job = por_nome.get(nome)
+                if not job:
+                    continue
+                vistos.add(nome)
+                if (candidato.get("status") == "completed" and job.get("status") == "completed"
+                        and job.get("conclusion") == "success"
+                        and all(por_nome.get(n, {}).get("conclusion") == "success" for n in portoes)):
+                    provados.add(nome)
+                    provas.append(dict(workflow=workflow, job=nome, run=candidato["id"],
+                                       sha=sha, url=candidato.get("html_url")))
+            if vistos == exigidos:
+                break
+        por_nome = {j["name"]: j for j in original.get("jobs", [])}
+        for nome in exigidos - vistos:
+            job = por_nome.get(nome, {})
+            portoes = {"portao-de-deploy"} | ({"detectar"} if workflow == DEPLOYS[0] else set())
+            if (job.get("conclusion") == "success" and job.get("status") == "completed"
+                    and all(por_nome.get(n, {}).get("conclusion") == "success" for n in portoes)):
+                provados.add(nome)
+                provas.append(dict(workflow=workflow, job=nome, run=original["id"],
+                                   sha=original["sha"], url=original.get("url")))
+        if provados != exigidos:
+            return publicacao
+    return dict(publicacao, estado="PUBLICADO", terminal=True, publicacoes=provas,
+                acao="Cobertura técnica comprovada por jobs de commits que contêm a entrega. Registre os SHAs e runs; o aceite funcional continua separado.")

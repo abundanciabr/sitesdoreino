@@ -9,13 +9,20 @@ CELULA = ".github/workflows/deploy-celula.yml"
 INFRA = ".github/workflows/deploy-infra.yml"
 
 def run(path=CELULA, **mudancas):
-    dados = dict(id=10, path=path, head_sha=SHA, head_branch="main", event="push",
+    dados = dict(id=20 if path == INFRA else 10, path=path, head_sha=SHA, head_branch="main", event="push",
                  status="completed", conclusion="success", html_url="https://example.invalid/run/10")
     dados.update(mudancas)
     return dados
 
 def medir(monkeypatch, runs, arquivos=None):
-    monkeypatch.setattr(entrega, "_api", lambda *a: {"workflow_runs":runs})
+    def api(raiz, caminho, **kw):
+        if "/jobs?" in caminho:
+            numero = int(caminho.split("/")[2])
+            atual = next(r for r in runs if r["id"] == numero)
+            nomes = ["detectar", "portao-de-deploy", "publicar-dados-admin", "deploy (quiz)", "deploy (admin)", "sincronizar"]
+            return {"jobs": atual.get("jobs",[dict(name=n,status="completed",conclusion="success") for n in nomes])}
+        return {"workflow_runs":runs}
+    monkeypatch.setattr(entrega, "_api", api)
     return entrega.consultar_publicacao(RAIZ, SHA, arquivos or ["services/quiz/app.py"])
 
 def test_publicado_exige_o_sha_exato(monkeypatch):
@@ -124,3 +131,94 @@ def test_resposta_truncada_nao_aprova(monkeypatch):
     monkeypatch.setattr(entrega,"_api",lambda *a: dict(total_count=101,workflow_runs=[run()]))
     with pytest.raises(ErroDeInstrumentacao,match="truncada"):
         entrega.consultar_publicacao(RAIZ,SHA,["services/quiz/app.py"])
+
+
+def test_workflow_success_sem_job_da_celula_nao_publica(monkeypatch):
+    jobs=[dict(name=n,status="completed",conclusion="success") for n in ["detectar","portao-de-deploy","deploy (admin)"]]
+    estado=medir(monkeypatch,[run(jobs=jobs)])
+    assert estado["estado"] == "FALHA_PUBLICACAO"
+    assert "deploy (quiz)" in estado["runs"][0]["jobs_exigidos"]
+
+
+def test_dados_admin_nao_exigem_imagem_mas_exigem_publicador(monkeypatch):
+    jobs=[dict(name=n,status="completed",conclusion="success") for n in ["detectar","portao-de-deploy","publicar-dados-admin"]]
+    assert medir(monkeypatch,[run(jobs=jobs)],["painel/registros/a.js"])["estado"] == "PUBLICADO"
+    jobs.pop()
+    assert medir(monkeypatch,[run(jobs=jobs)],["painel/registros/a.js"])["estado"] == "FALHA_PUBLICACAO"
+
+
+def test_imagem_admin_nao_e_provada_por_publicador_de_dados(monkeypatch):
+    jobs=[dict(name=n,status="completed",conclusion="success") for n in ["detectar","portao-de-deploy","publicar-dados-admin"]]
+    assert medir(monkeypatch,[run(jobs=jobs)],["services/admin/app.py","painel/registros/a.js"])["estado"] == "FALHA_PUBLICACAO"
+
+
+def test_recuperacao_exige_run_falho_e_codigo_de_todas_celulas(monkeypatch):
+    falha=dict(estado="FALHA_PUBLICACAO",celulas=["cursos","admin"],runs=[dict(id=10,conclusion="failure",jobs=[dict(name="deploy (cursos)",conclusion="failure"),dict(name="deploy (admin)",conclusion="cancelled")])])
+    pr=dict(body="Corrige-publicacao: 10",files=[{"path":"services/cursos/apps/cursos/management/commands/corrigir.py"},{"path":"painel/registros/a.js"}])
+    assert entrega.correcao_da_publicacao(RAIZ,pr,falha)
+    for arquivos,body in [([{"path":"painel/registros/a.js"}],"Corrige-publicacao: 10"),(pr["files"],"Corrige-publicacao: 11"),([{"path":"services/admin/app.py"}],"Corrige-publicacao: 10"),([{"path":"services/cursos/tests/test_a.py"},{"path":"painel/registros/a.js"}],"Corrige-publicacao: 10")]:
+        assert not entrega.correcao_da_publicacao(RAIZ,dict(files=arquivos,body=body),falha)
+    sem_admin = dict(pr,files=[pr["files"][0]])
+    assert not entrega.correcao_da_publicacao(RAIZ,sem_admin,falha)
+    fixture = dict(pr,files=[{"path":"services/cursos/tests/cenario.py"},{"path":"painel/registros/a.js"}])
+    assert not entrega.correcao_da_publicacao(RAIZ,fixture,falha)
+    falha["runs"].append(dict(id=11,conclusion="failure",jobs=[dict(name="deploy (quiz)",conclusion="failure")]))
+    assert not entrega.correcao_da_publicacao(RAIZ,pr,falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(pr,body="Corrige-publicacao: 10, 11"),falha)
+
+
+def test_recuperacao_nao_dispensa_publicacao_pendente():
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 10",files=[{"path":"services/quiz/app.py"}]),dict(estado="AGUARDANDO_PUBLICACAO",celulas=["quiz"],runs=[dict(id=10,conclusion="failure",jobs=[dict(name="deploy (quiz)",conclusion="failure")])]))
+
+
+def test_sucessor_precisa_ancestralidade_e_job_real(monkeypatch):
+    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
+    sucessor=run(id=11,head_sha="b"*40)
+    nome="deploy (quiz)"
+    def api(raiz,caminho,**kw):
+        if "compare/" in caminho:
+            return dict(status="ahead")
+        if "/jobs?" in caminho:
+            return dict(jobs=[dict(name=n,status="completed",conclusion="success") for n in ["detectar","portao-de-deploy",nome]])
+        return dict(workflow_runs=[sucessor])
+    monkeypatch.setattr(entrega,"_api",api)
+    resultado=entrega.comprovar_sucessores(RAIZ,pendente)
+    assert resultado["estado"] == "PUBLICADO"
+    assert resultado["sha_integrado"] == SHA
+    assert resultado["publicacoes"][0]["sha"] == "b"*40
+    nome="deploy (admin)"
+    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+    nome="deploy (quiz)"
+    def sem_ancestralidade(raiz,caminho,**kw):
+        if "compare/" in caminho:
+            return dict(status="diverged")
+        return api(raiz,caminho,**kw)
+    monkeypatch.setattr(entrega,"_api",sem_ancestralidade)
+    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+
+
+def test_recuperacao_rejeita_id_extra_que_nao_e_falha_vigente(monkeypatch):
+    import mergear
+    from _nucleo import Estado
+    falha=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,acao="corrigir",celulas=["quiz"],runs=[dict(id=10,conclusion="failure",jobs=[dict(name="deploy (quiz)",conclusion="failure")])])
+    monkeypatch.setattr(entrega,"publicacoes_anteriores",lambda *a:[falha])
+    pr=dict(files=[{"path":"services/quiz/app.py"}],body="Corrige-publicacao: 10, 99")
+    assert any(r.estado is Estado.FAIL for r in mergear.checar_publicacoes_anteriores(RAIZ,pr))
+
+
+def test_sucessor_mais_recente_falho_nao_recua_para_verde_antigo(monkeypatch):
+    pendente=dict(estado="FALHA_PUBLICACAO",terminal=False,sha_integrado=SHA,celulas=["quiz"],runs=[dict(id=10,workflow=CELULA,sha=SHA,status="completed",conclusion="cancelled",jobs_exigidos=["detectar","portao-de-deploy","deploy (quiz)"],jobs=[])])
+    def api(raiz,caminho,**kw):
+        if "compare/" in caminho: return dict(status="ahead")
+        if "/jobs?" in caminho:
+            ruim="/12/" in caminho
+            return dict(jobs=[dict(name=n,status="completed",conclusion="failure" if ruim and n=="deploy (quiz)" else "success") for n in ["detectar","portao-de-deploy","deploy (quiz)"]])
+        return dict(workflow_runs=[run(id=12,head_sha="c"*40,conclusion="failure"),run(id=11,head_sha="b"*40)])
+    monkeypatch.setattr(entrega,"_api",api)
+    assert entrega.comprovar_sucessores(RAIZ,pendente)["estado"] == "FALHA_PUBLICACAO"
+
+
+def test_correcao_da_infra_exige_caminho_que_a_publica():
+    falha=dict(estado="FALHA_PUBLICACAO",celulas=[],runs=[dict(id=20,workflow=INFRA,conclusion="failure",jobs=[dict(name="sincronizar",conclusion="failure")])])
+    assert entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 20",files=[{"path":"infra/docker-compose.yml"}]),falha)
+    assert not entrega.correcao_da_publicacao(RAIZ,dict(body="Corrige-publicacao: 20",files=[{"path":"painel/registros/a.js"}]),falha)

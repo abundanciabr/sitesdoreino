@@ -781,7 +781,7 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
 
 
 def checar_publicacoes_anteriores(raiz: Path, pr: dict) -> list[Resultado]:
-    from estado_da_entrega import publicacoes_anteriores, consultar_entrega
+    from estado_da_entrega import publicacoes_anteriores, consultar_entrega, correcao_da_publicacao, correcoes_declaradas
 
     try:
         pendentes = publicacoes_anteriores(raiz, [a["path"] for a in pr.get("files", [])])
@@ -789,9 +789,16 @@ def checar_publicacoes_anteriores(raiz: Path, pr: dict) -> list[Resultado]:
             entrega = consultar_entrega(raiz, numero)
             if entrega.get("sha_integrado") and not entrega["terminal"]:
                 pendentes.append(entrega)
+        declaradas = set(correcoes_declaradas(pr))
+        falhas_reais = {r["id"] for e in pendentes if e["estado"] == "FALHA_PUBLICACAO"
+                        for r in e.get("runs", []) if r.get("conclusion") == "failure"}
+        if declaradas - falhas_reais:
+            return [Resultado("recuperação de publicação", Estado.FAIL,
+                              "Corrige-publicacao cita run que não é falha vigente",
+                              "Retire a declaração obsoleta e peça nova revisão do contexto de recuperação.")]
         return [Resultado("publicação anterior", Estado.FAIL if e["estado"] == "FALHA_PUBLICACAO" else Estado.ERROR,
                           e["estado"] + " em " + e["sha_integrado"], e["acao"])
-                for e in pendentes]
+                for e in pendentes if not correcao_da_publicacao(raiz, pr, e)]
     except (ErroDeInstrumentacao, OSError, ValueError, KeyError, TypeError) as erro:
         return [Resultado("publicação anterior", Estado.ERROR,
                           "não consegui conferir as publicações anteriores", str(erro))]
@@ -799,6 +806,7 @@ def checar_publicacoes_anteriores(raiz: Path, pr: dict) -> list[Resultado]:
 
 def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
     from revisor_de_pouso import avaliar_atestado
+    from estado_da_entrega import correcoes_declaradas
 
     try:
         paginas = json.loads(_gh(
@@ -809,7 +817,7 @@ def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
         comentarios = [c for pagina in paginas for c in pagina]
         if any(not isinstance(c, dict) for c in comentarios):
             raise ValueError("comentário inválido")
-        return avaliar_atestado(pr.get("headRefOid") or "", comentarios)
+        return avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
     except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
         return Resultado("revisão independente", Estado.ERROR,
                          "não consegui medir a revisão independente", str(erro))

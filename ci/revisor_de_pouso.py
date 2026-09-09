@@ -35,7 +35,7 @@ MARCA_ATESTADO = "<!-- revisao-independente:v1 -->"
 ASSOCIACOES_CONFIAVEIS = {"OWNER", "MEMBER", "COLLABORATOR"}
 
 
-def avaliar_atestado(sha: str, comentarios: list[dict]) -> Resultado:
+def avaliar_atestado(sha: str, comentarios: list[dict], *, correcoes: list[int] | None = None) -> Resultado:
     """O último atestado confiável prevalece, inclusive quando inválido."""
     def recusar(motivo):
         return Resultado("revisão independente", Estado.FAIL, motivo,
@@ -68,6 +68,10 @@ def avaliar_atestado(sha: str, comentarios: list[dict]) -> Resultado:
         return recusar("despacho, revisor e maestro precisam ser tarefas distintas")
     if dado["veredito"] != "APROVADO":
         return recusar("revisão reprovada ou sem aprovação: " + dado["resumo"])
+    if correcoes:
+        declaradas = dado.get("corrige_publicacao")
+        if not isinstance(declaradas, list) or any(type(n) is not int for n in declaradas) or sorted(set(declaradas)) != sorted(correcoes):
+            return recusar("a recuperação declarada não está na avaliação independente")
     return Resultado("revisão independente", Estado.PASS,
                      "atestado aprovado para " + sha,
                      f"Comentário {ultimo.get('id')}; revisor {dado['revisor']}. "
