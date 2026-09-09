@@ -770,32 +770,51 @@ def test_erro_preserva_motivo_no_html_sem_texto_livre_na_url(
 
 
 @respx.mock
-@pytest.mark.parametrize("evento_na_fila", [False, True])
+@pytest.mark.parametrize(
+    "estado,arquivo,aplicada",
+    [
+        ("na fila", "ausente", False),
+        ("cancelada", "ausente", False),
+        ("cancelada", "adulterado", False),
+        ("na fila", "exato", False),
+        ("cancelada", "exato", True),
+    ],
+    ids=[
+        "sem-provas",
+        "sem-arquivo",
+        "bytes-divergentes",
+        "estado-divergente",
+        "ambas-provas",
+    ],
+)
 def test_integracao_so_vira_aplicacao_com_evento_exato_na_fila(
-    tmp_path, monkeypatch, com_token, evento_na_fila
+    tmp_path, monkeypatch, com_token, estado, arquivo, aplicada
 ):
-    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    fila_com_ranking(tmp_path, monkeypatch)
     remoto = github_responde_bem()
     cliente = _dentro()
     cliente.post(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "repetida."}
     )
     remoto.prs[0].update(state="closed", merged=True)
-    if evento_na_fila:
-        # A mesma pasta selecionada precisa conter tanto o estado quanto os bytes originais.
-        pasta = tmp_path / "fila_embutida"
-        estados = json.loads((pasta / "estados.json").read_text())
-        estados["TAR-102"]["estado"] = "cancelada"
-        (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
+    pasta = tmp_path / "fila_embutida"
+    estados = json.loads((pasta / "estados.json").read_text())
+    estados["TAR-102"]["estado"] = estado
+    (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
+    if arquivo != "ausente":
         for path, conteudo in remoto.arquivos.items():
+            if arquivo == "adulterado":
+                evento = json.loads(conteudo)
+                evento["detalhe"] = "Motivo diferente do pedido integrado."
+                conteudo = json.dumps(evento).encode("utf-8")
             (pasta / path.removeprefix("fila/")).write_bytes(conteudo)
     resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
     assert resposta.context["resultado"] == "integrado"
-    assert resposta.context["aplicacao_conferida"] is evento_na_fila
+    assert resposta.context["aplicacao_conferida"] is aplicada
     assert (
         "O cancelamento e o evento original estão presentes"
         in pagina_sem_estilo(resposta)
-    ) is evento_na_fila
+    ) is aplicada
 
 
 def test_prompt_da_sessao_do_dono_nao_depende_de_maestro_inexistente():
