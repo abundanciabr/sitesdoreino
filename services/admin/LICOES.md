@@ -373,3 +373,17 @@ redirecionado, hash ou carimbo divergente, contagem incoerente e mistura com
 array inline são cobertura desconhecida, nunca deduplicação parcial. O hash
 não substitui a conferência do conteúdo: bytes íntegros ainda podem carregar
 quantidade ou carimbo de outro retrato.
+
+### Um ramo não comprova um pedido de cancelamento
+
+A criação de uma referência pode persistir antes de a resposta chegar. Um código 422
+não comprova PR aberto e um timeout não comprova ausência de gravação. A tela
+confere o ramo, o evento e o PR da mesma TAR antes de continuar. O evento entra
+em um commit e o ramo avança sem force; uma corrida relê o vencedor. Motivo,
+data e bytes já gravados permanecem intactos, e divergência pede conferência.
+
+O resultado do POST conserva o rascunho no HTML, sem texto livre em URL nem
+sessão nova. A consulta posterior recebe só a TAR e reconstrói o estado no
+GitHub; parâmetros resultado/pr não são prova. PR integrado só confirma a
+aplicação quando a fila selecionada contém o estado cancelado e os bytes do
+evento original. O motivo público é anunciado no gesto de confirmação.
