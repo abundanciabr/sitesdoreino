@@ -77,6 +77,20 @@ def _texto_do_disco(caminho: Path) -> str | None:
 def decidir(dados: dict) -> int:
     ferramenta = dados.get("tool_name", "")
     entrada = dados.get("tool_input") or {}
+    if ferramenta == "apply_patch":
+        try:
+            from patch_codex import ler_patch, texto_proposto
+            for alteracao in ler_patch(dados):
+                conteudo = texto_proposto(alteracao)
+                if conteudo is not None:
+                    resultado = decidir({**dados, "tool_name": "Write", "tool_input": {
+                        "file_path": str(alteracao.destino), "content": conteudo}})
+                    if resultado:
+                        return resultado
+        except Exception as erro:
+            return _recusar(f"{CABECALHO}\\nPatch não medido: {erro}. Releia o arquivo e corrija o patch.")
+        return 0
+
     if ferramenta not in ("Write", "Edit"):
         return 0
 
