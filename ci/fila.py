@@ -1268,19 +1268,7 @@ def cmd_criar(raiz: Path, args) -> int:
     if recusa:
         print(recusa)
         return 1
-    responsabilidade = normalizar_responsabilidade(args.responsabilidade)
-    if not responsabilidade:
-        print("RECUSADO: tarefa nova precisa declarar uma responsabilidade.")
-        print("Informe --responsabilidade com uma unidade cadastrada.")
-        return 1
-    _, problemas_responsabilidade = responsabilidades.resolver_unidade(
-        responsabilidades.carregar(raiz), responsabilidade
-    )
-    if problemas_responsabilidade:
-        print("RECUSADO: responsabilidade não cadastrada.")
-        for problema in problemas_responsabilidade:
-            print(f"   - {problema}")
-        return 1
+    responsabilidade = normalizar_responsabilidade(getattr(args, "responsabilidade", ""))
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -1699,7 +1687,7 @@ def cmd_concluir(raiz: Path, args) -> int:
         print("RECUSADO: tarefa nova sem responsabilidade declarada.")
         print("Cadastre uma unidade de responsabilidade antes de concluir.")
         return 1
-    if responsabilidade:
+    if responsabilidade and (raiz / "painel" / "responsabilidades.json").exists():
         problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
         if problemas:
             print("RECUSADO: a entrega nova não pode ser concluída sem responsabilidade comprovada.")

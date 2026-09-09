@@ -40,6 +40,7 @@ def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
         "evidencia_exigida": "um PR mergeado",
         "despacho": "faça a coisa, com calma",
         "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
         "criada_em": "2026-08-29",
     }
     dados.update(sobrescreve)
@@ -234,6 +235,7 @@ def test_criar_recusa_move_invalido_ANTES_de_gastar_numero(tmp_path, monkeypatch
         despacho="faça",
         despacho_arquivo="",
         origem="teste",
+        responsabilidade="medicao-de-esforco",
     )
     assert fila.cmd_criar(tmp_path, args) == 1
     saida = capsys.readouterr().out
