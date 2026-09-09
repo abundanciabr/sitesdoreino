@@ -469,6 +469,37 @@ caso("livro sem pedido nenhum carimba zero, e não some", !!filaZero && filaZero
 caso("...com a data do mais antigo em null, nunca uma data inventada",
   !!filaZero && filaZero.maisAntigo === null);
 
+function vinculosCarimbados(html) {
+  var linha = /^  pedidosDoDonoVinculos: (\[[^\r\n]*\]),$/m.exec(html);
+  return linha ? JSON.parse(linha[1]) : null;
+}
+caso("vínculos vazios preservam carimbo de zero", JSON.stringify(vinculosCarimbados(leia(dirZero, "painel.html"))) === "[]");
+var idEscapado = "20260827-002-legado";
+var entradasVinculos = {}, registrosVinculos = [
+  camposDoRegistro("20260826-001-pedido", {precisa_do_dono:true, tarefa:"TAR-292"}),
+  camposDoRegistro(idEscapado, {precisa_do_dono:true, quando:"2026-08-27"}),
+  camposDoRegistro("20260826-003-respondido", {precisa_do_dono:true}),
+  camposDoRegistro("20260828-001-resposta", {responde_a:"20260826-003-respondido"})
+];
+registrosVinculos.forEach(function(r) { entradasVinculos[r.arquivo + ".js"] = registroBom(r.arquivo, r); });
+var dirVinculos = montarCenario(entradasVinculos);
+caso("gerador aceita pedido com TAR e legado", roda(dirVinculos).code === 0);
+var htmlVinculos = leia(dirVinculos, "painel.html"), vinculos = vinculosCarimbados(htmlVinculos);
+var esperadosVinculos = require("../logica.js").caixaDeEntrada(registrosVinculos, new Date()).map(function(p) {
+  return {arquivo:p.registro.arquivo, tarefa:p.registro.tarefa || null};
+});
+caso("IDs e tarefas do carimbo seguem exatamente caixaDeEntrada", JSON.stringify(vinculos) === JSON.stringify(esperadosVinculos));
+caso("quantidade e vínculos carimbados são coerentes", !!vinculos && filaCarimbada(htmlVinculos).quantidade === vinculos.length);
+caso("legado conserva tarefa nula", !!vinculos && vinculos.some(function(v){return v.arquivo === idEscapado && v.tarefa === null;}));
+var linhaProdutora = fs.readFileSync(path.join(RAIZ_PAINEL,"gerar_manifesto.js"),"utf8").split("\n").filter(function(l){return l.indexOf('"  pedidosDoDonoVinculos: ') !== -1;})[0];
+var idComEscape = 'aspas" e barra\\ e </script>';
+var linhaEscapada = linhaProdutora ? require("vm").runInNewContext(linhaProdutora.trim().replace(/,$/, ""), {
+  pedidosDoDono:[{registro:{arquivo:idComEscape}}]
+}) : "";
+var voltaDoEscape = vinculosCarimbados(linhaEscapada);
+caso("string escapada conserva identidade e não fecha script", !!voltaDoEscape && voltaDoEscape[0].arquivo === idComEscape && linhaEscapada.indexOf("</script>") === -1);
+
+
 // ---------------------------------------------------------------------------
 // AS ÁREAS DO SITE (07/09/2026, a aba Prioridades). Elas viajam com a página
 // porque é delas que a tela tira a ORDEM, o nome que o dono lê e a que área
