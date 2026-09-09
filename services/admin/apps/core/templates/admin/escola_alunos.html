@@ -375,6 +375,7 @@
       <form class="decidir" method="post" action="{% url 'escola_aluno_salvar' %}">
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <input type="hidden" name="pessoa_email" value="{{ pessoa.email }}">
         <label class="rotulo" for="estado-{{ pessoa.id }}">Situação</label>
         <select id="estado-{{ pessoa.id }}" name="status">
           {% for valor, texto in estados %}

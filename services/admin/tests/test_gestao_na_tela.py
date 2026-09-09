@@ -131,6 +131,7 @@ def test_a_tela_lista_os_alunos_com_o_formulario():
     # Os cinco campos que a lei §3 deixa mexer, e o botão.
     for campo in ("status", "nome_completo", "whatsapp", "turma", "comprou_em"):
         assert f'name="{campo}"' in html, campo
+    assert html.count('name="pessoa_email"') == 1
     assert reverse("escola_aluno_salvar") in html
 
 
