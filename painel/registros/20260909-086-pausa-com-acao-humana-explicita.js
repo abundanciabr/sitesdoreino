@@ -9,14 +9,13 @@
   verificado_em: "2026-09-09",
   precisa_do_dono: false,
   responde_a: null,
-  gravidade: "alto",
+  gravidade: "ambar",
   frente: "fabrica",
   area: null,
   vence_em_dias: null,
-  se_eu_nao_decidir: "A tela continuará exigindo que o mantenedor adivinhe como retomar uma etapa pausada.",
-  recomendacao: "Nenhuma ação manual restante para esta tarefa. A pista deve validar e pousar o PR.",
-  reversivel: true,
-  impacto: "O próximo passo humano fica visível e acionável na própria prestação de contas.",
-  portao: "ci/prestacao_de_contas.py",
-  pr: "https://github.com/abundanciabr/sitesdoreino/pull/1502"
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: "alto",
+  portao: "entrega"
 });})();
