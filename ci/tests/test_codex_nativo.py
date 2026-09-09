@@ -205,3 +205,31 @@ def test_session_start_emite_um_json_valido(bancada):
     contexto = json.loads(resultado.stdout)["hookSpecificOutput"]["additionalContext"]
     assert "fichas nativas conferidas" in contexto
     assert "ainda não mede transcripts Codex" in contexto
+
+def test_launcher_windows_sem_arquivo_do_hook_fecha(tmp_path):
+    import subprocess
+    if sys.platform != "win32":
+        pytest.skip("Inicialização nativa Windows.")
+    (tmp_path / ".git").mkdir()
+    configuracao = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))
+    command = configuracao["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"]
+    resultado = subprocess.run(command, input="{}", capture_output=True,
+                               text=True, encoding="utf-8", cwd=tmp_path, timeout=30)
+    assert resultado.returncode == 2, resultado.stderr
+    assert "PAROU POR SEGURANCA" in resultado.stderr
+
+def test_launcher_posix_sem_python_fecha(tmp_path):
+    import os
+    import subprocess
+    from conftest import BASH
+    if BASH is None:
+        pytest.skip("Bash ausente, caso POSIX declarado.")
+    fakebin = tmp_path / "bin"
+    fakebin.mkdir()
+    git = fakebin / "git"
+    git.write_text("#!/bin/sh\nprintf '/checkout'\n", encoding="utf-8")
+    git.chmod(0o755)
+    comando = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    r = subprocess.run([BASH, "-c", comando], env={**os.environ, "PATH": str(fakebin)},
+                       capture_output=True, text=True, encoding="utf-8")
+    assert r.returncode == 2, r.stderr
