@@ -116,12 +116,14 @@ function elemento() {
     classList: {valores: new Set(), add(c) {this.valores.add(c);}, remove(c) {this.valores.delete(c);}}};
 }
 const estado = elemento(), lista = elemento(), carimbo = elemento(), cartao = elemento();
+const etiqueta = elemento(); cartao.querySelector = () => etiqueta;
+let interromperMontagem = false;
 const eventos = {}, eventosJanela = {}, timers = [];
 const doc = {visibilityState: "visible", hidden: false,
   getElementById(id) {return {"ao-vivo-estado": estado, "ao-vivo-lista": lista, "ao-vivo-carimbo": carimbo}[id];},
   querySelector(s) {return s === ".ao-vivo-caixa" ? {dataset: {repo: "x/y"}} : cartao;},
   querySelectorAll() {return [cartao];}, createElement: elemento,
-  createTextNode(t) {return {textContent: t};},
+  createTextNode(t) {if(interromperMontagem && t.includes("interromper montagem")) throw Error("montagem interrompida"); return {textContent: t};},
   addEventListener(n, f) {eventos[n] = f;}};
 let agora = 1000000, chamadas = 0, falha = false, incompleta = false;
 let reservas = [{ref: "refs/reservas/tarefa-TAR-002"}];
@@ -167,6 +169,32 @@ const ciclo = () => new Promise(resolve => setImmediate(resolve));
  assert.match(estado.textContent, /parcial|primeir/i);
  assert.equal(lista.children.length, 100);
  assert.match(carimbo.textContent, /leitura|consult/i);
+ incompleta = false; reservas = [{ref:"refs/reservas/tarefa-TAR-002"}];
+ const bom = {number:3,title:"TAR-002 entrega",head:{ref:"agent/TAR-002"},draft:false};
+ prs = [bom]; agora += 301000; eventosJanela.focus(); await ciclo();
+ const linhasAntes = [...lista.children], textoAntes = texto(lista), horaAntes = carimbo.textContent;
+ const classesAntes = [...cartao.classList.valores], etiquetaAntes = etiqueta.textContent;
+ const camposInvalidos = [
+   {title:{toString:7}}, {title:[]}, {title:7}, {title:true},
+   {head:{ref:{toString:7}}}, {head:{ref:[]}}, {head:{ref:7}}, {head:{ref:false}},
+   {head:7}, {head:"ramo"}, {head:[]}, {draft:"false"}, {draft:7},
+   {number:0}, {number:1.5}, {number:Number.MAX_SAFE_INTEGER+1}
+ ];
+ const respostasInvalidas = camposInvalidos.map(campos => ({reservas:[], prs:[bom,{...bom,...campos},bom]}));
+ for (const ref of [7,{},null,"refs/reservas/tarefa-outra", "refs/reservas/tarefa-TAR-002\"", "refs/reservas/tarefa-TAR-002\n"])
+   respostasInvalidas.push({reservas:[{ref:"refs/reservas/tarefa-TAR-003"},{ref}],prs:[bom]});
+ respostasInvalidas.push({reservas:[],prs:[bom,{...bom,title:"interromper montagem"}],interromper:true});
+ for (const respostaInvalida of respostasInvalidas) {
+  reservas = respostaInvalida.reservas; prs = respostaInvalida.prs;
+  interromperMontagem = !!respostaInvalida.interromper;
+  for(let repeticao=0; repeticao<2; repeticao++) {
+   agora += 301000; eventosJanela.focus(); await ciclo();
+   assert.match(estado.textContent,/não consegui/i,JSON.stringify(respostaInvalida));
+   assert.deepEqual(lista.children,linhasAntes);
+   assert.equal(texto(lista),textoAntes); assert.equal(carimbo.textContent,horaAntes);
+   assert.deepEqual([...cartao.classList.valores],classesAntes); assert.equal(etiqueta.textContent,etiquetaAntes);
+  }
+ }
  console.log("PASS: draft, aceite, foco, visibilidade, limite, erro e ausência de duplicação");
 })().catch(e => {console.error(e); process.exitCode = 1;});
 """
