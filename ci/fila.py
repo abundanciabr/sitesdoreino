@@ -95,7 +95,7 @@ EVENTOS_TERMINAIS = ("concluida", "cancelada")
 #     acrescentar, como em todo o resto desta casa.
 EXPLICADA = "explicada"
 
-EVENTOS_VALIDOS = EVENTOS_DE_CICLO + EVENTOS_TERMINAIS + (EXPLICADA,)
+EVENTOS_VALIDOS = EVENTOS_DE_CICLO + EVENTOS_TERMINAIS + (EXPLICADA, "submetida")
 
 # Os quatro campos, e só eles. O contrato é fechado aqui porque a célula `admin`
 # o consome pelo `estados.json` que `listar --json` gera no build: campo novo
@@ -161,6 +161,9 @@ CAMPOS_DO_EVENTO = {
     "quem": str,
 }
 CAMPOS_OPCIONAIS_DO_EVENTO = {
+    "pr": str,
+    "revisao": str,
+    "arvore": str,
     "detalhe": str,
     "evidencia": str,
     "verificado_em": str,
@@ -627,6 +630,10 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
         except (TypeError, ValueError):
             erros.append(f"{nome}: 'quando' precisa ser data-hora ISO (veio {quando!r})")
             continue
+        if tipo == "submetida":
+            erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
+        elif any(campo in dados for campo in ("pr", "revisao", "arvore")):
+            erros.append(f"{nome}: pr, revisao e arvore pertencem ao evento submetida")
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -694,6 +701,21 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
     return eventos
 
 
+def problemas_da_submissao(dados: dict) -> list[str]:
+    erros = []
+    if not re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+/pull/[1-9]\d*", str(dados.get("pr") or "")):
+        erros.append("pr exige a URL completa do pull request no GitHub")
+    for campo in ("revisao", "arvore"):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
+            erros.append(f"{campo} exige o SHA completo do código validado")
+    return erros
+
+
+def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
+    return next((e for e in reversed(_em_ordem(eventos))
+                 if e.get("tarefa") == tid and e.get("evento") == "submetida"), None)
+
+
 def calcular_estados(
     tarefas: dict[str, dict],
     eventos: list[dict],
@@ -731,7 +753,9 @@ def calcular_estados(
         ultimo_ciclo = next(
             (e for e in reversed(cadeia) if e["evento"] in EVENTOS_DE_CICLO), None
         )
-        if ultimo_ciclo is not None and ultimo_ciclo["evento"] == "bloqueada":
+        submetida = ultima_submissao(cadeia, tid)
+        if (ultimo_ciclo is not None and ultimo_ciclo["evento"] == "bloqueada"
+                and (submetida is None or cadeia.index(ultimo_ciclo) > cadeia.index(submetida))):
             resultado = {
                 "estado": BLOQUEADA,
                 "motivo": ultimo_ciclo.get("detalhe") or "",
@@ -743,6 +767,15 @@ def calcular_estados(
                 # tarefa que talvez fosse dele. `cmd_validar` cobra o campo em
                 # todo bloqueio vivo, então este `None` não sobrevive a um PR.
                 "espera": ultimo_ciclo.get("espera"),
+            }
+            estados[tid] = resultado
+            return resultado
+        if submetida:
+            resultado = {
+                "estado": EM_EXECUCAO,
+                "motivo": "Entrega submetida; falta comprovar o aceite da tarefa.",
+                "quem": submetida["quem"],
+                **{campo: submetida[campo] for campo in ("pr", "revisao", "arvore")},
             }
             estados[tid] = resultado
             return resultado
@@ -884,6 +917,27 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
     return achados
 
 
+def consultar_pr_submetido(raiz: Path, url: str) -> dict:
+    try:
+        proc = subprocess.run(
+            ["gh", "pr", "view", url, "--json", "url,state,headRefOid,mergeCommit"],
+            cwd=str(raiz), capture_output=True, text=True, encoding="utf-8",
+            timeout=120, stdin=subprocess.DEVNULL,
+        )
+        if proc.returncode != 0:
+            raise ValueError("consulta recusada pelo GitHub")
+        dados = json.loads(proc.stdout)
+        if (not isinstance(dados, dict) or dados.get("url") != url
+                or dados.get("state") not in ("OPEN", "MERGED", "CLOSED")):
+            raise ValueError("identidade ou estado do PR incompatível")
+        return dados
+    except (OSError, subprocess.TimeoutExpired, ValueError) as erro:
+        raise ErroDeInstrumentacao(
+            "não consegui conferir o PR submetido",
+            f"Confira gh pr view {url} e repita a operação. A tarefa não foi devolvida à fila.",
+        ) from erro
+
+
 def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
     ultimos: dict[str, dict] = {}
     for evento in _em_ordem(eventos):
@@ -910,6 +964,10 @@ def rotular_orfaos(
     escritos: list[Path] = []
     for tid in sorted(tarefas):
         if tid in terminais:
+            continue
+        submetida = ultima_submissao(eventos, tid)
+        if submetida:
+            consultar_pr_submetido(raiz, submetida["pr"])
             continue
         ultimo = ultimos.get(tid)
         if not ultimo or ultimo["evento"] != "reivindicada":
@@ -1428,12 +1486,15 @@ def cmd_pegar(raiz: Path, args) -> int:
 
 
 def cmd_soltar(raiz: Path, args) -> int:
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
         return 1
     _soltar_reserva_se_houver(raiz, tid)
+    if ultima_submissao(eventos, tid):
+        print(f"{tid}: reserva solta; entrega continua aguardando comprovação.")
+        return 0
     caminho = _escrever_evento(raiz, tid, "devolvida", args.quem, detalhe=args.motivo)
     print(f"{tid} devolvida à fila. Evento: {caminho.relative_to(raiz)}")
     return 0
@@ -1552,6 +1613,41 @@ def cmd_cancelar(raiz: Path, args) -> int:
     return 0
 
 
+def cmd_submeter(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("submeter", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
+        return 1
+    if calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA):
+        print(f"RECUSADO: {tid} já terminou. Confira sua cadeia antes de submeter.")
+        return 1
+    vinculo = {campo: getattr(args, campo) for campo in ("pr", "revisao", "arvore")}
+    erros = problemas_da_submissao(vinculo)
+    if erros:
+        print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
+        return 1
+    anterior = ultima_submissao(eventos, tid)
+    if anterior and anterior.get("pr") != args.pr:
+        print(f"RECUSADO: {tid} já tem outra entrega submetida. Confira {anterior['pr']} antes de trocar o vínculo.")
+        return 1
+    if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
+        dados = montar_evento(tid, "submetida", args.quem)
+        dados.update(vinculo)
+        pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
+        caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
+        if caminho.exists():
+            raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
+        _escrever_json(caminho, dados)
+    _soltar_reserva_se_houver(raiz, tid)
+    print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
+    return 0
+
+
 def cmd_concluir(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("concluir", raiz)
     if recusa:
@@ -1565,6 +1661,11 @@ def cmd_concluir(raiz: Path, args) -> int:
     estado = calcular_estados(tarefas, eventos)[tid]
     if estado["estado"] in (CONCLUIDA, CANCELADA):
         print(f"RECUSADO: {tid} já terminou ({estado['estado']}).")
+        return 1
+    if ultima_submissao(eventos, tid):
+        print(f"RECUSADO: {tid} aguarda comprovação do aceite, além da abertura ou integração do PR.")
+        print("Use a reconciliação da entrega com a prova exigida; não encerre por texto livre.")
+        print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
     if not (args.evidencia or "").strip():
         print("RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro.")
@@ -1912,6 +2013,13 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", required=True, help="por que ela não vai mais ser feita")
 
+    p = sub.add_parser("submeter", help="vincula a entrega validada sem concluir a tarefa")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--pr", required=True, help="URL completa do pull request")
+    p.add_argument("--revisao", required=True, help="SHA completo do código validado")
+    p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
+
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
@@ -1951,6 +2059,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_bloquear(raiz, args)
         if args.acao == "cancelar":
             return cmd_cancelar(raiz, args)
+        if args.acao == "submeter":
+            return cmd_submeter(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
         if args.acao == "explicar":

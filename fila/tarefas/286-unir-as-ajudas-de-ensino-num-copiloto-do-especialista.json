@@ -1,0 +1,24 @@
+{
+  "arquivo": "286-unir-as-ajudas-de-ensino-num-copiloto-do-especialista",
+  "id": "TAR-286",
+  "titulo": "Unir as ajudas de ensino num Copiloto do Especialista",
+  "toca": [
+    "cursos",
+    "forum",
+    "admin",
+    "painel",
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-283",
+    "TAR-285"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PRs fatiados por contrato e célula que reutilizam o Assistente de laudo, o Guardião de fidelidade e a inteligência do fórum; respostas citam aulas, triagem e escalada funcionam; tutor autônomo e avaliação visual só entram após decisão que reconcilie o mandato anterior.",
+  "despacho": "Monte o Copiloto do Especialista a partir do Assistente de laudo, da TAR-246 e da inteligência do fórum; não crie agentes paralelos para capacidades já entregues. O conhecimento usado deve citar a aula ou fonte, separar triagem de resposta e escalar para pessoa quando faltar segurança. Antes de tutor autônomo ou avaliação visual, confronte o mandato anterior que limita agentes e exige que apontem sem corrigir; divergência vira decisão do mantenedor. Fatie contratos e células antes de código.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; reaproveita TAR-157, TAR-245 e TAR-246 concluídas",
+  "criada_em": "2026-09-09"
+}

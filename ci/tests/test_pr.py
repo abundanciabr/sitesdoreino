@@ -82,10 +82,11 @@ class Duble:
 RESPOSTAS_FELIZES = {
     "remote get-url": "https://github.com/abundanciabr/sitesdoreino.git",
     "gh api": json.dumps({"full_name": "abundanciabr/sitesdoreino", "private": False}),
+    "git show " + "b" * 40 + ":ci/pr.py": "def abrir(): pass\n",
     "write-tree": "a" * 40,
     "rev-parse HEAD^{tree}": "a" * 40,
     "rev-parse HEAD": "b" * 40,
-        "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
+    "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
     "rev-parse --abbrev-ref": "agent/ci/make-pr\n",
     "status --porcelain": " M ci/pr.py\n?? ci/tests/test_pr.py\n",
     "diff --cached --name-only": "ci/pr.py\n",
@@ -109,6 +110,10 @@ def bancada(tmp_path: Path, principal: bool = False) -> Path:
     )
     (raiz / "corpo.md").write_text("## O que muda\n\nUm comando só.\n", encoding="utf-8")
     (raiz / "validacao.json").write_text(json.dumps({"comandos": [["pytest", "ci/tests"]]}), encoding="utf-8")
+    pr.telemetria.registrar_fase(
+        "abertura", "concluido", tarefa="agent/ci/make-pr", tentativa="abertura-legada",
+        branch="agent/ci/make-pr", commit="b" * 40, cwd=str(raiz),
+    )
     return raiz
 
 
@@ -188,6 +193,8 @@ def test_o_registro_nasce_com_os_onze_campos_derivados(tmp_path):
         "verificado_em": "2026-09-06",
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": None,
         "gravidade": "info",
         "frente": "fabrica",
         "area": "ci",
@@ -565,6 +572,9 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
 
 @pytest.mark.parametrize('tarefa_aberta', ['TAR-001','agent/ci/make-pr'])
 def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aberta):
+    import fila
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001': {}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [])
     raiz = bancada(tmp_path)
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
@@ -603,11 +613,11 @@ def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
     monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
     dub = Duble()
-    assert pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR) == ['fila/eventos/concluida.json']
+    assert pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40) == ['fila/eventos/concluida.json']
     assert not dub.chamadas
     evento['evidencia'] = URL_DO_PR+'0'
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
-        pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)
+        pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
@@ -620,10 +630,13 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo)
     git('config','user.name','Teste')
     git('config','user.email','teste@example.com')
     (origem/'.gitignore').write_text('necessario.py\n' if ignorado else '',encoding='utf-8')
-    git('add','.gitignore')
+    (origem/'ci').mkdir()
+    (origem/'ci/pr.py').write_text('def abrir(): pass\n',encoding='utf-8')
+    git('add','.gitignore','ci/pr.py')
     git('commit','-m','base')
     raiz=tmp_path/'bancada'
     git('worktree','add','-b','agent/ci/prova',str(raiz))
+    pr.telemetria.registrar_fase('abertura','concluido',tarefa='agent/ci/prova',tentativa='legada',branch='agent/ci/prova',commit=git('rev-parse','HEAD'),cwd=str(raiz))
     (raiz/'check.py').write_text('import necessario\ndef test_entregue():\n    assert necessario.valor == 42\n',encoding='utf-8')
     (raiz/'necessario.py').write_text('valor = 42\n',encoding='utf-8')
     (tmp_path/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
@@ -985,34 +998,154 @@ def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro
     assert resultado in capsys.readouterr().out
 
 
-def test_confirmacao_remota_atrasada_nao_refaz_validacao(tmp_path):
-    class GitComAtraso(Duble):
-        consultas = 0
-        def __call__(self, comando, raiz=None, **opcoes):
-            if comando[:3] == ["gh", "pr", "view"]:
-                self.consultas += 1
-                if self.consultas == 1:
-                    self.chamadas.append(comando)
-                    return json.dumps({"headRefOid": "a" * 40, "state": "OPEN", "isDraft": False})
-            return super().__call__(comando, raiz, **opcoes)
+
+def test_fechamento_submete_tar_recuperada_e_recibo_a_identifica(tmp_path, monkeypatch):
+    import fila
     raiz = bancada(tmp_path)
-    git = GitComAtraso(RESPOSTAS_FELIZES)
-    pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)
-    assert git.consultas == 2
-    assert len([c for c in git.chamadas if c[0] == "pytest"]) == 2
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py concluir")
+    assert dub.pediu("--revisao " + "b" * 40)
+    assert dub.pediu("--arvore " + "a" * 40)
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert pr.campos_lidos(recibo.read_text(encoding="utf-8"))["tarefa"] == "TAR-001"
 
 
-def test_confirmacao_remota_divergente_permanece_recusada(tmp_path):
+def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
     raiz = bancada(tmp_path)
-    git = Duble({**RESPOSTAS_FELIZES, "gh pr view": json.dumps({"headRefOid": "c" * 40, "state": "OPEN", "isDraft": False})})
-    with pytest.raises(pr.ParouPorSeguranca, match="confirma"):
-        pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)
-    assert not git.pediu("gh pr ready")
-    assert len([c for c in git.chamadas if c[:3] == ["gh", "pr", "view"]]) == 3
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz, tarefa="TAR-999"), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+    assert not dub.pediu("gh pr create")
 
 
-def test_confirmacao_remota_sem_estado_de_rascunho_e_erro(tmp_path):
+def test_tar_do_titulo_reutiliza_cadastro_sem_confundir_tentativa(tmp_path, monkeypatch):
+    import fila
     raiz = bancada(tmp_path)
-    git = Duble({**RESPOSTAS_FELIZES, "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN"})})
-    with pytest.raises(pr.ErroDeInstrumentacao, match="incompleto"):
-        pr.abrir(raiz, pedido(raiz), rodar=git, hoje=HOJE)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("TAR-999", "agent/ci/make-pr"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, titulo="fila: corrigir conclusão TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("TAR-999")
+
+
+
+def test_tar_explicita_nao_confunde_tarefa_citada_com_dependencia(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    (raiz / "corpo.md").write_text("Corrige TAR-001. Caso histórico TAR-077.", encoding="utf-8")
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-077": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py submeter TAR-077")
+
+
+
+def test_abertura_nova_sem_tar_recusa_antes_de_publicar(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
+def test_abertura_sem_proveniencia_nao_presume_sessao_legada(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr.telemetria, "ler_tudo", lambda *a: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
+def test_abertura_com_revisao_ilegivel_nao_presume_sessao_legada(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": ""})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+
+
+@pytest.mark.parametrize("ultimo_evento", ["concluida", "cancelada", "reivindicacao_expirada", "devolvida"])
+def test_tar_explicita_ignora_posse_historica_encerrada(tmp_path, monkeypatch, ultimo_evento):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-077": {}})
+    eventos = [
+        {"tarefa": "TAR-077", "evento": "reivindicada", "quem": "agent/ci/make-pr", "quando": "2026-09-01T00:00:00+00:00"},
+        {"tarefa": "TAR-077", "evento": ultimo_evento, "quem": "agent/ci/make-pr", "quando": "2026-09-02T00:00:00+00:00"},
+    ]
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: eventos)
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+
+
+
+def test_propagacao_do_sha_reconsulta_sem_repetir_recibo_ou_validacao(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": ("c" if len(consultas) == 1 else "b") * 40,
+                               "state": "OPEN", "isDraft": False})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 2
+    assert sum("reservar.py numero registro" in linha for linha in dub.linhas) == 1
+    assert sum("worktree add --detach" in linha for linha in dub.linhas) == 2
+    assert len(list((raiz / "painel/registros").glob("*.js"))) == 1
+
+
+@pytest.mark.parametrize("remoto", [
+    {"headRefOid": "c" * 40, "state": "OPEN", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "CLOSED", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "OPEN"},
+])
+def test_propagacao_esgota_consultas_sem_aprovar_revisao_ou_estado_errados(tmp_path, monkeypatch, remoto):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps(remoto)
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ParouPorSeguranca, match="após 3 consultas"):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert len(consultas) == 3
+    assert not dub.pediu("gh pr ready")
+
+
+def test_propagacao_de_ready_exige_estado_final_confirmado(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": len(consultas) < 3})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 3
+    assert sum("gh pr ready" in linha for linha in dub.linhas) == 1
