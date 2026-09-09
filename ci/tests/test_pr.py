@@ -186,6 +186,8 @@ def test_o_registro_nasce_com_os_onze_campos_derivados(tmp_path):
         "verificado_em": "2026-09-06",
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": None,
         "gravidade": "info",
         "frente": "fabrica",
         "area": "ci",
@@ -563,6 +565,9 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
 
 @pytest.mark.parametrize('tarefa_aberta', ['TAR-001','agent/ci/make-pr'])
 def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aberta):
+    import fila
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001': {}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [])
     raiz = bancada(tmp_path)
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
@@ -601,11 +606,11 @@ def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
     monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
     dub = Duble()
-    assert pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR) == ['fila/eventos/concluida.json']
+    assert pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40) == ['fila/eventos/concluida.json']
     assert not dub.chamadas
     evento['evidencia'] = URL_DO_PR+'0'
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
-        pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)
+        pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
@@ -981,3 +986,55 @@ def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro
     ])
     assert retorno == codigo
     assert resultado in capsys.readouterr().out
+
+
+
+def test_fechamento_submete_tar_recuperada_e_recibo_a_identifica(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py concluir")
+    assert dub.pediu("--revisao " + "b" * 40)
+    assert dub.pediu("--arvore " + "a" * 40)
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert pr.campos_lidos(recibo.read_text(encoding="utf-8"))["tarefa"] == "TAR-001"
+
+
+def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz, tarefa="TAR-999"), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+    assert not dub.pediu("gh pr create")
+
+
+def test_tar_do_titulo_reutiliza_cadastro_sem_confundir_tentativa(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("TAR-999", "agent/ci/make-pr"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, titulo="fila: corrigir conclusão TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("TAR-999")
+
+
+
+def test_tar_explicita_nao_confunde_tarefa_citada_com_dependencia(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    (raiz / "corpo.md").write_text("Corrige TAR-001. Caso histórico TAR-077.", encoding="utf-8")
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-077": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py submeter TAR-077")

@@ -258,6 +258,7 @@ def montar_campos(
     frente: str | None,
     evidencia_extra: str,
     area: str | None = None,
+    tarefa: str | None = None,
 ) -> dict:
     """Os 14 campos do molde: 11 derivados do PR, 1 de julgamento, 2 de opção."""
     evidencia = url_do_pr
@@ -275,6 +276,8 @@ def montar_campos(
         "verificado_em": iso,
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": tarefa,
         "gravidade": gravidade,
         "frente": frente,
         "area": area,
@@ -497,7 +500,7 @@ def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACA
     return provas
 
 
-def _concluir_fila(raiz, correr, tarefa, ramo, url):
+def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
     if tarefa is None:
         return []
     from fila import carregar_tarefas, carregar_eventos
@@ -510,7 +513,13 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
     if finais and not any(e.get("evidencia") == url and e["evento"] == "concluida" for e in finais):
         raise ParouPorSeguranca("tarefa já encerrada por outro fato", "Confira a cadeia da fila; não sobrescreva o encerramento.")
     if not finais:
-        correr([sys.executable, "ci/fila.py", "concluir", tarefa, "--quem", ramo, "--evidencia", url])
+        anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
+        if anterior and anterior.get("pr") == url:
+            diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
+            if all(c.startswith(("painel/registros/", "fila/eventos/")) for c in diferenca):
+                revisao, arvore = anterior["revisao"], anterior["arvore"]
+        correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
+                "--pr", url, "--revisao", revisao, "--arvore", arvore])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:
@@ -580,6 +589,34 @@ def _tentativa_da_abertura(raiz, ramo):
     return uuid.uuid4().hex, ramo.split('/')[-1]
 
 
+def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura):
+    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas
+    candidatos = set()
+    if pedido.tarefa:
+        if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
+            raise ParouPorSeguranca("tarefa inválida", "Informe --tarefa TAR-NNN da fila existente.")
+        candidatos.add(pedido.tarefa)
+    if re.fullmatch(r"TAR-\d{3,}", tarefa_da_abertura):
+        candidatos.add(tarefa_da_abertura)
+    erros = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    candidatos.update(e["tarefa"] for e in eventos
+                      if e.get("quem") == ramo and e.get("evento") in ("reivindicada", "submetida"))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(ramo + " " + pedido.titulo))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(pedido.corpo_arquivo.read_text(encoding="utf-8")))
+    if not candidatos:
+        return None  # Sessões legadas sem acompanhamento continuam válidas.
+    if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
+        raise ParouPorSeguranca(
+            "tarefa ausente, ambígua ou fila inválida",
+            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com --tarefa antes de publicar.",
+        )
+    return candidatos.pop()
+
+
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
     raiz = Path(raiz)
     hoje = hoje or datetime.now(timezone.utc).date()
@@ -593,6 +630,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
     tentativa, tarefa_da_abertura = _tentativa_da_abertura(raiz, ramo)
+    pedido.tarefa = _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura)
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
@@ -651,7 +689,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         campos = montar_campos(
             arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
             url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
-            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1],
+            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
             evidencia_extra=f"Validação local: árvore {arvore}; commit {commit}; {len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas.",
         )
         texto = renderizar(campos)
@@ -660,7 +698,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
         destino.write_text(texto, encoding="utf-8")
-    eventos = _concluir_fila(raiz, correr, pedido.tarefa, ramo, url)
+    eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
     correr(["node", "painel/gerar_manifesto.js"])
     relativo = destino.relative_to(raiz).as_posix()
     correr(["git", "add", "--", relativo, *eventos])
@@ -774,7 +812,7 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--gravidade", default="info", help=f"um de: {', '.join(GRAVIDADES)}")
     p.add_argument("--frente", default=None, help=f"um de: {', '.join(FRENTES)}")
     p.add_argument("--validacao-arquivo", type=Path, required=True)
-    p.add_argument("--tarefa", help="TAR-NNN da fila; conclui e embarca os eventos")
+    p.add_argument("--tarefa", help="TAR-NNN da fila; submete a entrega e embarca seus eventos")
     p.add_argument("--evidencia", default="", help="a prova que soma à URL do PR")
     p.add_argument("--continuar", action="store_true", help="relê o estado e pula o feito")
     return p
