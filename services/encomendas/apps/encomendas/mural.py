@@ -362,7 +362,11 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
         razao = (
             JA_FOI_PEGA
             if projeto.status == Encomenda.Status.RESERVADA
-            else E_CHAMADA_ABERTA_USE_ACEITAR
+            else (
+                E_CHAMADA_ABERTA_USE_ACEITAR
+                if projeto.status == Encomenda.Status.ABERTA
+                else NAO_ESTA_NO_MURAL
+            )
         )
         return Desfecho(feito=False, razao=razao, encomenda_em=projeto.status)
 
