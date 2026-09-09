@@ -1218,10 +1218,16 @@ def _dizer_a_area(
         if area_esperada in celulas:
             conserto = f'Escreva area: "{area_esperada}" (o nome do seu ramo).'
         else:
+            exemplos = ", ".join(
+                f'\"{celula}\"'
+                for celula in sorted(
+                    celulas, key=lambda celula: (celula.startswith("."), celula)
+                )[:3]
+            )
             conserto = (
                 f"O ramo agent/{area_esperada}/ não corresponde a nenhuma área "
                 "de painel/areas.json: escreva area: com o nome de uma célula "
-                "que esteja lá."
+                f"que esteja lá, por exemplo: {exemplos}."
             )
         print(
             f"{MARCA_DA_SOMBRA_DA_AREA}: {arquivo} não declara área. Quando a "
