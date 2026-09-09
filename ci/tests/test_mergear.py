@@ -47,6 +47,7 @@ def _pr(**alteracoes: Any) -> dict[str, Any]:
         "mergeStateStatus": "CLEAN",
         "baseRefName": "main",
         "headRefName": "agent/falso",
+        "headRefOid": "a" * 40,
         "url": "https://example.invalid/pr/99",
         "author": {"login": "ninguem"},
         "labels": [],
@@ -516,7 +517,7 @@ def test_confirmo_certo_mergeia_e_confere_o_estado(monkeypatch) -> None:
     monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
     monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
     assert mergear.main(["99", "--confirmo", "99"]) == 0
-    assert ["pr", "merge", "99", "--merge"] in chamadas
+    assert ["pr", "merge", "99", "--merge", "--match-head-commit", "a" * 40] in chamadas
     assert any(c[:2] == ["pr", "view"] for c in chamadas)
 
 
