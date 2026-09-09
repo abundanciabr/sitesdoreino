@@ -45,7 +45,6 @@ renderiza vazio, não quebra.
   <symbol id="i-plataforma" viewBox="0 0 20 20"><path d="M10 3l7 3.5-7 3.5-7-3.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M3 10.5l7 3.5 7-3.5M3 14l7 3.5L17 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></symbol>
   <symbol id="i-grade" viewBox="0 0 20 20"><rect x="3" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="11" y="3" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="3" y="11" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="11" y="11" width="6" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
   <symbol id="i-mais" viewBox="0 0 20 20"><line x1="10" y1="4" x2="10" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
-  <symbol id="i-sino" viewBox="0 0 20 20"><path d="M6 8a4 4 0 018 0c0 3 1 4 1.5 4.7H4.5C5 12 6 11 6 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8.5 15a1.6 1.6 0 003 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-barras" viewBox="0 0 20 20"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="1.3"/></symbol>
   {% comment %}
   O ícone do roadmap (EVO-31). O protótipo reaproveita o `#i-bars` no botão
@@ -58,7 +57,7 @@ renderiza vazio, não quebra.
   {% comment %}
   O ícone de "Meu impacto" (V1.2). É o `#i-user` do protótipo, redesenhado com o
   traço desta folha e batizado em PT-BR como todos os outros daqui (`i-grade`,
-  `i-mais`, `i-sino`, `i-barras`, `i-trilha`).
+  `i-mais`, `i-barras`, `i-trilha`).
   {% endcomment %}
   <symbol id="i-pessoa" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 16.6c0-3.1 2.7-4.8 6-4.8s6 1.7 6 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
 </svg>
@@ -111,27 +110,6 @@ ocupa a largura toda; o `wrap` e a bancada desta area.
         {% endcomment %}
         <a href="{% url 'quadro' %}#roadmap" title="Roadmap" aria-label="Roadmap"><svg aria-hidden="true"><use href="#i-trilha"/></svg></a>
         <a href="{% url 'nova_sugestao' %}" title="Nova ideia" aria-label="Nova ideia" class="{% if request.resolver_match.url_name == 'nova_sugestao' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-mais"/></svg></a>
-        {% comment %}
-        A contagem do sino vem do context processor `apps.core.avisos.sino` e é
-        PREGUIÇOSA — o `{% templatetag openblock %} with {% templatetag closeblock %}` a resolve UMA vez, senão o
-        template pagaria duas consultas para escrever o mesmo número duas vezes.
-
-        O destino da lista é a central única do site, fora do prefixo da Caixa.
-        A Caixa continua calculando o contador para não perder o aviso enquanto
-        a pessoa navega aqui, mas não mantém uma segunda tela de leitura.
-
-        Duas amarras de guarda nesta linha, e as duas custam uma explicação:
-
-        * o `href` é o endereço público da central (`/notificacoes`), sem o
-          prefixo da Caixa: é uma rota de outra célula;
-        * o nome acessível é `avisos (N)`, em minúsculas, porque é assim que
-        `test_o_sino_de_toda_pagina_conta_so_os_meus` mede a contagem por
-        pessoa. O número TAMBÉM sai desenhado, no `.contador` ao lado do
-        sino — o guarda mede o dado, e quem olha a tela vê o mesmo dado.
-        {% endcomment %}
-        {% with nao_lidos=avisos_nao_lidos %}
-          <a href="/notificacoes" title="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" aria-label="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}"><svg aria-hidden="true"><use href="#i-sino"/></svg>{% if nao_lidos %}<span class="contador" aria-hidden="true">{{ nao_lidos }}</span>{% endif %}</a>
-        {% endwith %}
         {% comment %}
         "Meu impacto" (V1.2) — o lugar que o protótipo reservou no pé do trilho
         (`#nav-perfil`). Como o botão do roadmap, ele é uma ÂNCORA para uma seção
