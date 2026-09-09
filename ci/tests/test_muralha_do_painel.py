@@ -91,8 +91,21 @@ def _copia_com_git(tmp_path: Path) -> Path:
 
 
 def test_passa_no_repositorio_real() -> None:
-    proc = _roda(RAIZ)
-    assert proc.returncode == 0, proc.stdout + proc.stderr
+    painel = RAIZ / "painel"
+    anteriores = {
+        caminho: caminho.read_bytes()
+        for caminho in [painel / "painel.html", *painel.glob("livro-*.js")]
+        if caminho.exists()
+    }
+    try:
+        proc = _roda(RAIZ)
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+    finally:
+        for caminho in set(anteriores) | {painel / "painel.html", *painel.glob("livro-*.js")}:
+            if caminho in anteriores:
+                caminho.write_bytes(anteriores[caminho])
+            else:
+                caminho.unlink(missing_ok=True)
 
 
 @pytest.mark.parametrize("resposta", [None, ["20260910-997-entrega-do-cenario"]])
