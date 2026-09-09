@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-114-tar-079-protecao-do-provedor",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "TAR-079: protecao do provedor",
+  detalhe: "Protecao de reputacao e capacidade validada com 259 testes; o envio fica fechado sem token do webhook, e a rota publica, os limites e o historico de supressoes ainda dependem da configuracao do provedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1503. Validação local: árvore 1a49845918525370448a3d0255d9d733d2b75dfc; commit 781e92f85c5530a4f533a3f3b84bb7480c5dd248; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-079",
+  gravidade: "ambar",
+  frente: "curso",
+  area: "mensageria",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
