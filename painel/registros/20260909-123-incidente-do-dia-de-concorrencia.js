@@ -13,7 +13,7 @@
   frente: "fabrica",
   area: "admin",
   vence_em_dias: null,
-  porque_so_voce: null,
+  porque_so_voce: "Só o dono da conta pode renovar a credencial do GitHub usada pelo gh.",
   proximo_passo: "Renovar a autenticação do GitHub e manter uma única tarefa ativa por clone.",
   se_eu_nao_decidir: "O pouso automático continuará sem conseguir conferir as evidências e novas tarefas poderão colidir no clone principal.",
   recomendacao: "Usar uma filha limpa por frente, com PRs empilhados apenas quando uma dependência real for provada.",
