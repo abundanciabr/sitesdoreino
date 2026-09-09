@@ -213,6 +213,12 @@ PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
 CAIXINHA = re.compile(r"^[ \t]*[-*][ \t]*\[(?: |x|X)\][ \t]+\S", re.M)
 CAIXA_ABERTA = re.compile(r"^[ \t]*[-*][ \t]*\[ \][ \t]+\S", re.M)
 
+ACAO_DO_MANTENEDOR = re.compile(
+    r"🔶\s*AÇÃO NECESSÁRIA DO MANTENEDOR", re.I
+)
+FAÇA_AGORA = re.compile(r"\bFaça agora\s*:", re.I)
+QUANDO_FIZER = re.compile(r"\bQuando você fizer isso\s*:", re.I)
+
 # ------------------------------------------------- o que muda o mundo ----
 
 FERRAMENTAS_QUE_ESCREVEM = {"Edit", "Write", "NotebookEdit"}
@@ -474,6 +480,19 @@ def _prestou_contas(entrada: dict) -> bool:
         if not achado:
             return False
         if indice in JULGAMENTO and not _tem_substancia(_corpo_apos(texto, achado.end())):
+            return False
+    decisao = TITULOS[3].search(texto)
+    assert decisao is not None
+    corpo_da_decisao = _corpo_apos(texto, decisao.end())
+    sem_pendencia = re.match(
+        r"^\s*(?:[—:*.-]\s*)?nada(?:\s+depende\b|\s*[.!]?\s*$)",
+        corpo_da_decisao,
+        re.I,
+    )
+    if not sem_pendencia:
+        if not (ACAO_DO_MANTENEDOR.search(corpo_da_decisao)
+                and FAÇA_AGORA.search(corpo_da_decisao)
+                and QUANDO_FIZER.search(corpo_da_decisao)):
             return False
     if not _tem_substancia(_corpo_apos(texto, veredito.end())):
         return False
@@ -841,6 +860,15 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
     for indice in JULGAMENTO:
         titulo, dica = BLOCOS[indice]
         linhas += [f"{titulo} — VOCÊ ESCREVE ({dica})", ""]
+        if indice == 3:
+            linhas += [
+                "   Se algo depender do mantenedor, use exatamente este bloco:",
+                "   🔶 AÇÃO NECESSÁRIA DO MANTENEDOR",
+                "   Faça agora: <uma ação concreta, em uma frase>",
+                "   Quando você fizer isso: <o que o robô fará em seguida>",
+                "   Se nada depender dele, escreva: nada depende de você.",
+                "",
+            ]
     linhas += [
         "**Veredito:** VOCÊ ESCREVE — PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê",
         "",
@@ -963,7 +991,9 @@ def molde(faltou_o_plano: bool, transcript: str | None = None) -> str:
         "   · Demonstre, não descreva: comando executado + saída real.",
         "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
         "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",
-        "   · Se algo depende dele, abra a caixa de pergunta (AskUserQuestion) junto.",
+        "   · Se algo depende dele, abra a caixa de pergunta (AskUserQuestion) junto e",
+        "     repita no relatório o bloco visual: \"🔶 AÇÃO NECESSÁRIA DO MANTENEDOR\",",
+        "     \"Faça agora:\" e \"Quando você fizer isso:\".",
         "   · NÃO PRONTO é resposta honesta e aceita. Verde inventado, não.",
         "   · Bloco de julgamento vazio, ou com o rótulo do molde intocado, é recusado.",
     ]
