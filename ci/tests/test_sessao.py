@@ -423,6 +423,12 @@ class MundoFalso:
     # -- as saídas plausíveis ----------------------------------------------
 
     def _stdout(self, linha: str) -> str:
+        if "remote get-url" in linha:
+            return "https://github.com/abundanciabr/sitesdoreino.git"
+        if "gh api" in linha:
+            return '{"full_name":"abundanciabr/sitesdoreino","private":false}'
+        if "rev-list --reverse" in linha:
+            return ""
         if "gh pr list" in linha:
             return self.saidas.get("gh_pr_list", "[]")
         if "gh pr create" in linha:

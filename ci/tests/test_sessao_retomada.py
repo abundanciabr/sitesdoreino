@@ -206,6 +206,7 @@ def bancada_git_real(repo, tmp_path):
     )
     for nome in (
         "sessao.py",
+        "mandato_publicacao.py",
         "_nucleo.py",
         "licao_do_caminho.py",
         "sino_das_armadilhas.py",
@@ -230,6 +231,11 @@ def bancada_git_real(repo, tmp_path):
     git(raiz, "add", ".")
     git(raiz, "commit", "-m", "Base do teste")
     remoto = tmp_path / "origin.git"
+    modulo = raiz / "ci/mandato_publicacao.py"
+    with modulo.open("a", encoding="utf-8") as arquivo:
+        arquivo.write("\nDESTINOS = frozenset({" + repr(str(remoto)) + "})\n")
+    git(raiz, "add", "ci/mandato_publicacao.py")
+    git(raiz, "commit", "-m", "Configurar o destino isolado de teste")
     subprocess.run(
         ["git", "clone", "--bare", str(raiz), str(remoto)],
         check=True,
@@ -264,6 +270,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     estado_pr = tmp_path / "pr-aberto"
     (binario / "gh").write_text(
         "#!/bin/sh\n"
+        'if [ "$1" = "api" ]; then echo \'{"full_name":"abundanciabr/sitesdoreino","private":false}\'; exit 0; fi\n'
         f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
         f"if [ \"$2\" = \"create\" ]; then touch \"{estado_pr}\"; echo 'https://github.com/abundanciabr/sitesdoreino/pull/91'; exit 0; fi\n"
         "if [ \"$2\" = \"view\" ]; then echo '{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}'; exit 0; fi\n",
@@ -272,6 +279,7 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     (binario / "gh").chmod(0o755)
     (binario / "gh.cmd").write_text(
         "@echo off\n"
+        'if "%1"=="api" (echo {"full_name":"abundanciabr/sitesdoreino","private":false} & exit /b 0)\n'
         "if \"%2\"==\"list\" (\n"
         f"  if exist \"{estado_pr}\" (echo [{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]) else (echo [])\n"
         "  exit /b 0\n"

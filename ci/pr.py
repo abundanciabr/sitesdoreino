@@ -34,6 +34,7 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
 )
 import telemetria
+from mandato_publicacao import PublicacaoRecusada, REPOSITORIO, conferir_envio
 from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 # O vocabulário do livro. Copiado de `painel/logica.js` de propósito: o
@@ -624,7 +625,11 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "resultado": "concluido",
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=commit, **correlacao)
-    correr(["git", "push", "-u", "origin", ramo])
+    try:
+        conferir_envio(raiz, pedido.arquivos, rodar)
+    except PublicacaoRecusada as erro:
+        raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
+    correr(["git", "push", "-u", "origin", ramo, "--no-follow-tags"])
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
     # A identidade é do fato (ramo, PR e árvore), nunca de uma tentativa.
@@ -689,13 +694,17 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
-    correr(["git", "push", "origin", ramo])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+    try:
+        conferir_envio(raiz, [*pedido.arquivos, relativo, *eventos], rodar)
+    except PublicacaoRecusada as erro:
+        raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
+    correr(["git", "push", "origin", ramo, "--no-follow-tags"])
+    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO, "--json", "headRefOid,state,isDraft"]))
     if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
         raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
     if remoto.get("isDraft") is True:
-        correr(["gh", "pr", "ready", str(numero)])
-        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+        correr(["gh", "pr", "ready", str(numero), "--repo", REPOSITORIO])
+        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO, "--json", "headRefOid,state,isDraft"]))
     if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN" or remoto.get("isDraft") is True:
         raise ParouPorSeguranca("PR remoto continua em rascunho", "Confira gh pr view e torne o PR pronto antes de pedir pouso.")
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
@@ -709,7 +718,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
 
 
 def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
-    bruto = correr(["gh", "pr", "list", "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
+    bruto = correr(["gh", "pr", "list", "--repo", REPOSITORIO, "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
     try:
         encontrados = json.loads(bruto)
     except (TypeError, ValueError) as erro:
@@ -720,10 +729,10 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
         existente = encontrados[0]
         if existente.get("state", "OPEN") != "OPEN":
             raise ParouPorSeguranca("PR do ramo já foi encerrado", "Use uma nova bancada para um novo trabalho.")
-        correr(["gh", "pr", "edit", str(existente["number"]), "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
+        correr(["gh", "pr", "edit", str(existente["number"]), "--repo", REPOSITORIO, "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
         return int(existente["number"]), existente["url"]
     saida = correr([
-        "gh", "pr", "create",
+        "gh", "pr", "create", "--repo", REPOSITORIO,
         "--base", "main",
         "--title", pedido.titulo,
         "--body-file", str(pedido.corpo_arquivo),

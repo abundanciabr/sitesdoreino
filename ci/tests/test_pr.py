@@ -80,6 +80,8 @@ class Duble:
 
 
 RESPOSTAS_FELIZES = {
+    "remote get-url": "https://github.com/abundanciabr/sitesdoreino.git",
+    "gh api": json.dumps({"full_name": "abundanciabr/sitesdoreino", "private": False}),
     "write-tree": "a" * 40,
     "rev-parse HEAD^{tree}": "a" * 40,
     "rev-parse HEAD": "b" * 40,
