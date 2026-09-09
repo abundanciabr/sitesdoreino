@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+arquivo:"20260909-119-reparo-do-portao",
+tipo:"pendencia",
+quando:"2026-09-09",
+titulo:"PR #1507: decidir exceção para recuperar a pista",
+detalhe:"A pista usa main com erro de instrumento. O portão também recusa a publicação anterior de cursos, run 34291988385: correspondência de aula do módulo 3. O reparo separado, PR #1454, segue aberto.",
+autoridade:"sessao",
+evidencia:"https://github.com/abundanciabr/sitesdoreino/pull/1507",
+verificado_em:"2026-09-09",
+precisa_do_dono:true,
+responde_a:null,
+gravidade:"ambar",
+frente:"fabrica",
+area:"ci",
+vence_em_dias:null,
+porque_so_voce:"A lei reserva a integração à pista.",
+proximo_passo:"Decidir integração manual excepcional do PR #1507.",
+se_eu_nao_decidir:"O reparo da pista permanece sem integração.",
+recomendacao:"Autorizar só esta exceção; a falha de cursos continua pendente.",
+reversivel:false,
+impacto:"alto",
+portao:null
+});})();

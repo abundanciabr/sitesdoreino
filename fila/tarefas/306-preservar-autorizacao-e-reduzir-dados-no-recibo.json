@@ -1,0 +1,17 @@
+{
+  "arquivo": "306-preservar-autorizacao-e-reduzir-dados-no-recibo",
+  "id": "TAR-306",
+  "titulo": "Preservar autorização e reduzir dados no recibo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Dois documentos revisados, Padrão de Trabalho PASS, 11 testes aprovados e recibo técnico no PR.",
+  "despacho": "Ajustar somente painel/LEIA-ME.md e docs/decisoes/DECISAO-claude-md-so-lei.md. Preservar autorização conferida por finalidade, destino, exposição e limites. Recibo técnico sem conteúdo privado. Manter revisão do SHA e permissões do aplicativo. Complemento do PR 1491.",
+  "origem": "Complemento documental ao PR 1491.",
+  "criada_em": "2026-09-09"
+}

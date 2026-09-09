@@ -75,8 +75,36 @@
    o SHA entregue. Os logs de stdout, stderr e falha ficam sanitizados em
    uma pasta privada dentro do `.git`, com revisão e tentativa. O resumo
    informa o caminho para inspeção; os logs não são publicados no recibo.
-   O `detalhe` continua sendo julgamento de quem fez o trabalho, com mínimo
-   de 80 caracteres; o recibo completo deve ocupar menos de 1 KB.
+   **O recibo informa o resultado técnico, sem reproduzir conteúdo privado.**
+   No título, no `detalhe` e na evidência pública, registre a mudança, os testes
+   executados e o SHA ou link verificável. Não copie nomes pessoais, dados
+   privados, conversas ou logs internos para explicar a entrega. Exemplo de
+   molde, a preencher com teste e SHA reais: "Cadastro de responsabilidade
+   atualizado; testes de atualização e acesso passaram; commit <SHA>." O
+   `detalhe` tem mínimo de 80 caracteres; o recibo completo ocupa menos de 1 KB.
+   Revise seu conteúdo antes do envio; a sanitização dos logs não certifica texto escrito pelo autor.
+
+   **Confira a autorização existente antes de pedir outra.** Prepare o diff
+   e o texto final do recibo, completando os identificadores gerados pelo rito
+   assim que existirem. Confira no histórico da tarefa a finalidade, o destino,
+   a exposição e os limites explicitamente autorizados. Ao delegar, leve no
+   brief o pedido original, seus limites e o destino verificado, para que a
+   autorização não se perca entre agentes. Dentro desses limites,
+   as etapas técnicas da entrega, inclusive recibo e novo SHA, não exigem nova
+   pergunta só pela mudança mecânica. Autorização restrita a uma ação ou commit
+   continua restrita: não a transforme em autorização geral. Mudança de
+   finalidade, destino ou exposição exige autorização específica. Novo SHA
+   continua exigindo as validações e a revisão técnica previstas no rito.
+
+   Uma recusa da revisão automática do aplicativo continua valendo. Confira
+   se a autorização existente e o conteúdo final foram apresentados à revisão.
+   Evidência adicional pode fundamentar reavaliação da mesma ação; a recusa
+   permanece até nova aprovação. Prepare
+   uma alternativa materialmente mais segura que resolva o motivo da recusa;
+   se não houver, devolva à maestro a ação, o motivo e a decisão específica
+   necessária. Não repita a mesma ação por outro caminho para contornar a
+   recusa. Estas instruções orientam o agente; não alteram permissões nem
+   garantem aprovação pelo aplicativo.
 
    Preparação concluída, validação local e PR aberto são estados distintos.
    Revisão, integração e publicação permanecem não verificadas neste comando.

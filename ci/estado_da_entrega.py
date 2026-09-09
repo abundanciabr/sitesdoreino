@@ -10,6 +10,8 @@ import fnmatch
 import base64
 import json
 import re
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import mapa_de_celulas
@@ -118,7 +120,7 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     base = dict(sha_integrado=sha, celulas=celulas, workflows=exigidos, runs=[])
     if not exigidos:
         return dict(base, estado="SEM_PUBLICACAO", terminal=True, acao="Integração concluída; este diff não dispara publicação.")
-    resposta = _api(raiz, f"actions/runs?head_sha={sha}&per_page=100")
+    resposta = _api(raiz, f"actions/runs?head_sha={sha}&branch=main&event=push&per_page=100")
     if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
         raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
     # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
@@ -229,10 +231,13 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
         if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
             raise ErroDeInstrumentacao("histórico de jobs ausente; imagem e dados não foram conferidos")
         runs = resposta["workflow_runs"]
-        for run in sorted(runs, key=lambda r: r["id"], reverse=True):
-            if run.get("path") != DEPLOYS[0] or run.get("event") != "push" or run.get("head_branch") != "main":
-                continue
-            nomes = {j["name"] for j in consultar_jobs(raiz, run) if j.get("conclusion") != "skipped"}
+        candidatos = sorted((r for r in runs if r.get("path") == DEPLOYS[0]
+                             and r.get("event") == "push" and r.get("head_branch") == "main"),
+                            key=lambda r: r["id"], reverse=True)
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            jobs_da_pagina = list(executor.map(lambda r: consultar_jobs(raiz, r), candidatos))
+        for run, jobs in zip(candidatos, jobs_da_pagina):
+            nomes = {j["name"] for j in jobs if j.get("conclusion") != "skipped"}
             encontrados = faltam & nomes
             if encontrados:
                 shas.add(run["head_sha"])
@@ -307,6 +312,17 @@ def correcao_da_publicacao(raiz: Path, pr: dict, publicacao: dict) -> bool:
     return True
 
 
+def _git_ancestralidade(raiz: Path, *args, entrada=None):
+    try:
+        return subprocess.run(["git", *args], cwd=raiz, input=entrada,
+                              stdin=subprocess.DEVNULL if entrada is None else None,
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ErroDeInstrumentacao("não foi possível medir a ancestralidade local",
+                                  "Confira o Git e o histórico da bancada. " + str(exc)) from exc
+
+
 def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
     """Cobertura posterior é provada por job e ancestralidade, nunca só pelo SHA."""
     from rerun_de_deploy import RUNS_OLHADOS_ATRAS
@@ -317,6 +333,40 @@ def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
         return publicacao
     provas = []
     comparacoes = {}
+    sincronizado = False
+    historico_conferido = False
+
+    def ancestral(sha):
+        nonlocal sincronizado, historico_conferido
+        anterior = publicacao.get("sha_integrado") or ""
+        if not re.fullmatch(r"[0-9a-f]{40}", anterior):
+            raise ErroDeInstrumentacao("commit original inválido; confira o SHA integrado")
+        if not historico_conferido:
+            raso = executar(["git", "rev-parse", "--is-shallow-repository"], cwd=raiz,
+                            descricao="conferir completude do histórico").stdout.strip()
+            if raso != "false":
+                raise ErroDeInstrumentacao("histórico raso não prova ancestralidade; use fetch-depth: 0")
+            historico_conferido = True
+        while True:
+            commits = _git_ancestralidade(raiz, "cat-file", "--batch-check=%(objecttype)",
+                                         entrada=f"{anterior}^{{commit}}\n{sha}^{{commit}}\n")
+            tipos = commits.stdout.splitlines()
+            if commits.returncode != 0 or len(tipos) != 2:
+                raise ErroDeInstrumentacao("não foi possível conferir os commits locais", commits.stderr)
+            if tipos == ["commit", "commit"]:
+                break
+            if any(t != "commit" and not t.endswith(" missing") for t in tipos):
+                raise ErroDeInstrumentacao("objetos locais não são commits; confira o histórico")
+            if sincronizado:
+                raise ErroDeInstrumentacao("commit ausente após sincronização; confira o histórico de origin/main")
+            executar(["git", "fetch", "origin", "main"], cwd=raiz,
+                     descricao="obter commits ausentes para provar ancestralidade")
+            sincronizado = True
+        resultado = _git_ancestralidade(raiz, "merge-base", "--is-ancestor", anterior, sha)
+        if resultado.returncode not in (0, 1):
+            raise ErroDeInstrumentacao("Git não comprovou ancestralidade; confira os objetos locais",
+                                      f"exit {resultado.returncode}: {resultado.stderr}")
+        return resultado.returncode == 0
     for original in publicacao["runs"]:
         if original.get("status") != "completed":
             return publicacao
@@ -338,8 +388,8 @@ def comprovar_sucessores(raiz: Path, publicacao: dict) -> dict:
             if not re.fullmatch(r"[0-9a-f]{40}", sha or ""):
                 continue
             if sha not in comparacoes:
-                comparacoes[sha] = _api(raiz, f"compare/{publicacao['sha_integrado']}...{sha}").get("status")
-            if comparacoes[sha] not in {"ahead", "identical"}:
+                comparacoes[sha] = ancestral(sha)
+            if not comparacoes[sha]:
                 continue
             jobs = consultar_jobs(raiz, candidato)
             por_nome = {j["name"]: j for j in jobs}
