@@ -162,7 +162,11 @@ def test_dispatcher_stop_cobra_e_aceita_relatorio(bancada):
             input=json.dumps({"hook_event_name": "Stop", "transcript_path": str(arquivo), "cwd": str(bancada)}),
             capture_output=True, text=True, encoding="utf-8")
     assert rodar().returncode == 2
-    relatorio = "\n".join(titulo + " Alteração conferida com teste real." for titulo, _ in contas.BLOCOS)
+    relatorio = "\n".join(
+        titulo + (" nada depende de você." if "O que eu preciso decidir" in titulo
+                  else " Alteração conferida com teste real.")
+        for titulo, _ in contas.BLOCOS
+    )
     relatorio += "\n- [x] Correção verificada.\n**Veredito:** PRONTO, os testes passaram."
     registros.append({"type": "response_item", "payload": {"type": "message", "role": "assistant",
         "content": [{"type": "output_text", "text": relatorio}]}})
