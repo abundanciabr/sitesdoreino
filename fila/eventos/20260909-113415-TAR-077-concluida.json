@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-113415-TAR-077-concluida",
+  "tarefa": "TAR-077",
+  "evento": "concluida",
+  "quando": "2026-09-09T11:34:15+00:00",
+  "quem": "sessao-alunos-resolver-pendencias-painel-20260909",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/1246 MERGED em 2026-09-06, commit a65ebd8a6fa703ec465b3f4fc1b5c5ffbfbcfe1f; registro 20260906-106 comprova e-mail real recebido fora do site com SPF, DKIM e DMARC aprovados.",
+  "verificado_em": "2026-09-09"
+}
