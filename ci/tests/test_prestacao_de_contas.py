@@ -1057,6 +1057,18 @@ def test_monitor_sozinho_nao_torna_falha_externa_acionavel(tmp_path):
     ]))
 
 
+def test_quebrou_no_github_actions_sem_acao_e_recusado(tmp_path):
+    escuro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O check quebrou no GitHub Actions.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(escuro),
+    ]))
+
+
 def test_veredito_nao_pronto_por_falha_externa_com_acao_e_aceito(tmp_path):
     claro = CONTAS_COMPLETAS.replace(
         "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
@@ -1064,6 +1076,19 @@ def test_veredito_nao_pronto_por_falha_externa_com_acao_e_aceito(tmp_path):
         "Hash Sum mismatch no repositório externo do Google; você não precisa "
         "mexer na infraestrutura agora, quando o provedor estabilizar rode "
         "`painel-no-navegador` no PR.",
+    )
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(claro),
+    ]))
+
+
+def test_acao_no_infinitivo_torna_falha_externa_acionavel(tmp_path):
+    claro = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** NÃO PRONTO. O check quebrou no GitHub Actions; ação: "
+        "aguardar o GitHub e reexecutar o check.",
     )
     _silencio(_decidir(tmp_path, [
         _humano("conserte"),

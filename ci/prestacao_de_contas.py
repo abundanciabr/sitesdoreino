@@ -201,14 +201,17 @@ TITULOS = tuple(
 # a régua é o veredito estar escrito, não a pontuação escolhida para escrevê-lo.
 VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
 VEREDITO_COM_BLOQUEIO_EXTERNO = re.compile(
-    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+)\b.{0,120}"
+    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+|quebr\w+|caiu|"
+    r"timeout|mismatch)\b.{0,120}"
     r"\b(?:extern[ao]|infraestrutura|provedor|github|google|actions)\b|"
     r"\b(?:extern[ao]|infraestrutura|provedor|github|google|actions)\b.{0,120}"
-    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+)\b",
+    r"\b(?:falha|erro|bloqueio|reprova\w+|vermelh\w+|quebr\w+|caiu|"
+    r"timeout|mismatch)\b",
     re.I | re.S,
 )
 ACAO_DO_BLOQUEIO_EXTERNO = re.compile(
-    r"\b(?:fa[çc]a|rode|reexecute|rerun|aguarde|espere|n[aã]o\s+fa[çc]a|"
+    r"\b(?:fa[çc]a|fazer|rode|rodar|reexecute|reexecutar|rerun|"
+    r"aguarde|aguardar|espere|esperar|n[aã]o\s+fa[çc]a|"
     r"n[aã]o\s+precisa|nada\s+depende|depende\s+de\s+ningu[eé]m|"
     r"acompanhe|acompanha|rechec\w+)\b",
     re.I,
