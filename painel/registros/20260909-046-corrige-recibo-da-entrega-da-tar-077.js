@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-046-corrige-recibo-da-entrega-da-tar-077",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "O recibo da entrega da TAR-077 agora cita a revisão final correta",
+  detalhe: "O registro anterior citava a árvore inicial c18449c. A revisão final entregue foi b40e8fd, e o PR 1481 entrou na main pelo merge 4c0de5a.\n\nEsta resposta preserva o histórico e fixa a prova correta: os 7 checks passaram, o deploy-celula 34347180768 terminou success, e a implementação original continua comprovada pelo PR 1246 e pelo e-mail real recebido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1481; merge 4c0de5a; deploy 34347180768 success",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: "20260909-045-fila-reconhecer-a-entrega-da-tar-077",
+  gravidade: "info",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

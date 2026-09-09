@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-043-tar-258-negociacao-sem-proposta",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "A negociação sem primeira proposta agora tem limite e saída",
+  detalhe: "O aceite ou a primeira proposta que encontra outra negociação viva não deixa mais gravação parcial nem erro de servidor: a tela recebe a razão nomeada e a encomenda continua no estado anterior. O tique usa o relógio de horas úteis da proposta para mandar ao plantão a negociação que ficou sem proposta de pé. O simulador deixou de tolerar esses defeitos como exceções conhecidas e passou a proibi-los.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1478",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

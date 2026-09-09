@@ -121,7 +121,9 @@ devolve ERROR, nunca PASS.
 | `contract_freeze.py` | muralha de contrato | Compara schema OpenAPI vivo × congelado; sonda a autenticação efetiva na fonte (django-ninja omite `security` em vez de emitir `[]` — cegueira que só a sonda pega) |
 | `guarda_dos_guardas.py` | muralha/PR | Prova que `INVARIANTES.md` e o disco não divergem: todo teste-guarda citado existe e ainda morde (sem skip/xfail/corpo vazio) |
 | `muralha_pasta_compartilhada.py` | hook do harness | Recusa edição/git-de-estado quando a sessão roda no clone principal (não é CI de PR, é hook local) |
-| `mergear.py` | merge | Confere checks, labels, dívida do livro; mergeia via `gh pr merge`; **confere de novo no GitHub** que o estado virou `MERGED` — nunca confia no exit code do comando |
+| `mergear.py` | merge | Exige atestado independente do SHA final, checks, labels, livro e publicações anteriores da célula/provedores; fixa o SHA no merge da pista e confere MERGED no GitHub |
+| `revisor_de_pouso.py` | revisão | Valida o atestado da maestro sobre avaliação real de outra tarefa; o scanner de quatro heurísticas continua apenas consultivo |
+| `estado_da_entrega.py` | acompanhamento | Deriva revisão, integração e publicação do GitHub e dos gatilhos dos workflows; `esperar.py --entrega N` consulta uma vez e retorna JSON com SHA, células, runs e próxima ação |
 | `divida_do_livro.py` | merge/painel | Lista PRs mergeados sem registro citando o número, com graça de 90min |
 | `indice_de_armadilhas.py` | documentação | Gera `armadilhas/INDICE.md`; reprova (ERROR) se dois arquivos colidirem no mesmo número |
 | `doctor.py` | diagnóstico | Read-only: "este ambiente consegue rodar o trabalho?" — nunca conserta nada |
@@ -197,3 +199,7 @@ em nenhum arquivo versionado; a chave privada de deploy (`deploy_ci`, sem
 `.pub`) está corretamente fora do controle de versão. O único IP real do
 projeto (o da VPS) existe fora deste mapa, propositalmente — ver a nota de
 segurança em [02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
+
+O protocolo, os estados e os limites de confiança do atestado estão em
+`docs/decisoes/DECISAO-revisao-e-publicacao.md`. IDs distintos não autenticam
+o runtime: a maestro confere a procedência da avaliação independente.

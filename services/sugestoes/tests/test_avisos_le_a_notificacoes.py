@@ -1,13 +1,10 @@
 # tests/test_avisos_le_a_notificacoes.py  # [RECEITA:R5 v1]
-"""A tela `/avisos` — fail VISÍVEL, a regra OPOSTA do sino (Escolha 2 de
-`docs/decisoes/DECISAO-fase-4-do-sininho.md`).
+"""A tela `/avisos` — fail VISÍVEL conforme a Escolha 2 de
+`docs/decisoes/DECISAO-fase-4-do-sininho.md`.
 
 Esta página É a função dela: se a caixa central de avisos
 (`contracts/notificacoes.openapi.yaml`) não responde, a tela precisa dizer
-isso — nunca fingir "zero avisos". `tests/test_sino_le_a_notificacoes.py`
-mede a ponta OPOSTA (o sino no trilho, fail ABERTA); os dois arquivos juntos
-provam que o MESMO dado tem comportamento DELIBERADAMENTE diferente conforme
-a tela que o mostra.
+isso, nunca fingir "zero avisos".
 
 Quatro assuntos, cada um com seção própria:
 
@@ -30,7 +27,6 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from apps.core.avisos import limpar_cache_de_resumo
 from apps.sugestoes.models import Aviso, Sugestao
 
 pytestmark = pytest.mark.django_db
@@ -178,13 +174,10 @@ def test_os_titulos_das_sugestoes_saem_em_uma_consulta_so(
         return resposta
 
     _semear(1)
-    limpar_cache_de_resumo()  # o sino no trilho tem cache próprio — ver o
-    # comentário gêmeo em test_volume_dos_avisos.py::test_ler_a_pagina...
     with CaptureQueriesContext(connection) as com_uma:
         _abrir()
 
     _semear(5)
-    limpar_cache_de_resumo()
     with CaptureQueriesContext(connection) as com_seis:
         resposta = _abrir()
 

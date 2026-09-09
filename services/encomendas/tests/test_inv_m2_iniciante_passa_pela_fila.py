@@ -13,7 +13,7 @@ pegaria primeiro, e a promessa do primeiro dólar viraria uma corrida.
 
 TRÊS MECANISMOS, E ELES SÃO DE CAMADAS DIFERENTES DE PROPÓSITO
 ---------------------------------------------------------------
-1. **`mural.PISTA_DE_NASCIMENTO`**: o Iniciante nasce `na_fila`, e a tabela de
+1. **`mural.STATUS_DE_NASCIMENTO`**: o Iniciante nasce `na_fila`, e a tabela de
    três linhas é a regra inteira, sem ramo escondido.
 2. **A máquina de estado**: `na_fila` não tem seta para `no_mural`, e o gatilho
    do PostgreSQL recusa a transição, inclusive vinda de um `queryset.update()`.
@@ -57,7 +57,6 @@ def test_o_projeto_iniciante_nasce_na_fila(semeado):
 
     assert projeto.nivel == Encomenda.Nivel.INICIANTE
     assert projeto.status == Encomenda.Status.NA_FILA
-    assert projeto.pista == Encomenda.Pista.FILA
 
 
 @pytest.mark.parametrize(
@@ -82,7 +81,6 @@ def test_o_projeto_intermediario_e_o_avancado_nascem_no_mural(semeado, cartao, n
 
     assert projeto.nivel == nivel
     assert projeto.status == Encomenda.Status.NO_MURAL
-    assert projeto.pista == Encomenda.Pista.MURAL
 
 
 def test_ninguem_escolhe_a_pista_nem_o_nivel(semeado):
@@ -96,6 +94,14 @@ def test_ninguem_escolhe_a_pista_nem_o_nivel(semeado):
 
     aceitos = set(inspect.signature(mural.nascer).parameters)
     assert {"nivel", "pista", "status"} & aceitos == set()
+
+
+def test_a_encomenda_nao_guarda_uma_segunda_rota(semeado):
+    """O status é a única fonte persistida sobre a rota do projeto."""
+    campos = {campo.name for campo in Encomenda._meta.fields}
+
+    assert "pista" not in campos
+    assert not hasattr(Encomenda, "Pista")
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +125,6 @@ def test_o_banco_recusa_um_iniciante_criado_direto_no_mural(semeado):
                 cartao=Encomenda.Cartao.ITEM_SIMPLES,
                 nivel=Encomenda.Nivel.INICIANTE,
                 status=Encomenda.Status.NO_MURAL,
-                pista=Encomenda.Pista.MURAL,
             )
 
 
@@ -132,25 +137,9 @@ def test_o_banco_aceita_um_intermediario_criado_direto_no_mural(semeado):
         cartao=Encomenda.Cartao.VESTIVEL_OU_VEICULO,
         nivel=Encomenda.Nivel.INTERMEDIARIO,
         status=Encomenda.Status.NO_MURAL,
-        pista=Encomenda.Pista.MURAL,
     )
 
     assert projeto.pk is not None
-
-
-def test_o_banco_recusa_um_projeto_no_mural_com_a_pista_da_fila(semeado):
-    """A coluna `pista` não pode mentir sobre onde o projeto está sendo mostrado."""
-    with pytest.raises(IntegrityError, match="no_mural_so_na_pista_do_mural"):
-        with transaction.atomic():
-            Encomenda.objects.create(
-                site_id=SITE,
-                origem=Encomenda.Origem.ESCOLA,
-                cliente_id="cli-1",
-                cartao=Encomenda.Cartao.VESTIVEL_OU_VEICULO,
-                nivel=Encomenda.Nivel.INTERMEDIARIO,
-                status=Encomenda.Status.NO_MURAL,
-                pista=Encomenda.Pista.FILA,
-            )
 
 
 def test_a_encomenda_da_fila_nao_tem_seta_para_o_mural(semeado, criar_encomenda):
@@ -192,20 +181,13 @@ def test_o_iniciante_so_aparece_no_mural_depois_da_chamada_aberta(
     assert [p.pk for p in mural.listar(ze.id, depois, site_id=SITE)] == [projeto.pk]
 
 
-def test_a_chamada_aberta_move_a_pista_e_nao_o_nivel(semeado, criar_encomenda):
-    """O projeto passa a ser mostrado no Mural, e continua sendo Iniciante.
-
-    É por isso que `pista` é coluna e não conta derivada do nível: depois da
-    chamada aberta, "qual é o nível?" e "onde ele está sendo mostrado?" passam a
-    ter respostas diferentes, e as duas perguntas são feitas.
-    """
+def test_a_chamada_aberta_muda_o_status_e_nao_o_nivel(semeado, criar_encomenda):
+    """O projeto passa a ser mostrado no Mural, e continua sendo Iniciante."""
     projeto = criar_encomenda()
-    assert projeto.pista == Encomenda.Pista.FILA
 
     tique.rodar(projeto.criada_em + timedelta(days=2), site_id=SITE)
 
     projeto.refresh_from_db()
-    assert projeto.pista == Encomenda.Pista.MURAL
     assert projeto.nivel == Encomenda.Nivel.INICIANTE
     assert projeto.status == Encomenda.Status.ABERTA
 
@@ -227,6 +209,6 @@ def test_o_iniciante_em_chamada_aberta_nao_se_pega_com_reserva(
     desfecho = mural.pegar(projeto.pk, ze.id, depois, site_id=SITE)
 
     assert not desfecho.feito
-    assert desfecho.razao == mural.NAO_ESTA_NO_MURAL
+    assert desfecho.razao == "e_chamada_aberta_use_aceitar"
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.ABERTA

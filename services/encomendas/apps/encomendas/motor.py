@@ -121,7 +121,13 @@ ENTREGAS_INSUFICIENTES = "entregas_insuficientes"
 ABANDONO_RECENTE = "abandono_recente"
 NAO_ESTA_DISPONIVEL = "nao_esta_disponivel"
 COM_OFERTA_PENDENTE = "com_oferta_pendente"
+COM_NEGOCIACAO_VIVA = "com_negociacao_viva"
 JA_RECEBEU_ESTA = "ja_recebeu_esta"
+
+ESTADOS_DE_NEGOCIACAO_VIVA = (
+    Encomenda.Status.RESERVADA,
+    Encomenda.Status.EM_NEGOCIACAO,
+)
 
 # O DESFECHO DE CADA ENCOMENDA NUMA RODADA. São cinco, e estão todos escritos
 # porque o desfecho que ninguém nomeia vira "o que sobra" — e é ele que entope a
@@ -156,6 +162,7 @@ class Candidato:
     data_entrada_fila: datetime | None
     tem_oferta_pendente: bool
     abandonos: tuple[str, ...] = ()
+    tem_negociacao_viva: bool = False
 
     def agora_com_oferta_pendente(self) -> "Candidato":
         """Uma cópia deste candidato já com a oferta pendente marcada.
@@ -330,6 +337,11 @@ def por_que_nao(
     if candidato.tem_oferta_pendente:
         return COM_OFERTA_PENDENTE
 
+    # [INV-ENC-N6]: negociar não tira o lugar, mas impede uma segunda
+    # negociação viva nas duas pistas.
+    if candidato.tem_negociacao_viva:
+        return COM_NEGOCIACAO_VIVA
+
     # [INV-ENC-J6]: ninguém vê a mesma encomenda duas vezes.
     if candidato.perfil_id in vaga.ja_ofertada_a:
         return JA_RECEBEU_ESTA
@@ -408,6 +420,13 @@ def candidatos_do_banco(site_id: str) -> tuple[Candidato, ...]:
             site_id=site_id, resultado=Oferta.Resultado.PENDENTE
         ).values_list("aluno_id", flat=True)
     )
+    com_negociacao_viva = set(
+        Encomenda.objects.filter(
+            site_id=site_id,
+            aluno_id__isnull=False,
+            status__in=ESTADOS_DE_NEGOCIACAO_VIVA,
+        ).values_list("aluno_id", flat=True)
+    )
     return tuple(
         Candidato(
             perfil_id=perfil.id,
@@ -417,6 +436,7 @@ def candidatos_do_banco(site_id: str) -> tuple[Candidato, ...]:
             data_entrada_fila=perfil.data_entrada_fila,
             tem_oferta_pendente=perfil.id in com_oferta_pendente,
             abandonos=tuple(perfil.abandonos or ()),
+            tem_negociacao_viva=perfil.id in com_negociacao_viva,
         )
         for perfil in PerfilProfissional.objects.filter(site_id=site_id)
     )

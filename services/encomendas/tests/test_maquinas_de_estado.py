@@ -59,19 +59,11 @@ def perfil(db):
 
 # O padrão é `NA_FILA` desde 04/09/2026, e a troca acompanha o modelo: a
 # encomenda nasce numa pista, não no caixa (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
-# O cartão decide o nível, e desde o Mural (TAR-133) o nível também decide onde
-# a encomenda pode estar: o banco recusa um projeto Iniciante `no_mural` ou
-# `reservada` (`iniciante_nunca_no_mural_reservavel`, [INV-ENC-M2]) e recusa
-# qualquer um dos dois fora da pista do Mural. Por isso a fábrica aceita o
-# cartão e deriva as duas colunas.
-PISTA_DO_STATUS = {
-    Encomenda.Status.NO_MURAL: Encomenda.Pista.MURAL,
-    Encomenda.Status.RESERVADA: Encomenda.Pista.MURAL,
-}
-
-
+# O cartão decide o nível, e o banco recusa um projeto Iniciante `no_mural` ou
+# `reservada` (`iniciante_nunca_no_mural_reservavel`, [INV-ENC-M2]). A fábrica
+# aceita o cartão e deriva o nível, sem repetir uma rota em outra coluna.
 def cria_encomenda(
-    status=Encomenda.Status.NA_FILA, cartao=Encomenda.Cartao.ITEM_SIMPLES, pista=None
+    status=Encomenda.Status.NA_FILA, cartao=Encomenda.Cartao.ITEM_SIMPLES
 ):
     return Encomenda.objects.create(
         site_id=SITE,
@@ -80,7 +72,6 @@ def cria_encomenda(
         cartao=cartao,
         nivel=Encomenda.NIVEL_DO_CARTAO[cartao],
         status=status,
-        pista=pista or PISTA_DO_STATUS.get(status, Encomenda.Pista.FILA),
     )
 
 
@@ -370,7 +361,7 @@ def test_o_python_e_o_postgres_concordam_em_todos_os_pares(db):
         # o INSERT nao passa por ele: preparar o estado de partida por `update`
         # seria pedir ao gatilho que permitisse justamente o que ele recusa.
         #
-        # VESTIVEL E PISTA DO MURAL nos 19 estados, e a escolha e do que este
+        # VESTIVEL nos 19 estados, e a escolha e do que este
         # teste mede: aqui a pergunta e "o gatilho e o dicionario concordam?", e
         # so ela. Um projeto Iniciante seria recusado nos pares que chegam a
         # `no_mural` pelo CHECK `iniciante_nunca_no_mural_reservavel`
@@ -380,7 +371,6 @@ def test_o_python_e_o_postgres_concordam_em_todos_os_pares(db):
         encomenda = cria_encomenda(
             de,
             cartao=Encomenda.Cartao.VESTIVEL_OU_VEICULO,
-            pista=Encomenda.Pista.MURAL,
         )
         for para in ESTADOS_DE_ENCOMENDA:
             if de == para:

@@ -431,27 +431,15 @@ jobs:
               continue
             fi
 
-            # O REVISOR DE POUSO (B11 / TAR-006, 02/09/2026) — ver a decisão 6
-            # do cabeçalho. Ele lê o diff com contexto fresco, procurando a
-            # família de falso-verde que nenhum portão desta casa pega, e
-            # comenta o veredito no PR. NÃO tem poder de recusa, e por isso roda
-            # aqui, com o merge já decidido: revisor que barra vira portão sem
-            # apelação num fluxo onde não há humano para desempatar.
-            #
-            # As três blindagens, e nenhuma delas é enfeite. Se este passo
-            # falhar, demorar ou chamar algo que não responde, O POUSO DESTE PR
-            # E DOS OUTROS SEGUE NORMALMENTE:
-            #   `timeout`  — não existe espera infinita numa fila serial;
-            #   o `if`     — falha não propaga por baixo do `set -e`;
-            #   do lado de lá, `ci/revisor_de_pouso.py` sai 0 por construção e
-            #   diz `NAO-REVISADO` em vez de fabricar veredito.
-            # Guarda das três: ci/tests/test_pista_chama_o_revisor.py.
+            # O atestado independente já foi exigido por mergear.py e será
+            # conferido de novo no SHA fixado pelo merge. Este scanner é
+            # apenas consultivo; suas heurísticas não substituem o revisor.
             revisor_comecou=$(date +%s)
             if timeout "$TETO_DO_REVISOR" python ci/revisor_de_pouso.py "$alvo" --comentar; then
               echo "Revisor de pouso: $(($(date +%s) - revisor_comecou))s no #$alvo."
             else
-              echo "O revisor de pouso NÃO completou no #$alvo, e isto não segura nada:"
-              echo "ele OPINA, não reprova. O pouso deste PR segue normalmente."
+              echo "A varredura consultiva NÃO completou no #$alvo:"
+              echo "o atestado independente continua obrigatório no portão de merge."
             fi
 
             # VERDE: mergeia pelo MESMO portão que o agente usa — a pista não
@@ -466,7 +454,15 @@ jobs:
             # pior (RETROSPECTIVA-FASE-D, padrão 1).
             if python ci/mergear.py "$alvo" --confirmo "$alvo"; then
               pousados=$((pousados + 1))
-              echo "PR #$alvo POUSOU."
+              echo "PR #$alvo POUSOU. Publicação ainda precisa de prova."
+              # Uma consulta, sem laço: a maestro acompanha pelo heartbeat.
+              # Antes do próximo merge, o portão confere as publicações da
+              # mesma célula e dos provedores, inclusive de passagens anteriores.
+              if python ci/esperar.py --entrega "$alvo"; then
+                echo "PR #$alvo: integração e publicação conferidas."
+              else
+                echo "PR #$alvo: a consulta acima informa a próxima ação da maestro."
+              fi
             else
               falhas=$((falhas + 1))
               echo "PR #$alvo: o merge NÃO se completou. Seguindo para o próximo;"

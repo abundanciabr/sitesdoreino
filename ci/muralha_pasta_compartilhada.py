@@ -197,19 +197,48 @@ def _tokens(segmento: str) -> list[str]:
     return limpos
 
 
-def _arvore_limpa(raiz: Path) -> bool:
-    """Limpa = nenhum arquivo RASTREADO modificado (untracked não conta:
-    ele sobrevive a switch/pull). Se o git não responder, NÃO está limpa
-    (fail-closed)."""
+def diagnostico_arvore_suja(raiz: Path) -> str | None:
+    """Explica uma árvore rastreada suja, inclusive divergência invisível."""
     try:
-        saida = subprocess.run(
+        status = subprocess.run(
             ["git", "-C", str(raiz), "status", "--porcelain"],
             capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=10, check=True,
         ).stdout
     except Exception:
-        return False
-    return all(linha.startswith("??") for linha in saida.splitlines() if linha)
+        return "não consegui conferir o estado do Git; não encosto nesta pasta"
+
+    linhas = [linha for linha in status.splitlines() if linha]
+    rastreados = [linha for linha in linhas if not linha.startswith("??")]
+    if not rastreados:
+        return None
+
+    nomes = [linha[3:] for linha in rastreados]
+    visiveis: set[str] = set()
+    for argumentos in (("diff", "--name-only"), ("diff", "--cached", "--name-only")):
+        resposta = _git_de_leitura(raiz, *argumentos)
+        if resposta is None or resposta.returncode != 0:
+            return "há trabalho rastreado não commitado, mas não consegui detalhá-lo"
+        visiveis.update(
+            linha.casefold()
+            for linha in resposta.stdout.splitlines()
+            if linha
+        )
+
+    ocultos = [nome for nome in nomes if nome.casefold() not in visiveis]
+    if ocultos:
+        arquivos = ", ".join(ocultos)
+        return (
+            "há arquivo(s) rastreado(s) que divergem só em caixa ou fim de linha: "
+            f"{arquivos}. Confira com `git status --short` e `git show HEAD:<arquivo>`; "
+            "corrija a cópia local antes de atualizar."
+        )
+    return "tem trabalho NÃO COMMITADO"
+
+
+def _arvore_limpa(raiz: Path) -> bool:
+    """Limpa = nenhum arquivo RASTREADO modificado; untracked não conta."""
+    return diagnostico_arvore_suja(raiz) is None
 
 
 def _git_de_leitura(raiz: Path, *argumentos: str):
@@ -344,11 +373,12 @@ def atualizar_o_espelho(raiz: Path, atraso: int) -> str | None:
             "mexo em pasta que pode estar no meio de outra coisa — quem "
             "decide aqui é o dono do computador."
         )
-    if not _arvore_limpa(raiz):
+    sujeira = diagnostico_arvore_suja(raiz)
+    if sujeira:
         return (
             f"🔄 ESPELHO NÃO ATUALIZADO: a pasta está {atraso} commits atrás, "
-            "mas tem trabalho NÃO COMMITADO — pode ser de outra sessão "
-            "(armadilhas/135). Não encosto. Avise o dono do computador."
+            f"mas {sujeira}. Pode ser de outra sessão (armadilhas/135). "
+            "Não encosto. Avise o dono do computador."
         )
 
     # A busca na rede é o MELHOR ESFORÇO, nunca a decisão. Sem rede, o cache
@@ -505,6 +535,19 @@ def decidir(dados: dict) -> str | None:
     ferramenta = dados.get("tool_name") or ""
     entrada = dados.get("tool_input") or {}
     cwd = dados.get("cwd") or "."
+
+    if ferramenta == "apply_patch":
+        try:
+            from patch_codex import ler_patch
+            for alteracao in ler_patch(dados):
+                for alvo in {alteracao.origem, alteracao.destino}:
+                    motivo = decidir({**dados, "tool_name": "Write",
+                                      "tool_input": {"file_path": str(alvo)}})
+                    if motivo:
+                        return motivo
+        except Exception as erro:
+            return f"🧱 Patch não medido: {erro}. Corrija o pedido antes de gravar."
+        return None
 
     if ferramenta in FERRAMENTAS_DE_EDICAO:
         caminho_cru = entrada.get(FERRAMENTAS_DE_EDICAO[ferramenta])

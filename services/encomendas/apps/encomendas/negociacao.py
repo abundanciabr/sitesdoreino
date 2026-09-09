@@ -58,7 +58,7 @@ from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
 
-from .gestos import Desfecho
+from .gestos import JA_NEGOCIA_OUTRO_PROJETO, Desfecho
 from .models import (
     Acordo,
     Encomenda,
@@ -82,7 +82,6 @@ ENTREGAVEL_FORA_DO_BRIEFING = "entregavel_fora_do_briefing"
 SEM_PROPOSTA_DE_PE = "sem_proposta_de_pe"
 SEM_ACORDO = "sem_acordo"
 SEM_PAGAMENTO_CONFIRMADO = "sem_pagamento_confirmado"
-JA_NEGOCIA_OUTRO_PROJETO = "ja_negocia_outro_projeto"
 SEM_AUTOR = "sem_autor"
 SEM_MOTIVO = "sem_motivo"
 
@@ -98,6 +97,9 @@ MOTIVO_DO_CLIENTE_CALADO = (
 )
 MOTIVO_DO_ALUNO_CALADO = (
     "a contraproposta venceu sem resposta do aluno: volta a pista de origem"
+)
+MOTIVO_DA_NEGOCIACAO_SEM_PROPOSTA = (
+    "a negociacao venceu sem primeira proposta: vai ao plantao"
 )
 MOTIVO_DA_DESISTENCIA_DO_ALUNO = "o aluno desistiu da negociacao: volta a pista"
 MOTIVO_DA_DESISTENCIA_DO_CLIENTE = "o cliente desistiu da negociacao: vai ao plantao"
@@ -206,21 +208,16 @@ def aviso_de_piso(
 
 
 def volta_para(projeto: Encomenda) -> str:
-    """A pista de origem deste projeto: `na_fila` ou `no_mural`.
+    """Calcula o destino de retorno a partir do nível da encomenda.
 
-    O nível decide, e não a coluna `pista`, quando os dois discordam: um projeto
-    Iniciante que chegou ao Mural pela chamada aberta tem `pista=mural`, e
-    devolvê-lo a `no_mural` seria pô-lo na prateleira reservável, que é
-    exatamente o que o [INV-ENC-M2] proíbe (e o banco recusa,
-    `iniciante_nunca_no_mural_reservavel`). A fila é a casa dele.
+    Iniciante sempre retorna à fila, inclusive depois de uma chamada aberta.
+    Intermediário e Avançado sempre retornam ao Mural. O nível é a única fonte
+    necessária porque a chamada aberta é o único desvio de rota, e o status já
+    o registra.
     """
     if projeto.nivel == Encomenda.Nivel.INICIANTE:
         return Encomenda.Status.NA_FILA
-    return (
-        Encomenda.Status.NO_MURAL
-        if projeto.pista == Encomenda.Pista.MURAL
-        else Encomenda.Status.NA_FILA
-    )
+    return Encomenda.Status.NO_MURAL
 
 
 def _soltar_o_aluno(projeto: Encomenda) -> None:
@@ -245,21 +242,9 @@ def _soltar_o_aluno(projeto: Encomenda) -> None:
 
 
 def devolver_a_pista(projeto: Encomenda, motivo: str) -> None:
-    """O ALUNO calou ou desistiu: o projeto volta à pista de origem, para o próximo.
-
-    Ele não perde o lugar na fila, mas perde este projeto (§4.2). A coluna
-    `pista` volta a dizer a verdade junto com o status, porque um projeto
-    `na_fila` com `pista=mural` seria lido de dois jeitos por dois pedaços de
-    código, e o segundo a ler é o que erra.
-    """
+    """O ALUNO calou ou desistiu: o projeto volta à rota de origem."""
     destino = volta_para(projeto)
     _soltar_o_aluno(projeto)
-    projeto.pista = (
-        Encomenda.Pista.MURAL
-        if destino == Encomenda.Status.NO_MURAL
-        else Encomenda.Pista.FILA
-    )
-    projeto.save(update_fields=["pista", "atualizada_em"])
     projeto.mudar_status(destino, motivo=motivo)
 
 
@@ -377,27 +362,30 @@ def propor(
             feito=False, razao=RODADAS_ESGOTADAS, encomenda_em=projeto.status
         )
 
-    if de_pe is not None:
-        de_pe.responder(Proposta.Resultado.SUPERADA, em=agora)
-
-    if projeto.status == Encomenda.Status.RESERVADA:
-        reserva = (
-            ReservaDoMural.objects.select_for_update()
-            .filter(encomenda=projeto, resultado=ReservaDoMural.Resultado.PENDENTE)
-            .first()
-        )
-        if reserva is not None:
-            reserva.responder(ReservaDoMural.Resultado.NEGOCIANDO, em=agora)
-        projeto.mudar_status(
-            Encomenda.Status.EM_NEGOCIACAO,
-            ator_id=perfil.pessoa_id,
-            motivo=MOTIVO_DA_PRIMEIRA_PROPOSTA,
-        )
-
     try:
         # Savepoint próprio: um `IntegrityError` engolido sem ele quebraria a
         # transação inteira, inclusive o que já foi gravado (`armadilhas/027`).
         with transaction.atomic():
+            if de_pe is not None:
+                de_pe.responder(Proposta.Resultado.SUPERADA, em=agora)
+
+            if projeto.status == Encomenda.Status.RESERVADA:
+                reserva = (
+                    ReservaDoMural.objects.select_for_update()
+                    .filter(
+                        encomenda=projeto,
+                        resultado=ReservaDoMural.Resultado.PENDENTE,
+                    )
+                    .first()
+                )
+                if reserva is not None:
+                    reserva.responder(ReservaDoMural.Resultado.NEGOCIANDO, em=agora)
+                projeto.mudar_status(
+                    Encomenda.Status.EM_NEGOCIACAO,
+                    ator_id=perfil.pessoa_id,
+                    motivo=MOTIVO_DA_PRIMEIRA_PROPOSTA,
+                )
+
             Proposta.objects.create(
                 site_id=site_id,
                 encomenda=projeto,
@@ -411,11 +399,20 @@ def propor(
                 justificativa=justificativa,
                 valida_ate=calcular_validade_da_proposta(agora, site_id=site_id),
             )
-    except IntegrityError:
+    except IntegrityError as erro:
+        if not any(
+            nome in str(erro)
+            for nome in (
+                "uma_negociacao_viva_por_aluno",
+                "uma_proposta_viva_por_aluno",
+            )
+        ):
+            raise
         # O índice `uma_proposta_viva_por_aluno` é a trava que sobra quando a
         # leitura educada falha ([INV-ENC-N6]): o aluno já tem outra negociação
         # de pé, somando as duas pistas. É a mesma forma de `mural.pegar`, e
         # pela mesma razão: uma frase nomeada em vez de um `IntegrityError`.
+        projeto.refresh_from_db(fields=["status"])
         return Desfecho(
             feito=False, razao=JA_NEGOCIA_OUTRO_PROJETO, encomenda_em=projeto.status
         )

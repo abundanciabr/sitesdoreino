@@ -36,15 +36,15 @@ def _oferecer(criar_encomenda, cliente="cli-1"):
 # ---------------------------------------------------------------------------
 
 
-def test_aceitar_leva_a_encomenda_para_a_negociacao_e_o_aluno_para_trabalhando(
+def test_aceitar_leva_a_encomenda_para_a_negociacao_e_mantem_o_aluno_disponivel(
     tres_na_fila, criar_encomenda
 ):
     """O aceite fecha a oferta, prende a encomenda ao aluno e ocupa a vaga dele.
 
     **Aceitar não é começar a produzir**, e a diferença é da emenda de 04/09/2026:
     com negociação, valor e prazo só existem depois do acordo, então o destino é
-    `em_negociacao` e o caixa fica depois dele. O que a negociação faz a partir
-    daqui é o degrau 2.12.
+    `em_negociacao` e o caixa fica depois dele. Enquanto o cliente pensa, a
+    disponibilidade do aluno não muda.
     """
     ana, _, _ = tres_na_fila
     encomenda, oferta = _oferecer(criar_encomenda)
@@ -59,15 +59,16 @@ def test_aceitar_leva_a_encomenda_para_a_negociacao_e_o_aluno_para_trabalhando(
     assert oferta.resultado == Oferta.Resultado.ACEITA
     assert oferta.respondida_em == AGORA
     assert encomenda.aluno_id == ana.id
-    assert ana.disponibilidade == PerfilProfissional.Disponibilidade.TRABALHANDO
+    assert ana.disponibilidade == PerfilProfissional.Disponibilidade.DISPONIVEL
 
 
-def test_quem_aceitou_nao_recebe_a_encomenda_seguinte(tres_na_fila, criar_encomenda):
+def test_quem_esta_negociando_nao_recebe_a_encomenda_seguinte(
+    tres_na_fila, criar_encomenda
+):
     """[INV-ENC-J7] e a regra "uma por vez" (§6.5) saindo do mesmo gesto.
 
-    O aluno vira "trabalhando" no aceite, e o motor já sabe recusar quem está
-    trabalhando. Se o aceite não mudasse a disponibilidade, a pessoa levaria a
-    fila inteira e a promessa de "uma encomenda da fila por vez" seria uma frase.
+    Negociar mantém o aluno disponível para conservar seu lugar, mas o motor
+    conhece a negociação viva e não oferece outro projeto a ele.
     """
     ana, bia, _ = tres_na_fila
     _, oferta = _oferecer(criar_encomenda, cliente="cli-1")
@@ -239,21 +240,16 @@ def test_apertar_duas_vezes_o_mesmo_botao_nao_e_erro_e_diz_por_que(
     )
 
 
-def test_quem_esta_trabalhando_nao_mexe_no_interruptor(tres_na_fila, criar_encomenda):
-    """O interruptor é do aluno; a suspensão de quem está no meio de um trabalho não.
-
-    A máquina de disponibilidade permite `trabalhando → pausado`, e essa seta
-    existe para o PLANTÃO. Se o botão do aluno a usasse, alguém sairia da fila
-    com uma encomenda aceita nas mãos, e nem o cliente nem o plantão saberiam.
-    """
+def test_quem_esta_negociando_pode_usar_o_interruptor(tres_na_fila, criar_encomenda):
+    """Negociar mantém a disponibilidade, então o aluno pode pausar e religar."""
     ana, _, _ = tres_na_fila
     _, oferta = _oferecer(criar_encomenda)
     gestos.aceitar(oferta.pk, ana.id, AGORA, site_id=SITE)
 
-    assert gestos.pausar(ana.id, site_id=SITE).razao == gestos.ESTA_TRABALHANDO
-    assert gestos.religar(ana.id, AGORA, site_id=SITE).razao == gestos.ESTA_TRABALHANDO
+    assert gestos.pausar(ana.id, site_id=SITE).feito
+    assert gestos.religar(ana.id, AGORA, site_id=SITE).feito
     ana.refresh_from_db()
-    assert ana.disponibilidade == PerfilProfissional.Disponibilidade.TRABALHANDO
+    assert ana.disponibilidade == PerfilProfissional.Disponibilidade.DISPONIVEL
 
 
 def test_a_pausa_que_nao_e_do_aluno_nao_se_desliga_pelo_botao_dele(

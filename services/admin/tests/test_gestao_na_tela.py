@@ -131,6 +131,7 @@ def test_a_tela_lista_os_alunos_com_o_formulario():
     # Os cinco campos que a lei §3 deixa mexer, e o botão.
     for campo in ("status", "nome_completo", "whatsapp", "turma", "comprou_em"):
         assert f'name="{campo}"' in html, campo
+    assert html.count('name="pessoa_email"') == 1
     assert reverse("escola_aluno_salvar") in html
 
 
@@ -494,6 +495,92 @@ def test_salvar_cursos_cria_o_novo_e_persiste_os_dados(monkeypatch):
     assert resposta["Location"].endswith("?resultado=salvo")
     assert post_route.called
     assert not patch_route.called
+
+
+@respx.mock
+def test_salvar_cursos_nao_reativa_o_curso_desmarcado(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(200, json=[{"id": "curso-um", "name": "Curso um"}])
+    )
+    _tela_responde([_aluno(status="ativa", product_id="curso-um")])
+    patch_route = respx.patch(f"{ALUNOS}/matriculas/{ALVO}").mock(
+        return_value=httpx.Response(200, json=_aluno(status="suspensa"))
+    )
+
+    resposta = _dentro().post(
+        reverse("escola_aluno_salvar"),
+        {
+            "alvo": ALVO,
+            "pessoa_email": "aluno@exemplo.com",
+            "status": "ativa",
+        },
+    )
+
+    assert resposta["Location"].endswith("?resultado=salvo")
+    assert patch_route.call_count == 1
+    assert json.loads(patch_route.calls.last.request.read())["status"] == "suspensa"
+
+
+@respx.mock
+def test_salvar_cursos_aplica_situacao_antes_da_selecao(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(200, json=[{"id": "curso-um", "name": "Curso um"}])
+    )
+    _tela_responde([_aluno(status="ativa", product_id="curso-um")])
+    patch_route = respx.patch(f"{ALUNOS}/matriculas/{ALVO}").mock(
+        return_value=httpx.Response(200, json=_aluno(status="encerrada"))
+    )
+
+    resposta = _dentro().post(
+        reverse("escola_aluno_salvar"),
+        {
+            "alvo": ALVO,
+            "pessoa_email": "aluno@exemplo.com",
+            "status": "encerrada",
+            "curso": ["curso-um"],
+        },
+    )
+
+    assert resposta["Location"].endswith("?resultado=salvo")
+    assert patch_route.call_count == 1
+    assert json.loads(patch_route.calls.last.request.read())["status"] == "encerrada"
+
+
+@respx.mock
+def test_salvar_cursos_ignora_dados_iguais_depois_da_situacao(monkeypatch):
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo")
+    respx.get("http://catalogo:8000/api/produtos").mock(
+        return_value=httpx.Response(200, json=[{"id": "curso-um", "name": "Curso um"}])
+    )
+    _tela_responde(
+        [_aluno(status="ativa", product_id="curso-um", turma="", comprou_em=None)]
+    )
+    patch_route = respx.patch(f"{ALUNOS}/matriculas/{ALVO}").mock(
+        return_value=httpx.Response(200, json=_aluno(status="encerrada"))
+    )
+
+    resposta = _dentro().post(
+        reverse("escola_aluno_salvar"),
+        {
+            "alvo": ALVO,
+            "pessoa_email": "aluno@exemplo.com",
+            "status": "encerrada",
+            "nome_completo": "Aluno Exemplo",
+            "whatsapp": "(96) 99999-0000",
+            "turma": "",
+            "comprou_em": "",
+            "curso": ["curso-um"],
+        },
+    )
+
+    assert resposta["Location"].endswith("?resultado=salvo")
+    assert patch_route.call_count == 1
+    assert json.loads(patch_route.calls.last.request.read())["status"] == "encerrada"
 
 
 RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)

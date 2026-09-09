@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-023326-TAR-011-concluida",
+  "tarefa": "TAR-011",
+  "evento": "concluida",
+  "quando": "2026-09-09T02:33:26+00:00",
+  "quem": "agent/ci/abandonar-sem-apagar",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1468",
+  "verificado_em": "2026-09-09"
+}

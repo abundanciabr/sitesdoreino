@@ -731,8 +731,15 @@ def montar_o_pedido(analise: Analise, momento: str, hoje) -> str:
             "",
             "ESTE REGISTRO PEDE DECISÃO DO MANTENEDOR, então ele nasce com",
             "`precisa_do_dono: true` e a Central de Pendências passa a cobrá-lo.",
-            "Preencha também os quatro da decisão (se_eu_nao_decidir, recomendacao,",
-            "reversivel, impacto): sem eles a ficha dele na tela diz que não sabe.",
+            "Preencha os seis campos obrigatórios:",
+            "  porque_so_voce: explique por que a decisão depende só do mantenedor.",
+            f"  proximo_passo: {analise.proximo_passo}",
+            "  se_eu_nao_decidir: diga o que acontece se a decisão ficar parada.",
+            "  recomendacao: indique a ação recomendada e o motivo.",
+            "  reversivel: true ou false, conforme a decisão pode ser desfeita.",
+            "  impacto: alto, medio ou baixo.",
+            "O robô justifica por que só o mantenedor pode decidir;",
+            "não peça ao mantenedor para completar esses campos.",
         ]
     return "\n".join(linhas)
 

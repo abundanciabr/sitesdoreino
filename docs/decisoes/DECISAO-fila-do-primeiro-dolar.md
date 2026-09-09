@@ -262,6 +262,19 @@ reprova constante mágica no motor. O rito de mudança é a linha nova com
 motivo escrito, e o livro do painel recebe um registro quando o mantenedor
 muda um valor (é ele quem muda; o registro é o rastro).
 
+Uma chamada aberta já avisou todos os elegíveis, mas ainda pode não ter
+aceite: nenhum aluno pode ser elegível naquele momento, ou todos podem deixar
+o prazo passar. Ela não fica aberta indefinidamente. O tique de um minuto lê a
+chave histórica `horas_para_escalar_chamada_aberta`, conta horas de parede
+desde a entrada em `aberta` e muda a encomenda para `para_reclassificar`.
+
+Essa é a escolha da casa para a escalada, porque `para_reclassificar` já é a
+fila do plantão e deixa a decisão seguinte com o professor. Não nasce uma
+notificação solta, nem uma segunda fila, nem um timer individual. A mudança
+fica no histórico com o motivo do relógio e sem autor humano. O valor inicial é
+24 horas, igual ao prazo de espera que leva à chamada aberta; o mantenedor pode
+alterá-lo acrescentando uma nova linha de parâmetro.
+
 ### 3.9 Nomes, endereços e eventos
 
 - **Nome no menu: "Encomendas". Nome da funcionalidade: "Fila do Primeiro
@@ -343,6 +356,7 @@ códigos são definitivos; o caminho do guarda também.
 | **[INV-ENC-J8]** | O relógio da oferta não avança fora da janela 8h–22h (São Paulo) | `.../test_inv_j8_relogio_congela_fora_da_janela.py` |
 | **[INV-ENC-J9]** | Nenhuma encomenda passa de 24h em `na_fila`/`oferecida` sem virar aberta | `.../test_inv_j9_vira_aberta_em_24h.py` |
 | **[INV-ENC-J10]** | Reexecutar o motor sem mudança de estado não cria oferta nova | `.../test_inv_j10_motor_idempotente.py` |
+| **[INV-ENC-J11]** | Chamada aberta sem aceite não passa do prazo histórico sem ir ao plantão | `services/encomendas/tests/test_inv_j11_chamada_aberta_tem_fim.py` |
 
 ### Dinheiro (somam-se aos 12 existentes; Fase 3, célula `pagamentos` e esta)
 
@@ -379,6 +393,7 @@ A semente grava exatamente estes; mudar é linha nova com motivo (§3.8).
 | `janela_inicio` / `janela_fim` | 08:00 / 22:00 | hora local (`America/Sao_Paulo`) |
 | `silencios_para_pausa` | 3 | silêncios consecutivos |
 | `horas_para_virar_aberta` | 24 | horas na fila |
+| `horas_para_escalar_chamada_aberta` | 24 | horas em chamada aberta sem aceite |
 | `encomendas_simultaneas_por_aluno` | 1 | encomendas da fila |
 | `prazo_producao.simples` / `.vestivel_veiculo` / `.personagem` | 3 / 7 / 14 | dias |
 | `dias_de_revisao_no_prazo_prometido` | 1 | dia |

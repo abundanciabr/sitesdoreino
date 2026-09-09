@@ -37,6 +37,7 @@ de mentira.
 
 from __future__ import annotations
 
+from dataclasses import replace
 import datetime as dt
 import json
 import os
@@ -683,14 +684,50 @@ def test_o_pedido_carrega_o_vocabulario_do_livro():
     assert "PRÓXIMO PASSO:" in texto
 
 
-def test_o_pedido_que_pede_decisao_dele_manda_preencher_os_quatro():
+@pytest.mark.parametrize("momento", ["reuniao", "fechamento"])
+def test_o_pedido_que_pede_decisao_dele_exige_os_seis_campos(momento):
     texto = RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", "PRECISA DO DONO: sim")
-    pedido = analista.montar_o_pedido(
-        analista.ler_a_resposta(texto), "fechamento", HOJE
-    )
+    pedido = analista.montar_o_pedido(analista.ler_a_resposta(texto), momento, HOJE)
     assert "tipo: pendencia" in pedido
     assert "precisa_do_dono: true" in pedido
     assert "se_eu_nao_decidir" in pedido and "Central de Pendências" in pedido
+    assert "seis campos obrigatórios" in pedido
+    for campo in (
+        "porque_so_voce",
+        "proximo_passo",
+        "se_eu_nao_decidir",
+        "recomendacao",
+        "reversivel",
+        "impacto",
+    ):
+        assert f"  {campo}: " in pedido, f"falta instrução para {campo}"
+    assert "O robô justifica por que só o mantenedor pode decidir" in pedido
+    assert "não peça ao mantenedor para completar esses campos" in pedido
+
+
+@pytest.mark.parametrize(
+    "passo",
+    [
+        "Autorizar a despesa de R$ 30 ou manter o serviço atual.",
+        'Escolher entre "publicar" e "revisar". A evidência está no painel.',
+    ],
+)
+def test_o_pedido_reaproveita_o_proximo_passo_da_analise(passo):
+    a = analista.ler_a_resposta(
+        RESPOSTA_INTEIRA.replace("PRECISA DO DONO: não", "PRECISA DO DONO: sim")
+    )
+    a = replace(a, proximo_passo=passo)
+    pedido = analista.montar_o_pedido(a, "reuniao", HOJE)
+    assert f"  proximo_passo: {passo}" in pedido
+    assert f"    PRÓXIMO PASSO: {passo}" in pedido
+
+
+def test_o_pedido_tecnico_nao_exige_campos_de_decisao_do_mantenedor():
+    a = analista.ler_a_resposta(RESPOSTA_INTEIRA)
+    pedido = analista.montar_o_pedido(a, "reuniao", HOJE)
+    assert "tipo: nota" in pedido and "precisa_do_dono: false" in pedido
+    assert "porque_so_voce:" not in pedido
+    assert "  proximo_passo:" not in pedido
 
 
 # ---------------------------------------------------------------------------

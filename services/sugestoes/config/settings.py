@@ -162,13 +162,6 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
-                # O sininho (EVO-21): a contagem de não-lidos fica disponível em
-                # TODA página sem nenhuma view lembrar de pô-la no contexto —
-                # Lei 1, porque um combinado desses é esquecido pela primeira
-                # view escrita depois. O valor é preguiçoso (um callable que o
-                # Django só executa se o template pedir), então página que não
-                # mostra o sino não paga consulta. Ver apps/core/avisos.py.
-                "apps.core.avisos.sino",
                 # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
                 # É processador de contexto, e não uma inclusão escrita em cada
                 # template, porque "em todas as páginas" não pode depender de
@@ -176,8 +169,8 @@ TEMPLATES = [
                 # (`armadilhas/242`). Quem desenha é `sugestoes/base_caixa.html`.
                 "apps.core.rodape.rodape_do_contexto",
                 # O MENU DO TOPO em TODA página (`apps.core.menu`), 31/08/2026.
-                # Processador pelo MESMO motivo do sino acima: "em todas as
-                # páginas" não pode depender de a view lembrar da peça. Ele lê o
+                # Processador pelo MESMO motivo: "em todas as páginas" não pode
+                # depender de a view lembrar da peça. Ele lê o
                 # menu que o mantenedor configurou em /admin/menu/, e falha para
                 # o lado de "sem menu" em qualquer tropeço.
                 "apps.core.menu.menu_do_contexto",

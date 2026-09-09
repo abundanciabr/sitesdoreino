@@ -97,21 +97,23 @@ if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; 
   exit 2
 fi
 PY_BIN="$(command -v python3 || command -v python)"
-saida="$("$PY_BIN" ci/verificar_painel.py 2>&1)"
-codigo=$?
-if [[ $codigo -ne 0 ]]; then
-  echo "❌ MURALHA DO PAINEL — reprovou em: verificar_painel.py (exit $codigo)"
-  echo "$saida" | tail -n 25 | sed 's/^/   /'
-  # ERROR aqui só vira ERROR da muralha se NADA tiver reprovado antes. Se um
-  # passo anterior já achou defeito de conteúdo, o veredito é FAIL: dizer "não
-  # consegui medir" quando já se mediu e está quebrado é rebaixar uma certeza a
-  # uma dúvida — e mandar quem lê investigar o instrumento em vez do defeito.
-  if [[ $codigo -eq 2 && $falhou -eq 0 ]]; then
-    echo "   ⚠️ exit 2 = ERROR: a muralha NÃO conseguiu inspecionar o painel. Isto NÃO é um OK."
-    exit 2
+for verificador in ci/verificar_painel.py ci/encerramento_alertas.py; do
+  saida="$("$PY_BIN" "$verificador" 2>&1)"
+  codigo=$?
+  if [[ $codigo -ne 0 ]]; then
+    echo "❌ MURALHA DO PAINEL — reprovou em: $verificador (exit $codigo)"
+    echo "$saida" | tail -n 25 | sed 's/^/   /'
+    # ERROR aqui só vira ERROR da muralha se NADA tiver reprovado antes. Se um
+    # passo anterior já achou defeito de conteúdo, o veredito é FAIL: dizer "não
+    # consegui medir" quando já se mediu e está quebrado é rebaixar uma certeza a
+    # uma dúvida — e mandar quem lê investigar o instrumento em vez do defeito.
+    if [[ $codigo -eq 2 && $falhou -eq 0 ]]; then
+      echo "   ⚠️ exit 2 = ERROR: a muralha NÃO conseguiu inspecionar o painel. Isto NÃO é um OK."
+      exit 2
+    fi
+    falhou=1
   fi
-  falhou=1
-fi
+done
 
 if [[ $falhou -eq 1 ]]; then exit 1; fi
 echo "✅ Muralha do painel: construiu do livro, reconstruiu igual byte a byte, guardas"

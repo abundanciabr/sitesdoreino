@@ -13,7 +13,7 @@ tem quatro gestos e mais nada:
 
 | Gesto | O que muda |
 |---|---|
-| **Aceitar** | a encomenda vai para a negociação, o aluno vira "trabalhando" |
+| **Aceitar** | a encomenda vai para a negociação, o aluno mantém sua disponibilidade |
 | **Passar** | com um dos quatro motivos; a encomenda volta à fila, ou vai ao plantão |
 | **Pausar** | o interruptor desligado: sai das ofertas, **mantém o lugar** |
 | **Voltar à fila** | o interruptor religado, no MESMO lugar de antes |
@@ -73,7 +73,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from . import motor
 from .models import Encomenda, Oferta, Parametro, PerfilProfissional
@@ -91,6 +91,7 @@ NAO_E_SUA = "nao_e_sua"
 MOTIVO_FORA_DOS_QUATRO = "motivo_fora_dos_quatro"
 NAO_ESTA_ABERTA = "nao_esta_aberta"
 JA_FOI_LEVADA = "ja_foi_levada"
+JA_NEGOCIA_OUTRO_PROJETO = "ja_negocia_outro_projeto"
 JA_ESTA_PAUSADO = "ja_esta_pausado"
 JA_ESTA_DISPONIVEL = "ja_esta_disponivel"
 ESTA_TRABALHANDO = "esta_trabalhando"
@@ -222,7 +223,7 @@ def _travar_a_oferta(oferta_id, perfil_id, *, site_id: str):
 
 @transaction.atomic
 def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
-    """O aluno aceita a oferta: a encomenda vai negociar, e ele vira "trabalhando".
+    """O aluno aceita a oferta: a encomenda vai negociar, sem travar o aluno.
 
     **Aceitar deixou de ser começar a produzir**: com a negociação que o
     mantenedor liberou em 04/09/2026, o valor e o prazo só existem depois do
@@ -230,9 +231,8 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     (`PLANO-AREA-DE-NEGOCIACAO.md` §5; a máquina de estado já dizia isso desde a
     TAR-140). O que a negociação FAZ a partir daí é o degrau 2.12.
 
-    O aluno vira "trabalhando" no mesmo gesto (plano §7.2), e é isso que faz
-    [INV-ENC-J7] valer sem ninguém precisar lembrar: quem está negociando não
-    recebe a oferta seguinte, e a regra "uma por vez" (§6.5) sai de graça.
+    O aluno continua disponível no mesmo gesto. O motor consulta a negociação
+    viva para impedir a oferta seguinte, sem punir o aluno pela espera do cliente.
 
     **A corrida com o relógio é resolvida pela trava, não por uma comparação.**
     Um aceite que chega no mesmo segundo em que o tique expira a oferta não é
@@ -248,15 +248,25 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     if perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:
         return Desfecho(feito=False, razao=motor.NAO_ESTA_DISPONIVEL)
 
-    oferta.responder(Oferta.Resultado.ACEITA, em=agora)
-    encomenda.aluno = perfil
-    encomenda.save(update_fields=["aluno", "atualizada_em"])
-    encomenda.mudar_status(
-        Encomenda.Status.EM_NEGOCIACAO,
-        ator_id=perfil.pessoa_id,
-        motivo=MOTIVO_DO_ACEITE,
-    )
-    perfil.mudar_disponibilidade(PerfilProfissional.Disponibilidade.TRABALHANDO)
+    try:
+        with transaction.atomic():
+            oferta.responder(Oferta.Resultado.ACEITA, em=agora)
+            encomenda.aluno = perfil
+            encomenda.save(update_fields=["aluno", "atualizada_em"])
+            encomenda.mudar_status(
+                Encomenda.Status.EM_NEGOCIACAO,
+                ator_id=perfil.pessoa_id,
+                motivo=MOTIVO_DO_ACEITE,
+            )
+    except IntegrityError as erro:
+        if "uma_negociacao_viva_por_aluno" not in str(erro):
+            raise
+        encomenda.refresh_from_db(fields=["status", "aluno"])
+        return Desfecho(
+            feito=False,
+            razao=JA_NEGOCIA_OUTRO_PROJETO,
+            encomenda_em=encomenda.status,
+        )
     zerar_o_silencio(perfil)
     return Desfecho(feito=True, encomenda_em=encomenda.status)
 
@@ -393,6 +403,11 @@ def aceitar_a_chamada_aberta(
             aluno=perfil, resultado=Oferta.Resultado.PENDENTE
         ).exists(),
         abandonos=tuple(perfil.abandonos or ()),
+        tem_negociacao_viva=Encomenda.objects.filter(
+            site_id=perfil.site_id,
+            aluno=perfil,
+            status__in=motor.ESTADOS_DE_NEGOCIACAO_VIVA,
+        ).exists(),
     )
     razao = motor.por_que_nao(vaga, candidato, regras, agora)
     if razao:
