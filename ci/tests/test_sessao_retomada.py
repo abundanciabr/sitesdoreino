@@ -258,6 +258,14 @@ def test_retomar_abertura_dentro_do_worktree_real_preserva_head_e_arquivos(
     binario = tmp_path / "bin"
     binario.mkdir()
     estado_pr = tmp_path / "pr-aberto"
+    (binario / "gh").write_text(
+        "#!/bin/sh\n"
+        f"if [ \"$2\" = \"list\" ]; then if [ -f \"{estado_pr}\" ]; then echo '[{{\"number\":91,\"state\":\"OPEN\",\"isDraft\":true}}]'; else echo '[]'; fi; exit 0; fi\n"
+        f"if [ \"$2\" = \"create\" ]; then touch \"{estado_pr}\"; echo 'https://github.com/abundanciabr/sitesdoreino/pull/91'; exit 0; fi\n"
+        "if [ \"$2\" = \"view\" ]; then echo '{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}'; exit 0; fi\n",
+        encoding="utf-8",
+    )
+    (binario / "gh").chmod(0o755)
     (binario / "gh.cmd").write_text(
         "@echo off\n"
         "if \"%2\"==\"list\" (\n"
