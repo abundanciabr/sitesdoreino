@@ -12,8 +12,9 @@ gatilho:
   - gh api rate limit exceeded
   - acesso negado em pytest tmp_path
 guarda:
-  tipo: procedimento
+  tipo: nenhum
   detector: ci/sessao.py
+  motivo: A causa nasce no modo de coordenação entre tarefas e no ambiente do agente; o CI atual mede o resultado, mas ainda não impede todas essas colisões antes de elas consumirem tempo.
 sinal:
   - "ahead 1, behind 492"
   - "escopo estourou o orçamento de arquivos"
