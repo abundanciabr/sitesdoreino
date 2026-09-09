@@ -1,0 +1,23 @@
+{
+  "arquivo": "296-entregar-um-crm-humano-antes-da-automacao-comercial",
+  "id": "TAR-296",
+  "titulo": "Entregar um CRM humano antes da automação comercial",
+  "toca": [
+    "leads",
+    "funil",
+    "admin",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-283"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR validado demonstra oportunidades, etapa, titular, histórico único, próxima ação, prazo e acompanhamento humano até o desfecho; a prova não depende de IA, WhatsApp ou automação.",
+  "despacho": "Implemente na Fase 2 o CRM humano reaproveitando as fontes existentes. Cada oportunidade terá etapa, responsável, histórico único, próxima ação, prazo e acompanhamento humano do desfecho. Não crie outro histórico comercial. Esta entrega é independente de IA, WhatsApp e automação comercial e fornece a evidência reutilizada pela TAR-288, que continua pendente até comprovar também os requisitos de automação, controles, canais e intervenção humana.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; Fase 2, separação do CRM humano da automação comercial",
+  "criada_em": "2026-09-09",
+  "responsabilidade": "relacionamento-e-acesso"
+}

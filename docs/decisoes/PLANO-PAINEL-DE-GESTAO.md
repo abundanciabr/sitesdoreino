@@ -509,3 +509,50 @@ Garantia escrita em prosa apodrece (`RETROSPECTIVA-FASE-D.md`, padrão 2).
 - **Latência da gestão:** quanto tempo passa entre um sinal e a decisão, entre a
   decisão e o começo do trabalho, e entre o fim de um experimento e o
   aprendizado incorporado.
+## Adendo de execução aprovado: Meshcraft Scale OS
+
+Em 09/09/2026, a direção foi consolidada em quatro fases. A gestão vem antes dos copilotos e continua usando as fontes, filas, registros e mecanismos já existentes.
+
+### Fases e critérios de conclusão
+
+1. **Fundação da gestão:** inventário conhecido com responsabilidade explícita ou herdada, quatro funções associadas a pessoas, titular e substituto aceitos, alçadas e fontes definidos, direção inicial registrada, medição de esforço iniciada e guarda contra entrega nova sem responsabilidade.
+2. **Gestão funcionando:** central existente com quatro visões, permissões no servidor, operação, melhoria e construção diferenciadas, CRM humano utilizável e revisão semanal conduzida sem depender de copiloto.
+3. **Copilotos e integrações:** execução persistente e auditável, seguida pelos quatro copilotos e integrações aplicáveis. Falha, repetição, tomada de controle humana, fonte ausente, custo e limites ficam visíveis. WhatsApp continua vinculado à TAR-080.
+4. **Validação integrada:** quatro conclusões separadas, funcionamento, economia de esforço, qualidade e capacidade. Ensaio concluído, meta atingida, produto funcionando no escopo e autorização para ampliar são estados diferentes.
+
+A TAR-296 é o CRM humano da Fase 2. A TAR-288 permanece a entrega do conjunto comercial e só pode ser concluída quando automação, controles, canais aplicáveis e intervenção humana estiverem comprovados. A evidência da TAR-296 será reaproveitada, sem criar outro histórico comercial.
+
+### Fundação de responsabilidades
+
+O cadastro versionado em `painel/responsabilidades.json` cobre processos, resultados, serviços, integrações, campanhas, cursos, documentos, rotinas financeiras e continuidade. Cada unidade informa finalidade, resultado acompanhado, função titular, pessoa ocupante, substituto, fonte oficial, regra de acompanhamento, preparação, execução, aprovação, exceções, alçada e evidência. Uma unidade subordinada pode declarar `herda_de`; exceções são explícitas.
+
+Responsabilidade de negócio, execução técnica e permissão de acesso permanecem separadas. Delegar execução não transfere o desfecho. Transferência só vale após aceite. Até lá, o titular anterior acompanha. Falta de pessoa, substituto, fonte ou capacidade é exceção visível. Publicar uma correção técnica não encerra o caso do comprador ou aluno sem evidência do resultado para a pessoa.
+
+O comando `ci/responsabilidades.py` audita a cobertura e verifica uma responsabilidade explícita ou herdada antes da conclusão de uma entrega nova. A fila exige esse vínculo ao criar uma tarefa nova e `ci/fila.py concluir` recusa pessoa ocupante ou substituto ausente. As quatro pessoas ainda não foram identificadas em decisões ou cadastros consultados em 09/09/2026; por isso a fundação está implementada, mas a atribuição nominal continua pendência real do mantenedor.
+
+### Scale OS mínimo e cadências
+
+O acompanhamento preserva dois percursos. Operação registra necessidade, responsável, próxima ação, execução e resolução. Melhoria registra objetivo, hipótese, intervenção, resultado e decisão. Construção continua na fila técnica. O ciclo mantém horizonte aproximado de 12 semanas, com uma MCI principal, hipótese de gargalo fundamentada, evidências, medidas de direção, compromissos com responsável e prazo, limites de proteção, resultados observados e decisões.
+
+A revisão semanal trata compromissos, resultados, atrasos, impedimentos, medidas de direção e limites de proteção. A revisão mensal trata economia, coortes, qualidade, capacidade humana e maturidade das evidências. A revisão por ciclo trata objetivos, MCI, hipótese de gargalo e prioridades. A revisão semanal não cria uma nova MCI.
+
+Cada indicador declara definição, fonte, período, responsável e situação da medição. Fato observado, estimativa, dado imaturo e informação indisponível não são intercambiáveis. Falta de medição não é zero. Nenhuma lacuna técnica isolada é declarada como gargalo econômico principal sem prova.
+
+### Medição de esforço desde a Fase 1
+
+`painel/medicoes/esforco.json` iniciou a coleta em 09/09/2026. Cada observação registra rotina, natureza, volume, minutos de referência, tempo humano posterior, revisão, retrabalho, exceções, qualidade, reabertura, prazo, período e condições. O arquivo contém uma fixture identificada como teste, não uma observação real. A linha de base está iniciada, mas insuficiente para comparação; produtividade real ainda não foi comprovada.
+
+A meta de superar 80 por cento de redução vale para trabalho braçal e repetitivo elegível, ponderado por volume e minutos de referência. Ela inclui revisão, retrabalho, exceções e manutenção da automação e não exige o mesmo percentual de atividades de julgamento.
+
+### Rastreabilidade e validação da Fase 4
+
+As tarefas TAR-283 a TAR-289 e TAR-297 continuam ligadas ao documento privado e às fontes originais. A TAR-290 foi cancelada e preservada no histórico porque sua validação única foi substituída por quatro conclusões separadas. Permissões exigem conferência no servidor e recusa de ação não autorizada. Cobertura distingue fonte vazia, fonte indisponível e integração ausente. Persistência, identidade, aprovação, evidência, deduplicação, recuperação, tentativas, limites, falhas e encaminhamento humano pertencem à Fase 3. Fontes pedagógicas autorizadas, versão, referência de aula, falta de fonte, decisão humana e análise visual real permanecem critérios do Ensino. Nenhuma ação de gasto, campanha, cobrança ou publicação é autorizada só pela entrega da infraestrutura.
+
+A validação final produzirá quatro conclusões independentes:
+
+- funcionamento, com percursos completos, permissões, integrações, falhas, recuperação e intervenção humana;
+- economia de esforço, com minutos equivalentes antes e depois e custos humanos da automação;
+- qualidade, com resolução, reabertura, erros, adequação pedagógica e limites definidos;
+- capacidade, com carga técnica, filas, picos, custos, disponibilidade e capacidade humana.
+
+Resultados negativos ou inconclusivos são válidos quando têm evidência e consequência registrada. 500 vendas por dia e 50 mil alunos são alvos de ensaio, com perfis de uso representativos; 50 mil cadastros não significam 50 mil acessos simultâneos. A avaliação econômica e os resultados dos alunos permanecem, sem usar coortes imaturas como prova consolidada. Ensaios de escala não pertencem à Fase 1.

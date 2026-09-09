@@ -58,6 +58,7 @@ if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import reservar  # noqa: E402
+import responsabilidades  # noqa: E402
 from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
 
 # Quem sabe distinguir espelho de bancada é a muralha da pasta compartilhada, e
@@ -141,6 +142,7 @@ CAMPOS_DA_TAREFA = {
 MANUTENCAO = "manutencao"
 CAMPOS_OPCIONAIS_DA_TAREFA = {
     "depende_de": list,
+    "responsabilidade": str,
     "notas": str,
     "cria": list,
     "move": list,
@@ -1317,6 +1319,8 @@ def cmd_criar(raiz: Path, args) -> int:
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     }
+    if getattr(args, "responsabilidade", ""):
+        dados["responsabilidade"] = args.responsabilidade
     caminho = pasta / f"{stem}.json"
     _escrever_json(caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
@@ -1671,6 +1675,14 @@ def cmd_concluir(raiz: Path, args) -> int:
         print("RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro.")
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
+    if "responsabilidade" in tarefas[tid]:
+        problemas = responsabilidades.validar_entrega(raiz, tarefas[tid]["responsabilidade"])
+        if problemas:
+            print("RECUSADO: a entrega nova não pode ser concluída sem responsabilidade comprovada.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            print("Cadastre a pessoa ocupante e o substituto aceito antes de concluir.")
+            return 1
     _soltar_reserva_se_houver(raiz, tid)
     caminho = _escrever_evento(
         raiz,
@@ -1964,6 +1976,7 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
+    p.add_argument("--responsabilidade", required=True, help="id da unidade de responsabilidade que acompanha o desfecho")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
     p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")
