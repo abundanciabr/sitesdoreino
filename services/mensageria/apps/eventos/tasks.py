@@ -41,10 +41,18 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import transaction
 
 from config.huey import huey
 
-from .models import EnvioRegistrado
+from .capacidade import (
+    CapacidadeDoProvedor,
+    atraso_com_backoff,
+    registrar_falha,
+    registrar_sucesso,
+    reservar_envio,
+)
+from .models import EnderecoDeEmail, EnvioRegistrado
 
 logger = logging.getLogger("mensageria.provedores")
 
@@ -67,6 +75,39 @@ class EnvioRecusado(RuntimeError):
     """O provedor conversou e não aceitou a carta: zero mensagens saíram."""
 
 
+class EmailBloqueado(RuntimeError):
+    """O endereço foi devolvido ou reclamou e não pode receber mais e-mail."""
+
+
+def _email_normalizado(email: str) -> str:
+    return email.strip().lower()
+
+
+def marcar_email_como_bloqueado(email: str, motivo: str) -> EnderecoDeEmail:
+    """Registra bounce ou complaint e encerra envios pendentes do endereço."""
+
+    if motivo not in {"devolucao", "reclamacao"}:
+        raise ValueError("motivo deve ser devolucao ou reclamacao")
+    email = _email_normalizado(email)
+    with transaction.atomic():
+        bloqueio, criado = EnderecoDeEmail.objects.get_or_create(
+            email=email,
+            defaults={"motivo": motivo},
+        )
+        if not criado and bloqueio.motivo != "reclamacao":
+            bloqueio.motivo = motivo
+            bloqueio.save(update_fields=["motivo", "bloqueado_em"])
+        EnvioRegistrado.objects.filter(
+            destinatario__iexact=email,
+            canal="email",
+            status="pendente",
+        ).update(
+            status="falhou",
+            resultado=f"endereco bloqueado por {bloqueio.motivo}; nenhum novo envio sera tentado",
+        )
+    return bloqueio
+
+
 def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     """Manda o e-mail de verdade. Volta em silêncio SÓ quando ele saiu.
 
@@ -74,6 +115,11 @@ def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     que qualquer comentário: com ele ligado, um provedor fora do ar vira `None` e
     a linha é marcada como enviada.
     """
+    destinatario = _email_normalizado(destinatario)
+    if EnderecoDeEmail.objects.filter(email=destinatario).exists():
+        raise EmailBloqueado(
+            f"endereco {destinatario} esta bloqueado por devolucao ou reclamacao; nenhum envio sera tentado"
+        )
     if not (settings.EMAIL_HOST and settings.DEFAULT_FROM_EMAIL):
         raise EmailNaoConfigurado(
             "SMTP_HOST/SMTP_FROM ausentes no env desta celula — o passo do "
@@ -113,30 +159,54 @@ def enviar_whatsapp(destinatario: str, corpo: str) -> None:
 PROVEDORES = {"email": enviar_email, "whatsapp": enviar_whatsapp}
 
 
-def processar_envio(envio_id: int) -> None:
+def processar_envio(envio_id: int, task=None) -> None:
     """Corpo nu da task — chamado direto pelo teste-guarda, sem passar pelo Huey."""
     envio = EnvioRegistrado.objects.get(id=envio_id)
     if envio.status == "enviado":
         return  # idempotência extra: reentrega da própria task
     try:
         if envio.canal == "email":
+            reservar_envio()
             enviar_email(envio.destinatario, envio.assunto, envio.corpo)
+            registrar_sucesso()
         else:
             enviar_whatsapp(envio.destinatario, envio.corpo)
-    except Exception as exc:  # provedor fora do ar
+    except EmailBloqueado as exc:
+        envio.status = "falhou"
         envio.tentativas += 1
         envio.resultado = str(exc)[:500]
-        # `status` NÃO vira "enviado" aqui, e é o ponto inteiro deste arquivo: a
-        # linha fica como está e o Huey reagenda.
+        envio.save(update_fields=["status", "tentativas", "resultado"])
+        return
+    except CapacidadeDoProvedor as exc:
+        if task is not None:
+            task.retry_delay = exc.atraso
+        envio.tentativas += 1
+        envio.resultado = str(exc)[:500]
         envio.save(update_fields=["tentativas", "resultado"])
-        raise  # o Huey decide o retry; nunca propaga a quem emitiu o evento
-    envio.status = "enviado"
-    envio.tentativas += 1
-    envio.resultado = "ok"
-    envio.save(update_fields=["status", "tentativas", "resultado"])
+        raise
+    except EmailNaoConfigurado as exc:
+        envio.tentativas += 1
+        envio.resultado = str(exc)[:500]
+        envio.save(update_fields=["tentativas", "resultado"])
+        raise
+    except Exception as exc:  # provedor fora do ar
+        if envio.canal == "email":
+            registrar_falha()
+            if task is not None:
+                task.retry_delay = atraso_com_backoff(envio.tentativas + 1)
+        envio.tentativas += 1
+        envio.resultado = str(exc)[:500]
+        envio.save(update_fields=["tentativas", "resultado"])
+        raise
+    else:
+        envio.status = "enviado"
+        envio.tentativas += 1
+        envio.resultado = "ok"
+        envio.save(update_fields=["status", "tentativas", "resultado"])
+        return
 
 
-@huey.task(retries=5, retry_delay=30)
-def enviar_notificacao(envio_id: int) -> None:
+@huey.task(retries=5, retry_delay=30, context=True)
+def enviar_notificacao(envio_id: int, task=None) -> None:
     """Toda task é idempotente — retry é comportamento normal, não exceção."""
-    processar_envio(envio_id)
+    processar_envio(envio_id, task=task)

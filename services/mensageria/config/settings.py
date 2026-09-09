@@ -130,6 +130,7 @@ EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
+EMAIL_WEBHOOK_TOKEN = os.environ.get("EMAIL_WEBHOOK_TOKEN", "")
 
 # djhuey lê `settings.HUEY`. Precisa ser a MESMA instância que as tasks decoram
 # (config/huey.py) — uma instância nova aqui criaria uma SEGUNDA fila: o handler
