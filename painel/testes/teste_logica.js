@@ -1006,6 +1006,18 @@ caso("cadeia não aplica vínculos pela metade", Object.keys(LOGICA.complementos
     LOGICA.problemasAbertos([alvo,residual,baixa]).map(function(r){return r.arquivo;}).join() === residual.arquivo);
 });
 
+exemplosResolucao.decisoes.forEach(function(c) {
+  var pedido = reg(Object.assign({}, exemplosResolucao.pedido, c.alvo));
+  var resposta = reg(Object.assign({}, exemplosResolucao.decisao, c.resposta));
+  caso("decisão compartilhada: " + c.nome, LOGICA.decisaoComprovada(resposta,pedido) === c.esperado);
+  if (resposta.relacao === "decisao") caso("decisão não corrige incidente: " + c.nome, !LOGICA.resolucaoComprovada(resposta,pedido));
+});
+caso("decisão sem alvo não tem prova", !LOGICA.decisaoComprovada(exemplosResolucao.decisao,null));
+caso("decisão sem registro não tem prova", !LOGICA.decisaoComprovada(null,exemplosResolucao.pedido));
+var perguntaIncidente = reg(Object.assign({}, exemplosResolucao.pedido));
+var respostaHumana = reg(Object.assign({}, exemplosResolucao.decisao));
+caso("decisão humana encerra pergunta sem resolver incidente", LOGICA.caixaDeEntrada([perguntaIncidente,respostaHumana],HOJE).length === 0 && LOGICA.problemasAbertos([perguntaIncidente,respostaHumana]).length === 1);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

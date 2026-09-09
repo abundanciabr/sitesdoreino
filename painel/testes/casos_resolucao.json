@@ -419,5 +419,189 @@
       },
       "esperado": false
     }
+  ],
+  "pedido": {
+    "arquivo": "ocorrencia",
+    "tipo": "incidente",
+    "gravidade": "vermelho",
+    "quando": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1474",
+    "precisa_do_dono": true
+  },
+  "decisao": {
+    "arquivo": "resolucao",
+    "tipo": "resposta",
+    "relacao": "decisao",
+    "gravidade": "info",
+    "responde_a": "ocorrencia",
+    "quando": "2026-09-09T15:00:00Z",
+    "verificado_em": "2026-09-09T15:00:00Z",
+    "tarefa": "TAR-292",
+    "evidencia": "ConferÃªncia pÃºblica com resultado registrado.",
+    "autoridade": "mantenedor"
+  },
+  "decisoes": [
+    {
+      "nome": "decisão humana comprovada",
+      "alvo": {},
+      "resposta": {},
+      "esperado": true
+    },
+    {
+      "nome": "tipo decisão também responde",
+      "alvo": {},
+      "resposta": {
+        "tipo": "decisao"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "fuso equivalente conserva decisão",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T12:00:00-03:00"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "decisão verde não é resolução técnica",
+      "alvo": {},
+      "resposta": {
+        "gravidade": "verde"
+      },
+      "esperado": true
+    },
+    {
+      "nome": "alvo não pede decisão",
+      "alvo": {
+        "precisa_do_dono": false
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "outro alvo",
+      "alvo": {
+        "arquivo": "outro"
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "alvo é tentativa",
+      "alvo": {
+        "relacao": "comentario",
+        "responde_a": "original"
+      },
+      "resposta": {},
+      "esperado": false
+    },
+    {
+      "nome": "sem alvo explícito",
+      "alvo": {},
+      "resposta": {
+        "responde_a": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "autorreferência",
+      "alvo": {},
+      "resposta": {
+        "arquivo": "ocorrencia"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "autoridade sem mandato",
+      "alvo": {},
+      "resposta": {
+        "autoridade": "github"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "tipo medição não decide",
+      "alvo": {},
+      "resposta": {
+        "tipo": "medicao"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "comentário não decide",
+      "alvo": {},
+      "resposta": {
+        "relacao": "comentario"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "resolução não é decisão",
+      "alvo": {},
+      "resposta": {
+        "relacao": "resolucao"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova vazia",
+      "alvo": {},
+      "resposta": {
+        "evidencia": " "
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova ausente",
+      "alvo": {},
+      "resposta": {
+        "evidencia": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "prova anterior ao pedido",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T14:59:59Z"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "instante sem fuso",
+      "alvo": {},
+      "resposta": {
+        "verificado_em": "2026-09-09T15:00:00"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "TAR diferente",
+      "alvo": {},
+      "resposta": {
+        "tarefa": "TAR-294"
+      },
+      "esperado": false
+    },
+    {
+      "nome": "TAR ausente",
+      "alvo": {},
+      "resposta": {
+        "tarefa": null
+      },
+      "esperado": false
+    },
+    {
+      "nome": "pedido legado sem TAR",
+      "alvo": {
+        "tarefa": null
+      },
+      "resposta": {
+        "tarefa": null
+      },
+      "esperado": true
+    }
   ]
 }

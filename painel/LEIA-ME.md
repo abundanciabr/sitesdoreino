@@ -413,3 +413,10 @@ Outra obrigação que cite o mesmo PR permanece aberta, inclusive se pertencer
 à mesma tarefa. A conclusão da tarefa exige conferir suas obrigações restantes;
 a URL compartilhada não demonstra esse aceite. Conclusões verdes genéricas,
 sem `relacao`, continuam submetidas à guarda das entregas que citam o mesmo PR.
+
+Para conferir uma decisão, use `LOGICA.decisaoComprovada(resposta, alvo)` ou
+`ci.encerramento_alertas.decisao_comprovada(resposta, alvo)`. O contrato exige
+alvo original explícito com `precisa_do_dono: true`, autoridade `mantenedor`,
+tipo `resposta` ou `decisao`, `relacao: "decisao"`, a mesma TAR quando existente,
+e prova conferida a partir do pedido. A decisão encerra a pergunta humana;
+`baixa_comprovada` continua recusando tratá-la como resolução de incidente.

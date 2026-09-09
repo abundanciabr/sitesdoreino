@@ -73,6 +73,19 @@ def baixa_comprovada(resposta: dict, alerta: dict) -> bool:
     return not prs or bool(prs & prs_citados(resposta.get("evidencia")))
 
 
+def decisao_comprovada(resposta: dict | None, alvo: dict | None) -> bool:
+    """Uma resposta humana encerra a pergunta, sem atestar correção técnica."""
+    if not resposta or not alvo or resposta.get("arquivo") == alvo.get("arquivo") or resposta.get("responde_a") != alvo.get("arquivo") or (alvo.get("relacao") and alvo.get("responde_a")):
+        return False
+    return (
+        resposta.get("relacao") == "decisao" and alvo.get("precisa_do_dono") is True
+        and resposta.get("autoridade") == "mantenedor"
+        and resposta.get("tipo") in ("decisao", "resposta")
+        and (not alvo.get("tarefa") or resposta.get("tarefa") == alvo["tarefa"])
+        and prova_posterior(resposta, alvo)
+    )
+
+
 def complementos_comprovados(registros: dict[str, dict]) -> dict[str, str]:
     candidatos, ambiguos = {}, set()
     for r in registros.values():
@@ -136,6 +149,8 @@ def conferir_registros(registros: dict[str, dict], novos: set[str]) -> list[str]
         if relacao == "historico":
             if alvo_id is not None or registro.get("tipo") != "incidente" or registro.get("precisa_do_dono") or registro.get("gravidade") != "verde" or not prova_posterior(registro, registro):
                 problemas.append(f"{ident}: historico sem prova ou com alvo; use incidente verde comprovado sem responde_a, ou resolucao para encerrar ocorrência existente.")
+        if relacao == "decisao" and not decisao_comprovada(registro, alvo):
+            problemas.append(f"{ident}: decisão sem prova do pedido; indique o alvo original, autoridade mantenedor, tipo resposta ou decisao, mesma tarefa e evidencia conferida a partir do pedido.")
         if relacao == "resolucao" and (not alvo or not baixa_comprovada(registro, alvo)):
             problemas.append(f"{ident}: baixa de {alvo_id} sem prova. Use gravidade verde, a mesma tarefa, verificado_em a partir do alerta e evidencia do PR da entrega e da conferência realizada.")
         if alvo and relacao is None and (alvo.get("precisa_do_dono") or baixa_comprovada(registro, alvo)):

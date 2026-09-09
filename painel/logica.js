@@ -114,6 +114,8 @@
   }
 
   function decisaoComprovada(r, alvo) {
+    if (!r || !alvo || r.arquivo === alvo.arquivo || r.responde_a !== alvo.arquivo ||
+        (alvo.relacao && alvo.responde_a)) return false;
     return r.relacao === "decisao" && alvo.precisa_do_dono === true &&
       r.autoridade === "mantenedor" && (r.tipo === "decisao" || r.tipo === "resposta") &&
       (!alvo.tarefa || r.tarefa === alvo.tarefa) && provaPosterior(r, alvo);
@@ -1134,6 +1136,7 @@
 
   var LOGICA = {
     resolucaoComprovada: resolucaoComprovada,
+    decisaoComprovada: decisaoComprovada,
     complementosComprovados: complementosComprovados,
     idsDaOcorrencia: idsDaOcorrencia,
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,

@@ -316,3 +316,20 @@ def test_resolucao_tipificada_nao_cobra_nem_fecha_outro_alvo_do_mesmo_pr(outra_t
     assert not guarda.baixa_comprovada(registros["verde"], registros["residual"])
     registros["generica"] = dict(VERDE, arquivo="generica")
     assert any("residual" in erro for erro in guarda.conferir_registros(registros, {"generica"}))
+
+
+@pytest.mark.parametrize("caso", EXEMPLOS["decisoes"], ids=lambda c: c["nome"])
+def test_decisao_comprovada_mesmos_exemplos_javascript(caso):
+    alvo = dict(EXEMPLOS["pedido"], **caso["alvo"])
+    resposta = dict(EXEMPLOS["decisao"], **caso["resposta"])
+    assert guarda.decisao_comprovada(resposta, alvo) is caso["esperado"]
+    if resposta["relacao"] == "decisao":
+        assert not guarda.baixa_comprovada(resposta, alvo)
+        registros = {alvo["arquivo"]: alvo, resposta["arquivo"]: resposta}
+        erros = guarda.conferir_registros(registros, {resposta["arquivo"]})
+        assert bool(erros) is not caso["esperado"]
+
+
+def test_decisao_sem_registro_ou_alvo_nao_tem_prova():
+    assert not guarda.decisao_comprovada(None, EXEMPLOS["pedido"])
+    assert not guarda.decisao_comprovada(EXEMPLOS["decisao"], None)
