@@ -1520,6 +1520,10 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
     "janela_fim": ("hora_do_dia", "Hora em que o relógio da oferta congela"),
     "silencios_para_pausa": ("inteiro", "Silêncios seguidos que pausam o aluno"),
     "horas_para_virar_aberta": ("horas", "Horas na fila até a chamada aberta"),
+    "horas_para_escalar_chamada_aberta": (
+        "horas",
+        "Horas em chamada aberta sem aceite até o plantão",
+    ),
     "encomendas_simultaneas_por_aluno": (
         "inteiro",
         "Encomendas da fila que um aluno faz ao mesmo tempo",

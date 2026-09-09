@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-031-o-portao-do-pr-1462-pagou-a-divida-do-livro",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "O portão do PR 1462 pagou a dívida de 27 merges no livro",
+  detalhe: "O portão do PR #1462 registrou 27 merges antigos sem fato consolidado: #1451, #1450, #1449, #1448, #1447, #1444, #1445, #1441, #1442, #1437, #1438, #1435, #1434, #1429, #1433, #1426, #1430, #1424, #1423, #1425, #1420, #1416, #1412, #1411, #1410, #1407 e #1406. O #1399 ficou fora por já estar em voo. A TAR-254 tem o registro próprio do PR #1462.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1462",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

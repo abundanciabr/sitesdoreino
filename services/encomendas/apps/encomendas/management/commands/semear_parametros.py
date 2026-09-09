@@ -54,18 +54,19 @@ MOTIVO_DA_SEMENTE = (
     "gravado pela semente da celula."
 )
 
-# Os 27 valores iniciais, na ordem da lei secao 6. A tabela da lei tem 19
-# linhas porque varias juntam duas ou tres chaves numa celula so ("janela_inicio
-# / janela_fim", "prazo_producao.simples / .vestivel_veiculo / .personagem"); as
-# CHAVES distintas sao 27, e sao elas que o banco guarda. O despacho da TAR-120
-# dizia 21, e a divergencia esta reportada: onde o despacho e a lei discordam,
-# vence a lei.
+# Os valores iniciais, na ordem da lei secao 6 e das decisoes que a completam.
+# A tabela da lei agrupa varias chaves numa celula so ("janela_inicio / janela_fim",
+# "prazo_producao.simples / .vestivel_veiculo / .personagem"); sao as CHAVES
+# distintas que o banco guarda. O despacho da TAR-120 dizia 21, e a divergencia
+# esta reportada: onde o despacho e a lei discordam, vence a lei. A TAR-254
+# acrescenta o prazo da chamada aberta.
 VALORES_INICIAIS = {
     "relogio_da_oferta": "3",
     "janela_inicio": "08:00",
     "janela_fim": "22:00",
     "silencios_para_pausa": "3",
     "horas_para_virar_aberta": "24",
+    "horas_para_escalar_chamada_aberta": "24",
     "encomendas_simultaneas_por_aluno": "1",
     "prazo_producao.simples": "3",
     "prazo_producao.vestivel_veiculo": "7",
@@ -88,10 +89,9 @@ VALORES_INICIAIS = {
     "entregas_para_nivel_avancado": "5",
     "janela_sem_abandono": "90",
     "pausa_por_segundo_abandono": "30",
-    # A 28a chave, e a unica que nao vem da lei secao 6: ela vem do paragrafo 9
-    # do PLANO-AREA-DE-NEGOCIACAO.md, a emenda que o mantenedor aprovou em
-    # 04/09/2026. Tres HORAS UTEIS para o aluno que pegou um projeto no Mural
-    # olhar o briefing e propor.
+    # As chaves adicionais vêm do paragrafo 9 do PLANO-AREA-DE-NEGOCIACAO.md,
+    # da decisão do Mural e deste prazo da chamada aberta. Tres HORAS UTEIS para
+    # o aluno que pegou um projeto no Mural olhar o briefing e propor.
     "relogio_da_reserva_no_mural": "3",
     # As tres da NEGOCIACAO (paragrafo 9 do PLANO-AREA-DE-NEGOCIACAO.md, degrau
     # 2.12): tres rodadas para cada lado, vinte e quatro HORAS UTEIS de validade

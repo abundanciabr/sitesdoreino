@@ -28,16 +28,17 @@ acontecido às 14h?", pergunta "o que está vencido AGORA?". É o cenário 15 do
 anexo B do plano, e ele tem guarda próprio
 (`tests/test_inv_j10_motor_idempotente.py`).
 
-A ORDEM DOS TRÊS GESTOS É REGRA, NÃO ARRUMAÇÃO
------------------------------------------------
+A ORDEM DOS GESTOS É REGRA, NÃO ARRUMAÇÃO
+-----------------------------------------
 1. **Expirar** as ofertas vencidas (a encomenda volta a `na_fila`).
-2. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
-3. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
+2. **Escalar** a chamada aberta que venceu sem aceite ao plantão.
+3. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
+4. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
 
-Trocar 1 com 2 mudaria o desfecho de quem estava com o relógio vencido no exato
+Trocar 1 com 3 mudaria o desfecho de quem estava com o relógio vencido no exato
 minuto das 24h: a oferta seria CANCELADA em vez de EXPIRADA, e a auditoria de
 justiça leria "a plataforma tirou a oferta dele" onde a verdade é "o prazo dele
-acabou". Trocar 2 com 3 daria uma oferta nova, de três horas, a uma encomenda
+acabou". Trocar 3 com 4 daria uma oferta nova, de três horas, a uma encomenda
 que já devia estar em chamada aberta — e o [INV-ENC-J9] cairia por um minuto a
 cada volta.
 
@@ -78,7 +79,10 @@ from .models import (
     Proposta,
     ReservaDoMural,
 )
-from .relogio import prazo_para_virar_aberta
+from .relogio import (
+    prazo_para_escalar_chamada_aberta,
+    prazo_para_virar_aberta,
+)
 
 # OS DOIS ESTADOS EM QUE A ENCOMENDA ESTÁ ESPERANDO UM ALUNO DA FILA. O
 # [INV-ENC-J9] nomeia os dois, e a razão de serem dois é que a encomenda pinga
@@ -91,6 +95,9 @@ ESTADOS_DA_ESPERA = frozenset({Encomenda.Status.NA_FILA, Encomenda.Status.OFEREC
 # pessoa ali seria inventar autoria.
 MOTIVO_DA_EXPIRACAO = "o relogio da oferta venceu sem resposta do aluno"
 MOTIVO_DA_ABERTURA = "esperou o prazo da fila sem aceite: virou chamada aberta"
+MOTIVO_DA_CHAMADA_ABERTA_SEM_ACEITE = (
+    "esperou o prazo da chamada aberta sem aceite: vai ao plantao"
+)
 
 
 @dataclass(frozen=True)
@@ -143,6 +150,18 @@ def entrou_na_espera_em(encomenda: Encomenda, estados=ESTADOS_DA_ESPERA) -> date
     entrada = (
         MudancaDeStatus.objects.filter(encomenda=encomenda, para__in=estados)
         .exclude(de__in=estados)
+        .order_by("-em", "-id")
+        .first()
+    )
+    return entrada.em if entrada else encomenda.criada_em
+
+
+def entrou_na_chamada_aberta_em(encomenda: Encomenda) -> datetime:
+    """Desde quando esta encomenda está em chamada aberta."""
+    entrada = (
+        MudancaDeStatus.objects.filter(
+            encomenda=encomenda, para=Encomenda.Status.ABERTA
+        )
         .order_by("-em", "-id")
         .first()
     )
@@ -282,6 +301,42 @@ def abrir_o_que_esperou_demais(agora: datetime, *, site_id: str) -> tuple[object
             encomenda.mudar_status(Encomenda.Status.ABERTA, motivo=MOTIVO_DA_ABERTURA)
             abertas.append(encomenda_id)
     return tuple(abertas)
+
+
+def escalar_chamadas_abertas_sem_aceite(
+    agora: datetime, *, site_id: str
+) -> tuple[object, ...]:
+    """Manda ao plantão a chamada aberta que venceu sem aceite.
+
+    A chamada aberta é uma espera diferente da fila: todos já foram avisados,
+    e o próximo destino não é outro aluno, mas o plantão. O marco é a entrada
+    em `aberta`; voltar a contar desde `criada_em` faria uma encomenda recém
+    aberta escalar no mesmo tique quando o prazo da fila for maior.
+
+    O estado é travado antes da decisão, como nos demais gestos do tique. Se o
+    aluno aceitar entre a consulta e a trava, a chamada não é escalada.
+    """
+    prazo = prazo_para_escalar_chamada_aberta(agora, site_id=site_id)
+    abertas = list(
+        Encomenda.objects.filter(site_id=site_id, status=Encomenda.Status.ABERTA)
+        .order_by("criada_em", "id")
+        .values_list("pk", flat=True)
+    )
+
+    ao_plantao: list[object] = []
+    for encomenda_id in abertas:
+        with transaction.atomic():
+            encomenda = Encomenda.objects.select_for_update().get(pk=encomenda_id)
+            if encomenda.status != Encomenda.Status.ABERTA:
+                continue
+            if agora - entrou_na_chamada_aberta_em(encomenda) < prazo:
+                continue
+            encomenda.mudar_status(
+                Encomenda.Status.PARA_RECLASSIFICAR,
+                motivo=MOTIVO_DA_CHAMADA_ABERTA_SEM_ACEITE,
+            )
+            ao_plantao.append(encomenda_id)
+    return tuple(ao_plantao)
 
 
 def expirar_reservas_vencidas(agora: datetime, *, site_id: str) -> tuple[object, ...]:
@@ -469,15 +524,20 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     2. **Expirar** as reservas vencidas (o projeto volta ao Mural).
     3. **Expirar** as propostas vencidas (o projeto volta à pista, ou vai ao
        plantão, conforme quem ficou calado).
-    4. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
-    5. **Mandar ao plantão** o que encalhou no Mural ([INV-ENC-M5]).
-    6. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
+    4. **Escalar** a chamada aberta que venceu sem aceite ao plantão.
+    5. **Abrir** o que esperou demais na fila ([INV-ENC-J9]).
+    6. **Mandar ao plantão** o que encalhou no Mural ([INV-ENC-M5]).
+    7. **Oferecer** o que sobrou em `na_fila` (o motor do degrau 2.3).
 
-    O 2 vem antes do 5 pela mesma razão que o 1 vem antes do 4: o projeto cuja
+    O 2 vem antes do 6 pela mesma razão que o 1 vem antes do 5: o projeto cuja
     reserva acabou de vencer volta à prateleira NESTA passada, e é nesta passada
     que ele tem de ser julgado. Com a ordem trocada, um projeto sem elegível
     ficaria um tique inteiro escondido dentro de `reservada`, e o [INV-ENC-M5]
     cairia por um minuto a cada volta.
+
+    A escalada da chamada aberta vem antes da abertura da fila de propósito: a
+    chamada que acabou de nascer recebe o prazo inteiro para ser aceita, e a
+    próxima passada do mesmo tique faz a primeira reavaliação do novo relógio.
 
     E o 3 vem antes dos dois pela mesma razão outra vez: a negociação que morreu
     devolve o projeto à fila ou ao Mural agora, e quem acabou de voltar tem de
@@ -492,8 +552,11 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     expiradas = expirar_ofertas_vencidas(agora, site_id=site_id)
     reservas = expirar_reservas_vencidas(agora, site_id=site_id)
     propostas = expirar_propostas_vencidas(agora, site_id=site_id)
+    chamadas_escaladas = escalar_chamadas_abertas_sem_aceite(agora, site_id=site_id)
     abertas = abrir_o_que_esperou_demais(agora, site_id=site_id)
-    ao_plantao = mandar_ao_plantao_o_que_ninguem_pode_pegar(agora, site_id=site_id)
+    ao_plantao = chamadas_escaladas + mandar_ao_plantao_o_que_ninguem_pode_pegar(
+        agora, site_id=site_id
+    )
     rodada = motor.rodar(agora, site_id=site_id)
     return Tique(
         ofertas_expiradas=expiradas,

@@ -411,3 +411,16 @@ def prazo_para_virar_aberta(agora: datetime, *, site_id: str) -> timedelta:
     reconhece.
     """
     return _horas_do_parametro("horas_para_virar_aberta", agora, site_id=site_id)
+
+
+def prazo_para_escalar_chamada_aberta(agora: datetime, *, site_id: str) -> timedelta:
+    """Quantas horas de parede uma chamada aberta espera sem aceite.
+
+    A chamada aberta já avisou todos os elegíveis. Se ninguém aceitar, o
+    próximo tique precisa entregá-la ao plantão, usando a chave histórica
+    própria dessa segunda espera. Horas de parede mantêm a mesma
+    unidade do prazo que levou a encomenda até a chamada aberta.
+    """
+    return _horas_do_parametro(
+        "horas_para_escalar_chamada_aberta", agora, site_id=site_id
+    )

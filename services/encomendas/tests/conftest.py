@@ -55,14 +55,15 @@ CARTAO_DO_NIVEL = {
 
 @pytest.fixture
 def semeado(db):
-    """Os 32 parâmetros com valor no banco, pelo caminho da instalação.
+    """Os 33 parâmetros com valor no banco, pelo caminho da instalação.
 
     Vinte e sete da lei §6; o `relogio_da_reserva_no_mural` e as três da
     negociação, do §9 do `PLANO-AREA-DE-NEGOCIACAO.md`; e a
-    `janela_do_ritmo_da_espera`, que chegou com a porta de máquina. As três
-    chaves do piso por nível existem no catálogo e nascem sem linha, de
-    propósito. Quem conta é `tests/test_parametros_sao_dado.py`; aqui a
-    contagem é só a descrição do cenário.
+    `janela_do_ritmo_da_espera` e `horas_para_escalar_chamada_aberta`, que
+    chegaram com decisões da porta de máquina. As três chaves do piso por nível
+    existem no catálogo e nascem sem linha, de propósito. Quem conta é
+    `tests/test_parametros_sao_dado.py`; aqui a contagem é só a descrição do
+    cenário.
     """
     call_command("semear_parametros", site=SITE_PADRAO, stdout=StringIO())
     return SITE_PADRAO
