@@ -1,0 +1,25 @@
+{
+  "arquivo": "289-dar-a-operacoes-um-copiloto-de-saude-incidentes-e-trafego",
+  "id": "TAR-289",
+  "titulo": "Dar a Operações um copiloto de saúde, incidentes e tráfego",
+  "toca": [
+    "admin",
+    "metricas",
+    "infra",
+    "funil",
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-283",
+    "TAR-285"
+  ],
+  "cria": [],
+  "move": [
+    "margem-por-real-de-aquisicao",
+    "latencia-de-execucao"
+  ],
+  "evidencia_exigida": "PRs fatiados por contrato e célula com saúde e incidentes em uma visão, rastreio conferido de Meta e Google, sugestões de verba explicáveis e teste de que nenhuma compra ou gasto ocorre sem limite e aprovação registrados.",
+  "despacho": "Construa o Copiloto de Operações e Tráfego. Reuse saúde e incidentes existentes e o degrau 18 de docs/decisoes/PLANO-PAINEL-DE-GESTAO.md para anúncios; não duplique esse plano. Antes de integrar Meta ou Google, fatie contratos e células e reconcilie a decisão anterior: pagamento fica por último e abertura ou clique de e-mail não é rastreado. Sugestão de verba é leitura; execução financeira só existe com limite autorizado e aprovação registrada. Esta tarefa não autoriza gasto nem integração paga.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; anúncios já previstos no degrau 18 do PLANO-PAINEL-DE-GESTAO",
+  "criada_em": "2026-09-09"
+}
