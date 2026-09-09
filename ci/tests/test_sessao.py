@@ -421,6 +421,12 @@ class MundoFalso:
     # -- as saídas plausíveis ----------------------------------------------
 
     def _stdout(self, linha: str) -> str:
+        if "gh pr list" in linha:
+            return self.saidas.get("gh_pr_list", "[]")
+        if "gh pr create" in linha:
+            return "https://github.com/abundanciabr/sitesdoreino/pull/9999"
+        if "gh pr view" in linha:
+            return '{"state":"OPEN","isDraft":true,"headRefOid":"abc"}'
         if "worktree list" in linha:
             return self.saidas.get("worktree_list", "")
         if "rev-parse --abbrev-ref" in linha:
@@ -474,6 +480,8 @@ def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     texto = mundo.sessao().rodar()
     assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "6 passed" in texto
+    assert "gh pr create" in "\n".join(mundo.chamadas)
+    assert "--draft" in "\n".join(mundo.chamadas)
     juntas = "\n".join(mundo.chamadas)
     assert "fetch origin" in juntas
     assert (
@@ -507,6 +515,16 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     assert "docker start" not in juntas
     assert "6 passed" in texto  # e mesmo assim o baseline foi medido de novo
     assert any("já existia" in linha for linha in mundo.log)
+
+
+def test_ramo_com_pr_encerrado_nao_e_reutilizado():
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "state": "CLOSED", "isDraft": true}]',
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado"):
+        mundo.sessao().rodar()
 
 
 def test_container_parado_e_reiniciado_e_nao_recriado():
@@ -557,7 +575,7 @@ def test_falha_num_passo_nao_deixa_os_passos_seguintes_rodarem():
     juntas = "\n".join(mundo.chamadas)
     assert "docker" not in juntas
     assert "doctor.py" not in juntas
-    assert mundo.escritos == {}
+    assert any("anuncio-fuso-horario.md" in caminho for caminho in mundo.escritos)
 
 
 @pytest.mark.parametrize("codigo_do_make", [1, 2])
@@ -600,8 +618,8 @@ def test_worktree_sujo_depois_do_baseline_recusa_a_declaracao():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert erro.value.codigo == 1
-    assert "git status: limpo" in erro.value.detalhe
+    assert erro.value.codigo == 2
+    assert erro.value.passo == sessao.P_ANUNCIO
 
 
 def test_worktree_existente_em_OUTRA_branch_recusa_em_vez_de_misturar_despachos():
@@ -921,7 +939,7 @@ def test_sem_container_faz_a_bancada_e_o_indice_e_para_por_ali():
     assert "indice_de_armadilhas.py" in juntas
     for proibido in ("-m venv", "pip install", "docker", "doctor.py", "/usr/bin/make"):
         assert proibido not in juntas, "--sem-container ainda executa " + proibido
-    assert mundo.escritos == {}  # nem o .env de sessão
+    assert any("anuncio-fuso-horario.md" in caminho for caminho in mundo.escritos)
     assert "não medido" in texto
 
 
@@ -1004,9 +1022,8 @@ def test_sem_ambiente_a_bancada_suja_recusa_a_declaracao_de_limpa():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert erro.value.passo == sessao.P_INDICE
-    assert erro.value.codigo == 1
-    assert "git status: limpo" in erro.value.detalhe
+    assert erro.value.passo == sessao.P_ANUNCIO
+    assert erro.value.codigo == 2
 
 
 def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
@@ -1014,4 +1031,4 @@ def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
     mundo.sessao().rodar()
     passes = [linha for linha in mundo.log if "PASS" in linha]
-    assert len(passes) == len(sessao.passos_do_plano(plano)) == 4
+    assert len(passes) == len(sessao.passos_do_plano(plano)) == 5

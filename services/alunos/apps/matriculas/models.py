@@ -164,6 +164,7 @@ class Matricula(models.Model):
     # decidindo sobre uma linha da fila e não sobre uma matrícula paga.
     # Guarda de que pedido real não pode começar assim: services.matricular().
     PREFIXO_DA_FILA = "pre:"
+    PREFIXO_ADMINISTRATIVO = "admin:"
 
     site_id = models.CharField(max_length=64)  # [INV-P5] guarda o site_id do evento
     order_id = models.CharField(
@@ -230,9 +231,11 @@ class Matricula(models.Model):
         turmas anteriores entram pedindo aprovacao (`liberado`), e os alunos
         que a meta de vendas conta vem do checkout (`comprou`).
         """
-        return (
-            "liberado" if self.order_id.startswith(self.PREFIXO_DA_FILA) else "comprou"
-        )
+        if self.order_id.startswith(self.PREFIXO_DA_FILA):
+            return "liberado"
+        if self.order_id.startswith(self.PREFIXO_ADMINISTRATIVO):
+            return "administrativo"
+        return "comprou"
 
     class Meta:
         indexes = [models.Index(fields=["email"])]

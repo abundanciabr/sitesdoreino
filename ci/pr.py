@@ -690,9 +690,14 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
     correr(["git", "push", "origin", ramo])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state"]))
+    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
     if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
         raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
+    if remoto.get("isDraft") is True:
+        correr(["gh", "pr", "ready", str(numero)])
+        remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN" or remoto.get("isDraft") is True:
+        raise ParouPorSeguranca("PR remoto continua em rascunho", "Confira gh pr view e torne o PR pronto antes de pedir pouso.")
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
