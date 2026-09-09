@@ -33,7 +33,9 @@ def test_marca_um_boss_por_modulo():
             bloco=bloco,
             ordem=ordem * 10 + 2,
             numero=f"{ordem}B",
-            titulo_exibido=titulo.upper() if ordem == 3 else titulo,
+            titulo_exibido=(
+                "SALVANDO PROJETOS E NAVEGACAO!" if ordem == 2 else titulo
+            ),
         )
 
     call_command("marcar_bosses_primeiros_dolares", stdout=StringIO())
@@ -43,7 +45,7 @@ def test_marca_um_boss_por_modulo():
         .order_by("bloco__ordem")
         .values_list("titulo_exibido", flat=True)
     ) == [
-        titulo.upper() if ordem == 3 else titulo
+        "SALVANDO PROJETOS E NAVEGACAO!" if ordem == 2 else titulo
         for ordem, titulo in enumerate(BOSSES_POR_MODULO, start=1)
     ]
 
