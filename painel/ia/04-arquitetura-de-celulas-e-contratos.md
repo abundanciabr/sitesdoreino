@@ -103,13 +103,11 @@ o que já existe):
 - **Não nasce evento de presença**, e **login vale 0 XP, sempre**: "dia
   ativo" deriva do próprio ledger, não de um evento de comparecimento.
 
-**O que ela oferece** (leitura por HTTP; contrato
-`contracts/gamificacao.openapi.yaml`, ainda por escrever): `getPublicProfiles`
-— lote de até 50 ids, devolvendo `id → {nivel, titulo_slug, moldura_slug}`,
-para o fórum decorar N autores com **uma** chamada; id desconhecido é
-omitido, e nunca sai e-mail nem XP bruto. E `getMyStatus`, o painel do
-próprio aluno. **Todo consumidor liga com cache de 5 min e falha ABERTA**: se
-a gamificação cair, a página perde o selo, nunca quebra.
+**O que ela oferece** é definido pelo contrato vigente
+`contracts/gamificacao.openapi.yaml` e pela implementação que o exporta.
+`getPublicProfiles` devolve os campos públicos `nivel` e `titulo_slug`; não há
+`moldura_slug` nesse schema. Confira operações, autenticação e limites no
+contrato atual antes de desenhar consumidor.
 
 **Superfície pública:** `/conquistas` (host-bound em `meshcraft.top`), com
 `/medalhas`, `/jornada`, `/loja` e `/estudio`. O prefixo tem 10 letras de
@@ -144,20 +142,19 @@ vitrine pública mora em **`meshcraft.top/estudio/apelido`**. Onde o plano de
 30/08/2026 ainda escrever "Têmpera", **leia Forja** — o plano foi escrito
 antes da Sessão A e o registro `20260830-061` é o mais novo.
 
-**Quando ela existir de verdade**, a linha dela entra na tabela das células
-acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
-`constituicoes/AGENTS.gamificacao.md` — e aí o teste-guarda
-`ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
-cite, em vez de apenas aceitar que ele a antecipe.
+`celulas.yml`, `ci/manifesto-de-contratos.json` e
+`constituicoes/AGENTS.gamificacao.md` registram a célula. O teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` exige que o mapa a cite, sem certificar
+os fatos desta seção.
 
 ## A 16ª célula, nascida em 04/09/2026: `metricas`
 
 **Onde está a lei.** `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2 (o livro
 de fatos), §6.4 (marcos, coortes, dimensões) e §6.6 (a confiança). A
-constituição da célula é `constituicoes/AGENTS.metricas.md`. Na gênese ela tem
-UMA rota (`/healthz`), nenhuma tabela e nenhum cliente: tudo o que a
-constituição descreve como "expõe" é o destino da escada, não o estado do
-disco.
+constituição da célula é `constituicoes/AGENTS.metricas.md`. O estado técnico
+atual é conferível em `services/metricas/config/urls.py`, `config/api.py`,
+`apps/fatos/` e `contracts/metricas.openapi.yaml`; existência no disco não
+prova o runtime.
 
 **O que ela é.** O livro de fatos da plataforma. Toda tela de gestão da casa
 conta AO VIVO, perguntando às células a cada abertura: isso responde "quantas
@@ -188,19 +185,19 @@ externo; evento inválido vai para a fila de eventos mortos e vira incidente,
 nunca é aceito pela metade; o fuso é `America/Sao_Paulo` porque a unidade da
 medição é o DIA; e "não sei" nunca vira zero.
 
-**A escada:** 7.1 gênese (feito) · 7.2 o evento imutável e a fila de mortos ·
-7.3 a recepção com Bearer e o teste de 401 · 7.4 a API de leitura, o contrato
-congelado e a `admin` como cliente · 7.5 o compose, em PR próprio. Até o 7.5,
-o `deploy-celula` desta célula fica vermelho em todo merge que a toca, e isso
-é esperado (`armadilhas/088`).
+**Entradas atuais:** fatos chegam por Redis Streams no comando
+`apps/fatos/management/commands/consume_eventos.py` e passam por
+`apps/fatos/recepcao.py`. A leitura HTTP está em `config/api.py` e
+`apps/fatos/api.py`. Consulte fila, livro e GitHub para saber integração e
+publicação; a escada histórica não responde esse estado.
 
 ## A 15ª célula, nascida em 03/09/2026: `encomendas`
 
 **Estado:** lei escrita a partir do plano mestre v0.1 que o mantenedor
 trouxe e **aprovada por ele em 03/09/2026** (pergunta estruturada; registro
-`20260904-006`); esqueleto em `services/encomendas` no mesmo dia (só
-`/healthz`, sem tabela, sem tela, sem contrato congelado). Esta
-seção existe para que a próxima IA não desenhe marketplace, oferta de
+`20260904-006`). A implementação e o contrato atuais são conferíveis em
+`services/encomendas/` e `contracts/encomendas.openapi.yaml`. Esta seção existe
+para que a próxima IA não desenhe marketplace, oferta de
 trabalho a aluno, fila remunerada ou portfólio de encomenda dentro de outra
 célula sem saber que já há dona para isso. **Fonte de verdade:**
 `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` (a lei: as emendas da casa
@@ -294,8 +291,8 @@ aluno, peça só com autorização, cliente novo passa pelo plantão).
 que o mantenedor trouxe em 04/09/2026 (eles moram FORA do repositório, de
 propósito: obra não lançada, `armadilhas/331`), e **aprovado por ele em
 pergunta estruturada na mesma sessão** (registro `20260905-001`, PR #1044);
-esqueleto em `services/cursos` no mesmo dia (TAR-146: só `/healthz`, sem
-tabela, sem tela, sem contrato congelado). **Fonte de verdade:**
+implementação em `services/cursos/` e contrato em
+`contracts/cursos.openapi.yaml`. **Fonte de verdade:**
 `docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da casa aos nove
 documentos, o modelo, os eventos, as superfícies, os agentes de IA, os
 invariantes, a escada) e `docs/decisoes/CONSTITUICAO-cursos-rascunho.md` (a

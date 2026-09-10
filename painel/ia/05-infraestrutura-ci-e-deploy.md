@@ -117,17 +117,16 @@ devolve ERROR, nunca PASS.
 | `divida_do_livro.py` | merge/painel | Lista PRs mergeados sem registro citando o número, com graça de 90min |
 | `indice_de_armadilhas.py` | documentação | Gera `armadilhas/INDICE.md`; reprova (ERROR) se dois arquivos colidirem no mesmo número |
 | `doctor.py` | diagnóstico | Read-only: "este ambiente consegue rodar o trabalho?" — nunca conserta nada |
-| `sessao.py` | bootstrap | Único script de `ci/` que escreve no mundo: cria worktree, venv, sobe Postgres/Redis com porta derivada da célula, roda baseline, só imprime a declaração de abertura se tudo passar |
+| `sessao.py` | bootstrap | cria worktree, prepara o ambiente, sobe Postgres/Redis quando aplicável, roda baseline e emite a declaração de abertura |
 | `portao_de_deploy.py` | deploy | Ver seção abaixo |
 | `rollback.py` | deploy | Ver seção abaixo |
 | `cross-smoke.sh` | teste | Só para `pagamentos`: se o diff mexe num método de pagamento, roda os testes de smoke do método oposto |
 | `manifesto-de-contratos.json` | config | Lista autoritativa: qual célula tem contrato `required` vs `not-applicable` (com motivo obrigatório) |
 | `guardas-nao-declarados.txt` | config | "Dívida catraca" de guardas que existem mas ainda não viraram invariante numerado — só encolhe |
 
-`ci/tests/` (~23 arquivos, rodados por `--apenas testador` em todo PR e todo
-push à `main`) **não testam o produto — testam os próprios portões**: cada
-um monta um repositório falso em `tmp_path` e prova que o instrumento
-reprova quando deveria (sabotagem deliberada) e passa quando deveria.
+Os testes adversariais de `ci/tests/` exercitam os próprios portões com
+repositórios descartáveis e sabotagem deliberada. Liste os testes e confira a
+entrada vigente em `ci/ci.py` antes de afirmar sua cobertura.
 
 ## Deploy e rollback, em detalhe
 
@@ -169,7 +168,7 @@ documenta esse gap). Ver [07 — oportunidades](07-oportunidades-e-fronteiras.md
 | `checkout` | Mercado Pago — só a chave pública (client-side, não é segredo) | `MP_PUBLIC_KEY` |
 | `mensageria` | SMTP (e-mail transacional) | `SMTP_HOST/PORT/USER/PASSWORD/FROM` |
 | `mensageria` | Gateway de WhatsApp | `WHATSAPP_GATEWAY_URL/TOKEN` |
-| demais 7 células | só APIs internas entre células (tokens por par consumidor→provedor) | — |
+| outras células | APIs internas conforme o código e `celulas.yml` | tokens por par quando declarados pela implementação |
 | *(infra)* | Cloudflare, Let's Encrypt/ACME, GHCR | configurados fora de env de célula |
 
 Desenho de isolamento notável: `checkout` (adjacente ao dinheiro, de frente
@@ -181,14 +180,11 @@ mecanicamente por `guarda-de-segredos.sh`.
 
 ## O que este documento verificou e NÃO reproduz
 
-Uma varredura dedicada confirmou: todos os `infra/env/*.env.exemplo` (12
-arquivos) têm só placeholders; todas as senhas em
-`infra/provisionamento-postgres.sql` são placeholders; nenhum workflow tem
-segredo em texto puro (tudo via `${{ secrets.* }}`); nenhum IP real aparece
-em nenhum arquivo versionado; a chave privada de deploy (`deploy_ci`, sem
-`.pub`) está corretamente fora do controle de versão. O único IP real do
-projeto (o da VPS) existe fora deste mapa, propositalmente — ver a nota de
-segurança em [02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
+Não use a varredura histórica deste documento como atestado atual. Confira os
+moldes em `infra/env/`, o provisionamento, os workflows e a árvore versionada
+com `ci/guarda-de-segredos.sh`. O mapa não reproduz valores de segredo nem
+endereços privados. Ver também a nota de segurança em
+[02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
 
 O protocolo, os estados e os limites de confiança do atestado estão em
 `docs/decisoes/DECISAO-revisao-e-publicacao.md`. IDs distintos não autenticam

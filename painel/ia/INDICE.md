@@ -19,8 +19,9 @@ melhorias com informação real em vez de suposição.
 O que ele não é: **não é a fonte de verdade, e não é um painel de status.**
 - Onde este mapa e um documento original (`CONSTITUICAO.md`, `RITOS.md`,
   código real, etc.) divergirem, **o original vence** — este mapa é um
-  resumo, escrito por leitura em 27/08/2026, e não é recalculado
-  automaticamente como `painel/painel.html` é. Se você encontrar uma
+  resumo, originalmente escrito em 27/08/2026 e revisto em 10/09/2026 contra
+  a revisão `12101ba`; ele não é recalculado automaticamente como
+  `painel/painel.html` é. Se você encontrar uma
   divergência, é sinal de que este mapa ficou velho: corrija-o no mesmo PR
   da sua mudança, ou abra um registro em `painel/registros/` apontando o quê.
 - Este mapa não guarda nenhum veredito sobre o estado atual do projeto
