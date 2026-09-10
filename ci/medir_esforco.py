@@ -40,8 +40,8 @@ def validar(raiz: Path) -> list[str]:
         else:
             for chave in CONCLUSOES:
                 conclusao = conclusoes[chave]
-                if not isinstance(conclusao, dict) or conclusao.get("estado") != "comprovado" or not all(isinstance(conclusao.get(campo), str) and conclusao[campo].strip() for campo in ("evidencia", "consequencia")):
-                    erros.append(f"conclusoes.{chave} precisa ter estado comprovado, evidencia e consequencia preenchidos")
+                if not isinstance(conclusao, dict) or conclusao.get("estado") not in {"comprovado", "inconclusivo", "refutado"} or not all(isinstance(conclusao.get(campo), str) and conclusao[campo].strip() for campo in ("evidencia", "consequencia")):
+                    erros.append(f"conclusoes.{chave} precisa ter estado válido, evidencia e consequencia preenchidos")
     for observacao in observacoes:
         if not isinstance(observacao, dict):
             erros.append("observação precisa ser um objeto")

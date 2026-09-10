@@ -14,7 +14,10 @@ FUNCOES = {
     "comercial-relacionamento",
 }
 
-UNIDADE_CAMPOS_OBRIGATORIOS = ("finalidade", "acompanhamento", "fonte", "evidencia")
+UNIDADE_CAMPOS_OBRIGATORIOS = (
+    "tipo", "finalidade", "titular_funcao", "acompanhamento", "fonte",
+    "prepara", "executa", "aprova", "excecoes", "autoridade", "evidencia",
+)
 
 
 def identidade_ia(valor: object) -> bool:
@@ -45,6 +48,7 @@ def resolver_unidade(registro: dict, identificador: str) -> tuple[dict | None, l
     }
     atual = identificador
     vistos = []
+    cadeia = []
     while atual:
         if atual in vistos:
             return None, [f"herança circular em {identificador}"]
@@ -52,9 +56,13 @@ def resolver_unidade(registro: dict, identificador: str) -> tuple[dict | None, l
         unidade = unidades.get(atual)
         if unidade is None:
             return None, [f"responsabilidade {atual} não foi cadastrada"]
-        if unidade.get("titular_funcao") in FUNCOES:
-            return unidade, []
+        cadeia.append(unidade)
         atual = unidade.get("herda_de")
+    efetiva = {}
+    for unidade in reversed(cadeia):
+        efetiva.update(unidade)
+    if efetiva.get("titular_funcao") in FUNCOES:
+        return efetiva, []
     return None, [f"responsabilidade {identificador} não tem titular explícito ou herdado"]
 
 

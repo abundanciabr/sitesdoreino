@@ -528,7 +528,7 @@ O cadastro versionado em `painel/responsabilidades.json` cobre processos, result
 
 Responsabilidade de negócio, execução técnica e permissão de acesso permanecem separadas. Delegar execução não transfere o desfecho. Transferência só vale após aceite. Até lá, o titular anterior acompanha. Falta de pessoa, substituto, fonte ou capacidade é exceção visível. Publicar uma correção técnica não encerra o caso do comprador ou aluno sem evidência do resultado para a pessoa.
 
-O comando `ci/responsabilidades.py` audita a cobertura e verifica uma responsabilidade explícita ou herdada antes da conclusão de uma entrega nova. A fila exige esse vínculo ao criar uma tarefa nova e `ci/fila.py concluir` recusa pessoa ocupante ou substituto ausente. As quatro pessoas ainda não foram identificadas em decisões ou cadastros consultados em 09/09/2026; por isso a fundação está implementada, mas a atribuição nominal continua pendência real do mantenedor.
+O comando `ci/responsabilidades.py` audita a cobertura e verifica uma responsabilidade explícita ou herdada antes da conclusão de uma entrega nova. A fila exige esse vínculo ao criar uma tarefa nova e `ci/fila.py concluir` recusa pessoa ocupante ou substituto ausente. A fundação tem atribuição nominal definida para Arameu, Ryan, Lívia e Maria, sem substituto humano; a ausência de substituto escala ao titular e, se necessário, ao mantenedor.
 
 ### Scale OS mínimo e cadências
 

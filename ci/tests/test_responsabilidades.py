@@ -20,13 +20,14 @@ def registro_completo() -> dict:
             nome: {"pessoa": "Pessoa", "substituto": "Substituto"}
             for nome in responsabilidades.FUNCOES
         },
-        "unidades": [
+            "unidades": [
             {
                 "id": "curso",
                 "titular_funcao": "ensino-comunidade",
                 "pessoa": None,
                 "substituto": None,
                 "finalidade": "entregar",
+                "tipo": "processo", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa",
                 "acompanhamento": "revisar",
                 "fonte": "fonte",
                 "evidencia": "prova",
@@ -39,6 +40,9 @@ def registro_completo() -> dict:
 def test_entrega_com_responsabilidade_herdada_e_pessoas_definidas(tmp_path):
     raiz = escrever_registro(tmp_path, registro_completo())
     assert responsabilidades.validar_entrega(raiz, "aula") == []
+    registro = registro_completo()
+    registro["unidades"][1]["aprova"] = "IA"
+    assert any("IA não pode ocupar o campo aprova" in erro for erro in responsabilidades.validar_entrega(escrever_registro(tmp_path, registro), "aula"))
 
 
 def test_entrega_sem_unidade_e_recusada(tmp_path):
@@ -139,6 +143,21 @@ def test_resumo_de_esforco_pesa_casos_pelo_tempo_de_referencia(tmp_path):
         encoding="utf-8",
     )
     assert medir_esforco.resumo(tmp_path)["economia_media_percentual"] == 80.0
+
+
+def test_medicao_inconclusiva_e_valida_sem_comprovar_produtividade(tmp_path):
+    (tmp_path / "painel" / "medicoes").mkdir(parents=True)
+    observacao = {
+        "id": "real", "natureza": "operacao", "rotina": "x", "casos": 2,
+        "minutos_referencia": 100, "minutos_humanos": 10, "minutos_revisao": 0,
+        "minutos_retrabalho": 0, "minutos_excecoes": 0, "minutos_manutencao": 0,
+        "excecoes": 0, "qualidade": "avaliada", "reaberturas": 0, "prazo": "cumprido",
+        "periodo": "hoje", "condicoes": "comparável", "situacao_dado": "real",
+    }
+    conclusoes = {chave: {"estado": "inconclusivo", "evidencia": "prova", "consequencia": "continuar medindo"} for chave in medir_esforco.CONCLUSOES}
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text(json.dumps({"observacoes": [observacao, {**observacao, "id": "real-2"}], "conclusoes": conclusoes}), encoding="utf-8")
+    assert medir_esforco.validar(tmp_path) == []
+    assert medir_esforco.resumo(tmp_path)["produtividade_comprovada"] is False
 
 
 def test_ia_nao_pode_ser_titular_ou_substituta(tmp_path):
