@@ -22,14 +22,21 @@
         <p class="nota">Titular: <b>{{ visao.pessoa }}</b>.</p>
 
         <h4 class="rotulo">Fazer hoje</h4>
-        {% if visao.fila_de_hoje %}
-          {% if visao.fila_de_hoje.quantidade is None %}
-            <p>A fonte de oportunidades e acessos não respondeu agora.</p>
-          {% elif visao.fila_de_hoje.quantidade == 0 %}
-            <p>Nenhuma pessoa aguarda acesso nesta fonte agora.</p>
-          {% else %}
-            <p><a href="{{ visao.fila_de_hoje.href }}">{{ visao.fila_de_hoje.quantidade }} pessoa{{ visao.fila_de_hoje.quantidade|pluralize:"s" }} aguardando acesso</a>{% if visao.fila_de_hoje.espera_ha %}; a mais antiga espera há {{ visao.fila_de_hoje.espera_ha }} dias{% endif %}.</p>
-          {% endif %}
+        {% if visao.fontes_de_trabalho %}
+          {% for fonte in visao.fontes_de_trabalho %}
+            <h5 class="nota">{{ fonte.nome }}</h5>
+            {% if fonte.fila %}
+              {% if fonte.fila.quantidade is None %}
+                <p>A fonte {{ fonte.nome }} não respondeu agora.</p>
+              {% elif fonte.fila.quantidade == 0 %}
+                <p>Nenhuma pessoa aguarda acesso nesta fonte agora.</p>
+              {% else %}
+                <p><a href="{{ fonte.fila.href }}">{{ fonte.fila.quantidade }} pessoa{{ fonte.fila.quantidade|pluralize:"s" }} aguardando acesso</a>{% if fonte.fila.espera_ha %}; a mais antiga espera há {{ fonte.fila.espera_ha }} dias{% endif %}.</p>
+              {% endif %}
+            {% else %}
+              <p>{{ fonte.sem_leitura }}</p>
+            {% endif %}
+          {% endfor %}
         {% else %}
           <p>Esta fonte ainda não oferece uma lista de trabalho atribuível para hoje.</p>
         {% endif %}
@@ -44,16 +51,23 @@
         {% endif %}
 
         <h4 class="rotulo">Resolver atrasos</h4>
-        {% if visao.fila_de_hoje %}
-          {% if visao.fila_de_hoje.quantidade is None %}
-            <p>Não sei se há atraso até a fonte voltar a responder.</p>
-          {% elif visao.fila_de_hoje.quantidade == 0 %}
-            <p>Não há atraso nesta fila agora.</p>
-          {% elif visao.fila_de_hoje.espera_ha %}
-            <p>Priorize a pessoa que espera há {{ visao.fila_de_hoje.espera_ha }} dias.</p>
-          {% else %}
-            <p>Há pessoas aguardando, mas a fonte não informou a idade da espera.</p>
-          {% endif %}
+        {% if visao.fontes_de_trabalho %}
+          {% for fonte in visao.fontes_de_trabalho %}
+            <h5 class="nota">{{ fonte.nome }}</h5>
+            {% if fonte.fila %}
+              {% if fonte.fila.quantidade is None %}
+                <p>Não sei se há atraso até a fonte voltar a responder.</p>
+              {% elif fonte.fila.quantidade == 0 %}
+                <p>Não há atraso nesta fila agora.</p>
+              {% elif fonte.fila.espera_ha %}
+                <p>Priorize a pessoa que espera há {{ fonte.fila.espera_ha }} dias.</p>
+              {% else %}
+                <p>Há pessoas aguardando, mas a fonte não informou a idade da espera.</p>
+              {% endif %}
+            {% else %}
+              <p>Não é possível medir atrasos em {{ fonte.nome }} até existir leitura.</p>
+            {% endif %}
+          {% endfor %}
         {% else %}
           <p>A fonte ainda não permite medir atrasos desta função.</p>
         {% endif %}

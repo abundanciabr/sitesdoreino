@@ -832,16 +832,61 @@ def test_as_quatro_funcoes_encontram_hoje_aprovacoes_atrasos_e_resultados():
 
 
 @respx.mock
-def test_fonte_indisponivel_na_visao_comercial_nao_parece_fila_vazia():
-    """A única fila já integrada não responde: a visão precisa dizer isso."""
+def test_acessos_indisponiveis_e_crm_sem_leitura_nao_parecem_fila_vazia():
+    """Acesso e CRM declaram separadamente o que a Central consegue ler."""
     respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
 
     html = _texto(_dentro().get(TELA))
 
     assert "Comercial e Relacionamento" in html
-    assert "A fonte de oportunidades e acessos não respondeu agora." in html
+    assert "A fonte Acessos à escola não respondeu agora." in html
+    assert (
+        "O CRM ainda não está integrado à Central. Ainda não há contrato de leitura nem consumidor."
+        in html
+    )
+    assert "A fonte de oportunidades e acessos não respondeu agora." not in html
     assert "0 pendência comercial" not in html
+
+
+def test_fonte_sem_leitura_precisa_explicar_a_lacuna():
+    """Fonte sem fila não pode gerar um trecho em branco na Central."""
+    with pytest.raises(ValueError, match="precisa explicar"):
+        central.FonteDeTrabalho(nome="CRM de oportunidades", fila=None)
+
+
+@respx.mock
+def test_queda_futura_do_crm_nomeia_a_fonte_e_nao_parece_fila_vazia(monkeypatch):
+    """Quando o CRM ganhar leitura, a queda dele usa a mesma guarda explícita."""
+    _todos_respondem()
+    visao = central.VisaoDeResponsabilidade(
+        nome="Comercial e Relacionamento",
+        pessoa="Maria",
+        fontes=(),
+        aprovacoes=(),
+        destino="/escola/alunos/",
+        destino_texto="Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+        fontes_de_trabalho=(
+            central.FonteDeTrabalho(
+                nome="CRM de oportunidades",
+                fila=central.Fila(
+                    titulo="Oportunidades ativas",
+                    quantidade=None,
+                    espera_ha=None,
+                    href="/crm/",
+                    o_que_e="",
+                    onde_mora="o CRM",
+                ),
+            ),
+        ),
+        lacunas=(),
+    )
+    monkeypatch.setattr(central, "visoes_de_responsabilidade", lambda _: (visao,))
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "A fonte CRM de oportunidades não respondeu agora." in html
+    assert "Nenhuma pessoa aguarda acesso nesta fonte agora." not in html
 
 
 @respx.mock
