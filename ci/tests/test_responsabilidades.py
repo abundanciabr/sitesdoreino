@@ -84,9 +84,34 @@ def test_medicao_de_esforco_distingue_teste_de_trabalho_real(tmp_path):
 
 
 def test_tarefa_nova_sem_responsabilidade_e_reconhecida_como_invalida():
-    assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-09"}) is True
+    assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-09", "responsabilidade_obrigatoria": True}) is True
     assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-08"}) is False
     assert fila.normalizar_responsabilidade("  ensino-comunidade  ") == "ensino-comunidade"
+    assert fila.tarefa_exige_responsabilidade({"criada_em": "2026-09-09", "responsabilidade": "x"}) is False
+
+
+def test_unidade_sem_id_e_recusada_sem_traceback(tmp_path):
+    registro = registro_completo()
+    registro["unidades"].append({"finalidade": "sem id"})
+    raiz = escrever_registro(tmp_path, registro)
+    assert "unidade sem id válido" in responsabilidades.auditar(raiz)
+
+
+def test_medicao_recusa_booleano_e_numero_infinito(tmp_path):
+    (tmp_path / "painel" / "medicoes").mkdir(parents=True)
+    observacao = {
+        "id": "real", "natureza": "operacao", "rotina": "x", "casos": 1,
+        "minutos_referencia": True, "minutos_humanos": float("inf"), "minutos_revisao": 0,
+        "minutos_retrabalho": 0, "minutos_excecoes": 0, "minutos_manutencao": 0,
+        "excecoes": 0, "qualidade": "confirmada", "reaberturas": 0, "prazo": "cumprido",
+        "periodo": "hoje", "condicoes": "fixture", "situacao_dado": "real",
+    }
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text(
+        json.dumps({"observacoes": [observacao]}), encoding="utf-8"
+    )
+    erros = medir_esforco.validar(tmp_path)
+    assert any("minutos_referencia precisa ser número" in erro for erro in erros)
+    assert any("minutos_humanos precisa ser número" in erro for erro in erros)
 
 
 def test_medicao_real_incompleta_e_recusada(tmp_path):

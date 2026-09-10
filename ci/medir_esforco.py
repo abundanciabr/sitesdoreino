@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 
@@ -44,9 +45,10 @@ def validar(raiz: Path) -> list[str]:
         if observacao.get("situacao_dado") == "real":
             for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"):
                 valor = observacao.get(campo)
-                if not isinstance(valor, (int, float)) or valor < 0:
+                if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor) or valor < 0:
                     erros.append(f"{identificador}: {campo} precisa ser número não negativo")
-            if not isinstance(observacao.get("minutos_referencia"), (int, float)) or observacao.get("minutos_referencia", 0) <= 0:
+            referencia = observacao.get("minutos_referencia")
+            if isinstance(referencia, bool) or not isinstance(referencia, (int, float)) or not math.isfinite(referencia) or referencia <= 0:
                 erros.append(f"{identificador}: minutos_referencia precisa ser maior que zero")
         if observacao.get("situacao_dado") == "teste" and observacao.get("qualidade") != "não avaliada; dado de teste":
             erros.append(f"{observacao['id']}: teste precisa declarar que não mede qualidade real")

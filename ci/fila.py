@@ -154,6 +154,7 @@ MANUTENCAO = "manutencao"
 CAMPOS_OPCIONAIS_DA_TAREFA = {
     "depende_de": list,
     "responsabilidade": str,
+    "responsabilidade_obrigatoria": bool,
     "notas": str,
     "cria": list,
     "move": list,
@@ -1682,6 +1683,7 @@ def cmd_criar(raiz: Path, args) -> int:
         "despacho": despacho,
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "responsabilidade_obrigatoria": True,
     }
     if responsabilidade:
         dados["responsabilidade"] = responsabilidade
@@ -2112,8 +2114,8 @@ def cmd_concluir(raiz: Path, args) -> int:
 
 
 def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
-    """Tarefas criadas após a guarda precisam declarar a unidade titular."""
-    return tarefa.get("criada_em", "") >= "2026-09-09"
+    """Somente tarefas criadas pela guarda exigem responsabilidade."""
+    return tarefa.get("responsabilidade_obrigatoria") is True
 
 def cmd_reconciliar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("reconciliar", raiz)

@@ -776,6 +776,20 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
     assert fila.cmd_concluir(tmp_path, args) == 1
 
 
+@pytest.mark.parametrize("caminho", ["concluir", "reconciliar"])
+def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_path, monkeypatch, caminho):
+    t = tarefa(responsabilidade_obrigatoria=True)
+    montar(tmp_path, [t], [submissao()] if caminho == "reconciliar" else [evento()])
+    if caminho == "concluir":
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+        assert fila.cmd_concluir(tmp_path, args) == 1
+    else:
+        monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+        monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10"))
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js")
+        assert fila.cmd_reconciliar(tmp_path, args) == 1
+
+
 # ---------------------------------------------------------------------------
 # Onde o comprovante nasce — armadilhas/192 (TAR-018)
 #

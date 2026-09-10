@@ -31,7 +31,11 @@ def carregar(raiz: Path) -> dict:
 
 
 def resolver_unidade(registro: dict, identificador: str) -> tuple[dict | None, list[str]]:
-    unidades = {item["id"]: item for item in registro.get("unidades", [])}
+    unidades = {
+        item["id"]: item
+        for item in registro.get("unidades", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"].strip()
+    }
     atual = identificador
     vistos = []
     while atual:
@@ -90,6 +94,9 @@ def auditar(raiz: Path) -> list[str]:
         if not funcao.get("substituto") and not sem_substituto_valido(funcao):
             erros.append(f"{identificador}: substituto ausente")
     for unidade in registro.get("unidades", []):
+        if not isinstance(unidade, dict) or not isinstance(unidade.get("id"), str) or not unidade["id"].strip():
+            erros.append("unidade sem id válido")
+            continue
         for campo in UNIDADE_CAMPOS_OBRIGATORIOS:
             if not unidade.get(campo):
                 erros.append(f"{unidade.get('id', 'sem id')}: campo obrigatório ausente: {campo}")
