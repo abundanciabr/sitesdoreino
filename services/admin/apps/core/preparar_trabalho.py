@@ -22,7 +22,8 @@ def preparar_trabalho(pedido: str) -> dict:
     }
     motivo = ""
     normalizado = "".join(
-        letra for letra in unicodedata.normalize("NFKD", pedido.casefold())
+        letra
+        for letra in unicodedata.normalize("NFKD", pedido.casefold())
         if not unicodedata.combining(letra)
     )
     if len(pedido) > 400:
@@ -39,7 +40,9 @@ def preparar_trabalho(pedido: str) -> dict:
         )
         or any(ord(letra) < 32 and letra not in "\n\r\t" for letra in pedido)
     ):
-        motivo = "O pedido contém um caminho ou uma instrução incompatível com esta prévia."
+        motivo = (
+            "O pedido contém um caminho ou uma instrução incompatível com esta prévia."
+        )
     if motivo:
         resultado.update(
             estado="recusada",
