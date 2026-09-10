@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-031-painel-registrar-auditoria-independente-da-fase-1",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "painel: registrar auditoria independente da Fase 1",
+  detalhe: "Auditoria do HEAD c0ac7bf8 registrou nove achados rastreáveis na fila, sem alterar o produto auditado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1523. Validação local: árvore dff8532418a6d45c4b19a10ff462bb02540057a4; commit 9cc822be4efab57e11cf1a911af8b826f6ccd175; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-318",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
