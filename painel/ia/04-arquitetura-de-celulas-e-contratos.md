@@ -1,11 +1,10 @@
 # painel/ia — 04. Arquitetura de Células e Contratos
 
 > Parte do [Mapa para IA](INDICE.md) do sitesdoreino. Resumo curado — a fonte
-> de verdade é `celula-template/`, `constituicoes/`, `contracts/` e cada
-> `services/<celula>/`. **Os números abaixo (quantas células têm contrato,
-> quantos eventos existem) mudam conforme o projeto cresce — antes de
-> confiar numa contagem para uma decisão importante, confira ao vivo com
-> `git ls-files` em vez de aceitar este snapshot (27/08/2026).**
+> de verdade é `celulas.yml`, `ci/manifesto-de-contratos.json`,
+> `celula-template/`, `constituicoes/`, `contracts/` e cada
+> `services/<celula>/`. Inventário e estado mudam conforme o projeto cresce:
+> consulte essas fontes e os verificadores antes de decidir.
 
 ## O padrão (`celula-template/`)
 
@@ -18,7 +17,7 @@ plataforma inteira), `.env.dev` (gitignored), `config/{settings,urls,asgi}.py`
 e `static/` próprios (não existe `base.html` compartilhado entre células —
 Lei 7 da Constituição), `tests/`, `pytest.ini`.
 
-Convenções mecânicas que atravessam as 13 células:
+Convenções mecânicas que atravessam as células:
 - **Fail-hard de settings** — `SECRET_KEY`/`DATABASE_URL` ausentes ⇒
   `ImproperlyConfigured`, nunca fallback silencioso.
 - **`SCRIPT_NAME`/`FORCE_SCRIPT_NAME`** lido do env — o urlconf nunca conhece
@@ -37,86 +36,30 @@ Convenções mecânicas que atravessam as 13 células:
 - Módulo extra opcional (`celula-template/pagamentos-extra/`) para células
   que precisam do isolamento reforçado que hoje só `pagamentos` usa.
 
-## As 13 células
+## Como descobrir as células e seus contratos
 
-| Célula | Domínio (por `apps/`) | LICOES.md | Constituição | Contrato OpenAPI |
-|---|---|---|---|---|
-| `admin` | `core` apenas — sem app de domínio próprio | ✓ | ✓ | — (só consome) |
-| `alunos` | `bridge`, `core`, `eventos`, `matriculas` | ✓ | ✓ | ✓ |
-| `catalogo` | `core`, `ofertas`, `produtos`, `sites` | ✓ | ✓ | ✓ |
-| `checkout` | `core`, `pedidos` | ✓ | ✓ | ✓ |
-| `forum` | `core`, `forum` | ✓ | ✓ | ✓ (3 operações; nasceu sem contrato por lei de gênese e virou `required` depois) |
-| `funil` | `core`, `i18n` | ✓ | ✓ | — (páginas HTML, sem API JSON) |
-| `identidade` | `core`, `identidade` | ✓ | ✓ | ✓ |
-| `leads` | `core` apenas | ✓ | ✓ | ✓ |
-| `mensageria` | `core`, `eventos` | ✓ | ✓ | — (esqueleto: só `/healthz`) |
-| `notificacoes` | `core`, `eventos`, `notificacoes` | ✓ | ✓ | ✓ (4 operações; nasceu sem contrato por lei de gênese e virou `required` depois) |
-| `pagamentos` | sem `apps/`: `core`, `methods/{pix,card}`, `providers/mercadopago`, `api` | ✓ | ✓ | ✓ |
-| `quiz` | `core`, `quiz` | ✓ | ✓ | — (só páginas HTML) |
-| `sugestoes` | `core`, `sugestoes` | ✓ | ✓ | ✓ (1 operação) |
+`celulas.yml` é o inventário operacional de propriedade de caminhos e consumo
+HTTP. `ci/manifesto-de-contratos.json` declara se o contrato OpenAPI de cada
+célula é `required` ou `not-applicable`, com motivo. `python -B
+ci/mapa_de_celulas.py --verificar` confere essas relações contra o checkout.
+Não copie para este mapa uma contagem que essas fontes já calculam.
 
-**Todas as 13 células têm `LICOES.md` e constituição própria** — não é um
-subconjunto (um levantamento anterior a este mapa presumia só 8; foi
-corrigido nesta pesquisa). **9** células têm contrato OpenAPI `required`
-(alunos, catalogo, checkout, forum, identidade, leads, notificacoes,
-pagamentos, sugestoes); as outras **4** (admin, funil, mensageria, quiz) são
-`not-applicable` por motivo escrito em `ci/manifesto-de-contratos.json`
-— recontado em 30/08/2026, contra o manifesto e o disco. (A contagem
-anterior deste mapa, "7 required + 5 not-applicable", somava 12 num projeto
-de 13 células: sinal exato do padrão 2 da retrospectiva — número escrito à
-mão em documento que nada recalcula. Recontar é sempre mais confiável que
-confiar na linha acima.)
+As fronteiras que mais confundem uma tarefa são estáveis: `identidade`
+reconhece a pessoa; cada célula autoriza o próprio gesto; `alunos` é dona da
+matrícula; `cursos`, do conteúdo; `pages`, das páginas e do portfólio;
+`pagamentos`, da cobrança; e `admin` compõe telas por APIs. As seções abaixo
+explicam as decisões que não cabem no inventário.
 
-> **A 14ª célula, `gamificacao`, nasceu:** aprovada pelo mantenedor em
-> 30/08/2026 e em `services/` desde o mesmo dia (PR #629). Ela tem seção
-> própria logo abaixo — leia-a antes de propor qualquer mecânica de ponto,
-> selo, ranking ou recompensa em qualquer outra célula.
->
-> **A 15ª nasceu em 03/09/2026:** `encomendas`, a Fila do Primeiro Dólar,
-> lei aprovada pelo mantenedor e esqueleto em `services/` no mesmo dia. Seção
-> própria mais abaixo — leia-a antes de desenhar qualquer coisa que pareça
-> marketplace, fila de trabalho remunerado, oferta a aluno ou portfólio de
-> encomenda em outra célula.
->
-> **A 16ª nasceu em 04/09/2026:** `metricas`, o livro de fatos da plataforma
-> (degrau 7.1 do `PLANO-PAINEL-DE-GESTAO.md`). Seção própria mais abaixo. Ela
-> é a única célula que não terá tela nenhuma, e a única cuja razão de existir
-> é o TEMPO: as demais respondem "como está agora", e ela responde "como
-> estava". Antes de propor que qualquer célula guarde histórico próprio de
-> contagem, leia a seção dela.
->
-> **A 17ª nasceu em 04/09/2026:** `cursos`, a sala de aula da Meshcraft (o
-> conteúdo do curso, o progresso, o checkpoint e o laudo, e os agentes de IA
-> que trabalham nela), lei aprovada pelo mantenedor e esqueleto em `services/`
-> no mesmo dia. Seção própria mais abaixo — leia-a antes de desenhar aula,
-> progresso de aluno, checkpoint, laudo ou agente de IA em outra célula.
->
-> **A 18ª ainda NÃO nasceu:** `pages`, a casa das páginas do aluno (o portfólio
-> é a primeira delas, e a vitrine pública em `/estudio/<apelido>` sai dela). A
-> casa foi escolhida pelo mantenedor em 01/09/2026, renomeada por ele em
-> 02/09/2026 e liberada para construção em 05/09/2026, mas `services/pages` não
-> existe: ela nasce no degrau 01 da escada. Seção própria mais abaixo, escrita
-> antes do código de propósito, para que ninguém desenhe portfólio de aluno ou
-> vitrine de obra dentro de outra célula.
+Para medir tamanho, use `git ls-files services/<celula>`, nunca uma varredura
+que inclua caches e ambientes ignorados.
 
-**Nota de método para medir tamanho de célula:** use `git ls-files
-services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
-chegou a mostrar 2073 arquivos num `find` cru — investigado a fundo, **96%
-era `.mypy_cache/`** de uma sessão anterior (gitignored, não existe em clone
-limpo). Contado certo (`git ls-files`), `pagamentos` tem 48 arquivos — menor
-que `funil` (54) e pouco maior que `checkout` (44), apesar de ser o domínio
-mais crítico. Por código real versionado, quem lidera é `sugestoes` (114
-arquivos), de longe a célula mais extensa; a mais recente das 13 é `forum`
-(51 arquivos). *Contagens de 30/08/2026 — recontar, não confiar.*
+## Célula `gamificacao`
 
-## A 14ª célula, ainda nascendo: `gamificacao`
-
-**Estado:** lei aprovada pelo mantenedor em 30/08/2026 (Sessão A de
-arquitetura + aprovação da lei; registros `20260830-061` e `20260830-064` no
-livro); a pasta `services/gamificacao` **ainda não existe** no momento desta
-escrita. Esta seção existe para que a próxima IA não desenhe ponto, selo,
-ranking ou recompensa dentro de outra célula sem saber que já há dona para
-isso. **Fonte de verdade:**
+**Estado:** a célula existe em `services/gamificacao`; sua propriedade, seu
+contrato e sua lei são conferíveis em `celulas.yml`,
+`ci/manifesto-de-contratos.json`, `contracts/gamificacao.openapi.yaml` e
+`constituicoes/AGENTS.gamificacao.md`. Esta seção evita que outra célula
+redesenhe ponto, selo, ranking ou recompensa. **Fonte de verdade:**
 `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` (a engenharia, com a escada de
 entrega no §6) e `docs/consultorias/gamificacao/VEREDITO.md` (a
 rastreabilidade de cada decisão, vinda de 6 consultorias + 5 auditorias).
@@ -160,13 +103,11 @@ o que já existe):
 - **Não nasce evento de presença**, e **login vale 0 XP, sempre**: "dia
   ativo" deriva do próprio ledger, não de um evento de comparecimento.
 
-**O que ela oferece** (leitura por HTTP; contrato
-`contracts/gamificacao.openapi.yaml`, ainda por escrever): `getPublicProfiles`
-— lote de até 50 ids, devolvendo `id → {nivel, titulo_slug, moldura_slug}`,
-para o fórum decorar N autores com **uma** chamada; id desconhecido é
-omitido, e nunca sai e-mail nem XP bruto. E `getMyStatus`, o painel do
-próprio aluno. **Todo consumidor liga com cache de 5 min e falha ABERTA**: se
-a gamificação cair, a página perde o selo, nunca quebra.
+**O que ela oferece** é definido pelo contrato vigente
+`contracts/gamificacao.openapi.yaml` e pela implementação que o exporta.
+`getPublicProfiles` devolve os campos públicos `nivel` e `titulo_slug`; não há
+`moldura_slug` nesse schema. Confira operações, autenticação e limites no
+contrato atual antes de desenhar consumidor.
 
 **Superfície pública:** `/conquistas` (host-bound em `meshcraft.top`), com
 `/medalhas`, `/jornada`, `/loja` e `/estudio`. O prefixo tem 10 letras de
@@ -201,20 +142,19 @@ vitrine pública mora em **`meshcraft.top/estudio/apelido`**. Onde o plano de
 30/08/2026 ainda escrever "Têmpera", **leia Forja** — o plano foi escrito
 antes da Sessão A e o registro `20260830-061` é o mais novo.
 
-**Quando ela existir de verdade**, a linha dela entra na tabela das células
-acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
-`constituicoes/AGENTS.gamificacao.md` — e aí o teste-guarda
-`ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
-cite, em vez de apenas aceitar que ele a antecipe.
+`celulas.yml`, `ci/manifesto-de-contratos.json` e
+`constituicoes/AGENTS.gamificacao.md` registram a célula. O teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` exige que o mapa a cite, sem certificar
+os fatos desta seção.
 
 ## A 16ª célula, nascida em 04/09/2026: `metricas`
 
 **Onde está a lei.** `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2 (o livro
 de fatos), §6.4 (marcos, coortes, dimensões) e §6.6 (a confiança). A
-constituição da célula é `constituicoes/AGENTS.metricas.md`. Na gênese ela tem
-UMA rota (`/healthz`), nenhuma tabela e nenhum cliente: tudo o que a
-constituição descreve como "expõe" é o destino da escada, não o estado do
-disco.
+constituição da célula é `constituicoes/AGENTS.metricas.md`. O estado técnico
+atual é conferível em `services/metricas/config/urls.py`, `config/api.py`,
+`apps/fatos/` e `contracts/metricas.openapi.yaml`; existência no disco não
+prova o runtime.
 
 **O que ela é.** O livro de fatos da plataforma. Toda tela de gestão da casa
 conta AO VIVO, perguntando às células a cada abertura: isso responde "quantas
@@ -245,19 +185,19 @@ externo; evento inválido vai para a fila de eventos mortos e vira incidente,
 nunca é aceito pela metade; o fuso é `America/Sao_Paulo` porque a unidade da
 medição é o DIA; e "não sei" nunca vira zero.
 
-**A escada:** 7.1 gênese (feito) · 7.2 o evento imutável e a fila de mortos ·
-7.3 a recepção com Bearer e o teste de 401 · 7.4 a API de leitura, o contrato
-congelado e a `admin` como cliente · 7.5 o compose, em PR próprio. Até o 7.5,
-o `deploy-celula` desta célula fica vermelho em todo merge que a toca, e isso
-é esperado (`armadilhas/088`).
+**Entradas atuais:** fatos chegam por Redis Streams no comando
+`apps/fatos/management/commands/consume_eventos.py` e passam por
+`apps/fatos/recepcao.py`. A leitura HTTP está em `config/api.py` e
+`apps/fatos/api.py`. Consulte fila, livro e GitHub para saber integração e
+publicação; a escada histórica não responde esse estado.
 
 ## A 15ª célula, nascida em 03/09/2026: `encomendas`
 
 **Estado:** lei escrita a partir do plano mestre v0.1 que o mantenedor
 trouxe e **aprovada por ele em 03/09/2026** (pergunta estruturada; registro
-`20260904-006`); esqueleto em `services/encomendas` no mesmo dia (só
-`/healthz`, sem tabela, sem tela, sem contrato congelado). Esta
-seção existe para que a próxima IA não desenhe marketplace, oferta de
+`20260904-006`). A implementação e o contrato atuais são conferíveis em
+`services/encomendas/` e `contracts/encomendas.openapi.yaml`. Esta seção existe
+para que a próxima IA não desenhe marketplace, oferta de
 trabalho a aluno, fila remunerada ou portfólio de encomenda dentro de outra
 célula sem saber que já há dona para isso. **Fonte de verdade:**
 `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` (a lei: as emendas da casa
@@ -351,8 +291,8 @@ aluno, peça só com autorização, cliente novo passa pelo plantão).
 que o mantenedor trouxe em 04/09/2026 (eles moram FORA do repositório, de
 propósito: obra não lançada, `armadilhas/331`), e **aprovado por ele em
 pergunta estruturada na mesma sessão** (registro `20260905-001`, PR #1044);
-esqueleto em `services/cursos` no mesmo dia (TAR-146: só `/healthz`, sem
-tabela, sem tela, sem contrato congelado). **Fonte de verdade:**
+implementação em `services/cursos/` e contrato em
+`contracts/cursos.openapi.yaml`. **Fonte de verdade:**
 `docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da casa aos nove
 documentos, o modelo, os eventos, as superfícies, os agentes de IA, os
 invariantes, a escada) e `docs/decisoes/CONSTITUICAO-cursos-rascunho.md` (a
@@ -430,15 +370,12 @@ porta de máquina.
 e `constituicoes/AGENTS.cursos.md` no lugar), e o teste-guarda
 `ci/tests/test_painel_ia_atualizado.py` **exige** que este mapa a cite.
 
-## A 18ª célula, ainda NÃO nascida: `pages`
+## Célula `pages`
 
-**Estado:** a casa foi escolhida pelo mantenedor em 01/09/2026, renomeada por
-ele de `portfolio` para `pages` em 02/09/2026 (registros `20260901-023`,
-`20260902-061` e `20260903-003` no livro), e a construção foi liberada por ele
-em 05/09/2026 com a assinatura do corredor
-`docs/changespecs/CS-PAGES-0001.md`. **A pasta `services/pages` ainda não
-existe**: ela nasce no degrau 01 da escada do §5 do plano, e esta seção foi
-escrita no degrau 00, de propósito, antes do código. **Fonte de verdade:**
+**Estado:** a casa existe em `services/pages`; sua propriedade, seu contrato e
+sua lei são conferíveis em `celulas.yml`, `ci/manifesto-de-contratos.json`,
+`contracts/pages.openapi.yaml` e `constituicoes/AGENTS.pages.md`. A construção
+foi autorizada pelo corredor `docs/changespecs/CS-PAGES-0001.md`. **Fonte de verdade:**
 `docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md` (a fronteira no §4, a escada no §5,
 o preço da foto por link no §6.2, o que ninguém pode inventar no §7 e os
 critérios da escola no §8) e o corredor `CS-PAGES-0001`. O resumo abaixo é
@@ -531,11 +468,10 @@ feito na aula.
 - travessão em texto que o aluno lê (`ci/travessao.py`);
 - marco real pagando XP (ele vale zero, de propósito).
 
-**Ela ainda não está em `celulas.yml`, não tem constituição, não tem manifesto e
-não tem contrato.** Enquanto a pasta não existir, o teste-guarda
-`ci/tests/test_painel_ia_atualizado.py` não a cobra: ele exige que toda célula
-de `services/` apareça neste mapa, e não proíbe o contrário. Quando ela nascer
-no degrau 01, é este parágrafo que muda.
+**Ela está em `celulas.yml`, tem constituição, manifesto e contrato.** O
+teste-guarda `ci/tests/test_painel_ia_atualizado.py` exige que toda célula de
+`services/` seja citada neste mapa; ele não certifica os demais fatos desta
+seção.
 
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 
@@ -594,12 +530,11 @@ linha, incrementa contador — não sabe montar leque de destinatários). Ver
 
 ## Isolamento entre células (`ci/cerca-de-celula.sh`)
 
-Implementa a Lei 2.3 (uma sessão = uma célula = um worktree) e a Lei 3
-(proibido importar código/ler banco de outra célula). Roda em todo PR:
-calcula o diff, extrai células tocadas em `services/*`, **reprova se o diff
-tocar mais de uma** — a mensagem manda abrir um PR por célula. Reprova
-também se `contracts/` mudar junto com qualquer `services/`, e se
-`contracts/` mudar sem a label `contrato`.
+Implementa o Rito de Contrato da Lei 2.3 e parte da Lei 3. Um PR pode tocar
+mais de uma célula; `celulas.yml` identifica todas as tocadas e o CI roda a
+suíte de cada uma. Cada sessão continua em um worktree e o orçamento de 15
+arquivos continua valendo. A cerca reprova `contracts/` mudando junto com
+`services/` e contrato sem a etiqueta exigida.
 
 O isolamento de dados é reforçado a nível de infraestrutura, não só de CI:
 cada célula tem seu próprio database + role Postgres — a conexão de uma

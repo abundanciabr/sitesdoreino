@@ -19,8 +19,9 @@ melhorias com informação real em vez de suposição.
 O que ele não é: **não é a fonte de verdade, e não é um painel de status.**
 - Onde este mapa e um documento original (`CONSTITUICAO.md`, `RITOS.md`,
   código real, etc.) divergirem, **o original vence** — este mapa é um
-  resumo, escrito por leitura em 27/08/2026, e não é recalculado
-  automaticamente como `painel/painel.html` é. Se você encontrar uma
+  resumo, originalmente escrito em 27/08/2026 e revisto em 10/09/2026 contra
+  a revisão `12101ba`; ele não é recalculado automaticamente como
+  `painel/painel.html` é. Se você encontrar uma
   divergência, é sinal de que este mapa ficou velho: corrija-o no mesmo PR
   da sua mudança, ou abra um registro em `painel/registros/` apontando o quê.
 - Este mapa não guarda nenhum veredito sobre o estado atual do projeto
@@ -43,56 +44,40 @@ projeto: o que não pode ser mecanizado em portão de CI acaba exigindo um
 passo manual do único ser humano no projeto, então mecanizar é
 sistematicamente preferido a documentar.
 
-Arquiteturalmente, é uma plataforma de **13 microsserviços Django+django-ninja
-isolados ("células")** — `admin`, `alunos`, `catalogo`, `checkout`, `forum`,
-`funil`, `identidade`, `leads`, `mensageria`, `notificacoes`, `pagamentos`,
-`quiz`, `sugestoes` — cada uma com banco Postgres próprio, processo próprio
-atrás de um Traefik roteado por caminho, e proibida de importar código ou ler
-banco de outra célula. A 14ª, `gamificacao`, foi aprovada em 30/08/2026 e
-nasceu no mesmo dia, com seção própria em
-[04](04-arquitetura-de-celulas-e-contratos.md). Uma 16ª, `metricas` (o livro
-de fatos: a única célula sem tela, que guarda a história dos números para o
-painel poder dizer o que mudou), nasceu em 04/09/2026 e tem seção lá. Uma 15ª,
-`encomendas` (a Fila do Primeiro Dólar, o marketplace de encomendas 3D da
-escola), ganhou
-lei aprovada e esqueleto em `services/` em 03/09/2026, e também tem seção em
-[04]. Uma 17ª, `cursos` (a sala de aula da Meshcraft: o conteúdo do curso, o
-progresso, o checkpoint, o laudo e os agentes de IA que trabalham nela), ganhou
-lei aprovada e esqueleto em `services/` em 04/09/2026, com seção em [04]. Uma
-18ª, `pages` (a casa das páginas do aluno: o portfólio, a Prancheta que ensina a
-montá-lo e a vitrine pública em `/estudio/<apelido>`), foi liberada para
-construção em 05/09/2026 e **ainda não existe em `services/`**: ela nasce no
-degrau 01 da escada do plano dela, e a seção em [04] foi escrita antes do
-código, de propósito. A
-comunicação entre células é
-só HTTP contratado (OpenAPI congelado) ou eventos versionados (outbox +
-Redis Streams). Tudo
-isso é lei escrita e imposta por portões mecânicos, não só convenção — ver
-[01](01-leis-ritos-e-invariantes.md).
+Arquiteturalmente, é uma plataforma de serviços Django+django-ninja isolados,
+chamados de células. `celulas.yml` lista as células atuais, seus caminhos e os
+consumos HTTP; `ci/manifesto-de-contratos.json` declara o estado dos contratos;
+e [04](04-arquitetura-de-celulas-e-contratos.md) explica as fronteiras. Cada
+célula tem processo e banco próprios atrás do Traefik e não importa código nem
+lê o banco de outra. A comunicação legítima ocorre por HTTP contratado ou por
+eventos versionados. Confira a revisão e rode `python -B
+ci/mapa_de_celulas.py --verificar` antes de usar o inventário numa decisão.
 
-Culturalmente, é um projeto com uma disciplina de engenharia incomumente
-madura para o tamanho: praticamente todo processo tem teste-guarda,
-praticamente todo portão de CI segue uma semântica fail-closed de 4 estados
-(PASS/FAIL/ERROR/SKIP — "não consegui medir" nunca vira "passou"), e o
-projeto documenta ativamente os próprios erros passados (`armadilhas/`, ~126
-entradas) e os padrões que os atravessam
-(`docs/decisoes/RETROSPECTIVA-FASE-D.md`, 8 padrões — ver
-[02](02-armadilhas-e-padroes-recorrentes.md)). Muita coisa que pareceria
-dívida técnica vista de fora é, na verdade, uma escolha deliberada e testada
-— por isso a leitura de [06](06-produto-decisoes-e-roadmap.md) antes de
-propor mudança de produto, e de [01](01-leis-ritos-e-invariantes.md) antes
-de propor mudança de processo, importa mais aqui do que em um projeto médio.
+Culturalmente, os portões usam a semântica fail-closed de quatro estados
+(PASS, FAIL, ERROR e SKIP), e o projeto registra erros em `armadilhas/` e
+padrões transversais em `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Materialize
+`armadilhas/INDICE.md` para a revisão atual em vez de confiar numa contagem
+copiada. Leia [06](06-produto-decisoes-e-roadmap.md) antes de propor mudança
+de produto e [01](01-leis-ritos-e-invariantes.md) antes de mudar processo.
+
+## Prompt para construir o GPS de execução
+
+O documento versionado `docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md` é o
+prompt integral para abrir uma nova conversa, montar a equipe e construir o
+mapa operacional derivado. Ele prepara essa obra; não declara que o GPS já está
+implementado. Depois do merge e do deploy comprovados, sua rota pública é
+[`/mapa-ia/planos/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md`](/mapa-ia/planos/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md).
 
 ## Índice — leia só o que casa com sua tarefa
 
 | # | Documento | Cobre | Leia se você for... |
 |---|---|---|---|
 | — | [Este arquivo] | Orientação geral, o que foi omitido | ...abrir este mapa pela primeira vez (você está aqui) |
-| 01 | [Leis, Ritos e Invariantes](01-leis-ritos-e-invariantes.md) | As 9 leis da `CONSTITUICAO.md`, os ritos obrigatórios de sessão/merge/emergência, os invariantes técnicos (INV-P*, INV-CI01), as receitas do Caminho Dourado (R1-R12) | ...mexer em qualquer código — especialmente dinheiro, CI, merge, ou abrir uma sessão nova |
-| 02 | [Armadilhas e Padrões Recorrentes](02-armadilhas-e-padroes-recorrentes.md) | Taxonomia do catálogo de ~126 armadilhas, os 8 padrões estruturais da retrospectiva, como o índice é gerado | ...investigar um erro específico, ou quiser não repetir uma falha já catalogada |
+| 01 | [Leis, Ritos e Invariantes](01-leis-ritos-e-invariantes.md) | A Constituição vigente, os ritos obrigatórios de sessão/merge/emergência, os invariantes técnicos e as receitas do Caminho Dourado | ...mexer em qualquer código — especialmente dinheiro, CI, merge, ou abrir uma sessão nova |
+| 02 | [Armadilhas e Padrões Recorrentes](02-armadilhas-e-padroes-recorrentes.md) | Taxonomia do catálogo de armadilhas, padrões estruturais da retrospectiva e geração do índice | ...investigar um erro específico, ou quiser não repetir uma falha já catalogada |
 | 03 | [Sistema do Painel e Livro](03-sistema-do-painel-e-livro.md) | O mecanismo `painel/` inteiro — schema do registro, como as vistas são calculadas, a lei anti-duplicação, como a produção serve o painel | ...mexer em `painel/`, ou construir qualquer coisa que relate status/progresso |
-| 04 | [Arquitetura de Células e Contratos](04-arquitetura-de-celulas-e-contratos.md) | O padrão de célula, tabela das 13 células **+ a 14ª em gênese (`gamificacao`: o que consome, o que oferece, o que deliberadamente não faz)**, o mecanismo de contratos (OpenAPI + eventos) e o isolamento entre células | ...entender ou mudar uma célula específica, mexer em `contracts/`, ou propor qualquer mecânica de ponto/selo/recompensa |
-| 05 | [Infraestrutura, CI e Deploy](05-infraestrutura-ci-e-deploy.md) | Topologia Docker/Traefik, os 6 workflows do GitHub Actions, todos os scripts de `ci/`, deploy e rollback, integrações externas por célula | ...mexer em `infra/`, `.github/workflows/`, ou qualquer script de `ci/` |
+| 04 | [Arquitetura de Células e Contratos](04-arquitetura-de-celulas-e-contratos.md) | O padrão de célula, fontes do inventário atual, fronteiras, contratos OpenAPI, eventos e isolamento entre células | ...entender ou mudar uma célula específica, mexer em `contracts/`, ou propor qualquer mecânica de ponto/selo/recompensa |
+| 05 | [Infraestrutura, CI e Deploy](05-infraestrutura-ci-e-deploy.md) | Topologia Docker/Traefik, fontes dos workflows atuais, scripts de `ci/`, deploy, rollback e integrações externas | ...mexer em `infra/`, `.github/workflows/`, ou qualquer script de `ci/` |
 | 06 | [Produto, Decisões e Roadmap](06-produto-decisoes-e-roadmap.md) | Mapa de features (identidade, admin, notificações, i18n, Caixa de Sugestões, pagamentos), o mecanismo de ChangeSpec, e uma lista do que não reabrir | ...avaliar prioridade de feature, ou perguntar "por que isso existe assim" |
 | 07 | [Oportunidades e Fronteiras](07-oportunidades-e-fronteiras.md) | Lacunas já conhecidas, achados concretos desta pesquisa, e o método que este projeto exige antes de propor mudança | ...está exatamente caçando o que melhorar — **comece e termine sua auditoria aqui** |
 
@@ -137,41 +122,17 @@ uma decisão de produto documentada aqui deveria atualizar o documento
 correspondente no mesmo PR — do mesmo jeito que se espera de qualquer outro
 documento deste repositório.
 
-## Fotografia — quando isto foi escrito
+## Fontes de frescor
 
-Pesquisa e redação: 27/08/2026, por uma sessão de Claude Code a pedido do
-mantenedor, lendo os documentos-fonte e o código reais deste repositório
-(não por inferência ou por memória de treinamento). Números que mudam com o
-tempo (quantidade de registros no painel, quantidade de armadilhas
-catalogadas, quantidade de contratos congelados) estão marcados como
-fotografia nos documentos individuais — **recontar é sempre mais confiável
-que confiar no número escrito aqui.**
+- Células e consumo HTTP: `celulas.yml` e `python -B
+  ci/mapa_de_celulas.py --verificar`.
+- Contratos: `ci/manifesto-de-contratos.json`, `contracts/` e o exportador de
+  cada célula.
+- Rotas: `painel/mapa-do-site.json` e `python -B
+  ci/mapa_do_site.py --verificar`, com os limites declarados pelo verificador.
+- Estado de trabalho: `python ci/fila.py listar --ao-vivo --json`, eventos da
+  fila, livro e GitHub.
+- Armadilhas: índice materializado por `python ci/indice_de_armadilhas.py`.
 
-**Revisões desde então** (uma linha por passagem, para que quem ler saiba a
-idade de cada parte):
-
-- **30/08/2026** — [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a
-  seção da célula `gamificacao`, que está nascendo, e teve corrigidos os
-  fatos que haviam envelhecido desde 27/08: o `forum` passou de esqueleto a
-  célula com `LICOES.md` e contrato congelado, `notificacoes` também já tem
-  contrato, e a contagem de contratos (que dizia "7 + 5" num projeto de 13
-  células) foi refeita contra `ci/manifesto-de-contratos.json`. **Ainda
-  velho, e não corrigido nesta passagem:** a contagem de armadilhas ("~126"
-  aqui e em [02](02-armadilhas-e-padroes-recorrentes.md)) — o catálogo tinha
-  **201** entradas em 30/08/2026, contadas por
-  `python ci/indice_de_armadilhas.py`. O porquê de o guarda deste mapa não
-  pegar nada disso está em `armadilhas/222`.
-- **04/09/2026** — [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a
-  seção da célula `cursos` (a sala de aula da Meshcraft: conteúdo, progresso,
-  checkpoint, laudo e os agentes de IA que trabalham nela), planejada nesse
-  dia a partir dos nove documentos do projeto Meshcraft e ainda não nascida.
-  Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md`.
-- **04/09/2026 (noite)** — a célula `cursos` nasceu (TAR-146): a seção dela em
-  [04](04-arquitetura-de-celulas-e-contratos.md) passou de "planejada" a
-  "nascida", e o parágrafo das células acima ganhou a 17ª.
-- **05/09/2026**: [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a seção
-  da célula `pages`, que **ainda não existe em `services/`** e nasce no degrau 01
-  da escada. Este é o degrau 00 do `docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`:
-  o mapa cita a casa antes de ela ser construída, para que nenhuma IA desenhe
-  portfólio de aluno ou vitrine de obra em outra célula. Corredor assinado:
-  `docs/changespecs/CS-PAGES-0001.md`.
+Se uma fonte não puder ser consultada, escreva `NÃO MEDIDO`. O teste de
+presença deste mapa não certifica seus fatos; `armadilhas/222` explica o limite.
