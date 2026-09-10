@@ -15,6 +15,7 @@ CAMPOS = {
 }
 SITUACOES = {"teste", "real"}
 NATUREZAS = {"teste", "operacao", "melhoria", "manutencao"}
+CONCLUSOES = ("funcionamento", "economia", "qualidade", "capacidade")
 
 
 def carregar(raiz: Path) -> dict:
@@ -32,6 +33,15 @@ def validar(raiz: Path) -> list[str]:
     observacoes = dados.get("observacoes", [])
     if not isinstance(observacoes, list):
         return ["observacoes precisa ser uma lista de objetos"]
+    conclusoes = dados.get("conclusoes")
+    if conclusoes is not None:
+        if not isinstance(conclusoes, dict) or set(conclusoes) != set(CONCLUSOES):
+            erros.append("conclusoes precisa conter exatamente funcionamento, economia, qualidade e capacidade")
+        else:
+            for chave in CONCLUSOES:
+                conclusao = conclusoes[chave]
+                if not isinstance(conclusao, dict) or conclusao.get("estado") != "comprovado" or not all(isinstance(conclusao.get(campo), str) and conclusao[campo].strip() for campo in ("evidencia", "consequencia")):
+                    erros.append(f"conclusoes.{chave} precisa ter estado comprovado, evidencia e consequencia preenchidos")
     for observacao in observacoes:
         if not isinstance(observacao, dict):
             erros.append("observação precisa ser um objeto")
@@ -74,7 +84,13 @@ def validar(raiz: Path) -> list[str]:
 
 
 def resumo(raiz: Path) -> dict:
-    dados = carregar(raiz)
+    erros = validar(raiz)
+    if erros:
+        return {"coleta": "não disponível", "linha_de_base": "indisponível", "observacoes_reais": 0, "economia_media_percentual": None, "produtividade_comprovada": False, "erro": "; ".join(erros)}
+    try:
+        dados = carregar(raiz)
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+        return {"coleta": "não disponível", "linha_de_base": "indisponível", "observacoes_reais": 0, "economia_media_percentual": None, "produtividade_comprovada": False, "erro": f"não foi possível ler a medição ({erro}); corrija o arquivo e repita"}
     reais = [item for item in dados.get("observacoes", []) if item.get("situacao_dado") == "real"]
     referencia_total = 0
     trabalho_total = 0
@@ -96,8 +112,9 @@ def resumo(raiz: Path) -> dict:
             and economia_media is not None
             and economia_media > 80
             and isinstance(dados.get("conclusoes"), dict)
-            and {"funcionamento", "economia", "qualidade", "capacidade"} <= set(dados["conclusoes"])
-            and all(dados["conclusoes"][chave] == "comprovado" for chave in ("funcionamento", "economia", "qualidade", "capacidade"))
+            and isinstance(dados.get("conclusoes"), dict)
+            and set(dados["conclusoes"]) == set(CONCLUSOES)
+            and all(dados["conclusoes"][chave].get("estado") == "comprovado" for chave in CONCLUSOES)
         ),
     }
 

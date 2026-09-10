@@ -26,8 +26,15 @@ def sem_substituto_valido(funcao: dict) -> bool:
     return valor is True and not funcao.get("substituto")
 
 
+def pessoa_valida(valor: object, permitir_vazio: bool = False) -> bool:
+    return (permitir_vazio and valor is None) or (isinstance(valor, str) and bool(valor.strip()))
+
+
 def carregar(raiz: Path) -> dict:
-    return json.loads((raiz / "painel" / "responsabilidades.json").read_text(encoding="utf-8"))
+    registro = json.loads((raiz / "painel" / "responsabilidades.json").read_text(encoding="utf-8"))
+    if not isinstance(registro, dict) or not isinstance(registro.get("funcoes"), dict) or not isinstance(registro.get("unidades"), list):
+        raise ValueError("o cadastro precisa conter funcoes e unidades")
+    return registro
 
 
 def resolver_unidade(registro: dict, identificador: str) -> tuple[dict | None, list[str]]:
@@ -58,7 +65,7 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
         return erros
     assert unidade is not None
     funcao = registro["funcoes"].get(unidade["titular_funcao"], {})
-    if not funcao.get("pessoa"):
+    if not pessoa_valida(funcao.get("pessoa")):
         erros.append(f"função {unidade['titular_funcao']} não tem pessoa ocupante")
     if identidade_ia(funcao.get("pessoa")):
         erros.append(f"função {unidade['titular_funcao']} não pode ter IA como pessoa ocupante")
@@ -66,6 +73,8 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
         erros.append(f"função {unidade['titular_funcao']} não pode ter IA como substituto")
     if funcao.get("sem_substituto") not in (None, True, False):
         erros.append(f"função {unidade['titular_funcao']} tem sem_substituto inválido")
+    if not pessoa_valida(funcao.get("substituto"), permitir_vazio=True):
+        erros.append(f"função {unidade['titular_funcao']} tem substituto inválido")
     if not funcao.get("substituto") and not sem_substituto_valido(funcao):
         erros.append(f"função {unidade['titular_funcao']} não tem substituto aceito")
     for campo in ("aprova", "autoridade"):
@@ -83,7 +92,7 @@ def auditar(raiz: Path) -> list[str]:
     if set(registro.get("funcoes", {})) != FUNCOES:
         erros.append("o cadastro precisa conter exatamente as quatro funções")
     for identificador, funcao in registro.get("funcoes", {}).items():
-        if not funcao.get("pessoa"):
+        if not pessoa_valida(funcao.get("pessoa")):
             erros.append(f"{identificador}: pessoa ocupante ausente")
         if identidade_ia(funcao.get("pessoa")):
             erros.append(f"{identificador}: IA não pode ser pessoa ocupante")
@@ -91,6 +100,8 @@ def auditar(raiz: Path) -> list[str]:
             erros.append(f"{identificador}: IA não pode ser substituto")
         if funcao.get("sem_substituto") not in (None, True, False):
             erros.append(f"{identificador}: sem_substituto precisa ser booleano")
+        if not pessoa_valida(funcao.get("substituto"), permitir_vazio=True):
+            erros.append(f"{identificador}: substituto inválido")
         if not funcao.get("substituto") and not sem_substituto_valido(funcao):
             erros.append(f"{identificador}: substituto ausente")
     for unidade in registro.get("unidades", []):
