@@ -302,7 +302,9 @@ def test_youtube_e_vimeo_entram_embutidos(aluna, esqueleto, client, url, embutid
     corpo = corpo_de(
         abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
     )
-    assert f'<iframe src="{embutido}"' in corpo
+    assert (
+        f'<iframe src="{embutido}" ' 'referrerpolicy="strict-origin-when-cross-origin"'
+    ) in corpo
     assert "Abrir o vídeo em outra aba" in corpo
 
 
