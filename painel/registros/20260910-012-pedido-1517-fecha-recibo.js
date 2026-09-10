@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-012-pedido-1517-fecha-recibo",
+  tipo: "resposta",
+  quando: "2026-09-10",
+  titulo: "Pedido 1517 fecha o recibo dos oito Bosses",
+  detalhe: "A publicação comprovada no registro 008 encerra o recibo 20260910-006. Esta resposta apenas liga o recibo à prova terminal já registrada.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34433902392",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-006-cursos-marcar-boss-com-titulo-real",
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
