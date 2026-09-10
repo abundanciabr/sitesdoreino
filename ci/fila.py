@@ -54,6 +54,7 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CI = Path(__file__).resolve().parent
 if str(CI) not in sys.path:
@@ -222,9 +223,7 @@ PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
 RE_REGISTRO_DE_ACEITE = re.compile(
     r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js"
 )
-RE_PROVA_GITHUB = re.compile(
-    r"https://github\.com/[\w.-]+/[\w.-]+/(?:actions/runs/[1-9]\d*|pull/[1-9]\d*)"
-)
+RE_URL = re.compile(r"https?://[^\s<>\"']+")
 CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
 
 
@@ -1127,7 +1126,14 @@ def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -
             "o registro de aceite não informa quando foi verificado"
         )
     evidencia = str(registro.get("evidencia") or "")
-    citadas = set(RE_PROVA_GITHUB.findall(evidencia))
+    citadas = set()
+    for texto in RE_URL.findall(evidencia):
+        texto = texto.rstrip(".,;:)")
+        try:
+            urlsplit(texto)
+        except ValueError:
+            continue
+        citadas.add(texto)
     if not provas_da_publicacao or not citadas.intersection(provas_da_publicacao):
         raise RecusaDeReconciliacao(
             "o registro de aceite não cita a prova da publicação correspondente"

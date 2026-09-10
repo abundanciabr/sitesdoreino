@@ -1841,11 +1841,50 @@ def test_reconciliacao_recusa_atestado_ausente_ou_de_outro_sha():
             },
             "publicação",
         ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/attempts/2",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/jobs/9",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "?check_suite_focus=true",
+            },
+            "publicação",
+        ),
     ],
 )
 def test_reconciliacao_recusa_registro_sem_aceite_da_publicacao(registro, trecho):
     with pytest.raises(fila.RecusaDeReconciliacao, match=trecho):
         fila.provar_conteudo_do_aceite(registro, [RUN_RECONCILIADO])
+
+
+def test_reconciliacao_aceita_url_canonica_com_pontuacao_textual():
+    fila.provar_conteudo_do_aceite(
+        {
+            "gravidade": "verde",
+            "precisa_do_dono": False,
+            "verificado_em": "2026-09-10",
+            "evidencia": f"Publicação conferida em {RUN_RECONCILIADO}.",
+        },
+        [RUN_RECONCILIADO],
+    )
 
 
 def test_recuperacao_usa_publicacoes_efetivas_e_nao_o_run_historico_falho():
@@ -2171,6 +2210,7 @@ def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
     evento_a.write_text("{}\n", encoding="utf-8")
     _git("add", ".", cwd=repo)
     _git("commit", "-m", "evento a", cwd=repo)
+    ponta_a = _sha(repo, "HEAD")
     _git("checkout", "-b", "metadados-b", revisao, cwd=repo)
     recibo_b = repo / "painel/registros/b.js"
     recibo_b.parent.mkdir(parents=True)
@@ -2179,6 +2219,15 @@ def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
     _git("commit", "-m", "recibo b", cwd=repo)
 
     _git("checkout", "metadados-a", cwd=repo)
+    _git("merge", "--no-commit", "metadados-b", cwd=repo)
+    _git("commit", "-m", "merge somente de escritura", cwd=repo)
+    head_verde = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-verde.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integracao da escritura", cwd=repo)
+    merge_verde = _sha(repo, "HEAD")
+
+    _git("checkout", "-b", "merge-com-codigo", ponta_a, cwd=repo)
     _git("merge", "--no-commit", "metadados-b", cwd=repo)
     codigo.write_text("TITULO = 'mudou no merge'\n", encoding="utf-8")
     _git("add", ".", cwd=repo)
@@ -2191,6 +2240,12 @@ def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
     _git("remote", "add", "origin", str(remoto), cwd=repo)
     _git("push", "origin", "HEAD:main", cwd=repo)
 
+    fila.medir_linhagem(
+        repo,
+        {"revisao": revisao, "arvore": arvore},
+        head_verde,
+        merge_verde,
+    )
     with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
         fila.medir_linhagem(
             repo,
