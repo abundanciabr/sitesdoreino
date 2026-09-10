@@ -10,6 +10,8 @@ import fnmatch
 import base64
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 
 import mapa_de_celulas
@@ -17,6 +19,7 @@ from _nucleo import ErroDeInstrumentacao, Estado, executar
 from revisor_de_pouso import avaliar_atestado
 
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
+MAX_PAGINAS_DO_HISTORICO = 100
 
 
 def _api(raiz: Path, caminho: str, *, paginas=False):
@@ -118,17 +121,22 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     base = dict(sha_integrado=sha, celulas=celulas, workflows=exigidos, runs=[])
     if not exigidos:
         return dict(base, estado="SEM_PUBLICACAO", terminal=True, acao="Integração concluída; este diff não dispara publicação.")
-    resposta = _api(raiz, f"actions/runs?head_sha={sha}&per_page=100")
-    if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
-        raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
-    # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
-    if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
-        raise ErroDeInstrumentacao("lista de publicações truncada; confira os runs do SHA")
-    runs = [r for r in resposta["workflow_runs"] if r.get("head_sha") == sha
-            and r.get("head_branch") == "main" and r.get("event") == "push"]
-    escolhidos = [max((r for r in runs if r.get("path") == w),
-                     key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
-                  for w in exigidos]
+    runs_por_workflow = {}
+    for workflow in exigidos:
+        resposta = _api(raiz, f"actions/workflows/{Path(workflow).name}/runs?head_sha={sha}&per_page=100")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
+        # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
+        if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
+            raise ErroDeInstrumentacao("lista de publicações truncada; confira os runs do SHA")
+        runs_por_workflow[workflow] = [
+            r for r in resposta["workflow_runs"]
+            if r.get("path") == workflow and r.get("head_sha") == sha
+            and r.get("head_branch") == "main" and r.get("event") == "push"
+        ]
+    escolhidos = [max(runs_por_workflow[workflow],
+                      key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
+                  for workflow in exigidos]
     base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha,
                          status=r.get("status"), conclusion=r.get("conclusion"),
                          url=r.get("html_url")) for r in escolhidos if r]
@@ -219,29 +227,97 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
         if sha:
             shas.add(sha)
     # Dados recentes não apagam a última tentativa da imagem da mesma célula.
-    from rerun_de_deploy import RUNS_OLHADOS_ATRAS
     faltam = {f"deploy ({c})" for c in requeridas}
-    if "admin" in requeridas:
-        faltam.add("publicar-dados-admin")
-    pagina = 1
-    while faltam:
-        resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}&page={pagina}")
-        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
-            raise ErroDeInstrumentacao("histórico de jobs ausente; imagem e dados não foram conferidos")
-        runs = resposta["workflow_runs"]
-        for run in sorted(runs, key=lambda r: r["id"], reverse=True):
-            if run.get("path") != DEPLOYS[0] or run.get("event") != "push" or run.get("head_branch") != "main":
-                continue
-            nomes = {j["name"] for j in consultar_jobs(raiz, run) if j.get("conclusion") != "skipped"}
-            encontrados = faltam & nomes
-            if encontrados:
-                shas.add(run["head_sha"])
-                faltam -= encontrados
-            if not faltam:
-                break
-        if len(runs) < RUNS_OLHADOS_ATRAS:
+    # O job de dados nasceu depois de vários deploys históricos. O workflow
+    # do SHA encontrado decide se ele era exigido, em consultar_publicacao.
+    # Procurá-lo aqui faria a pista atravessar todo o histórico antigo sem
+    # nunca encontrar um job que ainda não existia.
+    runs = []
+    total = None
+    for pagina in range(1, MAX_PAGINAS_DO_HISTORICO + 1):
+        resposta = _api(
+            raiz,
+            f"actions/workflows/deploy-celula.yml/runs?per_page=100&page={pagina}",
+        )
+        if (not isinstance(resposta, dict)
+                or not isinstance(resposta.get("workflow_runs"), list)
+                or not isinstance(resposta.get("total_count"), int)):
+            raise ErroDeInstrumentacao(
+                "histórico de jobs ausente; imagem e dados não foram conferidos"
+            )
+        if total is None:
+            total = resposta["total_count"]
+            if total < 0 or total > MAX_PAGINAS_DO_HISTORICO * 100:
+                raise ErroDeInstrumentacao(
+                    "histórico excedeu o teto seguro da consulta; amplie o instrumento antes de julgar"
+                )
+        elif resposta["total_count"] != total:
+            raise ErroDeInstrumentacao(
+                "histórico mudou durante a consulta; confira novamente antes de julgar"
+            )
+        pagina_de_runs = resposta["workflow_runs"]
+        runs.extend(pagina_de_runs)
+        if len(runs) >= total:
             break
-        pagina += 1
+        if not pagina_de_runs:
+            raise ErroDeInstrumentacao(
+                "histórico de jobs ficou incompleto durante a consulta; confira novamente"
+            )
+    if total is None or len(runs) != total or len({run.get("id") for run in runs}) != total:
+        raise ErroDeInstrumentacao(
+            "histórico de jobs ficou incompleto durante a consulta; confira novamente"
+        )
+    candidatos = []
+    for run in runs:
+        if (run.get("path") != DEPLOYS[0] or run.get("event") != "push"
+                or run.get("head_branch") != "main"):
+            continue
+        try:
+            inicio = datetime.fromisoformat(run["run_started_at"].replace("Z", "+00:00"))
+        except (AttributeError, KeyError, TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "histórico sem o instante da tentativa; não dá para ordenar as publicações",
+                str(erro),
+            ) from erro
+        if inicio.tzinfo is None:
+            raise ErroDeInstrumentacao(
+                "histórico sem o fuso da tentativa; não dá para ordenar as publicações"
+            )
+        if not isinstance(run.get("id"), int) or not isinstance(run.get("run_attempt"), int):
+            raise ErroDeInstrumentacao(
+                "histórico sem identidade da tentativa; não dá para ordenar as publicações"
+            )
+        candidatos.append((inicio, run["run_attempt"], run["id"], run))
+    candidatos = [item[-1] for item in sorted(
+        candidatos, key=lambda item: item[:3], reverse=True
+    )]
+
+    def considerar(run, jobs):
+        nonlocal faltam
+        nomes = {j["name"] for j in jobs if j.get("conclusion") != "skipped"}
+        encontrados = faltam & nomes
+        if encontrados:
+            shas.add(run["head_sha"])
+            faltam -= encontrados
+
+    if candidatos:
+        considerar(candidatos[0], consultar_jobs(raiz, candidatos[0]))
+    for inicio_do_lote in range(1, len(candidatos), 8):
+        if not faltam:
+            break
+        lote = candidatos[inicio_do_lote:inicio_do_lote + 8]
+        with ThreadPoolExecutor(max_workers=len(lote)) as executor:
+            futuros = [(run, executor.submit(consultar_jobs, raiz, run)) for run in lote]
+            for run, futuro in futuros:
+                considerar(run, futuro.result())
+                if not faltam:
+                    for _, pendente in futuros:
+                        pendente.cancel()
+                    break
+    if faltam:
+        raise ErroDeInstrumentacao(
+            "o histórico completo não prova os jobs: " + ", ".join(sorted(faltam))
+        )
     resultados = []
     for sha in sorted(shas):
         alterados = git("diff", "--name-only", sha + "^", sha).splitlines()
