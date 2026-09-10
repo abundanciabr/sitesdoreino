@@ -79,6 +79,12 @@ MIDDLEWARE = [
 # Vazia ⇒ ninguem entra. Fail-closed por construcao.
 ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
 
+# O vínculo entre cada função da central e sua conta entra só no ambiente do
+# servidor. O código exige JSON com as quatro chaves: estrategia, operacoes,
+# ensino e comercial. Ausência ou formato inválido recusa as ações funcionais.
+# A identidade continua apenas reconhecendo a conta; não define esta permissão.
+CENTRAL_RESPONSAVEIS = os.environ.get("CENTRAL_RESPONSAVEIS", "")
+
 # Para onde mandar quem nao tem sessao. E o mesmo endereco publico que o
 # `funil` usa — a tela de login mora la, nos tres idiomas, e esta celula nunca
 # serve caminho com forma de idioma.
