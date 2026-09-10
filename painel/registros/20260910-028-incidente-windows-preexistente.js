@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-028-incidente-windows-preexistente",
+  tipo: "incidente",
+  quando: "2026-09-10",
+  titulo: "Windows: falha preexistente no alarme da máquina de agentes",
+  detalhe: "O workflow rede-do-windows falhou após o merge, mas a mesma falha nominal já existia antes da Fase 1 e está acompanhada na issue #1191.",
+  autoridade: "github",
+  evidencia: "Issue #1191; run preexistente 34446817150 no SHA fdb8fed3a03975a9029fce3b08553936f2dc742e; run pós-merge 34456533183 falhou nominalmente em test_launcher_windows_na_subpasta_sem_python_no_path. O log encurtado não permite afirmar as demais falhas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "incidente",
+  tarefa: "TAR-283",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: "Acompanhar a issue #1191; não reabrir a Fase 1 por esse alarme preexistente.",
+  reversivel: true
+}); })();
