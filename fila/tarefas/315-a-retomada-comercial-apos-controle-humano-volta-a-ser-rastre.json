@@ -1,0 +1,25 @@
+{
+  "arquivo": "315-a-retomada-comercial-apos-controle-humano-volta-a-ser-rastre",
+  "id": "TAR-315",
+  "titulo": "A retomada comercial após controle humano volta a ser rastreável",
+  "toca": [
+    "leads",
+    "funil",
+    "mensageria",
+    "admin",
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-288"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Na Fase 3, testes vermelho para verde provam pausa na transferência, ausência de concorrência e retomada somente por evento explícito autorizado e auditável ligado à TAR-288; ausência ou repetição mantém a automação parada.",
+  "despacho": "GRAVIDADE: MÉDIO, bloqueante da preservação da Fase 1.\n\nREQUISITO: depois que uma pessoa assume uma conversa comercial, a automação só pode retomar por uma transição explícita, autorizada e rastreável; pausa e ausência de concorrência permanecem obrigatórias.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; fila/tarefas/288-construir-o-historico-comercial-e-o-copiloto-comercial.json, linhas 22 a 24; docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, linha 520; https://meshcraft.top/admin/documentos/equipe-quatro-copilotos, leitura autenticada em 10/09/2026 do adendo e do trecho de transferência humana.\n\nEVIDÊNCIA OBSERVADA: TAR-288 ainda exige transferência humana, identificação da automação e separação do CRM, mas o requisito explícito de retomada após controle humano desapareceu da tarefa, do plano e do documento salvo. A pausa e a proibição de concorrência continuam presentes.\n\nREPRODUÇÃO: procure em TAR-288 e no plano pelos termos retomada, controle humano e autorização de retorno; confira no adendo e no trecho de transferência humana do documento que não existe requisito rastreável ligando a retomada à TAR-288.\n\nESPERADO: uma tarefa filha ligada à TAR-288 preserva a retomada explícita, autorizada, auditável e sem concorrência. OBSERVADO: a passagem para a pessoa está declarada, mas o caminho seguro de volta não está.\n\nIMPACTO: uma implementação futura pode retomar mensagens automaticamente durante ou depois do atendimento humano sem prova de autorização.\n\nCORREÇÃO MÍNIMA: preservar agora o requisito nesta tarefa filha com dependência de TAR-288. Implementar a retomada somente na Fase 3, fatiando por célula e contrato quando necessário. Não editar critérios históricos imutáveis nem exigir a implementação na Fase 1.\n\nCLASSIFICAÇÃO: falha de preservação da Fase 1; bloqueia a rastreabilidade do requisito, sem antecipar funcionalidade da Fase 3.\n\nPROVA DE FECHO: na Fase 3, testes mostram pausa imediata na transferência, nenhuma concorrência com a pessoa e retomada somente após evento explícito autorizado e auditável; ausência ou repetição do evento mantém a automação parada.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; requisito preservado como tarefa filha da TAR-288",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
