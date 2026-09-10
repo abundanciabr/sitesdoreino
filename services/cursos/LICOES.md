@@ -155,3 +155,16 @@ existe"; oferecê-lo terminaria em 403. Mostrar sem botão, com a frase, é o me
 
 **O que fica:** o 301 do endereço antigo de AULA (`/E00`, TAR-216) continua, e
 `_curso_unico` existe só para ele. Só o 301 da raiz morreu.
+
+## O teste dos Bosses parte dos títulos reais, não da lista que ele fiscaliza
+
+**Medido em 10/09/2026, após o deploy do PR #1454 falhar.** O comando procurava
+`Modificador Bevel e Triangulate`, enquanto a aula 31 se chamava `Comando Bevel
+e Triangulate`. O teste importava `BOSSES_POR_MODULO` do próprio comando para
+criar as aulas e, por isso, fabricava uma base que repetia o erro e ficava verde.
+
+O guarda desta célula mantém uma fixture literal dos oito títulos conferidos na
+tela administrativa. Assim, mudar a lista do comando sem corresponder ao curso
+real reprova. A mesma prova roda o comando duas vezes e cria uma duplicata com
+caixa e pontuação diferentes, para preservar idempotência, normalização e recusa
+de ambiguidade sem gravação.
