@@ -303,3 +303,14 @@ por `#area/alunos` também pertence a essa aba: iniciar a busca apenas quando
 a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
 precisa aparecer na área durante carregamento, aviso e falha. O teste real
 do navegador cobre a entrada direta, a volta ao menu e a troca de área.
+
+## Um atalho de aula altera só o que ele pede (10/09/2026)
+
+O modelo Vídeo do YouTube recebe somente uma URL, mas a aula que o recebe pode
+ter peças, quiz, pausas, critérios e uma marca de Boss já escritos. Montar um
+corpo vazio para aproveitar a porta de gravação apagaria esse trabalho sem que
+o formulário mostrasse o perigo.
+
+A regra é: leia a aula atual pela porta, troque apenas `video_url` e devolva o
+corpo completo. O teste `test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula`
+confere cada campo que precisa permanecer igual.

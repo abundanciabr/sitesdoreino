@@ -1362,6 +1362,17 @@
     },
     {
       "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Vídeo do YouTube",
+      "descricao": "O modelo rápido de uma aula já criada. A pessoa cola uma URL do YouTube, a tela preserva o restante da aula, salva o novo vídeo e publica para os alunos.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/video-do-youtube/",
+      "observacao": "Aceita somente links HTTPS que a sala de aula incorpora: youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Se a publicação for recusada depois de salvar, a tela diz que o vídeo foi salvo e oferece a nova tentativa."
+    },
+    {
+      "celula": "admin",
       "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
       "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
       "alcance": "publico",
