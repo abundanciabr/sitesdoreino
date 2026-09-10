@@ -123,6 +123,7 @@ nome do gesto escrito nele, não tem como ser mal entendido.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
@@ -521,19 +522,27 @@ def _e_url_de_video_youtube(url: str) -> bool:
     try:
         endereco = urlparse(url)
         host = (endereco.hostname or "").lower()
+        porta = endereco.port
     except ValueError:
         return False
-    if endereco.scheme != "https":
+    if endereco.scheme != "https" or porta not in (None, 443):
         return False
 
     partes = [parte for parte in endereco.path.split("/") if parte]
     if host == "youtu.be" or host.endswith(".youtu.be"):
-        return len(partes) == 1
+        return len(partes) == 1 and bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", partes[0]))
     if host != "youtube.com" and not host.endswith(".youtube.com"):
         return False
     if endereco.path == "/watch":
-        return bool((parse_qs(endereco.query).get("v") or [""])[0].strip())
-    return len(partes) == 2 and partes[0] in {"embed", "shorts"}
+        identificadores = parse_qs(endereco.query).get("v") or []
+        return len(identificadores) == 1 and bool(
+            re.fullmatch(r"[A-Za-z0-9_-]{11}", identificadores[0])
+        )
+    return (
+        len(partes) == 2
+        and partes[0] in {"embed", "shorts"}
+        and bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", partes[1]))
+    )
 
 
 def _corpo(rascunho: dict) -> "tuple[dict, dict]":

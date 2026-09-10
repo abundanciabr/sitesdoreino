@@ -1421,6 +1421,7 @@ def test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula():
 
     assert 'name="video_url"' in html
     assert "Voltar ao editor completo" in html
+    assert "Os demais campos já existentes nesta aula são preservados." in html
     assert resposta.status_code == 302
     assert resposta["Location"] == f"{endereco}?recado=publicada&versao=2"
     corpo = json.loads(gravacao.calls.last.request.content)
@@ -1446,7 +1447,16 @@ def test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula():
 
 @pytest.mark.django_db
 @respx.mock
-def test_o_modelo_youtube_recusa_url_que_a_sala_nao_incorpora():
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/",
+        "https://www.youtube.com/watch?v=curto",
+        "https://youtu.be:444/dQw4w9WgXcQ",
+    ],
+    ids=["pagina-generica", "id-curto", "porta-nao-padrao"],
+)
+def test_o_modelo_youtube_recusa_url_que_a_sala_nao_incorpora(url):
     _mock_site()
     _mock_aula()
     gravacao = respx.put(
@@ -1458,7 +1468,7 @@ def test_o_modelo_youtube_recusa_url_que_a_sala_nao_incorpora():
 
     resposta = _dentro().post(
         f"/escola/{CURSO}/aulas/E07/video-do-youtube/",
-        {"video_url": "https://www.youtube.com/"},
+        {"video_url": url},
     )
 
     assert resposta.status_code == 422

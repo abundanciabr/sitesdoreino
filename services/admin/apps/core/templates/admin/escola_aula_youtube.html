@@ -41,7 +41,7 @@
     {% csrf_token %}
     <label class="rotulo" for="video_url">Link do vídeo no YouTube</label>
     <input type="url" id="video_url" name="video_url" value="{{ video_url }}" placeholder="https://youtu.be/ID" required autocomplete="off">
-    <p class="nota">Aceita youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Os demais campos desta aula ficam vazios.</p>
+    <p class="nota">Aceita youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Os demais campos já existentes nesta aula são preservados.</p>
     <button type="submit">Salvar e publicar aula</button>
   </form>
   {% endif %}
