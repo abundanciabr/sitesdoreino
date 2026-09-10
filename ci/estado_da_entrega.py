@@ -10,6 +10,7 @@ import fnmatch
 import base64
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import mapa_de_celulas
@@ -118,17 +119,22 @@ def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
     base = dict(sha_integrado=sha, celulas=celulas, workflows=exigidos, runs=[])
     if not exigidos:
         return dict(base, estado="SEM_PUBLICACAO", terminal=True, acao="Integração concluída; este diff não dispara publicação.")
-    resposta = _api(raiz, f"actions/runs?head_sha={sha}&per_page=100")
-    if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
-        raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
-    # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
-    if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
-        raise ErroDeInstrumentacao("lista de publicações truncada; confira os runs do SHA")
-    runs = [r for r in resposta["workflow_runs"] if r.get("head_sha") == sha
-            and r.get("head_branch") == "main" and r.get("event") == "push"]
-    escolhidos = [max((r for r in runs if r.get("path") == w),
-                     key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
-                  for w in exigidos]
+    runs_por_workflow = {}
+    for workflow in exigidos:
+        resposta = _api(raiz, f"actions/workflows/{Path(workflow).name}/runs?head_sha={sha}&per_page=100")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("GitHub não devolveu a lista de publicações")
+        # Não aceitar uma página truncada: uma execução mais recente pode estar fora dela.
+        if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
+            raise ErroDeInstrumentacao("lista de publicações truncada; confira os runs do SHA")
+        runs_por_workflow[workflow] = [
+            r for r in resposta["workflow_runs"]
+            if r.get("path") == workflow and r.get("head_sha") == sha
+            and r.get("head_branch") == "main" and r.get("event") == "push"
+        ]
+    escolhidos = [max(runs_por_workflow[workflow],
+                      key=lambda r: (r.get("id", 0), r.get("run_attempt", 1)), default=None)
+                  for workflow in exigidos]
     base["runs"] = [dict(id=r["id"], workflow=r["path"], sha=sha,
                          status=r.get("status"), conclusion=r.get("conclusion"),
                          url=r.get("html_url")) for r in escolhidos if r]
@@ -226,11 +232,9 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
     # Procurá-lo aqui faria a pista atravessar todo o histórico antigo sem
     # nunca encontrar um job que ainda não existia.
     pagina = 1
-    while faltam:
-        resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}&page={pagina}")
-        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
-            raise ErroDeInstrumentacao("histórico de jobs ausente; imagem e dados não foram conferidos")
-        runs = resposta["workflow_runs"]
+
+    def considerar(runs):
+        nonlocal faltam
         for run in sorted(runs, key=lambda r: r["id"], reverse=True):
             if run.get("path") != DEPLOYS[0] or run.get("event") != "push" or run.get("head_branch") != "main":
                 continue
@@ -240,7 +244,40 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
                 shas.add(run["head_sha"])
                 faltam -= encontrados
             if not faltam:
-                break
+                return True
+        return False
+
+    for sha in sorted(shas):
+        resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?head_sha={sha}&per_page=100")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("histórico do SHA sem lista de publicações")
+        if resposta.get("total_count", len(resposta["workflow_runs"])) > len(resposta["workflow_runs"]):
+            raise ErroDeInstrumentacao("publicações do SHA truncadas; confira os runs")
+        if considerar(resposta["workflow_runs"]):
+            break
+
+    while faltam:
+        resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}&page={pagina}")
+        if not isinstance(resposta, dict) or not isinstance(resposta.get("workflow_runs"), list):
+            raise ErroDeInstrumentacao("histórico de jobs ausente; imagem e dados não foram conferidos")
+        runs = resposta["workflow_runs"]
+        candidatos = [run for run in sorted(runs, key=lambda r: r["id"], reverse=True)
+                      if run.get("path") == DEPLOYS[0]
+                      and run.get("event") == "push"
+                      and run.get("head_branch") == "main"]
+        with ThreadPoolExecutor(max_workers=max(1, min(8, len(candidatos)))) as executor:
+            futuros = {executor.submit(consultar_jobs, raiz, run): run for run in candidatos}
+            for futuro in as_completed(futuros):
+                run = futuros[futuro]
+                nomes = {j["name"] for j in futuro.result() if j.get("conclusion") != "skipped"}
+                encontrados = faltam & nomes
+                if encontrados:
+                    shas.add(run["head_sha"])
+                    faltam -= encontrados
+                if not faltam:
+                    for pendente in futuros:
+                        pendente.cancel()
+                    break
         if len(runs) < RUNS_OLHADOS_ATRAS:
             break
         pagina += 1

@@ -310,6 +310,8 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
 
     def api(raiz, caminho, **kw):
         chamadas.append(caminho)
+        if "head_sha=" in caminho:
+            return {"workflow_runs": [run()]}
         pagina = int(caminho.rsplit("page=", 1)[1])
         return {"workflow_runs": [run(id=n) for n in range(1, 31)] if pagina == 1 else []}
 
@@ -331,9 +333,43 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
     monkeypatch.setattr(entrega, "consultar_publicacao", consultar_publicacao)
 
     assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
-    assert len(jobs_consultados) == 1
+    assert jobs_consultados
     assert sum("actions/workflows/" in chamada for chamada in chamadas) == 1
     assert len(publicacoes) == 1
+
+
+def test_historico_consulta_jobs_em_paralelo_sem_mudar_a_prova(monkeypatch):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+
+    consultados = []
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
+        "admin": Celula("admin", ("services/admin",), ()),
+    })
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {
+        CELULA: ["services/**"], INFRA: ["infra/**"],
+    })
+    monkeypatch.setattr(entrega, "executar", lambda args, **kw: SimpleNamespace(
+        stdout="false" if args[1] == "rev-parse" and "--is-shallow-repository" in args
+        else SHA if args[1] in {"rev-parse", "log"} else "services/admin/app.py"
+        if args[1] == "diff" else ""
+    ))
+    monkeypatch.setattr(entrega, "_api", lambda *a, **kw: {
+        "workflow_runs": [run(id=n) for n in range(1, 31)],
+    })
+
+    def consultar_jobs(raiz, run):
+        consultados.append(run["id"])
+        return [{"name": "deploy (admin)", "status": "completed", "conclusion": "success"}]
+
+    monkeypatch.setattr(entrega, "consultar_jobs", consultar_jobs)
+    monkeypatch.setattr(entrega, "consultar_publicacao", lambda *a: {
+        "terminal": True, "estado": "PUBLICADO", "sha_integrado": SHA,
+    })
+
+    assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
+    assert consultados
+    assert len(consultados) <= 30
 
 
 @pytest.mark.parametrize("arquivo,esperado", [("painel/registros/a.js","PUBLICADO"),("painel/registros/a.js","FALHA_PUBLICACAO"),("docs/decisoes/plano.md","SEM_PUBLICACAO")])
