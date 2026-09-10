@@ -352,10 +352,9 @@ def test_a_pagina_diz_o_que_ela_e_e_que_nao_ha_nada_a_fazer(tmp_path, monkeypatc
     assert "1 dela não anda sem você" in pagina
     assert "fale comigo na conversa" in pagina
 
-    # A tela é de OLHAR: nenhum formulário, nenhum botão que escreva. Ele
-    # decidiu isso com todas as letras em 03/09/2026 — "vamos continuar aqui no
-    # claude code mesmo" —, e a frase acima só continua verdadeira enquanto
-    # nada aqui agir.
+    # A tela continua sem caminho de escrita. A prévia de preparar trabalho
+    # chegou depois desta guarda: ela é GET, não cria TAR, reserva ou PR, e só
+    # organiza o texto para a conversa seguinte.
     #
     # A medição é do CORPO DESTA PÁGINA, e não da resposta inteira: a moldura
     # do Admin (a faixa, o menu, o rodapé) é compartilhada por 22 telas, e um
@@ -363,7 +362,9 @@ def test_a_pagina_diz_o_que_ela_e_e_que_nao_ha_nada_a_fazer(tmp_path, monkeypatc
     # deixaria ESTE guarda vermelho num PR que não tem nada a ver com a aba dos
     # robôs. Guarda que fica chato é guarda que alguém desliga (`armadilhas/247`).
     corpo = pagina.split('class="envolucro largo"')[-1].split("rodape-do-admin")[0]
-    assert "<form" not in corpo
+    assert '<form method="get" class="forma">' in corpo
+    assert '<form method="post"' not in corpo
+    assert "Esta prévia não cria TAR, reserva, PR nem executa robô." in corpo
 
 
 def test_o_lugar_tecnico_vira_um_lugar_que_ele_reconhece():

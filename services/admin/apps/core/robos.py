@@ -72,6 +72,7 @@ from apps.auditoria.models import Registro
 
 from . import fila_no_github
 from .admin_dados import PASTA_DADOS_FILA_ATIVO, selecionar_dados
+from .preparar_trabalho import preparar_trabalho
 from .views import _auditar
 
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
@@ -533,7 +534,13 @@ def robos(request):
         # Mesma lei do painel ausente: a página DIZ que a fila não veio (500),
         # nunca finge fila vazia — "não há trabalho" seria mentira.
         resposta = render(
-            request, "admin/caixa_robos.html", {"fila_ausente": True}, status=500
+            request,
+            "admin/caixa_robos.html",
+            {
+                "fila_ausente": True,
+                "preparacao": preparar_trabalho(request.GET.get("preparar", "")),
+            },
+            status=500,
         )
         resposta["Content-Security-Policy"] = _csp(resposta.content)
         return resposta
@@ -640,6 +647,7 @@ def robos(request):
                 if (request.GET.get("pr", "") or "").strip().isdigit()
                 else ""
             ),
+            "preparacao": preparar_trabalho(request.GET.get("preparar", "")),
         },
     )
     resposta["Content-Security-Policy"] = _csp(resposta.content)

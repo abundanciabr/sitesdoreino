@@ -1023,16 +1023,109 @@ def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
     assert not dub.pediu("gh pr create")
 
 
-def test_tar_do_titulo_reutiliza_cadastro_sem_confundir_tentativa(tmp_path, monkeypatch):
+@pytest.mark.parametrize("fonte", ["ramo", "titulo", "corpo", "posse"])
+def test_pr_documental_sem_vinculo_recusa_tar_citada_sem_efeitos(tmp_path, monkeypatch, fonte):
     import fila
     raiz = bancada(tmp_path)
-    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("TAR-999", "agent/ci/make-pr"))
-    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    ramo = "agent/ci/TAR-321" if fonte == "ramo" else "agent/ci/make-pr"
+    titulo = "docs: plano da TAR-321" if fonte == "titulo" else "docs: plano de obra futura"
+    if fonte == "corpo":
+        (raiz / "corpo.md").write_text("Este plano descreve a obra futura TAR-321.", encoding="utf-8")
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-321": {}})
+    eventos = [{"tarefa": "TAR-321", "evento": "reivindicada", "quem": ramo,
+                "quando": "2026-09-01T00:00:00+00:00"}] if fonte == "posse" else []
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: eventos)
+    fases = []
+    monkeypatch.setattr(pr.telemetria, "registrar_fase", lambda *args, **dados: fases.append(dados))
+    dub = Duble({**RESPOSTAS_FELIZES, "rev-parse --abbrev-ref": ramo,
+                 "git show " + "b" * 40 + ":ci/pr.py": "PROTOCOLO_SUBMISSAO = 1\n"})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa") as erro:
+        pr.abrir(raiz, pedido(raiz, titulo=titulo), rodar=dub, hoje=HOJE)
+    assert "--tarefa" in erro.value.o_que_fazer
+    assert not fases
+    assert not list((raiz / "painel/registros").glob("*.js"))
+    assert all(c[:2] in (["git", "rev-parse"], ["git", "status"], ["git", "show"])
+               for c in dub.chamadas)
+
+
+def test_pr_documental_com_vinculo_submete_so_tar_explicita(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    (raiz / "corpo.md").write_text("Este documento planeja a obra futura TAR-321.", encoding="utf-8")
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-320": {}, "TAR-321": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble({**RESPOSTAS_FELIZES, "rev-parse --abbrev-ref": "agent/ci/TAR-321"})
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-320", titulo="docs: plano da TAR-321"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-320")
+    assert not dub.pediu("ci/fila.py submeter TAR-321")
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert pr.campos_lidos(recibo.read_text(encoding="utf-8"))["tarefa"] == "TAR-320"
+
+
+@pytest.mark.parametrize("fase,resultado", [("fechamento", "iniciado"), ("fechamento", "falhou"),
+                                           ("fechamento", "concluido"), ("abertura", "iniciado"),
+                                           ("abertura", "falhou")])
+def test_fase_sem_abertura_concluida_nao_prova_vinculo(tmp_path, monkeypatch, fase, resultado):
+    import fila
+    raiz = bancada(tmp_path)
+    evento = dict(tarefa="TAR-321", tentativa="tentativa-anterior", branch="agent/ci/make-pr",
+                  commit="b" * 40, pr=None, fase=fase, resultado=resultado, contexto_bytes=None)
+    evento.update(id=pr.telemetria.identidade_fase(evento), quando="2026-09-09T00:00:00+00:00")
+    monkeypatch.setattr(pr.telemetria, "ler_tudo", lambda *args: [evento])
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-321": {}})
     monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
     dub = Duble(RESPOSTAS_FELIZES)
-    pr.abrir(raiz, pedido(raiz, titulo="fila: corrigir conclusão TAR-001"), rodar=dub, hoje=HOJE)
-    assert dub.pediu("ci/fila.py submeter TAR-001")
-    assert not dub.pediu("TAR-999")
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz, continuar=True), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+
+
+def test_abertura_atual_define_tar_sem_herdar_fechamento_anterior(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    fases = []
+    for fase, tarefa, quando in [("abertura", "TAR-001", "2026-09-08"),
+                                ("abertura", "TAR-320", "2026-09-09"),
+                                ("fechamento", "TAR-321", "2026-09-10")]:
+        evento = dict(tarefa=tarefa, tentativa="tentativa-" + tarefa, branch="agent/ci/make-pr",
+                      commit="b" * 40, pr=None, fase=fase, resultado="concluido", contexto_bytes=None)
+        evento.update(id=pr.telemetria.identidade_fase(evento), quando=quando + "T00:00:00+00:00")
+        fases.append(evento)
+    monkeypatch.setattr(pr.telemetria, "ler_tudo", lambda *args: fases)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-320": {}, "TAR-321": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert pr._tentativa_da_abertura(raiz, "agent/ci/make-pr") == ("tentativa-TAR-320", "TAR-320")
+    assert dub.pediu("ci/fila.py submeter TAR-320")
+    assert not dub.pediu("ci/fila.py submeter TAR-321")
+
+
+def test_tar_explicita_divergente_da_abertura_recusa_sem_publicar(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-atual", "TAR-320"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-320": {}, "TAR-321": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="ambígua"):
+        pr.abrir(raiz, pedido(raiz, tarefa="TAR-321"), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+
+
+def test_sessao_atual_nao_herda_excecao_da_abertura_legada(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    fases = []
+    for commit, quando in [("b" * 40, "2026-09-08"), ("c" * 40, "2026-09-09")]:
+        evento = dict(tarefa="agent/ci/make-pr", tentativa="sessao-" + commit, branch="agent/ci/make-pr",
+                      commit=commit, pr=None, fase="abertura", resultado="concluido", contexto_bytes=None)
+        evento.update(id=pr.telemetria.identidade_fase(evento), quando=quando + "T00:00:00+00:00")
+        fases.append(evento)
+    monkeypatch.setattr(pr.telemetria, "ler_tudo", lambda *args: fases)
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "c" * 40 + ":ci/pr.py": "PROTOCOLO_SUBMISSAO = 1\n"})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
 
 
 

@@ -1,0 +1,31 @@
+<section class="cartao espaco-16" aria-labelledby="preparar-trabalho-titulo">
+  <h2 id="preparar-trabalho-titulo">Preparar trabalho</h2>
+  <p class="aviso">Esta prévia não cria TAR, reserva, PR nem executa robô.</p>
+  <form method="get" class="forma">
+    <label for="preparar-trabalho-pedido" class="largo">Resultado desejado ou TAR/PR
+      <textarea id="preparar-trabalho-pedido" name="preparar" rows="3" maxlength="400" aria-describedby="preparar-trabalho-ajuda">{{ preparacao.pedido }}</textarea>
+    </label>
+    <p id="preparar-trabalho-ajuda">Use até 400 caracteres. O pedido aparecerá no endereço desta prévia; não inclua senhas ou segredos.</p>
+    <button type="submit">Preparar</button>
+  </form>
+  <div role="status" data-estado="{{ preparacao.estado }}">
+    <h3>{{ preparacao.titulo }}</h3>
+    <p>{{ preparacao.mensagem }}</p>
+    <dl>
+      <dt>Próximo passo</dt>
+      <dd>{{ preparacao.proximo_passo }}</dd>
+      <dt>Por que este passo</dt>
+      <dd>{{ preparacao.por_que }}</dd>
+      <dt>Fontes e limites</dt>
+      <dd>{{ preparacao.fontes_e_limites }}</dd>
+    </dl>
+  </div>
+  {% if preparacao.prompt %}
+    <div class="forma">
+      <label for="preparar-trabalho-prompt" class="largo">Texto para copiar e levar ao agente
+        <textarea id="preparar-trabalho-prompt" readonly rows="12" aria-describedby="preparar-trabalho-copia">{{ preparacao.prompt }}</textarea>
+      </label>
+    </div>
+    <p id="preparar-trabalho-copia">Selecione e copie o texto acima para preparar a próxima etapa.</p>
+  {% endif %}
+</section>

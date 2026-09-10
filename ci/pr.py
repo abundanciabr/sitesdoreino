@@ -574,7 +574,7 @@ def _fases_da_abertura(raiz, ramo):
         for evento in eventos:
             identidade = telemetria.identidade_fase(evento)
             if (not identidade or evento.get("id") != identidade or evento.get("branch") != ramo
-                    or evento.get("fase") not in ("abertura", "fechamento")):
+                    or evento.get("fase") != "abertura" or evento.get("resultado") != "concluido"):
                 continue
             try:
                 quando = datetime.fromisoformat(evento["quando"])
@@ -593,21 +593,20 @@ def _tentativa_da_abertura(raiz, ramo):
     if candidatos:
         evento = max(candidatos, key=lambda item: item[0])[1]
         return evento["tentativa"], evento["tarefa"]
-    return uuid.uuid4().hex, ramo.split('/')[-1]
+    return uuid.uuid4().hex, ramo
 
 
 def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
-    aberturas = [item for item in _fases_da_abertura(raiz, ramo)
-                 if item[1]["fase"] == "abertura" and item[1]["resultado"] == "concluido"]
+    aberturas = _fases_da_abertura(raiz, ramo)
     if not aberturas:
         return False
-    primeira = min(aberturas, key=lambda item: item[0])[1]
-    codigo = correr(["git", "show", primeira["commit"] + ":ci/pr.py"])
+    atual = max(aberturas, key=lambda item: item[0])[1]
+    codigo = correr(["git", "show", atual["commit"] + ":ci/pr.py"])
     return bool(codigo.strip()) and not re.search(r"^PROTOCOLO_SUBMISSAO\s*=", codigo, re.M)
 
 
 def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
-    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas, calcular_estados, CONCLUIDA, CANCELADA, NA_FILA
+    from fila import carregar_tarefas, carregar_eventos
     candidatos = set()
     if pedido.tarefa:
         if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
@@ -617,19 +616,12 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
         candidatos.add(tarefa_da_abertura)
     erros = []
     tarefas = carregar_tarefas(raiz, erros)
-    eventos = carregar_eventos(raiz, tarefas, erros)
-    estados = calcular_estados(tarefas, eventos)
-    candidatos.update(tid for tid, estado in estados.items()
-                      if estado.get("quem") == ramo and estado["estado"] not in (CONCLUIDA, CANCELADA, NA_FILA))
-    if not candidatos:
-        candidatos.update(tarefas_citadas(ramo + " " + pedido.titulo))
-    if not candidatos:
-        candidatos.update(tarefas_citadas(pedido.corpo_arquivo.read_text(encoding="utf-8")))
+    carregar_eventos(raiz, tarefas, erros)
     if not candidatos:
         if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
             return None
         raise ParouPorSeguranca(
-            "tarefa não identificada para esta sessão",
+            "tarefa sem vínculo explícito ou abertura concluída para esta sessão",
             "Consulte python ci/fila.py listar e vincule a TAR existente com --tarefa. "
             "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
         )

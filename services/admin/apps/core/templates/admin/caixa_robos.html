@@ -54,6 +54,7 @@ não tem sigla (lei do CLAUDE.md).
       repositório (<code>fila/</code>); avise um robô com estas palavras:
       "a fila embutida não chegou na imagem da admin".
     </p>
+    {% include "admin/_preparar_trabalho.html" %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
 
@@ -316,6 +317,7 @@ não tem sigla (lei do CLAUDE.md).
         </p>
       {% endif %}
     </div>
+    {% include "admin/_preparar_trabalho.html" %}
     <p class="carimbo espaco-abaixo-20">
       São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo é de
       agora, perguntada ao GitHub pelo seu navegador; o quadro depois dela é o retrato
