@@ -66,6 +66,7 @@ bytes que `apps/core/painel.py` já serve. Uma conta, um lugar.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone as tz
@@ -99,6 +100,33 @@ FILAS_QUE_AINDA_NAO_VEJO = (
 )
 
 
+# A Central lê o cadastro publicado, em vez de repetir quem responde por cada
+# processo. Sem o cadastro, a tela confessa a falha e não atribui trabalho por
+# suposição.
+FUNCOES_DA_CENTRAL = (
+    "estrategia-conteudo",
+    "operacoes-trafego",
+    "ensino-comunidade",
+    "comercial-relacionamento",
+)
+
+DESTINOS_DAS_FUNCOES = {
+    "estrategia-conteudo": ("placar", "Ver o placar e preparar a revisão semanal."),
+    "operacoes-trafego": ("painel", "Ver os pedidos e incidentes do sistema."),
+    "ensino-comunidade": ("escola", "Abrir a operação da escola."),
+    "comercial-relacionamento": (
+        "escola_alunos",
+        "Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+    ),
+}
+
+LACUNAS_DO_ENSINO = (
+    "A fonte ainda não oferece uma lista de portfólios para conferir.",
+    "A fonte de marcos ainda não tem contrato de leitura para a Central.",
+    "A fonte ainda não oferece uma lista de checkpoints esperando laudo.",
+)
+
+
 @dataclass(frozen=True)
 class Fila:
     """Uma linha da portaria.
@@ -113,6 +141,96 @@ class Fila:
     href: str
     o_que_e: str
     onde_mora: str
+
+
+@dataclass(frozen=True)
+class VisaoDeResponsabilidade:
+    """Uma das quatro leituras da Central, sem virar uma segunda fila."""
+
+    nome: str
+    pessoa: str
+    fontes: tuple[str, ...]
+    aprovacoes: tuple[str, ...]
+    destino: str
+    destino_texto: str
+    fila_de_hoje: "Fila | None"
+    lacunas: tuple[str, ...]
+
+
+def _cadastro_de_responsabilidades() -> dict | None:
+    """Lê a publicação versionada das responsabilidades, ou confessa a falta."""
+    pasta = diretorio_do_painel()
+    arquivo = pasta / "responsabilidades.json" if pasta is not None else None
+    if arquivo is None or not arquivo.is_file():
+        return None
+    try:
+        dados = json.loads(arquivo.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(dados, dict):
+        return None
+    funcoes = dados.get("funcoes")
+    unidades = dados.get("unidades")
+    if not isinstance(funcoes, dict) or not isinstance(unidades, list):
+        return None
+    return dados
+
+
+def visoes_de_responsabilidade(
+    fila_de_entrada: Fila,
+) -> tuple[VisaoDeResponsabilidade, ...] | None:
+    """Monta as quatro visões a partir do cadastro, sem inferir titularidade.
+
+    Hoje só a fila de entrada possui uma leitura que permite contar trabalho
+    individualmente. As outras fontes continuam declaradas no cartão da função
+    para que a ausência de integração não pareça uma fila vazia.
+    """
+    cadastro = _cadastro_de_responsabilidades()
+    if cadastro is None:
+        return None
+    funcoes = cadastro["funcoes"]
+    unidades = cadastro["unidades"]
+    visoes = []
+    for chave in FUNCOES_DA_CENTRAL:
+        funcao = funcoes.get(chave)
+        destino = DESTINOS_DAS_FUNCOES.get(chave)
+        if not isinstance(funcao, dict) or destino is None:
+            return None
+        nome = funcao.get("nome")
+        pessoa = funcao.get("pessoa")
+        if not isinstance(nome, str) or not isinstance(pessoa, str):
+            return None
+        unidades_da_funcao = [
+            unidade
+            for unidade in unidades
+            if isinstance(unidade, dict) and unidade.get("titular_funcao") == chave
+        ]
+        fontes = tuple(
+            fonte
+            for unidade in unidades_da_funcao
+            if isinstance((fonte := unidade.get("fonte")), str)
+        )
+        aprovacoes = tuple(
+            finalidade
+            for unidade in unidades_da_funcao
+            if unidade.get("aprova") == nome
+            and isinstance((finalidade := unidade.get("finalidade")), str)
+        )
+        visoes.append(
+            VisaoDeResponsabilidade(
+                nome=nome,
+                pessoa=pessoa,
+                fontes=fontes,
+                aprovacoes=aprovacoes,
+                destino=reverse(destino[0]),
+                destino_texto=destino[1],
+                fila_de_hoje=(
+                    fila_de_entrada if chave == "comercial-relacionamento" else None
+                ),
+                lacunas=LACUNAS_DO_ENSINO if chave == "ensino-comunidade" else (),
+            )
+        )
+    return tuple(visoes)
 
 
 def _mais_antiga(datas: list, agora: datetime) -> "int | None":
@@ -184,10 +302,8 @@ def decisoes_paradas_no_painel(agora: datetime) -> Fila:
 def pendencias(request):
     """A portaria. Abre sempre, mesmo com as duas filas mudas."""
     agora = datetime.now(tz.utc)
-    filas = [
-        quem_quer_entrar(AlunosClient(), agora),
-        decisoes_paradas_no_painel(agora),
-    ]
+    fila_de_entrada = quem_quer_entrar(AlunosClient(), agora)
+    filas = [fila_de_entrada, decisoes_paradas_no_painel(agora)]
     esperando = [f for f in filas if f.quantidade]
     return render(
         request,
@@ -205,5 +321,6 @@ def pendencias(request):
             # apresentá-lo como conta fechada seria a mesma mentira do zero.
             "total_e_um_piso": any(f.quantidade is None for f in filas),
             "ainda_nao_vejo": FILAS_QUE_AINDA_NAO_VEJO,
+            "visoes": visoes_de_responsabilidade(fila_de_entrada),
         },
     )

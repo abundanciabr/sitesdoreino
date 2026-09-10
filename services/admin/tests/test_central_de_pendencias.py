@@ -297,6 +297,76 @@ def test_a_confissao_lista_as_TRES_filas_do_degrau_3_e_nenhuma_outra():
 
 
 # ---------------------------------------------------------------------------
+# 4.1 As quatro visões não escondem fonte que a Central ainda não lê
+# ---------------------------------------------------------------------------
+@respx.mock
+def test_as_quatro_funcoes_encontram_hoje_aprovacoes_atrasos_e_resultados():
+    """A Central oferece a mesma pergunta operacional às quatro pessoas.
+
+    O cartão não inventa uma fila para Ensino só porque ela ainda não tem uma
+    porta que a enumere. A resposta honesta continua sendo visível ao lado das
+    outras três perguntas, em vez de um zero que pareceria trabalho concluído.
+    """
+    _todos_respondem()
+
+    html = _texto(_dentro().get(TELA))
+
+    for funcao, pessoa in (
+        ("Estratégia e Conteúdo", "Arameu"),
+        ("Operações e Tráfego", "Ryan"),
+        ("Ensino e Comunidade", "Lívia"),
+        ("Comercial e Relacionamento", "Maria"),
+    ):
+        assert funcao in html
+        assert pessoa in html
+    for pergunta in (
+        "Fazer hoje",
+        "Aprovar",
+        "Resolver atrasos",
+        "Acompanhar resultados",
+    ):
+        assert html.count(pergunta) == 4
+    assert "A fonte ainda não oferece uma lista de portfólios para conferir." in html
+    assert "A fonte de marcos ainda não tem contrato de leitura para a Central." in html
+    assert "A fonte ainda não oferece uma lista de checkpoints esperando laudo." in html
+
+
+@respx.mock
+def test_fonte_indisponivel_na_visao_comercial_nao_parece_fila_vazia():
+    """A única fila já integrada não responde: a visão precisa dizer isso."""
+    respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
+    respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "Comercial e Relacionamento" in html
+    assert "A fonte de oportunidades e acessos não respondeu agora." in html
+    assert "0 pendência comercial" not in html
+
+
+@respx.mock
+def test_sem_cadastro_de_responsabilidades_a_central_nao_inventa_quatro_titulares(
+    monkeypatch,
+):
+    """O cadastro publicado caiu: não há pessoa atribuível por adivinhação."""
+    monkeypatch.setattr(central, "diretorio_do_painel", lambda: None)
+    _todos_respondem()
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "Não consegui ler o cadastro de responsabilidades." in html
+    assert "Estratégia e Conteúdo" not in html
+
+
+@respx.mock
+def test_cadastro_de_responsabilidades_de_formato_errado_e_recusado(monkeypatch):
+    """JSON válido ainda pode não ser o cadastro que a tela espera."""
+    monkeypatch.setattr(central.json, "loads", lambda _: [])
+
+    assert central._cadastro_de_responsabilidades() is None
+
+
+# ---------------------------------------------------------------------------
 # 5. O número do painel é o do PAINEL, lido da página que o gerador produz
 # ---------------------------------------------------------------------------
 def test_o_carimbo_da_fila_casa_com_a_pagina_REAL_do_gerador():
