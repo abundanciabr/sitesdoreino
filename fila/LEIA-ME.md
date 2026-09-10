@@ -101,6 +101,12 @@ onde também entram guardas comuns de responsabilidade. Medição impossível sa
 como ERROR; prova medida e incompatível sai como recusa. Nenhum dos dois escreve
 o evento.
 
+Quando o próprio PR introduz `reconciliar`, o aceite de sua TAR só existe depois
+que esse PR publica. Nesse caso, use a exceção **“À mão, quando o `make pr` não
+serve”** de `painel/LEIA-ME.md`: primeiro embarque o registro de aceite em um PR
+de escrituração; depois rode `reconciliar` e embarque apenas o evento gerado em
+outro PR de escrituração. Não ressubmeta a tarefa concluída nem crie outra TAR.
+
 **O comprovante nasce na bancada, nunca no espelho** (desde 30/08/2026,
 TAR-018). O balcão escreve o evento na pasta em que foi chamado — e a ordem de
 partida antiga (pegar a tarefa *antes* de criar o worktree) fazia esse arquivo

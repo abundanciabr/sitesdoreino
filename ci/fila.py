@@ -984,10 +984,22 @@ def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
     return proc.returncode == 0
 
 
+def bancada_contem_main_publicada(raiz: Path) -> bool:
+    _git_da_fila(
+        raiz, "fetch", "origin", "main", para_que="atualizar a fila publicada"
+    )
+    return _git_predicado(
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        "origin/main",
+        "HEAD",
+        descricao="conferir se a bancada contém a fila publicada",
+    )
+
+
 def problemas_da_linhagem(
     submissao: dict,
-    head: str,
-    merge: str,
     medicao: dict,
 ) -> list[str]:
     problemas = []
@@ -1005,17 +1017,10 @@ def problemas_da_linhagem(
     ]
     if codigo:
         problemas.append("há código posterior à revisão: " + ", ".join(codigo))
-    if not re.fullmatch(r"[0-9a-f]{40}", head or ""):
-        problemas.append("o HEAD final não é um SHA completo")
-    if not re.fullmatch(r"[0-9a-f]{40}", merge or ""):
-        problemas.append("o merge publicado não é um SHA completo")
     return problemas
 
 
 def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
-    _git_da_fila(
-        raiz, "fetch", "origin", "main", para_que="atualizar a linha publicada"
-    )
     profundidade = _git_da_fila(
         raiz,
         "rev-parse",
@@ -1038,12 +1043,14 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
         raise ErroDeInstrumentacao("o git não devolveu a árvore da revisão")
     caminhos = _git_da_fila(
         raiz,
-        "diff",
+        "log",
+        "--diff-merges=first-parent",
+        "--format=",
         "--name-only",
-        revisao,
-        head,
+        f"{revisao}..{head}",
         para_que="conferir mudanças posteriores à revisão",
     ).splitlines()
+    caminhos = [caminho for caminho in caminhos if caminho]
     medicao = {
         "arvore_medida": arvore_medida,
         "revisao_ancestral": _git_predicado(
@@ -1064,7 +1071,7 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
         ),
         "caminhos_posteriores": caminhos,
     }
-    problemas = problemas_da_linhagem(submissao, head, merge, medicao)
+    problemas = problemas_da_linhagem(submissao, medicao)
     if problemas:
         raise RecusaDeReconciliacao("; ".join(problemas))
 
@@ -1112,6 +1119,8 @@ def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -
         raise RecusaDeReconciliacao("o registro ainda declara uma pendência do dono")
     verificado_em = str(registro.get("verificado_em") or "")
     try:
+        if not RE_DATA.fullmatch(verificado_em):
+            raise ValueError
         datetime.strptime(verificado_em, "%Y-%m-%d")
     except ValueError:
         raise RecusaDeReconciliacao(
@@ -2069,6 +2078,15 @@ def cmd_reconciliar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("reconciliar", raiz)
     if recusa:
         print(recusa)
+        return 1
+    if not bancada_contem_main_publicada(raiz):
+        print(
+            "RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou."
+        )
+        print(
+            "Faça merge de origin/main nesta bancada e repita reconciliar; "
+            "nenhuma reserva ou evento foi alterado."
+        )
         return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
