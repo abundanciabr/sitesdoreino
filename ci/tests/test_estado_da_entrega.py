@@ -156,6 +156,44 @@ def test_historia_sem_job_exigido_falha_fechado(monkeypatch):
         entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
 
 
+def test_historia_truncada_falha_fechado(monkeypatch):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+    from _nucleo import ErroDeInstrumentacao
+
+    paginas = []
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
+        "admin": Celula("admin", ("services/admin",), ()),
+    })
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {
+        CELULA: ["services/**"], INFRA: ["infra/**"],
+    })
+    monkeypatch.setattr(entrega, "executar", lambda args, **kw: SimpleNamespace(
+        stdout="false" if args[1] == "rev-parse" and "--is-shallow-repository" in args
+        else SHA if args[1] == "rev-parse" else ""
+    ))
+
+    def api(raiz, caminho, **kw):
+        pagina = int(caminho.rsplit("page=", 1)[1])
+        paginas.append(pagina)
+        return {
+            "total_count": 101,
+            "workflow_runs": [run(id=n) for n in range(1, 101)] if pagina == 1 else [],
+        }
+
+    monkeypatch.setattr(entrega, "_api", api)
+    monkeypatch.setattr(entrega, "consultar_jobs", lambda *a: [
+        {"name": "deploy (admin)", "status": "completed", "conclusion": "success"},
+    ])
+    monkeypatch.setattr(entrega, "consultar_publicacao", lambda *a: {
+        "terminal": True, "estado": "PUBLICADO", "sha_integrado": SHA,
+    })
+
+    with pytest.raises(ErroDeInstrumentacao, match="histórico de jobs ficou incompleto"):
+        entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
+    assert paginas == [1, 2]
+
+
 def test_cli_consulta_uma_vez_sem_espera(monkeypatch, capsys):
     import esperar
     monkeypatch.setattr(entrega,"consultar_entrega",lambda *a: dict(estado="AGUARDANDO_PUBLICACAO",terminal=False,sha_integrado=SHA))

@@ -255,9 +255,14 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
             raise ErroDeInstrumentacao(
                 "histórico mudou durante a consulta; confira novamente antes de julgar"
             )
-        runs.extend(resposta["workflow_runs"])
+        pagina_de_runs = resposta["workflow_runs"]
+        runs.extend(pagina_de_runs)
         if len(runs) >= total:
             break
+        if not pagina_de_runs:
+            raise ErroDeInstrumentacao(
+                "histórico de jobs ficou incompleto durante a consulta; confira novamente"
+            )
     if total is None or len(runs) != total or len({run.get("id") for run in runs}) != total:
         raise ErroDeInstrumentacao(
             "histórico de jobs ficou incompleto durante a consulta; confira novamente"
