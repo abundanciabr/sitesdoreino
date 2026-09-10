@@ -12,7 +12,9 @@ INFRA = ".github/workflows/deploy-infra.yml"
 
 def run(path=CELULA, **mudancas):
     dados = dict(id=20 if path == INFRA else 10, path=path, head_sha=SHA, head_branch="main", event="push",
-                 status="completed", conclusion="success", html_url="https://example.invalid/run/10")
+                 status="completed", conclusion="success", run_attempt=1,
+                 run_started_at="2026-09-09T10:00:00Z",
+                 html_url="https://example.invalid/run/10")
     dados.update(mudancas)
     return dados
 
@@ -103,11 +105,16 @@ def test_dependencia_declarada_mergeada_com_deploy_vermelho_bloqueia(monkeypatch
 def test_historia_de_celula_e_provedor_e_medida_antes_de_liberar(monkeypatch):
     from types import SimpleNamespace
     from mapa_de_celulas import Celula
+    from _nucleo import ErroDeInstrumentacao
     mapa = {n: Celula(n,("services/"+n,),deps) for n,deps in
             [("loja",("vendas",)),("vendas",()),("quiz",())]}
     monkeypatch.setattr(entrega.mapa_de_celulas,"carregar",lambda *a: mapa)
     monkeypatch.setattr(entrega,"caminhos_dos_deploys",lambda *a: {CELULA:["services/**"],INFRA:["infra/traefik/**"]})
-    monkeypatch.setattr(entrega,"_api",lambda *a,**kw: dict(workflow_runs=[]))
+    monkeypatch.setattr(entrega,"_api",lambda *a,**kw: dict(total_count=1,workflow_runs=[run()]))
+    monkeypatch.setattr(entrega,"consultar_jobs",lambda *a: [
+        dict(name="deploy (loja)",status="completed",conclusion="success"),
+        dict(name="deploy (vendas)",status="completed",conclusion="success"),
+    ])
     vistos=[]
     def executar(args,**kw):
         vistos.append(args)
@@ -123,8 +130,30 @@ def test_historia_de_celula_e_provedor_e_medida_antes_de_liberar(monkeypatch):
     assert entrega.publicacoes_anteriores(RAIZ,["services/loja/app.py"])[0]["estado"] == "FALHA_PUBLICACAO"
     assert any("services/vendas" in a for a in vistos)
     vistos.clear()
-    assert entrega.publicacoes_anteriores(RAIZ,["services/quiz/app.py"]) == []
+    with pytest.raises(ErroDeInstrumentacao, match=r"não prova os jobs: deploy \(quiz\)"):
+        entrega.publicacoes_anteriores(RAIZ,["services/quiz/app.py"])
     assert not any("services/vendas" in a for a in vistos)
+
+
+def test_historia_sem_job_exigido_falha_fechado(monkeypatch):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+    from _nucleo import ErroDeInstrumentacao
+
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
+        "admin": Celula("admin", ("services/admin",), ()),
+    })
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {
+        CELULA: ["services/**"], INFRA: ["infra/**"],
+    })
+    monkeypatch.setattr(entrega, "executar", lambda args, **kw: SimpleNamespace(
+        stdout="false" if args[1] == "rev-parse" and "--is-shallow-repository" in args
+        else SHA if args[1] == "rev-parse" else ""
+    ))
+    monkeypatch.setattr(entrega, "_api", lambda *a, **kw: {"total_count": 0, "workflow_runs": []})
+
+    with pytest.raises(ErroDeInstrumentacao, match=r"não prova os jobs: deploy \(admin\)"):
+        entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
 
 
 def test_cli_consulta_uma_vez_sem_espera(monkeypatch, capsys):
@@ -249,7 +278,7 @@ def test_cli_erro_inesperado_preserva_contrato_json(monkeypatch, capsys):
     assert "Corrija a consulta" in estado["acao"]
 
 
-@pytest.mark.parametrize("fonte", ["job", "caminho", "pagina"])
+@pytest.mark.parametrize("fonte", ["job", "caminho"])
 def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte):
     from types import SimpleNamespace
     from mapa_de_celulas import Celula
@@ -266,19 +295,11 @@ def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte)
             return SimpleNamespace(stdout="painel/registros/a.js" if args[-1]==SHA else "services/admin/app.py")
         return SimpleNamespace(stdout="")
     monkeypatch.setattr(entrega,"executar",executar)
-    paginas = set()
     def api(raiz,caminho,**kw):
         runs = [run(id=11),run(head_sha=imagem,conclusion="failure")]
-        if fonte == "caminho": return dict(workflow_runs=[])
-        if fonte == "pagina":
-            pagina = int(caminho.rsplit("page=",1)[1])
-            assert pagina not in paginas, "repetiu a mesma página"
-            paginas.add(pagina)
-            runs = runs[pagina-1:pagina]
-        return dict(workflow_runs=runs)
-    if fonte == "pagina":
-        import rerun_de_deploy
-        monkeypatch.setattr(rerun_de_deploy,"RUNS_OLHADOS_ATRAS",1)
+        if fonte == "caminho":
+            runs = [run(head_sha=imagem,conclusion="failure")]
+        return dict(total_count=len(runs),workflow_runs=runs)
     monkeypatch.setattr(entrega,"_api",api)
     monkeypatch.setattr(entrega,"consultar_jobs",lambda raiz,r: [dict(name="publicar-dados-admin" if r["id"]==11 else "deploy (admin)",status="completed",conclusion="success" if r["id"]==11 else "failure")])
     monkeypatch.setattr(entrega,"consultar_publicacao",lambda raiz,sha,arquivos: dict(terminal=sha==SHA,estado="PUBLICADO" if sha==SHA else "FALHA_PUBLICACAO",sha_integrado=sha))
@@ -310,10 +331,7 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
 
     def api(raiz, caminho, **kw):
         chamadas.append(caminho)
-        if "head_sha=" in caminho:
-            return {"workflow_runs": [run()]}
-        pagina = int(caminho.rsplit("page=", 1)[1])
-        return {"workflow_runs": [run(id=n) for n in range(1, 31)] if pagina == 1 else []}
+        return {"total_count": 30, "workflow_runs": [run(id=n) for n in range(1, 31)]}
 
     monkeypatch.setattr(entrega, "executar", executar)
     monkeypatch.setattr(entrega, "_api", api)
@@ -334,14 +352,18 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
 
     assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
     assert jobs_consultados
-    assert sum("actions/workflows/" in chamada for chamada in chamadas) == 1
+    assert chamadas == ["actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page=100&page=1"]
     assert len(publicacoes) == 1
 
 
-def test_historico_consulta_jobs_em_paralelo_sem_mudar_a_prova(monkeypatch):
+def test_historico_paralelo_reduz_na_ordem_da_tentativa(monkeypatch):
+    from threading import Event
     from types import SimpleNamespace
     from mapa_de_celulas import Celula
 
+    antigo_terminou = Event()
+    recente = "c" * 40
+    antigo = "b" * 40
     consultados = []
     monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
         "admin": Celula("admin", ("services/admin",), ()),
@@ -351,25 +373,86 @@ def test_historico_consulta_jobs_em_paralelo_sem_mudar_a_prova(monkeypatch):
     })
     monkeypatch.setattr(entrega, "executar", lambda args, **kw: SimpleNamespace(
         stdout="false" if args[1] == "rev-parse" and "--is-shallow-repository" in args
-        else SHA if args[1] in {"rev-parse", "log"} else "services/admin/app.py"
+        else SHA if args[1] == "rev-parse" else "services/admin/app.py"
         if args[1] == "diff" else ""
     ))
     monkeypatch.setattr(entrega, "_api", lambda *a, **kw: {
-        "workflow_runs": [run(id=n) for n in range(1, 31)],
+        "total_count": 3,
+        "workflow_runs": [
+            run(id=30, run_started_at="2026-09-09T12:00:00Z"),
+            run(id=20, head_sha=recente, run_started_at="2026-09-09T11:00:00Z"),
+            run(id=10, head_sha=antigo, run_started_at="2026-09-09T10:00:00Z"),
+        ],
     })
 
-    def consultar_jobs(raiz, run):
-        consultados.append(run["id"])
+    def consultar_jobs(raiz, atual):
+        consultados.append(atual["id"])
+        if atual["id"] == 30:
+            return [{"name": "detectar", "status": "completed", "conclusion": "success"}]
+        if atual["id"] == 10:
+            antigo_terminou.set()
+        else:
+            assert antigo_terminou.wait(1), "a consulta antiga não terminou durante a nova"
         return [{"name": "deploy (admin)", "status": "completed", "conclusion": "success"}]
 
     monkeypatch.setattr(entrega, "consultar_jobs", consultar_jobs)
-    monkeypatch.setattr(entrega, "consultar_publicacao", lambda *a: {
-        "terminal": True, "estado": "PUBLICADO", "sha_integrado": SHA,
+    monkeypatch.setattr(entrega, "consultar_publicacao", lambda raiz, sha, arquivos: {
+        "terminal": sha != recente,
+        "estado": "FALHA_PUBLICACAO" if sha == recente else "PUBLICADO",
+        "sha_integrado": sha,
     })
 
-    assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
-    assert consultados
-    assert len(consultados) <= 30
+    bloqueios = entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
+    assert [bloqueio["sha_integrado"] for bloqueio in bloqueios] == [recente]
+    assert set(consultados) == {10, 20, 30}
+
+
+def test_reexecucao_recente_com_id_antigo_na_segunda_pagina_decide(monkeypatch):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+
+    antigo = "b" * 40
+    recente = "c" * 40
+    paginas = []
+    jobs_consultados = []
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
+        "admin": Celula("admin", ("services/admin",), ()),
+    })
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {
+        CELULA: ["services/**"], INFRA: ["infra/**"],
+    })
+    monkeypatch.setattr(entrega, "executar", lambda args, **kw: SimpleNamespace(
+        stdout="false" if args[1] == "rev-parse" and "--is-shallow-repository" in args
+        else SHA if args[1] == "rev-parse" else "services/admin/app.py"
+        if args[1] == "diff" else ""
+    ))
+
+    def api(raiz, caminho, **kw):
+        pagina = int(caminho.rsplit("page=", 1)[1])
+        paginas.append(pagina)
+        runs = [run(id=n, head_sha=antigo) for n in range(20, 120)] if pagina == 1 else [
+            run(id=10, run_attempt=2, head_sha=recente,
+                run_started_at="2026-09-09T11:00:00Z"),
+        ]
+        return {"total_count": 101, "workflow_runs": runs}
+
+    monkeypatch.setattr(entrega, "_api", api)
+
+    def consultar_jobs(raiz, atual):
+        jobs_consultados.append(atual["id"])
+        return [{"name": "deploy (admin)", "status": "completed", "conclusion": "success"}]
+
+    monkeypatch.setattr(entrega, "consultar_jobs", consultar_jobs)
+    monkeypatch.setattr(entrega, "consultar_publicacao", lambda raiz, sha, arquivos: {
+        "terminal": sha == antigo,
+        "estado": "PUBLICADO" if sha == antigo else "FALHA_PUBLICACAO",
+        "sha_integrado": sha,
+    })
+
+    bloqueios = entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
+    assert [bloqueio["sha_integrado"] for bloqueio in bloqueios] == [recente]
+    assert paginas == [1, 2]
+    assert jobs_consultados == [10]
 
 
 @pytest.mark.parametrize("arquivo,esperado", [("painel/registros/a.js","PUBLICADO"),("painel/registros/a.js","FALHA_PUBLICACAO"),("docs/decisoes/plano.md","SEM_PUBLICACAO")])
