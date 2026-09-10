@@ -5,7 +5,7 @@
   titulo: "Pedido 1517 fecha o recibo dos oito Bosses",
   detalhe: "A publicação comprovada no registro 008 encerra o recibo 20260910-006. Esta resposta apenas liga o recibo à prova terminal já registrada.",
   autoridade: "sessao",
-  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34433902392",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1517; https://github.com/abundanciabr/sitesdoreino/actions/runs/34433902392",
   verificado_em: "2026-09-10",
   precisa_do_dono: false,
   responde_a: "20260910-006-cursos-marcar-boss-com-titulo-real",
