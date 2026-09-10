@@ -1673,7 +1673,11 @@ def cmd_criar(raiz: Path, args) -> int:
     if not cadastro.exists():
         print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
         return 1
-    problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    try:
+        problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+        print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        return 1
     if problemas_da_responsabilidade:
         print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
         for problema in problemas_da_responsabilidade:

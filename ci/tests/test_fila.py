@@ -1717,7 +1717,17 @@ def args_de_reconciliar(**extra):
 
 
 def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypatch):
-    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento(), submissao_reconciliavel()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+        "unidades": [{"id": "medicao-de-esforco", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "evidencia": "prova"}],
+    }, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)

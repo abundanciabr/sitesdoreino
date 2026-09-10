@@ -110,7 +110,7 @@ def main() -> int:
     parser.add_argument("--entrega", metavar="RESPONSABILIDADE")
     parser.add_argument("--auditar", action="store_true")
     args = parser.parse_args()
-    erros = validar_entrega(args.raiz, args.entrega) if args.entrega else auditar(args.raiz)
+    erros = validar_entrega(args.raiz, args.entrega) if args.entrega and not args.auditar else auditar(args.raiz)
     if erros:
         print("RESPONSABILIDADE NÃO COMPROVADA")
         for erro in erros:

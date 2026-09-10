@@ -59,7 +59,7 @@ def validar(raiz: Path) -> list[str]:
                 if not isinstance(valor, str) or not valor.strip():
                     erros.append(f"{identificador}: {campo} precisa ser texto preenchido")
         if observacao.get("situacao_dado") == "teste" and observacao.get("qualidade") != "não avaliada; dado de teste":
-            erros.append(f"{observacao['id']}: teste precisa declarar que não mede qualidade real")
+            erros.append(f"{identificador}: teste precisa declarar que não mede qualidade real")
     return erros
 
 
