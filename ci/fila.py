@@ -2063,7 +2063,11 @@ def _concluir_com_prova(
         print("Crie painel/responsabilidades.json antes de concluir a entrega.")
         return 1
     if responsabilidade and cadastro.exists():
-        problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
+        try:
+            problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
+        except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+            print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+            return 1
         if problemas:
             print("RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada.")
             for problema in problemas:

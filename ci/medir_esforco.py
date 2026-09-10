@@ -22,10 +22,20 @@ def carregar(raiz: Path) -> dict:
 
 
 def validar(raiz: Path) -> list[str]:
-    dados = carregar(raiz)
+    try:
+        dados = carregar(raiz)
+    except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+        return [f"não foi possível ler painel/medicoes/esforco.json ({erro}); corrija o arquivo e repita"]
+    if not isinstance(dados, dict):
+        return ["esforco.json precisa conter um objeto JSON com observacoes"]
     erros = []
     observacoes = dados.get("observacoes", [])
+    if not isinstance(observacoes, list):
+        return ["observacoes precisa ser uma lista de objetos"]
     for observacao in observacoes:
+        if not isinstance(observacao, dict):
+            erros.append("observação precisa ser um objeto")
+            continue
         identificador = observacao.get("id")
         if not isinstance(identificador, str) or not identificador.strip():
             erros.append("observação sem identificador")
@@ -81,7 +91,14 @@ def resumo(raiz: Path) -> dict:
         "linha_de_base": dados.get("situacao_linha_de_base", "indisponível"),
         "observacoes_reais": len(reais),
         "economia_media_percentual": economia_media,
-        "produtividade_comprovada": bool(reais and economia_media is not None and economia_media > 80),
+        "produtividade_comprovada": bool(
+            len(reais) >= 2
+            and economia_media is not None
+            and economia_media > 80
+            and isinstance(dados.get("conclusoes"), dict)
+            and {"funcionamento", "economia", "qualidade", "capacidade"} <= set(dados["conclusoes"])
+            and all(dados["conclusoes"][chave] == "comprovado" for chave in ("funcionamento", "economia", "qualidade", "capacidade"))
+        ),
     }
 
 
