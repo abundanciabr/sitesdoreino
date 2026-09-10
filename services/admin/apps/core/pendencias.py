@@ -108,6 +108,33 @@ FILAS_QUE_AINDA_NAO_VEJO = (
     ("Checkpoints de aula esperando laudo", "/cursos/plantao"),
 )
 
+FUNCOES_DA_CENTRAL = (
+    "estrategia-conteudo",
+    "operacoes-trafego",
+    "ensino-comunidade",
+    "comercial-relacionamento",
+)
+
+DESTINOS_DAS_FUNCOES = {
+    "estrategia-conteudo": ("placar", "Ver o placar e preparar a revisão semanal."),
+    "operacoes-trafego": ("painel", "Ver os pedidos e incidentes do sistema."),
+    "ensino-comunidade": ("escola", "Abrir a operação da escola."),
+    "comercial-relacionamento": (
+        "escola_alunos",
+        "Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+    ),
+}
+
+LACUNAS_DO_ENSINO = (
+    "A fonte ainda não oferece uma lista de portfólios para conferir.",
+    "A fonte de marcos ainda não tem contrato de leitura para a Central.",
+    "A fonte ainda não oferece uma lista de checkpoints esperando laudo.",
+)
+
+INTEGRACAO_INDISPONIVEL = "integracao_indisponivel"
+ACESSO_NEGADO = "acesso_negado"
+_ESTADOS_SEM_FILA = frozenset((INTEGRACAO_INDISPONIVEL, ACESSO_NEGADO))
+
 
 @dataclass(frozen=True)
 class Fila:
@@ -125,6 +152,155 @@ class Fila:
     onde_mora: str
     tarefas: frozenset[str] | None = None
     sem_responsavel: int = 0
+
+
+@dataclass(frozen=True)
+class FonteDeTrabalho:
+    """A leitura disponível de uma fonte, sem confundir ausência e indisponibilidade."""
+
+    nome: str
+    fila: "Fila | None"
+    singular: "str | None" = None
+    plural: "str | None" = None
+    vazio: "str | None" = None
+    estado: "str | None" = None
+    explicacao: "str | None" = None
+    proximo_gesto: "str | None" = None
+
+    def __post_init__(self) -> None:
+        if self.fila is None:
+            if (
+                self.estado not in _ESTADOS_SEM_FILA
+                or not self.explicacao
+                or not self.proximo_gesto
+            ):
+                raise ValueError(
+                    "Fonte sem leitura precisa explicar estado e próximo gesto."
+                )
+            return
+        if self.estado or self.explicacao or self.proximo_gesto:
+            raise ValueError("Fonte com fila não pode declarar indisponibilidade.")
+        if self.fila.quantidade is not None and not all(
+            (self.singular, self.plural, self.vazio)
+        ):
+            raise ValueError("Fonte com fila precisa nomear estado e ação.")
+
+
+@dataclass(frozen=True)
+class Aprovacao:
+    """Uma aprovação com a porta interna que leva à fonte que a decide."""
+
+    finalidade: str
+    href: str
+
+
+@dataclass(frozen=True)
+class VisaoDeResponsabilidade:
+    """Uma das quatro leituras da Central, sem virar uma segunda fila."""
+
+    nome: str
+    pessoa: "str | None"
+    fontes: tuple[str, ...]
+    aprovacoes: tuple[Aprovacao, ...]
+    destino: str
+    destino_texto: str
+    fontes_de_trabalho: tuple[FonteDeTrabalho, ...]
+    lacunas: tuple[str, ...]
+    sem_substituto: bool = False
+
+
+def _cadastro_de_responsabilidades() -> dict | None:
+    """Lê a publicação versionada das responsabilidades, ou confessa a falta."""
+    pasta = diretorio_do_painel()
+    arquivo = pasta / "responsabilidades.json" if pasta is not None else None
+    if arquivo is None or not arquivo.is_file():
+        return None
+    try:
+        dados = json.loads(arquivo.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    funcoes = dados.get("funcoes") if isinstance(dados, dict) else None
+    unidades = dados.get("unidades") if isinstance(dados, dict) else None
+    if not isinstance(funcoes, dict) or not isinstance(unidades, list):
+        return None
+    return dados
+
+
+def visoes_de_responsabilidade(
+    fila_de_entrada: Fila,
+) -> tuple[VisaoDeResponsabilidade, ...] | None:
+    """Monta as quatro visões a partir do cadastro, sem inferir titularidade."""
+    cadastro = _cadastro_de_responsabilidades()
+    if cadastro is None:
+        return None
+    funcoes = cadastro["funcoes"]
+    unidades = cadastro["unidades"]
+    visoes = []
+    for chave in FUNCOES_DA_CENTRAL:
+        funcao = funcoes.get(chave)
+        destino = DESTINOS_DAS_FUNCOES.get(chave)
+        if not isinstance(funcao, dict) or destino is None:
+            return None
+        nome = funcao.get("nome")
+        pessoa = funcao.get("pessoa")
+        sem_substituto = funcao.get("sem_substituto")
+        if (
+            not isinstance(nome, str)
+            or not isinstance(pessoa, str)
+            or not isinstance(sem_substituto, bool)
+        ):
+            return None
+        pessoa = pessoa.strip() or None
+        unidades_da_funcao = [
+            unidade
+            for unidade in unidades
+            if isinstance(unidade, dict) and unidade.get("titular_funcao") == chave
+        ]
+        fontes = tuple(
+            fonte
+            for unidade in unidades_da_funcao
+            if isinstance((fonte := unidade.get("fonte")), str)
+        )
+        aprovacoes = tuple(
+            Aprovacao(finalidade=finalidade, href=reverse(destino[0]))
+            for unidade in unidades_da_funcao
+            if unidade.get("aprova") == nome
+            and isinstance((finalidade := unidade.get("finalidade")), str)
+        )
+        fontes_de_trabalho = ()
+        if chave == "comercial-relacionamento":
+            fontes_de_trabalho = (
+                FonteDeTrabalho(
+                    nome="Acessos à escola",
+                    fila=fila_de_entrada,
+                    singular="pessoa aguardando acesso",
+                    plural="pessoas aguardando acesso",
+                    vazio="Nenhuma pessoa aguarda acesso nesta fonte agora.",
+                ),
+                FonteDeTrabalho(
+                    nome="CRM de oportunidades",
+                    fila=None,
+                    estado=INTEGRACAO_INDISPONIVEL,
+                    explicacao="Ainda não há contrato de leitura nem consumidor.",
+                    proximo_gesto=(
+                        "Acompanhe o CRM na fonte dona até a Central ganhar leitura."
+                    ),
+                ),
+            )
+        visoes.append(
+            VisaoDeResponsabilidade(
+                nome=nome,
+                pessoa=pessoa,
+                fontes=fontes,
+                aprovacoes=aprovacoes,
+                destino=reverse(destino[0]),
+                destino_texto=destino[1],
+                fontes_de_trabalho=fontes_de_trabalho,
+                lacunas=LACUNAS_DO_ENSINO if chave == "ensino-comunidade" else (),
+                sem_substituto=sem_substituto,
+            )
+        )
+    return tuple(visoes)
 
 
 def _mais_antiga(datas: list, agora: datetime) -> "int | None":
@@ -291,8 +467,9 @@ def pendencias(request):
     """A portaria preserva as fontes disponíveis quando outra não responde."""
     agora = datetime.now(tz.utc)
     painel = decisoes_paradas_no_painel(agora)
+    fila_de_entrada = quem_quer_entrar(AlunosClient(), agora)
     filas = [
-        quem_quer_entrar(AlunosClient(), agora),
+        fila_de_entrada,
         painel,
         decisoes_paradas_na_fila(agora, painel.tarefas or frozenset()),
     ]
@@ -323,5 +500,6 @@ def pendencias(request):
             "total_e_um_piso": any(f.quantidade is None for f in filas)
             or bool(sem_responsavel),
             "ainda_nao_vejo": FILAS_QUE_AINDA_NAO_VEJO,
+            "visoes": visoes_de_responsabilidade(fila_de_entrada),
         },
     )
