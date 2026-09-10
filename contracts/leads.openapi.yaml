@@ -222,6 +222,34 @@ paths:
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade ou transferência inexistente }
         '409': { description: A transferência não está pendente ou pertence a outro titular }
+  /opportunities/{opportunity_id}/transfers/{transfer_id}/refuse:
+    parameters:
+      - name: opportunity_id
+        in: path
+        required: true
+        schema: { type: string }
+      - name: transfer_id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      operationId: refuseOpportunityTransfer
+      summary: Recusa uma transferência pendente sem trocar o titular da oportunidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecusarTransferenciaOportunidade' }
+      responses:
+        '200':
+          description: Transferência recusada; o titular atual permanece responsável
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransferenciaResponsabilidade' }
+        '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
+        '404': { description: Oportunidade ou transferência inexistente }
+        '409': { description: A transferência não está pendente ou pertence a outro titular }
+        '422': { description: Payload inválido }
   /opportunities/{opportunity_id}/close:
     parameters:
       - name: opportunity_id
@@ -280,6 +308,9 @@ components:
     EtapaOportunidade:
       type: string
       enum: [nova, qualificada, proposta, negociacao, ganha, perdida, desqualificada]
+    EtapaAbertaOportunidade:
+      type: string
+      enum: [nova, qualificada, proposta, negociacao]
     TitularOportunidade:
       type: object
       additionalProperties: false
@@ -328,7 +359,7 @@ components:
         autor_id: { type: string }
         tipo:
           type: string
-          enum: [nota, contato, etapa_alterada, transferencia_solicitada, transferencia_aceita, encerramento, reabertura]
+          enum: [nota, contato, etapa_alterada, transferencia_solicitada, transferencia_aceita, transferencia_recusada, encerramento, reabertura]
         descricao: { type: string }
         evidencia: { type: string }
     Oportunidade:
@@ -368,7 +399,7 @@ components:
       required: [lead_id, etapa, titular_id, fonte, proximo_passo]
       properties:
         lead_id: { type: string }
-        etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
+        etapa: { $ref: '#/components/schemas/EtapaAbertaOportunidade' }
         titular_id: { type: string }
         fonte: { $ref: '#/components/schemas/FonteOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
@@ -377,7 +408,7 @@ components:
       additionalProperties: false
       minProperties: 1
       properties:
-        etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
+        etapa: { $ref: '#/components/schemas/EtapaAbertaOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
     RegistrarHistoricoOportunidade:
       type: object
@@ -409,6 +440,12 @@ components:
         estado: { type: string, enum: [pendente, aceita, recusada] }
         solicitada_em: { type: string, format: date-time }
         concluida_em: { type: string, format: date-time }
+    RecusarTransferenciaOportunidade:
+      type: object
+      additionalProperties: false
+      required: [motivo]
+      properties:
+        motivo: { type: string, minLength: 1 }
     EncerrarOportunidade:
       type: object
       additionalProperties: false
@@ -426,8 +463,7 @@ components:
       properties:
         motivo: { type: string, minLength: 1 }
         etapa:
-          type: string
-          enum: [nova, qualificada, proposta, negociacao]
+          $ref: '#/components/schemas/EtapaAbertaOportunidade'
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
     PaginaDeOportunidades:
       type: object
