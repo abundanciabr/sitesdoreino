@@ -61,6 +61,7 @@ if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import reservar  # noqa: E402
+import responsabilidades  # noqa: E402
 import estado_da_entrega  # noqa: E402
 import revisor_de_pouso  # noqa: E402
 from _nucleo import (  # noqa: E402
@@ -152,6 +153,8 @@ CAMPOS_DA_TAREFA = {
 MANUTENCAO = "manutencao"
 CAMPOS_OPCIONAIS_DA_TAREFA = {
     "depende_de": list,
+    "responsabilidade": str,
+    "responsabilidade_obrigatoria": bool,
     "notas": str,
     "cria": list,
     "move": list,
@@ -1616,11 +1619,16 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     return tarefas, eventos
 
 
+def normalizar_responsabilidade(valor: object) -> str:
+    return valor.strip() if isinstance(valor, str) else ""
+
+
 def cmd_criar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("criar", raiz)
     if recusa:
         print(recusa)
         return 1
+    responsabilidade = normalizar_responsabilidade(getattr(args, "responsabilidade", ""))
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -1658,6 +1666,23 @@ def cmd_criar(raiz: Path, args) -> int:
         print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
+    if not responsabilidade:
+        print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if not cadastro.exists():
+        print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
+        return 1
+    try:
+        problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+        print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        return 1
+    if problemas_da_responsabilidade:
+        print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
+        for problema in problemas_da_responsabilidade:
+            print(f"- {problema}")
+        return 1
     numero = reservar.alocar_numero(raiz, "tarefa")
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
@@ -1675,7 +1700,10 @@ def cmd_criar(raiz: Path, args) -> int:
         "despacho": despacho,
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "responsabilidade_obrigatoria": True,
     }
+    if responsabilidade:
+        dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
     _escrever_json(caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
@@ -2019,6 +2047,32 @@ def _concluir_com_prova(
     Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
     soltura da reserva e da escrita do evento, para valer nos dois caminhos.
     """
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefa = tarefas.get(tid)
+    if tarefa is None and (raiz / "fila" / "tarefas").exists():
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
+        print("RECUSADO: tarefa nova sem responsabilidade declarada.")
+        print("Cadastre uma unidade de responsabilidade antes de concluir.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not cadastro.exists():
+        print("RECUSADO: cadastro de responsabilidades não existe.")
+        print("Crie painel/responsabilidades.json antes de concluir a entrega.")
+        return 1
+    if responsabilidade and cadastro.exists():
+        try:
+            problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
+        except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+            print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+            return 1
+        if problemas:
+            print("RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            return 1
     caminho = _escrever_evento(
         raiz,
         tid,
@@ -2079,6 +2133,10 @@ def cmd_concluir(raiz: Path, args) -> int:
         args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
 
+
+def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
+    """Somente tarefas criadas pela guarda exigem responsabilidade."""
+    return tarefa.get("responsabilidade_obrigatoria") is True
 
 def cmd_reconciliar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("reconciliar", raiz)
@@ -2408,6 +2466,7 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
+    p.add_argument("--responsabilidade", required=True, help="id da unidade de responsabilidade que acompanha o desfecho")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
     p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")

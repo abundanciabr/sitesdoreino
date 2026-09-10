@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 
 import fila
+import responsabilidades
 from _nucleo import ErroDeInstrumentacao, Estado, Resultado
 
 
@@ -40,6 +41,7 @@ def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
         "evidencia_exigida": "um PR mergeado",
         "despacho": "faça a coisa, com calma",
         "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
         "criada_em": "2026-08-29",
     }
     dados.update(sobrescreve)
@@ -234,6 +236,7 @@ def test_criar_recusa_move_invalido_ANTES_de_gastar_numero(tmp_path, monkeypatch
         despacho="faça",
         despacho_arquivo="",
         origem="teste",
+        responsabilidade="medicao-de-esforco",
     )
     assert fila.cmd_criar(tmp_path, args) == 1
     saida = capsys.readouterr().out
@@ -774,6 +777,43 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
     assert fila.cmd_concluir(tmp_path, args) == 1
 
 
+@pytest.mark.parametrize("caminho", ["concluir", "reconciliar"])
+def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_path, monkeypatch, caminho):
+    t = tarefa(responsabilidade_obrigatoria=True)
+    montar(tmp_path, [t], [submissao()] if caminho == "reconciliar" else [evento()])
+    if caminho == "concluir":
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+        assert fila.cmd_concluir(tmp_path, args) == 1
+    else:
+        monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+        monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10"))
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js")
+        assert fila.cmd_reconciliar(tmp_path, args) == 1
+
+
+def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+            "unidades": [{
+            "id": "medicao-de-esforco", "tipo": "rotina",
+            "titular_funcao": "estrategia-conteudo", "finalidade": "medir",
+            "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa",
+            "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma",
+            "autoridade": "Pessoa", "evidencia": "prova",
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+    assert fila.cmd_concluir(tmp_path, args) == 0
+
+
 # ---------------------------------------------------------------------------
 # Onde o comprovante nasce — armadilhas/192 (TAR-018)
 #
@@ -1291,6 +1331,7 @@ def args_de_criar(**sobrescreve):
         "despacho": "faça",
         "despacho_arquivo": "",
         "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
         **explicacao(),
     }
     dados.update(sobrescreve)
@@ -1469,6 +1510,11 @@ def test_criar_SEM_explicacao_recusa_ANTES_de_gastar_numero(tmp_path, monkeypatc
 
 def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
     montar(tmp_path, [])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {nome: {"pessoa": "Pessoa", "substituto": "Substituto"} for nome in responsabilidades.FUNCOES},
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa", "evidencia": "prova"}],
+    }), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
     assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
@@ -1670,7 +1716,17 @@ def args_de_reconciliar(**extra):
 
 
 def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypatch):
-    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento(), submissao_reconciliavel()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa", "evidencia": "prova"}],
+    }, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
