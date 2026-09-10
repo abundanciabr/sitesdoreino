@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-039-admin-proteger-acoes-da-central-por-funcao",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "admin: proteger ações da central por função",
+  detalhe: "Guarda privada liga cada função a uma conta e recusa ação funcional fora da função titular.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1531. Validação local: árvore 45fd662373df257a85ff7ba7eea2eab1bde4d742; commit 70fd94d7e8f1a88eda7dc72e8731610e1be2d3cc; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-284",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
