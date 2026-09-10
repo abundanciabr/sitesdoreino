@@ -42,7 +42,7 @@ Não mantenha seis agentes ativos por hábito. Respeite os slots disponíveis, t
 
 O modelo, o esforço e o teto de contexto de cada brief vêm de `python ci/economia_da_fabrica.py brief`. Não fixe um modelo por papel neste documento e não deixe um subagente herdar um modelo caro por acidente. Use as ferramentas que existem no ambiente. Não crie tarefas separadas do Codex, conversas novas ou automações agendadas sem pedido explícito. A equipe trabalha nesta conversa. A memória persistente está nos artefatos versionados e nos registros, não na sobrevivência dos agentes. Não infira autorização para agendamento, assinatura, crédito ou gasto externo.
 
-Se esta conversa recebeu a `TAR-321` ou o conteúdo integral deste prompt, a abertura já aconteceu. Leia e execute a missão aqui, sem pedir outra conversa.
+Se esta conversa recebeu a `TAR-324` ou o conteúdo integral deste prompt, a abertura já aconteceu. Leia e execute a missão aqui, sem pedir outra conversa.
 
 ## Pré-voo obrigatório
 
@@ -59,7 +59,7 @@ Se o pedido for somente para escrever ou avaliar um prompt, não trate isso como
 Construa uma relação explícita `pergunta -> origem -> decisão -> prova`. Cada pacote entregue deve citar fonte, revisão ou SHA, data da consulta e limite conhecido. Use esta lista como rota inicial, sempre conferindo os arquivos atuais:
 
 - `celulas.yml` e `ci/mapa_de_celulas.py`: quem possui cada caminho e quais consumos HTTP estão declarados e observados. O comando `python -B ci/mapa_de_celulas.py --verificar` prova a consistência que o verificador implementa. Ele não prova tráfego em produção.
-- `ci/manifesto-de-contratos.json`, `contracts/*.openapi.yaml` e `contracts/eventos/`: quais contratos são requeridos ou não aplicáveis, quais operações foram congeladas e quais eventos têm schema versionado. Um schema de evento não prova, sozinho, quem o produz ou consome; localize com `rg` os comandos `services/<celula>/apps/**/management/commands/consume_eventos.py` e confira produtores e handlers reais.
+- `ci/manifesto-de-contratos.json`, os contratos OpenAPI em `contracts/` e `contracts/eventos/`: quais contratos são requeridos ou não aplicáveis, quais operações foram congeladas e quais eventos têm schema versionado. Um schema de evento não prova, sozinho, quem o produz ou consome; localize com `rg` os arquivos `consume_eventos.py` dentro de `services/` e confira produtores e handlers reais.
 - `services/<celula>/config/settings.py`, `config/urls.py`, modelos, APIs e testes: o comportamento implementado de uma célula. Arquivo de configuração não prova processo ativo. Identidade reconhece a pessoa; cada célula autoriza o próprio gesto. `alunos` é dona da matrícula, `cursos` do conteúdo, `pages` das páginas e do portfólio, `pagamentos` da cobrança, e `admin` orquestra telas por APIs.
 - `infra/docker-compose.yml` e `infra/traefik/`: serviços, redes e roteamento declarados. Uma rota com prefixo público ainda pode exigir Bearer. Não conclua que toda API interna está isolada da internet sem ler o matcher, middleware e autenticação.
 - `.github/workflows/`, `ci/ci.py` e `Makefile`: quais entradas de teste, integração, pista, deploy e recuperação existem agora. Liste os workflows no disco em vez de copiar uma contagem histórica.
@@ -114,6 +114,8 @@ Não crie um formato concorrente. Estenda a composição que `ci/sessao.py`, `ci
 
 Uma tarefa nova descreve resultado testável, não uma pergunta vaga. Diferença comprovada entre intenção e realidade vira tarefa na fila com vínculo à origem, dependências e aceite verificável. Antes de criar, procure a tarefa existente e vincule ou complemente o trabalho sem editar história. A tarefa guarda o trabalho que falta; o livro guarda fatos ocorridos; o mapa guarda referência. Não copie o mesmo fato para os três.
 
+Uma TAR citada como tarefa futura, dependência ou exemplo não é a tarefa entregue pelo PR atual. Passe ao rito o vínculo explícito da TAR efetivamente entregue e confira o estado calculado de todas as TAR citadas antes e depois da submissão. A presença de um identificador no corpo, no prompt ou no recibo não autoriza concluir nem submeter outra missão.
+
 Uma retomada também carrega worktree, ramo, SHA, PR, checks, run de deploy, erro, tentativas, última prova e ação exata seguinte. Preserve código e commits. Verifique se `main` já incorporou ou superou o PR. Não use reset destrutivo, não recrie a tarefa e não duplique recibo ou evento. Use `ci/pr.py --continuar` como entrada idempotente quando o rito indicar. Integração, deploy e publicação são estados diferentes.
 
 ## Autonomia e autoridade
@@ -150,6 +152,7 @@ Cubra, no mínimo:
 - busca com zero resultado e contexto truncado;
 - entrada inválida, path traversal e prompt injection em documento;
 - erro de instrumento;
+- PR documental que cita uma TAR futura sem submetê-la nem concluí-la;
 - deploy vermelho depois de merge verde;
 - lição nova que reaparece no brief seguinte.
 
