@@ -2065,7 +2065,7 @@ def _concluir_com_prova(
     if responsabilidade and cadastro.exists():
         try:
             problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
-        except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+        except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
             print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
             return 1
         if problemas:
