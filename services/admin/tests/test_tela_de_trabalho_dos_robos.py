@@ -186,6 +186,59 @@ def numa_linha(texto: str) -> str:
     return re.sub(r"\s+", " ", texto)
 
 
+@pytest.mark.parametrize(
+    ("pedido", "estado", "titulo"),
+    [
+        ("Organizar a página dos cursos", "tarefa_nova", "Preparar uma tarefa nova"),
+        ("Retomar TAR-324", "retomada", "Retomar um trabalho existente"),
+    ],
+)
+@respx.mock
+def test_a_central_prepara_tarefa_nova_ou_retomada_sem_acionar_github(
+    tmp_path, monkeypatch, pedido, estado, titulo
+):
+    fila_com_ranking(tmp_path, monkeypatch)
+
+    pagina = pagina_sem_estilo(
+        _dentro().get(reverse("caixa_robos"), {"preparar": pedido})
+    )
+
+    assert "Preparar trabalho" in pagina
+    assert "Esta prévia não cria TAR, reserva, PR nem executa robô." in pagina
+    assert f'data-estado="{estado}"' in pagina
+    assert titulo in pagina
+    assert "Texto para copiar e levar ao agente" in pagina
+    assert all(not str(chamada.request.url).startswith(REPO) for chamada in respx.calls)
+
+
+@respx.mock
+def test_a_central_expoe_recusa_clara_para_entrada_insegura(tmp_path, monkeypatch):
+    fila_com_ranking(tmp_path, monkeypatch)
+
+    pagina = pagina_sem_estilo(
+        _dentro().get(reverse("caixa_robos"), {"preparar": "../segredo"})
+    )
+
+    assert 'data-estado="recusada"' in pagina
+    assert "Reformule o pedido" in pagina
+    assert "resultado desejado ou com TAR/PR" in pagina
+    assert all(not str(chamada.request.url).startswith(REPO) for chamada in respx.calls)
+
+
+@respx.mock
+def test_a_previa_continua_disponivel_quando_a_fila_embutida_falha(monkeypatch):
+    monkeypatch.setattr(robos, "CANDIDATOS", ())
+
+    resposta = _dentro().get(reverse("caixa_robos"), {"preparar": "TAR-324"})
+
+    pagina = pagina_sem_estilo(resposta)
+    assert resposta.status_code == 500
+    assert "a fila embutida não chegou na imagem da admin" in pagina
+    assert "Preparar trabalho" in pagina
+    assert 'data-estado="retomada"' in pagina
+    assert all(not str(chamada.request.url).startswith(REPO) for chamada in respx.calls)
+
+
 def github_responde_bem():
     """As quatro chamadas do caminho feliz, e nada além delas.
 
