@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-042-docs-orientar-mapa-vivo",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "docs: orientar mapa vivo",
+  detalhe: "O prompt guia a equipe do mapa vivo; a TAR-321 guarda a construção, e os mapas citam fontes atuais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1533. Validação local: árvore 234fdd60ec4e01afcdcd804d42b41e2b1da4974e; commit 371764625ff500028770331aca67b83487cae899; 7 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-321",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
