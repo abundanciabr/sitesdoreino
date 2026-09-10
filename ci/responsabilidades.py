@@ -32,7 +32,7 @@ def pessoa_valida(valor: object, permitir_vazio: bool = False) -> bool:
 
 def carregar(raiz: Path) -> dict:
     registro = json.loads((raiz / "painel" / "responsabilidades.json").read_text(encoding="utf-8"))
-    if not isinstance(registro, dict) or not isinstance(registro.get("funcoes"), dict) or not isinstance(registro.get("unidades"), list):
+    if not isinstance(registro, dict) or not isinstance(registro.get("funcoes"), dict) or not all(isinstance(valor, dict) for valor in registro["funcoes"].values()) or not isinstance(registro.get("unidades"), list):
         raise ValueError("o cadastro precisa conter funcoes e unidades")
     return registro
 
@@ -65,6 +65,8 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
         return erros
     assert unidade is not None
     funcao = registro["funcoes"].get(unidade["titular_funcao"], {})
+    if not isinstance(funcao, dict):
+        return [f"função {unidade['titular_funcao']} tem cadastro inválido"]
     if not pessoa_valida(funcao.get("pessoa")):
         erros.append(f"função {unidade['titular_funcao']} não tem pessoa ocupante")
     if identidade_ia(funcao.get("pessoa")):
@@ -92,6 +94,9 @@ def auditar(raiz: Path) -> list[str]:
     if set(registro.get("funcoes", {})) != FUNCOES:
         erros.append("o cadastro precisa conter exatamente as quatro funções")
     for identificador, funcao in registro.get("funcoes", {}).items():
+        if not isinstance(funcao, dict):
+            erros.append(f"{identificador}: cadastro de função inválido")
+            continue
         if not pessoa_valida(funcao.get("pessoa")):
             erros.append(f"{identificador}: pessoa ocupante ausente")
         if identidade_ia(funcao.get("pessoa")):

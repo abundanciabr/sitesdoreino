@@ -1675,7 +1675,7 @@ def cmd_criar(raiz: Path, args) -> int:
         return 1
     try:
         problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
-    except (FileNotFoundError, json.JSONDecodeError, OSError) as erro:
+    except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
         print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
         return 1
     if problemas_da_responsabilidade:

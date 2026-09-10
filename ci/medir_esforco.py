@@ -78,6 +78,8 @@ def validar(raiz: Path) -> list[str]:
                 valor = observacao.get(campo)
                 if not isinstance(valor, str) or not valor.strip():
                     erros.append(f"{identificador}: {campo} precisa ser texto preenchido")
+            if observacao.get("qualidade") == "não avaliada; dado de teste":
+                erros.append(f"{identificador}: dado real precisa de qualidade avaliada")
         if observacao.get("situacao_dado") == "teste" and observacao.get("qualidade") != "não avaliada; dado de teste":
             erros.append(f"{identificador}: teste precisa declarar que não mede qualidade real")
     return erros
@@ -111,7 +113,6 @@ def resumo(raiz: Path) -> dict:
             len(reais) >= 2
             and economia_media is not None
             and economia_media > 80
-            and isinstance(dados.get("conclusoes"), dict)
             and isinstance(dados.get("conclusoes"), dict)
             and set(dados["conclusoes"]) == set(CONCLUSOES)
             and all(dados["conclusoes"][chave].get("estado") == "comprovado" for chave in CONCLUSOES)
