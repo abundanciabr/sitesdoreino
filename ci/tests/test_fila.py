@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 
 import fila
-from _nucleo import ErroDeInstrumentacao
+from _nucleo import ErroDeInstrumentacao, Estado, Resultado
 
 
 def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
@@ -1632,3 +1632,681 @@ def test_submissao_publicada_continua_visivel_nos_grupos_atuais_do_admin(tmp_pat
     assert cartao["arvore"] == "b" * 40
     assert estados["TAR-002"]["estado"] == fila.BLOQUEADA
     assert all(dados["estado"] != fila.CONCLUIDA for dados in estados.values())
+
+
+# ---------------------------------------------------------------------------
+# RECONCILIAR UMA ENTREGA SUBMETIDA
+#
+# A URL do PR não fecha a tarefa. Este caminho só escreve depois de conferir a
+# árvore revisada, o HEAD, o merge, a publicação, o atestado e o aceite que já
+# mora no livro.
+# ---------------------------------------------------------------------------
+
+
+REVISAO_RECONCILIADA = "1" * 40
+ARVORE_RECONCILIADA = "2" * 40
+HEAD_RECONCILIADO = "3" * 40
+MERGE_RECONCILIADO = "4" * 40
+RUN_RECONCILIADO = "https://github.com/abundanciabr/sitesdoreino/actions/runs/123"
+REGISTRO_DE_ACEITE = "painel/registros/20260910-008-bosses-no-ar.js"
+
+
+def submissao_reconciliavel(**extra):
+    return evento(
+        tipo="submetida",
+        hora="11:00:00",
+        pr=URL_SUBMISSAO,
+        revisao=REVISAO_RECONCILIADA,
+        arvore=ARVORE_RECONCILIADA,
+        **extra,
+    )
+
+
+def args_de_reconciliar(**extra):
+    return argparse.Namespace(
+        tarefa="TAR-001",
+        quem="maestro",
+        aceite_registro=REGISTRO_DE_ACEITE,
+        **extra,
+    )
+
+
+def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    evidencia = (
+        f"{URL_SUBMISSAO}; revisão {REVISAO_RECONCILIADA}; árvore {ARVORE_RECONCILIADA}; "
+        f"HEAD {HEAD_RECONCILIADO}; merge {MERGE_RECONCILIADO}; publicação {RUN_RECONCILIADO}; "
+        f"aceite {REGISTRO_DE_ACEITE}"
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (evidencia, "2026-09-10"),
+    )
+
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 0
+    escritos = list((tmp_path / "fila/eventos").glob("*-TAR-001-concluida.json"))
+    assert len(escritos) == 1
+    dados = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert dados["evidencia"] == evidencia
+    assert dados["verificado_em"] == "2026-09-10"
+
+
+def test_reconciliar_recusa_sem_submissao_e_terminal_sem_duplicar(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: pytest.fail("não mede entrega sem submissão viva"),
+    )
+    montar(tmp_path, [tarefa()], [evento()])
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 1
+
+    terminal = tmp_path / "terminal"
+    montar(
+        terminal,
+        [tarefa()],
+        [
+            evento(),
+            submissao_reconciliavel(),
+            evento(
+                tipo="concluida",
+                hora="12:00:00",
+                evidencia="prova",
+                verificado_em="2026-09-10",
+            ),
+        ],
+    )
+    assert fila.cmd_reconciliar(terminal, args_de_reconciliar()) == 1
+    assert len(list((terminal / "fila/eventos").glob("*-concluida.json"))) == 1
+
+
+@pytest.mark.parametrize(
+    "mudanca,trecho",
+    [
+        ({"arvore_medida": "9" * 40}, "árvore"),
+        ({"revisao_ancestral": False}, "revisão"),
+        ({"head_ancestral": False}, "HEAD"),
+        ({"caminhos_posteriores": ["services/cursos/models.py"]}, "código posterior"),
+    ],
+)
+def test_reconciliacao_recusa_arvore_linhagem_ou_codigo_posterior(mudanca, trecho):
+    medicao = {
+        "arvore_medida": ARVORE_RECONCILIADA,
+        "revisao_ancestral": True,
+        "head_ancestral": True,
+        "caminhos_posteriores": [
+            "fila/eventos/20260910-TAR-001-submetida.json",
+            "painel/registros/20260910-001-recibo.js",
+        ],
+    }
+    medicao.update(mudanca)
+    problemas = fila.problemas_da_linhagem(submissao_reconciliavel(), medicao)
+    assert any(trecho in problema for problema in problemas)
+
+
+@pytest.mark.parametrize(
+    "estado",
+    [
+        {"estado": "AGUARDANDO_PUBLICACAO", "terminal": False},
+        {"estado": "FALHA_PUBLICACAO", "terminal": False},
+        {"estado": "ENCERRADO_SEM_INTEGRAR", "terminal": True},
+    ],
+)
+def test_reconciliacao_recusa_entrega_sem_desfecho_publicado(estado):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="publicação|integrada"):
+        fila.provar_estado_terminal(estado)
+
+
+@pytest.mark.parametrize("campo", ["sha_atual", "sha_integrado"])
+def test_reconciliacao_exige_shas_terminais_completos(campo):
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+    }
+    estado[campo] = "curto"
+    with pytest.raises(ErroDeInstrumentacao, match="ausente"):
+        fila.provar_estado_terminal(estado)
+
+
+def test_reconciliacao_recusa_atestado_ausente_ou_de_outro_sha():
+    for resultado in (
+        Resultado("revisão", Estado.FAIL, "atestado ausente"),
+        Resultado("revisão", Estado.FAIL, "SHA mudou"),
+    ):
+        with pytest.raises(fila.RecusaDeReconciliacao, match="atestado"):
+            fila.provar_atestado(resultado)
+
+
+@pytest.mark.parametrize(
+    "registro,trecho",
+    [
+        (
+            {
+                "gravidade": "info",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "verde",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": True,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "pendência",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": "outro run",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-02-30",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "quando",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-9-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "quando",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "0",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/attempts/2",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/jobs/9",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "?check_suite_focus=true",
+            },
+            "publicação",
+        ),
+    ],
+)
+def test_reconciliacao_recusa_registro_sem_aceite_da_publicacao(registro, trecho):
+    with pytest.raises(fila.RecusaDeReconciliacao, match=trecho):
+        fila.provar_conteudo_do_aceite(registro, [RUN_RECONCILIADO])
+
+
+def test_reconciliacao_aceita_url_canonica_com_pontuacao_textual():
+    fila.provar_conteudo_do_aceite(
+        {
+            "gravidade": "verde",
+            "precisa_do_dono": False,
+            "verificado_em": "2026-09-10",
+            "evidencia": f"Publicação conferida em {RUN_RECONCILIADO}.",
+        },
+        [RUN_RECONCILIADO],
+    )
+
+
+def test_recuperacao_usa_publicacoes_efetivas_e_nao_o_run_historico_falho():
+    estado = {
+        "estado": "PUBLICADO",
+        "runs": [
+            {
+                "url": "https://github.com/x/y/actions/runs/34430133801",
+                "conclusion": "failure",
+            }
+        ],
+        "publicacoes": [
+            {
+                "url": "https://github.com/x/y/actions/runs/34435534721",
+                "job": "publicar-dados-admin",
+            },
+            {
+                "url": "https://github.com/x/y/actions/runs/34433902392",
+                "job": "deploy (cursos)",
+            },
+        ],
+    }
+    assert fila.urls_da_publicacao_comprovada(estado, URL_SUBMISSAO) == [
+        "https://github.com/x/y/actions/runs/34433902392",
+        "https://github.com/x/y/actions/runs/34435534721",
+    ]
+
+
+def test_entrega_sem_publicacao_usa_o_pr_integrado_como_prova():
+    estado = {"estado": "SEM_PUBLICACAO", "runs": []}
+    assert fila.urls_da_publicacao_comprovada(estado, URL_SUBMISSAO) == [
+        URL_SUBMISSAO
+    ]
+
+
+def test_reconciliacao_confronta_a_url_com_o_repositorio_corrente(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "ler_pr",
+        lambda *a: {"url": "https://github.com/outro/projeto/pull/1494"},
+    )
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "consultar_entrega",
+        lambda *a: pytest.fail("não consulta publicação de outro repositório"),
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="deste repositório"):
+        fila.provar_reconciliacao(
+            tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
+        )
+
+
+def test_reconciliacao_exige_as_correcoes_de_publicacao_no_atestado(
+    tmp_path, monkeypatch
+):
+    pr = {
+        "url": URL_SUBMISSAO,
+        "headRefOid": HEAD_RECONCILIADO,
+        "mergeCommit": {"oid": MERGE_RECONCILIADO},
+        "body": "Corrige-publicacao: 34430133801",
+    }
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+        "runs": [{"url": RUN_RECONCILIADO}],
+    }
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a, **k: [])
+    correcoes = []
+
+    def avaliar(*args, **kwargs):
+        correcoes.extend(kwargs["correcoes"])
+        return Resultado("revisão", Estado.PASS, "atestado aprovado")
+
+    monkeypatch.setattr(fila.revisor_de_pouso, "avaliar_atestado", avaliar)
+    monkeypatch.setattr(
+        fila,
+        "carregar_aceite",
+        lambda *a: {"verificado_em": "2026-09-10"},
+    )
+    fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+    assert correcoes == [34430133801]
+
+
+def test_aceite_precisa_existir_na_main_e_ser_posterior_ao_merge(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        fila,
+        "_git_da_fila",
+        lambda *a, **k: "",
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não existe"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_aceite_local_precisa_ser_identico_a_main(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        fila,
+        "_git_da_fila",
+        lambda *a, **k: REGISTRO_DE_ACEITE + "\n",
+    )
+    monkeypatch.setattr(fila, "_git_predicado", lambda *a, **k: False)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="difere"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_aceite_precisa_ser_introduzido_depois_do_merge(tmp_path, monkeypatch):
+    def git_medido(_raiz, *args, **_kwargs):
+        if args[0] == "ls-tree":
+            return REGISTRO_DE_ACEITE + "\n"
+        if args[0] == "log":
+            return MERGE_RECONCILIADO + "\n"
+        raise AssertionError(args)
+
+    monkeypatch.setattr(fila, "_git_da_fila", git_medido)
+    monkeypatch.setattr(fila, "_git_predicado", lambda *a, **k: True)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="após o merge"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_reconciliacao_instrumento_quebrado_e_error_nao_fail(
+    tmp_path, monkeypatch, capsys
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "raiz_do_repo", lambda: tmp_path)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (_ for _ in ()).throw(ErroDeInstrumentacao("git indisponível")),
+    )
+    assert (
+        fila.main(
+            [
+                "reconciliar",
+                "TAR-001",
+                "--quem",
+                "maestro",
+                "--aceite-registro",
+                REGISTRO_DE_ACEITE,
+            ]
+        )
+        == 2
+    )
+    assert "PAROU POR SEGURANÇA" in capsys.readouterr().out
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_reconciliacao_recusada_nao_escreve_nem_libera(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (_ for _ in ()).throw(
+            fila.RecusaDeReconciliacao("publicação pendente")
+        ),
+    )
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 1
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_conclusao_escreve_antes_de_liberar_e_falha_de_escrita_preserva_reserva(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "_escrever_evento",
+        lambda *a, **k: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("disco recusou a escrita")
+        ),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="disco recusou"):
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert liberadas == []
+
+
+def test_falha_ao_liberar_explica_como_preservar_a_conclusao(tmp_path, monkeypatch):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+
+    def falhar(*args):
+        assert list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+        raise ErroDeInstrumentacao("servidor recusou a soltura")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", falhar)
+    with pytest.raises(ErroDeInstrumentacao, match="conclusão foi registrada") as erro:
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert "fila.py soltar TAR-001" in erro.value.detalhe
+    assert len(list((tmp_path / "fila/eventos").glob("*-concluida.json"))) == 1
+
+
+def _sha(cwd, revisao):
+    return subprocess.run(
+        ["git", "rev-parse", revisao],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+
+    codigo = repo / "services/cursos/codigo.py"
+    codigo.parent.mkdir(parents=True)
+    codigo.write_text("TITULO = 'real'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo validado", cwd=repo)
+    revisao = _sha(repo, "HEAD")
+    arvore = _sha(repo, "HEAD^{tree}")
+
+    evento = repo / "fila/eventos/submetida.json"
+    recibo = repo / "painel/registros/recibo.js"
+    evento.parent.mkdir(parents=True)
+    recibo.parent.mkdir(parents=True)
+    evento.write_text("{}\n", encoding="utf-8")
+    recibo.write_text("registro\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "escritura", cwd=repo)
+    head_valido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-1.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integração", cwd=repo)
+    merge_valido = _sha(repo, "HEAD")
+
+    codigo.write_text("TITULO = 'mudou depois'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo posterior", cwd=repo)
+    head_invalido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-2.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "segunda integração", cwd=repo)
+    merge_invalido = _sha(repo, "HEAD")
+    _git("revert", "--no-edit", head_invalido, cwd=repo)
+    head_revertido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-3.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "terceira integração", cwd=repo)
+    merge_revertido = _sha(repo, "HEAD")
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    submetida = {"revisao": revisao, "arvore": arvore}
+    fila.medir_linhagem(repo, submetida, head_valido, merge_valido)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(repo, submetida, head_invalido, merge_invalido)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(repo, submetida, head_revertido, merge_revertido)
+
+
+def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+
+    codigo = repo / "services/cursos/codigo.py"
+    codigo.parent.mkdir(parents=True)
+    codigo.write_text("TITULO = 'validado'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo validado", cwd=repo)
+    revisao = _sha(repo, "HEAD")
+    arvore = _sha(repo, "HEAD^{tree}")
+
+    _git("checkout", "-b", "metadados-a", cwd=repo)
+    evento_a = repo / "fila/eventos/a.json"
+    evento_a.parent.mkdir(parents=True)
+    evento_a.write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "evento a", cwd=repo)
+    ponta_a = _sha(repo, "HEAD")
+    _git("checkout", "-b", "metadados-b", revisao, cwd=repo)
+    recibo_b = repo / "painel/registros/b.js"
+    recibo_b.parent.mkdir(parents=True)
+    recibo_b.write_text("registro\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "recibo b", cwd=repo)
+
+    _git("checkout", "metadados-a", cwd=repo)
+    _git("merge", "--no-commit", "metadados-b", cwd=repo)
+    _git("commit", "-m", "merge somente de escritura", cwd=repo)
+    head_verde = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-verde.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integracao da escritura", cwd=repo)
+    merge_verde = _sha(repo, "HEAD")
+
+    _git("checkout", "-b", "merge-com-codigo", ponta_a, cwd=repo)
+    _git("merge", "--no-commit", "metadados-b", cwd=repo)
+    codigo.write_text("TITULO = 'mudou no merge'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "merge com resolucao de codigo", cwd=repo)
+    head = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integracao publicada", cwd=repo)
+    merge = _sha(repo, "HEAD")
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "origin", "HEAD:main", cwd=repo)
+
+    fila.medir_linhagem(
+        repo,
+        {"revisao": revisao, "arvore": arvore},
+        head_verde,
+        merge_verde,
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(
+            repo,
+            {"revisao": revisao, "arvore": arvore},
+            head,
+            merge,
+        )
+
+
+def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
+    tmp_path, monkeypatch, capsys
+):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    primeira = tmp_path / "primeira"
+    primeira.mkdir()
+    _git("init", "-b", "main", cwd=primeira)
+    _git("config", "user.email", "teste@teste", cwd=primeira)
+    _git("config", "user.name", "Teste", cwd=primeira)
+    montar(primeira, [tarefa()], [evento(), submissao_reconciliavel()])
+    _git("add", ".", cwd=primeira)
+    _git("commit", "-m", "entrega submetida", cwd=primeira)
+    _git("remote", "add", "origin", str(remoto), cwd=primeira)
+    _git("push", "-u", "origin", "main", cwd=primeira)
+
+    atrasada = tmp_path / "atrasada"
+    _git("clone", "-b", "main", str(remoto), str(atrasada), cwd=tmp_path)
+    concluida = evento(
+        tipo="concluida",
+        hora="12:00:00",
+        evidencia="prova publicada",
+        verificado_em="2026-09-10",
+    )
+    caminho = primeira / "fila/eventos" / f"{concluida['arquivo']}.json"
+    caminho.write_text(json.dumps(concluida), encoding="utf-8")
+    _git("add", ".", cwd=primeira)
+    _git("commit", "-m", "conclusao publicada", cwd=primeira)
+    _git("push", "origin", "main", cwd=primeira)
+
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: pytest.fail("não releia a fila antes de provar seu frescor"),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+
+    assert fila.cmd_reconciliar(atrasada, args_de_reconciliar()) == 1
+    assert "merge de origin/main" in capsys.readouterr().out
+    assert liberadas == []
+    assert not list((atrasada / "fila/eventos").glob("*-concluida.json"))
+    assert _sha(atrasada, "origin/main") == _sha(primeira, "HEAD")
+
+
+def test_reconciliar_exige_bancada(espelho_e_bancada):
+    principal, _ = espelho_e_bancada
+    assert fila.cmd_reconciliar(principal, args_de_reconciliar()) == 1
+    assert not list((principal / "fila/eventos").glob("*-concluida.json"))

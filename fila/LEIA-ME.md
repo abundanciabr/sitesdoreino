@@ -75,10 +75,37 @@ Nenhum PR fechado devolve automaticamente trabalho submetido à fila.
 
 **`concluir` exige evidência.** Para tarefas submetidas, texto livre e URL de
 PR não bastam: o balcão recusa e encaminha à reconciliação da entrega com a
-prova do aceite. Essa reconciliação é uma etapa posterior; submissão, integração
-e publicação são fatos diferentes. O caminho legado sem submissão mantém sua
-validação de evidência. Sem prova, o balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
+prova do aceite. Submissão, integração e publicação são fatos diferentes. O
+caminho legado sem submissão mantém sua validação de evidência. Sem prova, o
+balcão recusa, a mesma lei do verde do livro. `validar` reprova evento
 `concluida` sem `evidencia` + `verificado_em`.
+
+```bash
+python ci/fila.py reconciliar TAR-307 --quem "maestro" \
+  --aceite-registro painel/registros/20260910-008-bosses-no-ar.js
+```
+
+`reconciliar` deriva PR, revisão e árvore da última submissão. Ele confere a
+árvore validada, a ancestralidade revisão → HEAD → merge e recusa código
+posterior; só recibos em `painel/registros/` e eventos em `fila/eventos/` podem
+ter entrado depois da revisão. O estado precisa ser `PUBLICADO` ou
+`SEM_PUBLICACAO`, calculado por `estado_da_entrega`, e o atestado independente
+precisa aprovar o HEAD final. Em publicação recuperada, a prova vem dos jobs
+posteriores que cobriram a entrega, nunca da tentativa histórica que falhou.
+
+O aceite continua no livro. `--aceite-registro` aponta para um registro verde,
+sem pendência do dono, já integrado à `main` depois do merge e que cita a URL da
+publicação comprovada. O evento terminal guarda apenas os ponteiros canônicos
+para essas fontes. `concluir` e `reconciliar` passam pelo mesmo ponto de escrita,
+onde também entram guardas comuns de responsabilidade. Medição impossível sai
+como ERROR; prova medida e incompatível sai como recusa. Nenhum dos dois escreve
+o evento.
+
+Quando o próprio PR introduz `reconciliar`, o aceite de sua TAR só existe depois
+que esse PR publica. Nesse caso, use a exceção **“À mão, quando o `make pr` não
+serve”** de `painel/LEIA-ME.md`: primeiro embarque o registro de aceite em um PR
+de escrituração; depois rode `reconciliar` e embarque apenas o evento gerado em
+outro PR de escrituração. Não ressubmeta a tarefa concluída nem crie outra TAR.
 
 **O comprovante nasce na bancada, nunca no espelho** (desde 30/08/2026,
 TAR-018). O balcão escreve o evento na pasta em que foi chamado — e a ordem de
@@ -89,8 +116,8 @@ arquivo fora, `validar` respondia `✅ Fila válida`, exit 0 (`armadilhas/192`).
 
 A cura tem duas peças, com autoridade deliberadamente diferente:
 
-- **`criar`, `pegar`, `bloquear`, `cancelar` e `concluir` RECUSAM no clone
-  principal** (exit 1) e a
+- **`criar`, `pegar`, `bloquear`, `cancelar`, `submeter`, `concluir` e
+  `reconciliar` RECUSAM no clone principal** (exit 1) e a
   recusa ensina a ordem certa: worktree primeiro, balcão de dentro dele. Não é
   portão de CI — nenhum PR reprova por isto; é um comando interativo se
   recusando a produzir lixo, e o conserto custa um `git worktree add`. Aviso em

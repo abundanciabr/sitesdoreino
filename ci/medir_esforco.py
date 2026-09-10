@@ -70,7 +70,7 @@ def resumo(raiz: Path) -> dict:
         "linha_de_base": dados.get("situacao_linha_de_base", "indisponível"),
         "observacoes_reais": len(reais),
         "economia_media_percentual": economia_media,
-        "produtividade_comprovada": bool(dados.get("produtividade_comprovada", False) and referencia_total),
+        "produtividade_comprovada": bool(reais and economia_media is not None and economia_media > 80),
     }
 
 

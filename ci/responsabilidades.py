@@ -21,6 +21,11 @@ def identidade_ia(valor: object) -> bool:
     return isinstance(valor, str) and valor.strip().casefold() in {"ia", "agente de ia", "agente ia"}
 
 
+def sem_substituto_valido(funcao: dict) -> bool:
+    valor = funcao.get("sem_substituto")
+    return valor is True and not funcao.get("substituto")
+
+
 def carregar(raiz: Path) -> dict:
     return json.loads((raiz / "painel" / "responsabilidades.json").read_text(encoding="utf-8"))
 
@@ -55,8 +60,13 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
         erros.append(f"função {unidade['titular_funcao']} não pode ter IA como pessoa ocupante")
     if identidade_ia(funcao.get("substituto")):
         erros.append(f"função {unidade['titular_funcao']} não pode ter IA como substituto")
-    if not funcao.get("substituto") and not funcao.get("sem_substituto"):
+    if funcao.get("sem_substituto") not in (None, True, False):
+        erros.append(f"função {unidade['titular_funcao']} tem sem_substituto inválido")
+    if not funcao.get("substituto") and not sem_substituto_valido(funcao):
         erros.append(f"função {unidade['titular_funcao']} não tem substituto aceito")
+    for campo in ("aprova", "autoridade"):
+        if identidade_ia(unidade.get(campo)):
+            erros.append(f"{identificador}: IA não pode ocupar o campo {campo}")
     for campo in UNIDADE_CAMPOS_OBRIGATORIOS:
         if not unidade.get(campo):
             erros.append(f"{identificador}: campo obrigatório ausente: {campo}")
@@ -75,7 +85,9 @@ def auditar(raiz: Path) -> list[str]:
             erros.append(f"{identificador}: IA não pode ser pessoa ocupante")
         if identidade_ia(funcao.get("substituto")):
             erros.append(f"{identificador}: IA não pode ser substituto")
-        if not funcao.get("substituto") and not funcao.get("sem_substituto"):
+        if funcao.get("sem_substituto") not in (None, True, False):
+            erros.append(f"{identificador}: sem_substituto precisa ser booleano")
+        if not funcao.get("substituto") and not sem_substituto_valido(funcao):
             erros.append(f"{identificador}: substituto ausente")
     for unidade in registro.get("unidades", []):
         for campo in UNIDADE_CAMPOS_OBRIGATORIOS:

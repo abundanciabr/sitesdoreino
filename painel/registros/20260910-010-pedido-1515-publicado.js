@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-010-pedido-1515-publicado",
+  tipo: "resposta",
+  quando: "2026-09-10",
+  titulo: "Pedido 1515 publicou o histórico",
+  detalhe: "Sob mandato, ci/estado_da_entrega.py integrou no merge 060c405267bccead590bf901cfa73220ef60b33f do pedido 1515, por abundanciabr às 04:01:09 UTC; pista 34434787150 verde. O deploy 34435534721 concluiu às 04:04:15 UTC com detectar, portao-de-deploy, publicar-dados-admin e deploy admin verdes. consultar_entrega confirmou PUBLICADO, terminal e nenhum trabalho sem prova.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34435534721",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260909-009-endpoint-misto-truncou-publicacao",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
