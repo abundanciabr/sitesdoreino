@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-027-scale-os-aceite-tar283",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: aceite da fundação TAR-283",
+  detalhe: "A fundação da Fase 1 foi aceita após conferir responsabilidades nominais, ausência de substitutos humanos, alçadas, fontes, direção, cadências, medição iniciada e guarda de entrega.",
+  autoridade: "github",
+  evidencia: "PR #1500 mergeado em cd201c495824c4fca16155031b5f87ad93cf05f1 (https://github.com/abundanciabr/sitesdoreino/pull/1500); deploy-celula 34456533118 completed/success (https://github.com/abundanciabr/sitesdoreino/actions/runs/34456533118); documento privado salvo e relido no endereço original; fila e cadastro conferidos.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "aceite",
+  tarefa: "TAR-283",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();
