@@ -16,6 +16,5 @@
   area: "infra",
   vence_em_dias: null,
   se_eu_nao_decidir: null,
-  recomendacao: "Acompanhar a issue #1191; não reabrir a Fase 1 por esse alarme preexistente.",
   reversivel: true
 }); })();
