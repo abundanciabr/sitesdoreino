@@ -42,11 +42,11 @@ def validar(raiz: Path) -> list[str]:
             erros.append(f"{identificador}: casos precisa ser inteiro não negativo")
         if situacao == "real" and isinstance(casos, int) and casos <= 0:
             erros.append(f"{identificador}: dado real precisa de pelo menos um caso")
+        for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"):
+            valor = observacao.get(campo)
+            if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor) or valor < 0:
+                erros.append(f"{identificador}: {campo} precisa ser número não negativo")
         if observacao.get("situacao_dado") == "real":
-            for campo in ("minutos_referencia", "minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"):
-                valor = observacao.get(campo)
-                if isinstance(valor, bool) or not isinstance(valor, (int, float)) or not math.isfinite(valor) or valor < 0:
-                    erros.append(f"{identificador}: {campo} precisa ser número não negativo")
             referencia = observacao.get("minutos_referencia")
             if isinstance(referencia, bool) or not isinstance(referencia, (int, float)) or not math.isfinite(referencia) or referencia <= 0:
                 erros.append(f"{identificador}: minutos_referencia precisa ser maior que zero")

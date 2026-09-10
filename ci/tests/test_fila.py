@@ -27,6 +27,7 @@ from pathlib import Path
 import pytest
 
 import fila
+import responsabilidades
 from _nucleo import ErroDeInstrumentacao, Estado, Resultado
 
 
@@ -1331,6 +1332,7 @@ def args_de_criar(**sobrescreve):
         "despacho": "faça",
         "despacho_arquivo": "",
         "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
         **explicacao(),
     }
     dados.update(sobrescreve)
@@ -1509,6 +1511,11 @@ def test_criar_SEM_explicacao_recusa_ANTES_de_gastar_numero(tmp_path, monkeypatc
 
 def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
     montar(tmp_path, [])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {nome: {"pessoa": "Pessoa", "substituto": "Substituto"} for nome in responsabilidades.FUNCOES},
+        "unidades": [{"id": "medicao-de-esforco", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "evidencia": "prova"}],
+    }), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
     assert fila.cmd_criar(tmp_path, args_de_criar()) == 0

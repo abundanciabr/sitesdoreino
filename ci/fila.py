@@ -1666,6 +1666,19 @@ def cmd_criar(raiz: Path, args) -> int:
         print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
+    if not responsabilidade:
+        print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if not cadastro.exists():
+        print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
+        return 1
+    problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    if problemas_da_responsabilidade:
+        print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
+        for problema in problemas_da_responsabilidade:
+            print(f"- {problema}")
+        return 1
     numero = reservar.alocar_numero(raiz, "tarefa")
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
