@@ -221,8 +221,10 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
     # Dados recentes não apagam a última tentativa da imagem da mesma célula.
     from rerun_de_deploy import RUNS_OLHADOS_ATRAS
     faltam = {f"deploy ({c})" for c in requeridas}
-    if "admin" in requeridas:
-        faltam.add("publicar-dados-admin")
+    # O job de dados nasceu depois de vários deploys históricos. O workflow
+    # do SHA encontrado decide se ele era exigido, em consultar_publicacao.
+    # Procurá-lo aqui faria a pista atravessar todo o histórico antigo sem
+    # nunca encontrar um job que ainda não existia.
     pagina = 1
     while faltam:
         resposta = _api(raiz, f"actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page={RUNS_OLHADOS_ATRAS}&page={pagina}")

@@ -286,6 +286,56 @@ def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte)
     assert [b["sha_integrado"] for b in bloqueios] == [imagem]
 
 
+def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monkeypatch):
+    from types import SimpleNamespace
+    from mapa_de_celulas import Celula
+
+    chamadas = []
+    jobs_consultados = []
+    publicacoes = []
+    monkeypatch.setattr(entrega.mapa_de_celulas, "carregar", lambda *a: {
+        "admin": Celula("admin", ("services/admin",), ()),
+    })
+    monkeypatch.setattr(entrega, "caminhos_dos_deploys", lambda *a: {
+        CELULA: ["services/**"], INFRA: ["infra/**"],
+    })
+    def executar(args, **kw):
+        if args[1] == "rev-parse":
+            return SimpleNamespace(stdout="false" if "--is-shallow-repository" in args else SHA)
+        if args[1] == "log":
+            return SimpleNamespace(stdout=SHA if "services/admin" in args else "")
+        if args[1] == "diff":
+            return SimpleNamespace(stdout="services/admin/app.py")
+        return SimpleNamespace(stdout="")
+
+    def api(raiz, caminho, **kw):
+        chamadas.append(caminho)
+        pagina = int(caminho.rsplit("page=", 1)[1])
+        return {"workflow_runs": [run(id=n) for n in range(1, 31)] if pagina == 1 else []}
+
+    monkeypatch.setattr(entrega, "executar", executar)
+    monkeypatch.setattr(entrega, "_api", api)
+    def consultar_jobs(raiz, run):
+        jobs_consultados.append(run["id"])
+        return [
+            {"name": "detectar", "status": "completed", "conclusion": "success"},
+            {"name": "portao-de-deploy", "status": "completed", "conclusion": "success"},
+            {"name": "deploy (admin)", "status": "completed", "conclusion": "success"},
+        ]
+
+    monkeypatch.setattr(entrega, "consultar_jobs", consultar_jobs)
+    def consultar_publicacao(*a):
+        publicacoes.append(a)
+        return {"terminal": True, "estado": "PUBLICADO", "sha_integrado": SHA}
+
+    monkeypatch.setattr(entrega, "consultar_publicacao", consultar_publicacao)
+
+    assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
+    assert len(jobs_consultados) == 1
+    assert sum("actions/workflows/" in chamada for chamada in chamadas) == 1
+    assert len(publicacoes) == 1
+
+
 @pytest.mark.parametrize("arquivo,esperado", [("painel/registros/a.js","PUBLICADO"),("painel/registros/a.js","FALHA_PUBLICACAO"),("docs/decisoes/plano.md","SEM_PUBLICACAO")])
 def test_publicacao_usa_workflow_vigente_no_sha(monkeypatch, arquivo, esperado):
     consultas = []
