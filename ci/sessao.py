@@ -1773,14 +1773,6 @@ def contexto_direcionado(
         linhas.append("Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
                       "python ci/indice_de_armadilhas.py quando precisar da consulta integral.")
     achados = {}
-    for caminho in caminhos:
-        try:
-            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
-            for item in itens:
-                achados.setdefault(item["armadilha"], item)
-        except (OSError, ValueError, TypeError, KeyError):
-            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
-            break
     if sintoma:
         try:
             # O sino limita toques por comando. Consultar cada assinatura mantém
@@ -1790,6 +1782,16 @@ def contexto_direcionado(
                     achados.setdefault(item["armadilha"], item)
         except (OSError, ValueError, TypeError, KeyError):
             linhas.append("Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py.")
+    for caminho in caminhos:
+        try:
+            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
+            for item in itens:
+                encontrado = achados.setdefault(item["armadilha"], item)
+                if item.get("licao") and not encontrado.get("licao"):
+                    encontrado["licao"] = item["licao"]
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
+            break
     if not achados:
         linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
     for item in list(achados.values())[:limite]:
