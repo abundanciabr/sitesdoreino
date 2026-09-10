@@ -352,7 +352,7 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
 
     assert entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"]) == []
     assert jobs_consultados
-    assert chamadas == ["actions/workflows/deploy-celula.yml/runs?branch=main&event=push&per_page=100&page=1"]
+    assert chamadas == ["actions/workflows/deploy-celula.yml/runs?per_page=100&page=1"]
     assert len(publicacoes) == 1
 
 

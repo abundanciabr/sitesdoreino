@@ -237,8 +237,7 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
     for pagina in range(1, MAX_PAGINAS_DO_HISTORICO + 1):
         resposta = _api(
             raiz,
-            "actions/workflows/deploy-celula.yml/runs?branch=main&event=push"
-            f"&per_page=100&page={pagina}",
+            f"actions/workflows/deploy-celula.yml/runs?per_page=100&page={pagina}",
         )
         if (not isinstance(resposta, dict)
                 or not isinstance(resposta.get("workflow_runs"), list)
