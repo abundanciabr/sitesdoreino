@@ -1913,6 +1913,10 @@ def test_reconciliacao_instrumento_quebrado_e_error_nao_fail(
     montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
     monkeypatch.setattr(fila, "raiz_do_repo", lambda: tmp_path)
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
     monkeypatch.setattr(
         fila,
         "provar_reconciliacao",
@@ -1932,3 +1936,127 @@ def test_reconciliacao_instrumento_quebrado_e_error_nao_fail(
         == 2
     )
     assert "PAROU POR SEGURANÇA" in capsys.readouterr().out
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_reconciliacao_recusada_nao_escreve_nem_libera(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (_ for _ in ()).throw(
+            fila.RecusaDeReconciliacao("publicação pendente")
+        ),
+    )
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 1
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_conclusao_escreve_antes_de_liberar_e_falha_de_escrita_preserva_reserva(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "_escrever_evento",
+        lambda *a, **k: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("disco recusou a escrita")
+        ),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="disco recusou"):
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert liberadas == []
+
+
+def test_falha_ao_liberar_explica_como_preservar_a_conclusao(tmp_path, monkeypatch):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+
+    def falhar(*args):
+        assert list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+        raise ErroDeInstrumentacao("servidor recusou a soltura")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", falhar)
+    with pytest.raises(ErroDeInstrumentacao, match="conclusão foi registrada") as erro:
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert "fila.py soltar TAR-001" in erro.value.detalhe
+    assert len(list((tmp_path / "fila/eventos").glob("*-concluida.json"))) == 1
+
+
+def _sha(cwd, revisao):
+    return subprocess.run(
+        ["git", "rev-parse", revisao],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+
+    codigo = repo / "services/cursos/codigo.py"
+    codigo.parent.mkdir(parents=True)
+    codigo.write_text("TITULO = 'real'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo validado", cwd=repo)
+    revisao = _sha(repo, "HEAD")
+    arvore = _sha(repo, "HEAD^{tree}")
+
+    evento = repo / "fila/eventos/submetida.json"
+    recibo = repo / "painel/registros/recibo.js"
+    evento.parent.mkdir(parents=True)
+    recibo.parent.mkdir(parents=True)
+    evento.write_text("{}\n", encoding="utf-8")
+    recibo.write_text("registro\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "escritura", cwd=repo)
+    head_valido = _sha(repo, "HEAD")
+    (repo / "merge-1").write_text("merge\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integração", cwd=repo)
+    merge_valido = _sha(repo, "HEAD")
+
+    codigo.write_text("TITULO = 'mudou depois'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo posterior", cwd=repo)
+    head_invalido = _sha(repo, "HEAD")
+    (repo / "merge-2").write_text("merge\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "segunda integração", cwd=repo)
+    merge_invalido = _sha(repo, "HEAD")
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    submetida = {"revisao": revisao, "arvore": arvore}
+    fila.medir_linhagem(repo, submetida, head_valido, merge_valido)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(repo, submetida, head_invalido, merge_invalido)
+
+
+def test_reconciliar_exige_bancada(espelho_e_bancada):
+    principal, _ = espelho_e_bancada
+    assert fila.cmd_reconciliar(principal, args_de_reconciliar()) == 1
+    assert not list((principal / "fila/eventos").glob("*-concluida.json"))

@@ -110,8 +110,8 @@ arquivo fora, `validar` respondia `✅ Fila válida`, exit 0 (`armadilhas/192`).
 
 A cura tem duas peças, com autoridade deliberadamente diferente:
 
-- **`criar`, `pegar`, `bloquear`, `cancelar` e `concluir` RECUSAM no clone
-  principal** (exit 1) e a
+- **`criar`, `pegar`, `bloquear`, `cancelar`, `submeter`, `concluir` e
+  `reconciliar` RECUSAM no clone principal** (exit 1) e a
   recusa ensina a ordem certa: worktree primeiro, balcão de dentro dele. Não é
   portão de CI — nenhum PR reprova por isto; é um comando interativo se
   recusando a produzir lixo, e o conserto custa um `git worktree add`. Aviso em

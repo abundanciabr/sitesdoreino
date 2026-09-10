@@ -1994,7 +1994,6 @@ def cmd_submeter(raiz: Path, args) -> int:
 
 def _concluir_com_prova(
     raiz: Path,
-    tarefa: dict,
     tid: str,
     quem: str,
     evidencia: str,
@@ -2005,7 +2004,6 @@ def _concluir_com_prova(
     Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
     soltura da reserva e da escrita do evento, para valer nos dois caminhos.
     """
-    _soltar_reserva_se_houver(raiz, tid)
     caminho = _escrever_evento(
         raiz,
         tid,
@@ -2014,6 +2012,15 @@ def _concluir_com_prova(
         evidencia=evidencia,
         verificado_em=verificado_em,
     )
+    try:
+        _soltar_reserva_se_houver(raiz, tid)
+    except ErroDeInstrumentacao as erro:
+        raise ErroDeInstrumentacao(
+            "a conclusão foi registrada, mas a reserva não foi liberada",
+            f"Evento: {caminho.relative_to(raiz)}\n"
+            f"Rode python ci/fila.py soltar {tid} --quem {quem} e confira a reserva.\n"
+            f"Causa original: {erro.resumo}",
+        ) from erro
     print(
         f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
     )
@@ -2051,7 +2058,6 @@ def cmd_concluir(raiz: Path, args) -> int:
         return 1
     return _concluir_com_prova(
         raiz,
-        tarefas[tid],
         tid,
         args.quem,
         args.evidencia,
@@ -2092,7 +2098,6 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         return 1
     return _concluir_com_prova(
         raiz,
-        tarefas[tid],
         tid,
         args.quem,
         evidencia,
