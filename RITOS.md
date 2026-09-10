@@ -102,8 +102,10 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
    revise `git diff --cached --name-only` antes de commitar.
 2. **Regra de parada:** DUAS tentativas consecutivas de correção falharam ⇒
-   pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
-   terceira tentativa sem novo despacho.
+   preserve os arquivos e commits e devolva à maestro. Ela separa falha de
+   código e de instrumento, refaz o diagnóstico e emite novo despacho dentro
+   do pedido aprovado. Só decisão exclusiva dele vai ao mantenedor; não
+   repita uma terceira tentativa com a mesma hipótese.
 3. **Intocabilidade dos testes:** proibido deletar, desativar, comentar ou afrouxar
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não
@@ -264,7 +266,11 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 Contratos congelados são o que impede o pronto-e-funcionando de virar labirinto.
 Mudá-los é legítimo — mas é um RITO, nunca uma decisão de sessão:
 
-1. Sessão de arquitetura **com o mantenedor presente** (CODEOWNERS torna isso mecânico).
+1. A maestro conduz a análise de arquitetura dentro do pedido aprovado.
+   Adição interna compatível pode prosseguir com consumidores identificados,
+   testes de compatibilidade e ordem de publicação. Quebra de API pública,
+   migração destrutiva, gasto novo ou ampliação de acesso exige decisão
+   específica do mantenedor com impacto e plano de reversão preparados.
 2. PR contendo **somente** `contracts/`, com a label `contrato` (a cerca reprova
    contrato misturado com código de célula).
 3. **Provedor primeiro**, mantendo retrocompatibilidade (campo novo opcional, nunca

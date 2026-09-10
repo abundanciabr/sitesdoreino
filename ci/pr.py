@@ -35,6 +35,7 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
 )
 import telemetria
+from mandato_publicacao import PublicacaoRecusada, REPOSITORIO, conferir_envio, conferir_textos
 from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 # O vocabulário do livro. Copiado de `painel/logica.js` de propósito: o
@@ -357,6 +358,10 @@ def _conferir_o_pedido(raiz: Path, pedido: Pedido) -> None:
     for texto in (pedido.titulo, pedido.detalhe, Path(pedido.corpo_arquivo).read_text(encoding="utf-8"), Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")):
         if _sanitizar(texto) != texto:
             raise ParouPorSeguranca("texto contém possível segredo", "Remova credenciais do texto; forneça segredos somente pelo ambiente apropriado.")
+        try:
+            conferir_textos(texto)
+        except PublicacaoRecusada as erro:
+            raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
     mensagem = Path(pedido.mensagem_arquivo).read_text(encoding="utf-8")
     if COAUTOR not in mensagem:
         raise ParouPorSeguranca(
@@ -644,7 +649,7 @@ def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
 def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
     for tentativa in range(3):
         try:
-            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--repo", REPOSITORIO, "--json", "headRefOid,state,isDraft"]))
         except (TypeError, ValueError) as erro:
             raise ErroDeInstrumentacao(
                 "consulta final do PR inválida",
@@ -708,7 +713,11 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "resultado": "concluido",
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=commit, **correlacao)
-    correr(["git", "push", "-u", "origin", ramo])
+    try:
+        conferir_envio(raiz, pedido.arquivos, rodar)
+    except PublicacaoRecusada as erro:
+        raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
+    correr(["git", "push", "-u", "origin", ramo, "--no-follow-tags"])
     numero, url = _achar_ou_abrir_o_pr(correr, pedido, ramo)
     dizer(f"PASS PR aberto: #{numero} {url}")
     # A identidade é do fato (ramo, PR e árvore), nunca de uma tentativa.
@@ -773,10 +782,14 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         "comandos_sha256": [hashlib.sha256(json.dumps(c).encode()).hexdigest() for c in comandos],
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
-    correr(["git", "push", "origin", ramo])
+    try:
+        conferir_envio(raiz, [*pedido.arquivos, relativo, *eventos], rodar)
+    except PublicacaoRecusada as erro:
+        raise ParouPorSeguranca("publicação fora do mandato", str(erro)) from erro
+    correr(["git", "push", "origin", ramo, "--no-follow-tags"])
     remoto = _conferir_revisao_remota(correr, numero, entregue)
     if remoto["isDraft"]:
-        correr(["gh", "pr", "ready", str(numero)])
+        correr(["gh", "pr", "ready", str(numero), "--repo", REPOSITORIO])
         _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
     if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
         dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
@@ -789,7 +802,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
 
 
 def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
-    bruto = correr(["gh", "pr", "list", "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
+    bruto = correr(["gh", "pr", "list", "--repo", REPOSITORIO, "--head", ramo, "--state", "all", "--json", "number,url,state"]).strip()
     try:
         encontrados = json.loads(bruto)
     except (TypeError, ValueError) as erro:
@@ -800,10 +813,10 @@ def _achar_ou_abrir_o_pr(correr, pedido: Pedido, ramo: str) -> tuple[int, str]:
         existente = encontrados[0]
         if existente.get("state", "OPEN") != "OPEN":
             raise ParouPorSeguranca("PR do ramo já foi encerrado", "Use uma nova bancada para um novo trabalho.")
-        correr(["gh", "pr", "edit", str(existente["number"]), "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
+        correr(["gh", "pr", "edit", str(existente["number"]), "--repo", REPOSITORIO, "--title", pedido.titulo, "--body-file", str(pedido.corpo_arquivo)])
         return int(existente["number"]), existente["url"]
     saida = correr([
-        "gh", "pr", "create",
+        "gh", "pr", "create", "--repo", REPOSITORIO,
         "--base", "main",
         "--title", pedido.titulo,
         "--body-file", str(pedido.corpo_arquivo),

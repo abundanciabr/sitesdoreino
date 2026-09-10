@@ -83,9 +83,11 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 4. **Prova proporcional ao risco.** Célula de dinheiro ⇒ evidência no transporte
    (respx — §6.9) e/ou reprodução em ambiente prod-like; célula comum ⇒ suíte padrão.
    "Deveria funcionar" não é evidência em lugar nenhum (Lei 6).
-5. **FAIL ≠ ERROR.** FAIL = código errado ⇒ o agente conserta. ERROR = instrumento
-   quebrou ⇒ problema de ambiente, NÃO se mexe no código ([INV-CI01]). Rotear o
-   vermelho certo para a resposta certa é metade da regência.
+5. **FAIL ≠ ERROR.** FAIL confirmado no produto volta ao despacho; ERROR
+   exige reparar o instrumento, sem adulterar o produto ([INV-CI01]). Baseline
+   herdado também volta à maestro para diagnóstico. Após duas correções
+   falhas, novo despacho exige hipótese e evidência novas; só dependência
+   exclusiva do mantenedor vira pedido de decisão.
 6. **Sucesso parcial é sucesso.** 5 verdes + 1 travado ⇒ mergeiam-se os 5, o travado
    é isolado com diagnóstico e reportado. O lote é colheita, não tudo-ou-nada.
 7. **Contenção (anti-metas do PLANO-10X).** Sem refatoração "de passagem", sem célula
@@ -116,9 +118,17 @@ Para cada PR verde, na ordem canário → comuns → dinheiro:
 python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
 ```
 
-Quem arma a espera é a maestro, pelo Monitor disponível. Confira a etiqueta
-`pousar` antes de encerrar; uma espera encerrada sem etiqueta não encaminhou
-nada. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+Quem arma a espera é a maestro. Confira a etiqueta `pousar`; sem ela não
+houve encaminhamento. Antes, publique o parecer real do revisor independente
+para o SHA final, conforme `ci/mergear.py`. Se o SHA mudar, refaça a revisão.
+Depois, consulte `python ci/esperar.py --entrega <N>` e confira a tela afetada.
+Para continuar após encerrar a sessão, crie e confira o acompanhamento
+nativo do Codex apenas quando o mantenedor autorizar esse efeito persistente.
+Ele observa só este lote, devolve falhas ao responsável e pede nova revisão
+quando necessário; fica quieto sem mudança acionável e se encerra após a
+conclusão verificada. A criação precisa ser confirmada pela ferramenta,
+não por texto no relatório. Sem autorização, acompanhe na sessão atual.
+Nunca use esse acompanhamento para escolher trabalho novo da fila. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
 `20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
 PR aberto, revisão aprovada, integração e publicação são estados distintos.
 
@@ -160,8 +170,10 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
 
 ## §7 — O que NUNCA entra num lote / o que fica com o humano
 
-- **Rito de Contrato** (RITOS §3): sessão de arquitetura com o mantenedor presente.
-  O lote pode *esperar* um contrato, nunca *mudá-lo*.
+- **Decisões exclusivas dele:** negócio, gasto novo, apagar dados, migração
+  destrutiva, quebra de API pública e ampliação de acesso. A maestro prepara
+  impacto, recomendação e reversão antes de pedir a decisão. Adição interna
+  compatível dentro do mandato segue RITOS §3 com as provas dos consumidores.
 - **Segredos, VPS/SSH, console do provedor, settings do GitHub**: só do mantenedor.
 - **e2e de fechamento e drill de rollback**: seriais por natureza — fecham um ciclo,
   não entram no meio de um.
@@ -172,7 +184,7 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
 
 | Sintoma | Resposta |
 |---|---|
-| Check vermelho num PR do lote | FAIL ⇒ agente conserta (máx. 2 tentativas); ERROR ⇒ ambiente/instrumento, não toque no código |
+| Check vermelho num PR do lote | FAIL ⇒ despacho corrige; duas falhas ⇒ maestro refaz diagnóstico; ERROR ⇒ reparar instrumento, sem adulterar produto |
 | Conflito em arquivo de texto compartilhado | rebase + as duas linhas sobrevivem (§7.6) |
 | Deploy vermelho após merge | pausa da janela; `--log-failed`; externa ⇒ rerun; código ⇒ só aquela célula espera |
 | Agente sumiu/travou | lote segue; re-brief com diagnóstico ou corte do despacho |

@@ -1,16 +1,10 @@
 # CLAUDE.md — sitesdoreino
 
-Lei de toda sessão do Claude Code aqui. Este arquivo entra em cada chamada de
-cada robô, por isso só carrega a REGRA, o COMANDO e QUEM A FAZ VALER. O porquê
-de cada lei (datas, PRs, medições) mora em
-`docs/decisoes/DECISAO-claude-md-so-lei.md`: abra quando precisar do motivo.
-Lei nova entra aqui nesse formato e leva a história para lá, no mesmo PR; o
-tamanho deste arquivo tem teto mecânico.
+Lei de toda sessão: REGRA, COMANDO e QUEM FAZ VALER. Motivos ficam em
+`docs/decisoes/DECISAO-claude-md-so-lei.md`; lei nova acrescenta a história
+lá no mesmo PR. Este arquivo tem teto mecânico.
 
 ## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa
-
-Vale aqui integralmente, por ordem do mantenedor, e é a primeira seção,
-palavra por palavra; só o nível dos títulos mudou, porque `##` aqui marca lei.
 
 ### Padrão de trabalho — Modelo Steve Jobs / Apple
 
@@ -167,19 +161,18 @@ irreversível, destrutivo ou caro) vai em caixa de pergunta estruturada
 cabem dentro dele.** "Nada além dele" proíbe enchimento, não o que a casa
 exige: veredito do deploy em "O que foi verificado"; merge em caminho
 CODEOWNERS, nominal, em "O que mudou"; passo manual ou bloqueio em "O que eu
-preciso decidir", com a caixa aberta junto; e, quando nada depende dele, a
-linha "nada depende de ninguém, ~8 min".
+preciso decidir", com a caixa aberta junto; e, quando nada depende dele, informe o estado verificado e o acompanhamento ativo.
 
 **Quem faz valer:** `ci/padrao_de_trabalho.py` · `ci/tests/test_padrao_de_trabalho.py`.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-Use o contexto direcionado da abertura (`ci/sessao.py`) por caminho e sintoma.
-Confira origens, ausências e truncamento; abra as entradas citadas e recuperadas,
-`services/<celula>/LICOES.md` e, uma vez por sessão, os 8 padrões de
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho continuam
-obrigatórias. Para aprofundamento: `--caminho`/`--sintoma`, `--limite-contexto`
-ou `armadilhas/INDICE.md` (gerado fora do Git por `python ci/indice_de_armadilhas.py`).
+Leia o contexto direcionado de `ci/sessao.py`: origens, ausências, truncamento
+e entradas citadas/recuperadas; `services/<celula>/LICOES.md`; e, uma vez por
+sessão, os 8 padrões de `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais
+e por caminho são obrigatórias. Para aprofundamento: use `--caminho`/`--sintoma`,
+`--limite-contexto` ou `armadilhas/INDICE.md`, gerado fora do Git por
+`python ci/indice_de_armadilhas.py`.
 
 **Ao terminar, acrescente o que aprendeu:** arquivo novo `armadilhas/NNN-slug.md`
 com o `NNN` pedido ao almoxarife (`python ci/reservar.py numero armadilha`), e
@@ -204,40 +197,48 @@ No principal ficam livres leituras, `git fetch`, `git worktree` e `gh`; com a
 (`armadilhas/135`). O espelho se atualiza sozinho na abertura da sessão, só
 quando é seguro.
 
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, hook em `.claude/settings.json` · `ci/tests/test_muralha_pasta_compartilhada.py`.
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, hooks do executor ativo · `ci/tests/test_muralha_pasta_compartilhada.py`.
+
+## Autonomia dentro do pedido aprovado
+
+O mandato cobre código, testes, documentação técnica e registros sem dados
+privados da entrega solicitada no GitHub público `abundanciabr/sitesdoreino`.
+Confira destino, arquivos declarados e histórico transmitido; a maestro
+revisa conteúdo e escopo. Segredos e outro destino exigem tratamento
+específico. Permissões e revisão automática do aplicativo continuam valendo.
+
+Negócio, gasto novo, apagar dados, migração destrutiva, quebra de API pública
+ou ampliar acesso exigem decisão específica, com impacto, recomendação e
+reversão preparados. Falha técnica volta aos robôs; duas correções falhas
+exigem novo diagnóstico da maestro. ERROR não autoriza adulterar o produto.
+Contratos compatíveis seguem RITOS §3.
+
+**Quem faz valer:** `ci/mandato_publicacao.py` em `ci/sessao.py` e `ci/pr.py` · `ci/tests/test_mandato_publicacao.py`. Intenção e confidencialidade exigem revisão do conteúdo.
 
 ## Todo pedido do mantenedor é um lote
 
-A sessão que recebe um pedido dele É a maestro. Ela divide o pedido em pedaços
-independentes (prefira uma célula por PR; CONSTITUICAO Lei 2 exige as suítes
-de todas as tocadas; teto de 15 arquivos, fora `painel/` e `fila/`), dispara
-um sub-agente por pedaço com a ficha `despacho`,
-em paralelo, e mantém em série só o que depende de outro pedaço. Enquanto os
-checks rodam, o `revisor` lê o diff. `make pr` reserva e embarca recibo e eventos;
-não repita esses efeitos com o `escrivao`, que julga lições e fatos adicionais.
-A maestro arma a espera, consolida o placar e fala com ele. Confira PRs abertos.
+A sessão que recebe o pedido é a maestro. Divide peças independentes entre
+subagentes `despacho` em paralelo e encadeia dependências. Prefira uma célula
+por PR; teste todas as tocadas (CONSTITUICAO Lei 2); teto de 15 arquivos,
+fora `painel/` e `fila/`. Confira PRs abertos. Enquanto os checks rodam,
+`revisor` lê o diff. `make pr` embarca recibo e eventos; `escrivao` só julga
+lições e fatos adicionais. A maestro acompanha e presta contas.
 
-As fichas em `.claude/agents/` carregam o rito; o brief leva SÓ a tarefa e as
-armadilhas dela. Sub-agente nunca pergunta ao mantenedor nem dispara outro
-sub-agente. Regência: `RUNBOOK-LOTES.md`.
+Use fichas do executor ativo em `.codex/agents/` ou `.claude/agents/`.
+Brief leva tarefa e armadilhas; subagente não pergunta ao mantenedor nem
+dispara outro. Regência: `RUNBOOK-LOTES.md`.
 
-**Quem faz valer:** `ci/tests/test_fichas_de_robo.py`. A divisão e o disparo em paralelo são julgamento da maestro, sem mecanismo.
+**Quem faz valer:** `ci/tests/test_fichas_de_robo.py`. Divisão e paralelismo são julgamento da maestro.
 
 ## O que uma chamada custa
 
-Cada comando reenvia a conversa inteira, e sub-agente sem `model` herda o
-modelo da maestro, o mais caro.
+Escolha modelo e esforço pelo brief de `ci/economia_da_fabrica.py`, para o
+executor ativo. Use identificadores disponíveis nesse executor; nunca um
+apelido de outro provedor. Na dúvida arquitetural, use o modelo de cima.
+Acima de ~300k de contexto, avise e indique o que levar à conversa nova;
+quem fecha é o mantenedor. Custo não reduz a ambição.
 
-1. **O modelo se escolhe, não se herda.** `model: "sonnet"` para rotina
-   (registro, armadilha, texto de tela, teste, rota, semente); o de cima para
-   arquitetura, contrato e código novo do produto. Na dúvida, o de cima.
-2. **Conversa que engorda avisa.** Acima de ~300k de contexto, a sessão diz
-   isso ao mantenedor em uma linha e sugere conversa nova, dizendo o que
-   levar. Quem fecha é ele.
-
-Isto muda o preço unitário, nunca a ambição.
-
-**Quem faz valer:** `ci/tests/test_fichas_de_robo.py`. O resto é julgamento da maestro, sem mecanismo.
+**Quem faz valer:** `ci/economia_da_fabrica.py` · `ci/tests/test_fichas_de_robo.py`. A decisão de complexidade é julgamento da maestro.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
@@ -270,9 +271,7 @@ Onde vale: toda `templates/`, `traducoes/` e
 Fora: o bastidor do mantenedor (`ci/texto-publico-bastidor.txt`), `painel/ia/`,
 o que nunca é publicado e **a OBRA dele (o texto das aulas e o do livro), onde
 nenhuma tela conta riscas nem pede reescrita**
-(`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`). O portão vigia
-ARQUIVOS, não o banco: texto já semeado em produção se conserta por migração de
-dados (molde em `forum/migrations/0003`). Na dúvida,
+(`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`). Texto já semeado em produção exige migração de dados (`forum/migrations/0003`). Na dúvida,
 `python ci/travessao.py --listar`.
 
 **Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` · `ci/tests/test_travessao.py` · na escrita, `ci/muralha_do_travessao_na_escrita.py` · `ci/tests/test_muralha_do_travessao_na_escrita.py` · a obra, `services/admin/tests/test_editor_de_aulas.py`.
@@ -303,29 +302,20 @@ número por `python ci/reservar.py numero registro`, menos de 1 KB.
 
 ## O agente pede pouso; quem mergeia é a pista
 
-Ninguém espera pelo mantenedor, e o agente não mergeia: pede pouso e vai
-embora.
+A maestro recebe PR com recibo e parecer independente do SHA final, publica
+a avaliação real e roda `ci/esperar.py --checks <N> --e-pousar`. Novo SHA
+exige nova revisão. Confira `pousar`: é encaminhamento, não conclusão.
 
-1. PR aberto → registro embarcado no mesmo ramo (PR que só escritura é isento).
-2. UM comando, pela ferramenta `Monitor`:
+Acompanhe `ci/esperar.py --entrega <N>`, confira a tela e registre o resultado.
+Falha técnica volta ao responsável. Após a sessão, continuidade exige
+acompanhamento nativo autorizado pelo mantenedor e criação confirmada pela
+ferramenta (RUNBOOK §5). Sem ele, acompanhe nesta sessão e reporte o limite.
 
-   ```bash
-   python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
-   ```
+`--confirmo` é só da pista. CODEOWNERS (`contracts/`, `pagamentos`, `checkout`,
+`infra/`, `ci/`, `.github/`, arquivos-lei) exige mandato do despacho e anúncio
+nominal. Informe estado observado, sem atribuir prazo fixo à fila.
 
-   Verde vira pedido de pouso sozinho; vermelho, pendente ou estouro nunca
-   viram. Antes de encerrar, confira a etiqueta `pousar` no PR: espera armada
-   por sub-agente morre com ele.
-3. A pista mergeia e comenta no PR. **No relatório final, diga com todas as
-   letras que nada mais depende de ninguém**, e que a fila leva 8 min de mediana.
-4. Merge tocando `services/` ou `infra/`: veredito do deploy, em registro novo.
-
-`--confirmo` recusa quem não é a pista; o botão de merge do site não é
-caminho. Caminho CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`,
-`ci/`, `.github/`, arquivos-lei da raiz) só com mandato do despacho, anunciado
-nominalmente no relatório final.
-
-**Quem faz valer:** `ci/mergear.py` · `.github/workflows/pouso.yml` · `ci/tests/test_mergear.py`.
+**Quem faz valer:** `ci/mergear.py` · `ci/esperar.py` · `.github/workflows/pouso.yml` · `ci/tests/test_mergear.py`. O parecer é atestado da maestro, não assinatura criptográfica do robô.
 
 ## Depois de todo merge que dispara deploy
 

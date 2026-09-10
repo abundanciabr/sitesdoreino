@@ -80,11 +80,13 @@ class Duble:
 
 
 RESPOSTAS_FELIZES = {
+    "remote get-url": "https://github.com/abundanciabr/sitesdoreino.git",
+    "gh api": json.dumps({"full_name": "abundanciabr/sitesdoreino", "private": False}),
     "git show " + "b" * 40 + ":ci/pr.py": "def abrir(): pass\n",
     "write-tree": "a" * 40,
     "rev-parse HEAD^{tree}": "a" * 40,
     "rev-parse HEAD": "b" * 40,
-        "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
+    "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
     "rev-parse --abbrev-ref": "agent/ci/make-pr\n",
     "status --porcelain": " M ci/pr.py\n?? ci/tests/test_pr.py\n",
     "diff --cached --name-only": "ci/pr.py\n",
@@ -480,7 +482,7 @@ def test_falha_de_validacao_ou_rede_nunca_imprime_sucesso(tmp_path, capsys, onde
 
 def test_revisao_remota_antiga_recusa(tmp_path):
     raiz = bancada(tmp_path)
-    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN'})})
+    dub = Duble({**RESPOSTAS_FELIZES, 'gh pr view': json.dumps({'headRefOid': 'c'*40, 'state': 'OPEN', 'isDraft': False})})
     with pytest.raises(pr.ParouPorSeguranca, match='revisão entregue'):
         pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
 

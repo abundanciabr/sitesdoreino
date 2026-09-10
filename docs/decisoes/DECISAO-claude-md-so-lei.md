@@ -997,3 +997,44 @@ abertura (`--plano`) e na memória do robô — sem mecanismo, declarado.
 
 **Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.
 
+
+
+### Autonomia por escopo e integração nativa, 09/09/2026
+
+O mantenedor aprovou implementar a revisão do fluxo herdado: os robôs devem
+concluir o trabalho técnico e reservar a intervenção humana às decisões que
+exigem sua autoridade. O destino autorizado desta entrega é o GitHub público
+`abundanciabr/sitesdoreino`, com código, testes, documentação técnica e
+registros operacionais sem conteúdo privado. Isso não muda as permissões
+nem a revisão automática do aplicativo.
+
+O portão de publicação passa a conferir os URLs efetivos de leitura e push,
+a identidade pública do repositório, os arquivos declarados e os commits
+novos a transmitir, inclusive conteúdo removido num commit posterior.
+Credenciais reconhecíveis, bancos, logs privados e destinos divergentes
+interrompem o envio. A guarda limita o rito; não intercepta qualquer comando
+Git manual nem determina sozinha se um texto é confidencial. O exame do
+conteúdo e a pertinência ao pedido permanecem responsabilidade da maestro.
+
+`AGENTS.md` direciona o Codex à lei canônica em `CLAUDE.md`, evitando duas
+cópias divergentes. Fichas e hooks do executor ativo precisam ser testados
+com os eventos que ele realmente envia. Adições internas de contrato
+compatíveis seguem com prova dos consumidores; mudanças destrutivas ou de
+negócio exigem decisão preparada. Duas falhas mudam o diagnóstico e o
+despacho responsável, sem transformar qualquer problema técnico em tarefa
+do mantenedor.
+
+Parecer independente do SHA final, integração, deploy e verificação da tela
+são etapas distintas. A maestro publica a avaliação real de outro robô;
+o comentário é atestado de responsabilidade, não autenticação criptográfica
+do executor. Acompanhamento após a sessão exige autorização específica,
+criação confirmada pela ferramenta nativa e encerramento ao concluir o lote.
+A antiga frase obrigatória de prazo de oito minutos foi retirada porque
+um pedido de pouso não prova integração nem publicação.
+
+
+O mesmo lote reproduziu leitura atrasada do SHA pelo GitHub logo após o push
+nos PRs 1489 e 1492: a consulta seguinte confirmou o commit já enviado, mas
+o rito exigia executar todas as provas novamente. O fechamento agora repete
+somente a confirmação remota, com três consultas e espera curta limitada;
+SHA ainda divergente, PR fechado ou estado incompleto nunca vira sucesso.

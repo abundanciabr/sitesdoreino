@@ -1156,6 +1156,7 @@ class Sessao:
         antes do código, sem transformar alterações do agente em anúncio.
         """
         passo = self._abrir(P_ANUNCIO)
+        from mandato_publicacao import PublicacaoRecusada, REPOSITORIO, conferir_envio, conferir_textos
         titulo = f"rascunho: {self.plano.frase or self.plano.tarefa_da_fila or self.plano.tarefa}"
         corpo = (
             "# Trabalho em andamento\n\n"
@@ -1166,10 +1167,14 @@ class Sessao:
             f"Tarefa: {self.plano.tarefa_da_fila or self.plano.tarefa}\n\n"
             "A revisão só será solicitada depois da implementação e da validação."
         )
+        try:
+            conferir_textos(titulo, corpo)
+        except PublicacaoRecusada as erro:
+            raise ErroDeSessao(passo, "anúncio fora do mandato", detalhe=str(erro), codigo=1) from erro
         corpo_arquivo = self.plano.scratch / f"anuncio-{self.plano.tarefa}.md"
         self._escrever(corpo_arquivo, corpo)
         consulta = self._correr(
-            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
+            [gh, "pr", "list", "--repo", REPOSITORIO, "--head", self.plano.branch, "--state", "all",
              "--json", "number,url,state,isDraft"],
             cwd=self.plano.worktree,
             timeout=120,
@@ -1245,15 +1250,25 @@ class Sessao:
                     cwd=self.plano.worktree,
                     timeout=120,
                 )
+        try:
+            conferir_envio(
+                self.plano.worktree, eventos,
+                lambda comando, raiz: self._exigir(
+                    passo, [gh, *comando[1:]] if comando[0] == "gh" else comando,
+                    cwd=raiz, timeout=120,
+                ).stdout,
+            )
+        except PublicacaoRecusada as erro:
+            raise ErroDeSessao(passo, "publicação fora do mandato", detalhe=str(erro), codigo=1) from erro
         self._exigir(
             passo,
-            ["git", "push", "-u", "origin", self.plano.branch],
+            ["git", "push", "-u", "origin", self.plano.branch, "--no-follow-tags"],
             cwd=self.plano.worktree,
             timeout=600,
         )
         criado = self._exigir(
             passo,
-            [gh, "pr", "create", "--draft", "--base", "main", "--head", self.plano.branch,
+            [gh, "pr", "create", "--repo", REPOSITORIO, "--draft", "--base", "main", "--head", self.plano.branch,
              "--title", titulo, "--body-file", str(corpo_arquivo)],
             cwd=self.plano.worktree,
             timeout=120,
@@ -1266,7 +1281,7 @@ class Sessao:
                 detalhe="Confira gh pr list e repita a abertura. Sem URL, o anúncio não foi comprovado.",
             )
         conferido = self._correr(
-            [gh, "pr", "view", achado.group(1), "--json", "state,isDraft,headRefOid"],
+            [gh, "pr", "view", achado.group(1), "--repo", REPOSITORIO, "--json", "state,isDraft,headRefOid"],
             cwd=self.plano.worktree,
             timeout=120,
         )
@@ -1773,14 +1788,6 @@ def contexto_direcionado(
         linhas.append("Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
                       "python ci/indice_de_armadilhas.py quando precisar da consulta integral.")
     achados = {}
-    for caminho in caminhos:
-        try:
-            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
-            for item in itens:
-                achados.setdefault(item["armadilha"], item)
-        except (OSError, ValueError, TypeError, KeyError):
-            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
-            break
     if sintoma:
         try:
             # O sino limita toques por comando. Consultar cada assinatura mantém
@@ -1790,6 +1797,14 @@ def contexto_direcionado(
                     achados.setdefault(item["armadilha"], item)
         except (OSError, ValueError, TypeError, KeyError):
             linhas.append("Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py.")
+    for caminho in caminhos:
+        try:
+            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
+            for item in itens:
+                achados.setdefault(item["armadilha"], item)
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
+            break
     if not achados:
         linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
     for item in list(achados.values())[:limite]:
