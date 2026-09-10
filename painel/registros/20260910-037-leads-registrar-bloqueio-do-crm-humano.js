@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-037-leads-registrar-bloqueio-do-crm-humano",
+  tipo: "pendencia",
+  quando: "2026-09-10",
+  titulo: "leads: registrar bloqueio do CRM humano",
+  detalhe: "A leitura do contrato e das rotas provou que a entrega exigiria uma nova fronteira entre leads e admin e permissões humanas sem mapeamento de contas. Este PR registra o bloqueio e a decisão necessária.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1528. Validação local: árvore 916839dafe2c045a3a92037d7b21de2c3ce2fc53; commit 5bfe90f168ee5aadf8f4eac916e900ec68dc0185; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-296",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
