@@ -12,7 +12,7 @@ CURSO = "primeiros-dolares"
 BOSSES_POR_MODULO = (
     "Como descobri o mercado e criei o método",
     "Salvando Projetos e Navegação",
-    "Modificador Bevel e Triangulate",
+    "Comando Bevel e Triangulate",
     "Modelagem Avançada Carro [Parte 7]",
     "Aula Especial",
     "Rigging na Prática [Weight Paint]",
