@@ -40,9 +40,12 @@ def registro_completo() -> dict:
 def test_entrega_com_responsabilidade_herdada_e_pessoas_definidas(tmp_path):
     raiz = escrever_registro(tmp_path, registro_completo())
     assert responsabilidades.validar_entrega(raiz, "aula") == []
+    assert responsabilidades.auditar(raiz) == []
     registro = registro_completo()
     registro["unidades"][1]["aprova"] = "IA"
-    assert any("IA não pode ocupar o campo aprova" in erro for erro in responsabilidades.validar_entrega(escrever_registro(tmp_path, registro), "aula"))
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert any("IA não pode ocupar o campo aprova" in erro for erro in responsabilidades.validar_entrega(tmp_path, "aula"))
+    assert any("IA não pode ocupar o campo aprova" in erro for erro in responsabilidades.auditar(tmp_path))
 
 
 def test_entrega_sem_unidade_e_recusada(tmp_path):

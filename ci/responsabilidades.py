@@ -121,8 +121,13 @@ def auditar(raiz: Path) -> list[str]:
         if not isinstance(unidade, dict) or not isinstance(unidade.get("id"), str) or not unidade["id"].strip():
             erros.append("unidade sem id válido")
             continue
+        efetiva, problemas = resolver_unidade(registro, unidade["id"])
+        if problemas:
+            erros.extend(f"{unidade['id']}: {erro}" for erro in problemas)
+            continue
+        assert efetiva is not None
         for campo in UNIDADE_CAMPOS_OBRIGATORIOS:
-            if not unidade.get(campo):
+            if not efetiva.get(campo):
                 erros.append(f"{unidade.get('id', 'sem id')}: campo obrigatório ausente: {campo}")
         erros.extend(f"{unidade['id']}: {erro}" for erro in validar_entrega(raiz, unidade["id"]))
     return sorted(set(erros))
