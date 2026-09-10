@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-069-video-youtube-publicado",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Atalho de vídeo do YouTube publicado no PR #1540",
+  detalhe: "O PR #1540 foi integrado no commit 0d44f1bedac8cb43f427cd72e162c674e25a1ff7. O deploy da administração terminou com sucesso, deixando disponível a criação de aula por uma única URL de vídeo do YouTube.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1540; https://github.com/abundanciabr/sitesdoreino/actions/runs/34534825997",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-052-admin-criar-modelo-de-video-do-youtube",
+  relacao: "aceite",
+  tarefa: "TAR-327",
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();
