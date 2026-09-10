@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Vídeo do YouTube{% endblock %}
+{% block corpo %}
+<style>
+  .modelo-youtube { max-width: 640px; }
+  .modelo-youtube input { width: 100%; padding: 10px 12px; font: inherit; color: var(--texto); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; }
+  .modelo-youtube button { margin-top: 16px; padding: 11px 18px; font: inherit; font-weight: 600; color: var(--verde); background: var(--fundo); border: 1px solid var(--verde); border-radius: 8px; cursor: pointer; }
+</style>
+<div class="envolucro modelo-youtube">
+  <p><a class="volta" href="{{ url_da_lista }}">&larr; Todas as encomendas</a></p>
+  {% if nao_existe %}
+  <h1>Essa encomenda não existe</h1>
+  <p class="aviso borda-amarela">A aula precisa existir na estrutura do curso antes de receber este modelo.</p>
+  {% elif falha_da_sala %}
+  <h1>Vídeo do YouTube</h1>
+  <p class="aviso borda-vermelha"><b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}</p>
+  {% else %}
+  <h1>{{ aula.numero }}: {{ aula.titulo_exibido|default:"(sem título ainda)" }}</h1>
+  <p class="subtitulo">Vídeo do YouTube. Cole a URL e a aula será salva e publicada.</p>
+  <p><a class="volta" href="{{ url_do_editor }}">Voltar ao editor completo</a></p>
+
+  {% if recado == "publicada" %}
+  <p class="aviso feito"><b>Aula publicada.</b> O vídeo está aberto para os alunos na versão {{ versao_nova }}.</p>
+  {% endif %}
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para concluir.</b> {{ erro }}</p>
+  {% endif %}
+  {% for frase in gerais %}
+  <p class="aviso borda-vermelha">{{ frase }}</p>
+  {% endfor %}
+
+  {% if url_salva %}
+  <form method="post" action="{{ url_de_publicar }}">
+    {% csrf_token %}
+    <input type="hidden" name="confirmo" value="1">
+    <button type="submit">Tentar publicar a aula de novo</button>
+  </form>
+  {% endif %}
+
+  <form method="post" action="{{ url_do_modelo }}">
+    {% csrf_token %}
+    <label class="rotulo" for="video_url">Link do vídeo no YouTube</label>
+    <input type="url" id="video_url" name="video_url" value="{{ video_url }}" placeholder="https://youtu.be/ID" required autocomplete="off">
+    <p class="nota">Aceita youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Os demais campos desta aula ficam vazios.</p>
+    <button type="submit">Salvar e publicar aula</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

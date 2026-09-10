@@ -85,6 +85,7 @@ from apps.core.aulas import (
     aula,
     aula_publicar,
     aula_salvar,
+    aula_youtube,
     aulas,
     instrumento,
     instrumento_salvar,
@@ -694,6 +695,12 @@ urlpatterns = [
         r"aulas/(?P<numero>[A-Za-z0-9]+)/$",
         aula,
         name="escola_aula",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+        aula_youtube,
+        name="escola_aula_youtube",
     ),
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"

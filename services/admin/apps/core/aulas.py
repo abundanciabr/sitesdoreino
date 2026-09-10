@@ -124,12 +124,13 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from apps.auditoria.models import Registro
 
@@ -138,6 +139,7 @@ from .views import _auditar
 
 LISTA = "admin/escola_aulas.html"
 EDITOR = "admin/escola_aula.html"
+YOUTUBE = "admin/escola_aula_youtube.html"
 INSTRUMENTO = "admin/escola_instrumento.html"
 
 # ---------------------------------------------------------------------------
@@ -512,6 +514,26 @@ def _rascunho_do_formulario(request) -> dict:
         "pausas": pausas,
         "erros": {},
     }
+
+
+def _e_url_de_video_youtube(url: str) -> bool:
+    """Só aceita formas HTTPS que a sala de aula incorpora como vídeo."""
+    try:
+        endereco = urlparse(url)
+        host = (endereco.hostname or "").lower()
+    except ValueError:
+        return False
+    if endereco.scheme != "https":
+        return False
+
+    partes = [parte for parte in endereco.path.split("/") if parte]
+    if host == "youtu.be" or host.endswith(".youtu.be"):
+        return len(partes) == 1
+    if host != "youtube.com" and not host.endswith(".youtube.com"):
+        return False
+    if endereco.path == "/watch":
+        return bool((parse_qs(endereco.query).get("v") or [""])[0].strip())
+    return len(partes) == 2 and partes[0] in {"embed", "shorts"}
 
 
 def _corpo(rascunho: dict) -> "tuple[dict, dict]":
@@ -901,6 +923,7 @@ def _desenhar_aula(
         "url_da_lista": _endereco("escola_aulas", curso, parte),
         "url_de_salvar": _endereco("escola_aula_salvar", curso, parte, numero),
         "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+        "url_do_modelo_youtube": _endereco("escola_aula_youtube", curso, parte, numero),
         "url_do_capitulo": _endereco("escola_capitulo", curso, parte, numero),
         "url_de_conferir": (
             _endereco("escola_aula", curso, parte, numero) + "?conferir=1"
@@ -1127,6 +1150,211 @@ def aula(request, curso: str, numero: str, parte: "str | None" = None):
         recado=request.GET.get("recado", ""),
         versao=int(bruto) if bruto.isdigit() else 0,
         conferir=request.GET.get("conferir", ""),
+    )
+
+
+def _desenhar_aula_youtube(
+    request,
+    site: dict,
+    curso: str,
+    numero: str,
+    parte: "int | None",
+    *,
+    video_url: str = "",
+    erro: str = "",
+    gerais: "list[str] | None" = None,
+    recado: str = "",
+    versao: int = 0,
+    url_salva: bool = False,
+    status: int = 200,
+):
+    """A tela curta do modelo: a aula existe antes, o único dado novo é a URL."""
+    cliente = CursosClient()
+    desfecho, aula_lida = cliente.aula(site["id"], curso, numero, parte)
+    contexto_do_lugar = {
+        "curso": curso,
+        "numero": numero,
+        "url_da_lista": _endereco("escola_aulas", curso, parte),
+        "url_do_editor": _endereco("escola_aula", curso, parte, numero),
+        "url_do_modelo": _endereco("escola_aula_youtube", curso, parte, numero),
+        "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+    }
+    if desfecho == CursosClient.NAO_EXISTE:
+        return render(
+            request,
+            YOUTUBE,
+            {"admin": request.admin, "nao_existe": True} | contexto_do_lugar,
+            status=404,
+        )
+    if desfecho != CursosClient.OK:
+        return render(
+            request,
+            YOUTUBE,
+            {"admin": request.admin, "falha_da_sala": _falha(desfecho)}
+            | contexto_do_lugar,
+            status=503,
+        )
+    return render(
+        request,
+        YOUTUBE,
+        {
+            "admin": request.admin,
+            "aula": _cabecalho(aula_lida or {}),
+            "video_url": video_url or str((aula_lida or {}).get("video_url") or ""),
+            "erro": erro,
+            "gerais": gerais or [],
+            "recado": recado,
+            "versao_nova": versao,
+            "url_salva": url_salva,
+        }
+        | contexto_do_lugar,
+        status=status,
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def aula_youtube(request, curso: str, numero: str, parte: "str | None" = None):
+    """Grava e publica uma encomenda usando somente uma URL de vídeo do YouTube."""
+    site = _site_desta_requisicao(request)
+    if site is None:
+        return _sem_site(request)
+    na_parte = int(parte) if parte else None
+    if request.method == "GET":
+        bruto = (request.GET.get("versao") or "").strip()
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            recado=request.GET.get("recado", ""),
+            versao=int(bruto) if bruto.isdigit() else 0,
+        )
+
+    video_url = (request.POST.get("video_url") or "").strip()
+    if not _e_url_de_video_youtube(video_url):
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro=(
+                "Cole um link HTTPS de vídeo do YouTube, no formato youtu.be/ID, "
+                "youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Nada foi salvo."
+            ),
+            status=422,
+        )
+
+    cliente = CursosClient()
+    leitura, aula_atual = cliente.aula(site["id"], curso, numero, na_parte)
+    if leitura != CursosClient.OK:
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro="Não foi possível ler a aula antes de trocar o vídeo. Nada foi salvo.",
+            status=503,
+        )
+    rascunho = _rascunho_da_aula(aula_atual or {})
+    rascunho["video_url"] = video_url
+    corpo, _ = _corpo(rascunho)
+    desfecho, resposta = cliente.gravar_aula(site["id"], curso, numero, corpo, na_parte)
+    if desfecho == CursosClient.OK:
+        versao = int((resposta or {}).get("versao") or 0)
+        _auditar(request, Registro.EDITAR_AULA, numero, Registro.OK, f"versao {versao}")
+        publicado, resposta_publicada = CursosClient().publicar_aula(
+            site["id"], curso, numero, na_parte
+        )
+        if publicado == CursosClient.OK:
+            versao_publicada = int((resposta_publicada or {}).get("versao") or versao)
+            _auditar(
+                request,
+                Registro.PUBLICAR_AULA,
+                numero,
+                Registro.OK,
+                f"versao {versao_publicada}",
+            )
+            destino = _endereco("escola_aula_youtube", curso, na_parte, numero)
+            return HttpResponseRedirect(
+                f"{destino}?recado=publicada&versao={versao_publicada}"
+            )
+        if publicado == CursosClient.RECUSADO:
+            _auditar(
+                request,
+                Registro.PUBLICAR_AULA,
+                numero,
+                Registro.RECUSADO_PELA_CELULA,
+                "recusou",
+            )
+            return _desenhar_aula_youtube(
+                request,
+                site,
+                curso,
+                numero,
+                na_parte,
+                video_url=video_url,
+                gerais=_pendurar(
+                    {"erros": {}, "pecas": [], "quiz": [], "pausas": []},
+                    {},
+                    resposta_publicada,
+                ),
+                erro="A URL foi salva, mas a aula não foi aberta para os alunos.",
+                url_salva=True,
+                status=422,
+            )
+        _auditar(
+            request, Registro.PUBLICAR_AULA, numero, Registro.NAO_RESPONDEU, publicado
+        )
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro=(
+                "A URL foi salva. Não consegui confirmar se a aula foi aberta para os "
+                "alunos; recarregue em um minuto e confira o estado dela."
+            ),
+            status=503,
+        )
+
+    if desfecho == CursosClient.RECUSADO:
+        _auditar(
+            request,
+            Registro.EDITAR_AULA,
+            numero,
+            Registro.RECUSADO_PELA_CELULA,
+            "recusou",
+        )
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            gerais=_pendurar(
+                {"erros": {}, "pecas": [], "quiz": [], "pausas": []}, {}, resposta
+            ),
+            erro="A sala de aula não aceitou a URL. Nada foi salvo.",
+            status=422,
+        )
+    _auditar(request, Registro.EDITAR_AULA, numero, Registro.NAO_RESPONDEU, desfecho)
+    return _desenhar_aula_youtube(
+        request,
+        site,
+        curso,
+        numero,
+        na_parte,
+        video_url=video_url,
+        erro="Não sei se a URL foi salva. Espere um minuto e confira a aula antes de tentar de novo.",
+        status=503,
     )
 
 
