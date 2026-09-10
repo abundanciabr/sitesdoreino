@@ -50,6 +50,18 @@ def test_contexto_real_por_caminho_sintoma_e_multiplos_alvos(memoria):
     assert "painel/registros/20260908-001-teste.js" in texto
 
 
+def test_sintoma_prioritario_preserva_licao_do_caminho(memoria):
+    texto = sessao.contexto_direcionado(
+        memoria,
+        objetivo="Corrigir contagem do mapa",
+        caminhos=["painel/registros/teste.js"],
+        sintoma="estado parcial com evidência atual aparece como capítulo sem prova",
+        limite=1,
+    )
+    assert "Lição 466:" in texto
+    assert "prova de estado independe da cor" in texto
+
+
 def test_contexto_vazio_e_truncado_sao_explicitos(memoria):
     vazio = sessao.contexto_direcionado(
         memoria, objetivo="Teste", caminhos=["inexistente.xyz"]
