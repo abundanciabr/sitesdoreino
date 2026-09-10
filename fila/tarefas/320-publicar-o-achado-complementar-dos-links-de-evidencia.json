@@ -4,6 +4,7 @@
   "titulo": "Publicar o achado complementar dos links de evidência",
   "toca": [
     "painel",
+    "fila",
     "ci"
   ],
   "depende_de": [],
