@@ -50,6 +50,14 @@ def validar(raiz: Path) -> list[str]:
             referencia = observacao.get("minutos_referencia")
             if isinstance(referencia, bool) or not isinstance(referencia, (int, float)) or not math.isfinite(referencia) or referencia <= 0:
                 erros.append(f"{identificador}: minutos_referencia precisa ser maior que zero")
+            for campo in ("excecoes", "reaberturas"):
+                valor = observacao.get(campo)
+                if not isinstance(valor, int) or isinstance(valor, bool) or valor < 0:
+                    erros.append(f"{identificador}: {campo} precisa ser inteiro não negativo")
+            for campo in ("qualidade", "prazo", "periodo", "condicoes"):
+                valor = observacao.get(campo)
+                if not isinstance(valor, str) or not valor.strip():
+                    erros.append(f"{identificador}: {campo} precisa ser texto preenchido")
         if observacao.get("situacao_dado") == "teste" and observacao.get("qualidade") != "não avaliada; dado de teste":
             erros.append(f"{observacao['id']}: teste precisa declarar que não mede qualidade real")
     return erros
@@ -64,8 +72,9 @@ def resumo(raiz: Path) -> dict:
         referencia = item.get("minutos_referencia", 0)
         if referencia > 0:
             trabalho_humano = sum(item.get(campo, 0) for campo in ("minutos_humanos", "minutos_revisao", "minutos_retrabalho", "minutos_excecoes", "minutos_manutencao"))
-            referencia_total += referencia
-            trabalho_total += trabalho_humano
+            casos = item.get("casos", 0)
+            referencia_total += referencia * casos
+            trabalho_total += trabalho_humano * casos
     economia_media = ((referencia_total - trabalho_total) / referencia_total * 100) if referencia_total else None
     return {
         "coleta": "iniciada" if dados.get("coleta_iniciada_em") else "não iniciada",

@@ -790,6 +790,30 @@ def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_p
         assert fila.cmd_reconciliar(tmp_path, args) == 1
 
 
+def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+        "unidades": [{
+            "id": "medicao-de-esforco",
+            "titular_funcao": "estrategia-conteudo",
+            "finalidade": "medir",
+            "acompanhamento": "revisar",
+            "fonte": "teste",
+            "evidencia": "prova",
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+    assert fila.cmd_concluir(tmp_path, args) == 0
+
+
 # ---------------------------------------------------------------------------
 # Onde o comprovante nasce — armadilhas/192 (TAR-018)
 #

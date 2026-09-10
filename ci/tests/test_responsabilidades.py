@@ -138,7 +138,7 @@ def test_resumo_de_esforco_pesa_casos_pelo_tempo_de_referencia(tmp_path):
         json.dumps({"produtividade_comprovada": True, "observacoes": [observacao, segunda]}),
         encoding="utf-8",
     )
-    assert medir_esforco.resumo(tmp_path)["economia_media_percentual"] == 50.0
+    assert medir_esforco.resumo(tmp_path)["economia_media_percentual"] == 80.0
 
 
 def test_ia_nao_pode_ser_titular_ou_substituta(tmp_path):
