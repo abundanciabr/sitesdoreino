@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-133556-TAR-341-concluida",
+  "tarefa": "TAR-341",
+  "evento": "concluida",
+  "quando": "2026-09-11T13:35:56+00:00",
+  "quem": "maestro-capitulo-1",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1514; revisao=88809a4449243a2be15488fa5cf2024b13439c6a; arvore=22e45008223c881c1b9bb69084e79ee709bc1c7e; head=b81c5215dab481a955c3971e8f23d0d18cfdbd81; merge=b203069077f80800b1b901f6ca4596b15da48e97; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34599284793; atestado=atestado aprovado para b81c5215dab481a955c3971e8f23d0d18cfdbd81; aceite=painel/registros/20260911-054-aceite-dos-pedidos-privados-da-reuniao.js",
+  "verificado_em": "2026-09-11"
+}
