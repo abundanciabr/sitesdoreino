@@ -1,40 +1,22 @@
-"""`/admin/reuniao/` — o modo reunião de segunda-feira (degrau 3 do plano).
-
-A quarta disciplina das 4 Disciplinas da Execução é a cadência de
-responsabilidade: uma reunião curta, toda semana, com pauta fixa, que termina
-em compromissos. Os documentos do Scale OS (1.1 §96 a §105) pedem que a
-reunião aconteça DENTRO do painel, em oito passos, e que no fim o sistema
-grave decisões, tarefas e compromissos.
-
-## Como isso vira desta casa, sem quebrar uma lei
-
-1. **A pauta lê o placar, nunca outra montagem.** Os oito passos são o mesmo
-   `montar_o_placar()` de `/admin/placar/` (as estrelas-guia, a meta, a
-   direção, os compromissos, a restrição). O que ainda não tem fonte diz
-   "sem dados até o degrau N", como a capa.
-2. **Esta tela não escreve nada.** Nem no banco da `admin`, nem no livro. Um
-   compromisso é um REGISTRO do livro (tipo `compromisso`, PR #942), e
-   registro entra por PR, escrito por um robô. O que a reunião produz é **o
-   pedido para o robô**: um bloco de texto, montado dos campos que o
-   mantenedor preencheu no passo 8, para ele colar numa sessão. É o mesmo
-   caminho que o painel do dono já usa para os diagnósticos ("um bloco
-   copiável para colar numa sessão", `painel/LEIA-ME.md`), e o mesmo de
-   `/admin/caixa/exportar/`: sem JavaScript (a porta manda `script-src
-   'self'` e a célula não serve estático), um campo de texto que se seleciona
-   com Ctrl+A.
-3. **Sem escrita, sem auditoria a fazer.** A lei da `admin` (§4.3) exige
-   linha de auditoria em toda ESCRITA. Aqui o POST calcula e devolve; o
-   estado de ninguém muda. Recarregar a página apaga o que foi digitado, e
-   isso é dito na tela: o que vale é o que chegar ao livro.
-"""
+"""Pauta da Reunião e pedidos privados retomáveis, sem execução automática."""
 
 from __future__ import annotations
 
-from django.shortcuts import render
+import datetime as dt
+import json
+from uuid import uuid4
+
+from django.core import signing
+from django.db import DatabaseError
+from django.http import Http404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from . import analista as analista_
+from . import pedido_da_reuniao as pedidos
+from . import fila_no_github, robos
+from .models import Documento
 from .placar import montar_o_placar, site_de
 
 #: Os oito passos da pauta, na ordem do Scale OS 1.1 §98 a §105, traduzidos.
@@ -135,25 +117,60 @@ def montar_o_pedido(campos: dict, hoje, foto: str | None = None) -> str | None:
     return "\n".join(linhas)
 
 
+def _formulario(hoje, foto, admin):
+    return signing.dumps(
+        {
+            "id": str(uuid4()),
+            "dia": hoje.isoformat(),
+            "foto": foto,
+            "autor": admin["email"],
+        },
+        salt="reuniao-pauta",
+    )
+
+
 @require_http_methods(["GET", "POST"])
 def reuniao(request):
-    """A pauta guiada. GET mostra os oito passos; POST devolve o pedido para o robô.
-
-    **Dois botões, um POST, e o `acao` separa os dois.** O de sempre monta o
-    pedido dos compromissos; o do analista (degrau 16) pergunta ao robô o que a
-    semana está deixando passar. Um POST sem `acao` continua caindo no primeiro,
-    que é o que o botão antigo manda.
-    """
     hoje = timezone.localdate()
-    contexto = montar_o_placar(hoje, site_de(request))
     campos = request.POST if request.method == "POST" else {}
     pediram_o_analista = campos.get("acao") == analista_.ACAO
+    erro, status = "", 200
+    formulario = campos.get("formulario", "")
+    original = None
+    if request.method == "POST" and not pediram_o_analista:
+        try:
+            original = signing.loads(formulario, salt="reuniao-pauta")
+            if original["autor"] != request.admin["email"]:
+                raise signing.BadSignature("autor diferente")
+            doc, _ = pedidos.salvar_inicial(
+                original["id"],
+                campos,
+                dt.date.fromisoformat(original["dia"]),
+                original["foto"],
+                request.admin,
+            )
+            return redirect("pedido_reuniao", identidade=original["id"])
+        except (signing.BadSignature, KeyError, ValueError) as exc:
+            if isinstance(exc, pedidos.ConflitoDoPedido):
+                erro, status = str(exc), 409
+            else:
+                erro, status = (
+                    "A pauta não pôde ser identificada. Seu texto continua abaixo; confira e salve novamente.",
+                    400,
+                )
+                formulario = ""
+                original = None
+        except DatabaseError:
+            erro, status = (
+                "Não consegui confirmar a gravação. Seu texto continua abaixo; repita Salvar pedido privado para recuperar o mesmo pedido.",
+                503,
+            )
+    contexto = montar_o_placar(hoje, site_de(request))
     foto = (contexto.get("mudancas") or {}).get("foto_de_hoje")
-    pedido = (
-        montar_o_pedido(campos, hoje, foto)
-        if request.method == "POST" and not pediram_o_analista
-        else None
-    )
+    if original is not None:
+        foto = original["foto"]
+    if not formulario:
+        formulario = _formulario(hoje, foto, request.admin)
     return render(
         request,
         "admin/reuniao.html",
@@ -162,7 +179,12 @@ def reuniao(request):
             **contexto,
             "passos": PASSOS,
             "campos": campos,
-            "pedido": pedido,
+            "formulario": formulario,
+            "foto_da_pauta": foto,
+            "erro_pedido": erro,
+            "pedidos_salvos": Documento.objects.filter(
+                nome__startswith=pedidos.PREFIXO, publico=False, arquivado=False
+            ).order_by("-atualizado_em"),
             "montou": request.method == "POST" and not pediram_o_analista,
             "vence_em_dias": VENCE_EM_DIAS,
             "analista": analista_.para_a_tela(
@@ -176,4 +198,152 @@ def reuniao(request):
                 pediram=pediram_o_analista,
             ),
         },
+        status=status,
+    )
+
+
+def _publicado(envelope, remoto):
+    pasta = robos.diretorio_da_fila()
+    estados = robos.ler_estados(pasta)
+    if estados is None:
+        return {
+            "detalhe": "Não consegui confirmar o que chegou ao site: a fila publicada está indisponível. Consulte novamente. Se a fila continuar indisponível, acione o robô para conferir a publicação desta mesma tarefa."
+        }
+    vinculos = [
+        (tid, dado)
+        for tid, dado in estados.items()
+        if isinstance(dado.get("pedido"), dict)
+        and dado["pedido"].get("id") == envelope["pedido"]["id"]
+    ]
+    if not vinculos:
+        return {
+            "detalhe": "Esta cópia da fila ainda não confirma o pedido no site. Ela pode ser anterior ao recebimento no ramo."
+        }
+    if len(vinculos) != 1:
+        return {
+            "erro": True,
+            "detalhe": "Mais de uma tarefa está vinculada ao pedido. Peça ao robô para conferir a origem antes de continuar.",
+        }
+    tid, dado = vinculos[0]
+    if (
+        dado["pedido"] != envelope["pedido"]
+        or any(
+            type(dado["pedido"][campo]) is not int for campo in ("documento", "versao")
+        )
+        or (remoto and remoto.tarefa and remoto.tarefa != tid)
+    ):
+        return {
+            "erro": True,
+            "tarefa": tid,
+            "detalhe": "A fila publicada contém outra versão deste pedido. Continue na mesma tarefa; esta versão não tem aplicação confirmada.",
+        }
+    grupo = next((g for g in robos.COLUNAS if robos.e_deste_grupo(dado, g)), None)
+    resultado = {
+        "tarefa": tid,
+        "situacao": grupo["rotulo"] if grupo else "Estado não reconhecido",
+        "detalhe": "A identidade da tarefa consta nesta cópia da fila. Resultado dos itens ainda não conferido.",
+    }
+    if remoto and remoto.artefatos:
+        try:
+            for caminho, conteudo in remoto.artefatos:
+                arquivo = pasta / caminho.removeprefix("fila/")
+                if (
+                    not arquivo.resolve().is_relative_to(pasta.resolve())
+                    or arquivo.read_bytes().replace(b"\r\n", b"\n") != conteudo
+                ):
+                    raise ValueError("artefato divergente")
+        except (OSError, ValueError):
+            resultado["detalhe"] = (
+                "A identidade consta na fila, mas não consegui confirmar os mesmos artefatos na publicação. Resultado ainda não conferido."
+            )
+        else:
+            resultado["detalhe"] = (
+                "A tarefa e a explicação recebidas também constam nesta cópia publicada. Resultado dos itens ainda não conferido."
+            )
+    if dado.get("estado") == "concluída":
+        resultado[
+            "detalhe"
+        ] += " A conclusão foi registrada na fila; isso não comprova aqui a aplicação de cada item."
+    return resultado
+
+
+@require_http_methods(["GET", "POST"])
+def pedido_reuniao(request, identidade):
+    doc = get_object_or_404(
+        Documento,
+        nome=pedidos.nome_do_pedido(identidade),
+        publico=False,
+        arquivado=False,
+    )
+    versao = doc.versoes.order_by("-pk").first()
+    if versao is None:
+        raise Http404
+    texto, erro, status = doc.corpo, "", 200
+    versao_editada = versao.pk
+    if request.method == "POST":
+        texto = request.POST.get("texto", texto)
+        versao_editada = request.POST.get("versao", "")
+        try:
+            try:
+                esperada = int(request.POST.get("versao", ""))
+            except ValueError as exc:
+                raise pedidos.ConflitoDoPedido(
+                    "A versão enviada é inválida. Reabra o pedido salvo antes de continuar."
+                ) from exc
+            acao = request.POST.get("acao")
+            if acao == "salvar":
+                pedidos.editar(doc.nome, esperada, texto, request.admin)
+            elif (
+                acao == "autorizar" and request.POST.get("publicacao_publica") == "sim"
+            ):
+                pedidos.autorizar(
+                    doc.nome,
+                    esperada,
+                    request.admin,
+                    texto_exibido=request.POST.get("texto"),
+                )
+            else:
+                raise pedidos.ConflitoDoPedido(
+                    "Para autorizar, leia o texto e confirme que a tarefa e os registros serão públicos."
+                )
+            return redirect("pedido_reuniao", identidade=identidade)
+        except pedidos.ConflitoDoPedido as exc:
+            erro, status = str(exc), 409
+        except DatabaseError:
+            erro, status = (
+                "Não consegui confirmar a gravação. Seu texto continua abaixo; repita o mesmo gesto para recuperar o pedido.",
+                503,
+            )
+        doc.refresh_from_db()
+        versao = doc.versoes.order_by("-pk").first()
+    dados = pedidos.envelope(doc, versao)
+    autorizado = pedidos.envelope_autorizado(doc, versao)
+    recibo = None
+    if request.method == "GET" and request.GET.get("conferir") == "1":
+        recibo = fila_no_github.consultar_recibo_reuniao(dados)
+    publicado = _publicado(dados, recibo)
+    if publicado.get("erro") or (recibo and recibo.estado == "divergente"):
+        autorizado = None
+    return render(
+        request,
+        "admin/pedido_reuniao.html",
+        {
+            "admin": request.admin,
+            "documento": doc,
+            "versao": versao,
+            "identidade": identidade,
+            "texto": texto,
+            "versao_editada": versao_editada,
+            "pode_autorizar": str(versao_editada) == str(versao.pk)
+            and texto.replace("\r\n", "\n") == versao.corpo.replace("\r\n", "\n"),
+            "erro_pedido": erro,
+            "recibo": recibo,
+            "publicado": publicado,
+            "envelope": (
+                json.dumps(autorizado, ensure_ascii=False, sort_keys=True, indent=2)
+                if autorizado
+                else ""
+            ),
+        },
+        status=status,
     )
