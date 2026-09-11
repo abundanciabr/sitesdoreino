@@ -225,8 +225,8 @@ para inferência comparativa.
 Revisões e ponto de retomada calculados nesta rodada:
 
 - entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
-- instrumento derivado do conteúdo: `f7137dc343a6c4ae916c41aa9a079e0e2376407e`;
-- analisador derivado do arquivo: `004d92e418ca12d04272e4ef67123aa8aca9ba6b9fc07c6a409c3a224bd2b090`;
+- instrumento derivado do texto versionado: `60d18c36a71f02bf18d120734430459318493197`;
+- analisador derivado do texto versionado: `0848baf65f32461eeafd6aff182fb141605579e294572c84f96f9daaa50bedf0`;
 - auditoria independente desse par de hashes: pendente;
 - retomada: classificar cada tarefa elegível no arquivo versionado antes da
   abertura, registrar transições append-only com evidência e métricas

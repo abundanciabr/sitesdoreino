@@ -14,11 +14,15 @@ import telemetria  # noqa: E402
 
 
 def manifesto(*, estado="concluida"):
+    tarefa = "TAR-F4-REAL-001"
+    commit = "a" * 40
+    pr = 1
     return {
-        "tarefa": "TAR-F4-REAL-001",
+        "tarefa": tarefa,
         "tentativa": "tentativa-real-001",
         "branch": "agent/admin/tarefa-real",
-        "commit": "a" * 40,
+        "commit": commit,
+        "pr": pr,
         "piloto": "fase3",
         "condicao": "depois",
         "par_id": "par-real-001",
@@ -49,8 +53,11 @@ def manifesto(*, estado="concluida"):
         ),
         "evidencia": (
             {
-                "resultado": "resultado conferido",
-                "fonte": "https://example.test/prova",
+                "resultado": f"{tarefa} {estado}: PR #{pr} no commit {commit}",
+                "fonte": (
+                    "https://github.com/abundanciabr/sitesdoreino/pull/"
+                    f"{pr}/commits/{commit}"
+                ),
                 "verificado_em": "2026-09-08T10:30:00+00:00",
             }
             if estado != "pendente"
@@ -101,6 +108,12 @@ def test_comando_recusa_metrica_omitida_em_vez_de_inferir_zero(tmp_path, monkeyp
     manifesto_path = escrever_manifesto(tmp_path, dados)
 
     assert comando.main(["--manifesto", str(manifesto_path)]) == 2
+
+    for valor in (float("nan"), float("inf"), float("-inf")):
+        dados = manifesto()
+        dados["metricas"]["runner_minutos"] = valor
+        manifesto_path = escrever_manifesto(tmp_path, dados)
+        assert comando.main(["--manifesto", str(manifesto_path)]) == 2
 
 
 def test_comando_aceita_pendente_com_fim_ausente(tmp_path, monkeypatch):
@@ -179,6 +192,17 @@ def test_reexecucao_com_evidencia_conflitante_e_recusada(tmp_path, monkeypatch):
     comando.main(["--manifesto", str(tmp_path / "medicao.json")])
 
     conflito = dict(original, pr=9999)
+    conflito["evidencia"] = dict(
+        original["evidencia"],
+        resultado=(
+            f"{conflito['tarefa']} {conflito['estado']}: PR #9999 "
+            f"no commit {conflito['commit']}"
+        ),
+        fonte=(
+            "https://github.com/abundanciabr/sitesdoreino/pull/9999/commits/"
+            + conflito["commit"]
+        ),
+    )
     with pytest.raises(ValueError, match="mesma observação tem conteúdo diferente"):
         comando.registrar_manifesto(conflito, cwd=tmp_path)
 
@@ -231,9 +255,11 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
             "classificacao_sha256": "d" * 64,
             "classificada_em": "2026-09-08T09:59:00+00:00",
             "autorizada_por": "fila-versionada:" + "e" * 40,
+            "commit_classificacao": "e" * 40,
         },
     )
-    monkeypatch.setattr(comando, "revisao_do_instrumento", lambda _: "f" * 40)
+    monkeypatch.setattr(comando, "_classificacao_antecede_commit", lambda *_: True)
+    monkeypatch.setattr(comando, "revisao_do_instrumento", lambda _: "b" * 40)
 
     assert comando.registrar_execucao_fase4(
         tmp_path,
@@ -285,13 +311,11 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
     encerrados = [evento for evento in eventos if evento["estado"] == "concluida"]
     assert encerrados[0]["pr"] == 1400
     assert encerrados[0]["evidencia"] == {
-        "resultado": "concluida: PR #1400 no commit " + "a" * 40,
+        "resultado": "TAR-001 concluida: PR #1400 no commit " + "a" * 40,
         "fonte": "https://github.com/abundanciabr/sitesdoreino/pull/1400/commits/"
         + "a" * 40,
         "verificado_em": "2026-09-08T10:02:00+00:00",
     }
-
-
 def test_classificacao_posterior_ao_inicio_nao_entra_no_caderno(tmp_path, monkeypatch):
     git_dir = tmp_path / ".git"
     git_dir.mkdir()
@@ -336,6 +360,7 @@ def test_classificacao_posterior_ao_inicio_nao_entra_no_caderno(tmp_path, monkey
             "classificacao_sha256": "d" * 64,
             "classificada_em": "2026-09-08T10:01:00+00:00",
             "autorizada_por": "fila-versionada:" + "e" * 40,
+            "commit_classificacao": "e" * 40,
         },
     )
     monkeypatch.setattr(comando, "revisao_do_instrumento", lambda _: "f" * 40)
@@ -354,7 +379,7 @@ def test_classificacao_posterior_ao_inicio_nao_entra_no_caderno(tmp_path, monkey
     assert telemetria.ler_tudo(git_dir) == []
 
 
-def test_revisao_do_instrumento_vem_do_conteudo_e_nao_da_classificacao(
+def test_revisao_declarada_precisa_corresponder_ao_conteudo_do_instrumento(
     tmp_path, monkeypatch
 ):
     git_dir = tmp_path / ".git"
@@ -400,12 +425,28 @@ def test_revisao_do_instrumento_vem_do_conteudo_e_nao_da_classificacao(
             "classificacao_sha256": "d" * 64,
             "classificada_em": "2026-09-08T09:59:00+00:00",
             "autorizada_por": "fila-versionada:" + "e" * 40,
+            "commit_classificacao": "e" * 40,
         },
     )
+    monkeypatch.setattr(comando, "_classificacao_antecede_commit", lambda *_: True)
     monkeypatch.setattr(
         comando, "revisao_do_instrumento", lambda _: "d" * 40, raising=False
     )
 
+    assert not comando.registrar_execucao_fase4(
+        tmp_path,
+        tarefa="TAR-001",
+        tentativa="tentativa-real",
+        branch="agent/ci/tarefa-real",
+        commit="a" * 40,
+        estado="pendente",
+        inicio="2026-09-08T10:00:00+00:00",
+        fim=None,
+        pr=None,
+    )
+    assert telemetria.ler_tudo(git_dir) == []
+
+    classificacao["revisao_instrumento"] = "d" * 40
     assert comando.registrar_execucao_fase4(
         tmp_path,
         tarefa="TAR-001",
@@ -425,15 +466,18 @@ def test_revisao_do_instrumento_muda_quando_o_codigo_muda(tmp_path):
     for relativo in comando.ARQUIVOS_DO_INSTRUMENTO:
         caminho = tmp_path / relativo
         caminho.parent.mkdir(parents=True, exist_ok=True)
-        caminho.write_text(f"conteúdo de {relativo}", encoding="utf-8")
+        caminho.write_bytes(f"conteudo de {relativo}\nlinha\n".encode("utf-8"))
     primeira = comando.revisao_do_instrumento(tmp_path)
-    (tmp_path / "ci" / "analise_fase4.py").write_text(
-        "código revisado", encoding="utf-8"
+    (tmp_path / "ci" / "analise_fase4.py").write_bytes(
+        b"conteudo de ci/analise_fase4.py\r\nlinha\r\n"
     )
+    mesma_revisao = comando.revisao_do_instrumento(tmp_path)
+    (tmp_path / "ci" / "analise_fase4.py").write_bytes(b"codigo revisado\n")
 
     segunda = comando.revisao_do_instrumento(tmp_path)
 
     assert len(primeira) == 40
+    assert primeira == mesma_revisao
     assert primeira != segunda
 
 
@@ -441,7 +485,6 @@ def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path):
     classificacao = {
         "piloto": "fase1",
         "condicao": "depois",
-        "par_id": None,
         "tipo": "produto",
         "complexidade": "alta",
         "natureza": "codigo",
@@ -489,6 +532,13 @@ def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path):
         cwd=tmp_path,
         check=True,
     )
+    commit_anterior = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
     tarefa["medicao_fase4"] = classificacao
     caminho.write_text(json.dumps(tarefa), encoding="utf-8")
     subprocess.run(
@@ -520,7 +570,14 @@ def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path):
 
     assert vinculo is not None
     assert vinculo["autorizada_por"] == f"fila-versionada:{commit_classificacao}"
+    assert vinculo["commit_classificacao"] == commit_classificacao
     assert vinculo["classificacao"] == classificacao
+    assert comando._classificacao_antecede_commit(
+        tmp_path, vinculo, commit_classificacao
+    )
+    assert not comando._classificacao_antecede_commit(
+        tmp_path, vinculo, commit_anterior
+    )
 
 
 def test_avanco_legitimo_de_commit_e_append_only_e_repeticao_exata_e_idempotente(

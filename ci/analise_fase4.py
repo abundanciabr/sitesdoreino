@@ -24,86 +24,40 @@ import telemetria  # noqa: E402
 import metricas_da_fabrica  # noqa: E402
 
 
-REVISAO_DA_ANALISE = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+REVISAO_DA_ANALISE = telemetria.sha256_texto_versionado(Path(__file__))
 PILOTOS = telemetria.PILOTOS
 TAMANHO_INICIAL_DA_AMOSTRA = 20
 MINIMO_DE_PARES = 10
 NUMERO_DE_REAMOSTRAGENS = 2000
 METRICAS_DE_CUSTO = (
-    "chamadas_modelo",
-    "chamadas_ferramenta",
-    "runner_minutos",
-    "retentativas",
-    "correcoes_revisao",
-    "reaberturas",
-    "minutos_adocao",
-    "minutos_manutencao",
-    "defeitos_escapados",
-    "violacoes_seguranca",
+    "chamadas_modelo", "chamadas_ferramenta", "runner_minutos",
+    "retentativas", "correcoes_revisao", "reaberturas", "minutos_adocao",
+    "minutos_manutencao", "defeitos_escapados", "violacoes_seguranca",
 )
 METRICAS_DE_RECURSO = METRICAS_DE_CUSTO + ("contexto_bytes",)
 ATRIBUTOS_DE_COMPARABILIDADE = (
-    "tipo",
-    "complexidade",
-    "natureza",
-    "componentes",
-    "fronteiras_integracao",
-    "migracao",
-    "risco",
-    "escopo_publicacao",
+    "tipo", "complexidade", "natureza", "componentes",
+    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
 )
 ATRIBUTOS_DE_PAREAMENTO = ATRIBUTOS_DE_COMPARABILIDADE + ("revisao_instrumento",)
-FONTES_SINTETICAS = frozenset(
-    {
-        "telemetria-de-teste",
-        "telemetria-de-test",
-        "fixture",
-        "sintetico",
-        "sintetica",
-        "sintética",
-        "sintéticos",
-        "sintéticas",
-    }
-)
-FONTES_OPERACIONAIS = frozenset(
-    {
-        "registro-operacional-autorizado",
-        "fila-operacional-fase4",
-    }
-)
+FONTES_SINTETICAS = frozenset({
+    "telemetria-de-teste", "telemetria-de-test", "fixture", "sintetico",
+    "sintetica", "sintética", "sintéticos", "sintéticas",
+})
+FONTES_OPERACIONAIS = frozenset({
+    "registro-operacional-autorizado", "fila-operacional-fase4",
+})
 CAMPOS_DE_IDENTIDADE_DA_TAREFA = (
-    "tarefa",
-    "tentativa",
-    "branch",
-    "commit",
-    "piloto",
-    "condicao",
-    "tipo",
-    "complexidade",
-    "natureza",
-    "componentes",
-    "fronteiras_integracao",
-    "migracao",
-    "risco",
-    "escopo_publicacao",
-    "revisao_instrumento",
-    "estado",
-    "fonte",
-    "metricas",
+    "tarefa", "tentativa", "branch", "commit", "piloto", "condicao",
+    "tipo", "complexidade", "natureza", "componentes",
+    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+    "revisao_instrumento", "estado", "fonte", "metricas",
 )
 
 
 def _ordem_evento(evento: dict) -> tuple[str, str, str]:
-    return (
-        str(
-            evento.get("observado_em")
-            or evento.get("fim")
-            or evento.get("inicio")
-            or ""
-        ),
-        str(evento.get("quando") or ""),
-        str(evento.get("id") or ""),
-    )
+    return (str(evento.get("observado_em") or evento.get("fim") or evento.get("inicio") or ""),
+            str(evento.get("quando") or ""), str(evento.get("id") or ""))
 
 
 def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
@@ -120,20 +74,14 @@ def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
         for eventos_da_tentativa in por_tentativa.values():
             ordenados = sorted(eventos_da_tentativa, key=_ordem_evento)
             tentativa = dict(ordenados[-1])
-            inicios = [
-                evento["inicio"]
-                for evento in eventos_da_tentativa
-                if evento.get("inicio")
-            ]
-            fins = [
-                evento["fim"] for evento in eventos_da_tentativa if evento.get("fim")
-            ]
+            inicios = [evento["inicio"] for evento in eventos_da_tentativa if evento.get("inicio")]
+            fins = [evento["fim"] for evento in eventos_da_tentativa if evento.get("fim")]
             tentativa["inicio"] = min(inicios) if inicios else None
             tentativa["fim"] = max(fins) if fins else None
             tentativa["tentativas_observadas"] = 1
-            tentativa["revisoes_observadas"] = sorted(
-                {evento["revisao_instrumento"] for evento in eventos_da_tentativa}
-            )
+            tentativa["revisoes_observadas"] = sorted({
+                evento["revisao_instrumento"] for evento in eventos_da_tentativa
+            })
             tentativa["falhas_observadas"] = int(
                 tentativa["estado"] in ("falhou", "abandonada")
             )
@@ -146,27 +94,18 @@ def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
         agregado["inicio"] = min(inicios) if inicios else None
         agregado["fim"] = max(fins) if fins else None
         agregado["tentativas_observadas"] = len(tentativas)
-        agregado["falhas_observadas"] = sum(
-            evento["falhas_observadas"] for evento in tentativas
-        )
-        agregado["revisoes_observadas"] = sorted(
-            {
-                revisao
-                for evento in tentativas
-                for revisao in evento["revisoes_observadas"]
-            }
-        )
+        agregado["falhas_observadas"] = sum(evento["falhas_observadas"] for evento in tentativas)
+        agregado["revisoes_observadas"] = sorted({
+            revisao for evento in tentativas for revisao in evento["revisoes_observadas"]
+        })
         agregado["classificacao_consistente"] = all(
             all(evento[campo] == grupo[0][campo] for campo in ATRIBUTOS_DE_PAREAMENTO)
             for evento in grupo
         )
         agregado["metricas"] = {}
         for campo in METRICAS_DE_RECURSO:
-            valores = [
-                tentativa["metricas"][campo]
-                for tentativa in tentativas
-                if tentativa["metricas"][campo] is not None
-            ]
+            valores = [tentativa["metricas"][campo] for tentativa in tentativas
+                       if tentativa["metricas"][campo] is not None]
             agregado["metricas"][campo] = sum(valores) if valores else None
         agrupados.append(agregado)
     return agrupados
@@ -189,9 +128,7 @@ def _duracao(evento: dict) -> float | None:
     fim = _instante(evento.get("fim"))
     if inicio is None or fim is None:
         return None
-    segundos = (
-        fim.astimezone(timezone.utc) - inicio.astimezone(timezone.utc)
-    ).total_seconds()
+    segundos = (fim.astimezone(timezone.utc) - inicio.astimezone(timezone.utc)).total_seconds()
     return segundos / 60 if segundos >= 0 else None
 
 
@@ -238,69 +175,65 @@ def _evento_valido(evento: object) -> bool:
     return _instante(fim) is not None
 
 
-def _evento_confirmatorio(
-    evento: dict, vinculos: dict[str, dict] | None = None
-) -> bool:
-    if (
-        not _evento_valido(evento)
-        or not _eh_operacional(evento)
-        or evento.get("schema_medicao") != 2
-    ):
+def _evidencia_confere(evento: dict) -> bool:
+    evidencia = evento.get("evidencia")
+    pr = evento.get("pr")
+    if not isinstance(evidencia, dict) or type(pr) is not int or pr < 1:
         return False
-    if (
-        _instante(evento.get("classificada_em")) is None
-        or _instante(evento.get("observado_em")) is None
-    ):
+    esperado = {
+        "resultado": (
+            f"{evento['tarefa']} {evento['estado']}: PR #{pr} "
+            f"no commit {evento['commit']}"
+        ),
+        "fonte": (
+            "https://github.com/abundanciabr/sitesdoreino/pull/"
+            f"{pr}/commits/{evento['commit']}"
+        ),
+    }
+    if any(evidencia.get(campo) != valor for campo, valor in esperado.items()):
+        return False
+    verificado_em = _instante(evidencia.get("verificado_em"))
+    fim = _instante(evento.get("fim"))
+    return verificado_em is not None and fim is not None and verificado_em >= fim
+
+
+def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None) -> bool:
+    if (not _evento_valido(evento) or not _eh_operacional(evento)
+            or evento.get("schema_medicao") != 2):
+        return False
+    if _instante(evento.get("classificada_em")) is None or _instante(evento.get("observado_em")) is None:
         return False
     if _instante(evento["classificada_em"]) > _instante(evento["inicio"]):
         return False
-    if (
-        not isinstance(evento.get("autorizada_por"), str)
-        or not evento["autorizada_por"].strip()
-    ):
+    if not isinstance(evento.get("autorizada_por"), str) or not evento["autorizada_por"].strip():
         return False
-    if not all(
-        isinstance(evento.get(campo), str) and len(evento[campo]) == 64
-        for campo in ("tarefa_sha256", "classificacao_sha256")
-    ):
+    if not all(isinstance(evento.get(campo), str) and len(evento[campo]) == 64
+               for campo in ("tarefa_sha256", "classificacao_sha256")):
         return False
-    if not isinstance(evento.get("revisao_instrumento"), str) or len(
-        evento["revisao_instrumento"]
-    ) not in (40, 64):
+    if not isinstance(evento.get("revisao_instrumento"), str) or len(evento["revisao_instrumento"]) not in (40, 64):
         return False
     observado_em = _instante(evento["observado_em"])
     inicio = _instante(evento["inicio"])
     if observado_em is None or inicio is None or observado_em < inicio:
         return False
-    if vinculos is not None:
-        vinculo = vinculos.get(evento["tarefa"])
-        if not vinculo:
-            return False
-        if (
-            evento["tarefa_sha256"] != vinculo.get("tarefa_sha256")
+    if vinculos is None:
+        return False
+    vinculo = vinculos.get(evento["tarefa"])
+    if not vinculo:
+        return False
+    if (evento["tarefa_sha256"] != vinculo.get("tarefa_sha256")
             or evento["classificacao_sha256"] != vinculo.get("classificacao_sha256")
             or evento["classificada_em"] != vinculo.get("classificada_em")
-            or evento["autorizada_por"] != vinculo.get("autorizada_por")
-        ):
-            return False
-        classificacao = vinculo.get("classificacao")
-        if not isinstance(classificacao, dict):
-            return False
-        if any(
-            evento.get(campo) != valor
-            for campo, valor in classificacao.items()
-            if campo != "revisao_instrumento"
-        ):
-            return False
+            or evento["autorizada_por"] != vinculo.get("autorizada_por")):
+        return False
+    classificacao = vinculo.get("classificacao")
+    if not isinstance(classificacao, dict):
+        return False
+    if any(evento.get(campo) != valor for campo, valor in classificacao.items()):
+        return False
     if evento["estado"] == "pendente":
         return evento.get("fim") is None and evento.get("evidencia") is None
-    evidencia = evento.get("evidencia")
-    if (
-        not isinstance(evidencia, dict)
-        or _instante(evidencia.get("verificado_em")) is None
-    ):
-        return False
-    if _instante(evidencia["verificado_em"]) < _instante(evento["fim"]):
+    if not _evidencia_confere(evento):
         return False
     return observado_em >= _instante(evento["fim"])
 
@@ -316,22 +249,16 @@ def _eh_operacional(evento: dict) -> bool:
 
 
 def _esta_incompleto(evento: dict) -> bool:
-    if any(
-        campo not in evento or evento[campo] is None
-        for campo in CAMPOS_DE_IDENTIDADE_DA_TAREFA
-    ):
+    if any(campo not in evento or evento[campo] is None
+           for campo in CAMPOS_DE_IDENTIDADE_DA_TAREFA):
         return True
     metricas = evento.get("metricas")
-    if not isinstance(metricas, dict) or set(metricas) != set(
-        telemetria.METRICAS_DA_TAREFA
-    ):
+    if not isinstance(metricas, dict) or set(metricas) != set(telemetria.METRICAS_DA_TAREFA):
         return True
     if evento.get("estado") != "pendente" and evento.get("fim") is None:
         return True
-    return any(
-        evento.get(campo) is not None and _instante(evento.get(campo)) is None
-        for campo in ("inicio", "fim")
-    )
+    return any(evento.get(campo) is not None and _instante(evento.get(campo)) is None
+               for campo in ("inicio", "fim"))
 
 
 def _periodo(eventos: list[dict]) -> dict:
@@ -345,53 +272,26 @@ def _periodo(eventos: list[dict]) -> dict:
     }
 
 
-def _diagnostico_da_entrada(
-    eventos: list[dict], vinculos: dict[str, dict] | None = None
-) -> dict:
-    registros = [
-        evento
-        for evento in eventos
-        if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"
-    ]
+def _diagnostico_da_entrada(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> dict:
+    registros = [evento for evento in eventos
+                 if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"]
     validos = [evento for evento in registros if _evento_valido(evento)]
     sinteticos = [evento for evento in registros if _eh_sintetico(evento)]
-    nao_operacionais = [
-        evento
-        for evento in registros
-        if not _eh_sintetico(evento) and not _eh_operacional(evento)
-    ]
+    nao_operacionais = [evento for evento in registros
+                        if not _eh_sintetico(evento) and not _eh_operacional(evento)]
     reais = [evento for evento in validos if _eh_operacional(evento)]
-    incompletos = [
-        evento
-        for evento in registros
-        if _eh_operacional(evento) and _esta_incompleto(evento)
-    ]
-    erros_validacao = [
-        evento
-        for evento in registros
-        if _eh_operacional(evento)
-        and not _evento_valido(evento)
-        and not _esta_incompleto(evento)
-    ]
+    incompletos = [evento for evento in registros
+                   if _eh_operacional(evento) and _esta_incompleto(evento)]
+    erros_validacao = [evento for evento in registros
+                       if _eh_operacional(evento)
+                       and not _evento_valido(evento) and not _esta_incompleto(evento)]
     estruturais = [evento for evento in registros if _evento_valido(evento)]
-    confirmatorios = [
-        evento for evento in registros if _evento_confirmatorio(evento, vinculos)
-    ]
-    estruturais_nao_confirmatorios = [
-        evento
-        for evento in estruturais
-        if evento not in confirmatorios and _eh_operacional(evento)
-    ]
-    fontes = sorted(
-        {str(evento.get("fonte")) for evento in registros if evento.get("fonte")}
-    )
-    revisoes = sorted(
-        {
-            str(evento.get("revisao_instrumento"))
-            for evento in registros
-            if evento.get("revisao_instrumento")
-        }
-    )
+    confirmatorios = [evento for evento in registros if _evento_confirmatorio(evento, vinculos)]
+    estruturais_nao_confirmatorios = [evento for evento in estruturais
+                                      if evento not in confirmatorios and _eh_operacional(evento)]
+    fontes = sorted({str(evento.get("fonte")) for evento in registros if evento.get("fonte")})
+    revisoes = sorted({str(evento.get("revisao_instrumento"))
+                       for evento in registros if evento.get("revisao_instrumento")})
     motivos = Counter()
     if sinteticos:
         motivos["sintetico"] = len(sinteticos)
@@ -402,9 +302,7 @@ def _diagnostico_da_entrada(
     if nao_operacionais:
         motivos["fonte_nao_operacional"] = len(nao_operacionais)
     if estruturais_nao_confirmatorios:
-        motivos["estrutura_valida_sem_confirmacao"] = len(
-            estruturais_nao_confirmatorios
-        )
+        motivos["estrutura_valida_sem_confirmacao"] = len(estruturais_nao_confirmatorios)
     return {
         "periodo_considerado": _periodo(eventos),
         "revisao_da_analise": REVISAO_DA_ANALISE,
@@ -420,10 +318,8 @@ def _diagnostico_da_entrada(
         "registros_reais_reconhecidos": len(reais),
         "registros_estruturalmente_validos": len(estruturais),
         "registros_confirmatorios_completos": len(confirmatorios),
-        "registros_reais_inelegiveis": len(
-            [evento for evento in registros if _eh_operacional(evento)]
-        )
-        - len(confirmatorios),
+        "registros_reais_inelegiveis": len([evento for evento in registros
+                                            if _eh_operacional(evento)]) - len(confirmatorios),
         "registros_reais_incompletos": len(incompletos),
         "registros_estruturais_sem_confirmacao": len(estruturais_nao_confirmatorios),
         "erros_de_leitura_correlacao_validacao": 0,
@@ -465,12 +361,7 @@ def _custo_total_minutos(eventos: list[dict]) -> float | None:
 
 def _margem(before: float | None, after: float | None) -> dict:
     if before is None or after is None:
-        return {
-            "antes": before,
-            "depois": after,
-            "diferenca_absoluta": None,
-            "reducao_relativa": None,
-        }
+        return {"antes": before, "depois": after, "diferenca_absoluta": None, "reducao_relativa": None}
     diferenca = after - before
     return {
         "antes": before,
@@ -480,33 +371,22 @@ def _margem(before: float | None, after: float | None) -> dict:
     }
 
 
-def _resultado(
-    antes: list[dict],
-    depois: list[dict],
-    pares_com_tempo: int,
-    diferencas: list[float],
-    qualidade: dict,
-    medianas: dict,
-    custo_total: dict,
-    revisoes: set[str],
-) -> str:
+def _resultado(antes: list[dict], depois: list[dict], pares_com_tempo: int,
+               diferencas: list[float], qualidade: dict, medianas: dict,
+               custo_total: dict, revisoes: set[str]) -> str:
     qualidade_antes = qualidade["antes"]
     qualidade_depois = qualidade["depois"]
     qualidade_obrigatoria_atual = (
-        qualidade_depois["violacoes_seguranca"] is not None
-        and qualidade_depois["violacoes_seguranca"] > 0
-    ) or (
-        qualidade_depois["defeitos_escapados"] is not None
-        and qualidade_depois["defeitos_escapados"] > 0
+        (qualidade_depois["violacoes_seguranca"] is not None
+         and qualidade_depois["violacoes_seguranca"] > 0)
+        or (qualidade_depois["defeitos_escapados"] is not None
+            and qualidade_depois["defeitos_escapados"] > 0)
     )
     if qualidade_obrigatoria_atual:
         return "regressão"
     if not antes and not depois:
         return "não avaliável"
-    if (
-        len(antes) < TAMANHO_INICIAL_DA_AMOSTRA
-        or len(depois) < TAMANHO_INICIAL_DA_AMOSTRA
-    ):
+    if len(antes) < TAMANHO_INICIAL_DA_AMOSTRA or len(depois) < TAMANHO_INICIAL_DA_AMOSTRA:
         return "inconclusivo"
     if pares_com_tempo < MINIMO_DE_PARES:
         return "inconclusivo"
@@ -514,11 +394,9 @@ def _resultado(
         return "inconclusivo"
     if len(revisoes) != 1:
         return "inconclusivo"
-    if any(
-        qualidade_condicao[campo] is None
-        for qualidade_condicao in (qualidade_antes, qualidade_depois)
-        for campo in ("violacoes_seguranca", "defeitos_escapados")
-    ):
+    if any(qualidade_condicao[campo] is None
+           for qualidade_condicao in (qualidade_antes, qualidade_depois)
+           for campo in ("violacoes_seguranca", "defeitos_escapados")):
         return "inconclusivo"
     if custo_total["antes"] is None or custo_total["depois"] is None:
         return "inconclusivo"
@@ -527,20 +405,15 @@ def _resultado(
     intervalo = _intervalo_das_diferencas(diferencas)
     if intervalo is None:
         return "inconclusivo"
-    if (
-        medianas["depois"] < medianas["antes"]
-        and intervalo[1] < 0
-        and custo_total["depois"] < custo_total["antes"]
-    ):
+    if (medianas["depois"] < medianas["antes"] and intervalo[1] < 0
+            and custo_total["depois"] < custo_total["antes"]):
         return "benefício demonstrado no escopo"
     if medianas["depois"] > medianas["antes"] and intervalo[0] > 0:
         return "regressão"
     return "inconclusivo"
 
 
-def _piloto(
-    eventos: list[dict], piloto: str, incompletos: list[dict] | None = None
-) -> dict:
+def _piloto(eventos: list[dict], piloto: str, incompletos: list[dict] | None = None) -> dict:
     incompletos = incompletos or []
     observados = [e for e in eventos if e["piloto"] == piloto]
     incompletos_do_piloto = [e for e in incompletos if e.get("piloto") == piloto]
@@ -549,9 +422,7 @@ def _piloto(
     por_par: dict[str, dict[str, list[dict]]] = {}
     for evento in observados:
         if evento.get("par_id"):
-            por_par.setdefault(evento["par_id"], {}).setdefault(
-                evento["condicao"], []
-            ).append(evento)
+            por_par.setdefault(evento["par_id"], {}).setdefault(evento["condicao"], []).append(evento)
     pares = [
         (grupos["antes"][0], grupos["depois"][0])
         for grupos in por_par.values()
@@ -563,58 +434,34 @@ def _piloto(
         for condicao in ("antes", "depois")
     )
     pares_compatíveis = [
-        (antes_evento, depois_evento)
-        for antes_evento, depois_evento in pares
+        (antes_evento, depois_evento) for antes_evento, depois_evento in pares
         if antes_evento["classificacao_consistente"]
         and depois_evento["classificacao_consistente"]
-        and all(
-            antes_evento[campo] == depois_evento[campo]
-            for campo in ATRIBUTOS_DE_PAREAMENTO
-        )
+        and all(antes_evento[campo] == depois_evento[campo]
+                for campo in ATRIBUTOS_DE_PAREAMENTO)
     ]
-    antes_com_duracao = [
-        e for e in antes if _duracao(e) is not None and e["estado"] == "concluida"
-    ]
-    depois_com_duracao = [
-        e for e in depois if _duracao(e) is not None and e["estado"] == "concluida"
-    ]
+    antes_com_duracao = [e for e in antes if _duracao(e) is not None and e["estado"] == "concluida"]
+    depois_com_duracao = [e for e in depois if _duracao(e) is not None and e["estado"] == "concluida"]
     medianas = {
-        "antes": (
-            statistics.median([_duracao(e) for e in antes_com_duracao])
-            if antes_com_duracao
-            else None
-        ),
-        "depois": (
-            statistics.median([_duracao(e) for e in depois_com_duracao])
-            if depois_com_duracao
-            else None
-        ),
+        "antes": statistics.median([_duracao(e) for e in antes_com_duracao]) if antes_com_duracao else None,
+        "depois": statistics.median([_duracao(e) for e in depois_com_duracao]) if depois_com_duracao else None,
     }
-    diferencas = [
-        _duracao(depois_evento) - _duracao(antes_evento)
-        for antes_evento, depois_evento in pares_compatíveis
-        if antes_evento["estado"] == "concluida"
-        and depois_evento["estado"] == "concluida"
-        and _duracao(antes_evento) is not None
-        and _duracao(depois_evento) is not None
-    ]
-
+    diferencas = [_duracao(depois_evento) - _duracao(antes_evento)
+                  for antes_evento, depois_evento in pares_compatíveis
+                  if antes_evento["estado"] == "concluida"
+                  and depois_evento["estado"] == "concluida"
+                  and _duracao(antes_evento) is not None
+                  and _duracao(depois_evento) is not None]
     def qualidade_da_condicao(eventos_da_condicao: list[dict]) -> dict:
         def total(campo: str):
             valores = [e["metricas"].get(campo) for e in eventos_da_condicao]
-            return (
-                sum(valores)
-                if valores and all(v is not None for v in valores)
-                else None
-            )
+            return sum(valores) if valores and all(v is not None for v in valores) else None
 
         return {
             "violacoes_seguranca": total("violacoes_seguranca"),
             "defeitos_escapados": total("defeitos_escapados"),
-            "falhas": sum(
-                e.get("falhas_observadas", e["estado"] in ("falhou", "abandonada"))
-                for e in eventos_da_condicao
-            ),
+            "falhas": sum(e.get("falhas_observadas", e["estado"] in ("falhou", "abandonada"))
+                         for e in eventos_da_condicao),
             "pendentes": sum(e["estado"] == "pendente" for e in eventos_da_condicao),
         }
 
@@ -644,23 +491,12 @@ def _piloto(
     revisoes = {
         revisao
         for evento in observados
-        for revisao in evento.get(
-            "revisoes_observadas", [evento["revisao_instrumento"]]
-        )
+        for revisao in evento.get("revisoes_observadas", [evento["revisao_instrumento"]])
     }
-    resultado = _resultado(
-        antes,
-        depois,
-        len(diferencas),
-        diferencas,
-        qualidade,
-        medianas,
-        custo_total,
-        revisoes,
-    )
+    resultado = _resultado(antes, depois, len(diferencas), diferencas, qualidade,
+                           medianas, custo_total, revisoes)
     pares_incompletos = (
-        len(pares)
-        - len(diferencas)
+        len(pares) - len(diferencas)
         + sum(1 for e in incompletos_do_piloto if e.get("par_id"))
     )
     falha_atual = (
@@ -671,29 +507,21 @@ def _piloto(
     return {
         "piloto": piloto,
         "resultado": resultado,
-        "decisao_expansao": (
-            "bloqueada por falha atual" if falha_atual else "não liberada"
-        ),
+        "decisao_expansao": "bloqueada por falha atual" if falha_atual else "não liberada",
         "motivo_decisao_expansao": (
             "A condição depois tem falha de segurança ou qualidade; corrija e reavalie."
-            if falha_atual
-            else "Benefício do piloto não aprova auditoria nem expansão; os critérios de entrada continuam pendentes."
+            if falha_atual else
+            "Benefício do piloto não aprova auditoria nem expansão; os critérios de entrada continuam pendentes."
         ),
         "amostra": {
-            "antes": len(antes),
-            "depois": len(depois),
-            "pares": len(diferencas),
-            "pares_incompletos": pares_incompletos,
+            "antes": len(antes), "depois": len(depois),
+            "pares": len(diferencas), "pares_incompletos": pares_incompletos,
             "registros_incompletos": len(incompletos_do_piloto),
             "pendentes": qualidade_depois["pendentes"] + qualidade_antes["pendentes"],
-            "falhas_ou_abandonadas": qualidade_depois["falhas"]
-            + qualidade_antes["falhas"],
-            "tentativas_observadas": sum(
-                e["tentativas_observadas"] for e in observados
-            ),
+            "falhas_ou_abandonadas": qualidade_depois["falhas"] + qualidade_antes["falhas"],
+            "tentativas_observadas": sum(e["tentativas_observadas"] for e in observados),
             "tarefas_com_tempo_observado": {
-                "antes": len(antes_com_duracao),
-                "depois": len(depois_com_duracao),
+                "antes": len(antes_com_duracao), "depois": len(depois_com_duracao),
             },
             "exclusoes": len(pares) - len(pares_compatíveis),
             "colisoes_de_pareamento": colisoes_de_pareamento,
@@ -709,14 +537,13 @@ def _piloto(
         "incerteza_intervalo_pareado_minutos": intervalo,
         "qualidade": qualidade,
         "custo_completo": {
-            "antes": _custo(antes),
-            "depois": _custo(depois),
+            "antes": _custo(antes), "depois": _custo(depois),
             "total_minutos": custo_total,
         },
         "metricas_secundarias": metricas_secundarias,
         "fontes": sorted({e["fonte"] for e in observados}),
         "revisoes_do_instrumento": sorted(revisoes),
-    }
+}
 
 
 def _estratificacao(eventos: list[dict]) -> list[dict]:
@@ -736,14 +563,11 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
     invalidos = 0
     antigos = 0
     diagnostico = _diagnostico_da_entrada(eventos, vinculos)
-    incompletos = [
-        evento
-        for evento in eventos
-        if isinstance(evento, dict)
-        and evento.get("evento") == "tarefa_medida"
-        and _eh_operacional(evento)
-        and _esta_incompleto(evento)
-    ]
+    incompletos = [evento for evento in eventos
+                   if isinstance(evento, dict)
+                   and evento.get("evento") == "tarefa_medida"
+                   and _eh_operacional(evento)
+                   and _esta_incompleto(evento)]
     for evento in eventos:
         if not isinstance(evento, dict) or evento.get("evento") != "tarefa_medida":
             antigos += 1
@@ -763,110 +587,65 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
     for evento in validos.values():
         por_tarefa.setdefault(evento["tarefa"], []).append(evento)
     conflitos = {
-        tarefa
-        for tarefa, grupo in por_tarefa.items()
-        if len(
-            {
-                tuple(
-                    evento.get(campo)
-                    for campo in ("piloto", "condicao", *ATRIBUTOS_DE_COMPARABILIDADE)
-                )
-                for evento in grupo
-            }
-        )
-        > 1
+        tarefa for tarefa, grupo in por_tarefa.items()
+        if len({tuple(evento.get(campo) for campo in ("piloto", "condicao", *ATRIBUTOS_DE_COMPARABILIDADE))
+                for evento in grupo}) > 1
     }
     diagnostico["tarefas_com_classificacao_conflitante"] = len(conflitos)
-    eventos_sem_conflito = [
-        evento for evento in validos.values() if evento["tarefa"] not in conflitos
-    ]
+    eventos_sem_conflito = [evento for evento in validos.values() if evento["tarefa"] not in conflitos]
     tarefas = _agrupar_tentativas(eventos_sem_conflito)
     tentativas_consolidadas = {
-        (evento["tarefa"], evento["tentativa"]) for evento in eventos_sem_conflito
+        (evento["tarefa"], evento["tentativa"])
+        for evento in eventos_sem_conflito
     }
-    incompletos_nao_consolidados = [
-        evento
-        for evento in incompletos
-        if (evento.get("tarefa"), evento.get("tentativa"))
-        not in tentativas_consolidadas
-    ]
-    pilotos = {
-        piloto: _piloto(tarefas, piloto, incompletos_nao_consolidados)
-        for piloto in PILOTOS
-    }
+    incompletos_nao_consolidados = [evento for evento in incompletos
+                                    if (evento.get("tarefa"), evento.get("tentativa"))
+                                    not in tentativas_consolidadas]
+    pilotos = {piloto: _piloto(tarefas, piloto, incompletos_nao_consolidados)
+               for piloto in PILOTOS}
     percurso_historico = metricas_da_fabrica.consolidar_percurso(eventos)
-    entrada_fase4 = [
-        evento
-        for evento in eventos
-        if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"
-    ]
-    entrada = json.dumps(entrada_fase4, ensure_ascii=False, sort_keys=True).encode(
-        "utf-8"
-    )
+    entrada_fase4 = [evento for evento in eventos
+                     if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"]
+    entrada = json.dumps(entrada_fase4, ensure_ascii=False, sort_keys=True).encode("utf-8")
     entrada_sha256 = hashlib.sha256(entrada).hexdigest()
-    revisoes_confirmatorias = {
-        evento["revisao_instrumento"] for evento in validos.values()
-    }
-    auditorias = sorted(
-        (
-            evento
-            for evento in eventos
-            if isinstance(evento, dict)
-            and telemetria.identidade_auditoria(evento) == evento.get("id")
-            and evento.get("entrada_sha256") == entrada_sha256
-            and evento.get("revisao_analise") == REVISAO_DA_ANALISE
-            and revisoes_confirmatorias == {evento.get("revisao_instrumento")}
-        ),
-        key=lambda evento: (evento["verificado_em"], evento["id"]),
-    )
-    auditoria = (
-        {"aprovada": "concluída", "reprovada": "reprovada"}[auditorias[-1]["estado"]]
-        if auditorias
-        else "pendente"
-    )
+    revisoes_confirmatorias = {evento["revisao_instrumento"] for evento in validos.values()}
+    auditorias = sorted((evento for evento in eventos
+                         if isinstance(evento, dict)
+                         and telemetria.identidade_auditoria(evento) == evento.get("id")
+                         and evento.get("entrada_sha256") == entrada_sha256
+                         and evento.get("revisao_analise") == REVISAO_DA_ANALISE
+                         and revisoes_confirmatorias == {evento.get("revisao_instrumento")}),
+                        key=lambda evento: (evento["verificado_em"], evento["id"]))
+    auditoria = ({"aprovada": "concluída", "reprovada": "reprovada"}[auditorias[-1]["estado"]]
+                 if auditorias else "pendente")
     resultados_conclusivos = {
-        "benefício demonstrado no escopo",
-        "regressão",
-        "sem benefício relevante demonstrado",
+        "benefício demonstrado no escopo", "regressão", "sem benefício relevante demonstrado"
     }
     avaliacao = (
-        "em coleta"
-        if not tarefas
-        else (
-            "concluída"
-            if all(p["resultado"] in resultados_conclusivos for p in pilotos.values())
-            else "inconclusiva"
-        )
+        "em coleta" if not tarefas else
+        "concluída" if all(p["resultado"] in resultados_conclusivos for p in pilotos.values()) else
+        "inconclusiva"
     )
-    falha_atual = any(
-        p["decisao_expansao"] == "bloqueada por falha atual" for p in pilotos.values()
-    )
+    falha_atual = any(p["decisao_expansao"] == "bloqueada por falha atual" for p in pilotos.values())
     return {
         "instrumentacao": "implementada",
         "amostra_disponivel": "disponível" if tarefas else "ausente",
         "avaliacao": avaliacao,
         "auditoria_independente": auditoria,
-        "decisao_expansao": (
-            "bloqueada por falha atual" if falha_atual else "não liberada"
-        ),
+        "decisao_expansao": "bloqueada por falha atual" if falha_atual else "não liberada",
         "motivo_decisao_expansao": (
             "Há falha atual de segurança ou qualidade na condição depois; expansão bloqueada até correção e nova avaliação."
-            if falha_atual
-            else "A avaliação não concede auditoria nem expansão automaticamente; a entrada exige critérios e revisão independente."
+            if falha_atual else
+            "A avaliação não concede auditoria nem expansão automaticamente; a entrada exige critérios e revisão independente."
         ),
         "analise": REVISAO_DA_ANALISE,
         "observacoes": {
-            "tarefas_validas": len(tarefas),
-            "tentativas_validas": len(tentativas_consolidadas),
-            "eventos_estruturalmente_validos": diagnostico[
-                "registros_estruturalmente_validos"
-            ],
+            "tarefas_validas": len(tarefas), "tentativas_validas": len(tentativas_consolidadas),
+            "eventos_estruturalmente_validos": diagnostico["registros_estruturalmente_validos"],
             "tarefas_confirmatorias_completas": len(tarefas),
             "eventos_invalidos": invalidos,
             "eventos_incompletos_excluidos": len(incompletos),
-            "eventos_estruturais_sem_confirmacao": diagnostico[
-                "registros_estruturais_sem_confirmacao"
-            ],
+            "eventos_estruturais_sem_confirmacao": diagnostico["registros_estruturais_sem_confirmacao"],
             "eventos_antigos_ou_de_outras_fases": antigos,
             "deduplicacao": "unidade por tarefa; tentativa identificada por tarefa e tentativa",
         },
@@ -889,46 +668,25 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Analisa os pilotos da Fase 4 usando a telemetria existente"
-    )
-    parser.add_argument(
-        "--local",
-        action="store_true",
-        help="mantido explícito para deixar a origem da prova visível",
-    )
+    parser = argparse.ArgumentParser(description="Analisa os pilotos da Fase 4 usando a telemetria existente")
+    parser.add_argument("--local", action="store_true", help="mantido explícito para deixar a origem da prova visível")
     args = parser.parse_args(argv)
     del args
     from telemetria import dir_git_comum, ler_tudo
-
     raiz = Path.cwd()
     git = dir_git_comum(raiz)
     if git is None:
-        print(
-            json.dumps(
-                {
-                    "estado": "ERROR",
-                    "mensagem": "não encontrei o .git comum; execute na bancada do projeto",
-                },
-                ensure_ascii=False,
-            )
-        )
+        print(json.dumps({"estado": "ERROR", "mensagem": "não encontrei o .git comum; execute na bancada do projeto"}, ensure_ascii=False))
         return 2
     cobertura = {}
     eventos = ler_tudo(git, cobertura=cobertura)
     from registrar_tarefa_fase4 import vinculo_da_tarefa
 
-    tarefas = {
-        evento.get("tarefa")
-        for evento in eventos
-        if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"
-    }
-    vinculos = {
-        tarefa: vinculo
-        for tarefa in tarefas
-        if isinstance(tarefa, str)
-        if (vinculo := vinculo_da_tarefa(raiz, tarefa)) is not None
-    }
+    tarefas = {evento.get("tarefa") for evento in eventos
+               if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"}
+    vinculos = {tarefa: vinculo for tarefa in tarefas
+                if isinstance(tarefa, str)
+                if (vinculo := vinculo_da_tarefa(raiz, tarefa)) is not None}
     saida = analisar(eventos, vinculos)
     saida["leitura"] = cobertura
     diagnostico = saida["diagnostico_da_entrada"]

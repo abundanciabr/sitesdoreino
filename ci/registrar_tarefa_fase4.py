@@ -16,55 +16,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import telemetria  # noqa: E402
 
 
-CAMPOS_OBRIGATORIOS = frozenset(
-    {
-        "tarefa",
-        "tentativa",
-        "branch",
-        "commit",
-        "piloto",
-        "condicao",
-        "tipo",
-        "complexidade",
-        "natureza",
-        "componentes",
-        "fronteiras_integracao",
-        "migracao",
-        "risco",
-        "escopo_publicacao",
-        "revisao_instrumento",
-        "estado",
-        "fonte",
-        "metricas",
-        "inicio",
-        "fim",
-        "schema_medicao",
-        "tarefa_sha256",
-        "classificacao_sha256",
-        "classificada_em",
-        "autorizada_por",
-        "observado_em",
-        "evidencia",
-    }
-)
+CAMPOS_OBRIGATORIOS = frozenset({
+    "tarefa", "tentativa", "branch", "commit", "piloto", "condicao", "tipo",
+    "complexidade", "natureza", "componentes", "fronteiras_integracao",
+    "migracao", "risco", "escopo_publicacao", "revisao_instrumento", "estado",
+    "fonte", "metricas", "inicio", "fim", "schema_medicao", "tarefa_sha256",
+    "classificacao_sha256", "classificada_em", "autorizada_por", "observado_em",
+    "evidencia",
+})
 CAMPOS_OPCIONAIS = frozenset({"par_id", "pr", "sessao"})
 CAMPOS_PERMITIDOS = CAMPOS_OBRIGATORIOS | CAMPOS_OPCIONAIS
 METRICAS_NULAS = {campo: None for campo in telemetria.METRICAS_DA_TAREFA}
-CLASSIFICACAO_OBRIGATORIA = frozenset(
-    {
-        "piloto",
-        "condicao",
-        "tipo",
-        "complexidade",
-        "natureza",
-        "componentes",
-        "fronteiras_integracao",
-        "migracao",
-        "risco",
-        "escopo_publicacao",
-        "revisao_instrumento",
-    }
-)
+CLASSIFICACAO_OBRIGATORIA = frozenset({
+    "piloto", "condicao", "tipo", "complexidade", "natureza", "componentes",
+    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
+    "revisao_instrumento",
+})
 CLASSIFICACAO_OPCIONAL = frozenset({"par_id"})
 ARQUIVOS_DO_INSTRUMENTO = (
     "ci/telemetria.py",
@@ -82,13 +49,9 @@ def _instante(valor: object, campo: str, *, nulo: bool) -> datetime | None:
     try:
         instante = datetime.fromisoformat(valor.replace("Z", "+00:00"))
     except ValueError as erro:
-        raise ValueError(
-            f"{campo} não é uma data ISO-8601 válida; corrija o manifesto"
-        ) from erro
+        raise ValueError(f"{campo} não é uma data ISO-8601 válida; corrija o manifesto") from erro
     if instante.tzinfo is None:
-        raise ValueError(
-            f"{campo} não informa fuso horário; use UTC, por exemplo +00:00"
-        )
+        raise ValueError(f"{campo} não informa fuso horário; use UTC, por exemplo +00:00")
     return instante
 
 
@@ -158,6 +121,23 @@ def validar_manifesto(manifesto: object) -> dict:
         if fim is not None and verificado_em is not None and verificado_em < fim:
             raise ValueError(
                 "a evidência foi verificada antes do resultado; corrija o manifesto"
+            )
+        pr = manifesto.get("pr")
+        if type(pr) is not int or pr < 1:
+            raise ValueError("resultado encerrado exige o número verificável do PR")
+        esperada = {
+            "resultado": (
+                f"{manifesto['tarefa']} {estado}: PR #{pr} "
+                f"no commit {manifesto['commit']}"
+            ),
+            "fonte": (
+                "https://github.com/abundanciabr/sitesdoreino/pull/"
+                f"{pr}/commits/{manifesto['commit']}"
+            ),
+        }
+        if any(evidencia.get(campo) != valor for campo, valor in esperada.items()):
+            raise ValueError(
+                "a evidência não corresponde à tarefa, estado, PR e commit medidos"
             )
     evento = dict(manifesto, evento="tarefa_medida")
     if telemetria.identidade_tarefa(evento) is None:
@@ -280,7 +260,10 @@ def classificacao_da_tarefa(raiz: Path, tarefa: str) -> dict | None:
     classificacao = tarefas.get(tarefa, {}).get("medicao_fase4")
     if erros or not isinstance(classificacao, dict):
         return None
-    if set(classificacao) != CLASSIFICACAO_OBRIGATORIA | CLASSIFICACAO_OPCIONAL:
+    chaves = set(classificacao)
+    if not CLASSIFICACAO_OBRIGATORIA.issubset(chaves) or chaves - (
+        CLASSIFICACAO_OBRIGATORIA | CLASSIFICACAO_OPCIONAL
+    ):
         return None
     revisao = classificacao.get("revisao_instrumento")
     if not isinstance(revisao, str) or len(revisao) != 40:
@@ -346,6 +329,7 @@ def vinculo_da_tarefa(raiz: Path, tarefa: str) -> dict | None:
         "classificacao_sha256": _sha256_json(classificacao),
         "classificada_em": classificada_em,
         "autorizada_por": f"fila-versionada:{commit}",
+        "commit_classificacao": commit,
     }
 
 
@@ -357,13 +341,37 @@ def revisao_do_instrumento(raiz: Path | None = None) -> str:
         partes.append(
             {
                 "caminho": relativo,
-                "sha256": hashlib.sha256(caminho.read_bytes()).hexdigest(),
+                "sha256": telemetria.sha256_texto_versionado(caminho),
             }
         )
     bruto = json.dumps(
         {"arquivos": partes}, sort_keys=True, separators=(",", ":")
     ).encode()
     return hashlib.sha1(bruto).hexdigest()
+
+
+def _classificacao_antecede_commit(raiz: Path, vinculo: dict, commit: str) -> bool:
+    commit_classificacao = vinculo.get("commit_classificacao")
+    if not isinstance(commit_classificacao, str) or len(commit_classificacao) != 40:
+        return False
+    try:
+        processo = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(raiz),
+                "merge-base",
+                "--is-ancestor",
+                commit_classificacao,
+                commit,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    return processo.returncode == 0
 
 
 def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
@@ -374,14 +382,12 @@ def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
     return (
         manifesto["tarefa_sha256"] == vinculo["tarefa_sha256"]
         and manifesto["classificacao_sha256"] == vinculo["classificacao_sha256"]
-        and manifesto["revisao_instrumento"] == revisao_do_instrumento(raiz)
-        and all(
-            manifesto.get(campo) == valor
-            for campo, valor in classificacao.items()
-            if campo != "revisao_instrumento"
-        )
+        and classificacao["revisao_instrumento"] == revisao_do_instrumento(raiz)
+        and manifesto["revisao_instrumento"] == classificacao["revisao_instrumento"]
+        and all(manifesto.get(campo) == valor for campo, valor in classificacao.items())
         and manifesto["classificada_em"] == vinculo["classificada_em"]
         and manifesto["autorizada_por"] == vinculo["autorizada_por"]
+        and _classificacao_antecede_commit(raiz, vinculo, manifesto["commit"])
     )
 
 
@@ -415,11 +421,16 @@ def registrar_execucao_fase4(
         or classificada_em > inicio_instante
     ):
         return False
+    if not _classificacao_antecede_commit(raiz, vinculo, commit):
+        return False
+    revisao_atual = revisao_do_instrumento(raiz)
+    if classificacao["revisao_instrumento"] != revisao_atual:
+        return False
     observado_em = fim or inicio
     evidencia = None
     if fim is not None and pr is not None:
         evidencia = {
-            "resultado": f"{estado}: PR #{pr} no commit {commit}",
+            "resultado": f"{tarefa} {estado}: PR #{pr} no commit {commit}",
             "fonte": f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}/commits/{commit}",
             "verificado_em": fim,
         }
@@ -440,7 +451,7 @@ def registrar_execucao_fase4(
         contexto_bytes=contexto_bytes,
         tarefa_sha256=vinculo["tarefa_sha256"],
         classificacao_sha256=vinculo["classificacao_sha256"],
-        revisao_instrumento=revisao_do_instrumento(raiz),
+        revisao_instrumento=revisao_atual,
         observado_em=observado_em,
         evidencia=evidencia,
     )
