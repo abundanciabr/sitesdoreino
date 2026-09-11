@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-075-painel-cobrir-recursos-das-responsabilidades",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "painel: cobrir recursos das responsabilidades",
+  detalhe: "A correção fecha os achados da revisão do PR #1579 ao resolver cada fonte para arquivo real e recusar alçadas sem decisão ou destino de escalonamento preenchidos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1579. Validação local: árvore 55fcbf9643844ef36b1769e70f135116241ba0bc; commit 2b59a71d9a8b53e90151d824276084019e5a90e9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-309",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
