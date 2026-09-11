@@ -19,7 +19,12 @@
     {% for visao in visoes %}
       <section class="cartao espaco-abaixo-10">
         <h3 class="titulo-da-conta">{{ visao.nome }}</h3>
-        <p class="nota">Titular: <b>{{ visao.pessoa }}</b>.</p>
+        {% if visao.pessoa is None %}
+          <p class="aviso borda-amarela"><b>Titular ausente.</b>
+          {% if visao.sem_substituto %}Não há substituto humano cadastrado.{% else %}A fonte não informou substituto.{% endif %}</p>
+        {% else %}
+          <p class="nota">Titular: <b>{{ visao.pessoa }}</b>.</p>
+        {% endif %}
 
         <h4 class="rotulo">Fazer hoje</h4>
         {% if visao.fontes_de_trabalho %}
@@ -29,12 +34,17 @@
               {% if fonte.fila.quantidade is None %}
                 <p>A fonte {{ fonte.nome }} não respondeu agora.</p>
               {% elif fonte.fila.quantidade == 0 %}
-                <p>Nenhuma pessoa aguarda acesso nesta fonte agora.</p>
+                <p>{{ fonte.vazio }}</p>
               {% else %}
-                <p><a href="{{ fonte.fila.href }}">{{ fonte.fila.quantidade }} pessoa{{ fonte.fila.quantidade|pluralize:"s" }} aguardando acesso</a>{% if fonte.fila.espera_ha %}; a mais antiga espera há {{ fonte.fila.espera_ha }} dias{% endif %}.</p>
+                <p><a href="{{ fonte.fila.href }}">{{ fonte.fila.quantidade }} {% if fonte.fila.quantidade == 1 %}{{ fonte.singular }}{% else %}{{ fonte.plural }}{% endif %}</a>{% if fonte.fila.espera_ha %}; a mais antiga espera há {{ fonte.fila.espera_ha }} dias{% endif %}.</p>
               {% endif %}
             {% else %}
-              <p>{{ fonte.sem_leitura }}</p>
+              {% if fonte.estado == "integracao_indisponivel" %}
+                <p>Integração indisponível: {{ fonte.explicacao }}</p>
+              {% else %}
+                <p>Acesso negado: {{ fonte.explicacao }}</p>
+              {% endif %}
+              <p>{{ fonte.proximo_gesto }}</p>
             {% endif %}
           {% endfor %}
         {% else %}
@@ -44,7 +54,7 @@
         <h4 class="rotulo">Aprovar</h4>
         {% if visao.aprovacoes %}
           <ul class="notas">
-            {% for aprovacao in visao.aprovacoes %}<li>{{ aprovacao }}</li>{% endfor %}
+            {% for aprovacao in visao.aprovacoes %}<li><a href="{{ aprovacao.href }}">{{ aprovacao.finalidade }}</a></li>{% endfor %}
           </ul>
         {% else %}
           <p>A fonte ainda não expõe pendências de aprovação para esta função.</p>
