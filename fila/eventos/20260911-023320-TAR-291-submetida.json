@@ -1,0 +1,12 @@
+{
+  "arquivo": "20260911-023320-TAR-291-submetida",
+  "tarefa": "TAR-291",
+  "evento": "submetida",
+  "quando": "2026-09-11T02:33:20+00:00",
+  "quem": "agent/admin/pr1506-versao-dados",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1510",
+  "revisao": "2535bac20f2887312aa20b7454d70100435aa61d",
+  "arvore": "c51ec26438acef32ba814a845a2d4187c8190c9d",
+  "substitui": "https://github.com/abundanciabr/sitesdoreino/pull/1493",
+  "detalhe": "O PR #1493 foi fechado sem merge; o PR #1510 recupera integralmente a entrega da TAR-291 sobre a main atual."
+}
