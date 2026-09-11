@@ -86,14 +86,23 @@ def fonte_valida(fonte: object, raiz: Path) -> bool:
     referencias = [referencia.strip() for referencia in fonte.replace(" e ", ",").split(",")]
     if not referencias or len(set(referencias)) != len(referencias):
         return False
+    try:
+        raiz_resolvida = raiz.resolve()
+    except OSError:
+        return False
     for referencia in referencias:
         caminho = PurePosixPath(referencia)
+        try:
+            destino = raiz.joinpath(*caminho.parts).resolve()
+        except (OSError, RuntimeError):
+            return False
         if (
             not referencia
             or "\\" in referencia
             or caminho.is_absolute()
             or any(parte in {".", ".."} for parte in caminho.parts)
-            or not (raiz.joinpath(*caminho.parts)).is_file()
+            or not destino.is_file()
+            or not destino.is_relative_to(raiz_resolvida)
         ):
             return False
     return True

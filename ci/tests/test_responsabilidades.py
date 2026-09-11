@@ -1,5 +1,7 @@
 import json
+import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -249,6 +251,36 @@ def test_auditoria_recusa_decisao_ou_escalonamento_vazio(tmp_path):
     registro["unidades"][0]["autoridade"] = "Decide:   Escala para: mantenedor."
     (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
     assert "curso: autoridade precisa declarar decisão e escalonamento" in responsabilidades.auditar(raiz)
+
+
+def test_auditoria_recusa_fonte_simbolica_fora_da_bancada(tmp_path):
+    registro = registro_completo()
+    registro["unidades"][0]["fonte"] = "painel/fonte/link.txt"
+    raiz = escrever_registro(tmp_path, registro)
+    fonte = raiz / "painel" / "fonte"
+    fonte.mkdir()
+    (fonte / "link.txt").write_text("dentro", encoding="utf-8")
+    assert responsabilidades.auditar(raiz) == []
+
+    externa = tmp_path.parent / f"{tmp_path.name}-fonte-externa"
+    externa.mkdir()
+    (externa / "link.txt").write_text("fora", encoding="utf-8")
+    (fonte / "link.txt").unlink()
+    fonte.rmdir()
+    try:
+        fonte.symlink_to(externa, target_is_directory=True)
+    except OSError:
+        if os.name != "nt":
+            raise
+        resultado = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(fonte), str(externa)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert resultado.returncode == 0, resultado.stderr
+
+    assert "curso: fonte precisa listar referências concretas" in responsabilidades.auditar(raiz)
 
     registro["unidades"][0]["autoridade"] = "Decide: aprova a entrega. Escala para:   "
     (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
