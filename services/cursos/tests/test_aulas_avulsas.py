@@ -95,10 +95,10 @@ def test_edita_os_tres_campos_sem_slug_preserva_endereco_e_publicacao():
     assert aula_no_banco.publicada_em == publicada_em_antes
 
 
-def test_edita_slug_normalizado_em_tempo_real_sem_acentos_ou_simbolos():
+def test_edita_slug_no_formato_do_contrato_e_gravado_sem_alteracao():
     criada = criar().json()
     aula_id = AulaAvulsa.objects.get(slug=criada["slug"]).pk
-    resposta = editar(criada["slug"], slug="  AULA de Testes!  ")
+    resposta = editar(criada["slug"], slug="aula-de-testes")
     assert resposta.status_code == 200
     assert resposta.json()["slug"] == "aula-de-testes"
     assert AulaAvulsa.objects.get(pk=aula_id).slug == "aula-de-testes"
@@ -116,9 +116,28 @@ def test_edita_slug_ocupado_com_menor_sufixo_livre():
     criar(titulo="Guia")
     criar(titulo="Guia")
     criar(titulo="Guia")
-    resposta = editar(criada["slug"], slug="Guia")
+    resposta = editar(criada["slug"], slug="guia")
     assert resposta.status_code == 200
     assert resposta.json()["slug"] == "guia-4"
+
+
+def test_edita_slug_longo_ocupado_encontra_menor_sufixo_apos_truncamento():
+    base = "a" * 140
+    criada = criar(titulo="Aula original").json()
+    aula_id = AulaAvulsa.objects.get(slug=criada["slug"]).pk
+    for sufixo in range(1, 4):
+        AulaAvulsa.objects.create(
+            site_id=SITE,
+            titulo=f"Aula {sufixo}",
+            slug=api._proximo_slug(base, sufixo),
+            video_url="https://youtu.be/dQw4w9WgXcQ",
+        )
+
+    assert api._proximo_slug_livre(SITE, base, aula_id) == api._proximo_slug(base, 4)
+    resposta = editar(criada["slug"], slug=base)
+
+    assert resposta.status_code == 200
+    assert resposta.json()["slug"] == api._proximo_slug(base, 4)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -155,7 +174,7 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         titulo="Aula disputada",
         video_url="https://youtu.be/dQw4w9WgXcQ",
         descricao="",
-        slug="Aula disputada",
+        slug="aula-disputada",
     )
 
     def editar_em_concorrencia(endereco):
@@ -178,10 +197,15 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
     ) == set(enderecos)
 
 
-@pytest.mark.parametrize("slug", ["", "!!!", "   "])
-def test_edita_slug_sem_letras_ou_numeros_e_422(slug):
+@pytest.mark.parametrize("slug", ["", "!!!", "   ", "AULA de Testes!"])
+def test_edita_slug_fora_do_formato_do_contrato_devolve_422_como_envelope(slug):
     criada = criar().json()
-    assert editar(criada["slug"], slug=slug).status_code == 422
+    resposta = editar(criada["slug"], slug=slug)
+    assert resposta.status_code == 422
+    assert resposta.json() == {
+        "erro": "slug_invalido",
+        "o_que_fazer": "Use letras minúsculas sem acentos, números e hífens.",
+    }
 
 
 def test_editar_aula_ausente_neste_site_devolve_404():
@@ -199,12 +223,20 @@ def test_editar_aula_ausente_neste_site_devolve_404():
         HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
     )
     assert resposta.status_code == 404
+    assert resposta.json() == {
+        "erro": "aula_avulsa_nao_encontrada",
+        "o_que_fazer": "Confira o endereço da aula ou escolha outra aula publicada.",
+    }
 
 
 def test_editar_recusa_chave_desconhecida_com_campos_validos():
     criada = criar().json()
     resposta = editar(criada["slug"], campo_desconhecido="nao-pode")
     assert resposta.status_code == 422
+    assert resposta.json() == {
+        "erro": "corpo_invalido",
+        "o_que_fazer": "Revise os campos da aula e envie somente título, URL do vídeo, descrição e slug.",
+    }
 
 
 @pytest.mark.parametrize(

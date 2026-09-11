@@ -1,5 +1,6 @@
 # config/api.py  # [RECEITA:R1 v1]
 from ninja import NinjaAPI
+from ninja.errors import HttpError, ValidationError
 
 from apps.core.api import router as cursos_router
 from apps.core.auth import bearerAuth
@@ -60,15 +61,15 @@ api = NinjaAPI(
         "A AULA AVULSA ENTRA DESDE 11/09/2026: e uma resposta em video que a\n"
         "escola compartilha fora da sequencia de qualquer curso. Ela pertence ao\n"
         "`site_id`, nasce publicada com titulo, URL do YouTube e descricao, e o\n"
-        "servico gera o `slug` imutavel que vira o endereco permanente. O Admin\n"
-        "nunca manda nem escolhe esse slug. A lista devolve somente aulas publicadas\n"
+        "servico gera o `slug` que vira o endereco compartilhado. O Admin\n"
+        "nunca manda esse slug na criacao. A lista devolve somente aulas publicadas\n"
         "do mesmo site. A pagina publica le seu banco local, sem uma terceira\n"
         "operacao interna.\n"
         "\n"
         "A EDICAO DA AULA AVULSA ENTRA DESDE 11/09/2026: o Admin grava titulo,\n"
-        "URL do YouTube e descricao pela identidade fixa do endereco. Editar o\n"
-        "titulo nunca troca o `slug`, porque o link que ja circulou entre os alunos\n"
-        "continua apontando para a mesma aula.\n"
+        "URL do YouTube e descricao pela identidade do endereco. Ele tambem pode\n"
+        "enviar um slug novo, ja em minusculas, sem acentos e com hifens, para\n"
+        "trocar o link compartilhado. Sem esse campo, o endereco continua igual.\n"
         "\n"
         "O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao\n"
         "inteligencia artificial: `checkLesson` le uma aula e devolve a lista\n"
@@ -134,3 +135,55 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", cursos_router)
+
+
+def _e_edicao_de_aula_avulsa(request) -> bool:
+    return request.method == "PUT" and "/aulas-avulsas/" in request.path_info
+
+
+def _resposta_de_erro_da_aula_avulsa(request, status, erro, o_que_fazer):
+    return api.create_response(
+        request,
+        {"erro": erro, "o_que_fazer": o_que_fazer},
+        status=status,
+    )
+
+
+@api.exception_handler(HttpError)
+def resposta_para_http_error(request, exc):
+    if _e_edicao_de_aula_avulsa(request):
+        if exc.status_code == 404:
+            return _resposta_de_erro_da_aula_avulsa(
+                request,
+                404,
+                "aula_avulsa_nao_encontrada",
+                "Confira o endereço da aula ou escolha outra aula publicada.",
+            )
+        if exc.status_code == 422:
+            return _resposta_de_erro_da_aula_avulsa(
+                request,
+                422,
+                "corpo_invalido",
+                "Revise os campos da aula e envie somente título, URL do vídeo, descrição e slug.",
+            )
+    return api.create_response(request, {"detail": str(exc)}, status=exc.status_code)
+
+
+@api.exception_handler(ValidationError)
+def resposta_para_erro_de_validacao(request, exc):
+    if _e_edicao_de_aula_avulsa(request):
+        slug_invalido = any(erro["loc"][-1] == "slug" for erro in exc.errors)
+        if slug_invalido:
+            return _resposta_de_erro_da_aula_avulsa(
+                request,
+                422,
+                "slug_invalido",
+                "Use letras minúsculas sem acentos, números e hífens.",
+            )
+        return _resposta_de_erro_da_aula_avulsa(
+            request,
+            422,
+            "corpo_invalido",
+            "Revise os campos da aula e envie somente título, URL do vídeo, descrição e slug.",
+        )
+    return api.create_response(request, {"detail": exc.errors}, status=422)

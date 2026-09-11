@@ -428,8 +428,9 @@ class AulaAvulsaParaCriarSchema(Schema):
 class AulaAvulsaParaEditarSchema(Schema):
     """O corpo da edicao de aula avulsa.
 
-    Sem `slug`, a aula conserva o endereco atual. Com ele, o servico normaliza
-    letras, numeros e hifens e encontra o menor sufixo livre quando preciso.
+    Sem `slug`, a aula conserva o endereco atual. Com ele, o editor envia
+    letras minusculas, numeros e hifens e o servico encontra o menor sufixo
+    livre quando preciso.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -437,7 +438,11 @@ class AulaAvulsaParaEditarSchema(Schema):
     titulo: str = Field(min_length=1, max_length=CURTO)
     video_url: str = Field(min_length=1, max_length=URL)
     descricao: str = Field(max_length=5000)
-    slug: str | None = Field(default=None, max_length=140)
+    slug: str | None = Field(
+        default=None,
+        max_length=140,
+        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    )
 
 
 class BlocoParaGravarSchema(Schema):
@@ -888,18 +893,16 @@ def _proximo_slug(titulo: str, sufixo: int) -> str:
     return f"{base[: 140 - len(cauda)].rstrip('-') or 'aula'}{cauda}"
 
 
-def _slug_normalizado(valor: str) -> str:
-    slug = slugify(valor)
-    if not slug:
-        raise HttpError(422, "o endereço da aula precisa ter letras ou números")
-    return slug[:140].rstrip("-")
+def _slug_valido(valor: str) -> str:
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", valor):
+        raise HttpError(422, "o endereço da aula precisa usar o formato informado")
+    return valor
 
 
 def _proximo_slug_livre(site_id: str, base: str, aula_id: int) -> str:
     ocupados = set(
         AulaAvulsaModel.objects.filter(site_id=site_id)
         .exclude(pk=aula_id)
-        .filter(Q(slug=base) | Q(slug__startswith=f"{base}-"))
         .values_list("slug", flat=True)
     )
     for sufixo in range(1, 10_000):
@@ -996,7 +999,7 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
         "atualizada.\n"
         "\n"
         "Sem slug, o endereco compartilhado continua o mesmo. Quando houver slug,\n"
-        "o servico o normaliza e escolhe o menor sufixo numerico livre se o\n"
+        "o servico confere o formato e escolhe o menor sufixo numerico livre se o\n"
         "endereco ja existir no site. Site ou slug do caminho inexistente responde\n"
         "404. Corpo invalido responde 422, inclusive campo desconhecido, titulo,\n"
         "video_url ou slug sem letras ou numeros, URL que nao seja HTTPS\n"
@@ -1018,7 +1021,7 @@ def update_standalone_lesson(
     payload: AulaAvulsaParaEditarSchema,
 ):
     titulo, video_url = _campos_da_aula_avulsa(payload)
-    slug_pedido = _slug_normalizado(payload.slug) if payload.slug is not None else None
+    slug_pedido = _slug_valido(payload.slug) if payload.slug is not None else None
     for _ in range(10_000):
         try:
             with transaction.atomic():
