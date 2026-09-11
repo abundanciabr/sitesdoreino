@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-020-deploy-da-sala-de-aulas-avulsas-confirmado",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1551 publicou as aulas avulsas para alunos",
+  detalhe: "O PR 1551 foi integrado em 11/09/2026 às 02:37 UTC, no commit aa0ceae4a3457d2188760b8c16906a8fce2cc638. O deploy-celula da sala de aulas avulsas terminou com resultado success no run 34555336881, conferido no GitHub.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34555336881",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();
