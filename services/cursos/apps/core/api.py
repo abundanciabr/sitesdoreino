@@ -259,11 +259,11 @@ class AulaSchema(AulaDaListaSchema):
 class AulaAvulsaSchema(Schema):
     """A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
 
-    `slug` e gerado pelo servico na criacao e pode mudar na edicao. Quando o
-    novo endereco ja estiver ocupado no mesmo site, o servico acrescenta o
-    menor sufixo numerico livre. `estado` sempre e `publicada`: esta porta nao
-    oferece rascunho nem uma segunda publicacao.
-    """
+    `slug` e o endereco final salvo pelo servico. Ele nasce do titulo na criacao
+    e pode mudar na edicao quando o Admin envia um slug valido. Se o endereco
+    pedido estiver ocupado no mesmo site, o servico acrescenta um sufixo numerico
+    e devolve aqui o endereco efetivamente salvo. `estado` sempre e `publicada`:
+    esta porta nao oferece rascunho nem uma segunda publicacao."""
 
     titulo: str
     slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -438,11 +438,13 @@ class SlugDeAulaAvulsaInvalido(HttpError):
 
 
 class AulaAvulsaParaEditarSchema(Schema):
-    """O corpo da edicao de aula avulsa.
-
-    Sem `slug`, a aula conserva o endereco atual. Com ele, o servico normaliza
-    o texto digitado e encontra o menor sufixo livre quando preciso.
-    """
+    """O corpo que edita uma aula avulsa. Os tres campos de conteudo
+    continuam obrigatorios. `slug` e opcional: ausente, conserva o endereco;
+    presente, aceita o texto digitado para um novo endereco e o servico o
+    normaliza para ASCII minusculo com hifens.
+    Em colisao com outra aula, o servico reserva atomicamente o menor sufixo
+    numerico livre e devolve o slug final salvo na resposta. O slug da propria
+    aula nao conta como colisao."""
 
     model_config = ConfigDict(extra="forbid")
 
