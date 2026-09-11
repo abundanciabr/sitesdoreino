@@ -290,6 +290,8 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
         + "a" * 40,
         "verificado_em": "2026-09-08T10:02:00+00:00",
     }
+
+
 def test_classificacao_posterior_ao_inicio_nao_entra_no_caderno(tmp_path, monkeypatch):
     git_dir = tmp_path / ".git"
     git_dir.mkdir()

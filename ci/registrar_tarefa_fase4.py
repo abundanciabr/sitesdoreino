@@ -16,22 +16,55 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import telemetria  # noqa: E402
 
 
-CAMPOS_OBRIGATORIOS = frozenset({
-    "tarefa", "tentativa", "branch", "commit", "piloto", "condicao", "tipo",
-    "complexidade", "natureza", "componentes", "fronteiras_integracao",
-    "migracao", "risco", "escopo_publicacao", "revisao_instrumento", "estado",
-    "fonte", "metricas", "inicio", "fim", "schema_medicao", "tarefa_sha256",
-    "classificacao_sha256", "classificada_em", "autorizada_por", "observado_em",
-    "evidencia",
-})
+CAMPOS_OBRIGATORIOS = frozenset(
+    {
+        "tarefa",
+        "tentativa",
+        "branch",
+        "commit",
+        "piloto",
+        "condicao",
+        "tipo",
+        "complexidade",
+        "natureza",
+        "componentes",
+        "fronteiras_integracao",
+        "migracao",
+        "risco",
+        "escopo_publicacao",
+        "revisao_instrumento",
+        "estado",
+        "fonte",
+        "metricas",
+        "inicio",
+        "fim",
+        "schema_medicao",
+        "tarefa_sha256",
+        "classificacao_sha256",
+        "classificada_em",
+        "autorizada_por",
+        "observado_em",
+        "evidencia",
+    }
+)
 CAMPOS_OPCIONAIS = frozenset({"par_id", "pr", "sessao"})
 CAMPOS_PERMITIDOS = CAMPOS_OBRIGATORIOS | CAMPOS_OPCIONAIS
 METRICAS_NULAS = {campo: None for campo in telemetria.METRICAS_DA_TAREFA}
-CLASSIFICACAO_OBRIGATORIA = frozenset({
-    "piloto", "condicao", "tipo", "complexidade", "natureza", "componentes",
-    "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
-    "revisao_instrumento",
-})
+CLASSIFICACAO_OBRIGATORIA = frozenset(
+    {
+        "piloto",
+        "condicao",
+        "tipo",
+        "complexidade",
+        "natureza",
+        "componentes",
+        "fronteiras_integracao",
+        "migracao",
+        "risco",
+        "escopo_publicacao",
+        "revisao_instrumento",
+    }
+)
 CLASSIFICACAO_OPCIONAL = frozenset({"par_id"})
 ARQUIVOS_DO_INSTRUMENTO = (
     "ci/telemetria.py",
@@ -49,9 +82,13 @@ def _instante(valor: object, campo: str, *, nulo: bool) -> datetime | None:
     try:
         instante = datetime.fromisoformat(valor.replace("Z", "+00:00"))
     except ValueError as erro:
-        raise ValueError(f"{campo} não é uma data ISO-8601 válida; corrija o manifesto") from erro
+        raise ValueError(
+            f"{campo} não é uma data ISO-8601 válida; corrija o manifesto"
+        ) from erro
     if instante.tzinfo is None:
-        raise ValueError(f"{campo} não informa fuso horário; use UTC, por exemplo +00:00")
+        raise ValueError(
+            f"{campo} não informa fuso horário; use UTC, por exemplo +00:00"
+        )
     return instante
 
 

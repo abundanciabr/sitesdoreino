@@ -173,8 +173,8 @@ expansão.
 ## I. Comandos e saídas reais
 
 ```text
-python -m pytest ci/tests/test_pr.py ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_fila.py ci/tests/test_sessao.py -q
-339 passed in 79.40s
+python -m pytest ci/tests/test_pr.py ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_fila.py ci/tests/test_sessao.py ci/tests/test_metricas_percurso.py ci/tests/test_licao_do_caminho.py --basetemp C:\t338i2 -q
+554 passed in 64.49s
 
 python ci/registrar_tarefa_fase4.py --manifesto medicao-tar280.json
 PASS tarefa registrada: id=c4902a38e2edd7578518281be355ebd3a0fb17d5420eae5b0e5b8de53043a92a
@@ -225,8 +225,8 @@ para inferência comparativa.
 Revisões e ponto de retomada calculados nesta rodada:
 
 - entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
-- instrumento derivado do conteúdo: `762976157a017f62c933bcbd039435e4e2313369`;
-- analisador derivado do arquivo: `fbd081891d7d72d1ef2b9837175b8942b55d3331d615848234d8f3d93ede0ddd`;
+- instrumento derivado do conteúdo: `f7137dc343a6c4ae916c41aa9a079e0e2376407e`;
+- analisador derivado do arquivo: `004d92e418ca12d04272e4ef67123aa8aca9ba6b9fc07c6a409c3a224bd2b090`;
 - auditoria independente desse par de hashes: pendente;
 - retomada: classificar cada tarefa elegível no arquivo versionado antes da
   abertura, registrar transições append-only com evidência e métricas
@@ -242,6 +242,6 @@ do corretivo, não revisão independente do seu SHA.
 
 ## Conclusão global
 
-**NÃO PRONTA.** A coleta operacional foi demonstrada neste caso e a auditoria
-independente foi concluída. A avaliação comparativa ainda está em andamento e
-não há ganho comprovado.
+**NÃO PRONTA.** O corretivo foi validado internamente. A auditoria independente
+do novo instrumento e do hash da entrada está pendente. A avaliação comparativa
+ainda está em andamento e não há ganho comprovado.

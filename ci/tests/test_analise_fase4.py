@@ -112,7 +112,9 @@ def test_sintetico_invalido_tambem_e_excluido_sem_virar_erro_real():
 
     assert resultado["observacoes"]["eventos_invalidos"] == 0
     assert resultado["diagnostico_da_entrada"]["registros_sinteticos_excluidos"] == 1
-    assert resultado["diagnostico_da_entrada"]["motivos_de_rejeicao"] == {"sintetico": 1}
+    assert resultado["diagnostico_da_entrada"]["motivos_de_rejeicao"] == {
+        "sintetico": 1
+    }
 
 
 def test_diagnostico_separa_incompleto_de_erro_de_correlacao():
@@ -185,8 +187,9 @@ def test_abertura_pendente_e_fechamento_da_mesma_tentativa_preservam_metricas():
 
 def test_registrar_tarefa_grava_no_caderno_privado_da_telemetria(tmp_path, monkeypatch):
     evento = tarefa("antes", 1)
-    campos = {chave: valor for chave, valor in evento.items()
-              if chave not in {"evento", "id"}}
+    campos = {
+        chave: valor for chave, valor in evento.items() if chave not in {"evento", "id"}
+    }
     git_dir = tmp_path / ".git"
     git_dir.mkdir()
     monkeypatch.setattr(telemetria, "dir_git_comum", lambda _: git_dir)
@@ -200,7 +203,9 @@ def test_registrar_tarefa_grava_no_caderno_privado_da_telemetria(tmp_path, monke
 
 def test_ausencia_de_tempo_ou_custo_nao_vira_zero():
     sem_tempo = tarefa("antes", 1, minutos=None)
-    sem_custo = tarefa("depois", 2, metricas={campo: None for campo in telemetria.METRICAS_DA_TAREFA})
+    sem_custo = tarefa(
+        "depois", 2, metricas={campo: None for campo in telemetria.METRICAS_DA_TAREFA}
+    )
     resultado = analise.analisar([sem_tempo, sem_custo])
     piloto = resultado["pilotos"]["fase3"]
     assert piloto["metrica_principal_minutos"]["antes"] is None
@@ -212,8 +217,10 @@ def test_ausencia_de_tempo_ou_custo_nao_vira_zero():
 def test_par_incompleto_nao_forma_par_completo():
     eventos = []
     for numero in range(20):
-        eventos += [tarefa("antes", numero, minutos=None if numero == 0 else 60),
-                    tarefa("depois", numero, minutos=30)]
+        eventos += [
+            tarefa("antes", numero, minutos=None if numero == 0 else 60),
+            tarefa("depois", numero, minutos=30),
+        ]
     resultado = analise.analisar(eventos)
     amostra = resultado["pilotos"]["fase3"]["amostra"]
     assert amostra["pares"] == 19
@@ -289,7 +296,9 @@ def test_hash_da_entrada_muda_com_registro_invalido():
     invalido = dict(valido, id="0" * 64)
 
     sem_invalido = analise.analisar([valido])["reprodutibilidade"]["entrada_sha256"]
-    com_invalido = analise.analisar([valido, invalido])["reprodutibilidade"]["entrada_sha256"]
+    com_invalido = analise.analisar([valido, invalido])["reprodutibilidade"][
+        "entrada_sha256"
+    ]
 
     assert sem_invalido != com_invalido
 
@@ -297,7 +306,10 @@ def test_hash_da_entrada_muda_com_registro_invalido():
 def test_vinte_pares_com_qualidade_preservada_podem_demonstrar_beneficio():
     eventos = []
     for numero in range(20):
-        eventos += [tarefa("antes", numero, minutos=60), tarefa("depois", numero, minutos=30)]
+        eventos += [
+            tarefa("antes", numero, minutos=60),
+            tarefa("depois", numero, minutos=30),
+        ]
     resultado = analise.analisar(eventos)
     piloto = resultado["pilotos"]["fase3"]
     assert piloto["amostra"]["antes"] == 20
@@ -365,8 +377,10 @@ def test_beneficio_sustentado_em_todos_os_pilotos_nao_aprova_auditoria_ou_expans
     assert resultado["avaliacao"] == "concluída"
     assert resultado["auditoria_independente"] == "pendente"
     assert resultado["decisao_expansao"] == "não liberada"
-    assert all(p["resultado"] == "benefício demonstrado no escopo"
-               for p in resultado["pilotos"].values())
+    assert all(
+        p["resultado"] == "benefício demonstrado no escopo"
+        for p in resultado["pilotos"].values()
+    )
 
 
 def test_falha_de_qualidade_e_dado_ausente_impedem_aprovacao():
@@ -391,6 +405,8 @@ def test_evento_adulterado_fica_fora_da_analise():
     assert resultado["observacoes"]["eventos_invalidos"] == 1
     assert resultado["observacoes"]["tarefas_validas"] == 0
     assert "outro-tipo" not in json.dumps(resultado, ensure_ascii=False)
+
+
 def test_estado_da_tentativa_e_o_mais_recente_e_nao_um_verde_antigo():
     concluida = tarefa("depois", 1, estado="concluida")
     concluida["quando"] = "2026-09-08T10:30:00+00:00"
