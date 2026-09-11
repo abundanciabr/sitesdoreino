@@ -397,3 +397,28 @@ sessão nova. A consulta posterior recebe só a TAR e reconstrói o estado no
 GitHub; parâmetros resultado/pr não são prova. PR integrado só confirma a
 aplicação quando a fila selecionada contém o estado cancelado e os bytes do
 evento original. O motivo público é anunciado no gesto de confirmação.
+
+### A Reunião salva texto privado; o recibo exige a mesma versão
+
+Documento, versão e auditoria de uma gravação entram na mesma transação. A
+chave única do nome decide a primeira corrida; a tentativa repetida compara a
+impressão digital do formulário com a auditoria e recupera o efeito original,
+sem recalcular a foto ou o dia. Uma edição usa versão esperada e mantém essa
+versão no formulário de conflito, impedindo que repetir vire sobrescrita.
+
+Autorizar tem verbo próprio e liga documento, versão, autoria e hash do texto.
+A migração de escolhas usa somente estado, sem SQL nem reconstrução da tabela
+append-only. O documento continua privado; o aviso de destino público aparece
+antes do gesto. Salvar, autorizar e copiar não recebem nem executam o pedido.
+
+Antes do merge, a main pode desconhecer a tarefa. O recibo confere a reserva e
+os dois blobs no commit fixado do ramo vencedor, com GET limitado. A comparação
+é UTF-8 estrito e JSON canônico recursivo, tolerando apenas CRLF. Truncamento,
+versão divergente ou resposta parcial não viram recebimento. A cópia publicada
+é outra prova, no contexto de dados da requisição; conclusão legada continua
+sendo conclusão registrada, com resultado dos itens ainda não conferido.
+
+
+### Reunião: texto conferido e integração comprovada
+
+O gesto de autorizar precisa enviar o texto visível junto da versão: uma tela de conflito pode preservar o rascunho perdedor enquanto o banco já contém outro texto. Compare ambos sob o bloqueio da transação, preserve o rascunho e mostre a versão salva para recuperar. A foto da pauta vem do formulário original assinado também nas respostas de erro, sem depender do placar disponível no retry. PR com nome de ramo igual não prova integração: confira os artefatos nos commits do PR e do merge e o merge na história da main. Se essa prova faltar, conserve apenas o recebimento já conferido.

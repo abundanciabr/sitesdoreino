@@ -119,6 +119,7 @@ class Registro(models.Model):
     # diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    AUTORIZAR_PEDIDO = "autorizar_pedido"
     # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
     # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
     # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
@@ -308,6 +309,7 @@ class Registro(models.Model):
         (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
+        (AUTORIZAR_PEDIDO, "autorizar uma versão do pedido da Reunião"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
