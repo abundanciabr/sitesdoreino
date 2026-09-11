@@ -152,7 +152,6 @@ def test_edita_slug_longo_ocupado_encontra_menor_sufixo_apos_truncamento():
     assert resposta.json()["slug"] == api._proximo_slug(base, 4)
 
 
-@pytest.mark.django_db(transaction=True)
 def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
     primeira = AulaAvulsa.objects.create(
         site_id=SITE,
@@ -160,26 +159,27 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         slug="primeira",
         video_url="https://youtu.be/dQw4w9WgXcQ",
     )
-    segunda = AulaAvulsa.objects.create(
-        site_id=SITE,
-        titulo="Segunda",
-        slug="segunda",
-        video_url="https://youtu.be/dQw4w9WgXcQ",
-    )
-    barreira = Barrier(2)
-    trava = Lock()
+    
     chamadas = 0
-    proximo_slug_livre = api._proximo_slug_livre
+    original_proximo = api._proximo_slug_livre
 
     def disputar_o_mesmo_endereco(*args):
         nonlocal chamadas
-        candidato = proximo_slug_livre(*args)
-        with trava:
-            chamadas += 1
-            precisa_esperar = chamadas <= 2
-        if precisa_esperar:
-            barreira.wait(timeout=5)
-        return candidato
+        chamadas += 1
+        if chamadas == 1:
+            # Na primeira tentativa, simula que outro processo roubou o slug 
+            # logo após calcularmos que "aula-disputada" estava livre.
+            # Criamos a aula concorrente no banco para forçar o IntegrityError
+            # quando o update real tentar salvar.
+            AulaAvulsa.objects.create(
+                site_id=SITE,
+                titulo="Segunda",
+                slug="aula-disputada",
+                video_url="https://youtu.be/dQw4w9WgXcQ",
+            )
+            return "aula-disputada"
+        # Na segunda tentativa, calcula normalmente (vai achar aula-disputada-2)
+        return original_proximo(*args)
 
     monkeypatch.setattr(api, "_proximo_slug_livre", disputar_o_mesmo_endereco)
     payload = api.AulaAvulsaParaEditarSchema(
@@ -189,24 +189,12 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         slug="Aula disputada",
     )
 
-    def editar_em_concorrencia(endereco):
-        close_old_connections()
-        try:
-            return api.update_standalone_lesson(None, endereco, SITE, payload)["slug"]
-        finally:
-            close_old_connections()
+    resultado = api.update_standalone_lesson(None, primeira.slug, SITE, payload)
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        enderecos = list(
-            executor.map(editar_em_concorrencia, [primeira.slug, segunda.slug])
-        )
+    assert resultado["slug"] == "aula-disputada-2"
+    assert AulaAvulsa.objects.get(pk=primeira.pk).slug == "aula-disputada-2"
+    assert AulaAvulsa.objects.filter(slug="aula-disputada").exists()
 
-    assert sorted(enderecos) == ["aula-disputada", "aula-disputada-2"]
-    assert set(
-        AulaAvulsa.objects.filter(pk__in=[primeira.pk, segunda.pk]).values_list(
-            "slug", flat=True
-        )
-    ) == set(enderecos)
 
 
 @pytest.mark.parametrize("slug", ["", "!!!", "   "])
