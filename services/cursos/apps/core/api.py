@@ -962,21 +962,7 @@ def list_standalone_lessons(request, site_id: str):
     response={201: AulaAvulsaSchema},
     operation_id="createStandaloneLesson",
     summary="Cria e publica uma aula avulsa com endereço próprio",
-    description=(
-        "O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,\n"
-        "video_url e descricao. O servico gera o slug pelo titulo e o estabiliza\n"
-        "na criacao: se um titulo igual ja tiver ocupado o endereco naquele site,\n"
-        "ele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.\n"
-        "\n"
-        "A aula nasce publicada, com estado `publicada`, e pode ser lida na hora\n"
-        "pelo endereco devolvido. Nao existe rascunho nem gesto posterior de\n"
-        "publicacao nesta porta. A edicao usa `updateStandaloneLesson` e pode\n"
-        "trocar o endereco.\n"
-        "\n"
-        "422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\n"
-        "do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\n"
-        "corpo tiver uma chave desconhecida."
-    ),
+    description="O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,\nvideo_url e descricao. O servico gera o slug pelo titulo e o estabiliza\nna criacao: se um titulo igual ja tiver ocupado o endereco naquele site,\nele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.\n\nA aula nasce publicada, com estado `publicada`, e pode ser lida na hora\npelo endereco devolvido. Nao existe rascunho nem gesto posterior de\npublicacao nesta porta. A edicao usa `updateStandaloneLesson`: preserva\no endereco original somente quando o corpo do PUT omite `slug`.\n\n422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\ndo YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\ncorpo tiver uma chave desconhecida.",
 )
 def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriarSchema):
     titulo, video_url = _campos_da_aula_avulsa(payload)
@@ -1001,18 +987,7 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
     response=AulaAvulsaSchema,
     operation_id="updateStandaloneLesson",
     summary="Edita uma aula avulsa e pode trocar seu endereço",
-    description=(
-        "O gesto Editar aula avulsa do Admin. O corpo recebe exatamente\n"
-        "titulo, video_url, descricao e, opcionalmente, slug, e devolve a aula\n"
-        "atualizada.\n"
-        "\n"
-        "Sem slug, o endereco compartilhado continua o mesmo. Quando houver slug,\n"
-        "o servico o normaliza e escolhe o menor sufixo numerico livre se o\n"
-        "endereco ja existir no site. Site ou slug do caminho inexistente responde\n"
-        "404. Corpo invalido responde 422, inclusive campo desconhecido, titulo,\n"
-        "video_url ou slug sem letras ou numeros, URL que nao seja HTTPS\n"
-        "incorporavel do YouTube e descricao acima de 5.000 caracteres."
-    ),
+    description="O gesto Editar aula avulsa do Admin. O `slug` do caminho identifica\na aula existente. O corpo recebe titulo, video_url, descricao e, opcionalmente,\num slug novo. Esse slug pode conter o texto digitado pela pessoa. Quando ele\nvier, o servico normaliza acentos, simbolos e espacos para letras ASCII\nminusculas, numeros e hifens; depois grava o endereco pedido ou,\nse ele ja estiver ocupado por outra aula no mesmo site, acrescenta o menor\nsufixo numerico livre, como `-2` e `-3`. O slug igual ao da propria aula\nnao e colisao e permanece igual. Antes de gravar, o servico reserva o\nendereco por unicidade atomica de site e slug. Se outra gravacao ocupar\no sufixo no mesmo instante, ele tenta o proximo menor sufixo livre antes\nde responder. Nao ha conflito para o Admin resolver: a resposta 200 sempre\ndevolve o slug final salvo.\n\nSem slug no corpo, o endereco atual permanece. Site ou slug do caminho\ninexistente responde 404. Corpo invalido responde 422, inclusive campo\ndesconhecido, slug que nao gera letras ou numeros, titulo ou video_url vazios, URL que\nnao seja HTTPS incorporavel do YouTube e descricao acima de 5.000 caracteres.",
     openapi_extra={
         "requestBody": {
             "content": {
