@@ -7,7 +7,6 @@ import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
 CONTRATO = RAIZ / "contracts" / "cursos.openapi.yaml"
-PADRAO_SLUG = "^[a-z0-9]+(?:-[a-z0-9]+)*$"
 
 
 def contrato() -> dict:
@@ -31,9 +30,17 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
 
     assert corpo["$ref"] == "#/components/schemas/AulaAvulsaParaEditarSchema"
     assert esquema["additionalProperties"] is False
-    assert esquema["properties"]["slug"] == {"pattern": PADRAO_SLUG, "type": "string"}
+    assert esquema["properties"]["slug"] == {"maxLength": 140, "type": "string"}
     assert "slug" not in esquema["required"]
     assert "slug" not in requisicao["examples"]["preservar_endereco"]["value"]
+    assert (
+        requisicao["examples"]["slug_normalizado"]["value"]["slug"] == "Ação & Testes"
+    )
+    assert operacao["x-normalizacao-de-slug"] == {
+        "campo": "slug",
+        "algoritmo": "unicode_para_ascii_minusculo_com_hifens",
+        "exemplo": {"entrada": "Ação & Testes", "saida": "acao-testes"},
+    }
     assert operacao["x-reserva-de-slug"] == {
         "chave": ["site_id", "slug"],
         "atomica": True,
@@ -47,6 +54,7 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
     assert exemplos["slug_identico"]["value"]["slug"] == "aula-de-testes"
     assert exemplos["slug_ocupado"]["value"]["slug"] == "aula-de-testes-2"
     assert exemplos["menor_sufixo_livre"]["value"]["slug"] == "aula-de-testes-3"
+    assert exemplos["slug_normalizado"]["value"]["slug"] == "acao-testes"
     assert corpo_404["schema"]["properties"]["erro"] == {
         "const": "aula_avulsa_nao_encontrada",
         "type": "string",
@@ -65,7 +73,7 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
     }
     assert exemplos_422["slug_invalido"]["value"] == {
         "erro": "slug_invalido",
-        "o_que_fazer": "Use letras minúsculas sem acentos, números e hífens.",
+        "o_que_fazer": "Informe um endereço com ao menos uma letra ou número.",
     }
     assert (
         respostas["404"]["description"]
@@ -73,5 +81,5 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
     )
     assert (
         respostas["422"]["description"]
-        == "Corpo invalido, inclusive slug fora do formato permitido"
+        == "Corpo invalido, inclusive slug que nao gera letras ou numeros"
     )
