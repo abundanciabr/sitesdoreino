@@ -48,6 +48,15 @@ retry do provedor, que não tem teste de ponta a ponta.
 **Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.
 """
 
+CONTAS_COM_ACAO_PENDENTE = CONTAS_COMPLETAS.replace(
+    "**O que eu preciso decidir** — nada depende de ninguém, ~8 min até o ar.",
+    """**O que eu preciso decidir** —
+
+🔶 AÇÃO NECESSÁRIA DO MANTENEDOR
+Faça agora: autorize a publicação no painel do provedor.
+Quando você fizer isso: continuo com a verificação externa e entrego o resultado.""",
+).replace("**Veredito:** PRONTO", "**Veredito:** NÃO PRONTO")
+
 
 # ------------------------------------------------------------- montagem ----
 
@@ -131,6 +140,28 @@ def test_o_mesmo_turno_com_as_contas_passa_calado(tmp_path):
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
         _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_relatorio_com_pendencia_diz_acao_e_proximo_efeito(tmp_path):
+    _silencio(_decidir(tmp_path, [
+        _humano("publique o site"),
+        _ferramenta("Edit", {"file_path": "infra/sites.json"}),
+        _fala(CONTAS_COM_ACAO_PENDENTE),
+    ]))
+
+
+def test_pendencia_sem_sinalizacao_visual_e_recusada(tmp_path):
+    sem_instrucao = CONTAS_COM_ACAO_PENDENTE.replace(
+        "🔶 AÇÃO NECESSÁRIA DO MANTENEDOR\n"
+        "Faça agora: autorize a publicação no painel do provedor.\n"
+        "Quando você fizer isso: continuo com a verificação externa e entrego o resultado.",
+        "a publicação depende de uma autorização sua.",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("publique o site"),
+        _ferramenta("Edit", {"file_path": "infra/sites.json"}),
+        _fala(sem_instrucao),
     ]))
 
 

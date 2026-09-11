@@ -159,6 +159,19 @@ jobs:
       - name: Instalar o navegador
         run: |
           npm install --no-save playwright@1.62.1
-          npx playwright install --with-deps chromium
+          for tentativa in 1 2 3; do
+            echo "Instalação do Chromium: tentativa ${tentativa}/3"
+            if npx playwright install --with-deps chromium; then
+              exit 0
+            fi
+            if [ "${tentativa}" -lt 3 ]; then
+              echo "Instalação transitória falhou; limpando índices APT do runner e tentando novamente."
+              sudo rm -rf /var/lib/apt/lists/*
+              sudo apt-get clean
+              sleep 5
+            fi
+          done
+          echo "Instalação do Chromium falhou após 3 tentativas automáticas."
+          exit 1
       - name: O painel num navegador de verdade (orçamento de amplificação)
         run: node e2e/painel_no_navegador.js

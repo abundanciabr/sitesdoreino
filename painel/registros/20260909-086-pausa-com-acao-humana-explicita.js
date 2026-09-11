@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-086-pausa-com-acao-humana-explicita",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Pausa com dependência humana passou a mostrar a ação exata",
+  detalhe: "A prestação de contas agora exige o bloco visual AÇÃO NECESSÁRIA DO MANTENEDOR, com Faça agora e Quando você fizer isso. Relatórios sem pendência continuam declarando que nada depende de você.",
+  autoridade: "sessao",
+  evidencia: "63 testes da prestação de contas passaram quando executados com o alias python disponível. PR https://github.com/abundanciabr/sitesdoreino/pull/1502.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: "alto",
+  portao: "entrega"
+});})();

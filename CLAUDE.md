@@ -394,7 +394,7 @@ em PT-BR, sempre.**
    - **O que mudou** — fatos, não adjetivos
    - **O que foi verificado e como** — o comando e a saída real
    - **O que foi cortado e por quê** — "nada" é resposta
-   - **O que eu preciso decidir** — ou a linha dizendo que nada depende dele
+   - **O que eu preciso decidir** — nada depende dele ou ação visual do mantenedor
    - **Auditoria de qualidade** — a regra 6 item a item, e o que a regra 8 atacaria
    - **Veredito:** PRONTO ou NÃO PRONTO, com uma linha do porquê
 
