@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260911-112355-TAR-338-submetida",
+  "tarefa": "TAR-338",
+  "evento": "submetida",
+  "quando": "2026-09-11T11:23:55+00:00",
+  "quem": "agent/ci/corrigir-instrumento-pareto-fase4",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1561",
+  "revisao": "6276736c3fe209832054a4698239817bcfc7d138",
+  "arvore": "4c74cdc0b2031bfbd37476bf07628e0774659b76"
+}
