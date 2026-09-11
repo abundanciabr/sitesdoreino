@@ -1,11 +1,17 @@
-# CLAUDE.md — sitesdoreino
+# AGENTS.md — sitesdoreino
 
-Lei de toda sessão do Claude Code aqui. Este arquivo entra em cada chamada de
+Lei de toda sessão do Codex aqui. Este arquivo entra em cada chamada de
 cada robô, por isso só carrega a REGRA, o COMANDO e QUEM A FAZ VALER. O porquê
 de cada lei (datas, PRs, medições) mora em
 `docs/decisoes/DECISAO-claude-md-so-lei.md`: abra quando precisar do motivo.
 Lei nova entra aqui nesse formato e leva a história para lá, no mesmo PR; o
 tamanho deste arquivo tem teto mecânico.
+
+## Regra de intenção da sessão
+
+Tudo o que for pedido aqui dentro do projeto `sitesdoreino` é uma tarefa de execução no código.
+Considere que a solicitação é para agir no serviço/site, com mudança, validação e entrega no repositório.
+Conversas informais devem ser feitas fora deste fluxo.
 
 ## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa
 
@@ -204,7 +210,7 @@ No principal ficam livres leituras, `git fetch`, `git worktree` e `gh`; com a
 (`armadilhas/135`). O espelho se atualiza sozinho na abertura da sessão, só
 quando é seguro.
 
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, hook em `.claude/settings.json` · `ci/tests/test_muralha_pasta_compartilhada.py`.
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, hook em `.codex/hooks.json` · `ci/tests/test_muralha_pasta_compartilhada.py`.
 
 ## Todo pedido do mantenedor é um lote
 
@@ -217,7 +223,7 @@ checks rodam, o `revisor` lê o diff. `make pr` reserva e embarca recibo e event
 não repita esses efeitos com o `escrivao`, que julga lições e fatos adicionais.
 A maestro arma a espera, consolida o placar e fala com ele. Confira PRs abertos.
 
-As fichas em `.claude/agents/` carregam o rito; o brief leva SÓ a tarefa e as
+As fichas em `.codex/agents/` carregam o rito; o brief leva SÓ a tarefa e as
 armadilhas dela. Sub-agente nunca pergunta ao mantenedor nem dispara outro
 sub-agente. Regência: `RUNBOOK-LOTES.md`.
 
@@ -331,7 +337,7 @@ onde: **isto se apoia em fatos que o sistema já conhece?**
 - **Sim** (votos, alunos, tarefas, dinheiro, estado): tela calculada em
   `/admin/`, com teste; nunca documento com número escrito dentro.
 - **Não** (plano, lei, explicação, roteiro): editor em `/admin/documentos/`.
-- **Para IA de fora ler:** `/mapa-ia/planos/`; artefato do claude.ai é privado.
+- **Para IA de fora ler:** `/mapa-ia/planos/`; artefato do Codex.ai é privado.
 
 Prévia na conversa e texto curto na resposta continuam valendo.
 
@@ -349,6 +355,11 @@ em PT-BR, sempre.**
 
 - **Faça você o máximo.** Ele só entra onde é insubstituível (segredos,
   console do provedor). Agente não tem SSH para a VPS: o canal é o pipeline.
+- **Execute no PowerShell o que você consegue executar.** Se o agente tem
+  acesso ao projeto, ao GitHub ou ao ambiente local para rodar um comando,
+  ele deve rodá-lo e conferir o resultado. Só peça ao mantenedor para colar
+  um comando quando faltar uma credencial, uma decisão dele, uma janela da
+  VPS ou outra capacidade que o agente realmente não tenha.
 - **Passo manual é UM bloco único de colar**, fail-closed ("PAROU POR
   SEGURANÇA"), **dizendo em qual janela colar:** `PS C:\>` é o PC;
   `deploy@srv...` ou `root@srv...` já é a VPS. Avise antes as surpresas:

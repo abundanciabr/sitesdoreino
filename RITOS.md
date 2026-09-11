@@ -31,11 +31,6 @@ nesse caso o baseline fica não medido e os testes dos alvos são necessários.
 Repita a mesma entrada para retomar, sem apagar a bancada. Os logs completos
 ficam no caminho que a abertura informa; a declaração só descreve o observado.
 
-Depois de criar a bancada, a abertura publica e confere um PR em rascunho antes
-do primeiro arquivo de código. O fechamento reutiliza esse PR e só o torna
-pronto para revisão depois da validação final. Um ramo que já tenha PR encerrado
-não é reutilizado.
-
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
 > "Li o **Padrão de Trabalho** (1ª seção do `CLAUDE.md`), `CONSTITUICAO.md` e
@@ -108,9 +103,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não
    é aceito.
-4. **Fecho da catraca, o agente PEDE POUSO; quem mergeia é a pista (desde
+4. **Fecho da catraca — o agente PEDE POUSO; quem mergeia é a pista (desde
    29/08/2026):** aberto o PR, o próprio agente conclui, sem pedir nem esperar o
-   humano, mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
+   humano — mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
    embarca** (desde 31/08/2026): leia o número que o `gh` devolveu ao abrir o
    PR: `make pr` valida, reserva e embarca o registro e os eventos NO MESMO RAMO.
    Não duplique a escrituração; confira os efeitos informados pelo comando
@@ -217,6 +212,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      leia o balcão da fila, escreva o registro — e colha o veredito quando ele
      chegar. O que a lei exige é **reportar** o veredito, nunca *encarar* o
      relógio até ele sair.
+     **Em lote: NÃO espere o deploy de nenhum PR.** Reporte os números dos PRs
+     pousados e encerre a sessão. O deploy é conferido pela próxima sessão ou
+     pelo alarme-main.
 
    - **A voz da espera já fala; não repita cada batimento com uma linha sua.**
      Cada `⏳` do `esperar.py` já aparece na janela do mantenedor, com o estado
