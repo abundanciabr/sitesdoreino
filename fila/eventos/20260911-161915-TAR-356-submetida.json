@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260911-161915-TAR-356-submetida",
+  "tarefa": "TAR-356",
+  "evento": "submetida",
+  "quando": "2026-09-11T16:19:15+00:00",
+  "quem": "agent/ci/corrigir-falso-positivo-fontes-pr",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1587",
+  "revisao": "f01f82fab3409a789dd515ff57aebf3e8ff3674d",
+  "arvore": "e9885d7e8c3f143fe2f887aa8e87a4346ae63453"
+}
