@@ -242,6 +242,17 @@ def documento_criar(request):
             ),
             status=422,
         )
+    if nome.startswith(documentos.PREFIXO_PEDIDO_REUNIAO):
+        return _tela(
+            request,
+            rascunho,
+            criando=True,
+            erro=(
+                "Esse endereço é reservado aos pedidos da reunião. Escolha "
+                "outro endereço para o documento."
+            ),
+            status=422,
+        )
     if Documento.objects.filter(nome=nome).exists():
         return _tela(
             request,

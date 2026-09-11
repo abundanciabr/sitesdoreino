@@ -2280,8 +2280,8 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "A reunião de segunda-feira",
-      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Termina no pedido para o robô: um bloco de texto para colar numa sessão, que vira registro no livro.",
-      "observacao": "Esta tela não grava nada; o que vale é o que chegar ao livro. Degrau 3 do plano do painel de gestão."
+      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Ao salvar, cria um documento privado com identidade, versão e auditoria para conferência antes de qualquer publicação.",
+      "observacao": "Salvar preserva o pedido no banco e não o envia ao repositório. A autorização acontece na tela do pedido específico e também não executa a tarefa. Degrau 3 do plano do painel de gestão."
     },
     {
       "celula": "admin",

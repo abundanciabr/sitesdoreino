@@ -585,7 +585,7 @@ class _RecebimentoReuniao:
             reserva.get("chave") != self.chave
             or reserva.get("superficie") != "tarefa"
             or not isinstance(numero, str)
-            or not re.fullmatch(r"[0-9]{3}", numero)
+            or not re.fullmatch(r"[0-9]{3,12}", numero)
             or not isinstance(ramo, str)
             or not re.fullmatch(r"agent/[a-zA-Z0-9/_-]+", ramo)
             or any(parte in ("", ".", "..") for parte in ramo.split("/"))
@@ -757,7 +757,7 @@ def consultar_recibo_reuniao(envelope):
     if not token():
         return ReciboReuniao(
             "incerto",
-            "Não consegui confirmar recebimento: a consulta ao repositório está indisponível. O texto privado continua salvo; tente consultar novamente.",
+            "Não consegui confirmar recebimento: a consulta ao repositório está indisponível. O texto privado continua salvo; tente consultar novamente. Se você já levou o pedido à sessão e a consulta continuar indisponível, acione o robô para conferir a mesma tarefa.",
         )
     leitor = _RecebimentoReuniao(envelope)
     try:
@@ -773,7 +773,7 @@ def consultar_recibo_reuniao(envelope):
     ) as erro:
         return ReciboReuniao(
             "incerto",
-            f"Não consegui confirmar recebimento. {erro}",
+            f"Não consegui confirmar recebimento. {erro} Consulte novamente. Se a consulta continuar indisponível, acione o robô para conferir a mesma tarefa.",
             leitor.tarefa,
             leitor.ramo,
         )

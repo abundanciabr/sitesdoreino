@@ -167,12 +167,14 @@ from tests.test_reuniao import _dentro, _a_escola_responde, ambiente, SESSAO, CO
 
 
 @pytest.fixture
-def fonte_remota():
+def fonte_remota(request):
     doc, versao = criar()
     dados = pedidos.envelope(doc, versao)
+    numero = getattr(request, "param", "987")
+    tarefa_id = "TAR-" + numero
     chave = hashlib.sha256(("pedido:" + dados["pedido"]["id"]).encode()).hexdigest()
     reserva = {
-        "numero": "987",
+        "numero": numero,
         "ramo": "agent/painel/reuniao",
         "superficie": "tarefa",
         "chave": chave,
@@ -180,18 +182,18 @@ def fonte_remota():
         "dia": "20260909",
         "criado_em": "2026-09-09T12:00:00+00:00",
     }
-    stem = "987-pedido-da-reuniao-de-09-09-2026"
-    evento = "20260909-120000-TAR-987-explicada"
+    stem = numero + "-pedido-da-reuniao-de-09-09-2026"
+    evento = "20260909-120000-" + tarefa_id + "-explicada"
     tarefa = {
         "arquivo": stem,
-        "id": "TAR-987",
+        "id": tarefa_id,
         **dados["tarefa"],
         "pedido": dados["pedido"],
         "criada_em": "2026-09-09",
     }
     explicacao = {
         "arquivo": evento,
-        "tarefa": "TAR-987",
+        "tarefa": tarefa_id,
         "evento": "explicada",
         "quando": reserva["criado_em"],
         "quem": dados["tarefa"]["origem"],
@@ -271,6 +273,23 @@ def test_recibo_so_confirma_dois_artefatos_no_mesmo_sha(fonte_remota, monkeypatc
     assert recibo.estado == "recebido" and recibo.tarefa == "TAR-987"
     assert recibo.revisao == "b" * 40 and len(recibo.artefatos) == 2
     assert not recibo.inicio
+
+
+@pytest.mark.parametrize("fonte_remota", ["1000"], indirect=True)
+def test_recibo_aceita_tarefa_com_quatro_digitos(fonte_remota, monkeypatch):
+    recibo = consultar(fonte_remota, monkeypatch)
+    assert recibo.estado == "recebido" and recibo.tarefa == "TAR-1000"
+
+
+@respx.mock
+def test_fila_indisponivel_explica_quando_acionar_o_robo(fonte_remota, monkeypatch):
+    dados = fonte_remota[0]
+    monkeypatch.setenv("GITHUB_TOKEN_FILA", "somente-teste")
+    respx.get(host="api.github.com").mock(return_value=httpx.Response(503))
+    recibo = fila_no_github.consultar_recibo_reuniao(dados)
+    assert recibo.estado == "incerto"
+    assert "Consulte novamente" in recibo.detalhe
+    assert "consulta continuar indisponível, acione o robô" in recibo.detalhe
 
 
 @pytest.mark.parametrize(
@@ -395,6 +414,65 @@ def test_tela_salvar_reabrir_autorizar_sem_enviar(monkeypatch):
     assert not any(c.request.url.host == "api.github.com" for c in respx.calls)
     assert cliente.get(pagina.context["documento"].endereco).status_code == 404
     assert cliente.get(resposta.url + "?autorizado=1&pr=123").context["recibo"] is None
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("rota", "metodo"),
+    [
+        ("doc_publico", "get"),
+        ("documento_admin", "get"),
+        ("documento_editar", "get"),
+        ("documento_versoes", "get"),
+        ("documento_salvar", "post"),
+        ("documento_arquivar", "post"),
+        ("documento_desarquivar", "post"),
+        ("documento_restaurar", "post"),
+        ("documento_apagar", "post"),
+    ],
+)
+def test_pedido_privado_nao_abre_nem_muda_pela_biblioteca(rota, metodo):
+    _a_escola_responde()
+    cliente = _dentro()
+    doc, versao = criar()
+    Documento.objects.filter(pk=doc.pk).update(publico=True)
+    url = reverse(rota, args=[doc.nome])
+    dados = {
+        "titulo": "Texto exposto",
+        "corpo": "Não pode entrar",
+        "versao": versao.pk,
+        "confirmacao": doc.nome,
+    }
+    resposta = getattr(cliente, metodo)(url, dados)
+    assert resposta.status_code == 404
+    doc.refresh_from_db()
+    assert doc.corpo == versao.corpo
+
+
+@respx.mock
+def test_pedido_privado_nao_aparece_nas_listas_da_biblioteca():
+    _a_escola_responde()
+    cliente = _dentro()
+    doc, _ = criar()
+    Documento.objects.filter(pk=doc.pk).update(publico=True)
+    for rota in ("docs_publicos", "documentos_admin"):
+        resposta = cliente.get(reverse(rota))
+        assert resposta.status_code == 200
+        assert doc.nome not in resposta.content.decode()
+
+
+@respx.mock
+def test_biblioteca_recusa_criar_no_prefixo_dos_pedidos():
+    _a_escola_responde()
+    cliente = _dentro()
+    nome = pedidos.nome_do_pedido(str(uuid.uuid4()))
+    resposta = cliente.post(
+        reverse("documento_criar"),
+        {"titulo": "Documento comum", "nome": nome, "corpo": "Texto"},
+    )
+    assert resposta.status_code == 422
+    assert "reservado aos pedidos da reunião" in resposta.content.decode()
+    assert not Documento.objects.filter(nome=nome).exists()
 
 
 @respx.mock

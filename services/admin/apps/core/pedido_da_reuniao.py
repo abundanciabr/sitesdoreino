@@ -20,9 +20,10 @@ from django.db import (
 )
 
 from apps.auditoria.models import Registro
+from . import documentos
 from .models import Documento, VersaoDoDocumento
 
-PREFIXO = "pedido-reuniao-"
+PREFIXO = documentos.PREFIXO_PEDIDO_REUNIAO
 CAMPOS = (
     "compromisso1",
     "compromisso2",
