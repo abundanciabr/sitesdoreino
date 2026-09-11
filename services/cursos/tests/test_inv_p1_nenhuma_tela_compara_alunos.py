@@ -52,6 +52,8 @@ AS_ROTAS_DA_CELULA = {
     "concluir-aula",
     "concluir-aula-do-curso",
     "aula",
+    "aulas-avulsas",
+    "aula-avulsa",
     # O CATÁLOGO (07/09/2026): a raiz da célula lista CURSOS, nunca pessoas.
     # Um cartão por `Curso` do site, e a situação de cada um é a da pessoa da
     # sessão. É o lugar do antigo `mapa` sem slug, que redirecionava.
@@ -189,7 +191,15 @@ def test_nenhuma_rota_recebe_o_id_de_outra_pessoa():
     parametros = set()
     for padrao in get_resolver().url_patterns:
         parametros |= set(re.findall(r"<(?:\w+:)?(\w+)>", str(padrao.pattern)))
-    assert parametros == {"numero", "ordem", "caminho", "envio_id", "curso", "parte"}
+    assert parametros == {
+        "numero",
+        "ordem",
+        "caminho",
+        "envio_id",
+        "curso",
+        "parte",
+        "slug",
+    }
 
 
 def test_toda_consulta_de_progresso_nas_views_e_filtrada_pela_pessoa():

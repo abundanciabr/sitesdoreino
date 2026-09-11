@@ -1,0 +1,20 @@
+{
+  "arquivo": "332-trocar-uma-entrega-recuperada-sem-apagar-o-comprovante-anter",
+  "id": "TAR-332",
+  "titulo": "Trocar uma entrega recuperada sem apagar o comprovante anterior",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste vermelho, verde e mutação prova que a troca só grava quando o PR anterior está fechado sem merge e o novo está aberto no SHA e na árvore informados; a TAR-291 é transferida do PR 1493 para o PR 1510 pelo comando oficial, com histórico preservado.",
+  "despacho": "Adicionar ao comando submeter a substituição explícita do PR anterior, com motivo obrigatório. Validar que o PR citado é a última submissão, está fechado sem merge, e que o novo PR está aberto no SHA e na árvore conferidos. Erro do Git ou GitHub é ERROR sem escrita; estado incompatível é recusa sem escrita nem soltura de reserva. Validar a cadeia append-only para que JSON manual sem elo reprove. Preservar última submissão, cálculo de estado e reconciliador. Não criar outra tarefa para o produto.",
+  "origem": "Pedido do mantenedor de 10/09/2026; bloqueio reproduzido ao recuperar a TAR-291 do PR 1493 no PR 1510",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

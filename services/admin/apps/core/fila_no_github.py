@@ -1,48 +1,9 @@
-# apps/core/fila_no_github.py — a única escrita desta célula na fila de trabalho
-"""Tirar uma tarefa da fila, pela porta por onde tudo entra nesta casa: um PR.
+"""Um pedido por TAR, recuperado do GitHub antes de qualquer continuação.
 
-**Por que este arquivo existe separado de `robos.py`.** Aquele é a tela que LÊ
-o retrato da fila e não conhece segredo nenhum; este é o único ponto da célula
-que carrega um token e fala com um servidor de fora. Juntar os dois faria o
-caminho de leitura, que responde a toda visita do dono, importar a credencial
-de escrita.
-
-## A tela nunca escreve na `main`
-
-O gesto do botão "Excluir" não apaga nada e não grava nada em lugar nenhum: ele
-abre um PR com UM arquivo novo em `fila/eventos/`, o evento `cancelada` que
-`ci/fila.py` escreveria pelo balcão. Quem mergeia é a pista, como em qualquer
-outro PR desta casa. É por isso que a resposta ao dono fala em "pedido aberto"
-e em "cerca de 8 minutos", nunca em "excluída".
-
-Quatro chamadas, nesta ordem, porque é a receita da API do GitHub para criar um
-arquivo num ramo novo sem clonar nada:
-
-1. onde a `main` está agora (o SHA);
-2. o ramo `agent/fila/cancelar-TAR-NNN`, apontando para lá;
-3. o arquivo do evento, commitado nesse ramo;
-4. o PR.
-
-O ramo cita `TAR-NNN` no nome de propósito: é assim que `ci/fila.py` liga um PR
-à tarefa dele, e é a mesma citação que a conferência do `toca` procura. Um PR
-que toca só `fila/eventos/` é área ISENTA lá (`ci/conferencia_do_toca.py`), e é
-isento de registro do livro (`CLAUDE.md`), então ele pousa sozinho.
-
-## O formato do evento é CONTRATO da fila, não escolha desta tela
-
-`arquivo`, `tarefa`, `evento`, `quando`, `quem`, `detalhe` — os campos e o nome
-do arquivo (`AAAAMMDD-HHMMSS-TAR-NNN-cancelada.json`) são os de
-`ci/fila.py::montar_evento`, e `validar` reprova qualquer desvio na muralha. A
-célula não pode importar `ci/` (é outra cerca), então a receita está escrita
-aqui uma segunda vez — e o guarda que impede as duas de divergirem é a própria
-muralha da fila, que roda em todo PR que este arquivo abre.
-
-## Sem token, desligado — nunca quebrado, nunca escondido
-
-`GITHUB_TOKEN_FILA` chega pelo `env_file` da célula, o mesmo caminho da
-`ANTHROPIC_API_KEY` do fórum. Enquanto ela não existir, `esta_ligado()` devolve
-`False`, o botão nasce cinza e a tela diz o que fazer. Botão que some é a pior
-das opções: o dono nunca saberia que o gesto existe.
+O evento entra no ramo em um único avanço de referência, sem force. Duas
+requisições podem preparar commits, mas só uma avança; a outra lê o vencedor.
+Um ramo, um evento e um PR são provas diferentes. Nenhuma delas prova que o
+snapshot servido pelo admin já aplicou o cancelamento.
 """
 
 from __future__ import annotations
@@ -50,6 +11,8 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import httpx
@@ -60,21 +23,21 @@ REPOSITORIO = "abundanciabr/sitesdoreino"
 VARIAVEL_DO_TOKEN = "GITHUB_TOKEN_FILA"
 API = "https://api.github.com"
 RAMO_BASE = "main"
-
-# Dez segundos, e não os 2,0s das chamadas entre células: aqui são quatro idas
-# a um servidor de fora, na internet do provedor, e o dono está olhando a tela
-# esperando um número de PR. Desistir cedo demais o faria clicar de novo — e o
-# segundo clique bateria no ramo já criado, que é a única falha desagradável
-# deste caminho.
 TIMEOUT = 10.0
-
-# Quem aparece no evento público. É um LUGAR, não uma pessoa: este repositório
-# é público, e o e-mail de quem clicou fica na auditoria da célula, que não é.
 QUEM = "mantenedor-pela-tela-dos-robos"
-
-OK = "ok"
 SEM_TOKEN = "sem_token"
-RECUSOU = "recusou"
+_ID = re.compile(r"TAR-[0-9]{3,12}")
+_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+@dataclass(frozen=True)
+class PedidoCancelamento:
+    estado: str
+    detalhe: str = ""
+    numero: int | None = None
+    arquivo: str = ""
+    conteudo: bytes = b""
+    motivo: str = ""
 
 
 def token() -> str:
@@ -82,15 +45,13 @@ def token() -> str:
 
 
 def esta_ligado() -> bool:
-    """O botão pode existir clicável nesta imagem?"""
     return bool(token())
 
 
 def montar_evento(tarefa: str, motivo: str, agora: datetime) -> tuple[str, dict]:
-    """O evento `cancelada`, no formato exato que `ci/fila.py validar` aceita."""
-    stem = f"{agora.strftime('%Y%m%d-%H%M%S')}-{tarefa}-cancelada"
-    return stem, {
-        "arquivo": stem,
+    arquivo = f"{agora.strftime('%Y%m%d-%H%M%S')}-{tarefa}-cancelada"
+    return arquivo, {
+        "arquivo": arquivo,
         "tarefa": tarefa,
         "evento": "cancelada",
         "quando": agora.isoformat(timespec="seconds"),
@@ -99,113 +60,355 @@ def montar_evento(tarefa: str, motivo: str, agora: datetime) -> tuple[str, dict]
     }
 
 
-def _recado(resposta: httpx.Response) -> str:
-    """O que dizer ao dono quando o GitHub recusa — sem jargão e sem segredo.
+class _Conflito(ValueError):
+    pass
 
-    Nunca ecoa o corpo da resposta: ele traz mensagens em inglês e, em algumas
-    recusas, pedaços do que foi mandado. O número do estado basta para um robô
-    entender, e a frase basta para o dono saber que não foi ele.
-    """
-    return f"o GitHub recusou o pedido (código {resposta.status_code})."
+
+class _SemConfirmacao(Exception):
+    pass
+
+
+def _sha(valor):
+    if not isinstance(valor, str) or not _SHA.fullmatch(valor):
+        raise _Conflito("O GitHub respondeu com uma revisão inválida.")
+    return valor
+
+
+class _Cancelamento:
+    """Confere o protocolo de uma TAR sem aceitar URLs de respostas externas."""
+
+    def __init__(self, tarefa, motivo, senha):
+        self.tarefa = tarefa
+        self.motivo = motivo
+        self.ramo = f"agent/fila/cancelar-{tarefa}"
+        self.cliente = http()
+        self.headers = {
+            "Authorization": f"Bearer {senha}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        self.prova = PedidoCancelamento("incerto")
+        self.main = self.head = ""
+
+    def chamar(self, metodo, caminho, *, aceita=(200,), **kwargs):
+        resposta = self.cliente.request(
+            metodo,
+            f"{API}/repos/{REPOSITORIO}{caminho}",
+            headers=self.headers,
+            timeout=TIMEOUT,
+            **kwargs,
+        )
+        if resposta.status_code not in aceita:
+            raise _SemConfirmacao(
+                f"O GitHub recusou a etapa (código {resposta.status_code})."
+            )
+        if resposta.status_code in (404, 409, 422):
+            return None
+        if 'rel="next"' in resposta.headers.get("link", ""):
+            raise _Conflito(
+                "A consulta trouxe mais de uma página e não confirma um pedido único."
+            )
+        return resposta.json()
+
+    def evento(self, files, sha):
+        if not isinstance(files, list) or len(files) != 1:
+            raise _Conflito("O ramo não contém somente o evento esperado desta tarefa.")
+        arquivo = files[0]
+        path = arquivo["filename"]
+        padrao = rf"fila/eventos/[0-9]{{8}}-[0-9]{{6}}-{self.tarefa}-cancelada\.json"
+        if (
+            arquivo.get("status") != "added"
+            or not isinstance(path, str)
+            or not re.fullmatch(padrao, path)
+        ):
+            raise _Conflito("O conteúdo do ramo diverge do pedido de cancelamento.")
+        dado = self.chamar("GET", f"/contents/{path}", params={"ref": _sha(sha)})
+        if (
+            dado.get("type") != "file"
+            or dado.get("path") != path
+            or dado.get("encoding") != "base64"
+        ):
+            raise _Conflito("O GitHub não confirmou o arquivo esperado.")
+        conteudo = base64.b64decode("".join(dado["content"].split()), validate=True)
+        if len(conteudo) > 10000:
+            raise _Conflito(
+                "O evento recebido excede o tamanho de um pedido desta tela."
+            )
+        evento = json.loads(conteudo)
+        if not isinstance(evento, dict) or set(evento) != {
+            "arquivo",
+            "tarefa",
+            "evento",
+            "quando",
+            "quem",
+            "detalhe",
+        }:
+            raise _Conflito("O evento recebido tem um formato diferente do esperado.")
+        quando = datetime.fromisoformat(evento["quando"])
+        motivo = evento["detalhe"]
+        if (
+            quando.tzinfo is None
+            or evento["tarefa"] != self.tarefa
+            or evento["evento"] != "cancelada"
+            or evento["quem"] != QUEM
+            or not isinstance(motivo, str)
+            or not motivo.strip()
+            or len(motivo) > 500
+            or path
+            != "fila/eventos/" + montar_evento(self.tarefa, motivo, quando)[0] + ".json"
+            or evento["arquivo"] + ".json" != path.rsplit("/", 1)[1]
+        ):
+            raise _Conflito(
+                "A origem, a data ou o conteúdo do evento diverge desta tarefa."
+            )
+        self.prova = PedidoCancelamento(
+            "recebido", arquivo=path, conteudo=conteudo, motivo=motivo
+        )
+        if self.motivo is not None and motivo != self.motivo:
+            raise _Conflito(
+                "Já existe um motivo diferente gravado. Consulte o pedido original e peça a continuação a um robô."
+            )
+        return self.prova
+
+    def conferir_pr(self, numero):
+        if type(numero) is not int or numero <= 0:
+            raise _Conflito("O GitHub não confirmou um número válido de pedido.")
+        pr = self.chamar("GET", f"/pulls/{numero}")
+        if (
+            pr.get("number") != numero
+            or type(pr.get("number")) is not int
+            or pr.get("html_url") != f"https://github.com/{REPOSITORIO}/pull/{numero}"
+            or pr["head"]["ref"] != self.ramo
+            or pr["base"]["ref"] != RAMO_BASE
+            or pr["head"]["repo"]["full_name"] != REPOSITORIO
+            or pr["base"]["repo"]["full_name"] != REPOSITORIO
+            or pr.get("state") not in ("open", "closed")
+            or type(pr.get("merged")) is not bool
+        ):
+            raise _Conflito("A identidade ou a origem do pedido diverge desta tarefa.")
+        files = self.chamar("GET", f"/pulls/{numero}/files", params={"per_page": 100})
+        evento = self.evento(files, pr["head"]["sha"])
+        if pr["state"] == "closed" and not pr["merged"]:
+            raise _Conflito(
+                "O pedido foi fechado sem integração. Peça a um robô para conferir e continuar este mesmo pedido."
+            )
+        if pr["state"] == "open" and pr["merged"]:
+            raise _Conflito(
+                "O GitHub respondeu com estados incompatíveis para o pedido."
+            )
+        self.prova = PedidoCancelamento(
+            "integrado" if pr["merged"] else "revisao",
+            numero=numero,
+            arquivo=evento.arquivo,
+            conteudo=evento.conteudo,
+            motivo=evento.motivo,
+        )
+        return self.prova
+
+    def conferir(self):
+        prs = self.chamar(
+            "GET",
+            "/pulls",
+            params={
+                "state": "all",
+                "head": f"{REPOSITORIO.split('/')[0]}:{self.ramo}",
+                "base": RAMO_BASE,
+                "per_page": 100,
+            },
+        )
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise _Conflito(
+                "A consulta não confirmou um único pedido para esta tarefa."
+            )
+        if prs:
+            candidato = prs[0]
+            if (
+                candidato["head"]["ref"] != self.ramo
+                or candidato["head"]["repo"]["full_name"] != REPOSITORIO
+                or candidato["base"]["ref"] != RAMO_BASE
+                or candidato["base"]["repo"]["full_name"] != REPOSITORIO
+                or _numero_e_url_do_pr(candidato) is False
+            ):
+                raise _Conflito("A consulta devolveu um pedido de outra origem.")
+            return self.conferir_pr(candidato["number"])
+        base = self.chamar("GET", f"/git/ref/heads/{RAMO_BASE}")
+        if (
+            base.get("ref") != f"refs/heads/{RAMO_BASE}"
+            or base["object"].get("type") != "commit"
+        ):
+            raise _Conflito("O GitHub não confirmou a origem principal do pedido.")
+        self.main = _sha(base["object"]["sha"])
+        ref = self.chamar("GET", f"/git/ref/heads/{self.ramo}", aceita=(200, 404))
+        if ref is None:
+            self.head = ""
+            return PedidoCancelamento("sem_pedido")
+        if (
+            ref.get("ref") != f"refs/heads/{self.ramo}"
+            or ref["object"].get("type") != "commit"
+        ):
+            raise _Conflito("A referência recebida não pertence ao ramo desta tarefa.")
+        self.head = _sha(ref["object"]["sha"])
+        comparacao = self.chamar("GET", f"/compare/{self.main}...{self.head}")
+        commits = comparacao["total_commits"]
+        if type(commits) is not int:
+            raise _Conflito("O GitHub não confirmou o histórico do ramo.")
+        if (
+            commits == 0
+            and comparacao["status"] in ("identical", "behind")
+            and comparacao["files"] == []
+            and comparacao["merge_base_commit"]["sha"] == self.head
+        ):
+            return PedidoCancelamento(
+                "sem_pedido",
+                "Existe um ramo sem evento. Repetir o pedido pode completar a etapa faltante.",
+            )
+        if commits != 1 or comparacao["status"] not in ("ahead", "diverged"):
+            raise _Conflito(
+                "O ramo contém um histórico diferente do pedido desta tela."
+            )
+        return self.evento(comparacao["files"], self.head)
+
+    def gravar_evento(self, motivo, agora):
+        origem = self.head or self.main
+        commit = self.chamar("GET", f"/git/commits/{origem}")
+        nome, evento = montar_evento(self.tarefa, motivo, agora)
+        arvore = self.chamar(
+            "POST",
+            "/git/trees",
+            aceita=(201,),
+            json={
+                "base_tree": _sha(commit["tree"]["sha"]),
+                "tree": [
+                    {
+                        "path": f"fila/eventos/{nome}.json",
+                        "mode": "100644",
+                        "type": "blob",
+                        "content": json.dumps(evento, ensure_ascii=False, indent=2)
+                        + "\n",
+                    }
+                ],
+            },
+        )
+        novo = self.chamar(
+            "POST",
+            "/git/commits",
+            aceita=(201,),
+            json={
+                "message": f"fila: pedido de cancelamento da {self.tarefa}",
+                "tree": _sha(arvore["sha"]),
+                "parents": [origem],
+            },
+        )
+        sha = _sha(novo["sha"])
+        if self.head:
+            self.chamar(
+                "PATCH",
+                f"/git/refs/heads/{self.ramo}",
+                aceita=(200, 409, 422),
+                json={"sha": sha, "force": False},
+            )
+        else:
+            self.chamar(
+                "POST",
+                "/git/refs",
+                aceita=(201, 409, 422),
+                json={"ref": f"refs/heads/{self.ramo}", "sha": sha},
+            )
+
+
+def _numero_e_url_do_pr(pr):
+    numero = pr.get("number")
+    return (
+        type(numero) is int
+        and numero > 0
+        and pr.get("html_url") == f"https://github.com/{REPOSITORIO}/pull/{numero}"
+    )
+
+
+def _operar(tarefa, titulo="", motivo=None, agora=None, *, escrever=False):
+    if not isinstance(tarefa, str) or not _ID.fullmatch(tarefa):
+        return PedidoCancelamento(
+            "conflito", "A tarefa não tem um identificador válido. Recarregue a fila."
+        )
+    if escrever and (
+        not isinstance(motivo, str) or not motivo.strip() or len(motivo) > 500
+    ):
+        return PedidoCancelamento(
+            "conflito", "Escreva um motivo de até 500 caracteres e tente de novo."
+        )
+    senha = token()
+    if not senha:
+        return PedidoCancelamento(SEM_TOKEN)
+    pedido = _Cancelamento(tarefa, motivo, senha)
+    try:
+        atual = pedido.conferir()
+        if not escrever or atual.estado in ("revisao", "integrado"):
+            return atual
+        if atual.estado == "sem_pedido":
+            instante = agora or datetime.now(timezone.utc)
+            if not isinstance(instante, datetime) or instante.tzinfo is None:
+                raise _Conflito("A data do pedido não informa o fuso horário.")
+            pedido.gravar_evento(motivo, instante)
+            atual = pedido.conferir()
+            if atual.estado in ("revisao", "integrado"):
+                return atual
+            if atual.estado != "recebido":
+                raise _SemConfirmacao("Não recebi confirmação do evento no ramo.")
+        resposta = pedido.chamar(
+            "POST",
+            "/pulls",
+            aceita=(201, 409, 422),
+            json={
+                "title": f"fila: pedido de cancelamento da {tarefa}",
+                "head": pedido.ramo,
+                "base": RAMO_BASE,
+                "body": f"Pedido do mantenedor pela tela dos robôs.\n\nTarefa: **{tarefa}**, {titulo}.\n\nMotivo gravado no evento:\n\n{atual.motivo}\n\nEste PR contém somente o evento da fila. A integração e a aplicação ainda precisam ser conferidas.",
+            },
+        )
+        if resposta is not None:
+            return pedido.conferir_pr(resposta["number"])
+        atual = pedido.conferir()
+        if atual.estado not in ("revisao", "integrado"):
+            raise _SemConfirmacao(
+                "O evento foi recebido, mas não recebi confirmação do PR."
+            )
+        return atual
+    except (httpx.HTTPError, _SemConfirmacao) as erro:
+        explicacao = (
+            str(erro)
+            if isinstance(erro, _SemConfirmacao)
+            else f"A comunicação foi interrompida ({type(erro).__name__})."
+        )
+        prova = pedido.prova
+        return PedidoCancelamento(
+            "recebido" if prova.arquivo else "incerto",
+            explicacao
+            + " Não foi possível confirmar todas as etapas. Consulte ou repita o mesmo pedido para continuar.",
+            numero=prova.numero,
+            arquivo=prova.arquivo,
+            conteudo=prova.conteudo,
+            motivo=prova.motivo,
+        )
+    except (ValueError, TypeError, KeyError, AttributeError) as erro:
+        explicacao = (
+            str(erro)
+            if isinstance(erro, _Conflito)
+            else "O GitHub respondeu com dados incompatíveis com este pedido. Peça a um robô para conferir a continuação."
+        )
+        return PedidoCancelamento(
+            "conflito",
+            explicacao,
+            arquivo=pedido.prova.arquivo,
+            conteudo=pedido.prova.conteudo,
+            motivo=pedido.prova.motivo,
+        )
+
+
+def consultar_pedido_de_cancelamento(tarefa: str) -> PedidoCancelamento:
+    return _operar(tarefa)
 
 
 def abrir_pr_de_cancelamento(
-    tarefa: str,
-    titulo: str,
-    motivo: str,
-    agora: datetime | None = None,
-) -> tuple[str, str]:
-    """Abre o PR que tira `tarefa` da fila. Devolve (desfecho, número ou recado).
-
-    `tarefa` já chega validada como `TAR-NNN` por quem chama, e é o ÚNICO valor
-    que entra num endereço. O motivo, que é texto livre do dono, viaja sempre
-    dentro do corpo JSON da chamada, nunca costurado numa URL nem num comando
-    (`armadilhas/047`).
-    """
-    chave = token()
-    if not chave:
-        return SEM_TOKEN, ""
-
-    agora = agora or datetime.now(timezone.utc)
-    stem, evento = montar_evento(tarefa, motivo, agora)
-    ramo = f"agent/fila/cancelar-{tarefa}"
-    cabecalhos = {
-        "Authorization": f"Bearer {chave}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-    }
-    repo = f"{API}/repos/{REPOSITORIO}"
-    cliente = http()
-
-    try:
-        onde_esta_a_main = cliente.get(
-            f"{repo}/git/ref/heads/{RAMO_BASE}", headers=cabecalhos, timeout=TIMEOUT
-        )
-        if onde_esta_a_main.status_code != 200:
-            return RECUSOU, _recado(onde_esta_a_main)
-        sha = (onde_esta_a_main.json().get("object") or {}).get("sha")
-        if not sha:
-            return RECUSOU, "o GitHub respondeu sem dizer onde a main está agora."
-
-        ramo_novo = cliente.post(
-            f"{repo}/git/refs",
-            headers=cabecalhos,
-            json={"ref": f"refs/heads/{ramo}", "sha": sha},
-            timeout=TIMEOUT,
-        )
-        # 422 aqui quer dizer uma coisa só, e ela é boa notícia: o ramo já
-        # existe, ou seja, este pedido já foi aberto. Dizer isso é melhor do
-        # que abrir um segundo PR para a mesma tarefa.
-        if ramo_novo.status_code == 422:
-            return RECUSOU, f"já existe um pedido aberto para tirar a {tarefa} da fila."
-        if ramo_novo.status_code >= 300:
-            return RECUSOU, _recado(ramo_novo)
-
-        corpo = json.dumps(evento, ensure_ascii=False, indent=2) + "\n"
-        arquivo = cliente.put(
-            f"{repo}/contents/fila/eventos/{stem}.json",
-            headers=cabecalhos,
-            json={
-                "message": f"fila: a {tarefa} sai da fila por decisão do mantenedor",
-                "content": base64.b64encode(corpo.encode("utf-8")).decode("ascii"),
-                "branch": ramo,
-            },
-            timeout=TIMEOUT,
-        )
-        if arquivo.status_code >= 300:
-            return RECUSOU, _recado(arquivo)
-
-        pedido = cliente.post(
-            f"{repo}/pulls",
-            headers=cabecalhos,
-            json={
-                "title": f"fila: a {tarefa} sai da fila por decisão do mantenedor",
-                "head": ramo,
-                "base": RAMO_BASE,
-                "body": (
-                    f"O mantenedor tirou a **{tarefa}** da fila pela tela "
-                    "`/admin/caixa/robos/`.\n\n"
-                    f"**Tarefa:** {titulo}\n\n"
-                    f"**Motivo que ele escreveu:** {motivo}\n\n"
-                    "Este PR traz um arquivo só, o evento `cancelada` da fila. "
-                    "Sem registro do livro, porque PR que toca só `fila/` é "
-                    "isento (CLAUDE.md)."
-                ),
-            },
-            timeout=TIMEOUT,
-        )
-        if pedido.status_code >= 300:
-            return RECUSOU, _recado(pedido)
-        numero = pedido.json().get("number")
-    except httpx.HTTPError as erro:
-        # A internet caindo no meio é o caso comum, e ele não é culpa de quem
-        # clicou. O nome da classe basta para um robô rastrear; a frase é o que
-        # o dono lê.
-        return (
-            RECUSOU,
-            f"não consegui falar com o GitHub agora ({type(erro).__name__}).",
-        )
-
-    if not isinstance(numero, int):
-        return RECUSOU, "o pedido foi aberto, mas o GitHub não disse o número dele."
-    return OK, str(numero)
+    tarefa: str, titulo: str, motivo: str, agora: datetime | None = None
+) -> PedidoCancelamento:
+    return _operar(tarefa, titulo, motivo, agora, escrever=True)

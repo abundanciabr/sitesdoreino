@@ -1524,11 +1524,23 @@ def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
 
 
 URL_SUBMISSAO = "https://github.com/abundanciabr/sitesdoreino/pull/1494"
+URL_SUBSTITUTA = "https://github.com/abundanciabr/sitesdoreino/pull/1510"
 
 
 def submissao(**extra):
-    return evento(tipo="submetida", hora="11:00:00", pr=URL_SUBMISSAO,
-                  revisao="a" * 40, arvore="b" * 40, **extra)
+    hora = extra.pop("hora", "11:00:00")
+    dados = {"pr": URL_SUBMISSAO, "revisao": "a" * 40, "arvore": "b" * 40}
+    dados.update(extra)
+    return evento(tipo="submetida", hora=hora, **dados)
+
+
+def args_de_submeter(**extra):
+    dados = {
+        "tarefa": "TAR-001", "quem": "sessao-a", "pr": URL_SUBMISSAO,
+        "revisao": "a" * 40, "arvore": "b" * 40, "substitui": "", "motivo": "",
+    }
+    dados.update(extra)
+    return argparse.Namespace(**dados)
 
 
 @pytest.mark.parametrize("fim_reserva", [None, "devolvida", "reivindicacao_expirada"])
@@ -1597,13 +1609,213 @@ def test_submeter_persiste_antes_de_soltar_e_retomada_nao_duplica(tmp_path, monk
     def soltar(raiz, tid):
         assert list((raiz / "fila/eventos").glob("*submetida*"))
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
-    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", pr=URL_SUBMISSAO,
-                              revisao="a" * 40, arvore="b" * 40)
+    args = args_de_submeter()
     assert fila.cmd_submeter(tmp_path, args) == 0
     assert fila.cmd_submeter(tmp_path, args) == 0
     escritos = list((tmp_path / "fila/eventos").glob("*submetida*"))
     assert len(escritos) == 1
     assert not list((tmp_path / "fila/eventos").glob("*concluida*"))
+
+
+def _instrumentar_substituicao(monkeypatch, *, anterior="CLOSED", merge=None,
+                               novo="OPEN", head="c" * 40, arvore="d" * 40):
+    consultas = []
+    def consultar(_raiz, url):
+        consultas.append(url)
+        if url == URL_SUBMISSAO:
+            return {"url": url, "state": anterior, "mergeCommit": merge,
+                    "headRefOid": "a" * 40}
+        return {"url": url, "state": novo, "mergeCommit": None,
+                "headRefOid": head}
+    monkeypatch.setattr(fila, "consultar_pr_submetido", consultar)
+    monkeypatch.setattr(fila, "_git_da_fila", lambda *args, **kwargs: arvore + "\n")
+    return consultas
+
+
+def test_submeter_substitui_pr_fechado_sem_merge_com_elo_auditavel(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    consultas = _instrumentar_substituicao(monkeypatch)
+    liberadas = []
+    def soltar(raiz, tid):
+        _, eventos, erros = carregar(raiz)
+        assert erros == []
+        atual = fila.ultima_submissao(eventos, tid)
+        assert atual["pr"] == URL_SUBSTITUTA
+        assert atual["substitui"] == URL_SUBMISSAO
+        assert atual["detalhe"] == "trabalho inteiro recuperado"
+        liberadas.append(tid)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo=" trabalho inteiro recuperado ",
+    )
+
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
+    assert liberadas == ["TAR-001"]
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["pr"] == URL_SUBSTITUTA
+    assert estado["revisao"] == "c" * 40
+    assert fila.ultima_submissao(eventos, "TAR-001")["substitui"] == URL_SUBMISSAO
+
+
+@pytest.mark.parametrize("mudanca,trecho", [
+    ({"substitui": ""}, "substitui"),
+    ({"substitui": "https://github.com/abundanciabr/sitesdoreino/pull/999"}, "última submissão"),
+    ({"motivo": "   "}, "motivo"),
+    ({"anterior": "OPEN"}, "anterior ainda está aberto"),
+    ({"anterior": "MERGED", "merge": {"oid": "f" * 40}}, "anterior foi integrado"),
+    ({"novo": "CLOSED"}, "novo PR não está aberto"),
+    ({"head": "e" * 40}, "revisão informada"),
+    ({"arvore_medida": "e" * 40}, "árvore informada"),
+])
+def test_submeter_substituicao_recusa_estado_ou_vinculo_sem_efeito(
+    tmp_path, monkeypatch, capsys, mudanca, trecho
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    opcoes = {chave: mudanca[chave] for chave in ("anterior", "merge", "novo", "head") if chave in mudanca}
+    _instrumentar_substituicao(
+        monkeypatch, arvore=mudanca.get("arvore_medida", "d" * 40), **opcoes,
+    )
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=mudanca.get("substitui", URL_SUBMISSAO),
+        motivo=mudanca.get("motivo", "trabalho recuperado"),
+    )
+
+    assert fila.cmd_submeter(tmp_path, args) == 1
+    assert trecho in capsys.readouterr().out
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+@pytest.mark.parametrize("instrumento", ["github", "git"])
+def test_submeter_substituicao_com_instrumento_quebrado_e_error_sem_efeito(
+    tmp_path, monkeypatch, instrumento
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    if instrumento == "github":
+        monkeypatch.setattr(fila, "consultar_pr_submetido", lambda *args: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("GitHub indisponível", "repita depois")
+        ))
+    else:
+        _instrumentar_substituicao(monkeypatch)
+        monkeypatch.setattr(fila, "_git_da_fila", lambda *args, **kwargs: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("git indisponível", "repita depois")
+        ))
+
+    nome = "GitHub" if instrumento == "github" else "git"
+    with pytest.raises(ErroDeInstrumentacao, match=f"{nome} indisponível"):
+        fila.cmd_submeter(tmp_path, args_de_submeter(
+            pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+            substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+        ))
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+@pytest.mark.parametrize("campo_ausente", ["mergeCommit", "headRefOid", "arvore"])
+def test_submeter_substituicao_recusa_medicao_ausente_com_error_sem_efeito(
+    tmp_path, monkeypatch, campo_ausente
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    def consultar(_raiz, url):
+        if url == URL_SUBMISSAO:
+            dados = {"url": url, "state": "CLOSED", "mergeCommit": None}
+        else:
+            dados = {"url": url, "state": "OPEN", "headRefOid": "c" * 40}
+        dados.pop(campo_ausente, None)
+        return dados
+    monkeypatch.setattr(fila, "consultar_pr_submetido", consultar)
+    monkeypatch.setattr(
+        fila, "_git_da_fila",
+        lambda *args, **kwargs: "" if campo_ausente == "arvore" else "d" * 40,
+    )
+
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.cmd_submeter(tmp_path, args_de_submeter(
+            pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+            substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+        ))
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+def test_submeter_substituicao_repetida_e_idempotente(tmp_path, monkeypatch):
+    substituta = submissao(
+        hora="12:00:00", pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, detalhe="trabalho recuperado",
+    )
+    montar(tmp_path, [tarefa()], [evento(), submissao(), substituta])
+    monkeypatch.setattr(
+        fila, "consultar_pr_submetido",
+        lambda *args: pytest.fail("repetição idempotente não mede nem escreve"),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver",
+        lambda _raiz, tid: liberadas.append(tid),
+    )
+
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+    )) == 0
+    assert liberadas == ["TAR-001"]
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+
+def test_submeter_substituicao_retomada_libera_sem_duplicar_evento(
+    tmp_path, monkeypatch,
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    consultas = _instrumentar_substituicao(monkeypatch)
+    liberacoes = []
+
+    def soltar(_raiz, tid):
+        liberacoes.append(tid)
+        if len(liberacoes) == 1:
+            raise ErroDeInstrumentacao("reserva não liberada", "repita a submissão")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+    )
+
+    with pytest.raises(ErroDeInstrumentacao, match="reserva não liberada"):
+        fila.cmd_submeter(tmp_path, args)
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
+    assert liberacoes == ["TAR-001", "TAR-001"]
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+
+@pytest.mark.parametrize("eventos,trecho", [
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             detalhe="troca sem elo")], "sem elo"),
+    ([submissao(substitui=URL_SUBSTITUTA, detalhe="troca")], "primeira submissão"),
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             substitui=URL_SUBSTITUTA, detalhe="troca")], "última submissão"),
+    ([submissao(), submissao(hora="12:00:00", substitui=URL_SUBMISSAO,
+                             detalhe="troca")], "mesmo PR"),
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             substitui=URL_SUBMISSAO, detalhe="   ")], "motivo vazio"),
+])
+def test_validador_recusa_submissao_manual_que_quebra_a_cadeia(tmp_path, eventos, trecho):
+    montar(tmp_path, [tarefa()], [evento(), *eventos])
+    _, _, erros = carregar(tmp_path)
+    assert any(trecho in erro for erro in erros), erros
 
 
 def test_url_de_pr_nao_conclui_submissao_sem_prova_do_aceite(tmp_path, monkeypatch, capsys):
@@ -2309,6 +2521,73 @@ def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
             head,
             merge,
         )
+
+
+@pytest.mark.parametrize(
+    "cenario",
+    ["sincronizacao", "lateral", "resolucao", "conflito", "autoral", "revertida", "octopus"],
+)
+def test_medir_linhagem_separa_sincronizacao_de_autoria(tmp_path, cenario):
+    repo = tmp_path
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    codigo = repo / "codigo.py"
+    codigo.write_text("TITULO = 'base'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "base", cwd=repo)
+    _git("checkout", "-b", "entrega", cwd=repo)
+    codigo.write_text("TITULO = 'submetido'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo submetido", cwd=repo)
+    submetida = {"revisao": _sha(repo, "HEAD"), "arvore": _sha(repo, "HEAD^{tree}")}
+
+    _git("checkout", "main", cwd=repo)
+    if cenario == "lateral":
+        _git("checkout", "-b", "lateral", cwd=repo)
+    recebido = repo / "recebido.py"
+    recebido.write_text("VALOR = 'publicado'\n", encoding="utf-8")
+    if cenario == "conflito":
+        codigo.write_text("TITULO = 'mudou na main'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo da outra entrega", cwd=repo)
+    pai_lateral = _sha(repo, "HEAD")
+    pais_laterais = [pai_lateral]
+    if cenario == "octopus":
+        _git("checkout", "-b", "segunda", "main^", cwd=repo)
+        (repo / "segundo.py").write_text("VALOR = 2\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "segunda entrega", cwd=repo)
+        pais_laterais.append(_sha(repo, "HEAD"))
+        _git("checkout", "main", cwd=repo)
+        _git("merge", "--no-ff", "segunda", "-m", "segunda publicada", cwd=repo)
+    _git("checkout", "entrega", cwd=repo)
+    sincronizacao = subprocess.run(
+        ["git", "merge", "--no-ff", "--no-commit", *pais_laterais],
+        cwd=repo, capture_output=True, text=True,
+    )
+    assert sincronizacao.returncode == (1 if cenario == "conflito" else 0)
+    if cenario in ("resolucao", "conflito", "octopus"):
+        codigo.write_text("TITULO = 'resolucao manual'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "sincronizacao", cwd=repo)
+    if cenario in ("autoral", "revertida"):
+        recebido.write_text("VALOR = 'autoral posterior'\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "mudanca depois da sincronizacao", cwd=repo)
+        if cenario == "revertida":
+            _git("revert", "--no-edit", "HEAD", cwd=repo)
+    head = _sha(repo, "HEAD")
+    _git("checkout", "main", cwd=repo)
+    _git("merge", "--no-ff", "entrega", "-m", "integracao", cwd=repo)
+    merge = _sha(repo, "HEAD")
+
+    if cenario == "sincronizacao":
+        fila.medir_linhagem(repo, submetida, head, merge)
+    else:
+        caminho = "codigo.py" if cenario in ("resolucao", "conflito", "octopus") else "recebido.py"
+        with pytest.raises(fila.RecusaDeReconciliacao, match=caminho):
+            fila.medir_linhagem(repo, submetida, head, merge)
 
 
 def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
