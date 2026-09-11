@@ -95,13 +95,13 @@ def test_edita_os_tres_campos_sem_slug_preserva_endereco_e_publicacao():
     assert aula_no_banco.publicada_em == publicada_em_antes
 
 
-def test_edita_slug_no_formato_do_contrato_e_gravado_sem_alteracao():
+def test_edita_slug_normaliza_unicode_antes_de_reservar_o_endereco():
     criada = criar().json()
     aula_id = AulaAvulsa.objects.get(slug=criada["slug"]).pk
-    resposta = editar(criada["slug"], slug="aula-de-testes")
+    resposta = editar(criada["slug"], slug="Ação & Testes")
     assert resposta.status_code == 200
-    assert resposta.json()["slug"] == "aula-de-testes"
-    assert AulaAvulsa.objects.get(pk=aula_id).slug == "aula-de-testes"
+    assert resposta.json()["slug"] == "acao-testes"
+    assert AulaAvulsa.objects.get(pk=aula_id).slug == "acao-testes"
 
 
 def test_edita_slug_igual_ao_atual_sem_alterar_o_endereco():
@@ -116,7 +116,7 @@ def test_edita_slug_ocupado_com_menor_sufixo_livre():
     criar(titulo="Guia")
     criar(titulo="Guia")
     criar(titulo="Guia")
-    resposta = editar(criada["slug"], slug="guia")
+    resposta = editar(criada["slug"], slug="Guia")
     assert resposta.status_code == 200
     assert resposta.json()["slug"] == "guia-4"
 
@@ -174,7 +174,7 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         titulo="Aula disputada",
         video_url="https://youtu.be/dQw4w9WgXcQ",
         descricao="",
-        slug="aula-disputada",
+        slug="Aula disputada",
     )
 
     def editar_em_concorrencia(endereco):
@@ -197,14 +197,14 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
     ) == set(enderecos)
 
 
-@pytest.mark.parametrize("slug", ["", "!!!", "   ", "AULA de Testes!"])
+@pytest.mark.parametrize("slug", ["", "!!!", "   "])
 def test_edita_slug_fora_do_formato_do_contrato_devolve_422_como_envelope(slug):
     criada = criar().json()
     resposta = editar(criada["slug"], slug=slug)
     assert resposta.status_code == 422
     assert resposta.json() == {
         "erro": "slug_invalido",
-        "o_que_fazer": "Use letras minúsculas sem acentos, números e hífens.",
+        "o_que_fazer": "Informe um endereço com ao menos uma letra ou número.",
     }
 
 

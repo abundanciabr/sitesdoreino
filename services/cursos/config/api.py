@@ -2,7 +2,7 @@
 from ninja import NinjaAPI
 from ninja.errors import HttpError, ValidationError
 
-from apps.core.api import router as cursos_router
+from apps.core.api import SlugDeAulaAvulsaInvalido, router as cursos_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que a célula
@@ -68,7 +68,7 @@ api = NinjaAPI(
         "\n"
         "A EDICAO DA AULA AVULSA ENTRA DESDE 11/09/2026: o Admin grava titulo,\n"
         "URL do YouTube e descricao pela identidade do endereco. Ele tambem pode\n"
-        "enviar um slug novo, ja em minusculas, sem acentos e com hifens, para\n"
+        "enviar um texto para um slug novo, e o servico o normaliza antes de\n"
         "trocar o link compartilhado. Sem esse campo, o endereco continua igual.\n"
         "\n"
         "O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao\n"
@@ -167,6 +167,18 @@ def resposta_para_http_error(request, exc):
                 "Revise os campos da aula e envie somente título, URL do vídeo, descrição e slug.",
             )
     return api.create_response(request, {"detail": str(exc)}, status=exc.status_code)
+
+
+@api.exception_handler(SlugDeAulaAvulsaInvalido)
+def resposta_para_slug_de_aula_avulsa_invalido(request, exc):
+    if _e_edicao_de_aula_avulsa(request):
+        return _resposta_de_erro_da_aula_avulsa(
+            request,
+            422,
+            "slug_invalido",
+            "Informe um endereço com ao menos uma letra ou número.",
+        )
+    return api.create_response(request, {"detail": str(exc)}, status=422)
 
 
 @api.exception_handler(ValidationError)
