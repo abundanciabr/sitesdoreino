@@ -1,0 +1,11 @@
+{% extends "cursos/moldura.html" %}
+{% block titulo %}Aulas avulsas{% endblock %}
+{% block faixa %}<a href="{% url 'catalogo' %}">Cursos</a><span class="onde">Aulas avulsas</span>{% endblock %}
+{% block conteudo %}
+<section class="abertura"><p class="rotulo">Meshcraft Academy</p><h1>Aulas avulsas</h1><p class="passo">Respostas diretas para dúvidas que apareceram na comunidade.</p></section>
+{% for aula in aulas %}
+<article class="curso"><h2><a href="{% url 'aula-avulsa' aula.slug %}">{{ aula.titulo }}</a></h2>{% if aula.descricao %}<p>{{ aula.descricao|truncatechars:180 }}</p>{% endif %}<p class="entrar"><a href="{% url 'aula-avulsa' aula.slug %}">Abrir aula</a></p></article>
+{% empty %}
+<section class="convite"><h2>Ainda não há aulas avulsas.</h2><p>Quando uma resposta em vídeo estiver pronta, ela aparecerá aqui.</p></section>
+{% endfor %}
+{% endblock %}
