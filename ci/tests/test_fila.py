@@ -794,6 +794,8 @@ def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_p
 def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path, monkeypatch):
     montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento()])
     (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
     (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
         "funcoes": {
             "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
@@ -1511,6 +1513,8 @@ def test_criar_SEM_explicacao_recusa_ANTES_de_gastar_numero(tmp_path, monkeypatc
 def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
     montar(tmp_path, [])
     (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
     (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
         "funcoes": {nome: {"pessoa": "Pessoa", "substituto": "Substituto"} for nome in responsabilidades.FUNCOES},
         "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma", "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova"}],
@@ -1930,6 +1934,8 @@ def args_de_reconciliar(**extra):
 def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypatch):
     montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento(), submissao_reconciliavel()])
     (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
     (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
         "funcoes": {
             "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
