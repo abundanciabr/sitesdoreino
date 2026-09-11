@@ -30,6 +30,21 @@ from apps.core import robos
 
 
 @respx.mock
+def test_robos_identificam_a_copia_alternativa_realmente_lida(tmp_path, monkeypatch):
+    from tests.test_versao_dos_dados_admin import pacote
+
+    anterior = pacote(tmp_path / "anterior", tipo="fila", extras={"estados.json": {}})
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path / "ausente", anterior))
+    resposta = _dentro().get(reverse("caixa_robos"))
+    html = texto(resposta)
+    assert resposta.status_code == 200
+    assert "cópia alternativa" in html
+    assert "a" * 40 in html
+    assert "Execução 1000" in html
+    assert str(tmp_path) not in html
+
+
+@respx.mock
 def test_entrega_submetida_continua_visivel_sem_aceite(tmp_path, monkeypatch):
     pasta = fila_de_mentira(tmp_path, monkeypatch)
     (pasta / "estados.json").write_text(

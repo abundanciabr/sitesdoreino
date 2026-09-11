@@ -69,6 +69,53 @@ TELA = "/pendencias/"
 
 
 @respx.mock
+def test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao(
+    tmp_path, monkeypatch
+):
+    from tests.test_versao_dos_dados_admin import pacote
+
+    livro = pacote(
+        tmp_path / "livro",
+        texto="pedidosDoDono: { quantidade: 0, maisAntigoQuando: null }",
+    )
+    fila = pacote(
+        tmp_path / "fila",
+        sha="b" * 40,
+        run=11,
+        tipo="fila",
+        extras={"estados.json": {}},
+    )
+    monkeypatch.setattr(painel, "CANDIDATOS", (livro,))
+    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path / "ausente", fila))
+    outra_fila = pacote(
+        tmp_path / "outra-fila",
+        sha="c" * 40,
+        run=12,
+        tipo="fila",
+        extras={"estados.json": {}},
+    )
+    ler_estados = robos.ler_estados
+
+    def ler_e_trocar(pasta):
+        estados = ler_estados(pasta)
+        monkeypatch.setattr(robos, "CANDIDATOS", (outra_fila,))
+        return estados
+
+    monkeypatch.setattr(robos, "ler_estados", ler_e_trocar)
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "Dados do livro" in html
+    assert "Dados da fila de trabalho" in html
+    assert "a" * 40 in html
+    assert "b" * 40 in html
+    assert "Execução 1000" in html
+    assert "Execução 1100" in html
+    assert "c" * 40 not in html
+    assert "cópia alternativa" in html
+    assert str(tmp_path) not in html
+
+
+@respx.mock
 def test_central_inclui_a_decisao_humana_da_fila_sem_trabalho_tecnico(
     tmp_path, monkeypatch
 ):

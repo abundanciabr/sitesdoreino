@@ -5,6 +5,12 @@
   <h1>Pendências</h1>
   <p class="subtitulo">Decisões que esperam por você, nas três fontes consultadas.
   Cada linha leva para onde a coisa se resolve. A cobertura ainda é parcial.</p>
+  {% if dados_livro %}
+    <details><summary>Dados do livro</summary>{% include "admin/dados_do_painel.html" with dados=dados_livro %}</details>
+  {% endif %}
+  {% if dados_fila %}
+    <details><summary>Dados da fila de trabalho</summary>{% include "admin/dados_do_painel.html" with dados=dados_fila %}</details>
+  {% endif %}
 
   {% comment %}
   O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"

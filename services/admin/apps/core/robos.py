@@ -398,10 +398,14 @@ _SCRIPT_EMBUTIDO = re.compile(
 )
 
 
-def diretorio_da_fila() -> Path | None:
-    dados = selecionar_dados(
+def dados_da_fila():
+    return selecionar_dados(
         CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
     )
+
+
+def diretorio_da_fila() -> Path | None:
+    dados = dados_da_fila()
     return dados.pasta if dados else None
 
 
@@ -630,6 +634,7 @@ def robos(request):
         "admin/caixa_robos.html",
         {
             "colunas": colunas,
+            "dados": dados_da_fila(),
             "esperando_voce": esperando_voce,
             "sem_responsavel": next(
                 len(c["cartoes"]) for c in colunas if c.get("espera") == "desconhecida"
