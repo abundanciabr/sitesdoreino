@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-160807-TAR-356-explicada",
+  "tarefa": "TAR-356",
+  "evento": "explicada",
+  "quando": "2026-09-11T16:08:07+00:00",
+  "quem": "Correção necessária para publicar a edição de endereço das aulas avulsas.",
+  "o_que_e": "A validação do PR recusa um arquivo gerado pela própria muralha como se fosse código novo.",
+  "o_que_muda": "A publicação volta a concluir quando a checagem cria o livro do painel, sem reduzir a proteção contra código injetado.",
+  "exemplo": "É como impedir que o recibo impresso pela portaria seja confundido com uma chave falsa deixada na mesa.",
+  "importancia": 85
+}

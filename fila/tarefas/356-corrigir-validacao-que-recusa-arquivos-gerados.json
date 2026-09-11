@@ -1,0 +1,19 @@
+{
+  "arquivo": "356-corrigir-validacao-que-recusa-arquivos-gerados",
+  "id": "TAR-356",
+  "titulo": "Corrigir validação que recusa arquivos gerados",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com teste que aceita somente os livros gerados do painel e recusa fonte ignorada fora da lista.",
+  "despacho": "Corrija a validação de PR que trata o livro JavaScript gerado pela muralha do painel como código novo. Toque apenas `ci/pr.py` e os testes correspondentes. A prova deve aceitar somente os arquivos ignorados e determinísticos gerados pelo painel e continuar recusando toda fonte nova fora dessa lista. Rode a suíte focal, a muralha e abra o PR com recibo.",
+  "origem": "Correção necessária para publicar a edição de endereço das aulas avulsas.",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
