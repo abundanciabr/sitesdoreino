@@ -144,10 +144,10 @@ paths:
         required: true
         schema:
           type: string
-        description: O escopo da escola que limita a consulta.
+        description: O escopo da escola que limita a consulta e tem de coincidir com cada candidata devolvida.
       responses:
         '200':
-          description: Lista de candidatas. Lista vazia significa que nao ha candidata para esta pessoa neste site.
+          description: Lista de candidatas. Lista vazia significa que nao ha candidata para esta pessoa neste site, inclusive quando existe apenas em outro site.
           content:
             application/json:
               schema:
@@ -166,7 +166,11 @@ paths:
 
         site indicado, da area Mostre seu trabalho, moderados e com consentimento
 
-        expresso para a Galeria.
+        expresso para a Galeria. Cada `CandidataDaGaleria.site_id` tem de ser
+
+        igual ao `site_id` pedido. Candidata de outro site e omitida, sem trocar
+
+        a resposta por erro que revele a sua existencia.
 
 
         O Bearer identifica o servico, nao o aluno. O Forum aceita apenas o par
@@ -252,20 +256,31 @@ components:
       type: object
     ReferenciaSeguraDaGaleria:
       properties:
+        origem:
+          enum:
+          - forum
+          - lista_permitida
+          type: string
         tipo:
           enum:
           - imagem
           - link
           type: string
         url:
+          description: URL HTTPS validada pelo Forum. A origem e o proprio Forum ou um dominio da lista permitida do provedor.
           format: uri
+          pattern: ^https://
           type: string
       required:
+      - origem
       - tipo
       - url
       type: object
     CandidataDaGaleria:
       properties:
+        site_id:
+          description: Repete exatamente o site_id do pedido. Candidata de outro site nunca aparece.
+          type: string
         topico_id:
           type: string
         titulo:
@@ -273,9 +288,12 @@ components:
         referencia:
           $ref: '#/components/schemas/ReferenciaSeguraDaGaleria'
         url_canonica:
+          description: Rota HTTPS canônica do Forum para o tópico. O Forum a gera e a rota reaplica a permissão de leitura, não é destino externo.
           format: uri
+          pattern: ^https://[^/]+/forum/t/[^/?#]+$
           type: string
       required:
+      - site_id
       - topico_id
       - titulo
       - referencia
