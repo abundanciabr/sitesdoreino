@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-048-tar-345-painel-rota-de-edicao",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "TAR-345: painel: rota de edição",
+  detalhe: "A rota de edição entrou no mapa, e o guarda mediu 262 rotas sem endereço fantasma.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1566. Validação local: árvore ab8890121c1acc55547b249dbbaf96f972f90f6e; commit 680694542f1f03bafef24dadd3690247be752159; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-345",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
