@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as DEZESSETE operações, o token errado e o conjunto vazio, em vez de
+# cobre as VINTE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",
@@ -30,7 +30,7 @@ api = NinjaAPI(
         "\n"
         "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
         "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
-        "banco e nunca guardando copia (a lei anti-duplicacao). Sao dezessete\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Sao vinte\n"
         "operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,\n"
         "`getLesson`, `putLesson`, `publishLesson`), as quatro antigas que\n"
         "resolvem a aula so pelo site (`listSiteLessons`, `getSiteLesson`,\n"
@@ -39,8 +39,8 @@ api = NinjaAPI(
         "`getInstrument`, `putInstrument`), a do bloco (`putBlock`), a do\n"
         "Revisor de coerencia (`checkLesson`, degrau 3.1) e as quatro do\n"
         "CURSO (`listCourses`, `createCourse`, `putCourse`,\n"
-        "`putCourseStructure`), e as duas de AULA AVULSA (`listStandaloneLessons`,\n"
-        "`createStandaloneLesson`). O placar da fila\n"
+        "`putCourseStructure`), e as tres de AULA AVULSA (`listStandaloneLessons`,\n"
+        "`createStandaloneLesson`, `updateStandaloneLesson`). O placar da fila\n"
         "(getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA\n"
         "NAO EXISTEM nesta porta: o degrau 2.1 pousou sem os dois, e o degrau\n"
         "em que eles nascem ainda nao esta marcado. Quem precisar deles hoje\n"
@@ -64,6 +64,11 @@ api = NinjaAPI(
         "nunca manda nem escolhe esse slug. A lista devolve somente aulas publicadas\n"
         "do mesmo site. A pagina publica le seu banco local, sem uma terceira\n"
         "operacao interna.\n"
+        "\n"
+        "A EDICAO DA AULA AVULSA ENTRA DESDE 11/09/2026: o Admin grava titulo,\n"
+        "URL do YouTube e descricao pela identidade fixa do endereco. Editar o\n"
+        "titulo nunca troca o `slug`, porque o link que ja circulou entre os alunos\n"
+        "continua apontando para a mesma aula.\n"
         "\n"
         "O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao\n"
         "inteligencia artificial: `checkLesson` le uma aula e devolve a lista\n"
