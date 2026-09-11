@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 import responsabilidades
 import medir_esforco
 import fila
@@ -11,6 +13,7 @@ def escrever_registro(tmp_path: Path, registro: dict) -> Path:
     (tmp_path / "painel" / "responsabilidades.json").write_text(
         json.dumps(registro), encoding="utf-8"
     )
+    (tmp_path / "painel" / "fonte.txt").write_text("fonte", encoding="utf-8")
     return tmp_path
 
 
@@ -31,10 +34,10 @@ def registro_completo() -> dict:
                 "aprova": "Ensino e Comunidade", "excecoes": "nenhuma",
                 "autoridade": "Decide: define a entrega. Escala para: mantenedor.",
                 "acompanhamento": "revisar",
-                "fonte": "painel/fonte",
+                "fonte": "painel/fonte.txt",
                 "evidencia": "prova",
             },
-            {"id": "aula", "herda_de": "curso", "finalidade": "entregar", "acompanhamento": "revisar", "fonte": "painel/fonte", "evidencia": "prova"},
+            {"id": "aula", "herda_de": "curso", "finalidade": "entregar", "acompanhamento": "revisar", "fonte": "painel/fonte.txt", "evidencia": "prova"},
         ],
     }
 
@@ -223,3 +226,30 @@ def test_auditoria_recusa_heranca_por_id_duplicado(tmp_path):
     raiz = escrever_registro(tmp_path, registro)
 
     assert "identificador de responsabilidade duplicado: curso" in responsabilidades.auditar(raiz)
+
+
+@pytest.mark.parametrize("fonte", [
+    "services/inexistente.py",
+    "painel",
+    "texto services/inexistente.py",
+])
+def test_auditoria_recusa_fonte_que_nao_resolve_para_arquivo(tmp_path, fonte):
+    registro = registro_completo()
+    registro["unidades"][0]["fonte"] = fonte
+    raiz = escrever_registro(tmp_path, registro)
+
+    assert "curso: fonte precisa listar referências concretas" in responsabilidades.auditar(raiz)
+
+
+def test_auditoria_recusa_decisao_ou_escalonamento_vazio(tmp_path):
+    registro = registro_completo()
+    raiz = escrever_registro(tmp_path, registro)
+    assert responsabilidades.auditar(raiz) == []
+
+    registro["unidades"][0]["autoridade"] = "Decide:   Escala para: mantenedor."
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert "curso: autoridade precisa declarar decisão e escalonamento" in responsabilidades.auditar(raiz)
+
+    registro["unidades"][0]["autoridade"] = "Decide: aprova a entrega. Escala para:   "
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert "curso: autoridade precisa declarar decisão e escalonamento" in responsabilidades.auditar(raiz)
