@@ -804,9 +804,9 @@ def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path,
             "unidades": [{
             "id": "medicao-de-esforco", "tipo": "rotina",
             "titular_funcao": "estrategia-conteudo", "finalidade": "medir",
-            "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa",
-            "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma",
-            "autoridade": "Pessoa", "evidencia": "prova",
+            "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa",
+            "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma",
+            "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova",
         }],
     }, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
@@ -1513,7 +1513,7 @@ def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
     (tmp_path / "painel").mkdir()
     (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
         "funcoes": {nome: {"pessoa": "Pessoa", "substituto": "Substituto"} for nome in responsabilidades.FUNCOES},
-        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa", "evidencia": "prova"}],
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma", "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova"}],
     }), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
@@ -1937,7 +1937,7 @@ def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypa
             "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
             "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
         },
-        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "teste", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa", "evidencia": "prova"}],
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma", "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova"}],
     }, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
     monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
