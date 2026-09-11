@@ -25,7 +25,7 @@ type:
 # não a presença do arquivo em disco. A `gamificacao` nasce `not-applicable` e
 # vira `required` no PR 4 da escada (RITOS §3), quando o contrato existir.
 contrato-check:
-	python ../../ci/contract_freeze.py $(CELULA) && echo "✅ ci/freeze-de-contrato.sh: portão verificado"
+	python ../../ci/contract_freeze.py $(CELULA) && echo "✅ ci/contract_freeze.py: portão verificado (adaptador: ci/freeze-de-contrato.sh)"
 
 ci: lint type test contrato-check
 	@echo "✅ $(CELULA): Definição de Pronto local atingida"
