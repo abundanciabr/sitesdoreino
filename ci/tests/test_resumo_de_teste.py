@@ -15,7 +15,7 @@ def test_verde(tmp_path):
     }))
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--arquivo", str(result_file)],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8",
     )
     assert r.returncode == 0
     assert "✅" in r.stdout
@@ -32,7 +32,7 @@ def test_vermelho(tmp_path):
     }))
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--arquivo", str(result_file)],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8",
     )
     assert r.returncode == 1
     assert "❌" in r.stdout
@@ -42,6 +42,6 @@ def test_vermelho(tmp_path):
 def test_arquivo_ausente(tmp_path):
     r = subprocess.run(
         [sys.executable, str(SCRIPT), "--arquivo", str(tmp_path / "nao_existe.json")],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8",
     )
     assert r.returncode == 2
