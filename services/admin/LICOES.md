@@ -341,16 +341,45 @@ incidente. `verificada` significa que identidade e arquivos conferiram; não
 afirma que a revisão é a mais recente do repositório.
 
 `PortaAdministrativa` abre um contexto por requisição e o descarta em
-`finally`, inclusive em recusa ou exceção. A primeira seleção fixa a revisão;
-cada tipo fixa sua pasta concreta ou sua indisponibilidade. Outro consumidor
-não troca de pacote para encontrar um artefato ausente. Painel e fila só se
-combinam na mesma revisão e execução; no legado, precisam pertencer à mesma
-raiz local.
-Sem uma cópia compatível, a fonte fica indisponível e a tela mantém o aviso
-que já trata a ausência. O publicador atual tem dois ponteiros independentes:
-a publicação conjunta e atômica ainda precisa ser implementada.
+`finally`, inclusive em recusa ou exceção. Cada tipo fixa independentemente
+sua pasta concreta, identidade ou indisponibilidade durante toda a resposta.
+Outro consumidor do mesmo tipo não troca de pacote para encontrar um artefato
+ausente. O PR #1510 retirou a exigência de identidade conjunta: painel e fila
+podem vir de revisões, execuções e raízes locais distintas, porque seus
+ponteiros são independentes. A tela identifica cada fonte e mantém seu aviso
+de alternativa ou ausência. A próxima requisição pode selecionar outra versão.
 
 Não há cache entre requisições. Uma otimização futura precisa usar a
 identidade da release concreta e preservar o aviso da alternativa; cachear
 o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
 arquivos dentro da release continua sendo responsabilidade do publicador.
+
+## Reserva, rascunho e submissão não comprovam aceite (09/09/2026)
+
+A aba dos robôs recebe estados materializados e uma consulta separada ao
+GitHub. Reserva identifica posse; rascunho identifica preparação; PR aberto
+não comprova testes, aceite ou publicação. O carimbo da consulta precisa
+continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
+resposta antes de substituir linhas e classes, preserve a última leitura em
+erro e declare paginação sem apresentar a primeira página como total.
+
+Validar só o número do PR não protege os campos usados para montar a linha.
+Título, referência do ramo, fase e referência da reserva também precisam de
+tipo e formato conferidos. Monte linhas, marcações e carimbo fora do DOM;
+só substitua a leitura depois que a preparação inteira terminar. A regressão
+injeta um item ruim entre bons e interrompe uma montagem válida: em ambos os
+casos, inclusive na repetição, preserva nós, classes, etiquetas e horário.
+
+A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
+próprio, pois ausência de classificação não é decisão humana. O produtor do
+livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
+declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
+continuam visíveis e o total de assuntos fica desconhecido.
+Quando os vínculos completos saem do HTML, `pedidosDoDonoVinculosFonte`
+identifica o JSON local por nome, carimbo do livro, quantidade e SHA-256 dos
+bytes. A Central lê esse arquivo na mesma pasta concreta já fixada pela
+resposta; não seleciona outra publicação para buscar o que faltou. Caminho
+redirecionado, hash ou carimbo divergente, contagem incoerente e mistura com
+array inline são cobertura desconhecida, nunca deduplicação parcial. O hash
+não substitui a conferência do conteúdo: bytes íntegros ainda podem carregar
+quantidade ou carimbo de outro retrato.
