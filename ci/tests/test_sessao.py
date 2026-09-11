@@ -984,3 +984,74 @@ def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
     mundo.sessao().rodar()
     passes = [linha for linha in mundo.log if "PASS" in linha]
     assert len(passes) == len(sessao.passos_do_plano(plano))
+
+@pytest.fixture
+def plano_mock(tmp_path):
+    p = sessao.Plano(
+        celula="quiz",
+        tarefa="otimizacao",
+        frase="foo",
+        sobe_ambiente=True,
+        tarefa_da_fila="",
+        raiz=tmp_path / "repo",
+        arquivo_env=tmp_path / ".env",
+        postgres="",
+        porta_postgres=5432,
+        redis="",
+        porta_redis=6379,
+        worktree=tmp_path / "repo" / "wt",
+        branch="agent/quiz/otimizacao",
+        scratch=tmp_path / "scratch",
+        venv=tmp_path / "venv"
+    )
+    p.worktree.mkdir(parents=True, exist_ok=True)
+    (p.worktree / "services" / "quiz").mkdir(parents=True, exist_ok=True)
+    p.requisitos.parent.mkdir(parents=True, exist_ok=True)
+    p.requisitos.write_text("pytest==8.0.0", encoding="utf-8")
+    p.venv.mkdir(parents=True, exist_ok=True)
+    p.requisitos.write_text("pytest==8.0.0", encoding="utf-8")
+    p.venv.mkdir(parents=True, exist_ok=True)
+    return p
+
+def test_venv_reutilizado(plano_mock, monkeypatch):
+    import hashlib
+    import unittest.mock
+    sessao_obj = sessao.Sessao(plano_mock)
+    sessao_obj._correr = unittest.mock.MagicMock(return_value="")
+    sessao_obj._exigir = unittest.mock.MagicMock()
+    sessao_obj._pass = unittest.mock.MagicMock()
+
+    sessao_obj.instalar()
+    assert sessao_obj._exigir.call_count == 1
+    
+    req_hash = hashlib.sha256(plano_mock.requisitos.read_bytes()).hexdigest()
+    assert (plano_mock.venv / f".reqs.{req_hash}").exists()
+
+    sessao_obj.instalar()
+    assert sessao_obj._exigir.call_count == 1
+    sessao_obj._pass.assert_called_with("dependências intocadas — sigo")
+
+def test_baseline_pulado(plano_mock, monkeypatch):
+    import unittest.mock
+    sessao_obj = sessao.Sessao(plano_mock)
+    sessao_obj._ferramenta = unittest.mock.MagicMock(return_value="make")
+    
+    def mock_correr(cmd, **kwargs):
+        if cmd[:2] == ["git", "rev-parse"]:
+            return "abcdef1234567890"
+        return "fake output"
+    
+    sessao_obj._correr = unittest.mock.MagicMock(side_effect=mock_correr)
+    sessao_obj._pass = unittest.mock.MagicMock()
+
+    saida = sessao_obj.rodar_baseline("git")
+    assert saida == "fake output"
+    assert sessao_obj._correr.call_count == 2
+    assert (plano_mock.venv / ".baseline.abcdef1234567890").exists()
+
+    sessao_obj._correr.reset_mock()
+    sessao_obj._correr.side_effect = mock_correr
+    saida = sessao_obj.rodar_baseline("git")
+    assert saida == "PULADO"
+    assert sessao_obj._correr.call_count == 1
+    sessao_obj._pass.assert_called_with("baseline já medido para este commit — sigo")
