@@ -1053,8 +1053,12 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
         },
         "responses": {
             "200": {
+                "description": "OK",
                 "content": {
                     "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/AulaAvulsaSchema"
+                        },
                         "examples": {
                             "menor_sufixo_livre": {
                                 "summary": "O "
