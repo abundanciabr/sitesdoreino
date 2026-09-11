@@ -2,15 +2,21 @@
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 
 RAIZ = Path(__file__).resolve().parents[2]
 CONTRATO = RAIZ / "contracts" / "cursos.openapi.yaml"
+PRESERVACAO_CONDICIONAL = "somente quando o corpo do PUT omite `slug`"
 
 
 def contrato() -> dict:
     return yaml.safe_load(CONTRATO.read_text(encoding="utf-8"))
+
+
+def assert_preservacao_condicional(descricao: str) -> None:
+    assert PRESERVACAO_CONDICIONAL in descricao
 
 
 def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() -> None:
@@ -30,7 +36,7 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
     exemplos_422 = corpo_422["examples"]
 
     assert corpo["$ref"] == "#/components/schemas/AulaAvulsaParaEditarSchema"
-    assert "somente quando o corpo do PUT omite `slug`" in criacao["description"]
+    assert_preservacao_condicional(criacao["description"])
     assert esquema["additionalProperties"] is False
     assert esquema["properties"]["slug"] == {"maxLength": 140, "type": "string"}
     assert "slug" not in esquema["required"]
@@ -85,3 +91,10 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
         respostas["422"]["description"]
         == "Corpo invalido, inclusive slug que nao gera letras ou numeros"
     )
+
+
+def test_guarda_da_preservacao_condicional_reprova_sem_a_condicao() -> None:
+    with pytest.raises(AssertionError):
+        assert_preservacao_condicional(
+            "A edicao usa `updateStandaloneLesson` e preserva o endereco original."
+        )
