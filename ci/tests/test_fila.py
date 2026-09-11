@@ -1759,15 +1759,45 @@ def test_submeter_substituicao_repetida_e_idempotente(tmp_path, monkeypatch):
         fila, "consultar_pr_submetido",
         lambda *args: pytest.fail("repetição idempotente não mede nem escreve"),
     )
+    liberadas = []
     monkeypatch.setattr(
         fila, "_soltar_reserva_se_houver",
-        lambda *args: pytest.fail("repetição idempotente não solta outra vez"),
+        lambda _raiz, tid: liberadas.append(tid),
     )
 
     assert fila.cmd_submeter(tmp_path, args_de_submeter(
         pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
         substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
     )) == 0
+    assert liberadas == ["TAR-001"]
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+
+def test_submeter_substituicao_retomada_libera_sem_duplicar_evento(
+    tmp_path, monkeypatch,
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    consultas = _instrumentar_substituicao(monkeypatch)
+    liberacoes = []
+
+    def soltar(_raiz, tid):
+        liberacoes.append(tid)
+        if len(liberacoes) == 1:
+            raise ErroDeInstrumentacao("reserva não liberada", "repita a submissão")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+    )
+
+    with pytest.raises(ErroDeInstrumentacao, match="reserva não liberada"):
+        fila.cmd_submeter(tmp_path, args)
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
+    assert liberacoes == ["TAR-001", "TAR-001"]
     assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
 
 

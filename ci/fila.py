@@ -2057,7 +2057,11 @@ def cmd_submeter(raiz: Path, args) -> int:
     if mesmo_vinculo and substitui:
         if (anterior.get("substitui") == substitui
                 and str(anterior.get("detalhe") or "").strip() == motivo):
-            print(f"{tid}: esta substituição já está registrada em {args.pr}.")
+            _soltar_reserva_se_houver(raiz, tid)
+            print(
+                f"{tid}: esta substituição já está registrada em {args.pr}; "
+                "reserva liberada."
+            )
             return 0
         print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
         return 1
