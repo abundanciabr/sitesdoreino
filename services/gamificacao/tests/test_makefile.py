@@ -70,6 +70,21 @@ def test_receitas_de_validacao_executam_sem_shell_posix():
     assert "RESULTADO  PASS" in saida
 
 
+def test_lint_executa_black_no_cmd(tmp_path):
+    preparar_receita_temporaria(tmp_path, "black --check .")
+    ferramenta_que_falha(tmp_path, "black")
+
+    resultado = executar_make(
+        tmp_path,
+        "lint",
+        ambiente=ambiente_com_ferramentas_em(tmp_path),
+    )
+
+    saida = resultado.stdout + resultado.stderr
+    assert resultado.returncode != 0
+    assert "black" in saida
+
+
 def test_lint_executa_importlinter_quando_a_configuracao_existe(tmp_path):
     preparar_receita_temporaria(tmp_path, "lint-imports")
     pacote_de_teste(tmp_path)
