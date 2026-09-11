@@ -259,10 +259,10 @@ class AulaSchema(AulaDaListaSchema):
 class AulaAvulsaSchema(Schema):
     """A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
 
-    `slug` e gerado pelo servico no instante da criacao e nunca muda, para
-    que um link enviado em grupo continue levando para a mesma aula, mesmo
-    quando titulo, video_url ou descricao forem editados. `estado` sempre e
-    `publicada`: esta porta nao oferece rascunho nem uma segunda publicacao.
+    `slug` e gerado pelo servico na criacao e pode mudar na edicao. Quando o
+    novo endereco ja estiver ocupado no mesmo site, o servico acrescenta o
+    menor sufixo numerico livre. `estado` sempre e `publicada`: esta porta nao
+    oferece rascunho nem uma segunda publicacao.
     """
 
     titulo: str
@@ -423,6 +423,21 @@ class AulaAvulsaParaCriarSchema(Schema):
     titulo: str = Field(min_length=1, max_length=CURTO)
     video_url: str = Field(min_length=1, max_length=URL)
     descricao: str = Field(max_length=5000)
+
+
+class AulaAvulsaParaEditarSchema(Schema):
+    """O corpo da edicao de aula avulsa.
+
+    Sem `slug`, a aula conserva o endereco atual. Com ele, o servico normaliza
+    letras, numeros e hifens e encontra o menor sufixo livre quando preciso.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    titulo: str = Field(min_length=1, max_length=CURTO)
+    video_url: str = Field(min_length=1, max_length=URL)
+    descricao: str = Field(max_length=5000)
+    slug: str | None = Field(default=None, max_length=140)
 
 
 class BlocoParaGravarSchema(Schema):
@@ -873,7 +888,30 @@ def _proximo_slug(titulo: str, sufixo: int) -> str:
     return f"{base[: 140 - len(cauda)].rstrip('-') or 'aula'}{cauda}"
 
 
-def _campos_da_aula_avulsa(payload: AulaAvulsaParaCriarSchema) -> tuple[str, str]:
+def _slug_normalizado(valor: str) -> str:
+    slug = slugify(valor)
+    if not slug:
+        raise HttpError(422, "o endereço da aula precisa ter letras ou números")
+    return slug[:140].rstrip("-")
+
+
+def _proximo_slug_livre(site_id: str, base: str, aula_id: int) -> str:
+    ocupados = set(
+        AulaAvulsaModel.objects.filter(site_id=site_id)
+        .exclude(pk=aula_id)
+        .filter(Q(slug=base) | Q(slug__startswith=f"{base}-"))
+        .values_list("slug", flat=True)
+    )
+    for sufixo in range(1, 10_000):
+        candidato = _proximo_slug(base, sufixo)
+        if candidato not in ocupados:
+            return candidato
+    raise HttpError(409, "não foi possível encontrar um endereço livre para esta aula")
+
+
+def _campos_da_aula_avulsa(
+    payload: AulaAvulsaParaCriarSchema | AulaAvulsaParaEditarSchema,
+) -> tuple[str, str]:
     titulo = payload.titulo.strip()
     if not titulo:
         raise HttpError(422, "o título da aula avulsa não pode ficar vazio")
@@ -921,8 +959,8 @@ def list_standalone_lessons(request, site_id: str):
         "\n"
         "A aula nasce publicada, com estado `publicada`, e pode ser lida na hora\n"
         "pelo endereco devolvido. Nao existe rascunho nem gesto posterior de\n"
-        "publicacao nesta porta. A edicao usa `updateStandaloneLesson` e preserva\n"
-        "o endereco original.\n"
+        "publicacao nesta porta. A edicao usa `updateStandaloneLesson` e pode\n"
+        "trocar o endereco.\n"
         "\n"
         "422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\n"
         "do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\n"
@@ -951,16 +989,18 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
     "/aulas-avulsas/{slug}",
     response=AulaAvulsaSchema,
     operation_id="updateStandaloneLesson",
-    summary="Edita uma aula avulsa sem trocar seu endereço",
+    summary="Edita uma aula avulsa e pode trocar seu endereço",
     description=(
         "O gesto Editar aula avulsa do Admin. O corpo recebe exatamente\n"
-        "titulo, video_url e descricao, e devolve a aula atualizada.\n"
+        "titulo, video_url, descricao e, opcionalmente, slug, e devolve a aula\n"
+        "atualizada.\n"
         "\n"
-        "`slug` e a identidade permanente: o titulo pode mudar, mas o endereco\n"
-        "compartilhado nunca muda. Site ou slug inexistente responde 404. Corpo\n"
-        "invalido responde 422, inclusive campo desconhecido, titulo ou video_url\n"
-        "vazios, URL que nao seja HTTPS incorporavel do YouTube e descricao acima\n"
-        "de 5.000 caracteres."
+        "Sem slug, o endereco compartilhado continua o mesmo. Quando houver slug,\n"
+        "o servico o normaliza e escolhe o menor sufixo numerico livre se o\n"
+        "endereco ja existir no site. Site ou slug do caminho inexistente responde\n"
+        "404. Corpo invalido responde 422, inclusive campo desconhecido, titulo,\n"
+        "video_url ou slug sem letras ou numeros, URL que nao seja HTTPS\n"
+        "incorporavel do YouTube e descricao acima de 5.000 caracteres."
     ),
     openapi_extra={
         "responses": {
@@ -975,22 +1015,36 @@ def update_standalone_lesson(
     request,
     slug: Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")],
     site_id: str,
-    payload: AulaAvulsaParaCriarSchema,
+    payload: AulaAvulsaParaEditarSchema,
 ):
     titulo, video_url = _campos_da_aula_avulsa(payload)
-    with transaction.atomic():
-        aula = (
-            AulaAvulsaModel.objects.select_for_update()
-            .filter(site_id=site_id, slug=slug)
-            .first()
-        )
-        if aula is None:
-            raise HttpError(404, "aula avulsa inexistente para este site e slug")
-        aula.titulo = titulo
-        aula.video_url = video_url
-        aula.descricao = payload.descricao
-        aula.save(update_fields=["titulo", "video_url", "descricao"])
-    return _aula_avulsa(aula)
+    slug_pedido = _slug_normalizado(payload.slug) if payload.slug is not None else None
+    for _ in range(10_000):
+        try:
+            with transaction.atomic():
+                aula = (
+                    AulaAvulsaModel.objects.select_for_update()
+                    .filter(site_id=site_id, slug=slug)
+                    .first()
+                )
+                if aula is None:
+                    raise HttpError(
+                        404, "aula avulsa inexistente para este site e slug"
+                    )
+                slug_final = (
+                    aula.slug
+                    if slug_pedido is None or slug_pedido == aula.slug
+                    else _proximo_slug_livre(site_id, slug_pedido, aula.pk)
+                )
+                aula.titulo = titulo
+                aula.slug = slug_final
+                aula.video_url = video_url
+                aula.descricao = payload.descricao
+                aula.save(update_fields=["titulo", "slug", "video_url", "descricao"])
+            return _aula_avulsa(aula)
+        except IntegrityError:
+            continue
+    raise HttpError(409, "não foi possível encontrar um endereço livre para esta aula")
 
 
 @router.get(

@@ -1,9 +1,13 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier, Lock
 
 import pytest
+from django.db import close_old_connections
 from django.test import Client
 from django.urls import clear_script_prefix, reverse, set_script_prefix
 
+from apps.core import api
 from apps.cursos.models import AulaAvulsa
 from tests.conftest import ANA, COOKIE, SITE, dublar_matricula, dublar_sessao
 
@@ -27,6 +31,21 @@ def criar(**mudancas):
     corpo.update(mudancas)
     return Client().post(
         f"{BASE}/aulas-avulsas?site_id={SITE}",
+        data=json.dumps(corpo),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
+    )
+
+
+def editar(endereco, **mudancas):
+    corpo = {
+        "titulo": "Os três pilares atualizados",
+        "video_url": "https://youtu.be/dQw4w9WgXcQ",
+        "descricao": "Uma explicação corrigida.",
+    }
+    corpo.update(mudancas)
+    return Client().put(
+        f"{BASE}/aulas-avulsas/{endereco}?site_id={SITE}",
         data=json.dumps(corpo),
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
@@ -59,21 +78,10 @@ def test_titulo_igual_ganha_sufixo_e_slug_nao_muda():
     assert primeira_do_banco.slug == "os-pilares-do-roblox"
 
 
-def test_edita_os_tres_campos_sem_mudar_slug_nem_data_de_publicacao():
+def test_edita_os_tres_campos_sem_slug_preserva_endereco_e_publicacao():
     criada = criar().json()
     publicada_em_antes = AulaAvulsa.objects.get(slug=criada["slug"]).publicada_em
-    resposta = Client().put(
-        f"{BASE}/aulas-avulsas/{criada['slug']}?site_id={SITE}",
-        data=json.dumps(
-            {
-                "titulo": "Os três pilares atualizados",
-                "video_url": "https://youtu.be/dQw4w9WgXcQ",
-                "descricao": "Uma explicação corrigida.",
-            }
-        ),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
-    )
+    resposta = editar(criada["slug"])
     assert resposta.status_code == 200
     atualizada = resposta.json()
     assert atualizada == {
@@ -85,6 +93,95 @@ def test_edita_os_tres_campos_sem_mudar_slug_nem_data_de_publicacao():
     aula_no_banco = AulaAvulsa.objects.get(slug=criada["slug"])
     assert aula_no_banco.slug == criada["slug"]
     assert aula_no_banco.publicada_em == publicada_em_antes
+
+
+def test_edita_slug_normalizado_em_tempo_real_sem_acentos_ou_simbolos():
+    criada = criar().json()
+    aula_id = AulaAvulsa.objects.get(slug=criada["slug"]).pk
+    resposta = editar(criada["slug"], slug="  AULA de Testes!  ")
+    assert resposta.status_code == 200
+    assert resposta.json()["slug"] == "aula-de-testes"
+    assert AulaAvulsa.objects.get(pk=aula_id).slug == "aula-de-testes"
+
+
+def test_edita_slug_igual_ao_atual_sem_alterar_o_endereco():
+    criada = criar().json()
+    resposta = editar(criada["slug"], slug=criada["slug"])
+    assert resposta.status_code == 200
+    assert resposta.json()["slug"] == criada["slug"]
+
+
+def test_edita_slug_ocupado_com_menor_sufixo_livre():
+    criada = criar(titulo="Aula original").json()
+    criar(titulo="Guia")
+    criar(titulo="Guia")
+    criar(titulo="Guia")
+    resposta = editar(criada["slug"], slug="Guia")
+    assert resposta.status_code == 200
+    assert resposta.json()["slug"] == "guia-4"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
+    primeira = AulaAvulsa.objects.create(
+        site_id=SITE,
+        titulo="Primeira",
+        slug="primeira",
+        video_url="https://youtu.be/dQw4w9WgXcQ",
+    )
+    segunda = AulaAvulsa.objects.create(
+        site_id=SITE,
+        titulo="Segunda",
+        slug="segunda",
+        video_url="https://youtu.be/dQw4w9WgXcQ",
+    )
+    barreira = Barrier(2)
+    trava = Lock()
+    chamadas = 0
+    proximo_slug_livre = api._proximo_slug_livre
+
+    def disputar_o_mesmo_endereco(*args):
+        nonlocal chamadas
+        candidato = proximo_slug_livre(*args)
+        with trava:
+            chamadas += 1
+            precisa_esperar = chamadas <= 2
+        if precisa_esperar:
+            barreira.wait(timeout=5)
+        return candidato
+
+    monkeypatch.setattr(api, "_proximo_slug_livre", disputar_o_mesmo_endereco)
+    payload = api.AulaAvulsaParaEditarSchema(
+        titulo="Aula disputada",
+        video_url="https://youtu.be/dQw4w9WgXcQ",
+        descricao="",
+        slug="Aula disputada",
+    )
+
+    def editar_em_concorrencia(endereco):
+        close_old_connections()
+        try:
+            return api.update_standalone_lesson(None, endereco, SITE, payload)["slug"]
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        enderecos = list(
+            executor.map(editar_em_concorrencia, [primeira.slug, segunda.slug])
+        )
+
+    assert sorted(enderecos) == ["aula-disputada", "aula-disputada-2"]
+    assert set(
+        AulaAvulsa.objects.filter(pk__in=[primeira.pk, segunda.pk]).values_list(
+            "slug", flat=True
+        )
+    ) == set(enderecos)
+
+
+@pytest.mark.parametrize("slug", ["", "!!!", "   "])
+def test_edita_slug_sem_letras_ou_numeros_e_422(slug):
+    criada = criar().json()
+    assert editar(criada["slug"], slug=slug).status_code == 422
 
 
 def test_editar_aula_ausente_neste_site_devolve_404():
@@ -106,19 +203,7 @@ def test_editar_aula_ausente_neste_site_devolve_404():
 
 def test_editar_recusa_chave_desconhecida_com_campos_validos():
     criada = criar().json()
-    resposta = Client().put(
-        f"{BASE}/aulas-avulsas/{criada['slug']}?site_id={SITE}",
-        data=json.dumps(
-            {
-                "titulo": "Os três pilares atualizados",
-                "video_url": "https://youtu.be/dQw4w9WgXcQ",
-                "descricao": "Uma explicação corrigida.",
-                "slug": "nao-pode",
-            }
-        ),
-        content_type="application/json",
-        HTTP_AUTHORIZATION=f"Bearer {TOKEN}",
-    )
+    resposta = editar(criada["slug"], campo_desconhecido="nao-pode")
     assert resposta.status_code == 422
 
 
