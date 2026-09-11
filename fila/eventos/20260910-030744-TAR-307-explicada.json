@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-030744-TAR-307-explicada",
+  "tarefa": "TAR-307",
+  "evento": "explicada",
+  "quando": "2026-09-10T03:07:44+00:00",
+  "quem": "Falha do deploy 34430133801 após o pouso do PR #1454",
+  "o_que_e": "A publicação de cursos para antes de marcar os oito desafios principais porque procura um nome diferente do que está gravado na aula 31.",
+  "o_que_muda": "A publicação volta a encontrar a aula correta e marca um desafio principal em cada um dos oito módulos sem alterar o conteúdo do curso.",
+  "exemplo": "Hoje a aula se chama Comando Bevel e Triangulate, mas a publicação procura Modificador Bevel e Triangulate e para sem gravar.",
+  "importancia": 95
+}

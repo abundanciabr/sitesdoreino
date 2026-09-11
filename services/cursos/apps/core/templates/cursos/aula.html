@@ -90,7 +90,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 <section class="video" id="video">
   <h2>O vídeo da aula</h2>
   {% if video.embutido %}
-  <div class="quadro"><iframe src="{{ video.embutido }}" title="Vídeo da aula" loading="lazy" allowfullscreen allow="fullscreen"></iframe></div>
+  <div class="quadro"><iframe src="{{ video.embutido }}" referrerpolicy="strict-origin-when-cross-origin" title="Vídeo da aula" loading="lazy" allowfullscreen allow="fullscreen"></iframe></div>
   <p class="miudo"><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir o vídeo em outra aba</a></p>
   {% elif video.link %}
   <p><a class="botao" href="{{ video.link }}" target="_blank" rel="noopener">Assistir ao vídeo</a></p>

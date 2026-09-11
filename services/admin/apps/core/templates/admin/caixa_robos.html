@@ -66,6 +66,7 @@ não tem sigla (lei do CLAUDE.md).
     {% endif %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
+    {% if dados %}{% include "admin/dados_do_painel.html" %}{% endif %}
 
     <style>
       /* O CARTÃO DE TAREFA. Fundo e borda são os DA CASA (`--painel`/`--linha`),
@@ -153,7 +154,7 @@ não tem sigla (lei do CLAUDE.md).
       dialog.confirmar-exclusao h2 { font-size: 16px; margin: 0 0 10px; }
       dialog.confirmar-exclusao p { font-size: 13.5px; color: var(--texto-2); margin: 0 0 12px; }
       dialog.confirmar-exclusao label { display: block; font-size: 13px; margin-bottom: 4px; }
-      dialog.confirmar-exclusao input {
+      dialog.confirmar-exclusao textarea {
         width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
         background: var(--fundo); color: var(--texto);
         border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 14px;
@@ -540,7 +541,7 @@ não tem sigla (lei do CLAUDE.md).
           </p>
           <input type="hidden" name="tarefa" id="campo-da-tarefa" value="{{ tarefa_do_resultado }}">
           <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
-          <input id="motivo-da-exclusao" name="motivo" maxlength="500" autocomplete="off" value="{{ rascunho.motivo }}" required>
+          <textarea id="motivo-da-exclusao" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
           <p><a id="consultar-pedido" href="{% url 'caixa_robos' %}{% if tarefa_do_resultado %}?pedido={{ tarefa_do_resultado }}{% endif %}">Consultar o pedido existente desta tarefa</a></p>
           <div class="botoes">
             <button type="button" id="deixar-na-fila">Voltar ao quadro</button>

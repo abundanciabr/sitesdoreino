@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-045144-TAR-332-concluida",
+  "tarefa": "TAR-332",
+  "evento": "concluida",
+  "quando": "2026-09-11T04:51:44+00:00",
+  "quem": "despacho-admin-pr1506-retomada",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1549; revisao=52bbcf708ac9ca9c70d4a27ae29156393dfd5800; arvore=311db662db1581fc630d82b91daa4afec6d4ae8e; head=f5ac594b4e9f62fc47422da814bca819520804f8; merge=38bc8dd26850fb5469cf4dadc366f27e190fb01b; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34554589959; atestado=atestado aprovado para f5ac594b4e9f62fc47422da814bca819520804f8; aceite=painel/registros/20260911-016-pr-1549-publicado.js",
+  "verificado_em": "2026-09-11"
+}

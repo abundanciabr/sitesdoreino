@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104311-TAR-313-explicada",
+  "tarefa": "TAR-313",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:43:11+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; cálculo dos estados e contraprova em memória",
+  "o_que_e": "As próximas entregas podem avançar sem a etapa que define o que cada pessoa vê e o que o servidor permite fazer.",
+  "o_que_muda": "A ordem da fila passa a impedir que uma frente seja chamada de completa antes de suas permissões estarem comprovadas.",
+  "exemplo": "O CRM humano pode ser preparado sem inteligência artificial, mas só fecha quando a visão e as permissões da pessoa responsável estiverem provadas.",
+  "importancia": 100
+}

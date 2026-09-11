@@ -30,6 +30,7 @@ E dois guardas que não vêm do pedido dele, e sim das leis da casa:
 
 import json
 import re
+from html.parser import HTMLParser
 
 import httpx
 import pytest
@@ -749,6 +750,76 @@ def test_parametros_de_resultado_na_url_nao_sao_prova(tmp_path, monkeypatch):
 
 
 @respx.mock
+def test_motivo_multilinha_sobrevive_ao_formulario_e_a_retomada(
+    tmp_path, monkeypatch, com_token
+):
+    class FormularioDeCancelamento(HTMLParser):
+        def __init__(self, resposta):
+            super().__init__(convert_charrefs=True)
+            self.dados = {}
+            self.campo = None
+            self.feed(
+                resposta.content.decode().replace("\r\n", "\n").replace("\r", "\n")
+            )
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            nome = attrs.get("name")
+            if nome not in {"tarefa", "motivo"}:
+                return
+            if tag == "input":
+                # O controle de linha única remove CR/LF antes de enviar.
+                self.dados[nome] = (
+                    attrs.get("value", "").replace("\r", "").replace("\n", "")
+                )
+            elif tag == "textarea":
+                self.campo = nome
+                self.dados[nome] = ""
+
+        def handle_data(self, data):
+            if self.campo:
+                # A submissão HTML serializa quebras de linha como CRLF.
+                self.dados[self.campo] += data.replace("\n", "\r\n")
+
+        def handle_endtag(self, tag):
+            if tag == "textarea":
+                self.campo = None
+
+    fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    remoto.falhar = ("POST", "/pulls")
+    remoto.resposta_perdida = True
+    cliente = _dentro()
+    motivo = (
+        'Primeira linha: "duplicada" & conferida.\r\n\r\nSegunda linha: <preservar>.'
+    )
+    resposta = cliente.post(
+        reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": motivo}
+    )
+    assert resposta.status_code == 200
+    assert resposta.context["resultado"] == "recebido"
+    originais = dict(remoto.arquivos)
+    assert json.loads(next(iter(originais.values())))["detalhe"] == motivo
+    assert len(remoto.prs) == len(originais) == 1
+    chamadas = len(remoto.chamadas)
+
+    for _ in range(2):
+        formulario = FormularioDeCancelamento(resposta)
+        resposta = cliente.post(reverse("caixa_robos_excluir"), formulario.dados)
+        assert resposta.status_code == 200
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert resposta.context["pr"] == 1270
+        resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert remoto.arquivos == originais
+        assert len(remoto.prs) == len(remoto.arquivos) == 1
+
+    assert all(chave[0] == "GET" for chave, _ in remoto.chamadas[chamadas:])
+
+
+@respx.mock
 def test_erro_preserva_motivo_no_html_sem_texto_livre_na_url(
     tmp_path, monkeypatch, com_token
 ):
@@ -798,7 +869,7 @@ def test_integracao_so_vira_aplicacao_com_evento_exato_na_fila(
     )
     remoto.prs[0].update(state="closed", merged=True)
     pasta = tmp_path / "fila_embutida"
-    estados = json.loads((pasta / "estados.json").read_text())
+    estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
     estados["TAR-102"]["estado"] = estado
     (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
     if arquivo != "ausente":
@@ -822,3 +893,44 @@ def test_prompt_da_sessao_do_dono_nao_depende_de_maestro_inexistente():
     assert "Devolva o resultado a mim" in prompt
     assert "maestro" not in prompt
     assert "aplicação" in prompt and "aceite" in prompt
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "dados",
+    [[], {"TAR-102": None}, {"TAR-102": {}}, {"TAR-102": {"estado": "inválido"}}],
+)
+def test_fila_invalida_recusa_cancelamento_e_preserva_motivo(
+    tmp_path, monkeypatch, com_token, dados
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(json.dumps(dados), encoding="utf-8")
+    resposta = _dentro().post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Conservar este motivo."},
+    )
+    assert resposta.status_code == 400
+    assert resposta.context["resultado"] == "sem_fila"
+    assert resposta.context["rascunho"]["motivo"] == "Conservar este motivo."
+    assert "Conferir a fila e retomar o pedido público" in pagina_sem_estilo(resposta)
+    assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_consulta_integrada_sem_fila_nao_afirma_aplicacao(
+    tmp_path, monkeypatch, com_token
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    cliente = _dentro()
+    cliente.post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Motivo persistente."},
+    )
+    remoto.prs[0].update(state="closed", merged=True)
+    (pasta / "estados.json").unlink()
+    resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+    assert resposta.context["resultado"] == "integrado"
+    assert resposta.context["aplicacao_conferida"] is False
+    assert resposta.context["rascunho"]["motivo"] == "Motivo persistente."
+    assert "ainda não foi confirmada" in pagina_sem_estilo(resposta)

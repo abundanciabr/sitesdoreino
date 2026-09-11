@@ -248,6 +248,7 @@ class Registro(models.Model):
     # `LICOES.md` (28/08/2026).
     CRIAR_CURSO = "criar_curso"
     EDITAR_CURSO = "editar_curso"
+    CRIAR_AULA_AVULSA = "criar_aula_avulsa"
     # [ESTRUTURA] 07/09/2026 (TAR-272): a tela que da ao curso a lista dos
     # modulos e das aulas dele, colada de uma vez. Verbo PROPRIO, e nao um
     # `editar_curso` reaproveitado: aquele troca o produto ou a regra de
@@ -336,6 +337,7 @@ class Registro(models.Model):
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
         (CRIAR_CURSO, "criar um curso novo na escola"),
         (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
+        (CRIAR_AULA_AVULSA, "criar uma aula avulsa para compartilhar"),
         (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),

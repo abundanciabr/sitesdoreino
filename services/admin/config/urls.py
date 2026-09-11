@@ -85,10 +85,12 @@ from apps.core.aulas import (
     aula,
     aula_publicar,
     aula_salvar,
+    aula_youtube,
     aulas,
     instrumento,
     instrumento_salvar,
 )
+from apps.core.aulas_avulsas import aula_avulsa_criar, aulas_avulsas
 from apps.core.sequencias import (
     sequencia,
     sequencia_ligar,
@@ -678,6 +680,10 @@ urlpatterns = [
     path("escola/cursos/", escola_cursos, name="escola_cursos"),
     path("escola/cursos/criar", escola_curso_criar, name="escola_curso_criar"),
     path("escola/cursos/alterar", escola_curso_alterar, name="escola_curso_alterar"),
+    path("escola/aulas-avulsas/", aulas_avulsas, name="escola_aulas_avulsas"),
+    path(
+        "escola/aulas-avulsas/criar", aula_avulsa_criar, name="escola_aula_avulsa_criar"
+    ),
     # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
     # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
     # expande o grupo opcional em dois endereços e escolhe pelo que você passa
@@ -695,6 +701,12 @@ urlpatterns = [
         r"aulas/(?P<numero>[A-Za-z0-9]+)/$",
         aula,
         name="escola_aula",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+        aula_youtube,
+        name="escola_aula_youtube",
     ),
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
