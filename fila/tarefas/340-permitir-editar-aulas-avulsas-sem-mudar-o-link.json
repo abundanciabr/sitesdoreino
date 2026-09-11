@@ -1,0 +1,19 @@
+{
+  "arquivo": "340-permitir-editar-aulas-avulsas-sem-mudar-o-link",
+  "id": "TAR-340",
+  "titulo": "Permitir editar aulas avulsas sem mudar o link",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de contrato integrado com PUT de aula avulsa, corpo estrito, resposta AulaAvulsaSchema, slug estável, respostas 404 e 422, revisão independente e contrato aditivo aprovado sem remoções.",
+  "despacho": "No Rito de Contrato, adicionar PUT /aulas-avulsas/{slug}?site_id=. O corpo recebe exatamente titulo, video_url e descricao; a resposta é AulaAvulsaSchema. O slug é identidade estável e não muda quando o título é editado. Site ou slug inexistente responde 404 e corpo inválido responde 422. Não tocar serviços, infraestrutura ou painel neste PR.",
+  "origem": "erro relatado pela mantenedora em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
