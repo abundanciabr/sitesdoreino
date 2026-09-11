@@ -175,7 +175,7 @@ paths:
           description: Oportunidade atualizada
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
+              schema: { $ref: '#/components/schemas/ResultadoDaAtualizacaoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade está encerrada; use a reabertura para retomá-la }
@@ -321,7 +321,7 @@ paths:
           description: Oportunidade encerrada
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
+              schema: { $ref: '#/components/schemas/ResultadoDoEncerramentoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade já está encerrada }
@@ -350,7 +350,7 @@ paths:
           description: Oportunidade reaberta
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
+              schema: { $ref: '#/components/schemas/ResultadoDaReaberturaDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade ainda está aberta }
@@ -368,6 +368,9 @@ components:
     EtapaAbertaOportunidade:
       type: string
       enum: [nova, qualificada, proposta, negociacao]
+    EtapaEncerradaOportunidade:
+      type: string
+      enum: [ganha, perdida, desqualificada]
     SituacaoOportunidade:
       type: string
       enum: [aberta, encerrada]
@@ -402,12 +405,13 @@ components:
     DesfechoOportunidade:
       type: object
       additionalProperties: false
-      required: [resultado, motivo, encerrada_em]
+      required: [resultado, motivo, evidencia, encerrada_em]
       properties:
         resultado:
           type: string
           enum: [ganha, perdida, desqualificada]
         motivo: { type: string, minLength: 1 }
+        evidencia: { type: string, minLength: 1 }
         encerrada_em: { type: string, format: date-time }
     RegistroHistoricoOportunidade:
       type: object
@@ -424,15 +428,33 @@ components:
         descricao: { type: string }
         evidencia: { type: string }
     Oportunidade:
+      description: "A situação define variantes disjuntas: aberta não tem desfecho; encerrada exige etapa final e desfecho."
+      oneOf:
+        - $ref: '#/components/schemas/OportunidadeAberta'
+        - $ref: '#/components/schemas/OportunidadeEncerrada'
+    OportunidadeAberta:
       type: object
-      description: A situação diferencia oportunidade aberta de encerrada; etapas finais só existem quando a situação está encerrada.
       additionalProperties: false
       required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, criada_em, atualizada_em]
       properties:
         id: { type: string }
         lead_id: { type: string }
-        etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
-        situacao: { $ref: '#/components/schemas/SituacaoOportunidade' }
+        etapa: { $ref: '#/components/schemas/EtapaAbertaOportunidade' }
+        situacao: { const: aberta }
+        titular: { $ref: '#/components/schemas/TitularOportunidade' }
+        fonte: { $ref: '#/components/schemas/FonteOportunidade' }
+        proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
+        criada_em: { type: string, format: date-time }
+        atualizada_em: { type: string, format: date-time }
+    OportunidadeEncerrada:
+      type: object
+      additionalProperties: false
+      required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, desfecho, criada_em, atualizada_em]
+      properties:
+        id: { type: string }
+        lead_id: { type: string }
+        etapa: { $ref: '#/components/schemas/EtapaEncerradaOportunidade' }
+        situacao: { const: encerrada }
         titular: { $ref: '#/components/schemas/TitularOportunidade' }
         fonte: { $ref: '#/components/schemas/FonteOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
@@ -440,14 +462,35 @@ components:
         criada_em: { type: string, format: date-time }
         atualizada_em: { type: string, format: date-time }
     OportunidadeComHistorico:
+      oneOf:
+        - $ref: '#/components/schemas/OportunidadeAbertaComHistorico'
+        - $ref: '#/components/schemas/OportunidadeEncerradaComHistorico'
+    OportunidadeAbertaComHistorico:
       type: object
       additionalProperties: false
       required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, criada_em, atualizada_em, historico]
       properties:
         id: { type: string }
         lead_id: { type: string }
-        etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
-        situacao: { $ref: '#/components/schemas/SituacaoOportunidade' }
+        etapa: { $ref: '#/components/schemas/EtapaAbertaOportunidade' }
+        situacao: { const: aberta }
+        titular: { $ref: '#/components/schemas/TitularOportunidade' }
+        fonte: { $ref: '#/components/schemas/FonteOportunidade' }
+        proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
+        criada_em: { type: string, format: date-time }
+        atualizada_em: { type: string, format: date-time }
+        historico:
+          type: array
+          items: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
+    OportunidadeEncerradaComHistorico:
+      type: object
+      additionalProperties: false
+      required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, desfecho, criada_em, atualizada_em, historico]
+      properties:
+        id: { type: string }
+        lead_id: { type: string }
+        etapa: { $ref: '#/components/schemas/EtapaEncerradaOportunidade' }
+        situacao: { const: encerrada }
         titular: { $ref: '#/components/schemas/TitularOportunidade' }
         fonte: { $ref: '#/components/schemas/FonteOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
@@ -504,6 +547,14 @@ components:
         estado: { type: string, enum: [pendente, aceita, recusada] }
         solicitada_em: { type: string, format: date-time }
         concluida_em: { type: string, format: date-time }
+        motivo_recusa: { type: string, minLength: 1 }
+      allOf:
+        - if:
+            properties:
+              estado: { const: recusada }
+            required: [estado]
+          then:
+            required: [motivo_recusa]
     TransferenciaComEvento:
       type: object
       additionalProperties: false
@@ -517,6 +568,27 @@ components:
       required: [oportunidade, evento]
       properties:
         oportunidade: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+        evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
+    ResultadoDaAtualizacaoDaOportunidade:
+      type: object
+      additionalProperties: false
+      required: [oportunidade, evento]
+      properties:
+        oportunidade: { $ref: '#/components/schemas/OportunidadeAbertaComHistorico' }
+        evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
+    ResultadoDoEncerramentoDaOportunidade:
+      type: object
+      additionalProperties: false
+      required: [oportunidade, evento]
+      properties:
+        oportunidade: { $ref: '#/components/schemas/OportunidadeEncerradaComHistorico' }
+        evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
+    ResultadoDaReaberturaDaOportunidade:
+      type: object
+      additionalProperties: false
+      required: [oportunidade, evento]
+      properties:
+        oportunidade: { $ref: '#/components/schemas/OportunidadeAbertaComHistorico' }
         evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
     RecusarTransferenciaOportunidade:
       type: object

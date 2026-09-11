@@ -85,18 +85,67 @@ def test_encerramento_exige_evidencia_nao_vazia():
     assert encerramento["properties"]["evidencia"]["minLength"] == 1
 
 
+def test_oportunidade_aberta_e_encerrada_sao_estados_disjuntos():
+    documento = carregar()
+    schemas = documento["components"]["schemas"]
+
+    assert schemas["Oportunidade"]["oneOf"] == [
+        {"$ref": "#/components/schemas/OportunidadeAberta"},
+        {"$ref": "#/components/schemas/OportunidadeEncerrada"},
+    ]
+    assert schemas["OportunidadeComHistorico"]["oneOf"] == [
+        {"$ref": "#/components/schemas/OportunidadeAbertaComHistorico"},
+        {"$ref": "#/components/schemas/OportunidadeEncerradaComHistorico"},
+    ]
+    aberta = schemas["OportunidadeAberta"]
+    encerrada = schemas["OportunidadeEncerrada"]
+    assert aberta["properties"]["situacao"] == {"const": "aberta"}
+    assert aberta["properties"]["etapa"] == {
+        "$ref": "#/components/schemas/EtapaAbertaOportunidade"
+    }
+    assert "desfecho" not in aberta["properties"]
+    assert encerrada["properties"]["situacao"] == {"const": "encerrada"}
+    assert encerrada["properties"]["etapa"] == {
+        "$ref": "#/components/schemas/EtapaEncerradaOportunidade"
+    }
+    assert "desfecho" in encerrada["required"]
+    assert encerrada["properties"]["desfecho"] == {
+        "$ref": "#/components/schemas/DesfechoOportunidade"
+    }
+
+
+def test_desfecho_preserva_a_evidencia_do_encerramento():
+    desfecho = carregar()["components"]["schemas"]["DesfechoOportunidade"]
+
+    assert desfecho["required"] == ["resultado", "motivo", "evidencia", "encerrada_em"]
+    assert desfecho["properties"]["evidencia"]["minLength"] == 1
+
+
+def test_transferencia_recusada_preserva_o_motivo_da_recusa():
+    transferencia = carregar()["components"]["schemas"]["TransferenciaResponsabilidade"]
+
+    assert transferencia["properties"]["motivo_recusa"]["minLength"] == 1
+    assert transferencia["allOf"] == [
+        {
+            "if": {
+                "properties": {"estado": {"const": "recusada"}},
+                "required": ["estado"],
+            },
+            "then": {"required": ["motivo_recusa"]},
+        }
+    ]
+
+
 def test_mutacoes_retornao_evento_imutavel():
     documento = carregar()
-    caminhos_de_oportunidade = [
-        ("/opportunities/{opportunity_id}", "patch", "200"),
-        ("/opportunities/{opportunity_id}/transfers/{transfer_id}/accept", "post", "200"),
-        ("/opportunities/{opportunity_id}/close", "post", "200"),
-        ("/opportunities/{opportunity_id}/reopen", "post", "200"),
-    ]
-    for caminho, metodo, codigo in caminhos_de_oportunidade:
-        assert resposta(documento, caminho, metodo, codigo) == (
-            "#/components/schemas/ResultadoDaMutacaoDaOportunidade"
-        )
+    respostas = {
+        ("/opportunities/{opportunity_id}", "patch", "200"): "ResultadoDaAtualizacaoDaOportunidade",
+        ("/opportunities/{opportunity_id}/transfers/{transfer_id}/accept", "post", "200"): "ResultadoDaMutacaoDaOportunidade",
+        ("/opportunities/{opportunity_id}/close", "post", "200"): "ResultadoDoEncerramentoDaOportunidade",
+        ("/opportunities/{opportunity_id}/reopen", "post", "200"): "ResultadoDaReaberturaDaOportunidade",
+    }
+    for (caminho, metodo, codigo), schema in respostas.items():
+        assert resposta(documento, caminho, metodo, codigo) == f"#/components/schemas/{schema}"
 
     for caminho, metodo, codigo in [
         ("/opportunities/{opportunity_id}/transfers", "post", "201"),
@@ -111,6 +160,15 @@ def test_mutacoes_retornao_evento_imutavel():
         "oportunidade",
         "evento",
     ]
+    assert schemas["ResultadoDaAtualizacaoDaOportunidade"]["properties"]["oportunidade"] == {
+        "$ref": "#/components/schemas/OportunidadeAbertaComHistorico"
+    }
+    assert schemas["ResultadoDoEncerramentoDaOportunidade"]["properties"]["oportunidade"] == {
+        "$ref": "#/components/schemas/OportunidadeEncerradaComHistorico"
+    }
+    assert schemas["ResultadoDaReaberturaDaOportunidade"]["properties"]["oportunidade"] == {
+        "$ref": "#/components/schemas/OportunidadeAbertaComHistorico"
+    }
     assert schemas["TransferenciaComEvento"]["required"] == ["transferencia", "evento"]
     assert set(schemas["RegistroHistoricoOportunidade"]["properties"]["tipo"]["enum"]) >= {
         "etapa_alterada",
