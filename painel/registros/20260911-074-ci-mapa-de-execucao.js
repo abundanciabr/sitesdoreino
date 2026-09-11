@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-074-ci-mapa-de-execucao",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: mapa de execução",
+  detalhe: "GPS: CODEOWNERS, snapshot, reserva e prompt corrigidos. TAR-319/TAR-339; 431 testes e 20 mutações. Ampla incompleta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1558. Validação local: árvore 1234612b82ec6958d5a05605fd7e2b19fd13a032; commit 2e33a1acc6a3bc116af2e20b7781a68491e2ea52; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-339",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
