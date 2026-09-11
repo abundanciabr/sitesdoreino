@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-045121-TAR-291-concluida",
+  "tarefa": "TAR-291",
+  "evento": "concluida",
+  "quando": "2026-09-11T04:51:21+00:00",
+  "quem": "despacho-admin-pr1506-retomada",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1510; revisao=bcb3e731a3a18727fd3304a3d6517288c8a3472a; arvore=9bd67eaab3d16f242fd62a920f7bcb0aa103e8d8; head=0fe2e5986e58716114410ed5255aba42f3470b79; merge=ffdecfc3604ec0c9b9dde040d0abb06d67207d37; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34557853243; atestado=atestado aprovado para 0fe2e5986e58716114410ed5255aba42f3470b79; aceite=painel/registros/20260911-023-versao-dos-dados-publicada.js",
+  "verificado_em": "2026-09-11"
+}

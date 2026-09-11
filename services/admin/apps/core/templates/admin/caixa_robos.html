@@ -53,6 +53,17 @@ não tem sigla (lei do CLAUDE.md).
       Isso não significa que não há trabalho. Peça a um robô para conferir a
       exportação de <code>fila/estados.json</code> e a publicação dos dados da admin.
     </p>
+    {% include "admin/_pedido_de_cancelamento.html" %}
+    {% if rascunho %}
+      <form method="post" action="{% url 'caixa_robos_excluir' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tarefa" value="{{ tarefa_do_resultado }}">
+        <label for="motivo-preservado">Motivo enviado, preservado para nova tentativa</label>
+        <textarea id="motivo-preservado" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+        <p>Se a fila puder ser conferida, este pedido e seu motivo serão enviados ao repositório público abundanciabr/sitesdoreino no GitHub.</p>
+        <button type="submit">Conferir a fila e retomar o pedido público</button>
+      </form>
+    {% endif %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
     {% if dados %}{% include "admin/dados_do_painel.html" %}{% endif %}
@@ -143,7 +154,7 @@ não tem sigla (lei do CLAUDE.md).
       dialog.confirmar-exclusao h2 { font-size: 16px; margin: 0 0 10px; }
       dialog.confirmar-exclusao p { font-size: 13.5px; color: var(--texto-2); margin: 0 0 12px; }
       dialog.confirmar-exclusao label { display: block; font-size: 13px; margin-bottom: 4px; }
-      dialog.confirmar-exclusao input {
+      dialog.confirmar-exclusao textarea {
         width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
         background: var(--fundo); color: var(--texto);
         border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 14px;
@@ -232,61 +243,7 @@ não tem sigla (lei do CLAUDE.md).
 
     <h1>Os robôs</h1>
 
-    {% comment %}
-    O DESFECHO DO ÚLTIMO CLIQUE no botão de excluir (padrão POST-redirect-GET,
-    como toda escrita desta área). Cada recusa diz o que aconteceu E o que
-    fazer: mensagem que só informa deixa o dono olhando para a tela sem saída.
-    O endereço do PR é montado aqui, do repositório que a página já conhece,
-    com um número que a view conferiu ser número. Nada que veio de fora é
-    ecoado como link.
-    {% endcomment %}
-    {% if resultado == "pedido_aberto" %}
-      <p class="desfecho deu-certo">
-        <b>Pedido aberto.</b> O trabalho nº {{ pr }} tira a {{ tarefa_do_resultado }} da fila.
-        Quem publica é a esteira, e ela costuma levar uns 8 minutos.
-        <a href="https://github.com/{{ repositorio }}/pull/{{ pr }}" target="_blank" rel="noopener">abrir o nº {{ pr }}</a>
-      </p>
-    {% elif resultado == "sem_motivo" %}
-      <p class="desfecho nao-deu">
-        Não excluí a {{ tarefa_do_resultado }} porque faltou o motivo. Ele é o que fica
-        no lugar da tarefa para sempre, então clique em Excluir de novo e escreva
-        por que ela não vai mais ser feita.
-      </p>
-    {% elif resultado == "motivo_longo" %}
-      <p class="desfecho nao-deu">
-        O motivo passou de 500 letras. Ele precisa caber numa frase, porque é o que
-        alguém vai ler daqui a meses no lugar da tarefa. Encurte e tente de novo.
-      </p>
-    {% elif resultado == "nao_existe" %}
-      <p class="desfecho nao-deu">
-        Essa tarefa não está na fila desta publicação. Recarregue a página, porque a
-        lista pode ter mudado desde que você a abriu.
-      </p>
-    {% elif resultado == "ja_terminou" %}
-      <p class="desfecho nao-deu">
-        A {{ tarefa_do_resultado }} já terminou, e a fila não aceita nenhum
-        acontecimento depois do fim. Não há o que excluir.
-      </p>
-    {% elif resultado == "sem_fila" %}
-      <p class="desfecho nao-deu">
-        A fila não veio nesta imagem do site, então não deu para conferir a tarefa
-        antes de excluí-la. Avise um robô com estas palavras: "a fila embutida não
-        chegou na imagem da admin".
-      </p>
-    {% elif resultado == "sem_token" %}
-      <p class="desfecho nao-deu">
-        O clique não abriu o pedido no GitHub, porque a chave {{ variavel_do_token }}
-        não está no env da admin agora. Ela pode nunca ter sido posta, mas o mais
-        provável, se o botão funcionava antes e parou agora, é que ela tenha vencido.
-        Avise um robô com estas palavras: "ponha (ou troque) a {{ variavel_do_token }}
-        no env da admin". O roteiro é o mesmo dos dois casos, criar ou trocar: infra/por-a-chave-do-github.sh.
-      </p>
-    {% elif resultado == "github_recusou" %}
-      <p class="desfecho nao-deu">
-        Não deu para abrir o pedido, porque {{ recado }} Tente de novo daqui a pouco;
-        se repetir, avise um robô com esta frase inteira.
-      </p>
-    {% endif %}
+    {% include "admin/_pedido_de_cancelamento.html" %}
 
     <div class="o-que-e-isto">
       <p>
@@ -576,18 +533,19 @@ não tem sigla (lei do CLAUDE.md).
       <dialog class="confirmar-exclusao" id="confirmar-exclusao">
         <form method="post" action="{% url 'caixa_robos_excluir' %}">
           {% csrf_token %}
-          <h2>Excluir esta tarefa para sempre?</h2>
+          <h2>Pedir a exclusão desta tarefa?</h2>
           <p id="qual-tarefa"></p>
+          {% if reabrir_formulario %}<p role="alert">{{ recado }} Confira o motivo preservado antes de repetir o pedido.</p>{% endif %}
           <p>
-            A tarefa some da fila e não volta. O histórico dela fica guardado, mas
-            ninguém vai fazê-la. Se você mudar de ideia depois, ela precisa nascer de novo.
+            O pedido será enviado para revisão no repositório público abundanciabr/sitesdoreino, no GitHub. O motivo escrito abaixo ficará público no evento e no PR. A tarefa só sai da fila depois da integração e da aplicação do cancelamento.
           </p>
-          <input type="hidden" name="tarefa" id="campo-da-tarefa">
+          <input type="hidden" name="tarefa" id="campo-da-tarefa" value="{{ tarefa_do_resultado }}">
           <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
-          <input id="motivo-da-exclusao" name="motivo" maxlength="500" autocomplete="off" required>
+          <textarea id="motivo-da-exclusao" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+          <p><a id="consultar-pedido" href="{% url 'caixa_robos' %}{% if tarefa_do_resultado %}?pedido={{ tarefa_do_resultado }}{% endif %}">Consultar o pedido existente desta tarefa</a></p>
           <div class="botoes">
-            <button type="button" id="deixar-na-fila">Deixar na fila</button>
-            <button type="submit" class="confirma">Sim, excluir</button>
+            <button type="button" id="deixar-na-fila">Voltar ao quadro</button>
+            <button type="submit" class="confirma">Enviar o pedido público</button>
           </div>
         </form>
       </dialog>
@@ -636,13 +594,20 @@ não tem sigla (lei do CLAUDE.md).
           if (botao.classList.contains("excluir") && !botao.disabled && caixa) {
             document.getElementById("qual-tarefa").textContent =
               "“" + botao.dataset.titulo + "” (" + botao.dataset.tarefa + ")";
+            if (document.getElementById("campo-da-tarefa").value !== botao.dataset.tarefa) {
+              document.getElementById("motivo-da-exclusao").value = "";
+            }
             document.getElementById("campo-da-tarefa").value = botao.dataset.tarefa;
-            document.getElementById("motivo-da-exclusao").value = "";
+            document.getElementById("consultar-pedido").href = "{% url 'caixa_robos' %}?pedido=" + encodeURIComponent(botao.dataset.tarefa);
             caixa.showModal();
           }
         });
 
         if (caixa) {
+          if ({{ reabrir_formulario|yesno:"true,false" }} && document.getElementById("campo-da-tarefa").value) {
+            document.getElementById("qual-tarefa").textContent = document.getElementById("campo-da-tarefa").value;
+            caixa.showModal();
+          }
           document.getElementById("deixar-na-fila").addEventListener("click", function () {
             caixa.close();
           });
