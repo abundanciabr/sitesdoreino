@@ -270,7 +270,7 @@ def _ler_entrada(git_comum: Path) -> tuple[list[object], int]:
     erros = 0
     pasta = git_comum / "telemetria-dos-robos"
     if not pasta.is_dir():
-        return eventos, erros
+        raise FileNotFoundError(pasta)
     for caminho in sorted(pasta.glob("*.jsonl")):
         try:
             linhas = caminho.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -306,7 +306,16 @@ def main(argv: list[str] | None = None) -> int:
         print("estado: ERROR")
         print("motivo: .git comum não encontrado")
         return 2
-    eventos, erros = _ler_entrada(git_comum)
+    try:
+        eventos, erros = _ler_entrada(git_comum)
+    except FileNotFoundError as erro:
+        print("estado: ERROR")
+        print(f"fonte_ausente: {erro.args[0]}")
+        print(
+            "acao: execute na bancada que contém o caderno privado "
+            ".git/telemetria-dos-robos"
+        )
+        return 2
     resultado = auditar_eventos(eventos, raiz)
     if erros:
         print("estado: ERROR")

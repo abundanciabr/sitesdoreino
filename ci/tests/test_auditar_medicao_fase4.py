@@ -122,3 +122,16 @@ def test_revisoes_publicadas_sao_derivadas_dos_textos_versionados():
     assert resultado["revisao_analise"] == (
         "62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0"
     )
+
+
+def test_fonte_privada_ausente_reprova_com_caminho_e_acao(
+    tmp_path, monkeypatch, capsys
+):
+    git_comum = tmp_path / ".git"
+    git_comum.mkdir()
+    monkeypatch.setattr(auditor, "_git_comum", lambda raiz: git_comum)
+
+    assert auditor.main(["--local"]) == 2
+    saida = capsys.readouterr().out
+    assert f"fonte_ausente: {git_comum / 'telemetria-dos-robos'}" in saida
+    assert "execute na bancada que contém o caderno privado" in saida

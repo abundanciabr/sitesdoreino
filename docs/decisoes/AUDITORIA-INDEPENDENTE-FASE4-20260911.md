@@ -124,7 +124,7 @@ pares_declarados_ou_elegiveis: 0
 metricas_ausentes_nao_convertidas_em_zero: 54
 
 python -m pytest ci/tests/test_auditar_medicao_fase4.py -q
-4 passed in 0.76s
+5 passed in 0.21s
 
 git merge-base --is-ancestor f0c85e1ee23a1e27486f2b35b1ad5cf8b7e013ed 98fccb36d0550e18a2a6c6877c743fa2aa7eaee8
 exit 0
