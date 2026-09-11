@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import mapa_de_celulas
 import mapa_do_site
@@ -80,12 +80,29 @@ def texto_preenchido(valor: object) -> bool:
     return isinstance(valor, str) and bool(valor.strip())
 
 
-def validar_campos_concretos(unidade: dict, identificador: str) -> list[str]:
+def fonte_valida(fonte: object, raiz: Path) -> bool:
+    if not texto_preenchido(fonte):
+        return False
+    referencias = [referencia.strip() for referencia in fonte.replace(" e ", ",").split(",")]
+    if not referencias or len(set(referencias)) != len(referencias):
+        return False
+    for referencia in referencias:
+        caminho = PurePosixPath(referencia)
+        if (
+            not referencia
+            or "\\" in referencia
+            or caminho.is_absolute()
+            or any(parte in {".", ".."} for parte in caminho.parts)
+            or not (raiz.joinpath(*caminho.parts)).is_file()
+        ):
+            return False
+    return True
+
+
+def validar_campos_concretos(unidade: dict, identificador: str, raiz: Path) -> list[str]:
     erros = []
     fonte = unidade.get("fonte")
-    if not texto_preenchido(fonte) or not any(
-        f"{diretorio}/" in fonte for diretorio in ("services", "painel", "infra", "docs", "ci")
-    ):
+    if not fonte_valida(fonte, raiz):
         erros.append(f"{identificador}: fonte precisa listar referências concretas")
 
     aprova = unidade.get("aprova")
@@ -94,7 +111,8 @@ def validar_campos_concretos(unidade: dict, identificador: str) -> list[str]:
 
     autoridade = unidade.get("autoridade")
     destino = autoridade.partition("Escala para:")[2] if texto_preenchido(autoridade) else ""
-    if not autoridade.startswith("Decide:") or not texto_preenchido(destino) or not any(
+    decisao = autoridade.removeprefix("Decide:").partition("Escala para:")[0].strip() if texto_preenchido(autoridade) else ""
+    if not autoridade.startswith("Decide:") or not texto_preenchido(decisao) or not texto_preenchido(destino) or not any(
         nome.casefold() in destino.casefold() for nome in (*NOMES_DE_FUNCOES.values(), "mantenedor")
     ):
         erros.append(f"{identificador}: autoridade precisa declarar decisão e escalonamento")
@@ -164,7 +182,7 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
     for campo in UNIDADE_CAMPOS_OBRIGATORIOS:
         if not unidade.get(campo):
             erros.append(f"{identificador}: campo obrigatório ausente: {campo}")
-    erros.extend(validar_campos_concretos(unidade, identificador))
+    erros.extend(validar_campos_concretos(unidade, identificador, raiz))
     return erros
 
 
