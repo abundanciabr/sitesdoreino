@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-001-pausa-com-acao-humana-explicita",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Pausa com dependência humana passou a mostrar a ação exata",
+  detalhe: "A prestação de contas agora exige o bloco visual AÇÃO NECESSÁRIA DO MANTENEDOR, com Faça agora e Quando você fizer isso. Relatórios sem pendência continuam declarando que nada depende de você.",
+  autoridade: "sessao",
+  evidencia: "60 testes da prestação de contas passaram; dois testes de shell ficaram bloqueados porque o alias python não existe neste ambiente.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: null,
+  se_eu_nao_decidir: "A tela continuará exigindo que o mantenedor adivinhe como retomar uma etapa pausada.",
+  recomendacao: "Regularizar o acesso ao GitHub e pousar este PR pelo rito da pista.",
+  reversivel: true,
+  impacto: "alto"
+});})();

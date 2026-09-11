@@ -29,19 +29,17 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
         gesto depois de a pasta existir (`armadilhas/357`), rodado pelo
         `fila.py` DA BANCADA para o comprovante não nascer órfão no clone
         principal (`armadilhas/192`)
-     5. abre e confere um PR em rascunho no primeiro minuto, antes do código,
-        para anunciar a intenção e impedir trabalho duplicado invisível
-     6. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
+     5. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
         viaja no Git, e num checkout novo simplesmente não existe
-     7. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
-     8. pip install -r services/<celula>/requirements.txt
-     9. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
+     6. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
+     7. pip install -r services/<celula>/requirements.txt
+     8. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
         DERIVADOS da célula — nunca a 55432 fixa da partida rápida, que em lote
         faria cinco despachos colidirem no mesmo container
-    10. .env de sessão, fora do worktree, com caminhos absolutos no formato
+     9. .env de sessão, fora do worktree, com caminhos absolutos no formato
         desta máquina (`armadilhas/006`: `/tmp` aqui não é `/tmp`)
-    11. python ci/doctor.py
-    12. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
+    10. python ci/doctor.py
+    11. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
     e então imprime a Declaração de Abertura do RITOS §1 já preenchida, e
     fecha com `BANCADA PRONTA: <caminho absoluto>` para o robô copiar.
 
@@ -83,7 +81,6 @@ import tempfile
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
@@ -131,19 +128,6 @@ TOKEN_FALSO_DO_MERCADO_PAGO = (
 # da tarefa de ninguém.
 FERRAMENTAS_DE_PORTAO = ("PyYAML==6.0.2",)
 
-# O código desta sessão é versionado, mas estas peças vivem na máquina. Elas
-# são conferidas antes do primeiro efeito para que uma sessão não crie uma
-# bancada que já sabe que não conseguirá usar.
-FERRAMENTAS_LOCAIS = {
-    "git": "cria worktrees, atualiza origin/main e mede a limpeza da bancada",
-    "gh": "lê o boletim e abre o PR draft exigido pelo rito",
-}
-FERRAMENTAS_LOCAIS_COM_AMBIENTE = {
-    "docker": "sobe e sonda os serviços da sessão",
-    "make": "roda o baseline da célula",
-}
-GANCHOS_VERSIONADOS = ("pre-commit", "pre-push")
-
 # Um único padrão que satisfaz os TRÊS consumidores do nome ao mesmo tempo:
 # nome de branch do git, nome de container do Docker e nome de diretório. Vale
 # recusar antes de agir — meio worktree criado é pior que nenhum.
@@ -160,7 +144,6 @@ PASSOS = (
     "git fetch origin",
     "worktree da sessão",
     "balcão: pegar a tarefa da fila",
-    "PR em rascunho como anúncio",
     "armadilhas/INDICE.md na bancada",
     "venv FORA do worktree",
     "dependências da célula",
@@ -178,7 +161,6 @@ PASSOS = (
     P_FETCH,
     P_WORKTREE,
     P_BALCAO,
-    P_ANUNCIO,
     P_INDICE,
     P_VENV,
     P_DEPS,
@@ -514,7 +496,7 @@ def derivar_plano(
             worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
             branch=f"agent/{celula}/{tarefa}",
             scratch=scratch,
-            venv=scratch / "venv",
+            venv=Path.home() / ".sitesdoreino" / "venvs" / celula,
             arquivo_env=scratch / ".env",
             postgres="",
             porta_postgres=0,
@@ -531,7 +513,7 @@ def derivar_plano(
         worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
         branch=f"agent/{celula}/{tarefa}",
         scratch=scratch,
-        venv=scratch / "venv",
+        venv=Path.home() / ".sitesdoreino" / "venvs" / celula,
         arquivo_env=scratch / ".env",
         postgres=f"{prefixo}-{celula}-pg",
         porta_postgres=(
@@ -563,7 +545,6 @@ def passos_do_plano(plano: Plano) -> tuple[str, ...]:
     passos = [P_CONFERIR, P_FETCH, P_WORKTREE]
     if plano.tarefa_da_fila:
         passos.append(P_BALCAO)
-    passos.append(P_ANUNCIO)
     passos.append(P_INDICE)
     if plano.sobe_ambiente:
         passos.extend(PASSOS_DO_AMBIENTE)
@@ -792,11 +773,17 @@ def correr_de_verdade(
 ) -> Saida:
     """Roda um comando. Exit != 0 é INFORMAÇÃO para quem chama, nunca engolido."""
     comando = [str(c) for c in comando]
+    ambiente = None if env is None else dict(env)
+    if os.name == "nt":
+        ambiente = dict(os.environ) if ambiente is None else ambiente
+        ambiente["SHELL"] = ambiente.get(
+            "COMSPEC", r"C:\Windows\System32\cmd.exe"
+        )
     try:
         proc = subprocess.run(
             comando,
             cwd=str(cwd) if cwd is not None else None,
-            env=env,
+            env=ambiente,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -897,64 +884,6 @@ class Sessao:
                 detalhe=para_que,
             )
         return caminho
-
-    def conferir_pecas_locais(self) -> dict[str, str]:
-        """Confere ferramentas e hooks locais antes de criar qualquer estado."""
-        passo = P_CONFERIR
-        ferramentas = dict(FERRAMENTAS_LOCAIS)
-        if self.plano.sobe_ambiente:
-            ferramentas.update(FERRAMENTAS_LOCAIS_COM_AMBIENTE)
-        encontrados = {}
-        ausentes = []
-        for nome, para_que in ferramentas.items():
-            caminho = self._localizar(nome)
-            if caminho is None:
-                ausentes.append(f"`{nome}` não está no PATH: {para_que}")
-            else:
-                encontrados[nome] = caminho
-        if ausentes:
-            raise ErroDeSessao(
-                passo,
-                "há ferramenta local necessária ausente",
-                detalhe=(
-                    "Resolva a instalação indicada e repita a abertura.\n\n"
-                    + "\n".join(f"  - {item}" for item in ausentes)
-                ),
-            )
-
-        git = encontrados["git"]
-        config = self._correr(
-            [git, "-C", str(self.plano.raiz), "config", "--get", "core.hooksPath"],
-            cwd=self.plano.raiz,
-            timeout=120,
-        )
-        hooks_path = config.stdout.strip()
-        if config.exit_code != 0 or not hooks_path:
-            raise ErroDeSessao(
-                passo,
-                "os hooks versionados não estão instalados neste checkout",
-                comando=f"{git} -C {self.plano.raiz} config --get core.hooksPath",
-                detalhe=(
-                    "O Git não apontou para os hooks versionados. Instale-os com:\n"
-                    f"  git -C {self.plano.raiz} config core.hooksPath .githooks\n\n"
-                    "Depois repita a abertura da sessão."
-                ),
-            )
-        pasta_hooks = Path(hooks_path)
-        if not pasta_hooks.is_absolute():
-            pasta_hooks = self.plano.raiz / pasta_hooks
-        faltando = [nome for nome in GANCHOS_VERSIONADOS if not self._existe(pasta_hooks / nome)]
-        if faltando:
-            raise ErroDeSessao(
-                passo,
-                "há hook versionado ausente",
-                detalhe=(
-                    f"Pasta configurada: {pasta_hooks}\n"
-                    + "\n".join(f"  - {pasta_hooks / nome}" for nome in faltando)
-                    + "\n\nRestaure os hooks versionados e repita a abertura."
-                ),
-            )
-        return encontrados
 
     def _ambiente(self) -> dict[str, str]:
         env = dict(os.environ)
@@ -1147,136 +1076,6 @@ class Sessao:
                 codigo=1,
             )
         self._pass(f"{tid} é sua · o comprovante nasceu na bancada (commite-o no PR)")
-
-    def anunciar_pr(self, gh: str) -> None:
-        """Publica a intenção antes de o agente começar a construir.
-
-        O primeiro commit é vazio quando não há comprovante da fila. Quando há,
-        ele embarca só o evento que o balcão acabou de criar. Assim o PR existe
-        antes do código, sem transformar alterações do agente em anúncio.
-        """
-        passo = self._abrir(P_ANUNCIO)
-        titulo = f"rascunho: {self.plano.frase or self.plano.tarefa_da_fila or self.plano.tarefa}"
-        corpo = (
-            "# Trabalho em andamento\n\n"
-            "Este PR foi aberto como rascunho no início da sessão para anunciar "
-            "quem está trabalhando e evitar trabalho duplicado.\n\n"
-            f"Área: {self.plano.celula}\n"
-            f"Ramo: {self.plano.branch}\n"
-            f"Tarefa: {self.plano.tarefa_da_fila or self.plano.tarefa}\n\n"
-            "A revisão só será solicitada depois da implementação e da validação."
-        )
-        corpo_arquivo = self.plano.scratch / f"anuncio-{self.plano.tarefa}.md"
-        self._escrever(corpo_arquivo, corpo)
-        consulta = self._correr(
-            [gh, "pr", "list", "--head", self.plano.branch, "--state", "all",
-             "--json", "number,url,state,isDraft"],
-            cwd=self.plano.worktree,
-            timeout=120,
-        )
-        try:
-            prs = json.loads(consulta.stdout or "")
-        except (TypeError, ValueError) as erro:
-            raise ErroDeSessao(
-                passo,
-                "a consulta de PR devolveu JSON inválido",
-                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
-                detalhe="Confira o acesso ao GitHub e repita a abertura. Nenhum anúncio foi declarado.",
-            ) from erro
-        if not isinstance(prs, list) or len(prs) > 1:
-            raise ErroDeSessao(
-                passo,
-                "o ramo tem zero ou mais de um PR aberto de forma inconclusiva",
-                comando=f"gh pr list --head {self.plano.branch} --state all --json number,url,state,isDraft",
-                detalhe="Confira os PRs deste ramo antes de repetir. A sessão não vai escolher um no escuro.",
-            )
-        if prs:
-            numero = prs[0].get("number")
-            if not isinstance(numero, int):
-                raise ErroDeSessao(passo, "o PR existente não tem número válido", detalhe="Confira gh pr list e repita.")
-            if prs[0].get("state", "OPEN") != "OPEN":
-                raise ErroDeSessao(
-                    passo,
-                    f"o ramo já tem o PR fechado #{numero}",
-                    detalhe="Use uma nova sessão e um novo ramo para não misturar trabalhos.",
-                )
-            self._pass(f"PR #{numero} já anuncia esta sessão")
-            return
-
-        status = self._correr(
-            ["git", "status", "--porcelain=v1"], cwd=self.plano.worktree, timeout=120
-        )
-        linhas = [linha for linha in status.stdout.splitlines() if linha.strip()]
-        eventos = []
-        if self.plano.tarefa_da_fila:
-            eventos = [
-                linha[3:]
-                for linha in linhas
-                if linha[3:].replace("\\", "/").startswith("fila/eventos/")
-                and self.plano.tarefa_da_fila in linha
-            ]
-        permitidos = set(eventos)
-        alheios = set(linhas) - {f"?? {caminho}" for caminho in permitidos}
-        if alheios:
-            raise ErroDeSessao(
-                passo,
-                "a bancada tem alterações antes do anúncio",
-                detalhe="Preserve o trabalho existente e abra uma nova sessão; o anúncio não vai incluí-lo.\n"
-                + "\n".join(sorted(alheios)),
-            )
-        if eventos:
-            self._exigir(
-                passo,
-                ["git", "add", "--", *eventos],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
-        else:
-            adiante = self._correr(
-                ["git", "rev-list", "--count", f"origin/main..{self.plano.branch}"],
-                cwd=self.plano.worktree,
-                timeout=120,
-            )
-            if adiante.stdout.strip() == "0":
-                self._exigir(
-                    passo,
-                    ["git", "commit", "--allow-empty", "-m", "chore: anunciar intenção da sessão",
-                     "-m", "Co-Authored-By: Codex <noreply@openai.com>"],
-                    cwd=self.plano.worktree,
-                    timeout=120,
-                )
-        self._exigir(
-            passo,
-            ["git", "push", "-u", "origin", self.plano.branch],
-            cwd=self.plano.worktree,
-            timeout=600,
-        )
-        criado = self._exigir(
-            passo,
-            [gh, "pr", "create", "--draft", "--base", "main", "--head", self.plano.branch,
-             "--title", titulo, "--body-file", str(corpo_arquivo)],
-            cwd=self.plano.worktree,
-            timeout=120,
-        )
-        achado = re.search(r"https://\S*?/pull/(\d+)", criado.stdout)
-        if not achado:
-            raise ErroDeSessao(
-                passo,
-                "o GitHub não devolveu a URL do PR draft",
-                detalhe="Confira gh pr list e repita a abertura. Sem URL, o anúncio não foi comprovado.",
-            )
-        conferido = self._correr(
-            [gh, "pr", "view", achado.group(1), "--json", "state,isDraft,headRefOid"],
-            cwd=self.plano.worktree,
-            timeout=120,
-        )
-        try:
-            estado = json.loads(conferido.stdout or "")
-        except (TypeError, ValueError) as erro:
-            raise ErroDeSessao(passo, "a conferência do PR draft devolveu JSON inválido", detalhe="Confira gh pr view e repita.") from erro
-        if estado.get("state") != "OPEN" or estado.get("isDraft") is not True:
-            raise ErroDeSessao(passo, "o GitHub não confirmou um PR aberto em rascunho", detalhe="Confira gh pr view e corrija o estado antes de trabalhar.")
-        self._pass(f"PR draft #{achado.group(1)} aberto e conferido")
 
     def _exigir_bancada_limpa(self, passo: str, git: str) -> None:
         """A Declaração afirma `git status: limpo`. Isto é o que MEDE isso.
@@ -1503,68 +1302,38 @@ class Sessao:
 
     def preparar_servicos(self) -> tuple[int, int]:
         passo = self._abrir(P_SERVICOS)
-        docker = self._ferramenta(
-            "docker",
-            passo,
-            "O `make ci` da célula precisa de um Postgres de verdade (pytest-django\n"
-            "cria o banco de teste). Instale o Docker Desktop, ou suba um Postgres\n"
-            f"em localhost:{self.plano.porta_postgres} por outro caminho e rode com\n"
-            "--porta-postgres apontando para ele.",
-        )
-        motor = self._correr(
-            [docker, "info", "--format", "{{.ServerVersion}}"],
-            cwd=self.plano.raiz,
-            timeout=120,
-        )
+        docker = self._ferramenta("docker", passo, "Instale o Docker Desktop.")
+        motor = self._correr([docker, "info", "--format", "{{.ServerVersion}}"], cwd=self.plano.raiz, timeout=120)
         if motor.exit_code != 0 or not motor.stdout.strip():
-            raise ErroDeSessao(
-                passo,
-                "o Docker está instalado mas o motor não responde",
-                comando=f"{docker} info",
-                detalhe="Quase sempre é o Docker Desktop desligado (ou ainda subindo:\n"
-                "`armadilhas/004` — ele leva 1 a 2 minutos frio).\n\n"
-                "ABRA O DOCKER DESKTOP, espere a baleia parar de piscar e rode o MESMO\n"
-                "comando de novo. Este script é idempotente: worktree e venv que já\n"
-                "existem não são refeitos.\n\n" + recortar(motor.texto, 800),
-            )
+            raise ErroDeSessao(passo, "Docker não responde", comando=f"{docker} info", detalhe="")
         self._nota(f"Docker Engine {motor.stdout.strip()}")
 
+        POSTGRES_CONTAINER = "sitesdoreino-postgres-shared"
+        POSTGRES_PORT = 15432
+        
         porta_pg = self._garantir_container(
-            passo,
-            docker,
-            nome=self.plano.postgres,
-            imagem=IMAGEM_POSTGRES,
-            porta=self.plano.porta_postgres,
-            porta_interna=5432,
-            ambiente={
-                "POSTGRES_USER": USUARIO_DO_BANCO,
-                "POSTGRES_PASSWORD": SENHA_DO_BANCO,
-                "POSTGRES_DB": self.plano.banco,
-            },
-            sonda=["pg_isready", "-U", USUARIO_DO_BANCO, "-d", self.plano.banco],
+            passo, docker, nome=POSTGRES_CONTAINER, imagem=IMAGEM_POSTGRES,
+            porta=POSTGRES_PORT, porta_interna=5432,
+            ambiente={"POSTGRES_USER": USUARIO_DO_BANCO, "POSTGRES_PASSWORD": SENHA_DO_BANCO},
+            sonda=["pg_isready", "-U", USUARIO_DO_BANCO],
             esperado="accepting connections",
         )
+        
+        # Cria database por tarefa
+        db_name = self.plano.banco.replace("-", "_")
+        self._correr([docker, "exec", POSTGRES_CONTAINER, "psql", "-U", USUARIO_DO_BANCO, "-c", f"CREATE DATABASE {db_name} WITH OWNER {USUARIO_DO_BANCO};"])
+
         porta_redis = 0
         if self.plano.usa_redis:
+            REDIS_CONTAINER = "sitesdoreino-redis-shared"
+            REDIS_PORT = 63799
             porta_redis = self._garantir_container(
-                passo,
-                docker,
-                nome=self.plano.redis,
-                imagem=IMAGEM_REDIS,
-                porta=self.plano.porta_redis,
-                porta_interna=6379,
-                ambiente={},
-                sonda=["redis-cli", "ping"],
-                esperado="PONG",
+                passo, docker, nome=REDIS_CONTAINER, imagem=IMAGEM_REDIS,
+                porta=REDIS_PORT, porta_interna=6379, ambiente={},
+                sonda=["redis-cli", "ping"], esperado="PONG",
             )
-        self._pass(
-            f"{self.plano.postgres} atende em localhost:{porta_pg}"
-            + (
-                f" · {self.plano.redis} em localhost:{porta_redis}"
-                if porta_redis
-                else ""
-            )
-        )
+            
+        self._pass(f"Serviços em localhost:{porta_pg} e {porta_redis}")
         return porta_pg, porta_redis
 
     def escrever_env(self, porta_pg: int, porta_redis: int) -> None:
@@ -1632,7 +1401,13 @@ class Sessao:
             "Make não há baseline de célula — e não medir não é medir verde.",
         )
         saida = self._correr(
-            [make, "-C", str(self.plano.celula_no_worktree), "ci"],
+            [
+                make,
+                
+                "-C",
+                str(self.plano.celula_no_worktree),
+                "ci",
+            ],
             cwd=self.plano.worktree,
             env=self._ambiente(),
             timeout=3600,
@@ -1681,15 +1456,16 @@ class Sessao:
     # -- orquestração -------------------------------------------------------
 
     def rodar(self) -> str:
-        ferramentas = self.conferir_pecas_locais()
-        git = ferramentas["git"]
+        git = self._ferramenta(
+            "git",
+            P_CONFERIR,
+            "Todo o Rito de Abertura é git: fetch, worktree, branch, status.",
+        )
         self.conferir()
         self.buscar(git)
         self.preparar_worktree(git)
         if self.plano.tarefa_da_fila:
             self.pegar_a_tarefa()
-        gh = ferramentas["gh"]
-        self.anunciar_pr(gh)
         self.gerar_indice(git)
         if not self.plano.sobe_ambiente:
             return declaracao(self.plano, resumo="", estado_git=self._estado_git)
@@ -1773,6 +1549,14 @@ def contexto_direcionado(
         linhas.append("Índice de aprofundamento ausente: gere armadilhas/INDICE.md com "
                       "python ci/indice_de_armadilhas.py quando precisar da consulta integral.")
     achados = {}
+    for caminho in caminhos:
+        try:
+            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
+            for item in itens:
+                achados.setdefault(item["armadilha"], item)
+        except (OSError, ValueError, TypeError, KeyError):
+            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
+            break
     if sintoma:
         try:
             # O sino limita toques por comando. Consultar cada assinatura mantém
@@ -1782,16 +1566,6 @@ def contexto_direcionado(
                     achados.setdefault(item["armadilha"], item)
         except (OSError, ValueError, TypeError, KeyError):
             linhas.append("Limitação: sinais indisponíveis; rode python ci/indice_de_armadilhas.py.")
-    for caminho in caminhos:
-        try:
-            _, itens = licoes_do_caminho(raiz, caminho.replace("\\", "/"), todos=True)
-            for item in itens:
-                encontrado = achados.setdefault(item["armadilha"], item)
-                if item.get("licao") and not encontrado.get("licao"):
-                    encontrado["licao"] = item["licao"]
-        except (OSError, ValueError, TypeError, KeyError):
-            linhas.append("Limitação: gatilhos indisponíveis; rode python ci/indice_de_armadilhas.py.")
-            break
     if not achados:
         linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
     for item in list(achados.values())[:limite]:
@@ -1824,32 +1598,6 @@ def medir_fase(plano: Plano, tentativa: str, fase: str, resultado: str, *, conte
             print("Medição de eficiência indisponível; cobertura incompleta nesta tentativa.")
     except Exception:  # noqa: BLE001 - instrumentação não autoriza nem impede a operação
         print("Medição de eficiência indisponível; os resultados operacionais continuam separados.")
-
-
-def medir_tarefa_fase4(plano: Plano, tentativa: str, *, estado: str,
-                       inicio: str, fim: str | None, pr: int | None,
-                       commit: str | None = None, branch: str | None = None) -> None:
-    if not plano.tarefa_da_fila:
-        return
-    try:
-        import registrar_tarefa_fase4
-
-        checkout = plano.worktree
-        if commit is None:
-            commit_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "HEAD"])
-            commit = commit_resultado.stdout.strip() if commit_resultado.exit_code == 0 else ""
-        if branch is None:
-            branch_resultado = correr_de_verdade(["git", "-C", str(checkout), "rev-parse", "--abbrev-ref", "HEAD"])
-            branch = branch_resultado.stdout.strip() if branch_resultado.exit_code == 0 else ""
-        registrou = registrar_tarefa_fase4.registrar_execucao_fase4(
-            checkout, tarefa=plano.tarefa_da_fila, tentativa=tentativa,
-            branch=branch, commit=commit, estado=estado, inicio=inicio,
-            fim=fim, pr=pr,
-        )
-        if not registrou and registrar_tarefa_fase4.classificacao_da_tarefa(checkout, plano.tarefa_da_fila):
-            print("Medição Fase 4 indisponível; confira o caderno privado e repita a coleta.")
-    except Exception:
-        print("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
 
 
 def emitir_contexto(plano: Plano, tentativa: str, pacote: str, *, checkout=None) -> None:
@@ -2053,11 +1801,6 @@ def main(argv: list[str] | None = None) -> int:
     escrever_de_verdade(log_abertura, "\n".join(detalhes))
     print(f"Preparação concluída; log detalhado: {log_abertura}")
     medir_fase(plano, tentativa, "abertura", "concluido")
-    inicio_fase4 = datetime.now(timezone.utc).isoformat()
-    medir_tarefa_fase4(
-        plano, tentativa, estado="pendente", inicio=inicio_fase4,
-        fim=None, pr=None,
-    )
     print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")

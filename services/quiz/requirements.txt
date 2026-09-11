@@ -8,3 +8,5 @@ pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0
 jsonschema==4.23.0
+
+pytest-json-report

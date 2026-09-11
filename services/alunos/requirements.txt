@@ -7,7 +7,6 @@ redis==5.1.1
 # as MESMAS de sugestoes/checkout/quiz/mensageria de propósito: um relay por
 # célula em versão própria seria N comportamentos de biblioteca para o mesmo
 # padrão (`armadilhas/071` mostra o preço de divergir).
-services/alunos/vendor/outbox_relay-0.3.1-py3-none-any.whl
 huey==2.5.1
 # A única conversa desta célula com outra: `findPersonByEmail` na identidade,
 # para endereçar a carta. Timeout explícito, fail-aberto.
@@ -27,3 +26,5 @@ respx==0.23.1
 jsonschema==4.23.0
 black==24.10.0
 PyYAML==6.0.2
+
+pytest-json-report
