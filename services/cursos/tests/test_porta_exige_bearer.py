@@ -8,7 +8,7 @@ mantenedor) passa a responder 200 para o mundo, sem mudar uma linha de
 `infra/` e sem nada no roteador para segurar. É por isso que este arquivo é o
 guarda, e não a topologia.
 
-Três coisas ficam provadas, para cada uma das dezessete operações: sem token é 401,
+Três coisas ficam provadas, para cada uma das vinte operações: sem token é 401,
 com token errado é 401, e com o conjunto de tokens VAZIO (o env ausente) é 401
 mesmo com o token certo. E uma quarta, sobre o próprio guarda: a lista
 percorrida aqui é a lista INTEIRA da porta, medida na fonte; uma operação nova
@@ -125,17 +125,23 @@ CORPO_DA_ESTRUTURA = {
     ]
 }
 
-# As dezenove, uma a uma: (operationId, método, caminho, corpo). Os caminhos são
+# As vinte, uma a uma: (operationId, método, caminho, corpo). Os caminhos são
 # os reais, com `site_id`, curso, parte e corpo válido, para que o 401 prove o
 # cadeado e nunca um 404 ou 422 disfarçado. As quatro que sabem de curso entram
 # aqui pelo mesmo motivo que as outras: quem passa pela borda pública é a
 # ROTA, e uma rota nova sem cadeado abre o texto das aulas para o mundo.
-AS_DEZESSETE = [
+AS_VINTE = [
     ("listStandaloneLessons", "get", f"/aulas-avulsas?site_id={SITE}", None),
     (
         "createStandaloneLesson",
         "post",
         f"/aulas-avulsas?site_id={SITE}",
+        CORPO_DA_AULA_AVULSA,
+    ),
+    (
+        "updateStandaloneLesson",
+        "put",
+        f"/aulas-avulsas/aula-inexistente?site_id={SITE}",
         CORPO_DA_AULA_AVULSA,
     ),
     ("listSiteLessons", "get", f"/aulas?site_id={SITE}", None),
@@ -186,7 +192,7 @@ AS_DEZESSETE = [
         CORPO_DA_ESTRUTURA,
     ),
 ]
-IDS = [operacao for operacao, *_ in AS_DEZESSETE]
+IDS = [operacao for operacao, *_ in AS_VINTE]
 
 
 @pytest.fixture(autouse=True)
@@ -207,24 +213,18 @@ def chamar(metodo: str, caminho: str, corpo=None, token: str | None = TOKEN):
     )
 
 
-@pytest.mark.parametrize(
-    ("operacao", "metodo", "caminho", "corpo"), AS_DEZESSETE, ids=IDS
-)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_VINTE, ids=IDS)
 def test_sem_token_e_401(operacao, metodo, caminho, corpo):
     assert chamar(metodo, caminho, corpo, token=None).status_code == 401
 
 
-@pytest.mark.parametrize(
-    ("operacao", "metodo", "caminho", "corpo"), AS_DEZESSETE, ids=IDS
-)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_VINTE, ids=IDS)
 def test_token_errado_e_401(operacao, metodo, caminho, corpo):
     resposta = chamar(metodo, caminho, corpo, token="token-de-outra-celula")
     assert resposta.status_code == 401
 
 
-@pytest.mark.parametrize(
-    ("operacao", "metodo", "caminho", "corpo"), AS_DEZESSETE, ids=IDS
-)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_VINTE, ids=IDS)
 def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     settings, operacao, metodo, caminho, corpo
 ):
@@ -237,14 +237,17 @@ def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     assert chamar(metodo, caminho, corpo).status_code == 401
 
 
-@pytest.mark.parametrize(
-    ("operacao", "metodo", "caminho", "corpo"), AS_DEZESSETE, ids=IDS
-)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_VINTE, ids=IDS)
 def test_o_token_certo_abre_a_porta(esqueleto, operacao, metodo, caminho, corpo):
     """O cenário tem dente: com o esqueleto semeado e o token do par, as
-    dezessete respondem 200 (a que cria, 201). Sem isto, um caminho digitado
+    vinte respondem 200 (a que cria, 201). Sem isto, um caminho digitado
     errado daria 404 sem token e 401 com token errado, e os três guardas acima
     ficariam verdes medindo uma rota que não existe."""
+    if operacao == "updateStandaloneLesson":
+        criada = chamar(
+            "post", f"/aulas-avulsas?site_id={SITE}", CORPO_DA_AULA_AVULSA
+        ).json()
+        caminho = f"/aulas-avulsas/{criada['slug']}?site_id={SITE}"
     esperado = 201 if operacao in ("createCourse", "createStandaloneLesson") else 200
     assert chamar(metodo, caminho, corpo).status_code == esperado
 
