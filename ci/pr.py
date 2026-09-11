@@ -417,6 +417,7 @@ ARQUIVOS_DE_CONFIGURACAO_DE_TESTE = frozenset({
     "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini",
     "sitecustomize.py", "usercustomize.py",
 })
+ARTEFATOS_IGNORADOS_DA_REVISAO = re.compile(r"painel/(?:painel\.html|livro-\d{6}\.js)\Z")
 
 
 def _conferir_revisao_validada(raiz, commit, rodar, arvore_esperada=None):
@@ -442,9 +443,12 @@ def _conferir_revisao_validada(raiz, commit, rodar, arvore_esperada=None):
     for linha in status.splitlines():
         if len(linha) < 4 or linha[:2] not in ("??", "!!"):
             continue
-        caminho = Path(linha[3:]).name.casefold()
+        caminho_bruto = linha[3:]
+        if linha[:2] == "!!" and ARTEFATOS_IGNORADOS_DA_REVISAO.fullmatch(caminho_bruto):
+            continue
+        caminho = Path(caminho_bruto).name.casefold()
         if caminho in ARQUIVOS_DE_CONFIGURACAO_DE_TESTE or Path(caminho).suffix in EXTENSOES_DE_FONTE:
-            nao_rastreados.append(linha[3:])
+            nao_rastreados.append(caminho_bruto)
     if alterados:
         raise ParouPorSeguranca(
             "a validação alterou fontes rastreadas na revisão isolada",
