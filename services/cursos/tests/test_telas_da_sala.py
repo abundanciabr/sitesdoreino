@@ -29,6 +29,7 @@ import re
 import httpx
 import pytest
 from django.urls import clear_script_prefix, reverse, set_script_prefix
+from django.utils import timezone
 
 from apps.core import menu as motor_do_menu
 from apps.cursos import progresso as portas
@@ -85,10 +86,44 @@ def test_a_porta_aberta_em_rascunho_e_dita_como_em_preparo(aluna, client):
     assert 'href="/E00"' not in corpo
 
 
+def test_o_proximo_passo_ignora_rascunho_e_destaca_aula_publicada_disponivel(
+    aluna, esqueleto, client
+):
+    primeira = publicar(esqueleto.aulas.get(numero="E00"))
+    rascunho = esqueleto.aulas.get(numero="E01")
+    publicada = publicar(esqueleto.aulas.get(numero="E02"))
+    publicar(esqueleto.aulas.get(numero="E03"))
+
+    abrir(client, reverse("curso", args=["profissional"]))
+    pessoa = Progresso.objects.get(aula=primeira).pessoa
+    Progresso.objects.filter(pessoa=pessoa, aula=primeira).update(
+        estado=Progresso.Estado.CONCLUIDA, concluida_em=timezone.now()
+    )
+    Progresso.objects.create(
+        pessoa=pessoa, aula=rascunho, estado=Progresso.Estado.DISPONIVEL
+    )
+    Progresso.objects.create(
+        pessoa=pessoa, aula=publicada, estado=Progresso.Estado.DISPONIVEL
+    )
+
+    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
+    proximo_passo = corpo.split('<section class="proxima-porta">', 1)[1].split(
+        "</section>", 1
+    )[0]
+    assert rascunho.titulo_exibido not in proximo_passo
+    assert publicada.titulo_exibido in proximo_passo
+    assert ">Em preparo<" in corpo
+    assert "A escola está preparando esta aula." in corpo
+    assert "Conclua a aula anterior para abrir esta porta." in corpo
+    assert "Aula publicada e disponível para você." in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E01"]) not in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E03"]) not in corpo
+
+
 def test_o_mapa_mostra_o_estado_de_cada_porta(aluna, aula_publicada, client):
     corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
     assert ">Disponível<" in corpo
-    assert corpo.count(">Trancada<") == 33
+    assert corpo.count(">Em preparo<") == 33
 
 
 # ---------------------------------------------------------------- 2. a aula
