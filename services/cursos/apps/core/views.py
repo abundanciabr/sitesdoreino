@@ -61,6 +61,7 @@ from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
+    AulaAvulsa,
     Curso,
     Envio,
     Laudo,
@@ -693,8 +694,54 @@ def _embutir(url: str) -> str | None:
 
 
 def _video(aula: Aula) -> dict:
-    url = (aula.video_url or "").strip()
+    return _video_por_url(aula.video_url)
+
+
+def _video_por_url(video_url: str) -> dict:
+    url = (video_url or "").strip()
     return {"link": url, "embutido": _embutir(url) if url else None}
+
+
+def _porta_de_aulas_avulsas(request):
+    """A matrícula ativa DESTE site abre a biblioteca, sem criar progresso."""
+    ator = quem_e(request)
+    if not ator.autenticado:
+        return None, _recusar(request, "entrar", status=200)
+    if site_atual() is None or not ator.matricula_conferida:
+        return None, _recusar(request, "sem-resposta", status=403)
+    if not ator.produtos_matriculados:
+        return None, _recusar(request, "sem-matricula", status=403)
+    return ator, None
+
+
+@require_GET
+def aulas_avulsas(request):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    return render(
+        request,
+        "cursos/aulas_avulsas.html",
+        {"aulas": AulaAvulsa.objects.filter(site_id=site_atual()), **_de_fora()},
+    )
+
+
+@require_GET
+def aula_avulsa(request, slug: str):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    aula = get_object_or_404(AulaAvulsa, site_id=site_atual(), slug=slug)
+    return render(
+        request,
+        "cursos/aula_avulsa.html",
+        {
+            "aula": aula,
+            "descricao": para_html(aula.descricao) if aula.descricao.strip() else "",
+            "video": _video_por_url(aula.video_url),
+            **_de_fora(),
+        },
+    )
 
 
 def _tempo(segundos: int) -> str:
