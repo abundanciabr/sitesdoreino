@@ -51,10 +51,12 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
         "const": "aula_avulsa_nao_encontrada",
         "type": "string",
     }
+    assert corpo_404["schema"]["properties"]["o_que_fazer"]["minLength"] == 1
     assert corpo_422["schema"]["properties"]["erro"]["enum"] == [
         "corpo_invalido",
         "slug_invalido",
     ]
+    assert corpo_422["schema"]["properties"]["o_que_fazer"]["minLength"] == 1
     assert exemplos_404["aula_nao_encontrada"]["value"] == {
         "erro": "aula_avulsa_nao_encontrada",
         "o_que_fazer": "Confira o endereço da aula ou escolha outra aula publicada.",
