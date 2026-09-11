@@ -450,8 +450,48 @@ paths:
                     publicada_em: '2026-09-11T10:58:49.598Z'
         '404':
           description: Aula avulsa inexistente para este site e slug do caminho
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                properties:
+                  erro:
+                    const: aula_avulsa_nao_encontrada
+                    type: string
+                  o_que_fazer:
+                    type: string
+                required:
+                - erro
+                - o_que_fazer
+                type: object
+              examples:
+                aula_nao_encontrada:
+                  value:
+                    erro: aula_avulsa_nao_encontrada
+                    o_que_fazer: Confira o endereço da aula ou escolha outra aula publicada.
         '422':
           description: Corpo invalido, inclusive slug fora do formato permitido
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                properties:
+                  erro:
+                    enum:
+                    - corpo_invalido
+                    - slug_invalido
+                    type: string
+                  o_que_fazer:
+                    type: string
+                required:
+                - erro
+                - o_que_fazer
+                type: object
+              examples:
+                slug_invalido:
+                  value:
+                    erro: slug_invalido
+                    o_que_fazer: Use letras minúsculas sem acentos, números e hífens.
       description: 'O gesto Editar aula avulsa do Admin. O `slug` do caminho identifica
 
         a aula existente. O corpo recebe titulo, video_url, descricao e, opcionalmente,
@@ -482,11 +522,26 @@ paths:
         desconhecido, slug fora do formato, titulo ou video_url vazios, URL que
 
         nao seja HTTPS incorporavel do YouTube e descricao acima de 5.000 caracteres.'
+      x-reserva-de-slug:
+        chave:
+        - site_id
+        - slug
+        atomica: true
+        exclui_aula_editada: true
+        em_colisao: menor_sufixo_numerico_livre
+        repete_ate_reservar: true
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AulaAvulsaParaEditarSchema'
+            examples:
+              preservar_endereco:
+                summary: Sem slug, a aula conserva o endereço atual
+                value:
+                  titulo: Aula de testes
+                  video_url: https://www.youtube.com/embed/abcdefghijk
+                  descricao: Primeira aula de testes
         required: true
   /aulas:
     get:

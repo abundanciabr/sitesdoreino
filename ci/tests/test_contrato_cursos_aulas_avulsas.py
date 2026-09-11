@@ -17,23 +17,52 @@ def contrato() -> dict:
 def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() -> None:
     documento = contrato()
     operacao = documento["paths"]["/aulas-avulsas/{slug}"]["put"]
-    corpo = operacao["requestBody"]["content"]["application/json"]["schema"]
+    requisicao = operacao["requestBody"]["content"]["application/json"]
+    corpo = requisicao["schema"]
     esquema = documento["components"]["schemas"][
         corpo["$ref"].removeprefix("#/components/schemas/")
     ]
     respostas = operacao["responses"]
     exemplos = respostas["200"]["content"]["application/json"]["examples"]
+    corpo_404 = respostas["404"]["content"]["application/json"]
+    corpo_422 = respostas["422"]["content"]["application/json"]
+    exemplos_404 = corpo_404["examples"]
+    exemplos_422 = corpo_422["examples"]
 
     assert corpo["$ref"] == "#/components/schemas/AulaAvulsaParaEditarSchema"
     assert esquema["additionalProperties"] is False
     assert esquema["properties"]["slug"] == {"pattern": PADRAO_SLUG, "type": "string"}
     assert "slug" not in esquema["required"]
+    assert "slug" not in requisicao["examples"]["preservar_endereco"]["value"]
+    assert operacao["x-reserva-de-slug"] == {
+        "chave": ["site_id", "slug"],
+        "atomica": True,
+        "exclui_aula_editada": True,
+        "em_colisao": "menor_sufixo_numerico_livre",
+        "repete_ate_reservar": True,
+    }
     assert respostas["200"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/AulaAvulsaSchema"
     }
     assert exemplos["slug_identico"]["value"]["slug"] == "aula-de-testes"
     assert exemplos["slug_ocupado"]["value"]["slug"] == "aula-de-testes-2"
     assert exemplos["menor_sufixo_livre"]["value"]["slug"] == "aula-de-testes-3"
+    assert corpo_404["schema"]["properties"]["erro"] == {
+        "const": "aula_avulsa_nao_encontrada",
+        "type": "string",
+    }
+    assert corpo_422["schema"]["properties"]["erro"]["enum"] == [
+        "corpo_invalido",
+        "slug_invalido",
+    ]
+    assert exemplos_404["aula_nao_encontrada"]["value"] == {
+        "erro": "aula_avulsa_nao_encontrada",
+        "o_que_fazer": "Confira o endereço da aula ou escolha outra aula publicada.",
+    }
+    assert exemplos_422["slug_invalido"]["value"] == {
+        "erro": "slug_invalido",
+        "o_que_fazer": "Use letras minúsculas sem acentos, números e hífens.",
+    }
     assert (
         respostas["404"]["description"]
         == "Aula avulsa inexistente para este site e slug do caminho"
