@@ -127,12 +127,15 @@ Guardas: `tests/test_porta_de_maquina.py` e `tests/test_porta_exige_bearer.py`.
 from __future__ import annotations
 
 import enum
+import re
 from datetime import datetime
 from typing import Annotated, Any, Literal
+from urllib.parse import urlsplit
 
 from django.db import IntegrityError, transaction
 from django.db.models import F, Q
 from django.utils import timezone
+from django.utils.text import slugify
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
@@ -140,6 +143,7 @@ from pydantic import ConfigDict, model_validator
 from apps.cursos import coerencia, enderecos, fidelidade
 from apps.cursos.models import PADRAO_DO_NUMERO_DE_AULA, PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
+from apps.cursos.models import AulaAvulsa as AulaAvulsaModel
 from apps.cursos.models import Bloco as BlocoModel
 from apps.cursos.models import Curso as CursoModel
 from apps.cursos.models import Instrumento as InstrumentoModel
@@ -250,6 +254,23 @@ class AulaSchema(AulaDaListaSchema):
     video_url: str
     pecas: list[PecaSchema]
     pausas: list[PausaSchema]
+
+
+class AulaAvulsaSchema(Schema):
+    """A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
+
+    `slug` e gerado pelo servico no instante da criacao e nunca muda, para
+    que um link enviado em grupo continue levando para a mesma aula. `estado`
+    sempre e `publicada`: esta porta nao oferece rascunho, edicao nem uma
+    segunda publicacao.
+    """
+
+    titulo: str
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    video_url: str
+    descricao: str
+    estado: Literal["publicada"]
+    publicada_em: datetime
 
 
 class DefeitoSchema(Schema):
@@ -388,6 +409,20 @@ class AulaParaGravarSchema(Schema):
                 f"pausa com ordem repetida: {', '.join(map(str, repetidas))}"
             )
         return self
+
+
+class AulaAvulsaParaCriarSchema(Schema):
+    """O unico corpo que cria uma aula avulsa. O Admin oferece os tres
+    campos ao mantenedor, mas so o servico gera o endereco pelo titulo.
+    Descricao aceita texto vazio, para uma explicacao curta que so precisa
+    do titulo e do video, mas o campo sempre viaja no corpo.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    titulo: str = Field(min_length=1, max_length=CURTO)
+    video_url: str = Field(min_length=1, max_length=URL)
+    descricao: str = Field(max_length=5000)
 
 
 class BlocoParaGravarSchema(Schema):
@@ -794,6 +829,116 @@ def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # AS OPERAÇÕES
 # ---------------------------------------------------------------------------
+
+_ID_DO_YOUTUBE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def _youtube_incorporavel(url: str) -> bool:
+    """Só URL HTTPS do YouTube que a página pública pode incorporar."""
+    partes = urlsplit(url)
+    if partes.scheme != "https":
+        return False
+    host = partes.netloc.lower().removeprefix("www.").removeprefix("m.")
+    segmentos = [segmento for segmento in partes.path.split("/") if segmento]
+    if host == "youtu.be" and segmentos:
+        video_id = segmentos[0]
+    elif host == "youtube.com" and segmentos:
+        if segmentos[0] == "watch":
+            video_id = dict(
+                par.split("=", 1) for par in partes.query.split("&") if "=" in par
+            ).get("v", "")
+        elif segmentos[0] in ("embed", "shorts") and len(segmentos) > 1:
+            video_id = segmentos[1]
+        else:
+            return False
+    else:
+        return False
+    return bool(_ID_DO_YOUTUBE.fullmatch(video_id))
+
+
+def _aula_avulsa(aula: AulaAvulsaModel) -> dict[str, Any]:
+    return {
+        "titulo": aula.titulo,
+        "slug": aula.slug,
+        "video_url": aula.video_url,
+        "descricao": aula.descricao,
+        "estado": aula.estado,
+        "publicada_em": aula.publicada_em,
+    }
+
+
+def _proximo_slug(titulo: str, sufixo: int) -> str:
+    base = slugify(titulo) or "aula"
+    cauda = "" if sufixo == 1 else f"-{sufixo}"
+    return f"{base[: 140 - len(cauda)].rstrip('-') or 'aula'}{cauda}"
+
+
+@router.get(
+    "/aulas-avulsas",
+    response=list[AulaAvulsaSchema],
+    operation_id="listStandaloneLessons",
+    summary="As aulas avulsas publicadas de um site, da mais recente para a mais antiga",
+    description=(
+        "A lista que o Admin consulta para reencontrar e compartilhar uma\n"
+        "aula avulsa. Ela so devolve aulas publicadas do mesmo `site_id`, da mais\n"
+        "recente para a mais antiga. Site sem aula avulsa responde lista vazia,\n"
+        "porque esse e o primeiro uso normal.\n"
+        "\n"
+        "Aula avulsa nao pertence a curso, bloco, parte, progresso ou avaliacao.\n"
+        "Ela existe para responder uma duvida em grupo com um endereco proprio."
+    ),
+)
+def list_standalone_lessons(request, site_id: str):
+    return [
+        _aula_avulsa(aula) for aula in AulaAvulsaModel.objects.filter(site_id=site_id)
+    ]
+
+
+@router.post(
+    "/aulas-avulsas",
+    response={201: AulaAvulsaSchema},
+    operation_id="createStandaloneLesson",
+    summary="Cria e publica uma aula avulsa com endereço próprio",
+    description=(
+        "O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,\n"
+        "video_url e descricao. O servico gera o slug pelo titulo e o estabiliza\n"
+        "na criacao: se um titulo igual ja tiver ocupado o endereco naquele site,\n"
+        "ele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.\n"
+        "\n"
+        "A aula nasce publicada, com estado `publicada`, e pode ser lida na hora\n"
+        "pelo endereco devolvido. Nao existe rascunho, edicao ou gesto posterior\n"
+        "de publicacao nesta porta.\n"
+        "\n"
+        "422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\n"
+        "do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\n"
+        "corpo tiver uma chave desconhecida."
+    ),
+)
+def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriarSchema):
+    titulo = payload.titulo.strip()
+    if not titulo:
+        raise HttpError(422, "o título da aula avulsa não pode ficar vazio")
+    video_url = payload.video_url.strip()
+    if not _youtube_incorporavel(video_url):
+        raise HttpError(
+            422,
+            "a URL do vídeo precisa ser um link HTTPS incorporável do YouTube. "
+            "Use um link de assistir, curto, incorporar ou Shorts.",
+        )
+    for sufixo in range(1, 10_000):
+        try:
+            with transaction.atomic():
+                aula = AulaAvulsaModel.objects.create(
+                    site_id=site_id,
+                    titulo=titulo,
+                    slug=_proximo_slug(titulo, sufixo),
+                    video_url=video_url,
+                    descricao=payload.descricao,
+                )
+            return 201, _aula_avulsa(aula)
+        except IntegrityError:
+            continue
+    raise HttpError(409, "não foi possível criar um endereço único para esta aula")
 
 
 @router.get(
