@@ -15,5 +15,7 @@
   vence_em_dias: null,
   se_eu_nao_decidir: "O freeze completo local continua sem veredito para as células com requirements incompatíveis.",
   recomendacao: "Executar cada célula em ambiente isolado, como no workflow oficial, antes de usar o freeze completo como PASS.",
-  reversivel: true
-}); })();
+  reversivel: true,
+  impacto: "alto",
+  porque_so_voce: "Os pacotes python conflitantes precisam de revisão humana",
+  proximo_passo: "Rodar tests em conteiner isolado"}); })();

@@ -15,5 +15,7 @@
   vence_em_dias: null,
   se_eu_nao_decidir: "As falhas externas continuam impedindo o veredito verde da suíte completa.",
   recomendacao: "Corrigir os registros inválidos do painel e preparar o ambiente Bash/WSL antes de usar a suíte ampla como veredito.",
-  reversivel: true
-}); })();
+  reversivel: true,
+  impacto: "alto",
+  porque_so_voce: "Os registros do painel precisam ser validados manualmente",
+  proximo_passo: "Revisar o livro de ocorrências"}); })();

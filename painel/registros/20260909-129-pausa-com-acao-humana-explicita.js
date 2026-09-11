@@ -16,5 +16,7 @@
   se_eu_nao_decidir: "A tela continuará exigindo que o mantenedor adivinhe como retomar uma etapa pausada.",
   recomendacao: "Regularizar o acesso ao GitHub e pousar este PR pelo rito da pista.",
   reversivel: true,
-  impacto: "alto"
+  impacto: "alto",
+  porque_so_voce: "Depende de credenciais humanas fora do escopo do robô",
+  proximo_passo: "Autenticar com o GitHub via CLI"
 });})();
