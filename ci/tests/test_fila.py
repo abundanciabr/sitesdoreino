@@ -2523,6 +2523,73 @@ def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    "cenario",
+    ["sincronizacao", "lateral", "resolucao", "conflito", "autoral", "revertida", "octopus"],
+)
+def test_medir_linhagem_separa_sincronizacao_de_autoria(tmp_path, cenario):
+    repo = tmp_path
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    codigo = repo / "codigo.py"
+    codigo.write_text("TITULO = 'base'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "base", cwd=repo)
+    _git("checkout", "-b", "entrega", cwd=repo)
+    codigo.write_text("TITULO = 'submetido'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo submetido", cwd=repo)
+    submetida = {"revisao": _sha(repo, "HEAD"), "arvore": _sha(repo, "HEAD^{tree}")}
+
+    _git("checkout", "main", cwd=repo)
+    if cenario == "lateral":
+        _git("checkout", "-b", "lateral", cwd=repo)
+    recebido = repo / "recebido.py"
+    recebido.write_text("VALOR = 'publicado'\n", encoding="utf-8")
+    if cenario == "conflito":
+        codigo.write_text("TITULO = 'mudou na main'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo da outra entrega", cwd=repo)
+    pai_lateral = _sha(repo, "HEAD")
+    pais_laterais = [pai_lateral]
+    if cenario == "octopus":
+        _git("checkout", "-b", "segunda", "main^", cwd=repo)
+        (repo / "segundo.py").write_text("VALOR = 2\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "segunda entrega", cwd=repo)
+        pais_laterais.append(_sha(repo, "HEAD"))
+        _git("checkout", "main", cwd=repo)
+        _git("merge", "--no-ff", "segunda", "-m", "segunda publicada", cwd=repo)
+    _git("checkout", "entrega", cwd=repo)
+    sincronizacao = subprocess.run(
+        ["git", "merge", "--no-ff", "--no-commit", *pais_laterais],
+        cwd=repo, capture_output=True, text=True,
+    )
+    assert sincronizacao.returncode == (1 if cenario == "conflito" else 0)
+    if cenario in ("resolucao", "conflito", "octopus"):
+        codigo.write_text("TITULO = 'resolucao manual'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "sincronizacao", cwd=repo)
+    if cenario in ("autoral", "revertida"):
+        recebido.write_text("VALOR = 'autoral posterior'\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "mudanca depois da sincronizacao", cwd=repo)
+        if cenario == "revertida":
+            _git("revert", "--no-edit", "HEAD", cwd=repo)
+    head = _sha(repo, "HEAD")
+    _git("checkout", "main", cwd=repo)
+    _git("merge", "--no-ff", "entrega", "-m", "integracao", cwd=repo)
+    merge = _sha(repo, "HEAD")
+
+    if cenario == "sincronizacao":
+        fila.medir_linhagem(repo, submetida, head, merge)
+    else:
+        caminho = "codigo.py" if cenario in ("resolucao", "conflito", "octopus") else "recebido.py"
+        with pytest.raises(fila.RecusaDeReconciliacao, match=caminho):
+            fila.medir_linhagem(repo, submetida, head, merge)
+
+
 def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
     tmp_path, monkeypatch, capsys
 ):

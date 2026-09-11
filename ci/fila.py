@@ -1073,16 +1073,44 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
     ).strip()
     if not arvore_medida:
         raise ErroDeInstrumentacao("o git não devolveu a árvore da revisão")
-    caminhos = _git_da_fila(
+    commits = _git_da_fila(
         raiz,
         "log",
-        "--diff-merges=first-parent",
-        "--format=",
-        "--name-only",
+        "--first-parent",
+        "--format=%H %P",
         f"{revisao}..{head}",
         para_que="conferir mudanças posteriores à revisão",
     ).splitlines()
-    caminhos = [caminho for caminho in caminhos if caminho]
+    caminhos = set()
+    for linha in commits:
+        commit, *pais = linha.split()
+        modo = "first-parent"
+        # Remerge só mede merges de dois pais; os demais ficam conservadores.
+        if len(pais) == 2 and all(
+            _git_predicado(
+                raiz,
+                "merge-base",
+                "--is-ancestor",
+                pai,
+                f"{merge}^1",
+                descricao="conferir se o pai lateral já pertence à base publicada",
+            )
+            for pai in pais[1:]
+        ):
+            modo = "remerge"
+        caminhos.update(
+            caminho
+            for caminho in _git_da_fila(
+                raiz,
+                "show",
+                f"--diff-merges={modo}",
+                "--format=",
+                "--name-only",
+                commit,
+                para_que="medir autoria posterior sem o código sincronizado",
+            ).splitlines()
+            if caminho
+        )
     medicao = {
         "arvore_medida": arvore_medida,
         "revisao_ancestral": _git_predicado(
@@ -1101,7 +1129,7 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
             merge,
             descricao="conferir HEAD ancestral do merge",
         ),
-        "caminhos_posteriores": caminhos,
+        "caminhos_posteriores": sorted(caminhos),
     }
     problemas = problemas_da_linhagem(submissao, medicao)
     if problemas:
