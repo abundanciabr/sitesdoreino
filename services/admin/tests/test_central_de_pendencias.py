@@ -69,8 +69,9 @@ TELA = "/pendencias/"
 
 
 @respx.mock
+@pytest.mark.parametrize("alternativa", ["livro", "fila"])
 def test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, alternativa
 ):
     from tests.test_versao_dos_dados_admin import pacote
 
@@ -85,8 +86,16 @@ def test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao(
         tipo="fila",
         extras={"estados.json": {}},
     )
-    monkeypatch.setattr(painel, "CANDIDATOS", (livro,))
-    monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path / "ausente", fila))
+    monkeypatch.setattr(
+        painel,
+        "CANDIDATOS",
+        (tmp_path / "ausente", livro) if alternativa == "livro" else (livro,),
+    )
+    monkeypatch.setattr(
+        robos,
+        "CANDIDATOS",
+        (tmp_path / "ausente", fila) if alternativa == "fila" else (fila,),
+    )
     outra_fila = pacote(
         tmp_path / "outra-fila",
         sha="c" * 40,
@@ -106,6 +115,8 @@ def test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao(
     html = _texto(_dentro().get(TELA))
     assert "Dados do livro" in html
     assert "Dados da fila de trabalho" in html
+    rotulo = "Dados do livro" if alternativa == "livro" else "Dados da fila de trabalho"
+    assert f"<details open><summary>{rotulo}</summary>" in html
     assert "a" * 40 in html
     assert "b" * 40 in html
     assert "Execução 1000" in html
