@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-004-pedido-1509-fechado-apos-contagem-atual",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Pedido de integração 1509 foi fechado após a contagem atual do livro",
+  detalhe: "A contagem de 39 veio do clone principal, 492 entregas atrás. A mesma lista de 60 integrações deu zero na main atual: os 39 números já estavam no livro. O pedido 1509 citava só 1508 e 1509, por isso não pagaria os 39; foi fechado às 02:01 UTC. A rodada 34425474588 confirmou 'dívida: PASS, livro em dia'. A lista de publicação truncada segue em análise no pedido 1515.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1509",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

@@ -1,0 +1,19 @@
+{
+  "arquivo": "317-a-tela-das-coortes-deixa-de-pedir-uma-decisao-ja-recusada",
+  "id": "TAR-317",
+  "titulo": "A tela das coortes deixa de pedir uma decisão já recusada",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de renderização e tela autenticada citam Meta, Google, link próprio e indicação, removem a pergunta recusada e preservam o estado de dado ainda ausente sem convertê-lo em zero.",
+  "despacho": "GRAVIDADE: MÉDIO, preexistente e não bloqueante da Fase 1.\n\nREQUISITO: a tela de coortes precisa apresentar como fontes decididas Meta, Google, link próprio e indicação, sem reabrir a pergunta de produto já recusada.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; services/admin/apps/core/templates/admin/coortes.html, linhas 203 a 208; docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, linhas 443 a 450; produção em /admin/placar/coortes/.\n\nEVIDÊNCIA OBSERVADA: a tela diz que a separação por canal depende de perguntar como você conheceu a escola. O plano registra que essa pergunta foi definitivamente recusada e fixa as fontes Meta, Google, link próprio e indicação. A tela autenticada reproduz a pergunta recusada.\n\nREPRODUÇÃO: abra /admin/placar/coortes/ autenticado e compare o texto do estado futuro com a decisão registrada nas linhas 443 a 450 do plano.\n\nESPERADO: o estado futuro explica que a origem virá das quatro fontes decididas e quais dados ainda faltam, sem pedir novamente a pergunta recusada. OBSERVADO: a tela apresenta a pergunta como dependência futura.\n\nIMPACTO: o mantenedor recebe como pendência uma decisão já encerrada e pode orientar trabalho na direção rejeitada.\n\nCORREÇÃO MÍNIMA: reescrever somente o texto da tela para refletir as fontes decididas, preservando o estado sem número e sem alterar contrato, fonte de dados ou decisão de produto.\n\nCLASSIFICAÇÃO: falha preexistente, não atribuída ao PR 1500 e não bloqueante da Fase 1.\n\nPROVA DE FECHO: teste de renderização e tela autenticada mostram as quatro fontes decididas, não contêm a pergunta recusada e continuam distinguindo dado ausente de zero.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; decisão registrada no plano e tela autenticada",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

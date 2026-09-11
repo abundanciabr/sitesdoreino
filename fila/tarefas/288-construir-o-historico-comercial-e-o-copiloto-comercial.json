@@ -11,7 +11,8 @@
   ],
   "depende_de": [
     "TAR-283",
-    "TAR-285"
+    "TAR-285",
+    "TAR-296"
   ],
   "cria": [],
   "move": [

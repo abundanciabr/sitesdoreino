@@ -1,0 +1,21 @@
+{
+  "arquivo": "320-publicar-o-achado-complementar-dos-links-de-evidencia",
+  "id": "TAR-320",
+  "titulo": "Publicar o achado complementar dos links de evidência",
+  "toca": [
+    "painel",
+    "fila",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado e publicado contendo TAR-319, evento explicado, registro 033 e armadilha 461, com validadores de escritura aprovados.",
+  "despacho": "OBJETIVO: publicar o registro do achado complementar dos links de evidência, sua tarefa de correção futura e a armadilha reutilizável.\n\nESCOPO: somente `fila/tarefas/`, evento `explicada`, `painel/registros/` e `armadilhas/`. Não alterar produto, tarefas ou eventos antigos, TAR-318, PRs 1511 e 1512, nem implementar a TAR-319.\n\nEVIDÊNCIA DE ENTREGA: o PR precisa conter a tarefa do achado, o evento explicado, o registro histórico com a publicação do PR #1525 e a armadilha sobre `urlize` aplicado a `entrega=https://` ou `publicacao=https://`. Os validadores da fila, responsabilidades, painel, armadilhas e travessão precisam passar.\n\nCLASSIFICAÇÃO: tarefa administrativa da entrega desta escritura. Não conta como novo achado da auditoria e não substitui a TAR-319.",
+  "origem": "Despacho complementar da auditoria independente da Fase 1",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

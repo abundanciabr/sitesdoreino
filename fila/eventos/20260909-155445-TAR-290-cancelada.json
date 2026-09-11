@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260909-155445-TAR-290-cancelada",
+  "tarefa": "TAR-290",
+  "evento": "cancelada",
+  "quando": "2026-09-09T15:54:45+00:00",
+  "quem": "agent/admin/fase-1-scale-os",
+  "detalhe": "Substituída pela TAR-297: a validação agora separa funcionamento, economia de esforço, qualidade e capacidade e não transforma a meta de mais de 80 por cento em critério único. O histórico da TAR-290 permanece preservado."
+}

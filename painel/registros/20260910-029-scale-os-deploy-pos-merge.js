@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-029-scale-os-deploy-pos-merge",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: merge e deploy do fechamento da Fase 1",
+  detalhe: "O registro de aceite pós-merge foi integrado e o deploy da publicação terminou com sucesso.",
+  autoridade: "github",
+  evidencia: "PR #1521 mergeado em ce83de4ff4aa1b0c87decbb51c8014536ab8a04a (https://github.com/abundanciabr/sitesdoreino/pull/1521); deploy-celula 34462705573 completed/success (https://github.com/abundanciabr/sitesdoreino/actions/runs/34462705573).",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "deploy",
+  tarefa: "TAR-283",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

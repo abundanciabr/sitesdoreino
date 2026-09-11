@@ -9,9 +9,11 @@
 
 ## Topologia (uma VPS, sem orquestrador)
 
-Produção é um único `docker-compose.yml`, sem Kubernetes/Swarm: **24
-containers** em duas redes Docker — `edge` (Traefik ↔ mundo ↔ células) e
-`interna` (tudo ↔ Postgres/Redis). Três containers de infraestrutura:
+Produção é declarada em um único `infra/docker-compose.yml`, sem
+Kubernetes/Swarm. O inventário de serviços deve ser lido desse arquivo e
+validado pelo portão de infraestrutura, sem copiar uma contagem para este
+mapa. As duas redes Docker são `edge` (Traefik ↔ mundo ↔ células) e `interna`
+(tudo ↔ Postgres/Redis). A infraestrutura compartilhada inclui:
 
 - **`traefik`** (v3.4) — único ponto que expõe as portas 80/443 do host.
 - **`postgres:17`** — um único servidor, mas **um database e um role por
@@ -22,15 +24,12 @@ containers** em duas redes Docker — `edge` (Traefik ↔ mundo ↔ células) e
   broker do Huey (filas assíncronas); cada célula usa um índice de DB Redis
   próprio (`/0` a `/8`).
 
-**13 células** rodam como servidor HTTP (porta 8000 interna) em imagem
-própria (`ghcr.io/.../plataforma-<celula>:<TAG>`), com healthcheck comum em
-`/healthz`. **9 processos auxiliares** (consumers de evento, relays, workers
-Huey) usam a MESMA imagem da célula-mãe com `command:` sobrescrito, ficam só
-na rede `interna` (sem rota pública) — a topologia de rede aplica fisicamente
-o "raio de explosão = 1 célula" da Lei 2. O nome do auxiliar sempre começa
-com `<celula>-`, e é assim (sem lista fixa) que o deploy descobre o que subir
-junto. Três volumes nomeados persistem estado: `pgdata`, `redisdata`,
-`letsencrypt`.
+Cada célula HTTP usa imagem própria (`ghcr.io/.../plataforma-<celula>:<TAG>`)
+e healthcheck em `/healthz`. Consumers de evento, relays e workers Huey usam a
+imagem da célula-mãe com `command:` sobrescrito e ficam na rede `interna`. O
+nome do auxiliar começa com `<celula>-`, e é assim, sem lista fixa, que o
+deploy descobre o que subir junto. Os volumes persistentes também são
+declarados no compose.
 
 ## Roteamento (Traefik)
 
@@ -84,24 +83,15 @@ célula colide com um código de idioma).
   nunca falha por atraso de imagem; mas reprova alto se o banco não tiver as
   colunas que o modelo espera (migração não rodou).
 
-## Os 6 workflows do GitHub Actions
+## Workflows do GitHub Actions
 
-| Workflow | Trigger | Faz | Required? |
-|---|---|---|---|
-| **muralhas** | todo PR | `ci/ci.py --apenas muralhas` (cerca de célula + orçamento + guarda de segredos + muralha do painel) + `--apenas testador` (suíte adversarial) | Sim — required check nativo desde 26/08/2026 |
-| **ci-celula** | PR e push em `main` | `detectar` (célula tocada) → `rodar` (`make ci` da célula) → `gate` (job terminal `if: always()`, só aceita `skipped` como verde se a detecção concluiu que não há célula nenhuma tocada) | Sim — `ci-celula-gate` é o check exigido |
-| **alarme-main** | push em `main` | Guarda de segredos na `main` inteira (não só o diff) + testador; abre/comenta issue `main-vermelha` se falhar | Não — é alarme, não portão |
-| **deploy-celula** | push em `main` tocando `services/**` ou `painel/**` | `detectar` → `portao_de_deploy.py` (modo célula) → build+push da imagem (GHCR) → SSH: sobe só os serviços daquela célula | Portão interno faz as vezes de required check |
-| **deploy-infra** | push em `main` tocando `infra/docker-compose.yml`, `infra/traefik/**`, `infra/sites.json`, `infra/sincronizar_sites.py` | `portao_de_deploy.py` (modo infra) → valida config, backup datado, troca arquivos, `up -d`, confere tudo `running`, roda sincronização de sites + smoke HTTP real (200 na raiz de cada host) | Portão interno |
-| **rollback** | manual (`workflow_dispatch`) | `ci/rollback.py` valida (célula no manifesto; alvo é `main` ou sha ancestral; imagem existe) → SSH aplica só naquele `docker compose up -d`, sem persistir | Portão interno |
-
-Nota histórica: como o repositório é privado numa conta pessoal, o GitHub por
-muito tempo não ofereceu required checks nativos — por isso os "portões"
-substitutos em Python (`mergear.py`, `portao_de_deploy.py`). Desde
-26/08/2026 um ruleset nativo "main protegida" foi ligado (`muralhas` +
-`ci-celula-gate` como required), mas os scripts continuam como segunda
-camada, porque **nenhum required check nativo olha o deploy** — ele roda
-depois do merge.
+Liste as definições atuais com `git ls-files '.github/workflows/*.yml'
+'.github/workflows/*.yaml'` e leia seus gatilhos e jobs. As famílias vigentes
+incluem muralhas e suítes por célula em PR, pista de pouso, alarmes da `main`,
+deploy por célula, deploy de infraestrutura e rollback. O estado `required`
+pertence à configuração atual do GitHub, não ao nome do arquivo; quando a
+consulta remota não estiver disponível, declare `NÃO MEDIDO`. Deploy acontece
+depois do merge e precisa de veredito próprio.
 
 ## Os scripts de `ci/` — muralhas, portões e ferramentas
 
@@ -114,7 +104,7 @@ devolve ERROR, nunca PASS.
 |---|---|---|
 | `_nucleo.py` | núcleo | `Estado`/`Resultado`/`Relatorio`, resolução fail-closed da raiz do repo, execução de subprocesso onde qualquer anomalia vira erro de instrumentação |
 | `ci.py` | orquestração | Runner canônico local (`python ci/ci.py`); agrega freeze + muralhas + guardas + testador + `make ci` opcional de uma célula |
-| `cerca-de-celula.sh` | muralha/PR | "1 PR = 1 célula": reprova diff tocando `services/` de mais de uma célula; exige label `contrato` se `contracts/` mudar |
+| `cerca-de-celula.sh` | muralha/PR | impõe o Rito de Contrato; aceita PR multicélula, cuja matriz é derivada de `celulas.yml`, e exige a etiqueta adequada se `contracts/` mudar |
 | `orcamento-de-mudanca.sh` | muralha/PR | Teto de 15 arquivos por PR (label `arquitetural` libera; lane `traducoes` libera lotes restritos a dado) |
 | `guarda-de-segredos.sh` | muralha/PR + alarme | `git grep` na árvore inteira por credencial de produção do Mercado Pago e cabeçalho de chave privada; confere que arquivos-molde mantêm `TROQUE_` |
 | `muralha-do-painel.sh` | muralha/PR | Confere `painel/manifesto.js` em dia com `painel/registros/` e os testes-guarda em JS do painel |
@@ -127,17 +117,16 @@ devolve ERROR, nunca PASS.
 | `divida_do_livro.py` | merge/painel | Lista PRs mergeados sem registro citando o número, com graça de 90min |
 | `indice_de_armadilhas.py` | documentação | Gera `armadilhas/INDICE.md`; reprova (ERROR) se dois arquivos colidirem no mesmo número |
 | `doctor.py` | diagnóstico | Read-only: "este ambiente consegue rodar o trabalho?" — nunca conserta nada |
-| `sessao.py` | bootstrap | Único script de `ci/` que escreve no mundo: cria worktree, venv, sobe Postgres/Redis com porta derivada da célula, roda baseline, só imprime a declaração de abertura se tudo passar |
+| `sessao.py` | bootstrap | cria worktree, prepara o ambiente, sobe Postgres/Redis quando aplicável, roda baseline e emite a declaração de abertura |
 | `portao_de_deploy.py` | deploy | Ver seção abaixo |
 | `rollback.py` | deploy | Ver seção abaixo |
 | `cross-smoke.sh` | teste | Só para `pagamentos`: se o diff mexe num método de pagamento, roda os testes de smoke do método oposto |
 | `manifesto-de-contratos.json` | config | Lista autoritativa: qual célula tem contrato `required` vs `not-applicable` (com motivo obrigatório) |
 | `guardas-nao-declarados.txt` | config | "Dívida catraca" de guardas que existem mas ainda não viraram invariante numerado — só encolhe |
 
-`ci/tests/` (~23 arquivos, rodados por `--apenas testador` em todo PR e todo
-push à `main`) **não testam o produto — testam os próprios portões**: cada
-um monta um repositório falso em `tmp_path` e prova que o instrumento
-reprova quando deveria (sabotagem deliberada) e passa quando deveria.
+Os testes adversariais de `ci/tests/` exercitam os próprios portões com
+repositórios descartáveis e sabotagem deliberada. Liste os testes e confira a
+entrada vigente em `ci/ci.py` antes de afirmar sua cobertura.
 
 ## Deploy e rollback, em detalhe
 
@@ -179,7 +168,7 @@ documenta esse gap). Ver [07 — oportunidades](07-oportunidades-e-fronteiras.md
 | `checkout` | Mercado Pago — só a chave pública (client-side, não é segredo) | `MP_PUBLIC_KEY` |
 | `mensageria` | SMTP (e-mail transacional) | `SMTP_HOST/PORT/USER/PASSWORD/FROM` |
 | `mensageria` | Gateway de WhatsApp | `WHATSAPP_GATEWAY_URL/TOKEN` |
-| demais 7 células | só APIs internas entre células (tokens por par consumidor→provedor) | — |
+| outras células | APIs internas conforme o código e `celulas.yml` | tokens por par quando declarados pela implementação |
 | *(infra)* | Cloudflare, Let's Encrypt/ACME, GHCR | configurados fora de env de célula |
 
 Desenho de isolamento notável: `checkout` (adjacente ao dinheiro, de frente
@@ -191,14 +180,11 @@ mecanicamente por `guarda-de-segredos.sh`.
 
 ## O que este documento verificou e NÃO reproduz
 
-Uma varredura dedicada confirmou: todos os `infra/env/*.env.exemplo` (12
-arquivos) têm só placeholders; todas as senhas em
-`infra/provisionamento-postgres.sql` são placeholders; nenhum workflow tem
-segredo em texto puro (tudo via `${{ secrets.* }}`); nenhum IP real aparece
-em nenhum arquivo versionado; a chave privada de deploy (`deploy_ci`, sem
-`.pub`) está corretamente fora do controle de versão. O único IP real do
-projeto (o da VPS) existe fora deste mapa, propositalmente — ver a nota de
-segurança em [02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
+Não use a varredura histórica deste documento como atestado atual. Confira os
+moldes em `infra/env/`, o provisionamento, os workflows e a árvore versionada
+com `ci/guarda-de-segredos.sh`. O mapa não reproduz valores de segredo nem
+endereços privados. Ver também a nota de segurança em
+[02 — armadilhas](02-armadilhas-e-padroes-recorrentes.md).
 
 O protocolo, os estados e os limites de confiança do atestado estão em
 `docs/decisoes/DECISAO-revisao-e-publicacao.md`. IDs distintos não autenticam

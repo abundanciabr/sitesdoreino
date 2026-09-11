@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260910-144546-TAR-322-submetida",
+  "tarefa": "TAR-322",
+  "evento": "submetida",
+  "quando": "2026-09-10T14:45:46+00:00",
+  "quem": "agent/ci/deploy-rate-limit",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1534",
+  "revisao": "5c8c4961971d0a54704ef56e0964cbc802144a4e",
+  "arvore": "bd94ace9fc448f157cd5206893ee651ce561c2d9"
+}

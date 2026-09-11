@@ -1,0 +1,17 @@
+{
+  "arquivo": "307-corrigir-a-aula-que-impede-a-publicacao-dos-bosses-de-primei",
+  "id": "TAR-307",
+  "titulo": "Corrigir a aula que impede a publicação dos Bosses de Primeiros Dólares",
+  "toca": [
+    "cursos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR #1517 com o título real da aula 31, fixture independente, oito Bosses configurados e publicação de cursos verde",
+  "despacho": "Corrigir somente a referência do Boss do módulo 3 para Comando Bevel e Triangulate, manter normalização, transação, idempotência e recusa de ambiguidade, e provar com fixture independente. Não alterar conteúdo, estado das aulas nem esquema. Origem: PR #1454 e deploy 34430133801.",
+  "origem": "Falha do deploy 34430133801 após o pouso do PR #1454",
+  "criada_em": "2026-09-10"
+}
