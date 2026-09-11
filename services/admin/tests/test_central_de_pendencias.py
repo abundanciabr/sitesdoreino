@@ -184,7 +184,7 @@ def test_fila_de_trabalho_indisponivel_na_central_nao_e_zero(
     monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
     _todos_respondem([])
     html = _texto(_dentro().get(TELA))
-    assert "Não deu para perguntar a a fila de trabalho agora" in html
+    assert "Não foi possível consultar a fila de trabalho agora." in html
     assert "0 · Tarefas" not in html
     assert "Você está em dia" not in html
 
@@ -694,7 +694,7 @@ def test_com_a_alunos_muda_a_tela_diz_isso_e_NAO_mostra_zero():
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
     html = _texto(_dentro().get(TELA))
 
-    assert "Não deu para perguntar a a lista de alunos agora." in html
+    assert "Não foi possível consultar a lista de alunos agora." in html
     assert "0 · Pessoas querendo entrar" not in html
     assert "Nada esperando você em: a lista de alunos" not in html
 
@@ -707,7 +707,7 @@ def test_sem_o_par_de_tokens_a_tela_tambem_abre(monkeypatch):
     resposta = _dentro().get(TELA)
 
     assert resposta.status_code == 200
-    assert "Não deu para perguntar" in _texto(resposta)
+    assert "Não foi possível consultar" in _texto(resposta)
 
 
 @respx.mock
@@ -765,7 +765,7 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
 
     assert "Nada esperando você em:" in html
     assert "a lista de alunos" in html
-    assert "Não deu para perguntar a a lista de alunos" not in html
+    assert "Não foi possível consultar a lista de alunos" not in html
 
 
 # ---------------------------------------------------------------------------
@@ -835,7 +835,7 @@ def test_sem_o_painel_na_imagem_a_linha_diz_que_nao_sabe(monkeypatch):
 
     html = _texto(_dentro().get(TELA))
 
-    assert "Não deu para perguntar a o painel do sistema agora." in html
+    assert "Não foi possível consultar o painel do sistema agora." in html
     assert "0 · Decisões suas paradas" not in html
 
 
