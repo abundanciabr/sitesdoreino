@@ -1014,12 +1014,213 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
         "incorporavel do YouTube e descricao acima de 5.000 caracteres."
     ),
     openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "preservar_endereco": {
+                            "summary": "Sem "
+                            "slug, "
+                            "a "
+                            "aula "
+                            "conserva "
+                            "o "
+                            "endereço "
+                            "atual",
+                            "value": {
+                                "descricao": "Primeira " "aula " "de " "testes",
+                                "titulo": "Aula " "de " "testes",
+                                "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                            },
+                        },
+                        "slug_normalizado": {
+                            "summary": "Texto "
+                            "digitado "
+                            "vira "
+                            "um "
+                            "endereço "
+                            "simples",
+                            "value": {
+                                "descricao": "Primeira " "aula " "de " "testes",
+                                "slug": "Ação " "& " "Testes",
+                                "titulo": "Aula " "de " "testes",
+                                "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                            },
+                        },
+                    }
+                }
+            }
+        },
         "responses": {
-            404: {"description": "Aula avulsa inexistente para este site e slug"},
-            422: {
-                "description": "Corpo invalido, URL do YouTube invalida ou campo desconhecido"
+            "200": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "menor_sufixo_livre": {
+                                "summary": "O "
+                                "sufixo "
+                                "dois "
+                                "esta "
+                                "ocupado "
+                                "e "
+                                "o "
+                                "tres "
+                                "e "
+                                "o "
+                                "primeiro "
+                                "livre",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes-3",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_identico": {
+                                "summary": "O "
+                                "slug "
+                                "pedido "
+                                "ja "
+                                "e "
+                                "o "
+                                "da "
+                                "propria "
+                                "aula",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_normalizado": {
+                                "summary": "O "
+                                "serviço "
+                                "devolve "
+                                "o "
+                                "endereço "
+                                "que "
+                                "normalizou",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "acao-testes",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_ocupado": {
+                                "summary": "Outra "
+                                "aula "
+                                "ja "
+                                "usa "
+                                "o "
+                                "slug "
+                                "pedido",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes-2",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                        }
+                    }
+                }
             },
-        }
+            "404": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "aula_nao_encontrada": {
+                                "value": {
+                                    "erro": "aula_avulsa_nao_encontrada",
+                                    "o_que_fazer": "Confira "
+                                    "o "
+                                    "endereço "
+                                    "da "
+                                    "aula "
+                                    "ou "
+                                    "escolha "
+                                    "outra "
+                                    "aula "
+                                    "publicada.",
+                                }
+                            }
+                        },
+                        "schema": {
+                            "additionalProperties": False,
+                            "properties": {
+                                "erro": {
+                                    "const": "aula_avulsa_nao_encontrada",
+                                    "type": "string",
+                                },
+                                "o_que_fazer": {"minLength": 1, "type": "string"},
+                            },
+                            "required": ["erro", "o_que_fazer"],
+                            "type": "object",
+                        },
+                    }
+                },
+                "description": "Aula avulsa inexistente para este site e slug do caminho",
+            },
+            "422": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "slug_invalido": {
+                                "value": {
+                                    "erro": "slug_invalido",
+                                    "o_que_fazer": "Informe "
+                                    "um "
+                                    "endereço "
+                                    "com "
+                                    "ao "
+                                    "menos "
+                                    "uma "
+                                    "letra "
+                                    "ou "
+                                    "número.",
+                                }
+                            }
+                        },
+                        "schema": {
+                            "additionalProperties": False,
+                            "properties": {
+                                "erro": {
+                                    "enum": ["corpo_invalido", "slug_invalido"],
+                                    "type": "string",
+                                },
+                                "o_que_fazer": {"minLength": 1, "type": "string"},
+                            },
+                            "required": ["erro", "o_que_fazer"],
+                            "type": "object",
+                        },
+                    }
+                },
+                "description": "Corpo invalido, inclusive slug que nao gera letras ou "
+                "numeros",
+            },
+        },
+        "x-normalizacao-de-slug": {
+            "algoritmo": "unicode_para_ascii_minusculo_com_hifens",
+            "campo": "slug",
+            "exemplo": {"entrada": "Ação & Testes", "saida": "acao-testes"},
+        },
+        "x-reserva-de-slug": {
+            "atomica": True,
+            "chave": ["site_id", "slug"],
+            "em_colisao": "menor_sufixo_numerico_livre",
+            "exclui_aula_editada": True,
+            "repete_ate_reservar": True,
+        },
     },
 )
 def update_standalone_lesson(
