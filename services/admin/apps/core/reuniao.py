@@ -207,7 +207,7 @@ def _publicado(envelope, remoto):
     estados = robos.ler_estados(pasta)
     if estados is None:
         return {
-            "detalhe": "Não consegui confirmar o que chegou ao site: a fila publicada está indisponível."
+            "detalhe": "Não consegui confirmar o que chegou ao site: a fila publicada está indisponível. Consulte novamente. Se a fila continuar indisponível, acione o robô para conferir a publicação desta mesma tarefa."
         }
     vinculos = [
         (tid, dado)

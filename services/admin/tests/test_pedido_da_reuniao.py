@@ -581,6 +581,14 @@ def test_conclusao_legada_e_fila_antiga_nao_viram_aplicacao(
     assert reuniao._publicado(dados, recibo)["erro"] is True
 
 
+def test_fila_publicada_indisponivel_explica_quando_acionar_o_robo(monkeypatch):
+    dados = pedidos.envelope(*criar())
+    monkeypatch.setattr(reuniao.robos, "ler_estados", lambda _: None)
+    resultado = reuniao._publicado(dados, None)
+    assert "Consulte novamente" in resultado["detalhe"]
+    assert "fila continuar indisponível, acione o robô" in resultado["detalhe"]
+
+
 def test_inicio_exige_evento_da_mesma_tarefa(fonte_remota, monkeypatch):
     respostas = fonte_remota[2]
     arquivo = "20260909-130000-TAR-987-iniciada"
