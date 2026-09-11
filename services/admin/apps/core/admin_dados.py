@@ -40,7 +40,6 @@ class DadosAdmin:
 @dataclass
 class _DadosDaResposta:
     selecoes: dict[str | None, DadosAdmin | None] = field(default_factory=dict)
-    identidade: tuple | None = None
 
 
 _DADOS_DA_RESPOSTA: ContextVar[_DadosDaResposta | None] = ContextVar(
@@ -56,12 +55,6 @@ def dados_da_resposta():
         yield
     finally:
         _DADOS_DA_RESPOSTA.reset(token)
-
-
-def _identidade(dados: DadosAdmin) -> tuple:
-    if dados.sha:
-        return ("publicacao", dados.sha, dados.run_id, dados.run_number)
-    return ("legado", dados.pasta.parent)
 
 
 class _DadosInvalidos(ValueError):
@@ -175,7 +168,6 @@ def _selecionar_dados(
     tipo: str | None = None,
     arquivos_obrigatorios: tuple[str, ...] = (),
     diretorios_obrigatorios: tuple[str, ...] = (),
-    identidade: tuple | None = None,
 ) -> DadosAdmin | None:
     """Valida e retorna a versão concreta, com a razão de qualquer alternativa."""
     motivo = None
@@ -216,9 +208,6 @@ def _selecionar_dados(
             ),
             motivo=motivo,
         )
-        if identidade is not None and _identidade(selecionado) != identidade:
-            motivo = motivo or "Os dados disponíveis pertencem a outra revisão."
-            continue
         return selecionado
     return None
 
@@ -246,10 +235,7 @@ def selecionar_dados(
         tipo=tipo,
         arquivos_obrigatorios=arquivos_obrigatorios,
         diretorios_obrigatorios=diretorios_obrigatorios,
-        identidade=contexto.identidade if contexto is not None else None,
     )
     if contexto is not None:
         contexto.selecoes[tipo] = dados
-        if dados is not None and contexto.identidade is None:
-            contexto.identidade = _identidade(dados)
     return dados

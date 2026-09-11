@@ -369,10 +369,7 @@ def test_indisponibilidade_fica_fixada_ate_o_fim_da_resposta(tmp_path):
     assert admin_dados.selecionar_dados((pasta,), tipo="painel").pasta == pasta
 
 
-@pytest.mark.parametrize("tem_copia_compativel", [True, False])
-def test_fila_json_nao_mistura_revisoes_quando_o_ponteiro_do_painel_muda(
-    tmp_path, monkeypatch, tem_copia_compativel
-):
+def test_fila_json_usa_a_publicacao_atual_de_cada_tipo(tmp_path, monkeypatch):
     from apps.core import fila_do_painel, robos
     from apps.core.porta import PortaAdministrativa
 
@@ -389,11 +386,7 @@ def test_fila_json_nao_mistura_revisoes_quando_o_ponteiro_do_painel_muda(
     ponteiro = tmp_path / "painel_ativo"
     apontar(painel_a, ponteiro)
     monkeypatch.setattr(robos, "CANDIDATOS", (fila_a,))
-    monkeypatch.setattr(
-        painel,
-        "CANDIDATOS",
-        (ponteiro, painel_a) if tem_copia_compativel else (ponteiro,),
-    )
+    monkeypatch.setattr(painel, "CANDIDATOS", (ponteiro,))
     leitor = robos.diretorio_da_fila
 
     def ler_fila_e_trocar():
@@ -410,13 +403,8 @@ def test_fila_json_nao_mistura_revisoes_quando_o_ponteiro_do_painel_muda(
         dados = json.loads(resposta.content)
         assert dados["erro"] is None
         assert dados["tarefas"][0]["titulo"] == "Tarefa A"
-        if tem_copia_compativel:
-            assert dados["tarefas"][0]["area"] == "area-a"
-            assert dados["aviso"] is None
-        else:
-            assert dados["tarefas"][0]["area"] is None
-            assert dados["aviso"]
-        assert "area-b" not in resposta.content.decode()
+        assert dados["tarefas"][0]["area"] == "area-b"
+        assert dados["aviso"] is None
     finally:
         retirar_ponteiro(ponteiro)
 
@@ -442,7 +430,9 @@ def test_artefato_de_diretorio_ausente_nao_troca_a_fila_fixada(tmp_path):
     PortaAdministrativa(montar)(RequestFactory().get("/healthz"))
 
 
-def test_mesma_revisao_em_execucoes_distintas_nao_e_a_mesma_publicacao(tmp_path):
+def test_painel_e_fila_de_execucoes_distintas_ficam_disponiveis_na_mesma_resposta(
+    tmp_path,
+):
     from django.http import HttpResponse
     from apps.core.porta import PortaAdministrativa
 
@@ -453,7 +443,7 @@ def test_mesma_revisao_em_execucoes_distintas_nao_e_a_mesma_publicacao(tmp_path)
         assert (
             admin_dados.selecionar_dados((painel_a,), tipo="painel").pasta == painel_a
         )
-        assert admin_dados.selecionar_dados((fila_b,), tipo="fila") is None
+        assert admin_dados.selecionar_dados((fila_b,), tipo="fila").pasta == fila_b
         return HttpResponse("ok")
 
     PortaAdministrativa(montar)(RequestFactory().get("/healthz"))
