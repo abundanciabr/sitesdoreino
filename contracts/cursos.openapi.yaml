@@ -381,9 +381,9 @@ paths:
 
         pelo endereco devolvido. Nao existe rascunho nem gesto posterior de
 
-        publicacao nesta porta. A edicao usa `updateStandaloneLesson` e preserva
+        publicacao nesta porta. A edicao usa `updateStandaloneLesson`: preserva
 
-        o endereco original.
+        o endereco original somente quando o corpo do PUT omite `slug`.
 
 
         422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS
@@ -448,6 +448,15 @@ paths:
                     descricao: Primeira aula de testes
                     estado: publicada
                     publicada_em: '2026-09-11T10:58:49.598Z'
+                slug_normalizado:
+                  summary: O serviço devolve o endereço que normalizou
+                  value:
+                    titulo: Aula de testes
+                    slug: acao-testes
+                    video_url: https://www.youtube.com/embed/abcdefghijk
+                    descricao: Primeira aula de testes
+                    estado: publicada
+                    publicada_em: '2026-09-11T10:58:49.598Z'
         '404':
           description: Aula avulsa inexistente para este site e slug do caminho
           content:
@@ -471,7 +480,7 @@ paths:
                     erro: aula_avulsa_nao_encontrada
                     o_que_fazer: Confira o endereço da aula ou escolha outra aula publicada.
         '422':
-          description: Corpo invalido, inclusive slug fora do formato permitido
+          description: Corpo invalido, inclusive slug que nao gera letras ou numeros
           content:
             application/json:
               schema:
@@ -493,14 +502,16 @@ paths:
                 slug_invalido:
                   value:
                     erro: slug_invalido
-                    o_que_fazer: Use letras minúsculas sem acentos, números e hífens.
+                    o_que_fazer: Informe um endereço com ao menos uma letra ou número.
       description: 'O gesto Editar aula avulsa do Admin. O `slug` do caminho identifica
 
         a aula existente. O corpo recebe titulo, video_url, descricao e, opcionalmente,
 
-        um slug novo. Esse slug precisa conter somente letras ASCII minusculas,
+        um slug novo. Esse slug pode conter o texto digitado pela pessoa. Quando ele
 
-        numeros e hifens. Quando ele vier, o servico grava o endereco pedido ou,
+        vier, o servico normaliza acentos, simbolos e espacos para letras ASCII
+
+        minusculas, numeros e hifens; depois grava o endereco pedido ou,
 
         se ele ja estiver ocupado por outra aula no mesmo site, acrescenta o menor
 
@@ -521,7 +532,7 @@ paths:
 
         inexistente responde 404. Corpo invalido responde 422, inclusive campo
 
-        desconhecido, slug fora do formato, titulo ou video_url vazios, URL que
+        desconhecido, slug que nao gera letras ou numeros, titulo ou video_url vazios, URL que
 
         nao seja HTTPS incorporavel do YouTube e descricao acima de 5.000 caracteres.'
       x-reserva-de-slug:
@@ -532,6 +543,12 @@ paths:
         exclui_aula_editada: true
         em_colisao: menor_sufixo_numerico_livre
         repete_ate_reservar: true
+      x-normalizacao-de-slug:
+        campo: slug
+        algoritmo: unicode_para_ascii_minusculo_com_hifens
+        exemplo:
+          entrada: Ação & Testes
+          saida: acao-testes
       requestBody:
         content:
           application/json:
@@ -542,6 +559,13 @@ paths:
                 summary: Sem slug, a aula conserva o endereço atual
                 value:
                   titulo: Aula de testes
+                  video_url: https://www.youtube.com/embed/abcdefghijk
+                  descricao: Primeira aula de testes
+              slug_normalizado:
+                summary: Texto digitado vira um endereço simples
+                value:
+                  titulo: Aula de testes
+                  slug: Ação & Testes
                   video_url: https://www.youtube.com/embed/abcdefghijk
                   descricao: Primeira aula de testes
         required: true
@@ -1635,7 +1659,9 @@ components:
 
         continuam obrigatorios. `slug` e opcional: ausente, conserva o endereco;
 
-        presente, pede um novo endereco no formato ASCII minusculo com hifens.
+        presente, aceita o texto digitado para um novo endereco e o servico o
+
+        normaliza para ASCII minusculo com hifens.
 
         Em colisao com outra aula, o servico reserva atomicamente o menor sufixo
 
@@ -1648,7 +1674,7 @@ components:
           minLength: 1
           type: string
         slug:
-          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          maxLength: 140
           type: string
         video_url:
           maxLength: 500
