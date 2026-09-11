@@ -397,3 +397,12 @@ sessão nova. A consulta posterior recebe só a TAR e reconstrói o estado no
 GitHub; parâmetros resultado/pr não são prova. PR integrado só confirma a
 aplicação quando a fila selecionada contém o estado cancelado e os bytes do
 evento original. O motivo público é anunciado no gesto de confirmação.
+
+## O endereço de outra célula não herda o prefixo da área administrativa (11/09/2026)
+
+Uma aula avulsa é criada pelo painel, mas quem a serve é `cursos`, sob
+`/cursos`. Montar o endereço público a partir da tela administrativa produziu
+`/aulas/<slug>`, caminho que não existe. A regra é explicitar, em uma função
+única, o endereço da célula dona e testar a cópia do link, a prévia e o botão
+de edição com `SCRIPT_NAME=/admin/`: links internos seguem o prefixo da admin,
+enquanto o endereço compartilhado continua na raiz de `cursos`.
