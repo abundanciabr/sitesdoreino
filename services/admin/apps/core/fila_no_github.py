@@ -412,3 +412,368 @@ def abrir_pr_de_cancelamento(
     tarefa: str, titulo: str, motivo: str, agora: datetime | None = None
 ) -> PedidoCancelamento:
     return _operar(tarefa, titulo, motivo, agora, escrever=True)
+
+
+@dataclass(frozen=True)
+class ReciboReuniao:
+    estado: str
+    detalhe: str
+    tarefa: str = ""
+    ramo: str = ""
+    revisao: str = ""
+    pr: int | None = None
+    artefatos: tuple = ()
+    inicio: str = ""
+
+
+class _RecebimentoReuniao:
+    """Leitura limitada de uma reserva e de dois artefatos no mesmo commit."""
+
+    def __init__(self, envelope):
+        import hashlib
+        from time import monotonic
+
+        self.envelope = envelope
+        self.chave = hashlib.sha256(
+            ("pedido:" + envelope["pedido"]["id"]).encode("utf-8")
+        ).hexdigest()
+        self.fim = monotonic() + TIMEOUT
+        self.chamadas = 0
+        self.tarefa = self.ramo = ""
+
+    def get(self, caminho, *, params=None, ausente=False):
+        from time import monotonic
+
+        restante = self.fim - monotonic()
+        self.chamadas += 1
+        if restante <= 0 or self.chamadas > 32:
+            raise _SemConfirmacao(
+                "A consulta atingiu o limite. Tente conferir novamente."
+            )
+        with http().stream(
+            "GET",
+            f"{API}/repos/{REPOSITORIO}{caminho}",
+            headers={
+                "Authorization": f"Bearer {token()}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            params=params,
+            timeout=restante,
+            follow_redirects=False,
+        ) as resposta:
+            if ausente and resposta.status_code == 404:
+                return None
+            if resposta.status_code != 200:
+                raise _SemConfirmacao(
+                    f"O GitHub não confirmou a consulta (código {resposta.status_code}). Tente novamente."
+                )
+            if 'rel="next"' in resposta.headers.get("link", ""):
+                raise _SemConfirmacao(
+                    "A resposta ultrapassou uma página. Peça ao robô para conferir a mesma tarefa."
+                )
+            bruto = bytearray()
+            for parte in resposta.iter_bytes():
+                bruto.extend(parte)
+                if len(bruto) > 2000000 or monotonic() > self.fim:
+                    raise _SemConfirmacao(
+                        "A resposta excedeu o limite de leitura. Tente conferir novamente."
+                    )
+            return json.loads(bruto.decode("utf-8"))
+
+    def ref(self, nome, ausente=False):
+        from urllib.parse import quote
+
+        dado = self.get("/git/ref/" + quote(nome, safe="/"), ausente=ausente)
+        if dado is None:
+            return None
+        if dado.get("ref") != "refs/" + nome or dado["object"].get("type") != "commit":
+            raise _Conflito(
+                "A referência não confirma a origem pedida. Confira a tarefa com o robô."
+            )
+        return _sha(dado["object"]["sha"])
+
+    def arvore(self, sha):
+        dado = self.get("/git/trees/" + _sha(sha))
+        if dado.get("truncated") is not False or not isinstance(dado.get("tree"), list):
+            raise _SemConfirmacao(
+                "A árvore está incompleta. Não consegui confirmar o recebimento; tente novamente."
+            )
+        entradas = dado["tree"]
+        nomes = [item["path"] for item in entradas]
+        if len(set(nomes)) != len(nomes) or any(
+            not isinstance(n, str) or "/" in n or n in (".", "..") for n in nomes
+        ):
+            raise _Conflito(
+                "A árvore trouxe caminhos ambíguos. Confira o ramo original."
+            )
+        return entradas
+
+    def subarvore(self, entradas, nome):
+        item = next((e for e in entradas if e["path"] == nome), None)
+        if not item or item.get("type") != "tree" or item.get("mode") != "040000":
+            raise _SemConfirmacao(
+                "Os artefatos da fila ainda não foram confirmados. Tente novamente após o envio do robô."
+            )
+        return self.arvore(item["sha"])
+
+    def blob(self, item):
+        if item.get("type") != "blob" or item.get("mode") != "100644":
+            raise _Conflito(
+                "O artefato não é um arquivo de dados regular. Confira o ramo original."
+            )
+        dado = self.get("/git/blobs/" + _sha(item["sha"]))
+        if dado.get("encoding") != "base64" or dado.get("sha") != item["sha"]:
+            raise _Conflito(
+                "O arquivo não confirma os bytes solicitados. Confira o ramo original."
+            )
+        conteudo = base64.b64decode("".join(dado["content"].split()), validate=True)
+        conteudo.decode("utf-8")
+        if len(conteudo) > 100000:
+            raise _Conflito(
+                "O arquivo excede o tamanho de um pedido desta tela. Confira o ramo original."
+            )
+        return conteudo.replace(b"\r\n", b"\n")
+
+    def conferir_integracao(self, pr, revisao, origem, artefatos):
+        head = _sha(pr["head"]["sha"])
+        merge = _sha(pr["merge_commit_sha"])
+        if origem == "ramo" and head != revisao:
+            raise _SemConfirmacao("O PR aponta para outra revisão do ramo.")
+        for sha in dict.fromkeys((head, merge)):
+            if sha == revisao:
+                continue
+            fila = self.subarvore(self.arvore(sha), "fila")
+            for pasta in ("tarefas", "eventos"):
+                entradas = self.subarvore(fila, pasta)
+                for caminho, esperado in artefatos:
+                    if not caminho.startswith("fila/" + pasta + "/"):
+                        continue
+                    nome = caminho.rsplit("/", 1)[1]
+                    item = next((e for e in entradas if e["path"] == nome), None)
+                    if item is None or self.blob(item) != esperado:
+                        raise _SemConfirmacao(
+                            "O commit do PR ou da integração não confirma os mesmos artefatos."
+                        )
+        main = revisao if origem == "main" else self.ref("heads/" + RAMO_BASE)
+        if main != merge:
+            comparacao = self.get(f"/compare/{main}...{merge}")
+            if (
+                comparacao.get("status") != "behind"
+                or comparacao["base_commit"]["sha"] != main
+                or comparacao["merge_base_commit"]["sha"] != merge
+            ):
+                raise _SemConfirmacao(
+                    "O commit da integração não foi confirmado na história da main."
+                )
+
+    def conferir(self):
+        import unicodedata
+
+        reserva_sha = self.ref("chaves-numero/tarefa/" + self.chave, ausente=True)
+        if reserva_sha is None:
+            return ReciboReuniao(
+                "incerto",
+                "Não consegui confirmar recebimento. Salvar, autorizar ou copiar não envia o pedido; consulte novamente após a sessão do robô.",
+            )
+        commit = self.get("/git/commits/" + reserva_sha)
+        if commit.get("sha") != reserva_sha:
+            raise _Conflito("A revisão da reserva diverge. Confira o pedido original.")
+        reserva = json.loads(commit["message"])
+        numero, ramo = reserva.get("numero"), reserva.get("ramo")
+        if (
+            reserva.get("chave") != self.chave
+            or reserva.get("superficie") != "tarefa"
+            or not isinstance(numero, str)
+            or not re.fullmatch(r"[0-9]{3,12}", numero)
+            or not isinstance(ramo, str)
+            or not re.fullmatch(r"agent/[a-zA-Z0-9/_-]+", ramo)
+            or any(parte in ("", ".", "..") for parte in ramo.split("/"))
+        ):
+            raise _Conflito(
+                "A reserva tem identidade ou ramo inválido. Confira o pedido com o robô."
+            )
+        self.tarefa, self.ramo = "TAR-" + numero, ramo
+        if reserva.get("pedido") != self.envelope["pedido"] or any(
+            type(reserva["pedido"][campo]) is not int
+            for campo in ("documento", "versao")
+        ):
+            return ReciboReuniao(
+                "divergente",
+                "Esta identidade já está reservada com outra versão. Continue na mesma tarefa com o texto original; esta versão não tem recebimento confirmado.",
+                self.tarefa,
+                ramo,
+            )
+        instante = datetime.fromisoformat(reserva["criado_em"])
+        if instante.tzinfo is None or instante.strftime("%Y%m%d") != reserva.get("dia"):
+            raise _Conflito("A data da reserva não confere. Confira o pedido original.")
+        sha = self.ref("heads/" + ramo, ausente=True)
+        origem = "ramo"
+        if sha is None:
+            sha = self.ref("heads/" + RAMO_BASE)
+            origem = "main"
+        raiz = self.arvore(sha)
+        fila = self.subarvore(raiz, "fila")
+        tarefas = self.subarvore(fila, "tarefas")
+        eventos = self.subarvore(fila, "eventos")
+        tarefa = self.envelope["tarefa"]
+        plano = (
+            unicodedata.normalize("NFKD", tarefa["titulo"])
+            .encode("ascii", "ignore")
+            .decode()
+        )
+        slug = re.sub(r"[^a-z0-9]+", "-", plano.lower()).strip("-")[:60] or "tarefa"
+        stem = numero + "-" + slug
+        evento_stem = f"{instante:%Y%m%d-%H%M%S}-{self.tarefa}-explicada"
+        candidatos = [e for e in tarefas if e["path"].startswith(numero + "-")]
+        if len(candidatos) != 1 or candidatos[0]["path"] != stem + ".json":
+            raise _Conflito(
+                "Não encontrei um único arquivo da tarefa original. Confira o ramo com o robô."
+            )
+        explicada = next(
+            (e for e in eventos if e["path"] == evento_stem + ".json"), None
+        )
+        if explicada is None:
+            raise _SemConfirmacao(
+                "Falta a explicação do pedido no mesmo ramo. Tente novamente após o envio completo."
+            )
+        esperados = (
+            (
+                "fila/tarefas/" + stem + ".json",
+                candidatos[0],
+                {
+                    "arquivo": stem,
+                    "id": self.tarefa,
+                    **tarefa,
+                    "pedido": self.envelope["pedido"],
+                    "criada_em": instante.astimezone(timezone.utc).strftime("%Y-%m-%d"),
+                },
+            ),
+            (
+                "fila/eventos/" + evento_stem + ".json",
+                explicada,
+                {
+                    "arquivo": evento_stem,
+                    "tarefa": self.tarefa,
+                    "evento": "explicada",
+                    "quando": instante.isoformat(timespec="seconds"),
+                    "quem": tarefa["origem"],
+                    **self.envelope["explicacao"],
+                },
+            ),
+        )
+        artefatos = []
+        for caminho, item, esperado in esperados:
+            conteudo = self.blob(item)
+            canonico = (
+                json.dumps(esperado, ensure_ascii=False, sort_keys=True, indent=2)
+                + "\n"
+            ).encode("utf-8")
+            if conteudo != canonico:
+                raise _Conflito(
+                    "Os bytes recebidos divergem do pedido autorizado. Continue na mesma tarefa e confira a versão original."
+                )
+            artefatos.append((caminho, conteudo))
+        prs = self.get(
+            "/pulls",
+            params={"state": "all", "head": f"abundanciabr:{ramo}", "per_page": 100},
+        )
+        if not isinstance(prs, list) or len(prs) > 1:
+            raise _Conflito(
+                "Mais de um PR pode corresponder ao ramo. Confira o pedido original."
+            )
+        pr_numero, integrado = None, False
+        detalhe_integracao = ""
+        if prs:
+            pr = prs[0]
+            if (
+                not _numero_e_url_do_pr(pr)
+                or pr["head"]["ref"] != ramo
+                or pr["head"]["repo"]["full_name"] != REPOSITORIO
+                or pr["base"]["ref"] != RAMO_BASE
+                or pr["base"]["repo"]["full_name"] != REPOSITORIO
+                or pr.get("state") not in ("open", "closed")
+            ):
+                raise _Conflito(
+                    "O PR não pertence à origem da tarefa. Confira o ramo original."
+                )
+            pr_numero = pr["number"]
+            if pr.get("merged_at") and pr["state"] == "closed":
+                try:
+                    self.conferir_integracao(pr, sha, origem, artefatos)
+                    integrado = True
+                    detalhe_integracao = " Integração confirmada na história da main, com os mesmos artefatos no PR e no commit integrado."
+                except (
+                    _Conflito,
+                    _SemConfirmacao,
+                    httpx.HTTPError,
+                    ValueError,
+                    TypeError,
+                    KeyError,
+                    AttributeError,
+                ):
+                    detalhe_integracao = " A integração não foi confirmada. Consulte novamente ou peça ao robô para conferir o PR e a main."
+        inicio = ""
+        inicios = [
+            e
+            for e in eventos
+            if re.fullmatch(
+                rf"[0-9]{{8}}-[0-9]{{6}}-{self.tarefa}-iniciada\.json", e["path"]
+            )
+        ]
+        if len(inicios) > 8:
+            raise _SemConfirmacao(
+                "O histórico de início excede esta consulta. Confira a tarefa com o robô."
+            )
+        for item in inicios:
+            dado = json.loads(self.blob(item))
+            data = datetime.fromisoformat(dado["quando"])
+            if (
+                dado.get("tarefa") != self.tarefa
+                or dado.get("evento") != "iniciada"
+                or not dado.get("quem")
+                or data.tzinfo is None
+                or dado.get("arquivo") + ".json" != item["path"]
+                or item["path"] != f"{data:%Y%m%d-%H%M%S}-{self.tarefa}-iniciada.json"
+            ):
+                raise _Conflito(
+                    "O registro de início diverge da tarefa. Confira o ramo original."
+                )
+            inicio = max(inicio, dado["quando"])
+        return ReciboReuniao(
+            "integrado" if integrado else "recebido",
+            f"Pedido recebido na {origem}, com tarefa e explicação conferidas na mesma revisão. Integração não comprova publicação ou aplicação."
+            + detalhe_integracao,
+            self.tarefa,
+            ramo,
+            sha,
+            pr_numero,
+            tuple(artefatos),
+            inicio,
+        )
+
+
+def consultar_recibo_reuniao(envelope):
+    if not token():
+        return ReciboReuniao(
+            "incerto",
+            "Não consegui confirmar recebimento: a consulta ao repositório está indisponível. O texto privado continua salvo; tente consultar novamente. Se você já levou o pedido à sessão e a consulta continuar indisponível, acione o robô para conferir a mesma tarefa.",
+        )
+    leitor = _RecebimentoReuniao(envelope)
+    try:
+        return leitor.conferir()
+    except (
+        _Conflito,
+        _SemConfirmacao,
+        httpx.HTTPError,
+        ValueError,
+        TypeError,
+        KeyError,
+        AttributeError,
+    ) as erro:
+        return ReciboReuniao(
+            "incerto",
+            f"Não consegui confirmar recebimento. {erro} Consulte novamente. Se a consulta continuar indisponível, acione o robô para conferir a mesma tarefa.",
+            leitor.tarefa,
+            leitor.ramo,
+        )

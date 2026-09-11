@@ -3,7 +3,7 @@
 O modo reunião (/admin/reuniao/, degrau 3 do painel de gestão): a pauta de
 segunda-feira em oito passos, lida do MESMO placar, que termina no pedido
 para o robô (o bloco de texto com os compromissos e as decisões, para colar
-numa sessão). Esta tela não escreve nada. Regras em apps/core/reuniao.py.
+numa sessão). A gravação privada preserva o pedido para retomar. Regras em apps/core/reuniao.py.
 
 Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
 {% endcomment %}
@@ -11,8 +11,11 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
 {% block corpo %}
 <div class="envolucro">
   <h1>A reunião de segunda-feira</h1>
-  <p class="subtitulo">Oito passos, uma hora no máximo, e no fim um ou dois compromissos. Nada aqui é gravado: o que vale é o que chegar ao livro.</p>
+  <p class="subtitulo">Oito passos, uma hora no máximo, e no fim um ou dois compromissos. Salve o pedido privado ao terminar. Depois de revisar, você pode autorizar o envio para a sessão do robô.</p>
 
+  {% if erro_pedido %}<p class="aviso borda-vermelha" role="alert">{{ erro_pedido }}</p>{% endif %}
+  <h2 class="titulo-de-bloco">Pedidos salvos</h2>
+  <ul class="notas">{% for salvo in pedidos_salvos %}<li><a href="{% url 'pedido_reuniao' identidade=salvo.nome|cut:'pedido-reuniao-' %}">{{ salvo.titulo }}</a> (privado)</li>{% empty %}<li>Nenhum pedido salvo. Preencha a pauta e salve o primeiro no passo 8.</li>{% endfor %}</ul>
   {% if not meta %}
     <p class="aviso borda-vermelha"><b>O placar não montou</b> (falta o cartão da meta), e sem ele a pauta não tem o que ler.</p>
     <ul class="notas">{% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}</ul>
@@ -96,10 +99,12 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
   <h2 class="titulo-de-bloco espaco-20">7. As decisões</h2>
   <p class="recado">O que ficou decidido hoje vai no passo 8, e vira registro tipo decisão no livro.</p>
 
+  {% endif %}
   <h2 class="titulo-de-bloco espaco-20">8. Os compromissos novos, e o pedido para o robô</h2>
   <p class="recado">Um ou dois por pessoa, nunca quinze. Cada um vence em {{ vence_em_dias }} dias; na próxima segunda o veredito aparece sozinho.</p>
   <form class="forma" method="post" action="{% url 'reuniao' %}">
     {% csrf_token %}
+    <input type="hidden" name="formulario" value="{{ formulario }}">
     <label for="compromisso1">Compromisso 1 (o que, quem, até quando)</label>
     <input id="compromisso1" name="compromisso1" type="text" maxlength="200" value="{{ campos.compromisso1|default:'' }}">
     <label for="compromisso2">Compromisso 2 (opcional)</label>
@@ -110,23 +115,13 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
     <textarea id="decisoes" name="decisoes" rows="3" maxlength="1000">{{ campos.decisoes|default:'' }}</textarea>
     <label for="aprendemos">O que aprendemos (opcional)</label>
     <textarea id="aprendemos" name="aprendemos" rows="2" maxlength="600">{{ campos.aprendemos|default:'' }}</textarea>
-    {% if mudancas.foto_de_hoje %}
+    {% if foto_da_pauta %}
     <label><input type="checkbox" name="tirar_foto" value="sim" {% if not montou or campos.tirar_foto %}checked{% endif %}> Tirar a foto da semana (o placar de hoje vira memória, e na próxima segunda o bloco "o que mudou" compara com ela)</label>
+    <p class="recado-fraco">Este pedido mantém a foto registrada quando você abriu a pauta.</p>
     {% endif %}
-    <button type="submit">Montar o pedido para o robô</button>
+    <button type="submit">Salvar pedido privado</button>
   </form>
 
-  {% if montou %}
-    {% if pedido %}
-      <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
-      <p class="recado-fraco">Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi gravado aqui: o que vale é o que chegar ao livro. Recarregar a página apaga o texto.</p>
-      <textarea class="colar" rows="14" readonly>{{ pedido }}</textarea>
-    {% else %}
-      <p class="aviso borda-amarela"><b>Nada para pedir.</b> Preencha ao menos um compromisso, uma decisão, um aprendizado ou a restrição confirmada, ou marque a foto da semana.</p>
-    {% endif %}
-  {% endif %}
-
   {% include "admin/_analista.html" %}
-  {% endif %}
 </div>
 {% endblock %}
