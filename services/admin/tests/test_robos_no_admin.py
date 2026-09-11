@@ -68,6 +68,58 @@ def test_entrega_submetida_continua_visivel_sem_aceite(tmp_path, monkeypatch):
     assert "Trabalho em andamento, com aceite ainda não comprovado" in html
     assert "O trabalho já está pronto" not in html
     assert "<summary>Conclusões registradas" not in html
+    assert 'href="https://github.com/x/y/pull/1494"' in html
+    assert "Conferir entrega submetida" in html
+    assert "a" * 40 in html
+    assert "b" * 40 in html
+
+
+@respx.mock
+def test_execucao_sem_submissao_nao_inventa_endereco(tmp_path, monkeypatch):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps({"TAR-293": {"estado": "em execução", "titulo": "Construindo"}}),
+        encoding="utf-8",
+    )
+    html = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+    assert "Ainda não há submissão registrada para esta tarefa" in html
+    assert "Conferir entrega submetida" not in html
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "endereco",
+    [
+        "javascript:alert(1)",
+        "https://github.com.evil/x/y/pull/1",
+        'https://github.com/x/y/pull/1" onclick="alert(1)',
+        "https://github.com/x/y/pull/1\\n",
+    ],
+)
+def test_identidade_da_entrega_nao_injeta_html_nem_link_inseguro(
+    tmp_path, monkeypatch, endereco
+):
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-293": {
+                    "estado": "em execução",
+                    "titulo": "Conferindo",
+                    "pr": endereco,
+                    "revisao": "<script>revisao</script>",
+                    "arvore": "<script>arvore</script>",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    html = texto(_dentro().get(reverse("caixa_robos")))
+    assert "Endereço da entrega inválido" in html
+    assert "Conferir entrega submetida" not in html
+    assert "<script>revisao</script>" not in html
+    assert "&lt;script&gt;revisao&lt;/script&gt;" in html
+    assert "&lt;script&gt;arvore&lt;/script&gt;" in html
 
 
 @respx.mock

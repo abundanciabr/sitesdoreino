@@ -341,14 +341,13 @@ incidente. `verificada` significa que identidade e arquivos conferiram; não
 afirma que a revisão é a mais recente do repositório.
 
 `PortaAdministrativa` abre um contexto por requisição e o descarta em
-`finally`, inclusive em recusa ou exceção. A primeira seleção fixa a revisão;
-cada tipo fixa sua pasta concreta ou sua indisponibilidade. Outro consumidor
-não troca de pacote para encontrar um artefato ausente. Painel e fila só se
-combinam na mesma revisão e execução; no legado, precisam pertencer à mesma
-raiz local.
-Sem uma cópia compatível, a fonte fica indisponível e a tela mantém o aviso
-que já trata a ausência. O publicador atual tem dois ponteiros independentes:
-a publicação conjunta e atômica ainda precisa ser implementada.
+`finally`, inclusive em recusa ou exceção. Cada tipo fixa independentemente
+sua pasta concreta, identidade ou indisponibilidade durante toda a resposta.
+Outro consumidor do mesmo tipo não troca de pacote para encontrar um artefato
+ausente. O PR #1510 retirou a exigência de identidade conjunta: painel e fila
+podem vir de revisões, execuções e raízes locais distintas, porque seus
+ponteiros são independentes. A tela identifica cada fonte e mantém seu aviso
+de alternativa ou ausência. A próxima requisição pode selecionar outra versão.
 
 Não há cache entre requisições. Uma otimização futura precisa usar a
 identidade da release concreta e preservar o aviso da alternativa; cachear

@@ -569,6 +569,15 @@ def robos(request):
                 {
                     "id": tid,
                     **dados,
+                    "entrega_url": (
+                        dados["pr"]
+                        if isinstance(dados.get("pr"), str)
+                        and re.fullmatch(
+                            r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[1-9][0-9]*",
+                            dados["pr"],
+                        )
+                        else None
+                    ),
                     "onde": onde_isso_mexe(dados.get("toca")),
                     "quando": ultima_mexida.get(tid),
                     # Sobrescreve o cru que veio dos dados de propósito: o que a
