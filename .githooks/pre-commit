@@ -98,4 +98,9 @@ if [[ -f ci/registro_no_commit.py ]]; then
     exit 1
   fi
 fi
+
+if [[ -f ci/travessao.py ]]; then
+  python ci/travessao.py --verificar-staged || exit 1
+fi
+
 exit 0
