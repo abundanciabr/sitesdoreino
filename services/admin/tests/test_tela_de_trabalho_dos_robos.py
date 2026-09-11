@@ -798,7 +798,7 @@ def test_integracao_so_vira_aplicacao_com_evento_exato_na_fila(
     )
     remoto.prs[0].update(state="closed", merged=True)
     pasta = tmp_path / "fila_embutida"
-    estados = json.loads((pasta / "estados.json").read_text())
+    estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
     estados["TAR-102"]["estado"] = estado
     (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
     if arquivo != "ausente":
@@ -822,3 +822,44 @@ def test_prompt_da_sessao_do_dono_nao_depende_de_maestro_inexistente():
     assert "Devolva o resultado a mim" in prompt
     assert "maestro" not in prompt
     assert "aplicação" in prompt and "aceite" in prompt
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "dados",
+    [[], {"TAR-102": None}, {"TAR-102": {}}, {"TAR-102": {"estado": "inválido"}}],
+)
+def test_fila_invalida_recusa_cancelamento_e_preserva_motivo(
+    tmp_path, monkeypatch, com_token, dados
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(json.dumps(dados), encoding="utf-8")
+    resposta = _dentro().post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Conservar este motivo."},
+    )
+    assert resposta.status_code == 400
+    assert resposta.context["resultado"] == "sem_fila"
+    assert resposta.context["rascunho"]["motivo"] == "Conservar este motivo."
+    assert "Conferir a fila e retomar o pedido público" in pagina_sem_estilo(resposta)
+    assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_consulta_integrada_sem_fila_nao_afirma_aplicacao(
+    tmp_path, monkeypatch, com_token
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    cliente = _dentro()
+    cliente.post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Motivo persistente."},
+    )
+    remoto.prs[0].update(state="closed", merged=True)
+    (pasta / "estados.json").unlink()
+    resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+    assert resposta.context["resultado"] == "integrado"
+    assert resposta.context["aplicacao_conferida"] is False
+    assert resposta.context["rascunho"]["motivo"] == "Motivo persistente."
+    assert "ainda não foi confirmada" in pagina_sem_estilo(resposta)

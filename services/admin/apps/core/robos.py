@@ -565,6 +565,7 @@ def _quadro(request, *, resultado=None, rascunho=None):
         "rascunho": rascunho,
         "repositorio": fila_no_github.REPOSITORIO,
         "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
+        "aplicacao_conferida": False,
     }
     pasta = diretorio_da_fila()
     estados = ler_estados(pasta)
@@ -735,13 +736,14 @@ def excluir_tarefa(request):
             "motivo_longo", Registro.RECUSADO_PELA_CELULA, "motivo longo demais"
         )
     pasta = diretorio_da_fila()
-    if pasta is None:
+    estados = ler_estados(pasta)
+    if estados is None:
         return responder(
             "sem_fila",
             Registro.NAO_RESPONDEU,
             "não foi possível conferir a fila disponível",
         )
-    dados = (_ler_json(pasta / "estados.json") or {}).get(tarefa)
+    dados = estados.get(tarefa)
     if dados is None:
         return responder(
             "nao_existe", Registro.RECUSADO_PELA_CELULA, "não existe na fila disponível"
