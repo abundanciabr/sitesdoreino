@@ -258,7 +258,7 @@ def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None)
     observado_em = _instante(evento["observado_em"])
     if inicio is None or fim is None or fim < inicio:
         return False
-    if [evento.get("pr"), evento["commit"]] not in vinculo.get(
+    if [evento.get("pr"), evento["commit"], evento["estado"]] not in vinculo.get(
         "resultados_verificados", ()
     ):
         return False
@@ -761,7 +761,7 @@ def main(argv: list[str] | None = None) -> int:
             and _classificacao_antecede_commit(raiz, vinculo, evento["commit"])
         ]
         vinculo["resultados_verificados"] = [
-            [evento.get("pr"), evento["commit"]]
+            [evento.get("pr"), evento["commit"], evento["estado"]]
             for evento in relacionados
             if evento.get("estado") != "pendente"
             and type(evento.get("pr")) is int

@@ -117,7 +117,9 @@ def vinculo_para(evento):
         "resultados_verificados": [],
     }
     if evento["estado"] != "pendente":
-        vinculo["resultados_verificados"].append([evento["pr"], evento["commit"]])
+        vinculo["resultados_verificados"].append(
+            [evento["pr"], evento["commit"], evento["estado"]]
+        )
     return vinculo
 
 
@@ -173,7 +175,9 @@ def analisar_com_fila(eventos, vinculos=None):
                 )
                 if evento.get("commit") not in vinculo["commits_descendentes"]:
                     vinculo["commits_descendentes"].append(evento["commit"])
-                resultado = [evento.get("pr"), evento.get("commit")]
+                resultado = [
+                    evento.get("pr"), evento.get("commit"), evento.get("estado")
+                ]
                 if (
                     evento.get("estado") != "pendente"
                     and resultado not in vinculo["resultados_verificados"]
@@ -670,7 +674,11 @@ def test_vinculo_externo_divergente_impede_confirmacao():
     atualizar_identidade_e_evidencia(commit_sem_ancestralidade)
     vinculo_sem_ancestralidade = vinculo_para(evento)
     vinculo_sem_ancestralidade["resultados_verificados"].append(
-        [commit_sem_ancestralidade["pr"], commit_sem_ancestralidade["commit"]]
+        [
+            commit_sem_ancestralidade["pr"],
+            commit_sem_ancestralidade["commit"],
+            commit_sem_ancestralidade["estado"],
+        ]
     )
     resultado_sem_ancestralidade = _analisar_sem_fila(
         [commit_sem_ancestralidade],
@@ -680,6 +688,11 @@ def test_vinculo_externo_divergente_impede_confirmacao():
     atualizar_identidade_e_evidencia(pr_sem_relacao)
     resultado_sem_relacao = _analisar_sem_fila(
         [pr_sem_relacao], {evento["tarefa"]: vinculo_para(evento)}
+    )
+    estado_sem_relacao = dict(evento, estado="falhou")
+    atualizar_identidade_e_evidencia(estado_sem_relacao)
+    resultado_com_estado_inventado = _analisar_sem_fila(
+        [estado_sem_relacao], {evento["tarefa"]: vinculo_para(evento)}
     )
     fim_antes_do_inicio = dict(evento)
     fim_antes_do_inicio["fim"] = (
@@ -698,6 +711,7 @@ def test_vinculo_externo_divergente_impede_confirmacao():
     assert resultado_generico["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_sem_ancestralidade["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_sem_relacao["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado_com_estado_inventado["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_com_fim_invalido["observacoes"]["tarefas_confirmatorias_completas"] == 0
 
 
