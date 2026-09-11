@@ -50,13 +50,16 @@ def painel_materializado():
     seria um verde sem medição.
     """
     if (CELULA / "painel_embutido" / "painel.html").is_file():
+        yield
         return
     painel = RAIZ_DO_REPO / "painel"
     if (painel / "painel.html").is_file():
+        yield
         return
     gerador = painel / "gerar_manifesto.js"
     node = shutil.which("node")
     if not gerador.is_file() or node is None:
+        yield
         return
     subprocess.run(
         [node, str(gerador)],
