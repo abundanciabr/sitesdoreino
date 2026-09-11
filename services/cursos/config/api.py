@@ -184,7 +184,10 @@ def resposta_para_slug_de_aula_avulsa_invalido(request, exc):
 @api.exception_handler(ValidationError)
 def resposta_para_erro_de_validacao(request, exc):
     if _e_edicao_de_aula_avulsa(request):
-        slug_invalido = any(erro["loc"][-1] == "slug" for erro in exc.errors)
+        slug_invalido = any(
+            erro["loc"][-1] == "slug" and erro["type"] != "string_type"
+            for erro in exc.errors
+        )
         if slug_invalido:
             return _resposta_de_erro_da_aula_avulsa(
                 request,

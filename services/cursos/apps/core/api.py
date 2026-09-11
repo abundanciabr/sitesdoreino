@@ -425,6 +425,13 @@ class AulaAvulsaParaCriarSchema(Schema):
     descricao: str = Field(max_length=5000)
 
 
+class _SlugAusente(str):
+    pass
+
+
+_SLUG_AUSENTE = _SlugAusente()
+
+
 class SlugDeAulaAvulsaInvalido(HttpError):
     def __init__(self):
         super().__init__(422, "o endereço da aula precisa usar o formato informado")
@@ -442,7 +449,7 @@ class AulaAvulsaParaEditarSchema(Schema):
     titulo: str = Field(min_length=1, max_length=CURTO)
     video_url: str = Field(min_length=1, max_length=URL)
     descricao: str = Field(max_length=5000)
-    slug: str | None = Field(default=None, max_length=140)
+    slug: str = Field(default_factory=lambda: _SLUG_AUSENTE, max_length=140)
 
 
 class BlocoParaGravarSchema(Schema):
@@ -1022,7 +1029,9 @@ def update_standalone_lesson(
     payload: AulaAvulsaParaEditarSchema,
 ):
     titulo, video_url = _campos_da_aula_avulsa(payload)
-    slug_pedido = _slug_normalizado(payload.slug) if payload.slug is not None else None
+    slug_pedido = (
+        None if payload.slug is _SLUG_AUSENTE else _slug_normalizado(payload.slug)
+    )
     for _ in range(10_000):
         try:
             with transaction.atomic():

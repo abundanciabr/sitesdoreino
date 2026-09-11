@@ -95,6 +95,18 @@ def test_edita_os_tres_campos_sem_slug_preserva_endereco_e_publicacao():
     assert aula_no_banco.publicada_em == publicada_em_antes
 
 
+def test_edita_slug_nulo_devolve_422_como_corpo_invalido():
+    criada = criar().json()
+
+    resposta = editar(criada["slug"], slug=None)
+
+    assert resposta.status_code == 422
+    assert resposta.json() == {
+        "erro": "corpo_invalido",
+        "o_que_fazer": "Revise os campos da aula e envie somente título, URL do vídeo, descrição e slug.",
+    }
+
+
 def test_edita_slug_normaliza_unicode_antes_de_reservar_o_endereco():
     criada = criar().json()
     aula_id = AulaAvulsa.objects.get(slug=criada["slug"]).pk
