@@ -79,7 +79,16 @@ paths:
     get:
       operationId: listOpportunities
       summary: Lista oportunidades humanas sem repetir o histórico da pessoa
+      x-autorizacao:
+        recurso: oportunidade
+        acao: listar
+        permitido_para: [comercial]
+        escopo: titular
       parameters:
+        - name: lead_id
+          in: query
+          schema: { type: string }
+          description: Identificador opaco do lead cujas oportunidades serão listadas.
         - name: titular_id
           in: query
           schema: { type: string }
@@ -87,10 +96,13 @@ paths:
         - name: etapa
           in: query
           schema: { $ref: '#/components/schemas/EtapaOportunidade' }
+        - name: situacao
+          in: query
+          schema: { $ref: '#/components/schemas/SituacaoOportunidade' }
         - name: atrasada
           in: query
           schema: { type: boolean }
-          description: Quando verdadeiro, retorna somente oportunidades com próximo passo vencido.
+          description: Quando verdadeiro, retorna somente oportunidades com etapa aberta e próximo passo vencido.
         - name: cursor
           in: query
           schema: { type: string }
@@ -104,6 +116,11 @@ paths:
     post:
       operationId: createOpportunity
       summary: Registra uma oportunidade para uma pessoa já conhecida pela fonte leads
+      x-autorizacao:
+        recurso: oportunidade
+        acao: criar
+        permitido_para: [comercial]
+        escopo: titular_autorizado
       requestBody:
         required: true
         content:
@@ -127,6 +144,11 @@ paths:
     get:
       operationId: getOpportunity
       summary: Consulta uma oportunidade e o histórico humano que pertence a ela
+      x-autorizacao:
+        recurso: oportunidade
+        acao: consultar
+        permitido_para: [comercial]
+        escopo: titular
       responses:
         '200':
           description: Oportunidade encontrada
@@ -138,6 +160,11 @@ paths:
     patch:
       operationId: updateOpportunity
       summary: Atualiza etapa, próximo passo ou prazo sem alterar o histórico
+      x-autorizacao:
+        recurso: oportunidade
+        acao: atualizar
+        permitido_para: [comercial]
+        escopo: titular
       requestBody:
         required: true
         content:
@@ -148,7 +175,7 @@ paths:
           description: Oportunidade atualizada
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade está encerrada; use a reabertura para retomá-la }
@@ -162,6 +189,11 @@ paths:
     post:
       operationId: appendOpportunityHistory
       summary: Acrescenta um registro humano imutável ao histórico da oportunidade
+      x-autorizacao:
+        recurso: oportunidade
+        acao: registrar_historico
+        permitido_para: [comercial]
+        escopo: titular
       requestBody:
         required: true
         content:
@@ -185,6 +217,11 @@ paths:
     post:
       operationId: transferOpportunityResponsibility
       summary: Transfere a responsabilidade pela oportunidade sem apagar quem a acompanhava
+      x-autorizacao:
+        recurso: oportunidade
+        acao: transferir
+        permitido_para: [comercial]
+        escopo: titular
       requestBody:
         required: true
         content:
@@ -195,7 +232,7 @@ paths:
           description: Transferência pendente de aceite do novo titular
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TransferenciaResponsabilidade' }
+              schema: { $ref: '#/components/schemas/TransferenciaComEvento' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: Já há uma transferência pendente para esta oportunidade }
@@ -213,12 +250,17 @@ paths:
     post:
       operationId: acceptOpportunityTransfer
       summary: Aceita a transferência e troca o titular da oportunidade
+      x-autorizacao:
+        recurso: transferencia
+        acao: aceitar
+        permitido_para: [comercial]
+        escopo: novo_titular
       responses:
         '200':
           description: Transferência concluída
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade ou transferência inexistente }
         '409': { description: A transferência não está pendente ou pertence a outro titular }
@@ -235,6 +277,11 @@ paths:
     post:
       operationId: refuseOpportunityTransfer
       summary: Recusa uma transferência pendente sem trocar o titular da oportunidade
+      x-autorizacao:
+        recurso: transferencia
+        acao: recusar
+        permitido_para: [comercial]
+        escopo: novo_titular
       requestBody:
         required: true
         content:
@@ -245,7 +292,7 @@ paths:
           description: Transferência recusada; o titular atual permanece responsável
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/TransferenciaResponsabilidade' }
+              schema: { $ref: '#/components/schemas/TransferenciaComEvento' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade ou transferência inexistente }
         '409': { description: A transferência não está pendente ou pertence a outro titular }
@@ -259,6 +306,11 @@ paths:
     post:
       operationId: closeOpportunity
       summary: Encerra uma oportunidade com um desfecho explícito
+      x-autorizacao:
+        recurso: oportunidade
+        acao: encerrar
+        permitido_para: [comercial]
+        escopo: titular
       requestBody:
         required: true
         content:
@@ -269,7 +321,7 @@ paths:
           description: Oportunidade encerrada
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade já está encerrada }
@@ -283,6 +335,11 @@ paths:
     post:
       operationId: reopenOpportunity
       summary: Reabre uma oportunidade encerrada com novo próximo passo
+      x-autorizacao:
+        recurso: oportunidade
+        acao: reabrir
+        permitido_para: [comercial]
+        escopo: titular
       requestBody:
         required: true
         content:
@@ -293,7 +350,7 @@ paths:
           description: Oportunidade reaberta
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+              schema: { $ref: '#/components/schemas/ResultadoDaMutacaoDaOportunidade' }
         '403': { $ref: '#/components/responses/AcaoNaoAutorizada' }
         '404': { description: Oportunidade inexistente }
         '409': { description: A oportunidade ainda está aberta }
@@ -311,6 +368,9 @@ components:
     EtapaAbertaOportunidade:
       type: string
       enum: [nova, qualificada, proposta, negociacao]
+    SituacaoOportunidade:
+      type: string
+      enum: [aberta, encerrada]
     TitularOportunidade:
       type: object
       additionalProperties: false
@@ -321,7 +381,7 @@ components:
           description: Identificador opaco da conta, nunca e-mail.
         funcao:
           type: string
-          enum: [estrategia, operacoes, ensino, comercial]
+          enum: [comercial]
     ProximoPasso:
       type: object
       additionalProperties: false
@@ -351,6 +411,7 @@ components:
         encerrada_em: { type: string, format: date-time }
     RegistroHistoricoOportunidade:
       type: object
+      description: Evento imutável da oportunidade; a API não expõe alteração nem remoção.
       additionalProperties: false
       required: [id, registrado_em, autor_id, tipo, descricao]
       properties:
@@ -364,12 +425,14 @@ components:
         evidencia: { type: string }
     Oportunidade:
       type: object
+      description: A situação diferencia oportunidade aberta de encerrada; etapas finais só existem quando a situação está encerrada.
       additionalProperties: false
-      required: [id, lead_id, etapa, titular, fonte, proximo_passo, criada_em, atualizada_em]
+      required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, criada_em, atualizada_em]
       properties:
         id: { type: string }
         lead_id: { type: string }
         etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
+        situacao: { $ref: '#/components/schemas/SituacaoOportunidade' }
         titular: { $ref: '#/components/schemas/TitularOportunidade' }
         fonte: { $ref: '#/components/schemas/FonteOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
@@ -379,11 +442,12 @@ components:
     OportunidadeComHistorico:
       type: object
       additionalProperties: false
-      required: [id, lead_id, etapa, titular, fonte, proximo_passo, criada_em, atualizada_em, historico]
+      required: [id, lead_id, etapa, situacao, titular, fonte, proximo_passo, criada_em, atualizada_em, historico]
       properties:
         id: { type: string }
         lead_id: { type: string }
         etapa: { $ref: '#/components/schemas/EtapaOportunidade' }
+        situacao: { $ref: '#/components/schemas/SituacaoOportunidade' }
         titular: { $ref: '#/components/schemas/TitularOportunidade' }
         fonte: { $ref: '#/components/schemas/FonteOportunidade' }
         proximo_passo: { $ref: '#/components/schemas/ProximoPasso' }
@@ -440,6 +504,20 @@ components:
         estado: { type: string, enum: [pendente, aceita, recusada] }
         solicitada_em: { type: string, format: date-time }
         concluida_em: { type: string, format: date-time }
+    TransferenciaComEvento:
+      type: object
+      additionalProperties: false
+      required: [transferencia, evento]
+      properties:
+        transferencia: { $ref: '#/components/schemas/TransferenciaResponsabilidade' }
+        evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
+    ResultadoDaMutacaoDaOportunidade:
+      type: object
+      additionalProperties: false
+      required: [oportunidade, evento]
+      properties:
+        oportunidade: { $ref: '#/components/schemas/OportunidadeComHistorico' }
+        evento: { $ref: '#/components/schemas/RegistroHistoricoOportunidade' }
     RecusarTransferenciaOportunidade:
       type: object
       additionalProperties: false
@@ -449,13 +527,13 @@ components:
     EncerrarOportunidade:
       type: object
       additionalProperties: false
-      required: [resultado, motivo]
+      required: [resultado, motivo, evidencia]
       properties:
         resultado:
           type: string
           enum: [ganha, perdida, desqualificada]
         motivo: { type: string, minLength: 1 }
-        evidencia: { type: string }
+        evidencia: { type: string, minLength: 1 }
     ReabrirOportunidade:
       type: object
       additionalProperties: false
