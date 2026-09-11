@@ -417,7 +417,7 @@ ARQUIVOS_DE_CONFIGURACAO_DE_TESTE = frozenset({
     "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini",
     "sitecustomize.py", "usercustomize.py",
 })
-ARTEFATOS_IGNORADOS_DA_REVISAO = re.compile(r"painel/(?:painel\.html|livro-\d{6}\.js)\Z")
+ARTEFATOS_IGNORADOS_DA_REVISAO = re.compile(r"painel/livro-\d{6}\.js\Z")
 
 
 def _conferir_revisao_validada(raiz, commit, rodar, arvore_esperada=None):

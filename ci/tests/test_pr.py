@@ -756,6 +756,27 @@ def test_validacao_407_aceita_livro_ignorado_gerado_pela_muralha(tmp_path):
     assert len(provas) == 1
 
 
+def test_validacao_407_recusa_livro_ignorado_sem_data_do_artefato_gerado(tmp_path):
+    origem, raiz, _, _ = _repositorio_de_validacao(tmp_path)
+    (origem / ".gitignore").write_text("painel/livro-*.js\n", encoding="utf-8")
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=origem, check=True, capture_output=True, text=True).stdout.strip()
+
+    git("add", ".gitignore")
+    git("commit", "-m", "ignorar artefato do painel")
+    correto = git("rev-parse", "HEAD")
+    git("worktree", "remove", "--force", str(raiz))
+    git("worktree", "add", "--detach", str(raiz), correto)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "-c", "from pathlib import Path; Path('painel').mkdir(); Path('painel/livro-injetado.js').write_text('')"]],
+            lambda *_: None,
+        )
+
+
 def test_validacao_407_recusa_fonte_ignorada_fora_do_artefato_gerado(tmp_path):
     origem, raiz, _, _ = _repositorio_de_validacao(tmp_path)
     (origem / ".gitignore").write_text("injetado.py\n", encoding="utf-8")
