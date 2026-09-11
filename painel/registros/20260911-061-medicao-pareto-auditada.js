@@ -9,7 +9,7 @@
   verificado_em: "2026-09-11",
   precisa_do_dono: false,
   responde_a: "20260911-056-ci-corrigir-medicao-pareto",
-  relacao: "comentario",
+  relacao: "aceite",
   tarefa: "TAR-338",
   gravidade: "verde",
   frente: "fabrica",
