@@ -14,6 +14,10 @@
   <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
   <h1>Aulas avulsas</h1>
   <p class="subtitulo">Crie uma resposta em vídeo e compartilhe o mesmo endereço no Fórum, na Caixa de Sugestões ou no grupo.</p>
+  {% if criada %}
+  <p class="recado"><b>A aula foi publicada.</b> <a href="{{ criada.endereco }}" target="_blank" rel="noopener">Abrir a aula</a> ou <button type="button" class="botao" data-copiar-link="{{ criada.endereco }}">Copiar o link</button></p>
+  {% endif %}
+  <p id="copiar-ajuda" class="aviso" aria-live="polite" hidden></p>
 
   {% if sem_site %}
   <p class="aviso borda-vermelha"><b>Não consegui saber de qual escola são as aulas.</b> Recarregue a página em um minuto. Nada mudou.</p>
@@ -22,9 +26,6 @@
   {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
   {% else %}
     {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
-    {% if criada %}
-    <p class="recado"><b>A aula foi publicada.</b> <a href="{{ criada.endereco }}" target="_blank" rel="noopener">Abrir a aula</a> ou <button type="button" class="botao" data-copiar-link="{{ criada.endereco }}">Copiar o link</button></p>
-    {% endif %}
     <div class="cartao">
       <form class="aula-avulsa-formulario" action="{{ url_criar }}" method="post">
         {% csrf_token %}
@@ -49,13 +50,24 @@
   (() => {
     const titulo = document.getElementById("titulo");
     const previa = document.getElementById("previa-do-endereco");
+    const ajuda = document.getElementById("copiar-ajuda");
     const slug = (texto) => texto.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     if (titulo && previa) {
       const atualizar = () => { previa.textContent = previa.dataset.base + (slug(titulo.value) || "...") + "/"; };
       titulo.addEventListener("input", atualizar);
       atualizar();
     }
-    document.querySelectorAll("[data-copiar-link]").forEach((botao) => botao.addEventListener("click", async () => { await navigator.clipboard.writeText(new URL(botao.dataset.copiarLink, window.location.origin).href); botao.textContent = "Link copiado"; }));
+    document.querySelectorAll("[data-copiar-link]").forEach((botao) => botao.addEventListener("click", async () => {
+      const endereco = new URL(botao.dataset.copiarLink, window.location.origin).href;
+      try {
+        if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error("clipboard indisponível");
+        await navigator.clipboard.writeText(endereco);
+        botao.textContent = "Link copiado";
+      } catch (_) {
+        ajuda.hidden = false;
+        ajuda.textContent = `Não consegui copiar o link. Selecione e copie este endereço manualmente: ${endereco}`;
+      }
+    }));
   })();
 </script>
 {% endblock %}

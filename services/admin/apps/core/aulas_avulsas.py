@@ -42,7 +42,7 @@ def _desenhar(request, site: dict, contexto: dict, status: int = 200):
             request,
             TELA,
             {"admin": request.admin, "falha_da_sala": _falha(desfecho)} | contexto,
-            status=503,
+            status=200 if contexto.get("criada") else 503,
         )
     return render(
         request,
