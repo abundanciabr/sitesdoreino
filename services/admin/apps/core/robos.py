@@ -61,11 +61,8 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from urllib.parse import quote
 
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
@@ -315,7 +312,7 @@ def prompt_para_tocar(tarefa: str, toca) -> str:
         mandato = ""
     return (
         f"Toque a {tarefa} da fila de trabalho.\n\n"
-        "Você é um despacho: construa somente esta tarefa e entregue um PR pronto "
+        "Esta sessão foi aberta por mim para conduzir esta tarefa até o resultado. Entregue um PR revisável "
         "para pousar. Leia o despacho completo no arquivo dela em fila/tarefas/ "
         f"antes de começar.{mandato}\n\n"
         "Trabalhe numa bancada própria criada de origin/main, nunca no clone "
@@ -334,9 +331,9 @@ def prompt_para_tocar(tarefa: str, toca) -> str:
         f"A entrega usa ci/fila.py submeter {tarefa}, com --quem, --pr, "
         "--revisao e --arvore da validação. Abrir ou integrar o PR não conclui "
         "a tarefa: falta comprovar o aceite e registrar a baixa com evidência. "
-        "Não faça o pouso automático e não fique "
-        "esperando checks: devolva à maestro o número do PR, o ramo, os testes "
-        "rodados e qualquer bloqueio."
+        "Conduza a revisão, os checks e o pedido de pouso pelo rito da casa. "
+        "Confira o aceite e a aplicação quando exigida antes de concluir a TAR. "
+        "Devolva o resultado a mim, com o número do PR, as provas e qualquer bloqueio."
     )
 
 
@@ -548,13 +545,38 @@ def _csp(html: bytes) -> str:
 
 @require_GET
 def robos(request):
+    return _quadro(request)
+
+
+def _quadro(request, *, resultado=None, rascunho=None):
+    rascunho = rascunho or {}
+    tarefa_do_resultado = rascunho.get("tarefa", "")
+    if resultado is None and "pedido" in request.GET:
+        tarefa_do_resultado = request.GET.get("pedido", "")
+        resultado = fila_no_github.consultar_pedido_de_cancelamento(tarefa_do_resultado)
+        rascunho = {"tarefa": tarefa_do_resultado, "motivo": resultado.motivo}
+    if not RE_ID_DA_TAREFA.fullmatch(tarefa_do_resultado):
+        tarefa_do_resultado = ""
+    contexto_pedido = {
+        "resultado": resultado.estado if resultado else "",
+        "recado": resultado.detalhe if resultado else "",
+        "tarefa_do_resultado": tarefa_do_resultado,
+        "pr": resultado.numero if resultado else None,
+        "rascunho": rascunho,
+        "repositorio": fila_no_github.REPOSITORIO,
+        "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
+        "aplicacao_conferida": False,
+    }
     pasta = diretorio_da_fila()
     estados = ler_estados(pasta)
     if estados is None:
         # Mesma lei do painel ausente: a página DIZ que a fila não veio (500),
         # nunca finge fila vazia — "não há trabalho" seria mentira.
         resposta = render(
-            request, "admin/caixa_robos.html", {"fila_ausente": True}, status=500
+            request,
+            "admin/caixa_robos.html",
+            {"fila_ausente": True, **contexto_pedido},
+            status=400 if resultado else 500,
         )
         resposta["Content-Security-Policy"] = _csp(resposta.content)
         return resposta
@@ -638,6 +660,17 @@ def robos(request):
         if isinstance(medida, dict)
     ]
 
+    aplicacao_conferida = False
+    if resultado and resultado.estado == "integrado" and pasta and resultado.arquivo:
+        try:
+            aplicacao_conferida = (
+                estados.get(tarefa_do_resultado, {}).get("estado") == "cancelada"
+                and (pasta / resultado.arquivo.removeprefix("fila/")).read_bytes()
+                == resultado.conteudo
+            )
+        except OSError:
+            pass
+
     resposta = render(
         request,
         "admin/caixa_robos.html",
@@ -656,22 +689,19 @@ def robos(request):
             "repositorio": fila_no_github.REPOSITORIO,
             "pode_excluir": fila_no_github.esta_ligado(),
             "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
-            # O desfecho do último clique no botão de excluir (padrão
-            # POST-redirect-GET, como toda escrita desta área). O número do PR
-            # só passa se for mesmo um número: ele veio de um servidor de fora,
-            # e a página monta o endereço dele a partir do repositório que ela
-            # já conhece, em vez de ecoar uma URL que alguém respondeu.
-            "resultado": request.GET.get("resultado", ""),
-            "recado": request.GET.get("recado", "")[:200],
-            "tarefa_do_resultado": (
-                request.GET.get("tarefa", "")
-                if RE_ID_DA_TAREFA.match(request.GET.get("tarefa", ""))
-                else ""
-            ),
-            "pr": (
-                (request.GET.get("pr", "") or "").strip()
-                if (request.GET.get("pr", "") or "").strip().isdigit()
-                else ""
+            **contexto_pedido,
+            "aplicacao_conferida": aplicacao_conferida,
+            "reabrir_formulario": bool(
+                resultado
+                and resultado.estado
+                in {
+                    "incerto",
+                    "recebido",
+                    "conflito",
+                    "sem_pedido",
+                    "sem_motivo",
+                    "motivo_longo",
+                }
             ),
         },
     )
@@ -679,67 +709,70 @@ def robos(request):
     return resposta
 
 
-def _de_volta_ao_quadro(resultado: str, **extras) -> HttpResponseRedirect:
-    partes = [f"resultado={quote(resultado)}"]
-    partes += [f"{chave}={quote(str(valor))}" for chave, valor in extras.items()]
-    return HttpResponseRedirect(f"{reverse('caixa_robos')}?{'&'.join(partes)}")
-
-
 @require_POST
 def excluir_tarefa(request):
-    """Tira uma tarefa da fila para sempre, pela única porta que existe: um PR.
-
-    **Esta view não apaga nada.** Ela pede ao GitHub um PR com um arquivo novo
-    em `fila/eventos/` (o evento `cancelada`), e quem mergeia é a pista, como em
-    todo PR desta casa. A tela nunca escreve na `main` — e é por isso que a
-    resposta fala em pedido aberto e em cerca de 8 minutos.
-
-    Cada desfecho vira uma linha de auditoria, inclusive os recusados: quando o
-    GitHub diz não, nada é escrito em lugar nenhum, e sem esta linha o gesto não
-    teria deixado rastro.
-    """
+    """Continua o mesmo pedido e registra o que foi confirmado, inclusive falhas."""
     tarefa = (request.POST.get("tarefa") or "").strip()
-    motivo = (request.POST.get("motivo") or "").strip()
-    # `alvo` tem 64 no banco, e um id recusado pode ser qualquer coisa que
-    # alguém tenha mandado: o corte é do tamanho da coluna, não um palpite.
+    rascunho = {"tarefa": tarefa, "motivo": request.POST.get("motivo") or ""}
+    motivo = rascunho["motivo"].strip()
     alvo = tarefa[:64]
 
-    def anotar(desfecho, detalhe):
+    def responder(estado, desfecho, detalhe):
         _auditar(request, Registro.CANCELAR_TAREFA, alvo, desfecho, detalhe)
+        return _quadro(
+            request,
+            resultado=fila_no_github.PedidoCancelamento(estado, detalhe),
+            rascunho=rascunho,
+        )
 
-    if not RE_ID_DA_TAREFA.match(tarefa):
-        anotar(Registro.RECUSADO_PELA_CELULA, "id fora do formato TAR-NNN")
-        return _de_volta_ao_quadro("nao_existe")
+    if not RE_ID_DA_TAREFA.fullmatch(tarefa):
+        return responder(
+            "nao_existe", Registro.RECUSADO_PELA_CELULA, "id fora do formato TAR-NNN"
+        )
     if not motivo:
-        anotar(Registro.RECUSADO_PELA_CELULA, "sem motivo")
-        return _de_volta_ao_quadro("sem_motivo", tarefa=tarefa)
+        return responder("sem_motivo", Registro.RECUSADO_PELA_CELULA, "sem motivo")
     if len(motivo) > MOTIVO_NO_MAXIMO:
-        anotar(Registro.RECUSADO_PELA_CELULA, "motivo longo demais")
-        return _de_volta_ao_quadro("motivo_longo", tarefa=tarefa)
-
+        return responder(
+            "motivo_longo", Registro.RECUSADO_PELA_CELULA, "motivo longo demais"
+        )
     pasta = diretorio_da_fila()
-    if pasta is None:
-        anotar(Registro.NAO_RESPONDEU, "a fila não veio nesta imagem")
-        return _de_volta_ao_quadro("sem_fila", tarefa=tarefa)
-    dados = (_ler_json(pasta / "estados.json") or {}).get(tarefa)
+    estados = ler_estados(pasta)
+    if estados is None:
+        return responder(
+            "sem_fila",
+            Registro.NAO_RESPONDEU,
+            "não foi possível conferir a fila disponível",
+        )
+    dados = estados.get(tarefa)
     if dados is None:
-        anotar(Registro.RECUSADO_PELA_CELULA, "não existe na fila")
-        return _de_volta_ao_quadro("nao_existe")
-    # Depois do fim, silêncio: a fila recusa evento posterior a um terminal, e
-    # recusar aqui evita abrir um PR que a muralha reprovaria.
+        return responder(
+            "nao_existe", Registro.RECUSADO_PELA_CELULA, "não existe na fila disponível"
+        )
     if dados.get("estado") in ("concluída", "cancelada"):
-        anotar(Registro.RECUSADO_PELA_CELULA, f"já terminou ({dados.get('estado')})")
-        return _de_volta_ao_quadro("ja_terminou", tarefa=tarefa)
+        return responder(
+            "ja_terminou",
+            Registro.RECUSADO_PELA_CELULA,
+            f"já terminou ({dados.get('estado')})",
+        )
 
-    desfecho, detalhe = fila_no_github.abrir_pr_de_cancelamento(
-        tarefa=tarefa, titulo=str(dados.get("titulo") or tarefa), motivo=motivo
+    pedido = fila_no_github.abrir_pr_de_cancelamento(
+        tarefa=tarefa,
+        titulo=str(dados.get("titulo") or tarefa),
+        motivo=motivo,
     )
-    if desfecho == fila_no_github.SEM_TOKEN:
-        anotar(Registro.NAO_RESPONDEU, "sem a senha do GitHub nesta imagem")
-        return _de_volta_ao_quadro("sem_token", tarefa=tarefa)
-    if desfecho != fila_no_github.OK:
-        anotar(Registro.NAO_RESPONDEU, detalhe)
-        return _de_volta_ao_quadro("github_recusou", tarefa=tarefa, recado=detalhe)
-
-    anotar(Registro.OK, f"PR #{detalhe}: {motivo}")
-    return _de_volta_ao_quadro("pedido_aberto", tarefa=tarefa, pr=detalhe)
+    confirmado = pedido.estado in ("recebido", "revisao", "integrado")
+    detalhe = (
+        f"{pedido.estado}: "
+        + (f"PR #{pedido.numero}. " if pedido.numero else "")
+        + pedido.detalhe
+    )
+    if confirmado:
+        detalhe += f" Motivo gravado: {pedido.motivo}"
+    _auditar(
+        request,
+        Registro.CANCELAR_TAREFA,
+        alvo,
+        Registro.OK if confirmado else Registro.NAO_RESPONDEU,
+        detalhe,
+    )
+    return _quadro(request, resultado=pedido, rascunho=rascunho)

@@ -39,11 +39,17 @@ dividido, os testes dos robôs revelaram a dependência real da primeira filha,
 
 Houve ainda falhas de ambiente que consumiram tempo: o Windows encontrou um
 `bash` que não conseguia iniciar `/bin/bash`, o pytest apontou para um diretório
-temporário compartilhado sem permissão e o portão de pouso não conseguiu ler
-evidências porque o `gh` tinha credencial inválida e a API estava sem cota.
+temporário compartilhado sem permissão, a suíte adversarial contaminou o
+caderninho do clone principal ao procurar o Git comum e o portão de pouso não
+conseguiu ler evidências porque o `gh` tinha credencial inválida e a API estava
+sem cota. A entrada nova também revelou uma fragilidade do próprio contexto:
+uma lição adicional compartilhando `ci/sessao.py` empurrou a lição 373 para fora
+do limite de oito resultados.
 
 O procedimento que fica é curto: congelar novas tarefas no clone principal,
 abrir uma bancada por tarefa com `ci/sessao.py`, dividir pelo limite de código,
 testar cada base empilhada antes de abrir o próximo PR e separar o teste
-temporário da `.venv` compartilhada. O pouso só é armado depois de confirmar
+temporário da `.venv` compartilhada. O contexto deve consultar primeiro o
+sintoma declarado e depois os caminhos genéricos. A suíte precisa isolar o
+Git comum e os comandos bash. O pouso só é armado depois de confirmar
 autenticação e cota da API.
