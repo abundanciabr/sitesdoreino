@@ -33,11 +33,13 @@ from django.utils import timezone
 
 from apps.core import menu as motor_do_menu
 from apps.cursos import progresso as portas
-from apps.cursos.models import Aula, Peca, Progresso, RegistroDePausa
+from apps.cursos.models import Aula, Bloco, Curso, Peca, Progresso, RegistroDePausa
 from tests.conftest import (
     ANA,
     CATALOGO,
     COOKIE,
+    PRODUTO_DE_OUTRO_CURSO,
+    SITE,
     URL_DO_MENU,
     dublar_matricula,
     dublar_sessao,
@@ -118,6 +120,49 @@ def test_o_proximo_passo_ignora_rascunho_e_destaca_aula_publicada_disponivel(
     assert "Aula publicada e disponível para você." in corpo
     assert reverse("aula-do-curso", args=["profissional", 1, "E01"]) not in corpo
     assert reverse("aula-do-curso", args=["profissional", 1, "E03"]) not in corpo
+
+
+def test_o_proximo_passo_livre_ignora_rascunho_disponivel(aluna, rede, client):
+    curso = Curso.objects.create(
+        site_id=SITE,
+        slug="roblox",
+        nome="Primeiros Dólares com Roblox",
+        progressao=Curso.Progressao.LIVRE,
+        produto_id=PRODUTO_DE_OUTRO_CURSO,
+    )
+    bloco = Bloco.objects.create(
+        curso=curso, ordem=1, letra="A", parte=1, nome="Começando"
+    )
+    rascunho = Aula.objects.create(
+        curso=curso,
+        bloco=bloco,
+        ordem=1,
+        numero="1",
+        titulo_exibido="Rascunho primeiro",
+    )
+    publicada = publicar(
+        Aula.objects.create(
+            curso=curso,
+            bloco=bloco,
+            ordem=2,
+            numero="2",
+            titulo_exibido="Aula publicada depois",
+        )
+    )
+    dublar_matricula(rede, ANA["email"], produtos=[PRODUTO_DE_OUTRO_CURSO])
+
+    abrir(client, reverse("curso", args=[curso.slug]))
+    pessoa = Progresso.objects.get(aula=rascunho).pessoa
+    Progresso.objects.create(
+        pessoa=pessoa, aula=publicada, estado=Progresso.Estado.DISPONIVEL
+    )
+
+    corpo = corpo_de(abrir(client, reverse("curso", args=[curso.slug])))
+    proximo_passo = corpo.split('<section class="proxima-porta">', 1)[1].split(
+        "</section>", 1
+    )[0]
+    assert rascunho.titulo_exibido not in proximo_passo
+    assert publicada.titulo_exibido in proximo_passo
 
 
 def test_o_mapa_mostra_o_estado_de_cada_porta(aluna, aula_publicada, client):
