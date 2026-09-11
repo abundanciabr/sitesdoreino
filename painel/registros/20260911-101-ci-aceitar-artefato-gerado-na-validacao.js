@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-101-ci-aceitar-artefato-gerado-na-validacao",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: aceitar artefato gerado na validação",
+  detalhe: "A validação isolada deixa de confundir o livro JavaScript gerado pela muralha com código injetado, sem permitir arquivos fonte novos fora da lista explícita de artefatos do painel.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1587. Validação local: árvore 18cf9cc7fcdf3d297a4c2195c0cffea02be7d0e0; commit 5adf28abc58577ac8ef07796d4f3a769c443c459; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-356",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
