@@ -1,20 +1,17 @@
 ---
 schema_version: 2
 armadilha: 468
-estado: guardada
-degrau: 4
+estado: documentada
+degrau: 1
 confianca: alta
 custo_por_queda: medio
 guarda:
-  tipo: CI
-  dono: painel/testes/teste_logica.js
+  tipo: nenhum
+  motivo: "O teste atual confere apenas fábrica na primeira posição e vender na última; trocar comunidade e curso continua verde. Este PR registra a orientação sem ampliar o produto."
 sinal:
   - um plano numera capítulos pela posição em FRENTES
   - comunidade e curso recebem números diferentes dos mostrados no Meu mapa
   - ORDEM_DO_MAPA em painel/logica.js
-gatilho:
-  - painel/testes/teste_logica.js
-licao: Para numerar capítulos, leia ORDEM_DO_MAPA e confirme a ordem mostrada na página. FRENTES valida nomes; sua posição não define a narrativa.
 ---
 
 # O vocabulário de frentes não numera os capítulos
@@ -23,6 +20,8 @@ licao: Para numerar capítulos, leia ORDEM_DO_MAPA e confirme a ordem mostrada n
 narrativa que a pessoa vê: fábrica, site, comunidade, curso e vender. Confundir
 as duas listas transforma comunidade em capítulo 2 e curso em capítulo 3.
 
-O teste do mapa já guarda a ordem narrativa. Antes de nomear um capítulo em
-plano, prompt ou registro, confira a constante e a página gerada; a posição no
-vocabulário não é prova da numeração exibida.
+Antes de nomear um capítulo em plano, prompt ou registro, confira a constante e
+a página gerada; a posição no vocabulário não é prova da numeração exibida. O
+teste atual só exige fábrica primeiro e vender por último. Ele não detecta a
+troca entre comunidade e curso, portanto esta orientação ainda não tem guarda
+específica.
