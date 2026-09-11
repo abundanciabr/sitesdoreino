@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -16,12 +19,25 @@ TELA = "admin/escola_aulas_avulsas.html"
 TELA_DE_EDICAO = "admin/escola_aula_avulsa_editar.html"
 
 
-def _rascunho(request) -> dict:
-    return {
+def _normalizar_slug(valor: str) -> str:
+    sem_acento = "".join(
+        caractere
+        for caractere in unicodedata.normalize("NFKD", valor)
+        if not unicodedata.combining(caractere)
+    )
+    slug = re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-")
+    return re.sub(r"-+", "-", slug)
+
+
+def _rascunho(request, *, slug_atual: str | None = None) -> dict:
+    rascunho = {
         "titulo": (request.POST.get("titulo") or "").strip(),
         "video_url": (request.POST.get("video_url") or "").strip(),
         "descricao": (request.POST.get("descricao") or "").strip(),
     }
+    if slug_atual is not None:
+        rascunho["slug"] = _normalizar_slug(request.POST.get("slug") or slug_atual)
+    return rascunho
 
 
 def _linha(aula: dict) -> dict:
@@ -45,7 +61,8 @@ def _desenhar_edicao(request, aula: dict, contexto: dict, status: int = 200):
             "admin": request.admin,
             "aula": linha,
             "url_editar": reverse(
-                "escola_aula_avulsa_editar", kwargs={"slug": linha["slug"]}
+                "escola_aula_avulsa_editar",
+                kwargs={"slug": aula.get("_slug_da_rota") or linha["slug"]},
             ),
         }
         | contexto,
@@ -228,8 +245,8 @@ def aula_avulsa_editar(request, slug: str):
             )
         return _desenhar_edicao(request, aula, {})
 
-    rascunho = _rascunho(request)
-    aula_atual = {"slug": slug} | rascunho
+    rascunho = _rascunho(request, slug_atual=slug)
+    aula_atual = {"_slug_da_rota": slug} | rascunho
     if not rascunho["titulo"]:
         return _desenhar_edicao(
             request,
@@ -246,15 +263,25 @@ def aula_avulsa_editar(request, slug: str):
             },
             status=400,
         )
+    if not rascunho["slug"]:
+        return _desenhar_edicao(
+            request,
+            aula_atual,
+            {
+                "erro": "Escreva um endereço com letras ou números antes de salvar. Nada foi alterado."
+            },
+            status=400,
+        )
 
     desfecho, aula = CursosClient().editar_aula_avulsa(site["id"], slug, rascunho)
     if desfecho == CursosClient.OK:
+        slug_salvo = str((aula or {}).get("slug") or slug)
         _auditar(
             request,
             Registro.EDITAR_AULA_AVULSA,
-            slug,
+            slug_salvo,
             Registro.OK,
-            "campos: titulo, video_url, descricao",
+            "campos: titulo, video_url, descricao, slug",
         )
         return _desenhar_edicao(request, aula or aula_atual, {"salva": True})
 
@@ -267,14 +294,14 @@ def aula_avulsa_editar(request, slug: str):
             if desfecho in (CursosClient.RECUSADO, CursosClient.NAO_EXISTE)
             else Registro.NAO_RESPONDEU
         ),
-        f"campos: titulo, video_url, descricao; desfecho: {desfecho}",
+        f"campos: titulo, video_url, descricao, slug; desfecho: {desfecho}",
     )
     if desfecho == CursosClient.RECUSADO:
         return _desenhar_edicao(
             request,
             aula_atual,
             {
-                "erro": "A sala de aula não aceitou as alterações: corrija o nome, a URL do YouTube ou a descrição e salve de novo."
+                "erro": "A sala de aula não aceitou as alterações: corrija o nome, o endereço, a URL do YouTube ou a descrição e salve de novo."
             },
             status=400,
         )

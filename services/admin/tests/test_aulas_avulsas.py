@@ -98,6 +98,7 @@ def test_cliente_lista_e_cria_pela_porta_do_contrato():
             "titulo": "Título corrigido",
             "video_url": "https://youtu.be/abcdefghijk",
             "descricao": "Descrição corrigida.",
+            "slug": "titulo-corrigido",
         },
     ) == (CursosClient.OK, _aula(titulo="Título corrigido"))
     assert lista.called and criar.called and editar.called
@@ -110,6 +111,7 @@ def test_cliente_lista_e_cria_pela_porta_do_contrato():
         "titulo": "Título corrigido",
         "video_url": "https://youtu.be/abcdefghijk",
         "descricao": "Descrição corrigida.",
+        "slug": "titulo-corrigido",
     }
 
 
@@ -275,7 +277,7 @@ def test_links_da_tela_respeitam_script_name():
 
 
 @respx.mock
-def test_edicao_mostra_campos_preenchidos_e_link_que_nao_muda():
+def test_edicao_mostra_campos_preenchidos_e_endereco_editavel():
     _site()
     respx.get(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
         return_value=httpx.Response(200, json=[_aula()])
@@ -294,8 +296,9 @@ def test_edicao_mostra_campos_preenchidos_e_link_que_nao_muda():
     assert 'value="https://www.youtube.com/watch?v=abcdefghijk"' in html
     assert "Uma resposta objetiva para a dúvida da turma." in html
     assert "/cursos/aulas/como-vender-seu-primeiro-item" in html
-    assert "não muda quando a aula é editada" in html
-    assert 'name="slug"' not in html
+    assert 'name="slug"' in html
+    assert 'value="como-vender-seu-primeiro-item"' in html
+    assert "Se este endereço já estiver em uso" in html
 
 
 @respx.mock
@@ -323,12 +326,43 @@ def test_formulario_de_edicao_respeita_script_name():
 
 
 @respx.mock
-def test_edicao_atualiza_campos_sem_mudar_slug_e_audita():
+def test_edicao_gera_previa_do_endereco_a_partir_do_nome_e_normaliza_slug():
+    _site()
+    respx.get(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
+        return_value=httpx.Response(200, json=[_aula()])
+    )
+    html = (
+        _cliente()
+        .get(
+            reverse(
+                "escola_aula_avulsa_editar",
+                kwargs={"slug": "como-vender-seu-primeiro-item"},
+            )
+        )
+        .content.decode()
+    )
+
+    script = re.search(r"<script>(.*?)</script>", html, re.S)
+    assert script, "a edição precisa atualizar a prévia enquanto o nome muda"
+    codigo = script.group(1)
+    assert 'normalize("NFKD")' in codigo
+    assert 'titulo.addEventListener("input"' in codigo
+    assert 'slug.addEventListener("input"' in codigo
+    assert "slugEditadoManualmente" in codigo
+    assert 'data-base="/cursos/aulas/"' in html
+
+
+@respx.mock
+def test_edicao_atualiza_campos_e_slug_e_audita():
     _site()
     editar = respx.put(
         f"{CURSOS}/aulas-avulsas/como-vender-seu-primeiro-item",
         params={"site_id": SITE_ID},
-    ).mock(return_value=httpx.Response(200, json=_aula(titulo="Título corrigido")))
+    ).mock(
+        return_value=httpx.Response(
+            200, json=_aula(titulo="Título corrigido", slug="titulo-corrigido")
+        )
+    )
 
     resposta = _cliente().post(
         reverse(
@@ -339,25 +373,79 @@ def test_edicao_atualiza_campos_sem_mudar_slug_e_audita():
             "titulo": "Título corrigido",
             "video_url": "https://youtu.be/abcdefghijk",
             "descricao": "Descrição corrigida.",
+            "slug": "titulo-corrigido",
         },
     )
     html = resposta.content.decode()
 
     assert resposta.status_code == 200
     assert "As alterações foram salvas" in html
-    assert "/cursos/aulas/como-vender-seu-primeiro-item" in html
+    assert "/cursos/aulas/titulo-corrigido" in html
     assert json.loads(editar.calls[0].request.content) == {
         "titulo": "Título corrigido",
         "video_url": "https://youtu.be/abcdefghijk",
         "descricao": "Descrição corrigida.",
+        "slug": "titulo-corrigido",
     }
     registro = Registro.objects.get()
     assert (registro.acao, registro.alvo, registro.desfecho, registro.detalhe) == (
         Registro.EDITAR_AULA_AVULSA,
-        "como-vender-seu-primeiro-item",
+        "titulo-corrigido",
         Registro.OK,
-        "campos: titulo, video_url, descricao",
+        "campos: titulo, video_url, descricao, slug",
     )
+
+
+@respx.mock
+def test_edicao_normaliza_o_endereco_manual_antes_de_enviar_a_sala():
+    _site()
+    editar = respx.put(
+        f"{CURSOS}/aulas-avulsas/como-vender-seu-primeiro-item",
+        params={"site_id": SITE_ID},
+    ).mock(return_value=httpx.Response(200, json=_aula(slug="acao-teste-2026-2")))
+
+    resposta = _cliente().post(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        ),
+        {
+            "titulo": "Ação teste",
+            "video_url": "https://youtu.be/abcdefghijk",
+            "descricao": "",
+            "slug": " Ação & teste 2026! ",
+        },
+    )
+
+    assert resposta.status_code == 200
+    assert json.loads(editar.calls[0].request.content)["slug"] == "acao-teste-2026"
+    assert "/cursos/aulas/acao-teste-2026-2" in resposta.content.decode()
+
+
+@respx.mock
+def test_edicao_recusa_endereco_sem_letras_ou_numeros_sem_enviar_a_sala():
+    _site()
+
+    resposta = _cliente().post(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        ),
+        {
+            "titulo": "Nome corrigido",
+            "video_url": "https://youtu.be/abcdefghijk",
+            "descricao": "",
+            "slug": "!!!",
+        },
+    )
+
+    assert resposta.status_code == 400
+    html = resposta.content.decode()
+    assert "Escreva um endereço com letras ou números" in html
+    assert (
+        'action="/escola/aulas-avulsas/como-vender-seu-primeiro-item/editar/"' in html
+    )
+    assert Registro.objects.count() == 0
 
 
 @respx.mock

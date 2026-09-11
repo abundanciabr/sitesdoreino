@@ -2122,7 +2122,12 @@ class CursosClient:
     def editar_aula_avulsa(
         self, site_id: str, slug: str, corpo: dict
     ) -> "tuple[str, dict | None]":
-        """`updateStandaloneLesson`: atualiza campos sem mudar o endereço."""
+        """`updateStandaloneLesson`: atualiza os campos e pede o novo endereço.
+
+        O caminho leva o endereço atual para localizar a aula. O corpo leva
+        `slug`, já normalizado pela tela, e a resposta traz o endereço final,
+        inclusive quando a cursos acrescenta o número de colisão.
+        """
         return self._pedir(
             "put",
             "aulas-avulsas/" + quote(slug, safe=""),

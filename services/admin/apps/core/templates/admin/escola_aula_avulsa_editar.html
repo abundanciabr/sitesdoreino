@@ -21,10 +21,12 @@
   {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
   {% if salva %}<p class="recado"><b>As alterações foram salvas.</b> <a href="{{ aula.endereco }}" target="_blank" rel="noopener">Abrir a aula</a></p>{% endif %}
   <div class="cartao">
-    <p class="aula-avulsa-edicao-endereco">Endereço para compartilhar: <a href="{{ aula.endereco }}" target="_blank" rel="noopener">{{ aula.endereco }}</a>. Este endereço não muda quando a aula é editada.</p>
+    <p class="aula-avulsa-edicao-endereco">Endereço para compartilhar: <a id="previa-endereco" data-base="/cursos/aulas/" href="{{ aula.endereco }}" target="_blank" rel="noopener">{{ aula.endereco }}</a>. Você pode alterar este endereço.</p>
     <form class="aula-avulsa-edicao-formulario" action="{{ url_editar }}" method="post">
       {% csrf_token %}
       <label for="titulo">Nome da aula<input id="titulo" name="titulo" maxlength="120" required value="{{ aula.titulo }}"></label>
+      <label for="slug">Endereço da aula<input id="slug" name="slug" maxlength="120" pattern="[a-z0-9-]+" required value="{{ aula.slug }}" autocomplete="off" spellcheck="false" aria-describedby="ajuda-endereco"></label>
+      <p id="ajuda-endereco" class="aula-avulsa-edicao-endereco">O endereço é criado a partir do nome até você editar este campo. Se este endereço já estiver em uso, a plataforma acrescenta o próximo número livre ao salvar, por exemplo, <span>/cursos/aulas/aula-de-testes-2</span>.</p>
       <label for="video_url">URL do vídeo<input id="video_url" name="video_url" type="url" maxlength="500" required value="{{ aula.video_url }}" placeholder="https://www.youtube.com/watch?v=..."></label>
       <label for="descricao">Descrição da aula<textarea id="descricao" name="descricao" maxlength="5000">{{ aula.descricao }}</textarea></label>
       <p><button class="botao" type="submit">Salvar alterações</button></p>
@@ -32,4 +34,32 @@
   </div>
   {% endif %}
 </div>
+<script>
+  const titulo = document.getElementById("titulo");
+  const slug = document.getElementById("slug");
+  const previa = document.getElementById("previa-endereco");
+  let slugEditadoManualmente = false;
+
+  function normalizarSlug(valor) {
+    return valor.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function atualizarPrevia() {
+    slug.value = normalizarSlug(slug.value);
+    const endereco = `${previa.dataset.base}${slug.value}`;
+    previa.href = endereco;
+    previa.textContent = endereco;
+  }
+
+  titulo.addEventListener("input", () => {
+    if (!slugEditadoManualmente) {
+      slug.value = normalizarSlug(titulo.value);
+      atualizarPrevia();
+    }
+  });
+  slug.addEventListener("input", () => {
+    slugEditadoManualmente = true;
+    atualizarPrevia();
+  });
+</script>
 {% endblock %}
