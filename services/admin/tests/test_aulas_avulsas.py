@@ -76,6 +76,10 @@ def test_cliente_lista_e_cria_pela_porta_do_contrato():
     criar = respx.post(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
         return_value=httpx.Response(201, json=_aula())
     )
+    editar = respx.put(
+        f"{CURSOS}/aulas-avulsas/como-vender-seu-primeiro-item",
+        params={"site_id": SITE_ID},
+    ).mock(return_value=httpx.Response(200, json=_aula(titulo="Título corrigido")))
 
     cliente = CursosClient()
     assert cliente.aulas_avulsas(SITE_ID) == (CursosClient.OK, [_aula()])
@@ -87,11 +91,25 @@ def test_cliente_lista_e_cria_pela_porta_do_contrato():
             "descricao": "",
         },
     ) == (CursosClient.OK, _aula())
-    assert lista.called and criar.called
+    assert cliente.editar_aula_avulsa(
+        SITE_ID,
+        "como-vender-seu-primeiro-item",
+        {
+            "titulo": "Título corrigido",
+            "video_url": "https://youtu.be/abcdefghijk",
+            "descricao": "Descrição corrigida.",
+        },
+    ) == (CursosClient.OK, _aula(titulo="Título corrigido"))
+    assert lista.called and criar.called and editar.called
     assert json.loads(criar.calls[0].request.content) == {
         "titulo": "Nome",
         "video_url": "https://youtu.be/abcdefghijk",
         "descricao": "",
+    }
+    assert json.loads(editar.calls[0].request.content) == {
+        "titulo": "Título corrigido",
+        "video_url": "https://youtu.be/abcdefghijk",
+        "descricao": "Descrição corrigida.",
     }
 
 
@@ -136,8 +154,14 @@ def test_tela_lista_cria_e_mostra_o_link_final_do_servico():
 
     assert resposta.status_code == 200
     assert criar.called
-    assert "/aulas/slug-que-o-servidor-escolheu/" in html
+    assert "/cursos/aulas/slug-que-o-servidor-escolheu" in html
     assert "Copiar o link" in html
+    assert (
+        reverse(
+            "escola_aula_avulsa_editar", kwargs={"slug": "slug-que-o-servidor-escolheu"}
+        )
+        in html
+    )
     registro = Registro.objects.get()
     assert (registro.acao, registro.alvo, registro.desfecho) == (
         Registro.CRIAR_AULA_AVULSA,
@@ -168,7 +192,7 @@ def test_criacao_preserva_o_link_quando_a_lista_nao_responde():
     html = resposta.content.decode()
     assert resposta.status_code == 200
     assert "A aula foi publicada" in html
-    assert "/aulas/resposta-da-sala/" in html
+    assert "/cursos/aulas/resposta-da-sala" in html
     assert "não respondeu" in html
 
 
@@ -226,7 +250,7 @@ def test_previa_javascript_gera_endereco_sem_virar_campo_editavel():
     assert "previa.dataset.base" in codigo
     assert "navigator.clipboard" in codigo
     assert "Não consegui copiar o link" in codigo
-    assert 'data-base="/aulas/"' in html
+    assert 'data-base="/cursos/aulas/"' in html
     assert 'name="slug"' not in html
 
 
@@ -237,10 +261,169 @@ def test_links_da_tela_respeitam_script_name():
     try:
         _site()
         respx.get(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
-            return_value=httpx.Response(200, json=[])
+            return_value=httpx.Response(200, json=[_aula()])
         )
         html = _cliente().get("/escola/aulas-avulsas/").content.decode()
         assert 'action="/admin/escola/aulas-avulsas/criar"' in html
-        assert 'data-base="/aulas/"' in html
+        assert 'data-base="/cursos/aulas/"' in html
+        assert (
+            'href="/admin/escola/aulas-avulsas/como-vender-seu-primeiro-item/editar/"'
+            in html
+        )
     finally:
         set_script_prefix(anterior)
+
+
+@respx.mock
+def test_edicao_mostra_campos_preenchidos_e_link_que_nao_muda():
+    _site()
+    respx.get(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
+        return_value=httpx.Response(200, json=[_aula()])
+    )
+
+    resposta = _cliente().get(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        )
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert 'value="Como vender seu primeiro item"' in html
+    assert 'value="https://www.youtube.com/watch?v=abcdefghijk"' in html
+    assert "Uma resposta objetiva para a dúvida da turma." in html
+    assert "/cursos/aulas/como-vender-seu-primeiro-item" in html
+    assert "não muda quando a aula é editada" in html
+    assert 'name="slug"' not in html
+
+
+@respx.mock
+def test_formulario_de_edicao_respeita_script_name():
+    anterior = get_script_prefix()
+    set_script_prefix("/admin/")
+    try:
+        _site()
+        respx.get(f"{CURSOS}/aulas-avulsas", params={"site_id": SITE_ID}).mock(
+            return_value=httpx.Response(200, json=[_aula()])
+        )
+        html = (
+            _cliente()
+            .get("/escola/aulas-avulsas/como-vender-seu-primeiro-item/editar/")
+            .content.decode()
+        )
+
+        assert (
+            'action="/admin/escola/aulas-avulsas/como-vender-seu-primeiro-item/editar/"'
+            in html
+        )
+        assert "/cursos/aulas/como-vender-seu-primeiro-item" in html
+    finally:
+        set_script_prefix(anterior)
+
+
+@respx.mock
+def test_edicao_atualiza_campos_sem_mudar_slug_e_audita():
+    _site()
+    editar = respx.put(
+        f"{CURSOS}/aulas-avulsas/como-vender-seu-primeiro-item",
+        params={"site_id": SITE_ID},
+    ).mock(return_value=httpx.Response(200, json=_aula(titulo="Título corrigido")))
+
+    resposta = _cliente().post(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        ),
+        {
+            "titulo": "Título corrigido",
+            "video_url": "https://youtu.be/abcdefghijk",
+            "descricao": "Descrição corrigida.",
+        },
+    )
+    html = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    assert "As alterações foram salvas" in html
+    assert "/cursos/aulas/como-vender-seu-primeiro-item" in html
+    assert json.loads(editar.calls[0].request.content) == {
+        "titulo": "Título corrigido",
+        "video_url": "https://youtu.be/abcdefghijk",
+        "descricao": "Descrição corrigida.",
+    }
+    registro = Registro.objects.get()
+    assert (registro.acao, registro.alvo, registro.desfecho, registro.detalhe) == (
+        Registro.EDITAR_AULA_AVULSA,
+        "como-vender-seu-primeiro-item",
+        Registro.OK,
+        "campos: titulo, video_url, descricao",
+    )
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("campo", "texto"),
+    [
+        ("titulo", "Escreva o nome da aula"),
+        ("video_url", "Cole a URL do vídeo do YouTube"),
+    ],
+)
+def test_edicao_recusa_campo_obrigatorio_sem_enviar_a_sala(campo, texto):
+    _site()
+    dados = {
+        "titulo": "Nome corrigido",
+        "video_url": "https://youtu.be/abcdefghijk",
+        "descricao": "",
+    }
+    dados[campo] = ""
+
+    resposta = _cliente().post(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        ),
+        dados,
+    )
+
+    assert resposta.status_code == 400
+    assert texto in resposta.content.decode()
+    assert Registro.objects.count() == 0
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("status", "texto", "codigo", "desfecho"),
+    [
+        (422, "não aceitou as alterações", 400, Registro.RECUSADO_PELA_CELULA),
+        (404, "não está mais publicada", 404, Registro.RECUSADO_PELA_CELULA),
+        (403, "recusou a admin", 503, Registro.NAO_RESPONDEU),
+        (503, "não respondeu", 503, Registro.NAO_RESPONDEU),
+    ],
+)
+def test_edicao_da_aula_traduz_cada_desfecho(status, texto, codigo, desfecho):
+    _site()
+    respx.put(
+        f"{CURSOS}/aulas-avulsas/como-vender-seu-primeiro-item",
+        params={"site_id": SITE_ID},
+    ).mock(return_value=httpx.Response(status, json={"detail": "motivo da recusa"}))
+
+    resposta = _cliente().post(
+        reverse(
+            "escola_aula_avulsa_editar",
+            kwargs={"slug": "como-vender-seu-primeiro-item"},
+        ),
+        {
+            "titulo": "Nome corrigido",
+            "video_url": "https://youtu.be/abcdefghijk",
+            "descricao": "",
+        },
+    )
+
+    assert resposta.status_code == codigo
+    assert texto in resposta.content.decode().lower()
+    registro = Registro.objects.get()
+    assert (registro.acao, registro.alvo, registro.desfecho) == (
+        Registro.EDITAR_AULA_AVULSA,
+        "como-vender-seu-primeiro-item",
+        desfecho,
+    )
