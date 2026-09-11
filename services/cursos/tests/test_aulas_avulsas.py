@@ -104,15 +104,15 @@ def test_editar_aula_ausente_neste_site_devolve_404():
     assert resposta.status_code == 404
 
 
-def test_editar_reusa_as_validacoes_da_criacao():
+def test_editar_recusa_chave_desconhecida_com_campos_validos():
     criada = criar().json()
     resposta = Client().put(
         f"{BASE}/aulas-avulsas/{criada['slug']}?site_id={SITE}",
         data=json.dumps(
             {
-                "titulo": "   ",
-                "video_url": "https://vimeo.com/123",
-                "descricao": "",
+                "titulo": "Os três pilares atualizados",
+                "video_url": "https://youtu.be/dQw4w9WgXcQ",
+                "descricao": "Uma explicação corrigida.",
                 "slug": "nao-pode",
             }
         ),
