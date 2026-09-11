@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260909-001-pausa-com-acao-humana-explicita",
+  arquivo: "20260909-129-pausa-com-acao-humana-explicita",
   tipo: "entrega",
   quando: "2026-09-09",
   titulo: "Pausa com dependência humana passou a mostrar a ação exata",
