@@ -12,11 +12,14 @@
 # consome o fórum consome ISTO, e o motor por baixo pode ser trocado um dia sem
 # ninguém do outro lado saber.
 #
-# A INVARIANTE QUE ATRAVESSA AS TRÊS OPERAÇÕES: elas só falam de ÁREA PÚBLICA.
-# Nem conteúdo, nem contagem, nem existência de área trancada. O Bearer prova
-# QUEM CHAMA, nunca quem é a pessoa — não chega cookie aqui, não há visitante, e
-# sem pessoa o único recorte honesto é o que qualquer um já veria de graça.
-# Guarda: `services/forum/tests/test_porta_de_maquina.py`.
+# AS TRÊS OPERAÇÕES PÚBLICAS, /areas, /topicos/recentes e /resumo, só falam de
+# ÁREA PÚBLICA. Elas nunca revelam conteúdo, contagem ou existência de área
+# trancada. A exceção única é /galeria/candidatas/{pessoa_id}: o par
+# gamificacao→forum consulta referências consentidas da própria autora, no
+# escopo de um site, sem transformar o tópico original em público. O Bearer
+# identifica o serviço, nunca a pessoa; o provedor confere autoria da candidata
+# e a gamificação confere a sessão da pessoa que consulta. Guarda das operações
+# públicas: `services/forum/tests/test_porta_de_maquina.py`.
 #
 # E não sai dado pessoal: nem e-mail, nem identificador de plataforma, nem quem
 # leu o quê. O público desta escola é majoritariamente menor de idade.
@@ -39,15 +42,24 @@ info:
     Lei do assunto: docs/decisoes/DECISAO-forum-da-escola.md.
 
 
-    ESTA PORTA SO RESPONDE SOBRE AREA PUBLICA. Nao ha cookie aqui e nao ha
+    AS OPERACOES /areas, /topicos/recentes E /resumo SO RESPONDEM SOBRE AREA
 
-    pessoa a reconhecer: o Bearer prova QUEM CHAMA, nunca quem e o
+    PUBLICA. Area de aluno e area de turma nao aparecem nelas, nem o conteudo,
 
-    visitante. Sem pessoa, o unico recorte honesto e o que qualquer um ja
+    nem a contagem, nem a existencia.
 
-    veria de graca. Area de aluno e area de turma nao aparecem por aqui —
 
-    nem o conteudo, nem a contagem, nem a existencia.
+    A UNICA EXCECAO E /galeria/candidatas/{pessoa_id}. Ela existe apenas para
+
+    o par gamificacao e forum consultar referencias consentidas da propria
+
+    autora, no escopo de um site, sem tornar o topico original publico. O
+
+    Bearer identifica o servico, nunca a pessoa. O Forum confere que cada
+
+    candidata e do `pessoa_id` pedido; a gamificacao, com sessao, confere que
+
+    quem consulta so pede as proprias candidatas.
 
 
     E nao sai dado pessoal: nem e-mail, nem quem leu o que. O publico
@@ -157,11 +169,13 @@ paths:
         expresso para a Galeria.
 
 
-        O provedor confere que a pessoa da solicitacao e dona das candidatas. A
+        O Bearer identifica o servico, nao o aluno. O Forum aceita apenas o par
 
-        gamificacao confere que o aluno consulta somente as proprias candidatas;
+        gamificacao e confere que cada candidata tem `pessoa_id` como autora. A
 
-        a equipe usa fluxo proprio e auditado.
+        gamificacao, usando a sessao, confere que o aluno consulta somente as
+
+        proprias candidatas; a equipe usa fluxo proprio e auditado.
 
 
         Esta operacao nao revela area de aluno, conversa, pessoa ou obra sem
