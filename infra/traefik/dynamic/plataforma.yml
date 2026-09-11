@@ -58,6 +58,15 @@ http:
         replacement: 'https://meshcraft.top/${1}'
         permanent: true
 
+    aulas-avulsas-legadas-para-cursos:
+      # O painel publicou aulas avulsas sob `/aulas/<slug>/` antes de conhecer
+      # o SCRIPT_NAME da sala. Desvie só esse endereço ao canônico, sem criar
+      # uma segunda página nem capturar caminhos que não sejam um slug Django.
+      redirectRegex:
+        regex: '^https?://meshcraft\.top/aulas/([A-Za-z0-9_-]+)/?(\?.*)?$'
+        replacement: 'https://meshcraft.top/cursos/aulas/${1}${2}'
+        permanent: true
+
   routers:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
@@ -310,6 +319,18 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca]
       service: cursos
+      tls: {}
+
+    aulas-avulsas-legadas:
+      # Este router só casa o caminho legado gerado pelo painel. Um endereço
+      # fora do formato de slug não chega a este middleware e segue no funil.
+      rule: "Host(`meshcraft.top`) && PathRegexp(`^/aulas/[A-Za-z0-9_-]+/?$`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca, aulas-avulsas-legadas-para-cursos]
+      # O serviço é obrigatório para o Traefik, mas o redirectRegex encerra a
+      # requisição antes que o funil seja consultado.
+      service: funil
       tls: {}
 
     pages:
