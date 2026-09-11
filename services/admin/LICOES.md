@@ -422,3 +422,12 @@ sendo conclusão registrada, com resultado dos itens ainda não conferido.
 ### Reunião: texto conferido e integração comprovada
 
 O gesto de autorizar precisa enviar o texto visível junto da versão: uma tela de conflito pode preservar o rascunho perdedor enquanto o banco já contém outro texto. Compare ambos sob o bloqueio da transação, preserve o rascunho e mostre a versão salva para recuperar. A foto da pauta vem do formulário original assinado também nas respostas de erro, sem depender do placar disponível no retry. PR com nome de ramo igual não prova integração: confira os artefatos nos commits do PR e do merge e o merge na história da main. Se essa prova faltar, conserve apenas o recebimento já conferido.
+
+## O endereço de outra célula não herda o prefixo da área administrativa (11/09/2026)
+
+Uma aula avulsa é criada pelo painel, mas quem a serve é `cursos`, sob
+`/cursos`. Montar o endereço público a partir da tela administrativa produziu
+`/aulas/<slug>`, caminho que não existe. A regra é explicitar, em uma função
+única, o endereço da célula dona e testar a cópia do link, a prévia e o botão
+de edição com `SCRIPT_NAME=/admin/`: links internos seguem o prefixo da admin,
+enquanto o endereço compartilhado continua na raiz de `cursos`.
