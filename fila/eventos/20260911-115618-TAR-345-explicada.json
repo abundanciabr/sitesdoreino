@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-115618-TAR-345-explicada",
+  "tarefa": "TAR-345",
+  "evento": "explicada",
+  "quando": "2026-09-11T11:56:18+00:00",
+  "quem": "PR #1564",
+  "o_que_e": "O mapa do site ainda não informa a página usada para editar uma aula avulsa.",
+  "o_que_muda": "A verificação passa a reconhecer a nova página de edição e impede que ela seja publicada sem constar no mapa.",
+  "exemplo": "Ao abrir a edição de uma aula, a rota aparece no mapa como as demais páginas administrativas.",
+  "importancia": 65
+}
