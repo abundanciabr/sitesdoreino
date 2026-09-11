@@ -152,7 +152,9 @@ info:
 
     CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    `putCourseStructure`). O placar da fila
+    `putCourseStructure`), e as duas de AULA AVULSA (`listStandaloneLessons`,
+
+    `createStandaloneLesson`). O placar da fila
 
     (getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA
 
@@ -182,6 +184,21 @@ info:
     algum aluno ja passou. O texto de cada aula continua entrando so por
 
     `putLesson`.
+
+
+    A AULA AVULSA ENTRA DESDE 11/09/2026: e uma resposta em video que a
+
+    escola compartilha fora da sequencia de qualquer curso. Ela pertence ao
+
+    `site_id`, nasce publicada com titulo, URL do YouTube e descricao, e o
+
+    servico gera o `slug` imutavel que vira o endereco permanente. O Admin
+
+    nunca manda nem escolhe esse slug. A lista devolve somente aulas publicadas
+
+    do mesmo site. A pagina publica le seu banco local, sem uma terceira
+
+    operacao interna.
 
 
     O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao
@@ -295,6 +312,80 @@ info:
 
     '
 paths:
+  /aulas-avulsas:
+    get:
+      operationId: listStandaloneLessons
+      summary: As aulas avulsas publicadas de um site, da mais recente para a mais antiga
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AulaAvulsaSchema'
+                type: array
+      description: 'A lista que o Admin consulta para reencontrar e compartilhar uma
+
+        aula avulsa. Ela so devolve aulas publicadas do mesmo `site_id`, da mais
+
+        recente para a mais antiga. Site sem aula avulsa responde lista vazia,
+
+        porque esse e o primeiro uso normal.
+
+
+        Aula avulsa nao pertence a curso, bloco, parte, progresso ou avaliacao.
+
+        Ela existe para responder uma duvida em grupo com um endereco proprio.'
+    post:
+      operationId: createStandaloneLesson
+      summary: Cria e publica uma aula avulsa com endereço próprio
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaAvulsaSchema'
+      description: 'O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,
+
+        video_url e descricao. O servico gera o slug pelo titulo e o estabiliza
+
+        na criacao: se um titulo igual ja tiver ocupado o endereco naquele site,
+
+        ele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.
+
+
+        A aula nasce publicada, com estado `publicada`, e pode ser lida na hora
+
+        pelo endereco devolvido. Nao existe rascunho, edicao ou gesto posterior
+
+        de publicacao nesta porta.
+
+
+        422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS
+
+        do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o
+
+        corpo tiver uma chave desconhecida.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AulaAvulsaParaCriarSchema'
+        required: true
   /aulas:
     get:
       operationId: listSiteLessons
@@ -1316,6 +1407,67 @@ paths:
         required: true
 components:
   schemas:
+    AulaAvulsaSchema:
+      description: 'A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
+
+
+        `slug` e gerado pelo servico no instante da criacao e nunca muda, para
+
+        que um link enviado em grupo continue levando para a mesma aula. `estado`
+
+        sempre e `publicada`: esta porta nao oferece rascunho, edicao nem uma
+
+        segunda publicacao.'
+      properties:
+        titulo:
+          type: string
+        slug:
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          type: string
+        video_url:
+          type: string
+        descricao:
+          type: string
+        estado:
+          const: publicada
+          type: string
+        publicada_em:
+          format: date-time
+          type: string
+      required:
+      - titulo
+      - slug
+      - video_url
+      - descricao
+      - estado
+      - publicada_em
+      type: object
+    AulaAvulsaParaCriarSchema:
+      additionalProperties: false
+      description: 'O unico corpo que cria uma aula avulsa. O Admin oferece os tres
+
+        campos ao mantenedor, mas so o servico gera o endereco pelo titulo.
+
+        Descricao aceita texto vazio, para uma explicacao curta que so precisa
+
+        do titulo e do video, mas o campo sempre viaja no corpo.'
+      properties:
+        titulo:
+          maxLength: 120
+          minLength: 1
+          type: string
+        video_url:
+          maxLength: 500
+          minLength: 1
+          type: string
+        descricao:
+          maxLength: 5000
+          type: string
+      required:
+      - titulo
+      - video_url
+      - descricao
+      type: object
     AulaDaListaSchema:
       description: 'A linha da listagem: o que o editor mostra no índice, sem texto de peça.'
       properties:
