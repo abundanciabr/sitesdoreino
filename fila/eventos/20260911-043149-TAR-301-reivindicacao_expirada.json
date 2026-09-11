@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260911-043149-TAR-301-reivindicacao_expirada",
+  "tarefa": "TAR-301",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-11T04:31:49+00:00",
+  "quem": "despacho-admin-pr1506-retomada",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}
