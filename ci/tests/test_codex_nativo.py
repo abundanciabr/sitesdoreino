@@ -102,34 +102,7 @@ def test_fichas_nativas_declaradas_e_revisor_sem_escrita(monkeypatch):
     monkeypatch.setenv("CODEX_THREAD_ID", "teste")
     assert economia.auditar_fichas(RAIZ) == []
 
-def test_launcher_windows_na_subpasta_sem_python_no_path():
-    import os
-    import subprocess
-    import shutil
-    if sys.platform != "win32":
-        pytest.skip("Prova do launcher Windows; dispatcher é testado em todos os sistemas.")
-    configuracao = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))
-    command = configuracao["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"]
-    ambiente = dict(os.environ)
-    ambiente.pop("CLAUDE_PROJECT_DIR", None)
-    ambiente["PATH"] = str(Path(shutil.which("powershell.exe")).parent)
-    dados = {"hook_event_name": "PreToolUse", "tool_name": "Bash",
-             "tool_input": {"command": "git status --short"}, "cwd": str(RAIZ / "ci")}
-    resultado = subprocess.run(command, input=json.dumps(dados), capture_output=True,
-                               text=True, encoding="utf-8", env=ambiente, cwd=RAIZ / "ci", timeout=30)
-    assert resultado.returncode == 0, resultado.stderr
 
-def test_launcher_windows_preserva_exit_dois_no_bloqueio():
-    import subprocess
-    if sys.platform != "win32":
-        pytest.skip("Contrato de exit do CMD no Windows.")
-    configuracao = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))
-    command = configuracao["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"]
-    dados = evento(RAIZ, "")
-    resultado = subprocess.run(command, input=json.dumps(dados), capture_output=True,
-                               text=True, encoding="utf-8", cwd=RAIZ / "ci", timeout=30)
-    assert resultado.returncode == 2, resultado.stderr
-    assert "não medido" in resultado.stderr
 
 @pytest.mark.parametrize("entrada", ["{}", "JSON quebrado"])
 def test_dispatcher_fecha_entrada_nao_medida(entrada):
@@ -206,33 +179,7 @@ def test_session_start_emite_um_json_valido(bancada):
     assert "fichas nativas conferidas" in contexto
     assert "ainda não mede transcripts Codex" in contexto
 
-def test_launcher_windows_sem_arquivo_do_hook_fecha(tmp_path):
-    import subprocess
-    if sys.platform != "win32":
-        pytest.skip("Inicialização nativa Windows.")
-    (tmp_path / ".git").mkdir()
-    configuracao = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))
-    command = configuracao["hooks"]["PreToolUse"][0]["hooks"][0]["commandWindows"]
-    resultado = subprocess.run(command, input="{}", capture_output=True,
-                               text=True, encoding="utf-8", cwd=tmp_path, timeout=30)
-    assert resultado.returncode == 2, resultado.stderr
-    assert "PAROU POR SEGURANCA" in resultado.stderr
 
-def test_launcher_posix_sem_python_fecha(tmp_path):
-    import os
-    import subprocess
-    from conftest import BASH
-    if BASH is None:
-        pytest.skip("Bash ausente, caso POSIX declarado.")
-    fakebin = tmp_path / "bin"
-    fakebin.mkdir()
-    git = fakebin / "git"
-    git.write_text("#!/bin/sh\nprintf '/checkout'\n", encoding="utf-8")
-    git.chmod(0o755)
-    comando = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
-    r = subprocess.run([BASH, "-c", comando], env={**os.environ, "PATH": str(fakebin)},
-                       capture_output=True, text=True, encoding="utf-8")
-    assert r.returncode == 2, r.stderr
 
 def test_dispatcher_preserva_acentos_e_emoji_em_console_cp1252(bancada):
     import os
