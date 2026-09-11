@@ -352,6 +352,42 @@ class Aula(models.Model):
         return f"{self.numero} {self.titulo_exibido}"
 
 
+class AulaAvulsa(models.Model):
+    """Uma aula publicada para responder uma dúvida sem pertencer a um curso.
+
+    O endereço é identidade da resposta compartilhada: nasce do título na porta
+    de máquina e nunca muda. Não há progresso, bloco, checkpoint ou avaliação.
+    """
+
+    class Estado(models.TextChoices):
+        PUBLICADA = "publicada", "Publicada"
+
+    site_id = id_do_site()
+    titulo = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140)
+    video_url = models.URLField(max_length=500)
+    descricao = models.TextField(blank=True, default="")
+    estado = models.CharField(
+        max_length=10, choices=Estado.choices, default=Estado.PUBLICADA
+    )
+    publicada_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-publicada_em", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "slug"], name="uma_aula_avulsa_por_slug_por_site"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(estado="publicada"),
+                name="aula_avulsa_nasce_publicada",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
 # ---------------------------------------------------------------------------
 # 5. A PEÇA: as 16 da anatomia, duas internas e uma sob demanda
 # ---------------------------------------------------------------------------
