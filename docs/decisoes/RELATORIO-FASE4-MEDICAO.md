@@ -225,8 +225,8 @@ para inferência comparativa.
 Revisões e ponto de retomada calculados nesta rodada:
 
 - entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
-- instrumento derivado do texto versionado: `57a53710d1aeb6c2662bea88c58b392e4a049296`;
-- analisador derivado do texto versionado: `5582b9385dc3f40be7a9e5431297ffc65e3d3e6df2838dbf781f34ab63bbc219`;
+- instrumento derivado do texto versionado: `cc723699b0e16fa21f479aaa84fd75a4691ea169`;
+- analisador derivado do texto versionado: `f4aa55d219ac2c98d9537c28f5852ff5fdac862e4cbd290e61188b2c6f84976b`;
 - auditoria independente desse par de hashes: pendente;
 - retomada: classificar cada tarefa elegível no arquivo versionado antes da
   abertura, registrar transições append-only com evidência e métricas
@@ -237,8 +237,9 @@ A validação integrada local terminou com 554 testes aprovados. As mutações d
 guardas reprovaram quando foram retirados o vínculo, a anterioridade, a revisão
 derivada, a evidência, a identidade integral, a declaração das métricas, o
 estado mais recente, a unidade por tarefa, a revisão do par, a identidade da
-tentativa, a completude confirmatória e o hash do parecer. Isso é prova interna
-do corretivo, não revisão independente do seu SHA.
+tentativa, a completude confirmatória, a coerência temporal, o fato versionado,
+o estado remoto e a ordem UTC dos pareceres. Isso é prova interna do corretivo,
+não revisão independente do seu SHA.
 
 ## Conclusão global
 
