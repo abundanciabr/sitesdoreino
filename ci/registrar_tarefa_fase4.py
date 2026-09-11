@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import subprocess
 import sys
+import tarfile
 from datetime import datetime
 from pathlib import Path
 
@@ -401,38 +403,107 @@ def _classificacao_antecede_commit(raiz: Path, vinculo: dict, commit: str) -> bo
     return processo.returncode == 0
 
 
-def _pr_confere_tarefa_commit(
-    raiz: Path, tarefa: str, pr: int, commit: str
-) -> bool:
-    from fila import carregar_eventos, carregar_tarefas
-
-    erros: list[str] = []
-    tarefas = carregar_tarefas(raiz, erros)
-    eventos = carregar_eventos(raiz, tarefas, erros)
-    url = f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}"
-    submissao = any(
-        evento.get("evento") == "submetida"
-        and evento.get("tarefa") == tarefa
-        and evento.get("pr") == url
-        and evento.get("revisao") == commit
-        for evento in eventos
-    )
-    if erros or not submissao:
-        return False
+def _eventos_versionados(raiz: Path) -> list[dict] | None:
     try:
         processo = subprocess.run(
-            ["gh", "pr", "view", str(pr), "--json", "commits,url"],
+            ["git", "-C", str(raiz), "archive", "--format=tar", "HEAD", "fila/eventos"],
+            capture_output=True,
+            check=False,
+        )
+        if processo.returncode != 0:
+            return None
+        with tarfile.open(fileobj=io.BytesIO(processo.stdout), mode="r:") as arquivo:
+            eventos = []
+            for membro in arquivo.getmembers():
+                if not membro.isfile() or not membro.name.endswith(".json"):
+                    continue
+                extraido = arquivo.extractfile(membro)
+                if extraido is None:
+                    return None
+                evento = json.loads(extraido.read().decode("utf-8"))
+                if not isinstance(evento, dict):
+                    return None
+                eventos.append(evento)
+            return eventos
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, tarfile.TarError):
+        return None
+
+
+def _dados_do_pr(raiz: Path, pr: int) -> dict | None:
+    try:
+        processo = subprocess.run(
+            ["gh", "pr", "view", str(pr), "--json", "commits,url,state,mergeCommit"],
             cwd=raiz,
             capture_output=True,
             text=True,
             check=False,
         )
-        dados = json.loads(processo.stdout) if processo.returncode == 0 else {}
+        dados = json.loads(processo.stdout) if processo.returncode == 0 else None
     except (OSError, json.JSONDecodeError):
+        return None
+    return dados if isinstance(dados, dict) else None
+
+
+def _referencias_do_fato(evento: dict) -> dict[str, str]:
+    texto = evento.get("evidencia") or evento.get("detalhe")
+    if not isinstance(texto, str):
+        return {}
+    referencias = {}
+    for parte in texto.split(";"):
+        chave, separador, valor = parte.strip().partition("=")
+        if not separador or not chave or chave in referencias:
+            return {}
+        referencias[chave] = valor.strip()
+    return referencias
+
+
+def _pr_confere_tarefa_commit(
+    raiz: Path, tarefa: str, pr: int, commit: str, estado: str
+) -> bool:
+    fatos_por_estado = {
+        "concluida": {"concluida"},
+        "falhou": {"bloqueada"},
+        "abandonada": {"cancelada", "devolvida"},
+    }
+    estados_remotos = {
+        "concluida": "MERGED",
+        "falhou": "CLOSED",
+        "abandonada": "CLOSED",
+    }
+    if estado not in fatos_por_estado:
         return False
-    return dados.get("url") == url and any(
+    eventos = _eventos_versionados(raiz)
+    url = f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}"
+    fato = False
+    for evento in eventos or ():
+        referencias = _referencias_do_fato(evento)
+        if (
+            evento.get("evento") in fatos_por_estado[estado]
+            and evento.get("tarefa") == tarefa
+            and referencias.get("entrega") == url
+            and commit
+            in {
+                referencias.get("revisao"),
+                referencias.get("head"),
+                referencias.get("merge"),
+            }
+        ):
+            fato = True
+            break
+    if eventos is None or not fato:
+        return False
+    dados = _dados_do_pr(raiz, pr)
+    if (
+        dados is None
+        or dados.get("url") != url
+        or dados.get("state") != estados_remotos[estado]
+    ):
+        return False
+    merge_commit = dados.get("mergeCommit")
+    return any(
         item.get("oid") == commit for item in dados.get("commits", ())
-    )
+        if isinstance(item, dict)
+    ) or (isinstance(merge_commit, dict) and merge_commit.get("oid") == commit)
 
 
 def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
@@ -452,7 +523,11 @@ def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
         and (
             manifesto["estado"] == "pendente"
             or _pr_confere_tarefa_commit(
-                raiz, manifesto["tarefa"], manifesto["pr"], manifesto["commit"]
+                raiz,
+                manifesto["tarefa"],
+                manifesto["pr"],
+                manifesto["commit"],
+                manifesto["estado"],
             )
         )
     )
@@ -496,7 +571,7 @@ def registrar_execucao_fase4(
     observado_em = fim or inicio
     evidencia = None
     if fim is not None and pr is not None:
-        if not _pr_confere_tarefa_commit(raiz, tarefa, pr, commit):
+        if not _pr_confere_tarefa_commit(raiz, tarefa, pr, commit, estado):
             return False
         evidencia = {
             "resultado": f"{tarefa} {estado}: PR #{pr} no commit {commit}",

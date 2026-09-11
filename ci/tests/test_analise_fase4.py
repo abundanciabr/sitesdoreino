@@ -279,6 +279,18 @@ def test_abertura_pendente_e_fechamento_da_mesma_tentativa_preservam_metricas():
     assert piloto["metrica_principal_minutos"]["depois"] == 30
     assert piloto["metricas_secundarias"]["chamadas_modelo"]["depois"]["total"] == 1
 
+    inicio_divergente = dict(concluida)
+    inicio_divergente["inicio"] = (
+        datetime.fromisoformat(concluida["inicio"]) + timedelta(minutes=1)
+    ).isoformat()
+    atualizar_identidade_e_evidencia(inicio_divergente)
+    resultado_divergente = analisar_com_fila(
+        [pendente, concluida, inicio_divergente]
+    )
+
+    assert resultado_divergente["observacoes"]["tarefas_validas"] == 0
+    assert resultado_divergente["observacoes"]["tentativas_validas"] == 0
+
 
 def test_registrar_tarefa_grava_no_caderno_privado_da_telemetria(tmp_path, monkeypatch):
     evento = tarefa("antes", 1)
@@ -569,6 +581,13 @@ def test_validade_estrutural_nao_vira_completude_confirmatoria():
     assert resultado["observacoes"]["eventos_estruturais_sem_confirmacao"] == 1
     assert resultado["amostra_disponivel"] == "ausente"
 
+    pendente = tarefa("depois", 2, estado="pendente", minutos=None)
+    resultado_pendente = analisar_com_fila([pendente])
+
+    assert resultado_pendente["observacoes"]["eventos_estruturalmente_validos"] == 1
+    assert resultado_pendente["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado_pendente["amostra_disponivel"] == "ausente"
+
 
 def test_auditoria_so_vale_para_o_hash_e_a_revisao_exatos():
     evento = tarefa("depois", 1)
@@ -595,6 +614,20 @@ def test_auditoria_so_vale_para_o_hash_e_a_revisao_exatos():
         analisar_com_fila([evento, auditoria_errada])["auditoria_independente"]
         == "pendente"
     )
+    auditoria_posterior = dict(
+        auditoria,
+        estado="reprovada",
+        verificado_em="2026-09-08T10:00:00-03:00",
+    )
+    auditoria_posterior["id"] = telemetria.identidade_auditoria(
+        auditoria_posterior
+    )
+    assert (
+        analisar_com_fila([evento, auditoria, auditoria_posterior])[
+            "auditoria_independente"
+        ]
+        == "reprovada"
+    )
 
 
 def test_tentativa_e_identificada_sem_multiplicar_mudanca_de_branch():
@@ -607,7 +640,7 @@ def test_tentativa_e_identificada_sem_multiplicar_mudanca_de_branch():
         classificada_em=primeira["classificada_em"],
         branch="agent/ci/ramo-retomado",
     )
-    segunda["id"] = telemetria.identidade_tarefa(segunda)
+    alinhar_ao_vinculo(segunda, primeira)
 
     resultado = analisar_com_fila([primeira, segunda])
 
@@ -648,6 +681,16 @@ def test_vinculo_externo_divergente_impede_confirmacao():
     resultado_sem_relacao = _analisar_sem_fila(
         [pr_sem_relacao], {evento["tarefa"]: vinculo_para(evento)}
     )
+    fim_antes_do_inicio = dict(evento)
+    fim_antes_do_inicio["fim"] = (
+        datetime.fromisoformat(evento["inicio"]) - timedelta(minutes=1)
+    ).isoformat()
+    fim_antes_do_inicio["observado_em"] = evento["inicio"]
+    atualizar_identidade_e_evidencia(fim_antes_do_inicio)
+    resultado_com_fim_invalido = _analisar_sem_fila(
+        [fim_antes_do_inicio],
+        {evento["tarefa"]: vinculo_para(fim_antes_do_inicio)},
+    )
 
     assert sem_fila["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado["observacoes"]["eventos_estruturalmente_validos"] == 1
@@ -655,6 +698,7 @@ def test_vinculo_externo_divergente_impede_confirmacao():
     assert resultado_generico["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_sem_ancestralidade["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_sem_relacao["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado_com_fim_invalido["observacoes"]["tarefas_confirmatorias_completas"] == 0
 
 
 def test_parecer_reprovado_no_hash_atual_nao_aparece_como_aprovado():

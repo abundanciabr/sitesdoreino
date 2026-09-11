@@ -210,7 +210,7 @@ def _evidencia_confere(evento: dict) -> bool:
     return verificado_em is not None and fim is not None and verificado_em >= fim
 
 
-def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None) -> bool:
+def _evento_vinculado(evento: dict, vinculos: dict[str, dict] | None = None) -> bool:
     if (not _evento_valido(evento) or not _eh_operacional(evento)
             or evento.get("schema_medicao") != 2):
         return False
@@ -246,15 +246,25 @@ def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None)
         return False
     if any(evento.get(campo) != valor for campo, valor in classificacao.items()):
         return False
-    if evento["estado"] == "pendente":
-        return evento.get("fim") is None and evento.get("evidencia") is None
+    return True
+
+
+def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None) -> bool:
+    if not _evento_vinculado(evento, vinculos) or evento["estado"] == "pendente":
+        return False
+    vinculo = vinculos[evento["tarefa"]]
+    inicio = _instante(evento["inicio"])
+    fim = _instante(evento.get("fim"))
+    observado_em = _instante(evento["observado_em"])
+    if inicio is None or fim is None or fim < inicio:
+        return False
     if [evento.get("pr"), evento["commit"]] not in vinculo.get(
         "resultados_verificados", ()
     ):
         return False
     if not _evidencia_confere(evento):
         return False
-    return observado_em >= _instante(evento["fim"])
+    return observado_em is not None and observado_em >= fim
 
 
 def _eh_sintetico(evento: dict) -> bool:
@@ -602,6 +612,21 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
         if _esta_incompleto(evento) or not _evento_confirmatorio(evento, vinculos):
             continue
         validos[evento["id"]] = evento
+    transicoes_vinculadas = [
+        evento
+        for evento in eventos
+        if isinstance(evento, dict) and _evento_vinculado(evento, vinculos)
+    ]
+    por_tentativa: dict[tuple[str, str], list[dict]] = {}
+    for evento in transicoes_vinculadas:
+        por_tentativa.setdefault(
+            (evento["tarefa"], evento["tentativa"]), []
+        ).append(evento)
+    inicios_conflitantes = {
+        chave
+        for chave, grupo in por_tentativa.items()
+        if len({evento["inicio"] for evento in grupo}) > 1
+    }
     por_tarefa: dict[str, list[dict]] = {}
     for evento in validos.values():
         por_tarefa.setdefault(evento["tarefa"], []).append(evento)
@@ -611,7 +636,13 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
                 for evento in grupo}) > 1
     }
     diagnostico["tarefas_com_classificacao_conflitante"] = len(conflitos)
-    eventos_sem_conflito = [evento for evento in validos.values() if evento["tarefa"] not in conflitos]
+    diagnostico["tentativas_com_inicio_conflitante"] = len(inicios_conflitantes)
+    eventos_sem_conflito = [
+        evento
+        for evento in validos.values()
+        if evento["tarefa"] not in conflitos
+        and (evento["tarefa"], evento["tentativa"]) not in inicios_conflitantes
+    ]
     tarefas = _agrupar_tentativas(eventos_sem_conflito)
     tentativas_consolidadas = {
         (evento["tarefa"], evento["tentativa"])
@@ -627,14 +658,18 @@ def analisar(eventos: list[dict], vinculos: dict[str, dict] | None = None) -> di
                      if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"]
     entrada = json.dumps(entrada_fase4, ensure_ascii=False, sort_keys=True).encode("utf-8")
     entrada_sha256 = hashlib.sha256(entrada).hexdigest()
-    revisoes_confirmatorias = {evento["revisao_instrumento"] for evento in validos.values()}
+    revisoes_confirmatorias = {
+        evento["revisao_instrumento"] for evento in eventos_sem_conflito
+    }
     auditorias = sorted((evento for evento in eventos
                          if isinstance(evento, dict)
                          and telemetria.identidade_auditoria(evento) == evento.get("id")
                          and evento.get("entrada_sha256") == entrada_sha256
                          and evento.get("revisao_analise") == REVISAO_DA_ANALISE
                          and revisoes_confirmatorias == {evento.get("revisao_instrumento")}),
-                        key=lambda evento: (evento["verificado_em"], evento["id"]))
+                        key=lambda evento: (
+                            _instante_utc(evento["verificado_em"]), evento["id"]
+                        ))
     auditoria = ({"aprovada": "concluída", "reprovada": "reprovada"}[auditorias[-1]["estado"]]
                  if auditorias else "pendente")
     resultados_conclusivos = {
@@ -732,7 +767,7 @@ def main(argv: list[str] | None = None) -> int:
             and type(evento.get("pr")) is int
             and isinstance(evento.get("commit"), str)
             and _pr_confere_tarefa_commit(
-                raiz, tarefa, evento["pr"], evento["commit"]
+                raiz, tarefa, evento["pr"], evento["commit"], evento["estado"]
             )
         ]
         vinculos[tarefa] = vinculo

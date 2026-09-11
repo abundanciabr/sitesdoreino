@@ -10,7 +10,6 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import registrar_tarefa_fase4 as comando  # noqa: E402
-import fila  # noqa: E402
 import telemetria  # noqa: E402
 
 
@@ -594,31 +593,67 @@ def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path, monkeypatc
         tmp_path, vinculo, commit_anterior
     )
     url = "https://github.com/abundanciabr/sitesdoreino/pull/1400"
-    monkeypatch.setattr(fila, "carregar_tarefas", lambda *_: {"TAR-001": tarefa})
-    monkeypatch.setattr(
-        fila,
-        "carregar_eventos",
-        lambda *_: [
+    evento_dir = tmp_path / "fila" / "eventos"
+    evento_dir.mkdir()
+    evento_path = evento_dir / "001-concluida.json"
+    fato_versionado = {
+        "evento": "concluida",
+        "tarefa": "TAR-001",
+        "evidencia": f"entrega={url}; head={commit_classificacao}",
+    }
+    evento_path.write_text(json.dumps(fato_versionado), encoding="utf-8")
+    subprocess.run(["git", "add", evento_path.relative_to(tmp_path)], cwd=tmp_path, check=True)
+    subprocess.run(
+        [
+            "git", "-c", "user.name=Teste", "-c", "user.email=teste@example.test",
+            "commit", "-qm", "conclui",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
+    evento_path.write_text(
+        json.dumps(
             {
                 "evento": "submetida",
                 "tarefa": "TAR-001",
                 "pr": url,
-                "revisao": commit_classificacao,
+                "revisao": commit_anterior,
             }
-        ],
+        ),
+        encoding="utf-8",
     )
     monkeypatch.setattr(
-        comando.subprocess,
-        "run",
-        lambda *_args, **_kwargs: subprocess.CompletedProcess(
-            [], 0, json.dumps({"url": url, "commits": [{"oid": commit_classificacao}]}), ""
-        ),
+        comando,
+        "_dados_do_pr",
+        lambda *_: {
+            "url": url,
+            "state": "MERGED",
+            "commits": [{"oid": commit_classificacao}],
+            "mergeCommit": {"oid": "f" * 40},
+        },
     )
+    assert comando._eventos_versionados(tmp_path) == [fato_versionado]
     assert comando._pr_confere_tarefa_commit(
-        tmp_path, "TAR-001", 1400, commit_classificacao
+        tmp_path, "TAR-001", 1400, commit_classificacao, "concluida"
     )
     assert not comando._pr_confere_tarefa_commit(
-        tmp_path, "TAR-001", 1400, commit_anterior
+        tmp_path, "TAR-001", 1400, commit_anterior, "concluida"
+    )
+    assert not comando._pr_confere_tarefa_commit(
+        tmp_path, "TAR-001", 1400, commit_classificacao, "falhou"
+    )
+    monkeypatch.setattr(
+        comando,
+        "_dados_do_pr",
+        lambda *_: {
+            "url": url,
+            "state": "OPEN",
+            "commits": [{"oid": commit_classificacao}],
+            "mergeCommit": None,
+        },
+    )
+    assert not comando._pr_confere_tarefa_commit(
+        tmp_path, "TAR-001", 1400, commit_classificacao, "concluida"
     )
 
 
