@@ -18,13 +18,20 @@ def executar_make(diretorio, *alvos, ambiente=None):
         or ambiente_final.get("SHELL")
         or "sh"
     )
+    comando_make = [
+        shutil.which("make") or "make",
+        f"SHELL={shell}",
+        *(f"{chave}={valor}" for chave, valor in sobreposicoes.items()),
+        *alvos,
+    ]
+    comspec = ambiente_final.get("ComSpec") or ambiente_final.get("COMSPEC")
+    comando = (
+        [comspec, "/d", "/s", "/c", subprocess.list2cmdline(comando_make)]
+        if comspec
+        else comando_make
+    )
     return subprocess.run(
-        [
-            "make",
-            f"SHELL={shell}",
-            *(f"{chave}={valor}" for chave, valor in sobreposicoes.items()),
-            *alvos,
-        ],
+        comando,
         cwd=diretorio,
         env=ambiente_final,
         capture_output=True,
@@ -33,20 +40,22 @@ def executar_make(diretorio, *alvos, ambiente=None):
     )
 
 
-def preparar_receita_temporaria(tmp_path, comando):
-    receita = (RAIZ_DA_CELULA / "Makefile").read_text(encoding="utf-8")
-    (tmp_path / "Makefile").write_text(
-        receita.replace(comando, f"{comando} /c exit 19", 1), encoding="utf-8"
-    )
+def preparar_receita_temporaria(tmp_path):
+    shutil.copy(RAIZ_DA_CELULA / "Makefile", tmp_path / "Makefile")
 
 
-def ferramenta_que_falha(tmp_path, nome):
+def ferramenta_de_teste(tmp_path, nome, codigo):
+    mensagem = f"{nome} de teste encerrou com {codigo}"
     unix = tmp_path / nome
-    unix.write_text("#!/bin/sh\nexit 19\n", encoding="utf-8")
+    unix.write_text(
+        f"#!/bin/sh\nprintf '%s\\n' '{mensagem}' >&2\nexit {codigo}\n",
+        encoding="utf-8",
+    )
     unix.chmod(0o755)
-    comspec = os.environ.get("ComSpec") or os.environ.get("COMSPEC")
-    if comspec:
-        shutil.copy(comspec, tmp_path / f"{nome}.exe")
+    (tmp_path / f"{nome}.cmd").write_text(
+        f"@echo {mensagem} 1>&2\r\n@exit /b {codigo}\r\n", encoding="utf-8"
+    )
+    return mensagem
 
 
 def pacote_de_teste(tmp_path):
@@ -57,7 +66,11 @@ def pacote_de_teste(tmp_path):
 
 def ambiente_com_ferramentas_em(tmp_path):
     chave_do_path = next(chave for chave in os.environ if chave.upper() == "PATH")
-    return {chave_do_path: f"{tmp_path}{os.pathsep}{os.environ[chave_do_path]}"}
+    raiz_do_sistema = Path(
+        os.environ.get("SystemRoot") or os.environ.get("WINDIR") or "/"
+    )
+    diretorios = [tmp_path, raiz_do_sistema / "System32", raiz_do_sistema]
+    return {chave_do_path: os.pathsep.join(map(str, diretorios))}
 
 
 def test_receitas_de_validacao_executam_sem_shell_posix():
@@ -71,8 +84,8 @@ def test_receitas_de_validacao_executam_sem_shell_posix():
 
 
 def test_lint_executa_black_no_cmd(tmp_path):
-    preparar_receita_temporaria(tmp_path, "black --check .")
-    ferramenta_que_falha(tmp_path, "black")
+    preparar_receita_temporaria(tmp_path)
+    mensagem = ferramenta_de_teste(tmp_path, "black", 19)
 
     resultado = executar_make(
         tmp_path,
@@ -82,16 +95,17 @@ def test_lint_executa_black_no_cmd(tmp_path):
 
     saida = resultado.stdout + resultado.stderr
     assert resultado.returncode != 0
-    assert "black" in saida
+    assert mensagem in saida
 
 
 def test_lint_executa_importlinter_quando_a_configuracao_existe(tmp_path):
-    preparar_receita_temporaria(tmp_path, "lint-imports")
+    preparar_receita_temporaria(tmp_path)
     pacote_de_teste(tmp_path)
     (tmp_path / ".importlinter").write_text(
         "[importlinter]\nroot_package = aplicacao\n", encoding="utf-8"
     )
-    ferramenta_que_falha(tmp_path, "lint-imports")
+    ferramenta_de_teste(tmp_path, "black", 0)
+    mensagem = ferramenta_de_teste(tmp_path, "lint-imports", 19)
 
     resultado = executar_make(
         tmp_path,
@@ -101,14 +115,14 @@ def test_lint_executa_importlinter_quando_a_configuracao_existe(tmp_path):
 
     saida = resultado.stdout + resultado.stderr
     assert resultado.returncode != 0
-    assert "lint-imports" in saida
+    assert mensagem in saida
 
 
 def test_type_executa_mypy_quando_a_configuracao_existe(tmp_path):
-    preparar_receita_temporaria(tmp_path, "mypy .")
+    preparar_receita_temporaria(tmp_path)
     pacote_de_teste(tmp_path)
     (tmp_path / "mypy.ini").write_text("[mypy]\n", encoding="utf-8")
-    ferramenta_que_falha(tmp_path, "mypy")
+    mensagem = ferramenta_de_teste(tmp_path, "mypy", 19)
 
     resultado = executar_make(
         tmp_path,
@@ -118,4 +132,4 @@ def test_type_executa_mypy_quando_a_configuracao_existe(tmp_path):
 
     saida = resultado.stdout + resultado.stderr
     assert resultado.returncode != 0
-    assert "mypy" in saida
+    assert mensagem in saida
