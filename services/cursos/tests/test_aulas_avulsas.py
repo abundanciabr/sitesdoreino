@@ -159,7 +159,7 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         slug="primeira",
         video_url="https://youtu.be/dQw4w9WgXcQ",
     )
-    
+
     chamadas = 0
     original_proximo = api._proximo_slug_livre
 
@@ -167,7 +167,7 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
         nonlocal chamadas
         chamadas += 1
         if chamadas == 1:
-            # Na primeira tentativa, simula que outro processo roubou o slug 
+            # Na primeira tentativa, simula que outro processo roubou o slug
             # logo após calcularmos que "aula-disputada" estava livre.
             # Criamos a aula concorrente no banco para forçar o IntegrityError
             # quando o update real tentar salvar.
@@ -194,7 +194,6 @@ def test_edita_slug_concorrente_reexecuta_apos_colisao_no_banco(monkeypatch):
     assert resultado["slug"] == "aula-disputada-2"
     assert AulaAvulsa.objects.get(pk=primeira.pk).slug == "aula-disputada-2"
     assert AulaAvulsa.objects.filter(slug="aula-disputada").exists()
-
 
 
 @pytest.mark.parametrize("slug", ["", "!!!", "   "])
