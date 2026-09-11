@@ -680,7 +680,9 @@ urlpatterns = [
     path("escola/cursos/criar", escola_curso_criar, name="escola_curso_criar"),
     path("escola/cursos/alterar", escola_curso_alterar, name="escola_curso_alterar"),
     path("escola/aulas-avulsas/", aulas_avulsas, name="escola_aulas_avulsas"),
-    path("escola/aulas-avulsas/criar", aula_avulsa_criar, name="escola_aula_avulsa_criar"),
+    path(
+        "escola/aulas-avulsas/criar", aula_avulsa_criar, name="escola_aula_avulsa_criar"
+    ),
     # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
     # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
     # expande o grupo opcional em dois endereços e escolhe pelo que você passa
