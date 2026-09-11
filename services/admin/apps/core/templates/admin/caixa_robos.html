@@ -541,7 +541,7 @@ não tem sigla (lei do CLAUDE.md).
           </p>
           <input type="hidden" name="tarefa" id="campo-da-tarefa" value="{{ tarefa_do_resultado }}">
           <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
-          <input id="motivo-da-exclusao" name="motivo" maxlength="500" autocomplete="off" value="{{ rascunho.motivo }}" required>
+          <textarea id="motivo-da-exclusao" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
           <p><a id="consultar-pedido" href="{% url 'caixa_robos' %}{% if tarefa_do_resultado %}?pedido={{ tarefa_do_resultado }}{% endif %}">Consultar o pedido existente desta tarefa</a></p>
           <div class="botoes">
             <button type="button" id="deixar-na-fila">Voltar ao quadro</button>

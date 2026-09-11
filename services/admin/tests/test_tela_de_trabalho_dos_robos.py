@@ -30,6 +30,7 @@ E dois guardas que não vêm do pedido dele, e sim das leis da casa:
 
 import json
 import re
+from html.parser import HTMLParser
 
 import httpx
 import pytest
@@ -746,6 +747,76 @@ def test_parametros_de_resultado_na_url_nao_sao_prova(tmp_path, monkeypatch):
     assert resposta.context["resultado"] == ""
     assert "Pedido recebido" not in pagina_sem_estilo(resposta)
     assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_motivo_multilinha_sobrevive_ao_formulario_e_a_retomada(
+    tmp_path, monkeypatch, com_token
+):
+    class FormularioDeCancelamento(HTMLParser):
+        def __init__(self, resposta):
+            super().__init__(convert_charrefs=True)
+            self.dados = {}
+            self.campo = None
+            self.feed(
+                resposta.content.decode().replace("\r\n", "\n").replace("\r", "\n")
+            )
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            nome = attrs.get("name")
+            if nome not in {"tarefa", "motivo"}:
+                return
+            if tag == "input":
+                # O controle de linha única remove CR/LF antes de enviar.
+                self.dados[nome] = (
+                    attrs.get("value", "").replace("\r", "").replace("\n", "")
+                )
+            elif tag == "textarea":
+                self.campo = nome
+                self.dados[nome] = ""
+
+        def handle_data(self, data):
+            if self.campo:
+                # A submissão HTML serializa quebras de linha como CRLF.
+                self.dados[self.campo] += data.replace("\n", "\r\n")
+
+        def handle_endtag(self, tag):
+            if tag == "textarea":
+                self.campo = None
+
+    fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    remoto.falhar = ("POST", "/pulls")
+    remoto.resposta_perdida = True
+    cliente = _dentro()
+    motivo = (
+        'Primeira linha: "duplicada" & conferida.\r\n\r\nSegunda linha: <preservar>.'
+    )
+    resposta = cliente.post(
+        reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": motivo}
+    )
+    assert resposta.status_code == 200
+    assert resposta.context["resultado"] == "recebido"
+    originais = dict(remoto.arquivos)
+    assert json.loads(next(iter(originais.values())))["detalhe"] == motivo
+    assert len(remoto.prs) == len(originais) == 1
+    chamadas = len(remoto.chamadas)
+
+    for _ in range(2):
+        formulario = FormularioDeCancelamento(resposta)
+        resposta = cliente.post(reverse("caixa_robos_excluir"), formulario.dados)
+        assert resposta.status_code == 200
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert resposta.context["pr"] == 1270
+        resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert remoto.arquivos == originais
+        assert len(remoto.prs) == len(remoto.arquivos) == 1
+
+    assert all(chave[0] == "GET" for chave, _ in remoto.chamadas[chamadas:])
 
 
 @respx.mock
