@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-043-ci-corrigir-medicao-pareto",
+  tipo: "medicao",
+  quando: "2026-09-11",
+  titulo: "ci: corrigir medição Pareto",
+  detalhe: "A TAR-338 fecha a amostra sem fila, ancestralidade Git, revisão atual e evidência verificável.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1561. Validação local: árvore b480165914bf0e92ef333fd9650178ba1967a9fb; commit aad9a644533765621064b1c3a0c0e983297fa65a; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-338",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
