@@ -981,12 +981,6 @@ def molde(faltou_o_plano: bool, transcript: str | None = None) -> str:
 
 
 def modo_contas(entrada: dict) -> int:
-    # `stop_hook_active` diz só "já houve uma recusa neste fim de turno". Se ela
-    # foi atendida, só o transcript sabe — e ele é relido com a MESMA régua
-    # (armadilhas/368: a primeira versão gritava sem olhar, e em 32 de 50 vezes
-    # o relatório estava na tela).
-    segunda_passada = bool(entrada.get("stop_hook_active"))
-
     caminho = entrada.get("transcript_path")
     if not caminho:
         print(
@@ -1008,12 +1002,10 @@ def modo_contas(entrada: dict) -> int:
     entradas = ler_transcript(arquivo)
     recusar, motivo, teve_plano = decidir(entradas)
 
-    # Alavanca 3, em SOMBRA: só telemetria, roda na primeira passada de todo
-    # Stop — inclusive quando a prestação de contas já foi paga, porque a
-    # sessão pode ter aberto os PRs em série ANTES do relatório. A segunda
-    # passada do mesmo fim de turno não conta de novo: a série é uma só.
-    # registrar() já é fail-open (nunca lança), então isto não pode derrubar o
-    # exit code que `decidir()` já calculou.
+    sessao = entrada.get("session_id", "default")
+    marca = arquivo.parent / f".tentativas_stop_{sessao}.txt"
+    segunda_passada = marca.exists() or bool(entrada.get("stop_hook_active"))
+
     if not segunda_passada:
         prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
         if prs_criados >= 2 and despachos_de_verdade == 0:
@@ -1024,7 +1016,32 @@ def modo_contas(entrada: dict) -> int:
                 sessao=entrada.get("session_id"),
             )
 
-    if not recusar:
+    if recusar:
+        tentativas = 1
+        if marca.exists():
+            tentativas = int(marca.read_text(encoding="utf-8").strip() or "1") + 1
+        elif bool(entrada.get("stop_hook_active")):
+            tentativas = 2
+        marca.write_text(str(tentativas), encoding="utf-8")
+
+        if tentativas == 1:
+            print(molde(faltou_o_plano=not teve_plano, transcript=str(arquivo)), file=sys.stderr)
+            print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
+            return 2
+        elif tentativas == 2:
+            print(
+                "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
+                "   O que você tem na tela pode não ser o relatório da tarefa.\n"
+                "   (Dando uma chance, mas isso é um erro.)",
+                file=sys.stderr,
+            )
+            return 1
+        else:
+            marca.unlink()
+            return 0
+    else:
+        if marca.exists():
+            marca.unlink()
         return 0
     if segunda_passada:
         # Já recusei uma vez neste fim de turno e o relatório continua faltando.
