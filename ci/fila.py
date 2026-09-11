@@ -178,6 +178,7 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "pr": str,
     "revisao": str,
     "arvore": str,
+    "substitui": str,
     "detalhe": str,
     "evidencia": str,
     "verificado_em": str,
@@ -655,8 +656,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             continue
         if tipo == "submetida":
             erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
-        elif any(campo in dados for campo in ("pr", "revisao", "arvore")):
-            erros.append(f"{nome}: pr, revisao e arvore pertencem ao evento submetida")
+        elif any(campo in dados for campo in ("pr", "revisao", "arvore", "substitui")):
+            erros.append(f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida")
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -703,6 +704,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                     )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
+    _conferir_cadeias_de_submissao(eventos, erros)
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
     # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
     # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
@@ -732,6 +734,34 @@ def problemas_da_submissao(dados: dict) -> list[str]:
         if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
             erros.append(f"{campo} exige o SHA completo do código validado")
     return erros
+
+
+def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> None:
+    ultima_por_tarefa: dict[str, dict] = {}
+    for evento in eventos:
+        if evento.get("evento") != "submetida":
+            continue
+        nome = evento.get("arquivo", "evento submetida")
+        anterior = ultima_por_tarefa.get(evento.get("tarefa"))
+        elo = str(evento.get("substitui") or "").strip()
+        motivo = str(evento.get("detalhe") or "").strip()
+        if anterior is None:
+            if elo:
+                erros.append(f"{nome}: elo substitui não cabe na primeira submissão")
+        elif evento.get("pr") == anterior.get("pr"):
+            if elo:
+                erros.append(f"{nome}: elo substitui não atualiza o mesmo PR")
+        else:
+            if not elo:
+                erros.append(f"{nome}: troca de PR sem elo substitui")
+            elif elo != anterior.get("pr"):
+                erros.append(
+                    f"{nome}: substitui precisa apontar para a última submissão, "
+                    f"{anterior.get('pr')}"
+                )
+            if not motivo:
+                erros.append(f"{nome}: substituição com motivo vazio não conta a troca")
+        ultima_por_tarefa[evento.get("tarefa")] = evento
 
 
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
@@ -2019,12 +2049,55 @@ def cmd_submeter(raiz: Path, args) -> int:
         print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
         return 1
     anterior = ultima_submissao(eventos, tid)
+    substitui = str(getattr(args, "substitui", "") or "").strip()
+    motivo = str(getattr(args, "motivo", "") or "").strip()
+    mesmo_vinculo = anterior is not None and all(
+        anterior.get(campo) == valor for campo, valor in vinculo.items()
+    )
+    if mesmo_vinculo and substitui:
+        if (anterior.get("substitui") == substitui
+                and str(anterior.get("detalhe") or "").strip() == motivo):
+            _soltar_reserva_se_houver(raiz, tid)
+            print(
+                f"{tid}: esta substituição já está registrada em {args.pr}; "
+                "reserva liberada."
+            )
+            return 0
+        print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
+        return 1
     if anterior and anterior.get("pr") != args.pr:
-        print(f"RECUSADO: {tid} já tem outra entrega submetida. Confira {anterior['pr']} antes de trocar o vínculo.")
+        if not substitui:
+            print(
+                f"RECUSADO: {tid} já tem outra entrega submetida. Use --substitui "
+                f"{anterior['pr']} e informe --motivo para trocar o vínculo."
+            )
+            return 1
+        if substitui != anterior.get("pr"):
+            print(
+                "RECUSADO: --substitui precisa ser exatamente a URL da última "
+                f"submissão: {anterior['pr']}."
+            )
+            return 1
+        if not motivo:
+            print("RECUSADO: --motivo é obrigatório ao substituir uma entrega.")
+            return 1
+        problemas = _problemas_da_substituicao(raiz, anterior, vinculo)
+        if problemas:
+            print("RECUSADO: " + "; ".join(problemas) + ". Nada foi alterado.")
+            return 1
+    elif substitui:
+        contexto = "a primeira submissão" if anterior is None else "o mesmo PR"
+        print(f"RECUSADO: --substitui não cabe em {contexto}.")
+        return 1
+    elif motivo:
+        print("RECUSADO: --motivo só acompanha uma substituição indicada por --substitui.")
         return 1
     if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
         dados = montar_evento(tid, "submetida", args.quem)
         dados.update(vinculo)
+        if substitui:
+            dados["substitui"] = substitui
+            dados["detalhe"] = motivo
         pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
@@ -2033,6 +2106,58 @@ def cmd_submeter(raiz: Path, args) -> int:
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
     return 0
+
+
+def _problemas_da_substituicao(
+    raiz: Path,
+    anterior: dict,
+    novo_vinculo: dict,
+) -> list[str]:
+    pr_anterior = consultar_pr_submetido(raiz, anterior["pr"])
+    if "mergeCommit" not in pr_anterior:
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou se o PR anterior foi integrado",
+            f"Confira gh pr view {anterior['pr']} --json state,mergeCommit e repita.",
+        )
+    problemas = []
+    if (pr_anterior.get("state") == "MERGED"
+            or pr_anterior.get("mergeCommit") is not None):
+        problemas.append("o PR anterior foi integrado")
+    elif pr_anterior.get("state") == "OPEN":
+        problemas.append("o PR anterior ainda está aberto")
+    elif pr_anterior.get("state") != "CLOSED":
+        problemas.append("o PR anterior não está fechado sem merge")
+    if problemas:
+        return problemas
+
+    pr_novo = consultar_pr_submetido(raiz, novo_vinculo["pr"])
+    head_remoto = pr_novo.get("headRefOid")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(head_remoto or "")):
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou a revisão do novo PR",
+            f"Confira gh pr view {novo_vinculo['pr']} --json state,headRefOid e repita.",
+        )
+    if pr_novo.get("state") != "OPEN":
+        problemas.append("o novo PR não está aberto")
+    if head_remoto != novo_vinculo["revisao"]:
+        problemas.append("a revisão informada difere do HEAD do novo PR")
+    if problemas:
+        return problemas
+
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{novo_vinculo['revisao']}^{{tree}}",
+        para_que="medir a árvore da revisão substituta",
+    ).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", arvore_medida):
+        raise ErroDeInstrumentacao(
+            "o git não informou a árvore da revisão substituta",
+            "Confira se a revisão existe nesta bancada e repita.",
+        )
+    if arvore_medida != novo_vinculo["arvore"]:
+        problemas.append("a árvore informada difere da árvore local da revisão")
+    return problemas
 
 
 def _concluir_com_prova(
@@ -2522,6 +2647,8 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--pr", required=True, help="URL completa do pull request")
     p.add_argument("--revisao", required=True, help="SHA completo do código validado")
     p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
+    p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
+    p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
