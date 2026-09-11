@@ -459,6 +459,7 @@ paths:
                     const: aula_avulsa_nao_encontrada
                     type: string
                   o_que_fazer:
+                    minLength: 1
                     type: string
                 required:
                 - erro
@@ -482,6 +483,7 @@ paths:
                     - slug_invalido
                     type: string
                   o_que_fazer:
+                    minLength: 1
                     type: string
                 required:
                 - erro
