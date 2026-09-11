@@ -41,11 +41,14 @@ ordenadas, sem publicar o conteúdo bruto.
 
 ## Recálculo independente
 
-O recálculo usou somente a biblioteca padrão para percorrer os arquivos JSONL,
-recompor a identidade SHA-256 de cada evento e conferir fonte, estado,
-relógios com fuso e métricas não negativas. Ele não importou
-`ci/analise_fase4.py`, `ci/registrar_tarefa_fase4.py` nem suas funções
-decisórias.
+O recálculo versionado em `ci/auditar_medicao_fase4.py` usou somente a
+biblioteca padrão para percorrer os arquivos JSONL, recompor a identidade
+SHA-256 de cada evento e conferir fonte, estado, relógios com fuso e métricas
+não negativas. Ele não importou `ci/analise_fase4.py`,
+`ci/registrar_tarefa_fase4.py`, `ci/telemetria.py` nem suas funções
+decisórias. O teste `ci/tests/test_auditar_medicao_fase4.py` inspeciona a
+árvore sintática dos imports, fixa as revisões publicadas e sabota remoção,
+estado e métrica nula.
 
 | Medida | Resultado |
 |---|---:|
@@ -107,14 +110,21 @@ tarefas_validas: 0
 tentativas_validas: 0
 entrada_sha256: d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56
 
-recálculo independente pela biblioteca padrão
+python ci/auditar_medicao_fase4.py --local
+estado: PASS
+entrada_sha256: d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56
+revisao_instrumento: 8cdc4905084d1d5c68745523897edf36367d6b7d
+revisao_analise: 62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0
 eventos_tarefa_medida: 5
 eventos_estruturalmente_validos: 5
 candidatos_confirmatorios_schema2_encerrados: 0
-pares_declarados: 0
+tarefas_confirmatorias_completas: 0
+tarefas_distintas: 4
+pares_declarados_ou_elegiveis: 0
 metricas_ausentes_nao_convertidas_em_zero: 54
-revisao_instrumento: 8cdc4905084d1d5c68745523897edf36367d6b7d
-revisao_analise: 62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0
+
+python -m pytest ci/tests/test_auditar_medicao_fase4.py -q
+4 passed in 0.76s
 
 git merge-base --is-ancestor f0c85e1ee23a1e27486f2b35b1ad5cf8b7e013ed 98fccb36d0550e18a2a6c6877c743fa2aa7eaee8
 exit 0
