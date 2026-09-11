@@ -1320,6 +1320,27 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas-avulsas/",
+      "endereco": "/admin/escola/aulas-avulsas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas publicadas fora de cursos e o formulário para criar outra com nome, URL do vídeo e descrição.",
+      "observacao": "O endereço compartilhável nasce na célula cursos e é gerado pelo nome no instante de criar. Esta tela só mostra uma prévia, nunca recebe um slug digitável.",
+      "exemplo": "/admin/escola/aulas-avulsas/"
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/aulas-avulsas/criar",
+      "endereco": "/admin/escola/aulas-avulsas/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar uma aula avulsa",
+      "descricao": "Não é uma página: publica uma aula com nome, URL do vídeo e descrição, e devolve o link que pode ser compartilhado."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/cursos/criar",
       "endereco": "/admin/escola/cursos/criar",
       "alcance": "publico",

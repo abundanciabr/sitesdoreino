@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Aulas avulsas{% endblock %}
+{% block corpo %}
+<style>
+  .aula-avulsa-formulario { display: grid; gap: 12px; }
+  .aula-avulsa-formulario label { display: grid; gap: 4px; font-weight: 600; }
+  .aula-avulsa-formulario input, .aula-avulsa-formulario textarea { width: 100%; padding: 9px 10px; font: inherit; color: var(--texto); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; }
+  .aula-avulsa-formulario textarea { min-height: 110px; resize: vertical; }
+  .aula-avulsa-endereco { margin: 0; color: var(--texto-2); font-size: 14px; }
+  .aula-avulsa-lista { display: grid; gap: 12px; margin-top: 28px; }
+  .aula-avulsa-lista h2 { margin-bottom: 0; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
+  <h1>Aulas avulsas</h1>
+  <p class="subtitulo">Crie uma resposta em vídeo e compartilhe o mesmo endereço no Fórum, na Caixa de Sugestões ou no grupo.</p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha"><b>Não consegui saber de qual escola são as aulas.</b> Recarregue a página em um minuto. Nada mudou.</p>
+  {% elif falha_da_sala %}
+  <p class="aviso borda-vermelha"><b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}</p>
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  {% else %}
+    {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+    {% if criada %}
+    <p class="recado"><b>A aula foi publicada.</b> <a href="{{ criada.endereco }}" target="_blank" rel="noopener">Abrir a aula</a> ou <button type="button" class="botao" data-copiar-link="{{ criada.endereco }}">Copiar o link</button></p>
+    {% endif %}
+    <div class="cartao">
+      <form class="aula-avulsa-formulario" action="{{ url_criar }}" method="post">
+        {% csrf_token %}
+        <label for="titulo">Nome da aula<input id="titulo" name="titulo" maxlength="120" required value="{{ rascunho.titulo }}"></label>
+        <p class="aula-avulsa-endereco">A URL final é criada ao publicar: <span id="previa-do-endereco" data-base="/aulas/">/aulas/</span></p>
+        <label for="video_url">URL do vídeo<input id="video_url" name="video_url" type="url" maxlength="500" required value="{{ rascunho.video_url }}" placeholder="https://www.youtube.com/watch?v=..."></label>
+        <label for="descricao">Descrição da aula<textarea id="descricao" name="descricao" maxlength="5000">{{ rascunho.descricao }}</textarea></label>
+        <p><button class="botao" type="submit">Criar aula avulsa</button></p>
+      </form>
+    </div>
+    <section class="aula-avulsa-lista" aria-labelledby="aulas-publicadas">
+      <h2 id="aulas-publicadas">Aulas publicadas</h2>
+      {% for aula in aulas %}
+      <article class="cartao"><span class="rotulo">{{ aula.publicada_em }}</span><div class="valor"><b>{{ aula.titulo }}</b></div>{% if aula.descricao %}<p class="nota">{{ aula.descricao }}</p>{% endif %}<p><a href="{{ aula.endereco }}" target="_blank" rel="noopener">Abrir</a> · <button type="button" class="botao" data-copiar-link="{{ aula.endereco }}">Copiar o link</button></p></article>
+      {% empty %}
+      <p class="aviso">Nenhuma aula avulsa foi publicada ainda. A primeira vai aparecer aqui com o link pronto para compartilhar.</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+</div>
+<script>
+  (() => {
+    const titulo = document.getElementById("titulo");
+    const previa = document.getElementById("previa-do-endereco");
+    const slug = (texto) => texto.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    if (titulo && previa) {
+      const atualizar = () => { previa.textContent = previa.dataset.base + (slug(titulo.value) || "...") + "/"; };
+      titulo.addEventListener("input", atualizar);
+      atualizar();
+    }
+    document.querySelectorAll("[data-copiar-link]").forEach((botao) => botao.addEventListener("click", async () => { await navigator.clipboard.writeText(new URL(botao.dataset.copiarLink, window.location.origin).href); botao.textContent = "Link copiado"; }));
+  })();
+</script>
+{% endblock %}
