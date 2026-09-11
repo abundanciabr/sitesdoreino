@@ -446,6 +446,25 @@
     },
     {
       "celula": "cursos",
+      "rota": "aulas",
+      "endereco": "/cursos/aulas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas que podem ser compartilhadas sem pertencer a um curso. Só abre para quem tem matrícula ativa em um produto deste site."
+    },
+    {
+      "celula": "cursos",
+      "rota": "aulas/<slug:slug>",
+      "endereco": "/cursos/aulas/<slug:slug>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma aula avulsa",
+      "descricao": "A aula compartilhável: mostra o vídeo do YouTube, a descrição e o link direto para o vídeo. Não altera o andamento de nenhum curso.",
+      "exemplo": "/cursos/aulas/como-publicar-seu-jogo"
+    },
+    {
+      "celula": "cursos",
       "rota": "<slug:curso>/",
       "endereco": "/cursos/<slug:curso>/",
       "alcance": "publico",
