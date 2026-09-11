@@ -1056,9 +1056,7 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
                 "description": "OK",
                 "content": {
                     "application/json": {
-                        "schema": {
-                            "$ref": "#/components/schemas/AulaAvulsaSchema"
-                        },
+                        "schema": {"$ref": "#/components/schemas/AulaAvulsaSchema"},
                         "examples": {
                             "menor_sufixo_livre": {
                                 "summary": "O "
@@ -1135,9 +1133,9 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
                                     "video_url": "https://www.youtube.com/embed/abcdefghijk",
                                 },
                             },
-                        }
+                        },
                     }
-                }
+                },
             },
             "404": {
                 "content": {
