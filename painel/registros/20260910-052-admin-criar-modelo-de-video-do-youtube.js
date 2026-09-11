@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-052-admin-criar-modelo-de-video-do-youtube",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "admin: criar modelo de vídeo do YouTube",
+  detalhe: "O novo modelo de aula aceita apenas uma URL de vídeo do YouTube, preserva todo conteúdo já escrito na aula, grava pela porta existente e tenta publicá-la no mesmo gesto, sem criar contrato novo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1540. Validação local: árvore 9fdac95db90229383824156b6dbfe8874e66a728; commit 123e9a0fa2aa7d72219acdee4d385edd280d93cc; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-327",
+  gravidade: "info",
+  frente: "curso",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

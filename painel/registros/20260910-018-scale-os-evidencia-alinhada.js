@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-018-scale-os-evidencia-alinhada",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: evidência final alinhada",
+  detalhe: "TAR-297 agora declara responsabilidade obrigatória, a medição pondera casos e a guarda comum tem caminho válido testado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 0f5785c348de20d4a955cc17da50d01383ae236d; árvore 6ebd0f980c8b37e918b8d331592d071bf3f603b9; submissão cec4058e; 227 testes relacionados; muralhas local PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

@@ -81,7 +81,7 @@ from django.views.decorators.http import require_GET
 from . import robos
 from .caixa import _dias
 from .clients import AlunosClient
-from .painel import diretorio_do_painel
+from .painel import dados_do_painel, diretorio_do_painel
 
 # O carimbo que o gerador do painel deixa na página, em forma rígida e numa
 # linha só (`painel/gerar_manifesto.js`). Ler por padrão, em vez de executar o
@@ -315,6 +315,8 @@ def pendencias(request):
                 else None
             ),
             "vinculos_ausentes": painel.tarefas is None,
+            "dados_livro": dados_do_painel(),
+            "dados_fila": robos.dados_da_fila(),
             "sem_responsavel": sem_responsavel,
             # `any`, e não `all`: com UMA fila muda o total já é um piso, e
             # apresentá-lo como conta fechada seria a mesma mentira do zero.

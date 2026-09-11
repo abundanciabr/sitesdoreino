@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-110857-TAR-318-explicada",
+  "tarefa": "TAR-318",
+  "evento": "explicada",
+  "quando": "2026-09-10T11:08:57+00:00",
+  "quem": "Despacho da maestro após recusa segura do protocolo de submissão em 10/09/2026",
+  "o_que_e": "A auditoria encontrou nove correções e precisa publicar esse resultado na fila e no histórico da escola.",
+  "o_que_muda": "Os achados passam a existir como trabalho rastreável, com prova reproduzível e um veredito preservado no painel.",
+  "exemplo": "A revisão encontra uma medição que aceita cópia duplicada; a publicação transforma isso numa tarefa com responsável e prova de fecho.",
+  "importancia": 100
+}

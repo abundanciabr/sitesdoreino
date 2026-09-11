@@ -5,6 +5,12 @@
   <h1>Pendências</h1>
   <p class="subtitulo">Decisões que esperam por você, nas três fontes consultadas.
   Cada linha leva para onde a coisa se resolve. A cobertura ainda é parcial.</p>
+  {% if dados_livro %}
+    <details{% if dados_livro.motivo %} open{% endif %}><summary>Dados do livro</summary>{% include "admin/dados_do_painel.html" with dados=dados_livro %}</details>
+  {% endif %}
+  {% if dados_fila %}
+    <details{% if dados_fila.motivo %} open{% endif %}><summary>Dados da fila de trabalho</summary>{% include "admin/dados_do_painel.html" with dados=dados_fila %}</details>
+  {% endif %}
 
   {% comment %}
   O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"
@@ -73,7 +79,7 @@
   {% endcomment %}
   {% for fila in mudas %}
     <p class="aviso calado">
-      <b>Não deu para perguntar a {{ fila.onde_mora }} agora.</b>
+      <b>Não foi possível consultar {{ fila.onde_mora }} agora.</b>
       Então não sei quantas coisas estão esperando você ali, e prefiro dizer
       isso a mostrar um zero. Recarregue esta página daqui a pouco; se
       continuar assim, abra

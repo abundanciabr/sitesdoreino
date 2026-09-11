@@ -304,6 +304,17 @@ a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
 precisa aparecer na área durante carregamento, aviso e falha. O teste real
 do navegador cobre a entrada direta, a volta ao menu e a troca de área.
 
+## Um atalho de aula altera só o que ele pede (10/09/2026)
+
+O modelo Vídeo do YouTube recebe somente uma URL, mas a aula que o recebe pode
+ter peças, quiz, pausas, critérios e uma marca de Boss já escritos. Montar um
+corpo vazio para aproveitar a porta de gravação apagaria esse trabalho sem que
+o formulário mostrasse o perigo.
+
+A regra é: leia a aula atual pela porta, troque apenas `video_url` e devolva o
+corpo completo. O teste `test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula`
+confere cada campo que precisa permanecer igual.
+
 ## A versão dos dados fica presa antes de conferir e ler (09/09/2026, TAR-291)
 
 Resolver o ponteiro depois de conferir os hashes permite validar uma versão e
@@ -330,14 +341,13 @@ incidente. `verificada` significa que identidade e arquivos conferiram; não
 afirma que a revisão é a mais recente do repositório.
 
 `PortaAdministrativa` abre um contexto por requisição e o descarta em
-`finally`, inclusive em recusa ou exceção. A primeira seleção fixa a revisão;
-cada tipo fixa sua pasta concreta ou sua indisponibilidade. Outro consumidor
-não troca de pacote para encontrar um artefato ausente. Painel e fila só se
-combinam na mesma revisão e execução; no legado, precisam pertencer à mesma
-raiz local.
-Sem uma cópia compatível, a fonte fica indisponível e a tela mantém o aviso
-que já trata a ausência. O publicador atual tem dois ponteiros independentes:
-a publicação conjunta e atômica ainda precisa ser implementada.
+`finally`, inclusive em recusa ou exceção. Cada tipo fixa independentemente
+sua pasta concreta, identidade ou indisponibilidade durante toda a resposta.
+Outro consumidor do mesmo tipo não troca de pacote para encontrar um artefato
+ausente. O PR #1510 retirou a exigência de identidade conjunta: painel e fila
+podem vir de revisões, execuções e raízes locais distintas, porque seus
+ponteiros são independentes. A tela identifica cada fonte e mantém seu aviso
+de alternativa ou ausência. A próxima requisição pode selecionar outra versão.
 
 Não há cache entre requisições. Uma otimização futura precisa usar a
 identidade da release concreta e preservar o aviso da alternativa; cachear

@@ -1,0 +1,29 @@
+{
+  "arquivo": "297-medir-funcionamento-economia-qualidade-e-capacidade-do-scale",
+  "id": "TAR-297",
+  "titulo": "Medir funcionamento, economia, qualidade e capacidade do Scale OS",
+  "toca": [
+    "admin",
+    "painel",
+    "ci",
+    "metricas"
+  ],
+  "depende_de": [
+    "TAR-284",
+    "TAR-285",
+    "TAR-286",
+    "TAR-287",
+    "TAR-288",
+    "TAR-289"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Relatório reproduzível separa funcionamento, economia de esforço, qualidade e capacidade, aceita resultados negativos ou inconclusivos, mede a meta de mais de 80 por cento como hipótese a testar e ensaia 500 vendas por dia e 50 mil alunos fora da produção, sem confundir cadastro com simultaneidade.",
+  "despacho": "Feche a arquitetura com quatro conclusões separadas: funcionamento, economia de esforço, qualidade e capacidade. A redução maior que 80 por cento é meta a testar, não condição única de aceite. Inclua revisão, retrabalho, exceções, manutenção, qualidade, reabertura, custo, filas, picos, disponibilidade e capacidade humana. Resultados negativos ou inconclusivos são válidos quando têm evidência e consequência registrada. Exercite 500 vendas por dia e 50 mil alunos com perfis representativos e sem carga em produção; 50 mil alunos cadastrados não significam 50 mil acessos simultâneos. Preserve a avaliação econômica e os resultados dos alunos, sem usar coortes imaturas como prova consolidada.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; validação da Fase 4 corrigida em 09/09/2026",
+  "criada_em": "2026-09-09",
+  "responsabilidade": "medicao-de-esforco",
+  "responsabilidade_obrigatoria": true
+}

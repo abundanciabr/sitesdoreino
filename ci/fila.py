@@ -10,6 +10,8 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
+    python ci/fila.py reconciliar TAR-001 --quem "maestro" \
+        --aceite-registro painel/registros/AAAAMMDD-NNN-slug.js
     python ci/fila.py explicar TAR-001 --quem "sessao-x" \
         --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
     python ci/fila.py validar                # fail-closed; roda na muralha
@@ -52,13 +54,23 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CI = Path(__file__).resolve().parent
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import reservar  # noqa: E402
-from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
+import responsabilidades  # noqa: E402
+import estado_da_entrega  # noqa: E402
+import revisor_de_pouso  # noqa: E402
+from _nucleo import (  # noqa: E402
+    ErroDeInstrumentacao,
+    Estado,
+    configurar_saida,
+    executar,
+    raiz_do_repo,
+)
 
 # Quem sabe distinguir espelho de bancada é a muralha da pasta compartilhada, e
 # ela sabe desde 26/08/2026: no worktree o `.git` é ARQUIVO, no clone principal
@@ -141,6 +153,8 @@ CAMPOS_DA_TAREFA = {
 MANUTENCAO = "manutencao"
 CAMPOS_OPCIONAIS_DA_TAREFA = {
     "depende_de": list,
+    "responsabilidade": str,
+    "responsabilidade_obrigatoria": bool,
     "notas": str,
     "cria": list,
     "move": list,
@@ -164,6 +178,7 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "pr": str,
     "revisao": str,
     "arvore": str,
+    "substitui": str,
     "detalhe": str,
     "evidencia": str,
     "verificado_em": str,
@@ -209,6 +224,15 @@ RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # divergiriam no primeiro dia em que alguém mexesse numa só.
 RE_CITACAO = re.compile(r"TAR-\d{3,}")
 PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
+RE_REGISTRO_DE_ACEITE = re.compile(
+    r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js"
+)
+RE_URL = re.compile(r"https?://[^\s<>\"']+")
+CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
+
+
+class RecusaDeReconciliacao(ValueError):
+    """A medição terminou e encontrou uma entrega que ainda não pode fechar."""
 
 
 # ---------------------------------------------------------------------------
@@ -632,8 +656,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             continue
         if tipo == "submetida":
             erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
-        elif any(campo in dados for campo in ("pr", "revisao", "arvore")):
-            erros.append(f"{nome}: pr, revisao e arvore pertencem ao evento submetida")
+        elif any(campo in dados for campo in ("pr", "revisao", "arvore", "substitui")):
+            erros.append(f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida")
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -680,6 +704,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                     )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
+    _conferir_cadeias_de_submissao(eventos, erros)
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
     # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
     # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
@@ -709,6 +734,34 @@ def problemas_da_submissao(dados: dict) -> list[str]:
         if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
             erros.append(f"{campo} exige o SHA completo do código validado")
     return erros
+
+
+def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> None:
+    ultima_por_tarefa: dict[str, dict] = {}
+    for evento in eventos:
+        if evento.get("evento") != "submetida":
+            continue
+        nome = evento.get("arquivo", "evento submetida")
+        anterior = ultima_por_tarefa.get(evento.get("tarefa"))
+        elo = str(evento.get("substitui") or "").strip()
+        motivo = str(evento.get("detalhe") or "").strip()
+        if anterior is None:
+            if elo:
+                erros.append(f"{nome}: elo substitui não cabe na primeira submissão")
+        elif evento.get("pr") == anterior.get("pr"):
+            if elo:
+                erros.append(f"{nome}: elo substitui não atualiza o mesmo PR")
+        else:
+            if not elo:
+                erros.append(f"{nome}: troca de PR sem elo substitui")
+            elif elo != anterior.get("pr"):
+                erros.append(
+                    f"{nome}: substitui precisa apontar para a última submissão, "
+                    f"{anterior.get('pr')}"
+                )
+            if not motivo:
+                erros.append(f"{nome}: substituição com motivo vazio não conta a troca")
+        ultima_por_tarefa[evento.get("tarefa")] = evento
 
 
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
@@ -936,6 +989,345 @@ def consultar_pr_submetido(raiz: Path, url: str) -> dict:
             "não consegui conferir o PR submetido",
             f"Confira gh pr view {url} e repita a operação. A tarefa não foi devolvida à fila.",
         ) from erro
+
+
+def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", *argumentos],
+            cwd=str(raiz),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise ErroDeInstrumentacao(
+            f"{descricao}: o git não respondeu",
+            "A relação entre revisão, HEAD e integração não foi medida.",
+        ) from erro
+    if proc.returncode not in (0, 1):
+        raise ErroDeInstrumentacao(
+            f"{descricao}: resposta inválida do git",
+            proc.stderr.strip() or "O git não explicou a falha.",
+        )
+    return proc.returncode == 0
+
+
+def bancada_contem_main_publicada(raiz: Path) -> bool:
+    _git_da_fila(
+        raiz, "fetch", "origin", "main", para_que="atualizar a fila publicada"
+    )
+    return _git_predicado(
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        "origin/main",
+        "HEAD",
+        descricao="conferir se a bancada contém a fila publicada",
+    )
+
+
+def problemas_da_linhagem(
+    submissao: dict,
+    medicao: dict,
+) -> list[str]:
+    problemas = []
+    if medicao.get("arvore_medida") != submissao.get("arvore"):
+        problemas.append("a árvore da revisão difere da árvore submetida")
+    if not medicao.get("revisao_ancestral"):
+        problemas.append("a revisão submetida não é ancestral do HEAD final")
+    if not medicao.get("head_ancestral"):
+        problemas.append("o HEAD final não é ancestral do merge publicado")
+    posteriores = medicao.get("caminhos_posteriores") or []
+    codigo = [
+        caminho
+        for caminho in posteriores
+        if not caminho.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)
+    ]
+    if codigo:
+        problemas.append("há código posterior à revisão: " + ", ".join(codigo))
+    return problemas
+
+
+def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
+    profundidade = _git_da_fila(
+        raiz,
+        "rev-parse",
+        "--is-shallow-repository",
+        para_que="conferir a profundidade do histórico",
+    ).strip()
+    if profundidade != "false":
+        raise ErroDeInstrumentacao(
+            "histórico raso não prova a reconciliação",
+            "Use um checkout com fetch-depth 0 e repita.",
+        )
+    revisao = submissao["revisao"]
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{revisao}^{{tree}}",
+        para_que="medir a árvore da revisão submetida",
+    ).strip()
+    if not arvore_medida:
+        raise ErroDeInstrumentacao("o git não devolveu a árvore da revisão")
+    caminhos = _git_da_fila(
+        raiz,
+        "log",
+        "--diff-merges=first-parent",
+        "--format=",
+        "--name-only",
+        f"{revisao}..{head}",
+        para_que="conferir mudanças posteriores à revisão",
+    ).splitlines()
+    caminhos = [caminho for caminho in caminhos if caminho]
+    medicao = {
+        "arvore_medida": arvore_medida,
+        "revisao_ancestral": _git_predicado(
+            raiz,
+            "merge-base",
+            "--is-ancestor",
+            revisao,
+            head,
+            descricao="conferir revisão ancestral do HEAD",
+        ),
+        "head_ancestral": _git_predicado(
+            raiz,
+            "merge-base",
+            "--is-ancestor",
+            head,
+            merge,
+            descricao="conferir HEAD ancestral do merge",
+        ),
+        "caminhos_posteriores": caminhos,
+    }
+    problemas = problemas_da_linhagem(submissao, medicao)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas))
+
+
+def provar_estado_terminal(estado: dict) -> None:
+    if not isinstance(estado, dict) or not isinstance(estado.get("estado"), str):
+        raise ErroDeInstrumentacao(
+            "o leitor da entrega devolveu dados inválidos",
+            "Não há estado confiável para reconciliar.",
+        )
+    if estado["estado"] == "ENCERRADO_SEM_INTEGRAR":
+        raise RecusaDeReconciliacao("a entrega não foi integrada")
+    if not estado.get("terminal") or estado["estado"] not in (
+        "PUBLICADO",
+        "SEM_PUBLICACAO",
+    ):
+        raise RecusaDeReconciliacao(
+            f"a publicação ainda não terminou com sucesso ({estado['estado']})"
+        )
+    for campo in ("sha_atual", "sha_integrado"):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(estado.get(campo) or "")):
+            raise ErroDeInstrumentacao(
+                f"{campo} ausente no estado da entrega",
+                "O GitHub não devolveu a identidade completa do código.",
+            )
+
+
+def provar_atestado(resultado) -> None:
+    if not isinstance(resultado, revisor_de_pouso.Resultado):
+        raise ErroDeInstrumentacao(
+            "o revisor devolveu um resultado inválido",
+            "A avaliação independente não pôde ser interpretada.",
+        )
+    if resultado.estado is not Estado.PASS:
+        raise RecusaDeReconciliacao(
+            "o atestado independente do HEAD final não foi aprovado: "
+            + resultado.resumo
+        )
+
+
+def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -> None:
+    if registro.get("gravidade") != "verde":
+        raise RecusaDeReconciliacao("o registro de aceite não tem veredito verde")
+    if registro.get("precisa_do_dono") is not False:
+        raise RecusaDeReconciliacao("o registro ainda declara uma pendência do dono")
+    verificado_em = str(registro.get("verificado_em") or "")
+    try:
+        if not RE_DATA.fullmatch(verificado_em):
+            raise ValueError
+        datetime.strptime(verificado_em, "%Y-%m-%d")
+    except ValueError:
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não informa quando foi verificado"
+        )
+    evidencia = str(registro.get("evidencia") or "")
+    citadas = set()
+    for texto in RE_URL.findall(evidencia):
+        texto = texto.rstrip(".,;:)")
+        try:
+            urlsplit(texto)
+        except ValueError:
+            continue
+        citadas.add(texto)
+    if not provas_da_publicacao or not citadas.intersection(provas_da_publicacao):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não cita a prova da publicação correspondente"
+        )
+
+
+def urls_da_publicacao_comprovada(estado: dict, pr: str) -> list[str]:
+    if estado["estado"] == "SEM_PUBLICACAO":
+        return [pr]
+    fonte = estado.get("publicacoes")
+    if fonte is None:
+        fonte = estado.get("runs", [])
+    return sorted(
+        {
+            str(item["url"])
+            for item in fonte
+            if isinstance(item, dict) and item.get("url")
+        }
+    )
+
+
+def _ler_registro(raiz: Path, caminho: str) -> dict:
+    script = (
+        "const fs=require('fs'),vm=require('vm');"
+        "const s={window:{}};"
+        "vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),s,{timeout:1000});"
+        "const r=s.window.REGISTROS||[];"
+        "if(r.length!==1)process.exit(3);"
+        "process.stdout.write(JSON.stringify(r[0]));"
+    )
+    saida = executar(
+        ["node", "-e", script, str(raiz / caminho)],
+        cwd=raiz,
+        descricao="ler o aceite na fonte oficial do livro",
+        exigir_stdout=True,
+    ).stdout
+    try:
+        registro = json.loads(saida)
+    except (TypeError, json.JSONDecodeError) as erro:
+        raise ErroDeInstrumentacao(
+            "o registro de aceite não pôde ser lido",
+            "O livro não devolveu um objeto JSON confiável.",
+        ) from erro
+    if not isinstance(registro, dict):
+        raise ErroDeInstrumentacao("o registro de aceite não é um objeto")
+    return registro
+
+
+def carregar_aceite(
+    raiz: Path,
+    caminho: str,
+    merge: str,
+    provas_da_publicacao: list[str],
+) -> dict:
+    caminho = caminho.replace("\\", "/")
+    if not RE_REGISTRO_DE_ACEITE.fullmatch(caminho):
+        raise RecusaDeReconciliacao(
+            "--aceite-registro exige painel/registros/AAAAMMDD-NNN-slug.js"
+        )
+    rastreado = _git_da_fila(
+        raiz,
+        "ls-tree",
+        "-r",
+        "--name-only",
+        "origin/main",
+        "--",
+        caminho,
+        para_que="localizar o aceite na linha publicada",
+    ).splitlines()
+    if rastreado != [caminho]:
+        raise RecusaDeReconciliacao("o registro de aceite não existe em origin/main")
+    if not _git_predicado(
+        raiz,
+        "diff",
+        "--quiet",
+        "origin/main",
+        "--",
+        caminho,
+        descricao="comparar o aceite local com origin/main",
+    ):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite local difere da fonte já integrada em origin/main"
+        )
+    introducao = _git_da_fila(
+        raiz,
+        "log",
+        "-1",
+        "--diff-filter=A",
+        "--format=%H",
+        "origin/main",
+        "--",
+        caminho,
+        para_que="localizar quando o aceite entrou no livro",
+    ).strip()
+    if not introducao:
+        raise RecusaDeReconciliacao("não foi possível localizar a introdução do aceite")
+    if introducao == merge or not _git_predicado(
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        merge,
+        introducao,
+        descricao="conferir aceite posterior à integração",
+    ):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não foi introduzido após o merge"
+        )
+    registro = _ler_registro(raiz, caminho)
+    if registro.get("arquivo") != Path(caminho).stem:
+        raise RecusaDeReconciliacao(
+            "a identidade interna do registro de aceite diverge do arquivo"
+        )
+    provar_conteudo_do_aceite(registro, provas_da_publicacao)
+    return registro
+
+
+def provar_reconciliacao(
+    raiz: Path,
+    submissao: dict,
+    aceite_registro: str,
+) -> tuple[str, str]:
+    numero = int(submissao["pr"].rsplit("/", 1)[1])
+    pr = estado_da_entrega.ler_pr(raiz, numero)
+    if pr.get("url") != submissao["pr"]:
+        raise RecusaDeReconciliacao(
+            "a URL submetida não identifica o PR deste repositório"
+        )
+    estado = estado_da_entrega.consultar_entrega(raiz, numero)
+    provar_estado_terminal(estado)
+    head = estado["sha_atual"]
+    merge = estado["sha_integrado"]
+    if (
+        pr.get("headRefOid") != head
+        or (pr.get("mergeCommit") or {}).get("oid") != merge
+    ):
+        raise ErroDeInstrumentacao(
+            "as duas leituras do PR discordam",
+            "HEAD ou merge mudou durante a reconciliação. Repita a medição.",
+        )
+    medir_linhagem(raiz, submissao, head, merge)
+
+    comentarios = estado_da_entrega._api(  # uma leitura GitHub, sem segundo protocolo
+        raiz, f"issues/{numero}/comments", paginas=True
+    )
+    atestado = revisor_de_pouso.avaliar_atestado(
+        head,
+        comentarios,
+        correcoes=estado_da_entrega.correcoes_declaradas(pr),
+    )
+    provar_atestado(atestado)
+
+    provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
+    registro = carregar_aceite(raiz, aceite_registro, merge, provas)
+    publicacao = ",".join(provas)
+    evidencia = (
+        f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
+        f"arvore={submissao['arvore']}; head={head}; merge={merge}; "
+        f"estado={estado['estado']}; publicacao={publicacao}; "
+        f"atestado={atestado.resumo}; aceite={aceite_registro.replace('\\', '/')}"
+    )
+    return evidencia, registro["verificado_em"]
 
 
 def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
@@ -1257,11 +1649,16 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     return tarefas, eventos
 
 
+def normalizar_responsabilidade(valor: object) -> str:
+    return valor.strip() if isinstance(valor, str) else ""
+
+
 def cmd_criar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("criar", raiz)
     if recusa:
         print(recusa)
         return 1
+    responsabilidade = normalizar_responsabilidade(getattr(args, "responsabilidade", ""))
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -1299,6 +1696,23 @@ def cmd_criar(raiz: Path, args) -> int:
         print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
+    if not responsabilidade:
+        print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if not cadastro.exists():
+        print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
+        return 1
+    try:
+        problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+        print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        return 1
+    if problemas_da_responsabilidade:
+        print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
+        for problema in problemas_da_responsabilidade:
+            print(f"- {problema}")
+        return 1
     numero = reservar.alocar_numero(raiz, "tarefa")
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
@@ -1316,7 +1730,10 @@ def cmd_criar(raiz: Path, args) -> int:
         "despacho": despacho,
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "responsabilidade_obrigatoria": True,
     }
+    if responsabilidade:
+        dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
     _escrever_json(caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
@@ -1632,12 +2049,55 @@ def cmd_submeter(raiz: Path, args) -> int:
         print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
         return 1
     anterior = ultima_submissao(eventos, tid)
+    substitui = str(getattr(args, "substitui", "") or "").strip()
+    motivo = str(getattr(args, "motivo", "") or "").strip()
+    mesmo_vinculo = anterior is not None and all(
+        anterior.get(campo) == valor for campo, valor in vinculo.items()
+    )
+    if mesmo_vinculo and substitui:
+        if (anterior.get("substitui") == substitui
+                and str(anterior.get("detalhe") or "").strip() == motivo):
+            _soltar_reserva_se_houver(raiz, tid)
+            print(
+                f"{tid}: esta substituição já está registrada em {args.pr}; "
+                "reserva liberada."
+            )
+            return 0
+        print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
+        return 1
     if anterior and anterior.get("pr") != args.pr:
-        print(f"RECUSADO: {tid} já tem outra entrega submetida. Confira {anterior['pr']} antes de trocar o vínculo.")
+        if not substitui:
+            print(
+                f"RECUSADO: {tid} já tem outra entrega submetida. Use --substitui "
+                f"{anterior['pr']} e informe --motivo para trocar o vínculo."
+            )
+            return 1
+        if substitui != anterior.get("pr"):
+            print(
+                "RECUSADO: --substitui precisa ser exatamente a URL da última "
+                f"submissão: {anterior['pr']}."
+            )
+            return 1
+        if not motivo:
+            print("RECUSADO: --motivo é obrigatório ao substituir uma entrega.")
+            return 1
+        problemas = _problemas_da_substituicao(raiz, anterior, vinculo)
+        if problemas:
+            print("RECUSADO: " + "; ".join(problemas) + ". Nada foi alterado.")
+            return 1
+    elif substitui:
+        contexto = "a primeira submissão" if anterior is None else "o mesmo PR"
+        print(f"RECUSADO: --substitui não cabe em {contexto}.")
+        return 1
+    elif motivo:
+        print("RECUSADO: --motivo só acompanha uma substituição indicada por --substitui.")
         return 1
     if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
         dados = montar_evento(tid, "submetida", args.quem)
         dados.update(vinculo)
+        if substitui:
+            dados["substitui"] = substitui
+            dados["detalhe"] = motivo
         pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
@@ -1645,6 +2105,119 @@ def cmd_submeter(raiz: Path, args) -> int:
         _escrever_json(caminho, dados)
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
+    return 0
+
+
+def _problemas_da_substituicao(
+    raiz: Path,
+    anterior: dict,
+    novo_vinculo: dict,
+) -> list[str]:
+    pr_anterior = consultar_pr_submetido(raiz, anterior["pr"])
+    if "mergeCommit" not in pr_anterior:
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou se o PR anterior foi integrado",
+            f"Confira gh pr view {anterior['pr']} --json state,mergeCommit e repita.",
+        )
+    problemas = []
+    if (pr_anterior.get("state") == "MERGED"
+            or pr_anterior.get("mergeCommit") is not None):
+        problemas.append("o PR anterior foi integrado")
+    elif pr_anterior.get("state") == "OPEN":
+        problemas.append("o PR anterior ainda está aberto")
+    elif pr_anterior.get("state") != "CLOSED":
+        problemas.append("o PR anterior não está fechado sem merge")
+    if problemas:
+        return problemas
+
+    pr_novo = consultar_pr_submetido(raiz, novo_vinculo["pr"])
+    head_remoto = pr_novo.get("headRefOid")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(head_remoto or "")):
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou a revisão do novo PR",
+            f"Confira gh pr view {novo_vinculo['pr']} --json state,headRefOid e repita.",
+        )
+    if pr_novo.get("state") != "OPEN":
+        problemas.append("o novo PR não está aberto")
+    if head_remoto != novo_vinculo["revisao"]:
+        problemas.append("a revisão informada difere do HEAD do novo PR")
+    if problemas:
+        return problemas
+
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{novo_vinculo['revisao']}^{{tree}}",
+        para_que="medir a árvore da revisão substituta",
+    ).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", arvore_medida):
+        raise ErroDeInstrumentacao(
+            "o git não informou a árvore da revisão substituta",
+            "Confira se a revisão existe nesta bancada e repita.",
+        )
+    if arvore_medida != novo_vinculo["arvore"]:
+        problemas.append("a árvore informada difere da árvore local da revisão")
+    return problemas
+
+
+def _concluir_com_prova(
+    raiz: Path,
+    tid: str,
+    quem: str,
+    evidencia: str,
+    verificado_em: str,
+) -> int:
+    """Único ponto terminal para `concluir` e `reconciliar`.
+
+    Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
+    soltura da reserva e da escrita do evento, para valer nos dois caminhos.
+    """
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefa = tarefas.get(tid)
+    if tarefa is None and (raiz / "fila" / "tarefas").exists():
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
+        print("RECUSADO: tarefa nova sem responsabilidade declarada.")
+        print("Cadastre uma unidade de responsabilidade antes de concluir.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not cadastro.exists():
+        print("RECUSADO: cadastro de responsabilidades não existe.")
+        print("Crie painel/responsabilidades.json antes de concluir a entrega.")
+        return 1
+    if responsabilidade and cadastro.exists():
+        try:
+            problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
+        except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+            print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+            return 1
+        if problemas:
+            print("RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            return 1
+    caminho = _escrever_evento(
+        raiz,
+        tid,
+        "concluida",
+        quem,
+        evidencia=evidencia,
+        verificado_em=verificado_em,
+    )
+    try:
+        _soltar_reserva_se_houver(raiz, tid)
+    except ErroDeInstrumentacao as erro:
+        raise ErroDeInstrumentacao(
+            "a conclusão foi registrada, mas a reserva não foi liberada",
+            f"Evento: {caminho.relative_to(raiz)}\n"
+            f"Rode python ci/fila.py soltar {tid} --quem {quem} e confira a reserva.\n"
+            f"Causa original: {erro.resumo}",
+        ) from erro
+    print(
+        f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
+    )
     return 0
 
 
@@ -1663,26 +2236,80 @@ def cmd_concluir(raiz: Path, args) -> int:
         print(f"RECUSADO: {tid} já terminou ({estado['estado']}).")
         return 1
     if ultima_submissao(eventos, tid):
-        print(f"RECUSADO: {tid} aguarda comprovação do aceite, além da abertura ou integração do PR.")
-        print("Use a reconciliação da entrega com a prova exigida; não encerre por texto livre.")
+        print(
+            f"RECUSADO: {tid} aguarda comprovação do aceite, além da abertura ou integração do PR."
+        )
+        print(
+            "Use a reconciliação da entrega com a prova exigida; não encerre por texto livre."
+        )
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
     if not (args.evidencia or "").strip():
-        print("RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro.")
+        print(
+            "RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro."
+        )
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
-    _soltar_reserva_se_houver(raiz, tid)
-    caminho = _escrever_evento(
+    return _concluir_com_prova(
         raiz,
         tid,
-        "concluida",
         args.quem,
-        evidencia=args.evidencia,
-        verificado_em=args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        args.evidencia,
+        args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
-    print(f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
-    return 0
 
+
+def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
+    """Somente tarefas criadas pela guarda exigem responsabilidade."""
+    return tarefa.get("responsabilidade_obrigatoria") is True
+
+def cmd_reconciliar(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("reconciliar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    if not bancada_contem_main_publicada(raiz):
+        print(
+            "RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou."
+        )
+        print(
+            "Faça merge de origin/main nesta bancada e repita reconciliar; "
+            "nenhuma reserva ou evento foi alterado."
+        )
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    estado = calcular_estados(tarefas, eventos)[tid]
+    if estado["estado"] in (CONCLUIDA, CANCELADA):
+        print(
+            f"RECUSADO: {tid} já terminou ({estado['estado']}); nenhum evento foi repetido."
+        )
+        return 1
+    submissao = ultima_submissao(eventos, tid)
+    if not submissao:
+        print(f"RECUSADO: {tid} não tem entrega submetida para reconciliar.")
+        print(
+            "Use concluir no fluxo legado, ou submeter com PR, revisão e árvore validados."
+        )
+        return 1
+    try:
+        evidencia, verificado_em = provar_reconciliacao(
+            raiz, submissao, args.aceite_registro
+        )
+    except RecusaDeReconciliacao as erro:
+        print(f"RECUSADO: {erro}.")
+        print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
+        return 1
+    return _concluir_com_prova(
+        raiz,
+        tid,
+        args.quem,
+        evidencia,
+        verificado_em,
+    )
 
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
     """Solta a referência no servidor; se ela não existir, não é erro."""
@@ -1964,6 +2591,7 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
+    p.add_argument("--responsabilidade", required=True, help="id da unidade de responsabilidade que acompanha o desfecho")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
     p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")
@@ -2019,12 +2647,26 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--pr", required=True, help="URL completa do pull request")
     p.add_argument("--revisao", required=True, help="SHA completo do código validado")
     p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
+    p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
+    p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
     p.add_argument("--evidencia", required=True, help="a prova (URL de PR, saída de teste…)")
     p.add_argument("--verificado-em", default="", help="quando a prova foi conferida (AAAA-MM-DD)")
+
+    p = sub.add_parser(
+        "reconciliar",
+        help="fecha entrega submetida após conferir integração, publicação e aceite",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument(
+        "--aceite-registro",
+        required=True,
+        help="painel/registros/AAAAMMDD-NNN-slug.js já integrado após a entrega",
+    )
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
 
@@ -2063,6 +2705,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_submeter(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
+        if args.acao == "reconciliar":
+            return cmd_reconciliar(raiz, args)
         if args.acao == "explicar":
             return cmd_explicar(raiz, args)
         if args.acao == "imutabilidade":

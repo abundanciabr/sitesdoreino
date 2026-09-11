@@ -446,6 +446,25 @@
     },
     {
       "celula": "cursos",
+      "rota": "aulas",
+      "endereco": "/cursos/aulas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas que podem ser compartilhadas sem pertencer a um curso. Só abre para quem tem matrícula ativa em um produto deste site."
+    },
+    {
+      "celula": "cursos",
+      "rota": "aulas/<slug:slug>",
+      "endereco": "/cursos/aulas/<slug:slug>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma aula avulsa",
+      "descricao": "A aula compartilhável: mostra o vídeo do YouTube, a descrição e o link direto para o vídeo. Não altera o andamento de nenhum curso.",
+      "exemplo": "/cursos/aulas/como-publicar-seu-jogo"
+    },
+    {
+      "celula": "cursos",
       "rota": "<slug:curso>/",
       "endereco": "/cursos/<slug:curso>/",
       "alcance": "publico",
@@ -1320,6 +1339,27 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas-avulsas/",
+      "endereco": "/admin/escola/aulas-avulsas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas publicadas fora de cursos e o formulário para criar outra com nome, URL do vídeo e descrição.",
+      "observacao": "O endereço compartilhável nasce na célula cursos e é gerado pelo nome no instante de criar. Esta tela só mostra uma prévia, nunca recebe um slug digitável.",
+      "exemplo": "/admin/escola/aulas-avulsas/"
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/aulas-avulsas/criar",
+      "endereco": "/admin/escola/aulas-avulsas/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar uma aula avulsa",
+      "descricao": "Não é uma página: publica uma aula com nome, URL do vídeo e descrição, e devolve o link que pode ser compartilhado."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/cursos/criar",
       "endereco": "/admin/escola/cursos/criar",
       "alcance": "publico",
@@ -1359,6 +1399,17 @@
       "descricao": "O editor de uma aula: o pedido, o cliente, o instrumento, o \"Aceito quando\", o quiz, o vídeo por link, as 18 peças em Markdown na ordem em que o aluno as lê (as duas internas avisadas), as pausas do vídeo, o botão de salvar e o de publicar.",
       "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/",
       "observacao": "O endereço carrega o curso e a Parte para que o link, ao ser compartilhado, diga em que ponto do livro aquela encomenda está; Parte que não casa com a encomenda recusa e devolve o endereço certo. O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Vídeo do YouTube",
+      "descricao": "O modelo rápido de uma aula já criada. A pessoa cola uma URL do YouTube, a tela preserva o restante da aula, salva o novo vídeo e publica para os alunos.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/video-do-youtube/",
+      "observacao": "Aceita somente links HTTPS que a sala de aula incorpora: youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Se a publicação for recusada depois de salvar, a tela diz que o vídeo foi salvo e oferece a nova tentativa."
     },
     {
       "celula": "admin",

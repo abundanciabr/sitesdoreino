@@ -53,6 +53,11 @@ CORPO_DO_INSTRUMENTO = {
 CORPO_DO_BLOCO = {"nome": "O Diorama", "boss_titulo": "O Diorama"}
 CORPO_DO_CURSO_NOVO = {"slug": "roblox", "nome": "Primeiros Dolares com Roblox"}
 CORPO_DO_CURSO = {"nome": "Profissional"}
+CORPO_DA_AULA_AVULSA = {
+    "titulo": "Como começar no Roblox",
+    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "descricao": "Uma resposta curta.",
+}
 # A estrutura do livro inteira, para que o `putCourseStructure` com o token
 # certo responda 200 no esqueleto semeado (nenhuma aula some, nada é apagado).
 CORPO_DA_ESTRUTURA = {
@@ -120,12 +125,19 @@ CORPO_DA_ESTRUTURA = {
     ]
 }
 
-# As dezessete, uma a uma: (operationId, método, caminho, corpo). Os caminhos são
+# As dezenove, uma a uma: (operationId, método, caminho, corpo). Os caminhos são
 # os reais, com `site_id`, curso, parte e corpo válido, para que o 401 prove o
 # cadeado e nunca um 404 ou 422 disfarçado. As quatro que sabem de curso entram
 # aqui pelo mesmo motivo que as outras: quem passa pela borda pública é a
 # ROTA, e uma rota nova sem cadeado abre o texto das aulas para o mundo.
 AS_DEZESSETE = [
+    ("listStandaloneLessons", "get", f"/aulas-avulsas?site_id={SITE}", None),
+    (
+        "createStandaloneLesson",
+        "post",
+        f"/aulas-avulsas?site_id={SITE}",
+        CORPO_DA_AULA_AVULSA,
+    ),
     ("listSiteLessons", "get", f"/aulas?site_id={SITE}", None),
     ("getSiteLesson", "get", f"/aulas/E00?site_id={SITE}", None),
     ("putSiteLesson", "put", f"/aulas/E00?site_id={SITE}", CORPO_DA_AULA),
@@ -233,7 +245,7 @@ def test_o_token_certo_abre_a_porta(esqueleto, operacao, metodo, caminho, corpo)
     dezessete respondem 200 (a que cria, 201). Sem isto, um caminho digitado
     errado daria 404 sem token e 401 com token errado, e os três guardas acima
     ficariam verdes medindo uma rota que não existe."""
-    esperado = 201 if operacao == "createCourse" else 200
+    esperado = 201 if operacao in ("createCourse", "createStandaloneLesson") else 200
     assert chamar(metodo, caminho, corpo).status_code == esperado
 
 

@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-009-endpoint-misto-truncou-publicacao",
+  tipo: "incidente",
+  quando: "2026-09-09",
+  titulo: "O endpoint misto truncou a prova de publicação",
+  detalhe: "Depois de corrigir a busca histórica, o portão alcançou a consulta da publicação no SHA e encontrou uma lista truncada porque actions/runs misturava deploy, pouso e outros workflows. A resposta não foi aceita como verde.\n\nA correção consulta cada workflow de deploy separadamente e mantém a recusa quando o histórico daquele workflow estiver truncado.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1515",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: null,
+  area: "fabrica",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

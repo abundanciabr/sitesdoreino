@@ -395,10 +395,14 @@ _SCRIPT_EMBUTIDO = re.compile(
 )
 
 
-def diretorio_da_fila() -> Path | None:
-    dados = selecionar_dados(
+def dados_da_fila():
+    return selecionar_dados(
         CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
     )
+
+
+def diretorio_da_fila() -> Path | None:
+    dados = dados_da_fila()
     return dados.pasta if dados else None
 
 
@@ -586,6 +590,15 @@ def _quadro(request, *, resultado=None, rascunho=None):
                 {
                     "id": tid,
                     **dados,
+                    "entrega_url": (
+                        dados["pr"]
+                        if isinstance(dados.get("pr"), str)
+                        and re.fullmatch(
+                            r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[1-9][0-9]*",
+                            dados["pr"],
+                        )
+                        else None
+                    ),
                     "onde": onde_isso_mexe(dados.get("toca")),
                     "quando": ultima_mexida.get(tid),
                     # Sobrescreve o cru que veio dos dados de propósito: o que a
@@ -662,6 +675,7 @@ def _quadro(request, *, resultado=None, rascunho=None):
         "admin/caixa_robos.html",
         {
             "colunas": colunas,
+            "dados": dados_da_fila(),
             "esperando_voce": esperando_voce,
             "sem_responsavel": next(
                 len(c["cartoes"]) for c in colunas if c.get("espera") == "desconhecida"

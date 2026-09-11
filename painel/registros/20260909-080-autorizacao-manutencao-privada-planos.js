@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-080-autorizacao-manutencao-privada-planos",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "Autorização para salvar planos privados já aprovados",
+  detalhe: "O mantenedor confirmou que o agente pode atualizar e salvar um documento privado de plano já existente quando o pedido for explícito, sem pedir uma confirmação redundante para o ato de salvar. A autorização foi registrada em painel/autorizacoes/manutencao-privada-de-planos.json e mantém limites para publicação, acesso, segredos, gastos, cobranças, mensagens e automações externas. A fila, o livro e as aprovações específicas continuam sendo as fontes de estado.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500; Validação local: árvore 4ccc2db6310fc3fc8cae99b27287859250c3a210; commit 8b3fe41be02704942839cb14d0d2634121a526c3; 5 comandos, exit 0.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

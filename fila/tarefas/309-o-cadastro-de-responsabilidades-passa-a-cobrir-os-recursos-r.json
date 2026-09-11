@@ -1,0 +1,19 @@
+{
+  "arquivo": "309-o-cadastro-de-responsabilidades-passa-a-cobrir-os-recursos-r",
+  "id": "TAR-309",
+  "titulo": "O cadastro de responsabilidades passa a cobrir os recursos reais",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Auditoria e contraprovas demonstram vínculo explícito ou herdado de todos os recursos conhecidos, fontes e alçadas concretas e recusa de ausência ou ambiguidade, sem inventar substituto humano nem tornar IA titular.",
+  "despacho": "GRAVIDADE: ALTO, bloqueante da Fase 1.\n\nREQUISITO: toda frente e todo recurso conhecido precisam ter vínculo rastreável com uma unidade de responsabilidade, por declaração explícita ou herança verificável, com fonte e autoridade concretas.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; PR 1500, revisão cd201c495824c4fca16155031b5f87ad93cf05f1; painel/responsabilidades.json, linhas 38 a 46.\n\nEVIDÊNCIA OBSERVADA: o inventário tem oito unidades, sem herda_de, enquanto o mapa contém 18 células e 256 rotas sem vínculo. Finanças não identifica assinaturas, recorrência, verba de aquisição, margem, caixa ou contabilidade; usa aprovador e fonte indefinidos. Operação omite checkout, matrícula, qualidade de dados e comunicação afetada. Continuidade não traz procedimento e fonte para a ausência das quatro funções.\n\nREPRODUÇÃO: rode python ci/responsabilidades.py --auditar e compare as oito unidades de painel/responsabilidades.json com as 18 células e 256 rotas do mapa; confira os campos fonte, aprova, autoridade e evidencia das unidades financas-e-conciliacao, operacao-tecnica e continuidade-operacional.\n\nESPERADO: cada recurso conhecido resolve para uma responsabilidade válida e para fontes e alçadas verificáveis. OBSERVADO: recursos podem ficar sem vínculo e descrições genéricas ainda recebem o veredito RESPONSABILIDADE COMPROVADA.\n\nIMPACTO: decisões, incidentes e rotinas podem ficar sem acompanhamento identificável, portanto a fundação não sustenta a operação declarada.\n\nCORREÇÃO MÍNIMA: completar a mesma estrutura, com vínculos explícitos ou herdados para os recursos conhecidos e fontes e autoridades concretas. Preservar a decisão do dono de não inventar substitutos humanos; agente de IA não vira titular.\n\nCLASSIFICAÇÃO: ausência demonstrada na entrega da Fase 1; bloqueia o aceite técnico desta fase e preserva o aceite histórico já registrado até nova decisão baseada na correção.\n\nPROVA DE FECHO: auditoria positiva e contraprovas mostram cobertura de todos os recursos conhecidos, herança válida, ausência e ambiguidade recusadas, e nenhum substituto ou titular de IA inventado.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; prompt SHA256 7D80CF9F6E6921C1C76CC1B1FBDB460376C198D1853C05450D01F8F76E0FC914",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

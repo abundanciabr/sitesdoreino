@@ -66,6 +66,7 @@ não tem sigla (lei do CLAUDE.md).
     {% endif %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
+    {% if dados %}{% include "admin/dados_do_painel.html" %}{% endif %}
 
     <style>
       /* O CARTÃO DE TAREFA. Fundo e borda são os DA CASA (`--painel`/`--linha`),

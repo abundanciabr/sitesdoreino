@@ -69,6 +69,64 @@ TELA = "/pendencias/"
 
 
 @respx.mock
+@pytest.mark.parametrize("alternativa", ["livro", "fila"])
+def test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao(
+    tmp_path, monkeypatch, alternativa
+):
+    from tests.test_versao_dos_dados_admin import pacote
+
+    livro = pacote(
+        tmp_path / "livro",
+        texto="pedidosDoDono: { quantidade: 0, maisAntigoQuando: null }",
+    )
+    fila = pacote(
+        tmp_path / "fila",
+        sha="b" * 40,
+        run=11,
+        tipo="fila",
+        extras={"estados.json": {}},
+    )
+    monkeypatch.setattr(
+        painel,
+        "CANDIDATOS",
+        (tmp_path / "ausente", livro) if alternativa == "livro" else (livro,),
+    )
+    monkeypatch.setattr(
+        robos,
+        "CANDIDATOS",
+        (tmp_path / "ausente", fila) if alternativa == "fila" else (fila,),
+    )
+    outra_fila = pacote(
+        tmp_path / "outra-fila",
+        sha="c" * 40,
+        run=12,
+        tipo="fila",
+        extras={"estados.json": {}},
+    )
+    ler_estados = robos.ler_estados
+
+    def ler_e_trocar(pasta):
+        estados = ler_estados(pasta)
+        monkeypatch.setattr(robos, "CANDIDATOS", (outra_fila,))
+        return estados
+
+    monkeypatch.setattr(robos, "ler_estados", ler_e_trocar)
+    _todos_respondem([])
+    html = _texto(_dentro().get(TELA))
+    assert "Dados do livro" in html
+    assert "Dados da fila de trabalho" in html
+    rotulo = "Dados do livro" if alternativa == "livro" else "Dados da fila de trabalho"
+    assert f"<details open><summary>{rotulo}</summary>" in html
+    assert "a" * 40 in html
+    assert "b" * 40 in html
+    assert "Execução 1000" in html
+    assert "Execução 1100" in html
+    assert "c" * 40 not in html
+    assert "cópia alternativa" in html
+    assert str(tmp_path) not in html
+
+
+@respx.mock
 def test_central_inclui_a_decisao_humana_da_fila_sem_trabalho_tecnico(
     tmp_path, monkeypatch
 ):
@@ -126,7 +184,7 @@ def test_fila_de_trabalho_indisponivel_na_central_nao_e_zero(
     monkeypatch.setattr(robos, "CANDIDATOS", (tmp_path,))
     _todos_respondem([])
     html = _texto(_dentro().get(TELA))
-    assert "Não deu para perguntar a a fila de trabalho agora" in html
+    assert "Não foi possível consultar a fila de trabalho agora." in html
     assert "0 · Tarefas" not in html
     assert "Você está em dia" not in html
 
@@ -636,7 +694,7 @@ def test_com_a_alunos_muda_a_tela_diz_isso_e_NAO_mostra_zero():
     respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
     html = _texto(_dentro().get(TELA))
 
-    assert "Não deu para perguntar a a lista de alunos agora." in html
+    assert "Não foi possível consultar a lista de alunos agora." in html
     assert "0 · Pessoas querendo entrar" not in html
     assert "Nada esperando você em: a lista de alunos" not in html
 
@@ -649,7 +707,7 @@ def test_sem_o_par_de_tokens_a_tela_tambem_abre(monkeypatch):
     resposta = _dentro().get(TELA)
 
     assert resposta.status_code == 200
-    assert "Não deu para perguntar" in _texto(resposta)
+    assert "Não foi possível consultar" in _texto(resposta)
 
 
 @respx.mock
@@ -707,7 +765,7 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
 
     assert "Nada esperando você em:" in html
     assert "a lista de alunos" in html
-    assert "Não deu para perguntar a a lista de alunos" not in html
+    assert "Não foi possível consultar a lista de alunos" not in html
 
 
 # ---------------------------------------------------------------------------
@@ -777,7 +835,7 @@ def test_sem_o_painel_na_imagem_a_linha_diz_que_nao_sabe(monkeypatch):
 
     html = _texto(_dentro().get(TELA))
 
-    assert "Não deu para perguntar a o painel do sistema agora." in html
+    assert "Não foi possível consultar o painel do sistema agora." in html
     assert "0 · Decisões suas paradas" not in html
 
 

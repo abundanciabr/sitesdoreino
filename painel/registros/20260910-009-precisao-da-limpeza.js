@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-009-precisao-da-limpeza",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Pedido 1516 separa as provas da limpeza autorizada",
+  detalhe: "Correção do 005: as 168 exclusões foram autorizadas. As 113 execuções foram selecionadas pelo estado cancelado; não houve inspeção de seus logs para medir pousos. Nas outras 55, todas com estado de sucesso, os logs mostraram zero pousos. O backup citado no 005 preserva os IDs e horários da operação.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1516",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-005-limpeza-pista",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
