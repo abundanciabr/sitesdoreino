@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-030-admin-retomar-o-mesmo-pedido-de-cancelamento-apos-interrupca",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: retomar o mesmo pedido de cancelamento após interrupção",
+  detalhe: "Retoma o mesmo cancelamento sem duplicar evento ou PR. Preserva o motivo, recusa fila inválida e exige prova da aplicação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1513. Validação local: árvore 016f26fd81c2d18c2f887fa03ce80eaeead1cbd6; commit 9d01730deb3fea4998c9ccde6834aeddc622295f; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-301",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

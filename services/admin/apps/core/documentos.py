@@ -67,6 +67,11 @@ FORA_DA_LISTA = frozenset({"LEIA-ME"})
 #: pasta; mesmo assim `_arquivo` confere o resultado resolvido.
 RE_NOME = re.compile(r"^[a-z0-9-]+$")
 
+#: Pedidos da reunião usam a tabela de documentos como armazenamento privado,
+#: mas não pertencem à biblioteca editorial. O prefixo separa as duas famílias
+#: em toda porta de leitura e escrita da biblioteca.
+PREFIXO_PEDIDO_REUNIAO = "pedido-reuniao-"
+
 #: O maior endereço que as telas desta área aceitam. Casa com o `max_length` da
 #: coluna nas duas tabelas que o usam (`Documento` e `TextoDoLivro`), e o
 #: limite existe para o endereço caber numa linha de lista sem quebrar.
@@ -212,7 +217,7 @@ def ler(nome: str) -> "Documento | None":
     `SlugField`, que aceita maiúscula e sublinhado, e um nome assim seria um
     documento inalcançável pela rota. Aqui ele simplesmente não existe.
     """
-    if not RE_NOME.match(nome):
+    if not RE_NOME.match(nome) or nome.startswith(PREFIXO_PEDIDO_REUNIAO):
         return None
     from .models import Documento
 
@@ -239,7 +244,7 @@ def listar(*, so_publicos: bool, com_arquivados: bool = False) -> "list[Document
     """
     from .models import Documento
 
-    consulta = Documento.objects.all()
+    consulta = Documento.objects.exclude(nome__startswith=PREFIXO_PEDIDO_REUNIAO)
     if so_publicos:
         consulta = consulta.filter(publico=True, arquivado=False)
     elif not com_arquivados:

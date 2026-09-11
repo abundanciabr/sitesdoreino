@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-104203-TAR-299-concluida",
+  "tarefa": "TAR-299",
+  "evento": "concluida",
+  "quando": "2026-09-11T10:42:03+00:00",
+  "quem": "agent/admin/pr1506-reuniao",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1512; revisao=d9287df56cb5409fb72c2302f37257db4a3c10b6; arvore=ab10928e7d28fb84ea40b62b9914cf728dd88d1e; head=92006e9e2c4ac552a83f425af6117b3b386e6fd7; merge=03e7c08b04aff239486b83d19a8f8253661aee59; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34561992574; atestado=atestado aprovado para 92006e9e2c4ac552a83f425af6117b3b386e6fd7; aceite=painel/registros/20260911-029-aceite-dos-estados-publicados.js",
+  "verificado_em": "2026-09-11"
+}

@@ -134,7 +134,7 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao dezessete
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao vinte
 
     operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
@@ -152,9 +152,9 @@ info:
 
     CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    `putCourseStructure`), e as duas de AULA AVULSA (`listStandaloneLessons`,
+    `putCourseStructure`), e as tres de AULA AVULSA (`listStandaloneLessons`,
 
-    `createStandaloneLesson`). O placar da fila
+    `createStandaloneLesson`, `updateStandaloneLesson`). O placar da fila
 
     (getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA
 
@@ -199,6 +199,15 @@ info:
     do mesmo site. A pagina publica le seu banco local, sem uma terceira
 
     operacao interna.
+
+
+    A EDICAO DA AULA AVULSA ENTRA DESDE 11/09/2026: o Admin grava titulo,
+
+    URL do YouTube e descricao pela identidade fixa do endereco. Editar o
+
+    titulo nunca troca o `slug`, porque o link que ja circulou entre os alunos
+
+    continua apontando para a mesma aula.
 
 
     O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao
@@ -370,9 +379,11 @@ paths:
 
         A aula nasce publicada, com estado `publicada`, e pode ser lida na hora
 
-        pelo endereco devolvido. Nao existe rascunho, edicao ou gesto posterior
+        pelo endereco devolvido. Nao existe rascunho nem gesto posterior de
 
-        de publicacao nesta porta.
+        publicacao nesta porta. A edicao usa `updateStandaloneLesson` e preserva
+
+        o endereco original.
 
 
         422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS
@@ -380,6 +391,53 @@ paths:
         do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o
 
         corpo tiver uma chave desconhecida.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AulaAvulsaParaCriarSchema'
+        required: true
+  /aulas-avulsas/{slug}:
+    put:
+      operationId: updateStandaloneLesson
+      summary: Edita uma aula avulsa sem trocar seu endereço
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaAvulsaSchema'
+        '404':
+          description: Aula avulsa inexistente para este site e slug
+        '422':
+          description: Corpo invalido, URL do YouTube invalida ou campo desconhecido
+      description: 'O gesto Editar aula avulsa do Admin. O corpo recebe exatamente
+
+        titulo, video_url e descricao, e devolve a aula atualizada.
+
+
+        `slug` e a identidade permanente: o titulo pode mudar, mas o endereco
+
+        compartilhado nunca muda. Site ou slug inexistente responde 404. Corpo
+
+        invalido responde 422, inclusive campo desconhecido, titulo ou video_url
+
+        vazios, URL que nao seja HTTPS incorporavel do YouTube e descricao acima
+
+        de 5.000 caracteres.'
       requestBody:
         content:
           application/json:
@@ -1413,11 +1471,11 @@ components:
 
         `slug` e gerado pelo servico no instante da criacao e nunca muda, para
 
-        que um link enviado em grupo continue levando para a mesma aula. `estado`
+        que um link enviado em grupo continue levando para a mesma aula, mesmo
 
-        sempre e `publicada`: esta porta nao oferece rascunho, edicao nem uma
+        quando titulo, video_url ou descricao forem editados. `estado` sempre e
 
-        segunda publicacao.'
+        `publicada`: esta porta nao oferece rascunho nem uma segunda publicacao.'
       properties:
         titulo:
           type: string

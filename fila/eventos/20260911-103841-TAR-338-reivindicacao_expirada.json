@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260911-103841-TAR-338-reivindicacao_expirada",
+  "tarefa": "TAR-338",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-11T10:38:41+00:00",
+  "quem": "despacho-ci-corrigir-instrumento-pareto-fase4",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}

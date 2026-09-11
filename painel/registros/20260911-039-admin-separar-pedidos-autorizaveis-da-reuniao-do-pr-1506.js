@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-039-admin-separar-pedidos-autorizaveis-da-reuniao-do-pr-1506",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: separar pedidos autorizáveis da reunião do PR 1506",
+  detalhe: "Pedido privado vincula texto, identidade e versão; autorização não executa. Recibo e isolamento da biblioteca foram provados em navegador, testes e mutações.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1514. Validação local: árvore 8f34c86328fbca0936ff537a9ab84db6a71c5487; commit d631b98bba68a9d7b650da563d1fe6bf6c86b510; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-341",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -2,6 +2,20 @@
 
 Específico desta célula. Transversal vai em `armadilhas/` (raiz).
 
+## O prefixo público mora no `reverse`, nunca no endereço digitado
+
+**Medido em 11/09/2026, na edição das aulas avulsas.** As rotas da biblioteca
+existem no urlconf como `aulas/<slug>`, mas a célula publica sob
+`SCRIPT_NAME=/cursos`. Um link montado como `/aulas/<slug>` ignora esse prefixo
+e a borda responde 404, embora a aula exista no banco. O caminho público é
+`reverse("aula-avulsa", args=[slug])`, que produz
+`/cursos/aulas/<slug>` quando o prefixo está configurado.
+
+O teste da página sob `SCRIPT_NAME` precisa afirmar os dois lados: o endereço
+revertido carrega `/cursos`, e o urlconf resolve o `path_info` sem esse trecho.
+Escrever `/cursos` dentro de `urls.py` resolveria somente hoje e quebraria a
+próxima mudança de montagem.
+
 ## A sala pergunta MATRÍCULAS, não categoria, e o 404 mudou de significado
 
 **Contexto.** Até 06/09/2026 `apps/core/sessao.py` chamava

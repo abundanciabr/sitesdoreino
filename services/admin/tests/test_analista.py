@@ -813,10 +813,20 @@ def test_a_falha_da_ia_nao_apaga_a_tela_nem_o_que_foi_digitado(monkeypatch):
 def test_o_botao_de_montar_o_pedido_continua_fazendo_o_que_fazia():
     """O analista não roubou o POST antigo da reunião."""
     _a_escola_responde()
-    html = (
-        _dentro()
-        .post(reverse("reuniao"), {"compromisso1": "Abrir a fila toda manhã"})
-        .content.decode()
+    cliente = _dentro()
+    formulario = cliente.get(reverse("reuniao")).context["formulario"]
+    resposta = cliente.post(
+        reverse("reuniao"),
+        {
+            "formulario": formulario,
+            "compromisso1": "Abrir a fila toda manhã",
+        },
     )
-    assert "O pedido para o robô" in html
+    assert resposta.status_code == 302
+    pagina = cliente.get(resposta.url)
+    html = pagina.content.decode()
+    assert "Pedido privado salvo" in html
     assert "tipo `compromisso`" in html
+    assert not pagina.context["documento"].publico
+    assert not pagina.context["envelope"]
+    assert all(chamada.request.method == "GET" for chamada in respx.calls)

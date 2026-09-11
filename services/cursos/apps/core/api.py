@@ -260,9 +260,9 @@ class AulaAvulsaSchema(Schema):
     """A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
 
     `slug` e gerado pelo servico no instante da criacao e nunca muda, para
-    que um link enviado em grupo continue levando para a mesma aula. `estado`
-    sempre e `publicada`: esta porta nao oferece rascunho, edicao nem uma
-    segunda publicacao.
+    que um link enviado em grupo continue levando para a mesma aula, mesmo
+    quando titulo, video_url ou descricao forem editados. `estado` sempre e
+    `publicada`: esta porta nao oferece rascunho nem uma segunda publicacao.
     """
 
     titulo: str
@@ -873,6 +873,20 @@ def _proximo_slug(titulo: str, sufixo: int) -> str:
     return f"{base[: 140 - len(cauda)].rstrip('-') or 'aula'}{cauda}"
 
 
+def _campos_da_aula_avulsa(payload: AulaAvulsaParaCriarSchema) -> tuple[str, str]:
+    titulo = payload.titulo.strip()
+    if not titulo:
+        raise HttpError(422, "o título da aula avulsa não pode ficar vazio")
+    video_url = payload.video_url.strip()
+    if not _youtube_incorporavel(video_url):
+        raise HttpError(
+            422,
+            "a URL do vídeo precisa ser um link HTTPS incorporável do YouTube. "
+            "Use um link de assistir, curto, incorporar ou Shorts.",
+        )
+    return titulo, video_url
+
+
 @router.get(
     "/aulas-avulsas",
     response=list[AulaAvulsaSchema],
@@ -906,8 +920,9 @@ def list_standalone_lessons(request, site_id: str):
         "ele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.\n"
         "\n"
         "A aula nasce publicada, com estado `publicada`, e pode ser lida na hora\n"
-        "pelo endereco devolvido. Nao existe rascunho, edicao ou gesto posterior\n"
-        "de publicacao nesta porta.\n"
+        "pelo endereco devolvido. Nao existe rascunho nem gesto posterior de\n"
+        "publicacao nesta porta. A edicao usa `updateStandaloneLesson` e preserva\n"
+        "o endereco original.\n"
         "\n"
         "422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\n"
         "do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\n"
@@ -915,16 +930,7 @@ def list_standalone_lessons(request, site_id: str):
     ),
 )
 def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriarSchema):
-    titulo = payload.titulo.strip()
-    if not titulo:
-        raise HttpError(422, "o título da aula avulsa não pode ficar vazio")
-    video_url = payload.video_url.strip()
-    if not _youtube_incorporavel(video_url):
-        raise HttpError(
-            422,
-            "a URL do vídeo precisa ser um link HTTPS incorporável do YouTube. "
-            "Use um link de assistir, curto, incorporar ou Shorts.",
-        )
+    titulo, video_url = _campos_da_aula_avulsa(payload)
     for sufixo in range(1, 10_000):
         try:
             with transaction.atomic():
@@ -939,6 +945,52 @@ def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriar
         except IntegrityError:
             continue
     raise HttpError(409, "não foi possível criar um endereço único para esta aula")
+
+
+@router.put(
+    "/aulas-avulsas/{slug}",
+    response=AulaAvulsaSchema,
+    operation_id="updateStandaloneLesson",
+    summary="Edita uma aula avulsa sem trocar seu endereço",
+    description=(
+        "O gesto Editar aula avulsa do Admin. O corpo recebe exatamente\n"
+        "titulo, video_url e descricao, e devolve a aula atualizada.\n"
+        "\n"
+        "`slug` e a identidade permanente: o titulo pode mudar, mas o endereco\n"
+        "compartilhado nunca muda. Site ou slug inexistente responde 404. Corpo\n"
+        "invalido responde 422, inclusive campo desconhecido, titulo ou video_url\n"
+        "vazios, URL que nao seja HTTPS incorporavel do YouTube e descricao acima\n"
+        "de 5.000 caracteres."
+    ),
+    openapi_extra={
+        "responses": {
+            404: {"description": "Aula avulsa inexistente para este site e slug"},
+            422: {
+                "description": "Corpo invalido, URL do YouTube invalida ou campo desconhecido"
+            },
+        }
+    },
+)
+def update_standalone_lesson(
+    request,
+    slug: Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")],
+    site_id: str,
+    payload: AulaAvulsaParaCriarSchema,
+):
+    titulo, video_url = _campos_da_aula_avulsa(payload)
+    with transaction.atomic():
+        aula = (
+            AulaAvulsaModel.objects.select_for_update()
+            .filter(site_id=site_id, slug=slug)
+            .first()
+        )
+        if aula is None:
+            raise HttpError(404, "aula avulsa inexistente para este site e slug")
+        aula.titulo = titulo
+        aula.video_url = video_url
+        aula.descricao = payload.descricao
+        aula.save(update_fields=["titulo", "video_url", "descricao"])
+    return _aula_avulsa(aula)
 
 
 @router.get(
