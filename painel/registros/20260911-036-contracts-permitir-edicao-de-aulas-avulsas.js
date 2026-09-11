@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-036-contracts-permitir-edicao-de-aulas-avulsas",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "contracts: permitir edição de aulas avulsas",
+  detalhe: "PUT aditivo preserva o slug, fecha o corpo e documenta 404 e 422 sem quebrar operações existentes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1560. Validação local: árvore 9dfaad3d806dfa7300216665738565df788d7357; commit c2e8f8710456b719253e4465bdb974f4dc87f11f; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-340",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
