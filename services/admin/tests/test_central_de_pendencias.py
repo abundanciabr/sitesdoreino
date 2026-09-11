@@ -850,10 +850,55 @@ def test_acessos_indisponiveis_e_crm_sem_leitura_nao_parecem_fila_vazia():
     assert "0 pendência comercial" not in html
 
 
+@respx.mock
+@pytest.mark.parametrize("status", [401, 403])
+def test_acesso_negado_pela_alunos_chega_a_fonte_real_da_central(status):
+    """Credencial recusada não é queda da fonte nem fila vazia."""
+    respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(status))
+    respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
+
+    html = _texto(_dentro().get(TELA))
+
+    inicio = html.index("Acessos à escola")
+    fim = html.index("CRM de oportunidades", inicio)
+    acessos = html[inicio:fim]
+    assert (
+        "Acesso negado: A fonte recusou a credencial de leitura da Central." in acessos
+    )
+    assert "Peça a Operações que restaure a leitura autorizada." in acessos
+    assert "A fonte Acessos à escola não respondeu agora." not in acessos
+
+
+@respx.mock
+def test_crm_indisponivel_entrega_link_validado_para_a_fonte_dona():
+    """O próximo gesto do CRM precisa abrir a fonte, não só nomeá-la."""
+    _todos_respondem([])
+
+    html = _texto(_dentro().get(TELA))
+
+    inicio = html.index("CRM de oportunidades")
+    fim = html.index("</section>", inicio)
+    crm = html[inicio:fim]
+    assert (
+        '<a href="/leads">Acompanhe o CRM na fonte dona até a Central ganhar leitura.</a>'
+        in crm
+    )
+
+
 def test_fonte_sem_leitura_precisa_explicar_a_lacuna():
     """Fonte sem fila não pode gerar um trecho em branco na Central."""
     with pytest.raises(ValueError, match="precisa explicar"):
         central.FonteDeTrabalho(nome="CRM de oportunidades", fila=None)
+
+    with pytest.raises(ValueError, match="URL segura"):
+        central.FonteDeTrabalho(
+            nome="CRM de oportunidades",
+            fila=None,
+            estado=central.INTEGRACAO_INDISPONIVEL,
+            explicacao="Não há leitura.",
+            proximo_gesto="Abra a fonte.",
+            proximo_gesto_url="javascript:alert('nao')",
+        )
 
 
 @respx.mock

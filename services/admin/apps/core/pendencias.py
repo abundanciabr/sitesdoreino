@@ -134,6 +134,12 @@ LACUNAS_DO_ENSINO = (
 INTEGRACAO_INDISPONIVEL = "integracao_indisponivel"
 ACESSO_NEGADO = "acesso_negado"
 _ESTADOS_SEM_FILA = frozenset((INTEGRACAO_INDISPONIVEL, ACESSO_NEGADO))
+URL_DA_FONTE_CRM = "/leads"
+
+
+def _e_url_da_fonte_segura(url: str) -> bool:
+    """A Central só aponta para a porta pública declarada pela fonte do CRM."""
+    return url == URL_DA_FONTE_CRM
 
 
 @dataclass(frozen=True)
@@ -152,6 +158,7 @@ class Fila:
     onde_mora: str
     tarefas: frozenset[str] | None = None
     sem_responsavel: int = 0
+    acesso_negado: bool = False
 
 
 @dataclass(frozen=True)
@@ -166,6 +173,7 @@ class FonteDeTrabalho:
     estado: "str | None" = None
     explicacao: "str | None" = None
     proximo_gesto: "str | None" = None
+    proximo_gesto_url: "str | None" = None
 
     def __post_init__(self) -> None:
         if self.fila is None:
@@ -177,6 +185,10 @@ class FonteDeTrabalho:
                 raise ValueError(
                     "Fonte sem leitura precisa explicar estado e próximo gesto."
                 )
+            if self.proximo_gesto_url is not None and not _e_url_da_fonte_segura(
+                self.proximo_gesto_url
+            ):
+                raise ValueError("Fonte sem leitura precisa de URL segura.")
             return
         if self.estado or self.explicacao or self.proximo_gesto:
             raise ValueError("Fonte com fila não pode declarar indisponibilidade.")
@@ -272,10 +284,33 @@ def visoes_de_responsabilidade(
             fontes_de_trabalho = (
                 FonteDeTrabalho(
                     nome="Acessos à escola",
-                    fila=fila_de_entrada,
-                    singular="pessoa aguardando acesso",
-                    plural="pessoas aguardando acesso",
-                    vazio="Nenhuma pessoa aguarda acesso nesta fonte agora.",
+                    fila=None if fila_de_entrada.acesso_negado else fila_de_entrada,
+                    singular=(
+                        None
+                        if fila_de_entrada.acesso_negado
+                        else "pessoa aguardando acesso"
+                    ),
+                    plural=(
+                        None
+                        if fila_de_entrada.acesso_negado
+                        else "pessoas aguardando acesso"
+                    ),
+                    vazio=(
+                        None
+                        if fila_de_entrada.acesso_negado
+                        else "Nenhuma pessoa aguarda acesso nesta fonte agora."
+                    ),
+                    estado=ACESSO_NEGADO if fila_de_entrada.acesso_negado else None,
+                    explicacao=(
+                        "A fonte recusou a credencial de leitura da Central."
+                        if fila_de_entrada.acesso_negado
+                        else None
+                    ),
+                    proximo_gesto=(
+                        "Peça a Operações que restaure a leitura autorizada."
+                        if fila_de_entrada.acesso_negado
+                        else None
+                    ),
                 ),
                 FonteDeTrabalho(
                     nome="CRM de oportunidades",
@@ -285,6 +320,7 @@ def visoes_de_responsabilidade(
                     proximo_gesto=(
                         "Acompanhe o CRM na fonte dona até a Central ganhar leitura."
                     ),
+                    proximo_gesto_url=URL_DA_FONTE_CRM,
                 ),
             )
         visoes.append(
@@ -323,7 +359,8 @@ def quem_quer_entrar(cliente: AlunosClient, agora: datetime) -> Fila:
     (`esperando_ha_dias`, do contrato), e este módulo não reconta: a idade é
     dela, que é quem tem a data de verdade.
     """
-    fila = cliente.fila("aguardando")
+    leitura = cliente.fila_para_central("aguardando")
+    fila = leitura.itens
     return Fila(
         titulo="Pessoas querendo entrar na escola",
         quantidade=None if fila is None else len(fila),
@@ -333,6 +370,7 @@ def quem_quer_entrar(cliente: AlunosClient, agora: datetime) -> Fila:
         href=reverse("escola_alunos"),
         o_que_e="Alguém pediu entrada e fica sem acesso a nada até você liberar.",
         onde_mora="a lista de alunos",
+        acesso_negado=leitura.acesso_negado,
     )
 
 

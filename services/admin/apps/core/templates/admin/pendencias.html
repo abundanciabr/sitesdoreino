@@ -44,7 +44,11 @@
               {% else %}
                 <p>Acesso negado: {{ fonte.explicacao }}</p>
               {% endif %}
-              <p>{{ fonte.proximo_gesto }}</p>
+              {% if fonte.proximo_gesto_url %}
+                <p><a href="{{ fonte.proximo_gesto_url }}">{{ fonte.proximo_gesto }}</a></p>
+              {% else %}
+                <p>{{ fonte.proximo_gesto }}</p>
+              {% endif %}
             {% endif %}
           {% endfor %}
         {% else %}
