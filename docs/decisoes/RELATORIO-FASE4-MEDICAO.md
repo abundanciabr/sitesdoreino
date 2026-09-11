@@ -2,6 +2,11 @@
 
 Data da análise: 2026-09-08
 
+> As seções A a J preservam o fechamento publicado em 08/09/2026. Nelas,
+> “entrada atual” significa exclusivamente o hash histórico identificado na
+> seção B; o parecer daquele ciclo não se transfere para código ou entrada
+> posteriores.
+
 ## A. Veredito
 
 **Estado global: NÃO PRONTA.** A coleta operacional foi demonstrada em uma
@@ -197,6 +202,43 @@ entrada_sha256: 44cef42c07ac6c5e8325cab0e512a71aa8bd56e722f9df9b9dc4619d8bf9025c
 3. Manter a expansão bloqueada e repetir a auditoria depois de novas
    observações reais comparáveis.
 4. Recalcular a análise antes de qualquer decisão de expansão.
+
+## K. Rodada diagnóstica de 11/09/2026
+
+Antes da correção do instrumento, uma execução real de
+`python ci/analise_fase4.py --local` leu quatro eventos `tarefa_medida`, três
+tarefas e quatro tentativas. A Fase 1 aparecia com zero tarefas antes, três
+depois, nenhum par e duas pendentes; apenas a TAR-280 tinha duração encerrada.
+O hash exato dessa entrada foi
+`3f70e888f49c96b555fa15aa05bc3658d828ee143c18d893c5b75ff099436daa`.
+Esta rodada é diagnóstico do instrumento anterior, não uma auditoria
+independente do código corrigido.
+
+Antes do primeiro ajuste do instrumento, a abertura real da TAR-339 acrescentou
+o quinto evento privado, ainda na revisão histórica
+`bbe1036d0f8fb5b3e434fe36bc57ab7eee2f810e`. O corretivo preservou os cinco
+eventos e não classificou a própria TAR-338. Com o contrato corrigido, a leitura
+atual separa cinco eventos estruturalmente válidos de zero observações
+confirmatórias completas. Não há tarefa, tentativa, condição ou par elegível
+para inferência comparativa.
+
+Revisões e ponto de retomada calculados nesta rodada:
+
+- entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
+- instrumento derivado do conteúdo: `762976157a017f62c933bcbd039435e4e2313369`;
+- analisador derivado do arquivo: `fbd081891d7d72d1ef2b9837175b8942b55d3331d615848234d8f3d93ede0ddd`;
+- auditoria independente desse par de hashes: pendente;
+- retomada: classificar cada tarefa elegível no arquivo versionado antes da
+  abertura, registrar transições append-only com evidência e métricas
+  observadas ou nulas, alcançar 20 tarefas por condição e 10 pares compatíveis
+  e então emitir um parecer ligado ao hash da entrada e às revisões exatas.
+
+A validação integrada local terminou com 554 testes aprovados. As mutações das
+guardas reprovaram quando foram retirados o vínculo, a anterioridade, a revisão
+derivada, a evidência, a identidade integral, a declaração das métricas, o
+estado mais recente, a unidade por tarefa, a revisão do par, a identidade da
+tentativa, a completude confirmatória e o hash do parecer. Isso é prova interna
+do corretivo, não revisão independente do seu SHA.
 
 ## Conclusão global
 

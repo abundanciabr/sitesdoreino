@@ -11,29 +11,74 @@ import analise_fase4 as analise  # noqa: E402
 import telemetria  # noqa: E402
 
 
-def tarefa(condicao, numero, *, piloto="fase3", estado="concluida", minutos=30,
-           par=True, metricas=None, fonte="registro-operacional-autorizado"):
+def tarefa(
+    condicao,
+    numero,
+    *,
+    piloto="fase3",
+    estado="concluida",
+    minutos=30,
+    par=True,
+    metricas=None,
+    fonte="registro-operacional-autorizado",
+):
     inicio = datetime(2026, 9, 1, tzinfo=timezone.utc) + timedelta(days=numero)
     fim = inicio + timedelta(minutes=minutos) if minutos is not None else None
     dados = {
-        "evento": "tarefa_medida", "tarefa": f"TAR-{piloto}-{numero}-{condicao}",
+        "evento": "tarefa_medida",
+        "tarefa": f"TAR-{piloto}-{numero}-{condicao}",
         "tentativa": f"tentativa-{numero}-{condicao}",
-        "branch": f"agent/ci/medicao-{numero}-{condicao}", "commit": "a" * 40,
-        "pr": numero + 1, "piloto": piloto, "condicao": condicao,
-        "par_id": f"par-{numero}" if par else None, "tipo": "correcao-transversal",
-        "complexidade": "media", "natureza": "codigo", "componentes": "ci",
-        "fronteiras_integracao": "uma", "migracao": "nao",
-        "risco": "medio", "escopo_publicacao": "publicacao-verificada",
-        "revisao_instrumento": "b" * 40,
-        "inicio": inicio.isoformat(), "fim": fim.isoformat() if fim else None,
-        "estado": estado, "fonte": fonte,
-        "metricas": metricas if metricas is not None else {
-            "chamadas_modelo": 1, "chamadas_ferramenta": 2, "runner_minutos": 3,
-            "retentativas": 0, "correcoes_revisao": 0, "reaberturas": 0,
-            "minutos_adocao": 0, "minutos_manutencao": 0,
-            "defeitos_escapados": 0, "violacoes_seguranca": 0,
-            "contexto_bytes": None,
-        },
+        "branch": f"agent/ci/medicao-{numero}-{condicao}",
+        "commit": "a" * 40,
+        "pr": numero + 1,
+        "piloto": piloto,
+        "condicao": condicao,
+        "par_id": f"par-{numero}" if par else None,
+        "tipo": "correcao-transversal",
+        "complexidade": "media",
+        "natureza": "codigo",
+        "componentes": "ci",
+        "fronteiras_integracao": "uma",
+        "migracao": "nao",
+        "risco": "medio",
+        "escopo_publicacao": "publicacao-verificada",
+        "revisao_instrumento": "b" * 64,
+        "inicio": inicio.isoformat(),
+        "fim": fim.isoformat() if fim else None,
+        "estado": estado,
+        "fonte": fonte,
+        "metricas": (
+            metricas
+            if metricas is not None
+            else {
+                "chamadas_modelo": 1,
+                "chamadas_ferramenta": 2,
+                "runner_minutos": 3,
+                "retentativas": 0,
+                "correcoes_revisao": 0,
+                "reaberturas": 0,
+                "minutos_adocao": 0,
+                "minutos_manutencao": 0,
+                "defeitos_escapados": 0,
+                "violacoes_seguranca": 0,
+                "contexto_bytes": None,
+            }
+        ),
+        "schema_medicao": 2,
+        "tarefa_sha256": "c" * 64,
+        "classificacao_sha256": "d" * 64,
+        "classificada_em": (inicio - timedelta(minutes=1)).isoformat(),
+        "autorizada_por": "maestro-fase4",
+        "observado_em": (fim or inicio).isoformat(),
+        "evidencia": (
+            None
+            if estado == "pendente"
+            else {
+                "resultado": "resultado conferido",
+                "fonte": "https://example.test/prova",
+                "verificado_em": (fim or inicio).isoformat(),
+            }
+        ),
     }
     dados["id"] = telemetria.identidade_tarefa(dados)
     return dados
@@ -110,13 +155,24 @@ def test_tentativas_da_mesma_tarefa_nao_formam_tarefas_novas():
 
 
 def test_abertura_pendente_e_fechamento_da_mesma_tentativa_preservam_metricas():
-    pendente = tarefa("depois", 1, estado="pendente", minutos=None, metricas={})
+    pendente = tarefa(
+        "depois",
+        1,
+        estado="pendente",
+        minutos=None,
+        metricas={campo: None for campo in telemetria.METRICAS_DA_TAREFA},
+    )
     concluida = tarefa("depois", 2, minutos=30)
     concluida["tarefa"] = pendente["tarefa"]
     concluida["tentativa"] = pendente["tentativa"]
     concluida["branch"] = pendente["branch"]
     concluida["inicio"] = pendente["inicio"]
-    concluida["fim"] = (datetime.fromisoformat(concluida["inicio"]) + timedelta(minutes=30)).isoformat()
+    concluida["classificada_em"] = pendente["classificada_em"]
+    concluida["fim"] = (
+        datetime.fromisoformat(concluida["inicio"]) + timedelta(minutes=30)
+    ).isoformat()
+    concluida["observado_em"] = concluida["fim"]
+    concluida["evidencia"]["verificado_em"] = concluida["fim"]
     concluida["id"] = telemetria.identidade_tarefa(concluida)
 
     piloto = analise.analisar([pendente, concluida])["pilotos"]["fase3"]
@@ -190,12 +246,15 @@ def test_revisoes_diferentes_do_instrumento_impedem_aprovacao():
         antes = tarefa("antes", numero, minutos=60)
         depois = tarefa("depois", numero, minutos=30)
         if numero == 0:
-            depois["revisao_instrumento"] = "c" * 40
+            depois["revisao_instrumento"] = "c" * 64
             depois["id"] = telemetria.identidade_tarefa(depois)
         eventos += [antes, depois]
     resultado = analise.analisar(eventos)
     assert resultado["pilotos"]["fase3"]["resultado"] == "inconclusivo"
-    assert len(resultado["pilotos"]["fase3"]["comparabilidade"]["revisoes_do_instrumento"]) == 2
+    assert (
+        len(resultado["pilotos"]["fase3"]["comparabilidade"]["revisoes_do_instrumento"])
+        == 2
+    )
 
 
 def test_retomada_que_troca_revisao_do_instrumento_fica_inconclusiva():
@@ -203,13 +262,13 @@ def test_retomada_que_troca_revisao_do_instrumento_fica_inconclusiva():
     retomada = tarefa("antes", 2)
     retomada["tarefa"] = primeira["tarefa"]
     retomada["tentativa"] = "retomada-1"
-    retomada["revisao_instrumento"] = "c" * 40
+    retomada["revisao_instrumento"] = "c" * 64
     retomada["id"] = telemetria.identidade_tarefa(retomada)
 
     piloto = analise.analisar([primeira, retomada])["pilotos"]["fase3"]
 
     assert piloto["resultado"] == "inconclusivo"
-    assert piloto["revisoes_do_instrumento"] == ["b" * 40, "c" * 40]
+    assert piloto["revisoes_do_instrumento"] == ["b" * 64, "c" * 64]
 
 
 def test_colisao_de_par_id_nao_fabrica_pareamento():
@@ -332,3 +391,183 @@ def test_evento_adulterado_fica_fora_da_analise():
     assert resultado["observacoes"]["eventos_invalidos"] == 1
     assert resultado["observacoes"]["tarefas_validas"] == 0
     assert "outro-tipo" not in json.dumps(resultado, ensure_ascii=False)
+def test_estado_da_tentativa_e_o_mais_recente_e_nao_um_verde_antigo():
+    concluida = tarefa("depois", 1, estado="concluida")
+    concluida["quando"] = "2026-09-08T10:30:00+00:00"
+    reaberta = tarefa("depois", 2, estado="falhou")
+    reaberta.update(
+        tarefa=concluida["tarefa"],
+        tentativa=concluida["tentativa"],
+        branch=concluida["branch"],
+        inicio=concluida["inicio"],
+        classificada_em=concluida["classificada_em"],
+        fim="2026-09-08T10:40:00+00:00",
+        quando="2026-09-08T10:40:00+00:00",
+        observado_em="2026-09-08T10:40:00+00:00",
+    )
+    reaberta["evidencia"]["verificado_em"] = "2026-09-08T10:40:00+00:00"
+    reaberta["id"] = telemetria.identidade_tarefa(reaberta)
+
+    piloto = analise.analisar([concluida, reaberta])["pilotos"]["fase3"]
+
+    assert piloto["amostra"]["falhas_ou_abandonadas"] == 1
+    assert piloto["amostra"]["tarefas_com_tempo_observado"]["depois"] == 0
+
+
+def test_mesma_tarefa_em_duas_condicoes_e_uma_unidade_incompativel():
+    antes = tarefa("antes", 1)
+    depois = tarefa("depois", 2)
+    depois["tarefa"] = antes["tarefa"]
+    depois["id"] = telemetria.identidade_tarefa(depois)
+
+    resultado = analise.analisar([antes, depois])
+
+    assert resultado["observacoes"]["tarefas_validas"] == 0
+    assert (
+        resultado["diagnostico_da_entrada"]["tarefas_com_classificacao_conflitante"]
+        == 1
+    )
+
+
+def test_revisao_do_instrumento_entra_na_compatibilidade_do_par():
+    antes = tarefa("antes", 1)
+    depois = tarefa("depois", 1)
+    depois["revisao_instrumento"] = "c" * 64
+    depois["id"] = telemetria.identidade_tarefa(depois)
+
+    piloto = analise.analisar([antes, depois])["pilotos"]["fase3"]
+
+    assert piloto["amostra"]["pares"] == 0
+    assert piloto["comparabilidade"]["pares_incompativeis"] == 1
+
+
+def test_validade_estrutural_nao_vira_completude_confirmatoria():
+    legado_sem_vinculo_ou_evidencia = tarefa("depois", 1)
+    for campo in (
+        "schema_medicao",
+        "tarefa_sha256",
+        "classificacao_sha256",
+        "classificada_em",
+        "autorizada_por",
+        "observado_em",
+        "evidencia",
+    ):
+        legado_sem_vinculo_ou_evidencia.pop(campo)
+    legado_sem_vinculo_ou_evidencia["revisao_instrumento"] = "b" * 40
+    legado_sem_vinculo_ou_evidencia["id"] = telemetria.identidade_tarefa(
+        legado_sem_vinculo_ou_evidencia
+    )
+
+    resultado = analise.analisar([legado_sem_vinculo_ou_evidencia])
+
+    assert resultado["observacoes"]["eventos_estruturalmente_validos"] == 1
+    assert resultado["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado["observacoes"]["eventos_incompletos_excluidos"] == 0
+    assert resultado["observacoes"]["eventos_estruturais_sem_confirmacao"] == 1
+    assert resultado["amostra_disponivel"] == "ausente"
+
+
+def test_auditoria_so_vale_para_o_hash_e_a_revisao_exatos():
+    evento = tarefa("depois", 1)
+    sem_auditoria = analise.analisar([evento])
+    entrada_sha = sem_auditoria["reprodutibilidade"]["entrada_sha256"]
+    auditoria = {
+        "evento": "auditoria_fase4",
+        "entrada_sha256": entrada_sha,
+        "revisao_analise": sem_auditoria["analise"],
+        "revisao_instrumento": evento["revisao_instrumento"],
+        "auditor": "revisor-independente",
+        "estado": "aprovada",
+        "verificado_em": "2026-09-08T12:00:00+00:00",
+        "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1420",
+    }
+    auditoria["id"] = telemetria.identidade_auditoria(auditoria)
+
+    assert (
+        analise.analisar([evento, auditoria])["auditoria_independente"] == "concluída"
+    )
+    auditoria_errada = dict(auditoria, entrada_sha256="0" * 64)
+    auditoria_errada["id"] = telemetria.identidade_auditoria(auditoria_errada)
+    assert (
+        analise.analisar([evento, auditoria_errada])["auditoria_independente"]
+        == "pendente"
+    )
+
+
+def test_tentativa_e_identificada_sem_multiplicar_mudanca_de_branch():
+    primeira = tarefa("depois", 1, estado="pendente", minutos=None)
+    segunda = tarefa("depois", 2)
+    segunda.update(
+        tarefa=primeira["tarefa"],
+        tentativa=primeira["tentativa"],
+        inicio=primeira["inicio"],
+        classificada_em=primeira["classificada_em"],
+        branch="agent/ci/ramo-retomado",
+    )
+    segunda["id"] = telemetria.identidade_tarefa(segunda)
+
+    resultado = analise.analisar([primeira, segunda])
+
+    assert resultado["observacoes"]["tarefas_validas"] == 1
+    assert resultado["observacoes"]["tentativas_validas"] == 1
+
+
+def test_vinculo_externo_divergente_impede_confirmacao():
+    evento = tarefa("depois", 1)
+    vinculos = {
+        evento["tarefa"]: {
+            "classificacao": {
+                campo: evento[campo]
+                for campo in (
+                    "piloto",
+                    "condicao",
+                    "par_id",
+                    "tipo",
+                    "complexidade",
+                    "natureza",
+                    "componentes",
+                    "fronteiras_integracao",
+                    "migracao",
+                    "risco",
+                    "escopo_publicacao",
+                    "revisao_instrumento",
+                )
+            },
+            "tarefa_sha256": "0" * 64,
+            "classificacao_sha256": evento["classificacao_sha256"],
+            "classificada_em": evento["classificada_em"],
+            "autorizada_por": evento["autorizada_por"],
+        }
+    }
+
+    resultado = analise.analisar([evento], vinculos)
+
+    assert resultado["observacoes"]["eventos_estruturalmente_validos"] == 1
+    assert resultado["observacoes"]["tarefas_confirmatorias_completas"] == 0
+
+
+def test_parecer_reprovado_no_hash_atual_nao_aparece_como_aprovado():
+    evento = tarefa("depois", 1)
+    entrada_sha = analise.analisar([evento])["reprodutibilidade"]["entrada_sha256"]
+    auditoria = {
+        "evento": "auditoria_fase4",
+        "entrada_sha256": entrada_sha,
+        "revisao_analise": analise.REVISAO_DA_ANALISE,
+        "revisao_instrumento": evento["revisao_instrumento"],
+        "auditor": "revisor-independente",
+        "estado": "reprovada",
+        "verificado_em": "2026-09-08T12:00:00+00:00",
+        "evidencia": "https://example.test/parecer",
+    }
+    auditoria["id"] = telemetria.identidade_auditoria(auditoria)
+
+    assert (
+        analise.analisar([evento, auditoria])["auditoria_independente"] == "reprovada"
+    )
+
+
+def test_revisao_da_analise_e_o_hash_do_codigo_carregado():
+    assert (
+        analise.REVISAO_DA_ANALISE
+        == __import__("hashlib").sha256(Path(analise.__file__).read_bytes()).hexdigest()
+    )
