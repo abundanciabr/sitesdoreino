@@ -1710,7 +1710,8 @@ def test_submeter_substituicao_com_instrumento_quebrado_e_error_sem_efeito(
             ErroDeInstrumentacao("git indisponível", "repita depois")
         ))
 
-    with pytest.raises(ErroDeInstrumentacao):
+    nome = "GitHub" if instrumento == "github" else "git"
+    with pytest.raises(ErroDeInstrumentacao, match=f"{nome} indisponível"):
         fila.cmd_submeter(tmp_path, args_de_submeter(
             pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
             substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
@@ -1771,7 +1772,8 @@ def test_submeter_substituicao_repetida_e_idempotente(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("eventos,trecho", [
-    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA)], "sem elo"),
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             detalhe="troca sem elo")], "sem elo"),
     ([submissao(substitui=URL_SUBSTITUTA, detalhe="troca")], "primeira submissão"),
     ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
                              substitui=URL_SUBSTITUTA, detalhe="troca")], "última submissão"),
