@@ -65,6 +65,12 @@ def painel_materializado():
         capture_output=True,
         timeout=300,
     )
+    try:
+        yield
+    finally:
+        (painel / "painel.html").unlink(missing_ok=True)
+        for livro in painel.glob("livro-*.js"):
+            livro.unlink()
 
 
 @pytest.fixture(autouse=True)
