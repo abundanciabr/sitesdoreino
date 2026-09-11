@@ -91,7 +91,7 @@ def tarefa(
 
 
 def vinculo_para(evento):
-    return {
+    vinculo = {
         "classificacao": {
             campo: evento[campo]
             for campo in (
@@ -113,7 +113,12 @@ def vinculo_para(evento):
         "classificacao_sha256": evento["classificacao_sha256"],
         "classificada_em": evento["classificada_em"],
         "autorizada_por": evento["autorizada_por"],
+        "commits_descendentes": [evento["commit"]],
+        "resultados_verificados": [],
     }
+    if evento["estado"] != "pendente":
+        vinculo["resultados_verificados"].append([evento["pr"], evento["commit"]])
+    return vinculo
 
 
 def atualizar_identidade_e_evidencia(evento):
@@ -163,7 +168,17 @@ def analisar_com_fila(eventos, vinculos=None):
         vinculos = {}
         for evento in eventos:
             if isinstance(evento, dict) and evento.get("schema_medicao") == 2:
-                vinculos.setdefault(evento.get("tarefa"), vinculo_para(evento))
+                vinculo = vinculos.setdefault(
+                    evento.get("tarefa"), vinculo_para(evento)
+                )
+                if evento.get("commit") not in vinculo["commits_descendentes"]:
+                    vinculo["commits_descendentes"].append(evento["commit"])
+                resultado = [evento.get("pr"), evento.get("commit")]
+                if (
+                    evento.get("estado") != "pendente"
+                    and resultado not in vinculo["resultados_verificados"]
+                ):
+                    vinculo["resultados_verificados"].append(resultado)
     return _analisar_sem_fila(eventos, vinculos)
 
 
@@ -475,7 +490,13 @@ def test_evento_adulterado_fica_fora_da_analise():
     assert "outro-tipo" not in json.dumps(resultado, ensure_ascii=False)
 def test_estado_da_tentativa_e_o_mais_recente_e_nao_um_verde_antigo():
     concluida = tarefa("depois", 1, estado="concluida")
-    concluida["quando"] = "2026-09-08T10:30:00+00:00"
+    concluida.update(
+        inicio="2026-09-08T10:00:00+00:00",
+        fim="2026-09-08T10:30:00+00:00",
+        observado_em="2026-09-08T10:30:00+00:00",
+        quando="2026-09-08T10:30:00+00:00",
+    )
+    atualizar_identidade_e_evidencia(concluida)
     reaberta = tarefa("depois", 2, estado="falhou")
     reaberta.update(
         tarefa=concluida["tarefa"],
@@ -483,9 +504,9 @@ def test_estado_da_tentativa_e_o_mais_recente_e_nao_um_verde_antigo():
         branch=concluida["branch"],
         inicio=concluida["inicio"],
         classificada_em=concluida["classificada_em"],
-        fim="2026-09-08T10:40:00+00:00",
-        quando="2026-09-08T10:40:00+00:00",
-        observado_em="2026-09-08T10:40:00+00:00",
+        fim="2026-09-08T08:40:00-03:00",
+        quando="2026-09-08T08:40:00-03:00",
+        observado_em="2026-09-08T08:40:00-03:00",
     )
     alinhar_ao_vinculo(reaberta, concluida)
 
@@ -612,11 +633,28 @@ def test_vinculo_externo_divergente_impede_confirmacao():
         [evidencia_generica],
         {evidencia_generica["tarefa"]: vinculo_para(evidencia_generica)},
     )
+    commit_sem_ancestralidade = dict(evento, commit="b" * 40)
+    atualizar_identidade_e_evidencia(commit_sem_ancestralidade)
+    vinculo_sem_ancestralidade = vinculo_para(evento)
+    vinculo_sem_ancestralidade["resultados_verificados"].append(
+        [commit_sem_ancestralidade["pr"], commit_sem_ancestralidade["commit"]]
+    )
+    resultado_sem_ancestralidade = _analisar_sem_fila(
+        [commit_sem_ancestralidade],
+        {evento["tarefa"]: vinculo_sem_ancestralidade},
+    )
+    pr_sem_relacao = dict(evento, pr=9999)
+    atualizar_identidade_e_evidencia(pr_sem_relacao)
+    resultado_sem_relacao = _analisar_sem_fila(
+        [pr_sem_relacao], {evento["tarefa"]: vinculo_para(evento)}
+    )
 
     assert sem_fila["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado["observacoes"]["eventos_estruturalmente_validos"] == 1
     assert resultado["observacoes"]["tarefas_confirmatorias_completas"] == 0
     assert resultado_generico["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado_sem_ancestralidade["observacoes"]["tarefas_confirmatorias_completas"] == 0
+    assert resultado_sem_relacao["observacoes"]["tarefas_confirmatorias_completas"] == 0
 
 
 def test_parecer_reprovado_no_hash_atual_nao_aparece_como_aprovado():

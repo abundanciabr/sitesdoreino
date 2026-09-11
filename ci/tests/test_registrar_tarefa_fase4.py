@@ -10,6 +10,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import registrar_tarefa_fase4 as comando  # noqa: E402
+import fila  # noqa: E402
 import telemetria  # noqa: E402
 
 
@@ -176,13 +177,25 @@ def test_manifesto_da_execucao_preenche_so_dados_do_fluxo():
 def test_reexecucao_do_registrador_nao_duplica_a_identidade(tmp_path, monkeypatch):
     git_dir = preparar_caderno(tmp_path, monkeypatch)
     dados = manifesto()
+    hostil = dict(dados, evento="tarefa_medida")
+    hostil["id"] = telemetria.identidade_tarefa(hostil)
+    hostil["branch"] = "agent/hostil/mesmo-id"
+    pasta = git_dir / telemetria.PASTA
+    pasta.mkdir()
+    (pasta / "sessao-real-001.jsonl").write_text(
+        json.dumps(hostil) + "\n", encoding="utf-8"
+    )
     manifesto_path = escrever_manifesto(tmp_path, dados)
 
     assert comando.main(["--manifesto", str(manifesto_path)]) == 0
     assert comando.main(["--manifesto", str(manifesto_path)]) == 0
 
     eventos = telemetria.ler_tudo(git_dir)
-    assert len(eventos) == 1
+    assert len(eventos) == 2
+    assert sum(
+        telemetria.identidade_tarefa(evento) == evento.get("id")
+        for evento in eventos
+    ) == 1
 
 
 def test_reexecucao_com_evidencia_conflitante_e_recusada(tmp_path, monkeypatch):
@@ -259,6 +272,7 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
         },
     )
     monkeypatch.setattr(comando, "_classificacao_antecede_commit", lambda *_: True)
+    monkeypatch.setattr(comando, "_pr_confere_tarefa_commit", lambda *_: True)
     monkeypatch.setattr(comando, "revisao_do_instrumento", lambda _: "b" * 40)
 
     assert comando.registrar_execucao_fase4(
@@ -272,17 +286,18 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
         fim=None,
         pr=None,
     )
-    assert comando.registrar_execucao_fase4(
-        tmp_path,
-        tarefa="TAR-001",
-        tentativa="tentativa-real",
-        branch="agent/ci/tarefa-real",
-        commit="a" * 40,
-        estado="pendente",
-        inicio="2026-09-08T10:00:01+00:00",
-        fim=None,
-        pr=None,
-    )
+    with pytest.raises(ValueError, match="início da tentativa mudou"):
+        comando.registrar_execucao_fase4(
+            tmp_path,
+            tarefa="TAR-001",
+            tentativa="tentativa-real",
+            branch="agent/ci/tarefa-real",
+            commit="a" * 40,
+            estado="pendente",
+            inicio="2026-09-08T10:00:01+00:00",
+            fim=None,
+            pr=None,
+        )
     assert comando.registrar_execucao_fase4(
         tmp_path,
         tarefa="TAR-001",
@@ -307,7 +322,7 @@ def test_fluxo_da_tarefa_da_fila_chama_o_registrador_sem_manifesto_manual(
     )
 
     eventos = telemetria.ler_tudo(git_dir)
-    assert len(eventos) == 4
+    assert len(eventos) == 3
     encerrados = [evento for evento in eventos if evento["estado"] == "concluida"]
     assert encerrados[0]["pr"] == 1400
     assert encerrados[0]["evidencia"] == {
@@ -481,7 +496,7 @@ def test_revisao_do_instrumento_muda_quando_o_codigo_muda(tmp_path):
     assert primeira != segunda
 
 
-def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path):
+def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path, monkeypatch):
     classificacao = {
         "piloto": "fase1",
         "condicao": "depois",
@@ -577,6 +592,33 @@ def test_vinculo_usa_o_commit_em_que_a_classificacao_entrou(tmp_path):
     )
     assert not comando._classificacao_antecede_commit(
         tmp_path, vinculo, commit_anterior
+    )
+    url = "https://github.com/abundanciabr/sitesdoreino/pull/1400"
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *_: {"TAR-001": tarefa})
+    monkeypatch.setattr(
+        fila,
+        "carregar_eventos",
+        lambda *_: [
+            {
+                "evento": "submetida",
+                "tarefa": "TAR-001",
+                "pr": url,
+                "revisao": commit_classificacao,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        comando.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            [], 0, json.dumps({"url": url, "commits": [{"oid": commit_classificacao}]}), ""
+        ),
+    )
+    assert comando._pr_confere_tarefa_commit(
+        tmp_path, "TAR-001", 1400, commit_classificacao
+    )
+    assert not comando._pr_confere_tarefa_commit(
+        tmp_path, "TAR-001", 1400, commit_anterior
     )
 
 

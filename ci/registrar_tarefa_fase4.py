@@ -206,7 +206,27 @@ def registrar_manifesto(
     for evento in existentes:
         if evento.get("evento") != "tarefa_medida":
             continue
-        if evento.get("id") == identidade:
+        existente = {
+            campo: evento[campo]
+            for campo in CAMPOS_PERMITIDOS - {"sessao"}
+            if campo in evento
+        }
+        try:
+            validar_manifesto(existente)
+        except ValueError:
+            continue
+        identidade_existente = telemetria.identidade_tarefa(evento)
+        if identidade_existente is None or identidade_existente != evento.get("id"):
+            continue
+        if (
+            identidade_existente == identidade
+            and existente
+            == {
+                campo: manifesto[campo]
+                for campo in CAMPOS_PERMITIDOS - {"sessao"}
+                if campo in manifesto
+            }
+        ):
             return None, True
         mesma_observacao = (
             evento.get("tarefa") == manifesto["tarefa"]
@@ -218,6 +238,13 @@ def registrar_manifesto(
                 "a mesma observação tem conteúdo diferente; corrija o manifesto"
             )
         mesma_tarefa = evento.get("tarefa") == manifesto["tarefa"]
+        mesma_tentativa = (
+            mesma_tarefa and evento.get("tentativa") == manifesto["tentativa"]
+        )
+        if mesma_tentativa and evento.get("inicio") != manifesto["inicio"]:
+            raise ValueError(
+                "o início da tentativa mudou; preserve o primeiro instante observado"
+            )
         if mesma_tarefa and evento.get("schema_medicao") == 2:
             imutaveis = (
                 "tarefa_sha256",
@@ -374,6 +401,40 @@ def _classificacao_antecede_commit(raiz: Path, vinculo: dict, commit: str) -> bo
     return processo.returncode == 0
 
 
+def _pr_confere_tarefa_commit(
+    raiz: Path, tarefa: str, pr: int, commit: str
+) -> bool:
+    from fila import carregar_eventos, carregar_tarefas
+
+    erros: list[str] = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    url = f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}"
+    submissao = any(
+        evento.get("evento") == "submetida"
+        and evento.get("tarefa") == tarefa
+        and evento.get("pr") == url
+        and evento.get("revisao") == commit
+        for evento in eventos
+    )
+    if erros or not submissao:
+        return False
+    try:
+        processo = subprocess.run(
+            ["gh", "pr", "view", str(pr), "--json", "commits,url"],
+            cwd=raiz,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        dados = json.loads(processo.stdout) if processo.returncode == 0 else {}
+    except (OSError, json.JSONDecodeError):
+        return False
+    return dados.get("url") == url and any(
+        item.get("oid") == commit for item in dados.get("commits", ())
+    )
+
+
 def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
     vinculo = vinculo_da_tarefa(raiz, manifesto["tarefa"])
     if vinculo is None:
@@ -388,6 +449,12 @@ def _vinculo_confere(raiz: Path, manifesto: dict) -> bool:
         and manifesto["classificada_em"] == vinculo["classificada_em"]
         and manifesto["autorizada_por"] == vinculo["autorizada_por"]
         and _classificacao_antecede_commit(raiz, vinculo, manifesto["commit"])
+        and (
+            manifesto["estado"] == "pendente"
+            or _pr_confere_tarefa_commit(
+                raiz, manifesto["tarefa"], manifesto["pr"], manifesto["commit"]
+            )
+        )
     )
 
 
@@ -429,6 +496,8 @@ def registrar_execucao_fase4(
     observado_em = fim or inicio
     evidencia = None
     if fim is not None and pr is not None:
+        if not _pr_confere_tarefa_commit(raiz, tarefa, pr, commit):
+            return False
         evidencia = {
             "resultado": f"{tarefa} {estado}: PR #{pr} no commit {commit}",
             "fonte": f"https://github.com/abundanciabr/sitesdoreino/pull/{pr}/commits/{commit}",

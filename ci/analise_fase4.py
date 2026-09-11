@@ -55,9 +55,22 @@ CAMPOS_DE_IDENTIDADE_DA_TAREFA = (
 )
 
 
-def _ordem_evento(evento: dict) -> tuple[str, str, str]:
-    return (str(evento.get("observado_em") or evento.get("fim") or evento.get("inicio") or ""),
-            str(evento.get("quando") or ""), str(evento.get("id") or ""))
+def _instante_utc(valor: str | None) -> datetime:
+    instante = _instante(valor)
+    return (
+        instante.astimezone(timezone.utc)
+        if instante is not None
+        else datetime.min.replace(tzinfo=timezone.utc)
+    )
+
+
+def _ordem_evento(evento: dict) -> tuple[datetime, datetime, str]:
+    observado = evento.get("observado_em") or evento.get("fim") or evento.get("inicio")
+    return (
+        _instante_utc(observado),
+        _instante_utc(evento.get("quando")),
+        str(evento.get("id") or ""),
+    )
 
 
 def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
@@ -76,8 +89,8 @@ def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
             tentativa = dict(ordenados[-1])
             inicios = [evento["inicio"] for evento in eventos_da_tentativa if evento.get("inicio")]
             fins = [evento["fim"] for evento in eventos_da_tentativa if evento.get("fim")]
-            tentativa["inicio"] = min(inicios) if inicios else None
-            tentativa["fim"] = max(fins) if fins else None
+            tentativa["inicio"] = min(inicios, key=_instante_utc) if inicios else None
+            tentativa["fim"] = max(fins, key=_instante_utc) if fins else None
             tentativa["tentativas_observadas"] = 1
             tentativa["revisoes_observadas"] = sorted({
                 evento["revisao_instrumento"] for evento in eventos_da_tentativa
@@ -91,8 +104,8 @@ def _agrupar_tentativas(eventos: list[dict]) -> list[dict]:
         agregado = dict(ordenadas_tentativas[-1])
         inicios = [evento["inicio"] for evento in tentativas if evento.get("inicio")]
         fins = [evento["fim"] for evento in tentativas if evento.get("fim")]
-        agregado["inicio"] = min(inicios) if inicios else None
-        agregado["fim"] = max(fins) if fins else None
+        agregado["inicio"] = min(inicios, key=_instante_utc) if inicios else None
+        agregado["fim"] = max(fins, key=_instante_utc) if fins else None
         agregado["tentativas_observadas"] = len(tentativas)
         agregado["falhas_observadas"] = sum(evento["falhas_observadas"] for evento in tentativas)
         agregado["revisoes_observadas"] = sorted({
@@ -226,6 +239,8 @@ def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None)
             or evento["classificada_em"] != vinculo.get("classificada_em")
             or evento["autorizada_por"] != vinculo.get("autorizada_por")):
         return False
+    if evento["commit"] not in vinculo.get("commits_descendentes", ()):
+        return False
     classificacao = vinculo.get("classificacao")
     if not isinstance(classificacao, dict):
         return False
@@ -233,6 +248,10 @@ def _evento_confirmatorio(evento: dict, vinculos: dict[str, dict] | None = None)
         return False
     if evento["estado"] == "pendente":
         return evento.get("fim") is None and evento.get("evidencia") is None
+    if [evento.get("pr"), evento["commit"]] not in vinculo.get(
+        "resultados_verificados", ()
+    ):
+        return False
     if not _evidencia_confere(evento):
         return False
     return observado_em >= _instante(evento["fim"])
@@ -680,13 +699,43 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     cobertura = {}
     eventos = ler_tudo(git, cobertura=cobertura)
-    from registrar_tarefa_fase4 import vinculo_da_tarefa
+    from registrar_tarefa_fase4 import (
+        _classificacao_antecede_commit,
+        _pr_confere_tarefa_commit,
+        vinculo_da_tarefa,
+    )
 
     tarefas = {evento.get("tarefa") for evento in eventos
                if isinstance(evento, dict) and evento.get("evento") == "tarefa_medida"}
-    vinculos = {tarefa: vinculo for tarefa in tarefas
-                if isinstance(tarefa, str)
-                if (vinculo := vinculo_da_tarefa(raiz, tarefa)) is not None}
+    vinculos = {}
+    for tarefa in tarefas:
+        if not isinstance(tarefa, str):
+            continue
+        vinculo = vinculo_da_tarefa(raiz, tarefa)
+        if vinculo is None:
+            continue
+        relacionados = [
+            evento
+            for evento in eventos
+            if isinstance(evento, dict) and evento.get("tarefa") == tarefa
+        ]
+        vinculo["commits_descendentes"] = [
+            evento["commit"]
+            for evento in relacionados
+            if isinstance(evento.get("commit"), str)
+            and _classificacao_antecede_commit(raiz, vinculo, evento["commit"])
+        ]
+        vinculo["resultados_verificados"] = [
+            [evento.get("pr"), evento["commit"]]
+            for evento in relacionados
+            if evento.get("estado") != "pendente"
+            and type(evento.get("pr")) is int
+            and isinstance(evento.get("commit"), str)
+            and _pr_confere_tarefa_commit(
+                raiz, tarefa, evento["pr"], evento["commit"]
+            )
+        ]
+        vinculos[tarefa] = vinculo
     saida = analisar(eventos, vinculos)
     saida["leitura"] = cobertura
     diagnostico = saida["diagnostico_da_entrada"]
