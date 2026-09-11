@@ -15,6 +15,7 @@ def contrato() -> dict:
 
 def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() -> None:
     documento = contrato()
+    criacao = documento["paths"]["/aulas-avulsas"]["post"]
     operacao = documento["paths"]["/aulas-avulsas/{slug}"]["put"]
     requisicao = operacao["requestBody"]["content"]["application/json"]
     corpo = requisicao["schema"]
@@ -29,6 +30,7 @@ def test_edicao_de_aula_avulsa_aceita_slug_opcional_e_retorna_o_final_salvo() ->
     exemplos_422 = corpo_422["examples"]
 
     assert corpo["$ref"] == "#/components/schemas/AulaAvulsaParaEditarSchema"
+    assert "somente quando o corpo do PUT omite `slug`" in criacao["description"]
     assert esquema["additionalProperties"] is False
     assert esquema["properties"]["slug"] == {"maxLength": 140, "type": "string"}
     assert "slug" not in esquema["required"]
