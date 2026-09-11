@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-152507-TAR-351-explicada",
+  "tarefa": "TAR-351",
+  "evento": "explicada",
+  "quando": "2026-09-11T15:25:07+00:00",
+  "quem": "pedido do mantenedor em 11/09/2026",
+  "o_que_e": "Hoje uma aula avulsa mantém o mesmo endereço mesmo quando seu nome muda.",
+  "o_que_muda": "Quem edita a aula poderá escolher um novo endereço simples sem enviar links repetidos ou encontrar conflito manual.",
+  "exemplo": "Ao trocar o nome para Aula de testes, o endereço pode virar aula-de-testes e uma repetição recebe aula-de-testes-2.",
+  "importancia": 80
+}

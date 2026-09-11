@@ -107,6 +107,10 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   agente para. Nesse ponto, preserve os arquivos e commits e reporte o
   diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
   retira do lote.
+- **Depois do `--e-pousar`, a maestro NÃO espera deploy.** O veredito do
+  deploy é conferido por cron ou na próxima sessão. A maestro reporta o
+  estado dos PRs ao mantenedor e encerra. O deploy leva 3.2 min de mediana;
+  a pista reporta sozinha no PR.
 
 ## §5 — Encaminhamento à pista (na ordem do §3)
 
