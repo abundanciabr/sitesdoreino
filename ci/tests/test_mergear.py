@@ -480,6 +480,9 @@ def _gh_de_mentira(
         chamadas.append(list(argumentos))
         if argumentos and argumentos[0] == "api":
             return _json.dumps(remessas or [])
+        if argumentos[-1:] == ["headRefOid,labels,state"]:
+            return _json.dumps({"state": "OPEN", "headRefOid": "a" * 40,
+                                "labels": [{"name": "pousar"}]})
         if argumentos[:2] == ["pr", "view"]:
             return _json.dumps(
                 {

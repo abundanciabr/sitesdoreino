@@ -313,15 +313,16 @@ Ninguém espera pelo mantenedor, e o agente não mergeia: pede pouso e vai
 embora.
 
 1. PR aberto → registro embarcado no mesmo ramo.
-2. Espere os checks UMA VEZ:
+2. Peça pouso assim que o PR tiver revisão independente e recibo:
 
    ```bash
-   python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
+   python ci/mergear.py <N> --pousar
    ```
 
-   Verde vira pedido de pouso sozinho. Vermelho: conserte (máx 2 tentativas).
-3. **Depois do pouso pedido, ENCERRE.** Não espere o merge. Não espere o deploy.
-   A fila leva 8 min de mediana e comenta no PR o desfecho.
+   O comando confirma a etiqueta e a revisão remota, retorna JSON e encerra.
+   Checks pendentes aguardam na pista; reprovação real exige correção.
+3. **Depois do pouso pedido, ENCERRE.** Não espere checks, merge ou deploy.
+   A pista reage aos eventos do GitHub e publica o desfecho no PR.
 4. Merge tocando `services/` ou `infra/`: a maestro verifica o deploy
    na PRÓXIMA sessão, não nesta. Se houver urgência, o alarme-main dispara
    issue.

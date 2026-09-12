@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-004204-TAR-362-explicada",
+  "tarefa": "TAR-362",
+  "evento": "explicada",
+  "quando": "2026-09-12T00:42:04+00:00",
+  "quem": "Diamantes e cinco gargalos aprovados pelo mantenedor em 12/09/2026",
+  "o_que_e": "O comando local mantém o robô esperando verificações que a pista do GitHub já acompanha por eventos.",
+  "o_que_muda": "Depois da prova local e da revisão, a entrega pode entrar na fila e o robô encerrar o turno.",
+  "exemplo": "Um teste ainda rodando fica sob cuidado da pista; um teste reprovado continua impedindo a integração.",
+  "importancia": 95
+}
