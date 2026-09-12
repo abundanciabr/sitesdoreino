@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-028-fila-a-porta-do-pouso-fecha-a-tarefa-valendo",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fila: a porta do pouso fecha a tarefa, valendo",
+  detalhe: "A porta do pouso passou a fechar a tarefa de verdade e a levar o evento para a main num commit proprio; falha agora grita em vez de calar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1603. Validação local: árvore 4c0367cd9933ccd15cfe8c5dd00390651c404d4f; commit 0ead58e4a281ee7b9d194b223fd08b55001c6721; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-369",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
