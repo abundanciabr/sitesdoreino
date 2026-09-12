@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-038-feat-ci-impor-lei-de-ferro-na-triade",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "feat(ci): impor lei de ferro na triade",
+  detalhe: "A lei de ferro fixa os papéis, recusa escrita e Workflow no ato de criação e deixa o Codex como executor, com guardas e portões provados em bancada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1606. Validação local: árvore 6e090b8d7c2c5c7c43852e134a2010e57aba6000; commit ff9242fdc1f94947867c649a8febf220ac45be41; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-376",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
