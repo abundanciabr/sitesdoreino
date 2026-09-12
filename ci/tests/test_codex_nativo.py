@@ -138,7 +138,8 @@ def test_monitor_preserva_guarda_da_espera(monkeypatch):
 @pytest.mark.parametrize("config", [".codex/hooks.json", ".claude/settings.json"])
 def test_config_apenas_monitor_por_acao_e_checkpoints_preservados(config):
     hooks = json.loads((RAIZ / config).read_text(encoding="utf-8"))["hooks"]
-    assert [h["matcher"] for h in hooks["PreToolUse"]] == ["Monitor"]
+    esperado = ["Monitor", "Agent|Workflow"] if config == ".claude/settings.json" else ["Monitor"]
+    assert [h["matcher"] for h in hooks["PreToolUse"]] == esperado
     assert hooks["PostToolUse"] == []
     for evento_hook in ["SessionStart", "UserPromptSubmit", "Stop"]:
         assert hooks[evento_hook]

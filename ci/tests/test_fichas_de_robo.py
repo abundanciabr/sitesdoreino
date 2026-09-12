@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import tomllib
 
 RAIZ = Path(__file__).resolve().parents[2]
 FICHAS = RAIZ / ".claude" / "agents"
@@ -134,6 +135,19 @@ def test_o_despacho_sem_model_exige_brief_roteado() -> None:
     )
 
 
+def test_despacho_claude_so_encaminha_sem_execucao_nem_modelo_herdado() -> None:
+    campos = _frontmatter(FICHAS / "despacho.md")
+    permitidas = _lista(campos.get("tools", ""))
+    assert permitidas == {"Read", "Grep", "Glob"}, (
+        "despacho.md: encaminhar não autoriza shell, escrita ou delegação; "
+        "restrinja tools a Read, Grep e Glob."
+    )
+    negadas = _lista(campos.get("disallowedTools", ""))
+    assert {"Bash", "Edit", "Write", "NotebookEdit", "Agent", "AskUserQuestion"} <= negadas
+    assert campos.get("model") == "sonnet"
+    assert campos.get("effort") == "medium"
+
+
 def test_o_revisor_so_le() -> None:
     campos = _frontmatter(FICHAS / "revisor.md")
     permitidas = _lista(campos.get("tools", ""))
@@ -163,8 +177,8 @@ def test_receitas_operacionais_seguem_as_emendas_da_constituicao() -> None:
         assert "Uma célula por PR;" not in texto
 
 
-def test_ficha_de_abertura_usa_o_bootstrap_e_preserva_a_regua() -> None:
-    texto = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+def test_ficha_do_executor_usa_o_bootstrap_e_preserva_a_regua() -> None:
+    texto = tomllib.loads((RAIZ / ".codex/agents/despacho.toml").read_text(encoding="utf-8"))["developer_instructions"]
     abertura = texto.split("## 1.", 1)[1].split("## 3.", 1)[0]
     assert "make sessao" in abertura
     assert "ci/sessao.py" in abertura
@@ -177,8 +191,8 @@ def test_ficha_de_abertura_usa_o_bootstrap_e_preserva_a_regua() -> None:
     assert "--sem-container" in receita_contexto
 
 
-def test_ficha_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
-    texto = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+def test_ficha_do_executor_fecha_pelo_comando_existente_sem_dispensa_de_revisao() -> None:
+    texto = tomllib.loads((RAIZ / ".codex/agents/despacho.toml").read_text(encoding="utf-8"))["developer_instructions"]
     fechamento = texto.split("## 6.", 1)[1].split("## 7.", 1)[0]
     assert "make pr" in fechamento and "VALIDACAO=" in fechamento
     assert "CONTINUAR=1" in fechamento and "--continuar" in fechamento

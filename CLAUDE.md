@@ -90,22 +90,18 @@ decisão ou passo manual em Pendências. Nunca invente resultado para fechar.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-Use o contexto direcionado da abertura `ci/sessao.py`: confira origens,
-ausências e truncamento; abra entradas citadas/recuperadas,
-`services/<celula>/LICOES.md` e uma vez por sessão os 8 padrões de
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho permanecem.
-Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
-JSON com até 3 lições de 500 caracteres e origens.
-Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
-de restrições. Para aprofundamento, use `--caminho`/`--sintoma`/`--limite-contexto`
-da sessão ou abra `armadilhas/INDICE.md` sob demanda, nunca a pasta inteira.
+No contexto direcionado da abertura, confira origens, ausências e truncamento; abra
+entradas citadas, `services/<celula>/LICOES.md` e, uma vez por sessão, os 8
+padrões de `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Erro/caminho usa
+`python ci/consultar_armadilhas.py`; aprofundamento usa sessão ou índice sob
+demanda, nunca a pasta inteira. Índice ausente exige
+`python ci/indice_de_armadilhas.py`, não suposição de liberdade.
 
-Lição nova: número por `python ci/reservar.py numero armadilha`, arquivo
-novo `armadilhas/NNN-slug.md`, índice regenerado. Não acrescente a
-`ARMADILHAS.md` nem edite entrada alheia. Declare `gatilho` e `licao`
-quando ligados a caminho. Lição exclusiva da célula vai ao `LICOES.md`.
-O escrivão julga lições da equipe. Correção fora do alcance exige registro
-`pendencia`, `precisa_do_dono: true`, e relatório.
+Lição nova usa número de `python ci/reservar.py numero armadilha`, arquivo
+`armadilhas/NNN-slug.md` e índice regenerado; nunca edite entrada alheia nem
+`ARMADILHAS.md`. Lição local vai ao `LICOES.md`; o escrivão julga as globais.
+Declare `gatilho` e `licao` nas lições ligadas a caminho.
+Fora do alcance exige `pendencia`, `precisa_do_dono: true`, e relatório.
 
 **Quem faz valer:** `ci/consultar_armadilhas.py`, muralhas do índice e reservas.
 
@@ -126,24 +122,24 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege e atesta,
-nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
-mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
-paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
-`painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
-dependência fora do brief volta à maestro com `Depende-de: #N`. Revisor lê o
-diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
-Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
-`.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
+Papéis fixos (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code somente
+rege; Codex implementa e testa sem decidir arquitetura ou lei nem reger;
+Antigravity só audita e verifica. Pedido direto não muda papel. Subagente herda
+limites de quem o lançou; nome não dá autoridade, Claude não implementa por
+subagente e autorrevisão do Codex não é verificação independente. Só decisão
+expressa do mantenedor altera papéis. A maestro pode escrever decisão, brief e
+registro de regência, nunca implementação, código, teste ou edição operacional
+de lei. Lote: uma célula por PR, até 15 arquivos fora `painel/` e `fila/`;
+contrato e CODEOWNERS exigem mandato; dependência fora do brief volta à maestro.
 
 **Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
 
 ## O que uma chamada custa
 
-Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
-nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
-dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
-com o que levar; ele decide. Economia não reduz ambição.
+Classifique com `python ci/economia_da_fabrica.py brief`; escolha explicitamente
+modelo, esforço e teto no lançamento. Só contexto pertinente; não repita leituras
+nem divida por arquivo sem independência útil. Acima de ~300k de contexto, avise
+e sugira nova sessão com handoff; o mantenedor decide. Economia não reduz ambição.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
