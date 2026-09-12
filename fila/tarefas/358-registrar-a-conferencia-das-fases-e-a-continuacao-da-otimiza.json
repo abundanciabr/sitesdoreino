@@ -1,0 +1,20 @@
+{
+  "arquivo": "358-registrar-a-conferencia-das-fases-e-a-continuacao-da-otimiza",
+  "id": "TAR-358",
+  "titulo": "Registrar a conferencia das fases e a continuacao da otimizacao",
+  "toca": [
+    "painel",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro dos merges 1590 e 1583 e deploy conferido, com tarefa da Fase 3 na fila; validadores de painel e fila aprovados e PR integrado.",
+  "despacho": "Publicar somente registros novos dos merges externos e do deploy confirmado e inventario da Fase 3. Nao implementar Fase 3 nem concluir sua tarefa. PR 1589 pertence a Fase 2 em recuperacao. Validar painel e fila.",
+  "origem": "Retomada do mantenedor em 12/09/2026 e plano mestre de otimizacao 10x aprovado",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
