@@ -1,0 +1,19 @@
+{
+  "arquivo": "364-consultar-licoes-quando-necessario-e-preservar-as-regras-com",
+  "id": "TAR-364",
+  "titulo": "Consultar lições quando necessário e preservar as regras com menos repetição",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Consulta dos índices reais em JSON compacto; dez regras preservadas sob os tetos; checkpoints sem scripts por ação comum; testes dos alvos e mutações verdes; PR com recibo.",
+  "despacho": "Concluir fases 1.1, 3.1 e 3.2 do plano aprovado: consulta ativa, leis compactas, launcher nativo e testes de fiação. Mudança arquitetural coesa autorizada em vinte arquivos. Preservar testes de comportamento, checkpoints, quatro blocos finais, histórico e recibo automático.",
+  "origem": "TAR-359, Plano-Mestre10X e Diamantes aprovados; fatia contexto-sob-demanda.",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

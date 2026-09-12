@@ -112,13 +112,52 @@ def test_dispatcher_fecha_entrada_nao_medida(entrada):
     assert resultado.returncode == 2
     assert "PAROU POR SEGURANÇA" in resultado.stderr
 
-def test_dispatcher_recusa_travessao_sem_escrever(bancada):
-    import subprocess
-    dados = evento(bancada, "*** Add File: services/a/templates/a.html\n+Olá — mundo.\n")
-    resultado = subprocess.run([sys.executable, str(RAIZ / "ci/hook_codex.py"), "PreToolUse"],
-                               input=json.dumps(dados), capture_output=True, text=True, encoding="utf-8")
-    assert resultado.returncode == 2, resultado.stderr
-    assert "TRAVESSÃO" in resultado.stderr
+@pytest.mark.parametrize("nome", ["apply_patch", "Edit", "Write", "Bash", "PowerShell"])
+@pytest.mark.parametrize("evento_hook", ["PreToolUse", "PostToolUse"])
+def test_acao_comum_nao_executa_scripts_nem_le_transcript(monkeypatch, nome, evento_hook):
+    # guarda: ci/hook_codex.py:44
+    import hook_codex
+    def proibido(*args, **kwargs):
+        pytest.fail("ação comum disparou processamento de hook")
+    monkeypatch.setattr(hook_codex, "executar", proibido)
+    assert hook_codex.decidir({"hook_event_name": evento_hook, "tool_name": nome}) == 0
+
+
+def test_monitor_preserva_guarda_da_espera(monkeypatch):
+    # guarda: ci/hook_codex.py:43
+    import hook_codex
+    chamadas = []
+    def executar(script, dados):
+        chamadas.append(script)
+        return 2
+    monkeypatch.setattr(hook_codex, "executar", executar)
+    assert hook_codex.decidir({"hook_event_name": "PreToolUse", "tool_name": "Monitor"}) == 2
+    assert chamadas == ["muralha_da_espera.py"]
+
+
+@pytest.mark.parametrize("config", [".codex/hooks.json", ".claude/settings.json"])
+def test_config_apenas_monitor_por_acao_e_checkpoints_preservados(config):
+    hooks = json.loads((RAIZ / config).read_text(encoding="utf-8"))["hooks"]
+    assert [h["matcher"] for h in hooks["PreToolUse"]] == ["Monitor"]
+    assert hooks["PostToolUse"] == []
+    for evento_hook in ["SessionStart", "UserPromptSubmit", "Stop"]:
+        assert hooks[evento_hook]
+
+
+def test_launcher_codex_nativo_preservado():
+    hooks = json.loads((RAIZ / ".codex/hooks.json").read_text(encoding="utf-8"))["hooks"]
+    for evento_hook in ["SessionStart", "UserPromptSubmit", "Stop", "PreToolUse"]:
+        comando = hooks[evento_hook][0]["hooks"][0]
+        assert "hook_codex.cmd" in comando["commandWindows"]
+        assert "CLAUDE_PROJECT_DIR" not in str(comando)
+        assert evento_hook in comando["commandWindows"]
+
+
+def test_travessao_permanece_no_checkpoint_de_commit():
+    gancho = (RAIZ / ".githooks/pre-commit").read_text(encoding="utf-8")
+    assert "python ci/travessao.py --verificar-staged || exit 1" in gancho
+    assert "python ci/registro_no_commit.py" in gancho
+
 
 def test_dispatcher_stop_cobra_e_aceita_relatorio(bancada):
     import subprocess
