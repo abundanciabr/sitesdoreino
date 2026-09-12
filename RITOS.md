@@ -2,6 +2,14 @@
 
 Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e antídoto.
 
+**A tríade e os ritos.** Desde 12/09/2026 (`docs/decisoes/DECISAO-triade-de-ias.md`)
+três agentes passam por estes ritos com papéis distintos. Claude Code, a maestro,
+escreve o brief e a tarefa (§5), publica o atestado da revisão e pede pouso (§2, peça 4);
+nunca mergeia nem espera em laço (§2, peça 6). Codex, o executor, segue §1, §2 e §5
+pela ficha `despacho`, um PR por tarefa, e nunca pergunta ao mantenedor. Antigravity,
+a sentinela, só lê: audita `origin/main` e verifica cada entrega alheia depois do merge;
+nunca edita código nem lei.
+
 ---
 
 ## §1 — Rito de Abertura de Sessão (worktree por agente)
@@ -190,12 +198,12 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 
      **Onde "checks de PR não se esperam" NÃO se aplica, e o texto acima
      enganava:** a frase fala do LAÇO (atualizar → esperar → a `main` andou →
-     repetir, as oito voltas da `armadilhas/156`), nunca da espera ÚNICA que o
-     portão exige. `ci/mergear.py --pousar` recusa com check em andamento
-     (ERROR), e o `CLAUDE.md` manda "espere os checks concluírem" antes de
-     pedir pouso — então `--checks`, uma vez, é rito, não desperdício. Isto
-     quase virou defeito: o PR #801 nasceu proibindo `--checks` também, e a
-     tentativa de pedir o próprio pouso é que revelou a contradição.
+     repetir, as oito voltas da `armadilhas/156`). Desde 12/09/2026 ninguém
+     roda `--checks` antes de pedir pouso: `ci/mergear.py --pousar` admite
+     check em andamento e a pista aguarda quieta (peça 5); a maestro publica o
+     atestado, pede pouso e encerra (`docs/decisoes/DECISAO-triade-de-ias.md`,
+     regra 2). O PR #801 nasceu proibindo `--checks` também, e a tentativa de
+     pedir o próprio pouso é que revelou a contradição da época.
 
    - **Enquanto o deploy roda, VÁ TRABALHAR.** O `Monitor` roda a espera em
      segundo plano e te acorda: essa é a razão de ele existir. Ficar parado
@@ -350,8 +358,9 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    entradas de abertura; `listar`, `validar` e `soltar` continuam livres lá (devolver
    tarefa presa é gesto de emergência, e emergência não espera worktree).
 2. **Trabalho novo que um despacho descobre vira tarefa registrada**
-   (`python ci/fila.py criar ...`, número do almoxarife) — nunca item de
-   memória de sessão, nunca lista paralela num documento. A fila é a única
+   (`python ci/fila.py criar ...`, número do almoxarife), e volta à maestro,
+   que decide se entra no lote: nunca item de memória de sessão, nunca lista
+   paralela num documento. A fila é a única
    casa do "o que está por fazer"; o livro continua sendo a única casa do
    "o que aconteceu".
 3. **Concluir exige evidência** (`concluir --evidencia <URL>`) — sem prova o

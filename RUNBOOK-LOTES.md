@@ -3,6 +3,10 @@
 > **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
+> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é a sessão que
+> recebe o pedido (Claude Code por regra; Codex quando o pedido é colado nele); o
+> agente de célula segue a ficha `despacho`, seja sub-agente ou Codex que pega tarefa
+> na fila; a verificação depois do merge é do Antigravity.
 >
 > Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
 > merge passou ao agente (PR #58, Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`)
@@ -15,7 +19,8 @@
 
 **Desde 05/09/2026 você não precisa pedir.** Todo pedido seu numa sessão é um
 lote: a sessão que o recebe divide em pedaços independentes, dispara um
-sub-agente por pedaço com as fichas de `.claude/agents/`, e só o que depende
+sub-agente por pedaço com as fichas de `.claude/agents/`, ou cria a tarefa na
+fila com o brief compilado inteiro no campo `despacho`, que o Codex executa, e só o que depende
 de outro pedaço fica em série (CLAUDE.md, "Todo pedido do mantenedor é um
 lote"; decisão sua no registro `20260905-013`). O texto abaixo continua
 valendo para quando você quer que a sessão tire o trabalho DA FILA em vez de
@@ -96,7 +101,8 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 
 - Dispare os agentes em paralelo, um por despacho, cada um com seu brief. Se o brief
   nomeia worktree, dispare **sem** isolamento de worktree do harness (ARMADILHAS §8.1)
-  — o agente cria o dele pelo RITOS §1.
+  — o agente cria o dele pelo RITOS §1. O Codex abre a própria bancada por
+  `make sessao` a partir da tarefa da fila.
 - **Regras anticolisão vão DENTRO de cada brief:** arquivo de texto compartilhado
   (ARMADILHAS, tabela do red-team, bloco `env:` do `ci-celula.yml`) ⇒ cada sessão
   escreve SÓ a própria entrada/linha e faz `git fetch origin && git rebase
@@ -150,6 +156,8 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
    correção ou resposta é outro registro, com `responde_a`.
 2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
    a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
+   Depois do merge, a maestro lê a verificação da sentinela (Antigravity), que
+   mede o aceite da ficha, não o diff.
 3. **Relatório único, em linguagem de resultado** ("os leads invisíveis agora
    aparecem"), contendo: a tabela do placar (abaixo), os anúncios de fortaleza,
    o que ficou de fora e por quê, e o que sobrou para o humano (§7) — em bloco

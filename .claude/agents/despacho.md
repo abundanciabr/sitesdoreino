@@ -15,6 +15,13 @@ O brief precisa trazer `modelo_recomendado`, `esforco_recomendado` e
 `teto_de_contexto`, gerados por `python ci/economia_da_fabrica.py brief`; sem
 isso, pare e devolva à maestro, porque herdar modelo caro não é decisão.
 
+Este rito é a ficha do EXECUTOR da tríade (docs/decisoes/DECISAO-triade-de-ias.md),
+seguida pelo sub-agente despacho (pedido colado em sessão Claude Code ou Codex)
+ou pelo Codex que pega tarefa na fila: um PR por tarefa, com evento e registro a bordo pelo `make pr`.
+O executor nunca pergunta ao mantenedor, nunca edita o clone principal, nunca
+amplia o mandato, não audita nem decide lei. A maestro (Claude Code) decide e
+publica o atestado; a sentinela (Antigravity) verifica depois do merge.
+
 ## 1. A bancada primeiro, o balcão depois
 
 ```bash
@@ -104,15 +111,11 @@ com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
 #1160, que ficou 12h30 assim (`armadilhas/364`).
 
 Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
-devolver o **número do PR** à maestro no relatório final. É ela, cuja sessão
-sobrevive, que arma a espera:
+devolver o **número do PR** à maestro no relatório final. A maestro publica o
+atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra; a pista
+mergeia.
 
-```bash
-# quem roda isto é a MAESTRO, na sessão dela, nunca você:
-python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR #<N>" --e-pousar
-```
-
-Vermelho, pendente ou ERROR nunca vira pedido de pouso: FAIL você conserta
+Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
 no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits
 e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no código.
 
