@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-008-ci-encaminhar-sem-espera",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: encaminhar sem espera",
+  detalhe: "TAR-362: encaminha pendências à pista, confirma etiqueta e SHA; preserva revisão, recibo e bloqueio de falhas reais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1593. Validação local: árvore cee3dbb911ba3350ef02b8806341698abcc01e0a; commit 3a7a46acec1c0d318ed85254b5e3971222af380c; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-362",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
