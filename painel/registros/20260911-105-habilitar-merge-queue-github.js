@@ -13,6 +13,9 @@
   frente: "fabrica",
   area: "painel",
   vence_em_dias: null,
+  se_eu_nao_decidir: "Sem fila",
+  recomendacao: "Ativar na UI.",
+  reversivel: true,
   porque_so_voce: "Configurações do repositório exigem permissão de mantenedor no GitHub",
   proximo_passo: "Acesse Settings > Branches no repositório e ative Require Merge Queue",
   impacto: "alto"
