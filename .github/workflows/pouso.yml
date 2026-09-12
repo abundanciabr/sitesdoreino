@@ -164,7 +164,13 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  # `write` desde 12/09/2026: depois de cada merge a porta fecha a tarefa na
+  # fila e empurra o evento para a `main` num commit próprio
+  # (`ci/mergear.py`, "A PORTA DO POUSO FECHA A TAREFA"). Sem isto o evento
+  # morreria no checkout efêmero deste job. O empurrão usa o GITHUB_TOKEN da
+  # checkout — token de job, não o PAT — e por isso não reacorda workflow
+  # nenhum, o que mantém o `alarme-main` medindo só o que entra por merge.
+  contents: write
 
 jobs:
   pousar:

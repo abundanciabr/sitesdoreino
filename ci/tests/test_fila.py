@@ -1182,9 +1182,10 @@ def test_o_evento_gerado_pela_porta_passa_na_validacao_da_propria_fila(tmp_path)
     )
 
 
-def test_a_sombra_nao_grava_nada_no_disco(tmp_path):
-    """O que a separa da versão graduada. Se este teste cair, a regra passou a
-    escrever no livro da fila sem ter graduado."""
+def test_decidir_continua_sem_tocar_no_disco(tmp_path):
+    """DECIDIR e GRAVAR seguem separadas depois da graduação de 12/09/2026:
+    quem escreve é `gravar_conclusoes_pela_porta`, logo abaixo. Sem esta
+    separação não haveria como perguntar à fila o que ela faria sem fazer."""
     raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
     antes = sorted(p.name for p in (raiz / "fila" / "eventos").glob("*.json"))
     _sombra(raiz)
@@ -2643,3 +2644,64 @@ def test_reconciliar_exige_bancada(espelho_e_bancada):
     principal, _ = espelho_e_bancada
     assert fila.cmd_reconciliar(principal, args_de_reconciliar()) == 1
     assert not list((principal / "fila/eventos").glob("*-concluida.json"))
+
+
+# ---------------------------------------------------------------------------
+# A GRAVAÇÃO PELA PORTA (12/09/2026) — a sombra graduou.
+#
+# `evento_de_conclusao_em_sombra` continua DECIDINDO sem tocar no disco (o
+# teste acima segue de pé). Quem escreve é `gravar_conclusoes_pela_porta`, e é
+# ela que precisa ser idempotente: no livro da fila não há desfazer.
+# ---------------------------------------------------------------------------
+
+
+def test_a_porta_grava_exatamente_o_evento_que_a_sombra_montou(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    achados = _sombra(raiz)
+    escritos = fila.gravar_conclusoes_pela_porta(raiz, achados)
+    assert [e["desfecho"] for e in escritos] == [fila.PORTA_GRAVOU]
+    caminho = escritos[0]["caminho"]
+    assert caminho.name == "20260906-143005-TAR-001-concluida.json"
+    assert json.loads(caminho.read_text(encoding="utf-8")) == achados[0]["evento"]
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+
+
+def test_a_porta_nao_grava_um_segundo_concluida_para_a_mesma_tarefa(tmp_path):
+    """A idempotência é por TAREFA, não por nome de arquivo: o nome carrega o
+    segundo em que foi montado, então a segunda gravação viria com outro nome
+    e ninguém veria a duplicata."""
+    # guarda: ci/fila.py:1695
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    achados = _sombra(raiz)
+    fila.gravar_conclusoes_pela_porta(raiz, achados)
+    depois_da_primeira = sorted(p.name for p in (raiz / "fila/eventos").glob("*.json"))
+
+    outro_segundo = _sombra(
+        raiz, agora=fila.datetime(2026, 9, 6, 14, 31, 0, tzinfo=fila.timezone.utc)
+    )
+    # A sombra já recusaria (a tarefa virou "concluída"); a trava de dentro é
+    # provada alimentando a gravação com a decisão ANTIGA, que ainda diz
+    # "geraria" — é o que aconteceria com uma decisão calculada antes.
+    assert outro_segundo[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    antigo = dict(achados[0])
+    antigo["evento"] = dict(antigo["evento"], arquivo="20260906-143100-TAR-001-concluida")
+    escritos = fila.gravar_conclusoes_pela_porta(raiz, [antigo])
+    assert [e["desfecho"] for e in escritos] == [fila.PORTA_JA_EXISTE]
+    assert sorted(p.name for p in (raiz / "fila/eventos").glob("*.json")) == (
+        depois_da_primeira
+    )
+
+
+def test_a_porta_nao_grava_o_que_a_sombra_recusou(tmp_path):
+    """Silêncio e "já existe" não viram arquivo. Se virassem, a porta estaria
+    gravando a partir de uma decisão que ela mesma não tomou."""
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    antes = sorted(p.name for p in (raiz / "fila/eventos").glob("*.json"))
+    recusas = [
+        {"tarefa": "TAR-001", "desfecho": fila.SOMBRA_SILENCIO, "motivo": "x", "evento": None},
+        {"tarefa": "TAR-001", "desfecho": fila.SOMBRA_JA_EXISTE, "motivo": "y", "evento": None},
+    ]
+    assert fila.gravar_conclusoes_pela_porta(raiz, recusas) == []
+    assert sorted(p.name for p in (raiz / "fila/eventos").glob("*.json")) == antes

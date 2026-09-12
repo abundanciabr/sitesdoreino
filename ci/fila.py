@@ -1665,6 +1665,60 @@ def evento_de_conclusao_em_sombra(
     return saida
 
 
+
+# ---------------------------------------------------------------------------
+# A GRADUAÇÃO (12/09/2026) — a porta do pouso passou a GRAVAR.
+#
+# A sombra acima mediu 52 pousos: 39 "geraria" e 13 "silencio", todos os 13
+# pela mesma causa única (o `gh` caiu ao ler o diff), nenhum caso de tarefa
+# errada. É o que o bloco anterior escreveu como condição para graduar.
+#
+# O preço de não graduar estava medido também: 18 tarefas paradas em
+# "reivindicada" com os 18 PRs MERGED, ocupando 7 áreas e derrubando o lote
+# máximo de tarefas livres para 1.
+#
+# O que a porta grava é EXATAMENTE o evento que a sombra montou — o mesmo
+# `montar_evento`, o mesmo dicionário, sem uma segunda receita.
+# ---------------------------------------------------------------------------
+
+PORTA_GRAVOU = "gravou"
+PORTA_JA_EXISTE = "ja_existe"
+
+
+def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
+    """Existe um evento de conclusão desta tarefa no livro do disco?
+
+    Olha pelo PADRÃO DO NOME, não pelo nome inteiro: o arquivo carrega o
+    segundo em que foi montado, então a mesma tarefa concluída duas vezes
+    geraria dois nomes diferentes e a idempotência por nome não veria nada.
+    """
+    return any(pasta_eventos(raiz).glob(f"*-{tid}-concluida.json"))
+
+
+def gravar_conclusoes_pela_porta(raiz: Path, achados: list[dict]) -> list[dict]:
+    """Escreve no livro da fila as conclusões que a porta decidiu gravar.
+
+    Recebe o que `evento_de_conclusao_em_sombra` devolveu e grava SÓ os
+    `geraria`, com o evento já montado lá. Devolve uma linha por tarefa:
+    `gravou` (com o caminho) ou `ja_existe` (nada escrito).
+    """
+    escritos: list[dict] = []
+    for achado in achados or []:
+        if achado.get("desfecho") != SOMBRA_GERARIA:
+            continue
+        tid = str(achado.get("tarefa") or "")
+        evento = achado.get("evento") or {}
+        if ja_tem_conclusao(raiz, tid):
+            escritos.append({"tarefa": tid, "desfecho": PORTA_JA_EXISTE, "caminho": None})
+            continue
+        pasta = pasta_eventos(raiz)
+        pasta.mkdir(parents=True, exist_ok=True)
+        caminho = pasta / f"{evento['arquivo']}.json"
+        _escrever_json(caminho, evento)
+        escritos.append({"tarefa": tid, "desfecho": PORTA_GRAVOU, "caminho": caminho})
+    return escritos
+
+
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     erros: list[str] = []
     tarefas = carregar_tarefas(raiz, erros)
