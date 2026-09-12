@@ -1,172 +1,21 @@
 #!/usr/bin/env python3
-"""A PRESTAÇÃO DE CONTAS — turno que mexeu no mundo não termina calado.
+"""Prestação de contas com leitura incremental e uma cobrança por mudança.
 
-POR QUE ELA EXISTE (05/09/2026)
--------------------------------
-O mantenedor precisou pedir a mesma coisa várias vezes porque as sessões
-acabavam sem dizer nada. Nas palavras dele: "ao final das tarefas que eu peço
-aqui para os robôs fazerem eles simplesmente, ao invés de prestarem contas da
-tarefa, como qualquer pessoa que acabou de fazer algo naturalmente faria, eles
-apenas arquivam as conversas, sem ao menos explicarem o que foi feito, se
-realmente foi resolvido o problema".
-
-A lei já existia: **regra 9 do Padrão de Trabalho** ("Como entregar"), primeira
-seção do `CLAUDE.md`. O que não existia era quem a fizesse valer — e o próprio
-`ci/padrao_de_trabalho.py` diz isso com todas as letras: ele confere que o TEXTO
-da régua continua no lugar, e declara que **NÃO confere que alguém a tenha
-obedecido**. Das onze regras do Padrão, a 9 é a única cujo cumprimento é
-observável de fora, e era a única sem portão. Este arquivo fecha esse buraco.
-
-Garantia sem mecanismo é o padrão 2 da `docs/decisoes/RETROSPECTIVA-FASE-D.md`,
-e a doença-mãe desta casa (Lei 1). A regra 9 era o caso mais caro dela, porque
-quem pagava a conta era o mantenedor, uma pergunta repetida por vez.
-
-COMO O HARNESS O CHAMA (fiação em .claude/settings.json)
---------------------------------------------------------
-  --plano   UserPromptSubmit — recebe {prompt, ...}. O stdout de um exit 0 entra
-            no contexto do turno. É a ÚNICA janela em que dá para exigir o plano:
-            cobrar plano no fim, quando o trabalho já acabou, não serve para nada.
-
-  --contas  Stop — recebe {transcript_path, stop_hook_active, ...}. exit 2
-            RECUSA o fim do turno e devolve o stderr ao robô, que precisa
-            continuar. É esta recusa que torna impossível arquivar em silêncio.
-
-A SEGUNDA PASSADA (06/09/2026, armadilhas/368)
------------------------------------------------
-Depois de uma recusa o robô continua, escreve (ou não) o relatório, e o harness
-chama o Stop DE NOVO, com `stop_hook_active: true`. Esse campo diz só "já houve
-uma recusa neste fim de turno"; não diz se ela foi atendida. A primeira versão
-tratava o campo como prova de desobediência e devolvia exit 1 com "o robô foi
-cobrado e terminou assim mesmo" SEM abrir o transcript. Medido nos transcripts
-de 05 e 06/09/2026: 50 segundas passadas, 50 avisos, e em 32 delas o relatório
-válido estava na tela. O aviso saía também no caminho certo, e um aviso que sai
-sempre é um aviso que ninguém mais lê.
-
-A segunda passada mede o transcript com a MESMA régua da primeira: relatório
-presente e válido, exit 0 em silêncio; ainda faltando, exit 1 com o aviso.
-Nunca exit 2, que prenderia a sessão em laço.
-
-A RÉGUA, e por que ela não é "todo turno"
-------------------------------------------
-Cobrar prestação de contas em todo turno seria pior que não cobrar nenhuma.
-Medido no transcript real da sessão que motivou este portão: de 232 mensagens de
-usuário, **225 eram `<task-notification>`** — o harness reacordando o robô a
-cada batimento de uma espera. Um portão ingênuo pediria 225 relatórios e o
-mantenedor aprenderia a ignorar todos.
-
-O discriminador não é heurística de texto: é o campo estruturado
-`origin.kind` de cada entrada do transcript.
-
-    origin.kind == "human"              o mantenedor falou   → abre a janela
-    origin.kind == "task-notification"  a máquina acordou    → não abre nada
-    origin.kind == "peer"               outra sessão         → não abre nada
-
-A DÍVIDA, e por que ela atravessa as falas dele
------------------------------------------------
-A pergunta é uma só, e vale para a SESSÃO inteira:
-
-    houve mudança no mundo depois da última prestação de contas?
-
-Se houve, o turno não termina. Se não houve — turno de espera, pergunta
-respondida, leitura — o portão cala. É por isso que "Aguardando." continua
-barato e o trabalho feito continua caro.
-
-**A varredura é da sessão inteira, e não da janela aberta pela última fala
-dele.** A primeira versão olhava só para a janela, e o mantenedor mandou a tela
-que provou o erro: a sessão abriu o PR #1092, mergeou, e ficou esperando o
-deploy; no meio disso ele respondeu uma pergunta ("deixe assim: só admin pode
-ver, ler"); e a partir dali não houve mais nenhuma mudança no mundo. A dívida
-do trabalho já feito tinha sido apagada porque ELE digitou uma frase, e a
-conversa ia ser arquivada com "Aguardando." como última palavra. Dívida se paga
-com o relatório, nunca com o devedor falando outra coisa.
-
-O `origin.kind` continua servindo — só que para outra coisa: saber se o PLANO
-apareceu no pedido atual, e para o `--plano` calar nos acordares da máquina.
-
-O QUE TENTEI E NÃO FUNCIONOU, para ninguém refazer
----------------------------------------------------
-Adiar a cobrança até "não haver mais nada em voo", para o relatório sair com o
-veredito do deploy dentro. O sinal não existe de forma confiável: medido no
-transcript real daquela sessão, **4 tarefas de fundo tinham terminado** (o `✅`
-do desfecho está lá, no último evento de cada uma) e **nenhuma recebeu a
-notificação com `<status>completed</status>`**. Um portão que dependesse disso
-ficaria mudo justamente no caso reclamado. Sinal que some sem avisar não vira
-guarda.
-
-O que sobra, dito na cara: a cobrança cai no fim do turno que FEZ o trabalho, e
-não depois do deploy. O veredito do deploy segue sendo obrigação de texto
-(`CLAUDE.md`), sem mecanismo.
-
-O QUE CONTA COMO MUDAR O MUNDO
--------------------------------
-Ferramenta que escreve (`Edit`, `Write`, `NotebookEdit`), publicação
-(`Artifact`) e `Agent` que não seja de leitura (`Explore`/`Plan` não contam).
-Escrita no scratchpad da sessão não conta: arquivo temporário de análise não é
-entrega. Para `Bash`/`PowerShell` há uma lista de comandos que mudam o mundo —
-e ela é **LOMBADA, não muralha**, na mesma honestidade da regra 3 da
-`ci/muralha_da_espera.py`: "jeitos de mudar o mundo" é conjunto aberto, e um
-comando rebuscado que ela não reconheça passa. Ela pega os casos honestos, que
-são a esmagadora maioria — e é indispensável porque o modo automático deste
-harness manda escrever arquivo por heredoc de `Bash`, não pela ferramenta
-`Write`.
-
-O CHECKLIST, e por que ele é cobrado no fecho (05/09/2026, o mesmo dia)
-------------------------------------------------------------------------
-Pedido dele, com as palavras dele: "quero que toda e cada tarefa mostre um
-checklist e um roadmap claro de onde está e o que ainda precisa ser feito ao
-final de cada etapa, fase, parte, executada". O plano em caixinhas da abertura
-sumia da tela depois de vinte chamadas de ferramenta, e ele não sabia se a
-tarefa estava no passo 2 ou no 5.
-
-A lei tem três pontas (CLAUDE.md, "Plano na abertura, contas no fecho"): o
-checklist na abertura, o checklist reimpresso e marcado ao fim de CADA etapa, e
-o checklist no estado final abrindo a prestação de contas. Só a terceira é
-mensurável: "etapa" não existe para a máquina, e um portão que contasse
-reimpressões por chamada de ferramenta cobraria checklist a cada `ls`. Então o
-`Stop` exige a caixinha (`- [x]`/`- [ ]`) DENTRO da prestação de contas, e a
-recusa ensina as três pontas. A ponta do meio fica na lei, no `--plano` e na
-memória do robô — sem mecanismo, e dito aqui para ninguém tomar este portão
-por garantia dela.
-
-O QUE ELE **NÃO** MEDE, dito na cara
--------------------------------------
-Que a prestação de contas seja VERDADEIRA. Nenhum portão barato mede "isto foi
-mesmo verificado". O que ele torna impossível é o silêncio: os seis blocos
-aparecem, o checklist marcado aparece, o veredito PRONTO/NÃO PRONTO fica em
-cima da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável;
-ausência não é.
-
-Também não mede o PLANO de abertura. O `--plano` o exige, mas exigir é tudo o
-que dá para fazer com honestidade: no Stop o turno já acabou, e bloquear por
-algo que não tem mais conserto só produziria um robô travado. Quando o portão
-recusa, ele diz também se o plano faltou — conselho pendurado numa recusa que
-já ia acontecer, custo zero.
-
-FAIL-OPEN BARULHENTO, E POR QUÊ (armadilhas/176)
--------------------------------------------------
-As muralhas desta casa são fail-closed: "não consegui medir" nunca vira
-permissão. Aqui a escolha é outra, e deliberada: um Stop hook que trava por
-defeito interno prende a sessão do mantenedor sem saída. Então erro interno sai
-com **exit 1 e grito no stderr** — não bloqueia, mas também não cala. É a
-exigência da `armadilhas/176`: um hook fail-open que emudece ao quebrar é
-indistinguível de um hook correto, e foi assim que o sino nasceu morto.
-
-Uso (fora do harness, para depurar):
-
-    echo '{"transcript_path":"...","stop_hook_active":false}' | python ci/prestacao_de_contas.py --contas
-    echo '{"prompt":"conserte o login"}' | python ci/prestacao_de_contas.py --plano
-
-Exit codes: 0 permite/cala · 2 RECUSA o fim do turno (só no --contas) ·
-1 não consegui medir, ou segunda passada ainda sem relatório (barulhento,
-nunca silencioso).
+O Stop conserva apenas dívida, plano e contadores, sem reler o histórico.
+O relatório exige quatro blocos e checklist coerente. Erros de instrumento
+são avisados sem bloquear o turno; o molde completo permanece sob demanda.
+História da cobrança: armadilhas/368 e docs/decisoes/RETROSPECTIVA-FASE-D.md.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -174,15 +23,11 @@ import telemetria  # noqa: E402  (irmão de pasta; o insert acima é o que o per
 
 # ---------------------------------------------------------------- a régua ----
 
-# Os seis blocos. Os quatro primeiros são a regra 9 do Padrão, palavra por
-# palavra — mudar um título aqui é reescrever a lei do mantenedor, e tem de
-# aparecer no diff desta tupla. Os dois últimos ele pediu em 05/09/2026.
+# Quatro blocos aprovados no Plano-Mestre10X: três títulos e o veredito.
 BLOCOS = (
     ("**O que mudou**", "fatos, não adjetivos"),
-    ("**O que foi verificado e como**", "o comando e a saída real, não a promessa"),
-    ("**O que foi cortado e por quê**", '"nada" é resposta, e é comum'),
-    ("**O que eu preciso decidir**", 'se nada depende dele, a linha que diz isso'),
-    ("**Auditoria de qualidade**", "a Definição de Pronto item a item, e o que o crítico mais duro atacaria"),
+    ("**O que foi verificado**", "o comando e a saída real, não a promessa"),
+    ("**Pendências**", 'se nada depende dele, diga isso'),
 )
 
 # Reconhecer o BLOCO, não decorar a pontuação. `**O que mudou**` e
@@ -376,6 +221,92 @@ def inicio_da_janela(entradas: list[dict]) -> int:
     return 0
 
 
+def ler_estado_incremental(caminho: Path) -> dict:
+    """Mantém somente dívida e contadores; o conteúdo antigo não volta à memória."""
+    cache = caminho.with_suffix(caminho.suffix + ".contas.json")
+    try:
+        estado = json.loads(cache.read_text(encoding="utf-8"))
+        if not isinstance(estado, dict) or estado.get("versao") != 1:
+            estado = {}
+    except (OSError, ValueError):
+        estado = {}
+    stat = caminho.stat()
+    identidade = [stat.st_dev, stat.st_ino]
+    offset = estado.get("offset", 0)
+    prefixo = estado.get("prefixo_bytes", 0)
+    if (type(offset) is not int or not 0 <= offset <= stat.st_size
+            or type(prefixo) is not int or not 0 <= prefixo <= 512
+            or estado.get("identidade") != identidade):
+        estado = {}
+        offset = prefixo = 0
+    with caminho.open("rb") as fonte:
+        assinatura = hashlib.sha256(fonte.read(prefixo)).hexdigest()
+        fonte.seek(max(0, offset - 512))
+        cauda = hashlib.sha256(fonte.read(min(offset, 512))).hexdigest()
+        if (estado and (assinatura != estado.get("prefixo_sha256")
+                or cauda != estado.get("cauda_sha256")
+                or (stat.st_size == offset and stat.st_mtime_ns != estado.get("mtime")))):
+            estado = {}
+            offset = 0
+        if not estado:
+            estado = {"versao": 1, "motivo": "", "teve_plano": False,
+                      "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0}
+        fonte.seek(offset)
+        while True:
+            inicio = fonte.tell()
+            linha = fonte.readline()
+            if not linha:
+                break
+            try:
+                entrada = json.loads(linha.decode("utf-8-sig"))
+            except (ValueError, UnicodeError):
+                if not linha.endswith(b"\n"):
+                    fonte.seek(inicio)
+                    break
+                continue
+            if not isinstance(entrada, dict) or entrada.get("isSidechain"):
+                continue
+            if entrada.get("type") in {"response_item", "event_msg"}:
+                entrada = _entrada_codex(entrada)
+                if entrada is None:
+                    continue
+            if (entrada.get("origin") or {}).get("kind") == "human":
+                estado["teve_plano"] = False
+            estado["teve_plano"] |= _teve_plano([entrada], 0)
+            motivo = _mudanca_na_entrada(entrada)
+            if motivo:
+                estado["motivo"] = motivo
+                estado["mudancas"] += 1
+            if _prestou_contas(entrada):
+                estado["motivo"] = ""
+            prs, despachos = contar_prs_e_despachos([entrada])
+            estado["prs"] += prs
+            estado["despachos"] += despachos
+        estado["offset"] = fonte.tell()
+        fonte.seek(max(0, estado["offset"] - 512))
+        cauda = hashlib.sha256(fonte.read(min(estado["offset"], 512))).hexdigest()
+        fonte.seek(0)
+        prefixo = fonte.read(min(512, estado["offset"]))
+    estado.update(identidade=identidade, mtime=stat.st_mtime_ns,
+                  prefixo_bytes=len(prefixo), prefixo_sha256=hashlib.sha256(prefixo).hexdigest(),
+                  cauda_sha256=cauda)
+    return estado
+
+
+def gravar_estado_incremental(caminho: Path, estado: dict) -> None:
+    cache = caminho.with_suffix(caminho.suffix + ".contas.json")
+    temporario = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=cache.parent,
+                                         prefix=cache.name, delete=False) as arquivo:
+            temporario = Path(arquivo.name)
+            json.dump(estado, arquivo, ensure_ascii=False)
+        os.replace(temporario, cache)
+    finally:
+        if temporario is not None:
+            temporario.unlink(missing_ok=True)
+
+
 def _mudanca_na_entrada(entrada: dict) -> str | None:
     """O motivo pelo qual esta entrada mudou o mundo, ou None."""
     if entrada.get("type") != "assistant":
@@ -450,7 +381,7 @@ def contar_prs_e_despachos(entradas: list[dict]) -> tuple[int, int]:
 
 
 def _prestou_contas(entrada: dict) -> bool:
-    """Esta fala do robô tem os seis blocos? (cinco títulos + o veredito)"""
+    """Esta fala traz os quatro blocos e o checklist final?"""
     if entrada.get("type") != "assistant":
         return False
     conteudo = (entrada.get("message") or {}).get("content")
@@ -465,15 +396,12 @@ def _prestou_contas(entrada: dict) -> bool:
     veredito = VEREDITO.search(texto)
     if not veredito:
         return False
-    # Título escrito não é bloco preenchido. Os três blocos de julgamento e o
-    # veredito precisam de conteúdo: o molde com fatos preenche os outros, e um
-    # relatório com "**Auditoria de qualidade**" e nada embaixo é o silêncio de
-    # volta, com moldura (06/09/2026).
-    for indice, padrao in enumerate(TITULOS):
+    # Títulos sem fatos ou julgamento não constituem um relatório.
+    for padrao in TITULOS:
         achado = padrao.search(texto)
         if not achado:
             return False
-        if indice in JULGAMENTO and not _tem_substancia(_corpo_apos(texto, achado.end())):
+        if not _tem_substancia(_corpo_apos(texto, achado.end())):
             return False
     if not _tem_substancia(_corpo_apos(texto, veredito.end())):
         return False
@@ -554,10 +482,8 @@ URL_DE_PR = re.compile(r"/pull/(\d+)\b")
 # colado e não preenchido — e isso é o silêncio de volta, com moldura.
 MARCA_DO_MOLDE = re.compile(r"voc[êe]\s+escreve|fatos\s+da\s+m[áa]quina", re.I)
 
-# Os blocos que a máquina NÃO pode preencher (índices em BLOCOS/TITULOS):
-# o que foi cortado, o que depende dele, a auditoria. O veredito é o quarto, e
-# é cobrado à parte porque tem regex próprio.
-JULGAMENTO = (2, 3, 4)
+# Pendências exigem julgamento; o veredito é conferido separadamente.
+JULGAMENTO = (2,)
 
 
 def _texto_da_fala(entrada: dict) -> str:
@@ -819,7 +745,7 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
         linhas.append(f"   comandos: não medido ({sem_transcript})")
     linhas.append("")
 
-    linhas.append("**O que foi verificado e como** — FATOS DA MÁQUINA")
+    linhas.append("**O que foi verificado** — FATOS DA MÁQUINA")
     verificacoes = verificacoes_do_turno(entradas, comeco) if entradas else []
     if verificacoes:
         for comando, ultima in verificacoes[-TETO_DA_LISTA:]:
@@ -928,52 +854,20 @@ def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
     return True, ultima_mudanca[1], _teve_plano(entradas, inicio_da_janela(entradas))
 
 
-def molde(faltou_o_plano: bool, transcript: str | None = None) -> str:
-    comando_molde = "python ci/prestacao_de_contas.py --molde-com-fatos"
-    if transcript:
-        comando_molde += f' --transcript "{transcript}"'
+def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "") -> str:
     linhas = [
-        "🧾 PRESTAÇÃO DE CONTAS: há trabalho feito nesta sessão sem relatório nenhum.",
-        "",
-        "   O mantenedor é leigo em código e não lê o transcript. Se você parar aqui,",
-        "   ele vai ter que perguntar de novo o que foi feito — foi por isso que este",
-        "   portão nasceu (regra 9 do Padrão de Trabalho, 1ª seção do CLAUDE.md).",
-        "",
-        "   Os fatos você NÃO escreve de cabeça. Rode primeiro:",
-        "",
-        f"       {comando_molde}",
-        "",
-        "   Ele devolve o molde com o checklist do seu plano, os arquivos tocados,",
-        "   os comandos rodados e os checks do PR já preenchidos. O que sobra para",
-        "   você é o julgamento — e é só isso que ninguém pode escrever no seu lugar.",
-        "",
-        "   Escreva AGORA, em português, nesta ordem e sem enfeite:",
-        "",
-        "   O checklist do plano no estado final — `- [x]` no que caiu, `- [ ]` no",
-        "   que ficou, com o motivo — e a linha \"Onde estou: passo N de M\".",
-    ]
-    for titulo, dica in BLOCOS:
-        linhas.append(f"   {titulo} — {dica}")
-    linhas += [
-        "   **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê.",
-        "",
-        "   Regras que valem dentro do molde:",
-        "   · O checklist é o roteiro que ele pediu: sem caixinha, o relatório não vale.",
-        "   · PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga NÃO PRONTO.",
-        "   · Demonstre, não descreva: comando executado + saída real.",
-        "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
-        "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",
-        "   · Se algo depende dele, abra a caixa de pergunta (AskUserQuestion) junto.",
-        "   · NÃO PRONTO é resposta honesta e aceita. Verde inventado, não.",
-        "   · Bloco de julgamento vazio, ou com o rótulo do molde intocado, é recusado.",
+        "🧾 PRESTAÇÃO DE CONTAS: trabalho feito nesta sessão sem relatório. " + _uma_linha(motivo)[:180],
+        "## Plano",
+        "- [x] Indique os passos concluídos; use [ ] para o que falta.",
+        "Onde estou: passo N de M; diga o próximo passo se houver.",
+        "**O que mudou**: fatos.",
+        "**O que foi verificado**: comando e resultado, ou NÃO RODEI.",
+        "**Pendências**: o que falta, ou nada depende de ninguém.",
+        "**Veredito:** PRONTO ou NÃO PRONTO, com o motivo.",
+        f'Fatos: python ci/prestacao_de_contas.py --molde-com-fatos --transcript "{transcript or "caminho-da-sessao"}"',
     ]
     if faltou_o_plano:
-        linhas += [
-            "",
-            "   E o plano não apareceu no começo deste turno. Não dá para consertar",
-            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e é",
-            "   reimpresso marcado ao fim de CADA etapa, com onde você está.",
-        ]
+        linhas.append("Na próxima tarefa, apresente o plano antes de começar.")
     return "\n".join(linhas)
 
 
@@ -1005,59 +899,43 @@ def modo_contas(entrada: dict) -> int:
         )
         return 1
 
-    entradas = ler_transcript(arquivo)
-    recusar, motivo, teve_plano = decidir(entradas)
+    try:
+        estado = ler_estado_incremental(arquivo)
+        recusar = bool(estado["motivo"])
+        ja_cobrada = segunda_passada or estado["cobrada"] == estado["mudancas"]
+        if recusar:
+            estado["cobrada"] = estado["mudancas"]
+        gravar_estado_incremental(arquivo, estado)
+    except (OSError, ValueError, TypeError, KeyError) as erro:
+        print(f"PRESTAÇÃO DE CONTAS: leitura incremental não conferida: {erro}. "
+              "Confira o acesso ao transcript e ao arquivo .contas.json; não bloqueei o turno.",
+              file=sys.stderr)
+        return 1
 
-    # Alavanca 3, em SOMBRA: só telemetria, roda na primeira passada de todo
-    # Stop — inclusive quando a prestação de contas já foi paga, porque a
-    # sessão pode ter aberto os PRs em série ANTES do relatório. A segunda
-    # passada do mesmo fim de turno não conta de novo: a série é uma só.
-    # registrar() já é fail-open (nunca lança), então isto não pode derrubar o
-    # exit code que `decidir()` já calculou.
-    if not segunda_passada:
-        prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
-        if prs_criados >= 2 and despachos_de_verdade == 0:
-            telemetria.registrar(
-                "serie_sem_despacho",
-                {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
-                cwd=entrada.get("cwd"),
-                sessao=entrada.get("session_id"),
-            )
-
+    if not segunda_passada and estado["prs"] >= 2 and estado["despachos"] == 0:
+        telemetria.registrar(
+            "serie_sem_despacho",
+            {"prs_criados": estado["prs"], "despachos": estado["despachos"]},
+            cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
+        )
     if not recusar:
         return 0
-    if segunda_passada:
-        # Já recusei uma vez neste fim de turno e o relatório continua faltando.
-        # Recusar de novo prenderia a sessão em laço. Passo — mas GRITO, para o
-        # mantenedor ver que o robô foi cobrado e não trouxe as contas.
-        # (exit 1: barulhento, não bloqueia.)
-        print(
-            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
-            "   O que você tem na tela pode não ser o relatório da tarefa.",
-            file=sys.stderr,
-        )
+    if ja_cobrada:
+        print("PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo; "
+              "o relatório continua pendente, sem nova recusa. "
+              "Escreva os quatro blocos e o checklist para concluir as contas.", file=sys.stderr)
         return 1
-    print(molde(faltou_o_plano=not teve_plano, transcript=str(arquivo)), file=sys.stderr)
-    print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
+    print(molde(faltou_o_plano=not estado["teve_plano"], transcript=str(arquivo),
+                motivo=estado["motivo"]), file=sys.stderr)
     return 2
 
 
-AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, ROTEIRO A CADA ETAPA, CONTAS DEPOIS (lei da casa, CLAUDE.md).
-   Se este pedido vai mudar o mundo — editar arquivo, rodar comando que altera
-   algo, abrir PR — a PRIMEIRA coisa da sua resposta é o plano em caixinhas
-   ("## Plano — <tarefa>", um "- [ ]" por passo). Ao FIM DE CADA ETAPA,
-   reimprima o checklist inteiro marcado ("- [x]" no que caiu, "- [ ]" no que
-   falta) e a linha "Onde estou: passo N de M", com o próximo passo dito —
-   ele não lê o transcript, e é assim que sabe onde a tarefa está.
-   A ÚLTIMA coisa é a prestação de contas, que começa pelo mesmo checklist no
-   estado final: O que mudou · O que foi verificado e como · O que foi cortado
-   e por quê · O que eu preciso decidir · Auditoria de qualidade · Veredito
-   PRONTO/NÃO PRONTO. O portão do Stop recusa terminar sem ela e sem a
-   caixinha — não é sugestão.
-   Antes de escrever o fecho, rode `python ci/prestacao_de_contas.py
-   --molde-com-fatos --transcript <caminho-da-sessao>`: ele já traz o checklist,
-   os arquivos, os comandos e os checks preenchidos. Sem identidade explícita,
-   o comando recusa escolher o transcript mais recente da máquina."""
+AVISO_DO_PLANO = """📋 PLANO PRIMEIRO: comece mudanças com ## Plano e - [ ] por passo.
+Ao FIM DE CADA ETAPA, reimprima o checklist marcado e Onde estou: passo N de M.
+No fecho: checklist final, O que mudou, O que foi verificado, Pendências e
+Veredito PRONTO/NÃO PRONTO com motivo. PRONTO não admite caixinha aberta.
+Fatos sob demanda: python ci/prestacao_de_contas.py --molde-com-fatos
+--transcript <caminho-da-sessao>. Não escolha o transcript de outra sessão."""
 
 
 def modo_plano(entrada: dict) -> int:
@@ -1083,7 +961,7 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as erro:  # noqa: BLE001
             print(
                 f"🧾 MOLDE COM FATOS: não consegui montar ({type(erro).__name__}: {erro}).\n"
-                "   Escreva os seis blocos à mão; o portão do Stop continua valendo."
+                "   Escreva os quatro blocos à mão; o portão do Stop continua valendo."
             )
             return 0
 
