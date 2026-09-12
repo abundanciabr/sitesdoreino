@@ -1268,7 +1268,7 @@ def test_a_porta_fecha_a_tarefa_e_leva_o_evento_para_a_main(
 ):
     """(a) O coração da graduação: depois do merge, a tarefa está concluída —
     e não no disco efêmero da pista, e sim na `main`, com o link do PR."""
-    # guarda: ci/mergear.py:1266
+    # guarda: ci/mergear.py:1274
     raiz, origem = _repo_com_origem(tmp_path)
     chamadas: list = []
     _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
@@ -1386,6 +1386,39 @@ def test_a_main_ja_com_a_conclusao_nao_recebe_commit_novo(monkeypatch, tmp_path)
     escritos[0]["caminho"].write_text('{"tarefa": "TAR-001", "de novo": 1}', encoding="utf-8")
     mergear._empurrar_conclusoes(raiz, escritos, 100)
     assert _git_no(origem, "rev-parse", "main").strip() == ponta
+
+
+def test_a_porta_so_diz_concluida_do_que_entrou_de_fato_na_main(
+    monkeypatch, tmp_path, capsys
+):
+    """Gravar no disco da pista e CHEGAR À MAIN são coisas diferentes, e só a
+    segunda sobrevive ao fim do job.
+
+    O caso: a `main` já tem a conclusão desta tarefa (outro pouso da mesma
+    passagem a fechou) e o checkout deste job, feito antes, não a tem. A
+    decisão local diz "gravei"; o empurrão descarta. Se a porta imprimisse e
+    medisse a decisão local, ela anunciaria como fechada uma tarefa cujo
+    arquivo morre com o disco — a mentira exata que esta regra veio curar.
+    """
+    # guarda: ci/mergear.py:1237
+    raiz, origem = _repo_com_origem(tmp_path)
+    # A main ganha a conclusão; o disco deste job continua sem ela.
+    ja_na_main = raiz / "fila" / "eventos" / "20260910-090000-TAR-001-concluida.json"
+    ja_na_main.write_text('{"tarefa": "TAR-001"}', encoding="utf-8")
+    _git_no(raiz, "add", "-A")
+    _git_no(raiz, "commit", "-m", "outro pouso fechou a mesma tarefa")
+    _git_no(raiz, "push", "origin", "main")
+    _git_no(raiz, "reset", "--hard", "HEAD~1")
+    assert not ja_na_main.exists()
+
+    chamadas: list = []
+    _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    saida = capsys.readouterr().out
+    assert "já tinha conclusão na main" in saida
+    assert "CONCLUÍDA pelo merge" not in saida
+    conclusoes = [n for n in _eventos_na_main(origem) if n.endswith("-concluida.json")]
+    assert conclusoes == ["20260910-090000-TAR-001-concluida.json"], conclusoes
 
 
 def test_empurrao_recusado_uma_vez_e_refeito_sobre_a_ponta_nova(monkeypatch, tmp_path):

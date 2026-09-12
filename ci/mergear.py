@@ -1156,7 +1156,7 @@ def concluir_tarefas_do_pr(
             arquivos_do_diff=diff.ler("o fechamento da tarefa"),
         )
         escritos = fila.gravar_conclusoes_pela_porta(raiz, achados)
-        _empurrar_com_tentativas(raiz, escritos, numero)
+        entraram = _empurrar_com_tentativas(raiz, escritos, numero)
     except Exception as erro:  # noqa: BLE001 — ver o cabeçalho: falha aqui grita
         # A falha também se MEDE: sem isto, a única classe de desfecho que a
         # telemetria não veria seria justamente a que dói.
@@ -1183,14 +1183,14 @@ def concluir_tarefas_do_pr(
         )
         return False
     for achado in achados:
-        _dizer_a_porta(numero, achado, escritos)
+        _dizer_a_porta(numero, achado, entraram)
         telemetria.registrar(
             "evento_da_fila_pela_porta",
             {
                 "modo": "valendo",
                 "pr": numero,
                 "tarefa": achado["tarefa"],
-                "desfecho": achado["desfecho"],
+                "desfecho": _desfecho_real(achado, entraram),
                 "motivo": achado["motivo"],
                 "arquivo": (achado.get("evento") or {}).get("arquivo", ""),
             },
@@ -1200,7 +1200,19 @@ def concluir_tarefas_do_pr(
     return True
 
 
-def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> None:
+def _desfecho_real(achado: dict, entraram: set[str]) -> str:
+    """O que MEDIR: o que chegou à `main`, nunca o que se decidiu gravar.
+
+    Gravar no disco da pista e chegar à `main` são coisas diferentes, e só a
+    segunda existe depois que o job morre. Dizer "gravei" para um arquivo que
+    não entrou seria a mentira exata que esta regra veio curar.
+    """
+    if achado["desfecho"] != fila.SOMBRA_GERARIA:
+        return achado["desfecho"]
+    return fila.PORTA_GRAVOU if achado["tarefa"] in entraram else fila.PORTA_JA_EXISTE
+
+
+def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> set[str]:
     """Leva os eventos recém-gravados para a `main`, num commit da pista.
 
     Monta o commit por ENCANAMENTO (`hash-object`, `read-tree`, `commit-tree`)
@@ -1213,7 +1225,7 @@ def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> None:
     """
     novos = [e for e in escritos if e["desfecho"] == fila.PORTA_GRAVOU]
     if not novos:
-        return
+        return set()
     _git(raiz, ["fetch", "origin", "main"], "buscar a main para escriturar a conclusão")
     base = _git(raiz, ["rev-parse", "FETCH_HEAD"], "achar a ponta da main").strip()
     # Guarda final da idempotência, e a única que enxerga o que ESTÁ na main:
@@ -1222,14 +1234,10 @@ def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> None:
     na_main = _git(
         raiz, ["ls-tree", "--name-only", base, "fila/eventos/"], "ler o livro da main"
     )
-    a_empurrar = [
-        e
-        for e in novos
-        if f"-{e['tarefa']}-concluida.json" not in na_main
-    ]
+    a_empurrar = [e for e in novos if f"-{e['tarefa']}-concluida.json" not in na_main]
     if not a_empurrar:
         print(f"{MARCA_DA_PORTA}: a main já tem essas conclusões, nada a empurrar.")
-        return
+        return set()
     with tempfile.TemporaryDirectory() as tmp:
         env = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
         _git(raiz, ["read-tree", base], "montar a árvore da main", env=env)
@@ -1265,9 +1273,10 @@ def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> None:
     ).strip()
     _git(raiz, ["push", "origin", f"{commit}:refs/heads/main"], "empurrar a conclusão")
     print(f"{MARCA_DA_PORTA}: {tarefas} fechada(s) na main pelo commit {commit[:12]}.")
+    return {e["tarefa"] for e in a_empurrar}
 
 
-def _empurrar_com_tentativas(raiz: Path, escritos: list[dict], numero: int) -> None:
+def _empurrar_com_tentativas(raiz: Path, escritos: list[dict], numero: int) -> set[str]:
     """A `main` pode andar entre o `fetch` e o `push`, e aí o push é recusado.
 
     Um pouso por vez é garantido pelo `concurrency` da pista, mas a `main` não
@@ -1278,8 +1287,7 @@ def _empurrar_com_tentativas(raiz: Path, escritos: list[dict], numero: int) -> N
     ultimo: Exception | None = None
     for tentativa in range(1, TENTATIVAS_DE_EMPURRAO + 1):
         try:
-            _empurrar_conclusoes(raiz, escritos, numero)
-            return
+            return _empurrar_conclusoes(raiz, escritos, numero)
         except ErroDeInstrumentacao as erro:
             ultimo = erro
             print(
@@ -1310,24 +1318,16 @@ def _git(
     ).stdout
 
 
-def _dizer_a_porta(numero: int, achado: dict, escritos: list[dict]) -> None:
+def _dizer_a_porta(numero: int, achado: dict, entraram: set[str]) -> None:
     tarefa = achado["tarefa"]
     if achado["desfecho"] == fila.SOMBRA_GERARIA:
-        gravado = next(
-            (
-                e
-                for e in escritos
-                if e["tarefa"] == tarefa and e["desfecho"] == fila.PORTA_GRAVOU
-            ),
-            None,
-        )
-        if gravado:
+        if tarefa in entraram:
             print(
                 f"\n{MARCA_DA_PORTA}: {tarefa} CONCLUÍDA pelo merge do PR #{numero}.\n"
                 f"   gravei fila/eventos/{achado['evento']['arquivo']}.json"
             )
         else:
-            print(f"{MARCA_DA_PORTA}: {tarefa} já tinha conclusão no livro, nada a fazer.")
+            print(f"{MARCA_DA_PORTA}: {tarefa} já tinha conclusão na main, nada a fazer.")
         return
     if achado["desfecho"] == fila.SOMBRA_JA_EXISTE:
         print(f"{MARCA_DA_PORTA}: {tarefa} já existe, nada a fazer.")
