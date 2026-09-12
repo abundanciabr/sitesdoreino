@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-021-docs-conselho-da-fase-4",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "docs: conselho da Fase 4",
+  detalhe: "Conselho no site e debate na issue 1600. R2 e TAR-368 tratam de coleta, sem afirmar economia.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1601. Validação local: árvore 3c4b3f1484ecd5ccde096b5941c94c70d8c0eaa3; commit 8872412b333e6465e4afbc01ef553d04b167638a; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-368",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "governanca",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
