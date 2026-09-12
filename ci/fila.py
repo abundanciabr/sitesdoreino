@@ -1509,12 +1509,11 @@ def _escrever_evento(
 # não tem desfazer, porque depois do terminal a fila não aceita mais nada. A
 # sombra IMPRIME o que gravaria e mede, e a graduação vem depois.
 #
-# O QUE GRADUA (PR futuro, depois de uma semana de medição): que os disparos
-# medidos mostrem "geraria" batendo com o que o robô escreveria à mão, sem um
-# único caso de tarefa errada. Aí a porta passa a gravar o evento no RAMO e
-# commitá-lo ANTES do merge — antes, e não depois, porque o evento precisa
-# entrar na `main` pelo próprio PR, como o registro do livro faz desde
-# 31/08/2026 (`armadilhas/248`).
+# O QUE GRADUOU, em 12/09/2026: o destino acertado (o evento entra na `main`
+# pelo próprio PR, como o registro do livro faz desde 31/08/2026,
+# `armadilhas/248`), mas NÃO por esta porta. Leia a seção seguinte: quem grava
+# é `ci/pr.py`, junto da submissão, porque push direto na `main` é recusado
+# para todo mundo. A sombra abaixo continua medindo e não grava nada.
 # ---------------------------------------------------------------------------
 
 SOMBRA_GERARIA = "geraria"
@@ -2359,8 +2358,10 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
 
     Não passa pelo guarda do aceite de `cmd_concluir` de propósito: a decisão
-    de 12/09/2026 é que o merge do PR fecha a tarefa. Por isso a evidência não
-    é texto livre, e sim a URL do PR que a `main` vai integrar.
+    de 12/09/2026 é que o merge do PR fecha a tarefa. Em troca, a evidência não
+    pode ser texto livre: o `--pr` tem de ser, exatamente, o PR da submissão que
+    a fila já registrou. Sem essa amarra qualquer string fecharia qualquer
+    tarefa, e a folga de `cmd_submeter` reabriria uma tarefa alheia por ela.
     """
     recusa = _parar_se_for_o_espelho("fechar-pela-entrega", raiz)
     if recusa:
@@ -2370,6 +2371,12 @@ def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
     tid = args.tarefa
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    entrega = ultima_submissao(eventos, tid)
+    nossa = entrega is not None and entrega.get("pr") == args.pr
+    if not nossa:
+        print(f"RECUSADO: {args.pr} não é a entrega submetida de {tid}; nada foi escrito.")
+        print("O feito viaja na entrega: submeta primeiro, e cite o PR exato da submissão.")
         return 1
     finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
     alheio = bool(finais) and not fechada_por_esta_entrega(eventos, tid, args.pr)
