@@ -30,6 +30,12 @@ if str(CI) not in sys.path:
 
 import sessao  # noqa: E402
 
+@pytest.fixture(autouse=True)
+def ambiente_falso_isolado(tmp_path, monkeypatch):
+    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+    monkeypatch.setattr(sessao, "identidade_do_venv", lambda _, **kwargs: "f" * 64)
+
+
 CELULAS = [
     "alunos",
     "catalogo",
@@ -53,12 +59,13 @@ def plano_de_teste(**extra) -> sessao.Plano:
         raiz=Path("C:/repo") if os.name == "nt" else Path("/repo"),
         celulas=CELULAS,
         usa_redis=True,
-        base_de_scratch=Path("C:/scratch") if os.name == "nt" else Path("/scratch"),
+        base_de_scratch=Path.home() / "scratch",
     )
     padrao.update(extra)
     celula = padrao.pop("celula", "quiz")
     tarefa = padrao.pop("tarefa", "fuso-horario")
-    return sessao.derivar_plano(celula, tarefa, **padrao)
+    plano = sessao.derivar_plano(celula, tarefa, **padrao)
+    return sessao.replace(plano, venv=plano.venv / ("f" * 64))
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +77,9 @@ def test_deriva_worktree_branch_e_containers_a_partir_de_celula_e_tarefa():
     plano = plano_de_teste()
     assert plano.worktree.name == "wt-quiz-fuso-horario"
     assert plano.branch == "agent/quiz/fuso-horario"
-    assert plano.postgres == "sessao-quiz-pg"
-    assert plano.redis == "sessao-quiz-redis"
-    assert plano.banco == "quiz_db"
+    assert plano.postgres == "sitesdoreino-postgres-shared"
+    assert plano.redis == "sessao-quiz-fuso-horario-redis"
+    assert plano.banco.startswith("quiz_")
     # O worktree nasce IRMÃO do clone principal, nunca dentro dele (RITOS §1).
     assert not sessao.esta_dentro(plano.worktree, plano.raiz)
 
@@ -105,8 +112,8 @@ def test_portas_nao_colidem_entre_celulas():
     """O motivo do requisito: em lote, cinco despachos rodam ao mesmo tempo."""
     pg = [plano_de_teste(celula=c).porta_postgres for c in CELULAS]
     redis = [plano_de_teste(celula=c).porta_redis for c in CELULAS]
-    assert len(set(pg)) == len(CELULAS)
-    assert len(set(redis)) == len(CELULAS)
+    assert set(pg) == {15432}
+    assert set(redis) == {0}  # Docker escolhe uma porta livre por container
     assert set(pg).isdisjoint(redis)
 
 
@@ -221,7 +228,7 @@ def test_env_traz_as_tres_variaveis_que_todo_make_ci_local_precisa():
     )
     assert variaveis["PYTHONUTF8"] == "1"
     assert variaveis["DJANGO_SECRET_KEY"] == "ci-apenas-nunca-em-producao"
-    assert variaveis["DATABASE_URL"] == "postgres://dev:dev@localhost:55468/quiz_db"
+    assert variaveis["DATABASE_URL"] == f"postgres://{plano.banco}:dev@localhost:55468/{plano.banco}"
 
 
 def test_env_usa_a_porta_REAL_do_container_e_nao_a_derivada():
@@ -408,7 +415,7 @@ class MundoFalso:
         return (
             None
             if nome in self.saidas.get("sem_ferramenta", ())
-            else f"/usr/bin/{nome}"
+            else (None if nome == "uv" else f"/usr/bin/{nome}")
         )
 
     def dormir(self, segundos: float) -> None:
@@ -416,6 +423,9 @@ class MundoFalso:
 
     def escrever(self, caminho: Path, texto: str) -> None:
         self.escritos[_n(caminho)] = texto
+        if ".instalado." in caminho.name or caminho.name == ".senha-banco":
+            caminho.parent.mkdir(parents=True, exist_ok=True)
+            caminho.write_text(texto, encoding="utf-8")
 
     def anotar(self, texto: str = "") -> None:
         self.log.append(str(texto))
@@ -433,8 +443,12 @@ class MundoFalso:
             return self.saidas.get("worktree_list", "")
         if "config --get core.hooksPath" in linha:
             return self.saidas.get("hooks_path", str(self.plano.raiz / ".githooks"))
+        if linha.endswith("rev-parse origin/main") or linha.endswith("rev-parse HEAD"):
+            return "a" * 40
         if "rev-parse --abbrev-ref" in linha:
             return self.saidas.get("branch_atual", self.plano.branch)
+        if "docker inspect" in linha:
+            return "a" * 64 + " sha256:" + "b" * 64
         if "docker info" in linha:
             return "29.7.2"
         if "docker ps" in linha:
@@ -444,9 +458,13 @@ class MundoFalso:
             porta = (
                 self.plano.porta_postgres
                 if nome == self.plano.postgres
-                else self.plano.porta_redis
+                else (self.plano.porta_redis or 16468)
             )
             return f"0.0.0.0:{porta}"
+        if "SELECT 1 FROM pg_roles" in linha:
+            return self.saidas.get("papel_existe", "")
+        if "SELECT pg_get_userbyid" in linha:
+            return self.saidas.get("banco_existe", "")
         if "pg_isready" in linha:
             return "accepting connections"
         if "redis-cli ping" in linha:
@@ -493,8 +511,8 @@ def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     )
     assert "-m venv" in juntas
     assert "pip install" in juntas and "PyYAML==6.0.2" in juntas
-    assert "docker run -d --name sessao-quiz-pg" in juntas
-    assert "docker run -d --name sessao-quiz-redis" in juntas
+    assert "docker run -d --name sitesdoreino-postgres-shared" in juntas
+    assert "docker run -d --name sessao-quiz-fuso-horario-redis" in juntas
     assert "ci/doctor.py" in juntas
     assert _n(mundo.plano.arquivo_env) in mundo.escritos
 
@@ -541,7 +559,7 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     mundo.existentes.add(_n(plano.python_do_venv))
     texto = mundo.sessao().rodar()
     juntas = "\n".join(mundo.chamadas)
-    assert "worktree add" not in juntas
+    assert not any("worktree add" in c and "--detach" not in c for c in mundo.chamadas)
     assert "-m venv" not in juntas
     assert "docker run" not in juntas
     assert "docker start" not in juntas
@@ -1066,3 +1084,52 @@ def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
     mundo.sessao().rodar()
     passes = [linha for linha in mundo.log if "PASS" in linha]
     assert len(passes) == len(sessao.passos_do_plano(plano)) == 5
+
+
+def test_bancos_de_tarefas_distintas_nao_colidem():
+    a = plano_de_teste(tarefa="uma")
+    b = plano_de_teste(tarefa="outra")
+    assert a.banco != b.banco
+    assert a.postgres == b.postgres == "sitesdoreino-postgres-shared"
+    assert a.redis != b.redis
+    assert len(a.banco) <= 58
+
+
+def test_falha_ao_criar_banco_impede_baseline():
+    mundo = MundoFalso(plano_de_teste(), falhar={"CREATE DATABASE": 1})
+    with pytest.raises(sessao.ErroDeSessao, match="exit code"):
+        mundo.sessao().rodar()
+    assert not any("ci/doctor.py" in c for c in mundo.chamadas)
+
+
+def test_banco_existente_e_reutilizado_sem_erro_engolido():
+    mundo = MundoFalso(plano_de_teste(), banco_existe=plano_de_teste().banco)
+    mundo.sessao().rodar()
+    assert not any("CREATE DATABASE" in c for c in mundo.chamadas)
+
+
+def test_consulta_banco_ilegivel_recusa_abertura():
+    mundo = MundoFalso(plano_de_teste(), banco_existe="indisponivel")
+    with pytest.raises(sessao.ErroDeSessao, match="resposta inesperada"):
+        mundo.sessao().rodar()
+
+
+def test_role_da_tarefa_restringe_conexao_e_senha_nao_e_compartilhada():
+    mundo = MundoFalso(plano_de_teste())
+    abertura = mundo.sessao()
+    abertura.rodar()
+    comandos = "\n".join(mundo.chamadas)
+    assert f'CREATE ROLE "{abertura.plano.banco}" LOGIN CREATEDB NOSUPERUSER NOCREATEROLE' in comandos
+    assert f'REVOKE CONNECT ON DATABASE "{abertura.plano.banco}" FROM PUBLIC' in comandos
+    assert len(abertura.plano.senha_banco) == 48
+    assert abertura.plano.senha_banco != sessao.SENHA_DO_BANCO
+    segunda = mundo.sessao()
+    segunda.rodar()
+    assert segunda.plano.senha_banco == abertura.plano.senha_banco
+
+
+def test_role_existente_sem_credencial_preserva_banco():
+    mundo = MundoFalso(plano_de_teste(), papel_existe="1")
+    with pytest.raises(sessao.ErroDeSessao, match="credencial da tarefa indisponível"):
+        mundo.sessao().rodar()
+    assert not any("CREATE ROLE" in c or "ALTER ROLE" in c for c in mundo.chamadas)
