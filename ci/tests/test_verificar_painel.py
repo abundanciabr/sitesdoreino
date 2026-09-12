@@ -143,9 +143,34 @@ def _reescreve_mes(caminho: Path, registros: list[dict]) -> None:
 # ------------------------------------------------------------------ o verde
 
 
-def test_passa_no_repositorio_real() -> None:
+def test_passa_no_repositorio_real(tmp_path: Path, monkeypatch) -> None:
     """PASS contra o repositório de verdade — o piso de que ele funciona."""
-    proc = _roda(RAIZ)
+    executar = subprocess.run
+
+    def somente_na_copia(comando, *args, **kwargs):
+        assert Path(kwargs["cwd"]).resolve() != RAIZ.resolve(), (
+            "o teste não pode gerar nem verificar artefatos na bancada compartilhada"
+        )
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", somente_na_copia)
+    raiz = tmp_path / "checkout"
+    subprocess.run(
+        ["git", "clone", "--shared", "--quiet", str(RAIZ), str(raiz)],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    assert not (raiz / "painel" / "painel.html").exists()
+    subprocess.run(
+        ["node", "painel/gerar_manifesto.js"],
+        cwd=raiz,
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    proc = _roda(raiz)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "PASS" in proc.stdout
 
