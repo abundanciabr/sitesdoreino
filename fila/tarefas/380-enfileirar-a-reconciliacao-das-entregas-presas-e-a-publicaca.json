@@ -1,0 +1,19 @@
+{
+  "arquivo": "380-enfileirar-a-reconciliacao-das-entregas-presas-e-a-publicaca",
+  "id": "TAR-380",
+  "titulo": "Enfileirar a reconciliação das entregas presas e a publicação do conselho",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de escrituração integrado com as tarefas TAR-377, TAR-378 e TAR-379 criadas e explicadas; python ci/fila.py validar verde.",
+  "despacho": "Criar na fila as tarefas do aceite das 31 entregas já integradas (TAR-377), da reconciliação delas (TAR-378) e da publicação da pasta do conselho (TAR-379), com os briefs prontos no campo despacho, por decisão do mantenedor de 12/09/2026. Só escrituração.",
+  "origem": "maestro, 12/09/2026",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
