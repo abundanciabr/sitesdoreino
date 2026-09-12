@@ -32,3 +32,5 @@ PyYAML==6.0.2
 # suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
 respx==0.23.1
 black==24.10.0
+
+pytest-json-report

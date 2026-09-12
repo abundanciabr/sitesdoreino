@@ -44,3 +44,5 @@ black==24.10.0
 # verdade no ar — e suíte que depende de outra célula fica vermelha por motivo
 # alheio.
 respx==0.23.1
+
+pytest-json-report

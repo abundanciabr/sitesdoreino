@@ -75,6 +75,8 @@ def _ferramenta(nome: str, entrada: dict) -> dict:
 
 
 def _decidir(tmp_path: Path, entradas: list[dict], **extra) -> subprocess.CompletedProcess:
+    for arq in tmp_path.glob(".tentativas_stop_*.txt"):
+        arq.unlink()
     transcript = tmp_path / "transcript.jsonl"
     transcript.write_text(
         "\n".join(json.dumps(e, ensure_ascii=False) for e in entradas),
