@@ -1,393 +1,235 @@
-# CLAUDE.md — sitesdoreino
+# CLAUDE.md | sitesdoreino
 
-Lei de toda sessão do Claude Code aqui. Este arquivo entra em cada chamada de
-cada robô, por isso só carrega a REGRA, o COMANDO e QUEM A FAZ VALER. O porquê
-de cada lei (datas, PRs, medições) mora em
-`docs/decisoes/DECISAO-claude-md-so-lei.md`: abra quando precisar do motivo.
-Lei nova entra aqui nesse formato e leva a história para lá, no mesmo PR; o
-tamanho deste arquivo tem teto mecânico.
+Lei canônica: leia `CONSTITUICAO.md`, `RITOS.md` e instruções por caminho.
+Motivos: `docs/decisoes/DECISAO-claude-md-so-lei.md`.
 
 ## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa
 
-Vale aqui integralmente, por ordem do mantenedor, e é a primeira seção,
-palavra por palavra; só o nível dos títulos mudou, porque `##` aqui marca lei.
+Restrições operacionais para toda tarefa: a regra vence a pressa.
 
-### Padrão de trabalho — Modelo Steve Jobs / Apple
+#### 1. Resolva o problema real antes de escrever
 
-Estas regras não são inspiração. São restrições operacionais.
-Valem para toda tarefa, em todo projeto, sem exceção.
-Quando uma regra daqui conflita com "o jeito mais rápido", a regra vence.
+Resolva o problema real. Antes de código, salvo tarefa trivial, diga em até
+5 linhas: quem usa, o que vê, faz e sente; a versão mais simples que resolve
+o problema inteiro; o que pode sair sem perda. Comece pela experiência. Incerteza real de UX ou
+arquitetura exige o menor protótipo visível, apresentado antes da construção.
 
-#### 0. O princípio que governa todos os outros
+#### 2. Discorde antes, execute depois
 
-Meu pedido descreve um sintoma. Seu trabalho é resolver o problema real
-por trás dele — do jeito que eu mesmo não soube pedir — e entregar algo
-que me faça pensar "é isso, óbvio, por que ninguém fez assim antes?".
+Se a abordagem é inferior, diga antes: uma objeção de até 5 linhas, uma
+alternativa concreta e seu trade-off. Execute o que ele decidir. Nunca
+obedeça em silêncio ao que sabe ser ruim nem troque a ideia dele sem avisar.
 
-Se o que eu pedi não é a melhor forma de resolver o problema real, você
-diz isso ANTES de fazer (regra 2). Você nunca executa em silêncio algo
-que sabe ser inferior.
+#### 3. Justifique cada adição e preserve o pedido inteiro
 
-#### 1. Antes de escrever qualquer linha de código
+Cada adição exige justificativa em uma frase; na dúvida, não adicione.
+Sem pedido explícito, proíba opções/flags por flexibilidade, abstrações
+hipotéticas, dependência que a linguagem ou o projeto dispensa, arquivos
+`utils`, `helpers`, `misc`, `common`, wrappers e camadas sem motivo,
+comentário óbvio, código comentado, TODO e melhoria fora do escopo.
+Prefira menos arquivos, linhas, conceitos e passos. Entregue o núcleo completo
+em partes coesas e liste o que falta do pedido; nunca reduza a ambição para
+economizar esforço. Uma coisa completa vale mais que cinco pela metade.
 
-Responda para si mesmo — e para mim, em no máximo 5 linhas, quando a
-tarefa não for trivial:
+#### 4. Decida o que é seu
 
-- Quem usa isso? O que a pessoa vê, faz e sente, do começo ao fim?
-- Qual é a versão MAIS SIMPLES que resolve o problema INTEIRO?
-- O que pode ser cortado sem perda?
+Escolha a solução e justifique em uma linha; não sirva cardápio nem pergunte
+o que o código responde. Decisões irreversíveis, destrutivas ou caras
+(dados, migrations, API pública, dinheiro), segredos e decisões exclusivas
+dele exigem confirmação antes da ação. A maestro pergunta; o despacho
+registra o bloqueio e devolve impacto e reversão.
 
-Comece pela experiência e trabalhe de trás para frente até a tecnologia.
-Nunca o contrário. Se houver incerteza real de UX ou arquitetura,
-construa o menor protótipo que permita VER a coisa, mostre, e só então
-construa de verdade.
+#### 5. Responda pelo produto inteiro
 
-#### 2. Discorde antes. Execute depois.
+Do primeiro comando à tela, responda por setup, execução, erros e documentos.
+Dependência quebrada exige conserto autorizado ou aviso explícito.
+A entrega funciona da cadeira do usuário.
 
-Se você discorda da abordagem: uma objeção em no máximo 5 linhas, com UMA
-alternativa concreta e o trade-off. Depois faça o que eu decidir.
+#### 6. Só declare pronto com prova
 
-Proibido: obedecer em silêncio a uma ideia que você sabe ser ruim.
-Proibido: trocar a minha ideia pela sua sem avisar.
+Rodou de verdade, com comando e saída real, ou escreva "NÃO RODEI".
+Trate vazio, erro, carregando, primeiro uso e entrada inválida. Todo erro
+explica o que aconteceu e o que fazer. Zero caminhos quebrados, placeholders
+ou "implementar depois". Nomes dizem o que são, renomeie quando necessário.
+Siga convenções existentes. Sem debug, código morto ou import sem uso.
+Todos os itens aplicáveis são obrigatórios; um item falhando impede PRONTO.
 
-#### 3. Diga não (mil "nãos" para cada "sim")
+#### 7. Faça o passe de remoção
 
-Cada coisa que você adiciona precisa justificar a própria existência em
-uma frase. Se não consegue, não adiciona. Na dúvida, não adiciona.
+Examine cada linha, arquivo, dependência e passo: se remover não quebra
+nada do pedido, remova. Pronto é quando não há mais nada a tirar.
 
-Proibido, salvo pedido explícito meu:
+#### 8. Revise com rigor
 
-- opções, flags e parâmetros de configuração "para dar flexibilidade"
-- abstrações para necessidades futuras hipotéticas
-- dependência nova quando a linguagem ou o projeto já resolvem
-- arquivos `utils`, `helpers`, `misc`, `common`
-- wrappers, camadas e indireção sem motivo que caiba em uma frase
-- comentários que explicam o óbvio, código comentado, TODOs
-- "melhorias" fora do escopo que eu não pedi
+Leia como o crítico mais implacável: liste o que reprovaria e corrija antes
+de entregar. Código que causaria vergonha numa apresentação não está pronto.
 
-Se a tarefa é grande: proponha o núcleo que muda tudo, entregue esse
-núcleo perfeito, e liste o resto como próximos passos. Uma coisa
-completa vale mais que cinco pela metade.
+#### 9. Demonstre e preste contas
 
-Prefira sempre: menos arquivos, menos linhas, menos conceitos, menos
-passos para o usuário.
+Mostre comando e saída real, tela ou artefato do jeito que o usuário vê.
+Checklist final e quatro blocos: **O que mudou**, **O que foi verificado**,
+**Pendências**, **Veredito** PRONTO ou NÃO PRONTO com motivo.
+Cortes só se houver; auditoria item a item só quando relevante.
+Sem elogio próprio, enchimento, repetir o que ele sabe ou "espero que ajude".
 
-#### 4. Decida. Não me entregue um cardápio.
+#### 10. Não substitua prova por promessa
 
-Quando peço um resultado, você escolhe a melhor solução, entrega, e diz
-em UMA linha por que escolheu. Não me apresenta quatro opções para eu
-escolher. Não faz pergunta cuja resposta está no código — vá olhar.
+Frases proibidas: "deve funcionar", "provavelmente", "em teoria",
+"bom o suficiente", "por enquanto", "depois a gente melhora",
+"solução temporária", "gambiarra", "quick fix". Se surgirem, falta concluir.
 
-Exceção obrigatória: decisões irreversíveis, destrutivas ou caras
-(apagar dados, migrations, mudar API pública, gastar dinheiro real).
-Nessas, pare e confirme antes.
+### As três costuras
 
-#### 5. O produto inteiro é responsabilidade sua
+A regra 3 proíbe adição não pedida, nunca subtração do pedido.
+A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.
+O formato da regra 9 inclui as obrigações da casa: CODEOWNERS nominal em
+mudanças; provas de integração/publicação só quando conferidas; bloqueio,
+decisão ou passo manual em Pendências. Nunca invente resultado para fechar.
 
-Você responde pelo caminho completo: do primeiro comando que eu digito
-até o resultado final na minha tela. "A função funciona" não é entrega.
-"A coisa funciona, da cadeira do usuário" é entrega.
-
-Isso inclui o setup, o comando para rodar, a mensagem de erro, o README
-de três linhas. Se a sua parte depende de algo que está quebrado, o
-problema é seu: conserte ou avise. Nunca finja que não viu.
-
-#### 6. Definição de "pronto"
-
-Uma tarefa só está pronta quando TODOS os itens abaixo são verdadeiros.
-Se um único item falha, você não diz "pronto".
-
-- [ ] Rodou de verdade (teste, comando, build, servidor) e mostra a saída.
-      Você nunca diz "deve funcionar". Ou rodou, ou escreve "NÃO RODEI".
-- [ ] Todo estado está tratado: vazio, erro, carregando, primeiro uso,
-      entrada inválida.
-- [ ] Toda mensagem de erro diz o que aconteceu E o que fazer.
-- [ ] Zero caminhos quebrados, zero placeholders, zero "implementar depois".
-- [ ] Nomes (variáveis, funções, arquivos, comandos) dizem exatamente o
-      que a coisa é. Renomear não é opcional.
-- [ ] Segue as convenções que JÁ existem no projeto. Uma adição
-      inconsistente é um bug.
-- [ ] Nada de print/log de debug, código morto, import sem uso.
-
-#### 7. O passe de remoção
-
-Antes de entregar, faça uma passada só para tirar. Pergunte a cada
-linha, arquivo, dependência e passo: "se eu remover isso, o que quebra?"
-Se a resposta for "nada", remova.
-
-Pronto não é quando não há mais nada a adicionar. É quando não há mais
-nada a tirar.
-
-#### 8. Revise como o crítico mais implacável do mundo
-
-Antes de entregar, leia o seu próprio trabalho como o revisor mais duro
-que existe. Liste o que ele criticaria. Corrija. Só então entregue.
-
-Teste final: se este código fosse projetado numa tela de keynote, você
-teria vergonha de alguma parte? Se sim, não está pronto.
-
-#### 9. Como entregar
-
-Demonstre, não descreva. Mostre o comando executado e a saída real, a
-tela, o arquivo gerado — do jeito que o usuário vê.
-
-Relatório final, sempre neste formato e nada além dele:
-
-- **O que mudou** — fatos, não adjetivos
-- **O que foi verificado e como** — comando + resultado
-- **O que foi cortado e por quê**
-- **O que eu preciso decidir** (se houver)
-
-Sem "espero que ajude". Sem resumir o que eu já sei. Sem elogiar o
-próprio trabalho.
-
-#### 10. Frases proibidas
-
-"deve funcionar" · "provavelmente" · "em teoria" · "bom o suficiente" ·
-"por enquanto" · "depois a gente melhora" · "solução temporária" ·
-"gambiarra" · "quick fix"
-
-Se uma dessas frases aparece na sua cabeça, o trabalho não terminou.
-
-### Como este Padrão convive com as leis desta casa
-
-**1. A regra 3 ("diga não") não autoriza entregar menos do que
-foi pedido.** Ela proíbe ADIÇÃO não pedida; a lei "feito completo" proíbe
-SUBTRAÇÃO do pedido. A regra 1 fecha a costura: "a versão MAIS SIMPLES que
-resolve o problema INTEIRO". Ninguém cita a regra 3, nem o passe de remoção,
-para recomendar escopo cortado.
-
-**2. A regra 4 ("não me entregue um cardápio") vale para as decisões que são
-SUAS, não para as que são dele.** O que é seu (biblioteca, nome, desenho, o
-que está no código), decida. O que é dele (só ele pode decidir, ou é
-irreversível, destrutivo ou caro) vai em caixa de pergunta estruturada
-(`AskUserQuestion`), opções em português simples.
-
-**3. O formato de relatório da regra 9 é o formato, e as obrigações desta casa
-cabem dentro dele.** "Nada além dele" proíbe enchimento, não o que a casa
-exige: veredito do deploy em "O que foi verificado"; merge em caminho
-CODEOWNERS, nominal, em "O que mudou"; passo manual ou bloqueio em "O que eu
-preciso decidir", com a caixa aberta junto; e, quando nada depende dele, a
-linha "nada depende de ninguém, ~8 min".
-
-**Quem faz valer:** `ci/padrao_de_trabalho.py` · `ci/tests/test_padrao_de_trabalho.py`.
+**Quem faz valer:** `ci/padrao_de_trabalho.py`; julgamento não automatizado.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-Use o contexto direcionado da abertura (`ci/sessao.py`) por caminho e sintoma.
-Confira origens, ausências e truncamento; abra as entradas citadas e recuperadas,
-`services/<celula>/LICOES.md` e, uma vez por sessão, os 8 padrões de
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho continuam
-obrigatórias. Para aprofundamento: `--caminho`/`--sintoma`, `--limite-contexto`
-ou `armadilhas/INDICE.md` (gerado fora do Git por `python ci/indice_de_armadilhas.py`).
+Use o contexto direcionado da abertura `ci/sessao.py`: confira origens,
+ausências e truncamento; abra entradas citadas/recuperadas,
+`services/<celula>/LICOES.md` e uma vez por sessão os 8 padrões de
+`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho permanecem.
+Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
+JSON com até 3 lições de 500 caracteres e origens.
+Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
+de restrições. Para aprofundamento, use `--caminho`/`--sintoma`/`--limite-contexto`
+da sessão ou abra `armadilhas/INDICE.md` sob demanda, nunca a pasta inteira.
 
-**Ao terminar, acrescente o que aprendeu:** arquivo novo `armadilhas/NNN-slug.md`
-com o `NNN` pedido ao almoxarife (`python ci/reservar.py numero armadilha`), e
-regenere o índice; lição só de uma célula vai no `LICOES.md` dela. Nunca no
-`ARMADILHAS.md`, nunca na entrada de outro agente. Se a lição morde ao tocar um
-caminho, declare `gatilho:` e `licao:` no frontmatter. Correção fora das suas
-mãos (instalar, plano pago, permissão): registro `pendencia` com
-`precisa_do_dono: true`, dito no relatório final.
+Lição nova: número por `python ci/reservar.py numero armadilha`, arquivo
+novo `armadilhas/NNN-slug.md`, índice regenerado. Não acrescente a
+`ARMADILHAS.md` nem edite entrada alheia. Declare `gatilho` e `licao`
+quando ligados a caminho. Lição exclusiva da célula vai ao `LICOES.md`.
+O escrivão julga lições da equipe. Correção fora do alcance exige registro
+`pendencia`, `precisa_do_dono: true`, e relatório.
 
-**Quem faz valer:** `ci/muralha-do-indice.sh` · `.githooks/pre-commit` · `ci/muralha-das-reservas.sh` · `ci/licao_do_caminho.py` · `ci/tests/test_licao_do_caminho.py` · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`. A leitura em si não tem mecanismo (`ci/leis-sem-mecanismo.txt`).
+**Quem faz valer:** `ci/consultar_armadilhas.py`, muralhas do índice e reservas.
 
 ## O clone principal é espelho, não bancada
 
-Na pasta principal, nunca edite nem mude o estado do git. Crie a sua bancada:
+Nunca edite nem mude o git no principal. Abra
+`python ci/sessao.py --celula <area> --tarefa <slug> --sem-container`
+para área sem serviço; com serviço, omita `--sem-container`.
+Entre no caminho absoluto informado. Retome pela mesma entrada, preservando
+alterações. Recusa exige conferir dono e ação segura, nunca forçar.
+Baseline da abertura é conferido antes de editar; sem contêiner, rode testes
+dos alvos. Falha herdada exige saída e revisão medida, ausência não aprova.
+No principal são livres leituras, fetch, worktree e gh; somente com árvore
+limpa são permitidos switch main e pull. A abertura atualiza o espelho quando seguro.
 
-```bash
-python ci/sessao.py --celula <area> --tarefa <slug> --sem-container
-```
-
-No principal ficam livres leituras, `git fetch`, `git worktree` e `gh`; com a
-árvore limpa, `git switch main` e `git pull`. A recusa 🧱 não se contorna
-(`armadilhas/135`). O espelho se atualiza sozinho na abertura da sessão, só
-quando é seguro.
-
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, hook em `.claude/settings.json` · `ci/tests/test_muralha_pasta_compartilhada.py`.
+**Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`
+(aviso SessionStart; a proibição de editar continua lei).
 
 ## Todo pedido do mantenedor é um lote
 
-A sessão que recebe um pedido dele É a maestro. Ela divide o pedido em pedaços
-independentes (prefira uma célula por PR; CONSTITUICAO Lei 2 exige as suítes
-de todas as tocadas; teto de 15 arquivos, fora `painel/` e `fila/`), dispara
-um sub-agente por pedaço com a ficha `despacho`,
-em paralelo, e mantém em série só o que depende de outro pedaço. Enquanto os
-checks rodam, o `revisor` lê o diff. `make pr` reserva e embarca recibo e eventos;
-não repita esses efeitos com o `escrivao`, que julga lições e fatos adicionais.
-A maestro arma a espera, consolida o placar e fala com ele. Confira PRs abertos.
+A sessão que recebe o pedido é a maestro: confira PRs abertos, delegue
+partes independentes em paralelo e dependências em série. Prefira uma célula por PR; se tocar várias,
+rode todas as suítes. Teto de 15 arquivos, fora `painel/` e `fila/`.
+Contrato congelado e CODEOWNERS exigem mandato escrito. Dependência externa
+ao brief volta à maestro, com `Depende-de: #N`.
+Revisor independente lê o diff. `make pr` embarca reserva, recibo e eventos.
+Escrivão registra lições/fatos adicionais sem duplicar esses efeitos.
+Subagente nunca pergunta ao mantenedor nem dispara subagente.
+Ficha em `.codex/agents/` ou `.claude/agents/`; regência `RUNBOOK-LOTES.md`.
 
-As fichas em `.claude/agents/` carregam o rito; o brief leva SÓ a tarefa e as
-armadilhas dela. Sub-agente nunca pergunta ao mantenedor nem dispara outro
-sub-agente. Regência: `RUNBOOK-LOTES.md`.
-
-**Quem faz valer:** `ci/tests/test_fichas_de_robo.py`. A divisão e o disparo em paralelo são julgamento da maestro, sem mecanismo.
+**Quem faz valer:** `ci/pr.py` e testes das fichas; divisão é julgamento.
 
 ## O que uma chamada custa
 
-Cada comando reenvia a conversa inteira, e sub-agente sem `model` herda o
-modelo da maestro, o mais caro.
+Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
+nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
+dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
+com o que levar; ele decide. Economia não reduz ambição.
 
-1. **O modelo se escolhe, não se herda.** `model: "sonnet"` para rotina
-   (registro, armadilha, texto de tela, teste, rota, semente); o de cima para
-   arquitetura, contrato e código novo do produto. Na dúvida, o de cima.
-2. **Conversa que engorda avisa.** Acima de ~300k de contexto, a sessão diz
-   isso ao mantenedor em uma linha e sugere conversa nova, dizendo o que
-   levar. Quem fecha é ele.
-
-Isto muda o preço unitário, nunca a ambição.
-
-**Quem faz valer:** `ci/tests/test_fichas_de_robo.py`. O resto é julgamento da maestro, sem mecanismo.
+**Quem faz valer:** `ci/economia_da_fabrica.py`.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
-Entre a opção completa e a reduzida, a completa é o padrão, mesmo custando
-mais tempo, mais PRs e mais sessões dele
-(`docs/decisoes/DECISAO-filosofia-de-escopo.md`).
+Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
+Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
+segurança são bloqueios reais.
 
-- Nenhum agente, nem banca de segunda opinião, recomenda escopo reduzido para
-  economizar tempo ou esforço.
-- Não use "isso leva dias/semanas" para desencorajar ambição.
-- Não é desculpa para descuido: PRs pequenos, orçamento de 15 arquivos, Ritos
-  de Contrato e evidência vermelho→verde continuam. Fatiar em fases é o
-  caminho; "completo" é o destino.
-- Bloqueio real (serviço pago, credencial só dele, limite legal, segurança)
-  continua sendo bloqueio real.
+**Quem faz valer:** julgamento.
 
 ## Nenhum texto publicado sai com travessão
 
-Texto que alguém fora do bastidor lê sai sem travessão (`—`, `–`, `―` e as
-formas HTML). A troca é uma REESCRITA em português correto: vírgula
-(explicação no meio), parênteses (acessório), dois-pontos (fechamento no fim
-da frase), aspas (fala). Dois-pontos nunca separa verbo de complemento nem
-abre continuação direta (`é`, `são`, `não`): aí é vírgula com conectivo, ou
-ponto final. Leia em voz alta; se tropeçar, está errado. Hífen é livre. Título
-de aba usa barra: `Cadastro | Meshcraft`.
+Proíba `—`, `–`, `―` e entidades HTML em texto publicado.
+Reescreva em português: vírgula para explicação, parênteses para acessório,
+dois-pontos para fechamento, aspas para fala. Não separe verbo de complemento
+nem continuação direta com dois-pontos; use conectivo ou ponto. Leia em voz alta.
+Hífen livre; título de aba usa barra: `Cadastro | Meshcraft`.
+Vale em templates, traducoes, documentos, management/commands, rótulos
+TextChoices fora de migrations e arquivos `ci:texto-publicado`.
+Exclua bastidor (`ci/texto-publico-bastidor.txt`), `painel/ia/`, não publicado
+e a obra dele (aulas/livro), sem contagem de riscas nem pedido de reescrita.
+O portão mede arquivos; texto semeado exige migração de dados (forum/0003).
+Confira `python ci/travessao.py --listar`.
 
-Onde vale: toda `templates/`, `traducoes/` e
-`documentos/`; `management/commands/`; o RÓTULO de todo `TextChoices` (fora
-`migrations/`); e qualquer arquivo com o comentário `ci:texto-publicado`.
-Fora: o bastidor do mantenedor (`ci/texto-publico-bastidor.txt`), `painel/ia/`,
-o que nunca é publicado e **a OBRA dele (o texto das aulas e o do livro), onde
-nenhuma tela conta riscas nem pede reescrita**
-(`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`). O portão vigia
-ARQUIVOS, não o banco: texto já semeado em produção se conserta por migração de
-dados (molde em `forum/migrations/0003`). Na dúvida,
-`python ci/travessao.py --listar`.
-
-**Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` · `ci/tests/test_travessao.py` · na escrita, `ci/muralha_do_travessao_na_escrita.py` · `ci/tests/test_muralha_do_travessao_na_escrita.py` · a obra, `services/admin/tests/test_editor_de_aulas.py`.
+**Quem faz valer:** `ci/travessao.py` no pre-commit (staged), CI e testes do editor.
 
 ## O livro de ocorrências é obrigatório, não opcional
 
-O painel do dono (`painel/painel.html`, gerado) não guarda dado próprio: tudo
-é calculado de `painel/registros/`. Depois de CADA tarefa relevante
-(concluída, falhou, bloqueou, incidente, decisão pedida ou respondida),
-acrescente UM REGISTRO NOVO, sem perguntar: molde em `painel/LEIA-ME.md`,
-número por `python ci/reservar.py numero registro`, menos de 1 KB.
+Conclusão, falha, bloqueio, incidente e decisão pedida/respondida exigem
+registro novo <1 KB em `painel/registros/`; molde `painel/LEIA-ME.md` e número
+por `python ci/reservar.py numero registro`. Nunca edite registro; correção
+é outro, com `responde_a` ao fechar pedido. Verde exige `evidencia` e
+`verificado_em`. `make pr` abre PR e embarca recibo no ramo: não repita esses efeitos.
+Só registro é commitado; painel.html e livro-AAAAMM.js são gerados.
+Merge confirmado de fora: `gh pr view <N> --json state,mergedBy,mergeCommit`
+e registro na mesma resposta. Telas calculam o livro, sem lista paralela.
+Superfície muda em `painel/logica.js` por PR com guarda; painéis em arquivos/
+são lápides. Sem tipo específico, use nota.
 
-- **Commite só o registro.** Os gerados (`painel.html`, `livro-AAAAMM.js`) não
-  viajam no Git.
-- **Nunca edite um registro.** Correção ou resposta é registro novo, com
-  `responde_a` quando fecha um pedido.
-- **Verde exige prova conferida** (`evidencia` + `verificado_em`).
-- **O registro EMBARCA no próprio PR:** abra o PR, leia o número, escreva o
-  registro citando-o, commite no mesmo ramo. Sem recibo não há pouso.
-- **Merge confirmado de fora** também é gatilho de registro: confira com
-  `gh pr view <N> --json state,mergedBy,mergeCommit` e registre na mesma resposta.
-- **Nenhum fato mora em dois lugares.** Superfície nova se calcula do livro;
-  lista própria é proibida. O que falta no painel muda em `painel/logica.js`,
-  por PR, com teste-guarda. Os painéis de `arquivos/painel-*.html` são lápides.
-- Sem `tipo` adequado, `nota` serve para quase tudo.
-
-**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` · `.githooks/pre-commit` → `ci/registro_no_commit.py` · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
 
 ## O agente pede pouso; quem mergeia é a pista
 
-Ninguém espera pelo mantenedor, e o agente não mergeia: pede pouso e vai
-embora.
+Um commit técnico de fechamento substitui microcommits; preserve histórico
+e recibo automático. `git add` por arquivo, nunca `git add -A`; confira o staged.
+Despacho entrega número, ramo, SHA e provas. Maestro confere revisão
+independente e recibo, executa `python ci/mergear.py <N> --pousar`, confirma
+etiqueta e SHA e encerra. Não espere checks, merge ou deploy.
+A pista acompanha checks e integra somente pelo portão; encaminhamento
+não é integração nem publicação. FAIL admite até duas correções; depois
+preserve arquivos/commits e reporte. ERROR é instrumento, nunca aprovação.
+Não espere pelo mantenedor. Resultado posterior vem da pista; urgência
+de publicação segue alarme-main.
 
-1. PR aberto → registro embarcado no mesmo ramo.
-2. Peça pouso assim que o PR tiver revisão independente e recibo:
-
-   ```bash
-   python ci/mergear.py <N> --pousar
-   ```
-
-   O comando confirma a etiqueta e a revisão remota, retorna JSON e encerra.
-   Checks pendentes aguardam na pista; reprovação real exige correção.
-3. **Depois do pouso pedido, ENCERRE.** Não espere checks, merge ou deploy.
-   A pista reage aos eventos do GitHub e publica o desfecho no PR.
-4. Merge tocando `services/` ou `infra/`: a maestro verifica o deploy
-   na PRÓXIMA sessão, não nesta. Se houver urgência, o alarme-main dispara
-   issue.
-
-**Quem faz valer:** `ci/mergear.py` · `.github/workflows/pouso.yml` · `ci/tests/test_mergear.py`.
+**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`, seus testes.
 
 ## O que você entrega para ele mora no site
 
-Toda entrega que ele vai ler mais de uma vez nasce dentro de `meshcraft.top`
-(`docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md`). A pergunta que decide
-onde: **isto se apoia em fatos que o sistema já conhece?**
+Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
+Documento recebido é ordem de serviço: inventarie, compare, abra fila e
+execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
-- **Sim** (votos, alunos, tarefas, dinheiro, estado): tela calculada em
-  `/admin/`, com teste; nunca documento com número escrito dentro.
-- **Não** (plano, lei, explicação, roteiro): editor em `/admin/documentos/`.
-- **Para IA de fora ler:** `/mapa-ia/planos/`; artefato do claude.ai é privado.
-
-Prévia na conversa e texto curto na resposta continuam valendo.
-
-**O inverso é a mesma lei: documento que ELE envia é ordem de serviço, não
-conteúdo para arquivar** (`armadilhas/362`). Pergunte: "se eu só guardar isto,
-o que ele pediu passa a existir?" Se não, o rito é de obra: inventário do que
-precisa existir; diff com a realidade, olhando código e site; o que falta vira
-tarefa na fila (RITOS §5), citando o documento; o despacho começa na mesma
-sessão; a página com o documento é subproduto.
+**Quem faz valer:** julgamento.
 
 ## Como trabalhar com o mantenedor
 
-Ele é leigo em código e em terminal e lê SOMENTE português: **toda resposta
-em PT-BR, sempre.**
+Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
+VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 
-- **Faça você o máximo.** Ele só entra onde é insubstituível (segredos,
-  console do provedor). Agente não tem SSH para a VPS: o canal é o pipeline.
-- **Passo manual é UM bloco único de colar**, fail-closed ("PAROU POR
-  SEGURANÇA"), **dizendo em qual janela colar:** `PS C:\>` é o PC;
-  `deploy@srv...` ou `root@srv...` já é a VPS. Avise antes as surpresas:
-  senha invisível, silêncio é sucesso, `>>` acrescenta e `>` apaga.
-- **Reporte em linguagem de resultado** ("a plataforma está no ar"); marcos se
-  celebram.
-- **Qualquer coisa pendente nele vira pergunta estruturada ali mesmo**
-  (`AskUserQuestion`), cada opção em português simples (o porquê e a
-  consequência) e a recomendada marcada. A régua: "isto ia deixá-lo compondo
-  resposta livre?" Se ele fechar a caixa sem responder, é "não agora": pare e
-  não repita. Em lote, quem pergunta é só a maestro, numa pergunta só.
+**Quem faz valer:** julgamento.
 
 ## Plano na abertura, contas no fecho
 
-1. **Na abertura.** Pedido que muda o mundo começa por `## Plano`, um `- [ ]`
-   por passo.
-2. **Ao fim de cada etapa.** Reimprima o MESMO checklist marcado e a linha
-   `Onde estou: passo N de M`, com o próximo passo dito.
-3. **No fecho.** O checklist no estado final (PRONTO com caixa aberta é
-   contradição) e os seis blocos:
-   - **O que mudou** — fatos, não adjetivos
-   - **O que foi verificado e como** — o comando e a saída real
-   - **O que foi cortado e por quê** — "nada" é resposta
-   - **O que eu preciso decidir** — ou a linha dizendo que nada depende dele
-   - **Auditoria de qualidade** — a regra 6 item a item, e o que a regra 8 atacaria
-   - **Veredito:** PRONTO ou NÃO PRONTO, com uma linha do porquê
+Abra com `## Plano` e `- [ ]` por passo. Cada etapa reimprime checklist,
+`Onde estou: passo N de M` e próximo passo. Fecho segue regra 9.
+PRONTO com caixa aberta é contradição; NÃO PRONTO honesto é aceito.
+Leitura, pergunta respondida e acordar de espera não geram dívida.
 
-NÃO PRONTO é resposta honesta e aceita. O portão cala em turno que só leu, em
-pergunta respondida e nos acordares de espera; a dívida se paga só com o
-relatório, no turno que fez o trabalho.
-
-**Quem faz valer:** `ci/prestacao_de_contas.py` (`Stop` e `UserPromptSubmit`) · `ci/tests/test_prestacao_de_contas.py`. A ponta 2 não tem mecanismo.
+**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit e Stop)
+e testes; checklist intermediário é julgamento.
 
 ## Mapa do projeto para IA
 
-`painel/ia/INDICE.md` é o mapa técnico do projeto inteiro, para uma IA sem
-contexto auditar o sistema. Abra em auditoria ampla ou segunda opinião de
-arquitetura, não em todo despacho. Se divergir do original, o original vence,
-e quem perceber corrige o mapa no mesmo PR.
+`painel/ia/INDICE.md` é o mapa técnico para auditoria ampla/segunda opinião
+de arquitetura, não leitura de todo despacho. Fonte original vence divergência;
+quem detectar corrige mapa no mesmo PR.
 
 **Quem faz valer:** `ci/tests/test_painel_ia_atualizado.py`.
