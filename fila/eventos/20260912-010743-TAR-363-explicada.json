@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-010743-TAR-363-explicada",
+  "tarefa": "TAR-363",
+  "evento": "explicada",
+  "quando": "2026-09-12T01:07:43+00:00",
+  "quem": "Plano-Mestre10X e Diamantes aprovados pelo mantenedor; orientação final concentrar em concluir.",
+  "o_que_e": "O encerramento relê toda a conversa e pode pedir um relatório longo novamente.",
+  "o_que_muda": "O robô entrega as contas em quatro blocos e encerra sem repetição de cobranças.",
+  "exemplo": "Depois de corrigir a tarefa, a resposta informa a mudança, a verificação, a pendência e o resultado.",
+  "importancia": 90
+}
