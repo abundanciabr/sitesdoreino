@@ -1071,6 +1071,7 @@ def pedir_pouso(numero: int, head_esperado: str) -> int:
 
 MARCA_DA_PORTA = "🚪 PORTA (evento da fila)"
 TENTATIVAS_DE_LEITURA_DO_DIFF = 3
+TENTATIVAS_DE_EMPURRAO = 3
 AUTOR_DA_PORTA = "pista de pouso"
 EMAIL_DA_PORTA = "pista@meshcraft.top"
 
@@ -1155,8 +1156,23 @@ def concluir_tarefas_do_pr(
             arquivos_do_diff=diff.ler("o fechamento da tarefa"),
         )
         escritos = fila.gravar_conclusoes_pela_porta(raiz, achados)
-        _empurrar_conclusoes(raiz, escritos, numero)
+        _empurrar_com_tentativas(raiz, escritos, numero)
     except Exception as erro:  # noqa: BLE001 — ver o cabeçalho: falha aqui grita
+        # A falha também se MEDE: sem isto, a única classe de desfecho que a
+        # telemetria não veria seria justamente a que dói.
+        telemetria.registrar(
+            "evento_da_fila_pela_porta",
+            {
+                "modo": "valendo",
+                "pr": numero,
+                "tarefa": ",".join(dict.fromkeys(citadas)),
+                "desfecho": "falhou",
+                "motivo": f"{erro.__class__.__name__}: {erro}",
+                "arquivo": "",
+            },
+            cwd=str(raiz),
+            sessao=os.environ.get("GITHUB_RUN_ID") or "",
+        )
         print(
             f"\nERROR: o PR #{numero} ENTROU na main, mas não consegui fechar a "
             f"tarefa dele na fila ({erro.__class__.__name__}: {erro}).\n"
@@ -1249,6 +1265,31 @@ def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> None:
     ).strip()
     _git(raiz, ["push", "origin", f"{commit}:refs/heads/main"], "empurrar a conclusão")
     print(f"{MARCA_DA_PORTA}: {tarefas} fechada(s) na main pelo commit {commit[:12]}.")
+
+
+def _empurrar_com_tentativas(raiz: Path, escritos: list[dict], numero: int) -> None:
+    """A `main` pode andar entre o `fetch` e o `push`, e aí o push é recusado.
+
+    Um pouso por vez é garantido pelo `concurrency` da pista, mas a `main` não
+    é só dela: deploy e mão humana também escrevem ali. Sem isto, uma corrida
+    de segundos faria a passagem inteira terminar VERMELHA por um empurrão que
+    só precisava ser refeito sobre a ponta nova.
+    """
+    ultimo: Exception | None = None
+    for tentativa in range(1, TENTATIVAS_DE_EMPURRAO + 1):
+        try:
+            _empurrar_conclusoes(raiz, escritos, numero)
+            return
+        except ErroDeInstrumentacao as erro:
+            ultimo = erro
+            print(
+                f"{MARCA_DA_PORTA}: o empurrão falhou na tentativa {tentativa} "
+                f"de {TENTATIVAS_DE_EMPURRAO}; a main pode ter andado."
+            )
+    raise ErroDeInstrumentacao(
+        f"não consegui levar a conclusão do PR #{numero} para a main",
+        f"Foram {TENTATIVAS_DE_EMPURRAO} tentativas. Ultima falha:" + chr(10) + str(ultimo),
+    )
 
 
 def _git(

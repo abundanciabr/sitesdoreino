@@ -1268,7 +1268,7 @@ def test_a_porta_fecha_a_tarefa_e_leva_o_evento_para_a_main(
 ):
     """(a) O coração da graduação: depois do merge, a tarefa está concluída —
     e não no disco efêmero da pista, e sim na `main`, com o link do PR."""
-    # guarda: ci/mergear.py:1250
+    # guarda: ci/mergear.py:1266
     raiz, origem = _repo_com_origem(tmp_path)
     chamadas: list = []
     _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
@@ -1323,7 +1323,7 @@ def test_diff_ilegivel_tenta_tres_vezes_e_entao_grita(monkeypatch, tmp_path, cap
 
     O merge NÃO é desfeito nem contestado: quando isto roda, ele já entrou.
     """
-    # guarda: ci/mergear.py:1614
+    # guarda: ci/mergear.py:1655
     raiz, origem = _repo_com_origem(tmp_path)
     chamadas: list = []
     quedas: list = []
@@ -1386,6 +1386,47 @@ def test_a_main_ja_com_a_conclusao_nao_recebe_commit_novo(monkeypatch, tmp_path)
     escritos[0]["caminho"].write_text('{"tarefa": "TAR-001", "de novo": 1}', encoding="utf-8")
     mergear._empurrar_conclusoes(raiz, escritos, 100)
     assert _git_no(origem, "rev-parse", "main").strip() == ponta
+
+
+def test_empurrao_recusado_uma_vez_e_refeito_sobre_a_ponta_nova(monkeypatch, tmp_path):
+    """A `main` não é só da pista: deploy e mão humana também escrevem nela, e
+    o push recusado por ela ter andado é conserto, não falha da entrega."""
+    raiz, origem = _repo_com_origem(tmp_path)
+    quedas: list[int] = []
+    de_verdade = mergear._empurrar_conclusoes
+
+    def _empurrao_que_cai_uma_vez(raiz_, escritos, numero):
+        quedas.append(numero)
+        if len(quedas) == 1:
+            raise mergear.ErroDeInstrumentacao("push recusado", "a main andou")
+        return de_verdade(raiz_, escritos, numero)
+
+    monkeypatch.setattr(mergear, "_empurrar_conclusoes", _empurrao_que_cai_uma_vez)
+    chamadas: list = []
+    _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    assert len(quedas) == 2
+    assert [n for n in _eventos_na_main(origem) if n.endswith("-concluida.json")]
+
+
+def test_empurrao_recusado_ate_o_fim_derruba_o_pouso_sem_tocar_no_merge(
+    monkeypatch, tmp_path, capsys
+):
+    """Se nem as três tentativas levarem a conclusão, o comando sai != 0 — a
+    fila mentiria em silêncio se ele saísse 0."""
+    raiz, origem = _repo_com_origem(tmp_path)
+
+    def _empurrao_que_sempre_cai(_raiz, _escritos, _numero):
+        raise mergear.ErroDeInstrumentacao("push recusado", "a main andou")
+
+    monkeypatch.setattr(mergear, "_empurrar_conclusoes", _empurrao_que_sempre_cai)
+    chamadas: list = []
+    _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 2
+    saida = capsys.readouterr().out
+    assert f"de {mergear.TENTATIVAS_DE_EMPURRAO}" in saida
+    assert "mergeado de verdade" in saida
+    assert not any(n.endswith("-concluida.json") for n in _eventos_na_main(origem))
 
 
 def test_o_main_abre_o_diff_uma_vez_para_a_porta_e_para_a_sombra_da_area(
