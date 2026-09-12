@@ -1,0 +1,20 @@
+{
+  "arquivo": "366-corrigir-rede-do-windows-em-checkout-limpo",
+  "id": "TAR-366",
+  "titulo": "Corrigir rede do Windows em checkout limpo",
+  "toca": [
+    "ci/tests/test_verificar_painel.py",
+    "ci/tests/test_por_a_chave_da_ia_do_admin.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Reproduzir o painel ausente e a indisponibilidade do WSL; provar isolamento do checkout, rodar os dois focais, a rede testador e a suite admin.",
+  "despacho": "Corrigir os dois testes sem alterar producao: gerar e verificar painel em checkout temporario isolado e usar o Bash sondado sem exigir docker-desktop. Armadilhas 421 e 458. Brief tipo teste, modelo_recomendado gpt-5.6-sol, esforco_recomendado medium, teto_de_contexto 100000.",
+  "origem": "Pedido do mantenedor para concluir PR #1594 e confirmar Windows verde; falhas herdadas reproduzidas na main 5be205553f8f425935e613c43dcc0ddd5291c826.",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
