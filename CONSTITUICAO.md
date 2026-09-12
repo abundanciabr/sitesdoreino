@@ -141,8 +141,10 @@ nunca por cirurgia de infra.
 
 
 Toda tarefa desta plataforma obedece ao **Padrão de Trabalho (Modelo Steve Jobs /
-Apple)**, escrito por inteiro na PRIMEIRA seção do `CLAUDE.md` da raiz — o único
-documento que entra sozinho no contexto de toda sessão. É lei deste repositório
+Apple)**, preservado em forma compacta, sem perda das obrigações, na PRIMEIRA
+seção do `CLAUDE.md` da raiz, a fonte canônica referenciada por `AGENTS.md`.
+A autorização está em `docs/decisoes/DECISAO-contexto-sob-demanda.md`.
+É lei deste repositório
 desde 04/09/2026, por ordem do mantenedor, e não sugestão: resolver o problema
 REAL por trás do pedido; discordar ANTES e executar depois; decidir em vez de
 servir cardápio; responder pelo caminho inteiro até a tela do usuário; e a

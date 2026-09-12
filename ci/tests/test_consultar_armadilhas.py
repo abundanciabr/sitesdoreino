@@ -43,7 +43,7 @@ licao: Confira o comando e restaure a configuração antes de repetir, caso {num
 
 
 def test_sinal_real_com_caminho_deduplica_e_limita(catalogo):
-    # guarda: ci/consultar_armadilhas.py:78
+    # guarda: ci/consultar_armadilhas.py:81
     r = consulta.consultar(catalogo, 'FalhaConhecida numero 1', 'services/exemplo/rota.py')
     assert r['estado'] == 'PASS'
     assert [x['id'] for x in r['resultados']] == ['001', '002', '003']
@@ -54,6 +54,19 @@ def test_sinal_real_com_caminho_deduplica_e_limita(catalogo):
 def test_glob_nao_e_regex_e_normaliza_barra(catalogo):
     assert len(consulta.consultar(catalogo, caminho=r'services\exemplo\rota.py')['resultados']) == 3
     assert not consulta.consultar(catalogo, caminho='services/exemplo/rotaXpy')['resultados']
+
+
+def test_gatilho_de_diretorio_inclui_descendentes_sem_confundir_vizinhos(catalogo):
+    # guarda: ci/consultar_armadilhas.py:67
+    indice = catalogo / 'armadilhas/GATILHOS.json'
+    dados = json.loads(indice.read_text(encoding='utf-8'))
+    dados['gatilhos'][0]['caminho'] = 'services/admin/'
+    indice.write_text(json.dumps(dados), encoding='utf-8')
+    for caminho in ['services/admin/views.py', r'services\admin\tests\test_views.py']:
+        resultado = consulta.consultar(catalogo, caminho=caminho)
+        assert resultado['estado'] == 'PASS'
+        assert [item['id'] for item in resultado['resultados']] == ['001']
+    assert not consulta.consultar(catalogo, caminho='services/admin_extra/views.py')['resultados']
 
 
 def test_extrai_solucao_sem_metadados_nem_historia(tmp_path):

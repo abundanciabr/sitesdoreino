@@ -197,6 +197,14 @@ def test_obrigacao_removida_reprova(tmp_path, obrigacao):
     _falha(padrao.conferir(raiz), "as exigências literais")
 
 
+def test_constituicao_preserva_a_lei_canonica_compacta():
+    constituicao = (RAIZ / 'CONSTITUICAO.md').read_text(encoding='utf-8')
+    lei = constituicao.split('## Lei 10', 1)[1].split('## Definição de Pronto', 1)[0]
+    assert 'forma compacta, sem perda das obrigações' in lei
+    assert 'AGENTS.md' in lei
+    assert 'escrito por inteiro' not in lei
+
+
 def test_codex_sem_ponteiro_canonico_reprova(tmp_path):
     raiz = _cenario(tmp_path, **{"AGENTS.md": ("Leia `CLAUDE.md` antes de agir", "Leia o resumo")})
     _falha(padrao.conferir(raiz), "Codex aponta para a lei")

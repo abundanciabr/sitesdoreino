@@ -62,7 +62,10 @@ def consultar(raiz: Path, sintoma: str = '', caminho: str = '') -> dict:
             if Path(alvo).is_absolute():
                 alvo = Path(alvo).resolve().relative_to(raiz.resolve()).as_posix()
             for gatilho in gatilhos:
-                if fnmatch.fnmatchcase(alvo.removeprefix('./'), gatilho['caminho']):
+                padrao = gatilho['caminho']
+                if padrao.endswith('/'):
+                    padrao += '*'
+                if fnmatch.fnmatchcase(alvo.removeprefix('./'), padrao):
                     candidatos.append(gatilho)
         resultados = []
         vistos = set()
