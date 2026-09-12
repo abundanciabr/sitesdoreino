@@ -1111,8 +1111,7 @@ class DiffDoPR:
                             "/files?per_page=100",
                         ],
                         self._raiz,
-                        f"ler o diff do PR #{self._numero} para {quem}"
-                        f" (tentativa {tentativa} de {TENTATIVAS_DE_LEITURA_DO_DIFF})",
+                        f"ler o diff do PR #{self._numero} para {quem}",
                     )
                 )
                 return self._remessas

@@ -1268,7 +1268,7 @@ def test_a_porta_fecha_a_tarefa_e_leva_o_evento_para_a_main(
 ):
     """(a) O coração da graduação: depois do merge, a tarefa está concluída —
     e não no disco efêmero da pista, e sim na `main`, com o link do PR."""
-    # guarda: ci/mergear.py:1251
+    # guarda: ci/mergear.py:1250
     raiz, origem = _repo_com_origem(tmp_path)
     chamadas: list = []
     _armar_pouso(monkeypatch, raiz, _pr_que_cita_a_tarefa(), _gh_de_mentira(chamadas))
@@ -1323,7 +1323,7 @@ def test_diff_ilegivel_tenta_tres_vezes_e_entao_grita(monkeypatch, tmp_path, cap
 
     O merge NÃO é desfeito nem contestado: quando isto roda, ele já entrou.
     """
-    # guarda: ci/mergear.py:1615
+    # guarda: ci/mergear.py:1614
     raiz, origem = _repo_com_origem(tmp_path)
     chamadas: list = []
     quedas: list = []
