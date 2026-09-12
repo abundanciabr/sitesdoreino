@@ -14,6 +14,13 @@ publico-para-ia: true
 > 2) fica como degrau seguinte, e depende de duas decisões que ele deixou para
 > depois: o teto do dia e as tarefas da fábrica (registro `20260905-015`, na
 > caixa "Precisa de você"). A tarefa dele nasce na fila quando elas chegarem.
+>
+> **Emenda 12/09/2026, a tríade** (`docs/decisoes/DECISAO-triade-de-ias.md`):
+> a sessão-maestro é o Claude Code (rege, despacha, executa o cirúrgico com as
+> próprias mãos, revisa o crítico e nunca mergeia); o executor da fila
+> previsto no degrau 2 passa a ser o Codex, pela ficha `despacho`; a auditoria
+> de `origin/main` e a verificação de cada entrega alheia depois do merge (a de
+> ficha dele, a maestro verifica) são do Antigravity. O corpo §0 a §11 é histórico e fica como estava.
 
 **Escrito em 05/09/2026**, a partir de: a pergunta dele; a medição da fila, do
 runbook de lotes e da pista contra o `origin/main` (commit `540f6994`); o veredito
@@ -466,3 +473,5 @@ aprendido vai para o `RUNBOOK-LOTES.md` §9 como lição de regência.
 lote por pedido) foi construído no PR #1056. O despachante espera as duas
 decisões do §8 (teto do dia; tarefas da fábrica), registradas como pendência
 `20260905-015`. Quem responde "isto foi feito?" continua sendo o livro e a fila.
+
+**Emenda 12/09/2026, a tríade:** o Claude Code rege, despacha, executa o cirúrgico e revisa o crítico, sem mergear; o Codex é o executor da fila pela ficha `despacho`; o Antigravity audita e verifica depois do merge (`docs/decisoes/DECISAO-triade-de-ias.md`).
