@@ -29,7 +29,7 @@ def test_pendente_entra_na_fila_mas_nao_passa_no_portao(status):
 
 
 def test_checks_ainda_nao_criados_podem_aguardar_na_fila():
-    # guarda: ci/mergear.py:999
+    # guarda: ci/mergear.py:1005
     dados = pr()
     r = relatorio(*mergear.checar_checks(dados))
     assert r.estado is Estado.ERROR
@@ -47,7 +47,7 @@ def test_pendencia_de_checks_nao_esconde_recusa(nome, estado):
 
 
 def test_check_reprovado_nao_e_espera():
-    # guarda: ci/mergear.py:1006
+    # guarda: ci/mergear.py:1012
     dados = pr([{"name": "muralhas", "status": "COMPLETED", "conclusion": "FAILURE"}])
     assert not mergear.pode_aguardar_na_pista(relatorio(*mergear.checar_checks(dados)), dados)
 
@@ -86,7 +86,7 @@ def test_fila_devolve_json_e_confere_etiqueta_sem_merge(monkeypatch, capsys):
 
 
 def test_etiqueta_nao_confirmada_nao_anuncia_sucesso(monkeypatch, capsys):
-    # guarda: ci/mergear.py:1028
+    # guarda: ci/mergear.py:1034
     monkeypatch.setattr(mergear, "raiz_do_repo", lambda: ".")
     monkeypatch.setattr(mergear, "_gh", lambda *a, **k: json.dumps({"state": "OPEN", "headRefOid": "a" * 40, "labels": []}))
     assert mergear.pedir_pouso(99, "a" * 40) == 2
@@ -145,3 +145,28 @@ def test_recusa_estruturada_preserva_diagnostico_sem_etiquetar(monkeypatch, caps
     saida = json.loads(capsys.readouterr().out)
     assert saida["estado"] == "RECUSADO"
     assert saida["motivos"] == [{"verificacao": "recibo", "estado": "FAIL", "resumo": "recibo ausente"}]
+
+
+@pytest.mark.parametrize("situacao,esperado,enfileira", [
+    ("OPEN", Estado.ERROR, True), ("CLOSED", Estado.FAIL, False),
+    ("MERGED", Estado.PASS, False), ("consulta", Estado.ERROR, True),
+])
+def test_dependencia_pendente_aguarda_na_pista(monkeypatch, situacao, esperado, enfileira):
+    # guarda: ci/mergear.py:1001
+    from pathlib import Path
+    dados = pr(body="Depende-de: #12")
+    def consultar(*args, **kwargs):
+        if situacao == "consulta":
+            raise mergear.ErroDeInstrumentacao("consulta indisponível", "Confira o GitHub.")
+        return json.dumps({"state": situacao, "title": "provedor"})
+    monkeypatch.setattr(mergear, "_gh", consultar)
+    r = relatorio(*mergear.checar_dependencias(Path.cwd(), dados))
+    assert r.estado is esperado
+    assert mergear.pode_aguardar_na_pista(r, dados) is enfileira
+
+
+@pytest.mark.parametrize("nome", ["check/testes", "revisão independente", "registro a bordo"])
+def test_dependencia_pendente_nao_esconde_falha_real(nome):
+    r = relatorio(Resultado("Depende-de #12", Estado.ERROR, "ainda aberto"),
+                  Resultado(nome, Estado.FAIL, "falha real"))
+    assert not mergear.pode_aguardar_na_pista(r, pr())
