@@ -88,7 +88,7 @@ import time
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -865,7 +865,10 @@ def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
             referencia = re.match(r"^(?:-r\s*|-c\s*|--requirement(?:=|\s+)|--constraint(?:=|\s+))(.+)$", linha)
             if referencia:
                 incluir(arquivo.parent / referencia.group(1).strip())
-            elif linha.startswith(("-e", ".", "/", "file:")) or " @ file:" in linha:
+            elif (linha.startswith(("-e", "--editable", "-f", "--find-links", ".", "/", "\\", "file:"))
+                  or PureWindowsPath(linha).drive
+                  or (" @ " in linha and not linha.split(" @ ", 1)[1].startswith(("https://", "http://")))
+                  or (linha.lower().endswith((".whl", ".zip", ".tar.gz")) and "://" not in linha)):
                 raise ErroDeSessao(P_VENV, "dependência local sem identidade imutável",
                                    detalhe=f"Use uma versão publicada antes de reutilizar o ambiente: {linha}")
     try:

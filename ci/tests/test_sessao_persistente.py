@@ -223,8 +223,9 @@ def test_interpretador_perdido_exige_reinstalacao(ambiente):
     assert sum("install" in c for c in chamadas) == 2
 
 
-def test_dependencia_local_nao_recebe_cache(ambiente):
-    ambiente.requisitos.write_text("-e ../pacote")
+@pytest.mark.parametrize("referencia", ["-e ../pacote", r"--editable ..\pacote", r"--editable=..\pacote", r"C:\pacote", r"\\servidor\pacote", "pacote @ ./local", "pacote-1.whl", "--find-links ./pacotes"])
+def test_dependencia_local_nao_recebe_cache(ambiente, referencia):
+    ambiente.requisitos.write_text(referencia)
     with pytest.raises(sessao.ErroDeSessao, match="local sem identidade"):
         sessao.identidade_do_venv(ambiente.requisitos)
 
