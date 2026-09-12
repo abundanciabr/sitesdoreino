@@ -902,7 +902,10 @@ def test_retomada_apos_timeout_exige_duas_novas_provas(tmp_path, prova_expirada)
 
 @pytest.mark.parametrize('pai_encerra', [False, True])
 @pytest.mark.parametrize('nova_sessao', [False, True])
-def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao):
+@pytest.mark.parametrize('atraso_do_neto', [0, 3])
+def test_timeout_encerra_filhos_e_netos_reais(
+    tmp_path, pai_encerra, nova_sessao, atraso_do_neto, monkeypatch
+):
     import os
     import signal
     import subprocess
@@ -910,16 +913,36 @@ def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao
     script = tmp_path/'processos.py'
     script.write_text('''import os, pathlib, subprocess, sys, time
 profundidade = int(sys.argv[1])
+if profundidade == 0:
+    time.sleep(float(sys.argv[4]))
 pathlib.Path(f"pid-{profundidade}").write_text(str(os.getpid()))
 print(f"iniciado {profundidade}", flush=True)
 print("saída íntegra " + "x"*12000, flush=True)
 if profundidade:
-    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3]], start_new_session=sys.argv[3] == "nova")
+    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3], sys.argv[4]], start_new_session=sys.argv[3] == "nova")
 if profundidade == 2 and sys.argv[2] == "sair":
     sys.exit(0)
 print("token=SEGREDO_CONTROLADO", file=sys.stderr, flush=True)
 time.sleep(60)
 ''', encoding='utf-8')
+    comunicar = subprocess.Popen.communicate
+
+    def comunicar_com_arvore_pronta(processo, input=None, timeout=None):
+        if timeout == 2:
+            limite_da_preparacao = time.monotonic() + 30
+            while len(list(tmp_path.glob('pid-*'))) != 3:
+                assert time.monotonic() < limite_da_preparacao, (
+                    'preparação incompleta: pai, filho e neto não nasceram em 30s'
+                )
+                try:
+                    comunicar(processo, input=input, timeout=.05)
+                except subprocess.TimeoutExpired:
+                    continue
+                pytest.fail('a preparação encerrou sem pai, filho e neto')
+        return comunicar(processo, input=input, timeout=timeout)
+
+    monkeypatch.setattr(subprocess.Popen, 'communicate', comunicar_com_arvore_pronta)
+
     def vivo(pid):
         if os.name == 'nt':
             import ctypes
@@ -945,7 +968,7 @@ time.sleep(60)
     log = tmp_path/'timeout.log'
     try:
         with pytest.raises(pr.PrazoDeValidacaoExcedido, match='TIMEOUT'):
-            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma'], tmp_path, log=log, prazo_segundos=2)
+            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma', str(atraso_do_neto)], tmp_path, log=log, prazo_segundos=2)
         pids = [int(p.read_text()) for p in tmp_path.glob('pid-*')]
         assert len(pids) == 3, 'pai, filho e neto precisam ter executado'
         limite = time.monotonic() + 3
