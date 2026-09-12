@@ -15,5 +15,3 @@ jsonschema==4.23.0
 mypy==1.13.0
 django-stubs==5.1.1
 import-linter==2.1
-
-pytest-json-report

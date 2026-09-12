@@ -33,5 +33,3 @@ respx==0.23.1
 # propósito: quatro versões da mesma biblioteca para o mesmo padrão são quatro
 # comportamentos a depurar (`armadilhas/071`).
 django-ninja==1.3.0
-
-pytest-json-report

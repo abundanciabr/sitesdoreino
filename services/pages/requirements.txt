@@ -50,5 +50,3 @@ redis==5.1.1
 # teste, que seria uma segunda verdade sobre o contrato. Versão igual à das
 # vizinhas de propósito (`armadilhas/071`).
 jsonschema==4.23.0
-
-pytest-json-report

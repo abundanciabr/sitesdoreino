@@ -30,6 +30,12 @@ if str(CI) not in sys.path:
 
 import sessao  # noqa: E402
 
+@pytest.fixture(autouse=True)
+def ambiente_falso_isolado(tmp_path, monkeypatch):
+    monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
+    monkeypatch.setattr(sessao, "identidade_do_venv", lambda _, **kwargs: "f" * 64)
+
+
 CELULAS = [
     "alunos",
     "catalogo",
@@ -53,12 +59,13 @@ def plano_de_teste(**extra) -> sessao.Plano:
         raiz=Path("C:/repo") if os.name == "nt" else Path("/repo"),
         celulas=CELULAS,
         usa_redis=True,
-        base_de_scratch=Path("C:/scratch") if os.name == "nt" else Path("/scratch"),
+        base_de_scratch=Path.home() / "scratch",
     )
     padrao.update(extra)
     celula = padrao.pop("celula", "quiz")
     tarefa = padrao.pop("tarefa", "fuso-horario")
-    return sessao.derivar_plano(celula, tarefa, **padrao)
+    plano = sessao.derivar_plano(celula, tarefa, **padrao)
+    return sessao.replace(plano, venv=plano.venv / ("f" * 64))
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +77,9 @@ def test_deriva_worktree_branch_e_containers_a_partir_de_celula_e_tarefa():
     plano = plano_de_teste()
     assert plano.worktree.name == "wt-quiz-fuso-horario"
     assert plano.branch == "agent/quiz/fuso-horario"
-    assert plano.postgres == "sessao-quiz-pg"
-    assert plano.redis == "sessao-quiz-redis"
-    assert plano.banco == "quiz_db"
+    assert plano.postgres == "sitesdoreino-postgres-shared"
+    assert plano.redis == "sessao-quiz-fuso-horario-redis"
+    assert plano.banco.startswith("quiz_")
     # O worktree nasce IRMÃO do clone principal, nunca dentro dele (RITOS §1).
     assert not sessao.esta_dentro(plano.worktree, plano.raiz)
 
@@ -105,8 +112,8 @@ def test_portas_nao_colidem_entre_celulas():
     """O motivo do requisito: em lote, cinco despachos rodam ao mesmo tempo."""
     pg = [plano_de_teste(celula=c).porta_postgres for c in CELULAS]
     redis = [plano_de_teste(celula=c).porta_redis for c in CELULAS]
-    assert len(set(pg)) == len(CELULAS)
-    assert len(set(redis)) == len(CELULAS)
+    assert set(pg) == {15432}
+    assert set(redis) == {0}  # Docker escolhe uma porta livre por container
     assert set(pg).isdisjoint(redis)
 
 
@@ -221,7 +228,7 @@ def test_env_traz_as_tres_variaveis_que_todo_make_ci_local_precisa():
     )
     assert variaveis["PYTHONUTF8"] == "1"
     assert variaveis["DJANGO_SECRET_KEY"] == "ci-apenas-nunca-em-producao"
-    assert variaveis["DATABASE_URL"] == "postgres://dev:dev@localhost:55468/quiz_db"
+    assert variaveis["DATABASE_URL"] == f"postgres://{plano.banco}:dev@localhost:55468/{plano.banco}"
 
 
 def test_env_usa_a_porta_REAL_do_container_e_nao_a_derivada():
@@ -408,7 +415,7 @@ class MundoFalso:
         return (
             None
             if nome in self.saidas.get("sem_ferramenta", ())
-            else f"/usr/bin/{nome}"
+            else (None if nome == "uv" else f"/usr/bin/{nome}")
         )
 
     def dormir(self, segundos: float) -> None:
@@ -416,6 +423,9 @@ class MundoFalso:
 
     def escrever(self, caminho: Path, texto: str) -> None:
         self.escritos[_n(caminho)] = texto
+        if ".instalado." in caminho.name or caminho.name == ".senha-banco":
+            caminho.parent.mkdir(parents=True, exist_ok=True)
+            caminho.write_text(texto, encoding="utf-8")
 
     def anotar(self, texto: str = "") -> None:
         self.log.append(str(texto))
@@ -433,6 +443,8 @@ class MundoFalso:
             return self.saidas.get("worktree_list", "")
         if "config --get core.hooksPath" in linha:
             return self.saidas.get("hooks_path", str(self.plano.raiz / ".githooks"))
+        if linha.endswith("rev-parse origin/main") or linha.endswith("rev-parse HEAD"):
+            return "a" * 40
         if "rev-parse --abbrev-ref" in linha:
             return self.saidas.get("branch_atual", self.plano.branch)
         if "docker info" in linha:
@@ -444,9 +456,13 @@ class MundoFalso:
             porta = (
                 self.plano.porta_postgres
                 if nome == self.plano.postgres
-                else self.plano.porta_redis
+                else (self.plano.porta_redis or 16468)
             )
             return f"0.0.0.0:{porta}"
+        if "SELECT 1 FROM pg_roles" in linha:
+            return self.saidas.get("papel_existe", "")
+        if "SELECT pg_get_userbyid" in linha:
+            return self.saidas.get("banco_existe", "")
         if "pg_isready" in linha:
             return "accepting connections"
         if "redis-cli ping" in linha:
@@ -484,8 +500,8 @@ def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     texto = mundo.sessao().rodar()
     assert texto.startswith("Leituras exigidas: CONSTITUICAO.md e constituicoes/AGENTS.quiz.md.")
     assert "6 passed" in texto
-    pass
-    pass
+    assert "gh pr create" in "\n".join(mundo.chamadas)
+    assert "--draft" in "\n".join(mundo.chamadas)
     juntas = "\n".join(mundo.chamadas)
     assert "fetch origin" in juntas
     assert (
@@ -494,9 +510,37 @@ def test_caminho_feliz_termina_na_declaracao_e_cria_tudo_uma_vez():
     assert "-m venv" in juntas
     assert "pip install" in juntas and "PyYAML==6.0.2" in juntas
     assert "docker run -d --name sitesdoreino-postgres-shared" in juntas
-    assert "docker run -d --name sitesdoreino-redis-shared" in juntas
+    assert "docker run -d --name sessao-quiz-fuso-horario-redis" in juntas
     assert "ci/doctor.py" in juntas
     assert _n(mundo.plano.arquivo_env) in mundo.escritos
+
+
+def test_pre_voo_recusa_ferramenta_ausente_antes_de_criar_bancada():
+    mundo = MundoFalso(plano_de_teste(), sem_ferramenta=("gh",))
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == "conferir o repositório e a célula"
+    assert "`gh` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
+
+
+def test_pre_voo_recusa_hooks_nao_instalados_antes_de_criar_bancada():
+    mundo = MundoFalso(
+        plano_de_teste(),
+        hooks_path="",
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="hooks versionados não estão instalados"):
+        mundo.sessao().rodar()
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
+
+
+def test_pre_voo_recusa_hook_versionado_ausente():
+    plano = plano_de_teste()
+    mundo = MundoFalso(plano)
+    mundo.existentes.remove(_n(plano.raiz / ".githooks" / "pre-push"))
+    with pytest.raises(sessao.ErroDeSessao, match="há hook versionado ausente"):
+        mundo.sessao().rodar()
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_segunda_execucao_nao_recria_nada_idempotencia():
@@ -507,13 +551,13 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     mundo = MundoFalso(
         plano,
         worktree_list=porcelain,
-        docker_ps="sitesdoreino-postgres-shared\trunning\nsitesdoreino-redis-shared\trunning",
+        docker_ps=f"{plano.postgres}\trunning\n{plano.redis}\trunning",
     )
     mundo.existentes.add(_n(plano.worktree / ".git"))
     mundo.existentes.add(_n(plano.python_do_venv))
     texto = mundo.sessao().rodar()
     juntas = "\n".join(mundo.chamadas)
-    assert "worktree add" not in juntas
+    assert not any("worktree add" in c and "--detach" not in c for c in mundo.chamadas)
     assert "-m venv" not in juntas
     assert "docker run" not in juntas
     assert "docker start" not in juntas
@@ -521,16 +565,26 @@ def test_segunda_execucao_nao_recria_nada_idempotencia():
     assert any("já existia" in linha for linha in mundo.log)
 
 
+def test_ramo_com_pr_encerrado_nao_e_reutilizado():
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        gh_pr_list='[{"number": 91, "state": "CLOSED", "isDraft": true}]',
+    )
+    with pytest.raises(sessao.ErroDeSessao, match="PR fechado"):
+        mundo.sessao().rodar()
+
+
 def test_container_parado_e_reiniciado_e_nao_recriado():
     plano = plano_de_teste(usa_redis=False)
     mundo = MundoFalso(
         plano,
         falhar={"rev-parse --verify": 1},
-        docker_ps="sitesdoreino-postgres-shared\texited",
+        docker_ps=f"{plano.postgres}\texited",
     )
     mundo.sessao().rodar()
     juntas = "\n".join(mundo.chamadas)
-    assert "docker start sitesdoreino-postgres-shared" in juntas
+    assert f"docker start {plano.postgres}" in juntas
     assert "docker run" not in juntas
 
 
@@ -569,7 +623,7 @@ def test_falha_num_passo_nao_deixa_os_passos_seguintes_rodarem():
     juntas = "\n".join(mundo.chamadas)
     assert "docker" not in juntas
     assert "doctor.py" not in juntas
-    pass # P_ANUNCIO was removed
+    assert any("anuncio-fuso-horario.md" in caminho for caminho in mundo.escritos)
 
 
 @pytest.mark.parametrize("codigo_do_make", [1, 2])
@@ -602,6 +656,18 @@ def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
         mundo.sessao().rodar()
     assert erro.value.codigo == 2
     assert "NÃO chegou a rodar" in erro.value.resumo
+
+
+def test_worktree_sujo_depois_do_baseline_recusa_a_declaracao():
+    mundo = MundoFalso(
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1},
+        porcelain=" M services/quiz/config/settings.py",
+    )
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.codigo == 2
+    assert erro.value.passo == sessao.P_ANUNCIO
 
 
 def test_worktree_existente_em_OUTRA_branch_recusa_em_vez_de_misturar_despachos():
@@ -638,9 +704,9 @@ def test_docker_desligado_da_mensagem_acionavel_e_nao_traceback():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert "Docker não responde" in erro.value.resumo
-    pass
-    pass
+    assert "motor não responde" in erro.value.resumo
+    assert "ABRA O DOCKER DESKTOP" in erro.value.detalhe
+    assert "idempotente" in erro.value.detalhe
 
 
 def test_docker_ausente_do_PATH_para_com_instrucao_em_vez_de_seguir():
@@ -649,8 +715,8 @@ def test_docker_ausente_do_PATH_para_com_instrucao_em_vez_de_seguir():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    pass
-    pass
+    assert "`docker` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_make_ausente_para_no_baseline_e_nao_finge_verde():
@@ -659,9 +725,9 @@ def test_make_ausente_para_no_baseline_e_nao_finge_verde():
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
-    assert erro.value.passo == "baseline: make ci da célula"
-    pass
-    pass
+    assert erro.value.passo == "conferir o repositório e a célula"
+    assert "`make` não está no PATH" in erro.value.detalhe
+    assert not any("worktree" in chamada for chamada in mundo.chamadas)
 
 
 def test_python_do_PATH_fora_do_venv_e_barrado_armadilha_014():
@@ -913,6 +979,20 @@ def plano_sem_ambiente(**extra) -> sessao.Plano:
     return plano_de_teste(sobe_ambiente=False, usa_redis=False, **extra)
 
 
+def test_sem_container_faz_a_bancada_e_o_indice_e_para_por_ali():
+    plano = plano_sem_ambiente()
+    mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
+    texto = mundo.sessao().rodar()
+    juntas = "\n".join(mundo.chamadas)
+    assert "fetch origin" in juntas
+    assert "worktree add" in juntas
+    assert "indice_de_armadilhas.py" in juntas
+    for proibido in ("-m venv", "pip install", "docker", "doctor.py", "/usr/bin/make"):
+        assert proibido not in juntas, "--sem-container ainda executa " + proibido
+    assert any("anuncio-fuso-horario.md" in caminho for caminho in mundo.escritos)
+    assert "não medido" in texto
+
+
 def test_sem_container_nao_exige_que_a_area_seja_uma_celula_declarada():
     plano = plano_sem_ambiente(celula="painel", tarefa="divida-do-livro")
     assert plano.celula == "painel"
@@ -978,80 +1058,76 @@ def test_makefile_repassa_a_tarefa_da_fila_e_o_sem_container():
     assert "--sem-container" in corpo and "$(SEM_CONTAINER)" in corpo
 
 
+def test_sem_ambiente_a_bancada_suja_recusa_a_declaracao_de_limpa():
+    """A Declaração afirma `git status: limpo` também sem baseline.
+
+    Sem este passo, `--sem-container` assinaria limpeza que ninguém mediu: a
+    checagem morava dentro do baseline, e o baseline não roda aqui.
+    """
+    plano = plano_sem_ambiente()
+    mundo = MundoFalso(
+        plano,
+        falhar={"rev-parse --verify": 1},
+        porcelain=" M ci/sessao.py",
+    )
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        mundo.sessao().rodar()
+    assert erro.value.passo == sessao.P_ANUNCIO
+    assert erro.value.codigo == 2
+
+
 def test_sem_ambiente_tambem_imprime_um_PASS_por_passo():
     plano = plano_sem_ambiente()
     mundo = MundoFalso(plano, falhar={"rev-parse --verify": 1})
     mundo.sessao().rodar()
     passes = [linha for linha in mundo.log if "PASS" in linha]
-    assert len(passes) == len(sessao.passos_do_plano(plano))
+    assert len(passes) == len(sessao.passos_do_plano(plano)) == 5
 
-@pytest.fixture
-def plano_mock(tmp_path):
-    p = sessao.Plano(
-        celula="quiz",
-        tarefa="otimizacao",
-        frase="foo",
-        sobe_ambiente=True,
-        tarefa_da_fila="",
-        raiz=tmp_path / "repo",
-        arquivo_env=tmp_path / ".env",
-        postgres="",
-        porta_postgres=5432,
-        redis="",
-        porta_redis=6379,
-        worktree=tmp_path / "repo" / "wt",
-        branch="agent/quiz/otimizacao",
-        scratch=tmp_path / "scratch",
-        venv=tmp_path / "venv"
-    )
-    p.worktree.mkdir(parents=True, exist_ok=True)
-    (p.worktree / "services" / "quiz").mkdir(parents=True, exist_ok=True)
-    p.requisitos.parent.mkdir(parents=True, exist_ok=True)
-    p.requisitos.write_text("pytest==8.0.0", encoding="utf-8")
-    p.venv.mkdir(parents=True, exist_ok=True)
-    p.requisitos.write_text("pytest==8.0.0", encoding="utf-8")
-    p.venv.mkdir(parents=True, exist_ok=True)
-    return p
 
-def test_venv_reutilizado(plano_mock, monkeypatch):
-    import hashlib
-    import unittest.mock
-    sessao_obj = sessao.Sessao(plano_mock)
-    sessao_obj._correr = unittest.mock.MagicMock(return_value="")
-    sessao_obj._exigir = unittest.mock.MagicMock()
-    sessao_obj._pass = unittest.mock.MagicMock()
+def test_bancos_de_tarefas_distintas_nao_colidem():
+    a = plano_de_teste(tarefa="uma")
+    b = plano_de_teste(tarefa="outra")
+    assert a.banco != b.banco
+    assert a.postgres == b.postgres == "sitesdoreino-postgres-shared"
+    assert a.redis != b.redis
+    assert len(a.banco) <= 58
 
-    sessao_obj.instalar()
-    assert sessao_obj._exigir.call_count == 1
-    
-    req_hash = hashlib.sha256(plano_mock.requisitos.read_bytes()).hexdigest()
-    assert (plano_mock.venv / f".reqs.{req_hash}").exists()
 
-    sessao_obj.instalar()
-    assert sessao_obj._exigir.call_count == 1
-    sessao_obj._pass.assert_called_with("dependências intocadas — sigo")
+def test_falha_ao_criar_banco_impede_baseline():
+    mundo = MundoFalso(plano_de_teste(), falhar={"CREATE DATABASE": 1})
+    with pytest.raises(sessao.ErroDeSessao, match="exit code"):
+        mundo.sessao().rodar()
+    assert not any("ci/doctor.py" in c for c in mundo.chamadas)
 
-def test_baseline_pulado(plano_mock, monkeypatch):
-    import unittest.mock
-    sessao_obj = sessao.Sessao(plano_mock)
-    sessao_obj._ferramenta = unittest.mock.MagicMock(return_value="make")
-    
-    def mock_correr(cmd, **kwargs):
-        if cmd[:2] == ["git", "rev-parse"]:
-            return "abcdef1234567890"
-        return "fake output"
-    
-    sessao_obj._correr = unittest.mock.MagicMock(side_effect=mock_correr)
-    sessao_obj._pass = unittest.mock.MagicMock()
 
-    saida = sessao_obj.rodar_baseline("git")
-    assert saida == "fake output"
-    assert sessao_obj._correr.call_count == 2
-    assert (plano_mock.venv / ".baseline.abcdef1234567890").exists()
+def test_banco_existente_e_reutilizado_sem_erro_engolido():
+    mundo = MundoFalso(plano_de_teste(), banco_existe=plano_de_teste().banco)
+    mundo.sessao().rodar()
+    assert not any("CREATE DATABASE" in c for c in mundo.chamadas)
 
-    sessao_obj._correr.reset_mock()
-    sessao_obj._correr.side_effect = mock_correr
-    saida = sessao_obj.rodar_baseline("git")
-    assert saida == "PULADO"
-    assert sessao_obj._correr.call_count == 1
-    sessao_obj._pass.assert_called_with("baseline já medido para este commit — sigo")
+
+def test_consulta_banco_ilegivel_recusa_abertura():
+    mundo = MundoFalso(plano_de_teste(), banco_existe="indisponivel")
+    with pytest.raises(sessao.ErroDeSessao, match="resposta inesperada"):
+        mundo.sessao().rodar()
+
+
+def test_role_da_tarefa_restringe_conexao_e_senha_nao_e_compartilhada():
+    mundo = MundoFalso(plano_de_teste())
+    abertura = mundo.sessao()
+    abertura.rodar()
+    comandos = "\n".join(mundo.chamadas)
+    assert f'CREATE ROLE "{abertura.plano.banco}" LOGIN CREATEDB NOSUPERUSER NOCREATEROLE' in comandos
+    assert f'REVOKE CONNECT ON DATABASE "{abertura.plano.banco}" FROM PUBLIC' in comandos
+    assert len(abertura.plano.senha_banco) == 48
+    assert abertura.plano.senha_banco != sessao.SENHA_DO_BANCO
+    segunda = mundo.sessao()
+    segunda.rodar()
+    assert segunda.plano.senha_banco == abertura.plano.senha_banco
+
+
+def test_role_existente_sem_credencial_preserva_banco():
+    mundo = MundoFalso(plano_de_teste(), papel_existe="1")
+    with pytest.raises(sessao.ErroDeSessao, match="credencial da tarefa indisponível"):
+        mundo.sessao().rodar()
+    assert not any("CREATE ROLE" in c or "ALTER ROLE" in c for c in mundo.chamadas)

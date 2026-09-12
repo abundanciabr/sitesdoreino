@@ -17,5 +17,3 @@ jsonschema==4.23.0
 # desenvolve tem PyYAML global (`armadilhas/096`). Mesmo pino das outras celulas.
 PyYAML==6.0.2
 black==24.10.0
-
-pytest-json-report

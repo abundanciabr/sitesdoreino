@@ -32,5 +32,3 @@ respx==0.23.1
 # (armadilhas/096). Mesma versão pinada das outras células required.
 PyYAML==6.0.2
 black==24.10.0
-
-pytest-json-report

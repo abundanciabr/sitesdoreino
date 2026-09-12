@@ -34,5 +34,3 @@ black==24.10.0
 # `respx` que a gênese deixou plantados para "quando o cliente chegar" saíram no
 # degrau 7.4, quando ficou claro que o cliente é a `admin` e mora lá. Esta
 # célula só RECEBE (Redis Streams) e RESPONDE (django-ninja).
-
-pytest-json-report
