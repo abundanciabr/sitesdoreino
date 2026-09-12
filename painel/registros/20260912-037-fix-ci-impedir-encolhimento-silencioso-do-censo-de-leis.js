@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-037-fix-ci-impedir-encolhimento-silencioso-do-censo-de-leis",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fix(ci): impedir encolhimento silencioso do censo de leis",
+  detalhe: "O portão compara o censo local com origin/main, reprova leis ausentes sem decisão e transforma remoto ilegível em ERROR, com guarda e quatro casos comprovados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1610. Validação local: árvore 3d84d4fe628ff9cb2e92a7a0ce2c430f790f5111; commit 864f0d5633a20912de29d60f30c082b469bb1edb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-371",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
