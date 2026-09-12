@@ -4,8 +4,8 @@
   "evento": "explicada",
   "quando": "2026-09-12T00:24:47+00:00",
   "quem": "PLANO-MESTRE-10X-OTIMIZACAO.md aprovado pelo mantenedor em anexo na retomada de 12/09/2026",
-  "o_que_e": "Os robos ainda releem instrucoes repetidas e saidas extensas durante o trabalho.",
+  "o_que_e": "Os robôs ainda releem instruções repetidas e saidas extensas durante o trabalho.",
   "o_que_muda": "Consultar somente as licoes necessarias e reduzir o texto repetido e o custo de encerrar a tarefa.",
-  "exemplo": "Ao encontrar um erro, o robo recebe ate tres solucoes curtas em vez de reler documentos inteiros.",
+  "exemplo": "Ao encontrar um erro, o robo recebe até três soluções curtas em vez de reler documentos inteiros.",
   "importancia": 80
 }
