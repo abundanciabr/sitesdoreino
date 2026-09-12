@@ -5,7 +5,9 @@
   "toca": [
     "fila"
   ],
-  "depende_de": [],
+  "depende_de": [
+    "TAR-377"
+  ],
   "cria": [],
   "move": [
     "manutencao"
