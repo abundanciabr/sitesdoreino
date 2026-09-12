@@ -818,7 +818,8 @@ def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
         comentarios = [c for pagina in paginas for c in pagina]
         if any(not isinstance(c, dict) for c in comentarios):
             raise ValueError("comentário inválido")
-        return avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
+        return avaliar_atestado(pr.get("headRefOid") or "", comentarios,
+                                correcoes=correcoes_declaradas(pr), raiz=raiz)
     except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
         return Resultado("revisão independente", Estado.ERROR,
                          "não consegui medir a revisão independente", str(erro))
