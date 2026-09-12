@@ -58,6 +58,7 @@ LEI_SEM_PORTAO = "# C\n\n## Lei 2 — Outra coisa\n\nSó texto, ninguém impõe.
 
 
 def test_o_censo_do_projeto_esta_em_dia():
+    # guarda: ci/leis_sem_mecanismo.py:162
     relatorio = censo.conferir(RAIZ)
     assert relatorio.estado is Estado.PASS, relatorio.render()
 
@@ -139,6 +140,52 @@ def test_citacao_para_arquivo_existente_passa(tmp_path: Path):
     (raiz / "ci" / "existe.py").write_text("# sou o portão\n", encoding="utf-8")
     relatorio = censo.conferir(raiz)
     assert relatorio.estado is Estado.PASS, relatorio.render()
+
+
+def test_censo_igual_ao_remoto_PASS(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / "ci" / "existe.py").write_text("# portão\n", encoding="utf-8")
+    (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
+    monkeypatch.setattr(censo, "_leis_de_origin_main", lambda _: censo.levantar(raiz))
+    relatorio = censo.conferir(raiz)
+    assert relatorio.estado is Estado.PASS, relatorio.render()
+
+
+def test_censo_menor_sem_decisao_FAIL(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
+    remotas = censo.levantar(raiz) + [censo.Lei("CONSTITUICAO.md", "Lei remota", ())]
+    monkeypatch.setattr(censo, "_leis_de_origin_main", lambda _: remotas)
+    monkeypatch.setattr(censo, "_decisoes_novas", lambda _: [])
+    relatorio = censo.conferir(raiz)
+    assert relatorio.estado is Estado.FAIL, relatorio.render()
+    assert "Lei remota" in relatorio.render()
+
+
+def test_censo_menor_com_decisao_PASS(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / "ci" / "existe.py").write_text("# portão\n", encoding="utf-8")
+    (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
+    remotas = censo.levantar(raiz) + [censo.Lei("CONSTITUICAO.md", "Lei remota", ())]
+    monkeypatch.setattr(censo, "_leis_de_origin_main", lambda _: remotas)
+    monkeypatch.setattr(censo, "_decisoes_novas", lambda _: ["docs/decisoes/DECISAO-nova.md"])
+    relatorio = censo.conferir(raiz)
+    assert relatorio.estado is Estado.PASS, relatorio.render()
+    assert "DECISAO-nova.md" in relatorio.render()
+
+
+def test_origin_main_ilegivel_ERROR(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
+    monkeypatch.setattr(
+        censo,
+        "_leis_de_origin_main",
+        lambda _: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("origin/main ilegível", "remoto indisponível")
+        ),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="origin/main ilegível"):
+        censo.conferir(raiz)
 
 
 # --------------------------------------------------------------------------

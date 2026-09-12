@@ -49,6 +49,7 @@ Exit codes: 0 PASS · 1 lei fora da lei (sem mecanismo e sem dívida) · 2 ERROR
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -122,6 +123,108 @@ def levantar(raiz: Path) -> list[Lei]:
     return leis
 
 
+def _levantar_texto(texto_por_arquivo: dict[str, str]) -> list[Lei]:
+    leis: list[Lei] = []
+    for arquivo, padrao in ARQUIVOS_LEI.items():
+        texto = texto_por_arquivo[arquivo]
+        partes = re.split(padrao, texto, flags=re.M)
+        for titulo, corpo in zip(partes[1::2], partes[2::2]):
+            achado = DECLARACAO.search(corpo)
+            declarados = tuple(CAMINHO.findall(achado.group(1))) if achado else ()
+            leis.append(Lei(arquivo, titulo.strip(), declarados))
+    if not leis:
+        raise ErroDeInstrumentacao(
+            "nenhuma lei encontrada nos arquivos-lei",
+            "Ou os títulos mudaram de forma, ou o censo está cego. "
+            "Zero leis NÃO é 'este projeto não tem regras'.",
+        )
+    return leis
+
+
+def _leis_de_origin_main(raiz: Path) -> list[Lei]:
+    textos: dict[str, str] = {}
+    for arquivo in ARQUIVOS_LEI:
+        processo = subprocess.run(
+            ["git", "show", f"origin/main:{arquivo}"],
+            cwd=raiz,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if processo.returncode != 0:
+            raise ErroDeInstrumentacao(
+                f"origin/main ilegível: {arquivo}",
+                processo.stderr.strip()
+                or "Não foi possível ler a lei remota para comparar o censo.",
+            )
+        textos[arquivo] = processo.stdout
+    return _levantar_texto(textos)
+
+
+def _decisoes_novas(raiz: Path) -> list[str]:
+    processo = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--name-only",
+            "--diff-filter=A",
+            "origin/main...HEAD",
+            "--",
+            "docs/decisoes",
+        ],
+        cwd=raiz,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if processo.returncode != 0:
+        raise ErroDeInstrumentacao(
+            "não foi possível conferir decisões novas",
+            processo.stderr.strip(),
+        )
+    return [linha.strip() for linha in processo.stdout.splitlines() if linha.strip()]
+
+
+def _conferir_tamanho_remoto(raiz: Path, leis: list[Lei], relatorio: Relatorio) -> None:
+    """# guarda: ci/leis_sem_mecanismo.py:148"""
+    if not (raiz / ".git").exists():
+        return
+    remotas = _leis_de_origin_main(raiz)
+    if len(leis) >= len(remotas):
+        relatorio.registrar(
+            Resultado(
+                "censo não encolheu contra origin/main",
+                Estado.PASS,
+                f"censo local {len(leis)} · origin/main {len(remotas)}",
+            )
+        )
+        return
+    decisoes = _decisoes_novas(raiz)
+    if decisoes:
+        relatorio.registrar(
+            Resultado(
+                "censo menor justificado por decisão nova",
+                Estado.PASS,
+                f"censo local {len(leis)} · origin/main {len(remotas)} · "
+                f"decisão: {', '.join(decisoes)}",
+            )
+        )
+        return
+    relatorio.registrar(
+        Resultado(
+            "censo não encolheu contra origin/main",
+            Estado.FAIL,
+            f"censo local {len(leis)} · origin/main {len(remotas)}",
+            "Leis ausentes no censo local: "
+            + "\n".join(f"  - {lei.id}" for lei in remotas if lei.id not in {item.id for item in leis}),
+        )
+    )
+
+
 def carregar_divida(raiz: Path) -> set[str]:
     caminho = raiz / DIVIDA
     try:
@@ -143,6 +246,8 @@ def conferir(raiz: Path) -> Relatorio:
     relatorio = Relatorio(titulo="LEIS SEM MECANISMO — quem faz valer cada regra")
     leis = levantar(raiz)
     divida = carregar_divida(raiz)
+
+    _conferir_tamanho_remoto(raiz, leis, relatorio)
 
     citacoes_mortas: list[str] = []
     sem_mecanismo: list[str] = []

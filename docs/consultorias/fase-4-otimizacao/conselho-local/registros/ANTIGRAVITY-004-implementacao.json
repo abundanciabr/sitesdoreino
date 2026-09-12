@@ -1,0 +1,11 @@
+{
+  "ficha": "ANTIGRAVITY-004",
+  "tarefa": "TAR-371",
+  "implementacao": "ci/leis_sem_mecanismo.py",
+  "provas": {
+    "casos": "censo igual ao remoto PASS; censo menor sem decisão FAIL; censo menor com decisão nova PASS; origin/main ilegível ERROR",
+    "testes": "python -m pytest ci/tests/test_leis_sem_mecanismo.py -q: 18 passed",
+    "guarda": "python ci/provar_guardas.py ci/tests/test_leis_sem_mecanismo.py: estado PASS, guardas 1, reprovaram 1",
+    "censo": "python ci/leis_sem_mecanismo.py: CENSO 28 leis, 24 com mecanismo, 4 em dívida; RESULTADO PASS"
+  }
+}
