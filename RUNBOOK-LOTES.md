@@ -107,27 +107,26 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   agente para. Nesse ponto, preserve os arquivos e commits e reporte o
   diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
   retira do lote.
-- **Depois do `--e-pousar`, a maestro NÃO espera deploy.** O veredito do
+- **Depois de `--pousar`, a maestro NÃO espera checks, merge ou deploy.** O veredito do
   deploy é conferido por cron ou na próxima sessão. A maestro reporta o
   estado dos PRs ao mantenedor e encerra. O deploy leva 3.2 min de mediana;
   a pista reporta sozinha no PR.
 
 ## §5 — Encaminhamento à pista (na ordem do §3)
 
-Para cada PR verde, na ordem canário → comuns → dinheiro:
+Para cada PR com revisão independente e recibo, na ordem canário → comuns → dinheiro:
 
 ```bash
-python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
+python ci/mergear.py <N> --pousar
 ```
 
-Quem arma a espera é a maestro, pelo Monitor disponível. Confira a etiqueta
-`pousar` antes de encerrar; uma espera encerrada sem etiqueta não encaminhou
-nada. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+O comando confere a etiqueta `pousar` e o SHA remoto antes de responder
+`ENFILEIRADO`. A maestro encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
 `20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
 PR aberto, revisão aprovada, integração e publicação são estados distintos.
 
-- Vermelho, pendente, ausente ou ERROR ⇒ **não mergeia**: conserta ou fica fora do
-  lote. O botão do site não é caminho (Lei 4).
+- Vermelho ou erro de consulta recusa o pedido; checks pendentes ou ainda ausentes
+  aguardam na pista. Nenhum desses estados permite merge. O botão do site não é caminho (Lei 4).
 - **Merge que dispara deploy** (`services/**` ⇒ `deploy-celula`; `infra/**` ⇒
   `deploy-infra`): antes do PRÓXIMO merge, leia o veredito REAL do run —
   `gh run view <id> --json status,conclusion` — nunca o exit de um pipe (§5.10).
