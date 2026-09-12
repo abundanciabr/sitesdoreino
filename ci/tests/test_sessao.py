@@ -447,6 +447,8 @@ class MundoFalso:
             return "a" * 40
         if "rev-parse --abbrev-ref" in linha:
             return self.saidas.get("branch_atual", self.plano.branch)
+        if "docker inspect" in linha:
+            return "a" * 64 + " sha256:" + "b" * 64
         if "docker info" in linha:
             return "29.7.2"
         if "docker ps" in linha:

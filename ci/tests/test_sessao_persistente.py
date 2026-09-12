@@ -343,3 +343,20 @@ def test_trava_aguarda_produtor_apos_120s_com_relogio_acelerado(tmp_path, monkey
     finally:
         liberar.touch()
         processo.wait(timeout=10)
+
+
+def test_imagem_ou_instancia_nova_invalida_baseline(baseline):
+    a, estado = baseline
+    a._servicos = {"postgres": "instancia1 imagem1"}
+    a.rodar_baseline("git")
+    a._servicos = {"postgres": "instancia2 imagem1"}
+    a.rodar_baseline("git")
+    a._servicos = {"postgres": "instancia2 imagem2"}
+    a.rodar_baseline("git")
+    assert estado["make"] == 3
+
+
+def test_sistema_operacional_invalida_venv(ambiente, monkeypatch):
+    antes = sessao.identidade_do_venv(ambiente.requisitos)
+    monkeypatch.setattr(sessao.platform, "release", lambda: "outro-sistema")
+    assert sessao.identidade_do_venv(ambiente.requisitos) != antes

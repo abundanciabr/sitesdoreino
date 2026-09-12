@@ -848,7 +848,7 @@ def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
 
 def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
     identidade = hashlib.sha256()
-    identidade.update(repr((sys.executable, sys.version, platform.machine(),
+    identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
                             FERRAMENTAS_DE_PORTAO)).encode())
     visitados = set()
 
@@ -906,6 +906,7 @@ class Sessao:
         self._estado_git = "não medido"
         self._passos = passos_do_plano(plano)
         self._variaveis: dict[str, str] = {}
+        self._servicos: dict[str, str] = {}
 
     # -- utilidades ---------------------------------------------------------
 
@@ -1655,6 +1656,19 @@ class Sessao:
                     sonda=["redis-cli", "ping"],
                     esperado="PONG",
                 )
+            for nome in (self.plano.postgres, self.plano.redis):
+                if not nome:
+                    continue
+                identidade = self._exigir(passo, [docker, "inspect", "--format", "{{.Id}} {{.Image}}", nome],
+                                           cwd=self.plano.raiz).stdout.strip()
+                if not re.fullmatch(r"[0-9a-f]{64} sha256:[0-9a-f]{64}", identidade):
+                    raise ErroDeSessao(passo, "identidade do serviço indisponível",
+                                       detalhe=f"Confira docker inspect {nome} e repita a abertura.")
+                # Cada tarefa nasce com outro Redis, mas com a mesma imagem imutável.
+                if nome == self.plano.postgres:
+                    self._servicos["postgres"] = identidade
+                else:
+                    self._servicos["redis"] = identidade.split()[1]
         self._pass(
             f"{self.plano.postgres} atende em localhost:{porta_pg}"
             + (
@@ -1747,7 +1761,7 @@ class Sessao:
                       "SESSAO_WORKTREE", "SESSAO_SCRATCH"):
             if chave in ambiente:
                 ambiente[chave] = "isolado-por-tarefa"
-        identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items())))
+        identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items()), sorted(self._servicos.items())))
         chave = hashlib.sha256(identidade.encode()).hexdigest()
         return revisao, Path.home() / ".sitesdoreino" / "baselines" / self.plano.celula / f"{chave}.json", base
 
