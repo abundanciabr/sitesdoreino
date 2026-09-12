@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-123749-TAR-368-explicada",
+  "tarefa": "TAR-368",
+  "evento": "explicada",
+  "quando": "2026-09-12T12:37:49+00:00",
+  "quem": "https://github.com/abundanciabr/sitesdoreino/issues/1600",
+  "o_que_e": "As IAs concordaram em conferir o percurso da coleta antes de comparar velocidade e custo.",
+  "o_que_muda": "A comparação usará uma entrega real acompanhada do começo ao fim, com as lacunas visíveis.",
+  "exemplo": "O relógio começa na preparação de um trabalho já necessário e termina quando seu resultado é conferido; testes isolados não encerram a medição.",
+  "importancia": 80
+}

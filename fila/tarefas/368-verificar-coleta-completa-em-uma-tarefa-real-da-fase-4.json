@@ -1,0 +1,19 @@
+{
+  "arquivo": "368-verificar-coleta-completa-em-uma-tarefa-real-da-fase-4",
+  "id": "TAR-368",
+  "titulo": "Verificar coleta completa em uma tarefa real da Fase 4",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Manifesto classificado antes do resultado de uma tarefa real elegível, percurso completo até resultado verificado, análise reproduzível por SHA e hash da entrada e diagnóstico explícito de lacunas. Um ciclo comprova a coleta, nunca benefício estatístico.",
+  "despacho": "Leia docs/decisoes/CONSENSO-FASE4.md e PROTOCOLO-FASE4-MEDICAO.md. Reaproveite a auditoria TAR-348; não a repita. Esta tarefa coordena a medição e fica fora da amostra. Antes de iniciar outra tarefa real elegível já existente na fila, registre seu manifesto sem inventar baseline ou dados. Acompanhe seu resultado exigido usando os mecanismos atuais e verifique completude, identidade e elegibilidade. Use ci/registrar_tarefa_fase4.py e ci/analise_fase4.py; preserve dados privados. Falta de fonte fica explícita. Lacuna do instrumento vira correção delimitada própria, sem alterar código nesta tarefa. Não declare economia nem expansão. Após o percurso válido, descreva como acumular tarefas consecutivas segundo o protocolo completo, sem fabricar tarefas para atingir amostra.",
+  "origem": "https://github.com/abundanciabr/sitesdoreino/issues/1600",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "medicao-de-esforco"
+}
