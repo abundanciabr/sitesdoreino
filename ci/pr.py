@@ -544,9 +544,12 @@ def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
     if erros or tarefa not in tarefas:
         raise ParouPorSeguranca("tarefa ausente ou fila inválida", "Rode python ci/fila.py validar e confira a tarefa antes de retomar.")
     finais = [e for e in eventos if e["tarefa"] == tarefa and e["evento"] in ("concluida", "cancelada")]
-    if finais and not any(e.get("evidencia") == url and e["evento"] == "concluida" for e in finais):
+    nossa = [e for e in finais if e["evento"] == "concluida" and e.get("evidencia") == url]
+    if finais and not nossa:
         raise ParouPorSeguranca("tarefa já encerrada por outro fato", "Confira a cadeia da fila; não sobrescreva o encerramento.")
-    if not finais:
+    # A conclusão desta mesma entrega não conta como encerramento alheio: sem
+    # isto o `--continuar` congelaria a submissão na primeira revisão.
+    if len(finais) == len(nossa):
         anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
         if anterior and anterior.get("pr") == url:
             diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
@@ -554,6 +557,7 @@ def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
                 revisao, arvore = anterior["revisao"], anterior["arvore"]
         correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
                 "--pr", url, "--revisao", revisao, "--arvore", arvore])
+        correr([sys.executable, "ci/fila.py", "fechar-pela-entrega", tarefa, "--quem", ramo, "--pr", url])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:
