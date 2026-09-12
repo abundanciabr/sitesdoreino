@@ -1665,24 +1665,25 @@ def evento_de_conclusao_em_sombra(
     return saida
 
 
-
 # ---------------------------------------------------------------------------
-# A GRADUAÇÃO (12/09/2026) — a porta do pouso passou a GRAVAR.
+# O "FEITO" VIAJA NA ENTREGA (12/09/2026)
 #
-# A sombra acima mediu 52 pousos: 39 "geraria" e 13 "silencio", todos os 13
-# pela mesma causa única (o `gh` caiu ao ler o diff), nenhum caso de tarefa
-# errada. É o que o bloco anterior escreveu como condição para graduar.
+# A sombra acima previa graduar gravando o evento na porta do pouso, DEPOIS do
+# merge. Não dá: a `main` tem ruleset ativo com `pull_request` e
+# `required_status_checks` e `bypass_actors: []` (ruleset 21570247), então push
+# direto na `main` é recusado para todo mundo, a pista inclusive. A porta não
+# tem onde gravar.
 #
-# O preço de não graduar estava medido também: 18 tarefas paradas em
-# "reivindicada" com os 18 PRs MERGED, ocupando 7 áreas e derrubando o lote
-# máximo de tarefas livres para 1.
+# O que sobra é o caminho que o livro do painel já usa desde 31/08/2026
+# (`armadilhas/248`): o "feito" entra na `main` DENTRO do próprio PR da
+# entrega, escrito por `ci/pr.py` junto da submissão. O preço, autorizado
+# pelo mantenedor: a tarefa fecha no merge do PR, não no aceite do
+# mantenedor.
 #
-# O que a porta grava é EXATAMENTE o evento que a sombra montou — o mesmo
-# `montar_evento`, o mesmo dicionário, sem uma segunda receita.
+# O guarda de `cmd_concluir` ("aguarda comprovação do aceite") fica de pé:
+# este caminho não passa por ele, e concluir por texto livre continua
+# recusado.
 # ---------------------------------------------------------------------------
-
-PORTA_GRAVOU = "gravou"
-PORTA_JA_EXISTE = "ja_existe"
 
 
 def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
@@ -1695,28 +1696,40 @@ def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
     return any(pasta_eventos(raiz).glob(f"*-{tid}-concluida.json"))
 
 
-def gravar_conclusoes_pela_porta(raiz: Path, achados: list[dict]) -> list[dict]:
-    """Escreve no livro da fila as conclusões que a porta decidiu gravar.
+def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
+    """A tarefa terminou pela conclusão que ESTA entrega escreveu, e só por ela?
 
-    Recebe o que `evento_de_conclusao_em_sombra` devolveu e grava SÓ os
-    `geraria`, com o evento já montado lá. Devolve uma linha por tarefa:
-    `gravou` (com o caminho) ou `ja_existe` (nada escrito).
+    Sem isto o `--continuar` do mesmo PR bateria no guarda terminal de
+    `cmd_submeter` que ele próprio acabou de criar, e pararia de atualizar a
+    submissão.
     """
-    escritos: list[dict] = []
-    for achado in achados or []:
-        if achado.get("desfecho") != SOMBRA_GERARIA:
-            continue
-        tid = str(achado.get("tarefa") or "")
-        evento = achado.get("evento") or {}
-        if ja_tem_conclusao(raiz, tid):
-            escritos.append({"tarefa": tid, "desfecho": PORTA_JA_EXISTE, "caminho": None})
-            continue
-        pasta = pasta_eventos(raiz)
-        pasta.mkdir(parents=True, exist_ok=True)
-        caminho = pasta / f"{evento['arquivo']}.json"
-        _escrever_json(caminho, evento)
-        escritos.append({"tarefa": tid, "desfecho": PORTA_GRAVOU, "caminho": caminho})
-    return escritos
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    nossas = [e for e in finais if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)]
+    return bool(finais) and len(finais) == len(nossas)
+
+
+def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
+    """Escreve o "feito" desta tarefa no ramo da entrega. Devolve se escreveu.
+
+    A evidência é a URL do PR, exata: é por ela que `ci/pr.py` reconhece a
+    conclusão como sua e que `fechada_por_esta_entrega` a distingue de um
+    encerramento alheio.
+
+    Passa por `_concluir_com_prova` de propósito, e não por uma segunda
+    receita: é lá que moram as guardas de responsabilidade e a soltura da
+    reserva, e as duas valem aqui igual.
+    """
+    if ja_tem_conclusao(raiz, tid):
+        return False
+    hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje)
+    if codigo != 0:
+        raise ErroDeInstrumentacao(
+            f"a entrega de {tid} não pôde escrever a conclusão",
+            "Leia a recusa acima, corrija a fila e repita python ci/pr.py --continuar.",
+        )
+    return True
+
 
 
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
@@ -2122,7 +2135,8 @@ def cmd_submeter(raiz: Path, args) -> int:
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
         return 1
-    if calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA):
+    if (calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA)
+            and not fechada_por_esta_entrega(eventos, tid, args.pr)):
         print(f"RECUSADO: {tid} já terminou. Confira sua cadeia antes de submeter.")
         return 1
     vinculo = {campo: getattr(args, campo) for campo in ("pr", "revisao", "arvore")}
@@ -2339,6 +2353,32 @@ def cmd_concluir(raiz: Path, args) -> int:
         args.evidencia,
         args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
+
+
+def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
+    """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
+
+    Não passa pelo guarda do aceite de `cmd_concluir` de propósito: a decisão
+    de 12/09/2026 é que o merge do PR fecha a tarefa. Por isso a evidência não
+    é texto livre, e sim a URL do PR que a `main` vai integrar.
+    """
+    recusa = _parar_se_for_o_espelho("fechar-pela-entrega", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    alheio = bool(finais) and not fechada_por_esta_entrega(eventos, tid, args.pr)
+    if alheio:
+        print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
+        return 1
+    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr):
+        print(f"{tid}: o feito desta entrega já está no ramo; nada repetido.")
+    return 0
 
 
 def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
@@ -2732,6 +2772,14 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
     p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
 
+    p = sub.add_parser(
+        "fechar-pela-entrega",
+        help="escreve o feito no ramo da entrega; é o que ci/pr.py chama",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--pr", required=True, help="URL completa do pull request da entrega")
+
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
@@ -2785,6 +2833,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_cancelar(raiz, args)
         if args.acao == "submeter":
             return cmd_submeter(raiz, args)
+        if args.acao == "fechar-pela-entrega":
+            return cmd_fechar_pela_entrega(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
         if args.acao == "reconciliar":

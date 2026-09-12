@@ -600,22 +600,56 @@ def test_validacao_muda_indice_e_expira_prova(tmp_path):
     assert not dub.pediu('git push')
 
 
-def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
+def _fila_de_uma_tarefa(tmp_path, monkeypatch, eventos):
+    """Bancada com a fila fingida: só os eventos que o caso quer medir."""
     import fila
     raiz = bancada(tmp_path)
     (raiz/'fila/eventos').mkdir(parents=True)
-    tarefa = 'TAR-001'
-    evento = {'tarefa':tarefa, 'evento':'concluida','evidencia':URL_DO_PR}
-    caminho = raiz/'fila/eventos/concluida.json'
-    caminho.write_text(json.dumps(evento),encoding='utf-8')
-    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
-    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001':{}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: eventos)
+    return raiz
+
+
+def _acoes_da_fila(dub):
+    return [c[2] for c in dub.chamadas if len(c) > 2 and c[1] == 'ci/fila.py']
+
+
+def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
+    """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
+    # guarda: ci/pr.py:560
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
-    assert pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40) == ['fila/eventos/concluida.json']
-    assert not dub.chamadas
-    evento['evidencia'] = URL_DO_PR+'0'
+    pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+    fechamento = [c for c in dub.chamadas if 'fechar-pela-entrega' in c][0]
+    assert fechamento[-2:] == ['--pr', URL_DO_PR]
+
+
+def test_continuar_nao_duplica_o_feito_e_segue_atualizando_a_submissao(tmp_path, monkeypatch):
+    """A conclusão desta entrega não congela a submissão nem se repete.
+
+    O guarda antigo (`if not finais`) parava de chamar a fila no primeiro
+    `--continuar`, e a submissão ficava presa na revisão de estreia.
+    """
+    # guarda: ci/pr.py:547
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR}
+    caminho_conclusao = 'fila/eventos/concluida.json'
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    (raiz/caminho_conclusao).write_text(json.dumps(evento),encoding='utf-8')
+    dub = Duble()
+    arquivos = pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert arquivos == [caminho_conclusao]
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+
+
+def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch):
+    """Conclusão com outra evidência é encerramento alheio: não se sobrescreve."""
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR+'0'}
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    dub = Duble()
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
-        pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+        pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert not dub.chamadas
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])

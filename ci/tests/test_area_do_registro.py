@@ -302,15 +302,10 @@ def test_falha_de_leitura_na_sombra_da_area_nomeia_a_sombra_da_area(
     assert "sombra do evento da fila" not in saida
 
 
-def test_um_tropeco_isolado_do_gh_nao_custa_mais_a_leitura(
-    monkeypatch, tmp_path, capsys
+def test_falha_de_leitura_nao_fica_guardada_e_a_sombra_seguinte_rele(
+    monkeypatch, tmp_path
 ) -> None:
-    """Desde 12/09/2026 a leitura tenta três vezes antes de desistir.
-
-    Nos 52 pousos medidos em sombra, TODOS os 13 silêncios vieram daqui: o
-    `gh` caiu ao ler o diff. Agora que a porta FECHA a tarefa, uma queda
-    isolada de rede não pode mais custar o fechamento.
-    """
+    """Um tropeço não pode virar diff vazio reaproveitado pela segunda sombra."""
     descricoes: list[str] = []
     remessas = [_remessa("painel/registros/20260907-001-a.js")]
 
@@ -322,37 +317,11 @@ def test_um_tropeco_isolado_do_gh_nao_custa_mais_a_leitura(
 
     monkeypatch.setattr(mergear, "_gh", _gh_que_cai_so_na_primeira_leitura)
     diff = mergear.DiffDoPR(tmp_path, 99)
-    assert diff.ler("o fechamento da tarefa") == remessas
-    assert len(descricoes) == 2
-    assert "falhou na tentativa 1 de 3" in capsys.readouterr().out
-
-
-def test_falha_de_leitura_nao_fica_guardada_e_a_leitora_seguinte_rele(
-    monkeypatch, tmp_path
-) -> None:
-    """Um tropeço não pode virar diff vazio reaproveitado pela segunda leitora.
-
-    Aqui o `gh` cai nas TRÊS tentativas da primeira leitora — só então ela
-    desiste —, e a segunda ainda assim tenta por conta própria, com o nome
-    dela na descrição.
-    """
-    descricoes: list[str] = []
-    remessas = [_remessa("painel/registros/20260907-001-a.js")]
-
-    def _gh_que_cai_nas_tres_primeiras(_argumentos, _raiz, descricao, **_kwargs):
-        descricoes.append(descricao)
-        if len(descricoes) <= mergear.TENTATIVAS_DE_LEITURA_DO_DIFF:
-            raise mergear.ErroDeInstrumentacao("o gh caiu", "sem rede")
-        return json.dumps(remessas)
-
-    monkeypatch.setattr(mergear, "_gh", _gh_que_cai_nas_tres_primeiras)
-    diff = mergear.DiffDoPR(tmp_path, 99)
     with pytest.raises(mergear.ErroDeInstrumentacao):
-        diff.ler("o fechamento da tarefa")
+        diff.ler("a sombra do evento da fila")
     assert diff.ler("a sombra da área do registro") == remessas
     assert descricoes == [
-        *["ler o diff do PR #99 para o fechamento da tarefa"]
-        * mergear.TENTATIVAS_DE_LEITURA_DO_DIFF,
+        "ler o diff do PR #99 para a sombra do evento da fila",
         "ler o diff do PR #99 para a sombra da área do registro",
     ]
 

@@ -164,13 +164,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  # `write` desde 12/09/2026: depois de cada merge a porta fecha a tarefa na
-  # fila e empurra o evento para a `main` num commit próprio
-  # (`ci/mergear.py`, "A PORTA DO POUSO FECHA A TAREFA"). Sem isto o evento
-  # morreria no checkout efêmero deste job. O empurrão usa o GITHUB_TOKEN da
-  # checkout — token de job, não o PAT — e por isso não reacorda workflow
-  # nenhum, o que mantém o `alarme-main` medindo só o que entra por merge.
-  contents: write
+  contents: read
 
 jobs:
   pousar:
@@ -458,14 +452,7 @@ jobs:
             # é contada e a passagem termina VERMELHA lá embaixo. Engolir aqui
             # seria trocar um entupimento por um falso-verde, que nesta casa é
             # pior (RETROSPECTIVA-FASE-D, padrão 1).
-            # O codigo importa, nao so o sucesso: 2 e ERROR do portao, e desde
-            # 12/09/2026 o caminho mais provavel dele e "o merge ENTROU e a
-            # escrituracao da fila nao fechou" (ci/mergear.py, "A PORTA DO POUSO
-            # FECHA A TAREFA"). Dizer "o merge NAO se completou" nesse caso seria
-            # mentira, e mandaria quem le tentar de novo um merge ja feito.
-            codigo=0
-            python ci/mergear.py "$alvo" --confirmo "$alvo" || codigo=$?
-            if [ "$codigo" -eq 0 ]; then
+            if python ci/mergear.py "$alvo" --confirmo "$alvo"; then
               pousados=$((pousados + 1))
               echo "PR #$alvo POUSOU. Publicação ainda precisa de prova."
               # Uma consulta, sem laço: a maestro acompanha pelo heartbeat.
@@ -476,12 +463,6 @@ jobs:
               else
                 echo "PR #$alvo: a consulta acima informa a próxima ação da maestro."
               fi
-            elif [ "$codigo" -eq 2 ]; then
-              falhas=$((falhas + 1))
-              echo "PR #$alvo: o portão saiu ERROR. O merge pode TER ENTRADO com a"
-              echo "escrituração da fila por fazer — NÃO mande mergear de novo."
-              echo "Confira: gh pr view $alvo --json state,mergeCommit"
-              echo "esta passagem vai terminar vermelha por causa disto."
             else
               falhas=$((falhas + 1))
               echo "PR #$alvo: o merge NÃO se completou. Seguindo para o próximo;"

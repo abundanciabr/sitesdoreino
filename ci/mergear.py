@@ -44,7 +44,6 @@ import os
 import re
 import shutil
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -1046,51 +1045,34 @@ def pedir_pouso(numero: int, head_esperado: str) -> int:
 
 
 # ---------------------------------------------------------------------------
-# A PORTA DO POUSO FECHA A TAREFA (12/09/2026) — a sombra graduou.
+# A SOMBRA DO EVENTO DA FILA (06/09/2026) — a porta vê o que gravaria.
 #
-# A regra, a medição que a graduou e o preço de não graduar estão em
-# `ci/fila.py`, na seção "A GRADUAÇÃO". Aqui fica só a fiação: depois do merge
-# CONFIRMADO (nunca do exit do comando que o disparou), a porta lê o diff do
-# PR, pergunta à fila o que gravar, GRAVA, e leva o evento para a `main` num
-# commit próprio.
+# A regra e o motivo de ela nascer em sombra estão em `ci/fila.py`, na seção
+# "O EVENTO 'CONCLUÍDA' PELA PORTA DO POUSO". Aqui fica só a fiação: depois do
+# merge CONFIRMADO (nunca do exit do comando que o disparou), a porta lê o
+# diff do PR, pergunta à fila o que gravaria, IMPRIME, e mede.
 #
-# POR QUE O COMMIT: `--confirmo` só roda dentro da pista
-# (`.github/workflows/pouso.yml`, `MERGEAR_SOU_A_PISTA`), num checkout que
-# morre junto com o job. Gravar sem empurrar seria escrever num disco que
-# ninguém mais vê — a tarefa continuaria presa em "reivindicada" e o robô
-# acharia que o buraco estava fechado. É por isso que o job pede
-# `contents: write`.
-#
-# FAIL-CLOSED, ao contrário da sombra que ela substitui. A sombra calava
-# porque não escrevia nada, e uma exceção dela transformaria um pouso bom em
-# ERROR à toa. Agora ela ESCREVE o livro da fila: falhar calado devolveria
-# exatamente a doença que ela cura — tarefa mergeada que ninguém fecha, sem
-# ninguém saber. Falha aqui grita e o comando sai != 0. O que NUNCA acontece
-# é desfazer ou derrubar o merge: quando isto roda, o merge já entrou.
+# Fail-open de ponta a ponta, ao contrário do resto deste portão: a sombra
+# roda depois de o merge já ter acontecido, e uma exceção aqui transformaria
+# um pouso bem-sucedido em ERROR. Muralha na dúvida recusa; sombra na dúvida
+# cala.
 # ---------------------------------------------------------------------------
 
-MARCA_DA_PORTA = "🚪 PORTA (evento da fila)"
-TENTATIVAS_DE_LEITURA_DO_DIFF = 3
-TENTATIVAS_DE_EMPURRAO = 3
-AUTOR_DA_PORTA = "pista de pouso"
-EMAIL_DA_PORTA = "pista@meshcraft.top"
+MARCA_DA_SOMBRA = "🌓 SOMBRA (evento da fila pela porta)"
 
 
 class DiffDoPR:
     """O diff do PR, lido do `gh` UMA vez por pouso e reaproveitado.
 
-    Duas leitoras rodam depois do mesmo merge, e as duas precisam do mesmo
+    Duas sombras rodam depois do mesmo merge, e as duas precisam do mesmo
     endpoint. Antes, cada uma chamava por conta própria (duas viagens de rede
-    idênticas), e a descrição da leitura era fixa no nome da PRIMEIRA, então
-    uma falha de rede na segunda acusava a errada. Aqui quem lê diz o próprio
-    nome, e a leitura bem-sucedida fica guardada para a seguinte.
+    idênticas), e a descrição da leitura era fixa no nome da PRIMEIRA sombra,
+    então uma falha de rede na segunda acusava a sombra errada. Aqui quem lê
+    diz o próprio nome, e a leitura bem-sucedida fica guardada para a seguinte.
 
-    TENTA TRÊS VEZES antes de desistir. Não é zelo: nos 52 pousos medidos em
-    sombra, TODOS os 13 silêncios vieram desta única linha — o `gh` caiu ao
-    ler o diff. Uma queda de rede não pode custar o fechamento da tarefa.
-
-    Leitura que falha nas três não fica guardada: a seguinte tenta de novo por
-    conta própria, com o nome dela na descrição.
+    Leitura que falha não fica guardada: a sombra que tropeçou cala (fail-open,
+    ela roda depois de o merge já ter acontecido) e a seguinte tenta por conta
+    própria, com o nome dela na descrição.
     """
 
     def __init__(self, raiz: Path, numero: int) -> None:
@@ -1099,240 +1081,92 @@ class DiffDoPR:
         self._remessas: list[dict[str, Any]] | None = None
 
     def ler(self, quem: str) -> list[dict[str, Any]]:
-        if self._remessas is not None:
-            return self._remessas
-        ultimo: Exception | None = None
-        for tentativa in range(1, TENTATIVAS_DE_LEITURA_DO_DIFF + 1):
-            try:
-                self._remessas = json.loads(
-                    _gh(
-                        [
-                            "api",
-                            f"repos/{{owner}}/{{repo}}/pulls/{self._numero}"
-                            "/files?per_page=100",
-                        ],
-                        self._raiz,
-                        f"ler o diff do PR #{self._numero} para {quem}",
-                    )
+        if self._remessas is None:
+            self._remessas = json.loads(
+                _gh(
+                    [
+                        "api",
+                        f"repos/{{owner}}/{{repo}}/pulls/{self._numero}"
+                        "/files?per_page=100",
+                    ],
+                    self._raiz,
+                    f"ler o diff do PR #{self._numero} para {quem}",
                 )
-                return self._remessas
-            except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
-                ultimo = erro
-                print(
-                    f"{MARCA_DA_PORTA}: a leitura do diff do PR #{self._numero} "
-                    f"falhou na tentativa {tentativa} de "
-                    f"{TENTATIVAS_DE_LEITURA_DO_DIFF} ({erro.__class__.__name__})."
-                )
-        raise ErroDeInstrumentacao(
-            f"não consegui ler o diff do PR #{self._numero} para {quem}",
-            f"Foram {TENTATIVAS_DE_LEITURA_DO_DIFF} tentativas. Última falha:\n{ultimo}",
-        )
+            )
+        return self._remessas
 
 
-def concluir_tarefas_do_pr(
+def sombra_do_evento_da_fila(
     raiz: Path, pr: dict[str, Any], sha_do_merge: str, diff: DiffDoPR
-) -> bool:
-    """Fecha na fila as tarefas que o PR recém-mergeado cita.
-
-    Devolve False quando a escrituração falhou — e aí quem chama sai != 0. O
-    merge NÃO é tocado: ele já aconteceu quando isto roda.
-    """
+) -> list[dict]:
     numero = int(pr.get("number") or 0)
     titulo = str(pr.get("title") or "")
     corpo = str(pr.get("body") or "")
     ramo = str(pr.get("headRefName") or "")
     citadas = fila.tarefas_citadas(f"{titulo}\n{corpo}\n{ramo}")
     if not citadas:
-        return True  # PR sem tarefa citada: silêncio total, sem nem consultar
+        return []  # PR sem tarefa citada: silêncio total, sem nem consultar
     try:
-        achados = fila.evento_de_conclusao_em_sombra(
-            raiz,
-            numero=numero,
-            titulo=titulo,
-            corpo=corpo,
-            ramo=ramo,
-            url=str(pr.get("url") or ""),
-            sha_do_merge=sha_do_merge,
-            arquivos_do_diff=diff.ler("o fechamento da tarefa"),
-        )
-        escritos = fila.gravar_conclusoes_pela_porta(raiz, achados)
-        entraram = _empurrar_com_tentativas(raiz, escritos, numero)
-    except Exception as erro:  # noqa: BLE001 — ver o cabeçalho: falha aqui grita
-        # A falha também se MEDE: sem isto, a única classe de desfecho que a
-        # telemetria não veria seria justamente a que dói.
-        telemetria.registrar(
-            "evento_da_fila_pela_porta",
-            {
-                "modo": "valendo",
-                "pr": numero,
-                "tarefa": ",".join(dict.fromkeys(citadas)),
-                "desfecho": "falhou",
-                "motivo": f"{erro.__class__.__name__}: {erro}",
-                "arquivo": "",
-            },
-            cwd=str(raiz),
-            sessao=os.environ.get("GITHUB_RUN_ID") or "",
-        )
-        print(
-            f"\nERROR: o PR #{numero} ENTROU na main, mas não consegui fechar a "
-            f"tarefa dele na fila ({erro.__class__.__name__}: {erro}).\n"
-            f"O merge está feito e não precisa ser refeito. O que falta é só o "
-            f"evento de conclusão. Feche à mão, da sua bancada:\n"
-            f"  python ci/fila.py concluir <TAR-xxx> --quem <robô> "
-            f'--evidencia "PR #{numero} (merge {sha_do_merge[:12]})"'
-        )
-        return False
-    for achado in achados:
-        _dizer_a_porta(numero, achado, entraram)
-        telemetria.registrar(
-            "evento_da_fila_pela_porta",
-            {
-                "modo": "valendo",
-                "pr": numero,
-                "tarefa": achado["tarefa"],
-                "desfecho": _desfecho_real(achado, entraram),
-                "motivo": achado["motivo"],
-                "arquivo": (achado.get("evento") or {}).get("arquivo", ""),
-            },
-            cwd=str(raiz),
-            sessao=os.environ.get("GITHUB_RUN_ID") or "",
-        )
-    return True
-
-
-def _desfecho_real(achado: dict, entraram: set[str]) -> str:
-    """O que MEDIR: o que chegou à `main`, nunca o que se decidiu gravar.
-
-    Gravar no disco da pista e chegar à `main` são coisas diferentes, e só a
-    segunda existe depois que o job morre. Dizer "gravei" para um arquivo que
-    não entrou seria a mentira exata que esta regra veio curar.
-    """
-    if achado["desfecho"] != fila.SOMBRA_GERARIA:
-        return achado["desfecho"]
-    return fila.PORTA_GRAVOU if achado["tarefa"] in entraram else fila.PORTA_JA_EXISTE
-
-
-def _empurrar_conclusoes(raiz: Path, escritos: list[dict], numero: int) -> set[str]:
-    """Leva os eventos recém-gravados para a `main`, num commit da pista.
-
-    Monta o commit por ENCANAMENTO (`hash-object`, `read-tree`, `commit-tree`)
-    em vez de `git add`: a passagem da pista segue rodando na mesma árvore
-    depois daqui — ela ainda atende até cinco PRs — e mexer no índice ou no
-    working tree dela no meio do caminho seria trocar um buraco por outro.
-
-    O commit nasce do `origin/main` recém-buscado, ou seja, JÁ COM o merge que
-    acabou de entrar: ele acrescenta um arquivo e não desfaz nada.
-    """
-    novos = [e for e in escritos if e["desfecho"] == fila.PORTA_GRAVOU]
-    if not novos:
-        return set()
-    _git(raiz, ["fetch", "origin", "main"], "buscar a main para escriturar a conclusão")
-    base = _git(raiz, ["rev-parse", "FETCH_HEAD"], "achar a ponta da main").strip()
-    # Guarda final da idempotência, e a única que enxerga o que ESTÁ na main:
-    # dentro de uma passagem da pista, o checkout do job não recebe o que os
-    # pousos anteriores dela empurraram.
-    na_main = _git(
-        raiz, ["ls-tree", "--name-only", base, "fila/eventos/"], "ler o livro da main"
-    )
-    a_empurrar = [e for e in novos if f"-{e['tarefa']}-concluida.json" not in na_main]
-    if not a_empurrar:
-        print(f"{MARCA_DA_PORTA}: a main já tem essas conclusões, nada a empurrar.")
-        return set()
-    with tempfile.TemporaryDirectory() as tmp:
-        env = {"GIT_INDEX_FILE": str(Path(tmp) / "index")}
-        _git(raiz, ["read-tree", base], "montar a árvore da main", env=env)
-        for escrito in a_empurrar:
-            caminho = escrito["caminho"]
-            blob = _git(
-                raiz, ["hash-object", "-w", str(caminho)], "guardar o evento"
-            ).strip()
-            relativo = caminho.relative_to(raiz).as_posix()
-            _git(
-                raiz,
-                ["update-index", "--add", "--cacheinfo", f"100644,{blob},{relativo}"],
-                f"pôr {relativo} na árvore",
-                env=env,
-            )
-        arvore = _git(raiz, ["write-tree"], "fechar a árvore", env=env).strip()
-    tarefas = ", ".join(e["tarefa"] for e in a_empurrar)
-    commit = _git(
-        raiz,
-        [
-            "-c",
-            f"user.name={AUTOR_DA_PORTA}",
-            "-c",
-            f"user.email={EMAIL_DA_PORTA}",
-            "commit-tree",
-            arvore,
-            "-p",
-            base,
-            "-m",
-            f"fila: {tarefas} concluída(s) pelo merge do PR #{numero}",
-        ],
-        "assinar o commit da conclusão",
-    ).strip()
-    _git(raiz, ["push", "origin", f"{commit}:refs/heads/main"], "empurrar a conclusão")
-    print(f"{MARCA_DA_PORTA}: {tarefas} fechada(s) na main pelo commit {commit[:12]}.")
-    return {e["tarefa"] for e in a_empurrar}
-
-
-def _empurrar_com_tentativas(raiz: Path, escritos: list[dict], numero: int) -> set[str]:
-    """A `main` pode andar entre o `fetch` e o `push`, e aí o push é recusado.
-
-    Um pouso por vez é garantido pelo `concurrency` da pista, mas a `main` não
-    é só dela: deploy e mão humana também escrevem ali. Sem isto, uma corrida
-    de segundos faria a passagem inteira terminar VERMELHA por um empurrão que
-    só precisava ser refeito sobre a ponta nova.
-    """
-    ultimo: Exception | None = None
-    for tentativa in range(1, TENTATIVAS_DE_EMPURRAO + 1):
         try:
-            return _empurrar_conclusoes(raiz, escritos, numero)
-        except ErroDeInstrumentacao as erro:
-            ultimo = erro
-            print(
-                f"{MARCA_DA_PORTA}: o empurrão falhou na tentativa {tentativa} "
-                f"de {TENTATIVAS_DE_EMPURRAO}; a main pode ter andado."
+            remessas = diff.ler("a sombra do evento da fila")
+        except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
+            achados = [
+                {
+                    "tarefa": tid,
+                    "desfecho": fila.SOMBRA_SILENCIO,
+                    "motivo": f"não consegui ler o diff do PR ({erro})",
+                    "evento": None,
+                }
+                for tid in dict.fromkeys(citadas)
+            ]
+        else:
+            achados = fila.evento_de_conclusao_em_sombra(
+                raiz,
+                numero=numero,
+                titulo=titulo,
+                corpo=corpo,
+                ramo=ramo,
+                url=str(pr.get("url") or ""),
+                sha_do_merge=sha_do_merge,
+                arquivos_do_diff=remessas,
             )
-    raise ErroDeInstrumentacao(
-        f"não consegui levar a conclusão do PR #{numero} para a main",
-        f"Foram {TENTATIVAS_DE_EMPURRAO} tentativas. Ultima falha:" + chr(10) + str(ultimo),
-    )
+        for achado in achados:
+            _dizer_a_sombra(numero, achado)
+            telemetria.registrar(
+                "evento_da_fila_pela_porta",
+                {
+                    "modo": "sombra",
+                    "pr": numero,
+                    "tarefa": achado["tarefa"],
+                    "desfecho": achado["desfecho"],
+                    "motivo": achado["motivo"],
+                    "arquivo": (achado.get("evento") or {}).get("arquivo", ""),
+                },
+                cwd=str(raiz),
+                sessao=os.environ.get("GITHUB_RUN_ID") or "",
+            )
+        return achados
+    except Exception as erro:  # noqa: BLE001 — sombra na dúvida cala
+        print(f"{MARCA_DA_SOMBRA}: não mediu ({erro.__class__.__name__}: {erro}).")
+        return []
 
 
-def _git(
-    raiz: Path, args: list[str], descricao: str, *, env: dict[str, str] | None = None
-) -> str:
-    caminho = shutil.which("git")
-    if caminho is None:
-        raise ErroDeInstrumentacao(
-            "git não encontrado no PATH",
-            "A conclusão da tarefa entra na main por um commit. Sem o `git` não há como.",
-        )
-    return executar(
-        [caminho, *args],
-        cwd=raiz,
-        descricao=descricao,
-        exigir_stdout=False,
-        env_extra=env,
-    ).stdout
-
-
-def _dizer_a_porta(numero: int, achado: dict, entraram: set[str]) -> None:
+def _dizer_a_sombra(numero: int, achado: dict) -> None:
     tarefa = achado["tarefa"]
     if achado["desfecho"] == fila.SOMBRA_GERARIA:
-        if tarefa in entraram:
-            print(
-                f"\n{MARCA_DA_PORTA}: {tarefa} CONCLUÍDA pelo merge do PR #{numero}.\n"
-                f"   gravei fila/eventos/{achado['evento']['arquivo']}.json"
-            )
-        else:
-            print(f"{MARCA_DA_PORTA}: {tarefa} já tinha conclusão na main, nada a fazer.")
+        evento = achado["evento"]
+        print(
+            f"\n{MARCA_DA_SOMBRA}: {tarefa}\n"
+            f"   sombra: eu teria gravado fila/eventos/{evento['arquivo']}.json\n"
+            + json.dumps(evento, ensure_ascii=False, indent=2)
+            + "\n   Nada foi gravado: esta regra nasceu em sombra "
+            "(ci/fila.py, o porquê e o que gradua)."
+        )
         return
     if achado["desfecho"] == fila.SOMBRA_JA_EXISTE:
-        print(f"{MARCA_DA_PORTA}: {tarefa} já existe, nada a fazer.")
+        print(f"{MARCA_DA_SOMBRA}: {tarefa} já existe, nada a fazer.")
         return
-    print(f"{MARCA_DA_PORTA}: {tarefa} sem evento, {achado['motivo']}.")
+    print(f"{MARCA_DA_SOMBRA}: {tarefa} sem evento, {achado['motivo']}.")
 
 
 # ---------------------------------------------------------------------------
@@ -1642,7 +1476,7 @@ def main(argv: list[str] | None = None) -> int:
     sha = (estado_final.get("mergeCommit") or {}).get("oid") or "?"
     print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
     diff = DiffDoPR(raiz, args.pr)
-    concluiu = concluir_tarefas_do_pr(raiz, pr, sha, diff)
+    sombra_do_evento_da_fila(raiz, pr, sha, diff)
     sombra_da_area_do_registro(raiz, pr, diff)
     print(
         "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
@@ -1650,9 +1484,7 @@ def main(argv: list[str] | None = None) -> int:
         "painel/registros/ (molde em painel/LEIA-ME.md). Só o registro: os "
         "arquivos gerados do painel são da integração desde a Onda 3."
     )
-    # O merge entrou de qualquer jeito; o != 0 aqui diz que a ESCRITURAÇÃO da
-    # fila falhou, e o bloco ERROR acima diz o que fazer à mão.
-    return 0 if concluiu else 2
+    return 0
 
 
 def _blindar(rotulo: str, funcao):
