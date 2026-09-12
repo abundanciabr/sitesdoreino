@@ -767,15 +767,19 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
                 )
             )
         else:
+            estado_da_dependencia = Estado.FAIL
+            if situacao == "OPEN":
+                estado_da_dependencia = Estado.ERROR
             resultados.append(
                 Resultado(
                     f"Depende-de #{numero}",
-                    Estado.FAIL,
+                    estado_da_dependencia,
                     f"ainda não entrou (state={situacao}) — {titulo}",
-                    "Este PR declarou precisar daquele antes. Espere o pouso "
-                    "dele; se a ordem não importa mais, tire a linha "
-                    "`Depende-de:` da descrição — ela é uma promessa, e "
-                    "promessa que ninguém cumpre é pior que promessa nenhuma.",
+                    "A dependência está aberta. Este PR pode aguardar na pista; "
+                    "a integração permanece bloqueada até ela pousar."
+                    if situacao == "OPEN" else
+                    "A dependência não foi integrada. Confira o PR declarado e "
+                    "corrija seu encerramento antes de pedir pouso novamente.",
                 )
             )
     return resultados
@@ -994,6 +998,8 @@ def pode_aguardar_na_pista(relatorio: Relatorio, pr: dict) -> bool:
     if not recusas:
         return False
     for resultado in recusas:
+        if resultado.estado is Estado.ERROR and resultado.nome.startswith("Depende-de #"):
+            continue
         if resultado.estado is Estado.ERROR and resultado.nome in (
             pendentes | {"checks", "checks obrigatórios"}
         ):

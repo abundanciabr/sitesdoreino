@@ -827,7 +827,8 @@ def test_le_a_declaracao_de_dependencia(corpo: str, esperado: list) -> None:
     assert mergear.dependencias_declaradas(_pr_com_corpo(corpo)) == esperado
 
 
-def test_dependencia_ainda_aberta_reprova(monkeypatch) -> None:
+def test_dependencia_ainda_aberta_aguarda_sem_aprovar_merge(monkeypatch) -> None:
+    # guarda: ci/mergear.py:772
     import json as _json
 
     def gh(argumentos, raiz, descricao, **kwargs):
@@ -837,7 +838,7 @@ def test_dependencia_ainda_aberta_reprova(monkeypatch) -> None:
 
     monkeypatch.setattr(mergear, "_gh", gh)
     resultados = mergear.checar_dependencias(RAIZ, _pr_com_corpo("Depende-de: #12"))
-    assert resultados and resultados[0].estado is Estado.FAIL
+    assert resultados and resultados[0].estado is Estado.ERROR
     assert "ainda não entrou" in resultados[0].resumo
 
 
