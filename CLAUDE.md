@@ -126,17 +126,17 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-A sessão que recebe o pedido é a maestro: confira PRs abertos, delegue
-partes independentes em paralelo e dependências em série. Prefira uma célula por PR; se tocar várias,
-rode todas as suítes. Teto de 15 arquivos, fora `painel/` e `fila/`.
-Contrato congelado e CODEOWNERS exigem mandato escrito. Dependência externa
-ao brief volta à maestro, com `Depende-de: #N`.
-Revisor independente lê o diff. `make pr` embarca reserva, recibo e eventos.
-Escrivão registra lições/fatos adicionais sem duplicar esses efeitos.
-Subagente nunca pergunta ao mantenedor nem dispara subagente.
-Ficha em `.codex/agents/` ou `.claude/agents/`; regência `RUNBOOK-LOTES.md`.
+Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege e atesta,
+nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
+mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
+paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
+`painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
+dependência fora do brief volta à maestro com `Depende-de: #N`. Revisor lê o
+diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
+Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
+`.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
 
-**Quem faz valer:** `ci/pr.py` e testes das fichas; divisão é julgamento.
+**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
 
 ## O que uma chamada custa
 

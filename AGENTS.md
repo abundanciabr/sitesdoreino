@@ -25,6 +25,14 @@ No Codex, as fichas ficam em `.codex/agents/`; modelo, esforço e teto vêm de
 `python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
 despacho não cria subagente nem pergunta ao mantenedor.
 
+Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
+constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
+registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
+edita o clone principal, nunca arma espera, nunca amplia o mandato; não
+audita nem decide lei. Claude Code rege e publica o atestado da revisão;
+Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
+direto nesta sessão continua sendo lote regido por ela.
+
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
 `python ci/sessao.py --celula <area> --tarefa <slug>` abre a bancada;
