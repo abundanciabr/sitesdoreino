@@ -219,6 +219,18 @@ def auditar_fichas(raiz: Path) -> list[str]:
             falhas.append(
                 f"{relativo}: despacho sem model só é aceito se o brief declarar modelo_recomendado"
             )
+    relativo = ".claude/agents/despacho.md"
+    caminho = raiz / relativo
+    if caminho.parent.is_dir() and not caminho.is_file():
+        falhas.append(f"{relativo}: falta a ficha de encaminhamento; restaure-a antes de delegar.")
+    if caminho.is_file():
+        campos = _frontmatter(caminho)
+        permitidas = {item.strip() for item in campos.get("tools", "").split(",") if item.strip()}
+        negadas = {item.strip() for item in campos.get("disallowedTools", "").split(",")}
+        if (campos.get("name") != "despacho" or campos.get("model") != MODELO_ROTINA
+                or campos.get("effort") != "medium" or permitidas != {"Read", "Grep", "Glob"}
+                or not {"Bash", "Edit", "Write", "NotebookEdit", "Agent", "AskUserQuestion"} <= negadas):
+            falhas.append(f"{relativo}: encaminhamento exige sonnet/medium, Read, Grep e Glob; negue shell, escrita e delegação. Use Codex para implementar.")
     return falhas
 
 
@@ -260,6 +272,10 @@ def compilar_brief(
     armadilhas: list[str],
 ) -> str:
     perfil = perfil_por_tipo(tipo)
+    if tipo == "espera":
+        raise ErroDeInstrumentacao("brief de espera não é implementação", "A maestro acompanha a pista; não encaminhe espera ao executor. Use rotear para consultar o perfil.")
+    categoria = "topo" if PERFIS[tipo].modelo == MODELO_TOPO else "rotina"
+    perfil = replace(perfil, modelo=MODELOS_CODEX[categoria])
     if not objetivo.strip():
         raise ErroDeInstrumentacao("objetivo vazio", "Brief sem objetivo vira adivinhação.")
     if not alvos:
@@ -273,6 +289,7 @@ def compilar_brief(
         "",
         f"objetivo: {objetivo.strip()}",
         f"tipo: {perfil.tipo}",
+        "executor: codex",
         f"modelo_recomendado: {perfil.modelo}",
         f"esforco_recomendado: {perfil.esforco}",
         f"teto_de_contexto: {perfil.teto_contexto}",
@@ -291,6 +308,9 @@ def compilar_brief(
         "- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
         "",
         "## Limite",
+        "- Revisão e diagnóstico aqui são técnicos, da implementação; não produzem auditoria ou atestado independente.",
+        "- Claude Code rege; Codex implementa o decidido; Antigravity verifica com independência.",
+        "- Subagentes mantêm o papel da IA de origem; não substituem outra IA da tríade.",
         "- Não leia documentação ampla sem gatilho do erro, caminho ou contrato.",
         "- Ao passar do teto de contexto, devolva handoff curto e pare a expansão.",
     ]
@@ -342,7 +362,7 @@ def cmd_auditar_fichas(args: argparse.Namespace) -> int:
     raiz = raiz_do_repo()
     falhas = auditar_fichas(raiz)
     if falhas:
-        print("FAIL economia-fichas: herança cara ou brief sem modelo")
+        print("FAIL economia-fichas: modelo, papel ou ferramentas incompatíveis; corrija as fichas indicadas.")
         for falha in falhas:
             print(f"  - {falha}")
         return 1

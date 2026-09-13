@@ -10,6 +10,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Agent|Workflow",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_dos_sub_agentes.py\"",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "PostToolUse": [],

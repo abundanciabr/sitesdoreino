@@ -26,12 +26,13 @@ No Codex, as fichas ficam em `.codex/agents/`; modelo, esforço e teto vêm de
 despacho não cria subagente nem pergunta ao mantenedor.
 
 Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
-constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
-registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
-edita o clone principal, nunca arma espera, nunca amplia o mandato; não
-audita nem decide lei. Claude Code rege e publica o atestado da revisão;
-Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
-direto nesta sessão continua sendo lote regido por ela.
+implementa decisões e testa o próprio trabalho pela ficha `despacho`; não
+decide arquitetura ou lei por conta própria nem rege lote. Claude Code somente
+rege: decide, prioriza, prepara briefs, acompanha e encaminha. Antigravity só
+audita e verifica com independência. Pedido direto não muda papel. Subagentes
+herdam os limites da IA que os lançou; nomes não transferem autoridade, e
+Claude Code não implementa por subagente. Autorrevisão técnica do Codex não
+substitui a revisão nem a verificação independente da tríade.
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.

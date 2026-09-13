@@ -29,8 +29,7 @@ disputa: veio de uma IA fazendo o que faz melhor, ler o sistema inteiro.
 A divisão segue a força de cada uma. Antigravity tem a maior janela de
 contexto e enxerga o todo: audita. Codex tem volume, paralelismo e custo
 baixo por PR em tarefa bem especificada: constrói. Claude Code segura
-constituições longas, traduz achado em brief sem ambiguidade e pega o bug
-sutil: rege, executa o cirúrgico e revisa o crítico.
+constituições longas e traduz achado em brief sem ambiguidade: rege.
 
 Duas fichas do conselho foram reprovadas por um único motivo: mediram a pasta
 local, que estava 82 commits atrás de `origin/main` e com o `CLAUDE.md`
@@ -40,9 +39,9 @@ mutilado. Por isso a regra 1 abaixo é a primeira.
 
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
-| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; revisa PR crítico e publica o atestado | espera check em laço; mergeia; delega arquitetura |
-| Executor | Codex | o PR pela ficha `despacho`, que grava o evento na fila e o registro no livro; a `implementacao` com prova, quando o brief a pedir | pergunta ao mantenedor; edita o clone principal; arma espera; amplia o mandato; audita; decide lei |
-| Sentinela | Antigravity | achados medidos contra `origin/main` (`proposta`) e a verificação independente de cada entrega alheia (`verificacao`) | edita código ou lei; escreve despacho; grava evento ou registro; mede a pasta local |
+| Maestro | Claude Code | decisões dentro do mandato, prioridades, briefs, acompanhamento, encaminhamento e registros de regência | implementação decidida, inclusive edição operacional de lei, código ou teste; reger por meio de subagente executor |
+| Executor | Codex | implementação das decisões e os testes do próprio trabalho pela ficha `despacho` | decidir arquitetura ou lei por conta própria; reger lote; auditar a própria entrega como verificação independente |
+| Sentinela | Antigravity | auditoria e verificação independente contra `origin/main` | implementar; reger; transformar verificação em autorrevisão do executor |
 
 Quem verifica o quê: a sentinela verifica toda entrega que não é de ficha
 dela; a entrega de ficha da sentinela é verificada pela maestro. A revisão
@@ -50,6 +49,15 @@ independente que o portão de pouso exige antes do merge (`ci/mergear.py`,
 atestado de `docs/decisoes/DECISAO-revisao-e-publicacao.md`) continua sendo
 feita pelo revisor da casa e publicada pela maestro; a verificação da
 sentinela vem depois do merge e mede o aceite da ficha, não o diff.
+Autorrevisão técnica do Codex é parte da implementação e não substitui nenhuma
+dessas verificações independentes.
+
+Pedido direto não muda papel. Subagentes herdam os limites da IA que os lançou,
+e nomes de agentes ou fichas não transferem autoridade. Claude Code não pode
+escrever implementação por meio de subagente. A lei é decidida pelo mantenedor
+ou pela maestro dentro de mandato expresso; o executor apenas transcreve o que
+foi decidido. Só o mantenedor pode alterar estes papéis por decisão expressa:
+urgência, tarefa pequena e conveniência não criam autoexceção.
 
 ## O contrato, que já existia
 
@@ -87,7 +95,7 @@ mora lá deixa de classificar: ele lista.
 
 ## O que a tríade não muda
 
-- A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
+- A lei do lote: a maestro rege e o Codex executa, independentemente da sessão em que o pedido foi colado.
 - O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, revisor independente, atestado, pouso pela pista.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
 - Pedido colado no Antigravity vira proposta medida contra `origin/main`, devolvida à maestro; ele não executa.
@@ -120,16 +128,20 @@ pela própria autora; ANTIGRAVITY-002, porque a pista já acorda por evento.
 
 ## Quem faz valer
 
+`ci/economia_da_fabrica.py` (executor, modelo, esforço e teto do brief),
 `ci/pr.py` (recibo e eventos a bordo, tarefa vinculada), `ci/fila.py`
 (balcão, `validar` fail-closed na muralha), `ci/mergear.py` (atestado
 independente e pouso pela pista) e os testes das fichas
 (`ci/tests/test_fichas_de_robo.py`, `ci/tests/test_codex_nativo.py`). A
-divisão de papéis em si é julgamento: nenhum portão sabe qual IA está
-digitando. O que ele sabe conferir é o rastro: tarefa na fila, brief roteado,
-PR com recibo, atestado com três identidades distintas.
+divisão de papéis em si é julgamento: nenhum portão autentica qual IA está
+digitando. O compilador fixa o executor Codex nos briefs de implementação e a
+ficha nativa `despacho` do Claude Code é somente leitura; isso limita esses dois
+mecanismos, sem controlar agentes genéricos nem o harness inteiro. A casa confere
+apenas o rastro que conhece: tarefa, brief, PR com recibo e atestado.
 
 ## A memória
 
 - 12/09/2026, manhã: conselho local da Fase 4 (Codex propõe o regulamento; Claude Code e Antigravity escrevem fichas; 0 pontos).
 - 12/09/2026, tarde: o mantenedor pede a tríade. Claude Code escreve o protocolo e os dois convites na pasta de trabalho do mantenedor, fora do Git. Codex aceita às 16:49, Antigravity às 16:47; os aceites ficam gravados na mesma pasta. O protocolo é esta decisão.
 - 12/09/2026, noite: PR #1603 (despacho 2) recebe atestado e pedido de pouso; PR #1604 cria a TAR-371 (despacho 1) e a TAR-370; esta decisão entra na lei.
+- 12/09/2026, correção expressa do mantenedor: remove “execução cirúrgica” e a regência por quem recebe o pedido; fixa Claude Code somente na regência, Codex na execução e Antigravity na sentinela. As atribuições antigas acima permanecem como história, sem abrir precedente operacional.

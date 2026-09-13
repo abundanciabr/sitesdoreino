@@ -3,10 +3,9 @@
 > **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
-> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é a sessão que
-> recebe o pedido (Claude Code por regra; Codex quando o pedido é colado nele); o
-> agente de célula segue a ficha `despacho`, seja sub-agente ou Codex que pega tarefa
-> na fila; a verificação depois do merge é do Antigravity.
+> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é sempre Claude
+> Code. Codex executa os briefs e Antigravity audita e verifica. Pedido colado em
+> qualquer sessão não muda esses papéis.
 >
 > Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
 > merge passou ao agente (PR #58, Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`)
@@ -17,12 +16,13 @@
 
 ## §0 — Para você, humano: como pedir um lote
 
-**Desde 05/09/2026 você não precisa pedir.** Todo pedido seu numa sessão é um
-lote: a sessão que o recebe divide em pedaços independentes, dispara um
-sub-agente por pedaço com as fichas de `.claude/agents/`, ou cria a tarefa na
-fila com o brief compilado inteiro no campo `despacho`, que o Codex executa, e só o que depende
-de outro pedaço fica em série (CLAUDE.md, "Todo pedido do mantenedor é um
-lote"; decisão sua no registro `20260905-013`). O texto abaixo continua
+**Desde 05/09/2026 você não precisa pedir.** Todo pedido seu entra na regência
+da maestro, que divide o lote, classifica cada tarefa, escolhe explicitamente
+modelo, esforço e teto conforme `python ci/economia_da_fabrica.py brief` e cria
+na fila o brief que o Codex executa. Só o que depende de outro pedaço fica em
+série. Subagentes herdam os limites da IA que os lançou; nomes de ficha não
+transferem autoridade e Claude Code não escreve implementação por subagente.
+O texto abaixo continua
 valendo para quando você quer que a sessão tire o trabalho DA FILA em vez de
 receber um pedido novo.
 
