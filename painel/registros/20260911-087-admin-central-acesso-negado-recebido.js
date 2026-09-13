@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-087-admin-central-acesso-negado-recebido",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "Central administrativa passou a declarar acesso negado",
+  detalhe: "PR #1532 atualizado no SHA fd5d49deebf460c79391f881d17d35f9531da273. As mutações da regra de 401, do link do CRM e da validação da URL reprovaram. A Central passou com 86 testes; a suíte administrativa passou com 1943; o freeze do admin passou.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1532",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260911-084-admin-central-recebida",
+  gravidade: "info",
+  frente: null,
+  area: "painel",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

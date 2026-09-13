@@ -797,6 +797,308 @@ def test_a_confissao_lista_as_TRES_filas_do_degrau_3_e_nenhuma_outra():
 
 
 # ---------------------------------------------------------------------------
+# 4.1 As quatro visões não escondem fonte que a Central ainda não lê
+# ---------------------------------------------------------------------------
+@respx.mock
+def test_as_quatro_funcoes_encontram_hoje_aprovacoes_atrasos_e_resultados():
+    """A Central oferece a mesma pergunta operacional às quatro pessoas.
+
+    O cartão não inventa uma fila para Ensino só porque ela ainda não tem uma
+    porta que a enumere. A resposta honesta continua sendo visível ao lado das
+    outras três perguntas, em vez de um zero que pareceria trabalho concluído.
+    """
+    _todos_respondem()
+
+    html = _texto(_dentro().get(TELA))
+
+    for funcao, pessoa in (
+        ("Estratégia e Conteúdo", "Arameu"),
+        ("Operações e Tráfego", "Ryan"),
+        ("Ensino e Comunidade", "Lívia"),
+        ("Comercial e Relacionamento", "Maria"),
+    ):
+        assert funcao in html
+        assert pessoa in html
+    for pergunta in (
+        "Fazer hoje",
+        "Aprovar",
+        "Resolver atrasos",
+        "Acompanhar resultados",
+    ):
+        assert html.count(pergunta) == 4
+    assert "A fonte ainda não oferece uma lista de portfólios para conferir." in html
+    assert "A fonte de marcos ainda não tem contrato de leitura para a Central." in html
+    assert "A fonte ainda não oferece uma lista de checkpoints esperando laudo." in html
+
+
+@respx.mock
+def test_acessos_indisponiveis_e_crm_sem_leitura_nao_parecem_fila_vazia():
+    """Acesso e CRM declaram separadamente o que a Central consegue ler."""
+    respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(503))
+    respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "Comercial e Relacionamento" in html
+    assert "A fonte Acessos à escola não respondeu agora." in html
+    assert (
+        "Integração indisponível: Ainda não há contrato de leitura nem consumidor."
+        in html
+    )
+    assert "Acompanhe o CRM na fonte dona até a Central ganhar leitura." in html
+    assert "A fonte de oportunidades e acessos não respondeu agora." not in html
+    assert "0 pendência comercial" not in html
+
+
+@respx.mock
+@pytest.mark.parametrize("status", [401, 403])
+def test_acesso_negado_pela_alunos_chega_a_fonte_real_da_central(status):
+    """Credencial recusada não é queda da fonte nem fila vazia."""
+    respx.get(FILA_DE_ENTRADA).mock(return_value=httpx.Response(status))
+    respx.get(LISTA_DE_ALUNOS).mock(return_value=httpx.Response(200, json=[]))
+
+    html = _texto(_dentro().get(TELA))
+
+    inicio = html.index("Acessos à escola")
+    fim = html.index("CRM de oportunidades", inicio)
+    acessos = html[inicio:fim]
+    assert (
+        "Acesso negado: A fonte recusou a credencial de leitura da Central." in acessos
+    )
+    assert "Peça a Operações que restaure a leitura autorizada." in acessos
+    assert "A fonte Acessos à escola não respondeu agora." not in acessos
+
+
+@respx.mock
+def test_crm_indisponivel_entrega_link_validado_para_a_fonte_dona():
+    """O próximo gesto do CRM precisa abrir a fonte, não só nomeá-la."""
+    _todos_respondem([])
+
+    html = _texto(_dentro().get(TELA))
+
+    inicio = html.index("CRM de oportunidades")
+    fim = html.index("</section>", inicio)
+    crm = html[inicio:fim]
+    assert (
+        '<a href="/leads">Acompanhe o CRM na fonte dona até a Central ganhar leitura.</a>'
+        in crm
+    )
+
+
+def test_fonte_sem_leitura_precisa_explicar_a_lacuna():
+    """Fonte sem fila não pode gerar um trecho em branco na Central."""
+    with pytest.raises(ValueError, match="precisa explicar"):
+        central.FonteDeTrabalho(nome="CRM de oportunidades", fila=None)
+
+    with pytest.raises(ValueError, match="URL segura"):
+        central.FonteDeTrabalho(
+            nome="CRM de oportunidades",
+            fila=None,
+            estado=central.INTEGRACAO_INDISPONIVEL,
+            explicacao="Não há leitura.",
+            proximo_gesto="Abra a fonte.",
+            proximo_gesto_url="javascript:alert('nao')",
+        )
+
+
+@respx.mock
+def test_queda_futura_do_crm_nomeia_a_fonte_e_nao_parece_fila_vazia(monkeypatch):
+    """Quando o CRM ganhar leitura, a queda dele usa a mesma guarda explícita."""
+    _todos_respondem()
+    visao = central.VisaoDeResponsabilidade(
+        nome="Comercial e Relacionamento",
+        pessoa="Maria",
+        fontes=(),
+        aprovacoes=(),
+        destino="/escola/alunos/",
+        destino_texto="Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+        fontes_de_trabalho=(
+            central.FonteDeTrabalho(
+                nome="CRM de oportunidades",
+                fila=central.Fila(
+                    titulo="Oportunidades ativas",
+                    quantidade=None,
+                    espera_ha=None,
+                    href="/crm/",
+                    o_que_e="",
+                    onde_mora="o CRM",
+                ),
+            ),
+        ),
+        lacunas=(),
+    )
+    monkeypatch.setattr(central, "visoes_de_responsabilidade", lambda _: (visao,))
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "A fonte CRM de oportunidades não respondeu agora." in html
+    assert "Nenhuma pessoa aguarda acesso nesta fonte agora." not in html
+
+
+@respx.mock
+def test_titular_vazio_permanece_no_cartao_com_ausencia_e_sem_substituto(monkeypatch):
+    """A falta de pessoa não apaga a função nem permite inventar alguém."""
+    _todos_respondem()
+    cadastro = central._cadastro_de_responsabilidades()
+    assert cadastro is not None
+    cadastro["funcoes"]["comercial-relacionamento"]["pessoa"] = ""
+    monkeypatch.setattr(central, "_cadastro_de_responsabilidades", lambda: cadastro)
+
+    html = _texto(_dentro().get(TELA))
+
+    inicio = html.index("Comercial e Relacionamento")
+    fim = html.index("</section>", inicio)
+    cartao = html[inicio:fim]
+    assert "Titular ausente." in cartao
+    assert "Não há substituto humano cadastrado." in cartao
+    assert "Maria" not in cartao
+
+
+@respx.mock
+def test_integracao_indisponivel_e_acesso_negado_tem_estados_e_gestos_distintos(
+    monkeypatch,
+):
+    """A Central não chama falta de integração de recusa de acesso."""
+    _todos_respondem()
+    visao = central.VisaoDeResponsabilidade(
+        nome="Comercial e Relacionamento",
+        pessoa="Maria",
+        fontes=(),
+        aprovacoes=(),
+        destino="/escola/alunos/",
+        destino_texto="Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+        fontes_de_trabalho=(
+            central.FonteDeTrabalho(
+                nome="CRM de oportunidades",
+                fila=None,
+                estado=central.INTEGRACAO_INDISPONIVEL,
+                explicacao="Ainda não há contrato de leitura nem consumidor.",
+                proximo_gesto="Acompanhe o CRM na fonte dona até a Central ganhar leitura.",
+            ),
+            central.FonteDeTrabalho(
+                nome="Acessos à escola",
+                fila=None,
+                estado=central.ACESSO_NEGADO,
+                explicacao="A fonte recusou a credencial de leitura da Central.",
+                proximo_gesto="Peça ao titular de Operações que restaure a leitura autorizada.",
+            ),
+        ),
+        lacunas=(),
+    )
+    monkeypatch.setattr(central, "visoes_de_responsabilidade", lambda _: (visao,))
+
+    html = _texto(_dentro().get(TELA))
+
+    assert (
+        "Integração indisponível: Ainda não há contrato de leitura nem consumidor."
+        in html
+    )
+    assert "Acompanhe o CRM na fonte dona até a Central ganhar leitura." in html
+    assert "Acesso negado: A fonte recusou a credencial de leitura da Central." in html
+    assert "Peça ao titular de Operações que restaure a leitura autorizada." in html
+
+
+@respx.mock
+def test_crm_vazio_e_com_demanda_nao_viram_pessoas_aguardando_acesso(monkeypatch):
+    """O CRM conta oportunidades; acesso conta pessoas, são fontes independentes."""
+    _todos_respondem()
+
+    def central_com_crm(quantidade):
+        return (
+            central.VisaoDeResponsabilidade(
+                nome="Comercial e Relacionamento",
+                pessoa="Maria",
+                fontes=(),
+                aprovacoes=(),
+                destino="/escola/alunos/",
+                destino_texto="Abrir pessoas aguardando acesso e acompanhar o desfecho.",
+                fontes_de_trabalho=(
+                    central.FonteDeTrabalho(
+                        nome="CRM de oportunidades",
+                        fila=central.Fila(
+                            titulo="Oportunidades ativas",
+                            quantidade=quantidade,
+                            espera_ha=2 if quantidade else None,
+                            href="/crm/",
+                            o_que_e="",
+                            onde_mora="o CRM",
+                        ),
+                        singular="oportunidade ativa",
+                        plural="oportunidades ativas",
+                        vazio="Nenhuma oportunidade ativa nesta fonte agora.",
+                    ),
+                    central.FonteDeTrabalho(
+                        nome="Acessos à escola",
+                        fila=central.Fila(
+                            titulo="Pessoas aguardando acesso",
+                            quantidade=0,
+                            espera_ha=None,
+                            href="/escola/alunos/",
+                            o_que_e="",
+                            onde_mora="a lista de alunos",
+                        ),
+                        singular="pessoa aguardando acesso",
+                        plural="pessoas aguardando acesso",
+                        vazio="Nenhuma pessoa aguarda acesso nesta fonte agora.",
+                    ),
+                ),
+                lacunas=(),
+            ),
+        )
+
+    monkeypatch.setattr(
+        central, "visoes_de_responsabilidade", lambda _: central_com_crm(0)
+    )
+    vazio = _texto(_dentro().get(TELA))
+    monkeypatch.setattr(
+        central, "visoes_de_responsabilidade", lambda _: central_com_crm(2)
+    )
+    com_demanda = _texto(_dentro().get(TELA))
+
+    assert "Nenhuma oportunidade ativa nesta fonte agora." in vazio
+    assert "2 oportunidades ativas" in com_demanda
+    assert "2 pessoas aguardando acesso" not in com_demanda
+
+
+@respx.mock
+def test_aprovacoes_usam_link_interno_da_fonte_dona():
+    """A aprovação abre a casa que a decide, sem URL vinda do cadastro."""
+    _todos_respondem()
+    html = _texto(_dentro().get(TELA))
+
+    for funcao, rota in (
+        ("Estratégia e Conteúdo", "placar"),
+        ("Ensino e Comunidade", "escola"),
+    ):
+        inicio = html.index(funcao)
+        aprovar = html.index("Aprovar", inicio)
+        resolver_atrasos = html.index("Resolver atrasos", aprovar)
+        assert f'<a href="{reverse(rota)}">' in html[aprovar:resolver_atrasos]
+
+
+@respx.mock
+def test_sem_cadastro_de_responsabilidades_a_central_nao_inventa_quatro_titulares(
+    monkeypatch,
+):
+    """O cadastro publicado caiu: não há pessoa atribuível por adivinhação."""
+    monkeypatch.setattr(central, "diretorio_do_painel", lambda: None)
+    _todos_respondem()
+
+    html = _texto(_dentro().get(TELA))
+
+    assert "Não consegui ler o cadastro de responsabilidades." in html
+    assert "Estratégia e Conteúdo" not in html
+
+
+@respx.mock
+def test_cadastro_de_responsabilidades_de_formato_errado_e_recusado(monkeypatch):
+    """JSON válido ainda pode não ser o cadastro que a tela espera."""
+    monkeypatch.setattr(central.json, "loads", lambda _: [])
+
+    assert central._cadastro_de_responsabilidades() is None
+
+
+# ---------------------------------------------------------------------------
 # 5. O número do painel é o do PAINEL, lido da página que o gerador produz
 # ---------------------------------------------------------------------------
 def test_o_carimbo_da_fila_casa_com_a_pagina_REAL_do_gerador():
