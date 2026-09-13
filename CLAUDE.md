@@ -141,11 +141,10 @@ Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
 ## O que uma chamada custa
 
 Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
-nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
-dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
-com o que levar; ele decide. Economia não reduz ambição.
-Para poupar tokens de leitura (arrasto): nunca leia arquivos inteiros (como `cat` em logs, retomadas ou referências maiores que 100 linhas); extraia apenas a seção necessária com `sed -n` ou `grep`.
-Para medição de estado consolidada: use `python ci/resumo_maestro.py` em vez de chamar `git fetch`, `gh pr list` e `ci/fila.py` separadamente.
+nunca herde modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
+Acima de ~300k de contexto, sugira conversa nova. Economia não reduz ambição.
+Poupe tokens: extraia trechos com `sed -n` ou `grep`, nunca `cat` em arquivo grande.
+Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
@@ -190,16 +189,13 @@ são lápides. Sem tipo específico, use nota.
 
 ## O agente pede pouso; quem mergeia é a pista
 
-Um commit técnico de fechamento substitui microcommits; preserve histórico
-e recibo automático. `git add` por arquivo, nunca `git add -A`; confira o staged.
-Despacho entrega número, ramo, SHA e provas. Maestro confere revisão
-independente e recibo, executa `python ci/mergear.py <N> --pousar`, confirma
-etiqueta e SHA e encerra. Não espere checks, merge ou deploy.
-A pista acompanha checks e integra somente pelo portão; encaminhamento
-não é integração nem publicação. FAIL admite até duas correções; depois
-preserve arquivos/commits e reporte. ERROR é instrumento, nunca aprovação.
-Não espere pelo mantenedor. Resultado posterior vem da pista; urgência
-de publicação segue alarme-main.
+Um commit de fechamento substitui microcommits; preserve histórico e recibo automático.
+`git add` por arquivo, nunca `-A`; confira o staged.
+Despacho entrega número, ramo, SHA e provas. Maestro confere revisão e recibo,
+executa `python ci/mergear.py <N> --pousar`, confirma etiqueta/SHA e encerra.
+A pista acompanha checks e integra pelo portão. Não espere checks, merge ou deploy.
+FAIL admite duas correções; depois preserve e reporte. ERROR nunca aprova.
+Urgência segue alarme-main.
 
 **Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`, seus testes.
 
