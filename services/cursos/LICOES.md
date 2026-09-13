@@ -2,6 +2,20 @@
 
 Específico desta célula. Transversal vai em `armadilhas/` (raiz).
 
+## O endereço de aula é escolhido pelo banco, não pela prévia do editor
+
+**Medido em 11/09/2026, na edição das aulas avulsas.** A prévia do Admin pode
+normalizar o título para um endereço legível, mas duas edições podem pedir o
+mesmo valor antes de qualquer uma gravar. Consultar os endereços ocupados não
+fecha essa janela.
+
+O banco é a autoridade pela restrição `uma_aula_avulsa_por_slug_por_site`. A
+porta calcula o menor sufixo livre, grava numa transação e, se a restrição
+recusar uma disputa, consulta e tenta de novo. A prova usa duas conexões reais
+do PostgreSQL paradas na mesma candidata: uma recebe `aula-disputada`, a outra
+recebe `aula-disputada-2`. Tirar a repetição após `IntegrityError` derruba o
+teste.
+
 ## O prefixo público mora no `reverse`, nunca no endereço digitado
 
 **Medido em 11/09/2026, na edição das aulas avulsas.** As rotas da biblioteca

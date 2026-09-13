@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-202813-TAR-371-explicada",
+  "tarefa": "TAR-371",
+  "evento": "explicada",
+  "quando": "2026-09-12T20:28:13+00:00",
+  "quem": "ficha ANTIGRAVITY-004 do conselho da Fase 4, aprovada por claude e codex; despacho 1 do lote da tríade",
+  "o_que_e": "Existe um portão que confere se cada lei dos robôs tem quem a faça valer, mas ele não percebe quando uma lei inteira some. Em 12/09/2026 um robô apagou 12 das 13 leis na pasta local e o portão teria deixado passar.",
+  "o_que_muda": "Nenhuma lei dos robôs pode mais sumir em silêncio: se o número de leis cair, o PR só passa com uma decisão escrita explicando a remoção. Protege as regras que mantêm a fábrica de pé.",
+  "exemplo": "É o inventário da loja que apita quando falta um item, em vez de só conferir se cada item presente tem etiqueta.",
+  "importancia": 70
+}

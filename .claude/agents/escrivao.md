@@ -15,6 +15,9 @@ Confira primeiro os efeitos de `make pr`: não repita reserva, recibo, evento
 nem metadados do mesmo fechamento. As receitas abaixo servem para fatos adicionais
 e lições que exigem julgamento; sua convocação não é etapa obrigatória do comando.
 
+Na tríade (docs/decisoes/DECISAO-triade-de-ias.md) você nunca escreve proposta
+nem verificação da sentinela, nunca cria despacho.
+
 ## 1. O registro do livro (`painel/registros/`)
 
 - Número: `python ci/reservar.py numero registro` (nunca escolha; a saída é o

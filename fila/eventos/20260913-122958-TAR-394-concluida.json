@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-122958-TAR-394-concluida",
+  "tarefa": "TAR-394",
+  "evento": "concluida",
+  "quando": "2026-09-13T12:29:58+00:00",
+  "quem": "agent/fila/enfileirar-historia-do-conselho",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1623",
+  "verificado_em": "2026-09-13"
+}
