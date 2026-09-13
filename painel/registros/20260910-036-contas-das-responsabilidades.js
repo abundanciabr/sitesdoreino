@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-036-contas-das-responsabilidades",
+  tipo: "decisao",
+  quando: "2026-09-10",
+  titulo: "Definir as contas das quatro responsabilidades",
+  detalhe: "O CRM humano precisa autorizar cada ação por conta e papel. A célula leads só conhece tokens técnicos, não contas humanas. Inferir o papel pelo nome da conta concederia acesso sem regra verificável.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  porque_so_voce: "Somente o mantenedor pode associar as contas reais aos papéis Estratégia, Operações, Ensino e Comercial.",
+  proximo_passo: "Registrar qual conta ocupa cada papel e quem pode substituir temporariamente cada uma.",
+  se_eu_nao_decidir: "O CRM não pode expor nem alterar oportunidades com permissão aplicada no servidor.",
+  recomendacao: "Definir uma conta titular e uma substituta por papel antes do PR de contrato, para que o contrato carregue a autorização correta.",
+  reversivel: true,
+  impacto: "alto",
+  portao: null
+});})();

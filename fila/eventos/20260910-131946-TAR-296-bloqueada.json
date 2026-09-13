@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-131946-TAR-296-bloqueada",
+  "tarefa": "TAR-296",
+  "evento": "bloqueada",
+  "quando": "2026-09-10T13:19:46+00:00",
+  "quem": "despacho-leads-crm-humano-v2",
+  "detalhe": "O contrato congelado de leads só expõe captura (POST /leads) e tags; o CRM humano exige operações novas de listar, criar e atualizar oportunidade para a Central em admin. Destrava com o fatiamento da maestro: primeiro um PR exclusivo de contrato leads v2 pelo RITOS.md §3, depois despachos dependentes em leads e admin.",
+  "espera": "fila"
+}

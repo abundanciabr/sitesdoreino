@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-132441-TAR-296-bloqueada",
+  "tarefa": "TAR-296",
+  "evento": "bloqueada",
+  "quando": "2026-09-10T13:24:41+00:00",
+  "quem": "despacho-leads-crm-humano-v2",
+  "detalhe": "A submissão automática do PR de escrituração não entrega a TAR-296. O CRM continua bloqueado: falta decisão do mantenedor sobre as contas titulares e substitutas dos quatro papéis, seguida do fatiamento de contrato leads v2 e da integração da Central em admin.",
+  "espera": "mantenedor"
+}
