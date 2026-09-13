@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-035759-TAR-391-explicada",
+  "tarefa": "TAR-391",
+  "evento": "explicada",
+  "quando": "2026-09-13T03:57:59+00:00",
+  "quem": "contrato pousado no PR #1581 (TAR-350) em origin/main b433cb76; RITOS §3 (provedor antes do consumidor); brief da maestro em C:\\Users\\davia\\AppData\\Local\\Temp\\sitesdoreino-sessoes\\maestro-adendo\\brief-b2a-forum-porta-candidatas.md. Sem --depende-de por decisão da maestro em 13/09/2026: a dependência real (o contrato em origin/main) já está satisfeita; a TAR-350 só espera a reconciliação da TAR-378.",
+  "o_que_e": "O contrato que deixa a Galeria perguntar ao Fórum quais conversas de um aluno podem virar obra já está assinado, mas o Fórum ainda não responde a essa pergunta e o aluno não tem como consentir.",
+  "o_que_muda": "O aluno marca no próprio tópico que aquela conversa pode ir para a Galeria, e o Fórum responde à Galeria só com essas conversas, de área pública e moderadas; nada privado sai.",
+  "exemplo": "É o aluno colocar uma etiqueta de pode expor no trabalho dele; sem etiqueta, a vitrine não recebe nada.",
+  "importancia": 70
+}
