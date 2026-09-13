@@ -51,6 +51,11 @@ import re
 #: perdeu o DDD (dois números da lista real vieram assim).
 DIGITOS_DO_SUFIXO = 8
 
+#: A segunda passada da conferência. Quatro é o pedaço que o olho humano usa
+#: quando pergunta "termina em quanto?", e é útil quando DDD, DDI ou nono
+#: dígito vieram diferentes demais para o sufixo forte casar.
+DIGITOS_DO_FINAL_CURTO = 4
+
 #: Abaixo disto não há sugestão nenhuma: um pedaço de 5 dígitos casa com gente
 #: demais, e uma sugestão errada custa mais atenção do mantenedor do que ela
 #: poupa.
@@ -107,6 +112,32 @@ def sufixo_de(numero: str) -> str:
     if len(d) < MINIMO_PARA_SUGERIR:
         return ""
     return d[-DIGITOS_DO_SUFIXO:]
+
+
+def final_curto_de(numero: str) -> str:
+    """Os quatro últimos dígitos para achar candidatos parecidos na tela."""
+    d = chave_de(numero)
+    if len(d) < DIGITOS_DO_FINAL_CURTO:
+        return ""
+    return d[-DIGITOS_DO_FINAL_CURTO:]
+
+
+def formatar(numero: str) -> str:
+    """Um telefone para leitura humana, sem mudar a chave que compara."""
+    d = digitos(numero)
+    if len(d) in (12, 13) and d.startswith("55"):
+        d = d[2:]
+    if len(d) == 11:
+        return f"({d[:2]}) {d[2:7]}-{d[7:]}"
+    if len(d) == 10:
+        return f"({d[:2]}) {d[2:6]}-{d[6:]}"
+    if len(d) == 9:
+        return f"{d[:3]} {d[3:6]} {d[6:]}"
+    if len(d) == 8:
+        return f"{d[:4]}-{d[4:]}"
+    if len(d) == 7:
+        return f"{d[:3]}-{d[3:]}"
+    return (numero or "").strip()
 
 
 def numeros_no_texto(texto: str) -> "list[str]":
