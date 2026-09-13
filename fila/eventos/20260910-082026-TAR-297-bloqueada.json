@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-082026-TAR-297-bloqueada",
+  "tarefa": "TAR-297",
+  "evento": "bloqueada",
+  "quando": "2026-09-10T08:20:26+00:00",
+  "quem": "agent/admin/fase-1-scale-os",
+  "detalhe": "TAR-297 valida a Fase 4 e não representa a fundação da Fase 1; aguarda fila própria após as dependências 284 a 289.",
+  "espera": "mantenedor"
+}

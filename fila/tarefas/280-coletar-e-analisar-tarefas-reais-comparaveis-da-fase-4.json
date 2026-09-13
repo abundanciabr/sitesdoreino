@@ -1,0 +1,18 @@
+{
+  "arquivo": "280-coletar-e-analisar-tarefas-reais-comparaveis-da-fase-4",
+  "id": "TAR-280",
+  "titulo": "Coletar e analisar tarefas reais comparáveis da Fase 4",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pelo menos um conjunto real registrado pelo comando da Fase 4, análise reproduzida e tabela explícita de antes, depois, pares, pendências e exclusões",
+  "despacho": "Leia o protocolo da Fase 4 e execute somente tarefas reais elegíveis que já existam no fluxo normal do projeto. Antes de iniciar cada tarefa, registre o manifesto com identidade, piloto, condição, tipo, complexidade, atributos de comparabilidade, revisão do instrumento, relógios e métricas observadas ou null. Ao encerrar, complete o manifesto sem transformar falha, retomada ou PR em tarefa nova. Use python ci/registrar_tarefa_fase4.py --manifesto <arquivo-json-da-tarefa> e reproduza python ci/analise_fase4.py --local. Não fabrique tarefas, pares, zeros ou números ausentes. Registre fontes, exclusões e pendências.",
+  "origem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "criada_em": "2026-09-08"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-010-ci-concluir-contexto-sob-demanda-e-checkpoints",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: concluir contexto sob demanda e checkpoints",
+  detalhe: "Consulta ativa e leis compactas preservam obrigações; hooks mantêm checkpoints. Testes e seis mutações passaram. CODEOWNERS: ci/, CLAUDE.md e AGENTS.md.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1594. Validação local: árvore aff40127a1d36a77ff07f1f22646794cdeb8b5bf; commit 7e41bfd41ddce952a5bef5399fa2fc14ab6b2f62; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-364",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

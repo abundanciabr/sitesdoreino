@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-016-pr-1549-publicado",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "O PR 1549 foi integrado e publicado",
+  detalhe: "A pista integrou o mecanismo que preserva a submissão anterior e exige elo e motivo para trocar uma entrega fechada sem integração.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1549; https://github.com/abundanciabr/sitesdoreino/actions/runs/34554589959; merge 38bc8dd26850fb5469cf4dadc366f27e190fb01b; quatro jobs success",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260911-011-ci-preservar-troca-explicita-de-entrega",
+  relacao: "comentario",
+  tarefa: "TAR-332",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

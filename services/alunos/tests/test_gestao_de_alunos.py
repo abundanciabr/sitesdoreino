@@ -46,6 +46,7 @@ CHAVES = {
     "comprou_em",
     "status",
     "origem",
+    "product_id",
     "criada_em",
     "virou_aluno_em",
 }

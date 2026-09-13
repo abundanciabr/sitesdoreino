@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-193806-TAR-282-explicada",
+  "tarefa": "TAR-282",
+  "evento": "explicada",
+  "quando": "2026-09-08T19:38:06+00:00",
+  "quem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "o_que_e": "A coleta real ainda tem zero tarefas elegíveis, mas o instrumento precisa ser exercitado sem contaminar a telemetria operacional.",
+  "o_que_muda": "Os testes controlados demonstram que o mecanismo separa ausência, repetição, falha, dados incompletos e pares sintéticos sem declarar produtividade real.",
+  "exemplo": "Vinte pares artificiais podem verificar a fórmula e a incerteza, mas permanecem fora da amostra confirmatória.",
+  "importancia": 90
+}

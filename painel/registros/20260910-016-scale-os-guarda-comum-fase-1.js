@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-016-scale-os-guarda-comum-fase-1",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: guarda comum da Fase 1",
+  detalhe: "Main recuperada incorporada; concluir e reconciliar usam a guarda comum; evento TAR-297 validado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 4e26ace8d74a8eb374cc83fc17f5d404c4c1676f; árvore 3c3c00c2ac55de9e1090a25242866ad47b928907; 222 testes; muralhas PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

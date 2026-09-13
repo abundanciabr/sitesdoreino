@@ -323,20 +323,15 @@ class NotificacoesClient:
     porquê), timeout curto e explícito, `httpx.HTTPError` separado de
     `ValueError` no `.json()`.
 
-    **Por que este cliente NUNCA levanta exceção — ao contrário de
+    **Por que este cliente NUNCA levanta exceção, ao contrário de
     `AlunosClient`/`IdentidadeClient`, os dois vizinhos acima.** Aqueles dois
     alimentam AUTORIZAÇÃO (fail-CLOSED: quem não consegue perguntar fecha a
-    porta — `exigir()` propositalmente falha alto). Este cliente alimenta DUAS
-    telas com regras OPOSTAS (`DECISAO-fase-4-do-sininho.md` Escolha 2): o sino
-    (`avisos.sino`, fail ABERTA, em toda página) e a tela de avisos
-    (`avisos.ver_avisos`, fail VISÍVEL, só naquela página). Nenhuma exceção
-    única poderia servir às duas ao mesmo tempo — por isso todo método aqui
-    devolve `None` em qualquer tropeço (config ausente, rede, HTTP fora de
-    200, JSON fora do contrato), e quem chama decide o que `None` significa
-    PARA A TELA DELE: o sino traduz como "não mostra número"; `ver_avisos`
-    traduz como "mostra a frase de falha". `None` nunca se confunde com uma
-    resposta real vazia (`nao_lidas: 0`, `itens: []`) — são estados
-    DIFERENTES, exatamente como a Escolha 2 exige.
+    porta, `exigir()` propositalmente falha alto). Este cliente alimenta a tela
+    de avisos (`avisos.ver_avisos`), que precisa mostrar uma falha clara quando
+    a caixa central não responde. Por isso todo método de leitura aqui devolve
+    `None` em qualquer tropeço (config ausente, rede, HTTP fora de 200, JSON
+    fora do contrato). `None` nunca se confunde com uma resposta real vazia
+    (`itens: []`).
 
     A ÚNICA exceção a "sempre `None`" é `marcar_uma_como_lida`, que distingue
     um terceiro caso (`False`) — ver a docstring dela.
@@ -353,58 +348,11 @@ class NotificacoesClient:
         `funil` — mesma razão, mesma forma: `.get()`, nunca
         `os.environ[...]`, lido NO PONTO DE USO. Falta de config é MAIS
         provável que falha de rede (basta uma variável não colada no
-        servidor), e não pode furar nem o fail-open do sino nem o
-        fail-visible da tela — as duas precisam continuar respondendo.
+        servidor), e não pode furar o fail-visible da tela.
         """
         base = (os.environ.get("NOTIFICACOES_API_URL") or "").strip().rstrip("/")
         token = (os.environ.get("NOTIFICACOES_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
-
-    def obter_resumo(self, *, destinatario_id: str, site_id: str) -> "int | None":
-        """Quantos avisos não lidos esta pessoa tem NESTE site, ou `None`.
-
-        `None` é "não sei" (config ausente, rede, HTTP≠200, JSON fora do
-        contrato) — quem chama (o sino) não desenha número nenhum. É
-        DIFERENTE de `0`, que é "perguntei e a resposta é zero".
-        """
-        config = self._configuracao()
-        if config is None:
-            logger.error(
-                "notificacoes: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
-                "ausentes no env desta célula — resumo indisponível"
-            )
-            return None
-        base, token = config
-        try:
-            r = http().get(
-                f"{base}/resumo",
-                params={"destinatario_id": destinatario_id, "site_id": site_id},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=self.TIMEOUT,
-            )
-        except httpx.HTTPError as erro:
-            logger.error("resumo: não deu para perguntar à notificacoes: %s", erro)
-            return None
-
-        if r.status_code != 200:
-            logger.error("resumo: a notificacoes respondeu HTTP %s", r.status_code)
-            return None
-
-        try:
-            corpo = r.json()
-        except ValueError as erro:
-            logger.error("resumo: a notificacoes respondeu fora do contrato: %s", erro)
-            return None
-
-        if not isinstance(corpo, dict):
-            return None
-        valor = corpo.get("nao_lidas")
-        # `bool` é subclasse de `int` em Python — excluí-lo explicitamente
-        # evita que um `true`/`false` fora do contrato vire "1 aviso"/"0
-        # avisos" por acidente de tipagem.
-        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
-            return None
-        return valor
 
     def listar_avisos(
         self, *, destinatario_id: str, site_id: str, cursor: str = ""

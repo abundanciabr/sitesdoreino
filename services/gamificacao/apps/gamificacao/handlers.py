@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 #: `tests/test_o_marco_do_portfolio.py`, que procura no banco a linha semeada
 #: por este nome.
 MARCO_DO_PORTFOLIO = "portfolio-publicado"
+CONQUISTA_DO_BOSS = "boss-do-modulo"
 
 
 def _creditar(envelope: dict) -> None:
@@ -251,14 +252,67 @@ def ao_aula_concluida(envelope: dict) -> None:
     importa: a célula LÊ que a porta abriu. Nada aqui decide se alguém pode
     assistir a coisa alguma, e é isso que o terceiro invariante protege.
 
-    `data.e_boss` chega `true` quando a aula fecha um Bloco, e HOJE não muda
-    nada: a medalha "Fechou um Bloco" pediria uma palavra nova no vocabulário
-    FECHADO de critérios (`criterios.CONTAS`) e uma tabela-registro para
-    contá-la, no molde de `AjudaAceita`. As duas coisas são decisão do
-    mantenedor, não de um handler (critério de morte nº 1 da lei). O XP sai
-    igual com a bandeira ligada ou desligada.
+    `data.e_boss` chega `true` quando a aula fecha um módulo. O XP continua
+    sendo o da aula, sem bônus. Quando a conquista concreta estiver ligada,
+    este mesmo fato concede o reconhecimento privado do Boss; não é critério
+    genérico, não abre aula e não altera a progressão.
     """
     _creditar(envelope)
+    if (envelope.get("data") or {}).get("e_boss") is True:
+        _conceder_boss(envelope)
+
+
+def _conceder_boss(envelope: dict) -> None:
+    """Reconhece um Boss concluído, sem inventar aluno e sem XP extra."""
+    data = envelope.get("data") or {}
+    site_id = data.get("site_id")
+    aluno_id = envelope.get("ator_id")
+    if not (site_id and aluno_id):
+        logger.warning(
+            "Boss concluído %s chegou sem site ou aluno: não concedo conquista",
+            envelope.get("event_id"),
+        )
+        return
+
+    conquista = ConquistaDefinicao.objects.filter(
+        site_id=site_id, slug=CONQUISTA_DO_BOSS
+    ).first()
+    if conquista is None:
+        logger.warning(
+            "o site %s não tem a conquista %s: rode `semear_economia` antes "
+            "de esperar o reconhecimento do Boss",
+            site_id,
+            CONQUISTA_DO_BOSS,
+        )
+        return
+    if conquista.classe != ConquistaDefinicao.Classe.MEDALHA:
+        logger.error(
+            "a conquista %s do site %s não é uma medalha: não concedo "
+            "reconhecimento de Boss",
+            CONQUISTA_DO_BOSS,
+            site_id,
+        )
+        return
+    if not conquista.ativa:
+        logger.info(
+            "a conquista %s do site %s está desligada: Boss recebido sem "
+            "concessão. Ligar é decisão do mantenedor em /admin/economia/.",
+            CONQUISTA_DO_BOSS,
+            site_id,
+        )
+        return
+
+    pessoa, _ = Pessoa.objects.get_or_create(
+        id_da_plataforma=aluno_id,
+        defaults={"email": f"{aluno_id}@desconhecido.invalid"},
+    )
+    conceder(
+        pessoa=pessoa,
+        site_id=site_id,
+        conquista=conquista,
+        validador_papel=Concessao.PapelDoValidador.SISTEMA,
+        origem_event_id=str(envelope.get("event_id") or ""),
+    )
 
 
 # ---------------------------------------------------------------------------

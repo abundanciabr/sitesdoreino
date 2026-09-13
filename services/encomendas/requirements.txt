@@ -4,6 +4,7 @@
 #
 # Django 5.1.4 porque é a versão de todas as células vivas da plataforma.
 Django==5.1.4
+PyYAML==6.0.2
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 uvicorn==0.32.1

@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import tomllib
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -25,7 +27,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
 
 MODELO_ROTINA = "sonnet"
-MODELO_TOPO = "modelo-de-cima"
+MODELO_TOPO = "opus"
+MODELOS_CODEX = {"rotina": "gpt-5.6-sol", "topo": "gpt-6-astra"}
+
+
+def harness_ativo(raiz: Path | None = None) -> str:
+    if os.environ.get("CODEX_THREAD_ID") or os.environ.get("CODEX_SESSION_ID"):
+        return "codex"
+    if os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PROJECT_DIR"):
+        return "claude"
+    return "codex" if ((raiz or Path.cwd()) / ".codex").is_dir() else "claude"
+
+
+def _perfil_do_harness(perfil: Perfil) -> Perfil:
+    if harness_ativo() == "codex":
+        categoria = "topo" if perfil.modelo == MODELO_TOPO else "rotina"
+        return replace(perfil, modelo=MODELOS_CODEX[categoria])
+    return perfil
 
 
 @dataclass(frozen=True)
@@ -118,7 +136,7 @@ PALAVRAS_POR_TIPO = {
 
 def perfil_por_tipo(tipo: str) -> Perfil:
     try:
-        return PERFIS[tipo]
+        return _perfil_do_harness(PERFIS[tipo])
     except KeyError as exc:
         raise ErroDeInstrumentacao(
             "tipo de tarefa desconhecido",
@@ -130,8 +148,8 @@ def classificar(texto: str) -> Perfil:
     baixo = " " + texto.lower() + " "
     for tipo, palavras in PALAVRAS_POR_TIPO.items():
         if any(palavra in baixo for palavra in palavras):
-            return PERFIS[tipo]
-    return PERFIS["produto"]
+            return _perfil_do_harness(PERFIS[tipo])
+    return _perfil_do_harness(PERFIS["produto"])
 
 
 def _frontmatter(caminho: Path) -> dict[str, str]:
@@ -157,19 +175,40 @@ def _frontmatter(caminho: Path) -> dict[str, str]:
 
 
 def auditar_fichas(raiz: Path) -> list[str]:
-    pasta = raiz / ".claude" / "agents"
+    harness = harness_ativo(raiz)
+    pasta = raiz / f".{harness}" / "agents"
     if not pasta.is_dir():
         raise ErroDeInstrumentacao(
             "pasta de fichas não existe",
             f"Esperado: {pasta}\nSem fichas não há herança de modelo a auditar.",
         )
     falhas: list[str] = []
-    for caminho in sorted(pasta.glob("*.md")):
+    caminhos = sorted(pasta.glob("*.toml" if harness == "codex" else "*.md"))
+    if not caminhos:
+        raise ErroDeInstrumentacao("pasta de fichas vazia", f"Crie as fichas nativas em {pasta}.")
+    if harness == "codex":
+        for nome in ("despacho", "revisor", "escrivao"):
+            if not (pasta / f"{nome}.toml").is_file():
+                falhas.append(f"{pasta.name}: falta a ficha nativa {nome}.toml")
+    for caminho in caminhos:
         texto = caminho.read_text(encoding="utf-8")
-        campos = _frontmatter(caminho)
-        modelo = campos.get("model", "").strip()
+        try:
+            campos = tomllib.loads(texto) if harness == "codex" else _frontmatter(caminho)
+        except tomllib.TOMLDecodeError as erro:
+            raise ErroDeInstrumentacao("ficha TOML inválida", f"{caminho}: {erro}") from erro
+        modelo = str(campos.get("model", "")).strip()
         nome = campos.get("name") or caminho.stem
         relativo = caminho.relative_to(raiz).as_posix()
+        if harness == "codex":
+            esperado = MODELOS_CODEX["topo" if nome == "despacho" else "rotina"]
+            if modelo != esperado:
+                falhas.append(f"{relativo}: model precisa ser {esperado}, recebido {modelo!r}")
+            if campos.get("model_reasoning_effort") not in {"low", "medium", "high", "xhigh"}:
+                falhas.append(f"{relativo}: declare model_reasoning_effort suportado")
+            if nome == "revisor" and campos.get("sandbox_mode") != "read-only":
+                falhas.append(f"{relativo}: revisor exige sandbox_mode read-only")
+            if not campos.get("developer_instructions") or campos.get("name") != caminho.stem:
+                falhas.append(f"{relativo}: confira name e developer_instructions")
         if nome in {"revisor", "escrivao"} and not modelo:
             falhas.append(f"{relativo}: {nome} precisa declarar model")
         if nome in {"revisor", "escrivao"} and "opus" in modelo.lower():

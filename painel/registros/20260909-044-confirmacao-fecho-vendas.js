@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-044-confirmacao-fecho-vendas",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "As entregas de Vendas foram confirmadas no ar e fechadas na fila",
+  detalhe: "A TAR-254 foi conferida como concluída pelo PR #1462. As TARs 255, 257 e 258 foram fechadas na fila depois dos merges dos PRs #1477, #1475 e #1478, com os deploys das encomendas verdes nos runs 34311640966, 34308751309 e 34314838446. A publicação dos eventos da fila também terminou verde no run 34315647026. A tela pública ficou com uma única tarefa de Vendas pendente, a TAR-256, que depende de decisão do mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1479",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "A TAR-256 continua na fila e a coluna pista permanece sem decisão.",
+  recomendacao: "Autorizar a remoção da coluna pista, conforme a decisão pendente da TAR-256.",
+  reversivel: false,
+  impacto: "medio",
+  portao: null
+});})();

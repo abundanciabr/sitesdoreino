@@ -297,12 +297,20 @@ for chave in IDENTIDADE_API_URL IDENTIDADE_API_TOKEN ADMIN_EMAILS; do
 done
 
 # A CONFERÊNCIA nº 1b: o par em que esta célula é PROVEDORA sobreviveu à
-# reescrita, com o MESMO valor que estava no arquivo. Se ele sumir ou mudar, a
-# fila da conferência do portfólio passa a responder 401 para todo mundo, e o
-# sintoma é indistinguível de "ninguém tem permissão" (`armadilhas/111`).
-if [ -n "$T_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$T_PAGES" ]
-then echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK"
-else echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO"; faltou=1; fi
+# reescrita, com o MESMO valor que estava na cópia de segurança. Se ele sumir
+# ou mudar, a fila da conferência do portfólio passa a responder 401 para todo
+# mundo, e o sintoma é indistinguível de "ninguém tem permissão"
+# (`armadilhas/111`). Na primeira execução não há cópia anterior, então não há
+# valor a preservar e a conferência aceita a criação do marcador.
+if [ -n "$BAK" ]; then ANTES_PAGES="$(ler_de "$BAK" TOKENS_ACEITOS_PAGES)"; else ANTES_PAGES=""; fi
+if [ -z "$BAK" ]; then
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK (não havia valor anterior)"
+elif [ -n "$ANTES_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$ANTES_PAGES" ]; then
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK (preservada, o mesmo valor que estava em $BAK)"
+else
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO (o valor anterior está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"
+  faltou=1
+fi
 
 # A CONFERÊNCIA nº 1c: a chave do GitHub do botão de excluir tarefa sobreviveu
 # à reescrita, com o MESMO valor que estava no arquivo. VAZIA É RESULTADO

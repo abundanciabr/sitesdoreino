@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-061-medicao-pareto-auditada",
+  tipo: "resposta",
+  quando: "2026-09-11",
+  titulo: "A medição Pareto foi auditada sem criar amostra",
+  detalhe: "A revisão independente confirmou o instrumento publicado pelo PR 1561. A entrada tem cinco eventos estruturalmente válidos, zero observação confirmatória, zero tarefa elegível e zero par. A amostra é insuficiente, a avaliação comparativa é inconclusiva e nenhuma expansão foi autorizada.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1561 merge 98fccb36d0550e18a2a6c6877c743fa2aa7eaee8; https://github.com/abundanciabr/sitesdoreino/actions/runs/34602581463 completed/success; entrada d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260911-056-ci-corrigir-medicao-pareto",
+  relacao: "aceite",
+  tarefa: "TAR-338",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

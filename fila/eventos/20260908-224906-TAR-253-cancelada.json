@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260908-224906-TAR-253-cancelada",
+  "tarefa": "TAR-253",
+  "evento": "cancelada",
+  "quando": "2026-09-08T22:49:06+00:00",
+  "quem": "sessao-fabrica-fechar-teto-obsoleto",
+  "detalhe": "Resolvida pela TAR-332: ci/ci.py usa pytest-xdist com -n auto quando disponível. Medição atual nesta máquina terminou em 256,8s, abaixo do teto de 900s, e devolveu FAIL real por /bin/bash ausente no WSL, não ERROR por timeout. O bloqueio do WSL é outro problema e não será escondido aumentando o relógio; prova na armadilha 421."
+}

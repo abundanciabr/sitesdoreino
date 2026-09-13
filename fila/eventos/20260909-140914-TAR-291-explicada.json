@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-140914-TAR-291-explicada",
+  "tarefa": "TAR-291",
+  "evento": "explicada",
+  "quando": "2026-09-09T14:09:14+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/parecer-encerramento-e-confianca-do-painel-2026-09-09",
+  "o_que_e": "O painel pode mostrar uma cópia antiga sem avisar e diferentes telas podem ler versões diferentes dos dados.",
+  "o_que_muda": "O painel identifica a versão mostrada, avisa quando usa uma cópia anterior e mantém a mesma versão durante a leitura.",
+  "exemplo": "Se a publicação nova estiver incompleta, o dono vê o aviso de que está lendo uma cópia anterior e qual é essa versão.",
+  "importancia": 90
+}

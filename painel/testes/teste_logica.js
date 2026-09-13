@@ -263,6 +263,36 @@ caso("o pedido do dono aparece no capítulo da frente dele",
 caso("o resumo do mapa é contado, nunca escrito",
   LOGICA.resumoDoMapa([rumoSite, frenteSite], AGORA).comProvaConferida === 1 &&
   LOGICA.resumoDoMapa([rumoSite, frenteSite], AGORA).semRumo === 4);
+var frenteParcialProvada = reg({
+  arquivo: "20260825-911-f", tipo: "frente", frente: "curso", quando: "2026-08-25",
+  gravidade: "ambar", evidencia: "tela conferida", verificado_em: "2026-08-25", vence_em_dias: 7
+});
+var frenteSemEvidencia = reg({
+  arquivo: "20260825-912-f", tipo: "frente", frente: "comunidade", quando: "2026-08-25",
+  gravidade: "info", evidencia: null, verificado_em: "2026-08-25", vence_em_dias: 7
+});
+var frenteSemDataDaProva = reg({
+  arquivo: "20260825-913-f", tipo: "frente", frente: "vender", quando: "2026-08-25",
+  gravidade: "info", evidencia: "tela conferida", verificado_em: null, vence_em_dias: 7
+});
+var frenteAntigaReconferida = reg({
+  arquivo: "20260801-914-f", tipo: "frente", frente: "fabrica", quando: "2026-08-01",
+  gravidade: "ambar", evidencia: "tela reconferida", verificado_em: "2026-08-25", vence_em_dias: 7
+});
+var frenteNovaComProvaVencida = reg({
+  arquivo: "20260825-915-f", tipo: "frente", frente: "vender", quando: "2026-08-25",
+  gravidade: "ambar", evidencia: "tela conferida", verificado_em: "2026-08-01", vence_em_dias: 7
+});
+caso("estado parcial com prova conferida conta como capítulo comprovado",
+  LOGICA.resumoDoMapa([frenteParcialProvada], AGORA).comProvaConferida === 1);
+caso("estado sem evidência não conta mesmo com data de verificação",
+  LOGICA.resumoDoMapa([frenteSemEvidencia], AGORA).comProvaConferida === 0);
+caso("estado sem data da prova não conta mesmo com evidência",
+  LOGICA.resumoDoMapa([frenteSemDataDaProva], AGORA).comProvaConferida === 0);
+caso("fato antigo com prova reconferida ainda conta",
+  LOGICA.resumoDoMapa([frenteAntigaReconferida], AGORA).comProvaConferida === 1);
+caso("fato novo com prova vencida não conta",
+  LOGICA.resumoDoMapa([frenteNovaComProvaVencida], AGORA).comProvaConferida === 0);
 
 console.log("== frescor computado ==");
 var vencido = reg({ arquivo: "20260810-001-v", quando: "2026-08-10", vence_em_dias: 7 });
@@ -488,10 +518,33 @@ var comRumos = [
   reg({ arquivo: "20260804-301-fecha-a", responde_a: "20260801-300-rumo-a", quando: "2026-08-04" }),
   reg({ arquivo: "20260801-302-rumo-b", tipo: "rumo", frente: "curso", quando: "2026-08-01", gravidade: "info" }),
   reg({ arquivo: "20260802-303-fecha-b", responde_a: "20260801-302-rumo-b", quando: "2026-08-02" }),
-  reg({ arquivo: "20260801-304-rumo-aberto", tipo: "rumo", frente: "vender", quando: "2026-08-01", gravidade: "info" })
+  reg({ arquivo: "20260801-304-rumo-aberto", tipo: "rumo", frente: "vender", quando: "2026-08-01", gravidade: "info" }),
+  reg({ arquivo: "20260801-305-rumo-antigo", tipo: "rumo", frente: "fabrica", quando: "2026-08-01", gravidade: "info" }),
+  reg({ arquivo: "20260805-306-substitui", responde_a: "20260801-305-rumo-antigo", quando: "2026-08-05", relacao: "substituicao" }),
+  reg({ arquivo: "20260805-307-rumo-novo", tipo: "rumo", frente: "fabrica", quando: "2026-08-05", gravidade: "info" })
 ];
 var cal = LOGICA.confianca(comRumos);
-caso("conta os rumos cumpridos e os abertos", cal.rumosCumpridos === 2 && cal.rumosAbertos === 1);
+caso("substituição não vira cumprimento e o rumo novo segue aberto",
+  cal.rumosCumpridos === 2 && cal.rumosAbertos === 2);
+var rumoJaEntregue = reg({
+  arquivo: "20260801-308-rumo-entregue", tipo: "rumo", frente: "comunidade",
+  quando: "2026-08-01", gravidade: "info"
+});
+var entregaDoRumo = reg({
+  arquivo: "20260803-309-entrega", responde_a: "20260801-308-rumo-entregue", quando: "2026-08-03"
+});
+var antesDaSubstituicao = LOGICA.confianca([rumoJaEntregue, entregaDoRumo]);
+var depoisDaSubstituicao = LOGICA.confianca([
+  rumoJaEntregue,
+  entregaDoRumo,
+  reg({ arquivo: "20260805-310-substitui-depois", responde_a: "20260801-308-rumo-entregue", quando: "2026-08-05", relacao: "substituicao" }),
+  reg({ arquivo: "20260805-311-rumo-novo", tipo: "rumo", frente: "comunidade", quando: "2026-08-05", gravidade: "info" })
+]);
+caso("substituição posterior preserva a contagem e a data do cumprimento",
+  antesDaSubstituicao.rumosCumpridos === 1 &&
+  depoisDaSubstituicao.rumosCumpridos === 1 &&
+  depoisDaSubstituicao.maisRapido.cumprido === antesDaSubstituicao.maisRapido.cumprido &&
+  depoisDaSubstituicao.maisRapido.dias === antesDaSubstituicao.maisRapido.dias);
 caso("mede quantos dias do prometer ao cumprir",
   cal.maisRapido.dias === 1 && cal.maisDevagar.dias === 3);
 caso("...e devolve a mediana", cal.medianaDeDias === 1);
@@ -895,6 +948,35 @@ caso("...então a aba Prioridades desenha o pedido cortado na área certa, e nã
     .areas[0].grupos.decidir.some(function (i) { return i.registro.arquivo === pedidoVelho; }) &&
   !LOGICA.prioridades(resumoComArea.registros, HOJE, resumoComArea.respondidos, AREAS_TESTE, [])
     .semArea.grupos.decidir.some(function (i) { return i.registro.arquivo === pedidoVelho; }));
+
+["porque_so_voce", "proximo_passo"].forEach(function (campo) {
+  ["", "  ", 1, false, []].forEach(function (valor) {
+    var pedido = reg({precisa_do_dono: true}); pedido[campo] = valor;
+    caso(campo + " inválido é recusado: " + JSON.stringify(valor), LOGICA.validarRegistros([pedido]).length > 0);
+  });
+  var tecnico = reg({}); tecnico[campo] = "Uma decisão concreta";
+  caso(campo + " não desaparece em registro marcado como técnico", LOGICA.validarRegistros([tecnico]).length > 0);
+});
+var decisoesComPasso = comArea.map(function (r) {
+  return Object.assign({}, r, r.precisa_do_dono ? {
+    porque_so_voce: "Só você pode autorizar a despesa.",
+    proximo_passo: "Aprovar ou recusar a contratação."
+  } : {});
+});
+var resumoComPasso = LOGICA.montarResumo(decisoesComPasso);
+var pedidoComPasso = resumoComPasso.registros.filter(function (r) { return r.arquivo === pedidoVelho; })[0];
+caso("justificativa exclusiva do dono sobrevive ao corte do resumo",
+  pedidoComPasso._so_titulo && pedidoComPasso.porque_so_voce === "Só você pode autorizar a despesa.");
+caso("próximo passo da decisão sobrevive ao corte do resumo",
+  pedidoComPasso._so_titulo && pedidoComPasso.proximo_passo === "Aprovar ou recusar a contratação.");
+var tecnicoVisivel = reg({arquivo: "20260909-998-tecnico", gravidade: "vermelho", area: "identidade"});
+var legadoAmbiguo = reg({arquivo: "20200101-998-legado", quando: "2020-01-01", precisa_do_dono: true,
+  titulo: "O teste falhou e o serviço precisa de atenção", area: "identidade"});
+var separacao = LOGICA.prioridades([tecnicoVisivel, legadoAmbiguo], HOJE, null, AREAS_TESTE, []).areas[0];
+caso("falha técnica continua visível em alertas, fora das decisões",
+  separacao.grupos.alerta.length === 1 && separacao.grupos.alerta[0].registro.arquivo === tecnicoVisivel.arquivo);
+caso("pedido antigo ambíguo não some por texto técnico ou idade",
+  separacao.grupos.decidir.length === 1 && separacao.grupos.decidir[0].registro.arquivo === legadoAmbiguo.arquivo);
 
 console.log("");
 if (falhas.length) {

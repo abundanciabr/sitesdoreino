@@ -1,0 +1,28 @@
+{
+  "versao": 1,
+  "revisado_em": "2026-09-09",
+  "escopo": "Manutenção de documento privado de plano já existente, quando o pedido do mantenedor for explícito.",
+  "pode": [
+    "Consolidar fases, critérios, dependências, tarefas e lacunas no mesmo documento privado.",
+    "Salvar a atualização mantendo o endereço e o acesso privado já existentes.",
+    "Registrar que a operação foi concluída no livro, conforme o rito obrigatório."
+  ],
+  "nao_pode": [
+    "Publicar, tornar público ou alterar a permissão do documento.",
+    "Expor segredos, dados pessoais ou credenciais.",
+    "Autorizar gasto, cobrança, reembolso, contrato, campanha ou mensagem externa.",
+    "Ativar automação externa, integração paga ou mudança irreversível.",
+    "Registrar a IA como titular, substituta ou aprovadora humana.",
+    "Substituir a fonte de estado, a fila, o livro de ocorrências ou a aprovação necessária para outras ações."
+  ],
+  "provas_obrigatorias": [
+    "Mesmo endereço privado confirmado após salvar.",
+    "Registro no livro de ocorrências.",
+    "Fila, testes e diff conferidos na mesma entrega."
+  ],
+  "continua_exigindo_mantenedor": [
+    "Definição de titular, substituto ou política explícita de ausência de substituto.",
+    "Decisão irreversível, destrutiva, cara ou que altere acesso.",
+    "Credencial, plano pago, contrato, publicação ou autorização externa."
+  ]
+}

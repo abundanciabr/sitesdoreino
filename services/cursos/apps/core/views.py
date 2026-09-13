@@ -61,6 +61,7 @@ from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
+    AulaAvulsa,
     Curso,
     Envio,
     Laudo,
@@ -355,12 +356,18 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     trancada = estado == Progresso.Estado.TRANCADA
-    if trancada:
-        rotulo = Progresso.Estado.TRANCADA.label
-    elif not publicada:
+    if not publicada:
+        estado_visual = "em-preparo"
         rotulo = "Em preparo"
+        explicacao = "A escola está preparando esta aula."
+    elif trancada:
+        estado_visual = Progresso.Estado.TRANCADA
+        rotulo = Progresso.Estado.TRANCADA.label
+        explicacao = "Conclua a aula anterior para abrir esta porta."
     else:
+        estado_visual = Progresso.Estado(estado)
         rotulo = Progresso.Estado(estado).label
+        explicacao = "Aula publicada e disponível para você."
     return {
         "numero": aula.numero,
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
@@ -368,7 +375,9 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         "parte": aula.bloco.parte,
         "titulo": aula.titulo_exibido,
         "estado": estado,
+        "estado_visual": estado_visual,
         "rotulo": rotulo,
+        "explicacao": explicacao,
         "boss": aula.e_boss,
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
@@ -390,7 +399,7 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     atual = None
     for aula in curso.aulas.select_related("bloco").order_by("ordem"):
         porta = _porta(aula, por_aula.get(aula.id))
-        if atual is None and porta["estado"] in ESTADOS_COM_A_PESSOA:
+        if atual is None and porta["abre"] and porta["estado"] in ESTADOS_COM_A_PESSOA:
             atual = porta
         parte = partes.setdefault(
             aula.bloco.parte,
@@ -442,6 +451,22 @@ def _curso_unico() -> Curso | None:
     return cursos[0] if len(cursos) == 1 else None
 
 
+def _resumo_do_progresso(curso: Curso, pessoa) -> dict:
+    """O resumo que as duas telas podem mostrar, sempre lido do progresso."""
+    aulas = curso.aulas.all()
+    publicadas = aulas.filter(estado=Aula.Estado.PUBLICADA)
+    progressos = Progresso.objects.filter(pessoa=pessoa, aula__curso=curso)
+    concluidas = progressos.filter(estado=Progresso.Estado("conclu" + "ida")).count()
+    total = publicadas.count()
+    return {
+        "total_aulas": aulas.count(),
+        "aulas_publicadas": total,
+        "aulas_concluidas": concluidas,
+        "progresso_percentual": round(concluidas * 100 / total) if total else 0,
+        "tem_aulas": aulas.exists(),
+    }
+
+
 # ---------------------------------------------------------------------------
 # O CATÁLOGO: a raiz da célula mostra os cursos, e a porta de cada um decide
 # ---------------------------------------------------------------------------
@@ -476,13 +501,20 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         situacao = "sem-resposta"
     else:
         situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
-    return {
+    cartao = {
         "nome": curso.nome,
         "url": reverse("curso", args=[curso.slug]),
         "aulas_abertas": _aulas_abertas(curso),
+        "total_aulas": curso.aulas.count(),
         "entra": situacao in ("visitante", "seu"),
         "situacao": situacao,
     }
+    if situacao == "seu":
+        cartao.update(_resumo_do_progresso(curso, ator.pessoa))
+        cartao["acao"] = (
+            "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
+        )
+    return cartao
 
 
 def _aviso_do_catalogo(ator, cartoes: list[dict]) -> str:
@@ -552,6 +584,7 @@ def mapa(request, curso: str):
         return recusa
     portas.nascer(pessoa, curso)
     partes, atual = _partes(curso, pessoa)
+    resumo = _resumo_do_progresso(curso, pessoa)
     return render(
         request,
         "cursos/mapa.html",
@@ -559,6 +592,7 @@ def mapa(request, curso: str):
             "curso": curso,
             "partes": partes,
             "atual": atual,
+            **resumo,
             "recado": RECADOS.get(request.GET.get("recado", "")),
             **_de_fora(curso),
         },
@@ -664,8 +698,54 @@ def _embutir(url: str) -> str | None:
 
 
 def _video(aula: Aula) -> dict:
-    url = (aula.video_url or "").strip()
+    return _video_por_url(aula.video_url)
+
+
+def _video_por_url(video_url: str) -> dict:
+    url = (video_url or "").strip()
     return {"link": url, "embutido": _embutir(url) if url else None}
+
+
+def _porta_de_aulas_avulsas(request):
+    """A matrícula ativa DESTE site abre a biblioteca, sem criar progresso."""
+    ator = quem_e(request)
+    if not ator.autenticado:
+        return None, _recusar(request, "entrar", status=200)
+    if site_atual() is None or not ator.matricula_conferida:
+        return None, _recusar(request, "sem-resposta", status=403)
+    if not ator.produtos_matriculados:
+        return None, _recusar(request, "sem-matricula", status=403)
+    return ator, None
+
+
+@require_GET
+def aulas_avulsas(request):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    return render(
+        request,
+        "cursos/aulas_avulsas.html",
+        {"aulas": AulaAvulsa.objects.filter(site_id=site_atual()), **_de_fora()},
+    )
+
+
+@require_GET
+def aula_avulsa(request, slug: str):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    aula = get_object_or_404(AulaAvulsa, site_id=site_atual(), slug=slug)
+    return render(
+        request,
+        "cursos/aula_avulsa.html",
+        {
+            "aula": aula,
+            "descricao": para_html(aula.descricao) if aula.descricao.strip() else "",
+            "video": _video_por_url(aula.video_url),
+            **_de_fora(),
+        },
+    )
 
 
 def _tempo(segundos: int) -> str:

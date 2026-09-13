@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-031-fila-enfileirar-o-lote-da-triade",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fila: enfileirar o lote da tríade",
+  detalhe: "TAR-371 criada: despacho 1 da tríade, trava contra apagamento de lei (ficha ANTIGRAVITY-004), brief pronto para o Codex. TAR-370: esta escrituração. Só fila, nenhum código.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1604. Validação local: árvore e5124bdb6787c0bf9def650dbf3aaf869074b131; commit d2bfad2a3cef0fc8f99eb73c5b2ab1aeb5ca9ea5; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-370",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-107-resposta-teto-do-painel-resolvido",
+  tipo: "resposta",
+  quando: "2026-09-07",
+  titulo: "A margem do painel foi restaurada",
+  detalhe: "A TAR-274 foi concluída no PR #1364. A página caiu de 297.241 para 268.890 bytes, mantendo a lógica do painel no arquivo de origem e embutindo apenas a versão sem comentários. Este registro fecha o alerta de tamanho, sem criar um novo teto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1364",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260907-081-o-painel-a-3-por-cento-do-teto-virou-tarefa-e-a-licao-virou-armadilha",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

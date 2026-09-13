@@ -50,6 +50,8 @@ for arg in sys.argv[1:]:
         break
 for chave, resposta in roteiro.get("respostas", {}).items():
     if chave in caminho:
+        if "--include" in sys.argv:
+            sys.stdout.write("HTTP/2.0 200 OK" + chr(10) * 2)
         if isinstance(resposta, dict) and "__cru__" in resposta:
             sys.stdout.write(resposta["__cru__"])
         else:
@@ -140,7 +142,7 @@ def rodar_portao(tmp_path: Path, roteiro: dict, **env_extra: str):
             "PORTAO_MODO": "celula",
             "PORTAO_INTERVALO": "0",
             "PORTAO_GRACA": "0",
-            "PORTAO_TIMEOUT": "0",
+            "PORTAO_TIMEOUT": "2",
             "PYTHONUTF8": "1",
         }
     )

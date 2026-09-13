@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-109-resposta-auditoria-fabrica-publicada",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "A auditoria independente da fábrica foi publicada",
+  detalhe: "O PR #1401 integrou as correções encontradas na auditoria independente, e o deploy 34269707941 terminou com sucesso. Este registro fecha o alerta da auditoria publicada, sem transformar a auditoria em aprovação automática da expansão da Fase 4.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1401 e https://github.com/abundanciabr/sitesdoreino/actions/runs/34269707941",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-068-painel-registrar-auditoria-independente-da-fabrica",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

@@ -1,0 +1,20 @@
+{
+  "arquivo": "347-links-antigos-de-aulas-avulsas-passam-a-abrir",
+  "id": "TAR-347",
+  "titulo": "Links antigos de aulas avulsas passam a abrir",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de infraestrutura com redirecionamento permanente, guarda que limita o slug e deploy-infra confirmado.",
+  "despacho": "Redirecionar somente https://meshcraft.top/aulas/<slug>/ para https://meshcraft.top/cursos/aulas/<slug>, preservar a query string e não criar uma segunda página. Provar a borda no Traefik e a limitação do slug.",
+  "origem": "erro relatado pela mantenedora em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

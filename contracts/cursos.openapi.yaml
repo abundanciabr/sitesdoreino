@@ -134,7 +134,7 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao dezessete
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao vinte
 
     operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
@@ -152,7 +152,9 @@ info:
 
     CURSO (`listCourses`, `createCourse`, `putCourse`,
 
-    `putCourseStructure`). O placar da fila
+    `putCourseStructure`), e as tres de AULA AVULSA (`listStandaloneLessons`,
+
+    `createStandaloneLesson`, `updateStandaloneLesson`). O placar da fila
 
     (getReviewQueue) e o progresso do aluno (getStudentProgress) AINDA
 
@@ -182,6 +184,30 @@ info:
     algum aluno ja passou. O texto de cada aula continua entrando so por
 
     `putLesson`.
+
+
+    A AULA AVULSA ENTRA DESDE 11/09/2026: e uma resposta em video que a
+
+    escola compartilha fora da sequencia de qualquer curso. Ela pertence ao
+
+    `site_id`, nasce publicada com titulo, URL do YouTube e descricao, e o
+
+    servico gera o `slug` imutavel que vira o endereco permanente. O Admin
+
+    nunca manda nem escolhe esse slug. A lista devolve somente aulas publicadas
+
+    do mesmo site. A pagina publica le seu banco local, sem uma terceira
+
+    operacao interna.
+
+
+    A EDICAO DA AULA AVULSA ENTRA DESDE 11/09/2026: o Admin grava titulo,
+
+    URL do YouTube e descricao pela identidade fixa do endereco. Editar o
+
+    titulo nunca troca o `slug`, porque o link que ja circulou entre os alunos
+
+    continua apontando para a mesma aula.
 
 
     O REVISOR DE COERENCIA ENTROU EM 07/09/2026, e ele e CODIGO, nao
@@ -295,6 +321,254 @@ info:
 
     '
 paths:
+  /aulas-avulsas:
+    get:
+      operationId: listStandaloneLessons
+      summary: As aulas avulsas publicadas de um site, da mais recente para a mais antiga
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AulaAvulsaSchema'
+                type: array
+      description: 'A lista que o Admin consulta para reencontrar e compartilhar uma
+
+        aula avulsa. Ela so devolve aulas publicadas do mesmo `site_id`, da mais
+
+        recente para a mais antiga. Site sem aula avulsa responde lista vazia,
+
+        porque esse e o primeiro uso normal.
+
+
+        Aula avulsa nao pertence a curso, bloco, parte, progresso ou avaliacao.
+
+        Ela existe para responder uma duvida em grupo com um endereco proprio.'
+    post:
+      operationId: createStandaloneLesson
+      summary: Cria e publica uma aula avulsa com endereço próprio
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaAvulsaSchema'
+      description: 'O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,
+
+        video_url e descricao. O servico gera o slug pelo titulo e o estabiliza
+
+        na criacao: se um titulo igual ja tiver ocupado o endereco naquele site,
+
+        ele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.
+
+
+        A aula nasce publicada, com estado `publicada`, e pode ser lida na hora
+
+        pelo endereco devolvido. Nao existe rascunho nem gesto posterior de
+
+        publicacao nesta porta. A edicao usa `updateStandaloneLesson`: preserva
+
+        o endereco original somente quando o corpo do PUT omite `slug`.
+
+
+        422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS
+
+        do YouTube incorporavel, a descricao passar de 5.000 caracteres ou o
+
+        corpo tiver uma chave desconhecida.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AulaAvulsaParaCriarSchema'
+        required: true
+  /aulas-avulsas/{slug}:
+    put:
+      operationId: updateStandaloneLesson
+      summary: Edita uma aula avulsa e pode trocar seu endereço
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaAvulsaSchema'
+              examples:
+                slug_identico:
+                  summary: O slug pedido ja e o da propria aula
+                  value:
+                    titulo: Aula de testes
+                    slug: aula-de-testes
+                    video_url: https://www.youtube.com/embed/abcdefghijk
+                    descricao: Primeira aula de testes
+                    estado: publicada
+                    publicada_em: '2026-09-11T10:58:49.598Z'
+                slug_ocupado:
+                  summary: Outra aula ja usa o slug pedido
+                  value:
+                    titulo: Aula de testes
+                    slug: aula-de-testes-2
+                    video_url: https://www.youtube.com/embed/abcdefghijk
+                    descricao: Primeira aula de testes
+                    estado: publicada
+                    publicada_em: '2026-09-11T10:58:49.598Z'
+                menor_sufixo_livre:
+                  summary: O sufixo dois esta ocupado e o tres e o primeiro livre
+                  value:
+                    titulo: Aula de testes
+                    slug: aula-de-testes-3
+                    video_url: https://www.youtube.com/embed/abcdefghijk
+                    descricao: Primeira aula de testes
+                    estado: publicada
+                    publicada_em: '2026-09-11T10:58:49.598Z'
+                slug_normalizado:
+                  summary: O serviço devolve o endereço que normalizou
+                  value:
+                    titulo: Aula de testes
+                    slug: acao-testes
+                    video_url: https://www.youtube.com/embed/abcdefghijk
+                    descricao: Primeira aula de testes
+                    estado: publicada
+                    publicada_em: '2026-09-11T10:58:49.598Z'
+        '404':
+          description: Aula avulsa inexistente para este site e slug do caminho
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                properties:
+                  erro:
+                    const: aula_avulsa_nao_encontrada
+                    type: string
+                  o_que_fazer:
+                    minLength: 1
+                    type: string
+                required:
+                - erro
+                - o_que_fazer
+                type: object
+              examples:
+                aula_nao_encontrada:
+                  value:
+                    erro: aula_avulsa_nao_encontrada
+                    o_que_fazer: Confira o endereço da aula ou escolha outra aula publicada.
+        '422':
+          description: Corpo invalido, inclusive slug que nao gera letras ou numeros
+          content:
+            application/json:
+              schema:
+                additionalProperties: false
+                properties:
+                  erro:
+                    enum:
+                    - corpo_invalido
+                    - slug_invalido
+                    type: string
+                  o_que_fazer:
+                    minLength: 1
+                    type: string
+                required:
+                - erro
+                - o_que_fazer
+                type: object
+              examples:
+                slug_invalido:
+                  value:
+                    erro: slug_invalido
+                    o_que_fazer: Informe um endereço com ao menos uma letra ou número.
+      description: 'O gesto Editar aula avulsa do Admin. O `slug` do caminho identifica
+
+        a aula existente. O corpo recebe titulo, video_url, descricao e, opcionalmente,
+
+        um slug novo. Esse slug pode conter o texto digitado pela pessoa. Quando ele
+
+        vier, o servico normaliza acentos, simbolos e espacos para letras ASCII
+
+        minusculas, numeros e hifens; depois grava o endereco pedido ou,
+
+        se ele ja estiver ocupado por outra aula no mesmo site, acrescenta o menor
+
+        sufixo numerico livre, como `-2` e `-3`. O slug igual ao da propria aula
+
+        nao e colisao e permanece igual. Antes de gravar, o servico reserva o
+
+        endereco por unicidade atomica de site e slug. Se outra gravacao ocupar
+
+        o sufixo no mesmo instante, ele tenta o proximo menor sufixo livre antes
+
+        de responder. Nao ha conflito para o Admin resolver: a resposta 200 sempre
+
+        devolve o slug final salvo.
+
+
+        Sem slug no corpo, o endereco atual permanece. Site ou slug do caminho
+
+        inexistente responde 404. Corpo invalido responde 422, inclusive campo
+
+        desconhecido, slug que nao gera letras ou numeros, titulo ou video_url vazios, URL que
+
+        nao seja HTTPS incorporavel do YouTube e descricao acima de 5.000 caracteres.'
+      x-reserva-de-slug:
+        chave:
+        - site_id
+        - slug
+        atomica: true
+        exclui_aula_editada: true
+        em_colisao: menor_sufixo_numerico_livre
+        repete_ate_reservar: true
+      x-normalizacao-de-slug:
+        campo: slug
+        algoritmo: unicode_para_ascii_minusculo_com_hifens
+        exemplo:
+          entrada: Ação & Testes
+          saida: acao-testes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AulaAvulsaParaEditarSchema'
+            examples:
+              preservar_endereco:
+                summary: Sem slug, a aula conserva o endereço atual
+                value:
+                  titulo: Aula de testes
+                  video_url: https://www.youtube.com/embed/abcdefghijk
+                  descricao: Primeira aula de testes
+              slug_normalizado:
+                summary: Texto digitado vira um endereço simples
+                value:
+                  titulo: Aula de testes
+                  slug: Ação & Testes
+                  video_url: https://www.youtube.com/embed/abcdefghijk
+                  descricao: Primeira aula de testes
+        required: true
   /aulas:
     get:
       operationId: listSiteLessons
@@ -1316,6 +1590,104 @@ paths:
         required: true
 components:
   schemas:
+    AulaAvulsaSchema:
+      description: 'A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
+
+
+        `slug` e o endereco final salvo pelo servico. Ele nasce do titulo na criacao
+
+        e pode mudar na edicao quando o Admin envia um slug valido. Se o endereco
+
+        pedido estiver ocupado no mesmo site, o servico acrescenta um sufixo numerico
+
+        e devolve aqui o endereco efetivamente salvo. `estado` sempre e `publicada`:
+
+        esta porta nao oferece rascunho nem uma segunda publicacao.'
+      properties:
+        titulo:
+          type: string
+        slug:
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          type: string
+        video_url:
+          type: string
+        descricao:
+          type: string
+        estado:
+          const: publicada
+          type: string
+        publicada_em:
+          format: date-time
+          type: string
+      required:
+      - titulo
+      - slug
+      - video_url
+      - descricao
+      - estado
+      - publicada_em
+      type: object
+    AulaAvulsaParaCriarSchema:
+      additionalProperties: false
+      description: 'O unico corpo que cria uma aula avulsa. O Admin oferece os tres
+
+        campos ao mantenedor, mas so o servico gera o endereco pelo titulo.
+
+        Descricao aceita texto vazio, para uma explicacao curta que so precisa
+
+        do titulo e do video, mas o campo sempre viaja no corpo.'
+      properties:
+        titulo:
+          maxLength: 120
+          minLength: 1
+          type: string
+        video_url:
+          maxLength: 500
+          minLength: 1
+          type: string
+        descricao:
+          maxLength: 5000
+          type: string
+      required:
+      - titulo
+      - video_url
+      - descricao
+      type: object
+    AulaAvulsaParaEditarSchema:
+      additionalProperties: false
+      description: 'O corpo que edita uma aula avulsa. Os tres campos de conteudo
+
+        continuam obrigatorios. `slug` e opcional: ausente, conserva o endereco;
+
+        presente, aceita o texto digitado para um novo endereco e o servico o
+
+        normaliza para ASCII minusculo com hifens.
+
+        Em colisao com outra aula, o servico reserva atomicamente o menor sufixo
+
+        numerico livre e devolve o slug final salvo na resposta. O slug da propria
+
+        aula nao conta como colisao.'
+      properties:
+        titulo:
+          maxLength: 120
+          minLength: 1
+          type: string
+        slug:
+          maxLength: 140
+          type: string
+        video_url:
+          maxLength: 500
+          minLength: 1
+          type: string
+        descricao:
+          maxLength: 5000
+          type: string
+      required:
+      - titulo
+      - video_url
+      - descricao
+      type: object
     AulaDaListaSchema:
       description: 'A linha da listagem: o que o editor mostra no índice, sem texto de peça.'
       properties:

@@ -27,12 +27,7 @@ import pytest
 from django.core.management import call_command
 
 from apps.encomendas import mural
-from apps.encomendas.models import (
-    ESTADOS_DO_MURAL_RESERVAVEL,
-    Encomenda,
-    PerfilProfissional,
-    Pessoa,
-)
+from apps.encomendas.models import Encomenda, PerfilProfissional, Pessoa
 
 SITE_PADRAO = "escola-a"
 
@@ -55,14 +50,15 @@ CARTAO_DO_NIVEL = {
 
 @pytest.fixture
 def semeado(db):
-    """Os 32 parâmetros com valor no banco, pelo caminho da instalação.
+    """Os 33 parâmetros com valor no banco, pelo caminho da instalação.
 
     Vinte e sete da lei §6; o `relogio_da_reserva_no_mural` e as três da
     negociação, do §9 do `PLANO-AREA-DE-NEGOCIACAO.md`; e a
-    `janela_do_ritmo_da_espera`, que chegou com a porta de máquina. As três
-    chaves do piso por nível existem no catálogo e nascem sem linha, de
-    propósito. Quem conta é `tests/test_parametros_sao_dado.py`; aqui a
-    contagem é só a descrição do cenário.
+    `janela_do_ritmo_da_espera` e `horas_para_escalar_chamada_aberta`, que
+    chegaram com decisões da porta de máquina. As três chaves do piso por nível
+    existem no catálogo e nascem sem linha, de propósito. Quem conta é
+    `tests/test_parametros_sao_dado.py`; aqui a contagem é só a descrição do
+    cenário.
     """
     call_command("semear_parametros", site=SITE_PADRAO, stdout=StringIO())
     return SITE_PADRAO
@@ -131,18 +127,6 @@ def criar_encomenda(db):
             cartao=CARTAO_DO_NIVEL[nivel],
             nivel=nivel,
             status=status,
-            # A coluna `pista` não pode mentir sobre onde o projeto está sendo
-            # mostrado, e o banco recusa o par incoerente
-            # (`no_mural_so_na_pista_do_mural`). A fábrica deriva a pista do
-            # status pedido, e não do nível, porque quem chama aqui está
-            # montando um cenário no meio da vida da encomenda, não o
-            # nascimento dela. O nascimento tem porta própria: `mural.nascer`,
-            # e é a fixture `criar_projeto_no_mural` que a usa.
-            pista=(
-                Encomenda.Pista.MURAL
-                if status in ESTADOS_DO_MURAL_RESERVAVEL
-                else Encomenda.Pista.FILA
-            ),
         )
 
     return fabrica
@@ -154,8 +138,8 @@ def criar_projeto_no_mural(db):
 
     Passa por `mural.nascer`, e não por um `create` próprio, pela mesma razão
     que a fixture `semeado` chama o semeador: um cenário que monta o estado por
-    fora prova o código contra um nascimento que ninguém faz. A pista e o
-    estado inicial vêm da regra, e o teste não os informa.
+    fora prova o código contra um nascimento que ninguém faz. O estado inicial
+    vem da regra, e o teste não o informa.
 
     O nível padrão é o INTERMEDIÁRIO porque é o primeiro que nasce no Mural: o
     Iniciante nasce na fila, e um projeto Iniciante criado por aqui iria para a

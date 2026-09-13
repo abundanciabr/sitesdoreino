@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-031933-TAR-007-concluida",
+  "tarefa": "TAR-007",
+  "evento": "concluida",
+  "quando": "2026-09-09T03:19:33+00:00",
+  "quem": "agent/ci/verificador-maiusculas-fim-linha",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1473",
+  "verificado_em": "2026-09-09"
+}

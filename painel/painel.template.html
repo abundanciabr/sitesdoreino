@@ -565,6 +565,10 @@ try {
       l.appendChild(el("span", "decisao-val", valor || ausente));
       ficha.appendChild(l);
     }
+    linha("Por que só você", r.porque_so_voce,
+      "O pedido antigo não explica por que esta decisão depende só de você.");
+    linha("Próximo passo", r.proximo_passo,
+      "O pedido antigo não registra um próximo passo claro.");
     linha("Se você não decidir", r.se_eu_nao_decidir,
       "não sei — o pedido não diz o que acontece se ficar parado");
     linha("Minha recomendação", r.recomendacao,
@@ -780,6 +784,8 @@ try {
   function detalhesDePrioridade(i) {
     var linhas = [];
     if (i.especie === "pedido") {
+      if (i.registro.porque_so_voce) linhas.push(["Por que só você", i.registro.porque_so_voce]);
+      if (i.registro.proximo_passo) linhas.push(["Próximo passo", i.registro.proximo_passo]);
       if (i.registro.se_eu_nao_decidir) linhas.push(["Se você não decidir", i.registro.se_eu_nao_decidir]);
       if (i.registro.recomendacao) linhas.push(["Recomendação", i.registro.recomendacao]);
     } else if (i.especie === "tarefa") {

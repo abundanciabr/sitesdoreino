@@ -20,16 +20,16 @@ pergunta. Estes são endereços públicos, por onde o NAVEGADOR da pessoa caminh
 
 import os
 
+from apps.i18n.idiomas import caminho_publico
+
 # Onde a pessoa que já entrou vai ao clicar no próprio nome. Continua sendo a
 # Caixa: é a única área logada do site até a escola nascer.
 CAIXA_PADRAO = "/forms/sugestoes/"
 
-# A tela de avisos da Caixa — destino do sino (Fase 5 do sininho,
-# docs/notificacoes/PLANO-MESTRE.md). Mesma célula de CAIXA_PADRAO (o prefixo
-# público sai da MESMA FORCE_SCRIPT_NAME, services/sugestoes/config/
-# settings.py), rota nomeada `avisos` em services/sugestoes/config/urls.py —
-# lida ali, nunca adivinhada, porque só ela sabe se um dia esse prefixo muda.
-AVISOS_PADRAO = "/forms/sugestoes/avisos"
+# A tela única de avisos do site. O idioma é acrescentado no ponto de uso;
+# sem configuração de site, o caminho padrão continua sendo a raiz do idioma.
+AVISOS_PADRAO = "/notificacoes"
+AVISOS_LEGADO = "/forms/sugestoes/avisos"
 
 # O FÓRUM da escola — a área pública dele responde sem login desde 30/08/2026.
 # Célula `forum`, monolíngue, prefixo próprio no gateway. Entra aqui (e não
@@ -66,8 +66,13 @@ def url_da_caixa() -> str:
     return _ler("URL_DA_CAIXA", CAIXA_PADRAO)
 
 
-def url_dos_avisos() -> str:
-    return _ler("URL_DOS_AVISOS", AVISOS_PADRAO)
+def url_dos_avisos(cfg: dict | None = None, idioma: str | None = None) -> str:
+    configurado = (os.environ.get("URL_DOS_AVISOS") or "").strip()
+    if configurado and configurado != AVISOS_LEGADO:
+        return configurado
+    if cfg is not None and idioma is not None:
+        return caminho_publico(cfg, idioma, AVISOS_PADRAO)
+    return AVISOS_PADRAO
 
 
 def url_de_entrada() -> str:

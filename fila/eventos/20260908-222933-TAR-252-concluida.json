@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260908-222933-TAR-252-concluida",
+  "tarefa": "TAR-252",
+  "evento": "concluida",
+  "quando": "2026-09-08T22:29:33+00:00",
+  "quem": "agent/fabrica/corrigir-prestacao-outra-sessao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1433",
+  "verificado_em": "2026-09-08"
+}

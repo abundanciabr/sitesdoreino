@@ -49,6 +49,8 @@ class Duble:
     def __call__(self, comando: list[str], raiz: Path | None = None, **opcoes) -> str:
         self.chamadas.append(list(comando))
         linha = " ".join(comando)
+        if comando[:3] == ["git", "status", "--porcelain=v1"]:
+            return ""
         if self.explode_em and self.explode_em in linha:
             raise pr.ErroDeInstrumentacao(
                 f"o comando falhou: {linha}", "exit 1\n(saída do dublê)"
@@ -78,10 +80,11 @@ class Duble:
 
 
 RESPOSTAS_FELIZES = {
+    "git show " + "b" * 40 + ":ci/pr.py": "def abrir(): pass\n",
     "write-tree": "a" * 40,
     "rev-parse HEAD^{tree}": "a" * 40,
     "rev-parse HEAD": "b" * 40,
-    "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN"}),
+        "gh pr view": json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": False}),
     "rev-parse --abbrev-ref": "agent/ci/make-pr\n",
     "status --porcelain": " M ci/pr.py\n?? ci/tests/test_pr.py\n",
     "diff --cached --name-only": "ci/pr.py\n",
@@ -105,6 +108,10 @@ def bancada(tmp_path: Path, principal: bool = False) -> Path:
     )
     (raiz / "corpo.md").write_text("## O que muda\n\nUm comando só.\n", encoding="utf-8")
     (raiz / "validacao.json").write_text(json.dumps({"comandos": [["pytest", "ci/tests"]]}), encoding="utf-8")
+    pr.telemetria.registrar_fase(
+        "abertura", "concluido", tarefa="agent/ci/make-pr", tentativa="abertura-legada",
+        branch="agent/ci/make-pr", commit="b" * 40, cwd=str(raiz),
+    )
     return raiz
 
 
@@ -184,6 +191,8 @@ def test_o_registro_nasce_com_os_onze_campos_derivados(tmp_path):
         "verificado_em": "2026-09-06",
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": None,
         "gravidade": "info",
         "frente": "fabrica",
         "area": "ci",
@@ -434,6 +443,29 @@ def test_pr_existente_e_consultado_sem_continuar(tmp_path):
     assert pr._achar_ou_abrir_o_pr(lambda c: dub(c), pedido(bancada(tmp_path)), 'agent/ci/make-pr') == (1210, URL_DO_PR)
     assert not dub.pediu('gh pr create')
 
+
+def test_pr_draft_vira_pronto_depois_da_validacao_final(tmp_path):
+    raiz = bancada(tmp_path)
+    class DraftDuble(Duble):
+        def __init__(self):
+            super().__init__(RESPOSTAS_FELIZES)
+            self.views = 0
+
+        def __call__(self, comando, raiz=None, **opcoes):
+            if comando[:3] == ["gh", "pr", "view"]:
+                self.views += 1
+                self.chamadas.append(list(comando))
+                return json.dumps({
+                    "headRefOid": "b" * 40,
+                    "state": "OPEN",
+                    "isDraft": self.views == 1,
+                })
+            return super().__call__(comando, raiz, **opcoes)
+
+    dub = DraftDuble()
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert dub.pediu("gh pr ready 1210")
+
 @pytest.mark.parametrize('onde', ['pytest ci/tests', 'gh pr list', 'gh pr view'])
 def test_falha_de_validacao_ou_rede_nunca_imprime_sucesso(tmp_path, capsys, onde):
     raiz = bancada(tmp_path)
@@ -538,6 +570,9 @@ def test_recibo_maior_que_1kb_recusa(tmp_path):
 
 @pytest.mark.parametrize('tarefa_aberta', ['TAR-001','agent/ci/make-pr'])
 def test_correlacao_usa_tentativa_da_abertura(tmp_path, monkeypatch, tarefa_aberta):
+    import fila
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001': {}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [])
     raiz = bancada(tmp_path)
     fases = []
     monkeypatch.setattr(pr, '_tentativa_da_abertura', lambda *a: ('tentativa-abertura', tarefa_aberta))
@@ -565,22 +600,56 @@ def test_validacao_muda_indice_e_expira_prova(tmp_path):
     assert not dub.pediu('git push')
 
 
-def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
+def _fila_de_uma_tarefa(tmp_path, monkeypatch, eventos):
+    """Bancada com a fila fingida: só os eventos que o caso quer medir."""
     import fila
     raiz = bancada(tmp_path)
     (raiz/'fila/eventos').mkdir(parents=True)
-    tarefa = 'TAR-001'
-    evento = {'tarefa':tarefa, 'evento':'concluida','evidencia':URL_DO_PR}
-    caminho = raiz/'fila/eventos/concluida.json'
-    caminho.write_text(json.dumps(evento),encoding='utf-8')
-    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
-    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001':{}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: eventos)
+    return raiz
+
+
+def _acoes_da_fila(dub):
+    return [c[2] for c in dub.chamadas if len(c) > 2 and c[1] == 'ci/fila.py']
+
+
+def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
+    """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
+    # guarda: ci/pr.py:560
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
-    assert pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR) == ['fila/eventos/concluida.json']
-    assert not dub.chamadas
-    evento['evidencia'] = URL_DO_PR+'0'
+    pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+    fechamento = [c for c in dub.chamadas if 'fechar-pela-entrega' in c][0]
+    assert fechamento[-2:] == ['--pr', URL_DO_PR]
+
+
+def test_continuar_nao_duplica_o_feito_e_segue_atualizando_a_submissao(tmp_path, monkeypatch):
+    """A conclusão desta entrega não congela a submissão nem se repete.
+
+    O guarda antigo (`if not finais`) parava de chamar a fila no primeiro
+    `--continuar`, e a submissão ficava presa na revisão de estreia.
+    """
+    # guarda: ci/pr.py:547
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR}
+    caminho_conclusao = 'fila/eventos/concluida.json'
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    (raiz/caminho_conclusao).write_text(json.dumps(evento),encoding='utf-8')
+    dub = Duble()
+    arquivos = pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert arquivos == [caminho_conclusao]
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+
+
+def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch):
+    """Conclusão com outra evidência é encerramento alheio: não se sobrescreve."""
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR+'0'}
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    dub = Duble()
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
-        pr._concluir_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR)
+        pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert not dub.chamadas
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
@@ -593,10 +662,13 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo)
     git('config','user.name','Teste')
     git('config','user.email','teste@example.com')
     (origem/'.gitignore').write_text('necessario.py\n' if ignorado else '',encoding='utf-8')
-    git('add','.gitignore')
+    (origem/'ci').mkdir()
+    (origem/'ci/pr.py').write_text('def abrir(): pass\n',encoding='utf-8')
+    git('add','.gitignore','ci/pr.py')
     git('commit','-m','base')
     raiz=tmp_path/'bancada'
     git('worktree','add','-b','agent/ci/prova',str(raiz))
+    pr.telemetria.registrar_fase('abertura','concluido',tarefa='agent/ci/prova',tentativa='legada',branch='agent/ci/prova',commit=git('rev-parse','HEAD'),cwd=str(raiz))
     (raiz/'check.py').write_text('import necessario\ndef test_entregue():\n    assert necessario.valor == 42\n',encoding='utf-8')
     (raiz/'necessario.py').write_text('valor = 42\n',encoding='utf-8')
     (tmp_path/'mensagem.txt').write_text('ci: prova\n\n'+COAUTOR+'\n',encoding='utf-8')
@@ -621,6 +693,102 @@ def test_validacao_real_nao_usa_modulo_fora_da_revisao(tmp_path, ignorado, alvo)
         assert not logs
     assert (raiz/'necessario.py').exists()
     assert len(git('worktree','list','--porcelain').split('worktree '))-1 == 2
+
+
+def _repositorio_de_validacao(tmp_path):
+    import subprocess
+
+    origem = tmp_path / "origem-407"
+    subprocess.run(["git", "init", str(origem)], check=True, capture_output=True)
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=origem, check=True,
+                              capture_output=True, text=True).stdout.strip()
+    git("config", "user.name", "Teste")
+    git("config", "user.email", "teste@example.com")
+    (origem / "fonte.py").write_text("valor = 1\n", encoding="utf-8")
+    (origem / "troca.py").write_text(
+        "import subprocess, sys\n"
+        "subprocess.run(['git', 'checkout', '--detach', sys.argv[1]], check=True)\n",
+        encoding="utf-8",
+    )
+    git("add", ".")
+    git("commit", "-m", "bom")
+    correto = git("rev-parse", "HEAD")
+    (origem / "fonte.py").write_text("valor = 2\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-m", "outra revisao")
+    outro = git("rev-parse", "HEAD")
+    raiz = tmp_path / "bancada-407"
+    git("worktree", "add", "-b", "agent/ci/prova-407", str(raiz), correto)
+    return origem, raiz, correto, outro
+
+
+def test_validacao_407_aceita_revisao_correta_e_arquivos_temporarios(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+    provas = pr._validar(
+        raiz, correto, pr.rodar,
+        [[sys.executable, "-c", "from pathlib import Path; p=Path('temp.txt'); p.write_text('ok'); assert p.read_text() == 'ok'"]],
+        lambda *_: None,
+    )
+
+    assert len(provas) == 1
+
+
+def test_validacao_407_recusa_troca_de_revisao_mesmo_com_exit_zero(tmp_path):
+    _, raiz, correto, outro = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="trocou a revisão"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "troca.py", outro]],
+            lambda *_: None,
+        )
+
+
+def test_validacao_407_recusa_alteracao_de_fonte_rastreada(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="alterou fontes rastreadas"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "-c", "from pathlib import Path; Path('fonte.py').write_text('quebrado')"]],
+            lambda *_: None,
+        )
+
+
+def test_validacao_407_recusa_fonte_nao_rastreada_de_injecao(tmp_path):
+    _, raiz, correto, _ = _repositorio_de_validacao(tmp_path)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
+        pr._validar(
+            raiz, correto, pr.rodar,
+            [[sys.executable, "-c", "from pathlib import Path; Path('conftest.py').write_text('')"]],
+            lambda *_: None,
+        )
+
+
+def test_retomada_407_nao_reutiliza_prova_invalidada(tmp_path):
+    raiz = bancada(tmp_path)
+    primeira = Duble(RESPOSTAS_FELIZES)
+    mutou = False
+
+    def executar_primeira(comando, cwd, **opcoes):
+        nonlocal mutou
+        if comando == ["pytest", "ci/tests"] and "log" in opcoes:
+            mutou = True
+            return "passo verde\n"
+        if comando == ["git", "rev-parse", "HEAD"] and mutou and cwd != raiz:
+            return "c" * 40
+        return primeira(comando, cwd, **opcoes)
+
+    with pytest.raises(pr.ParouPorSeguranca, match="trocou a revisão"):
+        pr.abrir(raiz, pedido(raiz), rodar=executar_primeira, hoje=HOJE)
+
+    segunda = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, continuar=True), rodar=segunda, hoje=HOJE)
+
+    assert segunda.linhas.count("pytest ci/tests") == 2
+    assert segunda.pediu("git worktree add")
 
 
 def test_log_privado_preserva_stdout_stderr_e_redige_segredos(tmp_path):
@@ -768,7 +936,10 @@ def test_retomada_apos_timeout_exige_duas_novas_provas(tmp_path, prova_expirada)
 
 @pytest.mark.parametrize('pai_encerra', [False, True])
 @pytest.mark.parametrize('nova_sessao', [False, True])
-def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao):
+@pytest.mark.parametrize('atraso_do_neto', [0, 3])
+def test_timeout_encerra_filhos_e_netos_reais(
+    tmp_path, pai_encerra, nova_sessao, atraso_do_neto, monkeypatch
+):
     import os
     import signal
     import subprocess
@@ -776,16 +947,36 @@ def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao
     script = tmp_path/'processos.py'
     script.write_text('''import os, pathlib, subprocess, sys, time
 profundidade = int(sys.argv[1])
+if profundidade == 0:
+    time.sleep(float(sys.argv[4]))
 pathlib.Path(f"pid-{profundidade}").write_text(str(os.getpid()))
 print(f"iniciado {profundidade}", flush=True)
 print("saída íntegra " + "x"*12000, flush=True)
 if profundidade:
-    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3]], start_new_session=sys.argv[3] == "nova")
+    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3], sys.argv[4]], start_new_session=sys.argv[3] == "nova")
 if profundidade == 2 and sys.argv[2] == "sair":
     sys.exit(0)
 print("token=SEGREDO_CONTROLADO", file=sys.stderr, flush=True)
 time.sleep(60)
 ''', encoding='utf-8')
+    comunicar = subprocess.Popen.communicate
+
+    def comunicar_com_arvore_pronta(processo, input=None, timeout=None):
+        if timeout == 2:
+            limite_da_preparacao = time.monotonic() + 30
+            while len(list(tmp_path.glob('pid-*'))) != 3:
+                assert time.monotonic() < limite_da_preparacao, (
+                    'preparação incompleta: pai, filho e neto não nasceram em 30s'
+                )
+                try:
+                    comunicar(processo, input=input, timeout=.05)
+                except subprocess.TimeoutExpired:
+                    continue
+                pytest.fail('a preparação encerrou sem pai, filho e neto')
+        return comunicar(processo, input=input, timeout=timeout)
+
+    monkeypatch.setattr(subprocess.Popen, 'communicate', comunicar_com_arvore_pronta)
+
     def vivo(pid):
         if os.name == 'nt':
             import ctypes
@@ -811,7 +1002,7 @@ time.sleep(60)
     log = tmp_path/'timeout.log'
     try:
         with pytest.raises(pr.PrazoDeValidacaoExcedido, match='TIMEOUT'):
-            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma'], tmp_path, log=log, prazo_segundos=2)
+            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma', str(atraso_do_neto)], tmp_path, log=log, prazo_segundos=2)
         pids = [int(p.read_text()) for p in tmp_path.glob('pid-*')]
         assert len(pids) == 3, 'pai, filho e neto precisam ter executado'
         limite = time.monotonic() + 3
@@ -860,3 +1051,212 @@ def test_cli_distingue_reprovacao_de_timeout(tmp_path, monkeypatch, capsys, erro
     ])
     assert retorno == codigo
     assert resultado in capsys.readouterr().out
+
+
+
+def test_fechamento_submete_tar_recuperada_e_recibo_a_identifica(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("tentativa-1", "TAR-001"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py concluir")
+    assert dub.pediu("--revisao " + "b" * 40)
+    assert dub.pediu("--arvore " + "a" * 40)
+    recibo = next((raiz / "painel/registros").glob("*.js"))
+    assert pr.campos_lidos(recibo.read_text(encoding="utf-8"))["tarefa"] == "TAR-001"
+
+
+def test_tar_inexistente_recusa_antes_de_git_add_ou_publicacao(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz, tarefa="TAR-999"), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+    assert not dub.pediu("gh pr create")
+
+
+def test_tar_do_titulo_reutiliza_cadastro_sem_confundir_tentativa(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr, "_tentativa_da_abertura", lambda *args: ("TAR-999", "agent/ci/make-pr"))
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, titulo="fila: corrigir conclusão TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("TAR-999")
+
+
+
+def test_tar_explicita_nao_confunde_tarefa_citada_com_dependencia(tmp_path, monkeypatch):
+    import fila
+    raiz = bancada(tmp_path)
+    (raiz / "corpo.md").write_text("Corrige TAR-001. Caso histórico TAR-077.", encoding="utf-8")
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-077": {}})
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+    assert not dub.pediu("ci/fila.py submeter TAR-077")
+
+
+
+def test_abertura_nova_sem_tar_recusa_antes_de_publicar(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": Path(pr.__file__).read_text(encoding="utf-8")})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
+def test_abertura_sem_proveniencia_nao_presume_sessao_legada(tmp_path, monkeypatch):
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(pr.telemetria, "ler_tudo", lambda *a: [])
+    dub = Duble(RESPOSTAS_FELIZES)
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+    assert not dub.pediu("git push")
+
+
+def test_abertura_com_revisao_ilegivel_nao_presume_sessao_legada(tmp_path):
+    raiz = bancada(tmp_path)
+    dub = Duble({**RESPOSTAS_FELIZES, "git show " + "b" * 40 + ":ci/pr.py": ""})
+    with pytest.raises(pr.ParouPorSeguranca, match="tarefa"):
+        pr.abrir(raiz, pedido(raiz), rodar=dub, hoje=HOJE)
+    assert not dub.pediu("git add")
+
+
+@pytest.mark.parametrize("ultimo_evento", ["concluida", "cancelada", "reivindicacao_expirada", "devolvida"])
+def test_tar_explicita_ignora_posse_historica_encerrada(tmp_path, monkeypatch, ultimo_evento):
+    import fila
+    raiz = bancada(tmp_path)
+    monkeypatch.setattr(fila, "carregar_tarefas", lambda *args: {"TAR-001": {}, "TAR-077": {}})
+    eventos = [
+        {"tarefa": "TAR-077", "evento": "reivindicada", "quem": "agent/ci/make-pr", "quando": "2026-09-01T00:00:00+00:00"},
+        {"tarefa": "TAR-077", "evento": ultimo_evento, "quem": "agent/ci/make-pr", "quando": "2026-09-02T00:00:00+00:00"},
+    ]
+    monkeypatch.setattr(fila, "carregar_eventos", lambda *args: eventos)
+    dub = Duble(RESPOSTAS_FELIZES)
+    pr.abrir(raiz, pedido(raiz, tarefa="TAR-001"), rodar=dub, hoje=HOJE)
+    assert dub.pediu("ci/fila.py submeter TAR-001")
+
+
+
+def test_propagacao_do_sha_reconsulta_sem_repetir_recibo_ou_validacao(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": ("c" if len(consultas) == 1 else "b") * 40,
+                               "state": "OPEN", "isDraft": False})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 2
+    assert sum("reservar.py numero registro" in linha for linha in dub.linhas) == 1
+    assert sum("worktree add --detach" in linha for linha in dub.linhas) == 2
+    assert len(list((raiz / "painel/registros").glob("*.js"))) == 1
+
+
+@pytest.mark.parametrize("remoto", [
+    {"headRefOid": "c" * 40, "state": "OPEN", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "CLOSED", "isDraft": False},
+    {"headRefOid": "b" * 40, "state": "OPEN"},
+])
+def test_propagacao_esgota_consultas_sem_aprovar_revisao_ou_estado_errados(tmp_path, monkeypatch, remoto):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps(remoto)
+        return dub(comando, raiz, **opcoes)
+    with pytest.raises(pr.ParouPorSeguranca, match="após 3 consultas"):
+        pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE)
+    assert len(consultas) == 3
+    assert not dub.pediu("gh pr ready")
+
+
+def test_propagacao_de_ready_exige_estado_final_confirmado(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setattr(time, "sleep", lambda segundos: None)
+    raiz = bancada(tmp_path)
+    dub = Duble(RESPOSTAS_FELIZES)
+    consultas = []
+    def executar(comando, raiz, **opcoes):
+        if comando[:3] == ["gh", "pr", "view"]:
+            consultas.append(comando)
+            return json.dumps({"headRefOid": "b" * 40, "state": "OPEN", "isDraft": len(consultas) < 3})
+        return dub(comando, raiz, **opcoes)
+    assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
+    assert len(consultas) == 3
+    assert sum("gh pr ready" in linha for linha in dub.linhas) == 1
+
+
+def _bancada_com_painel_geravel(tmp_path):
+    import shutil
+    import subprocess
+
+    _, raiz, _, _ = _repositorio_de_validacao(tmp_path)
+    painel = raiz / "painel"
+    (painel / "registros").mkdir(parents=True)
+    for nome in ("gerar_manifesto.js", "logica.js", "areas.json", "painel.template.html"):
+        shutil.copy2(RAIZ_DO_REPO / "painel" / nome, painel / nome)
+    registro = {"arquivo": "20260912-001-prova", "tipo": "nota", "quando": "2026-09-12",
+                "titulo": "Registro da prova", "detalhe": DETALHE, "autoridade": "sessao",
+                "evidencia": None, "verificado_em": None, "precisa_do_dono": False,
+                "responde_a": None, "gravidade": "info", "frente": "fabrica", "area": "ci",
+                "vence_em_dias": None}
+    (painel / "registros/20260912-001-prova.js").write_text(
+        "(window.REGISTROS = window.REGISTROS || []).push(" + json.dumps(registro) + ");", encoding="utf-8")
+    (raiz / ".gitignore").write_text("painel/painel.html\npainel/livro-*.js\nextra.py\nignorada/\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=raiz, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "painel canonico"], cwd=raiz, check=True, capture_output=True)
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=raiz, text=True).strip()
+    return raiz, commit
+
+
+def test_validacao_aceita_geracao_canonica_deterministica(tmp_path):
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    provas = pr._validar(raiz, commit, pr.rodar, [
+        ["node", "painel/gerar_manifesto.js"], ["node", "painel/gerar_manifesto.js", "--conferir"]
+    ], lambda *_: None)
+    assert len(provas) == 2
+    assert not (raiz / "painel/livro-202609.js").exists()
+
+
+@pytest.mark.parametrize("acao", [
+    "Path('painel/livro-202609.js').write_text('process.exit(0)')",
+    "Path('painel/livro-202609.js').unlink()",
+    "Path('painel/painel.html').write_text('adulterado')",
+])
+def test_validacao_recusa_artefato_adulterado_mesmo_com_nome_legitimo(tmp_path, acao):
+    # guarda: ci/pr.py:459
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    with pytest.raises(pr.ParouPorSeguranca, match="artefato"):
+        pr._validar(raiz, commit, pr.rodar, [
+            [sys.executable, "-c", "from pathlib import Path; " + acao]
+        ], lambda *_: None)
+
+
+@pytest.mark.parametrize("arquivo", ["extra.py", "ignorada/injecao.py", "painel/livro-202608.js"])
+def test_validacao_recusa_fonte_ignorada_extra_apos_preparar_artefatos(tmp_path, arquivo):
+    # guarda: ci/pr.py:477
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
+        pr._validar(raiz, commit, pr.rodar, [[sys.executable, "-c",
+            f"from pathlib import Path; p=Path({arquivo!r}); p.parent.mkdir(exist_ok=True); p.write_text('arbitrario')"
+        ]], lambda *_: None)

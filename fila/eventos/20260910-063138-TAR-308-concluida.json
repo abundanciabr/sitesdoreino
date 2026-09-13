@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-063138-TAR-308-concluida",
+  "tarefa": "TAR-308",
+  "evento": "concluida",
+  "quando": "2026-09-10T06:31:38+00:00",
+  "quem": "agent/ci/publicar-evento-tar-308",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1518; revisao=505b99b79f0566038aae6761f3cc0803c865f1a3; arvore=5190221afc4f892f5140ad19b75614c872475026; head=af6559196eb56ae7e94444f1843dd91682f76616; merge=f613b25a8d3add4ae9781c6ed5ba604a9cf5791c; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34441578586; atestado=atestado aprovado para af6559196eb56ae7e94444f1843dd91682f76616; aceite=painel/registros/20260910-014-pedido-1518-publicado.js",
+  "verificado_em": "2026-09-10"
+}

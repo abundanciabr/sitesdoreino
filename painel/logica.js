@@ -270,6 +270,11 @@
       // mesma família do `precisa_do_dono` escrito com aspas, que fazia um
       // pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
       // ---------------------------------------------------------------------
+      ["porque_so_voce", "proximo_passo"].forEach(function (campo) {
+        if (r[campo] != null && (typeof r[campo] !== "string" || !r[campo].trim() || r.precisa_do_dono !== true)) {
+          erros.push(nome + ": '" + campo + "' exige texto com conteúdo e precisa_do_dono true; confira painel/LEIA-ME.md");
+        }
+      });
       if (r.se_eu_nao_decidir != null && (typeof r.se_eu_nao_decidir !== "string" || r.se_eu_nao_decidir.trim() === "")) {
         erros.push(nome + ": 'se_eu_nao_decidir' precisa ser texto com conteúdo, ou null");
       }
@@ -469,7 +474,13 @@
     var capitulos = meuMapa(registros, agora, prontos);
     return {
       capitulos: capitulos.length,
-      comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
+      comProvaConferida: capitulos.filter(function (c) {
+        if (!c.estado) return false;
+        if (!c.estado.evidencia) return false;
+        if (!c.estado.verificado_em) return false;
+        return c.estado.vence_em_dias == null ||
+          diasEntre(c.estado.verificado_em, agora) <= c.estado.vence_em_dias;
+      }).length,
       semRegistro: capitulos.filter(function (c) { return !c.estado; }).length,
       semRumo: capitulos.filter(function (c) { return c.rumos.length === 0; }).length,
       esperandoVoce: capitulos.reduce(function (n, c) { return n + c.esperando.length; }, 0)
@@ -754,10 +765,14 @@
     // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
     // sai daqui é a contagem e a mediana — nunca uma nota.
     var resp = respondidos(registros);
+    var entregasDeRumo = {};
+    registros.forEach(function (r) {
+      if (r.responde_a && r.relacao !== "substituicao") entregasDeRumo[r.responde_a] = r;
+    });
     var cumpridos = [];
     registros.forEach(function (r) {
       if (r.tipo !== "rumo") return;
-      var fecha = resp[r.arquivo];
+      var fecha = entregasDeRumo[r.arquivo];
       if (!fecha) return;
       cumpridos.push({
         rumo: r.arquivo,
@@ -896,7 +911,8 @@
     // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
-    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
+    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto",
+    "porque_so_voce", "proximo_passo"];
   // Os campos do EXPERIMENTO ficam de fora desta lista de propósito (05/09/2026,
   // degrau 12). O painel do dono não desenha o laboratório em canto nenhum — a
   // tela dele é `/admin/placar/laboratorio/`, e ela lê os registros de origem,

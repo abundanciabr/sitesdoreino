@@ -73,6 +73,7 @@ ENV_REF="$ENV_IDENTIDADE"
 # escolha deste script.
 IDENTIDADE_URL="http://identidade:8000/interno"
 ALUNOS_URL="http://alunos:8000/api/alunos"
+CATALOGO_URL="http://catalogo:8000/api/catalogo"
 
 # -----------------------------------------------------------------------------
 # 1. ONDE, tudo conferido ANTES de gerar ou escrever coisa nenhuma.
@@ -101,16 +102,13 @@ done
 #    entra junto pelo mesmo motivo: ela é lista escrita à mão pelo mantenedor,
 #    e ninguém aqui sabe inventá-la.
 #
-#    O QUE AINDA NÃO ESTÁ NESTA LISTA, e é dito na cara para ninguém descobrir
-#    pela recusa: `TOKENS_ACEITOS_ADMIN`, `CATALOGO_API_URL` e `TOKEN_CATALOGO`.
-#    Quem as escreve é `infra/provisionar-pares-da-sala-de-aula.sh`, e depois de
-#    ELE rodar esta trava passa a recusar toda nova execução deste script. A
-#    recusa é fail-closed e barulhenta (não apaga nada, e manda avisar o
-#    agente), mas ela torna falsa a promessa de idempotência do cabeçalho. Fazer
-#    este roteiro herdar as três é mudar de dono uma variável entre dois
-#    roteiros, e essa decisão pede tarefa própria, não um parágrafo aqui.
+#    As três chaves que o roteiro de pares alinha depois também entram aqui:
+#    são preservadas quando já existem e nascem com um marcador forte quando
+#    este é o primeiro roteiro a rodar. Sem isto, o roteiro de pares deixa
+#    sobras no arquivo e esta trava impede toda reexecução, embora nada tenha
+#    sido apagado.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID CURSOS_PROFESSORES DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID CATALOGO_API_URL CURSOS_PROFESSORES DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKEN_CATALOGO TOKENS_ACEITOS_ADMIN"
 
 # LITERAL, e não `$ENV_CURSOS`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script como
@@ -243,6 +241,17 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_CURSOS)"
 [ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ALUNOS} -ge 32 ] || parar "o token do par cursos->alunos ficou curto demais. Nada foi alterado."
 
+# O roteiro de pares alinha estes três valores nos dois lados depois. Aqui eles
+# nascem uma única vez se ainda não houver valor e, nas execuções seguintes,
+# são relidos do arquivo vivo para não rotacionar um par em uso.
+T_ADMIN="$(ler_de "$ENV_CURSOS" TOKENS_ACEITOS_ADMIN)"
+[ -n "$T_ADMIN" ] || T_ADMIN="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_ADMIN} -ge 32 ] || parar "o token do par admin->cursos ficou curto demais. Nada foi alterado."
+
+T_CATALOGO="$(ler_de "$ENV_CURSOS" TOKEN_CATALOGO)"
+[ -n "$T_CATALOGO" ] || T_CATALOGO="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+[ ${#T_CATALOGO} -ge 32 ] || parar "o token do par cursos->catalogo ficou curto demais. Nada foi alterado."
+
 # ── AS QUATRO QUE ESTE SCRIPT NÃO SABE GERAR, e por isso RELÊ ───────────────
 # Reescrever o arquivo inteiro sem estas quatro linhas as apagaria em silêncio,
 # com o container de pé e o deploy verde (`armadilhas/111`). O efeito seria o
@@ -308,6 +317,9 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
+CATALOGO_API_URL=$CATALOGO_URL
+TOKEN_CATALOGO=$T_CATALOGO
+TOKENS_ACEITOS_ADMIN=$T_ADMIN
 ADMIN_EMAILS=$ADMINS
 CURSOS_PROFESSORES=$PROFESSORES
 ANTHROPIC_API_KEY=$CHAVE_DA_IA

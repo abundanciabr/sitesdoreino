@@ -1,0 +1,20 @@
+{
+  "arquivo": "281-auditar-independentemente-a-medicao-da-fase-4",
+  "id": "TAR-281",
+  "titulo": "Auditar independentemente a medição da Fase 4",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-280"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "parecer independente com revisão examinada, hash e fontes conferidos, análise reproduzida, exclusões verificadas, achados registrados e retestes concluídos",
+  "despacho": "Audite a Fase 4 com contexto e execução separados do implementador. Leia docs/decisoes/PROTOCOLO-FASE4-MEDICAO.md e docs/decisoes/RELATORIO-FASE4-MEDICAO.md, confira a revisão do instrumento, o hash da entrada, os eventos brutos autorizados, as exclusões, os dados ausentes, as falhas, as retomadas e a correspondência entre conclusão e evidência. Reexecute os testes e python ci/analise_fase4.py --local. Recalcule os resultados principais, registre achados com severidade, evidência, correção e reteste. Não aprove expansão enquanto a amostra, a qualidade, a recuperação e a publicação não estiverem comprovadas.",
+  "origem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "criada_em": "2026-09-08"
+}

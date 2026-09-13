@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-021-scale-os-encerramento-tecnico",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: encerramento técnico da Fase 1",
+  detalhe: "Dados inválidos têm recusa orientada, a comprovação de produtividade exige as quatro conclusões e os dois caminhos terminais tratam cadastro inválido sem traceback.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 7c91c9b0a749302dd78e32b93839db8ecb774538; árvore 819fb71f44bc3120d0d17e375b7848dd058cd0e4; submissão 4c5ed606; 227 testes relacionados; muralhas local PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

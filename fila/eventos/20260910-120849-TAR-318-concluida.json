@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-120849-TAR-318-concluida",
+  "tarefa": "TAR-318",
+  "evento": "concluida",
+  "quando": "2026-09-10T12:08:49+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1523; revisao=9cc822be4efab57e11cf1a911af8b826f6ccd175; arvore=dff8532418a6d45c4b19a10ff462bb02540057a4; head=d676ed8223ecdfe5956b6b54ea59f4adcbc39cce; merge=dfb06e637b7dfc15282d9f9e05b08d1a663e8033; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34471938757; atestado=atestado aprovado para d676ed8223ecdfe5956b6b54ea59f4adcbc39cce; aceite=painel/registros/20260910-032-auditoria-independente-da-fase-1-publicada.js",
+  "verificado_em": "2026-09-10"
+}

@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-127-resposta-sobre-credencial-e-deploy",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "correção: deploy e gh usam autenticações diferentes",
+  detalhe: "O diagnóstico anterior confundiu uma falha temporária de leitura do gh local com bloqueio do deploy. O deploy roda no GitHub Actions com o token do workflow. A conferência atual mostra o gh local autenticado na conta abundanciabr, com 796 requisições restantes na cota core, e o workflow pouso 34415326049 terminou com sucesso. O registro 126 fica preservado como histórico da falha observada naquele momento, mas a decisão de renovar a credencial deixa de estar pendente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1514. Workflow pouso: https://github.com/abundanciabr/sitesdoreino/actions/runs/34415326049. Conferências atuais: gh auth status com conta ativa e gh api rate_limit com core remaining 796.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: "20260909-126-incidente-do-testador-e-ambiente",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true,
+  impacto: "medio"
+}); })();

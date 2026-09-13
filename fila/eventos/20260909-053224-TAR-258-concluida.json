@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-053224-TAR-258-concluida",
+  "tarefa": "TAR-258",
+  "evento": "concluida",
+  "quando": "2026-09-09T05:32:24+00:00",
+  "quem": "despacho-encomendas-tar-258",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1478; merge 7e07bd5e66ff850c7ab155c22973707be4376e0a; deploy-celula 34314838446 success; suite 494 passed",
+  "verificado_em": "2026-09-09"
+}

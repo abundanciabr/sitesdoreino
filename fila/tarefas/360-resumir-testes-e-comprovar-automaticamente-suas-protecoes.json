@@ -1,0 +1,19 @@
+{
+  "arquivo": "360-resumir-testes-e-comprovar-automaticamente-suas-protecoes",
+  "id": "TAR-360",
+  "titulo": "Resumir testes e comprovar automaticamente suas proteções",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Executor canônico gera resumo compacto com log completo; pytest real passa antes da sabotagem, falha no teste escolhido e passa após restauração; erros e ausência de testes nunca aprovam; suíte do testador verde.",
+  "despacho": "Concluir Fases 2.2 e 2.3 do plano mestre aprovado: resumo JSON no runner ci/ci.py, dependência central de testes, provar_guardas isolado do trabalho atual e fichas Codex. Mandato ci/ e .github/. Não iniciar Fase 3.",
+  "origem": "Plano mestre de otimização aprovado pelo mantenedor, Fases 2.2 e 2.3",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

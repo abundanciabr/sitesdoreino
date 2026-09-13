@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260912-013532-TAR-360-submetida",
+  "tarefa": "TAR-360",
+  "evento": "submetida",
+  "quando": "2026-09-12T01:35:32+00:00",
+  "quem": "agent/ci/testes-json-mutacao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1595",
+  "revisao": "4d83df1f964157384b1117ebd1d4e3fa52ad4100",
+  "arvore": "4bce914869333e1c3e0abb2b44c2c676a6390fbf"
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-011136-TAR-009-concluida",
+  "tarefa": "TAR-009",
+  "evento": "concluida",
+  "quando": "2026-09-09T01:11:36+00:00",
+  "quem": "agent/ci/trava-cobertura-celula",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1455",
+  "verificado_em": "2026-09-09"
+}

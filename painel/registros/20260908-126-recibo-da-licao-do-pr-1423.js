@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-126-recibo-da-licao-do-pr-1423",
+  tipo: "nota",
+  quando: "2026-09-08",
+  titulo: "A lição dos alertas antigos foi registrada no PR 1423",
+  detalhe: "A armadilha 415 registra que uma entrega verde posterior não fecha um alerta âmbar por inferência. O vínculo precisa ser escrito em um registro novo com responde_a. Este recibo embarca a lição no próprio PR que fechou os quatro alertas da área painel.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1423",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
