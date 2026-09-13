@@ -41,11 +41,17 @@ def test_porta_alheia_nao_encerra_processo(casa, monkeypatch):
         local.iniciar()
 
 
-def test_reexecucao_verifica_paginas_sem_iniciar(casa, monkeypatch):
+@pytest.mark.parametrize("raiz_anterior", ["atual", "outra-bancada"])
+def test_reexecucao_verifica_paginas_sem_iniciar(casa, monkeypatch, raiz_anterior):
     dados = casa / "dados/SitesDoReino/administracao-local"
     dados.mkdir(parents=True)
     (dados / "servidor.json").write_text(
-        json.dumps({"raiz": str(local.RAIZ), "token": "teste"})
+        json.dumps(
+            {
+                "raiz": str(local.RAIZ) if raiz_anterior == "atual" else raiz_anterior,
+                "token": "teste",
+            }
+        )
     )
     monkeypatch.setattr(local, "porta_ocupada", lambda: True)
     monkeypatch.setattr(local, "verificar_paginas", lambda token: [("Plano", token)])

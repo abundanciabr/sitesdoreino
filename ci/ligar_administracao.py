@@ -107,7 +107,7 @@ def iniciar():
         except (ValueError, OSError):
             pass
     if porta_ocupada():
-        if anterior.get("raiz") == str(RAIZ) and anterior.get("token"):
+        if anterior.get("token"):
             return (
                 verificar_paginas(anterior["token"]),
                 "A administração já estava ligada.",
