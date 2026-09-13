@@ -2460,6 +2460,9 @@ def cmd_validar(raiz: Path) -> int:
     erros: list[str] = []
     tarefas = carregar_tarefas(raiz, erros)
     eventos = carregar_eventos(raiz, tarefas, erros)
+    if (raiz / "painel" / "responsabilidades.json").exists() or any(tarefa_exige_responsabilidade(tarefa) for tarefa in tarefas.values()):
+        problemas_do_cadastro = responsabilidades.auditar(raiz)
+        erros.extend(f"{erro}. Corrija painel/responsabilidades.json e repita a validação." for erro in problemas_do_cadastro)
     if erros:
         print(f"❌ FILA INVÁLIDA — {len(erros)} problema(s):")
         for erro in erros:
@@ -2610,7 +2613,17 @@ def conferir_imutabilidade(raiz: Path, base: str) -> list[str]:
     problemas: list[str] = []
     for status, caminho in mudancas_em_tarefas(raiz, base):
         if status.startswith("A"):
-            continue  # criar não é editar
+            tarefa = _tarefa_na_revisao(raiz, "HEAD", caminho)
+            responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade"))
+            if not responsabilidade or not tarefa_exige_responsabilidade(tarefa):
+                problemas.append(f"{caminho}: tarefa nova sem responsabilidade obrigatória. Corrija responsabilidade e responsabilidade_obrigatoria antes de entregar.")
+            else:
+                try:
+                    erros = responsabilidades.validar_entrega(raiz, responsabilidade)
+                except (OSError, ValueError) as erro:
+                    erros = [f"cadastro de responsabilidades ilegível: {erro}"]
+                problemas.extend(f"{caminho}: {erro}. Corrija a responsabilidade da tarefa ou painel/responsabilidades.json antes de entregar." for erro in erros)
+            continue
         if status.startswith("D"):
             problemas.append(
                 f"{caminho} foi APAGADO — apagar e recriar é editar por outra porta"
