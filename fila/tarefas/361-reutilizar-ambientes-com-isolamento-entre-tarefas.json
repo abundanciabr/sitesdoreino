@@ -1,0 +1,19 @@
+{
+  "arquivo": "361-reutilizar-ambientes-com-isolamento-entre-tarefas",
+  "id": "TAR-361",
+  "titulo": "Reutilizar ambientes com isolamento entre tarefas",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de persistência, concorrência, bancos distintos e cache seguro; PR 1589 integrado.",
+  "despacho": "Concluir Fase 2.1 no PR 1589: venv por célula e hash dos requisitos e Python, instalação protegida por trava, uv opcional, Postgres compartilhado com banco por tarefa, Redis isolado, baseline reutilizado apenas com main e ambiente compatíveis. Preservar pré-voo, anúncio de PR e coleta. Provar concorrência e falhas. Alvos ci/sessao.py e testes correspondentes.",
+  "origem": "Plano Mestre 10x aprovado, Fase 2.1, recuperação do PR 1589",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

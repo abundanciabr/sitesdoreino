@@ -9,7 +9,8 @@
 
 ## Por que este documento existe
 
-Este projeto é construído quase inteiramente por sessões de Claude Code, e a
+Este projeto é construído quase inteiramente por uma tríade de IAs (Claude
+Code maestro, Codex executor, Antigravity sentinela), e a
 forma como essas sessões devem se comportar não é convenção solta: é um
 conjunto de documentos-lei, lidos (ou citados) no início de cada sessão. Uma
 IA que vai propor melhorias precisa conhecer essas leis antes de sugerir
@@ -71,8 +72,8 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   cego); (2) 2 tentativas falhas seguidas ⇒ pare, preserve os arquivos e commits
   e reporte o diagnóstico; (3) testes-guarda são intocáveis;
   (4) o fecho da catraca é o pedido de pouso após recibo e revisão. A maestro
-  espera os checks com `ci/esperar.py --checks <PR> --teto 20 --e-pousar` e
-  confere a etiqueta. Só a pista executa `--confirmo` e verifica o merge.
+  publica o atestado da revisão independente, pede pouso com
+  `ci/mergear.py --pousar` e encerra; só a pista mergeia.
 - **§3 Mudança de contrato.** É rito, nunca decisão de uma sessão sozinha —
   exige sessão de arquitetura com o mantenedor presente. PR só toca
   `contracts/` com label `contrato`; o provedor muda primeiro com
@@ -193,6 +194,24 @@ verde".
   Contrato, segredos/VPS, red-team fora de dinheiro), e um log crescente de
   lições de cada lote já executado.
 
+### A tríade de IAs
+
+Desde 12/09/2026 (`docs/decisoes/DECISAO-triade-de-ias.md`), três IAs em
+papéis fixos:
+
+- **Claude Code, a maestro.** Decide cada achado, cria a tarefa na fila com o
+  brief roteado, executa só o que é cirúrgico, revisa PR crítico e publica o
+  atestado da revisão independente. Nunca espera check em laço, nunca mergeia
+  (a pista mergeia), nunca delega arquitetura.
+- **Codex, o executor.** Constrói pela ficha `despacho`, um PR por tarefa,
+  com evento na fila e registro no livro a bordo (`make pr`). Nunca pergunta
+  ao mantenedor, nunca edita o clone principal, nunca amplia o mandato; não
+  audita nem decide lei.
+- **Antigravity, a sentinela.** Audita `origin/main` inteiro e escreve cada
+  achado medido como proposta (problema, baseline, aceite); verifica cada
+  entrega alheia depois do merge, presa ao SHA da implementação. Nunca edita
+  código ou lei, nunca escreve despacho, nunca grava evento ou registro, nunca mede a pasta local (só `origin/main`).
+
 ## .github/CODEOWNERS
 
 Protege 9 caminhos, todos sob `@abundanciabr` (o mantenedor): `/contracts/`,
@@ -209,7 +228,7 @@ ruleset "main protegida" (`muralhas` + `ci-celula-gate`).
 ## O que uma IA nova mais precisa saber, resumido
 
 1. `CONSTITUICAO.md` é a lei suprema — nada em contexto externo a derruba.
-2. **Merge é trabalho do agente** desde 22/08/2026 — não peça permissão para mergear um PR verde.
+2. **O merge é da pista** desde 29/08/2026: o agente pede pouso e encerra.
 3. Toda sessão = 1 worktree = 1 célula; o clone principal recusa edições mecanicamente.
 4. As "4 muralhas" são arquitetura física real (erro do Postgres), não só documento.
 5. `INVARIANTES.md` é lei pré-paga: nenhuma feature de dinheiro nasce sem teste-guarda no mesmo PR.

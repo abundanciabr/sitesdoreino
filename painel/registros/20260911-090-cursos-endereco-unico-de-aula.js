@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-090-cursos-endereco-unico-de-aula",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: endereço único de aula",
+  detalhe: "O banco confirma o endereço final mesmo quando duas edições disputam o mesmo link.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1583. Validação local: árvore c88b5919c9dbfb22c142bfcd546c981a12235384; commit 0947c49662142f1ac90d1fbe1cd65b0f4adf4172; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-354",
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

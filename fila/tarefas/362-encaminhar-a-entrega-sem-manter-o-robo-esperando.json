@@ -1,0 +1,19 @@
+{
+  "arquivo": "362-encaminhar-a-entrega-sem-manter-o-robo-esperando",
+  "id": "TAR-362",
+  "titulo": "Encaminhar a entrega sem manter o robô esperando",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Pedido de pouso aceita checks pendentes sem permitir merge; falha real ou erro de consulta continuam recusados; etiqueta confirmada por leitura; JSON compacto; testes do portao e pista verdes.",
+  "despacho": "Ajustar ci/mergear.py --pousar para encaminhar pendências transitórias de checks sem relaxar o portão do merge. Confirmar etiqueta e revisão remota, retornar JSON compacto e atualizar instruções operacionais. Preservar revisão independente, recibo, bloqueio de falhas reais e integração somente pela pista. Não remover histórico, não mudar permissões nem ativar Merge Queue não elegível.",
+  "origem": "Diamantes e cinco gargalos aprovados pelo mantenedor em 12/09/2026",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

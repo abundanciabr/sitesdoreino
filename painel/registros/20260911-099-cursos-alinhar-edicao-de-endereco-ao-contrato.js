@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-099-cursos-alinhar-edicao-de-endereco-ao-contrato",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: alinhar edição de endereço ao contrato",
+  detalhe: "O serviço reserva o endereço final, inclusive depois de truncar um slug longo, e explica como corrigir uma entrada recusada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1583. Validação local: árvore 0bd04bec2f151c97e798bc4685eac8bdb76163d4; commit 9f46b2ccc764a86de21f412aa0a36351bf78d023; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-354",
+  gravidade: "info",
+  frente: "site",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

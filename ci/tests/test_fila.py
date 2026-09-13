@@ -2649,3 +2649,103 @@ def test_reconciliar_exige_bancada(espelho_e_bancada):
     principal, _ = espelho_e_bancada
     assert fila.cmd_reconciliar(principal, args_de_reconciliar()) == 1
     assert not list((principal / "fila/eventos").glob("*-concluida.json"))
+
+
+# ---------------------------------------------------------------------------
+# O "FEITO" VIAJA NA ENTREGA (12/09/2026): a tarefa fecha no merge do PR,
+# porque push direto na `main` é recusado para todo mundo e a porta do pouso
+# não tem onde gravar.
+# ---------------------------------------------------------------------------
+
+def args_de_fechar(**extra):
+    dados = {"tarefa": "TAR-001", "quem": "agent/fila/tarefa", "pr": URL_SUBMISSAO}
+    dados.update(extra)
+    return argparse.Namespace(**dados)
+
+
+def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch):
+    """O PR de entrega submete e fecha, e o estado calculado vira concluída."""
+    # guarda: ci/fila.py:1724
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+    assert len(escrito) == 1
+    dados = json.loads(escrito[0].read_text(encoding="utf-8"))
+    assert dados["evidencia"] == URL_SUBMISSAO
+    assert dados["verificado_em"]
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+
+
+def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch, capsys):
+    """Sem submissão registrada, nenhuma string fecha tarefa alheia.
+
+    A evidência de uma entrega é o PR que a fila JÁ registrou como submissão.
+    Sem esta amarra, `fechar-pela-entrega TAR-nnn --pr "qualquer coisa"`
+    encerraria a tarefa de outra pessoa com prova inventada, e a folga de
+    `cmd_submeter` reabriria a tarefa por essa mesma string.
+    """
+    # guarda: ci/fila.py:2376
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr="prova inventada")) == 1
+    assert "não é a entrega submetida" in capsys.readouterr().out
+    assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+
+
+def test_fechar_pela_entrega_recusa_pr_diferente_da_submissao(tmp_path, monkeypatch, capsys):
+    """Submissão existe, mas para outro PR: também não fecha."""
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr=URL_SUBMISSAO + "9")) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+
+
+def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys):
+    """`--continuar` chama de novo e nada é repetido."""
+    # guarda: ci/fila.py:1695
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    capsys.readouterr()
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    assert "já está no ramo" in capsys.readouterr().out
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
+
+
+def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
+    """Conclusão alheia não é sobrescrita nem acompanhada de uma segunda."""
+    # guarda: ci/fila.py:2382
+    alheia = evento(tipo="concluida", hora="12:00:00",
+                    evidencia="outro aceite", verificado_em="2026-09-11")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
+    assert "já terminou por outro fato" in capsys.readouterr().out
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
+
+
+def test_submeter_segue_atualizando_a_entrega_que_fechou_a_tarefa(tmp_path, monkeypatch):
+    """O `--continuar` não pode bater no guarda terminal que ele mesmo criou."""
+    # guarda: ci/fila.py:1707
+    nossa = evento(tipo="concluida", hora="12:00:00",
+                   evidencia=URL_SUBMISSAO, verificado_em="2026-09-12")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), nossa])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(revisao="c" * 40)) == 0
+    submetidas = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-submetida.json"))
+    assert len(submetidas) == 2
+
+
+def test_submeter_continua_recusando_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
+    """A folga vale só para a conclusão desta entrega, e por PR exato."""
+    alheia = evento(tipo="concluida", hora="12:00:00",
+                    evidencia=URL_SUBMISSAO + "0", verificado_em="2026-09-11")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(revisao="c" * 40)) == 1
+    assert "já terminou" in capsys.readouterr().out
