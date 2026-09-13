@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-002508-TAR-360-explicada",
+  "tarefa": "TAR-360",
+  "evento": "explicada",
+  "quando": "2026-09-12T00:25:08+00:00",
+  "quem": "Plano mestre de otimização aprovado pelo mantenedor, Fases 2.2 e 2.3",
+  "o_que_e": "Os robôs precisam ler relatórios longos de testes e sabotar manualmente o código para conferir as proteções.",
+  "o_que_muda": "Os resultados ficam curtos sem perder a prova completa, e um comando confere as proteções sem alterar o trabalho original.",
+  "exemplo": "Um teste passa, o comando retira a instrução protegida em uma cópia, confirma a falha e restaura a cópia para conferir o teste novamente.",
+  "importancia": 85
+}

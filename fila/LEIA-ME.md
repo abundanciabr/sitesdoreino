@@ -34,6 +34,14 @@ python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutenca
 python ci/fila.py validar              # o que a muralha roda em todo PR
 ```
 
+**Quem usa qual verbo** (desde 12/09/2026, `docs/decisoes/DECISAO-triade-de-ias.md`):
+
+| Papel | Quem | Verbos |
+|---|---|---|
+| Maestro | Claude Code | `criar`, `explicar`, `bloquear`, `cancelar`, `reconciliar` |
+| Executor | Codex | `pegar`, `submeter`, `soltar`, `criar` (tarefa que descobre no caminho, RITOS §5) e `bloquear` (dúvida que só o mantenedor decide, devolvida à maestro); a conclusão da própria entrega viaja pelo `make pr` (PR #1603) |
+| Sentinela | Antigravity | só `listar` e `validar`; nunca grava evento |
+
 **`pegar` é a trava.** Ele chama o almoxarife (`ci/reservar.py`), que cria uma
 referência atômica no servidor do GitHub — quem chega segundo recebe recusa DO
 SERVIDOR, na hora, e a reserva expira sozinha em 3 horas se a sessão morrer.
@@ -368,6 +376,8 @@ append-only ficam de fora da conta por não poderem gerar colisão:
 - **Waves, scheduler, heartbeat, compilador de prompts** — registrados como
   evolução no veredito, sem promessa. A fila nasce com o vocabulário que
   permite calculá-los depois (`toca`, `depende_de`).
+- **A proposta e a verificação da sentinela** moram nos registros do
+  conselho, definidos em `docs/decisoes/DECISAO-triade-de-ias.md`.
 
 ## Quem faz valer
 

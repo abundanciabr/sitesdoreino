@@ -18,7 +18,8 @@ caminho que o rito registra. O cinto é o ruleset; a catraca é este script.
 Desde a emenda de 29/08/2026 da CONSTITUICAO.md, Lei 4 (registro
 20260829-006), o agente pede pouso e só a pista mergeia. `--confirmo` exige
 repetir o número do PR e é recusado fora do ambiente da pista. A maestro
-confere a revisão independente e os checks antes do encaminhamento.
+confere a revisão independente antes do encaminhamento; a pista aguarda os
+checks e só integra quando o mesmo portão aprova.
 
 [INV-CI01] Vale a mesma semântica dos outros portões:
 
@@ -227,7 +228,7 @@ MOTIVO_GITHUB_AINDA_CALCULANDO = "MOTIVO  github-ainda-calculando"
 def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
     mergeavel = pr.get("mergeable")
     status = pr.get("mergeStateStatus")
-    if mergeavel == "CONFLICTING":
+    if mergeavel == "CONFLICTING" or status == "DIRTY":
         return Resultado(
             "conflitos",
             Estado.FAIL,
@@ -766,15 +767,19 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
                 )
             )
         else:
+            estado_da_dependencia = Estado.FAIL
+            if situacao == "OPEN":
+                estado_da_dependencia = Estado.ERROR
             resultados.append(
                 Resultado(
                     f"Depende-de #{numero}",
-                    Estado.FAIL,
+                    estado_da_dependencia,
                     f"ainda não entrou (state={situacao}) — {titulo}",
-                    "Este PR declarou precisar daquele antes. Espere o pouso "
-                    "dele; se a ordem não importa mais, tire a linha "
-                    "`Depende-de:` da descrição — ela é uma promessa, e "
-                    "promessa que ninguém cumpre é pior que promessa nenhuma.",
+                    "A dependência está aberta. Este PR pode aguardar na pista; "
+                    "a integração permanece bloqueada até ela pousar."
+                    if situacao == "OPEN" else
+                    "A dependência não foi integrada. Confira o PR declarado e "
+                    "corrija seu encerramento antes de pedir pouso novamente.",
                 )
             )
     return resultados
@@ -817,7 +822,8 @@ def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
         comentarios = [c for pagina in paginas for c in pagina]
         if any(not isinstance(c, dict) for c in comentarios):
             raise ValueError("comentário inválido")
-        return avaliar_atestado(pr.get("headRefOid") or "", comentarios, correcoes=correcoes_declaradas(pr))
+        return avaliar_atestado(pr.get("headRefOid") or "", comentarios,
+                                correcoes=correcoes_declaradas(pr), raiz=raiz)
     except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
         return Resultado("revisão independente", Estado.ERROR,
                          "não consegui medir a revisão independente", str(erro))
@@ -963,27 +969,7 @@ def motivos_da_recusa(relatorio: Relatorio) -> list[str]:
 
 
 def so_falta_atualizar_a_base(relatorio: Relatorio) -> bool:
-    """A ÚNICA reprovação é `BEHIND` — que é o serviço da pista, não um defeito.
-
-    POR QUE ISTO EXISTE (auditoria das Ondas 3 a 6, 29/08/2026)
-    -----------------------------------------------------------
-    O `RITOS.md` se contradizia, e o código seguia a metade errada:
-
-      §2 peça 4:  "o `--pousar` só age com o portão verde"
-      §2 peça 5:  "Quando usar: o PR ficou `BEHIND` mais de uma vez"
-
-    Um PR `BEHIND` NÃO está verde — logo o comando recusava exatamente o caso
-    que a lei manda mandar para a pista. Quem batia nisso tinha duas saídas: a
-    etiqueta na mão (que a própria peça 5 abençoa) ou voltar ao
-    `update-branch` → esperar 90s → a `main` andou → repetir, que é o laço de
-    oito voltas que a pista existe para abolir (`armadilhas/156`).
-
-    ISTO NÃO AFROUXA NADA. Pedir pouso não mergeia: põe o PR na fila. A pista
-    atualiza a base, roda ESTE MESMO portão contra o mundo novo, e só então
-    mergeia. O que muda é quem faz o trabalho chato — ela, que tem paciência,
-    em vez do agente, que não tem. Vermelho de verdade e ERROR continuam sendo
-    recusa: a pista não é lugar de despejar PR quebrado.
-    """
+    """Reconhece o caso histórico de base envelhecida como única reprovação."""
     if relatorio.estado is not Estado.FAIL:
         return False
     reprovados = [r for r in relatorio.resultados if r.estado is not Estado.PASS]
@@ -993,8 +979,43 @@ def so_falta_atualizar_a_base(relatorio: Relatorio) -> bool:
     )
 
 
-def pedir_pouso(numero: int) -> int:
-    """Põe a etiqueta e explica o que vem depois. É o novo gesto normal."""
+def pode_aguardar_na_pista(relatorio: Relatorio, pr: dict) -> bool:
+    """Admite espera na fila, sem alterar o veredito exigido para integrar."""
+    if pr.get("state") != "OPEN" or pr.get("isDraft"):
+        return False
+    if (pr.get("mergeable") == "MERGEABLE" and pr.get("mergeStateStatus") == "BEHIND"
+            and so_falta_atualizar_a_base(relatorio)):
+        return True
+    pendentes = set()
+    for check in mais_recente_por_nome(pr.get("statusCheckRollup") or []):
+        status = (check.get("status") or "").upper()
+        estado = (check.get("conclusion") or check.get("state") or "").upper()
+        if status in {"QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED"} or (
+            not status and estado in {"PENDING", "EXPECTED"}
+        ):
+            pendentes.add("check/" + (check.get("name") or check.get("context") or "(sem nome)"))
+    recusas = [r for r in relatorio.resultados if r.estado not in (Estado.PASS, Estado.SKIP)]
+    if not recusas:
+        return False
+    for resultado in recusas:
+        if resultado.estado is Estado.ERROR and resultado.nome.startswith("Depende-de #"):
+            continue
+        if resultado.estado is Estado.ERROR and resultado.nome in (
+            pendentes | {"checks", "checks obrigatórios"}
+        ):
+            continue
+        if resultado.nome == "conflitos" and (
+            (pr.get("mergeable") == "UNKNOWN" and resultado.estado is Estado.ERROR)
+            or (pr.get("mergeable") == "MERGEABLE"
+                and pr.get("mergeStateStatus") == "BEHIND" and resultado.estado is Estado.FAIL)
+        ):
+            continue
+        return False
+    return True
+
+
+def pedir_pouso(numero: int, head_esperado: str) -> int:
+    """Confirma a etiqueta no GitHub e encerra sem aguardar checks ou merge."""
     try:
         raiz = raiz_do_repo()
         _gh(
@@ -1003,22 +1024,23 @@ def pedir_pouso(numero: int) -> int:
             f"pedir pouso do PR #{numero}",
             exigir_stdout=False,
         )
-    except ErroDeInstrumentacao as erro:
-        print(f"\nERROR ao pedir pouso: {erro.resumo}\n{erro.detalhe}")
+        remoto = json.loads(_gh(
+            ["pr", "view", str(numero), "--json", "headRefOid,labels,state"],
+            raiz, f"confirmar o pedido do PR #{numero}",
+        ))
+        confirmado = (remoto.get("state") == "OPEN"
+                      and remoto.get("headRefOid") == head_esperado
+                      and any(r.get("name") == ETIQUETA_DE_POUSO for r in remoto.get("labels", [])))
+        if not confirmado:
+            raise ValueError("etiqueta ou revisão não confirmada")
+    except (ErroDeInstrumentacao, ValueError, TypeError, AttributeError) as erro:
+        print(json.dumps({"estado": "ERROR", "pr": numero,
+                          "acao": "Confira a etiqueta e a revisão no GitHub antes de repetir o pedido.",
+                          "erro": str(erro)[:160]}, ensure_ascii=False))
         return 2
-    print(
-        f"\n🛬 POUSO PEDIDO — o PR #{numero} está na fila da pista.\n"
-        "\n"
-        "   A pista atende um PR por vez: atualiza com a `main` de agora,\n"
-        "   confere pelo MESMO portão que você acabou de rodar, e mergeia. Se a\n"
-        "   base envelhecer no meio, o problema é dela — ela tem paciência.\n"
-        "\n"
-        "   Você NÃO precisa esperar em laço. A maestro acompanha: a pista\n"
-        "   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando).\n"
-        "\n"
-        f"   Acompanhar: python ci/esperar.py --entrega {numero}\n"
-        f"   Desistir:   gh pr edit {numero} --remove-label {ETIQUETA_DE_POUSO}"
-    )
+    print(json.dumps({"estado": "ENFILEIRADO", "pr": numero, "head": head_esperado,
+                      "integrado": False, "mensagem": "Não precisa esperar: a pista confere os checks e publica o desfecho no PR."},
+                     ensure_ascii=False))
     return 0
 
 
@@ -1322,12 +1344,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--pousar",
         action="store_true",
-        help="confere e, se estiver tudo verde, PEDE POUSO (põe a etiqueta). É "
+        help="confere revisão e recibo, admite checks pendentes e confirma a etiqueta. É "
         "o gesto normal do agente desde 29/08/2026: quem mergeia é a pista.",
     )
     args = parser.parse_args(argv)
 
     relatorio, pr = conferir(args.pr)
+    if args.pousar:
+        if pr and (relatorio.estado is Estado.PASS or pode_aguardar_na_pista(relatorio, pr)):
+            return pedir_pouso(args.pr, pr["headRefOid"])
+        recusas = [r for r in relatorio.resultados if r.estado not in (Estado.PASS, Estado.SKIP)]
+        print(json.dumps({"estado": "RECUSADO", "pr": args.pr,
+                          "motivos": [{"verificacao": r.nome, "estado": r.estado.name,
+                                       "resumo": r.resumo} for r in recusas],
+                          "acao": f"Corrija os motivos; diagnóstico: python ci/mergear.py {args.pr} --conferir"},
+                         ensure_ascii=False))
+        return relatorio.exit_code
     if pr:
         print(cabecalho(pr))
     print(relatorio.render())
@@ -1338,12 +1370,7 @@ def main(argv: list[str] | None = None) -> int:
     if codigos:
         print(f"{MARCA_DE_MOTIVO} {' '.join(codigos)}")
 
-    # `--pousar` com a base envelhecida é o caso que a pista existe para
-    # resolver — ver `so_falta_atualizar_a_base`. Qualquer outra reprovação,
-    # e o ERROR, continuam recusando.
-    pouso_da_base_velha = args.pousar and so_falta_atualizar_a_base(relatorio)
-
-    if relatorio.estado is not Estado.PASS and not pouso_da_base_velha:
+    if relatorio.estado is not Estado.PASS:
         print(
             "\nMERGE RECUSADO. "
             + (
@@ -1355,21 +1382,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return relatorio.exit_code
 
-    if pouso_da_base_velha:
-        print(
-            "\nA base deste PR envelheceu — e é exatamente para isso que a pista "
-            "serve.\n"
-            "   Ela atualiza, espera os checks medirem o mundo NOVO, confere por "
-            "este\n"
-            "   mesmo portão e só então mergeia. Pondo na fila:"
-        )
-
     if args.conferir:
         print("\nTudo verde. (--conferir: nada foi mergeado.)")
         return 0
-
-    if args.pousar:
-        return pedir_pouso(args.pr)
 
     # A RECUSA (Onda 4, fatia 3). Só a pista mergeia — ver o bloco lá em cima.
     if not sou_a_pista():

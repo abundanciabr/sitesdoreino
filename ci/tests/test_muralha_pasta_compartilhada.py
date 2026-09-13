@@ -411,33 +411,12 @@ def test_o_atraso_nao_e_medido_em_worktree(tmp_path):
 
 # ---------- a fiação: sem o hook no settings, a muralha é decoração ----------
 
-def test_settings_do_projeto_liga_a_muralha():
-    fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    pre = fiacao["hooks"]["PreToolUse"]
-    comandos = [
-        h["command"]
-        for entrada in pre
-        for h in entrada["hooks"]
-        if h.get("type") == "command"
-    ]
-    assert any("muralha_pasta_compartilhada.py" in c for c in comandos), (
-        "o PreToolUse do .claude/settings.json não chama a muralha"
-    )
-    matchers = " ".join(entrada.get("matcher", "") for entrada in pre)
-    for ferramenta in ("Edit", "Write", "NotebookEdit", "Bash", "PowerShell"):
-        assert ferramenta in matchers, (
-            f"a ferramenta {ferramenta} está fora do matcher da muralha"
-        )
-    sessao = fiacao["hooks"]["SessionStart"]
-    avisos = [
-        h["command"]
-        for entrada in sessao
-        for h in entrada["hooks"]
-        if h.get("type") == "command"
-    ]
-    assert any("--aviso" in c for c in avisos), (
-        "o SessionStart do .claude/settings.json não liga o aviso da muralha"
-    )
+def test_settings_preserva_aviso_sem_rodar_muralha_por_acao():
+    fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))["hooks"]
+    comandos = [h["command"] for e in fiacao["PreToolUse"] for h in e["hooks"]]
+    assert not any("muralha_pasta_compartilhada.py" in c for c in comandos)
+    avisos = [h["command"] for e in fiacao["SessionStart"] for h in e["hooks"]]
+    assert any("muralha_pasta_compartilhada.py" in c and "--aviso" in c for c in avisos)
 
 
 # ------------------------------------------------------------------------

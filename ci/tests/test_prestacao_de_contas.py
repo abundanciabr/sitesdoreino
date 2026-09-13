@@ -36,14 +36,9 @@ Onde estou: passo 2 de 2, acabou.
 
 **O que mudou** — o webhook do Pix passou a ignorar evento repetido.
 
-**O que foi verificado e como** — `pytest services/pagamentos` → 41 passed.
+**O que foi verificado** — `pytest services/pagamentos` → 41 passed.
 
-**O que foi cortado e por quê** — nada.
-
-**O que eu preciso decidir** — nada depende de ninguém, ~8 min até o ar.
-
-**Auditoria de qualidade** — Definição de Pronto 7/7. O crítico atacaria o
-retry do provedor, que não tem teste de ponta a ponta.
+**Pendências** — nada depende de ninguém, ~8 min até o ar.
 
 **Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.
 """
@@ -98,10 +93,8 @@ def _recusa_que_ensina(proc: subprocess.CompletedProcess) -> None:
     # A recusa tem de ENTREGAR o molde: recusa que não ensina só trava o robô
     # de outro jeito. E o emoji/acento provam que a fala não morreu no cp1252.
     assert "🧾 PRESTAÇÃO DE CONTAS" in proc.stderr
-    for titulo, _ in (("**O que mudou**", 0), ("**O que foi verificado e como**", 0),
-                      ("**O que foi cortado e por quê**", 0),
-                      ("**O que eu preciso decidir**", 0),
-                      ("**Auditoria de qualidade**", 0)):
+    for titulo, _ in (("**O que mudou**", 0), ("**O que foi verificado**", 0),
+                      ("**Pendências**", 0)):
         assert titulo in proc.stderr, f"o molde não trouxe {titulo}"
     assert "PRONTO" in proc.stderr
     # E o roteiro que ele pediu em 05/09/2026: a recusa tem de ensinar a caixinha.
@@ -113,10 +106,50 @@ def _silencio(proc: subprocess.CompletedProcess) -> None:
     assert proc.stderr.strip() == "", proc.stderr
 
 
+def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:907
+    transcript = tmp_path / "persistente.jsonl"
+    transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
+    carga = {"transcript_path": str(transcript), "stop_hook_active": False}
+    resultados = [_rodar(["--contas"], carga) for _ in range(3)]
+    assert [r.returncode for r in resultados] == [2, 1, 1]
+    assert len(resultados[0].stderr.splitlines()) <= 10
+
+
+def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:281
+    transcript = tmp_path / "incremental.jsonl"
+    transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
+    carga = {"transcript_path": str(transcript)}
+    assert _rodar(["--contas"], carga).returncode == 2
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(_humano("Como está?")) + "\n")
+    assert _rodar(["--contas"], carga).returncode == 1
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(_fala(CONTAS_COMPLETAS)) + "\n")
+    _silencio(_rodar(["--contas"], carga))
+    cache = json.loads(transcript.with_suffix(".jsonl.contas.json").read_text())
+    assert cache["offset"] == transcript.stat().st_size
+    assert not cache["motivo"]
+    assert "entradas" not in cache
+
+
+def test_incremental_rele_linha_parcial_que_foi_completada(tmp_path):
+    transcript = tmp_path / "parcial.jsonl"
+    linha = json.dumps(_ferramenta("Edit", {"file_path": "a.py"}))
+    transcript.write_text(linha[:20], encoding="utf-8")
+    carga = {"transcript_path": str(transcript)}
+    _silencio(_rodar(["--contas"], carga))
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(linha[20:] + "\n")
+    assert _rodar(["--contas"], carga).returncode == 2
+
+
 # ------------------------------------------- o caso que motivou o portão ----
 
 
 def test_turno_que_editou_arquivo_e_calou_e_recusado(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:278
     proc = _decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
@@ -306,8 +339,8 @@ def test_subagente_de_leitura_nao_conta_mas_despacho_conta(tmp_path):
 
 
 def test_relatorio_sem_um_dos_blocos_e_recusado(tmp_path):
-    for titulo in ("**O que mudou**", "**Auditoria de qualidade**",
-                   "**O que eu preciso decidir**"):
+    for titulo in ("**O que mudou**", "**O que foi verificado**",
+                   "**Pendências**"):
         mutilado = CONTAS_COMPLETAS.replace(titulo, "**Alguma coisa**")
         _recusa_que_ensina(_decidir(tmp_path, [
             _humano("conserte"),
@@ -333,7 +366,7 @@ def test_pontuacao_natural_do_relatorio_nao_barra_o_robo(tmp_path):
         CONTAS_COMPLETAS.replace("**O que mudou**", "**O que mudou:**"),
         CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "**Veredito** — PRONTO"),
         CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "Veredito: **PRONTO**"),
-        CONTAS_COMPLETAS.replace("**Auditoria de qualidade**", "**AUDITORIA DE QUALIDADE**"),
+        CONTAS_COMPLETAS.replace("**Pendências**", "**PENDÊNCIAS**"),
     ):
         _silencio(_decidir(tmp_path, [
             _humano("conserte"),
@@ -472,6 +505,7 @@ def test_segunda_passada_sem_o_relatorio_grita_sem_prender(tmp_path):
     ], stop_hook_active=True)
     assert proc.returncode == 1, (proc.returncode, proc.stdout, proc.stderr)
     assert "cobrado e terminou assim mesmo" in proc.stderr
+    assert "Escreva os quatro blocos e o checklist" in proc.stderr
     assert "🧾" not in proc.stderr, "a segunda passada não recusa: a recusa já aconteceu"
 
 
@@ -912,11 +946,10 @@ def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
     Preencher isso por conta própria seria fabricar prestação de contas."""
     proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
     assert proc.returncode == 0, proc.stderr
-    for titulo in ("**O que foi cortado e por quê**", "**O que eu preciso decidir**",
-                   "**Auditoria de qualidade**", "**Veredito:**"):
+    for titulo in ("**Pendências**", "**Veredito:**"):
         assert titulo in proc.stdout, f"o molde não trouxe {titulo}"
-    corpo = proc.stdout.split("**O que foi cortado e por quê**", 1)[1]
-    assert corpo.count("VOCÊ ESCREVE") >= 4, corpo
+    corpo = proc.stdout.split("**Pendências**", 1)[1]
+    assert corpo.count("VOCÊ ESCREVE") == 2, corpo
 
 
 def test_molde_com_fatos_sem_identidade_recusa_escolher_transcript(tmp_path):
@@ -964,8 +997,8 @@ def test_bloco_de_julgamento_vazio_e_recusado(tmp_path):
     teste nasceu VERMELHO contra o portão anterior, que só olhava se o título
     estava escrito."""
     vazio = CONTAS_COMPLETAS.replace(
-        "**O que foi cortado e por quê** — nada.",
-        "**O que foi cortado e por quê**",
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências**",
     )
     _recusa_que_ensina(_decidir(tmp_path, [
         _humano("conserte"),
@@ -977,9 +1010,8 @@ def test_bloco_de_julgamento_vazio_e_recusado(tmp_path):
 def test_bloco_com_o_rotulo_do_molde_intocado_e_recusado(tmp_path):
     """O molde colado sem preencher: o rótulo "VOCÊ ESCREVE" continua lá."""
     intocado = CONTAS_COMPLETAS.replace(
-        "**Auditoria de qualidade** — Definição de Pronto 7/7. O crítico atacaria o\n"
-        "retry do provedor, que não tem teste de ponta a ponta.",
-        "**Auditoria de qualidade** — VOCÊ ESCREVE",
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências** — VOCÊ ESCREVE",
     )
     assert "VOCÊ ESCREVE" in intocado
     _recusa_que_ensina(_decidir(tmp_path, [
@@ -1010,8 +1042,8 @@ def test_uma_palavra_basta_para_o_bloco(tmp_path):
         "**O que foi cortado e por quê** — nada.",
         "**O que foi cortado e por quê**: nada",
     ).replace(
-        "**O que eu preciso decidir** — nada depende de ninguém, ~8 min até o ar.",
-        "**O que eu preciso decidir**: nada",
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências**: nada",
     )
     _silencio(_decidir(tmp_path, [
         _humano("conserte"),

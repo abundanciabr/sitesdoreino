@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-034958-TAR-366-explicada",
+  "tarefa": "TAR-366",
+  "evento": "explicada",
+  "quando": "2026-09-12T03:49:58+00:00",
+  "quem": "Pedido do mantenedor para concluir PR #1594 e confirmar Windows verde; falhas herdadas reproduzidas na main 5be205553f8f425935e613c43dcc0ddd5291c826.",
+  "o_que_e": "A rede de testes do Windows falha em computadores limpos porque pressupoe um painel ja gerado e uma distribuicao WSL instalada.",
+  "o_que_muda": "Os testes prepararam seus proprios arquivos isolados e usam o Bash disponivel, sem depender do estado anterior do computador.",
+  "exemplo": "Um computador novo baixa o repositorio e consegue conferir o painel sem arquivos gerados nem a distribuicao docker-desktop.",
+  "importancia": 90
+}

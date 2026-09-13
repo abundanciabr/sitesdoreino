@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-029-fila-o-feito-viaja-dentro-da-entrega",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fila: o feito viaja dentro da entrega",
+  detalhe: "O evento que fecha a tarefa passou a ser escrito por ci/pr.py dentro do proprio PR da entrega. A porta do pouso nao tem onde gravar: a main tem ruleset ativo e recusa push direto de todo mundo, a pista inclusive.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1603. Suite ci/tests: 3176 passed, 2 skipped. ci/provar_guardas.py: PASS, 8 de 8 guardas reprovaram. TAR-369 fechada na fila real. Revisao e integracao nao verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-369",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

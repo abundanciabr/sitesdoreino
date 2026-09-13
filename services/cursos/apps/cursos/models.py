@@ -355,8 +355,8 @@ class Aula(models.Model):
 class AulaAvulsa(models.Model):
     """Uma aula publicada para responder uma dúvida sem pertencer a um curso.
 
-    O endereço é identidade da resposta compartilhada: nasce do título na porta
-    de máquina e nunca muda. Não há progresso, bloco, checkpoint ou avaliação.
+    O endereço nasce do título na porta de máquina e pode mudar na edição. Não
+    há progresso, bloco, checkpoint ou avaliação.
     """
 
     class Estado(models.TextChoices):

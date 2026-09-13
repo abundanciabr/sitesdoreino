@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-011-ci-resumir-resultados-e-comprovar-guardas-em-bancada-isolada",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: resumir resultados e comprovar guardas em bancada isolada",
+  detalhe: "Os robôs leem testes em JSON e provam proteções em cópia isolada. O painel conserva sua prova de integridade.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1595. Validação local: árvore 4bce914869333e1c3e0abb2b44c2c676a6390fbf; commit 4d83df1f964157384b1117ebd1d4e3fa52ad4100; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-360",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
