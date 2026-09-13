@@ -8,6 +8,8 @@ site aceita. Números fictícios, a mesma FORMA dos reais.
 from apps.core.telefone import (
     chave_de,
     digitos,
+    final_curto_de,
+    formatar,
     numeros_no_texto,
     sufixo_de,
 )
@@ -87,6 +89,15 @@ class TestSugestaoNaoEIgualdade:
         a, b = "11 99999-8888", "21 99999-8888"
         assert chave_de(a) != chave_de(b), "casar isto liberaria a pessoa errada"
         assert sufixo_de(a) == sufixo_de(b), "mas vale mostrar para ele conferir"
+        assert final_curto_de(a) == "8888"
+
+
+class TestFormatoParaConferencia:
+    def test_celular_brasileiro_fica_legivel(self):
+        assert formatar("+55 11 99999-8888") == "(11) 99999-8888"
+
+    def test_numero_curto_continua_legivel(self):
+        assert formatar("3604477") == "360-4477"
 
 
 class TestLerOArquivoDoMantenedor:
