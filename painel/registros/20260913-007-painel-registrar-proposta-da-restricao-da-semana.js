@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-007-painel-registrar-proposta-da-restricao-da-semana",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "painel: registrar proposta da restrição da semana",
+  detalhe: "O livro agora mostra a decisão que falta para a direção da semana: uma proposta concreta de restrição, com impacto e próximo passo, sem fingir aprovação do mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1616. Validação local: árvore f4a8a0ae4100cfb342203fe781ccb6441ab2c2ee; commit c6ac5a2f05007b16c63bfc172dc188e7b7867745; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-312",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
