@@ -74,7 +74,9 @@ def test_convite_local_assina_cookie_e_abre_a_tela_sem_google():
 
 @override_settings(ADMIN_LINK_TOKEN="convite-local")
 def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
-    resposta = acesso_local(RequestFactory().get("/acesso-local/outro-token/"), "outro-token")
+    resposta = acesso_local(
+        RequestFactory().get("/acesso-local/outro-token/"), "outro-token"
+    )
     assert resposta.status_code == 404
     assert "Gere outro pelo lançador local" in resposta.content.decode()
 
@@ -86,7 +88,9 @@ def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
 )
 def test_cookie_local_fora_da_lista_oficial_nao_autoriza():
     cliente = Client()
-    entrada = acesso_local(RequestFactory().get("/acesso-local/convite-local/"), "convite-local")
+    entrada = acesso_local(
+        RequestFactory().get("/acesso-local/convite-local/"), "convite-local"
+    )
     cliente.cookies.update(entrada.cookies)
     resposta = cliente.get("/plano-mestre/")
     assert resposta.status_code == 302

@@ -313,7 +313,9 @@ class PortaAdministrativa:
             )
         except signing.BadSignature:
             return None
-        email = admin.get("email", "").strip().lower() if isinstance(admin, dict) else ""
+        email = (
+            admin.get("email", "").strip().lower() if isinstance(admin, dict) else ""
+        )
         if not email or email not in _emails_autorizados():
             return None
         return {
