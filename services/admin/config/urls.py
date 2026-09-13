@@ -87,6 +87,7 @@ from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
+from apps.core.radio import radio_api, radio_pagina
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -462,6 +463,8 @@ urlpatterns = [
     # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
+    path("caixa/radio/", radio_pagina, name="radio_pagina"),
+    path("caixa/radio/api/", radio_api, name="radio_api"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
     # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),
