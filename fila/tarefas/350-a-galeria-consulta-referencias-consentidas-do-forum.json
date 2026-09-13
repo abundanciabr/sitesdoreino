@@ -1,0 +1,19 @@
+{
+  "arquivo": "350-a-galeria-consulta-referencias-consentidas-do-forum",
+  "id": "TAR-350",
+  "titulo": "A Galeria consulta referencias consentidas do Forum",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR do contrato com aditivo validado, recibo embarcado e cadeia contrato para Forum para Gamificacao declarada",
+  "despacho": "Célula contracts. Defina exclusivamente em contracts/forum.openapi.yaml o aditivo retrocompatível que permite à Gamificação consultar referências de trabalhos consentidos para a Galeria. Cite o degrau 19 de PLANO-CELULA-GAMIFICACAO e o lote C de PLANO-LOTES-DA-GAMIFICACAO. TAR-102 e PR #846 são apenas a fundação: registram autoria e leem títulos públicos, mas não autorizam candidatas privadas consentidas. A cadeia é contrato isolado, depois provedor Fórum, depois consumidora Gamificação. Não toque serviços, infraestrutura, consumidores ou telas. Exija vínculo site_id, pessoa_id e candidata, mídia HTTPS de origem Fórum ou lista permitida, e URL canônica protegida pelo Fórum. Rode contrato aditivo e os testes dos portões, embarque recibo e peça revisão. Não arme pouso.",
+  "origem": "PLANO-CELULA-GAMIFICACAO degrau 19 e PLANO-LOTES-DA-GAMIFICACAO lote C; TAR-102 e PR #846 sao fundacao insuficiente",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
