@@ -78,7 +78,7 @@ from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
-from apps.core.reuniao import reuniao
+from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
 from apps.core.talentos import talentos
 from apps.core.aulas import (
@@ -90,7 +90,7 @@ from apps.core.aulas import (
     instrumento,
     instrumento_salvar,
 )
-from apps.core.aulas_avulsas import aula_avulsa_criar, aulas_avulsas
+from apps.core.aulas_avulsas import aula_avulsa_criar, aula_avulsa_editar, aulas_avulsas
 from apps.core.sequencias import (
     sequencia,
     sequencia_ligar,
@@ -597,6 +597,7 @@ urlpatterns = [
     # dela no `painel/mapa-do-site.json` é `"gesto": false`.
     path("placar/talentos/", talentos, name="talentos"),
     path("reuniao/", reuniao, name="reuniao"),
+    path("reuniao/pedidos/<uuid:identidade>/", pedido_reuniao, name="pedido_reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
@@ -682,6 +683,11 @@ urlpatterns = [
     path("escola/aulas-avulsas/", aulas_avulsas, name="escola_aulas_avulsas"),
     path(
         "escola/aulas-avulsas/criar", aula_avulsa_criar, name="escola_aula_avulsa_criar"
+    ),
+    path(
+        "escola/aulas-avulsas/<slug:slug>/editar/",
+        aula_avulsa_editar,
+        name="escola_aula_avulsa_editar",
     ),
     # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
     # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django

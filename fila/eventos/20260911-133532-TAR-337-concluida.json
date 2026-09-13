@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-133532-TAR-337-concluida",
+  "tarefa": "TAR-337",
+  "evento": "concluida",
+  "quando": "2026-09-11T13:35:32+00:00",
+  "quem": "maestro-capitulo-1",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1557; revisao=9184f8e5ab1883d8b7196507ef9988c2ebc034d6; arvore=8b01377d21026d6de4c95b4a14f160ceb92eb74b; head=02a6b5535e0e524d69f2393f77a29e2e0f8b147b; merge=2f4d66c0bbd54ad180b59838b41839daa13f66fb; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34563618018; atestado=atestado aprovado para 02a6b5535e0e524d69f2393f77a29e2e0f8b147b; aceite=painel/registros/20260911-034-aceite-da-correcao-de-linhagem.js",
+  "verificado_em": "2026-09-11"
+}

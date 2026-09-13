@@ -2,6 +2,11 @@
 
 Data da análise: 2026-09-08
 
+> As seções A a J preservam o fechamento publicado em 08/09/2026. Nelas,
+> “entrada atual” significa exclusivamente o hash histórico identificado na
+> seção B; o parecer daquele ciclo não se transfere para código ou entrada
+> posteriores.
+
 ## A. Veredito
 
 **Estado global: NÃO PRONTA.** A coleta operacional foi demonstrada em uma
@@ -168,8 +173,8 @@ expansão.
 ## I. Comandos e saídas reais
 
 ```text
-python -m pytest ci/tests/test_pr.py ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_fila.py ci/tests/test_sessao.py -q
-339 passed in 79.40s
+python -m pytest ci/tests/test_pr.py ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_fila.py ci/tests/test_sessao.py ci/tests/test_metricas_percurso.py ci/tests/test_licao_do_caminho.py --basetemp C:\t338i2 -q
+554 passed in 64.49s
 
 python ci/registrar_tarefa_fase4.py --manifesto medicao-tar280.json
 PASS tarefa registrada: id=c4902a38e2edd7578518281be355ebd3a0fb17d5420eae5b0e5b8de53043a92a
@@ -198,8 +203,49 @@ entrada_sha256: 44cef42c07ac6c5e8325cab0e512a71aa8bd56e722f9df9b9dc4619d8bf9025c
    observações reais comparáveis.
 4. Recalcular a análise antes de qualquer decisão de expansão.
 
+## K. Rodada diagnóstica de 11/09/2026
+
+Antes da correção do instrumento, uma execução real de
+`python ci/analise_fase4.py --local` leu quatro eventos `tarefa_medida`, três
+tarefas e quatro tentativas. A Fase 1 aparecia com zero tarefas antes, três
+depois, nenhum par e duas pendentes; apenas a TAR-280 tinha duração encerrada.
+O hash exato dessa entrada foi
+`3f70e888f49c96b555fa15aa05bc3658d828ee143c18d893c5b75ff099436daa`.
+Esta rodada é diagnóstico do instrumento anterior, não uma auditoria
+independente do código corrigido.
+
+Antes do primeiro ajuste do instrumento, a abertura real da TAR-339 acrescentou
+o quinto evento privado, ainda na revisão histórica
+`bbe1036d0f8fb5b3e434fe36bc57ab7eee2f810e`. O corretivo preservou os cinco
+eventos e não classificou a própria TAR-338. Com o contrato corrigido, a leitura
+atual separa cinco eventos estruturalmente válidos de zero observações
+confirmatórias completas. Não há tarefa, tentativa, condição ou par elegível
+para inferência comparativa.
+
+Revisões e ponto de retomada calculados nesta rodada:
+
+- entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
+- instrumento derivado do texto versionado: `8cdc4905084d1d5c68745523897edf36367d6b7d`;
+- analisador derivado do texto versionado: `62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0`;
+- auditoria independente desse par de hashes: concluída em
+  `docs/decisoes/AUDITORIA-INDEPENDENTE-FASE4-20260911.md`, pela TAR-348;
+- retomada: classificar cada tarefa elegível no arquivo versionado antes da
+  abertura, registrar transições append-only com evidência e métricas
+  observadas ou nulas, alcançar 20 tarefas por condição e 10 pares compatíveis
+  e então emitir um parecer ligado ao hash da entrada e às revisões exatas.
+
+A validação integrada local terminou com 554 testes aprovados. As mutações das
+guardas reprovaram quando foram retirados o vínculo, a anterioridade, a revisão
+derivada, a evidência, a identidade integral, a declaração das métricas, o
+estado mais recente, a unidade por tarefa, a revisão do par, a identidade da
+tentativa, a completude confirmatória, a coerência temporal, o fato versionado,
+o estado remoto, o estado da tripla confirmatória e a ordem UTC dos pareceres.
+Isso é prova interna do corretivo, não revisão independente do seu SHA.
+
 ## Conclusão global
 
-**NÃO PRONTA.** A coleta operacional foi demonstrada neste caso e a auditoria
-independente foi concluída. A avaliação comparativa ainda está em andamento e
-não há ganho comprovado.
+**NÃO PRONTA.** O corretivo foi validado internamente e a auditoria independente
+da TAR-348 confirmou o instrumento no novo hash de entrada. O estado computado
+é `em coleta`: há cinco eventos estruturalmente válidos, zero observação
+confirmatória, zero tarefa elegível e zero par. A avaliação comparativa continua
+inconclusiva, não há ganho comprovado e nenhuma expansão está autorizada.

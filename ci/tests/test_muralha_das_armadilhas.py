@@ -235,22 +235,11 @@ def test_erro_interno_recusa(monkeypatch):
 # ------------------------------------------------------------- a fiação ----
 
 
-def test_settings_do_projeto_liga_a_muralha():
-    """Muralha sem fiação é decoração (RETROSPECTIVA-FASE-D §2)."""
+def test_fiacao_nao_executa_telemetria_em_sombra_por_acao():
     fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    entradas = fiacao.get("hooks", {}).get("PreToolUse", [])
-    minhas = [
-        e for e in entradas
-        if any("muralha_das_armadilhas.py" in h.get("command", "")
-               for h in e.get("hooks", []))
-    ]
-    assert minhas, "a muralha não está ligada em .claude/settings.json"
-    matcher = minhas[0].get("matcher", "")
-    for ferramenta in muralha.FERRAMENTAS_COBERTAS:
-        assert ferramenta in matcher, (
-            f"a tabela tem regra para {ferramenta} e o matcher não o cobre — "
-            "a regra nunca rodaria"
-        )
+    assert "muralha_das_armadilhas.py" not in json.dumps(fiacao)
+    assert all(regra.autoridade == "sombra" for regra in muralha.REGRAS)
+    assert (RAIZ_DO_REPO / "ci/consultar_armadilhas.py").is_file()
 
 
 def test_toda_regra_aponta_uma_entrada_que_existe():

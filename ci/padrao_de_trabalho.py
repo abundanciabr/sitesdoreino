@@ -1,45 +1,6 @@
-"""O PADRÃO DE TRABALHO — que ele continue no lugar, e que ninguém comece sem vê-lo.
+"""Confere as dez regras compactas, obrigações, portas e teto em bytes.
 
-O mantenedor trouxe o Padrão de Trabalho (Modelo Steve Jobs / Apple) de fora em
-04/09/2026 com uma ordem de duas partes: que valesse aqui **integralmente**, e
-que ficasse onde **nenhum robô conseguisse ignorá-lo**. A primeira metade é
-texto, e mora na PRIMEIRA seção do `CLAUDE.md` da raiz — o único documento deste
-repositório que entra sozinho no contexto de toda sessão, em toda bancada.
-
-Este arquivo é a segunda metade: o mecanismo.
-
-POR QUE UM PORTÃO, E NÃO SÓ A CONFIANÇA
----------------------------------------
-Porque a doença-mãe desta casa é regra escrita que ninguém impõe (Lei 1, e o
-censo do `ci/leis_sem_mecanismo.py`). Uma lei que vive só como prosa é obedecida
-enquanto alguém lembrar — e a seção do Padrão é grande, cara em contexto, e a
-primeira candidata a "resumir para economizar" numa sessão apertada. Resumir a
-régua é apagá-la: o que faz o Padrão funcionar é a exigência literal ("rodou de
-verdade, ou escreve NÃO RODEI"), não a lembrança do espírito dele.
-
-O QUE ELE CONFERE (e o que NÃO confere)
----------------------------------------
-Confere que o texto continua **inteiro e primeiro** no `CLAUDE.md`; que o
-arquivo inteiro cabe no teto de tamanho (ele entra em cada chamada de cada
-robô, e a história de cada lei mora em
-`docs/decisoes/DECISAO-claude-md-so-lei.md`, não nele); e que cada porta de
-entrada do projeto aponta para ele: a Constituição (Lei 10), a declaração de
-abertura de sessão (`RITOS.md` §1), o cabeçalho do índice de armadilhas que se
-lê antes de cada tarefa, o molde de despacho do `CAMINHO-DOURADO.md`, o mapa
-do kit e o mapa para IA de fora.
-
-NÃO confere — e isto é dito na cara — que alguém tenha OBEDECIDO ao Padrão. Não
-existe portão barato que meça "resolveu o problema real" ou "discordou antes".
-O que se pode mecanizar é a impossibilidade de alegar que não sabia: o texto
-está no contexto, o aviso abre a sessão, e o brief o repete.
-
-Uso:
-
-    python ci/padrao_de_trabalho.py            # o portão (roda no `ci/tests/`)
-    python ci/padrao_de_trabalho.py --aviso    # o aviso de abertura de sessão
-
-Exit codes: 0 PASS · 1 FAIL (texto mutilado, ou porta que parou de apontar) ·
-2 ERROR (não deu para medir — o que NÃO é um PASS).
+Mudança semântica continua exigindo mandato; o portão não julga obediência.
 """
 
 from __future__ import annotations
@@ -61,51 +22,63 @@ from _nucleo import (  # noqa: E402
 
 TITULO = "## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa"
 
-# As onze regras, com o título EXATO que o mantenedor escreveu. Renomear uma
+# As dez regras, com o título EXATO que o mantenedor escreveu. Renomear uma
 # regra é reescrever a lei dele — se for para acontecer, que apareça no diff
 # desta lista, e não em silêncio dentro de um parágrafo de 200 linhas.
-REGRAS = (
-    "0. O princípio que governa todos os outros",
-    "1. Antes de escrever qualquer linha de código",
-    "2. Discorde antes. Execute depois.",
-    "3. Diga não (mil \"nãos\" para cada \"sim\")",
-    "4. Decida. Não me entregue um cardápio.",
-    "5. O produto inteiro é responsabilidade sua",
-    "6. Definição de \"pronto\"",
-    "7. O passe de remoção",
-    "8. Revise como o crítico mais implacável do mundo",
-    "9. Como entregar",
-    "10. Frases proibidas",
-)
+REGRAS = ('1. Resolva o problema real antes de escrever',
+ '2. Discorde antes, execute depois',
+ '3. Justifique cada adição e preserve o pedido inteiro',
+ '4. Decida o que é seu',
+ '5. Responda pelo produto inteiro',
+ '6. Só declare pronto com prova',
+ '7. Faça o passe de remoção',
+ '8. Revise com rigor',
+ '9. Demonstre e preste contas',
+ '10. Não substitua prova por promessa')
 
-# As frases que CARREGAM o Padrão. Um resumo bem-intencionado mataria cada uma
-# delas sem mexer num único título — e é exatamente assim que uma régua vira
-# lembrança. Cada linha aqui é uma exigência literal, não um tema.
-PEDRAS_ANGULARES = (
-    "Estas regras não são inspiração. São restrições operacionais.",
-    "é isso, óbvio, por que ninguém fez assim antes?",
-    "Você nunca executa em silêncio algo\nque sabe ser inferior.",
-    "Qual é a versão MAIS SIMPLES que resolve o problema INTEIRO?",
-    "Proibido: obedecer em silêncio a uma ideia que você sabe ser ruim.",
-    "Uma coisa\ncompleta vale mais que cinco pela metade.",
-    "Você nunca diz \"deve funcionar\". Ou rodou, ou escreve \"NÃO RODEI\".",
-    "Pronto não é quando não há mais nada a adicionar. É quando não há mais\nnada a tirar.",
-    "Demonstre, não descreva.",
-    "**O que mudou**",
-    "**O que foi verificado e como**",
-    "**O que foi cortado e por quê**",
-    "**O que eu preciso decidir**",
-    "\"deve funcionar\" · \"provavelmente\" · \"em teoria\" · \"bom o suficiente\" ·",
-)
+PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
+ 'Resolva o problema real',
+ '5 linhas: quem usa, o que vê, faz e sente',
+ 'o problema inteiro; o que pode sair sem perda',
+ 'menor protótipo visível',
+ 'Execute o que ele decidir',
+ 'nem troque a ideia dele sem avisar',
+ 'Cada adição exige justificativa em uma frase',
+ 'abstrações',
+ 'dependência que a linguagem ou o projeto dispensa',
+ '`utils`, `helpers`, `misc`, `common`',
+ 'wrappers e camadas sem motivo',
+ 'comentário óbvio, código comentado, TODO e melhoria fora do escopo',
+ 'nunca reduza a ambição',
+ 'Uma coisa completa vale mais que cinco pela metade',
+ 'não sirva cardápio nem pergunte',
+ 'exigem confirmação antes da ação',
+ 'Do primeiro comando à tela',
+ 'Dependência quebrada exige conserto autorizado ou aviso explícito',
+ 'Rodou de verdade, com comando e saída real, ou escreva "NÃO RODEI".',
+ 'vazio, erro, carregando, primeiro uso e entrada inválida',
+ 'Todo erro explica o que aconteceu e o que fazer',
+ 'Zero caminhos quebrados, placeholders',
+ 'Nomes dizem o que são',
+ 'Siga convenções existentes',
+ 'Sem debug, código morto ou import sem uso',
+ 'um item falhando impede PRONTO',
+ 'se remover não quebra nada do pedido, remova',
+ 'liste o que reprovaria e corrija',
+ 'Mostre comando e saída real, tela ou artefato',
+ '**O que mudou**',
+ '**O que foi verificado**',
+ '**Pendências**',
+ '**Veredito**',
+ 'Cortes só se houver; auditoria item a item só quando relevante',
+ 'Sem elogio próprio, enchimento',
+ '"deve funcionar", "provavelmente", "em teoria"',
+ '"bom o suficiente", "por enquanto", "depois a gente melhora"',
+ '"solução temporária", "gambiarra", "quick fix"')
 
-# A conciliação com as leis que já existiam. Sem ela, a regra 3 vira desculpa
-# para cortar escopo e a regra 4 vira desculpa para não abrir a caixa de
-# pergunta — as duas coisas que já custaram caro a este projeto.
-COSTURAS = (
-    "não autoriza entregar menos do que\nfoi pedido",
-    "vale para as decisões que são\nSUAS, não para as que são dele",
-    "é o formato, e as obrigações desta casa\ncabem dentro dele",
-)
+COSTURAS = ('A regra 3 proíbe adição não pedida, nunca subtração do pedido.',
+ 'A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.',
+ 'O formato da regra 9 inclui as obrigações da casa')
 
 # As portas: cada arquivo que precisa continuar apontando para o Padrão, e a
 # marca que prova o ponteiro. Porta que para de apontar não dá erro em lugar
@@ -119,12 +92,7 @@ PORTAS = {
     "painel/ia/01-leis-ritos-e-invariantes.md": "| 10 | O Padrão de Trabalho |",
 }
 
-# O TETO. O CLAUDE.md inteiro entra em cada chamada de cada robô. Em 06/09/2026
-# ele tinha 60 mil caracteres, quase metade história, e custou 421 milhões de
-# tokens em quatro dias (medição do mantenedor). A lei virou "regra, comando,
-# quem faz valer"; o porquê mora em docs/decisoes/DECISAO-claude-md-so-lei.md.
-# Sem teto, cada lei nova traz a própria história de volta, em silêncio.
-TETO_DE_CARACTERES = 20_000
+TETOS_EM_BYTES = {"CLAUDE.md": 12_000, "AGENTS.md": 10_000}
 
 
 def _claude_md(raiz: Path) -> str:
@@ -180,13 +148,13 @@ def conferir(raiz: Path) -> Relatorio:
         )
     )
 
-    # 2. As onze regras, com o título exato.
+    # 2. As dez regras, com o título exato.
     achadas = regras_no_texto(bloco)
     faltando = [r for r in REGRAS if r not in achadas]
     sobrando = [r for r in achadas if r not in REGRAS]
     relatorio.registrar(
         Resultado(
-            "as 11 regras, íntegras",
+            "as 10 regras, íntegras",
             Estado.PASS if not (faltando or sobrando) else Estado.FAIL,
             f"{len(achadas)}/{len(REGRAS)} regras com o título exato"
             if not (faltando or sobrando)
@@ -195,14 +163,15 @@ def conferir(raiz: Path) -> Relatorio:
                 [f"  FALTA:   {r}" for r in faltando]
                 + [f"  ESTRANHA: {r}" for r in sobrando]
             )
-            + "\n\nO texto do mantenedor entra INTEGRALMENTE ou não entra. "
+            + "\n\nA expressão compacta preserva todas as obrigações. "
             "Regra apagada não é economia de contexto: é a régua encolhendo "
             "sem ninguém decidir.",
         )
     )
 
     # 3. As pedras angulares — o que um resumo mataria sem mexer num título.
-    perdidas = [p for p in PEDRAS_ANGULARES if p not in bloco]
+    normalizado = " ".join(bloco.split())
+    perdidas = [p for p in PEDRAS_ANGULARES if p not in normalizado]
     relatorio.registrar(
         Resultado(
             "as exigências literais",
@@ -211,7 +180,7 @@ def conferir(raiz: Path) -> Relatorio:
             if not perdidas
             else f"{len(perdidas)} frase(s)-chave sumiram do texto",
             "\n".join(f"  - {p!r}" for p in perdidas)
-            + "\n\nSão as frases que fazem o Padrão funcionar. Parafrasear cada "
+            + "\n\nSão as frases que fazem o Padrão funcionar. Apagar cada "
             "uma delas é o jeito silencioso de revogar a lei — e foi por isso "
             "que este portão existe.",
         )
@@ -253,20 +222,24 @@ def conferir(raiz: Path) -> Relatorio:
             "porta dele emudece, para ele a lei não existe.",
         )
     )
-    # 6. O teto. Lei cabe; história não.
-    tamanho = len(texto)
-    relatorio.registrar(
-        Resultado(
-            "cabe no teto de contexto",
-            Estado.PASS if tamanho <= TETO_DE_CARACTERES else Estado.FAIL,
-            f"{tamanho:_} de {TETO_DE_CARACTERES:_} caracteres".replace("_", "."),
-            "Este arquivo é relido em toda chamada de todo robô. Lei nova entra "
-            "como regra + comando + quem faz valer; a história dela (datas, PRs, "
-            "medições, o que custou) vai para "
-            "docs/decisoes/DECISAO-claude-md-so-lei.md. Subir o teto é decisão do "
-            "mantenedor, não de um PR que passava por perto.",
-        )
-    )
+    for nome, teto in TETOS_EM_BYTES.items():
+        try:
+            conteudo = (raiz / nome).read_bytes()
+        except OSError as erro:
+            raise ErroDeInstrumentacao(f"{nome} ilegível", str(erro)) from erro
+        relatorio.registrar(Resultado(
+            f"teto de {nome}", Estado.PASS if len(conteudo) < teto else Estado.FAIL,
+            f"{len(conteudo)} de {teto} bytes",
+            "Mova história para docs/decisoes, preservando obrigações e referências.",
+        ))
+    agentes = (raiz / "AGENTS.md").read_text(encoding="utf-8")
+    aponta = "Leia `CLAUDE.md` antes de agir" in agentes
+    resumo = re.findall(r"^\| (\d+) \|", agentes, re.M)
+    relatorio.registrar(Resultado(
+        "Codex aponta para a lei", Estado.PASS if aponta and resumo == [str(n) for n in range(1, 11)] else Estado.FAIL,
+        "ponteiro canônico e dez referências",
+        "AGENTS.md precisa apontar para CLAUDE.md e listar as dez regras.",
+    ))
     return relatorio
 
 

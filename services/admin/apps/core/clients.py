@@ -2119,6 +2119,17 @@ class CursosClient:
             sucesso=(201,),
         )
 
+    def editar_aula_avulsa(
+        self, site_id: str, slug: str, corpo: dict
+    ) -> "tuple[str, dict | None]":
+        """`updateStandaloneLesson`: atualiza campos sem mudar o endereço."""
+        return self._pedir(
+            "put",
+            "aulas-avulsas/" + quote(slug, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
     def criar_curso(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
         """`createCourse`: o gesto Novo curso, com apelido, nome, regra e produto.
 

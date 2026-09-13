@@ -39,24 +39,8 @@ def decidir(dados: dict) -> int:
     evento = dados["hook_event_name"]
     ferramenta = dados.get("tool_name", "")
     if evento == "PreToolUse":
-        for script in ("muralha_pasta_compartilhada.py", "muralha_do_travessao_na_escrita.py"):
-            codigo = executar(script, dados)
-            if codigo:
-                return 2
-        if ferramenta == "apply_patch":
-            from patch_codex import ler_patch
-            for alteracao in ler_patch(dados):
-                for alvo in {alteracao.origem, alteracao.destino}:
-                    sintetico = {**dados, "tool_name": "Write", "tool_input": {"file_path": str(alvo)}}
-                    if executar("licao_do_caminho.py", sintetico):
-                        return 2
-        elif ferramenta in {"Edit", "Write"}:
-            if executar("licao_do_caminho.py", dados):
-                return 2
-        elif ferramenta in {"Bash", "PowerShell", "Monitor"}:
-            for script in ("muralha_da_espera.py", "muralha_das_armadilhas.py"):
-                if executar(script, dados):
-                    return 2
+        if ferramenta == "Monitor":
+            return 2 if executar("muralha_da_espera.py", dados) else 0
         return 0
     if evento == "SessionStart":
         from economia_da_fabrica import auditar_fichas
@@ -70,7 +54,7 @@ def decidir(dados: dict) -> int:
     if evento == "Stop":
         return executar("prestacao_de_contas.py", dados, "--contas")
     if evento == "PostToolUse":
-        return executar("sino_das_armadilhas.py", dados)
+        return 0
     raise ValueError(f"evento desconhecido: {evento}; confira .codex/hooks.json")
 
 

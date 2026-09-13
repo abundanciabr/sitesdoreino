@@ -119,6 +119,7 @@ class Registro(models.Model):
     # diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    AUTORIZAR_PEDIDO = "autorizar_pedido"
     # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
     # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
     # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
@@ -248,6 +249,7 @@ class Registro(models.Model):
     CRIAR_CURSO = "criar_curso"
     EDITAR_CURSO = "editar_curso"
     CRIAR_AULA_AVULSA = "criar_aula_avulsa"
+    EDITAR_AULA_AVULSA = "editar_aula_avulsa"
     # [ESTRUTURA] 07/09/2026 (TAR-272): a tela que da ao curso a lista dos
     # modulos e das aulas dele, colada de uma vez. Verbo PROPRIO, e nao um
     # `editar_curso` reaproveitado: aquele troca o produto ou a regra de
@@ -308,6 +310,7 @@ class Registro(models.Model):
         (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
+        (AUTORIZAR_PEDIDO, "autorizar uma versão do pedido da Reunião"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
@@ -336,6 +339,7 @@ class Registro(models.Model):
         (CRIAR_CURSO, "criar um curso novo na escola"),
         (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
         (CRIAR_AULA_AVULSA, "criar uma aula avulsa para compartilhar"),
+        (EDITAR_AULA_AVULSA, "editar uma aula avulsa para compartilhar"),
         (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),

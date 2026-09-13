@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-012800-TAR-364-explicada",
+  "tarefa": "TAR-364",
+  "evento": "explicada",
+  "quando": "2026-09-12T01:28:00+00:00",
+  "quem": "TAR-359, Plano-Mestre10X e Diamantes aprovados; fatia contexto-sob-demanda.",
+  "o_que_e": "O robô recebe instruções repetidas e consultas automáticas durante ações comuns.",
+  "o_que_muda": "As regras ficam preservadas e as lições são consultadas somente quando ajudam a tarefa.",
+  "exemplo": "Ao encontrar um erro, o robô recebe até três orientações curtas com a origem de cada uma.",
+  "importancia": 85
+}

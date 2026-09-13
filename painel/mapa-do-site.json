@@ -1360,6 +1360,15 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas-avulsas/<slug:slug>/editar/",
+      "endereco": "/admin/escola/aulas-avulsas/<slug:slug>/editar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar uma aula avulsa",
+      "descricao": "A página para trocar o nome, a URL do vídeo e a descrição de uma aula publicada. O link compartilhado continua o mesmo."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/cursos/criar",
       "endereco": "/admin/escola/cursos/criar",
       "alcance": "publico",
@@ -2280,8 +2289,19 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "A reunião de segunda-feira",
-      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Termina no pedido para o robô: um bloco de texto para colar numa sessão, que vira registro no livro.",
-      "observacao": "Esta tela não grava nada; o que vale é o que chegar ao livro. Degrau 3 do plano do painel de gestão."
+      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Ao salvar, cria um documento privado com identidade, versão e auditoria para conferência antes de qualquer publicação.",
+      "observacao": "Salvar preserva o pedido no banco e não o envia ao repositório. A autorização acontece na tela do pedido específico e também não executa a tarefa. Degrau 3 do plano do painel de gestão."
+    },
+    {
+      "celula": "admin",
+      "rota": "reuniao/pedidos/<uuid:identidade>/",
+      "endereco": "/admin/reuniao/pedidos/<uuid:identidade>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Conferir e autorizar o pedido da reunião",
+      "descricao": "A tela de um pedido específico da reunião, com o texto conferido, a origem e o estado da autorização. Ela preserva a leitura para que o mantenedor possa retomar o mesmo pedido depois de uma interrupção.",
+      "observacao": "O endereço é uma página de conferência e não libera nada por si só. A autorização só vale quando o texto conferido e a identificação do pedido permanecem vinculados."
     },
     {
       "celula": "admin",

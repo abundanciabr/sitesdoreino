@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-202628-TAR-370-explicada",
+  "tarefa": "TAR-370",
+  "evento": "explicada",
+  "quando": "2026-09-12T20:26:28+00:00",
+  "quem": "pedido do mantenedor em 12/09/2026: tríade de IAs em papéis fixos",
+  "o_que_e": "Hoje as três IAs (Claude Code, Codex e Antigravity) sabem seus papéis pelo protocolo, mas o balcão de tarefas ainda não tem as tarefas do primeiro lote. Sem tarefa na fila, o Codex não consegue abrir a bancada nem entregar.",
+  "o_que_muda": "Cada IA passa a pegar o trabalho no balcão, com o brief pronto, em vez de esperar um prompt colado à mão. É o que faz o lote andar em paralelo sem você no meio.",
+  "exemplo": "É colocar as ordens de serviço no quadro da oficina: cada mecânico pega a sua sem perguntar ao dono o que fazer.",
+  "importancia": 40
+}
