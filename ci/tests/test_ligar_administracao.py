@@ -1,11 +1,22 @@
 import io
 import json
-from pathlib import Path
 import subprocess
 
 import pytest
 
 import ligar_administracao as local
+
+
+def test_falha_de_rede_diz_o_que_fazer(monkeypatch, capsys):
+    def falhar():
+        raise OSError("conexão interrompida")
+
+    monkeypatch.setattr(local, "iniciar", falhar)
+    assert local.main() == 1
+    mensagem = capsys.readouterr().out
+    assert "conexão interrompida" in mensagem
+    assert "servidor.log" in mensagem
+    assert "execute novamente" in mensagem
 
 
 @pytest.fixture

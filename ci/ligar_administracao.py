@@ -215,6 +215,10 @@ def main():
         enderecos, mensagem = iniciar()
     except (FalhaLocal, OSError, urllib.error.URLError) as erro:
         print(f"NÃO FOI POSSÍVEL ABRIR: {erro}")
+        if not isinstance(erro, FalhaLocal):
+            print(
+                "Confira servidor.log em LOCALAPPDATA/SitesDoReino/administracao-local, corrija a causa indicada e execute novamente."
+            )
         return 1
     print(mensagem)
     for titulo, endereco in enderecos:
