@@ -6,10 +6,11 @@ import httpx
 import pytest
 import respx
 from django.http import Http404
-from django.test import Client, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.urls import reverse
 
 from apps.core import planos_para_ia
+from apps.core.views import acesso_local
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -24,6 +25,7 @@ def ambiente(settings, monkeypatch, tmp_path):
     monkeypatch.setenv("ADMIN_PLANOS_DIR", str(tmp_path))
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
+    settings.ADMIN_LINK_TOKEN = "convite-local"
 
 
 def _dentro() -> Client:
@@ -56,7 +58,10 @@ def _md(pasta: Path, nome: str, texto: str) -> None:
 )
 def test_convite_local_assina_cookie_e_abre_a_tela_sem_google():
     cliente = Client()
-    entrada = cliente.get("/acesso-local/convite-local/?next=/plano-mestre/")
+    entrada = acesso_local(
+        RequestFactory().get("/acesso-local/convite-local/?next=/plano-mestre/"),
+        "convite-local",
+    )
     assert entrada.status_code == 302
     assert entrada["Location"] == "/plano-mestre/"
     assert "admin_acesso_local" in entrada.cookies
@@ -69,7 +74,7 @@ def test_convite_local_assina_cookie_e_abre_a_tela_sem_google():
 
 @override_settings(ADMIN_LINK_TOKEN="convite-local")
 def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
-    resposta = Client().get("/acesso-local/outro-token/")
+    resposta = acesso_local(RequestFactory().get("/acesso-local/outro-token/"), "outro-token")
     assert resposta.status_code == 404
     assert "Gere outro pelo lançador local" in resposta.content.decode()
 
@@ -81,7 +86,7 @@ def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
 )
 def test_cookie_local_fora_da_lista_oficial_nao_autoriza():
     cliente = Client()
-    entrada = cliente.get("/acesso-local/convite-local/")
+    entrada = acesso_local(RequestFactory().get("/acesso-local/convite-local/"), "convite-local")
     cliente.cookies.update(entrada.cookies)
     resposta = cliente.get("/plano-mestre/")
     assert resposta.status_code == 302

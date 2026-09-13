@@ -245,7 +245,7 @@ class PortaAdministrativa:
             return self.get_response(request)
 
         if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
-            return self.get_response(request)
+            return self._com_seguranca(self.get_response(request))
 
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (PREFIXO_PUBLICO_DOS_DOCUMENTOS, PREFIXO_PUBLICO_DOS_PLANOS)

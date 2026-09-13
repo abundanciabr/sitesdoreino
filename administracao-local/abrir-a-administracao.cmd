@@ -8,7 +8,7 @@ set "SCRIPT_NAME="
 for /f "delims=" %%K in ('python -c "import secrets; print(secrets.token_urlsafe(32))"') do set "DJANGO_SECRET_KEY=%%K"
 set "DEBUG=1"
 set "DATABASE_URL=sqlite:///teste-local.sqlite3"
-set "ADMIN_PLANOS_DIR=%~dp0..\sitesdoreino-docs\administracao-local"
+if not defined ADMIN_PLANOS_DIR set "ADMIN_PLANOS_DIR=%~dp0..\docs\administracao-local"
 set "ADMIN_LOCAL_EMAIL=mantenedor@localhost"
 set "ADMIN_EMAILS=%ADMIN_LOCAL_EMAIL%"
 for /f "delims=" %%K in ('python -c "import secrets; print(secrets.token_urlsafe(32))"') do set "ADMIN_LINK_TOKEN=%%K"
@@ -26,7 +26,7 @@ python manage.py shell -c "from django.db import connection; faltando={'core_doc
 if errorlevel 1 goto falha_tabelas
 
 echo Administracao local pronta. Abra:
-echo http://127.0.0.1:8000/admin/acesso-local/%ADMIN_LINK_TOKEN%/?next=/admin/plano-mestre/
+echo http://127.0.0.1:8000/acesso-local/%ADMIN_LINK_TOKEN%/
 python manage.py runserver 127.0.0.1:8000
 goto fim
 

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
@@ -155,7 +156,6 @@ from config.api import api
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
-    path("acesso-local/<str:token>/", acesso_local, name="acesso_local"),
     # A PORTA DE MAQUINA (06/09/2026), no mesmo endereco que o `forum`, a
     # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
     # FICA DEBAIXO do prefixo roteado: `meshcraft.top/admin/interno/...` e
@@ -922,3 +922,8 @@ urlpatterns = [
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
 ]
+
+if settings.ADMIN_LINK_TOKEN:
+    urlpatterns.append(
+        path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
+    )
