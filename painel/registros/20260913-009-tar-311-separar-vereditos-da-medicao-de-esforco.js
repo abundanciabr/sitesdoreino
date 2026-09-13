@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-009-tar-311-separar-vereditos-da-medicao-de-esforco",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "TAR-311: Separar vereditos da medição de esforço",
+  detalhe: "A medicao passa a recusar entradas que fabricavam maturidade e a expor economia comprovada, meta atingida e vereditos separados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1618. Validação local: árvore 222d7cf2dba629bdd3c14b649795b63d8bb72c73; commit e1dbff0d412c415045f9eb7474f5b56c03b5c2a9; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-311",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
