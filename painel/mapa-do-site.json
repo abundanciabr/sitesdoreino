@@ -2634,6 +2634,36 @@
       "titulo": "Baixar o dossie do portfolio em PDF",
       "descricao": "Nao e uma pagina de ler: abrir este endereco baixa um arquivo. E o portfolio do aluno em PDF, montado no nosso servidor com as mesmas obras da vitrine, na mesma ordem, com o selo da escola quando ele existe. Serve para o aluno anexar num e-mail, imprimir ou levar a uma reuniao, e cada obra abre no endereco dela com um clique.",
       "observacao": "So o proprio aluno baixa o dele: o arquivo desce atras da porta da area do aluno, e nunca do endereco publico da vitrine. Como a vitrine, ele nao leva e-mail, telefone nem nome, so o apelido e as obras. Aluno que ainda nao guardou obra nenhuma recebe a explicacao na tela, e nao um arquivo vazio."
+    },
+    {
+      "celula": "admin",
+      "rota": "plano-mestre/",
+      "endereco": "/admin/plano-mestre/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Plano mestre local",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": false
+    },
+    {
+      "celula": "admin",
+      "rota": "plano-mestre/mtime.json",
+      "endereco": "/admin/plano-mestre/mtime.json",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Atualização do plano mestre",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": true
+    },
+    {
+      "celula": "admin",
+      "rota": "^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
+      "endereco": "/admin/plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Documento do plano mestre",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": true
     }
   ]
 }

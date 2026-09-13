@@ -628,42 +628,35 @@ def test_nenhuma_rota_publica_nova_para_a_leitura_ou_para_criar_livro():
         assert resposta.status_code in (302, 303), caminho
 
 
+@pytest.mark.django_db(transaction=connection.vendor == "sqlite")
 def test_a_migracao_associa_um_capitulo_preexistente_a_um_livro_padrao(db):
-    """Reconstrói o estado REAL de antes do PR: um `TextoDoLivro` sem `livro`
-    nenhum, no banco na forma de quando a coluna ainda não existia — mesmo
-    molde de `tests/test_reembolso_no_banco.py`, adaptado para uma migração
-    que muda o ESQUEMA, não só o dado.
+    """SQLite exige DDL fora de atomic; Postgres conserva rollback sem TRUNCATE."""
+    folhas = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        executor = MigrationExecutor(connection)
+        alvo_antes = [("core", "0011_semear_o_guia_do_portfolio")]
+        executor.migrate(alvo_antes)
+        executor.loader.build_graph()
 
-    **`transaction=True` NÃO entra aqui, e é de propósito** (`armadilhas/361`):
-    o Postgres roda DDL dentro de transação sem problema, então o `db` comum
-    (que embrulha o teste inteiro numa transação desfeita por `ROLLBACK`) já
-    basta para o `MigrationExecutor` andar para trás e para frente. Marcar
-    `transaction=True` trocaria o desmonte por um `flush` de verdade — e o
-    `flush` tenta `TRUNCATE auditoria_registro`, que o gatilho append-only da
-    tabela (`armadilhas/079`) recusa. O teste passava, e o erro estourava no
-    desmonte de um teste vizinho, sem relação nenhuma com esta migração.
-    """
-    executor = MigrationExecutor(connection)
-    alvo_antes = [("core", "0011_semear_o_guia_do_portfolio")]
-    executor.migrate(alvo_antes)
-    executor.loader.build_graph()
+        estado_antigo = executor.loader.project_state(alvo_antes)
+        TextoDoLivroAntigo = estado_antigo.apps.get_model("core", "TextoDoLivro")
+        TextoDoLivroAntigo.objects.using(connection.alias).create(
+            nome="cap-de-antes", titulo="Capítulo de antes", corpo="Já estava aqui."
+        )
 
-    estado_antigo = executor.loader.project_state(alvo_antes)
-    TextoDoLivroAntigo = estado_antigo.apps.get_model("core", "TextoDoLivro")
-    TextoDoLivroAntigo.objects.using(connection.alias).create(
-        nome="cap-de-antes", titulo="Capítulo de antes", corpo="Já estava aqui."
-    )
+        executor = MigrationExecutor(connection)
+        alvo_depois = [("core", "0012_o_livro_por_tras_dos_capitulos")]
+        executor.migrate(alvo_depois)
+        executor.loader.build_graph()
 
-    executor = MigrationExecutor(connection)
-    alvo_depois = [("core", "0012_o_livro_por_tras_dos_capitulos")]
-    executor.migrate(alvo_depois)
-    executor.loader.build_graph()
-
-    assert Livro.objects.count() == 1
-    livro = Livro.objects.get()
-    assert livro.slug == "meu-livro"
-    capitulo = TextoDoLivro.objects.get(nome="cap-de-antes")
-    assert capitulo.livro_id == livro.id
+        assert Livro.objects.count() == 1
+        livro = Livro.objects.get()
+        assert livro.slug == "meu-livro"
+        capitulo = TextoDoLivro.objects.get(nome="cap-de-antes")
+        assert capitulo.livro_id == livro.id
+    finally:
+        if connection.vendor == "sqlite":
+            MigrationExecutor(connection).migrate(folhas)
 
 
 def test_a_migracao_em_banco_vazio_nao_cria_livro_orfao(db):
