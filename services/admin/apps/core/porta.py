@@ -31,6 +31,7 @@ import hashlib
 import logging
 import re
 
+from django.core import signing
 from django.conf import settings
 from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
@@ -149,6 +150,7 @@ PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
 #: pelo mesmo motivo que a `pages` escreveu: uma rota futura chamada
 #: `/internosecreto` nao herda nada daqui.
 PREFIXO_DA_PORTA_DE_MAQUINA = "/interno"
+PREFIXO_ACESSO_LOCAL = "/acesso-local/"
 
 
 def _sob_a_porta_de_maquina(caminho: str) -> bool:
@@ -242,9 +244,18 @@ class PortaAdministrativa:
             # porque quem consome e outra celula, nunca um navegador.
             return self.get_response(request)
 
+        if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
+            return self.get_response(request)
+
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (PREFIXO_PUBLICO_DOS_DOCUMENTOS, PREFIXO_PUBLICO_DOS_PLANOS)
         ):
+            return self._com_seguranca(self.get_response(request))
+
+        admin_local = self._admin_local_da_requisicao(request)
+        if admin_local:
+            request.admin = admin_local
+            _anota(medidor.registrar_resposta, "entrou")
             return self._com_seguranca(self.get_response(request))
 
         cookie = request.META.get("HTTP_COOKIE", "")
@@ -287,6 +298,25 @@ class PortaAdministrativa:
         return self._com_seguranca(self.get_response(request))
 
     # ---------------------------------------------------------------- respostas
+
+    @staticmethod
+    def _admin_local_da_requisicao(request):
+        bruto = request.COOKIES.get(settings.ADMIN_LOCAL_COOKIE_NAME)
+        if not bruto:
+            return None
+        try:
+            admin = signing.TimestampSigner().unsign_object(
+                bruto, max_age=settings.ADMIN_LOCAL_COOKIE_MAX_AGE
+            )
+        except signing.BadSignature:
+            return None
+        if admin.get("email", "").strip().lower() != settings.ADMIN_LOCAL_EMAIL.strip().lower():
+            return None
+        return {
+            "id": admin.get("id") or settings.ADMIN_LOCAL_ID,
+            "nome": admin.get("nome") or settings.ADMIN_LOCAL_NOME,
+            "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
+        }
 
     def _para_o_login(self, request):
         _anota(medidor.registrar_resposta, "mandou_para_o_login")

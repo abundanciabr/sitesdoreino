@@ -48,6 +48,32 @@ def _md(pasta: Path, nome: str, texto: str) -> None:
     (pasta / nome).write_text(texto, encoding="utf-8")
 
 
+@override_settings(
+    ADMIN_LINK_TOKEN="convite-local",
+    ADMIN_LOCAL_EMAIL=DONO,
+    ADMIN_LOCAL_ID="id-local",
+    ADMIN_LOCAL_NOME="Mantenedor local",
+)
+def test_convite_local_assina_cookie_e_abre_a_tela_sem_google():
+    cliente = Client()
+    entrada = cliente.get("/acesso-local/convite-local/?next=/plano-mestre/")
+    assert entrada.status_code == 302
+    assert entrada["Location"] == "/plano-mestre/"
+    assert "admin_acesso_local" in entrada.cookies
+
+    cliente.cookies.update(entrada.cookies)
+    pagina = cliente.get("/plano-mestre/")
+    assert pagina.status_code == 200
+    assert "/entrar/google" not in pagina.content.decode()
+
+
+@override_settings(ADMIN_LINK_TOKEN="convite-local")
+def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
+    resposta = Client().get("/acesso-local/outro-token/")
+    assert resposta.status_code == 404
+    assert "Gere outro pelo lançador local" in resposta.content.decode()
+
+
 @respx.mock
 def test_lista_os_markdowns_da_pasta_sem_nome_digitado(tmp_path):
     _md(

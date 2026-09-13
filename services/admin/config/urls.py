@@ -115,6 +115,7 @@ from apps.core.sumario import (
     sumario_prever,
 )
 from apps.core.views import (
+    acesso_local,
     escola,
     escola_admin_promover,
     escola_admin_remover,
@@ -154,6 +155,7 @@ from config.api import api
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
+    path("acesso-local/<str:token>/", acesso_local, name="acesso_local"),
     # A PORTA DE MAQUINA (06/09/2026), no mesmo endereco que o `forum`, a
     # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
     # FICA DEBAIXO do prefixo roteado: `meshcraft.top/admin/interno/...` e

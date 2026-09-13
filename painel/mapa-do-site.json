@@ -2195,36 +2195,6 @@
     },
     {
       "celula": "admin",
-      "rota": "plano-mestre/",
-      "endereco": "/admin/plano-mestre/",
-      "alcance": "publico",
-      "para_quem": "equipe",
-      "gesto": false,
-      "titulo": "O plano mestre local",
-      "descricao": "A lista local dos documentos do plano mestre, lida direto da pasta configurada no lançador da administração. Cada cartão abre o markdown por cima do painel e a aba recarrega quando o arquivo muda em desenvolvimento."
-    },
-    {
-      "celula": "admin",
-      "rota": "plano-mestre/mtime.json",
-      "endereco": "/admin/plano-mestre/mtime.json",
-      "alcance": "publico",
-      "para_quem": "equipe",
-      "gesto": false,
-      "titulo": "Relógio local do plano mestre",
-      "descricao": "Não é uma página: é o JSON que a tela do plano mestre consulta em desenvolvimento para saber se algum markdown mudou e recarregar a aba."
-    },
-    {
-      "celula": "admin",
-      "rota": "^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
-      "endereco": "/admin/plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
-      "alcance": "publico",
-      "para_quem": "equipe",
-      "gesto": false,
-      "titulo": "Um documento do plano mestre",
-      "descricao": "Não é uma página aberta pelo menu: é o JSON com o markdown renderizado que aparece no leitor por cima do plano mestre."
-    },
-    {
-      "celula": "admin",
       "rota": "placar/",
       "endereco": "/admin/placar/",
       "alcance": "publico",
