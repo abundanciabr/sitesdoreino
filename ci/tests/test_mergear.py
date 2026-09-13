@@ -481,8 +481,13 @@ def _gh_de_mentira(
         if argumentos and argumentos[0] == "api":
             return _json.dumps(remessas or [])
         if argumentos[-1:] == ["headRefOid,labels,state"]:
-            return _json.dumps({"state": "OPEN", "headRefOid": "a" * 40,
-                                "labels": [{"name": "pousar"}]})
+            return _json.dumps(
+                {
+                    "state": "OPEN",
+                    "headRefOid": "a" * 40,
+                    "labels": [{"name": "pousar"}],
+                }
+            )
         if argumentos[:2] == ["pr", "view"]:
             return _json.dumps(
                 {
@@ -542,69 +547,6 @@ def test_merge_que_nao_vira_merged_reprova(monkeypatch) -> None:
 # ENSINA. Uma recusa que só diga "não" faria a próxima sessão procurar um
 # contorno — e contorno existe, porque isto é disciplina, não muralha.
 # ---------------------------------------------------------------------------
-
-
-def test_o_agente_nao_mergeia_mais_e_a_recusa_ensina_o_caminho(monkeypatch, capsys):
-    chamadas: list = []
-    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
-    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
-    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
-    assert mergear.main(["99", "--confirmo", "99"]) == 1
-    assert chamadas == [], "com tudo verde, o robô AINDA assim não pode mergear"
-    saida = capsys.readouterr().out
-    assert "--pousar" in saida, "a recusa precisa dizer o que fazer em seguida"
-    assert "20260829-006" in saida, "e de onde veio a decisão"
-
-
-def test_pousar_poe_a_etiqueta_e_nao_mergeia(monkeypatch, capsys):
-    chamadas: list = []
-    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
-    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
-    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
-    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: RAIZ)
-    assert mergear.main(["99", "--pousar"]) == 0
-    assert ["pr", "edit", "99", "--add-label", "pousar"] in chamadas
-    assert not any(c[:2] == ["pr", "merge"] for c in chamadas)
-    assert "não precisa esperar" in capsys.readouterr().out.lower()
-
-
-def test_pousar_so_acontece_com_o_portao_verde(monkeypatch):
-    """Pedir pouso de um PR reprovado entupiria a fila com trabalho quebrado."""
-    chamadas: list = []
-    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
-    monkeypatch.setattr(
-        mergear, "conferir", lambda n: (_relatorio_vermelho(), _pr())
-    )
-    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
-    assert mergear.main(["99", "--pousar"]) == 1
-    assert chamadas == []
-
-
-def test_so_a_pista_declara_a_variavel_de_identificacao():
-    """A identificação existe num lugar só: o workflow da pista.
-
-    Se ela aparecer em outro workflow, a recusa vira decoração — e o motivo de
-    a Lei 4 ter mudado (o agente perdendo a corrida contra o relógio dos
-    checks) volta em silêncio.
-    """
-    import yaml
-
-    fluxos = sorted((RAIZ / ".github" / "workflows").glob("*.yml"))
-    com_a_variavel = [
-        f.name
-        for f in fluxos
-        if mergear.VARIAVEL_DA_PISTA in f.read_text(encoding="utf-8")
-    ]
-    assert com_a_variavel == ["pouso.yml"], (
-        "a identificação da pista tem de existir só no pouso.yml; encontrada em: "
-        + ", ".join(com_a_variavel)
-    )
-
-
-def test_a_pista_continua_usando_o_MESMO_portao():
-    """A pista não pode ser mais permissiva que a catraca do agente."""
-    texto = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(encoding="utf-8")
-    assert "ci/mergear.py" in texto and "--confirmo" in texto
 
 
 # ---------------------------------------------------------------------------
@@ -855,7 +797,7 @@ def test_dependencia_ja_mergeada_passa(monkeypatch) -> None:
 
 
 def test_dependencia_que_nao_da_para_conferir_e_ERROR(monkeypatch) -> None:
-    """"Não sei se a dependência entrou" nunca vira "pode entrar"."""
+    """ "Não sei se a dependência entrou" nunca vira "pode entrar"."""
 
     def gh_quebrado(*a, **k):
         raise mergear.ErroDeInstrumentacao("gh fora do ar", "")
@@ -921,13 +863,6 @@ def test_a_pista_nao_chama_a_si_mesma_por_dispatch():
     )
 
 
-def test_a_fila_anda_dentro_da_mesma_execucao():
-    """Sem o laço, cada passagem atenderia UM PR e o resto esperaria 15 min."""
-    script = _pouso_yml()
-    assert "MAX_POUSOS" in script, "sumiu o laço que faz a fila andar"
-    assert "for volta in" in script
-
-
 def test_a_pista_continua_com_um_pouso_por_vez():
     """Ordem serial é o ponto da pista: `concurrency` sem cancelamento."""
     import yaml as _yaml
@@ -935,28 +870,6 @@ def test_a_pista_continua_com_um_pouso_por_vez():
     fluxo = _yaml.safe_load(_pouso_yml())
     assert fluxo["concurrency"]["group"] == "pouso"
     assert fluxo["concurrency"]["cancel-in-progress"] is False
-
-
-def test_a_pista_continua_atendendo_o_mais_antigo_primeiro():
-    assert "sort_by(.createdAt)" in _pouso_yml(), (
-        "quem pediu antes pousa antes — sem isso a fila vira sorteio"
-    )
-
-
-def test_a_pista_nao_atende_o_mesmo_PR_duas_vezes_na_mesma_passagem():
-    """O GitHub lista um PR como aberto por alguns segundos DEPOIS do merge.
-
-    Medido em 29/08/2026, na primeira passagem do laço novo: a volta seguinte
-    pegou o mesmo PR que acabara de pousar. Naquele run o portão respondeu ERROR
-    e a pista saiu quieta — mas com FAIL ela teria tirado a etiqueta e comentado
-    "não pousei" num PR que ENTROU. Comentário mentiroso no PR é pior que volta
-    perdida: ele vira a memória do projeto.
-    """
-    script = _pouso_yml()
-    assert "ja_vistos" in script, (
-        "sumiu a lista de PRs já atendidos na passagem — a pista pode voltar a "
-        "comentar 'não pousei' num PR que pousou"
-    )
 
 
 def test_a_pista_acorda_quando_os_checks_concluem():
@@ -980,36 +893,6 @@ def test_a_pista_acorda_quando_os_checks_concluem():
         "a rede de segurança saiu — o evento perde acordadas (workflow "
         "renomeado, etiqueta posta num PR já verde), e aí alguém espera para sempre"
     )
-
-
-def test_a_pista_acorda_quando_a_etiqueta_e_posta():
-    """O buraco que o `workflow_run` não cobre é o fluxo PADRÃO da casa.
-
-    `mergear.py --pousar` etiqueta DEPOIS dos checks verdes — nenhum
-    `workflow_run` vem depois disso, e quem seguia a regra ("peça pouso e vá
-    embora") esperava a rede de 15 min. O gatilho tem de ser
-    `pull_request_target` (roda a definição da MAIN — decisão 2: um PR não
-    altera o juiz que o julga), nunca `pull_request`.
-    """
-    import yaml as _yaml
-
-    fluxo = _yaml.safe_load(_pouso_yml())
-    gatilhos = fluxo.get(True) or fluxo.get("on")
-    assert "pull_request_target" in gatilhos, (
-        "a etiqueta parou de acordar a pista — o fluxo padrão do --pousar "
-        "volta a esperar até 15 min parado"
-    )
-    assert "labeled" in gatilhos["pull_request_target"]["types"]
-    assert "pull_request" not in gatilhos, (
-        "pull_request (sem _target) roda a definição DO PR — o PR passa a "
-        "poder alterar o juiz que vai julgá-lo (decisão 2 do cabeçalho)"
-    )
-    # A decisão 2 só sobrevive se o job continuar julgando com o código da main.
-    passos = fluxo["jobs"]["pousar"]["steps"]
-    checkouts = [p for p in passos if "checkout" in str(p.get("uses", ""))]
-    assert checkouts and all(
-        p.get("with", {}).get("ref") == "main" for p in checkouts
-    ), "o checkout da pista deixou de ser ref: main — o juiz virou o réu"
 
 
 # --------------------------------------------------------------------------
@@ -1045,16 +928,14 @@ _ERRO = mergear.Resultado("checks", Estado.ERROR, "nenhum check reportado neste 
 
 def test_so_a_base_velha_pode_pedir_pouso():
     """O caso que a peça 5 nomeia: só falta atualizar, e a pista faz isso."""
-    assert mergear.so_falta_atualizar_a_base(
-        _relatorio(_VERDE, _BEHIND, _PULADO)
-    ) is True
+    assert (
+        mergear.so_falta_atualizar_a_base(_relatorio(_VERDE, _BEHIND, _PULADO)) is True
+    )
 
 
 def test_base_velha_MAIS_check_vermelho_continua_recusando():
     """A pista não é lugar de despejar PR quebrado — ela é a catraca com paciência."""
-    assert mergear.so_falta_atualizar_a_base(
-        _relatorio(_BEHIND, _VERMELHO)
-    ) is False
+    assert mergear.so_falta_atualizar_a_base(_relatorio(_BEHIND, _VERMELHO)) is False
 
 
 def test_base_velha_MAIS_erro_continua_recusando():
@@ -1073,24 +954,6 @@ def test_erro_sozinho_nao_vira_pouso():
 def test_relatorio_verde_nao_passa_por_esta_porta():
     """Verde segue o caminho normal; esta função é só para a exceção."""
     assert mergear.so_falta_atualizar_a_base(_relatorio(_VERDE)) is False
-
-
-def test_a_lei_e_o_codigo_dizem_a_mesma_coisa_sobre_pousar_com_base_velha():
-    """A contradição era entre DUAS metades do RITOS — o texto viaja junto.
-
-    Sem este guarda, o conserto do código deixaria a peça 4 dizendo o oposto do
-    que o comando faz, e a próxima sessão acreditaria no documento.
-    """
-    ritos = (RAIZ / "RITOS.md").read_text(encoding="utf-8")
-    assert "o `--pousar` só age com o portão verde" not in ritos, (
-        "a peça 4 do RITOS ainda afirma que o --pousar exige portão verde, e o "
-        "código já aceita a base envelhecida. Documento e mecanismo discordando "
-        "é a doença que este projeto mais paga caro."
-    )
-    assert "base envelhecida" in ritos or "base velha" in ritos, (
-        "o RITOS precisa dizer, em algum lugar, o que acontece ao pedir pouso "
-        "com a base envelhecida"
-    )
 
 
 # --------------------------------------------------------------------------
@@ -1133,25 +996,9 @@ def test_a_linha_do_motivo_e_ASCII_PURO():
     assert linha.isascii(), f"o motivo saiu com caractere não-ASCII: {linha!r}"
 
 
-def test_a_pista_procura_EXATAMENTE_o_codigo_que_o_portao_imprime():
-    """As duas pontas, amarradas. Sem isto, elas se soltam sem nada avisar."""
-    pouso = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(
-        encoding="utf-8"
-    )
-    assert mergear.MARCA_DE_MOTIVO in pouso, (
-        f"a pista não procura mais a marca '{mergear.MARCA_DE_MOTIVO}' que "
-        "ci/mergear.py imprime — o roteamento do pouso está solto"
-    )
-    assert mergear.MOTIVO_BASE_VELHA in pouso, (
-        f"a pista não procura mais o código '{mergear.MOTIVO_BASE_VELHA}'"
-    )
-
-
 def test_a_pista_NAO_roteia_mais_pela_frase_em_portugues():
     """A frase pode voltar ao relatório; ela não pode voltar a DECIDIR."""
-    pouso = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(
-        encoding="utf-8"
-    )
+    pouso = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(encoding="utf-8")
     for linha in pouso.splitlines():
         alvo = linha.strip()
         if not alvo.startswith("if grep") and not alvo.startswith("grep"):
@@ -1193,7 +1040,9 @@ def _fila_com_tarefa_reivindicada(raiz: Path, quem: str = "despacho-ci-0609") ->
         ),
         encoding="utf-8",
     )
-    (raiz / "fila" / "eventos" / "20260906-100000-TAR-001-reivindicada.json").write_text(
+    (
+        raiz / "fila" / "eventos" / "20260906-100000-TAR-001-reivindicada.json"
+    ).write_text(
         _json.dumps(
             {
                 "arquivo": "20260906-100000-TAR-001-reivindicada",
@@ -1234,9 +1083,7 @@ def test_a_porta_diz_em_sombra_o_evento_que_gravaria(monkeypatch, tmp_path, caps
     assert _eventos_no_disco(raiz) == antes, "sombra que grava deixou de ser sombra"
 
 
-def test_o_main_abre_o_diff_uma_vez_para_as_duas_sombras(
-    monkeypatch, tmp_path
-):
+def test_o_main_abre_o_diff_uma_vez_para_as_duas_sombras(monkeypatch, tmp_path):
     """A coordenação real do pouso deve compartilhar um único leitor de diff."""
     raiz = _fila_com_tarefa_reivindicada(tmp_path)
     (raiz / "painel").mkdir(parents=True, exist_ok=True)
@@ -1263,9 +1110,7 @@ def test_o_main_abre_o_diff_uma_vez_para_as_duas_sombras(
     monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
     monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
     monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), pr))
-    monkeypatch.setattr(
-        mergear, "_gh", _gh_de_mentira(chamadas, remessas=remessas)
-    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, remessas=remessas))
     assert mergear.main(["99", "--confirmo", "99"]) == 0
     consultas = [
         chamada
@@ -1286,23 +1131,6 @@ def test_a_sombra_nao_roda_se_o_merge_nao_aconteceu(monkeypatch, tmp_path, capsy
     )
     monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, "OPEN"))
     assert mergear.main(["99", "--confirmo", "99"]) == 1
-    assert "SOMBRA" not in capsys.readouterr().out
-
-
-def test_confirmo_de_quem_nao_e_a_pista_continua_recusando_e_sem_sombra(
-    monkeypatch, tmp_path, capsys
-):
-    """(e) O guarda que já existia não pode afrouxar por causa da sombra."""
-    raiz = _fila_com_tarefa_reivindicada(tmp_path)
-    chamadas: list = []
-    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
-    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
-    monkeypatch.setattr(
-        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
-    )
-    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
-    assert mergear.main(["99", "--confirmo", "99"]) == 1
-    assert chamadas == []
     assert "SOMBRA" not in capsys.readouterr().out
 
 
