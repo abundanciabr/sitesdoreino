@@ -62,6 +62,8 @@ import json
 import re
 from pathlib import Path
 
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -543,6 +545,24 @@ def _csp(html: bytes) -> str:
     )
 
 
+def partes_da_evidencia(texto):
+    texto = str(texto or "")
+    partes = []
+    fim = 0
+    validar_url = URLValidator(schemes=["https"])
+    for achado in re.finditer(r"https://(?:(?!,https://)[^\s<>\"';])+", texto):
+        endereco = achado[0].rstrip(".,)")
+        try:
+            validar_url(endereco)
+        except ValidationError:
+            continue
+        partes.append((texto[fim : achado.start()], None))
+        partes.append((endereco, endereco))
+        fim = achado.start() + len(endereco)
+    partes.append((texto[fim:], None))
+    return partes
+
+
 @require_GET
 def robos(request):
     return _quadro(request)
@@ -591,6 +611,7 @@ def _quadro(request, *, resultado=None, rascunho=None):
                 {
                     "id": tid,
                     **dados,
+                    "motivo_partes": partes_da_evidencia(dados.get("motivo")),
                     "entrega_url": (
                         dados["pr"]
                         if isinstance(dados.get("pr"), str)
