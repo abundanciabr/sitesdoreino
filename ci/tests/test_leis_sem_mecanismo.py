@@ -58,7 +58,7 @@ LEI_SEM_PORTAO = "# C\n\n## Lei 2 — Outra coisa\n\nSó texto, ninguém impõe.
 
 
 def test_o_censo_do_projeto_esta_em_dia():
-    # guarda: ci/leis_sem_mecanismo.py:162
+    # guarda: ci/leis_sem_mecanismo.py:208
     relatorio = censo.conferir(RAIZ)
     assert relatorio.estado is Estado.PASS, relatorio.render()
 
@@ -174,6 +174,24 @@ def test_censo_menor_com_decisao_PASS(tmp_path: Path, monkeypatch: pytest.Monkey
     assert "DECISAO-nova.md" in relatorio.render()
 
 
+def test_arquivo_novo_fora_do_padrao_nao_justifica(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / "ci" / "existe.py").write_text("# portão\n", encoding="utf-8")
+    (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
+    remotas = censo.levantar(raiz) + [censo.Lei("CONSTITUICAO.md", "Lei remota", ())]
+    monkeypatch.setattr(censo, "_leis_de_origin_main", lambda _: remotas)
+    monkeypatch.setattr(censo, "_decisoes_novas", lambda _: [])
+    relatorio = censo.conferir(raiz)
+    assert relatorio.estado is Estado.FAIL, relatorio.render()
+
+
+def test_sem_git_e_ERROR(tmp_path: Path):
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
+    (raiz / "ci" / "existe.py").write_text("# portão\n", encoding="utf-8")
+    with pytest.raises(ErroDeInstrumentacao, match=r"bancada sem \.git"):
+        censo.conferir(raiz, exigir_referencia=True)
+
+
 def test_origin_main_ilegivel_ERROR(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
     (raiz / ".git").write_text("gitdir: falso", encoding="utf-8")
@@ -251,5 +269,5 @@ def test_a_muralha_reprova_de_verdade(tmp_path: Path):
         timeout=300,
         check=False,
     )
-    assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert "Lei 2" in proc.stdout
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "bancada sem" in proc.stdout

@@ -1,11 +1,13 @@
 {
-  "ficha": "ANTIGRAVITY-004",
-  "tarefa": "TAR-371",
-  "implementacao": "ci/leis_sem_mecanismo.py",
-  "provas": {
-    "casos": "censo igual ao remoto PASS; censo menor sem decisão FAIL; censo menor com decisão nova PASS; origin/main ilegível ERROR",
-    "testes": "python -m pytest ci/tests/test_leis_sem_mecanismo.py -q: 18 passed",
-    "guarda": "python ci/provar_guardas.py ci/tests/test_leis_sem_mecanismo.py: estado PASS, guardas 1, reprovaram 1",
-    "censo": "python ci/leis_sem_mecanismo.py: CENSO 28 leis, 24 com mecanismo, 4 em dívida; RESULTADO PASS"
-  }
+  "tipo": "implementacao",
+  "proposta": "ANTIGRAVITY-004",
+  "autor": "codex",
+  "registrado_em": "2026-09-13T00:40:00-03:00",
+  "proposta_sha256": "856c27c65998a66a1ff48d68c6e5acce4161bffe83c265c5a2feba3837cb6986",
+  "prova": "ci/tests/test_leis_sem_mecanismo.py",
+  "prova_sha256": "E3C7725D919F37990DFBC980386AF2F790F553C3B63B87EECAF5BB8EBC9F1C43",
+  "resultado": "20 testes e quatro cenas do DoD verdes; censo remoto fail-closed",
+  "minutos_totais": 55,
+  "custo_reais": null,
+  "fonte_custo": ""
 }

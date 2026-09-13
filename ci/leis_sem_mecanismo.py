@@ -186,13 +186,25 @@ def _decisoes_novas(raiz: Path) -> list[str]:
             "não foi possível conferir decisões novas",
             processo.stderr.strip(),
         )
-    return [linha.strip() for linha in processo.stdout.splitlines() if linha.strip()]
+    return [
+        linha.strip()
+        for linha in processo.stdout.splitlines()
+        if linha.strip().startswith("docs/decisoes/DECISAO-")
+        and linha.strip().endswith(".md")
+    ]
 
 
-def _conferir_tamanho_remoto(raiz: Path, leis: list[Lei], relatorio: Relatorio) -> None:
-    """# guarda: ci/leis_sem_mecanismo.py:148"""
+def _conferir_tamanho_remoto(
+    raiz: Path, leis: list[Lei], relatorio: Relatorio, exigir_referencia: bool
+) -> None:
+    """Confronta o censo local com a referência remota."""
     if not (raiz / ".git").exists():
-        return
+        if not exigir_referencia:
+            return
+        raise ErroDeInstrumentacao(
+            "bancada sem .git",
+            "O censo remoto não foi conferido; execute o portão em uma bancada Git.",
+        )
     remotas = _leis_de_origin_main(raiz)
     if len(leis) >= len(remotas):
         relatorio.registrar(
@@ -242,12 +254,12 @@ def carregar_divida(raiz: Path) -> set[str]:
     }
 
 
-def conferir(raiz: Path) -> Relatorio:
+def conferir(raiz: Path, exigir_referencia: bool = False) -> Relatorio:
     relatorio = Relatorio(titulo="LEIS SEM MECANISMO — quem faz valer cada regra")
     leis = levantar(raiz)
     divida = carregar_divida(raiz)
 
-    _conferir_tamanho_remoto(raiz, leis, relatorio)
+    _conferir_tamanho_remoto(raiz, leis, relatorio, exigir_referencia)
 
     citacoes_mortas: list[str] = []
     sem_mecanismo: list[str] = []
@@ -328,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
                 marca = ", ".join(lei.declarados) if lei.declarados else "— ninguém —"
                 print(f"{lei.id}\n    {marca}")
             return 0
-        relatorio = conferir(raiz)
+        relatorio = conferir(raiz, exigir_referencia=True)
     except ErroDeInstrumentacao as erro:
         print(f"\n❌ ERROR leis_sem_mecanismo: {erro.resumo}")
         if erro.detalhe:
