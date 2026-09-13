@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.csrf import csrf_protect
 
 from apps.forum.models import Area, Mensagem, Topico
 
@@ -444,13 +445,23 @@ def novo_topico(request, slug: str):
     return _criar_nova_conversa(request, ator, area, titulo, texto)
 
 
+@csrf_protect
 @require_http_methods(["GET", "POST"])
 def abrir_conversa(request):
     ator = quem_e(request)
     if request.method == "GET":
         if not ator.autenticado:
             return redirect(_porta_de_entrada(request))
-        areas = [area for area in areas_visiveis(ator) if pode_escrever(area, ator)]
+        visiveis = areas_visiveis(ator)
+        areas = [area for area in visiveis if pode_escrever(area, ator)]
+        motivo = next(
+            (
+                por_que_nao_escreve(area, ator)
+                for area in visiveis
+                if por_que_nao_escreve(area, ator) == "matricula"
+            ),
+            "matricula",
+        )
         return render(
             request,
             "forum/abrir_conversa.html",
@@ -461,15 +472,14 @@ def abrir_conversa(request):
                 "titulo_digitado": "",
                 "texto_digitado": "",
                 "erro": "",
-                "sem_matricula": not ator.eh_aluno and not ator.eh_equipe,
+                "motivo": motivo,
             },
         )
 
     slug = (request.POST.get("area") or "").strip()
     if not ator.autenticado:
-        area = get_object_or_404(Area, slug=slug)
-    else:
-        ator, area = _area_para_ler(request, slug)
+        return redirect(_porta_de_entrada(request))
+    ator, area = _area_para_ler(request, slug)
     if not pode_escrever(area, ator):
         return HttpResponseForbidden(ERRO_SEM_PERMISSAO)
     titulo = (request.POST.get("titulo") or "").strip()
@@ -486,7 +496,7 @@ def abrir_conversa(request):
                 "titulo_digitado": titulo,
                 "texto_digitado": texto,
                 "erro": erro,
-                "sem_matricula": False,
+                "motivo": "",
             },
             status=400,
         )

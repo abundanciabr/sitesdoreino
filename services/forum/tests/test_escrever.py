@@ -26,7 +26,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 from django.db import IntegrityError, transaction
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 from apps.forum.models import Area, Mensagem, Pessoa, Topico
 from apps.core.views import ERRO_TITULO_CURTO
@@ -556,15 +556,16 @@ def test_a_porta_unica_recusa_area_onde_o_aluno_nao_escreve(
 
 
 def test_a_porta_unica_recusa_o_post_de_quem_nao_esta_logado(
-    client, env, monkeypatch, avisos
+    client, env, monkeypatch, sala
 ):
     sem_login(monkeypatch)
     resposta = client.post(
         reverse("abrir_conversa"),
-        {"area": avisos.slug, "titulo": "Minha dúvida", "texto": "Não pode."},
+        {"area": sala.slug, "titulo": "Minha dúvida", "texto": "Não pode."},
         headers={"cookie": COOKIE},
     )
-    assert resposta.status_code == 403
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith("/entrar/google?next=")
     assert Topico.objects.count() == 0
 
 
@@ -580,15 +581,26 @@ def test_a_porta_unica_devolve_o_texto_quando_o_titulo_e_curto(
     corpo = resposta.content.decode()
     assert resposta.status_code == 400
     assert "texto que fica na tela" in corpo
-    assert f'value="{sala.slug}"' in corpo and "checked" in corpo
+    assert f'name="area" value="{sala.slug}" required checked' in corpo
     assert ERRO_TITULO_CURTO in corpo
     assert Topico.objects.count() == 0
 
 
+@override_settings(MIDDLEWARE=[])
 def test_a_porta_unica_atravessa_o_csrf_de_verdade(env, monkeypatch, sala):
     como_aluno(monkeypatch)
     navegador = Client(enforce_csrf_checks=True)
     navegador.cookies["meshcraft_sessao"] = "um-cookie-opaco-qualquer"
+    sem_token = navegador.post(
+        reverse("abrir_conversa"),
+        {
+            "area": sala.slug,
+            "titulo": "Sem token CSRF",
+            "texto": "Não deveria publicar.",
+        },
+    )
+    assert sem_token.status_code == 403
+    assert Topico.objects.count() == 0
     tela = navegador.get(reverse("abrir_conversa"))
     corpo = tela.content.decode()
     token = corpo.split('name="csrfmiddlewaretoken" value="', 1)[1].split('"', 1)[0]

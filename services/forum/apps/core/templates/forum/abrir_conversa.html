@@ -24,11 +24,9 @@
               placeholder="O que você tentou, o que aconteceu, e onde travou.">{{ texto_digitado }}</textarea>
     <button type="submit">Publicar</button>
   </form>
-{% elif sem_matricula %}
+{% elif motivo == "matricula" %}
   <div class="cartao recado">
-    <strong>Escrever é para quem está matriculado.</strong>
-    <p>Você pode ler tudo por aqui. Para abrir uma conversa, é preciso estar
-      matriculado em um curso da escola.</p>
+    {% include "forum/_recado_matricula.html" %}
   </div>
 {% else %}
   <div class="cartao recado">
