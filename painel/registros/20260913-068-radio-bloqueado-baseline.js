@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-068-radio-bloqueado-baseline",
+  tipo: "pendencia",
+  quando: "2026-09-13",
+  titulo: "Entrega do rádio bloqueada na abertura",
+  detalhe: "ci/sessao.py --celula admin --tarefa radio-entrega-sessoes parou no baseline da base 8fd22d9dfb2d632622d816be4414cb952287183e: make ci, exit 2; Makefile:19, -f foi inesperado neste momento. Nenhuma implementação dos dois PRs começou. Bancada preservada em agent/admin/radio-entrega-sessoes.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  area: "admin",
+  porque_so_voce: "Correção do baseline está fora do mandato do rádio.",
+  proximo_passo: "Maestro deve encaminhar a correção da abertura no Windows.",
+  se_eu_nao_decidir: "Os dois PRs do rádio ficam bloqueados.",
+  recomendacao: "Conferir o PR 1626 e retomar a mesma abertura com baseline verde.",
+  reversivel: true,
+  impacto: "baixo"
+}); })();
