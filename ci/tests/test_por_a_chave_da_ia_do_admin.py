@@ -56,11 +56,12 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
+
+from conftest import BASH
 
 RAIZ = Path(__file__).resolve().parents[2]
 SCRIPT = RAIZ / "infra" / "por-a-chave-da-ia-do-admin.sh"
@@ -99,12 +100,11 @@ ADMIN_ENV = (
 
 
 def _bash() -> str:
-    caminho = shutil.which("bash")
-    assert caminho, (
+    assert BASH, (
         "não achei `bash` nesta máquina. Este guarda EXECUTA o roteiro; sem "
         "interpretador ele não tem o que medir, e isso não é um OK ([INV-CI01])."
     )
-    return caminho
+    return BASH
 
 
 def _plataforma(
@@ -788,8 +788,18 @@ def test_o_provisionamento_sabe_de_tudo_que_este_roteiro_escreve(tmp_path):
         )
 
 
-def test_conferencia_pages_compara_com_a_copia_anterior_e_morde_a_sabotagem(tmp_path):
+def test_conferencia_pages_compara_com_a_copia_anterior_e_morde_a_sabotagem(
+    tmp_path, monkeypatch
+):
     """A releitura quebrada não pode aprovar uma rotação silenciosa."""
+    executar = subprocess.run
+
+    def sem_wsl(comando, *args, **kwargs):
+        if comando[0] == "wsl.exe":
+            raise FileNotFoundError("WSL indisponível no runner Windows")
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", sem_wsl)
     fonte = PROVISIONAMENTO.read_text(encoding="utf-8")
     inicio = fonte.index(
         'if [ -n "$BAK" ]; then ANTES_PAGES=', fonte.index("CONFERÊNCIA nº 1b")
@@ -800,11 +810,7 @@ def test_conferencia_pages_compara_com_a_copia_anterior_e_morde_a_sabotagem(tmp_
     assert '"$ANTES_PAGES"' in bloco
 
     def rodar(bloco_shell, *, bak: str, vivo: str, pages: str):
-        comando = (
-            ["wsl.exe", "-d", "docker-desktop", "--", "sh", "-s"]
-            if os.name == "nt"
-            else ["sh", "-s"]
-        )
+        comando = [_bash(), "-s"]
         script = (
             "set -u\n"
             "AMBIENTE=$(mktemp -d)\n"
@@ -825,7 +831,7 @@ def test_conferencia_pages_compara_com_a_copia_anterior_e_morde_a_sabotagem(tmp_
             + "\nexit \"$faltou\"\n"
         )
         resultado = subprocess.run(
-            comando, input=script.encode(), capture_output=True
+            comando, input=script.encode("utf-8"), capture_output=True, timeout=30
         )
         return subprocess.CompletedProcess(
             resultado.args,

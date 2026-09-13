@@ -1,0 +1,19 @@
+{
+  "arquivo": "339-o-mapa-prepara-o-proximo-passo-para-comecar-ou-retomar-traba",
+  "id": "TAR-339",
+  "titulo": "O mapa prepara o próximo passo para começar ou retomar trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "CLI demonstra tarefa nova e retomada com fontes revisadas, frescor, próximo passo, grafo e prompt; cenários adversariais e guardas por mutação passam.",
+  "despacho": "Construir o núcleo canônico e determinístico do mapa de execução em ci/mapa_de_execucao.py e ci/tests/test_mapa_de_execucao.py. Reutilizar fila, contexto, economia, estado de entrega e consultas existentes. Provar tarefa nova, retomada, fontes indisponíveis, entrada hostil e invalidação. Mandato CODEOWNERS: ci/. PR 1539 somente leitura. Origem TAR-324.",
+  "origem": "TAR-324",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

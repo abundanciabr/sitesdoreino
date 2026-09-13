@@ -60,8 +60,9 @@ def test_so_a_e00_nasce_e_as_outras_33_ficam_trancadas(aluna, esqueleto, client)
         reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE
     ).content.decode()
     assert Progresso.objects.count() == 1
-    # 33 portas fechadas no mapa, com o rótulo de trancada.
+    # Todas estão em preparo; só a E00 disponível deixa de estar bloqueada.
     assert corpo.count("estado-trancada") == 33
+    assert corpo.count(">Em preparo<") == 34
 
 
 # ------------------------------------------------- ninguém entra sem ela

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260912-011420-TAR-362-submetida",
+  "tarefa": "TAR-362",
+  "evento": "submetida",
+  "quando": "2026-09-12T01:14:20+00:00",
+  "quem": "agent/ci/encaminhamento-por-eventos",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1593",
+  "revisao": "3a7a46acec1c0d318ed85254b5e3971222af380c",
+  "arvore": "cee3dbb911ba3350ef02b8806341698abcc01e0a"
+}
