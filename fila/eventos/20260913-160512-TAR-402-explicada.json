@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-160512-TAR-402-explicada",
+  "tarefa": "TAR-402",
+  "evento": "explicada",
+  "quando": "2026-09-13T16:05:12+00:00",
+  "quem": "Pedido direto do mantenedor em 13/09/2026; complemento operacional ao PR 1606",
+  "o_que_e": "A configuracao usada pelo Claude nao impede criar equipes e executar tarefas do Codex",
+  "o_que_muda": "Instala uma guarda local de funcao e consumo que independe do espelho antigo",
+  "exemplo": "Pedir um plano nao permite criar um Workflow com vinte agentes",
+  "importancia": 95
+}

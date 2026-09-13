@@ -126,17 +126,19 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege e atesta,
-nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
-mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
-paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
-`painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
-dependência fora do brief volta à maestro com `Depende-de: #N`. Revisor lê o
+Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude rege e atesta, não
+executa, mergeia ou cria subagentes/Workflow. Plano e pesquisa viram briefs
+para Codex, que constrói por `despacho`, sem perguntar nem decidir lei.
+Antigravity audita e verifica, nunca edita. Regente confere PRs; partes
+independentes em paralelo no Codex, dependências em série. Uma célula por PR;
+15 arquivos fora `painel/` e `fila/`; contrato congelado e CODEOWNERS exigem
+mandato. Dependência fora do brief volta com `Depende-de: #N`. Revisor lê o
 diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
-Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
-`.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
+Subagente não pergunta nem cria subagente. Fichas em `.claude/agents/` e
+`.codex/agents/`; regência `RUNBOOK-LOTES.md`. Proteção local e teto de consumo:
+`docs/decisoes/DECISAO-regencia-claude-local.md`.
 
-**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
+**Quem faz valer:** `ci/regencia_claude.py`, `ci/pr.py`, `ci/fila.py` e testes.
 
 ## O que uma chamada custa
 
