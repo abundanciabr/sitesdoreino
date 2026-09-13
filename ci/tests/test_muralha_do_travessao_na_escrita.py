@@ -250,10 +250,28 @@ def test_recusa_json_quebrado():
     assert r.returncode == 2
 
 
-def test_fiacao_no_settings_json():
-    texto = FIACAO.read_text(encoding="utf-8")
-    assert "muralha_do_travessao_na_escrita.py" in texto
-    assert '"Edit|Write"' in texto
+def test_fiacao_muda_da_escrita_para_o_commit():
+    assert "muralha_do_travessao_na_escrita.py" not in FIACAO.read_text(encoding="utf-8")
+    gancho = (RAIZ_DO_REPO / ".githooks/pre-commit").read_text(encoding="utf-8")
+    assert "python ci/travessao.py --verificar-staged || exit 1" in gancho
+    assert (RAIZ_DO_REPO / "ci/muralha-do-travessao.sh").is_file()
+
+
+def test_checkpoint_mede_texto_do_stage_e_nao_a_edicao_seguinte(tmp_path, monkeypatch):
+    import travessao
+    subprocess.run(["git", "init", str(tmp_path)], check=True, capture_output=True)
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci/texto-publico-bastidor.txt").write_text("", encoding="utf-8")
+    p = tmp_path / "services/exemplo/templates/pagina.html"
+    p.parent.mkdir(parents=True)
+    p.write_text("<p>Olá — mundo.</p>", encoding="utf-8")
+    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    p.write_text("<p>Olá, mundo.</p>", encoding="utf-8")
+    monkeypatch.setattr(travessao, "raiz_do_repo", lambda: tmp_path)
+    assert travessao.main(["--verificar-staged"]) == 1
+    subprocess.run(["git", "add", "services"], cwd=tmp_path, check=True, capture_output=True)
+    p.write_text("<p>Olá — mundo.</p>", encoding="utf-8")
+    assert travessao.main(["--verificar-staged"]) == 0
 
 
 # ---------- a equivalência das duas réguas ----------

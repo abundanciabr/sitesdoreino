@@ -600,22 +600,56 @@ def test_validacao_muda_indice_e_expira_prova(tmp_path):
     assert not dub.pediu('git push')
 
 
-def test_fila_retomada_preserva_evento_logico(tmp_path, monkeypatch):
+def _fila_de_uma_tarefa(tmp_path, monkeypatch, eventos):
+    """Bancada com a fila fingida: só os eventos que o caso quer medir."""
     import fila
     raiz = bancada(tmp_path)
     (raiz/'fila/eventos').mkdir(parents=True)
-    tarefa = 'TAR-001'
-    evento = {'tarefa':tarefa, 'evento':'concluida','evidencia':URL_DO_PR}
-    caminho = raiz/'fila/eventos/concluida.json'
-    caminho.write_text(json.dumps(evento),encoding='utf-8')
-    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {tarefa:{}})
-    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: [evento])
+    monkeypatch.setattr(fila, 'carregar_tarefas', lambda *a: {'TAR-001':{}})
+    monkeypatch.setattr(fila, 'carregar_eventos', lambda *a: eventos)
+    return raiz
+
+
+def _acoes_da_fila(dub):
+    return [c[2] for c in dub.chamadas if len(c) > 2 and c[1] == 'ci/fila.py']
+
+
+def test_entrega_submete_e_fecha_a_tarefa_no_proprio_ramo(tmp_path, monkeypatch):
+    """O "feito" viaja na entrega: um PR de entrega submete E fecha."""
+    # guarda: ci/pr.py:560
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [])
     dub = Duble()
-    assert pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40) == ['fila/eventos/concluida.json']
-    assert not dub.chamadas
-    evento['evidencia'] = URL_DO_PR+'0'
+    pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+    fechamento = [c for c in dub.chamadas if 'fechar-pela-entrega' in c][0]
+    assert fechamento[-2:] == ['--pr', URL_DO_PR]
+
+
+def test_continuar_nao_duplica_o_feito_e_segue_atualizando_a_submissao(tmp_path, monkeypatch):
+    """A conclusão desta entrega não congela a submissão nem se repete.
+
+    O guarda antigo (`if not finais`) parava de chamar a fila no primeiro
+    `--continuar`, e a submissão ficava presa na revisão de estreia.
+    """
+    # guarda: ci/pr.py:547
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR}
+    caminho_conclusao = 'fila/eventos/concluida.json'
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    (raiz/caminho_conclusao).write_text(json.dumps(evento),encoding='utf-8')
+    dub = Duble()
+    arquivos = pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert arquivos == [caminho_conclusao]
+    assert _acoes_da_fila(dub) == ['submeter', 'fechar-pela-entrega']
+
+
+def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch):
+    """Conclusão com outra evidência é encerramento alheio: não se sobrescreve."""
+    evento = {'tarefa':'TAR-001','evento':'concluida','evidencia':URL_DO_PR+'0'}
+    raiz = _fila_de_uma_tarefa(tmp_path, monkeypatch, [evento])
+    dub = Duble()
     with pytest.raises(pr.ParouPorSeguranca, match='outro fato'):
-        pr._submeter_fila(raiz, lambda c:dub(c), tarefa, 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+        pr._submeter_fila(raiz, lambda c:dub(c), 'TAR-001', 'agent/ci/tarefa', URL_DO_PR, 'a'*40, 'b'*40)
+    assert not dub.chamadas
 
 @pytest.mark.parametrize('ignorado', [False, True])
 @pytest.mark.parametrize('alvo', ['relativo','python_absoluto','pytest_absoluto'])
@@ -902,7 +936,10 @@ def test_retomada_apos_timeout_exige_duas_novas_provas(tmp_path, prova_expirada)
 
 @pytest.mark.parametrize('pai_encerra', [False, True])
 @pytest.mark.parametrize('nova_sessao', [False, True])
-def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao):
+@pytest.mark.parametrize('atraso_do_neto', [0, 3])
+def test_timeout_encerra_filhos_e_netos_reais(
+    tmp_path, pai_encerra, nova_sessao, atraso_do_neto, monkeypatch
+):
     import os
     import signal
     import subprocess
@@ -910,16 +947,36 @@ def test_timeout_encerra_filhos_e_netos_reais(tmp_path, pai_encerra, nova_sessao
     script = tmp_path/'processos.py'
     script.write_text('''import os, pathlib, subprocess, sys, time
 profundidade = int(sys.argv[1])
+if profundidade == 0:
+    time.sleep(float(sys.argv[4]))
 pathlib.Path(f"pid-{profundidade}").write_text(str(os.getpid()))
 print(f"iniciado {profundidade}", flush=True)
 print("saída íntegra " + "x"*12000, flush=True)
 if profundidade:
-    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3]], start_new_session=sys.argv[3] == "nova")
+    subprocess.Popen([sys.executable, __file__, str(profundidade-1), sys.argv[2], sys.argv[3], sys.argv[4]], start_new_session=sys.argv[3] == "nova")
 if profundidade == 2 and sys.argv[2] == "sair":
     sys.exit(0)
 print("token=SEGREDO_CONTROLADO", file=sys.stderr, flush=True)
 time.sleep(60)
 ''', encoding='utf-8')
+    comunicar = subprocess.Popen.communicate
+
+    def comunicar_com_arvore_pronta(processo, input=None, timeout=None):
+        if timeout == 2:
+            limite_da_preparacao = time.monotonic() + 30
+            while len(list(tmp_path.glob('pid-*'))) != 3:
+                assert time.monotonic() < limite_da_preparacao, (
+                    'preparação incompleta: pai, filho e neto não nasceram em 30s'
+                )
+                try:
+                    comunicar(processo, input=input, timeout=.05)
+                except subprocess.TimeoutExpired:
+                    continue
+                pytest.fail('a preparação encerrou sem pai, filho e neto')
+        return comunicar(processo, input=input, timeout=timeout)
+
+    monkeypatch.setattr(subprocess.Popen, 'communicate', comunicar_com_arvore_pronta)
+
     def vivo(pid):
         if os.name == 'nt':
             import ctypes
@@ -945,7 +1002,7 @@ time.sleep(60)
     log = tmp_path/'timeout.log'
     try:
         with pytest.raises(pr.PrazoDeValidacaoExcedido, match='TIMEOUT'):
-            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma'], tmp_path, log=log, prazo_segundos=2)
+            pr.rodar([sys.executable, 'processos.py', '2', 'sair' if pai_encerra else 'ficar', 'nova' if nova_sessao else 'mesma', str(atraso_do_neto)], tmp_path, log=log, prazo_segundos=2)
         pids = [int(p.read_text()) for p in tmp_path.glob('pid-*')]
         assert len(pids) == 3, 'pai, filho e neto precisam ter executado'
         limite = time.monotonic() + 3
@@ -1147,3 +1204,59 @@ def test_propagacao_de_ready_exige_estado_final_confirmado(tmp_path, monkeypatch
     assert pr.abrir(raiz, pedido(raiz), rodar=executar, hoje=HOJE).startswith("PR 1210")
     assert len(consultas) == 3
     assert sum("gh pr ready" in linha for linha in dub.linhas) == 1
+
+
+def _bancada_com_painel_geravel(tmp_path):
+    import shutil
+    import subprocess
+
+    _, raiz, _, _ = _repositorio_de_validacao(tmp_path)
+    painel = raiz / "painel"
+    (painel / "registros").mkdir(parents=True)
+    for nome in ("gerar_manifesto.js", "logica.js", "areas.json", "painel.template.html"):
+        shutil.copy2(RAIZ_DO_REPO / "painel" / nome, painel / nome)
+    registro = {"arquivo": "20260912-001-prova", "tipo": "nota", "quando": "2026-09-12",
+                "titulo": "Registro da prova", "detalhe": DETALHE, "autoridade": "sessao",
+                "evidencia": None, "verificado_em": None, "precisa_do_dono": False,
+                "responde_a": None, "gravidade": "info", "frente": "fabrica", "area": "ci",
+                "vence_em_dias": None}
+    (painel / "registros/20260912-001-prova.js").write_text(
+        "(window.REGISTROS = window.REGISTROS || []).push(" + json.dumps(registro) + ");", encoding="utf-8")
+    (raiz / ".gitignore").write_text("painel/painel.html\npainel/livro-*.js\nextra.py\nignorada/\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=raiz, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "painel canonico"], cwd=raiz, check=True, capture_output=True)
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=raiz, text=True).strip()
+    return raiz, commit
+
+
+def test_validacao_aceita_geracao_canonica_deterministica(tmp_path):
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    provas = pr._validar(raiz, commit, pr.rodar, [
+        ["node", "painel/gerar_manifesto.js"], ["node", "painel/gerar_manifesto.js", "--conferir"]
+    ], lambda *_: None)
+    assert len(provas) == 2
+    assert not (raiz / "painel/livro-202609.js").exists()
+
+
+@pytest.mark.parametrize("acao", [
+    "Path('painel/livro-202609.js').write_text('process.exit(0)')",
+    "Path('painel/livro-202609.js').unlink()",
+    "Path('painel/painel.html').write_text('adulterado')",
+])
+def test_validacao_recusa_artefato_adulterado_mesmo_com_nome_legitimo(tmp_path, acao):
+    # guarda: ci/pr.py:459
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    with pytest.raises(pr.ParouPorSeguranca, match="artefato"):
+        pr._validar(raiz, commit, pr.rodar, [
+            [sys.executable, "-c", "from pathlib import Path; " + acao]
+        ], lambda *_: None)
+
+
+@pytest.mark.parametrize("arquivo", ["extra.py", "ignorada/injecao.py", "painel/livro-202608.js"])
+def test_validacao_recusa_fonte_ignorada_extra_apos_preparar_artefatos(tmp_path, arquivo):
+    # guarda: ci/pr.py:477
+    raiz, commit = _bancada_com_painel_geravel(tmp_path)
+    with pytest.raises(pr.ParouPorSeguranca, match="fontes não rastreadas"):
+        pr._validar(raiz, commit, pr.rodar, [[sys.executable, "-c",
+            f"from pathlib import Path; p=Path({arquivo!r}); p.parent.mkdir(exist_ok=True); p.write_text('arbitrario')"
+        ]], lambda *_: None)
