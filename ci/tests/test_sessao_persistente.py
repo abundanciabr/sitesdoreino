@@ -143,7 +143,7 @@ def test_baseline_pulado_e_log_completo_preservado(baseline):
     assert a.rodar_baseline("git") == "6 passed"
     assert a.rodar_baseline("git") == "6 passed"
     assert estado["make"] == 1
-    assert a.plano.log_do_baseline.read_text() == "6 passed in 1s"
+    assert a.plano.log_do_baseline.read_text().endswith("6 passed in 1s")
 
 
 def test_baseline_reexecutado_em_nova_main(baseline):
@@ -361,3 +361,81 @@ def test_sistema_operacional_invalida_venv(ambiente, monkeypatch):
     antes = sessao.identidade_do_venv(ambiente.requisitos)
     monkeypatch.setattr(sessao.platform, "release", lambda: "outro-sistema")
     assert sessao.identidade_do_venv(ambiente.requisitos) != antes
+
+
+@pytest.fixture
+def windows_sem_shell(baseline, monkeypatch):
+    a, estado = baseline
+    monkeypatch.setattr(sessao, "identidade_do_venv", lambda *_args, **_kwargs: a.plano.venv.name)
+    monkeypatch.setattr(sessao.platform, "system", lambda: "Windows")
+    original = a._correr
+    estado.update(shell=None, pytest=0, comandos=[])
+    a._localizar = lambda nome: estado["shell"] if nome == "sh" else "make"
+
+    def correr(comando, **kwargs):
+        estado["comandos"].append((comando, kwargs))
+        if "--exec-path" in comando:
+            return sessao.Saida(comando, 0, str(a.plano.raiz / "Git/mingw64/libexec/git-core"), "")
+        if comando[0] == "make" and not any(c.startswith("SHELL=") for c in comando):
+            return sessao.Saida(comando, 255, "", "-f foi inesperado neste momento.")
+        if "pytest" in comando:
+            estado["pytest"] += 1
+            return sessao.Saida(comando, estado.get("pytest_exit", 0), "7 passed in 1s", estado.get("pytest_erro", ""))
+        return original(comando, **kwargs)
+
+    a._correr = correr
+    return a, estado
+
+
+def test_windows_shell_do_git_impede_make_cair_no_cmd(windows_sem_shell):
+    # guarda: ci/sessao.py:1823
+    # guarda: ci/sessao.py:1824
+    a, estado = windows_sem_shell
+    shell = a.plano.raiz / "Git/usr/bin/sh.exe"
+    shell.parent.mkdir(parents=True)
+    shell.touch()
+    assert a.rodar_baseline("git") == "6 passed"
+    comando, kwargs = next(c for c in estado["comandos"] if c[0][0] == "make")
+    assert f"SHELL={shell.as_posix()}" in comando
+    assert kwargs["env"]["SHELL"] == shell.as_posix()
+    caminhos = kwargs["env"]["PATH"].split(os.pathsep)
+    assert caminhos[:2] == [str(a.plano.bin_do_venv), str(shell.parent)]
+    assert subprocess.list2cmdline(comando) in a.plano.log_do_baseline.read_text()
+    assert estado["pytest"] == 0
+
+
+def test_windows_sem_shell_mede_pytest_e_declara_sem_lint(windows_sem_shell):
+    # guarda: ci/sessao.py:1826
+    # guarda: ci/sessao.py:1789
+    a, estado = windows_sem_shell
+    resumo = a.rodar_baseline("git")
+    assert resumo == "7 passed"
+    texto = sessao.declaracao(a.plano, resumo=resumo, metodo_baseline=a._metodo_baseline)
+    assert "por pytest direto, sem lint" in texto
+    assert "make ci" not in texto
+    comando, kwargs = next(c for c in estado["comandos"] if "pytest" in c[0])
+    assert comando == [str(a.plano.python_do_venv), "-m", "pytest", "-q"]
+    assert Path(kwargs["cwd"]).parts[-2:] == ("services", "quiz")
+    assert "por pytest direto, sem lint" in a.plano.log_do_baseline.read_text()
+    assert subprocess.list2cmdline(comando) in a.plano.log_do_baseline.read_text()
+    assert a.rodar_baseline("git") == "7 passed"
+    assert estado["pytest"] == 1
+    _, cache_pytest, _ = a.chave_do_baseline("git")
+    estado["shell"] = "C:/Git/usr/bin/sh.exe"
+    assert a.rodar_baseline("git") == "6 passed"
+    assert a._metodo_baseline == "`make ci`"
+    _, cache_make, _ = a.chave_do_baseline("git")
+    assert cache_make != cache_pytest
+
+
+@pytest.mark.parametrize("codigo", [1, 124, 126, 127])
+def test_windows_pytest_quebrado_diz_erro_e_acao(windows_sem_shell, codigo):
+    # guarda: ci/sessao.py:1835
+    a, estado = windows_sem_shell
+    estado.update(pytest_exit=codigo, pytest_erro="No module named pytest")
+    with pytest.raises(sessao.ErroDeSessao) as erro:
+        a.rodar_baseline("git")
+    assert "O pytest direto falhou" in erro.value.detalhe
+    assert "repita a abertura" in erro.value.detalhe
+    assert "No module named pytest" in erro.value.detalhe
+    assert erro.value.codigo == (1 if codigo == 1 else 2)
