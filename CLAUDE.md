@@ -144,6 +144,8 @@ Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
 nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
 dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
 com o que levar; ele decide. Economia não reduz ambição.
+Para poupar tokens de leitura (arrasto): nunca leia arquivos inteiros (como `cat` em logs, retomadas ou referências maiores que 100 linhas); extraia apenas a seção necessária com `sed -n` ou `grep`.
+Para medição de estado consolidada: use `python ci/resumo_maestro.py` em vez de chamar `git fetch`, `gh pr list` e `ci/fila.py` separadamente.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
