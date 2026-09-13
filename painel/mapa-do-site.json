@@ -1728,6 +1728,15 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/radio/radio.js",
+      "endereco": "/admin/caixa/radio/radio.js",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Atualizar o rádio",
+      "descricao": "A atualização automática das mensagens enquanto a tela está aberta."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/radio/api/",
       "endereco": "/admin/caixa/radio/api/",
       "alcance": "publico",
