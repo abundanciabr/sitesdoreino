@@ -99,8 +99,15 @@ class Administrador(models.Model):
 class MensagemDoRadio(models.Model):
     """Uma mensagem append-only entre as três IAs e o mantenedor."""
 
-    AUTORES = ("claude", "codex", "antigravity", "mantenedor")
+    AUTORES = ("claude", "codex", "antigravity", "mantenedor", "fila")
+    TIPOS = ("recado", "parecer", "boletim")
 
+    tipo = models.CharField(
+        max_length=8, choices=[(item, item) for item in TIPOS], default="recado"
+    )
+    chave_boletim = models.CharField(
+        max_length=64, unique=True, null=True, editable=False
+    )
     sequencia = models.BigAutoField(primary_key=True)
     autor = models.CharField(max_length=12, choices=[(item, item) for item in AUTORES])
     quando = models.DateTimeField(auto_now_add=True)

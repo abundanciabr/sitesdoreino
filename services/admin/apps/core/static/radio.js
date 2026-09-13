@@ -7,16 +7,33 @@
       const resposta = await fetch(`${lista.dataset.api}?desde=${ultima}`, {headers: {Accept: "application/json"}});
       if (!resposta.ok) throw new Error("leitura indisponível");
       const dados = await resposta.json();
-      if (!Array.isArray(dados.mensagens)) throw new Error("resposta inválida");
+      if (!Array.isArray(dados.mensagens) || dados.mensagens.some((mensagem) => !["recado", "parecer", "boletim"].includes(mensagem.tipo || "recado"))) throw new Error("resposta inválida");
       if (dados.mensagens.length && lista.querySelector(".aviso")) lista.replaceChildren();
       dados.mensagens.forEach((mensagem) => {
-        const artigo = document.createElement("article");
-        artigo.className = "cartao radio-mensagem";
+        const tipo = mensagem.tipo || "recado";
+        const artigo = document.createElement(tipo === "boletim" ? "p" : "article");
+        artigo.className = `${tipo === "boletim" ? "nota" : tipo === "parecer" ? "historia" : "cartao"} radio-mensagem`;
+        if (tipo === "boletim") {
+          const linha = document.createElement("span");
+          linha.className = "subtitulo";
+          linha.textContent = `Boletim · ${mensagem.autor} · ${mensagem.texto}`;
+          artigo.appendChild(linha);
+          lista.appendChild(artigo);
+          ultima = Math.max(ultima, mensagem.sequencia);
+          return;
+        }
         const autoria = document.createElement("div");
-        autoria.textContent = `${mensagem.autor} · ${mensagem.quando}${mensagem.tarefa ? ` · ${mensagem.tarefa}` : ""}`;
+        autoria.textContent = `${tipo === "parecer" ? "Parecer" : "Recado"} · ${mensagem.autor} · ${mensagem.quando}${mensagem.tarefa ? ` · ${mensagem.tarefa}` : ""}`;
         const texto = document.createElement("p");
         texto.textContent = mensagem.texto;
-        artigo.append(autoria, texto);
+        artigo.appendChild(autoria);
+        if (tipo === "parecer") {
+          const legenda = document.createElement("p");
+          legenda.className = "nota";
+          legenda.textContent = "Comentário, sem ordem de execução";
+          artigo.appendChild(legenda);
+        }
+        artigo.appendChild(texto);
         lista.appendChild(artigo);
         ultima = Math.max(ultima, mensagem.sequencia);
       });

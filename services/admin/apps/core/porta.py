@@ -261,7 +261,14 @@ class PortaAdministrativa:
         if tem_cookie_local:
             return self._para_o_login(request)
 
-        if request.path_info == "/caixa/radio/api/" and (
+        if (
+            request.path_info == "/caixa/radio/api/"
+            or (
+                request.path_info == "/caixa/radio/"
+                and request.method == "POST"
+                and request.content_type == "application/json"
+            )
+        ) and (
             request.headers.get("Authorization", "").startswith("Bearer ")
             or request.headers.get("Accept") == "application/json"
         ):

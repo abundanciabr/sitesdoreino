@@ -1,6 +1,7 @@
 """O rádio append-only da tríade, dentro da área administrativa."""
 
 import json
+import hashlib
 import hmac
 import re
 from pathlib import Path
@@ -22,6 +23,7 @@ def _mensagem_json(mensagem):
     return {
         "sequencia": mensagem.sequencia,
         "autor": mensagem.autor,
+        "tipo": mensagem.tipo,
         "quando": mensagem.quando.isoformat(),
         "texto": mensagem.texto,
         "tarefa": mensagem.tarefa or None,
@@ -75,28 +77,53 @@ def _radio_api_autorizada(request):
     if not isinstance(dados, dict):
         return _erro("o corpo precisa ser um objeto JSON")
     autor = dados.get("autor")
+    tipo = dados.get("tipo", "recado")
     texto = dados.get("texto")
     tarefa = dados.get("tarefa") or ""
     if autor not in MensagemDoRadio.AUTORES:
-        return _erro("autor inválido; use claude, codex, antigravity ou mantenedor")
+        return _erro(
+            "autor inválido; use claude, codex, antigravity, mantenedor ou fila"
+        )
+    if tipo not in MensagemDoRadio.TIPOS:
+        return _erro("tipo inválido; use recado, parecer ou boletim")
     if not isinstance(texto, str) or not texto.strip() or len(texto) > 2000:
         return _erro("texto precisa ter entre 1 e 2.000 caracteres")
     if not isinstance(tarefa, str) or (tarefa and not _TAREFA.fullmatch(tarefa)):
         return _erro("tarefa precisa ter o formato TAR-NNN")
     try:
         with transaction.atomic():
-            mensagem = MensagemDoRadio.objects.create(
-                autor=autor, texto=texto, tarefa=tarefa
-            )
+            dados_mensagem = {
+                "autor": autor,
+                "tipo": tipo,
+                "texto": texto,
+                "tarefa": tarefa,
+            }
+            if autor == "fila" and tipo == "boletim":
+                chave = hashlib.sha256(
+                    json.dumps([tarefa, texto], ensure_ascii=False).encode()
+                ).hexdigest()
+                mensagem, criada = MensagemDoRadio.objects.get_or_create(
+                    chave_boletim=chave, defaults=dados_mensagem
+                )
+            else:
+                mensagem = MensagemDoRadio.objects.create(**dados_mensagem)
+                criada = True
     except (DatabaseError, ValidationError):
         return _erro(
             "não consegui guardar a mensagem; confira o banco e tente de novo", 503
         )
-    return JsonResponse(_mensagem_json(mensagem), status=201)
+    return JsonResponse(_mensagem_json(mensagem), status=201 if criada else 200)
 
 
+@csrf_exempt
 @require_http_methods(["GET", "POST"])
 def radio_pagina(request):
+    if request.method == "POST" and request.content_type == "application/json":
+        return radio_api(request)
+    return csrf_protect(_radio_pagina)(request)
+
+
+def _radio_pagina(request):
     texto = request.POST.get("texto", "") if request.method == "POST" else ""
     erro_envio = None
     status = 200

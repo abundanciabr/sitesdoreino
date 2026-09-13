@@ -63,6 +63,7 @@ if str(CI) not in sys.path:
 import reservar  # noqa: E402
 import responsabilidades  # noqa: E402
 import estado_da_entrega  # noqa: E402
+import radio  # noqa: E402
 import revisor_de_pouso  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
@@ -1426,6 +1427,33 @@ def _escrever_json(caminho: Path, dados: dict) -> None:
     )
 
 
+def _estados_para_boletim(raiz: Path) -> dict[str, dict] | None:
+    erros: list[str] = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    return None if erros else calcular_estados(tarefas, eventos)
+
+
+def _gravar_fila(raiz: Path, caminho: Path, dados: dict) -> None:
+    antes = _estados_para_boletim(raiz)
+    _escrever_json(caminho, dados)
+    depois = _estados_para_boletim(raiz)
+    if antes is None or depois is None:
+        print("AVISO: registro preservado, mas não foi possível calcular o boletim. Execute python ci/fila.py validar e corrija os dados indicados.", file=sys.stderr)
+        return
+    quando = dados.get("quando") or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for tid in sorted(depois):
+        estado = depois[tid]["estado"]
+        if antes.get(tid, {}).get("estado") == estado:
+            continue
+        texto = f"{tid}: {estado} em {quando}"
+        try:
+            radio._chamar("POST", {"autor": "fila", "tipo": "boletim", "tarefa": tid, "texto": texto})
+        except RuntimeError as erro:
+            print(f"AVISO: estado de {tid} preservado; o rádio não confirmou o boletim. {erro}", file=sys.stderr)
+            print(f"Reenvie sem repetir a mudança de estado: python ci/radio.py dizer '{texto}' --autor fila --tipo boletim --tarefa {tid}", file=sys.stderr)
+
+
 def montar_evento(
     tid: str,
     evento: str,
@@ -1484,7 +1512,7 @@ def _escrever_evento(
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / f"{dados['arquivo']}.json"
-    _escrever_json(caminho, dados)
+    _gravar_fila(raiz, caminho, dados)
     return caminho
 
 
@@ -1829,7 +1857,7 @@ def cmd_criar(raiz: Path, args) -> int:
     if responsabilidade:
         dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
-    _escrever_json(caminho, dados)
+    _gravar_fila(raiz, caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
     # ele). Separados porque a tarefa é imutável e a explicação se corrige.
     do_evento = _escrever_evento(
@@ -2197,7 +2225,7 @@ def cmd_submeter(raiz: Path, args) -> int:
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
             raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
-        _escrever_json(caminho, dados)
+        _gravar_fila(raiz, caminho, dados)
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
     return 0
