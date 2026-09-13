@@ -19,6 +19,13 @@ reencontrar a avaliação sem publicar conversas, prompts ou dados privados.
 Não se copia uma aprovação para um SHA novo. Commit novo, inclusive atualização
 da base pela pista, exige nova avaliação e novo comentário.
 
+Na tríade (docs/decisoes/DECISAO-triade-de-ias.md), `maestro` é a sessão
+que rege o lote (Claude Code por regra); `despacho` é a tarefa autora
+(o Codex pela ficha despacho; no trabalho cirúrgico da maestro, a própria tarefa
+da fila que ela fechou, para os três IDs serem distintos); `revisor` é o
+revisor da casa que leu o SHA final. A verificação da sentinela (Antigravity)
+vem depois do merge e não substitui este atestado.
+
 O portão aceita somente comentários com associação OWNER, MEMBER ou
 COLLABORATOR informada pelo GitHub. Entre comentários com o marcador, o mais
 recente por ID prevalece, inclusive se inválido. Comentários externos não

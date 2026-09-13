@@ -1,0 +1,19 @@
+{
+  "arquivo": "371-trava-contra-apagamento-silencioso-de-lei-no-portao-das-leis",
+  "id": "TAR-371",
+  "titulo": "Trava contra apagamento silencioso de lei no portão das leis",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com ci/leis_sem_mecanismo.py reprovando censo menor que o de origin/main sem decisão nova em docs/decisoes/; quatro casos com saída colada (igual PASS, menor sem decisão FAIL, menor com decisão PASS, remoto ilegível ERROR); guarda provado por ci/provar_guardas.py; ANTIGRAVITY-004-implementacao.json gravado.",
+  "despacho": "# DESPACHO 1: ci, trava contra apagamento de lei\nFICHA: ANTIGRAVITY-004, em docs/consultorias/fase-4-otimizacao/conselho-local/registros/ANTIGRAVITY-004-proposta.json (pasta local do conselho, aprovada por claude 2 e codex 3). Protocolo da tríade: mapa-ia/planos/PROTOCOLO-DA-TRIADE.md (local).\nCÉLULA: ci · WORKTREE: wt-ci-trava-de-lei · TAR: esta tarefa\nABERTURA: make sessao CELULA=ci TAREFA=trava-de-lei TAR=<o número desta tarefa> SEM_CONTAINER=1\nPADRÃO: o Padrão de Trabalho (1ª seção do CLAUDE.md) vale inteiro, inclusive a regra 2 (discorde antes, em 5 linhas, com uma alternativa) e a regra 9 (relatório em blocos, sem enchimento).\nCONTEXTO: ci/leis_sem_mecanismo.py faz o censo das leis de CLAUDE.md, AGENTS.md e CONSTITUICAO.md e cobra mecanismo de cada uma, mas deixa uma lei sumir em silêncio: em 12/09/2026 o robô da Fase 3 apagou 12 de 13 seções na pasta local e o portão teria passado. Em origin/main (22a9bd26) o censo devolve 28 leis, 24 com mecanismo e 4 em dívida declarada; a pasta local mutilada devolvia 16, e o portão de hoje passa nas duas.\nMISSÃO: quando o censo local for menor que o censo de origin/main, o portão reprova, a menos que o PR traga um arquivo novo em docs/decisoes/ que justifique a remoção.\nALVOS (permitido escrever): ci/leis_sem_mecanismo.py · ci/tests/test_leis_sem_mecanismo.py · painel/registros/ (o recibo do PR) · armadilhas/ (a lição, se houver, com número do almoxarife)\nSOMENTE-LEITURA: CLAUDE.md · AGENTS.md · CONSTITUICAO.md · ci/padrao_de_trabalho.py · ci/_nucleo.py\nFORA DE ESCOPO: restaurar ou editar CLAUDE.md e AGENTS.md; qualquer outro portão; qualquer gancho.\nINVARIANTE: INV-CI01, ausência de evidência não é evidência de acerto. Remoto ilegível é ERROR, nunca PASS.\nDoD: o aceite da ficha, com saída colada para cada caso: (1) censo igual ao remoto, PASS; (2) censo menor sem decisão nova, FAIL nomeando as leis que sumiram; (3) censo menor com docs/decisoes/DECISAO-*.md novo no diff, PASS citando o arquivo; (4) remoto ilegível, ERROR. Guarda marcado com \"# guarda: <arquivo>:<linha>\" e provado por python ci/provar_guardas.py, nunca por mutação manual. Suíte ci/tests/test_leis_sem_mecanismo.py 100% verde. make pr com o registro embarcado. Devolver o número do PR, gravar docs/consultorias/fase-4-otimizacao/conselho-local/registros/ANTIGRAVITY-004-implementacao.json com a prova, e encerrar.\nORÇAMENTO: até 5 arquivos.\nMANDATO: caminho CODEOWNERS ci/ autorizado pelo mantenedor em 12/09/2026 para o lote da tríade.\nmodelo_recomendado: sonnet (no Codex: gpt-5.6-sol) · esforco_recomendado: medium · teto_de_contexto: 100000\nARMADILHAS: 334 (git show de caminho com ponto na frente quebra no Git Bash) · 135 (nunca editar o clone principal) · 364 (pouso armado pelo despacho morre com a sessão dele)",
+  "origem": "ficha ANTIGRAVITY-004 do conselho da Fase 4, aprovada por claude e codex; despacho 1 do lote da tríade",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

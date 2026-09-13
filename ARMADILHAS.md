@@ -15,6 +15,11 @@ tarefa, isso pertence aqui.
 **Use o contexto direcionado da abertura por caminho e sintoma e abra as origens.**
 As regras globais, as dos caminhos e os oito padrões da Retrospectiva continuam obrigatórios.
 
+Agente, aqui, é quem constrói pela ficha de despacho: o sub-agente `despacho` ou o
+Codex, o executor da tríade (docs/decisoes/DECISAO-triade-de-ias.md). Antigravity, a
+sentinela, só lê: audita e verifica, não cria entrada nem despacho. Claude Code, como
+maestro, escreve o brief e julga as lições que as entradas trazem.
+
 1. **Antes de codar:** siga o §2 abaixo, confira o contexto emitido, suas origens,
    ausências e truncamento; abra as entradas do brief e as recuperadas.
 2. **Quando bater de frente com algo:** refine `--caminho`/`--sintoma` em
@@ -56,7 +61,7 @@ As regras globais, as dos caminhos e os oito padrões da Retrospectiva continuam
 | **`armadilhas/INDICE.md`** | **quem precisar de aprofundamento** | o mapa do que a **realidade cobrou** — uma linha por armadilha |
 | **`armadilhas/NNN-slug.md`** | o agente que o índice mandar abrir | a armadilha em si (sintoma → causa → solução → origem) |
 | **`ARMADILHAS.md`** (este) | todo agente | a regra de uso acima + a partida rápida (§2) |
-| `ARMADILHAS-OPERACAO.md` | **maestro de lote, quem mergeia, o humano** | §1 precisa-de-você · como se mergeia · painéis · §9 dívidas abertas |
+| `ARMADILHAS-OPERACAO.md` | **maestro (Claude Code), sentinela (Antigravity), o humano** | §1 precisa-de-você · como se mergeia · painéis · §9 dívidas abertas |
 | `docs/historico/RESOLVIDAS.md` | quem precisar do histórico | armadilhas já resolvidas — fora da dieta do despacho |
 | `services/<celula>/LICOES.md` | agente **daquela** célula | decisões e armadilhas **só** daquela célula |
 | **`painel/registros/NNN.js`** | **o humano** (via `painel/painel.html`) | o que ACONTECEU — um registro por acontecimento, só se acrescenta |

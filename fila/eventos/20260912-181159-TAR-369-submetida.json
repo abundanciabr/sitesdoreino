@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260912-181159-TAR-369-submetida",
+  "tarefa": "TAR-369",
+  "evento": "submetida",
+  "quando": "2026-09-12T18:11:59+00:00",
+  "quem": "agent/fila/pouso-fecha-tarefa",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1603",
+  "revisao": "8f16349f72e3993605b9c604ecd9c7a882c168de",
+  "arvore": "c03748079e4279e1ac4e00956c4cba693b2bc629"
+}
