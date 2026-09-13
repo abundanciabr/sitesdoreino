@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-128-deploy-da-baixa-da-chave-terminou-verde",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "O deploy da baixa da chave da IA terminou verde",
+  detalhe: "O PR 1421 foi merged no commit 5a5a1fa4c9c7e8ee51177d70355605a5451e179c. O deploy-celula terminou com status completed e conclusion success. A conferência final no painel ao vivo mostrou Sem área reconhecida 0 e Nada pendente nesta área hoje.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34283775181",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: null,
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

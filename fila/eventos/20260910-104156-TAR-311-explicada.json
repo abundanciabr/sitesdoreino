@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104156-TAR-311-explicada",
+  "tarefa": "TAR-311",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:41:56+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; contraprovas locais e armadilhas 400, 411 e 402",
+  "o_que_e": "O medidor pode contar duas cópias da mesma observação como se fossem experiência real e mistura quatro respostas diferentes numa só.",
+  "o_que_muda": "A escola passa a distinguir dado real, economia medida, meta alcançada, qualidade e capacidade antes de decidir se a operação amadureceu.",
+  "exemplo": "Duas cópias do mesmo teste hoje viram economia comprovada de 99 por cento; depois da correção, continuam sendo uma única observação sintética.",
+  "importancia": 100
+}

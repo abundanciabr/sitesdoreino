@@ -737,6 +737,9 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J8",
         "INV-ENC-J9",
         "INV-ENC-J10",
+        # A chamada aberta sem aceite (TAR-254) deixa de ficar presa e vai para
+        # o plantão.
+        "INV-ENC-J11",
         # O Mural chegou no degrau 2.11 (07/09/2026, TAR-133): a segunda pista,
         # para quem já entregou. M1 mede ELEGIBILIDADE, e não "já entregou",
         # porque a chamada aberta avisa todo elegível e num projeto Iniciante

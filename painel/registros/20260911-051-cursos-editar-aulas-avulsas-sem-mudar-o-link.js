@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-051-cursos-editar-aulas-avulsas-sem-mudar-o-link",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: editar aulas avulsas sem mudar o link",
+  detalhe: "PUT estrito preserva slug e publicação. A mutação da URL e da chave extra derrubou suas provas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1565. Validação local: árvore 02d777da0dc0d4b4475f570aba27ed1de651bf8c; commit 4bded3a45109f8115369a473f1fc26c349d7c8bf; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-342",
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

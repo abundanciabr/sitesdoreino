@@ -390,7 +390,7 @@ def coletar(raiz: Path, dias: int, agora: datetime | None = None) -> dict:
         "commits": commits,
         "na_fila": len(na_fila),
         "abertos": len(devolvidos),
-        "pedidos_ao_dono": pedidos_ao_dono(raiz),
+        **pedidos_da_fila_do_dono(raiz),
         "leis_sem_mecanismo": leis_sem_mecanismo(raiz),
     }
 
@@ -415,11 +415,18 @@ fs.readdirSync(dir).filter(function (n) { return n.slice(-3) === '.js'; })
     (caixa.window.REGISTROS || []).forEach(function (r) { regs.push(r); });
   });
 if (!regs.length) { throw new Error('nenhum registro carregado'); }
-process.stdout.write(String(LOGICA.caixaDeEntrada(regs, new Date()).length));
+var fila = LOGICA.caixaDeEntrada(regs, new Date());
+var porFrente = {};
+fila.forEach(function (r) {
+  var frente = r.registro && typeof r.registro.frente === 'string' && r.registro.frente.trim()
+    ? r.registro.frente : 'sem frente';
+  porFrente[frente] = (porFrente[frente] || 0) + 1;
+});
+process.stdout.write(JSON.stringify({total: fila.length, por_frente: porFrente}));
 """
 
 
-def pedidos_ao_dono(raiz: Path) -> int:
+def pedidos_da_fila_do_dono(raiz: Path) -> dict:
     """Pedidos do livro esperando resposta — a fila de UMA pessoa (B14).
 
     A regra é a do painel, e é a do painel LITERALMENTE: esta função chama
@@ -461,13 +468,42 @@ def pedidos_ao_dono(raiz: Path) -> int:
         descricao="contar a fila do mantenedor pela regra do painel",
         exigir_stdout=True,
     ).stdout.strip()
-    if not saida.isdigit():
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
         raise ErroDeInstrumentacao(
-            "o contador da fila não devolveu um número",
-            f"Recebido:\n  {saida!r}\n\nSem número não há medida, e 'não sei' "
-            "nunca vira zero.",
+            "o contador da fila não devolveu JSON",
+            f"Recebido:\n  {saida!r}\n\nSem medida não há divisão por frente, e "
+            "'não sei' nunca vira zero.",
+        ) from erro
+    total = dados.get("total")
+    por_frente = dados.get("por_frente")
+    if type(total) is not int or total < 0 or not isinstance(por_frente, dict):
+        raise ErroDeInstrumentacao(
+            "o contador da fila devolveu uma estrutura inválida",
+            f"Recebido:\n  {saida!r}",
         )
-    return int(saida)
+    if any(type(valor) is not int or valor < 0 for valor in por_frente.values()):
+        raise ErroDeInstrumentacao(
+            "a divisão por frente devolveu contagens inválidas",
+            f"Recebido:\n  {saida!r}",
+        )
+    if sum(por_frente.values()) != total:
+        raise ErroDeInstrumentacao(
+            "a divisão por frente não fecha com o total da fila",
+            f"Total: {total}; por frente: {por_frente}",
+        )
+    return {"pedidos_ao_dono": total, "pedidos_ao_dono_por_frente": por_frente}
+
+
+def pedidos_ao_dono(raiz: Path) -> int:
+    """Mantém a consulta antiga para quem só precisa do total."""
+    return pedidos_da_fila_do_dono(raiz)["pedidos_ao_dono"]
+
+
+def pedidos_ao_dono_por_frente(raiz: Path) -> dict[str, int]:
+    """Devolve a mesma fila do painel agrupada pela frente do registro."""
+    return pedidos_da_fila_do_dono(raiz)["pedidos_ao_dono_por_frente"]
 
 
 def leis_sem_mecanismo(raiz: Path) -> int:
@@ -490,7 +526,9 @@ def leis_sem_mecanismo(raiz: Path) -> int:
 
 def montar(dados: dict) -> str:
     """Rende o boletim de saúde. Sem dados, não inventa linha."""
-    faltando = [c for c in ("pousos", "minutos", "commits") if c not in dados]
+    faltando = [c for c in (
+        "pousos", "minutos", "commits", "pedidos_ao_dono_por_frente"
+    ) if c not in dados]
     if faltando:
         raise ErroDeInstrumentacao(
             "medida incompleta — não vou imprimir meia-verdade",
@@ -531,6 +569,13 @@ def montar(dados: dict) -> str:
         f"NA FILA DA PISTA      {dados['na_fila']} de {dados['abertos']} PR(s) abertos",
         f"PEDIDOS AO DONO       {dados['pedidos_ao_dono']} esperando resposta dele",
         "                      (é o único recurso do projeto que não escala)",
+        "POR FRENTE            " + " · ".join(
+            f"{frente}: {quantidade}"
+            for frente, quantidade in sorted(
+                dados["pedidos_ao_dono_por_frente"].items()
+            )
+        ) if dados["pedidos_ao_dono_por_frente"] else
+        "POR FRENTE            nenhuma pendência medida",
         f"LEIS SEM MECANISMO    {dados['leis_sem_mecanismo']} regra(s) que ninguém faz valer",
         "",
         "Este arquivo MEDE e não julga: nenhum destes números reprova nada.",

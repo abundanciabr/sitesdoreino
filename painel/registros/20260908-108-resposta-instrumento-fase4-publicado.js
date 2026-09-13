@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-108-resposta-instrumento-fase4-publicado",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "O instrumento da Fase 4 foi publicado sem falso ganho",
+  detalhe: "O PR #1393 e o deploy 34263732285 publicaram o instrumento da Fase 4. A análise continua com zero tarefas confirmatórias, por isso este registro fecha apenas o alerta de publicação e não declara ganho de eficiência nem libera expansão.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1393 e https://github.com/abundanciabr/sitesdoreino/actions/runs/34263732285",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-054-ci-medir-pilotos-da-fase-4-sem-falso-ganho",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

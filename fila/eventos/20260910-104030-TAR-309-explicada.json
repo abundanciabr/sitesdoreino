@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104030-TAR-309-explicada",
+  "tarefa": "TAR-309",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:40:30+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; prompt SHA256 7D80CF9F6E6921C1C76CC1B1FBDB460376C198D1853C05450D01F8F76E0FC914",
+  "o_que_e": "O mapa de responsabilidades nomeia pessoas, mas ainda não liga todas as partes reais da escola a quem acompanha cada desfecho.",
+  "o_que_muda": "Cada recurso conhecido passa a ter uma responsabilidade rastreável, para que nenhuma rotina ou incidente fique sem acompanhamento.",
+  "exemplo": "Hoje a parte financeira diz quem cuida em termos gerais, mas não mostra quem acompanha assinaturas, caixa e verba de aquisição.",
+  "importancia": 100
+}

@@ -507,6 +507,7 @@ def como_o_painel_ve(matricula: Matricula) -> dict:
             matricula.comprou_em.isoformat() if matricula.comprou_em else None
         ),
         "status": matricula.status,
+        "product_id": matricula.product_id,
         # DERIVADO do prefixo, nunca de um campo proprio. A regra mora no
         # MODELO desde 05/09/2026, porque o evento `matricula.situacao-alterada`
         # tambem a le: duas derivacoes discordariam no primeiro backfill.

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-047-remocao-da-coluna-pista",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "A coluna pista foi removida das encomendas",
+  detalhe: "A decisão autorizada na TAR-256 foi implementada. Encomendas agora persistem apenas o nível e o status, que determinam a rota sem uma segunda coluna. A migração 0007 remove a coluna e a constraint antiga, e os fluxos de nascimento, chamada aberta e retorno ao mural foram atualizados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1482",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: "20260909-044-confirmacao-fecho-vendas",
+  gravidade: "verde",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-062-infra-redirecionar-links-legados-de-aulas",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "infra: redirecionar links legados de aulas",
+  detalhe: "O Traefik redireciona permanentemente apenas URLs legadas de aula com slug Django válido e conserva a query string, sem criar página duplicada nem atingir caminhos diferentes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1569. Validação local: árvore 716a262a0249741b805675a32d1e8a5d262282b0; commit f46e8d3eda3d80ab070414d4b1264933325bbeb4; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-347",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

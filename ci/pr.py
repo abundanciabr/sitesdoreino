@@ -16,6 +16,7 @@ import sys
 import unicodedata
 import uuid
 import tempfile
+import time
 import subprocess
 import os
 from collections import Counter
@@ -82,6 +83,7 @@ MINIMO_DO_DETALHE = 80
 
 COAUTOR = "Co-Authored-By"
 PRAZO_VALIDACAO_PADRAO = 900
+PROTOCOLO_SUBMISSAO = 1
 
 
 class PrazoDeValidacaoExcedido(ErroDeInstrumentacao):
@@ -258,6 +260,7 @@ def montar_campos(
     frente: str | None,
     evidencia_extra: str,
     area: str | None = None,
+    tarefa: str | None = None,
 ) -> dict:
     """Os 14 campos do molde: 11 derivados do PR, 1 de julgamento, 2 de opção."""
     evidencia = url_do_pr
@@ -275,6 +278,8 @@ def montar_campos(
         "verificado_em": iso,
         "precisa_do_dono": False,
         "responde_a": None,
+        "relacao": "comentario",
+        "tarefa": tarefa,
         "gravidade": gravidade,
         "frente": frente,
         "area": area,
@@ -404,7 +409,86 @@ def _hash_git(valor: str) -> str:
     return valor
 
 
-def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACAO_PADRAO):
+EXTENSOES_DE_FONTE = frozenset({
+    ".c", ".cc", ".cpp", ".cs", ".go", ".h", ".hpp", ".java", ".js",
+    ".jsx", ".php", ".py", ".pyi", ".rb", ".rs", ".sh", ".ts", ".tsx",
+})
+ARQUIVOS_DE_CONFIGURACAO_DE_TESTE = frozenset({
+    "conftest.py", "pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini",
+    "sitecustomize.py", "usercustomize.py",
+})
+
+
+def _preparar_artefatos_da_validacao(raiz, rodar, logs):
+    gerador = raiz / "painel/gerar_manifesto.js"
+    if not gerador.is_file():
+        return {}
+    rodar(["node", "painel/gerar_manifesto.js"], raiz, log=logs / "preparacao.log")
+    arquivos = [raiz / "painel/painel.html", *sorted((raiz / "painel").glob("livro-*.js"))]
+    artefatos = {}
+    for arquivo in arquivos:
+        if arquivo.name != "painel.html" and not re.fullmatch(r"livro-\d{4}(?:0[1-9]|1[0-2])\.js", arquivo.name):
+            continue
+        if not arquivo.is_file() or arquivo.is_symlink():
+            raise ErroDeInstrumentacao("o gerador não materializou um artefato regular", "Confira o log privado preparacao.log; a validação não começou.")
+        artefatos[arquivo.relative_to(raiz).as_posix()] = hashlib.sha256(arquivo.read_bytes()).hexdigest()
+    (logs / "artefatos.json").write_text(json.dumps(artefatos, sort_keys=True), encoding="utf-8")
+    return artefatos
+
+
+def _conferir_revisao_validada(raiz, commit, rodar, arvore_esperada=None, artefatos=None):
+    revisao = _hash_git(rodar(["git", "rev-parse", "HEAD"], raiz))
+    if revisao != commit:
+        raise ParouPorSeguranca(
+            f"a validação trocou a revisão: está em {revisao}, mas a prova exige {commit}",
+            "O comando trocou a revisão isolada. A prova foi invalidada; não retome usando este resultado.",
+        )
+    arvore = _hash_git(rodar(["git", "rev-parse", "HEAD^{tree}"], raiz))
+    if arvore_esperada is None:
+        arvore_esperada = arvore
+    if arvore != arvore_esperada:
+        raise ParouPorSeguranca(
+            f"a validação trocou a árvore: está em {arvore}, mas a prova exige {arvore_esperada}",
+            "O comando trocou a árvore da revisão isolada. A prova foi invalidada; não retome usando este resultado.",
+        )
+    artefatos = artefatos or {}
+    for relativo, esperado in artefatos.items():
+        arquivo = raiz / relativo
+        integro = arquivo.is_file() and not arquivo.is_symlink()
+        if integro:
+            integro = hashlib.sha256(arquivo.read_bytes()).hexdigest() == esperado
+        if not integro:
+            raise ParouPorSeguranca(
+                f"artefato canônico da validação foi alterado ou removido: {relativo}",
+                "O conteúdo diverge do gerador da revisão entregue. Confira o comando de validação e repita a prova.",
+            )
+    alterados = rodar(["git", "diff", "HEAD", "--name-only"], raiz).strip()
+    nao_rastreados = []
+    status = rodar([
+        "git", "status", "--porcelain=v1", "--untracked-files=all", "--ignored=traditional", "-z"
+    ], raiz)
+    for linha in status.split("\0"):
+        if len(linha) < 4 or linha[:2] not in ("??", "!!"):
+            continue
+        if linha[3:] in artefatos:
+            continue
+        caminho = Path(linha[3:]).name.casefold()
+        if caminho in ARQUIVOS_DE_CONFIGURACAO_DE_TESTE or Path(caminho).suffix in EXTENSOES_DE_FONTE:
+            nao_rastreados.append(linha[3:])
+    if alterados:
+        raise ParouPorSeguranca(
+            "a validação alterou fontes rastreadas na revisão isolada",
+            "Confira os logs privados e valide novamente a revisão sem modificar fontes durante a prova.",
+        )
+    if nao_rastreados:
+        raise ParouPorSeguranca(
+            "a validação criou fontes não rastreadas na revisão isolada",
+            "Remova a fonte temporária ou coloque scripts de apoio fora do checkout; a prova foi invalidada.",
+        )
+    return arvore_esperada
+
+
+def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACAO_PADRAO, arvore_esperada=None):
     for comando in comandos:
         for argumento in comando[1:]:
             valor = argumento.split("=", 1)[1] if argumento.startswith("-") and "=" in argumento else argumento
@@ -421,21 +505,26 @@ def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACA
         isolada = Path(temporario).resolve() / "arvore"
         rodar(["git", "worktree", "add", "--detach", str(isolada), commit], raiz)
         try:
+            arvore_esperada = _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada)
+            artefatos = _preparar_artefatos_da_validacao(isolada, rodar, logs)
+            _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada, artefatos)
             for indice, comando in enumerate(comandos, 1):
                 log = logs / f"{indice}.log"
+                _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada, artefatos)
                 try:
                     saida = rodar(comando, isolada, log=log, prazo_segundos=prazo_segundos)
                 except (PrazoDeValidacaoExcedido, ValidacaoReprovada):
+                    _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada, artefatos)
                     raise
                 except ErroDeInstrumentacao as erro:
+                    _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada, artefatos)
                     raise ErroDeInstrumentacao(
                         f"validação {indice} não aprovada",
                         f"O comando falhou ou não pôde executar. Leia o log privado {log} e retome; nenhum resultado foi aprovado.",
                     ) from erro
+                _conferir_revisao_validada(isolada, commit, rodar, arvore_esperada, artefatos)
                 provas.append(hashlib.sha256(saida.encode("utf-8")).hexdigest())
                 dizer(f"PASS validação {indice}: exit 0; log privado {log}")
-            if rodar(["git", "diff", "HEAD", "--name-only"], isolada).strip():
-                raise ParouPorSeguranca("a validação alterou o código isolado", "Confira os logs privados e valide a revisão final sem modificar fontes durante a prova.")
         finally:
             # O caminho nasce neste processo dentro do diretório temporário.
             # Só esta árvore descartável pode ser removida, inclusive na falha.
@@ -445,7 +534,7 @@ def _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos=PRAZO_VALIDACA
     return provas
 
 
-def _concluir_fila(raiz, correr, tarefa, ramo, url):
+def _submeter_fila(raiz, correr, tarefa, ramo, url, revisao, arvore):
     if tarefa is None:
         return []
     from fila import carregar_tarefas, carregar_eventos
@@ -455,10 +544,20 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
     if erros or tarefa not in tarefas:
         raise ParouPorSeguranca("tarefa ausente ou fila inválida", "Rode python ci/fila.py validar e confira a tarefa antes de retomar.")
     finais = [e for e in eventos if e["tarefa"] == tarefa and e["evento"] in ("concluida", "cancelada")]
-    if finais and not any(e.get("evidencia") == url and e["evento"] == "concluida" for e in finais):
+    nossa = [e for e in finais if e["evento"] == "concluida" and e.get("evidencia") == url]
+    if finais and not nossa:
         raise ParouPorSeguranca("tarefa já encerrada por outro fato", "Confira a cadeia da fila; não sobrescreva o encerramento.")
-    if not finais:
-        correr([sys.executable, "ci/fila.py", "concluir", tarefa, "--quem", ramo, "--evidencia", url])
+    # A conclusão desta mesma entrega não conta como encerramento alheio: sem
+    # isto o `--continuar` congelaria a submissão na primeira revisão.
+    if len(finais) == len(nossa):
+        anterior = next((e for e in reversed(eventos) if e["tarefa"] == tarefa and e["evento"] == "submetida"), None)
+        if anterior and anterior.get("pr") == url:
+            diferenca = correr(["git", "diff", "--name-only", anterior["revisao"], revisao]).splitlines()
+            if all(c.startswith(("painel/registros/", "fila/eventos/")) for c in diferenca):
+                revisao, arvore = anterior["revisao"], anterior["arvore"]
+        correr([sys.executable, "ci/fila.py", "submeter", tarefa, "--quem", ramo,
+                "--pr", url, "--revisao", revisao, "--arvore", arvore])
+        correr([sys.executable, "ci/fila.py", "fechar-pela-entrega", tarefa, "--quem", ramo, "--pr", url])
     arquivos = []
     for caminho in (raiz / "fila/eventos").glob("*.json"):
         if json.loads(caminho.read_text(encoding="utf-8")).get("tarefa") == tarefa:
@@ -466,7 +565,44 @@ def _concluir_fila(raiz, correr, tarefa, ramo, url):
     return arquivos
 
 
-def _tentativa_da_abertura(raiz, ramo):
+def _fechar_medicao_fase4(raiz: Path, tarefa: str | None, tentativa: str,
+                          ramo: str, commit: str, pr: int) -> bool:
+    if tarefa is None:
+        return True
+    import registrar_tarefa_fase4
+
+    if registrar_tarefa_fase4.classificacao_da_tarefa(raiz, tarefa) is None:
+        return True
+    git = telemetria.dir_git_comum(raiz)
+    eventos = telemetria.ler_tudo(git) if git else []
+    relacionados = [evento for evento in eventos
+                    if evento.get("evento") == "tarefa_medida"
+                    and evento.get("tarefa") == tarefa
+                    and evento.get("tentativa") == tentativa
+                    and evento.get("branch") == ramo]
+    inicios = [evento.get("inicio") for evento in relacionados if evento.get("inicio")]
+    if not inicios:
+        return False
+    inicio = min(inicios)
+    contexto = [evento.get("contexto_bytes") for evento in eventos
+                if evento.get("evento") == "fase_operacional"
+                and evento.get("tarefa") == tarefa
+                and evento.get("tentativa") == tentativa
+                and evento.get("branch") == ramo
+                and evento.get("fase") == "contexto"
+                and evento.get("resultado") == "concluido"
+                and isinstance(evento.get("contexto_bytes"), int)]
+    contexto_bytes = sum(contexto) if contexto else None
+    fim = datetime.now(timezone.utc).isoformat()
+    registrou = registrar_tarefa_fase4.registrar_execucao_fase4(
+        raiz, tarefa=tarefa, tentativa=tentativa, branch=ramo,
+        commit=commit, estado="concluida", inicio=inicio, fim=fim,
+        pr=pr, contexto_bytes=contexto_bytes,
+    )
+    return registrou
+
+
+def _fases_da_abertura(raiz, ramo):
     try:
         pasta = telemetria.dir_git_comum(raiz)
         eventos = telemetria.ler_tudo(pasta) if pasta else []
@@ -483,12 +619,84 @@ def _tentativa_da_abertura(raiz, ramo):
             except (ValueError, TypeError, KeyError):
                 continue
             candidatos.append((quando, evento))
-        if candidatos:
-            evento = max(candidatos, key=lambda item: item[0])[1]
-            return evento["tentativa"], evento["tarefa"]
+        return candidatos
     except Exception:
-        pass  # Métrica ausente ou inválida não substitui as provas obrigatórias.
+        return []
+
+
+def _tentativa_da_abertura(raiz, ramo):
+    candidatos = _fases_da_abertura(raiz, ramo)
+    if candidatos:
+        evento = max(candidatos, key=lambda item: item[0])[1]
+        return evento["tentativa"], evento["tarefa"]
     return uuid.uuid4().hex, ramo.split('/')[-1]
+
+
+def _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+    aberturas = [item for item in _fases_da_abertura(raiz, ramo)
+                 if item[1]["fase"] == "abertura" and item[1]["resultado"] == "concluido"]
+    if not aberturas:
+        return False
+    primeira = min(aberturas, key=lambda item: item[0])[1]
+    codigo = correr(["git", "show", primeira["commit"] + ":ci/pr.py"])
+    return bool(codigo.strip()) and not re.search(r"^PROTOCOLO_SUBMISSAO\s*=", codigo, re.M)
+
+
+def _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr):
+    from fila import carregar_tarefas, carregar_eventos, tarefas_citadas, calcular_estados, CONCLUIDA, CANCELADA, NA_FILA
+    candidatos = set()
+    if pedido.tarefa:
+        if not re.fullmatch(r"TAR-\d{3,}", pedido.tarefa):
+            raise ParouPorSeguranca("tarefa inválida", "Informe --tarefa TAR-NNN da fila existente.")
+        candidatos.add(pedido.tarefa)
+    if re.fullmatch(r"TAR-\d{3,}", tarefa_da_abertura):
+        candidatos.add(tarefa_da_abertura)
+    erros = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    estados = calcular_estados(tarefas, eventos)
+    candidatos.update(tid for tid, estado in estados.items()
+                      if estado.get("quem") == ramo and estado["estado"] not in (CONCLUIDA, CANCELADA, NA_FILA))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(ramo + " " + pedido.titulo))
+    if not candidatos:
+        candidatos.update(tarefas_citadas(pedido.corpo_arquivo.read_text(encoding="utf-8")))
+    if not candidatos:
+        if _sessao_anterior_ao_protocolo(raiz, ramo, correr):
+            return None
+        raise ParouPorSeguranca(
+            "tarefa não identificada para esta sessão",
+            "Consulte python ci/fila.py listar e vincule a TAR existente com --tarefa. "
+            "Sem abertura comprovadamente anterior ao protocolo, não publico trabalho sem tarefa.",
+        )
+    if erros or len(candidatos) != 1 or not candidatos <= tarefas.keys():
+        raise ParouPorSeguranca(
+            "tarefa ausente, ambígua ou fila inválida",
+            "Rode python ci/fila.py listar e validar; reutilize a TAR existente com --tarefa antes de publicar.",
+        )
+    return candidatos.pop()
+
+
+def _conferir_revisao_remota(correr, numero, entregue, *, exigir_pronto=False):
+    for tentativa in range(3):
+        try:
+            remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state,isDraft"]))
+        except (TypeError, ValueError) as erro:
+            raise ErroDeInstrumentacao(
+                "consulta final do PR inválida",
+                "Confira gh pr view; nenhuma revisão remota foi aprovada.",
+            ) from erro
+        if (isinstance(remoto, dict) and remoto.get("headRefOid") == entregue
+                and remoto.get("state") == "OPEN" and type(remoto.get("isDraft")) is bool
+                and (not exigir_pronto or remoto["isDraft"] is False)):
+            return remoto
+        if tentativa < 2:
+            time.sleep(2)
+    raise ParouPorSeguranca(
+        "PR remoto não confirma a revisão entregue após 3 consultas",
+        f"Confira gh pr view {numero}: exijo SHA {entregue}, estado OPEN e rascunho conferido. "
+        "Nenhuma revisão anterior foi aprovada; os commits e recibos foram preservados.",
+    )
 
 
 def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, dizer=print) -> str:
@@ -504,6 +712,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if not sujo and not pedido.continuar:
         raise ParouPorSeguranca("árvore sem mudanças", "Use --continuar para validar os commits existentes.")
     tentativa, tarefa_da_abertura = _tentativa_da_abertura(raiz, ramo)
+    pedido.tarefa = _identificar_tarefa(raiz, pedido, ramo, tarefa_da_abertura, correr)
     correlacao = dict(tarefa=pedido.tarefa or tarefa_da_abertura, tentativa=tentativa,
                      branch=ramo, cwd=str(raiz))
     inicial = _hash_git(correr(["git", "rev-parse", "HEAD"]))
@@ -522,7 +731,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     if _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])) != arvore:
         raise ParouPorSeguranca("commit diverge da árvore validada", "Confira os hooks e valide novamente o commit efetivamente entregue.")
     try:
-        provas = _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos)
+        provas = _validar(raiz, commit, rodar, comandos, dizer, prazo_segundos, arvore)
     except ErroDeInstrumentacao:
         telemetria.registrar_fase("validacao", "falhou", commit=commit, **correlacao)
         raise
@@ -562,7 +771,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         campos = montar_campos(
             arquivo=nome, titulo=pedido.titulo, detalhe=pedido.detalhe,
             url_do_pr=url, dia=hoje, tipo=pedido.tipo, gravidade=pedido.gravidade,
-            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1],
+            frente=pedido.frente or derivar_frente(pedido.arquivos), area=ramo.split('/')[1], tarefa=pedido.tarefa,
             evidencia_extra=f"Validação local: árvore {arvore}; commit {commit}; {len(provas)} comando(s), exit 0. Revisão, integração e publicação não verificadas.",
         )
         texto = renderizar(campos)
@@ -571,7 +780,7 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         if destino.exists():
             raise ParouPorSeguranca("destino do recibo já existe", "Confira o registro existente; nunca sobrescreva um fato anterior.")
         destino.write_text(texto, encoding="utf-8")
-    eventos = _concluir_fila(raiz, correr, pedido.tarefa, ramo, url)
+    eventos = _submeter_fila(raiz, correr, pedido.tarefa, ramo, url, commit, arvore)
     correr(["node", "painel/gerar_manifesto.js"])
     relativo = destino.relative_to(raiz).as_posix()
     correr(["git", "add", "--", relativo, *eventos])
@@ -586,7 +795,8 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
         raise ParouPorSeguranca("revisão entregue difere da validada", "Confira o diff e execute novamente o fechamento.")
     entregue = _hash_git(correr(["git", "rev-parse", "HEAD"]))
     try:
-        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos)
+        provas_finais = _validar(raiz, entregue, rodar, comandos, dizer, prazo_segundos,
+                                 _hash_git(correr(["git", "rev-parse", "HEAD^{tree}"])))
     except ErroDeInstrumentacao:
         telemetria.registrar_fase("validacao", "falhou", commit=entregue, pr=numero, **correlacao)
         raise
@@ -600,13 +810,16 @@ def abrir(raiz: Path, pedido: Pedido, *, rodar=rodar, hoje: date | None = None, 
     }, cwd=str(raiz), sessao=tentativa)
     telemetria.registrar_fase("validacao", "concluido", commit=entregue, pr=numero, **correlacao)
     correr(["git", "push", "origin", ramo])
-    remoto = json.loads(correr(["gh", "pr", "view", str(numero), "--json", "headRefOid,state"]))
-    if remoto.get("headRefOid") != entregue or remoto.get("state") != "OPEN":
-        raise ParouPorSeguranca("PR remoto não confirma a revisão entregue", "Confira gh pr view e retome; nenhum sucesso remoto foi declarado.")
+    remoto = _conferir_revisao_remota(correr, numero, entregue)
+    if remoto["isDraft"]:
+        correr(["gh", "pr", "ready", str(numero)])
+        _conferir_revisao_remota(correr, numero, entregue, exigir_pronto=True)
+    if not _fechar_medicao_fase4(raiz, pedido.tarefa, tentativa, ramo, entregue, numero):
+        dizer("Medição Fase 4 indisponível; os resultados operacionais continuam separados.")
     telemetria.registrar_fase("fechamento", "concluido", commit=entregue, pr=numero, **correlacao)
     dizer("PASS validação local concluída; recibo embarcado e revisão remota conferida")
     dizer("Revisão: não verificada. Integração: não verificada. Publicação: não verificada.")
-    final = f"PR {numero} aberto com recibo: {url}; devolva à maestro para revisão e espera."
+    final = f"PR {numero} aberto com recibo: {url}; devolva à maestro para revisão e encaminhamento à pista."
     dizer(final)
     return final
 
@@ -677,7 +890,7 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--gravidade", default="info", help=f"um de: {', '.join(GRAVIDADES)}")
     p.add_argument("--frente", default=None, help=f"um de: {', '.join(FRENTES)}")
     p.add_argument("--validacao-arquivo", type=Path, required=True)
-    p.add_argument("--tarefa", help="TAR-NNN da fila; conclui e embarca os eventos")
+    p.add_argument("--tarefa", help="TAR-NNN da fila; submete a entrega e embarca seus eventos")
     p.add_argument("--evidencia", default="", help="a prova que soma à URL do PR")
     p.add_argument("--continuar", action="store_true", help="relê o estado e pula o feito")
     return p

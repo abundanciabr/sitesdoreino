@@ -20,6 +20,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 import divida_do_livro
 import mergear
 from _nucleo import Estado
@@ -155,6 +157,7 @@ def _pr_com_registro(ramo: str = "agent/ci/area-do-registro") -> dict[str, Any]:
         "body": "",
         "url": "https://example.invalid/pr/99",
         "headRefName": ramo,
+        "headRefOid": "a" * 40,
         "files": [
             {"path": "ci/mergear.py"},
             {"path": "painel/registros/20260907-001-a.js"},
@@ -212,6 +215,7 @@ def test_ramo_fora_das_areas_conhecidas_nao_sugere_o_nome_do_ramo(
         "O ramo agent/xyz/ não corresponde a nenhuma área de painel/areas.json"
         in saida
     )
+    assert 'por exemplo: "admin", "ci", "infra".' in saida
 
 
 def test_area_diferente_do_ramo_teria_reprovado(tmp_path, capsys) -> None:
@@ -296,6 +300,30 @@ def test_falha_de_leitura_na_sombra_da_area_nomeia_a_sombra_da_area(
     assert "não mediu" in saida
     assert "para a sombra da área do registro" in saida
     assert "sombra do evento da fila" not in saida
+
+
+def test_falha_de_leitura_nao_fica_guardada_e_a_sombra_seguinte_rele(
+    monkeypatch, tmp_path
+) -> None:
+    """Um tropeço não pode virar diff vazio reaproveitado pela segunda sombra."""
+    descricoes: list[str] = []
+    remessas = [_remessa("painel/registros/20260907-001-a.js")]
+
+    def _gh_que_cai_so_na_primeira_leitura(_argumentos, _raiz, descricao, **_kwargs):
+        descricoes.append(descricao)
+        if len(descricoes) == 1:
+            raise mergear.ErroDeInstrumentacao("o gh caiu", "sem rede")
+        return json.dumps(remessas)
+
+    monkeypatch.setattr(mergear, "_gh", _gh_que_cai_so_na_primeira_leitura)
+    diff = mergear.DiffDoPR(tmp_path, 99)
+    with pytest.raises(mergear.ErroDeInstrumentacao):
+        diff.ler("a sombra do evento da fila")
+    assert diff.ler("a sombra da área do registro") == remessas
+    assert descricoes == [
+        "ler o diff do PR #99 para a sombra do evento da fila",
+        "ler o diff do PR #99 para a sombra da área do registro",
+    ]
 
 
 def test_o_diff_e_lido_uma_vez_por_pouso_e_quem_le_diz_o_proprio_nome(

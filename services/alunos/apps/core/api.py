@@ -1468,6 +1468,7 @@ _LIST_ALL_ENROLLMENTS_OPENAPI = {
                                 "comprou_em",
                                 "status",
                                 "origem",
+                                "product_id",
                                 "criada_em",
                             ],
                             "properties": {
@@ -1492,9 +1493,10 @@ _LIST_ALL_ENROLLMENTS_OPENAPI = {
                                 },
                                 "origem": {
                                     "type": "string",
-                                    "enum": ["comprou", "liberado"],
+                                    "enum": ["comprou", "liberado", "administrativo"],
                                     "description": _D1,
                                 },
+                                "product_id": {"type": "string"},
                                 "criada_em": {"type": "string", "format": "date-time"},
                                 "virou_aluno_em": {
                                     "type": ["string", "null"],

@@ -32,7 +32,7 @@ from apps.core.middleware import (
     ROTAS_DE_MAQUINA,
     SiteResolutionMiddleware,
 )
-from apps.core.enderecos import AVISOS_PADRAO, CAIXA_PADRAO as CAIXA
+from apps.core.enderecos import CAIXA_PADRAO as CAIXA
 from apps.i18n import catalogo as cat
 from config.urls import urlpatterns
 
@@ -177,6 +177,9 @@ ROTAS_LOCALIZAVEIS = (
     "/login",
     "/avisos/ligar",
     "/avisos/desligar",
+    "/notificacoes",
+    "/notificacoes/marcar-todas",
+    "/notificacoes/",
     # A previa da equipe (02/09/2026). E PAGINA, e nao rota de maquina: a tela
     # tem texto, e o texto e traduzido. Que ela responda 404 para quem nao e da
     # equipe nao muda isso — a classificacao aqui e sobre localizacao, nunca
@@ -401,7 +404,7 @@ def test_o_link_da_caixa_e_exatamente_o_caminho_nu(client, aluno, idioma):
     assert f'href="/{idioma}/forms/' not in conteudo
 
 
-@pytest.mark.parametrize("nu", [CAIXA, AVISOS_PADRAO])
+@pytest.mark.parametrize("nu", [CAIXA])
 def test_url_de_outra_celula_com_prefixo_morre_404(client, rede, nu):
     """Os DENTES do guarda 3: por que o link nu é contrato, não desleixo.
 
@@ -411,9 +414,8 @@ def test_url_de_outra_celula_com_prefixo_morre_404(client, rede, nu):
     este teste exercita: 404 na cara de quem clicou. Prefixar o link
     cross-célula hoje tira do ar o único caminho para a área logada.
 
-    Os dois destinos da Caixa entram: a porta (`/forms/sugestoes/`) e a tela
-    de avisos do sino — mesmo prefixo público, mesma armadilha, e o dia em que
-    um deles regredir o outro não avisa.
+    A porta da Caixa entra nesta prova. A tela de avisos agora pertence ao
+    funil e, por isso, é uma rota interna localizada.
     """
     assert client.get(f"/pt-br{nu}", HTTP_HOST=HOST_MESH).status_code == 404
 

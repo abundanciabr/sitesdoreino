@@ -12,7 +12,7 @@
 |---|---|---|
 | `painel.template.html` | **A FONTE da porta.** É este que se edita. Ele não tem dados — o gerador injeta o resumo e as regras nele. | Por PR, como código. |
 | `painel.html` | **GERADO** por `gerar_manifesto.js`: o template + as regras + o resumo, num arquivo só. Abrir o painel é **UM pedido**. Não guarda dado próprio: tudo é calculado dos registros. **Não mora no Git** desde 28/08/2026 — quem o constrói é a integração. | Só o gerador — e só a integração commita nada disso (ela não commita: constrói). |
-| `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
+| `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | O executor (Codex) escreve ao fechar cada entrega, pelo `make pr`; a maestro escreve os registros pós-merge (publicação, verificação, pendência) e os das entregas cirúrgicas que ela mesma fecha pelo `make pr`; a sentinela (Antigravity) não escreve aqui: o resultado dela vai na verificação (`docs/decisoes/DECISAO-triade-de-ias.md`). |
 | `livro-AAAAMM.js` | **GERADO**, um por mês. O conteúdo dos registros daquele mês, buscado só quando você abre a Memória. Mês fechado nunca mais é reescrito. **Não mora no Git** desde 28/08/2026. | Só o gerador. Nunca à mão. |
 | `areas.json` | **As seis áreas do site nas palavras do dono**, e que nomes de célula e de ramo pertencem a cada uma. Um lugar só: a aba Prioridades, a rota `fila.json` da área administrativa e o portão do pouso leem daqui. A ordem da lista é a ordem da tela; uma célula pertence a UMA área (o gerador reprova se aparecer em duas). | Por PR, com teste-guarda. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
@@ -20,7 +20,7 @@
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página) e monta `painel.html` + os meses. `--conferir` só confere (para CI). O nome ficou do tempo em que ele só escrevia um manifesto. | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
 | `../ci/verificar_painel.py` | **O verificador de FORA.** Confere os gerados contra o índice do Git (`git ls-files`), em Python, sem reusar uma linha do gerador. É ele que pega o que o `--conferir` não tem como pegar: um bug do próprio gerador. Roda na muralha. | Por PR. |
-| `ia/` | **Mapa técnico do projeto para IA** (`ia/INDICE.md` é a porta) — infraestrutura, arquitetura de células, CI/CD, decisões de produto, escrito para uma IA sem contexto prévio auditar o sistema e sugerir melhorias. Segue a mesma lei deste diretório: não guarda veredito próprio sobre o estado do projeto, só mapeia mecanismo — quem quiser saber "o que está pendente" continua lendo `registros/`, nunca `ia/`. | Por PR, junto com a mudança que descreve. |
+| `ia/` | **Mapa técnico do projeto para IA** (`ia/INDICE.md` é a porta) — infraestrutura, arquitetura de células, CI/CD, decisões de produto, escrito para uma IA sem contexto prévio auditar o sistema e sugerir melhorias. Segue a mesma lei deste diretório: não guarda veredito próprio sobre o estado do projeto, só mapeia mecanismo — quem quiser saber "o que está pendente" continua lendo `registros/`, nunca `ia/`. | Por PR, junto com a mudança que descreve. É a porta da sentinela (Antigravity), que audita `origin/main` (`docs/decisoes/DECISAO-triade-de-ias.md`). |
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
@@ -98,6 +98,25 @@
    recibo a bordo (`ci/mergear.py`); PR que só escritura (`painel/` e/ou
    `fila/`) é isento. Registro de fato pós-merge (veredito de deploy, incidente)
    continua sendo PR próprio, só de livro.
+   **A cor descreve o estado que continua aberto.** Um recibo de trabalho
+   validado localmente usa `info`; ele não prova publicação. Use `ambar` ou
+   `vermelho` quando a entrega ainda exigir uma ação, pois essas cores abrem
+   alerta no painel. Confirmado o resultado, a baixa faz parte da conclusão:
+   o registro novo aponta `responde_a` para o identificador exato da entrega,
+   com `gravidade: "verde"`, `evidencia` citando a URL completa do PR no GitHub
+   e a conferência realizada,
+   e `verificado_em` a partir da data do alerta. Se houver dois alertas,
+   escreva uma baixa específica para cada um no mesmo PR; não apague o passado.
+
+   A muralha do painel executa `python ci/encerramento_alertas.py` e recusa
+   uma conclusão verde nova que cite um PR com entrega em alerta sem baixa
+   comprovada. Ela também recusa baixa nova sem prova. A recusa só lê o livro,
+   não cria pendência e ensina a corrigir o próprio PR. A comparação usa
+   `BASE_REF` (padrão `origin/main`); base ou instrumento indisponível é ERROR.
+   Alertas antigos sem relação com a conclusão nova não bloqueiam outro trabalho.
+   O portão confere vínculos e evidência declarada; não consulta a produção
+   nem certifica a verdade do relatório PRONTO na conversa.
+
 1. **À mão, quando o `make pr` não serve** (registro pós-merge, resposta a um
    pedido, correção de rumo): crie **um arquivo novo** em `registros/`, nome
    `AAAAMMDD-NNN-slug.js`. O `NNN` **se pede ao almoxarife — não se escolhe:**
@@ -146,9 +165,10 @@
                                         // da aba Prioridades. Sem ele, a tela cai na `frente` e diz que caiu.
   vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
 
-  // OS QUATRO DA DECISÃO — só fazem sentido com `precisa_do_dono: true`, e são
-  // OPCIONAIS. Sem eles a ficha na tela diz "não sei", que é honesto e cobra
-  // quem escreveu o pedido. Com eles, o dono decide sem reconstruir o contexto.
+  // DECISÃO: os seis campos são obrigatórios em pedidos NOVOS ao dono.
+  // Registros antigos continuam imutáveis e visíveis até resposta explícita.
+  porque_so_voce: null,                 // por que esta decisão só pode ser dele
+  proximo_passo: null,                  // ação concreta para ele aprovar, recusar ou executar
   se_eu_nao_decidir: null,              // o que acontece se isto ficar parado — ou null
   recomendacao: null,                   // o que você sugere, e por quê — ou null
   reversivel: null,                     // true/false SEM aspas ("false" seria verdadeiro em JS) — ou null
@@ -195,12 +215,25 @@
   congeladas de propósito (registro mergeado não se edita); um terceiro
   registro *nesses* números, porém, ainda reprova — a tolerância guarda o
   tamanho do par herdado, não uma licença permanente.
-- **Pedido chega decidível, ou diz que não sabe:** a caixa "Precisa de você"
-  mostra, para cada pedido, o que acontece se ele ficar parado, a recomendação,
-  se dá para voltar atrás e o peso. Campo ausente aparece como "não sei" —
-  nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
-  A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
-  ver, não para reordenar a fila pelas suas costas.
+- **Pedido novo chega decidível:** `precisa_do_dono: true` cabe quando falta
+  uma decisão exclusiva do mantenedor, como autorizar despesa, fornecer segredo,
+  destruir dados, definir produto ou ampliar acesso. O título nomeia a decisão;
+  `porque_so_voce` explica a exclusividade, `proximo_passo` diz o gesto concreto,
+  `se_eu_nao_decidir` registra a consequência de esperar e `recomendacao` traz a
+  sugestão com motivo. `reversivel` é booleano e `impacto` é alto, medio ou baixo.
+  `ci/encerramento_alertas.py`, já executado na muralha, exige os seis campos
+  apenas em IDs novos contra `BASE_REF`. Escrever uma data antiga não dispensa o portão.
+  O julgamento de que só ele pode decidir continua sendo da maestro; texto
+  preenchido não prova exclusividade. A máquina confere presença e tipos.
+- **Falha técnica é trabalho dos robôs:** erro de teste, ferramenta ou publicação
+  reparável dentro do pedido usa `precisa_do_dono: false`, `gravidade: "ambar"`
+  ou `"vermelho"`, diagnóstico e próximo passo do robô em `detalhe`. Continua
+  visível nos alertas e em Prioridades. A recusa do portão se corrige no próprio
+  PR, sem criar automaticamente outro pedido ao mantenedor.
+- **Histórico não some por adivinhação:** pedido antigo incompleto continua na
+  caixa, com ausência explícita. Nem idade nem palavras do texto o encerram.
+  Correção exige registro novo com `responde_a` e evidência conferida; a baixa
+  não apaga o original. A ordem dos pedidos continua por idade.
 - **Prioridades por área do site (07/09/2026):** a aba 🎯 mostra tudo que está
   aberto agrupado pelas seis áreas de `painel/areas.json` (Alunos, Cursos,
   Comunidade, Vendas, Seu painel, Infra e fábrica) e, dentro de cada uma, em

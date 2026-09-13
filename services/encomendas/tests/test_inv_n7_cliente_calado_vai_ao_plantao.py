@@ -92,7 +92,6 @@ def test_o_aluno_calado_devolve_o_projeto_a_pista(projeto_pego, formulario):
     assert tique.expirar_propostas_vencidas(agora, site_id=SITE)
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.NO_MURAL
-    assert projeto.pista == Encomenda.Pista.MURAL
     assert projeto.aluno_id is None
     assert projeto.historico.latest("em").motivo == negociacao.MOTIVO_DO_ALUNO_CALADO
 
@@ -103,14 +102,12 @@ def test_o_projeto_iniciante_volta_para_a_FILA_e_nunca_para_o_mural(
     """A pista de origem é do NÍVEL, e não da coluna, quando os dois discordam.
 
     Um projeto Iniciante chega ao Mural pela chamada aberta e fica com
-    `pista=mural`; devolvê-lo a `no_mural` seria pô-lo na prateleira reservável,
-    que é o que o [INV-ENC-M2] proíbe e o banco recusa.
+    status `aberta`; devolvê-lo a `no_mural` seria pô-lo na prateleira
+    reservável, que é o que o [INV-ENC-M2] proíbe e o banco recusa.
     """
     bru = dois_no_mural[1]
     agora = _agora()
     aberta = criar_encomenda(status=Encomenda.Status.ABERTA)
-    aberta.pista = Encomenda.Pista.MURAL
-    aberta.save(update_fields=["pista"])
 
     assert gestos.aceitar_a_chamada_aberta(aberta.pk, bru.pk, agora, site_id=SITE).feito
     assert negociacao.propor(
@@ -134,7 +131,6 @@ def test_o_projeto_iniciante_volta_para_a_FILA_e_nunca_para_o_mural(
     assert tique.expirar_propostas_vencidas(agora, site_id=SITE)
     aberta.refresh_from_db()
     assert aberta.status == Encomenda.Status.NA_FILA
-    assert aberta.pista == Encomenda.Pista.FILA
 
 
 def test_a_segunda_passada_do_tique_nao_faz_nada(projeto_pego, formulario):

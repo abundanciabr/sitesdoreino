@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-006-cursos-marcar-boss-com-titulo-real",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "cursos: marcar Boss com título real",
+  detalhe: "O comando usa o título real da aula 31; o teste independente prova idempotência e ambiguidade.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1517. Validação local: árvore 566433d36aca9ba299c990fd18368d7bf412ddf0; commit 9998176f04fbee45432711fd6668875ce908a630; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-307",
+  gravidade: "ambar",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

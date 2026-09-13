@@ -10,7 +10,7 @@ de pé, e o mantenedor a reafirmou em 04/09/2026: *"só a escola por enquanto"*.
 A confirmação é o plantão registrando "pago pela escola", com nome e data.
 """
 
-from datetime import datetime, timezone as fuso
+from datetime import datetime, timedelta, timezone as fuso
 
 import pytest
 from django.db import IntegrityError, connection, transaction
@@ -161,7 +161,9 @@ def test_com_acordo_e_pagamento_a_producao_comeca(projeto_pego, formulario):
     assert projeto.pagamento_confirmado_por == "prof-1"
     assert projeto.pagamento_confirmado_em == agora
 
-    comecou = negociacao.comecar_a_producao(projeto.pk, agora, site_id=SITE)
+    comecou = negociacao.comecar_a_producao(
+        projeto.pk, agora + timedelta(microseconds=1), site_id=SITE
+    )
     assert comecou.feito
     projeto.refresh_from_db()
     assert projeto.status == Encomenda.Status.EM_PRODUCAO

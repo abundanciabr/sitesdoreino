@@ -101,6 +101,7 @@ from .relogio import calcular_expiracao_da_reserva
 
 NAO_ESTA_NO_MURAL = "nao_esta_no_mural"
 JA_FOI_PEGA = "ja_foi_pega"
+E_CHAMADA_ABERTA_USE_ACEITAR = "e_chamada_aberta_use_aceitar"
 CORRIDA_PERDIDA = "corrida_perdida"
 
 MOTIVO_DA_PEGADA = "o aluno pegou o projeto no mural e ganhou a vez"
@@ -109,17 +110,17 @@ MOTIVO_SEM_ELEGIVEL_NO_MURAL = (
     "esperou o prazo no mural sem nenhum aluno elegivel disponivel"
 )
 
-# A pista e o estado em que cada nível nasce. É a regra 2 e a regra 3 escritas
-# como DADO, e não como um `if`: uma tabela de três linhas cabe numa tela, é
-# lida por quem revisa em cinco segundos, e não tem ramo escondido.
+# O estado em que cada nível nasce. É a regra 2 e a regra 3 escritas como DADO,
+# e não como um `if`: uma tabela de três linhas cabe numa tela, é lida por quem
+# revisa em cinco segundos, e não tem ramo escondido.
 #
 # O cartão decide o nível (o banco faz valer, `o_cartao_decide_o_nivel`), e o
-# nível decide a pista. Ninguém escolhe pista: nem o cliente, que sequer sabe
-# que existem duas (§3.4), nem o aluno.
-PISTA_DE_NASCIMENTO: dict[str, tuple[str, str]] = {
-    Encomenda.Nivel.INICIANTE: (Encomenda.Pista.FILA, Encomenda.Status.NA_FILA),
-    Encomenda.Nivel.INTERMEDIARIO: (Encomenda.Pista.MURAL, Encomenda.Status.NO_MURAL),
-    Encomenda.Nivel.AVANCADO: (Encomenda.Pista.MURAL, Encomenda.Status.NO_MURAL),
+# nível decide o estado inicial. Ninguém escolhe rota: nem o cliente, que sequer
+# sabe que existem duas (§3.4), nem o aluno.
+STATUS_DE_NASCIMENTO: dict[str, str] = {
+    Encomenda.Nivel.INICIANTE: Encomenda.Status.NA_FILA,
+    Encomenda.Nivel.INTERMEDIARIO: Encomenda.Status.NO_MURAL,
+    Encomenda.Nivel.AVANCADO: Encomenda.Status.NO_MURAL,
 }
 
 # O QUE O MURAL MOSTRA. Dois estados, e os dois querem dizer "este projeto está
@@ -149,12 +150,12 @@ def nascer(
     briefing: dict | None = None,
     autorizacao_portfolio: bool = False,
 ) -> Encomenda:
-    """Cria a encomenda já na pista que o nível dela manda.
+    """Cria a encomenda já no estado que o nível dela manda.
 
     É a ÚNICA porta de nascimento desta célula, e é ela que a Fase 3 vai chamar
     quando o cliente descrever o projeto. Existir como função, e não como um
     `Encomenda.objects.create` espalhado por quem tiver pressa, é o que faz a
-    regra de pista ser uma coisa só: uma segunda porta divergiria da primeira no
+    regra de rota ser uma coisa só: uma segunda porta divergiria da primeira no
     dia em que o plano mudasse, e ninguém saberia qual das duas estava certa.
 
     O nível não é argumento de propósito: **o cartão decide o nível**, sempre
@@ -163,14 +164,13 @@ def nascer(
     entende. Aqui a incoerência é impossível de escrever.
     """
     nivel = Encomenda.NIVEL_DO_CARTAO[cartao]
-    pista, status = PISTA_DE_NASCIMENTO[nivel]
+    status = STATUS_DE_NASCIMENTO[nivel]
     return Encomenda.objects.create(
         site_id=site_id,
         origem=origem,
         cliente_id=cliente_id,
         cartao=cartao,
         nivel=nivel,
-        pista=pista,
         status=status,
         briefing=briefing or {},
         autorizacao_portfolio=autorizacao_portfolio,
@@ -182,7 +182,22 @@ def nascer(
 # ---------------------------------------------------------------------------
 
 
-def vaga_de(projeto: Encomenda) -> motor.Vaga:
+def _reservas_por_encomenda(encomenda_ids, *, site_id: str) -> dict:
+    """Agrupa em uma leitura os alunos que já pegaram cada encomenda."""
+    por_encomenda = {}
+    for encomenda_id, aluno_id in ReservaDoMural.objects.filter(
+        site_id=site_id, encomenda_id__in=encomenda_ids
+    ).values_list("encomenda_id", "aluno_id"):
+        por_encomenda.setdefault(encomenda_id, set()).add(aluno_id)
+    return {
+        encomenda_id: frozenset(alunos)
+        for encomenda_id, alunos in por_encomenda.items()
+    }
+
+
+def vaga_de(
+    projeto: Encomenda, reservas_por_encomenda: dict | None = None
+) -> motor.Vaga:
     """A vaga do Mural, com a memória de quem já teve este projeto.
 
     A memória do Mural são as RESERVAS, e não as ofertas da fila, e a diferença
@@ -197,14 +212,17 @@ def vaga_de(projeto: Encomenda) -> motor.Vaga:
     `IntegrityError`; quem a torna impossível de violar é o índice único
     `ninguem_pega_o_mesmo_projeto_duas_vezes`.
     """
+    alunos_que_ja_pegaram = (
+        _reservas_por_encomenda([projeto.pk], site_id=projeto.site_id).get(
+            projeto.pk, frozenset()
+        )
+        if reservas_por_encomenda is None
+        else reservas_por_encomenda.get(projeto.pk, frozenset())
+    )
     return motor.Vaga(
         encomenda_id=projeto.pk,
         nivel=projeto.nivel,
-        ja_ofertada_a=frozenset(
-            ReservaDoMural.objects.filter(encomenda=projeto).values_list(
-                "aluno_id", flat=True
-            )
-        ),
+        ja_ofertada_a=alunos_que_ja_pegaram,
     )
 
 
@@ -225,11 +243,20 @@ def _candidato(perfil: PerfilProfissional) -> motor.Candidato:
             aluno=perfil, resultado=Oferta.Resultado.PENDENTE
         ).exists(),
         abandonos=tuple(perfil.abandonos or ()),
+        tem_negociacao_viva=Encomenda.objects.filter(
+            site_id=perfil.site_id,
+            aluno=perfil,
+            status__in=motor.ESTADOS_DE_NEGOCIACAO_VIVA,
+        ).exists(),
     )
 
 
 def tem_elegivel_disponivel(
-    projeto: Encomenda, candidatos, regras: motor.Regras, agora: datetime
+    projeto: Encomenda,
+    candidatos,
+    regras: motor.Regras,
+    agora: datetime,
+    reservas_por_encomenda: dict | None = None,
 ) -> bool:
     """Existe alguém que poderia pegar este projeto agora? A quarta regra numa linha.
 
@@ -239,7 +266,11 @@ def tem_elegivel_disponivel(
     impedir. Quem chama é o tique, e a resposta dele é a razão escrita que o
     professor vai ler.
     """
-    return bool(motor.elegiveis(vaga_de(projeto), candidatos, regras, agora))
+    return bool(
+        motor.elegiveis(
+            vaga_de(projeto, reservas_por_encomenda), candidatos, regras, agora
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -271,12 +302,20 @@ def listar(perfil_id, agora: datetime, *, site_id: str) -> tuple[Encomenda, ...]
 
     regras = motor.Regras.do_banco(agora, site_id=site_id)
     candidato = _candidato(perfil)
-    return tuple(
-        projeto
-        for projeto in Encomenda.objects.filter(
+    projetos = list(
+        Encomenda.objects.filter(
             site_id=site_id, status__in=ESTADOS_VISIVEIS_NO_MURAL
         ).order_by("criada_em", "id")
-        if not motor.por_que_nao(vaga_de(projeto), candidato, regras, agora)
+    )
+    reservas_por_encomenda = _reservas_por_encomenda(
+        [projeto.pk for projeto in projetos], site_id=site_id
+    )
+    return tuple(
+        projeto
+        for projeto in projetos
+        if not motor.por_que_nao(
+            vaga_de(projeto, reservas_por_encomenda), candidato, regras, agora
+        )
     )
 
 
@@ -303,8 +342,9 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
     O aluno NÃO vira "trabalhando": quem pegou um projeto ainda não tem trabalho
     nenhum, e travá-lo na fila por três horas porque está lendo um briefing
     seria puni-lo por estar interessado (plano §4.2). O que ele não pode é
-    receber uma oferta da fila enquanto isso, e essa parte sai de graça, porque
-    o [INV-ENC-J2] já vale pela `Oferta`.
+    receber uma oferta da fila nem iniciar outra negociação enquanto isso. O
+    [INV-ENC-J2] bloqueia a oferta pendente e o [INV-ENC-N6] bloqueia a
+    negociação viva, inclusive quando ela começou no Mural.
     """
     projeto = (
         Encomenda.objects.select_for_update()
@@ -321,7 +361,11 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
         razao = (
             JA_FOI_PEGA
             if projeto.status == Encomenda.Status.RESERVADA
-            else NAO_ESTA_NO_MURAL
+            else (
+                E_CHAMADA_ABERTA_USE_ACEITAR
+                if projeto.status == Encomenda.Status.ABERTA
+                else NAO_ESTA_NO_MURAL
+            )
         )
         return Desfecho(feito=False, razao=razao, encomenda_em=projeto.status)
 

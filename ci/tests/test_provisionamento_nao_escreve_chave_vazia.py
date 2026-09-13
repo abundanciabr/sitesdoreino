@@ -292,6 +292,68 @@ def test_a_conferencia_do_forum_compara_com_a_copia_e_nao_consigo_mesma():
     )
 
 
+def test_cursos_preserva_as_tres_chaves_que_o_roteiro_de_pares_acrescenta():
+    """O roteiro principal não pode apagar o que o roteiro de pares escreve."""
+    script = "infra/provisionar-cursos.sh"
+    fonte = (RAIZ / script).read_text(encoding="utf-8")
+    esperado = {
+        "TOKENS_ACEITOS_ADMIN": "T_ADMIN",
+        "CATALOGO_API_URL": "CATALOGO_URL",
+        "TOKEN_CATALOGO": "T_CATALOGO",
+    }
+    for chave, variavel in esperado.items():
+        assert f"{chave}=${variavel}" in fonte
+        assert f'ler_de "$ENV_CURSOS" {chave}' in fonte or chave == "CATALOGO_API_URL"
+
+    def orfas(texto: str) -> set[str]:
+        corpo = _heredocs(texto, script)[0][1]
+        valores = set(
+            _valores_atribuidos(_sem_comentarios_nem_heredocs(texto, script))
+        )
+        resultado = set()
+        for linha in corpo.splitlines():
+            achado = RE_LINHA_DE_CHAVE.match(linha)
+            if not achado:
+                continue
+            resultado.update(
+                chave
+                for chave in RE_REFERENCIA.findall(achado.group(2))
+                if chave not in valores
+            )
+        return resultado
+
+    assert not orfas(fonte)
+    def preservacoes_ausentes(texto: str) -> set[str]:
+        return {
+            chave
+            for linha, chave in (
+                (
+                    'T_ADMIN="$(ler_de "$ENV_CURSOS" TOKENS_ACEITOS_ADMIN)"',
+                    "TOKENS_ACEITOS_ADMIN",
+                ),
+                (
+                    'T_CATALOGO="$(ler_de "$ENV_CURSOS" TOKEN_CATALOGO)"',
+                    "TOKEN_CATALOGO",
+                ),
+            )
+            if linha not in texto.splitlines()
+        }
+
+    assert not preservacoes_ausentes(fonte)
+    for linha, chave in (
+        (
+            'T_ADMIN="$(ler_de "$ENV_CURSOS" TOKENS_ACEITOS_ADMIN)"',
+            "TOKENS_ACEITOS_ADMIN",
+        ),
+        (
+            'T_CATALOGO="$(ler_de "$ENV_CURSOS" TOKEN_CATALOGO)"',
+            "TOKEN_CATALOGO",
+        ),
+        ):
+        sabotada = fonte.replace(f"{linha}\n", "")
+        assert chave in preservacoes_ausentes(sabotada)
+
+
 SCRIPT_DE_MENTIRA = """#!/usr/bin/env bash
 RELIDA="$(ler_de "$ENV_X" X_RELIDA)"
 NASCE_VAZIA=""

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-113747-TAR-342-explicada",
+  "tarefa": "TAR-342",
+  "evento": "explicada",
+  "quando": "2026-09-11T11:37:47+00:00",
+  "quem": "erro relatado pela mantenedora em 11/09/2026",
+  "o_que_e": "A aula avulsa pode ser criada, mas ainda não pode ser atualizada sem trocar o seu conteúdo manualmente.",
+  "o_que_muda": "Quem administra a escola poderá corrigir nome, vídeo e descrição sem quebrar o link já enviado aos alunos.",
+  "exemplo": "Uma aula compartilhada no fórum continua no mesmo endereço mesmo quando o título ou o vídeo são corrigidos.",
+  "importancia": 90
+}

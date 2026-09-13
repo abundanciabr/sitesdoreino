@@ -18,8 +18,9 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
 
 {% block conteudo %}
 <section class="abertura">
+  <p class="rotulo">Meshcraft Academy</p>
   <h1>Os cursos da Meshcraft Academy</h1>
-  <p class="passo">Cada curso tem a sua sala de aula. Escolha o seu e entre.</p>
+  <p class="passo">Escolha sua próxima entrega. Cada curso é uma sala com um caminho claro para construir, entregar e avançar.</p>
   {% if visitante %}
   <p class="miudo">Já é aluno? <a href="{{ url_de_entrada }}">Entrar na escola</a></p>
   {% endif %}
@@ -39,8 +40,19 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
 
 {% for curso in cursos %}
 <article class="curso situacao-{{ curso.situacao }}">
-  <h2>{{ curso.nome }}{% if curso.situacao == "seu" %} <span class="selo">Seu curso</span>{% endif %}</h2>
+  <div class="curso-topo">
+    <div>
+      <p class="rotulo">{% if curso.situacao == "seu" %}Seu caminho{% elif curso.situacao == "visitante" %}Curso aberto{% else %}Curso disponível na escola{% endif %}</p>
+      <h2>{{ curso.nome }}{% if curso.situacao == "seu" %} <span class="selo">Seu curso</span>{% endif %}</h2>
+    </div>
+    {% if curso.situacao == "seu" and curso.aulas_publicadas %}<strong class="percentual">{{ curso.progresso_percentual }}%</strong>{% endif %}
+  </div>
   <p class="aulas">{% if curso.aulas_abertas == 0 %}Nenhuma aula aberta ainda{% elif curso.aulas_abertas == 1 %}1 aula aberta{% else %}{{ curso.aulas_abertas }} aulas abertas{% endif %}</p>
+  {% if curso.aulas_abertas == 0 and curso.total_aulas %}<p class="estado-conteudo">O conteúdo deste curso está em preparo.</p>{% endif %}
+  {% if curso.situacao == "seu" %}
+  <div class="barra-progresso" role="progressbar" aria-label="Progresso do curso" aria-valuenow="{{ curso.progresso_percentual }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ curso.progresso_percentual }}%"></span></div>
+  <p class="progresso-legenda">{{ curso.aulas_concluidas }} de {{ curso.aulas_publicadas }} aulas concluídas</p>
+  {% endif %}
   {% if curso.situacao == "nao-e-seu" %}
   <p class="miudo">Você não está matriculado neste curso.</p>
   {% elif curso.situacao == "sem-produto" %}
@@ -48,7 +60,7 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
   Ninguém entra aqui ainda. Fale com a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
   {% endif %}
   {% if curso.entra %}
-  <p class="entrar"><a href="{{ curso.url }}">Entrar no curso</a></p>
+  <p class="entrar"><a href="{{ curso.url }}">{{ curso.acao|default:"Entrar no curso" }}</a></p>
   {% endif %}
 </article>
 {% empty %}

@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-124-separacao-pr1506-retomada",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: separar retomada de pedidos do PR 1506",
+  detalhe: "A retomada de pedidos após interrupção foi separada do lote grande do PR 1506 em uma filha baseada nos estados dos robôs. A base empilhada passou com 108 testes focados e todas as muralhas locais.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1513. Validação local: 108 testes focados e muralhas com exit 0.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();

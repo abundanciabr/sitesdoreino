@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-133523-TAR-320-concluida",
+  "tarefa": "TAR-320",
+  "evento": "concluida",
+  "quando": "2026-09-10T13:35:23+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1526; revisao=8d3c950d1dce440252ca0298735aaf32bcd7229d; arvore=f88f125edb1e99fcfb8fc2063586007d4dcb3a86; head=9e4d1a30f81744390f77bf5b22d332ce0f4b150d; merge=5988697276fe3eea68de37f83eece3d5fd690319; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34480711696; atestado=atestado aprovado para 9e4d1a30f81744390f77bf5b22d332ce0f4b150d; aceite=painel/registros/20260910-035-complemento-da-auditoria-publicado.js",
+  "verificado_em": "2026-09-10"
+}

@@ -42,6 +42,10 @@ def _repo(tmp_path: Path, conteudo: str = DOIS_TESTES) -> Path:
     (raiz / "ci" / "tests").mkdir(parents=True)
     (raiz / "services" / "quiz" / "tests").mkdir(parents=True)
     (raiz / "contracts").mkdir()
+    (raiz / "celulas.yml").write_text(
+        "celulas:\n  quiz:\n    caminhos: [services/quiz]\n    consome: []\n",
+        encoding="utf-8",
+    )
     (raiz / "contracts" / "LEIA-ME.md").write_text("c", encoding="utf-8")
     for marca in ("CONSTITUICAO.md", "INVARIANTES.md"):
         (raiz / marca).write_text("cenario", encoding="utf-8")
@@ -209,6 +213,40 @@ def test_menos_testes_no_mesmo_arquivo_reprova(tmp_path: Path, monkeypatch):
     assert "2 → 1" in relatorio.render()
 
 
+def test_cobertura_da_celula_reprova_reducao_do_total(tmp_path: Path, monkeypatch):
+    raiz = _repo(tmp_path)
+    _commit(raiz, lambda r: (r / ALVO).write_text(UM_TESTE, encoding="utf-8"))
+    reducoes, placar = catraca.cobertura_das_celulas(raiz, "HEAD~1")
+    assert reducoes == ["célula quiz: 2 → 1 teste(s) coletável(eis)"]
+    assert placar == "quiz: 2 antes · 1 depois"
+
+
+def test_cobertura_da_celula_nao_confunde_movimento_com_reducao(
+    tmp_path: Path, monkeypatch
+):
+    raiz = _repo(tmp_path)
+
+    def mover_um_teste(r: Path) -> None:
+        (r / ALVO).write_text(UM_TESTE, encoding="utf-8")
+        (r / "services" / "quiz" / "tests" / "test_outro.py").write_text(
+            UM_TESTE, encoding="utf-8"
+        )
+
+    _commit(raiz, mover_um_teste)
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    assert catraca.cobertura_das_celulas(raiz, "HEAD~1") == (
+        [],
+        "quiz: 2 antes · 2 depois",
+    )
+
+
+def test_cobertura_da_celula_sem_mapa_e_ERROR(tmp_path: Path):
+    raiz = _repo(tmp_path)
+    (raiz / "celulas.yml").unlink()
+    with pytest.raises(ErroDeInstrumentacao):
+        catraca.cobertura_das_celulas(raiz, "HEAD")
+
+
 @pytest.mark.parametrize(
     "desligador",
     [
@@ -332,7 +370,12 @@ def test_a_muralha_reprova_de_verdade(tmp_path: Path):
         pytest.skip("sem bash utilizável")
     raiz = _repo(tmp_path)
     _commit(raiz, lambda r: (r / ALVO).unlink())
-    for arquivo in ("catraca_de_testes.py", "_nucleo.py", "catraca-de-testes.sh"):
+    for arquivo in (
+        "catraca_de_testes.py",
+        "mapa_de_celulas.py",
+        "_nucleo.py",
+        "catraca-de-testes.sh",
+    ):
         shutil.copy(RAIZ / "ci" / arquivo, raiz / "ci" / arquivo)
     proc = subprocess.run(
         [BASH, str(raiz / "ci" / "catraca-de-testes.sh")],

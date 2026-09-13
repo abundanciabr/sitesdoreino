@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-141040-TAR-293-explicada",
+  "tarefa": "TAR-293",
+  "evento": "explicada",
+  "quando": "2026-09-09T14:10:40+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "A fila recebe entregas antes de saber se chegaram ao resultado pedido.",
+  "o_que_muda": "Abrir uma entrega deixa a tarefa aguardando comprovação e mantém suas dependências protegidas.",
+  "exemplo": "Enviar um conserto para revisão ainda não quer dizer que ele chegou ao site.",
+  "importancia": 95
+}

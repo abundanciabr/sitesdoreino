@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-041-deploy-da-correcao-de-situacao-confirmado",
+  tipo: "medicao",
+  quando: "2026-09-09",
+  titulo: "Deploy da correção de situação confirmado",
+  detalhe: "O PR #1474 foi incorporado no commit d6b146ff. O primeiro deploy foi revertido por indisponibilidade da VPS, e a repetição terminou com sucesso no run 34307380203. A conferência pública mostrou os dois cursos liberados e o painel salvou a ficha antiga como Ex-aluno.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1474; https://github.com/abundanciabr/sitesdoreino/actions/runs/34307380203; https://meshcraft.top/admin/escola/alunos/; https://meshcraft.top/cursos/",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

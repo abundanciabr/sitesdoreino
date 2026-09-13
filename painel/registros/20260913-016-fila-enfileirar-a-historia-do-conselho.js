@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-016-fila-enfileirar-a-historia-do-conselho",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "fila: enfileirar a história do conselho",
+  detalhe: "TAR-395 guarda o brief completo da história do conselho e só libera sua execução depois da TAR-379. Esta entrega cria a ordem no balcão e não antecipa registros ou armadilha.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1623. Validação local: árvore 4e15c5271f64c99f9123b4a5a543bfc167c0c8ba; commit 3bda332de74cc0368fa1db3027921d808d5c2322; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-394",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

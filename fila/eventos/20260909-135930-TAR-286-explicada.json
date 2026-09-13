@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-135930-TAR-286-explicada",
+  "tarefa": "TAR-286",
+  "evento": "explicada",
+  "quando": "2026-09-09T13:59:30+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; reaproveita TAR-157, TAR-245 e TAR-246 concluídas",
+  "o_que_e": "A escola já tem ajudas separadas para laudo, fidelidade e fórum, sem uma porta única com fonte citada, triagem e passagem para uma pessoa.",
+  "o_que_muda": "A pessoa de Ensino ganha um copiloto único que reaproveita essas capacidades e mostra de onde veio cada orientação.",
+  "exemplo": "Ao receber uma dúvida sobre um checkpoint, o copiloto cita a aula correspondente e encaminha para a pessoa de Ensino quando a fonte não basta.",
+  "importancia": 91
+}

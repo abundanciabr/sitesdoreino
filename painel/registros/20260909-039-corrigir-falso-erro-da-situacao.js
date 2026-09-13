@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-039-corrigir-falso-erro-da-situacao",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Corrigir falso erro ao salvar situação do aluno",
+  detalhe: "O formulário agora envia apenas campos que mudaram. A tela não acusa falha depois de aplicar a situação, mesmo quando os demais campos chegam repetidos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1474",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

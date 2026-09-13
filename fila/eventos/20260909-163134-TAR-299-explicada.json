@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-163134-TAR-299-explicada",
+  "tarefa": "TAR-299",
+  "evento": "explicada",
+  "quando": "2026-09-09T16:31:34+00:00",
+  "quem": "Pedido do mantenedor de painel administrativo confiável; fatia admin atribuída pela maestro, dependente dos PRs 1493 e 1496.",
+  "o_que_e": "A Central e a aba de robôs mostram os assuntos que precisam de atenção e o estado realmente conhecido de cada entrega.",
+  "o_que_muda": "Decisões humanas aparecem na entrada, trabalho técnico fica com os robôs e falhas de leitura preservam a última informação válida.",
+  "exemplo": "Uma entrega em rascunho aparece em preparação; uma tarefa submetida ainda aguarda comprovação do aceite.",
+  "importancia": 85
+}

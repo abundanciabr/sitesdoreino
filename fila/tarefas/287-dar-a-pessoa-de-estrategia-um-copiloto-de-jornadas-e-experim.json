@@ -1,0 +1,24 @@
+{
+  "arquivo": "287-dar-a-pessoa-de-estrategia-um-copiloto-de-jornadas-e-experim",
+  "id": "TAR-287",
+  "titulo": "Dar à pessoa de Estratégia um copiloto de jornadas e experimentos",
+  "toca": [
+    "admin",
+    "painel",
+    "mensageria",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-283",
+    "TAR-285"
+  ],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo",
+    "latencia-de-aprendizado"
+  ],
+  "evidencia_exigida": "PRs fatiados que reutilizam o analista e as jornadas, registram hipótese, medida, guarda e prazo, preservam versões aprovadas e provam que nenhuma mudança chega ao público sem aprovação.",
+  "despacho": "Construa o Copiloto de Estratégia reaproveitando o analista das TAR-250 e TAR-263, o laboratório de experimentos e as jornadas existentes. Ele propõe hipóteses e mudanças, liga cada proposta a evidência e guarda versões aprovadas. Nenhum texto ou jornada muda em produção sem aprovação registrada. Fatie por célula e por contrato após a TAR-283 e a fundação TAR-285; não copie números do painel para uma base paralela.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; reutiliza TAR-250, TAR-263 e jornadas existentes",
+  "criada_em": "2026-09-09"
+}

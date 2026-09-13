@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-040-tar-257-aluno-livre-durante-negociacao",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Aluno em negociação permanece disponível sem receber uma segunda oferta",
+  detalhe: "A TAR-257 removeu a mudança para trabalhando no aceite e fez o motor conhecer negociações vivas. O aluno pode continuar disponível enquanto o cliente pensa, mas a fila recusa uma segunda negociação viva com razão explícita. O teste adversarial ficou vermelho quando a guarda foi removida e voltou a ficar verde depois da restauração.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1475",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: "medio",
+  portao: null
+}); })();

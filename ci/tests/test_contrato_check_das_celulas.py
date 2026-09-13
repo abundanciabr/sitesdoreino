@@ -67,6 +67,7 @@ protege.
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -89,6 +90,49 @@ PORTAO = "ci/freeze-de-contrato.sh"
 # `[ -f x ]`, `[ -e x ]`, `[ -s x ]`, `[ -r x ]`, e os mesmos com `test`.
 # `-d` (diretório) entra junto: a ideia proibida é a mesma.
 RAMIFICA_POR_DISCO = re.compile(r"(\[|\btest\b)\s+-[fedsr]\s")
+
+MANIFESTO = RAIZ / "ci" / "manifesto-de-contratos.json"
+
+
+def _pacotes_do_requirements(texto: str) -> set[str]:
+    pacotes: set[str] = set()
+    for linha in texto.splitlines():
+        linha = linha.split("#", 1)[0].strip()
+        if not linha:
+            continue
+        nome = re.split(r"[<=>!~\[]", linha, maxsplit=1)[0].strip().lower()
+        pacotes.add(nome)
+    return pacotes
+
+
+def _celulas_sem_pyyaml(manifesto: dict, raiz: Path) -> list[str]:
+    ausentes: list[str] = []
+    for celula, configuracao in manifesto["celulas"].items():
+        if configuracao.get("freeze") != "required":
+            continue
+        requirements = raiz / "services" / celula / "requirements.txt"
+        if not requirements.is_file():
+            ausentes.append(f"{celula}: requirements.txt ausente")
+            continue
+        if "pyyaml" not in _pacotes_do_requirements(
+            requirements.read_text(encoding="utf-8")
+        ):
+            ausentes.append(celula)
+    return ausentes
+
+
+def test_toda_celula_com_freeze_required_declara_pyyaml():
+    manifesto = json.loads(MANIFESTO.read_text(encoding="utf-8"))
+    assert _celulas_sem_pyyaml(manifesto, RAIZ) == []
+
+
+def test_o_guarda_morde_celula_no_limbo_sem_pyyaml(tmp_path):
+    manifesto = {"celulas": {"falsa": {"freeze": "required"}}}
+    requirements = tmp_path / "services" / "falsa" / "requirements.txt"
+    requirements.parent.mkdir(parents=True)
+    requirements.write_text("Django==5.0\n", encoding="utf-8")
+
+    assert _celulas_sem_pyyaml(manifesto, tmp_path) == ["falsa"]
 
 
 def receita_do_alvo(texto: str, alvo: str) -> list[str] | None:

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-035-complemento-da-auditoria-publicado",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Complemento da auditoria publicado",
+  detalhe: "Complemento, TAR-319 e armadilha 461 publicados. Este verde aceita só essa publicação; TAR-319 segue aberta e a Fase 1 continua NÃO PRONTA.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1526; merge 5988697276fe3eea68de37f83eece3d5fd690319; https://github.com/abundanciabr/sitesdoreino/actions/runs/34480711696; https://meshcraft.top/admin/caixa/robos/; https://meshcraft.top/admin/painel/",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-034-painel-registrar-achado-complementar-nos-links-de-evidencia",
+  relacao: "resposta",
+  tarefa: "TAR-320",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

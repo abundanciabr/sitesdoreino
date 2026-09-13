@@ -394,7 +394,8 @@ def test_diff_ilegivel_vira_nao_revisado_e_sai_com_exit_zero(tmp_path):
     proc = _rodar_cli("0", "--diff-de", str(tmp_path / "nao-existe.patch"))
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert f"{rev.MARCA} {rev.NAO_REVISADO}" in proc.stdout
-    assert "O pouso segue normalmente" in proc.stdout
+    assert "atestado independente continua" in proc.stdout
+    assert "obrigatório para o pouso" in proc.stdout
 
 
 def test_diff_vazio_nao_vira_limpo(tmp_path):

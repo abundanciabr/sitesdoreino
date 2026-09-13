@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-153205-TAR-354-explicada",
+  "tarefa": "TAR-354",
+  "evento": "explicada",
+  "quando": "2026-09-11T15:32:05+00:00",
+  "quem": "pedido do mantenedor em 11/09/2026",
+  "o_que_e": "A edição de aula avulsa passa a escolher um endereço público único.",
+  "o_que_muda": "Duas aulas não recebem o mesmo link quando o nome ou endereço se repetem.",
+  "exemplo": "Ao pedir aula-de-testes para uma segunda aula, ela recebe aula-de-testes-2.",
+  "importancia": 80
+}

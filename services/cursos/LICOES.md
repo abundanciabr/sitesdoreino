@@ -2,6 +2,34 @@
 
 Específico desta célula. Transversal vai em `armadilhas/` (raiz).
 
+## O endereço de aula é escolhido pelo banco, não pela prévia do editor
+
+**Medido em 11/09/2026, na edição das aulas avulsas.** A prévia do Admin pode
+normalizar o título para um endereço legível, mas duas edições podem pedir o
+mesmo valor antes de qualquer uma gravar. Consultar os endereços ocupados não
+fecha essa janela.
+
+O banco é a autoridade pela restrição `uma_aula_avulsa_por_slug_por_site`. A
+porta calcula o menor sufixo livre, grava numa transação e, se a restrição
+recusar uma disputa, consulta e tenta de novo. A prova usa duas conexões reais
+do PostgreSQL paradas na mesma candidata: uma recebe `aula-disputada`, a outra
+recebe `aula-disputada-2`. Tirar a repetição após `IntegrityError` derruba o
+teste.
+
+## O prefixo público mora no `reverse`, nunca no endereço digitado
+
+**Medido em 11/09/2026, na edição das aulas avulsas.** As rotas da biblioteca
+existem no urlconf como `aulas/<slug>`, mas a célula publica sob
+`SCRIPT_NAME=/cursos`. Um link montado como `/aulas/<slug>` ignora esse prefixo
+e a borda responde 404, embora a aula exista no banco. O caminho público é
+`reverse("aula-avulsa", args=[slug])`, que produz
+`/cursos/aulas/<slug>` quando o prefixo está configurado.
+
+O teste da página sob `SCRIPT_NAME` precisa afirmar os dois lados: o endereço
+revertido carrega `/cursos`, e o urlconf resolve o `path_info` sem esse trecho.
+Escrever `/cursos` dentro de `urls.py` resolveria somente hoje e quebraria a
+próxima mudança de montagem.
+
 ## A sala pergunta MATRÍCULAS, não categoria, e o 404 mudou de significado
 
 **Contexto.** Até 06/09/2026 `apps/core/sessao.py` chamava
@@ -155,3 +183,16 @@ existe"; oferecê-lo terminaria em 403. Mostrar sem botão, com a frase, é o me
 
 **O que fica:** o 301 do endereço antigo de AULA (`/E00`, TAR-216) continua, e
 `_curso_unico` existe só para ele. Só o 301 da raiz morreu.
+
+## O teste dos Bosses parte dos títulos reais, não da lista que ele fiscaliza
+
+**Medido em 10/09/2026, após o deploy do PR #1454 falhar.** O comando procurava
+`Modificador Bevel e Triangulate`, enquanto a aula 31 se chamava `Comando Bevel
+e Triangulate`. O teste importava `BOSSES_POR_MODULO` do próprio comando para
+criar as aulas e, por isso, fabricava uma base que repetia o erro e ficava verde.
+
+O guarda desta célula mantém uma fixture literal dos oito títulos conferidos na
+tela administrativa. Assim, mudar a lista do comando sem corresponder ao curso
+real reprova. A mesma prova roda o comando duas vezes e cria uma duplicata com
+caixa e pontuação diferentes, para preservar idempotência, normalização e recusa
+de ambiguidade sem gravação.

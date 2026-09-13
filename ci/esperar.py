@@ -1,127 +1,32 @@
 #!/usr/bin/env python3
-"""ESPERAR — a única forma autorizada de um robô esperar algo de fora.
+"""Espera com teto vivo e consulta única da entrega até publicação.
 
-O PROBLEMA (29/08/2026, nas palavras do mantenedor)
----------------------------------------------------
-"aparece que o robô está trabalhando, executando, fazendo algo, porém, passam
-horas e mais horas, e daí o robô vem e diz: AH EU ESTAVA ESPERANDO ALGO ME
-RESPONDER, MAS ESSE ALGO QUEBROU E DAÍ EU NÃO PUDE CONTINUAR". Espera sem fim
-é visualmente idêntica a trabalho. A cura não é prometer que o agente avisa —
-é usar uma espera QUE FALA SOZINHA e MORRE NO TETO. História: armadilhas/161.
+    python ci/esperar.py --checks PR --e-pousar
+    python ci/esperar.py --entrega PR
+    python ci/esperar.py --run ID
+    python ci/esperar.py --deploy SHA
 
-COMO USAR (pelo agente, dentro de uma sessão)
----------------------------------------------
-Rode pela ferramenta `Monitor` do harness — cada linha impressa aqui vira uma
-mensagem na conversa, AO VIVO, enquanto o agente segue trabalhando (medido em
-29/08/2026; um Bash em primeiro plano só entrega o stdout no fim, e o teto de
-um Bash é 10 min). O `timeout_ms` do Monitor deve ser MAIOR que o teto daqui,
-senão o harness mata o esperador antes da linha de morte — silêncio, a doença.
+`--entrega` retorna JSON sem laço; a maestro acompanha pelo mecanismo nativo
+ativo da sessão. Só PUBLICADO e SEM_PUBLICACAO retornam zero. Etiqueta não
+é integração, e merge não é publicação. Nova revisão, recusa, publicação
+pendente e falha devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
 
-    python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
-    python ci/esperar.py --deploy <sha> --teto 20
-    python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
-    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro,
-        e o que acorda o robô UMA vez: --e-pousar já implica --so-desfecho)
-    python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
+As esperas usam a régua de `ci/tempos_esperados.json`, com voz e prazo finito.
+`--teto` é override explícito para espera sem régua. `--e-pousar` implica
+`--so-desfecho`: o bastidor vai ao stderr e ao log privado, o resultado sai
+uma vez no stdout. Pedir pouso não certifica a entrega nem encerra a
+responsabilidade pelo acompanhamento. `--pouso` permanece legado e recusa
+laços sem justificativa; use a consulta `--entrega` na retomada nativa.
 
-ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
-manda ter são o veredito do deploy (CLAUDE.md) e a conclusão dos checks UMA VEZ
-antes de pedir pouso (o portão recusa com check em andamento). Todo o resto é
-tempo morto.
-
-E DESDE 31/08/2026 ISSO TEM MECANISMO: `--pouso` RECUSA. A regra existia só em
-texto — aqui e no RITOS — e apodreceu como toda garantia sem mecanismo
-(RETROSPECTIVA-FASE-D §2): os robôs seguiam esperando o pouso, porque a opção
-estava listada ao lado das legítimas. O que custava, medido em 31/08/2026 sobre
-os 40 PRs do dia:
-
-    PR aberto até entrar (mediana) .................... 8,4 min
-    uma passagem da pista ............................. 34 s (máx 61 s)
-    o deploy chegar na VPS (mediana) .................. 3,2 min
-
-Depois que a etiqueta está posta, o robô não tem mais nada a fazer ali: a fila
-anda sozinha 326 vezes por hora e comenta no PR o desfecho. Ficar olhando não
-acelera um segundo, e enche a janela do mantenedor de batimento sem fato novo.
-A fila nunca precisou de plateia.
-
-Quem tem motivo real (depurar a própria pista) passa `--mesmo-assim "<motivo>"`;
-a recusa ensina o caminho e não se contorna por acidente.
-
-E DESDE 03/09/2026 O CAMINHO INTEIRO É UM COMANDO SÓ: `--checks N --e-pousar`.
-O rito tinha três passos (esperar os checks, conferir o portão, pedir pouso) e
-os dois últimos dependiam de o robô VOLTAR para executá-los. Numa sessão que
-terminou entre um passo e outro, o PR ficou verde e parado, e o mantenedor
-passou horas esperando um pouso que esperava por ele. Com `--e-pousar`, a
-própria espera, ao ver os checks verdes, chama `ci/mergear.py N --pousar` (o
-MESMO portão, sem cópia de regra) e pede o pouso. Vermelho, estouro ou
-medição impossível NUNCA viram pedido: o portão só é chamado no verde, e ele
-ainda recusa por conta própria (base velha, dívida do livro, registro ausente).
-
-AS TRÊS LINHAS DO CONTRATO
---------------------------
-    ▶ partida: o que vou esperar, o teto, e o que farei se estourar
-    ⏳ batimento (~60s): tempo decorrido E o estado OBSERVADO lá fora —
-       um relógio sem estado observado é silêncio com batimento bonito
-    🔴/✅ desfecho: SEMPRE barulhento — verde, reprovado, teto, ou
-       "não consegui medir" (que nunca, jamais, vira verde — INV-CI01)
-
-E DESDE 06/09/2026 AS TRÊS LINHAS SE DIVIDEM EM DOIS CANOS. Todas continuam
-existindo; muda quem escuta cada uma. Sob `--so-desfecho` (que `--e-pousar`
-liga sozinho), só o DESFECHO sai no stdout, numa impressão só; partida,
-batimento e placar vão para o stderr e para o log da espera.
-
-O motivo é dinheiro. Cada linha no stdout de uma espera rodada pelo agente
-vira uma notificação, e cada notificação REENVIA a conversa inteira ao modelo
-(97,7% de toda a entrada da semana era releitura). Medido em 06/09/2026: a
-espera dos checks sozinha custava de 18% a 21,8% da cota semanal, falando a
-cada mudança de placar com o contexto entre 372k e 401k. Um `--e-pousar` que
-acorda o robô cinco vezes cobra cinco releituras para dizer cinco vezes a
-mesma coisa — e o robô só tem o que fazer no fim.
-
-Isto NÃO é a espera muda da `armadilhas/161` voltando. Muda era a espera sem
-voz e sem teto, invisível de fora. O teto continua matando, o desfecho continua
-barulhento, o bastidor continua na tela (stderr) e no
-`~/.sitesdoreino/esperas.jsonl`. Quem não pede a flag segue com a voz de
-sempre, inteira no stdout: `--run`/`--deploy` pelo Monitor não mudaram nada.
-
-E O VERMELHO DIZ A CAUSA, NÃO O NOME (06/09/2026). Um desfecho que dizia só
-"checks REPROVADOS: muralhas" mandava o robô caçar; medido, isso custou 41
-chamadas de mediana em 32 episódios da semana (12% da cota) para achar um texto
-que o CI já tinha impresso. Agora o desfecho vermelho busca o log do job
-(`gh run view --log-failed`, teto de 30 s, UM job), recorta o bloco de falha e
-o casa com `armadilhas/SINAIS.json` pelo MESMO reconhecedor do sino. Tudo aí é
-fail-open: sem log, `gh` que falha ou que demora, o desfecho volta a dizer o de
-sempre. Lição não é muralha — na dúvida ela cala, em vez de recusar.
-
-E DESDE 07/09/2026 O NÚMERO SE CONFERE ANTES DE ESPERAR. `--checks`/`--pouso`
-recebem o NÚMERO DO PR, mas `--checks` também se lê como "quantos checks": em
-05/09/2026 dois robôs, sem saber um do outro, passaram a CONTAGEM (6 e 13), e o
-instrumento foi medir os PRs #6 e #13, mesclados desde agosto e alheios à
-tarefa. Cada um queimou as 20 tentativas repetindo "não consegui medir" — frase
-legítima para uma condição impossível, a mesma doença do sha curto em
-`resolver_sha_inteiro` (armadilhas/354). Agora uma pergunta ao `gh`, antes da
-partida da voz, recusa NA HORA o número que não é PR deste repositório — e, no
-`--checks`, o que não está ABERTO —, nomeando o PR que o número achou de
-verdade. É lição, não muralha: `gh` mudo (rede, credencial) a deixa CALADA, e o
-laço, fail-closed, segue decidindo sozinho.
-
-Exit codes (o dialeto da casa): 0 concluiu verde · 1 concluiu REPROVADO ·
-2 estouro do teto ou medição impossível.
-
-A régua de "quanto isso costuma levar" vem de `ci/tempos_esperados.json`;
-sem régua a voz diz "não sei quanto isto costuma levar" — nunca inventa
-número. Cada espera concluída deixa uma linha em
-`~/.sitesdoreino/esperas.jsonl` (a casa única do fato "quanto durou"), de onde
-a régua futura come.
-
-Costura de teste: ESPERAR_GH (lista JSON do comando que faz as vezes do `gh`),
-no molde de PORTAO_GH.
+Exit das esperas: 0 verde, 1 reprovado, 2 teto ou instrumento. Costura offline:
+ESPERAR_GH contém a lista JSON do executável que substitui gh nos testes.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -180,6 +85,8 @@ GATILHOS = Path(__file__).resolve().parents[1] / "armadilhas" / "GATILHOS.json"
 LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
+FATOR_DE_FOLGA_DO_TETO = 2.0
+ARREDONDAMENTO_DO_TETO_S = 60.0
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
 
 # As esperas que a lei manda NÃO existir (RITOS.md §2 peça 6: "a melhor espera
@@ -290,6 +197,24 @@ def acima_do_esperado(regua: dict | None, decorrido: float) -> bool:
     p90 = regua.get("p90_s") if amostra >= AMOSTRA_MINIMA else None
     limite = p90 or (regua.get("p50_s") or 0) * 1.5
     return bool(limite) and decorrido > limite
+
+
+def teto_da_regua(regua: dict | None) -> float | None:
+    """Calcula um teto em segundos a partir da régua, sem inventar prazo."""
+    if not regua:
+        return None
+    try:
+        p50 = float(regua.get("p50_s") or 0)
+        p90 = float(regua.get("p90_s") or 0)
+        amostra = int(regua.get("amostra") or 0)
+    except (TypeError, ValueError):
+        return None
+    if p50 <= 0:
+        return None
+    base = p90 if amostra >= AMOSTRA_MINIMA and p90 > 0 else p50 * 1.5
+    return math.ceil(
+        base * FATOR_DE_FOLGA_DO_TETO / ARREDONDAMENTO_DO_TETO_S
+    ) * ARREDONDAMENTO_DO_TETO_S
 
 
 # ------------------------------------------------------------ observadores ----
@@ -912,6 +837,8 @@ def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     alvo = p.add_mutually_exclusive_group(required=False)
+    alvo.add_argument("--entrega", type=int, metavar="PR",
+                      help="consulta uma vez revisão, integração e publicação; saída JSON")
     alvo.add_argument("--run", help="id de um run do Actions (o veredito do deploy)")
     alvo.add_argument("--deploy", metavar="SHA",
                       help="sha na main — espera os runs de deploy dele")
@@ -924,7 +851,7 @@ def main(argv: list[str] | None = None) -> int:
     alvo.add_argument("--autoteste", action="store_true",
                       help="prova viva de que a espera fala e morre no teto")
     p.add_argument("--teto", type=float, metavar="MIN",
-                   help="teto em MINUTOS — obrigatório; ao estourar, a espera MORRE")
+                   help="teto manual em MINUTOS; sem ele, calculo pela régua viva")
     p.add_argument("--dizendo", default="", help="o que estou esperando, para leigo")
     p.add_argument("--voz", type=float, default=60.0,
                    help="segundos entre batimentos falados (padrão 60)")
@@ -948,17 +875,23 @@ def main(argv: list[str] | None = None) -> int:
                    help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
     args = p.parse_args(argv)
 
+    if args.entrega is not None:
+        from estado_da_entrega import consultar_entrega
+        from _nucleo import raiz_do_repo
+        try:
+            estado = consultar_entrega(raiz_do_repo(), args.entrega)
+            print(json.dumps(estado, ensure_ascii=False))
+            return 0 if estado["estado"] in {"PUBLICADO", "SEM_PUBLICACAO"} else 1
+        except Exception as erro:
+            print(json.dumps(dict(pr=args.entrega, estado="ERROR", terminal=False,
+                                  acao="Corrija a consulta antes de decidir: " + str(erro)), ensure_ascii=False))
+            return 2
     if args.autoteste:
         return autoteste()
     if not (args.run or args.deploy or args.checks or args.pouso or args.sonda):
         p.error("diga O QUE esperar: --run/--deploy/--checks/--pouso/--sonda")
-    if args.teto is None or args.teto <= 0:
-        p.error("--teto <minutos> é obrigatório — espera sem teto é a doença "
-                "que este script existe para curar (armadilhas/161)")
-
     gh = _gh()
     repo = _repo()
-    teto_s = args.teto * 60.0
     # `--e-pousar` é o caminho automático do rito, e ele existe justamente para
     # o robô não voltar: calar o bastidor ali é o ganho inteiro. Quem chama
     # `--run`/`--deploy` na mão pelo Monitor continua com a voz de sempre.
@@ -990,6 +923,19 @@ def main(argv: list[str] | None = None) -> int:
     dizendo = args.dizendo or rotulo
     chave_da_regua = args.regua or chave
     regua = carregar_regua(chave_da_regua)
+    if args.teto is not None:
+        if args.teto <= 0:
+            p.error("--teto precisa ser maior que zero")
+        teto_s = args.teto * 60.0
+    else:
+        teto_s = teto_da_regua(regua)
+        if teto_s is None:
+            p.error(
+                f"não consegui calcular o teto pela régua {chave_da_regua!r}. "
+                "Use --teto <minutos> para uma espera sem medição, ou "
+                "--regua <chave> quando existir uma entrada válida em "
+                "ci/tempos_esperados.json."
+            )
     pr_do_pouso = args.pr or args.checks or args.pouso
 
     # A ESPERA QUE NÃO DEVIA EXISTIR (31/08/2026) — ver o cabeçalho. A recusa
@@ -1171,8 +1117,8 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     if proc.returncode == 0:
         voz.desfecho(
             f"{prefixo}🛬 pedi pouso do PR {pr} pelo portão. A pista assume: "
-            "atualiza, confere e mergeia sozinha, e comenta no PR. Nada mais "
-            "depende de ninguém aqui."
+            "a integração e a publicação ainda não foram comprovadas. "
+            f"A maestro acompanha com python ci/esperar.py --entrega {pr}."
         )
         return 0
     # A recusa é o desfecho, e desfecho não se sussurra: o motivo do portão vem

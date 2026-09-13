@@ -104,3 +104,8 @@ def test_auditoria_aceita_despacho_variavel_quando_exige_modelo_no_brief(
     )
 
     assert auditar_fichas(tmp_path) == []
+
+@pytest.fixture(autouse=True)
+def harness_claude_das_fixtures(monkeypatch):
+    # Estas fixtures medem a compatibilidade das fichas Markdown do Claude.
+    monkeypatch.setattr("economia_da_fabrica.harness_ativo", lambda raiz=None: "claude")

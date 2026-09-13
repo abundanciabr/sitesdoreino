@@ -270,6 +270,11 @@ fi
 docker compose up -d --wait --wait-timeout 180 $SERVICOS
 docker compose ps $SERVICOS
 
+if [ "$CELULA" = "cursos" ]; then
+  docker compose exec -T cursos python manage.py marcar_bosses_primeiros_dolares \
+    || parar_o_deploy "nao consegui marcar os Bosses de Primeiros Dolares. Nada foi considerado publicado."
+fi
+
 # A PROVA DE QUE ESTE SCRIPT RODOU ATE O FIM. Sem ela, um passo que nao executa
 # nada devolve 0 e o deploy fica VERDE sem ter subido imagem nenhuma — foi
 # exatamente o que aconteceu em 28/08/2026, quando o parametro do workflow

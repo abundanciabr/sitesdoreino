@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-028-ci-conferir-entregas-sem-confundir-sincronizacao-com-codigo",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: conferir entregas sem confundir sincronização com código novo",
+  detalhe: "Linhagem distingue sincronização de autoria. CODEOWNERS: ci/fila.py e ci/tests/test_fila.py.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1557. Validação local: árvore 8b01377d21026d6de4c95b4a14f160ceb92eb74b; commit 9184f8e5ab1883d8b7196507ef9988c2ebc034d6; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-337",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

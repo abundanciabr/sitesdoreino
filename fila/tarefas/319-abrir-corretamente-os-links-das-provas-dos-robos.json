@@ -1,0 +1,19 @@
+{
+  "arquivo": "319-abrir-corretamente-os-links-das-provas-dos-robos",
+  "id": "TAR-319",
+  "titulo": "Abrir corretamente os links das provas dos robôs",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de renderização do formato do reconciliador e leitura autenticada de um cartão concluído abrem os URLs HTTPS reais de entrega e publicação.",
+  "despacho": "GRAVIDADE: MÉDIO.\n\nREQUISITO: a evidência estruturada dos cartões de robôs precisa preservar o texto e oferecer links que abram os endereços HTTPS reais de entrega e publicação.\n\nBASE AUDITADA: `services/admin/apps/core/templates/admin/_cartao_robo.html:93` e `:95` na revisão `9e726020b68f45400459956a0e8ef1bfc689239a`; último commit do componente no escopo auditado, `14d79e53`. O formato já existia em `fila/eventos/20260910-095143-TAR-283-concluida.json:7` e `fila/eventos/20260910-063138-TAR-308-concluida.json:7` no SHA `c0ac7bf85f07afb4400ce2e50b08c293b453950c`.\n\nEVIDÊNCIA OBSERVADA: após o PR #1525 ser integrado e publicado pelo run `34476399743`, a leitura autenticada de `/admin/caixa/robos/` mostrou a TAR-318 entre as 243 tarefas concluídas, com a cadeia textual completa. Os atalhos exibidos como `Value entrega=https://...` e `publicacao=https://...` não apontam para os endereços HTTPS reais. O mesmo comportamento aparece na TAR-308.\n\nREPRODUÇÃO: execute `python -c \"from django.utils.html import urlize; print(urlize('entrega=https://github.com/abundanciabr/sitesdoreino/pull/1523; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34471938757'))\"`. A saída cria `href=\"http://entrega=https://github.com/...\"` e `href=\"http://publicacao=https://github.com/...\"`.\n\nESPERADO: clicar em cada prova abre o PR ou o run HTTPS correspondente.\n\nOBSERVADO: o texto da prova permanece íntegro, mas os `href` incluem o nome do campo e ficam inválidos.\n\nIMPACTO: a prova canônica existe e continua legível, porém o atalho do cartão não a abre, o que dificulta a conferência operacional.\n\nCORREÇÃO MÍNIMA: extrair e renderizar com escape seguro os URLs reais da evidência estruturada, preservando o texto e todos os eventos históricos. Cobrir o formato produzido pelo reconciliador com teste de renderização e conferir um cartão concluído em leitura autenticada.\n\nCLASSIFICAÇÃO: falha preexistente, média, sem bloqueio adicional automático da Fase 1. Não mudar o contrato do evento, não criar nova fonte de estado e não reescrever evidências históricas.\n\nPROVA DE FECHO: teste de renderização comprova `href` HTTPS reais para entrega e publicação no formato do reconciliador; leitura autenticada de um cartão concluído abre ambos os destinos corretos.",
+  "origem": "Auditoria complementar da Fase 1 após a publicação do PR #1525",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

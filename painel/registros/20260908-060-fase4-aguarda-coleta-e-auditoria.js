@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-060-fase4-aguarda-coleta-e-auditoria",
+  tipo: "pendencia",
+  quando: "2026-09-08",
+  titulo: "A Fase 4 aguarda tarefas reais e uma auditoria independente",
+  detalhe: "A análise publicada do instrumento encontrou zero tarefas confirmatórias válidas e zero pares. A coleta foi colocada na fila como TAR-280. A auditoria independente foi colocada na fila como TAR-281, dependente da coleta, mas ainda exige um revisor com contexto e execução separados do implementador. Sem essas duas provas, a expansão continua bloqueada.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1393",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "A coleta permanece sem auditor designado e a expansão não pode ser liberada.",
+  recomendacao: "Designar um auditor independente e liberar somente as fontes autorizadas necessárias para reproduzir a análise.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

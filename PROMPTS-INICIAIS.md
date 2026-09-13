@@ -9,10 +9,13 @@
 
 1. **Você** executa o Prompt Zero pessoalmente (agentes não tocam a VPS).
 2. Para cada prompt de agente: abra o worktree que o despacho nomeia, cole o prompt,
-   espere o PR verde. *(Atualização 22/08/2026: o merge deixou de ser seu — o agente
-   mergeia pelo portão, `python ci/mergear.py <N> --confirmo <N>`, inclusive sob
-   CODEOWNERS, com anúncio nominal no relatório. Lei 4 e
-   `docs/decisoes/DECISAO-merge-pelo-agente.md`.)*
+   e encerre; o resultado chega pelo livro e pela fila. *(Atualização 12/09/2026,
+   `docs/decisoes/DECISAO-triade-de-ias.md`: o merge não é seu nem do agente. Pedido
+   colado no Claude Code vira tarefa na fila e o Codex constrói pela ficha `despacho`;
+   pedido colado no Codex é executado como um despacho. O revisor da casa lê o PR, a
+   maestro (Claude Code) publica o atestado e pede pouso com `python ci/mergear.py <N>
+   --pousar`, mesmo com check pendente; só a pista mergeia; o Antigravity verifica a
+   entrega alheia depois do merge.)*
 3. *(Aposentada em 22/08/2026, decisão do mantenedor — PLANO-10X Alavanca 1. A regra
    era "um prompt por vez", com validade autodeclarada "até o esqueleto andar" — e o
    esqueleto andou no PR #31. O paralelo já tinha sido demonstrado duas vezes sem
@@ -25,6 +28,8 @@
    compartilhado (ARMADILHAS, tabela do red-team, bloco `env:` do `ci-celula.yml`):
    cada sessão escreve SÓ a própria entrada/linha e faz
    `git fetch origin && git rebase origin/main` antes do push (ARMADILHAS §7.6).
+   Pedido colado no Claude Code vira tarefas na fila para o Codex; pedido colado no
+   Codex é executado como um despacho (`docs/decisoes/DECISAO-triade-de-ias.md`).
 4. Só depois do esqueleto verde na VPS + red-team (Etapa E), abrem-se os briefs de produto.
 5. **Multissítio:** um deploy, N domínios (Lei 9). Células públicas usam o middleware
    CONV-SITE; entidades públicas e eventos carregam `site_id` (INV-P11); domínio novo

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-100-cursos-normalizar-endereco-de-aula",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: normalizar endereço de aula",
+  detalhe: "O serviço normaliza o texto do endereço antes de reservá-lo, inclusive depois de truncar um slug longo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1583. Validação local: árvore 66d13411335d3572cca40f71c8eb2889d3b6ff78; commit 585900cafac160d4e725bd6ccd09c3da15d38140; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-354",
+  gravidade: "info",
+  frente: "site",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

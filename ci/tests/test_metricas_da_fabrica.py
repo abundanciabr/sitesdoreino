@@ -53,6 +53,7 @@ def _dados(**mudancas) -> dict:
         "na_fila": 1,
         "abertos": 3,
         "pedidos_ao_dono": 2,
+        "pedidos_ao_dono_por_frente": {"fabrica": 1, "site": 1},
         "leis_sem_mecanismo": 3,
     }
     base.update(mudancas)
@@ -74,6 +75,7 @@ def test_a_contagem_de_pousos_nao_sai_da_amostra():
     texto = metricas.montar(_dados(pousos=377, amostra=40))
     assert "377 entrega(s)" in texto
     assert "amostra de 40 PR(s)" in texto
+    assert "POR FRENTE            fabrica: 1 · site: 1" in texto
 
 
 def test_a_amostra_e_declarada_como_amostra():
@@ -221,7 +223,11 @@ def test_a_coleta_separa_contagem_de_amostra(tmp_path: Path, monkeypatch):
             ]
         ),
     )
-    monkeypatch.setattr(metricas, "pedidos_ao_dono", lambda raiz: 0)
+    monkeypatch.setattr(
+        metricas,
+        "pedidos_da_fila_do_dono",
+        lambda raiz: {"pedidos_ao_dono": 0, "pedidos_ao_dono_por_frente": {}},
+    )
     monkeypatch.setattr(metricas, "leis_sem_mecanismo", lambda raiz: 0)
     dados = metricas.coletar(RAIZ, 7, agora=AGORA)
     assert dados["pousos"] == 90
@@ -251,8 +257,10 @@ def _livro(tmp_path: Path, registros: list[str]) -> Path:
     return raiz
 
 
-def _registro(nome: str, precisa: bool, aspas: bool, responde_a: str | None = None):
+def _registro(nome: str, precisa: bool, aspas: bool,
+              responde_a: str | None = None, frente: str | None = None):
     """Um registro do livro. `aspas=True` usa chaves entre aspas (JSON)."""
+    valor_frente = json.dumps(frente) if frente is not None else "null"
     campos = {
         "arquivo": f'"{nome}"',
         "tipo": '"nota"',
@@ -265,7 +273,7 @@ def _registro(nome: str, precisa: bool, aspas: bool, responde_a: str | None = No
         "precisa_do_dono": "true" if precisa else "false",
         "responde_a": f'"{responde_a}"' if responde_a else "null",
         "gravidade": '"info"',
-        "frente": "null",
+        "frente": valor_frente,
         "vence_em_dias": "null",
         "se_eu_nao_decidir": "null",
         "recomendacao": "null",
@@ -299,6 +307,22 @@ def test_registro_com_chaves_entre_aspas_TAMBEM_conta(tmp_path: Path):
         "um dos dois pedidos não foi contado — é exatamente o defeito que fez "
         "o Python dizer 6 e o painel dizer 7"
     )
+
+
+def test_a_fila_do_dono_se_divide_pela_frente_do_livro(tmp_path: Path):
+    raiz = _livro(
+        tmp_path,
+        [
+            _registro("20260829-000-r", precisa=True, aspas=False, frente="fabrica"),
+            _registro("20260829-001-r", precisa=True, aspas=True, frente="site"),
+            _registro("20260829-002-r", precisa=True, aspas=False),
+        ],
+    )
+    assert metricas.pedidos_ao_dono_por_frente(raiz) == {
+        "fabrica": 1,
+        "site": 1,
+        "sem frente": 1,
+    }
 
 
 def test_pedido_respondido_sai_da_fila(tmp_path: Path):

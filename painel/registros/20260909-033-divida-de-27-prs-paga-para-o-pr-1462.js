@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-033-divida-de-27-prs-paga-para-o-pr-1462",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Dívida de 27 PRs antigos paga para o PR #1462",
+  detalhe: "A escrituração separada paga a dívida do livro que bloqueava o PR #1462, registrando os 27 PRs antigos com evidência individual. O PR #1399 não entra porque continua em voo.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1451; https://github.com/abundanciabr/sitesdoreino/pull/1450; https://github.com/abundanciabr/sitesdoreino/pull/1449; https://github.com/abundanciabr/sitesdoreino/pull/1448; https://github.com/abundanciabr/sitesdoreino/pull/1447; https://github.com/abundanciabr/sitesdoreino/pull/1444; https://github.com/abundanciabr/sitesdoreino/pull/1445; https://github.com/abundanciabr/sitesdoreino/pull/1441; https://github.com/abundanciabr/sitesdoreino/pull/1442; https://github.com/abundanciabr/sitesdoreino/pull/1437; https://github.com/abundanciabr/sitesdoreino/pull/1438; https://github.com/abundanciabr/sitesdoreino/pull/1435; https://github.com/abundanciabr/sitesdoreino/pull/1434; https://github.com/abundanciabr/sitesdoreino/pull/1429; https://github.com/abundanciabr/sitesdoreino/pull/1433; https://github.com/abundanciabr/sitesdoreino/pull/1426; https://github.com/abundanciabr/sitesdoreino/pull/1430; https://github.com/abundanciabr/sitesdoreino/pull/1424; https://github.com/abundanciabr/sitesdoreino/pull/1423; https://github.com/abundanciabr/sitesdoreino/pull/1425; https://github.com/abundanciabr/sitesdoreino/pull/1420; https://github.com/abundanciabr/sitesdoreino/pull/1416; https://github.com/abundanciabr/sitesdoreino/pull/1412; https://github.com/abundanciabr/sitesdoreino/pull/1411; https://github.com/abundanciabr/sitesdoreino/pull/1410; https://github.com/abundanciabr/sitesdoreino/pull/1407; https://github.com/abundanciabr/sitesdoreino/pull/1406",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

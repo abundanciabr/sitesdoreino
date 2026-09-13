@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-038-leads-contrato-crm-humano",
+  tipo: "decisao",
+  quando: "2026-09-10",
+  titulo: "leads: contrato CRM humano",
+  detalhe: "Define CRM humano com titular, prazo, evidência, fonte e histórico imutável por oportunidade.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1530. Validação local: árvore cc203490117c62c4270a0c026a637e441efa734e; commit 394bcf4c4fd97bab7d55c5bc16f7e0391baf9e22; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-296",
+  gravidade: "info",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

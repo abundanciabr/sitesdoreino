@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104120-TAR-310-explicada",
+  "tarefa": "TAR-310",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:41:20+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; contraprovas locais do prompt SHA256 7D80CF9F6E6921C1C76CC1B1FBDB460376C198D1853C05450D01F8F76E0FC914",
+  "o_que_e": "Hoje a fila pode aceitar trabalho novo sem dizer qual responsabilidade acompanha o resultado, e o cadastro pode esconder definições repetidas.",
+  "o_que_muda": "Toda tarefa nova chega ligada a uma responsabilidade real, e erros no cadastro param a entrega com uma instrução clara.",
+  "exemplo": "Uma tarefa sem responsável hoje recebe a mensagem Fila válida; depois da correção, ela será recusada antes de entrar.",
+  "importancia": 100
+}

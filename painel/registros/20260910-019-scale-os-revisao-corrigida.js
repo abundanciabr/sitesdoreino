@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-019-scale-os-revisao-corrigida",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: revisão independente corrigida",
+  detalhe: "A medição valida números finitos em todos os dados e a criação valida a unidade de responsabilidade antes de reservar o número.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit f2adbcf714ca336277904cb47c0bb89fb12374ac; árvore 7c32c17fd1807a396cbf80c89dd20e87ad087694; submissão ef9725f1; 227 testes relacionados; muralhas local PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

@@ -533,6 +533,44 @@ caso("registro com 'area' inventada REPROVA (exit 1)", rAreaMa.code === 1);
 caso("...e diz qual nome não existe", rAreaMa.out.indexOf("celula-que-nao-existe") !== -1);
 
 console.log("");
+var templateDecisao = fs.readFileSync(path.join(RAIZ_PAINEL, "painel.template.html"), "utf8");
+var fonteFicha = templateDecisao.slice(templateDecisao.indexOf("function fichaDaDecisao(r)"),
+  templateDecisao.indexOf("  // ---------- a capa, calculada"));
+var contextoFicha = {
+  el: function (tag, classe, texto) {
+    return { texto: texto || "", filhos: [], appendChild: function (filho) { this.filhos.push(filho); } };
+  }
+};
+require("vm").runInNewContext(fonteFicha, contextoFicha);
+var fichaCompleta = contextoFicha.fichaDaDecisao({
+  porque_so_voce: "Só você pode autorizar essa despesa.",
+  proximo_passo: "Aprovar ou recusar a contratação.",
+  se_eu_nao_decidir: "O serviço atual continua ativo.",
+  recomendacao: "Manter o serviço atual.", reversivel: false, impacto: "alto"
+});
+var linhasFicha = fichaCompleta.filhos.map(function (linha) {
+  return linha.filhos.map(function (parte) { return parte.texto; }).join(": ");
+});
+caso("a ficha mostra a justificativa exclusiva do dono",
+  linhasFicha.indexOf("Por que só você: Só você pode autorizar essa despesa.") !== -1);
+caso("a ficha mostra o próximo passo concreto",
+  linhasFicha.indexOf("Próximo passo: Aprovar ou recusar a contratação.") !== -1);
+var fontePrioridade = templateDecisao.slice(templateDecisao.indexOf("function detalhesDePrioridade(i)"),
+  templateDecisao.indexOf("  function itemDePrioridade(i, posicao)"));
+require("vm").runInNewContext(fontePrioridade, contextoFicha);
+var detalhesPedido = contextoFicha.detalhesDePrioridade({especie: "pedido", registro: {
+  porque_so_voce: "Só você pode autorizar essa despesa.", proximo_passo: "Aprovar ou recusar."
+}});
+caso("a aba Prioridades mostra a justificativa exclusiva do dono",
+  detalhesPedido.some(function (linha) { return linha[0] === "Por que só você" && linha[1] === "Só você pode autorizar essa despesa."; }));
+caso("a aba Prioridades mostra o próximo passo concreto",
+  detalhesPedido.some(function (linha) { return linha[0] === "Próximo passo" && linha[1] === "Aprovar ou recusar."; }));
+var fichaAntiga = contextoFicha.fichaDaDecisao({});
+caso("pedido antigo informa a ausência da justificativa sem desaparecer",
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não explica por que esta decisão depende só de você."; }));
+caso("pedido antigo informa a ausência de próximo passo sem desaparecer",
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não registra um próximo passo claro."; }));
+
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");
   process.exit(1);

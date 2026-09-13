@@ -1,0 +1,21 @@
+{
+  "arquivo": "324-o-mapa-vivo-prepara-o-proximo-passo-e-o-prompt-de-cada-taref",
+  "id": "TAR-324",
+  "titulo": "O mapa vivo prepara o próximo passo e o prompt de cada tarefa",
+  "toca": [
+    "ci",
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Duas tarefas reais, uma nova e uma retomada autorizadas, recebem orientação e prompt completos pela mesma autoridade no CLI e na central; guardas novos provados vermelho, verde e por mutação.",
+  "despacho": "Esta conversa já é a conversa de execução. Leia integralmente docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md, monte a equipe em ondas, compare a base existente com o resultado pedido e execute as fases do mapa vivo até o aceite comprovado. Oriente tarefa nova e retomada pela mesma autoridade, com CLI determinístico e integração à central existente. Reutilize contexto, economia, fila, livro e robôs; elimine a escolha de perfil concorrente no painel; preserve as fronteiras entre ci, painel e admin. Não reivindique nem execute o backlog inteiro. A demonstração só gera orientação para frentes alheias, e a execução ponta a ponta usa casos com mandato vigente.",
+  "origem": "Substitui TAR-321, cancelada porque o PR documental foi associado indevidamente à obra futura; pedido do mantenedor de 10/09/2026 e docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

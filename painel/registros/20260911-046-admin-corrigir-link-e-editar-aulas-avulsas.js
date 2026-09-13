@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-046-admin-corrigir-link-e-editar-aulas-avulsas",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: corrigir link e editar aulas avulsas",
+  detalhe: "Links das aulas avulsas apontam para cursos, e a edição preserva o endereço compartilhado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1564. Validação local: árvore 703f3d4d3ed03107ff73a94ea446338577f80915; commit 1fb445b74215a0280f498a5c5226baf383abef86; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-343",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

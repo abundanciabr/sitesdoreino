@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-125-correcao-da-corrida-do-pedido",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: corrigir corrida SQLite no pedido da reunião",
+  detalhe: "A corrida de criação e edição do pedido agora repete somente locks transitórios do SQLite, com limite fechado. A rota do pedido também entrou no mapa do site.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1514. Validação local: 121 testes focados, Black e muralhas com exit 0.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();

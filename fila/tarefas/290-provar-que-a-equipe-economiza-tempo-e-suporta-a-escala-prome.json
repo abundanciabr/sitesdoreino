@@ -1,0 +1,29 @@
+{
+  "arquivo": "290-provar-que-a-equipe-economiza-tempo-e-suporta-a-escala-prome",
+  "id": "TAR-290",
+  "titulo": "Provar que a equipe economiza tempo e suporta a escala prometida",
+  "toca": [
+    "admin",
+    "painel",
+    "ci",
+    "metricas"
+  ],
+  "depende_de": [
+    "TAR-284",
+    "TAR-285",
+    "TAR-286",
+    "TAR-287",
+    "TAR-288",
+    "TAR-289"
+  ],
+  "cria": [],
+  "move": [
+    "latencia-de-execucao",
+    "compras-no-ciclo",
+    "alunos-na-plataforma"
+  ],
+  "evidencia_exigida": "Baseline por rotina e medições reproduzíveis mostram redução maior que 80 por cento dos minutos humanos em trabalho braçal e repetitivo, incluindo revisão e retrabalho, com qualidade mantida; testes de carga exercitam 500 vendas por dia e 50 mil alunos sem converter alvo em capacidade demonstrada.",
+  "despacho": "Feche a arquitetura com provas de qualidade, economia e escala depois das seis frentes dependentes. Meça por rotina os minutos humanos antes e depois no mesmo trabalho, incluindo revisão e retrabalho, e prove que a qualidade foi mantida; redução maior que 80 por cento é meta a testar. Exercite 500 vendas por dia e 50 mil alunos como alvos de carga, com ensaio reproduzível, custo, fila, falha e recuperação observáveis. Divida os testes por célula e contrato, preserve dados e não rode carga em produção. Só declare alcançado o que a medição comprovar.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos, metas de qualidade, economia e escala",
+  "criada_em": "2026-09-09"
+}

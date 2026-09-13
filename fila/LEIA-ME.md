@@ -14,7 +14,7 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 | O que | Onde | Regra |
 |---|---|---|
 | Uma tarefa | `tarefas/NNN-slug.json` | Um arquivo por tarefa. **Nunca se edita depois de criado** — número vem do almoxarife (`python ci/reservar.py numero tarefa`), id é `TAR-NNN`. |
-| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
+| Um acontecimento | `eventos/AAAAMMDD-HHMMSS-TAR-NNN-<evento>.json` | Um arquivo por evento: `reivindicada` · `devolvida` · `bloqueada` · `reivindicacao_expirada` · `submetida` · `concluida` · `cancelada` · `explicada`. Corrigir é acrescentar, nunca editar. |
 | O estado | **em lugar nenhum** | Calculado, sempre: pela cadeia de eventos + reservas do almoxarife + PRs abertos. Não existe campo `status`. |
 
 ## O balcão — como um robô usa (`ci/fila.py`)
@@ -22,14 +22,25 @@ tarefas seria lista digitada à mão — proibida pela lei anti-duplicação.
 ```
 python ci/fila.py listar --ao-vivo     # o quadro: estados calculados + reservas + PRs
 python ci/fila.py pegar TAR-007 --quem "sessao-<area>-<data>"
+python ci/fila.py zelar --quem "zelador-da-fila"
 python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
 python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
 python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
+python ci/fila.py submeter TAR-007 --quem "..." --pr "https://github.com/abundanciabr/sitesdoreino/pull/NNN" --revisao <SHA> --arvore <SHA>
+python ci/fila.py submeter TAR-007 --quem "..." --pr "https://github.com/abundanciabr/sitesdoreino/pull/NOVO" --revisao <SHA> --arvore <SHA> --substitui "https://github.com/abundanciabr/sitesdoreino/pull/ANTERIOR" --motivo "por que a entrega mudou"
 python ci/fila.py concluir TAR-007 --quem "..." --evidencia "https://github.com/.../pull/NNN"
 python ci/fila.py explicar TAR-007 --quem "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py validar              # o que a muralha roda em todo PR
 ```
+
+**Quem usa qual verbo** (desde 12/09/2026, `docs/decisoes/DECISAO-triade-de-ias.md`):
+
+| Papel | Quem | Verbos |
+|---|---|---|
+| Maestro | Claude Code | `criar`, `explicar`, `bloquear`, `cancelar`, `reconciliar` |
+| Executor | Codex | `pegar`, `submeter`, `soltar`, `criar` (tarefa que descobre no caminho, RITOS §5) e `bloquear` (dúvida que só o mantenedor decide, devolvida à maestro); a conclusão da própria entrega viaja pelo `make pr` (PR #1603) |
+| Sentinela | Antigravity | só `listar` e `validar`; nunca grava evento |
 
 **`pegar` é a trava.** Ele chama o almoxarife (`ci/reservar.py`), que cria uma
 referência atômica no servidor do GitHub — quem chega segundo recebe recusa DO
@@ -38,9 +49,83 @@ O evento gravado em `eventos/` é o registro durável; a referência é a trava 
 tempo real. Os dois viajam por caminhos diferentes de propósito: a referência
 vale AGORA, o evento vale para sempre (entra no PR do trabalho).
 
-**`concluir` exige evidência.** Sem prova (URL de PR, saída crua de teste), o
-balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
+**O zelador não apaga trabalho.** Antes de uma aquisição, e também pelo comando
+`zelar`, a fila confere a validade das reservas. Uma tarefa cuja reivindicação
+ficou sem reserva viva e sem PR aberto recebe o acontecimento
+`reivindicacao_expirada` e volta para `na fila`. O ramo, o PR e a referência
+remota continuam intactos para auditoria. O acontecimento é a etiqueta; não
+existe limpeza destrutiva.
+
+**Submissão não é conclusão.** `make pr` recupera a TAR da abertura, do ramo,
+do título, do corpo ou da reivindicação do ramo e confere o cadastro antes
+de publicar. Identidades conflitantes ou ausentes na fila recusam com o
+comando para corrigir. Tentativa é uma execução da mesma tarefa. Sessões
+legadas sem acompanhamento continuam aceitas quando sua abertura registrada
+aponta para uma revisão anterior ao protocolo de submissão. Abertura nova,
+proveniência ausente ou revisão ilegível exige vincular a TAR existente antes
+de publicar. Não se cria cadastro paralelo.
+
+`submeter` grava `pr` (URL completa), `revisao` (commit do código validado) e
+`arvore` (árvore daquele commit) em evento novo. O recibo do painel carrega a
+mesma `tarefa` e `relacao: "comentario"`, sem declarar resolução. Retomar a
+mesma entrega não repete o evento. Revisão nova do mesmo PR gera outra
+submissão. Trocar para outro PR exige `--substitui` com a URL exata da última
+submissão e `--motivo`. Antes de gravar ou soltar a reserva, o balcão confere
+que o PR anterior está fechado sem merge, que o novo está aberto no SHA
+informado e que a árvore local daquele SHA é a declarada. Falha do Git ou do
+GitHub para a operação com ERROR e nenhuma recusa produz evento ou solta a
+reserva. O novo evento preserva `substitui` e `detalhe`; o anterior permanece
+intacto. Repetir a mesma substituição não cria outro evento.
+
+`validar` também lê a cadeia inteira e reprova JSON manual que troca de PR sem
+elo, aponta para uma submissão que não é a última, usa elo na primeira
+submissão ou na atualização do mesmo PR, ou deixa o motivo vazio. O estado e o
+reconciliador continuam seguindo a última submissão válida.
+
+A revisão precede o commit do recibo para evitar autorreferência. A prova final
+mede o SHA entregue novamente; o reconciliador deve conferir a árvore da revisão,
+sua relação com o HEAD revisado e a ausência de alterações de código posteriores.
+Alterações apenas nos recibos e eventos não exigem outra submissão.
+
+Soltar a reserva de uma entrega submetida preserva seu vínculo e não libera
+a tarefa nem seus dependentes. O zelador consulta também o PR persistido,
+incluindo os estados fechado e integrado. Falha de consulta interrompe a
+operação; PR integrado sem prova do aceite permanece aguardando comprovação.
+Nenhum PR fechado devolve automaticamente trabalho submetido à fila.
+
+**`concluir` exige evidência.** Para tarefas submetidas, texto livre e URL de
+PR não bastam: o balcão recusa e encaminha à reconciliação da entrega com a
+prova do aceite. Submissão, integração e publicação são fatos diferentes. O
+caminho legado sem submissão mantém sua validação de evidência. Sem prova, o
+balcão recusa, a mesma lei do verde do livro. `validar` reprova evento
 `concluida` sem `evidencia` + `verificado_em`.
+
+```bash
+python ci/fila.py reconciliar TAR-307 --quem "maestro" \
+  --aceite-registro painel/registros/20260910-008-bosses-no-ar.js
+```
+
+`reconciliar` deriva PR, revisão e árvore da última submissão. Ele confere a
+árvore validada, a ancestralidade revisão → HEAD → merge e recusa código
+posterior; só recibos em `painel/registros/` e eventos em `fila/eventos/` podem
+ter entrado depois da revisão. O estado precisa ser `PUBLICADO` ou
+`SEM_PUBLICACAO`, calculado por `estado_da_entrega`, e o atestado independente
+precisa aprovar o HEAD final. Em publicação recuperada, a prova vem dos jobs
+posteriores que cobriram a entrega, nunca da tentativa histórica que falhou.
+
+O aceite continua no livro. `--aceite-registro` aponta para um registro verde,
+sem pendência do dono, já integrado à `main` depois do merge e que cita a URL da
+publicação comprovada. O evento terminal guarda apenas os ponteiros canônicos
+para essas fontes. `concluir` e `reconciliar` passam pelo mesmo ponto de escrita,
+onde também entram guardas comuns de responsabilidade. Medição impossível sai
+como ERROR; prova medida e incompatível sai como recusa. Nenhum dos dois escreve
+o evento.
+
+Quando o próprio PR introduz `reconciliar`, o aceite de sua TAR só existe depois
+que esse PR publica. Nesse caso, use a exceção **“À mão, quando o `make pr` não
+serve”** de `painel/LEIA-ME.md`: primeiro embarque o registro de aceite em um PR
+de escrituração; depois rode `reconciliar` e embarque apenas o evento gerado em
+outro PR de escrituração. Não ressubmeta a tarefa concluída nem crie outra TAR.
 
 **O comprovante nasce na bancada, nunca no espelho** (desde 30/08/2026,
 TAR-018). O balcão escreve o evento na pasta em que foi chamado — e a ordem de
@@ -51,8 +136,8 @@ arquivo fora, `validar` respondia `✅ Fila válida`, exit 0 (`armadilhas/192`).
 
 A cura tem duas peças, com autoridade deliberadamente diferente:
 
-- **`criar`, `pegar`, `bloquear`, `cancelar` e `concluir` RECUSAM no clone
-  principal** (exit 1) e a
+- **`criar`, `pegar`, `bloquear`, `cancelar`, `submeter`, `concluir` e
+  `reconciliar` RECUSAM no clone principal** (exit 1) e a
   recusa ensina a ordem certa: worktree primeiro, balcão de dentro dele. Não é
   portão de CI — nenhum PR reprova por isto; é um comando interativo se
   recusando a produzir lixo, e o conserto custa um `git worktree add`. Aviso em
@@ -75,8 +160,13 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
   aberta (calculado — ninguém escreve isso, e o `espera` sai `fila`).
 - **reivindicada** — evento `reivindicada` sem devolução posterior, OU reserva
   viva no servidor.
-- **em execução** — há PR ABERTO citando `TAR-NNN` no título ou no ramo
-  (só na vista `--ao-vivo`).
+- **na fila novamente** — evento `reivindicacao_expirada`, quando a reserva
+  venceu e não há PR aberto.
+- **em execução**: há evento `submetida` com PR, revisão e árvore validados,
+  ou PR aberto citando `TAR-NNN` na vista `--ao-vivo`. A submissão mantém o
+  vocabulário que os leitores atuais reconhecem. Seu motivo diz que falta
+  comprovar o aceite; a reserva pode terminar e os dependentes continuam
+  bloqueados. O evento distingue a fase sem criar outro estado público.
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
 
@@ -286,6 +376,8 @@ append-only ficam de fora da conta por não poderem gerar colisão:
 - **Waves, scheduler, heartbeat, compilador de prompts** — registrados como
   evolução no veredito, sem promessa. A fila nasce com o vocabulário que
   permite calculá-los depois (`toca`, `depende_de`).
+- **A proposta e a verificação da sentinela** moram nos registros do
+  conselho, definidos em `docs/decisoes/DECISAO-triade-de-ias.md`.
 
 ## Quem faz valer
 

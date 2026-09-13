@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-111135-TAR-340-explicada",
+  "tarefa": "TAR-340",
+  "evento": "explicada",
+  "quando": "2026-09-11T11:11:35+00:00",
+  "quem": "erro relatado pela mantenedora em 11/09/2026",
+  "o_que_e": "A escola cria aulas avulsas, mas ainda não consegue corrigir uma aula já publicada.",
+  "o_que_muda": "A equipe poderá trocar nome, vídeo e descrição sem quebrar o endereço já enviado aos alunos.",
+  "exemplo": "Uma aula com vídeo trocado mantém o mesmo link no grupo, mas passa a mostrar a versão correta.",
+  "importancia": 75
+}

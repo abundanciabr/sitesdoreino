@@ -58,6 +58,11 @@ from __future__ import annotations
 import json
 import re
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from esperar import carregar_regua, teto_da_regua  # noqa: E402
 
 TIMEOUT_PADRAO_MS = 120_000       # o padrão do Bash do harness (2 min)
 MONITOR_PADRAO_MS = 300_000       # o padrão do Monitor (5 min)
@@ -84,6 +89,22 @@ ESPERA_MUDA = (
 SONECA = re.compile(r"\b(?:sleep|Start-Sleep)\s+(?:-s(?:econds)?\s+)?(\d+)\b",
                     re.IGNORECASE)
 TETO_DO_WRAPPER = re.compile(r"--teto[=\s]+(\d+(?:\.\d+)?)")
+REGUA_DO_WRAPPER = re.compile(r"--regua[=\s]+([A-Za-z0-9_.-]+)")
+
+
+def _chave_da_regua(comando: str) -> str | None:
+    regua = REGUA_DO_WRAPPER.search(comando)
+    if regua:
+        return regua.group(1)
+    for opcao, chave in (
+        ("--checks", "checks"),
+        ("--pouso", "pouso"),
+        ("--run", "deploy-celula"),
+        ("--deploy", "deploy-celula"),
+    ):
+        if opcao in comando:
+            return chave
+    return None
 
 
 def _utf8_na_saida() -> None:
@@ -112,7 +133,11 @@ def _tem_teto_interno(comando: str) -> bool:
 def _teto_do_wrapper_ms(comando: str) -> float | None:
     m = TETO_DO_WRAPPER.search(comando)
     if not m or "esperar.py" not in comando:
-        return None
+        chave = _chave_da_regua(comando) if "esperar.py" in comando else None
+        if not chave:
+            return None
+        teto_s = teto_da_regua(carregar_regua(chave))
+        return teto_s * 1000 if teto_s is not None else None
     return float(m.group(1)) * 60_000
 
 

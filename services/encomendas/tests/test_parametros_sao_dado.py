@@ -69,7 +69,7 @@ A_LEI_SECAO_6 = {
     "entregas_para_nivel_avancado": "5",
     "janela_sem_abandono": "90",
     "pausa_por_segundo_abandono": "30",
-    # A 28ª, e a única que não vem da lei §6: ela vem do §9 do
+    # A chave do Mural, que vem do §9 do
     # `PLANO-AREA-DE-NEGOCIACAO.md`, a emenda que o mantenedor aprovou em
     # 04/09/2026 e que trouxe o Mural. Transcrita aqui pela mesma razão que as
     # outras 27: um teste que importa a resposta do arquivo que ele mede não
@@ -87,6 +87,9 @@ A_LEI_SECAO_6 = {
     # porque o guarda de constante magica deste arquivo reprova numero solto na
     # celula, e reprovou este quando ele nasceu assim.
     "janela_do_ritmo_da_espera": "30",
+    # O prazo da chamada aberta é uma decisão histórica própria, e não pode
+    # desaparecer porque a chave não está na tabela original da §6.
+    "horas_para_escalar_chamada_aberta": "24",
 }
 
 # AS CHAVES QUE EXISTEM NO CATALOGO E NAO TEM VALOR, DE PROPOSITO. O piso por
@@ -125,15 +128,15 @@ def semear(site=SITE):
 # ---------------------------------------------------------------------------
 
 
-def test_o_catalogo_tem_as_35_chaves():
+def test_o_catalogo_tem_as_36_chaves():
     """Chave a mais ou a menos reprova aqui, antes de o motor ler `None`."""
     assert sorted(CHAVES_DE_PARAMETRO) == sorted(
         set(A_LEI_SECAO_6) | O_PISO_NASCE_SEM_NUMERO
     )
-    assert len(CHAVES_DE_PARAMETRO) == 35
+    assert len(CHAVES_DE_PARAMETRO) == 36
 
 
-def test_a_semente_grava_os_32_valores(db):
+def test_a_semente_grava_os_33_valores(db):
     """A prova de fora: cada chave é LIDA DO BANCO e comparada com a lei."""
     semear()
     do_banco = dict(

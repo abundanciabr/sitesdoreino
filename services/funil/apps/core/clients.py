@@ -425,6 +425,111 @@ class NotificacoesClient:
             return None
         return valor
 
+    def listar_avisos(
+        self, *, destinatario_id: str, site_id: str, cursor: str = ""
+    ) -> "dict | None":
+        config = self._configuracao()
+        if config is None:
+            logger.error("avisos: configuração da notificacoes ausente")
+            return None
+        base, token = config
+        parametros = {"destinatario_id": destinatario_id, "site_id": site_id}
+        if cursor:
+            parametros["cursor"] = cursor
+        try:
+            resposta = http().get(
+                f"{base}/avisos",
+                params=parametros,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("avisos: não deu para perguntar à notificacoes: %s", erro)
+            return None
+        if resposta.status_code != 200:
+            logger.error(
+                "avisos: a notificacoes respondeu HTTP %s", resposta.status_code
+            )
+            return None
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            logger.error("avisos: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("itens"), list):
+            logger.error("avisos: resposta sem a lista de itens")
+            return None
+        proximo = corpo.get("proximo_cursor")
+        if proximo is not None and not isinstance(proximo, str):
+            logger.error("avisos: cursor seguinte fora do contrato")
+            return None
+        return corpo
+
+    def marcar_uma_como_lida(
+        self, *, destinatario_id: str, site_id: str, id: str
+    ) -> "bool | None":
+        config = self._configuracao()
+        if config is None:
+            logger.error("marcar-lida: configuração da notificacoes ausente")
+            return None
+        base, token = config
+        try:
+            resposta = http().post(
+                f"{base}/marcar-lida",
+                json={"destinatario_id": destinatario_id, "site_id": site_id, "id": id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("marcar-lida: não deu para chamar a notificacoes: %s", erro)
+            return None
+        if resposta.status_code == 404:
+            return False
+        if resposta.status_code != 200:
+            logger.error(
+                "marcar-lida: a notificacoes respondeu HTTP %s", resposta.status_code
+            )
+            return None
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            logger.error("marcar-lida: resposta fora do contrato: %s", erro)
+            return None
+        return isinstance(corpo, dict) and isinstance(corpo.get("ja_estava_lido"), bool)
+
+    def marcar_todas_como_lidas(
+        self, *, destinatario_id: str, site_id: str
+    ) -> "int | None":
+        config = self._configuracao()
+        if config is None:
+            logger.error("marcar-lidas: configuração da notificacoes ausente")
+            return None
+        base, token = config
+        try:
+            resposta = http().post(
+                f"{base}/marcar-lidas",
+                json={"destinatario_id": destinatario_id, "site_id": site_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("marcar-lidas: não deu para chamar a notificacoes: %s", erro)
+            return None
+        if resposta.status_code != 200:
+            logger.error(
+                "marcar-lidas: a notificacoes respondeu HTTP %s", resposta.status_code
+            )
+            return None
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            logger.error("marcar-lidas: resposta fora do contrato: %s", erro)
+            return None
+        valor = corpo.get("marcados") if isinstance(corpo, dict) else None
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+            return None
+        return valor
+
     # -----------------------------------------------------------------------
     # O aviso na tela do celular (Fase 7, 31/08/2026) — as duas ESCRITAS
     # -----------------------------------------------------------------------
