@@ -97,3 +97,28 @@ def test_pagina_renderiza_erro_e_primeiro_uso(cracha, monkeypatch):
     assert resposta.status_code == 200
     assert "não consegui carregar" in resposta.content.decode().lower()
     assert "escreva a primeira" in resposta.content.decode().lower()
+
+
+@pytest.mark.parametrize(
+    "cabecalho",
+    [{"HTTP_AUTHORIZATION": "Bearer invalido"}, {"HTTP_ACCEPT": "application/json"}],
+)
+def test_pagina_nao_abre_so_com_cabecalho(client, db, cabecalho):
+    resposta = client.get(reverse("radio_pagina"), **cabecalho)
+    assert resposta.status_code == 302
+    assert "Rádio da tríade" not in resposta.content.decode()
+
+
+def test_api_aceita_cookie_do_lancador_local(client, db, settings):
+    from apps.core.views import acesso_local
+
+    settings.ADMIN_LINK_TOKEN = "convite-radio"
+    settings.ADMIN_LOCAL_EMAIL = "dono@casa"
+    settings.ADMIN_EMAILS = "dono@casa"
+    entrada = acesso_local(
+        RequestFactory().get("/acesso-local/convite-radio/"), "convite-radio"
+    )
+    client.cookies.update(entrada.cookies)
+    resposta = client.get(reverse("radio_api"), HTTP_ACCEPT="application/json")
+    assert resposta.status_code == 200
+    assert resposta.json()["mensagens"] == []

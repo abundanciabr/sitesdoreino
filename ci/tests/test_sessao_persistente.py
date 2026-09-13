@@ -16,6 +16,7 @@ import sessao
 def ambiente(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "home", lambda: tmp_path / "home")
     plano = sessao.derivar_plano("quiz", "primeira", raiz=tmp_path / "repo",
+                                base_de_scratch=tmp_path / "scratch",
                                 celulas=["quiz"], usa_redis=False)
     plano.requisitos.parent.mkdir(parents=True)
     plano.requisitos.write_text("pytest==8.3.4", encoding="utf-8")

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-056-guarda-do-lancador-local",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: a guarda lê o lançador local",
+  detalhe: "O PR #1633 fecha a quarta rodada: o lançador aponta para docs/administracao-local sem caminho pessoal, só define a pasta padrão quando ela não existe no ambiente, a rota de convite só nasce com token e o caminho local conserva os cabeçalhos de segurança. A tela sai do menu persistente porque é uma entrada de demonstração local, não um endereço para publicar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1633. SHA c974297cbb2d10702a9c793ef37f761d6d12f57b. pytest -q -k 'not migracao_associa_um_capitulo_preexistente_a_um_livro_padrao' => 1946 passed, 1 deselected; pytest focado => 36 passed; ciclo medido no template => 2,0 s (setInterval 2000 ms). Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-404",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-054-admin-plano-mestre-local",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: plano mestre local",
+  detalhe: "TAR-404: o admin local lista markdowns do plano mestre, abre documento em dialog e recarrega em DEBUG quando a pasta muda.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1633. Validação local: árvore c16b1629d1fb4a2a63b65c21fe28671305d035d4; commit 91531a92cddfbff993d67880e8947afbebdbe583; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-404",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
