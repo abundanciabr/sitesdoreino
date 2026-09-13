@@ -74,6 +74,20 @@ def test_convite_local_invalido_recusa_e_explica_o_proximo_passo():
     assert "Gere outro pelo lançador local" in resposta.content.decode()
 
 
+@override_settings(
+    ADMIN_LINK_TOKEN="convite-local",
+    ADMIN_LOCAL_EMAIL=DONO,
+    ADMIN_EMAILS="outro@exemplo.com",
+)
+def test_cookie_local_fora_da_lista_oficial_nao_autoriza():
+    cliente = Client()
+    entrada = cliente.get("/acesso-local/convite-local/")
+    cliente.cookies.update(entrada.cookies)
+    resposta = cliente.get("/plano-mestre/")
+    assert resposta.status_code == 302
+    assert "/entrar/google" in resposta["Location"]
+
+
 @respx.mock
 def test_lista_os_markdowns_da_pasta_sem_nome_digitado(tmp_path):
     _md(

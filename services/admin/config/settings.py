@@ -81,7 +81,7 @@ ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
 
 # O mantenedor entra pelo convite local assinado pelo lançador, nunca pelo site
 # público. O token só existe no ambiente da máquina local.
-URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/acesso-local/")
+URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
 ADMIN_LINK_TOKEN = os.environ.get("ADMIN_LINK_TOKEN", "")
 ADMIN_LOCAL_ID = os.environ.get("ADMIN_LOCAL_ID", "mantenedor-local")
 ADMIN_LOCAL_NOME = os.environ.get("ADMIN_LOCAL_NOME", "Mantenedor")

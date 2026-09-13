@@ -4,10 +4,13 @@ setlocal
 cd /d "%~dp0.."
 if errorlevel 1 goto falha_raiz
 
+set "SCRIPT_NAME="
 for /f "delims=" %%K in ('python -c "import secrets; print(secrets.token_urlsafe(32))"') do set "DJANGO_SECRET_KEY=%%K"
 set "DEBUG=1"
 set "DATABASE_URL=sqlite:///teste-local.sqlite3"
-set "ADMIN_PLANOS_DIR=%~dp0..\docs\decisoes"
+set "ADMIN_PLANOS_DIR=%~dp0..\sitesdoreino-docs\administracao-local"
+set "ADMIN_LOCAL_EMAIL=mantenedor@localhost"
+set "ADMIN_EMAILS=%ADMIN_LOCAL_EMAIL%"
 for /f "delims=" %%K in ('python -c "import secrets; print(secrets.token_urlsafe(32))"') do set "ADMIN_LINK_TOKEN=%%K"
 set "URL_DE_ENTRADA=/acesso-local/%ADMIN_LINK_TOKEN%/"
 

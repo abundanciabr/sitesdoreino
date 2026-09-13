@@ -252,11 +252,14 @@ class PortaAdministrativa:
         ):
             return self._com_seguranca(self.get_response(request))
 
+        tem_cookie_local = settings.ADMIN_LOCAL_COOKIE_NAME in request.COOKIES
         admin_local = self._admin_local_da_requisicao(request)
         if admin_local:
             request.admin = admin_local
             _anota(medidor.registrar_resposta, "entrou")
             return self._com_seguranca(self.get_response(request))
+        if tem_cookie_local:
+            return self._para_o_login(request)
 
         cookie = request.META.get("HTTP_COOKIE", "")
         if not cookie:
@@ -310,12 +313,13 @@ class PortaAdministrativa:
             )
         except signing.BadSignature:
             return None
-        if admin.get("email", "").strip().lower() != settings.ADMIN_LOCAL_EMAIL.strip().lower():
+        email = admin.get("email", "").strip().lower() if isinstance(admin, dict) else ""
+        if not email or email not in _emails_autorizados():
             return None
         return {
             "id": admin.get("id") or settings.ADMIN_LOCAL_ID,
             "nome": admin.get("nome") or settings.ADMIN_LOCAL_NOME,
-            "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
+            "email": email,
         }
 
     def _para_o_login(self, request):
