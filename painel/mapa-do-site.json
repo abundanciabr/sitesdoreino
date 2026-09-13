@@ -294,6 +294,15 @@
     },
     {
       "celula": "forum",
+      "rota": "novo",
+      "endereco": "/forum/novo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Abrir uma conversa no fórum, escolhendo a área",
+      "descricao": "É o endereço que a escola manda no grupo para a pessoa fazer uma pergunta. Quem não entrou faz login e volta para cá; depois escolhe a área antes de publicar."
+    },
+    {
+      "celula": "forum",
       "rota": "t/<int:topico_id>/responder",
       "endereco": "/forum/t/<int:topico_id>/responder",
       "exemplo": "/forum/t/1/responder",
