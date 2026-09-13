@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-044449-TAR-314-submetida",
+  "tarefa": "TAR-314",
+  "evento": "submetida",
+  "quando": "2026-09-13T04:44:49+00:00",
+  "quem": "agent/fila/medicao-nao-e-decisao-do-mantenedor",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1617",
+  "revisao": "086fa4a757b25518732c99bbc10a9a87487a2519",
+  "arvore": "cea2e5c4b51f7e115c39dee2004985bbb3241ae4"
+}

@@ -29,7 +29,7 @@ Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
 constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
 registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
 edita o clone principal, nunca arma espera, nunca amplia o mandato; não
-audita nem decide lei. Claude Code rege e publica o atestado da revisão;
+audita nem decide lei. Claude Code rege; a integração é automática;
 Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
 direto nesta sessão continua sendo lote regido por ela.
 
@@ -49,10 +49,10 @@ No fecho, checklist atualizado e **O que mudou**, **O que foi verificado**,
 **Pendências**, **Veredito** PRONTO ou NÃO PRONTO. Auditoria item a item
 somente quando relevante; cortes somente quando houver.
 Despacho devolve número do PR, ramo, SHA, arquivos, CODEOWNERS e provas.
-A maestro confere revisão independente e recibo, pede
-`python ci/mergear.py <N> --pousar`, confirma etiqueta e SHA e encerra.
-A pista acompanha checks, integração e publicação; nenhum deles é
-sinônimo de validação local ou encaminhamento.
+O PR pronto integra automaticamente quando muralhas e ci-celula-gate ficam
+verdes, sem revisor obrigatório, atestado ou etiqueta de pouso.
+CODEOWNERS e contrato congelado continuam exigindo mandato do mantenedor.
+Validação local, integração e publicação são estados distintos e exigem prova.
 
 **Quem faz valer:** `ci/padrao_de_trabalho.py`, `ci/hook_codex.py`,
 `ci/prestacao_de_contas.py`, `ci/mergear.py` e respectivos testes.

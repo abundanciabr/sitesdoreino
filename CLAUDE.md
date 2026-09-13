@@ -126,13 +126,12 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege e atesta,
+Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege,
 nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
 mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
 paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
 `painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
-dependência fora do brief volta à maestro com `Depende-de: #N`. Revisor lê o
-diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
+dependência fora do brief volta à maestro com `Depende-de: #N`. Revisão adicional é facultativa; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
 Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
 `.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
 
@@ -141,9 +140,10 @@ Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
 ## O que uma chamada custa
 
 Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
-nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
-dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
-com o que levar; ele decide. Economia não reduz ambição.
+nunca herde modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
+Acima de ~300k de contexto, sugira conversa nova. Economia não reduz ambição.
+Poupe tokens: extraia trechos com `sed -n` ou `grep`, nunca `cat` em arquivo grande.
+Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
@@ -186,20 +186,18 @@ são lápides. Sem tipo específico, use nota.
 
 **Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
 
-## O agente pede pouso; quem mergeia é a pista
+## Integração automática
 
-Um commit técnico de fechamento substitui microcommits; preserve histórico
-e recibo automático. `git add` por arquivo, nunca `git add -A`; confira o staged.
-Despacho entrega número, ramo, SHA e provas. Maestro confere revisão
-independente e recibo, executa `python ci/mergear.py <N> --pousar`, confirma
-etiqueta e SHA e encerra. Não espere checks, merge ou deploy.
-A pista acompanha checks e integra somente pelo portão; encaminhamento
-não é integração nem publicação. FAIL admite até duas correções; depois
-preserve arquivos/commits e reporte. ERROR é instrumento, nunca aprovação.
-Não espere pelo mantenedor. Resultado posterior vem da pista; urgência
-de publicação segue alarme-main.
+PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
+atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
+exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
+descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
+Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
+não integram. Informe somente estados comprovados de validação, integração e
+publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 
-**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`, seus testes.
+**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml` e a proteção nativa da main.
 
 ## O que você entrega para ele mora no site
 
