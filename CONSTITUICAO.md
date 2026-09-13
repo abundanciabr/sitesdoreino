@@ -53,47 +53,19 @@ ou é pacote versionado.
 
 **Quem faz valer:** `ci/guarda_dos_guardas.py` — ele prova que o `.importlinter` da célula existe E é invocado pelo `Makefile` (pecado 1). O pecado 2 é imposto pelo Postgres (role por célula: acesso cruzado não é proibido, é `permission denied`). **O pecado 3 — duplicar-e-divergir — não tem mecanismo**, e essa lacuna está declarada em `ci/leis-sem-mecanismo.txt`.
 
-## Lei 4 — Separação de Poderes
+## Lei 4: Integração protegida e automática
 
+Decisão do mantenedor de 13/09/2026: a main permanece protegida por PR,
+sem push direto, com `muralhas` e `ci-celula-gate` obrigatórios. O workflow
+`pouso.yml` integra automaticamente após esses checks verdes no SHA atual.
+Revisor obrigatório, atestado, etiqueta de pouso e encaminhamento pela
+maestro deixam de ser requisitos. CODEOWNERS e contrato congelado continuam
+exigindo a palavra do mantenedor; o rito de contrato permanece.
+A automação só executa código da main, conserva a conferência de identidade
+do SHA e não declara publicação a partir de um merge.
 
-Quem escreve código **não certifica**: o CI certifica, e todo merge passa pelo
-portão `ci/mergear.py`, que recusa check vermelho, ausente, pendente ou pulado sem
-declaração — o botão de merge do site não é caminho válido para ninguém. **Mergear
-é trabalho do agente, não do humano** (decisão do mantenedor em 22/08/2026; motivos
-e mecânica em `docs/decisoes/DECISAO-merge-pelo-agente.md`): a exigência de
-aprovação humana prévia era o maior gargalo medido do projeto (mediana 22 min,
-média 264 min por merge — PLANO-10X, Alavanca 1) e, com um único colaborador no
-repositório, era inexecutável como trava (o GitHub proíbe aprovar o próprio PR —
-ARMADILHAS H9). Nos caminhos CODEOWNERS (`contracts/`, `services/pagamentos/`,
-`services/checkout/`, `infra/`, `ci/`, `.github/` e os arquivos-lei da raiz), a
-aprovação prévia foi substituída por **mandato + transparência**: agente só mergeia
-ali o que o despacho pediu, e anuncia cada merge desses caminhos nominalmente no
-relatório final e no painel. O Rito de Contrato (RITOS.md §3) continua valendo por
-inteiro — mudou quem executa o merge, não a liturgia antes dele.
-
-**Emenda de 29/08/2026 — o merge saiu da mão do agente e passou para a pista**
-(decisão do mantenedor; registro `20260829-006`, Onda 4 fatia 3 do
-`docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`). O agente **pede pouso**
-(`python ci/mergear.py <N> --pousar`) e vai embora; quem mergeia é
-`.github/workflows/pouso.yml`, pelo MESMO portão. Motivo medido: o agente
-mergeia com base em checks que rodaram ANTES de a fila andar, e a `main` recebe
-~100 entregas por dia — ele perdia a corrida contra o próprio relógio, oito
-voltas num PR de quatro arquivos (`armadilhas/156`). **O que NÃO mudou, e é o
-essencial: ninguém espera pelo mantenedor.** Quem mergeia continua sendo
-máquina; mudou qual máquina, e ela tem paciência. A trava no `ci/mergear.py` é
-disciplina (o agente tem o mesmo `gh`); a muralha de verdade contra merge com
-base velha é o `strict` do conjunto de regras da `main`, que roda no servidor.
-
-**Emenda de 12/09/2026, a tríade.** Três IAs, três papéis fixos
-(`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code é a maestro, decide cada
-achado e o que entra no lote, nunca mergeia e nunca espera check em laço; Codex é o
-executor, constrói pela ficha `despacho`, um PR por tarefa, e não audita nem decide
-lei; Antigravity é a sentinela, audita `origin/main` e verifica cada entrega alheia
-depois do merge (a de ficha dela, a maestro verifica); nunca edita código ou lei,
-nunca grava evento ou registro, nunca mede a pasta local. O pouso continua sendo
-da pista.
-
-**Quem faz valer:** `ci/mergear.py` (a catraca, e a recusa de mergear para quem não é a pista) · `.github/workflows/pouso.yml` (quem mergeia) · `ci/tests/test_mergear.py`.
+**Quem faz valer:** o ruleset `main protegida`, `ci/mergear.py`,
+`.github/workflows/pouso.yml` e `ci/tests/test_merge_automatico.py`.
 
 ## Lei 5 — A Lei das 2h da Manhã
 
