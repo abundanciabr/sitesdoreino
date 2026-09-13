@@ -96,6 +96,7 @@ SECOES = (
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
     ("documentos_admin", "Documentos"),
+    ("plano_mestre", "Plano mestre"),
     # "Livro", e não "Biblioteca": a tela guarda o livro que ele está
     # escrevendo, e é assim que ele fala dela. "Biblioteca" ao lado de
     # "Documentos" faria as duas parecerem a mesma coisa vista de dois ângulos

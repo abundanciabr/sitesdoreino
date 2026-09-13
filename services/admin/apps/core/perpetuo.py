@@ -69,6 +69,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 from django.shortcuts import render
+from django.urls import reverse
 from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient, GamificacaoClient, MensageriaClient
@@ -89,6 +90,23 @@ from .placar import site_de
 # mesma ideia fariam esta tela dizer "girando" enquanto a outra diz "entupida".
 from .restricao import DIAS_DE_ESPERA_QUE_VIRAM_GARGALO
 from .restricao import ETAPAS as PASSAGENS_DO_FUNIL
+
+
+def _admin(nome: str) -> dict:
+    """Uma porta desta célula, por nome de rota, nunca por `/admin/...`."""
+    return {"rota": nome}
+
+
+def _endereco_da_porta(porta) -> str:
+    if isinstance(porta, dict):
+        return "/admin" + reverse(porta["rota"])
+    return porta
+
+
+def _link_local_da_porta(porta) -> str | None:
+    if isinstance(porta, dict):
+        return reverse(porta["rota"])
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -129,7 +147,7 @@ ETAPAS = (
             "no vazio. É a vitrine do site e o que aparece no alto de cada "
             "página."
         ),
-        "portas": ("/", "/admin/menu/"),
+        "portas": ("/", _admin("menu_do_topo")),
         "sem_fonte_porque": (
             "ninguém conta quantas pessoas visitam o site. Nenhuma parte da "
             "plataforma guarda visita, e é por isso que esta peça não tem "
@@ -167,10 +185,10 @@ ETAPAS = (
         # se desligam: o dono lia a promessa e não tinha como agir sobre ela.
         # Guarda: `test_a_peca_que_faz_o_perpetuo_oferece_o_interruptor_dela`.
         "portas": (
-            "/admin/escola/jornadas/",
+            _admin("escola_jornadas"),
             "/avisos/ligar",
             "/docs/",
-            "/admin/documentos/",
+            _admin("documentos_admin"),
         ),
     },
     {
@@ -182,7 +200,7 @@ ETAPAS = (
             "pede entrada fica numa fila, e cada dia parado nela é um dia de "
             "alguém animado esfriando."
         ),
-        "portas": ("/login", "/admin/escola/alunos/", "/admin/escola/turmas/"),
+        "portas": ("/login", _admin("escola_alunos"), _admin("escola_turmas")),
     },
     {
         "chave": "entregar",
@@ -197,10 +215,10 @@ ETAPAS = (
             "/forum/",
             "/conquistas/",
             "/forms/sugestoes/",
-            "/admin/economia/",
+            _admin("economia"),
             # 04/09/2026: o quadro de pontos nasceu depois desta área, e
             # entrega é onde ele responde ("quem está jogando, e quem parou").
-            "/admin/escola/pontos/",
+            _admin("escola_pontos"),
         ),
     },
     {
@@ -220,12 +238,12 @@ ETAPAS = (
             "palpite: quantas pessoas passam de uma etapa para a seguinte, e "
             "em quais delas a casa ainda não sabe medir."
         ),
-        # `/admin/placar/` entra aqui em 04/09/2026, e a ordem importa: ele é
+        # A tela de medição entra aqui em 04/09/2026, e a ordem importa: ela é
         # a tela do funil desta casa (a barra do mês, a meta e a restrição da
         # semana, com pedidos, liberações e tempo típico ao vivo da `alunos`).
         # A área do perpétuo NÃO monta um funil próprio — seria a segunda
         # definição do mesmo fato, e o `CLAUDE.md` a proíbe. Ela aponta.
-        "portas": ("/admin/placar/", "/admin/escola/jornada/"),
+        "portas": (_admin("placar"), _admin("escola_jornada")),
     },
 )
 
@@ -465,12 +483,14 @@ def etapas_com_portas(mapa: "dict | None", estados: "dict | None" = None) -> lis
     montadas = []
     for etapa in ETAPAS:
         portas = []
-        for endereco in etapa["portas"]:
+        for declarada in etapa["portas"]:
+            endereco = _endereco_da_porta(declarada)
             entrada = None if mapa is None else mapa.get(endereco)
             if entrada is None:
                 portas.append({"endereco": endereco, "faltando": True})
                 continue
             porta = _preparar(entrada)
+            porta["link"] = _link_local_da_porta(declarada) or porta["link"]
             porta["faltando"] = False
             portas.append(porta)
         veredito = estados.get(etapa["chave"])

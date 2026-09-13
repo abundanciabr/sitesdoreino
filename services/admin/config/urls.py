@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
@@ -68,7 +69,13 @@ from apps.core.menu import (
     menu_versao_padrao,
 )
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
-from apps.core.planos_para_ia import plano_publico, planos_indice
+from apps.core.planos_para_ia import (
+    plano_mestre,
+    plano_mestre_documento,
+    plano_mestre_mtime,
+    plano_publico,
+    planos_indice,
+)
 from apps.core.painel import painel, painel_arquivo
 from apps.core.pendencias import pendencias
 from apps.core.perpetuo import perpetuo
@@ -109,6 +116,7 @@ from apps.core.sumario import (
     sumario_prever,
 )
 from apps.core.views import (
+    acesso_local,
     escola,
     escola_admin_promover,
     escola_admin_remover,
@@ -425,6 +433,13 @@ urlpatterns = [
     ),
     path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
     re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
+    path("plano-mestre/", plano_mestre, name="plano_mestre"),
+    path("plano-mestre/mtime.json", plano_mestre_mtime, name="plano_mestre_mtime"),
+    re_path(
+        r"^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
+        plano_mestre_documento,
+        name="plano_mestre_documento",
+    ),
     # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
     # acima. Os dois são "painéis" e é por isso que a separação precisa estar
     # no endereço, e não só no texto do link: `/painel/` mostra como a
@@ -907,3 +922,8 @@ urlpatterns = [
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
 ]
+
+if settings.ADMIN_LINK_TOKEN:
+    urlpatterns.append(
+        path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
+    )

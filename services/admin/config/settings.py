@@ -79,10 +79,15 @@ MIDDLEWARE = [
 # Vazia ⇒ ninguem entra. Fail-closed por construcao.
 ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
 
-# Para onde mandar quem nao tem sessao. E o mesmo endereco publico que o
-# `funil` usa — a tela de login mora la, nos tres idiomas, e esta celula nunca
-# serve caminho com forma de idioma.
+# O mantenedor entra pelo convite local assinado pelo lançador, nunca pelo site
+# público. O token só existe no ambiente da máquina local.
 URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+ADMIN_LINK_TOKEN = os.environ.get("ADMIN_LINK_TOKEN", "")
+ADMIN_LOCAL_ID = os.environ.get("ADMIN_LOCAL_ID", "mantenedor-local")
+ADMIN_LOCAL_NOME = os.environ.get("ADMIN_LOCAL_NOME", "Mantenedor")
+ADMIN_LOCAL_EMAIL = os.environ.get("ADMIN_LOCAL_EMAIL", "mantenedor@localhost")
+ADMIN_LOCAL_COOKIE_NAME = "admin_acesso_local"
+ADMIN_LOCAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
 # ---------------------------------------------------------------------------
 # Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_<PAR>
