@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-094-gamificacao-validar-receita-make-no-windows",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "gamificacao: validar receita Make no Windows",
+  detalhe: "A receita roda no Windows; cmd.exe e mutações provam cada guarda, já sem omissões.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1585. Validação local: árvore 1e20fc53ad73e5d692157083440fa0af127f0da7; commit 7fe9b76b9f8f650996082a116a6b54dcbd5ea3bb; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-355",
+  gravidade: "info",
+  frente: null,
+  area: "gamificacao",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
