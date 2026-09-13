@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-002-ci-preparar-lotes-da-fila",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "ci: preparar lotes da fila",
+  detalhe: "Exporta briefs e resumo integral. Prova: 39 testes e 5 mutações. Custo total não medido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1611. Validação local: árvore 5859c9f3ce1f63821063017fa4f3b8d8e549261b; commit eb9b4c44b0f4193906768b0fe3b1d5542e3d081e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-381",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

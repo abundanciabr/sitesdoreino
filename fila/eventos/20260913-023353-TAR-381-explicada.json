@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-023353-TAR-381-explicada",
+  "tarefa": "TAR-381",
+  "evento": "explicada",
+  "quando": "2026-09-13T02:33:53+00:00",
+  "quem": "Pedido direto do mantenedor ao Codex em 12/09/2026 para reduzir custo e tempo da Maestro a no maximo 10% do atual",
+  "o_que_e": "A preparacao de tarefas repete leituras e escrita de despachos completos na conversa da Maestro.",
+  "o_que_muda": "O executor prepara os arquivos em lote e a Maestro recebe um resumo para decidir, com origem e pendencias conferiveis.",
+  "exemplo": "Sete tarefas existentes geram sete arquivos completos para executar e um resumo curto para a Maestro.",
+  "importancia": 100
+}
