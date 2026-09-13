@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-014035-TAR-365-explicada",
+  "tarefa": "TAR-365",
+  "evento": "explicada",
+  "quando": "2026-09-12T01:40:35+00:00",
+  "quem": "Correção necessária ao encaminhamento assíncrono aprovado pelo mantenedor",
+  "o_que_e": "A atualização automática da base invalida a revisão mesmo quando apenas combina código já aprovado.",
+  "o_que_muda": "A pista comprova a combinação limpa e mantém a revisão original, recusando alterações e conflitos.",
+  "exemplo": "Uma entrega revisada recebe a base atualizada e continua na pista se a combinação for exatamente a produzida pelo Git.",
+  "importancia": 95
+}

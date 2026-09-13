@@ -47,7 +47,15 @@ def _payload_painel(pasta: Path, *, sha=SHA_DA_PUBLICACAO, run_number=10) -> Pat
     return pasta
 
 
-def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path):
+def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path, monkeypatch):
+    import preparar_dados_admin
+    from mapa_de_execucao import _hash
+
+    catalogo = {"formato": "mapa-de-execucao.v1", "pacotes": {}}
+    catalogo["digest"] = _hash(catalogo)
+    monkeypatch.setattr(
+        preparar_dados_admin, "materializar_catalogo", lambda *a, **kw: catalogo
+    )
     raiz = tmp_path / "repo"
     (raiz / "ci").mkdir(parents=True)
     (raiz / "fila" / "tarefas").mkdir(parents=True)

@@ -1,0 +1,21 @@
+{
+  "arquivo": "378-fechar-na-fila-as-31-tarefas-cujo-trabalho-ja-entrou-no-site",
+  "id": "TAR-378",
+  "titulo": "Fechar na fila as 31 tarefas cujo trabalho já entrou no site",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-377"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, só fila/eventos/, com um evento concluida por tarefa escrito por python ci/fila.py reconciliar citando o registro de aceite; python ci/fila.py validar verde; listar mostra as 31 como concluída, ou a recusa colada de cada uma que não fechou.",
+  "despacho": "# DESPACHO 2b-B: fila, fechar as 31 tarefas cujo trabalho já entrou no site\nexecutor: codex\nPRÉ-CONDIÇÃO: a TAR-377 (os aceites) pousada em origin/main. Antes disso não pegue esta: reconciliar recusa aceite que não esteja em origin/main.\nORIGEM: decisão do mantenedor em 12/09/2026 (retomada da maestro, seção 4, item 1). A TAR-377 escreveu os aceites; esta fecha as tarefas.\nCÉLULA: fila · WORKTREE: wt-fila-fechar-as-presas · TAR: esta tarefa\nABERTURA: make sessao CELULA=fila TAREFA=fechar-as-presas TAR=<o número desta tarefa> SEM_CONTAINER=1\nPADRÃO: o Padrão de Trabalho (1ª seção do CLAUDE.md) vale inteiro, inclusive a regra 2 (discorde antes, em 5 linhas, com uma alternativa) e a regra 9 (relatório em blocos, sem enchimento).\nCONTEXTO: 31 tarefas estão em execução com o PR já integrado, porque pousaram antes de o merge fechar a tarefa (PR #1603). A tabela tarefa, PR e registro de aceite está no corpo do PR que entregou a TAR-377; a URL desse PR está no evento submetida da TAR-377 em fila/eventos/. python ci/fila.py reconciliar lê o PR no GitHub, confere a integração, a publicação e o atestado, valida o aceite e escreve o evento concluida; recusa bancada que não incorporou origin/main.\nAS 31: TAR-293, TAR-295, TAR-325, TAR-327, TAR-328, TAR-330, TAR-331, TAR-334, TAR-336, TAR-338, TAR-339, TAR-340, TAR-342, TAR-343, TAR-345, TAR-347, TAR-348, TAR-351, TAR-354, TAR-358, TAR-360, TAR-361, TAR-362, TAR-363, TAR-364, TAR-365, TAR-366, TAR-367, TAR-370, TAR-372, TAR-373.\nMISSÃO: na bancada com origin/main incorporada (git merge origin/main antes de começar), rode para cada uma das 31: python ci/fila.py reconciliar TAR-NNN --quem agent/fila/fechar-as-presas --aceite-registro painel/registros/<o aceite da tabela>. Cada chamada escreve um evento concluida em fila/eventos/ e solta a reserva; commite os eventos por arquivo. Recusa é resultado, não obstáculo: cole a saída inteira no corpo do PR, deixe a tarefa como está e siga para a próxima. Nunca escreva evento à mão, nunca use concluir com texto livre, nunca edite arquivo em fila/tarefas/.\nALVOS (permitido escrever): fila/eventos/ (só arquivos novos escritos pelo balcão) · painel/registros/ (só o recibo do PR).\nSOMENTE-LEITURA: ci/fila.py · fila/tarefas/ · painel/registros/.\nFORA DE ESCOPO: qualquer código; qualquer registro além do recibo; tarefa fora da lista.\nINVARIANTE: estado é conta dos eventos; um evento só nasce pelo balcão.\nDoD: python ci/fila.py validar verde; python ci/fila.py listar mostrando as 31 como concluída, ou a recusa colada de cada uma que ficou; python -m pytest ci/tests/test_fila.py -q verde; make pr com o recibo embarcado. Devolva o número do PR e encerre.\nORÇAMENTO: até 31 eventos novos (fila/ fica fora do teto de 15).\nMANDATO: decisão do mantenedor em 12/09/2026, dada à maestro pela pergunta estruturada da retomada (seção 4, item 1: reconciliar as tarefas presas) e registrada na escrituração desta tarefa.\nmodelo_recomendado: sonnet (no Codex: gpt-5.6-sol) · esforco_recomendado: medium · teto_de_contexto: 70000\nARMADILHAS: 192 (pegar a tarefa antes do worktree deixa o evento no espelho) · 356 (corrente errada na fila não tem evento que a conserte) · 135 (nunca editar o clone principal).",
+  "origem": "decisão do mantenedor em 12/09/2026 (despacho 2b da retomada da maestro); depois da TAR-377; executor Codex",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

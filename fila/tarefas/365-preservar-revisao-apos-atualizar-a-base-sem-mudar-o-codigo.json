@@ -1,0 +1,19 @@
+{
+  "arquivo": "365-preservar-revisao-apos-atualizar-a-base-sem-mudar-o-codigo",
+  "id": "TAR-365",
+  "titulo": "Preservar revisão após atualizar a base sem mudar o código",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Git real aceita composição limpa e cadeia; recusa commit extra, conflito, árvore manual, base externa e revisão posterior inválida; falhas de instrumento resultam em ERROR. Testes e mutações aprovados, fila e painel válidos, revisão independente e recibo no PR.",
+  "despacho": "Alterar ci/revisor_de_pouso.py, somente checar_revisao_independente em ci/mergear.py, testes de revisão e decisão técnica. Preservar atestado original. Conferir toda cadeia de primeiro pai com dois pais, segundo pai ancestral da main recém-obtida e árvore igual a merge-tree sem conflitos. Não tocar no modo pousar nem executar fonte do PR.",
+  "origem": "Correção necessária ao encaminhamento assíncrono aprovado pelo mantenedor",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

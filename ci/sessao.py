@@ -34,14 +34,14 @@ duplica nada — o que já existe é reusado, e reusar não é falhar):
      6. `ci/indice_de_armadilhas.py` DENTRO da bancada: o índice é gerado, não
         viaja no Git, e num checkout novo simplesmente não existe
      7. venv FORA do worktree (`armadilhas/008`: dentro é risco de commit)
-     8. pip install -r services/<celula>/requirements.txt
-     9. Postgres (e Redis, quando a célula usa) em Docker, com nome e porta
-        DERIVADOS da célula — nunca a 55432 fixa da partida rápida, que em lote
-        faria cinco despachos colidirem no mesmo container
+     8. dependências por hash e Python, com uv quando disponível e trava local
+     9. Postgres compartilhado com banco por tarefa; Redis separado por tarefa
+        e porta livre escolhida pelo Docker
     10. .env de sessão, fora do worktree, com caminhos absolutos no formato
         desta máquina (`armadilhas/006`: `/tmp` aqui não é `/tmp`)
     11. python ci/doctor.py
-    12. baseline: `make ci` da célula, com a saída INTEIRA num log em disco
+    12. baseline da main isolada: `make ci` da célula, com log completo e cache
+        por revisão e ambiente; as mudanças da tarefa têm validação própria
     e então imprime a Declaração de Abertura do RITOS §1 já preenchida, e
     fecha com `BANCADA PRONTA: <caminho absoluto>` para o robô copiar.
 
@@ -74,6 +74,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
+import platform
+import secrets
+from contextlib import contextmanager
 import os
 import re
 import shutil
@@ -82,9 +86,9 @@ import sys
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Callable, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -428,10 +432,13 @@ class Plano:
     porta_postgres: int
     redis: str
     porta_redis: int
+    senha_banco: str = SENHA_DO_BANCO
 
     @property
     def banco(self) -> str:
-        return f"{self.celula}_db"
+        identidade = f"{self.celula}:{self.tarefa}:{self.raiz.resolve()}"
+        sufixo = hashlib.sha256(identidade.encode()).hexdigest()[:16]
+        return f"{self.celula[:24]}_{sufixo}"
 
     @property
     def log_do_baseline(self) -> Path:
@@ -514,7 +521,7 @@ def derivar_plano(
             worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
             branch=f"agent/{celula}/{tarefa}",
             scratch=scratch,
-            venv=scratch / "venv",
+            venv=Path.home() / ".sitesdoreino" / "venvs" / celula,
             arquivo_env=scratch / ".env",
             postgres="",
             porta_postgres=0,
@@ -531,26 +538,12 @@ def derivar_plano(
         worktree=(raiz.parent / f"wt-{celula}-{tarefa}").absolute(),
         branch=f"agent/{celula}/{tarefa}",
         scratch=scratch,
-        venv=scratch / "venv",
+        venv=Path.home() / ".sitesdoreino" / "venvs" / celula,
         arquivo_env=scratch / ".env",
-        postgres=f"{prefixo}-{celula}-pg",
-        porta_postgres=(
-            porta_postgres
-            if porta_postgres is not None
-            else derivar_porta(
-                celula, celulas, PORTA_POSTGRES_BASE, PORTA_POSTGRES_TETO
-            )
-        ),
-        redis=f"{prefixo}-{celula}-redis" if usa_redis else "",
-        porta_redis=(
-            (
-                porta_redis
-                if porta_redis is not None
-                else derivar_porta(celula, celulas, PORTA_REDIS_BASE, PORTA_REDIS_TETO)
-            )
-            if usa_redis
-            else 0
-        ),
+        postgres="sitesdoreino-postgres-shared",
+        porta_postgres=porta_postgres if porta_postgres is not None else 15432,
+        redis=f"{prefixo}-{celula}-{tarefa}-redis" if usa_redis else "",
+        porta_redis=porta_redis if usa_redis and porta_redis is not None else 0,
     )
 
 
@@ -593,7 +586,7 @@ def variaveis_de_sessao(
         "PYTHONUTF8": "1",
         "DJANGO_SECRET_KEY": SEGREDO_DE_DESENVOLVIMENTO,
         "DATABASE_URL": (
-            f"postgres://{USUARIO_DO_BANCO}:{SENHA_DO_BANCO}"
+            f"postgres://{plano.banco}:{plano.senha_banco}"
             f"@localhost:{porta_postgres}/{plano.banco}"
         ),
     }
@@ -659,7 +652,7 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", e
     # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
     # mediu. "não medido" com o motivo é honesto; "verde" seria falso-verde.
     baseline = (
-        f"Baseline: `make ci` da célula {plano.celula} = {resumo}."
+        f"Baseline da BASE origin/main: `make ci` da célula {plano.celula} = {resumo}; a tarefa exige validação própria."
         if resumo
         else "Baseline: não medido (--sem-container: esta bancada não sobe ambiente)."
     )
@@ -819,6 +812,73 @@ def escrever_de_verdade(caminho: Path, texto: str) -> None:
     caminho.write_text(texto, encoding="utf-8", newline="\n")
 
 
+@contextmanager
+def trava_de_ambiente(caminho: Path, *, passo: str = P_VENV):
+    """O SO libera a trava também se o processo morrer, sem apagar lock alheio."""
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    with caminho.open("a+b") as arquivo:
+        if arquivo.tell() == 0:
+            arquivo.write(b"0")
+            arquivo.flush()
+        limite = time.monotonic() + 7200
+        while True:
+            try:
+                arquivo.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+                    msvcrt.locking(arquivo.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(arquivo.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as erro:
+                if time.monotonic() >= limite:
+                    raise ErroDeSessao(passo, "ambiente em preparação por outra sessão",
+                                       detalhe=f"Aguarde e repita a abertura. Trava: {caminho}") from erro
+                time.sleep(0.1)
+        try:
+            yield
+        finally:
+            arquivo.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(arquivo.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(arquivo.fileno(), fcntl.LOCK_UN)
+
+
+def identidade_do_venv(requisitos: Path, *, ler=None) -> str:
+    identidade = hashlib.sha256()
+    identidade.update(repr((sys.executable, sys.version, platform.system(), platform.release(), platform.machine(),
+                            FERRAMENTAS_DE_PORTAO)).encode())
+    visitados = set()
+
+    def incluir(arquivo):
+        arquivo = arquivo.resolve()
+        if arquivo in visitados:
+            return
+        visitados.add(arquivo)
+        conteudo = (ler(arquivo) if ler else arquivo.read_bytes()).replace(b"\r\n", b"\n")
+        identidade.update(len(conteudo).to_bytes(8, "big"))
+        identidade.update(conteudo)
+        for linha in conteudo.decode("utf-8").splitlines():
+            linha = linha.split(" #", 1)[0].strip()
+            referencia = re.match(r"^(?:-r\s*|-c\s*|--requirement(?:=|\s+)|--constraint(?:=|\s+))(.+)$", linha)
+            if referencia:
+                incluir(arquivo.parent / referencia.group(1).strip())
+            elif (linha.startswith(("-e", "--editable", "-f", "--find-links", ".", "/", "\\", "file:"))
+                  or PureWindowsPath(linha).drive
+                  or (" @ " in linha and not linha.split(" @ ", 1)[1].startswith(("https://", "http://")))
+                  or (linha.lower().endswith((".whl", ".zip", ".tar.gz")) and "://" not in linha)):
+                raise ErroDeSessao(P_VENV, "dependência local sem identidade imutável",
+                                   detalhe=f"Use uma versão publicada antes de reutilizar o ambiente: {linha}")
+    try:
+        incluir(requisitos)
+    except (OSError, UnicodeError) as erro:
+        raise ErroDeSessao(P_VENV, "não foi possível ler as dependências",
+                           detalhe=f"Confira {requisitos} e repita a abertura: {erro}") from erro
+    return identidade.hexdigest()
+
+
 class Sessao:
     """Executa o plano, passo a passo, parando no primeiro que não deu certo.
 
@@ -849,6 +909,7 @@ class Sessao:
         self._estado_git = "não medido"
         self._passos = passos_do_plano(plano)
         self._variaveis: dict[str, str] = {}
+        self._servicos: dict[str, str] = {}
 
     # -- utilidades ---------------------------------------------------------
 
@@ -1367,45 +1428,51 @@ class Sessao:
 
     def preparar_venv(self) -> None:
         passo = self._abrir(P_VENV)
-        if self._existe(self.plano.python_do_venv):
-            self._pass("venv já existia — sigo")
-            return
-        comando = [sys.executable, "-m", "venv", str(self.plano.venv)]
-        self._exigir(passo, comando, cwd=self.plano.raiz, timeout=600)
-        if not self._existe(self.plano.python_do_venv):
-            raise ErroDeSessao(
-                passo,
-                "o `python -m venv` saiu 0 mas o interpretador não apareceu",
-                comando=" ".join(comando),
-                detalhe=f"Esperado:\n  {self.plano.python_do_venv}",
-            )
-        self._pass(f"venv criado em {self.plano.venv}")
+        chave = identidade_do_venv(self.plano.requisitos)
+        self.plano = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / chave)
+        with trava_de_ambiente(self.plano.venv.with_suffix(".lock")):
+            if self._existe(self.plano.python_do_venv):
+                self._pass("venv já existia; dependências serão conferidas pelo hash")
+                return
+            (self.plano.venv / ".instalado").unlink(missing_ok=True)
+            self._exigir(passo, [sys.executable, "-m", "venv", str(self.plano.venv)],
+                          cwd=self.plano.raiz, timeout=600)
+            if not self._existe(self.plano.python_do_venv):
+                raise ErroDeSessao(passo, "o interpretador não apareceu após criar o venv",
+                                   detalhe=f"Confira {self.plano.python_do_venv} e repita a abertura.")
+            self._pass(f"venv criado em {self.plano.venv}")
+
+    def ambiente_instalado(self) -> bool:
+        try:
+            return self._existe(self.plano.python_do_venv) and (self.plano.venv / ".instalado").read_text(encoding="utf-8") == self.plano.venv.name
+        except (OSError, UnicodeError):
+            return False
 
     def instalar(self) -> None:
         passo = self._abrir(P_DEPS)
-        comando = [
-            str(self.plano.python_do_venv),
-            "-m",
-            "pip",
-            "install",
-            "--disable-pip-version-check",
-            "-r",
-            str(self.plano.requisitos),
-            *FERRAMENTAS_DE_PORTAO,
-        ]
-        self._exigir(
-            passo,
-            comando,
-            cwd=self.plano.worktree,
-            timeout=3600,
-            dica="Sem rede, ou uma versão pinada que o índice não serve mais.\n"
-            "Este passo é idempotente: rode o mesmo comando de novo depois de\n"
-            "resolver, que o pip só instala o que faltar.",
-        )
-        self._pass(
-            f"requirements.txt de {self.plano.celula} + "
-            f"{', '.join(FERRAMENTAS_DE_PORTAO)} instalados"
-        )
+        chave = identidade_do_venv(self.plano.requisitos)
+        if self.plano.venv.name != chave:
+            raise ErroDeSessao(passo, "dependências mudaram durante a preparação",
+                               detalhe="Repita a abertura para preparar o novo ambiente.")
+        marca = self.plano.venv / ".instalado"
+        with trava_de_ambiente(self.plano.venv.with_suffix(".lock")):
+            if self.ambiente_instalado():
+                self._pass("dependências intocadas; ambiente reutilizado")
+                return
+            uv = self._localizar("uv")
+            comando = ([uv, "pip", "install", "--python", str(self.plano.python_do_venv)]
+                       if uv else [str(self.plano.python_do_venv), "-m", "pip", "install",
+                                   "--disable-pip-version-check"])
+            comando += ["-r", str(self.plano.requisitos), *FERRAMENTAS_DE_PORTAO]
+            self._exigir(passo, comando, cwd=self.plano.worktree, timeout=3600,
+                          dica="Confira o acesso ao índice de pacotes e repita a abertura.")
+            temporario = marca.with_suffix(f".{uuid.uuid4().hex}.tmp")
+            try:
+                self._escrever(temporario, chave)
+                temporario.replace(marca)
+            finally:
+                temporario.unlink(missing_ok=True)
+            self._pass(f"dependências de {self.plano.celula} instaladas ({chave[:8]})")
 
     def _garantir_container(
         self,
@@ -1441,7 +1508,7 @@ class Sessao:
             comando = [docker, "run", "-d", "--name", nome]
             for chave, valor in ambiente.items():
                 comando += ["-e", f"{chave}={valor}"]
-            comando += ["-p", f"{porta}:{porta_interna}", imagem]
+            comando += ["-p", f"127.0.0.1:{porta or ''}:{porta_interna}", imagem]
             self._exigir(
                 passo,
                 comando,
@@ -1529,34 +1596,82 @@ class Sessao:
             )
         self._nota(f"Docker Engine {motor.stdout.strip()}")
 
-        porta_pg = self._garantir_container(
-            passo,
-            docker,
-            nome=self.plano.postgres,
-            imagem=IMAGEM_POSTGRES,
-            porta=self.plano.porta_postgres,
-            porta_interna=5432,
-            ambiente={
-                "POSTGRES_USER": USUARIO_DO_BANCO,
-                "POSTGRES_PASSWORD": SENHA_DO_BANCO,
-                "POSTGRES_DB": self.plano.banco,
-            },
-            sonda=["pg_isready", "-U", USUARIO_DO_BANCO, "-d", self.plano.banco],
-            esperado="accepting connections",
-        )
-        porta_redis = 0
-        if self.plano.usa_redis:
-            porta_redis = self._garantir_container(
+        with trava_de_ambiente(Path.home() / ".sitesdoreino" / "postgres-shared.lock", passo=passo):
+            porta_pg = self._garantir_container(
                 passo,
                 docker,
-                nome=self.plano.redis,
-                imagem=IMAGEM_REDIS,
-                porta=self.plano.porta_redis,
-                porta_interna=6379,
-                ambiente={},
-                sonda=["redis-cli", "ping"],
-                esperado="PONG",
+                nome=self.plano.postgres,
+                imagem=IMAGEM_POSTGRES,
+                porta=self.plano.porta_postgres,
+                porta_interna=5432,
+                ambiente={
+                    "POSTGRES_USER": USUARIO_DO_BANCO,
+                    "POSTGRES_PASSWORD": SENHA_DO_BANCO,
+                },
+                sonda=["pg_isready", "-U", USUARIO_DO_BANCO],
+                esperado="accepting connections",
             )
+            consulta = [docker, "exec", self.plano.postgres, "psql", "-U", USUARIO_DO_BANCO,
+                        "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-tAc"]
+            senha_arquivo = self.plano.scratch / ".senha-banco"
+            try:
+                senha = senha_arquivo.read_text(encoding="utf-8").strip()
+            except FileNotFoundError:
+                senha = ""
+            papel = self._exigir(passo, [*consulta,
+                f"SELECT 1 FROM pg_roles WHERE rolname = '{self.plano.banco}'"],
+                cwd=self.plano.raiz).stdout.strip()
+            if papel not in ("", "1") or (papel == "1" and not senha):
+                raise ErroDeSessao(passo, "credencial da tarefa indisponível",
+                                   detalhe="Preserve o banco existente e recupere o scratch da tarefa ou abra uma tarefa nova.")
+            if not senha:
+                senha = secrets.token_hex(24)
+                self._escrever(senha_arquivo, senha)
+            if not re.fullmatch(r"[a-f0-9]{48}", senha):
+                raise ErroDeSessao(passo, "credencial local inválida", detalhe=f"Confira {senha_arquivo} e repita a abertura.")
+            if papel != "1":
+                self._exigir(passo, [*consulta,
+                    f"""CREATE ROLE "{self.plano.banco}" LOGIN CREATEDB NOSUPERUSER NOCREATEROLE PASSWORD '{senha}'"""],
+                    cwd=self.plano.raiz)
+            self.plano = replace(self.plano, senha_banco=senha)
+            dono = self._exigir(passo, [*consulta,
+                f"SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '{self.plano.banco}'"],
+                cwd=self.plano.raiz).stdout.strip()
+            if dono and dono != self.plano.banco:
+                raise ErroDeSessao(passo, "consulta do banco devolveu resposta inesperada",
+                                   detalhe="O banco pertence a outro papel. Preserve os dados e abra uma tarefa nova.")
+            if not dono:
+                self._exigir(passo, [*consulta,
+                    f'CREATE DATABASE "{self.plano.banco}" WITH OWNER "{self.plano.banco}"'],
+                    cwd=self.plano.raiz)
+            self._exigir(passo, [*consulta, f'REVOKE CONNECT ON DATABASE "{self.plano.banco}" FROM PUBLIC'],
+                          cwd=self.plano.raiz)
+            porta_redis = 0
+            if self.plano.usa_redis:
+                porta_redis = self._garantir_container(
+                    passo,
+                    docker,
+                    nome=self.plano.redis,
+                    imagem=IMAGEM_REDIS,
+                    porta=self.plano.porta_redis,
+                    porta_interna=6379,
+                    ambiente={},
+                    sonda=["redis-cli", "ping"],
+                    esperado="PONG",
+                )
+            for nome in (self.plano.postgres, self.plano.redis):
+                if not nome:
+                    continue
+                identidade = self._exigir(passo, [docker, "inspect", "--format", "{{.Id}} {{.Image}}", nome],
+                                           cwd=self.plano.raiz).stdout.strip()
+                if not re.fullmatch(r"[0-9a-f]{64} sha256:[0-9a-f]{64}", identidade):
+                    raise ErroDeSessao(passo, "identidade do serviço indisponível",
+                                       detalhe=f"Confira docker inspect {nome} e repita a abertura.")
+                # Cada tarefa nasce com outro Redis, mas com a mesma imagem imutável.
+                if nome == self.plano.postgres:
+                    self._servicos["postgres"] = identidade
+                else:
+                    self._servicos["redis"] = identidade.split()[1]
         self._pass(
             f"{self.plano.postgres} atende em localhost:{porta_pg}"
             + (
@@ -1622,61 +1737,101 @@ class Sessao:
         )
         self._pass("doctor READY")
 
+    def ambiente_da_base(self) -> dict[str, str]:
+        # Metadados do agente não entram no processo de teste nem na sua identidade.
+        return {k: v for k, v in self._ambiente().items()
+                if not k.startswith(("CODEX_", "CLAUDE_"))
+                and k not in {"PYTEST_CURRENT_TEST", "PWD", "OLDPWD", "PYTHONPATH"}}
+
+    def chave_do_baseline(self, git: str) -> tuple[str, Path, "Sessao"]:
+        revisao = self._exigir(P_BASELINE, [git, "rev-parse", "origin/main"],
+                               cwd=self.plano.worktree).stdout.strip()
+        if not re.fullmatch(r"[0-9a-f]{40,64}", revisao):
+            raise ErroDeSessao(P_BASELINE, "revisão da main inválida",
+                               detalhe="Confira git fetch origin e repita a abertura.")
+        def ler_da_base(arquivo):
+            relativo = arquivo.relative_to(self.plano.worktree.resolve()).as_posix()
+            return self._exigir(P_BASELINE, [git, "show", f"{revisao}:{relativo}"],
+                                 cwd=self.plano.worktree).stdout.encode("utf-8")
+        identidade_base = identidade_do_venv(self.plano.requisitos, ler=ler_da_base)
+        plano_base = replace(self.plano, venv=Path.home() / ".sitesdoreino" / "venvs" / self.plano.celula / identidade_base)
+        base = Sessao(plano_base, correr=self._correr, escrever=self._escrever,
+                      existe=self._existe, localizar=self._localizar, dormir=self._dormir,
+                      log=lambda texto: self._nota(texto.replace("PASS", "BASE")))
+        base._variaveis = {**self._variaveis, "SESSAO_VENV": str(plano_base.venv)}
+        ambiente = base.ambiente_da_base()
+        for chave in ("DATABASE_URL", "REDIS_STREAMS_URL", "HUEY_REDIS_URL",
+                      "SESSAO_WORKTREE", "SESSAO_SCRATCH"):
+            if chave in ambiente:
+                ambiente[chave] = "isolado-por-tarefa"
+        identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items()), sorted(self._servicos.items())))
+        chave = hashlib.sha256(identidade.encode()).hexdigest()
+        return revisao, Path.home() / ".sitesdoreino" / "baselines" / self.plano.celula / f"{chave}.json", base
+
     def rodar_baseline(self, git: str) -> str:
         passo = self._abrir(P_BASELINE)
-        make = self._ferramenta(
-            "make",
-            passo,
-            "O `make ci` de cada célula encadeia lint/type/test/contrato-check e\n"
-            "ainda não foi portado para Python (ci/ci.py delega para ele). Sem GNU\n"
-            "Make não há baseline de célula — e não medir não é medir verde.",
-        )
-        saida = self._correr(
-            [make, "-C", str(self.plano.celula_no_worktree), "ci"],
-            cwd=self.plano.worktree,
-            env=self._ambiente(),
-            timeout=3600,
-        )
-        # O log INTEIRO vai para o disco ANTES do veredito, para existir tanto
-        # no verde quanto no vermelho: o recorte de 4000 caracteres da mensagem
-        # de erro serve para ler na tela, não para investigar.
-        try:
-            self._escrever(self.plano.log_do_baseline, saida.texto)
-            onde_o_log = str(self.plano.log_do_baseline)
-        except OSError as exc:
-            onde_o_log = f"(não consegui gravar o log: {exc})"
-        if saida.exit_code in SENTINELAS_DE_INSTRUMENTACAO:
-            raise ErroDeSessao(
-                passo,
-                f"o baseline NÃO chegou a rodar (exit {saida.exit_code})",
-                comando=f"make -C {self.plano.celula_no_worktree} ci",
-                detalhe=recortar(saida.texto, 4000)
-                + f"\n\nLog completo: {onde_o_log}"
-                + "\n\nEste resultado não é um FAIL: nada foi provado sobre o código.",
-            )
-        if saida.exit_code != 0:
-            # O GNU Make devolve 2 quando uma receita reprova (`black --check`
-            # sai 1 e o make traduz para 2). Tratar o 2 como "não consegui
-            # medir" mandaria quem lê investigar o lugar errado — o que reprovou
-            # foi a célula, não o instrumento. Só as sentinelas do próprio
-            # `correr_de_verdade` (127/126/124) significam instrumentação.
-            raise ErroDeSessao(
-                passo,
-                f"o baseline REPROVOU (exit {saida.exit_code}) — a main está "
-                "vermelha para esta célula",
-                comando=f"make -C {self.plano.celula_no_worktree} ci",
-                detalhe=recortar(saida.texto, 4000)
-                + f"\n\nLog completo: {onde_o_log}"
-                + "\n\nRITOS.md §1: consertar main quebrada NÃO é escopo de sessão de\n"
-                "feature. Pare e reporte ao mantenedor.",
-                codigo=1,
-            )
-        resumo = resumo_do_baseline(saida.texto)
-        self._nota(f"make ci verde ({resumo}) · log completo: {onde_o_log}")
-
+        make = self._ferramenta("make", passo, "Instale GNU Make e repita a abertura para medir a base.")
         self._exigir_bancada_limpa(passo, git)
-        self._pass(f"make ci = {resumo} · git status: {self._estado_git} · log: {onde_o_log}")
-        return resumo
+        revisao, cache, ambiente_base = self.chave_do_baseline(git)
+        with trava_de_ambiente(cache.with_suffix(".lock"), passo=passo):
+            if ambiente_base.ambiente_instalado():
+                try:
+                    prova = json.loads(cache.read_text(encoding="utf-8"))
+                    texto = prova["saida"]
+                    if (prova["exit_code"] == 0 and isinstance(texto, str) and texto.strip()
+                            and prova["sha256"] == hashlib.sha256(texto.encode()).hexdigest()):
+                        self._escrever(self.plano.log_do_baseline, texto)
+                        resumo = resumo_do_baseline(texto)
+                        self._pass(f"baseline da BASE {revisao[:12]} reutilizado: {resumo}; log: {self.plano.log_do_baseline}")
+                        return resumo
+                except (OSError, ValueError, KeyError, TypeError):
+                    self._nota("baseline sem evidência válida no cache; medindo a base")
+            with tempfile.TemporaryDirectory(prefix="baseline-main-") as temporario:
+                base = Path(temporario).resolve() / "arvore"
+                self._exigir(passo, [git, "worktree", "add", "--detach", str(base), revisao],
+                              cwd=self.plano.raiz, timeout=300)
+                try:
+                    ambiente_base.plano = replace(ambiente_base.plano, worktree=base)
+                    if not ambiente_base.ambiente_instalado():
+                        ambiente_base.preparar_venv()
+                        ambiente_base.instalar()
+                    env = ambiente_base.ambiente_da_base()
+                    env["PYTHONPATH"] = str(base)
+                    env["SESSAO_WORKTREE"] = str(base)
+                    saida = self._correr([make, "-C", str(base / "services" / self.plano.celula), "ci"],
+                                         cwd=base, env=env, timeout=3600)
+                    self._escrever(self.plano.log_do_baseline, saida.texto)
+                    if saida.exit_code in SENTINELAS_DE_INSTRUMENTACAO:
+                        raise ErroDeSessao(passo, f"o baseline NÃO chegou a rodar (exit {saida.exit_code})",
+                                           detalhe=f"Confira o instrumento. Log completo: {self.plano.log_do_baseline}")
+                    if saida.exit_code != 0:
+                        raise ErroDeSessao(passo, f"o baseline da BASE {revisao} REPROVOU (exit {saida.exit_code})",
+                                           detalhe=recortar(saida.texto, 4000) + f"\nLog completo: {self.plano.log_do_baseline}\nPare e reporte a falha da base.", codigo=1)
+                    medida = self._exigir(passo, [git, "rev-parse", "HEAD"], cwd=base).stdout.strip()
+                    sujo = self._exigir(passo, [git, "status", "--porcelain"], cwd=base).stdout.strip()
+                    if medida != revisao or sujo:
+                        raise ErroDeSessao(passo, "o baseline alterou a revisão isolada",
+                                           detalhe="A prova não será reutilizada. Confira o log e corrija a suíte da base.")
+                finally:
+                    if not base.is_relative_to(Path(temporario).resolve()):
+                        raise ErroDeSessao(passo, "limpeza fora da bancada temporária recusada", detalhe=str(base))
+                    self._exigir(passo, [git, "worktree", "remove", "--force", str(base)],
+                                  cwd=self.plano.raiz, timeout=300)
+            self._exigir_bancada_limpa(passo, git)
+            if ambiente_base.ambiente_instalado() and saida.texto.strip():
+                prova = json.dumps({"exit_code": 0, "saida": saida.texto,
+                                    "sha256": hashlib.sha256(saida.texto.encode()).hexdigest()}, ensure_ascii=False)
+                temporario = cache.with_suffix(f".{uuid.uuid4().hex}.tmp")
+                try:
+                    self._escrever(temporario, prova)
+                    temporario.replace(cache)
+                except OSError as erro:
+                    self._nota(f"baseline medido, mas cache não foi gravado: {erro}")
+                finally:
+                    temporario.unlink(missing_ok=True)
+            resumo = resumo_do_baseline(saida.texto)
+            self._pass(f"make ci da BASE {revisao[:12]} = {resumo}; log completo: {self.plano.log_do_baseline}")
+            return resumo
 
     # -- orquestração -------------------------------------------------------
 
@@ -2043,7 +2198,9 @@ def main(argv: list[str] | None = None) -> int:
     detalhes = []
     log_abertura = plano.scratch / f"abertura-{tentativa}.log"
     try:
-        texto = Sessao(plano, log=detalhes.append).rodar()
+        abertura = Sessao(plano, log=detalhes.append)
+        texto = abertura.rodar()
+        plano = abertura.plano
     except ErroDeSessao as erro:
         escrever_de_verdade(log_abertura, "\n".join(detalhes + [erro.render()]))
         print(erro.render())
@@ -2061,7 +2218,7 @@ def main(argv: list[str] | None = None) -> int:
     print(moldura_da_declaracao(texto))
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
-        print(f"A suíte da célula rodou em {plano.celula_no_worktree}.")
+        print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")
     pacote = contexto(plano.worktree)
     emitir_contexto(plano, tentativa, pacote)
     print("Próxima ação autorizada: conferir as leituras obrigatórias e executar o brief; revisão, integração e publicação não foram realizadas.")
