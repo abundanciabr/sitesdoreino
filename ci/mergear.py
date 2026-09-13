@@ -889,6 +889,14 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
         ]
         if not regras:
             raise ValueError("CODEOWNERS vazio")
+        if not isinstance(pr.get("files"), list):
+            raise ValueError("a consulta não trouxe a lista de arquivos")
+        if any(
+            not donos or any(c in padrao for c in "*?![") for padrao, *donos in regras
+        ):
+            raise ValueError(
+                "padrão CODEOWNERS não suportado; atualize o leitor antes de integrar"
+            )
         mandato = re.search(
             r"^Mandato-do-mantenedor: (.{20,})$", pr.get("body") or "", re.MULTILINE
         )
@@ -945,6 +953,10 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
 
     relatorio.registrar(checar_estado(pr))
     relatorio.registrar(checar_mergeabilidade(pr))
+    if not re.fullmatch(r"[0-9a-f]{40}", pr.get("headRefOid") or ""):
+        relatorio.registrar(
+            Resultado("SHA", Estado.ERROR, "a consulta não trouxe um SHA válido")
+        )
     if pr.get("baseRefName") != "main":
         relatorio.registrar(
             Resultado("base", Estado.FAIL, "integração automática atende somente main")

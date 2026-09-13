@@ -73,6 +73,17 @@ def test_obrigatorio_ausente_recusa(monkeypatch, repo, pr):
     assert conferir(monkeypatch, repo, pr).estado is not Estado.PASS
 
 
+@pytest.mark.parametrize("campo", ["headRefOid", "files"])
+def test_consulta_incompleta_nao_aprova(monkeypatch, repo, pr, campo):
+    pr.pop(campo)
+    assert conferir(monkeypatch, repo, pr).estado is Estado.ERROR
+
+
+def test_novo_padrao_codeowners_desconhecido_nao_libera(monkeypatch, repo, pr):
+    (repo / ".github/CODEOWNERS").write_text("* @dono\n")
+    assert conferir(monkeypatch, repo, pr).estado is Estado.ERROR
+
+
 def test_codeowners_sem_mandato_recusa(monkeypatch, repo, pr):
     pr["files"] = [{"path": "ci/exemplo.py"}]
     assert conferir(monkeypatch, repo, pr).estado is Estado.FAIL
