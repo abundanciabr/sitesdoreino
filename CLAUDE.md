@@ -90,18 +90,22 @@ decisão ou passo manual em Pendências. Nunca invente resultado para fechar.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-No contexto direcionado da abertura, confira origens, ausências e truncamento; abra
-entradas citadas, `services/<celula>/LICOES.md` e, uma vez por sessão, os 8
-padrões de `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Erro/caminho usa
-`python ci/consultar_armadilhas.py`; aprofundamento usa sessão ou índice sob
-demanda, nunca a pasta inteira. Índice ausente exige
-`python ci/indice_de_armadilhas.py`, não suposição de liberdade.
+Use o contexto direcionado da abertura `ci/sessao.py`: confira origens,
+ausências e truncamento; abra entradas citadas/recuperadas,
+`services/<celula>/LICOES.md` e uma vez por sessão os 8 padrões de
+`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho permanecem.
+Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
+JSON com até 3 lições de 500 caracteres e origens.
+Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
+de restrições. Para aprofundamento, use `--caminho`/`--sintoma`/`--limite-contexto`
+da sessão ou abra `armadilhas/INDICE.md` sob demanda, nunca a pasta inteira.
 
-Lição nova usa número de `python ci/reservar.py numero armadilha`, arquivo
-`armadilhas/NNN-slug.md` e índice regenerado; nunca edite entrada alheia nem
-`ARMADILHAS.md`. Lição local vai ao `LICOES.md`; o escrivão julga as globais.
-Declare `gatilho` e `licao` nas lições ligadas a caminho.
-Fora do alcance exige `pendencia`, `precisa_do_dono: true`, e relatório.
+Lição nova: número por `python ci/reservar.py numero armadilha`, arquivo
+novo `armadilhas/NNN-slug.md`, índice regenerado. Não acrescente a
+`ARMADILHAS.md` nem edite entrada alheia. Declare `gatilho` e `licao`
+quando ligados a caminho. Lição exclusiva da célula vai ao `LICOES.md`.
+O escrivão julga lições da equipe. Correção fora do alcance exige registro
+`pendencia`, `precisa_do_dono: true`, e relatório.
 
 **Quem faz valer:** `ci/consultar_armadilhas.py`, muralhas do índice e reservas.
 
@@ -132,14 +136,14 @@ registro de regência, nunca implementação, código, teste ou edição operaci
 de lei. Lote: uma célula por PR, até 15 arquivos fora `painel/` e `fila/`;
 contrato e CODEOWNERS exigem mandato; dependência fora do brief volta à maestro.
 
-**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
+**Quem faz valer:** `ci/pr.py`, `ci/fila.py`, `ci/muralha_dos_sub_agentes.py` e testes das fichas; papéis são julgamento.
 
 ## O que uma chamada custa
 
-Classifique com `python ci/economia_da_fabrica.py brief`; escolha explicitamente
-modelo, esforço e teto no lançamento. Só contexto pertinente; não repita leituras
-nem divida por arquivo sem independência útil. Acima de ~300k de contexto, avise
-e sugira nova sessão com handoff; o mantenedor decide. Economia não reduz ambição.
+Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
+nunca herde modelo. Rotina usa econômico; arquitetura/contrato/produto ou
+dúvida usa superior. Acima de ~300k de contexto, avise e sugira conversa nova
+com o que levar; ele decide. Economia não reduz ambição.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
 
