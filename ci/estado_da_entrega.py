@@ -10,7 +10,6 @@ import fnmatch
 import base64
 import json
 import re
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -109,6 +108,67 @@ def consultar_jobs(raiz: Path, run: dict) -> list[dict]:
         raise ErroDeInstrumentacao("jobs de publicação truncados; não há prova de cobertura")
     return [dict(id=j.get("id"), name=j.get("name"), status=j.get("status"),
                  conclusion=j.get("conclusion"), url=j.get("html_url")) for j in dados["jobs"]]
+
+
+def consultar_jobs_em_lote(raiz: Path, runs: list[dict]) -> dict[int, list[dict]]:
+    """A varredura só usa nome e conclusão; check run não é ID de actions job."""
+    if not 1 <= len(runs) <= 8 or any(
+        not isinstance(r.get("node_id"), str) or not r["node_id"]
+        or type(r.get("id")) is not int or type(r.get("run_attempt")) is not int
+        for r in runs
+    ) or len({r["node_id"] for r in runs}) != len(runs):
+        raise ErroDeInstrumentacao("histórico sem identidade para consultar jobs; confira os runs novamente")
+    query = """query($ids: [ID!]!) {
+      nodes(ids: $ids) { ... on WorkflowRun {
+        id databaseId runAttempt
+        checkSuite { checkRuns(first: 100, filterBy: {checkType: LATEST}) {
+          totalCount pageInfo { hasNextPage } nodes { name status conclusion }
+        } }
+      } }
+    }"""
+    args = ["gh", "api", "graphql", "-f", "query=" + query]
+    for run in runs:
+        args.extend(["-f", "ids[]=" + run["node_id"]])
+    saida = executar(args, cwd=raiz, descricao="consultar os jobs históricos em lote; repita se falhar",
+                     exigir_stdout=True).stdout
+    try:
+        dados = json.loads(saida)
+        if not isinstance(dados, dict) or dados.get("errors"):
+            raise ValueError("GraphQL não concluiu a medição")
+        nos = dados["data"]["nodes"]
+        if not isinstance(nos, list) or len(nos) != len(runs):
+            raise ValueError("lista de runs incompleta")
+        por_id = {n["id"]: n for n in nos}
+        if len(por_id) != len(runs) or set(por_id) != {r["node_id"] for r in runs}:
+            raise ValueError("identidade dos runs divergiu")
+        resultado = {}
+        for run in runs:
+            no = por_id[run["node_id"]]
+            if (type(no["databaseId"]) is not int or no["databaseId"] != run["id"]
+                    or type(no["runAttempt"]) is not int or no["runAttempt"] != run["run_attempt"]):
+                raise ValueError("tentativa mudou entre histórico e jobs")
+            checks = no["checkSuite"]["checkRuns"]
+            jobs = checks["nodes"]
+            if (not isinstance(jobs, list) or type(checks["totalCount"]) is not int
+                    or checks["totalCount"] != len(jobs) or len(jobs) > 100
+                    or checks["pageInfo"]["hasNextPage"] is not False):
+                raise ValueError("jobs truncados ou incompletos")
+            normalizados = []
+            for job in jobs:
+                status, conclusao, nome = job["status"], job["conclusion"], job["name"]
+                if (status not in {"COMPLETED", "IN_PROGRESS", "PENDING", "QUEUED", "REQUESTED", "WAITING"}
+                        or conclusao not in {None, "ACTION_REQUIRED", "CANCELLED", "FAILURE", "NEUTRAL",
+                                             "SKIPPED", "STALE", "STARTUP_FAILURE", "SUCCESS", "TIMED_OUT"}
+                        or not isinstance(nome, str) or not nome.strip()):
+                    raise ValueError("estado ou nome de job não reconhecido")
+                normalizados.append(dict(name=nome, status=status.lower(),
+                                         conclusion=conclusao.lower() if conclusao else None))
+            resultado[run["id"]] = normalizados
+        return resultado
+    except (KeyError, TypeError, ValueError) as erro:
+        raise ErroDeInstrumentacao(
+            "jobs históricos sem prova completa; confira o GitHub e repita a consulta", str(erro),
+        ) from erro
 
 
 def consultar_publicacao(raiz: Path, sha: str, arquivos: list[str]) -> dict:
@@ -306,14 +366,11 @@ def publicacoes_anteriores(raiz: Path, arquivos: list[str]) -> list[dict]:
         if not faltam:
             break
         lote = candidatos[inicio_do_lote:inicio_do_lote + 8]
-        with ThreadPoolExecutor(max_workers=len(lote)) as executor:
-            futuros = [(run, executor.submit(consultar_jobs, raiz, run)) for run in lote]
-            for run, futuro in futuros:
-                considerar(run, futuro.result())
-                if not faltam:
-                    for _, pendente in futuros:
-                        pendente.cancel()
-                    break
+        jobs_por_run = consultar_jobs_em_lote(raiz, lote)
+        for run in lote:
+            considerar(run, jobs_por_run[run["id"]])
+            if not faltam:
+                break
     if faltam:
         raise ErroDeInstrumentacao(
             "o histórico completo não prova os jobs: " + ", ".join(sorted(faltam))

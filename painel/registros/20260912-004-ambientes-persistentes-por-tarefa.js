@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-004-ambientes-persistentes-por-tarefa",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "Ambientes de teste reutilizados por tarefa",
+  detalhe: "TAR-361: ferramentas por hash, banco e senha por tarefa; baseline da main isolada. Recuperação do PR existente em ramo auxiliar, preservando seis registros históricos. JSON e mutação seguem em outra entrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1589. Código 67e6aa932a478d3076e5c1d846864932df3dff92; 191 testes e 8 casos locais; Docker confirmou acesso cruzado negado.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-361",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -178,6 +178,7 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "pr": str,
     "revisao": str,
     "arvore": str,
+    "substitui": str,
     "detalhe": str,
     "evidencia": str,
     "verificado_em": str,
@@ -655,8 +656,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             continue
         if tipo == "submetida":
             erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
-        elif any(campo in dados for campo in ("pr", "revisao", "arvore")):
-            erros.append(f"{nome}: pr, revisao e arvore pertencem ao evento submetida")
+        elif any(campo in dados for campo in ("pr", "revisao", "arvore", "substitui")):
+            erros.append(f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida")
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -703,6 +704,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                     )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
+    _conferir_cadeias_de_submissao(eventos, erros)
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
     # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
     # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
@@ -732,6 +734,34 @@ def problemas_da_submissao(dados: dict) -> list[str]:
         if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
             erros.append(f"{campo} exige o SHA completo do código validado")
     return erros
+
+
+def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> None:
+    ultima_por_tarefa: dict[str, dict] = {}
+    for evento in eventos:
+        if evento.get("evento") != "submetida":
+            continue
+        nome = evento.get("arquivo", "evento submetida")
+        anterior = ultima_por_tarefa.get(evento.get("tarefa"))
+        elo = str(evento.get("substitui") or "").strip()
+        motivo = str(evento.get("detalhe") or "").strip()
+        if anterior is None:
+            if elo:
+                erros.append(f"{nome}: elo substitui não cabe na primeira submissão")
+        elif evento.get("pr") == anterior.get("pr"):
+            if elo:
+                erros.append(f"{nome}: elo substitui não atualiza o mesmo PR")
+        else:
+            if not elo:
+                erros.append(f"{nome}: troca de PR sem elo substitui")
+            elif elo != anterior.get("pr"):
+                erros.append(
+                    f"{nome}: substitui precisa apontar para a última submissão, "
+                    f"{anterior.get('pr')}"
+                )
+            if not motivo:
+                erros.append(f"{nome}: substituição com motivo vazio não conta a troca")
+        ultima_por_tarefa[evento.get("tarefa")] = evento
 
 
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
@@ -1043,16 +1073,44 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
     ).strip()
     if not arvore_medida:
         raise ErroDeInstrumentacao("o git não devolveu a árvore da revisão")
-    caminhos = _git_da_fila(
+    commits = _git_da_fila(
         raiz,
         "log",
-        "--diff-merges=first-parent",
-        "--format=",
-        "--name-only",
+        "--first-parent",
+        "--format=%H %P",
         f"{revisao}..{head}",
         para_que="conferir mudanças posteriores à revisão",
     ).splitlines()
-    caminhos = [caminho for caminho in caminhos if caminho]
+    caminhos = set()
+    for linha in commits:
+        commit, *pais = linha.split()
+        modo = "first-parent"
+        # Remerge só mede merges de dois pais; os demais ficam conservadores.
+        if len(pais) == 2 and all(
+            _git_predicado(
+                raiz,
+                "merge-base",
+                "--is-ancestor",
+                pai,
+                f"{merge}^1",
+                descricao="conferir se o pai lateral já pertence à base publicada",
+            )
+            for pai in pais[1:]
+        ):
+            modo = "remerge"
+        caminhos.update(
+            caminho
+            for caminho in _git_da_fila(
+                raiz,
+                "show",
+                f"--diff-merges={modo}",
+                "--format=",
+                "--name-only",
+                commit,
+                para_que="medir autoria posterior sem o código sincronizado",
+            ).splitlines()
+            if caminho
+        )
     medicao = {
         "arvore_medida": arvore_medida,
         "revisao_ancestral": _git_predicado(
@@ -1071,7 +1129,7 @@ def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
             merge,
             descricao="conferir HEAD ancestral do merge",
         ),
-        "caminhos_posteriores": caminhos,
+        "caminhos_posteriores": sorted(caminhos),
     }
     problemas = problemas_da_linhagem(submissao, medicao)
     if problemas:
@@ -1451,12 +1509,11 @@ def _escrever_evento(
 # não tem desfazer, porque depois do terminal a fila não aceita mais nada. A
 # sombra IMPRIME o que gravaria e mede, e a graduação vem depois.
 #
-# O QUE GRADUA (PR futuro, depois de uma semana de medição): que os disparos
-# medidos mostrem "geraria" batendo com o que o robô escreveria à mão, sem um
-# único caso de tarefa errada. Aí a porta passa a gravar o evento no RAMO e
-# commitá-lo ANTES do merge — antes, e não depois, porque o evento precisa
-# entrar na `main` pelo próprio PR, como o registro do livro faz desde
-# 31/08/2026 (`armadilhas/248`).
+# O QUE GRADUOU, em 12/09/2026: o destino acertado (o evento entra na `main`
+# pelo próprio PR, como o registro do livro faz desde 31/08/2026,
+# `armadilhas/248`), mas NÃO por esta porta. Leia a seção seguinte: quem grava
+# é `ci/pr.py`, junto da submissão, porque push direto na `main` é recusado
+# para todo mundo. A sombra abaixo continua medindo e não grava nada.
 # ---------------------------------------------------------------------------
 
 SOMBRA_GERARIA = "geraria"
@@ -1605,6 +1662,73 @@ def evento_de_conclusao_em_sombra(
             }
         )
     return saida
+
+
+# ---------------------------------------------------------------------------
+# O "FEITO" VIAJA NA ENTREGA (12/09/2026)
+#
+# A sombra acima previa graduar gravando o evento na porta do pouso, DEPOIS do
+# merge. Não dá: a `main` tem ruleset ativo com `pull_request` e
+# `required_status_checks` e `bypass_actors: []` (ruleset 21570247), então push
+# direto na `main` é recusado para todo mundo, a pista inclusive. A porta não
+# tem onde gravar.
+#
+# O que sobra é o caminho que o livro do painel já usa desde 31/08/2026
+# (`armadilhas/248`): o "feito" entra na `main` DENTRO do próprio PR da
+# entrega, escrito por `ci/pr.py` junto da submissão. O preço, autorizado
+# pelo mantenedor: a tarefa fecha no merge do PR, não no aceite do
+# mantenedor.
+#
+# O guarda de `cmd_concluir` ("aguarda comprovação do aceite") fica de pé:
+# este caminho não passa por ele, e concluir por texto livre continua
+# recusado.
+# ---------------------------------------------------------------------------
+
+
+def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
+    """Existe um evento de conclusão desta tarefa no livro do disco?
+
+    Olha pelo PADRÃO DO NOME, não pelo nome inteiro: o arquivo carrega o
+    segundo em que foi montado, então a mesma tarefa concluída duas vezes
+    geraria dois nomes diferentes e a idempotência por nome não veria nada.
+    """
+    return any(pasta_eventos(raiz).glob(f"*-{tid}-concluida.json"))
+
+
+def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
+    """A tarefa terminou pela conclusão que ESTA entrega escreveu, e só por ela?
+
+    Sem isto o `--continuar` do mesmo PR bateria no guarda terminal de
+    `cmd_submeter` que ele próprio acabou de criar, e pararia de atualizar a
+    submissão.
+    """
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    nossas = [e for e in finais if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)]
+    return bool(finais) and len(finais) == len(nossas)
+
+
+def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
+    """Escreve o "feito" desta tarefa no ramo da entrega. Devolve se escreveu.
+
+    A evidência é a URL do PR, exata: é por ela que `ci/pr.py` reconhece a
+    conclusão como sua e que `fechada_por_esta_entrega` a distingue de um
+    encerramento alheio.
+
+    Passa por `_concluir_com_prova` de propósito, e não por uma segunda
+    receita: é lá que moram as guardas de responsabilidade e a soltura da
+    reserva, e as duas valem aqui igual.
+    """
+    if ja_tem_conclusao(raiz, tid):
+        return False
+    hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje)
+    if codigo != 0:
+        raise ErroDeInstrumentacao(
+            f"a entrega de {tid} não pôde escrever a conclusão",
+            "Leia a recusa acima, corrija a fila e repita python ci/pr.py --continuar.",
+        )
+    return True
+
 
 
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
@@ -2010,7 +2134,8 @@ def cmd_submeter(raiz: Path, args) -> int:
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
         return 1
-    if calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA):
+    if (calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA)
+            and not fechada_por_esta_entrega(eventos, tid, args.pr)):
         print(f"RECUSADO: {tid} já terminou. Confira sua cadeia antes de submeter.")
         return 1
     vinculo = {campo: getattr(args, campo) for campo in ("pr", "revisao", "arvore")}
@@ -2019,12 +2144,55 @@ def cmd_submeter(raiz: Path, args) -> int:
         print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
         return 1
     anterior = ultima_submissao(eventos, tid)
+    substitui = str(getattr(args, "substitui", "") or "").strip()
+    motivo = str(getattr(args, "motivo", "") or "").strip()
+    mesmo_vinculo = anterior is not None and all(
+        anterior.get(campo) == valor for campo, valor in vinculo.items()
+    )
+    if mesmo_vinculo and substitui:
+        if (anterior.get("substitui") == substitui
+                and str(anterior.get("detalhe") or "").strip() == motivo):
+            _soltar_reserva_se_houver(raiz, tid)
+            print(
+                f"{tid}: esta substituição já está registrada em {args.pr}; "
+                "reserva liberada."
+            )
+            return 0
+        print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
+        return 1
     if anterior and anterior.get("pr") != args.pr:
-        print(f"RECUSADO: {tid} já tem outra entrega submetida. Confira {anterior['pr']} antes de trocar o vínculo.")
+        if not substitui:
+            print(
+                f"RECUSADO: {tid} já tem outra entrega submetida. Use --substitui "
+                f"{anterior['pr']} e informe --motivo para trocar o vínculo."
+            )
+            return 1
+        if substitui != anterior.get("pr"):
+            print(
+                "RECUSADO: --substitui precisa ser exatamente a URL da última "
+                f"submissão: {anterior['pr']}."
+            )
+            return 1
+        if not motivo:
+            print("RECUSADO: --motivo é obrigatório ao substituir uma entrega.")
+            return 1
+        problemas = _problemas_da_substituicao(raiz, anterior, vinculo)
+        if problemas:
+            print("RECUSADO: " + "; ".join(problemas) + ". Nada foi alterado.")
+            return 1
+    elif substitui:
+        contexto = "a primeira submissão" if anterior is None else "o mesmo PR"
+        print(f"RECUSADO: --substitui não cabe em {contexto}.")
+        return 1
+    elif motivo:
+        print("RECUSADO: --motivo só acompanha uma substituição indicada por --substitui.")
         return 1
     if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
         dados = montar_evento(tid, "submetida", args.quem)
         dados.update(vinculo)
+        if substitui:
+            dados["substitui"] = substitui
+            dados["detalhe"] = motivo
         pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
@@ -2033,6 +2201,58 @@ def cmd_submeter(raiz: Path, args) -> int:
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
     return 0
+
+
+def _problemas_da_substituicao(
+    raiz: Path,
+    anterior: dict,
+    novo_vinculo: dict,
+) -> list[str]:
+    pr_anterior = consultar_pr_submetido(raiz, anterior["pr"])
+    if "mergeCommit" not in pr_anterior:
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou se o PR anterior foi integrado",
+            f"Confira gh pr view {anterior['pr']} --json state,mergeCommit e repita.",
+        )
+    problemas = []
+    if (pr_anterior.get("state") == "MERGED"
+            or pr_anterior.get("mergeCommit") is not None):
+        problemas.append("o PR anterior foi integrado")
+    elif pr_anterior.get("state") == "OPEN":
+        problemas.append("o PR anterior ainda está aberto")
+    elif pr_anterior.get("state") != "CLOSED":
+        problemas.append("o PR anterior não está fechado sem merge")
+    if problemas:
+        return problemas
+
+    pr_novo = consultar_pr_submetido(raiz, novo_vinculo["pr"])
+    head_remoto = pr_novo.get("headRefOid")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(head_remoto or "")):
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou a revisão do novo PR",
+            f"Confira gh pr view {novo_vinculo['pr']} --json state,headRefOid e repita.",
+        )
+    if pr_novo.get("state") != "OPEN":
+        problemas.append("o novo PR não está aberto")
+    if head_remoto != novo_vinculo["revisao"]:
+        problemas.append("a revisão informada difere do HEAD do novo PR")
+    if problemas:
+        return problemas
+
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{novo_vinculo['revisao']}^{{tree}}",
+        para_que="medir a árvore da revisão substituta",
+    ).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", arvore_medida):
+        raise ErroDeInstrumentacao(
+            "o git não informou a árvore da revisão substituta",
+            "Confira se a revisão existe nesta bancada e repita.",
+        )
+    if arvore_medida != novo_vinculo["arvore"]:
+        problemas.append("a árvore informada difere da árvore local da revisão")
+    return problemas
 
 
 def _concluir_com_prova(
@@ -2132,6 +2352,40 @@ def cmd_concluir(raiz: Path, args) -> int:
         args.evidencia,
         args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
+
+
+def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
+    """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
+
+    Não passa pelo guarda do aceite de `cmd_concluir` de propósito: a decisão
+    de 12/09/2026 é que o merge do PR fecha a tarefa. Em troca, a evidência não
+    pode ser texto livre: o `--pr` tem de ser, exatamente, o PR da submissão que
+    a fila já registrou. Sem essa amarra qualquer string fecharia qualquer
+    tarefa, e a folga de `cmd_submeter` reabriria uma tarefa alheia por ela.
+    """
+    recusa = _parar_se_for_o_espelho("fechar-pela-entrega", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    entrega = ultima_submissao(eventos, tid)
+    nossa = entrega is not None and entrega.get("pr") == args.pr
+    if not nossa:
+        print(f"RECUSADO: {args.pr} não é a entrega submetida de {tid}; nada foi escrito.")
+        print("O feito viaja na entrega: submeta primeiro, e cite o PR exato da submissão.")
+        return 1
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    alheio = bool(finais) and not fechada_por_esta_entrega(eventos, tid, args.pr)
+    if alheio:
+        print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
+        return 1
+    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr):
+        print(f"{tid}: o feito desta entrega já está no ramo; nada repetido.")
+    return 0
 
 
 def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
@@ -2522,6 +2776,16 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--pr", required=True, help="URL completa do pull request")
     p.add_argument("--revisao", required=True, help="SHA completo do código validado")
     p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
+    p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
+    p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
+
+    p = sub.add_parser(
+        "fechar-pela-entrega",
+        help="escreve o feito no ramo da entrega; é o que ci/pr.py chama",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--pr", required=True, help="URL completa do pull request da entrega")
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
@@ -2576,6 +2840,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_cancelar(raiz, args)
         if args.acao == "submeter":
             return cmd_submeter(raiz, args)
+        if args.acao == "fechar-pela-entrega":
+            return cmd_fechar_pela_entrega(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
         if args.acao == "reconciliar":

@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Editar aula avulsa{% endblock %}
+{% block corpo %}
+<style>
+  .aula-avulsa-edicao-formulario { display: grid; gap: 12px; }
+  .aula-avulsa-edicao-formulario label { display: grid; gap: 4px; font-weight: 600; }
+  .aula-avulsa-edicao-formulario input, .aula-avulsa-edicao-formulario textarea { width: 100%; padding: 9px 10px; font: inherit; color: var(--texto); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; }
+  .aula-avulsa-edicao-formulario textarea { min-height: 110px; resize: vertical; }
+  .aula-avulsa-edicao-endereco { margin: 0; color: var(--texto-2); font-size: 14px; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola_aulas_avulsas' %}">&larr; Aulas avulsas</a></p>
+  <h1>Editar aula avulsa</h1>
+  {% if sem_site %}
+  <p class="aviso borda-vermelha"><b>Não consegui saber de qual escola é esta aula.</b> Volte à lista e recarregue a página em um minuto. Nada mudou.</p>
+  {% elif falha_da_sala %}
+  <p class="aviso borda-vermelha"><b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}</p>
+  {% elif aula_inexistente %}
+  <p class="aviso borda-vermelha">{{ erro }}</p>
+  {% else %}
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  {% if salva %}<p class="recado"><b>As alterações foram salvas.</b> <a href="{{ aula.endereco }}" target="_blank" rel="noopener">Abrir a aula</a></p>{% endif %}
+  <div class="cartao">
+    <p class="aula-avulsa-edicao-endereco">Endereço para compartilhar: <a href="{{ aula.endereco }}" target="_blank" rel="noopener">{{ aula.endereco }}</a>. Este endereço não muda quando a aula é editada.</p>
+    <form class="aula-avulsa-edicao-formulario" action="{{ url_editar }}" method="post">
+      {% csrf_token %}
+      <label for="titulo">Nome da aula<input id="titulo" name="titulo" maxlength="120" required value="{{ aula.titulo }}"></label>
+      <label for="video_url">URL do vídeo<input id="video_url" name="video_url" type="url" maxlength="500" required value="{{ aula.video_url }}" placeholder="https://www.youtube.com/watch?v=..."></label>
+      <label for="descricao">Descrição da aula<textarea id="descricao" name="descricao" maxlength="5000">{{ aula.descricao }}</textarea></label>
+      <p><button class="botao" type="submit">Salvar alterações</button></p>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

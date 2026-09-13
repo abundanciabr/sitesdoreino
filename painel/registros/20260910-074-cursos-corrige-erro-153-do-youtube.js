@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-074-cursos-corrige-erro-153-do-youtube",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "cursos: corrige erro 153 do YouTube",
+  detalhe: "O player da aula recebe a origem do curso e volta a carregar a capa nativa do YouTube.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1544. Validação local: árvore a8ed10bfe703536ada8ff19ad1214a1866080708; commit 56025de98733a632b9c2d6f56344c8530d2805a8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-330",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

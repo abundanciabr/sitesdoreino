@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260911-133506-TAR-301-concluida",
+  "tarefa": "TAR-301",
+  "evento": "concluida",
+  "quando": "2026-09-11T13:35:06+00:00",
+  "quem": "maestro-capitulo-1",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1513; revisao=0a47115a0dba617f96cd06020bf2f39f812c1f4c; arvore=4d2a422aa3fe7e8856b984812ed816b75f7c0e66; head=ca1709924efe80c016fe97e27c5f3d5cca9d173e; merge=3307b8f3aee245aad0bcc42aaca413731899f4ff; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34567349081; atestado=atestado aprovado para ca1709924efe80c016fe97e27c5f3d5cca9d173e; aceite=painel/registros/20260911-033-aceite-da-retomada-do-pedido.js",
+  "verificado_em": "2026-09-11"
+}

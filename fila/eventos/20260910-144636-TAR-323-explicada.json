@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-144636-TAR-323-explicada",
+  "tarefa": "TAR-323",
+  "evento": "explicada",
+  "quando": "2026-09-10T14:46:36+00:00",
+  "quem": "Pedido do mantenedor de 10/09/2026; PR 1533",
+  "o_que_e": "O guia que prepara a equipe do mapa vivo já foi escrito, mas sua entrega precisa ter identidade própria e separada da construção futura.",
+  "o_que_muda": "A publicação do guia e as correções documentais passam a ter recibo próprio, enquanto a construção do mapa vivo continua pronta para uma nova conversa.",
+  "exemplo": "Este PR entrega o roteiro e registra a encomenda; outra tarefa constrói e testa o GPS.",
+  "importancia": 92
+}

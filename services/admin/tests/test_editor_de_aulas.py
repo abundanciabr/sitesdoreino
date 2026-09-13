@@ -1391,3 +1391,126 @@ def test_a_recusa_de_publicar_do_inv_c1_chega_a_tela_como_frase():
     html = _texto(resposta)
     assert recusa in html
     assert Registro.objects.filter(acao=Registro.PUBLICAR_AULA).exists()
+
+
+# ---------------------------------------------------------------------------
+# 12. O MODELO VÍDEO DO YOUTUBE
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+@respx.mock
+def test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula():
+    _mock_site()
+    aula_inicial = _aula()
+    _mock_aula(aula_inicial)
+    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula(versao=2) | {"video_url": url}))
+    publicacao = respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(
+        return_value=httpx.Response(
+            200, json=_aula(estado="publicada", versao=2) | {"video_url": url}
+        )
+    )
+
+    cliente = _dentro()
+    endereco = f"/escola/{CURSO}/aulas/E07/video-do-youtube/"
+    html = _texto(cliente.get(endereco))
+    resposta = cliente.post(endereco, {"video_url": url})
+
+    assert 'name="video_url"' in html
+    assert "Voltar ao editor completo" in html
+    assert "Os demais campos já existentes nesta aula são preservados." in html
+    assert resposta.status_code == 302
+    assert resposta["Location"] == f"{endereco}?recado=publicada&versao=2"
+    corpo = json.loads(gravacao.calls.last.request.content)
+    assert corpo["video_url"] == url
+    assert corpo["pedido"] == aula_inicial["pedido"]
+    assert corpo["cliente"] == aula_inicial["cliente"]
+    assert corpo["instrumento"] == aula_inicial["instrumento"]
+    assert corpo["minimo"] == aula_inicial["minimo"]
+    assert corpo["aceito_quando"] == aula_inicial["aceito_quando"]
+    assert corpo["quiz"] == aula_inicial["quiz"]
+    assert corpo["e_boss"] == aula_inicial["e_boss"]
+    assert corpo["banca_nivel"] == aula_inicial["banca_nivel"]
+    assert corpo["pecas"] == aula_inicial["pecas"]
+    assert corpo["pausas"] == aula_inicial["pausas"]
+    assert publicacao.call_count == 1
+    assert Registro.objects.filter(
+        acao=Registro.EDITAR_AULA, desfecho=Registro.OK
+    ).exists()
+    assert Registro.objects.filter(
+        acao=Registro.PUBLICAR_AULA, desfecho=Registro.OK
+    ).exists()
+
+
+@pytest.mark.django_db
+@respx.mock
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/",
+        "https://www.youtube.com/watch?v=curto",
+        "https://youtu.be:444/dQw4w9WgXcQ",
+    ],
+    ids=["pagina-generica", "id-curto", "porta-nao-padrao"],
+)
+def test_o_modelo_youtube_recusa_url_que_a_sala_nao_incorpora(url):
+    _mock_site()
+    _mock_aula()
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula()))
+    respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula(estado="publicada")))
+
+    resposta = _dentro().post(
+        f"/escola/{CURSO}/aulas/E07/video-do-youtube/",
+        {"video_url": url},
+    )
+
+    assert resposta.status_code == 422
+    assert gravacao.call_count == 0
+    assert "Cole um link HTTPS de vídeo do YouTube" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_modelo_youtube_diz_que_a_url_salvou_quando_publicar_recusa():
+    _mock_site()
+    _mock_aula()
+    url = "https://youtu.be/dQw4w9WgXcQ"
+    respx.put(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
+        return_value=httpx.Response(200, json=_aula(versao=2) | {"video_url": url})
+    )
+    publicar = respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(422, json={"detail": "falta uma regra"}))
+
+    resposta = _dentro().post(
+        f"/escola/{CURSO}/aulas/E07/video-do-youtube/",
+        {"video_url": url},
+    )
+
+    assert resposta.status_code == 422
+    assert publicar.call_count == 1
+    html = _texto(resposta)
+    assert "A URL foi salva, mas a aula não foi aberta para os alunos." in html
+    assert "Tentar publicar a aula de novo" in html
+    assert "falta uma regra" in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_editor_completo_leva_ao_modelo_youtube():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+
+    html = _texto(
+        _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    )
+
+    assert f"/escola/{CURSO}/aulas/E07/video-do-youtube/" in html

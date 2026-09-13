@@ -18,6 +18,7 @@ muralha — reprovar lá reprova aqui.
 
 from __future__ import annotations
 
+import os
 import shutil
 import json
 import subprocess
@@ -37,6 +38,8 @@ pytestmark = pytest.mark.skipif(
 
 
 def _roda(cwd: Path) -> subprocess.CompletedProcess[str]:
+    ambiente = os.environ.copy()
+    ambiente["BASE_REF"] = "origin/main"
     return subprocess.run(
         [BASH, str(MURALHA)],
         cwd=str(cwd),
@@ -46,6 +49,7 @@ def _roda(cwd: Path) -> subprocess.CompletedProcess[str]:
         errors="replace",
         timeout=300,
         check=False,
+        env=ambiente,
     )
 
 

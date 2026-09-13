@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-113825-TAR-343-explicada",
+  "tarefa": "TAR-343",
+  "evento": "explicada",
+  "quando": "2026-09-11T11:38:25+00:00",
+  "quem": "Pedido do mantenedor: erro no endereço compartilhado e necessidade de editar aulas já criadas.",
+  "o_que_e": "O painel cria aulas avulsas, mas entrega um endereço que não existe e não permite corrigir uma aula publicada.",
+  "o_que_muda": "A escola passa a compartilhar o endereço público certo e a atualizar nome, vídeo e descrição sem quebrar o link enviado aos alunos.",
+  "exemplo": "Depois de compartilhar uma aula no Fórum, a escola consegue corrigir a descrição ou trocar o vídeo na tela de edição, e o mesmo link continua abrindo a aula.",
+  "importancia": 92
+}

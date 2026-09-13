@@ -27,11 +27,20 @@ python ci/fila.py soltar TAR-007 --quem "..." --motivo "..."
 python ci/fila.py bloquear TAR-007 --quem "..." --motivo "..." --espera <mantenedor|fila>
 python ci/fila.py cancelar TAR-007 --quem "..." --motivo "..."   # não vai mais ser feita
 python ci/fila.py submeter TAR-007 --quem "..." --pr "https://github.com/abundanciabr/sitesdoreino/pull/NNN" --revisao <SHA> --arvore <SHA>
+python ci/fila.py submeter TAR-007 --quem "..." --pr "https://github.com/abundanciabr/sitesdoreino/pull/NOVO" --revisao <SHA> --arvore <SHA> --substitui "https://github.com/abundanciabr/sitesdoreino/pull/ANTERIOR" --motivo "por que a entrega mudou"
 python ci/fila.py concluir TAR-007 --quem "..." --evidencia "https://github.com/.../pull/NNN"
 python ci/fila.py explicar TAR-007 --quem "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> --evidencia-exigida "..." --despacho "..." --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
 python ci/fila.py validar              # o que a muralha roda em todo PR
 ```
+
+**Quem usa qual verbo** (desde 12/09/2026, `docs/decisoes/DECISAO-triade-de-ias.md`):
+
+| Papel | Quem | Verbos |
+|---|---|---|
+| Maestro | Claude Code | `criar`, `explicar`, `bloquear`, `cancelar`, `reconciliar` |
+| Executor | Codex | `pegar`, `submeter`, `soltar`, `criar` (tarefa que descobre no caminho, RITOS §5) e `bloquear` (dúvida que só o mantenedor decide, devolvida à maestro); a conclusão da própria entrega viaja pelo `make pr` (PR #1603) |
+| Sentinela | Antigravity | só `listar` e `validar`; nunca grava evento |
 
 **`pegar` é a trava.** Ele chama o almoxarife (`ci/reservar.py`), que cria uma
 referência atômica no servidor do GitHub — quem chega segundo recebe recusa DO
@@ -60,7 +69,18 @@ de publicar. Não se cria cadastro paralelo.
 `arvore` (árvore daquele commit) em evento novo. O recibo do painel carrega a
 mesma `tarefa` e `relacao: "comentario"`, sem declarar resolução. Retomar a
 mesma entrega não repete o evento. Revisão nova do mesmo PR gera outra
-submissão; trocar para outro PR exige conferir a entrega existente.
+submissão. Trocar para outro PR exige `--substitui` com a URL exata da última
+submissão e `--motivo`. Antes de gravar ou soltar a reserva, o balcão confere
+que o PR anterior está fechado sem merge, que o novo está aberto no SHA
+informado e que a árvore local daquele SHA é a declarada. Falha do Git ou do
+GitHub para a operação com ERROR e nenhuma recusa produz evento ou solta a
+reserva. O novo evento preserva `substitui` e `detalhe`; o anterior permanece
+intacto. Repetir a mesma substituição não cria outro evento.
+
+`validar` também lê a cadeia inteira e reprova JSON manual que troca de PR sem
+elo, aponta para uma submissão que não é a última, usa elo na primeira
+submissão ou na atualização do mesmo PR, ou deixa o motivo vazio. O estado e o
+reconciliador continuam seguindo a última submissão válida.
 
 A revisão precede o commit do recibo para evitar autorreferência. A prova final
 mede o SHA entregue novamente; o reconciliador deve conferir a árvore da revisão,
@@ -356,6 +376,8 @@ append-only ficam de fora da conta por não poderem gerar colisão:
 - **Waves, scheduler, heartbeat, compilador de prompts** — registrados como
   evolução no veredito, sem promessa. A fila nasce com o vocabulário que
   permite calculá-los depois (`toca`, `depende_de`).
+- **A proposta e a verificação da sentinela** moram nos registros do
+  conselho, definidos em `docs/decisoes/DECISAO-triade-de-ias.md`.
 
 ## Quem faz valer
 

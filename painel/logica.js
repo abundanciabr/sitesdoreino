@@ -474,7 +474,13 @@
     var capitulos = meuMapa(registros, agora, prontos);
     return {
       capitulos: capitulos.length,
-      comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
+      comProvaConferida: capitulos.filter(function (c) {
+        if (!c.estado) return false;
+        if (!c.estado.evidencia) return false;
+        if (!c.estado.verificado_em) return false;
+        return c.estado.vence_em_dias == null ||
+          diasEntre(c.estado.verificado_em, agora) <= c.estado.vence_em_dias;
+      }).length,
       semRegistro: capitulos.filter(function (c) { return !c.estado; }).length,
       semRumo: capitulos.filter(function (c) { return c.rumos.length === 0; }).length,
       esperandoVoce: capitulos.reduce(function (n, c) { return n + c.esperando.length; }, 0)
@@ -759,10 +765,14 @@
     // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
     // sai daqui é a contagem e a mediana — nunca uma nota.
     var resp = respondidos(registros);
+    var entregasDeRumo = {};
+    registros.forEach(function (r) {
+      if (r.responde_a && r.relacao !== "substituicao") entregasDeRumo[r.responde_a] = r;
+    });
     var cumpridos = [];
     registros.forEach(function (r) {
       if (r.tipo !== "rumo") return;
-      var fecha = resp[r.arquivo];
+      var fecha = entregasDeRumo[r.arquivo];
       if (!fecha) return;
       cumpridos.push({
         rumo: r.arquivo,

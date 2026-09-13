@@ -337,17 +337,14 @@ def test_a_suite_nao_suja_o_caderninho_da_casa(tmp_path: Path):
     )
 
 
-def test_settings_do_projeto_liga_o_sino():
-    """Sino sem fiação é decoração (RETROSPECTIVA-FASE-D §2)."""
+def test_settings_troca_sino_por_consulta_ativa():
     fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    entradas = fiacao.get("hooks", {}).get("PostToolUse", [])
-    ligado = [
-        e for e in entradas
-        if any("sino_das_armadilhas.py" in h.get("command", "")
-               for h in e.get("hooks", []))
-    ]
-    assert ligado, "o sino não está ligado em .claude/settings.json"
-    assert "Bash" in ligado[0].get("matcher", "")
+    assert fiacao["hooks"]["PostToolUse"] == []
+    from consultar_armadilhas import consultar
+    resposta = consultar(RAIZ, "ConfigError: Schema for status 201 is not set")
+    assert resposta["estado"] == "PASS"
+    assert resposta["resultados"][0]["id"] == "021"
+    assert "JsonResponse" in resposta["resultados"][0]["licao"]
 # ---------------------------------- o catalogo real x o corpus feliz ----
 
 

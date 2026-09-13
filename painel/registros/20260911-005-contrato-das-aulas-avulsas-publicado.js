@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-005-contrato-das-aulas-avulsas-publicado",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1548 publicou o contrato das aulas avulsas",
+  detalhe: "O PR 1548 foi integrado em 11/09/2026 às 01:22 UTC, no commit a0fc068a3315c7197709eeccd68aad53f5a26428. Ele alterou somente o contrato e sua escrituração, portanto não acionou deploy.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1548",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

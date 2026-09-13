@@ -1,0 +1,19 @@
+{
+  "arquivo": "337-conferir-a-entrega-sem-confundir-atualizacao-com-codigo-novo",
+  "id": "TAR-337",
+  "titulo": "Conferir a entrega sem confundir atualizacao com codigo novo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Git real: sincronizacao da main aceita; branch lateral fora da base, resolucao manual e alteracao revertida recusadas; vermelho e verde, mutacoes de first-parent, diff e ancestralidade; suite ci relevante, fila validar e muralhas; TAR-332 e TAR-325 medidas sem reconciliar; PR com recibo.",
+  "despacho": "Corrigir somente ci/fila.py e ci/tests/test_fila.py. Percorrer first-parent; pais laterais sao base somente se ancestrais de merge-final^1; sincronizacao usa remerge diff e demais merges diff contra primeiro pai. Preservar testes existentes. modelo_recomendado: gpt-6-astra; esforco_recomendado: high; teto_de_contexto: 180000. Excluida da amostra Pareto do capitulo 3 porque nasceu como correcao do instrumento.",
+  "origem": "Capitulo 3, auditoria da linhagem de TAR-332 e TAR-325; correcao do instrumento excluida da amostra Pareto deste capitulo",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

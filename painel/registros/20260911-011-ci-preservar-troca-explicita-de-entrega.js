@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-011-ci-preservar-troca-explicita-de-entrega",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: preservar troca explícita de entrega",
+  detalhe: "Após falha ao liberar, repetir a substituição preserva o evento e tenta soltar a reserva antes de confirmar sucesso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1549. Validação local: árvore 311db662db1581fc630d82b91daa4afec6d4ae8e; commit 52bbcf708ac9ca9c70d4a27ae29156393dfd5800; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-332",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

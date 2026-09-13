@@ -18,6 +18,13 @@ def run(path=CELULA, **mudancas):
     dados.update(mudancas)
     return dados
 
+
+def jobs_do_historico(monkeypatch, consultar):
+    monkeypatch.setattr(entrega, "consultar_jobs", consultar)
+    monkeypatch.setattr(entrega, "consultar_jobs_em_lote", lambda raiz, runs: {
+        r["id"]: consultar(raiz, r) for r in runs
+    })
+
 def conteudo_workflow(caminho):
     arquivo = caminho.removeprefix("contents/").split("?",1)[0]
     return dict(encoding="base64",content=base64.b64encode((RAIZ/arquivo).read_bytes()).decode())
@@ -111,7 +118,7 @@ def test_historia_de_celula_e_provedor_e_medida_antes_de_liberar(monkeypatch):
     monkeypatch.setattr(entrega.mapa_de_celulas,"carregar",lambda *a: mapa)
     monkeypatch.setattr(entrega,"caminhos_dos_deploys",lambda *a: {CELULA:["services/**"],INFRA:["infra/traefik/**"]})
     monkeypatch.setattr(entrega,"_api",lambda *a,**kw: dict(total_count=1,workflow_runs=[run()]))
-    monkeypatch.setattr(entrega,"consultar_jobs",lambda *a: [
+    jobs_do_historico(monkeypatch, lambda *a: [
         dict(name="deploy (loja)",status="completed",conclusion="success"),
         dict(name="deploy (vendas)",status="completed",conclusion="success"),
     ])
@@ -339,7 +346,7 @@ def test_dados_admin_verdes_nao_escondem_ultima_imagem_falha(monkeypatch, fonte)
             runs = [run(head_sha=imagem,conclusion="failure")]
         return dict(total_count=len(runs),workflow_runs=runs)
     monkeypatch.setattr(entrega,"_api",api)
-    monkeypatch.setattr(entrega,"consultar_jobs",lambda raiz,r: [dict(name="publicar-dados-admin" if r["id"]==11 else "deploy (admin)",status="completed",conclusion="success" if r["id"]==11 else "failure")])
+    jobs_do_historico(monkeypatch, lambda raiz,r: [dict(name="publicar-dados-admin" if r["id"]==11 else "deploy (admin)",status="completed",conclusion="success" if r["id"]==11 else "failure")])
     monkeypatch.setattr(entrega,"consultar_publicacao",lambda raiz,sha,arquivos: dict(terminal=sha==SHA,estado="PUBLICADO" if sha==SHA else "FALHA_PUBLICACAO",sha_integrado=sha))
     bloqueios=entrega.publicacoes_anteriores(RAIZ,["services/admin/app.py"])
     assert [b["sha_integrado"] for b in bloqueios] == [imagem]
@@ -394,12 +401,10 @@ def test_historico_anterior_a_job_de_dados_nao_fica_procurando_para_sempre(monke
     assert len(publicacoes) == 1
 
 
-def test_historico_paralelo_reduz_na_ordem_da_tentativa(monkeypatch):
-    from threading import Event
+def test_historico_em_lote_reduz_na_ordem_da_tentativa(monkeypatch):
     from types import SimpleNamespace
     from mapa_de_celulas import Celula
 
-    antigo_terminou = Event()
     recente = "c" * 40
     antigo = "b" * 40
     consultados = []
@@ -415,11 +420,11 @@ def test_historico_paralelo_reduz_na_ordem_da_tentativa(monkeypatch):
         if args[1] == "diff" else ""
     ))
     monkeypatch.setattr(entrega, "_api", lambda *a, **kw: {
-        "total_count": 3,
+        "total_count": 9,
         "workflow_runs": [
             run(id=30, run_started_at="2026-09-09T12:00:00Z"),
             run(id=20, head_sha=recente, run_started_at="2026-09-09T11:00:00Z"),
-            run(id=10, head_sha=antigo, run_started_at="2026-09-09T10:00:00Z"),
+            *[run(id=n, head_sha=antigo, run_started_at="2026-09-09T10:00:00Z") for n in range(10, 17)],
         ],
     })
 
@@ -427,13 +432,17 @@ def test_historico_paralelo_reduz_na_ordem_da_tentativa(monkeypatch):
         consultados.append(atual["id"])
         if atual["id"] == 30:
             return [{"name": "detectar", "status": "completed", "conclusion": "success"}]
-        if atual["id"] == 10:
-            antigo_terminou.set()
-        else:
-            assert antigo_terminou.wait(1), "a consulta antiga não terminou durante a nova"
-        return [{"name": "deploy (admin)", "status": "completed", "conclusion": "success"}]
+        pytest.fail("a varredura voltou a fazer uma consulta REST por run")
+
+    lotes = []
+
+    def consultar_lote(raiz, runs):
+        lotes.append([r["id"] for r in runs])
+        return {r["id"]: [{"name": "deploy (admin)", "status": "completed", "conclusion": "success"}]
+                for r in reversed(runs)}
 
     monkeypatch.setattr(entrega, "consultar_jobs", consultar_jobs)
+    monkeypatch.setattr(entrega, "consultar_jobs_em_lote", consultar_lote)
     monkeypatch.setattr(entrega, "consultar_publicacao", lambda raiz, sha, arquivos: {
         "terminal": sha != recente,
         "estado": "FALHA_PUBLICACAO" if sha == recente else "PUBLICADO",
@@ -442,7 +451,8 @@ def test_historico_paralelo_reduz_na_ordem_da_tentativa(monkeypatch):
 
     bloqueios = entrega.publicacoes_anteriores(RAIZ, ["services/admin/app.py"])
     assert [bloqueio["sha_integrado"] for bloqueio in bloqueios] == [recente]
-    assert set(consultados) == {10, 20, 30}
+    assert consultados == [30]
+    assert lotes == [[20, 16, 15, 14, 13, 12, 11, 10]]
 
 
 def test_reexecucao_recente_com_id_antigo_na_segunda_pagina_decide(monkeypatch):

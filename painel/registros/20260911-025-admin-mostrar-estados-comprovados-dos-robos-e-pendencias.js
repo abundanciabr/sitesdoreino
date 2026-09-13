@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-025-admin-mostrar-estados-comprovados-dos-robos-e-pendencias",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: mostrar estados comprovados dos robôs e pendências",
+  detalhe: "Pendências e robôs identificam os dados lidos e mantêm a referência da entrega submetida até a conferência do aceite.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1512. Validação local: árvore ab10928e7d28fb84ea40b62b9914cf728dd88d1e; commit d9287df56cb5409fb72c2302f37257db4a3c10b6; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-299",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
