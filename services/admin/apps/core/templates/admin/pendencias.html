@@ -12,6 +12,96 @@
     <details{% if dados_fila.motivo %} open{% endif %}><summary>Dados da fila de trabalho</summary>{% include "admin/dados_do_painel.html" with dados=dados_fila %}</details>
   {% endif %}
 
+  {% if visoes %}
+    <h2 class="titulo-de-bloco">As quatro visões de responsabilidade</h2>
+    <p class="recado-fraco">Cada visão mostra o que a Central consegue ler hoje.
+    Fonte sem lista ou sem resposta aparece por extenso, nunca como uma fila vazia.</p>
+    {% for visao in visoes %}
+      <section class="cartao espaco-abaixo-10">
+        <h3 class="titulo-da-conta">{{ visao.nome }}</h3>
+        {% if visao.pessoa is None %}
+          <p class="aviso borda-amarela"><b>Titular ausente.</b>
+          {% if visao.sem_substituto %}Não há substituto humano cadastrado.{% else %}A fonte não informou substituto.{% endif %}</p>
+        {% else %}
+          <p class="nota">Titular: <b>{{ visao.pessoa }}</b>.</p>
+        {% endif %}
+
+        <h4 class="rotulo">Fazer hoje</h4>
+        {% if visao.fontes_de_trabalho %}
+          {% for fonte in visao.fontes_de_trabalho %}
+            <h5 class="nota">{{ fonte.nome }}</h5>
+            {% if fonte.fila %}
+              {% if fonte.fila.quantidade is None %}
+                <p>A fonte {{ fonte.nome }} não respondeu agora.</p>
+              {% elif fonte.fila.quantidade == 0 %}
+                <p>{{ fonte.vazio }}</p>
+              {% else %}
+                <p><a href="{{ fonte.fila.href }}">{{ fonte.fila.quantidade }} {% if fonte.fila.quantidade == 1 %}{{ fonte.singular }}{% else %}{{ fonte.plural }}{% endif %}</a>{% if fonte.fila.espera_ha %}; a mais antiga espera há {{ fonte.fila.espera_ha }} dias{% endif %}.</p>
+              {% endif %}
+            {% else %}
+              {% if fonte.estado == "integracao_indisponivel" %}
+                <p>Integração indisponível: {{ fonte.explicacao }}</p>
+              {% else %}
+                <p>Acesso negado: {{ fonte.explicacao }}</p>
+              {% endif %}
+              {% if fonte.proximo_gesto_url %}
+                <p><a href="{{ fonte.proximo_gesto_url }}">{{ fonte.proximo_gesto }}</a></p>
+              {% else %}
+                <p>{{ fonte.proximo_gesto }}</p>
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <p>Esta fonte ainda não oferece uma lista de trabalho atribuível para hoje.</p>
+        {% endif %}
+
+        <h4 class="rotulo">Aprovar</h4>
+        {% if visao.aprovacoes %}
+          <ul class="notas">
+            {% for aprovacao in visao.aprovacoes %}<li><a href="{{ aprovacao.href }}">{{ aprovacao.finalidade }}</a></li>{% endfor %}
+          </ul>
+        {% else %}
+          <p>A fonte ainda não expõe pendências de aprovação para esta função.</p>
+        {% endif %}
+
+        <h4 class="rotulo">Resolver atrasos</h4>
+        {% if visao.fontes_de_trabalho %}
+          {% for fonte in visao.fontes_de_trabalho %}
+            <h5 class="nota">{{ fonte.nome }}</h5>
+            {% if fonte.fila %}
+              {% if fonte.fila.quantidade is None %}
+                <p>Não sei se há atraso até a fonte voltar a responder.</p>
+              {% elif fonte.fila.quantidade == 0 %}
+                <p>Não há atraso nesta fila agora.</p>
+              {% elif fonte.fila.espera_ha %}
+                <p>Priorize a pessoa que espera há {{ fonte.fila.espera_ha }} dias.</p>
+              {% else %}
+                <p>Há pessoas aguardando, mas a fonte não informou a idade da espera.</p>
+              {% endif %}
+            {% else %}
+              <p>Não é possível medir atrasos em {{ fonte.nome }} até existir leitura.</p>
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <p>A fonte ainda não permite medir atrasos desta função.</p>
+        {% endif %}
+
+        <h4 class="rotulo">Acompanhar resultados</h4>
+        <p><a href="{{ visao.destino }}">{{ visao.destino_texto }}</a></p>
+        {% if visao.fontes %}
+          <p class="recado-fraco">Fontes oficiais: {% for fonte in visao.fontes %}{{ fonte }}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>
+        {% endif %}
+        {% for lacuna in visao.lacunas %}
+          <p class="aviso borda-amarela">{{ lacuna }}</p>
+        {% endfor %}
+      </section>
+    {% endfor %}
+  {% else %}
+    <p class="aviso borda-vermelha"><b>Não consegui ler o cadastro de responsabilidades.</b>
+    Não é seguro atribuir trabalho sem ele. Recarregue esta página; se continuar,
+    acompanhe no painel do sistema.</p>
+  {% endif %}
+
   {% comment %}
   O NÚMERO GRANDE só aparece quando há número. Com tudo zerado ele seria um "0"
   de 44 pixels no alto da tela, e um contador zerado todo dia é o que ensina
