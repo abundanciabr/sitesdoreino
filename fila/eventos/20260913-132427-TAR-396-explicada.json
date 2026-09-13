@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-132427-TAR-396-explicada",
+  "tarefa": "TAR-396",
+  "evento": "explicada",
+  "quando": "2026-09-13T13:24:27+00:00",
+  "quem": "mandato do mantenedor em 13/09/2026 ~12:55Z; PR #1621; retomada item 27",
+  "o_que_e": "No Windows o make das células cai no cmd.exe e o baseline da abertura falha em -f foi inesperado, parando despachos antes de editar.",
+  "o_que_muda": "A abertura chama o make com o sh.exe do Git ou roda pytest direto e diz isso na Declaração.",
+  "exemplo": "É trocar a chave inglesa que não encaixa em vez de trocar todos os parafusos da casa.",
+  "importancia": 75
+}

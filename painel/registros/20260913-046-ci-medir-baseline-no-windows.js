@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-046-ci-medir-baseline-no-windows",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "ci: medir baseline no Windows",
+  detalhe: "O baseline usa shell e PATH do Git; sem shell, declara pytest sem lint. CODEOWNERS: ci/sessao.py e seu teste.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1626. Validação local: árvore eefc5e582c03afd93a84e4a7a52d54ade79733f0; commit 5eb500460e4f7768b97da4ec2b35f0c4177f5acb; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-396",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
