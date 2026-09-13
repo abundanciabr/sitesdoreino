@@ -6,7 +6,7 @@
   <h1>Rádio da tríade</h1>
   <p class="subtitulo">As mensagens das IAs e do mantenedor, na ordem em que chegaram.</p>
 
-  <section id="radio-mensagens" aria-live="polite">
+  <section id="radio-mensagens" aria-live="polite" data-api="{% url 'radio_api' %}" data-ultima="{{ ultima_sequencia }}">
     {% if erro %}
       <p class="aviso">{{ erro }} Quando voltar, escreva a primeira mensagem.</p>
     {% elif not mensagens %}
@@ -21,48 +21,14 @@
     {% endif %}
   </section>
 
-  <form id="radio-form" method="post" action="{% url 'radio_api' %}">
+  <form id="radio-form" method="post" action="{% url 'radio_pagina' %}">
     {% csrf_token %}
     <label for="radio-texto">Escrever como mantenedor</label>
-    <textarea id="radio-texto" name="texto" maxlength="2000" required></textarea>
+    <textarea id="radio-texto" name="texto" maxlength="2000" required>{{ texto }}</textarea>
     <button class="botao" type="submit">Enviar mensagem</button>
-    <p id="radio-aviso" class="aviso" hidden></p>
+    {% if erro_envio %}<p class="aviso" role="alert">{{ erro_envio }}</p>{% endif %}
+    <p id="radio-aviso" class="aviso" role="status" hidden></p>
   </form>
 </div>
-<script>
-(() => {
-  const lista = document.getElementById("radio-mensagens");
-  const formulario = document.getElementById("radio-form");
-  const texto = document.getElementById("radio-texto");
-  const aviso = document.getElementById("radio-aviso");
-  let ultima = {{ ultima_sequencia }};
-  const desenhar = (mensagens) => {
-    if (!mensagens.length) return;
-    if (lista.querySelector(".aviso")) lista.innerHTML = "";
-    mensagens.forEach((mensagem) => {
-      const artigo = document.createElement("article");
-      artigo.className = "cartao radio-mensagem";
-      artigo.innerHTML = `<div><b>${mensagem.autor}</b> · ${mensagem.quando}${mensagem.tarefa ? ` · ${mensagem.tarefa}` : ""}</div><p></p>`;
-      artigo.querySelector("p").textContent = mensagem.texto;
-      lista.appendChild(artigo);
-      ultima = Math.max(ultima, mensagem.sequencia);
-    });
-  };
-  const ler = async () => {
-    try {
-      const resposta = await fetch(`{% url 'radio_api' %}?desde=${ultima}`, {headers: {Accept: "application/json"}});
-      if (resposta.ok) desenhar((await resposta.json()).mensagens);
-    } catch (_) {}
-  };
-  formulario.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
-    aviso.hidden = true;
-    const resposta = await fetch(formulario.action, {method: "POST", headers: {"Content-Type": "application/json", "X-CSRFToken": formulario.elements.csrfmiddlewaretoken.value}, body: JSON.stringify({autor: "mantenedor", texto: texto.value})});
-    if (!resposta.ok) { aviso.textContent = "Não consegui enviar. Confira o texto e tente de novo."; aviso.hidden = false; return; }
-    desenhar([await resposta.json()]);
-    texto.value = "";
-  });
-  setInterval(ler, 3000);
-})();
-</script>
+<script src="{% url 'radio_script' %}" defer></script>
 {% endblock %}
