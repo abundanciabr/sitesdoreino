@@ -2,13 +2,10 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 
 
 def main() -> int:
-    if not (os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_PROJECT_DIR")):
-        return 0
     try:
         dados = json.loads(sys.stdin.buffer.read().decode("utf-8-sig"))
         ferramenta = dados.get("tool_name")
