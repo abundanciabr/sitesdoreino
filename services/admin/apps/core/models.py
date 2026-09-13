@@ -118,6 +118,13 @@ class MensagemDoRadio(models.Model):
         ordering = ("sequencia",)
 
 
+class LeituraDoRadio(models.Model):
+    sessao = models.CharField(max_length=64, primary_key=True)
+    autor = models.CharField(max_length=12)
+    ultima_sequencia = models.PositiveBigIntegerField(default=0)
+    quando = models.DateTimeField(null=True)
+
+
 class Documento(models.Model):
     """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
 

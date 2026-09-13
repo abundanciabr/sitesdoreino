@@ -9,6 +9,105 @@ from apps.core.models import MensagemDoRadio
 from apps.core.radio import radio_api, radio_pagina
 
 
+def test_sessao_nova_recebe_recado_sem_repetir_e_outra_recebe_tambem(db, cracha):
+    # guarda: services/admin/apps/core/radio.py:149
+    mensagem = MensagemDoRadio.objects.create(
+        autor="mantenedor", texto="Confira o pedido"
+    )
+
+    def entregar(sessao):
+        resposta = radio_api(
+            pedido(
+                "POST",
+                reverse("radio_api"),
+                {"acao": "entregar", "sessao": sessao, "autor": "codex"},
+                cracha,
+            )
+        )
+        assert resposta.status_code == 200
+        return json.loads(resposta.content)
+
+    primeira = entregar("sessao-um")
+    assert [m["sequencia"] for m in primeira["mensagens"]] == [mensagem.sequencia]
+    assert entregar("sessao-um")["mensagens"] == []
+    assert entregar("sessao-dois")["mensagens"] == primeira["mensagens"]
+    from apps.core.models import LeituraDoRadio
+
+    assert list(LeituraDoRadio.objects.values_list("ultima_sequencia", flat=True)) == [
+        mensagem.sequencia,
+        mensagem.sequencia,
+    ]
+    assert LeituraDoRadio.objects.filter(quando__isnull=False).count() == 2
+
+
+@pytest.mark.django_db(transaction=True, available_apps=["apps.core"])
+def test_chamadas_simultaneas_da_mesma_sessao_nao_duplicam(cracha):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from django.db import close_old_connections
+
+    barreira = Barrier(2)
+    mensagem = MensagemDoRadio.objects.create(
+        autor="mantenedor", texto="Só uma entrega"
+    )
+
+    def entregar(_):
+        close_old_connections()
+        try:
+            barreira.wait(timeout=10)
+            resposta = radio_api(
+                pedido(
+                    "POST",
+                    reverse("radio_api"),
+                    {"acao": "entregar", "sessao": "concorrente", "autor": "codex"},
+                    cracha,
+                )
+            )
+            assert resposta.status_code == 200
+            return json.loads(resposta.content)["mensagens"]
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        entregas = list(pool.map(entregar, range(2)))
+    assert [m["sequencia"] for lote in entregas for m in lote] == [mensagem.sequencia]
+
+
+def test_sessao_sem_mensagem_continua_sem_leitura_medida(db, cracha):
+    from apps.core.models import LeituraDoRadio
+
+    resposta = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "vazia", "autor": "antigravity"},
+            cracha,
+        )
+    )
+    assert resposta.status_code == 200
+    assert json.loads(resposta.content)["mensagens"] == []
+    assert LeituraDoRadio.objects.get(sessao="vazia").quando is None
+
+
+def test_leitura_sem_tabela_responde_503_sem_confirmar(cracha, monkeypatch):
+    from apps.core.models import LeituraDoRadio
+
+    monkeypatch.setattr(
+        LeituraDoRadio.objects,
+        "bulk_create",
+        lambda *args, **kwargs: (_ for _ in ()).throw(DatabaseError("sem tabela")),
+    )
+    resposta = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "primeiro-uso", "autor": "codex"},
+            cracha,
+        )
+    )
+    assert resposta.status_code == 503
+
+
 @pytest.fixture
 def cracha():
     return {"id": "mantenedor", "nome": "Mantenedor", "email": "dono@casa"}
@@ -145,7 +244,7 @@ def navegador_radio(settings):
 def test_formulario_sem_javascript_grava_e_volta_para_tela(
     db, navegador_radio, settings
 ):
-    # guarda: services/admin/apps/core/radio.py:139
+    # guarda: services/admin/apps/core/radio.py:189
     cliente = navegador_radio
     resposta = cliente.post(
         reverse("radio_pagina"),
@@ -276,7 +375,7 @@ def test_api_preserva_tipo_e_novo_autor(db, cracha, tipo):
     [{"tipo": "ordem"}, {"tipo": None}, {"tipo": []}, {"autor": "desconhecido"}],
 )
 def test_api_recusa_autor_ou_tipo_invalidos(db, cracha, dados):
-    # guarda: services/admin/apps/core/radio.py:88
+    # guarda: services/admin/apps/core/radio.py:93
     corpo = {"autor": "antigravity", "texto": "Prova", **dados}
     resposta = radio_api(pedido("POST", "/caixa/radio/api/", corpo, cracha))
     assert resposta.status_code == 400

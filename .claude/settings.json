@@ -20,6 +20,11 @@
             "type": "command",
             "command": "python -c \"import os,sys,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','prestacao_de_contas.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" --plano",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/radio_gancho.py\" claude",
+            "timeout": 10
           }
         ]
       }
@@ -52,6 +57,11 @@
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/padrao_de_trabalho.py\" --aviso",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/radio_gancho.py\" claude",
+            "timeout": 10
           }
         ]
       }

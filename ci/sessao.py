@@ -2126,6 +2126,12 @@ def raiz_do_clone(checkout: Path) -> Path:
     return principal
 
 
+def identidade_do_radio(autor: str, sessao_nativa: str) -> str:
+    if autor not in {"claude", "codex", "antigravity"} or not isinstance(sessao_nativa, str) or not sessao_nativa.strip():
+        raise ValueError("A abertura precisa da IA e da identidade da sessão nativa.")
+    return hashlib.sha256(f"{autor}:{sessao_nativa}".encode()).hexdigest()
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     args = construir_parser().parse_args(argv)
@@ -2249,6 +2255,13 @@ def main(argv: list[str] | None = None) -> int:
         fim=None, pr=None,
     )
     print(moldura_da_declaracao(texto))
+    sessao_nativa = os.environ.get("CODEX_SESSION_ID") or os.environ.get("CODEX_THREAD_ID")
+    autor = "codex"
+    if not sessao_nativa:
+        sessao_nativa = os.environ.get("CLAUDE_SESSION_ID")
+        autor = "claude"
+    if sessao_nativa:
+        print(f"Identidade do rádio: {identidade_do_radio(autor, sessao_nativa)}")
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")

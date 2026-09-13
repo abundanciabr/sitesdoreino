@@ -10,6 +10,17 @@ radio = importlib.util.module_from_spec(_ESPECIFICACAO)
 _ESPECIFICACAO.loader.exec_module(radio)
 
 
+def test_entregar_imprime_recado_novo_em_texto_puro(monkeypatch, capsys):
+    enviados = []
+    def chamar(metodo, dados):
+        enviados.append((metodo, dados))
+        return {"mensagens": [{"sequencia": 12, "autor": "mantenedor", "tipo": "recado", "texto": "Confira o pedido"}], "ultima_sequencia": 12}
+    monkeypatch.setattr(radio, "_chamar", chamar)
+    assert radio.main(["entregar", "--sessao", "sessao-um", "--autor", "codex"]) == 0
+    assert enviados == [("POST", {"acao": "entregar", "sessao": "sessao-um", "autor": "codex"})]
+    assert capsys.readouterr().out == "[Rádio 12 | mantenedor | recado] Confira o pedido\n"
+
+
 class Resposta:
     def __enter__(self):
         return self
