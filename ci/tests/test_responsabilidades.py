@@ -1,5 +1,9 @@
 import json
+import os
 from pathlib import Path
+import subprocess
+
+import pytest
 
 import responsabilidades
 import medir_esforco
@@ -11,6 +15,7 @@ def escrever_registro(tmp_path: Path, registro: dict) -> Path:
     (tmp_path / "painel" / "responsabilidades.json").write_text(
         json.dumps(registro), encoding="utf-8"
     )
+    (tmp_path / "painel" / "fonte.txt").write_text("fonte", encoding="utf-8")
     return tmp_path
 
 
@@ -27,12 +32,14 @@ def registro_completo() -> dict:
                 "pessoa": None,
                 "substituto": None,
                 "finalidade": "entregar",
-                "tipo": "processo", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Pessoa", "excecoes": "nenhuma", "autoridade": "Pessoa",
+                "tipo": "processo", "prepara": "Pessoa", "executa": "Pessoa",
+                "aprova": "Ensino e Comunidade", "excecoes": "nenhuma",
+                "autoridade": "Decide: define a entrega. Escala para: mantenedor.",
                 "acompanhamento": "revisar",
-                "fonte": "fonte",
+                "fonte": "painel/fonte.txt",
                 "evidencia": "prova",
             },
-            {"id": "aula", "herda_de": "curso", "finalidade": "entregar", "acompanhamento": "revisar", "fonte": "fonte", "evidencia": "prova"},
+            {"id": "aula", "herda_de": "curso", "finalidade": "entregar", "acompanhamento": "revisar", "fonte": "painel/fonte.txt", "evidencia": "prova"},
         ],
     }
 
@@ -171,3 +178,110 @@ def test_ia_nao_pode_ser_titular_ou_substituta(tmp_path):
     erros = responsabilidades.validar_entrega(raiz, "curso")
     assert any("não pode ter IA como pessoa ocupante" in erro for erro in erros)
     assert any("não pode ter IA como substituto" in erro for erro in erros)
+
+
+def escrever_inventario_de_recursos(raiz: Path) -> None:
+    (raiz / "celulas.yml").write_text(
+        "celulas:\n  admin:\n    caminhos: [painel]\n    consome: []\n  funil:\n    caminhos: [services/funil]\n    consome: []\n",
+        encoding="utf-8",
+    )
+    (raiz / "painel" / "mapa-do-site.json").write_text(json.dumps({
+        "enderecos": [
+            {"celula": "admin", "rota": "", "endereco": "/admin/", "alcance": "publico", "para_quem": "equipe", "titulo": "Admin", "descricao": "Painel"},
+            {"celula": "funil", "rota": "", "endereco": "/", "alcance": "publico", "para_quem": "visitante", "titulo": "Entrada", "descricao": "Site"},
+        ],
+    }), encoding="utf-8")
+
+
+def test_auditoria_recusa_recurso_sem_vinculo_e_vinculo_ambiguo(tmp_path):
+    registro = registro_completo()
+    registro["unidades"][0]["recursos"] = {"celulas": ["admin"]}
+    raiz = escrever_registro(tmp_path, registro)
+    escrever_inventario_de_recursos(raiz)
+
+    assert "recurso conhecido sem responsabilidade: celula:funil" in responsabilidades.auditar(raiz)
+
+    registro["unidades"].append({
+        **registro["unidades"][0],
+        "id": "outra-responsabilidade",
+    })
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert "recurso conhecido com vínculo ambíguo: celula:admin" in responsabilidades.auditar(raiz)
+
+
+def test_auditoria_recusa_fonte_e_alcada_sem_referencia_concreta(tmp_path):
+    registro = registro_completo()
+    registro["unidades"][0]["fonte"] = "fonte genérica"
+    registro["unidades"][0]["aprova"] = "alguém aprova"
+    registro["unidades"][0]["autoridade"] = "conforme necessário"
+    raiz = escrever_registro(tmp_path, registro)
+
+    erros = responsabilidades.auditar(raiz)
+    assert "curso: fonte precisa listar referências concretas" in erros
+    assert "curso: aprova precisa identificar funções responsáveis" in erros
+    assert "curso: autoridade precisa declarar decisão e escalonamento" in erros
+
+
+def test_auditoria_recusa_heranca_por_id_duplicado(tmp_path):
+    registro = registro_completo()
+    registro["unidades"].append({**registro["unidades"][0], "finalidade": "outra"})
+    raiz = escrever_registro(tmp_path, registro)
+
+    assert "identificador de responsabilidade duplicado: curso" in responsabilidades.auditar(raiz)
+
+
+@pytest.mark.parametrize("fonte", [
+    "services/inexistente.py",
+    "painel",
+    "texto services/inexistente.py",
+])
+def test_auditoria_recusa_fonte_que_nao_resolve_para_arquivo(tmp_path, fonte):
+    registro = registro_completo()
+    registro["unidades"][0]["fonte"] = fonte
+    raiz = escrever_registro(tmp_path, registro)
+
+    assert "curso: fonte precisa listar referências concretas" in responsabilidades.auditar(raiz)
+
+
+def test_auditoria_recusa_decisao_ou_escalonamento_vazio(tmp_path):
+    registro = registro_completo()
+    raiz = escrever_registro(tmp_path, registro)
+    assert responsabilidades.auditar(raiz) == []
+
+    registro["unidades"][0]["autoridade"] = "Decide:   Escala para: mantenedor."
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert "curso: autoridade precisa declarar decisão e escalonamento" in responsabilidades.auditar(raiz)
+
+
+def test_auditoria_recusa_fonte_simbolica_fora_da_bancada(tmp_path):
+    registro = registro_completo()
+    registro["unidades"][0]["fonte"] = "painel/fonte/link.txt"
+    raiz = escrever_registro(tmp_path, registro)
+    fonte = raiz / "painel" / "fonte"
+    fonte.mkdir()
+    (fonte / "link.txt").write_text("dentro", encoding="utf-8")
+    assert responsabilidades.auditar(raiz) == []
+
+    externa = tmp_path.parent / f"{tmp_path.name}-fonte-externa"
+    externa.mkdir()
+    (externa / "link.txt").write_text("fora", encoding="utf-8")
+    (fonte / "link.txt").unlink()
+    fonte.rmdir()
+    try:
+        fonte.symlink_to(externa, target_is_directory=True)
+    except OSError:
+        if os.name != "nt":
+            raise
+        resultado = subprocess.run(
+            ["cmd", "/c", "mklink", "/J", str(fonte), str(externa)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert resultado.returncode == 0, resultado.stderr
+
+    assert "curso: fonte precisa listar referências concretas" in responsabilidades.auditar(raiz)
+
+    registro["unidades"][0]["autoridade"] = "Decide: aprova a entrega. Escala para:   "
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps(registro), encoding="utf-8")
+    assert "curso: autoridade precisa declarar decisão e escalonamento" in responsabilidades.auditar(raiz)
