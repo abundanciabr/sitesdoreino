@@ -1,0 +1,11 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-003",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T10:35:00-03:00",
+  "problema": "O portão ci/leis_sem_mecanismo.py permite sair da lista de dívida apagando a lei silenciosamente (falha ocorrida na Fase 3). O piso numérico rígido (ANTIGRAVITY-001) impedia a consolidação legítima e foi rejeitado.",
+  "titulo": "Trava de apagamento documentado para leis de agentes",
+  "baseline": "Branch origin/main atual. O arquivo ci/leis_sem_mecanismo.py permite encolhimento do censo de leis.",
+  "aceite": "Alterar ci/leis_sem_mecanismo.py para comparar o total de leis atual com o total na origin/main (ou exigir que, se houver remoção de seção de lei, o PR contenha um arquivo correspondente adicionado em docs/decisoes/). A restauração dos arquivos CLAUDE.md e AGENTS.md será submetida primeiro como pergunta ao mantenedor.",
+  "origem": "Auditoria externa do Claude Code sobre a ANTIGRAVITY-001 (docs/consultorias/fase-4-otimizacao/CONSENSO-FASE-4.md)"
+}

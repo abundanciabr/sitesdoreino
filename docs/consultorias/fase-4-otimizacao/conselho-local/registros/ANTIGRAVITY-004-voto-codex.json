@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-004",
+  "autor": "codex",
+  "registrado_em": "2026-09-12T11:45:00-03:00",
+  "proposta_sha256": "856c27c65998a66a1ff48d68c6e5acce4161bffe83c265c5a2feba3837cb6986",
+  "decisao": "aprovar",
+  "importancia": 3,
+  "justificativa": "A revisão corrigiu os dois defeitos apontados: o baseline agora registra um comando e uma saída observável, e o aceite escolhe uma única regra, exigindo decisão escrita quando o censo diminuir. Aprovo com importância 3 por tratar de um requisito essencial de segurança. A implementação ainda precisa provar que compara o mesmo censo contra a revisão correta, exige a decisão correspondente à remoção e permanece fail-closed quando a ferramenta ou a prova não podem ser lidas. Este voto autoriza implementar, não confirma o resultado."
+}

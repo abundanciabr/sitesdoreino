@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-002",
+  "autor": "codex",
+  "registrado_em": "2026-09-12T11:06:00-03:00",
+  "proposta_sha256": "ae2a9e41af61a77e01a07193b1f8e7b97305f62debcc966cba97b1ed81e7356c",
+  "decisao": "reprovar",
+  "importancia": 0,
+  "justificativa": "Reprovo esta versão porque seu ganho é histórico e não mede o percurso atual, enquanto o aceite manda apagar ci/esperar.py antes de provar um substituto passivo para o veredito. A retrospectiva exige fonte estruturada e ERROR explícito; apagar o único instrumento sem demonstrar a entrega ao mantenedor pode converter falta de medição em silêncio. Também não há comando e saída que provem Exit 0 imediato de make pr nem um caso comparável de acompanhamento. Aprovaria uma nova versão fatiada: primeiro medir e provar o reportador passivo e a preservação do alerta; depois avaliar a remoção, com tempo, tokens e custo total observados."
+}
