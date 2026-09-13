@@ -16,7 +16,8 @@ from django.http import FileResponse, Http404, HttpResponseForbidden, JsonRespon
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.csrf import csrf_protect
 
 from apps.forum.models import Area, Mensagem, Topico
 
@@ -367,6 +368,38 @@ def _area_para_ler(request, slug: str):
     return ator, area
 
 
+def _validar_nova_conversa(titulo: str, texto: str) -> str:
+    if len(titulo) < TITULO_MINIMO:
+        return ERRO_TITULO_CURTO
+    if len(titulo) > TITULO_MAXIMO:
+        return ERRO_TITULO_LONGO
+    if len(texto) < TEXTO_MINIMO:
+        return ERRO_TEXTO_VAZIO
+    if len(texto) > TEXTO_MAXIMO:
+        return ERRO_TEXTO_LONGO
+    return ""
+
+
+def _criar_nova_conversa(request, ator, area, titulo: str, texto: str):
+    site_id = site_id_do_host(request.get_host())
+
+    with transaction.atomic():
+        topico = Topico.objects.create(area=area, autor=ator.pessoa, titulo=titulo)
+        mensagem = Mensagem.objects.create(
+            topico=topico, autor=ator.pessoa, texto=texto
+        )
+        mensagem.indexar_para_busca()
+        eventos.topico_criado(
+            site_id=site_id, topico=topico, ator_id=ator.pessoa.id_da_plataforma
+        )
+        eventos.mensagem_criada(
+            site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
+        )
+        transaction.on_commit(relay_apos_commit)
+
+    return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
+
+
 @require_POST
 def li_tudo(request, slug: str):
     """ "Já vi tudo": avança a marca-d'água desta área para agora.
@@ -393,15 +426,7 @@ def novo_topico(request, slug: str):
     titulo = (request.POST.get("titulo") or "").strip()
     texto = (request.POST.get("texto") or "").strip()
 
-    erro = ""
-    if len(titulo) < TITULO_MINIMO:
-        erro = ERRO_TITULO_CURTO
-    elif len(titulo) > TITULO_MAXIMO:
-        erro = ERRO_TITULO_LONGO
-    elif len(texto) < TEXTO_MINIMO:
-        erro = ERRO_TEXTO_VAZIO
-    elif len(texto) > TEXTO_MAXIMO:
-        erro = ERRO_TEXTO_LONGO
+    erro = _validar_nova_conversa(titulo, texto)
 
     if erro:
         # Devolve a MESMA tela com o que a pessoa digitou ainda lá dentro. Esta
@@ -417,30 +442,66 @@ def novo_topico(request, slug: str):
             status=400,
         )
 
-    # O site sai do HOST, e a pergunta acontece ANTES da transação: é uma
-    # chamada de rede (com cache), e rede dentro de transação segura a transação
-    # aberta pelo tempo do salto. Vazio significa "não emito" — nunca "não
-    # publico o tópico".
-    site_id = site_id_do_host(request.get_host())
+    return _criar_nova_conversa(request, ator, area, titulo, texto)
 
-    with transaction.atomic():
-        topico = Topico.objects.create(area=area, autor=ator.pessoa, titulo=titulo)
-        mensagem = Mensagem.objects.create(
-            topico=topico, autor=ator.pessoa, texto=texto
-        )
-        mensagem.indexar_para_busca()
-        # DOIS fatos, dois eventos: abrir a conversa e a primeira fala dela. O
-        # motor de XP paga por coisas diferentes, e juntar os dois num só
-        # obrigaria o consumidor a adivinhar qual aconteceu.
-        eventos.topico_criado(
-            site_id=site_id, topico=topico, ator_id=ator.pessoa.id_da_plataforma
-        )
-        eventos.mensagem_criada(
-            site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
-        )
-        transaction.on_commit(relay_apos_commit)
 
-    return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
+@csrf_protect
+@require_http_methods(["GET", "POST"])
+def abrir_conversa(request):
+    ator = quem_e(request)
+    if request.method == "GET":
+        if not ator.autenticado:
+            return redirect(_porta_de_entrada(request))
+        visiveis = areas_visiveis(ator)
+        areas = [area for area in visiveis if pode_escrever(area, ator)]
+        motivo = next(
+            (
+                por_que_nao_escreve(area, ator)
+                for area in visiveis
+                if por_que_nao_escreve(area, ator) == "matricula"
+            ),
+            "matricula",
+        )
+        return render(
+            request,
+            "forum/abrir_conversa.html",
+            {
+                "ator": ator,
+                "areas": areas,
+                "area_digitada": "",
+                "titulo_digitado": "",
+                "texto_digitado": "",
+                "erro": "",
+                "motivo": motivo,
+            },
+        )
+
+    slug = (request.POST.get("area") or "").strip()
+    if not ator.autenticado:
+        return redirect(_porta_de_entrada(request))
+    ator, area = _area_para_ler(request, slug)
+    if not pode_escrever(area, ator):
+        return HttpResponseForbidden(ERRO_SEM_PERMISSAO)
+    titulo = (request.POST.get("titulo") or "").strip()
+    texto = (request.POST.get("texto") or "").strip()
+    erro = _validar_nova_conversa(titulo, texto)
+    if erro:
+        return render(
+            request,
+            "forum/abrir_conversa.html",
+            {
+                "ator": ator,
+                "areas": [a for a in areas_visiveis(ator) if pode_escrever(a, ator)],
+                "area_digitada": area.slug,
+                "titulo_digitado": titulo,
+                "texto_digitado": texto,
+                "erro": erro,
+                "motivo": "",
+            },
+            status=400,
+        )
+
+    return _criar_nova_conversa(request, ator, area, titulo, texto)
 
 
 @require_POST

@@ -1,0 +1,20 @@
+{
+  "arquivo": "390-corrigir-revisao-do-pr-1613-da-porta-unica-do-forum",
+  "id": "TAR-390",
+  "titulo": "Corrigir revisão do PR 1613 da porta única do fórum",
+  "toca": [
+    "forum",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR 1613 atualizado no mesmo ramo, POST anônimo protegido por _area_para_ler, motivo reutilizado no template, teste negativo de CSRF e duas mutações vermelhas coladas no PR",
+  "despacho": "# Correção da revisão do PR 1613\n\nCorrigir sobre o mesmo ramo agent/forum/porta-unica-para-abrir-conversa.\n\n- O POST anônimo deve seguir _area_para_ler, sem get_object_or_404 cru.\n- A tela deve passar motivo=por_que_nao_escreve e reutilizar o bloco de matrícula de area.html.\n- O teste anônimo deve usar sala, o teste de validação deve casar valor e checked na mesma string.\n- Adicionar o teste de CSRF negativo e provar por mutação o guarda de login e o csrf_exempt.",
+  "origem": "revisão independente do PR 1613, comentário GitHub 5650571476, 13/09/2026",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
