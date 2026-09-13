@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-225406-TAR-380-explicada",
+  "tarefa": "TAR-380",
+  "evento": "explicada",
+  "quando": "2026-09-12T22:54:06+00:00",
+  "quem": "maestro, 12/09/2026",
+  "o_que_e": "As três tarefas precisam existir no balcão para o Codex pegar; sem elas, ninguém reconcilia nem publica.",
+  "o_que_muda": "O Codex pega as três no balcão com o brief pronto, sem prompt colado à mão.",
+  "exemplo": "É pendurar três ordens de serviço no quadro da oficina.",
+  "importancia": 30
+}

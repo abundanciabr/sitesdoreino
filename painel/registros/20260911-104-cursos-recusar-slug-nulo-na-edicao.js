@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-104-cursos-recusar-slug-nulo-na-edicao",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: recusar slug nulo na edição",
+  detalhe: "O serviço preserva o endereço só sem slug e explica a recusa quando a edição manda slug nulo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1583. Validação local: árvore c0908a3ec014bd16866b2cfbaaa3bcc732bc94ee; commit 27a503211e1cf504a14020a7490c6ab94f94a95d; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-354",
+  gravidade: "info",
+  frente: "site",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

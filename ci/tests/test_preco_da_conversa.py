@@ -210,15 +210,8 @@ def test_transcript_com_linha_quebrada_no_meio_nao_derruba(transcript):
 # ---------- a fiação ----------
 
 
-def test_o_gancho_esta_ligado_no_settings():
-    """Gancho que ninguém chama é lei sem mecanismo com outro nome — que é
-    exatamente a doença que este arquivo veio curar."""
+def test_preco_permanece_manual_sem_reler_transcript_por_acao():
     fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    comandos = [
-        h.get("command", "")
-        for grupo in fiacao["hooks"].get("PostToolUse", [])
-        for h in grupo.get("hooks", [])
-    ]
-    assert any("preco_da_conversa.py" in c for c in comandos), (
-        "o gancho existe mas não está ligado no PostToolUse de .claude/settings.json"
-    )
+    assert fiacao["hooks"]["PostToolUse"] == []
+    assert GANCHO.is_file()
+    assert callable(modulo.main)

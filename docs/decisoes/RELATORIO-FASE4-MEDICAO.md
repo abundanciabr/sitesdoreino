@@ -227,7 +227,8 @@ Revisões e ponto de retomada calculados nesta rodada:
 - entrada privada: `d4f1d527f4ae68b59d0f707216faf39df1adc62237be564856be2921ca8e7c56`;
 - instrumento derivado do texto versionado: `8cdc4905084d1d5c68745523897edf36367d6b7d`;
 - analisador derivado do texto versionado: `62f318c5aa70b7d9a1769c989824c50af71b13a161b1af1ac6b5c0fb6c6ca5e0`;
-- auditoria independente desse par de hashes: pendente;
+- auditoria independente desse par de hashes: concluída em
+  `docs/decisoes/AUDITORIA-INDEPENDENTE-FASE4-20260911.md`, pela TAR-348;
 - retomada: classificar cada tarefa elegível no arquivo versionado antes da
   abertura, registrar transições append-only com evidência e métricas
   observadas ou nulas, alcançar 20 tarefas por condição e 10 pares compatíveis
@@ -243,6 +244,8 @@ Isso é prova interna do corretivo, não revisão independente do seu SHA.
 
 ## Conclusão global
 
-**NÃO PRONTA.** O corretivo foi validado internamente. A auditoria independente
-do novo instrumento e do hash da entrada está pendente. A avaliação comparativa
-ainda está em andamento e não há ganho comprovado.
+**NÃO PRONTA.** O corretivo foi validado internamente e a auditoria independente
+da TAR-348 confirmou o instrumento no novo hash de entrada. O estado computado
+é `em coleta`: há cinco eventos estruturalmente válidos, zero observação
+confirmatória, zero tarefa elegível e zero par. A avaliação comparativa continua
+inconclusiva, não há ganho comprovado e nenhuma expansão está autorizada.

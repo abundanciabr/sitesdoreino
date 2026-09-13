@@ -1,0 +1,23 @@
+{
+  "arquivo": "373-a-triade-nos-documentos-de-regencia-quem-faz-o-que-em-cada-r",
+  "id": "TAR-373",
+  "titulo": "A tríade nos documentos de regência: quem faz o quê em cada roteiro",
+  "toca": [
+    "docs",
+    "fila",
+    "painel",
+    "CAMINHO-DOURADO.md",
+    "PLAYBOOK.md"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, dependente do da lei (#1605), com a tríade em CAMINHO-DOURADO, PLAYBOOK, PROMPTS-INICIAIS, 00-LEIA-PRIMEIRO, DESPACHO-PARTE-DO-SITE, LEIA-MEs da fila e do painel, três decisões e planos, ARMADILHAS e RUNBOOK-FASE-D; portões padrao_de_trabalho, leis_sem_mecanismo e testes das fichas verdes.",
+  "despacho": "Escrever nos treze documentos de regência qual IA faz o quê (Claude Code rege, Codex constrói, Antigravity audita e verifica), corrigindo as frases antigas que mandam o agente mergear ou perguntar ao mantenedor. Segundo PR da tríade; a lei está no primeiro (#1605, TAR-372).",
+  "origem": "pedido do mantenedor em 12/09/2026: altere todos os documentos explicando o papel de cada IA da tríade",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

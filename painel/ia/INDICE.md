@@ -37,8 +37,13 @@ O **sitesdoreino** é uma plataforma de cursos online vendidos por Pix/cartão
 (Mercado Pago), multissítio (N domínios, um único deploy), com destaque
 atual para uma escola de Roblox 3D ("Meshcraft Academy", em `meshcraft.top`)
 e um produto de baixo valor usado para provar a esteira ponta a ponta
-("Curso Esqueleto", R$9,90). É construído quase inteiramente por sessões de
-IA (Claude Code) para um mantenedor que é leigo em código e terminal — essa
+("Curso Esqueleto", R$9,90). É construído quase inteiramente por uma tríade
+de IAs em papéis fixos, Claude Code (maestro: decide, enfileira, executa o
+cirúrgico, revisa; nunca mergeia), Codex (executor: constrói pela ficha de
+despacho, um PR por tarefa) e Antigravity (sentinela: audita origin/main e
+verifica depois do merge; nunca edita), ver
+[01](01-leis-ritos-e-invariantes.md), para um mantenedor que é leigo em
+código e terminal: essa
 única característica explica boa parte das escolhas de arquitetura do
 projeto: o que não pode ser mecanizado em portão de CI acaba exigindo um
 passo manual do único ser humano no projeto, então mecanizar é
