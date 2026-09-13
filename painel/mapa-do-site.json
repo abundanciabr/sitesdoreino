@@ -2095,6 +2095,17 @@
     },
     {
       "celula": "mensageria",
+      "rota": "webhooks/email",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "gesto": true,
+      "titulo": "Receber devoluções e reclamações do correio",
+      "descricao": "O provedor informa que um endereço devolveu a mensagem ou reclamou, e a mensageria bloqueia novos envios para esse endereço.",
+      "observacao": "Não é uma página para pessoas. A entrada exige o token secreto do provedor e fica na rede interna até existir uma rota pública autorizada."
+    },
+    {
+      "celula": "mensageria",
       "rota": "api/mensageria/",
       "endereco": "-",
       "alcance": "interno",

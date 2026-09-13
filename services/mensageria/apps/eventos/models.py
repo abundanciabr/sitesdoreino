@@ -44,3 +44,30 @@ class EnvioRegistrado(models.Model):
                 name="uniq_envio_por_order_tipo_canal",
             ),
         ]
+
+
+class EnderecoDeEmail(models.Model):
+    """Endereço que o provedor declarou inválido ou que reclamou.
+
+    O bloqueio é global para e-mail: uma reclamação não pode ser contornada
+    por outra jornada ou pelo caminho transacional.
+    """
+
+    MOTIVOS = [("devolucao", "devolução"), ("reclamacao", "reclamação")]
+
+    email = models.EmailField(unique=True)
+    motivo = models.CharField(max_length=20, choices=MOTIVOS)
+    bloqueado_em = models.DateTimeField(auto_now=True)
+
+
+class JanelaDeCapacidade(models.Model):
+    """Contadores e disjuntor do único provedor de e-mail da célula."""
+
+    chave = models.CharField(max_length=32, unique=True, default="email")
+    minuto_em = models.DateTimeField()
+    envios_no_minuto = models.PositiveIntegerField(default=0)
+    hora_em = models.DateTimeField()
+    envios_na_hora = models.PositiveIntegerField(default=0)
+    disjuntor_ate = models.DateTimeField(null=True, blank=True)
+    falhas_consecutivas = models.PositiveSmallIntegerField(default=0)
+    atualizado_em = models.DateTimeField(auto_now=True)
