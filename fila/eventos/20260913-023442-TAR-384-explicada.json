@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-023442-TAR-384-explicada",
+  "tarefa": "TAR-384",
+  "evento": "explicada",
+  "quando": "2026-09-13T02:34:42+00:00",
+  "quem": "Adendo dos capítulos 2 a 5 (11/09), capítulo 2 Fase 2; bloqueio do PR #1528; brief da maestro de 13/09",
+  "o_que_e": "Hoje o site conhece os nomes das quatro pessoas da equipe, mas não sabe qual conta do Google é de quem. Por isso a Central não consegue autorizar uma ação por função.",
+  "o_que_muda": "O mantenedor associa cada conta a uma função numa tela, e o servidor passa a permitir ou recusar cada ação da Central por essa função. Sem isso o CRM humano e a frente de vender não saem do lugar.",
+  "exemplo": "Maria entra com a conta dela e consegue assumir uma oportunidade comercial; Ryan, com a conta dele, vê a mesma tela e o botão recusa com a explicação.",
+  "importancia": 85
+}
