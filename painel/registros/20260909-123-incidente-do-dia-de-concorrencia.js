@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-123-incidente-do-dia-de-concorrencia",
+  tipo: "incidente",
+  quando: "2026-09-09",
+  titulo: "incidente: concorrência e lote grande consumiram o dia",
+  detalhe: "O clone principal estava sujo e 492 commits atrás. Tarefas concorrentes compartilharam a árvore, o PR 1506 chegou a 43 arquivos e a muralha recusou 33 arquivos de código. Também foram confirmados bash indisponível, diretório temporário sem permissão, dependência entre filhas e API do GitHub sem cota. O mantenedor informou prejuízo de centenas de reais.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1510 e https://github.com/abundanciabr/sitesdoreino/pull/1512. Verificação local: doctor READY; muralhas PASS nas filhas; PR 1506 original FAIL no orçamento e no mapa; pouso recusado por ERROR de consulta à API.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: "Só o dono da conta pode renovar a credencial do GitHub usada pelo gh.",
+  proximo_passo: "Renovar a autenticação do GitHub e manter uma única tarefa ativa por clone.",
+  se_eu_nao_decidir: "O pouso automático continuará sem conseguir conferir as evidências e novas tarefas poderão colidir no clone principal.",
+  recomendacao: "Usar uma filha limpa por frente, com PRs empilhados apenas quando uma dependência real for provada.",
+  reversivel: true,
+  impacto: "alto"
+}); })();

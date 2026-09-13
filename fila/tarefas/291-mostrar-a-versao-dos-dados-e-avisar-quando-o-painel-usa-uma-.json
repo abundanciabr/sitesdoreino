@@ -1,0 +1,17 @@
+{
+  "arquivo": "291-mostrar-a-versao-dos-dados-e-avisar-quando-o-painel-usa-uma-",
+  "id": "TAR-291",
+  "titulo": "Mostrar a versão dos dados e avisar quando o painel usa uma cópia anterior",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Quatro regressões provadas vermelho e verde: cópia anterior sinalizada, versão fixada apesar da troca do ponteiro, todos os leitores validados e pacote publicado sem origem recusado; suíte admin aprovada.",
+  "despacho": "Corrigir seleção dos dados admin: resolver ponteiro antes da validação, compartilhar seleção entre consumidores, informar identidade e degradação na resposta existente e exigir origem do pacote publicado. Preservar legado identificado. Sem cache, publicador ou workflow neste PR. Modelo recomendado: gpt-6-astra; esforço high; teto de contexto 180000.",
+  "origem": "https://meshcraft.top/admin/documentos/parecer-encerramento-e-confianca-do-painel-2026-09-09",
+  "criada_em": "2026-09-09"
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "348-auditar-de-forma-independente-a-medicao-pareto-do-capitulo-1",
+  "id": "TAR-348",
+  "titulo": "Auditar de forma independente a medição Pareto do capítulo 1",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Parecer independente ligado ao hash integral da entrada e às revisões exatas; análise reproduzida; recálculo externo ao analisador; Git e GitHub conferidos; relatório atualizado; aceite do PR 1561 registrado sem liberar expansão.",
+  "despacho": "Auditar o instrumento Pareto publicado pelo PR #1561 sem alterar ci nem o caderno privado. Reexecutar a análise e os testes focais, recalcular hashes, validade estrutural e completude confirmatória fora das funções decisórias, conferir ancestralidade Git e estado remoto dos eventos. Registrar instrumento válido, amostra insuficiente, avaliação inconclusiva e nenhuma expansão autorizada. A própria auditoria e TAR-338 ficam fora da amostra. modelo_recomendado: gpt-5.6-sol; esforco_recomendado: medium; teto_de_contexto: 100000.",
+  "origem": "Filha de TAR-338; execução do capítulo 1, A fábrica de robôs",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "medicao-de-esforco"
+}

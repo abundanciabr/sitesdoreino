@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-080-painel-cobrir-recursos-das-responsabilidades",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "painel: cobrir recursos das responsabilidades",
+  detalhe: "A atualização preserva a correção de cobertura de responsabilidades e suas guardas na base atual da main, com a mesma auditoria e testes focais executados após o rebase.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1579. Validação local: árvore f9ec1fd8a91f9fb7394ea97c08409be7446b62f6; commit 5179122bcb838c73ca932047dccf83e2a7fcb095; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-309",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -2,12 +2,13 @@
 
 O painel é `painel/painel.html` + `painel/registros/` — um site estático puro,
 cuja fonte de verdade é o livro de ocorrências versionado no Git. Esta célula
-**não recalcula nada**: ela serve os MESMOS bytes que o mantenedor abre no PC.
+**não recalcula nada**: preserva os bytes do livro e acrescenta a identificação
+da versão selecionada, sem reimplementar suas contas.
 Isso não é preguiça, é a lei anti-duplicação do `CLAUDE.md` aplicada: um painel
 que reimplementasse a lógica de `painel/logica.js` seria um segundo lugar onde
 os fatos do projeto moram, e o dia em que os dois discordassem ninguém saberia
 qual está certo. A prova é `tests/test_painel_vivo.py::test_e_o_arquivo_do_repositorio`,
-que compara byte a byte.
+que compara byte a byte após retirar somente a identificação da publicação.
 
 ## De onde vem a pasta
 
@@ -50,6 +51,7 @@ from pathlib import Path
 
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_safe
 from django.views.static import serve as serve_do_django
 
@@ -59,9 +61,8 @@ from .admin_dados import PASTA_DADOS_PAINEL_ATIVO, selecionar_dados
 # imagem, `services/admin` num checkout).
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 
-# A ordem importa: em produção só a primeira existe; num checkout só a segunda.
-# Se um dia as duas existirem na mesma máquina (alguém rodou a cópia local), a
-# embutida vence — é a que produção serve, e teste que mede outra coisa mente.
+# A publicação vem primeiro. A cópia da imagem e o checkout são alternativas
+# identificadas na resposta; escolher uma delas não afirma que está atualizada.
 CANDIDATOS = (
     PASTA_DADOS_PAINEL_ATIVO,
     RAIZ_DA_CELULA / "painel_embutido",
@@ -79,11 +80,25 @@ _SCRIPT_EMBUTIDO = re.compile(
 )
 
 
-def diretorio_do_painel() -> Path | None:
-    """A pasta do painel, ou `None` se ela não veio nesta imagem."""
+def dados_do_painel():
     return selecionar_dados(
         CANDIDATOS, tipo="painel", arquivos_obrigatorios=("painel.html",)
     )
+
+
+def diretorio_do_painel() -> Path | None:
+    """A pasta concreta da mesma seleção validada que serve a página."""
+    dados = dados_do_painel()
+    return dados.pasta if dados else None
+
+
+def _identificar_resposta(resposta, dados):
+    resposta["X-Admin-Dados-Sha"] = dados.sha or "desconhecida"
+    resposta["X-Admin-Dados-Run"] = dados.run_id or "desconhecida"
+    resposta["X-Admin-Dados-Origem"] = dados.origem
+    resposta["X-Admin-Dados-Condicao"] = dados.condicao
+    resposta["Cache-Control"] = "no-store"
+    return resposta
 
 
 def _politica_de_seguranca(html: bytes) -> str:
@@ -125,15 +140,25 @@ def painel(request):
     embutidos, escritos pelo gerador. O passado só é buscado se o mantenedor
     abrir a Memória.
     """
-    pasta = diretorio_do_painel()
-    if pasta is None:
-        return render(request, "admin/painel_ausente.html", status=500)
+    dados = dados_do_painel()
+    if dados is None:
+        resposta = render(request, "admin/painel_ausente.html", status=500)
+        resposta["X-Admin-Dados-Condicao"] = "indisponivel"
+        resposta["Cache-Control"] = "no-store"
+        return resposta
 
-    html = (pasta / "painel.html").read_bytes()
+    html = (dados.pasta / "painel.html").read_bytes()
+    identificacao = render_to_string(
+        "admin/dados_do_painel.html", {"dados": dados}
+    ).encode("utf-8")
+    corpo = re.search(rb'<div class="wrap">', html) or re.search(
+        rb"<body\b[^>]*>", html, re.IGNORECASE
+    )
+    posicao = corpo.end() if corpo else 0
+    html = html[:posicao] + identificacao + html[posicao:]
     resposta = HttpResponse(html, content_type="text/html; charset=utf-8")
     resposta["Content-Security-Policy"] = _politica_de_seguranca(html)
-    resposta["Cache-Control"] = "no-store"
-    return resposta
+    return _identificar_resposta(resposta, dados)
 
 
 @require_safe
@@ -148,12 +173,11 @@ def painel_arquivo(request, path):
     A travessia de diretório já vem barrada pelo `safe_join` do Django, que
     devolve 400 (`SuspiciousFileOperation`, logado em `django.security`).
     """
-    pasta = diretorio_do_painel()
-    if pasta is None:
-        raise Http404("o painel não veio nesta imagem")
+    dados = dados_do_painel()
+    if dados is None:
+        raise Http404("nenhuma cópia do painel passou pela conferência")
     if Path(path).suffix.lower() not in EXTENSOES_SERVIDAS:
         raise Http404("o painel serve apenas .js, .css e .html")
 
-    resposta = serve_do_django(request, path, document_root=pasta)
-    resposta["Cache-Control"] = "no-store"
-    return resposta
+    resposta = serve_do_django(request, path, document_root=dados.pasta)
+    return _identificar_resposta(resposta, dados)

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-022-scale-os-correcao-de-historico",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Scale OS: correção de histórico da medição",
+  detalhe: "O registro anterior é corrigido por novo lançamento: a medição disponível é fixture de teste, não medição real; TAR-296 passa a ter guarda obrigatória.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. A conferência do arquivo painel/medicoes/esforco.json confirmou dado de teste; a correção foi enviada na Fase 1 e validada com 227 testes.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260909-088-admin-base-scale-os-fase-1",
+  relacao: "correcao",
+  tarefa: "TAR-297",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

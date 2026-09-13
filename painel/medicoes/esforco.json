@@ -1,0 +1,28 @@
+{
+  "versao": 1,
+  "coleta_iniciada_em": "2026-09-09",
+  "situacao_linha_de_base": "iniciada, insuficiente para comparação",
+  "regra": "economia = (minutos de referência - minutos humanos posteriores) / minutos de referência; incluir revisão, retrabalho, exceções e manutenção",
+  "meta_de_validacao": "superar 80 por cento no conjunto elegível, ponderado por volume e minutos de referência",
+  "observacoes": [
+    {
+      "id": "teste-fase-1-registro-minimo",
+      "natureza": "teste",
+      "rotina": "triagem de atendimento",
+      "casos": 1,
+      "minutos_referencia": 20,
+      "minutos_humanos": 20,
+      "minutos_revisao": 0,
+      "minutos_retrabalho": 0,
+      "minutos_excecoes": 0,
+      "minutos_manutencao": 0,
+      "excecoes": 0,
+      "qualidade": "não avaliada; dado de teste",
+      "reaberturas": null,
+      "prazo": "teste",
+      "periodo": "2026-09-09/2026-09-09",
+      "condicoes": "fixture do verificador, não trabalho real",
+      "situacao_dado": "teste"
+    }
+  ]
+}

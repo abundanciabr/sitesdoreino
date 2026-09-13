@@ -1,0 +1,19 @@
+{
+  "arquivo": "330-a-aula-do-youtube-abre-sem-erro-e-mostra-a-capa",
+  "id": "TAR-330",
+  "titulo": "A aula do YouTube abre sem erro e mostra a capa",
+  "toca": [
+    "cursos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "Teste da sala, revisão independente, PR integrado e deploy-celula verde",
+  "despacho": "Corrigir o iframe de vídeo da aula para enviar o referenciador exigido pelo YouTube, preservar o link externo e provar o erro 153 e a capa com testes.",
+  "origem": "Relato do mantenedor com captura do erro 153 na aula",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

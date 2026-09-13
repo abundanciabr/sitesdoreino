@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-034-painel-registrar-achado-complementar-nos-links-de-evidencia",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "painel: registrar achado complementar nos links de evidência",
+  detalhe: "Achado complementar preexistente registrado com tarefa de correção, evidência publicada e lição reutilizável.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1526. Validação local: árvore f88f125edb1e99fcfb8fc2063586007d4dcb3a86; commit 8d3c950d1dce440252ca0298735aaf32bcd7229d; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-320",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

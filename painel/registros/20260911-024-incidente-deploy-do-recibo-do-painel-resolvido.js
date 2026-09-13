@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-024-incidente-deploy-do-recibo-do-painel-resolvido",
+  tipo: "incidente",
+  quando: "2026-09-11",
+  titulo: "PR 1555: conexão do painel foi recuperada na publicação",
+  detalhe: "O deploy-celula do recibo do painel falhou primeiro ao enviar dados para a VPS: a conexão TCP na porta SSH 22 expirou. O run 34558554199 foi reexecutado somente nas etapas falhas e terminou com resultado success, incluindo publicar-dados-admin.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34558554199",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

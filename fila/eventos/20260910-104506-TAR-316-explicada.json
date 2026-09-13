@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104506-TAR-316-explicada",
+  "tarefa": "TAR-316",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:45:06+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; possibilidade local demonstrada sem chamada ao provedor",
+  "o_que_e": "O robô promete não enviar nome e telefone, mas um título escrito livremente ainda pode carregar esses dados até o pacote preparado para a inteligência artificial.",
+  "o_que_muda": "Textos livres passam por uma proteção real antes de sair da escola, e a análise para quando não puder remover o dado com segurança.",
+  "exemplo": "Um título com nome, e-mail de teste e telefone sintético hoje aparece inteiro no dossiê preparado para análise.",
+  "importancia": 80
+}

@@ -2,6 +2,8 @@ from django.urls import path, re_path
 
 from apps.core.views import (
     aula,
+    aula_avulsa,
+    aulas_avulsas,
     catalogo,
     concluir_aula,
     entregar_checkpoint,
@@ -52,6 +54,8 @@ urlpatterns = [
     # reconhece, nunca autoriza.
     path("plantao", plantao_fila, name="plantao"),
     path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
+    path("aulas", aulas_avulsas, name="aulas-avulsas"),
+    path("aulas/<slug:slug>", aula_avulsa, name="aula-avulsa"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
     # PESSOA DA SESSÃO: nenhuma rota recebe o id de outra pessoa, e nenhuma
     # lista alunos ([INV-CUR-P1], `tests/test_inv_p1_nenhuma_tela_compara_alunos.py`).

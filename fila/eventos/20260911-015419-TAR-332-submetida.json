@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260911-015419-TAR-332-submetida",
+  "tarefa": "TAR-332",
+  "evento": "submetida",
+  "quando": "2026-09-11T01:54:19+00:00",
+  "quem": "agent/ci/substituir-entrega-submetida",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1549",
+  "revisao": "c0dc8face21c2afda8367c65876f1a7255f70513",
+  "arvore": "2ecefc79da40dd0a51fc7b822de327cd8ed440fc"
+}

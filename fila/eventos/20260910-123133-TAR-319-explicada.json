@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-123133-TAR-319-explicada",
+  "tarefa": "TAR-319",
+  "evento": "explicada",
+  "quando": "2026-09-10T12:31:33+00:00",
+  "quem": "Auditoria complementar da Fase 1 após a publicação do PR #1525",
+  "o_que_e": "Os cartões preservam a prova, mas formam atalhos inválidos quando o texto começa com entrega= ou publicacao=.",
+  "o_que_muda": "Quem confere uma tarefa concluída abre diretamente o PR e a publicação comprovados.",
+  "exemplo": "Na TAR-318, clicar na entrega precisa abrir o PR #1523, sem incluir entrega= dentro do endereço.",
+  "importancia": 55
+}

@@ -2099,6 +2099,37 @@ class CursosClient:
         """
         return self._pedir("get", "cursos", params={"site_id": site_id}, forma=list)
 
+    def aulas_avulsas(self, site_id: str) -> "tuple[str, list | None]":
+        """`listStandaloneLessons`: as aulas compartilháveis deste site."""
+        return self._pedir(
+            "get", "aulas-avulsas", params={"site_id": site_id}, forma=list
+        )
+
+    def criar_aula_avulsa(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
+        """`createStandaloneLesson`: publica título, vídeo e descrição.
+
+        O serviço gera o slug imutável. Esta célula nunca aceita nem manda um
+        endereço escolhido no navegador.
+        """
+        return self._pedir(
+            "post",
+            "aulas-avulsas",
+            params={"site_id": site_id},
+            json=corpo,
+            sucesso=(201,),
+        )
+
+    def editar_aula_avulsa(
+        self, site_id: str, slug: str, corpo: dict
+    ) -> "tuple[str, dict | None]":
+        """`updateStandaloneLesson`: atualiza campos sem mudar o endereço."""
+        return self._pedir(
+            "put",
+            "aulas-avulsas/" + quote(slug, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
     def criar_curso(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
         """`createCourse`: o gesto Novo curso, com apelido, nome, regra e produto.
 

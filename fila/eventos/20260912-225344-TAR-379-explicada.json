@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-225344-TAR-379-explicada",
+  "tarefa": "TAR-379",
+  "evento": "explicada",
+  "quando": "2026-09-12T22:53:44+00:00",
+  "quem": "decisão do mantenedor em 12/09/2026 (retomada da maestro, seção 4, item 2); executor Codex",
+  "o_que_e": "As fichas, votos e provas do conselho das três IAs vivem só numa pasta desta máquina; os briefs da fila citam essas fichas e cada IA trabalha numa bancada onde a pasta não existe.",
+  "o_que_muda": "A pasta passa a viajar no repositório como as seis consultorias anteriores: qualquer IA, em qualquer bancada, lê a ficha e grava a verificação pelo mesmo caminho.",
+  "exemplo": "É levar a ata da reunião do armário de um sócio para o arquivo da empresa, onde todos consultam a mesma cópia.",
+  "importancia": 35
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-005505-TAR-332-explicada",
+  "tarefa": "TAR-332",
+  "evento": "explicada",
+  "quando": "2026-09-11T00:55:05+00:00",
+  "quem": "Pedido do mantenedor de 10/09/2026; bloqueio reproduzido ao recuperar a TAR-291 do PR 1493 no PR 1510",
+  "o_que_e": "Hoje uma tarefa mantém o primeiro pedido de entrega para sempre, mesmo quando esse pedido foi fechado e o trabalho inteiro foi recuperado em outro.",
+  "o_que_muda": "A mesma tarefa pode seguir para a entrega recuperada sem apagar o comprovante anterior e sem permitir uma troca silenciosa.",
+  "exemplo": "É como encaminhar uma encomenda fechada para o novo endereço deixando o recibo do endereço antigo preso ao histórico.",
+  "importancia": 95
+}

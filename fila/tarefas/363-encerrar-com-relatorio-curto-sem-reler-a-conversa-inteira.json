@@ -1,0 +1,19 @@
+{
+  "arquivo": "363-encerrar-com-relatorio-curto-sem-reler-a-conversa-inteira",
+  "id": "TAR-363",
+  "titulo": "Encerrar com relatório curto sem reler a conversa inteira",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Leitura incremental preserva a dívida; quatro blocos; template até10linhas; no máximo uma recusa por mudança; nova fala não apaga trabalho sem relatório; testes existentes adaptados e guardas verdes.",
+  "despacho": "Implementar a fase3.3 aprovada em ci/prestacao_de_contas.py e seus testes. Preservar dívida após nova fala, leitura dos formatos Claude e Codex, aviso explícito em erro e PRONTO incompatível com caixa aberta. Usar leitura incremental com estado compacto e limitar recusa sem depender da cooperação do harness. Atualizar a lei de quatro blocos em coordenação com a compressão de contexto. Sem benchmarks.",
+  "origem": "Plano-Mestre10X e Diamantes aprovados pelo mantenedor; orientação final concentrar em concluir.",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
