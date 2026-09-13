@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-086-cursos-destacar-somente-aula-publicada",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: destacar somente aula publicada",
+  detalhe: "Amplia a cobertura solicitada pela revisão final do PR #1580, sem mudar o comportamento da sala.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1580. Validação local: árvore 214bf7e56d276adebead53acdc1a076bbe67d799; commit 633b70c3c81f929955481c7db4c56ce7c0867788; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-349",
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
