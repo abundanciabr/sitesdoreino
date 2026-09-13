@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import uuid
+from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
@@ -288,6 +289,14 @@ class IdentidadeClient:
         return email if isinstance(email, str) and email else None
 
 
+@dataclass(frozen=True)
+class LeituraDaFila:
+    """Resultado da leitura de uma fila, sem apagar recusa de credencial."""
+
+    itens: "list[dict] | None"
+    acesso_negado: bool = False
+
+
 class AlunosClient:
     """`contracts/alunos.openapi.yaml` — a fila de liberação (somente leitura).
 
@@ -322,8 +331,8 @@ class AlunosClient:
         token = (os.environ.get("ALUNOS_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
 
-    def _buscar(self, caminho: str, params: dict) -> "list[dict] | None":
-        """Uma leitura de lista, com o mesmo fail-OPEN das duas que a usam.
+    def _buscar_com_estado(self, caminho: str, params: dict) -> LeituraDaFila:
+        """Lê uma lista e conserva a recusa que a Central precisa explicar.
 
         Existe porque `fila()` e `alunos()` diferem em UMA linha (o caminho), e
         duas cópias do mesmo tratamento de erro divergem no primeiro caso de
@@ -336,7 +345,7 @@ class AlunosClient:
                 "desta célula — a tela vai dizer que não consegue perguntar. "
                 "Rode infra/provisionar-pares-de-categorias.sh."
             )
-            return None
+            return LeituraDaFila(None)
         base, token = config
 
         try:
@@ -348,29 +357,35 @@ class AlunosClient:
             )
         except httpx.HTTPError as erro:
             logger.error("leitura %s: não deu para perguntar: %s", caminho, erro)
-            return None
+            return LeituraDaFila(None)
+
+        if r.status_code in (401, 403):
+            logger.error("leitura %s: a alunos recusou a credencial", caminho)
+            return LeituraDaFila(None, acesso_negado=True)
 
         if r.status_code != 200:
-            # 401 aqui significa que o par não está em `TOKENS_ACEITOS_ADMIN` do
-            # lado da `alunos` — de fora, indistinguível de "não há ninguém".
             logger.error(
                 "leitura %s: a alunos respondeu HTTP %s", caminho, r.status_code
             )
-            return None
+            return LeituraDaFila(None)
 
         try:
             corpo = r.json()
         except ValueError as erro:
             # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
             logger.error("leitura %s: resposta fora do contrato: %s", caminho, erro)
-            return None
+            return LeituraDaFila(None)
 
         if not isinstance(corpo, list):
             logger.error(
                 "leitura %s: a alunos respondeu um corpo que não é lista", caminho
             )
-            return None
-        return corpo
+            return LeituraDaFila(None)
+        return LeituraDaFila(corpo)
+
+    def _buscar(self, caminho: str, params: dict) -> "list[dict] | None":
+        """A compatibilidade dos consumidores antigos: lista ou ausência."""
+        return self._buscar_com_estado(caminho, params).itens
 
     def fila(self, status: str) -> "list[dict] | None":
         """Quem está na fila, de TODAS as escolas (`site_id` omitido de propósito).
@@ -383,6 +398,10 @@ class AlunosClient:
         (`DECISAO-categorias-de-usuario`).
         """
         return self._buscar("/pre-matriculas", {"status": status})
+
+    def fila_para_central(self, status: str) -> LeituraDaFila:
+        """A fila com a recusa preservada para a Central orientar a correção."""
+        return self._buscar_com_estado("/pre-matriculas", {"status": status})
 
     def prontuario(self, email: str) -> "dict | None":
         """[PRONTUARIO] A história de UMA pessoa — todas as passagens dela.
