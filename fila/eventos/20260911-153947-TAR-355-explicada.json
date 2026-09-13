@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-153947-TAR-355-explicada",
+  "tarefa": "TAR-355",
+  "evento": "explicada",
+  "quando": "2026-09-11T15:39:47+00:00",
+  "quem": "baseline medido na bancada da galeria do capitulo 3 em 11/09/2026",
+  "o_que_e": "A verificacao local da gamificacao parava no Windows antes de executar a suite.",
+  "o_que_muda": "A mesma receita agora chama todas as verificacoes declaradas no Windows e preserva a falha de cada uma.",
+  "exemplo": "Ao executar make ci, a mensagem '-f foi inesperado neste momento' nao interrompe mais a validacao antes dos testes.",
+  "importancia": 78
+}
