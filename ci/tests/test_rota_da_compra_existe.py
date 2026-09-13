@@ -55,8 +55,8 @@ que não foi julgado, em vez de passarem batido:
 
 - arquivo de rotas ausente, ou sem `http.routers` / `http.services`;
 - router sem `rule`;
-- matcher que este guarda não sabe julgar (`PathRegexp`, `Path`, o que
-  inventarem) — inclusive escondido atrás de um `&&`, porque a avaliação aqui
+- matcher que este guarda não sabe julgar (`Path`, ou `PathRegexp` fora do
+  único redirecionamento legado declarado abaixo) — inclusive escondido atrás de um `&&`, porque a avaliação aqui
   **não faz curto-circuito** de propósito;
 - router que casa o caminho da compra **sem `priority` inteira declarada** — o
   Traefik v3 então calcula a prioridade do COMPRIMENTO da regra, e a rota que
@@ -106,8 +106,14 @@ CAMINHO_QUALQUER = "/uma-pagina-que-ninguem-declarou"
 
 # Matchers que este guarda sabe julgar, e como. Qualquer outro ⇒ AssertionError
 # (INV-CI01). `Path` (casamento EXATO) está fora de propósito: julgá-lo exige
-# decidir semântica que este guarda não vai adivinhar.
-CONHECIDOS = frozenset({"Host", "PathPrefix"})
+# decidir semântica que este guarda não vai adivinhar. `PathRegexp` só existe
+# para o desvio legado, em forma fechada: liberar o tipo todo esconderia uma
+# rota futura da análise da compra.
+PATHREGEXP_LEGADO_DE_AULAS = r"^/aulas/[A-Za-z0-9_-]+/?$"
+PATHREGEXP_PERMITIDOS = {
+    "aulas-avulsas-legadas": PATHREGEXP_LEGADO_DE_AULAS,
+}
+CONHECIDOS = frozenset({"Host", "PathPrefix", "PathRegexp"})
 
 # Um matcher inteiro: `Nome(`arg`)`, `Nome(`a`, `b`)`. Os argumentos do Traefik
 # vêm sempre entre crases.
@@ -206,6 +212,15 @@ def _avaliar_matcher(nome: str, texto: str, host: str, caminho: str) -> bool:
     if funcao == "Host":
         # `Host` é casamento EXATO de host no Traefik (padrão é `HostRegexp`).
         return any(host.lower() == valor.lower() for valor in argumentos)
+    if funcao == "PathRegexp":
+        permitido = PATHREGEXP_PERMITIDOS.get(nome)
+        if len(argumentos) != 1 or argumentos[0] != permitido:
+            raise AssertionError(
+                f"router `{nome}`: PathRegexp {argumentos!r} que este guarda não "
+                "sabe julgar. Só o desvio legado de aulas, com regex ancorada e "
+                "slug Django, é conhecido. Ensine a forma nova antes de usá-la."
+            )
+        return re.fullmatch(permitido, caminho) is not None
     # `PathPrefix` casa prefixo de string CRU, sem fronteira de segmento.
     return any(caminho.startswith(valor) for valor in argumentos)
 
@@ -653,6 +668,31 @@ def test_aceita_prioridade_com_OUTRO_numero_desde_que_a_ordem_se_mantenha():
 def test_aceita_a_compra_declarada_num_OU_de_dois_prefixos():
     dupla = {**COMPRA_BOA, "rule": "PathPrefix(`/api/checkout`) || PathPrefix(`/api/compra`)"}
     assert problemas(_tabela(dupla)) == []
+
+
+def test_o_redirecionamento_legado_da_aula_nao_interfere_na_compra():
+    """O único PathRegexp permitido ganha só o caminho legado da aula."""
+    documento = _documento_real()
+    routers = routers_declarados(documento)
+    legado = routers["aulas-avulsas-legadas"]
+    assert regra_casa(
+        "aulas-avulsas-legadas",
+        legado["rule"],
+        "meshcraft.top",
+        "/aulas/aula-de-testes/",
+    )
+    assert not regra_casa(
+        "aulas-avulsas-legadas",
+        legado["rule"],
+        "meshcraft.top",
+        CAMINHO_DA_COMPRA,
+    )
+    assert vencedor(routers, "meshcraft.top", "/aulas/aula-de-testes/") == (
+        "aulas-avulsas-legadas"
+    )
+    vencedor_da_compra = vencedor(routers, "meshcraft.top", CAMINHO_DA_COMPRA)
+    assert vencedor_da_compra is not None
+    assert routers[vencedor_da_compra]["service"] == SERVICE_DA_COMPRA
 
 
 # --- fail-closed de instrumentação -----------------------------------------

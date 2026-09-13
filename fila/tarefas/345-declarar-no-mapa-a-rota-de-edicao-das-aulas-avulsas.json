@@ -1,0 +1,19 @@
+{
+  "arquivo": "345-declarar-no-mapa-a-rota-de-edicao-das-aulas-avulsas",
+  "id": "TAR-345",
+  "titulo": "Declarar no mapa a rota de edição das aulas avulsas",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/mapa_do_site.py verde e PR com a rota declarada",
+  "despacho": "Célula painel. Declare exclusivamente em painel/mapa-do-site.json a rota admin → escola/aulas-avulsas/<slug:slug>/editar/ criada pelo PR #1564. Não toque serviços, contratos, infraestrutura nem CI. Prove com python ci/mapa_do_site.py, embarque recibo e peça pouso.",
+  "origem": "PR #1564",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

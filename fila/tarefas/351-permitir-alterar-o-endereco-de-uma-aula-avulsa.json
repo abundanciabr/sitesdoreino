@@ -1,0 +1,20 @@
+{
+  "arquivo": "351-permitir-alterar-o-endereco-de-uma-aula-avulsa",
+  "id": "TAR-351",
+  "titulo": "Permitir alterar o endereço de uma aula avulsa",
+  "toca": [
+    "contracts",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de contrato integrado, com teste de slug opcional, colisão, menor sufixo livre, 404 e 422.",
+  "despacho": "Objetivo: permitir alterar o slug de uma aula avulsa ao editar. Aceite: o PUT aceita slug opcional, somente ASCII minúsculo com hifens, preserva o slug quando omitido, resolve colisões com o menor sufixo livre e devolve o slug final salvo. O slug do caminho identifica a aula existente; 404 e 422 precisam ter semântica explícita. A reserva de slug por site precisa ser atômica.",
+  "origem": "pedido do mantenedor em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

@@ -1,0 +1,20 @@
+{
+  "arquivo": "369-fechar-sozinha-a-tarefa-quando-o-trabalho-dela-entra-no-site",
+  "id": "TAR-369",
+  "titulo": "Fechar sozinha a tarefa quando o trabalho dela entra no site",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado citando uma tarefa reivindicada fecha essa tarefa na fila, com o link do PR como prova",
+  "despacho": "Promova para valendo o fechamento automatico de tarefa no merge, que hoje roda em modo sombra (a CLAUDE-010 do conselho da Fase 4).\n\nHoje: ci/mergear.py chama a sombra depois do merge confirmado, ela IMPRIME o evento de conclusao que gravaria e nao grava nada. Medido em 52 pousos: 39 geraria, 13 silencio, todos os 13 pela mesma causa unica (o gh caiu ao ler o diff do PR).\n\nO que fazer: gravar o evento de verdade (funcao nova em ci/fila.py, idempotente por tarefa), tentar tres vezes ao ler o diff, falhar alto (o comando sai diferente de zero) em vez de calar, e levar o evento para a main num commit proprio - sem isso ele morre no checkout efemero da pista. Nunca desfazer nem contestar o merge: quando isso roda, ele ja entrou.\n\nProva: PR de teste ligado a uma tarefa fecha a tarefa; PR sem tarefa citada e PR fechado sem merge nao fecham nada; fail-closed com saida colada; idempotencia com duas execucoes; guarda provada por ci/provar_guardas.py; suite da fila verde.",
+  "origem": "conselho da Fase 4, recomendacao CLAUDE-010",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

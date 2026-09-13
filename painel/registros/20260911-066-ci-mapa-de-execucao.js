@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-066-ci-mapa-de-execucao",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: mapa de execução",
+  detalhe: "CLI e central usam o mesmo pacote. TAR-319 nova/TAR-339 retomada; 71 focais, 13 muralhas, 11 mutações. Ampla incompleta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1558. Validação local: árvore 7d75753892d4b87cb933cdd3cf71ba847c756544; commit a87efcb601ec8a4515a29ac72c38b0dc08982ae3; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-339",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

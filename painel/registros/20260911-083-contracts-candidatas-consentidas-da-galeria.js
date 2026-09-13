@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-083-contracts-candidatas-consentidas-da-galeria",
+  tipo: "decisao",
+  quando: "2026-09-11",
+  titulo: "contracts: candidatas consentidas da galeria",
+  detalhe: "O contrato limita a Galeria a referencias consentidas da propria autora, no site solicitado, e impede que midia, URL ou candidatura de outra escola ampliem o acesso privado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1581. Validação local: árvore e8c3b0bed06d1f26f72599030917cafdeeb0571f; commit 65343250e316d462e886f46ffd957fa140cb24d0; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-350",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

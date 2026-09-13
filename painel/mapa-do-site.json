@@ -1360,6 +1360,15 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas-avulsas/<slug:slug>/editar/",
+      "endereco": "/admin/escola/aulas-avulsas/<slug:slug>/editar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar uma aula avulsa",
+      "descricao": "A página para trocar o nome, a URL do vídeo e a descrição de uma aula publicada. O link compartilhado continua o mesmo."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/cursos/criar",
       "endereco": "/admin/escola/cursos/criar",
       "alcance": "publico",

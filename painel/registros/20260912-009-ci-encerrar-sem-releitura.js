@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-009-ci-encerrar-sem-releitura",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: encerrar sem releitura",
+  detalhe: "TAR-363: Stop lê só novidades, cobra uma vez e exige checklist com quatro blocos no fecho.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1592. Validação local: árvore b9f5f3af2bdc5e965737ce40fb694ee347f41d58; commit d1c889d9ab8c7c10ba8d4ed3b3df4660097a9599; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-363",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
