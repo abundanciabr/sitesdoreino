@@ -40,16 +40,14 @@ mutilado. Por isso a regra 1 abaixo é a primeira.
 
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
-| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; revisa PR crítico e publica o atestado | espera check em laço; mergeia; delega arquitetura |
+| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
 | Executor | Codex | o PR pela ficha `despacho`, que grava o evento na fila e o registro no livro; a `implementacao` com prova, quando o brief a pedir | pergunta ao mantenedor; edita o clone principal; arma espera; amplia o mandato; audita; decide lei |
 | Sentinela | Antigravity | achados medidos contra `origin/main` (`proposta`) e a verificação independente de cada entrega alheia (`verificacao`) | edita código ou lei; escreve despacho; grava evento ou registro; mede a pasta local |
 
-Quem verifica o quê: a sentinela verifica toda entrega que não é de ficha
-dela; a entrega de ficha da sentinela é verificada pela maestro. A revisão
-independente que o portão de pouso exige antes do merge (`ci/mergear.py`,
-atestado de `docs/decisoes/DECISAO-revisao-e-publicacao.md`) continua sendo
-feita pelo revisor da casa e publicada pela maestro; a verificação da
-sentinela vem depois do merge e mede o aceite da ficha, não o diff.
+A sentinela verifica o aceite depois da entrega. Revisão adicional pode
+acontecer, mas não é condição de merge. A partir de 13/09/2026, o PR pronto
+integra automaticamente após os dois checks obrigatórios, preservados o
+mandato CODEOWNERS e o contrato congelado. A maestro não está no caminho do merge.
 
 ## O contrato, que já existia
 
@@ -82,13 +80,13 @@ mora lá deixa de classificar: ele lista.
 ## As três regras que não se negociam
 
 1. **Mede-se `origin/main`, nunca a pasta local.** Comando: `git fetch origin` e `git show origin/main:<caminho>` no PowerShell (no Git Bash, caminho começando por ponto quebra, `armadilhas/334`), ou uma bancada de leitura com `git worktree add ../wt-leitura --detach origin/main`.
-2. **Ninguém espera em laço.** Depois de `make pr`, o executor encerra; a maestro publica o atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra. A pista acorda por evento e mergeia. `python ci/esperar.py --entrega <N>` é consulta única, em JSON.
+2. **Ninguém espera em laço.** Depois de `make pr`, o executor encerra; a integração acontece por evento, sem revisor, atestado, etiqueta ou gesto da maestro. `python ci/esperar.py --entrega <N>` é consulta única, em JSON.
 3. **Piso de segurança.** Nenhum despacho remove guarda de CI nem lei do `CLAUDE.md`. Lei muda com decisão escrita em `docs/decisoes/`.
 
 ## O que a tríade não muda
 
 - A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
-- O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, revisor independente, atestado, pouso pela pista.
+- O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, integração automática pelos checks obrigatórios, com mandato CODEOWNERS e contrato congelado preservados.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
 - Pedido colado no Antigravity vira proposta medida contra `origin/main`, devolvida à maestro; ele não executa.
 
