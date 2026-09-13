@@ -1,0 +1,19 @@
+{
+  "arquivo": "367-tornar-deterministico-o-preparo-dos-testes-do-painel-no-wind",
+  "id": "TAR-367",
+  "titulo": "Tornar determinístico o preparo dos testes do painel no Windows",
+  "toca": [
+    "ci/tests/test_verificar_painel.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guarda vermelha para preparo amplo, cenário mínimo verde com PASS FAIL ERROR preservados, sabotagem da seleção de arquivos, estresse concorrente e testador completo.",
+  "despacho": "Substituir a cópia do livro histórico pelo conjunto mínimo determinístico nas fixtures adversariais; preservar o teste do HEAD real e o prazo de 120 segundos. Tipo teste, modelo_recomendado gpt-5.6-sol, esforco_recomendado medium, teto_de_contexto 100000. Armadilhas 421 e 458.",
+  "origem": "Pedido de concluir Windows verde após PR #1594. Run 34677176889, merge d0ebbf2f4d00a8fd4820c60840f60ef949deff9f, test_o_livro_inteiro_de_volta_reprova excedeu120s em git add -A.",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

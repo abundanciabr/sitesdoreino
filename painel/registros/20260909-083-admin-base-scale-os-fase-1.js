@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-083-admin-base-scale-os-fase-1",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: base Scale OS Fase 1",
+  detalhe: "Base Scale OS validada no estado final, com guarda de responsabilidade e autorização privada delimitada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. Validação local: árvore ff44ae66e98f06fea64283da9d2259b0a29222d6; commit e33a61668173fa6104514d705a2e1791e0d7823b; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-297",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

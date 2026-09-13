@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-024-scale-os-fechamento-guards",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: fechamento das guardas da Fase 1",
+  detalhe: "Cadastro estrutural inválido, dados de medição sem qualidade real e conclusões incompletas agora impedem encerramento ou comprovação indevida.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 0d5abc6d1c9aa40a0fef39a0ffb79692f0d44c07; árvore df42286a35ff528a4b9f92a06f6a73fb33c7640c; submissão 419fdeaa; 227 testes relacionados.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

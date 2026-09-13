@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104428-TAR-315-explicada",
+  "tarefa": "TAR-315",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:44:28+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; requisito preservado como tarefa filha da TAR-288",
+  "o_que_e": "A automação sabe entregar uma conversa a uma pessoa, mas a fila deixou de guardar a regra que controla quando ela pode voltar.",
+  "o_que_muda": "A retomada futura fica ligada ao trabalho comercial e só acontece depois de uma autorização registrada, sem disputar a conversa com a pessoa.",
+  "exemplo": "Se Maria assume um atendimento, o copiloto permanece parado até receber um gesto explícito que devolva aquela conversa.",
+  "importancia": 85
+}

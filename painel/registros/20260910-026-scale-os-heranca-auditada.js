@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-026-scale-os-heranca-auditada",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: herança efetiva auditada",
+  detalhe: "A auditoria e a validação agora conferem a mesma unidade composta, preservando restrições explícitas da filha e aceitando relatório inconclusivo sem declarar produtividade.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 2307e859e1880f90e7d2a5ca8dfffcf069106b5e; árvore bb037fd6b339c705882598f6671ff30ac69e7bfb; 228 testes relacionados; TAR-283 recebeu nova submissão no mesmo PR.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-283",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

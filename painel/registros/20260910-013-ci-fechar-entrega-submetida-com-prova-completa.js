@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-013-ci-fechar-entrega-submetida-com-prova-completa",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "ci: fechar entrega submetida com prova completa",
+  detalhe: "Reconcilia uma entrega submetida somente após provar código, merge, publicação, atestado e aceite. A TAR-307 foi encerrada pelo comando com o run 34433902392.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1518. Validação local: árvore 5190221afc4f892f5140ad19b75614c872475026; commit 505b99b79f0566038aae6761f3cc0803c865f1a3; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-308",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

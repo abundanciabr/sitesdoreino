@@ -15,7 +15,7 @@ impediriam:
 2. **Um painel que vira um fork.** Se algum dia alguém "melhorar" a cópia
    servida, passam a existir dois painéis divergentes — a duplicação que o
    `CLAUDE.md` proíbe. `test_e_o_arquivo_do_repositorio_byte_a_byte` compara
-   byte a byte.
+   byte a byte, descontando somente a identificação da publicação.
 
 3. **Um painel exposto.** Ele é a operação inteira do projeto numa tela. A
    porta o protege porque ele NÃO está em `CAMINHOS_ISENTOS`; isso é medido
@@ -99,12 +99,23 @@ def test_a_pasta_do_painel_foi_encontrada():
 def test_e_o_arquivo_do_repositorio_byte_a_byte():
     """A célula SERVE o painel; não reimplementa nem edita.
 
-    Byte a byte de propósito: uma comparação de "contém o título" aceitaria uma
+    Apenas o aviso de origem é retirado antes de comparar todos os bytes.
+    Uma comparação de "contém o título" aceitaria uma
     cópia divergente, e cópia divergente é a duplicação que a lei proíbe.
     """
     resposta = _dentro().get("/painel/")
     assert resposta.status_code == 200, resposta.content[:400]
-    assert resposta.content == (PAINEL_NO_REPO / "painel.html").read_bytes()
+    identificacao = re.findall(
+        rb"<!-- dados-admin:inicio -->.*?<!-- dados-admin:fim -->",
+        resposta.content,
+        re.DOTALL,
+    )
+    assert len(identificacao) == 1
+    assert b"Origem dos dados" in identificacao[0]
+    assert (
+        resposta.content.replace(identificacao[0], b"", 1)
+        == (PAINEL_NO_REPO / "painel.html").read_bytes()
+    )
 
 
 @respx.mock

@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-018-pr-1493-recuperado-no-pr-1510",
+  tipo: "nota",
+  quando: "2026-09-11",
+  titulo: "O PR 1493 fechado sem merge foi recuperado no PR 1510",
+  detalhe: "O PR 1510 preserva a entrega integral da TAR-291 e substitui o PR 1493, que foi fechado sem merge. Este registro não declara integração nem publicação da TAR-291.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1493#issuecomment-5627701201",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260909-072-admin-identificar-e-manter-a-versao-dos-dados",
+  relacao: "comentario",
+  tarefa: "TAR-291",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-144730-TAR-324-explicada",
+  "tarefa": "TAR-324",
+  "evento": "explicada",
+  "quando": "2026-09-10T14:47:30+00:00",
+  "quem": "Substitui TAR-321, cancelada porque o PR documental foi associado indevidamente à obra futura; pedido do mantenedor de 10/09/2026 e docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md",
+  "o_que_e": "A plataforma ainda não transforma suas fontes atuais em um mapa vivo que indique o próximo passo e prepare o prompt completo de cada tarefa.",
+  "o_que_muda": "O mantenedor passa a receber orientação verificável para começar ou retomar trabalho sem reconstruir o contexto manualmente.",
+  "exemplo": "Ao informar um pedido novo ou um trabalho interrompido, a central mostra o próximo passo seguro, explica por quê e oferece o prompt completo para copiar.",
+  "importancia": 95
+}

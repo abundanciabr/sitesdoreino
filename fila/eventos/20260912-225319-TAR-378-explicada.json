@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-225319-TAR-378-explicada",
+  "tarefa": "TAR-378",
+  "evento": "explicada",
+  "quando": "2026-09-12T22:53:19+00:00",
+  "quem": "decisão do mantenedor em 12/09/2026 (despacho 2b da retomada da maestro); depois da TAR-377; executor Codex",
+  "o_que_e": "A fila ainda mostra 31 tarefas em andamento cujo trabalho já está no site; o balcão só as fecha com o recibo de aceite que a TAR-377 escreve.",
+  "o_que_muda": "O quadro do mantenedor volta a dizer a verdade: 31 tarefas passam de em execução para concluída, com prova lida do GitHub.",
+  "exemplo": "É dar baixa no caderno de pedidos depois que o carimbo de entregue já está em cada nota.",
+  "importancia": 40
+}

@@ -6,6 +6,10 @@ Este kit é a Fase 0 completa da plataforma nova (domínio novo, VPS nova, tudo 
 Ele não é um plano que pede confiança: cada alegação estrutural vem com um teste que a
 falsificaria. A Fase 0 só termina quando o **red-team** (02-RED-TEAM.md) falha em matá-la.
 
+Desde 12/09/2026 três IAs operam aqui em papéis fixos (`docs/decisoes/DECISAO-triade-de-ias.md`):
+Claude Code rege e despacha, Codex executa, Antigravity audita e verifica. A lei está em `CLAUDE.md`.
+Onde as etapas abaixo dizem "agente", leia o executor.
+
 ## Mapa do kit
 
 | Caminho | O que é |

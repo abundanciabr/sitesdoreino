@@ -74,7 +74,38 @@ def _repo_falso(tmp_path: Path) -> Path:
     """
     raiz = tmp_path / "repo"
     raiz.mkdir()
-    shutil.copytree(RAIZ / "painel", raiz / "painel")
+    for relativo in (
+        "gerar_manifesto.js",
+        "logica.js",
+        "painel.template.html",
+        "areas.json",
+        "testes/teste_logica.js",
+        "testes/teste_gerador.js",
+    ):
+        destino = raiz / "painel" / relativo
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(RAIZ / "painel" / relativo, destino)
+    pasta_registros = raiz / "painel" / "registros"
+    pasta_registros.mkdir()
+    # As sabotagens usam até o índice 5; o livro completo é medido no HEAD real.
+    for numero in range(1, 7):
+        nome = f"20260826-{numero:03d}-cenario"
+        registro = {
+            "arquivo": nome,
+            "tipo": "nota",
+            "quando": "2026-08-26",
+            "titulo": f"Registro {numero}",
+            "detalhe": "Cenário do verificador",
+            "autoridade": "sessao",
+            "gravidade": "info",
+            "precisa_do_dono": False,
+        }
+        (pasta_registros / f"{nome}.js").write_text(
+            "(window.REGISTROS = window.REGISTROS || []).push("
+            + json.dumps(registro, ensure_ascii=False)
+            + ");\n",
+            encoding="utf-8",
+        )
     # Os artefatos são MATERIALIZADOS aqui, e nunca commitados — é o desenho de
     # escritor único da Onda 3, e o cenário precisa reproduzi-lo para medir o
     # verificador de verdade. Gerar em vez de confiar na cópia também torna o
@@ -97,7 +128,7 @@ def _repo_falso(tmp_path: Path) -> Path:
         ["git", "init", "-q"],
         ["git", "config", "user.email", "teste@exemplo"],
         ["git", "config", "user.name", "teste"],
-        ["git", "add", "-A"],
+        ["git", "add", "--", ".gitignore", "painel/registros"],
         ["git", "commit", "-q", "-m", "cenário"],
     ):
         subprocess.run(
@@ -143,9 +174,34 @@ def _reescreve_mes(caminho: Path, registros: list[dict]) -> None:
 # ------------------------------------------------------------------ o verde
 
 
-def test_passa_no_repositorio_real() -> None:
+def test_passa_no_repositorio_real(tmp_path: Path, monkeypatch) -> None:
     """PASS contra o repositório de verdade — o piso de que ele funciona."""
-    proc = _roda(RAIZ)
+    executar = subprocess.run
+
+    def somente_na_copia(comando, *args, **kwargs):
+        assert (
+            Path(kwargs["cwd"]).resolve() != RAIZ.resolve()
+        ), "o teste não pode gerar nem verificar artefatos na bancada compartilhada"
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", somente_na_copia)
+    raiz = tmp_path / "checkout"
+    subprocess.run(
+        ["git", "clone", "--shared", "--quiet", str(RAIZ), str(raiz)],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    assert not (raiz / "painel" / "painel.html").exists()
+    subprocess.run(
+        ["node", "painel/gerar_manifesto.js"],
+        cwd=raiz,
+        check=True,
+        capture_output=True,
+        timeout=120,
+    )
+    proc = _roda(raiz)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "PASS" in proc.stdout
 
@@ -158,6 +214,39 @@ def test_passa_num_repositorio_falso_intacto(tmp_path: Path) -> None:
     """
     proc = _roda(_repo_falso(tmp_path))
     assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_cenario_tem_somente_seis_registros_e_nao_indexa_arquivos_alheios(
+    tmp_path: Path, monkeypatch
+) -> None:
+    executar = subprocess.run
+
+    def acrescentar_arquivo_alheio(comando, *args, **kwargs):
+        if comando[:2] == ["git", "add"]:
+            (Path(kwargs["cwd"]) / "fora-do-cenario.txt").write_text(
+                "não pertence ao livro", encoding="utf-8"
+            )
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", acrescentar_arquivo_alheio)
+    raiz = _repo_falso(tmp_path)
+    esperados = {
+        ".gitignore",
+        *(
+            f"painel/registros/20260826-{numero:03d}-cenario.js"
+            for numero in range(1, 7)
+        ),
+    }
+    rastreados = subprocess.run(
+        ["git", "ls-files"],
+        cwd=raiz,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=120,
+    ).stdout.splitlines()
+    assert set(rastreados) == esperados
+    assert len(list((raiz / "painel" / "registros").glob("*.js"))) == 6
 
 
 # ------------------------------------------------- as sete formas de mentira

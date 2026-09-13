@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-128-bloqueio-do-portao-de-pouso",
+  tipo: "incidente",
+  quando: "2026-09-09",
+  titulo: "incidente: o portão de pouso não conseguiu completar a medição",
+  detalhe: "Os sete checks do PR 1510 estavam verdes, mas o portão de pouso recusou a integração porque não conseguiu confirmar a revisão independente do SHA final, a publicação anterior e o registro a bordo. A publicação anterior existe e o workflow deploy-celula 34083213061 terminou com sucesso. A causa das duas leituras indisponíveis foi a cota core da API do GitHub chegar a zero durante a espera, não uma falha do deploy nem ausência do registro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1510. Publicação anterior: https://github.com/abundanciabr/sitesdoreino/actions/runs/34083213061. O comando esperar.py registrou a recusa com revisão necessária e erro de leitura da API.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: "A revisão independente e o pedido de pouso dependem da decisão da maestro ou da pista, não do código.",
+  proximo_passo: "Aguardar o reset da cota, publicar o atestado de revisão independente do SHA final e repetir a conferência do portão uma única vez.",
+  se_eu_nao_decidir: "A cadeia permanece aberta, sem merge adicional e sem novo deploy dessas quatro filhas.",
+  recomendacao: "Separar a revisão independente da maestro e consultar a publicação anterior somente depois de confirmar a cota disponível.",
+  reversivel: true,
+  impacto: "medio"
+}); })();

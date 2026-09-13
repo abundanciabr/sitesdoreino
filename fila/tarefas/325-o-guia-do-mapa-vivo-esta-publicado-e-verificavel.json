@@ -1,0 +1,19 @@
+{
+  "arquivo": "325-o-guia-do-mapa-vivo-esta-publicado-e-verificavel",
+  "id": "TAR-325",
+  "titulo": "O guia do mapa vivo está publicado e verificável",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR 1533 contém o prompt integral, os mapas corrigidos, a tarefa futura separada e o recibo; publicação privada coincide com a fonte e os portões de documentação, fila e livro passam.",
+  "despacho": "Concluir a entrega documental do pedido do mantenedor: manter o prompt de ativação publicado idêntico à fonte, corrigir apenas os fatos desatualizados dos mapas 04, 05 e índice, registrar a obra futura em tarefa separada e provar fila, mapas, livro e diff. Esta tarefa fecha a preparação e a escrituração; não implementa o GPS.",
+  "origem": "Substitui TAR-323 para declarar corretamente o escopo documental na célula admin; pedido do mantenedor de 10/09/2026 e PR 1533",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

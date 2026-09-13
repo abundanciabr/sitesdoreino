@@ -278,6 +278,8 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
             f"    sys.exit({gh_exit or 1})\n"
             "atual = respostas.pop(0)\n"
             "fita.write_text(json.dumps(respostas), encoding='utf-8')\n"
+            "if '--include' in sys.argv:\n"
+            "    print('HTTP/2.0 200 OK\\n')\n"
             "print(json.dumps(atual))\n",
             encoding="utf-8",
         )

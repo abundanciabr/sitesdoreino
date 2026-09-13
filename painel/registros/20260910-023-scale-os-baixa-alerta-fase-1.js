@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-023-scale-os-baixa-alerta-fase-1",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Scale OS: baixa do alerta histórico da Fase 1",
+  detalhe: "A baixa confirma que o registro histórico de base descrevia dado de teste, e não medição real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. Conferência local: painel/medicoes/esforco.json contém situacao_dado teste; 227 testes relacionados e muralhas locais PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260909-083-admin-base-scale-os-fase-1",
+  relacao: "baixa",
+  tarefa: "TAR-297",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

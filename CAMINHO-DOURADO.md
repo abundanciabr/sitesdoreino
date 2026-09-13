@@ -48,6 +48,12 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
+Quem escreve o despacho é a maestro (Claude Code). Quem o executa é o Codex,
+um PR por tarefa, dentro dos ALVOS e do ORÇAMENTO. Quem verifica a entrega
+alheia depois do merge é a sentinela (Antigravity), que não escreve despacho nem
+código; entrega de ficha da própria sentinela, a maestro verifica
+(`docs/decisoes/DECISAO-triade-de-ias.md`).
+
 ```markdown
 # DESPACHO — <celula>: <tarefa em ≤5 palavras>
 CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
@@ -967,8 +973,9 @@ Os portões acima verificam **integridade**. Nenhum verifica se a tradução est
   com uma entrada **por idioma** (revisar o inglês não valida o espanhol); o
   `_fonte` não pode estar `pendente`. Sem isso é FAIL no CI **e o boot recusa
   subir**. A declaração **expira**: se o texto daquele idioma mudar no diff,
-  ela tem de mudar junto. Você não inventa o nome que vai ali — **peça a
-  revisão ao mantenedor e registre o que ele responder**.
+  ela tem de mudar junto. Você não inventa o nome que vai ali: **registre a
+  pendência com `precisa_do_dono: true` e devolva à maestro; ela pergunta ao
+  mantenedor e registra a resposta**.
   ⛔ A outra guarda do D8.3, a **retrotradução**, continua NÃO implementada:
   depende de modelo externo (chave de API, custo) e é decisão do mantenedor —
   não escreva stub que finja fazê-la.

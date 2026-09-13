@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260912-015214-TAR-365-submetida",
+  "tarefa": "TAR-365",
+  "evento": "submetida",
+  "quando": "2026-09-12T01:52:14+00:00",
+  "quem": "agent/ci/revisao-na-atualizacao-da-base",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1596",
+  "revisao": "fb7ff67170098b50d18fbb647306a4c3fc8658b5",
+  "arvore": "f9d54b5b0c5d4db91b86a0cf614b35167d819ebb"
+}

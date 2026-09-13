@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import time
@@ -37,6 +38,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 PASTA = "telemetria-dos-robos"
+
+
+def sha256_texto_versionado(caminho: Path) -> str:
+    """Identifica texto pelo conteúdo do Git, sem variar entre LF e CRLF."""
+    conteudo = caminho.read_text(encoding="utf-8").encode("utf-8")
+    return hashlib.sha256(conteudo).hexdigest()
+
 
 # Redação de segredos na ESCRITA — o detector da armadilhas/090 virando redator.
 # Se um segredo aparecer no comando medido, ele não chega ao disco.
@@ -163,6 +171,7 @@ RESULTADOS = ("iniciado", "concluido", "falhou", "nao_executado", "verificado")
 PILOTOS = ("fase1", "fase2", "fase3")
 CONDICOES = ("antes", "depois")
 ESTADOS_DA_TAREFA = ("concluida", "falhou", "pendente", "abandonada")
+ESTADOS_DA_AUDITORIA = ("aprovada", "reprovada")
 METRICAS_DA_TAREFA = (
     "chamadas_modelo", "chamadas_ferramenta", "runner_minutos",
     "retentativas", "correcoes_revisao", "reaberturas", "minutos_adocao",
@@ -234,8 +243,10 @@ def identidade_tarefa(dados: dict) -> str | None:
     pr = dados.get("pr")
     if pr is not None and (type(pr) is not int or pr < 1):
         return None
+    schema = dados.get("schema_medicao", 1)
     revisao_instrumento = dados.get("revisao_instrumento")
-    if not isinstance(revisao_instrumento, str) or not re.fullmatch(r"[a-f0-9]{40}", revisao_instrumento):
+    padrao_revisao = r"(?:[a-f0-9]{40}|[a-f0-9]{64})" if schema == 2 else r"[a-f0-9]{40}"
+    if not isinstance(revisao_instrumento, str) or not re.fullmatch(padrao_revisao, revisao_instrumento):
         return None
     par_id = dados.get("par_id")
     if par_id is not None and (not isinstance(par_id, str) or not re.fullmatch(r"[A-Za-z0-9_./-]{1,160}", par_id)):
@@ -252,17 +263,76 @@ def identidade_tarefa(dados: dict) -> str | None:
     if not isinstance(metricas, dict):
         return None
     permitidas = set(METRICAS_DA_TAREFA)
-    if set(metricas) - permitidas:
+    if (set(metricas) != permitidas if schema == 2 else bool(set(metricas) - permitidas)):
         return None
     for valor in metricas.values():
-        if valor is not None and (type(valor) not in (int, float) or valor < 0):
+        if valor is not None and (
+            type(valor) not in (int, float)
+            or not math.isfinite(valor)
+            or valor < 0
+        ):
             return None
-    campos = (
+    campos = [
         "tarefa", "tentativa", "branch", "commit", "pr", "piloto", "condicao",
         "par_id", "tipo", "complexidade", "natureza", "componentes",
         "fronteiras_integracao", "migracao", "risco", "escopo_publicacao",
         "revisao_instrumento", "inicio", "fim", "estado", "fonte", "metricas",
-    )
+    ]
+    if schema == 2:
+        for campo in ("tarefa_sha256", "classificacao_sha256"):
+            if not isinstance(dados.get(campo), str) or not re.fullmatch(r"[a-f0-9]{64}", dados[campo]):
+                return None
+        autorizada_por = dados.get("autorizada_por")
+        if (not isinstance(autorizada_por, str) or not autorizada_por.strip()
+                or len(autorizada_por) > 160 or redigir(autorizada_por) != autorizada_por):
+            return None
+        for campo in ("classificada_em", "observado_em"):
+            try:
+                instante = datetime.fromisoformat(str(dados.get(campo)).replace("Z", "+00:00"))
+            except (TypeError, ValueError):
+                return None
+            if instante.tzinfo is None:
+                return None
+        evidencia = dados.get("evidencia")
+        if evidencia is not None:
+            if not isinstance(evidencia, dict) or set(evidencia) != {"resultado", "fonte", "verificado_em"}:
+                return None
+            if not all(isinstance(evidencia.get(campo), str) and evidencia[campo].strip()
+                       for campo in ("resultado", "fonte", "verificado_em")):
+                return None
+            try:
+                verificado = datetime.fromisoformat(evidencia["verificado_em"].replace("Z", "+00:00"))
+            except ValueError:
+                return None
+            if verificado.tzinfo is None:
+                return None
+        campos = ["schema_medicao", *campos, "tarefa_sha256", "classificacao_sha256",
+                  "classificada_em", "autorizada_por", "observado_em", "evidencia"]
+    return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
+
+
+def identidade_auditoria(dados: dict) -> str | None:
+    """Liga um parecer à entrada e às revisões que ele efetivamente examinou."""
+    if dados.get("evento") != "auditoria_fase4" or dados.get("estado") not in ESTADOS_DA_AUDITORIA:
+        return None
+    for campo in ("entrada_sha256", "revisao_analise"):
+        if not isinstance(dados.get(campo), str) or not re.fullmatch(r"[a-f0-9]{64}", dados[campo]):
+            return None
+    if (not isinstance(dados.get("revisao_instrumento"), str)
+            or not re.fullmatch(r"[a-f0-9]{40}|[a-f0-9]{64}", dados["revisao_instrumento"])):
+        return None
+    for campo in ("auditor", "evidencia"):
+        valor = dados.get(campo)
+        if not isinstance(valor, str) or not valor.strip() or len(valor) > 400 or redigir(valor) != valor:
+            return None
+    try:
+        verificado = datetime.fromisoformat(str(dados.get("verificado_em")).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if verificado.tzinfo is None:
+        return None
+    campos = ("entrada_sha256", "revisao_analise", "revisao_instrumento", "auditor",
+              "estado", "verificado_em", "evidencia")
     return hashlib.sha256(json.dumps({c: dados.get(c) for c in campos}, sort_keys=True).encode()).hexdigest()
 
 
@@ -274,7 +344,13 @@ def registrar_tarefa(*, tarefa: str, tentativa: str, branch: str, commit: str,
                      metricas: dict, inicio: str | None = None,
                      fim: str | None = None, par_id: str | None = None,
                      pr: int | None = None, cwd: str | None = None,
-                     sessao: str | None = None) -> Path | None:
+                     sessao: str | None = None, schema_medicao: int | None = None,
+                     tarefa_sha256: str | None = None,
+                     classificacao_sha256: str | None = None,
+                     classificada_em: str | None = None,
+                     autorizada_por: str | None = None,
+                     observado_em: str | None = None,
+                     evidencia: dict | None = None) -> Path | None:
     """Registra uma tarefa comparável no mesmo caderninho privado da Fase 1.
 
     Campos ausentes continuam ausentes. Em particular, nenhuma métrica recebe
@@ -291,6 +367,13 @@ def registrar_tarefa(*, tarefa: str, tentativa: str, branch: str, commit: str,
             revisao_instrumento=revisao_instrumento, inicio=inicio, fim=fim,
             estado=estado, fonte=fonte, metricas=metricas,
         )
+        if schema_medicao is not None:
+            dados.update(
+                schema_medicao=schema_medicao, tarefa_sha256=tarefa_sha256,
+                classificacao_sha256=classificacao_sha256,
+                classificada_em=classificada_em, autorizada_por=autorizada_por,
+                observado_em=observado_em, evidencia=evidencia,
+            )
         dados["id"] = identidade_tarefa(dados)
         if dados["id"] is None:
             return None

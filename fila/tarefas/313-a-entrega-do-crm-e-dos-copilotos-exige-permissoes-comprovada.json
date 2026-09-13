@@ -1,0 +1,19 @@
+{
+  "arquivo": "313-a-entrega-do-crm-e-dos-copilotos-exige-permissoes-comprovada",
+  "id": "TAR-313",
+  "titulo": "A entrega do CRM e dos copilotos exige permissões comprovadas",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cálculo da fila prova que TAR-296 e TAR-286 a TAR-289 exigem TAR-284 ou evidência equivalente de visão e permissão; CRM humano segue independente de IA e WhatsApp, e concluir TAR-296 não conclui TAR-288.",
+  "despacho": "GRAVIDADE: ALTO, bloqueante da preservação da Fase 1.\n\nREQUISITO: a entrega do CRM na Fase 2 e dos copilotos na Fase 3 precisa comprovar a visão central e as permissões de servidor definidas na TAR-284, sem bloquear a preparação permitida nem acoplar o CRM humano à IA ou ao WhatsApp.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; fila/tarefas/286-unir-as-ajudas-de-ensino-num-copiloto-do-especialista.json, linhas 12 a 15; fila/tarefas/287-dar-a-pessoa-de-estrategia-um-copiloto-de-jornadas-e-experim.json, linhas 11 a 14; fila/tarefas/288-construir-o-historico-comercial-e-o-copiloto-comercial.json, linhas 12 a 16; fila/tarefas/289-dar-a-operacoes-um-copiloto-de-saude-incidentes-e-trafego.json, linhas 12 a 15; fila/tarefas/296-entregar-um-crm-humano-antes-da-automacao-comercial.json, linhas 11 a 13.\n\nEVIDÊNCIA OBSERVADA: a TAR-296 depende apenas da TAR-283; as TAR-286, TAR-287 e TAR-289 dependem de TAR-283 e TAR-285; a TAR-288 depende de TAR-283, TAR-285 e TAR-296. Nenhuma delas depende da TAR-284 nem tem tarefa filha ou sucessora que preserve prova equivalente das permissões. A fila aceita declarar CRM e copilotos completos antes da Central.\n\nREPRODUÇÃO: rode calcular_estados sobre a fila atual e liste depende_de das TAR-286, TAR-287, TAR-288, TAR-289 e TAR-296. Em memória, marque apenas TAR-296 como concluída e confirme que TAR-288 continua bloqueada; essa separação correta do CRM humano e da automação deve ser preservada.\n\nESPERADO: as cinco entregas só fecham após TAR-284 ou após tarefa filha ou sucessora ligada que comprove visão e permissão no servidor. A preparação da base TAR-285 pode avançar em paralelo, e o CRM humano continua independente de IA e WhatsApp. OBSERVADO: a corrente não cobra a Central nem preserva prova equivalente para concluir essas entregas.\n\nIMPACTO: uma tela ou automação pode ser declarada completa sem conferir quem pode ver e executar cada ação no servidor.\n\nCORREÇÃO MÍNIMA: acrescentar TAR-284 às dependências permitidas de TAR-296 e TAR-286 a TAR-289, ou criar tarefas filhas ou sucessoras ligadas que cobrem prova equivalente de visão e permissão. Não reescrever critérios antigos. Não acrescentar TAR-285 à TAR-296; a base comum pode avançar em paralelo. Concluir TAR-296 nunca conclui TAR-288.\n\nCLASSIFICAÇÃO: falha de preservação da Fase 1; bloqueia o encadeamento seguro das fases seguintes.\n\nPROVA DE FECHO: o cálculo da fila impede concluir as cinco entregas até a Central ou tarefa ligada com prova equivalente, sem bloquear a preparação da TAR-285, e conserva o teste em que só a TAR-296 concluída não conclui a TAR-288.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; cálculo dos estados e contraprova em memória",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

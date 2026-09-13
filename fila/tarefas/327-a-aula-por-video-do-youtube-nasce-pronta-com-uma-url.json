@@ -1,0 +1,21 @@
+{
+  "arquivo": "327-a-aula-por-video-do-youtube-nasce-pronta-com-uma-url",
+  "id": "TAR-327",
+  "titulo": "A aula por vídeo do YouTube nasce pronta com uma URL",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR mergeado: a página Vídeo do YouTube aceita URL HTTPS incorporável, preserva conteúdo existente, salva e publica; URL inválida e falha de publicação informam o que ocorreu; testes da admin e deploy verdes.",
+  "despacho": "Reutilizar putLesson/publishLesson; não tocar contracts/cursos; URL YouTube incorporável; publicar após salvar; informar estado parcial; provas e mutação.",
+  "origem": "pedido do mantenedor em 10/09/2026",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

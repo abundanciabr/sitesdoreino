@@ -94,6 +94,18 @@ mantenedor a selecionar e copiar à mão.
   {% elif cartao.motivo and not coluna.ranqueada %}
     <div class="motivo">{{ cartao.motivo|urlize }}</div>
   {% endif %}
+  {% if cartao.pr %}
+    <div class="motivo">
+      {% if cartao.entrega_url %}<a href="{{ cartao.entrega_url }}" target="_blank" rel="noopener">Conferir entrega submetida</a>
+      {% else %}Endereço da entrega inválido. Peça ao robô para conferir o registro.{% endif %}
+      <details><summary>Identificação da entrega</summary>
+        <p>Revisão <code>{{ cartao.revisao|default:"não informada" }}</code>.</p>
+        <p>Árvore <code>{{ cartao.arvore|default:"não informada" }}</code>.</p>
+      </details>
+    </div>
+  {% elif coluna.estado == "em execução" %}
+    <p>Ainda não há submissão registrada para esta tarefa. O robô precisa registrar a entrega antes da conferência.</p>
+  {% endif %}
   {% if cartao.prompt %}
     <div class="acoes">
       <button type="button" class="tocar" data-prompt="prompt-{{ cartao.id }}">Copiar o prompt para tocar aqui</button>

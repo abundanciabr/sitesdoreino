@@ -72,7 +72,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient, CatalogoClient
-from .painel import CANDIDATOS
+from .painel import diretorio_do_painel
 
 #: A subpasta do painel onde moram os cartões. Viaja para a imagem junto com o
 #: resto de `painel/` (o `deploy-celula` copia a pasta inteira).
@@ -164,11 +164,11 @@ TETO_DE_BLOCOS = 9
 
 def diretorio_dos_cartoes() -> Path | None:
     """`painel/cartoes/`, embutida ou de checkout; `None` se não veio."""
-    for candidato in CANDIDATOS:
-        pasta = candidato / PASTA_DOS_CARTOES
-        if pasta.is_dir():
-            return pasta
-    return None
+    painel = diretorio_do_painel()
+    if painel is None:
+        return None
+    pasta = painel / PASTA_DOS_CARTOES
+    return pasta if pasta.is_dir() else None
 
 
 def validar(cartao: object) -> list[str]:
