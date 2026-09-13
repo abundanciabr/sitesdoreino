@@ -256,7 +256,11 @@ def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_div
     git("config", "user.name", "Teste local")
     celula = repo / "services" / "quiz"
     celula.mkdir(parents=True)
-    (celula / "Makefile").write_text('ci:\n\t"' + sys.executable.replace("\\", "/") + '" -m pytest -q\n')
+    (celula / "Makefile").write_text(
+        'ci:\n\t@if [ -f test_base.py ]; then "'
+        + sys.executable.replace("\\", "/")
+        + '" -m pytest -q; else exit 1; fi\n'
+    )
     (celula / "requirements.txt").write_text(ambiente.requisitos.read_text())
     hash_base = sessao.identidade_do_venv(celula / "requirements.txt")
     (celula / "test_base.py").write_text(f'import os\ndef test_base(): assert os.environ["SESSAO_VENV"].endswith("{hash_base}")\n')
@@ -287,7 +291,7 @@ def test_baseline_real_de_duas_tarefas_usa_main_isolada(ambiente, requisitos_div
             chamadas.append(comando)
             return sessao.correr_de_verdade(comando, **kwargs)
         a._correr = correr
-        a._localizar = lambda _: make
+        a._localizar = shutil.which
         a._variaveis = sessao.variaveis_de_sessao(a.plano, porta_postgres=15432)
         assert a.rodar_baseline("git") == "1 passed"
         assert sum(c[0] == make for c in chamadas) == (1 if numero == 1 else 0)
