@@ -1719,6 +1719,25 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/radio/",
+      "endereco": "/admin/caixa/radio/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O rádio da tríade",
+      "descricao": "A conversa entre as três IAs e o mantenedor, com atualização automática e uma caixa para escrever."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/radio/api/",
+      "endereco": "/admin/caixa/radio/api/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ler e escrever no rádio",
+      "descricao": "A porta de leitura e escrita do rádio, protegida pelo crachá da administração."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/travessia/",
       "endereco": "/admin/caixa/travessia/",
       "alcance": "publico",

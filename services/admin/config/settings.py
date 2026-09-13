@@ -78,6 +78,7 @@ MIDDLEWARE = [
 # ADMIN_EMAILS e a UNICA fonte de "pode entrar" (DECISAO-celula-admin par.2).
 # Vazia ⇒ ninguem entra. Fail-closed por construcao.
 ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
+ADMIN_RADIO_TOKEN = os.environ.get("ADMIN_RADIO_TOKEN", "")
 
 # Para onde mandar quem nao tem sessao. E o mesmo endereco publico que o
 # `funil` usa — a tela de login mora la, nos tres idiomas, e esta celula nunca

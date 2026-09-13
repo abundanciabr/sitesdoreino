@@ -247,6 +247,12 @@ class PortaAdministrativa:
         ):
             return self._com_seguranca(self.get_response(request))
 
+        if request.path_info in {"/caixa/radio/", "/caixa/radio/api/"} and (
+            request.headers.get("Authorization", "").startswith("Bearer ")
+            or request.headers.get("Accept") == "application/json"
+        ):
+            return self._com_seguranca(self.get_response(request))
+
         cookie = request.META.get("HTTP_COOKIE", "")
         if not cookie:
             # Sem cookie nenhum não há o que perguntar — e perguntar custaria
