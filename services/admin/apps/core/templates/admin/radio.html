@@ -13,10 +13,15 @@
       <p class="aviso">Nenhuma mensagem ainda. Escreva a primeira para abrir o rádio.</p>
     {% else %}
       {% for mensagem in mensagens %}
-        <article class="cartao radio-mensagem">
-          <div><b>{{ mensagem.autor }}</b> · {{ mensagem.quando }}{% if mensagem.tarefa %} · {{ mensagem.tarefa }}{% endif %}</div>
-          <p>{{ mensagem.texto }}</p>
-        </article>
+        {% if mensagem.tipo == "boletim" %}
+          <p class="nota radio-mensagem"><span class="subtitulo">Boletim · {{ mensagem.autor }} · {{ mensagem.texto }}</span></p>
+        {% else %}
+          <article class="{% if mensagem.tipo == 'parecer' %}historia{% else %}cartao{% endif %} radio-mensagem">
+            <div><b>{% if mensagem.tipo == "parecer" %}Parecer{% else %}Recado{% endif %} · {{ mensagem.autor }}</b> · {{ mensagem.quando }}{% if mensagem.tarefa %} · {{ mensagem.tarefa }}{% endif %}</div>
+            {% if mensagem.tipo == "parecer" %}<p class="nota">Comentário, sem ordem de execução</p>{% endif %}
+            <p>{{ mensagem.texto }}</p>
+          </article>
+        {% endif %}
       {% endfor %}
     {% endif %}
   </section>

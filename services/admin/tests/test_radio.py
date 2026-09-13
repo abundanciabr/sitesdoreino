@@ -145,7 +145,7 @@ def navegador_radio(settings):
 def test_formulario_sem_javascript_grava_e_volta_para_tela(
     db, navegador_radio, settings
 ):
-    # guarda: services/admin/apps/core/radio.py:112
+    # guarda: services/admin/apps/core/radio.py:139
     cliente = navegador_radio
     resposta = cliente.post(
         reverse("radio_pagina"),
@@ -249,3 +249,92 @@ def test_api_bearer_continua_gravando_sem_cookie_ou_csrf(db, settings):
     )
     assert resposta.status_code == 201
     assert MensagemDoRadio.objects.get().texto == "mensagem CLI"
+
+
+@pytest.mark.parametrize("tipo", ["recado", "parecer", "boletim"])
+def test_api_preserva_tipo_e_novo_autor(db, cracha, tipo):
+    resposta = radio_api(
+        pedido(
+            "POST",
+            "/caixa/radio/api/",
+            {
+                "autor": "fila" if tipo == "boletim" else "antigravity",
+                "tipo": tipo,
+                "texto": "Prova técnica do canal",
+                "tarefa": "TAR-374",
+            },
+            cracha,
+        )
+    )
+    assert resposta.status_code == 201
+    assert json.loads(resposta.content)["tipo"] == tipo
+    assert MensagemDoRadio.objects.get().tipo == tipo
+
+
+@pytest.mark.parametrize(
+    "dados",
+    [{"tipo": "ordem"}, {"tipo": None}, {"tipo": []}, {"autor": "desconhecido"}],
+)
+def test_api_recusa_autor_ou_tipo_invalidos(db, cracha, dados):
+    # guarda: services/admin/apps/core/radio.py:88
+    corpo = {"autor": "antigravity", "texto": "Prova", **dados}
+    resposta = radio_api(pedido("POST", "/caixa/radio/api/", corpo, cracha))
+    assert resposta.status_code == 400
+    assert "como_corrigir" in json.loads(resposta.content)
+    assert not MensagemDoRadio.objects.exists()
+
+
+def test_mensagem_legada_permanece_recado(db, cracha):
+    resposta = radio_api(
+        pedido(
+            "POST", "/caixa/radio/api/", {"autor": "codex", "texto": "legado"}, cracha
+        )
+    )
+    assert resposta.status_code == 201
+    assert json.loads(resposta.content)["tipo"] == "recado"
+
+
+def test_boletim_reenviado_nao_duplica(db, cracha):
+    corpo = {
+        "autor": "fila",
+        "tipo": "boletim",
+        "texto": "TAR-374: concluída em 2026-09-13T12:00:00+00:00",
+        "tarefa": "TAR-374",
+    }
+    respostas = [
+        radio_api(pedido("POST", "/caixa/radio/api/", corpo, cracha)) for _ in range(2)
+    ]
+    assert [r.status_code for r in respostas] == [201, 200]
+    assert MensagemDoRadio.objects.count() == 1
+
+
+def test_post_json_na_rota_da_pagina_usa_mesma_autorizacao(db, settings):
+    from django.test import Client
+
+    settings.ADMIN_RADIO_TOKEN = "token-da-maquina"
+    resposta = Client(enforce_csrf_checks=True).post(
+        reverse("radio_pagina"),
+        data=json.dumps(
+            {
+                "autor": "antigravity",
+                "tipo": "parecer",
+                "texto": "Prova do canal, sem auditoria",
+            }
+        ),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer token-da-maquina",
+    )
+    assert resposta.status_code == 201
+    assert resposta.json()["tipo"] == "parecer"
+
+
+def test_tres_tipos_aparecem_com_apresentacoes_distintas(db, navegador_radio):
+    for tipo in ("recado", "parecer", "boletim"):
+        MensagemDoRadio.objects.create(
+            autor="mantenedor", tipo=tipo, texto="Mensagem " + tipo
+        )
+    corpo = navegador_radio.get(reverse("radio_pagina")).content.decode()
+    assert "Comentário, sem ordem de execução" in corpo
+    assert 'class="cartao radio-mensagem"' in corpo
+    assert 'class="historia radio-mensagem"' in corpo
+    assert 'class="nota radio-mensagem"' in corpo
