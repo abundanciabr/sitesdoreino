@@ -1,0 +1,19 @@
+{
+  "arquivo": "355-a-receita-make-da-gamificacao-roda-inteira-no-windows",
+  "id": "TAR-355",
+  "titulo": "A receita Make da gamificacao roda inteira no Windows",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "make -C services/gamificacao ci e python -m pytest -q terminam verdes no Windows, e os testes mostram que as duas construcoes POSIX antigas falham quando restauradas.",
+  "despacho": "CORRIGIR O BASELINE: em Windows, make -C services/gamificacao ci interrompe na primeira condicao POSIX com '-f foi inesperado neste momento'. A receita precisa executar Black, lint-imports quando .importlinter existir, mypy quando mypy.ini existir, os testes e o portao contract_freeze.py sem pular nenhuma etapa. A prova deve rodar a receita por cmd.exe, forcar cada ferramenta opcional a falhar com dublê controlado e comprovar que as duas construcoes POSIX antigas voltam a falhar sob mutacao. Nao altere contrato, infraestrutura, suite ou a regra economica.",
+  "origem": "baseline medido na bancada da galeria do capitulo 3 em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
