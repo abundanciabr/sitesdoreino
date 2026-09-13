@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-122458-TAR-319-bloqueada",
+  "tarefa": "TAR-319",
+  "evento": "bloqueada",
+  "quando": "2026-09-13T12:24:58+00:00",
+  "quem": "despacho-admin-links-das-provas-dos-robos",
+  "detalhe": "A abertura reprovou o baseline da base b8baf78c4618e74690f816794a3826c577446b85: make ci da admin saiu 2; Black aprovou 214 arquivos, mas o shell Windows recusou a condição do Makefile com -f foi inesperado neste momento. Nenhum código foi alterado. A maestro precisa encaminhar a correção da execução do baseline no Windows antes de retomar TAR-319, TAR-317 e TAR-316.",
+  "espera": "fila"
+}
