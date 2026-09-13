@@ -6,9 +6,7 @@
     "ci",
     ".claude"
   ],
-  "depende_de": [
-    "TAR-376"
-  ],
+  "depende_de": [],
   "cria": [],
   "move": [
     "manutencao"
