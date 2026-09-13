@@ -60,9 +60,10 @@ pronta da view; o template só desenha.
     <h3>{{ bloco.nome }}</h3>
     <ol class="portas">
       {% for porta in bloco.portas %}
-      <li class="porta estado-{{ porta.estado_visual }}{% if porta.atual %} atual{% endif %}{% if porta.boss %} boss{% endif %}">
+      <li class="porta estado-{{ porta.estado_visual }}{% if porta.estado == "trancada" and porta.estado_visual != "trancada" %} estado-trancada{% endif %}{% if porta.atual %} atual{% endif %}{% if porta.boss %} boss{% endif %}">
         {% if porta.abre %}<a href="{% url 'aula-do-curso' curso.slug porta.parte porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
-        <span class="selo">{{ porta.rotulo }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
+        <span class="selo">{{ porta.rotulo }}</span>
+        <span class="miudo">{{ porta.explicacao }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
       </li>
       {% endfor %}
     </ol>
