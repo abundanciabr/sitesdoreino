@@ -2,6 +2,14 @@
 
 Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e antídoto.
 
+**A tríade e os ritos.** Desde 12/09/2026 (`docs/decisoes/DECISAO-triade-de-ias.md`)
+três agentes passam por estes ritos com papéis distintos. Claude Code, a maestro,
+escreve o brief e a tarefa (§5), publica o atestado da revisão e pede pouso (§2, peça 4);
+nunca mergeia nem espera em laço (§2, peça 6). Codex, o executor, segue §1, §2 e §5
+pela ficha `despacho`, um PR por tarefa, e nunca pergunta ao mantenedor. Antigravity,
+a sentinela, só lê: audita `origin/main` e verifica cada entrega alheia depois do merge;
+nunca edita código nem lei.
+
 ---
 
 ## §1 — Rito de Abertura de Sessão (worktree por agente)
@@ -30,11 +38,6 @@ criar a bancada. Área sem serviço usa `SEM_CONTAINER=1` ou `--sem-container`:
 nesse caso o baseline fica não medido e os testes dos alvos são necessários.
 Repita a mesma entrada para retomar, sem apagar a bancada. Os logs completos
 ficam no caminho que a abertura informa; a declaração só descreve o observado.
-
-Depois de criar a bancada, a abertura publica e confere um PR em rascunho antes
-do primeiro arquivo de código. O fechamento reutiliza esse PR e só o torna
-pronto para revisão depois da validação final. Um ramo que já tenha PR encerrado
-não é reutilizado.
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
@@ -97,10 +100,12 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    nesta máquina), o merge guardado da peça 4, o `alarme-main` (issue se a main
    quebrar) e o portão de deploy (commit não-verde não alcança a VPS — provado
    ao vivo em 22/08/2026).
-1. **Catraca:** todo estado verde vira commit IMEDIATAMENTE (Conventional Commits,
-   descrição em PT: `fix(pix): corrigir parsing do webhook`). Nenhum trabalho novo
-   começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
-   revise `git diff --cached --name-only` antes de commitar.
+1. **Catraca:** trabalhe na bancada até concluir uma mudança revisável. Um commit
+   de fechamento reúne implementação e prova, com mensagem em português
+   (Conventional Commits). Não há obrigação de microcommits a cada teste verde.
+   `make pr` acrescenta recibo e eventos automaticamente no mesmo ramo.
+   Selecione os arquivos e confira `git diff --cached --name-only`; não inclua
+   mudanças alheias. Não reescreva commits já publicados para reduzir a contagem.
 2. **Regra de parada:** DUAS tentativas consecutivas de correção falharam ⇒
    pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
    terceira tentativa sem novo despacho.
@@ -108,9 +113,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não
    é aceito.
-4. **Fecho da catraca, o agente PEDE POUSO; quem mergeia é a pista (desde
+4. **Fecho da catraca — o agente PEDE POUSO; quem mergeia é a pista (desde
    29/08/2026):** aberto o PR, o próprio agente conclui, sem pedir nem esperar o
-   humano, mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
+   humano — mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
    embarca** (desde 31/08/2026): leia o número que o `gh` devolveu ao abrir o
    PR: `make pr` valida, reserva e embarca o registro e os eventos NO MESMO RAMO.
    Não duplique a escrituração; confira os efeitos informados pelo comando
@@ -120,23 +125,15 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 
    ```bash
    python ci/mergear.py <PR> --conferir   # o portão, como sempre
-   python ci/mergear.py <PR> --pousar     # verde (ou só a base velha) ⇒ pede pouso e SIGA
+   python ci/mergear.py <PR> --pousar     # revisão e recibo conferidos: encaminha e encerra
    ```
 
    `--confirmo` **recusa** para quem não é a pista, e a recusa diz isto aqui.
-   Vermelho, pendente, ausente ou ERROR ⇒ **não se pede pouso**: conserta-se ou
-   reporta-se (o `--pousar` reprova antes de pôr a etiqueta). O botão do site
-   não é caminho para ninguém.
-
-   **A ÚNICA exceção, e ela é o serviço da pista:** um PR cuja única reprovação
-   é a **base envelhecida** (`BEHIND`) *pode* pedir pouso — é literalmente o
-   caso que a peça 5 nomeia logo abaixo. Pedir pouso não mergeia: põe na fila.
-   A pista atualiza a base, espera os checks medirem o mundo novo, roda este
-   mesmo portão e só então mergeia. Até 29/08/2026 o comando recusava esse
-   caso — as peças 4 e 5 se contradiziam, e o agente era empurrado de volta
-   para o laço de oito voltas que a pista existe para abolir
-   (`armadilhas/156`). Achado pela auditoria das Ondas 3 a 6; guarda:
-   `ci/tests/test_mergear.py`.
+   **Encaminhamento imediato:** checks ainda ausentes ou em andamento, cálculo
+   de mergeabilidade e base envelhecida podem aguardar na pista. Falha de teste,
+   conflito real, recibo ausente, revisão reprovada ou erro de consulta recusam
+   o pedido. A pista exige o portão completamente verde para integrar.
+   `ENFILEIRADO` é confirmação da etiqueta e do SHA, nunca prova de integração.
 
    **Por que mudou** (decisão do mantenedor, registro `20260829-006`): o agente
    mergeava com base em checks que rodaram ANTES de a fila andar, e a `main`
@@ -154,9 +151,7 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 5. **A pista, por dentro — o que acontece depois que você pede pouso:**
 
    ```bash
-   python ci/esperar.py --checks <N> --teto 20 --e-pousar   # o caminho normal (03/09/2026): verde, portão, pouso
-   python ci/mergear.py <N> --pousar      # o mesmo portão, chamado à mão (peça 4)
-   gh pr edit <N> --add-label pousar      # o mesmo gesto, cru
+   python ci/mergear.py <N> --pousar      # encaminha e retorna JSON, sem espera
    ```
 
    E vá embora. A pista (`.github/workflows/pouso.yml`, Onda 4 do
@@ -203,12 +198,12 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 
      **Onde "checks de PR não se esperam" NÃO se aplica, e o texto acima
      enganava:** a frase fala do LAÇO (atualizar → esperar → a `main` andou →
-     repetir, as oito voltas da `armadilhas/156`), nunca da espera ÚNICA que o
-     portão exige. `ci/mergear.py --pousar` recusa com check em andamento
-     (ERROR), e o `CLAUDE.md` manda "espere os checks concluírem" antes de
-     pedir pouso — então `--checks`, uma vez, é rito, não desperdício. Isto
-     quase virou defeito: o PR #801 nasceu proibindo `--checks` também, e a
-     tentativa de pedir o próprio pouso é que revelou a contradição.
+     repetir, as oito voltas da `armadilhas/156`). Desde 12/09/2026 ninguém
+     roda `--checks` antes de pedir pouso: `ci/mergear.py --pousar` admite
+     check em andamento e a pista aguarda quieta (peça 5); a maestro publica o
+     atestado, pede pouso e encerra (`docs/decisoes/DECISAO-triade-de-ias.md`,
+     regra 2). O PR #801 nasceu proibindo `--checks` também, e a tentativa de
+     pedir o próprio pouso é que revelou a contradição da época.
 
    - **Enquanto o deploy roda, VÁ TRABALHAR.** O `Monitor` roda a espera em
      segundo plano e te acorda: essa é a razão de ele existir. Ficar parado
@@ -217,6 +212,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      leia o balcão da fila, escreva o registro — e colha o veredito quando ele
      chegar. O que a lei exige é **reportar** o veredito, nunca *encarar* o
      relógio até ele sair.
+     **Em lote: NÃO espere o deploy de nenhum PR.** Reporte os números dos PRs
+     pousados e encerre a sessão. O deploy é conferido pela próxima sessão ou
+     pelo alarme-main.
 
    - **A voz da espera já fala; não repita cada batimento com uma linha sua.**
      Cada `⏳` do `esperar.py` já aparece na janela do mantenedor, com o estado
@@ -360,8 +358,9 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    entradas de abertura; `listar`, `validar` e `soltar` continuam livres lá (devolver
    tarefa presa é gesto de emergência, e emergência não espera worktree).
 2. **Trabalho novo que um despacho descobre vira tarefa registrada**
-   (`python ci/fila.py criar ...`, número do almoxarife) — nunca item de
-   memória de sessão, nunca lista paralela num documento. A fila é a única
+   (`python ci/fila.py criar ...`, número do almoxarife), e volta à maestro,
+   que decide se entra no lote: nunca item de memória de sessão, nunca lista
+   paralela num documento. A fila é a única
    casa do "o que está por fazer"; o livro continua sendo a única casa do
    "o que aconteceu".
 3. **Concluir exige evidência** (`concluir --evidencia <URL>`) — sem prova o

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-131832-TAR-348-explicada",
+  "tarefa": "TAR-348",
+  "evento": "explicada",
+  "quando": "2026-09-11T13:18:32+00:00",
+  "quem": "Filha de TAR-338; execução do capítulo 1, A fábrica de robôs",
+  "o_que_e": "O instrumento corrigido está publicado, mas ainda falta uma conferência feita por uma sessão independente.",
+  "o_que_muda": "O mantenedor passa a saber se os números são rastreáveis e o que os dados realmente permitem concluir, sem confundir ausência de amostra com desempenho zero.",
+  "exemplo": "Como conferir uma balança com pesos conhecidos antes de aceitar qualquer conclusão sobre o que foi pesado.",
+  "importancia": 85
+}

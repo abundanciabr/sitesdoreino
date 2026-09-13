@@ -84,6 +84,15 @@ máquina; mudou qual máquina, e ela tem paciência. A trava no `ci/mergear.py` 
 disciplina (o agente tem o mesmo `gh`); a muralha de verdade contra merge com
 base velha é o `strict` do conjunto de regras da `main`, que roda no servidor.
 
+**Emenda de 12/09/2026, a tríade.** Três IAs, três papéis fixos
+(`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code é a maestro, decide cada
+achado e o que entra no lote, nunca mergeia e nunca espera check em laço; Codex é o
+executor, constrói pela ficha `despacho`, um PR por tarefa, e não audita nem decide
+lei; Antigravity é a sentinela, audita `origin/main` e verifica cada entrega alheia
+depois do merge (a de ficha dela, a maestro verifica); nunca edita código ou lei,
+nunca grava evento ou registro, nunca mede a pasta local. O pouso continua sendo
+da pista.
+
 **Quem faz valer:** `ci/mergear.py` (a catraca, e a recusa de mergear para quem não é a pista) · `.github/workflows/pouso.yml` (quem mergeia) · `ci/tests/test_mergear.py`.
 
 ## Lei 5 — A Lei das 2h da Manhã
@@ -141,8 +150,10 @@ nunca por cirurgia de infra.
 
 
 Toda tarefa desta plataforma obedece ao **Padrão de Trabalho (Modelo Steve Jobs /
-Apple)**, escrito por inteiro na PRIMEIRA seção do `CLAUDE.md` da raiz — o único
-documento que entra sozinho no contexto de toda sessão. É lei deste repositório
+Apple)**, preservado em forma compacta, sem perda das obrigações, na PRIMEIRA
+seção do `CLAUDE.md` da raiz, a fonte canônica referenciada por `AGENTS.md`.
+A autorização está em `docs/decisoes/DECISAO-contexto-sob-demanda.md`.
+É lei deste repositório
 desde 04/09/2026, por ordem do mantenedor, e não sugestão: resolver o problema
 REAL por trás do pedido; discordar ANTES e executar depois; decidir em vez de
 servir cardápio; responder pelo caminho inteiro até a tela do usuário; e a

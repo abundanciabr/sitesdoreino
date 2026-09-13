@@ -1,0 +1,20 @@
+{
+  "arquivo": "354-reservar-endereco-unico-ao-editar-aula-avulsa",
+  "id": "TAR-354",
+  "titulo": "Reservar endereço único ao editar aula avulsa",
+  "toca": [
+    "cursos",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de edição concorrente confirma sufixos únicos no PostgreSQL.",
+  "despacho": "Permitir que a edição de aula avulsa normalize o endereço informado, preserve o endereço ausente e reserve o menor sufixo livre sob concorrência.",
+  "origem": "pedido do mantenedor em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}
