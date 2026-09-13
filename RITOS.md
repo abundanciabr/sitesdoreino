@@ -89,7 +89,8 @@ Decisão do mantenedor em 13/09/2026, registrada em
    Rascunhos, forks, conflitos e checks ausentes ou sem sucesso não integram.
 6. O SHA conferido é exigido no comando de merge. Um push concorrente invalida
    a tentativa. O GitHub aplica novamente sua proteção no instante do merge.
-7. Integração só se declara depois da confirmação remota. Publicação tem
+7. Em falha, preserve os arquivos e commits; corrija a causa sem apagar trabalho.
+   Integração só se declara depois da confirmação remota. Publicação tem
    verificação própria e não é sinônimo de PR integrado.
 
 **Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`,
