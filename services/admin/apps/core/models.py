@@ -96,6 +96,28 @@ class Administrador(models.Model):
         return f"{self.email}{'' if self.ativo else ' (removido)'}"
 
 
+class MensagemDoRadio(models.Model):
+    """Uma mensagem append-only entre as três IAs e o mantenedor."""
+
+    AUTORES = ("claude", "codex", "antigravity", "mantenedor", "fila")
+    TIPOS = ("recado", "parecer", "boletim")
+
+    tipo = models.CharField(
+        max_length=8, choices=[(item, item) for item in TIPOS], default="recado"
+    )
+    chave_boletim = models.CharField(
+        max_length=64, unique=True, null=True, editable=False
+    )
+    sequencia = models.BigAutoField(primary_key=True)
+    autor = models.CharField(max_length=12, choices=[(item, item) for item in AUTORES])
+    quando = models.DateTimeField(auto_now_add=True)
+    texto = models.CharField(max_length=2000)
+    tarefa = models.CharField(max_length=7, blank=True)
+
+    class Meta:
+        ordering = ("sequencia",)
+
+
 class Documento(models.Model):
     """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
 
