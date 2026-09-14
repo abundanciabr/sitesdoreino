@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-151438-TAR-351-concluida",
+  "tarefa": "TAR-351",
+  "evento": "concluida",
+  "quando": "2026-09-14T15:14:38+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1582; revisao=2dc7617dde414efec398cd0bbbd3925b793d47b2; arvore=f224b4663e30c9322ca1aeb78b84ac8e0604e211; head=a6daef308c6ffe832e6f0a028115968e982ba004; merge=5108e307e8ffcec28da38e5e2e1a2235a67bca1e; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34622421663; atestado=atestado aprovado para a6daef308c6ffe832e6f0a028115968e982ba004; aceite=painel/registros/20260913-033-aceite-tar-351.js",
+  "verificado_em": "2026-09-13"
+}

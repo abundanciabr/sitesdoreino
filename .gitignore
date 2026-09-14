@@ -77,3 +77,6 @@ armadilhas/GATILHOS.json
 # biblioteca para dentro do commit — aconteceu em 06/09/2026, 6010 arquivos num
 # PR de dois. O `.venv` e da MAQUINA, nunca do repositorio.
 .venv/
+
+# Banco transitório da prova local da administração.
+services/admin/teste-local.sqlite3

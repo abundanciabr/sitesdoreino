@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-150242-TAR-079-explicada",
+  "tarefa": "TAR-079",
+  "evento": "explicada",
+  "quando": "2026-09-14T15:02:42+00:00",
+  "quem": "maestro",
+  "o_que_e": "Quando um e-mail devolve, endereco errado, ou a pessoa marca como spam, o site precisa parar de mandar mensagem pra aquele endereco para sempre.",
+  "o_que_muda": "Sem isso, insistir em enderecos que devolvem queima a reputacao do dominio da escola: depois de um tempo, ate os e-mails legitimos comecam a cair na caixa de spam de todo mundo.",
+  "exemplo": "E como continuar ligando pra um numero que sempre da caixa postal cheia: depois de um tempo a operadora marca seu numero como suspeito.",
+  "importancia": 75
+}
