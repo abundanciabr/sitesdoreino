@@ -23,7 +23,7 @@ maestro, escreve o brief e julga as lições que as entradas trazem.
 1. **Antes de codar:** siga o §2 abaixo, confira o contexto emitido, suas origens,
    ausências e truncamento; abra as entradas do brief e as recuperadas.
 2. **Quando bater de frente com algo:** refine `--caminho`/`--sintoma` em
-   `ci/sessao.py --contexto`, amplie `--limite-contexto` ou, para aprofundamento,
+   `ci/sessao.py --contexto` ou, para aprofundamento,
    consulte `armadilhas/INDICE.md`. As entradas começam pelo sintoma concreto.
 3. **Ao terminar o despacho — isto não é opcional:** crie **um arquivo novo**,
    `armadilhas/NNN-slug.md`, no formato

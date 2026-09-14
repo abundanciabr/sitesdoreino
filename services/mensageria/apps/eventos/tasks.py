@@ -38,13 +38,25 @@ recriar, com transporte de verdade, exatamente a mentira que ela veio apagar.
 """
 
 import logging
+import socket
+from contextlib import contextmanager, nullcontext
+from smtplib import SMTPException
 
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import connection, transaction
 
 from config.huey import huey
 
-from .models import EnvioRegistrado
+from .capacidade import (
+    CapacidadeDoProvedor,
+    CapacidadeNaoConfigurada,
+    atraso_com_backoff,
+    registrar_falha,
+    registrar_sucesso,
+    reservar_envio,
+)
+from .models import EnderecoDeEmail, EnvioRegistrado
 
 logger = logging.getLogger("mensageria.provedores")
 
@@ -67,6 +79,50 @@ class EnvioRecusado(RuntimeError):
     """O provedor conversou e não aceitou a carta: zero mensagens saíram."""
 
 
+class EmailBloqueado(RuntimeError):
+    """O endereço foi devolvido ou reclamou e não pode receber mais e-mail."""
+
+
+def _email_normalizado(email: str) -> str:
+    return email.strip().lower()
+
+
+@contextmanager
+def _bloqueio_do_endereco(email: str):
+    """Serializa o webhook e o envio do mesmo endereço no PostgreSQL."""
+
+    with transaction.atomic():
+        if connection.vendor == "postgresql":
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", [email])
+        yield
+
+
+def marcar_email_como_bloqueado(email: str, motivo: str) -> EnderecoDeEmail:
+    """Registra bounce ou complaint e encerra envios pendentes do endereço."""
+
+    if motivo not in {"devolucao", "reclamacao"}:
+        raise ValueError("motivo deve ser devolucao ou reclamacao")
+    email = _email_normalizado(email)
+    with _bloqueio_do_endereco(email):
+        bloqueio, criado = EnderecoDeEmail.objects.get_or_create(
+            email=email,
+            defaults={"motivo": motivo},
+        )
+        if not criado and bloqueio.motivo != "reclamacao":
+            bloqueio.motivo = motivo
+            bloqueio.save(update_fields=["motivo", "bloqueado_em"])
+        EnvioRegistrado.objects.filter(
+            destinatario__iexact=email,
+            canal="email",
+            status="pendente",
+        ).update(
+            status="falhou",
+            resultado=f"endereco bloqueado por {bloqueio.motivo}; nenhum envio sera tentado",
+        )
+    return bloqueio
+
+
 def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     """Manda o e-mail de verdade. Volta em silêncio SÓ quando ele saiu.
 
@@ -74,29 +130,42 @@ def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     que qualquer comentário: com ele ligado, um provedor fora do ar vira `None` e
     a linha é marcada como enviada.
     """
-    if not (settings.EMAIL_HOST and settings.DEFAULT_FROM_EMAIL):
-        raise EmailNaoConfigurado(
-            "SMTP_HOST/SMTP_FROM ausentes no env desta celula — o passo do "
-            "mantenedor (conta no provedor, dominio remetente e os registros de "
-            "DNS) ainda nao foi feito. Nenhum e-mail sai, e nenhuma linha e "
-            "marcada como enviada."
-        )
+    destinatario = _email_normalizado(destinatario)
+    with _bloqueio_do_endereco(destinatario):
+        if not settings.EMAIL_WEBHOOK_TOKEN:
+            raise EmailNaoConfigurado(
+                "EMAIL_WEBHOOK_TOKEN ausente; configure a rota autenticada de "
+                "webhook do provedor antes de enviar"
+            )
+        if EnderecoDeEmail.objects.filter(email=destinatario).exists():
+            raise EmailBloqueado(
+                f"endereco {destinatario} esta bloqueado por devolucao ou reclamacao; nenhum envio sera tentado"
+            )
+        if not settings.EMAIL_SUPPRESSIONS_SINCRONIZADAS:
+            raise EmailNaoConfigurado(
+                "a lista de enderecos suprimidos do provedor ainda nao foi "
+                "sincronizada; importe a lista e defina "
+                "EMAIL_SUPPRESSIONS_SINCRONIZADAS=1 antes de enviar"
+            )
+        if not (settings.EMAIL_HOST and settings.DEFAULT_FROM_EMAIL):
+            raise EmailNaoConfigurado(
+                "SMTP_HOST/SMTP_FROM ausentes no env desta celula; configure a "
+                "conta no provedor, o dominio remetente e os registros de DNS "
+                "antes de enviar"
+            )
 
-    quantos = send_mail(
-        subject=assunto,
-        message=corpo,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[destinatario],
-        fail_silently=False,
-    )
-    if quantos != 1:
-        # `armadilhas/028` na forma SMTP: ausência de exceção não é prova. O
-        # backend do Django devolve a CONTAGEM, e `0` sem levantar é desfecho
-        # real — sem esta linha, ele viraria "enviado" no registro.
-        raise EnvioRecusado(
-            f"o provedor aceitou a conexao e nao aceitou a carta: {quantos} "
-            f"mensagem(ns) enviada(s), esperava 1"
+        quantos = send_mail(
+            subject=assunto,
+            message=corpo,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[destinatario],
+            fail_silently=False,
         )
+        if quantos != 1:
+            raise EnvioRecusado(
+                f"o provedor aceitou a conexao e nao aceitou a carta: {quantos} "
+                f"mensagem(ns) enviada(s), esperava 1"
+            )
 
 
 def enviar_whatsapp(destinatario: str, corpo: str) -> None:
@@ -113,30 +182,90 @@ def enviar_whatsapp(destinatario: str, corpo: str) -> None:
 PROVEDORES = {"email": enviar_email, "whatsapp": enviar_whatsapp}
 
 
-def processar_envio(envio_id: int) -> None:
+def processar_envio(envio_id: int, task=None) -> None:
     """Corpo nu da task — chamado direto pelo teste-guarda, sem passar pelo Huey."""
     envio = EnvioRegistrado.objects.get(id=envio_id)
-    if envio.status == "enviado":
-        return  # idempotência extra: reentrega da própria task
-    try:
-        if envio.canal == "email":
-            enviar_email(envio.destinatario, envio.assunto, envio.corpo)
+    if envio.status == "enviado" or (
+        envio.status == "falhou" and envio.resultado.startswith("endereco bloqueado")
+    ):
+        return
+    bloqueio = (
+        _bloqueio_do_endereco(_email_normalizado(envio.destinatario))
+        if envio.canal == "email"
+        else nullcontext()
+    )
+    erro = None
+    erro_do_provedor = False
+    contar_tentativa = True
+    with bloqueio:
+        envio.refresh_from_db()
+        if envio.status == "enviado" or (
+            envio.status == "falhou"
+            and envio.resultado.startswith("endereco bloqueado")
+        ):
+            return
+        try:
+            if envio.canal == "email":
+                if EnderecoDeEmail.objects.filter(
+                    email=_email_normalizado(envio.destinatario)
+                ).exists():
+                    raise EmailBloqueado(
+                        f"endereco {_email_normalizado(envio.destinatario)} esta bloqueado por devolucao ou reclamacao; nenhum envio sera tentado"
+                    )
+                reservar_envio()
+                enviar_email(envio.destinatario, envio.assunto, envio.corpo)
+                registrar_sucesso()
+            else:
+                enviar_whatsapp(envio.destinatario, envio.corpo)
+        except EmailBloqueado as exc:
+            envio.status = "falhou"
+            envio.tentativas += 1
+            envio.resultado = str(exc)[:500]
+            envio.save(update_fields=["status", "tentativas", "resultado"])
+            return
+        except (CapacidadeDoProvedor, CapacidadeNaoConfigurada) as exc:
+            if isinstance(exc, CapacidadeDoProvedor):
+                contar_tentativa = False
+                if task is not None:
+                    task.retry_delay = exc.atraso
+            erro = exc
+        except EmailNaoConfigurado as exc:
+            erro = exc
+        except (
+            SMTPException,
+            socket.timeout,
+            TimeoutError,
+            ConnectionError,
+            OSError,
+            EnvioRecusado,
+        ) as exc:
+            erro = exc
+            erro_do_provedor = envio.canal == "email"
+            if task is not None:
+                task.retry_delay = atraso_com_backoff(envio.tentativas + 1)
+        except Exception as exc:
+            erro = exc
         else:
-            enviar_whatsapp(envio.destinatario, envio.corpo)
-    except Exception as exc:  # provedor fora do ar
-        envio.tentativas += 1
-        envio.resultado = str(exc)[:500]
-        # `status` NÃO vira "enviado" aqui, e é o ponto inteiro deste arquivo: a
-        # linha fica como está e o Huey reagenda.
-        envio.save(update_fields=["tentativas", "resultado"])
-        raise  # o Huey decide o retry; nunca propaga a quem emitiu o evento
-    envio.status = "enviado"
-    envio.tentativas += 1
-    envio.resultado = "ok"
-    envio.save(update_fields=["status", "tentativas", "resultado"])
+            envio.status = "enviado"
+            envio.tentativas += 1
+            envio.resultado = "ok"
+            envio.save(update_fields=["status", "tentativas", "resultado"])
+            return
+        if erro is not None:
+            if contar_tentativa:
+                envio.tentativas += 1
+            envio.resultado = str(erro)[:500]
+            envio.save(update_fields=["tentativas", "resultado"])
+    if erro_do_provedor:
+        registrar_falha()
+    raise erro
 
 
-@huey.task(retries=5, retry_delay=30)
-def enviar_notificacao(envio_id: int) -> None:
+@huey.task(retries=5, retry_delay=30, context=True)
+def enviar_notificacao(envio_id: int, task=None) -> None:
     """Toda task é idempotente — retry é comportamento normal, não exceção."""
-    processar_envio(envio_id)
+    try:
+        processar_envio(envio_id, task=task)
+    except CapacidadeDoProvedor as exc:
+        retries = task.retries if task is not None else 5
+        enviar_notificacao.schedule(args=(envio_id,), delay=exc.atraso, retries=retries)
