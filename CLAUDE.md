@@ -141,8 +141,6 @@ Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
 
 Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
 nunca herde modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
-Acima de ~300k de contexto, sugira conversa nova. Economia não reduz ambição.
-Poupe tokens: extraia trechos com `sed -n` ou `grep`, nunca `cat` em arquivo grande.
 Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.

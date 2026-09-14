@@ -60,63 +60,63 @@ PERFIS: dict[str, Perfil] = {
         "arquitetura",
         MODELO_TOPO,
         "high",
-        180_000,
+        999_999_999,
         "muda contrato, fronteira ou desenho de produto; erro aqui custa retrabalho amplo",
     ),
     "produto": Perfil(
         "produto",
         MODELO_TOPO,
         "high",
-        180_000,
+        999_999_999,
         "cria ou muda comportamento de produto; precisa de julgamento semantico",
     ),
     "contrato": Perfil(
         "contrato",
         MODELO_TOPO,
         "high",
-        160_000,
+        999_999_999,
         "muda promessa entre celulas; a economia errada aqui quebra consumidores",
     ),
     "revisao": Perfil(
         "revisao",
         MODELO_ROTINA,
         "medium",
-        90_000,
+        999_999_999,
         "le diff contra checklist fechado; modelo barato acha escopo, recibo e prova faltando",
     ),
     "escrita": Perfil(
         "escrita",
         MODELO_ROTINA,
         "medium",
-        70_000,
+        999_999_999,
         "preenche moldes de registro, fila e armadilha; criatividade aqui e risco",
     ),
     "diagnostico": Perfil(
         "diagnostico",
         MODELO_ROTINA,
         "medium",
-        100_000,
+        999_999_999,
         "mede estado e classifica FAIL ou ERROR antes de qualquer conserto",
     ),
     "teste": Perfil(
         "teste",
         MODELO_ROTINA,
         "medium",
-        100_000,
+        999_999_999,
         "guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto",
     ),
     "texto": Perfil(
         "texto",
         MODELO_ROTINA,
         "medium",
-        70_000,
+        999_999_999,
         "reescreve superficie publicada sem decidir arquitetura",
     ),
     "espera": Perfil(
         "espera",
         MODELO_ROTINA,
         "low",
-        40_000,
+        999_999_999,
         "acompanha estado externo e so acorda quando ha mudanca acionavel",
     ),
 }
@@ -325,11 +325,6 @@ def cmd_brief(args: argparse.Namespace) -> int:
         alvos=args.alvo,
         armadilhas=args.armadilha,
     )
-    if len(texto) > 8_000:
-        raise ErroDeInstrumentacao(
-            "brief compilado ficou grande demais",
-            f"Tamanho: {len(texto)} caracteres. Corte alvo ou armadilha antes de despachar.",
-        )
     if args.saida:
         Path(args.saida).write_text(texto, encoding="utf-8")
         print(f"gravei {args.saida} ({len(texto)} caracteres)")

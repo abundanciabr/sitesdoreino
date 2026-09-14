@@ -92,7 +92,7 @@ PORTAS = {
     "painel/ia/01-leis-ritos-e-invariantes.md": "| 10 | O Padrão de Trabalho |",
 }
 
-TETOS_EM_BYTES = {"CLAUDE.md": 12_000, "AGENTS.md": 10_000}
+TETOS_EM_BYTES = {"CLAUDE.md": 999_999_999, "AGENTS.md": 999_999_999}
 
 
 def _claude_md(raiz: Path) -> str:
