@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-225228-TAR-428-submetida",
+  "tarefa": "TAR-428",
+  "evento": "submetida",
+  "quando": "2026-09-14T22:52:28+00:00",
+  "quem": "agent/infra/retirar-admin-deploy",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1665",
+  "revisao": "672df44d5f12eed36a5f35ed266588d5abe1669b",
+  "arvore": "3b46a904ba5f33832e2c08b8e952399e4f17b385"
+}
