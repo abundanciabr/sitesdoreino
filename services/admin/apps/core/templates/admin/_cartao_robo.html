@@ -61,9 +61,8 @@ Numa PARADA, `quem` é quem escreveu o bloqueio, e não quem está com a tarefa,
 por isso a etiqueta troca de rótulo ali. "robô: sessao-x" num cartão que espera
 uma decisão dele diria que alguém está trabalhando nele agora, que é o oposto.
 
-O `motivo` das concluídas é o endereço do trabalho que a fechou; `urlize`
-transforma em link clicável, porque um endereço só de texto obriga o
-mantenedor a selecionar e copiar à mão.
+A evidência preserva o texto e separa os URLs HTTPS dos rótulos. O template
+escapa cada trecho e destino, sem incluir entrega= ou publicacao= no href.
 {% endcomment %}
 <div class="cartao-robo borda-{{ coluna.cor }}" data-tarefa="{{ cartao.id }}">
   <span class="agora">🔒 um robô reservou esta tarefa neste minuto</span>
@@ -89,10 +88,8 @@ mantenedor a selecionar e copiar à mão.
     <span class="etiqueta apagada">{{ cartao.id }}</span>
     {% if cartao.quem %}<span class="etiqueta apagada">{% if coluna.estado == "bloqueada" %}quem travou{% else %}robô{% endif %}: {{ cartao.quem }}</span>{% endif %}
   </div>
-  {% if coluna.estado == "bloqueada" %}
-    <div class="motivo">{% if cartao.motivo %}{{ cartao.motivo|urlize }}{% else %}Ninguém escreveu o motivo desta parada.{% endif %}</div>
-  {% elif cartao.motivo and not coluna.ranqueada %}
-    <div class="motivo">{{ cartao.motivo|urlize }}</div>
+  {% if coluna.estado == "bloqueada" or cartao.motivo and not coluna.ranqueada %}
+    <div class="motivo">{% if cartao.motivo %}{% for trecho, endereco in cartao.motivo_partes %}{% if endereco %}<a href="{{ endereco }}" rel="nofollow">{{ trecho }}</a>{% else %}{{ trecho }}{% endif %}{% endfor %}{% else %}Ninguém escreveu o motivo desta parada.{% endif %}</div>
   {% endif %}
   {% if cartao.pr %}
     <div class="motivo">

@@ -798,3 +798,80 @@ def test_sem_a_pasta_de_eventos_a_tela_fica_mais_pobre_e_nao_quebra(
 
     assert conta["ultima_mexida"] == {} and conta["terminadas"] == 0
     assert _dentro().get(reverse("caixa_robos")).status_code == 200
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "motivo, destinos",
+    [
+        (
+            "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1518; "
+            "revisao=505b99b79f0566038aae6761f3cc0803c865f1a3; "
+            "arvore=5190221afc4f892f5140ad19b75614c872475026; "
+            "head=af6559196eb56ae7e94444f1843dd91682f76616; "
+            "merge=f613b25a8d3add4ae9781c6ed5ba604a9cf5791c; estado=PUBLICADO; "
+            "publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34441578586; "
+            "atestado=aprovado; aceite=painel/registros/20260910-014-pedido-1518-publicado.js",
+            [
+                "https://github.com/abundanciabr/sitesdoreino/pull/1518",
+                "https://github.com/abundanciabr/sitesdoreino/actions/runs/34441578586",
+            ],
+        ),
+        (
+            "entrega=https://github.com/x/y/pull/516; "
+            "publicacao=https://github.com/x/y/actions/runs/1,https://github.com/x/y/actions/runs/2",
+            [
+                "https://github.com/x/y/pull/516",
+                "https://github.com/x/y/actions/runs/1",
+                "https://github.com/x/y/actions/runs/2",
+            ],
+        ),
+        ("https://github.com/x/y/pull/516", ["https://github.com/x/y/pull/516"]),
+        (
+            "<script>alert(1)</script> entrega=https://example.com/prova?a=1,2&b=2; "
+            'publicacao=javascript:alert(1); <img src=x onerror="alert(1)">',
+            ["https://example.com/prova?a=1,2&b=2"],
+        ),
+        (
+            "A prova ainda não tem endereço. https://; publicacao=javascript:alert(1)",
+            [],
+        ),
+    ],
+)
+def test_cartao_concluido_preserva_texto_e_renderiza_destinos_https(
+    tmp_path, monkeypatch, motivo, destinos
+):
+    # guarda: services/admin/apps/core/robos.py:563
+    from html.parser import HTMLParser
+
+    class ProvaNoCartao(HTMLParser):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.texto = []
+            self.links = []
+
+        def handle_starttag(self, tag, attrs):
+            assert tag == "a", f"HTML da evidência executável: {tag}"
+            atributos = dict(attrs)
+            assert set(atributos) <= {"href", "rel"}
+            self.links.append(atributos["href"])
+
+        def handle_data(self, data):
+            self.texto.append(data)
+
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
+    estados["TAR-001"]["motivo"] = motivo
+    (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
+    resposta = _dentro().get(reverse("caixa_robos"))
+    assert resposta.status_code == 200
+    cartao = re.search(
+        r'data-tarefa="TAR-001".*?<div class="motivo">(.*?)</div>',
+        texto(resposta),
+        re.S,
+    )
+    assert cartao is not None
+    prova = ProvaNoCartao()
+    prova.feed(cartao[1])
+    assert "".join(prova.texto) == motivo
+    assert prova.links == destinos
