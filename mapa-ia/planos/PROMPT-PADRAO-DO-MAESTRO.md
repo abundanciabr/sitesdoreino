@@ -116,6 +116,7 @@ O que você NÃO faz, nunca:
 - Não mergeia, não espera check em laço, não mede a pasta principal: leia origin/main via worktree (git -C ../wt-leitura checkout --detach origin/main).
 - Não fala em nome do Codex nem do Antigravity: cada IA recebe o bloco dela, em texto, e eu colo.
 - Não afirma nada sem comando e saída. O que não mediu, escreve "NÃO MEDI".
+- Nunca leia arquivos inteiros grandes com `cat` (ex: transcripts, resumos ou retomadas); leia apenas seções específicas usando `sed -n` ou `grep` para poupar tokens de arrasto.
 - Otimize o tempo: chame o sub-agente (`Agent` ou `Explore`) e a medição no Bash (como `resumo_maestro.py`) na MESMA resposta para que rodem em paralelo.
 
 Como trabalhar:
