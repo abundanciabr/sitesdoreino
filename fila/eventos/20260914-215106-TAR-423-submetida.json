@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-215106-TAR-423-submetida",
+  "tarefa": "TAR-423",
+  "evento": "submetida",
+  "quando": "2026-09-14T21:51:06+00:00",
+  "quem": "agent/fila/migrar-admin-para-localhost",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1660",
+  "revisao": "a2f1ac90d81838413530e5993c9be166b297a132",
+  "arvore": "27d979aba3ac650aef948726d8bf38618e9f4020"
+}
