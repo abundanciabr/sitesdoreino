@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.core.views import healthz
+from apps.eventos.webhooks import webhook_email
 from config.api import api
 
 # A `mensageria` não serve página nenhuma: não há `SCRIPT_NAME`, não há rota no
@@ -18,5 +19,6 @@ from config.api import api
 # motivo estão em `config/api.py`; congelá-lo é o degrau 6d, PR à parte.
 urlpatterns = [
     path("healthz", healthz),
+    path("webhooks/email", webhook_email),
     path("api/mensageria/", api.urls),
 ]

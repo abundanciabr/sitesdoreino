@@ -59,7 +59,7 @@ outro nome:
 |---|---|---|
 | achado | `<AUTOR>-NNN-proposta.json`: `tipo`, `id`, `autor`, `registrado_em`, `problema`, `titulo`, `baseline` (comando e saída contra `origin/main`), `aceite`, `origem` | esta decisão |
 | decisão | `<ID>-voto-claude.json`: `tipo`, `proposta`, `autor`, `registrado_em`, `proposta_sha256`, `decisao` (`aprovar`, `reprovar`, `abster`), `importancia`, `justificativa`; a tarefa criada na fila é a decisão executável | esta decisão |
-| despacho | `fila/tarefas/NNN-slug.json`, cujo campo `despacho` recebe o brief compilado inteiro (`python ci/fila.py criar --despacho-arquivo <brief>`), com `modelo_recomendado`, `esforco_recomendado` e `teto_de_contexto` | `fila/LEIA-ME.md`, `CAMINHO-DOURADO.md` §2, `ci/economia_da_fabrica.py` |
+| despacho | `fila/tarefas/NNN-slug.json`, cujo campo `despacho` recebe o brief compilado inteiro (`python ci/fila.py criar --despacho-arquivo <brief>`), com `modelo_recomendado` e `esforco_recomendado` | `fila/LEIA-ME.md`, `CAMINHO-DOURADO.md` §2, `ci/economia_da_fabrica.py` |
 | resultado | evento `submetida` em `fila/eventos/` (PR, revisão, árvore), registro em `painel/registros/`, e `<ID>-implementacao.json` (`tipo`, `proposta`, `autor`, `registrado_em`, `proposta_sha256`, `prova`, `prova_sha256`, `resultado`, `minutos_totais`, `custo_reais`, `fonte_custo`) quando o brief pedir | `fila/LEIA-ME.md`, `painel/LEIA-ME.md`, esta decisão |
 | verificação | `<ID>-verificacao-<autor>.json`: `proposta`, `autor`, `registrado_em`, `implementacao_sha256`, `decisao` (`confirmar`, `recusar`, `abster`), `justificativa`, `prova`, `prova_sha256` | esta decisão |
 
