@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-224221-TAR-428-explicada",
+  "tarefa": "TAR-428",
+  "evento": "explicada",
+  "quando": "2026-09-14T22:42:21+00:00",
+  "quem": "Pré-requisito técnico da TAR-427: publicar imagem antes de trocar compose, conforme Brief 2 de 14/09/2026.",
+  "o_que_e": "Documentos públicos e a consulta da equipe usam o processo que também serve a administração.",
+  "o_que_muda": "Prepara um processo que só lê esses dados para a administração poder sair da hospedagem.",
+  "exemplo": "A imagem de leitura fica disponível antes que a hospedagem passe a usá-la, evitando uma interrupção.",
+  "importancia": 100
+}
