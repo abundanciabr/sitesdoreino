@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-221926-TAR-409-explicada",
+  "tarefa": "TAR-409",
+  "evento": "explicada",
+  "quando": "2026-09-13T22:19:26+00:00",
+  "quem": "Pedido do mantenedor em 13/09/2026 para dar voz ao Antigravity",
+  "o_que_e": "O rádio guarda mensagens sem distinguir recados, pareceres e mudanças de estado.",
+  "o_que_muda": "O mantenedor reconhece o que é recado, comentário e boletim sem confundir parecer com ordem.",
+  "exemplo": "Um parecer do Antigravity aparece como comentário e uma tarefa concluída produz uma linha discreta.",
+  "importancia": 100
+}
