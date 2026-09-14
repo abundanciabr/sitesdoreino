@@ -8,6 +8,8 @@ import shlex
 import shutil
 import sqlite3
 import sys
+from contextlib import closing
+from datetime import date
 from pathlib import Path
 
 TETO_CONSUMO = 1_600_000
@@ -16,7 +18,7 @@ CONVERSA = {'AskUserQuestion', 'TodoWrite', 'TaskCreate', 'TaskUpdate', 'TaskLis
 ENCAMINHAR = (
     'RECUSADO: Claude rege; Codex executa. Escreva o brief em docs/despachos/ '
     'numa bancada e encaminhe por python ci/fila.py criar --despacho-arquivo <brief>. '
-    'Plano, pesquisa e implementação não autorizam agentes nem Workflow no Claude.'
+    'Agent aceita somente revisor ou Explore; construção e Workflow continuam recusados.'
 )
 
 
@@ -61,15 +63,24 @@ def consumo(caminho: Path, sessao: str, estado: Path) -> int:
                 raise ValueError('resposta sem identidade')
             respostas[ident] = max(respostas.get(ident, 0), sum(valores))
     estado.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(estado, timeout=5) as banco:
-        banco.execute('CREATE TABLE IF NOT EXISTS consumo (sessao TEXT, resposta TEXT, tokens INTEGER, PRIMARY KEY (sessao, resposta))')
+    with closing(sqlite3.connect(estado, timeout=5)) as banco, banco:
         banco.execute('BEGIN IMMEDIATE')
+        hoje = date.today().isoformat()
+        banco.execute('CREATE TABLE IF NOT EXISTS consumo (sessao TEXT, resposta TEXT, tokens INTEGER, PRIMARY KEY (sessao, resposta))')
+        if 'dia' not in {coluna[1] for coluna in banco.execute('PRAGMA table_info(consumo)')}:
+            banco.execute('ALTER TABLE consumo ADD COLUMN dia TEXT')
+            banco.execute('ALTER TABLE consumo ADD COLUMN tokens_dia INTEGER')
+            # O legado não tem data: preservar o débito no dia da migração evita zerar o teto.
+            banco.execute('UPDATE consumo SET dia = ?, tokens_dia = tokens', (hoje,))
         banco.executemany(
-            'INSERT INTO consumo VALUES (?, ?, ?) ON CONFLICT(sessao, resposta) '
-            'DO UPDATE SET tokens = MAX(tokens, excluded.tokens)',
-            [(sessao, ident, tokens) for ident, tokens in respostas.items()],
+            'INSERT INTO consumo (sessao, resposta, tokens, dia, tokens_dia) VALUES (?, ?, ?, ?, ?) '
+            'ON CONFLICT(sessao, resposta) DO UPDATE SET '
+            'tokens_dia = CASE WHEN consumo.dia = excluded.dia THEN consumo.tokens_dia ELSE 0 END '
+            '+ excluded.tokens - consumo.tokens, dia = excluded.dia, tokens = excluded.tokens '
+            'WHERE excluded.tokens > consumo.tokens',
+            [(sessao, ident, tokens, hoje, tokens) for ident, tokens in respostas.items()],
         )
-        return banco.execute('SELECT COALESCE(SUM(tokens), 0) FROM consumo WHERE sessao = ?', (sessao,)).fetchone()[0]
+        return banco.execute('SELECT COALESCE(SUM(tokens_dia), 0) FROM consumo WHERE dia = ?', (hoje,)).fetchone()[0]
 
 
 def pode_escrever(caminho: Path, projeto: Path, casa: Path) -> bool:
@@ -79,8 +90,9 @@ def pode_escrever(caminho: Path, projeto: Path, casa: Path) -> bool:
     if caminho.is_relative_to((casa / '.claude/plans').resolve()):
         return True
     repo = repositorio(caminho.parent)
-    return bool(repo and repo[1] == projeto / '.git' and repo[0] != projeto
-                and caminho.is_relative_to(repo[0] / 'docs/despachos'))
+    return bool(repo and repo[1] == projeto / '.git' and (
+        caminho == repo[0] / 'mapa-ia/planos/ROADMAP-SESSAO.md'
+        or (repo[0] != projeto and caminho.is_relative_to(repo[0] / 'docs/despachos'))))
 
 
 def comando_de_regencia(comando: str, cwd: Path, projeto: Path, casa: Path) -> bool:
@@ -91,6 +103,8 @@ def comando_de_regencia(comando: str, cwd: Path, projeto: Path, casa: Path) -> b
         return False
     if any(arg in {'--raiz', '--directory', '-C'} or arg.startswith('--raiz=') for arg in args):
         return False
+    if args == ['python', 'ci/resumo_maestro.py']:
+        return True
     opcoes = {
         'ci/economia_da_fabrica.py': {'--tipo', '--objetivo', '--celula', '--alvo', '--armadilha', '--saida', '--texto'},
         'ci/fila.py': {'--json', '--ao-vivo', '--titulo', '--toca', '--depende-de', '--tipo',
@@ -142,14 +156,16 @@ def decidir(dados: dict, projeto: Path, casa: Path) -> tuple[int, str]:
         total = consumo(Path(dados['transcript_path']), sessao,
                         casa / '.claude/hooks/sitesdoreino-regencia/consumo.sqlite3')
         if total >= TETO_CONSUMO:
-            limite = (f'PAROU: consumo registrado de {total} tokens atingiu o teto operacional '
+            limite = (f'PAROU: consumo do dia de {total} tokens atingiu o teto diário '
                       f'de {TETO_CONSUMO}, incluindo cache. Encaminhe o trabalho ao Codex; '
-                      'não abra outra sessão para contornar o teto.')
+                      'o orçamento renova no próximo dia local; outra sessão usa o mesmo teto.')
             return 3, limite
         nome, entrada = dados['tool_name'], dados['tool_input']
         if not isinstance(entrada, dict):
             raise ValueError('entrada da ferramenta inválida')
         if nome in LEITURA | CONVERSA:
+            return 0, ''
+        if nome == 'Agent' and entrada.get('subagent_type') in ('revisor', 'Explore'):
             return 0, ''
         if nome in {'Write', 'Edit'}:
             if pode_escrever(cwd / entrada['file_path'], projeto, casa):
