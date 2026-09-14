@@ -205,13 +205,11 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 **Quem faz valer:** julgamento.
 
-## Como trabalhar com o mantenedor
-
 ## A IA age, não manda o mantenedor agir
 
-A IA executa toda ação ao seu alcance e entrega o resultado. Só pede gesto do
-mantenedor por credencial, dinheiro, lei, irreversibilidade ou acesso exclusivo.
-**Quem faz valer:** julgamento; `ci/padrao_de_trabalho.py`.
+A IA executa o que puder e só pede ao mantenedor credencial, dinheiro, lei,
+irreversibilidade ou acesso exclusivo. **Quem faz valer:** julgamento;
+`ci/padrao_de_trabalho.py`.
 
 ## Plano na abertura, contas no fecho
 
