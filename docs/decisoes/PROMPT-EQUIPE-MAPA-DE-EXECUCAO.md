@@ -108,7 +108,7 @@ Não crie um formato concorrente. Estenda a composição que `ci/sessao.py`, `ci
 - plano ordenado, partes paralelas, donos de arquivos e `Depende-de`;
 - comandos conferidos, diretório de trabalho, ambiente, baseline e estado da medição;
 - aceite falsificável por cenário, saída observável e comando;
-- `modelo_recomendado`, `esforco_recomendado` e `teto_de_contexto`, compilados pela economia da fábrica;
+- `modelo_recomendado` e `esforco_recomendado`, compilados pela economia da fábrica;
 - plano de falha com no máximo duas tentativas de correção para FAIL, preservando ERROR como instrumento quebrado;
 - entrega: diff, registro, submissão, pista, deploy quando aplicável e próximo passo exato.
 

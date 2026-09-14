@@ -6,12 +6,11 @@ degrau: 2
 confianca: alta
 custo_por_queda: medio
 guarda:
-  tipo: teste
-  dono: ci/tests/test_preco_da_conversa.py
+  tipo: nenhum
+  motivo: o monitor de consumo de tokens foi removido por decisão do mantenedor, portanto não há mecanismo a guardar.
 gatilho:
-  - ci/preco_da_conversa.py
-  - ci/sino_das_armadilhas.py
-licao: gancho que fala "uma vez por sessão" guarda o estado AO LADO do transcript (`transcript.with_suffix(...)`), nunca em `tempfile.gettempdir()` — em temp ele sobrevive à conversa e o gancho cala para sempre naquela chave. Com vários patamares, guarde o MAIS ALTO já dito, não a lista.
+  - ci/economia_da_fabrica.py
+licao: o monitor de consumo de tokens foi removido. Não recrie avisos, patamares ou estado de contexto sem uma decisão explícita do mantenedor.
 ---
 
 # 371 — Estado de gancho em temp cala o gancho para sempre
