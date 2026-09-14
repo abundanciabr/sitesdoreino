@@ -10,6 +10,6 @@
   precisa_do_dono: false,
   responde_a: null,
   gravidade: "info",
-  frente: "docs",
+  frente: "fabrica",
   vence_em_dias: null
 });})();
