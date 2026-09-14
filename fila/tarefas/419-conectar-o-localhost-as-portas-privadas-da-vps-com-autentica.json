@@ -1,0 +1,19 @@
+{
+  "arquivo": "419-conectar-o-localhost-as-portas-privadas-da-vps-com-autentica",
+  "id": "TAR-419",
+  "titulo": "Conectar o localhost às portas privadas da VPS com autenticação",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Todos os critérios do aceite do despacho comprovados com comandos, testes e publicação quando houver; nenhum segredo, gasto, acesso cruzado a banco ou interface administrativa na VPS.",
+  "despacho": "# Brief compilado\n\nobjetivo: Conectar o localhost às portas privadas da VPS com autenticação\ntipo: contrato\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nmotivo_do_modelo: muda promessa entre celulas; a economia errada aqui quebra consumidores\ncelula: infra\n\n## Arquivos-alvo\n- infra/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n## Objetivo\nEntregar uma ponte privada e autenticada entre o backend local e APIs internas existentes da VPS. Medir primeiro transporte, identidade e autorização disponíveis; reutilizar o que existe e limitar a superfície às portas necessárias.\n## Alvos\ninfra/traefik/, infra/env/*.exemplo e configuração de rede em infra/docker-compose.yml somente conforme lacuna medida. Não gravar valores reais de credenciais. Contratos e código de consumidores são somente leitura; qualquer necessidade fora de infra vira brief dependente autorizado pela maestro.\n## Somente leitura\ncontracts/*.openapi.yaml, services/admin/apps/core/clients.py, infra/env/admin.env.exemplo, serviços provedores e suas configurações de autenticação. Hoje as portas internas têm nomes de rede como http://leads:8000/api/leads; esses nomes não são endereço de acesso do PC.\n## Aceite\nProva do PC para uma API contratada com autenticação válida; ausência, expiração e identidade errada recusadas; escopo por par e por site preservado; nenhuma porta de banco exposta; falha de rede distingue indisponibilidade de resultado vazio; segredos ausentes de código, logs e histórico. Testes da configuração e guardas por mutação, publicação por pipeline e reversão documentada. Lacuna que exija segredo ou decisão de acesso é bloqueio nominal, sem inventar autorização.\n## Restrições\nNenhuma autorização para segredo, gasto, SSH manual, leitura ou escrita no banco de outra célula, tela administrativa na VPS, conteúdo ou copiloto. Contratos congelados ficam somente leitura; lacuna de contrato volta à maestro para Rito de Contrato em PR exclusivo, provedor antes de consumidor. CODEOWNERS exige mandato nominal do mantenedor no PR. Código reconstruível do Admin local permanece no Git; trabalho operacional vivo permanece no localhost. Não criar UI nesta tarefa.",
+  "origem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

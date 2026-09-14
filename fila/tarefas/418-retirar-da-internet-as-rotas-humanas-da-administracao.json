@@ -1,0 +1,20 @@
+{
+  "arquivo": "418-retirar-da-internet-as-rotas-humanas-da-administracao",
+  "id": "TAR-418",
+  "titulo": "Retirar da internet as rotas humanas da Administração",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Todos os critérios do aceite do despacho comprovados com comandos, testes e publicação quando houver; nenhum segredo, gasto, acesso cruzado a banco ou interface administrativa na VPS.",
+  "despacho": "# Brief compilado\n\nobjetivo: Retirar da internet as rotas humanas da Administração\ntipo: arquitetura\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nmotivo_do_modelo: muda contrato, fronteira ou desenho de produto; erro aqui custa retrabalho amplo\ncelula: infra\n\n## Arquivos-alvo\n- infra/\n- ci/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n## Objetivo\nRetirar todas as rotas humanas administrativas da borda pública, preservando portas de máquina necessárias e páginas públicas de alunos. Esta tarefa entrega configuração e guardas, sem tocar telas ou desligar bancos.\n## Alvos\ninfra/traefik/dynamic/plataforma.yml, infra/docker-compose.yml apenas se necessário ao isolamento, guardas pertinentes em ci/tests/ e scripts ci/ que verificam publicação administrativa.\n## Somente leitura\nservices/admin/, services/alunos/, services/cursos/, contracts/, painel/mapa-do-site.json. O router admin está em plataforma.yml com Host(meshcraft.top) e PathPrefix(/admin); mapa-ia e docs compartilham o backend admin. Classificar cada rota antes de retirar acesso, sem confundir serviço com página de aluno. Não remover o contêiner apenas por servir uma tela.\n## Aceite\nInventário verificável de rotas e consumidores; teste guarda que reprove com a rota humana reaberta e passe com o fechamento; acesso externo humano recusado sem redirecionar para tela administrativa; páginas de aluno e portas de máquina necessárias preservadas; suíte dos caminhos tocados verde. Publicação somente por pipeline autorizado, com evidência externa e plano de rollback. Se uma porta necessária exigir a ponte privada, encadear antes de fechar essa porta.\n## Restrições\nNenhuma autorização para segredo, gasto, SSH manual, leitura ou escrita no banco de outra célula, tela administrativa na VPS, conteúdo ou copiloto. Contratos congelados ficam somente leitura; lacuna de contrato volta à maestro para Rito de Contrato em PR exclusivo, provedor antes de consumidor. CODEOWNERS exige mandato nominal do mantenedor no PR. Código reconstruível do Admin local permanece no Git; trabalho operacional vivo permanece no localhost. Não criar UI nesta tarefa.",
+  "origem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
