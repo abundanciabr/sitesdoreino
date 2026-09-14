@@ -28,7 +28,7 @@ import httpx
 import pytest
 import respx
 from django.test import Client
-from django.urls import reverse
+from django.urls import reverse, set_script_prefix
 
 from apps.core import perpetuo
 
@@ -98,6 +98,14 @@ def test_toda_porta_existe_no_mapa_do_site():
         f"endereço novo (o certo está em painel/mapa-do-site.json), ou tire a "
         f"porta da peça se a tela deixou de existir."
     )
+
+
+def test_endereco_da_porta_nao_duplica_prefixo_da_admin():
+    set_script_prefix("/admin/")
+    try:
+        assert perpetuo._endereco_da_porta({"rota": "menu_do_topo"}) == "/admin/menu/"
+    finally:
+        set_script_prefix("/")
 
 
 def test_nenhuma_peca_fica_sem_porta():

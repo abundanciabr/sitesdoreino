@@ -555,8 +555,9 @@ def test_o_aviso_do_plano_sai_para_pedido_do_mantenedor():
     assert "PLANO PRIMEIRO" in proc.stdout
     assert "- [ ]" in proc.stdout
     assert "Veredito" in proc.stdout
-    # A ponta do meio (05/09/2026) só tem o aviso como mecanismo: ele tem de dizê-la.
-    assert "FIM DE CADA ETAPA" in proc.stdout and "Onde estou" in proc.stdout
+    # O aviso define etapa como marco real e impede cópia entre marcos.
+    assert "concluir ou bloquear um passo planejado" in proc.stdout
+    assert "se não mudou, não o copie" in proc.stdout
 
 
 def test_o_aviso_do_plano_cala_no_acordar_da_maquina():
