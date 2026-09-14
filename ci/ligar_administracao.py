@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 
 RAIZ = Path(__file__).resolve().parents[1]
 ORIGEM = "http://127.0.0.1:8000"
@@ -236,6 +237,8 @@ def main():
     print(mensagem)
     for titulo, endereco in enderecos:
         print(f"{titulo} | HTTP 200 | {endereco}")
+    if not webbrowser.open(enderecos[0][1]):
+        print("O navegador não abriu. Abra o link do Plano mestre exibido acima.")
     return 0
 
 
