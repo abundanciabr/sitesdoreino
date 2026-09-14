@@ -1,0 +1,20 @@
+{
+  "arquivo": "412-executar-a-conexao-automatica-do-radio-nas-sessoes-da-triade",
+  "id": "TAR-412",
+  "titulo": "Executar a conexão automática do rádio nas sessões da tríade",
+  "toca": [
+    "admin",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Prova nativa da sessão nova recebendo a mensagem; testes focais e suíte admin verdes; se os hooks bloquearem, saída crua e bloqueio devolvido à Maestro.",
+  "despacho": "CÉLULA: admin, com integração CI. MODELO: gpt-5.6-sol. ESFORÇO: medium. TETO: 100000. MANDATO: executar a conexão automática da leitura do rádio às sessões, nos caminhos autorizados desta tarefa. SOMENTE-LEITURA: painel/ fila/ contracts/ .github/CODEOWNERS e PR #1640. ALVOS: os arquivos de implementação e testes do PR #1640, sem copiar nem reabrir seus hunks. FORA DE ESCOPO: credenciais novas, confiança de hooks, ação em sessão em andamento, contratos, rádio humano, merge, etiqueta pousar e revisão independente. DOD COM PROVA EXECUTÁVEL: python -m pytest services/admin/tests/test_radio.py -q com saída PASS; python -m pytest ci/tests/test_radio_cli.py ci/tests/test_radio_gancho.py ci/tests/test_codex_nativo.py ci/tests/test_sessao.py -q com saída PASS; prova nativa de sessão nova recebendo palavra de verificação escrita no rádio; git diff --name-only origin/main...HEAD sem sobreposição com outros lotes. Se Hooks need review impedir a prova, registrar saída crua, manter a tarefa bloqueada e devolver à Maestro.",
+  "origem": "TAR-411, criada na retomada do Maestro após inspeção do painel local e do rádio.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
