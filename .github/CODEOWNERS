@@ -9,6 +9,9 @@
 /infra/                     @abundanciabr
 /ci/                        @abundanciabr
 /.github/                   @abundanciabr
+/.claude/settings.json      @abundanciabr
+/.codex/hooks.json          @abundanciabr
+/.githooks/                 @abundanciabr
 /CONSTITUICAO.md            @abundanciabr
 /INVARIANTES.md             @abundanciabr
 /RITOS.md                   @abundanciabr

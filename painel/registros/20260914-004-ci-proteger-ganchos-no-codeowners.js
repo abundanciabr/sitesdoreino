@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-004-ci-proteger-ganchos-no-codeowners",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "ci: proteger ganchos no CODEOWNERS",
+  detalhe: "Quatro ganchos sem dono passam a exigir mandato. Teste vermelho antes e verde depois. Rádio 1640 fica em rascunho.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1641. Validação local: árvore f5ca6e314b58c23b6da483e68223480fea65033a; commit b88c049709f7c8e3b3987b5a422c101e945bd425; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-410",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
