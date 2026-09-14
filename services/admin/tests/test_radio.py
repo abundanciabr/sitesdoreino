@@ -69,7 +69,9 @@ def test_timeout_depois_da_entrega_nao_perde_recado(db, cracha):
         )
     )
     assert primeira.status_code == 200
-    assert json.loads(primeira.content)["mensagens"][0]["sequencia"] == mensagem.sequencia
+    assert (
+        json.loads(primeira.content)["mensagens"][0]["sequencia"] == mensagem.sequencia
+    )
     assert LeituraDoRadio.objects.get(sessao="timeout").ultima_sequencia == 0
 
     segunda = radio_api(
@@ -80,7 +82,9 @@ def test_timeout_depois_da_entrega_nao_perde_recado(db, cracha):
             cracha,
         )
     )
-    assert [item["sequencia"] for item in json.loads(segunda.content)["mensagens"]] == [mensagem.sequencia]
+    assert [item["sequencia"] for item in json.loads(segunda.content)["mensagens"]] == [
+        mensagem.sequencia
+    ]
 
 
 def test_confirmacoes_repetidas_da_mesma_sessao_nao_duplicam(db, cracha):

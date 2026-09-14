@@ -168,7 +168,9 @@ def _confirmar(request, dados):
         with transaction.atomic():
             leitura = LeituraDoRadio.objects.select_for_update().get(sessao=sessao)
             if leitura.autor != autor:
-                return _erro("essa sessão pertence a outra IA; confira a identidade", 409)
+                return _erro(
+                    "essa sessão pertence a outra IA; confira a identidade", 409
+                )
             if sequencia > leitura.ultima_sequencia:
                 leitura.ultima_sequencia = sequencia
                 leitura.quando = timezone.now()
@@ -182,9 +184,13 @@ def _confirmar(request, dados):
                     desfecho=Registro.OK,
                     detalhe=f"Rádio: {autor}, entrega até {sequencia}.",
                 )
-            return JsonResponse({"confirmado": sequencia, "ultima_sequencia": leitura.ultima_sequencia})
+            return JsonResponse(
+                {"confirmado": sequencia, "ultima_sequencia": leitura.ultima_sequencia}
+            )
     except LeituraDoRadio.DoesNotExist:
-        return _erro("sessão ainda não recebeu uma entrega; tente entregar novamente", 409)
+        return _erro(
+            "sessão ainda não recebeu uma entrega; tente entregar novamente", 409
+        )
     except DatabaseError:
         return _erro(
             "não consegui confirmar a leitura; confira o banco e tente de novo", 503
