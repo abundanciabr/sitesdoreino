@@ -305,20 +305,27 @@ def _html_do_markdown(texto: str) -> str:
 
 
 def mtime_local() -> int:
-    """O `mtime` mais recente dos documentos e do template do painel."""
-    momentos: list[float] = []
+    """Carimbo dos documentos locais e do template do painel."""
+    assinatura = hashlib.sha256()
     pasta = diretorio_local_dos_planos()
     if pasta is not None and pasta.is_dir():
-        momentos.extend(c.stat().st_mtime for c in pasta.glob("*.md") if c.is_file())
+        for caminho in sorted(pasta.glob("*.md")):
+            if not caminho.is_file():
+                continue
+            estado = caminho.stat()
+            assinatura.update(caminho.name.encode("utf-8"))
+            assinatura.update(f"{estado.st_mtime_ns}:{estado.st_size}".encode())
     try:
         template = get_template("admin/plano_mestre.html")
         origem = getattr(template, "origin", None)
         nome = getattr(origem, "name", "")
         if nome:
-            momentos.append(Path(nome).stat().st_mtime)
+            estado = Path(nome).stat()
+            assinatura.update(nome.encode("utf-8"))
+            assinatura.update(f"{estado.st_mtime_ns}:{estado.st_size}".encode())
     except OSError:
         pass
-    return int(max(momentos, default=0) * 1000)
+    return int.from_bytes(assinatura.digest()[:8], "big")
 
 
 def _csp_com_script(corpo: bytes) -> str:

@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 
 RAIZ = Path(__file__).resolve().parents[1]
 ORIGEM = "http://127.0.0.1:8000"
@@ -107,10 +108,23 @@ def iniciar():
         except (ValueError, OSError):
             pass
     if porta_ocupada():
-        if anterior.get("token"):
-            return (
-                verificar_paginas(anterior["token"]),
-                "A administração já estava ligada.",
+        if anterior.get("token") and anterior.get("raiz") == str(RAIZ):
+            try:
+                return (
+                    verificar_paginas(anterior["token"]),
+                    "A administração já estava ligada.",
+                )
+            except (OSError, urllib.error.URLError, FalhaLocal) as erro:
+                raise FalhaLocal(
+                    "A porta 8000 está ocupada, mas o servidor desta bancada "
+                    "não respondeu ao convite local. Feche o servidor na janela "
+                    "em que foi iniciado e execute este comando novamente."
+                ) from erro
+        if anterior.get("raiz"):
+            raise FalhaLocal(
+                "A porta 8000 está ocupada por outra bancada. Feche o servidor "
+                "na janela em que foi iniciado e execute este comando novamente. "
+                "Nenhum processo foi encerrado."
             )
         raise FalhaLocal(
             "A porta 8000 está ocupada por outro processo. Feche o servidor anterior na janela em que foi iniciado e execute este comando novamente. Nenhum processo foi encerrado."
@@ -164,7 +178,7 @@ def iniciar():
     print("Ligando a administração e verificando as páginas...", flush=True)
     with log.open("ab") as saida:
         processo = subprocess.Popen(
-            [str(python), "manage.py", "runserver", "127.0.0.1:8000", "--noreload"],
+            [str(python), "manage.py", "runserver", "127.0.0.1:8000"],
             cwd=RAIZ / "services/admin",
             env=ambiente,
             stdin=subprocess.DEVNULL,
@@ -223,6 +237,8 @@ def main():
     print(mensagem)
     for titulo, endereco in enderecos:
         print(f"{titulo} | HTTP 200 | {endereco}")
+    if not webbrowser.open(enderecos[0][1]):
+        print("O navegador não abriu. Abra o link do Plano mestre exibido acima.")
     return 0
 
 
