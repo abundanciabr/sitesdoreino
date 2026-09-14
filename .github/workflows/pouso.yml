@@ -9,7 +9,7 @@ on:
   schedule:
     - cron: '*/15 * * * *'
 concurrency:
-  group: pouso
+  group: pouso-${{ github.event.pull_request.head.ref || github.event.workflow_run.head_branch || 'varredura' }}
   cancel-in-progress: false
 permissions:
   contents: read
@@ -31,4 +31,5 @@ jobs:
       - name: Integrar entregas verificadas
         env:
           GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+          RAMO_DO_EVENTO: ${{ github.event.pull_request.head.ref || github.event.workflow_run.head_branch || '' }}
         run: python ci/mergear.py --automatico

@@ -45,6 +45,8 @@ def caso(tmp_path, monkeypatch):
         "CAMINHO-DOURADO.md",
         "INVARIANTES.md",
         ".github/CODEOWNERS",
+        ".claude/settings.json",
+        ".codex/hooks.json",
         "docs/decisoes/RETROSPECTIVA-FASE-D.md",
         "ci/sessao.py",
         "ci/pr.py",
