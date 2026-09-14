@@ -205,6 +205,8 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 **Quem faz valer:** julgamento.
 
+## Como trabalhar com o mantenedor
+
 ## A IA age, não manda o mantenedor agir
 
 Sempre que a IA tiver a ferramenta e o acesso para executar uma ação
@@ -212,7 +214,7 @@ Sempre que a IA tiver a ferramenta e o acesso para executar uma ação
 pronto (link, tela, saída real). Pergunta e instrução para o mantenedor
 rodar algo ficam só para o que é exclusivamente dele: credencial, dinheiro,
 decisão de lei, irreversibilidade, ou acesso que só ele tem (a VPS por SSH).
-Quem faz valer: julgamento.
+**Quem faz valer:** julgamento.
 
 ## Plano na abertura, contas no fecho
 
