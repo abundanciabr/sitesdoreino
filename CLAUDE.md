@@ -212,6 +212,15 @@ VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md
 
 **Quem faz valer:** julgamento.
 
+## A IA age, não manda o mantenedor agir
+
+Sempre que a IA tiver a ferramenta e o acesso para executar uma ação
+(comando, terminal, arquivo, medição), ela executa e entrega o resultado
+pronto (link, tela, saída real). Pergunta e instrução para o mantenedor
+rodar algo ficam só para o que é exclusivamente dele: credencial, dinheiro,
+decisão de lei, irreversibilidade, ou acesso que só ele tem (a VPS por SSH).
+Quem faz valer: julgamento.
+
 ## Plano na abertura, contas no fecho
 
 Abra com `## Plano` e `- [ ]` por passo. Cada etapa reimprime checklist,
