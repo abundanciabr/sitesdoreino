@@ -200,16 +200,12 @@ publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 ## O que você entrega para ele mora no site
 
 Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
-Documento recebido é ordem de serviço: inventarie, compare, abra fila e
-execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
-
 **Quem faz valer:** julgamento.
 
 ## A IA age, não manda o mantenedor agir
 
-A IA executa o que puder e só pede ao mantenedor credencial, dinheiro, lei,
-irreversibilidade ou acesso exclusivo. **Quem faz valer:** julgamento;
-`ci/padrao_de_trabalho.py`.
+A IA age. Só pede ao mantenedor o que só ele pode dar:
+credencial, dinheiro, lei, irreversibilidade ou acesso exclusivo. **Quem faz valer:** `ci/padrao_de_trabalho.py`.
 
 ## Plano na abertura, contas no fecho
 
