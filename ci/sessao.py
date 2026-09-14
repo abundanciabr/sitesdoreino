@@ -1916,7 +1916,7 @@ def caminhos_da_tarefa(tarefa: dict, celulas: Sequence[str]) -> list[str]:
 def contexto_direcionado(
     raiz: Path, *, objetivo: str, caminhos: Sequence[str], sintoma: str = "",
     aceite: Sequence[str] = (), restricoes: Sequence[str] = (),
-    decisoes: Sequence[str] = (), limite: int = 8,
+    decisoes: Sequence[str] = (),
 ) -> str:
     """Consulta os mesmos gatilhos e sinais dos ganchos, sem catálogo próprio."""
     from licao_do_caminho import licoes_do_caminho
@@ -1982,7 +1982,7 @@ def contexto_direcionado(
             break
     if not achados:
         linhas.append("Nenhuma lição recuperada; isso não significa ausência de restrições.")
-    for item in list(achados.values())[:limite]:
+    for item in achados.values():
         arquivo = item["arquivo"]
         linhas.append(f"Lição {item['armadilha']}: {item['titulo']} (origem: {arquivo})")
         resumo = resumo_da_armadilha(raiz / arquivo, arquivo, item.get("licao", ""))
@@ -1990,10 +1990,7 @@ def contexto_direcionado(
             linhas.append(resumo)
         else:
             linhas.append("Limitação: resumo indisponível; leia a origem completa.")
-    if len(achados) > limite:
-        linhas.append(f"Truncado: {limite} de {len(achados)} lições. Amplie com --limite-contexto {len(achados)}.")
-    linhas.append("Aprofundamento: arquivos de origem, armadilhas/INDICE.md e docs/decisoes/. "
-                  "Refine --caminho/--sintoma ou amplie --limite-contexto; o histórico completo continua no repositório.")
+    linhas.append("Aprofundamento: arquivos de origem, armadilhas/INDICE.md e docs/decisoes/.")
     return "\n".join(linhas)
 
 
@@ -2100,7 +2097,6 @@ def construir_parser() -> argparse.ArgumentParser:
     parser.add_argument("--aceite", action="append", default=[], help="critério de aceite do brief, repetível")
     parser.add_argument("--restricao", action="append", default=[], help="restrição do brief, repetível")
     parser.add_argument("--decisao", action="append", default=[], help="referência de decisão do brief, repetível")
-    parser.add_argument("--limite-contexto", type=int, default=8, choices=range(1, 101), metavar="1..100", help="limite de lições retornadas")
     return parser
 
 
@@ -2183,7 +2179,7 @@ def main(argv: list[str] | None = None) -> int:
                 limitacao = "\nLimitação: tarefa da fila indisponível ou inválida; confira o brief original."
         return contexto_direcionado(onde, objetivo=objetivo, caminhos=caminhos_do_contexto,
             sintoma=args.sintoma, aceite=aceite, restricoes=args.restricao,
-            decisoes=[*args.decisao, *origem], limite=args.limite_contexto) + limitacao
+            decisoes=[*args.decisao, *origem]) + limitacao
     tentativa = uuid.uuid4().hex
     if args.contexto:
         pacote = contexto(raiz)

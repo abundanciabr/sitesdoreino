@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-144214-TAR-413-submetida",
+  "tarefa": "TAR-413",
+  "evento": "submetida",
+  "quando": "2026-09-14T14:42:14+00:00",
+  "quem": "agent/ci/remover-limites-token-claude",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1647",
+  "revisao": "84b05c3753c6db1f7592596e7baf68a41dc083c8",
+  "arvore": "e09a3bfd0dbab9372b2adeb4167da2730ef99135"
+}

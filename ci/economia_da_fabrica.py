@@ -4,7 +4,7 @@
 Este comando mecaniza três escolhas que antes moravam em disciplina de sessão:
 
 1. classificar a tarefa antes de despachar;
-2. recomendar modelo, esforço e teto de contexto para aquele tipo de trabalho;
+2. recomendar modelo e esforço para aquele tipo de trabalho;
 3. compilar um brief curto, com só as armadilhas citadas, para o sub-agente.
 
 Ele não corta escopo e não substitui portão. A economia vem de tirar contexto
@@ -51,7 +51,6 @@ class Perfil:
     tipo: str
     modelo: str
     esforco: str
-    teto_contexto: int
     motivo: str
 
 
@@ -60,63 +59,54 @@ PERFIS: dict[str, Perfil] = {
         "arquitetura",
         MODELO_TOPO,
         "high",
-        180_000,
         "muda contrato, fronteira ou desenho de produto; erro aqui custa retrabalho amplo",
     ),
     "produto": Perfil(
         "produto",
         MODELO_TOPO,
         "high",
-        180_000,
         "cria ou muda comportamento de produto; precisa de julgamento semantico",
     ),
     "contrato": Perfil(
         "contrato",
         MODELO_TOPO,
         "high",
-        160_000,
         "muda promessa entre celulas; a economia errada aqui quebra consumidores",
     ),
     "revisao": Perfil(
         "revisao",
         MODELO_ROTINA,
         "medium",
-        90_000,
         "le diff contra checklist fechado; modelo barato acha escopo, recibo e prova faltando",
     ),
     "escrita": Perfil(
         "escrita",
         MODELO_ROTINA,
         "medium",
-        70_000,
         "preenche moldes de registro, fila e armadilha; criatividade aqui e risco",
     ),
     "diagnostico": Perfil(
         "diagnostico",
         MODELO_ROTINA,
         "medium",
-        100_000,
         "mede estado e classifica FAIL ou ERROR antes de qualquer conserto",
     ),
     "teste": Perfil(
         "teste",
         MODELO_ROTINA,
         "medium",
-        100_000,
         "guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto",
     ),
     "texto": Perfil(
         "texto",
         MODELO_ROTINA,
         "medium",
-        70_000,
         "reescreve superficie publicada sem decidir arquitetura",
     ),
     "espera": Perfil(
         "espera",
         MODELO_ROTINA,
         "low",
-        40_000,
         "acompanha estado externo e so acorda quando ha mudanca acionavel",
     ),
 }
@@ -275,7 +265,6 @@ def compilar_brief(
         f"tipo: {perfil.tipo}",
         f"modelo_recomendado: {perfil.modelo}",
         f"esforco_recomendado: {perfil.esforco}",
-        f"teto_de_contexto: {perfil.teto_contexto}",
         f"motivo_do_modelo: {perfil.motivo}",
         f"celula: {celula or 'ci'}",
         "",
@@ -290,9 +279,6 @@ def compilar_brief(
         "- Se escrever guarda novo, faça a mutação e confirme vermelho.",
         "- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
         "",
-        "## Limite",
-        "- Não leia documentação ampla sem gatilho do erro, caminho ou contrato.",
-        "- Ao passar do teto de contexto, devolva handoff curto e pare a expansão.",
     ]
     return "\n".join(linhas) + "\n"
 
@@ -305,7 +291,6 @@ def cmd_rotear(args: argparse.Namespace) -> int:
                 "tipo": perfil.tipo,
                 "modelo": perfil.modelo,
                 "esforco": perfil.esforco,
-                "teto_contexto": perfil.teto_contexto,
                 "motivo": perfil.motivo,
             },
             ensure_ascii=False,
@@ -325,11 +310,6 @@ def cmd_brief(args: argparse.Namespace) -> int:
         alvos=args.alvo,
         armadilhas=args.armadilha,
     )
-    if len(texto) > 8_000:
-        raise ErroDeInstrumentacao(
-            "brief compilado ficou grande demais",
-            f"Tamanho: {len(texto)} caracteres. Corte alvo ou armadilha antes de despachar.",
-        )
     if args.saida:
         Path(args.saida).write_text(texto, encoding="utf-8")
         print(f"gravei {args.saida} ({len(texto)} caracteres)")

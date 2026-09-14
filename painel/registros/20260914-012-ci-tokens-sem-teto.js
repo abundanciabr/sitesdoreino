@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-012-ci-tokens-sem-teto",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "ci: tokens sem teto",
+  detalhe: "Removidos tetos de contexto, truncagem e alertas por consumo. A validação focal passou com 81 testes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1647. Validação local: árvore e09a3bfd0dbab9372b2adeb4167da2730ef99135; commit 84b05c3753c6db1f7592596e7baf68a41dc083c8; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-413",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

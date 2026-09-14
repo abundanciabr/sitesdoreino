@@ -52,9 +52,9 @@ def test_brief_compilado_injeta_so_a_armadilha_citada(tmp_path: Path) -> None:
     )
 
     assert "modelo_recomendado: sonnet" in brief
+    assert "teto_de_contexto" not in brief
     assert "armadilhas/367-sub-agente-sem-model.md" in brief
     assert "372" not in brief
-    assert len(brief) < 8_000
 
 
 def test_brief_sem_alvo_para_em_vez_de_abrir_exploracao(tmp_path: Path) -> None:

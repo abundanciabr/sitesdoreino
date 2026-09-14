@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-150929-TAR-328-concluida",
+  "tarefa": "TAR-328",
+  "evento": "concluida",
+  "quando": "2026-09-14T15:09:29+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1541; revisao=d3a72099c4ced7f4c117a44ccbc3d32eaa17d909; arvore=96269973b88efb211cf66439d0bdc53640e2b4de; head=163e0a3eaabcbebc3b47ee801a5a07768e377d2e; merge=8a731254e4b4e29b68137f9feeea98c7df1a44d7; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34539544780; atestado=atestado aprovado para 163e0a3eaabcbebc3b47ee801a5a07768e377d2e; aceite=painel/registros/20260910-073-publicacao-do-mapa-confirmada.js",
+  "verificado_em": "2026-09-10"
+}
