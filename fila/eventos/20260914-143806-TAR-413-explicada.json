@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-143806-TAR-413-explicada",
+  "tarefa": "TAR-413",
+  "evento": "explicada",
+  "quando": "2026-09-14T14:38:06+00:00",
+  "quem": "Pedido direto do mantenedor em 14/09/2026",
+  "o_que_e": "O projeto impõe tetos de contexto e alertas de consumo ao Claude Code.",
+  "o_que_muda": "O Claude Code passa a trabalhar sem esses limites locais; só os limites físicos do provedor continuam existindo.",
+  "exemplo": "Uma conversa que ultrapassa 300 mil tokens segue seu trabalho sem aviso do repositório para parar ou trocar de conversa.",
+  "importancia": 80
+}

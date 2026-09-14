@@ -21,7 +21,7 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 9 | Demonstre; checklist e quatro blocos finais, sem enchimento. |
 | 10 | Não substitua prova por promessa nem use as frases proibidas. |
 
-No Codex, as fichas ficam em `.codex/agents/`; modelo, esforço e teto vêm de
+No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
 `python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
 despacho não cria subagente nem pergunta ao mantenedor.
 

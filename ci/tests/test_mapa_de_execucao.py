@@ -305,10 +305,9 @@ def test_busca_vazia_e_truncamento_nao_viram_completude(caso, capsys):
             ]
         },
     )
-    codigo, cortado = tar(caso, capsys, "--limite-contexto", "1")
-    assert codigo == 2 and cortado["contexto"]["truncado"] is True
-    assert cortado["proximo_passo"]["id"] == "completar_contexto"
-    assert "CLAUDE.md" in cortado["prompt"] and "CONSTITUICAO.md" in cortado["prompt"]
+    codigo, completo = tar(caso, capsys)
+    assert codigo == 0 and completo["contexto"]["truncado"] is False
+    assert "CLAUDE.md" in completo["prompt"] and "CONSTITUICAO.md" in completo["prompt"]
 
 
 def test_licao_nova_e_mudanca_da_fonte_aparecem_no_brief_seguinte(caso, capsys):
@@ -638,7 +637,7 @@ def test_catalogo_exporta_mesmo_pacote_sem_consulta_remota(caso, capsys):
     mapa, raiz, *_ = caso
     catalogo = mapa.materializar_catalogo(raiz, agora=datetime.fromisoformat(AGORA))
     _, cli_snapshot = cli(
-        caso, capsys, "--tar", "TAR-001", "--snapshot", "--limite-contexto", "100"
+        caso, capsys, "--tar", "TAR-001", "--snapshot"
     )
     assert catalogo["formato"] == "mapa-de-execucao.v1"
     assert catalogo["pacotes"]["TAR-001"] == cli_snapshot
