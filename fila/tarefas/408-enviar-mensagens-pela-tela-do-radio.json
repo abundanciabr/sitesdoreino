@@ -1,0 +1,20 @@
+{
+  "arquivo": "408-enviar-mensagens-pela-tela-do-radio",
+  "id": "TAR-408",
+  "titulo": "Enviar mensagens pela tela do rádio",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Enviar mensagem pelo navegador com CSRF e recuperar texto em erro, testes e HTTP reais",
+  "despacho": "Corrigir envio humano do rádio em services/admin/apps/core/radio.py e template/testes. POST HTML com CSRF, preservar texto em erro e JavaScript externo compatível com CSP. Manter Bearer CLI. Validar navegador isolado sem mensagens reais. modelo_recomendado: gpt-6-astra; esforco_recomendado: high; teto_de_contexto: 180000.",
+  "origem": "Falha enviada pelo mantenedor em 13/09/2026",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

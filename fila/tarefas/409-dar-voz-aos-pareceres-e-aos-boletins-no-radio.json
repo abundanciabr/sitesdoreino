@@ -1,0 +1,20 @@
+{
+  "arquivo": "409-dar-voz-aos-pareceres-e-aos-boletins-no-radio",
+  "id": "TAR-409",
+  "titulo": "Dar voz aos pareceres e aos boletins no rádio",
+  "toca": [
+    "admin",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Parecer pela CLI, boletim de mudança real da fila, três tipos distintos na tela e testes verdes",
+  "despacho": "Implementar tipo recado padrão, parecer e boletim no rádio; autores existentes mais fila; API validada, CLI --autor --tipo e compatibilidade --quem; emissões síncronas das mudanças reais calculadas da fila, idempotentes, com erro e reenvio explícitos. Não alterar credenciais Antigravity nem a autoridade de mover tarefas. Alvos services/admin ci/radio.py ci/fila.py e testes. Mandato ci autorizado pelo mantenedor. modelo_recomendado gpt-6-astra, esforco_recomendado high, teto_de_contexto 180000.",
+  "origem": "Pedido do mantenedor em 13/09/2026 para dar voz ao Antigravity",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
