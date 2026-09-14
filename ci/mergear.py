@@ -1399,7 +1399,7 @@ def integrar(numero: int, raiz: Path, *, conferir_apenas=False) -> int:
     return 0
 
 
-def integrar_abertos(raiz: Path) -> int:
+def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
     prs = json.loads(
         _gh(
             [
@@ -1413,7 +1413,8 @@ def integrar_abertos(raiz: Path) -> int:
                 "100",
                 "--json",
                 "number,isDraft,isCrossRepository,createdAt",
-            ],
+            ]
+            + (["--head", ramo] if ramo else []),
             raiz,
             "listar entregas abertas",
         )
@@ -1469,7 +1470,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         raiz = raiz_do_repo()
         return (
-            integrar_abertos(raiz)
+            integrar_abertos(raiz, ramo=os.environ.get("RAMO_DO_EVENTO", ""))
             if args.automatico
             else integrar(args.pr, raiz, conferir_apenas=args.conferir)
         )

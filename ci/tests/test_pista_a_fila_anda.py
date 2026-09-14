@@ -95,3 +95,27 @@ def test_falha_de_um_pr_nao_prende_o_seguinte(monkeypatch, tmp_path):
     monkeypatch.setattr(mergear, "integrar", integrar)
     assert mergear.integrar_abertos(tmp_path) == 2
     assert chamadas == [1, 2]
+
+
+def test_evento_consulta_apenas_o_ramo_que_terminou(monkeypatch, tmp_path):
+    consultas = []
+    monkeypatch.setattr(
+        mergear, "_gh", lambda args, *a, **k: consultas.append(args) or "[]"
+    )
+    assert mergear.integrar_abertos(tmp_path, ramo="agent/admin/entrega") == 0
+    assert consultas[0][-2:] == ["--head", "agent/admin/entrega"]
+
+
+def test_workflow_nao_descarta_eventos_de_outros_prs():
+    import yaml
+
+    fluxo = yaml.safe_load(
+        (Path(__file__).resolve().parents[2] / ".github/workflows/pouso.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    grupo = fluxo["concurrency"]["group"]
+    assert "pull_request.head.ref" in grupo
+    assert "workflow_run.head_branch" in grupo
+    passos = fluxo["jobs"]["pousar"]["steps"]
+    assert "RAMO_DO_EVENTO" in passos[-1]["env"]
