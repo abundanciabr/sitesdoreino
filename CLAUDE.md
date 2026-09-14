@@ -126,14 +126,14 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude rege e atesta, não
+Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude rege, não
 executa, mergeia ou cria subagentes/Workflow. Plano e pesquisa viram briefs
 para Codex, que constrói por `despacho`, sem perguntar nem decidir lei.
 Antigravity audita e verifica, nunca edita. Regente confere PRs; partes
 independentes em paralelo no Codex, dependências em série. Uma célula por PR;
 15 arquivos fora `painel/` e `fila/`; contrato congelado e CODEOWNERS exigem
-mandato. Dependência fora do brief volta com `Depende-de: #N`. Revisor lê o
-diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
+mandato. Dependência fora do brief volta com `Depende-de: #N`. Revisão adicional
+é facultativa; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
 Subagente não pergunta nem cria subagente. Fichas em `.claude/agents/` e
 `.codex/agents/`; regência `RUNBOOK-LOTES.md`. Proteção local e teto de consumo:
 `docs/decisoes/DECISAO-regencia-claude-local.md`.
@@ -189,17 +189,18 @@ são lápides. Sem tipo específico, use nota.
 
 **Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
 
-## O agente pede pouso; quem mergeia é a pista
+## Integração automática
 
-Um commit de fechamento substitui microcommits; preserve histórico e recibo automático.
-`git add` por arquivo, nunca `-A`; confira o staged.
-Despacho entrega número, ramo, SHA e provas. Maestro confere revisão e recibo,
-executa `python ci/mergear.py <N> --pousar`, confirma etiqueta/SHA e encerra.
-A pista acompanha checks e integra pelo portão. Não espere checks, merge ou deploy.
-FAIL admite duas correções; depois preserve e reporte. ERROR nunca aprova.
-Urgência segue alarme-main.
+PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
+atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
+exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
+descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
+Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
+não integram. Informe somente estados comprovados de validação, integração e
+publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 
-**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`, seus testes.
+**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml` e a proteção nativa da main.
 
 ## O que você entrega para ele mora no site
 

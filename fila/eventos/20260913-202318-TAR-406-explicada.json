@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-202318-TAR-406-explicada",
+  "tarefa": "TAR-406",
+  "evento": "explicada",
+  "quando": "2026-09-13T20:23:18+00:00",
+  "quem": "pedido direto do mantenedor no Codex, 13/09/2026",
+  "o_que_e": "Entregas verdes ficam esperando revisao e pedido de integracao.",
+  "o_que_muda": "A automacao integra quando os dois testes obrigatorios passam.",
+  "exemplo": "Enviar uma alteracao e ve-la integrada sem pedir pouso.",
+  "importancia": 100
+}
