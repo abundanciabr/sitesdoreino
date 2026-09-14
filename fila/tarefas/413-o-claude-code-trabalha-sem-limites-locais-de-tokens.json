@@ -1,0 +1,26 @@
+{
+  "arquivo": "413-o-claude-code-trabalha-sem-limites-locais-de-tokens",
+  "id": "TAR-413",
+  "titulo": "O Claude Code trabalha sem limites locais de tokens",
+  "toca": [
+    "ci",
+    "CLAUDE.md",
+    "AGENTS.md",
+    "ARMADILHAS.md",
+    "armadilhas",
+    ".claude",
+    ".codex",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Os testes de contexto, mapa, economia e integração nativa passam sem teto de tokens, truncagem ou alerta por patamar.",
+  "despacho": "Remover todos os limites locais relacionados a tokens do Claude Code. Remover teto de contexto dos briefs, truncagem numérica do contexto dirigido, recusa de brief por tamanho e avisos de patamar de tokens. Preservar seleção de fontes por relevância, segurança, permissões e limites físicos do provedor. Atualizar testes e documentos; provar com as suítes focais.",
+  "origem": "Pedido direto do mantenedor em 14/09/2026",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
