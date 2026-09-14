@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-140813-TAR-400-explicada",
+  "tarefa": "TAR-400",
+  "evento": "explicada",
+  "quando": "2026-09-13T14:08:13+00:00",
+  "quem": "ficha CLAUDE-008 do conselho da Fase 4, despacho 6 do lote da tríade (mapa-ia/planos/PROTOCOLO-DA-TRIADE.md §4); brief da maestro em 13/09/2026",
+  "o_que_e": "Nada impede uma IA de editar a pasta principal compartilhada, e foi assim que o arquivo de regras foi mutilado em 12/09.",
+  "o_que_muda": "Toda edição e toda cópia por terminal dentro da pasta principal é recusada na hora; nas bancadas de trabalho tudo continua livre.",
+  "exemplo": "É a trava na porta do arquivo morto: consulta livre, mas ninguém escreve lá dentro.",
+  "importancia": 85
+}
