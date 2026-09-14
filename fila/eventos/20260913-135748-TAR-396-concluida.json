@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-135748-TAR-396-concluida",
+  "tarefa": "TAR-396",
+  "evento": "concluida",
+  "quando": "2026-09-13T13:57:48+00:00",
+  "quem": "agent/ci/baseline-windows",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1626",
+  "verificado_em": "2026-09-13"
+}
