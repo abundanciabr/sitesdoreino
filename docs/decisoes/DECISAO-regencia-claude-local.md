@@ -19,9 +19,11 @@ ou o Antigravity; não dispara outro agente do Claude.
 
 Em 14/09/2026 o mantenedor elevou o teto de 180.000 para 800.000, incluindo
 cache. Vale o valor explícito de 800.000 (4,44 vezes o anterior); quatro vezes
-180.000 seriam 720.000. O consumo acumulado é preservado na reinstalação.
+180.000 seriam 720.000. Em novo pedido no mesmo dia, dobrou o teto para
+1.600.000, mantendo cache na contagem. O consumo acumulado é preservado
+na reinstalação.
 
-O teto operacional é 800.000 tokens registrados por sessão, somando entrada,
+O teto operacional é 1.600.000 tokens registrados por sessão, somando entrada,
 criação e leitura de cache e saída, sem contar novamente blocos da mesma
 resposta. Este é um limite de consumo acumulado, distinto do teto de contexto
 do brief. Ao atingir o teto ou perder a medição, PreToolUse devolve

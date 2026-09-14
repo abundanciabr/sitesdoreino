@@ -106,20 +106,20 @@ def test_compactacao_nao_renova_orcamento(tmp_path):
 def test_teto_para_a_sessao_antes_da_proxima_ferramenta(ambiente):
     # guarda: ci/regencia_claude.py:148
     projeto, casa, dados = ambiente
-    Path(dados['transcript_path']).write_text(json.dumps(mensagem(800_000)))
+    Path(dados['transcript_path']).write_text(json.dumps(mensagem(1_600_000)))
     codigo, motivo = decidir(dados, projeto, casa)
     assert codigo == 3
-    assert '800060' in motivo
+    assert '1600060' in motivo
 
 
-@pytest.mark.parametrize('total,codigo', [(180_000, 0), (358_021, 0), (799_999, 0), (800_000, 3), (800_001, 3)])
-def test_teto_de_800_mil_inclui_cache(ambiente, total, codigo):
+@pytest.mark.parametrize('total,codigo', [(800_000, 0), (800_001, 0), (1_599_999, 0), (1_600_000, 3), (1_600_001, 3)])
+def test_teto_de_1600_mil_inclui_cache(ambiente, total, codigo):
     projeto, casa, dados = ambiente
     Path(dados['transcript_path']).write_text(json.dumps(mensagem(total - 60)))
     resultado, motivo = decidir(dados, projeto, casa)
     assert resultado == codigo
     if codigo == 3:
-        assert '800000, incluindo cache' in motivo
+        assert '1600000, incluindo cache' in motivo
 
 
 @pytest.mark.parametrize('conteudo', ['{', '[]', json.dumps({'type': 'assistant', 'message': {}})])
@@ -166,7 +166,7 @@ def test_hook_instalado_recusa_workflow_e_para_ao_atingir_teto(ambiente):
     recusa = subprocess.run([sys.executable, str(script)], input=json.dumps(dados),
                             capture_output=True, text=True, encoding='utf-8')
     assert recusa.returncode == 2
-    Path(dados['transcript_path']).write_text(json.dumps(mensagem(800_000)))
+    Path(dados['transcript_path']).write_text(json.dumps(mensagem(1_600_000)))
     parada = subprocess.run([sys.executable, str(script)], input=json.dumps(dados),
                             capture_output=True, text=True, encoding='utf-8')
     assert parada.returncode == 0
