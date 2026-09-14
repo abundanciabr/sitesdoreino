@@ -229,3 +229,13 @@ def celula_ok(repo: RepoFalso) -> RepoFalso:
         }
     )
     return repo
+
+
+@pytest.fixture(autouse=True)
+def radio_nao_publica_mensagens_dos_testes(monkeypatch, tmp_path):
+    import radio
+
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "radio-desligado"))
+    monkeypatch.delenv("ADMIN_RADIO_URL", raising=False)
+    monkeypatch.delenv("ADMIN_RADIO_TOKEN", raising=False)
+    monkeypatch.setattr(radio, "_chamar", lambda metodo, dados=None, **kwargs: {"sequencia": 1, **(dados or {})})

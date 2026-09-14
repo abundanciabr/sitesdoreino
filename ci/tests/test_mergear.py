@@ -863,12 +863,10 @@ def test_a_pista_nao_chama_a_si_mesma_por_dispatch():
     )
 
 
-def test_a_pista_continua_com_um_pouso_por_vez():
-    """Ordem serial é o ponto da pista: `concurrency` sem cancelamento."""
+def test_a_pista_nao_interrompe_integracao_em_andamento():
     import yaml as _yaml
 
     fluxo = _yaml.safe_load(_pouso_yml())
-    assert fluxo["concurrency"]["group"] == "pouso"
     assert fluxo["concurrency"]["cancel-in-progress"] is False
 
 

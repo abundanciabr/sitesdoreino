@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Plano mestre{% endblock %}
+{% block corpo %}
+<main class="envolucro largo">
+  <h1>Plano mestre</h1>
+  <p class="subtitulo">Documentos locais lidos de <code>{{ pasta|default:"pasta não configurada" }}</code>.</p>
+
+  {% if recado %}
+    <div class="aviso">
+      <b>Não há documentos para listar.</b>
+      <p>{{ recado }}</p>
+      {% if pasta %}<p>O caminho procurado foi <code>{{ pasta }}</code>.</p>{% endif %}
+    </div>
+  {% else %}
+    {% for grupo in grupos %}
+      <h2 class="titulo-de-lista">{{ grupo.nome }}</h2>
+      <section class="cartoes" aria-label="{{ grupo.nome }}">
+        {% for plano in grupo.planos %}
+          <a class="cartao porta" href="{{ plano.endereco }}" data-plano-documento>
+            <span class="rotulo">{{ plano.arquivo }}</span>
+            <div class="valor"><b>{{ plano.titulo }}</b></div>
+            {% if plano.resumo %}<p class="nota">{{ plano.resumo }}</p>{% endif %}
+          </a>
+        {% endfor %}
+      </section>
+    {% endfor %}
+  {% endif %}
+</main>
+
+<dialog id="leitor-do-plano" class="leitor-do-plano">
+  <form method="dialog" class="fechar-dialogo"><button type="submit" aria-label="Fechar">Fechar</button></form>
+  <p class="rotulo" id="arquivo-do-plano"></p>
+  <h2 id="titulo-do-plano"></h2>
+  <article id="corpo-do-plano" class="documento-renderizado"></article>
+</dialog>
+
+<script>
+(() => {
+  const dialog = document.getElementById("leitor-do-plano");
+  const titulo = document.getElementById("titulo-do-plano");
+  const arquivo = document.getElementById("arquivo-do-plano");
+  const corpo = document.getElementById("corpo-do-plano");
+  document.querySelectorAll("[data-plano-documento]").forEach((link) => {
+    link.addEventListener("click", async (evento) => {
+      evento.preventDefault();
+      corpo.textContent = "Carregando...";
+      dialog.showModal();
+      const resposta = await fetch(link.href, {headers: {"Accept": "application/json"}});
+      if (!resposta.ok) {
+        corpo.textContent = "O arquivo não está mais na pasta. Atualize a página.";
+        return;
+      }
+      const dados = await resposta.json();
+      titulo.textContent = dados.titulo;
+      arquivo.textContent = dados.arquivo;
+      corpo.innerHTML = dados.html;
+    });
+  });
+  {% if acompanhar_mudancas %}
+  let visto = {{ mtime }};
+  setInterval(async () => {
+    const resposta = await fetch("{% url 'plano_mestre_mtime' %}", {cache: "no-store"});
+    if (!resposta.ok) return;
+    const dados = await resposta.json();
+    if (dados.mtime && dados.mtime !== visto) location.reload();
+  }, 2000);
+  {% endif %}
+})();
+</script>
+{% endblock %}
