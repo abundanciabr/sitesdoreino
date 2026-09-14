@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-012-fila-registrar-bloqueio-da-tar-313",
+  tipo: "pendencia",
+  quando: "2026-09-13",
+  titulo: "fila: registrar bloqueio da TAR-313",
+  detalhe: "O bloqueio preserva o requisito sem reescrever cinco tarefas históricas nem fingir que uma sucessora limita o estado da original. A fila precisa ganhar um vínculo exigível antes de TAR-313 voltar à execução.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1620. Validação local: árvore 3446fe557491fcf57b7a9d39923970d16dd2e53d; commit a25ffda8450bcbbf7e2243846ad00809dbd641ae; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-313",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
