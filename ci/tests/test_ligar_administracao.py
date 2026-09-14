@@ -55,7 +55,11 @@ def test_reexecucao_verifica_paginas_sem_iniciar(casa, monkeypatch, raiz_anterio
     )
     monkeypatch.setattr(local, "porta_ocupada", lambda: True)
     monkeypatch.setattr(local, "verificar_paginas", lambda token: [("Plano", token)])
-    assert local.iniciar()[0] == [("Plano", "teste")]
+    if raiz_anterior == "atual":
+        assert local.iniciar()[0] == [("Plano", "teste")]
+    else:
+        with pytest.raises(local.FalhaLocal, match="outra bancada"):
+            local.iniciar()
 
 
 def test_pasta_errada_diz_o_que_fazer(casa):
