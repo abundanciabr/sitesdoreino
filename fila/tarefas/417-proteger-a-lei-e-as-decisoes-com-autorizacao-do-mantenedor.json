@@ -1,0 +1,20 @@
+{
+  "arquivo": "417-proteger-a-lei-e-as-decisoes-com-autorizacao-do-mantenedor",
+  "id": "TAR-417",
+  "titulo": "Proteger a lei e as decisões com autorização do mantenedor",
+  "toca": [
+    ".github/CODEOWNERS",
+    "ci/tests/test_merge_automatico.py"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com as duas regras exatas no CODEOWNERS; teste focal vermelho antes e verde depois para CLAUDE.md e docs/decisoes/; python -m pytest ci/tests/test_merge_automatico.py -q verde; mutação automática PASS.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Adicionar somente /CLAUDE.md e /docs/decisoes/ ao CODEOWNERS; manter ci/mergear.py somente leitura; criar somente o teste focal necessário; não tocar PRs 1655 e 1658; provar vermelho e verde; abrir PR via make pr. O mantenedor precisa escrever Mandato-do-mantenedor na descrição citando o pedido e os caminhos protegidos.",
+  "origem": "Brief direto do mantenedor em 14/09/2026 para fechar a lacuna de mandato observada no PR 1658",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -132,14 +132,14 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege,
-nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
-mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
-paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
-`painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
-dependência fora do brief volta à maestro com `Depende-de: #N`. Revisão adicional é facultativa; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
-Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
-`.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
+Claude Code rege, nunca mergeia; Codex usa `despacho`, não pergunta ao mantenedor nem decide lei.
+Antigravity audita e verifica, nunca edita. Recebedor rege; confira PRs abertos.
+Independentes em paralelo; dependências em série. Uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
+Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.
+Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
+Subagente não pergunta ao mantenedor nem cria subagente. Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
+Maestro/executor: `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
+Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md#o-que-a-tríade-não-muda).
 
 **Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
 

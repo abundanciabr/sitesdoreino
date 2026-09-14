@@ -1,0 +1,19 @@
+{
+  "arquivo": "423-registrar-a-migracao-da-fila-administrativa-para-o-localhost",
+  "id": "TAR-423",
+  "titulo": "Registrar a migração da fila administrativa para o localhost",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Onze cancelamentos exatos, cinco tarefas futuras, fila.py validar e test_fila.py verdes, PR de escrituração com recibo e eventos, sem associar a entrega a capacidade futura.",
+  "despacho": "# Brief compilado\n\nobjetivo: Registrar os onze cancelamentos confirmados e criar as cinco tarefas de capacidade VPS\ntipo: escrita\nmodelo_recomendado: gpt-5.6-sol\nesforco_recomendado: medium\nmotivo_do_modelo: preenche moldes de registro, fila e armadilha; criatividade aqui e risco\ncelula: fila\n\n## Arquivos-alvo\n- fila/eventos\n- fila/tarefas\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\nObjetivo: registrar exatamente os cancelamentos TAR-285, 286, 287, 288, 289, 297, 315, 317, 324, 384 e 386 confirmados pelo mantenedor em 14/09/2026; criar exatamente cinco tarefas futuras: retirar rotas humanas administrativas da internet, ponte privada localhost-VPS, provedor CRM humano, transferencia e retomada comercial, telemetria somente leitura. Alvos: fila/eventos e fila/tarefas; recibo obrigatorio em painel/registros via make pr. Todo o restante somente leitura. Preservar TAR-316, TAR-319 e TAR-412. Medir as seis entregas ja integradas e registrar eventual recusa do reconciliador sem forcar conclusao. Esta tarefa representa somente escrituracao, nenhuma capacidade de produto. Aceite: fila.py validar PASS, test_fila.py verde, diff restrito, um PR pronto com registro e eventos pelo make pr. Mandato: confirmacao expressa do mantenedor em 14/09/2026; a maestro autorizou esta TAR adicional porque o fechamento canonico exige identidade propria da entrega.",
+  "origem": "Confirmação do mantenedor de 14/09/2026 e autorização da maestro para a identidade obrigatória desta escrituração.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
