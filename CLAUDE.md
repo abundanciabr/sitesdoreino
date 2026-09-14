@@ -212,7 +212,7 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 Se a IA puder executar uma ação
 (comando, terminal, arquivo, medição), ela executa e entrega o resultado
 pronto (link, tela ou saída). O mantenedor só recebe instrução para o que
-é exclusivamente dele: credencial, dinheiro, decisão de lei, irreversibilidade,
+é exclusivamente dele: credencial, dinheiro, lei, irreversibilidade,
 ou acesso exclusivo (VPS por SSH).
 **Quem faz valer:** julgamento; `ci/padrao_de_trabalho.py` confere o teto.
 
