@@ -10,7 +10,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-TETO_CONSUMO = 180_000
+TETO_CONSUMO = 800_000
 LEITURA = {'Read', 'Grep', 'Glob', 'WebSearch', 'WebFetch'}
 CONVERSA = {'AskUserQuestion', 'TodoWrite', 'TaskCreate', 'TaskUpdate', 'TaskList', 'TaskGet', 'TaskStop', 'EnterPlanMode'}
 ENCAMINHAR = (

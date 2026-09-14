@@ -129,13 +129,13 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude rege, não
 executa, mergeia ou cria subagentes/Workflow. Plano e pesquisa viram briefs
 para Codex, que constrói por `despacho`, sem perguntar nem decidir lei.
-Antigravity audita e verifica, nunca edita. Regente confere PRs; partes
+Antigravity audita e verifica, nunca edita. Confira PRs; partes
 independentes em paralelo no Codex, dependências em série. Uma célula por PR;
 15 arquivos fora `painel/` e `fila/`; contrato congelado e CODEOWNERS exigem
-mandato. Dependência fora do brief volta com `Depende-de: #N`. Revisão adicional
-é facultativa; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
-Subagente não pergunta nem cria subagente. Fichas em `.claude/agents/` e
-`.codex/agents/`; regência `RUNBOOK-LOTES.md`. Proteção local e teto de consumo:
+mandato. Dependência fora do brief volta com `Depende-de: #N`. Revisão
+facultativa; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
+Subagente não pergunta nem cria subagente. Fichas: `.claude/agents/` e
+`.codex/agents/`; rito `RUNBOOK-LOTES.md`. Guarda:
 `docs/decisoes/DECISAO-regencia-claude-local.md`.
 
 **Quem faz valer:** `ci/regencia_claude.py`, `ci/pr.py`, `ci/fila.py` e testes.

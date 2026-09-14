@@ -10,14 +10,18 @@ Explore e revisor sem orçamento agregado. O clone usado pelo Claude também
 está antigo e tem alterações de outras sessões. Esta entrega complementa
 esse trabalho com instalação local, sem substituir os arquivos do espelho.
 
-Claude rege: lê, escreve briefs em uma bancada, cria tarefas na fila e pede
-pouso pelo portão. Plano, pesquisa e construção vão ao Codex. Agent, Task,
+Claude rege: lê, escreve briefs em uma bancada e cria tarefas na fila;
+a integração é automática. Plano, pesquisa e construção vão ao Codex. Agent, Task,
 Workflow, edição de código, shell arbitrário e ferramentas não reconhecidas
 são recusados. A guarda aceita somente os comandos enumerados de regência;
 ela não tenta interpretar programas shell. Revisão independente usa o Codex
 ou o Antigravity; não dispara outro agente do Claude.
 
-O teto operacional é 180.000 tokens registrados por sessão, somando entrada,
+Em 14/09/2026 o mantenedor elevou o teto de 180.000 para 800.000, incluindo
+cache. Vale o valor explícito de 800.000 (4,44 vezes o anterior); quatro vezes
+180.000 seriam 720.000. O consumo acumulado é preservado na reinstalação.
+
+O teto operacional é 800.000 tokens registrados por sessão, somando entrada,
 criação e leitura de cache e saída, sem contar novamente blocos da mesma
 resposta. Este é um limite de consumo acumulado, distinto do teto de contexto
 do brief. Ao atingir o teto ou perder a medição, PreToolUse devolve
