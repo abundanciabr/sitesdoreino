@@ -25,7 +25,23 @@ def test_sessao_nova_recebe_recado_sem_repetir_e_outra_recebe_tambem(db, cracha)
             )
         )
         assert resposta.status_code == 200
-        return json.loads(resposta.content)
+        resultado = json.loads(resposta.content)
+        if resultado["mensagens"]:
+            confirmacao = radio_api(
+                pedido(
+                    "POST",
+                    reverse("radio_api"),
+                    {
+                        "acao": "confirmar",
+                        "sessao": sessao,
+                        "autor": "codex",
+                        "sequencia": resultado["mensagens"][-1]["sequencia"],
+                    },
+                    cracha,
+                )
+            )
+            assert confirmacao.status_code == 200
+        return resultado
 
     primeira = entregar("sessao-um")
     assert [m["sequencia"] for m in primeira["mensagens"]] == [mensagem.sequencia]
@@ -40,37 +56,71 @@ def test_sessao_nova_recebe_recado_sem_repetir_e_outra_recebe_tambem(db, cracha)
     assert LeituraDoRadio.objects.filter(quando__isnull=False).count() == 2
 
 
-@pytest.mark.django_db(transaction=True, available_apps=["apps.core"])
-def test_chamadas_simultaneas_da_mesma_sessao_nao_duplicam(cracha):
-    from concurrent.futures import ThreadPoolExecutor
-    from threading import Barrier
-    from django.db import close_old_connections
+def test_timeout_depois_da_entrega_nao_perde_recado(db, cracha):
+    from apps.core.models import LeituraDoRadio
 
-    barreira = Barrier(2)
+    mensagem = MensagemDoRadio.objects.create(autor="mantenedor", texto="Retentar")
+    primeira = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "timeout", "autor": "codex"},
+            cracha,
+        )
+    )
+    assert primeira.status_code == 200
+    assert json.loads(primeira.content)["mensagens"][0]["sequencia"] == mensagem.sequencia
+    assert LeituraDoRadio.objects.get(sessao="timeout").ultima_sequencia == 0
+
+    segunda = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "timeout", "autor": "codex"},
+            cracha,
+        )
+    )
+    assert [item["sequencia"] for item in json.loads(segunda.content)["mensagens"]] == [mensagem.sequencia]
+
+
+def test_confirmacoes_repetidas_da_mesma_sessao_nao_duplicam(db, cracha):
     mensagem = MensagemDoRadio.objects.create(
         autor="mantenedor", texto="Só uma entrega"
     )
-
-    def entregar(_):
-        close_old_connections()
-        try:
-            barreira.wait(timeout=10)
-            resposta = radio_api(
-                pedido(
-                    "POST",
-                    reverse("radio_api"),
-                    {"acao": "entregar", "sessao": "concorrente", "autor": "codex"},
-                    cracha,
-                )
+    entrega = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "repetida", "autor": "codex"},
+            cracha,
+        )
+    )
+    corpo = json.loads(entrega.content)
+    assert [m["sequencia"] for m in corpo["mensagens"]] == [mensagem.sequencia]
+    for _ in range(2):
+        confirmacao = radio_api(
+            pedido(
+                "POST",
+                reverse("radio_api"),
+                {
+                    "acao": "confirmar",
+                    "sessao": "repetida",
+                    "autor": "codex",
+                    "sequencia": mensagem.sequencia,
+                },
+                cracha,
             )
-            assert resposta.status_code == 200
-            return json.loads(resposta.content)["mensagens"]
-        finally:
-            close_old_connections()
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        entregas = list(pool.map(entregar, range(2)))
-    assert [m["sequencia"] for lote in entregas for m in lote] == [mensagem.sequencia]
+        )
+        assert confirmacao.status_code == 200
+    ultima = radio_api(
+        pedido(
+            "POST",
+            reverse("radio_api"),
+            {"acao": "entregar", "sessao": "repetida", "autor": "codex"},
+            cracha,
+        )
+    )
+    assert json.loads(ultima.content)["mensagens"] == []
 
 
 def test_sessao_sem_mensagem_continua_sem_leitura_medida(db, cracha):

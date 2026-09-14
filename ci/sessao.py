@@ -2132,6 +2132,17 @@ def identidade_do_radio(autor: str, sessao_nativa: str) -> str:
     return hashlib.sha256(f"{autor}:{sessao_nativa}".encode()).hexdigest()
 
 
+def imprimir_identidade_do_radio(ambiente=None) -> None:
+    ambiente = os.environ if ambiente is None else ambiente
+    sessao_nativa = ambiente.get("CODEX_SESSION_ID") or ambiente.get("CODEX_THREAD_ID")
+    autor = "codex"
+    if not sessao_nativa:
+        sessao_nativa = ambiente.get("CLAUDE_CODE_SESSION_ID")
+        autor = "claude"
+    if sessao_nativa and sessao_nativa.strip():
+        print(f"Identidade do rádio: {identidade_do_radio(autor, sessao_nativa)}")
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     args = construir_parser().parse_args(argv)
@@ -2255,13 +2266,7 @@ def main(argv: list[str] | None = None) -> int:
         fim=None, pr=None,
     )
     print(moldura_da_declaracao(texto))
-    sessao_nativa = os.environ.get("CODEX_SESSION_ID") or os.environ.get("CODEX_THREAD_ID")
-    autor = "codex"
-    if not sessao_nativa:
-        sessao_nativa = os.environ.get("CLAUDE_SESSION_ID")
-        autor = "claude"
-    if sessao_nativa:
-        print(f"Identidade do rádio: {identidade_do_radio(autor, sessao_nativa)}")
+    imprimir_identidade_do_radio()
     if plano.sobe_ambiente:
         print(f"O .env da sessão ficou em {plano.arquivo_env} (fora do worktree).")
         print("A prova da base está no log; mudanças da tarefa ainda exigem validação própria.")

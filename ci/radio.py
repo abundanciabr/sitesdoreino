@@ -109,12 +109,16 @@ def _chamar(metodo, dados=None, desde=0):
             resultado = json.load(resposta)
         if not isinstance(resultado, dict):
             raise ValueError("resposta não é objeto")
-        if metodo == "GET" or (dados or {}).get("acao") == "entregar":
+        acao = (dados or {}).get("acao")
+        if metodo == "GET" or acao == "entregar":
             if (
                 not isinstance(resultado.get("mensagens"), list)
                 or type(resultado.get("ultima_sequencia")) is not int
             ):
                 raise ValueError("leitura sem mensagens ou sequência")
+        elif acao == "confirmar":
+            if type(resultado.get("confirmado")) is not int:
+                raise ValueError("confirmação sem sequência")
         elif type(resultado.get("sequencia")) is not int or any(
             resultado.get(chave, "recado" if chave == "tipo" else None) != valor
             for chave, valor in dados.items()
@@ -168,6 +172,15 @@ def main(argv=None):
             linhas = [f"[Rádio {m['sequencia']} | {m['autor']} | {m['tipo']}] {m['texto']}" for m in mensagens]
             if linhas:
                 print("\n".join(linhas))
+                _chamar(
+                    "POST",
+                    {
+                        "acao": "confirmar",
+                        "sessao": args.sessao,
+                        "autor": autor,
+                        "sequencia": mensagens[-1]["sequencia"],
+                    },
+                )
         elif args.comando == "dizer":
             if args.autor not in AUTORES:
                 raise RuntimeError("Autor inválido. Use " + ", ".join(AUTORES) + ".")
