@@ -1,0 +1,22 @@
+(function(){(window.REGISTROS=window.REGISTROS||[]).push({
+arquivo:"20260914-023-mandato-1659",
+tipo:"pendencia",
+quando:"2026-09-14",
+titulo:"A mudança #1659 espera autorização do mantenedor",
+detalhe:"Somente @abundanciabr pode escrever o mandato na descrição do PR #1659.",
+autoridade:"rito",
+evidencia:"https://github.com/abundanciabr/sitesdoreino/pull/1659",
+verificado_em:"2026-09-14",
+precisa_do_dono:true,
+responde_a:"20260914-022-maestro-proteger-a-lei-canonica-e-as-decisoes-no-codeowners",
+tarefa:"TAR-417",
+gravidade:"ambar",
+frente:"fabrica",
+area:"ci",
+porque_so_voce:"Só @abundanciabr pode conceder o mandato exigido pelo CODEOWNERS.",
+proximo_passo:"Mandato-do-mantenedor: autorizo .github/CODEOWNERS e ci/tests/test_merge_automatico.py para proteger CLAUDE.md e docs/decisoes/ conforme meu pedido de 14/09/2026.",
+se_eu_nao_decidir:"A integração permanece bloqueada.",
+recomendacao:"Aprovar: o brief pediu a mudança e a mutação comprovou a guarda.",
+reversivel:true,
+impacto:"alto"
+});})();
