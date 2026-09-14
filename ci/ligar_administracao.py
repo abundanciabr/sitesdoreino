@@ -164,7 +164,7 @@ def iniciar():
     print("Ligando a administração e verificando as páginas...", flush=True)
     with log.open("ab") as saida:
         processo = subprocess.Popen(
-            [str(python), "manage.py", "runserver", "127.0.0.1:8000", "--noreload"],
+            [str(python), "manage.py", "runserver", "127.0.0.1:8000"],
             cwd=RAIZ / "services/admin",
             env=ambiente,
             stdin=subprocess.DEVNULL,
