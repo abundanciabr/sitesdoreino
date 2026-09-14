@@ -1,9 +1,14 @@
 """O acesso local continua fechado sem token; o comando usa o lançador medido."""
 
+import json
 import os
 from pathlib import Path
 import subprocess
 import sys
+
+import pytest
+
+from ci import ligar_administracao
 
 RAIZ = Path(__file__).resolve().parents[3]
 
@@ -51,3 +56,20 @@ assert Client().get('/acesso-local/qualquer-token/').status_code == 404
         check=False,
     )
     assert resultado.returncode == 0, resultado.stderr or resultado.stdout
+
+
+def test_lancador_explica_quando_a_porta_e_de_outra_bancada(monkeypatch, tmp_path):
+    docs = tmp_path / "sitesdoreino-docs" / "administracao-local"
+    docs.mkdir(parents=True)
+    (docs / "00-SINTESE-desenho-final.md").write_text("# Síntese\n", encoding="utf-8")
+    dados = tmp_path / "SitesDoReino" / "administracao-local"
+    dados.mkdir(parents=True)
+    (dados / "servidor.json").write_text(
+        json.dumps({"raiz": str(tmp_path / "outra-bancada"), "token": "antigo"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(ligar_administracao, "RAIZ", tmp_path / "bancada-atual")
+    monkeypatch.setattr(ligar_administracao, "porta_ocupada", lambda: True)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    with pytest.raises(ligar_administracao.FalhaLocal, match="outra bancada"):
+        ligar_administracao.iniciar()

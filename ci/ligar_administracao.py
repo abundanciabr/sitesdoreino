@@ -107,10 +107,23 @@ def iniciar():
         except (ValueError, OSError):
             pass
     if porta_ocupada():
-        if anterior.get("token"):
-            return (
-                verificar_paginas(anterior["token"]),
-                "A administração já estava ligada.",
+        if anterior.get("token") and anterior.get("raiz") == str(RAIZ):
+            try:
+                return (
+                    verificar_paginas(anterior["token"]),
+                    "A administração já estava ligada.",
+                )
+            except (OSError, urllib.error.URLError, FalhaLocal) as erro:
+                raise FalhaLocal(
+                    "A porta 8000 está ocupada, mas o servidor desta bancada "
+                    "não respondeu ao convite local. Feche o servidor na janela "
+                    "em que foi iniciado e execute este comando novamente."
+                ) from erro
+        if anterior.get("raiz"):
+            raise FalhaLocal(
+                "A porta 8000 está ocupada por outra bancada. Feche o servidor "
+                "na janela em que foi iniciado e execute este comando novamente. "
+                "Nenhum processo foi encerrado."
             )
         raise FalhaLocal(
             "A porta 8000 está ocupada por outro processo. Feche o servidor anterior na janela em que foi iniciado e execute este comando novamente. Nenhum processo foi encerrado."
