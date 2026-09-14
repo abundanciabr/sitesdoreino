@@ -1,5 +1,7 @@
 (function(){(window.REGISTROS=window.REGISTROS||[]).push({
-arquivo:"20260914-019-mandato-canal-triade",tipo:"pendencia",quando:"2026-09-14",
+arquivo:"20260914-019-mandato-canal-triade",
+tipo:"pendencia",
+quando:"2026-09-14",
 titulo:"Autorizar a integração do canal da tríade",
 detalhe:"TAR-416: dois arquivos de lei preparados. A integração aguarda a linha de mandato escrita pelo dono na descrição do PR.",
 autoridade:"sessao",evidencia:"https://github.com/abundanciabr/sitesdoreino/pull/1658",verificado_em:null,precisa_do_dono:true,responde_a:null,
