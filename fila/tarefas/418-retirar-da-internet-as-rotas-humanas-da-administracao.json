@@ -6,7 +6,9 @@
     "infra",
     "ci"
   ],
-  "depende_de": [],
+  "depende_de": [
+    "TAR-419"
+  ],
   "cria": [],
   "move": [
     "manutencao"
