@@ -3,6 +3,9 @@
 # de um checkout com core.autocrlf=true (comum em máquina Windows).
 *.sh text eol=lf
 
+# O lançador local é executado pelo Windows por duplo clique.
+*.cmd text eol=crlf
+
 # O deploy-infra injeta estes dois num bash/container Linux da VPS
 # (`shell -c "$(cat sincronizar_sites.py)"` e parsing do sites.json) — LF
 # garantido no blob, pela mesma razão dos .sh.
