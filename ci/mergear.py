@@ -1,39 +1,7 @@
-"""MERGE GUARDADO — a catraca do agente na Escada da Imposição (RITOS.md §2).
+"""Integração automática: checks obrigatórios, contrato e mandato CODEOWNERS.
 
-Este script nasceu como substituto de uma proteção que não existia: até
-26/08/2026 o GitHub não oferecia required checks aqui (repositório privado em
-conta pessoal — `Upgrade to GitHub Pro or make this repository public`, HTTP
-403), e o botão de merge do site funcionava com tudo vermelho.
-
-Desde 26/08/2026 a proteção nativa ESTÁ ligada (ruleset `main protegida`;
-ARMADILHAS-OPERACAO.md §1 H3): `muralhas` e `ci-celula-gate` são required
-checks e ninguém — nem o dono — mergeia com eles vermelhos. Este comando não
-virou redundante: ele confere ANTES de disparar (em vez de deixar o GitHub
-recusar depois), exige repetir o número do PR, distingue FAIL de ERROR, e é o
-caminho que o rito registra. O cinto é o ruleset; a catraca é este script.
-
-    python ci/mergear.py 22 --conferir    # só confere, nunca mergeia
-    python ci/mergear.py 22 --pousar      # solicita integração pela pista
-
-Desde a emenda de 29/08/2026 da CONSTITUICAO.md, Lei 4 (registro
-20260829-006), o agente pede pouso e só a pista mergeia. `--confirmo` exige
-repetir o número do PR e é recusado fora do ambiente da pista. A maestro
-confere a revisão independente antes do encaminhamento; a pista aguarda os
-checks e só integra quando o mesmo portão aprova.
-
-[INV-CI01] Vale a mesma semântica dos outros portões:
-
-    tudo verde e coerente      -> PASS,  segue para a confirmação
-    algum check reprovou       -> FAIL,  recusa (exit 1)
-    não consegui consultar     -> ERROR, recusa (exit 2)
-
-O caso mais importante é o terceiro. **"Nenhum check reportado" é ERROR, não
-sinal verde**: um PR sem checks é indistinguível de um PR cujos workflows nem
-chegaram a rodar.
-
-E o motivo de o número e o título aparecerem em destaque antes de qualquer
-pergunta: em 19/08/2026 o PR #21 foi mergeado no lugar do #20, com
-recomendações opostas para cada um. Nada na tela dizia qual era qual.
+Decisão do mantenedor em 13/09/2026; a main permanece protegida.
+As rotinas de diagnóstico legado não são condições de integração.
 """
 
 from __future__ import annotations
@@ -762,9 +730,7 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
         titulo = (estado.get("title") or "")[:60]
         if situacao == "MERGED":
             resultados.append(
-                Resultado(
-                    f"Depende-de #{numero}", Estado.PASS, f"já entrou — {titulo}"
-                )
+                Resultado(f"Depende-de #{numero}", Estado.PASS, f"já entrou — {titulo}")
             )
         else:
             estado_da_dependencia = Estado.FAIL
@@ -775,38 +741,105 @@ def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
                     f"Depende-de #{numero}",
                     estado_da_dependencia,
                     f"ainda não entrou (state={situacao}) — {titulo}",
-                    "A dependência está aberta. Este PR pode aguardar na pista; "
-                    "a integração permanece bloqueada até ela pousar."
-                    if situacao == "OPEN" else
-                    "A dependência não foi integrada. Confira o PR declarado e "
-                    "corrija seu encerramento antes de pedir pouso novamente.",
+                    (
+                        "A dependência está aberta. Este PR pode aguardar na pista; "
+                        "a integração permanece bloqueada até ela pousar."
+                        if situacao == "OPEN"
+                        else "A dependência não foi integrada. Confira o PR declarado e "
+                        "corrija seu encerramento antes de pedir pouso novamente."
+                    ),
                 )
             )
     return resultados
 
 
 def checar_publicacoes_anteriores(raiz: Path, pr: dict) -> list[Resultado]:
-    from estado_da_entrega import publicacoes_anteriores, consultar_entrega, correcao_da_publicacao, correcoes_declaradas
+    from estado_da_entrega import (
+        publicacoes_anteriores,
+        consultar_entrega,
+        correcao_da_publicacao,
+        correcoes_declaradas,
+    )
 
     try:
-        pendentes = publicacoes_anteriores(raiz, [a["path"] for a in pr.get("files", [])])
+        pendentes = publicacoes_anteriores(
+            raiz, [a["path"] for a in pr.get("files", [])]
+        )
         for numero in dependencias_declaradas(pr):
             entrega = consultar_entrega(raiz, numero)
             if entrega.get("sha_integrado") and not entrega["terminal"]:
                 pendentes.append(entrega)
         declaradas = set(correcoes_declaradas(pr))
-        falhas_reais = {r["id"] for e in pendentes if e["estado"] == "FALHA_PUBLICACAO"
-                        for r in e.get("runs", []) if r.get("conclusion") == "failure"}
+        falhas_reais = {
+            r["id"]
+            for e in pendentes
+            if e["estado"] == "FALHA_PUBLICACAO"
+            for r in e.get("runs", [])
+            if r.get("conclusion") == "failure"
+        }
         if declaradas - falhas_reais:
-            return [Resultado("recuperação de publicação", Estado.FAIL,
-                              "Corrige-publicacao cita run que não é falha vigente",
-                              "Retire a declaração obsoleta e peça nova revisão do contexto de recuperação.")]
-        return [Resultado("publicação anterior", Estado.FAIL if e["estado"] == "FALHA_PUBLICACAO" else Estado.ERROR,
-                          e["estado"] + " em " + e["sha_integrado"], e["acao"])
-                for e in pendentes if not correcao_da_publicacao(raiz, pr, e)]
+            return [
+                Resultado(
+                    "recuperação de publicação",
+                    Estado.FAIL,
+                    "Corrige-publicacao cita run que não é falha vigente",
+                    "Retire a declaração obsoleta e peça nova revisão do contexto de recuperação.",
+                )
+            ]
+        return [
+            Resultado(
+                "publicação anterior",
+                Estado.FAIL if e["estado"] == "FALHA_PUBLICACAO" else Estado.ERROR,
+                e["estado"] + " em " + e["sha_integrado"],
+                e["acao"],
+            )
+            for e in pendentes
+            if not correcao_da_publicacao(raiz, pr, e)
+        ]
     except (ErroDeInstrumentacao, OSError, ValueError, KeyError, TypeError) as erro:
-        return [Resultado("publicação anterior", Estado.ERROR,
-                          "não consegui conferir as publicações anteriores", str(erro))]
+        return [
+            Resultado(
+                "publicação anterior",
+                Estado.ERROR,
+                "não consegui conferir as publicações anteriores",
+                str(erro),
+            )
+        ]
+
+
+class DiffDoPR:
+    """O diff do PR, lido do `gh` UMA vez por pouso e reaproveitado.
+
+    Duas sombras rodam depois do mesmo merge, e as duas precisam do mesmo
+    endpoint. Antes, cada uma chamava por conta própria (duas viagens de rede
+    idênticas), e a descrição da leitura era fixa no nome da PRIMEIRA sombra,
+    então uma falha de rede na segunda acusava a sombra errada. Aqui quem lê
+    diz o próprio nome, e a leitura bem-sucedida fica guardada para a seguinte.
+
+    Leitura que falha não fica guardada: a sombra que tropeçou cala (fail-open,
+    ela roda depois de o merge já ter acontecido) e a seguinte tenta por conta
+    própria, com o nome dela na descrição.
+    """
+
+    def __init__(self, raiz: Path, numero: int) -> None:
+        self._raiz = raiz
+        self._numero = numero
+        self._remessas: list[dict[str, Any]] | None = None
+
+    def ler(self, quem: str) -> list[dict[str, Any]]:
+        if self._remessas is None:
+            self._remessas = json.loads(
+                _gh(
+                    [
+                        "api",
+                        f"repos/{{owner}}/{{repo}}/pulls/{self._numero}"
+                        "/files?per_page=100",
+                    ],
+                    self._raiz,
+                    f"ler o diff do PR #{self._numero} para {quem}",
+                )
+            )
+        return self._remessas
 
 
 def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
@@ -814,19 +847,99 @@ def checar_revisao_independente(raiz: Path, pr: dict) -> Resultado:
     from estado_da_entrega import correcoes_declaradas
 
     try:
-        paginas = json.loads(_gh(
-            ["api", f"repos/{{owner}}/{{repo}}/issues/{pr['number']}/comments",
-             "--paginate", "--slurp"], raiz, "ler o atestado independente"))
-        if not isinstance(paginas, list) or any(not isinstance(p, list) for p in paginas):
+        paginas = json.loads(
+            _gh(
+                [
+                    "api",
+                    f"repos/{{owner}}/{{repo}}/issues/{pr['number']}/comments",
+                    "--paginate",
+                    "--slurp",
+                ],
+                raiz,
+                "ler o atestado independente",
+            )
+        )
+        if not isinstance(paginas, list) or any(
+            not isinstance(p, list) for p in paginas
+        ):
             raise ValueError("comentários sem páginas completas")
         comentarios = [c for pagina in paginas for c in pagina]
         if any(not isinstance(c, dict) for c in comentarios):
             raise ValueError("comentário inválido")
-        return avaliar_atestado(pr.get("headRefOid") or "", comentarios,
-                                correcoes=correcoes_declaradas(pr), raiz=raiz)
+        return avaliar_atestado(
+            pr.get("headRefOid") or "",
+            comentarios,
+            correcoes=correcoes_declaradas(pr),
+            raiz=raiz,
+        )
     except (ErroDeInstrumentacao, ValueError, TypeError) as erro:
-        return Resultado("revisão independente", Estado.ERROR,
-                         "não consegui medir a revisão independente", str(erro))
+        return Resultado(
+            "revisão independente",
+            Estado.ERROR,
+            "não consegui medir a revisão independente",
+            str(erro),
+        )
+
+
+def checar_mandato(raiz: Path, pr: dict) -> Resultado:
+    try:
+        linhas = (raiz / ".github/CODEOWNERS").read_text(encoding="utf-8").splitlines()
+        regras = [
+            l.split() for l in linhas if l.strip() and not l.lstrip().startswith("#")
+        ]
+        if not regras:
+            raise ValueError("CODEOWNERS vazio")
+        if not isinstance(pr.get("files"), list):
+            raise ValueError("a consulta não trouxe a lista de arquivos")
+        if any(
+            not donos or any(c in padrao for c in "*?![") for padrao, *donos in regras
+        ):
+            raise ValueError(
+                "padrão CODEOWNERS não suportado; atualize o leitor antes de integrar"
+            )
+        mandato = re.search(
+            r"^Mandato-do-mantenedor: (.{20,})$", pr.get("body") or "", re.MULTILINE
+        )
+        autor = "@" + (pr.get("author") or {}).get("login", "")
+        for arquivo in pr.get("files") or []:
+            caminho = arquivo["path"]
+            for padrao, *donos in regras:
+                padrao = padrao.lstrip("/")
+                if (
+                    caminho.startswith(padrao)
+                    if padrao.endswith("/")
+                    else caminho == padrao
+                ):
+                    if (
+                        not mandato
+                        or autor not in donos
+                        or not any(
+                            alvo in mandato.group(1).split()
+                            for alvo in (padrao, caminho)
+                        )
+                    ):
+                        return Resultado(
+                            "mandato do mantenedor",
+                            Estado.FAIL,
+                            f"falta mandato do dono para {caminho}",
+                            "Registre na descrição, pelo dono, Mandato-do-mantenedor: seguido do pedido e dos caminhos autorizados.",
+                        )
+        if any(a["path"].startswith("contracts/") for a in pr.get("files") or []):
+            if "contrato" not in {l["name"] for l in pr.get("labels") or []}:
+                return Resultado(
+                    "contrato congelado",
+                    Estado.FAIL,
+                    "falta a declaração de mudança de contrato",
+                    "Preserve o rito de contrato e sua etiqueta contrato.",
+                )
+        return Resultado("mandato do mantenedor", Estado.PASS, "fronteiras respeitadas")
+    except (OSError, ValueError, KeyError) as erro:
+        return Resultado(
+            "mandato do mantenedor",
+            Estado.ERROR,
+            "não consegui conferir CODEOWNERS",
+            str(erro),
+        )
 
 
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
@@ -838,22 +951,27 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
         relatorio.registrar(Resultado.de_erro("consulta", erro))
         return relatorio, {}
 
-    relatorio.registrar(checar_revisao_independente(raiz_real, pr))
-    for r in checar_publicacoes_anteriores(raiz_real, pr):
-        relatorio.registrar(r)
     relatorio.registrar(checar_estado(pr))
     relatorio.registrar(checar_mergeabilidade(pr))
-    for r in checar_checks(pr):
-        relatorio.registrar(r)
-    for r in checar_labels(pr):
-        relatorio.registrar(r)
-    for r in checar_dependencias(raiz_real, pr):
-        relatorio.registrar(r)
-    relatorio.registrar(checar_registro_embarcado(raiz_real, pr))
-    frescor = checar_frescor_do_livro(raiz_real)
-    relatorio.registrar(frescor)
-    if frescor.estado is Estado.PASS:
-        relatorio.registrar(checar_divida_do_livro(raiz_real, pr))
+    if not re.fullmatch(r"[0-9a-f]{40}", pr.get("headRefOid") or ""):
+        relatorio.registrar(
+            Resultado("SHA", Estado.ERROR, "a consulta não trouxe um SHA válido")
+        )
+    if pr.get("baseRefName") != "main":
+        relatorio.registrar(
+            Resultado("base", Estado.FAIL, "integração automática atende somente main")
+        )
+    obrigatorios = dict(
+        pr,
+        statusCheckRollup=[
+            c
+            for c in pr.get("statusCheckRollup") or []
+            if (c.get("name") or c.get("context")) in CHECKS_OBRIGATORIOS
+        ],
+    )
+    for resultado in checar_checks(obrigatorios):
+        relatorio.registrar(resultado)
+    relatorio.registrar(checar_mandato(raiz_real, pr))
     return relatorio, pr
 
 
@@ -962,8 +1080,10 @@ def motivos_da_recusa(relatorio: Relatorio) -> list[str]:
         for r in relatorio.resultados
     ):
         codigos.append(MOTIVO_BASE_VELHA)
-    if any(r.nome == "revisão independente" and r.estado is not Estado.PASS
-           for r in relatorio.resultados):
+    if any(
+        r.nome == "revisão independente" and r.estado is not Estado.PASS
+        for r in relatorio.resultados
+    ):
         codigos.append("REVISAO-NECESSARIA")
     return codigos
 
@@ -974,17 +1094,18 @@ def so_falta_atualizar_a_base(relatorio: Relatorio) -> bool:
         return False
     reprovados = [r for r in relatorio.resultados if r.estado is not Estado.PASS]
     reprovados = [r for r in reprovados if r.estado is not Estado.SKIP]
-    return len(reprovados) == 1 and reprovados[0].resumo.startswith(
-        "a base envelheceu"
-    )
+    return len(reprovados) == 1 and reprovados[0].resumo.startswith("a base envelheceu")
 
 
 def pode_aguardar_na_pista(relatorio: Relatorio, pr: dict) -> bool:
     """Admite espera na fila, sem alterar o veredito exigido para integrar."""
     if pr.get("state") != "OPEN" or pr.get("isDraft"):
         return False
-    if (pr.get("mergeable") == "MERGEABLE" and pr.get("mergeStateStatus") == "BEHIND"
-            and so_falta_atualizar_a_base(relatorio)):
+    if (
+        pr.get("mergeable") == "MERGEABLE"
+        and pr.get("mergeStateStatus") == "BEHIND"
+        and so_falta_atualizar_a_base(relatorio)
+    ):
         return True
     pendentes = set()
     for check in mais_recente_por_nome(pr.get("statusCheckRollup") or []):
@@ -993,12 +1114,18 @@ def pode_aguardar_na_pista(relatorio: Relatorio, pr: dict) -> bool:
         if status in {"QUEUED", "IN_PROGRESS", "WAITING", "REQUESTED"} or (
             not status and estado in {"PENDING", "EXPECTED"}
         ):
-            pendentes.add("check/" + (check.get("name") or check.get("context") or "(sem nome)"))
-    recusas = [r for r in relatorio.resultados if r.estado not in (Estado.PASS, Estado.SKIP)]
+            pendentes.add(
+                "check/" + (check.get("name") or check.get("context") or "(sem nome)")
+            )
+    recusas = [
+        r for r in relatorio.resultados if r.estado not in (Estado.PASS, Estado.SKIP)
+    ]
     if not recusas:
         return False
     for resultado in recusas:
-        if resultado.estado is Estado.ERROR and resultado.nome.startswith("Depende-de #"):
+        if resultado.estado is Estado.ERROR and resultado.nome.startswith(
+            "Depende-de #"
+        ):
             continue
         if resultado.estado is Estado.ERROR and resultado.nome in (
             pendentes | {"checks", "checks obrigatórios"}
@@ -1006,94 +1133,18 @@ def pode_aguardar_na_pista(relatorio: Relatorio, pr: dict) -> bool:
             continue
         if resultado.nome == "conflitos" and (
             (pr.get("mergeable") == "UNKNOWN" and resultado.estado is Estado.ERROR)
-            or (pr.get("mergeable") == "MERGEABLE"
-                and pr.get("mergeStateStatus") == "BEHIND" and resultado.estado is Estado.FAIL)
+            or (
+                pr.get("mergeable") == "MERGEABLE"
+                and pr.get("mergeStateStatus") == "BEHIND"
+                and resultado.estado is Estado.FAIL
+            )
         ):
             continue
         return False
     return True
 
 
-def pedir_pouso(numero: int, head_esperado: str) -> int:
-    """Confirma a etiqueta no GitHub e encerra sem aguardar checks ou merge."""
-    try:
-        raiz = raiz_do_repo()
-        _gh(
-            ["pr", "edit", str(numero), "--add-label", ETIQUETA_DE_POUSO],
-            raiz,
-            f"pedir pouso do PR #{numero}",
-            exigir_stdout=False,
-        )
-        remoto = json.loads(_gh(
-            ["pr", "view", str(numero), "--json", "headRefOid,labels,state"],
-            raiz, f"confirmar o pedido do PR #{numero}",
-        ))
-        confirmado = (remoto.get("state") == "OPEN"
-                      and remoto.get("headRefOid") == head_esperado
-                      and any(r.get("name") == ETIQUETA_DE_POUSO for r in remoto.get("labels", [])))
-        if not confirmado:
-            raise ValueError("etiqueta ou revisão não confirmada")
-    except (ErroDeInstrumentacao, ValueError, TypeError, AttributeError) as erro:
-        print(json.dumps({"estado": "ERROR", "pr": numero,
-                          "acao": "Confira a etiqueta e a revisão no GitHub antes de repetir o pedido.",
-                          "erro": str(erro)[:160]}, ensure_ascii=False))
-        return 2
-    print(json.dumps({"estado": "ENFILEIRADO", "pr": numero, "head": head_esperado,
-                      "integrado": False, "mensagem": "Não precisa esperar: a pista confere os checks e publica o desfecho no PR."},
-                     ensure_ascii=False))
-    return 0
-
-
-# ---------------------------------------------------------------------------
-# A SOMBRA DO EVENTO DA FILA (06/09/2026) — a porta vê o que gravaria.
-#
-# A regra e o motivo de ela nascer em sombra estão em `ci/fila.py`, na seção
-# "O EVENTO 'CONCLUÍDA' PELA PORTA DO POUSO". Aqui fica só a fiação: depois do
-# merge CONFIRMADO (nunca do exit do comando que o disparou), a porta lê o
-# diff do PR, pergunta à fila o que gravaria, IMPRIME, e mede.
-#
-# Fail-open de ponta a ponta, ao contrário do resto deste portão: a sombra
-# roda depois de o merge já ter acontecido, e uma exceção aqui transformaria
-# um pouso bem-sucedido em ERROR. Muralha na dúvida recusa; sombra na dúvida
-# cala.
-# ---------------------------------------------------------------------------
-
 MARCA_DA_SOMBRA = "🌓 SOMBRA (evento da fila pela porta)"
-
-
-class DiffDoPR:
-    """O diff do PR, lido do `gh` UMA vez por pouso e reaproveitado.
-
-    Duas sombras rodam depois do mesmo merge, e as duas precisam do mesmo
-    endpoint. Antes, cada uma chamava por conta própria (duas viagens de rede
-    idênticas), e a descrição da leitura era fixa no nome da PRIMEIRA sombra,
-    então uma falha de rede na segunda acusava a sombra errada. Aqui quem lê
-    diz o próprio nome, e a leitura bem-sucedida fica guardada para a seguinte.
-
-    Leitura que falha não fica guardada: a sombra que tropeçou cala (fail-open,
-    ela roda depois de o merge já ter acontecido) e a seguinte tenta por conta
-    própria, com o nome dela na descrição.
-    """
-
-    def __init__(self, raiz: Path, numero: int) -> None:
-        self._raiz = raiz
-        self._numero = numero
-        self._remessas: list[dict[str, Any]] | None = None
-
-    def ler(self, quem: str) -> list[dict[str, Any]]:
-        if self._remessas is None:
-            self._remessas = json.loads(
-                _gh(
-                    [
-                        "api",
-                        f"repos/{{owner}}/{{repo}}/pulls/{self._numero}"
-                        "/files?per_page=100",
-                    ],
-                    self._raiz,
-                    f"ler o diff do PR #{self._numero} para {quem}",
-                )
-            )
-        return self._remessas
 
 
 def sombra_do_evento_da_fila(
@@ -1292,7 +1343,7 @@ def _dizer_a_area(
             conserto = f'Escreva area: "{area_esperada}" (o nome do seu ramo).'
         else:
             exemplos = ", ".join(
-                f'\"{celula}\"'
+                f'"{celula}"'
                 for celula in sorted(
                     celulas, key=lambda celula: (celula.startswith("."), celula)
                 )[:3]
@@ -1316,175 +1367,116 @@ def _dizer_a_area(
     print(f'{MARCA_DA_SOMBRA_DA_AREA}: {arquivo}: área "{area}" bate com o ramo.')
 
 
+def integrar(numero: int, raiz: Path, *, conferir_apenas=False) -> int:
+    relatorio, pr = conferir(numero)
+    print(relatorio.render())
+    if relatorio.estado is not Estado.PASS:
+        return relatorio.exit_code
+    if conferir_apenas:
+        return 0
+    _gh(
+        comando_de_merge(numero, "merge", pr["headRefOid"]),
+        raiz,
+        f"integrar PR #{numero}",
+        exigir_stdout=False,
+    )
+    final = json.loads(
+        _gh(
+            ["pr", "view", str(numero), "--json", "state,mergedAt,mergeCommit"],
+            raiz,
+            "confirmar integração",
+        )
+    )
+    if final.get("state") != "MERGED":
+        print(
+            "FAIL: o comando executou, mas o PR não consta como MERGED. Confira o PR antes de repetir."
+        )
+        return 1
+    print(json.dumps(dict(pr=numero, **final), ensure_ascii=False))
+    diff = DiffDoPR(raiz, numero)
+    sombra_do_evento_da_fila(raiz, pr, final["mergeCommit"]["oid"], diff)
+    sombra_da_area_do_registro(raiz, pr, diff)
+    return 0
+
+
+def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
+    prs = json.loads(
+        _gh(
+            [
+                "pr",
+                "list",
+                "--state",
+                "open",
+                "--base",
+                "main",
+                "--limit",
+                "100",
+                "--json",
+                "number,isDraft,isCrossRepository,createdAt",
+            ]
+            + (["--head", ramo] if ramo else []),
+            raiz,
+            "listar entregas abertas",
+        )
+    )
+    houve_erro = False
+    for item in sorted(prs, key=lambda p: p["createdAt"]):
+        if item["isDraft"] or item["isCrossRepository"]:
+            continue
+        try:
+            pr = carregar_pr(raiz, item["number"])
+            if checar_mandato(raiz, pr).estado is not Estado.PASS:
+                continue
+            if (
+                pr.get("mergeStateStatus") == "BEHIND"
+                and pr.get("mergeable") == "MERGEABLE"
+            ):
+                _gh(
+                    [
+                        "api",
+                        "--method",
+                        "PUT",
+                        f"repos/{{owner}}/{{repo}}/pulls/{item['number']}/update-branch",
+                        "-f",
+                        f"expected_head_sha={pr['headRefOid']}",
+                    ],
+                    raiz,
+                    "atualizar base para os checks",
+                    exigir_stdout=False,
+                )
+                continue
+            integrar(item["number"], raiz)
+        except (ErroDeInstrumentacao, ValueError, KeyError) as erro:
+            print(f"ERROR PR #{item['number']}: {erro}")
+            houve_erro = True
+    return 2 if houve_erro else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(
-        description="Merge guardado — confere os checks antes de mergear [INV-CI01]"
+        description="Integração automática com os checks obrigatórios e mandato CODEOWNERS"
     )
-    parser.add_argument("pr", type=int, help="número do PR")
-    parser.add_argument(
-        "--conferir",
-        action="store_true",
-        help="apenas confere e sai; nunca mergeia (bom para agentes e para CI)",
-    )
-    parser.add_argument(
-        "--metodo",
-        default="merge",
-        choices=["merge", "squash", "rebase"],
-        help="como mergear (padrão: merge)",
-    )
-    parser.add_argument(
-        "--confirmo",
-        type=int,
-        metavar="N",
-        help="confirma o merge sem prompt: N PRECISA repetir o número do PR "
-        "(mesma defesa de identidade da pergunta interativa). Desde 29/08/2026 "
-        "só a PISTA mergeia — o agente usa --pousar.",
-    )
-    parser.add_argument(
-        "--pousar",
-        action="store_true",
-        help="confere revisão e recibo, admite checks pendentes e confirma a etiqueta. É "
-        "o gesto normal do agente desde 29/08/2026: quem mergeia é a pista.",
-    )
+    parser.add_argument("pr", type=int, nargs="?")
+    parser.add_argument("--automatico", action="store_true")
+    parser.add_argument("--conferir", action="store_true")
+    parser.add_argument("--confirmo", type=int, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-
-    relatorio, pr = conferir(args.pr)
-    if args.pousar:
-        if pr and (relatorio.estado is Estado.PASS or pode_aguardar_na_pista(relatorio, pr)):
-            return pedir_pouso(args.pr, pr["headRefOid"])
-        recusas = [r for r in relatorio.resultados if r.estado not in (Estado.PASS, Estado.SKIP)]
-        print(json.dumps({"estado": "RECUSADO", "pr": args.pr,
-                          "motivos": [{"verificacao": r.nome, "estado": r.estado.name,
-                                       "resumo": r.resumo} for r in recusas],
-                          "acao": f"Corrija os motivos; diagnóstico: python ci/mergear.py {args.pr} --conferir"},
-                         ensure_ascii=False))
-        return relatorio.exit_code
-    if pr:
-        print(cabecalho(pr))
-    print(relatorio.render())
-
-    # A linha que a pista lê. Sempre depois do relatório, sempre ASCII, e só
-    # quando há motivo — uma linha vazia de código não é informação.
-    codigos = motivos_da_recusa(relatorio)
-    if codigos:
-        print(f"{MARCA_DE_MOTIVO} {' '.join(codigos)}")
-
-    if relatorio.estado is not Estado.PASS:
-        print(
-            "\nMERGE RECUSADO. "
-            + (
-                "Não foi possível confirmar o estado do PR — corrija a consulta antes "
-                "de decidir."
-                if relatorio.estado is Estado.ERROR
-                else "Há algo reprovado acima."
-            )
-        )
-        return relatorio.exit_code
-
-    if args.conferir:
-        print("\nTudo verde. (--conferir: nada foi mergeado.)")
-        return 0
-
-    # A RECUSA (Onda 4, fatia 3). Só a pista mergeia — ver o bloco lá em cima.
-    if not sou_a_pista():
-        print(
-            "\n🛬 MERGE NÃO É MAIS DO ROBÔ — e isto não é um erro seu.\n"
-            "\n"
-            f"   Tudo verde no PR #{args.pr}. O que mudou em 29/08/2026 (decisão\n"
-            "   do mantenedor, registro 20260829-006): quem mergeia é a PISTA DE\n"
-            "   POUSO, não o agente. Ela testa a junção com a `main` do momento,\n"
-            "   atende um PR por vez, e não perde a corrida contra o relógio dos\n"
-            "   checks — que era o que custava oito voltas num PR de 4 arquivos.\n"
-            "\n"
-            "   O que NÃO mudou: ninguém espera pelo mantenedor. Quem mergeia\n"
-            "   continua sendo máquina.\n"
-            "\n"
-            "   Faça isto, e siga a vida:\n"
-            f"       python ci/mergear.py {args.pr} --pousar\n"
-        )
+    if args.confirmo is not None and args.confirmo != args.pr:
+        print("Cancelado: o número confirmado difere do PR. Nada foi integrado.")
         return 1
-
-    if args.confirmo is not None:
-        if args.confirmo != args.pr:
-            print(
-                f"\nCancelado: --confirmo {args.confirmo} não bate com o PR "
-                f"conferido (#{args.pr}).\nNada foi mergeado. A repetição do "
-                "número é de propósito — confirme o PR certo."
-            )
-            return 1
-    else:
-        print(
-            f"\nTudo verde. Para mergear o PR #{args.pr}, digite o número dele e "
-            "Enter.\nQualquer outra coisa cancela."
-        )
-        try:
-            resposta = input("  número do PR: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            print("\nCancelado — nada foi mergeado. (Sessão sem teclado? O caminho")
-            print(
-                f" não-interativo é: python ci/mergear.py {args.pr} --confirmo {args.pr})"
-            )
-            return 1
-
-        if resposta != str(args.pr):
-            print(
-                f"\nCancelado: você digitou '{resposta}', e o PR conferido é o "
-                f"#{args.pr}.\nNada foi mergeado."
-            )
-            return 1
-
+    if args.automatico == (args.pr is not None):
+        parser.error("informe um PR ou --automatico")
     try:
         raiz = raiz_do_repo()
-        saida = _gh(
-            comando_de_merge(args.pr, args.metodo, pr["headRefOid"]),
-            raiz,
-            f"mergear o PR #{args.pr}",
-            exigir_stdout=False,
+        return (
+            integrar_abertos(raiz, ramo=os.environ.get("RAMO_DO_EVENTO", ""))
+            if args.automatico
+            else integrar(args.pr, raiz, conferir_apenas=args.conferir)
         )
-    except ErroDeInstrumentacao as erro:
-        print(f"\nERROR ao mergear: {erro.resumo}\n{erro.detalhe}")
+    except (ErroDeInstrumentacao, OSError, ValueError) as erro:
+        print(f"ERROR: {erro}. Confira a consulta no GitHub antes de repetir.")
         return 2
-    if saida.strip():
-        print(saida)
-
-    # Merge não se declara, confere-se (Lei 6): o veredito vem do estado real
-    # no GitHub, nunca do exit do comando que disparou a ação.
-    try:
-        estado_final = json.loads(
-            _gh(
-                ["pr", "view", str(args.pr), "--json", "state,mergedBy,mergeCommit"],
-                raiz,
-                f"conferir o merge do PR #{args.pr}",
-            )
-        )
-    except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
-        print(f"\nERROR: o merge foi disparado, mas a conferência falhou: {erro}")
-        print(
-            f"Confira à mão antes de qualquer outra coisa:\n"
-            f"  gh pr view {args.pr} --json state,mergedBy,mergeCommit"
-        )
-        return 2
-    if estado_final.get("state") != "MERGED":
-        print(
-            f"\nFAIL: o gh não recusou, mas o PR #{args.pr} não consta como "
-            f"MERGED (state={estado_final.get('state')}). Investigue antes de "
-            "tentar de novo."
-        )
-        return 1
-    quem = (estado_final.get("mergedBy") or {}).get("login", "?")
-    sha = (estado_final.get("mergeCommit") or {}).get("oid") or "?"
-    print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
-    diff = DiffDoPR(raiz, args.pr)
-    sombra_do_evento_da_fila(raiz, pr, sha, diff)
-    sombra_da_area_do_registro(raiz, pr, diff)
-    print(
-        "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
-        "(CLAUDE.md); e acrescente o registro do que aconteceu em "
-        "painel/registros/ (molde em painel/LEIA-ME.md). Só o registro: os "
-        "arquivos gerados do painel são da integração desde a Onda 3."
-    )
-    return 0
 
 
 def _blindar(rotulo: str, funcao):

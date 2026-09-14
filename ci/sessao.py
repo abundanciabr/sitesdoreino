@@ -641,7 +641,7 @@ def resumo_do_baseline(saida: str) -> str:
     return achados[-1] if achados else "verde"
 
 
-def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", estado_git: str = "limpo") -> str:
+def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", estado_git: str = "limpo", metodo_baseline: str = "`make ci`") -> str:
     """A Declaração de Abertura do RITOS §1, em UMA linha, pronta para colar."""
     primeira = (
         f"Leituras exigidas: CONSTITUICAO.md e {constituicao_da_celula}."
@@ -652,7 +652,7 @@ def declaracao(plano: Plano, *, resumo: str, constituicao_da_celula: str = "", e
     # Sem ambiente não houve baseline, e afirmar um seria assinar o que não se
     # mediu. "não medido" com o motivo é honesto; "verde" seria falso-verde.
     baseline = (
-        f"Baseline da BASE origin/main: `make ci` da célula {plano.celula} = {resumo}; a tarefa exige validação própria."
+        f"Baseline da BASE origin/main: {metodo_baseline} da célula {plano.celula} = {resumo}; a tarefa exige validação própria."
         if resumo
         else "Baseline: não medido (--sem-container: esta bancada não sobe ambiente)."
     )
@@ -1764,13 +1764,29 @@ class Sessao:
                       "SESSAO_WORKTREE", "SESSAO_SCRATCH"):
             if chave in ambiente:
                 ambiente[chave] = "isolado-por-tarefa"
-        identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items()), sorted(self._servicos.items())))
+        identidade = repr((revisao, str(plano_base.venv), sorted(ambiente.items()), sorted(self._servicos.items()), getattr(self, "_metodo_baseline", "`make ci`")))
         chave = hashlib.sha256(identidade.encode()).hexdigest()
         return revisao, Path.home() / ".sitesdoreino" / "baselines" / self.plano.celula / f"{chave}.json", base
 
     def rodar_baseline(self, git: str) -> str:
         passo = self._abrir(P_BASELINE)
         make = self._ferramenta("make", passo, "Instale GNU Make e repita a abertura para medir a base.")
+        shell = None
+        pytest_direto = False
+        if platform.system() == "Windows":
+            shell = self._localizar("sh")
+            if not shell:
+                caminho_git = self._correr([git, "--exec-path"], cwd=self.plano.worktree)
+                if caminho_git.exit_code == 0 and caminho_git.stdout.strip():
+                    for ancestral in Path(caminho_git.stdout.strip()).parents:
+                        candidato = ancestral / "usr" / "bin" / "sh.exe"
+                        if self._existe(candidato):
+                            shell = candidato.as_posix()
+                            break
+            pytest_direto = not shell
+        self._metodo_baseline = "`make ci`"
+        if pytest_direto:
+            self._metodo_baseline = "por pytest direto, sem lint"
         self._exigir_bancada_limpa(passo, git)
         revisao, cache, ambiente_base = self.chave_do_baseline(git)
         with trava_de_ambiente(cache.with_suffix(".lock"), passo=passo):
@@ -1778,7 +1794,8 @@ class Sessao:
                 try:
                     prova = json.loads(cache.read_text(encoding="utf-8"))
                     texto = prova["saida"]
-                    if (prova["exit_code"] == 0 and isinstance(texto, str) and texto.strip()
+                    if (prova.get("metodo") == self._metodo_baseline and prova.get("shell") == shell
+                            and prova["exit_code"] == 0 and isinstance(texto, str) and texto.strip()
                             and prova["sha256"] == hashlib.sha256(texto.encode()).hexdigest()):
                         self._escrever(self.plano.log_do_baseline, texto)
                         resumo = resumo_do_baseline(texto)
@@ -1798,15 +1815,30 @@ class Sessao:
                     env = ambiente_base.ambiente_da_base()
                     env["PYTHONPATH"] = str(base)
                     env["SESSAO_WORKTREE"] = str(base)
-                    saida = self._correr([make, "-C", str(base / "services" / self.plano.celula), "ci"],
-                                         cwd=base, env=env, timeout=3600)
-                    self._escrever(self.plano.log_do_baseline, saida.texto)
+                    celula = base / "services" / self.plano.celula
+                    comando = [make, "-C", str(celula), "ci"]
+                    cwd = base
+                    if shell:
+                        env["SHELL"] = shell
+                        comando.append(f"SHELL={shell}")
+                        env["PATH"] = os.pathsep.join([str(ambiente_base.plano.bin_do_venv), str(Path(shell).parent), env.get("PATH", "")])
+                    if pytest_direto:
+                        comando = [str(ambiente_base.plano.python_do_venv), "-m", "pytest", "-q"]
+                        cwd = celula
+                    comando_exato = subprocess.list2cmdline(comando)
+                    self._nota(f"{self._metodo_baseline}: {comando_exato} (cwd: {cwd})")
+                    saida = self._correr(comando, cwd=cwd, env=env, timeout=3600)
+                    texto = f"Método: {self._metodo_baseline}\nComando: {comando_exato}\nDiretório: {cwd}\n\n{saida.texto}"
+                    self._escrever(self.plano.log_do_baseline, texto)
+                    dica = "Confira o instrumento e repita a abertura."
+                    if pytest_direto:
+                        dica = "O pytest direto falhou; confira o Python e as dependências da célula e repita a abertura."
                     if saida.exit_code in SENTINELAS_DE_INSTRUMENTACAO:
                         raise ErroDeSessao(passo, f"o baseline NÃO chegou a rodar (exit {saida.exit_code})",
-                                           detalhe=f"Confira o instrumento. Log completo: {self.plano.log_do_baseline}")
+                                           detalhe=f"{dica}\n{recortar(saida.texto, 4000)}\nLog completo: {self.plano.log_do_baseline}", comando=comando_exato)
                     if saida.exit_code != 0:
                         raise ErroDeSessao(passo, f"o baseline da BASE {revisao} REPROVOU (exit {saida.exit_code})",
-                                           detalhe=recortar(saida.texto, 4000) + f"\nLog completo: {self.plano.log_do_baseline}\nPare e reporte a falha da base.", codigo=1)
+                                           detalhe=recortar(saida.texto, 4000) + f"\n{dica}\nLog completo: {self.plano.log_do_baseline}\nPare e reporte a falha da base.", comando=comando_exato, codigo=1)
                     medida = self._exigir(passo, [git, "rev-parse", "HEAD"], cwd=base).stdout.strip()
                     sujo = self._exigir(passo, [git, "status", "--porcelain"], cwd=base).stdout.strip()
                     if medida != revisao or sujo:
@@ -1819,8 +1851,8 @@ class Sessao:
                                   cwd=self.plano.raiz, timeout=300)
             self._exigir_bancada_limpa(passo, git)
             if ambiente_base.ambiente_instalado() and saida.texto.strip():
-                prova = json.dumps({"exit_code": 0, "saida": saida.texto,
-                                    "sha256": hashlib.sha256(saida.texto.encode()).hexdigest()}, ensure_ascii=False)
+                prova = json.dumps({"exit_code": 0, "saida": texto, "metodo": self._metodo_baseline, "shell": shell,
+                                    "sha256": hashlib.sha256(texto.encode()).hexdigest()}, ensure_ascii=False)
                 temporario = cache.with_suffix(f".{uuid.uuid4().hex}.tmp")
                 try:
                     self._escrever(temporario, prova)
@@ -1830,7 +1862,7 @@ class Sessao:
                 finally:
                     temporario.unlink(missing_ok=True)
             resumo = resumo_do_baseline(saida.texto)
-            self._pass(f"make ci da BASE {revisao[:12]} = {resumo}; log completo: {self.plano.log_do_baseline}")
+            self._pass(f"{self._metodo_baseline} da BASE {revisao[:12]} = {resumo}; log completo: {self.plano.log_do_baseline}")
             return resumo
 
     # -- orquestração -------------------------------------------------------
@@ -1858,7 +1890,8 @@ class Sessao:
         if not self._existe(self.plano.worktree / constituicao):
             constituicao = ""
         return declaracao(
-            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git
+            self.plano, resumo=resumo, constituicao_da_celula=constituicao, estado_git=self._estado_git,
+            metodo_baseline=self._metodo_baseline,
         )
 
 

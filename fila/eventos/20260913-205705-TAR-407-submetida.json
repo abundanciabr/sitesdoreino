@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-205705-TAR-407-submetida",
+  "tarefa": "TAR-407",
+  "evento": "submetida",
+  "quando": "2026-09-13T20:57:05+00:00",
+  "quem": "agent/ci/pouso-por-evento",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1637",
+  "revisao": "626a5482db22db1d3adeecb6e00aadf05c979c15",
+  "arvore": "112343654b49dddc5f0643c08aa26ac3d71dc44e"
+}

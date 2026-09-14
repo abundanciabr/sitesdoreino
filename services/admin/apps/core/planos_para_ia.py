@@ -63,11 +63,19 @@ dois endereços servem o mesmo arquivo.
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from django.http import Http404, HttpResponse
+import markdown
+from django.conf import settings
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import render
+from django.template.loader import get_template
+from django.urls import reverse
 from django.views.decorators.http import require_safe
 
 # `apps/core/planos_para_ia.py` → `apps/core` → `apps` → a raiz da célula
@@ -117,12 +125,41 @@ class Plano:
         return f"{PREFIXO_PUBLICO}{self.nome}"
 
 
+@dataclass(frozen=True)
+class PlanoLocal:
+    """Um `.md` local do plano mestre, servido atras da porta da admin."""
+
+    nome: str
+    arquivo: str
+    titulo: str
+    resumo: str
+    grupo: str
+    ordem: int
+    endereco: str
+
+
+GRUPOS_LOCAIS = (
+    (0, 9, "Núcleo"),
+    (10, 19, "Desenho"),
+    (20, 29, "Operação"),
+    (30, 39, "Acompanhamento"),
+)
+
+VARIAVEL_DA_PASTA_LOCAL = "ADMIN_PLANOS_DIR"
+
+
 def diretorio_dos_planos() -> Path | None:
     """A pasta embutida, ou a do checkout — a primeira que existir."""
     for candidato in CANDIDATOS:
         if candidato.is_dir():
             return candidato
     return None
+
+
+def diretorio_local_dos_planos() -> Path | None:
+    """A pasta local do plano mestre, vinda do ambiente."""
+    cru = (os.environ.get(VARIAVEL_DA_PASTA_LOCAL) or "").strip()
+    return Path(cru) if cru else None
 
 
 def _declara_publico(texto: str) -> bool:
@@ -143,6 +180,30 @@ def _titulo(texto: str, nome: str) -> str:
     return nome
 
 
+def _resumo(texto: str) -> str:
+    """A primeira linha de texto que não seja título nem metadado."""
+    for linha in texto.splitlines():
+        limpa = linha.strip()
+        if not limpa or limpa.startswith(("#", "---")) or ":" in limpa[:32]:
+            continue
+        return limpa.strip("*` ")
+    return ""
+
+
+def _grupo(numero: int) -> str:
+    for inicio, fim, nome in GRUPOS_LOCAIS:
+        if inicio <= numero <= fim:
+            return nome
+    return "Outros"
+
+
+def _ordem_do_nome(nome: str) -> int:
+    try:
+        return int(nome.split("-", 1)[0])
+    except ValueError:
+        return 10_000
+
+
 def _arquivo(nome: str) -> Path:
     """Resolve `<pasta>/<nome>.md` e confere que continua dentro da pasta."""
     pasta = diretorio_dos_planos()
@@ -157,6 +218,23 @@ def _arquivo(nome: str) -> Path:
 
     alvo = (pasta / f"{nome}.md").resolve()
     if pasta.resolve() not in alvo.parents or not alvo.is_file():
+        raise Http404("plano não encontrado")
+    return alvo
+
+
+def _arquivo_local(nome: str) -> Path:
+    """Resolve `<pasta>/<nome>.md` para a leitura local do painel."""
+    pasta = diretorio_local_dos_planos()
+    if pasta is None or not pasta.is_dir():
+        raise Http404("plano não encontrado")
+    if nome.endswith(".md"):
+        nome = nome[:-3]
+    if not RE_NOME.match(nome):
+        raise Http404("plano não encontrado")
+
+    raiz = pasta.resolve()
+    alvo = (raiz / f"{nome}.md").resolve()
+    if raiz not in alvo.parents or not alvo.is_file():
         raise Http404("plano não encontrado")
     return alvo
 
@@ -180,6 +258,85 @@ def listar() -> list[Plano]:
         if _declara_publico(cabecalho):
             achados.append(Plano(nome=nome, titulo=_titulo(cabecalho, nome)))
     return achados
+
+
+def listar_locais() -> tuple[list[PlanoLocal], Path | None, str | None]:
+    """Os `.md` locais do plano mestre, sem lista de nomes digitada."""
+    pasta = diretorio_local_dos_planos()
+    if pasta is None:
+        return [], None, f"Defina {VARIAVEL_DA_PASTA_LOCAL} no lançador local."
+    if not pasta.is_dir():
+        return [], pasta, "Crie a pasta ou ajuste o caminho no lançador local."
+
+    achados: list[PlanoLocal] = []
+    for caminho in sorted(
+        pasta.glob("*.md"), key=lambda p: (_ordem_do_nome(p.stem), p.name)
+    ):
+        if not RE_NOME.match(caminho.stem):
+            continue
+        try:
+            texto = caminho.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        ordem = _ordem_do_nome(caminho.stem)
+        achados.append(
+            PlanoLocal(
+                nome=caminho.stem,
+                arquivo=caminho.name,
+                titulo=_titulo(texto, caminho.stem),
+                resumo=_resumo(texto),
+                grupo=_grupo(ordem),
+                ordem=ordem,
+                endereco=reverse("plano_mestre_documento", args=[caminho.name]),
+            )
+        )
+    if not achados:
+        return [], pasta, "Coloque arquivos .md nessa pasta e atualize a página."
+    return achados, pasta, None
+
+
+def _html_do_markdown(texto: str) -> str:
+    """Markdown local em HTML, com tabelas legíveis."""
+    return markdown.markdown(
+        texto,
+        extensions=["tables", "fenced_code"],
+        output_format="html",
+    )
+
+
+def mtime_local() -> int:
+    """O `mtime` mais recente dos documentos e do template do painel."""
+    momentos: list[float] = []
+    pasta = diretorio_local_dos_planos()
+    if pasta is not None and pasta.is_dir():
+        momentos.extend(c.stat().st_mtime for c in pasta.glob("*.md") if c.is_file())
+    try:
+        template = get_template("admin/plano_mestre.html")
+        origem = getattr(template, "origin", None)
+        nome = getattr(origem, "name", "")
+        if nome:
+            momentos.append(Path(nome).stat().st_mtime)
+    except OSError:
+        pass
+    return int(max(momentos, default=0) * 1000)
+
+
+def _csp_com_script(corpo: bytes) -> str:
+    scripts = re.findall(
+        rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>",
+        corpo,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    hashes = " ".join(
+        "'sha256-" + base64.b64encode(hashlib.sha256(script).digest()).decode() + "'"
+        for script in scripts
+    )
+    return (
+        f"default-src 'self'; script-src 'self' {hashes}; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+        "object-src 'none'; base-uri 'none'; form-action 'self'; "
+        "frame-ancestors 'self'; connect-src 'self'"
+    )
 
 
 def _resposta(corpo: str) -> HttpResponse:
@@ -230,3 +387,50 @@ def plano_publico(request, nome: str) -> HttpResponse:
         # visitante.
         raise Http404("plano não encontrado")
     return _resposta(texto)
+
+
+@require_safe
+def plano_mestre(request) -> HttpResponse:
+    """Painel local do plano mestre, alimentado pela pasta de `.md`."""
+    planos, pasta, recado = listar_locais()
+    por_grupo: dict[str, list[PlanoLocal]] = {}
+    for plano in planos:
+        por_grupo.setdefault(plano.grupo, []).append(plano)
+    resposta = render(
+        request,
+        "admin/plano_mestre.html",
+        {
+            "admin": request.admin,
+            "grupos": [
+                {"nome": nome, "planos": itens} for nome, itens in por_grupo.items()
+            ],
+            "pasta": str(pasta) if pasta is not None else "",
+            "recado": recado,
+            "mtime": mtime_local(),
+            "acompanhar_mudancas": settings.DEBUG,
+        },
+    )
+    resposta["Content-Security-Policy"] = _csp_com_script(resposta.content)
+    return resposta
+
+
+@require_safe
+def plano_mestre_documento(request, nome: str) -> JsonResponse:
+    """Um documento local do plano mestre, em HTML para o dialog."""
+    alvo = _arquivo_local(nome)
+    texto = alvo.read_text(encoding="utf-8", errors="replace")
+    return JsonResponse(
+        {
+            "titulo": _titulo(texto, alvo.stem),
+            "arquivo": alvo.name,
+            "html": _html_do_markdown(texto),
+        }
+    )
+
+
+@require_safe
+def plano_mestre_mtime(request) -> JsonResponse:
+    """Relógio de recarga local. Em produção, não existe."""
+    if not settings.DEBUG:
+        raise Http404("plano não encontrado")
+    return JsonResponse({"mtime": mtime_local()})
