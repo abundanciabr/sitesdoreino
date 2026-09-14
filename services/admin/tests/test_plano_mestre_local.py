@@ -1,5 +1,6 @@
 """O plano mestre local da administração."""
 
+import os
 from pathlib import Path
 
 import httpx
@@ -164,6 +165,20 @@ def test_mtime_existe_so_em_debug(tmp_path):
     resposta = _dentro().get(reverse("plano_mestre_mtime"))
     assert resposta.status_code == 200
     assert resposta.json()["mtime"] > 0
+
+
+@override_settings(DEBUG=True)
+def test_mtime_muda_ao_apagar_arquivo_que_nao_e_o_mais_recente(tmp_path, monkeypatch):
+    antigo = tmp_path / "00-ANTIGO.md"
+    novo = tmp_path / "10-NOVO.md"
+    _md(tmp_path, antigo.name, "# Antigo\n")
+    _md(tmp_path, novo.name, "# Novo\n")
+    os.utime(antigo, (1_700_000_000, 1_700_000_000))
+    os.utime(novo, (1_800_000_000, 1_800_000_000))
+    monkeypatch.setenv("ADMIN_PLANOS_DIR", str(tmp_path))
+    antes = planos_para_ia.mtime_local()
+    antigo.unlink()
+    assert planos_para_ia.mtime_local() != antes
 
 
 @override_settings(DEBUG=False)
