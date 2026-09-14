@@ -1,6 +1,7 @@
 """O acesso local continua fechado sem token; o comando usa o lançador medido."""
 
 import json
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
@@ -8,9 +9,12 @@ import sys
 
 import pytest
 
-from ci import ligar_administracao
-
 RAIZ = Path(__file__).resolve().parents[3]
+_ESPECIFICACAO = importlib.util.spec_from_file_location(
+    "ligar_administracao_local", RAIZ / "ci/ligar_administracao.py"
+)
+ligar_administracao = importlib.util.module_from_spec(_ESPECIFICACAO)
+_ESPECIFICACAO.loader.exec_module(ligar_administracao)
 
 
 def test_cmd_chama_lancador_que_verifica_http():
