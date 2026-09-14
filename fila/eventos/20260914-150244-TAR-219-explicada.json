@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-150244-TAR-219-explicada",
+  "tarefa": "TAR-219",
+  "evento": "explicada",
+  "quando": "2026-09-14T15:02:44+00:00",
+  "quem": "maestro",
+  "o_que_e": "Hoje, quem tem a chave para LER o menu do site, forum, sugestoes, gamificacao, pages, tambem consegue, sem querer, GRAVAR o menu, e so a tela /admin/menu/ deveria poder gravar.",
+  "o_que_muda": "Enquanto isso nao for separado, quatro servicos que so precisam mostrar a barra do topo do site tem, de graca, o poder de reescreve-la. Esta tarefa nasceu trancada: ela mexe em contracts/, area protegida, e so anda com sua autorizacao escrita.",
+  "exemplo": "E como dar a chave mestra do predio pra quem so precisa ler a placa do saguao: ela abre a porta certa, mas tambem abre todas as outras.",
+  "importancia": 70
+}
