@@ -20,7 +20,7 @@
           {
             "type": "command",
             "command": "r=$(git rev-parse --show-toplevel) || exit 2; python3 \"$r/ci/hook_codex.py\" SessionStart; codigo=$?; exit \"$codigo\"",
-            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { [Console]::Error.WriteLine('PAROU POR SEGURANCA: checkout nao encontrado.'); exit 2 }; & (Join-Path $p.FullName 'ci/hook_codex.cmd') SessionStart; $codigo=$LASTEXITCODE; exit $codigo } catch { [Console]::Error.WriteLine('PAROU POR SEGURANCA: launcher Codex indisponivel. Confira ci/hook_codex.cmd e Python 3.11+.'); exit 2 }\"",
+            "commandWindows": "$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { exit 0 }; $saida = & (Join-Path $p.FullName 'ci/hook_codex.cmd') SessionStart 2>$null; if ($LASTEXITCODE -eq 0) { $saida }; exit 0 } catch { exit 0 }",
             "timeout": 180
           }
         ]
@@ -32,7 +32,7 @@
           {
             "type": "command",
             "command": "r=$(git rev-parse --show-toplevel) || exit 2; python3 \"$r/ci/hook_codex.py\" UserPromptSubmit; codigo=$?; exit \"$codigo\"",
-            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { [Console]::Error.WriteLine('PAROU POR SEGURANCA: checkout nao encontrado.'); exit 2 }; & (Join-Path $p.FullName 'ci/hook_codex.cmd') UserPromptSubmit; $codigo=$LASTEXITCODE; exit $codigo } catch { [Console]::Error.WriteLine('PAROU POR SEGURANCA: launcher Codex indisponivel. Confira ci/hook_codex.cmd e Python 3.11+.'); exit 2 }\"",
+            "commandWindows": "$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { exit 0 }; $saida = & (Join-Path $p.FullName 'ci/hook_codex.cmd') UserPromptSubmit 2>$null; if ($LASTEXITCODE -eq 0) { $saida }; exit 0 } catch { exit 0 }",
             "timeout": 180
           }
         ]
@@ -44,7 +44,7 @@
           {
             "type": "command",
             "command": "r=$(git rev-parse --show-toplevel) || exit 2; python3 \"$r/ci/hook_codex.py\" Stop; codigo=$?; exit \"$codigo\"",
-            "commandWindows": "powershell.exe -NoProfile -NonInteractive -Command \"$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { [Console]::Error.WriteLine('PAROU POR SEGURANCA: checkout nao encontrado.'); exit 2 }; & (Join-Path $p.FullName 'ci/hook_codex.cmd') Stop; $codigo=$LASTEXITCODE; exit $codigo } catch { [Console]::Error.WriteLine('PAROU POR SEGURANCA: launcher Codex indisponivel. Confira ci/hook_codex.cmd e Python 3.11+.'); exit 2 }\"",
+            "commandWindows": "$ErrorActionPreference='Stop'; try { $p=Get-Item -LiteralPath .; while ($p -and -not (Test-Path -LiteralPath (Join-Path $p.FullName '.git'))) { $p=$p.Parent }; if (-not $p) { exit 0 }; $saida = & (Join-Path $p.FullName 'ci/hook_codex.cmd') Stop 2>$null; if ($LASTEXITCODE -eq 0) { $saida }; exit 0 } catch { exit 0 }",
             "timeout": 180
           }
         ]

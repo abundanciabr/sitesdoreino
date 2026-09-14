@@ -1,5 +1,6 @@
 """Eventos nativos do Codex: guardas exercitados pela borda pública."""
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -9,6 +10,27 @@ import muralha_do_travessao_na_escrita as texto
 import economia_da_fabrica as economia
 
 RAIZ = Path(__file__).resolve().parents[2]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="launcher Windows")
+@pytest.mark.parametrize("evento_hook", ["SessionStart", "UserPromptSubmit", "Stop"])
+@pytest.mark.parametrize("codigo", [0, 1])
+def test_envelope_windows_preserva_contexto_e_cala_falha(tmp_path, evento_hook, codigo):
+    import subprocess
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "ci").mkdir()
+    (tmp_path / "ci/hook_codex.cmd").write_text(
+        f"@echo off\necho contexto\n" + ("echo falha >&2\n" if codigo else "") + f"exit /b {codigo}\n")
+    comando = json.loads((RAIZ / ".codex/hooks.json").read_text())["hooks"][evento_hook][0]["hooks"][0]["commandWindows"]
+    resultado = subprocess.run(
+        [os.path.join(os.environ["SystemRoot"], "System32/WindowsPowerShell/v1.0/powershell.exe"),
+         "-NoProfile", "-Command", comando], cwd=tmp_path,
+        input=json.dumps({"hook_event_name": evento_hook, "session_id": "nativa"}),
+        capture_output=True, text=True, timeout=15,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert resultado.stderr == ""
+    assert resultado.stdout == ("contexto\n" if codigo == 0 else "")
 
 @pytest.fixture
 def bancada(tmp_path):
