@@ -205,13 +205,6 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 **Quem faz valer:** julgamento.
 
-## Como trabalhar com o mantenedor
-
-Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
-VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
-
-**Quem faz valer:** julgamento.
-
 ## A IA age, não manda o mantenedor agir
 
 Sempre que a IA tiver a ferramenta e o acesso para executar uma ação
