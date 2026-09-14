@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-000817-TAR-410-explicada",
+  "tarefa": "TAR-410",
+  "evento": "explicada",
+  "quando": "2026-09-14T00:08:17+00:00",
+  "quem": "Despacho do mantenedor na sessão da maestro em 13/09/2026: blindar CODEOWNERS antes da confiança dos ganchos e do rádio 1640.",
+  "o_que_e": "Os arquivos que declaram comandos automáticos na máquina estão sem dono obrigatório.",
+  "o_que_muda": "Alterações nesses arquivos passam a exigir o mandato do mantenedor antes da integração.",
+  "exemplo": "Uma mudança no comando de abertura da sessão precisa da palavra do mantenedor.",
+  "importancia": 100
+}
