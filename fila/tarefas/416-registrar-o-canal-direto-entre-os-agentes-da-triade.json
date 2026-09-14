@@ -1,0 +1,20 @@
+{
+  "arquivo": "416-registrar-o-canal-direto-entre-os-agentes-da-triade",
+  "id": "TAR-416",
+  "titulo": "Registrar o canal direto entre os agentes da tríade",
+  "toca": [
+    "CLAUDE.md",
+    "docs/decisoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com dois parágrafos exatos, resumo de duas a quatro linhas, teto real de 12000 bytes verde e sem travessão novo; integração aguarda mandato exclusivo do mantenedor.",
+  "despacho": "# Brief compilado\n\nobjetivo: Registrar canal automático da tríade decidido pelo mantenedor em 14/09/2026\ntipo: contrato\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nmotivo_do_modelo: muda promessa entre celulas; a economia errada aqui quebra consumidores\ncelula: maestro\n\n## Arquivos-alvo\n- CLAUDE.md\n- docs/decisoes/DECISAO-triade-de-ias.md\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n## Mandato e execução\n\nPedido do mantenedor de 14/09/2026: incorporar em docs/decisoes/DECISAO-triade-de-ias.md, na seção O que a tríade não muda, os dois parágrafos do canal direto maestro-executor e do canal automático da sentinela comentados no PR #1655. Resumir em CLAUDE.md em 2 a 4 linhas, com ponteiro à seção, preservando o teto real de 12000 bytes. A maestro autorizou condensar apenas o parágrafo existente da tríade, preservando obrigações, para caber o resumo. Sem cron, permissões novas ou alteração do PR #1655. Correio e RETOMADA-DO-MAESTRO.md somente leitura. Publicar PR com recibo e eventos próprios; sem integração até o mantenedor escrever a linha de mandato na descrição citando este pedido e os dois arquivos. Nunca escrever o mandato por ele. Verificar texto exato, travessao --listar, padrao_de_trabalho e seus testes existentes. Nenhum teste novo: alteração documental, guarda de teto já existente.\n\nTexto exato:\n\nCanal direto maestro-executor, sem o mantenedor levar e trazer texto. A maestro fala direto com o executor pelo comentário no PR aberto (gh pr comment), sem o mantenedor colar nada: pede correção, registra lei acordada, cobra prova, e o executor lê e responde no mesmo PR. Esse canal só existe para PR já aberto, nunca para abrir tarefa nova (isso continua exigindo fila.py criar, decisão e mandato do mantenedor).\n\nCanal automático da sentinela (Antigravity), decidido pelo mantenedor em 14/09/2026. O Antigravity tem schedule (cron próprio), run_command (PowerShell local, inclusive gh), escrita de arquivo fora de sessão interativa e leitura/escrita em qualquer pasta. A casa usa, por decisão do mantenedor, só a caixa de correio e o gh, sem cron: o Antigravity não acorda sozinho, mas quando alguém abre a sessão dele, ele lê a caixa e pode comentar em PR direto pelo gh, sem o mantenedor colar comando. A caixa mora em docs/consultorias/fase-4-otimizacao/conselho-local/correio/ (fora do Git, já criada, com para-antigravity/ e para-maestro/), um arquivo novo por mensagem, nunca editar mensagem alheia, nome AAAAMMDD-HHMMSS-remetente-assunto.md. Ele continua nunca editando código, lei, despacho, evento ou registro; proposta e verificação continuam sendo os únicos artefatos que ele grava como decisão. A regra 1 (medir origin/main, nunca a pasta local) continua valendo sem exceção.",
+  "origem": "Pedido do mantenedor em 14/09/2026: canal automático comentado no PR #1655; entrega independente.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
