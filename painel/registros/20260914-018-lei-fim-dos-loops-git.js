@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-018-lei-fim-dos-loops-git",
+  tipo: "decisao",
+  quando: "2026-09-14",
+  titulo: "IAs não devem repassar status de Git; fim dos loops",
+  detalhe: "Decisão obrigatória incluída na regra 11 (CLAUDE.md e AGENTS.md): Nenhuma IA deve perguntar ou informar à outra IA sobre estado do Git, PR, checks, branches ou pouso. O Git já emite avisos de status automaticamente. Cada agente consulta diretamente a fonte estruturada (comandos, portões, scripts) e age sobre o resultado. Mensagem de status só existe quando traz uma mudança concreta, decisão necessária ou bloqueio novo. Todo loop deve ser imediatamente interrompido e redirecionado para ação.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1657",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
