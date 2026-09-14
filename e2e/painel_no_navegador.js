@@ -346,9 +346,9 @@ function pedidoBarradoParaDestinoExterno(texto) {
 function erroDaNossaPagina(mensagem) {
   var loc = mensagem.location && mensagem.location();
   var origem = (loc && loc.url) || "";
-  if (origem) return !ehExterno(origem);
   var texto = (mensagem.text && mensagem.text()) || "";
   if (pedidoBarradoParaDestinoExterno(texto)) return false;
+  if (origem) return !ehExterno(origem);
   return true;   // sem origem e sem relato de rede legível, o dono é nosso
 }
 
