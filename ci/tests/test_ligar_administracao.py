@@ -29,6 +29,11 @@ def casa(tmp_path, monkeypatch):
     (planos / "00-SINTESE-desenho-final.md").write_text("# Plano")
     monkeypatch.setattr(local, "RAIZ", raiz)
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "dados"))
+    dados = tmp_path / "dados/SitesDoReino/administracao-local"
+    dados.mkdir(parents=True)
+    (dados / "credencial-producao.txt").write_text(
+        "DATABASE_URL=postgres://admin:teste@postgres:5432/admin_db"
+    )
     return tmp_path
 
 
@@ -44,17 +49,19 @@ def test_porta_alheia_nao_encerra_processo(casa, monkeypatch):
 @pytest.mark.parametrize("raiz_anterior", ["atual", "outra-bancada"])
 def test_reexecucao_verifica_paginas_sem_iniciar(casa, monkeypatch, raiz_anterior):
     dados = casa / "dados/SitesDoReino/administracao-local"
-    dados.mkdir(parents=True)
+    dados.mkdir(parents=True, exist_ok=True)
     (dados / "servidor.json").write_text(
         json.dumps(
             {
                 "raiz": str(local.RAIZ) if raiz_anterior == "atual" else raiz_anterior,
                 "token": "teste",
+                "banco": "postgresql-via-ssh",
             }
         )
     )
     monkeypatch.setattr(local, "porta_ocupada", lambda: True)
     monkeypatch.setattr(local, "verificar_paginas", lambda token: [("Plano", token)])
+    monkeypatch.setattr(local, "executar", lambda *args: None)
     if raiz_anterior == "atual":
         assert local.iniciar()[0] == [("Plano", "teste")]
     else:
@@ -101,7 +108,8 @@ def test_http_200_no_login_nao_e_pagina_pronta(monkeypatch):
 
 def test_servidor_morto_informa_log(casa, monkeypatch):
     monkeypatch.setattr(local, "porta_ocupada", lambda: False)
-    monkeypatch.setattr(local, "executar", lambda *a: None)
+    executados = []
+    monkeypatch.setattr(local, "executar", lambda *a: executados.append(a[0]))
 
     class Processo:
         def poll(self):
@@ -110,3 +118,5 @@ def test_servidor_morto_informa_log(casa, monkeypatch):
     monkeypatch.setattr(local.subprocess, "Popen", lambda *a, **k: Processo())
     with pytest.raises(local.FalhaLocal, match="servidor encerrou"):
         local.iniciar()
+    assert ["node", str(local.RAIZ / "painel/gerar_manifesto.js")] in executados
+    assert not any("migrate" in comando for comando in executados)
