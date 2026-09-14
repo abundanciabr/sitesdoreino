@@ -209,11 +209,11 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 ## A IA age, não manda o mantenedor agir
 
-Se a IA tiver ferramenta e acesso para executar uma ação
+Se a IA puder executar uma ação
 (comando, terminal, arquivo, medição), ela executa e entrega o resultado
-pronto (link, tela, saída real). O mantenedor só recebe instrução para o que
+pronto (link, tela ou saída). O mantenedor só recebe instrução para o que
 é exclusivamente dele: credencial, dinheiro, decisão de lei, irreversibilidade,
-ou acesso que só ele tem (a VPS por SSH).
+ou acesso exclusivo (VPS por SSH).
 **Quem faz valer:** julgamento; `ci/padrao_de_trabalho.py` confere o teto.
 
 ## Plano na abertura, contas no fecho
