@@ -22,6 +22,7 @@ ORIGEM = "http://127.0.0.1:8000"
 PAGINAS = {
     "Plano mestre": "plano-mestre/",
     "Documentos": "documentos/",
+    "Docs": "docs/",
     "Biblioteca": "livro/",
     "Reunião": "reuniao/",
 }
@@ -89,7 +90,7 @@ def executar(comando, log, ambiente=None):
 
 
 def iniciar():
-    planos = RAIZ.parent / "sitesdoreino-docs/administracao-local"
+    planos = Path(os.environ.get("ADMIN_PLANOS_DIR", RAIZ.parent / "sitesdoreino-docs/administracao-local"))
     if not (planos / "00-SINTESE-desenho-final.md").is_file():
         raise FalhaLocal(
             f"Os planos não foram encontrados em {planos}. Restaure essa pasta de documentos e execute novamente."
