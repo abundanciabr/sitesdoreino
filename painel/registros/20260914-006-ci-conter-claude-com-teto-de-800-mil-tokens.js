@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-006-ci-conter-claude-com-teto-de-800-mil-tokens",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "ci: conter Claude com teto de 800 mil tokens",
+  detalhe: "Teto local elevado para 800 mil incluindo cache, conforme pedido. Prova instalada permite 358021 e 799999, para em 800000. Historico preservado. CODEOWNERS: ci/ e CLAUDE.md.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1630. Validação local: árvore 71da23d6db8e9f120f36ae5411e49d82701f4bea; commit 206c13ee8f6e0fa4f1ebf7afe5cbb14f2e177b2d; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-402",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
