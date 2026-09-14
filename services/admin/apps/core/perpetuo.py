@@ -99,7 +99,10 @@ def _admin(nome: str) -> dict:
 
 def _endereco_da_porta(porta) -> str:
     if isinstance(porta, dict):
-        return "/admin" + reverse(porta["rota"])
+        endereco = reverse(porta["rota"])
+        if endereco.startswith("/admin/"):
+            return endereco
+        return "/admin" + endereco
     return porta
 
 
