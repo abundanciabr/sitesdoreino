@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-150858-TAR-325-concluida",
+  "tarefa": "TAR-325",
+  "evento": "concluida",
+  "quando": "2026-09-14T15:08:58+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1533; revisao=ec34a21f65449670a35541018318788a4b541006; arvore=551d0b4e92b0ec5781217547e43bb08ed44c5084; head=22296533efba98580a5162f83fea3838718e8f42; merge=11235c0e0ba8dbee543f2d530bd6163ab5d4b050; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34497815763; atestado=atestado aprovado para 22296533efba98580a5162f83fea3838718e8f42; aceite=painel/registros/20260910-048-aceite-mapa-publicado.js",
+  "verificado_em": "2026-09-10"
+}

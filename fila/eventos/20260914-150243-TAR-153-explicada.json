@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-150243-TAR-153-explicada",
+  "tarefa": "TAR-153",
+  "evento": "explicada",
+  "quando": "2026-09-14T15:02:43+00:00",
+  "quem": "maestro",
+  "o_que_e": "Ligar o endereco /cursos no servidor de producao, para a sala de aula responder de verdade na internet.",
+  "o_que_muda": "Trancada ate voce rodar um comando na VPS, o passo H; depois disso este PR de infraestrutura entra sozinho e a pagina de saude do curso passa a responder.",
+  "exemplo": "E como instalar a placa nova antes de ligar a tomada: o eletricista, voce, liga a energia, e so entao o aparelho, o PR, funciona.",
+  "importancia": 55
+}
