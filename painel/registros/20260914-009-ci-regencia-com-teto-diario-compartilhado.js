@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-009-ci-regencia-com-teto-diario-compartilhado",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "ci: regencia com teto diario de 1,6 milhao",
+  detalhe: "Etapas 1-4: vermelho 2/4/2/4; verde 12/24/28/4. Legado sem data entra no dia da migracao. 89 testes e 2 guardas PASS. Copia instalada intacta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1630. Fonte validada: arvore 110903a9b98f023ef8b613cae5b0c364df06f89b; commit e60269ece61e4aee1ad1de0b6ae660293af3d05a; 4 comandos, exit 0. Integracao e instalacao nao verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-402",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
