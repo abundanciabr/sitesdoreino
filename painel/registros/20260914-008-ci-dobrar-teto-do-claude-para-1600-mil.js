@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-008-ci-dobrar-teto-do-claude-para-1600-mil",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "ci: dobrar teto do Claude para 1,6 milhao",
+  detalhe: "Teto instalado: 1600000 com cache. Permite 1599999; para em 1600000. Contagem preservada. 168 testes e 2 mutacoes PASS. CODEOWNERS: ci/ e CLAUDE.md.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1630. Validacao local: arvore 5d52c63159c5840fbf5891cb3c501ea927bda189; commit 0f256f699e83347a3d6e4c4c9bda9bbf27ac0c39; 4 comandos, exit 0. Integracao e publicacao nao verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-402",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
