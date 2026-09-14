@@ -203,7 +203,6 @@ Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
 **Quem faz valer:** julgamento.
 
 ## A IA age, não manda o mantenedor agir
-
 A IA age. Só pede ao mantenedor o que só ele pode dar:
 credencial, dinheiro, lei, irreversibilidade ou acesso exclusivo. **Quem faz valer:** `ci/padrao_de_trabalho.py`.
 
