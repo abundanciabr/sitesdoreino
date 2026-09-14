@@ -214,8 +214,13 @@ VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md
 
 ## Plano na abertura, contas no fecho
 
-Abra com `## Plano` e `- [ ]` por passo. Cada etapa reimprime checklist,
-`Onde estou: passo N de M` e próximo passo. Fecho segue regra 9.
+Abra com `## Plano` e `- [ ]` por passo. **Etapa** significa somente a
+conclusão ou o bloqueio de um passo planejado, não uma chamada de ferramenta,
+uma leitura, uma mensagem automática ou uma nova tentativa do mesmo comando.
+Reimprima o checklist apenas quando uma caixa mudou ou quando surgiu um
+bloqueio; entre esses marcos, continue trabalhando sem copiar o plano.
+Se o gancho já exibiu o plano ou o checklist não mudou, não o repita.
+No fecho, publique uma única prestação de contas conforme a regra 9.
 PRONTO com caixa aberta é contradição; NÃO PRONTO honesto é aceito.
 Leitura, pergunta respondida e acordar de espera não geram dívida.
 
