@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260912-234519-TAR-371-concluida",
+  "tarefa": "TAR-371",
+  "evento": "concluida",
+  "quando": "2026-09-12T23:45:19+00:00",
+  "quem": "agent/ci/trava-de-lei",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1610",
+  "verificado_em": "2026-09-12"
+}

@@ -1,0 +1,13 @@
+{
+  "tipo": "implementacao",
+  "proposta": "ANTIGRAVITY-004",
+  "autor": "codex",
+  "registrado_em": "2026-09-13T00:40:00-03:00",
+  "proposta_sha256": "856c27c65998a66a1ff48d68c6e5acce4161bffe83c265c5a2feba3837cb6986",
+  "prova": "ci/tests/test_leis_sem_mecanismo.py",
+  "prova_sha256": "dd800f32f5bb2c954256fef904081197a5f83985e1756d25a513de86c142dfd5",
+  "resultado": "20 testes e quatro cenas do DoD verdes; censo remoto fail-closed",
+  "minutos_totais": 55,
+  "custo_reais": null,
+  "fonte_custo": ""
+}
