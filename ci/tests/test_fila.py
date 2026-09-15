@@ -1073,11 +1073,14 @@ def test_apagar_o_arquivo_da_tarefa_REPROVA(fila_na_base):
     assert fila.cmd_imutabilidade(fila_na_base, "main") == 1
 
 
-def test_tarefa_nova_passa_livre(fila_na_base):
-    """Criar não é editar — senão o guarda travaria a fila inteira."""
+def test_tarefa_nova_com_responsabilidade_passa(fila_na_base):
+    """Uma tarefa nova com vínculo válido continua aceita pelo portão."""
+    from test_responsabilidades import escrever_registro, registro_completo
+
+    escrever_registro(fila_na_base, registro_completo())
     caminho = fila_na_base / "fila" / "tarefas" / "002-outra.json"
     caminho.write_text(
-        json.dumps(tarefa("002", "outra"), ensure_ascii=False), encoding="utf-8"
+        json.dumps(tarefa("002", "outra", responsabilidade="curso", responsabilidade_obrigatoria=True), ensure_ascii=False), encoding="utf-8"
     )
     _commitar(fila_na_base, "tarefa nova")
     assert fila.conferir_imutabilidade(fila_na_base, "main") == []
