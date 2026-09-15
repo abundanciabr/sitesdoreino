@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-117-curso-criado-mas-inventario-ainda-bloqueia-fase-2",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "O curso foi criado com progressão livre, mas a Fase 2 ainda aguarda a lista corrigida",
+  detalhe: "A tela atual do Admin lista Primeiros Dólares com Roblox com o apelido primeiros-dolares, progressão livre e 0 de 0 aulas. A primeira pendência foi resolvida fora desta sessão.\n\nA busca dirigida no projeto e nas pastas locais não encontrou fonte confiável para os cinco títulos ausentes. O resumo antigo informa 96 conteúdos, a lista disponível soma 91 e o Módulo 4 informa 25 aulas, mas mostra 20. A importação continua parada para não inventar títulos nem gravar uma estrutura incompleta.",
+  autoridade: "sessao",
+  evidencia: "https://meshcraft.top/admin/escola/cursos/",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: true,
+  responde_a: "20260908-061-fase-2-bloqueada-curso-e-inventario",
+  gravidade: "ambar",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "O curso permanece sem módulos e sem aulas para os alunos.",
+  recomendacao: "Fornecer a lista canônica corrigida dos 96 conteúdos, incluindo os cinco títulos ausentes.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();
