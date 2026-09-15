@@ -52,10 +52,14 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "127.0.0.1:8443:8443"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
       - letsencrypt:/letsencrypt
+    environment:
+      PONTE_ALUNOS_TOKEN: ${PONTE_ALUNOS_TOKEN:?defina PONTE_ALUNOS_TOKEN fora do Git}
+      PONTE_CATALOGO_TOKEN: ${PONTE_CATALOGO_TOKEN:?defina PONTE_CATALOGO_TOKEN fora do Git}
     networks: [edge]
 
   postgres:

@@ -52,6 +52,21 @@
 # =============================================================================
 set -eu
 
+ler_de() {
+  chave="$1"
+  valor=$(sed -n "s/^${chave}=//p" env/admin.env | head -n 1)
+  if [ -z "$valor" ]; then
+    echo "ERRO: $chave ausente ou vazio em env/admin.env — NADA foi trocado."
+    exit 1
+  fi
+  printf '%s' "$valor"
+}
+
+PONTE_ALUNOS_TOKEN=$(ler_de ALUNOS_API_TOKEN)
+PONTE_CATALOGO_TOKEN=$(ler_de TOKEN_CATALOGO)
+export PONTE_ALUNOS_TOKEN PONTE_CATALOGO_TOKEN
+trap 'unset PONTE_ALUNOS_TOKEN PONTE_CATALOGO_TOKEN' EXIT
+
 # PRIMEIRA linha, antes ate do `cd`: a partir daqui a VPS executou alguma
 # coisa, e o workflow para de repetir. Se o `cd` abaixo falhar, repetir nao
 # ajudaria mesmo — o diretorio nao aparece por insistencia.
