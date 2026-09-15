@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260915-022626-TAR-430-explicada",
+  "tarefa": "TAR-430",
+  "evento": "explicada",
+  "quando": "2026-09-15T02:26:26+00:00",
+  "quem": "agent/area/plano-unico",
+  "o_que_e": "A lei e o gancho ainda ordenam reimprimir o checklist quando uma caixa muda, multiplicando planos na mesma tarefa.",
+  "o_que_muda": "Plano completo uma vez na abertura; marcos apenas em uma linha; checklist completo no fecho.",
+  "exemplo": "Depois de ler arquivos, aparece só Onde estou: passo 2 de 5. Próximo passo: ..., sem outro Plano.",
+  "importancia": 80
+}
