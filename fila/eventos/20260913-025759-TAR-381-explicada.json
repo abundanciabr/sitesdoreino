@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-025759-TAR-381-explicada",
+  "tarefa": "TAR-381",
+  "evento": "explicada",
+  "quando": "2026-09-13T02:57:59+00:00",
+  "quem": "codex-maestro-dez-por-cento",
+  "o_que_e": "A preparação das tarefas repete leituras e escrita de despachos completos na conversa da Maestro.",
+  "o_que_muda": "O executor prepara os arquivos em lote e a Maestro recebe um resumo para decidir, com origem e pendências conferíveis.",
+  "exemplo": "Sete tarefas existentes geram sete arquivos completos para executar e um resumo curto para a Maestro.",
+  "importancia": 100
+}

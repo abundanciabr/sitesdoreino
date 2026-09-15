@@ -1,0 +1,19 @@
+{
+  "arquivo": "381-reduzir-o-preparo-repetitivo-da-maestro",
+  "id": "TAR-381",
+  "titulo": "Reduzir o preparo repetitivo da Maestro",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Comando em lote com sete despachos preservados, resumo medido, testes vermelho para verde, prova dos guardas e PR com recibo. A meta de 90% de custo e tempo reais exige medicao comparavel posterior e nao pode ser declarada pelo tamanho do resumo.",
+  "despacho": "# Brief compilado\n\nobjetivo: Preparar despachos em lote para reduzir releitura e escrita da Maestro, com resumo medido e arquivos completos para o executor; aferir meta de custo e tempo de 10% sem alegar resultado nao medido\ntipo: arquitetura\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nteto_de_contexto: 180000\nmotivo_do_modelo: muda contrato, fronteira ou desenho de produto; erro aqui custa retrabalho amplo\ncelula: ci\n\n## Arquivos-alvo\n- ci/preparar_regencia.py\n- ci/tests/test_preparar_regencia.py\n- RUNBOOK-LOTES.md\n- docs/despachos/maestro-enxuta.md\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n## Limite\n- Não leia documentação ampla sem gatilho do erro, caminho ou contrato.\n- Ao passar do teto de contexto, devolva handoff curto e pare a expansão.",
+  "origem": "Pedido direto do mantenedor ao Codex em 12/09/2026 para reduzir custo e tempo da Maestro a no maximo 10% do atual",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
