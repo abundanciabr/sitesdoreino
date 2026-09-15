@@ -21,13 +21,15 @@ montado à mão prova o que eu acredito, não o que o site faz.
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlparse
+
 import httpx
 import pytest
 from django.db import IntegrityError, transaction
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
-
 from apps.forum.models import Area, Mensagem, Pessoa, Topico
+from apps.core.views import ERRO_TITULO_CURTO
 
 pytestmark = pytest.mark.django_db
 
@@ -480,6 +482,138 @@ def test_a_tela_explica_a_matricula_para_quem_so_tem_cadastro(
     ).content.decode()
     assert "quem publica é a escola" in corpo
     assert "csrfmiddlewaretoken" not in corpo
+
+
+# ======================================================================
+# 7. A PORTA ÚNICA — o endereço que a escola cola no grupo
+# ======================================================================
+def test_a_porta_unica_manda_entrar_quem_nao_esta_logado(client, env, monkeypatch):
+    sem_login(monkeypatch)
+    resposta = client.get(reverse("abrir_conversa"), headers={"cookie": COOKIE})
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert parse_qs(urlparse(resposta["Location"]).query)["next"] == [
+        reverse("abrir_conversa")
+    ]
+
+
+def test_a_porta_unica_manda_entrar_quem_nao_tem_cookie(client):
+    resposta = client.get(reverse("abrir_conversa"))
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith("/entrar/google?next=")
+
+
+def test_o_aluno_ve_so_as_areas_onde_escreve(client, env, monkeypatch, sala, avisos):
+    como_aluno(monkeypatch)
+    corpo = client.get(
+        reverse("abrir_conversa"), headers={"cookie": COOKIE}
+    ).content.decode()
+    assert f'name="area" value="{sala.slug}"' in corpo
+    assert f'name="area" value="{avisos.slug}"' not in corpo
+    assert "csrfmiddlewaretoken" in corpo
+
+
+def test_quem_so_tem_cadastro_ve_o_recado_da_matricula(client, env, monkeypatch):
+    como_cadastrado(monkeypatch)
+    corpo = client.get(
+        reverse("abrir_conversa"), headers={"cookie": COOKIE}
+    ).content.decode()
+    assert "Escrever é para quem está matriculado" in corpo
+    assert "csrfmiddlewaretoken" not in corpo
+    assert 'name="area"' not in corpo
+
+
+def test_o_aluno_abre_a_conversa_pela_porta_unica(client, env, monkeypatch, sala):
+    como_aluno(monkeypatch)
+    resposta = client.post(
+        reverse("abrir_conversa"),
+        {
+            "area": sala.slug,
+            "titulo": "Minha dúvida sobre textura",
+            "texto": "A textura estica no braço.",
+        },
+        headers={"cookie": COOKIE},
+    )
+    assert resposta.status_code == 302
+    assert "#m" in resposta["Location"]
+    topico = Topico.objects.get()
+    assert topico.area == sala
+    assert topico.mensagens.get().texto == "A textura estica no braço."
+    assert topico.mensagens.get().busca
+
+
+def test_a_porta_unica_recusa_area_onde_o_aluno_nao_escreve(
+    client, env, monkeypatch, avisos
+):
+    como_aluno(monkeypatch)
+    resposta = client.post(
+        reverse("abrir_conversa"),
+        {"area": avisos.slug, "titulo": "Minha dúvida", "texto": "Não pode."},
+        headers={"cookie": COOKIE},
+    )
+    assert resposta.status_code == 403
+    assert Topico.objects.count() == 0
+
+
+def test_a_porta_unica_recusa_o_post_de_quem_nao_esta_logado(
+    client, env, monkeypatch, sala
+):
+    sem_login(monkeypatch)
+    resposta = client.post(
+        reverse("abrir_conversa"),
+        {"area": sala.slug, "titulo": "Minha dúvida", "texto": "Não pode."},
+        headers={"cookie": COOKIE},
+    )
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert Topico.objects.count() == 0
+
+
+def test_a_porta_unica_devolve_o_texto_quando_o_titulo_e_curto(
+    client, env, monkeypatch, sala
+):
+    como_aluno(monkeypatch)
+    resposta = client.post(
+        reverse("abrir_conversa"),
+        {"area": sala.slug, "titulo": "abc", "texto": "texto que fica na tela"},
+        headers={"cookie": COOKIE},
+    )
+    corpo = resposta.content.decode()
+    assert resposta.status_code == 400
+    assert "texto que fica na tela" in corpo
+    assert f'name="area" value="{sala.slug}" required checked' in corpo
+    assert ERRO_TITULO_CURTO in corpo
+    assert Topico.objects.count() == 0
+
+
+@override_settings(MIDDLEWARE=[])
+def test_a_porta_unica_atravessa_o_csrf_de_verdade(env, monkeypatch, sala):
+    como_aluno(monkeypatch)
+    navegador = Client(enforce_csrf_checks=True)
+    navegador.cookies["meshcraft_sessao"] = "um-cookie-opaco-qualquer"
+    sem_token = navegador.post(
+        reverse("abrir_conversa"),
+        {
+            "area": sala.slug,
+            "titulo": "Sem token CSRF",
+            "texto": "Não deveria publicar.",
+        },
+    )
+    assert sem_token.status_code == 403
+    assert Topico.objects.count() == 0
+    tela = navegador.get(reverse("abrir_conversa"))
+    corpo = tela.content.decode()
+    token = corpo.split('name="csrfmiddlewaretoken" value="', 1)[1].split('"', 1)[0]
+    resposta = navegador.post(
+        reverse("abrir_conversa"),
+        {
+            "area": sala.slug,
+            "titulo": "Agora vai pela porta",
+            "texto": "O formulário passou pelo CSRF.",
+            "csrfmiddlewaretoken": token,
+        },
+    )
+    assert resposta.status_code == 302
 
 
 def test_o_aluno_ve_o_formulario_na_area_dele(client, env, monkeypatch, sala):

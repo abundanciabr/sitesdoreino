@@ -12,6 +12,7 @@ from apps.core.moderacao import (
 from apps.core.views import (
     healthz,
     home,
+    abrir_conversa,
     li_tudo,
     novo_topico,
     responder,
@@ -53,6 +54,7 @@ urlpatterns = [
     # executa ao passear pela pagina. O cadeado de quem pode escrever mora em
     # `apps/core/permissoes.py`, nunca aqui.
     path("a/<slug:slug>/novo", novo_topico, name="novo_topico"),
+    path("novo", abrir_conversa, name="abrir_conversa"),
     path("t/<int:topico_id>/responder", responder, name="responder"),
     # "Ja vi tudo" — avanca a marca-d'agua da area. POST porque aqui a escrita e
     # o PEDIDO da pessoa, e nao consequencia de ela ter lido.

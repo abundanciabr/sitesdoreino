@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-031001-TAR-390-explicada",
+  "tarefa": "TAR-390",
+  "evento": "explicada",
+  "quando": "2026-09-13T03:10:01+00:00",
+  "quem": "revisão independente do PR 1613, comentário GitHub 5650571476, 13/09/2026",
+  "o_que_e": "A revisão encontrou um desvio no POST anônimo, repetição de recado e lacunas nos testes de login e CSRF.",
+  "o_que_muda": "A correção faz a porta única seguir os mesmos guardas das views vizinhas e prova os dois caminhos de segurança por mutação.",
+  "exemplo": "Ao publicar sem login ou sem token CSRF, a requisição é recusada pelo caminho protegido e nenhum tópico é criado.",
+  "importancia": 70
+}

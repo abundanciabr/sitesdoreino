@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-023712-TAR-388-explicada",
+  "tarefa": "TAR-388",
+  "evento": "explicada",
+  "quando": "2026-09-13T02:37:12+00:00",
+  "quem": "pedido do mantenedor à maestro, 12/09/2026, chat",
+  "o_que_e": "Hoje o aluno só abre uma conversa entrando primeiro numa área do fórum e rolando até o fim da página dela. Não existe um endereço que a escola possa mandar no grupo dizendo: pergunte aqui.",
+  "o_que_muda": "Passa a existir /forum/novo: a escola cola esse endereço no grupo, o aluno entra, escolhe a área e publica a dúvida. Quem não está logado é levado ao login e volta para lá.",
+  "exemplo": "Um aluno manda no WhatsApp: minha textura estica no braço. O professor responde só com o link meshcraft.top/forum/novo. O aluno abre, escolhe Dúvidas, cola a pergunta e publica; a resposta fica no fórum para todo mundo.",
+  "importancia": 70
+}

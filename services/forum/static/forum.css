@@ -133,6 +133,16 @@ h2 { font-size: 18px; margin: 0 0 4px; }
   padding: 10px 12px;
 }
 .escrever textarea { resize: vertical; min-height: 110px; }
+.areas-para-escrever { border: 0; padding: 0; margin: 0 0 18px; }
+.areas-para-escrever legend { font-weight: 600; padding: 0; }
+.areas-para-escrever label {
+  display: block;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.areas-para-escrever input { width: auto; margin-right: 8px; }
+.areas-para-escrever strong { display: inline; }
+.areas-para-escrever span { display: block; margin: 3px 0 0 26px; color: var(--tinta-fraca); }
 .escrever input:focus,
 .escrever textarea:focus {
   outline: 2px solid var(--destaque);

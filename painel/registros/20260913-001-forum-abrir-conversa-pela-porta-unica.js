@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-001-forum-abrir-conversa-pela-porta-unica",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "forum: abrir conversa pela porta única",
+  detalhe: "Entrega a porta única, com login, filtro de áreas, CSRF e publicação reaproveitada; mapa e fila acompanham.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1613. Validação local: árvore 6bf382d6fdd3b07c36bc77a97868f839873a98c8; commit 725d8ca89f7ed000d84c7267986d17a02c09514e; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-388",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
