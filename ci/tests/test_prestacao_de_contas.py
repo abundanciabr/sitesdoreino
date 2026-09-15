@@ -555,9 +555,28 @@ def test_o_aviso_do_plano_sai_para_pedido_do_mantenedor():
     assert "PLANO PRIMEIRO" in proc.stdout
     assert "- [ ]" in proc.stdout
     assert "Veredito" in proc.stdout
-    # O aviso define etapa como marco real e impede cópia entre marcos.
+    # O aviso define etapa como marco real.
     assert "concluir ou bloquear um passo planejado" in proc.stdout
-    assert "se não mudou, não o copie" in proc.stdout
+
+
+def test_o_aviso_troca_reimpressao_por_uma_linha_de_progresso():
+    # guarda: ci/prestacao_de_contas.py:951
+    proc = _rodar(["--plano"], {"prompt": "conserte o login do site"})
+    assert proc.returncode == 0, proc
+    assert "um único ## Plano" in proc.stdout
+    assert "Onde estou: passo N de M. Próximo passo: ..." in proc.stdout
+    assert "sem repetir título nem checklist" in proc.stdout
+    assert "mesmo quando uma caixa mudou ou surgiu bloqueio" in proc.stdout
+    assert "No fecho: checklist final" in proc.stdout
+
+
+def test_a_lei_e_a_decisao_nao_mandam_reimprimir_a_cada_etapa():
+    for caminho in ("CLAUDE.md", "docs/decisoes/DECISAO-claude-md-so-lei.md"):
+        texto = (RAIZ_DO_REPO / caminho).read_text(encoding="utf-8")
+        assert "Onde estou: passo N de M. Próximo passo: ..." in texto, caminho
+        assert "sem repetir título nem checklist" in texto, caminho
+        assert "Reimprima o checklist apenas quando" not in texto, caminho
+        assert "inteiro reimpresso e marcado" not in texto, caminho
 
 
 def test_o_aviso_do_plano_cala_no_acordar_da_maquina():

@@ -930,10 +930,12 @@ def modo_contas(entrada: dict) -> int:
     return 2
 
 
-AVISO_DO_PLANO = """📋 PLANO PRIMEIRO: comece mudanças com ## Plano e - [ ] por passo.
+AVISO_DO_PLANO = """📋 PLANO PRIMEIRO: abra a tarefa com um único ## Plano e - [ ] por passo.
 Etapa é só concluir ou bloquear um passo planejado, não uma chamada de ferramenta,
-leitura, mensagem automática ou nova tentativa. Reimprima o checklist apenas
-quando uma caixa mudou ou surgiu bloqueio; se não mudou, não o copie.
+leitura, mensagem automática ou nova tentativa. Ao concluir ou bloquear uma etapa,
+publique só: Onde estou: passo N de M. Próximo passo: ...
+sem repetir título nem checklist, mesmo quando uma caixa mudou ou surgiu bloqueio.
+Continuação da mesma tarefa não abre outro plano.
 No fecho: checklist final, O que mudou, O que foi verificado, Pendências e
 Veredito PRONTO/NÃO PRONTO com motivo. PRONTO não admite caixinha aberta.
 Fatos sob demanda: python ci/prestacao_de_contas.py --molde-com-fatos
