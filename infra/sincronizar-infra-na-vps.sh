@@ -73,6 +73,26 @@ mv -f infra.new/sites.json sites.json.new
 mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
 rmdir infra.new
 
+# ── 0.1) OS DOIS VALORES QUE O GATEWAY PRECISA, E MAIS NENHUM ──────────────
+#
+# Os roteadores da entrada privada injetam um Bearer por celula, e o valor vem
+# do env REAL desta VPS. Este e o unico ponto do script que le `env/`, ele le
+# DUAS chaves nominais e nunca imprime o valor: `--quiet` no compose existe
+# exatamente para nenhum segredo interpolado cair no log do Actions.
+#
+# Sem esta leitura, a interpolacao do compose receberia vazio, o `:?` derrubaria
+# a validacao e NADA seria trocado. E fail-closed de proposito: gateway sem
+# token e melhor que gateway aberto.
+for CHAVE in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR=$(grep -m1 "^$CHAVE=" env/admin.env | cut -d= -f2-) || VALOR=""
+  if [ -z "$VALOR" ]; then
+    echo "ERRO: $CHAVE ausente em /opt/plataforma/env/admin.env — a entrada privada nao pode nascer sem ele. NADA foi trocado."
+    exit 1
+  fi
+  export "$CHAVE=$VALOR"
+done
+unset VALOR
+
 # ── 1) VALIDAR ANTES DE TROCAR. O -f aponta para o .new, mas o
 # project dir continua /opt/plataforma: a interpolação roda contra
 # o .env e os env/*.env REAIS, que só existem aqui. --quiet para
@@ -230,4 +250,52 @@ echo "OK: sites do sites.json cadastrados/convergidos e provados."
 # workflow estava com o nome errado (script_file em vez de script_path): a acao
 # avisou "Unexpected input", ignorou o script, conectou, nao rodou nada e saiu
 # com sucesso. O workflow EXIGE esta linha na saida; sem ela, reprova.
+# ── 6) SONDA DA ENTRADA PRIVADA. Container `running` NAO prova que a rota
+# existe: a casa ja pagou por confundir "subiu" com "funciona". Aqui cada uma
+# das quatro leituras tem de responder 200, e o que nao esta na lista tem de
+# receber 404 do proprio Traefik. Falha aqui cai no trap e a plataforma volta
+# sozinha para a configuracao anterior.
+#
+# A sonda roda POR DENTRO da VPS, contra 127.0.0.1:8443, que e onde a porta
+# esta presa. Nenhum token aparece: quem injeta o Bearer e o middleware.
+echo "── sonda da entrada privada (127.0.0.1:8443) ──"
+PERMITIDOS="/alunos/api/alunos/pre-matriculas?status=aguardando
+/alunos/api/alunos/pre-matriculas?status=recusada
+/alunos/api/alunos/matriculas
+/catalogo/api/catalogo/produtos"
+printf '%s
+' "$PERMITIDOS" | while IFS= read -r CAMINHO; do
+  [ -n "$CAMINHO" ] || continue
+  CODIGO=000
+  for _ in 1 2 3 4 5 6; do
+    CODIGO=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8443$CAMINHO") || CODIGO=000
+    if [ "$CODIGO" = "200" ]; then break; fi
+    sleep 5
+  done
+  if [ "$CODIGO" != "200" ]; then
+    echo "ERRO: a entrada privada respondeu $CODIGO em $CAMINHO (esperava 200)."
+    exit 1
+  fi
+  echo "OK: 200 em $CAMINHO"
+done || exit 1
+
+recusar() {
+  # $1 e o rotulo que aparece no log; do $2 em diante vao os argumentos do curl.
+  ROTULO=$1
+  shift
+  CODIGO=$(curl -s -o /dev/null -w '%{http_code}' "$@") || CODIGO=000
+  if [ "$CODIGO" != "404" ]; then
+    echo "ERRO: a entrada privada respondeu $CODIGO em $ROTULO — o que nao esta na lista tem de receber 404."
+    exit 1
+  fi
+  echo "OK: 404 em $ROTULO"
+}
+
+recusar "POST na lista de matriculas" -X POST "http://127.0.0.1:8443/alunos/api/alunos/matriculas"
+recusar "caminho vizinho de matriculas" "http://127.0.0.1:8443/alunos/api/alunos/matriculas/1"
+recusar "pre-matriculas sem o status permitido" "http://127.0.0.1:8443/alunos/api/alunos/pre-matriculas"
+recusar "pre-matriculas com status fora da lista" "http://127.0.0.1:8443/alunos/api/alunos/pre-matriculas?status=ativa"
+recusar "escrita no catalogo" -X POST "http://127.0.0.1:8443/catalogo/api/catalogo/produtos"
+echo "OK: entrada privada com as quatro leituras servindo e o resto recusado."
+
 echo "SINCRONIZACAO-CONCLUIDA: $STAMP"
