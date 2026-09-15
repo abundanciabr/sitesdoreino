@@ -97,7 +97,7 @@ DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infr
 # `checks` NÃO ESTÁ AQUI, e a tentação de pôr é forte — a peça 6 diz "checks de
 # PR não se esperam". Ela fala do LAÇO (atualizar → esperar → a main andou →
 # repetir, as oito voltas da armadilhas/156), não da única espera que o portão
-# EXIGE: `ci/mergear.py --pousar` recusa com check em andamento (ERROR), e o
+# EXIGE: `ci/mergear.py` recusa com check em andamento (ERROR), e o
 # `CLAUDE.md` manda "espere os checks concluírem" ANTES de pedir pouso. Proibir
 # `--checks` tornaria o rito da casa impossível de cumprir. Medido ao vivo no
 # PR #801, que quase entrou com esse defeito: 90s (p50) de espera obrigatória.
@@ -864,7 +864,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="o plano Z — e 'continuar esperando' não é opção")
     p.add_argument("--pr", help="o PR do --ao-estourar pousar (se o alvo não for PR)")
     p.add_argument("--e-pousar", dest="e_pousar", action="store_true",
-                   help="ao ficar verde, passa pelo portão (ci/mergear.py --pousar) "
+                   help="ao ficar verde, passa pelo portão (ci/mergear.py) "
                         "e pede pouso sozinho — só com --checks")
     p.add_argument("--so-desfecho", dest="so_desfecho", action="store_true",
                    help="stdout recebe SÓ o desfecho (o robô acorda uma vez); "
@@ -946,7 +946,7 @@ def main(argv: list[str] | None = None) -> int:
             f"esperar {rotulo} é a espera que a lei manda NÃO existir "
             "(RITOS.md §2 peça 6: \"a melhor espera é a que não acontece\"). "
             f"{ESPERAS_QUE_NAO_DEVIAM_EXISTIR[chave]}.\n\n"
-            f"  O caminho:  python ci/mergear.py {pr_do_pouso} --pousar\n"
+            f"  O caminho:  python ci/mergear.py {pr_do_pouso}\n"
             "              …e SIGA para a próxima tarefa.\n\n"
             "Medido em 31/08/2026, nos 40 PRs do dia: a fila entrega em 8,4 min "
             "(mediana) e uma passagem da pista leva 34s. Esperar aqui não "
@@ -1068,7 +1068,7 @@ SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDIC
 
 
 def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
-    """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N --pousar`).
+    """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N`).
 
     Chamado só no verde, de propósito: vermelho, estouro e medição impossível
     saem antes, pelos caminhos de sempre. O portão continua dono da decisão —
@@ -1089,14 +1089,14 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     for volta in range(1, VOLTAS_DE_REMEDICAO + 1):
         try:
             proc = subprocess.run(
-                [*_mergear(), pr, "--pousar"],
+                [*_mergear(), pr],
                 capture_output=True, text=True, timeout=300,
                 encoding="utf-8", errors="replace",
             )
         except (OSError, subprocess.TimeoutExpired) as erro:
             voz.desfecho(
                 f"{linha_verde} 🔴 não consegui rodar o portão para o PR {pr} "
-                f"({erro}). Faça na mão: python ci/mergear.py {pr} --pousar".strip()
+                f"({erro}). Faça na mão: python ci/mergear.py {pr}".strip()
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")
