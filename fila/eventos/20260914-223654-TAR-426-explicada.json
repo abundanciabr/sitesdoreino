@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-223654-TAR-426-explicada",
+  "tarefa": "TAR-426",
+  "evento": "explicada",
+  "quando": "2026-09-14T22:36:54+00:00",
+  "quem": "Pedido urgente do mantenedor em 14/09/2026, Brief 2, fatia launcher autorizada pela maestro nesta conversa.",
+  "o_que_e": "O painel do computador usa uma cópia local vazia dos dados.",
+  "o_que_muda": "O mantenedor abre o painel por duplo clique e usa o banco real por conexão privada verificada.",
+  "exemplo": "Abrir Painel, Caixa e Escola no computador com o banco de produção, sem digitar comando nem publicar porta nova.",
+  "importancia": 100
+}

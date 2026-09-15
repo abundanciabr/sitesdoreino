@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-029-admin-abrir-painel-local-com-banco-real-por-tunel-ssh",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "admin: abrir painel local com banco real por túnel SSH",
+  detalhe: "O painel local abriu sete páginas com o banco real. O túnel foi conferido sem migrar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1663. Validação local: árvore 93f852a2304db1af063055ff1a44e57602f2dc0c; commit 8271ae716f47b4aa7a3b8e0ef04d3bb8f330281a; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-426",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
