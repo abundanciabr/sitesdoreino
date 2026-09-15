@@ -46,8 +46,12 @@
 # baixo sem nada acusar.
 #
 # QUEM PRECISA DISTO ANTES: o domínio remetente tem de estar verificado no Brevo,
-# com os registros de DNS (SPF, DKIM e o TXT de verificação) já no Cloudflare.
-# Sem eles o Brevo aceita a conexão e o Gmail joga a carta em spam — este script
+# com os registros de DNS (o TXT `brevo-code`, os dois CNAME de DKIM e o TXT
+# `_dmarc`) já no provedor de DNS do domínio. Esse provedor, para o meshcraft.top,
+# é a HOSTINGER, e NÃO o Cloudflare: os nameservers são pixel.dns-parking.com e
+# byte.dns-parking.com, medidos em 06/09/2026. Até essa data este arquivo dizia
+# Cloudflare e mandava o mantenedor procurar o domínio numa conta que nunca
+# existiu. Sem os registros o Brevo aceita a conexão e o Gmail joga a carta em spam — este script
 # não tem como conferir isso da VPS, e diz isso em voz alta no fim.
 # =============================================================================
 
@@ -294,7 +298,8 @@ fi
 
 echo "O que este script NÃO consegue conferir, e por isso digo em voz alta:"
 echo "  - se o domínio $SMTP_FROM está verificado no Brevo;"
-echo "  - se os registros de DNS (SPF, DKIM, DMARC) já estão no Cloudflare."
+echo "  - se os registros de DNS (brevo-code, DKIM e _dmarc) estão no provedor de"
+echo "    DNS do domínio, que para o meshcraft.top é a HOSTINGER, não o Cloudflare."
 echo "Sem eles o Brevo aceita a carta e o Gmail a joga em spam. A prova final é"
 echo "abrir o e-mail recebido e ver SPF e DKIM com 'pass' no cabeçalho."
 echo
