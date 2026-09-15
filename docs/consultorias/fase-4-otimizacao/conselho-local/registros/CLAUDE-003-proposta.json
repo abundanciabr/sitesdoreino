@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-003",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "CLAUDE.md tem 11.893 bytes e ci/padrao_de_trabalho.py:95 define TETOS_EM_BYTES={'CLAUDE.md': 12_000}. Sobram 107 bytes, 0,9% do teto. Nenhuma lei nova cabe, inclusive a da CLAUDE-004, que existe justamente para impedir que leis sumam.",
+  "titulo": "Abrir folga no teto do CLAUDE.md movendo a historia das leis para docs/decisoes",
+  "baseline": "Contra origin/main=22a9bd26. `git show origin/main:CLAUDE.md | wc -c` devolve 11893. `git show origin/main:ci/padrao_de_trabalho.py | grep -n 'TETOS_EM_BYTES' -A3` mostra o teto de 12000 para CLAUDE.md. Folga = 107 bytes.",
+  "aceite": "Depois: `wc -c CLAUDE.md` com folga de pelo menos 1.500 bytes, E `grep -c '^## ' CLAUDE.md` continua devolvendo 13, provando que a folga veio de mover HISTORIA (o porque) para docs/decisoes/, nunca de apagar lei. `python ci/padrao_de_trabalho.py` verde. Sem regressao: um diff lado a lado mostrando que cada uma das 13 secoes segue com regra, comando e mecanismo."
+}
