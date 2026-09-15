@@ -17,7 +17,10 @@
 #
 # MEDIDO em 15/09/2026, com a imagem `traefik:v3.4` de verdade, fora da VPS,
 # antes desta entrega existir:
-#   - `{{ env }}` funciona no provedor de arquivo, e o Bearer chega injetado;
+#   - a injecao por variavel de ambiente funciona no provedor de arquivo,
+#     e o Bearer chega injetado. NAO escreva a sintaxe do template neste
+#     comentario: o Traefik renderiza o texto CRU, e uma chamada invalida
+#     aqui recusa o arquivo inteiro e derruba a borda publica;
 #   - o cliente NÃO consegue trocar o `Authorization`: mandando um Bearer
 #     próprio, o que chega do outro lado continua sendo o do middleware;
 #   - `Method` + `Path` exato: 200 no permitido, 404 em `POST` no MESMO

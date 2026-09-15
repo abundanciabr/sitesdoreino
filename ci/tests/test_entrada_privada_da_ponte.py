@@ -127,3 +127,41 @@ def test_a_sonda_exige_404_no_que_esta_fora_da_lista():
     assert "-X POST" in texto and '"404"' in texto, (
         "sem provar a recusa, uma lista positiva quebrada passa despercebida."
     )
+
+
+# ---------------------------------------------------------------------------
+# O Traefik lê o arquivo ANTES do YAML: os testes acima, não.
+#
+# Em 15/09/2026 a publicação da fase 2 derrubou o roteamento público inteiro,
+# com 404 em TODOS os hosts, e nenhum dos testes acima viu. O motivo é que eles
+# medem o resultado de `yaml.safe_load`, que descarta comentários, enquanto o
+# provedor de arquivo do Traefik renderiza o texto CRU como template Go antes
+# de interpretar o YAML. Um `{{ ... }}` dentro de um comentário é ação de
+# template para ele. O que derrubou foi uma linha que documentava o ensaio:
+#
+#     #   - `{{ env }}` funciona no provedor de arquivo, ...
+#
+# `env` sem argumento reprova o template, o arquivo inteiro é recusado, e o
+# provedor `file` cai junto com ele, levando `plataforma.yml` e a raiz do site.
+# Medido com `traefik:v3.4` de verdade: com essa linha, ZERO roteadores sobem;
+# sem ela, `funil@file` e os demais sobem.
+# ---------------------------------------------------------------------------
+ACAO_DE_TEMPLATE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
+INJECAO_DE_VARIAVEL = re.compile(r'^\s*env\s+"[A-Z0-9_]+"\s*$')
+PASTA_DINAMICA = RAIZ / "infra" / "traefik" / "dynamic"
+
+
+def test_todo_template_dos_arquivos_dinamicos_e_uma_injecao_de_variavel():
+    """Qualquer `{{ ... }}`, mesmo em comentário, derruba o Traefik se for inválido."""
+    fora_do_contrato = [
+        (arquivo.name, acao.strip())
+        for arquivo in sorted(PASTA_DINAMICA.glob("*.yml"))
+        for acao in ACAO_DE_TEMPLATE.findall(arquivo.read_text(encoding="utf-8"))
+        if not INJECAO_DE_VARIAVEL.match(acao)
+    ]
+    assert not fora_do_contrato, (
+        "Estes `{{ ... }}` não são uma injeção `env \"NOME\"` e o Traefik vai "
+        "recusar o arquivo inteiro, derrubando a borda pública com 404 em todos "
+        f"os hosts: {fora_do_contrato}. Se está num comentário, reescreva o "
+        "comentário sem as chaves duplas."
+    )
