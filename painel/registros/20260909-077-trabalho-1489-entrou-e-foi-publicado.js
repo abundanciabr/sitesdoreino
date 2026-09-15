@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-077-trabalho-1489-entrou-e-foi-publicado",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "O trabalho 1489 entrou no projeto e foi publicado",
+  detalhe: "A pista integrou o conteúdo revisado ce329bce02f486739f2e4fa3603b94153cad78de no commit 0bf0418aaaec339e5d290cdc87006a8b516dc5f1. A publicação 34370467527 terminou com sucesso nas quatro etapas: detectar, conferir o portão, publicar a área administrativa e publicar seus dados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1489",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
