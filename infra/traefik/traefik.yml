@@ -14,6 +14,13 @@ entryPoints:
   websecure:
     address: ":443"
 
+  # ENTRADA PRIVADA da ponte com o painel localhost. Ela NÃO é pública: o
+  # compose publica esta porta só em 127.0.0.1, e quem chega vem pelo túnel
+  # SSH da fase 3. As operações permitidas estão em
+  # `dynamic/entrada-privada.yml`, e são quatro leituras.
+  privada:
+    address: ":8443"
+
 providers:
   file:
     directory: /etc/traefik/dynamic

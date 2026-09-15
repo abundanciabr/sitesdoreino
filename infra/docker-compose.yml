@@ -52,10 +52,20 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # A entrada privada fica presa ao loopback do HOST: nenhuma outra máquina
+      # da rede alcança 8443, nem por IPv4 nem por IPv6. Quem entra vem pelo
+      # túnel SSH da fase 3, que desemboca aqui dentro da própria VPS.
+      - "127.0.0.1:8443:8443"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
       - letsencrypt:/letsencrypt
+    # O gateway recebe DOIS valores, e só eles: os tokens que os roteadores da
+    # entrada privada injetam. Ele nunca recebe o `admin.env` inteiro. Quem os
+    # exporta é `sincronizar-infra-na-vps.sh`, lendo o env real da VPS.
+    environment:
+      ALUNOS_API_TOKEN: ${ALUNOS_API_TOKEN:?defina ALUNOS_API_TOKEN em env/admin.env}
+      TOKEN_CATALOGO: ${TOKEN_CATALOGO:?defina TOKEN_CATALOGO em env/admin.env}
     networks: [edge]
 
   postgres:
