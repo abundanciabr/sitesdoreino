@@ -5,6 +5,27 @@
   <h1>Plano mestre</h1>
   <p class="subtitulo">Documentos locais lidos de <code>{{ pasta|default:"pasta não configurada" }}</code>.</p>
 
+  <section class="cartao continuidade-local" aria-label="Continuidade do painel local">
+    <span class="rotulo">Continuidade do painel local</span>
+    {% if continuidade.erro %}
+      <div class="valor"><b>Não consegui ler o estado.</b></div>
+      <p class="nota">{{ continuidade.erro }}</p>
+    {% elif not continuidade.existe %}
+      <div class="valor"><b>Nenhuma sessão rodou ainda.</b></div>
+      <p class="nota">{{ continuidade.mensagem }}</p>
+      <p class="nota">Vigília: {% if continuidade.vigilia_ligada %}ligada{% else %}desligada{% endif %}.</p>
+    {% else %}
+      <div class="valor"><b>{{ continuidade.tarefa_corrente }}</b></div>
+      <p class="nota">
+        Última sessão: {{ continuidade.ultima_sessao|default:"ainda sem horário" }}.
+        Sessões rodadas: {{ continuidade.sessoes_rodadas }}.
+        Bloqueios esperando você: {{ continuidade.bloqueios }}.
+        Vigília: {% if continuidade.vigilia_ligada %}ligada{% else %}desligada{% endif %}.
+      </p>
+      {% if continuidade.ultimo_handoff %}<p class="nota">{{ continuidade.ultimo_handoff }}</p>{% endif %}
+    {% endif %}
+  </section>
+
   {% if recado %}
     <div class="aviso">
       <b>Não há documentos para listar.</b>

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-222908-TAR-425-submetida",
+  "tarefa": "TAR-425",
+  "evento": "submetida",
+  "quando": "2026-09-14T22:29:08+00:00",
+  "quem": "agent/fila/completar-cancelamentos-admin",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1664",
+  "revisao": "4a4c38e99d0b5b3b8242d74dae294602940a67a4",
+  "arvore": "af4493f0cc5e9ca6be0550f204848b96ccb427aa"
+}
