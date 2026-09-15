@@ -88,7 +88,10 @@ mora lá deixa de classificar: ele lista.
 - A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
 - O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, integração automática pelos checks obrigatórios, com mandato CODEOWNERS e contrato congelado preservados.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
-- Pedido colado no Antigravity vira proposta medida contra `origin/main`, devolvida à maestro; ele não executa.
+
+Canal direto maestro-executor, sem o mantenedor levar e trazer texto. A maestro fala direto com o executor pelo comentário no PR aberto (gh pr comment), sem o mantenedor colar nada: pede correção, registra lei acordada, cobra prova, e o executor lê e responde no mesmo PR. Esse canal só existe para PR já aberto, nunca para abrir tarefa nova (isso continua exigindo fila.py criar, decisão e mandato do mantenedor).
+
+Canal automático da sentinela (Antigravity), decidido pelo mantenedor em 14/09/2026. O Antigravity tem schedule (cron próprio), run_command (PowerShell local, inclusive gh), escrita de arquivo fora de sessão interativa e leitura/escrita em qualquer pasta. A casa usa, por decisão do mantenedor, só a caixa de correio e o gh, sem cron: o Antigravity não acorda sozinho, mas quando alguém abre a sessão dele, ele lê a caixa e pode comentar em PR direto pelo gh, sem o mantenedor colar comando. A caixa mora em docs/consultorias/fase-4-otimizacao/conselho-local/correio/ (fora do Git, já criada, com para-antigravity/ e para-maestro/), um arquivo novo por mensagem, nunca editar mensagem alheia, nome AAAAMMDD-HHMMSS-remetente-assunto.md. Ele continua nunca editando código, lei, despacho, evento ou registro; proposta e verificação continuam sendo os únicos artefatos que ele grava como decisão. A regra 1 (medir origin/main, nunca a pasta local) continua valendo sem exceção.
 
 ## O primeiro lote, em 12/09/2026
 

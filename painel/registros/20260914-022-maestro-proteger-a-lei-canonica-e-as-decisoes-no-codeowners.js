@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-022-maestro-proteger-a-lei-canonica-e-as-decisoes-no-codeowners",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "maestro: proteger a lei canônica e as decisões no CODEOWNERS",
+  detalhe: "As duas regras exigem mandato para lei e decisões. Suíte: 17 testes verdes; mutação comprovada. Falta mandato do dono na descrição.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1659. Validação local: árvore d3f221cb7d32991d1e2831da30e16fd64c42eaac; commit b94e0e2a1705edb173c4e17c4cdd8d54750673eb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-417",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "maestro",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260915-035852-TAR-431-explicada",
+  "tarefa": "TAR-431",
+  "evento": "explicada",
+  "quando": "2026-09-15T03:58:52+00:00",
+  "quem": "despacho-continuidade-painel-localhost-20260915",
+  "o_que_e": "Hoje o painel local só avança enquanto o mantenedor está na cadeira colando blocos em novas sessões.",
+  "o_que_muda": "O Windows passa a acordar um motor local, retomar pelo estado anterior, parar pelo freio de mão e mostrar no plano mestre o que andou.",
+  "exemplo": "Depois de uma noite fora, o mantenedor abre o plano mestre e vê em cinco segundos qual sessão rodou, em que tarefa parou e se a vigília está ligada.",
+  "importancia": 95
+}

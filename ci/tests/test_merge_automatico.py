@@ -89,6 +89,16 @@ def test_codeowners_sem_mandato_recusa(monkeypatch, repo, pr):
     assert conferir(monkeypatch, repo, pr).estado is Estado.FAIL
 
 
+@pytest.mark.parametrize("caminho", ["CLAUDE.md", "docs/decisoes/DECISAO-exemplo.md"])
+def test_lei_e_decisoes_sem_mandato_recusam(pr, caminho):
+    # guarda: ci/mergear.py:907
+    pr["files"] = [{"path": caminho}]
+    pr["author"]["login"] = "abundanciabr"
+    resultado = mergear.checar_mandato(RAIZ, pr)
+    assert resultado.estado is Estado.FAIL
+    assert resultado.resumo == f"falta mandato do dono para {caminho}"
+
+
 def test_mandato_do_dono_cobre_caminho(monkeypatch, repo, pr):
     pr["files"] = [{"path": "ci/exemplo.py"}]
     pr["body"] = (
