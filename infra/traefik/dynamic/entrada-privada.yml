@@ -1,0 +1,46 @@
+http:
+  middlewares:
+    ponte-alunos:
+      headers:
+        customRequestHeaders:
+          Authorization: "Bearer {{ env \"PONTE_ALUNOS_TOKEN\" }}"
+    ponte-catalogo:
+      headers:
+        customRequestHeaders:
+          Authorization: "Bearer {{ env \"PONTE_CATALOGO_TOKEN\" }}"
+    catalogo-prefixo:
+      stripPrefix:
+        prefixes:
+          - /catalogo
+
+  routers:
+    ponte-alunos-aguardando:
+      entryPoints: [privada]
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/pre-matriculas`) && Query(`status`, `aguardando`)"
+      service: alunos
+      middlewares: [ponte-alunos]
+    ponte-alunos-recusada:
+      entryPoints: [privada]
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/pre-matriculas`) && Query(`status`, `recusada`)"
+      service: alunos
+      middlewares: [ponte-alunos]
+    ponte-alunos-matriculas:
+      entryPoints: [privada]
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/matriculas`)"
+      service: alunos
+      middlewares: [ponte-alunos]
+    ponte-catalogo-produtos:
+      entryPoints: [privada]
+      rule: "Method(`GET`) && Path(`/catalogo/api/catalogo/produtos`)"
+      service: catalogo
+      middlewares: [ponte-catalogo, catalogo-prefixo]
+
+  services:
+    alunos:
+      loadBalancer:
+        servers:
+          - url: http://alunos:8000
+    catalogo:
+      loadBalancer:
+        servers:
+          - url: http://catalogo:8000

@@ -13,6 +13,8 @@ entryPoints:
           scheme: https
   websecure:
     address: ":443"
+  privada:
+    address: ":8443"
 
 providers:
   file:
