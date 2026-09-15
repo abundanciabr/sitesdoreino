@@ -96,6 +96,41 @@ cp -a traefik "traefik.bak-$STAMP"
 if [ -f sites.json ]; then cp -a sites.json "sites.json.bak-$STAMP"; fi
 echo "Backup: docker-compose.yml.bak-$STAMP e traefik.bak-$STAMP"
 
+# ── 2.1) A VOLTA ATRAS, ARMADA ANTES DE QUALQUER TROCA ──────────────────────
+#
+# Ate 15/09/2026 este script IMPRIMIA o caminho de volta e nao o aplicava, com
+# a frase "RESTAURACAO (voce, na VPS)". O pressuposto era que alguem com chave
+# SSH leria o log e digitaria quatro comandos. O mantenedor nao usa terminal e
+# o agente nao tem chave, entao uma troca ruim deixava as portas 80 e 443 de
+# TODA a plataforma fora do ar por tempo indeterminado, porque o mesmo Traefik
+# serve a borda publica inteira.
+#
+# Agora a volta acontece sozinha. TROCADO so vira 1 depois que os arquivos em
+# uso mudaram: falha ANTES disso nao restaura nada, porque nada foi trocado, e
+# restaurar por cima de um estado intacto seria estrago inventado.
+TROCADO=0
+
+restaurar_o_que_estava_no_ar() {
+  # TROCADO=0 na PRIMEIRA linha: se a propria restauracao falhar, o trap nao
+  # entra de novo e o laco nao existe.
+  TROCADO=0
+  echo "VOLTA ATRAS AUTOMATICA: a troca deu errado, devolvendo o que estava no ar."
+  cp -a "docker-compose.yml.bak-$STAMP" docker-compose.yml
+  rm -rf traefik
+  cp -a "traefik.bak-$STAMP" traefik
+  if [ -f "sites.json.bak-$STAMP" ]; then cp -a "sites.json.bak-$STAMP" sites.json; fi
+  docker compose up -d
+  docker compose up -d --force-recreate traefik
+  echo "── docker compose ps depois da volta atras ──"
+  docker compose ps
+  echo "VOLTA ATRAS CONCLUIDA: a plataforma esta com a configuracao anterior."
+}
+
+# O trap cobre tambem a falha que ninguem previu, e nao so os dois `if` abaixo.
+# `set -e` derruba o script em qualquer comando ruim, e sem trap essa queda
+# passaria direto pela volta atras.
+trap 'CODIGO=$?; if [ "$CODIGO" -ne 0 ] && [ "$TROCADO" = 1 ]; then restaurar_o_que_estava_no_ar; fi; exit $CODIGO' EXIT
+
 # ── 3) TROCA + APLICAÇÃO. `up -d` é idempotente: só recria o que
 # mudou no compose. Sem `docker compose pull`: sincronizar infra
 # não pode, de carona, trocar a versão das células — imagem nova
@@ -105,6 +140,7 @@ rm -rf traefik
 mv traefik.new traefik
 mv -f sites.json.new sites.json
 mv -f sincronizar_sites.py.new sincronizar_sites.py
+TROCADO=1
 mkdir -p admin-dados
 touch admin-dados/.permissao-deploy-teste
 rm -f admin-dados/.permissao-deploy-teste
@@ -143,11 +179,6 @@ if [ "$ESPERADOS" != "$RODANDO" ]; then
     echo "── logs (tail 60) dos serviços não-rodando:$FALHOS ──"
     docker compose logs --tail 60 $FALHOS
   fi
-  echo "RESTAURAÇÃO (você, na VPS — agente não tem chave, Lei 5):"
-  echo "  cd /opt/plataforma"
-  echo "  cp -a docker-compose.yml.bak-$STAMP docker-compose.yml"
-  echo "  rm -rf traefik && cp -a traefik.bak-$STAMP traefik"
-  echo "  docker compose up -d && docker compose up -d --force-recreate traefik"
   exit 1
 fi
 echo "OK: infra sincronizada — todos os serviços declarados estão rodando."
