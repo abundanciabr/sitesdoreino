@@ -88,6 +88,14 @@ if ! python3 -m json.tool sites.json.new >/dev/null; then
   exit 1
 fi
 
+# ── 1.1) A PASTA DE DADOS DO ADMIN, e a permissão de escrever nela, ANTES de
+# qualquer troca. Ela ficava no meio do passo 3, depois dos `mv`: uma pasta sem
+# permissão só era descoberta com os arquivos já trocados. Aqui a descoberta
+# acontece enquanto ainda não há nada para desfazer.
+mkdir -p admin-dados
+touch admin-dados/.permissao-deploy-teste
+rm -f admin-dados/.permissao-deploy-teste
+
 # ── 2) BACKUP DATADO do que está em uso, antes de sobrescrever. ──
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 cp -a docker-compose.yml "docker-compose.yml.bak-$STAMP"
@@ -141,9 +149,6 @@ mv traefik.new traefik
 mv -f sites.json.new sites.json
 mv -f sincronizar_sites.py.new sincronizar_sites.py
 TROCADO=1
-mkdir -p admin-dados
-touch admin-dados/.permissao-deploy-teste
-rm -f admin-dados/.permissao-deploy-teste
 docker compose up -d
 
 # O traefik monta ./traefik por bind mount, e bind mount prende o
