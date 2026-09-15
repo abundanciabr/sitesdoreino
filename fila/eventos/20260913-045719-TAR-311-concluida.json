@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-045719-TAR-311-concluida",
+  "tarefa": "TAR-311",
+  "evento": "concluida",
+  "quando": "2026-09-13T04:57:19+00:00",
+  "quem": "agent/ci/medicao-esforco-vereditos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1618",
+  "verificado_em": "2026-09-13"
+}
