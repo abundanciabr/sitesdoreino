@@ -1,0 +1,18 @@
+{
+  "arquivo": "304-veredito-de-falha-externa-sem-acao-clara",
+  "id": "TAR-304",
+  "titulo": "Veredito de falha externa sem ação clara",
+  "toca": [
+    "ci",
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pytest da prestação de contas passando com caso vermelho e verde",
+  "despacho": "Altere ci/prestacao_de_contas.py para recusar veredito NÃO PRONTO por falha externa, infraestrutura ou provedor quando a própria linha não disser a ação operacional para o mantenedor. Cubra com teste vermelho para a frase escura e teste verde para a forma acionável. Registre a armadilha nova e valide com pytest, índice de armadilhas e painel.",
+  "origem": "pedido do mantenedor em 2026-09-09",
+  "criada_em": "2026-09-09"
+}

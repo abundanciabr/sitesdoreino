@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-181122-TAR-304-explicada",
+  "tarefa": "TAR-304",
+  "evento": "explicada",
+  "quando": "2026-09-09T18:11:22+00:00",
+  "quem": "pedido do mantenedor em 2026-09-09",
+  "o_que_e": "Quando uma tarefa termina não pronta por problema externo, o veredito pode ficar técnico demais e não dizer se você precisa agir.",
+  "o_que_muda": "O veredito passa a dizer a ação concreta, para você não ficar no escuro sobre infraestrutura, espera ou reexecução.",
+  "exemplo": "Em vez de só dizer falha externa de infraestrutura, a resposta precisa dizer: você não mexe na infraestrutura agora; quando o provedor estabilizar, rode o check do navegador.",
+  "importancia": 90
+}
