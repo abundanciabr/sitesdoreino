@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-020-maestro-registrar-canal-automatico-da-triade",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "maestro: registrar canal automático da tríade",
+  detalhe: "Os dois parágrafos do canal da tríade foram incorporados e resumidos na lei canônica. O teto real e seus 54 testes passaram. A integração aguarda mandato escrito pelo mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1658. Validação local: árvore 940baced665156cd057a114ca123228e38ed5be6; commit 567c3a432679dda3129f3602453fd8644c8bd008; 7 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-416",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "maestro",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

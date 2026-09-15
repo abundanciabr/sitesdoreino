@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-215836-TAR-424-submetida",
+  "tarefa": "TAR-424",
+  "evento": "submetida",
+  "quando": "2026-09-14T21:58:36+00:00",
+  "quem": "agent/fila/encadear-telemetria-ponte-vps",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1661",
+  "revisao": "413e18f168d845981656c37b2eacadf7e9f7bb7e",
+  "arvore": "fb21053e79065ee1ee96a2e0df720a1fb42b18ba"
+}

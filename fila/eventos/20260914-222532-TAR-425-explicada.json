@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-222532-TAR-425-explicada",
+  "tarefa": "TAR-425",
+  "evento": "explicada",
+  "quando": "2026-09-14T22:25:32+00:00",
+  "quem": "Maestro: identidade de escrituração do pedido explícito do mantenedor de 14/09/2026, autorizada para completar a entrega.",
+  "o_que_e": "Quatro cancelamentos já preparados precisam entrar no histórico compartilhado.",
+  "o_que_muda": "Completa o reset confirmado pelo mantenedor e registra seu motivo.",
+  "exemplo": "As quinze tarefas aparecem canceladas, com onze eventos anteriores preservados e quatro acrescentados.",
+  "importancia": 99
+}
