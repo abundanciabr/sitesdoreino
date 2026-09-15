@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260915-003-admin-continuidade-do-painel-local",
+  tipo: "entrega",
+  quando: "2026-09-15",
+  titulo: "admin: continuidade do painel local",
+  detalhe: "Motor local com freio, trava única, vigília de 20 minutos e cartão no plano mestre. Guardas focais, fila e travessão passaram; admin completa passou localmente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1670. Validação local: árvore 0712f4c17aac39eb9e62dde1e97f2d8d0b3af098; commit bd08aa64b5edfa8b9e628b000c0aefe2adacadb9; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-15",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-431",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

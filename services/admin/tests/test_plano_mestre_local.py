@@ -1,5 +1,6 @@
 """O plano mestre local da administração."""
 
+import json
 import os
 from pathlib import Path
 
@@ -119,6 +120,38 @@ def test_pasta_ausente_ou_vazia_diz_o_caminho(monkeypatch, tmp_path):
     html = _dentro().get(reverse("plano_mestre")).content.decode()
     assert str(ausente) in html
     assert "Crie a pasta ou ajuste o caminho no lançador local." in html
+
+
+@respx.mock
+def test_cartao_da_continuidade_abre_vazio_e_diz_como_ligar(tmp_path):
+    html = _dentro().get(reverse("plano_mestre")).content.decode()
+    assert "Continuidade do painel local" in html
+    assert "Nenhuma sessão rodou ainda." in html
+    assert "administracao-local\\ligar-a-vigilia.cmd" in html
+    assert "Vigília: desligada." in html
+
+
+@respx.mock
+def test_cartao_da_continuidade_mostra_estado_da_ultima_sessao(tmp_path, monkeypatch):
+    monkeypatch.setenv("ADMIN_VIGILIA_LIGADA", "1")
+    (tmp_path / "estado-da-continuidade.json").write_text(
+        json.dumps(
+            {
+                "ultima_sessao": "2026-09-15T10:20:30+00:00",
+                "sessoes_rodadas": 2,
+                "tarefa_corrente": "TAR-316",
+                "bloqueios": [{"tarefa": "TAR-319"}],
+                "ultimo_handoff": "primeira deixou TAR-316 medido",
+            }
+        ),
+        encoding="utf-8",
+    )
+    html = _dentro().get(reverse("plano_mestre")).content.decode()
+    assert "TAR-316" in html
+    assert "Sessões rodadas: 2." in html
+    assert "Bloqueios esperando você: 1." in html
+    assert "Vigília: ligada." in html
+    assert "primeira deixou TAR-316 medido" in html
 
 
 @respx.mock
