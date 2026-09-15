@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260914-220106-TAR-316-cancelada",
+  "tarefa": "TAR-316",
+  "evento": "cancelada",
+  "quando": "2026-09-14T22:01:06+00:00",
+  "quem": "maestro",
+  "detalhe": "Pedido do mantenedor em 14/09/2026: reset da fila para a nova arquitetura de admin 100% localhost. Cancelada mesmo sem relacao direta com o pedido, por decisao explicita dele apos aviso."
+}
