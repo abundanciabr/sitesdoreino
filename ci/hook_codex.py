@@ -44,13 +44,16 @@ def decidir(dados: dict) -> int:
         return 0
     if evento == "SessionStart":
         from economia_da_fabrica import auditar_fichas
+        from radio_gancho import entregar
         falhas = auditar_fichas(CI.parent)
         mensagens = ["Auditoria Codex: " + ("; ".join(falhas) if falhas else "fichas nativas conferidas.")]
         mensagens.append("O aviso de preço da conversa ainda não mede transcripts Codex.")
+        mensagens.append(entregar(dados, "codex"))
         return executar("muralha_pasta_compartilhada.py", dados, "--aviso",
                         contexto="\n".join(mensagens) + "\n")
     if evento == "UserPromptSubmit":
-        return executar("prestacao_de_contas.py", dados, "--plano")
+        from radio_gancho import entregar
+        return executar("prestacao_de_contas.py", dados, "--plano", contexto=entregar(dados, "codex"))
     if evento == "Stop":
         return executar("prestacao_de_contas.py", dados, "--contas")
     if evento == "PostToolUse":

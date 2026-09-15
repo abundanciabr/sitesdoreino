@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  quando: "2026-09-13",
+  autoridade: "sessao",
+  verificado_em: "2026-09-13",
+  area: "admin",
+  arquivo: "20260913-070-radio-aguarda-confianca-nos-ganchos",
+  tipo: "pendencia",
+  titulo: "Revisar a confiança dos ganchos para provar a entrega do rádio",
+  detalhe: "Parte A preservada no rascunho 1640. Passaram 1994 testes de admin e 197 testes de CLI, ganchos e abertura; a entrega direta recebe a mensagem escrita pela tela. A sessão Codex nativa 01a09d25-e45d-70d2-9535-5c93795d16d3 respondeu SEM RECADO. A abertura interativa mostrou Hooks need review: 4 hooks are new or changed; hooks não executam sem confiança. Não houve aprovação de confiança nem alteração das permissões da máquina. A prova nativa obrigatória continua sem passar e a Parte B não começou. Depois da decisão, repetir a prova automática; não substituir por chamada manual do entregar.",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1640; Codex 0.153.4, abertura interativa em 2026-09-13 mostrou Hooks need review.",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  porque_so_voce: "Confiar nos ganchos autoriza comandos fora da sandbox e é decisão de acesso do mantenedor.",
+  proximo_passo: "A maestro deve encaminhar a revisão dos quatro ganchos no Codex aberto na bancada wt-admin-radio-entrega-sessoes, antes de repetir a prova.",
+  se_eu_nao_decidir: "O Codex não executa os ganchos; a Parte A não cumpre a prova obrigatória e a Parte B permanece parada.",
+  recomendacao: "Revisar os comandos mostrados pelo Codex e autorizar somente os ganchos da casa que o mantenedor reconhecer.",
+  reversivel: true,
+  impacto: "medio"
+}); })();

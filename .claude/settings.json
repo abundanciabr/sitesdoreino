@@ -20,6 +20,11 @@
             "type": "command",
             "command": "python -c \"import os,sys,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','prestacao_de_contas.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" --plano",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "for p in \"$LOCALAPPDATA/Programs/Python/Python312/python.exe\" \"$USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe\" /usr/bin/python3; do if [ -x \"$p\" ]; then c=$(\"$p\" -X utf8 -c \"import os,runpy,sys;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','radio_gancho.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" claude 2>/dev/null) && [ -n \"$c\" ] && printf '%s\\n' \"$c\"; break; fi; done; exit 0",
+            "timeout": 10
           }
         ]
       }
@@ -52,6 +57,11 @@
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/padrao_de_trabalho.py\" --aviso",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "for p in \"$LOCALAPPDATA/Programs/Python/Python312/python.exe\" \"$USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe\" /usr/bin/python3; do if [ -x \"$p\" ]; then c=$(\"$p\" -X utf8 -c \"import os,runpy,sys;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','radio_gancho.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" claude 2>/dev/null) && [ -n \"$c\" ] && printf '%s\\n' \"$c\"; break; fi; done; exit 0",
+            "timeout": 10
           }
         ]
       }

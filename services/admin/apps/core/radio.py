@@ -11,10 +11,13 @@ from django.conf import settings
 from django.db import DatabaseError, transaction
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .models import MensagemDoRadio
+from apps.auditoria.models import Registro
+
+from .models import LeituraDoRadio, MensagemDoRadio
 
 _TAREFA = re.compile(r"^TAR-[0-9]{3}$")
 
@@ -76,6 +79,10 @@ def _radio_api_autorizada(request):
         return _erro("o corpo não é JSON válido")
     if not isinstance(dados, dict):
         return _erro("o corpo precisa ser um objeto JSON")
+    if dados.get("acao") == "entregar":
+        return _entregar(request, dados)
+    if dados.get("acao") == "confirmar":
+        return _confirmar(request, dados)
     autor = dados.get("autor")
     tipo = dados.get("tipo", "recado")
     texto = dados.get("texto")
@@ -113,6 +120,81 @@ def _radio_api_autorizada(request):
             "não consegui guardar a mensagem; confira o banco e tente de novo", 503
         )
     return JsonResponse(_mensagem_json(mensagem), status=201 if criada else 200)
+
+
+def _entregar(request, dados):
+    sessao = dados.get("sessao")
+    autor = dados.get("autor")
+    if not isinstance(sessao, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", sessao):
+        return _erro("sessão inválida; use a identidade gerada na abertura")
+    if autor not in {"claude", "codex", "antigravity"}:
+        return _erro("autor inválido; use claude, codex ou antigravity")
+    try:
+        with transaction.atomic():
+            LeituraDoRadio.objects.bulk_create(
+                [LeituraDoRadio(sessao=sessao, autor=autor)], ignore_conflicts=True
+            )
+            leitura = LeituraDoRadio.objects.select_for_update().get(sessao=sessao)
+            if leitura.autor != autor:
+                return _erro(
+                    "essa sessão pertence a outra IA; confira a identidade", 409
+                )
+            itens = [
+                _mensagem_json(mensagem)
+                for mensagem in MensagemDoRadio.objects.filter(
+                    sequencia__gt=leitura.ultima_sequencia
+                ).order_by("sequencia")
+            ]
+            return JsonResponse(
+                {"mensagens": itens, "ultima_sequencia": leitura.ultima_sequencia}
+            )
+    except DatabaseError:
+        return _erro(
+            "não consegui registrar a leitura; confira o banco e tente de novo", 503
+        )
+
+
+def _confirmar(request, dados):
+    sessao = dados.get("sessao")
+    autor = dados.get("autor")
+    sequencia = dados.get("sequencia")
+    if not isinstance(sessao, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", sessao):
+        return _erro("sessão inválida; use a identidade gerada na abertura")
+    if autor not in {"claude", "codex", "antigravity"}:
+        return _erro("autor inválido; use claude, codex ou antigravity")
+    if type(sequencia) is not int or sequencia < 0:
+        return _erro("sequência inválida; confirme a sequência recebida")
+    try:
+        with transaction.atomic():
+            leitura = LeituraDoRadio.objects.select_for_update().get(sessao=sessao)
+            if leitura.autor != autor:
+                return _erro(
+                    "essa sessão pertence a outra IA; confira a identidade", 409
+                )
+            if sequencia > leitura.ultima_sequencia:
+                leitura.ultima_sequencia = sequencia
+                leitura.quando = timezone.now()
+                leitura.save(update_fields=["ultima_sequencia", "quando"])
+                admin = getattr(request, "admin", None) or {}
+                Registro.objects.create(
+                    quem_email=admin.get("email") or "",
+                    quem_id=admin.get("id") or "",
+                    acao=Registro.EDITAR,
+                    alvo=sessao,
+                    desfecho=Registro.OK,
+                    detalhe=f"Rádio: {autor}, entrega até {sequencia}.",
+                )
+            return JsonResponse(
+                {"confirmado": sequencia, "ultima_sequencia": leitura.ultima_sequencia}
+            )
+    except LeituraDoRadio.DoesNotExist:
+        return _erro(
+            "sessão ainda não recebeu uma entrega; tente entregar novamente", 409
+        )
+    except DatabaseError:
+        return _erro(
+            "não consegui confirmar a leitura; confira o banco e tente de novo", 503
+        )
 
 
 @csrf_exempt

@@ -109,12 +109,16 @@ def _chamar(metodo, dados=None, desde=0):
             resultado = json.load(resposta)
         if not isinstance(resultado, dict):
             raise ValueError("resposta não é objeto")
-        if metodo == "GET":
+        acao = (dados or {}).get("acao")
+        if metodo == "GET" or acao == "entregar":
             if (
                 not isinstance(resultado.get("mensagens"), list)
                 or type(resultado.get("ultima_sequencia")) is not int
             ):
                 raise ValueError("leitura sem mensagens ou sequência")
+        elif acao == "confirmar":
+            if type(resultado.get("confirmado")) is not int:
+                raise ValueError("confirmação sem sequência")
         elif type(resultado.get("sequencia")) is not int or any(
             resultado.get(chave, "recado" if chave == "tipo" else None) != valor
             for chave, valor in dados.items()
@@ -138,7 +142,7 @@ def _chamar(metodo, dados=None, desde=0):
 class _Argumentos(argparse.ArgumentParser):
     def error(self, message):
         raise RuntimeError(
-            "Comando inválido. Use dizer TEXTO --autor AUTOR --tipo TIPO, ou ler --desde NUMERO; consulte --help."
+            "Comando inválido. Use dizer TEXTO --autor AUTOR --tipo TIPO, ler --desde NUMERO ou entregar --sessao IDENTIDADE --autor AUTOR; consulte --help."
         )
 
 
@@ -152,9 +156,32 @@ def main(argv=None):
     dizer.add_argument("--tarefa")
     ler = comandos.add_parser("ler")
     ler.add_argument("--desde", type=int, default=0)
+    entregar = comandos.add_parser("entregar")
+    entregar.add_argument("--sessao", required=True)
+    entregar.add_argument("--autor", required=True)
     try:
         args = parser.parse_args(argv)
-        if args.comando == "dizer":
+        if args.comando == "entregar":
+            autor = "claude" if args.autor == "maestro" else args.autor
+            if autor not in {"claude", "codex", "antigravity"}:
+                raise RuntimeError("Autor inválido. Use maestro, codex ou antigravity.")
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.sessao):
+                raise RuntimeError("Sessão inválida. Use a identidade gerada na abertura.")
+            resultado = _chamar("POST", {"acao": "entregar", "sessao": args.sessao, "autor": autor})
+            mensagens = resultado["mensagens"]
+            linhas = [f"[Rádio {m['sequencia']} | {m['autor']} | {m['tipo']}] {m['texto']}" for m in mensagens]
+            if linhas:
+                print("\n".join(linhas))
+                _chamar(
+                    "POST",
+                    {
+                        "acao": "confirmar",
+                        "sessao": args.sessao,
+                        "autor": autor,
+                        "sequencia": mensagens[-1]["sequencia"],
+                    },
+                )
+        elif args.comando == "dizer":
             if args.autor not in AUTORES:
                 raise RuntimeError("Autor inválido. Use " + ", ".join(AUTORES) + ".")
             if args.tipo not in TIPOS:

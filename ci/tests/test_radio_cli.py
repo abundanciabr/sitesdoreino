@@ -10,6 +10,37 @@ radio = importlib.util.module_from_spec(_ESPECIFICACAO)
 _ESPECIFICACAO.loader.exec_module(radio)
 
 
+def test_entregar_imprime_recado_novo_em_texto_puro(monkeypatch, capsys):
+    enviados = []
+    def chamar(metodo, dados):
+        enviados.append((metodo, dados))
+        if dados.get("acao") == "confirmar":
+            return {"confirmado": dados["sequencia"], "ultima_sequencia": dados["sequencia"]}
+        return {"mensagens": [{"sequencia": 12, "autor": "mantenedor", "tipo": "recado", "texto": "Confira o pedido"}], "ultima_sequencia": 12}
+    monkeypatch.setattr(radio, "_chamar", chamar)
+    assert radio.main(["entregar", "--sessao", "sessao-um", "--autor", "codex"]) == 0
+    assert enviados == [
+        ("POST", {"acao": "entregar", "sessao": "sessao-um", "autor": "codex"}),
+        ("POST", {"acao": "confirmar", "sessao": "sessao-um", "autor": "codex", "sequencia": 12}),
+    ]
+    assert capsys.readouterr().out == "[Rádio 12 | mantenedor | recado] Confira o pedido\n"
+
+
+def test_timeout_depois_do_post_nao_confirma_a_entrega(monkeypatch, capsys):
+    chamadas = []
+
+    def chamar(metodo, dados):
+        chamadas.append(dados)
+        if dados["acao"] == "confirmar":
+            raise RuntimeError("tempo esgotado")
+        return {"mensagens": [{"sequencia": 12, "autor": "mantenedor", "tipo": "recado", "texto": "Retentar"}], "ultima_sequencia": 0}
+
+    monkeypatch.setattr(radio, "_chamar", chamar)
+    assert radio.main(["entregar", "--sessao", "sessao-um", "--autor", "codex"]) == 2
+    assert [dados["acao"] for dados in chamadas] == ["entregar", "confirmar"]
+    assert "tempo esgotado" in capsys.readouterr().err
+
+
 class Resposta:
     def __enter__(self):
         return self
