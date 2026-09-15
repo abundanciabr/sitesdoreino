@@ -1,0 +1,20 @@
+{
+  "arquivo": "428-preparar-o-processo-de-leitura-antes-de-retirar-a-administra",
+  "id": "TAR-428",
+  "titulo": "Preparar o processo de leitura antes de retirar a administração da VPS",
+  "toca": [
+    "admin",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Imagem separada com rotas fechadas, HTTP e mutação aprovados, publicada pelo pipeline sem trocar serviços.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Pré-requisito da TAR-427: URLconf fechado docs/mapa/consulta autenticada, configuração e Dockerfile somente leitura e publicação antecipada da imagem. Mandato do mantenedor de 14/09/2026 para services/admin e .github/workflows/deploy-celula.yml.",
+  "origem": "Pré-requisito técnico da TAR-427: publicar imagem antes de trocar compose, conforme Brief 2 de 14/09/2026.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

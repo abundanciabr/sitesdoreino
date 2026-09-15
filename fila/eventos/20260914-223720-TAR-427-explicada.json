@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-223720-TAR-427-explicada",
+  "tarefa": "TAR-427",
+  "evento": "explicada",
+  "quando": "2026-09-14T22:37:20+00:00",
+  "quem": "Pedido explícito do mantenedor em 14/09/2026, Brief 2 e delegação urgente da regência.",
+  "o_que_e": "A administração e duas áreas públicas compartilham o mesmo serviço na hospedagem.",
+  "o_que_muda": "A administração passa ao computador do mantenedor e os visitantes continuam lendo as áreas públicas.",
+  "exemplo": "O visitante abre documentos enquanto o mantenedor usa a administração apenas no computador dele.",
+  "importancia": 100
+}
