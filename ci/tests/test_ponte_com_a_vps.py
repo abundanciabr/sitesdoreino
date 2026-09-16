@@ -16,6 +16,7 @@ def test_provisionador_restringe_ponte_a_uma_entrada_local():
     assert "AllowAgentForwarding no" in texto
     assert "PermitTunnel no" in texto
     assert "ForceCommand /usr/bin/false" in texto
+    assert "Match all" in texto
     assert "PasswordAuthentication no" in texto
     assert "sshd -t" in texto
     assert "systemctl reload sshd" in texto

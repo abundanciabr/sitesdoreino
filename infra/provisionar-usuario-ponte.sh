@@ -33,6 +33,7 @@ Match User ponte
     AllowAgentForwarding no
     PermitTunnel no
     ForceCommand /usr/bin/false
+Match all
 EOF
 printf 'no-agent-forwarding,no-X11-forwarding,no-pty,no-user-rc,%s\n' "$CHAVE" > "$TEMP_KEYS"
 
