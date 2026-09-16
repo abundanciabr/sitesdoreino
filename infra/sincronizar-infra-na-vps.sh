@@ -71,7 +71,15 @@ mv -f infra.new/docker-compose.yml docker-compose.yml.new
 mv infra.new/traefik traefik.new
 mv -f infra.new/sites.json sites.json.new
 mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
+mv -f infra.new/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
+mv -f infra.new/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
 rmdir infra.new
+
+# O usuário da ponte precisa nascer antes da troca da infraestrutura. Este
+# binário é instalado uma vez por root em /usr/local/sbin e não é controlável
+# por deploy. Ele valida o sshd, guarda os arquivos atuais e só recarrega depois
+# de instalar a configuração.
+sudo -n /usr/local/sbin/provisionar-usuario-ponte
 
 # ── 0.1) OS DOIS VALORES QUE O GATEWAY PRECISA, E MAIS NENHUM ──────────────
 #
