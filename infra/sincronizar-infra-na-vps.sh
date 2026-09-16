@@ -59,38 +59,6 @@ echo "SINCRONIZACAO-INICIADA: $(date -u +%Y%m%dT%H%M%SZ)"
 
 cd /opt/plataforma
 
-# ── A PONTE, ANTES DE QUALQUER TROCA. ───────────────────────────────────
-#
-# Reconciliar a conta `ponte` e a primeira coisa que acontece de proposito:
-# aqui nada EM USO foi tocado ainda (`TROCADO` nem existe), entao uma falha
-# nesta altura deixa a VPS exatamente como estava — que e a regra 2 do brief da
-# TAR-419, "erro de sintaxe para o lote ali, sem recarregar nada".
-#
-# O provisionador NAO e este arquivo nem viaja com ele: e uma copia congelada,
-# pertencente ao root, que o mantenedor instalou uma vez com
-# `infra/instalar-provisionador-da-ponte.sh`. A esteira entra como `deploy`,
-# que nao e root, e so pode executar aquele caminho fixo, sem argumentos, pela
-# regra estreita de sudo que o instalador escreveu. Assim a esteira mantem a
-# ponte sozinha sem que o repositorio ganhe um caminho de root irrestrito na
-# VPS: um PR futuro nao muda o que roda como root.
-#
-# SEM O INSTALADOR RODADO, A SINCRONIZACAO SEGUE NORMAL. A ponte e um recurso
-# a mais, nao um pre-requisito do Traefik nem do compose; derrubar a entrega da
-# infraestrutura inteira porque a ponte ainda nao foi ligada seria trocar um
-# recurso que falta por uma plataforma desatualizada. O log diz a linha exata.
-#
-# COM o instalador rodado, uma falha AQUI reprova o run: o provisionador desfaz
-# sozinho o que tiver mexido, e um defeito no sshd tem de ser visto, nao
-# engolido.
-PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
-if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
-  sudo -n "$PROVISIONADOR_DA_PONTE"
-else
-  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
-  echo "       Para ligar, no console root da VPS, uma linha, uma vez so:"
-  echo "       curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh || echo \"PAROU. Se a linha acima disse 404, este roteiro ainda nao chegou na main: espere o PR da TAR-419 pousar e repita esta mesma linha.\""
-fi
-
 # ── 0) staging → caminhos temporários. Nada EM USO muda aqui. ──
 #
 # `rm -rf traefik.new` antes do `mv` nao e zelo: `mv origem destino` com o
@@ -103,7 +71,45 @@ mv -f infra.new/docker-compose.yml docker-compose.yml.new
 mv infra.new/traefik traefik.new
 mv -f infra.new/sites.json sites.json.new
 mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
+mv -f infra.new/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
+mv -f infra.new/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
 rmdir infra.new
+
+# ── A PONTE, ANTES DE QUALQUER TROCA, E ELA NAO SEGURA A INFRAESTRUTURA ────
+#
+# A conta `ponte` e reconciliada aqui de proposito: nada EM USO mudou ainda
+# (`TROCADO` nem existe), entao uma falha nesta altura deixa a VPS exatamente
+# como estava — que e a regra 2 do brief da TAR-419, "erro de sintaxe para o
+# lote ali, sem recarregar nada".
+#
+# O que roda como root NAO e o arquivo que acabou de chegar por SCP: e a copia
+# congelada em /usr/local/sbin, pertencente ao root, que o mantenedor instalou
+# uma vez com `infra/instalar-provisionador-usuario-ponte.sh`. A esteira entra
+# como `deploy`, que nao e root, e so pode executar aquele caminho fixo, sem
+# argumentos, pela regra estreita de sudo que o instalador escreveu.
+#
+# O `if` NAO E ZELO, E CONSERTO DE UMA QUEDA MEDIDA. Ate 16/09/2026 esta linha
+# era um `sudo -n` incondicional. Sob `set -eu`, e depois de a sentinela
+# `SINCRONIZACAO-INICIADA` ja ter saido (o que desliga a repeticao por
+# desenho), numa VPS que ainda nao tinha a regra de sudo ela devolveu
+# `sudo: a password is required` e derrubou a sincronizacao inteira: run
+# 35047777635 do `deploy-infra`, vermelho nas tres tentativas, com o compose e
+# o Traefik NAO sincronizados por causa de um recurso que nem tinha sido ligado
+# ainda. A ponte e um recurso a mais, nao pre-requisito do Traefik; faltar a
+# ponte nao pode custar uma plataforma desatualizada. Sem o instalador rodado,
+# o log diz a linha exata e a sincronizacao segue.
+#
+# COM o instalador rodado, uma falha AQUI reprova o run: o provisionador desfaz
+# sozinho o que tiver mexido, e defeito no sshd tem de ser visto, nao engolido.
+PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
+if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
+  sudo -n "$PROVISIONADOR_DA_PONTE"
+else
+  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
+  echo "       Os dois roteiros acabaram de chegar aqui. Para ligar a ponte, no"
+  echo "       console root da VPS, uma linha, uma vez so:"
+  echo "       bash /opt/plataforma/instalar-provisionador-usuario-ponte.sh /opt/plataforma/provisionar-usuario-ponte.sh"
+fi
 
 # ── 0.1) OS DOIS VALORES QUE O GATEWAY PRECISA, E MAIS NENHUM ──────────────
 #

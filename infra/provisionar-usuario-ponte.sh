@@ -24,14 +24,15 @@
 #      reload o sshd tem de continuar atendendo na 22; se nao continuar,
 #      restaura e recarrega de volta, ali mesmo.
 #
-# POR QUE NAO TEM `Match all` FECHANDO O BLOCO: medido em 16/09/2026 num
-# Ubuntu 24.04 com as MESMAS diretivas ativas que `infra/provisionamento-vps.sh`
-# deixa na VPS (PermitRootLogin, PasswordAuthentication, KbdInteractive,
-# X11Forwarding e Subsystem sftp). O escopo de um `Match` acaba no fim do
-# arquivo que o abriu: `sshd -T -C user=deploy` saiu identico ao estado sem o
-# drop-in, e o `Subsystem sftp` do arquivo principal continuou valendo para o
-# deploy. Uma linha que nao muda nada nao entra — e a trava 3 mede isso a cada
-# execucao, em vez de confiar nesta medicao para sempre.
+# SOBRE O `Match all` QUE FECHA O BLOCO: ele nao e necessario, e fica assim
+# mesmo. Medido em 16/09/2026 num Ubuntu 24.04 com as MESMAS diretivas ativas
+# que `infra/provisionamento-vps.sh` deixa na VPS (PermitRootLogin,
+# PasswordAuthentication, KbdInteractive, X11Forwarding e Subsystem sftp): o
+# escopo de um `Match` acaba no fim do arquivo que o abriu. Sem o `Match all`,
+# `sshd -T -C user=deploy` saiu identico ao estado sem o drop-in, o
+# `Subsystem sftp` do arquivo principal continuou valendo, e um drop-in
+# posterior (`99-*.conf`) tambem nao foi engolido. Fica por uma linha so, que
+# torna o arquivo legivel sozinho, sem depender de quem o le saber a regra.
 #
 # E IDEMPOTENTE E CONVERGENTE: rodado com tudo no lugar, ele nao escreve, nao
 # recarrega e diz isso. So mexe no sshd quando ha diferenca de verdade — por
@@ -49,7 +50,7 @@ CHAVES=$LAR/.ssh/authorized_keys
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "ERRO: este provisionador mexe em /etc/ssh e em conta de sistema, entao precisa de root. Nada foi alterado." >&2
-  echo "      Quem o executa e a esteira de infraestrutura; nao o rode a mao." >&2
+  echo "      Quem o executa e a esteira de infraestrutura, por sudo restrito a este caminho." >&2
   exit 1
 fi
 
@@ -74,7 +75,8 @@ CONFIG_DESEJADA="Match User $USUARIO
     X11Forwarding no
     AllowAgentForwarding no
     PermitTunnel no
-    ForceCommand /usr/bin/false"
+    ForceCommand /usr/bin/false
+Match all"
 CHAVES_DESEJADAS="restrict,port-forwarding,permitopen=\"$DESTINO_UNICO\",command=\"/usr/bin/false\" $CHAVE_AUTORIZADA"
 
 mostrar_o_que_a_ponte_recebeu() {
@@ -154,6 +156,7 @@ fi
 echo "PONTE: systemctl reload concluido (reload, nunca restart)."
 
 # ── 7) O SSHD CONTINUA ATENDENDO? Se nao, desfaz sozinho, aqui e agora. ──
+#
 # O reload RE-EXECUTA o sshd, e existe uma janela de instantes em que a porta 22
 # recusa conexao. Medido em 16/09/2026 no ensaio em container: sem repetir, a
 # medicao pega essa janela, conclui que o sshd morreu e desfaz uma mudanca que
