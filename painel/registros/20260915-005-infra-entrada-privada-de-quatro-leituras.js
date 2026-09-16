@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260915-005-infra-entrada-privada-de-quatro-leituras",
+  tipo: "entrega",
+  quando: "2026-09-15",
+  titulo: "infra: entrada privada de quatro leituras",
+  detalhe: "Nasce na VPS uma porta privada que serve quatro leituras ao painel local, e so leitura.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1673. Validação local: árvore 258e91f73e7edf0639dac62ebd121f2ad16566b7; commit 67ccf0edd5410265e3e326f05ac9f93ed943c91d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-15",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-433",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
