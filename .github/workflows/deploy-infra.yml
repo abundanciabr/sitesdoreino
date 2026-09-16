@@ -249,7 +249,7 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           # SÓ estes caminhos. env/ NUNCA entra nesta lista (INV-P8).
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
           target: /opt/plataforma/infra.new
           strip_components: 1
           # rm limpa SÓ o staging (o target acima) antes do upload, para que
@@ -304,7 +304,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
           target: /opt/plataforma/infra.new
           strip_components: 1
           rm: true
@@ -385,7 +385,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py"
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py,infra/provisionar-usuario-ponte.sh,infra/instalar-provisionador-usuario-ponte.sh"
           target: /opt/plataforma/infra.new
           strip_components: 1
           rm: true
