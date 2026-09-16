@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -338,7 +339,7 @@ def test_a_espera_que_nao_devia_existir_recusa_e_ensina_o_caminho(alvo, tmp_path
     proc = _rodar([f"--{alvo}", "447", "--teto", "15"], tmp_path)
     saida = proc.stdout + proc.stderr
     assert proc.returncode != 0, saida
-    assert "--pousar" in saida, "a recusa precisa ENSINAR o caminho certo"
+    assert "ci/mergear.py" in saida, "a recusa precisa ENSINAR o caminho certo"
     assert "447" in saida, "a recusa precisa citar o PR de quem a leu"
     assert "RITOS" in saida
 
@@ -376,12 +377,12 @@ def test_o_veredito_do_deploy_continua_livre(tmp_path):
 
 
 def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
-    """`--checks` NÃO pode ser proibido — é pré-requisito do `--pousar`.
+    """`--checks` NÃO pode ser proibido — é pré-requisito do `--e-pousar`.
 
     Este teste existe por um erro que quase pousou (armadilhas/258): a primeira
     versão do PR #801 proibiu `--checks` apoiada na letra do RITOS §2 peça 6
     ("checks de PR não se esperam"). A peça fala do LAÇO da armadilhas/156, não
-    da espera única que o portão EXIGE: `ci/mergear.py --pousar` recusa com
+    da espera única que o portão EXIGE: `ci/mergear.py N` recusa com
     check em andamento (ERROR), e o CLAUDE.md manda esperá-los concluir antes
     de pedir pouso. Proibir aqui tornaria o rito da casa impossível de cumprir.
     """
@@ -503,7 +504,7 @@ def test_checks_verdes_com_e_pousar_chamam_o_portao_e_pedem_pouso(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
-    assert chamado == "447 --pousar", chamado
+    assert chamado == "447", chamado
     assert "pedi pouso do PR 447 pelo portão" in proc.stdout
     assert "publicação ainda não foram comprovadas" in proc.stdout
     assert "--entrega 447" in proc.stdout
@@ -785,7 +786,7 @@ def test_o_portao_que_nao_conseguiu_medir_e_remedido_e_o_pouso_sai(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 2, chamadas
+    assert chamadas.count("447") == 2, chamadas
     # A remedição é bastidor: desde 06/09/2026 ela fala no stderr sob
     # `--e-pousar`, para não acordar o robô por um fato que ainda não é
     # desfecho. Continua PROIBIDO esperar calada — só mudou o cano.
@@ -809,7 +810,7 @@ def test_o_portao_que_REPROVA_nao_e_remedido_nenhuma_vez(tmp_path):
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 1, "FAIL não se remede: " + repr(chamadas)
+    assert chamadas.count("447") == 1, "FAIL não se remede: " + repr(chamadas)
     assert "RECUSOU o pouso do PR 447" in proc.stdout
 
 
@@ -823,7 +824,7 @@ def test_o_ERROR_que_nao_para_de_vir_desiste_e_conta_a_recusa_inteira(tmp_path):
     )
     assert proc.returncode == 2, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 6, chamadas
+    assert chamadas.count("447") == 6, chamadas
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "calcula isso de forma assíncrona" in proc.stdout
 
@@ -855,7 +856,7 @@ def test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 2, (
+    assert chamadas.count("447") == 2, (
         "a recusa em cp1252 não foi reconhecida como 'não consegui medir' — "
         "a decisão voltou a depender de bytes: " + repr(chamadas)
     )
@@ -1120,7 +1121,7 @@ def test_o_bloco_de_falha_tem_teto_de_600_caracteres():
 # workflow não enxerga. Ela funciona e deixa rastro: a execução antiga fica
 # CANCELLED pendurada no rollup, ao lado da nova que passou. Lendo o rollup
 # cru, a espera anunciava "checks REPROVADOS" no mesmo segundo em que
-# `gh pr checks` dizia `pass` e `ci/mergear.py --pousar` — a fonte de direito —
+# `gh pr checks` dizia `pass` e `ci/mergear.py N`, a fonte de direito,
 # aprovava o pouso. Falso vermelho num portão ensina a ignorar o portão.
 REABERTO = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
@@ -1156,7 +1157,7 @@ def test_execucao_cancelada_do_pr_reaberto_nao_reprova_o_que_esta_verde(tmp_path
         "o número também não pode mentir: são 3 checks, não 4 execuções"
     )
     chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
-    assert chamado == "1136 --pousar", chamado
+    assert chamado == "1136", chamado
 
 
 def test_execucao_cancelada_que_e_a_ATUAL_continua_reprovando(tmp_path):
@@ -1179,3 +1180,38 @@ def test_a_espera_e_o_portao_usam_a_MESMA_funcao_nunca_duas_copias():
     import mergear
 
     assert esperar.mais_recente_por_nome is mergear.mais_recente_por_nome
+
+
+# ---------------------------------------------------------------------------
+# O portão de mentira aceita qualquer argumento. O de verdade, não.
+#
+# Em 15/09/2026 o `--e-pousar` falhou em todo PR, com
+# `mergear.py: error: unrecognized arguments: --pousar`. A opção tinha saído
+# de `ci/mergear.py` e a chamada aqui ficou órfã, sem nenhum teste ver: todos
+# os testes acima trocam o portão por um script de mentira que engole qualquer
+# argumento. Este mede as flags contra o `--help` do portão DE VERDADE.
+# ---------------------------------------------------------------------------
+CHAMADA_DO_PORTAO = re.compile(r"\[\*_mergear\(\)(?P<argumentos>[^\]]*)\]", re.DOTALL)
+
+
+def test_as_flags_que_a_espera_passa_ao_portao_existem_no_portao():
+    espera = (RAIZ_DO_REPO / "ci" / "esperar.py").read_text(encoding="utf-8")
+    chamadas = CHAMADA_DO_PORTAO.findall(espera)
+    assert chamadas, "não achei nenhuma chamada ao portão em ci/esperar.py"
+
+    ajuda = subprocess.run(
+        [sys.executable, str(RAIZ_DO_REPO / "ci" / "mergear.py"), "--help"],
+        capture_output=True, text=True, timeout=60, encoding="utf-8", errors="replace",
+    ).stdout
+
+    orfas = sorted({
+        flag
+        for argumentos in chamadas
+        for flag in re.findall(r'"(--[a-z-]+)"', argumentos)
+        if flag not in ajuda
+    })
+    assert not orfas, (
+        f"ci/esperar.py passa ao portão flags que ci/mergear.py não tem: {orfas}. "
+        "O pouso automático falha em todo PR e ninguém vê, porque os testes daqui "
+        "usam um portão de mentira. Acerte a chamada ou devolva a opção ao portão."
+    )

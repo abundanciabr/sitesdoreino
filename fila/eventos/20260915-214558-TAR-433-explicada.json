@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260915-214558-TAR-433-explicada",
+  "tarefa": "TAR-433",
+  "evento": "explicada",
+  "quando": "2026-09-15T21:45:58+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O painel local mostra dois alunos de mentira porque nao tem por onde ler os alunos de verdade da VPS",
+  "o_que_muda": "Nasce uma porta privada na VPS que serve exatamente quatro leituras, e so leitura, para o painel do mantenedor",
+  "exemplo": "A tela de alunos deixa de mostrar Ana Local e Bruno Local e passa a poder mostrar a fila real de quem espera aprovacao",
+  "importancia": 95
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260915-213450-TAR-432-explicada",
+  "tarefa": "TAR-432",
+  "evento": "explicada",
+  "quando": "2026-09-15T21:34:50+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O script que atualiza a infraestrutura na VPS imprimia o caminho de volta e nao o aplicava",
+  "o_que_muda": "Quando a troca da errado, a configuracao anterior volta sozinha, em vez de a plataforma ficar fora do ar esperando alguem digitar comandos no servidor",
+  "exemplo": "Se a mudanca nova derrubar o Traefik, as portas 80 e 443 de todos os sites caem; hoje voltam sozinhas em segundos",
+  "importancia": 90
+}

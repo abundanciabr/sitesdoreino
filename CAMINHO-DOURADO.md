@@ -566,6 +566,10 @@ Um site novo é DADO, não infraestrutura. Três passos, minutos:
 domínio, registro `A` → IP da VPS (proxy laranja LIGADO), SSL mode **Full**.
 Modo B (sem Cloudflare): adicionar o domínio à lista `tls.domains` do router
 `funil` em `infra/traefik/dynamic/plataforma.yml` (uma linha, PR de infra).
+Ao mexer em qualquer arquivo de `infra/traefik/dynamic/`, nunca escreva as
+chaves duplas de template, nem dentro de comentário: o Traefik renderiza o
+texto cru antes do YAML, e uma chamada inválida recusa o arquivo inteiro e
+derruba a borda pública com 404 em todos os hosts (armadilha 478).
 
 **2. Cadastro (agente, célula catalogo):**
 
