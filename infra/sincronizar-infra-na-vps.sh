@@ -75,11 +75,41 @@ mv -f infra.new/provisionar-usuario-ponte.sh provisionar-usuario-ponte.sh
 mv -f infra.new/instalar-provisionador-usuario-ponte.sh instalar-provisionador-usuario-ponte.sh
 rmdir infra.new
 
-# O usuário da ponte precisa nascer antes da troca da infraestrutura. Este
-# binário é instalado uma vez por root em /usr/local/sbin e não é controlável
-# por deploy. Ele valida o sshd, guarda os arquivos atuais e só recarrega depois
-# de instalar a configuração.
-sudo -n /usr/local/sbin/provisionar-usuario-ponte
+# ── A PONTE, ANTES DE QUALQUER TROCA, E ELA NAO SEGURA A INFRAESTRUTURA ────
+#
+# A conta `ponte` e reconciliada aqui de proposito: nada EM USO mudou ainda
+# (`TROCADO` nem existe), entao uma falha nesta altura deixa a VPS exatamente
+# como estava — que e a regra 2 do brief da TAR-419, "erro de sintaxe para o
+# lote ali, sem recarregar nada".
+#
+# O que roda como root NAO e o arquivo que acabou de chegar por SCP: e a copia
+# congelada em /usr/local/sbin, pertencente ao root, que o mantenedor instalou
+# uma vez com `infra/instalar-provisionador-usuario-ponte.sh`. A esteira entra
+# como `deploy`, que nao e root, e so pode executar aquele caminho fixo, sem
+# argumentos, pela regra estreita de sudo que o instalador escreveu.
+#
+# O `if` NAO E ZELO, E CONSERTO DE UMA QUEDA MEDIDA. Ate 16/09/2026 esta linha
+# era um `sudo -n` incondicional. Sob `set -eu`, e depois de a sentinela
+# `SINCRONIZACAO-INICIADA` ja ter saido (o que desliga a repeticao por
+# desenho), numa VPS que ainda nao tinha a regra de sudo ela devolveu
+# `sudo: a password is required` e derrubou a sincronizacao inteira: run
+# 35047777635 do `deploy-infra`, vermelho nas tres tentativas, com o compose e
+# o Traefik NAO sincronizados por causa de um recurso que nem tinha sido ligado
+# ainda. A ponte e um recurso a mais, nao pre-requisito do Traefik; faltar a
+# ponte nao pode custar uma plataforma desatualizada. Sem o instalador rodado,
+# o log diz a linha exata e a sincronizacao segue.
+#
+# COM o instalador rodado, uma falha AQUI reprova o run: o provisionador desfaz
+# sozinho o que tiver mexido, e defeito no sshd tem de ser visto, nao engolido.
+PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
+if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
+  sudo -n "$PROVISIONADOR_DA_PONTE"
+else
+  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
+  echo "       Os dois roteiros acabaram de chegar aqui. Para ligar a ponte, no"
+  echo "       console root da VPS, uma linha, uma vez so:"
+  echo "       bash /opt/plataforma/instalar-provisionador-usuario-ponte.sh /opt/plataforma/provisionar-usuario-ponte.sh"
+fi
 
 # ── 0.1) OS DOIS VALORES QUE O GATEWAY PRECISA, E MAIS NENHUM ──────────────
 #
