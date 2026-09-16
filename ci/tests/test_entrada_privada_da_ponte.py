@@ -22,6 +22,17 @@ DINAMICO = RAIZ / "infra" / "traefik" / "dynamic" / "entrada-privada.yml"
 ESTATICO = RAIZ / "infra" / "traefik" / "traefik.yml"
 COMPOSE = RAIZ / "infra" / "docker-compose.yml"
 SINCRONIZADOR = RAIZ / "infra" / "sincronizar-infra-na-vps.sh"
+PROVISIONADOR = RAIZ / "infra" / "provisionar-usuario-ponte.sh"
+INSTALADOR = RAIZ / "infra" / "instalar-provisionador-da-ponte.sh"
+
+# A chave que abre a ponte, e a única. Trocá-la aponta o cano para outra
+# máquina, e é a mudança mais silenciosa que este lote admite: nada quebra,
+# nada fica vermelho, e o acesso passa a ser de outra pessoa.
+CHAVE_DESTE_PC = (
+    "ssh-ed25519 "
+    "AAAAC3NzaC1lZDI1NTE5AAAAIDFmhu8QkiIPwN0gqmYSmSrN9E2Wr8PdAk2N3qglquu6 "
+    "davi@DESKTOP-V8F32JA"
+)
 
 AS_QUATRO_LEITURAS = {
     ("GET", "/alunos/api/alunos/pre-matriculas", ("status", "aguardando")),
@@ -165,3 +176,85 @@ def test_todo_template_dos_arquivos_dinamicos_e_uma_injecao_de_variavel():
         f"os hosts: {fora_do_contrato}. Se está num comentário, reescreva o "
         "comentário sem as chaves duplas."
     )
+
+
+def so_codigo(caminho: Path) -> str:
+    """O roteiro sem os comentarios: medir ordem no texto inteiro mede a prosa.
+
+    Os cabecalhos desta casa citam os proprios comandos ao explicar por que
+    existem, entao `texto.index("systemctl reload")` acha a explicacao, e nao a
+    linha que recarrega.
+    """
+    return "\n".join(
+        linha for linha in caminho.read_text(encoding="utf-8").splitlines()
+        if not linha.lstrip().startswith("#")
+    )
+
+
+def test_a_chave_da_ponte_e_a_deste_pc_e_so_ela():
+    """Uma chave a mais, ou outra chave, abre o cano para outra maquina."""
+    texto = PROVISIONADOR.read_text(encoding="utf-8")
+    assert CHAVE_DESTE_PC in texto, (
+        "a chave autorizada da ponte deixou de ser a do PC do mantenedor"
+    )
+    assert texto.count("ssh-ed25519 ") == 1, (
+        "o provisionador tem de autorizar exatamente UMA chave publica"
+    )
+
+
+def test_o_provisionador_nunca_reinicia_o_sshd_nem_edita_o_arquivo_principal():
+    """`restart` derruba as sessoes abertas, e a sessao viva e o desfazer."""
+    codigo = so_codigo(PROVISIONADOR)
+    # O que se proibe e EXECUTAR o restart. A mensagem de ultimo recurso cita o
+    # comando para o mantenedor digitar no console do provedor, e citar nao e
+    # executar: por isso o texto entre aspas sai antes da medicao.
+    executavel = re.sub(r'"[^"]*"', '""', codigo)
+    assert "systemctl restart" not in executavel, (
+        "restart mata a sessao da esteira, que e o unico caminho de volta"
+    )
+    tocados = re.findall(r"/etc/ssh/sshd_config[^\s\"']*", codigo)
+    assert tocados, "o provisionador precisa escrever o drop-in do sshd"
+    for caminho in tocados:
+        assert caminho.startswith("/etc/ssh/sshd_config.d/"), (
+            f"{caminho} nao esta em sshd_config.d/: a mudanca e um arquivo de "
+            "acrescimo, nunca uma edicao do arquivo principal"
+        )
+
+
+def test_o_provisionador_mede_o_deploy_antes_de_recarregar():
+    """Sem comparar a configuracao efetiva do deploy, o reload e uma aposta."""
+    codigo = so_codigo(PROVISIONADOR)
+    assert codigo.index("DEPLOY_ANTES=") < codigo.index("systemctl reload"), (
+        "a fotografia do deploy tem de ser tirada antes de escrever e recarregar"
+    )
+    assert codigo.index("sshd -t") < codigo.index("systemctl reload"), (
+        "sshd -t vem antes do reload, sempre"
+    )
+
+
+def test_a_ponte_nao_derruba_a_sincronizacao_quando_ainda_nao_foi_ligada():
+    """Faltar a ponte e um recurso a menos; parar a infra seria estrago novo."""
+    codigo = so_codigo(SINCRONIZADOR)
+    assert codigo.index("PROVISIONADOR_DA_PONTE=") < codigo.index("ls infra.new"), (
+        "a ponte nasce antes de qualquer troca, quando nada em uso mudou ainda"
+    )
+    assert "instalar-provisionador-da-ponte.sh" in codigo, (
+        "o log tem de dizer a linha exata que liga a ponte"
+    )
+
+
+def test_o_deploy_so_pode_executar_o_caminho_congelado():
+    """Coringa no sudoers daria root irrestrito ao usuario da esteira."""
+    texto = INSTALADOR.read_text(encoding="utf-8")
+    assert "deploy ALL=(root) NOPASSWD: $DESTINO" in texto
+    assert "install -o root -g root -m 755" in texto, (
+        "o que roda como root nao pode ser gravavel pelo deploy"
+    )
+    regra = texto.split("NOPASSWD:")[1].splitlines()[0]
+    assert "*" not in regra, (
+        f"a regra do sudo {regra!r} tem coringa: isso e root irrestrito para o deploy"
+    )
+    assert "visudo -cf" in texto, (
+        "sudoers invalido em /etc/sudoers.d quebra o sudo da maquina inteira"
+    )
+

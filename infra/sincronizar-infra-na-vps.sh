@@ -59,6 +59,38 @@ echo "SINCRONIZACAO-INICIADA: $(date -u +%Y%m%dT%H%M%SZ)"
 
 cd /opt/plataforma
 
+# ── A PONTE, ANTES DE QUALQUER TROCA. ───────────────────────────────────
+#
+# Reconciliar a conta `ponte` e a primeira coisa que acontece de proposito:
+# aqui nada EM USO foi tocado ainda (`TROCADO` nem existe), entao uma falha
+# nesta altura deixa a VPS exatamente como estava — que e a regra 2 do brief da
+# TAR-419, "erro de sintaxe para o lote ali, sem recarregar nada".
+#
+# O provisionador NAO e este arquivo nem viaja com ele: e uma copia congelada,
+# pertencente ao root, que o mantenedor instalou uma vez com
+# `infra/instalar-provisionador-da-ponte.sh`. A esteira entra como `deploy`,
+# que nao e root, e so pode executar aquele caminho fixo, sem argumentos, pela
+# regra estreita de sudo que o instalador escreveu. Assim a esteira mantem a
+# ponte sozinha sem que o repositorio ganhe um caminho de root irrestrito na
+# VPS: um PR futuro nao muda o que roda como root.
+#
+# SEM O INSTALADOR RODADO, A SINCRONIZACAO SEGUE NORMAL. A ponte e um recurso
+# a mais, nao um pre-requisito do Traefik nem do compose; derrubar a entrega da
+# infraestrutura inteira porque a ponte ainda nao foi ligada seria trocar um
+# recurso que falta por uma plataforma desatualizada. O log diz a linha exata.
+#
+# COM o instalador rodado, uma falha AQUI reprova o run: o provisionador desfaz
+# sozinho o que tiver mexido, e um defeito no sshd tem de ser visto, nao
+# engolido.
+PROVISIONADOR_DA_PONTE=/usr/local/sbin/provisionar-usuario-ponte
+if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
+  sudo -n "$PROVISIONADOR_DA_PONTE"
+else
+  echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
+  echo "       Para ligar, no console root da VPS, uma linha, uma vez so:"
+  echo "       curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh"
+fi
+
 # ── 0) staging → caminhos temporários. Nada EM USO muda aqui. ──
 #
 # `rm -rf traefik.new` antes do `mv` nao e zelo: `mv origem destino` com o
