@@ -7,6 +7,7 @@
 # INV-P5); listEnrollments responde "quem é aluno" (e por isso filtra por status —
 # ver matriculas_que_valem). As três portas de /pre-matriculas são a fila de
 # liberação (docs/decisoes/DECISAO-fila-de-liberacao.md).
+import base64
 import json
 from datetime import date
 
@@ -1631,6 +1632,65 @@ def list_all_enrollments(request, site_id: str = None, status: str = None):
         como_o_painel_ve(m) for m in alunos_do_painel(site_id=site_id, status=status)
     ]
     return JsonResponse(corpo, safe=False, status=200)
+
+
+def _cursor_para_offset(cursor: str | None) -> int:
+    if not cursor:
+        return 0
+    try:
+        preenchimento = "=" * (-len(cursor) % 4)
+        valor = base64.urlsafe_b64decode((cursor + preenchimento).encode()).decode()
+        offset = int(valor)
+    except (ValueError, UnicodeDecodeError, base64.binascii.Error):
+        raise HttpError(
+            422, "cursor inválido; use o cursor devolvido pela página anterior"
+        )
+    if offset < 0:
+        raise HttpError(
+            422, "cursor inválido; use o cursor devolvido pela página anterior"
+        )
+    return offset
+
+
+def _offset_para_cursor(offset: int) -> str:
+    return base64.urlsafe_b64encode(str(offset).encode()).decode().rstrip("=")
+
+
+@router.get(
+    "/matriculas/pagina",
+    operation_id="listEnrollmentsPage",
+    summary="Quem ja e aluno — uma pagina para o painel administrativo",
+)
+def list_enrollments_page(
+    request,
+    site_id: str = None,
+    status: str = None,
+    cursor: str = None,
+    limite: int = 50,
+):
+    """Lista paginada; total e contagens medem a mesma consulta filtrada."""
+    if limite < 1 or limite > 100:
+        raise HttpError(422, "limite inválido; informe um número entre 1 e 100")
+    if status is not None and status not in Matricula.STATUS_DE_GESTAO:
+        status = None
+    consulta = alunos_do_painel(site_id=site_id, status=status)
+    offset = _cursor_para_offset(cursor)
+    itens = [como_o_painel_ve(m) for m in consulta[offset : offset + limite]]
+    total = consulta.count()
+    contagens = {
+        nome: consulta.filter(status=nome).count()
+        for nome in Matricula.STATUS_DE_GESTAO
+    }
+    proximo = _offset_para_cursor(offset + limite) if offset + limite < total else None
+    return JsonResponse(
+        {
+            "itens": itens,
+            "proximo_cursor": proximo,
+            "total": total,
+            "contagens": contagens,
+        },
+        status=200,
+    )
 
 
 @router.patch(

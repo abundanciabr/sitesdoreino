@@ -87,6 +87,13 @@ def listar(client, auth, **query):
     return client.get(url, **auth)
 
 
+def listar_pagina(client, auth, **query):
+    url = f"{MATRICULAS}/pagina"
+    if query:
+        url += "?" + "&".join(f"{k}={v}" for k, v in query.items())
+    return client.get(url, **auth)
+
+
 def mudar(client, auth, linha, **corpo):
     corpo.setdefault("decidido_por", "id-do-admin")
     return client.patch(
@@ -119,6 +126,54 @@ def test_a_lista_sem_site_id_traz_todas_as_escolas(client, auth):
     criar(site_id="escola-b", email="b@example.com")
     corpo = listar(client, auth).json()
     assert {linha["site_id"] for linha in corpo} == {"escola-a", "escola-b"}
+
+
+@pytest.mark.django_db
+def test_a_pagina_tem_cursor_total_e_contagens_da_consulta(client, auth):
+    criar(email="a@example.com", status=Matricula.STATUS_ATIVA)
+    criar(email="b@example.com", status=Matricula.STATUS_SUSPENSA)
+    criar(email="c@example.com", status=Matricula.STATUS_ATIVA)
+
+    primeira = listar_pagina(client, auth, limite=2).json()
+    assert len(primeira["itens"]) == 2
+    assert primeira["total"] == 3
+    assert primeira["contagens"] == {
+        "ativa": 2,
+        "suspensa": 1,
+        "encerrada": 0,
+        "reembolsada": 0,
+    }
+    assert primeira["proximo_cursor"]
+
+    segunda = listar_pagina(
+        client, auth, limite=2, cursor=primeira["proximo_cursor"]
+    ).json()
+    assert len(segunda["itens"]) == 1
+    assert segunda["proximo_cursor"] is None
+
+
+@pytest.mark.django_db
+def test_a_pagina_filtra_antes_de_contar(client, auth):
+    criar(site_id="escola-a", email="a@example.com", status=Matricula.STATUS_ATIVA)
+    criar(site_id="escola-b", email="b@example.com", status=Matricula.STATUS_ATIVA)
+    criar(site_id="escola-a", email="c@example.com", status=Matricula.STATUS_SUSPENSA)
+
+    corpo = listar_pagina(client, auth, site_id="escola-a", status="ativa").json()
+    assert corpo["total"] == 1
+    assert corpo["contagens"] == {
+        "ativa": 1,
+        "suspensa": 0,
+        "encerrada": 0,
+        "reembolsada": 0,
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "query", [{"limite": 0}, {"limite": 101}, {"cursor": "invalido"}]
+)
+def test_a_pagina_recusa_parametro_invalido(client, auth, query):
+    assert listar_pagina(client, auth, **query).status_code == 422
 
 
 @pytest.mark.django_db
