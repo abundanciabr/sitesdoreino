@@ -9,11 +9,15 @@
 # alunos aparecerem no seu painel.
 #
 # COMO RODAR, no console root da VPS (uma linha, sem argumentos):
-#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh || echo "PAROU. Se a linha acima disse 404, este roteiro ainda nao chegou na main: espere o PR da TAR-419 pousar e repita esta mesma linha."
+#
+#   O `|| echo` no fim nao e enfeite: quando o roteiro ainda nao esta na main, o
+#   proprio `curl` morre com um `404` cru e NENHUMA mensagem daqui de dentro
+#   chega a ser lida, porque o arquivo que as contem nao existe ainda. Medido
+#   em 16/09/2026, no console da VPS, antes de o PR pousar.
 #
 #   O prompt tem de estar como `root@srv...`. Se comecar com `PS C:\>`, voce
 #   esta no seu PC e este roteiro nao e para la.
-#   Rode DEPOIS que o PR da TAR-419 estiver na `main`: e de la que ele baixa.
 #
 # POR QUE ESTE PASSO EXISTE, e por que ele e UMA VEZ SO
 # ----------------------------------------------------

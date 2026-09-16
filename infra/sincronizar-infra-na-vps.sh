@@ -88,7 +88,7 @@ if [ -x "$PROVISIONADOR_DA_PONTE" ]; then
 else
   echo "PONTE: ainda nao ligada nesta VPS. A sincronizacao da infraestrutura segue normalmente."
   echo "       Para ligar, no console root da VPS, uma linha, uma vez so:"
-  echo "       curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh"
+  echo "       curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/instalar-provisionador-da-ponte.sh -o /tmp/ponte.sh && bash /tmp/ponte.sh || echo \"PAROU. Se a linha acima disse 404, este roteiro ainda nao chegou na main: espere o PR da TAR-419 pousar e repita esta mesma linha.\""
 fi
 
 # ── 0) staging → caminhos temporários. Nada EM USO muda aqui. ──
