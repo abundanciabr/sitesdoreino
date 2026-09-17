@@ -1,0 +1,19 @@
+{
+  "arquivo": "440-reunir-os-passos-de-entrega-e-consulta-no-caminho-dourado",
+  "id": "TAR-440",
+  "titulo": "Reunir os passos de entrega e consulta no Caminho Dourado",
+  "toca": [
+    "documentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Seção 5 do CAMINHO-DOURADO.md revisada, blocos PowerShell validados e PR documental com recibo e vínculo desta tarefa.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high, gerados por ci/economia_da_fabrica.py brief para arquitetura. Atualizar somente seção 5 de CAMINHO-DOURADO.md com comandos PowerShell de validação, ci/pr.py e consulta única após integração. Alvos adicionais apenas metadados obrigatórios da fila e recibo. ci/, infra/, workflows, contratos e demais leis são somente leitura. Mandato literal do mantenedor: Reescreva a seção afetada do documento com instruções executáveis, comandos prontos e padronizados. CAMINHO-DOURADO.md é CODEOWNERS @abundanciabr. Relatório já apresentado antes da edição. Não executar as melhorias propostas nem abrir tarefas colaterais. Baseline e pós-mudança: test_merge_automatico.py 17 passed; parser PowerShell dos blocos; revisão independente dos comandos. Bancada documentos/auditoria-devex-caminho-dourado.",
+  "origem": "Pedido explícito do mantenedor na sessão Codex de 17/09/2026: auditoria de processo e refatoração do Caminho Dourado.",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

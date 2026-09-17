@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-141339-TAR-438-explicada",
+  "tarefa": "TAR-438",
+  "evento": "explicada",
+  "quando": "2026-09-17T14:13:39+00:00",
+  "quem": "sessão Claude Code de 17/09/2026: o mantenedor escolheu Conserte agora entre as opções apresentadas pela maestro",
+  "o_que_e": "O programa que publica cada parte do site na máquina de produção parou de funcionar em 15 de setembro e ninguém percebeu por dois dias.",
+  "o_que_muda": "Sem isto, nada do que os robôs entregam chega ao site de verdade: seis publicações seguidas falharam e uma entrega pedida hoje ficou parada.",
+  "exemplo": "É como um entregador que passou a precisar de dois crachás para entrar no prédio, não recebeu nenhum, e o porteiro dizia que o apartamento não existia em vez de dizer que faltava crachá.",
+  "importancia": 95
+}

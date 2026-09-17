@@ -45,6 +45,8 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 | Colocar um site/domínio novo no ar | **R11** | Editar o Traefik ou criar stack nova |
 | Criar uma página em vários idiomas | **R12** | Texto fixo no template; a tag `url` crua; página nascendo com um idioma só |
 | Acrescentar um idioma a um site | **R12** | Recalcular o `_fonte` sem traduzir; idioma novo nascendo indexável |
+| Mexer na régua de uma meta (curva, datas, alvo) | **R13** | Corrigir o dado e deixar a prosa que o repete para trás |
+| Abrir PR que toca caminho CODEOWNERS | **R14** | Mandato em parágrafo, caminhos separados por vírgula, ou prefixo pela metade |
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
@@ -141,6 +143,26 @@ queries da célula filtram SEMPRE por `request.site["id"]`.
 
 Dinheiro: `amount_cents`/`price_cents`/`total_cents` **inteiros**, sempre.
 Identificadores em EN, comentários e prosa em PT. `Decimal` só na borda do provider.
+
+**Rodar o portão da raiz localmente exige o mesmo ambiente que o CI declara.**
+As células têm fail-hard em `config/settings.py` (INV-P10), então sem as
+variáveis o exportador de contrato morre antes de exportar e cada célula vira
+um ERROR. **Esse resultado não é um diagnóstico do repositório:** as
+verificações de `seguranca/*` nem chegam a aparecer na tabela, e a lista curta
+se parece com uma lista inteira (armadilhas/483).
+
+```bash
+# [RECEITA:CONV-CI v1] — os valores são os de .github/workflows/ci-celula.yml
+PYTHONUTF8=1 \
+DJANGO_SECRET_KEY=ci-apenas-nunca-em-producao \
+DATABASE_URL=postgres://ci:ci@localhost:5432/ci_db \
+REDIS_STREAMS_URL=redis://localhost:6379/0 \
+HUEY_REDIS_URL=redis://localhost:6379/1 \
+python ci/ci.py --apenas freeze
+```
+
+A célula `pagamentos` pede ainda `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`; os
+falsos que o CI usa estão no mesmo workflow.
 
 ---
 
@@ -1021,6 +1043,126 @@ derruba o `django.setup()` inteiro · `hreflang="es"` continua na **âncora** do
 seletor mesmo com `noindex`; a asserção negativa mira
 `<link rel="alternate" hreflang="es"`, nunca o atributo solto.
 
+---
+
+## R13 — Mexer na régua de uma meta (curva, datas, alvo)
+
+A régua de uma meta mora no **cartão** (`painel/cartoes/<meta>.json`), nunca na
+tela e nunca no código: quem lê a curva é uma função só (`placar.esperado_em`),
+e por isso o placar, a meta do mês e o calendário nunca discordam
+(`docs/decisoes/DECISAO-o-calendario-do-ciclo.md` §5). Mudar a régua é editar um
+arquivo de dados, e o resto segue junto. Menos uma coisa, e é nela que esta
+receita existe para doer: **a prosa em português que repete a curva.**
+
+```json
+// painel/cartoes/compras-no-ciclo.json  // [RECEITA:R13 v1]
+"semanas": [ { "n": 0, "de": "2026-09-14", "ate": "2026-09-18", "alvo": 0, "rotulo": "Preparação" } ],
+"versao": 5,
+"desde": "2026-09-17",
+"_por_que": "... a história anterior INTACTA, e o registro novo acrescentado no fim."
+```
+
+**O checklist, na ordem:**
+
+1. **O dado primeiro.** Só o cartão muda. Se a mudança pedir uma linha de Python,
+   a régua vazou do cartão para o código: pare e reporte, porque isso é outra
+   tarefa e outra decisão.
+2. **A soma continua fechando.** A soma dos alvos tem de dar exatamente `alvo`
+   menos `partida`. O validador (`placar._validar_as_semanas`) reprova o cartão
+   quando não dá, e a mensagem dele diz o conserto.
+3. **A última faixa não passa de `ate`.** Faixa depois do prazo é ficção, e o
+   validador NÃO vê isso. Quando o prazo é do mantenedor, quem encolhe é a faixa.
+4. **`versao` sobe e `desde` recebe o dia da mudança.** É o que deixa a tela
+   dizer de quando é a régua que ela está mostrando.
+5. **`_por_que` cresce no fim, nunca por cima.** A história de como a meta virou
+   o que é vale mais que a última versão dela.
+6. **Cace a prosa que repete a curva.** O passo que ninguém lembra e o único que
+   envelhece em silêncio: `grep -rn "primeiras semanas|semana de|em zero"` na
+   tela, na lei e no próprio `_por_que`. Todo número da curva escrito por extenso
+   em português é uma cópia, e cópia não muda por edição de dado nenhuma.
+7. **Deixe um guarda no lugar da sua memória.** A frase da tela que repete um
+   número do cartão ganha um teste que lê o cartão, conta, e exige a frase certa
+   (exemplo vivo: `test_a_prosa_da_tela_conta_as_mesmas_semanas_em_zero_que_o_cartao`).
+   Frase procurada por teste fica INTEIRA numa linha do template (armadilhas/394).
+8. **Prove na tela renderizada, não no cartão.** Entre o dado e a página existe
+   um template, e o teste que abre a tela e lê as datas dela é o único que mede
+   o que o mantenedor enxerga.
+
+**Por que esta receita existe:** a curva de `compras-no-ciclo` mudou duas vezes
+em duas semanas (04/09/2026 e 17/09/2026) e nas duas o texto que a repetia em
+português ficou para trás. Na primeira, a tela passou treze dias dizendo "as
+três primeiras semanas pedem zero venda" com o cartão dizendo cinco, sem nenhum
+portão ficar vermelho: prosa não é dado, e nada a media. O passo 7 é a resposta,
+e `armadilhas/480` é o relato.
+
+---
+
+## R14 — Abrir PR que toca caminho CODEOWNERS
+
+Alguns caminhos não são do agente: mudança neles só integra com a palavra
+escrita do mantenedor na descrição do PR. A lista vive em `.github/CODEOWNERS`,
+e hoje ela cobre `contracts/`, `services/pagamentos/`, `services/checkout/`,
+`infra/`, `ci/`, `.github/`, `.githooks/`, os arquivos de lei da raiz
+(`CONSTITUICAO.md`, `CLAUDE.md`, `INVARIANTES.md`, `RITOS.md`, este arquivo) e
+`docs/decisoes/`. **Confira no arquivo, não nesta frase:** lista copiada
+envelhece, e é por isso que o portão lê o original (a lição é a do R13 e da
+armadilhas/480).
+
+**1. O mandato é UMA LINHA, com os caminhos como palavras soltas.**
+
+```markdown
+<!-- na descrição do PR  [RECEITA:R14 v1] -->
+Mandato-do-mantenedor: <o pedido dele, nas palavras dele> CAMINHO-DOURADO.md ci/mergear.py
+```
+
+Três regras, e as três vêm do leitor, não do gosto de ninguém. Quem julga é
+`checar_mandato`, em `ci/mergear.py`:
+
+```python
+mandato = re.search(r"^Mandato-do-mantenedor: (.{20,})$", corpo, re.MULTILINE)
+...
+any(alvo in mandato.group(1).split() for alvo in (padrao, caminho))
+```
+
+- A regex termina em `$` com `re.MULTILINE`, então ela lê **a primeira linha e
+  para**. Mandato escrito em parágrafo deixa os caminhos nas linhas de baixo, e
+  para o portão eles não existem.
+- A comparação é `.split()` com igualdade exata. **Vírgula depois do caminho
+  derruba o pouso:** `CAMINHO-DOURADO.md,` é um token com vírgula colada, e ele
+  nunca é igual a `CAMINHO-DOURADO.md`. Separe por espaço, e só por espaço.
+- O que conta como caminho são **duas formas, e só elas**: o padrão escrito em
+  `.github/CODEOWNERS`, com a barra final (`ci/`, `services/pagamentos/`), ou o
+  caminho exato do arquivo que você tocou
+  (`ci/tests/test_chaves_do_gateway_no_deploy.py`). **Prefixo pela metade
+  reprova:** `ci/tests` é uma linha só, palavra solta e sem vírgula, e mesmo
+  assim não é nenhuma das duas. Quase pulou o PR #1686.
+
+E o autor do PR precisa constar como dono do caminho em `.github/CODEOWNERS`,
+senão o mandato não é aceito venha de onde vier.
+
+**2. Antes de dizer pronto, confira o julgamento.**
+
+```bash
+python ci/mergear.py <N> --conferir
+```
+
+Somente leitura, não integra nada, e imprime a tabela inteira com o motivo de
+cada linha. É o único gesto que separa "o PR está esperando a vez" de "o PR foi
+pulado". A varredura do `pouso.yml` descarta o PR reprovado no mandato com um
+`continue` mudo: ele some do log, os outros continuam sendo julgados na tela, e
+a espera fica idêntica ao progresso (armadilhas/482). O PR #1684 ficou 19
+minutos assim, verde nos 8 checks e invisível, por causa de uma vírgula.
+
+**3. Se reprovou, o conserto é reescrever a linha.** O FAIL diz
+`falta mandato do dono para <caminho>`. Reescreva a descrição com a linha do
+passo 1 e rode o `--conferir` de novo. Nada de novo commit: o portão lê a
+descrição do PR, não o diff.
+
+**Por que esta receita existe:** o mandato é a única lei desta casa que se
+escreve em prosa e é lida por máquina. Escrever para gente (parágrafo, lista
+com vírgulas) é o gesto natural, e é exatamente o gesto que o leitor recusa em
+silêncio. `armadilhas/481` é o relato.
+
 ## §4 — Anti-padrões com resposta pronta
 
 | A tentação | A resposta (sem pensar duas vezes) |
@@ -1036,12 +1178,94 @@ seletor mesmo com `noindex`; a asserção negativa mira
 | "Um segundo commit gigante no fim" | Catraca verde (RITOS §2.1): verde ⇒ commit, sempre. |
 | "Host desconhecido? Sirvo o site principal" | 404 (INV-P11). Site padrão silencioso contamina os testes de todos os sites. |
 
-## §5 — Checklist pré-PR (30 segundos, mecânico)
+## §5: Validar, entregar e consultar no PowerShell
 
-1. `make ci` verde — saída colada no PR.
-2. `git diff --name-only origin/main...HEAD` bate com os ALVOS do despacho.
-3. Contagem de arquivos dentro do ORÇAMENTO do despacho.
-4. `git diff origin/main...HEAD | grep -nE "TODO|print\(|console\.log"` — limpo ou justificado.
-5. Invariante tocado ⇒ evidência vermelho→verde colada.
-6. Handoff escrito no corpo do PR (RITOS §1).
-7. Título em Conventional Commit: `feat(checkout): ...` / `fix(pix): ...`.
+Roteiro dos agentes dentro da bancada aberta pelo RITOS §1. O mantenedor recebe
+resultado e prova; os comandos abaixo são trabalho do executor e da maestro.
+
+**1. Conferir o trabalho.** Rode os testes dos alvos do brief e guarde comando,
+saída e revisão. `--sem-container` deixa o baseline não medido e não dispensa testes.
+Confira `git status --short` e o diff, inclusive alterações sem commit, contra
+ALVOS e ORÇAMENTO. Remova debug, código morto e pendências de implementação.
+Invariante tocado exige vermelho→verde e prova dos guardas conforme a ficha.
+Prepare o handoff com ramo, SHA, provas, pendências e título convencional.
+Caminho com dono exige o mandato no formato da [R14](#r14--abrir-pr-que-toca-caminho-codeowners).
+
+**2. Abrir o PR com validação e recibo no mesmo ramo.** O executor define `$alvos`
+como lista dos caminhos autorizados no brief e `$preparo` como caminho absoluto
+da pasta local de preparação, fora dos arquivos entregues. `$tarefaFila` contém
+a TAR real vinculada a este trabalho pelo RITOS §5; sessões novas exigem esse
+vínculo antes de publicar. Prepare na pasta
+`mensagem.txt` (primeira linha: título do PR; última linha:
+`Co-Authored-By: Codex <noreply@openai.com>`), `corpo.md`, `detalhe.txt` e
+`validacao.json` conforme [painel/LEIA-ME.md](painel/LEIA-ME.md#como-registrar-um-acontecimento-o-gesto-de-toda-sessão).
+
+```powershell
+# [RECEITA:ENTREGA v1]
+if (-not $preparo -or -not $alvos -or $tarefaFila -notmatch '^TAR-\d{3,}$') { throw 'PAROU POR SEGURANÇA: defina a pasta, os alvos do brief e a TAR real desta entrega.' }
+$alterados = @()
+foreach ($consultaGit in @(@('diff', '--name-only', 'origin/main...HEAD'), @('diff', '--name-only', 'HEAD'), @('ls-files', '--others', '--exclude-standard'))) {
+    $alterados += git @consultaGit
+    if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: não foi possível medir os arquivos; confira a bancada e origin/main.' }
+}
+$alterados = @($alterados | Sort-Object -Unique)
+$foraDoBrief = @($alterados | Where-Object { $_ -notin $alvos })
+if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e devolva à maestro." }
+$codigoEntregue = @($alterados | Where-Object { $_ -notmatch '^(painel|fila)/' })
+if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; devolva à maestro.' }
+$titulo = Get-Content -LiteralPath (Join-Path $preparo 'mensagem.txt') -Encoding UTF8 -TotalCount 1 -ErrorAction Stop
+python ci/pr.py --titulo $titulo --mensagem-arquivo (Join-Path $preparo 'mensagem.txt') --corpo-arquivo (Join-Path $preparo 'corpo.md') --arquivos $alvos --detalhe-arquivo (Join-Path $preparo 'detalhe.txt') --validacao-arquivo (Join-Path $preparo 'validacao.json') --tarefa $tarefaFila
+if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: leia o diagnóstico, preserve a bancada e retome com --continuar após corrigir a causa.' }
+```
+
+O rito embarca os eventos da tarefa. Na retomada, use os mesmos argumentos e
+`--continuar`;
+não refaça reserva ou recibo. Inclua em `$alvos` os caminhos exatos do recibo e
+dos eventos gerados nesta tarefa ao retomar; outras alterações continuam fora
+do mandato. Confira `git diff --name-only origin/main...HEAD`,
+inclusive recibo e eventos. O rito valida a revisão isolada e o SHA final.
+PR aberto e validação local não comprovam integração nem publicação.
+
+**3. Consultar uma vez, a partir do ramo da bancada.** O executor devolve o PR;
+a maestro consulta sem laço. A integração é automática pelos checks no SHA atual
+(RITOS §2). A consulta composta não promete resposta em cinco segundos.
+
+```powershell
+# [RECEITA:ENTREGA v1]
+$jsonPr = gh pr view --json number,state,headRefOid,mergeCommit,url
+if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: confira ramo, autenticação e acesso ao GitHub.' }
+try { $pr = $jsonPr | ConvertFrom-Json -ErrorAction Stop }
+catch { throw 'PAROU POR SEGURANÇA: o GitHub não devolveu JSON válido; confira a consulta.' }
+if ("$($pr.number)" -notmatch '^\d+$') { throw 'PAROU POR SEGURANÇA: o GitHub não identificou um PR; confira o ramo.' }
+$pr | Select-Object number,state,headRefOid,mergeCommit,url
+switch ($pr.state) {
+    'MERGED' {
+        python ci/esperar.py --entrega $pr.number
+        $codigoConsulta = $LASTEXITCODE
+        if ($codigoConsulta -eq 2) { throw 'PAROU POR SEGURANÇA: a consulta falhou; leia acao, sem declarar publicação.' }
+        if ($codigoConsulta -notin @(0, 1)) { throw 'PAROU POR SEGURANÇA: saída inesperada; confira o instrumento.' }
+    }
+    'OPEN' { Write-Output 'PR aberto: integração não comprovada. Use a conferência da R14 para diagnóstico.' }
+    'CLOSED' { Write-Output 'PR encerrado sem integrar: esta entrega não foi publicada.' }
+    default { throw 'PAROU POR SEGURANÇA: estado desconhecido; confira a resposta do GitHub.' }
+}
+```
+
+Use `--entrega` só após `MERGED`: em PR aberto, o leitor ainda cobra atestado e
+etiqueta removidos por RITOS §2. Para diagnosticar PR aberto, a R14 usa
+`python ci/mergear.py $pr.number --conferir`, somente leitura.
+
+| JSON de `--entrega` | Prova e próxima ação |
+|---|---|
+| `PUBLICADO`, exit 0 | Jobs exigidos comprovados; guarde SHAs e links, confira o aceite funcional na borda |
+| `SEM_PUBLICACAO`, exit 0 | Integrado; este diff não dispara publicação |
+| `AGUARDANDO_PUBLICACAO`, exit 1 | Publicação não comprovada; leia `acao` e os runs |
+| `FALHA_PUBLICACAO`, exit 1 | Falha medida na publicação; leia `acao` e evidência antes de corrigir |
+| `ERROR`, exit 2 | Instrumento indisponível; corrija a consulta, sem atribuir sucesso ou falha ao site |
+
+**4. Comprovar a entrega pública.** Quando o pedido exige deploy, a entrega só
+termina com o texto ou aceite funcional conferido na URL pública e com o SHA
+publicado ligado à execução do deploy. Registre os instantes UTC de abertura,
+edição, PR, merge, deploy e verificação pública, além das falhas e do tempo
+gasto em cada etapa. PR aberto não encerra esse pedido: o executor entrega
+o ramo e as provas à maestro, que acompanha até a conferência pública.

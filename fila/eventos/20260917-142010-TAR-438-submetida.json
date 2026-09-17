@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260917-142010-TAR-438-submetida",
+  "tarefa": "TAR-438",
+  "evento": "submetida",
+  "quando": "2026-09-17T14:20:10+00:00",
+  "quem": "agent/infra/export-do-gateway-no-deploy",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1686",
+  "revisao": "8e1b62214f62a21b2e0b9138213a0889816f5ef1",
+  "arvore": "062f8bc4efe75e236b24a6c0f054c8aa0301f532"
+}
