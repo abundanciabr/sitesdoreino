@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-011-infra-o-deploy-de-celula-volta-a-subir",
+  tipo: "incidente",
+  quando: "2026-09-17",
+  titulo: "infra: o deploy de célula volta a subir",
+  detalhe: "O programa que publica o site parou em 15/09: passou a precisar de duas senhas do porteiro e não sabia passá-las. Seis publicações falharam. Agora ele passa as duas. A prova é a próxima.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1686. Validação local: árvore 062f8bc4efe75e236b24a6c0f054c8aa0301f532; commit 8e1b62214f62a21b2e0b9138213a0889816f5ef1; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-438",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

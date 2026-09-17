@@ -14,7 +14,7 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
 <div class="envolucro">
   <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
   <h1>O calendário do ciclo</h1>
-  <p class="subtitulo">As 12 semanas do ciclo, mais a de preparação e a de recuperação.</p>
+  <p class="subtitulo">As 12 semanas do ciclo, mais a preparação e a recuperação.</p>
 
   {% if not meta %}
   <p class="aviso borda-vermelha">
@@ -32,11 +32,11 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
 
   <p class="lei">
     Aqui está a régua que o placar usa para dizer se você está ganhando ou
-    perdendo. As três primeiras semanas pedem zero venda de propósito: são as
-    de aprender a campanha, o criativo, a copy e a página de venda. Cobrar
-    venda de quem ainda está aprendendo mede a coisa errada com precisão. A
-    conta sobe devagar, acelera no meio e concentra o peso no fim, quando o que
-    funciona já é conhecido.
+    perdendo.
+    As cinco primeiras semanas pedem zero venda de propósito: são as de aprender a campanha, o criativo, a copy e a página de venda.
+    Cobrar venda de quem ainda está aprendendo mede a coisa errada com
+    precisão. A conta sobe devagar, acelera no meio e concentra o peso no fim,
+    quando o que funciona já é conhecido.
   </p>
 
   {% if nao_consigo_contar %}
@@ -99,9 +99,10 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
   </p>
 
   <p class="aviso espaco-28">
-    <b>A semana de recuperação existe para o caso de a meta não cair no prazo.</b>
-    Ela não tem meta própria: o que ela carrega é o que faltar quando a semana
-    12 fechar. Se nada faltar, ela é uma semana livre.
+    <b>A recuperação existe para o caso de a meta não cair no prazo.</b>
+    Ela não é uma semana inteira: são os dias úteis que sobram entre o fim da semana 12 e o prazo do ciclo.
+    Também não tem meta própria, porque o que ela carrega é o que faltar quando
+    a semana 12 fechar. Se nada faltar, são dias livres.
   </p>
   {% endif %}
 </div>
