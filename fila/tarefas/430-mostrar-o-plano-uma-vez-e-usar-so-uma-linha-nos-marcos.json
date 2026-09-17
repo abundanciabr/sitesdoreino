@@ -1,0 +1,20 @@
+{
+  "arquivo": "430-mostrar-o-plano-uma-vez-e-usar-so-uma-linha-nos-marcos",
+  "id": "TAR-430",
+  "titulo": "Mostrar o plano uma vez e usar só uma linha nos marcos",
+  "toca": [
+    "ci",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Dois testes focais vermelho para verde; aviso e lei alinhados; suíte pertinente e prova automatizada de guardas aprovadas; PR com recibo.",
+  "despacho": "Objetivo: impedir a repetição do plano completo na mesma tarefa. Um único título Plano com caixinhas na abertura; ao concluir ou bloquear etapa, uma linha Onde estou: passo N de M. Próximo passo: ...; checklist final e prestação de contas no fecho.\nAlvos: CLAUDE.md; docs/decisoes/DECISAO-claude-md-so-lei.md; ci/prestacao_de_contas.py; ci/tests/test_prestacao_de_contas.py; tarefa e eventos desta demanda e recibo obrigatórios do make pr.\nSomente leitura: AGENTS.md, CONSTITUICAO.md, RITOS.md e demais arquivos. Sem contrato ou produto novo.\nMandato-do-mantenedor: pedido direto de 14/09/2026, com captura de várias reimpressões, autoriza os alvos CODEOWNERS CLAUDE.md, docs/decisoes/ e ci/ para eliminar a repetição do plano.\nAceite: aviso do gancho e documentos alinhados; dois testes focais vermelho para verde; suíte pertinente aprovada; prova de guardas automatizada; passe de remoção e revisão; PR com tarefa, eventos e recibo.\nBancada: agent/area/plano-unico. Área sem serviço. modelo_recomendado: gpt-6-astra. esforco_recomendado: high.",
+  "origem": "pedido direto do mantenedor em 14/09/2026 com captura",
+  "criada_em": "2026-09-15",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

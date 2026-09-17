@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260915-022600-TAR-430-explicada",
+  "tarefa": "TAR-430",
+  "evento": "explicada",
+  "quando": "2026-09-15T02:26:00+00:00",
+  "quem": "pedido direto do mantenedor em 14/09/2026 com captura",
+  "o_que_e": "A conversa repete o plano inteiro cada vez que uma etapa termina.",
+  "o_que_muda": "O mantenedor vê o plano na abertura e no fecho, com uma linha curta de progresso entre eles.",
+  "exemplo": "Marcar a leitura como concluída mostra somente o passo atual e o próximo, sem copiar as cinco caixinhas.",
+  "importancia": 70
+}

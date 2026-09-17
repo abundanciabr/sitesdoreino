@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260915-001-ci-manter-um-plano-por-tarefa",
+  tipo: "entrega",
+  quando: "2026-09-15",
+  titulo: "ci: manter um plano por tarefa",
+  detalhe: "Plano na abertura e no fecho; etapas com uma linha. Lei e aviso alinhados, 169 testes aprovados e quatro guardas comprovadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1668. Validação local: árvore 39bd3f64dc5093a58a1b82fcb75e88e0b9489aad; commit de8ee3d109518a2b0806d63b8263f28c0b0bfa92; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-15",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-430",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
