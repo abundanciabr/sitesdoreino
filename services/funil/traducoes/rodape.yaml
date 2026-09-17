@@ -83,3 +83,9 @@ direitos:
   en: "© {ano} Meshcraft Academy. All rights reserved."
   pt-br: "© {ano} Meshcraft Academy. Todos os direitos reservados."
   es: "© {ano} Meshcraft Academy. Todos los derechos reservados."
+
+atualizacao:
+  _fonte: "b8fd1e"
+  en: "Last updated: 17/09/2026 by Codex"
+  pt-br: "Última atualização: 17/09/2026 por Codex"
+  es: "Última actualización: 17/09/2026 por Codex"

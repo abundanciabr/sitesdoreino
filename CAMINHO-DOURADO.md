@@ -1262,3 +1262,10 @@ etiqueta removidos por RITOS §2. Para diagnosticar PR aberto, a R14 usa
 | `AGUARDANDO_PUBLICACAO`, exit 1 | Publicação não comprovada; leia `acao` e os runs |
 | `FALHA_PUBLICACAO`, exit 1 | Falha medida na publicação; leia `acao` e evidência antes de corrigir |
 | `ERROR`, exit 2 | Instrumento indisponível; corrija a consulta, sem atribuir sucesso ou falha ao site |
+
+**4. Comprovar a entrega pública.** Quando o pedido exige deploy, a entrega só
+termina com o texto ou aceite funcional conferido na URL pública e com o SHA
+publicado ligado à execução do deploy. Registre os instantes UTC de abertura,
+edição, PR, merge, deploy e verificação pública, além das falhas e do tempo
+gasto em cada etapa. PR aberto não encerra esse pedido: o executor entrega
+o ramo e as provas à maestro, que acompanha até a conferência pública.
