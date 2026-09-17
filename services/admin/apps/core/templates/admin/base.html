@@ -752,17 +752,31 @@ primeira versão deste arquivo, e o teste pegou.
        no celular, e não empurra a página inteira de lado: página que rola na
        horizontal esconde texto, e ninguém procura o que não sabe que existe. */
     .rolagem-lateral { overflow-x: auto; }
-    /* A tabela das coortes (05/09/2026) usa as MESMAS regras: é a mesma
-       forma de tabela, com outro conteúdo. Um segundo bloco de CSS igual
-       divergiria no primeiro ajuste feito só de um lado. */
-    .semanas-do-ciclo, .tabela-coortes { width: 100%; border-collapse: collapse; font-size: 14px; }
+    /* A tabela das coortes (05/09/2026) e o placar das IAs (17/09/2026) usam as
+       MESMAS regras: é a mesma forma de tabela, com outro conteúdo. Um segundo
+       bloco de CSS igual divergiria no primeiro ajuste feito só de um lado. */
+    .semanas-do-ciclo, .tabela-coortes, .tabela-ias { width: 100%; border-collapse: collapse; font-size: 14px; }
     .semanas-do-ciclo th, .semanas-do-ciclo td,
-    .tabela-coortes th, .tabela-coortes td {
+    .tabela-coortes th, .tabela-coortes td,
+    .tabela-ias th, .tabela-ias td {
       padding: 9px 10px; border-bottom: 1px solid var(--linha);
       text-align: left; white-space: nowrap;
     }
-    .semanas-do-ciclo th, .tabela-coortes th { color: var(--texto-2); font-size: 12px; font-weight: 600; }
-    .semanas-do-ciclo .numero, .tabela-coortes .numero { text-align: right; font-variant-numeric: tabular-nums; }
+    .semanas-do-ciclo th, .tabela-coortes th, .tabela-ias th { color: var(--texto-2); font-size: 12px; font-weight: 600; }
+    .semanas-do-ciclo .numero, .tabela-coortes .numero, .tabela-ias .numero { text-align: right; font-variant-numeric: tabular-nums; }
+    /* O papel e a consequência vão sob o nome, e não em coluna própria: são
+       leitura de apoio, e uma coluna a mais empurraria os números para fora da
+       tela no celular. */
+    .tabela-ias .papel { display: block; color: var(--texto-3); font-size: 12px; font-weight: 400; }
+    /* Quem lidera ganha fundo e borda, como a semana corrente: é a linha que o
+       olho tem de achar sem procurar. */
+    .tabela-ias .lidera td { background: var(--painel); border-top: 1px solid var(--azul); border-bottom-color: var(--azul); }
+    /* Quem não entregou nada fica apagada, e não vermelha: vermelho diria
+       "errou", e não entregar ainda não é erro — é o fato que a tela mostra.
+       O nome `sem-dono` é escolhido, e não óbvio: esta folha é servida em TODA
+       página da área, e a tela da ideia reprova palavra de obra no HTML dela
+       (`tests/test_caixa_acoes.py`) — inclusive dentro de comentário. */
+    .tabela-ias .parada td, .tabela-ias .sem-dono td { color: var(--texto-3); }
     .semanas-do-ciclo .acumulada { color: var(--texto-2); }
     /* Onde você está, em três estados. A semana de hoje ganha fundo e borda, e
        não só cor de texto: é a linha que o olho tem de achar sem procurar. */
@@ -776,7 +790,7 @@ primeira versão deste arquivo, e o teste pegou.
     }
     /* "Não sei" nunca é zero, e por isso não é vermelho: vermelho treinaria a
        ler ausência de resposta como resultado ruim. */
-    .semanas-do-ciclo .nao-sei { color: var(--texto-3); font-style: italic; }
+    .semanas-do-ciclo .nao-sei, .tabela-ias .nao-sei { color: var(--texto-3); font-style: italic; }
     .selo-verde, .selo-vermelho {
       margin-left: 7px; padding: 1px 7px; border-radius: 6px;
       font-size: 11px; font-weight: 600; border: 1px solid;
