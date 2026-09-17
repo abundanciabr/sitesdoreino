@@ -1,0 +1,19 @@
+{
+  "arquivo": "443-comparar-as-ias-apos-o-mesmo-prazo-de-observacao",
+  "id": "TAR-443",
+  "titulo": "Comparar as IAs após o mesmo prazo de observação",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado e GET público mostram sete dias completos para a mesma coorte de páginas, participações e custos nos três índices",
+  "despacho": "# Brief compilado\n\nobjetivo: Aplicar maturação uniforme de sete dias à página, participações e custos da mesma coorte nos três índices do prompt público das IAs.\ntipo: texto\nmodelo_recomendado: gpt-5.6-sol\nesforco_recomendado: medium\nmotivo_do_modelo: reescreve superficie publicada sem decidir arquitetura\ncelula: admin\n\n## Mandato e origem\n\nPedido direto do mantenedor em 17/09/2026 para criar o procedimento futuro das IAs. Correção mínima autorizada pela maestro após achado do revisor: o PR #1693 exigia sete dias completos apenas da sentinela e comparava coortes diferentes. Não alterar o PR integrado nem reabrir TAR-442.\n\n## Alvos\n\n- docs/decisoes/PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md\n- Artefatos obrigatórios da nova TAR e de ci/pr.py.\n\nSomente leitura: CLAUDE.md, CONSTITUICAO.md, RITOS.md, AGENTS.md, constituicoes/AGENTS.admin.md, services/admin/LICOES.md, docs/decisoes/RETROSPECTIVA-FASE-D.md, docs/decisoes/DECISAO-triade-de-ias.md, painel/LEIA-ME.md, fila/LEIA-ME.md, services/admin/apps/core/planos_para_ia.py e services/admin/tests/test_planos_para_ia.py. Armadilha 388.\n\n## Aceite\n\nMesma coorte madura para total de páginas, três numeradores, participações e custos; sete dias completos exigidos para todos. Tentativas, falhas e abandono permanecem no custo, sem selecionar apenas sucessos. Páginas recentes não favorecem um papel. Papéis, política, limiares e restante do prompt preservados. Decisão canônica não exige alteração, pois remete ao prompt para janela e suficiência.\n\n## Provas\n\nBaseline focal antes da edição, teste services/admin/tests/test_planos_para_ia.py, git diff --check, mapa de células, censo de travessão e muralhas. Conferência local da rota pública e conteúdo. Baseline completo NÃO MEDIDO por GNU Make ausente, mantendo a exceção documental e as limitações já registradas no lote. Passe de remoção e revisão. Rito ci/pr.py com recibo e eventos, sem esperar checks em laço; integração e publicação exigem prova própria.\n\n## Fronteira\n\nNão implementar ranking, não mudar código/testes/papéis/assinaturas, não modificar TAR-442 ou registros integrados. Não tocar trabalho de terceiros. CODEOWNERS /docs/decisoes/ com mandato escrito no PR. O evento concluida embarca por contrato do rito; não declara deploy ou GET externo.",
+  "origem": "Pedido direto do mantenedor em 17/09/2026; correção autorizada após achado do revisor no PR #1693",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

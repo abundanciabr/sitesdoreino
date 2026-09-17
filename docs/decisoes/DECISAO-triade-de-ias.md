@@ -38,6 +38,30 @@ mutilado. Por isso a regra 1 abaixo é a primeira.
 
 ## Os papéis
 
+### Atualização de 17/09/2026: alocação externa de capacidade
+
+O mantenedor pediu regras de cooperação e eficiência para o procedimento futuro
+das três IAs. A política pretendida é alocar Premium 20x ao primeiro colocado,
+Médio 5x ao segundo e considerar a descontinuação do terceiro. Esses nomes
+descrevem alocação externa de capacidade, não sobrevivência literal ou autorização
+para uma IA agir contra outra. Os papéis fixos desta decisão continuam intactos.
+
+A régua considera participação comprovada de cada papel nas páginas publicadas
+validadas da tríade e custo comparável. Cada página conta uma vez no total da
+equipe; os artefatos de regência, construção e verificação identificam as
+participações, sem multiplicar páginas. Qualidade, segurança e prova externa
+antecedem a contagem. Ausência de dados não equivale a zero.
+
+O artefato operacional é
+[`PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md`](PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md),
+que define janela, suficiência, custo e resposta esperada de cada IA. Ele não
+implementa placar nem executa alterações de assinatura. A avaliação é diagnóstica:
+alocar planos ou descontinuar participação exige decisão humana escrita após
+evidência suficiente, preservando artefatos e passagem de trabalho. Nenhuma
+classificação muda papéis ou amplia o mandato dos agentes.
+
+### Divisão de trabalho preservada
+
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
 | Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
@@ -130,6 +154,8 @@ digitando. O que ele sabe conferir é o rastro: tarefa na fila, brief roteado,
 PR com recibo, atestado com três identidades distintas.
 
 ## A memória
+
+- 17/09/2026: pedido direto do mantenedor estabelece a política pretendida de alocação externa por cooperação e eficiência. O prompt operacional explicita evidência e suficiência; os papéis fixos e a decisão humana sobre planos permanecem.
 
 - 12/09/2026, manhã: conselho local da Fase 4 (Codex propõe o regulamento; Claude Code e Antigravity escrevem fichas; 0 pontos).
 - 12/09/2026, tarde: o mantenedor pede a tríade. Claude Code escreve o protocolo e os dois convites na pasta de trabalho do mantenedor, fora do Git. Codex aceita às 16:49, Antigravity às 16:47; os aceites ficam gravados na mesma pasta. O protocolo é esta decisão.
