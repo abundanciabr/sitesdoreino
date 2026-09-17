@@ -20,7 +20,7 @@ import httpx
 import pytest
 import respx
 from django.test import Client
-from django.urls import reverse
+from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from apps.core import placar, reuniao
 
@@ -190,3 +190,36 @@ def test_sem_cracha_a_pagina_nao_abre():
         return_value=httpx.Response(200, json={"autenticado": False})
     )
     assert Client().get(reverse("reuniao")).status_code != 200
+
+
+# ------------------------------------------------------ a porta na capa
+
+
+@pytest.fixture
+def sob_o_prefixo_publico():
+    """O regime de produção: a área inteira mora sob `/admin`.
+
+    Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
+    o prefixo de thread que `reverse()` lê (`armadilhas/081`). O `finally`
+    restaura o anterior: o prefixo vaza entre testes.
+    """
+    anterior = get_script_prefix()
+    set_script_prefix("/admin/")
+    try:
+        yield
+    finally:
+        set_script_prefix(anterior)
+
+
+@respx.mock
+def test_a_visao_geral_oferece_a_porta_da_reuniao(sob_o_prefixo_publico):
+    """Um botão que ninguém encontra é uma funcionalidade que não existe.
+
+    E o endereço tem de levar o prefixo público: `href="/reuniao/"` abriria
+    no PC de quem desenvolve e daria 404 só na tela dele (`armadilhas/081`).
+    """
+    _a_escola_responde()
+    html = _dentro().get("/").content.decode()
+
+    assert "Abrir a pauta da reunião" in html
+    assert 'href="/admin/reuniao/"' in html
