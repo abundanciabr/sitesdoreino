@@ -159,7 +159,6 @@ def test_sem_cracha_a_pagina_nao_abre():
     assert resposta.status_code != 200
 
 
-# guarda: apps/core/templates/admin/visao_geral.html:84
 @pytest.fixture
 def sob_o_prefixo_publico():
     """O regime de producao: a area inteira mora sob `/admin`.
