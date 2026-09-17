@@ -46,6 +46,7 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 | Criar uma página em vários idiomas | **R12** | Texto fixo no template; a tag `url` crua; página nascendo com um idioma só |
 | Acrescentar um idioma a um site | **R12** | Recalcular o `_fonte` sem traduzir; idioma novo nascendo indexável |
 | Mexer na régua de uma meta (curva, datas, alvo) | **R13** | Corrigir o dado e deixar a prosa que o repete para trás |
+| Abrir PR que toca caminho CODEOWNERS | **R14** | Mandato em parágrafo, ou caminhos separados por vírgula |
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
@@ -142,6 +143,26 @@ queries da célula filtram SEMPRE por `request.site["id"]`.
 
 Dinheiro: `amount_cents`/`price_cents`/`total_cents` **inteiros**, sempre.
 Identificadores em EN, comentários e prosa em PT. `Decimal` só na borda do provider.
+
+**Rodar o portão da raiz localmente exige o mesmo ambiente que o CI declara.**
+As células têm fail-hard em `config/settings.py` (INV-P10), então sem as
+variáveis o exportador de contrato morre antes de exportar e cada célula vira
+um ERROR. **Esse resultado não é um diagnóstico do repositório:** as
+verificações de `seguranca/*` nem chegam a aparecer na tabela, e a lista curta
+se parece com uma lista inteira (armadilhas/483).
+
+```bash
+# [RECEITA:CONV-CI v1] — os valores são os de .github/workflows/ci-celula.yml
+PYTHONUTF8=1 \
+DJANGO_SECRET_KEY=ci-apenas-nunca-em-producao \
+DATABASE_URL=postgres://ci:ci@localhost:5432/ci_db \
+REDIS_STREAMS_URL=redis://localhost:6379/0 \
+HUEY_REDIS_URL=redis://localhost:6379/1 \
+python ci/ci.py --apenas freeze
+```
+
+A célula `pagamentos` pede ainda `MP_ACCESS_TOKEN` e `MP_WEBHOOK_SECRET`; os
+falsos que o CI usa estão no mesmo workflow.
 
 ---
 
@@ -1073,6 +1094,70 @@ português ficou para trás. Na primeira, a tela passou treze dias dizendo "as
 três primeiras semanas pedem zero venda" com o cartão dizendo cinco, sem nenhum
 portão ficar vermelho: prosa não é dado, e nada a media. O passo 7 é a resposta,
 e `armadilhas/480` é o relato.
+
+---
+
+## R14 — Abrir PR que toca caminho CODEOWNERS
+
+Alguns caminhos não são do agente: mudança neles só integra com a palavra
+escrita do mantenedor na descrição do PR. A lista vive em `.github/CODEOWNERS`,
+e hoje ela cobre `contracts/`, `services/pagamentos/`, `services/checkout/`,
+`infra/`, `ci/`, `.github/`, `.githooks/`, os arquivos de lei da raiz
+(`CONSTITUICAO.md`, `CLAUDE.md`, `INVARIANTES.md`, `RITOS.md`, este arquivo) e
+`docs/decisoes/`. **Confira no arquivo, não nesta frase:** lista copiada
+envelhece, e é por isso que o portão lê o original (a lição é a do R13 e da
+armadilhas/480).
+
+**1. O mandato é UMA LINHA, com os caminhos como palavras soltas.**
+
+```markdown
+<!-- na descrição do PR  [RECEITA:R14 v1] -->
+Mandato-do-mantenedor: <o pedido dele, nas palavras dele> CAMINHO-DOURADO.md ci/mergear.py
+```
+
+Duas regras, e as duas vêm do leitor, não do gosto de ninguém. Quem julga é
+`checar_mandato`, em `ci/mergear.py`:
+
+```python
+mandato = re.search(r"^Mandato-do-mantenedor: (.{20,})$", corpo, re.MULTILINE)
+...
+any(alvo in mandato.group(1).split() for alvo in (padrao, caminho))
+```
+
+- A regex termina em `$` com `re.MULTILINE`, então ela lê **a primeira linha e
+  para**. Mandato escrito em parágrafo deixa os caminhos nas linhas de baixo, e
+  para o portão eles não existem.
+- A comparação é `.split()` com igualdade exata. **Vírgula depois do caminho
+  derruba o pouso:** `CAMINHO-DOURADO.md,` é um token com vírgula colada, e ele
+  nunca é igual a `CAMINHO-DOURADO.md`. Separe por espaço, e só por espaço.
+
+O caminho vale tanto na forma da regra quanto na do arquivo: para
+`/services/pagamentos/` serve escrever `services/pagamentos/` ou o arquivo
+inteiro que você tocou. E o autor do PR precisa constar como dono do caminho em
+`.github/CODEOWNERS`, senão o mandato não é aceito venha de onde vier.
+
+**2. Antes de dizer pronto, confira o julgamento.**
+
+```bash
+python ci/mergear.py <N> --conferir
+```
+
+Somente leitura, não integra nada, e imprime a tabela inteira com o motivo de
+cada linha. É o único gesto que separa "o PR está esperando a vez" de "o PR foi
+pulado". A varredura do `pouso.yml` descarta o PR reprovado no mandato com um
+`continue` mudo: ele some do log, os outros continuam sendo julgados na tela, e
+a espera fica idêntica ao progresso (armadilhas/482). O PR #1684 ficou 19
+minutos assim, verde nos 8 checks e invisível, por causa de uma vírgula.
+
+**3. Se reprovou, o conserto é reescrever a linha.** O FAIL diz
+`falta mandato do dono para <caminho>`. Reescreva a descrição com a linha do
+passo 1 e rode o `--conferir` de novo. Nada de novo commit: o portão lê a
+descrição do PR, não o diff.
+
+**Por que esta receita existe:** o mandato é a única lei desta casa que se
+escreve em prosa e é lida por máquina. Escrever para gente (parágrafo, lista
+com vírgulas) é o gesto natural, e é exatamente o gesto que o leitor recusa em
+silêncio. `armadilhas/481` é o relato.
 
 ## §4 — Anti-padrões com resposta pronta
 
