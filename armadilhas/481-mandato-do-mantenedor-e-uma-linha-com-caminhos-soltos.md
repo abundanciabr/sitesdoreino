@@ -17,7 +17,7 @@ guarda:
   tipo: CI
   dono: ci/mergear.py
   detector: checar_mandato
-licao: O portão lê `Mandato-do-mantenedor:` com uma regex de UMA linha e compara os caminhos com `.split()`. Mandato em parágrafo deixa os caminhos nas linhas de baixo, invisíveis; vírgula depois do caminho (`CAMINHO-DOURADO.md,`) vira token com vírgula, que nunca casa. Escreva o mandato numa linha só, com os caminhos como palavras soltas e sem vírgula entre eles. Receita em CAMINHO-DOURADO.md R14.
+licao: O portão lê `Mandato-do-mantenedor:` com uma regex de UMA linha e compara os caminhos com `.split()`. Mandato em parágrafo esconde os caminhos das linhas de baixo; vírgula colada (`ci/,`) nunca casa; e prefixo pela metade (`ci/tests`) também não, porque só valem o padrão do CODEOWNERS com barra (`ci/`) ou o caminho exato do arquivo. Uma linha, palavras soltas. Receita em CAMINHO-DOURADO.md R14.
 ---
 
 # O mandato do mantenedor é uma linha só, e os caminhos são palavras soltas
@@ -45,6 +45,15 @@ O custo medido: o PR #1684 ficou com os 8 checks verdes, `mergeStateStatus`
 `CLEAN`, e a varredura do pouso o pulou por 19 minutos, sem uma linha de log
 (esse silêncio é a armadilhas/482). O conserto foi reescrever o mandato numa
 linha só, com os caminhos como palavras soltas.
+
+A terceira forma de errar não tem nada a ver com pontuação: é escrever um
+prefixo pela metade. O portão compara cada arquivo do PR com duas formas, e só
+com elas: o padrão do CODEOWNERS com a barra final (`ci/`) ou o caminho exato
+do arquivo (`ci/tests/test_chaves_do_gateway_no_deploy.py`). `ci/tests` é uma
+linha só, palavra solta, sem vírgula, e mesmo assim não é nenhuma das duas, então
+reprova igual. Foi o que quase pulou o PR #1686 poucas horas depois de esta
+armadilha nascer. O prefixo intermediário é o mais caro dos três porque parece
+obviamente certo.
 
 O formato que passa, pronto para colar, e a lista do que é CODEOWNERS hoje
 estão na receita R14 do `CAMINHO-DOURADO.md`. A fonte da verdade dos caminhos
