@@ -7,6 +7,7 @@
 # INV-P5); listEnrollments responde "quem é aluno" (e por isso filtra por status —
 # ver matriculas_que_valem). As três portas de /pre-matriculas são a fila de
 # liberação (docs/decisoes/DECISAO-fila-de-liberacao.md).
+import base64
 import json
 from datetime import date
 
@@ -1631,6 +1632,160 @@ def list_all_enrollments(request, site_id: str = None, status: str = None):
         como_o_painel_ve(m) for m in alunos_do_painel(site_id=site_id, status=status)
     ]
     return JsonResponse(corpo, safe=False, status=200)
+
+
+ERRO_DE_CURSOR = "cursor invalido; use o cursor devolvido pela pagina anterior"
+
+_LIST_ENROLLMENTS_PAGE_OPENAPI = {
+    "parameters": [
+        {
+            "name": "site_id",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+        },
+        {
+            "name": "status",
+            "in": "query",
+            "required": False,
+            "description": "Ausente = todos os estados de gestao (nao os da fila).",
+            "schema": {
+                "type": "string",
+                "enum": ["ativa", "suspensa", "encerrada", "reembolsada"],
+            },
+        },
+        {
+            "name": "limite",
+            "in": "query",
+            "required": False,
+            "description": "Quantos alunos por pagina.",
+            "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 25},
+        },
+        {
+            "name": "cursor",
+            "in": "query",
+            "required": False,
+            "description": "O `proximo_cursor` da pagina anterior. Ausente = primeira.",
+            "schema": {"type": "string"},
+        },
+    ],
+    "responses": {
+        "200": {
+            "description": "Uma pagina de alunos, e os contadores da tela inteira",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["itens", "proximo_cursor", "total", "contagens"],
+                        "properties": {
+                            # A MESMA forma de `/matriculas`, lida de la. Duas
+                            # montagens a mao da mesma forma divergem no primeiro
+                            # campo novo, e e por isso que `como_o_painel_ve`
+                            # tambem e uma funcao so.
+                            "itens": {
+                                "type": "array",
+                                "items": _LIST_ALL_ENROLLMENTS_OPENAPI["responses"][
+                                    "200"
+                                ]["content"]["application/json"]["schema"]["items"],
+                            },
+                            "proximo_cursor": {"type": ["string", "null"]},
+                            "total": {"type": "integer", "minimum": 0},
+                            "contagens": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": [
+                                    "ativa",
+                                    "suspensa",
+                                    "encerrada",
+                                    "reembolsada",
+                                ],
+                                "properties": {
+                                    "ativa": {"type": "integer", "minimum": 0},
+                                    "suspensa": {"type": "integer", "minimum": 0},
+                                    "encerrada": {"type": "integer", "minimum": 0},
+                                    "reembolsada": {"type": "integer", "minimum": 0},
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        "422": {"description": "Limite ou cursor invalido"},
+    },
+}
+
+
+def _cursor_para_offset(cursor: str | None) -> int:
+    """O cursor e o DESLOCAMENTO, embrulhado para nao parecer editavel.
+
+    Deslocamento, e nao a ultima chave vista: `alunos_do_painel` ordena por
+    `-enrolled_at`, que nao acompanha a ordem de `pk`. Paginar por `pk__lt`
+    contra essa ordenacao pula e repete alunos, e `test_paginar_nao_pula_nem_
+    repete_quando_a_ordem_de_compra_diverge_da_de_insercao` guarda isso.
+    """
+    if not cursor:
+        return 0
+    try:
+        # O `rstrip("=")` de `_offset_para_cursor` deixa o cursor curto e
+        # bonito na URL; o padding volta aqui, senao o decode recusa o proprio
+        # cursor que esta porta emitiu.
+        preenchimento = "=" * (-len(cursor) % 4)
+        cru = base64.urlsafe_b64decode((cursor + preenchimento).encode()).decode()
+        offset = int(cru)
+    except (ValueError, UnicodeDecodeError, base64.binascii.Error):
+        raise HttpError(422, ERRO_DE_CURSOR)
+    if offset < 0:
+        raise HttpError(422, ERRO_DE_CURSOR)
+    return offset
+
+
+def _offset_para_cursor(offset: int) -> str:
+    return base64.urlsafe_b64encode(str(offset).encode()).decode().rstrip("=")
+
+
+@router.get(
+    "/matriculas/pagina",
+    operation_id="listEnrollmentsPage",
+    summary="Quem ja e aluno, uma pagina por vez, para o painel",
+    openapi_extra=_LIST_ENROLLMENTS_PAGE_OPENAPI,
+)
+def list_enrollments_page(
+    request,
+    site_id: str = None,
+    status: str = None,
+    limite: int = 25,
+    cursor: str = None,
+):
+    """[GESTAO] A mesma lista de `/matriculas`, em pedacos, com os contadores."""
+    if limite < 1 or limite > 100:
+        raise HttpError(422, "limite invalido; informe um numero entre 1 e 100")
+    if status is not None and status not in Matricula.STATUS_DE_GESTAO:
+        # Mesma direcao da porta irma, e pelo mesmo motivo: estado fora do
+        # vocabulario cai em "todos", nunca em erro nem em lista vazia.
+        status = None
+    consulta = alunos_do_painel(site_id=site_id, status=status)
+    offset = _cursor_para_offset(cursor)
+    total = consulta.count()
+    itens = [como_o_painel_ve(m) for m in consulta[offset : offset + limite]]
+    # Os contadores NAO herdam o filtro de estado: a tela mostra os quatro ao
+    # mesmo tempo, e zera-los quando o mantenedor filtra por um deles faria a
+    # tela dizer que os outros tres nao existem.
+    contagens = {
+        estado: alunos_do_painel(site_id=site_id, status=estado).count()
+        for estado in Matricula.STATUS_DE_GESTAO
+    }
+    proximo = _offset_para_cursor(offset + limite) if offset + limite < total else None
+    return JsonResponse(
+        {
+            "itens": itens,
+            "proximo_cursor": proximo,
+            "total": total,
+            "contagens": contagens,
+        },
+        status=200,
+    )
 
 
 @router.patch(
