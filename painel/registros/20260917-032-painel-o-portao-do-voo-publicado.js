@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-032-painel-o-portao-do-voo-publicado",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "painel: o portão do voo publicado",
+  detalhe: "Aceite do PR 1703 conferido de fora: merge confirmado pelo gh e deploy-celula success em 4min09s. Fecha o ciclo que a lei nova exige.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1707. Validação local: árvore 63e655abb904094c3e585c87cca499383278312f; commit 8649dbf8330cda55e56388e1c2974c16c601d6ab; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-448",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
