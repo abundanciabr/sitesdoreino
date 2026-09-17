@@ -1,0 +1,21 @@
+{
+  "arquivo": "435-a-porta-que-entrega-a-lista-de-alunos-em-pedacos-ja-combinad",
+  "id": "TAR-435",
+  "titulo": "A porta que entrega a lista de alunos em pedacos, ja combinada no contrato",
+  "toca": [
+    "alunos"
+  ],
+  "depende_de": [
+    "TAR-434"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Suite da celula alunos verde com os testes novos, freeze de contrato PASS, e o teste de paginacao reprovando a implementacao por chave.",
+  "despacho": "# Despacho: a lista de alunos do painel passa a vir em paginas\n\n## O que e, em uma frase\n\n`GET /matriculas` devolve a escola inteira numa resposta so. A tela do painel\nprecisa de uma pagina por vez, mais os quatro contadores de situacao. Esta\ntarefa abre `GET /matriculas/pagina` na celula `alunos`, sem tocar na porta que\nja existe.\n\n## Escada, nesta ordem\n\n1. **Contrato, sozinho.** `contracts/alunos.openapi.yaml` ganha\n   `listEnrollmentsPage` com o envelope declarado inteiro: `itens`,\n   `proximo_cursor`, `total` e `contagens`. Rito de Contrato, RITOS.md §3.\n2. **Provedor.** `services/alunos/apps/core/api.py` implementa a porta, com\n   testes proprios. So depois do degrau 1 pousar, senao o freeze reprova.\n3. **Tela.** O painel troca a contagem de hoje pela rota nova. Fora desta\n   tarefa, porque mora na outra trilha.\n\n## Desenho fechado, nao reabrir\n\n- Paginacao por DESLOCAMENTO, nunca por chave. `alunos_do_painel` ordena por\n  `-enrolled_at`, que nao acompanha a ordem de `pk`: paginar por `pk__lt` pula\n  e repete alunos. Medido em 16/09/2026, com 3 de 5 alunos sumindo.\n- `contagens` NAO herda o filtro de estado. A tela mostra os quatro contadores\n  ao mesmo tempo, e zera-los ao filtrar faria a tela dizer que os outros tres\n  nao existem.\n- Estado desconhecido em `status` cai em \"todos\", nunca em erro nem em lista\n  vazia. E a decisao ja escrita em `GET /matriculas`, e duas portas do mesmo\n  recurso com regras diferentes e como uma tela comeca a mentir.\n- `limite` de 1 a 100, padrao 25. Fora da faixa, e cursor invalido, sao 422.\n\n## Evidencia que fecha\n\nFreeze de contrato PASS na celula, suite da celula verde com os testes novos, e\no teste de paginacao reprovando a implementacao por chave.\n\n## Origem\n\nDuas sessoes construiram esta porta em paralelo em 16/09/2026, sem saber uma da\noutra. O PR #1680 trazia contrato e codigo no mesmo lote e a muralha\n`cerca-de-celula` o reprovou. O mantenedor mandou juntar o melhor das duas.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
