@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-023440-TAR-435-explicada",
+  "tarefa": "TAR-435",
+  "evento": "explicada",
+  "quando": "2026-09-17T02:34:40+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "A implementacao de GET /matriculas/pagina na celula alunos, degrau 2 de 3.",
+  "o_que_muda": "O servidor passa a saber responder a lista em pedacos; a tela ainda nao usa.",
+  "exemplo": "Pedindo a primeira pagina com limite 25, o servidor devolve 25 alunos e o cursor da proxima.",
+  "importancia": 60
+}
