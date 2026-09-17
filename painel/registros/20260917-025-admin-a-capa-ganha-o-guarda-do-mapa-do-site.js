@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-025-admin-a-capa-ganha-o-guarda-do-mapa-do-site",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: a capa ganha o guarda que faltava para a porta do mapa do site",
+  detalhe: "Guarda test_a_visao_geral_oferece_a_porta_do_mapa_do_site em services/admin/tests/test_mapa_do_site.py, provado vermelho (cartao removido a mao) e verde (cartao restaurado). Fixture sob_o_prefixo_publico copiada de test_reuniao.py.",
+  autoridade: "local",
+  evidencia: "pytest services/admin/tests/test_mapa_do_site.py -q: 32 passed. make -C services/admin ci: PASS. Vermelho comprovado retirando o cartao e restaurando em seguida.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-443",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
