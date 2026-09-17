@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-017-admin-regras-de-cooperacao-das-ias",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: regras de cooperação das IAs",
+  detalhe: "Prompt público com papéis fixos e custo comprovado. Teste focal: 21 PASS. CI admin: ERROR, GNU Make ausente.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1693. Validação local: árvore 75405060dfe6c905bc958e62772ebcfcce83d83f; commit 82deda66a013a0ab90e21a5d0bb0e2f0428b663a; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-442",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

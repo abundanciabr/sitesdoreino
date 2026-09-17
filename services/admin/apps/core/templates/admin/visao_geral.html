@@ -204,6 +204,22 @@
         para quantos aparelhos ele chegou.
       </div>
     </a>
+    {% comment %}
+    A nona porta (17/09/2026). A Reunião existe desde o degrau 3 do plano do
+    painel de gestão — a pauta de segunda-feira que `apps/core/reuniao.py`
+    monta — mas não tinha porta nesta capa: quem não soubesse o endereço de
+    cor não chegava nela. Mesma lição das outras oito: um botão que ninguém
+    encontra é uma funcionalidade que não existe.
+    Lei: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'reuniao' %}">
+      <div class="rotulo">Abrir a pauta da reunião &rarr;</div>
+      <div class="nota">
+        Os oito passos da sua reunião de segunda-feira, lendo o mesmo placar
+        que a escola usa e terminando num pedido pronto para você mandar ao
+        robô.
+      </div>
+    </a>
   </div>
 
   {% comment %}
