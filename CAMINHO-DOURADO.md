@@ -46,7 +46,7 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 | Criar uma página em vários idiomas | **R12** | Texto fixo no template; a tag `url` crua; página nascendo com um idioma só |
 | Acrescentar um idioma a um site | **R12** | Recalcular o `_fonte` sem traduzir; idioma novo nascendo indexável |
 | Mexer na régua de uma meta (curva, datas, alvo) | **R13** | Corrigir o dado e deixar a prosa que o repete para trás |
-| Abrir PR que toca caminho CODEOWNERS | **R14** | Mandato em parágrafo, ou caminhos separados por vírgula |
+| Abrir PR que toca caminho CODEOWNERS | **R14** | Mandato em parágrafo, caminhos separados por vírgula, ou prefixo pela metade |
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
@@ -1115,7 +1115,7 @@ armadilhas/480).
 Mandato-do-mantenedor: <o pedido dele, nas palavras dele> CAMINHO-DOURADO.md ci/mergear.py
 ```
 
-Duas regras, e as duas vêm do leitor, não do gosto de ninguém. Quem julga é
+Três regras, e as três vêm do leitor, não do gosto de ninguém. Quem julga é
 `checar_mandato`, em `ci/mergear.py`:
 
 ```python
@@ -1130,11 +1130,15 @@ any(alvo in mandato.group(1).split() for alvo in (padrao, caminho))
 - A comparação é `.split()` com igualdade exata. **Vírgula depois do caminho
   derruba o pouso:** `CAMINHO-DOURADO.md,` é um token com vírgula colada, e ele
   nunca é igual a `CAMINHO-DOURADO.md`. Separe por espaço, e só por espaço.
+- O que conta como caminho são **duas formas, e só elas**: o padrão escrito em
+  `.github/CODEOWNERS`, com a barra final (`ci/`, `services/pagamentos/`), ou o
+  caminho exato do arquivo que você tocou
+  (`ci/tests/test_chaves_do_gateway_no_deploy.py`). **Prefixo pela metade
+  reprova:** `ci/tests` é uma linha só, palavra solta e sem vírgula, e mesmo
+  assim não é nenhuma das duas. Quase pulou o PR #1686.
 
-O caminho vale tanto na forma da regra quanto na do arquivo: para
-`/services/pagamentos/` serve escrever `services/pagamentos/` ou o arquivo
-inteiro que você tocou. E o autor do PR precisa constar como dono do caminho em
-`.github/CODEOWNERS`, senão o mandato não é aceito venha de onde vier.
+E o autor do PR precisa constar como dono do caminho em `.github/CODEOWNERS`,
+senão o mandato não é aceito venha de onde vier.
 
 **2. Antes de dizer pronto, confira o julgamento.**
 
