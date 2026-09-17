@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-015-funil-mostrar-a-data-da-atualizacao-no-rodape",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "funil: mostrar a data da atualização no rodapé",
+  detalhe: "Data fixa e autoria no fim do rodapé, com tradução e texto discreto. Suíte: 580 testes passaram. Publicação será conferida pela coordenação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1690. Validação local: árvore f32d1d46a580caf3cb5da76a0bf852a9c07ea6f9; commit 4862384c4d27aa79fa6cf2d2763cbd66ee7df76c; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-441",
+  gravidade: "info",
+  frente: null,
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
