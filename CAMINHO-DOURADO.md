@@ -1178,12 +1178,87 @@ silêncio. `armadilhas/481` é o relato.
 | "Um segundo commit gigante no fim" | Catraca verde (RITOS §2.1): verde ⇒ commit, sempre. |
 | "Host desconhecido? Sirvo o site principal" | 404 (INV-P11). Site padrão silencioso contamina os testes de todos os sites. |
 
-## §5 — Checklist pré-PR (30 segundos, mecânico)
+## §5: Validar, entregar e consultar no PowerShell
 
-1. `make ci` verde — saída colada no PR.
-2. `git diff --name-only origin/main...HEAD` bate com os ALVOS do despacho.
-3. Contagem de arquivos dentro do ORÇAMENTO do despacho.
-4. `git diff origin/main...HEAD | grep -nE "TODO|print\(|console\.log"` — limpo ou justificado.
-5. Invariante tocado ⇒ evidência vermelho→verde colada.
-6. Handoff escrito no corpo do PR (RITOS §1).
-7. Título em Conventional Commit: `feat(checkout): ...` / `fix(pix): ...`.
+Roteiro dos agentes dentro da bancada aberta pelo RITOS §1. O mantenedor recebe
+resultado e prova; os comandos abaixo são trabalho do executor e da maestro.
+
+**1. Conferir o trabalho.** Rode os testes dos alvos do brief e guarde comando,
+saída e revisão. `--sem-container` deixa o baseline não medido e não dispensa testes.
+Confira `git status --short` e o diff, inclusive alterações sem commit, contra
+ALVOS e ORÇAMENTO. Remova debug, código morto e pendências de implementação.
+Invariante tocado exige vermelho→verde e prova dos guardas conforme a ficha.
+Prepare o handoff com ramo, SHA, provas, pendências e título convencional.
+Caminho com dono exige o mandato no formato da [R14](#r14--abrir-pr-que-toca-caminho-codeowners).
+
+**2. Abrir o PR com validação e recibo no mesmo ramo.** O executor define `$alvos`
+como lista dos caminhos autorizados no brief e `$preparo` como caminho absoluto
+da pasta local de preparação, fora dos arquivos entregues. `$tarefaFila` contém
+a TAR real vinculada a este trabalho pelo RITOS §5; sessões novas exigem esse
+vínculo antes de publicar. Prepare na pasta
+`mensagem.txt` (primeira linha: título do PR; última linha:
+`Co-Authored-By: Codex <noreply@openai.com>`), `corpo.md`, `detalhe.txt` e
+`validacao.json` conforme [painel/LEIA-ME.md](painel/LEIA-ME.md#como-registrar-um-acontecimento-o-gesto-de-toda-sessão).
+
+```powershell
+# [RECEITA:ENTREGA v1]
+if (-not $preparo -or -not $alvos -or $tarefaFila -notmatch '^TAR-\d{3,}$') { throw 'PAROU POR SEGURANÇA: defina a pasta, os alvos do brief e a TAR real desta entrega.' }
+$alterados = @()
+foreach ($consultaGit in @(@('diff', '--name-only', 'origin/main...HEAD'), @('diff', '--name-only', 'HEAD'), @('ls-files', '--others', '--exclude-standard'))) {
+    $alterados += git @consultaGit
+    if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: não foi possível medir os arquivos; confira a bancada e origin/main.' }
+}
+$alterados = @($alterados | Sort-Object -Unique)
+$foraDoBrief = @($alterados | Where-Object { $_ -notin $alvos })
+if ($foraDoBrief.Count) { throw "PAROU POR SEGURANÇA: arquivos fora do brief: $($foraDoBrief -join ', '). Preserve-os e devolva à maestro." }
+$codigoEntregue = @($alterados | Where-Object { $_ -notmatch '^(painel|fila)/' })
+if ($codigoEntregue.Count -gt 15) { throw 'PAROU POR SEGURANÇA: orçamento de 15 arquivos excedido; devolva à maestro.' }
+$titulo = Get-Content -LiteralPath (Join-Path $preparo 'mensagem.txt') -Encoding UTF8 -TotalCount 1 -ErrorAction Stop
+python ci/pr.py --titulo $titulo --mensagem-arquivo (Join-Path $preparo 'mensagem.txt') --corpo-arquivo (Join-Path $preparo 'corpo.md') --arquivos $alvos --detalhe-arquivo (Join-Path $preparo 'detalhe.txt') --validacao-arquivo (Join-Path $preparo 'validacao.json') --tarefa $tarefaFila
+if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: leia o diagnóstico, preserve a bancada e retome com --continuar após corrigir a causa.' }
+```
+
+O rito embarca os eventos da tarefa. Na retomada, use os mesmos argumentos e
+`--continuar`;
+não refaça reserva ou recibo. Inclua em `$alvos` os caminhos exatos do recibo e
+dos eventos gerados nesta tarefa ao retomar; outras alterações continuam fora
+do mandato. Confira `git diff --name-only origin/main...HEAD`,
+inclusive recibo e eventos. O rito valida a revisão isolada e o SHA final.
+PR aberto e validação local não comprovam integração nem publicação.
+
+**3. Consultar uma vez, a partir do ramo da bancada.** O executor devolve o PR;
+a maestro consulta sem laço. A integração é automática pelos checks no SHA atual
+(RITOS §2). A consulta composta não promete resposta em cinco segundos.
+
+```powershell
+# [RECEITA:ENTREGA v1]
+$jsonPr = gh pr view --json number,state,headRefOid,mergeCommit,url
+if ($LASTEXITCODE -ne 0) { throw 'PAROU POR SEGURANÇA: confira ramo, autenticação e acesso ao GitHub.' }
+try { $pr = $jsonPr | ConvertFrom-Json -ErrorAction Stop }
+catch { throw 'PAROU POR SEGURANÇA: o GitHub não devolveu JSON válido; confira a consulta.' }
+if ("$($pr.number)" -notmatch '^\d+$') { throw 'PAROU POR SEGURANÇA: o GitHub não identificou um PR; confira o ramo.' }
+$pr | Select-Object number,state,headRefOid,mergeCommit,url
+switch ($pr.state) {
+    'MERGED' {
+        python ci/esperar.py --entrega $pr.number
+        $codigoConsulta = $LASTEXITCODE
+        if ($codigoConsulta -eq 2) { throw 'PAROU POR SEGURANÇA: a consulta falhou; leia acao, sem declarar publicação.' }
+        if ($codigoConsulta -notin @(0, 1)) { throw 'PAROU POR SEGURANÇA: saída inesperada; confira o instrumento.' }
+    }
+    'OPEN' { Write-Output 'PR aberto: integração não comprovada. Use a conferência da R14 para diagnóstico.' }
+    'CLOSED' { Write-Output 'PR encerrado sem integrar: esta entrega não foi publicada.' }
+    default { throw 'PAROU POR SEGURANÇA: estado desconhecido; confira a resposta do GitHub.' }
+}
+```
+
+Use `--entrega` só após `MERGED`: em PR aberto, o leitor ainda cobra atestado e
+etiqueta removidos por RITOS §2. Para diagnosticar PR aberto, a R14 usa
+`python ci/mergear.py $pr.number --conferir`, somente leitura.
+
+| JSON de `--entrega` | Prova e próxima ação |
+|---|---|
+| `PUBLICADO`, exit 0 | Jobs exigidos comprovados; guarde SHAs e links, confira o aceite funcional na borda |
+| `SEM_PUBLICACAO`, exit 0 | Integrado; este diff não dispara publicação |
+| `AGUARDANDO_PUBLICACAO`, exit 1 | Publicação não comprovada; leia `acao` e os runs |
+| `FALHA_PUBLICACAO`, exit 1 | Falha medida na publicação; leia `acao` e evidência antes de corrigir |
+| `ERROR`, exit 2 | Instrumento indisponível; corrija a consulta, sem atribuir sucesso ou falha ao site |
