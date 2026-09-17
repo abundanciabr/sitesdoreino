@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-014-docs-receita-de-entrega",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "docs: receita de entrega",
+  detalhe: "A receita orienta a entrega por comandos PowerShell e separa teste, integração e publicação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1688. Validação local: árvore 15e25cc0f15fce45bc3092954e88baae7222a05a; commit 8bafc964a60e3018d1b072a85fda8bdf7eab7f9d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-440",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "documentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

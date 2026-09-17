@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-010-ci-a-receita-de-abrir-pr-em-caminho-codeowners",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "ci: a receita de abrir PR em caminho CODEOWNERS",
+  detalhe: "O portão lê o mandato com regex de uma linha e compara com .split(): parágrafo esconde os caminhos e vírgula colada nunca casa. Só a linha única passa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1685. Validação local: árvore b91594df9f600a2c20197862304d0685947777c8; commit ebd87e28f8179873e7a9999662acfdad446d0bad; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-437",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
