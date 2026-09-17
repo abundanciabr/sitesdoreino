@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-013-ci-o-mandato-do-dono-so-aceita-o-caminho-exato",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "ci: o mandato do dono só aceita o caminho exato",
+  detalhe: "Lição da 481 reescrita em 397 de 400 caracteres para caber o terceiro erro sem perder os dois antigos. Regra medida no código, não inferida.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1689. Validação local: árvore 41ffb14880920496fa439903bbd4d21836420e05; commit efd1ff0635dbd41c304ef046fd14c5b310da0b39; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-439",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

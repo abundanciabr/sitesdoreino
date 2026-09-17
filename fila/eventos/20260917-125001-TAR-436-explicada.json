@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-125001-TAR-436-explicada",
+  "tarefa": "TAR-436",
+  "evento": "explicada",
+  "quando": "2026-09-17T12:50:01+00:00",
+  "quem": "pedido do mantenedor em 17/09/2026, sessao Claude Code",
+  "o_que_e": "A tela do calendario do ciclo mostra a semana de preparacao comecando em 7 de setembro e a semana 1 em 14 de setembro. Na vida real nada aconteceu naquela semana, entao as datas da tela estao uma semana adiantadas em relacao ao que de fato esta acontecendo.",
+  "o_que_muda": "O calendario passa a dizer a verdade: preparacao de 14 a 18 de setembro, semana 1 de 21 a 25 de setembro, e todas as outras uma semana a frente. Sem isso o placar cobra venda na semana errada e diz que ele esta perdendo quando ele esta no prazo.",
+  "exemplo": "Hoje, 17 de setembro, a tela acende a semana 1 como se ele ja devesse estar vendendo, quando ele ainda esta na semana de preparacao.",
+  "importancia": 70
+}
