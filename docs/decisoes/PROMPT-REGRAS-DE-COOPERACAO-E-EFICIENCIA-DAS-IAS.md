@@ -31,15 +31,17 @@ Reutilize as fontes existentes da fila, livro, GitHub e medição da fábrica, r
 
 4. Avaliação e alocação pretendida
 
-A janela é móvel de 30 dias, com data de corte explícita. Só há classificação com pelo menos 10 páginas válidas na janela, ao menos 5 participações elegíveis por agente, desfecho registrado de 100% das tarefas atribuídas e cobertura de custo comparável de 100% das participações comparadas. Ausência de qualquer condição produz INCONCLUSIVO, sem ranking. Sem valor marginal faturado atribuível, na mesma moeda e período, não se ordena por custo nem se aplica plano.
+A janela é móvel de 30 dias, com data de corte explícita. Use uma única coorte, o conjunto de entregas/TAR com desfecho registrado nessa janela: a verificação externa da página ou o encerramento sem publicação, inclusive falha e abandono. Cada entrega só amadurece após 7 dias completos desse marco. Até lá, página, participações e custos permanecem visíveis separadamente, sem entrar no total ou em qualquer dos três índices. A mesma coorte madura alimenta a contagem de páginas, os três numeradores, as participações e os custos comparados; não selecione apenas seus sucessos.
+
+Só há classificação com pelo menos 10 páginas válidas na coorte madura, ao menos 5 participações elegíveis por agente, desfecho registrado de 100% das tarefas atribuídas e cobertura de custo comparável de 100% das participações comparadas. Ausência de qualquer condição produz INCONCLUSIVO, sem ranking. Sem valor marginal faturado atribuível, na mesma moeda e período, não se ordena por custo nem se aplica plano.
 
 Com essas condições satisfeitas, compare estes três índices fixados previamente, em páginas qualificadas por unidade monetária:
 
 - Maestro: páginas oriundas de brief aceito sem correção de escopo, divididas pelo custo integral dos briefs.
 - Executor: páginas publicadas sem correção pós-revisão nem rollback, divididas pelo custo integral das execuções.
-- Sentinela: páginas verificadas em até 24 horas após o deploy e sem defeito escapado nos 7 dias seguintes à verificação, divididas pelo custo integral das verificações. A participação só entra no índice após 7 dias completos de observação.
+- Sentinela: páginas verificadas em até 24 horas após o deploy e sem defeito escapado nos 7 dias seguintes à verificação, divididas pelo custo integral das verificações. A maturação de 7 dias vale igualmente para a página inteira e os três papéis, não apenas para a sentinela.
 
-Em cada denominador, inclua todas as tentativas, falhas, abandono e retrabalho atribuíveis ao papel na janela, inclusive tarefas sem entrega. Custo zero ou não atribuível produz INCONCLUSIVO, nunca índice infinito ou custo presumido. Ordene do maior índice para o menor somente com custo marginal comparável e a cobertura e amostra exigidas acima; empate final permanece empate. O total de páginas continua sendo da tríade e os artefatos de cada papel registram participação sem multiplicá-lo. O quadro de avaliação é diagnóstico; aplicar planos é decisão humana.
+Em cada denominador, inclua o custo integral atribuível ao papel nas entregas da mesma coorte madura, desde a preparação, mesmo quando o gasto anteceder a janela: todas as tentativas, falhas, abandono e retrabalho, inclusive tarefas sem página válida. Não misture custos de entregas imaturas com pontos maduros, nem descarte os custos de uma entrega que não pontuou. Custo zero ou não atribuível produz INCONCLUSIVO, nunca índice infinito ou custo presumido. Ordene do maior índice para o menor somente com custo marginal comparável e a cobertura e amostra exigidas acima; empate final permanece empate. O total de páginas continua sendo da tríade e os artefatos de cada papel registram participação sem multiplicá-lo. O quadro de avaliação é diagnóstico; aplicar planos é decisão humana.
 
 Rollback ou regressão confirmada retira o ponto da entrega afetada e preserva todo o custo. Sua recuperação pode restabelecer aquele ponto depois de nova prova, nunca criar um segundo ponto pela correção. O custo e o incidente permanecem vinculados à entrega original.
 
