@@ -17,7 +17,7 @@ Leia CLAUDE.md, CONSTITUICAO.md, RITOS.md e as instruções aplicáveis aos cami
 
 A unidade é a página publicada validada, vinculada a uma tarefa legítima da fila e a um brief fechado. Antes da execução, a maestro registra o identificador canônico da página, o resultado do usuário e a entrega/TAR, indicando página nova ou revisão substancial. A contagem exige todos estes fatos: aceite funcional cumprido, testes e checks obrigatórios verdes no SHA entregue, merge integrado, deploy concluído e prova externa do percurso do usuário, identificada por URL, revisão, data e verificação independente.
 
-Qualidade e segurança são portões anteriores à contagem. HTTP 200 isolado, execução local, PR aberto ou merge não comprovam publicação funcional. Conte uma vez a entrega aprovada de cada página. Variações de URL, rotas que fragmentam a mesma experiência, placeholders, documentos, duplicatas e correções de defeitos da própria entrega não acrescentam páginas. Uma revisão substancial precisa de novo resultado legítimo, preclassificado no brief; não se rebatiza retrabalho para pontuar.
+Qualidade e segurança são portões anteriores à contagem. HTTP 200 isolado, execução local, PR aberto ou merge não comprovam publicação funcional. Cada identificador canônico da página conta no máximo uma vez na janela. Uma revisão substancial fica registrada como entrega, mas não vira página nova nem renova o ponto. Variações de URL, rotas que fragmentam a mesma experiência, placeholders, documentos, duplicatas e correções de defeitos da própria entrega não acrescentam páginas. Não se rebatiza retrabalho para pontuar.
 
 Conte cada página uma vez no total da tríade. Para cada agente, registre participação comprovada naquela página, uma vez por agente, sem criar páginas extras: brief e tarefa preparados pela maestro, PR produtor do executor e verificação independente da sentinela. O vínculo precisa demonstrar trabalho real, com autoria e momento conferíveis; copiar crédito ou associar-se depois sem contribuição não vale. Arquitetura, infraestrutura e segurança não viram páginas isoladas: recebem participação comprovada na página que desbloquearam. Reutilizar um componente não renova automaticamente o crédito de seu autor em todas as páginas futuras.
 
@@ -33,7 +33,13 @@ Reutilize as fontes existentes da fila, livro, GitHub e medição da fábrica, r
 
 A janela é móvel de 30 dias, com data de corte explícita. Só há classificação com pelo menos 10 páginas válidas na janela, ao menos 5 participações elegíveis por agente, desfecho registrado de 100% das tarefas atribuídas e cobertura de custo comparável de 100% das participações comparadas. Ausência de qualquer condição produz INCONCLUSIVO, sem ranking. Sem valor marginal faturado atribuível, na mesma moeda e período, não se ordena por custo nem se aplica plano.
 
-Com essas condições satisfeitas, a ordem é: mais páginas da tríade com participação comprovada de cada agente em seu papel; no empate, menor custo verificado por página com participação; persistindo o empate, menos retrabalho e regressões confirmadas. Some o custo integral atribuível de cada agente na janela, incluindo tarefas sem entrega, e divida por suas páginas com participação válida. Empate não autoriza inventar vencedor. O quadro de avaliação é diagnóstico; aplicar planos é decisão humana.
+Com essas condições satisfeitas, compare estes três índices fixados previamente, em páginas qualificadas por unidade monetária:
+
+- Maestro: páginas oriundas de brief aceito sem correção de escopo, divididas pelo custo integral dos briefs.
+- Executor: páginas publicadas sem correção pós-revisão nem rollback, divididas pelo custo integral das execuções.
+- Sentinela: páginas verificadas em até 24 horas após o deploy e sem defeito escapado nos 7 dias seguintes à verificação, divididas pelo custo integral das verificações. A participação só entra no índice após 7 dias completos de observação.
+
+Em cada denominador, inclua todas as tentativas, falhas, abandono e retrabalho atribuíveis ao papel na janela, inclusive tarefas sem entrega. Custo zero ou não atribuível produz INCONCLUSIVO, nunca índice infinito ou custo presumido. Ordene do maior índice para o menor somente com custo marginal comparável e a cobertura e amostra exigidas acima; empate final permanece empate. O total de páginas continua sendo da tríade e os artefatos de cada papel registram participação sem multiplicá-lo. O quadro de avaliação é diagnóstico; aplicar planos é decisão humana.
 
 Rollback ou regressão confirmada retira o ponto da entrega afetada e preserva todo o custo. Sua recuperação pode restabelecer aquele ponto depois de nova prova, nunca criar um segundo ponto pela correção. O custo e o incidente permanecem vinculados à entrega original.
 
