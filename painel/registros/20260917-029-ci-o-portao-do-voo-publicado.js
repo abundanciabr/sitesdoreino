@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-029-ci-o-portao-do-voo-publicado",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "ci: o portão do voo está em produção",
+  detalhe: "PR 1703 integrado pela pista e publicado. O Stop passa a recusar o fecho enquanto o PR da sessão não tiver resultado terminal. Primeira entrega medida pela própria lei nova: checks e deploy acompanhados por consulta com teto.",
+  autoridade: "github",
+  evidencia: "merge 889ac7e912e4873194c7c6c6e62ac8dbe4f250f6 (gh pr view 1703: MERGED 2026-09-17T23:14:30Z); deploy-celula run 35285927510 success em 4min09s: https://github.com/abundanciabr/sitesdoreino/actions/runs/35285927510",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: "20260917-027-ci-a-sessao-nao-fecha-em-voo",
+  relacao: "comentario",
+  tarefa: "TAR-446",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
