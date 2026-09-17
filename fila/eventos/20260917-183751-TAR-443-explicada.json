@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-183751-TAR-443-explicada",
+  "tarefa": "TAR-443",
+  "evento": "explicada",
+  "quando": "2026-09-17T18:37:51+00:00",
+  "quem": "Pedido direto do mantenedor em 17/09/2026; correção autorizada após achado do revisor no PR #1693",
+  "o_que_e": "O prompt atual espera sete dias para avaliar a sentinela, mas não exige o mesmo prazo das outras duas IAs.",
+  "o_que_muda": "As três IAs serão comparadas pelo mesmo conjunto de entregas já observado durante sete dias completos.",
+  "exemplo": "Uma página publicada ontem não dará ponto antecipado a quem planejou ou construiu enquanto a verificação ainda amadurece.",
+  "importancia": 60
+}
