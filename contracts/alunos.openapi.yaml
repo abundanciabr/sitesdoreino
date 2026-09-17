@@ -599,6 +599,178 @@ paths:
                             E-mail muda de dono; o id, nao.
                         motivo_recusa: { type: string }
         '422': { description: E-mail invalido }
+  /matriculas/pagina:
+    get:
+      operationId: listEnrollmentsPage
+      summary: Quem ja e aluno, uma pagina por vez, para o painel
+      parameters:
+      - name: site_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        description: Ausente = todos os estados de gestao (nao os da fila).
+        schema:
+          type: string
+          enum:
+          - ativa
+          - suspensa
+          - encerrada
+          - reembolsada
+      - name: limite
+        in: query
+        required: false
+        description: Quantos alunos por pagina.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      - name: cursor
+        in: query
+        required: false
+        description: O `proximo_cursor` da pagina anterior. Ausente = primeira.
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Uma pagina de alunos, e os contadores da tela inteira
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - itens
+                - proximo_cursor
+                - total
+                - contagens
+                properties:
+                  itens:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required:
+                      - id
+                      - site_id
+                      - email
+                      - nome_completo
+                      - whatsapp
+                      - turma
+                      - comprou_em
+                      - status
+                      - origem
+                      - product_id
+                      - criada_em
+                      properties:
+                        id:
+                          type: string
+                        site_id:
+                          type: string
+                        email:
+                          type: string
+                          format: email
+                        nome_completo:
+                          type: string
+                        whatsapp:
+                          type: string
+                        turma:
+                          type:
+                          - string
+                          - 'null'
+                        comprou_em:
+                          type:
+                          - string
+                          - 'null'
+                          format: date
+                        status:
+                          type: string
+                          enum:
+                          - ativa
+                          - suspensa
+                          - encerrada
+                          - reembolsada
+                        origem:
+                          type: string
+                          enum:
+                          - comprou
+                          - liberado
+                          - administrativo
+                          description: 'DERIVADO da proveniencia da linha, nunca de um campo proprio:
+
+                            `liberado` e quem entrou pela fila (o pedido sintetico `pre:`),
+
+                            `comprou` e o resto. Sai como palavra e nao como o numero do
+
+                            pedido — o numero e do provedor de pagamento e nao diz nada a
+
+                            quem le a tela.
+
+                            '
+                        product_id:
+                          type: string
+                        criada_em:
+                          type: string
+                          format: date-time
+                        virou_aluno_em:
+                          type:
+                          - string
+                          - 'null'
+                          format: date-time
+                          description: 'Quando a pessoa VIROU ALUNA. Para quem entrou pela fila
+                            (`liberado`) e o
+
+                            instante da liberacao; para quem comprou, o instante em que o pagamento
+
+                            confirmou a matricula (`criada_em`). Nasceu em 03/09/2026, no Rito
+                            de
+
+                            Contrato do placar do painel de gestao: a meta do mantenedor passou
+                            a ser
+
+                            "quantas pessoas compraram neste mes", e a data que conta e ESTA,
+                            nunca
+
+                            `comprou_em` (que a propria pessoa digita, opcional, pista de conferencia).
+
+                            Nulo so quando a linha nao tem nenhuma das duas, o que hoje nao acontece.
+
+                            '
+                  proximo_cursor:
+                    type:
+                    - string
+                    - 'null'
+                  total:
+                    type: integer
+                    minimum: 0
+                  contagens:
+                    type: object
+                    additionalProperties: false
+                    required:
+                    - ativa
+                    - suspensa
+                    - encerrada
+                    - reembolsada
+                    properties:
+                      ativa:
+                        type: integer
+                        minimum: 0
+                      suspensa:
+                        type: integer
+                        minimum: 0
+                      encerrada:
+                        type: integer
+                        minimum: 0
+                      reembolsada:
+                        type: integer
+                        minimum: 0
+        '422':
+          description: Limite ou cursor invalido
+      description: '[GESTAO] A mesma lista de `/matriculas`, em pedacos, com os contadores.'
   /matriculas/{id}:
     # A operacao `delete` (deleteEnrollment) MORREU AQUI em 29/08/2026, e a
     # ausencia dela e a lei: `docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md`.
