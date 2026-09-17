@@ -45,6 +45,7 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 | Colocar um site/domínio novo no ar | **R11** | Editar o Traefik ou criar stack nova |
 | Criar uma página em vários idiomas | **R12** | Texto fixo no template; a tag `url` crua; página nascendo com um idioma só |
 | Acrescentar um idioma a um site | **R12** | Recalcular o `_fonte` sem traduzir; idioma novo nascendo indexável |
+| Mexer na régua de uma meta (curva, datas, alvo) | **R13** | Corrigir o dado e deixar a prosa que o repete para trás |
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
@@ -1020,6 +1021,58 @@ lê os COMENTÁRIOS do template** — comentário que escreve a sintaxe proibida
 derruba o `django.setup()` inteiro · `hreflang="es"` continua na **âncora** do
 seletor mesmo com `noindex`; a asserção negativa mira
 `<link rel="alternate" hreflang="es"`, nunca o atributo solto.
+
+---
+
+## R13 — Mexer na régua de uma meta (curva, datas, alvo)
+
+A régua de uma meta mora no **cartão** (`painel/cartoes/<meta>.json`), nunca na
+tela e nunca no código: quem lê a curva é uma função só (`placar.esperado_em`),
+e por isso o placar, a meta do mês e o calendário nunca discordam
+(`docs/decisoes/DECISAO-o-calendario-do-ciclo.md` §5). Mudar a régua é editar um
+arquivo de dados, e o resto segue junto. Menos uma coisa, e é nela que esta
+receita existe para doer: **a prosa em português que repete a curva.**
+
+```json
+// painel/cartoes/compras-no-ciclo.json  // [RECEITA:R13 v1]
+"semanas": [ { "n": 0, "de": "2026-09-14", "ate": "2026-09-18", "alvo": 0, "rotulo": "Preparação" } ],
+"versao": 5,
+"desde": "2026-09-17",
+"_por_que": "... a história anterior INTACTA, e o registro novo acrescentado no fim."
+```
+
+**O checklist, na ordem:**
+
+1. **O dado primeiro.** Só o cartão muda. Se a mudança pedir uma linha de Python,
+   a régua vazou do cartão para o código: pare e reporte, porque isso é outra
+   tarefa e outra decisão.
+2. **A soma continua fechando.** A soma dos alvos tem de dar exatamente `alvo`
+   menos `partida`. O validador (`placar._validar_as_semanas`) reprova o cartão
+   quando não dá, e a mensagem dele diz o conserto.
+3. **A última faixa não passa de `ate`.** Faixa depois do prazo é ficção, e o
+   validador NÃO vê isso. Quando o prazo é do mantenedor, quem encolhe é a faixa.
+4. **`versao` sobe e `desde` recebe o dia da mudança.** É o que deixa a tela
+   dizer de quando é a régua que ela está mostrando.
+5. **`_por_que` cresce no fim, nunca por cima.** A história de como a meta virou
+   o que é vale mais que a última versão dela.
+6. **Cace a prosa que repete a curva.** O passo que ninguém lembra e o único que
+   envelhece em silêncio: `grep -rn "primeiras semanas|semana de|em zero"` na
+   tela, na lei e no próprio `_por_que`. Todo número da curva escrito por extenso
+   em português é uma cópia, e cópia não muda por edição de dado nenhuma.
+7. **Deixe um guarda no lugar da sua memória.** A frase da tela que repete um
+   número do cartão ganha um teste que lê o cartão, conta, e exige a frase certa
+   (exemplo vivo: `test_a_prosa_da_tela_conta_as_mesmas_semanas_em_zero_que_o_cartao`).
+   Frase procurada por teste fica INTEIRA numa linha do template (armadilhas/394).
+8. **Prove na tela renderizada, não no cartão.** Entre o dado e a página existe
+   um template, e o teste que abre a tela e lê as datas dela é o único que mede
+   o que o mantenedor enxerga.
+
+**Por que esta receita existe:** a curva de `compras-no-ciclo` mudou duas vezes
+em duas semanas (04/09/2026 e 17/09/2026) e nas duas o texto que a repetia em
+português ficou para trás. Na primeira, a tela passou treze dias dizendo "as
+três primeiras semanas pedem zero venda" com o cartão dizendo cinco, sem nenhum
+portão ficar vermelho: prosa não é dado, e nada a media. O passo 7 é a resposta,
+e `armadilhas/480` é o relato.
 
 ## §4 — Anti-padrões com resposta pronta
 
