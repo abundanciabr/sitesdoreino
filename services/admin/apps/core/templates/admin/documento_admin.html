@@ -14,6 +14,10 @@ um dia alguém vai ler só um deles.
   <p class="recado">Documento criado.</p>
   {% elif recado == "salvo" %}
   <p class="recado">Salvo.</p>
+  {% elif recado == "publicado" %}
+  <p class="recado">Publicado. Agora qualquer pessoa com o endereço pode ler.</p>
+  {% elif recado == "despublicado" %}
+  <p class="recado">Tirado do público. Agora só administradores podem ler.</p>
   {% elif recado == "arquivado" %}
   <p class="recado">Arquivado. Saiu do site, e o texto continua aqui inteiro.</p>
   {% elif recado == "desarquivado" %}
@@ -60,6 +64,33 @@ um dia alguém vai ler só um deles.
 
   <div class="documento">{{ corpo|safe }}</div>
 
+  <section class="cadastrar publicacao-do-documento espaco-34">
+    <h2>Publicação</h2>
+    {% if documento.arquivado %}
+    <p class="nota">
+      Este documento está arquivado. Desarquive antes de mudar quem pode lê-lo.
+    </p>
+    {% elif documento.publico %}
+    <p class="nota">
+      Tirar do público mantém o texto e o histórico, mas fecha o endereço para
+      visitantes. Só administradores continuarão vendo este documento.
+    </p>
+    <form method="post" action="{% url 'documento_despublicar' documento.nome %}">
+      {% csrf_token %}
+      <button type="submit">Tirar do público</button>
+    </form>
+    {% else %}
+    <p class="nota">
+      Revise o texto antes de publicar. Este gesto abre o endereço para qualquer
+      pessoa, sem exigir login.
+    </p>
+    <form method="post" action="{% url 'documento_publicar' documento.nome %}">
+      {% csrf_token %}
+      <button type="submit">Publicar no site</button>
+    </form>
+    {% endif %}
+  </section>
+
   {% comment %}
   Os dois gestos que tiram o documento de vista ficam no FIM da página, e
   fechados dentro de um `details`: eles são a exceção, não a rotina, e abertos
@@ -67,7 +98,7 @@ um dia alguém vai ler só um deles.
   cadastrar alguém à mão.
   {% endcomment %}
   <details class="cadastrar espaco-34">
-    <summary>Tirar este documento do site</summary>
+    <summary>Arquivar ou apagar este documento</summary>
 
     <div class="espaco-16">
       {% if documento.arquivado %}
