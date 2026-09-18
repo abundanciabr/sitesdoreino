@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-028-ranking-das-inteligencias-artificiais-publicado",
+  tipo: "medicao",
+  quando: "2026-09-17",
+  titulo: "O ranking das inteligencias artificiais do pedido 1698 esta publicado e protegido",
+  detalhe: "O merge 2aca315ac3dc4d531218a0188270449aa11b106d entrou. O fluxo publicou a administracao e seus dados sem falha. Pela internet, o ranking e a capa redirecionaram para a entrada, com cache desativado e protecoes do navegador.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/35285501569",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: "20260917-026-admin-ranking-das-ias",
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

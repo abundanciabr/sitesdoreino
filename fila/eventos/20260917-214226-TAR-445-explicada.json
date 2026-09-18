@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-214226-TAR-445-explicada",
+  "tarefa": "TAR-445",
+  "evento": "explicada",
+  "quando": "2026-09-17T21:42:26+00:00",
+  "quem": "Pedido direto do mantenedor em 17/09/2026, com mandato explícito para migrar os arquivos locais do ranking, inclusive ci, excluir o que for alheio, acrescentar o guarda e publicar pela pipeline.",
+  "o_que_e": "A implementação do ranking existe apenas como mudanças locais sem histórico; a versão oficial não tem a tela nem o teste que impede o cartão de desaparecer.",
+  "o_que_muda": "O mantenedor abre o painel e vê quanto cada inteligência artificial publicou, com cálculo rastreável pelo Git e uma proteção que acusa se a porta sumir da capa.",
+  "exemplo": "É publicar o placar e instalar, no mesmo gesto, o alarme que toca se alguém retirar sua porta da entrada.",
+  "importancia": 80
+}
