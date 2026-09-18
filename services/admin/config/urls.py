@@ -23,8 +23,10 @@ from apps.core.editor_de_documentos import (
     documento_arquivar,
     documento_criar,
     documento_desarquivar,
+    documento_despublicar,
     documento_editar,
     documento_novo,
+    documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
@@ -348,6 +350,16 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+        documento_publicar,
+        name="documento_publicar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+        documento_despublicar,
+        name="documento_despublicar",
     ),
     # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
     # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
