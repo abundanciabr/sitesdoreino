@@ -2163,10 +2163,22 @@ def argumentos_da_tarefa(quadro: dict, catalogo: dict) -> list | None:
         "sem mandato escrito do mantenedor.",
         "",
         "TESTE VERMELHO exigido antes de cada correção.",
-        f"COMANDO DE MUTAÇÃO: python ci/provar_guardas.py {dono}".rstrip(),
-        "EVIDÊNCIA DE ENCERRAMENTO: baseline PASS, mutação FAIL na chamada de "
-        f"{detector or '(declare o detector no frontmatter)'}, restauração PASS, "
-        f"e a prova pertencendo a armadilhas/{numero}.",
+        (
+            f"COMANDO DE MUTAÇÃO: python ci/provar_guardas.py {dono}"
+            if dono and detector else
+            "COMANDO DE MUTAÇÃO: ainda não existe, porque esta armadilha não "
+            "declara guarda mecânica. Construa a guarda, escreva no frontmatter "
+            "`guarda: {tipo, dono: <o teste>, detector: <o nome do teste>}`, e "
+            "só então a fila deixa esta tarefa fechar."
+        ),
+        (
+            "EVIDÊNCIA DE ENCERRAMENTO: baseline PASS, mutação FAIL na chamada "
+            f"de {detector}, restauração PASS, e a prova pertencendo a "
+            f"armadilhas/{numero}."
+            if dono and detector else
+            "EVIDÊNCIA DE ENCERRAMENTO: o ciclo PASS, FAIL, PASS da guarda que "
+            f"esta tarefa vai construir para armadilhas/{numero}."
+        ),
     ]
     media = minutos(
         int(eleita.get("segundos_ate_cobertura") or 0) // max(1, ocorrencias)

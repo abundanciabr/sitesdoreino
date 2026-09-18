@@ -2422,7 +2422,15 @@ def test_a_guarda_de_cada_armadilha_sai_do_frontmatter_vivo():
     """
     catalogo = catalogo_vivo()
     assert catalogo["088"]["guarda"] == "teste"
-    assert catalogo["088"]["dono"] == "infra/deploy-celula-na-vps.sh"
+    # `dono` e o TESTE e `detector` e o nome dele la dentro, que e a convencao
+    # das outras 440 entradas. O arquivo protegido nao mora aqui: ele se
+    # declara no marcador `# guarda:` de dentro do teste, e apontar o protegido
+    # em `dono` deixava a prova de mutacao impossivel de rodar (medido em
+    # 18/09/2026 na propria 088).
+    assert catalogo["088"]["dono"] == "ci/tests/test_chaves_do_gateway_no_deploy.py"
+    assert catalogo["088"]["detector"] == (
+        "test_celula_sem_servico_continua_dizendo_exatamente_isso"
+    )
     assert catalogo["127"]["guarda"] == "vacina"
     assert catalogo["127"]["dono"] == "ci/rerun_de_deploy.py"
     assert catalogo["088"]["guarda"] in termometro.GUARDAS_QUE_BLOQUEIAM
@@ -3760,6 +3768,28 @@ def test_a_causa_sem_armadilha_no_catalogo_nao_vira_tarefa_automatica():
     assert quadro["campea"] == f"causa/{CAUSA_GATEWAY}"
     assert quadro["promocao"]["precisa_de_numero"] is True
     assert termometro.argumentos_da_tarefa(quadro, catalogo_vivo()) is None
+
+
+def test_o_despacho_de_armadilha_SEM_guarda_manda_construir_a_guarda():
+    """Campea sem guarda mecanica nao recebe um comando de mutacao vazio.
+
+    `python ci/provar_guardas.py ` sem arquivo nenhum e instrucao quebrada, e
+    instrucao quebrada e pior que instrucao ausente: quem le tenta rodar.
+    """
+    real = janelas_que_reincidem("088")[0]
+    catalogo = dict(catalogo_vivo())
+    catalogo["088"] = dict(
+        catalogo["088"], guarda="nenhum", dono=None, detector=None,
+    )
+    quadro = termometro.montar_quadro(
+        [fato_da_janela(real)], catalogo=catalogo, base="origin/main", sha="f" * 40,
+    )
+    argv = termometro.argumentos_da_tarefa(quadro, catalogo)
+    despacho = argv[argv.index("--despacho") + 1]
+    vazio = "python ci/provar_guardas.py" + chr(10)
+    assert vazio not in despacho + chr(10)
+    assert "ainda não existe" in despacho
+    assert "guarda que esta tarefa vai construir" in despacho
 
 
 def test_erros_de_medicao_separam_buraco_de_instrumento_de_resposta_medida():
