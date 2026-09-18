@@ -1,0 +1,20 @@
+{
+  "arquivo": "456-mecanizar-a-recuperacao-dos-eventos-mortos-comecando-pela-me",
+  "id": "TAR-456",
+  "titulo": "Mecanizar a recuperação dos eventos mortos começando pela mensageria",
+  "toca": [
+    "mensageria",
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste envenena evento, envia à fila de falhas após o limite, corrige a causa, reprocessa uma vez e comprova efeito único, métrica e erro acionável; suíte verde e mutação dos guardas. Caso exija contrato ou API nova, parar no rito e abrir dependência antes de implementar.",
+  "despacho": "Brief gerado por ci/economia_da_fabrica.py brief --tipo arquitetura: modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Objetivo: operador vê eventos mortos, reprocessa com idempotência e prova efeito final, começando pela mensageria. Alvos: services/mensageria e services/metricas; contratos e infra somente leitura. Ler constituições e consumidores atuais. Não criar reprocessador genérico por antecipação nem ampliar escopo. Se contrato/API for necessário, parar no rito e abrir dependência. Aceite: evento envenenado atinge limite e DLQ, causa corrigida permite uma reexecução com efeito único, indicador e erro orientam ação; prova vermelho/verde e mutação pelo comando da casa. Um PR coeso com suítes afetadas e registro.",
+  "origem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Partes VIII e X",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

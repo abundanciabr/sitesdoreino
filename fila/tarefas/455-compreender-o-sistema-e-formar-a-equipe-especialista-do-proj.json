@@ -1,0 +1,21 @@
+{
+  "arquivo": "455-compreender-o-sistema-e-formar-a-equipe-especialista-do-proj",
+  "id": "TAR-455",
+  "titulo": "Compreender o sistema e formar a equipe especialista do projeto",
+  "toca": [
+    "docs",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Relatório integral versionado nas dez partes pedidas, sete funções justificadas com doze atributos cada, memória compartilhada ligada às fontes, lacunas rastreadas e revisão cruzada; links e verificadores da fila e livro aprovados. Entrega privada no editor é conferida separadamente ou registrada como dívida.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high; tipo: arquitetura. Compreender o sistema pelo código e fontes canônicas e formar equipe especialista operacional por domínio, sem vincular funções a marcas de IA. Alvo docs/consultorias/equipe-especialista/RELATORIO.md; fila e recibos próprios pelo rito. Leitura de todo sistema. Não alterar leis, contratos, CODEOWNERS, fichas permanentes nem corrigir lacunas fora do mandato. Dez partes exatas da missão, fato/inferência/hipótese/proposta explícitos, doze atributos por especialista, Knowledge Core único por referências, protocolo de revisão crítica e próximas ações rastreáveis. Preservar trabalho alheio e usar bancada isolada. Validar links locais, cobertura, fila, livro e texto; revisão antes do PR por ci/pr.py. Nenhuma publicação pública autorizada.",
+  "origem": "Pedido do mantenedor em 2026-09-18: MISSÃO COMPREENDER O SISTEMA E FORMAR A EQUIPE ESPECIALISTA DO PROJETO, pasted-text.txt d79d01c8-844a-41b6-bd12-223b1d5a6bef",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
