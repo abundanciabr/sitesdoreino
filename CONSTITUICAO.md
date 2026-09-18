@@ -58,8 +58,8 @@ ou é pacote versionado.
 Decisão do mantenedor de 13/09/2026: a main permanece protegida por PR,
 sem push direto, com `muralhas` e `ci-celula-gate` obrigatórios. O workflow
 `pouso.yml` integra automaticamente após esses checks verdes no SHA atual.
-Revisor obrigatório, atestado, etiqueta de pouso e encaminhamento pela
-maestro deixam de ser requisitos. CODEOWNERS e contrato congelado continuam
+Revisor obrigatório, atestado, etiqueta de pouso e encaminhamento manual
+deixam de ser requisitos. CODEOWNERS e contrato congelado continuam
 exigindo a palavra do mantenedor; o rito de contrato permanece.
 A automação só executa código da main, conserva a conferência de identidade
 do SHA e não declara publicação a partir de um merge.
@@ -139,7 +139,7 @@ fim daquela seção, e é a leitura conciliada que vale.
 
 Quem abre a entrega responde por ela até o resultado terminal: integrada,
 fechada, ou dívida registrada no livro com o que falta e por quê. PR aberto é
-estado intermediário, nunca entrega final. A autoridade vem junto: o executor
+estado intermediário, nunca entrega final. A autoridade vem junto: quem abriu
 decide e executa toda ação técnica segura para chegar lá (repetir deploy
 cancelado, consertar ambiente local, retomar check parado) sem pedir licença, e
 não devolve como pendência do mantenedor o que ainda tem comando disponível.
