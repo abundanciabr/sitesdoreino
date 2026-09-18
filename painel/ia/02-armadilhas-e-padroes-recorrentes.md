@@ -1,11 +1,16 @@
 # painel/ia — 02. Armadilhas e Padrões Recorrentes
 
 > Parte do [Mapa para IA](INDICE.md) do sitesdoreino. Este documento é um
-> **resumo curado** — a fonte de verdade é `armadilhas/INDICE.md` (gerado,
-> nunca editado à mão) e os ~126 arquivos individuais em `armadilhas/`. Este
-> texto existe para dar TAXONOMIA e CONTEXTO; para o sintoma exato que você
-> está vendo agora, vá direto ao índice e dê Ctrl+F — não leia esta página
-> como substituto disso.
+> **resumo curado** — a fonte de verdade são os **444 arquivos** individuais
+> `armadilhas/NNN-slug.md` (numerados de 003 a 485, medidos em 18/09/2026).
+> **`armadilhas/INDICE.md` é GERADO e não mora no Git** (está no
+> `.gitignore`): um clone novo não tem o arquivo até alguém rodar
+> `python ci/indice_de_armadilhas.py`, e a abertura de sessão o materializa.
+> Este texto existe para dar TAXONOMIA e CONTEXTO; para o sintoma exato que
+> você está vendo agora, o caminho é
+> `python ci/consultar_armadilhas.py "<mensagem de erro>"` ou
+> `--caminho <arquivo>`, que devolve até 3 lições com as origens. Não leia
+> esta página como substituto disso.
 
 ## Por que isto importa para quem for sugerir melhorias
 
@@ -59,7 +64,15 @@ que **conhecer o caso não impede repetir a classe**; só a categoria cura.
    Viabilidade exige ler config real (roteamento, permissões, secrets,
    workflow), nunca inferir só do código de aplicação.
 
-## Taxonomia do catálogo (~126 entradas em `armadilhas/`, por tema aproximado)
+## Taxonomia do catálogo (por tema aproximado)
+
+> **Recorte declarado, corrigido em 18/09/2026.** A tabela abaixo foi montada
+> quando o catálogo tinha ~126 entradas e suas faixas de número param em 136.
+> Hoje são **444 entradas**, então **319 delas não estão representadas em
+> nenhuma linha desta tabela**, e a conclusão sobre "os três maiores clusters"
+> vale só para o recorte antigo. Use a tabela para conhecer os TEMAS que já
+> morderam esta casa, nunca para dimensionar o catálogo: para isso, conte com
+> `git ls-tree -r --name-only origin/main armadilhas/`.
 
 | Tema | ~Qtd | Faixa de números de exemplo |
 |---|---|---|

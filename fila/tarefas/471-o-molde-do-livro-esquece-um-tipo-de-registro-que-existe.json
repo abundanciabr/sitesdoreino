@@ -1,0 +1,19 @@
+{
+  "arquivo": "471-o-molde-do-livro-esquece-um-tipo-de-registro-que-existe",
+  "id": "TAR-471",
+  "titulo": "O molde do livro esquece um tipo de registro que existe",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Molde citando o tipo e a regra do prazo; gerador do painel sem erro; muralhas verdes.",
+  "despacho": "# Despacho: o molde do livro esquece um tipo de registro que existe\n\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: correcao pequena de molde; o molde vence o estilo\ncelula: painel (abra com CELULA=admin TAREFA=molde-esquece-o-compromisso SEM_CONTAINER=1)\n\n## O achado (medido em origin/main em 18/09/2026)\n\n`painel/logica.js:23` define dez tipos validos de registro do livro, e o decimo e\n`compromisso`. `painel/logica.js:124` impoe uma regra extra: registro do tipo\n`compromisso` exige o campo `vence_em_dias` como numero maior que zero, senao o\nvalidador reprova com \"tipo 'compromisso' exige vence_em_dias (numero de dias,\nmaior que zero)\". O tipo nasceu em 03/09/2026, no degrau 2 do painel de gestao.\n\nOs dois moldes que ensinam alguem a escrever um registro listam nove tipos e nao\ncitam o decimo:\n\n- `painel/LEIA-ME.md`, o molde oficial que a lei manda seguir.\n- `.claude/agents/escrivao.md`, a ficha do escrivao, secao 1.\n\nConsequencia medida: quem seguir o molde nunca sabera que `compromisso` existe, e\nquem tentar usa-lo por conta propria leva reprova do validador sem entender o\nmotivo, porque o molde tambem nao menciona `vence_em_dias`.\n\n## Arquivos-alvo\n\n- `painel/LEIA-ME.md` (so a lista de tipos e o que ela precisa dizer sobre `compromisso`)\n- `.claude/agents/escrivao.md` (idem)\n\nConfira cada um antes de editar: se algum ja citar `compromisso` corretamente, nao\no toque e diga isso no relatorio.\n\n## Proibido neste PR\n\n- Tocar `painel/logica.js`, `painel/ia/**`, `ci/`, `.github/` ou arquivo-lei da raiz.\n  `painel/ia/**` esta sendo alterado pelo PR #1724 e colidiria. `painel/logica.js`\n  e a fonte e esta correta: quem esta errado e o molde.\n- Acrescentar tipo novo, mudar regra de validacao ou propor renomear qualquer tipo.\n\n## Como escrever a correcao\n\nEm portugues de leigo e sem travessao, o texto precisa dizer que `compromisso` e o\nque alguem promete para a semana, que ele exige `vence_em_dias` como numero maior\nque zero, e que o veredito dele e calculado de quem o responde, nunca marcado a mao.\n\n## Prova exigida\n\n- `node painel/gerar_manifesto.js` roda da raiz da bancada sem erro.\n- `python ci/ci.py --apenas muralhas` verde.\n- `git diff --name-only origin/main...HEAD` bate com os alvos mais os arquivos da tarefa.",
+  "origem": "Auditoria do mapa para IA de 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-222839-TAR-471-explicada",
+  "tarefa": "TAR-471",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:28:39+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "O livro de ocorrencias aceita dez tipos de registro, mas o molde que ensina a escrever um registro lista nove. O decimo, o compromisso, ficou de fora e ainda exige um prazo que o molde nao menciona.",
+  "o_que_muda": "Quem for escrever um compromisso passa a saber que ele existe e que precisa de prazo, em vez de descobrir pela reprova do validador.",
+  "exemplo": "Alguem promete uma entrega para a semana e tenta registrar. O molde nao explica o campo de prazo, o validador reprova, e a pessoa nao entende o motivo.",
+  "importancia": 45
+}

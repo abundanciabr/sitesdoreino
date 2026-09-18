@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-222357-TAR-469-explicada",
+  "tarefa": "TAR-469",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:23:57+00:00",
+  "quem": "TAR-455 e o RELATORIO.md da equipe especialista (PR 1720)",
+  "o_que_e": "O projeto acabou de receber um relatorio que descreve sete competencias de especialista em texto. Texto nao executa: hoje nao existe um jeito de convocar nenhuma delas.",
+  "o_que_muda": "Cada competencia vira uma ficha que se convoca pelo nome, com rito fixo e limites escritos, do jeito que as tres fichas que ja existem funcionam.",
+  "exemplo": "Em vez de reescrever em cada pedido o que um verificador deve conferir, a sessao convoca a ficha e o rito vem pronto.",
+  "importancia": 70
+}
