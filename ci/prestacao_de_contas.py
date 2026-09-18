@@ -16,6 +16,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -226,7 +227,7 @@ def ler_estado_incremental(caminho: Path) -> dict:
     cache = caminho.with_suffix(caminho.suffix + ".contas.json")
     try:
         estado = json.loads(cache.read_text(encoding="utf-8"))
-        if not isinstance(estado, dict) or estado.get("versao") != 1:
+        if not isinstance(estado, dict) or estado.get("versao") != 2:
             estado = {}
     except (OSError, ValueError):
         estado = {}
@@ -249,9 +250,10 @@ def ler_estado_incremental(caminho: Path) -> dict:
             estado = {}
             offset = 0
         if not estado:
-            estado = {"versao": 1, "motivo": "", "teve_plano": False,
+            estado = {"versao": 2, "motivo": "", "teve_plano": False,
                       "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0,
-                      "pr": 0, "ids_de_pr": [], "voo_cobrado": ""}
+                      "pr": 0, "ids_de_pr": [], "voo_cobrado": "",
+                      "promessa_tecnica": False, "pausa_humana": False}
         fonte.seek(offset)
         while True:
             inicio = fonte.tell()
@@ -273,6 +275,14 @@ def ler_estado_incremental(caminho: Path) -> dict:
                     continue
             if (entrada.get("origin") or {}).get("kind") == "human":
                 estado["teve_plano"] = False
+                conteudo = (entrada.get("message") or {}).get("content")
+                pedido = (conteudo if isinstance(conteudo, str) else
+                          "\n".join(_texto_do_bloco(b) for b in (conteudo or [])))
+                estado["pausa_humana"] = bool(PAUSA_HUMANA.search(_sem_acentos(pedido)))
+                estado["promessa_tecnica"] = False
+            fala = _texto_da_fala(entrada)
+            if fala:
+                estado["promessa_tecnica"] = promete_acao_tecnica(fala)
             estado["teve_plano"] |= _teve_plano([entrada], 0)
             motivo = _mudanca_na_entrada(entrada)
             if motivo:
@@ -498,6 +508,44 @@ def _texto_da_fala(entrada: dict) -> str:
     if isinstance(conteudo, list):
         return "\n".join(_texto_do_bloco(b) for b in conteudo)
     return ""
+
+
+def _sem_acentos(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", texto.lower())
+                   if not unicodedata.combining(c))
+
+
+PAUSA_HUMANA = re.compile(
+    r"(?:^|[.!?]\s*)(?:por favor,?\s*)?(?:pause|pare|interrompa|cancele)\b"
+)
+PROMESSA_TECNICA = re.compile(
+    r"\b(?:vou\s+(?:(?:agora|depois|ainda)\s+)?"
+    r"(?:abrir|ler|investigar|diagnosticar|corrigir|resolver|consertar|repetir|retomar|verificar)"
+    r"|(?:abrirei|lerei|investigarei|diagnosticarei|corrigirei|resolverei|consertarei|repetirei))\b"
+)
+OBJETO_TECNICO = re.compile(
+    r"\b(?:log|logs|check|checks|muralhas|erro|erros|falha|falhou|vermelho|conflito|"
+    r"teste|testes|deploy|integracao|publicacao|pipeline|build)\b"
+)
+
+
+def promete_acao_tecnica(texto: str) -> bool:
+    """Reconhece promessa atual, sem transformar citação histórica em intenção."""
+    texto = re.sub(r"```.*?```|\"[^\"]*\"|“[^”]*”", "", texto, flags=re.S)
+    texto = re.sub(r"(?m)^\s*>.*$", "", texto)
+    for frase in re.split(r"[.!?]\s*|\n\s*\n", _sem_acentos(texto)):
+        for promessa in PROMESSA_TECNICA.finditer(frase):
+            antes = frase[:promessa.start()]
+            if re.search(r"\b(?:nao|nunca)\s+$", antes):
+                continue
+            # Uma condição externa nomeada não promete execução antes do acesso.
+            if (re.search(r"\b(?:apos|quando|se)\b.*\bmantenedor\b.*"
+                          r"\b(?:liberar|fornecer|autorizar)\b", antes)
+                    and re.search(r"\b(?:403|401|acesso negado|credencial ausente)\b", antes)):
+                continue
+            if OBJETO_TECNICO.search(frase):
+                return True
+    return False
 
 
 def _usos_de_ferramenta(entrada: dict):
@@ -1085,6 +1133,14 @@ def modo_contas(entrada: dict) -> int:
             {"prs_criados": estado["prs"], "despachos": estado["despachos"]},
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
+    if estado.get("pausa_humana"):
+        return 0
+    if estado.get("promessa_tecnica"):
+        print("AÇÃO TÉCNICA PENDENTE: execute agora a investigação, leitura do log ou "
+              "correção prometida. Check vermelho, conflito e teste falho são trabalho "
+              "do agente. Só encerre com resultado medido, pausa explícita ou "
+              "impedimento externo real com evidência e próximo responsável.", file=sys.stderr)
+        return 2
     if not recusar:
         return _portao_do_voo(entrada, arquivo, estado, segunda_passada)
     if ja_cobrada:

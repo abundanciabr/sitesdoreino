@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import tomllib
 
 RAIZ = Path(__file__).resolve().parents[2]
 FICHAS = RAIZ / ".claude" / "agents"
@@ -194,6 +195,18 @@ def test_regra_de_parada_preserva_arquivos_e_commits() -> None:
         texto = (RAIZ / nome).read_text(encoding='utf-8')
         assert 'reset --hard' not in texto, f'{nome}: a parada não pode apagar trabalho'
         assert 'preserve os arquivos e commits' in texto, f'{nome}: a parada precisa preservar a bancada'
+
+
+def test_claude_e_codex_compartilham_a_regra_de_fecho_sem_promessa():
+    claude = (FICHAS / "despacho.md").read_text(encoding="utf-8")
+    codex = tomllib.loads((RAIZ / ".codex/agents/despacho.toml").read_text(encoding="utf-8"))
+    regra_claude = claude.split("## 7.", 1)[1].split("## 8.", 1)[0]
+    regra_codex = codex["developer_instructions"].split("## 7.", 1)[1].split("## 8.", 1)[0]
+    assert regra_claude == regra_codex
+    for obrigacao in ("Abra o log", "dentro do mandato", "pausa explícita",
+                      "impedimento externo real", "fato medido", "NÃO PRONTO"):
+        assert obrigacao in regra_claude
+    assert "--pousar" not in regra_claude
 
 
 # Fontes operacionais, incluindo moldes que voltam a virar instruções.

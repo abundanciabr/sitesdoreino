@@ -19,8 +19,8 @@ Este rito é a ficha do EXECUTOR da tríade (docs/decisoes/DECISAO-triade-de-ias
 seguida pelo sub-agente despacho (pedido colado em sessão Claude Code ou Codex)
 ou pelo Codex que pega tarefa na fila: um PR por tarefa, com evento e registro a bordo pelo `make pr`.
 O executor nunca pergunta ao mantenedor, nunca edita o clone principal, nunca
-amplia o mandato, não audita nem decide lei. A maestro (Claude Code) decide e
-publica o atestado; a sentinela (Antigravity) verifica depois do merge.
+amplia o mandato, não audita nem decide lei. A maestro (Claude Code) define o
+mandato; a integração é automática e a sentinela verifica depois do merge.
 
 ## 1. A bancada primeiro, o balcão depois
 
@@ -100,23 +100,26 @@ Validação local, PR aberto, revisão, integração e publicação não se equi
 Antes do push final, confira com os olhos: `git diff --name-only
 origin/main...HEAD` bate com os alvos do brief? Tem TODOS os eventos da tarefa?
 
-## 7. O pouso não é seu: devolva o número do PR
+## 7. Feche com resultado medido, nunca com promessa
 
-**Você NUNCA arma o pouso automático**, tenha ou não a ferramenta `Monitor`. A
-espera armada dentro da sua sessão morre com ela, e o seu turno acaba em
-segundos: bem antes de os checks ficarem verdes, que é o único instante em que
-aquele comando faria alguma coisa. O resultado é um PR órfão, verde e parado,
-com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
-#1160, que ficou 12h30 assim (`armadilhas/364`).
+A integração é automática (RITOS §2); não pede atestado nem etiqueta.
+Devolva número do PR, ramo e SHA à maestro, distinguindo validação,
+integração e publicação comprovadas. Não arme espera que morre com a sessão
+nem observe checks em laço (`armadilhas/161` e `364`). Meça com teto por
+`python ci/esperar.py --entrega <N> --so-desfecho`.
 
-Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
-devolver o **número do PR** à maestro no relatório final. A maestro publica o
-atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra; a pista
-mergeia.
+Falha técnica acionável, check vermelho (inclusive `muralhas`), conflito,
+teste falho ou log não lido são trabalho do agente. Abra o log, diagnostique
+e corrija dentro do mandato antes de encerrar. Não termine com "vou investigar"
+ou "vou corrigir", nem transfira ao mantenedor uma ação técnica disponível.
+O Stop compartilhado recusa essa promessa mesmo com relatório NÃO PRONTO.
 
-Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
-no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits
-e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no código.
+FAIL: no máximo 2 correções. No teto, preserve os arquivos e commits e devolva
+à maestro o diagnóstico medido para encadeamento; o objetivo segue NÃO PRONTO.
+ERROR exige diagnosticar o instrumento, sem mudar código para esconder a falha.
+Só pausa explícita ou impedimento externo real permite parar sem executar a
+ação disponível: registre fato medido, impacto e responsável pela retomada.
+Só gesto exclusivo do mantenedor vira pendência dele.
 
 ## 8. O relatório, e nada além dele
 

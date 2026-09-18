@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-152012-TAR-452-explicada",
+  "tarefa": "TAR-452",
+  "evento": "explicada",
+  "quando": "2026-09-18T15:20:12+00:00",
+  "quem": "Pedido do mantenedor em 18/09/2026 para todas as tarefas terminarem com a ação técnica executada e entrega comprovada",
+  "o_que_e": "O robô podia terminar a tarefa prometendo ler o erro e corrigir a falha, deixando a entrega parada.",
+  "o_que_muda": "O encerramento passa a recusar promessa técnica pendente e exige que o robô execute a ação disponível.",
+  "exemplo": "Ao dizer que abrirá o log de muralhas para corrigir a causa, o robô recebe recusa e continua o trabalho.",
+  "importancia": 95
+}

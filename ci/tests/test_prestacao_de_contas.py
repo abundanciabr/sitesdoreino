@@ -21,6 +21,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 PORTAO = RAIZ_DO_REPO / "ci" / "prestacao_de_contas.py"
 FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
@@ -42,6 +44,76 @@ Onde estou: passo 2 de 2, acabou.
 
 **Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.
 """
+
+PROMESSA_MURALHAS = (
+    "A integração está bloqueada porque o check agregador `muralhas` marcou falha, "
+    "apesar dos subchecks visíveis estarem verdes; vou abrir o log dessa falha "
+    "e corrigir a causa concreta."
+)
+
+
+@pytest.mark.parametrize("texto", [
+    PROMESSA_MURALHAS,
+    "O teste falhou. Vou investigar a causa e corrigir o erro.",
+    "Há conflito no PR; corrigirei o conflito na próxima etapa.",
+    "Vou ler o log de erro e repetir o check.",
+    CONTAS_COMPLETAS + "\n" + PROMESSA_MURALHAS,
+])
+def test_stop_recusa_promessa_tecnica_mesmo_com_relatorio(tmp_path, texto):
+    # guarda: ci/prestacao_de_contas.py:1143
+    proc = _decidir(tmp_path, [_humano("conclua a entrega"), _fala(texto)])
+    assert proc.returncode == 2, proc.stderr
+    assert "execute agora" in proc.stderr.lower()
+
+
+def test_segunda_passada_nao_perdoa_promessa_tecnica(tmp_path):
+    entradas = [_humano("conclua"), _fala(PROMESSA_MURALHAS)]
+    assert _decidir(tmp_path, entradas).returncode == 2
+    assert _decidir(tmp_path, entradas, stop_hook_active=True).returncode == 2
+
+
+@pytest.mark.parametrize("texto", [
+    "O check muralhas falhou porque faltava a evidência. Corrigi e os testes passaram.",
+    'O relatório anterior dizia: "vou abrir o log da falha e corrigir a causa". Agora está corrigido.',
+    "O check muralhas agrega os resultados e falha quando falta uma evidência.",
+    "A consulta retornou HTTP 403: acesso negado. Só o mantenedor pode liberar o acesso.",
+    "Após o mantenedor liberar o acesso negado (HTTP 403), vou ler o log da falha.",
+    "Não vou corrigir o erro: o mantenedor cancelou a entrega.",
+])
+def test_stop_preserva_historico_explicacao_e_bloqueio_externo(tmp_path, texto):
+    _silencio(_decidir(tmp_path, [_humano("explique o resultado"), _fala(texto)]))
+
+
+def test_pausa_explicita_do_mantenedor_interrompe_a_cobranca(tmp_path):
+    entradas = [_humano("conclua"), _fala(PROMESSA_MURALHAS),
+                _humano("Pause a tarefa agora."), _fala("Pausado. Vou corrigir o erro ao retomar.")]
+    _silencio(_decidir(tmp_path, entradas))
+
+
+def test_codex_recebe_a_mesma_recusa_de_promessa(tmp_path):
+    entrada = {"type": "response_item", "payload": {
+        "type": "message", "role": "assistant", "channel": "final",
+        "content": [{"type": "output_text", "text": PROMESSA_MURALHAS}],
+    }}
+    assert _decidir(tmp_path, [entrada]).returncode == 2
+
+
+def test_promessa_antiga_nao_contamina_resultado_atual(tmp_path):
+    entradas = [_humano("conclua"), _fala(PROMESSA_MURALHAS)]
+    assert _decidir(tmp_path, entradas).returncode == 2
+    entradas += [_fala("Abri o log, corrigi a causa e a suíte passou."), _notificacao("fim")]
+    _silencio(_decidir(tmp_path, entradas))
+
+
+def test_retomada_revoga_pausa_e_volta_a_cobrar(tmp_path):
+    entradas = [_humano("Pause a tarefa."), _fala("Pausado."),
+                _humano("Retome e conclua."), _fala(PROMESSA_MURALHAS)]
+    assert _decidir(tmp_path, entradas).returncode == 2
+
+
+def test_mencao_a_pausa_nao_e_pedido_para_parar(tmp_path):
+    entradas = [_humano("Não pause a tarefa."), _fala(PROMESSA_MURALHAS)]
+    assert _decidir(tmp_path, entradas).returncode == 2
 
 
 # ------------------------------------------------------------- montagem ----
@@ -107,7 +179,7 @@ def _silencio(proc: subprocess.CompletedProcess) -> None:
 
 
 def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:1074
+    # guarda: ci/prestacao_de_contas.py:1122
     transcript = tmp_path / "persistente.jsonl"
     transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
     carga = {"transcript_path": str(transcript), "stop_hook_active": False}
@@ -117,7 +189,7 @@ def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
 
 
 def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:282
+    # guarda: ci/prestacao_de_contas.py:292
     transcript = tmp_path / "incremental.jsonl"
     transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
     carga = {"transcript_path": str(transcript)}
@@ -149,7 +221,7 @@ def test_incremental_rele_linha_parcial_que_foi_completada(tmp_path):
 
 
 def test_turno_que_editou_arquivo_e_calou_e_recusado(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:279
+    # guarda: ci/prestacao_de_contas.py:289
     proc = _decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
@@ -1101,7 +1173,7 @@ def _stop(tmp_path: Path, entradas: list[dict], monkeypatch, situacao, motivo="e
                                        "stop_hook_active": False, "cwd": str(tmp_path)})
 
 
-# guarda: ci/prestacao_de_contas.py:763
+# guarda: ci/prestacao_de_contas.py:811
 def test_a_regua_do_voo_separa_terminal_de_em_voo():
     """Só merge e fechamento liberam o fecho. Verde e aberto ainda não integrou."""
     assert contas.situacao_do_pr({"state": "MERGED"})[0] == "terminal"
@@ -1115,7 +1187,7 @@ def test_a_regua_do_voo_separa_terminal_de_em_voo():
         {"name": "muralhas", "conclusion": "SUCCESS"}]})[0] == "aberto"
 
 
-# guarda: ci/prestacao_de_contas.py:1041
+# guarda: ci/prestacao_de_contas.py:1089
 def test_relatorio_com_o_pr_ainda_pendente_nao_encerra_a_sessao(tmp_path, monkeypatch, capsys):
     rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 2 check(s) sem resultado")
     assert rodar() == 2
@@ -1124,21 +1196,21 @@ def test_relatorio_com_o_pr_ainda_pendente_nao_encerra_a_sessao(tmp_path, monkey
     assert "ci/esperar.py --checks 1692 --so-desfecho" in erro
 
 
-# guarda: ci/prestacao_de_contas.py:1022
+# guarda: ci/prestacao_de_contas.py:1070
 def test_pr_integrado_deixa_a_sessao_fechar_calada(tmp_path, monkeypatch, capsys):
     rodar = _stop(tmp_path, _entrega(), monkeypatch, "terminal", "")
     assert rodar() == 0
     assert capsys.readouterr().err.strip() == ""
 
 
-# guarda: ci/prestacao_de_contas.py:1040
+# guarda: ci/prestacao_de_contas.py:1088
 def test_pr_em_rascunho_e_objetivo_incompleto(tmp_path, monkeypatch, capsys):
     rodar = _stop(tmp_path, _entrega(), monkeypatch, "rascunho", "está em rascunho")
     assert rodar() == 2
     assert "gh pr ready 1692" in capsys.readouterr().err
 
 
-# guarda: ci/prestacao_de_contas.py:1030
+# guarda: ci/prestacao_de_contas.py:1078
 def test_a_mesma_situacao_cobra_uma_vez_so(tmp_path, monkeypatch, capsys):
     """Recusar em laço seria a espera em laço com outro nome: uma vez por fato."""
     rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 1 check(s) sem resultado")
@@ -1146,7 +1218,7 @@ def test_a_mesma_situacao_cobra_uma_vez_so(tmp_path, monkeypatch, capsys):
     assert "sem nova recusa" in capsys.readouterr().err
 
 
-# guarda: ci/prestacao_de_contas.py:799
+# guarda: ci/prestacao_de_contas.py:847
 def test_situacao_nova_e_fato_novo_e_cobra_de_novo(tmp_path, monkeypatch, capsys):
     entradas = _entrega()
     assert _stop(tmp_path, entradas, monkeypatch, "pendente", "tem 1 check(s)")() == 2
@@ -1154,7 +1226,7 @@ def test_situacao_nova_e_fato_novo_e_cobra_de_novo(tmp_path, monkeypatch, capsys
     assert "rerun_de_deploy" in capsys.readouterr().err
 
 
-# guarda: ci/prestacao_de_contas.py:834
+# guarda: ci/prestacao_de_contas.py:882
 def test_o_pr_que_a_sessao_so_consultou_nao_e_entrega_dela(tmp_path, monkeypatch, capsys):
     """Quem responde pela entrega é quem a abriu; olhar o PR alheio não prende."""
     rodar = _stop(tmp_path, _entrega(comando="gh pr view 1692 --json state"),
@@ -1163,7 +1235,7 @@ def test_o_pr_que_a_sessao_so_consultou_nao_e_entrega_dela(tmp_path, monkeypatch
     assert capsys.readouterr().err.strip() == ""
 
 
-# guarda: ci/prestacao_de_contas.py:1027
+# guarda: ci/prestacao_de_contas.py:1075
 def test_gh_mudo_grita_e_nao_prende_a_sessao(tmp_path):
     """Instrumento mudo não aprova nada, e também não tranca o robô (INV-CI01)."""
     transcript = tmp_path / "voo.jsonl"
