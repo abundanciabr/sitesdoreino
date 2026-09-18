@@ -43,8 +43,11 @@ gente de verdade; a VPS; qualquer banco que não seja o de teste; credencial,
 token ou chave real; alterar a proteção da `main` ou o ruleset; a conta de outro
 agente; e o PR de qualquer outra pessoa.
 
-Credencial usada em golpe é falsa e obviamente falsa: o `APP_USR-fake123` do
-golpe 10 é literal, não modelo para inventar uma parecida com a verdadeira.
+Credencial usada em golpe é falsa e obviamente falsa. O golpe 10 traz a string
+exata em `02-RED-TEAM.md`: copie dali e nunca invente uma parecida com a
+verdadeira. Repare que o guarda de segredos reprova o prefixo de produção do
+provedor em QUALQUER arquivo do repositório, inclusive num texto que só o cita.
+Por isso o seu relatório nomeia esse golpe pelo número e nunca repete a string.
 
 Golpe que só faria sentido contra produção não é executado. Ele volta descrito,
 na linha `NÃO EXECUTEI`, e a maestro decide.
