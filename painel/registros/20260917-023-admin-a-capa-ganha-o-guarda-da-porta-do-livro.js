@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-023-admin-a-capa-ganha-o-guarda-da-porta-do-livro",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: a capa ganha o guarda da porta do Livro",
+  detalhe: "O menu do topo ja aponta para a mesma rota, entao o guarda mede o endereco dentro do cartao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1701. Validação local: árvore 32c2faf3a5825349c910923c86ac32cd2c11accd; commit b03b72b4dccc650cb040f4f331e30c5ff798d4ff; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-444",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
