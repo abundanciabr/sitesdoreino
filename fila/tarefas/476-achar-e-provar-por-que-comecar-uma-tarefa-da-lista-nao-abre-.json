@@ -1,0 +1,19 @@
+{
+  "arquivo": "476-achar-e-provar-por-que-comecar-uma-tarefa-da-lista-nao-abre-",
+  "id": "TAR-476",
+  "titulo": "Achar e provar por que comecar uma tarefa da lista nao abre o aviso de trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Arquivo e metodo do defeito citados, efeito reproduzido pela mensagem de erro do gh, contorno conhecido descrito, e tarefa de conserto criada a parte com o mandato exigido na evidencia. Nenhuma linha de ci/sessao.py alterada.",
+  "despacho": "Objetivo: localizar, provar e dar dono ao defeito que impede a abertura de sessao pelo caminho canonico do RITOS secao 5, sem corrigi-lo.\n\nDiagnostico ja feito e embarcado neste PR: em ci/sessao.py, metodo anunciar_pr, o ramo `if eventos:` executa `git add -- <eventos>` e segue direto para `git push`, sem nenhum `git commit`; o `git commit --allow-empty` existe somente no ramo `else`, o caso sem comprovante da fila. Efeito: `gh pr create` falha com \"No commits between main and <ramo>\" e toda abertura com --tar TAR-NNN morre. O docstring do proprio metodo declara a intencao de embarcar o evento, logo falta o commit, nao a decisao.\n\nEscopo estreito: leitura de codigo. Nao editar ci/sessao.py, que e CODEOWNERS. Diagnostico nao concede autorizacao para corrigir.\n\nAceite: o ponto exato do defeito citado por arquivo e metodo, o efeito reproduzido pela mensagem de erro, o contorno conhecido, e a tarefa de conserto criada separadamente com o mandato exigido em sua evidencia.",
+  "origem": "Retomada da TAR-455: achado 12 do RETOMAR-EQUIPE-ESPECIALISTA.md",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

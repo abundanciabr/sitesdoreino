@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-233535-TAR-477-explicada",
+  "tarefa": "TAR-477",
+  "evento": "explicada",
+  "quando": "2026-09-18T23:35:35+00:00",
+  "quem": "TAR-476: diagnostico em ci/sessao.py, metodo anunciar_pr",
+  "o_que_e": "O aviso de que um robo comecou a trabalhar numa tarefa nao consegue nascer: o sistema separa o papel para assinar e nunca assina, entao a entrega e recusada por estar vazia.",
+  "o_que_muda": "O caminho oficial de comecar uma tarefa volta a funcionar. Enquanto nao funciona, cada robo perde uma tentativa e precisa de um remendo manual para conseguir comecar.",
+  "exemplo": "E como preencher a ficha de entrada, deixar na bandeja e nunca entregar na recepcao: para o porteiro, voce nunca chegou.",
+  "importancia": 70
+}
