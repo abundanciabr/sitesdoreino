@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-007-ci-o-laco-de-melhoria-continua-integrado",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "ci: o laço de melhoria contínua mede e abre a tarefa",
+  detalhe: "O termômetro mede reincidência real no deploy: janela por célula, base fixada em origin/main e tarefa da campeã aberta pelo gatilho terminal, que só fecha com prova de mutação. Fecha as seis reprovações da Fase 8.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1710, merge 29abe460. 507 testes verdes no SHA integrado; provar_guardas na 088 real: PASS, FAIL, PASS. Publicação não verificada.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-450",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
