@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-225852-TAR-446-explicada",
+  "tarefa": "TAR-446",
+  "evento": "explicada",
+  "quando": "2026-09-17T22:58:52+00:00",
+  "quem": "Pedido do mantenedor em 17/09/2026, depois de uma sessao do Codex que encerrou com o PR aberto e os checks rodando",
+  "o_que_e": "O gancho de fim de turno so cobrava o relatorio; nada media se o trabalho relatado chegou ao fim",
+  "o_que_muda": "Com o relatorio escrito, o Stop mede o PR que a sessao abriu e recusa o fecho enquanto ele nao tiver resultado terminal",
+  "exemplo": "O robo escreve o relatorio com o PR aberto e dois checks rodando; o gancho recusa uma vez e entrega o comando com teto",
+  "importancia": 80
+}

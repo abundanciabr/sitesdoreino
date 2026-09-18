@@ -1,0 +1,19 @@
+{
+  "arquivo": "444-o-cartao-da-biblioteca-do-livro-na-capa-do-admin-ganha-o-tes",
+  "id": "TAR-444",
+  "titulo": "O cartao da Biblioteca do Livro na capa do admin ganha o teste-guarda que falta",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o guarda novo em services/admin/tests/test_livro.py e make -C services/admin ci verde",
+  "despacho": "# Brief compilado\n\nobjetivo: Provar por teste que o cartao da Biblioteca do Livro esta na capa da Administracao, com o rotulo que o mantenedor le e o endereco com o prefixo publico.\ncelula: admin\n\n## Alvos\n\n- services/admin/tests/test_livro.py\n\n## Aceite\n\nO guarda test_a_visao_geral_oferece_a_porta_do_livro afirma duas coisas sobre GET /: o rotulo \"Guardar os textos do livro\" aparece, e o cartao sai com href=\"/admin/livro/\" (armadilhas/081). Com o cartao removido a mao da capa, ou com o href do cartao sem o prefixo, o guarda reprova; com a capa intacta, passa. make -C services/admin ci verde.\n\n## Fronteira\n\nNao mexer na capa, na moldura, em ci/, em INVARIANTES.md nem no mapa do site. A fixture sob_o_prefixo_publico e copiada, nao movida: ela ja mora em quatro arquivos desta celula e unificar fixture nao e esta tarefa.",
+  "origem": "Despacho do mantenedor em 17/09/2026: dos treze cartoes da capa, dez estao sem guarda",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

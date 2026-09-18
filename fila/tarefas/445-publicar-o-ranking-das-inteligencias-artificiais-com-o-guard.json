@@ -1,0 +1,21 @@
+{
+  "arquivo": "445-publicar-o-ranking-das-inteligencias-artificiais-com-o-guard",
+  "id": "TAR-445",
+  "titulo": "Publicar o ranking das inteligências artificiais com o guarda da capa",
+  "toca": [
+    "admin",
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com cálculo do ranking contra origin/main, tela protegida em /admin/ranking-ias/, cartão na capa sob o prefixo público, prova de mutação do guarda, suítes de ci e admin verdes e deploy da admin verificado na VPS.",
+  "despacho": "Migrar os arquivos locais relacionados ao ranking para a bancada admin isolada; preservar origin/main e excluir update2.py, update3.py e qualquer hunk alheio; fechar entradas inválidas; provar o cartão e o prefixo por mutação; validar ci e admin; registrar o mandato de CODEOWNERS e entregar pela pipeline.",
+  "origem": "Pedido direto do mantenedor em 17/09/2026, com mandato explícito para migrar os arquivos locais do ranking, inclusive ci, excluir o que for alheio, acrescentar o guarda e publicar pela pipeline.",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
