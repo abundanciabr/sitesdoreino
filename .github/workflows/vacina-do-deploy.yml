@@ -441,6 +441,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # A BASE DA MEDIÇÃO tem de existir como ref antes de medir: o
+          # termômetro fixa `origin/main` num SHA e lê o catálogo DELE, nunca
+          # da árvore de trabalho (INV-R01). O `checkout` traz a ref do evento,
+          # e depender de ela por acaso ser `origin/main` deixaria a medição
+          # inteira nas mãos de um detalhe do runner.
+          git fetch --no-tags --quiet origin main:refs/remotes/origin/main
           # `|| CODIGO=$?` CAPTURA; `set +e`, `|| true` e `| tee` ESCONDERIAM
           # (os dois primeiros são proibidos em YAML por
           # `test_contract_freeze.py::test_workflows_nao_escondem_erro`, e o

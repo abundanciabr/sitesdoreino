@@ -697,6 +697,31 @@ def test_o_commit_do_robo_toca_SOMENTE_a_fila(materializar):
     )
 
 
+def test_a_BASE_da_medicao_e_buscada_antes_de_medir(medir):
+    """INV-R01 no runner: sem a ref, o termometro recusa a janela inteira.
+
+    O termometro fixa `origin/main` num SHA e le o catalogo DELE, nunca da
+    arvore de trabalho. O `checkout` traz a ref do evento, e depender de ela
+    POR ACASO ser `origin/main` deixaria toda a medicao nas maos de um detalhe
+    do runner: no dia em que mudasse, o job sairia 2 em todo deploy e ninguem
+    saberia por que.
+    """
+    passos = medir["steps"]
+    corpo = next(
+        p["run"] for p in passos if "ci/termometro.py" in str(p.get("run", ""))
+    )
+    linhas = corpo.splitlines()
+    busca = [i for i, l in enumerate(linhas) if l.strip().startswith("git fetch")]
+    medicao = [i for i, l in enumerate(linhas) if "ci/termometro.py" in l]
+    assert busca, "a base da medicao nao e buscada em lugar nenhum do passo"
+    assert "origin/main" in linhas[busca[0]], (
+        "a busca tem de trazer a ref que o termometro mede, e nao outra"
+    )
+    assert busca[0] < medicao[0], (
+        "buscar a base DEPOIS de medir nao ajuda a medicao que ja aconteceu"
+    )
+
+
 def test_a_MAIN_nunca_recebe_push_deste_arquivo(bruto):
     """A recusa mais cara de afrouxar, porque ela só falha uma vez.
 
