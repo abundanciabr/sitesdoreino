@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-221015-TAR-464-explicada",
+  "tarefa": "TAR-464",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:10:15+00:00",
+  "quem": "Frente A da equipe especialista, 18/09/2026",
+  "o_que_e": "O teste que confere as fichas dos robos so olha tres fichas: despacho, revisor e escrivao. As duas fichas novas, provador e adversario, entraram sem nenhuma conferencia.",
+  "o_que_muda": "Um campo escrito errado no cabecalho de uma ficha nova e ignorado em silencio, e o robo nasce com permissao errada: o adversario poderia ganhar ferramenta de escrita, ou qualquer um poderia voltar a falar direto com o mantenedor.",
+  "exemplo": "E como contratar duas pessoas novas e esquecer de incluir as duas na conferencia de cracha da portaria: elas circulam pelo predio sem ninguem checar o que podem abrir.",
+  "importancia": 60
+}

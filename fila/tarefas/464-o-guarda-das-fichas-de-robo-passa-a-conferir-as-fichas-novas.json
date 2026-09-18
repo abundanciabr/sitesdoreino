@@ -1,0 +1,19 @@
+{
+  "arquivo": "464-o-guarda-das-fichas-de-robo-passa-a-conferir-as-fichas-novas",
+  "id": "TAR-464",
+  "titulo": "O guarda das fichas de robo passa a conferir as fichas novas",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python -m pytest ci/tests/test_fichas_de_robo.py -q verde conferindo provador.md e adversario.md, com cada assercao nova provada por mutacao",
+  "despacho": "BRIEF FECHADO\n\ncelula: ci\nalvo unico: ci/tests/test_fichas_de_robo.py\nmandato: ci/ e caminho CODEOWNERS. Este brief so vale com a palavra escrita do\nmantenedor na descricao do PR (Mandato-do-mantenedor:). Sem ela, bloqueie.\n\nObjetivo: o guarda das fichas de robo passa a conferir tambem provador.md e\nadversario.md, que entraram em 18/09/2026 sem nenhuma assercao sobre elas.\n\nO que medir, sem inventar regra nova:\n1. NOMES ganha \"provador\" e \"adversario\": as duas fichas existem, name bate com\n   o nome do arquivo e description nao esta vazia.\n2. O frontmatter das duas so usa campos de CAMPOS_CONHECIDOS.\n3. As duas negam AskUserQuestion e Agent em disallowedTools.\n4. adversario.md so le: tools sem Edit, Write nem NotebookEdit, e\n   disallowedTools negando as tres, como o revisor ja exige.\n5. As duas declaram model, e nenhum model contem \"opus\", pela mesma razao do\n   escrivao e do revisor.\n6. O corpo de cada uma tem a secao do que ela devolve e a regra de que nao\n   pergunta ao mantenedor.\n\nProva exigida: cada assercao nova nasce reprovando (apague o campo na ficha,\nveja o teste cair, restaure) e depois passa por mutacao com\npython ci/provar_guardas.py ci/tests/test_fichas_de_robo.py.\nFeche com python -m pytest ci/tests/test_fichas_de_robo.py -q verde e\npython ci/ci.py --apenas muralhas verde.",
+  "origem": "Frente A da equipe especialista, 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
