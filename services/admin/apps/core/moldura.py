@@ -113,6 +113,11 @@ SECOES = (
     ("reuniao", "Reunião"),
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
+    # "Ranking das IAs", e nunca "Placar": já existe um item "Placar" nesta
+    # mesma barra, e ele é a meta de alunos. Dois "placar" lado a lado fariam o
+    # mantenedor clicar no errado, que é exatamente o atrito que renomeou
+    # "Abrir o painel da escola" em 28/08/2026 (17/09/2026).
+    ("ranking_das_ias", "Ranking das IAs"),
     ("painel", "Painel do sistema"),
 )
 
