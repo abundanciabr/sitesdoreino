@@ -170,3 +170,62 @@ def test_selecao_nao_aceita_falha_de_vizinho():
     assert guardas.selecionados({"dados": {"tests": [
         {"nodeid": "test_a.py::test_alvo[caso]", "outcome": "failed"}
     ]}}, "test_a.py::test_alvo")
+
+
+# ---------------------------------------------- guarda escrita em shell ----
+
+# O bloco fail-closed tem a mesma forma do que esta casa protege de verdade em
+# `infra/deploy-celula-na-vps.sh`: a recusa é a última linha do `then`, e
+# comentá-la deixa o script seguir em frente e sair 0.
+GUARDA_SH = (
+    b"#!/usr/bin/env bash\n"
+    b"set -eu\n"
+    b'VALOR="${VALOR:-}"\n'
+    b'if [ -z "$VALOR" ]; then\n'
+    b'  echo "ERRO: sem valor"\n'
+    b"  exit 1\n"
+    b"fi\n"
+    b'echo "ok"\n'
+)
+
+
+def test_dentro_aceita_shell_mas_so_no_conjunto_fechado(tmp_path):
+    (tmp_path / "guarda.sh").write_bytes(GUARDA_SH)
+    (tmp_path / "leia.md").write_text("texto")
+    assert guardas.dentro(tmp_path, "guarda.sh", guardas.SUFIXOS_MUTAVEIS).name == "guarda.sh"
+    with pytest.raises(guardas.ProvaInvalida, match="corrija o marcador"):
+        guardas.dentro(tmp_path, "leia.md", guardas.SUFIXOS_MUTAVEIS)
+    with pytest.raises(guardas.ProvaInvalida, match="corrija o marcador"):
+        guardas.dentro(tmp_path, "guarda.sh")
+
+
+def test_mutacao_de_shell_comenta_com_cerquilha_e_nunca_com_pass():
+    alterado = guardas.mutar(GUARDA_SH, 6, ".sh")
+    assert alterado.splitlines()[5] == b"  # exit 1"
+    assert b"pass" not in alterado
+
+
+def test_sabotagem_que_quebra_a_sintaxe_do_shell_e_erro_de_setup():
+    with pytest.raises(guardas.ProvaInvalida, match="sintaxe"):
+        guardas.mutar(GUARDA_SH, 4, ".sh")
+
+
+def test_ciclo_completo_com_guarda_em_shell(bancada):
+    from conftest import BASH
+    if BASH is None:
+        pytest.skip("nenhum bash utilizável foi encontrado neste ambiente")
+    (bancada / "guarda.sh").write_bytes(GUARDA_SH)
+    (bancada / "test_codigo.py").write_text(
+        "import subprocess\nfrom pathlib import Path\n"
+        "def test_recusa_sem_valor():\n"
+        "    # guarda: guarda.sh:6\n"
+        f"    roteiro = Path(__file__).resolve().parent / 'guarda.sh'\n"
+        f"    processo = subprocess.run([{BASH!r}, str(roteiro)], capture_output=True, text=True)\n"
+        "    assert processo.returncode != 0\n")
+    codigo, resultado, evidencia = provar(bancada)
+    assert codigo == 0, resultado
+    guarda = evidencia["guardas"][0]
+    assert guarda["protege"] == "guarda.sh" and guarda["linha"] == 6
+    assert (guarda["baseline"], guarda["mutacao"], guarda["restauracao"]) == ("PASS", "FAIL", "PASS")
+    assert guarda["reprovou"] is True
+    assert (bancada / "guarda.sh").read_bytes() == GUARDA_SH

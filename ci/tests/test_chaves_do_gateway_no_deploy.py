@@ -306,9 +306,18 @@ def test_celula_sem_servico_continua_dizendo_exatamente_isso(tmp_path: Path):
 
     Sem este caso, separar as duas situações poderia simplesmente apagar a
     recusa que impede um `up -d` sem argumento de subir a plataforma inteira.
+
+    O nome da célula NÃO tem hífen de propósito, e trocá-lo por um que tenha
+    cega este guarda. Medido por mutação em 18/09/2026: com hífen, comentar o
+    `exit 1` da linha 166 deixa o script seguir e morrer adiante, na conferência
+    do nome da base (`fantasma_db` aceita, `celula-que-nao-existe_db` não): o
+    processo ainda sai diferente de zero, nenhum `up -d` acontece, e o teste
+    continua verde com a recusa apagada. Sem hífen, a mesma sabotagem entrega
+    `up -d --wait` sem serviço nenhum e sai 0, que é o estrago de verdade.
     """
+    # guarda: infra/deploy-celula-na-vps.sh:166
     raiz = _plataforma(tmp_path)
-    processo, diario = _rodar(tmp_path, raiz, celula="celula-que-nao-existe")
+    processo, diario = _rodar(tmp_path, raiz, celula="celula_inexistente")
     tela = _tela(processo)
 
     assert processo.returncode != 0, (
