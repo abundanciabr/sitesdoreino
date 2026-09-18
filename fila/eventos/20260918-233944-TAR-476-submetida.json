@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260918-233944-TAR-476-submetida",
+  "tarefa": "TAR-476",
+  "evento": "submetida",
+  "quando": "2026-09-18T23:39:44+00:00",
+  "quem": "agent/ci/comprovante-da-fila-sem-commit",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1732",
+  "revisao": "3a6ccd0b8bcec4eb21903cbbc74e46ab91b869f0",
+  "arvore": "25004eb2d055f31fcb0ab54fd3cbd88bfe804295"
+}

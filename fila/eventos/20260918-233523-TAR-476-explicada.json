@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-233523-TAR-476-explicada",
+  "tarefa": "TAR-476",
+  "evento": "explicada",
+  "quando": "2026-09-18T23:35:23+00:00",
+  "quem": "Retomada da TAR-455: achado 12 do RETOMAR-EQUIPE-ESPECIALISTA.md",
+  "o_que_e": "Quando um robo comeca a trabalhar numa tarefa da lista, o sistema deveria abrir sozinho um aviso de que aquele trabalho comecou. Hoje o aviso nao nasce, e ninguem tinha ido ver por que.",
+  "o_que_muda": "O defeito deixa de ser uma frase solta num relatorio e passa a ter numero, dono e prova exigida, que e o unico jeito de ele ser consertado.",
+  "exemplo": "E a diferenca entre dizer que a porta emperra e marcar a visita do chaveiro com o defeito anotado.",
+  "importancia": 55
+}
