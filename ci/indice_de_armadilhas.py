@@ -68,6 +68,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -296,6 +297,66 @@ CORPUS_FELIZ = (
 )
 
 
+# O MESMO exame, do outro lado do fio: o log do GITHUB ACTIONS.
+#
+# O `CORPUS_FELIZ` acima é saída de TERMINAL LOCAL — ele nunca viu uma linha de
+# runner. Medido em 18/09/2026: passando os 414 sinais do catálogo por um log
+# de deploy VERDE de verdade (job 96033856977), DOIS casaram. `already exists`
+# é o registry respondendo que aquela camada da imagem já estava lá, e
+# `django-ninja` é uma linha do `pip install` que toda build imprime. Nenhum
+# dos dois é falha, e os dois estavam prontos para acusar reincidência em cima
+# de um deploy que deu certo.
+#
+# As linhas entram COM o carimbo de tempo e o prefixo do passo, que é como o
+# Actions as devolve: assinatura conferida contra a linha "limpa" não é a
+# assinatura que o sino vai comparar de verdade.
+CORPUS_FELIZ_DO_ACTIONS = (
+    "2026-08-19T10:16:10.4231338Z #9 1.489 Collecting django-ninja==1.3.0 "
+    "(from -r requirements.txt (line 2))",
+    "2026-08-19T10:16:23.0951423Z 5f70bf18a086: Layer already exists",
+)
+
+# As armadilhas cuja assinatura é procurada no LOG DO JOB TERMINAL — o job já
+# concluído, lido do GitHub Actions — e não na saída do terminal de quem
+# trabalha. Os dois textos chegam com codificações diferentes: o Actions guarda
+# o log em UTF-8 DUPLAMENTE codificado, então o `não` que o script imprimiu
+# chega como `nÃ£o` e um sinal acentuado casa ZERO logs de lá.
+#
+# A regra é opt-in por armadilha, e isso é deliberado: no terminal local o
+# acento casa normalmente, e 149 dos 414 sinais do catálogo dependem disso.
+# Global, esta regra reprovaria 36% do catálogo por um defeito que só existe do
+# outro lado do fio.
+ARMADILHAS_DO_LOG_TERMINAL = frozenset({"088"})
+
+# A DÍVIDA LEGADA — nomeada, congelada, e só pode encolher (18/09/2026).
+#
+# As regras novas valem para toda entrada a partir de hoje. O catálogo legado
+# NÃO é migrado nesta entrega: reescrever assinatura em massa é a mudança que
+# ninguém consegue revisar, e o relatório do laço proíbe. O que não se admite é
+# a exceção silenciosa — cada linha abaixo diz quem, o quê e por quê, o teto
+# das duas listas está travado por teste, e perdão que já não é preciso sai da
+# lista (`test_nenhuma_divida_congelada_e_fantasma`).
+DIVIDA_DO_CORPUS_DO_ACTIONS = frozenset({
+    # A resposta do registry a cada camada de imagem que já estava lá.
+    ("357", "already exists"),
+    # Uma linha do `pip install` de toda build.
+    ("351", "django-ninja"),
+})
+
+# Os 14 pares em que duas entradas disputam o mesmo texto. Medidos com
+# `colisoes_de_sinais` sobre a pasta inteira, no mesmo dia.
+DIVIDA_DE_COLISAO = frozenset({
+    ("205", "330"), ("224", "311"), ("228", "324"), ("228", "483"),
+    ("253", "347"), ("274", "319"), ("280", "323"), ("298", "365"),
+    ("308", "310"), ("319", "326"), ("335", "485"), ("358", "361"),
+    ("389", "395"), ("481", "484"),
+})
+
+# Os caracteres que um regex usa para dizer "aqui não é literal". O que sobra
+# entre eles é o que a assinatura exige ver letra por letra.
+META_DE_REGEX = frozenset(r".^$*+?{}[]\|()")
+
+
 class ErroDeFrontmatter(ErroDeInstrumentacao):
     pass
 
@@ -498,7 +559,7 @@ def validar_gatilhos(gatilhos: list, licao: str, nome: str) -> None:
                 )
 
 
-def validar_sinais(sinais: list, nome: str) -> None:
+def validar_sinais(sinais: list, nome: str, numero: str) -> None:
     for cru in sinais:
         if not isinstance(cru, str):
             raise ErroDeFrontmatter(f"{nome}: sinal não textual: {cru!r}", "")
@@ -526,6 +587,27 @@ def validar_sinais(sinais: list, nome: str) -> None:
                     f"Casou: {benigno[:70]!r}\n"
                     "Aperte a assinatura até ela só reconhecer a falha de verdade.",
                 )
+        if (numero, cru) not in DIVIDA_DO_CORPUS_DO_ACTIONS:
+            for benigno in CORPUS_FELIZ_DO_ACTIONS:
+                if compilado.search(benigno):
+                    raise ErroDeFrontmatter(
+                        f"{nome}: o sinal {cru!r} casa log de deploy VERDE "
+                        "do GitHub Actions",
+                        f"Casou: {benigno!r}\n"
+                        "Essa linha sai em TODO deploy que dá certo, então o sino\n"
+                        "acusaria reincidência em cima de sucesso. Ancore a\n"
+                        "assinatura no que SÓ a falha daquele job imprime.",
+                    )
+        if numero in ARMADILHAS_DO_LOG_TERMINAL and any(ord(c) > 127 for c in cru):
+            raise ErroDeFrontmatter(
+                f"{nome}: o sinal {cru!r} tem acento, e o log do Actions não",
+                "Esta armadilha procura a assinatura no log do job terminal do\n"
+                "GitHub Actions, que guarda o texto duplamente codificado em\n"
+                "UTF-8: o `não` que o script imprimiu chega ao log como `nÃ£o`.\n"
+                "Um sinal acentuado casa ZERO logs de lá — é sino morto.\n"
+                "Conserto: ancore a assinatura num trecho sem acento da mesma\n"
+                "linha (um caminho, um código, uma palavra sem diacrítico).",
+            )
 
 
 class Entrada:
@@ -598,7 +680,7 @@ class Entrada:
                 self.sinais = [sinal]
             elif isinstance(sinal, list):
                 self.sinais = [s for s in sinal if s is not None]
-            validar_sinais(self.sinais, self.nome)
+            validar_sinais(self.sinais, self.nome, self.numero)
             gatilho = self.frontmatter.get("gatilho")
             if isinstance(gatilho, str):
                 self.gatilhos = [gatilho.strip()]
@@ -658,6 +740,124 @@ class Entrada:
     @property
     def numero_canonico(self) -> int | None:
         return self.numero_de(self.nome)
+
+
+def sonda_do_sinal(regex: str) -> str:
+    """O maior trecho LITERAL de um regex: o que ele exige ver, letra por letra.
+
+    Decidir se dois regex casam o mesmo texto é, no caso geral, indecidível.
+    Comparar o que cada um exige LITERALMENTE é barato e basta para o que
+    importa aqui: se o regex de uma entrada casa o pedaço literal que a outra
+    exige, as duas disputam o mesmo erro.
+
+    Trecho curto é sonda fraca e não acusa ninguém — um `exit 1` dentro de duas
+    assinaturas legítimas não as torna concorrentes. O corte é o mesmo
+    `SINAL_MINIMO` que já reprova assinatura curta demais, porque é a mesma
+    pergunta: a partir de quantas letras um pedaço de texto identifica algo.
+    """
+    partes: list[str] = []
+    atual: list[str] = []
+    i = 0
+    while i < len(regex):
+        letra = regex[i]
+        if letra == "\\":  # escape: o par inteiro sai do literal
+            if atual:
+                partes.append("".join(atual))
+                atual = []
+            i += 2
+            continue
+        if letra in META_DE_REGEX:
+            if atual:
+                partes.append("".join(atual))
+                atual = []
+            i += 1
+            continue
+        atual.append(letra)
+        i += 1
+    if atual:
+        partes.append("".join(atual))
+    return max(partes, key=len).strip() if partes else ""
+
+
+class Assinatura(NamedTuple):
+    """Um `sinal:` pronto para ser comparado com os outros."""
+
+    armadilha: str
+    arquivo: str
+    regex: str
+    sonda: str
+    compilado: re.Pattern
+
+
+def colisoes_de_sinais(
+    entradas: list[Entrada],
+) -> list[tuple[tuple[str, str], Assinatura, Assinatura]]:
+    """Os pares de armadilhas que disputam o mesmo texto. MEDE; não julga.
+
+    Um par por vez, com a primeira dupla de sinais que o comprova — dizer as
+    quatro combinações do mesmo par transformaria a mensagem em parede de
+    texto, e o conserto é sempre o mesmo: apertar uma das duas assinaturas.
+    A dívida congelada não é descontada aqui, de propósito: quem mede não pode
+    ser quem perdoa, senão não sobra como provar que o perdão ainda é preciso.
+    """
+    assinaturas: list[Assinatura] = []
+    for entrada in entradas:
+        for regex in entrada.sinais:
+            sonda = sonda_do_sinal(regex)
+            if len(sonda) < SINAL_MINIMO:
+                continue
+            assinaturas.append(
+                Assinatura(entrada.numero, entrada.nome, regex, sonda, re.compile(regex))
+            )
+
+    achados: dict[tuple[str, str], tuple[Assinatura, Assinatura]] = {}
+    for posicao, primeira in enumerate(assinaturas):
+        for segunda in assinaturas[posicao + 1:]:
+            if primeira.armadilha == segunda.armadilha:
+                continue
+            if not (
+                primeira.compilado.search(segunda.sonda)
+                or segunda.compilado.search(primeira.sonda)
+            ):
+                continue
+            par = tuple(sorted((primeira.armadilha, segunda.armadilha)))
+            achados.setdefault(par, (primeira, segunda))
+    return [(par, dupla[0], dupla[1]) for par, dupla in sorted(achados.items())]
+
+
+def conferir_colisao_de_sinais(entradas: list[Entrada]) -> None:
+    """Dois sinais apontando o mesmo erro param o gerador — ERROR, nunca sino.
+
+    Sino que aponta duas entradas para a mesma linha do log não aponta nenhuma:
+    quem lê escolhe no chute, e a entrada errada manda consertar o que não
+    quebrou. Por isso ERROR e não FAIL — regenerar não conserta, alguém precisa
+    decidir de qual das duas aquele erro é.
+    """
+    novas = [c for c in colisoes_de_sinais(entradas) if c[0] not in DIVIDA_DE_COLISAO]
+    if not novas:
+        return
+
+    detalhe = []
+    for par, primeiro, segundo in novas:
+        detalhe.append(f"  {par[0]} x {par[1]} — o mesmo texto casa os dois:")
+        for assinatura in (primeiro, segundo):
+            detalhe.append(
+                f"    - {PASTA}/{assinatura.arquivo}: sinal {assinatura.regex!r}"
+            )
+    detalhe.append(
+        "\nDecida de QUAL das duas entradas aquele erro é, e aperte a assinatura\n"
+        "da outra até ela reconhecer só o que ela mesma documenta. Se as duas\n"
+        "falam da mesma queda, uma delas não precisa de sinal: `sinal` é a\n"
+        "assinatura que manda o leitor para UMA entrada.\n"
+        "\n"
+        "A lista `DIVIDA_DE_COLISAO` em ci/indice_de_armadilhas.py é o legado\n"
+        "congelado de 18/09/2026, e ela só encolhe: entrada nova não entra lá."
+    )
+    raise ErroDeInstrumentacao(
+        "sinais concorrentes: "
+        + ", ".join(f"{par[0]}x{par[1]}" for par, _, _ in novas),
+        "\n".join(detalhe),
+    )
 
 
 def conferir_numeracao(entradas: list[Entrada]) -> None:
@@ -758,6 +958,7 @@ def coletar(raiz: Path) -> list[Entrada]:
         )
     entradas = [Entrada(p) for p in arquivos]
     conferir_numeracao(entradas)
+    conferir_colisao_de_sinais(entradas)
     conferir_guardas_vivas(entradas, raiz)
     return entradas
 
@@ -1026,6 +1227,7 @@ def rodar(raiz: Path, conferir: bool, com_a_origem: bool = False) -> int:
         else:
             entradas, so_na_origem = unir(entradas, da_origem)
             conferir_numeracao(entradas)
+            conferir_colisao_de_sinais(entradas)
             conferir_guardas_vivas(entradas, raiz, caminhos_da_origem(raiz))
     artefatos = [
         (raiz / PASTA / NOME_DO_INDICE, montar(entradas, so_na_origem)),

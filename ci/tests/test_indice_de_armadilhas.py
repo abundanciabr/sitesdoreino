@@ -474,3 +474,267 @@ def test_o_guarda_de_referencias_reprova_de_verdade() -> None:
     assert "99.99" not in conhecidos
     achado = RE_CITACAO.search("ver ARMADILHAS §99.99 para detalhes")
     assert achado is not None and achado.group(1) == "99.99"
+
+
+# --------------------------------------------- a precisão dos SINAIS (Fase 1)
+#
+# O sino multiplica a autoridade do matcher: assinatura imprecisa fabrica
+# trabalho falso automaticamente, e sino que toca à toa é o sino que todo robô
+# aprende a ignorar. O `CORPUS_FELIZ` já provava isso contra a saída do
+# TERMINAL LOCAL. Faltavam três coisas, medidas em 18/09/2026:
+#
+# (a) o corpus não tinha uma única linha de log do GitHub Actions — e rodando os
+#     414 sinais do catálogo contra um log de deploy VERDE de verdade (job
+#     96033856977) DOIS casaram: `already exists` (a linha de push de imagem
+#     que todo deploy bem-sucedido imprime) e `django-ninja` (a linha de `pip
+#     install` de toda build);
+# (b) nada comparava os sinais ENTRE SI — 14 pares casam o mesmo texto, e o
+#     sino que aponta duas entradas para o mesmo erro não aponta nenhuma;
+# (c) o log do Actions guarda texto em UTF-8 DUPLAMENTE codificado, então um
+#     sinal acentuado casa ZERO logs de lá. Isso NÃO vale para o terminal
+#     local, onde 149 dos 414 sinais acentuados funcionam — por isso a regra é
+#     opt-in por armadilha, nunca global.
+
+
+def _com_frontmatter(pasta: Path, nome: str, numero: str, *sinais: str) -> Path:
+    """Uma entrada schema 2 com `sinal:` — o mínimo que `validar_sinais` exige.
+
+    O `_entrada` acima escreve entrada LEGADA (sem frontmatter), que não tem
+    sinal nenhum; assinatura só existe a partir do schema 2.
+    """
+    linhas = [
+        "---",
+        "schema_version: 2",
+        f"armadilha: {numero}",
+        "estado: documentada",
+        "confianca: alta",
+        "guarda:",
+        "  tipo: nenhum",
+        "  motivo: entrada de teste; nada a impor aqui",
+        "sinal:",
+    ]
+    linhas += [f"  - `{sinal}`" for sinal in sinais]
+    linhas += ["---", "", f"# Entrada de teste {numero}", ""]
+    caminho = pasta / nome
+    caminho.write_text("\n".join(linhas), encoding="utf-8", newline="\n")
+    return caminho
+
+
+def test_sinal_que_casa_deploy_verde_do_actions_e_recusado(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """As duas linhas que TODO deploy verde imprime não podem ser assinatura.
+
+    `already exists` é o que o registry responde a cada camada de imagem já
+    enviada; `django-ninja` é uma linha do `pip install` de toda build. As duas
+    casaram o log VERDE do job 96033856977 — e um sino que toca em cima de
+    deploy bem-sucedido acusa reincidência que não houve.
+    """
+    _com_frontmatter(repo_falso / indice.PASTA, "003-push.md", "003", "already exists")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+
+    assert indice.main([]) == 2
+    erro = capsys.readouterr().err
+    assert "already exists" in erro
+    assert "Layer already exists" in erro, (
+        "a mensagem precisa mostrar a linha VERDE que casou"
+    )
+
+
+def test_sinal_de_pip_install_verde_tambem_e_recusado(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O par do anterior: a outra linha medida, para o corpus não ter um caso só."""
+    _com_frontmatter(repo_falso / indice.PASTA, "003-pip.md", "003", "django-ninja")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 2
+
+
+def test_sinal_especifico_do_actions_continua_passando(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O verde do par: guarda que reprova tudo é guarda que alguém desliga.
+
+    Esta é a assinatura de uma falha DE VERDADE do mesmo log — ela não aparece
+    em deploy nenhum que deu certo.
+    """
+    _com_frontmatter(
+        repo_falso / indice.PASTA,
+        "003-falha.md",
+        "003",
+        "nao tem servico algum em /opt/plataforma/docker-compose.yml",
+    )
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+
+
+def test_dois_sinais_que_casam_o_mesmo_texto_sao_ERROR(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """ERROR (2): com duas entradas disputando o mesmo erro, o sino não aponta.
+
+    A saída precisa NOMEAR os dois concorrentes (arquivo e regex), porque o
+    conserto é editar um deles, e "algum sinal colide" manda caçar em 300
+    arquivos.
+    """
+    pasta = repo_falso / indice.PASTA
+    _com_frontmatter(pasta, "003-comando.md", "003", "Unknown command: 'export_openapi'")
+    _com_frontmatter(pasta, "004-contrato.md", "004", "export_openapi")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+
+    assert indice.main([]) == 2
+    erro = capsys.readouterr().err
+    assert "ERROR" in erro
+    assert "003-comando.md" in erro and "004-contrato.md" in erro
+    assert "export_openapi" in erro
+
+
+def test_sinais_distintos_nao_colidem(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O verde do par: duas assinaturas que falam de erros diferentes passam."""
+    pasta = repo_falso / indice.PASTA
+    _com_frontmatter(pasta, "003-comando.md", "003", "Unknown command: 'export_openapi'")
+    _com_frontmatter(pasta, "004-contrato.md", "004", "ConfigError: Schema for status")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+
+
+def test_sinal_acentuado_do_log_do_actions_e_recusado(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Acento no sinal de quem lê o log do Actions casa ZERO logs: é sino morto.
+
+    O Actions guarda o texto do job em UTF-8 duplamente codificado: o `não` que
+    o script imprimiu chega ao log como `nÃ£o`. A regra é opt-in
+    (`ARMADILHAS_DO_LOG_TERMINAL`) porque no TERMINAL LOCAL o acento funciona,
+    e 149 dos 414 sinais do catálogo dependem disso.
+    """
+    numero = sorted(indice.ARMADILHAS_DO_LOG_TERMINAL)[0]
+    _com_frontmatter(
+        repo_falso / indice.PASTA,
+        f"{numero}-do-actions.md",
+        numero,
+        "não tem serviço algum em /opt/plataforma",
+    )
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+
+    assert indice.main([]) == 2
+    erro = capsys.readouterr().err
+    assert "duplamente codificado" in erro, (
+        "a mensagem precisa explicar a dupla codificação"
+    )
+    assert "sem acento" in erro, (
+        "e precisa dizer o conserto, não só o diagnóstico"
+    )
+
+
+def test_sinal_acentuado_fora_do_log_do_actions_continua_valendo(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A regra é ESCOPADA: no terminal local o acento casa, e 149 sinais usam.
+
+    Global, esta regra reprovaria 36% do catálogo por um defeito que só existe
+    do outro lado.
+    """
+    assert "003" not in indice.ARMADILHAS_DO_LOG_TERMINAL
+    _com_frontmatter(
+        repo_falso / indice.PASTA,
+        "003-terminal.md",
+        "003",
+        "PAROU POR SEGURANÇA: não consegui perguntar",
+    )
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+
+
+# ------------------------------------------------ a dívida legada só encolhe
+#
+# As duas listas abaixo são exceções NOMEADAS e congeladas: o catálogo legado
+# não é migrado nesta entrega (o relatório proíbe), mas nenhuma linha nova pode
+# entrar nelas. Os tetos são a medição de 18/09/2026.
+
+# O CONJUNTO congelado, não o tamanho dele. Medir `len(...) <= N` deixava a
+# lista TROCAR de conteúdo sem ficar vermelha: bastava tirar um par já
+# corrigido e pôr outro qualquer no lugar. Subconjunto é o que "só encolhe"
+# quer dizer, e é o que este teste passou a medir.
+DIVIDA_DO_CORPUS_EM_18_09_2026 = frozenset(
+    {("357", "already exists"), ("351", "django-ninja")}
+)
+DIVIDA_DE_COLISAO_EM_18_09_2026 = frozenset(
+    {
+        ("205", "330"), ("224", "311"), ("228", "324"), ("228", "483"),
+        ("253", "347"), ("274", "319"), ("280", "323"), ("298", "365"),
+        ("308", "310"), ("319", "326"), ("335", "485"), ("358", "361"),
+        ("389", "395"), ("481", "484"),
+    }
+)
+
+
+def test_a_divida_legada_so_pode_encolher() -> None:
+    """Subconjunto do que foi medido em 18/09/2026, nunca um teto numérico.
+
+    Exceção congelada é dívida declarada; exceção que TROCA de conteúdo em
+    silêncio é o portão morrendo por dentro sem mexer no tamanho da lista.
+    """
+    novas_do_corpus = set(indice.DIVIDA_DO_CORPUS_DO_ACTIONS) - (
+        DIVIDA_DO_CORPUS_EM_18_09_2026
+    )
+    assert not novas_do_corpus, (
+        f"entrada nova na dívida do corpus: {sorted(novas_do_corpus)}. A lista "
+        "só encolhe: conserte o sinal em vez de perdoá-lo."
+    )
+    novas_de_colisao = set(indice.DIVIDA_DE_COLISAO) - (
+        DIVIDA_DE_COLISAO_EM_18_09_2026
+    )
+    assert not novas_de_colisao, (
+        f"par novo na dívida de colisão: "
+        f"{sorted(sorted(p) for p in novas_de_colisao)}. A lista só encolhe."
+    )
+
+
+def _entradas_reais() -> list[indice.Entrada]:
+    return [
+        indice.Entrada(p)
+        for p in sorted((RAIZ / indice.PASTA).glob("*.md"))
+        if p.name != indice.NOME_DO_INDICE
+    ]
+
+
+def test_nenhuma_divida_congelada_e_fantasma() -> None:
+    """Perdão para quem não erra mais é perdão que esconde o próximo erro.
+
+    Consertado o sinal, a linha SAI da lista — é isto que faz o teto acima
+    descer de verdade, em vez de virar enfeite.
+    """
+    entradas = _entradas_reais()
+    vivos = {
+        (e.numero, sinal)
+        for e in entradas
+        for sinal in e.sinais
+        if any(
+            re.compile(sinal).search(feliz)
+            for feliz in indice.CORPUS_FELIZ_DO_ACTIONS
+        )
+    }
+    assert not (set(indice.DIVIDA_DO_CORPUS_DO_ACTIONS) - vivos), (
+        "dívida do corpus que já não existe: apague a linha de "
+        "DIVIDA_DO_CORPUS_DO_ACTIONS e baixe o teto"
+    )
+
+    colidindo = {par for par, _, _ in indice.colisoes_de_sinais(entradas)}
+    assert not (set(indice.DIVIDA_DE_COLISAO) - colidindo), (
+        "dívida de colisão que já não existe: apague a linha de "
+        "DIVIDA_DE_COLISAO e baixe o teto"
+    )
+
+
+def test_o_catalogo_real_nao_ganha_colisao_nova() -> None:
+    """A prova DE FORA: a pasta de verdade, com a dívida congelada descontada."""
+    indice.conferir_colisao_de_sinais(_entradas_reais())

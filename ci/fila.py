@@ -46,6 +46,7 @@ Dialeto de exit (RETROSPECTIVA-FASE-D §1): 0 = OK · 1 = recusa/violação ·
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -61,6 +62,8 @@ if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import reservar  # noqa: E402
+import indice_de_armadilhas  # noqa: E402
+import provar_guardas  # noqa: E402
 import responsabilidades  # noqa: E402
 import estado_da_entrega  # noqa: E402
 import radio  # noqa: E402
@@ -190,6 +193,9 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "o_que_muda": str,
     "exemplo": str,
     "importancia": int,
+    # Só em `concluida` de tarefa da medição: a cadeia que provou a guarda da
+    # armadilha da origem. Quem a confere é `problemas_da_cadeia_automatica`.
+    "prova_da_guarda": dict,
 }
 
 # QUEM DESTRAVA UMA TAREFA PARADA — o campo que faltava (06/09/2026)
@@ -229,6 +235,13 @@ RE_REGISTRO_DE_ACEITE = re.compile(
     r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js"
 )
 RE_URL = re.compile(r"https?://[^\s<>\"']+")
+# A ORIGEM QUE O TERMÔMETRO ESCREVE — e que não é texto livre nenhum.
+# `origem` nasceu campo morto: `criar` gravava, `validar` cobrava uma string não
+# vazia, e ninguém lia. Neste formato exato ela vira a IDENTIDADE da tarefa (a
+# chave que impede a segunda medição de criar a segunda tarefa) e o ENDEREÇO da
+# armadilha cuja guarda precisa ser provada para a tarefa fechar. Fora dele,
+# `origem` continua sendo o que sempre foi, e tarefa de gente não muda de regra.
+RE_ORIGEM_AUTOMATICA = re.compile(r"^ci/termometro\.py:armadilhas/(\d{3,})$")
 CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
 
 
@@ -1464,6 +1477,7 @@ def montar_evento(
     espera: str | None = None,
     explicacao: dict | None = None,
     agora: datetime | None = None,
+    prova_da_guarda: dict | None = None,
 ) -> dict:
     """O conteúdo de um evento, sem tocar no disco.
 
@@ -1491,6 +1505,8 @@ def montar_evento(
         dados["espera"] = espera
     if explicacao:
         dados.update({c: explicacao[c] for c in CAMPOS_DA_EXPLICACAO})
+    if prova_da_guarda:
+        dados["prova_da_guarda"] = prova_da_guarda
     return dados
 
 
@@ -1505,9 +1521,11 @@ def _escrever_evento(
     espera: str | None = None,
     explicacao: dict | None = None,
     agora: datetime | None = None,
+    prova_da_guarda: dict | None = None,
 ) -> Path:
     dados = montar_evento(
-        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao, agora
+        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao,
+        agora, prova_da_guarda,
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
@@ -1775,6 +1793,208 @@ def normalizar_responsabilidade(valor: object) -> str:
     return valor.strip() if isinstance(valor, str) else ""
 
 
+# ---------------------------------------------------------------------------
+# A CADEIA DA ARMADILHA — o laço que o termômetro abre, e que só fecha com prova
+#
+# O termômetro mede reincidência e cria trabalho. Duas coisas podiam furar esse
+# laço, e as duas furam pelo mesmo lugar: a `origem`.
+#
+# NA ENTRADA, a origem é IDENTIDADE. Medir de novo na semana seguinte criaria a
+# segunda tarefa para a mesma reincidência, e a fila viraria um mostruário de
+# cópias — o balcão não tinha nada que reconhecesse "isto já entrou". O
+# almoxarife já sabe deduplicar por chave desde que `ci/reservar.py` ganhou a
+# ref atômica no servidor; o que faltava era alguém lhe dar a chave. Duas
+# medições simultâneas ainda passariam pela conferência antes de qualquer uma
+# gravar, e por isso a conferência se repete rente ao disco, logo antes de
+# gravar: é essa segunda leitura que morde a corrida.
+#
+# NA SAÍDA, a origem é ENDEREÇO. `concluir` sempre cobrou evidência, e evidência
+# é uma URL que ninguém relê: uma tarefa que existe para fazer uma armadilha
+# parar de morder pode fechar sem que nada tenha parado de morder. Aqui ela só
+# fecha se a guarda DAQUELA armadilha reprovar sabotada — e "daquela" é o miolo,
+# porque uma prova verdinha de outro teste é prova de nada. A cadeia gravada no
+# evento é o que `validar` reconstrói depois, no SHA do PR, sem rodar pytest:
+# quem produz a prova é a bancada, quem confere a identidade dela é a muralha.
+#
+# Tarefa de gente não entra nesta regra. O que separa uma da outra é a origem em
+# `RE_ORIGEM_AUTOMATICA`, e nada mais.
+# ---------------------------------------------------------------------------
+
+
+def chave_da_origem(origem: str) -> str:
+    """O sha256 que dá ao almoxarife a identidade estável desta tarefa.
+
+    Prefixado de propósito: a chave vive num espaço compartilhado com as outras
+    superfícies, e o sha256 de um texto solto casaria com qualquer outro uso do
+    mesmo texto no dia em que alguém reaproveitasse a mesma origem para outra
+    coisa.
+    """
+    return hashlib.sha256(f"fila/origem:{origem}".encode("utf-8")).hexdigest()
+
+
+def armadilha_da_origem(raiz: Path, origem: str) -> Path | None:
+    """O arquivo da armadilha que a origem endereça, ou None se não der para dizer.
+
+    None também quando o número casa com mais de um arquivo: catálogo ambíguo
+    não é lugar de escolher o primeiro em ordem alfabética.
+    """
+    achado = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())
+    if not achado:
+        return None
+    candidatos = sorted((raiz / "armadilhas").glob(f"{achado[1]}-*.md"))
+    return candidatos[0] if len(candidatos) == 1 else None
+
+
+def origem_ja_na_fila(tarefas: dict[str, dict], origem: str) -> str | None:
+    """O id da tarefa que já nasceu desta origem, em qualquer estado."""
+    alvo = str(origem or "").strip()
+    if not alvo:
+        return None
+    for tid in sorted(tarefas):
+        if str(tarefas[tid].get("origem") or "").strip() == alvo:
+            return tid
+    return None
+
+
+def guarda_declarada(raiz: Path, origem: str) -> tuple[list[str], str]:
+    """O arquivo que a armadilha aponta como sua guarda mecânica.
+
+    Devolve (problemas, dono). Uma leitura só do frontmatter nesta casa: o
+    parser é o de `ci/indice_de_armadilhas.py`, porque dois dialetos para o
+    mesmo bloco `---` divergiriam no primeiro dia em que alguém mexesse num só.
+    """
+    numero = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())[1]
+    caminho = armadilha_da_origem(raiz, origem)
+    if caminho is None:
+        return ([
+            f"a origem aponta armadilhas/{numero}, que não existe (ou existe em "
+            f"duplicata) nesta árvore. Confira o número na origem da tarefa, ou "
+            f"traga o catálogo para a bancada antes de concluir"
+        ], "")
+    linhas = caminho.read_text(encoding="utf-8").splitlines()
+    frontmatter = indice_de_armadilhas.ler_frontmatter(linhas, caminho.name)
+    if frontmatter is None:
+        return ([
+            f"{caminho.name} é entrada legada, sem frontmatter, e por isso não "
+            f"declara guarda nenhuma. Migre a entrada para schema_version 2 com "
+            f"'guarda: {{tipo: ..., dono: ...}}' antes de concluir"
+        ], "")
+    guarda = frontmatter.get("guarda") or {}
+    tipo = guarda.get("tipo")
+    if tipo in (None, "nenhum", "sino"):
+        return ([
+            f"{caminho.name} declara guarda {tipo!r}, que não reprova nada: sino "
+            f"avisa e 'nenhum' assume o buraco. Construa a guarda mecânica e "
+            f"atualize o frontmatter da armadilha antes de concluir esta tarefa"
+        ], "")
+    dono = str(guarda.get("dono") or "").strip()
+    if not dono:
+        return ([
+            f"{caminho.name} declara guarda {tipo!r} sem 'dono', então ninguém "
+            f"sabe qual arquivo provar. Acrescente 'dono: <caminho do teste>' ao "
+            f"frontmatter da armadilha"
+        ], "")
+    if not (raiz / dono).is_file():
+        return ([
+            f"{caminho.name} aponta a guarda '{dono}', que não existe nesta "
+            f"árvore. Corrija o caminho no frontmatter da armadilha, ou traga o "
+            f"arquivo para a bancada"
+        ], "")
+    return ([], dono)
+
+
+def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict]:
+    """Roda a guarda da armadilha desta origem e devolve (problemas, cadeia).
+
+    O que vai para dentro do evento é o RESUMO: node ID, linha sabotada e os
+    três estados. Os logs das três execuções ficam de fora de propósito — um
+    evento da fila é um arquivo que alguém abre no navegador, e o JSON integral
+    do pytest tem megabytes.
+    """
+    problemas, dono = guarda_declarada(raiz, origem)
+    if problemas:
+        return (problemas, {})
+    evidencia: dict = {"guardas": []}
+    try:
+        estado = provar_guardas.provar(raiz, [dono], evidencia)
+    except provar_guardas.ProvaInvalida as erro:
+        return ([
+            f"a prova de '{dono}' não pôde ser feita: {erro}. Conserte o marcador "
+            f"'# guarda: caminho.py:linha' do teste e repita"
+        ], {})
+    cadeia = {
+        "armadilha": RE_ORIGEM_AUTOMATICA.fullmatch(origem.strip())[1],
+        "revisao": evidencia.get("revisao", ""),
+        "guardas": [
+            {
+                "teste": g["teste"],
+                "protege": g["protege"],
+                "linha": g["linha"],
+                "baseline": g.get("baseline", ""),
+                "mutacao": g.get("mutacao", ""),
+                "restauracao": g.get("restauracao", ""),
+            }
+            for g in evidencia["guardas"]
+        ],
+    }
+    if estado is not Estado.PASS:
+        return ([
+            f"a guarda '{dono}' não fechou o ciclo PASS→FAIL→PASS (veredito "
+            f"{estado.value}). Rode python ci/provar_guardas.py {dono} e leia o "
+            f"log apontado antes de tentar concluir de novo"
+        ], cadeia)
+    return ([], cadeia)
+
+
+def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]:
+    """O que impede esta cadeia de provar a guarda da armadilha da origem.
+
+    Não roda teste nenhum: confere IDENTIDADE. É a mesma régua no balcão (logo
+    depois de produzir a prova) e na muralha (sobre a prova já gravada no
+    evento), porque duas réguas para o mesmo fato divergiriam no primeiro dia em
+    que alguém mexesse numa só.
+    """
+    origem = str((tarefa or {}).get("origem") or "").strip()
+    achado = RE_ORIGEM_AUTOMATICA.fullmatch(origem)
+    if not achado:
+        return []
+    numero = achado[1]
+    problemas, dono = guarda_declarada(raiz, origem)
+    if problemas:
+        return problemas
+    if not isinstance(prova, dict) or not prova.get("guardas"):
+        return [
+            f"a tarefa nasceu de armadilhas/{numero} e fecha sem a prova da guarda "
+            f"dela. Rode python ci/provar_guardas.py {dono} e conclua pelo balcão, "
+            f"que grava a cadeia dentro do evento"
+        ]
+    if str(prova.get("armadilha") or "").zfill(3) != numero.zfill(3):
+        return [
+            f"a prova anexada é da armadilha {prova.get('armadilha')!r}, e esta "
+            f"tarefa é de armadilhas/{numero}: a guarda que precisava reprovar "
+            f"sabotada é '{dono}'. Prove essa, e conclua de novo"
+        ]
+    achados: list[str] = []
+    for guarda in prova["guardas"]:
+        teste = str(guarda.get("teste") or "")
+        arquivo = teste.split("::")[0]
+        if arquivo != dono:
+            achados.append(
+                f"a prova roda '{teste}', que não pertence a armadilhas/{numero}: "
+                f"a guarda dela é '{dono}'. Prove essa, e conclua de novo"
+            )
+            continue
+        ciclo = (guarda.get("baseline"), guarda.get("mutacao"), guarda.get("restauracao"))
+        if ciclo != (Estado.PASS.value, Estado.FAIL.value, Estado.PASS.value):
+            achados.append(
+                f"a guarda de armadilhas/{numero}, '{teste}', registrou {ciclo}, e "
+                f"prova é PASS→FAIL→PASS: guarda que continua verde sabotada não "
+                f"testa nada. Rode python ci/provar_guardas.py {dono}, conserte o "
+                f"teste e conclua de novo"
+            )
+    return achados
+
+
 def cmd_criar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("criar", raiz)
     if recusa:
@@ -1788,7 +2008,7 @@ def cmd_criar(raiz: Path, args) -> int:
         print("RECUSADO: tarefa sem despacho pronto não entra na fila —")
         print("é o prompt de colar que os três consultores pediram. Use --despacho.")
         return 1
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     for dep in args.depende_de:
         if dep not in tarefas:
             print(f"RECUSADO: --depende-de {dep} não existe na fila.")
@@ -1835,7 +2055,33 @@ def cmd_criar(raiz: Path, args) -> int:
         for problema in problemas_da_responsabilidade:
             print(f"- {problema}")
         return 1
-    numero = reservar.alocar_numero(raiz, "tarefa")
+    # A origem da medição é identidade, não anotação: a mesma reincidência não
+    # abre a segunda tarefa. Antes do almoxarife porque número gasto não volta.
+    origem = str(args.origem or "").strip()
+    automatica = bool(RE_ORIGEM_AUTOMATICA.fullmatch(origem))
+    if automatica:
+        gemea = origem_ja_na_fila(tarefas, origem)
+        if gemea:
+            fechamentos = [
+                e for e in eventos
+                if e.get("tarefa") == gemea and e.get("evento") == "concluida"
+            ]
+            for fechamento in fechamentos:
+                quebras = problemas_da_cadeia_automatica(
+                    raiz, tarefas[gemea], fechamento.get("prova_da_guarda")
+                )
+                if quebras:
+                    print(f"PAROU POR SEGURANÇA: {gemea} já nasceu de {origem} e")
+                    print("consta concluída sem cadeia que se reconstrua:")
+                    for quebra in quebras:
+                        print(f"   - {quebra}")
+                    return Estado.ERROR.exit_code
+            print(f"{gemea} já nasceu de {origem} — nada a criar.")
+            print(f"   Tarefa: fila/tarefas/{tarefas[gemea]['arquivo']}.json")
+            return 0
+    numero = reservar.alocar_numero(
+        raiz, "tarefa", chave=chave_da_origem(origem) if automatica else None
+    )
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
     pasta = pasta_tarefas(raiz)
@@ -1857,6 +2103,18 @@ def cmd_criar(raiz: Path, args) -> int:
     if responsabilidade:
         dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
+    # A corrida: entre a conferência lá de cima e esta linha, outra medição pode
+    # ter gravado a mesma origem. Reler o disco rente à escrita é o que a fecha —
+    # a chave do almoxarife sozinha não bastaria, porque a gêmea pode ter nascido
+    # de uma execução que não chegou a pedir número.
+    if automatica:
+        tarefas_agora, _ = _carregar_ou_parar(raiz)
+        gemea = origem_ja_na_fila(tarefas_agora, origem)
+        if gemea and gemea != tid:
+            print(f"{gemea} nasceu de {origem} enquanto esta execução pedia número.")
+            print(f"   Tarefa: fila/tarefas/{tarefas_agora[gemea]['arquivo']}.json")
+            print(f"   Nada foi gravado; o número {numero} fica com a chave da origem.")
+            return 0
     _gravar_fila(raiz, caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
     # ele). Separados porque a tarefa é imutável e a explicação se corrige.
@@ -2321,6 +2579,24 @@ def _concluir_com_prova(
             for problema in problemas:
                 print(f"   - {problema}")
             return 1
+    # A tarefa que a medição abriu só fecha com a guarda da SUA armadilha
+    # reprovando sabotada. Aqui, e não em `cmd_concluir`, porque as três portas
+    # terminais desta fila desembocam neste ponto — `concluir`, `reconciliar` e o
+    # feito que viaja na entrega, escrito por `ci/pr.py` — e um portão em uma só
+    # delas é meio portão. Tarefa de gente não passa por nada disto.
+    prova_da_guarda = None
+    if tarefa and RE_ORIGEM_AUTOMATICA.fullmatch(str(tarefa.get("origem") or "").strip()):
+        problemas, prova_da_guarda = provar_guarda_da_armadilha(
+            raiz, str(tarefa["origem"]).strip()
+        )
+        problemas = problemas + problemas_da_cadeia_automatica(
+            raiz, tarefa, prova_da_guarda
+        )
+        if problemas:
+            print(f"RECUSADO: {tid} nasceu da medição e não pode fechar sem prova.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            return 1
     caminho = _escrever_evento(
         raiz,
         tid,
@@ -2328,6 +2604,7 @@ def _concluir_com_prova(
         quem,
         evidencia=evidencia,
         verificado_em=verificado_em,
+        prova_da_guarda=prova_da_guarda,
     )
     try:
         _soltar_reserva_se_houver(raiz, tid)
@@ -2494,6 +2771,20 @@ def cmd_validar(raiz: Path) -> int:
             print(f"   - {erro}")
         return 1
     estados = calcular_estados(tarefas, eventos)
+    # E a cadeia das tarefas que a medição abriu, reconstruída aqui no SHA do PR:
+    # sem rodar pytest, conferindo a IDENTIDADE do que a bancada gravou. Prova de
+    # outra armadilha, ou mutação que não mordeu, é conclusão falsa — e conclusão
+    # falsa faz o termômetro parar de medir uma reincidência que continua viva.
+    for evento_terminal in eventos:
+        if evento_terminal.get("evento") != "concluida":
+            continue
+        tarefa_do_evento = tarefas.get(evento_terminal.get("tarefa"))
+        if not tarefa_do_evento:
+            continue
+        for problema in problemas_da_cadeia_automatica(
+            raiz, tarefa_do_evento, evento_terminal.get("prova_da_guarda")
+        ):
+            erros.append(f"{evento_terminal['arquivo']}.json: {problema}")
     # Bloqueio VIVO sem `espera` reprova; bloqueio já superado, não. A régua é o
     # estado de HOJE, e não uma data de corte no código: os 22 eventos
     # `bloqueada` de tarefas que já seguiram adiante são história encerrada, e

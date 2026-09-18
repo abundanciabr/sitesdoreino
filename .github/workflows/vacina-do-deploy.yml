@@ -358,3 +358,98 @@ jobs:
               --label deploy-fora-do-ar \
               --body "$CORPO"
           fi
+  # =========================================================================
+  # A MEDIÇÃO — Fase 6 do laço de melhoria contínua.
+  #
+  # O gatilho terminal lá em cima já era o certo, e não precisou mudar: o
+  # `workflow_run`/`completed` responde no instante em que o deploy acaba e é a
+  # única fonte que enxerga a casa inteira. O que faltava era um SEGUNDO
+  # consumidor dele.
+  #
+  # POR QUE É UM JOB À PARTE, E NÃO UM PASSO DA CURA
+  #
+  # Porque as duas perguntas discordam justamente no verde. A cura só acorda no
+  # `cancelled` e no `failure`, e aquele `if:` não pode ser afrouxado: abri-lo
+  # para o `success` acordaria a vacina em cada um dos ~100 deploys saudáveis
+  # do dia para responder "nada a fazer". A medição precisa do contrário — é o
+  # VERDE que FECHA a janela de indisponibilidade de uma célula. Um termômetro
+  # que só visse doença mediria o começo de toda queda e o fim de nenhuma, o
+  # que é pior que não medir, porque parece medido.
+  #
+  # POR QUE NÃO TEM `needs`
+  #
+  # `needs: curar` faria a medição esperar um job que, no caso mais comum (o
+  # deploy verde), nem roda — e um job cujo `needs` não roda é PULADO. Ou seja,
+  # o `needs` apagaria exatamente a conclusão que esta medição existe para ver.
+  # No sentido inverso vale o mesmo: a cura não pode passar a depender da
+  # medição, senão o rerun de um deploy fora do ar ficaria atrás de um
+  # relatório. São irmãos, não uma fila.
+  #
+  # POR QUE NÃO PODE REPROVAR (`continue-on-error: true`)
+  #
+  # A medição roda no MESMO `head_sha` do deploy que ela mede. Vermelha, ela
+  # cairia em `ci/portao_de_deploy.py::vermelhos_nao_previstos` e passaria a
+  # barrar deploys por defeito do instrumento — o termômetro teria voto sobre o
+  # que ele observa. O que o `continue-on-error` tira é o VOTO, não a VOZ: o
+  # passo termina em `exit "$CODIGO"` e o resumo diz o número, porque um job
+  # que não pode reprovar e também não conta que falhou é falso-verde puro
+  # (`armadilhas/211`): ninguém descobriria que a casa parou de ser medida.
+  #
+  # O QUE NÃO MORA AQUI: classificar o run (reconhecido, ambíguo, desconhecido)
+  # e abrir tarefa. Um `grep` de log em YAML seria uma segunda regra sobre a
+  # mesma pergunta, sem teste sem rede, e é o instrumento mais rápido para
+  # confundir "não casei" com "não há problema". Guardas em
+  # `ci/tests/test_vacina_do_deploy_automatica.py`.
+  # =========================================================================
+  medir:
+    name: medir esta conclusão de deploy
+    # SEM `if:`, de propósito. `types: [completed]` já entrega as três
+    # conclusões terminais (`success`, `failure`, `cancelled`), e qualquer
+    # condição aqui só poderia SUBTRAIR uma delas — a primeira a se perder
+    # seria o `success`, que é o que fecha a janela.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read   # ler runs, jobs e logs; nada é escrito por este job
+    steps:
+      # `fetch-depth: 0` pela mesma razão da cura (`armadilhas/159`): fechar a
+      # janela de uma célula é perguntar ao Git se o deploy verde CARREGA o
+      # commit que caiu, e num clone raso `git merge-base --is-ancestor`
+      # responde 128, que é "não consegui medir".
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: O termômetro lê este run e diz o código dele
+        id: termometro
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_TERMINAL: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # `|| CODIGO=$?` CAPTURA; `set +e`, `|| true` e `| tee` ESCONDERIAM
+          # (os dois primeiros são proibidos em YAML por
+          # `test_contract_freeze.py::test_workflows_nao_escondem_erro`, e o
+          # terceiro faria o `$?` ser o do `tee`, que sai 0 sempre).
+          CODIGO=0
+          python ci/termometro.py --run "$RUN_TERMINAL" \
+            > medicao.txt 2>&1 || CODIGO=$?
+          cat medicao.txt
+          {
+            echo "### Termômetro do run $RUN_TERMINAL"
+            echo ""
+            echo '```'
+            head -c 3000 medicao.txt
+            echo '```'
+            echo ""
+            echo "O termômetro saiu **$CODIGO**."
+          } >> "$GITHUB_STEP_SUMMARY"
+          # O código é DITO. O `continue-on-error` do job impede que ele
+          # alcance o veredito do deploy; sem esta linha, ele não alcançaria
+          # ninguém.
+          exit "$CODIGO"

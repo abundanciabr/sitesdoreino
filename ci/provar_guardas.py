@@ -2,7 +2,9 @@
 
 Uso: python ci/provar_guardas.py ci/tests/test_exemplo.py
 Declare dentro do teste, ou imediatamente antes dele: # guarda: caminho.py:42
-A linha é substituída por pass e comentário. Só FAIL na chamada do teste prova
+A guarda protegida é .py ou .sh; o teste que a declara é sempre Python. A linha
+protegida vira comentário no dialeto dela, e a sintaxe do arquivo comentado é
+conferida antes de valer como sabotagem. Só FAIL na chamada do teste prova
 mutação: coleta, setup, teardown, timeout e zero testes são ERROR. O JSON
 completo inclui hashes e logs das três execuções para a revisão independente.
 """
@@ -24,6 +26,7 @@ import tempfile
 import tokenize
 import traceback
 
+import ci
 from _nucleo import Estado, configurar_saida
 from resumo_de_teste import executar_pytest
 
@@ -32,12 +35,42 @@ class ProvaInvalida(ValueError):
     pass
 
 
-def dentro(raiz: Path, relativo: str) -> Path:
+def sintaxe_python(conteudo: bytes) -> str:
+    try:
+        ast.parse(conteudo)
+    except SyntaxError as erro:
+        return str(erro)
+    return ""
+
+
+def sintaxe_shell(conteudo: bytes) -> str:
+    """`bash -n` no bash SONDADO da casa: o stub do WSL reprovaria todo script."""
+    fd, nome = tempfile.mkstemp(suffix=".sh")
+    try:
+        with os.fdopen(fd, "wb") as arquivo:
+            arquivo.write(conteudo)
+        conferido = subprocess.run([ci._bash(), "-n", nome], capture_output=True,
+                                   text=True, encoding="utf-8", errors="replace", timeout=60)
+    finally:
+        Path(nome).unlink(missing_ok=True)
+    return "" if conferido.returncode == 0 else conferido.stderr.strip()
+
+
+# Conjunto FECHADO: cada sufixo traz como se comenta uma linha nele e quem
+# confere que o arquivo comentado continua válido. Sufixo sem dialeto é recusado,
+# porque comentar com `#` o que não é `#` produziria sabotagem que mata o
+# processo inteiro — e um teste que morre assim parece guarda que não mordeu.
+DIALETOS = {".py": (b"pass  # ", sintaxe_python), ".sh": (b"# ", sintaxe_shell)}
+SUFIXOS_MUTAVEIS = tuple(DIALETOS)
+
+
+def dentro(raiz: Path, relativo: str, sufixos: tuple[str, ...] = (".py",)) -> Path:
     caminho = (raiz / relativo).resolve()
     if not caminho.is_relative_to(raiz.resolve()) or caminho == raiz.resolve():
         raise ProvaInvalida(f"caminho fora da bancada: {relativo}; use arquivo relativo à raiz")
-    if not caminho.is_file() or caminho.suffix != ".py":
-        raise ProvaInvalida(f"arquivo Python ausente: {relativo}; corrija o marcador")
+    if not caminho.is_file() or caminho.suffix not in sufixos:
+        raise ProvaInvalida(
+            f"arquivo {' ou '.join(sufixos)} ausente: {relativo}; corrija o marcador")
     return caminho
 
 
@@ -71,9 +104,9 @@ def descobrir(raiz: Path, entradas: list[str]) -> list[dict]:
                          or numero == min([f.lineno, *(d.lineno for d in f.decorator_list)]) - 1]
                 if len(donos) != 1:
                     raise ProvaInvalida(f"marcador sem teste específico em {caminho.name}:{numero}; ponha dentro do teste")
-                alvo = dentro(raiz, match[1].strip())
+                alvo = dentro(raiz, match[1].strip(), SUFIXOS_MUTAVEIS)
                 linha = int(match[2])
-                mutar(alvo.read_bytes(), linha)
+                mutar(alvo.read_bytes(), linha, alvo.suffix)
                 guarda = {"teste": f"{caminho.relative_to(raiz).as_posix()}::{donos[0][1]}",
                           "protege": alvo.relative_to(raiz).as_posix(), "linha": linha,
                           "sha256": hashlib.sha256(alvo.read_bytes()).hexdigest(), "reprovou": False}
@@ -84,20 +117,22 @@ def descobrir(raiz: Path, entradas: list[str]) -> list[dict]:
     return encontrados
 
 
-def mutar(conteudo: bytes, numero: int) -> bytes:
+def mutar(conteudo: bytes, numero: int, sufixo: str = ".py") -> bytes:
     linhas = conteudo.splitlines(keepends=True)
     if numero < 1 or numero > len(linhas):
         raise ProvaInvalida("linha protegida inexistente; corrija o número no marcador")
     linha = linhas[numero - 1]
     if not linha.strip() or linha.lstrip().startswith(b"#"):
         raise ProvaInvalida("linha protegida vazia ou comentário; aponte uma instrução executável")
+    prefixo, conferir = DIALETOS[sufixo]
     indentacao = linha[:len(linha) - len(linha.lstrip(b" \t"))]
-    linhas[numero - 1] = indentacao + b"pass  # " + linha.lstrip(b" \t")
+    linhas[numero - 1] = indentacao + prefixo + linha.lstrip(b" \t")
     alterado = b"".join(linhas)
-    try:
-        ast.parse(alterado)
-    except SyntaxError as erro:
-        raise ProvaInvalida("a sabotagem quebra a sintaxe; aponte uma instrução simples do bloco protegido") from erro
+    queixa = conferir(alterado)
+    if queixa:
+        raise ProvaInvalida(
+            "a sabotagem quebra a sintaxe; aponte uma instrução simples do bloco "
+            f"protegido: {queixa}")
     return alterado
 
 
@@ -117,7 +152,7 @@ def escrever_atomico(caminho: Path, conteudo: bytes) -> None:
 def sabotar(caminho: Path, linha: int):
     original = caminho.read_bytes()
     try:
-        escrever_atomico(caminho, mutar(original, linha))
+        escrever_atomico(caminho, mutar(original, linha, caminho.suffix))
         yield
     finally:
         escrever_atomico(caminho, original)
@@ -181,7 +216,7 @@ def provar(raiz: Path, entradas: list[str], evidencia: dict) -> Estado:
     with copiar_bancada(raiz, evidencia) as copia:
         for guarda in evidencia["guardas"]:
             teste = guarda["teste"]
-            alvo = dentro(copia, guarda["protege"])
+            alvo = dentro(copia, guarda["protege"], SUFIXOS_MUTAVEIS)
             if hashlib.sha256(alvo.read_bytes()).hexdigest() != guarda["sha256"]:
                 raise ProvaInvalida("o arquivo mudou durante a cópia; repita a prova com a bancada estável")
             guarda["teste_sha256"] = hashlib.sha256((copia / teste.split("::")[0]).read_bytes()).hexdigest()

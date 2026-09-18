@@ -1,3 +1,18 @@
+---
+schema_version: 2
+armadilha: 088
+estado: guardada
+degrau: 2
+confianca: alta
+custo_por_queda: alto
+guarda:
+  tipo: teste
+  dono: infra/deploy-celula-na-vps.sh
+  detector: ci/tests/test_chaves_do_gateway_no_deploy.py::test_celula_sem_servico_continua_dizendo_exatamente_isso
+sinal:
+  - `(?s)\A(?!.*required variable \w+ is missing a value).*ERRO: '(?!\$CELULA)[^'\n]+' [^\n]*algum em /opt/plataforma/docker-compose\.yml`
+---
+
 # Célula nova deixa o `deploy-celula` VERMELHO em todo merge, até o compose da VPS conhecê-la
 
 **Sintoma:** a célula nasceu, o `make ci` dela é verde, o `muralhas` é verde, o PR

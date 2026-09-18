@@ -1473,3 +1473,1787 @@ def test_a_195_e_prova_e_nunca_ocorrencia():
         "o vermelho que morre montando o objeto nao prova decisao nenhuma, e "
         "e esse o caso que a 195 manda recusar"
     )
+
+
+# ==========================================================================
+# F2: a coleta terminal. Tudo offline, por costura injetada.
+#
+# O que a Fase 2 existe para impedir, e o que cada teste daqui para baixo
+# prende:
+#
+#   1. A API do Actions entrega no MAXIMO 1000 runs por consulta e TRUNCA
+#      CALADA. A janela medida tem 1379 runs de `deploy-celula`. Uma consulta
+#      so devolveria 1000 e pareceria completa. Por isso a coleta fatia por
+#      DATA, e uma fatia que anuncia mais de 1000 vira ERROR em vez de medir
+#      pela metade.
+#   2. Fatias vizinhas compartilham a data da borda de proposito: sobreposicao
+#      nao deixa buraco entre fatias. O preco e o run repetido, e ele tem de
+#      virar UM run e UM download.
+#   3. Log indisponivel e ERROR, nunca ausencia de problema (INV-R08).
+#   4. A medicao sai do SHA publicado. Arvore local suja nao pode mover
+#      resultado nenhum: foi ler o worktree que reprovou
+#      `celulas_sem_publicacao` para este uso.
+# ==========================================================================
+
+import pytest  # noqa: E402
+
+import termometro  # noqa: E402
+
+
+def _run(
+    identificador: int,
+    *,
+    sha: str,
+    conclusao: str | None = "success",
+    criado: str = "2026-08-18T10:00:00Z",
+    atualizado: str | None = None,
+    tentativa: int = 1,
+    estado: str = "completed",
+) -> dict:
+    """Um run como a API do Actions o devolve, com a identidade completa.
+
+    `node_id` e `run_attempt` nao sao enfeite: `consultar_jobs_em_lote` recusa
+    o lote sem eles, e e por eles que a triagem barata acontece.
+    """
+    return {
+        "id": identificador,
+        "node_id": f"WFR_{identificador}",
+        "run_attempt": tentativa,
+        "head_sha": sha,
+        "created_at": criado,
+        "updated_at": atualizado or criado,
+        "status": estado,
+        "conclusion": conclusao,
+    }
+
+
+def _job(identificador: int, nome: str, conclusao: str) -> dict:
+    return {"id": identificador, "name": nome, "conclusion": conclusao,
+            "status": "completed"}
+
+
+class Bancada:
+    """As quatro costuras, sem rede, anotando cada chamada.
+
+    Ela nao imita o GitHub por gosto: cada campo aqui existe porque a coleta
+    de verdade depende dele. `anunciado` mente o `total_count` para provar
+    truncamento e paginacao incompleta sem precisar de 1000 runs de mentira.
+    """
+
+    def __init__(
+        self,
+        *,
+        runs: dict[tuple[str, str], list[dict]],
+        jobs: dict[int, list[dict]] | None = None,
+        logs: dict[int, object] | None = None,
+        ancestrais: tuple[tuple[str, str], ...] = (),
+        anunciado: dict[tuple[str, str], int] | None = None,
+        por_pagina: int = 100,
+        sujeira: str = "",
+    ) -> None:
+        self.runs = runs
+        self.jobs = jobs or {}
+        self.logs = logs or {}
+        self.ancestrais = set(ancestrais)
+        self.anunciado = anunciado or {}
+        self.por_pagina = por_pagina
+        self.sujeira = sujeira
+        self.caminhos: list[str] = []
+        self.lotes: list[list[dict]] = []
+        self.logs_baixados: list[int] = []
+        self.comandos_git: list[tuple[str, ...]] = []
+
+    # -- costura 1: a porta REST -------------------------------------------
+    def api(self, caminho: str) -> dict:
+        self.caminhos.append(caminho)
+        if "actions/workflows/" in caminho:
+            casou = re.search(r"created=([0-9-]+)\.\.([0-9-]+)", caminho)
+            assert casou, f"consulta sem recorte de data: {caminho}"
+            chave = (casou.group(1), casou.group(2))
+            pagina = int(re.search(r"[?&]page=(\d+)", caminho).group(1))
+            lista = self.runs.get(chave, [])
+            inicio = (pagina - 1) * self.por_pagina
+            return {
+                "total_count": self.anunciado.get(chave, len(lista)),
+                "workflow_runs": lista[inicio:inicio + self.por_pagina],
+            }
+        casou = re.search(r"actions/runs/(\d+)/jobs", caminho)
+        assert casou, f"caminho REST inesperado: {caminho}"
+        lista = self.jobs.get(int(casou.group(1)), [])
+        return {"total_count": len(lista), "jobs": lista}
+
+    # -- costura 2: a triagem barata em lote -------------------------------
+    def jobs_em_lote(self, runs: list[dict]) -> dict[int, list[dict]]:
+        if not 1 <= len(runs) <= 8:
+            raise AssertionError(
+                f"lote de {len(runs)} runs: o GraphQL desta casa so aceita de "
+                "1 a 8, e estourar isso e a recusa que o teste existe para pegar"
+            )
+        self.lotes.append(list(runs))
+        return {r["id"]: list(self.jobs.get(r["id"], [])) for r in runs}
+
+    # -- costura 3: o log cru ----------------------------------------------
+    def baixar_log(self, id_do_job: int):
+        self.logs_baixados.append(id_do_job)
+        valor = self.logs.get(id_do_job)
+        if isinstance(valor, Exception):
+            raise valor
+        return valor
+
+    # -- costura 4: o git, e SO pelo banco de objetos ----------------------
+    def git(self, args: list[str]) -> tuple[int, str]:
+        self.comandos_git.append(tuple(args))
+        if args[:2] == ["merge-base", "--is-ancestor"]:
+            return (0 if (args[2], args[3]) in self.ancestrais else 1, "")
+        return 0, self.sujeira
+
+
+def _coletar(bancada: Bancada, **extras) -> dict:
+    padrao = dict(
+        desde="2026-08-18", ate="2026-08-21", api=bancada.api,
+        baixar_log=bancada.baixar_log, git=bancada.git,
+        jobs_em_lote=bancada.jobs_em_lote,
+    )
+    padrao.update(extras)
+    return termometro.coletar(**padrao)
+
+
+# -- a) teto de 1000 -------------------------------------------------------
+
+
+def test_fatia_que_anuncia_mais_de_mil_runs_e_ERROR_e_nao_baixa_log_nenhum():
+    """1379 runs na janela: uma consulta so devolveria 1000 e mentiria verde.
+
+    O teto nao pode virar "medi o que deu": a fatia estourada para a coleta
+    INTEIRA antes de qualquer download, porque um denominador truncado
+    contamina todo numero que sai depois dele.
+    """
+    fatia = ("2026-08-18", "2026-08-21")
+    # A bancada SERVE os 1001 runs que anuncia. Se ela mentisse o total e
+    # entregasse um, quem recusaria seria a regra de paginacao incompleta, e
+    # este teste ficaria verde mesmo com o teto removido: um teste que nao
+    # testa nada.
+    demais = [_run(n, sha=f"sha{n}") for n in range(2, termometro.TETO_DA_API + 2)]
+    bancada = Bancada(
+        runs={fatia: [_run(1, sha="aaa", conclusao="failure")] + demais},
+        jobs={1: [_job(10, "deploy (mensageria)", "failure")]},
+        logs={10: "qualquer coisa"},
+    )
+    assert len(bancada.runs[fatia]) == termometro.TETO_DA_API + 1
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        _coletar(bancada)
+    assert "1001" in str(erro.value)
+    assert bancada.logs_baixados == [], (
+        "a coleta baixou log depois de saber que o denominador estava "
+        "truncado; medida parcial que parece inteira e exatamente o falso "
+        "verde que a fatia por data existe para impedir"
+    )
+
+
+def test_o_teto_e_o_limite_real_da_api_e_nao_um_numero_generoso():
+    assert termometro.TETO_DA_API == 1000
+    assert RUNS_ENUMERADOS > termometro.TETO_DA_API, (
+        "se a janela medida coubesse em uma consulta, o fatiamento por data "
+        "seria enfeite; ela nao cabe, e e por isso que ele existe"
+    )
+
+
+# -- b) log indisponivel ---------------------------------------------------
+
+
+def test_log_indisponivel_vira_ERROR_e_nunca_ausencia_de_problema():
+    """INV-R08: nao consegui ler nao e nada aconteceu.
+
+    As duas formas de indisponibilidade caem no mesmo estado: a costura que
+    devolve None (o `gh` saiu com codigo diferente de zero) e a que explode
+    (rede caiu no meio). Nenhuma das duas pode fechar a janela nem sumir do
+    relatorio.
+    """
+    fatia = ("2026-08-18", "2026-08-21")
+    for valor in (None, RuntimeError("gh api saiu 1")):
+        bancada = Bancada(
+            runs={fatia: [_run(1, sha="aaa", conclusao="failure")]},
+            jobs={1: [_job(10, "deploy (mensageria)", "failure")]},
+            logs={10: valor},
+        )
+        resultado = _coletar(bancada)
+        assert resultado["logs_indisponiveis"], (
+            f"log {valor!r} sumiu do relatorio: ausencia de leitura virou "
+            "ausencia de problema"
+        )
+        assert resultado["logs_lidos"] == 0
+        assert [j["estado_do_log"] for j in resultado["janelas"]] == ["ERROR"]
+        assert resultado["janelas"][0]["celula"] == "mensageria"
+
+
+# -- c) arvore local suja --------------------------------------------------
+
+
+def test_arvore_local_suja_nao_muda_o_resultado():
+    """A medicao sai do SHA publicado, nao do worktree.
+
+    Foi ler o worktree que desqualificou `celulas_sem_publicacao` para este
+    uso. Duas coletas identicas, uma delas com a bancada respondendo sujeira
+    a qualquer comando fora do banco de objetos, tem de dar o MESMO resultado
+    e nao podem ter perguntado nada ao worktree.
+    """
+    fatia = ("2026-08-18", "2026-08-21")
+
+    def monta(sujeira: str) -> Bancada:
+        return Bancada(
+            runs={fatia: [
+                _run(1, sha="aaa", conclusao="failure",
+                     criado="2026-08-18T10:00:00Z"),
+                _run(2, sha="bbb", conclusao="success",
+                     criado="2026-08-18T12:00:00Z"),
+            ]},
+            jobs={1: [_job(10, "deploy (mensageria)", "failure")],
+                  2: [_job(20, "deploy (mensageria)", "success")]},
+            logs={10: "recusa"},
+            ancestrais=(("aaa", "bbb"),),
+            sujeira=sujeira,
+        )
+
+    limpa, suja = monta(""), monta(" M services/mensageria/app.py\n?? lixo.txt")
+    assert _coletar(limpa) == _coletar(suja)
+    assert limpa.comandos_git, "sem pergunta de ancestralidade nao ha cobertura medida"
+    for comando in limpa.comandos_git + suja.comandos_git:
+        assert comando[:2] == ("merge-base", "--is-ancestor"), (
+            f"a coleta perguntou {comando!r} ao git: qualquer leitura do "
+            "worktree coloca o estado da bancada dentro da medicao"
+        )
+
+
+# -- d) borda entre fatias -------------------------------------------------
+
+
+def test_run_repetido_na_borda_de_duas_fatias_vira_um_run_e_um_download():
+    """Fatias vizinhas compartilham a data da borda de proposito.
+
+    Sobrepor e barato e nao deixa buraco; o preco e o run que aparece duas
+    vezes, e ele nao pode virar dois runs, dois jobs nem dois downloads do
+    mesmo log.
+    """
+    primeira, segunda = ("2026-08-18", "2026-08-21"), ("2026-08-21", "2026-08-24")
+    repetido = _run(1, sha="aaa", conclusao="failure",
+                    criado="2026-08-21T09:00:00Z")
+    bancada = Bancada(
+        runs={primeira: [dict(repetido)], segunda: [dict(repetido)]},
+        jobs={1: [_job(10, "deploy (mensageria)", "failure")]},
+        logs={10: "recusa"},
+    )
+    resultado = _coletar(bancada, ate="2026-08-24")
+    assert termometro.fatias_de_data("2026-08-18", "2026-08-24", 3) == (
+        primeira, segunda
+    ), "as fatias tem de encostar na borda; um buraco entre elas perde runs"
+    assert resultado["runs_unicos"] == 1
+    assert bancada.logs_baixados == [10]
+    assert resultado["logs_lidos"] == 1
+    assert len(resultado["janelas"]) == 1
+
+
+def test_o_mesmo_run_com_tentativa_diferente_entre_fatias_e_ERROR():
+    """Deduplicar nao pode virar "fico com o primeiro que vi".
+
+    Se o run mudou de tentativa entre uma fatia e outra, a medicao andou
+    debaixo da coleta: escolher em silencio qual das duas vale e inventar
+    resultado.
+    """
+    primeira, segunda = ("2026-08-18", "2026-08-21"), ("2026-08-21", "2026-08-24")
+    bancada = Bancada(runs={
+        primeira: [_run(1, sha="aaa", criado="2026-08-21T09:00:00Z")],
+        segunda: [_run(1, sha="aaa", criado="2026-08-21T09:00:00Z", tentativa=2)],
+    })
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        _coletar(bancada, ate="2026-08-24")
+    assert "tentativa" in str(erro.value)
+
+
+# -- paginacao, conclusao e lote -------------------------------------------
+
+
+def test_paginacao_incompleta_vira_ERROR_e_nao_medida_parcial():
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [_run(1, sha="aaa"), _run(2, sha="bbb")]},
+        anunciado={fatia: 5},
+        por_pagina=2,
+    )
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        _coletar(bancada)
+    assert "2 de 5" in str(erro.value)
+
+
+def test_a_paginacao_junta_todas_as_paginas_da_fatia():
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [_run(n, sha=f"sha{n}") for n in range(1, 6)]},
+        por_pagina=2,
+    )
+    assert _coletar(bancada)["runs_unicos"] == 5
+    assert len([c for c in bancada.caminhos if "workflows" in c]) == 3
+
+
+def test_conclusao_ausente_ou_desconhecida_vira_ERROR():
+    fatia = ("2026-08-18", "2026-08-21")
+    for conclusao in (None, "", "sei_la"):
+        bancada = Bancada(runs={fatia: [_run(1, sha="aaa", conclusao=conclusao)]})
+        with pytest.raises(termometro.ErroDeColeta) as erro:
+            _coletar(bancada)
+        assert "conclus" in str(erro.value).lower()
+
+
+def test_run_que_ainda_nao_terminou_nao_e_terminal_e_fica_de_fora():
+    """Nao terminal nao e ERROR nem queda: e fato que ainda nao aconteceu."""
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(runs={fatia: [
+        _run(1, sha="aaa", conclusao=None, estado="in_progress"),
+        _run(2, sha="bbb", conclusao="success"),
+    ]})
+    assert _coletar(bancada)["runs_unicos"] == 1
+
+
+def test_a_triagem_em_lote_respeita_o_limite_de_oito_runs():
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(runs={fatia: [_run(n, sha=f"sha{n}") for n in range(1, 20)]})
+    resultado = _coletar(bancada)
+    assert resultado["runs_unicos"] == 19
+    assert [len(lote) for lote in bancada.lotes] == [8, 8, 3]
+    for lote in bancada.lotes:
+        for run in lote:
+            assert isinstance(run["node_id"], str) and run["node_id"]
+            assert type(run["run_attempt"]) is int
+
+
+def test_a_triagem_em_lote_recusa_tamanho_fora_da_faixa():
+    """A costura aqui RESPONDE certo: a unica razao de recusar e o tamanho.
+
+    Com uma costura que devolve vazio, a recusa viria da checagem de lote
+    incompleto e o teste ficaria verde mesmo sem a faixa de 1 a 8.
+    """
+    runs = tuple(_run(n, sha=f"sha{n}") for n in range(1, 10))
+
+    def respondeu(lote):
+        return {r["id"]: [] for r in lote}
+
+    assert termometro.jobs_dos_runs(
+        runs, jobs_em_lote=respondeu, tamanho_do_lote=8
+    ).keys() == {r["id"] for r in runs}
+    for fora_da_faixa in (0, 9):
+        with pytest.raises(termometro.ErroDeColeta) as erro:
+            termometro.jobs_dos_runs(
+                runs, jobs_em_lote=respondeu, tamanho_do_lote=fora_da_faixa
+            )
+        assert "1 a 8" in str(erro.value)
+
+
+def test_lote_que_nao_devolve_todos_os_runs_vira_ERROR():
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        termometro.jobs_dos_runs(
+            (_run(1, sha="aaa"), _run(2, sha="bbb")),
+            jobs_em_lote=lambda runs: {runs[0]["id"]: []},
+        )
+    assert "2" in str(erro.value)
+
+
+def test_o_mesmo_log_nao_e_baixado_duas_vezes_na_mesma_execucao():
+    """Baixar log e a chamada cara da coleta; a segunda vez sai do cache.
+
+    O fracasso tambem entra no cache: repetir um download que ja falhou gasta
+    rede para receber a mesma resposta.
+    """
+    baixados: list[int] = []
+
+    def baixar(id_do_job):
+        baixados.append(id_do_job)
+        return "recusa" if id_do_job == 10 else None
+
+    cache: dict = {}
+    assert termometro.log_do_job(10, baixar_log=baixar, cache=cache) == "recusa"
+    assert termometro.log_do_job(10, baixar_log=baixar, cache=cache) == "recusa"
+    assert termometro.log_do_job(11, baixar_log=baixar, cache=cache) is None
+    assert termometro.log_do_job(11, baixar_log=baixar, cache=cache) is None
+    assert baixados == [10, 11]
+
+
+# -- cobertura por celula --------------------------------------------------
+
+
+def test_celulas_cobertas_saem_do_nome_do_job_e_so_do_verde():
+    cobertas = termometro.celulas_cobertas([
+        _job(1, "deploy (mensageria)", "success"),
+        _job(2, "deploy (funil)", "failure"),
+        _job(3, "portao", "success"),
+        _job(4, "deploy (admin)", "success"),
+    ])
+    assert cobertas == ("admin", "mensageria")
+
+
+def test_janela_sem_verde_que_cubra_a_celula_continua_aberta():
+    """Um verde de OUTRA celula nao publica a que caiu."""
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [
+            _run(1, sha="aaa", conclusao="failure", criado="2026-08-18T10:00:00Z"),
+            _run(2, sha="bbb", conclusao="success", criado="2026-08-18T12:00:00Z"),
+        ]},
+        jobs={1: [_job(10, "deploy (mensageria)", "failure")],
+              2: [_job(20, "deploy (funil)", "success")]},
+        logs={10: "recusa"},
+        ancestrais=(("aaa", "bbb"),),
+    )
+    janela = _coletar(bancada)["janelas"][0]
+    assert janela["fechamento"] is None
+    assert janela["run_de_fechamento"] is None
+
+
+def test_o_verde_que_fecha_a_janela_precisa_carregar_o_sha_que_caiu():
+    """Deploy anterior ao commit nao publicou o que o commit trouxe."""
+    fatia = ("2026-08-18", "2026-08-21")
+
+    def monta(ancestrais):
+        return Bancada(
+            runs={fatia: [
+                _run(1, sha="aaa", conclusao="failure",
+                     criado="2026-08-18T10:00:00Z",
+                     atualizado="2026-08-18T10:30:00Z"),
+                _run(2, sha="bbb", conclusao="success",
+                     criado="2026-08-18T12:00:00Z",
+                     atualizado="2026-08-18T12:30:00Z"),
+            ]},
+            jobs={1: [_job(10, "deploy (mensageria)", "failure")],
+                  2: [_job(20, "deploy (mensageria)", "success")]},
+            logs={10: "recusa"},
+            ancestrais=ancestrais,
+        )
+
+    fechada = _coletar(monta((("aaa", "bbb"),)))["janelas"][0]
+    assert fechada["fechamento"] == "2026-08-18T12:30:00Z"
+    assert fechada["run_de_fechamento"] == 2
+    aberta = _coletar(monta(()))["janelas"][0]
+    assert aberta["fechamento"] is None
+
+
+def test_o_cancelado_nao_abre_janela_na_coleta_tambem():
+    """A mesma regra do corpus congelado, agora na coleta.
+
+    O caso que separa e o run CANCELADO que carrega job de celula VERMELHO:
+    a cancelada chegou depois de um job ja ter morrido. Quem decide e a
+    conclusao do RUN. Se o vermelho de dentro abrisse janela, a contagem
+    sairia das 37 e o corpus da Fase 0 nao fecharia mais.
+    """
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [_run(1, sha="aaa", conclusao="cancelled")]},
+        jobs={1: [_job(10, "deploy (mensageria)", "failure"),
+                  _job(11, "deploy (funil)", "cancelled")]},
+        logs={10: "recusa"},
+    )
+    resultado = _coletar(bancada)
+    assert resultado["janelas"] == []
+    assert bancada.logs_baixados == []
+    assert termometro.CONCLUSAO_QUE_ABRE_JANELA == CONCLUSOES_QUE_ABREM_JANELA[0]
+
+
+def test_jobs_truncados_na_porta_REST_viram_ERROR():
+    """A mesma regra de `consultar_jobs`: menos jobs que o anunciado e ERROR."""
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        termometro.jobs_com_id(
+            {"id": 1},
+            api=lambda caminho: {"total_count": 3, "jobs": [_job(10, "x", "failure")]},
+        )
+    assert "truncad" in str(erro.value)
+
+
+def test_o_relatorio_da_coleta_conta_as_chamadas_que_fez():
+    """Evidencia para auditoria: quantas chamadas, nao "foi rapido"."""
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [_run(1, sha="aaa", conclusao="failure")]},
+        jobs={1: [_job(10, "deploy (mensageria)", "failure")]},
+        logs={10: "recusa"},
+    )
+    contagem = _coletar(bancada)["chamadas"]
+    assert contagem == {"api": 2, "jobs_em_lote": 1, "log": 1, "git": 0}
+
+
+# -- as fatias -------------------------------------------------------------
+
+
+def test_fatias_de_data_recusam_data_torta_e_intervalo_invertido():
+    with pytest.raises(termometro.ErroDeColeta):
+        termometro.fatias_de_data("18/08/2026", "2026-09-18")
+    with pytest.raises(termometro.ErroDeColeta):
+        termometro.fatias_de_data("2026-09-18", "2026-08-18")
+    with pytest.raises(termometro.ErroDeColeta):
+        termometro.fatias_de_data("2026-08-18", "2026-09-18", 0)
+
+
+def test_a_janela_medida_inteira_cabe_em_fatias_que_se_encostam():
+    fatias = termometro.fatias_de_data(JANELA_INICIO[:10], JANELA_FIM[:10])
+    assert fatias[0][0] == JANELA_INICIO[:10]
+    assert fatias[-1][1] == JANELA_FIM[:10]
+    for anterior, seguinte in zip(fatias, fatias[1:]):
+        assert anterior[1] == seguinte[0]
+
+
+# -- o comportamento antigo ------------------------------------------------
+
+
+def test_a_coleta_nao_entrou_no_caminho_de_sempre():
+    """`python ci/termometro.py` continua lendo so a telemetria local.
+
+    A coleta custa rede e so roda sob bandeira explicita; se ela vazar para o
+    caminho padrao, o relatorio de todo dia passa a depender do GitHub.
+    """
+    assert termometro.resumir([])["eventos"] == 0
+    assert set(termometro.resumir([])) == {
+        "eventos", "por_armadilha", "por_modo", "sessoes", "reincidencias"
+    }
+    assert termometro.quer_coleta([]) is False
+    assert termometro.quer_coleta(["--json"]) is False
+    for bandeira in ("--historico", "--desde=2026-08-18", "--ate=2026-09-18"):
+        assert termometro.quer_coleta([bandeira]) is True
+
+
+def test_o_modulo_nao_importa_yaml_no_topo():
+    """`estado_da_entrega` puxa PyYAML; no topo daqui ele quebra maquina sem.
+
+    O termometro de todo dia depende so de `telemetria`, e e por isso que os
+    imports da coleta moram DENTRO das funcoes.
+    """
+    fonte = (CI / "termometro.py").read_text(encoding="utf-8")
+    topo = fonte.split("\ndef ", 1)[0]
+    for proibido in ("import yaml", "import estado_da_entrega",
+                     "import mapa_de_celulas", "import rerun_de_deploy"):
+        assert proibido not in topo, (
+            f"{proibido!r} no topo do modulo: quem so quer o relatorio local "
+            "passa a precisar de PyYAML instalado"
+        )
+
+
+# ---------------------------------------------------------------------------
+# A COSTURA ENTRE O WORKFLOW E O INSTRUMENTO.
+#
+# `.github/workflows/vacina-do-deploy.yml` chama `ci/termometro.py --run <id>`.
+# Enquanto a medicao por run nao existir, essa bandeira TEM de recusar alto.
+# Antes deste guarda ela caia no relatorio de telemetria local e saia 0: o job
+# ficaria verde sem ter medido nada, que e o falso verde que este instrumento
+# inteiro existe para acabar.
+# ---------------------------------------------------------------------------
+
+
+def _bandeira_que_o_workflow_chama() -> str:
+    """Le do YAML, nao de uma copia digitada: se o job trocar de bandeira,
+    este teste tem de mudar junto."""
+    yml = (
+        RAIZ / ".github" / "workflows" / "vacina-do-deploy.yml"
+    ).read_text(encoding="utf-8")
+    chamadas = [
+        linha for linha in yml.splitlines() if "ci/termometro.py" in linha
+    ]
+    assert len(chamadas) == 1, (
+        f"esperava uma unica chamada ao termometro no workflow, achei "
+        f"{len(chamadas)}"
+    )
+    for palavra in chamadas[0].split():
+        if palavra.startswith("--"):
+            return palavra.split("=")[0]
+    raise AssertionError(f"chamada sem bandeira: {chamadas[0]!r}")
+
+
+def test_a_bandeira_que_o_workflow_chama_nunca_sai_zero_sem_medir():
+    import subprocess as _sp
+
+    bandeira = _bandeira_que_o_workflow_chama()
+    saida = _sp.run(
+        [sys.executable, str(RAIZ / "ci" / "termometro.py"), bandeira, "12345"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert saida.returncode == 2, (
+        f"`{bandeira}` saiu {saida.returncode}: bandeira reconhecida que nao "
+        "mede e nao recusa deixa o job verde sem medicao nenhuma"
+    )
+    texto = saida.stdout + saida.stderr
+    assert "NAO MEDI" in texto or "PAROU POR SEGURAN" in texto
+    assert "O QUE FAZER" in texto, "toda recusa diz o que fazer"
+
+
+def test_a_bandeira_sem_valor_tambem_recusa():
+    import subprocess as _sp
+
+    saida = _sp.run(
+        [sys.executable, str(RAIZ / "ci" / "termometro.py"), "--run"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert saida.returncode == 2
+
+
+# ==========================================================================
+# F3: classificação, custo e ranking.
+#
+# ONDE COLAR: ao fim de `ci/tests/test_termometro.py`, depois do bloco da
+# Fase 2. Estes testes usam o corpus congelado da Fase 0 como fixture — as 37
+# janelas REAIS, com run, job, tentativa e carimbo conferíveis na API — em vez
+# de dados inventados. Quando um caso precisa de algo que não aconteceu (a 127
+# que não foi recuperada, por exemplo), ele parte de uma janela real e diz, no
+# nome e no docstring, o que tirou dela.
+#
+# O que cada bloco daqui prende:
+#
+#   1. Os dois eixos não se misturam (INV-R11). O teste grande compara as 37
+#      janelas contra o GABARITO auditado: natureza e desfecho, os dois, para
+#      todas. Se alguém trocar a regra da 088 para "interceptada, logo não é
+#      ocorrência", 8 janelas divergem de uma vez.
+#   2. Menção não é queda (INV-R02) e prova não é dor: a 195 tem 37 citações
+#      em origin/main e ZERO janelas, e continua fora do ranking mesmo com as
+#      citações todas na entrada.
+#   3. Deduplicação na ordem do plano, inclusive o caso feio: a citação que
+#      chega ANTES da queda medida.
+#   4. Custo sem peso inventado: minuto só existe entre dois carimbos reais, e
+#      o fim da janela de consulta nunca vira resolução.
+#   5. Um só objeto: mexer no JSON move a tabela junto, e o teste mexe.
+# ==========================================================================
+
+import ast  # noqa: E402
+import json  # noqa: E402
+import random  # noqa: E402
+
+# O gabarito da Fase 0 nomeia as duas formas de ERROR separadamente, porque
+# ambiguidade e ausência de casamento pedem conserto diferente. No vocabulário
+# da Fase 3 as duas são `nao_classificada` — o MOTIVO é que as separa, e o
+# teste confere motivo por motivo mais abaixo.
+NATUREZA_DA_FASE_3 = {
+    "ocorrencia_operacional": "ocorrencia_operacional",
+    "ERROR_ambiguidade": "nao_classificada",
+    "ERROR_sem_casamento": "nao_classificada",
+}
+
+_CATALOGO_VIVO: dict = {}
+
+
+def catalogo_vivo() -> dict:
+    """O catálogo lido do frontmatter VIVO, uma vez por execução da suíte.
+
+    Ele é fixture de propósito: se alguém trocar `guarda.tipo` da 088 de
+    `teste` para `sino`, a 088 deixa de ser interceptada e este arquivo fica
+    vermelho — que é o alarme certo, porque o desfecho teria mudado de fato.
+    """
+    if not _CATALOGO_VIVO:
+        _CATALOGO_VIVO.update(termometro.catalogo_das_armadilhas(RAIZ))
+    return _CATALOGO_VIVO
+
+
+def fato_da_janela(janela: Janela, **extras):
+    """Uma janela real do corpus vira fato bruto, sem inventar nada.
+
+    O `sinais` entra como a saída de um detector CORRETO — a armadilha do
+    gabarito —, e não como a saída defeituosa de hoje: consertar o detector é
+    a Fase 1, e medir o defeito dela aqui mediria a fase errada. A exceção é a
+    janela ambígua, onde os dois sinais concorrentes são o fato medido e a
+    ambiguidade é justamente o que a Fase 3 tem de recusar (INV-R03).
+    """
+    dados = dict(
+        fonte="actions",
+        workflow=WORKFLOW_MEDIDO,
+        run=janela.abre_run,
+        job=janela.abre_job,
+        celula=janela.celula,
+        tentativa=janela.abre_attempt,
+        conclusao=CONCLUSOES_QUE_ABREM_JANELA[0],
+        inicio=janela.inicio,
+        fim=janela.fim,
+        fechada_por=janela.fecha_run,
+        evidencia=janela.evidencia_do_rotulo,
+        causa=janela.causa,
+        sinais=(
+            tuple(janela.sinais_observados_pelo_detector_atual)
+            if janela.natureza == "ERROR_ambiguidade"
+            else ((janela.armadilha_esperada,) if janela.armadilha_esperada else ())
+        ),
+    )
+    dados.update(extras)
+    return termometro.Fato(**dados)
+
+
+def quadro_do_corpus(extra=(), **kw):
+    """O quadro calculado sobre as 37 janelas reais, mais o que o teste pedir."""
+    fatos = [fato_da_janela(j) for j in JANELAS] + list(extra)
+    return termometro.montar_quadro(
+        fatos, catalogo=catalogo_vivo(), desde=JANELA_INICIO[:10],
+        ate=JANELA_FIM[:10], workflow=WORKFLOW_MEDIDO, **kw
+    )
+
+
+def um_quadro(fatos, **kw):
+    return termometro.montar_quadro(list(fatos), catalogo=catalogo_vivo(), **kw)
+
+
+# -- a) os dois eixos ------------------------------------------------------
+
+
+def test_o_vocabulario_dos_dois_eixos_e_o_do_plano():
+    """Palavra trocada aqui é relatório que diz outra coisa lá."""
+    assert termometro.NATUREZAS == (
+        "mencao", "ocorrencia_operacional", "prova", "nao_classificada"
+    )
+    assert termometro.ATUACOES == (
+        "sem_guarda", "interceptada", "mitigada", "escape", "desconhecida"
+    )
+    assert set(termometro.PROMOCAO_POR_ATUACAO) == set(termometro.ATUACOES)
+
+
+def test_a_guarda_de_cada_armadilha_sai_do_frontmatter_vivo():
+    """A casa da guarda declarada é o arquivo rastreado (INV-R05).
+
+    `armadilhas/GUARDAS.json` é derivado e está no .gitignore: usá-lo como
+    fonte de decisão seria medir uma cópia.
+    """
+    catalogo = catalogo_vivo()
+    assert catalogo["088"]["guarda"] == "teste"
+    assert catalogo["088"]["dono"] == "infra/deploy-celula-na-vps.sh"
+    assert catalogo["127"]["guarda"] == "vacina"
+    assert catalogo["127"]["dono"] == "ci/rerun_de_deploy.py"
+    assert catalogo["088"]["guarda"] in termometro.GUARDAS_QUE_BLOQUEIAM
+    assert catalogo["127"]["guarda"] in termometro.GUARDAS_QUE_RECUPERAM
+
+
+def test_as_37_janelas_reais_saem_com_o_PAR_do_gabarito():
+    """O teste grande: natureza E desfecho, para todas as 37 janelas reais.
+
+    Ele existe em vez de 37 asserções soltas porque o defeito que a Fase 3
+    tem de impedir é exatamente o de classificar certo "no caso que o autor
+    lembrou". Aqui não há caso escolhido: é o registro inteiro, com as duas
+    formas de ERROR mapeadas para `nao_classificada` e nada mais.
+    """
+    quadro = quadro_do_corpus()
+    calculados = quadro["classificados"]
+    assert len(calculados) == len(JANELAS), (
+        "cada janela real é uma ocorrência independente; sobrar ou faltar "
+        "linha aqui é deduplicação comendo fato que não era duplicata"
+    )
+    divergentes = [
+        (j.celula, j.abre_run, (NATUREZA_DA_FASE_3[j.natureza], j.desfecho),
+         (f["natureza"], f["atuacao"]))
+        for j, f in zip(JANELAS, calculados)
+        if (NATUREZA_DA_FASE_3[j.natureza], j.desfecho) != (f["natureza"], f["atuacao"])
+    ]
+    assert not divergentes, divergentes
+
+
+def test_a_088_e_ocorrencia_E_interceptada_ao_mesmo_tempo():
+    """INV-R11 e INV-R12 no caso de aceitação.
+
+    A muralha impediu o `up -d` sem argumento — o pior dano não aconteceu — e
+    a célula ficou sem publicação do mesmo jeito. Os dois eixos dizem coisas
+    diferentes sobre o MESMO fato, e é por isso que são dois.
+    """
+    quadro = quadro_do_corpus()
+    oito = [f for f in quadro["classificados"] if f["armadilha"] == "088"]
+    assert len(oito) == len(janelas_esperadas_de("088")) == 8
+    for fato in oito:
+        assert fato["natureza"] == "ocorrencia_operacional"
+        assert fato["atuacao"] == "interceptada"
+        assert fato["causa"] == CAUSA_088
+    campea = termometro.campea(quadro)
+    assert campea["chave"] == "armadilhas/088"
+    assert campea["interceptadas"] == 8
+    assert campea["minutos_ate_cobertura"] > 0, (
+        "interceptação com custo continua no ranking: guarda que funciona não "
+        "apaga o tempo em que a célula não publicou (INV-R12)"
+    )
+
+
+def test_a_127_separa_mitigada_de_escape():
+    """A mesma janela real, com e sem o verde que a cobriu.
+
+    A vacina RECUPERA; ela não impede a causa. Quando o verde que cobre a
+    célula existe, a atuação medida é `mitigada`. Quando não existe — ou
+    quando quem cobriu foi uma reversão —, a guarda aplicável estava lá e o
+    dano atravessou: `escape`, que pede consertar alcance, não criar uma
+    segunda guarda.
+    """
+    quadro = quadro_do_corpus()
+    mitigadas = [f for f in quadro["classificados"] if f["armadilha"] == "127"]
+    assert len(mitigadas) == 24
+    assert {f["atuacao"] for f in mitigadas} == {"mitigada"}
+
+    real = janelas_esperadas_de("127")[0]
+    sem_verde = um_quadro([fato_da_janela(
+        real, fim=None, fechada_por=None,
+    )])["classificados"][0]
+    assert sem_verde["natureza"] == "ocorrencia_operacional"
+    assert sem_verde["atuacao"] == "escape"
+    assert sem_verde["janela"]["aberta"] is True
+
+    revertida = um_quadro([fato_da_janela(
+        real, intervencao="rollback-celula",
+    )])["classificados"][0]
+    assert revertida["atuacao"] == "escape"
+    assert revertida["janela"]["aberta"] is True, (
+        "reverter não é publicar: o run de rollback não pode fechar a janela"
+    )
+
+
+def test_a_195_e_prova_e_nunca_ocorrencia_nem_entra_no_ranking():
+    """37 citações em origin/main, zero janelas — e zero linhas no ranking.
+
+    Contar menção como reincidência foi o erro que este laço existe para
+    desfazer, e a 195 é a prova viva dele: o texto que ela cita é uma PROVA de
+    mutação, não uma queda.
+    """
+    citacoes = [
+        termometro.Fato(
+            fonte="registro", artefato="registro", armadilha="195",
+            tarefa=f"TAR-{400 + i}",
+            evidencia=LOG_195_CITACAO_COMO_PROVA,
+        )
+        for i in range(37)
+    ]
+    quadro = quadro_do_corpus(extra=citacoes)
+    assert quadro["provas"] == 37
+    assert quadro["ocorrencias"] == 34, (
+        "as 34 ocorrências continuam sendo as do registro real: prova não "
+        "cria queda nenhuma"
+    )
+    for fato in quadro["classificados"]:
+        if fato["armadilha_citada"] == "195":
+            assert fato["natureza"] == "prova"
+            assert fato["natureza"] != "ocorrencia_operacional"
+    assert "armadilhas/195" not in {c["chave"] for c in quadro["ranking"]}
+    fora = {c["chave"]: c for c in quadro["fora_do_ranking"]}
+    assert fora["armadilhas/195"]["provas"] == 37
+    assert fora["armadilhas/195"]["ocorrencias_operacionais_confirmadas"] == 0
+    assert "195" not in {j.armadilha_esperada for j in JANELAS}
+
+
+def test_citacao_sem_queda_e_mencao_e_nao_aumenta_reincidencia():
+    """INV-R02, medido: 20 citações da 088 não movem um minuto sequer."""
+    so_quedas = um_quadro(fato_da_janela(j) for j in janelas_esperadas_de("088"))
+    citacoes = [
+        termometro.Fato(
+            fonte="registro", artefato="registro", armadilha="088",
+            tarefa=f"TAR-{500 + i}",
+            evidencia=f"https://github.com/abundanciabr/sitesdoreino/pull/{i}",
+        )
+        for i in range(20)
+    ]
+    com_citacoes = um_quadro(
+        [fato_da_janela(j) for j in janelas_esperadas_de("088")] + citacoes
+    )
+    antes, depois = so_quedas["ranking"][0], com_citacoes["ranking"][0]
+    assert depois["mencoes"] == 20
+    assert com_citacoes["mencoes"] == 20
+    assert antes["ocorrencias_operacionais_confirmadas"] == 8
+    assert depois["ocorrencias_operacionais_confirmadas"] == 8, (
+        "citar uma armadilha 20 vezes não a faz morder 20 vezes: reincidência "
+        "só cresce com queda terminal medida (INV-R02)"
+    )
+    assert depois["minutos_ate_cobertura"] == antes["minutos_ate_cobertura"]
+    assert depois["runs_afetados"] == antes["runs_afetados"]
+    assert all(
+        f["natureza"] == "mencao"
+        for f in com_citacoes["classificados"] if f["celula"] is None
+    )
+
+
+# -- b) deduplicação -------------------------------------------------------
+
+
+def test_a_ordem_da_deduplicacao_e_a_do_plano():
+    """A ordem é contrato, não detalhe de implementação."""
+    assert termometro.ORDEM_DA_DEDUPLICACAO == (
+        "workflow+run+job+celula+tentativa",
+        "url_do_run",
+        "pr+celula+conclusao",
+        "tarefa+evidencia",
+        "sem_identidade_suficiente",
+    )
+    quadro = quadro_do_corpus()
+    assert quadro["ordem_da_deduplicacao"] == list(
+        termometro.ORDEM_DA_DEDUPLICACAO
+    ), "o JSON publica a mesma ordem que o código usa"
+
+
+def test_duas_citacoes_do_mesmo_run_contam_UMA_ocorrencia():
+    """Registro e evento do mesmo run só sabem dizer a URL — e a URL é uma."""
+    real = janelas_esperadas_de("127")[0]
+    url = (
+        "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
+        f"{real.abre_run}"
+    )
+    quadro = um_quadro([
+        termometro.Fato(fonte="registro", artefato="registro", armadilha="127",
+                        url_do_run=url, evidencia="o registro do painel"),
+        termometro.Fato(fonte="evento", artefato="evento", armadilha="127",
+                        url_do_run=url, evidencia="o disparo do caderninho"),
+    ])
+    assert len(quadro["classificados"]) == 1
+    assert len(quadro["descartes"]) == 1
+    assert quadro["descartes"][0]["por"] == "url_do_run"
+    assert quadro["mencoes"] == 1
+
+
+def test_evento_e_registro_do_mesmo_run_nao_dobram_a_queda():
+    """O caso de regressão nomeado no plano.
+
+    A queda medida sabe workflow, run, job, célula e tentativa; o registro e o
+    evento só sabem a URL. Se os três contassem, a mesma queda valeria três —
+    e o ranking premiaria quem relata melhor.
+    """
+    real = janelas_esperadas_de("088")[0]
+    url = (
+        "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
+        f"{real.abre_run}"
+    )
+    quadro = um_quadro([
+        fato_da_janela(real),
+        termometro.Fato(fonte="registro", artefato="registro", armadilha="088",
+                        url_do_run=url, tarefa="TAR-600",
+                        evidencia="https://github.com/a/b/pull/7"),
+        termometro.Fato(fonte="evento", artefato="evento", armadilha="088",
+                        url_do_run=url, evidencia="disparo da muralha"),
+    ])
+    assert quadro["ocorrencias"] == 1
+    assert len(quadro["descartes"]) == 2
+    campea = termometro.campea(quadro)
+    assert campea["ocorrencias_operacionais_confirmadas"] == 1
+    assert campea["registros_produzidos"] == 1
+    assert campea["eventos_produzidos"] == 1
+    assert campea["artefatos"] == 2, (
+        "o registro e o evento continuam contando como ARTEFATO produzido — o "
+        "que eles não podem é virar uma segunda queda"
+    )
+
+
+def test_a_citacao_que_chega_ANTES_da_queda_nao_cria_segunda_ocorrencia():
+    """O caso feio da ordem de leitura.
+
+    Se a varredura fosse na ordem de chegada, a citação criaria o grupo pela
+    URL e a queda medida — que sabe run, job e célula — entraria como SEGUNDA
+    ocorrência do mesmo run. A deduplicação varre do mais específico para o
+    menos justamente por isso.
+    """
+    real = janelas_esperadas_de("127")[0]
+    url = (
+        "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
+        f"{real.abre_run}"
+    )
+    citacao = termometro.Fato(
+        fonte="registro", artefato="registro", armadilha="127",
+        url_do_run=url, evidencia="citado antes de a coleta rodar",
+    )
+    primeiro = um_quadro([citacao, fato_da_janela(real)])
+    depois = um_quadro([fato_da_janela(real), citacao])
+    assert primeiro["ocorrencias"] == depois["ocorrencias"] == 1
+    assert len(primeiro["descartes"]) == len(depois["descartes"]) == 1
+    assert primeiro["ranking"][0]["registros_produzidos"] == 1
+    assert [c["chave"] for c in primeiro["ranking"]] == (
+        [c["chave"] for c in depois["ranking"]]
+    )
+
+
+def test_jobs_distintos_do_mesmo_run_contam_separado():
+    """Duas células caídas no mesmo run são duas indisponibilidades."""
+    real = janelas_esperadas_de("127")[0]
+    outra = fato_da_janela(real)._replace(
+        job=real.abre_job + 1, celula="uma-outra-celula",
+    )
+    quadro = um_quadro([fato_da_janela(real), outra])
+    assert quadro["ocorrencias"] == 2
+    assert quadro["descartes"] == []
+
+
+def test_rerun_usa_a_tentativa_e_o_fato_repetido_nao():
+    """A tentativa faz parte da identidade; o fato idêntico repetido, não.
+
+    O rerun mantém o `run_id` e muda a tentativa: contar uma só esconderia a
+    segunda queda. Já o MESMO fato lido duas vezes (duas fatias de data que se
+    encostam, por exemplo) é uma ocorrência e não duas.
+    """
+    real = janelas_esperadas_de("127")[0]
+    primeira = fato_da_janela(real)
+    segunda = primeira._replace(tentativa=(real.abre_attempt or 1) + 1)
+    assert um_quadro([primeira, segunda])["ocorrencias"] == 2
+    assert um_quadro([primeira, primeira])["ocorrencias"] == 1
+    assert um_quadro([primeira, primeira])["descartes"][0]["por"] == (
+        "workflow+run+job+celula+tentativa"
+    )
+
+
+def test_fato_sem_identidade_suficiente_nao_e_classificavel():
+    """Passo 5 da ordem: sem identidade, não se acusa nem se conta."""
+    orfao = termometro.Fato(
+        fonte="registro", armadilha="088", evidencia="um texto solto",
+    )
+    quadro = um_quadro([orfao])
+    assert quadro["ocorrencias"] == 0
+    assert quadro["ranking"] == []
+    assert len(quadro["nao_classificadas"]) == 1
+    assert quadro["nao_classificadas"][0]["identidade"] == (
+        "sem_identidade_suficiente"
+    )
+    assert "identidade suficiente" in quadro["nao_classificadas"][0]["motivo"]
+
+
+# -- c) custo, sem peso inventado ------------------------------------------
+
+
+def test_deploy_verde_sem_cobertura_da_celula_NAO_encerra_a_janela():
+    """Verde de outra célula não publica a que caiu (INV-R07).
+
+    A lista de coberturas aqui é a de um dia real de merges: três verdes
+    depois da queda, e só um deles tocou a célula que estava fora do ar.
+    """
+    real = janelas_esperadas_de("127")[0]
+    so_outras = fato_da_janela(real, fim=None, fechada_por=None, coberturas=(
+        {"quando": "2026-08-19T11:00:00Z", "celulas": ("pagamentos",),
+         "run": 1, "workflow": WORKFLOW_MEDIDO},
+        {"quando": "2026-08-19T11:30:00Z", "celulas": ("alunos", "forum"),
+         "run": 2, "workflow": WORKFLOW_MEDIDO},
+    ))
+    fato = um_quadro([so_outras])["classificados"][0]
+    assert fato["janela"]["aberta"] is True
+    assert fato["janela"]["fim"] is None
+    assert fato["janela"]["segundos"] is None
+
+
+def test_o_PRIMEIRO_verde_que_cobre_a_celula_encerra_a_janela():
+    """E o rollback no meio do caminho não conta como o primeiro."""
+    real = janelas_esperadas_de("127")[0]
+    com_coberturas = fato_da_janela(real, fim=None, fechada_por=None, coberturas=(
+        {"quando": "2026-08-19T11:00:00Z", "celulas": ("pagamentos",),
+         "run": 1, "workflow": WORKFLOW_MEDIDO},
+        {"quando": "2026-08-19T12:00:00Z", "celulas": (real.celula,),
+         "run": 2, "workflow": "rollback-celula"},
+        {"quando": "2026-08-19T13:00:00Z", "celulas": (real.celula,),
+         "run": 3, "workflow": WORKFLOW_MEDIDO},
+        {"quando": "2026-08-19T14:00:00Z", "celulas": (real.celula,),
+         "run": 4, "workflow": WORKFLOW_MEDIDO},
+    ))
+    janela = um_quadro([com_coberturas])["classificados"][0]["janela"]
+    assert janela["fim"] == "2026-08-19T13:00:00Z"
+    assert janela["run_de_fechamento"] == 3
+    assert janela["aberta"] is False
+    assert janela["segundos"] == termometro.segundos_entre(
+        real.inicio, "2026-08-19T13:00:00Z"
+    )
+
+
+def test_run_de_rollback_nao_e_resolucao():
+    """Reverter devolve a plataforma; não publica o que caiu."""
+    real = janelas_esperadas_de("127")[0]
+    revertida = um_quadro([
+        fato_da_janela(real, intervencao="rollback-celula")
+    ])["classificados"][0]
+    assert revertida["janela"]["aberta"] is True
+    assert revertida["janela"]["fim"] is None
+    assert revertida["janela"]["intervencao"] == "rollback-celula"
+    assert "reverter não é publicar" in revertida["janela"]["motivo"]
+    quadro = um_quadro([fato_da_janela(real, intervencao="rollback-celula")])
+    assert quadro["sem_tempo_comparavel"][0]["intervencoes_detectadas"] == 1
+    assert quadro["ranking"] == [], (
+        "sem tempo comprovado a candidata sai SEPARADA, e não com minuto "
+        "emprestado da intervenção"
+    )
+    for nome in ("rollback", "reversao", "volta-atras"):
+        assert termometro.e_intervencao(f"deploy-{nome}-celula") is True
+    assert termometro.e_intervencao(WORKFLOW_MEDIDO) is False
+
+
+def test_janela_sem_resolucao_permanece_aberta_e_a_consulta_nao_a_fecha():
+    """A única janela aberta do corpus continua aberta, e o `--ate` não mente.
+
+    Mover o fim da consulta para 2099 não pode inventar minuto nenhum: o fim
+    da janela de consulta não é resolução, é só até onde a pergunta foi.
+    """
+    aberta = [j for j in JANELAS if j.fim is None]
+    assert len(aberta) == 1
+    curto = um_quadro([fato_da_janela(aberta[0])], ate="2026-09-18")
+    longo = um_quadro([fato_da_janela(aberta[0])], ate="2099-01-01")
+    for quadro in (curto, longo):
+        assert quadro["ranking"] == []
+        candidata = quadro["sem_tempo_comparavel"][0]
+        assert candidata["minutos_ate_cobertura"] is None
+        assert candidata["janelas_abertas"] == 1
+        assert candidata["tempo_comparavel"] is False
+        assert "não é inventado" in candidata["motivo"] or (
+            "minuto nenhum é inventado" in candidata["motivo"]
+        )
+    assert curto["sem_tempo_comparavel"] == longo["sem_tempo_comparavel"]
+
+
+def test_o_custo_bate_com_o_corpus_congelado_minuto_a_minuto():
+    """Os totais saem do registro da Fase 0, não de número digitado aqui.
+
+    O arredondamento acontece UMA vez, sobre a soma dos segundos — arredondar
+    janela por janela daria outro número, e o outro número não fecha com
+    `celula_minutos_esperados`.
+    """
+    quadro = quadro_do_corpus()
+    por_chave = {c["chave"]: c for c in quadro["ranking"]}
+    assert por_chave["armadilhas/088"]["minutos_ate_cobertura"] == (
+        celula_minutos_esperados(janelas_esperadas_de("088"))
+    )
+    assert por_chave["armadilhas/127"]["minutos_ate_cobertura"] == (
+        celula_minutos_esperados(janelas_esperadas_de("127"))
+    )
+    gateway = por_chave[f"causa/{CAUSA_GATEWAY}"]
+    assert gateway["minutos_ate_cobertura"] == (
+        celula_minutos_esperados(janelas_com_causa(CAUSA_GATEWAY))
+    )
+    assert gateway["janelas_abertas"] == 1, (
+        "a janela do gateway que nunca fechou continua aberta e fora da soma"
+    )
+    assert gateway["armadilha"] is None, (
+        "nenhuma armadilha do catálogo cobre esta causa hoje, e a Fase 3 não "
+        "inventa número para ela"
+    )
+
+
+def codigo_sem_docstring(fonte: str) -> str:
+    """O CÓDIGO do módulo, sem docstring nem comentário.
+
+    A proibição de peso vale para o que calcula, não para o texto que explica
+    a proibição. Mas ela precisa enxergar STRING: um peso inventado costuma
+    morar exatamente numa chave de dicionário, `{"alto": 10}`, e um exame que
+    jogasse fora todo literal de texto não veria nenhum deles.
+    """
+    arvore = ast.parse(fonte)
+    for no in ast.walk(arvore):
+        corpo = getattr(no, "body", None)
+        if not isinstance(
+            no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ) or not corpo:
+            continue
+        primeiro = corpo[0]
+        if (
+            isinstance(primeiro, ast.Expr)
+            and isinstance(getattr(primeiro, "value", None), ast.Constant)
+            and isinstance(primeiro.value.value, str)
+        ):
+            corpo.pop(0)
+    return ast.unparse(arvore)
+
+
+def test_nao_existe_peso_inventado_no_modulo():
+    """`alto = 10, medio = 5, baixo = 1` é proibido pelo plano.
+
+    Custo se mede em tempo medido entre dois carimbos reais. Multiplicar
+    registro por gravidade declarada devolveria o ranking a quem escreve
+    melhor a ficha da armadilha, que é o defeito que este laço desfaz.
+    """
+    limpo = codigo_sem_docstring((CI / "termometro.py").read_text(encoding="utf-8"))
+    for palavra in ("alto", "medio", "médio", "baixo", "custo_por_queda"):
+        assert palavra not in limpo, (
+            f"{palavra!r} no código do termômetro: custo se mede em tempo "
+            "medido, nunca em peso arbitrário por gravidade declarada"
+        )
+    # O exame precisa mesmo pegar o peso escondido numa chave de dicionário.
+    with pytest.raises(AssertionError):
+        sujo = codigo_sem_docstring(
+            'PESOS = {"alto": 10, "medio": 5, "baixo": 1}'
+        )
+        assert "alto" not in sujo
+
+
+def test_as_dimensoes_do_plano_estao_todas_em_cada_candidata():
+    """Dimensão que some do JSON é linha que some do relatório sem aviso."""
+    assert termometro.DIMENSOES == (
+        "ocorrencias_operacionais_confirmadas", "interceptadas", "mitigadas",
+        "escapes", "runs_afetados", "jobs_afetados", "celulas_afetadas",
+        "minutos_ate_cobertura", "registros_produzidos", "eventos_produzidos",
+        "intervencoes_detectadas",
+    )
+    quadro = quadro_do_corpus()
+    prateleiras = (
+        quadro["ranking"] + quadro["sem_tempo_comparavel"]
+        + quadro["fora_do_ranking"]
+    )
+    assert prateleiras
+    for candidata in prateleiras:
+        faltando = [d for d in termometro.DIMENSOES if d not in candidata]
+        assert not faltando, (candidata["chave"], faltando)
+
+
+# -- d) ranking, campeã e promoção -----------------------------------------
+
+
+def test_o_ranking_ordena_por_tempo_comprovado_e_a_088_vence():
+    """O portão da Fase 3, medido sobre o registro real.
+
+    A 088 vence, a 127 fica em segundo e a causa do gateway em terceiro. Os
+    números não estão digitados aqui: saem do corpus, e uma janela mexida lá
+    move a ordem daqui.
+    """
+    quadro = quadro_do_corpus()
+    assert [c["chave"] for c in quadro["ranking"]] == [
+        "armadilhas/088", "armadilhas/127", f"causa/{CAUSA_GATEWAY}",
+    ]
+    tempos = [c["minutos_ate_cobertura"] for c in quadro["ranking"]]
+    assert tempos == sorted(tempos, reverse=True)
+    assert quadro["campea"] == "armadilhas/088"
+    assert tempos[0] > 5 * tempos[1], (
+        "a 088 vence por folga mesmo sem as duas janelas do gateway, e é por "
+        "isso que ela é a fatia vertical desta entrega"
+    )
+    assert [c["posicao"] for c in quadro["ranking"]] == [1, 2, 3]
+
+
+def test_a_ordem_nao_depende_da_ordem_de_entrada():
+    """Desempate estável: embaralhar a entrada não move o relatório."""
+    fatos = [fato_da_janela(j) for j in JANELAS]
+    direto = termometro.montar_quadro(fatos, catalogo=catalogo_vivo())
+    embaralhado = list(fatos)
+    random.Random(1708).shuffle(embaralhado)
+    trocado = termometro.montar_quadro(embaralhado, catalogo=catalogo_vivo())
+    assert [c["chave"] for c in direto["ranking"]] == (
+        [c["chave"] for c in trocado["ranking"]]
+    )
+    assert direto["campea"] == trocado["campea"]
+    assert [c["minutos_ate_cobertura"] for c in direto["ranking"]] == (
+        [c["minutos_ate_cobertura"] for c in trocado["ranking"]]
+    )
+
+
+def test_o_desempate_final_e_o_numero_da_armadilha():
+    """Empate em tempo, ocorrências e artefatos: decide o menor número.
+
+    Aqui as candidatas são montadas à mão de propósito — o empate perfeito não
+    existe no registro real, e o que está sob teste é a regra de desempate,
+    não os dados.
+    """
+    empatadas = [
+        {"chave": "armadilhas/300", "armadilha": "300",
+         "minutos_ate_cobertura": 10, "tempo_comparavel": True,
+         "ocorrencias_operacionais_confirmadas": 2, "artefatos": 1},
+        {"chave": "armadilhas/127", "armadilha": "127",
+         "minutos_ate_cobertura": 10, "tempo_comparavel": True,
+         "ocorrencias_operacionais_confirmadas": 2, "artefatos": 1},
+        {"chave": f"causa/{CAUSA_GATEWAY}", "armadilha": None,
+         "minutos_ate_cobertura": 10, "tempo_comparavel": True,
+         "ocorrencias_operacionais_confirmadas": 2, "artefatos": 1},
+    ]
+    ordenadas = [c["chave"] for c in termometro.ordenar(empatadas)["ranking"]]
+    assert ordenadas == [
+        "armadilhas/127", "armadilhas/300", f"causa/{CAUSA_GATEWAY}",
+    ], "numeradas por número, e a candidata sem número depois, sem ganhar um"
+
+
+def test_candidata_sem_tempo_comparavel_sai_SEPARADA_e_sem_minutos():
+    """Sem janela fechada não há tempo comprovado — e não há minuto emprestado."""
+    aberta = [j for j in JANELAS if j.fim is None][0]
+    quadro = um_quadro([fato_da_janela(aberta)])
+    assert quadro["ranking"] == []
+    assert quadro["campea"] is None
+    assert quadro["promocao"] is None, (
+        "sem candidata com tempo comprovado não há campeã, e sem campeã não "
+        "há promoção: relatório que promove no escuro é o que se quer evitar"
+    )
+    separada = quadro["sem_tempo_comparavel"][0]
+    assert separada["minutos_ate_cobertura"] is None
+    assert separada["ocorrencias_operacionais_confirmadas"] == 1
+
+
+def test_uma_execucao_promove_no_maximo_UMA_campea():
+    """Três candidatas no ranking, uma promoção — e ela é a primeira."""
+    quadro = quadro_do_corpus()
+    assert len(quadro["ranking"]) == 3
+    eleitas = [c for c in quadro["ranking"] if c["chave"] == quadro["campea"]]
+    assert len(eleitas) == 1
+    promocao = quadro["promocao"]
+    assert isinstance(promocao, dict), (
+        "promoção é uma, não uma lista: a fila da Fase 5 não pode receber duas "
+        "campeãs da mesma execução"
+    )
+    assert promocao["chave"] == quadro["campea"] == eleitas[0]["chave"]
+    assert promocao["origem"] == "ci/termometro.py:armadilhas/088", (
+        "a identidade idempotente do INV-R06 sai daqui pronta para a fila"
+    )
+    assert termometro.promocao_da_campea(quadro) == promocao, (
+        "chamar de novo não elege uma segunda"
+    )
+
+
+def test_a_interceptada_cara_nao_manda_criar_guarda():
+    """INV-R11 e INV-R12: a guarda funcionou; criar outra seria trabalho falso.
+
+    O que a promoção pede é impedir a causa mais cedo e PRESERVAR a guarda que
+    interceptou — nunca uma segunda muralha em cima da primeira.
+    """
+    promocao = quadro_do_corpus()["promocao"]
+    assert promocao["atuacao"] == "interceptada"
+    assert promocao["acao"] == "prevenir a causa mais cedo e preservar a guarda"
+    assert promocao["nao_criar_guarda"] is True
+    assert promocao["acao"] != termometro.PROMOCAO_POR_ATUACAO["sem_guarda"]
+
+
+def test_a_promocao_de_causa_sem_armadilha_nao_inventa_numero():
+    """A causa do gateway não tem armadilha: quem dá número é o almoxarife."""
+    gateway = [fato_da_janela(j) for j in janelas_com_causa(CAUSA_GATEWAY)]
+    quadro = um_quadro(gateway)
+    promocao = quadro["promocao"]
+    assert promocao["chave"] == f"causa/{CAUSA_GATEWAY}"
+    assert promocao["armadilha"] is None
+    assert promocao["origem"] is None
+    assert promocao["precisa_de_numero"] is True
+    assert promocao["acao"] == termometro.PROMOCAO_POR_ATUACAO["sem_guarda"]
+
+
+# -- e) um só objeto para o humano e para o `--json` ------------------------
+
+
+def test_o_relatorio_humano_e_o_JSON_saem_do_MESMO_objeto():
+    """Mexer num campo do JSON move a tabela junto. O teste mexe.
+
+    Não existe segundo caminho de serialização: o que o `--json` imprime é o
+    próprio quadro, e a tabela humana é leitura dele. Um renderizador que
+    recalculasse qualquer número poderia continuar mostrando a história antiga
+    depois de o JSON mudar — e é esse o falso verde que este teste impede.
+    """
+    quadro = quadro_do_corpus()
+    assert json.loads(json.dumps(quadro, ensure_ascii=False)) == quadro, (
+        "o quadro tem de ser dado puro de JSON: objeto escondido lá dentro é "
+        "um segundo caminho por onde texto e JSON podem divergir"
+    )
+    esperado = celula_minutos_esperados(janelas_esperadas_de("088"))
+    antes = termometro.linhas_do_quadro(quadro)
+    assert any(f"{esperado} célula-minutos" in linha for linha in antes)
+
+    quadro["ranking"][0]["minutos_ate_cobertura"] = 7
+    quadro["ranking"][0]["ocorrencias_operacionais_confirmadas"] = 99
+    quadro["promocao"]["acao"] = "uma ação que ninguém escreveu no código"
+    depois = termometro.linhas_do_quadro(quadro)
+    assert any("7 célula-minutos" in linha for linha in depois)
+    assert any("99 ocorrência(s)" in linha for linha in depois)
+    assert any(
+        "uma ação que ninguém escreveu no código" in linha for linha in depois
+    )
+    assert not any(f"{esperado} célula-minutos" in linha for linha in depois)
+    assert termometro.campea(quadro)["minutos_ate_cobertura"] == 7, (
+        "a campeã é resolvida no ranking pela chave; se fosse cópia, o JSON "
+        "teria dois lugares para o mesmo número e um deles ficaria velho"
+    )
+
+
+def test_a_tabela_humana_le_um_quadro_e_nao_o_mundo():
+    """A tabela funciona sobre um dicionário montado à mão.
+
+    Se ela precisasse de estado escondido, de rede ou de arquivo, o `--json` e
+    o texto teriam fontes diferentes — e a Fase 3 existe para eles terem uma
+    só.
+    """
+    linhas = termometro.linhas_do_quadro({
+        "janela": {"desde": "2026-08-18", "ate": "2026-09-18",
+                   "workflow": WORKFLOW_MEDIDO},
+        "fatos": 1, "ocorrencias": 1, "mencoes": 0, "provas": 0,
+        "ranking": [{
+            "posicao": 1, "chave": "armadilhas/999",
+            "minutos_ate_cobertura": 42,
+            "ocorrencias_operacionais_confirmadas": 1,
+            "atuacao": "escape", "celulas_afetadas": 1, "artefatos": 0,
+            "janelas_abertas": 0, "intervencoes_detectadas": 0,
+        }],
+        "campea": "armadilhas/999", "promocao": None,
+        "sem_tempo_comparavel": [], "fora_do_ranking": [],
+        "nao_classificadas": [], "descartes": [], "medicao": None,
+    })
+    texto = "\n".join(linhas)
+    assert "armadilhas/999" in texto and "42 célula-minutos" in texto
+    assert "CAMPEÃ" in texto
+
+
+# -- f) ERROR continua visível ---------------------------------------------
+
+
+def test_as_janelas_nao_classificadas_ficam_SEPARADAS_e_visiveis():
+    """ERROR não é ausência de problema (INV-R08): sai do ranking, não do
+    relatório.
+
+    São três: a ambígua, que casou dois sinais (INV-R03), e as duas que não
+    casaram sinal nenhum — as mesmas duas que o relatório-plano publicou como
+    não classificadas.
+    """
+    quadro = quadro_do_corpus()
+    assert len(quadro["nao_classificadas"]) == 3
+    motivos = [n["motivo"] for n in quadro["nao_classificadas"]]
+    ambiguas = [m for m in motivos if "INV-R03" in m]
+    sem_casamento = [m for m in motivos if "INV-R08" in m]
+    assert len(ambiguas) == len(janelas_com_natureza("ERROR_ambiguidade")) == 1
+    assert len(sem_casamento) == 2 == (
+        TABELA_DO_RELATORIO["janelas_nao_classificadas"]
+    )
+    chaves = {c["chave"] for c in quadro["ranking"]}
+    for nao_classificada in quadro["nao_classificadas"]:
+        assert nao_classificada["chave"] not in chaves
+    texto = "\n".join(termometro.linhas_do_quadro(quadro))
+    assert "ERROR" in texto
+    assert "ausência de problema" in texto
+
+
+def test_log_ilegivel_vira_ERROR_e_nunca_ausencia_de_problema():
+    """INV-R08 do lado da classificação: sem log não há causa medida."""
+    real = janelas_esperadas_de("088")[0]
+    cego = um_quadro([fato_da_janela(real, log_lido=False, sinais=())])
+    assert cego["ranking"] == []
+    assert cego["ocorrencias"] == 0
+    assert "não pôde ser lido" in cego["nao_classificadas"][0]["motivo"]
+
+
+def test_sinal_que_aponta_armadilha_fora_do_catalogo_e_ERROR():
+    """Detector e catálogo discordando é medição inconsistente, não queda."""
+    real = janelas_esperadas_de("127")[0]
+    quadro = termometro.montar_quadro(
+        [fato_da_janela(real)._replace(sinais=("999",))],
+        catalogo={"127": catalogo_vivo()["127"]},
+    )
+    assert quadro["ocorrencias"] == 0
+    assert "não está no catálogo" in quadro["nao_classificadas"][0]["motivo"]
+
+
+def test_a_licao_que_nasceu_DEPOIS_do_run_nao_conta_reincidencia():
+    """Ocorrência operacional exige lição existente antes do run.
+
+    Quem caiu antes de a lição existir não reincidiu nela: contar essa queda
+    inflaria a reincidência da armadilha com o passado que ela veio explicar.
+    """
+    real = janelas_esperadas_de("127")[0]
+    catalogo = dict(catalogo_vivo())
+    catalogo["127"] = dict(catalogo["127"], nascida_em="2026-12-01T00:00:00Z")
+    quadro = termometro.montar_quadro([fato_da_janela(real)], catalogo=catalogo)
+    assert quadro["ocorrencias"] == 0
+    assert "nasceu em" in quadro["nao_classificadas"][0]["motivo"]
+    catalogo["127"] = dict(catalogo["127"], nascida_em="2026-08-01T00:00:00Z")
+    assert termometro.montar_quadro(
+        [fato_da_janela(real)], catalogo=catalogo
+    )["ocorrencias"] == 1
+
+
+def test_a_coleta_da_fase_2_atravessa_para_o_quadro_sem_detector_chutado():
+    """A ponte com a Fase 2, e a recusa que ela carrega.
+
+    `fatos_da_coleta` traduz as janelas medidas em fatos; sem a saída do
+    detector ela RECUSA, em vez de dizer "nenhum sinal" por não ter olhado.
+    """
+    real = janelas_esperadas_de("088")[0]
+    medida = {
+        "desde": JANELA_INICIO[:10], "ate": JANELA_FIM[:10],
+        "workflow": WORKFLOW_MEDIDO,
+        "janelas": [{
+            "celula": real.celula, "run_de_abertura": real.abre_run,
+            "job_de_abertura": real.abre_job, "tentativa": real.abre_attempt,
+            "abertura": real.inicio, "fechamento": real.fim,
+            "run_de_fechamento": real.fecha_run, "estado_do_log": "lido",
+        }],
+    }
+    fatos = termometro.fatos_da_coleta(medida, sinais_do_job=lambda job: ("088",))
+    quadro = termometro.montar_quadro(
+        fatos, catalogo=catalogo_vivo(), medicao=medida,
+    )
+    assert quadro["janela"]["workflow"] == WORKFLOW_MEDIDO
+    assert quadro["ranking"][0]["chave"] == "armadilhas/088"
+    assert quadro["ranking"][0]["atuacao"] == "interceptada"
+    assert quadro["medicao"] is medida
+
+    with pytest.raises(termometro.ErroDeClassificacao) as erro:
+        termometro.fatos_da_coleta(medida, sinais_do_job=None)
+    assert "detector" in str(erro.value)
+
+    ilegivel = json.loads(json.dumps(medida))
+    ilegivel["janelas"][0]["estado_do_log"] = "ERROR"
+    cego = termometro.montar_quadro(
+        termometro.fatos_da_coleta(ilegivel, sinais_do_job=lambda job: None),
+        catalogo=catalogo_vivo(),
+    )
+    assert cego["ranking"] == []
+    assert len(cego["nao_classificadas"]) == 1
+
+# ==========================================================================
+# F4: o laco fecha ponta a ponta.
+#
+# Ate aqui a Fase 2 media a janela e a Fase 3 sabia classificar, mas ninguem
+# ligava uma na outra: `fatos_da_coleta` exigia um `sinais_do_job` que nao
+# existia, e o CLI imprimia a coleta crua. O vao entre as duas era o lugar
+# exato onde o falso verde nasceria, porque a saida mais barata de "nao tenho
+# detector" e devolver tupla vazia e chamar isso de "nenhum sinal".
+#
+# O que este bloco prende:
+#
+#   1. O TEXTO do log chega a quem classifica, e nao entra na medida que vai
+#      para o `--json` (log e evidencia, nao medicao).
+#   2. O detector casa o log executado da 088 e recusa o ECO do script.
+#   3. Sinal que casa deploy VERDE nao vota (INV-R04).
+#   4. Dois sinais chegam como DOIS ao classificador, que devolve ambiguidade
+#      (INV-R03) - escolher o primeiro aqui esconderia o problema de quem tem
+#      de recusa-lo.
+#   5. `--json` e tabela saem do MESMO objeto, agora do CLI de verdade.
+#   6. Uma execucao promove UMA campea.
+#   7. Detector que nao pode ser construido RECUSA com codigo 2 e diz o que
+#      fazer, em vez de medir com um instrumento que nao existe.
+# ==========================================================================
+
+
+def _bancada_do_laco() -> Bancada:
+    """Duas quedas em miniatura, com o verde que cobre cada celula.
+
+    Nada e inventado do nada: os dois logs sao as fixtures reais do corpus, e
+    a 088 fica 120 minutos sem publicacao contra 60 da 127 - duas candidatas
+    no ranking, que e o que faz a promocao unica ser prova de alguma coisa.
+    """
+    return Bancada(
+        runs={("2026-08-18", "2026-08-21"): [
+            _run(1, sha="aaa", conclusao="failure",
+                 criado="2026-08-18T10:00:00Z"),
+            _run(2, sha="bbb", criado="2026-08-18T12:00:00Z"),
+            _run(3, sha="ccc", conclusao="failure",
+                 criado="2026-08-19T10:00:00Z"),
+            _run(4, sha="ddd", criado="2026-08-19T11:00:00Z"),
+        ]},
+        jobs={
+            1: [_job(11, "deploy (encomendas)", "failure")],
+            2: [_job(21, "deploy (encomendas)", "success")],
+            3: [_job(31, "deploy (admin)", "failure")],
+            4: [_job(41, "deploy (admin)", "success")],
+        },
+        logs={11: LOG_088_EXECUTADO, 31: LOG_127_SOLUCO_DE_REDE},
+        ancestrais=(("aaa", "bbb"), ("ccc", "ddd")),
+    )
+
+
+ARGV_DO_LACO = ["--desde=2026-08-18", "--ate=2026-08-21"]
+
+
+def _rodar_o_cli(monkeypatch, bancada, argv):
+    """`_medir_historico` de verdade, com as quatro costuras da bancada.
+
+    O catalogo NAO e falsificado: ele sai do frontmatter vivo de armadilhas/,
+    porque e a autoridade da 088 e da 127 declarada la que decide interceptada
+    e mitigada. So a rede sai de cena.
+    """
+    monkeypatch.chdir(RAIZ)
+    monkeypatch.setattr(termometro, "_costuras_reais", lambda raiz: dict(
+        api=bancada.api, baixar_log=bancada.baixar_log, git=bancada.git,
+        jobs_em_lote=bancada.jobs_em_lote,
+    ))
+    return termometro._medir_historico(list(argv))
+
+
+def test_a_coleta_entrega_o_TEXTO_do_log_a_quem_classifica():
+    """Sem o texto, o detector da Fase 1 nao tem o que ler.
+
+    E o texto fica FORA da medida: ela viaja dentro do quadro ate o `--json`,
+    e log e evidencia de megabytes, nao medicao. Quem quiser a linha literal
+    abre o job.
+    """
+    bancada = Bancada(
+        runs={("2026-08-18", "2026-08-21"): [
+            _run(1, sha="aaa", conclusao="failure",
+                 criado="2026-08-18T10:00:00Z"),
+        ]},
+        jobs={1: [_job(11, "deploy (encomendas)", "failure")]},
+        logs={11: LOG_088_EXECUTADO},
+    )
+    guardados: dict = {}
+    medida = _coletar(bancada, cache_de_log=guardados)
+
+    assert guardados == {11: LOG_088_EXECUTADO}
+    assert medida["logs_lidos"] == 1
+    assert set(medida) == {
+        "desde", "ate", "workflow", "runs_unicos", "logs_lidos",
+        "logs_indisponiveis", "celulas_cobertas", "janelas", "chamadas",
+    }, (
+        "a medida nao ganha campo nenhum: ela vai inteira para o `--json` "
+        "dentro do quadro, e megabytes de log ali afogam a medicao"
+    )
+
+    detector = termometro.detector_dos_logs(guardados, catalogo=catalogo_vivo())
+    assert detector(11) == ("088",)
+    assert detector(99) is None, (
+        "job sem log lido devolve None, nunca tupla vazia: 'nao olhei' e "
+        "'olhei e nao achei' sao respostas diferentes (INV-R08)"
+    )
+
+
+def test_o_detector_sem_instrumento_RECUSA_em_vez_de_devolver_tupla_vazia():
+    """Tres buracos de instrumento, e nenhum deles sai como "nenhum sinal".
+
+    Catalogo vazio, licao com frontmatter ilegivel e sinal que nao compila sao
+    a MESMA falta: nao ha detector para aquela licao. Devolver () seria dizer
+    que se olhou, e ninguem olhou (INV-R08).
+    """
+    with pytest.raises(termometro.ErroDeClassificacao) as vazio:
+        termometro.sinais_do_log(LOG_088_EXECUTADO, catalogo={})
+    assert "O QUE FAZER" in str(vazio.value)
+
+    ilegivel = dict(catalogo_vivo())
+    ilegivel["088"] = dict(ilegivel["088"], erro="frontmatter ilegivel: x")
+    with pytest.raises(termometro.ErroDeClassificacao) as torto:
+        termometro.sinais_do_log(LOG_088_EXECUTADO, catalogo=ilegivel)
+    assert "armadilhas/088" in str(torto.value)
+
+    quebrado = dict(catalogo_vivo())
+    quebrado["088"] = dict(quebrado["088"], sinal=("(sem fechar",))
+    with pytest.raises(termometro.ErroDeClassificacao) as regex:
+        termometro.sinais_do_log(LOG_088_EXECUTADO, catalogo=quebrado)
+    assert "compila" in str(regex.value)
+    assert catalogo_vivo()["088"].get("erro") is None, (
+        "o teste nao pode sujar o catalogo vivo que os outros usam"
+    )
+
+
+def test_o_log_da_088_casa_UM_sinal_e_o_ECO_do_script_nao_casa_nenhum():
+    """O sinal vivo da 088 separa a recusa EXECUTADA do eco que so a imprime.
+
+    A terceira assercao e a mentira da chave do gateway: a recusa da 088
+    aparece no log, mas o compose reclamou variavel obrigatoria antes dela, e
+    essas duas janelas nunca foram da 088.
+    """
+    catalogo = catalogo_vivo()
+    assert termometro.sinais_do_log(LOG_088_EXECUTADO, catalogo=catalogo) == (
+        "088",
+    )
+    assert termometro.sinais_do_log(LOG_088_SO_ECO, catalogo=catalogo) == ()
+    assert termometro.sinais_do_log(
+        LOG_088_MENTIRA_DA_CHAVE_DO_GATEWAY, catalogo=catalogo
+    ) == ()
+
+
+def test_sinal_que_casa_deploy_VERDE_nao_vota_no_detector():
+    """INV-R04: `already exists` e `django-ninja` saem em todo deploy que da
+    certo, entao nao podem acusar reincidencia em cima de sucesso.
+
+    A regua e a mesma do compilador do catalogo (`CORPUS_FELIZ_DO_ACTIONS`),
+    e nao uma segunda lista de perdoados que alguem esqueceria de atualizar.
+    """
+    catalogo = catalogo_vivo()
+    assert termometro.sinais_do_log(LOG_SAUDAVEL, catalogo=catalogo) == ()
+    ainda_casam = [
+        numero for numero, regexes in SINAIS_GENERICOS_MEDIDOS.items()
+        if any(
+            re.search(regex, LOG_SAUDAVEL)
+            for regex in regexes if regex in sinais_declarados(numero)
+        )
+    ]
+    assert ainda_casam, (
+        "nenhum sinal do catalogo casa mais o log saudavel: sem isso o teste "
+        "acima passa por falta de adversario, nao por acerto do detector"
+    )
+
+
+def test_dois_sinais_no_mesmo_log_chegam_como_DOIS_e_viram_ambiguidade():
+    """INV-R03: a sonda da 209 cita o soluco da 127 ao negar que seja ele.
+
+    O detector devolve a tupla INTEIRA. Escolher o primeiro aqui esconderia a
+    ambiguidade justamente de `natureza_do_fato`, que e quem tem de recusa-la.
+    """
+    catalogo = catalogo_vivo()
+    sinais = termometro.sinais_do_log(LOG_209_SONDA_MAIS_127, catalogo=catalogo)
+    assert sinais == ("127", "209")
+
+    real = janelas_esperadas_de("127")[0]
+    quadro = um_quadro([fato_da_janela(real, sinais=sinais)])
+    assert quadro["ocorrencias"] == 0
+    assert quadro["ranking"] == []
+    assert "INV-R03" in quadro["nao_classificadas"][0]["motivo"]
+
+
+def test_o_CLI_imprime_o_QUADRO_e_o_json_e_a_tabela_saem_do_MESMO_objeto(
+    monkeypatch, capsys
+):
+    """O laco fechado: coleta, detector, classificacao e ranking numa execucao.
+
+    E a prova do objeto unico feita onde ela importa, no CLI: o texto impresso
+    e, letra por letra, `linhas_do_quadro` do JSON impresso. Mexer num campo do
+    JSON move a tabela junto - se houvesse um segundo caminho de calculo, a
+    tabela continuaria contando a historia antiga.
+    """
+    assert _rodar_o_cli(monkeypatch, _bancada_do_laco(), ARGV_DO_LACO) == 0
+    texto = capsys.readouterr().out
+    assert _rodar_o_cli(
+        monkeypatch, _bancada_do_laco(), ARGV_DO_LACO + ["--json"]
+    ) == 0
+    quadro = json.loads(capsys.readouterr().out)
+
+    assert quadro["ranking"][0]["chave"] == "armadilhas/088"
+    assert quadro["ranking"][0]["minutos_ate_cobertura"] == 120
+    assert quadro["ranking"][0]["atuacao"] == "interceptada"
+    assert quadro["ranking"][1]["chave"] == "armadilhas/127"
+    assert quadro["ranking"][1]["atuacao"] == "mitigada"
+    assert texto.strip() == "\n".join(
+        termometro.linhas_do_quadro(quadro)
+    ).strip(), "a tabela impressa tem de ser leitura do JSON impresso"
+    assert "COLETA DO DEPLOY-CELULA" in texto, (
+        "o relatorio da coleta continua no rodape: o quadro acrescenta, nao "
+        "substitui o que a Fase 2 media"
+    )
+
+    quadro["ranking"][0]["minutos_ate_cobertura"] = 7
+    depois = termometro.linhas_do_quadro(quadro)
+    assert any("7 célula-minutos" in linha for linha in depois)
+    assert not any("120 célula-minutos" in linha for linha in depois)
+
+
+def test_uma_execucao_do_CLI_promove_no_maximo_UMA_campea(monkeypatch, capsys):
+    """Duas candidatas no ranking, uma promocao - e ela e a primeira."""
+    assert _rodar_o_cli(
+        monkeypatch, _bancada_do_laco(), ARGV_DO_LACO + ["--json"]
+    ) == 0
+    quadro = json.loads(capsys.readouterr().out)
+
+    assert len(quadro["ranking"]) == 2
+    assert isinstance(quadro["promocao"], dict), (
+        "promocao e uma, nao uma lista: a fila da Fase 5 nao pode receber duas "
+        "campeas da mesma execucao"
+    )
+    assert quadro["promocao"]["chave"] == quadro["campea"] == "armadilhas/088"
+    assert quadro["promocao"]["origem"] == "ci/termometro.py:armadilhas/088"
+    anunciadas = [
+        linha for linha in termometro.linhas_do_quadro(quadro)
+        if linha.startswith("PROMOÇÃO")
+    ]
+    assert len(anunciadas) == 1
+
+
+def test_o_CLI_RECUSA_com_codigo_2_quando_o_detector_nao_pode_ser_construido(
+    monkeypatch, capsys
+):
+    """Sem detector nao ha medicao: tupla vazia seria dizer 'nenhum sinal' sem
+    ter olhado, e e assim que buraco de instrumento vira saude (INV-R08).
+
+    A janela deste teste NAO tem queda nenhuma, e e de proposito: a recusa tem
+    de acontecer na CONSTRUCAO do detector. Um detector que so falhasse ao ler
+    o primeiro log deixaria uma janela limpa sair 0, com relatorio bonito
+    saido de um instrumento que nao existe.
+    """
+    monkeypatch.setattr(
+        termometro, "catalogo_das_armadilhas", lambda raiz, git=None: {}
+    )
+    so_verde = Bancada(
+        runs={("2026-08-18", "2026-08-21"): [
+            _run(1, sha="aaa", criado="2026-08-18T10:00:00Z"),
+        ]},
+        jobs={1: [_job(11, "deploy (encomendas)", "success")]},
+    )
+    codigo = _rodar_o_cli(monkeypatch, so_verde, ARGV_DO_LACO)
+
+    assert codigo == 2, (
+        "janela sem queda nenhuma nao pode sair 0 com detector inexistente"
+    )
+    assert so_verde.caminhos == [], (
+        "a recusa acontece ANTES da rede: gastar a janela inteira em chamadas "
+        "para so entao descobrir que nao ha com que classificar e desperdicio"
+    )
+    fim = capsys.readouterr()
+    assert fim.out.strip() == "", (
+        "recusa nao imprime relatorio: quadro pela metade e falso verde"
+    )
+    assert "detector" in fim.err
+    assert "O QUE FAZER" in fim.err, "toda recusa desta casa diz o que fazer"
