@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260918-224037-TAR-470-concluida",
+  "tarefa": "TAR-470",
+  "evento": "concluida",
+  "quando": "2026-09-18T22:40:37+00:00",
+  "quem": "agent/ci/dono-do-pacote-compartilhado",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1728",
+  "verificado_em": "2026-09-18"
+}
