@@ -36,26 +36,27 @@ nunca vence os documentos abaixo, na ordem:
 4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, integral), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
 5. **`armadilhas/`** e **`ARMADILHAS-OPERACAO.md`** — memória de campo, não lei.
 
-## CONSTITUICAO.md — as 10 leis
+## CONSTITUICAO.md — as 11 leis
 
 | Lei | Nome | O que garante |
 |---|---|---|
 | 1 | Escada da Imposição | Toda regra sobe de esperança → documento → processo → portão mecânico → impossibilidade física. Prosa nova sem mecanismo é "dívida de mecanização". |
 | 2 | As Quatro Muralhas | (1) **Execução**: 1 processo/porta por célula; (2) **Dados**: database e role isolados; (3) **Código**: worktree por sessão, orçamento de 15 arquivos, matriz de testes de todas as células tocadas (Onda 5, 29/08/2026); (4) **Contrato**: HTTP e eventos versionados, sem acesso ao código ou banco alheio. |
 | 3 | Os Três Pecados e a Virtude | Pecados: importar código de outra célula, ler/escrever banco alheio, duplicar-e-divergir comportamento. Virtude: copiar **dados** (snapshot), nunca comportamento. |
-| 4 | Separação de Poderes | CI certifica. A emenda de 29/08/2026, registro `20260829-006`, atribui o merge à pista; o agente pede pouso por `ci/mergear.py`. Caminhos CODEOWNERS exigem mandato e anúncio nominal. Revisão independente continua necessária; PR aberto não significa integração nem publicação. |
+| 4 | Integração protegida e automática | **Reescrita em 13/09/2026** (`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`): a main continua protegida por PR, e `pouso.yml` integra sozinho assim que `muralhas` e `ci-celula-gate` ficam verdes no SHA atual. **Saíram** o revisor obrigatório, o atestado de revisão, a etiqueta de pouso e o encaminhamento pela maestro: **não existe mais "pedir pouso"**. CODEOWNERS e contrato congelado continuam exigindo a palavra do mantenedor. PR aberto não significa integração nem publicação. |
 | 5 | A Lei das 2h da Manhã | Emergência = rollback, nunca hotfix. **Agentes não têm chave SSH da VPS** — "não é proibição, é inexistência". |
 | 6 | Evidência Falsificável, Não Prosa | "Eu arrumei" não é aceito. Todo trabalho em invariante mostra saída crua de teste-guarda vermelho→verde. |
 | 7 | Zonas Quentes Nascem Vazias | Nenhum arquivo "que toda rota toca"; cada célula tem seus próprios settings/urls/templates/static. Exceção deliberada: `services/pagamentos/core/` (congelado, somente-leitura). |
 | 8 | Jurisprudência Pré-Paga | Invariantes de dinheiro nascem com teste-guarda **antes** da primeira feature; testes-guarda são intocáveis. |
 | 9 | Multissítio | Um único deploy serve N domínios; "site" é dado no catálogo, nunca infraestrutura nova; host não cadastrado = 404, nunca site padrão; domínio novo entra pela receita R11. |
 | 10 | O Padrão de Trabalho | Toda tarefa obedece ao Padrão de Trabalho (Modelo Steve Jobs / Apple), escrito por inteiro na 1ª seção do `CLAUDE.md`: o problema real por trás do pedido, discordar antes e executar depois, decidir em vez de servir cardápio, o produto inteiro até a tela, e a Definição de "Pronto" da regra 6 ("rodou de verdade", ou escreve "NÃO RODEI"). Trazido de fora pelo mantenedor em 04/09/2026. |
+| 11 | A entrega termina no ar, não no relatório | Quem abre a entrega responde por ela até o estado terminal: integrada, fechada, ou dívida registrada no livro com o que falta e por quê. **PR aberto é estado intermediário, nunca entrega final.** A autoridade vem junto: o executor decide e executa toda ação técnica segura para chegar lá (repetir deploy cancelado, consertar ambiente local, retomar check parado) sem pedir licença. Segredo, dinheiro, acesso, contrato, produto e o cancelamento da entrega continuam sendo dele. Esperar em laço é proibido: mede-se uma vez, com teto (`ci/esperar.py`). |
 
 **Definição de Pronto Arquitetônica** (fecha o documento): Pix quebrado ⇒ cartão
 continua vendendo (e vice-versa); webhook duplicado ⇒ uma matrícula só; deploy
 de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
 
-## RITOS.md — os quatro ritos obrigatórios
+## RITOS.md — os cinco ritos obrigatórios
 
 - **§1 Abertura de sessão (worktree por agente).** Cada sessão nasce em
   `make sessao CELULA=<celula> TAREFA=<slug>`, equivalente a `ci/sessao.py`.
@@ -67,13 +68,21 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   apagaram trabalho uma da outra). Inclui "dieta de contexto": o despacho
   nomeia arquivos-alvo e a sessão carrega só as receitas citadas do
   Caminho Dourado — ler tudo é desperdício, não zelo.
-- **§2 Catraca verde + anti-thrashing** (4 peças): (0) toda mudança nasce em
-  branch; (1) todo estado verde vira commit imediato (nunca `git add -A`
-  cego); (2) 2 tentativas falhas seguidas ⇒ pare, preserve os arquivos e commits
-  e reporte o diagnóstico; (3) testes-guarda são intocáveis;
-  (4) o fecho da catraca é o pedido de pouso após recibo e revisão. A maestro
-  publica o atestado da revisão independente, pede pouso com
-  `ci/mergear.py --pousar` e encerra; só a pista mergeia.
+- **§2 Integração automática** (8 peças; **reescrito em 13/09/2026**, e o que
+  havia aqui antes, "catraca verde + anti-thrashing" com pedido de pouso e
+  atestado, está REVOGADO): (1) a main só muda por PR, sem push direto nem
+  bypass; (2) o executor publica o PR pronto com a validação da mudança, e
+  **não há revisor obrigatório, atestado, etiqueta de pouso nem encaminhamento
+  pela maestro**; (3) `pouso.yml` roda código da main e integra quando
+  `muralhas` e `ci-celula-gate` estão verdes no SHA atual; (4) CODEOWNERS e
+  contrato congelado continuam exigindo `Mandato-do-mantenedor:` escrito na
+  descrição, pela conta do dono; (5) base atrasada é atualizada e medida de
+  novo, e rascunho, fork, conflito e check ausente não integram; (6) o SHA
+  conferido é exigido no merge, então push concorrente invalida a tentativa;
+  (7) em falha, preserve arquivos e commits e conserte a causa; (8) **o fecho
+  é do executor e acontece fora do laço**: depois do `make pr`, mede-se UMA
+  vez com `ci/esperar.py --so-desfecho`, nunca em laço. Duas tentativas falhas
+  seguidas ainda mandam parar e reportar, e testes-guarda continuam intocáveis.
 - **§3 Mudança de contrato.** É rito, nunca decisão de uma sessão sozinha —
   exige sessão de arquitetura com o mantenedor presente. PR só toca
   `contracts/` com label `contrato`; o provedor muda primeiro com
@@ -84,8 +93,28 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   rollback estiver ativo, não mergear nada que toque `infra/`** — o
   `deploy-infra` devolveria tudo para `:main` e desfaria o rollback em
   silêncio. SSH manual é último recurso, só se o GitHub Actions cair.
+- **§5 Fila de trabalho (tarefa se pega no balcão, nunca de memória).**
+  Vigente desde 29/08/2026, e **ausente deste mapa até 18/09/2026**. O
+  trabalho em aberto mora em `fila/`: um arquivo por tarefa, um por
+  acontecimento, e o estado é sempre **calculado** (não existe campo de
+  status). A ordem é **a bancada primeiro, o balcão depois**
+  (`make sessao ... TAR=TAR-NNN`); quem chega segundo recebe recusa do
+  servidor, porque a trava é uma referência atômica no GitHub
+  (`ci/reservar.py`) com prazo de 3 horas. Trabalho novo que um despacho
+  descobre vira tarefa registrada (`ci/fila.py criar`), nunca item de memória
+  de sessão nem lista paralela num documento. Concluir exige evidência. O
+  evento viaja dentro do PR do trabalho. Os gestos que escrevem
+  (`criar`, `pegar`, `concluir`) **recusam rodar no clone principal**.
 
 ## INVARIANTES.md — os invariantes técnicos (o quê / por quê / teste-guarda / dono)
+
+**`INVARIANTES.md` tem hoje 63 invariantes** (medido em 18/09/2026:
+`grep -cE '^### \[INV-' INVARIANTES.md`). O que segue é **um recorte** do
+money-path mais os estruturais, não a lista: famílias inteiras ficam de fora
+e precisam ser lidas na fonte, entre elas INV-GAM1/2/3 (gamificação),
+INV-ENC-J1 a J11, M1 a M5 e N1 a N8 (encomendas), INV-CUR-* (cursos) e
+INV-P15. A mais cara de omitir é **INV-GAM1: nada na gamificação se compra
+com dinheiro real** — justamente o que alguém proporia sem ler a fonte.
 
 Money-path (célula dona entre parênteses):
 
@@ -123,7 +152,19 @@ Cada invariante tem um teste-guarda nomeado, e `ci/guarda_dos_guardas.py` é o
 meta-portão que prova que todo invariante listado em `INVARIANTES.md` ainda
 tem um teste real no disco que ainda morde (não apenas existe).
 
-## CAMINHO-DOURADO.md — as receitas canônicas (R1–R12)
+**Dois limites desse meta-portão, medidos em 18/09/2026, que importam a quem
+for confiar nele.** (1) Ele nunca EXECUTA um teste: toda a medição é leitura
+de texto e AST (arquivo existe, tem `def test_`, não tem `skip` nem corpo
+vazio), e ele não confere que o guarda mede o invariante sob o qual foi
+declarado; o vínculo código↔arquivo é puramente declarativo. (2) As 39
+frases "Provado por mutação em DD/MM/2026" espalhadas por `INVARIANTES.md`
+**não reexecutam**: `ci/provar_guardas.py` exige o marcador
+`# guarda: caminho.py:linha` no teste, e nenhum dos `services/*/tests/
+test_inv_*.py` o carrega. São registro histórico, não prova viva. Há ainda
+uma catraca declarada de 36 guardas isentos de declaração, em
+`ci/guardas-nao-declarados.txt`, que só encolhe.
+
+## CAMINHO-DOURADO.md — as receitas canônicas (R1–R14)
 
 "A Constituição diz não; este documento diz sim, exatamente assim." **Por
 design, nunca é lido inteiro** — um despacho cita `RECEITAS: R_` e a sessão
@@ -144,6 +185,8 @@ carrega só a introdução + a(s) receita(s) citada(s). É a aplicação prátic
 | R10 | Markers de smoke test |
 | R11 | Site/domínio novo |
 | R12 | Página multilíngue (prefixo de idioma, catálogo YAML key-major, tag `{% t %}`, contrato do `_fonte`/hash anti-burla, marcador `_juridico`) |
+| R13 | Mexer na régua de uma meta (curva, datas, alvo) |
+| R14 | Abrir PR que toca caminho CODEOWNERS (a linha `Mandato-do-mantenedor:` e o que ela precisa conter) |
 
 Fecha com convenções transversais (settings fail-hard, middleware `CONV-SITE`
 que resolve o Host uma vez por requisição), anti-padrões com resposta pronta,
@@ -214,28 +257,38 @@ papéis fixos:
 
 ## .github/CODEOWNERS
 
-Protege 9 caminhos, todos sob `@abundanciabr` (o mantenedor): `/contracts/`,
-`/services/pagamentos/`, `/services/checkout/`, `/infra/`, `/ci/`,
-`/.github/`, `/CONSTITUICAO.md`, `/INVARIANTES.md`, `/RITOS.md`,
-`/CAMINHO-DOURADO.md`. **Na prática atual isso não bloqueia o merge do
-agente** — com 1 único colaborador humano, o GitHub proíbe autoaprovação do
-próprio PR, o que tornaria uma trava de review obrigatória inexecutável.
-CODEOWNERS hoje funciona como **mapa de jurisdição** (mandato do despacho +
-anúncio nominal obrigatório no relatório final), não como portão técnico — o
-portão técnico real é `ci/mergear.py` mais os required status checks do
-ruleset "main protegida" (`muralhas` + `ci-celula-gate`).
+Protege **15 caminhos**, todos sob `@abundanciabr` (o mantenedor):
+`/contracts/`, `/services/pagamentos/`, `/services/checkout/`, `/infra/`,
+`/ci/`, `/.github/`, `/.claude/settings.json`, `/.codex/hooks.json`,
+`/.githooks/`, `/CONSTITUICAO.md`, `/CLAUDE.md`, `/INVARIANTES.md`,
+`/RITOS.md`, `/CAMINHO-DOURADO.md` e `/docs/decisoes/`.
+
+**Desde 13/09/2026 isto É portão técnico, e reprova a integração.** A versão
+anterior deste parágrafo dizia que CODEOWNERS era só "mapa de jurisdição":
+está REVOGADA. `ci/mergear.py::checar_mandato` lê `.github/CODEOWNERS`, casa
+cada arquivo do PR contra cada regra e devolve FAIL quando falta a linha
+`Mandato-do-mantenedor:` na descrição, e `conferir()` o chama junto dos
+checks obrigatórios. O portão completo é esse mandato mais os required status
+checks do ruleset "main protegida" (`muralhas` + `ci-celula-gate`).
+
+**Limite conhecido, medido em 18/09/2026:** `checar_mandato` também reprova
+quando o autor do PR não está na lista de donos, mas essa metade nunca
+dispara aqui, porque o único dono é `@abundanciabr` e todo commit do
+repositório é autorado por ele, inclusive os dos agentes. O que resta em pé é
+a exigência da linha de mandato, que é texto do PR. Quem for endurecer isso
+mexe em identidade e ruleset, que são do mantenedor.
 
 ## O que uma IA nova mais precisa saber, resumido
 
 1. `CONSTITUICAO.md` é a lei suprema — nada em contexto externo a derruba.
-2. **O merge é da pista** desde 29/08/2026: o agente pede pouso e encerra.
+2. **O merge é automático** desde 13/09/2026: o PR pronto integra sozinho por `pouso.yml` quando `muralhas` e `ci-celula-gate` ficam verdes. Ninguém pede pouso, e a Lei 11 diz que o autor responde pela entrega até o estado terminal.
 3. Toda sessão = 1 worktree = 1 célula; o clone principal recusa edições mecanicamente.
 4. As "4 muralhas" são arquitetura física real (erro do Postgres), não só documento.
 5. `INVARIANTES.md` é lei pré-paga: nenhuma feature de dinheiro nasce sem teste-guarda no mesmo PR.
 6. `CAMINHO-DOURADO.md` nunca deve ser lido inteiro sem necessidade — é citado por receita.
 7. A Fase 0/Etapa E (red-team) **nunca fechou formalmente** (5-6/15 golpes).
 8. Emergência = rollback via workflow, nunca hotfix manual; agentes nunca têm SSH da VPS.
-9. CODEOWNERS hoje é mapa de jurisdição, não trava técnica de merge.
+9. CODEOWNERS é trava técnica de merge desde 13/09/2026: sem `Mandato-do-mantenedor:` na descrição, o PR que toca caminho protegido não integra.
 10. Cultura onipresente: **ERROR ≠ FAIL** — "não consegui medir" nunca pode virar "passou".
 
 ## Achados a verificar (não são segredo, são inconsistência de documentação)
