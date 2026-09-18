@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-221704-TAR-465-explicada",
+  "tarefa": "TAR-465",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:17:04+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "O pedaco de programa que leva o aviso de matricula e de cadastro de um lado do site para o outro e escrito uma vez so e copiado para dois lugares. Esse pedaco nao esta na lista de quem cuida do que, entao quando alguem o corrige, nenhum teste roda e nada e publicado.",
+  "o_que_muda": "Hoje uma correcao nesse pedaco entra no site pela porta da frente sem ser testada e sem chegar ao ar: ela fica parada e ninguem avisa. Depois desta tarefa, esquecer de atualizar as duas copias fica vermelho na hora, para quem esqueceu.",
+  "exemplo": "Alguem conserta um erro que fazia a matricula do aluno nao aparecer depois do pagamento. O conserto e aprovado e guardado. Duas semanas depois o problema continua acontecendo, porque o site ainda esta usando a copia velha, e nenhuma tela disse isso.",
+  "importancia": 72
+}
