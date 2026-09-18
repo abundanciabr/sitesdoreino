@@ -1,0 +1,19 @@
+{
+  "arquivo": "451-documentos-novos-ficam-privados-ate-publicacao-explicita",
+  "id": "TAR-451",
+  "titulo": "Documentos novos ficam privados até publicação explícita",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com testes do admin provando que criação e salvamento não publicam, além de publicação e despublicação explícitas.",
+  "despacho": "Na célula admin, separe escrita de publicação: criação e salvamento jamais alteram a visibilidade; inclua ações explícitas para publicar e despublicar na página administrativa do documento; cubra rotas, auditoria, histórico, estado arquivado e tentativa de POST forjado; valide a suíte completa, formatação, migrations e contrato congelado.",
+  "origem": "Pedido direto do mantenedor em 2026-09-18",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
