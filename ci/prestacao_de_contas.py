@@ -516,7 +516,7 @@ def _sem_acentos(texto: str) -> str:
 
 
 PAUSA_HUMANA = re.compile(
-    r"(?:^|[.!?]\s*)(?:por favor,?\s*)?(?:pause|pare|interrompa|cancele)\b"
+    r"(?:^|[.!?]\s*)(?:por favor,?\s*)?(?:pause|pare|interrompa|cancele)\s+(?:a\s+)?(?:tarefa|execucao)\b"
 )
 PROMESSA_TECNICA = re.compile(
     r"\b(?:vou\s+(?:(?:agora|depois|ainda)\s+)?"
@@ -533,18 +533,25 @@ def promete_acao_tecnica(texto: str) -> bool:
     """Reconhece promessa atual, sem transformar citação histórica em intenção."""
     texto = re.sub(r"```.*?```|\"[^\"]*\"|“[^”]*”", "", texto, flags=re.S)
     texto = re.sub(r"(?m)^\s*>.*$", "", texto)
-    for frase in re.split(r"[.!?]\s*|\n\s*\n", _sem_acentos(texto)):
+    texto = _sem_acentos(texto)
+    texto = re.sub(r"\brelatorio anterior dizia que\b[^;\n]*;\s*agora\s+(?:ja\s+)?corrigi\b", "", texto)
+    frase_anterior = ""
+    for frase in re.split(r"[.!?]\s*|\n\s*\n", texto):
         for promessa in PROMESSA_TECNICA.finditer(frase):
             antes = frase[:promessa.start()]
             if re.search(r"\b(?:nao|nunca)\s+$", antes):
                 continue
             # Uma condição externa nomeada não promete execução antes do acesso.
-            if (re.search(r"\b(?:apos|quando|se)\b.*\bmantenedor\b.*"
-                          r"\b(?:liberar|fornecer|autorizar)\b", antes)
-                    and re.search(r"\b(?:403|401|acesso negado|credencial ausente)\b", antes)):
+            condicao_externa = re.search(
+                r"\b(?:apos|quando|se)\b.*\bmantenedor\b.*\b(?:liberar|fornecer|autorizar)\b", antes
+            ) or (re.search(r"\bquando\s+(?:(?:a\s+)?credencial\s+)?chegar\b", antes)
+                  and re.search(r"\bmantenedor\b.*\b(?:liberar|fornecer|enviar)\b", texto, re.S))
+            if (condicao_externa
+                    and re.search(r"\b(?:403|401|acesso negado|credencial ausente)\b", texto)):
                 continue
-            if OBJETO_TECNICO.search(frase):
+            if OBJETO_TECNICO.search(frase) or OBJETO_TECNICO.search(frase_anterior):
                 return True
+        frase_anterior = frase
     return False
 
 
