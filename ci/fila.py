@@ -1857,11 +1857,18 @@ def origem_ja_na_fila(tarefas: dict[str, dict], origem: str) -> str | None:
 
 
 def guarda_declarada(raiz: Path, origem: str) -> tuple[list[str], str]:
-    """O arquivo que a armadilha aponta como sua guarda mecânica.
+    """O node ID que a armadilha aponta como sua guarda mecânica.
 
-    Devolve (problemas, dono). Uma leitura só do frontmatter nesta casa: o
-    parser é o de `ci/indice_de_armadilhas.py`, porque dois dialetos para o
-    mesmo bloco `---` divergiriam no primeiro dia em que alguém mexesse num só.
+    Devolve (problemas, node), no formato `caminho/do/teste.py::detector`. Uma
+    leitura só do frontmatter nesta casa: o parser é o de
+    `ci/indice_de_armadilhas.py`, porque dois dialetos para o mesmo bloco `---`
+    divergiriam no primeiro dia em que alguém mexesse num só.
+
+    `dono` é o TESTE e `detector` é o nome dele lá dentro, que é a convenção do
+    catálogo. Quem reprova sabotada é pytest, e o arquivo protegido já se
+    declara no marcador `# guarda:` de dentro do teste: apontar o protegido em
+    `dono` deixava a prova impossível de rodar, defeito medido na 088 em
+    18/09/2026.
     """
     numero = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())[1]
     caminho = armadilha_da_origem(raiz, origem)
@@ -1894,33 +1901,102 @@ def guarda_declarada(raiz: Path, origem: str) -> tuple[list[str], str]:
             f"sabe qual arquivo provar. Acrescente 'dono: <caminho do teste>' ao "
             f"frontmatter da armadilha"
         ], "")
+    if not (dono.endswith(".py") and Path(dono).name.startswith("test_")):
+        return ([
+            f"{caminho.name} declara 'dono: {dono}', que não é um teste Python: a "
+            f"prova de mutação roda pytest, e o arquivo protegido já se declara no "
+            f"marcador '# guarda: {dono}:<linha>' de dentro do teste. Esta tarefa "
+            f"só fecha com 'dono' apontando o teste (caminho de um test_*.py) e "
+            f"'detector' nomeando o teste que reprova sabotado"
+        ], "")
+    detector = str(guarda.get("detector") or "").strip()
+    if not detector:
+        return ([
+            f"{caminho.name} declara guarda em '{dono}' sem 'detector', e provar o "
+            f"arquivo inteiro provaria qualquer teste dele. Acrescente "
+            f"'detector: test_<nome do teste que reprova>' ao frontmatter da "
+            f"armadilha"
+        ], "")
     if not (raiz / dono).is_file():
         return ([
             f"{caminho.name} aponta a guarda '{dono}', que não existe nesta "
             f"árvore. Corrija o caminho no frontmatter da armadilha, ou traga o "
             f"arquivo para a bancada"
         ], "")
-    return ([], dono)
+    # Oito entradas vivas escrevem `detector: test_x: a explicação`, e colar o
+    # campo cru produziria um node ID com a prosa dentro. Quem sabe separar o
+    # nome do teste do resto é o índice, e ele é o único que sabe: duas leituras
+    # do mesmo campo divergiriam no primeiro dia em que alguém mexesse numa só.
+    arquivo, teste = indice_de_armadilhas.alvo_do_detector(detector, dono)
+    if not teste:
+        return ([
+            f"{caminho.name} declara 'detector: {detector}', que não nomeia um "
+            f"teste de dentro de '{dono}': provar o arquivo inteiro provaria "
+            f"qualquer teste dele. Escreva 'detector: test_<nome do teste que "
+            f"reprova sabotado>'; `grep -n 'def test_' {dono}` mostra quais existem"
+        ], "")
+    return ([], f"{arquivo or dono}::{teste}")
+
+
+def marcador_real_da_guarda(raiz: Path, node: str) -> dict:
+    """O marcador `# guarda:` que este teste declara HOJE, relido da árvore.
+
+    É daqui que sai a verdade contra a qual a cadeia gravada se confronta: o
+    arquivo protegido, a linha e o sha256 dele. Levanta `ProvaInvalida` quando
+    não dá para dizer qual é a guarda deste node, porque "não consegui medir"
+    nunca pode virar "não há problema".
+    """
+    dono = node.split("::")[0]
+    encontrados = provar_guardas.descobrir(raiz, [dono])
+    alheios = sorted({g["teste"] for g in encontrados if g["teste"] != node})
+    if alheios:
+        raise provar_guardas.ProvaInvalida(
+            f"{dono} declara marcador de {', '.join(alheios)}, e não de '{node}'. "
+            f"Acerte o 'detector' no frontmatter da armadilha, ou ponha o marcador "
+            f"'# guarda: caminho.py:linha' dentro do teste declarado"
+        )
+    meus = [g for g in encontrados if g["teste"] == node]
+    if len(meus) != 1:
+        raise provar_guardas.ProvaInvalida(
+            f"'{node}' declara {len(meus)} marcadores '# guarda: caminho.py:linha', "
+            f"e a conferência de identidade compara um. Deixe um marcador só dentro "
+            f"do teste"
+        )
+    return meus[0]
 
 
 def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict]:
     """Roda a guarda da armadilha desta origem e devolve (problemas, cadeia).
 
-    O que vai para dentro do evento é o RESUMO: node ID, linha sabotada e os
-    três estados. Os logs das três execuções ficam de fora de propósito — um
+    O que vai para dentro do evento é o RESUMO: node ID, arquivo e linha
+    sabotados, o sha256 do protegido no momento da prova, se a sabotagem mordeu
+    e os três estados. Os logs das três execuções ficam de fora de propósito: um
     evento da fila é um arquivo que alguém abre no navegador, e o JSON integral
     do pytest tem megabytes.
     """
-    problemas, dono = guarda_declarada(raiz, origem)
+    problemas, node = guarda_declarada(raiz, origem)
     if problemas:
         return (problemas, {})
+    dono = node.split("::")[0]
     evidencia: dict = {"guardas": []}
     try:
+        # O confronto vem ANTES das três execuções. `provar` recebe o ARQUIVO,
+        # porque é o arquivo que ele varre atrás do marcador, e um detector que
+        # aponta outro teste renderia uma prova verdinha de coisa nenhuma.
+        marcador_real_da_guarda(raiz, node)
         estado = provar_guardas.provar(raiz, [dono], evidencia)
-    except provar_guardas.ProvaInvalida as erro:
+    except Exception as erro:  # noqa: BLE001 - git, bash e pytest entram aqui
+        # `ProvaInvalida` é só uma das saídas: a bancada descartável é uma
+        # worktree do git e a sabotagem de `.sh` chama o bash sondado da casa,
+        # e nenhum dos dois levanta `ProvaInvalida`. Deixar a exceção subir
+        # trocava a recusa explicada por um traceback.
         return ([
-            f"a prova de '{dono}' não pôde ser feita: {erro}. Conserte o marcador "
-            f"'# guarda: caminho.py:linha' do teste e repita"
+            f"a prova de '{node}' não pôde ser feita: "
+            f"{type(erro).__name__}: {erro}. Rode "
+            f"`python ci/provar_guardas.py {node.split('::')[0]}` para ver a "
+            f"mesma falha com o log inteiro: se ela citar o marcador, conserte "
+            f"o '# guarda: caminho:linha' do teste; se citar git ou bash, é a "
+            f"bancada que precisa estar limpa e com o bash no PATH"
         ], {})
     cadeia = {
         "armadilha": RE_ORIGEM_AUTOMATICA.fullmatch(origem.strip())[1],
@@ -1930,6 +2006,8 @@ def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict
                 "teste": g["teste"],
                 "protege": g["protege"],
                 "linha": g["linha"],
+                "sha256": g.get("sha256", ""),
+                "reprovou": bool(g.get("reprovou")),
                 "baseline": g.get("baseline", ""),
                 "mutacao": g.get("mutacao", ""),
                 "restauracao": g.get("restauracao", ""),
@@ -1939,7 +2017,7 @@ def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict
     }
     if estado is not Estado.PASS:
         return ([
-            f"a guarda '{dono}' não fechou o ciclo PASS→FAIL→PASS (veredito "
+            f"a guarda '{node}' não fechou o ciclo PASS→FAIL→PASS (veredito "
             f"{estado.value}). Rode python ci/provar_guardas.py {dono} e leia o "
             f"log apontado antes de tentar concluir de novo"
         ], cadeia)
@@ -1949,8 +2027,10 @@ def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict
 def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]:
     """O que impede esta cadeia de provar a guarda da armadilha da origem.
 
-    Não roda teste nenhum: confere IDENTIDADE. É a mesma régua no balcão (logo
-    depois de produzir a prova) e na muralha (sobre a prova já gravada no
+    Não roda teste nenhum: reconstrói a VERDADE das fontes (o frontmatter da
+    armadilha, o marcador do teste e o arquivo protegido como ele está agora) e
+    confronta item a item com o que a bancada gravou. É a mesma régua no balcão
+    (logo depois de produzir a prova) e na muralha (sobre a prova já gravada no
     evento), porque duas réguas para o mesmo fato divergiriam no primeiro dia em
     que alguém mexesse numa só.
     """
@@ -1959,9 +2039,10 @@ def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]
     if not achado:
         return []
     numero = achado[1]
-    problemas, dono = guarda_declarada(raiz, origem)
+    problemas, node = guarda_declarada(raiz, origem)
     if problemas:
         return problemas
+    dono = node.split("::")[0]
     if not isinstance(prova, dict) or not prova.get("guardas"):
         return [
             f"a tarefa nasceu de armadilhas/{numero} e fecha sem a prova da guarda "
@@ -1972,18 +2053,55 @@ def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]
         return [
             f"a prova anexada é da armadilha {prova.get('armadilha')!r}, e esta "
             f"tarefa é de armadilhas/{numero}: a guarda que precisava reprovar "
-            f"sabotada é '{dono}'. Prove essa, e conclua de novo"
+            f"sabotada é '{node}'. Prove essa, e conclua de novo"
+        ]
+    try:
+        marcador = marcador_real_da_guarda(raiz, node)
+    except provar_guardas.ProvaInvalida as erro:
+        return [
+            f"a guarda de armadilhas/{numero} não pôde ser relida para conferir a "
+            f"prova, e prova que não se confere não vale: {erro}"
         ]
     achados: list[str] = []
+    revisao = str(prova.get("revisao") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", revisao):
+        achados.append(
+            f"a prova de armadilhas/{numero} diz revisão {revisao!r}, e sem o SHA "
+            f"de 40 dígitos da árvore que a produziu ninguém a refaz. Rode python "
+            f"ci/provar_guardas.py {dono} e conclua pelo balcão, que grava a "
+            f"revisão medida"
+        )
     for guarda in prova["guardas"]:
         teste = str(guarda.get("teste") or "")
-        arquivo = teste.split("::")[0]
-        if arquivo != dono:
+        if teste != node:
             achados.append(
-                f"a prova roda '{teste}', que não pertence a armadilhas/{numero}: "
-                f"a guarda dela é '{dono}'. Prove essa, e conclua de novo"
+                f"a prova roda '{teste}', que não é a guarda de armadilhas/{numero}: "
+                f"a dela é '{node}'. Prove essa, e conclua de novo"
             )
             continue
+        sabotado = (str(guarda.get("protege") or ""), guarda.get("linha"))
+        declarado = (marcador["protege"], marcador["linha"])
+        if sabotado != declarado:
+            achados.append(
+                f"a prova de armadilhas/{numero} diz ter sabotado "
+                f"{sabotado[0]}:{sabotado[1]}, e o marcador de '{node}' protege "
+                f"{declarado[0]}:{declarado[1]}. Rode python ci/provar_guardas.py "
+                f"{dono} e conclua de novo, com a linha que o teste declara hoje"
+            )
+        elif str(guarda.get("sha256") or "") != marcador["sha256"]:
+            achados.append(
+                f"a prova de armadilhas/{numero} sabotou {declarado[0]} no sha256 "
+                f"{str(guarda.get('sha256') or '')[:12]!r}, e o arquivo de hoje é "
+                f"{marcador['sha256'][:12]!r}: prova feita antes de o arquivo mudar "
+                f"não prova o arquivo de agora. Rode python ci/provar_guardas.py "
+                f"{dono} e conclua de novo"
+            )
+        if not guarda.get("reprovou"):
+            achados.append(
+                f"a prova de armadilhas/{numero} não registra '{node}' REPROVANDO "
+                f"sabotada, e guarda que não morde não prova nada. Rode python "
+                f"ci/provar_guardas.py {dono}, conserte o teste e conclua de novo"
+            )
         ciclo = (guarda.get("baseline"), guarda.get("mutacao"), guarda.get("restauracao"))
         if ciclo != (Estado.PASS.value, Estado.FAIL.value, Estado.PASS.value):
             achados.append(

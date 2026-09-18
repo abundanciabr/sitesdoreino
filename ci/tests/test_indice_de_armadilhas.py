@@ -604,6 +604,67 @@ def test_sinais_distintos_nao_colidem(
     assert indice.main([]) == 0
 
 
+def test_sinais_com_a_mesma_ancora_colidem_com_a_prova_em_maos(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Sonda contra sonda não enxerga este par, e é ele que morde na operação.
+
+    Os dois exigem `resource` e cada um acrescenta uma palavra própria, então
+    o maior literal de um nunca casa o regex do outro. Só que um log com as
+    duas palavras acende os dois sinos de uma vez, que é a ambiguidade que a
+    classificação trata como ERROR. Acusar exige a prova em mãos: o texto
+    concreto que casa os dois, guardado para a mensagem poder mostrá-lo.
+    """
+    pasta = repo_falso / indice.PASTA
+    alfa = r"resource.{0,100}missing alpha"
+    beta = r"resource.{0,100}missing beta"
+    caminhos = [
+        _com_frontmatter(pasta, "003-alfa.md", "003", alfa),
+        _com_frontmatter(pasta, "004-beta.md", "004", beta),
+    ]
+
+    colisoes = indice.colisoes_de_sinais([indice.Entrada(c) for c in caminhos])
+    assert [c.par for c in colisoes] == [("003", "004")]
+    testemunha = colisoes[0].testemunha
+    assert re.search(alfa, testemunha) and re.search(beta, testemunha), (
+        f"a testemunha {testemunha!r} precisa casar os DOIS regexes; sem isso "
+        "a acusação é palpite"
+    )
+
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 2
+    erro = capsys.readouterr().err
+    assert testemunha in erro, (
+        "a mensagem precisa MOSTRAR o texto que casou os dois: sem ele, quem "
+        "lê não tem como conferir a acusação"
+    )
+
+
+def test_literal_curto_em_comum_nao_faz_de_dois_sinais_concorrentes(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`exit 1` cabe em qualquer falha: dividi-lo não é disputar o mesmo erro.
+
+    Existe texto que casa os dois (a linha `ambos` abaixo), e mesmo assim o
+    par não é acusado: o pedaço em comum tem menos que `SINAL_MINIMO` letras,
+    e abaixo disso um literal não identifica erro nenhum sozinho. Sem este
+    corte o detector acusaria meio catálogo, e acusação demais não é lida.
+    """
+    build = r"exit 1.{0,80}ao montar a imagem"
+    registry = r"exit 1.{0,80}ao empurrar para o registry"
+    ambos = "exit 1 ao montar a imagem, exit 1 ao empurrar para o registry"
+    assert re.search(build, ambos) and re.search(registry, ambos)
+    assert len("exit 1") < indice.SINAL_MINIMO
+
+    pasta = repo_falso / indice.PASTA
+    _com_frontmatter(pasta, "003-build.md", "003", build)
+    _com_frontmatter(pasta, "004-registry.md", "004", registry)
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+
+
 def test_sinal_acentuado_do_log_do_actions_e_recusado(
     repo_falso: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -728,7 +789,7 @@ def test_nenhuma_divida_congelada_e_fantasma() -> None:
         "DIVIDA_DO_CORPUS_DO_ACTIONS e baixe o teto"
     )
 
-    colidindo = {par for par, _, _ in indice.colisoes_de_sinais(entradas)}
+    colidindo = {c.par for c in indice.colisoes_de_sinais(entradas)}
     assert not (set(indice.DIVIDA_DE_COLISAO) - colidindo), (
         "dívida de colisão que já não existe: apague a linha de "
         "DIVIDA_DE_COLISAO e baixe o teto"
@@ -738,3 +799,186 @@ def test_nenhuma_divida_congelada_e_fantasma() -> None:
 def test_o_catalogo_real_nao_ganha_colisao_nova() -> None:
     """A prova DE FORA: a pasta de verdade, com a dívida congelada descontada."""
     indice.conferir_colisao_de_sinais(_entradas_reais())
+
+
+# ------------------------------------------- o detector aponta para algo vivo
+#
+# `dono` diz QUAL ARQUIVO prova a guarda; `detector` diz QUAL TESTE lá dentro
+# reprova quando alguém sabota o mecanismo. A `ci/fila.py` junta os dois em
+# `dono::detector` e entrega o node ao pytest na hora de concluir a tarefa: um
+# detector que nomeia teste renomeado ou apagado faz a conclusão recusar sem
+# que ninguém entenda o motivo, e o portão procurar um nó fantasma. Conferir
+# `dono` e não conferir `detector` era meia guarda (armadilhas/148).
+
+
+def _com_guarda(
+    pasta: Path, nome: str, numero: str, *, dono: str = "", detector: str = ""
+) -> Path:
+    """Uma entrada schema 2 com guarda mecânica: é ali que vivem os dois campos."""
+    linhas = [
+        "---",
+        "schema_version: 2",
+        f"armadilha: {numero}",
+        "estado: guardada",
+        "confianca: alta",
+        "guarda:",
+        "  tipo: teste",
+    ]
+    if dono:
+        linhas.append(f"  dono: '{dono}'")
+    if detector:
+        linhas.append(f"  detector: '{detector}'")
+    linhas += ["---", "", f"# Entrada de teste {numero}", ""]
+    caminho = pasta / nome
+    caminho.write_text("\n".join(linhas), encoding="utf-8", newline="\n")
+    return caminho
+
+
+@pytest.fixture()
+def repo_com_guarda(tmp_path: Path) -> Path:
+    """A árvore mínima: a pasta das armadilhas e um teste de verdade para apontar."""
+    (tmp_path / indice.PASTA).mkdir()
+    dono = tmp_path / "ci" / "tests" / "test_coisa.py"
+    dono.parent.mkdir(parents=True)
+    dono.write_text(
+        "def test_a_coisa_reprova_sabotada():\n    assert True\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return tmp_path
+
+
+def test_detector_que_nomeia_teste_apagado_do_dono_e_ERROR(repo_com_guarda: Path) -> None:
+    """O defeito inteiro: o arquivo existe, o nó que prova a guarda não."""
+    entrada = _com_guarda(
+        repo_com_guarda / indice.PASTA,
+        "500-detector-morto.md",
+        "500",
+        dono="ci/tests/test_coisa.py",
+        detector="test_que_alguem_renomeou",
+    )
+    with pytest.raises(indice.ErroDeInstrumentacao) as erro:
+        indice.conferir_guardas_vivas([indice.Entrada(entrada)], repo_com_guarda)
+    assert "test_que_alguem_renomeou" in erro.value.resumo
+    assert "ci/tests/test_coisa.py" in erro.value.resumo
+    assert "def test_" in erro.value.detalhe, "a recusa precisa dizer o que FAZER"
+
+
+def test_detector_que_nomeia_teste_existente_passa(repo_com_guarda: Path) -> None:
+    entrada = _com_guarda(
+        repo_com_guarda / indice.PASTA,
+        "501-detector-vivo.md",
+        "501",
+        dono="ci/tests/test_coisa.py",
+        detector="test_a_coisa_reprova_sabotada",
+    )
+    indice.conferir_guardas_vivas([indice.Entrada(entrada)], repo_com_guarda)
+
+
+def test_detector_em_prosa_descritiva_nao_e_medido(repo_com_guarda: Path) -> None:
+    """Das 58 entradas que declaram detector, 10 descrevem o mecanismo em palavras.
+
+    Régua que exigisse node ID de todas reprovaria o catálogo vivo no dia em que
+    entrasse, e guarda que nasce vermelha é guarda que alguém desliga.
+    """
+    pasta = repo_com_guarda / indice.PASTA
+    entradas = [
+        indice.Entrada(_com_guarda(
+            pasta, "502-prosa.md", "502",
+            dono="ci/tests/test_coisa.py",
+            detector="gatilho por caminho (ci/pr.py, ci/fila.py, ci/sessao.py)",
+        )),
+        indice.Entrada(_com_guarda(
+            pasta, "503-prosa.md", "503",
+            dono="ci/tests/test_coisa.py",
+            detector="revisão manual do estado da auditoria após o merge",
+        )),
+    ]
+    indice.conferir_guardas_vivas(entradas, repo_com_guarda)
+
+
+def test_detector_com_o_nome_do_arquivo_do_dono_nomeia_o_arquivo(
+    repo_com_guarda: Path,
+) -> None:
+    """Três entradas escrevem `detector: test_x` com `dono: .../test_x.py`.
+
+    Ali o detector nomeia o ARQUIVO, não um nó dentro dele. Sem esta ressalva a
+    régua acusaria de morto um ponteiro que resolve, e o conserto seria mexer no
+    catálogo para agradar o guarda, que é o avesso do que ele serve.
+    """
+    entrada = _com_guarda(
+        repo_com_guarda / indice.PASTA, "504-nome-do-arquivo.md", "504",
+        dono="ci/tests/test_coisa.py", detector="test_coisa",
+    )
+    indice.conferir_guardas_vivas([indice.Entrada(entrada)], repo_com_guarda)
+
+
+def test_detector_em_node_id_e_medido_no_arquivo_que_ele_mesmo_aponta(
+    repo_com_guarda: Path,
+) -> None:
+    """Quatro entradas trazem `arquivo.py::teste` e NENHUMA declara `dono`."""
+    pasta = repo_com_guarda / indice.PASTA
+    vivo = indice.Entrada(_com_guarda(
+        pasta, "505-node-vivo.md", "505",
+        detector="ci/tests/test_coisa.py::test_a_coisa_reprova_sabotada",
+    ))
+    indice.conferir_guardas_vivas([vivo], repo_com_guarda)
+
+    sem_arquivo = indice.Entrada(_com_guarda(
+        pasta, "506-node-sem-arquivo.md", "506",
+        detector="ci/tests/test_que_sumiu.py::test_a_coisa_reprova_sabotada",
+    ))
+    with pytest.raises(indice.ErroDeInstrumentacao) as erro:
+        indice.conferir_guardas_vivas([sem_arquivo], repo_com_guarda)
+    assert "ci/tests/test_que_sumiu.py" in erro.value.resumo
+
+
+def test_detector_de_entrada_da_origem_nao_e_medido_na_arvore_local(
+    repo_com_guarda: Path,
+) -> None:
+    """A régua do `dono` (TAR-050) vale igual para o detector.
+
+    No clone principal o índice é gerado da união com `origin/main`, que está à
+    frente: medir o nó de uma entrada de lá contra ESTA árvore acusaria de morto
+    o teste que só existe na origem.
+    """
+    entrada = indice.Entrada(
+        repo_com_guarda / indice.PASTA / "507-da-origem.md",
+        [
+            "---", "schema_version: 2", "armadilha: 507", "estado: guardada",
+            "confianca: alta", "guarda:", "  tipo: teste",
+            "  dono: 'ci/tests/test_de_la.py'",
+            "  detector: 'test_que_so_existe_na_origem'",
+            "---", "", "# Entrada de teste 507", "",
+        ],
+        origem="origin/main",
+    )
+    indice.conferir_guardas_vivas(
+        [entrada], repo_com_guarda, {"ci/tests/test_de_la.py"}
+    )
+
+
+def test_o_catalogo_real_nao_ganha_detector_reprovado_novo() -> None:
+    """A prova DE FORA: a pasta de verdade, com a dívida congelada descontada."""
+    indice.conferir_guardas_vivas(_entradas_reais(), RAIZ)
+
+
+def test_nenhuma_divida_de_detector_e_fantasma(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Perdão para quem já não erra é perdão que esconde o próximo erro.
+
+    Tira UMA linha da dívida por vez e exige que a recusa fale daquela entrada:
+    consertado o detector, o teste manda apagar a linha em vez de deixá-la
+    envelhecer como enfeite.
+    """
+    entradas = _entradas_reais()
+    for numero in sorted(indice.DIVIDA_DE_DETECTOR):
+        monkeypatch.setattr(
+            indice, "DIVIDA_DE_DETECTOR", indice.DIVIDA_DE_DETECTOR - {numero}
+        )
+        with pytest.raises(indice.ErroDeInstrumentacao) as erro:
+            indice.conferir_guardas_vivas(entradas, RAIZ)
+        assert numero in erro.value.resumo, (
+            f"a armadilha {numero} já não tem detector quebrado: apague a linha "
+            "de DIVIDA_DE_DETECTOR e feche a dívida"
+        )
+        monkeypatch.undo()

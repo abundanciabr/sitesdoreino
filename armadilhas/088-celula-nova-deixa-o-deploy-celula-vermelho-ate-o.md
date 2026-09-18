@@ -7,8 +7,8 @@ confianca: alta
 custo_por_queda: alto
 guarda:
   tipo: teste
-  dono: infra/deploy-celula-na-vps.sh
-  detector: ci/tests/test_chaves_do_gateway_no_deploy.py::test_celula_sem_servico_continua_dizendo_exatamente_isso
+  dono: ci/tests/test_chaves_do_gateway_no_deploy.py
+  detector: test_celula_sem_servico_continua_dizendo_exatamente_isso
 sinal:
   - `(?s)\A(?!.*required variable \w+ is missing a value).*ERRO: '(?!\$CELULA)[^'\n]+' [^\n]*algum em /opt/plataforma/docker-compose\.yml`
 ---

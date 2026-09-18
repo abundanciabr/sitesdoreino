@@ -396,10 +396,14 @@ jobs:
   # (`armadilhas/211`): ninguém descobriria que a casa parou de ser medida.
   #
   # O QUE NÃO MORA AQUI: classificar o run (reconhecido, ambíguo, desconhecido)
-  # e abrir tarefa. Um `grep` de log em YAML seria uma segunda regra sobre a
-  # mesma pergunta, sem teste sem rede, e é o instrumento mais rápido para
-  # confundir "não casei" com "não há problema". Guardas em
+  # e DECIDIR abrir tarefa. Um `grep` de log em YAML seria uma segunda regra
+  # sobre a mesma pergunta, sem teste sem rede, e é o instrumento mais rápido
+  # para confundir "não casei" com "não há problema". Guardas em
   # `ci/tests/test_vacina_do_deploy_automatica.py`.
+  #
+  # O QUE MORA AQUI, e é coisa diferente: LEVAR ao PR dela a tarefa que o
+  # instrumento já criou. Decidir e materializar são dois verbos, e só o
+  # segundo precisa de um runner com git, com ramo e com token.
   # =========================================================================
   medir:
     name: medir esta conclusão de deploy
@@ -411,8 +415,13 @@ jobs:
     timeout-minutes: 20
     continue-on-error: true
     permissions:
-      contents: read
-      actions: read   # ler runs, jobs e logs; nada é escrito por este job
+      # A medição LÊ o run e ESCREVE só a tarefa que nasceu dele: `contents`
+      # empurra o ramo próprio (a `main` continua protegida, então esta escrita
+      # não alcança linha publicada) e `pull-requests` abre o único PR dela.
+      # `issues` fica fora de propósito: alarme aqui seria um por deploy.
+      contents: write
+      pull-requests: write
+      actions: read   # ler runs, jobs e logs do deploy que está sendo medido
     steps:
       # `fetch-depth: 0` pela mesma razão da cura (`armadilhas/159`): fechar a
       # janela de uma célula é perguntar ao Git se o deploy verde CARREGA o
@@ -453,3 +462,98 @@ jobs:
           # alcance o veredito do deploy; sem esta linha, ele não alcançaria
           # ninguém.
           exit "$CODIGO"
+      # ---------------------------------------------------------------------
+      # A MATERIALIZAÇÃO, que é a outra metade do gatilho (seção 11 do
+      # relatório do laço).
+      #
+      # O instrumento cria a tarefa no disco de um runner efêmero. Sem este
+      # passo, o arquivo que nasceu em `fila/` vive alguns minutos e some com a
+      # máquina: a medição ficaria escrita num log que ninguém abre, e a tarefa
+      # continuaria dependendo de alguém lembrar de criá-la. É a Classe 2 da
+      # retrospectiva (garantia sem mecanismo) um andar acima, e é exatamente o
+      # defeito que este arquivo inteiro existe para fechar.
+      #
+      # O GESTO É O DA CASA, e não um atalho: ramo próprio, commit só do que
+      # nasceu, UM PR, e a integração de sempre decidindo. Escrever direto na
+      # `main` seria uma medição publicando sem ninguém medir a medição.
+      #
+      # POR QUE O PR NÃO NASCE DUAS VEZES. A primeira trava é a origem, no
+      # balcão da fila, onde ela tem teste sem rede. A segunda é o ramo, aqui:
+      # entre medir e abrir o PR existe uma janela em que dois runs podem estar
+      # de pé (dois deploys vermelhos seguidos da mesma célula), e o balcão
+      # protege o arquivo, não o PR.
+      #
+      # O TOKEN É O DO PRÓPRIO JOB, com o limite dito em voz alta: um PR aberto
+      # por ele não acorda os checks sozinho, então quem integra pode precisar
+      # acordar a esteira. Trocar por um PAT daria a uma medição um alcance
+      # maior que o da cura ao lado, e isso pede decisão do dono, não deste job.
+      # ---------------------------------------------------------------------
+      - name: A tarefa que nasceu desta medição vai para o PR dela
+        id: materializar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          URL_DESTA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A LINHA DECLARADA é o contrato inteiro entre os dois lados: ela
+          # existe quando, e somente quando, uma tarefa nasceu. Ler o código de
+          # saída no lugar dela confundiria "medi e não havia nada" com "medi e
+          # abri tarefa", que são desfechos opostos com o mesmo 0.
+          NASCIDA="$(sed -n 's/^TAREFA: //p' medicao.txt)"
+          if [ -z "$NASCIDA" ]; then
+            echo "Nenhuma tarefa nasceu desta medição: nada a levar a PR."
+            exit 0
+          fi
+          NUMERO="${NASCIDA%% *}"
+          RAMO="agent/ci/$NUMERO"
+          # `--state all`, e não `--state open`: um PR já fechado ou já mergeado
+          # também responde "esta tarefa já teve o PR dela". Procurar só entre
+          # os abertos abriria o segundo no dia seguinte ao merge do primeiro.
+          JA="$(gh pr list --state all --head "$RAMO" \
+            --json number --jq '.[0].number // empty')"
+          if [ -n "$JA" ]; then
+            echo "$NUMERO já tem o PR #$JA no ramo $RAMO. Um por tarefa."
+            exit 0
+          fi
+          git config user.name "pista de pouso"
+          git config user.email "pista@sitesdoreino.invalid"
+          git switch -c "$RAMO"
+          # `fila/` E NADA MAIS. O workspace de um runner tem sujeira por
+          # natureza (o relatório desta medição, o que uma ação deixou para
+          # trás), e o portão do livro isenta este PR justamente por ele só
+          # escriturar: um arquivo surpresa transformaria a isenção estreita
+          # num buraco.
+          git add fila/
+          git commit -m "tarefa: $NUMERO, nascida da medição de um deploy"
+          git push origin "$RAMO"
+          CORPO="$(cat <<EOF
+          **Uma tarefa nasceu da medição de um deploy, e este é o PR dela.**
+
+          - tarefa: \`$NUMERO\`
+          - medição que a criou: $URL_DESTA
+
+          ## O que este PR muda
+
+          Só o que nasceu em \`fila/\`: o arquivo da tarefa e a escrituração
+          dela. Nenhum outro caminho do repositório foi tocado e nada foi
+          publicado.
+
+          ## De onde ela veio
+
+          O termômetro leu o run terminal deste deploy, mediu a reincidência
+          campeã e abriu uma tarefa só. A tarefa é idempotente pela origem e o
+          ramo é idempotente pelo número: um segundo deploy sobre o mesmo fato
+          não gera outra tarefa nem outro PR.
+
+          ## O que fazer
+
+          Leia a tarefa como leria qualquer outra da fila. Se ela estiver certa,
+          o pouso é o de sempre. Se estiver errada, feche este PR: a medição que
+          a criou continua no log acima, e é lá que se descobre por quê.
+          EOF
+          )"
+          gh pr create \
+            --base main --head "$RAMO" \
+            --title "tarefa: $NUMERO, nascida da medição de um deploy" \
+            --body "$CORPO"

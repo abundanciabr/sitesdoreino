@@ -20,6 +20,7 @@ feita à mão e está colada no PR que fez a fila nascer.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -2765,15 +2766,28 @@ def test_submeter_continua_recusando_tarefa_encerrada_por_outro_fato(tmp_path, m
 ORIGEM_AUTOMATICA = "ci/termometro.py:armadilhas/088"
 ORIGEM_DE_OUTRA = "ci/termometro.py:armadilhas/203"
 GUARDA_DA_088 = "ci/tests/test_vacina_do_deploy.py"
+DETECTOR_DA_088 = "test_exemplo"
+NODE_DA_088 = f"{GUARDA_DA_088}::{DETECTOR_DA_088}"
+PROTEGIDO_DA_088 = "ci/vacina_do_deploy.py"
+LINHA_PROTEGIDA = 2
 
 
-def armadilha_com_guarda(raiz, numero="088", dono=GUARDA_DA_088, tipo="CI"):
-    """Uma armadilha de schema 2 no formato do catálogo, com a guarda declarada."""
+def armadilha_com_guarda(raiz, numero="088", dono=GUARDA_DA_088, tipo="CI",
+                         detector=DETECTOR_DA_088):
+    """Uma armadilha de schema 2, com a guarda declarada e a bancada que ela aponta.
+
+    A bancada é de mentira, mas COERENTE: o teste traz o marcador
+    `# guarda: arquivo:linha` que a conferência de identidade relê, e o arquivo
+    protegido tem a linha executável que a sabotagem comentaria. Sem isso, nada
+    aqui mediria o que a muralha mede no SHA do PR.
+    """
     pasta = raiz / "armadilhas"
     pasta.mkdir(parents=True, exist_ok=True)
     bloco = f"guarda:\n  tipo: {tipo}\n"
     if dono:
         bloco += f"  dono: {dono}\n"
+    if detector:
+        bloco += f"  detector: {detector}\n"
     (pasta / f"{numero}-exemplo.md").write_text(
         "---\n"
         "schema_version: 2\n"
@@ -2789,16 +2803,38 @@ def armadilha_com_guarda(raiz, numero="088", dono=GUARDA_DA_088, tipo="CI"):
     if dono:
         alvo = raiz / dono
         alvo.parent.mkdir(parents=True, exist_ok=True)
-        alvo.write_text("def test_exemplo():\n    assert True\n", encoding="utf-8")
+        if dono.endswith(".py"):
+            protegido = raiz / PROTEGIDO_DA_088
+            protegido.parent.mkdir(parents=True, exist_ok=True)
+            protegido.write_text(
+                'def vacinar():\n    return "verde"\n', encoding="utf-8"
+            )
+            alvo.write_text(
+                f"def {DETECTOR_DA_088}():\n"
+                f"    # guarda: {PROTEGIDO_DA_088}:{LINHA_PROTEGIDA}\n"
+                f"    assert True\n",
+                encoding="utf-8",
+            )
+        else:
+            # Dono que não é teste Python não tem marcador para escrever, e
+            # precisa existir para provar que existir não basta.
+            alvo.write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
     return raiz
 
 
-def cadeia(numero="088", teste=f"{GUARDA_DA_088}::test_exemplo", **sobrescreve):
+def sha_do_protegido(raiz):
+    """O sha256 que `provar_guardas.descobrir` mede do arquivo protegido."""
+    return hashlib.sha256((raiz / PROTEGIDO_DA_088).read_bytes()).hexdigest()
+
+
+def cadeia(raiz, numero="088", teste=NODE_DA_088, **sobrescreve):
     """O que `provar_guardas` mediu, no tamanho que cabe dentro do evento."""
     guarda = {
         "teste": teste,
-        "protege": "ci/vacina_do_deploy.py",
-        "linha": 42,
+        "protege": PROTEGIDO_DA_088,
+        "linha": LINHA_PROTEGIDA,
+        "sha256": sha_do_protegido(raiz),
+        "reprovou": True,
         "baseline": "PASS",
         "mutacao": "FAIL",
         "restauracao": "PASS",
@@ -2954,7 +2990,7 @@ def test_concluir_com_prova_de_OUTRA_armadilha_e_RECUSADO_dizendo_qual_faltou(
     monkeypatch.setattr(
         fila,
         "provar_guarda_da_armadilha",
-        lambda *a: ([], cadeia(numero="203")),
+        lambda *a: ([], cadeia(raiz, numero="203")),
     )
     assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
     saida = capsys.readouterr().out
@@ -2970,12 +3006,14 @@ def test_concluir_com_a_prova_certa_grava_a_cadeia_dentro_do_evento(
         montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
     )
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
-    monkeypatch.setattr(fila, "provar_guarda_da_armadilha", lambda *a: ([], cadeia()))
+    monkeypatch.setattr(
+        fila, "provar_guarda_da_armadilha", lambda *a: ([], cadeia(raiz))
+    )
     assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 0
     escritos = list((raiz / "fila" / "eventos").glob("*-concluida.json"))
     assert len(escritos) == 1
     gravado = json.loads(escritos[0].read_text(encoding="utf-8"))
-    assert gravado["prova_da_guarda"] == cadeia()
+    assert gravado["prova_da_guarda"] == cadeia(raiz)
     _, _, erros = carregar(raiz)
     assert erros == []
 
@@ -3027,12 +3065,12 @@ def medicao_fingida(estado, guardas):
     return provar
 
 
-def guarda_medida(**sobrescreve):
+def guarda_medida(raiz, **sobrescreve):
     dados = {
-        "teste": f"{GUARDA_DA_088}::test_exemplo",
-        "protege": "ci/vacina_do_deploy.py",
-        "linha": 42,
-        "sha256": "d" * 64,
+        "teste": NODE_DA_088,
+        "protege": PROTEGIDO_DA_088,
+        "linha": LINHA_PROTEGIDA,
+        "sha256": sha_do_protegido(raiz),
         "baseline": "PASS",
         "mutacao": "FAIL",
         "restauracao": "PASS",
@@ -3044,10 +3082,16 @@ def guarda_medida(**sobrescreve):
 
 
 def test_prova_verde_vira_cadeia_enxuta_sem_os_logs_do_pytest(tmp_path, monkeypatch):
-    """O evento é arquivo que alguém abre: o JSON integral do pytest não cabe nele."""
+    """O evento é arquivo que alguém abre: o JSON integral do pytest não cabe nele.
+
+    O que fica é o que a muralha precisa para refazer a conta sem pytest: node
+    ID, arquivo e linha sabotados, o sha256 de então e se a guarda mordeu.
+    """
     raiz = armadilha_com_guarda(tmp_path)
     monkeypatch.setattr(
-        fila.provar_guardas, "provar", medicao_fingida(Estado.PASS, [guarda_medida()])
+        fila.provar_guardas,
+        "provar",
+        medicao_fingida(Estado.PASS, [guarda_medida(raiz)]),
     )
     problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
     assert problemas == []
@@ -3055,9 +3099,11 @@ def test_prova_verde_vira_cadeia_enxuta_sem_os_logs_do_pytest(tmp_path, monkeypa
         "armadilha": "088",
         "revisao": "c" * 40,
         "guardas": [{
-            "teste": f"{GUARDA_DA_088}::test_exemplo",
-            "protege": "ci/vacina_do_deploy.py",
-            "linha": 42,
+            "teste": NODE_DA_088,
+            "protege": PROTEGIDO_DA_088,
+            "linha": LINHA_PROTEGIDA,
+            "sha256": sha_do_protegido(raiz),
+            "reprovou": True,
             "baseline": "PASS",
             "mutacao": "FAIL",
             "restauracao": "PASS",
@@ -3072,7 +3118,9 @@ def test_guarda_que_nao_reprova_sabotada_e_recusada_com_o_comando_do_conserto(
     monkeypatch.setattr(
         fila.provar_guardas,
         "provar",
-        medicao_fingida(Estado.FAIL, [guarda_medida(mutacao="PASS", reprovou=False)]),
+        medicao_fingida(
+            Estado.FAIL, [guarda_medida(raiz, mutacao="PASS", reprovou=False)]
+        ),
     )
     problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
     assert len(problemas) == 1
@@ -3082,17 +3130,32 @@ def test_guarda_que_nao_reprova_sabotada_e_recusada_com_o_comando_do_conserto(
 
 
 def test_instrumento_da_prova_quebrado_vira_recusa_explicada(tmp_path, monkeypatch):
-    """Marcador torto não pode virar conclusão: vira frase que diz o que arrumar."""
+    """Marcador torto não pode virar conclusão: vira frase que diz o que arrumar.
+
+    E a recusa vale para as TRÊS formas de o instrumento quebrar, não só para
+    `ProvaInvalida`: a bancada descartável é uma worktree do git e a sabotagem
+    de `.sh` chama o bash sondado da casa, e nenhum dos dois levanta
+    `ProvaInvalida`. Deixar qualquer uma subir trocaria a frase por traceback.
+    """
     raiz = armadilha_com_guarda(tmp_path)
 
-    def recusar(*a, **k):
-        raise fila.provar_guardas.ProvaInvalida("nenhuma guarda declarada")
+    quebras = [
+        fila.provar_guardas.ProvaInvalida("nenhuma guarda declarada"),
+        OSError("git worktree add: index.lock existe"),
+        RuntimeError("bash nao encontrado no PATH"),
+    ]
+    for quebra in quebras:
+        def recusar(*a, _erro=quebra, **k):
+            raise _erro
 
-    monkeypatch.setattr(fila.provar_guardas, "provar", recusar)
-    problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
-    assert prova == {}
-    assert "nenhuma guarda declarada" in problemas[0]
-    assert "# guarda: caminho.py:linha" in problemas[0]
+        monkeypatch.setattr(fila.provar_guardas, "provar", recusar)
+        problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
+        assert prova == {}
+        assert str(quebra) in problemas[0]
+        assert type(quebra).__name__ in problemas[0]
+        assert f"ci/provar_guardas.py {GUARDA_DA_088}" in problemas[0], (
+            "toda recusa diz o comando que mostra a mesma falha com o log inteiro"
+        )
 
 
 def test_guarda_sino_ou_nenhum_nao_fecha_a_tarefa_da_medicao(
@@ -3148,8 +3211,131 @@ def test_armadilha_sem_dono_ou_ausente_recusa_dizendo_o_que_corrigir(
     assert "entrada legada" in capsys.readouterr().out
 
 
-def fila_com_cadeia(raiz, prova):
-    """Fila com a tarefa da medição já concluída, e a cadeia que ela alega."""
+def test_o_detector_com_PROSA_colada_vira_node_ID_limpo(tmp_path, monkeypatch):
+    """Oito entradas vivas escrevem `detector: test_x: a explicacao`.
+
+    Colar o campo cru em `dono::detector` produziria um node ID com a prosa
+    dentro, e pytest nao coleta nada com esse nome. Quem separa o nome do
+    teste do resto e o indice, e a fila le dele: duas leituras do mesmo campo
+    divergiriam no primeiro dia em que alguem mexesse numa so.
+    """
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="test_exemplo: e a linha que impede o deploy sem chave",
+    )
+    problemas, node = fila.guarda_declarada(raiz, ORIGEM_AUTOMATICA)
+    assert problemas == []
+    assert node == f"{GUARDA_DA_088}::test_exemplo"
+
+
+def test_o_detector_que_so_repete_o_NOME_DO_ARQUIVO_e_recusado(
+    tmp_path, monkeypatch, capsys
+):
+    """`detector: test_vacina_do_deploy` com `dono: .../test_vacina_do_deploy.py`
+    nomeia o ARQUIVO, e provar o arquivo inteiro provaria qualquer teste dele.
+    """
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector=Path(GUARDA_DA_088).stem,
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "nao nomeia um teste" in saida.replace("ã", "a").replace("é", "e")
+    assert "grep -n 'def test_'" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_armadilha_sem_detector_recusa_dizendo_o_nome_que_falta_escrever(
+    tmp_path, monkeypatch, capsys
+):
+    """Sem o nome do detector, provar o arquivo provaria qualquer teste dele."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="",
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "sem 'detector'" in saida
+    assert "detector: test_" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_dono_que_aponta_o_arquivo_protegido_recusa_dizendo_onde_ele_mora(
+    tmp_path, monkeypatch, capsys
+):
+    """O defeito medido na 088 em 18/09/2026: 'dono' é o TESTE, e nada mais.
+
+    O arquivo protegido não entra em 'dono' nem quando existe: quem reprova
+    sabotada é pytest, e o protegido já se declara no marcador de dentro do teste.
+    """
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    protegido = "infra/deploy-celula-na-vps.sh"
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        dono=protegido,
+    )
+    assert (raiz / protegido).is_file()
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "não é um teste Python" in saida
+    assert f"# guarda: {protegido}:" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_detector_que_nenhum_marcador_do_teste_declara_e_RECUSADO(
+    tmp_path, monkeypatch, capsys
+):
+    """Detector torto não pode gastar três execuções para provar outra guarda."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="test_que_ninguem_marcou",
+    )
+
+    def nunca(*a, **k):
+        raise AssertionError("prova de detector torto não pode nem começar")
+
+    monkeypatch.setattr(fila.provar_guardas, "provar", nunca)
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "test_que_ninguem_marcou" in saida
+    assert NODE_DA_088 in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_dois_marcadores_no_mesmo_teste_param_a_conferencia_em_vez_de_escolher(
+    tmp_path, monkeypatch, capsys
+):
+    """Escolher um dos dois em silêncio seria medir por sorteio, e sorteio não prova."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    (raiz / PROTEGIDO_DA_088).write_text(
+        "def vacinar():\n    doses = 1\n    return doses\n", encoding="utf-8"
+    )
+    (raiz / GUARDA_DA_088).write_text(
+        f"def {DETECTOR_DA_088}():\n"
+        f"    # guarda: {PROTEGIDO_DA_088}:2\n"
+        f"    # guarda: {PROTEGIDO_DA_088}:3\n"
+        f"    assert True\n",
+        encoding="utf-8",
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "2 marcadores" in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def fila_com_cadeia(raiz, monta_prova):
+    """Fila com a tarefa da medição já concluída, e a cadeia que ela alega.
+
+    A bancada vem primeiro porque a cadeia se mede CONTRA ela: o marcador do
+    teste e o sha256 do arquivo protegido só existem depois que ela existe.
+    """
+    armadilha_com_guarda(raiz)
+    prova = monta_prova(raiz)
     extra = {"prova_da_guarda": prova} if prova is not None else {}
     montar(
         raiz,
@@ -3165,18 +3351,38 @@ def fila_com_cadeia(raiz, prova):
             ),
         ],
     )
-    return armadilha_com_guarda(raiz)
+    return raiz
 
 
 def test_validar_reprova_cadeia_que_nao_se_reconstroi(tmp_path, capsys):
+    """Cada linha é uma prova falsa que já passou, ou passaria, escrita à mão."""
     quebradas = {
-        "sem-prova": None,
-        "de-outra-armadilha": cadeia(numero="203"),
-        "teste-de-outro-arquivo": cadeia(teste="ci/tests/test_outra.py::test_x"),
-        "mutacao-verde": cadeia(guarda={"mutacao": "PASS"}),
+        "sem-prova": lambda raiz: None,
+        "de-outra-armadilha": lambda raiz: cadeia(raiz, numero="203"),
+        "teste-de-outro-arquivo": lambda raiz: cadeia(
+            raiz, teste="ci/tests/test_outra.py::test_x"
+        ),
+        "detector-inventado": lambda raiz: cadeia(
+            raiz, teste=f"{GUARDA_DA_088}::test_inventado"
+        ),
+        "mutacao-verde": lambda raiz: cadeia(raiz, guarda={"mutacao": "PASS"}),
+        "sabotagem-que-nao-mordeu": lambda raiz: cadeia(
+            raiz, guarda={"reprovou": False}
+        ),
+        "linha-que-o-marcador-nao-protege": lambda raiz: cadeia(
+            raiz, guarda={"linha": 999999}
+        ),
+        "arquivo-que-o-marcador-nao-protege": lambda raiz: cadeia(
+            raiz, guarda={"protege": "ci/outro_arquivo.py"}
+        ),
+        "sha256-de-antes-do-arquivo-mudar": lambda raiz: cadeia(
+            raiz, guarda={"sha256": "d" * 64}
+        ),
+        "sem-revisao": lambda raiz: cadeia(raiz, revisao=""),
+        "revisao-que-nao-e-sha": lambda raiz: cadeia(raiz, revisao="HEAD"),
     }
-    for nome, prova in quebradas.items():
-        raiz = fila_com_cadeia(tmp_path / nome, prova)
+    for nome, monta_prova in quebradas.items():
+        raiz = fila_com_cadeia(tmp_path / nome, monta_prova)
         assert fila.cmd_validar(raiz) == 1, nome
         saida = capsys.readouterr().out
         assert "FILA INVÁLIDA" in saida, nome
@@ -3184,9 +3390,71 @@ def test_validar_reprova_cadeia_que_nao_se_reconstroi(tmp_path, capsys):
 
 
 def test_validar_aceita_a_cadeia_que_se_reconstroi(tmp_path, capsys):
-    raiz = fila_com_cadeia(tmp_path / "inteira", cadeia())
+    raiz = fila_com_cadeia(tmp_path / "inteira", cadeia)
     assert fila.cmd_validar(raiz) == 0
     assert "Fila válida" in capsys.readouterr().out
+
+
+# A CAMPEÃ DE VERDADE: a 088 deste repositório, e não uma de mentira.
+# Sem os dois testes abaixo o laço seria uma engrenagem bonita girando no vazio:
+# o primeiro prova que a tarefa que o termômetro abre TEM como fechar, e o
+# segundo prova que uma cadeia inventada à mão NÃO fecha. Nenhum dos dois roda
+# pytest: os dois releem o marcador do teste, que é a fonte da verdade.
+
+
+def test_a_guarda_da_088_REAL_se_prova_pelo_marcador_que_o_teste_declara():
+    raiz = Path(__file__).resolve().parents[2]
+    problemas, node = fila.guarda_declarada(raiz, ORIGEM_AUTOMATICA)
+    assert problemas == []
+    assert node == (
+        "ci/tests/test_chaves_do_gateway_no_deploy.py"
+        "::test_celula_sem_servico_continua_dizendo_exatamente_isso"
+    )
+    marcador = fila.marcador_real_da_guarda(raiz, node)
+    assert marcador["protege"] == "infra/deploy-celula-na-vps.sh"
+    assert marcador["linha"] == 166
+    cadeia_da_bancada = {
+        "armadilha": "088",
+        "revisao": "e" * 40,
+        "guardas": [{
+            "teste": node,
+            "protege": marcador["protege"],
+            "linha": marcador["linha"],
+            "sha256": marcador["sha256"],
+            "reprovou": True,
+            "baseline": "PASS",
+            "mutacao": "FAIL",
+            "restauracao": "PASS",
+        }],
+    }
+    assert fila.problemas_da_cadeia_automatica(
+        raiz, {"origem": ORIGEM_AUTOMATICA}, cadeia_da_bancada
+    ) == []
+
+
+def test_cadeia_INVENTADA_para_a_088_REAL_e_RECUSADA():
+    """A reprodução da auditoria: node de mentira, arquivo que não existe, linha 999999."""
+    raiz = Path(__file__).resolve().parents[2]
+    inventada = {
+        "armadilha": "088",
+        "revisao": "e" * 40,
+        "guardas": [{
+            "teste": "infra/deploy-celula-na-vps.sh::test_inventado",
+            "protege": "infra/arquivo-que-nao-existe.sh",
+            "linha": 999999,
+            "sha256": "f" * 64,
+            "reprovou": True,
+            "baseline": "PASS",
+            "mutacao": "FAIL",
+            "restauracao": "PASS",
+        }],
+    }
+    problemas = fila.problemas_da_cadeia_automatica(
+        raiz, {"origem": ORIGEM_AUTOMATICA}, inventada
+    )
+    assert problemas
+    assert "test_inventado" in problemas[0]
+    assert "test_celula_sem_servico_continua_dizendo_exatamente_isso" in problemas[0]
 
 def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
     tmp_path, monkeypatch, capsys

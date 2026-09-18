@@ -60,7 +60,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
 
@@ -106,6 +106,10 @@ MOTIVO_AMBIGUIDADE = (
 MOTIVO_SEM_CASAMENTO = (
     "nenhum sinal com autoridade casou; ausencia de casamento nao e ausencia "
     "de problema (INV-R08)"
+)
+MOTIVO_ANTES_DA_LICAO = (
+    "a licao entrou no repositorio DEPOIS deste run: e a queda que a escreveu, "
+    "e nao uma reincidencia dela (item 3 da secao 18)"
 )
 
 
@@ -165,10 +169,10 @@ JANELAS: tuple[Janela, ...] = (
         jobs_vermelhos=(96034451817,),
         armadilha_esperada='127',
         evidencia_do_rotulo='2026/08/19 10:19:24 dial tcp ***:22: i/o timeout',
-        natureza='ocorrencia_operacional',
-        desfecho='mitigada',
+        natureza='ERROR_anterior_a_licao',
+        desfecho='desconhecida',
         causa=CAUSA_127,
-        motivo_de_exclusao=None,
+        motivo_de_exclusao=MOTIVO_ANTES_DA_LICAO,
         sinais_observados_pelo_detector_atual=('127',),
         estado_inicial_do_detector='reconhecida',
         linhas_de_eco_descartadas=0,
@@ -182,10 +186,10 @@ JANELAS: tuple[Janela, ...] = (
         jobs_vermelhos=(97397238376, 97404246281, 97416166996, 97424176662, 97435304289, 97437182591, 97453112809,),
         armadilha_esperada='088',
         evidencia_do_rotulo="ERRO: 'sugestoes' nÃ£o tem serviÃ§o algum em /opt/plataforma/docker-compose.yml.",
-        natureza='ocorrencia_operacional',
-        desfecho='interceptada',
+        natureza='ERROR_anterior_a_licao',
+        desfecho='desconhecida',
         causa=CAUSA_088,
-        motivo_de_exclusao=None,
+        motivo_de_exclusao=MOTIVO_ANTES_DA_LICAO,
         sinais_observados_pelo_detector_atual=(),
         estado_inicial_do_detector='invisivel',
         linhas_de_eco_descartadas=14,
@@ -838,9 +842,27 @@ def minutos(segundos: int) -> int:
     return round(segundos / 60)
 
 
+def apos(carimbo: str, horas: int) -> str:
+    """O mesmo instante, tantas horas depois, no formato do Actions."""
+    quando = _instante(carimbo) + timedelta(hours=horas)
+    return quando.isoformat().replace("+00:00", "Z")
+
+
 def janelas_esperadas_de(armadilha: str) -> tuple[Janela, ...]:
     """Pelo GABARITO. O nome diz de onde vem para ninguem ler como saida."""
     return tuple(j for j in JANELAS if j.armadilha_esperada == armadilha)
+
+
+def janelas_que_reincidem(armadilha: str) -> tuple[Janela, ...]:
+    """As do gabarito que a licao JA explicava quando o run rodou.
+
+    A queda que escreveu a licao nao reincide nela (item 3 da secao 18): ela
+    continua no registro, com o motivo dito, e fora do custo da candidata.
+    """
+    return tuple(
+        j for j in janelas_esperadas_de(armadilha)
+        if j.natureza == "ocorrencia_operacional"
+    )
 
 
 def janelas_com_causa(causa: str) -> tuple[Janela, ...]:
@@ -866,6 +888,22 @@ def celula_minutos_esperados(janelas: tuple[Janela, ...]) -> int:
     return minutos(
         sum(duracao_em_segundos(j) for j in janelas if j.fim is not None)
     )
+
+
+def ranking_esperado_do_corpus() -> list[str]:
+    """A ordem que o gabarito manda, por tempo comprovado ate a celula publicar.
+
+    Derivada, nunca digitada: uma janela mexida no registro move esta lista e
+    a do quadro juntas, que e o unico jeito de o teste continuar valendo.
+    """
+    medidos = {
+        "armadilhas/088": celula_minutos_esperados(janelas_que_reincidem("088")),
+        "armadilhas/127": celula_minutos_esperados(janelas_que_reincidem("127")),
+        f"causa/{CAUSA_GATEWAY}": celula_minutos_esperados(
+            janelas_com_causa(CAUSA_GATEWAY)
+        ),
+    }
+    return sorted(medidos, key=lambda chave: -medidos[chave])
 
 
 def causas_medidas() -> tuple[str, ...]:
@@ -1022,12 +1060,7 @@ def test_o_registro_tem_37_janelas_e_os_totais_saem_dele():
     assert len(fechadas) == 36
     assert len(JANELAS) - len(fechadas) == 1
     naturezas = sum(
-        len(janelas_com_natureza(n))
-        for n in (
-            "ocorrencia_operacional",
-            "ERROR_ambiguidade",
-            "ERROR_sem_casamento",
-        )
+        len(janelas_com_natureza(n)) for n in NATUREZA_DA_FASE_3
     )
     assert naturezas == len(JANELAS), "toda janela tem exatamente uma natureza"
 
@@ -1205,12 +1238,18 @@ def test_os_quatro_eixos_do_gabarito_nao_se_misturam():
             assert j.desfecho in ("interceptada", "mitigada", "sem_guarda")
         else:
             assert j.natureza.startswith("ERROR_")
-            assert j.armadilha_esperada is None and j.causa is None
             assert j.desfecho == "desconhecida"
-        if j.armadilha_esperada is None:
+            # A queda que ESCREVEU a licao e a unica forma de ERROR que sabe de
+            # qual armadilha ela e: e exatamente por saber a armadilha que da
+            # para ver que a licao e mais nova que o run.
+            if j.natureza == "ERROR_anterior_a_licao":
+                assert j.armadilha_esperada and j.causa
+            else:
+                assert j.armadilha_esperada is None and j.causa is None
+        if j.armadilha_esperada is None or j.natureza == "ERROR_anterior_a_licao":
             assert j.motivo_de_exclusao, (
-                f"a janela de {j.celula} no run {j.abre_run} nao tem armadilha "
-                "e precisa dizer por que"
+                f"a janela de {j.celula} no run {j.abre_run} sai do custo de "
+                "alguma candidata e precisa dizer por que"
             )
         else:
             assert j.armadilha_esperada in ("088", "127")
@@ -1235,13 +1274,13 @@ def test_a_causa_do_gateway_nao_tem_armadilha_e_sai_do_custo_da_088():
 
 def test_a_088_e_interceptada_e_a_127_mitigada():
     """INV-R11: ocorrencia e atuacao da guarda sao eixos independentes."""
-    for j in janelas_esperadas_de("088"):
+    for j in janelas_que_reincidem("088"):
         assert (j.natureza, j.desfecho, j.causa) == (
             "ocorrencia_operacional",
             "interceptada",
             CAUSA_088,
         )
-    for j in janelas_esperadas_de("127"):
+    for j in janelas_que_reincidem("127"):
         assert (j.natureza, j.desfecho, j.causa) == (
             "ocorrencia_operacional",
             "mitigada",
@@ -1550,6 +1589,8 @@ class Bancada:
         anunciado: dict[tuple[str, str], int] | None = None,
         por_pagina: int = 100,
         sujeira: str = "",
+        base_sha: str = "",
+        runs_por_data: list[dict] | None = None,
     ) -> None:
         self.runs = runs
         self.jobs = jobs or {}
@@ -1558,6 +1599,11 @@ class Bancada:
         self.anunciado = anunciado or {}
         self.por_pagina = por_pagina
         self.sujeira = sujeira
+        self.base_sha = base_sha or sha_desta_bancada()
+        # O gatilho terminal CALCULA a janela que vai medir, entao ele pede
+        # fatias que nenhum teste digitou. Com esta lista, a bancada responde
+        # por data, como a API faz, em vez de por uma chave combinada antes.
+        self.runs_por_data = runs_por_data
         self.caminhos: list[str] = []
         self.lotes: list[list[dict]] = []
         self.logs_baixados: list[int] = []
@@ -1571,12 +1617,26 @@ class Bancada:
             assert casou, f"consulta sem recorte de data: {caminho}"
             chave = (casou.group(1), casou.group(2))
             pagina = int(re.search(r"[?&]page=(\d+)", caminho).group(1))
-            lista = self.runs.get(chave, [])
+            lista = self.runs.get(chave)
+            if lista is None and self.runs_por_data is not None:
+                lista = [
+                    r for r in self.runs_por_data
+                    if chave[0] <= r["created_at"][:10] <= chave[1]
+                ]
+            lista = lista or []
             inicio = (pagina - 1) * self.por_pagina
             return {
                 "total_count": self.anunciado.get(chave, len(lista)),
                 "workflow_runs": lista[inicio:inicio + self.por_pagina],
             }
+        avulso = re.fullmatch(r"actions/runs/(\d+)", caminho)
+        if avulso:
+            procurado = int(avulso.group(1))
+            todos = [r for lista in self.runs.values() for r in lista]
+            todos += list(self.runs_por_data or ())
+            achados = [r for r in todos if r["id"] == procurado]
+            assert achados, f"run {procurado} nao existe nesta bancada"
+            return dict(achados[0])
         casou = re.search(r"actions/runs/(\d+)/jobs", caminho)
         assert casou, f"caminho REST inesperado: {caminho}"
         lista = self.jobs.get(int(casou.group(1)), [])
@@ -1605,6 +1665,8 @@ class Bancada:
         self.comandos_git.append(tuple(args))
         if args[:2] == ["merge-base", "--is-ancestor"]:
             return (0 if (args[2], args[3]) in self.ancestrais else 1, "")
+        if args[0] == "rev-parse":
+            return (0, self.base_sha) if self.base_sha else (128, "ref ausente")
         return 0, self.sujeira
 
 
@@ -1934,6 +1996,117 @@ def test_o_verde_que_fecha_a_janela_precisa_carregar_o_sha_que_caiu():
     assert aberta["fechamento"] is None
 
 
+def test_a_celula_que_cai_DE_NOVO_sem_verde_no_meio_fica_na_MESMA_janela():
+    """A janela e da CELULA, nao do job (INV-R07).
+
+    Tres merges da mesma celula reprovando pela mesma causa, sem nenhum verde
+    entre eles, sao UMA indisponibilidade de tres horas. Uma janela por job
+    daria tres janelas sobrepostas, e `candidatas` somaria 3h + 2h + 1h = 6h
+    de custo onde a celula ficou 3h fora do ar.
+
+    O corpus congelado ja diz isso: 37 janelas para 76 jobs vermelhos.
+    """
+    fatia = ("2026-09-01", "2026-09-04")
+    bancada = Bancada(
+        runs={fatia: [
+            _run(1, sha="a1", conclusao="failure", criado="2026-09-01T10:00:00Z"),
+            _run(2, sha="a2", conclusao="failure", criado="2026-09-01T11:00:00Z"),
+            _run(3, sha="a3", conclusao="failure", criado="2026-09-01T12:00:00Z"),
+            _run(4, sha="a4", conclusao="success", criado="2026-09-01T13:00:00Z"),
+        ]},
+        jobs={1: [_job(11, "deploy (sugestoes)", "failure")],
+              2: [_job(12, "deploy (sugestoes)", "failure")],
+              3: [_job(13, "deploy (sugestoes)", "failure")],
+              4: [_job(14, "deploy (sugestoes)", "success")]},
+        logs={11: "recusa", 12: "recusa", 13: "recusa"},
+        ancestrais=(("a1", "a2"), ("a1", "a3"), ("a2", "a3"),
+                    ("a1", "a4"), ("a2", "a4"), ("a3", "a4")),
+    )
+    medida = _coletar(bancada, desde=fatia[0], ate=fatia[1])
+    janelas = medida["janelas"]
+    assert len(janelas) == 1, (
+        f"{len(janelas)} janelas para uma indisponibilidade continua: cada "
+        "sobreposicao soma o mesmo intervalo outra vez no custo"
+    )
+    janela = janelas[0]
+    assert janela["abertura"] == "2026-09-01T10:00:00Z"
+    assert janela["fechamento"] == "2026-09-01T13:00:00Z"
+    assert janela["run_de_abertura"] == 1
+    assert janela["job_de_abertura"] == 11
+    assert janela["jobs_vermelhos"] == [11, 12, 13], (
+        "a janela tem de dizer TODOS os jobs que cairam nela, senao o rastro "
+        "some junto com as janelas duplicadas"
+    )
+    assert bancada.logs_baixados == [11], (
+        "o log que classifica a janela e o do job que a abriu; baixar os "
+        "outros e rede gasta para reler a mesma causa"
+    )
+    custo = um_quadro(termometro.fatos_da_coleta(
+        medida, sinais_do_job=lambda job: ("088",),
+    ))
+    assert custo["ranking"][0]["segundos_ate_cobertura"] == 3 * 3600, (
+        "tres janelas sobrepostas somariam 3h + 2h + 1h para uma queda de 3h"
+    )
+
+
+def test_o_verde_no_meio_separa_DUAS_janelas_da_mesma_celula():
+    """Publicou, caiu de novo: sao duas quedas, e as duas contam."""
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [
+            _run(1, sha="a1", conclusao="failure", criado="2026-08-18T10:00:00Z"),
+            _run(2, sha="a2", conclusao="success", criado="2026-08-18T11:00:00Z"),
+            _run(3, sha="a3", conclusao="failure", criado="2026-08-18T12:00:00Z"),
+            _run(4, sha="a4", conclusao="success", criado="2026-08-18T13:00:00Z"),
+        ]},  # o custo nao entra neste caso: aqui se conta JANELA, nao minuto
+        jobs={1: [_job(11, "deploy (cursos)", "failure")],
+              2: [_job(12, "deploy (cursos)", "success")],
+              3: [_job(13, "deploy (cursos)", "failure")],
+              4: [_job(14, "deploy (cursos)", "success")]},
+        logs={11: "recusa", 13: "recusa"},
+        ancestrais=(("a1", "a2"), ("a1", "a3"), ("a1", "a4"),
+                    ("a2", "a3"), ("a2", "a4"), ("a3", "a4")),
+    )
+    janelas = _coletar(bancada)["janelas"]
+    assert [j["run_de_abertura"] for j in janelas] == [1, 3]
+    assert [j["run_de_fechamento"] for j in janelas] == [2, 4]
+    assert [j["jobs_vermelhos"] for j in janelas] == [[11], [13]]
+
+
+def test_a_janela_so_fecha_no_verde_que_carrega_TODOS_os_commits_que_cairam():
+    """Fechar no primeiro commit declararia publicado o trabalho dos merges
+    seguintes, que continuam fora do ar."""
+    fatia = ("2026-08-18", "2026-08-21")
+    bancada = Bancada(
+        runs={fatia: [
+            _run(1, sha="a1", conclusao="failure", criado="2026-08-18T10:00:00Z"),
+            _run(2, sha="a2", conclusao="failure", criado="2026-08-18T11:00:00Z"),
+            _run(3, sha="a3", conclusao="success", criado="2026-08-18T12:00:00Z"),
+        ]},
+        jobs={1: [_job(11, "deploy (forum)", "failure")],
+              2: [_job(12, "deploy (forum)", "failure")],
+              3: [_job(13, "deploy (forum)", "success")]},
+        logs={11: "recusa", 12: "recusa"},
+        # O verde carrega o commit da PRIMEIRA queda, e nao o da segunda.
+        ancestrais=(("a1", "a2"), ("a1", "a3")),
+    )
+    janela = _coletar(bancada)["janelas"][0]
+    assert janela["fechamento"] is None
+    assert janela["jobs_vermelhos"] == [11, 12]
+
+
+def test_o_registro_congelado_conta_JANELA_e_nao_JOB_vermelho():
+    """A regua da Fase 0 ja separava as duas contagens; a coleta passou a
+    respeitar isso."""
+    assert len(JANELAS) == 37
+    assert sum(len(j.jobs_vermelhos) for j in JANELAS) == JOBS_DE_CELULA_FALHOS
+    assert JOBS_DE_CELULA_FALHOS > len(JANELAS), (
+        "sem janela com mais de um job vermelho este teste nao prova nada"
+    )
+    for janela in JANELAS:
+        assert janela.abre_job in janela.jobs_vermelhos
+
+
 def test_o_cancelado_nao_abre_janela_na_coleta_tambem():
     """A mesma regra do corpus congelado, agora na coleta.
 
@@ -2084,6 +2257,12 @@ def test_a_bandeira_que_o_workflow_chama_nunca_sai_zero_sem_medir():
 
 
 def test_a_bandeira_sem_valor_tambem_recusa():
+    """Sem numero nao ha run: isso e RECUSA (1), e nao erro de medicao (2).
+
+    O dialeto de saida da casa separa os dois de proposito: 1 e chamada
+    errada, que quem chamou conserta; 2 e "nao consegui medir", que manda
+    olhar o instrumento.
+    """
     import subprocess as _sp
 
     saida = _sp.run(
@@ -2094,7 +2273,10 @@ def test_a_bandeira_sem_valor_tambem_recusa():
         encoding="utf-8",
         errors="replace",
     )
-    assert saida.returncode == 2
+    assert saida.returncode == 1
+    texto = saida.stdout + saida.stderr
+    assert "RECUSADO" in texto
+    assert "O QUE FAZER" in texto, "toda recusa diz o que fazer"
 
 
 # ==========================================================================
@@ -2135,9 +2317,28 @@ NATUREZA_DA_FASE_3 = {
     "ocorrencia_operacional": "ocorrencia_operacional",
     "ERROR_ambiguidade": "nao_classificada",
     "ERROR_sem_casamento": "nao_classificada",
+    "ERROR_anterior_a_licao": "nao_classificada",
 }
 
 _CATALOGO_VIVO: dict = {}
+
+
+def sha_desta_bancada() -> str:
+    """O HEAD commitado desta bancada, que e a base que a suite mede."""
+    fim = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD^{commit}"], cwd=RAIZ,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return fim.stdout.strip()
+
+
+def git_desta_bancada(args: list[str]) -> tuple[int, str]:
+    """A costura de git real da suite: le o banco de objetos, nunca a arvore."""
+    fim = subprocess.run(
+        ["git", *args], cwd=RAIZ, capture_output=True, text=True,
+        encoding="utf-8", errors="replace",
+    )
+    return fim.returncode, (fim.stdout or "") + (fim.stderr or "")
 
 
 def catalogo_vivo() -> dict:
@@ -2148,7 +2349,9 @@ def catalogo_vivo() -> dict:
     vermelho — que é o alarme certo, porque o desfecho teria mudado de fato.
     """
     if not _CATALOGO_VIVO:
-        _CATALOGO_VIVO.update(termometro.catalogo_das_armadilhas(RAIZ))
+        _CATALOGO_VIVO.update(termometro.catalogo_das_armadilhas(
+            RAIZ, git=git_desta_bancada, ref="HEAD",
+        ))
     return _CATALOGO_VIVO
 
 
@@ -2258,14 +2461,17 @@ def test_a_088_e_ocorrencia_E_interceptada_ao_mesmo_tempo():
     """
     quadro = quadro_do_corpus()
     oito = [f for f in quadro["classificados"] if f["armadilha"] == "088"]
-    assert len(oito) == len(janelas_esperadas_de("088")) == 8
+    assert len(oito) == len(janelas_que_reincidem("088")) == 7, (
+        "a oitava janela da 088 e a queda que escreveu a licao, e ela nao "
+        "reincide nela mesma (item 3 da secao 18)"
+    )
     for fato in oito:
         assert fato["natureza"] == "ocorrencia_operacional"
         assert fato["atuacao"] == "interceptada"
         assert fato["causa"] == CAUSA_088
     campea = termometro.campea(quadro)
     assert campea["chave"] == "armadilhas/088"
-    assert campea["interceptadas"] == 8
+    assert campea["interceptadas"] == len(janelas_que_reincidem("088"))
     assert campea["minutos_ate_cobertura"] > 0, (
         "interceptação com custo continua no ranking: guarda que funciona não "
         "apaga o tempo em que a célula não publicou (INV-R12)"
@@ -2283,10 +2489,10 @@ def test_a_127_separa_mitigada_de_escape():
     """
     quadro = quadro_do_corpus()
     mitigadas = [f for f in quadro["classificados"] if f["armadilha"] == "127"]
-    assert len(mitigadas) == 24
+    assert len(mitigadas) == len(janelas_que_reincidem("127")) == 23
     assert {f["atuacao"] for f in mitigadas} == {"mitigada"}
 
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     sem_verde = um_quadro([fato_da_janela(
         real, fim=None, fechada_por=None,
     )])["classificados"][0]
@@ -2320,9 +2526,11 @@ def test_a_195_e_prova_e_nunca_ocorrencia_nem_entra_no_ranking():
     ]
     quadro = quadro_do_corpus(extra=citacoes)
     assert quadro["provas"] == 37
-    assert quadro["ocorrencias"] == 34, (
-        "as 34 ocorrências continuam sendo as do registro real: prova não "
-        "cria queda nenhuma"
+    assert quadro["ocorrencias"] == len(
+        janelas_com_natureza("ocorrencia_operacional")
+    ), (
+        "as ocorrências continuam sendo as do registro real: prova não cria "
+        "queda nenhuma"
     )
     for fato in quadro["classificados"]:
         if fato["armadilha_citada"] == "195":
@@ -2337,7 +2545,7 @@ def test_a_195_e_prova_e_nunca_ocorrencia_nem_entra_no_ranking():
 
 def test_citacao_sem_queda_e_mencao_e_nao_aumenta_reincidencia():
     """INV-R02, medido: 20 citações da 088 não movem um minuto sequer."""
-    so_quedas = um_quadro(fato_da_janela(j) for j in janelas_esperadas_de("088"))
+    so_quedas = um_quadro(fato_da_janela(j) for j in janelas_que_reincidem("088"))
     citacoes = [
         termometro.Fato(
             fonte="registro", artefato="registro", armadilha="088",
@@ -2347,13 +2555,14 @@ def test_citacao_sem_queda_e_mencao_e_nao_aumenta_reincidencia():
         for i in range(20)
     ]
     com_citacoes = um_quadro(
-        [fato_da_janela(j) for j in janelas_esperadas_de("088")] + citacoes
+        [fato_da_janela(j) for j in janelas_que_reincidem("088")] + citacoes
     )
     antes, depois = so_quedas["ranking"][0], com_citacoes["ranking"][0]
     assert depois["mencoes"] == 20
     assert com_citacoes["mencoes"] == 20
-    assert antes["ocorrencias_operacionais_confirmadas"] == 8
-    assert depois["ocorrencias_operacionais_confirmadas"] == 8, (
+    quantas = len(janelas_que_reincidem("088"))
+    assert antes["ocorrencias_operacionais_confirmadas"] == quantas
+    assert depois["ocorrencias_operacionais_confirmadas"] == quantas, (
         "citar uma armadilha 20 vezes não a faz morder 20 vezes: reincidência "
         "só cresce com queda terminal medida (INV-R02)"
     )
@@ -2385,7 +2594,7 @@ def test_a_ordem_da_deduplicacao_e_a_do_plano():
 
 def test_duas_citacoes_do_mesmo_run_contam_UMA_ocorrencia():
     """Registro e evento do mesmo run só sabem dizer a URL — e a URL é uma."""
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     url = (
         "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
         f"{real.abre_run}"
@@ -2409,7 +2618,7 @@ def test_evento_e_registro_do_mesmo_run_nao_dobram_a_queda():
     evento só sabem a URL. Se os três contassem, a mesma queda valeria três —
     e o ranking premiaria quem relata melhor.
     """
-    real = janelas_esperadas_de("088")[0]
+    real = janelas_que_reincidem("088")[0]
     url = (
         "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
         f"{real.abre_run}"
@@ -2442,7 +2651,7 @@ def test_a_citacao_que_chega_ANTES_da_queda_nao_cria_segunda_ocorrencia():
     ocorrência do mesmo run. A deduplicação varre do mais específico para o
     menos justamente por isso.
     """
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     url = (
         "https://github.com/abundanciabr/sitesdoreino/actions/runs/"
         f"{real.abre_run}"
@@ -2463,7 +2672,7 @@ def test_a_citacao_que_chega_ANTES_da_queda_nao_cria_segunda_ocorrencia():
 
 def test_jobs_distintos_do_mesmo_run_contam_separado():
     """Duas células caídas no mesmo run são duas indisponibilidades."""
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     outra = fato_da_janela(real)._replace(
         job=real.abre_job + 1, celula="uma-outra-celula",
     )
@@ -2479,7 +2688,7 @@ def test_rerun_usa_a_tentativa_e_o_fato_repetido_nao():
     segunda queda. Já o MESMO fato lido duas vezes (duas fatias de data que se
     encostam, por exemplo) é uma ocorrência e não duas.
     """
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     primeira = fato_da_janela(real)
     segunda = primeira._replace(tentativa=(real.abre_attempt or 1) + 1)
     assert um_quadro([primeira, segunda])["ocorrencias"] == 2
@@ -2513,7 +2722,7 @@ def test_deploy_verde_sem_cobertura_da_celula_NAO_encerra_a_janela():
     A lista de coberturas aqui é a de um dia real de merges: três verdes
     depois da queda, e só um deles tocou a célula que estava fora do ar.
     """
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     so_outras = fato_da_janela(real, fim=None, fechada_por=None, coberturas=(
         {"quando": "2026-08-19T11:00:00Z", "celulas": ("pagamentos",),
          "run": 1, "workflow": WORKFLOW_MEDIDO},
@@ -2528,29 +2737,29 @@ def test_deploy_verde_sem_cobertura_da_celula_NAO_encerra_a_janela():
 
 def test_o_PRIMEIRO_verde_que_cobre_a_celula_encerra_a_janela():
     """E o rollback no meio do caminho não conta como o primeiro."""
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     com_coberturas = fato_da_janela(real, fim=None, fechada_por=None, coberturas=(
-        {"quando": "2026-08-19T11:00:00Z", "celulas": ("pagamentos",),
+        {"quando": apos(real.inicio, 1), "celulas": ("pagamentos",),
          "run": 1, "workflow": WORKFLOW_MEDIDO},
-        {"quando": "2026-08-19T12:00:00Z", "celulas": (real.celula,),
+        {"quando": apos(real.inicio, 2), "celulas": (real.celula,),
          "run": 2, "workflow": "rollback-celula"},
-        {"quando": "2026-08-19T13:00:00Z", "celulas": (real.celula,),
+        {"quando": apos(real.inicio, 3), "celulas": (real.celula,),
          "run": 3, "workflow": WORKFLOW_MEDIDO},
-        {"quando": "2026-08-19T14:00:00Z", "celulas": (real.celula,),
+        {"quando": apos(real.inicio, 4), "celulas": (real.celula,),
          "run": 4, "workflow": WORKFLOW_MEDIDO},
     ))
     janela = um_quadro([com_coberturas])["classificados"][0]["janela"]
-    assert janela["fim"] == "2026-08-19T13:00:00Z"
+    assert janela["fim"] == apos(real.inicio, 3)
     assert janela["run_de_fechamento"] == 3
     assert janela["aberta"] is False
     assert janela["segundos"] == termometro.segundos_entre(
-        real.inicio, "2026-08-19T13:00:00Z"
+        real.inicio, apos(real.inicio, 3)
     )
 
 
 def test_run_de_rollback_nao_e_resolucao():
     """Reverter devolve a plataforma; não publica o que caiu."""
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     revertida = um_quadro([
         fato_da_janela(real, intervencao="rollback-celula")
     ])["classificados"][0]
@@ -2601,10 +2810,10 @@ def test_o_custo_bate_com_o_corpus_congelado_minuto_a_minuto():
     quadro = quadro_do_corpus()
     por_chave = {c["chave"]: c for c in quadro["ranking"]}
     assert por_chave["armadilhas/088"]["minutos_ate_cobertura"] == (
-        celula_minutos_esperados(janelas_esperadas_de("088"))
+        celula_minutos_esperados(janelas_que_reincidem("088"))
     )
     assert por_chave["armadilhas/127"]["minutos_ate_cobertura"] == (
-        celula_minutos_esperados(janelas_esperadas_de("127"))
+        celula_minutos_esperados(janelas_que_reincidem("127"))
     )
     gateway = por_chave[f"causa/{CAUSA_GATEWAY}"]
     assert gateway["minutos_ate_cobertura"] == (
@@ -2695,9 +2904,7 @@ def test_o_ranking_ordena_por_tempo_comprovado_e_a_088_vence():
     move a ordem daqui.
     """
     quadro = quadro_do_corpus()
-    assert [c["chave"] for c in quadro["ranking"]] == [
-        "armadilhas/088", "armadilhas/127", f"causa/{CAUSA_GATEWAY}",
-    ]
+    assert [c["chave"] for c in quadro["ranking"]] == ranking_esperado_do_corpus()
     tempos = [c["minutos_ate_cobertura"] for c in quadro["ranking"]]
     assert tempos == sorted(tempos, reverse=True)
     assert quadro["campea"] == "armadilhas/088"
@@ -2824,7 +3031,7 @@ def test_o_relatorio_humano_e_o_JSON_saem_do_MESMO_objeto():
         "o quadro tem de ser dado puro de JSON: objeto escondido lá dentro é "
         "um segundo caminho por onde texto e JSON podem divergir"
     )
-    esperado = celula_minutos_esperados(janelas_esperadas_de("088"))
+    esperado = celula_minutos_esperados(janelas_que_reincidem("088"))
     antes = termometro.linhas_do_quadro(quadro)
     assert any(f"{esperado} célula-minutos" in linha for linha in antes)
 
@@ -2878,12 +3085,21 @@ def test_as_janelas_nao_classificadas_ficam_SEPARADAS_e_visiveis():
     """ERROR não é ausência de problema (INV-R08): sai do ranking, não do
     relatório.
 
-    São três: a ambígua, que casou dois sinais (INV-R03), e as duas que não
-    casaram sinal nenhum — as mesmas duas que o relatório-plano publicou como
-    não classificadas.
+    São a ambígua, que casou dois sinais (INV-R03), as duas que não casaram
+    sinal nenhum (as mesmas do relatório-plano) e as duas quedas que ESCREVERAM
+    a lição que as explica, que não reincidem nela (item 3 da seção 18).
     """
     quadro = quadro_do_corpus()
-    assert len(quadro["nao_classificadas"]) == 3
+    assert len(quadro["nao_classificadas"]) == sum(
+        len(janelas_com_natureza(n)) for n in NATUREZA_DA_FASE_3
+        if n != "ocorrencia_operacional"
+    ) == 5
+    nasceram_depois = [
+        n["motivo"] for n in quadro["nao_classificadas"] if "nasceu em" in n["motivo"]
+    ]
+    assert len(nasceram_depois) == len(
+        janelas_com_natureza("ERROR_anterior_a_licao")
+    ) == 2
     motivos = [n["motivo"] for n in quadro["nao_classificadas"]]
     ambiguas = [m for m in motivos if "INV-R03" in m]
     sem_casamento = [m for m in motivos if "INV-R08" in m]
@@ -2899,9 +3115,91 @@ def test_as_janelas_nao_classificadas_ficam_SEPARADAS_e_visiveis():
     assert "ausência de problema" in texto
 
 
+def test_a_licao_escrita_NA_BANCADA_nao_entra_no_universo_medido():
+    """INV-R01: a base e um ref do git, e a arvore de trabalho fica de fora.
+
+    Enquanto o catalogo saia da pasta, bastava escrever um arquivo aqui para
+    criar uma armadilha, mudar a classificacao de um run e, com ela, a campea
+    que vira tarefa. O arquivo abaixo existe no disco e nao existe no `ref`.
+    """
+    intrusa = RAIZ / "armadilhas" / "999-licao-que-so-existe-nesta-bancada.md"
+    assert not intrusa.exists(), "deixe a bancada limpa antes de rodar a suite"
+    intrusa.write_text(
+        """---
+schema_version: 2
+armadilha: 999
+estado: observada
+degrau: 1
+confianca: baixa
+guarda:
+  tipo: nenhum
+  motivo: entrada de teste, nao commitada
+---
+
+# Licao que so existe nesta bancada
+""",
+        encoding="utf-8",
+    )
+    try:
+        catalogo = termometro.catalogo_das_armadilhas(
+            RAIZ, git=git_desta_bancada, ref="HEAD",
+        )
+    finally:
+        intrusa.unlink()
+    assert "999" not in catalogo, (
+        "a arvore local nao participa do universo: quem decide o catalogo e o "
+        "SHA medido (INV-R01)"
+    )
+    assert catalogo == catalogo_vivo()
+
+
+def test_o_quadro_PUBLICA_a_base_e_o_sha_que_mediu():
+    """Medicao sem base publicada nao se repete, e o que nao se repete nao se
+    audita."""
+    quadro = quadro_do_corpus(base="origin/main", sha="f" * 40)
+    assert quadro["janela"]["base"] == "origin/main"
+    assert quadro["janela"]["sha"] == "f" * 40
+    assert "base" in termometro.montar_quadro([])["janela"]
+    assert f"Base: origin/main em {'f' * 40}." in termometro.linhas_do_quadro(quadro)
+    assert termometro.BASE_DA_MEDICAO == indice.REF_DA_VERDADE, (
+        "duas bases diferentes para a mesma pergunta divergem no primeiro dia "
+        "em que alguem mexer numa so"
+    )
+
+
+def test_o_nascimento_das_licoes_custa_UMA_pergunta_ao_git():
+    """Uma pergunta por licao eram 444 processos antes do primeiro log.
+
+    O lote tem de dar exatamente a mesma resposta que a pergunta avulsa, e a
+    conferencia e feita contra o `git log` de uma entrada de verdade.
+    """
+    perguntas: list = []
+
+    def contando(args):
+        perguntas.append(tuple(args))
+        return git_desta_bancada(args)
+
+    nascimentos = termometro._nascimento_das_licoes(contando, "HEAD")
+    assert len(perguntas) == 1, perguntas
+    assert len(nascimentos) >= 400
+    nome = "armadilhas/088-celula-nova-deixa-o-deploy-celula-vermelho-ate-o.md"
+    avulsa = git_desta_bancada(
+        ["log", "--diff-filter=A", "--format=%cI", "-1", "HEAD", "--", nome]
+    )[1].strip()
+    assert nascimentos[nome] == avulsa
+
+
+def test_base_que_o_git_nao_resolve_vira_ERROR_e_nao_medicao_sem_base():
+    codigo, _ = git_desta_bancada(["rev-parse", "--verify", "nao-existe^{commit}"])
+    assert codigo != 0
+    with pytest.raises(termometro.ErroDeColeta) as erro:
+        termometro._sha_da_base(git_desta_bancada, "nao-existe")
+    assert "git fetch origin" in str(erro.value)
+
+
 def test_log_ilegivel_vira_ERROR_e_nunca_ausencia_de_problema():
     """INV-R08 do lado da classificação: sem log não há causa medida."""
-    real = janelas_esperadas_de("088")[0]
+    real = janelas_que_reincidem("088")[0]
     cego = um_quadro([fato_da_janela(real, log_lido=False, sinais=())])
     assert cego["ranking"] == []
     assert cego["ocorrencias"] == 0
@@ -2910,7 +3208,7 @@ def test_log_ilegivel_vira_ERROR_e_nunca_ausencia_de_problema():
 
 def test_sinal_que_aponta_armadilha_fora_do_catalogo_e_ERROR():
     """Detector e catálogo discordando é medição inconsistente, não queda."""
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     quadro = termometro.montar_quadro(
         [fato_da_janela(real)._replace(sinais=("999",))],
         catalogo={"127": catalogo_vivo()["127"]},
@@ -2925,7 +3223,7 @@ def test_a_licao_que_nasceu_DEPOIS_do_run_nao_conta_reincidencia():
     Quem caiu antes de a lição existir não reincidiu nela: contar essa queda
     inflaria a reincidência da armadilha com o passado que ela veio explicar.
     """
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     catalogo = dict(catalogo_vivo())
     catalogo["127"] = dict(catalogo["127"], nascida_em="2026-12-01T00:00:00Z")
     quadro = termometro.montar_quadro([fato_da_janela(real)], catalogo=catalogo)
@@ -2943,7 +3241,7 @@ def test_a_coleta_da_fase_2_atravessa_para_o_quadro_sem_detector_chutado():
     `fatos_da_coleta` traduz as janelas medidas em fatos; sem a saída do
     detector ela RECUSA, em vez de dizer "nenhum sinal" por não ter olhado.
     """
-    real = janelas_esperadas_de("088")[0]
+    real = janelas_que_reincidem("088")[0]
     medida = {
         "desde": JANELA_INICIO[:10], "ate": JANELA_FIM[:10],
         "workflow": WORKFLOW_MEDIDO,
@@ -3009,13 +3307,13 @@ def _bancada_do_laco() -> Bancada:
     no ranking, que e o que faz a promocao unica ser prova de alguma coisa.
     """
     return Bancada(
-        runs={("2026-08-18", "2026-08-21"): [
+        runs={("2026-09-01", "2026-09-04"): [
             _run(1, sha="aaa", conclusao="failure",
-                 criado="2026-08-18T10:00:00Z"),
-            _run(2, sha="bbb", criado="2026-08-18T12:00:00Z"),
+                 criado="2026-09-01T10:00:00Z"),
+            _run(2, sha="bbb", criado="2026-09-01T12:00:00Z"),
             _run(3, sha="ccc", conclusao="failure",
-                 criado="2026-08-19T10:00:00Z"),
-            _run(4, sha="ddd", criado="2026-08-19T11:00:00Z"),
+                 criado="2026-09-02T10:00:00Z"),
+            _run(4, sha="ddd", criado="2026-09-02T11:00:00Z"),
         ]},
         jobs={
             1: [_job(11, "deploy (encomendas)", "failure")],
@@ -3028,7 +3326,7 @@ def _bancada_do_laco() -> Bancada:
     )
 
 
-ARGV_DO_LACO = ["--desde=2026-08-18", "--ate=2026-08-21"]
+ARGV_DO_LACO = ["--desde=2026-09-01", "--ate=2026-09-04"]
 
 
 def _rodar_o_cli(monkeypatch, bancada, argv):
@@ -3158,7 +3456,7 @@ def test_dois_sinais_no_mesmo_log_chegam_como_DOIS_e_viram_ambiguidade():
     sinais = termometro.sinais_do_log(LOG_209_SONDA_MAIS_127, catalogo=catalogo)
     assert sinais == ("127", "209")
 
-    real = janelas_esperadas_de("127")[0]
+    real = janelas_que_reincidem("127")[0]
     quadro = um_quadro([fato_da_janela(real, sinais=sinais)])
     assert quadro["ocorrencias"] == 0
     assert quadro["ranking"] == []
@@ -3234,11 +3532,11 @@ def test_o_CLI_RECUSA_com_codigo_2_quando_o_detector_nao_pode_ser_construido(
     saido de um instrumento que nao existe.
     """
     monkeypatch.setattr(
-        termometro, "catalogo_das_armadilhas", lambda raiz, git=None: {}
+        termometro, "catalogo_das_armadilhas", lambda raiz, git=None, ref=None: {}
     )
     so_verde = Bancada(
-        runs={("2026-08-18", "2026-08-21"): [
-            _run(1, sha="aaa", criado="2026-08-18T10:00:00Z"),
+        runs={("2026-09-01", "2026-09-04"): [
+            _run(1, sha="aaa", criado="2026-09-01T10:00:00Z"),
         ]},
         jobs={1: [_job(11, "deploy (encomendas)", "success")]},
     )
@@ -3257,3 +3555,222 @@ def test_o_CLI_RECUSA_com_codigo_2_quando_o_detector_nao_pode_ser_construido(
     )
     assert "detector" in fim.err
     assert "O QUE FAZER" in fim.err, "toda recusa desta casa diz o que fazer"
+
+
+# ==========================================================================
+# F6 e F7: o gatilho terminal mede o run que acabou e abre UMA tarefa.
+#
+# O que este bloco prende, que e o portao F6 do plano:
+#
+#   1. Run saudavel nao cria tarefa, e nao gasta nem um download de log.
+#   2. Run ambiguo nao cria tarefa (INV-R03).
+#   3. Falha desconhecida nao vira ausencia de problema (INV-R08).
+#   4. Log ilegivel nao vira ausencia de problema (INV-R08).
+#   5. Falha reconhecida mede a janela e abre a tarefa da CAMPEA, com o
+#      despacho minimo da secao 11.
+#   6. Evento repetido manda a MESMA origem, que e a chave com que a fila
+#      recusa a segunda tarefa (INV-R06).
+#   7. Causa sem armadilha no catalogo nao inventa numero.
+# ==========================================================================
+
+
+def _bancada_do_gatilho(**extras) -> Bancada:
+    """Uma queda da 088 e uma da 127 dentro da janela que o gatilho vai medir.
+
+    As datas ficam DEPOIS do nascimento das duas licoes de proposito: queda
+    anterior a licao nao reincide nela, e uma bancada montada antes disso
+    mediria zero sem dizer por que.
+    """
+    padrao = dict(
+        runs={},
+        runs_por_data=[
+            _run(1, sha="aaa", conclusao="failure", criado="2026-09-01T10:00:00Z"),
+            _run(2, sha="bbb", criado="2026-09-01T13:00:00Z"),
+            _run(3, sha="ccc", conclusao="failure", criado="2026-08-30T10:00:00Z"),
+            _run(4, sha="ddd", criado="2026-08-30T11:00:00Z"),
+        ],
+        jobs={
+            1: [_job(11, "deploy (encomendas)", "failure")],
+            2: [_job(21, "deploy (encomendas)", "success")],
+            3: [_job(31, "deploy (admin)", "failure")],
+            4: [_job(41, "deploy (admin)", "success")],
+        },
+        logs={11: LOG_088_EXECUTADO, 31: LOG_127_SOLUCO_DE_REDE},
+        ancestrais=(("aaa", "bbb"), ("ccc", "ddd")),
+    )
+    padrao.update(extras)
+    return Bancada(**padrao)
+
+
+def _rodar_o_gatilho(monkeypatch, bancada, run_id: int, abertas: list) -> int:
+    """`_medir_um_run` de verdade, sem rede e sem escrever na fila.
+
+    `_abrir_tarefa` e a unica costura falsificada: o que ela recebe e o argv
+    que iria para `ci/fila.py criar`, e e ele que os testes leem. Quem recusa
+    a tarefa repetida continua sendo a fila, e isso se prova la.
+    """
+    monkeypatch.chdir(RAIZ)
+    monkeypatch.setattr(termometro, "_costuras_reais", lambda raiz: dict(
+        api=bancada.api, baixar_log=bancada.baixar_log, git=bancada.git,
+        jobs_em_lote=bancada.jobs_em_lote,
+    ))
+    monkeypatch.setattr(
+        termometro, "_abrir_tarefa",
+        lambda raiz, argumentos: (abertas.append(list(argumentos)), 0)[1],
+    )
+    return termometro._medir_um_run(["--run", str(run_id)])
+
+
+def _valor_do_argv(argv: list, bandeira: str) -> str:
+    return argv[argv.index(bandeira) + 1]
+
+
+def test_o_gatilho_no_run_VERDE_nao_abre_tarefa_e_nao_baixa_log(monkeypatch, capsys):
+    """O verde tambem passa pelo gatilho, e nao pode custar nem um download.
+
+    Sao cerca de cem deploys saudaveis por dia: um log baixado em cada um
+    seria rede gasta para confirmar saude.
+    """
+    abertas: list = []
+    bancada = _bancada_do_gatilho()
+    assert _rodar_o_gatilho(monkeypatch, bancada, 2, abertas) == 0
+    assert abertas == []
+    assert bancada.logs_baixados == []
+    assert "Nada a medir" in capsys.readouterr().out
+
+
+def test_o_gatilho_no_vermelho_SEM_celula_vermelha_nao_abre_tarefa(
+    monkeypatch, capsys
+):
+    """Run vermelho por outra coisa que nao um `deploy (<celula>)`."""
+    abertas: list = []
+    bancada = _bancada_do_gatilho(
+        jobs={1: [_job(11, "muralhas", "failure")]},
+    )
+    assert _rodar_o_gatilho(monkeypatch, bancada, 1, abertas) == 0
+    assert abertas == []
+    assert bancada.logs_baixados == []
+    assert "sem nenhum job" in capsys.readouterr().out
+
+
+def test_o_gatilho_com_log_ILEGIVEL_sai_ERROR_e_nao_abre_tarefa(
+    monkeypatch, capsys
+):
+    """INV-R08 no gatilho: nao consegui ler nunca e nada aconteceu."""
+    abertas: list = []
+    bancada = _bancada_do_gatilho(logs={11: None})
+    assert _rodar_o_gatilho(monkeypatch, bancada, 1, abertas) == 2
+    assert abertas == []
+    erro = capsys.readouterr().err
+    assert "NÃO MEDI" in erro and "O QUE FAZER" in erro
+
+
+def test_o_gatilho_com_DOIS_sinais_no_mesmo_log_sai_ERROR_e_nao_abre_tarefa(
+    monkeypatch, capsys
+):
+    """INV-R03 no gatilho: escolher o primeiro esconderia a ambiguidade de
+    quem tem de resolve-la."""
+    abertas: list = []
+    bancada = _bancada_do_gatilho(
+        logs={11: LOG_209_SONDA_MAIS_127}
+    )
+    assert _rodar_o_gatilho(monkeypatch, bancada, 1, abertas) == 2
+    assert abertas == []
+    erro = capsys.readouterr().err
+    assert "INV-R03" in erro and "O QUE FAZER" in erro
+
+
+def test_o_gatilho_sem_licao_reconhecida_sai_ERROR_e_diz_o_que_fazer(
+    monkeypatch, capsys
+):
+    """Falha que o catalogo nao cobre e ERROR, e a saida manda escrever a
+    licao: e assim que o catalogo cresce sem ninguem inventar numero."""
+    abertas: list = []
+    bancada = _bancada_do_gatilho(logs={11: "uma falha que ninguem documentou"})
+    assert _rodar_o_gatilho(monkeypatch, bancada, 1, abertas) == 2
+    assert abertas == []
+    erro = capsys.readouterr().err
+    assert "INV-R08" in erro
+    assert "armadilhas/" in erro and "Nenhuma tarefa foi aberta" in erro
+
+
+def test_o_gatilho_reconhecido_MEDE_a_janela_e_abre_a_tarefa_da_campea(
+    monkeypatch, capsys
+):
+    """O laco fechado, do run terminal ate o comando da fila.
+
+    O run que dispara e o da 088; a medicao da janela e quem decide a campea,
+    e o despacho carrega o minimo da secao 11: base medida, custo, celulas,
+    guarda declarada, comando de mutacao e evidencia de encerramento.
+    """
+    abertas: list = []
+    bancada = _bancada_do_gatilho()
+    assert _rodar_o_gatilho(monkeypatch, bancada, 1, abertas) == 0
+    assert len(abertas) == 1, "uma execucao promove no maximo UMA campea"
+    argv = abertas[0]
+    assert argv[0] == "criar"
+    assert _valor_do_argv(argv, "--origem") == "ci/termometro.py:armadilhas/088"
+    assert _valor_do_argv(argv, "--move") == "manutencao"
+    assert _valor_do_argv(argv, "--responsabilidade") == "operacao-tecnica"
+    assert "088" in _valor_do_argv(argv, "--titulo")
+    assert _valor_do_argv(argv, "--importancia") == str(
+        termometro.IMPORTANCIA_DA_CAMPEA
+    )
+    despacho = _valor_do_argv(argv, "--despacho")
+    assert sha_desta_bancada() in despacho, "o despacho publica a base medida"
+    assert "encomendas" in despacho, "as celulas afetadas estao no despacho"
+    assert "python ci/provar_guardas.py" in despacho
+    assert "EVIDÊNCIA DE ENCERRAMENTO" in despacho
+    assert "nunca criar uma segunda guarda" in despacho, (
+        "a 088 e interceptada: a promocao preserva a guarda (INV-R11, INV-R12)"
+    )
+    assert "TERMÔMETRO" in capsys.readouterr().out
+
+
+def test_o_gatilho_REPETIDO_manda_a_MESMA_origem_e_nao_uma_segunda(monkeypatch):
+    """INV-R06: o evento repetido nao cria tarefa nova.
+
+    A identidade e a `origem`, e e ela que a fila confere antes de gastar
+    numero do almoxarife. Duas execucoes tem de mandar exatamente a mesma.
+    """
+    import fila
+
+    abertas: list = []
+    _rodar_o_gatilho(monkeypatch, _bancada_do_gatilho(), 1, abertas)
+    _rodar_o_gatilho(monkeypatch, _bancada_do_gatilho(), 1, abertas)
+    origens = {_valor_do_argv(a, "--origem") for a in abertas}
+    assert len(abertas) == 2 and len(origens) == 1
+    assert fila.RE_ORIGEM_AUTOMATICA.fullmatch(origens.pop()), (
+        "a origem tem de casar a chave que a fila usa para deduplicar"
+    )
+    assert abertas[0] == abertas[1], (
+        "mesmo fato, mesmo comando: qualquer campo que mude por execucao "
+        "faria a fila ver duas tarefas diferentes"
+    )
+
+
+def test_a_causa_sem_armadilha_no_catalogo_nao_vira_tarefa_automatica():
+    """Quem da numero e o almoxarife.
+
+    A causa do gateway venceria por tempo num quadro so dela, e ainda assim
+    nao pode virar `armadilhas/NNN` inventado aqui.
+    """
+    gateway = janelas_com_causa(CAUSA_GATEWAY)
+    quadro = um_quadro([fato_da_janela(j) for j in gateway])
+    assert quadro["campea"] == f"causa/{CAUSA_GATEWAY}"
+    assert quadro["promocao"]["precisa_de_numero"] is True
+    assert termometro.argumentos_da_tarefa(quadro, catalogo_vivo()) is None
+
+
+def test_erros_de_medicao_separam_buraco_de_instrumento_de_resposta_medida():
+    """O codigo de saida so fica vermelho por ERRO, e nunca por resultado.
+
+    A queda que escreveu a licao e uma resposta com data e motivo; log
+    ilegivel, ambiguidade e ausencia de casamento sao buraco de instrumento.
+    Misturar os dois faria o comando gritar todo mes por ter acertado.
+    """
+    quadro = quadro_do_corpus()
+    cegas = termometro.erros_de_medicao(quadro)
+    assert len(quadro["nao_classificadas"]) == 5
+    assert len(cegas) == 3, [c["motivo"][:40] for c in cegas]
+    assert all("nasceu em" not in c["motivo"] for c in cegas)

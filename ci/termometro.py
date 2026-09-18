@@ -182,6 +182,15 @@ MAX_PAGINAS_POR_FATIA = 20
 LOTE_MAXIMO = 8
 DIAS_DA_JANELA_PADRAO = 30
 WORKFLOW_DO_DEPLOY = "deploy-celula"
+# A BASE DA MEDIÇÃO (INV-R01). O mesmo ref que `ci/indice_de_armadilhas.py`
+# chama de verdade: o catálogo, o nascimento das lições e a escolha da tarefa
+# saem dele, e nunca do worktree de quem roda o comando.
+BASE_DA_MEDICAO = "origin/main"
+# O peso da tarefa que a medição abre, na régua de 0 a 100 que ordena a tela
+# dele. Fixo e alto porque a campeã é, por definição, a reincidência mais cara
+# medida na janela: uma nota calculada daria um número diferente por execução
+# para a mesma pergunta.
+IMPORTANCIA_DA_CAMPEA = 72
 CONCLUSOES_CONHECIDAS = ("success", "failure", "cancelled", "skipped")
 CONCLUSAO_QUE_ABRE_JANELA = "failure"
 
@@ -507,10 +516,28 @@ def coletar(
     cobertura = {run["id"]: celulas_cobertas(triagem[run["id"]]) for run in runs}
     cache_de_log = {} if cache_de_log is None else cache_de_log
     baixar_contado = contada("log", baixar_log)
+    carrega = _ancestralidade(contada("git", git))
     indisponiveis: list[dict] = []
     janelas: list[dict] = []
+    # A célula que já está sem publicar, e os commits dela que nenhum verde
+    # cobriu ainda. As duas vivem só durante a varredura: o que sai daqui é a
+    # lista de janelas.
+    abertas: dict[str, int] = {}
+    caidos: list[list[str]] = []
 
-    for run in runs:
+    for run in sorted(runs, key=lambda r: (r["updated_at"], r["id"])):
+        # O VERDE PRIMEIRO. Fechar antes de abrir é o que permite ao mesmo run
+        # encerrar a queda de uma célula e abrir a de outra sem que uma delas
+        # atropele a outra, e é por isso que a varredura é cronológica.
+        for celula in cobertura[run["id"]]:
+            posicao = abertas.get(celula)
+            if posicao is None:
+                continue
+            if not all(carrega(sha, run["head_sha"]) for sha in caidos[posicao]):
+                continue
+            janelas[posicao]["fechamento"] = run["updated_at"]
+            janelas[posicao]["run_de_fechamento"] = run["id"]
+            del abertas[celula]
         if run["conclusion"] != CONCLUSAO_QUE_ABRE_JANELA:
             continue
         if not any(
@@ -523,6 +550,17 @@ def coletar(
             celula = celula_do_job(job.get("name"))
             if not celula or job.get("conclusion") != CONCLUSAO_QUE_ABRE_JANELA:
                 continue
+            posicao = abertas.get(celula)
+            if posicao is not None:
+                # A MESMA indisponibilidade, e não uma segunda. Cada merge da
+                # célula enquanto ela está fora do ar reprova pela mesma causa;
+                # contar cada um como janela nova somaria o mesmo intervalo
+                # tantas vezes quantos forem os merges (INV-R07).
+                janelas[posicao]["jobs_vermelhos"].append(job.get("id"))
+                caidos[posicao] = _commits_por_publicar(
+                    caidos[posicao], run["head_sha"], carrega
+                )
+                continue
             texto = log_do_job(
                 job.get("id"), baixar_log=baixar_contado, cache=cache_de_log
             )
@@ -533,6 +571,8 @@ def coletar(
                               "causa medida, e ausência de leitura não é "
                               "ausência de problema",
                 })
+            abertas[celula] = len(janelas)
+            caidos.append([run["head_sha"]])
             janelas.append({
                 "celula": celula,
                 "run_de_abertura": run["id"],
@@ -540,12 +580,12 @@ def coletar(
                 "tentativa": run["run_attempt"],
                 "head_sha": run["head_sha"],
                 "abertura": run["updated_at"],
+                "jobs_vermelhos": [job.get("id")],
                 "fechamento": None,
                 "run_de_fechamento": None,
                 "estado_do_log": "lido" if texto is not None else "ERROR",
             })
 
-    _fechar_janelas(janelas, runs, cobertura, git=contada("git", git))
     janelas.sort(key=lambda j: (j["abertura"], j["celula"], j["run_de_abertura"]))
     return {
         "desde": desde,
@@ -560,13 +600,13 @@ def coletar(
     }
 
 
-def _fechar_janelas(janelas: list[dict], runs, cobertura: dict, *, git) -> None:
-    """Fecha cada janela no primeiro verde que CARREGA o commit que caiu.
+def _ancestralidade(git):
+    """A pergunta "o verde carrega o commit que caiu?", feita uma vez por par.
 
-    Sem essa condição, um deploy anterior ao commit fecharia a janela dele:
-    um run que não tem o commit dentro não publicou o que ele trouxe. A
-    pergunta vai ao banco de objetos do Git, nunca ao worktree, e por isso a
-    árvore local suja não move o resultado.
+    Sem essa condição, um deploy anterior ao commit fecharia a janela dele: um
+    run que não tem o commit dentro não publicou o que ele trouxe. A pergunta
+    vai ao banco de objetos do Git, nunca ao worktree, e por isso a árvore
+    local suja não move o resultado.
     """
     respostas: dict[tuple[str, str], bool] = {}
 
@@ -583,20 +623,23 @@ def _fechar_janelas(janelas: list[dict], runs, cobertura: dict, *, git) -> None:
             respostas[chave] = codigo == 0
         return respostas[chave]
 
-    candidatos = sorted(runs, key=lambda r: (r["updated_at"], r["id"]))
-    for janela in janelas:
-        for run in candidatos:
-            if run["id"] == janela["run_de_abertura"]:
-                continue
-            if run["updated_at"] < janela["abertura"]:
-                continue
-            if janela["celula"] not in cobertura[run["id"]]:
-                continue
-            if not carrega(janela["head_sha"], run["head_sha"]):
-                continue
-            janela["fechamento"] = run["updated_at"]
-            janela["run_de_fechamento"] = run["id"]
-            break
+    return carrega
+
+
+def _commits_por_publicar(pendentes: list[str], caiu: str, carrega) -> list[str]:
+    """Os commits desta janela que nenhum outro commit dela já carrega.
+
+    Uma janela fecha quando o verde publica TUDO o que caiu nela, e não só o
+    primeiro commit: fechar no primeiro declararia publicado o trabalho dos
+    merges seguintes. A poda existe porque a `main` é linear na prática: sem
+    ela, uma janela com nove quedas faria nove perguntas de ancestralidade a
+    cada verde candidato; com ela, a lista colapsa para um commit e a pergunta
+    volta a ser uma. Commit repetido some pela mesma regra, porque todo commit
+    é ancestral de si mesmo.
+    """
+    if any(carrega(caiu, pendente) for pendente in pendentes):
+        return pendentes
+    return [p for p in pendentes if not carrega(p, caiu)] + [caiu]
 
 
 # ==========================================================================
@@ -717,6 +760,13 @@ MOTIVO_SEM_SINAL = (
     "nenhum sinal com autoridade casou e nenhuma causa foi identificada; "
     "ausência de casamento não é ausência de problema (INV-R08)"
 )
+MOTIVO_ANTERIOR_A_LICAO = (
+    "a lição armadilhas/{numero} nasceu em {nascida}, depois do run de "
+    "{inicio}: quem caiu antes de a lição existir não está reincidindo nela"
+)
+# As formas de `nao_classificada` que são ERRO DE MEDIÇÃO, e não resultado
+# medido. A de cima não entra: ela é uma resposta, com data e motivo. É esta
+# lista que decide o código de saída do comando (INV-R08).
 MOTIVO_LOG_ILEGIVEL = (
     "o log do job não pôde ser lido: sem ele não há causa medida, e não "
     "consegui ler nunca é nada aconteceu (INV-R08)"
@@ -1044,11 +1094,13 @@ def natureza_do_fato(fato: "Fato", *, catalogo: dict | None = None) -> tuple:
                 "catálogo lido: medição inconsistente é ERROR (INV-R08)"
             )
         nascida = entrada.get("nascida_em")
-        if nascida and fato.inicio and str(nascida) > str(fato.inicio):
-            return "nao_classificada", (
-                f"a lição armadilhas/{numero} nasceu em {nascida}, depois do "
-                f"run de {fato.inicio}: quem caiu antes de a lição existir "
-                "não está reincidindo nela"
+        # Comparar os dois carimbos como TEXTO erra nos dois sentidos: o Git
+        # traz o fuso de quem commitou (`-03:00`) e o Actions traz `Z`, e
+        # '2026-09-11T00:30:00-03:00' e menor que '2026-09-11T02:00:00Z' no
+        # alfabeto, embora seja mais tarde no relogio.
+        if nascida and fato.inicio and _instante(nascida) > _instante(fato.inicio):
+            return "nao_classificada", MOTIVO_ANTERIOR_A_LICAO.format(
+                numero=numero, nascida=nascida, inicio=fato.inicio,
             )
         return "ocorrencia_operacional", None
     if fato.causa and fato.evidencia:
@@ -1383,7 +1435,8 @@ def promocao_da_campea(quadro: dict) -> dict | None:
 def montar_quadro(
     fatos, *, catalogo: dict | None = None, medicao: dict | None = None,
     desde: str | None = None, ate: str | None = None,
-    workflow: str | None = None,
+    workflow: str | None = None, base: str | None = None,
+    sha: str | None = None,
 ) -> dict:
     """O quadro calculado: a mesma coisa que o `--json` imprime e que a tabela
     humana lê.
@@ -1416,6 +1469,11 @@ def montar_quadro(
             "desde": desde or medida.get("desde"),
             "ate": ate or medida.get("ate"),
             "workflow": workflow or medida.get("workflow"),
+            # A base examinada, publicada junto com o resultado (INV-R01):
+            # `base` é o ref pedido e `sha` é o commit em que ele estava. Sem
+            # os dois no quadro, ninguém consegue repetir esta medição depois.
+            "base": base,
+            "sha": sha,
         },
         "ordem_da_deduplicacao": list(ORDEM_DA_DEDUPLICACAO),
         "dimensoes": list(DIMENSOES),
@@ -1456,6 +1514,7 @@ def linhas_do_quadro(quadro: dict) -> list:
         "",
         f"Janela: {janela.get('desde')} a {janela.get('ate')} "
         f"({janela.get('workflow')}).",
+        f"Base: {janela.get('base')} em {janela.get('sha')}.",
         f"{quadro.get('fatos', 0)} fato(s) lido(s), "
         f"{quadro.get('ocorrencias', 0)} ocorrência(s) independente(s), "
         f"{len(quadro.get('descartes') or ())} descartada(s) por deduplicação.",
@@ -1566,72 +1625,90 @@ def _linhas_do_rodape(quadro: dict) -> list:
 # --------------------------------------------------------------------------
 
 
-def catalogo_das_armadilhas(raiz, *, git=None) -> dict:
-    """O tipo de guarda declarado de cada armadilha, lido do FRONTMATTER VIVO.
+def catalogo_das_armadilhas(raiz, *, git, ref: str) -> dict:
+    """O tipo de guarda declarado de cada armadilha, lido do REF, nunca da árvore.
+
+    `ref` é obrigatório e não existe caminho que leia o worktree: era ele que
+    deixava uma edição local não commitada mudar classificação, promoção e
+    ranking (INV-R01). Em produção quem o resolve é `_medir_historico`, que
+    fixa `origin/main` num SHA e o publica no quadro; na suíte é `HEAD`, que é
+    o que está commitado nesta bancada.
 
     A casa da guarda declarada é o arquivo rastreado em `armadilhas/`
     (INV-R05); `armadilhas/GUARDAS.json` é derivado e está no .gitignore,
     então não serve de fonte para decisão nenhuma. O import mora dentro da
     função porque quem só quer o relatório local não pode precisar dele.
 
-    `nascida_em` (opcional, quando a costura `git` é passada) é a data em que
-    a lição entrou no repositório. Sem ela não dá para saber se o run caiu
-    antes de a lição existir, e queda anterior à lição não é reincidência.
+    `nascida_em` é a data em que a lição entrou no repositório. Sem ela não dá
+    para saber se o run caiu antes de a lição existir, e queda anterior à lição
+    não é reincidência.
     """
     import indice_de_armadilhas as indice
 
     raiz = Path(raiz)
+    try:
+        entradas = indice.coletar_da_origem(raiz, ref)
+    except indice.ErroDeInstrumentacao as erro:
+        raise ErroDeClassificacao(
+            f"o catálogo de {ref} não pôde ser lido: {erro}. Sem catálogo "
+            "íntegro não dá para dizer que guarda existia, e medir com um "
+            "catálogo torto seria inventar desfecho."
+        ) from erro
+    if not entradas:
+        raise ErroDeClassificacao(
+            f"não achei armadilha nenhuma em {ref}:armadilhas/ (ou o git não "
+            f"respondeu por {ref} neste clone). Sem catálogo não dá para dizer "
+            "que guarda existia, e sem isso o desfecho seria chute."
+        )
+    nascimentos = _nascimento_das_licoes(git, ref)
     catalogo: dict = {}
-    for caminho in sorted(raiz.glob("armadilhas/[0-9]*.md")):
-        numero = caminho.name.split("-", 1)[0]
-        try:
-            linhas = caminho.read_text(encoding="utf-8").splitlines()
-            frente = indice.ler_frontmatter(linhas, caminho.name) or {}
-        except Exception as erro:  # noqa: BLE001 - frontmatter torto é ERROR
-            catalogo[numero] = {
-                "guarda": "nenhum", "arquivo": caminho.name, "sinal": (),
-                "erro": f"frontmatter ilegível: {erro}",
-            }
-            continue
-        guarda = frente.get("guarda") or {}
-        if not isinstance(guarda, dict):
-            guarda = {}
-        sinal = frente.get("sinal") or []
+    for entrada in entradas:
+        numero = entrada.nome.split("-", 1)[0]
+        guarda = entrada.guarda if isinstance(entrada.guarda, dict) else {}
         catalogo[numero] = {
             "guarda": str(guarda.get("tipo") or "nenhum"),
             "dono": guarda.get("dono"),
             "detector": guarda.get("detector"),
-            "estado": frente.get("estado"),
-            "arquivo": caminho.name,
+            "estado": (entrada.frontmatter or {}).get("estado"),
+            "arquivo": entrada.nome,
             # As assinaturas saem DESTA leitura, que já aconteceu, e não de um
             # segundo passeio pela pasta: duas leituras do mesmo arquivo são
             # dois lugares onde o mesmo fato pode divergir.
-            "sinal": tuple(sinal) if isinstance(sinal, list) else (sinal,),
-            "nascida_em": _nascimento_da_licao(raiz, caminho, git=git),
+            "sinal": tuple(entrada.sinais),
+            "nascida_em": nascimentos.get(f"armadilhas/{entrada.nome}"),
         }
-    if not catalogo:
-        raise ErroDeClassificacao(
-            f"não achei armadilha nenhuma em {raiz}/armadilhas: sem catálogo "
-            "não dá para dizer que guarda existia, e sem isso o desfecho "
-            "seria chute."
-        )
     return catalogo
 
 
-def _nascimento_da_licao(raiz, caminho, *, git=None) -> str | None:
-    if git is None:
-        return None
-    relativo = str(caminho.relative_to(raiz)).replace("\\", "/")
+def _nascimento_das_licoes(git, ref: str) -> dict:
+    """A data em que cada entrada de `armadilhas/` foi ACRESCENTADA ao `ref`.
+
+    Uma pergunta só para as 444 entradas, e não uma por arquivo: era esse
+    `git log` por lição que fazia a medição gastar centenas de processos antes
+    de baixar o primeiro log. `--reverse` põe a adição mais antiga primeiro, e
+    a primeira vitória de cada caminho é o nascimento dele.
+    """
     codigo, saida = git([
-        "log", "--diff-filter=A", "--format=%cI", "-1", "--", relativo,
+        "log", "--diff-filter=A", "--format=%cI", "--name-only", "--reverse",
+        ref, "--", "armadilhas/",
     ])
     if codigo != 0:
         raise ErroDeClassificacao(
-            f"git log de {relativo} saiu {codigo}: sem a data de nascimento da "
-            "lição não dá para separar reincidência de queda anterior a ela."
+            f"git log de {ref}:armadilhas/ saiu {codigo}: {str(saida)[:200]}. "
+            "Sem a data de nascimento das lições não dá para separar "
+            "reincidência de queda anterior a elas."
         )
-    primeira = str(saida or "").strip().splitlines()
-    return primeira[0].strip() if primeira else None
+    nascimentos: dict = {}
+    quando = None
+    for linha in str(saida or "").splitlines():
+        linha = linha.strip()
+        if not linha:
+            continue
+        if linha.startswith("armadilhas/"):
+            nascimentos.setdefault(linha, quando)
+        else:
+            quando = linha
+    return nascimentos
 
 
 def sinais_do_log(texto: str, *, catalogo: dict) -> tuple:
@@ -1811,6 +1888,24 @@ def _valor(argv: list[str], bandeira: str, padrao: str) -> str:
     return padrao
 
 
+def _sha_da_base(git, ref: str) -> str:
+    """O commit exato em que `ref` está agora, resolvido UMA vez.
+
+    Medir contra o nome do ramo deixaria a base andar no meio da medição: o
+    catálogo sairia de um commit e o relatório diria outro. O que atravessa
+    daqui para baixo é o SHA, e é ele que o quadro publica (INV-R01).
+    """
+    codigo, saida = git(["rev-parse", "--verify", f"{ref}^{{commit}}"])
+    achado = str(saida or "").strip().splitlines()
+    if codigo != 0 or not achado:
+        raise ErroDeColeta(
+            f"git rev-parse {ref} saiu {codigo}: {str(saida)[:200]}. A base da "
+            f"medição é {ref}, e sem ela não há universo para medir. O QUE "
+            f"FAZER: rode `git fetch origin` nesta bancada e repita."
+        )
+    return achado[0].strip()
+
+
 def _costuras_reais(raiz: Path) -> dict:
     """As mesmas quatro costuras, agora falando com o GitHub e com o Git."""
     import subprocess
@@ -1818,7 +1913,19 @@ def _costuras_reais(raiz: Path) -> dict:
     import estado_da_entrega
 
     def api(caminho: str):
-        return estado_da_entrega._api(raiz, caminho)
+        # A porta REST levanta `ErroDeInstrumentacao` quando o `gh` falha, e
+        # ela não é `ErroDeColeta`: sem esta tradução, token vencido ou run
+        # inexistente saía como traceback, que é ruído onde tinha de haver
+        # "o que aconteceu e o que fazer" (INV-R08).
+        try:
+            return estado_da_entrega._api(raiz, caminho)
+        except Exception as erro:  # noqa: BLE001 - porta com o mundo
+            raise ErroDeColeta(
+                f"o GitHub não respondeu {caminho}: {erro}. O QUE FAZER: "
+                "confira `gh auth status` e se o run existe neste repositório, "
+                "e repita; sem a resposta não há medição, e não medir nunca é "
+                "medir zero."
+            ) from erro
 
     def baixar_log(id_do_job):
         # `--allow-escape-sequences` preserva o ANSI, e é ele que separa o ECO
@@ -1840,7 +1947,14 @@ def _costuras_reais(raiz: Path) -> dict:
         return fim.returncode, (fim.stdout or "") + (fim.stderr or "")
 
     def jobs_em_lote(runs):
-        return estado_da_entrega.consultar_jobs_em_lote(raiz, runs)
+        try:
+            return estado_da_entrega.consultar_jobs_em_lote(raiz, runs)
+        except Exception as erro:  # noqa: BLE001 - mesma porta, mesma regra
+            raise ErroDeColeta(
+                f"a triagem em lote de {len(runs)} run(s) falhou: {erro}. "
+                "O QUE FAZER: confira `gh auth status` e repita; lote que não "
+                "volta nunca é lote vazio."
+            ) from erro
 
     return dict(api=api, baixar_log=baixar_log, git=git, jobs_em_lote=jobs_em_lote)
 
@@ -1890,7 +2004,8 @@ def _medir_historico(argv: list[str]) -> int:
         # coleta vai encher. Construí-lo primeiro faz a recusa acontecer antes
         # da primeira chamada de rede, em vez de depois de baixar a janela
         # inteira para então descobrir que não havia com que classificá-la.
-        catalogo = catalogo_das_armadilhas(raiz, git=costuras["git"])
+        sha = _sha_da_base(costuras["git"], BASE_DA_MEDICAO)
+        catalogo = catalogo_das_armadilhas(raiz, git=costuras["git"], ref=sha)
         sinais_do_job = detector_dos_logs(logs, catalogo=catalogo)
         dias = int(_valor(argv, "--dias-por-fatia", str(DIAS_POR_FATIA)))
         medida = coletar(
@@ -1901,6 +2016,8 @@ def _medir_historico(argv: list[str]) -> int:
             fatos_da_coleta(medida, sinais_do_job=sinais_do_job),
             catalogo=catalogo,
             medicao=medida,
+            base=BASE_DA_MEDICAO,
+            sha=sha,
         )
     except (ErroDeColeta, ValueError) as erro:
         print(
@@ -1915,36 +2032,302 @@ def _medir_historico(argv: list[str]) -> int:
         print(json.dumps(quadro, ensure_ascii=False, indent=2))
     else:
         print("\n".join(linhas_do_quadro(quadro)))
+    # Sair 0 com log ilegível ou janela sem classificar seria dizer "medi" sem
+    # ter medido, e é o código de saída que o workflow lê (INV-R08).
+    cegas = erros_de_medicao(quadro)
+    if medida["logs_indisponiveis"] or cegas:
+        print(
+            f"🧱 MEDI EM PARTE: {len(medida['logs_indisponiveis'])} log(s) "
+            f"indisponível(is) e {len(cegas)} janela(s) que não classifiquei. "
+            "Estão nomeadas acima, com o motivo de cada uma.",
+            file=sys.stderr,
+        )
+        return 2
     return 0
 
 
-def _medir_um_run(argv: list[str]) -> int:
-    """`--run <id>`: medir o run terminal que o gatilho acabou de entregar.
+def erros_de_medicao(quadro: dict) -> list:
+    """As janelas que a medição NÃO conseguiu medir, e só essas.
 
-    A classificacao por run e da Fase 3. Ate ela existir, esta porta RECUSA
-    alto, com codigo 2, em vez de cair no relatorio de telemetria local e sair
-    0. Bandeira reconhecida que nao mede e falso verde, e falso verde e
-    exatamente o que este instrumento existe para acabar (INV-CI01).
+    Uma lição mais nova que o run é resposta: tem data, motivo e lugar no
+    relatório. Já log ilegível, ambiguidade, ausência de casamento e catálogo
+    inconsistente são buraco de instrumento, e é por eles que o comando sai
+    ERROR em vez de 0 (INV-R08). Sem esta separação, ou o comando mente verde
+    com o mês inteiro ilegível, ou grita vermelho por ter feito o trabalho
+    certo.
     """
-    pedido = _valor(argv, "--run", "")
-    if not pedido:
+    molde = MOTIVO_ANTERIOR_A_LICAO.split("{", 1)[0]
+    return [
+        nao for nao in (quadro.get("nao_classificadas") or ())
+        if not str(nao.get("motivo") or "").startswith(molde)
+    ]
+
+
+def sinais_do_run(run: dict, *, api, baixar_log, cache: dict, catalogo: dict) -> list:
+    """O que o log de cada célula VERMELHA deste run casou no catálogo.
+
+    Uma entrada por célula caída, com os sinais que casaram, ou `None` quando
+    o log não pôde ser lido. É o portão barato do gatilho terminal: um pedido
+    REST pelos jobs e o log de quem caiu, e nada mais.
+    """
+    caidas = []
+    for job in jobs_com_id(run, api=api):
+        celula = celula_do_job(job.get("name"))
+        if not celula or job.get("conclusion") != CONCLUSAO_QUE_ABRE_JANELA:
+            continue
+        texto = log_do_job(job.get("id"), baixar_log=baixar_log, cache=cache)
+        caidas.append({
+            "celula": celula,
+            "job": job.get("id"),
+            "sinais": None if texto is None else sinais_do_log(texto, catalogo=catalogo),
+        })
+    return caidas
+
+
+def argumentos_da_tarefa(quadro: dict, catalogo: dict) -> list | None:
+    """O `ci/fila.py criar` que esta medição manda abrir, ou None.
+
+    Função pura, e é de propósito: quem escreve no disco é a fila, e é ela que
+    recusa a segunda tarefa da mesma origem (INV-R06). Aqui só se traduz o que
+    foi medido no despacho mínimo da seção 11 do plano. Candidata sem número de
+    catálogo não vira tarefa automática: quem dá número é o almoxarife, e
+    inventar um aqui criaria armadilha que ninguém escreveu.
+    """
+    promocao = quadro.get("promocao") or {}
+    numero = promocao.get("armadilha")
+    eleita = campea(quadro)
+    if not numero or eleita is None:
+        return None
+    entrada = catalogo.get(numero) or {}
+    janela = quadro.get("janela") or {}
+    dono = str(entrada.get("dono") or "")
+    detector = str(entrada.get("detector") or "")
+    node = f"{dono}::{detector}" if dono and detector else (dono or "(não declarada)")
+    quedas = [j for j in (eleita.get("janelas") or ()) if not j.get("aberta")]
+    ocorrencias = int(eleita.get("ocorrencias_operacionais_confirmadas") or 0)
+    celulas = list(eleita.get("celulas") or ())
+    despacho = [
+        f"Medido por ci/termometro.py em {janela.get('base')} "
+        f"{janela.get('sha')}, janela {janela.get('desde')} a "
+        f"{janela.get('ate')} do workflow {janela.get('workflow')}.",
+        "",
+        f"ARMADILHA: armadilhas/{numero} ({entrada.get('arquivo')}), lição "
+        f"nascida em {entrada.get('nascida_em')}.",
+        f"CUSTO COMPROVADO: {eleita.get('minutos_ate_cobertura')} "
+        f"célula-minutos em {ocorrencias} ocorrência(s) independente(s), "
+        f"{eleita.get('celulas_afetadas')} célula(s) afetada(s): "
+        f"{', '.join(celulas) or '(nenhuma)'}.",
+        f"JANELAS AINDA ABERTAS, com tempo NÃO somado acima: "
+        f"{eleita.get('janelas_abertas')}.",
+        "",
+        "RUNS E JOBS QUE FORMAM AS OCORRÊNCIAS:",
+    ]
+    for queda in quedas:
+        despacho.append(
+            f"  - {queda.get('celula')}: run {queda.get('run')}, job "
+            f"{queda.get('job')}, de {queda.get('inicio')} a {queda.get('fim')} "
+            f"({minutos(int(queda.get('segundos') or 0))} min), fechada pelo "
+            f"run {queda.get('run_de_fechamento')}."
+        )
+    despacho += ["", "LOGS MÍNIMOS, a linha literal que sustentou o rótulo:"]
+    for evidencia in eleita.get("evidencias") or ():
+        despacho.append(f"  - {evidencia}")
+    despacho += [
+        "",
+        f"SINAIS QUE CASARAM: {'; '.join(entrada.get('sinal') or ()) or '(nenhum)'}.",
+        "PROVA DE NÃO COLISÃO: `python ci/indice_de_armadilhas.py --conferir` "
+        "recusa assinatura que dispute o mesmo erro de outra entrada (INV-R04), "
+        "e passou no SHA acima.",
+        "",
+        f"REGISTROS E EVENTOS RELACIONADOS: "
+        f"{eleita.get('registros_produzidos')} registro(s), "
+        f"{eleita.get('eventos_produzidos')} evento(s), "
+        f"{eleita.get('tarefas_abertas')} tarefa(s) já aberta(s).",
+        "",
+        f"GUARDA ATUAL: {entrada.get('guarda') or 'nenhum'}, em {node}.",
+        f"DESFECHO ATUAL: {eleita.get('atuacao')}.",
+        f"LACUNA E PONTO DE ESTRANGULAMENTO: {promocao.get('acao')}",
+    ]
+    if promocao.get("nao_criar_guarda"):
+        despacho.append(
+            "  A guarda existe e interceptou. Preserve-a e prove-a: a tarefa é "
+            "impedir a causa mais cedo ou reduzir o custo dela, nunca criar uma "
+            "segunda guarda (INV-R11 e INV-R12)."
+        )
+    despacho += [
+        "",
+        f"SOMENTE LEITURA: {dono or '(sem guarda declarada)'} e o arquivo que o "
+        "marcador `# guarda:` dele protege. A guarda existente não se apaga nem "
+        "se duplica.",
+        "FRONTEIRAS CONGELADAS: contracts/, CODEOWNERS e services/ ficam fora "
+        "sem mandato escrito do mantenedor.",
+        "",
+        "TESTE VERMELHO exigido antes de cada correção.",
+        f"COMANDO DE MUTAÇÃO: python ci/provar_guardas.py {dono}".rstrip(),
+        "EVIDÊNCIA DE ENCERRAMENTO: baseline PASS, mutação FAIL na chamada de "
+        f"{detector or '(declare o detector no frontmatter)'}, restauração PASS, "
+        f"e a prova pertencendo a armadilhas/{numero}.",
+    ]
+    media = minutos(
+        int(eleita.get("segundos_ate_cobertura") or 0) // max(1, ocorrencias)
+    )
+    return [
+        "criar",
+        "--titulo", f"Reduzir a reincidência da armadilha {numero}",
+        "--toca", *(celulas or ["ci"]),
+        "--move", "manutencao",
+        "--responsabilidade", "operacao-tecnica",
+        "--origem", str(promocao.get("origem")),
+        "--evidencia-exigida",
+        f"PASS para FAIL para PASS da guarda declarada de armadilhas/{numero} "
+        f"({node}), e o custo medido caindo na janela seguinte",
+        "--despacho", "\n".join(despacho),
+        "--o-que-e",
+        f"A falha {numero} voltou {ocorrencias} vez(es) na última janela "
+        f"medida e deixou partes do site sem publicar por "
+        f"{eleita.get('minutos_ate_cobertura')} minutos somados.",
+        "--o-que-muda",
+        "O site para de ficar sem publicar pela mesma causa: esta tarefa ataca "
+        "a origem da falha, em vez de esperar a próxima queda.",
+        "--exemplo",
+        f"As células {', '.join(celulas) or 'medidas'} ficaram sem receber o "
+        f"que já tinha sido aprovado, e cada espera dessas custou, em média, "
+        f"{media} minutos.",
+        "--importancia", str(IMPORTANCIA_DA_CAMPEA),
+    ]
+
+
+def _abrir_tarefa(raiz: Path, argumentos: list) -> int:
+    """Chama `ci/fila.py criar`, que é quem sabe recusar tarefa repetida."""
+    import fila
+
+    return fila.main(argumentos)
+
+
+def _medir_um_run(argv: list) -> int:
+    """`--run <id>`: o run terminal que o deploy acabou de fechar.
+
+    O gatilho NÃO mede a janela inteira a cada deploy. São cerca de cem
+    deploys saudáveis por dia contra os 1.379 runs de uma janela de mês, e
+    medir tudo em cada um seria dezenas de milhares de chamadas diárias, que é
+    exatamente como a `armadilhas/462` esgotou a API. Então o run terminal é o
+    PORTÃO BARATO: um pedido REST pelos jobs dele e o log de cada célula
+    vermelha. Só quando esse log reconhece uma lição a medição cara acontece,
+    e é ela que diz quem é a campeã, quanto custou e o que vai no despacho.
+
+    Quem cria a tarefa é `ci/fila.py criar`, e é ela que recusa a segunda
+    tarefa da mesma origem: rodar de novo sobre o mesmo fato não duplica nada
+    (INV-R06).
+    """
+    from datetime import timedelta
+
+    pedido = _valor(argv, "--run", "").strip()
+    if not pedido.isdigit() or int(pedido) <= 0:
         print(
-            "🧱 PAROU POR SEGURANCA: `--run` veio sem o numero do run. "
-            "Use `--run=<id>` ou `--run <id>`.",
+            "🧱 RECUSADO: `--run` precisa do número do run terminal.\n"
+            f"   O QUE ACONTECEU: veio {pedido!r}.\n"
+            "   O QUE FAZER: use `--run=<id>` com o id que o "
+            "`github.event.workflow_run.id` entrega.",
+            file=sys.stderr,
+        )
+        return 1
+    raiz = Path.cwd()
+    logs: dict = {}
+    try:
+        costuras = _costuras_reais(raiz)
+        sha = _sha_da_base(costuras["git"], BASE_DA_MEDICAO)
+        catalogo = catalogo_das_armadilhas(raiz, git=costuras["git"], ref=sha)
+        run = _run_medido(costuras["api"](f"actions/runs/{pedido}"))
+        if run["status"] != "completed":
+            raise ErroDeColeta(
+                f"o run {pedido} está {run['status']!r}, e não terminal. O "
+                "gatilho é `workflow_run`/`completed`, e medir um run em voo "
+                "daria um retrato que muda depois de publicado."
+            )
+        if run["conclusion"] != CONCLUSAO_QUE_ABRE_JANELA:
+            print(
+                f"Run {pedido}: {run['conclusion']}. Nada a medir e nenhuma "
+                "tarefa a abrir: só o vermelho abre janela."
+            )
+            return 0
+        caidas = sinais_do_run(
+            run, api=costuras["api"], baixar_log=costuras["baixar_log"],
+            cache=logs, catalogo=catalogo,
+        )
+    except (ErroDeColeta, ErroDeClassificacao, ValueError) as erro:
+        print(f"🧱 PAROU POR SEGURANÇA: {erro}", file=sys.stderr)
+        return 2
+    if not caidas:
+        print(
+            f"Run {pedido}: vermelho sem nenhum job `deploy (<célula>)` "
+            "vermelho. Nada a medir por célula e nenhuma tarefa a abrir."
+        )
+        return 0
+    ilegiveis = [c for c in caidas if c["sinais"] is None]
+    ambiguas = [c for c in caidas if c["sinais"] and len(c["sinais"]) >= 2]
+    reconhecidas = sorted({
+        c["sinais"][0] for c in caidas if c["sinais"] and len(c["sinais"]) == 1
+    })
+    for cega in ilegiveis:
+        print(
+            f"🧱 NÃO MEDI a célula {cega['celula']} (job {cega['job']}): "
+            f"{MOTIVO_LOG_ILEGIVEL}\n"
+            "   O QUE FAZER: reabra o job no Actions enquanto o log existe, ou "
+            "meça a janela com `--desde` e `--ate`.",
+            file=sys.stderr,
+        )
+    for dupla in ambiguas:
+        print(
+            f"🧱 NÃO MEDI a célula {dupla['celula']} (job {dupla['job']}): "
+            f"{MOTIVO_AMBIGUO} Casaram: {', '.join(dupla['sinais'])}.\n"
+            "   O QUE FAZER: decida de qual entrada é esse erro e aperte a "
+            "assinatura da outra; `python ci/indice_de_armadilhas.py "
+            "--conferir` mostra o par.",
+            file=sys.stderr,
+        )
+    if ilegiveis or ambiguas:
+        return 2
+    if not reconhecidas:
+        print(
+            f"🧱 NÃO MEDI o run {pedido}: {MOTIVO_SEM_SINAL}\n"
+            "   O QUE FAZER: leia o log do job, escreva a lição em "
+            "`armadilhas/` com o `sinal:` dela, e a próxima queda igual será "
+            "reconhecida. Nenhuma tarefa foi aberta.",
             file=sys.stderr,
         )
         return 2
     print(
-        f"🧱 NAO MEDI o run {pedido}: a classificacao por run terminal "
-        "ainda nao existe neste instrumento.\n"
-        "   O QUE ACONTECEU: `--run` e bandeira reconhecida, e por isso nao "
-        "cai no relatorio de telemetria local nem sai 0.\n"
-        "   O QUE FAZER: meca a janela com "
-        "`python ci/termometro.py --desde=AAAA-MM-DD --ate=AAAA-MM-DD`, "
-        "que ja funciona, enquanto a medicao por run nao chega.",
-        file=sys.stderr,
+        f"Run {pedido}: falha reconhecida em "
+        + ", ".join(f"armadilhas/{n}" for n in reconhecidas)
+        + ". Medindo a janela para saber quem é a campeã."
     )
-    return 2
+    ate = str(run["updated_at"])[:10]
+    desde = (
+        _instante(run["updated_at"]) - timedelta(days=DIAS_DA_JANELA_PADRAO)
+    ).date().isoformat()
+    try:
+        sinais_do_job = detector_dos_logs(logs, catalogo=catalogo)
+        medida = coletar(
+            desde=desde, ate=ate, dias_por_fatia=DIAS_POR_FATIA,
+            cache_de_log=logs, **costuras,
+        )
+        quadro = montar_quadro(
+            fatos_da_coleta(medida, sinais_do_job=sinais_do_job),
+            catalogo=catalogo, medicao=medida, base=BASE_DA_MEDICAO, sha=sha,
+        )
+    except (ErroDeColeta, ErroDeClassificacao, ValueError) as erro:
+        print(f"🧱 PAROU POR SEGURANÇA: {erro}", file=sys.stderr)
+        return 2
+    print("\n".join(linhas_do_quadro(quadro)))
+    argumentos = argumentos_da_tarefa(quadro, catalogo)
+    if argumentos is None:
+        print(
+            "Nenhuma candidata com número de catálogo venceu esta medição: "
+            "nenhuma tarefa foi aberta, e número de armadilha não se inventa "
+            "aqui."
+        )
+        return 0
+    return _abrir_tarefa(raiz, argumentos)
 
 
 def main(argv: list[str]) -> int:
