@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-010-painel-ia-o-mapa-para-ia-volta-a-bater-com-a-lei-viva",
+  tipo: "nota",
+  quando: "2026-09-18",
+  titulo: "painel/ia: o mapa para IA volta a bater com a lei viva",
+  detalhe: "O mapa para IA ensinava lei revogada. Corrigi 17 divergencias medidas contra origin/main e descartei 9 que nao resistiram a segunda medicao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1724. Validação local: árvore 3b61e530c2d2f8e282ea35744493d179040765c3; commit 1752aedf9e66e9429a0b90b43b04a7e035f5dc1d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-463",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
