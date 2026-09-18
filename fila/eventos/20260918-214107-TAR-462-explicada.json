@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-214107-TAR-462-explicada",
+  "tarefa": "TAR-462",
+  "evento": "explicada",
+  "quando": "2026-09-18T21:41:07+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "A regra de emergencia manda voltar a versao anterior quando algo quebra, e avisa para ninguem juntar mudanca nova enquanto a volta estiver valendo. Esse aviso foi escrito quando juntar era gesto de gente. Hoje a juncao e automatica e acontece sozinha a cada quinze minutos, e nada nela sabe que existe uma volta de emergencia em curso.",
+  "o_que_muda": "A volta de emergencia passa a durar ate alguem desliga-la. Hoje ela pode ser desfeita em silencio, com tudo verde, enquanto o problema que a motivou continua la.",
+  "exemplo": "Duas da manha: o site quebra, a volta de emergencia conserta em 76 segundos. Quinze minutos depois a juncao automatica entra com outro trabalho, devolve a versao quebrada e ninguem e avisado.",
+  "importancia": 90
+}

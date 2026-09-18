@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-214454-TAR-463-explicada",
+  "tarefa": "TAR-463",
+  "evento": "explicada",
+  "quando": "2026-09-18T21:44:54+00:00",
+  "quem": "Pedido do mantenedor de 18/09/2026: compreender o sistema e formar a equipe",
+  "o_que_e": "O projeto tem um mapa escrito para IAs lerem antes de auditar a arquitetura. Ele foi escrito em 27 de agosto e revisto em 10 de setembro. Depois disso a lei da casa mudou duas vezes, e o mapa nao acompanhou.",
+  "o_que_muda": "Uma IA que ler o mapa deixa de aprender regra que ja acabou. Hoje ela aprenderia a pedir uma autorizacao que nao existe mais e a acreditar que uma conferencia obrigatoria nao bloqueia nada, quando bloqueia.",
+  "exemplo": "O mapa manda o robo pedir autorizacao para juntar o trabalho. Essa etapa acabou em 13 de setembro: hoje a juncao e automatica. O robo que seguir o mapa fica esperando por uma coisa que nunca vai acontecer.",
+  "importancia": 80
+}

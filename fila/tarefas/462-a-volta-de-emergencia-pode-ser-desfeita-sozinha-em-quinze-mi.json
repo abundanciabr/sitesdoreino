@@ -1,0 +1,19 @@
+{
+  "arquivo": "462-a-volta-de-emergencia-pode-ser-desfeita-sozinha-em-quinze-mi",
+  "id": "TAR-462",
+  "titulo": "A volta de emergencia pode ser desfeita sozinha em quinze minutos",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guarda que encena uma celula congelada e prova que a integracao e recusada, e que com o congelamento desligado ela passa. Provado por mutacao nos dois sentidos.",
+  "despacho": "# Brief compilado\n\nobjetivo: Impedir que a integracao automatica desfaca um rollback ativo sem ninguem no circuito\ntipo: arquitetura\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: fronteira entre incidente e entrega continua; a escolha do mecanismo decide o resto\ncelula: ci\n\n## O achado que origina esta tarefa (medido em origin/main, 18/09/2026)\n\nRITOS §4, a Lei das 2h da Manha, foi escrita em 23/08/2026, quando o merge\nera um gesto humano. Ela trata \"o proximo deploy da celula ja volta para\n`:main`\" como o botao de DESFAZER do rollback, e avisa: \"enquanto o rollback\nestiver ATIVO, nao mergeie nada que toque `infra/`\".\n\nDesde 13/09/2026 a integracao e automatica: `pouso.yml` acorda por\n`workflow_run` e por cron de 15 minutos, e `ci/mergear.py --automatico`\nintegra sem etiqueta, sem revisor e sem gesto de ninguem.\n\nMedido: `git grep -ic \"rollback\\|revers\" -- ci/mergear.py ci/portao_de_deploy.py`\ndevolve ZERO nos dois. Nada no caminho de integracao sabe que existe um\nrollback ativo.\n\nConsequencia: o aviso de RITOS §4 virou uma regra que so uma pessoa poderia\ncumprir, num caminho onde nao ha mais pessoa. Um rollback feito as 2h da\nmanha pode ser desfeito em silencio em ate 15 minutos, com o run verde.\n\n## Arquivos-alvo\n\n- ci/mergear.py (a consulta ao estado de congelamento, antes de integrar)\n- ci/rollback.py (ligar e desligar esse estado)\n- ci/tests/test_rollback_congela_a_celula.py (o guarda novo)\n\n## Como pensar antes de escrever\n\nO estado de \"celula congelada\" precisa ser legivel por maquina e sobreviver\na quem o ligou. Duas formas cabem na casa: um arquivo versionado (que exige\nPR para ligar, o que e lento demais para uma emergencia) ou uma referencia no\nservidor do GitHub, no mesmo molde do `ci/reservar.py`, que ja resolve\ntrava atomica com prazo. A segunda parece certa: emergencia nao espera PR, e\no prazo evita que um congelamento esquecido trave a casa para sempre. Meça\nantes de decidir, e diga por que escolheu.\n\n## Fora de mandato\n\n- Nao mexa em `.github/workflows/pouso.yml` sem mandato escrito.\n- Nao afrouxe nenhum portao existente para caber a solucao.\n- Nao toque na VPS: o agente nao tem SSH, e nao e isso que esta em jogo aqui.\n\n## Prova exigida\n\n- O guarda nasce vermelho: encene um rollback ativo e prove que a integracao\n  de um PR daquela celula e RECUSADA.\n- Mutacao: remova a consulta ao congelamento e confirme que o teste reprova.\n- Prove tambem o inverso: com o congelamento desligado, a integracao passa.\n  Um portao que recusa sempre nao e portao, e paralisia.",
+  "origem": "Auditoria do mapa para IA de 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

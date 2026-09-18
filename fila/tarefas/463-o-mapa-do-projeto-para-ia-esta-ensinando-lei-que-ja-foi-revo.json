@@ -1,0 +1,20 @@
+{
+  "arquivo": "463-o-mapa-do-projeto-para-ia-esta-ensinando-lei-que-ja-foi-revo",
+  "id": "TAR-463",
+  "titulo": "O mapa do projeto para IA esta ensinando lei que ja foi revogada",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cada correcao com o comando que a mediu; muralhas verdes e o teste do mapa verde; divergencia que nao resistir a segunda medicao fica de fora.",
+  "despacho": "# Brief compilado\n\nobjetivo: Medir os oito documentos de painel/ia contra origin/main e corrigir o que ensina lei revogada\ntipo: diagnostico\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: le lei e codigo lado a lado e decide o que e divergencia de verdade\ncelula: admin\n\n## Por que\n\n`painel/ia/` e o mapa tecnico que o CLAUDE.md manda uma IA ler antes de\nauditoria ampla ou segunda opiniao de arquitetura. Ele foi escrito em\n27/08/2026 e revisto em 10/09. A casa mudou de lei duas vezes depois disso\n(integracao automatica em 13/09; CODEOWNERS virou portao no mesmo dia) e o\nmapa nao acompanhou. A propria lei dele diz: fonte original vence divergencia,\ne quem detectar corrige no mesmo PR.\n\n## Arquivos-alvo\n\n- painel/ia/INDICE.md e 01 a 07\n\n## Somente leitura\n\n- CONSTITUICAO.md, RITOS.md, CLAUDE.md, INVARIANTES.md, CAMINHO-DOURADO.md\n- ci/mergear.py, ci/portao_de_deploy.py, celulas.yml, infra/sites.json\n- .github/CODEOWNERS e .github/workflows/\n\n## Fora de mandato\n\nNao tocar em nenhum arquivo de lei, em ci/ nem em docs/decisoes/: sao\nCODEOWNERS. Este trabalho corrige o RESUMO, nunca a fonte.\n\n## Prova exigida\n\n- `python ci/ci.py --apenas muralhas` verde.\n- `python -m pytest ci/tests/test_painel_ia_atualizado.py -q` verde.\n- Cada correcao carrega o comando que a mediu; divergencia alegada que nao\n  resistir a segunda medicao e descartada, nao escrita.",
+  "origem": "Pedido do mantenedor de 18/09/2026: compreender o sistema e formar a equipe",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
