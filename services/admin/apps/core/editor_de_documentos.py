@@ -6,12 +6,16 @@ https://meshcraft.top/docs/como-funciona-a-entrada"*.
 
 Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
 
-## Quatro rotas, quatro verbos
+## Um gesto por rota
 
 Mostrar o formulário vazio, criar, mostrar o formulário cheio, gravar. Um POST
 só com um campo escondido dizendo "o que fazer" faria a auditoria e o CSRF
 dependerem de um valor de formulário, e a leitura do `urls.py` deixaria de
 contar o que a tela faz. É a mesma gramática da tela do menu do topo.
+
+Criar e gravar texto nunca mudam a visibilidade. Publicar e tirar do público
+têm rotas e botões próprios, abaixo do documento já criado: revisão e exposição
+não cabem no mesmo clique.
 
 ## Formulário simples, sem script
 
@@ -92,9 +96,6 @@ def _do_formulario(request) -> dict:
         "nome": (request.POST.get("nome") or "").strip().lower(),
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
         "ordem": _inteiro(request.POST.get("ordem"), documentos.ORDEM_PADRAO),
-        # Caixa não marcada não é enviada pelo navegador: a ausência do campo é
-        # o "não". É o que faz `publico` continuar fail-CLOSED do lado da tela.
-        "publico": request.POST.get("publico") == "sim",
         "apendice_vivo": request.POST.get("apendice_vivo") == "sim",
         "verificado_em": (request.POST.get("verificado_em") or "").strip(),
         "proxima_verificacao_em": (
@@ -278,7 +279,7 @@ def documento_criar(request):
         nome=nome,
         corpo=rascunho["corpo"],
         ordem=rascunho["ordem"],
-        publico=rascunho["publico"],
+        publico=False,
         **_campos_de_apendice_vivo(rascunho),
     )
     _guardar_versao(request, documento, "criou o documento")
@@ -363,7 +364,6 @@ def documento_salvar(request, nome):
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
-    documento.publico = rascunho["publico"]
     for campo, valor in _campos_de_apendice_vivo(rascunho).items():
         setattr(documento, campo, valor)
     documento.save()
@@ -388,6 +388,51 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
+    )
+
+
+# --------------------------------------------------------- publicar e retirar
+
+
+@require_POST
+def documento_publicar(request, nome):
+    """Expõe um documento já criado, num gesto separado de escrever."""
+    return _mudar_publicacao(
+        request, nome, publico=True, acao=Registro.PUBLICAR_DOCUMENTO
+    )
+
+
+@require_POST
+def documento_despublicar(request, nome):
+    """Torna o documento visível apenas para administradores."""
+    return _mudar_publicacao(
+        request, nome, publico=False, acao=Registro.DESPUBLICAR_DOCUMENTO
+    )
+
+
+def _mudar_publicacao(request, nome, *, publico: bool, acao: str):
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    if documento.arquivado:
+        return HttpResponseRedirect(
+            f"{reverse('documento_admin', args=[documento.nome])}?recado=arquivado"
+        )
+    if documento.publico == publico:
+        recado = "publicado" if publico else "despublicado"
+        return HttpResponseRedirect(
+            f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
+        )
+
+    documento.publico = publico
+    documento.save(update_fields=["publico", "atualizado_em"])
+    gesto = "publicou o documento" if publico else "tirou o documento do público"
+    _guardar_versao(request, documento, gesto)
+    _auditar(request, acao, documento.nome, Registro.OK)
+    recado = "publicado" if publico else "despublicado"
+    return HttpResponseRedirect(
+        f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
     )
 
 

@@ -2439,7 +2439,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Escrever um documento novo",
-      "descricao": "O formulário em branco. O documento nasce fechado: só aparece no site aberto se você marcar a caixa de publicar."
+      "descricao": "O formulário em branco. Todo documento novo nasce fechado para o público e visível somente na administração. Depois de criar e revisar, você decide se quer publicá-lo."
     },
     {
       "celula": "admin",
@@ -2468,7 +2468,27 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Salvar a edição do documento",
-      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. A mudança aparece no site na hora, sem esperar atualização nenhuma."
+      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. Salvar muda o texto, mas não publica nem tira o documento do público."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Publicar um documento no site",
+      "descricao": "Não é uma página: é a ação separada que torna público um documento já criado e revisado. O botão aparece abaixo do conteúdo na administração."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Tirar um documento do público",
+      "descricao": "Não é uma página: retira o documento do site aberto, mas mantém o texto e todo o histórico disponíveis para a administração."
     },
     {
       "celula": "admin",
