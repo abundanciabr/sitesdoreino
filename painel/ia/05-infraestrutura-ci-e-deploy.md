@@ -111,8 +111,8 @@ devolve ERROR, nunca PASS.
 | `contract_freeze.py` | muralha de contrato | Compara schema OpenAPI vivo × congelado; sonda a autenticação efetiva na fonte (django-ninja omite `security` em vez de emitir `[]` — cegueira que só a sonda pega) |
 | `guarda_dos_guardas.py` | muralha/PR | Prova que `INVARIANTES.md` e o disco não divergem: todo teste-guarda citado existe e ainda morde (sem skip/xfail/corpo vazio) |
 | `muralha_pasta_compartilhada.py` | hook do harness | Recusa edição/git-de-estado quando a sessão roda no clone principal (não é CI de PR, é hook local) |
-| `mergear.py` | merge | Exige atestado independente do SHA final, checks, labels, livro e publicações anteriores da célula/provedores; fixa o SHA no merge da pista e confere MERGED no GitHub |
-| `revisor_de_pouso.py` | revisão | Valida o atestado da maestro sobre avaliação real de outra tarefa; o scanner de quatro heurísticas continua apenas consultivo |
+| `mergear.py` | merge | **Corrigido em 18/09/2026.** No caminho de integração (`conferir()`), julga só CINCO coisas: PR aberto e não-rascunho, mergeável e não-BEHIND com base `main`, SHA de 40 hex, os dois checks obrigatórios (`muralhas` e `ci-celula-gate`) verdes no SHA atual, e o mandato CODEOWNERS. Fixa o SHA com `--match-head-commit` e confere MERGED no GitHub. **O que a versão anterior desta linha prometia (atestado independente, labels, livro, publicações anteriores) está definido no arquivo e NUNCA é chamado** desde a integração automática de 13/09/2026: é uma segunda implementação de regras que o check `muralhas` já impõe, e o risco real dela é deriva entre as duas cópias. |
+| `revisor_de_pouso.py` | fila | **Não está mais no caminho do merge.** `DECISAO-merge-sem-rito-de-pouso.md` (13/09/2026) retirou o atestado e a maestro da integração. O módulo continua existindo e sendo chamado, mas por `ci/fila.py` e `ci/estado_da_entrega.py`, para derivar o estado de revisão de uma entrega, nunca para autorizar um merge. |
 | `estado_da_entrega.py` | acompanhamento | Deriva revisão, integração e publicação do GitHub e dos gatilhos dos workflows; `esperar.py --entrega N` consulta uma vez e retorna JSON com SHA, células, runs e próxima ação |
 | `divida_do_livro.py` | merge/painel | Lista PRs mergeados sem registro citando o número, com graça de 90min |
 | `indice_de_armadilhas.py` | documentação | Gera `armadilhas/INDICE.md`; reprova (ERROR) se dois arquivos colidirem no mesmo número |
@@ -137,11 +137,34 @@ concluir `success` no PR de origem. `skipped`/`cancelled`/ausência não é
 verde — só `success` explícito conta. Também varre o mesmo SHA por qualquer
 outro workflow que tenha ficado vermelho fora da lista conhecida.
 
-**`ci/rollback.py`** (único caminho `workflow_dispatch` do repositório) prova
-três coisas antes de qualquer SSH: célula está no manifesto; alvo é `main`
-ou sha comprovadamente ancestral via `git merge-base` (logo, um commit que já
-passou pelo portão de deploy); imagem existe no registry. O pin **não
-persiste** — o próximo deploy normal volta a `:main` sozinho. Isto mecaniza a
+**`ci/rollback.py`** prova quatro coisas antes de qualquer SSH: célula está no
+manifesto; motivo tem conteúdo; alvo é `main` ou sha comprovadamente ancestral
+via `git merge-base` (logo, um commit que já passou pelo portão de deploy);
+imagem existe no registry. O pin **não persiste** — o próximo deploy normal
+volta a `:main` sozinho.
+
+> **Correção de 18/09/2026, e ela importa.** A versão anterior desta linha
+> dizia que o rollback era "o único caminho `workflow_dispatch` do
+> repositório". **Não é.** Medido: **16 dos 25 workflows carregam
+> `DEPLOY_SSH_KEY` e alcançam a VPS**, e apenas TRÊS passam por portão antes
+> do SSH (`deploy-celula`, `deploy-infra` e este). Os outros treze
+> (`semear-*`, `backfill-*`, `esvaziar-caixa`, `ligar-os-degraus`,
+> `canario-fase-3-outbox`, `conferir-as-fichas`, `limpar-avisos-orfaos`)
+> entram na produção sem portão nenhum, e um deles esvazia dado.
+> Isso **tensiona a Lei 5** da Constituição, que chama a chave SSH de
+> inexistência e não de proibição: a inexistência vale para a SESSÃO do
+> agente, não para o CAMINHO. Um PR que toque `.github/` (caminho CODEOWNERS,
+> cujo mandato é uma linha de texto que o próprio agente escreve) ganha SSH na
+> VPS. Quem for avaliar segurança aqui precisa ler a cadeia inteira, não a
+> frase da Lei 5.
+>
+> Duas outras coisas que faltam a este documento e que um leitor precisa
+> saber: `ci/rollback.py` **não pergunta se houve migração** entre o alvo e
+> agora, então voltar a imagem não volta o esquema; e o rollback **é desfeito
+> sozinho** pela integração automática, que acorda por cron a cada 15 minutos
+> e devolve a célula a `:main` sem ninguém no circuito. A regra escrita em
+> RITOS §4 ("não mergeie nada que toque `infra/` com rollback ativo") nasceu
+> quando o merge era gesto humano. Isto mecaniza a
 Lei 5 (2h da manhã): reverter produção deixa de depender de acordar o
 mantenedor para colar comando SSH.
 
