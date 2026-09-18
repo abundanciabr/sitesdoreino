@@ -81,8 +81,11 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
   conferido é exigido no merge, então push concorrente invalida a tentativa;
   (7) em falha, preserve arquivos e commits e conserte a causa; (8) **o fecho
   é do executor e acontece fora do laço**: depois do `make pr`, mede-se UMA
-  vez com `ci/esperar.py --so-desfecho`, nunca em laço. Duas tentativas falhas
-  seguidas ainda mandam parar e reportar, e testes-guarda continuam intocáveis.
+  vez com `ci/esperar.py --so-desfecho`, nunca em laço. **O que NÃO mudou e
+  continua valendo:** duas tentativas falhas seguidas mandam parar,
+  preserve os arquivos e commits e reporte o diagnóstico
+  (nunca apagar trabalho para "começar limpo"); e testes-guarda continuam
+  intocáveis.
 - **§3 Mudança de contrato.** É rito, nunca decisão de uma sessão sozinha —
   exige sessão de arquitetura com o mantenedor presente. PR só toca
   `contracts/` com label `contrato`; o provedor muda primeiro com
