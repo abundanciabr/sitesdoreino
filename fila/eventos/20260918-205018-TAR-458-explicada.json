@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-205018-TAR-458-explicada",
+  "tarefa": "TAR-458",
+  "evento": "explicada",
+  "quando": "2026-09-18T20:50:18+00:00",
+  "quem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Parte VIII; revisão independente exigiu encaminhamento do risco Alto",
+  "o_que_e": "O código da compra coloca uma credencial de serviço em partes da página que chegam ao navegador.",
+  "o_que_muda": "O diagnóstico mostra exatamente o que essa credencial permite e qual proteção precisa existir antes de autorizar vendas.",
+  "exemplo": "Em uma simulação local, uma credencial inventada mostra se uma pessoa consegue enxergar no HTML uma chave que deveria ficar no servidor.",
+  "importancia": 95
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-008-docs-formar-equipe-especialista-tar-455",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "docs: formar equipe especialista (TAR-455)",
+  detalhe: "Mapa e equipe documentados. Dívida da Operação: criar síntese privada no editor e reler; o gesto não foi autorizado pelo instrumento.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1720. Validação local: árvore d3823fe546c9ae7a2b2a4f7266ab5e3f5bbd38e9; commit b71467e34f893e4a06829dbb60459ac9c6dbd683; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-455",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -19,12 +19,12 @@ em `painel/` guarda estado — toda vista é `f(registros[], agora)`.
 | `painel/logica.js` | Regras de cálculo puras (sem DOM/rede/relógio — quem chama passa `agora`). Roda idêntica em Node (gerador) e no navegador (página). | PR + teste-guarda |
 | `painel/gerar_manifesto.js` | Valida TODOS os registros com a mesma `logica.js` e MONTA a página: injeta as regras e o resumo em `painel.template.html`, e empacota o passado em um `livro-AAAAMM.js` por mês. `--conferir` só audita (usado pela CI). O nome é herança de quando ele só escrevia um manifesto. | Só o gerador, nunca à mão |
 | `painel/painel.template.html` | A FONTE da página — é este que se edita. Tem o marcador `__DADOS_DO_PAINEL__` onde o gerador injeta regras e resumo. | PR |
-| `painel/painel.html` | **GERADO.** A página que o mantenedor abre — HTML+CSS+JS+dados num arquivo só, fail-closed total. **Abrir custa UM pedido**, com 90 registros ou com 90 mil. | Só o gerador, nunca à mão |
+| `painel/painel.html` | **GERADO.** A página que o mantenedor abre — HTML+CSS+JS+dados num arquivo só, fail-closed total. **Abrir custa UM pedido.** Mas não "com 90 mil registros": `logica.js` define `ORCAMENTO_RESUMO_BYTES = 150 KB` e `ORCAMENTO_PAINEL_BYTES = 300 KB`, e acima disso **o gerador se RECUSA a construir** — o que trava todo PR que registre qualquer coisa. Medido em 18/09/2026: resumo a ~98% e página a ~95% do teto. Quando estourar, a resposta é olhar o que engordou o resumo, nunca subir o teto. | Só o gerador, nunca à mão |
 | `painel/livro-AAAAMM.js` | **GERADO**, um por mês: o conteúdo daquele mês, buscado só quando a Memória é aberta. Mês fechado nunca mais é reescrito. | Só o gerador, nunca à mão |
 | `ci/verificar_painel.py` | O verificador INDEPENDENTE: confere os gerados contra `git ls-files`, em Python, sem reusar código do gerador, comparando conjuntos de ids. Fecha o ponto cego do `--conferir` (o gerador conferindo a si mesmo). Roda como passo 4 da muralha do painel. | PR |
 | `painel/testes/` | `teste_logica.js` (~50 casos, cada regra provada nos dois sentidos) e `teste_gerador.js` (roda o gerador como subprocesso real, prova os 3 estados de saída) | PR |
 | `ci/muralha-do-painel.sh` | Roda os testes acima em todo PR (exit 0/1/2 — ERROR nunca vira PASS) | — |
-| `ci/divida_do_livro.py` | Segunda trava, na porta de merge: PR mergeado sem nenhum registro citando seu número vira "dívida" que bloqueia o **próximo** merge | — |
+| `ci/divida_do_livro.py` | A biblioteca que CALCULA a dívida (PR mergeado sem registro citando seu número). **Correção de 18/09/2026: ela NÃO é imposta na porta do merge.** `conferir()` em `ci/mergear.py` chama só `checar_estado`, `checar_mergeabilidade`, `checar_checks` e `checar_mandato`; `checar_divida_do_livro` e `checar_registro_embarcado` estão definidas e órfãs desde a integração automática de 13/09/2026. O que resta em pé é o degrau local `.githooks/pre-commit`, que vale só em quem tem `core.hooksPath` configurado. | — |
 
 ## Schema do registro, campo a campo
 
@@ -35,7 +35,7 @@ imposto dos dois lados").
 | Campo | Tipo/enum | Obrigatório | Regra |
 |---|---|---|---|
 | `arquivo` | string | sim | Igual ao nome do arquivo sem `.js`; padrão `AAAAMMDD-NNN-slug`; único |
-| `tipo` | `decisao \| pendencia \| resposta \| entrega \| incidente \| medicao \| frente \| rumo \| nota` | sim | — |
+| `tipo` | `decisao \| pendencia \| resposta \| entrega \| incidente \| medicao \| frente \| rumo \| nota \| compromisso` | sim | `compromisso` entrou em 03/09/2026 e **exige `vence_em_dias` numérico maior que zero**, senão o validador reprova. O veredito dele é calculado de quem o `responde_a`, nunca marcado à mão. |
 | `quando` | data ISO | sim | Quando o FATO aconteceu, não quando foi escrito |
 | `titulo` | string | sim | Texto puro — `<` no valor reprova (nunca HTML) |
 | `detalhe` | string | sim | Idem; `\n\n` separa parágrafos |

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260918-233950-TAR-476-concluida",
+  "tarefa": "TAR-476",
+  "evento": "concluida",
+  "quando": "2026-09-18T23:39:50+00:00",
+  "quem": "agent/ci/comprovante-da-fila-sem-commit",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1732",
+  "verificado_em": "2026-09-18"
+}
