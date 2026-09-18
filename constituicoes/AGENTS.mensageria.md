@@ -51,6 +51,13 @@ Templates versionados dentro da célula. Nunca toca dinheiro, nunca bloqueia din
 - Consumo idempotente por `event_id`: evento reentregue ⇒ UM envio (tabela de deduplicação).
 - Falha de provedor (SMTP/WhatsApp fora) ⇒ retry com backoff via Huey; jamais propaga erro para quem emitiu.
 - Todo envio registra: evento de origem, template+versão, destinatário, resultado.
+- **Evento morto se recupera, e a recuperação não reenvia nada duas vezes.**
+  O que esgota `MAX_ENTREGAS` vai para `<stream>.dlq` e sai de lá por
+  `manage.py eventos_mortos` (TAR-456, 18/09/2026): a listagem mostra motivo,
+  entregas e desde quando, e o reprocesso passa pelo MESMO `processar_envelope`
+  do consumidor, então a dedup por `event_id` continua sendo a única regra de
+  "reentrega implica UM envio". A entrada só sai da fila morta depois de o
+  efeito ser conferido no banco; falhou de novo, ela fica.
 
 ### A régua de quem recebe (jornadas, 31/08/2026)
 A régua é UMA SÓ, por pessoa, e atravessa toda entrega desta célula — um teto por

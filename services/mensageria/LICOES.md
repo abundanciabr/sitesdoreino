@@ -611,3 +611,36 @@ e exatamente o que o guarda existe para impedir. O sinal ainda nao sabe se o
 trabalho foi APROVADO (o laudo e fato da celula `cursos` e nao chega aqui), e
 apertar o sinal um dia so pode REDUZIR o que a fila oferece de venda: e o lado
 seguro da duvida.
+
+## A fila morta só é fila morta enquanto ninguém puder tirar nada de lá
+
+**Onde:** `apps/eventos/management/commands/eventos_mortos.py` (TAR-456).
+
+**O que existia:** a reentrega da PEL movia para `<stream>.dlq` o evento que
+esgotava `MAX_ENTREGAS` e logava `intervencao manual necessaria`. O caminho
+automático estava correto e terminava numa frase que ninguém conseguia cumprir:
+a intervenção exigia abrir o Redis na unha, achar a entrada, reconstruir o
+envelope e chamar o handler certo, com o risco de mandar duas vezes a mesma
+mensagem para o mesmo aluno. Um caminho que termina em "alguém faz isso à mão"
+não terminou.
+
+**As três decisões que valem a leitura:**
+
+1. **A recuperação passa pelo `processar_envelope` do consumidor, nunca pelo
+   handler direto.** É a dedup por `event_id` que faz "reprocessar duas vezes
+   produz um efeito", e chamar o handler na mão seria criar um segundo caminho
+   de entrega sem a trava do primeiro. Provado por mutação: trocar a chamada
+   pelo handler cru derruba o teste da entrada repetida.
+2. **O efeito final é conferido no banco antes de a entrada sair da fila.**
+   Handler que volta sem estourar não é prova de efeito (`RETROSPECTIVA-FASE-D`,
+   padrão 1). A fila morta é a última cópia que existe daquele evento: apagar a
+   entrada antes de ler o `EventoProcessado` transformaria um verde falso em
+   evento perdido para sempre.
+3. **Falhar de novo mantém a entrada e nomeia a causa.** Reprocessar antes de
+   corrigir o problema é o gesto mais provável do operador apressado, e a
+   resposta certa é o evento continuar morto com o erro real na tela.
+
+**A armadilha que o comando quase repetiu:** `--reprocessar ""` (variável de
+shell vazia) caía na listagem e saía com código zero, ou seja, um pedido de
+recuperação que virava relatório e parecia ter funcionado. A decisão é
+`alvo is not None`, e não a verdade do valor.
