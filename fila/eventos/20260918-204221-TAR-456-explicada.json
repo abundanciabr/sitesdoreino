@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-204221-TAR-456-explicada",
+  "tarefa": "TAR-456",
+  "evento": "explicada",
+  "quando": "2026-09-18T20:42:21+00:00",
+  "quem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Partes VIII e X",
+  "o_que_e": "Uma mensagem que falha várias vezes pode ficar separada e o caso da pessoa continuar incompleto.",
+  "o_que_muda": "A operação consegue localizar a falha, corrigir sua causa e concluir o caso sem repetir a mensagem ou seu efeito.",
+  "exemplo": "Uma comunicação falha até sair da fila normal; depois da correção, o operador a reenvia uma vez e vê a confirmação do resultado.",
+  "importancia": 90
+}

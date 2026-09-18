@@ -1,0 +1,20 @@
+{
+  "arquivo": "457-fazer-o-mapa-para-ia-acusar-fatos-arquiteturais-envelhecidos",
+  "id": "TAR-457",
+  "titulo": "Fazer o mapa para IA acusar fatos arquiteturais envelhecidos",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guardas reprovam GPS descrito como inexistente, rito antigo de pouso, motivos desatualizados de funil/quiz e chave freeze duplicada; ficam verdes após correção. Alteração de mecanismo citado exige atualização do mapa correspondente ou prova de derivação, sem criar segunda fonte de verdade. Suítes e mutação aprovadas.",
+  "despacho": "Brief gerado por ci/economia_da_fabrica.py brief --tipo arquitetura: modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Objetivo: mecanizar frescor semântico do mapa IA para GPS, integração, manifesto e células. Alvos previstos ci/ e painel/ia/; leitura das leis e mecanismos. Há caminho CODEOWNERS ci/: antes de editar, conferir mandato escrito específico; diagnóstico não concede autorização. Provar primeiro as divergências medidas no relatório TAR-455: GPS dito inexistente, rito antigo de pouso, motivos de funil/quiz e chave freeze duplicada. Propor o menor detector que ligue fonte e mapa sem duplicar verdade; fechar contrato do detector antes de implementar. Guardas vermelho/verde e mutação pelo rito. Não corrigir outras lacunas nem alterar governança nesta tarefa.",
+  "origem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Partes VIII e X",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
