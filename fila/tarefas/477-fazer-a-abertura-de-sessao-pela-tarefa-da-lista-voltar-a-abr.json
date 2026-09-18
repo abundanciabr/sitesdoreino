@@ -1,0 +1,21 @@
+{
+  "arquivo": "477-fazer-a-abertura-de-sessao-pela-tarefa-da-lista-voltar-a-abr",
+  "id": "TAR-477",
+  "titulo": "Fazer a abertura de sessao pela tarefa da lista voltar a abrir o aviso",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-476"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste reproduz a abertura com comprovante da fila, falha antes da correcao e passa depois, provando que o evento vira commit antes do push. Suite de ci/tests afetada verde. Editar ci/sessao.py exige mandato escrito do mantenedor com o caminho autorizado, sem o qual esta tarefa nao integra.",
+  "despacho": "Objetivo: fazer a abertura de sessao com --tar TAR-NNN voltar a funcionar.\n\nAlvo unico: ci/sessao.py, metodo anunciar_pr. Caminho CODEOWNERS: nao edite sem `Mandato-do-mantenedor:` escrito na descricao do PR, com este caminho autorizado. Diagnostico nao concede autorizacao.\n\nCorrecao esperada, minima: commitar os eventos adicionados antes do push, com mensagem propria, preservando o comportamento do ramo sem comprovante. Nao generalize, nao crie opcao nova, nao reorganize o metodo.\n\nAceite: um teste reproduz a abertura com comprovante da fila, falha antes da correcao e passa depois (vermelho para verde), provando que o ramo com evento gera commit antes do push. Suite de ci/tests afetada verde. Um PR coeso com registro embarcado.\n\nArmadilha: `python ci/ci.py --apenas testador` estoura o timeout interno de 900s em Windows; isso e ERROR de instrumento, nao FAIL. Valide o que prova a mudanca e deixe a suite completa para o runner do CI.",
+  "origem": "TAR-476: diagnostico em ci/sessao.py, metodo anunciar_pr",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
