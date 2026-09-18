@@ -1145,6 +1145,16 @@
     },
     {
       "celula": "admin",
+      "rota": "ranking-ias/",
+      "endereco": "/admin/ranking-ias/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Ranking das IAs: quem publicou o que",
+      "descricao": "Quanto cada uma das tres IAs da triade publicou em origin/main e quanto escreveu para publicar: paginas novas, entregas, linhas somadas e apagadas, retrabalho e a data da ultima entrega. Quem mede e ci/ranking_das_ias.py, contra o Git; esta tela so ordena e diz em qual plano de uso cada uma fica. Trabalho sem o rastro Co-authored-by aparece numa linha propria, fora do podio, porque repartir por palpite inventaria o ranking. Sem o arquivo medido a pagina diz que nao foi medida, e nunca mostra um placar zerado."
+    },
+    {
+      "celula": "admin",
       "rota": "mapa/",
       "endereco": "/admin/mapa/",
       "alcance": "publico",
