@@ -3735,6 +3735,35 @@ def test_o_gatilho_reconhecido_MEDE_a_janela_e_abre_a_tarefa_da_campea(
     assert "TERMÔMETRO" in capsys.readouterr().out
 
 
+def test_o_comando_gerado_e_ACEITO_pelo_balcao_da_fila(monkeypatch):
+    """O argv nao pode ser texto bonito que a fila recusa na linha de comando.
+
+    Os outros testes do gatilho falsificam `_abrir_tarefa` para ler o argv sem
+    escrever na fila, e e justamente por isso que uma bandeira com nome errado
+    passaria por todos eles e so apareceria em producao. Aqui o parser DE
+    VERDADE da fila le o mesmo argv.
+    """
+    import fila
+
+    abertas: list = []
+    _rodar_o_gatilho(monkeypatch, _bancada_do_gatilho(), 1, abertas)
+    lido = fila.construir_parser().parse_args(abertas[0])
+    assert lido.acao == "criar"
+    assert lido.origem == "ci/termometro.py:armadilhas/088"
+    assert lido.move == [fila.MANUTENCAO]
+    assert lido.toca and all(isinstance(t, str) and t for t in lido.toca)
+    assert lido.despacho.strip()
+    assert lido.evidencia_exigida.strip()
+    assert (
+        fila.IMPORTANCIA_MINIMA <= lido.importancia <= fila.IMPORTANCIA_MAXIMA
+    )
+    for campo in ("o_que_e", "o_que_muda", "exemplo"):
+        assert getattr(lido, campo).strip(), f"{campo} nao pode nascer vazio"
+    # E a unidade tem de existir no cadastro da casa: `operacao-tecnica`
+    # digitado errado so apareceria no dia da primeira campea.
+    assert fila.responsabilidades.validar_entrega(RAIZ, lido.responsabilidade) == []
+
+
 def test_o_gatilho_REPETIDO_manda_a_MESMA_origem_e_nao_uma_segunda(monkeypatch):
     """INV-R06: o evento repetido nao cria tarefa nova.
 
