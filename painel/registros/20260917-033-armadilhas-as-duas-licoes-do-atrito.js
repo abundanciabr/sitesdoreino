@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-033-armadilhas-as-duas-licoes-do-atrito",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "armadilhas: as duas lições do atrito",
+  detalhe: "Duas licoes medidas na entrega do portao do voo: orcamento de portao se mede antes de escrever, e artefato acessorio recusado duas vezes vira relato. Recuperadas por sintoma no consultar_armadilhas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1708. Validação local: árvore 507a968797045eddfdddd5245c40e8c5bfa91602; commit 25d2da8e1872dfafb5704030131aa18c17c08f0b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-449",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260917-230557-TAR-446-concluida",
+  "tarefa": "TAR-446",
+  "evento": "concluida",
+  "quando": "2026-09-17T23:05:57+00:00",
+  "quem": "agent/ci/a-sessao-nao-fecha-em-voo",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1703",
+  "verificado_em": "2026-09-17"
+}
