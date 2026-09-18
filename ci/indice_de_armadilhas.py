@@ -68,6 +68,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -92,6 +93,8 @@ RE_TITULO = re.compile(r"^#\s+(.*\S)\s*$")
 RE_ID_NO_TITULO = re.compile(r"^([0-9]+(?:\.[0-9]+)+)\s+(.*)$")
 RE_SINTOMA = re.compile(r"^\*\*Sintoma[^*]*\*\*:?\s*(.*)$")
 RE_NUMERO_DO_NOME = re.compile(r"^([0-9]+)-")
+# `{0,100}` é quantidade, não texto: entre as chaves não há nada a exigir.
+RE_QUANTIFICADOR = re.compile(r"\{[0-9]*(?:,[0-9]*)?\}")
 
 LIMITE_DA_CELULA = 220
 
@@ -296,6 +299,66 @@ CORPUS_FELIZ = (
 )
 
 
+# O MESMO exame, do outro lado do fio: o log do GITHUB ACTIONS.
+#
+# O `CORPUS_FELIZ` acima é saída de TERMINAL LOCAL — ele nunca viu uma linha de
+# runner. Medido em 18/09/2026: passando os 414 sinais do catálogo por um log
+# de deploy VERDE de verdade (job 96033856977), DOIS casaram. `already exists`
+# é o registry respondendo que aquela camada da imagem já estava lá, e
+# `django-ninja` é uma linha do `pip install` que toda build imprime. Nenhum
+# dos dois é falha, e os dois estavam prontos para acusar reincidência em cima
+# de um deploy que deu certo.
+#
+# As linhas entram COM o carimbo de tempo e o prefixo do passo, que é como o
+# Actions as devolve: assinatura conferida contra a linha "limpa" não é a
+# assinatura que o sino vai comparar de verdade.
+CORPUS_FELIZ_DO_ACTIONS = (
+    "2026-08-19T10:16:10.4231338Z #9 1.489 Collecting django-ninja==1.3.0 "
+    "(from -r requirements.txt (line 2))",
+    "2026-08-19T10:16:23.0951423Z 5f70bf18a086: Layer already exists",
+)
+
+# As armadilhas cuja assinatura é procurada no LOG DO JOB TERMINAL — o job já
+# concluído, lido do GitHub Actions — e não na saída do terminal de quem
+# trabalha. Os dois textos chegam com codificações diferentes: o Actions guarda
+# o log em UTF-8 DUPLAMENTE codificado, então o `não` que o script imprimiu
+# chega como `nÃ£o` e um sinal acentuado casa ZERO logs de lá.
+#
+# A regra é opt-in por armadilha, e isso é deliberado: no terminal local o
+# acento casa normalmente, e 149 dos 414 sinais do catálogo dependem disso.
+# Global, esta regra reprovaria 36% do catálogo por um defeito que só existe do
+# outro lado do fio.
+ARMADILHAS_DO_LOG_TERMINAL = frozenset({"088"})
+
+# A DÍVIDA LEGADA — nomeada, congelada, e só pode encolher (18/09/2026).
+#
+# As regras novas valem para toda entrada a partir de hoje. O catálogo legado
+# NÃO é migrado nesta entrega: reescrever assinatura em massa é a mudança que
+# ninguém consegue revisar, e o relatório do laço proíbe. O que não se admite é
+# a exceção silenciosa — cada linha abaixo diz quem, o quê e por quê, o teto
+# das duas listas está travado por teste, e perdão que já não é preciso sai da
+# lista (`test_nenhuma_divida_congelada_e_fantasma`).
+DIVIDA_DO_CORPUS_DO_ACTIONS = frozenset({
+    # A resposta do registry a cada camada de imagem que já estava lá.
+    ("357", "already exists"),
+    # Uma linha do `pip install` de toda build.
+    ("351", "django-ninja"),
+})
+
+# Os 14 pares em que duas entradas disputam o mesmo texto. Medidos com
+# `colisoes_de_sinais` sobre a pasta inteira, no mesmo dia.
+DIVIDA_DE_COLISAO = frozenset({
+    ("205", "330"), ("224", "311"), ("228", "324"), ("228", "483"),
+    ("253", "347"), ("274", "319"), ("280", "323"), ("298", "365"),
+    ("308", "310"), ("319", "326"), ("335", "485"), ("358", "361"),
+    ("389", "395"), ("481", "484"),
+})
+
+# Os caracteres que um regex usa para dizer "aqui não é literal". O que sobra
+# entre eles é o que a assinatura exige ver letra por letra.
+META_DE_REGEX = frozenset(r".^$*+?{}[]\|()")
+
+
 class ErroDeFrontmatter(ErroDeInstrumentacao):
     pass
 
@@ -498,7 +561,7 @@ def validar_gatilhos(gatilhos: list, licao: str, nome: str) -> None:
                 )
 
 
-def validar_sinais(sinais: list, nome: str) -> None:
+def validar_sinais(sinais: list, nome: str, numero: str) -> None:
     for cru in sinais:
         if not isinstance(cru, str):
             raise ErroDeFrontmatter(f"{nome}: sinal não textual: {cru!r}", "")
@@ -526,6 +589,27 @@ def validar_sinais(sinais: list, nome: str) -> None:
                     f"Casou: {benigno[:70]!r}\n"
                     "Aperte a assinatura até ela só reconhecer a falha de verdade.",
                 )
+        if (numero, cru) not in DIVIDA_DO_CORPUS_DO_ACTIONS:
+            for benigno in CORPUS_FELIZ_DO_ACTIONS:
+                if compilado.search(benigno):
+                    raise ErroDeFrontmatter(
+                        f"{nome}: o sinal {cru!r} casa log de deploy VERDE "
+                        "do GitHub Actions",
+                        f"Casou: {benigno!r}\n"
+                        "Essa linha sai em TODO deploy que dá certo, então o sino\n"
+                        "acusaria reincidência em cima de sucesso. Ancore a\n"
+                        "assinatura no que SÓ a falha daquele job imprime.",
+                    )
+        if numero in ARMADILHAS_DO_LOG_TERMINAL and any(ord(c) > 127 for c in cru):
+            raise ErroDeFrontmatter(
+                f"{nome}: o sinal {cru!r} tem acento, e o log do Actions não",
+                "Esta armadilha procura a assinatura no log do job terminal do\n"
+                "GitHub Actions, que guarda o texto duplamente codificado em\n"
+                "UTF-8: o `não` que o script imprimiu chega ao log como `nÃ£o`.\n"
+                "Um sinal acentuado casa ZERO logs de lá — é sino morto.\n"
+                "Conserto: ancore a assinatura num trecho sem acento da mesma\n"
+                "linha (um caminho, um código, uma palavra sem diacrítico).",
+            )
 
 
 class Entrada:
@@ -598,7 +682,7 @@ class Entrada:
                 self.sinais = [sinal]
             elif isinstance(sinal, list):
                 self.sinais = [s for s in sinal if s is not None]
-            validar_sinais(self.sinais, self.nome)
+            validar_sinais(self.sinais, self.nome, self.numero)
             gatilho = self.frontmatter.get("gatilho")
             if isinstance(gatilho, str):
                 self.gatilhos = [gatilho.strip()]
@@ -658,6 +742,216 @@ class Entrada:
     @property
     def numero_canonico(self) -> int | None:
         return self.numero_de(self.nome)
+
+
+def sonda_do_sinal(regex: str) -> str:
+    """O maior trecho LITERAL de um regex: o que ele exige ver, letra por letra.
+
+    Decidir se dois regex casam o mesmo texto é, no caso geral, indecidível.
+    Comparar o que cada um exige LITERALMENTE é barato e pega o par em que um
+    regex casa o pedaço que o outro exige. Só o MAIOR pedaço não basta: dois
+    sinais podem exigir a mesma âncora e divergir depois dela, e aí nenhuma
+    sonda casa o regex do outro enquanto um log só casa os dois. Esse segundo
+    caso é da `colisoes_de_sinais`, que lê a lista inteira de literais.
+
+    Trecho curto é sonda fraca e não acusa ninguém — um `exit 1` dentro de duas
+    assinaturas legítimas não as torna concorrentes. O corte é o mesmo
+    `SINAL_MINIMO` que já reprova assinatura curta demais, porque é a mesma
+    pergunta: a partir de quantas letras um pedaço de texto identifica algo.
+    """
+    partes = fragmentos_do_sinal(regex)
+    return max(partes, key=len).strip() if partes else ""
+
+
+def fragmentos_do_sinal(regex: str) -> list[str]:
+    """TODOS os trechos literais de um regex, na ordem em que ele os exige.
+
+    A sonda acima é o maior deles. Os outros não são sobra: dois sinais que
+    exigem o mesmo trecho longo disputam o mesmo erro mesmo quando nenhum dos
+    dois casa a sonda do outro, e é com a lista inteira que se monta o texto
+    capaz de provar isso.
+    """
+    partes: list[str] = []
+    atual: list[str] = []
+    i = 0
+    while i < len(regex):
+        letra = regex[i]
+        if letra == "\\":  # escape: o par inteiro sai do literal
+            if atual:
+                partes.append("".join(atual))
+                atual = []
+            i += 2
+            continue
+        quantidade = RE_QUANTIFICADOR.match(regex, i)
+        if quantidade:  # o miolo de `{0,100}` não é letra que alguém vai ler
+            if atual:
+                partes.append("".join(atual))
+                atual = []
+            i = quantidade.end()
+            continue
+        if letra in META_DE_REGEX:
+            if atual:
+                partes.append("".join(atual))
+                atual = []
+            i += 1
+            continue
+        atual.append(letra)
+        i += 1
+    if atual:
+        partes.append("".join(atual))
+    return partes
+
+
+def literais_do_sinal(regex: str) -> list[str]:
+    """Os fragmentos aparados, sem os vazios, na ordem: o texto exigido.
+
+    Separado da lista crua porque a sonda escolhe o maior ANTES de aparar, e
+    trocar essa ordem moveria a sonda de três assinaturas vivas do catálogo.
+    """
+    return [f for f in (parte.strip() for parte in fragmentos_do_sinal(regex)) if f]
+
+
+class Assinatura(NamedTuple):
+    """Um `sinal:` pronto para ser comparado com os outros."""
+
+    armadilha: str
+    arquivo: str
+    regex: str
+    sonda: str
+    exigidos: frozenset[str]  # os literais longos o bastante para nomear um erro
+    compilado: re.Pattern
+
+
+class Colisao(NamedTuple):
+    """Um par que disputa o mesmo erro, com a prova que o sustenta.
+
+    `testemunha` é o texto concreto que casa os DOIS sinais, ou "" quando o
+    par foi pego pela sonda cruzada e nenhum texto foi construído.
+    """
+
+    par: tuple[str, str]
+    primeira: Assinatura
+    segunda: Assinatura
+    testemunha: str
+
+
+def testemunha_da_colisao(primeira: Assinatura, segunda: Assinatura) -> str:
+    """Um texto que casa os dois sinais, ou "" quando não se achou nenhum.
+
+    Saber se dois regex podem casar o mesmo texto é indecidível no caso geral,
+    então aqui não se decide: constrói-se um candidato e mede-se. O candidato
+    é o que os dois exigem ver, emendado, nas duas ordens: se um log real pode
+    carregar as duas listas de exigências, esta emenda carrega. Não achar
+    candidato não prova que texto nenhum existe, só que este detector não
+    acusa sem prova, e acusação sem prova é palpite.
+    """
+    de_uma = literais_do_sinal(primeira.regex)
+    da_outra = literais_do_sinal(segunda.regex)
+    for candidato in (" ".join(de_uma + da_outra), " ".join(da_outra + de_uma)):
+        if primeira.compilado.search(candidato) and segunda.compilado.search(candidato):
+            return candidato
+    return ""
+
+
+def colisoes_de_sinais(entradas: list[Entrada]) -> list[Colisao]:
+    """Os pares de armadilhas que disputam o mesmo texto. MEDE; não julga.
+
+    Duas perguntas, porque uma só deixava passar o par que mais morde:
+
+    1. Um dos regex casa a sonda do outro? Então um exige, letra por letra, o
+       que o outro já reconhece sozinho.
+    2. Os dois exigem o MESMO trecho literal longo, e existe um texto que casa
+       os dois? Aqui mora `resource.{0,100}missing alpha` contra
+       `resource.{0,100}missing beta`: nenhuma sonda casa o outro regex, e um
+       log com as duas palavras acende os dois sinos ao mesmo tempo.
+
+    O trecho em comum precisa de `SINAL_MINIMO` letras pela mesma razão que a
+    sonda precisa: abaixo disso um literal não nomeia erro nenhum, e um
+    `exit 1` dentro de duas assinaturas legítimas não as torna concorrentes.
+    A testemunha é o que separa medir de adivinhar: sem o texto em mãos, a
+    pergunta 2 vira suspeita, e suspeita não para gerador nenhum.
+
+    Um par por vez, com a primeira dupla de sinais que o comprova — dizer as
+    quatro combinações do mesmo par transformaria a mensagem em parede de
+    texto, e o conserto é sempre o mesmo: apertar uma das duas assinaturas.
+    A dívida congelada não é descontada aqui, de propósito: quem mede não pode
+    ser quem perdoa, senão não sobra como provar que o perdão ainda é preciso.
+    """
+    assinaturas: list[Assinatura] = []
+    for entrada in entradas:
+        for regex in entrada.sinais:
+            sonda = sonda_do_sinal(regex)
+            if len(sonda) < SINAL_MINIMO:
+                continue
+            exigidos = frozenset(
+                f for f in literais_do_sinal(regex) if len(f) >= SINAL_MINIMO
+            )
+            assinaturas.append(
+                Assinatura(
+                    entrada.numero, entrada.nome, regex, sonda, exigidos,
+                    re.compile(regex),
+                )
+            )
+
+    achados: dict[tuple[str, str], Colisao] = {}
+    for posicao, primeira in enumerate(assinaturas):
+        for segunda in assinaturas[posicao + 1:]:
+            if primeira.armadilha == segunda.armadilha:
+                continue
+            par = tuple(sorted((primeira.armadilha, segunda.armadilha)))
+            if par in achados:  # o par já tem a dupla que o comprova
+                continue
+            sonda_cruzada = (
+                primeira.compilado.search(segunda.sonda)
+                or segunda.compilado.search(primeira.sonda)
+            )
+            if not sonda_cruzada and not primeira.exigidos & segunda.exigidos:
+                continue
+            testemunha = testemunha_da_colisao(primeira, segunda)
+            if not sonda_cruzada and not testemunha:
+                continue
+            achados[par] = Colisao(par, primeira, segunda, testemunha)
+    return [achados[par] for par in sorted(achados)]
+
+
+def conferir_colisao_de_sinais(entradas: list[Entrada]) -> None:
+    """Dois sinais apontando o mesmo erro param o gerador — ERROR, nunca sino.
+
+    Sino que aponta duas entradas para a mesma linha do log não aponta nenhuma:
+    quem lê escolhe no chute, e a entrada errada manda consertar o que não
+    quebrou. Por isso ERROR e não FAIL — regenerar não conserta, alguém precisa
+    decidir de qual das duas aquele erro é.
+    """
+    novas = [c for c in colisoes_de_sinais(entradas) if c.par not in DIVIDA_DE_COLISAO]
+    if not novas:
+        return
+
+    detalhe = []
+    for colisao in novas:
+        detalhe.append(f"  {colisao.par[0]} x {colisao.par[1]} disputam o mesmo erro:")
+        for assinatura in (colisao.primeira, colisao.segunda):
+            detalhe.append(
+                f"    - {PASTA}/{assinatura.arquivo}: sinal {assinatura.regex!r}"
+            )
+        detalhe.append(
+            f"    prova: o texto {colisao.testemunha!r} casa os dois"
+            if colisao.testemunha
+            else "    prova: um deles casa o trecho literal que o outro exige"
+        )
+    detalhe.append(
+        "\nDecida de QUAL das duas entradas aquele erro é, e aperte a assinatura\n"
+        "da outra até ela reconhecer só o que ela mesma documenta. Se as duas\n"
+        "falam da mesma queda, uma delas não precisa de sinal: `sinal` é a\n"
+        "assinatura que manda o leitor para UMA entrada.\n"
+        "\n"
+        "A lista `DIVIDA_DE_COLISAO` em ci/indice_de_armadilhas.py é o legado\n"
+        "congelado de 18/09/2026, e ela só encolhe: entrada nova não entra lá."
+    )
+    raise ErroDeInstrumentacao(
+        "sinais concorrentes: "
+        + ", ".join(f"{c.par[0]}x{c.par[1]}" for c in novas),
+        "\n".join(detalhe),
+    )
 
 
 def conferir_numeracao(entradas: list[Entrada]) -> None:
@@ -758,6 +1052,7 @@ def coletar(raiz: Path) -> list[Entrada]:
         )
     entradas = [Entrada(p) for p in arquivos]
     conferir_numeracao(entradas)
+    conferir_colisao_de_sinais(entradas)
     conferir_guardas_vivas(entradas, raiz)
     return entradas
 
@@ -872,6 +1167,54 @@ def unir(locais: list[Entrada], da_origem: list[Entrada]) -> tuple[list[Entrada]
     return todas, so_na_origem
 
 
+# O DETECTOR TAMBÉM PRECISA APONTAR PARA ALGO (18/09/2026)
+#
+# `dono` é o arquivo que prova a guarda; `detector` é o teste lá dentro que
+# reprova quando alguém sabota o mecanismo. A `ci/fila.py` junta os dois em
+# `dono::detector` e entrega esse node ao pytest na hora de concluir a tarefa,
+# então detector que nomeia teste renomeado faz a conclusão recusar sem motivo
+# legível, e o portão procurar um nó que não existe. Conferir só o `dono` era
+# meia guarda.
+#
+# Quatro formas convivem no catálogo, contadas nas 444 entradas de 18/09/2026:
+# 27 nomeiam um teste (`test_x`, às vezes seguido de `: a explicação`), 17 são
+# um caminho de arquivo, 4 são node ID completo (`arquivo.py::test_x`) e 10 são
+# prosa que descreve o mecanismo em palavras. Só as três primeiras apontam algo
+# que a máquina sabe procurar; prosa continua válida, porque régua que reprova
+# o catálogo vivo no dia em que entra é régua que alguém desliga.
+RE_NO_DO_DETECTOR = re.compile(
+    r"^(?:(?P<arquivo>[\w./-]+\.py)::)?(?P<teste>test_[A-Za-z0-9_]+)(?=$|[\s:,;])"
+)
+RE_ARQUIVO_DO_DETECTOR = re.compile(r"^[\w./-]+\.py$")
+
+# A dívida medida em 18/09/2026: detector que nomeia teste que não existe em
+# árvore nenhuma, porque quem apagou o teste não voltou na entrada. As três
+# ficam fora da régua até alguém decidir qual teste prova cada guarda hoje; a
+# lista só encolhe, e `test_nenhuma_divida_de_detector_e_fantasma` derruba a
+# linha que sobrar depois do conserto.
+DIVIDA_DE_DETECTOR = frozenset({"251", "406", "416"})
+
+
+def alvo_do_detector(detector: str, dono: str) -> tuple[str, str]:
+    """O (arquivo, teste) que o detector manda procurar. `("", "")` para prosa.
+
+    Teste sem arquivo no detector mora no `dono`, que é a convenção do catálogo
+    e o que a `ci/fila.py` monta. `detector: test_x` com `dono: .../test_x.py`
+    nomeia o ARQUIVO, não um nó dentro dele (3 entradas escrevem assim): sem
+    esta ressalva a régua acusaria de morto um ponteiro que resolve.
+    """
+    achado = RE_NO_DO_DETECTOR.match(detector)
+    if achado:
+        if achado["arquivo"]:  # node ID: o arquivo vem no próprio detector
+            return achado["arquivo"], achado["teste"]
+        if achado["teste"] == Path(dono).stem:
+            return dono, ""
+        return dono, achado["teste"]
+    if RE_ARQUIVO_DO_DETECTOR.match(detector):
+        return detector, ""
+    return "", ""
+
+
 def conferir_guardas_vivas(
     entradas: list[Entrada], raiz: Path, na_origem: set[str] | None = None
 ) -> None:
@@ -880,23 +1223,63 @@ def conferir_guardas_vivas(
     Ela faz o índice dizer 'esta lição é imposta por X' quando X não existe —
     e ler nunca dá erro, então ninguém percebe (armadilhas/148). Referência
     morta é ERROR, não FAIL: regenerar não conserta, alguém precisa decidir.
+    Vale para os dois campos: o `dono` que prova e o `detector` que reprova.
 
     Entrada que veio da ORIGEM é conferida contra a árvore da origem
-    (`na_origem`): o dono dela pode ainda não existir nesta pasta.
+    (`na_origem`): o dono dela pode ainda não existir nesta pasta. Pelo mesmo
+    motivo o NÓ dela não é medido: o teste que ela nomeia mora na origem, e
+    acusá-lo de morto lendo a árvore daqui é o defeito da TAR-050 de novo.
     """
     for entrada in entradas:
-        dono = entrada.guarda.get("dono")
-        if not dono:
-            continue
-        existe_aqui = (raiz / str(dono)).exists()
-        existe_na_origem = (
-            entrada.origem != "local" and na_origem is not None and str(dono) in na_origem
+        da_origem = entrada.origem != "local"
+        na_arvore_dela = (
+            na_origem if da_origem and na_origem is not None else frozenset()
         )
-        if not (existe_aqui or existe_na_origem):
+        dono = str(entrada.guarda.get("dono") or "").strip()
+        if dono and not ((raiz / dono).exists() or dono in na_arvore_dela):
             raise ErroDeInstrumentacao(
                 f"{entrada.nome}: a guarda aponta '{dono}', que não existe",
                 "Ou o caminho está errado, ou o mecanismo foi removido sem\n"
                 "atualizar a entrada. Corrija o caminho, ou declare\n"
+                "'guarda: {tipo: nenhum, motivo: ...}' e assuma o buraco.",
+            )
+
+        arquivo, teste = alvo_do_detector(
+            str(entrada.guarda.get("detector") or "").strip(), dono
+        )
+        if not arquivo:
+            continue
+        if not ((raiz / arquivo).is_file() or arquivo in na_arvore_dela):
+            raise ErroDeInstrumentacao(
+                f"{entrada.nome}: o detector aponta '{arquivo}', que não existe",
+                "A `ci/fila.py` monta `dono::detector` e entrega esse node ao\n"
+                "pytest para provar a guarda na conclusão da tarefa: apontando\n"
+                "arquivo que não existe, a conclusão recusa e quem a pediu não\n"
+                "descobre por quê.\n"
+                "\n"
+                "Corrija o caminho no `detector` do frontmatter, ou declare\n"
+                "'guarda: {tipo: nenhum, motivo: ...}' e assuma o buraco.",
+            )
+        if not teste or da_origem or entrada.numero in DIVIDA_DE_DETECTOR:
+            continue
+        corpo = (raiz / arquivo).read_text(encoding="utf-8", errors="replace")
+        if not re.search(
+            rf"^[ \t]*(?:async[ \t]+)?def[ \t]+{re.escape(teste)}[ \t]*\(", corpo, re.M
+        ):
+            raise ErroDeInstrumentacao(
+                f"{entrada.nome}: o detector nomeia '{teste}', "
+                f"que não existe em '{arquivo}'",
+                "Quem provava esta guarda foi renomeado ou apagado, e a entrada\n"
+                f"ficou apontando um nó fantasma: `pytest {arquivo}::{teste}`\n"
+                "não coleta nada, e a conclusão da tarefa pela `ci/fila.py`\n"
+                "recusa sem motivo legível.\n"
+                "\n"
+                "Veja que testes o arquivo tem hoje e ponha o nome certo no\n"
+                "frontmatter da entrada:\n"
+                "\n"
+                f"  grep -n 'def test_' {arquivo}\n"
+                "\n"
+                "Se o mecanismo sumiu de vez, declare\n"
                 "'guarda: {tipo: nenhum, motivo: ...}' e assuma o buraco.",
             )
 
@@ -1026,6 +1409,7 @@ def rodar(raiz: Path, conferir: bool, com_a_origem: bool = False) -> int:
         else:
             entradas, so_na_origem = unir(entradas, da_origem)
             conferir_numeracao(entradas)
+            conferir_colisao_de_sinais(entradas)
             conferir_guardas_vivas(entradas, raiz, caminhos_da_origem(raiz))
     artefatos = [
         (raiz / PASTA / NOME_DO_INDICE, montar(entradas, so_na_origem)),
