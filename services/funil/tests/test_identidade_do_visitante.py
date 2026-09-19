@@ -24,7 +24,6 @@ de esta entrega dar errado:
 import uuid
 
 import pytest
-from django.conf import settings
 from django.http import HttpResponse
 from django.test import RequestFactory
 
@@ -41,17 +40,6 @@ HOME = "/pt-br/"
 
 def _numero(resposta) -> str:
     return resposta.cookies[visitante.COOKIE].value
-
-
-# ---------------------------------------------------------------------------
-# Cadeado da premissa: sem isto, a asserção de `Secure` mediria o modo DEBUG
-# ---------------------------------------------------------------------------
-def test_a_suite_roda_na_configuracao_de_producao():
-    """`Secure` sai de `not DEBUG`. Com `DEBUG=1` o cookie sai sem ele, de
-    propósito (localhost é http), e um verde aqui não diria nada sobre
-    produção. O Django força `DEBUG=False` na suíte; aqui isso vira asserção,
-    e não suposição."""
-    assert settings.DEBUG is False
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +103,11 @@ def test_quem_entrou_tambem_tem_numero_de_visitante(client, logado):  # noqa: F8
 # ---------------------------------------------------------------------------
 # 2. O script da página não lê o número
 # ---------------------------------------------------------------------------
-def test_o_cookie_e_httponly_lax_secure_e_de_validade_longa(client, rede):
+def test_o_cookie_e_httponly_lax_e_de_validade_longa(client, rede):
+    """O `Secure` não é medido aqui: ele depende do `X-Forwarded-Proto` que o
+    Traefik encaminha, e quem exercita isso é
+    `tests/test_inv_secure_nos_cookies.py`. Medi-lo nesta requisição sem
+    cabeçalho seria medir uma constante."""
     morsel = client.get(HOME, HTTP_HOST=HOST_MESH).cookies[visitante.COOKIE]
 
     assert morsel["httponly"], (
@@ -123,7 +115,6 @@ def test_o_cookie_e_httponly_lax_secure_e_de_validade_longa(client, rede):
         "por script é cookie roubável por script"
     )
     assert morsel["samesite"] == "Lax"
-    assert morsel["secure"], "sem Secure o número viaja em claro num http://"
     assert int(morsel["max-age"]) == visitante.VALIDADE_EM_SEGUNDOS
 
 

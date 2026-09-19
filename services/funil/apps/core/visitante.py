@@ -58,8 +58,6 @@ inteira para ganhar nada: a borda não guarda resposta com `Set-Cookie`.
 
 import uuid
 
-from django.conf import settings
-
 from apps.core.middleware import ROTAS_DE_MAQUINA
 
 #: O nome do cookie, na convenção da casa (`meshcraft_sessao`,
@@ -124,13 +122,15 @@ class IdentidadeDoVisitante:
                 max_age=VALIDADE_EM_SEGUNDOS,
                 httponly=True,
                 samesite="Lax",
-                # `not DEBUG` e não `request.is_secure()`, e a escolha é
-                # medida: esta célula não declara `SECURE_PROXY_SSL_HEADER`
-                # (TAR-508), então `is_secure()` responde False em produção,
-                # porque o TLS termina no Traefik. O cookie sairia sem
-                # `Secure` justamente onde ele precisa sair com. `not DEBUG`
-                # é determinístico e é a mesma régua do `CSRF_COOKIE_SECURE`
-                # das outras células.
-                secure=not settings.DEBUG,
+                # A MESMA régua do cookie de `ver_como` e do resto da casa,
+                # e ela diz a verdade porque `config/settings.py` declara
+                # `SECURE_PROXY_SSL_HEADER`. Este cookie nasceu em 19/09/2026
+                # decidindo por `not settings.DEBUG`, porque naquele dia a
+                # célula ainda não declarava a linha e `is_secure()` mentia em
+                # produção. Consertada a causa, o contorno saiu: duas respostas
+                # para "esta conexão é segura?" na mesma célula é uma delas
+                # divergir da outra mais tarde.
+                # Guarda: tests/test_inv_secure_nos_cookies.py.
+                secure=request.is_secure(),
             )
         return resposta
