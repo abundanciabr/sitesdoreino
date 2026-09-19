@@ -59,7 +59,7 @@
         },
         "secao": {
           "type": "string",
-          "description": "Nome da seção alcançada, o mesmo `nome` do schema `Secao` do contrato do `catalogo`. A ordem canônica de uma página de oferta é hero, problema, mecanismo, prova, oferta, garantia e faq, e é essa ordem que faz a contagem virar uma escada de retenção. O vocabulário é FECHADO dentro do `catalogo`, que valida o que se grava, e fica aberto no contrato para que uma seção nova não custe um Rito."
+          "description": "Nome da seção alcançada, o mesmo `nome` do schema `Secao` do contrato do `catalogo`. A ordem canônica da página de vendas é a das onze seções da ferramenta 73 de `documentos/ferramentas-do-projeto-meshcraft.md`: cubo, viloes, metodo, instrumentos, percurso, tempo, para_quem_nao_serve, se_eu_parar, oferta, carta e perguntas. É essa ordem que faz a contagem virar uma escada de retenção, porque mostra em que degrau a pessoa parou de descer. O vocabulário é FECHADO dentro do `catalogo`, que valida o que se grava, e fica aberto no contrato para que uma seção nova não custe um Rito."
         }
       }
     }

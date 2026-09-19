@@ -61,7 +61,7 @@
         },
         "secao": {
           "type": "string",
-          "description": "Nome da seção de onde saiu o clique, o mesmo `nome` do schema `Secao` do contrato do `catalogo` (hero, problema, mecanismo, prova, oferta, garantia, faq)."
+          "description": "Nome da seção de onde saiu o clique, o mesmo `nome` do schema `Secao` do contrato do `catalogo`. As onze seções da ferramenta 73 de `documentos/ferramentas-do-projeto-meshcraft.md` são cubo, viloes, metodo, instrumentos, percurso, tempo, para_quem_nao_serve, se_eu_parar, oferta, carta e perguntas. Saber de qual delas saiu o clique é o que diz se o botão do topo vende mais do que o do bloco de oferta."
         },
         "slot": {
           "type": "string",
