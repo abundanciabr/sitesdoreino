@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-024911-TAR-421-bloqueada",
+  "tarefa": "TAR-421",
+  "evento": "bloqueada",
+  "quando": "2026-09-19T02:49:11+00:00",
+  "quem": "despacho-leads-transferencia-e-retomada-comercial",
+  "detalhe": "Falta o esquema de evento: contracts/eventos/ nao tem nenhum aviso de acompanhamento comercial humano, e o proprio aceite desta tarefa manda parar e abrir Rito de Contrato em PR exclusivo. Destrava com o mandato nominal do mantenedor para mexer em contracts/, que e a TAR-487; depois vem a TAR-488 e a TAR-489.",
+  "espera": "mantenedor"
+}
