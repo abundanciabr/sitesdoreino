@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-205820-TAR-517-explicada",
+  "tarefa": "TAR-517",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:58:20+00:00",
+  "quem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "o_que_e": "Antes de mexer no site, o robo monta uma copia do ambiente do site na maquina. Hoje ele monta essa copia com a versao de Python que estiver mais a mao, e nao com a versao em que o site roda de verdade.",
+  "o_que_muda": "Quando as duas versoes nao batem, a montagem falha no meio e a mensagem de erro aponta para o lugar errado, falando em problema de rede quando o problema e a versao. O robo perde a sessao inteira e so sai disso adivinhando.",
+  "exemplo": "E como receber a peca de reposicao certa e a chave de fenda errada: nada esta quebrado, mas o parafuso nao entra, e o manual manda voce ligar para a transportadora.",
+  "importancia": 50
+}
