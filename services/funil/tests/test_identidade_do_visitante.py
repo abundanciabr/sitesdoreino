@@ -106,7 +106,7 @@ def test_quem_entrou_tambem_tem_numero_de_visitante(client, logado):  # noqa: F8
 def test_o_cookie_e_httponly_lax_e_de_validade_longa(client, rede):
     """O `Secure` não é medido aqui: ele depende do `X-Forwarded-Proto` que o
     Traefik encaminha, e quem exercita isso é
-    `tests/test_inv_secure_nos_cookies.py`. Medi-lo nesta requisição sem
+    `tests/test_secure_nos_cookies.py`. Medi-lo nesta requisição sem
     cabeçalho seria medir uma constante."""
     morsel = client.get(HOME, HTTP_HOST=HOST_MESH).cookies[visitante.COOKIE]
 
