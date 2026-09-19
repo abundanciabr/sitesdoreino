@@ -333,6 +333,7 @@ var dados = [
     confianca: resumo.confianca,
     registros: resumo.registros,
     maisRecenteQuando: resumo.maisRecenteQuando,
+    comPrazoNoLivro: resumo.comPrazoNoLivro,
     totalNoLivro: resumo.totalNoLivro
   }) + ")",
   "};",
