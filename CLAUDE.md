@@ -36,8 +36,8 @@ economizar esforço. Uma coisa completa vale mais que cinco pela metade.
 Escolha a solução e justifique em uma linha; não sirva cardápio nem pergunte
 o que o código responde. Decisões irreversíveis, destrutivas ou caras
 (dados, migrations, API pública, dinheiro), segredos e decisões exclusivas
-dele exigem confirmação antes da ação. A maestro pergunta; o despacho
-registra o bloqueio e devolve impacto e reversão.
+dele exigem confirmação antes da ação. Quem fala com ele pergunta; o
+subagente registra o bloqueio e devolve impacto e reversão.
 
 #### 5. Responda pelo produto inteiro
 
@@ -126,16 +126,15 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Claude Code rege, nunca mergeia; Codex usa `despacho`, não pergunta ao mantenedor nem decide lei.
-Antigravity audita e verifica, nunca edita. Recebedor rege; confira PRs abertos.
+Nenhuma IA tem papel fixo: quem pega a tarefa faz o rito inteiro dela
+([decisão](docs/decisoes/DECISAO-fim-da-triade.md)). Recebedor rege; confira PRs abertos.
 Independentes em paralelo; dependências em série. Uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
-Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.
+Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: `Depende-de: #N`.
 Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
 Subagente não pergunta ao mantenedor nem cria subagente. Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
-Maestro/executor: `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
-Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md#o-que-a-tríade-não-muda).
+Entre sessões: `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
 
-**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
+**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas.
 
 ## O que uma chamada custa
 
@@ -187,7 +186,7 @@ são lápides. Sem tipo específico, use nota.
 ## Integração automática
 
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
-atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+atestado, etiqueta ou gesto manual. `muralhas` e `ci-celula-gate` precisam
 passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
 exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
 descrição com o pedido e os caminhos autorizados. Nunca invente mandato.

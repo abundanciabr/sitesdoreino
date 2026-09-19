@@ -1,12 +1,11 @@
 # RUNBOOK DO LOTE — como reger vários despachos em paralelo
 
-> **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
+> **Para a SESSÃO QUE REGE O LOTE** — a janela raiz que conversa com o
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
-> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é a sessão que
-> recebe o pedido (Claude Code por regra; Codex quando o pedido é colado nele); o
-> agente de célula segue a ficha `despacho`, seja sub-agente ou Codex que pega tarefa
-> na fila; a verificação depois do merge é do Antigravity.
+> Rege quem recebeu o pedido, qualquer que seja a IA: não há papel fixo desde
+> 18/09/2026 (`docs/decisoes/DECISAO-fim-da-triade.md`). O agente de célula segue
+> a ficha `despacho`, seja sub-agente ou sessão que pega a tarefa na fila.
 >
 > Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
 > merge passou ao agente (PR #58, Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`)
@@ -56,7 +55,7 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   de todas as tocadas. O orçamento de 15 arquivos continua.
 - Duas tarefas na MESMA célula não rodam em paralelo: viram **fila interna**
   (uma atrás da outra, no mesmo agente ou em agentes sucessivos).
-- Os merges saem **serial, um a um, pela pista** (RITOS §2 peça 4). A maestro
+- Os merges saem **serial, um a um, pela pista** (RITOS §2 peça 4). Quem rege
   encaminha o PR revisado e confere o resultado observado.
 
 ## §2 — Montagem (antes de disparar qualquer agente)
@@ -71,7 +70,7 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
    carrega a linha do Padrão de Trabalho): célula, arquivos-
    alvo, o que é somente-leitura, evidência exigida (vermelho→verde), receitas citadas
    por número — e as **armadilhas daquela tarefa já injetadas** (§3, regra 3).
-4. **Pré-voo da maestro** (5 min): `git fetch` + main verde? `alarme-main` sem issue
+4. **Pré-voo de quem rege** (5 min): `git fetch` + main verde? `alarme-main` sem issue
    `main-vermelha` aberta? plataforma saudável (último deploy verde)? `gh auth status`
    ok? Docker de pé (H4 — suba já, não no meio)?
 
@@ -108,13 +107,13 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   escreve SÓ a própria entrada/linha e faz `git fetch origin && git rebase
   origin/main` antes do push (§7.6). Conflito só de proximidade ⇒ as duas linhas
   sobrevivem, nunca se descarta a alheia.
-- **Agente parado ≠ lote parado.** A maestro segue com os demais e volta ao parado.
+- **Agente parado ≠ lote parado.** Quem rege segue com os demais e volta ao parado.
 - **Regra de parada vale dentro do lote:** 2 correções consecutivas falharam ⇒ o
   agente para. Nesse ponto, preserve os arquivos e commits e reporte o
-  diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
+  diagnóstico (RITOS §2.2). Quem rege decide se reformula o despacho ou o
   retira do lote.
-- **Depois de `--pousar`, a maestro NÃO espera checks, merge ou deploy.** O veredito do
-  deploy é conferido por cron ou na próxima sessão. A maestro reporta o
+- **Depois de `--pousar`, quem rege NÃO espera checks, merge ou deploy.** O veredito do
+  deploy é conferido por cron ou na próxima sessão. Quem rege reporta o
   estado dos PRs ao mantenedor e encerra. O deploy leva 3.2 min de mediana;
   a pista reporta sozinha no PR.
 
@@ -127,7 +126,7 @@ python ci/mergear.py <N> --pousar
 ```
 
 O comando confere a etiqueta `pousar` e o SHA remoto antes de responder
-`ENFILEIRADO`. A maestro encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+`ENFILEIRADO`. Quem rege encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
 `20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
 PR aberto, revisão aprovada, integração e publicação são estados distintos.
 
@@ -155,9 +154,7 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
    validado com `node painel/gerar_manifesto.js`. Registro nunca se edita:
    correção ou resposta é outro registro, com `responde_a`.
 2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
-   a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
-   Depois do merge, a maestro lê a verificação da sentinela (Antigravity), que
-   mede o aceite da ficha, não o diff.
+   quem rege registra as lições **de regência** (o que o lote ensinou sobre lotes).
 3. **Relatório único, em linguagem de resultado** ("os leads invisíveis agora
    aparecem"), contendo: a tabela do placar (abaixo), os anúncios de fortaleza,
    o que ficou de fora e por quê, e o que sobrou para o humano (§7) — em bloco
@@ -192,6 +189,11 @@ PR aberto, revisão aprovada, integração e publicação são estados distintos
 | Algo exige aprovação/segredo do humano | isole o passo, termine o resto, entregue UM bloco de colar rotulado |
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
+
+> Registro datado, não lei. As entradas anteriores a 18/09/2026 falam em
+> maestro, executor e sentinela porque foi assim que aconteceu; os papéis
+> fixos acabaram (`docs/decisoes/DECISAO-fim-da-triade.md`). Leia a lição,
+> não o crachá.
 
 **Lotes das quatro frentes e da escada da mensageria — 04/09/2026** (quatro frentes em
 paralelo: as tabelas da Fila do Primeiro Dólar · a porta de máquina da `mensageria` · o

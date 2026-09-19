@@ -224,7 +224,15 @@ def conferir(raiz: Path) -> Relatorio:
     )
     for nome, teto in TETOS_EM_BYTES.items():
         try:
-            conteudo = (raiz / nome).read_bytes()
+            # Normaliza CRLF antes de medir, como as outras checagens deste
+            # arquivo já fazem. O repositório guarda LF; um checkout Windows
+            # com `core.autocrlf=true` acrescenta 1 byte por linha, e as 237
+            # linhas do CLAUDE.md viravam 237 bytes de excesso que não existem
+            # em lugar nenhum. O portão reprovava só na bancada de quem
+            # trabalha, e a mensagem dele (mova história para docs/decisoes)
+            # empurrava o agente a apagar lei de verdade por causa de um fim
+            # de linha.
+            conteudo = (raiz / nome).read_bytes().replace(b"\r\n", b"\n")
         except OSError as erro:
             raise ErroDeInstrumentacao(f"{nome} ilegível", str(erro)) from erro
         relatorio.registrar(Resultado(

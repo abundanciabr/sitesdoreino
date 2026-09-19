@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-006-lei-a-triade-acaba-nenhuma-ia-tem-papel-fixo",
+  tipo: "decisao",
+  quando: "2026-09-18",
+  titulo: "lei: a tríade acaba, nenhuma IA tem papel fixo",
+  detalhe: "Maestro, executor e sentinela saem da lei: quem pega a tarefa faz o rito inteiro dela. O teto do CLAUDE.md contava CRLF e mandava apagar lei; ver armadilhas/486.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1715. Validação local: árvore 2786f7500ea65ab9ced221662b13ac2387bcd565; commit f5a6d4e264050ed4ac01f4b16b0688b4b9a65636; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-454",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

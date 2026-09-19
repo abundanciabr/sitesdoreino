@@ -30,7 +30,11 @@ def _cenario(tmp_path: Path, **trocas: tuple[str, str]) -> Path:
             velho, novo = trocas[nome]
             assert velho in texto, f"a mutilação de {nome} não encontrou: {velho!r}"
             texto = texto.replace(velho, novo, 1)
-        destino.write_text(texto, encoding="utf-8")
+        # LF sempre, como o repositório guarda. `write_text` traduz para
+        # CRLF no Windows, e o cenário passaria a medir 1 byte a mais por
+        # linha do que o portão mede na CI: a aritmética do teto abaixo
+        # ficava negativa e o teste dava verde sem mutilar nada.
+        destino.write_bytes(texto.encode("utf-8"))
     return raiz
 
 

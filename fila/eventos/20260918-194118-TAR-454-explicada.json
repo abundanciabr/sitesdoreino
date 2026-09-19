@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-194118-TAR-454-explicada",
+  "tarefa": "TAR-454",
+  "evento": "explicada",
+  "quando": "2026-09-18T19:41:18+00:00",
+  "quem": "Pedido direto do mantenedor em 2026-09-18",
+  "o_que_e": "A lei da casa dizia que cada IA tinha um papel fixo: Claude Code regia, Codex construía, Antigravity auditava.",
+  "o_que_muda": "Nenhuma IA tem papel fixo. Quem pega a tarefa faz o rito inteiro dela, e as IAs cooperam em vez de se dividirem por crachá.",
+  "exemplo": "Uma sessão que enxerga o bug conserta o bug, em vez de devolvê-lo porque construir era papel de outra.",
+  "importancia": 80
+}

@@ -1,5 +1,10 @@
 # DECISÃO: a tríade de IAs, papéis fixos em vez de disputa
 
+> **REVOGADA em 18/09/2026** por [`DECISAO-fim-da-triade.md`](DECISAO-fim-da-triade.md). Nenhuma IA tem
+> papel fixo: qualquer uma faz qualquer parte do rito. O que está abaixo é
+> história, não lei, e continua aqui porque mais de quarenta registros,
+> eventos e tarefas citam maestro, executor e sentinela.
+
 **Decidida pelo mantenedor em 12/09/2026.** O pedido dele, com as palavras dele:
 
 > "ao invés de continuar a disputa para ver quem das 3 IAs pode ser a líder, a
