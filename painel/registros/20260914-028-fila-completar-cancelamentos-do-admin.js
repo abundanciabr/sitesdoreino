@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-028-fila-completar-cancelamentos-do-admin",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "fila: completar cancelamentos do admin",
+  detalhe: "Reset localhost, 14/09/2026: 4 cancelamentos completam 15; 11 já integrados. Nenhuma tarefa publica admin na VPS. Após 3 avisos da maestro, o mantenedor confirmou cancelar mesmo sem relação direta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1664. Validação local: árvore af4493f0cc5e9ca6be0550f204848b96ccb427aa; commit 4a4c38e99d0b5b3b8242d74dae294602940a67a4; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-425",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

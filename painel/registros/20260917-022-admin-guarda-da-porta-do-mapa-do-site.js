@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-022-admin-guarda-da-porta-do-mapa-do-site",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "A capa do admin ganhou o guarda da porta do mapa do site",
+  detalhe: "PR #1699: o teste confere que a capa oferece o rótulo do Mapa do site e o endereço público /admin/mapa/. A retirada manual do cartão fez o guarda reprovar; a capa foi restaurada.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

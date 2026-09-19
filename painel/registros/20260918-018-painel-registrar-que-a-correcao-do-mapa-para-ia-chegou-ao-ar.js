@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-018-painel-registrar-que-a-correcao-do-mapa-para-ia-chegou-ao-ar",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "painel: registrar que a correcao do mapa para IA chegou ao ar",
+  detalhe: "A Lei 11 exige o estado terminal registrado. O recibo do PR 1724 dizia que integracao e publicacao nao estavam verificadas; agora estao, e a prova fica no livro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1731. Validação local: árvore 7148572798e419d535dbd9fc03fdfe84cd4a05dd; commit ccc9b716d7fa54172021daf788b4614952645ac5; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-474",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

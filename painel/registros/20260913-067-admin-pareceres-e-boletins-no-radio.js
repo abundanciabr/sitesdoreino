@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-067-admin-pareceres-e-boletins-no-radio",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: pareceres e boletins no radio",
+  detalhe: "O rádio distingue os três tipos. A fila anuncia mudanças após gravar o evento e informa como reenviar quando falha.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1639. Validação local: árvore bc22a1b412dd9b6ef5faef6aefd2228d1e3371b4; commit e1f48399792dcec1606d19f59d3a672dc3478f7d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-409",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

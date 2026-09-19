@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-151627-TAR-364-concluida",
+  "tarefa": "TAR-364",
+  "evento": "concluida",
+  "quando": "2026-09-14T15:16:27+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1594; revisao=77e6462f5e0f9d9bf36ec0213660d2602afab44d; arvore=5f3b9d690011c3ee13c56644a3b57da58b8a7170; head=c99ee590c1ef63b458278ebd75aa5567e4856f65; merge=d0ebbf2f4d00a8fd4820c60840f60ef949deff9f; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34677176894; atestado=atestado aprovado para c99ee590c1ef63b458278ebd75aa5567e4856f65; aceite=painel/registros/20260913-039-aceite-tar-364.js",
+  "verificado_em": "2026-09-13"
+}

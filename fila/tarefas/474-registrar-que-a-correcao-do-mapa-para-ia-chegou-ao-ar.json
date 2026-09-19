@@ -1,0 +1,19 @@
+{
+  "arquivo": "474-registrar-que-a-correcao-do-mapa-para-ia-chegou-ao-ar",
+  "id": "TAR-474",
+  "titulo": "Registrar que a correcao do mapa para IA chegou ao ar",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro novo citando o PR 1724, o commit de integracao e o run de publicacao, com gravidade verde.",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: low\ntipo: escrita\n\nRegistrar no livro o veredito de integracao e publicacao do PR 1724, comprovado\npor gh pr view (MERGED, commit c05a00020716) e por ci/esperar.py --entrega 1724\n(PUBLICADO, terminal). O recibo embarcado no PR declarou \"integracao e publicacao\nnao verificadas\", que era honesto na hora; agora ha prova, e a Lei 11 exige o\nestado terminal registrado. Alvo: um registro novo em painel/registros/.\nNunca editar o recibo anterior: correcao e registro NOVO.",
+  "origem": "TAR-463, cujo recibo declarou integracao e publicacao nao verificadas",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-019-fila-exigir-a-central-nas-cinco-entregas",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "fila: exigir a Central nas cinco entregas",
+  detalhe: "As cinco entregas exigem a Central. O CRM humano segue independente da base de IA. A correção preserva os critérios e o bloqueio histórico.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1620. Validação local: árvore 1a73693c74ed2cb2a812c5820b52d573aaaefadf; commit 65c144031a894814d9e1bbec200b05b33ed41652; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-313",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260918-235842-TAR-458-submetida",
+  "tarefa": "TAR-458",
+  "evento": "submetida",
+  "quando": "2026-09-18T23:58:42+00:00",
+  "quem": "agent/checkout/bearer-do-checkout-diagnostico",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1737",
+  "revisao": "3ccc61a3d087c31d3354e5a0696952630591e7d1",
+  "arvore": "baf92bccae669321a70da986f0cccee66911bb97"
+}

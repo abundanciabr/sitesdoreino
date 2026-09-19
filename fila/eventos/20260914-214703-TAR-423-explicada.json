@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-214703-TAR-423-explicada",
+  "tarefa": "TAR-423",
+  "evento": "explicada",
+  "quando": "2026-09-14T21:47:03+00:00",
+  "quem": "Confirmação do mantenedor de 14/09/2026 e autorização da maestro para a identidade obrigatória desta escrituração.",
+  "o_que_e": "A fila antiga ainda descreve trabalho administrativo no site que o mantenedor decidiu levar ao computador local.",
+  "o_que_muda": "O histórico registra os cancelamentos autorizados e separa as cinco capacidades que ainda precisam do servidor.",
+  "exemplo": "Uma tela administrativa cancelada sai da fila antiga; uma ponte de dados ganha tarefa própria sem autorizar outra tela na internet.",
+  "importancia": 99
+}

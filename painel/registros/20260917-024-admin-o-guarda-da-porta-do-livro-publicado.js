@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-024-admin-o-guarda-da-porta-do-livro-publicado",
+  tipo: "nota",
+  quando: "2026-09-17",
+  titulo: "O guarda da porta do Livro esta na main e a area administrativa foi republicada",
+  detalhe: "PR 1701 integrado as 21:58:53 UTC com oito checks verdes. O deploy da celula admin terminou com sucesso no commit de merge. Conferencia de fora: GET /admin/healthz devolveu 200, e GET /admin/livro/ devolveu 302 para a entrada, que e a porta fechando para quem nao tem cracha.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/35279626672",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: "20260917-023-admin-a-capa-ganha-o-guarda-da-porta-do-livro",
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

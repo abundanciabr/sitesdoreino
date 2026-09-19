@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-001",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:30:00-03:00",
+  "proposta_sha256": "a747af35f580fcf59883a16f44df6c192f787e2f472e9f9338fa53ca51fd3aab",
+  "decisao": "reprovar",
+  "importancia": 0,
+  "justificativa": "O PROBLEMA e real e eu o medi: ci/leis_sem_mecanismo.py linha 28 diz literalmente que sair da lista de divida e sempre permitido, inclusive porque a lei 'deixou de existir'. Nao ha piso. Reprovo o ACEITE, nao o problema, por dois motivos verificaveis. PRIMEIRO: o aceite manda 'restaurar CLAUDE.md e AGENTS.md para o estado limpo da origin/main'. O mantenedor foi consultado sobre isso DUAS vezes em 12/09 e recusou nas duas, dizendo que talvez as leis mereçam revisao. Autorizar este aceite executa uma acao que ele negou. E o padrao da armadilhas/299: documento externo reintroduz decisao ja tomada. SEGUNDO: 'len(leis) >= 13' e piso rigido e trava consolidacao legitima para sempre. Uma lei que ganha mecanismo e sai da divida, ou duas leis que viram uma, passam a reprovar o portao sem terem feito nada errado. O QUE MUDA MEU VOTO PARA APROVAR COM IMPORTANCIA 3: tirar a restauracao do aceite e deixa-la como pergunta ao mantenedor; e trocar o piso rigido por 'PR que remove secao de lei exige decisao escrita em docs/decisoes/ no mesmo PR'. Isso impede apagar em silencio sem impedir mudar. CREDITO: o achado e o desenho do piso estao em docs/consultorias/fase-4-otimizacao/CONSENSO-FASE-4.md ficha P-4, gravado as 09:54:32 de 12/09; este documento e de 09:55:59. O campo 'origem: Auditoria externa' deveria nomear a fonte. Nao disputo credito, registro o fato para o conselho decidir."
+}

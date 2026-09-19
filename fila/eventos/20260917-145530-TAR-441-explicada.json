@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-145530-TAR-441-explicada",
+  "tarefa": "TAR-441",
+  "evento": "explicada",
+  "quando": "2026-09-17T14:55:30+00:00",
+  "quem": "Pedido direto do mantenedor em 17/09/2026",
+  "o_que_e": "O rodapé público não informa a data desta atualização.",
+  "o_que_muda": "O visitante vê a data e a autoria discretas no fim do rodapé.",
+  "exemplo": "Última atualização: 17/09/2026 por Codex.",
+  "importancia": 60
+}

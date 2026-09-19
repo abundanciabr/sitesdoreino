@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-182632-TAR-404-explicada",
+  "tarefa": "TAR-404",
+  "evento": "explicada",
+  "quando": "2026-09-13T18:26:32+00:00",
+  "quem": "despacho colado no Codex em 2026-09-13",
+  "o_que_e": "Hoje o plano mestre fica em markdown local fora do admin; para ler durante a execução é preciso abrir arquivo por arquivo.",
+  "o_que_muda": "O admin passa a mostrar a lista viva desses markdowns, abre cada documento na própria tela e recarrega em desenvolvimento quando a pasta muda.",
+  "exemplo": "A pessoa abre a administração local, clica em Plano mestre e lê o documento certo sem procurar caminho no Windows.",
+  "importancia": 72
+}

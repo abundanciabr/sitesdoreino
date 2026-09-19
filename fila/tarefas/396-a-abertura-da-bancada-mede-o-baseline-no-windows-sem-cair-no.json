@@ -1,0 +1,19 @@
+{
+  "arquivo": "396-a-abertura-da-bancada-mede-o-baseline-no-windows-sem-cair-no",
+  "id": "TAR-396",
+  "titulo": "A abertura da bancada mede o baseline no Windows sem cair no cmd.exe",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado em ci/sessao.py com teste que simula o make caindo no cmd.exe; provar_guardas PASS; saída real do passo 12 da abertura na célula admin nesta máquina",
+  "despacho": "# Brief: a abertura da bancada mede o baseline no Windows sem cair no cmd.exe\n\nexecutor: codex\ncélula: ci\nmodelo: sonnet | esforço: medium | teto: 100000 (por `python ci/economia_da_fabrica.py brief --tipo teste --celula ci --alvo ci/sessao.py`, em origin/main 34f4147c, 13/09/2026 12:50Z)\nmandato CODEOWNERS: `ci/sessao.py` e seu teste, dado pelo mantenedor em 13/09/2026 (~12:55Z) com AskUserQuestion, opção recomendada. Nenhum Makefile de célula entra.\n\n## O problema real\n\nO passo 12 da abertura (`python ci/sessao.py`, \"baseline da main isolada: `make ci` da célula\") roda o `make` da célula. No Windows do mantenedor o `make` não acha `sh.exe` e cai no `cmd.exe`; a linha `@if [ -f .importlinter ]; then lint-imports; fi` (presente em 18 `services/*/Makefile` e em `celula-template/Makefile`, nenhum com `SHELL :=`) morre com \"-f foi inesperado neste momento\", exit 255 em `Makefile:19: lint`, depois de o Black já ter passado. A abertura classifica o baseline como FAIL exit 2 e o despacho para antes de editar. Em 13/09 isso travou TAR-319, TAR-317 e TAR-316 (PR #1621, evento `20260913-122458-TAR-319-bloqueada`). O alvo `test` (`python -m pytest -q`) não depende da linha quebrada.\n\n## O que fazer (correção mínima, em `ci/sessao.py`)\n\n1. No runner do baseline, quando a plataforma é Windows: localizar o `sh.exe` do Git for Windows (`git --exec-path` sobe até `usr/bin/sh.exe`, ou `where sh`) e chamar o `make` com `SHELL=<caminho>` no ambiente e na linha de comando (`make ci SHELL=...`). Se não houver `sh.exe`, rodar o alvo `test` direto (`python -m pytest -q` na célula) e escrever no log do baseline e na Declaração que o baseline foi medido \"por pytest direto, sem lint\" (a verdade, não um PASS de mentira).\n2. O log do baseline (`log_do_baseline`) grava o comando exato usado.\n3. Teste em `ci/tests/` que prova o comportamento sem depender do Windows real: simula o `make` caindo em shell sem `[` (um `make` falso que devolve \"-f foi inesperado\" e exit 255) e confirma (a) com `sh.exe` disponível o runner passa `SHELL=` e o baseline é PASS; (b) sem `sh.exe` o runner cai para `pytest` e a Declaração diz isso; (c) a mensagem de erro quando nem `pytest` roda diz o que aconteceu e o que fazer. Mutação: sabotar o fallback e ver vermelho (`python ci/provar_guardas.py <teste>`).\n4. Rodar de verdade nesta máquina: `python ci/sessao.py --celula admin --tarefa baseline-windows --sem-container` e colar a saída do passo 12 no PR.\n\n## Somente leitura\n`services/*/Makefile`, `celula-template/Makefile`, `RITOS.md` (§ SEM_CONTAINER), `armadilhas/` citadas pela abertura.\n\n## Fora de escopo\nEditar qualquer Makefile; mudar o que `make ci` faz no Linux ou no CI; TAR-319, 317 e 316 (seguem pelo contorno `python -m pytest -q` até este PR pousar).\n\n## DoD com prova (cole no PR)\n- Suíte de `ci/tests/` do arquivo tocado verde, contagem; `provar_guardas` PASS com número de guardas.\n- Saída real do passo 12 da abertura na célula admin nesta máquina (PASS, comando usado).\n- `python ci/padrao_de_trabalho.py` e `python ci/travessao.py --verificar-staged` PASS.\n- Recibo abaixo de 1 KB com `--gravidade info`; corpo do PR declara `ci/sessao.py` como CODEOWNERS e cita este mandato.",
+  "origem": "mandato do mantenedor em 13/09/2026 ~12:55Z; PR #1621; retomada item 27",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

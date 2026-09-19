@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-133123-TAR-313-concluida",
+  "tarefa": "TAR-313",
+  "evento": "concluida",
+  "quando": "2026-09-13T13:31:23+00:00",
+  "quem": "agent/fila/tar-313-permissoes-entregas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1620",
+  "verificado_em": "2026-09-13"
+}

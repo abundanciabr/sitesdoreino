@@ -1,0 +1,22 @@
+{
+  "arquivo": "433-a-porta-privada-pela-qual-o-painel-do-mantenedor-le-os-dados",
+  "id": "TAR-433",
+  "titulo": "A porta privada pela qual o painel do mantenedor le os dados reais da VPS",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-432"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "quatro leituras em 200 e recusa em 404 na sonda de dentro da VPS, mais testes que reprovem escrita, prefixo amplo, porta exposta e token literal",
+  "despacho": "DESPACHO: fase 2 da ponte, a entrada privada de quatro leituras.\n\nCELULA: infra. ALVOS: infra/traefik/traefik.yml, infra/traefik/dynamic/entrada-privada.yml,\ninfra/docker-compose.yml, infra/sincronizar-infra-na-vps.sh e o teste em ci/tests.\n\nMANDATO: o mantenedor autorizou mexer na VPS em 15/09/2026, aceitando por\nescrito a janela em que o site pode cair, e autorizou abrir o trabalho do site\ncom controle de versao fora da pasta do painel.\n\nO QUE CONSTRUIR: um entryPoint 8443 preso ao loopback do host, quatro\nroteadores de GET e mais nenhum, um middleware de Bearer por celula com o valor\nvindo do ambiente dentro da VPS, StripPrefix so para catalogo, e uma sonda que\nprove as quatro leituras em 200 e a recusa em 404 antes da sentinela de\nconclusao.\n\nEVIDENCIA EXIGIDA: ensaio com a imagem traefik:v3.4 antes da publicacao;\ntestes que reprovem se aparecer verbo de escrita, prefixo amplo, porta fora do\nloopback ou token literal versionado; sabotagem de cada um desses.\n\nFORA DE ESCOPO: escrita, as outras oito celulas, o tunel da fase 3 e a retirada\nda administracao publica.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-15",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -468,7 +468,6 @@ def materializar_pacote(
     aceite: str = "",
     sintoma: str = "",
     mandatos=(),
-    limite_contexto: int = 8,
     snapshot: bool = False,
     pr: int | None = None,
     ramo_pedido: str = "",
@@ -556,8 +555,6 @@ def materializar_pacote(
             )
         caminhos = sorted({_caminho(raiz, c) for c in caminhos})
         mandatos = sorted({_caminho(raiz, c) for c in mandatos})
-        if not 1 <= limite_contexto <= 100:
-            raise EntradaRecusada("Limite de contexto inválido. Use de 1 a 100 lições.")
         if pedido:
             pedido = _texto(pedido, "Pedido")
         if aceite:
@@ -776,7 +773,6 @@ def materializar_pacote(
             caminhos=caminhos,
             sintoma=sintoma,
             aceite=[aceite],
-            limite=limite_contexto,
         )
         for linha in contexto.splitlines():
             if linha.startswith("Leituras obrigatórias: "):
@@ -861,9 +857,7 @@ def materializar_pacote(
             contexto=dict(
                 texto=contexto,
                 bytes=len(contexto.encode("utf-8")),
-                teto=perfil.teto_contexto,
-                limite_licoes=limite_contexto,
-                truncado="Truncado:" in contexto,
+                truncado=False,
                 busca=(
                     "sem_resultados"
                     if "Nenhuma lição recuperada" in contexto
@@ -1026,8 +1020,8 @@ def materializar_pacote(
                 "ERROR",
                 _passo(
                     "completar_contexto",
-                    "Contexto ausente ou truncado; preparação NÃO MEDIDA.",
-                    "Restaure as fontes citadas e amplie --limite-contexto antes de executar.",
+                    "Contexto ausente; preparação NÃO MEDIDA.",
+                    "Restaure as fontes citadas antes de executar.",
                 ),
             )
         dono = estado.get("quem")
@@ -1280,7 +1274,7 @@ def materializar_catalogo(raiz: Path, *, agora: datetime) -> dict:
     coleta = dict(revisao=revisao, tarefas=tarefas, eventos=eventos, digests=digests)
     pacotes = {
         tid: materializar_pacote(
-            raiz, tid, agora=agora, snapshot=True, limite_contexto=100, _coleta=coleta
+            raiz, tid, agora=agora, snapshot=True, _coleta=coleta
         )
         for tid in sorted(tarefas)
     }
@@ -1324,7 +1318,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--instante-utc", help="Instante ISO 8601 UTC da coleta reproduzível"
     )
-    parser.add_argument("--limite-contexto", type=int, default=8)
     parser.add_argument(
         "--snapshot",
         action="store_true",
@@ -1344,7 +1337,6 @@ def main(argv: list[str] | None = None) -> int:
             aceite=args.aceite,
             sintoma=args.sintoma,
             mandatos=args.mandato,
-            limite_contexto=args.limite_contexto,
             snapshot=args.snapshot,
             pr=args.pr,
             ramo_pedido=args.ramo,

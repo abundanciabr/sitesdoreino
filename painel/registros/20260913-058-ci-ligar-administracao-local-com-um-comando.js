@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-058-ci-ligar-administracao-local-com-um-comando",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "ci: ligar administracao local com um comando",
+  detalhe: "O lancador prepara dependencias e banco local, verifica acesso e conteudo antes de imprimir links. Primeiro uso e repeticao reais medidos com quatro respostas HTTP 200; sete testes cobrem falhas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1635. Validação local: árvore 002b9771cf1265e3b20e5c2136f891ebbc560204; commit 48ba12c90895753cc30bebb86b993c3fef2cd5dc; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-405",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

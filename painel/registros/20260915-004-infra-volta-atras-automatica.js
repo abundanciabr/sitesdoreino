@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260915-004-infra-volta-atras-automatica",
+  tipo: "entrega",
+  quando: "2026-09-15",
+  titulo: "infra: volta atras automatica",
+  detalhe: "Se a atualizacao da infraestrutura der errado, a plataforma volta sozinha para a configuracao anterior.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1672. Validação local: árvore e34a72afefca1c1ca9f478072a2a08d4dfd7fc42; commit 184397a342efa614bac910b37a172adc14ecab28; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-15",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-432",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

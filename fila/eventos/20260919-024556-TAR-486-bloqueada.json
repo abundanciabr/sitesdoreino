@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-024556-TAR-486-bloqueada",
+  "tarefa": "TAR-486",
+  "evento": "bloqueada",
+  "quando": "2026-09-19T02:45:56+00:00",
+  "quem": "agent/ci/congelar-no-rollback",
+  "detalhe": "O mandato existe e o desenho esta pronto, mas o classificador de permissoes desta sessao recusou a edicao de .github/workflows/rollback.yml. Destrava quem autorizar a escrita nesse caminho para a sessao, ou uma sessao que ja a tenha.",
+  "espera": "mantenedor"
+}

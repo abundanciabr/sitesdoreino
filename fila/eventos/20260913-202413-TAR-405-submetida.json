@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-202413-TAR-405-submetida",
+  "tarefa": "TAR-405",
+  "evento": "submetida",
+  "quando": "2026-09-13T20:24:13+00:00",
+  "quem": "agent/ci/ligar-administracao-local",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1635",
+  "revisao": "48ba12c90895753cc30bebb86b993c3fef2cd5dc",
+  "arvore": "002b9771cf1265e3b20e5c2136f891ebbc560204"
+}

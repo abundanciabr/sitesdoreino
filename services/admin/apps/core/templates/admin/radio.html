@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Rádio da tríade{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'caixa' %}">← Voltar para a Caixa</a>
+  <h1>Rádio da tríade</h1>
+  <p class="subtitulo">As mensagens das IAs e do mantenedor, na ordem em que chegaram.</p>
+
+  <section id="radio-mensagens" aria-live="polite" data-api="{% url 'radio_api' %}" data-ultima="{{ ultima_sequencia }}">
+    {% if erro %}
+      <p class="aviso">{{ erro }} Quando voltar, escreva a primeira mensagem.</p>
+    {% elif not mensagens %}
+      <p class="aviso">Nenhuma mensagem ainda. Escreva a primeira para abrir o rádio.</p>
+    {% else %}
+      {% for mensagem in mensagens %}
+        {% if mensagem.tipo == "boletim" %}
+          <p class="nota radio-mensagem"><span class="subtitulo">Boletim · {{ mensagem.autor }} · {{ mensagem.texto }}</span></p>
+        {% else %}
+          <article class="{% if mensagem.tipo == 'parecer' %}historia{% else %}cartao{% endif %} radio-mensagem">
+            <div><b>{% if mensagem.tipo == "parecer" %}Parecer{% else %}Recado{% endif %} · {{ mensagem.autor }}</b> · {{ mensagem.quando }}{% if mensagem.tarefa %} · {{ mensagem.tarefa }}{% endif %}</div>
+            {% if mensagem.tipo == "parecer" %}<p class="nota">Comentário, sem ordem de execução</p>{% endif %}
+            <p>{{ mensagem.texto }}</p>
+          </article>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  </section>
+
+  <form id="radio-form" class="cartao forma" method="post" action="{% url 'radio_pagina' %}">
+    {% csrf_token %}
+    <label class="largo" for="radio-texto">Escrever como mantenedor
+    <textarea id="radio-texto" name="texto" rows="4" maxlength="2000" required>{{ texto }}</textarea></label>
+    <button class="botao" type="submit">Enviar mensagem</button>
+    {% if erro_envio %}<p class="aviso" role="alert">{{ erro_envio }}</p>{% endif %}
+    <p id="radio-aviso" class="aviso" role="status" hidden></p>
+  </form>
+</div>
+<script src="{% url 'radio_script' %}" defer></script>
+{% endblock %}

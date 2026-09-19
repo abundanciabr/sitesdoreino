@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-009-admin-o-calendario-do-ciclo-anda-uma-semana",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: o calendário do ciclo anda uma semana",
+  detalhe: "As 14 faixas andaram 7 dias; o prazo 15/12 ficou, e quem encolheu foi a recuperação. Um guarda novo lê o cartão e cobra a frase na tela.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1684. Validação local: árvore c74338a7fae792359b352135cc3bc0411a51be4d; commit 871681f7ea321eda001acd9a9db414c2b6e19231; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-436",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

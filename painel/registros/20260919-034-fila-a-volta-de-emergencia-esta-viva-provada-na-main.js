@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-034-fila-a-volta-de-emergencia-esta-viva-provada-na-main",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "fila: a volta de emergencia esta viva, provada na main",
+  detalhe: "A valvula aplicou de verdade na main: aplicar-na-vps verde, REVERSAO-CONCLUIDA vinda da VPS, e a celula devolvida a linha principal depois.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1762. Validação local: árvore b71d7ec685d214182680c4c7a506c853bf3ddbf2; commit 26de16927ab949bf620155637ee326ee1cc72783; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-492",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

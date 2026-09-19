@@ -1,0 +1,19 @@
+{
+  "arquivo": "405-ligar-a-administracao-local-com-um-comando",
+  "id": "TAR-405",
+  "titulo": "Ligar a administração local com um comando",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Primeiro uso e reexecucao com quatro links HTTP 200; testes das falhas.",
+  "despacho": "Mandato do mantenedor em 13/09/2026: criar lancador local com preparacao, porta ocupada, erro e prova HTTP. Alvos ci/ligar_administracao.py e ci/tests/test_ligar_administracao.py.",
+  "origem": "pedido direto do mantenedor no Codex, 13/09/2026",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

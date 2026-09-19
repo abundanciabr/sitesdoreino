@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-006-fila-fechar-a-tar-435-entregue-pelo-pr-1683",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "fila: fechar a TAR-435, entregue pelo PR 1683",
+  detalhe: "A TAR-435 estava aberta so por falta de evento: o PR 1683 mergeou em 17/09 e a rota da paginacao esta em origin/main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1746. Validação local: árvore be915d134c4915203560c8dd5d0cafc7e3b1cd16; commit 322a78fcc5c8d16b8483e188ab2a45d74f4332b9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-435",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

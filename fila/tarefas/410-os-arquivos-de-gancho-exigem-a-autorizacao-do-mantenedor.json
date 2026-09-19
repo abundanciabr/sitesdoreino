@@ -1,0 +1,19 @@
+{
+  "arquivo": "410-os-arquivos-de-gancho-exigem-a-autorizacao-do-mantenedor",
+  "id": "TAR-410",
+  "titulo": "Os arquivos de gancho exigem a autorização do mantenedor",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de cobertura vermelho antes e verde depois; lista medida dos arquivos; checks verdes e PR integrado.",
+  "despacho": "Os quatro arquivos de gancho estavam sem CODEOWNERS: .claude/settings.json, .codex/hooks.json, .githooks/pre-commit e .githooks/pre-push. Este PR atribui os dois arquivos de configuração e a pasta .githooks/ a @abundanciabr. O próprio .github/CODEOWNERS já está coberto por /.github/ e os executores por /ci/; essas regras foram preservadas.\n\nO teste novo descobre declarações JSON de hooks e arquivos versionados em .githooks/, verifica o dono efetivo (última regra aplicável) e exige que o portão real recuse integração sem mandato. CODEOWNERS ausente, leitura inválida ou padrão não suportado reprovam. A mudança contém somente CODEOWNERS, o teste novo e o recibo do livro.\n\nProva executada no Windows:\npython -m pytest ci/tests/test_codeowners_ganchos.py -q\nAntes: AssertionError: Sem @abundanciabr no CODEOWNERS: .claude/settings.json, .codex/hooks.json, .githooks/pre-commit, .githooks/pre-push. Cubra esses caminhos antes de integrar.\n1 failed in 2.73s\nDepois: 1 passed in 0.60s\npython -m pytest ci/tests/test_merge_automatico.py -q\n15 passed in 0.65s\n\nMandato-do-mantenedor: autorizo alterar o CODEOWNERS para cobrir todos os arquivos que declaram gancho, atribuindo-os a @abundanciabr. Pedido feito por mim em 13/09/2026 na sessão da maestro, ao decidir blindar antes de confiar nos ganchos do rádio. Caminhos autorizados neste repositório: .github/CODEOWNERS ci/tests/test_codeowners_ganchos.py\nCaminhos autorizados: CODEOWNERS, e a criação do teste que prova a cobertura.\n\nO #1640 permanece em rascunho e não foi alterado por este despacho. A autorização de confiança no PC e a retomada do rádio ficam com a maestro após esta integração.\n\nToca: ci",
+  "origem": "Despacho do mantenedor na sessão da maestro em 13/09/2026: blindar CODEOWNERS antes da confiança dos ganchos e do rádio 1640.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
