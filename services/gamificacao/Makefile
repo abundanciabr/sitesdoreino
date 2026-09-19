@@ -16,16 +16,16 @@ test:
 
 lint:
 	black --check .
-	@if [ -f .importlinter ]; then lint-imports; fi
+	$(if $(wildcard .importlinter),lint-imports)
 
 type:
-	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
+	$(if $(wildcard mypy.ini),mypy .,@echo "ℹ sem mypy nesta célula")
 
 # [INV-CI01] Quem decide se esta célula tem contrato é ci/manifesto-de-contratos.json,
 # não a presença do arquivo em disco. A `gamificacao` nasce `not-applicable` e
 # vira `required` no PR 4 da escada (RITOS §3), quando o contrato existir.
 contrato-check:
-	bash ../../ci/freeze-de-contrato.sh $(CELULA)
+	python ../../ci/contract_freeze.py $(CELULA) && echo "✅ ci/contract_freeze.py: portão verificado (adaptador: ci/freeze-de-contrato.sh)"
 
 ci: lint type test contrato-check
 	@echo "✅ $(CELULA): Definição de Pronto local atingida"

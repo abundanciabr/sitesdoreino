@@ -1,0 +1,22 @@
+{
+  "arquivo": "372-a-triade-na-lei-papel-trabalho-responsabilidades-e-limites-d",
+  "id": "TAR-372",
+  "titulo": "A tríade na lei: papel, trabalho, responsabilidades e limites de cada IA",
+  "toca": [
+    "ci",
+    "painel",
+    "CLAUDE.md",
+    "RITOS.md"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com a tríade em CLAUDE.md (dentro do teto de 12000 bytes), AGENTS.md, CONSTITUICAO.md Lei 4, RITOS.md, RUNBOOK-LOTES.md, as seis fichas, painel/ia e docs/decisoes/DECISAO-triade-de-ias.md; portões padrao_de_trabalho, leis_sem_mecanismo e testes das fichas verdes.",
+  "despacho": "Escrever em cada arquivo-lei e ficha a seção da tríade (Claude Code rege, Codex constrói, Antigravity audita e verifica), com regra, comando e quem faz valer, e a história em docs/decisoes/DECISAO-triade-de-ias.md. Segundo PR, dependente deste, cobre os documentos de regência.",
+  "origem": "pedido do mantenedor em 12/09/2026: altere todos os documentos explicando o papel de cada IA da tríade",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

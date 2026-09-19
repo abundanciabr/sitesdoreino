@@ -1,0 +1,19 @@
+{
+  "arquivo": "375-enfileirar-o-radio-e-a-lei-de-ferro-da-triade",
+  "id": "TAR-375",
+  "titulo": "Enfileirar o rádio e a Lei de Ferro da tríade",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de escrituração integrado com as tarefas do rádio e da Lei de Ferro criadas e explicadas; python ci/fila.py validar verde.",
+  "despacho": "Criar na fila as tarefas do rádio (ficha ANTIGRAVITY-007) e da Lei de Ferro (ficha ANTIGRAVITY-006), com os briefs prontos no campo despacho. Só escrituração.",
+  "origem": "maestro, 12/09/2026",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

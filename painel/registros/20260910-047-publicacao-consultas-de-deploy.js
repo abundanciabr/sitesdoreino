@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-047-publicacao-consultas-de-deploy",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Consultas de publicação corrigidas no PR #1534",
+  detalhe: "PR #1534 integrado por abundanciabr. Deploy, portão e publicação dos dados concluídos com sucesso no commit 0ba5310e3c73a5ee439b7a08e19f08df431315a7.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1534 MERGED; https://github.com/abundanciabr/sitesdoreino/actions/runs/34493727068 completed/success, quatro jobs success no SHA do merge.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-043-ci-reduzir-consultas-de-deploy",
+  relacao: "aceite",
+  tarefa: "TAR-322",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

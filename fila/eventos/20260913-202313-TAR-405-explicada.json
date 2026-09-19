@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-202313-TAR-405-explicada",
+  "tarefa": "TAR-405",
+  "evento": "explicada",
+  "quando": "2026-09-13T20:23:13+00:00",
+  "quem": "pedido direto do mantenedor no Codex, 13/09/2026",
+  "o_que_e": "O painel existe, mas exige preparar o servidor e localizar os documentos.",
+  "o_que_muda": "Um comando liga o painel e entrega os enderecos verificados.",
+  "exemplo": "Colar o comando no PowerShell e abrir o plano mestre.",
+  "importancia": 100
+}

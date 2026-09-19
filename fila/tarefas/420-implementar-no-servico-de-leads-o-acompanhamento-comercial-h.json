@@ -1,0 +1,19 @@
+{
+  "arquivo": "420-implementar-no-servico-de-leads-o-acompanhamento-comercial-h",
+  "id": "TAR-420",
+  "titulo": "Implementar no serviço de leads o acompanhamento comercial humano",
+  "toca": [
+    "leads"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Todos os critérios do aceite do despacho comprovados com comandos, testes e publicação quando houver; nenhum segredo, gasto, acesso cruzado a banco ou interface administrativa na VPS.",
+  "despacho": "# Brief compilado\n\nobjetivo: Implementar no serviço de leads o acompanhamento comercial humano\ntipo: produto\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nmotivo_do_modelo: cria ou muda comportamento de produto; precisa de julgamento semantico\ncelula: leads\n\n## Arquivos-alvo\n- services/leads/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n## Objetivo\nImplementar na célula leads o provedor do CRM humano definido no contrato integrado pelo PR #1530. A entrega é a API e sua persistência própria; nenhum consumidor ou tela.\n## Alvos\nservices/leads/apps/core/, services/leads/config/api.py e urls.py somente se necessário, migrations próprias, services/leads/tests/ e LICOES.md se houver lição específica.\n## Somente leitura\ncontracts/leads.openapi.yaml, constituicoes/AGENTS.leads.md, services/admin/. O contrato já contém opportunities, history, transfers e accept/refuse; services/leads/apps/core/api.py tem duas operações router.post, lacuna do provedor a medir antes de implementar. PR #1530 MERGED, merge d2f7948e5b5563c4226208af94385d689df3fef9.\n## Aceite\nOperações e respostas conformes ao contrato congelado; autorização por titular e site; histórico imutável; transferência pendente não troca responsável antes do aceite; recusa preserva motivo; encerramento exige evidência e reabertura segue contrato; transação e reentrega não duplicam efeito. Testes vermelho para verde das regras, mutação dos guardas, suíte leads e contrato-check verdes; publicação do provedor medida. Nenhuma alteração do contrato neste PR.\n## Restrições\nNenhuma autorização para segredo, gasto, SSH manual, leitura ou escrita no banco de outra célula, tela administrativa na VPS, conteúdo ou copiloto. Contratos congelados ficam somente leitura; lacuna de contrato volta à maestro para Rito de Contrato em PR exclusivo, provedor antes de consumidor. CODEOWNERS exige mandato nominal do mantenedor no PR. Código reconstruível do Admin local permanece no Git; trabalho operacional vivo permanece no localhost. Não criar UI nesta tarefa.",
+  "origem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

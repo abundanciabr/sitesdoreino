@@ -1,0 +1,21 @@
+{
+  "arquivo": "459-ensinar-outros-robos-a-repetir-uma-entrega-completa-e-compro",
+  "id": "TAR-459",
+  "titulo": "Ensinar outros robôs a repetir uma entrega completa e comprovada",
+  "toca": [
+    "docs",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Protocolo versionado reconstrói o caso do PR 1720 do pedido à página privada, distingue investigação, validação, integração e publicação, usa comandos vigentes e é conferido por links e fontes canônicas.",
+  "despacho": "Documentar em docs/consultorias/equipe-especialista/PROTOCOLO-DE-ENTREGA.md o método realmente usado na TAR-455 e no PR 1720. Público: robôs executores. Incluir princípio, fluxo passo a passo, paralelização, investigação por fatos, registro na fila, revisão adversarial, ci/pr.py, checks, integração automática, deploy, editor privado e confirmação exigida no gesto de escrita. Separar prova de promessa e registrar falhas observadas, inclusive dependência ausente, base atualizada e diagnóstico obsoleto de atestado. Não alterar leis, automação, CODEOWNERS, contratos ou o relatório de dez partes. Validar links, comandos citados, texto e fila; entregar por PR.",
+  "origem": "Pedido do mantenedor em 2026-09-18 após a TAR-455: detalhar como a entrega foi feita para instruir outros robôs",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

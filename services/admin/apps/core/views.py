@@ -15,10 +15,12 @@ preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
 import unicodedata
+import hmac
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
-from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.core import signing
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
@@ -34,6 +36,37 @@ from .models import Administrador
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
 from .turmas import conferir
+
+
+@require_GET
+def acesso_local(request, token=""):
+    """Cria a sessão local a partir do convite do lançador."""
+    esperado = settings.ADMIN_LINK_TOKEN
+    if not esperado or not hmac.compare_digest(token, esperado):
+        return HttpResponse(
+            "Este link local não é válido. Gere outro pelo lançador local.",
+            status=404,
+            content_type="text/plain; charset=utf-8",
+        )
+    conteudo = {
+        "id": settings.ADMIN_LOCAL_ID,
+        "nome": settings.ADMIN_LOCAL_NOME,
+        "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
+    }
+    destino = request.GET.get("next") or reverse("plano_mestre")
+    if not destino.startswith("/") or destino.startswith("//"):
+        destino = reverse("plano_mestre")
+    resposta = HttpResponseRedirect(destino)
+    resposta.set_cookie(
+        settings.ADMIN_LOCAL_COOKIE_NAME,
+        signing.TimestampSigner().sign_object(conteudo),
+        max_age=settings.ADMIN_LOCAL_COOKIE_MAX_AGE,
+        httponly=True,
+        secure=settings.CSRF_COOKIE_SECURE,
+        samesite="Lax",
+        path=settings.FORCE_SCRIPT_NAME or "/",
+    )
+    return resposta
 
 
 @require_GET

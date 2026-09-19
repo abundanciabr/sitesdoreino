@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-204650-TAR-372-explicada",
+  "tarefa": "TAR-372",
+  "evento": "explicada",
+  "quando": "2026-09-12T20:46:50+00:00",
+  "quem": "pedido do mantenedor em 12/09/2026: altere todos os documentos explicando o papel de cada IA da tríade",
+  "o_que_e": "Hoje as leis dos robôs falam de maestro, despacho e revisor como funções de uma sessão, sem dizer qual IA faz o quê. Quem abre uma sessão nova do Codex ou do Antigravity não encontra o próprio papel escrito.",
+  "o_que_muda": "Cada IA passa a ler, no arquivo que ela mesma carrega ao abrir, o que faz, o que entrega e o que nunca faz. Acaba a disputa por liderança e cada uma trabalha no que faz melhor.",
+  "exemplo": "É pendurar na parede da oficina quem é o chefe de obra, quem constrói e quem inspeciona, em vez de cada um se apresentar de novo a cada dia.",
+  "importancia": 60
+}

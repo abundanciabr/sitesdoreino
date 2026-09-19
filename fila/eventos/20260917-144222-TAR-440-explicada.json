@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-144222-TAR-440-explicada",
+  "tarefa": "TAR-440",
+  "evento": "explicada",
+  "quando": "2026-09-17T14:42:22+00:00",
+  "quem": "Pedido explícito do mantenedor na sessão Codex de 17/09/2026: auditoria de processo e refatoração do Caminho Dourado.",
+  "o_que_e": "O roteiro atual deixa os robôs procurando comandos em vários documentos e não explica claramente a diferença entre abrir uma entrega, integrá-la e publicá-la.",
+  "o_que_muda": "A receita reúne os comandos de entrega e consulta, aponta as provas exigidas e explica as falhas sem transformar ausência de medição em sucesso.",
+  "exemplo": "Um pedido já integrado pode ter publicação ainda não comprovada; a receita passa a consultar cada estado e mostrar qual evidência está faltando.",
+  "importancia": 60
+}

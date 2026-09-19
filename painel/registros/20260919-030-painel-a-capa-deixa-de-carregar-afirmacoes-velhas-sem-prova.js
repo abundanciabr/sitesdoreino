@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-030-painel-a-capa-deixa-de-carregar-afirmacoes-velhas-sem-prova",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "painel: a capa deixa de carregar afirmacoes velhas sem prova",
+  detalhe: "Pus teto no unico bloco da capa que nunca fecha sozinho: entrega sem prova nao ganha prova depois. Folga do resumo de 67 para 43.124 bytes, e nada aberto saiu.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1758. Validação local: árvore 5e0e6793c715510a0aef8e03edd7a0b725f61656; commit f8085fb2f87b9433c27fbe395fb19cb73d326810; 8 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-490",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

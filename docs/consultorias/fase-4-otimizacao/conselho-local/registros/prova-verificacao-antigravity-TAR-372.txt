@@ -1,0 +1,89 @@
+SHA origin/main: 9ca6a3b1fa00300551408b02cd67ff46a592cdf3
+
+Comando: powershell -Command "Select-String -Path CLAUDE.md, AGENTS.md, CONSTITUICAO.md, RITOS.md, RUNBOOK-LOTES.md -Pattern 'DECISAO-triade-de-ias' | Group-Object Filename | Select-Object Name, Count"
+Saida:
+
+Name             Count
+----             -----
+CLAUDE.md            1
+AGENTS.md            1
+CONSTITUICAO.md      1
+RITOS.md             2
+RUNBOOK-LOTES.md     1
+
+
+
+Comando: powershell -Command "Select-String -Path .codex/agents/*.md -Pattern 'DECISAO-triade-de-ias' | Group-Object Filename | Select-Object Name, Count"
+Saida:
+
+Comando: powershell -Command "Select-String -Path .claude/agents/*.md -Pattern 'DECISAO-triade-de-ias' | Group-Object Filename | Select-Object Name, Count"
+Saida:
+
+Name        Count
+----        -----
+despacho.md     1
+escrivao.md     1
+revisor.md      1
+
+
+
+Comando: powershell -Command "Get-ChildItem -Path painel/ia -Recurse | Select-String -Pattern 'DECISAO-triade-de-ias' | Group-Object Filename | Select-Object Name, Count"
+Saida:
+
+Name                           Count
+----                           -----
+01-leis-ritos-e-invariantes.md     1
+
+
+
+Comando: powershell -Command "Select-String -Path CONSTITUICAO.md -Pattern 'Lei 4' -Context 0,5"
+Saida:
+
+> CONSTITUICAO.md:56:## Lei 4 — Separação de Poderes
+  CONSTITUICAO.md:57:
+  CONSTITUICAO.md:58:
+  CONSTITUICAO.md:59:Quem escreve código **não certifica**: o CI certifica, e todo merge passa pelo
+  CONSTITUICAO.md:60:portão `ci/mergear.py`, que recusa check vermelho, ausente, pendente ou pulado sem
+  CONSTITUICAO.md:61:declaração — o botão de merge do site não é caminho válido para ninguém. **Mergear
+
+
+
+Comando: powershell -Command "(Get-Item CLAUDE.md).Length"
+Saida:
+11995
+
+Comando: python ci/padrao_de_trabalho.py
+Saida:
+PADRÃO DE TRABALHO — a régua está no lugar?
+
+  é a primeira seção         PASS   o Padrão abre o CLAUDE.md
+  as 10 regras, íntegras     PASS   10/10 regras com o título exato
+  as exigências literais     PASS   39 frases-chave presentes
+  as 3 costuras conciliadas  PASS   as três continuam escritas
+  as portas apontam para cá  PASS   6 portas apontando
+  teto de CLAUDE.md          PASS   11995 de 12000 bytes
+  teto de AGENTS.md          PASS   3416 de 10000 bytes
+  Codex aponta para a lei    PASS   ponteiro canônico e dez referências
+
+RESULTADO  PASS
+
+Comando: python ci/leis_sem_mecanismo.py
+Saida:
+CENSO: 28 leis · 24 com mecanismo · 4 em dívida
+  (sem mecanismo, declarado) CLAUDE.md::Como trabalhar com o mantenedor
+  (sem mecanismo, declarado) CLAUDE.md::Este projeto é para ser feito completo — nunca proponha a versão minimalista
+  (sem mecanismo, declarado) CLAUDE.md::O que você entrega para ele mora no site
+  (sem mecanismo, declarado) CONSTITUICAO.md::Lei 7 — Zonas Quentes Nascem Vazias
+LEIS SEM MECANISMO — quem faz valer cada regra
+
+  mecanismos citados existem         PASS   24 lei(s) com mecanismo declarado e presente
+  toda lei declara quem a faz valer  PASS   nenhuma lei fora da lei (4 na dívida declarada)
+
+RESULTADO  PASS
+
+Comando: python -m pytest ci/tests/ -k fichas -q
+Saida:
+................                                                         [100%]
+16 passed, 3164 deselected in 8.56s
+
+Veredito: CONFIRMADA

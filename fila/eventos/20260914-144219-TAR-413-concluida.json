@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-144219-TAR-413-concluida",
+  "tarefa": "TAR-413",
+  "evento": "concluida",
+  "quando": "2026-09-14T14:42:19+00:00",
+  "quem": "agent/ci/remover-limites-token-claude",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1647",
+  "verificado_em": "2026-09-14"
+}

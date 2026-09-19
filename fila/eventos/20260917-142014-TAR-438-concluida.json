@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260917-142014-TAR-438-concluida",
+  "tarefa": "TAR-438",
+  "evento": "concluida",
+  "quando": "2026-09-17T14:20:14+00:00",
+  "quem": "agent/infra/export-do-gateway-no-deploy",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1686",
+  "verificado_em": "2026-09-17"
+}

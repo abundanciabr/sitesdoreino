@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-007-ci-preservar-troca-explicita-de-entrega",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "ci: preservar troca explícita de entrega",
+  detalhe: "Trocas de PR exigem elo ao predecessor, motivo e provas de estado, SHA e árvore antes de gravar ou liberar a reserva.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1549. Validação local: árvore 2ecefc79da40dd0a51fc7b822de327cd8ed440fc; commit c0dc8face21c2afda8367c65876f1a7255f70513; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-332",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

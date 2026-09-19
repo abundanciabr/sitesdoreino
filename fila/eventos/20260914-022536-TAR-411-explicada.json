@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-022536-TAR-411-explicada",
+  "tarefa": "TAR-411",
+  "evento": "explicada",
+  "quando": "2026-09-14T02:25:36+00:00",
+  "quem": "Retomada do Maestro, seções 2, 3 e 5, confrontada com /painel/ e /caixa/radio/ em localhost em 14/09/2026.",
+  "o_que_e": "O rádio do admin grava e exibe recados, pareceres e boletins, mas as sessões das três IAs ainda não recebem automaticamente as mensagens nem registram a última sequência lida.",
+  "o_que_muda": "A mensagem escrita no rádio chega à sessão certa nos pontos de abertura autorizados, sem laço de espera; quando a integração não estiver disponível, o diagnóstico explica o bloqueio sem fingir entrega.",
+  "exemplo": "O mantenedor publica FAROL no rádio, abre uma sessão nova e encontra o recado recebido; se os hooks ainda exigirem confiança, a tarefa para com a ação exata e não envia nada por fora.",
+  "importancia": 75
+}

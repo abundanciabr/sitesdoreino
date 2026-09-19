@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-011-pedido-1515-fecha-primeiro-alerta",
+  tipo: "resposta",
+  quando: "2026-09-10",
+  titulo: "Pedido 1515 fecha o primeiro alerta do histórico",
+  detalhe: "A publicação comprovada no registro 010 também encerra o alerta 20260909-008. Esta resposta apenas liga o alerta à prova terminal já registrada.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34435534721",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260909-008-portao-varreu-job-historico-inexistente",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

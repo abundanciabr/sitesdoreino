@@ -10,6 +10,8 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
         --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
+    python ci/fila.py reconciliar TAR-001 --quem "maestro" \
+        --aceite-registro painel/registros/AAAAMMDD-NNN-slug.js
     python ci/fila.py explicar TAR-001 --quem "sessao-x" \
         --o-que-e "..." --o-que-muda "..." --exemplo "..." --importancia 85
     python ci/fila.py validar                # fail-closed; roda na muralha
@@ -44,6 +46,7 @@ Dialeto de exit (RETROSPECTIVA-FASE-D §1): 0 = OK · 1 = recusa/violação ·
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -52,13 +55,26 @@ import sys
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
 CI = Path(__file__).resolve().parent
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
 import reservar  # noqa: E402
-from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
+import indice_de_armadilhas  # noqa: E402
+import provar_guardas  # noqa: E402
+import responsabilidades  # noqa: E402
+import estado_da_entrega  # noqa: E402
+import radio  # noqa: E402
+import revisor_de_pouso  # noqa: E402
+from _nucleo import (  # noqa: E402
+    ErroDeInstrumentacao,
+    Estado,
+    configurar_saida,
+    executar,
+    raiz_do_repo,
+)
 
 # Quem sabe distinguir espelho de bancada é a muralha da pasta compartilhada, e
 # ela sabe desde 26/08/2026: no worktree o `.git` é ARQUIVO, no clone principal
@@ -141,6 +157,8 @@ CAMPOS_DA_TAREFA = {
 MANUTENCAO = "manutencao"
 CAMPOS_OPCIONAIS_DA_TAREFA = {
     "depende_de": list,
+    "responsabilidade": str,
+    "responsabilidade_obrigatoria": bool,
     "notas": str,
     "cria": list,
     "move": list,
@@ -164,6 +182,7 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "pr": str,
     "revisao": str,
     "arvore": str,
+    "substitui": str,
     "detalhe": str,
     "evidencia": str,
     "verificado_em": str,
@@ -174,6 +193,9 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {
     "o_que_muda": str,
     "exemplo": str,
     "importancia": int,
+    # Só em `concluida` de tarefa da medição: a cadeia que provou a guarda da
+    # armadilha da origem. Quem a confere é `problemas_da_cadeia_automatica`.
+    "prova_da_guarda": dict,
 }
 
 # QUEM DESTRAVA UMA TAREFA PARADA — o campo que faltava (06/09/2026)
@@ -209,6 +231,27 @@ RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # divergiriam no primeiro dia em que alguém mexesse numa só.
 RE_CITACAO = re.compile(r"TAR-\d{3,}")
 PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
+RE_REGISTRO_DE_ACEITE = re.compile(
+    r"painel/registros/\d{8}-\d{3}-[a-z0-9-]+\.js"
+)
+RE_URL = re.compile(r"https?://[^\s<>\"']+")
+# A ORIGEM QUE O TERMÔMETRO ESCREVE — e que não é texto livre nenhum.
+# `origem` nasceu campo morto: `criar` gravava, `validar` cobrava uma string não
+# vazia, e ninguém lia. Neste formato exato ela vira a IDENTIDADE da tarefa (a
+# chave que impede a segunda medição de criar a segunda tarefa) e o ENDEREÇO da
+# armadilha cuja guarda precisa ser provada para a tarefa fechar. Fora dele,
+# `origem` continua sendo o que sempre foi, e tarefa de gente não muda de regra.
+RE_ORIGEM_AUTOMATICA = re.compile(r"^ci/termometro\.py:armadilhas/(\d{3,})$")
+CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
+
+# Os checks que a proteção da main exige para integrar (Lei 4). Verdes no SHA
+# exato que integrou, eles são a suíte medida pela pista sobre o conteúdo que
+# entrou — e é isso que o fechamento retroativo põe no lugar da linhagem.
+CHECKS_DA_INTEGRACAO = ("muralhas", "ci-celula-gate")
+
+
+class RecusaDeReconciliacao(ValueError):
+    """A medição terminou e encontrou uma entrega que ainda não pode fechar."""
 
 
 # ---------------------------------------------------------------------------
@@ -632,8 +675,8 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
             continue
         if tipo == "submetida":
             erros.extend(f"{nome}: {erro}" for erro in problemas_da_submissao(dados))
-        elif any(campo in dados for campo in ("pr", "revisao", "arvore")):
-            erros.append(f"{nome}: pr, revisao e arvore pertencem ao evento submetida")
+        elif any(campo in dados for campo in ("pr", "revisao", "arvore", "substitui")):
+            erros.append(f"{nome}: pr, revisao, arvore e substitui pertencem ao evento submetida")
         if tipo == "concluida":
             if not str(dados.get("evidencia") or "").strip():
                 erros.append(
@@ -680,6 +723,7 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                     )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
+    _conferir_cadeias_de_submissao(eventos, erros)
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
     # A ÚNICA exceção é `explicada`, e ela é deliberada: a regra existe para que
     # ninguém reescreva o que ACONTECEU com a tarefa, e a explicação não conta
@@ -709,6 +753,34 @@ def problemas_da_submissao(dados: dict) -> list[str]:
         if not re.fullmatch(r"[0-9a-f]{40}", str(dados.get(campo) or "")):
             erros.append(f"{campo} exige o SHA completo do código validado")
     return erros
+
+
+def _conferir_cadeias_de_submissao(eventos: list[dict], erros: list[str]) -> None:
+    ultima_por_tarefa: dict[str, dict] = {}
+    for evento in eventos:
+        if evento.get("evento") != "submetida":
+            continue
+        nome = evento.get("arquivo", "evento submetida")
+        anterior = ultima_por_tarefa.get(evento.get("tarefa"))
+        elo = str(evento.get("substitui") or "").strip()
+        motivo = str(evento.get("detalhe") or "").strip()
+        if anterior is None:
+            if elo:
+                erros.append(f"{nome}: elo substitui não cabe na primeira submissão")
+        elif evento.get("pr") == anterior.get("pr"):
+            if elo:
+                erros.append(f"{nome}: elo substitui não atualiza o mesmo PR")
+        else:
+            if not elo:
+                erros.append(f"{nome}: troca de PR sem elo substitui")
+            elif elo != anterior.get("pr"):
+                erros.append(
+                    f"{nome}: substitui precisa apontar para a última submissão, "
+                    f"{anterior.get('pr')}"
+                )
+            if not motivo:
+                erros.append(f"{nome}: substituição com motivo vazio não conta a troca")
+        ultima_por_tarefa[evento.get("tarefa")] = evento
 
 
 def ultima_submissao(eventos: list[dict], tid: str) -> dict | None:
@@ -938,6 +1010,427 @@ def consultar_pr_submetido(raiz: Path, url: str) -> dict:
         ) from erro
 
 
+def _git_predicado(raiz: Path, *argumentos: str, descricao: str) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", *argumentos],
+            cwd=str(raiz),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        raise ErroDeInstrumentacao(
+            f"{descricao}: o git não respondeu",
+            "A relação entre revisão, HEAD e integração não foi medida.",
+        ) from erro
+    if proc.returncode not in (0, 1):
+        raise ErroDeInstrumentacao(
+            f"{descricao}: resposta inválida do git",
+            proc.stderr.strip() or "O git não explicou a falha.",
+        )
+    return proc.returncode == 0
+
+
+def bancada_contem_main_publicada(raiz: Path) -> bool:
+    _git_da_fila(
+        raiz, "fetch", "origin", "main", para_que="atualizar a fila publicada"
+    )
+    return _git_predicado(
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        "origin/main",
+        "HEAD",
+        descricao="conferir se a bancada contém a fila publicada",
+    )
+
+
+def problemas_da_linhagem(
+    submissao: dict,
+    medicao: dict,
+) -> list[str]:
+    problemas = []
+    if medicao.get("arvore_medida") != submissao.get("arvore"):
+        problemas.append("a árvore da revisão difere da árvore submetida")
+    if not medicao.get("revisao_ancestral"):
+        problemas.append("a revisão submetida não é ancestral do HEAD final")
+    if not medicao.get("head_ancestral"):
+        problemas.append("o HEAD final não é ancestral do merge publicado")
+    posteriores = medicao.get("caminhos_posteriores") or []
+    codigo = [
+        caminho
+        for caminho in posteriores
+        if not caminho.startswith(CAMINHOS_POSTERIORES_PERMITIDOS)
+    ]
+    if codigo:
+        problemas.append("há código posterior à revisão: " + ", ".join(codigo))
+    return problemas
+
+
+def medir_linhagem(raiz: Path, submissao: dict, head: str, merge: str) -> None:
+    profundidade = _git_da_fila(
+        raiz,
+        "rev-parse",
+        "--is-shallow-repository",
+        para_que="conferir a profundidade do histórico",
+    ).strip()
+    if profundidade != "false":
+        raise ErroDeInstrumentacao(
+            "histórico raso não prova a reconciliação",
+            "Use um checkout com fetch-depth 0 e repita.",
+        )
+    revisao = submissao["revisao"]
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{revisao}^{{tree}}",
+        para_que="medir a árvore da revisão submetida",
+    ).strip()
+    if not arvore_medida:
+        raise ErroDeInstrumentacao("o git não devolveu a árvore da revisão")
+    commits = _git_da_fila(
+        raiz,
+        "log",
+        "--first-parent",
+        "--format=%H %P",
+        f"{revisao}..{head}",
+        para_que="conferir mudanças posteriores à revisão",
+    ).splitlines()
+    caminhos = set()
+    for linha in commits:
+        commit, *pais = linha.split()
+        modo = "first-parent"
+        # Remerge só mede merges de dois pais; os demais ficam conservadores.
+        if len(pais) == 2 and all(
+            _git_predicado(
+                raiz,
+                "merge-base",
+                "--is-ancestor",
+                pai,
+                f"{merge}^1",
+                descricao="conferir se o pai lateral já pertence à base publicada",
+            )
+            for pai in pais[1:]
+        ):
+            modo = "remerge"
+        caminhos.update(
+            caminho
+            for caminho in _git_da_fila(
+                raiz,
+                "show",
+                f"--diff-merges={modo}",
+                "--format=",
+                "--name-only",
+                commit,
+                para_que="medir autoria posterior sem o código sincronizado",
+            ).splitlines()
+            if caminho
+        )
+    medicao = {
+        "arvore_medida": arvore_medida,
+        "revisao_ancestral": _git_predicado(
+            raiz,
+            "merge-base",
+            "--is-ancestor",
+            revisao,
+            head,
+            descricao="conferir revisão ancestral do HEAD",
+        ),
+        "head_ancestral": _git_predicado(
+            raiz,
+            "merge-base",
+            "--is-ancestor",
+            head,
+            merge,
+            descricao="conferir HEAD ancestral do merge",
+        ),
+        "caminhos_posteriores": sorted(caminhos),
+    }
+    problemas = problemas_da_linhagem(submissao, medicao)
+    if problemas:
+        raise RecusaDeReconciliacao("; ".join(problemas))
+
+
+def provar_estado_terminal(estado: dict) -> None:
+    if not isinstance(estado, dict) or not isinstance(estado.get("estado"), str):
+        raise ErroDeInstrumentacao(
+            "o leitor da entrega devolveu dados inválidos",
+            "Não há estado confiável para reconciliar.",
+        )
+    if estado["estado"] == "ENCERRADO_SEM_INTEGRAR":
+        raise RecusaDeReconciliacao("a entrega não foi integrada")
+    if not estado.get("terminal") or estado["estado"] not in (
+        "PUBLICADO",
+        "SEM_PUBLICACAO",
+    ):
+        raise RecusaDeReconciliacao(
+            f"a publicação ainda não terminou com sucesso ({estado['estado']})"
+        )
+    for campo in ("sha_atual", "sha_integrado"):
+        if not re.fullmatch(r"[0-9a-f]{40}", str(estado.get(campo) or "")):
+            raise ErroDeInstrumentacao(
+                f"{campo} ausente no estado da entrega",
+                "O GitHub não devolveu a identidade completa do código.",
+            )
+
+
+def provar_atestado(resultado) -> None:
+    if not isinstance(resultado, revisor_de_pouso.Resultado):
+        raise ErroDeInstrumentacao(
+            "o revisor devolveu um resultado inválido",
+            "A avaliação independente não pôde ser interpretada.",
+        )
+    if resultado.estado is not Estado.PASS:
+        raise RecusaDeReconciliacao(
+            "o atestado independente do HEAD final não foi aprovado: "
+            + resultado.resumo
+        )
+
+
+def provar_suite_no_head(raiz: Path, head: str) -> list[str]:
+    """Os checks obrigatórios da integração, verdes no SHA que entrou na main.
+
+    É o substituto da linhagem no fechamento retroativo, e é prova mais forte:
+    a linhagem confia na revisão que o despacho declarou ter testado, esta lê
+    da pista o veredito da suíte sobre o conteúdo que realmente integrou.
+    """
+    resposta = estado_da_entrega._api(raiz, f"commits/{head}/check-runs?per_page=100")
+    corridas = resposta.get("check_runs") if isinstance(resposta, dict) else None
+    if not isinstance(corridas, list) or resposta.get("total_count") != len(corridas):
+        raise ErroDeInstrumentacao(
+            "os checks do HEAD entregue não foram medidos por inteiro",
+            f"Confira gh api repos/{{owner}}/{{repo}}/commits/{head}/check-runs "
+            "e repita a reconciliação.",
+        )
+    medidos = []
+    for nome in CHECKS_DA_INTEGRACAO:
+        dele = [c for c in corridas if isinstance(c, dict) and c.get("name") == nome]
+        if not dele:
+            raise RecusaDeReconciliacao(
+                f"o check {nome} não existe no HEAD entregue {head}"
+            )
+        fora = sorted(
+            {str(c.get("conclusion")) for c in dele if c.get("conclusion") != "success"}
+        )
+        if fora:
+            raise RecusaDeReconciliacao(
+                f"o check {nome} não ficou verde no HEAD entregue {head}: "
+                + ", ".join(fora)
+            )
+        medidos.append(f"{nome}={len(dele)}x success")
+    return medidos
+
+
+def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -> None:
+    if registro.get("gravidade") != "verde":
+        raise RecusaDeReconciliacao("o registro de aceite não tem veredito verde")
+    if registro.get("precisa_do_dono") is not False:
+        raise RecusaDeReconciliacao("o registro ainda declara uma pendência do dono")
+    verificado_em = str(registro.get("verificado_em") or "")
+    try:
+        if not RE_DATA.fullmatch(verificado_em):
+            raise ValueError
+        datetime.strptime(verificado_em, "%Y-%m-%d")
+    except ValueError:
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não informa quando foi verificado"
+        )
+    evidencia = str(registro.get("evidencia") or "")
+    citadas = set()
+    for texto in RE_URL.findall(evidencia):
+        texto = texto.rstrip(".,;:)")
+        try:
+            urlsplit(texto)
+        except ValueError:
+            continue
+        citadas.add(texto)
+    if not provas_da_publicacao or not citadas.intersection(provas_da_publicacao):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não cita a prova da publicação correspondente"
+        )
+
+
+def urls_da_publicacao_comprovada(estado: dict, pr: str) -> list[str]:
+    if estado["estado"] == "SEM_PUBLICACAO":
+        return [pr]
+    fonte = estado.get("publicacoes")
+    if fonte is None:
+        fonte = estado.get("runs", [])
+    return sorted(
+        {
+            str(item["url"])
+            for item in fonte
+            if isinstance(item, dict) and item.get("url")
+        }
+    )
+
+
+def _ler_registro(raiz: Path, caminho: str) -> dict:
+    script = (
+        "const fs=require('fs'),vm=require('vm');"
+        "const s={window:{}};"
+        "vm.runInNewContext(fs.readFileSync(process.argv[1],'utf8'),s,{timeout:1000});"
+        "const r=s.window.REGISTROS||[];"
+        "if(r.length!==1)process.exit(3);"
+        "process.stdout.write(JSON.stringify(r[0]));"
+    )
+    saida = executar(
+        ["node", "-e", script, str(raiz / caminho)],
+        cwd=raiz,
+        descricao="ler o aceite na fonte oficial do livro",
+        exigir_stdout=True,
+    ).stdout
+    try:
+        registro = json.loads(saida)
+    except (TypeError, json.JSONDecodeError) as erro:
+        raise ErroDeInstrumentacao(
+            "o registro de aceite não pôde ser lido",
+            "O livro não devolveu um objeto JSON confiável.",
+        ) from erro
+    if not isinstance(registro, dict):
+        raise ErroDeInstrumentacao("o registro de aceite não é um objeto")
+    return registro
+
+
+def carregar_aceite(
+    raiz: Path,
+    caminho: str,
+    merge: str,
+    provas_da_publicacao: list[str],
+) -> dict:
+    caminho = caminho.replace("\\", "/")
+    if not RE_REGISTRO_DE_ACEITE.fullmatch(caminho):
+        raise RecusaDeReconciliacao(
+            "--aceite-registro exige painel/registros/AAAAMMDD-NNN-slug.js"
+        )
+    rastreado = _git_da_fila(
+        raiz,
+        "ls-tree",
+        "-r",
+        "--name-only",
+        "origin/main",
+        "--",
+        caminho,
+        para_que="localizar o aceite na linha publicada",
+    ).splitlines()
+    if rastreado != [caminho]:
+        raise RecusaDeReconciliacao("o registro de aceite não existe em origin/main")
+    if not _git_predicado(
+        raiz,
+        "diff",
+        "--quiet",
+        "origin/main",
+        "--",
+        caminho,
+        descricao="comparar o aceite local com origin/main",
+    ):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite local difere da fonte já integrada em origin/main"
+        )
+    introducao = _git_da_fila(
+        raiz,
+        "log",
+        "-1",
+        "--diff-filter=A",
+        "--format=%H",
+        "origin/main",
+        "--",
+        caminho,
+        para_que="localizar quando o aceite entrou no livro",
+    ).strip()
+    if not introducao:
+        raise RecusaDeReconciliacao("não foi possível localizar a introdução do aceite")
+    if introducao == merge or not _git_predicado(
+        raiz,
+        "merge-base",
+        "--is-ancestor",
+        merge,
+        introducao,
+        descricao="conferir aceite posterior à integração",
+    ):
+        raise RecusaDeReconciliacao(
+            "o registro de aceite não foi introduzido após o merge"
+        )
+    registro = _ler_registro(raiz, caminho)
+    if registro.get("arquivo") != Path(caminho).stem:
+        raise RecusaDeReconciliacao(
+            "a identidade interna do registro de aceite diverge do arquivo"
+        )
+    provar_conteudo_do_aceite(registro, provas_da_publicacao)
+    return registro
+
+
+def provar_reconciliacao(
+    raiz: Path,
+    submissao: dict,
+    aceite_registro: str,
+    retroativa: str = "",
+) -> tuple[str, str]:
+    numero = int(submissao["pr"].rsplit("/", 1)[1])
+    pr = estado_da_entrega.ler_pr(raiz, numero)
+    if pr.get("url") != submissao["pr"]:
+        raise RecusaDeReconciliacao(
+            "a URL submetida não identifica o PR deste repositório"
+        )
+    estado = estado_da_entrega.consultar_entrega(raiz, numero)
+    provar_estado_terminal(estado)
+    head = estado["sha_atual"]
+    merge = estado["sha_integrado"]
+    if (
+        pr.get("headRefOid") != head
+        or (pr.get("mergeCommit") or {}).get("oid") != merge
+    ):
+        raise ErroDeInstrumentacao(
+            "as duas leituras do PR discordam",
+            "HEAD ou merge mudou durante a reconciliação. Repita a medição.",
+        )
+    try:
+        medir_linhagem(raiz, submissao, head, merge)
+    except RecusaDeReconciliacao as recusa:
+        if not retroativa:
+            raise
+        checks = provar_suite_no_head(raiz, head)
+        linhagem = (
+            f"retroativa: {retroativa}; linhagem recusada ({recusa}); "
+            f"suíte verde no HEAD entregue: {', '.join(checks)}"
+        )
+    else:
+        if retroativa:
+            raise RecusaDeReconciliacao(
+                "--retroativa não cabe numa entrega cuja linhagem já se comprova"
+            )
+        linhagem = "linhagem comprovada"
+
+    comentarios = estado_da_entrega._api(  # uma leitura GitHub, sem segundo protocolo
+        raiz, f"issues/{numero}/comments", paginas=True
+    )
+    # A mesma régua do pouso: com a bancada em mãos, um atestado de outro SHA
+    # ainda passa quando a diferença é só a main recebida (`ci/mergear.py`).
+    atestado = revisor_de_pouso.avaliar_atestado(
+        head,
+        comentarios,
+        correcoes=estado_da_entrega.correcoes_declaradas(pr),
+        raiz=raiz,
+    )
+    provar_atestado(atestado)
+
+    provas = urls_da_publicacao_comprovada(estado, submissao["pr"])
+    registro = carregar_aceite(raiz, aceite_registro, merge, provas)
+    publicacao = ",".join(provas)
+    evidencia = (
+        f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
+        f"arvore={submissao['arvore']}; head={head}; merge={merge}; "
+        f"estado={estado['estado']}; publicacao={publicacao}; "
+        f"linhagem={linhagem}; "
+        f"atestado={atestado.resumo}; aceite={aceite_registro.replace('\\', '/')}"
+    )
+    return evidencia, registro["verificado_em"]
+
+
 def _ultimos_ciclos(eventos: list[dict]) -> dict[str, dict]:
     ultimos: dict[str, dict] = {}
     for evento in _em_ordem(eventos):
@@ -1006,6 +1499,33 @@ def _escrever_json(caminho: Path, dados: dict) -> None:
     )
 
 
+def _estados_para_boletim(raiz: Path) -> dict[str, dict] | None:
+    erros: list[str] = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    return None if erros else calcular_estados(tarefas, eventos)
+
+
+def _gravar_fila(raiz: Path, caminho: Path, dados: dict) -> None:
+    antes = _estados_para_boletim(raiz)
+    _escrever_json(caminho, dados)
+    depois = _estados_para_boletim(raiz)
+    if antes is None or depois is None:
+        print("AVISO: registro preservado, mas não foi possível calcular o boletim. Execute python ci/fila.py validar e corrija os dados indicados.", file=sys.stderr)
+        return
+    quando = dados.get("quando") or datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for tid in sorted(depois):
+        estado = depois[tid]["estado"]
+        if antes.get(tid, {}).get("estado") == estado:
+            continue
+        texto = f"{tid}: {estado} em {quando}"
+        try:
+            radio._chamar("POST", {"autor": "fila", "tipo": "boletim", "tarefa": tid, "texto": texto})
+        except RuntimeError as erro:
+            print(f"AVISO: estado de {tid} preservado; o rádio não confirmou o boletim. {erro}", file=sys.stderr)
+            print(f"Reenvie sem repetir a mudança de estado: python ci/radio.py dizer '{texto}' --autor fila --tipo boletim --tarefa {tid}", file=sys.stderr)
+
+
 def montar_evento(
     tid: str,
     evento: str,
@@ -1016,6 +1536,7 @@ def montar_evento(
     espera: str | None = None,
     explicacao: dict | None = None,
     agora: datetime | None = None,
+    prova_da_guarda: dict | None = None,
 ) -> dict:
     """O conteúdo de um evento, sem tocar no disco.
 
@@ -1043,6 +1564,8 @@ def montar_evento(
         dados["espera"] = espera
     if explicacao:
         dados.update({c: explicacao[c] for c in CAMPOS_DA_EXPLICACAO})
+    if prova_da_guarda:
+        dados["prova_da_guarda"] = prova_da_guarda
     return dados
 
 
@@ -1057,14 +1580,16 @@ def _escrever_evento(
     espera: str | None = None,
     explicacao: dict | None = None,
     agora: datetime | None = None,
+    prova_da_guarda: dict | None = None,
 ) -> Path:
     dados = montar_evento(
-        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao, agora
+        tid, evento, quem, detalhe, evidencia, verificado_em, espera, explicacao,
+        agora, prova_da_guarda,
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
     caminho = pasta / f"{dados['arquivo']}.json"
-    _escrever_json(caminho, dados)
+    _gravar_fila(raiz, caminho, dados)
     return caminho
 
 
@@ -1089,12 +1614,11 @@ def _escrever_evento(
 # não tem desfazer, porque depois do terminal a fila não aceita mais nada. A
 # sombra IMPRIME o que gravaria e mede, e a graduação vem depois.
 #
-# O QUE GRADUA (PR futuro, depois de uma semana de medição): que os disparos
-# medidos mostrem "geraria" batendo com o que o robô escreveria à mão, sem um
-# único caso de tarefa errada. Aí a porta passa a gravar o evento no RAMO e
-# commitá-lo ANTES do merge — antes, e não depois, porque o evento precisa
-# entrar na `main` pelo próprio PR, como o registro do livro faz desde
-# 31/08/2026 (`armadilhas/248`).
+# O QUE GRADUOU, em 12/09/2026: o destino acertado (o evento entra na `main`
+# pelo próprio PR, como o registro do livro faz desde 31/08/2026,
+# `armadilhas/248`), mas NÃO por esta porta. Leia a seção seguinte: quem grava
+# é `ci/pr.py`, junto da submissão, porque push direto na `main` é recusado
+# para todo mundo. A sombra abaixo continua medindo e não grava nada.
 # ---------------------------------------------------------------------------
 
 SOMBRA_GERARIA = "geraria"
@@ -1245,6 +1769,73 @@ def evento_de_conclusao_em_sombra(
     return saida
 
 
+# ---------------------------------------------------------------------------
+# O "FEITO" VIAJA NA ENTREGA (12/09/2026)
+#
+# A sombra acima previa graduar gravando o evento na porta do pouso, DEPOIS do
+# merge. Não dá: a `main` tem ruleset ativo com `pull_request` e
+# `required_status_checks` e `bypass_actors: []` (ruleset 21570247), então push
+# direto na `main` é recusado para todo mundo, a pista inclusive. A porta não
+# tem onde gravar.
+#
+# O que sobra é o caminho que o livro do painel já usa desde 31/08/2026
+# (`armadilhas/248`): o "feito" entra na `main` DENTRO do próprio PR da
+# entrega, escrito por `ci/pr.py` junto da submissão. O preço, autorizado
+# pelo mantenedor: a tarefa fecha no merge do PR, não no aceite do
+# mantenedor.
+#
+# O guarda de `cmd_concluir` ("aguarda comprovação do aceite") fica de pé:
+# este caminho não passa por ele, e concluir por texto livre continua
+# recusado.
+# ---------------------------------------------------------------------------
+
+
+def ja_tem_conclusao(raiz: Path, tid: str) -> bool:
+    """Existe um evento de conclusão desta tarefa no livro do disco?
+
+    Olha pelo PADRÃO DO NOME, não pelo nome inteiro: o arquivo carrega o
+    segundo em que foi montado, então a mesma tarefa concluída duas vezes
+    geraria dois nomes diferentes e a idempotência por nome não veria nada.
+    """
+    return any(pasta_eventos(raiz).glob(f"*-{tid}-concluida.json"))
+
+
+def fechada_por_esta_entrega(eventos: list[dict], tid: str, pr: str) -> bool:
+    """A tarefa terminou pela conclusão que ESTA entrega escreveu, e só por ela?
+
+    Sem isto o `--continuar` do mesmo PR bateria no guarda terminal de
+    `cmd_submeter` que ele próprio acabou de criar, e pararia de atualizar a
+    submissão.
+    """
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    nossas = [e for e in finais if e["evento"] == "concluida" and str(e.get("evidencia") or "") == str(pr)]
+    return bool(finais) and len(finais) == len(nossas)
+
+
+def fechar_pela_entrega(raiz: Path, tid: str, quem: str, pr: str) -> bool:
+    """Escreve o "feito" desta tarefa no ramo da entrega. Devolve se escreveu.
+
+    A evidência é a URL do PR, exata: é por ela que `ci/pr.py` reconhece a
+    conclusão como sua e que `fechada_por_esta_entrega` a distingue de um
+    encerramento alheio.
+
+    Passa por `_concluir_com_prova` de propósito, e não por uma segunda
+    receita: é lá que moram as guardas de responsabilidade e a soltura da
+    reserva, e as duas valem aqui igual.
+    """
+    if ja_tem_conclusao(raiz, tid):
+        return False
+    hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    codigo = _concluir_com_prova(raiz, tid, quem, pr, hoje)
+    if codigo != 0:
+        raise ErroDeInstrumentacao(
+            f"a entrega de {tid} não pôde escrever a conclusão",
+            "Leia a recusa acima, corrija a fila e repita python ci/pr.py --continuar.",
+        )
+    return True
+
+
+
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     erros: list[str] = []
     tarefas = carregar_tarefas(raiz, erros)
@@ -1257,11 +1848,336 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
     return tarefas, eventos
 
 
+def normalizar_responsabilidade(valor: object) -> str:
+    return valor.strip() if isinstance(valor, str) else ""
+
+
+# ---------------------------------------------------------------------------
+# A CADEIA DA ARMADILHA — o laço que o termômetro abre, e que só fecha com prova
+#
+# O termômetro mede reincidência e cria trabalho. Duas coisas podiam furar esse
+# laço, e as duas furam pelo mesmo lugar: a `origem`.
+#
+# NA ENTRADA, a origem é IDENTIDADE. Medir de novo na semana seguinte criaria a
+# segunda tarefa para a mesma reincidência, e a fila viraria um mostruário de
+# cópias — o balcão não tinha nada que reconhecesse "isto já entrou". O
+# almoxarife já sabe deduplicar por chave desde que `ci/reservar.py` ganhou a
+# ref atômica no servidor; o que faltava era alguém lhe dar a chave. Duas
+# medições simultâneas ainda passariam pela conferência antes de qualquer uma
+# gravar, e por isso a conferência se repete rente ao disco, logo antes de
+# gravar: é essa segunda leitura que morde a corrida.
+#
+# NA SAÍDA, a origem é ENDEREÇO. `concluir` sempre cobrou evidência, e evidência
+# é uma URL que ninguém relê: uma tarefa que existe para fazer uma armadilha
+# parar de morder pode fechar sem que nada tenha parado de morder. Aqui ela só
+# fecha se a guarda DAQUELA armadilha reprovar sabotada — e "daquela" é o miolo,
+# porque uma prova verdinha de outro teste é prova de nada. A cadeia gravada no
+# evento é o que `validar` reconstrói depois, no SHA do PR, sem rodar pytest:
+# quem produz a prova é a bancada, quem confere a identidade dela é a muralha.
+#
+# Tarefa de gente não entra nesta regra. O que separa uma da outra é a origem em
+# `RE_ORIGEM_AUTOMATICA`, e nada mais.
+# ---------------------------------------------------------------------------
+
+
+def chave_da_origem(origem: str) -> str:
+    """O sha256 que dá ao almoxarife a identidade estável desta tarefa.
+
+    Prefixado de propósito: a chave vive num espaço compartilhado com as outras
+    superfícies, e o sha256 de um texto solto casaria com qualquer outro uso do
+    mesmo texto no dia em que alguém reaproveitasse a mesma origem para outra
+    coisa.
+    """
+    return hashlib.sha256(f"fila/origem:{origem}".encode("utf-8")).hexdigest()
+
+
+def armadilha_da_origem(raiz: Path, origem: str) -> Path | None:
+    """O arquivo da armadilha que a origem endereça, ou None se não der para dizer.
+
+    None também quando o número casa com mais de um arquivo: catálogo ambíguo
+    não é lugar de escolher o primeiro em ordem alfabética.
+    """
+    achado = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())
+    if not achado:
+        return None
+    candidatos = sorted((raiz / "armadilhas").glob(f"{achado[1]}-*.md"))
+    return candidatos[0] if len(candidatos) == 1 else None
+
+
+def origem_ja_na_fila(tarefas: dict[str, dict], origem: str) -> str | None:
+    """O id da tarefa que já nasceu desta origem, em qualquer estado."""
+    alvo = str(origem or "").strip()
+    if not alvo:
+        return None
+    for tid in sorted(tarefas):
+        if str(tarefas[tid].get("origem") or "").strip() == alvo:
+            return tid
+    return None
+
+
+def guarda_declarada(raiz: Path, origem: str) -> tuple[list[str], str]:
+    """O node ID que a armadilha aponta como sua guarda mecânica.
+
+    Devolve (problemas, node), no formato `caminho/do/teste.py::detector`. Uma
+    leitura só do frontmatter nesta casa: o parser é o de
+    `ci/indice_de_armadilhas.py`, porque dois dialetos para o mesmo bloco `---`
+    divergiriam no primeiro dia em que alguém mexesse num só.
+
+    `dono` é o TESTE e `detector` é o nome dele lá dentro, que é a convenção do
+    catálogo. Quem reprova sabotada é pytest, e o arquivo protegido já se
+    declara no marcador `# guarda:` de dentro do teste: apontar o protegido em
+    `dono` deixava a prova impossível de rodar, defeito medido na 088 em
+    18/09/2026.
+    """
+    numero = RE_ORIGEM_AUTOMATICA.fullmatch(str(origem or "").strip())[1]
+    caminho = armadilha_da_origem(raiz, origem)
+    if caminho is None:
+        return ([
+            f"a origem aponta armadilhas/{numero}, que não existe (ou existe em "
+            f"duplicata) nesta árvore. Confira o número na origem da tarefa, ou "
+            f"traga o catálogo para a bancada antes de concluir"
+        ], "")
+    linhas = caminho.read_text(encoding="utf-8").splitlines()
+    frontmatter = indice_de_armadilhas.ler_frontmatter(linhas, caminho.name)
+    if frontmatter is None:
+        return ([
+            f"{caminho.name} é entrada legada, sem frontmatter, e por isso não "
+            f"declara guarda nenhuma. Migre a entrada para schema_version 2 com "
+            f"'guarda: {{tipo: ..., dono: ...}}' antes de concluir"
+        ], "")
+    guarda = frontmatter.get("guarda") or {}
+    tipo = guarda.get("tipo")
+    if tipo in (None, "nenhum", "sino"):
+        return ([
+            f"{caminho.name} declara guarda {tipo!r}, que não reprova nada: sino "
+            f"avisa e 'nenhum' assume o buraco. Construa a guarda mecânica e "
+            f"atualize o frontmatter da armadilha antes de concluir esta tarefa"
+        ], "")
+    dono = str(guarda.get("dono") or "").strip()
+    if not dono:
+        return ([
+            f"{caminho.name} declara guarda {tipo!r} sem 'dono', então ninguém "
+            f"sabe qual arquivo provar. Acrescente 'dono: <caminho do teste>' ao "
+            f"frontmatter da armadilha"
+        ], "")
+    if not (dono.endswith(".py") and Path(dono).name.startswith("test_")):
+        return ([
+            f"{caminho.name} declara 'dono: {dono}', que não é um teste Python: a "
+            f"prova de mutação roda pytest, e o arquivo protegido já se declara no "
+            f"marcador '# guarda: {dono}:<linha>' de dentro do teste. Esta tarefa "
+            f"só fecha com 'dono' apontando o teste (caminho de um test_*.py) e "
+            f"'detector' nomeando o teste que reprova sabotado"
+        ], "")
+    detector = str(guarda.get("detector") or "").strip()
+    if not detector:
+        return ([
+            f"{caminho.name} declara guarda em '{dono}' sem 'detector', e provar o "
+            f"arquivo inteiro provaria qualquer teste dele. Acrescente "
+            f"'detector: test_<nome do teste que reprova>' ao frontmatter da "
+            f"armadilha"
+        ], "")
+    if not (raiz / dono).is_file():
+        return ([
+            f"{caminho.name} aponta a guarda '{dono}', que não existe nesta "
+            f"árvore. Corrija o caminho no frontmatter da armadilha, ou traga o "
+            f"arquivo para a bancada"
+        ], "")
+    # Oito entradas vivas escrevem `detector: test_x: a explicação`, e colar o
+    # campo cru produziria um node ID com a prosa dentro. Quem sabe separar o
+    # nome do teste do resto é o índice, e ele é o único que sabe: duas leituras
+    # do mesmo campo divergiriam no primeiro dia em que alguém mexesse numa só.
+    arquivo, teste = indice_de_armadilhas.alvo_do_detector(detector, dono)
+    if not teste:
+        return ([
+            f"{caminho.name} declara 'detector: {detector}', que não nomeia um "
+            f"teste de dentro de '{dono}': provar o arquivo inteiro provaria "
+            f"qualquer teste dele. Escreva 'detector: test_<nome do teste que "
+            f"reprova sabotado>'; `grep -n 'def test_' {dono}` mostra quais existem"
+        ], "")
+    return ([], f"{arquivo or dono}::{teste}")
+
+
+def marcador_real_da_guarda(raiz: Path, node: str) -> dict:
+    """O marcador `# guarda:` que este teste declara HOJE, relido da árvore.
+
+    É daqui que sai a verdade contra a qual a cadeia gravada se confronta: o
+    arquivo protegido, a linha e o sha256 dele. Levanta `ProvaInvalida` quando
+    não dá para dizer qual é a guarda deste node, porque "não consegui medir"
+    nunca pode virar "não há problema".
+    """
+    dono = node.split("::")[0]
+    encontrados = provar_guardas.descobrir(raiz, [dono])
+    alheios = sorted({g["teste"] for g in encontrados if g["teste"] != node})
+    if alheios:
+        raise provar_guardas.ProvaInvalida(
+            f"{dono} declara marcador de {', '.join(alheios)}, e não de '{node}'. "
+            f"Acerte o 'detector' no frontmatter da armadilha, ou ponha o marcador "
+            f"'# guarda: caminho.py:linha' dentro do teste declarado"
+        )
+    meus = [g for g in encontrados if g["teste"] == node]
+    if len(meus) != 1:
+        raise provar_guardas.ProvaInvalida(
+            f"'{node}' declara {len(meus)} marcadores '# guarda: caminho.py:linha', "
+            f"e a conferência de identidade compara um. Deixe um marcador só dentro "
+            f"do teste"
+        )
+    return meus[0]
+
+
+def provar_guarda_da_armadilha(raiz: Path, origem: str) -> tuple[list[str], dict]:
+    """Roda a guarda da armadilha desta origem e devolve (problemas, cadeia).
+
+    O que vai para dentro do evento é o RESUMO: node ID, arquivo e linha
+    sabotados, o sha256 do protegido no momento da prova, se a sabotagem mordeu
+    e os três estados. Os logs das três execuções ficam de fora de propósito: um
+    evento da fila é um arquivo que alguém abre no navegador, e o JSON integral
+    do pytest tem megabytes.
+    """
+    problemas, node = guarda_declarada(raiz, origem)
+    if problemas:
+        return (problemas, {})
+    dono = node.split("::")[0]
+    evidencia: dict = {"guardas": []}
+    try:
+        # O confronto vem ANTES das três execuções. `provar` recebe o ARQUIVO,
+        # porque é o arquivo que ele varre atrás do marcador, e um detector que
+        # aponta outro teste renderia uma prova verdinha de coisa nenhuma.
+        marcador_real_da_guarda(raiz, node)
+        estado = provar_guardas.provar(raiz, [dono], evidencia)
+    except Exception as erro:  # noqa: BLE001 - git, bash e pytest entram aqui
+        # `ProvaInvalida` é só uma das saídas: a bancada descartável é uma
+        # worktree do git e a sabotagem de `.sh` chama o bash sondado da casa,
+        # e nenhum dos dois levanta `ProvaInvalida`. Deixar a exceção subir
+        # trocava a recusa explicada por um traceback.
+        return ([
+            f"a prova de '{node}' não pôde ser feita: "
+            f"{type(erro).__name__}: {erro}. Rode "
+            f"`python ci/provar_guardas.py {node.split('::')[0]}` para ver a "
+            f"mesma falha com o log inteiro: se ela citar o marcador, conserte "
+            f"o '# guarda: caminho:linha' do teste; se citar git ou bash, é a "
+            f"bancada que precisa estar limpa e com o bash no PATH"
+        ], {})
+    cadeia = {
+        "armadilha": RE_ORIGEM_AUTOMATICA.fullmatch(origem.strip())[1],
+        "revisao": evidencia.get("revisao", ""),
+        "guardas": [
+            {
+                "teste": g["teste"],
+                "protege": g["protege"],
+                "linha": g["linha"],
+                "sha256": g.get("sha256", ""),
+                "reprovou": bool(g.get("reprovou")),
+                "baseline": g.get("baseline", ""),
+                "mutacao": g.get("mutacao", ""),
+                "restauracao": g.get("restauracao", ""),
+            }
+            for g in evidencia["guardas"]
+        ],
+    }
+    if estado is not Estado.PASS:
+        return ([
+            f"a guarda '{node}' não fechou o ciclo PASS→FAIL→PASS (veredito "
+            f"{estado.value}). Rode python ci/provar_guardas.py {dono} e leia o "
+            f"log apontado antes de tentar concluir de novo"
+        ], cadeia)
+    return ([], cadeia)
+
+
+def problemas_da_cadeia_automatica(raiz: Path, tarefa: dict, prova) -> list[str]:
+    """O que impede esta cadeia de provar a guarda da armadilha da origem.
+
+    Não roda teste nenhum: reconstrói a VERDADE das fontes (o frontmatter da
+    armadilha, o marcador do teste e o arquivo protegido como ele está agora) e
+    confronta item a item com o que a bancada gravou. É a mesma régua no balcão
+    (logo depois de produzir a prova) e na muralha (sobre a prova já gravada no
+    evento), porque duas réguas para o mesmo fato divergiriam no primeiro dia em
+    que alguém mexesse numa só.
+    """
+    origem = str((tarefa or {}).get("origem") or "").strip()
+    achado = RE_ORIGEM_AUTOMATICA.fullmatch(origem)
+    if not achado:
+        return []
+    numero = achado[1]
+    problemas, node = guarda_declarada(raiz, origem)
+    if problemas:
+        return problemas
+    dono = node.split("::")[0]
+    if not isinstance(prova, dict) or not prova.get("guardas"):
+        return [
+            f"a tarefa nasceu de armadilhas/{numero} e fecha sem a prova da guarda "
+            f"dela. Rode python ci/provar_guardas.py {dono} e conclua pelo balcão, "
+            f"que grava a cadeia dentro do evento"
+        ]
+    if str(prova.get("armadilha") or "").zfill(3) != numero.zfill(3):
+        return [
+            f"a prova anexada é da armadilha {prova.get('armadilha')!r}, e esta "
+            f"tarefa é de armadilhas/{numero}: a guarda que precisava reprovar "
+            f"sabotada é '{node}'. Prove essa, e conclua de novo"
+        ]
+    try:
+        marcador = marcador_real_da_guarda(raiz, node)
+    except provar_guardas.ProvaInvalida as erro:
+        return [
+            f"a guarda de armadilhas/{numero} não pôde ser relida para conferir a "
+            f"prova, e prova que não se confere não vale: {erro}"
+        ]
+    achados: list[str] = []
+    revisao = str(prova.get("revisao") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", revisao):
+        achados.append(
+            f"a prova de armadilhas/{numero} diz revisão {revisao!r}, e sem o SHA "
+            f"de 40 dígitos da árvore que a produziu ninguém a refaz. Rode python "
+            f"ci/provar_guardas.py {dono} e conclua pelo balcão, que grava a "
+            f"revisão medida"
+        )
+    for guarda in prova["guardas"]:
+        teste = str(guarda.get("teste") or "")
+        if teste != node:
+            achados.append(
+                f"a prova roda '{teste}', que não é a guarda de armadilhas/{numero}: "
+                f"a dela é '{node}'. Prove essa, e conclua de novo"
+            )
+            continue
+        sabotado = (str(guarda.get("protege") or ""), guarda.get("linha"))
+        declarado = (marcador["protege"], marcador["linha"])
+        if sabotado != declarado:
+            achados.append(
+                f"a prova de armadilhas/{numero} diz ter sabotado "
+                f"{sabotado[0]}:{sabotado[1]}, e o marcador de '{node}' protege "
+                f"{declarado[0]}:{declarado[1]}. Rode python ci/provar_guardas.py "
+                f"{dono} e conclua de novo, com a linha que o teste declara hoje"
+            )
+        elif str(guarda.get("sha256") or "") != marcador["sha256"]:
+            achados.append(
+                f"a prova de armadilhas/{numero} sabotou {declarado[0]} no sha256 "
+                f"{str(guarda.get('sha256') or '')[:12]!r}, e o arquivo de hoje é "
+                f"{marcador['sha256'][:12]!r}: prova feita antes de o arquivo mudar "
+                f"não prova o arquivo de agora. Rode python ci/provar_guardas.py "
+                f"{dono} e conclua de novo"
+            )
+        if not guarda.get("reprovou"):
+            achados.append(
+                f"a prova de armadilhas/{numero} não registra '{node}' REPROVANDO "
+                f"sabotada, e guarda que não morde não prova nada. Rode python "
+                f"ci/provar_guardas.py {dono}, conserte o teste e conclua de novo"
+            )
+        ciclo = (guarda.get("baseline"), guarda.get("mutacao"), guarda.get("restauracao"))
+        if ciclo != (Estado.PASS.value, Estado.FAIL.value, Estado.PASS.value):
+            achados.append(
+                f"a guarda de armadilhas/{numero}, '{teste}', registrou {ciclo}, e "
+                f"prova é PASS→FAIL→PASS: guarda que continua verde sabotada não "
+                f"testa nada. Rode python ci/provar_guardas.py {dono}, conserte o "
+                f"teste e conclua de novo"
+            )
+    return achados
+
+
 def cmd_criar(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("criar", raiz)
     if recusa:
         print(recusa)
         return 1
+    responsabilidade = normalizar_responsabilidade(getattr(args, "responsabilidade", ""))
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -1269,7 +2185,7 @@ def cmd_criar(raiz: Path, args) -> int:
         print("RECUSADO: tarefa sem despacho pronto não entra na fila —")
         print("é o prompt de colar que os três consultores pediram. Use --despacho.")
         return 1
-    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefas, eventos = _carregar_ou_parar(raiz)
     for dep in args.depende_de:
         if dep not in tarefas:
             print(f"RECUSADO: --depende-de {dep} não existe na fila.")
@@ -1299,7 +2215,50 @@ def cmd_criar(raiz: Path, args) -> int:
         print("A tarefa vive no painel do dono, e ele é leigo em código: sem estes")
         print("quatro campos ela chega lá como um título que ninguém entende.")
         return 1
-    numero = reservar.alocar_numero(raiz, "tarefa")
+    if not responsabilidade:
+        print("RECUSADO: toda tarefa nova precisa de --responsabilidade com uma unidade cadastrada.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if not cadastro.exists():
+        print("RECUSADO: painel/responsabilidades.json não existe; cadastre a unidade antes de criar a tarefa.")
+        return 1
+    try:
+        problemas_da_responsabilidade = responsabilidades.validar_entrega(raiz, responsabilidade)
+    except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+        print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+        return 1
+    if problemas_da_responsabilidade:
+        print(f"RECUSADO: responsabilidade {responsabilidade} não é válida.")
+        for problema in problemas_da_responsabilidade:
+            print(f"- {problema}")
+        return 1
+    # A origem da medição é identidade, não anotação: a mesma reincidência não
+    # abre a segunda tarefa. Antes do almoxarife porque número gasto não volta.
+    origem = str(args.origem or "").strip()
+    automatica = bool(RE_ORIGEM_AUTOMATICA.fullmatch(origem))
+    if automatica:
+        gemea = origem_ja_na_fila(tarefas, origem)
+        if gemea:
+            fechamentos = [
+                e for e in eventos
+                if e.get("tarefa") == gemea and e.get("evento") == "concluida"
+            ]
+            for fechamento in fechamentos:
+                quebras = problemas_da_cadeia_automatica(
+                    raiz, tarefas[gemea], fechamento.get("prova_da_guarda")
+                )
+                if quebras:
+                    print(f"PAROU POR SEGURANÇA: {gemea} já nasceu de {origem} e")
+                    print("consta concluída sem cadeia que se reconstrua:")
+                    for quebra in quebras:
+                        print(f"   - {quebra}")
+                    return Estado.ERROR.exit_code
+            print(f"{gemea} já nasceu de {origem} — nada a criar.")
+            print(f"   Tarefa: fila/tarefas/{tarefas[gemea]['arquivo']}.json")
+            return 0
+    numero = reservar.alocar_numero(
+        raiz, "tarefa", chave=chave_da_origem(origem) if automatica else None
+    )
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
     pasta = pasta_tarefas(raiz)
@@ -1316,9 +2275,24 @@ def cmd_criar(raiz: Path, args) -> int:
         "despacho": despacho,
         "origem": args.origem,
         "criada_em": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "responsabilidade_obrigatoria": True,
     }
+    if responsabilidade:
+        dados["responsabilidade"] = responsabilidade
     caminho = pasta / f"{stem}.json"
-    _escrever_json(caminho, dados)
+    # A corrida: entre a conferência lá de cima e esta linha, outra medição pode
+    # ter gravado a mesma origem. Reler o disco rente à escrita é o que a fecha —
+    # a chave do almoxarife sozinha não bastaria, porque a gêmea pode ter nascido
+    # de uma execução que não chegou a pedir número.
+    if automatica:
+        tarefas_agora, _ = _carregar_ou_parar(raiz)
+        gemea = origem_ja_na_fila(tarefas_agora, origem)
+        if gemea and gemea != tid:
+            print(f"{gemea} nasceu de {origem} enquanto esta execução pedia número.")
+            print(f"   Tarefa: fila/tarefas/{tarefas_agora[gemea]['arquivo']}.json")
+            print(f"   Nada foi gravado; o número {numero} fica com a chave da origem.")
+            return 0
+    _gravar_fila(raiz, caminho, dados)
     # Dois arquivos, um gesto: a tarefa (para o robô) e a explicação dela (para
     # ele). Separados porque a tarefa é imutável e a explicação se corrige.
     do_evento = _escrever_evento(
@@ -1623,7 +2597,8 @@ def cmd_submeter(raiz: Path, args) -> int:
     if tid not in tarefas:
         print(f"RECUSADO: {tid} não existe. Confira python ci/fila.py listar.")
         return 1
-    if calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA):
+    if (calcular_estados(tarefas, eventos)[tid]["estado"] in (CONCLUIDA, CANCELADA)
+            and not fechada_por_esta_entrega(eventos, tid, args.pr)):
         print(f"RECUSADO: {tid} já terminou. Confira sua cadeia antes de submeter.")
         return 1
     vinculo = {campo: getattr(args, campo) for campo in ("pr", "revisao", "arvore")}
@@ -1632,19 +2607,194 @@ def cmd_submeter(raiz: Path, args) -> int:
         print("RECUSADO: " + "; ".join(erros) + ". Retome com o PR e a revisão validados.")
         return 1
     anterior = ultima_submissao(eventos, tid)
+    substitui = str(getattr(args, "substitui", "") or "").strip()
+    motivo = str(getattr(args, "motivo", "") or "").strip()
+    mesmo_vinculo = anterior is not None and all(
+        anterior.get(campo) == valor for campo, valor in vinculo.items()
+    )
+    if mesmo_vinculo and substitui:
+        if (anterior.get("substitui") == substitui
+                and str(anterior.get("detalhe") or "").strip() == motivo):
+            _soltar_reserva_se_houver(raiz, tid)
+            print(
+                f"{tid}: esta substituição já está registrada em {args.pr}; "
+                "reserva liberada."
+            )
+            return 0
+        print("RECUSADO: o elo substitui não pode atualizar o mesmo PR.")
+        return 1
     if anterior and anterior.get("pr") != args.pr:
-        print(f"RECUSADO: {tid} já tem outra entrega submetida. Confira {anterior['pr']} antes de trocar o vínculo.")
+        if not substitui:
+            print(
+                f"RECUSADO: {tid} já tem outra entrega submetida. Use --substitui "
+                f"{anterior['pr']} e informe --motivo para trocar o vínculo."
+            )
+            return 1
+        if substitui != anterior.get("pr"):
+            print(
+                "RECUSADO: --substitui precisa ser exatamente a URL da última "
+                f"submissão: {anterior['pr']}."
+            )
+            return 1
+        if not motivo:
+            print("RECUSADO: --motivo é obrigatório ao substituir uma entrega.")
+            return 1
+        problemas = _problemas_da_substituicao(raiz, anterior, vinculo)
+        if problemas:
+            print("RECUSADO: " + "; ".join(problemas) + ". Nada foi alterado.")
+            return 1
+    elif substitui:
+        contexto = "a primeira submissão" if anterior is None else "o mesmo PR"
+        print(f"RECUSADO: --substitui não cabe em {contexto}.")
+        return 1
+    elif motivo:
+        print("RECUSADO: --motivo só acompanha uma substituição indicada por --substitui.")
         return 1
     if not anterior or any(anterior.get(campo) != valor for campo, valor in vinculo.items()):
         dados = montar_evento(tid, "submetida", args.quem)
         dados.update(vinculo)
+        if substitui:
+            dados["substitui"] = substitui
+            dados["detalhe"] = motivo
         pasta_eventos(raiz).mkdir(parents=True, exist_ok=True)
         caminho = pasta_eventos(raiz) / f"{dados['arquivo']}.json"
         if caminho.exists():
             raise ErroDeInstrumentacao("evento de submissão já existe", "Repita após conferir o evento; não sobrescreva a história.")
-        _escrever_json(caminho, dados)
+        _gravar_fila(raiz, caminho, dados)
     _soltar_reserva_se_houver(raiz, tid)
     print(f"{tid}: entrega submetida em {args.pr}; aguardando comprovação do aceite.")
+    return 0
+
+
+def _problemas_da_substituicao(
+    raiz: Path,
+    anterior: dict,
+    novo_vinculo: dict,
+) -> list[str]:
+    pr_anterior = consultar_pr_submetido(raiz, anterior["pr"])
+    if "mergeCommit" not in pr_anterior:
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou se o PR anterior foi integrado",
+            f"Confira gh pr view {anterior['pr']} --json state,mergeCommit e repita.",
+        )
+    problemas = []
+    if (pr_anterior.get("state") == "MERGED"
+            or pr_anterior.get("mergeCommit") is not None):
+        problemas.append("o PR anterior foi integrado")
+    elif pr_anterior.get("state") == "OPEN":
+        problemas.append("o PR anterior ainda está aberto")
+    elif pr_anterior.get("state") != "CLOSED":
+        problemas.append("o PR anterior não está fechado sem merge")
+    if problemas:
+        return problemas
+
+    pr_novo = consultar_pr_submetido(raiz, novo_vinculo["pr"])
+    head_remoto = pr_novo.get("headRefOid")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(head_remoto or "")):
+        raise ErroDeInstrumentacao(
+            "o GitHub não informou a revisão do novo PR",
+            f"Confira gh pr view {novo_vinculo['pr']} --json state,headRefOid e repita.",
+        )
+    if pr_novo.get("state") != "OPEN":
+        problemas.append("o novo PR não está aberto")
+    if head_remoto != novo_vinculo["revisao"]:
+        problemas.append("a revisão informada difere do HEAD do novo PR")
+    if problemas:
+        return problemas
+
+    arvore_medida = _git_da_fila(
+        raiz,
+        "rev-parse",
+        f"{novo_vinculo['revisao']}^{{tree}}",
+        para_que="medir a árvore da revisão substituta",
+    ).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", arvore_medida):
+        raise ErroDeInstrumentacao(
+            "o git não informou a árvore da revisão substituta",
+            "Confira se a revisão existe nesta bancada e repita.",
+        )
+    if arvore_medida != novo_vinculo["arvore"]:
+        problemas.append("a árvore informada difere da árvore local da revisão")
+    return problemas
+
+
+def _concluir_com_prova(
+    raiz: Path,
+    tid: str,
+    quem: str,
+    evidencia: str,
+    verificado_em: str,
+) -> int:
+    """Único ponto terminal para `concluir` e `reconciliar`.
+
+    Guardas sobre a responsabilidade da entrega pertencem aqui, antes da
+    soltura da reserva e da escrita do evento, para valer nos dois caminhos.
+    """
+    tarefas, _ = _carregar_ou_parar(raiz)
+    tarefa = tarefas.get(tid)
+    if tarefa is None and (raiz / "fila" / "tarefas").exists():
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    responsabilidade = normalizar_responsabilidade(tarefa.get("responsabilidade")) if tarefa else ""
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not responsabilidade:
+        print("RECUSADO: tarefa nova sem responsabilidade declarada.")
+        print("Cadastre uma unidade de responsabilidade antes de concluir.")
+        return 1
+    cadastro = raiz / "painel" / "responsabilidades.json"
+    if tarefa and tarefa_exige_responsabilidade(tarefa) and not cadastro.exists():
+        print("RECUSADO: cadastro de responsabilidades não existe.")
+        print("Crie painel/responsabilidades.json antes de concluir a entrega.")
+        return 1
+    if responsabilidade and cadastro.exists():
+        try:
+            problemas = responsabilidades.validar_entrega(raiz, responsabilidade)
+        except (FileNotFoundError, json.JSONDecodeError, OSError, ValueError, KeyError, TypeError) as erro:
+            print(f"RECUSADO: não foi possível ler o cadastro de responsabilidades ({erro}). Corrija painel/responsabilidades.json e repita.")
+            return 1
+        if problemas:
+            print("RECUSADO: a entrega não pode ser concluída sem responsabilidade comprovada.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            return 1
+    # A tarefa que a medição abriu só fecha com a guarda da SUA armadilha
+    # reprovando sabotada. Aqui, e não em `cmd_concluir`, porque as três portas
+    # terminais desta fila desembocam neste ponto — `concluir`, `reconciliar` e o
+    # feito que viaja na entrega, escrito por `ci/pr.py` — e um portão em uma só
+    # delas é meio portão. Tarefa de gente não passa por nada disto.
+    prova_da_guarda = None
+    if tarefa and RE_ORIGEM_AUTOMATICA.fullmatch(str(tarefa.get("origem") or "").strip()):
+        problemas, prova_da_guarda = provar_guarda_da_armadilha(
+            raiz, str(tarefa["origem"]).strip()
+        )
+        problemas = problemas + problemas_da_cadeia_automatica(
+            raiz, tarefa, prova_da_guarda
+        )
+        if problemas:
+            print(f"RECUSADO: {tid} nasceu da medição e não pode fechar sem prova.")
+            for problema in problemas:
+                print(f"   - {problema}")
+            return 1
+    caminho = _escrever_evento(
+        raiz,
+        tid,
+        "concluida",
+        quem,
+        evidencia=evidencia,
+        verificado_em=verificado_em,
+        prova_da_guarda=prova_da_guarda,
+    )
+    try:
+        _soltar_reserva_se_houver(raiz, tid)
+    except ErroDeInstrumentacao as erro:
+        raise ErroDeInstrumentacao(
+            "a conclusão foi registrada, mas a reserva não foi liberada",
+            f"Evento: {caminho.relative_to(raiz)}\n"
+            f"Rode python ci/fila.py soltar {tid} --quem {quem} e confira a reserva.\n"
+            f"Causa original: {erro.resumo}",
+        ) from erro
+    print(
+        f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)"
+    )
     return 0
 
 
@@ -1663,26 +2813,114 @@ def cmd_concluir(raiz: Path, args) -> int:
         print(f"RECUSADO: {tid} já terminou ({estado['estado']}).")
         return 1
     if ultima_submissao(eventos, tid):
-        print(f"RECUSADO: {tid} aguarda comprovação do aceite, além da abertura ou integração do PR.")
-        print("Use a reconciliação da entrega com a prova exigida; não encerre por texto livre.")
+        print(
+            f"RECUSADO: {tid} aguarda comprovação do aceite, além da abertura ou integração do PR."
+        )
+        print(
+            "Use a reconciliação da entrega com a prova exigida; não encerre por texto livre."
+        )
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
     if not (args.evidencia or "").strip():
-        print("RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro.")
+        print(
+            "RECUSADO: concluir sem evidência não existe — a mesma lei do verde do livro."
+        )
         print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
         return 1
-    _soltar_reserva_se_houver(raiz, tid)
-    caminho = _escrever_evento(
+    return _concluir_com_prova(
         raiz,
         tid,
-        "concluida",
         args.quem,
-        evidencia=args.evidencia,
-        verificado_em=args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        args.evidencia,
+        args.verificado_em or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     )
-    print(f"✅ {tid} concluída. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+
+
+def cmd_fechar_pela_entrega(raiz: Path, args) -> int:
+    """O "feito" que viaja na entrega, escrito por `ci/pr.py`.
+
+    Não passa pelo guarda do aceite de `cmd_concluir` de propósito: a decisão
+    de 12/09/2026 é que o merge do PR fecha a tarefa. Em troca, a evidência não
+    pode ser texto livre: o `--pr` tem de ser, exatamente, o PR da submissão que
+    a fila já registrou. Sem essa amarra qualquer string fecharia qualquer
+    tarefa, e a folga de `cmd_submeter` reabriria uma tarefa alheia por ela.
+    """
+    recusa = _parar_se_for_o_espelho("fechar-pela-entrega", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    entrega = ultima_submissao(eventos, tid)
+    nossa = entrega is not None and entrega.get("pr") == args.pr
+    if not nossa:
+        print(f"RECUSADO: {args.pr} não é a entrega submetida de {tid}; nada foi escrito.")
+        print("O feito viaja na entrega: submeta primeiro, e cite o PR exato da submissão.")
+        return 1
+    finais = [e for e in eventos if e["tarefa"] == tid and e["evento"] in EVENTOS_TERMINAIS]
+    alheio = bool(finais) and not fechada_por_esta_entrega(eventos, tid, args.pr)
+    if alheio:
+        print(f"RECUSADO: {tid} já terminou por outro fato; nada foi escrito.")
+        return 1
+    if not fechar_pela_entrega(raiz, tid, args.quem, args.pr):
+        print(f"{tid}: o feito desta entrega já está no ramo; nada repetido.")
     return 0
 
+
+def tarefa_exige_responsabilidade(tarefa: dict) -> bool:
+    """Somente tarefas criadas pela guarda exigem responsabilidade."""
+    return tarefa.get("responsabilidade_obrigatoria") is True
+
+def cmd_reconciliar(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("reconciliar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    if not bancada_contem_main_publicada(raiz):
+        print(
+            "RECUSADO: origin/main contém eventos que esta bancada ainda não incorporou."
+        )
+        print(
+            "Faça merge de origin/main nesta bancada e repita reconciliar; "
+            "nenhuma reserva ou evento foi alterado."
+        )
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    estado = calcular_estados(tarefas, eventos)[tid]
+    if estado["estado"] in (CONCLUIDA, CANCELADA):
+        print(
+            f"RECUSADO: {tid} já terminou ({estado['estado']}); nenhum evento foi repetido."
+        )
+        return 1
+    submissao = ultima_submissao(eventos, tid)
+    if not submissao:
+        print(f"RECUSADO: {tid} não tem entrega submetida para reconciliar.")
+        print(
+            "Use concluir no fluxo legado, ou submeter com PR, revisão e árvore validados."
+        )
+        return 1
+    try:
+        evidencia, verificado_em = provar_reconciliacao(
+            raiz, submissao, args.aceite_registro, args.retroativa or ""
+        )
+    except RecusaDeReconciliacao as erro:
+        print(f"RECUSADO: {erro}.")
+        print(f"O que esta tarefa exige: {tarefas[tid]['evidencia_exigida']}")
+        return 1
+    return _concluir_com_prova(
+        raiz,
+        tid,
+        args.quem,
+        evidencia,
+        verificado_em,
+    )
 
 def _soltar_reserva_se_houver(raiz: Path, tid: str) -> None:
     """Solta a referência no servidor; se ela não existir, não é erro."""
@@ -1710,6 +2948,20 @@ def cmd_validar(raiz: Path) -> int:
             print(f"   - {erro}")
         return 1
     estados = calcular_estados(tarefas, eventos)
+    # E a cadeia das tarefas que a medição abriu, reconstruída aqui no SHA do PR:
+    # sem rodar pytest, conferindo a IDENTIDADE do que a bancada gravou. Prova de
+    # outra armadilha, ou mutação que não mordeu, é conclusão falsa — e conclusão
+    # falsa faz o termômetro parar de medir uma reincidência que continua viva.
+    for evento_terminal in eventos:
+        if evento_terminal.get("evento") != "concluida":
+            continue
+        tarefa_do_evento = tarefas.get(evento_terminal.get("tarefa"))
+        if not tarefa_do_evento:
+            continue
+        for problema in problemas_da_cadeia_automatica(
+            raiz, tarefa_do_evento, evento_terminal.get("prova_da_guarda")
+        ):
+            erros.append(f"{evento_terminal['arquivo']}.json: {problema}")
     # Bloqueio VIVO sem `espera` reprova; bloqueio já superado, não. A régua é o
     # estado de HOJE, e não uma data de corte no código: os 22 eventos
     # `bloqueada` de tarefas que já seguiram adiante são história encerrada, e
@@ -1964,6 +3216,7 @@ def construir_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
+    p.add_argument("--responsabilidade", required=True, help="id da unidade de responsabilidade que acompanha o desfecho")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")
     p.add_argument("--origem", default="despacho do mantenedor", help="de onde a tarefa veio")
@@ -2019,12 +3272,44 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--pr", required=True, help="URL completa do pull request")
     p.add_argument("--revisao", required=True, help="SHA completo do código validado")
     p.add_argument("--arvore", required=True, help="SHA completo da árvore validada")
+    p.add_argument("--substitui", default="", help="URL exata da última submissão, somente ao trocar de PR")
+    p.add_argument("--motivo", default="", help="por que o PR anterior fechado sem merge está sendo substituído")
+
+    p = sub.add_parser(
+        "fechar-pela-entrega",
+        help="escreve o feito no ramo da entrega; é o que ci/pr.py chama",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--pr", required=True, help="URL completa do pull request da entrega")
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
     p.add_argument("--evidencia", required=True, help="a prova (URL de PR, saída de teste…)")
     p.add_argument("--verificado-em", default="", help="quando a prova foi conferida (AAAA-MM-DD)")
+
+    p = sub.add_parser(
+        "reconciliar",
+        help="fecha entrega submetida após conferir integração, publicação e aceite",
+    )
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument(
+        "--aceite-registro",
+        required=True,
+        help="painel/registros/AAAAMMDD-NNN-slug.js já integrado após a entrega",
+    )
+    p.add_argument(
+        "--retroativa",
+        metavar="MOTIVO",
+        default="",
+        help=(
+            "fecha entrega antiga cuja linhagem se perdeu, trocando-a pelos "
+            "checks obrigatórios verdes no HEAD que integrou; o motivo vai "
+            "escrito na evidência do evento"
+        ),
+    )
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
 
@@ -2061,8 +3346,12 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_cancelar(raiz, args)
         if args.acao == "submeter":
             return cmd_submeter(raiz, args)
+        if args.acao == "fechar-pela-entrega":
+            return cmd_fechar_pela_entrega(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
+        if args.acao == "reconciliar":
+            return cmd_reconciliar(raiz, args)
         if args.acao == "explicar":
             return cmd_explicar(raiz, args)
         if args.acao == "imutabilidade":

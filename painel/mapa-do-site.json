@@ -294,6 +294,15 @@
     },
     {
       "celula": "forum",
+      "rota": "novo",
+      "endereco": "/forum/novo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Abrir uma conversa no fórum, escolhendo a área",
+      "descricao": "É o endereço que a escola manda no grupo para a pessoa fazer uma pergunta. Quem não entrou faz login e volta para cá; depois escolhe a área antes de publicar."
+    },
+    {
+      "celula": "forum",
       "rota": "t/<int:topico_id>/responder",
       "endereco": "/forum/t/<int:topico_id>/responder",
       "exemplo": "/forum/t/1/responder",
@@ -361,6 +370,18 @@
       "descricao": "O que acontece ao apertar um botão das suas ferramentas dentro de uma conversa: mudar o título, mover para outra área, fixar no topo, trancar, tirar do ar e apontar qual resposta resolveu a dúvida.",
       "gesto": true,
       "observacao": "Tirar do ar não apaga: a conversa some para o aluno e continua inteira para você, com um botão de devolver ao ar."
+    },
+    {
+      "celula": "forum",
+      "rota": "t/<int:topico_id>/galeria",
+      "endereco": "/forum/t/<int:topico_id>/galeria",
+      "exemplo": "/forum/t/1/galeria",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Mostrar o próprio trabalho na Galeria",
+      "descricao": "O que acontece quando o aluno aperta 'Mostrar na Galeria' ou 'Tirar da Galeria' na conversa dele da área Mostre seu trabalho. Fica guardado quem marcou e quando, e o endereço do trabalho que ele autorizou a escola a mostrar.",
+      "gesto": true,
+      "observacao": "Só o dono do trabalho enxerga essa caixa e só ele consegue usar este endereço: para todo o resto, inclusive professor e administrador, ele responde 'não existe'. Marcar não abre a conversa para quem é de fora, e tirar vale na hora."
     },
     {
       "celula": "forum",
@@ -443,6 +464,25 @@
       "para_quem": "aluno",
       "titulo": "O mapa das portas (o endereço antigo)",
       "descricao": "O endereço curto do curso, de antes de o endereço passar a dizer qual curso é. Ele continua respondendo, e sempre vai continuar: o checkpoint desta escola é por link, e um link já compartilhado não pode morrer. Com um curso só, ele serve esse curso; com mais de um, pede para o aluno escolher, em vez de escolher por ele."
+    },
+    {
+      "celula": "cursos",
+      "rota": "aulas",
+      "endereco": "/cursos/aulas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas que podem ser compartilhadas sem pertencer a um curso. Só abre para quem tem matrícula ativa em um produto deste site."
+    },
+    {
+      "celula": "cursos",
+      "rota": "aulas/<slug:slug>",
+      "endereco": "/cursos/aulas/<slug:slug>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma aula avulsa",
+      "descricao": "A aula compartilhável: mostra o vídeo do YouTube, a descrição e o link direto para o vídeo. Não altera o andamento de nenhum curso.",
+      "exemplo": "/cursos/aulas/como-publicar-seu-jogo"
     },
     {
       "celula": "cursos",
@@ -1117,6 +1157,16 @@
     },
     {
       "celula": "admin",
+      "rota": "ranking-ias/",
+      "endereco": "/admin/ranking-ias/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Ranking das IAs: quem publicou o que",
+      "descricao": "Quanto cada uma das tres IAs da triade publicou em origin/main e quanto escreveu para publicar: paginas novas, entregas, linhas somadas e apagadas, retrabalho e a data da ultima entrega. Quem mede e ci/ranking_das_ias.py, contra o Git; esta tela so ordena e diz em qual plano de uso cada uma fica. Trabalho sem o rastro Co-authored-by aparece numa linha propria, fora do podio, porque repartir por palpite inventaria o ranking. Sem o arquivo medido a pagina diz que nao foi medida, e nunca mostra um placar zerado."
+    },
+    {
+      "celula": "admin",
       "rota": "mapa/",
       "endereco": "/admin/mapa/",
       "alcance": "publico",
@@ -1320,6 +1370,36 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas-avulsas/",
+      "endereco": "/admin/escola/aulas-avulsas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aulas avulsas",
+      "descricao": "A lista de aulas publicadas fora de cursos e o formulário para criar outra com nome, URL do vídeo e descrição.",
+      "observacao": "O endereço compartilhável nasce na célula cursos e é gerado pelo nome no instante de criar. Esta tela só mostra uma prévia, nunca recebe um slug digitável.",
+      "exemplo": "/admin/escola/aulas-avulsas/"
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/aulas-avulsas/criar",
+      "endereco": "/admin/escola/aulas-avulsas/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar uma aula avulsa",
+      "descricao": "Não é uma página: publica uma aula com nome, URL do vídeo e descrição, e devolve o link que pode ser compartilhado."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/aulas-avulsas/<slug:slug>/editar/",
+      "endereco": "/admin/escola/aulas-avulsas/<slug:slug>/editar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar uma aula avulsa",
+      "descricao": "A página para trocar o nome, a URL do vídeo e a descrição de uma aula publicada. O link compartilhado continua o mesmo."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/cursos/criar",
       "endereco": "/admin/escola/cursos/criar",
       "alcance": "publico",
@@ -1359,6 +1439,17 @@
       "descricao": "O editor de uma aula: o pedido, o cliente, o instrumento, o \"Aceito quando\", o quiz, o vídeo por link, as 18 peças em Markdown na ordem em que o aluno as lê (as duas internas avisadas), as pausas do vídeo, o botão de salvar e o de publicar.",
       "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/",
       "observacao": "O endereço carrega o curso e a Parte para que o link, ao ser compartilhado, diga em que ponto do livro aquela encomenda está; Parte que não casa com a encomenda recusa e devolve o endereço certo. O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Vídeo do YouTube",
+      "descricao": "O modelo rápido de uma aula já criada. A pessoa cola uma URL do YouTube, a tela preserva o restante da aula, salva o novo vídeo e publica para os alunos.",
+      "exemplo": "/admin/escola/profissional/parte-1/aulas/E07/video-do-youtube/",
+      "observacao": "Aceita somente links HTTPS que a sala de aula incorpora: youtu.be/ID, youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Se a publicação for recusada depois de salvar, a tela diz que o vídeo foi salvo e oferece a nova tentativa."
     },
     {
       "celula": "admin",
@@ -1656,6 +1747,34 @@
       "para_quem": "equipe",
       "titulo": "A gestão da Caixa de Sugestões",
       "descricao": "A mesa: uma ideia por vez esperando a sua decisão. É aqui que a Caixa se administra, e não mais nas telas antigas."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/radio/",
+      "endereco": "/admin/caixa/radio/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O rádio da tríade",
+      "descricao": "A conversa entre as três IAs e o mantenedor, com atualização automática e uma caixa para escrever."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/radio/radio.js",
+      "endereco": "/admin/caixa/radio/radio.js",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Atualizar o rádio",
+      "descricao": "A atualização automática das mensagens enquanto a tela está aberta."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/radio/api/",
+      "endereco": "/admin/caixa/radio/api/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ler e escrever no rádio",
+      "descricao": "A porta de leitura e escrita do rádio, protegida pelo crachá da administração."
     },
     {
       "celula": "admin",
@@ -2035,6 +2154,17 @@
     },
     {
       "celula": "mensageria",
+      "rota": "webhooks/email",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "gesto": true,
+      "titulo": "Receber devoluções e reclamações do correio",
+      "descricao": "O provedor informa que um endereço devolveu a mensagem ou reclamou, e a mensageria bloqueia novos envios para esse endereço.",
+      "observacao": "Não é uma página para pessoas. A entrada exige o token secreto do provedor e fica na rede interna até existir uma rota pública autorizada."
+    },
+    {
+      "celula": "mensageria",
       "rota": "api/mensageria/",
       "endereco": "-",
       "alcance": "interno",
@@ -2229,8 +2359,19 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "A reunião de segunda-feira",
-      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Termina no pedido para o robô: um bloco de texto para colar numa sessão, que vira registro no livro.",
-      "observacao": "Esta tela não grava nada; o que vale é o que chegar ao livro. Degrau 3 do plano do painel de gestão."
+      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Ao salvar, cria um documento privado com identidade, versão e auditoria para conferência antes de qualquer publicação.",
+      "observacao": "Salvar preserva o pedido no banco e não o envia ao repositório. A autorização acontece na tela do pedido específico e também não executa a tarefa. Degrau 3 do plano do painel de gestão."
+    },
+    {
+      "celula": "admin",
+      "rota": "reuniao/pedidos/<uuid:identidade>/",
+      "endereco": "/admin/reuniao/pedidos/<uuid:identidade>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Conferir e autorizar o pedido da reunião",
+      "descricao": "A tela de um pedido específico da reunião, com o texto conferido, a origem e o estado da autorização. Ela preserva a leitura para que o mantenedor possa retomar o mesmo pedido depois de uma interrupção.",
+      "observacao": "O endereço é uma página de conferência e não libera nada por si só. A autorização só vale quando o texto conferido e a identificação do pedido permanecem vinculados."
     },
     {
       "celula": "admin",
@@ -2319,7 +2460,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Escrever um documento novo",
-      "descricao": "O formulário em branco. O documento nasce fechado: só aparece no site aberto se você marcar a caixa de publicar."
+      "descricao": "O formulário em branco. Todo documento novo nasce fechado para o público e visível somente na administração. Depois de criar e revisar, você decide se quer publicá-lo."
     },
     {
       "celula": "admin",
@@ -2348,7 +2489,27 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Salvar a edição do documento",
-      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. A mudança aparece no site na hora, sem esperar atualização nenhuma."
+      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. Salvar muda o texto, mas não publica nem tira o documento do público."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Publicar um documento no site",
+      "descricao": "Não é uma página: é a ação separada que torna público um documento já criado e revisado. O botão aparece abaixo do conteúdo na administração."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Tirar um documento do público",
+      "descricao": "Não é uma página: retira o documento do site aberto, mas mantém o texto e todo o histórico disponíveis para a administração."
     },
     {
       "celula": "admin",
@@ -2563,6 +2724,135 @@
       "titulo": "Baixar o dossie do portfolio em PDF",
       "descricao": "Nao e uma pagina de ler: abrir este endereco baixa um arquivo. E o portfolio do aluno em PDF, montado no nosso servidor com as mesmas obras da vitrine, na mesma ordem, com o selo da escola quando ele existe. Serve para o aluno anexar num e-mail, imprimir ou levar a uma reuniao, e cada obra abre no endereco dela com um clique.",
       "observacao": "So o proprio aluno baixa o dele: o arquivo desce atras da porta da area do aluno, e nunca do endereco publico da vitrine. Como a vitrine, ele nao leva e-mail, telefone nem nome, so o apelido e as obras. Aluno que ainda nao guardou obra nenhuma recebe a explicacao na tela, e nao um arquivo vazio."
+    },
+    {
+      "celula": "admin",
+      "rota": "plano-mestre/",
+      "endereco": "/admin/plano-mestre/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Plano mestre local",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": false
+    },
+    {
+      "celula": "admin",
+      "rota": "plano-mestre/mtime.json",
+      "endereco": "/admin/plano-mestre/mtime.json",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Atualização do plano mestre",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": true
+    },
+    {
+      "celula": "admin",
+      "rota": "^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
+      "endereco": "/admin/plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Documento do plano mestre",
+      "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio",
+      "endereco": "/encomendas/cardapio",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Cardapio: encomendar uma peca, e ver os pedidos abertos",
+      "descricao": "A porta de entrada do cliente. Mostra os tres cartoes (item simples, vestivel ou veiculo, personagem) com o prazo de producao de cada um, e acima deles os pedidos que ja estao andando. Nao ha preco nenhum: o valor nasce da proposta do modelador.",
+      "observacao": "So abre para quem esta na lista IDS_DO_PLANTAO do env desta celula, porque hoje a cliente e a propria escola. A aprovacao de cliente de fora e tarefa propria."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio/<str:cartao>",
+      "endereco": "/encomendas/cardapio/<str:cartao>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Briefing: descrever a peca de um cartao",
+      "descricao": "O formulario blindado do cartao escolhido: nome da peca, onde ela vai ser usada, estilo, o que o cliente quer receber e as observacoes. Nao existe campo de contato, e o texto livre recusa e-mail, telefone, link e arroba de rede social."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio/<str:cartao>/pedir",
+      "endereco": "/encomendas/cardapio/<str:cartao>/pedir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Enviar o pedido descrito no briefing",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aperta o botao de enviar o briefing. Abrir este endereco no navegador nao mostra nada.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Acompanhar um pedido do comeco ao fim",
+      "descricao": "A tela em que o cliente ve o que aconteceu com o pedido dele e o que fazer agora, em cada estado: procurando modelador, em negociacao, aguardando a confirmacao da escola, em producao, pronta para avaliar, em ajuste, aprovada. E daqui que ele aceita a proposta, contrapoe, aprova a entrega ou pede um ajuste.",
+      "observacao": "Pedido de outra pessoa responde 404, igual a pedido que nao existe: distinguir os dois contaria a um curioso que aquele identificador e de alguem."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/aceitar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/aceitar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aceitar a proposta do modelador",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aceita a proposta na tela do pedido. Valor, prazo, entregaveis e correcoes congelam nesse instante.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/contrapor",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/contrapor",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Responder com uma contraproposta",
+      "descricao": "Nao e uma pagina: e o envio do mesmo formulario de seis campos que o modelador preencheu, agora pelo lado do cliente. As rodadas sao contadas.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/desistir",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/desistir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Sair de uma negociacao",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente desiste antes do acordo. O pedido vai ao plantao da escola, e nunca ao proximo aluno da fila.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/aprovar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/aprovar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aprovar a entrega",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aprova a peca que passou pela revisao da escola. E o fim da jornada dele.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/ajuste",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/ajuste",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Pedir um ajuste na entrega",
+      "descricao": "Nao e uma pagina: e o envio do que precisa mudar na peca entregue. Quantos ajustes cabem e o que o acordo combinou; passando disso, o pedido vai ao plantao da escola.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/cancelar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/cancelar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Cancelar um pedido",
+      "descricao": "Nao e uma pagina: e o cancelamento do pedido enquanto ninguem trabalhou nele. Depois que a escola confirma o pagamento ele nao se cancela por aqui, e a tela diz para falar com o plantao.",
+      "gesto": true
     }
   ]
 }

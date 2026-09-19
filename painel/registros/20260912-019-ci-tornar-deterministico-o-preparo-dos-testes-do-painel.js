@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-019-ci-tornar-deterministico-o-preparo-dos-testes-do-painel",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: tornar deterministico o preparo dos testes do painel",
+  detalhe: "Os cenários usam seis registros conhecidos e só indexam o livro. A prova do repositório completo foi preservada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1598. Validação local: árvore dfa1be870f917182334308239010299c2c63e4e9; commit 56b86e6be883077215439a3ab431656ca802bf21; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-367",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

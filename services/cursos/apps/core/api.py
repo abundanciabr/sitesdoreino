@@ -127,12 +127,15 @@ Guardas: `tests/test_porta_de_maquina.py` e `tests/test_porta_exige_bearer.py`.
 from __future__ import annotations
 
 import enum
+import re
 from datetime import datetime
 from typing import Annotated, Any, Literal
+from urllib.parse import urlsplit
 
 from django.db import IntegrityError, transaction
 from django.db.models import F, Q
 from django.utils import timezone
+from django.utils.text import slugify
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError, ValidationError
 from pydantic import ConfigDict, model_validator
@@ -140,6 +143,7 @@ from pydantic import ConfigDict, model_validator
 from apps.cursos import coerencia, enderecos, fidelidade
 from apps.cursos.models import PADRAO_DO_NUMERO_DE_AULA, PARTES_DO_CURSO
 from apps.cursos.models import Aula as AulaModel
+from apps.cursos.models import AulaAvulsa as AulaAvulsaModel
 from apps.cursos.models import Bloco as BlocoModel
 from apps.cursos.models import Curso as CursoModel
 from apps.cursos.models import Instrumento as InstrumentoModel
@@ -250,6 +254,23 @@ class AulaSchema(AulaDaListaSchema):
     video_url: str
     pecas: list[PecaSchema]
     pausas: list[PausaSchema]
+
+
+class AulaAvulsaSchema(Schema):
+    """A aula avulsa que o Admin lista e que a pagina compartilhada mostra.
+
+    `slug` e o endereco final salvo pelo servico. Ele nasce do titulo na criacao
+    e pode mudar na edicao quando o Admin envia um slug valido. Se o endereco
+    pedido estiver ocupado no mesmo site, o servico acrescenta um sufixo numerico
+    e devolve aqui o endereco efetivamente salvo. `estado` sempre e `publicada`:
+    esta porta nao oferece rascunho nem uma segunda publicacao."""
+
+    titulo: str
+    slug: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    video_url: str
+    descricao: str
+    estado: Literal["publicada"]
+    publicada_em: datetime
 
 
 class DefeitoSchema(Schema):
@@ -388,6 +409,49 @@ class AulaParaGravarSchema(Schema):
                 f"pausa com ordem repetida: {', '.join(map(str, repetidas))}"
             )
         return self
+
+
+class AulaAvulsaParaCriarSchema(Schema):
+    """O unico corpo que cria uma aula avulsa. O Admin oferece os tres
+    campos ao mantenedor, mas so o servico gera o endereco pelo titulo.
+    Descricao aceita texto vazio, para uma explicacao curta que so precisa
+    do titulo e do video, mas o campo sempre viaja no corpo.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    titulo: str = Field(min_length=1, max_length=CURTO)
+    video_url: str = Field(min_length=1, max_length=URL)
+    descricao: str = Field(max_length=5000)
+
+
+class _SlugAusente(str):
+    pass
+
+
+_SLUG_AUSENTE = _SlugAusente()
+
+
+class SlugDeAulaAvulsaInvalido(HttpError):
+    def __init__(self):
+        super().__init__(422, "o endereço da aula precisa usar o formato informado")
+
+
+class AulaAvulsaParaEditarSchema(Schema):
+    """O corpo que edita uma aula avulsa. Os tres campos de conteudo
+    continuam obrigatorios. `slug` e opcional: ausente, conserva o endereco;
+    presente, aceita o texto digitado para um novo endereco e o servico o
+    normaliza para ASCII minusculo com hifens.
+    Em colisao com outra aula, o servico reserva atomicamente o menor sufixo
+    numerico livre e devolve o slug final salvo na resposta. O slug da propria
+    aula nao conta como colisao."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    titulo: str = Field(min_length=1, max_length=CURTO)
+    video_url: str = Field(min_length=1, max_length=URL)
+    descricao: str = Field(max_length=5000)
+    slug: str = Field(default_factory=lambda: _SLUG_AUSENTE, max_length=140)
 
 
 class BlocoParaGravarSchema(Schema):
@@ -794,6 +858,386 @@ def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # AS OPERAÇÕES
 # ---------------------------------------------------------------------------
+
+_ID_DO_YOUTUBE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+
+
+def _youtube_incorporavel(url: str) -> bool:
+    """Só URL HTTPS do YouTube que a página pública pode incorporar."""
+    partes = urlsplit(url)
+    if partes.scheme != "https":
+        return False
+    host = partes.netloc.lower().removeprefix("www.").removeprefix("m.")
+    segmentos = [segmento for segmento in partes.path.split("/") if segmento]
+    if host == "youtu.be" and segmentos:
+        video_id = segmentos[0]
+    elif host == "youtube.com" and segmentos:
+        if segmentos[0] == "watch":
+            video_id = dict(
+                par.split("=", 1) for par in partes.query.split("&") if "=" in par
+            ).get("v", "")
+        elif segmentos[0] in ("embed", "shorts") and len(segmentos) > 1:
+            video_id = segmentos[1]
+        else:
+            return False
+    else:
+        return False
+    return bool(_ID_DO_YOUTUBE.fullmatch(video_id))
+
+
+def _aula_avulsa(aula: AulaAvulsaModel) -> dict[str, Any]:
+    return {
+        "titulo": aula.titulo,
+        "slug": aula.slug,
+        "video_url": aula.video_url,
+        "descricao": aula.descricao,
+        "estado": aula.estado,
+        "publicada_em": aula.publicada_em,
+    }
+
+
+def _proximo_slug(titulo: str, sufixo: int) -> str:
+    base = slugify(titulo) or "aula"
+    cauda = "" if sufixo == 1 else f"-{sufixo}"
+    return f"{base[: 140 - len(cauda)].rstrip('-') or 'aula'}{cauda}"
+
+
+def _slug_normalizado(valor: str) -> str:
+    slug = slugify(valor)[:140].rstrip("-")
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", slug):
+        raise SlugDeAulaAvulsaInvalido()
+    return slug
+
+
+def _proximo_slug_livre(site_id: str, base: str, aula_id: int) -> str:
+    ocupados = set(
+        AulaAvulsaModel.objects.filter(site_id=site_id)
+        .exclude(pk=aula_id)
+        .values_list("slug", flat=True)
+    )
+    for sufixo in range(1, 10_000):
+        candidato = _proximo_slug(base, sufixo)
+        if candidato not in ocupados:
+            return candidato
+    raise HttpError(409, "não foi possível encontrar um endereço livre para esta aula")
+
+
+def _campos_da_aula_avulsa(
+    payload: AulaAvulsaParaCriarSchema | AulaAvulsaParaEditarSchema,
+) -> tuple[str, str]:
+    titulo = payload.titulo.strip()
+    if not titulo:
+        raise HttpError(422, "o título da aula avulsa não pode ficar vazio")
+    video_url = payload.video_url.strip()
+    if not _youtube_incorporavel(video_url):
+        raise HttpError(
+            422,
+            "a URL do vídeo precisa ser um link HTTPS incorporável do YouTube. "
+            "Use um link de assistir, curto, incorporar ou Shorts.",
+        )
+    return titulo, video_url
+
+
+@router.get(
+    "/aulas-avulsas",
+    response=list[AulaAvulsaSchema],
+    operation_id="listStandaloneLessons",
+    summary="As aulas avulsas publicadas de um site, da mais recente para a mais antiga",
+    description=(
+        "A lista que o Admin consulta para reencontrar e compartilhar uma\n"
+        "aula avulsa. Ela so devolve aulas publicadas do mesmo `site_id`, da mais\n"
+        "recente para a mais antiga. Site sem aula avulsa responde lista vazia,\n"
+        "porque esse e o primeiro uso normal.\n"
+        "\n"
+        "Aula avulsa nao pertence a curso, bloco, parte, progresso ou avaliacao.\n"
+        "Ela existe para responder uma duvida em grupo com um endereco proprio."
+    ),
+)
+def list_standalone_lessons(request, site_id: str):
+    return [
+        _aula_avulsa(aula) for aula in AulaAvulsaModel.objects.filter(site_id=site_id)
+    ]
+
+
+@router.post(
+    "/aulas-avulsas",
+    response={201: AulaAvulsaSchema},
+    operation_id="createStandaloneLesson",
+    summary="Cria e publica uma aula avulsa com endereço próprio",
+    description="O gesto Criar aula avulsa do Admin. O corpo recebe somente titulo,\nvideo_url e descricao. O servico gera o slug pelo titulo e o estabiliza\nna criacao: se um titulo igual ja tiver ocupado o endereco naquele site,\nele acrescenta um sufixo numerico sem pedir que o Admin escolha outro.\n\nA aula nasce publicada, com estado `publicada`, e pode ser lida na hora\npelo endereco devolvido. Nao existe rascunho nem gesto posterior de\npublicacao nesta porta. A edicao usa `updateStandaloneLesson`: preserva\no endereco original somente quando o corpo do PUT omite `slug`.\n\n422 se titulo ou video_url estiverem vazios, a URL nao for um link HTTPS\ndo YouTube incorporavel, a descricao passar de 5.000 caracteres ou o\ncorpo tiver uma chave desconhecida.",
+)
+def create_standalone_lesson(request, site_id: str, payload: AulaAvulsaParaCriarSchema):
+    titulo, video_url = _campos_da_aula_avulsa(payload)
+    for sufixo in range(1, 10_000):
+        try:
+            with transaction.atomic():
+                aula = AulaAvulsaModel.objects.create(
+                    site_id=site_id,
+                    titulo=titulo,
+                    slug=_proximo_slug(titulo, sufixo),
+                    video_url=video_url,
+                    descricao=payload.descricao,
+                )
+            return 201, _aula_avulsa(aula)
+        except IntegrityError:
+            continue
+    raise HttpError(409, "não foi possível criar um endereço único para esta aula")
+
+
+@router.put(
+    "/aulas-avulsas/{slug}",
+    response=AulaAvulsaSchema,
+    operation_id="updateStandaloneLesson",
+    summary="Edita uma aula avulsa e pode trocar seu endereço",
+    description="O gesto Editar aula avulsa do Admin. O `slug` do caminho identifica\na aula existente. O corpo recebe titulo, video_url, descricao e, opcionalmente,\num slug novo. Esse slug pode conter o texto digitado pela pessoa. Quando ele\nvier, o servico normaliza acentos, simbolos e espacos para letras ASCII\nminusculas, numeros e hifens; depois grava o endereco pedido ou,\nse ele ja estiver ocupado por outra aula no mesmo site, acrescenta o menor\nsufixo numerico livre, como `-2` e `-3`. O slug igual ao da propria aula\nnao e colisao e permanece igual. Antes de gravar, o servico reserva o\nendereco por unicidade atomica de site e slug. Se outra gravacao ocupar\no sufixo no mesmo instante, ele tenta o proximo menor sufixo livre antes\nde responder. Nao ha conflito para o Admin resolver: a resposta 200 sempre\ndevolve o slug final salvo.\n\nSem slug no corpo, o endereco atual permanece. Site ou slug do caminho\ninexistente responde 404. Corpo invalido responde 422, inclusive campo\ndesconhecido, slug que nao gera letras ou numeros, titulo ou video_url vazios, URL que\nnao seja HTTPS incorporavel do YouTube e descricao acima de 5.000 caracteres.",
+    openapi_extra={
+        "requestBody": {
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "preservar_endereco": {
+                            "summary": "Sem "
+                            "slug, "
+                            "a "
+                            "aula "
+                            "conserva "
+                            "o "
+                            "endereço "
+                            "atual",
+                            "value": {
+                                "descricao": "Primeira " "aula " "de " "testes",
+                                "titulo": "Aula " "de " "testes",
+                                "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                            },
+                        },
+                        "slug_normalizado": {
+                            "summary": "Texto "
+                            "digitado "
+                            "vira "
+                            "um "
+                            "endereço "
+                            "simples",
+                            "value": {
+                                "descricao": "Primeira " "aula " "de " "testes",
+                                "slug": "Ação " "& " "Testes",
+                                "titulo": "Aula " "de " "testes",
+                                "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                            },
+                        },
+                    }
+                }
+            }
+        },
+        "responses": {
+            "200": {
+                "description": "OK",
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": "#/components/schemas/AulaAvulsaSchema"},
+                        "examples": {
+                            "menor_sufixo_livre": {
+                                "summary": "O "
+                                "sufixo "
+                                "dois "
+                                "esta "
+                                "ocupado "
+                                "e "
+                                "o "
+                                "tres "
+                                "e "
+                                "o "
+                                "primeiro "
+                                "livre",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes-3",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_identico": {
+                                "summary": "O "
+                                "slug "
+                                "pedido "
+                                "ja "
+                                "e "
+                                "o "
+                                "da "
+                                "propria "
+                                "aula",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_normalizado": {
+                                "summary": "O "
+                                "serviço "
+                                "devolve "
+                                "o "
+                                "endereço "
+                                "que "
+                                "normalizou",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "acao-testes",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                            "slug_ocupado": {
+                                "summary": "Outra "
+                                "aula "
+                                "ja "
+                                "usa "
+                                "o "
+                                "slug "
+                                "pedido",
+                                "value": {
+                                    "descricao": "Primeira " "aula " "de " "testes",
+                                    "estado": "publicada",
+                                    "publicada_em": "2026-09-11T10:58:49.598Z",
+                                    "slug": "aula-de-testes-2",
+                                    "titulo": "Aula " "de " "testes",
+                                    "video_url": "https://www.youtube.com/embed/abcdefghijk",
+                                },
+                            },
+                        },
+                    }
+                },
+            },
+            "404": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "aula_nao_encontrada": {
+                                "value": {
+                                    "erro": "aula_avulsa_nao_encontrada",
+                                    "o_que_fazer": "Confira "
+                                    "o "
+                                    "endereço "
+                                    "da "
+                                    "aula "
+                                    "ou "
+                                    "escolha "
+                                    "outra "
+                                    "aula "
+                                    "publicada.",
+                                }
+                            }
+                        },
+                        "schema": {
+                            "additionalProperties": False,
+                            "properties": {
+                                "erro": {
+                                    "const": "aula_avulsa_nao_encontrada",
+                                    "type": "string",
+                                },
+                                "o_que_fazer": {"minLength": 1, "type": "string"},
+                            },
+                            "required": ["erro", "o_que_fazer"],
+                            "type": "object",
+                        },
+                    }
+                },
+                "description": "Aula avulsa inexistente para este site e slug do caminho",
+            },
+            "422": {
+                "content": {
+                    "application/json": {
+                        "examples": {
+                            "slug_invalido": {
+                                "value": {
+                                    "erro": "slug_invalido",
+                                    "o_que_fazer": "Informe "
+                                    "um "
+                                    "endereço "
+                                    "com "
+                                    "ao "
+                                    "menos "
+                                    "uma "
+                                    "letra "
+                                    "ou "
+                                    "número.",
+                                }
+                            }
+                        },
+                        "schema": {
+                            "additionalProperties": False,
+                            "properties": {
+                                "erro": {
+                                    "enum": ["corpo_invalido", "slug_invalido"],
+                                    "type": "string",
+                                },
+                                "o_que_fazer": {"minLength": 1, "type": "string"},
+                            },
+                            "required": ["erro", "o_que_fazer"],
+                            "type": "object",
+                        },
+                    }
+                },
+                "description": "Corpo invalido, inclusive slug que nao gera letras ou "
+                "numeros",
+            },
+        },
+        "x-normalizacao-de-slug": {
+            "algoritmo": "unicode_para_ascii_minusculo_com_hifens",
+            "campo": "slug",
+            "exemplo": {"entrada": "Ação & Testes", "saida": "acao-testes"},
+        },
+        "x-reserva-de-slug": {
+            "atomica": True,
+            "chave": ["site_id", "slug"],
+            "em_colisao": "menor_sufixo_numerico_livre",
+            "exclui_aula_editada": True,
+            "repete_ate_reservar": True,
+        },
+    },
+)
+def update_standalone_lesson(
+    request,
+    slug: Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")],
+    site_id: str,
+    payload: AulaAvulsaParaEditarSchema,
+):
+    titulo, video_url = _campos_da_aula_avulsa(payload)
+    slug_pedido = (
+        None if payload.slug is _SLUG_AUSENTE else _slug_normalizado(payload.slug)
+    )
+    for _ in range(10_000):
+        try:
+            with transaction.atomic():
+                aula = (
+                    AulaAvulsaModel.objects.select_for_update()
+                    .filter(site_id=site_id, slug=slug)
+                    .first()
+                )
+                if aula is None:
+                    raise HttpError(
+                        404, "aula avulsa inexistente para este site e slug"
+                    )
+                slug_final = (
+                    aula.slug
+                    if slug_pedido is None or slug_pedido == aula.slug
+                    else _proximo_slug_livre(site_id, slug_pedido, aula.pk)
+                )
+                aula.titulo = titulo
+                aula.slug = slug_final
+                aula.video_url = video_url
+                aula.descricao = payload.descricao
+                aula.save(update_fields=["titulo", "slug", "video_url", "descricao"])
+            return _aula_avulsa(aula)
+        except IntegrityError:
+            continue
+    raise HttpError(409, "não foi possível encontrar um endereço livre para esta aula")
 
 
 @router.get(

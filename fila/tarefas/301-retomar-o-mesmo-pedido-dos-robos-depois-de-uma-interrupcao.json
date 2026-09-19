@@ -1,0 +1,17 @@
+{
+  "arquivo": "301-retomar-o-mesmo-pedido-dos-robos-depois-de-uma-interrupcao",
+  "id": "TAR-301",
+  "titulo": "Retomar o mesmo pedido dos robôs depois de uma interrupção",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de transporte interrompido e resposta perdida retomam a mesma TAR sem duplicar evento ou PR; estados e motivo conferidos no Django autenticado e Chrome, com mutações das guardas.",
+  "despacho": "Corrigir somente fila_no_github.py, robos.py, caixa_robos.html, parcial se necessário, testes focais e LICOES. Preservar bytes e data do evento existente; conferir origem, conteúdo e PR. Não publicar dependências1493/1496 nem pedir pouso antes da coordenação da maestro. Nenhuma automação nova.",
+  "origem": "Desdobramento da auditoria de encerramento, despacho da maestro após checkpoint TAR299 aa231f6",
+  "criada_em": "2026-09-09"
+}

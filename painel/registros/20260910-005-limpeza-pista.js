@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-005-limpeza-pista",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Pedido 1516 registra limpeza autorizada",
+  detalhe: "Correção do 004: o atraso era 492 commits, não entregas. O mantenedor autorizou remover 168 execuções antigas da pista no SHA 16e4beab8594dbd65973359f2926f739f1262bc0: 113 canceladas e 55 verdes, nenhuma com merge. Restaram 82; testes, deploys e falhas foram preservados. Auditoria guarda IDs e horários; ZIP SHA-256 a0d17dc308bdacfd1e5e406109ea452551e329d2bc983ec122c758eefcb78c17.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1516",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-004-pedido-1509-fechado-apos-contagem-atual",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

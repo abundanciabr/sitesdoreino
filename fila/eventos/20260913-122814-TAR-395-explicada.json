@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-122814-TAR-395-explicada",
+  "tarefa": "TAR-395",
+  "evento": "explicada",
+  "quando": "2026-09-13T12:28:14+00:00",
+  "quem": "decisão do mantenedor em 12/09/2026 (~22:15 -03:00), retomada da maestro seção 3 item 16; brief da maestro em C:\\Users\\davia\\AppData\\Local\\Temp\\sitesdoreino-sessoes\\brief-historia-do-conselho.md",
+  "o_que_e": "Quatro registros e uma lição da manhã de 12/09 ficaram soltos na pasta principal, fora do Git; dois estão em formato errado.",
+  "o_que_muda": "A história do conselho da Fase 4 passa a estar no livro e no índice, no formato da casa, sem reescrever o que foi dito.",
+  "exemplo": "É passar a limpo as anotações do quadro branco antes que alguém apague.",
+  "importancia": 50
+}

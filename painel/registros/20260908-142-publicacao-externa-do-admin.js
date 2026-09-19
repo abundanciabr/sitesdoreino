@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-142-publicacao-externa-do-admin",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "O admin passou a consumir uma publicação externa versionada",
+  detalhe: "O deploy da célula admin prepara painel e fila fora da imagem, envia o pacote para a VPS e publica versões ativas por symlink. O container lê esse diretório em modo somente leitura e mantém o checkout apenas como fallback local.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

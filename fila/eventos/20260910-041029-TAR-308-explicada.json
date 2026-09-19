@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-041029-TAR-308-explicada",
+  "tarefa": "TAR-308",
+  "evento": "explicada",
+  "quando": "2026-09-10T04:10:29+00:00",
+  "quem": "recuperação do fechamento da TAR-307 após o PR #1517",
+  "o_que_e": "A fila guarda entregas prontas como trabalho em execução porque ainda não tem um comando que confira todas as provas após a publicação.",
+  "o_que_muda": "Entregas submetidas passam a terminar somente quando código revisado, integração, publicação e resultado observado formam uma cadeia conferida.",
+  "exemplo": "O conserto dos oito Bosses já está no ar, mas a tarefa continua aberta até a fila conferir o atestado, o deploy e o registro do resultado.",
+  "importancia": 90
+}

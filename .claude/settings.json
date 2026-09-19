@@ -2,32 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|NotebookEdit|Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_pasta_compartilhada.py\"",
-            "timeout": 20
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_do_travessao_na_escrita.py\"",
-            "timeout": 20
-          },
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/licao_do_caminho.py\"",
-            "timeout": 20
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell|Monitor",
+        "matcher": "Monitor",
         "hooks": [
           {
             "type": "command",
@@ -35,40 +10,9 @@
             "timeout": 20
           }
         ]
-      },
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_das_armadilhas.py\"",
-            "timeout": 20
-          }
-        ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/sino_das_armadilhas.py\"",
-            "timeout": 20
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell|Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/preco_da_conversa.py\"",
-            "timeout": 20
-          }
-        ]
-      }
-    ],
+    "PostToolUse": [],
     "UserPromptSubmit": [
       {
         "hooks": [

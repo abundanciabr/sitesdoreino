@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+SHA_DA_PUBLICACAO = "a" * 40
+
 RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ / "ci"))
 sys.path.insert(0, str(RAIZ / "services" / "admin"))
@@ -18,7 +20,7 @@ from publicador_dados_admin import (  # noqa: E402
 from apps.core.admin_dados import selecionar_dados  # noqa: E402
 
 
-def _payload_fila(pasta: Path, *, sha="abc123", run_number=10) -> Path:
+def _payload_fila(pasta: Path, *, sha=SHA_DA_PUBLICACAO, run_number=10) -> Path:
     (pasta / "tarefas").mkdir(parents=True)
     (pasta / "eventos").mkdir()
     (pasta / "tarefas" / "001.json").write_text("{}", encoding="utf-8")
@@ -28,13 +30,11 @@ def _payload_fila(pasta: Path, *, sha="abc123", run_number=10) -> Path:
     (pasta / "regua.json").write_text(
         json.dumps({"esperas": {}, "medido_em": "2026-09-08"}), encoding="utf-8"
     )
-    escrever_manifesto(
-        pasta, tipo="fila", sha=sha, run_id="run-id", run_number=run_number
-    )
+    escrever_manifesto(pasta, tipo="fila", sha=sha, run_id="321", run_number=run_number)
     return pasta
 
 
-def _payload_painel(pasta: Path, *, sha="abc123", run_number=10) -> Path:
+def _payload_painel(pasta: Path, *, sha=SHA_DA_PUBLICACAO, run_number=10) -> Path:
     (pasta / "registros").mkdir(parents=True)
     (pasta / "registros" / "20260908-001-x.js").write_text(
         "export default {}", encoding="utf-8"
@@ -42,12 +42,20 @@ def _payload_painel(pasta: Path, *, sha="abc123", run_number=10) -> Path:
     (pasta / "painel.html").write_text("<html></html>", encoding="utf-8")
     (pasta / "livro-202609.js").write_text("export default []", encoding="utf-8")
     escrever_manifesto(
-        pasta, tipo="painel", sha=sha, run_id="run-id", run_number=run_number
+        pasta, tipo="painel", sha=sha, run_id="321", run_number=run_number
     )
     return pasta
 
 
-def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path):
+def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path, monkeypatch):
+    import preparar_dados_admin
+    from mapa_de_execucao import _hash
+
+    catalogo = {"formato": "mapa-de-execucao.v1", "pacotes": {}}
+    catalogo["digest"] = _hash(catalogo)
+    monkeypatch.setattr(
+        preparar_dados_admin, "materializar_catalogo", lambda *a, **kw: catalogo
+    )
     raiz = tmp_path / "repo"
     (raiz / "ci").mkdir(parents=True)
     (raiz / "fila" / "tarefas").mkdir(parents=True)
@@ -63,7 +71,7 @@ def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path):
     destino = tmp_path / "payload"
     preparar_fila(raiz, destino)
     manifesto = escrever_manifesto(
-        destino, tipo="fila", sha="abc123", run_id="77", run_number=88
+        destino, tipo="fila", sha=SHA_DA_PUBLICACAO, run_id="77", run_number=88
     )
 
     assert json.loads((destino / "estados.json").read_text(encoding="utf-8")) == {
@@ -71,7 +79,7 @@ def test_preparar_fila_materializa_estados_regua_e_manifesto(tmp_path):
     }
     assert (destino / "regua.json").is_file()
     assert manifesto["formato"] == "admin-dados.v1"
-    assert manifesto["origem"]["sha"] == "abc123"
+    assert manifesto["origem"]["sha"] == SHA_DA_PUBLICACAO
     assert "estados.json" in manifesto["integridade"]["arquivos"]
 
 
@@ -81,7 +89,11 @@ def test_publicador_recusa_arquivo_com_hash_quebrado(tmp_path):
 
     with pytest.raises(PublicacaoInvalida, match="integridade quebrada"):
         decidir_publicacao(
-            payload, tmp_path / "ativo", tipo="fila", sha="abc123", run_number=10
+            payload,
+            tmp_path / "ativo",
+            tipo="fila",
+            sha=SHA_DA_PUBLICACAO,
+            run_number=10,
         )
 
 
@@ -93,7 +105,11 @@ def test_publicador_recusa_arquivo_fora_do_manifesto(tmp_path):
 
     with pytest.raises(PublicacaoInvalida, match="arquivo fora do manifesto"):
         decidir_publicacao(
-            payload, tmp_path / "ativo", tipo="painel", sha="abc123", run_number=10
+            payload,
+            tmp_path / "ativo",
+            tipo="painel",
+            sha=SHA_DA_PUBLICACAO,
+            run_number=10,
         )
 
 
@@ -103,12 +119,16 @@ def test_publicador_recusa_conteudo_incompleto_mesmo_com_manifesto(tmp_path):
     (payload / "estados.json").write_text("{}", encoding="utf-8")
     (payload / "regua.json").write_text(json.dumps({"esperas": {}}), encoding="utf-8")
     escrever_manifesto(
-        payload, tipo="fila", sha="abc123", run_id="run-id", run_number=10
+        payload, tipo="fila", sha=SHA_DA_PUBLICACAO, run_id="321", run_number=10
     )
 
     with pytest.raises(PublicacaoInvalida, match="fila sem tarefas JSON"):
         decidir_publicacao(
-            payload, tmp_path / "ativo", tipo="fila", sha="abc123", run_number=10
+            payload,
+            tmp_path / "ativo",
+            tipo="fila",
+            sha=SHA_DA_PUBLICACAO,
+            run_number=10,
         )
 
 
@@ -116,12 +136,16 @@ def test_publicador_recusa_painel_sem_livro_mensal(tmp_path):
     payload = _payload_painel(tmp_path / "payload")
     (payload / "livro-202609.js").unlink()
     escrever_manifesto(
-        payload, tipo="painel", sha="abc123", run_id="run-id", run_number=10
+        payload, tipo="painel", sha=SHA_DA_PUBLICACAO, run_id="321", run_number=10
     )
 
     with pytest.raises(PublicacaoInvalida, match="painel sem livro mensal JS"):
         decidir_publicacao(
-            payload, tmp_path / "ativo", tipo="painel", sha="abc123", run_number=10
+            payload,
+            tmp_path / "ativo",
+            tipo="painel",
+            sha=SHA_DA_PUBLICACAO,
+            run_number=10,
         )
 
 
@@ -130,7 +154,9 @@ def test_publicador_nao_deixa_run_antigo_sobrescrever_run_novo(tmp_path):
     ativo = _payload_fila(tmp_path / "ativo", run_number=10)
 
     assert (
-        decidir_publicacao(payload, ativo, tipo="fila", sha="abc123", run_number=9)
+        decidir_publicacao(
+            payload, ativo, tipo="fila", sha=SHA_DA_PUBLICACAO, run_number=9
+        )
         == "ignorar"
     )
 
@@ -144,14 +170,18 @@ def test_publicador_trata_painel_e_fila_como_publicacoes_independentes(tmp_path)
             painel,
             tmp_path / "ativo-painel",
             tipo="painel",
-            sha="abc123",
+            sha=SHA_DA_PUBLICACAO,
             run_number=10,
         )
         == "publicar"
     )
     assert (
         decidir_publicacao(
-            fila, tmp_path / "ativo-fila", tipo="fila", sha="abc123", run_number=10
+            fila,
+            tmp_path / "ativo-fila",
+            tipo="fila",
+            sha=SHA_DA_PUBLICACAO,
+            run_number=10,
         )
         == "publicar"
     )
@@ -169,8 +199,8 @@ def test_leitor_da_admin_pula_formato_incompativel(tmp_path):
     assert (
         selecionar_dados(
             (ruim, bom), tipo="painel", arquivos_obrigatorios=("painel.html",)
-        )
-        == bom
+        ).pasta
+        == bom.resolve()
     )
 
 
@@ -182,8 +212,8 @@ def test_leitor_da_admin_pula_payload_com_arquivo_fora_do_manifesto(tmp_path):
     assert (
         selecionar_dados(
             (ruim, bom), tipo="fila", arquivos_obrigatorios=("estados.json",)
-        )
-        == bom
+        ).pasta
+        == bom.resolve()
     )
 
 

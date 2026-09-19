@@ -3,6 +3,7 @@ import json
 
 from django.core.management.base import BaseCommand
 
+from apps.core import contrato_oportunidades as contrato
 from config.api import api
 
 
@@ -43,13 +44,41 @@ def _strip_empty_parameters(schema: dict) -> None:
                 del operation["parameters"]
 
 
-def _strip_empty_component_schemas(schema: dict) -> None:
-    """Esta célula não usa ninja.Schema nomeado nos endpoints (o contrato congelado
-    não tem components.schemas — tudo inline nos paths). django-ninja sempre inclui
-    "schemas": {} em components; o contrato à mão omite a chave quando vazia."""
-    components = schema.get("components", {})
-    if components.get("schemas") == {}:
-        del components["schemas"]
+def _declarar_componentes(schema: dict) -> None:
+    """Publica os componentes que esta célula declara em código.
+
+    As duas portas de lead (upsert e tags) não usam `ninja.Schema` nomeado: os
+    schemas delas são inline nos paths, e por isso o django-ninja devolve
+    `"schemas": {}`, chave que o contrato escrito à mão simplesmente omite.
+
+    O CRM humano é o contrário: o congelado nomeia 29 schemas e uma resposta
+    reaproveitada (`AcaoNaoAutorizada`). Eles vêm de
+    `apps/core/contrato_oportunidades.py`, que é código desta célula, e são
+    injetados aqui porque o `openapi_extra` do django-ninja só alcança a
+    operação, nunca a raiz do documento.
+    """
+    componentes = schema.setdefault("components", {})
+    schemas = {**componentes.get("schemas", {}), **contrato.SCHEMAS}
+    if schemas:
+        componentes["schemas"] = schemas
+    else:
+        componentes.pop("schemas", None)
+    componentes["responses"] = contrato.RESPOSTAS
+
+
+def _ancorar_parametros_de_caminho(schema: dict) -> None:
+    """Move para a ROTA o parâmetro que é da rota, não da operação.
+
+    O django-ninja emite o parâmetro de path em cada operação; o congelado o
+    declara uma vez por caminho, que é onde o OpenAPI recomenda pôr o que vale
+    para todos os métodos. As operações envolvidas mandam `"parameters": []` no
+    `openapi_extra` (a chave vazia some em `_strip_empty_parameters`), e a lista
+    volta aqui, no lugar certo, a partir da mesma declaração em código.
+    """
+    for caminho, parametros in contrato.PARAMETROS_DE_CAMINHO.items():
+        item = schema.get("paths", {}).get(caminho)
+        if item is not None:
+            item["parameters"] = parametros
 
 
 class Command(BaseCommand):
@@ -65,7 +94,8 @@ class Command(BaseCommand):
         )
         _strip_redundant_operation_noise(schema)
         _strip_empty_parameters(schema)
-        _strip_empty_component_schemas(schema)
+        _declarar_componentes(schema)
+        _ancorar_parametros_de_caminho(schema)
         # ensure_ascii=True (padrão) evita depender da codepage do terminal (Windows
         # cp1252 quebra em caracteres como "→"); o conteúdo semântico é idêntico —
         # \uXXXX decodifica para o mesmo unicode na leitura via yaml.safe_load.

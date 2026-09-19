@@ -50,16 +50,24 @@ def test_contexto_real_por_caminho_sintoma_e_multiplos_alvos(memoria):
     assert "painel/registros/20260908-001-teste.js" in texto
 
 
+def test_sintoma_prioritario_preserva_licao_do_caminho(memoria):
+    texto = sessao.contexto_direcionado(
+        memoria,
+        objetivo="Corrigir contagem do mapa",
+        caminhos=["painel/registros/teste.js"],
+        sintoma="estado parcial com evidência atual aparece como capítulo sem prova",
+    )
+    assert "Lição 466:" in texto
+    assert "prova de estado independe da cor" in texto
+
+
 def test_contexto_vazio_e_truncado_sao_explicitos(memoria):
     vazio = sessao.contexto_direcionado(
         memoria, objetivo="Teste", caminhos=["inexistente.xyz"]
     )
     assert "Nenhuma lição" in vazio
-    cheio = sessao.contexto_direcionado(
-        memoria, objetivo="Teste", caminhos=["painel/registros/teste.js"], limite=1
-    )
-    assert "Truncado" in cheio
-    assert "--limite-contexto" in cheio
+    cheio = sessao.contexto_direcionado(memoria, objetivo="Teste", caminhos=["painel/registros/teste.js"])
+    assert "Truncado" not in cheio
     assert "INDICE.md" in cheio
 
 
@@ -79,9 +87,7 @@ def test_contexto_preserva_licao_transversal(memoria):
     real = next(item for item in dados["gatilhos"] if item["armadilha"] == "179")
     dados["gatilhos"].append({**real, "caminho": "*", "armadilha": "transversal-real"})
     arquivo.write_text(json.dumps(dados), encoding="utf-8")
-    texto = sessao.contexto_direcionado(
-        memoria, objetivo="Teste", caminhos=["painel/registros/teste.js"], limite=100
-    )
+    texto = sessao.contexto_direcionado(memoria, objetivo="Teste", caminhos=["painel/registros/teste.js"])
     assert "transversal-real" in texto and "179" in texto
 
 

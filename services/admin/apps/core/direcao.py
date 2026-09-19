@@ -59,7 +59,7 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from .painel import CANDIDATOS
+from .painel import diretorio_do_painel
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, esperado_em
 
 #: Confirmar em até 48 horas: o mesmo limiar da restrição.
@@ -106,11 +106,11 @@ _CAMPO = {
 
 
 def diretorio_dos_registros() -> Path | None:
-    for candidato in CANDIDATOS:
-        pasta = candidato / "registros"
-        if pasta.is_dir():
-            return pasta
-    return None
+    painel = diretorio_do_painel()
+    if painel is None:
+        return None
+    pasta = painel / "registros"
+    return pasta if pasta.is_dir() else None
 
 
 def _campo(texto: str, nome: str):

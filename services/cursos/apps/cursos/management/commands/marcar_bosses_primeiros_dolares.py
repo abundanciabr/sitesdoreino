@@ -1,3 +1,6 @@
+import re
+import unicodedata
+
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
@@ -9,13 +12,21 @@ CURSO = "primeiros-dolares"
 BOSSES_POR_MODULO = (
     "Como descobri o mercado e criei o método",
     "Salvando Projetos e Navegação",
-    "Modificador Bevel e Triangulate",
+    "Comando Bevel e Triangulate",
     "Modelagem Avançada Carro [Parte 7]",
     "Aula Especial",
     "Rigging na Prática [Weight Paint]",
     "Portfólio",
     "Oferta Irresistível Fiverr",
 )
+
+
+def chave_de_titulo(texto):
+    sem_acentos = unicodedata.normalize("NFKD", texto)
+    ascii_puro = "".join(
+        caractere for caractere in sem_acentos if not unicodedata.combining(caractere)
+    )
+    return re.sub(r"[^a-z0-9]+", " ", ascii_puro.casefold()).strip()
 
 
 class Command(BaseCommand):
@@ -36,11 +47,22 @@ class Command(BaseCommand):
 
         selecionadas = []
         for bloco, titulo in zip(blocos, BOSSES_POR_MODULO):
-            aulas = list(Aula.objects.filter(bloco=bloco, titulo_exibido=titulo))
+            aulas_do_bloco = list(Aula.objects.filter(bloco=bloco).order_by("ordem"))
+            chave_esperada = chave_de_titulo(titulo)
+            aulas = [
+                aula
+                for aula in aulas_do_bloco
+                if chave_de_titulo(aula.titulo_exibido) == chave_esperada
+            ]
             if len(aulas) != 1:
+                encontrados = ", ".join(aula.titulo_exibido for aula in aulas_do_bloco)
+                if not encontrados:
+                    encontrados = "nenhuma aula"
                 raise CommandError(
                     f"O módulo {bloco.ordem} precisa ter exatamente uma aula "
-                    f"chamada {titulo!r}; encontrei {len(aulas)}. Nada foi alterado."
+                    f"chamada {titulo!r}; encontrei {len(aulas)}. Aulas no módulo: "
+                    f"{encontrados}. Ajuste a estrutura do curso pela porta de "
+                    "máquina e rode o deploy de novo. Nada foi alterado."
                 )
             selecionadas.append(aulas[0])
 
@@ -48,6 +70,9 @@ class Command(BaseCommand):
         Aula.objects.filter(pk__in=[aula.pk for aula in selecionadas]).update(
             e_boss=True
         )
+        nomes = ", ".join(aula.titulo_exibido for aula in selecionadas)
         self.stdout.write(
-            self.style.SUCCESS(f"{len(selecionadas)} Bosses marcados em {curso.nome}.")
+            self.style.SUCCESS(
+                f"{len(selecionadas)} Bosses marcados em {curso.nome}: {nomes}."
+            )
         )

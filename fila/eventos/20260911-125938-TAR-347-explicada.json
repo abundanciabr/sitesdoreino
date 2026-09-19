@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-125938-TAR-347-explicada",
+  "tarefa": "TAR-347",
+  "evento": "explicada",
+  "quando": "2026-09-11T12:59:38+00:00",
+  "quem": "erro relatado pela mantenedora em 11/09/2026",
+  "o_que_e": "Alguns links de aulas avulsas compartilhados pelo painel apontam para um endereço que devolve 404.",
+  "o_que_muda": "Quem receber um link antigo chega à aula correta sem pedir um novo endereço.",
+  "exemplo": "O link /aulas/aula-de-testes/ passa a levar a /cursos/aulas/aula-de-testes.",
+  "importancia": 80
+}

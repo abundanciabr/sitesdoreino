@@ -303,3 +303,131 @@ por `#area/alunos` também pertence a essa aba: iniciar a busca apenas quando
 a vista é `prioridades` deixa o favorito sem tarefas. O estado da busca
 precisa aparecer na área durante carregamento, aviso e falha. O teste real
 do navegador cobre a entrada direta, a volta ao menu e a troca de área.
+
+## Um atalho de aula altera só o que ele pede (10/09/2026)
+
+O modelo Vídeo do YouTube recebe somente uma URL, mas a aula que o recebe pode
+ter peças, quiz, pausas, critérios e uma marca de Boss já escritos. Montar um
+corpo vazio para aproveitar a porta de gravação apagaria esse trabalho sem que
+o formulário mostrasse o perigo.
+
+A regra é: leia a aula atual pela porta, troque apenas `video_url` e devolva o
+corpo completo. O teste `test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula`
+confere cada campo que precisa permanecer igual.
+
+## A versão dos dados fica presa antes de conferir e ler (09/09/2026, TAR-291)
+
+Resolver o ponteiro depois de conferir os hashes permite validar uma versão e
+servir outra. `admin_dados.selecionar_dados` resolve primeiro e devolve um
+`DadosAdmin` imutável: `pasta` concreta, `sha`, `run_id`, `run_number`,
+`gerado_em`, `origem`, `condicao` e `motivo`. Os leitores de registros e cartões
+usam a mesma seleção do painel; os adaptadores antigos devolvem apenas essa
+pasta concreta. A prova troca um ponteiro real durante a conferência e exige
+que a resposta continue na versão que foi conferida.
+
+`origem` distingue `publicacao`, `embutido` e `checkout`. `condicao` distingue
+`verificada`, `alternativa` e `legado`; `sha` ausente identifica legado mesmo
+quando ele é a alternativa. Pacote com manifesto exige revisão completa,
+identificação e número da execução, data com fuso e integridade. Ausência de
+manifesto só é aceita fora da pasta de publicações, como legado explícito.
+
+O HTML e os arquivos do painel respondem com `X-Admin-Dados-Sha`,
+`X-Admin-Dados-Run`, `X-Admin-Dados-Origem` e `X-Admin-Dados-Condicao`. Revisão ou
+execução desconhecida é `desconhecida`; nenhuma cópia válida é `indisponivel`
+na página de erro. A página acrescenta somente a identificação e o aviso da
+alternativa, sem mudar os bytes que calculam o livro. Caminhos locais nunca
+entram nesses cabeçalhos ou avisos. A alternativa não cria registro, pedido ou
+incidente. `verificada` significa que identidade e arquivos conferiram; não
+afirma que a revisão é a mais recente do repositório.
+
+`PortaAdministrativa` abre um contexto por requisição e o descarta em
+`finally`, inclusive em recusa ou exceção. Cada tipo fixa independentemente
+sua pasta concreta, identidade ou indisponibilidade durante toda a resposta.
+Outro consumidor do mesmo tipo não troca de pacote para encontrar um artefato
+ausente. O PR #1510 retirou a exigência de identidade conjunta: painel e fila
+podem vir de revisões, execuções e raízes locais distintas, porque seus
+ponteiros são independentes. A tela identifica cada fonte e mantém seu aviso
+de alternativa ou ausência. A próxima requisição pode selecionar outra versão.
+
+Não há cache entre requisições. Uma otimização futura precisa usar a
+identidade da release concreta e preservar o aviso da alternativa; cachear
+o nome do ponteiro congelaria a publicação vista. A imutabilidade dos
+arquivos dentro da release continua sendo responsabilidade do publicador.
+
+## Reserva, rascunho e submissão não comprovam aceite (09/09/2026)
+
+A aba dos robôs recebe estados materializados e uma consulta separada ao
+GitHub. Reserva identifica posse; rascunho identifica preparação; PR aberto
+não comprova testes, aceite ou publicação. O carimbo da consulta precisa
+continuar factual depois de minutos com a aba aberta. Ao renovar, valide a
+resposta antes de substituir linhas e classes, preserve a última leitura em
+erro e declare paginação sem apresentar a primeira página como total.
+
+Validar só o número do PR não protege os campos usados para montar a linha.
+Título, referência do ramo, fase e referência da reserva também precisam de
+tipo e formato conferidos. Monte linhas, marcações e carimbo fora do DOM;
+só substitua a leitura depois que a preparação inteira terminar. A regressão
+injeta um item ruim entre bons e interrompe uma montagem válida: em ambos os
+casos, inclusive na repetição, preserva nós, classes, etiquetas e horário.
+
+A Central reutiliza `robos.e_deste_grupo`: responsável desconhecido tem grupo
+próprio, pois ausência de classificação não é decisão humana. O produtor do
+livro publica vínculos explícitos em `pedidosDoDonoVinculos`; só uma TAR
+declarada retira a repetição entre livro e fila. Sem esses vínculos, as fontes
+continuam visíveis e o total de assuntos fica desconhecido.
+Quando os vínculos completos saem do HTML, `pedidosDoDonoVinculosFonte`
+identifica o JSON local por nome, carimbo do livro, quantidade e SHA-256 dos
+bytes. A Central lê esse arquivo na mesma pasta concreta já fixada pela
+resposta; não seleciona outra publicação para buscar o que faltou. Caminho
+redirecionado, hash ou carimbo divergente, contagem incoerente e mistura com
+array inline são cobertura desconhecida, nunca deduplicação parcial. O hash
+não substitui a conferência do conteúdo: bytes íntegros ainda podem carregar
+quantidade ou carimbo de outro retrato.
+
+### Um ramo não comprova um pedido de cancelamento
+
+A criação de uma referência pode persistir antes de a resposta chegar. Um código 422
+não comprova PR aberto e um timeout não comprova ausência de gravação. A tela
+confere o ramo, o evento e o PR da mesma TAR antes de continuar. O evento entra
+em um commit e o ramo avança sem force; uma corrida relê o vencedor. Motivo,
+data e bytes já gravados permanecem intactos, e divergência pede conferência.
+
+O resultado do POST conserva o rascunho no HTML, sem texto livre em URL nem
+sessão nova. A consulta posterior recebe só a TAR e reconstrói o estado no
+GitHub; parâmetros resultado/pr não são prova. PR integrado só confirma a
+aplicação quando a fila selecionada contém o estado cancelado e os bytes do
+evento original. O motivo público é anunciado no gesto de confirmação.
+
+### A Reunião salva texto privado; o recibo exige a mesma versão
+
+Documento, versão e auditoria de uma gravação entram na mesma transação. A
+chave única do nome decide a primeira corrida; a tentativa repetida compara a
+impressão digital do formulário com a auditoria e recupera o efeito original,
+sem recalcular a foto ou o dia. Uma edição usa versão esperada e mantém essa
+versão no formulário de conflito, impedindo que repetir vire sobrescrita.
+
+Autorizar tem verbo próprio e liga documento, versão, autoria e hash do texto.
+A migração de escolhas usa somente estado, sem SQL nem reconstrução da tabela
+append-only. O documento continua privado; o aviso de destino público aparece
+antes do gesto. Salvar, autorizar e copiar não recebem nem executam o pedido.
+
+Antes do merge, a main pode desconhecer a tarefa. O recibo confere a reserva e
+os dois blobs no commit fixado do ramo vencedor, com GET limitado. A comparação
+é UTF-8 estrito e JSON canônico recursivo, tolerando apenas CRLF. Truncamento,
+versão divergente ou resposta parcial não viram recebimento. A cópia publicada
+é outra prova, no contexto de dados da requisição; conclusão legada continua
+sendo conclusão registrada, com resultado dos itens ainda não conferido.
+
+
+### Reunião: texto conferido e integração comprovada
+
+O gesto de autorizar precisa enviar o texto visível junto da versão: uma tela de conflito pode preservar o rascunho perdedor enquanto o banco já contém outro texto. Compare ambos sob o bloqueio da transação, preserve o rascunho e mostre a versão salva para recuperar. A foto da pauta vem do formulário original assinado também nas respostas de erro, sem depender do placar disponível no retry. PR com nome de ramo igual não prova integração: confira os artefatos nos commits do PR e do merge e o merge na história da main. Se essa prova faltar, conserve apenas o recebimento já conferido.
+
+## O endereço de outra célula não herda o prefixo da área administrativa (11/09/2026)
+
+Uma aula avulsa é criada pelo painel, mas quem a serve é `cursos`, sob
+`/cursos`. Montar o endereço público a partir da tela administrativa produziu
+`/aulas/<slug>`, caminho que não existe. A regra é explicitar, em uma função
+única, o endereço da célula dona e testar a cópia do link, a prévia e o botão
+de edição com `SCRIPT_NAME=/admin/`: links internos seguem o prefixo da admin,
+enquanto o endereço compartilhado continua na raiz de `cursos`.

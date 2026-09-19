@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-018-ci-concluir-contexto-sob-demanda-e-checkpoints",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: concluir contexto sob demanda e checkpoints",
+  detalhe: "A correção Windows integrada compõe esta entrega, sem perda das fases anteriores. Provas ligadas à nova árvore.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1594. Validação local: árvore 5f3b9d690011c3ee13c56644a3b57da58b8a7170; commit 77e6462f5e0f9d9bf36ec0213660d2602afab44d; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-364",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

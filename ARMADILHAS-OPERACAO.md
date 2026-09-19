@@ -10,9 +10,12 @@
 > abertas (§9). Um despacho de célula não precisa carregar nada disto — é 38% da
 > antiga leitura obrigatória que virava token gasto em toda tarefa.
 >
-> **Quem PRECISA ler:** a sessão-maestro de um lote, quem vai mergear, quem vai
-> atualizar painel — e o mantenedor. **Quem precisa ESCREVER aqui:** todo agente
-> que topar com um atrito cuja correção definitiva não está nas mãos dele — a
+> **Quem PRECISA ler:** a maestro (Claude Code, a sessão que rege o lote e
+> atualiza o painel), a sentinela (Antigravity, que verifica entrega alheia depois
+> do merge) e o mantenedor; o executor (Codex) recebe só o brief
+> (`docs/decisoes/DECISAO-triade-de-ias.md`). **Quem precisa ESCREVER aqui:** a maestro ou o
+> executor que topar com um atrito cuja correção definitiva não está nas mãos dele
+> (a sentinela não edita: o atrito dela vai na proposta) — a
 > linha nova vai na tabela do §1, **e** no relatório final, em texto claro
 > (`CLAUDE.md`).
 >
@@ -168,6 +171,9 @@ sessão pediu para segurar.
 **Solução:** quando mais de um agente atua no mesmo repo, cheque cada `merge`/`push`
 contra o que qualquer sessão pediu para segurar; e antes de editar um arquivo
 compartilhado (painéis, docs de raiz), releia-o do disco — ele pode ter mudado.
+Desde 12/09/2026 a outra IA tem nome e limite: Codex só escreve no ramo do próprio
+despacho; Antigravity só emite proposta e verificação, nunca edita; Claude Code
+nunca mergeia, a pista mergeia (`docs/decisoes/DECISAO-triade-de-ias.md`).
 **Origem:** incidentes dos PRs #2 e #5.
 
 ### 7.2 O painel: como registrar (mudou em 26/08/2026 — a reforma)
