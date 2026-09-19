@@ -49,15 +49,52 @@ Ambiente esperado (fiação em .github/workflows/rollback.yml):
 Saídas em GITHUB_OUTPUT, consumidas pelo job de aplicar:
 
     celula · tag · var_tag (ex.: CHECKOUT_TAG)
+
+===========================================================================
+O CONGELAMENTO DA CÉLULA — o outro lado do RITOS §4, mecanizado
+
+    python ci/rollback.py congelar <celula> --motivo "..."
+    python ci/rollback.py congelados
+    python ci/rollback.py descongelar <celula>
+
+Voltar a imagem é metade do trabalho. A outra metade é o rollback CONTINUAR
+de pé, e até 18/09/2026 ela não existia em lugar nenhum: o RITOS §4 pedia
+"enquanto o rollback estiver ATIVO, não mergeie nada que toque `infra/`" numa
+época em que mergear era gesto humano. Desde 13/09/2026 quem integra é
+`ci/mergear.py --automatico`, acordado por cron de 15 em 15 minutos, sem
+etiqueta, sem revisor e sem ninguém no circuito. Medido antes desta mudança,
+`git grep -ic "rollback\\|revers" -- ci/mergear.py ci/portao_de_deploy.py`
+devolvia ZERO nos dois: nada no caminho de integração sabia que existia um
+rollback ativo, e um rollback das 2h da manhã podia ser desfeito em silêncio,
+com o run verde, antes de o mantenedor acordar.
+
+O estado mora numa REFERÊNCIA no servidor do GitHub (`refs/congelamentos/
+<celula>`), no mesmo molde do `ci/reservar.py`, e não num arquivo versionado.
+Arquivo versionado exigiria um PR para ligar, e PR leva minutos que a
+emergência não tem; a referência é uma escrita atômica, some do clone de
+ninguém e é lida pelo pouso direto do servidor.
+
+O PRAZO mora dentro do congelamento de propósito. Congelamento sem prazo é
+uma casa parada para sempre no dia em que alguém esquecer de descongelar, e
+esta casa não tem vigia para cobrar. Seis horas atravessam o resto de uma
+madrugada; incidente mais longo se renova com o mesmo comando.
+
+O QUE O CONGELAMENTO FECHA: os PRs que tocam a célula congelada (mergear a
+célula dispara o `deploy-celula` dela, que republica `:main` por cima da
+imagem para a qual ela voltou) e os PRs que tocam `infra/`, para qualquer
+célula congelada, porque o `deploy-infra` termina com `docker compose up -d`
+sem argumento e devolve TODAS as células ao `:main` de uma vez.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -72,11 +109,16 @@ from _nucleo import (  # noqa: E402
     raiz_declarada,
     raiz_do_repo,
 )
+from reservar import criar_ref_atomica  # noqa: E402
 
 SHA_COMPLETO = re.compile(r"^[0-9a-f]{40}$")
 ALVO_LINHA_PRINCIPAL = "main"
 PREFIXO_PADRAO = "ghcr.io/abundanciabr/plataforma-"
 MOTIVO_MINIMO = 10
+
+# Onde o congelamento mora no servidor, e por quanto tempo vale sem renovação.
+NS_CONGELAMENTO = "refs/congelamentos"
+HORAS_DE_CONGELAMENTO = 6
 
 # Trechos que o registry usa para dizer "essa tag não existe". Distinguem um
 # alvo errado (FAIL — quem disparou digitou um sha que nunca virou imagem) de
@@ -342,8 +384,218 @@ def publicar_saidas(ctx: Contexto) -> None:
             saida.write(f"{chave}={valor}\n")
 
 
-def main() -> int:
+def agora_utc() -> datetime:
+    """O relógio, num lugar só — é o que os guardas conseguem parar."""
+    return datetime.now(timezone.utc)
+
+
+def _decodificar(ref: str, mensagem: str) -> dict:
+    """O corpo de um congelamento, conferido. Ilegível é ERROR, nunca ausência.
+
+    Fail-closed na origem: "não consegui ler a referência" e "não há rollback
+    ativo" levariam o pouso a decisões opostas, e confundir as duas é
+    exatamente como o rollback seria desfeito em silêncio.
+    """
+    celula = ref.rsplit("/", 1)[-1]
+    try:
+        corpo = json.loads(mensagem)
+        if corpo.get("tipo") != "congelamento" or corpo.get("celula") != celula:
+            raise ValueError(f"o corpo não é o congelamento de '{celula}'")
+        datetime.fromisoformat(corpo["expira_em"])
+    except (json.JSONDecodeError, ValueError, TypeError, KeyError, AttributeError) as erro:
+        raise ErroDeInstrumentacao(
+            f"congelamento ilegível em {ref}",
+            f"{erro}\n\nMensagem lida:\n  {mensagem.strip()[:400]}\n\n"
+            "Isto NÃO é 'então não há rollback ativo'. Confira a referência no "
+            "servidor antes de deixar qualquer coisa ser integrada.",
+        ) from erro
+    return corpo
+
+
+def congelamentos_vivos(
+    pares: list[tuple[str, str]], agora: datetime | None = None
+) -> dict[str, dict]:
+    """Quais células estão congeladas AGORA, a partir de (referência, mensagem).
+
+    Puro de propósito: quem escreve o congelamento fala com o servidor por
+    `git` (roda numa bancada com credencial); quem lê é o pouso, que fala por
+    `gh` (o checkout dele não guarda credencial de git). O significado do
+    congelamento não pode morar nos dois lugares, só o fio.
+    """
+    agora = agora or agora_utc()
+    vivos: dict[str, dict] = {}
+    for ref, mensagem in pares:
+        corpo = _decodificar(ref, mensagem)
+        if datetime.fromisoformat(corpo["expira_em"]) > agora:
+            vivos[corpo["celula"]] = corpo
+    return vivos
+
+
+def _sha_da_ref(raiz: Path, ref: str) -> str:
+    saida = executar(
+        ["git", "ls-remote", "origin", ref],
+        cwd=raiz,
+        descricao=f"conferir {ref} no servidor",
+    ).stdout.strip()
+    return saida.split()[0] if saida else ""
+
+
+def _mensagem_do_commit(raiz: Path, sha: str) -> str:
+    executar(
+        ["git", "fetch", "--no-tags", "origin", sha],
+        cwd=raiz,
+        descricao="baixar o comprovante do congelamento",
+    )
+    return executar(
+        ["git", "show", "-s", "--format=%B", sha],
+        cwd=raiz,
+        descricao="ler o congelamento",
+        exigir_stdout=True,
+    ).stdout
+
+
+def _congelamento_no_servidor(raiz: Path, celula: str) -> tuple[str, dict] | None:
+    """O que já existe para esta célula: (sha, corpo). Corpo torto vira {}.
+
+    O sha é o que importa aqui: ele é o lease da renovação. Um corpo que não
+    decodifica não pode impedir alguém de congelar no meio de uma emergência;
+    quem recusa integrar nesse caso é o pouso, que já trata ilegível como ERROR.
+    """
+    sha = _sha_da_ref(raiz, f"{NS_CONGELAMENTO}/{celula}")
+    if not sha:
+        return None
+    try:
+        corpo = _decodificar(
+            f"{NS_CONGELAMENTO}/{celula}", _mensagem_do_commit(raiz, sha)
+        )
+    except ErroDeInstrumentacao:
+        corpo = {}
+    return sha, corpo
+
+
+def congelar(raiz: Path, celula: str, motivo: str) -> tuple[bool, str]:
+    """Liga o congelamento da célula por `HORAS_DE_CONGELAMENTO`. (ganhou?, recado)
+
+    Chamar de novo numa célula já congelada RENOVA o prazo, em uma operação só,
+    com lease no sha observado. É o caminho de um incidente que passa das seis
+    horas, e ele não pode ter um instante sequer em que a casa fica destravada.
+    """
+    declaradas = celulas_declaradas(raiz)
+    if celula not in declaradas:
+        raise ErroDeInstrumentacao(
+            f"'{celula}' não é célula declarada",
+            "Declaradas em ci/manifesto-de-contratos.json:\n"
+            + "\n".join(f"  - {c}" for c in declaradas)
+            + "\n\nCongelar um nome digitado errado congelaria o nada, em "
+            "silêncio, justo quando o silêncio custa mais caro.",
+        )
+    if len(motivo) < MOTIVO_MINIMO:
+        raise ErroDeInstrumentacao(
+            f"motivo com {len(motivo)} caractere(s) — mínimo {MOTIVO_MINIMO}",
+            "Quem vir a integração recusada daqui a três horas precisa ler o "
+            "que está acontecendo, sem acordar ninguém para perguntar.",
+        )
+
+    existente = _congelamento_no_servidor(raiz, celula)
+    agora = agora_utc()
+    expira = agora + timedelta(hours=HORAS_DE_CONGELAMENTO)
+    ganhou = criar_ref_atomica(
+        raiz,
+        f"{NS_CONGELAMENTO}/{celula}",
+        {
+            "tipo": "congelamento",
+            "celula": celula,
+            "motivo": motivo,
+            "criado_em": agora.isoformat(),
+            "expira_em": expira.isoformat(),
+        },
+        lease=existente[0] if existente else "",
+    )
+    if not ganhou:
+        return False, (
+            f"NÃO congelei '{celula}': a referência mudou no servidor entre a "
+            "leitura e a escrita. Rode o comando de novo e confira com "
+            "`python ci/rollback.py congelados`."
+        )
+    verbo = "renovado" if existente else "ligado"
+    return True, (
+        f"Congelamento {verbo}: '{celula}' não é integrada até "
+        f"{expira.isoformat()}.\n"
+        "A correção viaja por PR e só entra depois de "
+        f"`python ci/rollback.py descongelar {celula}`."
+    )
+
+
+def descongelar(raiz: Path, celula: str) -> None:
+    """Desliga o congelamento. Falha do servidor é ERROR, nunca silêncio."""
+    executar(
+        ["git", "push", "origin", f":{NS_CONGELAMENTO}/{celula}"],
+        cwd=raiz,
+        descricao=f"soltar o congelamento de {celula}",
+    )
+
+
+def congelados(raiz: Path) -> dict[str, dict]:
+    """O que está congelado agora, lido do servidor."""
+    saida = executar(
+        ["git", "ls-remote", "origin", f"{NS_CONGELAMENTO}/*"],
+        cwd=raiz,
+        descricao="listar os congelamentos",
+    ).stdout
+    pares = []
+    for linha in saida.splitlines():
+        if "\t" not in linha:
+            continue
+        sha, ref = linha.split("\t", 1)
+        pares.append((ref.strip(), _mensagem_do_commit(raiz, sha.strip())))
+    return congelamentos_vivos(pares)
+
+
+def _comandar(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="python ci/rollback.py",
+        description="Congelar e descongelar a célula enquanto o rollback está ativo",
+    )
+    sub = parser.add_subparsers(dest="acao", required=True)
+    p_congelar = sub.add_parser("congelar", help="recusa integrar esta célula")
+    p_congelar.add_argument("celula")
+    p_congelar.add_argument("--motivo", required=True)
+    sub.add_parser("congelados", help="o que está congelado agora")
+    sub.add_parser("descongelar", help="solta a célula").add_argument("celula")
+    args = parser.parse_args(argv)
+
+    try:
+        raiz = raiz_do_repo()
+        if args.acao == "congelar":
+            ganhou, recado = congelar(raiz, args.celula, args.motivo)
+            print(recado)
+            return 0 if ganhou else 1
+        if args.acao == "descongelar":
+            descongelar(raiz, args.celula)
+            print(
+                f"'{args.celula}' descongelada: a integração automática volta a "
+                "aceitar PRs dela."
+            )
+            return 0
+        vivos = congelados(raiz)
+        if not vivos:
+            print("Nenhuma célula congelada.")
+            return 0
+        for celula, corpo in sorted(vivos.items()):
+            print(f"{celula}  até {corpo['expira_em']}  {corpo.get('motivo', '')}")
+        return 0
+    except ErroDeInstrumentacao as erro:
+        print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n")
+        if erro.detalhe:
+            print(erro.detalhe)
+        return 2
+
+
+def main(argv: list[str] | None = None) -> int:
     configurar_saida()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv:
+        return _comandar(argv)
     relatorio = Relatorio(titulo="ROLLBACK — validação do alvo (RITOS §4)")
     ctx: Contexto | None = None
     try:
@@ -370,6 +622,14 @@ def main() -> int:
         publicar_saidas(ctx)
         print("")
         print(f"PLANO: {ctx.var_tag}={ctx.tag} docker compose up -d {ctx.celula}")
+        if ctx.alvo != ALVO_LINHA_PRINCIPAL:
+            # Voltar a imagem sem congelar deixa o rollback de pé por, no
+            # máximo, os 15 minutos até o próximo cron do pouso.
+            print("")
+            print(
+                "DEPOIS DE APLICAR, segure o rollback de pé:\n"
+                f'  python ci/rollback.py congelar {ctx.celula} --motivo "{ctx.motivo}"'
+            )
     return relatorio.exit_code
 
 
