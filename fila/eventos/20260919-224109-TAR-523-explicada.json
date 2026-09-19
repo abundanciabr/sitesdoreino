@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-224109-TAR-523-explicada",
+  "tarefa": "TAR-523",
+  "evento": "explicada",
+  "quando": "2026-09-19T22:41:09+00:00",
+  "quem": "brief da maestro em 19/09/2026, a partir do registro 20260919-081, com a autorizacao do mantenedor para o caminho de dono infra/",
+  "o_que_e": "A pagina de oferta ja esta no ar e o codigo dela ja sabe contar cada visita, mas o servico que serve essa pagina nao recebeu o endereco do lugar onde os fatos sao guardados. A pagina abre igual e a visita nao e contada.",
+  "o_que_muda": "Passa a existir o numero de quantas pessoas abriram a pagina de venda, que e o comeco da conta entre a visita e a compra. Sem isso nao da para saber quanta gente chegou nem qual texto converte.",
+  "exemplo": "E como uma loja com a porta aberta e a roleta da entrada desligada: entra gente o dia inteiro e no fim do dia ninguem sabe quantas foram.",
+  "importancia": 70
+}
