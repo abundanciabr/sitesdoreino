@@ -5,8 +5,13 @@ primeiro na `sugestoes` (PR #284). Esta é a quarta e última célula da série,
 mais delicada das quatro: **o urlconf do quiz mistura as duas convenções de
 propósito.**
 
-    path("quiz/<slug>/",          formulario)   <- canônica COM barra
-    path("quiz/<slug>/resultado", resultado)    <- canônica SEM barra
+    path("<slug>/",          formulario)   <- canônica COM barra
+    path("<slug>/resultado", resultado)    <- canônica SEM barra
+
+O prefixo público `/quiz` vem do `SCRIPT_NAME` e não está escrito no urlconf.
+Estes testes rodam sem ele, então os caminhos abaixo são os INTERNOS (`/crivo/`)
+— que é exatamente o que o resolver enxerga também em produção. Quem mede o
+endereço público é `tests/test_superficie_publica.py`.
 
 O Django já redireciona `/quiz/crivo` → `/quiz/crivo/` sozinho (`APPEND_SLASH`).
 Um middleware que fizesse o caminho contrário sem a regra 1 poria os dois em
@@ -59,7 +64,7 @@ def test_o_formulario_com_barra_nao_entra_em_laco_com_o_append_slash(client, qui
     A regra 1 ("não age quando a forma COM barra resolve") impede isso por
     construção. Aqui isso é medido, não confiado.
     """
-    resposta = pegar(client, f"/quiz/{quiz_a.slug}/")
+    resposta = pegar(client, f"/{quiz_a.slug}/")
     assert resposta.status_code == 200, (
         "a página do quiz deixou de responder — se virou redirecionamento, o "
         "middleware entrou em laço com o APPEND_SLASH do Django"
@@ -69,9 +74,9 @@ def test_o_formulario_com_barra_nao_entra_em_laco_com_o_append_slash(client, qui
 def test_a_forma_sem_barra_continua_indo_para_a_canonica(client, quiz_a):
     """O sentido que o Django já resolvia continua intacto: o middleware novo
     não pode desfazer o `APPEND_SLASH`."""
-    resposta = pegar(client, f"/quiz/{quiz_a.slug}")
+    resposta = pegar(client, f"/{quiz_a.slug}")
     assert resposta.status_code in (301, 302)
-    assert resposta["Location"].rstrip("/").endswith(f"/quiz/{quiz_a.slug}")
+    assert resposta["Location"].rstrip("/").endswith(f"/{quiz_a.slug}")
     assert resposta["Location"].endswith("/"), (
         "a forma canônica do formulário é COM barra; o middleware inverteu o "
         "destino do APPEND_SLASH"
@@ -92,7 +97,7 @@ def test_a_query_do_resultado_sobrevive_ao_redirecionamento(client, quiz_a):
     """
     pergunta = quiz_a.questions.get(order=1)
     envio = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {
             f"pergunta_{pergunta.id}": pergunta.options.get(points=10).id,
             "email": "lead@exemplo.com",
@@ -119,17 +124,40 @@ def test_a_query_do_resultado_sobrevive_ao_redirecionamento(client, quiz_a):
 
 def test_healthz_com_barra_nao_vira_caminho_novo_para_a_sonda(client):
     """`/healthz` é rota de MÁQUINA (`armadilhas/086`: uma sonda ganhando uma
-    gêmea sem querer). Redirecionar é aceitável; responder como a nua, não."""
+    gêmea sem querer). Redirecionar é aceitável; responder como a nua, não.
+
+    Desde que as páginas foram para a raiz do urlconf, `/healthz/` casa o
+    curinga `<slug>/` — a regra 1 barra o redirecionamento e quem responde é a
+    view, com o 404 de "não existe quiz chamado healthz". O que esta sonda NÃO
+    pode ganhar é uma gêmea que responda 200, e é isso que continua medido.
+    """
     resposta = pegar(client, "/healthz/")
     assert resposta.status_code != 200
     if resposta.status_code == 302:
         assert resposta["Location"] == "/healthz"
 
 
+def test_caminhos_isentos_de_site_nao_viram_500_no_curinga(client):
+    """A guarda que o curinga `<slug>/` obrigou a existir.
+
+    `/healthz/` e `/static/` são isentos da resolução de site (a sonda chega sem
+    Host de site, e o middleware nem define `request.site` neles). Com as
+    páginas na raiz do urlconf os dois passaram a CASAR a rota do formulário:
+    sem o 404 de `_quiz_do_site`, a view leria o atributo inexistente e as duas
+    formas devolveriam 500 — erro de servidor no lugar de um "não existe".
+    """
+    for caminho in ("/healthz/", "/static/"):
+        resposta = pegar(client, caminho)
+        assert resposta.status_code == 404, (
+            f"{caminho} respondeu {resposta.status_code}: o curinga da página "
+            "alcançou a view sem site resolvido"
+        )
+
+
 def test_e_302_e_nunca_301(client, quiz_a):
     """301 fica cacheado no navegador quase para sempre: se `/…/resultado/`
     ganhar rota própria amanhã, quem já visitou nunca mais a alcança."""
-    resposta = pegar(client, f"/quiz/{quiz_a.slug}/resultado/")
+    resposta = pegar(client, f"/{quiz_a.slug}/resultado/")
     assert resposta.status_code == 302
 
 
@@ -142,7 +170,7 @@ def test_post_com_barra_nao_e_redirecionado(client, quiz_a):
     """Um 302 num POST vira GET e o corpo é descartado em silêncio. O POST desta
     célula é a RESPOSTA do quiz — com as opções, o e-mail e o nome. Um lead
     redirecionado é um lead perdido sem erro, sem log e sem linha no banco."""
-    resposta = client.post(f"/quiz/{quiz_a.slug}/resultado/", HTTP_HOST=HOST)
+    resposta = client.post(f"/{quiz_a.slug}/resultado/", HTTP_HOST=HOST)
     assert resposta.status_code != 302, (
         "POST com barra foi redirecionado — a resposta do quiz viraria um GET e "
         "o lead sumiria em silêncio"
@@ -151,9 +179,22 @@ def test_post_com_barra_nao_e_redirecionado(client, quiz_a):
 
 
 def test_caminho_que_nao_existe_nem_com_nem_sem_barra_segue_404(client, quiz_a):
-    """Sem isto o middleware viraria um 302 universal para qualquer typo."""
+    """Sem isto o middleware viraria um 302 universal para qualquer typo.
+
+    Dois segmentos de propósito: com as páginas na raiz do urlconf, um segmento
+    só casa o curinga `<slug>/` e o 404 passa a vir da view, não da ausência de
+    rota — não é mais este middleware que está sendo medido. `/nao/existe/` não
+    resolve nem com nem sem barra, que é o cenário da regra 2.
+    """
+    assert pegar(client, "/nao/existe/").status_code == 404
+    assert pegar(client, "/nao/existe").status_code == 404
+
+
+def test_slug_inexistente_e_404_da_view_e_nao_um_302_do_middleware(client, quiz_a):
+    """O typo de um segmento só, que agora passa pelo curinga: ele tem de morrer
+    na view com 404, nunca virar redirecionamento para uma forma nua que também
+    não existe."""
     assert pegar(client, "/nao-existe/").status_code == 404
-    assert pegar(client, "/nao-existe").status_code == 404
 
 
 def test_a_raiz_nao_e_tocada(client):
@@ -167,7 +208,7 @@ def test_host_desconhecido_continua_404_mesmo_com_barra(client, quiz_a):
     """O CONV-SITE fecha para host não cadastrado, e o middleware não pode virar
     uma porta lateral em volta dele: a regra 2 pergunta ao urlconf, mas quem
     responde 404 aqui é a resolução de site — e ela continua mandando."""
-    for caminho in (f"/quiz/{quiz_a.slug}/", f"/quiz/{quiz_a.slug}/resultado/"):
+    for caminho in (f"/{quiz_a.slug}/", f"/{quiz_a.slug}/resultado/"):
         resposta = client.get(caminho, HTTP_HOST="nao-cadastrado.exemplo.com")
         assert resposta.status_code == 404, (
             f"{caminho} respondeu {resposta.status_code} para um host que não "

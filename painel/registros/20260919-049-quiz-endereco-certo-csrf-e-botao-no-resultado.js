@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-049-quiz-endereco-certo-csrf-e-botao-no-resultado",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "quiz: endereço certo, CSRF e botão no resultado",
+  detalhe: "Endereco, CSRF, botao por faixa e seed, provados ao vivo com SCRIPT_NAME=/quiz e por nove sabotagens. Falta a etiqueta arquitetural: 16 arquivos, um acima do teto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768. Validação local: árvore 668dc5e4b1c8294981307318a412a471f5bccd0c; commit 3e22f868e02e31ea3183ada16b567b4fcbb1e099; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-505",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
