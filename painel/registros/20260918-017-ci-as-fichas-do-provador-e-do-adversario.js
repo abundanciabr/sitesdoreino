@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-017-ci-as-fichas-do-provador-e-do-adversario",
+  tipo: "nota",
+  quando: "2026-09-18",
+  titulo: "ci: as fichas do provador e do adversario",
+  detalhe: "Duas fichas novas entram sem guarda proprio: estender o teste das fichas toca ci/, que e CODEOWNERS. A divida virou a TAR-464.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1725. Validação local: árvore 7619eaad369f365cfe04007f6b55f09b3d5b50f1; commit c2560d03aa860a2b1054c809b6df8f0c6c7ff4b8; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-472",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

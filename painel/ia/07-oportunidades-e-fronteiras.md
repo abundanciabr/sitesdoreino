@@ -11,7 +11,7 @@
 
 Se você é uma IA procurando onde uma sugestão de melhoria realmente ajudaria
 este projeto: comece por aqui, mas não pare aqui. As três seções abaixo
-respondem three perguntas diferentes — "onde NÃO mexer", "o que já está
+respondem três perguntas diferentes — "onde NÃO mexer", "o que já está
 sabidamente incompleto (e por quê)", e "o que esta própria pesquisa
 encontrou de concreto". A última é a mais imediatamente acionável: são
 achados pequenos, verificados, com caminho de arquivo exato.
@@ -42,7 +42,7 @@ antes de propor trabalho em qualquer um**.
 | Notificações: 2ª metade da Fase 3 (migrar avisos antigos da Caixa para a célula nova) e Fases 4-7 (sino em toda página, preferências, outros canais) | `docs/notificacoes/PLANO-MESTRE.md` | Trabalho enfileirado, não bloqueio |
 | `RUNBOOK-FASE-D.md` §7: checkout descarta parâmetros UTM; i18n do quiz ainda é local (não usa o catálogo YAML) | `RUNBOOK-FASE-D.md` §7 | Tabela de pendências herdadas, sem motivo individual declarado |
 | PLANO-10X item 4 ("detecção de falha"): mensagens presas na fila do Redis sem recuperação, relays de evento sem cobertura de queda, nenhuma reconciliação "quem pagou e não recebeu" | `docs/decisoes/PLANO-10X.md` | Identificado como alavanca, não confirmado se já endereçado — **candidato real a auditoria técnica de uma IA**, fora da zona de pagamentos-por-último (é sobre robustez do transporte de eventos, não sobre nova feature de cobrança) |
-| Nenhum ChangeSpec real foi escrito ainda (o mecanismo está pronto e testado) | `docs/caixa-de-sugestoes/` | Considerado correto, não falha — não é um "conserte isto" |
+| ~~Nenhum ChangeSpec real foi escrito ainda~~ **Corrigido em 18/09/2026: existem três**, e moram em `docs/changespecs/`, não em `docs/caixa-de-sugestoes/`: CS-CURSOS-0001, CS-PAGES-0001 e CS-CURSOS-0002 (marcado SUPERADO) | `docs/changespecs/` | Não é lacuna: o campo de aprovação fica vazio de propósito, porque assinar é passo manual do mantenedor, não trabalho de agente |
 
 ## 3. Achados concretos desta pesquisa (candidatos diretos a PR pequeno)
 
@@ -84,6 +84,45 @@ quiser um PR pequeno, verificável, de baixo risco:
    `INVARIANTES.md` — rastreados, não escondidos, em
    `ci/guardas-nao-declarados.txt`). Ver
    [02](02-armadilhas-e-padroes-recorrentes.md).
+
+## 3b. Achados da auditoria de 18/09/2026 (medidos em `origin/main`, nenhum previsto por este mapa)
+
+Uma auditoria ampla mediu os subsistemas contra `origin/main` e produziu
+quatro achados que **nenhum** dos oito documentos deste mapa cobria. Os
+outros achados dela já estavam escritos aqui há 22 dias, o que diz mais sobre
+leitura do que sobre código: **este documento existe para ser lido antes, e
+não estava sendo.**
+
+1. **Treze workflows entram na produção sem portão.** 16 dos 25 workflows
+   carregam `DEPLOY_SSH_KEY` e alcançam a VPS; só `deploy-celula`,
+   `deploy-infra` e `rollback` passam por portão antes do SSH. Os demais
+   (`semear-*`, `backfill-*`, `esvaziar-caixa`, `ligar-os-degraus`,
+   `canario-fase-3-outbox`, `conferir-as-fichas`, `limpar-avisos-orfaos`)
+   não passam por nenhum, e um deles esvazia dado. Detalhe e o que isso
+   significa para a Lei 5 em [05](05-infraestrutura-ci-e-deploy.md).
+2. **O portão de merge julga cinco coisas, não onze.** `conferir()` em
+   `ci/mergear.py` chama `checar_estado`, `checar_mergeabilidade`,
+   `checar_checks` e `checar_mandato`. Outras seis checagens estão definidas
+   no arquivo e **nunca são chamadas** desde 13/09/2026, entre elas a dívida
+   do livro e o registro embarcado. Ver [03](03-sistema-do-painel-e-livro.md).
+3. **`packages/outbox-relay` não tem dono.** É a única biblioteca
+   compartilhada entre células (usada por `alunos` e `identidade`) e está
+   fora de `celulas.yml`, fora do CODEOWNERS e fora dos `paths:` de deploy ao
+   mesmo tempo. A palavra `packages` não aparecia em nenhum documento deste
+   mapa. É a exceção viva à Lei 7, já em produção e sem responsável.
+4. **O mock `prism` não existe.** A Constituição chama de lei que
+   "consumidores desenvolvem contra mocks", e este mapa repetia a cláusula
+   como se fosse mecanismo. Medido: não há `prism` em nenhum workflow, em
+   nenhum compose ativo nem no `Makefile` da raiz; o alvo `make mocks` das
+   células só **imprime** a linha de comando que alguém teria de rodar à mão.
+   É o degrau "documento" da Lei 1, não portão, e o mapa devia dizer isso.
+
+Os quatro caem no **padrão 2 da retrospectiva** ("garantia declarada sem
+mecanismo apodrece"), e a cura que ele prescreve é a mesma nos quatro casos:
+ou nasce o portão que impõe a promessa mais o teste-guarda que reprova quem a
+desfizer, ou **o documento passa a dizer que a promessa não está imposta**.
+Fingir que está é o que produz falso-verde, que é o modo de falha nº 1 desta
+casa (padrão 1).
 
 ## 4. Antes de propor qualquer mudança: o método que este próprio projeto exige
 

@@ -1,0 +1,11 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-005",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T12:45:00-03:00",
+  "problema": "Tarefas já mergeadas apodrecem na fila com estado 'em execução' porque a automação não redige e commita o registro semântico exigido para a reconciliação do aceite. A espera bloqueia as áreas do código.",
+  "titulo": "Fecho Assíncrono com Micro-Agente acionado por workflow_run",
+  "baseline": "Saída de `python ci/fila.py listar --json` acusa 18 tarefas presas, como a TAR-340 bloqueando 'contracts'. Comando `gh pr view 1560 --json state` acusa MERGED. Revisão 22a9bd2 de `ci/mergear.py` demonstra a ausência de fechamento.",
+  "aceite": "Configurar a pista de pouso (.github/workflows/pouso.yml) para disparar um evento ao concluir o merge. Esse evento aciona um micro-agente isolado que recebe o diff, redige o arquivo de aceite em painel/registros/ e executa `ci/fila.py reconciliar` para fechar a tarefa e liberar a área de colisão, sem reter a sessão principal.",
+  "origem": "Identificação empírica das tarefas bloqueadas pelo Claude Code e diretriz de automação contínua da fila proposta pelo Codex."
+}
