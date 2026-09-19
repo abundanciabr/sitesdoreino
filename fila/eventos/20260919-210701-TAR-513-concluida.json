@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-210701-TAR-513-concluida",
+  "tarefa": "TAR-513",
+  "evento": "concluida",
+  "quando": "2026-09-19T21:07:01+00:00",
+  "quem": "agent/funil/cookie-seguro-atras-do-traefik",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1779",
+  "verificado_em": "2026-09-19"
+}

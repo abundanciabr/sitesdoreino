@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-215139-TAR-522-explicada",
+  "tarefa": "TAR-522",
+  "evento": "explicada",
+  "quando": "2026-09-19T21:51:39+00:00",
+  "quem": "brief fechado do mantenedor em 19/09/2026, a metade que ele opera da estrutura de paginas do catalogo",
+  "o_que_e": "Hoje o texto da pagina que vende o curso so pode ser preenchido por linha de comando. A estrutura existe na celula catalogo, com onze secoes e 43 espacos de texto, e nao ha nenhuma tela em que o mantenedor escreva neles.",
+  "o_que_muda": "Ele passa a escrever a pagina de venda sozinho, no navegador, sem pedir nada a ninguem, e a publicar quando quiser. Sem essa tela a estrutura construida no catalogo nao serve para nada.",
+  "exemplo": "Ele abre a tela da pagina de venda, digita a frase de abertura do curso no campo cubo.headline, aperta Salvar, ve o aviso de que o texto tem valor riscado, corrige, e aperta Publicar.",
+  "importancia": 90
+}

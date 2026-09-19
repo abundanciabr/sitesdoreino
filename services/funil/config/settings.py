@@ -23,6 +23,21 @@ FORCE_SCRIPT_NAME = (
 # CONV-SITE, ainda não instanciado neste esqueleto (sem regra de negócio).
 ALLOWED_HOSTS = ["*"]
 
+# O TLS termina no Traefik: para o uvicorn, a requisição chega em http. Sem
+# esta linha `request.is_secure()` responde False em produção e todo cookie
+# desta célula sai sem `Secure`, que foi o que a prévia da equipe fez no site
+# ao vivo até 19/09/2026.
+#
+# Confiar no cabeçalho é seguro porque só o container do Traefik publica porta
+# (`infra/docker-compose.yml`): `funil:8000` não existe fora da rede interna, e
+# o router da célula é `entryPoints: [websecure]`. Ninguém de fora alcança o
+# uvicorn para forjar o cabeçalho.
+#
+# `SECURE_SSL_REDIRECT` fica de fora de propósito: quem manda o http para o
+# https é o entryPoint `web` do Traefik, e ligar aqui também é arriscar laço.
+# Guarda: tests/test_secure_nos_cookies.py.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",

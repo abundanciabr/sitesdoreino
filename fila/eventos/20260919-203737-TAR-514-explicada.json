@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-203737-TAR-514-explicada",
+  "tarefa": "TAR-514",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:37:37+00:00",
+  "quem": "despacho do escrivao pela maestro em 19/09/2026, sessao com cinco despachos em paralelo",
+  "o_que_e": "cinco despachos paralelos produziram licoes soltas em relatorio, sem virar armadilha nem registro do livro",
+  "o_que_muda": "as licoes que servem a qualquer celula ficam pesquisaveis por ci/consultar_armadilhas.py e a correcao de rumo fica no livro, em vez de morrer no transcript de uma sessao",
+  "exemplo": "um agente futuro que escreva brief de pagina de vendas encontra a licao antes de repetir o slot proibido, e um agente que rode ci/pr.py sem --tarefa encontra a licao antes de fechar TAR alheia",
+  "importancia": 30
+}

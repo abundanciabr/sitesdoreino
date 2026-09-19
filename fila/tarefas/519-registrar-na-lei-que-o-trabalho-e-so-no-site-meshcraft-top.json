@@ -1,0 +1,20 @@
+{
+  "arquivo": "519-registrar-na-lei-que-o-trabalho-e-so-no-site-meshcraft-top",
+  "id": "TAR-519",
+  "titulo": "Registrar na lei que o trabalho é só no site meshcraft.top",
+  "toca": [
+    "CLAUDE.md",
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com a regra em CLAUDE.md e docs/decisoes/DECISAO-foco-em-meshcraft.md, muralhas verdes no SHA do PR",
+  "despacho": "Célula: maestro (lei). Ramo: agent/maestro/foco-em-meshcraft.\n\nEscreva na lei a decisão do mantenedor de 19/09/2026: todo o trabalho deste\nrepositório é do site meshcraft.top; basileiatoutheou.org fica congelado e não\nrecebe página, conteúdo, funcionalidade nem campanha novas além do que já\nexistia nessa data.\n\nAlvos (dois arquivos, nada de código):\n1. CLAUDE.md, dentro da seção \"Este projeto é para ser feito completo\". Não\n   abra seção nova: essa já está declarada em ci/leis-sem-mecanismo.txt e a\n   escolha de não abrir é do mantenedor.\n2. docs/decisoes/DECISAO-foco-em-meshcraft.md, novo.\n\nSó leitura: infra/traefik/dynamic/plataforma.yml, painel/mapa-do-site.json,\nservices/funil/tests/test_i18n_http.py.\n\nA fronteira que o texto precisa dizer: congela o SITE, não o encanamento. A\nplataforma é multissítio e os dois domínios são servidos pelos mesmos\nserviços; o conteúdo de cada site vive no banco. A rota do webhook do Mercado\nPago é a única do sistema presa a um host e o host é basileiatoutheou.org: ela\nserve o pagamento do meshcraft.top e continua manutenível. Tirá-la de lá muda\na URL cadastrada no Mercado Pago e é tarefa separada.\n\nNão construa portão para esta lei. O conteúdo do site congelado mora no banco,\nfora do alcance de um portão que leia o diff; um portão que reprovasse o nome\ndo domínio no diff não veria a desobediência provável e reprovaria manutenção\nlegítima do pagamento.\n\nEvidência exigida: python ci/ci.py --apenas muralhas verde, com\nleis-sem-mecanismo e muralha-do-travessao nomeados na saída.\n\nArmadilha: CLAUDE.md e docs/decisoes/ estão sob CODEOWNERS. O PR precisa da\nlinha Mandato-do-mantenedor: com os dois caminhos, escrita pela conta do dono.\nNunca invente mandato.",
+  "origem": "pedido do mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
