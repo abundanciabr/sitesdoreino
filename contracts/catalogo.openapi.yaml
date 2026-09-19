@@ -161,6 +161,120 @@ paths:
             schema:
               $ref: '#/components/schemas/SiteMenu'
         required: true
+  /sites/{site_id}/paginas/{slug}:
+    get:
+      operationId: getPage
+      summary: A página publicada de um site, que é o que quem visita vê
+      description: |-
+        É esta operação que a célula `funil` lê para renderizar. Devolve a versão
+        PUBLICADA, nunca o rascunho: o que está em edição não chega a quem visita.
+
+        Página sem nenhuma versão publicada responde 404, e não 200 com seções vazias.
+        Para quem renderiza, "ainda não existe" precisa levar a outro lugar, nunca a
+        uma tela em branco servida como se fosse a oferta.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+          description: Apelido da página dentro do site (ex. oferta)
+      responses:
+        '200':
+          description: A versão publicada corrente desta página
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaPublicada' }
+        '404': { description: Site inexistente, ou página sem nenhuma versão publicada }
+  /sites/{site_id}/paginas/{slug}/rascunho:
+    get:
+      operationId: getPageDraft
+      summary: O rascunho em edição de uma página, para a tela que escreve
+      description: |-
+        Serve o que está em edição, que é outra coisa do que está no ar. Página que
+        nunca foi editada responde 404: quem abre a tela precisa saber se começa de
+        uma folha em branco ou de um texto que alguém já deixou pela metade.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: O rascunho corrente desta página
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RascunhoDaPagina' }
+        '404': { description: Site inexistente, ou página sem rascunho nenhum }
+    put:
+      operationId: putPageDraft
+      summary: Grava o rascunho de uma página, inteiro
+      description: |-
+        Substitui as seções do rascunho de uma vez, e não remenda slot a slot, porque a
+        coerência é do CONJUNTO: a ordem das seções e os slots de cada uma só fazem
+        sentido juntos. É por aqui que a tela do `admin` salva o que o mantenedor
+        escreve, e gravar rascunho não publica nada.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secoes]
+              properties:
+                secoes:
+                  type: array
+                  items: { $ref: '#/components/schemas/Secao' }
+      responses:
+        '200':
+          description: O rascunho como ficou gravado, na forma canônica
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RascunhoDaPagina' }
+  /sites/{site_id}/paginas/{slug}/publicar:
+    post:
+      operationId: publishPage
+      summary: Publica o rascunho, criando a versão seguinte da página
+      description: |-
+        O rascunho vira uma versão publicada nova. Versão publicada não é editada:
+        `version` cresce e a anterior continua existindo, porque é ela que a telemetria
+        do funil já mediu. Sem isso, medir a página seria medir alvo móvel.
+
+        Rascunho vazio responde 409 e nada é publicado. Publicar página sem nada seria
+        pôr uma tela em branco no ar com a aparência de sucesso, e o caminho certo é
+        escrever antes.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: A versão que acabou de ser publicada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginaPublicada' }
+        '409': { description: Rascunho vazio; nada foi publicado }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -409,3 +523,81 @@ components:
               name: { type: string }
               price_cents: { type: integer, minimum: 0 }
               headline: { type: string }
+    PaginaPublicada:
+      type: object
+      description: |-
+        Uma versão publicada de uma página, que é o que quem visita vê e o que a
+        telemetria do funil mede. Publicada não se edita: cada publicação nasce com
+        `version` maior, e a anterior fica de pé porque os eventos já a citaram.
+      required: [id, site_id, slug, version, published_at, secoes]
+      properties:
+        id: { type: string, format: uuid }
+        site_id: { type: string, format: uuid }
+        slug: { type: string, description: 'Apelido da página dentro do site (ex. oferta); único por site' }
+        version:
+          type: integer
+          minimum: 1
+          description: Cresce a cada publicação e nunca é reescrita. É o número que os eventos do funil carregam para amarrar cada fato ao conteúdo exato que esteve na tela.
+        offer_slug:
+          type: string
+          description: 'Apelido da oferta que esta página vende, para ligar a visita ao pedido. Vazio quando a página não vende nada.'
+        published_at: { type: string, format: date-time }
+        secoes:
+          type: array
+          items: { $ref: '#/components/schemas/Secao' }
+    RascunhoDaPagina:
+      type: object
+      description: |-
+        O que está em edição, que é outra coisa do que está no ar. Só a tela do `admin`
+        lê e grava isto; quem visita nunca o alcança.
+      required: [site_id, slug, base_version, secoes, atualizado_em]
+      properties:
+        site_id: { type: string, format: uuid }
+        slug: { type: string }
+        base_version:
+          type: integer
+          minimum: 0
+          description: A versão publicada de onde este rascunho saiu. ZERO quando ainda não há nenhuma publicação, e é assim que a tela sabe que a página nunca esteve no ar.
+        secoes:
+          type: array
+          items: { $ref: '#/components/schemas/Secao' }
+        atualizado_em: { type: string, format: date-time }
+    Secao:
+      type: object
+      description: |-
+        Um bloco da página: um nome, um lugar na ordem e os textos que o preenchem.
+      required: [nome, ordem, slots]
+      properties:
+        nome:
+          type: string
+          description: |-
+            Nome da seção. A ordem canônica de uma página de oferta é hero, problema,
+            mecanismo, prova, oferta, garantia e faq, e é essa sequência que os eventos
+            `funil.secao-vista` transformam numa escada de retenção.
+        ordem:
+          type: integer
+          minimum: 0
+          description: Posição desta seção na página, de cima para baixo.
+        slots:
+          type: object
+          additionalProperties: { type: string }
+          description: |-
+            Os textos da seção, um por slot. O mapa é LIVRE aqui e o vocabulário é
+            FECHADO dentro do `catalogo`, que recusa slot desconhecido na gravação.
+            Enumerar os slots no contrato faria cada frase nova de copy custar um Rito
+            de Contrato; não validar em lugar nenhum faria nascer `div_47_text`. Por
+            isso a validação mora no provedor.
+
+            O vocabulário que o `catalogo` valida hoje, seção por seção:
+
+              hero:      eyebrow, headline, subheadline, cta_texto, cta_destino, imagem
+              problema:  headline, texto
+              mecanismo: headline, texto, imagem
+              prova:     headline, depoimento, numeros, autoridade
+              oferta:    headline, ancora_de_preco, preco_texto, parcelamento, bonus, cta_texto
+              garantia:  headline, texto, prazo
+              faq:       headline, perguntas
+
+            O nome do slot é o que os eventos `funil.cta-clicado` carregam no campo
+            `slot`. O texto muda a cada versão; o nome do slot não muda, e é por isso
+            que ele serve de identificador e a copy não serve.

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/funil.cta-clicado.v1.json",
+  "title": "funil.cta-clicado.v1",
+  "description": "ALGUÉM CLICOU NUM BOTÃO DE CHAMADA DA PÁGINA. É o fato que fecha a escada entre ver e comprar: visita, seção alcançada, clique, lead, pedido. Diz de QUAL seção e de QUAL slot saiu o clique, e é isso que permite saber se o botão do topo vende mais do que o do bloco de oferta sem precisar de teste nenhum. Publicado pela célula `funil`; quem consome é a `metricas`, pelo trilho de eventos que já existe. LEI DESTE EVENTO: o corpo carrega ID e VERSÃO, nunca o texto da headline nem o texto do botão. Texto dentro do evento apodrece, ocupa o livro imutável e impede comparar duas medições da mesma versão. É `pagina_version` que amarra o fato ao conteúdo exato que a pessoa viu. Rito de Contrato (RITOS.md §3) de 19/09/2026, em sessão de arquitetura com o mantenedor presente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "funil.cta-clicado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único DESTE fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila é contado uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante do clique, com fuso. Sem fuso o DIA do fato é um chute e a recepção da `metricas` recusa o envelope."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "visitor_id",
+        "pagina_slug",
+        "pagina_version",
+        "secao",
+        "slot",
+        "destino"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma. Mora aqui, dentro de `data`, porque é daqui que a recepção da `metricas` o lê (`services/metricas/apps/fatos/recepcao.py`)."
+        },
+        "visitor_id": {
+          "type": "string",
+          "description": "Identificador OPACO de primeira parte, gerado pela célula `funil` e guardado no navegador de quem visita. É o mesmo valor de `funil.pagina-vista` da mesma sessão, e é ele que liga o clique à visita. Não carrega dado pessoal dentro: nunca é e-mail, telefone, nome, IP nem hash de nenhum deles."
+        },
+        "pagina_slug": {
+          "type": "string",
+          "description": "Apelido da página dentro do site, o mesmo de `GET /sites/{site_id}/paginas/{slug}` no contrato do `catalogo`."
+        },
+        "pagina_version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A versão publicada que esta pessoa viu. Versão publicada nunca é reescrita, então este número é o que amarra o fato ao conteúdo exato da tela."
+        },
+        "secao": {
+          "type": "string",
+          "description": "Nome da seção de onde saiu o clique, o mesmo `nome` do schema `Secao` do contrato do `catalogo` (hero, problema, mecanismo, prova, oferta, garantia, faq)."
+        },
+        "slot": {
+          "type": "string",
+          "description": "Nome do slot clicado dentro da seção, o mesmo nome que a chave tem no mapa `slots` do schema `Secao` (por exemplo `cta_texto`). É o slot, e não o texto dele, que identifica o botão: o texto muda a cada versão e o nome do slot não."
+        },
+        "destino": {
+          "type": "string",
+          "description": "Para onde o clique levou, como a página o escreveu: o valor gravado no slot de destino (por exemplo `/checkout/mentoria` ou uma âncora para outra seção). É endereço, nunca copy."
+        }
+      }
+    }
+  }
+}
