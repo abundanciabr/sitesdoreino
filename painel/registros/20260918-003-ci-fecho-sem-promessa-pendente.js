@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-003-ci-fecho-sem-promessa-pendente",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "ci: fecho sem promessa pendente",
+  detalhe: "O Stop recusa promessa técnica pendente em Claude e Codex. Prova local: 207 testes verdes e 12 guardas por mutação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1713. Validação local: árvore 2c80e5cb8318d5470b92527ea49e369c6c7cad4d; commit c048b24e49e7d056bceb9e004d1be5a93a53749d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-452",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

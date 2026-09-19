@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260918-152341-TAR-452-concluida",
+  "tarefa": "TAR-452",
+  "evento": "concluida",
+  "quando": "2026-09-18T15:23:41+00:00",
+  "quem": "agent/ci/fecho-sem-promessa",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1713",
+  "verificado_em": "2026-09-18"
+}

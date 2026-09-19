@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260918-152338-TAR-452-submetida",
+  "tarefa": "TAR-452",
+  "evento": "submetida",
+  "quando": "2026-09-18T15:23:38+00:00",
+  "quem": "agent/ci/fecho-sem-promessa",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1713",
+  "revisao": "c048b24e49e7d056bceb9e004d1be5a93a53749d",
+  "arvore": "2c80e5cb8318d5470b92527ea49e369c6c7cad4d"
+}

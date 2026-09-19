@@ -104,6 +104,12 @@ Decisão do mantenedor em 13/09/2026, registrada em
    Teto estourado ou decisão exclusiva do mantenedor: dívida no livro e NÃO
    PRONTO com o que falta. O Stop recusa o fecho enquanto o PR desta sessão não
    tiver resultado terminal (`ci/prestacao_de_contas.py`, Lei 11).
+   Check vermelho (inclusive `muralhas`), conflito, teste falho e log não lido
+   exigem ação técnica agora: abra o log, diagnostique e corrija dentro do
+   mandato. Não encerre prometendo executar isso depois nem atribua a falha ao
+   mantenedor. Só pausa explícita ou impedimento externo real, com fato medido,
+   impacto e responsável pela retomada, permite parar. O Stop compartilhado
+   de Claude e Codex recusa promessa técnica pendente mesmo com NÃO PRONTO.
 
 **Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`,
 `ci/tests/test_merge_automatico.py` e o ruleset da main.

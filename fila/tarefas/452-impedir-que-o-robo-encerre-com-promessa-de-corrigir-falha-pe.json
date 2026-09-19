@@ -1,0 +1,23 @@
+{
+  "arquivo": "452-impedir-que-o-robo-encerre-com-promessa-de-corrigir-falha-pe",
+  "id": "TAR-452",
+  "titulo": "Impedir que o robô encerre com promessa de corrigir falha pendente",
+  "toca": [
+    "ci",
+    "CLAUDE.md",
+    "RITOS.md",
+    ".claude/agents/despacho.md",
+    ".codex/agents/despacho.toml"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com recusa da promessa de corrigir muralhas; 207 testes verdes e 12 guardas provados por mutação",
+  "despacho": "# Brief da entrega\n\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\ncelula: ci\nobjetivo: impedir encerramento com promessa futura de corrigir falha técnica acionável.\n\nMandato do mantenedor: registrar no projeto a obrigação de executar ações técnicas disponíveis e concluir a entrega, com autorização para ci/, CLAUDE.md e RITOS.md.\n\nAlvos: ci/prestacao_de_contas.py, ci/tests/test_prestacao_de_contas.py, ci/tests/test_fichas_de_robo.py, CLAUDE.md, RITOS.md, .claude/agents/despacho.md e .codex/agents/despacho.toml.\n\nProva exigida: frase concreta de muralhas recusada pelo Stop compartilhado; testes preservando pausa explícita, impedimento externo, histórico e resultado medido; testes focais e ampliados verdes; mutação dos guardas com baseline PASS, sabotagem FAIL e restauração PASS. Publicar pelo rito ci/pr.py com registro a bordo.",
+  "origem": "Pedido do mantenedor em 18/09/2026 para todas as tarefas terminarem com a ação técnica executada e entrega comprovada",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -9,7 +9,7 @@ Restrições operacionais para toda tarefa: a regra vence a pressa.
 
 #### 1. Resolva o problema real antes de escrever
 
-Resolva o problema real. Antes de código, salvo tarefa trivial, diga em até
+Antes de código, salvo tarefa trivial, diga em até
 5 linhas: quem usa, o que vê, faz e sente; a versão mais simples que resolve
 o problema inteiro; o que pode sair sem perda. Comece pela experiência. Incerteza real de UX ou
 arquitetura exige o menor protótipo visível, apresentado antes da construção.
@@ -90,36 +90,32 @@ decisão ou passo manual em Pendências. Nunca invente resultado para fechar.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-Use o contexto direcionado da abertura `ci/sessao.py`: confira origens,
-ausências e truncamento; abra entradas citadas/recuperadas,
-`services/<celula>/LICOES.md` e uma vez por sessão os 8 padrões de
-`docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho permanecem.
+Confira origens, ausências e truncamento do contexto direcionado de
+`ci/sessao.py`; leia entradas citadas/recuperadas, `services/<celula>/LICOES.md`
+e, uma vez por sessão, `docs/decisoes/RETROSPECTIVA-FASE-D.md` (8 padrões).
 Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
 JSON com até 3 lições de 500 caracteres e origens.
-Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
-de restrições. Para aprofundamento, use `--caminho`/`--sintoma` da sessão ou abra
-`armadilhas/INDICE.md` sob demanda.
+Índice ausente: `python ci/indice_de_armadilhas.py`; não significa ausência
+de restrições. Aprofundamento: `--caminho`/`--sintoma` ou `armadilhas/INDICE.md`.
 
-Lição nova: número por `python ci/reservar.py numero armadilha`, arquivo
-novo `armadilhas/NNN-slug.md`, índice regenerado. Não acrescente a
-`ARMADILHAS.md` nem edite entrada alheia. Declare `gatilho` e `licao`
-quando ligados a caminho. Lição exclusiva da célula vai ao `LICOES.md`.
-O escrivão julga lições da equipe. Correção fora do alcance exige registro
-`pendencia`, `precisa_do_dono: true`, e relatório.
+Lição nova: `python ci/reservar.py numero armadilha`, novo `armadilhas/NNN-slug.md`
+e índice regenerado. Não edite `ARMADILHAS.md` nem entrada alheia. Declare
+`gatilho`/`licao` se ligados a caminho. Lição da célula: `LICOES.md`.
+Escrivão julga lições; correção fora do alcance exige registro `pendencia`,
+`precisa_do_dono: true`, e relatório.
 
 **Quem faz valer:** `ci/consultar_armadilhas.py`, muralhas do índice e reservas.
 
 ## O clone principal é espelho, não bancada
 
-Nunca edite nem mude o git no principal. Abra
-`python ci/sessao.py --celula <area> --tarefa <slug> --sem-container`
-para área sem serviço; com serviço, omita `--sem-container`.
-Entre no caminho absoluto informado. Retome pela mesma entrada, preservando
-alterações. Recusa exige conferir dono e ação segura, nunca forçar.
-Baseline da abertura é conferido antes de editar; sem contêiner, rode testes
-dos alvos. Falha herdada exige saída e revisão medida, ausência não aprova.
-No principal são livres leituras, fetch, worktree e gh; somente com árvore
-limpa são permitidos switch main e pull. A abertura atualiza o espelho quando seguro.
+Não edite nem mude git no principal. Abra
+`python ci/sessao.py --celula <area> --tarefa <slug> --sem-container`;
+com serviço, omita `--sem-container`. Entre no caminho informado. Retome pela
+mesma entrada, preservando alterações; recusa exige conferir dono, nunca forçar.
+Confira baseline antes de editar; sem contêiner, teste os alvos. Falha herdada
+exige saída e revisão; ausência não aprova. No principal: leitura, fetch,
+worktree e gh livres; switch main/pull só com árvore limpa. A abertura atualiza
+o espelho quando seguro.
 
 **Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`
 (aviso SessionStart; a proibição de editar continua lei).
@@ -187,13 +183,13 @@ são lápides. Sem tipo específico, use nota.
 ## Integração automática
 
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
-atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
-passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
-exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
-descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
-Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
-não integram. Informe somente estados comprovados de validação, integração e
-publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
+atestado, etiqueta ou gesto da maestro. Main protegida: `muralhas` e
+`ci-celula-gate` verdes no SHA atual. Contrato congelado/CODEOWNERS exigem
+mandato do mantenedor: o dono registra `Mandato-do-mantenedor:` na descrição,
+com pedido e caminhos. Nunca invente mandato. Base atrasada é atualizada e
+remedida; rascunhos, forks e conflitos não integram. Só declare validação,
+integração e publicação comprovadas. Veja
+`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 
 **Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml` e a proteção nativa da main.
 
@@ -207,31 +203,31 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 ## Como trabalhar com o mantenedor
 
-Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
-VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
+PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH, use pipeline.
+Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
 
 **Quem faz valer:** julgamento.
 
 ## Plano na abertura, contas no fecho
 
-Abra com `## Plano` e `- [ ]` por passo. **Etapa** é concluir ou bloquear passo
-planejado, nunca ferramenta, leitura, aviso automático ou retentativa.
-Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
-após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
-com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
-pergunta ou acordar não geram dívida.
-Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
-veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
-nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele
-(Lei 11).
+Abra com `## Plano` e `- [ ]` por passo. **Etapa** é concluir ou bloquear passo,
+nunca ferramenta, leitura, aviso ou retentativa. Reimprima só se uma caixa
+mudou ou surgiu bloqueio, sem duplicar o gancho. Fecho único (regra 9):
+PRONTO não admite caixa aberta; leitura, pergunta e acordar não geram dívida.
+PR aberto, rascunho, check ou deploy sem veredito é entrega em voo: meça com
+teto (`ci/esperar.py`), nunca em laço. Falha técnica acionável, check vermelho,
+conflito, teste falho ou log não lido são trabalho do agente. Execute a ação
+segura autorizada antes de encerrar; "vou investigar/corrigir" não fecha tarefa.
+Só pausa explícita ou impedimento externo real justifica parar: registre fato
+medido, impacto e responsável pela retomada. Só gesto exclusivo do mantenedor
+vira pendência dele. NÃO PRONTO não dispensa ação técnica disponível (Lei 11).
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit, Stop, voo)
-e testes; checklist intermediário é julgamento.
+**Quem faz valer:** `ci/prestacao_de_contas.py` e testes; checklist
+intermediário é julgamento.
 
 ## Mapa do projeto para IA
 
-`painel/ia/INDICE.md` é o mapa técnico para auditoria ampla/segunda opinião
-de arquitetura, não leitura de todo despacho. Fonte original vence divergência;
-quem detectar corrige mapa no mesmo PR.
+`painel/ia/INDICE.md`: mapa de auditoria/arquitetura, não de todo despacho.
+Fonte original vence; corrija divergência no mesmo PR.
 
 **Quem faz valer:** `ci/tests/test_painel_ia_atualizado.py`.
