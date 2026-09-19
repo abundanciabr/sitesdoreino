@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-235331-TAR-478-explicada",
+  "tarefa": "TAR-478",
+  "evento": "explicada",
+  "quando": "2026-09-18T23:53:31+00:00",
+  "quem": "TAR-458: docs/consultorias/equipe-especialista/DIAGNOSTICO-TAR-458-bearer-do-checkout.md",
+  "o_que_e": "A pagina de compra manda ao navegador, dentro do proprio codigo-fonte, a senha que ela usa para falar com o sistema de pedidos. Qualquer visitante ve essa senha com um clique em ver codigo-fonte.",
+  "o_que_muda": "Hoje essa senha abre exatamente o que a pagina ja faz, e os freios de dinheiro seguram o resto. O problema e amanha: qualquer funcao nova do checkout nasce aberta a qualquer visitante, sem ninguem errar. Esta tarefa escreve a lista do que aquela senha pode fazer e fecha o resto.",
+  "exemplo": "E a chave que fica debaixo do tapete. Hoje ela so abre a porta da sala. Se amanha alguem trocar a fechadura do cofre pela mesma, o cofre abre com a chave do tapete. Esta tarefa carimba na chave: so serve para a sala.",
+  "importancia": 72
+}

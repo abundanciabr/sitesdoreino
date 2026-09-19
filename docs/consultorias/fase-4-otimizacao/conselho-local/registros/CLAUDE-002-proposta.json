@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-002",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "As dez tarefas TAR-358 a TAR-367 estao com os PRs mergeados e verdes, mas nenhuma tem evento `concluida` na fila. O balcao ci/fila.py mostra 100% do trabalho das Fases 1 a 3 como 'falta comprovar o aceite', e uma tarefa sem conclusao pode ser pega de novo por outro despacho.",
+  "titulo": "Fechar as dez tarefas da fila que ja foram entregues e mergeadas",
+  "baseline": "`ls fila/eventos/ | grep TAR-36` nao devolve nenhum arquivo `-concluida`. O estado por tarefa e: TAR-358 explicada/reivindicada/submetida; TAR-359 apenas explicada; TAR-360 a TAR-367 explicada/reivindicada/submetida. Os PRs correspondentes (#1589 a #1599) estao mergeados e verdes. Custo ja pago uma vez por esse buraco: em 05/09/2026 duas sessoes construiram o mesmo portfolio.",
+  "aceite": "Para cada uma das dez, registrar o evento `concluida` citando o numero do PR mergeado como evidencia, e mostrar `ls fila/eventos/ | grep -c 'TAR-36.*concluida'` devolvendo 10 (mais TAR-358). Sem regressao: `python ci/fila.py` roda sem erro e nenhuma tarefa ainda aberta aparece como concluida."
+}
