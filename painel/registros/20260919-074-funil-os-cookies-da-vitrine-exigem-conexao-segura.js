@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-074-funil-os-cookies-da-vitrine-exigem-conexao-segura",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "funil: os cookies da vitrine exigem conexao segura",
+  detalhe: "A vitrine era a ultima celula sem SECURE_PROXY_SSL_HEADER, e por isso gravava o cookie da previa sem Secure. Suite 603 para 606, guarda com 3 mutacoes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1779. Validação local: árvore ffb3e30519642c18ffbd334aec9ac9ac4af705c2; commit 3f0533eb1407e9068d66a3bf95ed647152c57f14; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-513",
+  gravidade: "info",
+  frente: "site",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

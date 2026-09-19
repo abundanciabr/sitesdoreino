@@ -1,0 +1,19 @@
+{
+  "arquivo": "516-abrir-bancada-com-tarefa-da-fila-para-antes-de-anunciar-o-tr",
+  "id": "TAR-516",
+  "titulo": "Abrir bancada com tarefa da fila para antes de anunciar o trabalho",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste que reprova antes do conserto porque o ramo chega ao push sem commit, e verde depois, com mutacao confirmada",
+  "despacho": "BRIEF FECHADO: a abertura com --tar nao consegue abrir o PR de anuncio.\n\n# Contexto\n`ci/sessao.py`, passo 5 (\"PR em rascunho como anuncio\"), decide assim:\n\n- com eventos da fila em `git status` (o caso de `--tar`), faz `git add` deles\n  e segue direto para o `git push`;\n- sem eventos, confere `git rev-list --count origin/main..<ramo>` e, se der\n  zero, faz um `git commit --allow-empty -m \"chore: anunciar intencao da\n  sessao\"`.\n\nO ramo do `--tar` chega ao `git push` com o recibo apenas NO INDICE, nunca\ncommitado, entao o ramo continua identico a main e o `gh pr create` morre com\n`GraphQL: No commits between main and <ramo>`. A sessao para no passo 5 de 12,\nsem venv, sem ambiente, sem baseline, e a Declaracao de Abertura nao sai.\n\nMedido em 19/09/2026 abrindo a bancada de `funil/cookie-seguro-atras-do-traefik`\ncom `--tar 513`. O contorno foi commitar o recibo a mao e repetir o comando.\n\n# Celula\n`ci`. Um PR, uma celula.\n\n# Alvos\n`ci/sessao.py` e os testes dele em `ci/tests/`.\n\n# O que construir\nFaca o ramo do `--tar` chegar ao push com pelo menos um commit, do mesmo jeito\nque o caminho sem `--tar` ja garante. O recibo da fila deve viajar nesse\ncommit: e o gesto que o proprio passo 4 manda fazer (\"o comprovante nasceu na\nbancada, commite-o no PR\").\n\n# Prova exigida\n- Teste que abre a bancada com `--tar` e falha antes do conserto no\n  `gh pr create`, ou no invariante \"o ramo esta a frente da main antes do push\".\n- Mutacao: desfazer o commit novo tem de deixar o teste vermelho.\n- `python -m pytest ci/tests -q`, saida colada, sem regressao.",
+  "origem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
