@@ -198,7 +198,8 @@ def bancada_git_real(repo, tmp_path):
     (raiz / ".githooks").mkdir()
     (raiz / ".githooks" / "pre-commit").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     (raiz / ".githooks" / "pre-push").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    for pasta in ("contracts", "services", "armadilhas"):
+    (raiz / "fila" / "eventos").mkdir(parents=True)
+    for pasta in ("contracts", "services", "armadilhas", "fila/eventos"):
         (raiz / pasta / ".gitkeep").write_text("", encoding="utf-8")
     (raiz / "preservado.txt").write_text("Trabalho preexistente", encoding="utf-8")
     (raiz / ".gitignore").write_text(
@@ -352,3 +353,88 @@ def test_resolver_clone_recusa_git_inconclusivo_sem_alterar_arquivos(
     with pytest.raises(ErroDeInstrumentacao):
         sessao.raiz_do_clone(bancada)
     assert git(raiz, "worktree", "list", "--porcelain") == antes
+
+
+@pytest.fixture
+def gh_que_recusa_ramo_sem_commit(tmp_path):
+    """Um `gh` de mentira que recusa o PR igual ao GitHub de verdade.
+
+    O `gh pr create` responde "No commits between main and <ramo>" e sai 1
+    quando o ramo não tem nenhum commit à frente de `main`. Sem isso o dublê
+    aceitaria qualquer coisa e o teste ficaria verde com o defeito a bordo.
+    """
+    import os
+    import sys
+
+    pasta = tmp_path / "bin-gh"
+    pasta.mkdir()
+    corpo = pasta / "gh_falso.py"
+    corpo.write_text(
+        "import subprocess, sys\n"
+        "a = sys.argv[1:]\n"
+        "if a[:2] == ['pr', 'list']:\n"
+        "    print('[]')\n"
+        "elif a[:2] == ['pr', 'create']:\n"
+        "    ramo = a[a.index('--head') + 1]\n"
+        "    adiante = subprocess.run(\n"
+        "        ['git', 'rev-list', '--count', 'origin/main..' + ramo],\n"
+        "        capture_output=True, text=True).stdout.strip()\n"
+        "    if adiante in ('', '0'):\n"
+        "        print('pull request create failed: No commits between main and '\n"
+        "              + ramo, file=sys.stderr)\n"
+        "        raise SystemExit(1)\n"
+        "    print('https://github.com/abundanciabr/sitesdoreino/pull/477')\n"
+        "elif a[:2] == ['pr', 'view']:\n"
+        "    print('{\"state\":\"OPEN\",\"isDraft\":true,\"headRefOid\":\"abc\"}')\n",
+        encoding="utf-8",
+    )
+    if os.name == "nt":
+        atalho = pasta / "gh.cmd"
+        atalho.write_text(
+            f'@echo off\n"{sys.executable}" "{corpo}" %*\n', encoding="utf-8"
+        )
+    else:
+        atalho = pasta / "gh"
+        atalho.write_text(
+            f'#!/bin/sh\nexec "{sys.executable}" "{corpo}" "$@"\n', encoding="utf-8"
+        )
+        atalho.chmod(0o755)
+    return str(atalho)
+
+
+def test_comprovante_da_fila_vira_commit_antes_do_push(
+    bancada_git_real, gh_que_recusa_ramo_sem_commit, tmp_path
+):
+    """TAR-477: o ramo com comprovante ia direto do `git add` para o `git push`.
+
+    Sem commit, o ramo empatava com `main` e o `gh pr create` morria com
+    "No commits between main and <ramo>": toda abertura com `--tar` caía ali.
+    """
+    raiz, bancada, git = bancada_git_real
+    comprovante = bancada / "fila/eventos/20260918-120000-TAR-001-reivindicada.json"
+    comprovante.write_text(
+        json.dumps(
+            {"tarefa": "TAR-001", "quem": "sessao-a", "evento": "reivindicada"}
+        ),
+        encoding="utf-8",
+    )
+    plano = plano_de_teste(
+        celula="ci",
+        tarefa="retomada",
+        raiz=raiz,
+        sobe_ambiente=False,
+        tarefa_da_fila="TAR-001",
+        base_de_scratch=tmp_path / "scratch",
+    )
+    assert plano.worktree == bancada
+
+    sessao.Sessao(plano, log=lambda *_: None).anunciar_pr(
+        gh_que_recusa_ramo_sem_commit
+    )
+
+    assert git(bancada, "rev-list", "--count", "origin/main..agent/ci/retomada") == "1"
+    assert (
+        "fila/eventos/20260918-120000-TAR-001-reivindicada.json"
+        in git(bancada, "show", "--name-only", "--format=", "HEAD")
+    )
+    assert git(bancada, "status", "--porcelain") == ""
