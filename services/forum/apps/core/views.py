@@ -22,6 +22,7 @@ from apps.forum.models import Area, Mensagem, Topico
 
 from . import agente
 from .etiquetas import decorar as decorar_com_etiquetas
+from .galeria import caixa_da_galeria
 from .leitura import (
     marcar_area_como_lida,
     novidades_por_area,
@@ -279,6 +280,7 @@ def contexto_do_topico(
     aviso_ia="",
     erro_ia="",
     orientacao="",
+    erro_galeria="",
 ):
     mensagens = Mensagem.objects.filter(topico=topico).select_related("autor")
     if not pode_moderar(ator):
@@ -327,6 +329,11 @@ def contexto_do_topico(
         "aviso_ia": aviso_ia,
         "erro_ia": erro_ia,
         "orientacao_digitada": orientacao,
+        # MOSTRAR NA GALERIA (`apps/core/galeria.py`). `None` para quase todo
+        # mundo: a caixa só existe para o DONO do trabalho, e só na área da
+        # vitrine. Quem não a vê também recebe 404 na rota do POST — esconder
+        # o botão nunca foi a proteção.
+        "galeria": caixa_da_galeria(ator, topico, erro_galeria),
     }
 
 
