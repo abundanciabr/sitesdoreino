@@ -30,7 +30,7 @@ A divisão segue a força de cada uma. Antigravity tem a maior janela de
 contexto e enxerga o todo: audita. Codex tem volume, paralelismo e custo
 baixo por PR em tarefa bem especificada: constrói. Claude Code segura
 constituições longas, traduz achado em brief sem ambiguidade e pega o bug
-sutil: rege, executa o cirúrgico e revisa o crítico.
+sutil: rege, executa o cirúrgico à mão e revisa o crítico.
 
 Duas fichas do conselho foram reprovadas por um único motivo: mediram a pasta
 local, que estava 82 commits atrás de `origin/main` e com o `CLAUDE.md`
@@ -64,7 +64,7 @@ classificação muda papéis ou amplia o mandato dos agentes.
 
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
-| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
+| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico com as próprias mãos, sem sub-agente; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
 | Executor | Codex | o PR pela ficha `despacho`, que grava o evento na fila e o registro no livro; a `implementacao` com prova, quando o brief a pedir | pergunta ao mantenedor; edita o clone principal; arma espera; amplia o mandato; audita; decide lei |
 | Sentinela | Antigravity | achados medidos contra `origin/main` (`proposta`) e a verificação independente de cada entrega alheia (`verificacao`) | edita código ou lei; escreve despacho; grava evento ou registro; mede a pasta local |
 
@@ -109,7 +109,7 @@ mora lá deixa de classificar: ele lista.
 
 ## O que a tríade não muda
 
-- A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
+- A lei do lote: pedido colado no Claude Code vira tarefa na fila com brief, e o Codex constrói; pedido colado no Codex é executado como um despacho pela ficha, e o que precisar dividir vira tarefa na fila, devolvida à maestro. O Claude Code não dispara sub-agente que escreva (`ci/muralha_dos_sub_agentes.py` recusa na criação); leitores como `revisor` e `Explore` continuam permitidos.
 - O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, integração automática pelos checks obrigatórios, com mandato CODEOWNERS e contrato congelado preservados.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
 
