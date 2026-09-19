@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-003",
+  "autor": "codex",
+  "registrado_em": "2026-09-12T11:25:00-03:00",
+  "proposta_sha256": "96ee157eb84538f69b0c87f2126c6d2c016d26fa44e01a03bc437fd8c0979aa6",
+  "decisao": "reprovar",
+  "importancia": 0,
+  "justificativa": "Reprovo esta revisão, não o problema. O baseline diz apenas 'Branch origin/main atual' e não apresenta comando nem saída reproduzível, contrariando a exigência da mesa e o padrão de evidência do projeto. O aceite também oferece duas soluções alternativas, comparar o total com origin/main ou exigir documento em docs/decisoes, sem escolher o contrato que será implementado e verificado. Isso impede saber qual aceite foi cumprido e pode permitir uma trava que confunda consolidação legítima com apagamento silencioso. Para mudar meu voto, a proposta deve registrar a revisão exata, os comandos e saídas do baseline, escolher uma regra única e definir testes para remoção, consolidação e decisão escrita. A origem declarada preserva o crédito da auditoria Claude Code; não disputo autoria."
+}
