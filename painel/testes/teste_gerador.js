@@ -92,6 +92,15 @@ caso("painel.html existe e traz o resumo embutido",
   existe(dir1, "painel.html") && leia(dir1, "painel.html").indexOf("var PAINEL = {") !== -1);
 caso("painel.html traz as REGRAS embutidas (a lógica deixou de ser um pedido)",
   leia(dir1, "painel.html").indexOf("montarResumo") !== -1);
+// A CONTA DE CONFIANÇA VIAJA NO BLOCO DE DADOS. Ela ficava de fora até
+// 19/09/2026, e a caixa "Posso confiar nisto?" desistia em silêncio: a única
+// vista que mede o próprio painel nunca chegou a desenhar. Desde o teto de
+// `SEM_PROVA_NO_RESUMO` ela é carga, e não enfeite — é dela que a capa tira
+// quantas afirmações sem prova existem no livro INTEIRO, agora que o bloco
+// "Dito, mas não comprovado" lista só as mais recentes. Sem esta linha a capa
+// mostraria uma lista curta com cara de lista completa.
+caso("painel.html traz a conta de confiança do livro inteiro",
+  leia(dir1, "painel.html").replace(/\\/g, "").indexOf('"confianca":{"afirmacoes":') !== -1);
 caso("--conferir com o painel em dia passa (exit 0)", roda(dir1, ["--conferir"]).code === 0);
 caso("o passado vira um arquivo POR MÊS, com o conteúdo",
   existe(dir1, "livro-202608.js") && leia(dir1, "livro-202608.js").indexOf("window.LIVRO") !== -1);

@@ -323,6 +323,14 @@ var dados = [
     JSON.stringify(pedidosDoDono.length ? pedidosDoDono[0].registro.quando : null) + " },",
   "  resumo: JSON.parse(" + comoTextoJS({
     respondidos: resumo.respondidos,
+    // Contada sobre o livro INTEIRO por `montarResumo`, e embarcada aqui.
+    // Ficava de fora até 19/09/2026: a caixa "Posso confiar nisto?" lê
+    // `PAINEL.resumo.confianca`, não achava nada e desistia em silêncio — a
+    // única vista que mede o próprio painel nunca chegou a desenhar. E ela
+    // passou a ser carga: é dela que a capa tira quantas afirmações sem prova
+    // existem no livro, agora que o bloco "Dito, mas não comprovado" mostra só
+    // as mais recentes (`SEM_PROVA_NO_RESUMO`).
+    confianca: resumo.confianca,
     registros: resumo.registros,
     maisRecenteQuando: resumo.maisRecenteQuando,
     totalNoLivro: resumo.totalNoLivro
