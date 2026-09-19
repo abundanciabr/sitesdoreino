@@ -1,0 +1,19 @@
+{
+  "arquivo": "484-o-congelamento-de-celula-baixa-um-comprovante-que-ninguem-le",
+  "id": "TAR-484",
+  "titulo": "O congelamento de celula baixa um comprovante que ninguem le",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Os 12 testes do guarda do congelamento verdes com a funcao devolvendo so o identificador, e a mutacao que apaga a trava da renovacao continuando a reprovar o teste que a cobre.",
+  "despacho": "# Brief compilado\n\nobjetivo: Fazer a consulta ao congelamento devolver so o identificador, tirando do caminho da emergencia duas conversas com o servidor cujo resultado e descartado\ntipo: teste\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: guarda focado nasce de comportamento ja definido; contrato aberto sobe para produto\ncelula: ci\n\n## Arquivos-alvo\n- ci/rollback.py\n- ci/tests/test_rollback_congela_a_celula.py\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "Passe de remocao sobre o proprio PR #1739, 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

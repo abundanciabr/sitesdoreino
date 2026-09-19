@@ -1,0 +1,42 @@
+{% extends "cliente_base.html" %}
+
+{% block titulo %}Cardapio{% endblock %}
+
+{% block conteudo %}
+  <h1>Encomendar uma peca</h1>
+  <p class="abertura">
+    Escolha o cartao que descreve o que voce quer. O cartao decide o prazo e o
+    nivel do modelador: voce nunca precisa escolher quem faz. O valor nasce da
+    proposta do modelador, e voce responde a ela.
+  </p>
+
+  {% if pedidos %}
+    <h2>Os seus pedidos</h2>
+    {% for pedido in pedidos %}
+      <div class="caixa">
+        <h3><a href="{% url 'pedido' pedido.id %}">{{ pedido.nome_da_peca }}</a></h3>
+        <p class="ajuda">{{ pedido.cartao }}</p>
+        <p>{{ pedido.aconteceu }}</p>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <h2>O cardapio</h2>
+  {% for cartao, prazo_dias in cartoes %}
+    <div class="caixa">
+      <h3>{{ cartao.titulo }}</h3>
+      <p>{{ cartao.o_que_e }}</p>
+      <p class="ajuda">Prazo de producao: {{ prazo_dias }} dias, contados da
+        confirmacao do pagamento pela escola.</p>
+      <ul class="miuda">
+        {% for linha in cartao.letra_miuda %}<li>{{ linha }}</li>{% endfor %}
+      </ul>
+      <p><a href="{% url 'briefing' cartao.valor %}">Descrever a peca deste cartao</a></p>
+    </div>
+  {% endfor %}
+
+  <p class="rodape">
+    O pagamento nao passa por este site. Quando voces fecharem o acordo, quem
+    confirma o pagamento e a escola, e voce ve isso na pagina do pedido.
+  </p>
+{% endblock %}
