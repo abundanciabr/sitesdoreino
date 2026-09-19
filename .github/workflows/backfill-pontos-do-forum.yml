@@ -40,6 +40,20 @@ jobs:
     permissions:
       contents: read
     steps:
+      # A CONFERENCIA QUE PRECEDE A CONEXAO (TAR-461). Num disparo por
+      # `workflow_dispatch` o GitHub roda o YAML e o `script_path` da REF
+      # escolhida, e nao os da main: sem este passo, qualquer ramo empurrado
+      # levaria o proprio `infra/*.sh` para dentro da VPS com a chave de deploy.
+      # Guarda: `ci/tests/test_workflows_com_ssh_tem_portao.py`.
+      - name: Recusar ref que nao seja main
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "::error::PAROU POR SEGURANCA: este workflow abre conexao com a VPS e so roda pela main."
+          echo "O GitHub executa o script da ref escolhida, e nao o da main: disparar por um ramo levaria o codigo do ramo para o servidor."
+          echo "O QUE FAZER: mergeie na main e dispare de novo com a branch main selecionada."
+          exit 1
+
       - uses: actions/checkout@v4
 
       # armadilhas/149: a ssh-action com `script_path` apontando para arquivo
