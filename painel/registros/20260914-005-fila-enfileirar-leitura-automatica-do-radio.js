@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-005-fila-enfileirar-leitura-automatica-do-radio",
+  tipo: "nota",
+  quando: "2026-09-14",
+  titulo: "fila: enfileirar leitura automática do rádio",
+  detalhe: "A pendência aparece na retomada e foi conferida no painel local; a tarefa registra alvos, somente-leitura, fora de escopo e prova sem duplicar o PR 1640.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1642. Validação local: árvore 7fab7865c2112a2b5a8cc7d4eb5b679d9e8f8237; commit 22625002c5659d541c7497e49702b9b3234417c1; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-411",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

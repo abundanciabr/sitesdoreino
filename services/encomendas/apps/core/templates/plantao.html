@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Plantão | Meshcraft</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0 auto; padding: 24px 16px 64px; max-width: 34rem;
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    p.abertura { margin: 0 0 28px; opacity: .8; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    input, select, button {
+      width: 100%; padding: 12px; font: inherit; border-radius: 8px;
+      border: 1px solid rgba(128,128,128,.5); background: transparent;
+      color: inherit; box-sizing: border-box;
+    }
+    button { margin-top: 24px; font-weight: 700; cursor: pointer; }
+    .recado {
+      padding: 12px 14px; border-radius: 8px; margin-bottom: 24px;
+      border: 1px solid rgba(128,128,128,.5);
+    }
+    .recado.certo { border-color: #1a7f37; }
+    .ajuda { font-size: .9rem; opacity: .75; margin: 6px 0 0; }
+  </style>
+</head>
+<body>
+  <h1>Plantão da Fila</h1>
+  <p class="abertura">
+    Aqui o professor diz o nível de cada aluno. Enquanto a Banca não existe,
+    quem dá o título é você, e ele fica registrado com o seu nome e a data.
+  </p>
+
+  {% if recado %}
+    <p class="recado {% if deu_certo %}certo{% endif %}">{{ recado }}</p>
+  {% endif %}
+
+  <form method="post" action="{% url 'plantao_titulo' %}">
+    {% csrf_token %}
+
+    <label for="email">E-mail do aluno</label>
+    <input type="email" id="email" name="email" required
+           autocomplete="off" placeholder="nome@exemplo.com">
+    <p class="ajuda">
+      Confiro na hora se essa pessoa está como aluna da escola. Se não estiver,
+      nada é gravado e eu digo o motivo.
+    </p>
+
+    <label for="titulo">Nível</label>
+    <select id="titulo" name="titulo" required>
+      {% for valor, rotulo in titulos %}
+        <option value="{{ valor }}">{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+    <p class="ajuda">
+      Nível 1 recebe projeto iniciante. Nível 2 abre o intermediário, e o
+      Nível 3 abre o avançado. Dar um nível maior não pula as entregas que
+      cada degrau exige.
+    </p>
+
+    <button type="submit">Registrar o título</button>
+  </form>
+</body>
+</html>

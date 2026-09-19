@@ -114,11 +114,14 @@ class Registro(models.Model):
     #
     # E ha um motivo a mais, que so vale para estes. Ao tirar o texto do Git, a
     # plataforma perdeu o `git log` dos documentos; a auditoria e o historico de
-    # versoes sao o que entra no lugar. CRIAR e EDITAR sao separados porque
-    # "este texto nasceu hoje" e "este texto mudou hoje" sao perguntas
-    # diferentes na hora de reconstruir o que aconteceu.
+    # versoes sao o que entra no lugar. CRIAR, EDITAR, PUBLICAR e DESPUBLICAR
+    # são separados porque nascer, mudar o texto e mudar quem pode lê-lo são
+    # perguntas diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    PUBLICAR_DOCUMENTO = "publicar_documento"
+    DESPUBLICAR_DOCUMENTO = "despublicar_documento"
+    AUTORIZAR_PEDIDO = "autorizar_pedido"
     # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
     # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
     # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
@@ -234,6 +237,61 @@ class Registro(models.Model):
     EDITAR_AULA = "editar_aula"
     PUBLICAR_AULA = "publicar_aula"
     EDITAR_INSTRUMENTO = "editar_instrumento"
+    # [CURSOS] 07/09/2026: a sala passou a servir varios cursos, e criar um
+    # virou gesto da tela (`DECISAO-a-sala-serve-varios-cursos.md`). Dois verbos
+    # proprios, e nao um `editar_aula` reaproveitado: aquele fala do TEXTO de
+    # uma encomenda, e estes falam do curso inteiro. Trocar o produto de um
+    # curso troca QUEM ENTRA nele, e trocar a regra de avanco muda como a
+    # proxima aula abre para todos os alunos dele: sao os dois gestos desta area
+    # que mexem na vida de uma turma inteira de uma vez, e quem ler esta tabela
+    # em meses precisa distinguir os dois de "gravei um texto".
+    #
+    # O `detalhe` guarda QUAIS campos mudaram, nunca os valores, pela regra do
+    # `LICOES.md` (28/08/2026).
+    CRIAR_CURSO = "criar_curso"
+    EDITAR_CURSO = "editar_curso"
+    CRIAR_AULA_AVULSA = "criar_aula_avulsa"
+    EDITAR_AULA_AVULSA = "editar_aula_avulsa"
+    # [ESTRUTURA] 07/09/2026 (TAR-272): a tela que da ao curso a lista dos
+    # modulos e das aulas dele, colada de uma vez. Verbo PROPRIO, e nao um
+    # `editar_curso` reaproveitado: aquele troca o produto ou a regra de
+    # avanco, e este cria (e pode APAGAR) as aulas por onde a turma inteira
+    # passa. E o unico gesto desta area que apaga aula, e quem ler esta tabela
+    # em meses precisa achar essas linhas sem interpretar detalhe.
+    #
+    # O `detalhe` guarda QUANTOS modulos e aulas foram mandados e as contagens
+    # que a porta devolveu, NUNCA os nomes: o nome de cada aula e obra do
+    # mantenedor, e obra nao entra numa tabela append-only (`LICOES.md`,
+    # 28/08/2026).
+    IMPORTAR_ESTRUTURA = "importar_estrutura"
+    # [FILA] 06/09/2026: o botao de excluir da aba "Os robos"
+    # (`/admin/caixa/robos/`). Verbo proprio, e o alvo dele nao e uma pessoa nem
+    # um texto: e um pedido de TRABALHO. Tirar um da fila e o unico gesto desta
+    # area que o outro lado nunca desfaz — `cancelada` e terminal, e a fila
+    # recusa qualquer evento depois de um terminal.
+    #
+    # A razao mais forte para esta linha existir e o desfecho RECUSADO. O gesto
+    # nao escreve no banco de ninguem: ele abre um PR no GitHub. Quando o GitHub
+    # diz nao (sem senha, ramo ja existente, internet caida), nada e escrito em
+    # lugar nenhum, e sem esta linha a tentativa nao teria deixado rastro. No
+    # caminho feliz o `detalhe` guarda o numero do PR, que e o unico jeito de
+    # ligar esta linha ao trabalho que ela abriu.
+    CANCELAR_TAREFA = "cancelar_tarefa"
+    # [PARAMETROS DA FILA] 07/09/2026, a tela `/admin/encomendas/parametros/`
+    # (degrau 2.14 da `DECISAO-fila-do-primeiro-dolar.md`). UM verbo, e nao dois
+    # como em `ligar_regra`/`desligar_regra`: la os dois estados sao gestos
+    # opostos e a pergunta "desde quando esta regra paga?" so se responde
+    # separando-os. Aqui nao ha dois estados, ha um numero, e o gesto e sempre o
+    # mesmo: acrescentar uma linha nova a um historico.
+    #
+    # E este verbo e METADE do rastro, exatamente como o da economia. A outra
+    # metade mora na celula `encomendas`: la ficam o VALOR novo, o `desde` a
+    # partir do qual ele vale e o motivo escrito, numa tabela append-only com
+    # gatilho no Postgres. O que ESTA linha acrescenta, e que nenhuma outra
+    # guarda, e a tentativa que FALHOU — quando a celula recusa o valor (fora do
+    # tipo, motivo curto demais) nada e escrito la, e sem esta linha o gesto de
+    # mexer na regua da fila nao teria deixado rastro em lugar nenhum.
+    MUDAR_PARAMETRO = "mudar_parametro"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -254,7 +312,10 @@ class Registro(models.Model):
         (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
+        (AUTORIZAR_PEDIDO, "autorizar uma versão do pedido da Reunião"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
+        (PUBLICAR_DOCUMENTO, "publicar um documento no site"),
+        (DESPUBLICAR_DOCUMENTO, "tirar um documento do público"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
         (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),
@@ -279,6 +340,13 @@ class Registro(models.Model):
         (EDITAR_AULA, "gravar uma encomenda do curso"),
         (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
+        (CRIAR_CURSO, "criar um curso novo na escola"),
+        (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
+        (CRIAR_AULA_AVULSA, "criar uma aula avulsa para compartilhar"),
+        (EDITAR_AULA_AVULSA, "editar uma aula avulsa para compartilhar"),
+        (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
+        (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
+        (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
     ]
 
     OK = "ok"

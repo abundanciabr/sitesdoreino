@@ -17,8 +17,9 @@ este arquivo trava:
    branco, recusa colidir com o que já existe, recusa os nomes que a área
    administrativa já usa, e NUNCA muda depois de criado.
 
-4. **`publico` continua fail-CLOSED do lado da tela.** Caixa não marcada não é
-   enviada pelo navegador, e a ausência do campo é o "não".
+4. **Criar e editar nunca publicam.** Todo documento novo nasce privado, mesmo
+   com um POST montado à mão. Publicar e tirar do público são gestos próprios,
+   oferecidos abaixo do documento depois que ele já existe.
 
 5. **Toda escrita deixa rastro na auditoria da célula.** A lei do `LICOES.md`
    daqui: a auditoria entra no MESMO PR da primeira escrita, nunca depois. O
@@ -94,6 +95,8 @@ def _criar(cliente, **campos):
         ("post", "/documentos/criar"),
         ("get", "/documentos/algum/editar"),
         ("post", "/documentos/algum/salvar"),
+        ("post", "/documentos/algum/publicar"),
+        ("post", "/documentos/algum/despublicar"),
     ],
 )
 def test_nenhuma_rota_do_editor_responde_sem_cracha(metodo, caminho):
@@ -249,14 +252,13 @@ def test_salvar_NAO_renomeia_o_documento_nem_por_post_montado_a_mao():
     assert Documento.objects.get().corpo == "novo texto"
 
 
-# ------------------------------- 4. `publico` continua fail-CLOSED na tela
+# ------------------------- 4. criar e editar nunca publicam por acidente
 
 
 @respx.mock
-def test_criar_sem_marcar_a_caixa_nasce_privado():
-    """Caixa não marcada não é enviada pelo navegador, e a ausência é o "não".
-    É a lei do §2 da `DECISAO-a-area-de-documentos`, do lado do formulário."""
-    _criar(_dentro(), titulo="Rascunho")
+def test_documento_novo_nasce_privado_ate_com_post_montado_a_mao():
+    """A segurança mora no servidor, não no estado inicial de uma caixa."""
+    _criar(_dentro(), titulo="Rascunho", publico="sim")
 
     documento = Documento.objects.get()
     assert documento.publico is False
@@ -264,24 +266,82 @@ def test_criar_sem_marcar_a_caixa_nasce_privado():
 
 
 @respx.mock
-def test_marcar_a_caixa_publica_de_verdade():
-    """O outro lado: sair para o mundo exige um gesto de propósito, e o gesto
-    funciona."""
-    _criar(_dentro(), titulo="Aberto", corpo="# Ola", publico="sim")
+def test_formulario_de_criacao_diz_que_nasce_privado_e_nao_oferece_publicar():
+    corpo = _dentro().get("/documentos/novo").content.decode()
 
-    resposta = Client().get("/docs/aberto")
-    assert resposta.status_code == 200
-    assert "<h1>Ola</h1>" in resposta.content.decode()
+    assert "Sempre nasce só para administradores" in corpo
+    assert 'name="publico"' not in corpo
 
 
 @respx.mock
-def test_desmarcar_a_caixa_tira_do_ar():
+def test_salvar_texto_nao_muda_a_visibilidade_nem_por_post_montado_a_mao():
     cliente = _dentro()
-    _criar(cliente, titulo="Aberto", publico="sim")
+    _criar(cliente, titulo="Rascunho")
 
-    cliente.post("/documentos/aberto/salvar", {"titulo": "Aberto", "corpo": "x"})
+    cliente.post(
+        "/documentos/rascunho/salvar",
+        {"titulo": "Rascunho", "corpo": "novo texto", "publico": "sim"},
+    )
+
+    assert Documento.objects.get(nome="rascunho").publico is False
+    assert Client().get("/docs/rascunho").status_code == 404
+
+
+@respx.mock
+def test_salvar_um_documento_publico_mantem_o_documento_publico():
+    cliente = _dentro()
+    _criar(cliente, titulo="Aberto")
+    cliente.post("/documentos/aberto/publicar")
+
+    cliente.post("/documentos/aberto/salvar", {"titulo": "Aberto", "corpo": "revisado"})
+
+    assert Documento.objects.get(nome="aberto").publico is True
+    assert Client().get("/docs/aberto").status_code == 200
+
+
+@respx.mock
+def test_publicar_e_um_gesto_separado_abaixo_do_documento():
+    cliente = _dentro()
+    _criar(cliente, titulo="Aberto", corpo="# Ola")
+
+    tela = cliente.get("/documentos/aberto").content.decode()
+    assert tela.index('<div class="documento">') < tela.index("Publicar no site")
+
+    resposta = cliente.post("/documentos/aberto/publicar")
+
+    assert resposta.status_code == 302
+    publico = Client().get("/docs/aberto")
+    assert publico.status_code == 200
+    assert "<h1>Ola</h1>" in publico.content.decode()
+
+
+@respx.mock
+def test_tirar_do_publico_e_um_gesto_separado_abaixo_do_documento():
+    cliente = _dentro()
+    _criar(cliente, titulo="Aberto")
+    cliente.post("/documentos/aberto/publicar")
+
+    tela = cliente.get("/documentos/aberto").content.decode()
+    assert tela.index('<div class="documento">') < tela.index("Tirar do público")
+
+    cliente.post("/documentos/aberto/despublicar")
 
     assert Client().get("/docs/aberto").status_code == 404
+
+
+@respx.mock
+def test_publicar_e_despublicar_deixam_verbos_proprios_na_auditoria():
+    cliente = _dentro()
+    _criar(cliente, titulo="Guia")
+
+    cliente.post("/documentos/guia/publicar")
+    cliente.post("/documentos/guia/despublicar")
+
+    assert [r.acao for r in Registro.objects.order_by("id")] == [
+        Registro.CRIAR_DOCUMENTO,
+        Registro.PUBLICAR_DOCUMENTO,
+        Registro.DESPUBLICAR_DOCUMENTO,
+    ]
 
 
 # ------------------------------------------- 5. o rastro de toda escrita
@@ -331,12 +391,13 @@ def test_o_documento_editado_muda_no_site_na_hora():
     """A prova de ponta a ponta do pedido dele: editar aqui muda o site, e não
     espera atualização nenhuma da plataforma."""
     cliente = _dentro()
-    _criar(cliente, titulo="Entrada", corpo="# Antes", publico="sim")
+    _criar(cliente, titulo="Entrada", corpo="# Antes")
+    cliente.post("/documentos/entrada/publicar")
     assert "Antes" in Client().get("/docs/entrada").content.decode()
 
     cliente.post(
         "/documentos/entrada/salvar",
-        {"titulo": "Entrada", "corpo": "# Depois", "publico": "sim"},
+        {"titulo": "Entrada", "corpo": "# Depois"},
     )
 
     corpo = Client().get("/docs/entrada").content.decode()

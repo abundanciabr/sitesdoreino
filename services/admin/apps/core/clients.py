@@ -5,6 +5,8 @@ import datetime as dt
 import logging
 import os
 import time
+import uuid
+from dataclasses import dataclass
 from urllib.parse import quote
 
 import httpx
@@ -287,6 +289,14 @@ class IdentidadeClient:
         return email if isinstance(email, str) and email else None
 
 
+@dataclass(frozen=True)
+class LeituraDaFila:
+    """Resultado da leitura de uma fila, sem apagar recusa de credencial."""
+
+    itens: "list[dict] | None"
+    acesso_negado: bool = False
+
+
 class AlunosClient:
     """`contracts/alunos.openapi.yaml` — a fila de liberação (somente leitura).
 
@@ -321,8 +331,8 @@ class AlunosClient:
         token = (os.environ.get("ALUNOS_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
 
-    def _buscar(self, caminho: str, params: dict) -> "list[dict] | None":
-        """Uma leitura de lista, com o mesmo fail-OPEN das duas que a usam.
+    def _buscar_com_estado(self, caminho: str, params: dict) -> LeituraDaFila:
+        """Lê uma lista e conserva a recusa que a Central precisa explicar.
 
         Existe porque `fila()` e `alunos()` diferem em UMA linha (o caminho), e
         duas cópias do mesmo tratamento de erro divergem no primeiro caso de
@@ -335,7 +345,7 @@ class AlunosClient:
                 "desta célula — a tela vai dizer que não consegue perguntar. "
                 "Rode infra/provisionar-pares-de-categorias.sh."
             )
-            return None
+            return LeituraDaFila(None)
         base, token = config
 
         try:
@@ -347,29 +357,35 @@ class AlunosClient:
             )
         except httpx.HTTPError as erro:
             logger.error("leitura %s: não deu para perguntar: %s", caminho, erro)
-            return None
+            return LeituraDaFila(None)
+
+        if r.status_code in (401, 403):
+            logger.error("leitura %s: a alunos recusou a credencial", caminho)
+            return LeituraDaFila(None, acesso_negado=True)
 
         if r.status_code != 200:
-            # 401 aqui significa que o par não está em `TOKENS_ACEITOS_ADMIN` do
-            # lado da `alunos` — de fora, indistinguível de "não há ninguém".
             logger.error(
                 "leitura %s: a alunos respondeu HTTP %s", caminho, r.status_code
             )
-            return None
+            return LeituraDaFila(None)
 
         try:
             corpo = r.json()
         except ValueError as erro:
             # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
             logger.error("leitura %s: resposta fora do contrato: %s", caminho, erro)
-            return None
+            return LeituraDaFila(None)
 
         if not isinstance(corpo, list):
             logger.error(
                 "leitura %s: a alunos respondeu um corpo que não é lista", caminho
             )
-            return None
-        return corpo
+            return LeituraDaFila(None)
+        return LeituraDaFila(corpo)
+
+    def _buscar(self, caminho: str, params: dict) -> "list[dict] | None":
+        """A compatibilidade dos consumidores antigos: lista ou ausência."""
+        return self._buscar_com_estado(caminho, params).itens
 
     def fila(self, status: str) -> "list[dict] | None":
         """Quem está na fila, de TODAS as escolas (`site_id` omitido de propósito).
@@ -382,6 +398,10 @@ class AlunosClient:
         (`DECISAO-categorias-de-usuario`).
         """
         return self._buscar("/pre-matriculas", {"status": status})
+
+    def fila_para_central(self, status: str) -> LeituraDaFila:
+        """A fila com a recusa preservada para a Central orientar a correção."""
+        return self._buscar_com_estado("/pre-matriculas", {"status": status})
 
     def prontuario(self, email: str) -> "dict | None":
         """[PRONTUARIO] A história de UMA pessoa — todas as passagens dela.
@@ -679,6 +699,78 @@ class AlunosClient:
         logger.error("gestao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
 
+    def matricular_aluno(
+        self, *, site_id: str, email: str, nome: str, product_id: str
+    ) -> "tuple[str, str]":
+        """Cria uma matrícula administrativa idempotente para um curso."""
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+        order_id = "admin:" + str(
+            uuid.uuid5(uuid.NAMESPACE_URL, f"{site_id}:{email}:{product_id}")
+        )
+        try:
+            r = http().post(
+                f"{base}/matriculas",
+                json={
+                    "site_id": site_id,
+                    "order_id": order_id,
+                    "product_id": product_id,
+                    "customer": {"email": email, "name": nome},
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError:
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+        if r.status_code in (200, 201):
+            return self.OK, ""
+        if r.status_code == 422:
+            return self.RECUSADO, "o curso ou os dados da pessoa foram recusados"
+        logger.error("matricular: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+    def sincronizar_cursos(
+        self,
+        *,
+        site_id: str,
+        email: str,
+        nome: str,
+        matriculas: list[dict],
+        cursos_marcados: list[str],
+        decidido_por: str,
+    ) -> "tuple[str, str]":
+        """Faz a seleção da tela coincidir com as matrículas da pessoa."""
+        por_curso = {str(m.get("product_id")): m for m in matriculas}
+        marcados = set(cursos_marcados)
+        for product_id in sorted(marcados):
+            matricula = por_curso.get(product_id)
+            if matricula is None:
+                desfecho, detalhe = self.matricular_aluno(
+                    site_id=site_id, email=email, nome=nome, product_id=product_id
+                )
+            elif matricula.get("status") == "suspensa":
+                desfecho, detalhe = self.atualizar_aluno(
+                    alvo=str(matricula["id"]),
+                    mudancas={"status": "ativa"},
+                    decidido_por=decidido_por,
+                )
+            else:
+                continue
+            if desfecho != self.OK:
+                return desfecho, detalhe
+        for product_id, matricula in por_curso.items():
+            if product_id not in marcados and matricula.get("status") == "ativa":
+                desfecho, detalhe = self.atualizar_aluno(
+                    alvo=str(matricula["id"]),
+                    mudancas={"status": "suspensa"},
+                    decidido_por=decidido_por,
+                )
+                if desfecho != self.OK:
+                    return desfecho, detalhe
+        return self.OK, ""
+
     # NAO existe metodo para apagar uma ficha, e a ausencia e a lei:
     # `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026). O metodo que morava aqui
     # chamava `DELETE /matriculas/{id}`, e a porta saiu do contrato da `alunos`
@@ -722,11 +814,6 @@ class CaixaClient:
 
     def ideias(self, por_email: str = "", com_conversa: bool = False) -> "dict | None":
         """O quadro inteiro com os FATOS de cada ideia, ou `None`.
-
-        `por_email` não filtra nada: ele responde uma pergunta só — *esta pessoa
-        pode assinar?* — e a resposta vem no campo `pode_assinar`. Quem recusa de
-        verdade é a Caixa, na escrita; isto serve para a tela não desenhar um
-        botão que já se sabe que vai ser recusado.
 
         `com_conversa` pede o TEXTO dos comentários de cada ideia (contrato de
         02/09/2026, RITOS §3). Ele é opcional aqui pelo mesmo motivo que é
@@ -920,11 +1007,6 @@ class CaixaClient:
             f"/gestao/ideias/{ideia_id}/avaliacao", {**campos, **quem}
         )
 
-    def registrar_changespec(self, ideia_id: int, *, campos: dict, quem: dict):
-        return self._escrever(
-            f"/gestao/ideias/{ideia_id}/changespec", {**campos, **quem}
-        )
-
     def arquivar(self, ideia_id: int, *, motivo: str, quem: dict):
         """`DECISAO-arquivar-ideia.md`: some do aluno, nada se perde no banco."""
         return self._escrever(
@@ -970,6 +1052,10 @@ class CatalogoClient:
     TIMEOUT = 4.0
     OK = "ok"
     RECUSADO = "recusado"
+    # 409 de `createProduct`: o apelido já é de um produto de OUTRO nome, e nada
+    # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
+    # outro apelido) e não de quem opera a máquina.
+    JA_EXISTE = "ja_existe"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1065,6 +1151,57 @@ class CatalogoClient:
             logger.error("cursos: o catálogo respondeu um corpo que não é lista")
             return None
         return corpo
+
+    def criar_produto(self, slug: str, nome: str) -> "tuple[str, dict | str]":
+        """`createProduct`: cadastra um produto (um curso é um produto).
+
+        É a única ESCRITA de catálogo que não é o menu, e ela existe porque
+        "fácil de criar um curso" não combina com um bloco de colar no servidor
+        a cada curso novo (`DECISAO-a-sala-serve-varios-cursos.md` §3.5).
+
+        **A porta é idempotente pelo apelido**, e é isso que torna seguro
+        reenviar o formulário: mesmo apelido com o mesmo nome responde 200 com
+        o produto que já existe, sem duplicar. Apelido já usado por um produto
+        de OUTRO nome é `JA_EXISTE`, e aí nada foi alterado do outro lado.
+
+        Devolve `(desfecho, produto)` no caminho feliz e `(desfecho, frase)` nos
+        outros: a frase é a do catálogo, mostrada verbatim, porque a regra é de
+        lá e reescrevê-la aqui daria duas redações para o mesmo não.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/produtos",
+                json={"slug": slug, "name": nome},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("cursos: não deu para criar o produto: %s", erro)
+            return self.NAO_RESPONDEU, "o catálogo não respondeu"
+        if r.status_code in (200, 201):
+            try:
+                corpo = r.json()
+            except ValueError as erro:
+                # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
+                logger.error("cursos: resposta fora do contrato: %s", erro)
+                return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+            if not isinstance(corpo, dict) or not str(corpo.get("id") or ""):
+                logger.error("cursos: o produto criado voltou sem id")
+                return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+            return self.OK, corpo
+        if r.status_code in (409, 422):
+            try:
+                frase = str(r.json().get("detail", "")).strip()
+            except ValueError:
+                frase = ""
+            desfecho = self.JA_EXISTE if r.status_code == 409 else self.RECUSADO
+            return desfecho, frase or "o catálogo recusou, sem dizer o motivo"
+        logger.error("cursos: criar produto respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "o catálogo não respondeu"
 
     def gravar_menu(self, site_id: str, menu: dict) -> "tuple[str, str]":
         """Grava o documento INTEIRO. Devolve (situação, frase para a tela)."""
@@ -1250,6 +1387,171 @@ class GamificacaoClient:
             return self.RECUSADO, f"essa {rotulo} não existe nesta escola"
         logger.error("economia: a mudança respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a gamificação respondeu com erro"
+
+
+class EncomendasClient:
+    """A régua da Fila do Primeiro Dólar — os números que o motor obedece.
+
+    Fala só o que a porta de máquina da `encomendas` expõe (`getParameters` e
+    `setParameter`, em `services/encomendas/apps/core/api.py`). Nunca lê o banco
+    dela (Lei 3), e **nunca guarda uma cópia** de parâmetro nenhum aqui: o valor
+    de um parâmetro é dado da `encomendas`, e o mesmo fato em dois lugares é a
+    lei anti-duplicação do `CLAUDE.md` sendo quebrada. No dia em que os dois
+    discordassem, esta tela mostraria um prazo e o aluno cumpriria outro.
+
+    **Ela existe porque a lei da célula chama de critério de morte 5 o dia em
+    que mudar um destes números exigir PR de código**
+    (`DECISAO-fila-do-primeiro-dolar.md` §3.8, e §9 do
+    `PLANO-AREA-DE-NEGOCIACAO.md`). Enquanto trocar o relógio da oferta
+    dependesse de um robô editar o semeador e esperar uma publicação, a régua
+    era código com aparência de dado.
+
+    DOIS PARES DE CHAVES, E O SEGUNDO NÃO É ENFEITE (`armadilhas/318`)
+    -----------------------------------------------------------------
+    A porta do outro lado tem dois graus: `TOKENS_ACEITOS_ADMIN` lê e
+    `TOKENS_ESCRITA_ADMIN` grava, e o alto contém o baixo. Este cliente guarda
+    os dois valores em variáveis separadas (`ENCOMENDAS_API_TOKEN` e
+    `ENCOMENDAS_API_TOKEN_ESCRITA`) porque ler a régua e MUDAR a régua da fila
+    inteira não podem ser o mesmo poder. Grau insuficiente volta 403 de lá, e
+    esta classe o traduz numa frase que diz o que fazer.
+
+    **Fail-OPEN na leitura, fail-CLOSED na escrita**, como na
+    `GamificacaoClient` e pelo mesmo motivo: uma tela de operação que não abre é
+    inútil justamente quando você precisa dela, e dizer "gravei" sem ter gravado
+    é pior que recusar.
+
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
+    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, motivo curto
+    #: demais, autor vazio, ou chave fora do vocabulário fechado.
+    RECUSADO = "recusado"
+    #: O par tem o crachá de LEITURA e pediu para gravar. Nome próprio, e não um
+    #: `RECUSADO` reaproveitado, porque a cura é outra e é um passo do
+    #: mantenedor dentro do servidor: não adianta ele corrigir o que digitou.
+    SEM_GRAU_DE_ESCRITA = "sem_grau_de_escrita"
+    #: Não deu para saber: rede, configuração ausente, 5xx, corpo fora do
+    #: contrato. Separado de `RECUSADO` porque "não deu certo" quando pode ter
+    #: dado faria o mantenedor gravar o mesmo valor de novo — e nesta tabela
+    #: gravar duas vezes são duas LINHAS de histórico, nunca uma sobrescrita.
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _endereco(self) -> str:
+        return (os.environ.get("ENCOMENDAS_API_URL") or "").strip().rstrip("/")
+
+    def _para_ler(self) -> "tuple[str, str] | None":
+        base = self._endereco()
+        token = (os.environ.get("ENCOMENDAS_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def _para_gravar(self) -> "tuple[str, str] | None":
+        base = self._endereco()
+        token = (os.environ.get("ENCOMENDAS_API_TOKEN_ESCRITA") or "").strip()
+        return (base, token) if base and token else None
+
+    def parametros(self) -> "list | None":
+        """O vocabulário fechado INTEIRO, com o valor de agora e o histórico.
+
+        `None` = não deu para perguntar. Chave que ainda não tem linha nenhuma
+        vem com `vigente` nulo, e isso não é falha: o piso de preço por nível
+        nasceu de propósito sem número (`PLANO-AREA-DE-NEGOCIACAO.md` §7 e §9).
+        Uma chave sem valor precisa aparecer na tela, ou o mantenedor não tem
+        por onde gravar o primeiro.
+        """
+        config = self._para_ler()
+        if config is None:
+            logger.warning(
+                "parametros: ENCOMENDAS_API_URL/ENCOMENDAS_API_TOKEN ainda não "
+                "estão no env desta célula (par admin→encomendas não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/parametros",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("parametros: as encomendas não responderam: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("parametros: as encomendas responderam HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("parametros: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, list):
+            logger.error("parametros: resposta com forma inesperada")
+            return None
+        return corpo
+
+    def mudar(
+        self, chave: str, valor: str, motivo: str, quem: str
+    ) -> "tuple[str, str]":
+        """Acrescenta uma linha nova ao histórico da chave. Devolve (situação, frase).
+
+        **Nunca reescreve a linha que está valendo**, e isso não é promessa deste
+        arquivo: o `UPDATE` é recusado por gatilho no PostgreSQL do outro lado. O
+        que este método decide é só o que o mantenedor lê quando a célula recusa.
+        """
+        config = self._para_gravar()
+        if config is None:
+            return (
+                self.SEM_GRAU_DE_ESCRITA,
+                "esta área ainda não tem permissão para GRAVAR na Fila do "
+                "Primeiro Dólar, só para ler. Falta um passo seu dentro do "
+                "servidor, que está no relatório do robô que construiu esta "
+                "tela (o roteiro chama-se provisionar-par-dos-parametros). Nada "
+                "foi mudado, e a lista continua sendo a verdade.",
+            )
+        base, token = config
+        try:
+            r = http().put(
+                f"{base}/parametros/{quote(chave, safe='')}",
+                json={"valor": valor, "motivo": motivo, "quem": quem},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("parametros: não deu para gravar %s: %s", chave, erro)
+            return self.NAO_RESPONDEU, "a Fila do Primeiro Dólar não respondeu"
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 403:
+            return (
+                self.SEM_GRAU_DE_ESCRITA,
+                "a Fila do Primeiro Dólar reconheceu esta área, e não deixou "
+                "gravar: o crachá que está no servidor é o de LEITURA. O roteiro "
+                "provisionar-par-dos-parametros, rodado dentro do servidor, "
+                "resolve isso. Nada foi mudado.",
+            )
+        if r.status_code == 404:
+            return self.RECUSADO, "esse número não existe na Fila do Primeiro Dólar"
+        if r.status_code == 400:
+            return self.RECUSADO, self._recusa_em_portugues(r)
+        logger.error("parametros: a gravação respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a Fila do Primeiro Dólar respondeu com erro"
+
+    def _recusa_em_portugues(self, resposta) -> str:
+        """A frase que a própria célula escreveu, ou uma nossa se o corpo vier torto.
+
+        A `encomendas` escreve as recusas dela em português e elas são
+        acionáveis ("use HH:MM", "escreva o motivo com pelo menos 15
+        caracteres"). Reescrevê-las aqui criaria duas versões da mesma regra, e a
+        daqui envelheceria calada no primeiro tipo novo de chave.
+        """
+        try:
+            corpo = resposta.json()
+        except ValueError:
+            corpo = None
+        detalhe = corpo.get("detail") if isinstance(corpo, dict) else None
+        return str(detalhe) if detalhe else "o valor não foi aceito"
 
 
 class NotificacoesClient:
@@ -1717,9 +2019,9 @@ class CursosClient:
     """A sala de aula: as encomendas do curso e os instrumentos de avaliação.
 
     Fala só o que está no contrato congelado (`contracts/cursos.openapi.yaml`,
-    degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as sete operações do
-    editor, e das aulas SEMPRE as que sabem de curso (`listLessons`,
-    `getLesson`, `putLesson`, `publishLesson`, sob `/cursos/{curso}/aulas`).
+    degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as operações do editor,
+    e das aulas SEMPRE as que sabem de curso (`listLessons`, `getLesson`,
+    `putLesson`, `publishLesson`, `checkLesson`, sob `/cursos/{curso}/aulas`).
     Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
@@ -1745,9 +2047,17 @@ class CursosClient:
     - **`RECUSADO`** (422): a `cursos` leu o corpo e recusou, e o segundo item
       é o `detail` do contrato, com a lista de erros campo por campo. Quem o
       traduz para português, ao lado de cada campo, é `apps/core/aulas.py`.
+      Desde 07/09/2026 `publicar_aula` também devolve `RECUSADO`, e aí o
+      `detail` é UMA FRASE, não uma lista: é o [INV-CUR-C1], a encomenda que
+      manda o aluno para uma que não existe. A frase sobe inteira para a tela.
     - **`NAO_RESPONDEU`**: rede, 5xx, corpo fora do contrato. Na escrita isto
       NÃO vira "recusado": a gravação pode ter acontecido do outro lado, e a
-      tela precisa dizer "não sei" em vez de "não valeu".
+      tela precisa dizer "não sei" em vez de "não valeu". No 503 o segundo item
+      é o `detail` da `cursos`, quando ela mandou um: é o caso do Guardião de
+      fidelidade, que explica em português por que a IA não respondeu (falta a
+      chave, a conta bateu no limite, a resposta veio ilegível). Trocar essa
+      frase pela genérica mandaria a professora procurar um problema de rede
+      que não existe.
 
     ## Fail-OPEN na leitura, fail-CLOSED na escrita
 
@@ -1759,11 +2069,23 @@ class CursosClient:
     """
 
     TIMEOUT = 4.0
+    # A conferência de FIDELIDADE é a única operação desta porta que espera por
+    # uma inteligência artificial, e são até quatro comparações em sequência,
+    # cada uma com o teto de 90 segundos da chamada (`agente.TIMEOUT`, do lado
+    # da `cursos`). Com os 4 segundos das outras, a professora leria "a sala de
+    # aula não respondeu" enquanto o pedido dela ainda estava sendo atendido do
+    # outro lado, e a conta seria paga sem ninguém ver o resultado.
+    TIMEOUT_DA_IA = 400.0
     OK = "ok"
     SEM_CONFIGURACAO = "sem_configuracao"
     RECUSOU = "recusou"
     NAO_EXISTE = "nao_existe"
     RECUSADO = "recusado"
+    # 409 de `createCourse`: já existe um curso com este apelido NESTE site, e
+    # nada foi criado. O apelido é a identidade do curso e não muda depois, por
+    # contrato, então a saída é escolher outro — e isso é decisão do mantenedor,
+    # não conserto de máquina.
+    JA_EXISTE = "ja_existe"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1786,6 +2108,72 @@ class CursosClient:
         if parte is not None:
             params["parte"] = int(parte)
         return params
+
+    # -- as tres operacoes do CURSO ------------------------------------------
+    def cursos(self, site_id: str) -> "tuple[str, list | None]":
+        """`listCourses`: os cursos deste site, em ordem de apelido.
+
+        Site sem curso nenhum responde lista vazia, e isso é resposta, não
+        falha: quem sabe a diferença é o desfecho, como em toda operação daqui.
+        """
+        return self._pedir("get", "cursos", params={"site_id": site_id}, forma=list)
+
+    def aulas_avulsas(self, site_id: str) -> "tuple[str, list | None]":
+        """`listStandaloneLessons`: as aulas compartilháveis deste site."""
+        return self._pedir(
+            "get", "aulas-avulsas", params={"site_id": site_id}, forma=list
+        )
+
+    def criar_aula_avulsa(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
+        """`createStandaloneLesson`: publica título, vídeo e descrição.
+
+        O serviço gera o slug imutável. Esta célula nunca aceita nem manda um
+        endereço escolhido no navegador.
+        """
+        return self._pedir(
+            "post",
+            "aulas-avulsas",
+            params={"site_id": site_id},
+            json=corpo,
+            sucesso=(201,),
+        )
+
+    def editar_aula_avulsa(
+        self, site_id: str, slug: str, corpo: dict
+    ) -> "tuple[str, dict | None]":
+        """`updateStandaloneLesson`: atualiza campos sem mudar o endereço."""
+        return self._pedir(
+            "put",
+            "aulas-avulsas/" + quote(slug, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
+    def criar_curso(self, site_id: str, corpo: dict) -> "tuple[str, dict | None]":
+        """`createCourse`: o gesto Novo curso, com apelido, nome, regra e produto.
+
+        Responde 201, e não 200, porque o curso nasce aqui. Apelido repetido
+        naquele site é `JA_EXISTE` (409), e nada foi criado do outro lado.
+        """
+        return self._pedir(
+            "post", "cursos", params={"site_id": site_id}, json=corpo, sucesso=(201,)
+        )
+
+    def alterar_curso(
+        self, site_id: str, curso: str, corpo: dict
+    ) -> "tuple[str, dict | None]":
+        """`putCourse`: nome, regra de avanço ou produto. Ausente é NÃO MEXER.
+
+        Por isso o corpo daqui leva só o que a tela quis trocar: mandar um campo
+        com o valor de hoje seria gravar de novo o que ninguém pediu, e mandar
+        `produto_id` vazio por engano desapontaria o produto e fecharia a sala.
+        """
+        return self._pedir(
+            "put",
+            "cursos/" + quote(curso, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
 
     # -- as quatro leituras --------------------------------------------------
     def aulas(
@@ -1816,6 +2204,44 @@ class CursosClient:
             "get",
             self._caminho(curso, quote(numero, safe="")),
             params=self._com_parte(site_id, parte),
+        )
+
+    def conferir_aula(
+        self,
+        site_id: str,
+        curso: str,
+        numero: str,
+        parte: "int | None" = None,
+        *,
+        modo: str = "coerencia",
+    ) -> "tuple[str, list | str | None]":
+        """`checkLesson`: os defeitos da encomenda, ou lista vazia.
+
+        É LEITURA, e nada é gravado do outro lado: os dois conferentes apontam
+        e nunca corrigem. Lista vazia é a resposta de uma encomenda sem defeito,
+        e não uma falha; quem sabe a diferença é o desfecho, como em toda
+        operação deste cliente.
+
+        `modo` escolhe a régua, e o padrão é o de sempre: `coerencia` é código
+        (as seis conferências mecânicas) e `fidelidade` é a IA do Guardião,
+        que compara cada peça derivada com a fonte dela. O parâmetro só viaja
+        quando é `fidelidade`, para que a chamada de coerência continue saindo
+        daqui byte a byte como saía antes do degrau 3.2.
+
+        As frases de cada defeito vêm prontas em português da `cursos`, e esta
+        célula as mostra verbatim: a regra é de lá, e reescrever a redação dela
+        aqui seria a mesma frase em dois lugares. Isso vale também para as
+        recusas do Guardião (422 sem o que conferir, 503 com a IA fora do ar):
+        elas chegam no segundo item, como texto.
+        """
+        pela_ia = modo == "fidelidade"
+        return self._pedir(
+            "get",
+            self._caminho(curso, quote(numero, safe=""), "conferir"),
+            params=self._com_parte(site_id, parte)
+            | ({"modo": modo} if pela_ia else {}),
+            forma=list,
+            timeout=self.TIMEOUT_DA_IA if pela_ia else None,
         )
 
     def instrumentos(self) -> "tuple[str, list | None]":
@@ -1861,17 +2287,54 @@ class CursosClient:
             params=self._com_parte(site_id, parte),
         )
 
+    def gravar_estrutura(self, site_id: str, curso: str, corpo: dict):
+        """`putCourseStructure`: os blocos e as aulas do curso, reconciliados.
+
+        Uma ida só, e do outro lado uma transação só: ou a estrutura inteira
+        entra, ou nada entra. Por isso o `RECUSADO` (422) daqui é o único
+        desfecho em que a tela pode afirmar que nada foi gravado, e o `detail`
+        dele traz o motivo pronto em português (a aula por onde um aluno passou,
+        ou a linha do problema), que a tela mostra verbatim.
+
+        Não passa por `_caminho`: aquele monta o endereço das aulas
+        (`cursos/<curso>/aulas/...`), e a estrutura é irmã dele, não filha.
+        """
+        return self._pedir(
+            "put",
+            "cursos/" + quote(curso, safe="") + "/estrutura",
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
     def gravar_instrumento(self, slug: str, corpo: dict):
         """`putInstrument`: a escala, os mínimos, a seção e os descritores.
         `nome_canonico` e `cartao` nunca vão no corpo: são da lei, e a porta
         recusa com 422 se forem."""
         return self._pedir("put", "instrumentos/" + quote(slug, safe=""), json=corpo)
 
-    def _pedir(self, metodo: str, caminho: str, *, params=None, json=None, forma=dict):
-        """Uma ida à porta, com o tratamento que as sete operações compartilham.
+    def _pedir(
+        self,
+        metodo: str,
+        caminho: str,
+        *,
+        params=None,
+        json=None,
+        forma=dict,
+        sucesso: "tuple[int, ...]" = (200,),
+        timeout: "float | None" = None,
+    ):
+        """Uma ida à porta, com o tratamento que as operações compartilham.
 
-        Devolve `(desfecho, corpo)`. Sete cópias do mesmo `try` divergiriam no
+        Devolve `(desfecho, corpo)`. Dez cópias do mesmo `try` divergiriam no
         primeiro caso de borda corrigido de um lado só.
+
+        `sucesso` existe porque `createCourse` responde **201**, e só ela: o
+        padrão continua sendo 200, então nenhuma operação que já rodava muda de
+        comportamento por causa desta linha.
+
+        `timeout` ausente é o desta porta, e é o certo para tudo o que a `cursos`
+        responde de cabeça. Só a conferência de fidelidade passa um seu, porque
+        só ela espera por uma IA.
         """
         config = self._configuracao()
         if config is None:
@@ -1888,7 +2351,7 @@ class CursosClient:
                 params=params,
                 json=json,
                 headers={"Authorization": "Bearer " + token},
-                timeout=self.TIMEOUT,
+                timeout=self.TIMEOUT if timeout is None else timeout,
             )
         except httpx.HTTPError as erro:
             logger.error("aulas: a sala de aula não respondeu: %s", erro)
@@ -1903,13 +2366,25 @@ class CursosClient:
             return self.RECUSOU, None
         if r.status_code == 404:
             return self.NAO_EXISTE, None
-        if r.status_code == 422:
+        if r.status_code == 409:
+            # Nenhuma operação desta porta respondia 409 antes de `createCourse`
+            # existir, então este ramo não muda nada do que já rodava: ele dá
+            # nome próprio ao "já existe" em vez de deixá-lo virar "não sei".
             try:
                 detalhe = r.json().get("detail")
             except (ValueError, AttributeError):
                 detalhe = None
-            return self.RECUSADO, detalhe
-        if r.status_code != 200:
+            return self.JA_EXISTE, detalhe
+        if r.status_code == 422:
+            return self.RECUSADO, self._detalhe(r)
+        if r.status_code == 503:
+            # A `cursos` diz POR QUE, em português, e a frase dela sobe inteira
+            # para a tela: é o Guardião de fidelidade avisando que a IA não
+            # respondeu. Sem isso, "falta a chave da Anthropic" chegaria à
+            # professora como "a sala de aula não respondeu".
+            logger.error("aulas: a sala de aula respondeu HTTP 503")
+            return self.NAO_RESPONDEU, self._detalhe(r)
+        if r.status_code not in sucesso:
             logger.error("aulas: a sala de aula respondeu HTTP %s", r.status_code)
             return self.NAO_RESPONDEU, None
 
@@ -1923,3 +2398,11 @@ class CursosClient:
             logger.error("aulas: resposta de %s com forma inesperada", caminho)
             return self.NAO_RESPONDEU, None
         return self.OK, corpo
+
+    @staticmethod
+    def _detalhe(r):
+        """O `detail` da recusa, ou `None` quando não veio um legível."""
+        try:
+            return r.json().get("detail")
+        except (ValueError, AttributeError):
+            return None

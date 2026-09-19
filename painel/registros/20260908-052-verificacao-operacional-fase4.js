@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-052-verificacao-operacional-fase4",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "O comando operacional da Fase 4 passou na seleção completa",
+  detalhe: "A seleção de medição, telemetria, métricas, armadilhas e índice passou com 128 testes em 24,95 segundos. O analisador continua com 0 tarefas confirmatórias e a expansão permanece bloqueada. Os manifestos inválidos foram recusados sem escrever no caderno privado.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

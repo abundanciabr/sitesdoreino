@@ -15,7 +15,7 @@
 #     make freeze   ==  python ci/contract_freeze.py
 #     make sessao   ==  python ci/sessao.py --celula <x> --tarefa <y>
 #
-# `sessao` é o ÚNICO alvo daqui que escreve no mundo (worktree, venv, container).
+# `sessao` prepara a bancada; `pr` publica o ramo e o recibo no GitHub.
 # Ele é explícito de propósito: nenhum outro alvo o chama, e rodar `make doctor`
 # nunca cria nada.
 #
@@ -25,13 +25,15 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas economia pr
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
 	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
+	@echo "  make pr TITULO=... MENSAGEM=... commit + push + PR + registro embarcado"
 	@echo "  make boletim                    o que o mundo e AGORA (antes de decidir)"
 	@echo "  make reservar SUP=registro      o servidor DA o numero (nao adivinhe)"
+	@echo "  make economia TIPO=x OBJETIVO=\"...\" ALVO=arquivo   gera brief curto"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
 	@echo "  make ci                a mudanca respeita as invariantes?"
 	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
@@ -77,6 +79,12 @@ reservar:       ## make reservar SUP=registro — o servidor DA o numero (nao ad
 reservas:       ## o que esta reservado agora, lido do servidor
 	$(PYTHON) ci/reservar.py listar
 
+economia:       ## make economia TIPO=revisao OBJETIVO="..." ALVO=ci/x.py [ARMADILHA=367]
+	@test -n "$(TIPO)" || { echo "ERROR: informe TIPO=arquitetura|produto|contrato|revisao|escrita|diagnostico|teste|texto|espera"; exit 2; }
+	@test -n "$(OBJETIVO)" || { echo "ERROR: informe OBJETIVO=\"o trabalho em uma frase\""; exit 2; }
+	@test -n "$(ALVO)" || { echo "ERROR: informe ALVO=<arquivo>"; exit 2; }
+	$(PYTHON) ci/economia_da_fabrica.py brief --tipo $(TIPO) --objetivo "$(OBJETIVO)" --alvo "$(ALVO)" $(if $(ARMADILHA),--armadilha $(ARMADILHA))
+
 indice:         ## regenera armadilhas/INDICE.md (rode ao criar uma entrada nova)
 	$(PYTHON) ci/indice_de_armadilhas.py
 
@@ -84,12 +92,21 @@ celula:         ## make celula CELULA=pagamentos
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
 	$(PYTHON) ci/ci.py --celula $(CELULA)
 
-mergear:        ## make mergear PR=22 — recusa merge com check vermelho
+mergear:        ## make mergear PR=22: confere os portões; integração pertence à pista
 	@test -n "$(PR)" || { echo "ERROR: informe PR=<numero>"; exit 2; }
 	$(PYTHON) ci/mergear.py $(PR)
 
 esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
 	bash e2e/esqueleto.sh
+
+pr:             ## make pr TITULO="ci: x" MENSAGEM=m.txt CORPO=c.md ARQUIVOS="a b" DETALHE=d.txt VALIDACAO=v.json
+	@test -n "$(TITULO)" || { echo "ERROR: informe TITULO=\"<celula>: o que muda, para leigo\""; exit 2; }
+	@test -n "$(MENSAGEM)" || { echo "ERROR: informe MENSAGEM=<arquivo com a mensagem do commit>"; exit 2; }
+	@test -n "$(CORPO)" || { echo "ERROR: informe CORPO=<arquivo com o corpo do PR>"; exit 2; }
+	@test -n "$(ARQUIVOS)" || { echo "ERROR: informe ARQUIVOS=\"caminho1 caminho2\""; exit 2; }
+	@test -n "$(DETALHE)" || { echo "ERROR: informe DETALHE=<arquivo com o que o mantenedor vai ler>"; exit 2; }
+	@test -n "$(VALIDACAO)" || { echo "ERROR: informe VALIDACAO=<JSON com comandos de validacao>"; exit 2; }
+	$(PYTHON) ci/pr.py --validacao-arquivo "$(VALIDACAO)" $(if $(TAR),--tarefa $(TAR)) --titulo "$(TITULO)" --mensagem-arquivo "$(MENSAGEM)" --corpo-arquivo "$(CORPO)" --detalhe-arquivo "$(DETALHE)" $(if $(TIPO),--tipo $(TIPO)) $(if $(GRAVIDADE),--gravidade $(GRAVIDADE)) $(if $(FRENTE),--frente $(FRENTE)) $(if $(EVIDENCIA),--evidencia "$(EVIDENCIA)") $(if $(CONTINUAR),--continuar) --arquivos $(ARQUIVOS)
 
 sessao:         ## make sessao CELULA=quiz TAREFA=fuso [TAR=178] [SEM_CONTAINER=1] [FRASE="..."]
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }

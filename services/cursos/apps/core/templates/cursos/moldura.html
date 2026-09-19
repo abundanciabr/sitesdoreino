@@ -25,7 +25,7 @@ A BARRA DO SITE vem antes da faixa desta área (decisão do mantenedor de
 cada tag põe uma linha em branco a mais na página de quem NÃO tem menu.
 {% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">{% block faixa %}
-  <a href="{% url 'mapa' %}">Curso</a>
+  <a href="{% url 'catalogo' %}">Cursos</a>
 {% endblock %}</div>
 
 <main>{% block conteudo %}{% endblock %}</main>
@@ -34,7 +34,7 @@ cada tag põe uma linha em branco a mais na página de quem NÃO tem menu.
   <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
   <nav class="links" aria-label="Links úteis">
     <a href="{{ rodape.url_do_site }}">Início do site</a>
-    <a href="{% url 'mapa' %}">Curso</a>
+    <a href="{% url 'catalogo' %}">Cursos</a>
     <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
   </nav>{% endif %}{% if rodape.mostra_direitos %}
   <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}

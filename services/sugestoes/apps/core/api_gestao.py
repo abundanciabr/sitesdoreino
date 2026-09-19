@@ -58,7 +58,6 @@ from apps.sugestoes.eventos import AtorSemIdDaPlataforma
 from apps.sugestoes.models import (
     AvaliacaoInterna,
     ChangeSpecAprovado,
-    CorredorAusente,
     HistoricoStatus,
     Sugestao,
 )
@@ -651,6 +650,10 @@ def _quem(payload: QuemAge):
     operation_id="setIdeaStatus",
     summary="Move a ideia de fase, com histórico e avisos",
     description=(
+        # A frase do ChangeSpec continua aqui porque este texto É o contrato
+        # congelado (`contracts/sugestoes.openapi.yaml`), e emendá-lo é Rito
+        # §3 com o mantenedor presente — nunca de dentro da célula. A trava
+        # saiu em 06/09/2026; esta linha some na próxima emenda do contrato.
         "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
         "transação, a plateia inteira recebe aviso, 'não planejado' exige "
         "justificativa e 'planejado → em desenvolvimento' exige ChangeSpec "
@@ -675,8 +678,6 @@ def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
                 "sugeriu vai ler essa frase."
             )
         }
-    except CorredorAusente as recusa:
-        return 422, {"erro": str(recusa)}
     except AtorSemIdDaPlataforma:
         # [INV-SUG12] O fato não pode ser afirmado sem quem o afirmou. Recusa
         # legível em vez de 500: o caminho existe e é curto — a pessoa entra uma

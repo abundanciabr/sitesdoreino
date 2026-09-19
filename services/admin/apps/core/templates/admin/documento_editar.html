@@ -15,8 +15,8 @@ renderizador escapa antes de formatar (documentos.para_html).
   <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
   <h1>Escrever um documento novo</h1>
   <p class="subtitulo">
-    Ele nasce fechado. Só aparece no site aberto se você marcar a caixa lá
-    embaixo.
+    Sempre nasce só para administradores. Depois de criar e revisar, você pode
+    publicá-lo na página do documento.
   </p>
   {% else %}
   <a class="volta" href="{% url 'documento_admin' rascunho.nome %}">&larr; Voltar ao documento</a>
@@ -114,13 +114,25 @@ renderizador escapa antes de formatar (documentos.para_html).
     </p>
 
     <label class="marcar espaco-20">
-      <input type="checkbox" name="publico" value="sim"
-             {% if rascunho.publico %}checked{% endif %}>
-      <span>Publicar no site, para qualquer pessoa ler</span>
+      <input type="checkbox" name="apendice_vivo" value="sim" id="apendice_vivo"
+             {% if rascunho.apendice_vivo %}checked{% endif %}>
+      <span>Este documento é um apêndice vivo</span>
     </label>
     <p class="nota">
-      Desmarcado, o documento fica só aqui dentro, visível para quem
-      administra.
+      Mostra no topo, para quem lê, a versão, quando foi verificado e quando a
+      verificação vence. Passada a data, o próprio documento avisa que a
+      verificação venceu.
+    </p>
+
+    <label class="rotulo" for="verificado_em">Verificado em</label>
+    <input type="date" id="verificado_em" name="verificado_em"
+           value="{{ rascunho.verificado_em }}">
+
+    <label class="rotulo" for="proxima_verificacao_em">Próxima verificação em</label>
+    <input type="date" id="proxima_verificacao_em" name="proxima_verificacao_em"
+           value="{{ rascunho.proxima_verificacao_em }}">
+    <p class="nota">
+      As duas datas só valem se a caixa acima estiver marcada.
     </p>
 
     <div class="gestos-do-editor">

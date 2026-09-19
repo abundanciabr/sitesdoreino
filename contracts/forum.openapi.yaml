@@ -12,11 +12,14 @@
 # consome o fórum consome ISTO, e o motor por baixo pode ser trocado um dia sem
 # ninguém do outro lado saber.
 #
-# A INVARIANTE QUE ATRAVESSA AS TRÊS OPERAÇÕES: elas só falam de ÁREA PÚBLICA.
-# Nem conteúdo, nem contagem, nem existência de área trancada. O Bearer prova
-# QUEM CHAMA, nunca quem é a pessoa — não chega cookie aqui, não há visitante, e
-# sem pessoa o único recorte honesto é o que qualquer um já veria de graça.
-# Guarda: `services/forum/tests/test_porta_de_maquina.py`.
+# AS TRÊS OPERAÇÕES PÚBLICAS, /areas, /topicos/recentes e /resumo, só falam de
+# ÁREA PÚBLICA. Elas nunca revelam conteúdo, contagem ou existência de área
+# trancada. A exceção única é /galeria/candidatas/{pessoa_id}: o par
+# gamificacao→forum consulta referências consentidas da própria autora, no
+# escopo de um site, sem transformar o tópico original em público. O Bearer
+# identifica o serviço, nunca a pessoa; o provedor confere autoria da candidata
+# e a gamificação confere a sessão da pessoa que consulta. Guarda das operações
+# públicas: `services/forum/tests/test_porta_de_maquina.py`.
 #
 # E não sai dado pessoal: nem e-mail, nem identificador de plataforma, nem quem
 # leu o quê. O público desta escola é majoritariamente menor de idade.
@@ -39,15 +42,24 @@ info:
     Lei do assunto: docs/decisoes/DECISAO-forum-da-escola.md.
 
 
-    ESTA PORTA SO RESPONDE SOBRE AREA PUBLICA. Nao ha cookie aqui e nao ha
+    AS OPERACOES /areas, /topicos/recentes E /resumo SO RESPONDEM SOBRE AREA
 
-    pessoa a reconhecer: o Bearer prova QUEM CHAMA, nunca quem e o
+    PUBLICA. Area de aluno e area de turma nao aparecem nelas, nem o conteudo,
 
-    visitante. Sem pessoa, o unico recorte honesto e o que qualquer um ja
+    nem a contagem, nem a existencia.
 
-    veria de graca. Area de aluno e area de turma nao aparecem por aqui —
 
-    nem o conteudo, nem a contagem, nem a existencia.
+    A UNICA EXCECAO E /galeria/candidatas/{pessoa_id}. Ela existe apenas para
+
+    o par gamificacao e forum consultar referencias consentidas da propria
+
+    autora, no escopo de um site, sem tornar o topico original publico. O
+
+    Bearer identifica o servico, nunca a pessoa. O Forum confere que cada
+
+    candidata e do `pessoa_id` pedido; a gamificacao, com sessao, confere que
+
+    quem consulta so pede as proprias candidatas.
 
 
     E nao sai dado pessoal: nem e-mail, nem quem leu o que. O publico
@@ -116,6 +128,69 @@ paths:
 
 
         `autor` e o nome de EXIBICAO. E-mail nao sai por esta porta.'
+  /galeria/candidatas/{pessoa_id}:
+    get:
+      operationId: listGalleryCandidatesForPerson
+      summary: Os trabalhos consentidos de uma pessoa para a Galeria
+      parameters:
+      - in: path
+        name: pessoa_id
+        required: true
+        schema:
+          type: string
+        description: O identificador opaco da pessoa que pede as proprias candidatas.
+      - in: query
+        name: site_id
+        required: true
+        schema:
+          type: string
+        description: O escopo da escola que limita a consulta e tem de coincidir com cada candidata devolvida.
+      responses:
+        '200':
+          description: Lista de candidatas. Lista vazia significa que nao ha candidata para esta pessoa neste site, inclusive quando existe apenas em outro site.
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/CandidataDaGaleria'
+                type: array
+        '401':
+          description: Bearer do par ausente ou invalido.
+        '403':
+          description: Pedido nao autorizado. A resposta nao informa se existe material privado.
+        '503':
+          description: Fonte indisponivel. Esta resposta e distinta da lista vazia e nao informa se existe material privado.
+      description: 'Porta exclusiva do par gamificacao e forum para a pessoa ver as
+
+        proprias candidatas. O Forum so devolve topicos do autor indicado, no
+
+        site indicado, da area Mostre seu trabalho, moderados e com consentimento
+
+        expresso para a Galeria. Cada `CandidataDaGaleria.site_id` tem de ser
+
+        igual ao `site_id` pedido. Candidata de outro site e omitida, sem trocar
+
+        a resposta por erro que revele a sua existencia.
+
+
+        O Bearer identifica o servico, nao o aluno. O Forum aceita apenas o par
+
+        gamificacao e confere que cada candidata tem `pessoa_id` como autora. A
+
+        gamificacao, usando a sessao, confere que o aluno consulta somente as
+
+        proprias candidatas; a equipe usa fluxo proprio e auditado.
+
+
+        Esta operacao nao revela area de aluno, conversa, pessoa ou obra sem
+
+        consentimento e nao torna o topico original publico. Ela nao devolve
+
+        texto integral, e-mail, leitura, contagem, identidade local nem listagem
+
+        geral de area privada. `pessoa_id` fica no pedido porque identifica a
+
+        unica autora permitida; ele nao e repetido na resposta.'
   /resumo:
     get:
       operationId: getForumSummary
@@ -178,6 +253,51 @@ components:
       - autor
       - respostas
       - ultima_atividade_em
+      type: object
+    ReferenciaSeguraDaGaleria:
+      properties:
+        origem:
+          enum:
+          - forum
+          - lista_permitida
+          type: string
+        tipo:
+          enum:
+          - imagem
+          - link
+          type: string
+        url:
+          description: URL HTTPS validada pelo Forum. A origem e o proprio Forum ou um dominio da lista permitida do provedor.
+          format: uri
+          pattern: ^https://
+          type: string
+      required:
+      - origem
+      - tipo
+      - url
+      type: object
+    CandidataDaGaleria:
+      properties:
+        site_id:
+          description: Repete exatamente o site_id do pedido. Candidata de outro site nunca aparece.
+          type: string
+        topico_id:
+          type: string
+        titulo:
+          type: string
+        referencia:
+          $ref: '#/components/schemas/ReferenciaSeguraDaGaleria'
+        url_canonica:
+          description: Rota HTTPS canônica do Forum para o tópico. O Forum a gera e a rota reaplica a permissão de leitura, não é destino externo.
+          format: uri
+          pattern: ^https://[^/]+/forum/t/[^/?#]+$
+          type: string
+      required:
+      - site_id
+      - topico_id
+      - titulo
+      - referencia
+      - url_canonica
       type: object
     Resumo:
       properties:

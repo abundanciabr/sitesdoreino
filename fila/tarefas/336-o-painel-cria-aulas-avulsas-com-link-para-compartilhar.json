@@ -1,0 +1,19 @@
+{
+  "arquivo": "336-o-painel-cria-aulas-avulsas-com-link-para-compartilhar",
+  "id": "TAR-336",
+  "titulo": "O painel cria aulas avulsas com link para compartilhar",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR da célula admin com testes de cliente, tela, prévia e prefixo, revisão independente e deploy conferido.",
+  "despacho": "Implementar no admin a lista e a criação de aulas avulsas contra o contrato cursos: nome, URL do vídeo, descrição e prévia não editável do endereço; tratar falhas da porta e auditar o gesto.",
+  "origem": "pedido explícito da mantenedora em 10/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-214640-TAR-421-explicada",
+  "tarefa": "TAR-421",
+  "evento": "explicada",
+  "quando": "2026-09-14T21:46:40+00:00",
+  "quem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "o_que_e": "O acompanhamento local precisa saber quando uma conversa foi entregue a uma pessoa e quando pode ser retomada pelos serviços.",
+  "o_que_muda": "Os serviços passam a registrar e expor a passagem de responsabilidade e a retomada autorizada sem duplicar ações comerciais.",
+  "exemplo": "Quando uma pessoa assume uma oportunidade, a sequência automática para; a retomada só ocorre pela condição autorizada e fica registrada.",
+  "importancia": 93
+}

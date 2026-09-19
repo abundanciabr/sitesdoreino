@@ -1,0 +1,17 @@
+{
+  "arquivo": "230-corrigir-o-texto-que-diz-que-ninguem-escreve-a-lista-de-quem",
+  "id": "TAR-230",
+  "titulo": "Corrigir o texto que diz que ninguem escreve a lista de quem confere portfolio",
+  "toca": [
+    "pages"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o docstring de services/pages/apps/core/equipe.py diz o presente (quem escreve a lista e infra/provisionar-equipe-do-portfolio.sh) e a suite services/pages/tests continua verde",
+  "despacho": "CELULA: pages. Arquivo unico: services/pages/apps/core/equipe.py (so o docstring\ndo topo, nenhuma linha de codigo).\n\nO QUE ESTA ERRADO HOJE. O ultimo paragrafo do docstring diz \"QUEM ESCREVE O ENV\nE O MANTENEDOR, NA VPS, e hoje ninguem escreveu: a variavel nao esta em\ninfra/provisionar-pages.sh, que e caminho CODEOWNERS, e o PR deste degrau nao\ntem mandato para toca-lo. (...) A divida esta no balcao, nascida bloqueada\".\nIsso deixou de ser verdade em 06/09/2026: a TAR-229 pagou a divida, e desde\nentao `IDS_DA_EQUIPE` esta em `CHAVES_QUE_EU_GERO`, no heredoc do\n`infra/provisionar-pages.sh` (que a PRESERVA relendo o arquivo vivo) e em\n`infra/env/pages.env.exemplo`, e existe o roteiro\n`infra/provisionar-equipe-do-portfolio.sh`, que traduz e-mail em id perguntando\na `identidade` e escreve a lista no env da celula.\n\nO QUE FAZER. Reescrever aquele paragrafo dizendo o presente: quem escreve a\nlista e `infra/provisionar-equipe-do-portfolio.sh`, rodado pelo mantenedor\ndentro da VPS com o e-mail de quem confere; enquanto ele nao rodar com ninguem,\na lista fica vazia e vazia e ninguem, que e o fail-closed correto. Nada mais do\narquivo muda: a funcao, os nomes e o comportamento ficam exatamente como estao,\ne os dois guardas de\n`services/pages/tests/test_pedido_de_conferencia.py` continuam verdes.\n\nCUIDADO: nao mexa em `infra/` (caminho CODEOWNERS, e ja esta feito) nem no\ncomportamento da leitura do env. E' um PR de UM arquivo.\n\nEVIDENCIA: `python -m pytest services/pages/tests -q` verde, e a leitura do\nparagrafo novo ao lado do `infra/provisionar-equipe-do-portfolio.sh`.",
+  "origem": "TAR-229, despacho-infra-equipe-portfolio-0609",
+  "criada_em": "2026-09-06"
+}

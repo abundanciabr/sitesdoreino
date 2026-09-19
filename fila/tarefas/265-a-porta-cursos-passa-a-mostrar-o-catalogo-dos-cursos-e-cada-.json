@@ -1,0 +1,19 @@
+{
+  "arquivo": "265-a-porta-cursos-passa-a-mostrar-o-catalogo-dos-cursos-e-cada-",
+  "id": "TAR-265",
+  "titulo": "A porta /cursos/ passa a mostrar o catalogo dos cursos, e cada curso se entra pelo proprio endereco",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: /cursos/ responde 200 com um cartao por curso e link para /cursos/<curso>/, nunca 301; o 301 do link antigo de aula continua; suite da cursos verde; prova por mutacao do 301 da raiz",
+  "despacho": "Voce e o despacho da celula cursos. Em origin/main, /cursos/ responde 301 para /cursos/profissional/ porque a view mapa acha um curso so (_a_raiz_mudou_de_casa em services/cursos/apps/core/views.py). O mantenedor quer que /cursos/ mostre um catalogo: um cartao por Curso (calculado de apps/cursos/enderecos.py::cursos_do_site), cada um com link para /cursos/<slug>/, e nunca redirecione. O 301 do link antigo de AULA (/cursos/E00) FICA.\n\nFaca: a rota raiz vira path(\"\", catalogo, name=\"catalogo\"); a view catalogo(request) monta a lista de cursos com slug, nome, url, aulas_abertas, entra e situacao (visitante, seu, nao-e-seu, sem-produto, sem-resposta) e um aviso do topo (sem-resposta, sem-matricula, sem-sala); template novo apps/core/templates/cursos/catalogo.html estendendo moldura.html; moldura.html e aula.html passam a apontar para o catalogo e para o mapa do curso; estilo em static/cursos/sala.css. Reescreva os testes que hoje afirmam o 301 da raiz e crie tests/test_catalogo_de_cursos.py, um caso por estado, com evidencia vermelho para verde e prova por mutacao (recolocar o 301 da raiz tem de deixar o teste vermelho).\n\nNao crie Curso para o produto primeiros-dolares, nao toque em infra/, contracts/, services/admin, comandos de gestao ou migracoes. Texto publicado sem travessao. Registro do livro a bordo do PR. Nunca arme pouso.",
+  "origem": "pedido do mantenedor em 07/09/2026: /cursos/ redirecionava sozinho para o curso do livro e o curso dos 132 alunos ficou sem porta",
+  "criada_em": "2026-09-07"
+}

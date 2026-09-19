@@ -39,6 +39,13 @@ STREAMS = [
     # `aula-concluida` já estava semeada, desligada, esperando por ele. Só a
     # porta que abre viaja: pausa, quiz da aula e envio não rendem ponto.
     "eventos.aula.concluida",
+    # O PORTFÓLIO (degrau 15, 06/09/2026). A célula `pages` publica este assunto
+    # quando alguém da equipe confere o portfólio de um aluno e o selo sai
+    # (`contracts/eventos/pages.portfolio.conferido.v1.json`). É o único assunto
+    # que esta célula assina para NÃO pagar nada: ele acende um MARCO REAL, e
+    # marco real vale zero XP de propósito. O motivo está declarado em
+    # `handlers.NAO_CREDITAM`, ao lado do handler que o cumpre.
+    "eventos.pages.portfolio.conferido",
 ]
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células

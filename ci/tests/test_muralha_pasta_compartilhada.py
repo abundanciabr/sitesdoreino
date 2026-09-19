@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+import muralha_pasta_compartilhada as muralha
+
 RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 MURALHA = RAIZ_DO_REPO / "ci" / "muralha_pasta_compartilhada.py"
 FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
@@ -409,33 +411,12 @@ def test_o_atraso_nao_e_medido_em_worktree(tmp_path):
 
 # ---------- a fiação: sem o hook no settings, a muralha é decoração ----------
 
-def test_settings_do_projeto_liga_a_muralha():
-    fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    pre = fiacao["hooks"]["PreToolUse"]
-    comandos = [
-        h["command"]
-        for entrada in pre
-        for h in entrada["hooks"]
-        if h.get("type") == "command"
-    ]
-    assert any("muralha_pasta_compartilhada.py" in c for c in comandos), (
-        "o PreToolUse do .claude/settings.json não chama a muralha"
-    )
-    matchers = " ".join(entrada.get("matcher", "") for entrada in pre)
-    for ferramenta in ("Edit", "Write", "NotebookEdit", "Bash", "PowerShell"):
-        assert ferramenta in matchers, (
-            f"a ferramenta {ferramenta} está fora do matcher da muralha"
-        )
-    sessao = fiacao["hooks"]["SessionStart"]
-    avisos = [
-        h["command"]
-        for entrada in sessao
-        for h in entrada["hooks"]
-        if h.get("type") == "command"
-    ]
-    assert any("--aviso" in c for c in avisos), (
-        "o SessionStart do .claude/settings.json não liga o aviso da muralha"
-    )
+def test_settings_preserva_aviso_sem_rodar_muralha_por_acao():
+    fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))["hooks"]
+    comandos = [h["command"] for e in fiacao["PreToolUse"] for h in e["hooks"]]
+    assert not any("muralha_pasta_compartilhada.py" in c for c in comandos)
+    avisos = [h["command"] for e in fiacao["SessionStart"] for h in e["hooks"]]
+    assert any("muralha_pasta_compartilhada.py" in c and "--aviso" in c for c in avisos)
 
 
 # ------------------------------------------------------------------------
@@ -482,6 +463,28 @@ def test_arvore_suja_nao_e_tocada_e_o_aviso_diz_por_que(tmp_path):
     assert "NÃO COMMITADO" in r.stdout
     assert "armadilhas/135" in r.stdout
     assert _sha(raiz) == antes, "mexeu numa pasta com trabalho nao salvo"
+
+
+def test_arvore_com_fim_de_linha_invisivel_diz_o_que_corrigir(tmp_path, monkeypatch):
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3)
+    original = muralha.subprocess.run
+
+    def git_simulado(comando, *args, **kwargs):
+        if comando[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(comando, 0, " M CLAUDE.md\n", "")
+        if comando[-2:] == ["diff", "--name-only"]:
+            return subprocess.CompletedProcess(comando, 0, "", "")
+        if comando[-3:] == ["diff", "--cached", "--name-only"]:
+            return subprocess.CompletedProcess(comando, 0, "", "")
+        return original(comando, *args, **kwargs)
+
+    monkeypatch.setattr(muralha.subprocess, "run", git_simulado)
+    mensagem = muralha.atualizar_o_espelho(raiz, 3)
+
+    assert mensagem is not None
+    assert "caixa ou fim de linha" in mensagem
+    assert "CLAUDE.md" in mensagem
+    assert "NÃO COMMITADO" not in mensagem
 
 
 def test_ramo_que_nao_e_main_nao_e_tocado(tmp_path):

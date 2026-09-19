@@ -1,0 +1,21 @@
+{
+  "arquivo": "310-a-fila-recusa-tarefa-sem-responsabilidade-e-cadastro-ambiguo",
+  "id": "TAR-310",
+  "titulo": "A fila recusa tarefa sem responsabilidade e cadastro ambíguo",
+  "toca": [
+    "ci",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes em repositório descartável provam que tarefa nova sem responsabilidade, inventário vazio, identificador duplicado e JSON inválido são recusados com ação clara; o caso válido passa e cada guarda morde sob mutação.",
+  "despacho": "GRAVIDADE: ALTO, bloqueante da Fase 1.\n\nREQUISITO: toda tarefa nova precisa declarar responsabilidade válida, e o inventário precisa recusar identificadores duplicados, unidades vazias e entrada ilegível com orientação de correção.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; ci/fila.py, linhas 154 a 162, 560 a 606 e 2200 a 2244; ci/responsabilidades.py, linhas 43 a 48 e 99 a 133; muralha-da-fila.sh, linha 48.\n\nEVIDÊNCIA OBSERVADA: os campos responsabilidade e responsabilidade_obrigatoria são opcionais e a validação normal não cobra vínculo. Em cópia isolada, uma TAR-9999 sem ambos passou com exit 0 e Fila válida. O leitor de responsabilidades sobrescreve identificadores repetidos e aceita unidades vazias; as contraprovas retornaram lista vazia para ambos. JSON inválido termina em JSONDecodeError sem dizer como corrigir.\n\nREPRODUÇÃO: no script C:\\Users\\davia\\AppData\\Local\\Temp\\meshcraft-auditoria-fase1-c0ac7bf8\\contraprovas.py, crie uma tarefa sem os dois campos e rode cmd_validar; depois carregue inventário vazio e o mesmo id com titulares diferentes. Preserve no PR de correção um trecho suficiente dessa reprodução para a prova sobreviver ao arquivo temporário.\n\nESPERADO: o portão normal da entrega recusa tarefa nova sem vínculo, cadastro vazio ou ambíguo e JSON inválido com mensagem que nomeia o erro e a ação. OBSERVADO: todos os negativos estruturados passam sem erro, salvo o JSON inválido, que quebra o instrumento com exceção crua.\n\nIMPACTO: a fila pode atribuir trabalho sem responsável e o cadastro pode perder uma definição por sobrescrita, enquanto o CI declara validade.\n\nCORREÇÃO MÍNIMA: ligar as exigências ao portão já executado na entrega, validar unicidade, cobertura e entrada com estados claros, sem criar esquema abstrato além do necessário.\n\nCLASSIFICAÇÃO: falha da entrega da Fase 1; bloqueia o aceite técnico da fase.\n\nPROVA DE FECHO: testes nascem vermelhos para os quatro negativos, passam com a correção e reprovam de novo quando cada guarda é sabotado. O caso positivo existente continua aceito.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; contraprovas locais do prompt SHA256 7D80CF9F6E6921C1C76CC1B1FBDB460376C198D1853C05450D01F8F76E0FC914",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

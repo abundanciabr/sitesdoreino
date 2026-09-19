@@ -10,10 +10,10 @@ do plano de 29/08/2026 — desenho em
 
 | O quê | De onde | Quem escreveu |
 |---|---|---|
-| O quadro (estados) | `fila_embutida/estados.json` | `ci/fila.py listar --json`, no build (escritor único) |
-| As tarefas/eventos | `fila_embutida/tarefas|eventos/` | os robôs, por PR |
-| A régua das esperas | `fila_embutida/regua.json` | `ci/medir_tempos.py` (a régua viva) |
-| Os estouros | `fila_embutida/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
+| O quadro (estados) | `admin-dados/fila_ativo/estados.json` | `ci/fila.py listar --json`, no publicador (escritor único) |
+| As tarefas/eventos | `admin-dados/fila_ativo/tarefas|eventos/` | os robôs, por PR |
+| A régua das esperas | `admin-dados/fila_ativo/regua.json` | `ci/medir_tempos.py` (a régua viva) |
+| Os estouros | `admin-dados/fila_ativo/esperas/resumo-*.json` | `ci/exportar_esperas.py` (curado e redigido) |
 | Ao vivo (reservas/PRs) | api.github.com, DO NAVEGADOR | o servidor do GitHub |
 
 Recalcular estados aqui seria a segunda definição de "em que pé está" — a
@@ -22,15 +22,38 @@ do último deploy, e a página DIZ isso (carimbo de geração à vista); o que �
 de agora (reservas do almoxarife, PRs abertos) o navegador do dono pergunta
 direto ao GitHub — o repositório é público de propósito, zero backend novo.
 
+## O que esta tela FAZ, desde 06/09/2026
+
+Ela deixou de ser só de olhar. O mantenedor abriu a página, viu 22 tarefas
+paradas e disse que não entendia nenhuma: todo campo do cartão tinha sido
+escrito por robô para robô. Quatro peças entraram, e três delas são CONTA, não
+dado novo.
+
+| A peça | De onde vem |
+|---|---|
+| A explicação (três parágrafos) | da fila: `o_que_e`, `o_que_muda`, `exemplo` |
+| O selo e a ordem | da fila: `importancia`, um inteiro de 0 a 100 |
+| A posição (#1, #2, …) | CALCULADA aqui, a cada visita |
+| O prompt de tocar a tarefa | CALCULADO do `id` e do `toca` |
+
+A posição nunca se guarda, e o motivo decide o desenho: ela muda sozinha quando
+uma tarefa entra ou sai da fila, e um campo `posicao` seria a segunda definição
+de "o que é mais importante", mentindo no dia seguinte.
+
+A quarta peça é o botão de excluir, e ele não apaga nada aqui: abre um PR no
+GitHub com o evento `cancelada` da fila (`fila_no_github.py`), e quem mergeia é
+a pista. A tela nunca escreve na `main`.
+
 ## O CSP desta rota
 
 A porta manda `script-src 'self'` em toda resposta (`porta.py`, via
-`setdefault` — resposta que traz o próprio CSP vence). Esta página tem uma
-ilha de script embutida (o bloco "ao vivo"), então o CSP dela declara o hash
-da ilha — o MESMO desenho de `painel.py`, e pelo mesmo motivo: `'unsafe-inline'`
-nunca entra. A diferença única: `connect-src` inclui `https://api.github.com`,
-senão o navegador bloquearia a pergunta ao GitHub e o bloco "ao vivo" morreria
-em silêncio (falha silenciosa é a pior — RETROSPECTIVA-FASE-D §1).
+`setdefault` — resposta que traz o próprio CSP vence). Esta página tem DUAS
+ilhas de script embutidas (o bloco "ao vivo" e os gestos dos dois botões),
+então o CSP dela declara o hash de cada uma — o MESMO desenho de `painel.py`, e
+pelo mesmo motivo: `'unsafe-inline'` nunca entra. A diferença única:
+`connect-src` inclui `https://api.github.com`, senão o navegador bloquearia a
+pergunta ao GitHub e o bloco "ao vivo" morreria em silêncio (falha silenciosa é
+a pior — RETROSPECTIVA-FASE-D §1).
 """
 
 import base64
@@ -40,16 +63,33 @@ import re
 from pathlib import Path
 
 from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
+
+from apps.auditoria.models import Registro
+
+from . import fila_no_github
+from .admin_dados import PASTA_DADOS_FILA_ATIVO, selecionar_dados
+from .views import _auditar
 
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 
-# Em produção só a primeira existe (o deploy embute); num checkout, nenhuma —
-# e a página diz que a fila não veio, em vez de fingir fila vazia. Não há
-# fallback para `<repo>/fila/` de propósito: os ESTADOS são materializados no
-# build (`estados.json`), e um fallback que recalculasse aqui seria a segunda
-# definição que o cabeçalho proíbe.
-CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
+# O vocabulário de identificador da fila (`ci/fila.py`, `RE_ID`). Está aqui
+# porque a cerca da célula impede importar `ci/` — e porque um `TAR-NNN` que
+# chega de um formulário é DADO, e dado que vai virar nome de ramo se confere
+# ANTES de ser usado (`armadilhas/047`).
+RE_ID_DA_TAREFA = re.compile(r"^TAR-\d{3,}$")
+
+# O teto do motivo da exclusão. Ele viaja para um repositório público e fica
+# para sempre no lugar da tarefa: é uma frase, não um documento.
+MOTIVO_NO_MAXIMO = 500
+
+# Em produção a fonte é a versão publicada; num checkout a cópia embutida ou a
+# fila da raiz mantêm a suíte legível sem rebuild de imagem.
+CANDIDATOS = (
+    PASTA_DADOS_FILA_ATIVO,
+    RAIZ_DA_CELULA / "fila_embutida",
+    RAIZ_DA_CELULA.parent.parent / "fila",
+)
 
 # OS GRUPOS DO QUADRO, na ordem em que aparecem na tela — e a ordem é POR
 # URGÊNCIA PARA O MANTENEDOR, não a ordem do fluxo de trabalho. O que pode
@@ -62,45 +102,61 @@ CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
 # coluna serve para quem MOVE cartão; ele não move nenhum, ele quer saber o que
 # parou esperando por ele.
 #
-# Cada grupo carrega quatro coisas para a tela:
+# Cada grupo carrega cinco coisas para a tela:
 #   estado     a chave do dado, vocabulário de CONTRATO de `ci/fila.py` — o
 #              template casa por ela, e ela NUNCA muda por motivo de tela;
+#   espera     só nos parados: qual das duas paradas é esta (`ci/fila.py`,
+#              QUEM_DESTRAVA). Ausente nos demais, que casam só pelo estado;
 #   rotulo     a mesma coisa em português de gente, que é o que se lê;
 #   curto      o rótulo do placar de números lá em cima;
 #   recolhida  nasce dentro de um `details` fechado (história, não pendência).
 #
 # A cor da borda diz AÇÃO EXIGIDA, nunca prioridade (consultoria:
-# desenho-kanban-cores-Gemini).
+# desenho-kanban-cores-Gemini). O âmbar existe num grupo só, e agora é verdade:
+# até 06/09/2026 ele pintava as 27 paradas de uma vez, e SEIS delas eram dele.
 COLUNAS = (
     {
         "estado": "bloqueada",
-        "rotulo": "Pararam no meio do caminho",
-        "curto": "paradas",
-        # A frase é NEUTRA de propósito, e isso custou uma correção no mesmo dia
-        # em que a tela nasceu. A primeira versão dizia "é aqui que costuma
-        # haver algo para você decidir" — e das 11 paradas em 03/09/2026,
-        # NENHUMA esperava o mantenedor: todas esperavam outra tarefa da fila.
-        # A fila não guarda "quem esta parada espera", então a tela não tem como
-        # saber, e inventar um palpite aqui seria uma segunda definição de "o
-        # que espera por você" concorrendo com a que é CALCULADA no livro.
-        # Quem responde essa pergunta é a aba "Quem está esperando".
-        "explicacao": "O que cada uma está esperando fica escrito no cartão: umas esperam outra tarefa terminar, outras esperam uma decisão de gente.",
+        "espera": "mantenedor",
+        "rotulo": "Esperando uma decisão sua",
+        "curto": "esperando VOCÊ",
+        # Esta frase pôde ficar afirmativa porque o dado passou a responder.
+        # A versão anterior era neutra por honestidade: dizia "umas esperam
+        # outra tarefa, outras esperam uma decisão de gente" porque a fila não
+        # guardava a diferença, e chutá-la aqui seria uma segunda definição de
+        # "o que espera por você". A cura não foi escrever melhor: foi o evento
+        # `bloqueada` passar a declarar quem destrava.
+        #
+        # Isto NÃO duplica a aba "Quem está esperando" (`caixa.esperando`): lá
+        # são IDEIAS da Caixa de Sugestões esperando assinatura ou triagem, que
+        # vêm da API da Caixa. Aqui são TAREFAS da fila de trabalho. Duas
+        # perguntas diferentes, duas fontes diferentes, nenhum fato em comum.
+        "explicacao": "Nenhum robô tira estas do lugar: elas dependem de uma autorização, uma decisão ou uma prova que só você pode dar. O que fazer em cada uma está escrito no cartão.",
         "cor": "ambar",
         "recolhida": False,
     },
     {
+        "estado": "bloqueada",
+        "espera": "desconhecida",
+        "rotulo": "Responsável pela parada ainda não informado",
+        "curto": "falta classificar",
+        "explicacao": "O robô precisa registrar quem destrava e o próximo passo. Estas tarefas continuam visíveis, mas ainda não sabemos se dependem de você.",
+        "cor": "roxo",
+        "recolhida": False,
+    },
+    {
         "estado": "em execução",
-        "rotulo": "O trabalho já está pronto, esperando conferência",
-        "curto": "na conferência",
-        "explicacao": "Um robô mandou o trabalho e a esteira está conferindo. Ninguém precisa fazer nada.",
+        "rotulo": "Trabalho em andamento, com aceite ainda não comprovado",
+        "curto": "aguardando aceite",
+        "explicacao": "O motivo de cada cartão informa o último passo registrado. Entrega submetida continua aqui até a comprovação do aceite. O robô deve conferir a entrega e registrar a prova.",
         "cor": "roxo",
         "recolhida": False,
     },
     {
         "estado": "reivindicada",
-        "rotulo": "Um robô pegou, e está com ela agora",
-        "curto": "com um robô agora",
-        "explicacao": "Reservou no servidor para nenhum outro robô pisar em cima, e ainda não mandou o trabalho.",
+        "rotulo": "Tarefa reservada por um robô",
+        "curto": "reserva registrada",
+        "explicacao": "Há uma reserva registrada. Ela identifica quem pegou a tarefa; não comprova atividade neste instante nem entrega pronta.",
         "cor": "roxo",
         "recolhida": False,
     },
@@ -108,15 +164,32 @@ COLUNAS = (
         "estado": "na fila",
         "rotulo": "Esperando um robô pegar",
         "curto": "esperando um robô",
-        "explicacao": "Prontas para trabalho. Ninguém pegou ainda.",
+        "explicacao": "Prontas para trabalho, da que mais custa hoje para a que menos custa. Ninguém pegou nenhuma ainda.",
         "cor": "azul",
         "recolhida": False,
+        # O ÚNICO GRUPO RANQUEADO, e o único com os dois botões (06/09/2026).
+        # Posição, selo e o prompt de tocar só fazem sentido no que espera
+        # trabalho: ordenar por importância o que um robô já pegou, ou o que já
+        # terminou, seria uma ordem que não muda decisão nenhuma.
+        "ranqueada": True,
+    },
+    {
+        "estado": "bloqueada",
+        "espera": "fila",
+        "rotulo": "Esperando outra tarefa terminar",
+        "curto": "na corrente",
+        "explicacao": "Cada uma depende de uma tarefa que vem antes dela, e se destrava sozinha quando aquela terminar. Nada aqui é seu.",
+        # Recolhida, e é a mudança que mais muda a tela: em 06/09/2026 eram 13
+        # cartões ocupando o topo com o mesmo âmbar de urgência das que
+        # esperavam por ele. Corrente de trabalho é consulta, não notícia.
+        "cor": "roxo",
+        "recolhida": True,
     },
     {
         "estado": "concluída",
-        "rotulo": "Já terminaram, com prova conferida",
-        "curto": "já terminaram",
-        "explicacao": "Cada uma traz o endereço do trabalho que a fechou. Clique para ver.",
+        "rotulo": "Conclusões registradas",
+        "curto": "conclusão registrada",
+        "explicacao": "A fila registrou a conclusão destas tarefas. Cada cartão traz o motivo e a referência disponíveis; este histórico não verifica novamente o aceite nem a publicação.",
         "cor": "verde",
         "recolhida": True,
     },
@@ -177,19 +250,144 @@ ONDE_ISSO_MEXE = {
 }
 
 
-def onde_isso_mexe(toca) -> list[str]:
-    """Os lugares de uma tarefa, traduzidos, sem repetir e em ordem estável.
+def area_do_toca(nome) -> str:
+    """`services/funil` e `funil` são a mesma área; `RITOS.md` é a raiz.
 
-    `services/funil` e `funil` são o mesmo lugar para quem lê — o `toca` aceita
-    as duas formas, e sem o corte a tela mostraria o lugar duas vezes.
+    O `toca` aceita as duas formas, e as duas leituras desta página (o lugar em
+    português e o mandato do prompt) precisam da MESMA normalização — duas
+    cópias dela divergiriam no primeiro conserto.
     """
+    return str(nome).rsplit("/", 1)[-1].removesuffix(".md")
+
+
+def onde_isso_mexe(toca) -> list[str]:
+    """Os lugares de uma tarefa, traduzidos, sem repetir e em ordem estável."""
     lugares = []
     for nome in toca or []:
-        curto = str(nome).rsplit("/", 1)[-1].removesuffix(".md")
-        lugar = ONDE_ISSO_MEXE.get(curto, curto)
+        lugar = ONDE_ISSO_MEXE.get(area_do_toca(nome), area_do_toca(nome))
         if lugar not in lugares:
             lugares.append(lugar)
     return lugares
+
+
+# OS CAMINHOS QUE SÓ SE TOCA COM MANDATO ESCRITO (`CLAUDE.md`, CODEOWNERS). Um
+# robô que pegar uma tarefa daqui vai PARAR na primeira linha se o pedido não
+# disser, com todas as letras, que ele tem autorização — então o prompt que o
+# dono copia já leva a autorização junto. Sem isso o botão entregaria um pedido
+# que morre no primeiro minuto.
+CAMINHOS_PROTEGIDOS = ("ci", ".github", "infra", "contracts", "pagamentos", "checkout")
+
+
+def caminhos_protegidos(toca) -> list[str]:
+    """Quais áreas desta tarefa são CODEOWNERS, na ordem em que ela as declara."""
+    achados = []
+    for nome in toca or []:
+        area = area_do_toca(nome)
+        if area in CAMINHOS_PROTEGIDOS and area not in achados:
+            achados.append(area)
+    return achados
+
+
+def prompt_para_tocar(tarefa: str, toca) -> str:
+    """O pedido pronto que o dono cola no Claude Code — CALCULADO, zero dado novo.
+
+    Ele nasceu de um pedido de 06/09/2026: a tela dizia o que estava parado e
+    não dava jeito nenhum de destravar. "Fale comigo na conversa" obriga o dono
+    a redigir, de cabeça, um pedido que precisa citar o número da tarefa, o
+    caminho do despacho e o mandato — e ele é leigo, então na prática nada
+    andava. Isto é o mesmo pedido, já escrito.
+
+    Tudo aqui sai do que a fila já sabe (o id e o `toca`): nenhum campo novo
+    nasce para alimentar este botão.
+    """
+    protegidos = caminhos_protegidos(toca)
+    if len(protegidos) == 1:
+        mandato = f"\nVocê tem meu mandato para o caminho protegido: {protegidos[0]}."
+    elif protegidos:
+        mandato = (
+            "\nVocê tem meu mandato para os caminhos protegidos: "
+            f"{', '.join(protegidos)}."
+        )
+    else:
+        mandato = ""
+    return (
+        f"Toque a {tarefa} da fila de trabalho.\n\n"
+        "Esta sessão foi aberta por mim para conduzir esta tarefa até o resultado. Entregue um PR revisável "
+        "para pousar. Leia o despacho completo no arquivo dela em fila/tarefas/ "
+        f"antes de começar.{mandato}\n\n"
+        "Trabalhe numa bancada própria criada de origin/main, nunca no clone "
+        f"principal. Abra a sessão com ci/sessao.py e --tar {tarefa}, preservando "
+        "a mesma tarefa em todos os eventos. Na bancada, consulte o contexto "
+        "direcionado e o índice de armadilhas. Leia AGENTS.md, as armadilhas citadas no "
+        "despacho e a lição da célula. Preserve mudanças alheias.\n\n"
+        "Antes de escrever, rode a suíte da célula. Depois, siga os alvos e limites "
+        "do despacho, escreva o teste que nasce vermelho, deixe-o verde e sabote "
+        "cada guarda para confirmar que ele reprova. Texto publicado sai em "
+        "português correto e sem travessão. Se depender de decisão do dono, segredo, "
+        "dinheiro ou VPS, bloqueie a tarefa no balcão com o motivo e registre que "
+        "precisa do dono.\n\n"
+        "Com a suíte verde, faça a revisão e o passe de remoção. Use make pr "
+        f"com TAR={tarefa} para embarcar o registro do painel e os eventos. "
+        f"A entrega usa ci/fila.py submeter {tarefa}, com --quem, --pr, "
+        "--revisao e --arvore da validação. Abrir ou integrar o PR não conclui "
+        "a tarefa: falta comprovar o aceite e registrar a baixa com evidência. "
+        "Conduza a revisão, os checks e o pedido de pouso pelo rito da casa. "
+        "Confira o aceite e a aplicação quando exigida antes de concluir a TAR. "
+        "Devolva o resultado a mim, com o número do PR, as provas e qualquer bloqueio."
+    )
+
+
+# A IMPORTÂNCIA, e as duas faixas que a viram selo. O número (0 a 100) é
+# DECLARADO na fila pelo evento `explicada` — esta tela nunca o calcula, nunca o
+# guarda e nunca o corrige. O que ela calcula é a POSIÇÃO (#1, #2, …), e por um
+# motivo que decide o desenho: a posição muda sozinha quando uma tarefa entra ou
+# sai da fila, e guardá-la seria a segunda definição que o cabeçalho proíbe.
+IMPORTANCIA_MAXIMA = 100
+CUSTA_CARO = 70
+IMPORTA = 40
+
+
+def importancia_declarada(dados: dict):
+    """O 0-100 que a fila declarou, ou `None` quando ninguém classificou.
+
+    **Falha aberto, como todo o resto desta página**: valor de outro tipo ou
+    fora da faixa vira "ninguém classificou", que é a verdade legível — e a
+    tarefa vai para o fim da lista em vez de sumir dela. `bool` é `int` em
+    Python, e `True` viraria importância 1: por isso ele é recusado à parte.
+    """
+    valor = dados.get("importancia")
+    if isinstance(valor, bool) or not isinstance(valor, int):
+        return None
+    if not 0 <= valor <= IMPORTANCIA_MAXIMA:
+        return None
+    return valor
+
+
+def selo_da_importancia(valor) -> dict:
+    """A mesma faixa, dita em português — o que o dono lê no lugar do número.
+
+    O número cru não decide nada para quem não o escreveu: "82" não responde
+    "eu devo mandar tocar esta hoje?". As três frases respondem.
+    """
+    if valor is None:
+        return {"texto": "ninguém classificou esta ainda", "classe": "sem-nota"}
+    if valor >= CUSTA_CARO:
+        return {"texto": "custa caro hoje", "classe": "alta"}
+    if valor >= IMPORTA:
+        return {"texto": "importa", "classe": "media"}
+    return {"texto": "pode esperar", "classe": "baixa"}
+
+
+def e_deste_grupo(dados: dict, grupo: dict) -> bool:
+    """Usa a classificação da fila; responsável ausente fica visível à parte."""
+    if dados.get("estado") != grupo["estado"]:
+        return False
+    esperado = grupo.get("espera")
+    if esperado is None:
+        return True
+    if esperado == "desconhecida":
+        return dados.get("espera") not in ("fila", "mantenedor")
+    return dados.get("espera") == esperado
 
 
 _SCRIPT_EMBUTIDO = re.compile(
@@ -197,11 +395,15 @@ _SCRIPT_EMBUTIDO = re.compile(
 )
 
 
+def dados_da_fila():
+    return selecionar_dados(
+        CANDIDATOS, tipo="fila", arquivos_obrigatorios=("estados.json",)
+    )
+
+
 def diretorio_da_fila() -> Path | None:
-    for candidato in CANDIDATOS:
-        if (candidato / "estados.json").is_file():
-            return candidato
-    return None
+    dados = dados_da_fila()
+    return dados.pasta if dados else None
 
 
 def _ler_json(caminho: Path):
@@ -209,6 +411,21 @@ def _ler_json(caminho: Path):
         return json.loads(caminho.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
+
+
+def ler_estados(pasta: Path | None) -> dict | None:
+    """A ausência ou corrupção do retrato não é uma fila vazia."""
+    estados = _ler_json(pasta / "estados.json") if pasta else None
+    conhecidos = {grupo["estado"] for grupo in COLUNAS}
+    if not isinstance(estados, dict) or any(
+        not RE_ID_DA_TAREFA.fullmatch(tid)
+        or not isinstance(dados, dict)
+        or not isinstance(dados.get("estado"), str)
+        or dados.get("estado") not in conhecidos
+        for tid, dados in estados.items()
+    ):
+        return None
+    return estados
 
 
 def _resumo_de_esperas(pasta: Path):
@@ -240,6 +457,7 @@ def andamento(pasta: Path) -> dict:
     """
     ultima_mexida: dict[str, str] = {}
     terminadas_por_dia: dict[str, int] = {}
+    conclusoes_registradas = set()
 
     for arquivo in sorted((pasta / "eventos").glob("*.json")):
         evento = _ler_json(arquivo)
@@ -252,7 +470,8 @@ def andamento(pasta: Path) -> dict:
         # Os arquivos vêm ordenados por nome, e o nome COMEÇA pelo carimbo de
         # tempo — então o último a passar por aqui é mesmo o mais recente.
         ultima_mexida[tarefa] = dia
-        if evento.get("evento") == "concluida":
+        if evento.get("evento") == "concluida" and tarefa not in conclusoes_registradas:
+            conclusoes_registradas.add(tarefa)
             terminadas_por_dia[dia] = terminadas_por_dia.get(dia, 0) + 1
 
     dias = sorted(terminadas_por_dia)
@@ -326,17 +545,42 @@ def _csp(html: bytes) -> str:
 
 @require_GET
 def robos(request):
+    return _quadro(request)
+
+
+def _quadro(request, *, resultado=None, rascunho=None):
+    rascunho = rascunho or {}
+    tarefa_do_resultado = rascunho.get("tarefa", "")
+    if resultado is None and "pedido" in request.GET:
+        tarefa_do_resultado = request.GET.get("pedido", "")
+        resultado = fila_no_github.consultar_pedido_de_cancelamento(tarefa_do_resultado)
+        rascunho = {"tarefa": tarefa_do_resultado, "motivo": resultado.motivo}
+    if not RE_ID_DA_TAREFA.fullmatch(tarefa_do_resultado):
+        tarefa_do_resultado = ""
+    contexto_pedido = {
+        "resultado": resultado.estado if resultado else "",
+        "recado": resultado.detalhe if resultado else "",
+        "tarefa_do_resultado": tarefa_do_resultado,
+        "pr": resultado.numero if resultado else None,
+        "rascunho": rascunho,
+        "repositorio": fila_no_github.REPOSITORIO,
+        "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
+        "aplicacao_conferida": False,
+    }
     pasta = diretorio_da_fila()
-    if pasta is None:
+    estados = ler_estados(pasta)
+    if estados is None:
         # Mesma lei do painel ausente: a página DIZ que a fila não veio (500),
         # nunca finge fila vazia — "não há trabalho" seria mentira.
         resposta = render(
-            request, "admin/caixa_robos.html", {"fila_ausente": True}, status=500
+            request,
+            "admin/caixa_robos.html",
+            {"fila_ausente": True, **contexto_pedido},
+            status=400 if resultado else 500,
         )
         resposta["Content-Security-Policy"] = _csp(resposta.content)
         return resposta
 
-    estados = _ler_json(pasta / "estados.json") or {}
     relogio = andamento(pasta)
     ultima_mexida = relogio["ultima_mexida"]
 
@@ -347,11 +591,24 @@ def robos(request):
                 {
                     "id": tid,
                     **dados,
+                    "entrega_url": (
+                        dados["pr"]
+                        if isinstance(dados.get("pr"), str)
+                        and re.fullmatch(
+                            r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[1-9][0-9]*",
+                            dados["pr"],
+                        )
+                        else None
+                    ),
                     "onde": onde_isso_mexe(dados.get("toca")),
                     "quando": ultima_mexida.get(tid),
+                    # Sobrescreve o cru que veio dos dados de propósito: o que a
+                    # tela usa é o valor já conferido, e nunca dois valores com
+                    # o mesmo nome dentro do mesmo dicionário.
+                    "importancia": importancia_declarada(dados),
                 }
                 for tid, dados in estados.items()
-                if dados.get("estado") == grupo["estado"]
+                if e_deste_grupo(dados, grupo)
             ),
             key=lambda c: c["id"],
             # A história vem do fim para o começo: quem abre as concluídas quer
@@ -359,7 +616,32 @@ def robos(request):
             # abertos (o que ainda pede trabalho) seguem na ordem de chegada.
             reverse=grupo["recolhida"],
         )
+        if grupo.get("ranqueada"):
+            # O RANKING. A ordem é a importância declarada, do maior para o
+            # menor; quem ninguém classificou vai para o fim (e não para o
+            # começo com nota zero, que seria inventar uma nota). O id desempata,
+            # para que dois cartões de mesma importância não troquem de lugar a
+            # cada publicação.
+            cartoes.sort(
+                key=lambda c: (
+                    c["importancia"] is None,
+                    -(c["importancia"] or 0),
+                    c["id"],
+                )
+            )
+            for posicao, cartao in enumerate(cartoes, start=1):
+                cartao["posicao"] = posicao
+                cartao["selo"] = selo_da_importancia(cartao["importancia"])
+                cartao["prompt"] = prompt_para_tocar(cartao["id"], cartao.get("toca"))
         colunas.append({**grupo, "cartoes": cartoes})
+
+    # Quantas param a vida dele. Sai daqui, e não de uma contagem no template,
+    # porque é a MESMA lista que o primeiro grupo já montou: contar de novo lá
+    # seria a segunda definição de "o que espera por você" dentro da própria
+    # página, e as duas divergiriam no dia em que o casamento mudasse.
+    esperando_voce = next(
+        (len(c["cartoes"]) for c in colunas if c.get("espera") == "mantenedor"), 0
+    )
 
     # A régua (`ci/tempos_esperados.json`): {"medido_em", "esperas": {chave:
     # {rotulo, p50_s, p90_s, amostra}}}. A regra de honestidade dela viaja para
@@ -378,17 +660,119 @@ def robos(request):
         if isinstance(medida, dict)
     ]
 
+    aplicacao_conferida = False
+    if resultado and resultado.estado == "integrado" and pasta and resultado.arquivo:
+        try:
+            aplicacao_conferida = (
+                estados.get(tarefa_do_resultado, {}).get("estado") == "cancelada"
+                and (pasta / resultado.arquivo.removeprefix("fila/")).read_bytes()
+                == resultado.conteudo
+            )
+        except OSError:
+            pass
+
     resposta = render(
         request,
         "admin/caixa_robos.html",
         {
             "colunas": colunas,
+            "dados": dados_da_fila(),
+            "esperando_voce": esperando_voce,
+            "sem_responsavel": next(
+                len(c["cartoes"]) for c in colunas if c.get("espera") == "desconhecida"
+            ),
             "total": len(estados),
             "andamento": relogio,
             "esperas": _resumo_de_esperas(pasta),
             "regua": linhas_da_regua,
             "regua_medida_em": regua.get("medido_em"),
+            "repositorio": fila_no_github.REPOSITORIO,
+            "pode_excluir": fila_no_github.esta_ligado(),
+            "variavel_do_token": fila_no_github.VARIAVEL_DO_TOKEN,
+            **contexto_pedido,
+            "aplicacao_conferida": aplicacao_conferida,
+            "reabrir_formulario": bool(
+                resultado
+                and resultado.estado
+                in {
+                    "incerto",
+                    "recebido",
+                    "conflito",
+                    "sem_pedido",
+                    "sem_motivo",
+                    "motivo_longo",
+                }
+            ),
         },
     )
     resposta["Content-Security-Policy"] = _csp(resposta.content)
     return resposta
+
+
+@require_POST
+def excluir_tarefa(request):
+    """Continua o mesmo pedido e registra o que foi confirmado, inclusive falhas."""
+    tarefa = (request.POST.get("tarefa") or "").strip()
+    rascunho = {"tarefa": tarefa, "motivo": request.POST.get("motivo") or ""}
+    motivo = rascunho["motivo"].strip()
+    alvo = tarefa[:64]
+
+    def responder(estado, desfecho, detalhe):
+        _auditar(request, Registro.CANCELAR_TAREFA, alvo, desfecho, detalhe)
+        return _quadro(
+            request,
+            resultado=fila_no_github.PedidoCancelamento(estado, detalhe),
+            rascunho=rascunho,
+        )
+
+    if not RE_ID_DA_TAREFA.fullmatch(tarefa):
+        return responder(
+            "nao_existe", Registro.RECUSADO_PELA_CELULA, "id fora do formato TAR-NNN"
+        )
+    if not motivo:
+        return responder("sem_motivo", Registro.RECUSADO_PELA_CELULA, "sem motivo")
+    if len(motivo) > MOTIVO_NO_MAXIMO:
+        return responder(
+            "motivo_longo", Registro.RECUSADO_PELA_CELULA, "motivo longo demais"
+        )
+    pasta = diretorio_da_fila()
+    estados = ler_estados(pasta)
+    if estados is None:
+        return responder(
+            "sem_fila",
+            Registro.NAO_RESPONDEU,
+            "não foi possível conferir a fila disponível",
+        )
+    dados = estados.get(tarefa)
+    if dados is None:
+        return responder(
+            "nao_existe", Registro.RECUSADO_PELA_CELULA, "não existe na fila disponível"
+        )
+    if dados.get("estado") in ("concluída", "cancelada"):
+        return responder(
+            "ja_terminou",
+            Registro.RECUSADO_PELA_CELULA,
+            f"já terminou ({dados.get('estado')})",
+        )
+
+    pedido = fila_no_github.abrir_pr_de_cancelamento(
+        tarefa=tarefa,
+        titulo=str(dados.get("titulo") or tarefa),
+        motivo=motivo,
+    )
+    confirmado = pedido.estado in ("recebido", "revisao", "integrado")
+    detalhe = (
+        f"{pedido.estado}: "
+        + (f"PR #{pedido.numero}. " if pedido.numero else "")
+        + pedido.detalhe
+    )
+    if confirmado:
+        detalhe += f" Motivo gravado: {pedido.motivo}"
+    _auditar(
+        request,
+        Registro.CANCELAR_TAREFA,
+        alvo,
+        Registro.OK if confirmado else Registro.NAO_RESPONDEU,
+        detalhe,
+    )
+    return _quadro(request, resultado=pedido, rascunho=rascunho)

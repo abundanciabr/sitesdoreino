@@ -9,7 +9,9 @@
        · quem já entrou vê o aviso de que vem novidade — e, DEPOIS DELE, o que
          a CATEGORIA dela permite (DECISAO-categorias-de-usuario, 28/08/2026):
 
-           aluno      → o caminho para a Caixa de Sugestões
+           aluno      → o caminho para a Prancheta do portfólio e para a
+                        Caixa de Sugestões (06/09/2026, degrau 18 do
+                        PLANO-PORTFOLIO-DO-ALUNO)
            na fila    → o andamento do pedido (dias, ou o motivo da recusa)
            ex-aluno   → que o acesso acabou (28/08, lei do ex-aluno)
            pausado    → que é temporário e volta sozinho
@@ -167,6 +169,20 @@
   {% endcomment %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
   {% elif request.ator.categoria == "aluno" %}
+  {% comment %}
+  [PRANCHETA] 06/09/2026, degrau 18 do PLANO-PORTFOLIO-DO-ALUNO (o último da
+  escada): o caminho para a Prancheta do portfólio, célula `pages`. Só o
+  `aluno` a vê — é a única categoria para quem a porta fail-closed da `pages`
+  (AC-05) de fato abre; mostrá-la a quem está na fila ou foi recusado seria
+  oferecer um botão que bate na cara de quem clicar, o mesmo defeito que a
+  Caixa já corrigiu em 28/08/2026 (comentário do topo deste arquivo).
+
+  Vem ANTES da Caixa, de propósito: a Caixa é a voz do aluno para a escola; a
+  Prancheta é o que ele veio fazer aqui. `request.url_da_prancheta` segue o
+  molde de `request.url_da_caixa` — endereço, não copy, em
+  `apps/core/enderecos.py`.
+  {% endcomment %}
+  <a class="cta" href="{{ request.url_da_prancheta }}">{% t "landing.ir_para_a_prancheta" %}</a>
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
   {% elif request.ator.categoria == "ex_aluno" %}
   {% comment %}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-066-admin-enviar-mensagens-pela-tela-do-radio",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: enviar mensagens pela tela do radio",
+  detalhe: "O envio humano agora funciona sem JavaScript: grava, volta à tela e preserva o texto quando há erro. A leitura periódica usa arquivo permitido pela segurança. Testes cobrem CSRF, API e Bearer.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1638. Validação local: árvore 354b3055f702ca7ab5b7b7c330364219843ba833; commit d8d4447fedae231620c8919443ef840761d94d41; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-408",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

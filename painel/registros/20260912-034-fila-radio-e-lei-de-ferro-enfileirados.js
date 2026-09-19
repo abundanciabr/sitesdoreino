@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-034-fila-radio-e-lei-de-ferro-enfileirados",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fila: rádio e Lei de Ferro enfileirados",
+  detalhe: "TAR-374 (rádio, ficha ANTIGRAVITY-007) e TAR-376 (Lei de Ferro, ficha ANTIGRAVITY-006) criadas com brief para o Codex; TAR-375 é esta escrituração. Só fila.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1608. Validação local: árvore 9d9408cb08ed523fa0449357acbfca3a9a43f625; commit 6b260f16ad1a360425808ff1d9d9a8826ea8e387; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-375",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

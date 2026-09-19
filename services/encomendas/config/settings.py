@@ -92,6 +92,16 @@ INSTALLED_APPS = [
     # demais na fila vira chamada aberta. **Nenhum timer agendado**: toda a
     # verdade está nas colunas, e por isso a fila sobrevive a reinício, deploy e
     # queda do Redis.
+    #
+    # OS GESTOS DO ALUNO entraram no degrau 2.5 (TAR-123), em
+    # `apps/encomendas/gestos.py`: aceitar, passar com um dos quatro motivos, o
+    # interruptor da fila, e o aceite da chamada aberta (o primeiro elegível que
+    # aceitar leva, com dois aceites simultâneos separados pela trava do banco).
+    # A pausa automática por três silêncios mora aí junto com o que a desfaz —
+    # `silencios_consecutivos` tem um dono só, e um teste de forma reprova quem
+    # escrever na coluna de outro arquivo. Continua sem TELA: a do aluno é a
+    # Fase 4, e o aviso ao professor por três "não me sinto pronto" em 30 dias
+    # espera a outbox de eventos, que esta célula ainda não tem.
     "apps.encomendas",
     # O BATIMENTO do tique, e só isso. Diferente das vizinhas, aqui o Huey não
     # carrega trabalho nenhum na fila do Redis: ele chama, de minuto em minuto,
@@ -152,6 +162,44 @@ CSRF_COOKIE_NAME = "encomendas_csrf"
 # `identidade`), ele não tem por que viajar para "/".
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
+
+# ---------------------------------------------------------------------------
+# OS TOKENS DA PORTA DE MÁQUINA — DOIS GRAUS, e o segundo grau não é enfeite
+# ---------------------------------------------------------------------------
+# Um por par consumidor, como em toda célula da casa: `TOKENS_ACEITOS_ADMIN`,
+# `TOKENS_ACEITOS_FUNIL`… Env ausente ⇒ conjunto VAZIO ⇒ 401 para todo mundo.
+# Fail-closed sem fail-hard: a célula sobe, o `/healthz` responde, o tique
+# continua batendo, e só a porta fica fechada até o token existir no env.
+#
+# **E AQUI HÁ UM SEGUNDO CONJUNTO, porque esta porta ESCREVE** — é a
+# `armadilhas/318` aplicada antes de cair nela. As dez portas de máquina que
+# esta copiou são, quase todas, de LEITURA: nelas um conjunto plano está certo,
+# porque quem entra lê, e ler é tudo o que há para fazer. Esta porta grava
+# parâmetro do dono (`setParameter`) e confirma dinheiro (`confirmPayment`).
+# Com um conjunto só, o par que pediu o token para desenhar a tela da fila de
+# um aluno ganharia, de graça, o poder de mudar o relógio da oferta e de
+# declarar uma encomenda paga.
+#
+# A separação é a mesma que a `identidade` já roda com `TOKENS_SENHA_*`, com
+# UMA diferença deliberada: aqui o grau alto CONTÉM o baixo (ver
+# `apps/core/auth.py`). Lá o par precisa estar nos dois envs, e isso tem um
+# modo de falha chato e silencioso — o mantenedor põe só o token de escrita, a
+# leitura devolve 401 e nada no log diz por quê. Fazer o grau alto conter a
+# leitura custa uma linha e apaga esse dia inteiro.
+#
+# Recusa de escrita é **403, e não 401**: o crachá é válido, o que falta é o
+# grau. Um 401 mandaria o par conferir o token que está certo.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
+TOKENS_ESCRITA = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ESCRITA_") and valor
+}
 
 TEMPLATES = [
     {

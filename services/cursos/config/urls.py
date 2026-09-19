@@ -2,6 +2,10 @@ from django.urls import path, re_path
 
 from apps.core.views import (
     aula,
+    aula_avulsa,
+    aulas_avulsas,
+    catalogo,
+    concluir_aula,
     entregar_checkpoint,
     gravar_autoavaliacao,
     healthz,
@@ -50,6 +54,8 @@ urlpatterns = [
     # reconhece, nunca autoriza.
     path("plantao", plantao_fila, name="plantao"),
     path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
+    path("aulas", aulas_avulsas, name="aulas-avulsas"),
+    path("aulas/<slug:slug>", aula_avulsa, name="aula-avulsa"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
     # PESSOA DA SESSÃO: nenhuma rota recebe o id de outra pessoa, e nenhuma
     # lista alunos ([INV-CUR-P1], `tests/test_inv_p1_nenhuma_tela_compara_alunos.py`).
@@ -63,6 +69,9 @@ urlpatterns = [
     ),
     # O CHECKPOINT (degrau 2.1): o aluno entrega por link, e volta para a aula.
     path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
+    # CONCLUIR A AULA (TAR-270): só no curso de progressão livre, o aluno
+    # conclui com um gesto e a seguinte abre. No curso por laudo a rota recusa.
+    path("<str:numero>/concluir", concluir_aula, name="concluir-aula"),
     # O LAUDO RECEBIDO (degrau 2.2): a mesma pessoa da sessão, o mais recente.
     path("<str:numero>/laudo", laudo_recebido, name="laudo-recebido"),
     # O ENDEREÇO DO LIVRO (TAR-212, 06/09/2026). O aluno tem o livro em mãos
@@ -76,20 +85,45 @@ urlpatterns = [
     # de um curso tem dois segmentos, a aula antiga tem um.
     path("<slug:curso>/", mapa, name="curso"),
     path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
-    path("<str:numero>", aula, name="aula"),
-    # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
-    # mais nada. Vem por último porque `path("")` casa o caminho vazio.
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/pausas/<int:ordem>",
+        registrar_pausa,
+        name="registrar-pausa-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/autoavaliacao",
+        gravar_autoavaliacao,
+        name="gravar-autoavaliacao-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/checkpoint",
+        entregar_checkpoint,
+        name="entregar-checkpoint-do-curso",
+    ),
+    path(
+        "<slug:curso>/parte-<int:parte>/<str:numero>/concluir",
+        concluir_aula,
+        name="concluir-aula-do-curso",
+    ),
+    # O ENDEREÇO ANTIGO DA AULA (`/E00`) MUDOU DE CASA (301, TAR-216): o
+    # checkpoint desta escola é POR LINK, e um link já compartilhado que
+    # passasse a dar 404 seria trabalho de aluno perdido. Mas enquanto os dois
+    # endereços servissem a mesma sala com 200, o link antigo continuaria
+    # levando a uma página que não diz em que parte do curso o aluno está. O
+    # 301 ensina o navegador e o buscador de uma vez.
     #
-    # ESTE ENDEREÇO E O DA AULA ACIMA SÃO OS ANTIGOS, E MUDARAM DE CASA
-    # (301, TAR-216): o checkpoint desta escola é POR LINK, e um link já
-    # compartilhado que passasse a dar 404 seria trabalho de aluno perdido.
-    # Mas enquanto os dois endereços servissem a mesma sala com 200, o link
-    # antigo continuaria levando a uma página que não diz em que parte do
-    # curso o aluno está. O 301 ensina o navegador e o buscador de uma vez.
-    #
-    # As duas rotas CONTINUAM existindo porque o 301 tem uma condição: ele só
+    # A rota CONTINUA existindo porque o 301 tem uma condição: ele só
     # acontece com UM curso no site. Com dois, o endereço antigo não diz qual
     # deles o aluno quer, e a tela que PERGUNTA é a resposta certa
     # (`apps/core/views.py::_curso_unico`).
-    path("", mapa, name="mapa"),
+    path("<str:numero>", aula, name="aula"),
+    # O CATÁLOGO, e ele é a raiz da célula: `meshcraft.top/cursos` sem mais
+    # nada. Vem por último porque `path("")` casa o caminho vazio.
+    #
+    # A raiz NUNCA redireciona (decisão do mantenedor de 07/09/2026). Até
+    # então ela respondia 301 para o mapa do único curso, e o aluno cuja
+    # matrícula ainda não tem sala era levado ao curso do livro sem pedir. O
+    # catálogo mostra um cartão por curso, com o link para o endereço de cada
+    # um, e a porta de cada curso decide quem entra.
+    path("", catalogo, name="catalogo"),
 ]

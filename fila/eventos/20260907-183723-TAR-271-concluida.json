@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-183723-TAR-271-concluida",
+  "tarefa": "TAR-271",
+  "evento": "concluida",
+  "quando": "2026-09-07T18:37:23+00:00",
+  "quem": "maestro-lote-cursos-20260907",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1362 MERGED: /admin/escola/cursos/ com a lista de cursos (produto, regra de avanco, aulas), Novo curso (createProduct + createCourse), trocar produto e progressao, CURSO_PADRAO removida, abas de Parte so com mais de uma parte, previa nos tres estados, mapa do site PASS (245 rotas), suite da admin 1601 passed, 12 sabotagens pegas; revisor: 3 achados corrigidos no commit 16ea582a; deploy-celula 34152028882 success (gh run view --json)",
+  "verificado_em": "2026-09-07"
+}

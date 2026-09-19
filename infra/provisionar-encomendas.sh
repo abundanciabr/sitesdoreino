@@ -87,14 +87,17 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 #
-#    E aqui a data é a mais previsível de todas: a escada desta célula tem os
-#    degraus 2.2 a 2.14 pela frente, e três deles já sabem o nome da variável
-#    que vão pedir a este env — `TOKENS_ACEITOS_ADMIN` (a tela dos parâmetros
-#    do dono, degrau 2.14), `REDIS_STREAMS_URL` (o relay de eventos) e a lista
-#    de quem é do plantão (Fase 7). Cada uma é uma chance de o script apagar o
-#    que não conhece.
+#    A data era previsível e CHEGOU: o degrau 2.14 (07/09/2026) trouxe
+#    `TOKENS_ACEITOS_ADMIN` e `TOKENS_ESCRITA_ADMIN`, os dois graus do par com a
+#    tela `/admin/encomendas/parametros/`. Elas entram na lista abaixo e no
+#    heredoc, RELIDAS do arquivo vivo e regravadas iguais — nunca geradas aqui,
+#    porque quem alinha os dois lados do par é `provisionar-par-dos-parametros.sh`
+#    (`armadilhas/111`, o mesmo desenho de `TOKENS_ACEITOS_PAGES` no
+#    `provisionar-admin.sh`). Ainda faltam `REDIS_STREAMS_URL` (o relay de
+#    eventos) e a lista de quem é do plantão (Fase 7): cada uma é uma chance de
+#    o script apagar o que não conhece.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKENS_ACEITOS_ADMIN TOKENS_ESCRITA_ADMIN"
 
 # LITERAL, e não `$ENV_ENCOMENDAS`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script como
@@ -227,6 +230,21 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS)"
 [ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ALUNOS} -ge 32 ] || parar "o token do par encomendas->alunos ficou curto demais. Nada foi alterado."
 
+# OS DOIS GRAUS DO PAR COM A TELA DOS PARÂMETROS: RELIDOS do arquivo vivo, nunca
+# gerados aqui (ver a lista da trava, lá em cima). Quem alinha os dois lados é
+# `infra/provisionar-par-dos-parametros.sh`, e um roteiro que provisiona a
+# célula todo dia não é o lugar de gerar a credencial de outro par: o valor novo
+# ficaria de um lado só e a tela do dono levaria 401 sem nada explicando.
+# VAZIAS é resposta legítima e o roteiro não para por isso — sem elas a célula
+# sobe igual e só a tela do dono diz, em português, o que falta.
+if [ -f env/encomendas.env ]; then
+  T_ADMIN_LE="$(ler_de "$ENV_ENCOMENDAS" TOKENS_ACEITOS_ADMIN)"
+  T_ADMIN_GRAVA="$(ler_de "$ENV_ENCOMENDAS" TOKENS_ESCRITA_ADMIN)"
+else
+  T_ADMIN_LE=""
+  T_ADMIN_GRAVA=""
+fi
+
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
@@ -265,6 +283,8 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
+TOKENS_ACEITOS_ADMIN=$T_ADMIN_LE
+TOKENS_ESCRITA_ADMIN=$T_ADMIN_GRAVA
 ENV
 
 chown --reference="$ENV_REF" "$ENV_ENCOMENDAS" 2>/dev/null \
@@ -325,22 +345,49 @@ garantir "$ENV_ALUNOS" TOKENS_ACEITOS_ENCOMENDAS "$T_ALUNOS" "par encomendas->al
 #    lê o env dele quando (re)nasce.
 #
 #    JAMAIS `docker compose up -d` sem argumento: isso devolveria TODAS as
-#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome. A
-#    `encomendas` NÃO entra aqui de propósito — ela ainda não existe neste
-#    compose; quem a põe lá é o degrau 2.10, depois desta tela.
+#    células à tag :main do compose (RITOS §4). Só estes serviços, pelo nome.
+#
+#    A `encomendas` e o `encomendas-tique` ENTRAM a partir do degrau 2.10
+#    (07/09/2026), que é quem os põe no compose. E entram por necessidade, não
+#    por simetria: este roteiro ROTACIONA a senha do banco, e um container que
+#    não renasce continua apresentando a senha velha a um banco que já trocou a
+#    fechadura.
+#
+#    E o resultado se MEDE. `docker compose up -d` pode derrubar o container e
+#    não subi-lo, e engolir a saída com `2>&1` apaga a única prova disso: em
+#    06/09/2026 uma célula ficou em 502 enquanto o roteiro imprimia PRONTO
+#    (`armadilhas/377`). Aqui a saída do erro é MOSTRADA, o estado é conferido
+#    depois, e "não subiu" nunca sai em tom de rodapé.
 # -----------------------------------------------------------------------------
-for SERVICO in identidade alunos; do
-  if command -v docker >/dev/null 2>&1 && docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
-    if docker compose up -d "$SERVICO" >/dev/null 2>&1; then
-      echo "  recarreguei: $SERVICO"
-    else
-      echo "  (aviso: não consegui recarregar $SERVICO. O arquivo JÁ está certo; o próximo deploy dela relê o env. Avise o agente.)"
-    fi
+CAIDOS=""
+for SERVICO in identidade alunos admin encomendas encomendas-tique; do
+  if ! command -v docker >/dev/null 2>&1 || ! docker compose config --services 2>/dev/null | grep -qx "$SERVICO"; then
+    echo "  (nao achei o servico $SERVICO no compose desta maquina. O arquivo JA esta certo; o proximo deploy dele rele o env.)"
+    continue
+  fi
+  SAIDA="$(docker compose up -d "$SERVICO" 2>&1)" || {
+    echo "  ERRO ao recarregar $SERVICO. O docker disse:"
+    printf '    %s
+' "$SAIDA"
+    CAIDOS="$CAIDOS $SERVICO"
+    continue
+  }
+  if docker compose ps --status running --services 2>/dev/null | grep -qx "$SERVICO"; then
+    echo "  recarreguei: $SERVICO"
   else
-    echo "  (aviso: não achei o serviço $SERVICO no compose desta máquina. O arquivo JÁ está certo; o próximo deploy relê o env.)"
+    echo "  ERRO: $SERVICO NAO esta de pe depois da recarga. O docker disse:"
+    printf '    %s
+' "$SAIDA"
+    CAIDOS="$CAIDOS $SERVICO"
   fi
 done
 echo
+if [ -n "$CAIDOS" ]; then
+  echo "PAROU POR SEGURANCA: estas partes do site NAO estao de pe:$CAIDOS"
+  echo "O que aconteceu: os arquivos foram gravados certos, mas o container nao subiu."
+  echo "O que fazer: copie esta tela inteira e mande para o robo. Nao rode de novo as cegas."
+  exit 1
+fi
 
 # -----------------------------------------------------------------------------
 # 8. O QUE FICOU

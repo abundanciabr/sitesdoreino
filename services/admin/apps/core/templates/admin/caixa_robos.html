@@ -49,13 +49,24 @@ não tem sigla (lei do CLAUDE.md).
   {% if fila_ausente %}
     <h1>Os robôs</h1>
     <p class="aviso espaco-16">
-      A fila de trabalho não veio nesta imagem. Isso não significa que não há
-      trabalho — significa que esta parte quebrou. O quadro vivo mora no
-      repositório (<code>fila/</code>); avise um robô com estas palavras:
-      "a fila embutida não chegou na imagem da admin".
+      Não consegui ler a fila desta publicação: os dados estão ausentes ou inválidos.
+      Isso não significa que não há trabalho. Peça a um robô para conferir a
+      exportação de <code>fila/estados.json</code> e a publicação dos dados da admin.
     </p>
+    {% include "admin/_pedido_de_cancelamento.html" %}
+    {% if rascunho %}
+      <form method="post" action="{% url 'caixa_robos_excluir' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tarefa" value="{{ tarefa_do_resultado }}">
+        <label for="motivo-preservado">Motivo enviado, preservado para nova tentativa</label>
+        <textarea id="motivo-preservado" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+        <p>Se a fila puder ser conferida, este pedido e seu motivo serão enviados ao repositório público abundanciabr/sitesdoreino no GitHub.</p>
+        <button type="submit">Conferir a fila e retomar o pedido público</button>
+      </form>
+    {% endif %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
+    {% if dados %}{% include "admin/dados_do_painel.html" %}{% endif %}
 
     <style>
       /* O CARTÃO DE TAREFA. Fundo e borda são os DA CASA (`--painel`/`--linha`),
@@ -86,15 +97,97 @@ não tem sigla (lei do CLAUDE.md).
         display: block; font-size: 12px; font-weight: 700;
         color: var(--amarelo); margin-bottom: 6px;
       }
+
+      /* ── O RANKING, A EXPLICAÇÃO E OS DOIS BOTÕES (06/09/2026) ────────────
+         Toda cor daqui é NOME DA CASA, sem valor de reserva inventado: foi
+         exatamente um `var(--cartao, #fff)` que deixou esta tela ilegível em
+         03/09, e `tests/test_toda_cor_usada_tem_dono.py` agora reprova quem
+         repetir a ideia. */
+      .cartao-robo .cabeca { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+      .cartao-robo .posicao { font-size: 12px; font-weight: 700; color: var(--texto-3); min-width: 26px; }
+      .cartao-robo .selo {
+        font-size: 11px; font-weight: 600; letter-spacing: .04em;
+        border-radius: 6px; padding: 1px 8px; text-transform: uppercase;
+      }
+      .cartao-robo .selo.alta { color: var(--vermelho); border: 1px solid var(--vermelho); }
+      .cartao-robo .selo.media { color: var(--amarelo); border: 1px solid var(--amarelo); }
+      .cartao-robo .selo.baixa { color: var(--texto-3); border: 1px solid var(--linha); }
+      /* Tracejado: a ausência de nota se vê de longe, e não se confunde com
+         uma nota baixa que alguém escolheu. */
+      .cartao-robo .selo.sem-nota { color: var(--texto-3); border: 1px dashed var(--linha); }
+
+      .cartao-robo .explicacao { font-size: 13.5px; color: var(--texto-2); margin: 10px 0 0; max-width: 72ch; }
+      .cartao-robo .explicacao p { margin: 0 0 6px; }
+      .cartao-robo .explicacao .rotulo { color: var(--texto); font-weight: 600; }
+      .cartao-robo .explicacao .exemplo { color: var(--texto-3); font-style: italic; }
+      .cartao-robo .sem-explicacao { font-size: 13px; color: var(--texto-3); font-style: italic; margin: 10px 0 0; }
+
+      .cartao-robo .acoes { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .cartao-robo .acoes button {
+        font: inherit; font-size: 13px; cursor: pointer; border-radius: 8px;
+        padding: 6px 12px; background: transparent; color: var(--texto-2);
+        border: 1px solid var(--linha);
+      }
+      .cartao-robo .acoes button.tocar { color: var(--azul); border-color: var(--azul); }
+      .cartao-robo .acoes button.copiado { color: var(--verde); border-color: var(--verde); }
+      .cartao-robo .acoes button.excluir:hover:enabled { color: var(--vermelho); border-color: var(--vermelho); }
+      .cartao-robo .acoes button:disabled { color: var(--texto-3); cursor: not-allowed; }
+      /* O prompt JÁ está no HTML, fechado. Abrir é trocar a classe, nunca
+         escrever texto pelo script: sem área de transferência, o gesto revela
+         o que já estava aqui, e nada se perde em silêncio. */
+      .cartao-robo .prompt-caixa { display: none; }
+      .cartao-robo .prompt-caixa.a-mostra {
+        display: block; margin: 10px 0 0; padding: 10px 12px;
+        background: var(--fundo); border: 1px dashed var(--linha); border-radius: 8px;
+        font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+        color: var(--texto-2); white-space: pre-wrap;
+      }
+
+      /* A CONFIRMAÇÃO DE EXCLUIR. `dialog` nativo: ele já prende o teclado
+         dentro da caixa e fecha no Esc, e nada disso precisa de script. */
+      dialog.confirmar-exclusao {
+        background: var(--painel); color: var(--texto);
+        border: 1px solid var(--linha); border-radius: 12px;
+        padding: 20px; max-width: 460px; line-height: 1.5;
+      }
+      dialog.confirmar-exclusao::backdrop { background: rgba(0, 0, 0, .6); }
+      dialog.confirmar-exclusao h2 { font-size: 16px; margin: 0 0 10px; }
+      dialog.confirmar-exclusao p { font-size: 13.5px; color: var(--texto-2); margin: 0 0 12px; }
+      dialog.confirmar-exclusao label { display: block; font-size: 13px; margin-bottom: 4px; }
+      dialog.confirmar-exclusao textarea {
+        width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
+        background: var(--fundo); color: var(--texto);
+        border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 14px;
+      }
+      dialog.confirmar-exclusao .botoes { display: flex; gap: 8px; justify-content: flex-end; }
+      dialog.confirmar-exclusao button {
+        font: inherit; font-size: 13px; cursor: pointer; border-radius: 8px;
+        padding: 6px 12px; background: transparent; color: var(--texto-2);
+        border: 1px solid var(--linha);
+      }
+      dialog.confirmar-exclusao button.confirma { color: var(--vermelho); border-color: var(--vermelho); }
+
+      /* O DESFECHO DO ÚLTIMO CLIQUE. Verde quando o pedido foi aberto, âmbar
+         quando não deu: o dono precisa saber, de relance, se o gesto pegou. */
+      .desfecho { border-left: 4px solid var(--linha); background: var(--painel);
+        border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 16px 0; font-size: 14px; }
+      .desfecho.deu-certo { border-left-color: var(--verde); }
+      .desfecho.nao-deu { border-left-color: var(--amarelo); }
+      .desligado { font-size: 13px; color: var(--amarelo); margin: 0 0 12px; }
+
       .borda-azul { border-left-color: #2f6fd0; }
       .borda-roxo { border-left-color: #7a4fc0; }
       .borda-ambar { border-left-color: var(--amarelo); }
       .borda-verde { border-left-color: var(--verde); }
       .borda-cinza { border-left-color: var(--texto-3); }
-      .selo-parou {
-        display: inline-block; font-size: 11px; font-weight: 700;
-        letter-spacing: .04em; color: #0f1115; background: var(--amarelo);
-        border-radius: 6px; padding: 1px 8px; margin-top: 9px;
+
+      /* A LINHA QUE DIZ QUE ALGO É DELE. Mesmo âmbar do grupo que ela anuncia,
+         e some inteira quando não há nada esperando — aviso que fica na tela
+         com o número zero ensina o olho a ignorar o aviso. */
+      .pede-voce {
+        border-left: 4px solid var(--amarelo);
+        background: var(--painel); border-radius: 0 8px 8px 0;
+        padding: 10px 14px; margin: 12px 0 0;
       }
 
       /* O PLACAR: um número por grupo, e cada número leva ao seu grupo. É a
@@ -149,35 +242,51 @@ não tem sigla (lei do CLAUDE.md).
     </style>
 
     <h1>Os robôs</h1>
+
+    {% include "admin/_pedido_de_cancelamento.html" %}
+
     <div class="o-que-e-isto">
       <p>
         <b>Cada cartão desta página é um pedaço de trabalho no seu site</b>, escrito
         antes de alguém começar a fazê-lo. Os robôs pegam um de cada vez, e ninguém
         pega o que outro já pegou.
       </p>
-      <p>
-        <b>Você não precisa fazer nada aqui.</b> Esta é a tela de olhar: ela responde
-        em que pé está o trabalho. Para pedir alguma coisa, continue falando comigo
-        na conversa, como sempre.
-      </p>
+      {% if esperando_voce %}
+        <p class="pede-voce">
+          <b>{{ esperando_voce }} dela{{ esperando_voce|pluralize:"s" }} não anda{{ esperando_voce|pluralize:",m" }} sem você.</b>
+          Estão logo abaixo, no primeiro bloco, com o que fazer escrito em cada uma.
+          O resto da página é só para olhar: para pedir ou destravar qualquer coisa,
+          fale comigo na conversa, como sempre.
+        </p>
+      {% elif sem_responsavel %}
+        <p>Há tarefas sem responsável informado. O robô precisa classificar quem destrava antes de afirmar se dependem de você.</p>
+      {% else %}
+        <p>
+          <b>Nada aqui depende de você agora.</b> Esta é a tela de olhar: ela responde
+          em que pé está o trabalho. Para pedir alguma coisa, continue falando comigo
+          na conversa, como sempre.
+        </p>
+      {% endif %}
       {% if andamento.terminadas %}
         <p class="ritmo">
-          Até agora os robôs terminaram <b>{{ andamento.terminadas }} tarefa{{ andamento.terminadas|pluralize }}</b>
-          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} de trabalho,
+          Há <b>{{ andamento.terminadas }} conclusões registradas</b>
+          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} do histórico,
           uma média de <b>{{ andamento.por_dia }} por dia</b>.
         </p>
       {% endif %}
     </div>
     <p class="carimbo espaco-abaixo-20">
-      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo é de
-      agora, perguntada ao GitHub pelo seu navegador; o quadro depois dela é o retrato
+      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo traz a
+      consulta ao GitHub feita pelo seu navegador; o quadro depois dela é o retrato
       da última publicação do site.
     </p>
 
-    <section class="ao-vivo-caixa">
-      <h2>Agora, neste minuto</h2>
-      <p id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
+    <section class="ao-vivo-caixa" data-repo="{{ repositorio }}">
+      <h2>Consulta ao GitHub</h2>
+      <p id="ao-vivo-estado" role="status">Consultando reservas e trabalhos abertos…</p>
+      <p id="ao-vivo-carimbo">Ainda sem leitura. A consulta se renova ao voltar a esta aba, no máximo uma vez a cada cinco minutos.</p>
       <ul class="ao-vivo" id="ao-vivo-lista"></ul>
+      <p><a href="https://github.com/{{ repositorio }}/pulls" target="_blank" rel="noopener">Ver todos os trabalhos no GitHub</a></p>
     </section>
 
     <div class="placar-robos">
@@ -205,6 +314,21 @@ não tem sigla (lei do CLAUDE.md).
           {% else %}
             <h2>{{ coluna.rotulo }} <span class="aba-conta">{{ coluna.cartoes|length }}</span></h2>
             <p class="explica">{{ coluna.explicacao }}</p>
+            {% if coluna.ranqueada and not pode_excluir %}
+              {% comment %}
+              O botão DESLIGADO se explica uma vez, aqui, e não em cada cartão:
+              a mesma frase repetida vinte vezes vira ruído e ensina o olho a
+              pular a página inteira. Escondê-lo seria pior ainda, porque o dono
+              nunca saberia que o gesto existe.
+              {% endcomment %}
+              <p class="desligado">
+                O botão de excluir está cinza porque falta uma chave, e nada está
+                quebrado por isso. Você mesmo liga o botão: crie a chave em
+                https://github.com/settings/personal-access-tokens/new e depois cole
+                uma linha na janela da VPS. O roteiro infra/por-a-chave-do-github.sh
+                tem o passo a passo escrito dentro, com os 7 passos do navegador.
+              </p>
+            {% endif %}
             <div class="cartoes-robo">
               {% for cartao in coluna.cartoes %}{% include "admin/_cartao_robo.html" %}{% endfor %}
             </div>
@@ -279,14 +403,22 @@ não tem sigla (lei do CLAUDE.md).
     <script>
       (function () {
         "use strict";
-        var REPO = "abundanciabr/sitesdoreino";
+        // O nome do repositório mora em `robos.py` e chega por atributo. Uma
+        // segunda cópia aqui dentro divergiria no primeiro dia em que alguém
+        // mexesse numa só.
+        var REPO = document.querySelector(".ao-vivo-caixa").dataset.repo;
         var estado = document.getElementById("ao-vivo-estado");
         var lista = document.getElementById("ao-vivo-lista");
+        var carimbo = document.getElementById("ao-vivo-carimbo");
+        var ultimaTentativa = null;
+        var emConsulta = false;
+        var ultimaLeitura = null;
 
         function falhou() {
-          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou ele " +
-            "limitou as perguntas desta hora). O quadro abaixo continua valendo: é o retrato " +
-            "do último deploy.";
+          estado.textContent = "Não consegui atualizar a leitura do GitHub (consulta ou resposta inválida). " +
+            (ultimaLeitura ? "A lista conserva a última leitura, que pode ter mudado. " : "Ainda não há uma leitura válida. ") +
+            "Volte a esta aba daqui a cinco minutos ou abra os trabalhos direto no GitHub. " +
+            "O quadro abaixo continua sendo o retrato da última publicação.";
         }
 
         function linha(texto, endereco, rotuloDoLink) {
@@ -300,46 +432,186 @@ não tem sigla (lei do CLAUDE.md).
             a.textContent = rotuloDoLink;
             li.appendChild(a);
           }
-          lista.appendChild(li);
+          return li;
         }
 
-        Promise.all([
-          fetch("https://api.github.com/repos/" + REPO + "/git/matching-refs/reservas%2Ftarefa-").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          }),
-          fetch("https://api.github.com/repos/" + REPO + "/pulls?state=open&per_page=100").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          })
-        ]).then(function (respostas) {
-          var reservas = respostas[0] || [];
-          var prs = respostas[1] || [];
-          var vivos = 0;
-
-          reservas.forEach(function (ref) {
-            var id = (ref.ref || "").split("tarefa-").pop();
-            if (!id) { return; }
-            vivos++;
-            linha("🔒 " + id + ": um robô reservou esta tarefa e está com ela agora.");
-            var cartao = document.querySelector('[data-tarefa="' + id + '"]');
-            if (cartao) { cartao.classList.add("reservada-agora"); }
+        function consultar(caminho) {
+          return fetch("https://api.github.com/repos/" + REPO + caminho, {
+            signal: AbortSignal.timeout(15000)
+          }).then(function (r) {
+            if (!r.ok) { throw new Error(r.status); }
+            var parcial = /rel="next"/.test(r.headers.get("Link") || "");
+            return r.json().then(function (itens) {
+              if (!Array.isArray(itens) || itens.some(function (i) {
+                if (!i || typeof i !== "object" || Array.isArray(i)) { return true; }
+                if (caminho.indexOf("matching-refs") !== -1) {
+                  return typeof i.ref !== "string" || !/^refs\/reservas\/tarefa-TAR-\d{3,}$/.test(i.ref) || /\s/.test(i.ref);
+                }
+                return !Number.isSafeInteger(i.number) || i.number <= 0 ||
+                  (i.title != null && typeof i.title !== "string") ||
+                  (i.draft != null && typeof i.draft !== "boolean") ||
+                  (i.head != null && (typeof i.head !== "object" || Array.isArray(i.head) ||
+                    (i.head.ref != null && typeof i.head.ref !== "string")));
+              })) {
+                throw new Error("resposta inválida");
+              }
+              return {itens: itens, parcial: parcial || itens.length >= 100};
+            });
           });
+        }
 
-          prs.forEach(function (pr) {
-            var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
-            var casado = texto.match(/TAR-\d{3,}/);
-            vivos++;
-            linha(
-              "⚙ " + (casado ? casado[0] + ": " : "") + "trabalho pronto esperando conferência: " +
+        function atualizar() {
+          if (document.hidden || emConsulta ||
+              (ultimaTentativa !== null && Date.now() - ultimaTentativa < 300000)) { return; }
+          ultimaTentativa = Date.now();
+          emConsulta = true;
+          estado.textContent = "Consultando reservas e trabalhos abertos…";
+          Promise.all([
+            consultar("/git/matching-refs/reservas%2Ftarefa-"),
+            consultar("/pulls?state=open&per_page=100")
+          ]).then(function (respostas) {
+            var reservas = respostas[0].itens;
+            var prs = respostas[1].itens;
+            var novasLinhas = [];
+            var marcacoes = [];
+            reservas.forEach(function (ref) {
+              var id = ref.ref.slice("refs/reservas/tarefa-".length);
+              novasLinhas.push(linha("🔒 " + id + ": reserva registrada; atividade atual não comprovada."));
+              var cartao = document.querySelector('[data-tarefa="' + id + '"]');
+              if (cartao) {
+                marcacoes.push({cartao: cartao, etiqueta: cartao.querySelector(".agora")});
+              }
+            });
+            prs.forEach(function (pr) {
+              var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
+              var casado = texto.match(/TAR-\d{3,}/);
+              var fase = pr.draft === true ? "rascunho, em preparação" :
+                pr.draft === false ? "entrega aberta, aceite ainda não comprovado" : "fase não informada pelo GitHub";
+              novasLinhas.push(linha("⚙ " + (casado ? casado[0] + ": " : "") + fase + ": " +
                 (pr.title || "(sem título)") + " ",
-              pr.html_url,
-              "abrir o nº " + pr.number
-            );
-          });
+                "https://github.com/" + REPO + "/pull/" + pr.number,
+                "abrir o nº " + pr.number));
+            });
+            var leitura = new Date();
+            var novoCarimbo = "Última leitura: " + leitura.toLocaleString("pt-BR") +
+              ". Renovação ao voltar à aba, no máximo a cada cinco minutos.";
+            var novoEstado = respostas.some(function (r) { return r.parcial; })
+              ? "Leitura parcial: " + prs.length + " trabalhos e " + reservas.length +
+                " reservas recebidos. Há limite ou outra página; estes números não são o total. Abra a lista completa no GitHub."
+              : reservas.length || prs.length ? "Reservas e trabalhos encontrados nesta leitura. Os testes e o aceite precisam de conferência." :
+                "Nenhuma reserva ou entrega aberta foi encontrada nesta leitura. Isso não comprova ausência de trabalho.";
+            var marcacoesAnteriores = document.querySelectorAll(".reservada-agora");
+            lista.replaceChildren.apply(lista, novasLinhas);
+            marcacoesAnteriores.forEach(function (cartao) { cartao.classList.remove("reservada-agora"); });
+            marcacoes.forEach(function (marcacao) {
+              marcacao.cartao.classList.add("reservada-agora");
+              if (marcacao.etiqueta) { marcacao.etiqueta.textContent = "🔒 reserva encontrada na última consulta"; }
+            });
+            ultimaLeitura = leitura;
+            carimbo.textContent = novoCarimbo;
+            estado.textContent = novoEstado;
+          }).catch(falhou).finally(function () { emConsulta = false; });
+        }
+        window.addEventListener("focus", atualizar);
+        document.addEventListener("visibilitychange", atualizar);
+        atualizar();
+      })();
+    </script>
 
-          estado.textContent = vivos
-            ? "É isto que o GitHub respondeu neste minuto:"
-            : "Neste minuto não há reserva viva nem trabalho aberto — nenhum robô está com a mão na massa agora.";
-        }).catch(falhou);
+    {% if pode_excluir %}
+      {% comment %}
+      A CAIXA DE CONFIRMAÇÃO, uma só para a página inteira: o script só troca o
+      nome da tarefa dentro dela. Uma por cartão seriam vinte formulários
+      iguais no HTML.
+
+      O formulário é de verdade, com `method="post"` e o carimbo de CSRF, e o
+      `TAR-NNN` viaja num campo escondido: o endereço da rota é fixo e não
+      carrega nada digitado (`armadilhas/047`). O `required`
+      do motivo é a primeira barreira, e a view recusa vazio de novo do lado de
+      cá, porque barreira que só existe no navegador não é barreira.
+      {% endcomment %}
+      <dialog class="confirmar-exclusao" id="confirmar-exclusao">
+        <form method="post" action="{% url 'caixa_robos_excluir' %}">
+          {% csrf_token %}
+          <h2>Pedir a exclusão desta tarefa?</h2>
+          <p id="qual-tarefa"></p>
+          {% if reabrir_formulario %}<p role="alert">{{ recado }} Confira o motivo preservado antes de repetir o pedido.</p>{% endif %}
+          <p>
+            O pedido será enviado para revisão no repositório público abundanciabr/sitesdoreino, no GitHub. O motivo escrito abaixo ficará público no evento e no PR. A tarefa só sai da fila depois da integração e da aplicação do cancelamento.
+          </p>
+          <input type="hidden" name="tarefa" id="campo-da-tarefa" value="{{ tarefa_do_resultado }}">
+          <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
+          <textarea id="motivo-da-exclusao" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+          <p><a id="consultar-pedido" href="{% url 'caixa_robos' %}{% if tarefa_do_resultado %}?pedido={{ tarefa_do_resultado }}{% endif %}">Consultar o pedido existente desta tarefa</a></p>
+          <div class="botoes">
+            <button type="button" id="deixar-na-fila">Voltar ao quadro</button>
+            <button type="submit" class="confirma">Enviar o pedido público</button>
+          </div>
+        </form>
+      </dialog>
+    {% endif %}
+
+    <script>
+      (function () {
+        "use strict";
+        var quadro = document.querySelector(".envolucro");
+        var caixa = document.getElementById("confirmar-exclusao");
+
+        quadro.addEventListener("click", function (evento) {
+          var botao = evento.target.closest("button");
+          if (!botao) { return; }
+
+          if (botao.classList.contains("tocar")) {
+            var prompt = document.getElementById(botao.dataset.prompt);
+            // A caixa ABRE sempre, tenha a cópia dado certo ou não: sem área de
+            // transferência (navegador antigo, permissão negada, página sem
+            // HTTPS), o texto continua na tela para ele selecionar. Falha que
+            // some sem dizer nada é a pior de todas.
+            prompt.classList.add("a-mostra");
+            var avisar = function (texto, deuCerto) {
+              botao.textContent = texto;
+              if (deuCerto) { botao.classList.add("copiado"); }
+            };
+            var voltarAoNormal = function () {
+              window.setTimeout(function () {
+                botao.textContent = "Copiar o prompt para tocar aqui";
+                botao.classList.remove("copiado");
+              }, 5000);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(prompt.textContent).then(function () {
+                avisar("copiado, é só colar no Claude Code", true);
+                voltarAoNormal();
+              }).catch(function () {
+                avisar("não consegui copiar sozinho, selecione o texto abaixo", false);
+              });
+            } else {
+              avisar("não consegui copiar sozinho, selecione o texto abaixo", false);
+            }
+            return;
+          }
+
+          if (botao.classList.contains("excluir") && !botao.disabled && caixa) {
+            document.getElementById("qual-tarefa").textContent =
+              "“" + botao.dataset.titulo + "” (" + botao.dataset.tarefa + ")";
+            if (document.getElementById("campo-da-tarefa").value !== botao.dataset.tarefa) {
+              document.getElementById("motivo-da-exclusao").value = "";
+            }
+            document.getElementById("campo-da-tarefa").value = botao.dataset.tarefa;
+            document.getElementById("consultar-pedido").href = "{% url 'caixa_robos' %}?pedido=" + encodeURIComponent(botao.dataset.tarefa);
+            caixa.showModal();
+          }
+        });
+
+        if (caixa) {
+          if ({{ reabrir_formulario|yesno:"true,false" }} && document.getElementById("campo-da-tarefa").value) {
+            document.getElementById("qual-tarefa").textContent = document.getElementById("campo-da-tarefa").value;
+            caixa.showModal();
+          }
+          document.getElementById("deixar-na-fila").addEventListener("click", function () {
+            caixa.close();
+          });
+        }
       })();
     </script>
   {% endif %}

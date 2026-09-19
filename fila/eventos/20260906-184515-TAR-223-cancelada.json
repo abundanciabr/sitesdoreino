@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-184515-TAR-223-cancelada",
+  "tarefa": "TAR-223",
+  "evento": "cancelada",
+  "quando": "2026-09-06T18:45:15+00:00",
+  "quem": "sessao-fila-decisoes-do-dono-20260906",
+  "detalhe": "O mantenedor decidiu em 06/09/2026, perguntado numa caixa que descrevia a obra e o que se perde sem ela: nao precisa da reconferencia diaria dos links do portfolio. A resposta dele foi 'nao precisa disso'. Os links continuam sendo conferidos quando alguem abre a pagina. Se ele mudar de ideia, nasce tarefa nova: cancelada nao volta."
+}

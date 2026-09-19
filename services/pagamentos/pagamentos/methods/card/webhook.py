@@ -119,5 +119,13 @@ def _montar_dados(
         "customer": _customer(intent),
     }
     if evento == "pagamento.aprovado":
-        return {**base, "method": "card", "mp_payment_id": mp_payment_id}
+        # [TAR-225] `product_id` é OPACO — mesma disciplina do gêmeo em
+        # methods/pix/webhook.py (ver o comentário lá). Veio no `metadata` da
+        # criação da intent; pagamentos só repassa, nunca interpreta. Opcional
+        # no contrato: AUSENTE quando o checkout não informou, nunca vazio.
+        aprovado = {**base, "method": "card", "mp_payment_id": mp_payment_id}
+        produto = str(intent.metadata.get("product_id") or "")
+        if produto:
+            aprovado["product_id"] = produto
+        return aprovado
     return {**base, "method": "card", "reason_code": reason_code}

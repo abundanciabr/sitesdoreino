@@ -33,6 +33,14 @@ AS PERGUNTAS SÃO AS DA PROFESSORA, e as respostas possíveis vêm dos vocabulá
 da `Peca`. Não existe nota, estrela nem classificação nesta tela, e a ausência é
 lei escrita (`PLANO-PORTFOLIO-DO-ALUNO.md` §7).
 
+A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11) fecha a página, e é aqui
+mesmo que ela mora: o aluno acabou de ver o que falta em cada peça, e o botão
+que manda tudo para a escola olhar tem de estar ao lado disso, não noutra tela.
+
+QUANDO O PORTFÓLIO VOLTA, O MOTIVO APARECE POR EXTENSO. Devolver sem dizer por
+quê é o que faz um aluno desistir, e esta é a metade do critério que o texto
+carrega: a frase da devolução diz o que falta E o que fazer.
+
 O FORMULÁRIO VEM ABERTO SÓ ONDE HÁ O QUE RESPONDER, e é `<details>` puro, sem
 uma linha de script. Numa estante de vinte peças, vinte formulários abertos
 fariam o aluno rolar a tela inteira para encontrar a única que ainda pede
@@ -124,6 +132,154 @@ continua a um clique de distância para quem quiser mudar a resposta.
 {% elif pode_guardar %}
   <p class="miudo">Você ainda não guardou nenhuma peça. Abra a imagem que você
   quer mostrar, copie o endereço da barra do navegador e cole no campo acima.</p>
+{% endif %}
+
+{% if pode_guardar %}
+  <section class="conferencia">
+    <h2>A conferência da escola</h2>
+    <p>Quando você achar que o portfólio está pronto, mande para a escola
+    olhar. Uma pessoa da equipe abre as suas peças, compara com o roteiro e
+    responde: ou aceita, ou devolve dizendo o que falta.</p>
+
+{% if recusa_da_conferencia %}
+    <p class="recusa" role="alert">{{ recusa_da_conferencia }}</p>
+{% endif %}
+
+{% comment %}
+O SELO DA ESCOLA (critério AC-12). Ele sai do estado do aluno, e não do último
+pedido: quem já foi conferido e pediu uma conferência nova continua com o selo
+da anterior, e ler o pedido faria o selo sumir da tela sem nada tê-lo tirado.
+
+O segundo parágrafo é a metade que o corredor exige por escrito. A foto entra
+por link colado e a escola não controla o que está do outro lado dele (plano
+§6.2), então o selo vale para o dia em que o monitor olhou. Um selo que
+prometesse mais seria uma promessa que a escola não pode cumprir, e o aluno
+levaria essa promessa para um cliente pagante.
+{% endcomment %}
+{% if selo_em %}
+    <p class="selo">Selo da escola: uma pessoa da equipe conferiu o seu
+    portfólio em {{ selo_em|date:"d/m/Y" }}.</p>
+    <p class="miudo">O selo vale para o que essa pessoa viu no dia da conferência.
+    Ele não fala do que você mudar depois, e não responde pelos endereços das
+    suas imagens, que ficam em sites que a escola não controla. Trocou ou
+    acrescentou peças? Peça uma conferência nova, e o selo passa a valer para o
+    dia dela.</p>
+{% endif %}
+
+{% if pedido.estado == "em_analise" %}
+    <p class="aviso">O seu portfólio está com a escola desde
+    {{ pedido.criado_em|date:"d/m/Y" }}, e a resposta chega até
+    {{ pedido.prazo_ate|date:"d/m/Y" }}.{% if pedido.prazo_ate < agora %} Essa
+    data já passou, e o seu pedido continua na fila: ele não foi esquecido nem
+    recusado.{% endif %}</p>
+    <p class="miudo">Você pode continuar arrumando as suas peças enquanto
+    espera. A equipe olha o portfólio como ele estiver no dia da conferência.</p>
+{% else %}
+{% if pedido.estado == "devolvido" %}
+    <p class="recusa">A escola devolveu o seu portfólio em
+    {{ pedido.respondido_em|date:"d/m/Y" }}, e este é o motivo:
+    {{ pedido.get_motivo_da_devolucao_display }}</p>
+    <p>Arrume o que falta e peça a conferência de novo. Devolver não é dizer
+    não: é dizer o que ainda falta.</p>
+{% elif pedido.estado == "aceito" %}
+    <p>A escola disse sim ao seu portfólio. Se você acrescentar peças novas,
+    pode pedir uma conferência nova.</p>
+{% endif %}
+    <form method="post" action="{% url 'pedir_conferencia' %}">{% csrf_token %}<button type="submit">Pedir a conferência da escola</button></form>
+{% endif %}
+  </section>
+
+{% comment %}
+A VITRINE (degrau 13, critério AC-13). Ela fecha a página de propósito: é o
+último passo do caminho do aluno, depois de guardar as peças e de mandar o
+portfólio para a escola olhar.
+
+O PADRÃO É PRIVADO, e a tela diz isso com todas as letras antes de qualquer
+botão. Enquanto ele não publicar, não existe página nenhuma para ninguém, e essa
+é a frase que ele precisa ler para confiar no que vai fazer.
+
+O ENDEREÇO APARECE INTEIRO, para copiar e colar no chat, e ele não sai de uma
+tag de url: a vitrine não mora sob o prefixo da área do aluno, e o motivo está
+por extenso em `apps/portfolio/vitrine.py`.
+
+TROCAR O ENDEREÇO É O MESMO BOTÃO DE PUBLICAR, e o aviso de que o link antigo
+para de funcionar vem ANTES dele, e não depois. Quem já mandou o link a um
+cliente precisa saber disso antes de apertar, não numa mensagem de sucesso.
+{% endcomment %}
+  <section class="conferencia">
+    <h2>A sua vitrine</h2>
+    <p>A vitrine é a página pronta que você manda ao cliente. Ela mostra as suas
+    peças, o seu apelido e o selo da escola, e nada mais: nem o seu e-mail, nem
+    o seu telefone, nem o seu nome. Ela também fica fora dos buscadores, então
+    só chega nela quem tem o link.</p>
+
+{% if recusa_da_vitrine %}
+    <p class="recusa" role="alert">{{ recusa_da_vitrine }}</p>
+{% endif %}
+
+{% if vitrine_publicada %}
+    <p class="selo">A sua vitrine está no ar neste endereço:</p>
+    <p><a href="{{ endereco_da_vitrine }}" target="_blank" rel="noopener">{{ endereco_da_vitrine }}</a></p>
+    <p class="miudo">Copie esse endereço e mande para quem você quiser. Tudo o
+    que você mudar aqui aparece lá na mesma hora.</p>
+    <form method="post" action="{% url 'despublicar_vitrine' %}">{% csrf_token %}<button type="submit">Tirar a vitrine do ar</button></form>
+    <p class="miudo">Tirar do ar é na hora: quem abrir o link deixa de ver a
+    página no mesmo instante. O endereço continua guardado com você, e volta a
+    funcionar quando você publicar de novo.</p>
+    <details class="responder">
+      <summary>Trocar o endereço da minha vitrine</summary>
+      <p class="miudo">Se você trocar, o endereço de agora para de funcionar, e
+      quem já tem o link antigo passa a ver uma página que não existe.</p>
+      <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
+        <p>
+          <label for="apelido-novo">Endereço novo</label>
+          <input type="text" id="apelido-novo" name="apelido" value="{{ apelido }}" maxlength="48" required>
+        </p>
+        <p><button type="submit">Trocar o endereço</button></p>
+      </form>
+    </details>
+{% else %}
+    <p>Enquanto você não publicar, não existe página nenhuma: ninguém consegue
+    ver as suas peças por fora da escola. Escolha o final do endereço e publique
+    quando quiser.</p>
+    <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}
+      <p>
+        <label for="apelido">O final do endereço</label>
+        <input type="text" id="apelido" name="apelido" value="{{ apelido }}" maxlength="48" placeholder="ana-3d" required>
+      </p>
+      <p class="miudo">Use letras e números, por exemplo o seu nome ou o nome do
+      seu estúdio. O endereço fica assim: meshcraft.top/estudio/ana-3d</p>
+      <p><button type="submit">Publicar a minha vitrine</button></p>
+    </form>
+{% endif %}
+  </section>
+
+{% comment %}
+O DOSSIÊ EM PDF (degrau 14, critério AC-16), e ele fecha a página porque é o
+último passo do caminho: guardar as peças, mandar para a escola olhar, publicar
+a vitrine, e sair daqui com o arquivo na mão.
+
+É UM LINK, e não um formulário. Baixar não muda nada no servidor, então a rota
+é `GET` e o navegador faz o resto sozinho, sem uma linha de script e sem POST.
+
+O TEXTO DIZ O QUE O ARQUIVO TEM E O QUE ELE NÃO TEM, porque quem vai anexá-lo a
+um e-mail para um cliente precisa saber disso antes de mandar, e não depois.
+{% endcomment %}
+  <section class="conferencia">
+    <h2>O seu dossiê</h2>
+    <p>O dossiê é o arquivo do seu portfólio, pronto para anexar num e-mail,
+    imprimir ou levar a uma reunião. Ele traz as mesmas obras da sua vitrine, na
+    mesma ordem, e o selo da escola quando você já tiver o seu. Cada obra abre
+    no endereço dela com um clique.</p>
+    <p class="miudo">Assim como a vitrine, o arquivo não leva o seu e-mail, o
+    seu telefone nem o seu nome: só o seu apelido e as suas obras.</p>
+
+{% if recusa_do_dossie %}
+    <p class="recusa" role="alert">{{ recusa_do_dossie }}</p>
+{% endif %}
+
+    <p><a href="{% url 'dossie' %}">Baixar o meu dossiê em PDF</a></p>
+  </section>
 {% endif %}
 
   <p class="miudo"><a href="{% url 'prancheta' %}">Voltar para a sua Prancheta</a></p>

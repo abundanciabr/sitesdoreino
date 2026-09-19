@@ -11,6 +11,8 @@
 > (`wt-<celula>-<tarefa>`), seu despacho já cita o que você precisa — mas a
 > §2 e a §9 abaixo valem para você também.
 
+Desde 12/09/2026 a casa opera com a tríade de IAs, em papéis fixos (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code é a maestro (decide cada achado, despacha a tarefa na fila com o brief roteado, executa só o que é cirúrgico, com as próprias mãos e sem sub-agente de escrita, revisa PR crítico e publica o atestado; nunca mergeia, a pista mergeia); Codex é o executor (um PR por tarefa, com evento na fila e registro no livro pelo `make pr`; nunca pergunta ao mantenedor, devolve a dúvida à maestro); Antigravity é a sentinela (escreve proposta medida contra `origin/main` e verifica cada entrega alheia depois do merge; nunca edita código ou lei). Pedido colado no Claude Code vira tarefas na fila para o Codex; pedido colado no Codex é executado como um despacho; só a maestro pergunta ao mantenedor.
+
 ## 0. O que é este projeto, em 1 parágrafo
 
 Uma plataforma de venda de cursos multissítio (N domínios, 1 deploy) construída
@@ -25,9 +27,9 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 
 | Documento | Leia quando | O que resolve |
 |---|---|---|
-| **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Manda você para o índice. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
-| **`armadilhas/INDICE.md`** | **Sempre, junto com o de cima.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
-| `ARMADILHAS-OPERACAO.md` | Maestro de lote, quem vai mergear, quem fala com o humano. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
+| **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Explica o contexto direcionado e o aprofundamento. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
+| **`armadilhas/INDICE.md`** | **Para aprofundamento após o contexto direcionado.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
+| `ARMADILHAS-OPERACAO.md` | A maestro (Claude Code), a sentinela (Antigravity) e o mantenedor; o executor recebe só o brief. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
 | `docs/historico/RESOLVIDAS.md` | Só quando precisar do histórico de um item já encerrado. | Armadilhas resolvidas — fora da dieta de um despacho normal. |
 | `CLAUDE.md` | Sempre (Claude Code lê sozinho; outras ferramentas, leia à mão). | Instruções de operação específicas deste harness — painel obrigatório, etc. |
 | `CONSTITUICAO.md` | Antes de qualquer código. | As leis que não se negociam (4 muralhas, escada da imposição). |
@@ -39,16 +41,16 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 | `02-RED-TEAM.md` | Fase E (atual). | Os 15 golpes de graduação — o rito ainda não fechou. |
 | `services/<celula>/LICOES.md` | Ao tocar UMA célula. | Decisões e armadilhas só daquela célula (se existir). |
 | `RUNBOOK-FASE-D.md` | Ao rodar, depurar ou estender o esqueleto que anda. | Manual operacional do que a Fase D entregou (comandos, pendências herdadas). |
-| **`docs/decisoes/RETROSPECTIVA-FASE-D.md`** | **Depois deste arquivo e do `armadilhas/INDICE.md`, antes de escrever código.** | Os **8 padrões que atravessam** as 67 armadilhas — o andar de cima do catálogo (falso-verde, garantia sem mecanismo, prova de fora, fail-closed na borda, humano no caminho crítico, contexto é orçamento, sessões paralelas, viabilidade sem ler config). Existe porque conhecer os casos não impede repetir a categoria. |
+| **`docs/decisoes/RETROSPECTIVA-FASE-D.md`** | **Antes de escrever código, uma vez por sessão.** | Os **8 padrões que atravessam** as 67 armadilhas — o andar de cima do catálogo (falso-verde, garantia sem mecanismo, prova de fora, fail-closed na borda, humano no caminho crítico, contexto é orçamento, sessões paralelas, viabilidade sem ler config). Existe porque conhecer os casos não impede repetir a categoria. |
 | `00-LEIA-PRIMEIRO.md`, `01-BRIEF-FASE-0.md`, `PROMPTS-INICIAIS.md` | Só para entender a HISTÓRIA (como o kit nasceu). | Framing original de bootstrapping — a Fase 0 já fechou; não descreve o estado atual. |
 | `arquivos/*.html` | **Provavelmente você não consegue ler isto.** | Painéis para o humano (não-técnico). `arquivos/` está no `.gitignore` — não existe dentro de um worktree de célula. Se você é root window e consegue ver, é conveniência, nunca fonte de lei. |
 
 **Ordem de leitura para uma sessão nova, root window, sem tarefa ainda definida:**
-este arquivo → `ARMADILHAS.md` (§2 partida rápida) + `armadilhas/INDICE.md` →
+este arquivo → `ARMADILHAS.md` (§2 abertura e contexto direcionado) →
 `docs/decisoes/RETROSPECTIVA-FASE-D.md` (os 8 padrões — leitura curta, evita
 repetir a CATEGORIA de erro que o catálogo já cobre caso a caso) →
 `ARMADILHAS-OPERACAO.md` §1 → `CONSTITUICAO.md` → `RITOS.md` §1 →
-pergunte ao humano qual é a tarefa, ou veja `git log`/`gh pr list` para inferir
+se você é a maestro, pergunte ao mantenedor qual é a tarefa; se você é um despacho, devolva a dúvida à maestro; ou veja `git log`/`gh pr list` para inferir
 onde o projeto parou.
 
 ## 2. Estado do projeto (fato registrado em 21/08/2026 — **verifique antes de confiar**)
@@ -90,40 +92,12 @@ prova a ausência do trabalho** — prova apenas que o certificado não foi
 emitido. As duas coisas precisam ser fechadas, e confundi-las custa refazer
 trabalho que já existe.
 
-**Gap conhecido, aberto, BLOQUEADO (não é bug para "consertar", e não é escolha):**
-não existe branch protection nativa do GitHub neste repositório —
-`gh api .../branches/main/protection` responde `403 "Upgrade to GitHub Pro or
-make this repository public"`.
-
-> **Não recomende "assine o GitHub Pro".** Atualizado em 21/08/2026: o cartão do
-> mantenedor **não é aceito pelo GitHub** e não há outra forma de pagamento —
-> a porta está fechada por impossibilidade, não por decisão de custo. Quatro
-> consultorias externas independentes recomendaram exatamente isso sem saber
-> da restrição; o conselho é morto. As saídas vivas estão em
-> `docs/decisoes/SINTESE-E-PLANO.md` §1 — a imediata é um **portão no workflow
-> de deploy** (consultar `check-runs` do commit e abortar se não estiver verde:
-> não protege a `main`, mas protege a VPS e o cliente, que é onde dói).
-
-Consequências diretas para qualquer agente:
-
-- Push direto na `main` **não é bloqueado pelo GitHub** — só por
-  `.githooks/pre-push` (`core.hooksPath`), que vale só nesta máquina/clone.
-- "Require review from Code Owners" **não está ativo** — `.github/CODEOWNERS`
-  existe mas é só sugestão de revisor até essa opção ser ligada.
-- A mitigação real hoje: `python ci/mergear.py <PR>` (recusa mergear PR com
-  check vermelho, quando o merge sai do terminal) + workflow `alarme-main`
-  (abre issue se a `main` quebrar DEPOIS do fato — alarme, não portão).
-- **Nunca trate um merge ou um push como seguro só porque "o GitHub deixou"** —
-  deixar passar é o comportamento esperado enquanto este item não for resolvido.
-  Detalhe completo: `ARMADILHAS-OPERACAO.md` §1 item H3, `INVARIANTES.md` (seção
-  "A cadeia de merge não está fechada").
-
-**Atrito H6, resolvido em 22/08/2026:** `ci/mergear.py` não usa mais `--yes`
-(o `gh` 2.97.0 desta máquina não tem a flag) e ganhou o caminho não-interativo
-`--confirmo <N>`, com conferência `state=MERGED` embutida — o comando que o
-script imprime voltou a ser o comando que funciona. E, desde a mesma data,
-**mergear é trabalho do agente** (Lei 4; RITOS.md §2 peça 4):
-`python ci/mergear.py <N> --confirmo <N>`, nunca o botão do site.
+**Proteção e integração:** o estado histórico acima não autoriza operações.
+RITOS.md §2 registra a proteção da `main` e o comando para conferir as regras
+no servidor. A emenda de 29/08/2026 da CONSTITUICAO Lei 4 atribui o merge à
+pista: a maestro publica o atestado e pede pouso com `python ci/mergear.py <N> --pousar`; a pista mergeia (check pendente não impede o pedido, a pista aguarda); `--confirmo` é
+reservado à pista. Siga RITOS.md §2 para os checks, recibo e encaminhamento,
+e CLAUDE.md para o veredito do deploy. Falha ao consultar não é aprovação.
 
 ## 3. As 8 células
 
@@ -138,13 +112,9 @@ script imprime voltou a ser o comando que funciona. E, desde a mesma data,
 | `quiz` | Fluxo de perguntas, pontuação server-side, emite `quiz.completado.v1` | `quiz_db` | auto (CI verde) | ✅ Fase D — PR #28 (resolução de site LOCAL, decisão aceita — ver `services/quiz/LICOES.md`) |
 | `funil` | Vitrine/landing mínima, stateless, preserva UTM até o checkout | sem banco (stateless) | auto (CI verde) | ✅ Fase D — PR #30 |
 
-Nenhuma área tem merge humano desde 22/08/2026
-(`docs/decisoes/DECISAO-merge-pelo-agente.md`): o agente mergeia tudo pelo portão
-(`ci/mergear.py`), inclusive `contracts/`, `infra/`, `ci/`, `.github/` e os
-arquivos de raiz que são lei (`CONSTITUICAO.md`, `INVARIANTES.md`, `RITOS.md`,
-`CAMINHO-DOURADO.md`) — nesses caminhos CODEOWNERS, só com mandato do despacho e
-com anúncio nominal no relatório (Lei 4). O `.github/CODEOWNERS` virou mapa de
-jurisdição (diz onde o anúncio é obrigatório), não trava.
+A coluna de merge da tabela é histórica. A operação vigente é a pista,
+conforme CONSTITUICAO Lei 4 e RITOS.md §2. Caminhos CODEOWNERS continuam
+exigindo mandato do despacho e anúncio nominal dos merges observados.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 
@@ -153,11 +123,13 @@ jurisdição (diz onde o anúncio é obrigatório), não trava.
 > como N delas rodam juntas e como a janela de merge fecha o lote.
 
 ```bash
-git fetch origin
-git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
-cd ../wt-<celula>-<tarefa>/services/<celula>
-make ci   # baseline PRECISA estar verde antes de tocar qualquer arquivo
+make sessao CELULA=<celula> TAREFA=<slug>
 ```
+
+Sem make: `python ci/sessao.py --celula <celula> --tarefa <slug>`. Entre na
+bancada informada e confira o baseline e o caminho do log. A retomada usa a
+mesma entrada. Para tarefa da fila e área sem serviço, siga RITOS.md §1;
+`--sem-container` não mede baseline, portanto rode os testes dos alvos.
 
 **Primeira linha da primeira resposta do agente** (obrigatória):
 > "Li `CONSTITUICAO.md` e `constituicoes/AGENTS.<celula>.md`. Worktree:
@@ -169,15 +141,15 @@ quebrada não é escopo de sessão de feature.
 
 Regras de anti-thrashing que valem sempre (RITOS.md §2): commit a cada estado
 verde (nunca `git add -A`); duas tentativas de correção falharam ⇒
-`git reset --hard <último-verde>` e reporte — a terceira tentativa é onde
-nascem labirintos; teste-guarda é intocável (nunca deletar/afrouxar para
-passar — se parecer errado, PARE e reporte).
+pare, preserve os arquivos e commits e reporte o diagnóstico. Não faça uma
+terceira tentativa sem novo despacho. Teste-guarda é intocável (nunca
+deletar ou afrouxar para passar; se parecer errado, PARE e reporte).
 
 ## 5. As leis que não se discute (CONSTITUICAO.md, resumo)
 
 - **4 muralhas:** execução (1 processo/porta por célula), dados (1 database +
   1 role Postgres por célula — cruzar é `permission denied`, não "proibido"),
-  código (1 sessão = 1 célula = 1 worktree), contrato (só HTTP versionado ou
+  código (1 sessão = 1 worktree; suítes das células tocadas), contrato (só HTTP versionado ou
   evento versionado entre células).
 - **3 pecados:** importar código de outra célula; ler/escrever banco de outra
   célula; duplicar-e-divergir comportamento. Virtude: copiar dados (snapshot).
@@ -255,15 +227,15 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
 ## 9. Antes de abrir a boca — checklist dos primeiros 5 minutos
 
 1. Este arquivo, inteiro.
-2. `ARMADILHAS.md` §2 (partida rápida) + `armadilhas/INDICE.md` (o mapa das
-   armadilhas — abra só o que casar); `ARMADILHAS-OPERACAO.md` §1 se for maestro
+2. `ARMADILHAS.md` §2 (abertura e contexto direcionado); abra as origens
+   recuperadas e citadas no brief; `ARMADILHAS-OPERACAO.md` §1 se for maestro
    de lote ou for mergear (o que só o humano resolve).
 3. Se a tarefa já é conhecida: `constituicoes/AGENTS.<celula>.md` +
    `services/<celula>/LICOES.md` (se existir).
-4. Rode o baseline (`make ci`) ANTES de tocar qualquer arquivo. Vermelho ⇒
+4. Confira o baseline emitido pela abertura ANTES de tocar qualquer arquivo. Vermelho ⇒
    pare e reporte.
 5. Se não há tarefa definida ainda: rode os comandos da §2 acima para saber
-   de fato onde o projeto parou, e pergunte ao humano em vez de assumir.
+   de fato onde o projeto parou; a maestro pergunta ao mantenedor, o despacho devolve a dúvida à maestro; nunca assuma.
 
 ## 10. Ao terminar uma tarefa
 

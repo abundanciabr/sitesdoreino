@@ -89,8 +89,9 @@ elo 3/4 falha com erro de autenticação da própria MP, não um bug do script.
 
 O mantenedor guarda essa credencial fora do repo, num compartilhamento de rede
 pessoal (correto, por INV-P8 — nunca deveria estar num arquivo versionado).
-**Se você precisa rodar `make esqueleto` e não tem a credencial: peça ao
-mantenedor onde está**, em vez de tentar gerar uma nova ou de commitar
+**Se você precisa rodar `make esqueleto` e não tem a credencial: se você é a
+maestro, pergunte ao mantenedor; se você é executor, bloqueie a tarefa com o motivo
+e `precisa_do_dono: true`, e a maestro pergunta**, em vez de tentar gerar uma nova ou de commitar
 qualquer valor de teste. Nunca escreva o valor real em nenhum arquivo
 versionado (nem aqui) — só em `e2e/.env.e2e`, git-ignorado.
 
@@ -351,8 +352,8 @@ vez de confiar numa só; se for corrigir §9, isso é PR de docs à parte.
 
 ## 9. O que NÃO fazer aqui
 
-- Não "conserte" a credencial de MP gerando uma nova sem falar com o
-  mantenedor (§3).
+- Não "conserte" a credencial de MP gerando uma nova sem passar pela
+  maestro (§3).
 - Não trate uma pendência da §7 como bug de sessão — são decisões já
   registradas; se for reabrir alguma, é `issue arquitetura:`, não edição
   silenciosa.

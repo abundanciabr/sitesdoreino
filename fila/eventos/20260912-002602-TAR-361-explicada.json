@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-002602-TAR-361-explicada",
+  "tarefa": "TAR-361",
+  "evento": "explicada",
+  "quando": "2026-09-12T00:26:02+00:00",
+  "quem": "Plano Mestre 10x aprovado, Fase 2.1, recuperação do PR 1589",
+  "o_que_e": "Cada nova tarefa prepara novamente as mesmas ferramentas de trabalho.",
+  "o_que_muda": "As ferramentas prontas são reutilizadas sem misturar dados de tarefas diferentes.",
+  "exemplo": "Cinco robôs usam um servidor local com bancos separados.",
+  "importancia": 85
+}

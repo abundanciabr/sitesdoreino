@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-142100-TAR-245-concluida",
+  "tarefa": "TAR-245",
+  "evento": "concluida",
+  "quando": "2026-09-07T14:21:00+00:00",
+  "quem": "maestro-agentes-de-ia-20260907",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/1276 MERGED (commit 72b72af81d3bb7e9925d81f2bdef0f48a084ed18, gh pr view --json state,mergedBy). O degrau precisou de dois PRs, na ordem da armadilhas/243: o contrato primeiro (https://github.com/abundanciabr/sitesdoreino/pull/1324, so contracts/cursos.openapi.yaml, etiqueta contrato, Rito de RITOS.md 3 com o mantenedor presente e autorizando nominalmente), o codigo depois. Freeze medido com as duas pecas na mesma arvore: 'contrato/cursos PASS identico ao congelado (1167 linhas comparadas)' e 'seguranca/cursos PASS 13 operacao(oes) com autenticacao conferida na fonte'; contrato_aditivo 'mudanca aditiva - nada removido'; nasceram ['checkLesson'], sumiram []. Os 8 checks do 1276 verdes em 2min05s. DEPLOY: gh run view 34131903431 --json status,conclusion devolve completed/success no sha 72b72af8. PROVA DE FORA depois do deploy: GET https://meshcraft.top/cursos/healthz -> 200 e GET https://meshcraft.top/cursos/ -> 301 para /cursos/profissional/, que responde 200. Licao da sessao: armadilhas/389 (https://github.com/abundanciabr/sitesdoreino/pull/1326, MERGED).",
+  "verificado_em": "2026-09-07"
+}

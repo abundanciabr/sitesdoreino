@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-006-a-progressao-livre-esta-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "A progressao livre passou pelo deploy da sala",
+  detalhe: "O PR 1372 foi mergeado e o deploy-celula 34173848125 terminou com sucesso. A sala subiu com o gesto Concluir esta aula para curso livre, mantendo o curso por laudo no caminho do laudo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34173848125",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-001-a-progressao-livre-entra-na-sala",
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

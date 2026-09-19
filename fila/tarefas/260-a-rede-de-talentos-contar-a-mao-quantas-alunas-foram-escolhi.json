@@ -1,0 +1,20 @@
+{
+  "arquivo": "260-a-rede-de-talentos-contar-a-mao-quantas-alunas-foram-escolhi",
+  "id": "TAR-260",
+  "titulo": "A rede de talentos: contar a mao quantas alunas foram escolhidas, quantos estudios aceitaram e quantos encaixes ja aconteceram",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-selecionados-para-a-rede",
+    "estudios-parceiros",
+    "encaixes-com-estudio"
+  ],
+  "evidencia_exigida": "PR verde; prova vermelho para verde por assercao; prova por mutacao depois do verde; a suite inteira da celula admin; python ci/mapa_do_site.py PASS com a rota nova no mapa; python ci/travessao.py PASS; painel/testes/teste_gerador.js verde; registro embarcado no mesmo ramo citando a URL do proprio PR",
+  "despacho": "Construa o DEGRAU 17 do docs/decisoes/PLANO-PAINEL-DE-GESTAO.md: rede de talentos e B2B, a mao. Celula admin. Contagem digitada e REGISTRO do livro tipo medicao com o campo foto, nunca tabela nova; um cartao em painel/cartoes/ por contagem; a tela e sub-rota do placar e nao escreve nada, produz bloco copiavel como /admin/reuniao/. Atualize a linha 17 da tabela do §8 do plano no mesmo PR.",
+  "origem": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 17; destravado em 07/09/2026 pela entrega do degrau 13 (PR #1327)",
+  "criada_em": "2026-09-07"
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "275-o-catalogo-dos-cursos-passa-pelo-revisor-aviso-que-nao-contr",
+  "id": "TAR-275",
+  "titulo": "O catalogo dos cursos passa pelo revisor: aviso que nao contradiz o cartao e link tente de novo no mesmo curso",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado com os 8 pontos do revisor consertados, teste novo para o aviso, para o link tente de novo e para o site sem configurar, suite da cursos verde, sabotagem do aviso e do link deixando teste vermelho",
+  "despacho": "Celula cursos, bancada propria a partir de origin/main. Consertar os 8 pontos do revisor do PR 1341: (1) _aviso_do_catalogo devolve vazio quando algum cartao e sem-produto; (2) a frase do cartao sem-produto ganha 'Fale com a escola pela pagina inicial'; (3) a docstring de aula aponta para _o_endereco_de_um_segmento_mudou_de_casa, e a frase do cache do 301 mora la; (4) sala.css: .curso entra nos seletores que ja existem (caixa, selo, botao) em vez de copiar; (5) tirar a chave slug do cartao; (6) tirar o block faixa de catalogo.html; (7) renomear o teste de dois cursos para dizer que abre o catalogo; (8) _sala resolve o curso antes da porta e passa para _recusar, para o link tente de novo voltar ao mesmo curso. Testes novos: aviso calado com sem-produto, link tente de novo em /profissional/, site sem SITE_ID. Suite verde, sabotagem de (1) e (8) vermelha, registro no PR.",
+  "origem": "revisor do PR 1341 em 07/09/2026, lista de 8 pontos entregue depois do pouso",
+  "criada_em": "2026-09-07"
+}

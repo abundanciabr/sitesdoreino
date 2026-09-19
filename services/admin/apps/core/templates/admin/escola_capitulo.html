@@ -1,0 +1,297 @@
+{% extends "admin/base.html" %}
+{% comment %}
+ENVIAR O CAPITULO INTEIRO de uma encomenda e ele virar as 16 peças dela.
+
+Uma caixa de colar, um campo de arquivo e dois botões. PREVER mostra o que
+aconteceria e não grava nada; IMPORTAR grava, pela porta de máquina, SÓ as
+peças que estão vazias hoje. O que já tem texto é preservado, e a tela diz
+que preservou.
+
+Esta tela NÃO GUARDA o capítulo: ele volta para a caixa dentro da própria
+página, e o arquivo continua sendo do mantenedor (armadilhas/331). Sem uma
+linha de script: a política de segurança desta área exige hash na CSP para
+script embutido (armadilhas/199), e um POST por gesto dispensa qualquer um.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+{% endcomment %}
+{% block titulo %}Enviar o capítulo da encomenda {{ numero }}{% endblock %}
+{% block corpo %}
+<style>
+  .caixa-do-capitulo { width: 100%; min-height: 260px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+  .dois-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .escolher-arquivo { margin-top: 14px; font-size: 14px; }
+  .escolher-arquivo input { display: block; margin-top: 6px; font: inherit; }
+  .linha-da-peca { border: 1px solid var(--linha); border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+  .linha-da-peca .qual { font-weight: 600; }
+  .linha-da-peca .trecho { display: block; margin: 4px 0 0; color: var(--texto-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .lista-simples { margin: 6px 0 0; padding-left: 20px; color: var(--texto-2); font-size: 14px; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{{ url_da_encomenda }}">&larr; A encomenda {{ numero }}</a></p>
+  <h1>Enviar o capítulo inteiro da encomenda {{ numero }}</h1>
+  <p class="subtitulo">
+    Cole aqui o capítulo inteiro, ou escolha o arquivo dele no seu computador,
+    e ele vira as 16 peças desta encomenda de uma vez.
+    <b>O que você já escreveu nunca é apagado</b>: esta tela só preenche peça
+    que está vazia, e diz na prévia o que deixou intacta.
+  </p>
+  <p class="subtitulo">
+    O capítulo não fica guardado em lugar nenhum. Ele passa por aqui, vira as
+    peças, e o arquivo continua só com você.
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola é este curso.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora.
+    Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-amarela">{{ erro }}</p>
+  {% if nomes_que_procuro %}
+  <p class="nota">
+    Os nomes de peça que eu procuro, cada um num título de dois sustenidos, são
+    estes. O nome não precisa ser igual: pode ter cauda depois do travessão,
+    pode estar em maiúsculas, e pode variar no acento.
+  </p>
+  <ul class="lista-simples">
+    {% for nome in nomes_que_procuro %}<li>{{ nome }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% endif %}
+
+  {% if falha_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+    Nada foi gravado, e o texto que você mandou continua na caixa abaixo.
+  </p>
+  {% endif %}
+
+  {% if recusada %}
+  <p class="aviso borda-vermelha">
+    <b>{{ recusada }}</b> Nada foi gravado nesta encomenda.
+  </p>
+  {% endif %}
+
+  <form method="post" class="forma" action="{{ url_de_prever }}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label for="capitulo"><b>O capítulo inteiro</b></label>
+    <textarea id="capitulo" name="capitulo" class="caixa-do-capitulo" rows="14" spellcheck="false">{{ colado }}</textarea>
+    <p class="escolher-arquivo">
+      <label for="arquivo"><b>Ou mande o arquivo do seu computador</b> ({{ extensoes }})</label>
+      <input type="file" id="arquivo" name="arquivo" accept=".md,.markdown,.txt">
+    </p>
+    <p class="nota">
+      Quando você escolhe um arquivo, é ele que vale, e a caixa acima é
+      ignorada. Pelo arquivo cabe capítulo de qualquer tamanho; pela caixa, o
+      navegador tem um limite bem menor.
+    </p>
+    <div class="dois-botoes">
+      <button type="submit" class="botao">Prever (não grava nada)</button>
+      <button type="submit" class="botao" formaction="{{ url_de_importar }}">Importar para a encomenda {{ numero }}</button>
+    </div>
+    <p class="nota">
+      Comece sempre pelo <b>Prever</b>: ele mostra, peça por peça, o que vai
+      entrar, o que vai ficar como está e o que não coube em nenhuma peça, sem
+      tocar em nada.
+    </p>
+  </form>
+
+  {% if recusei_pelo_numero %}
+  <p class="aviso borda-vermelha espaco-20">
+    <b>Não gravei nada: este capítulo não é o desta encomenda.</b>
+    O texto que você mandou abre com <b>Encomenda {{ conferencia.capitulo }}</b>,
+    e a encomenda aberta aqui é a <b>{{ numero }}</b>. Abra a encomenda
+    {{ conferencia.capitulo }} e mande o capítulo lá, ou corrija o número no
+    título do capítulo se ele estiver errado. Nada foi gravado.
+  </p>
+  {% endif %}
+
+  {% if importou %}
+  <p class="aviso borda-amarela espaco-20">
+    {% if gravou %}
+    <b>Encomenda {{ numero }} gravada, versão {{ versao }}.</b>
+    Só as peças que estavam vazias foram preenchidas; o que já tinha texto
+    ficou intacto.
+    {% else %}
+    <b>Nada a fazer nesta encomenda.</b>
+    Todas as peças que o capítulo traz já estavam escritas. Nada mudou, e a
+    versão continua a mesma.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if previu or importou or recusei_pelo_numero %}
+  <div class="cartao espaco-20">
+    <span class="rotulo">O que o capítulo traz</span>
+    <div class="valor"><b>{{ reconhecidas }} peça(s) reconhecida(s)</b></div>
+    <p class="nota">
+      {{ preencher|length }} campo(s) {% if importou and gravou %}estavam vazios{% else %}vazio(s) para preencher{% endif %} &middot;
+      {{ preservar|length }} campo(s) já {% if importou and gravou %}tinham{% else %}têm{% endif %} texto e {% if importou and gravou %}ficaram{% else %}ficam{% endif %} intactos &middot;
+      {{ lido.nao_reconhecidos|length }} título(s) que não coube(ram) em peça nenhuma.
+    </p>
+  </div>
+
+  {% if conferencia.sem_numero %}
+  <p class="aviso borda-amarela">
+    <b>Não achei o número da encomenda neste capítulo</b>, então não pude
+    conferir se ele é mesmo o da encomenda {{ numero }}. Um capítulo começa com
+    um título de um sustenido, assim: # Encomenda 08. Confira você mesmo antes
+    de importar, porque os 34 capítulos se parecem muito.
+  </p>
+  {% elif conferencia.diferente %}
+  <p class="aviso borda-vermelha">
+    <b>Este capítulo é da Encomenda {{ conferencia.capitulo }}, e você está na
+    {{ numero }}.</b>
+    O botão de importar vai recusar. Abra a encomenda
+    {{ conferencia.capitulo }}, ou corrija o número no título do capítulo.
+  </p>
+  {% else %}
+  <p class="nota">
+    Conferido: o capítulo abre com <b>Encomenda {{ conferencia.capitulo }}</b>,
+    que é a encomenda aberta aqui.
+  </p>
+  {% endif %}
+
+  {% if montadas %}
+  <p class="aviso borda-amarela">
+    <b>Uma peça foi montada de mais de um trecho do capítulo.</b>
+    {% for m in montadas %}
+    A peça <b>{{ m.campo }}</b> juntou {{ m.trechos }} títulos, nesta ordem:
+    {% for t in m.titulos %}<b>{{ t }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    Cada trecho guarda o próprio título dentro do texto da peça.
+    {% endfor %}
+  </p>
+  {% endif %}
+
+  {% if lido.nao_reconhecidos %}
+  <h2 class="secao">O que não coube em nenhuma peça</h2>
+  <p class="subtitulo">
+    Estes títulos não casaram com nenhuma das 16 peças, e por isso o texto
+    deles <b>não vai para lugar nenhum</b>. Nada foi adivinhado de propósito:
+    chutar a peça é o único jeito de perder o seu texto. Se algum deles for
+    mesmo uma peça, mude o título no capítulo e mande de novo.
+  </p>
+  {% for item in lido.nao_reconhecidos %}
+  <div class="linha-da-peca">
+    <span class="qual">{{ item.titulo }}</span>
+    <span class="trecho">{{ item.trecho|truncatechars:400 }}</span>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <h2 class="secao">Peça por peça</h2>
+  {% for c in preencher %}
+  <div class="linha-da-peca">
+    <span class="qual">{% if importou and gravou %}Preenchida{% else %}Vai preencher{% endif %}</span> {{ c.campo }}
+    <span class="trecho">{{ c.novo|truncatechars:400 }}</span>
+  </div>
+  {% empty %}
+  <p class="aviso">
+    Nenhuma peça vazia para preencher: tudo o que este capítulo traz já está
+    escrito na encomenda {{ numero }}.
+  </p>
+  {% endfor %}
+
+  {% for c in preservar %}
+  <div class="linha-da-peca">
+    <span class="qual">Deixada em paz</span> {{ c.campo }}
+    <span class="trecho">já tem texto seu: {{ c.atual|truncatechars:160 }}</span>
+  </div>
+  {% endfor %}
+
+  {% if faltando %}
+  <p class="aviso borda-amarela">
+    <b>{{ faltando|length }} peça(s) das 16 não vieram neste capítulo:</b>
+    {% for nome in faltando %}<b>{{ nome }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    Elas continuam como estavam na encomenda. Se você esperava alguma delas
+    aqui, confira o título dela no capítulo.
+  </p>
+  {% endif %}
+
+  <h2 class="secao">O Aceito quando e o Quiz</h2>
+  {% if lido.aceito_quando %}
+  <p class="nota">
+    Li <b>{{ lido.aceito_quando|length }} critério(s)</b> da linha "Aceito
+    quando" que está dentro do "Você faz". A linha continua inteira no texto da
+    peça, e os critérios também entram no campo próprio da encomenda.
+  </p>
+  <ul class="lista-simples">
+    {% for criterio in lido.aceito_quando %}<li>{{ criterio }}</li>{% endfor %}
+  </ul>
+  {% else %}
+  <p class="nota">
+    Não achei a linha "Aceito quando" na forma que eu sei ler (uma linha só,
+    com os critérios separados por ponto do meio). Nada se perdeu: o que estiver
+    escrito continua dentro do texto da peça "Você faz", e o campo próprio você
+    preenche na tela da encomenda.
+  </p>
+  {% endif %}
+
+  {% if lido.quiz %}
+  <p class="nota">
+    Li <b>{{ lido.quiz|length }} pergunta(s) de quiz</b> do Checkpoint, cada uma
+    já casada com a resposta que está na peça do Dicionário, pelo número.
+  </p>
+  <ul class="lista-simples">
+    {% for item in lido.quiz %}<li>{{ item.pergunta }}<br><span class="recado-fraco">{{ item.resposta_modelo }}</span></li>{% endfor %}
+  </ul>
+  {% elif lido.quiz_incompleto %}
+  <p class="aviso borda-amarela">
+    <b>Achei as perguntas do quiz, mas não achei a resposta de todas elas.</b>
+    As respostas ficam na peça do Dicionário, numa linha que começa com Quiz e
+    numera cada resposta entre parênteses. Como falta pelo menos uma, não
+    gravei nenhuma: inventar resposta seria pior. O texto continua inteiro
+    dentro das peças, e o quiz você preenche na tela da encomenda.
+  </p>
+  {% else %}
+  <p class="nota">
+    Não achei um quiz na forma que eu sei ler (a marca Quiz seguida de
+    perguntas numeradas, dentro do Checkpoint). Nada se perdeu: o que estiver
+    escrito continua dentro do texto da peça.
+  </p>
+  {% endif %}
+
+  <h2 class="secao">Lido, e que não é peça</h2>
+  <p class="subtitulo">
+    Estes títulos têm nome próprio e outro destino, então não entram em peça
+    nenhuma. Eles estão aqui só para você saber que foram lidos, e que ninguém
+    os perdeu.
+  </p>
+  {% for item in lido.nao_e_peca %}
+  <div class="historia"><b>{{ item.titulo }}:</b> {{ item.motivo }}</div>
+  {% empty %}
+  <p class="aviso">Nenhum título desses neste capítulo.</p>
+  {% endfor %}
+  {% if lido.abertura %}
+  <div class="historia">
+    <b>A abertura do capítulo:</b> o que vem antes da primeira peça (a marcação
+    de figura da página dupla, por exemplo) não é peça e fica de fora.
+    <span class="trecho">{{ lido.abertura|truncatechars:200 }}</span>
+  </div>
+  {% endif %}
+
+  <h2 class="secao">O que o capítulo traz e esta tela ainda não grava</h2>
+  <p class="subtitulo">
+    Três coisas do capítulo não têm onde ser gravadas hoje: o <b>título da
+    encomenda</b>, o <b>subtítulo</b> e o <b>título do Boss</b>. A ligação que
+    esta tela usa para falar com a sala de aula ainda não aceita nenhum dos
+    três. Essa porta está sendo aberta agora, do lado da sala de aula, e os
+    três entram num passo seguinte. Estão listados abaixo para você saber que
+    foram lidos.
+  </p>
+  {% if lido.titulo %}<div class="historia"><b>Título da encomenda:</b> {{ lido.titulo }}</div>{% endif %}
+  {% if lido.subtitulo %}<div class="historia"><b>Subtítulo:</b> {{ lido.subtitulo }}</div>{% endif %}
+  {% if lido.boss %}<div class="historia"><b>Boss {{ lido.boss.letra }}:</b> {{ lido.boss.titulo }}</div>{% endif %}
+  {% if not lido.titulo and not lido.subtitulo and not lido.boss %}
+  <p class="aviso">Nenhum dos três aparece neste capítulo.</p>
+  {% endif %}
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

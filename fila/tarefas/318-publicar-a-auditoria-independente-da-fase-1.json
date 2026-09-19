@@ -1,0 +1,20 @@
+{
+  "arquivo": "318-publicar-a-auditoria-independente-da-fase-1",
+  "id": "TAR-318",
+  "titulo": "Publicar a auditoria independente da Fase 1",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de escrituração integrado contém as nove tarefas de achado, seus eventos de explicação, o registro histórico, as contraprovas reproduzíveis e validação verde da fila e do painel, sem alterar o produto nem concluir TAR-309 a TAR-317.",
+  "despacho": "GRAVIDADE: ALTO, entrega da auditoria. REQUISITO: publicar a auditoria independente da Fase 1 com nove achados acionáveis e provas duráveis. BASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; PR 1500 na revisão cd201c495824c4fca16155031b5f87ad93cf05f1; PR 1521 na revisão ce83de4ff4aa1b0c87decbb51c8014536ab8a04a; PR 1522 na revisão c0ac7bf85f07afb4400ce2e50b08c293b453950c. EVIDÊNCIA OBSERVADA: nove achados foram reproduzidos e registrados nas TAR-309 a TAR-317, com registro histórico 20260910-030 e contraprovas de responsabilidade e esforço. REPRODUÇÃO: rode as contraprovas do corpo do PR a partir de Path.cwd em cópia temporária, valide a fila e gere e confira o painel. ESPERADO: fila, livro e PR preservam os nove achados, responsabilidades, provas e o veredito Fase 1 NÃO PRONTO. OBSERVADO: antes desta tarefa, o protocolo não tinha uma TAR única para identificar a entrega de escrituração. IMPACTO: sem publicação, os achados ficam presos à sessão e não entram no fluxo de correção. CORREÇÃO MÍNIMA: entregar somente tarefas, eventos, registro e prova, sem alterar produto, critérios antigos ou TAR-297. CLASSIFICAÇÃO: tarefa administrativa de entrega; não é um décimo achado. PROVA DE FECHO: PR integrado com fila e painel verdes e nenhuma TAR-309 a TAR-317 submetida ou concluída.",
+  "origem": "Despacho da maestro após recusa segura do protocolo de submissão em 10/09/2026",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

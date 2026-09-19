@@ -1,0 +1,17 @@
+{
+  "arquivo": "277-consolidar-a-abertura-a-medicao-e-o-fechamento-das-tarefas",
+  "id": "TAR-277",
+  "titulo": "Consolidar a abertura, a medição e o fechamento das tarefas",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de falha e retomada, revisão independente da revisão final e recibos dos PRs; ganhos somente com amostra medida.",
+  "despacho": "Executar a Fase 1 solicitada em 07/09/2026: reconciliar regras, corrigir telemetria, consolidar sessao/contexto/make pr, testar percurso e auditar. Preservar controles, produção e trabalho alheio.",
+  "origem": "Missão do mantenedor: implementar Fase 1 e realizar auditoria final, 07/09/2026",
+  "criada_em": "2026-09-08"
+}

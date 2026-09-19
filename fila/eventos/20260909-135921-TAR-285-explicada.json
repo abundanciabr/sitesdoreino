@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-135921-TAR-285-explicada",
+  "tarefa": "TAR-285",
+  "evento": "explicada",
+  "quando": "2026-09-09T13:59:21+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos, frente de execução persistente",
+  "o_que_e": "Os robôs atuais respondem em pontos isolados, mas não existe um ciclo comum que guarde cada execução, limite, aprovação, falha, nova tentativa e custo.",
+  "o_que_muda": "Todo trabalho dos copilotos passa a ter começo, resultado e responsabilidade visíveis, sem sumir quando o processo reinicia nem repetir uma ação concluída.",
+  "exemplo": "Se uma análise falhar no meio, a Central mostra a tentativa e permite repetir com segurança, sem cobrar duas vezes nem publicar duas vezes.",
+  "importancia": 95
+}

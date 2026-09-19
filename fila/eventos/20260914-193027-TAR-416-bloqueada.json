@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-193027-TAR-416-bloqueada",
+  "tarefa": "TAR-416",
+  "evento": "bloqueada",
+  "quando": "2026-09-14T19:30:27+00:00",
+  "quem": "codex-canal-automatico-triade",
+  "detalhe": "Integração exige que o mantenedor escreva pessoalmente na descrição o mandato para o pedido de 14/09/2026 e os dois arquivos de lei. Sem esse gesto o PR fica em rascunho.",
+  "espera": "mantenedor"
+}

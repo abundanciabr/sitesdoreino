@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260911-043453-TAR-337-submetida",
+  "tarefa": "TAR-337",
+  "evento": "submetida",
+  "quando": "2026-09-11T04:34:53+00:00",
+  "quem": "agent/ci/corrigir-linhagem-de-sincronizacao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1557",
+  "revisao": "9184f8e5ab1883d8b7196507ef9988c2ebc034d6",
+  "arvore": "8b01377d21026d6de4c95b4a14f160ceb92eb74b"
+}

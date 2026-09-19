@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-212154-TAR-327-explicada",
+  "tarefa": "TAR-327",
+  "evento": "explicada",
+  "quando": "2026-09-10T21:21:54+00:00",
+  "quem": "pedido do mantenedor em 10/09/2026",
+  "o_que_e": "Hoje o editor de aula exige preencher todos os campos, mesmo quando a aula é apenas um vídeo.",
+  "o_que_muda": "A escola cria e publica uma aula de vídeo com uma única URL do YouTube, preservando o editor completo para os demais tipos.",
+  "exemplo": "Ao abrir a aula 01 do curso, a pessoa cola https://youtu.be/... e a aula fica aberta para os alunos.",
+  "importancia": 80
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-042-tar-255-guardas-e-consultas-do-mural",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Mural com guardas corretas e uma leitura por conjunto",
+  detalhe: "A TAR-255 preservou a correção de ordem do M1 entregue na TAR-257, impediu que reserva em negociação expirasse como pendente, corrigiu a orientação da chamada aberta, retirou provas que mediam a própria implementação e reduziu as consultas repetidas do Mural e do tique. A suíte da célula passou com 491 testes.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1477",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: "medio",
+  portao: null
+}); })();

@@ -88,6 +88,24 @@ def test_teto_sem_timeout_explicito_compara_com_o_padrao_de_2min():
     _recusa_que_ensina(proc)
 
 
+def test_teto_calculado_da_regua_tambem_cabe_na_janela():
+    proc = _decidir("Bash", {
+        "command": "python ci/esperar.py --run 9",
+        "timeout": 300000,
+    })
+    _recusa_que_ensina(proc)
+    assert "10 min" in proc.stderr
+
+
+def test_teto_calculado_da_regua_passa_com_folga():
+    proc = _decidir("Monitor", {
+        "command": "python ci/esperar.py --run 9",
+        "timeout_ms": 700000,
+        "persistent": False,
+    })
+    assert proc.returncode == 0, proc.stderr
+
+
 # ------------------------------------------------- regra 3: espera muda ----
 
 
@@ -187,16 +205,10 @@ def test_ferramenta_alheia_nao_e_assunto_da_muralha():
 # ------------------------------------------------------------- a fiação ----
 
 
-def test_a_fiacao_do_harness_chama_a_muralha_da_espera():
-    """A muralha sem fiação é um parágrafo — o padrão 2 de novo. O matcher
-    precisa cobrir Bash, PowerShell E Monitor (a regra 4 vive no Monitor)."""
+def test_a_fiacao_do_harness_guarda_apenas_monitor():
     fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
-    entradas = fiacao.get("hooks", {}).get("PreToolUse", [])
-    da_espera = [
-        e for e in entradas
-        if any("muralha_da_espera" in h.get("command", "") for h in e.get("hooks", []))
-    ]
-    assert da_espera, "muralha_da_espera.py não está fiada no PreToolUse"
-    matcher = da_espera[0].get("matcher", "")
-    for ferramenta in ("Bash", "PowerShell", "Monitor"):
-        assert ferramenta in matcher, f"o matcher não cobre {ferramenta}"
+    entradas = fiacao["hooks"]["PreToolUse"]
+    da_espera = [e for e in entradas if any(
+        "muralha_da_espera" in h.get("command", "") for h in e.get("hooks", []))]
+    assert len(da_espera) == 1
+    assert da_espera[0]["matcher"] == "Monitor"

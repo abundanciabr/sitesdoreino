@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015940-TAR-204-explicada",
+  "tarefa": "TAR-204",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:40+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando um teste e cancelado e roda de novo, ficam dois registros com o mesmo nome, um cancelado e um aprovado. O vigia le o cancelado e anuncia reprovacao.",
+  "o_que_muda": "O robo acredita que falhou e refaz um trabalho que ja estava certo. Medido em 05/09: o vigia anunciou reprovado e o portao aprovou o mesmo trabalho.",
+  "exemplo": "E ver a primeira tentativa rasurada e ignorar a prova limpa entregue depois.",
+  "importancia": 75
+}

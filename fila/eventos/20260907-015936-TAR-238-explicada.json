@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015936-TAR-238-explicada",
+  "tarefa": "TAR-238",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:36+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Antes de publicar, um portao confere se o livro de ocorrencias esta em dia. So que ele le o livro da copia no seu PC, que envelhece calada.",
+  "o_que_muda": "Ele recusa trabalho bom, cobrando uma anotacao que ja foi feita. Aconteceu hoje: o mesmo trabalho recusado tres vezes seguidas, e o robo quase criou uma anotacao duplicada tentando pagar de novo.",
+  "exemplo": "E o porteiro conferindo a lista de convidados de ontem e barrando quem voce ja autorizou hoje.",
+  "importancia": 82
+}

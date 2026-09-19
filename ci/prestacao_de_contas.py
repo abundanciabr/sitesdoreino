@@ -1,171 +1,21 @@
 #!/usr/bin/env python3
-"""A PRESTAÇÃO DE CONTAS — turno que mexeu no mundo não termina calado.
+"""Prestação de contas com leitura incremental e uma cobrança por mudança.
 
-POR QUE ELA EXISTE (05/09/2026)
--------------------------------
-O mantenedor precisou pedir a mesma coisa várias vezes porque as sessões
-acabavam sem dizer nada. Nas palavras dele: "ao final das tarefas que eu peço
-aqui para os robôs fazerem eles simplesmente, ao invés de prestarem contas da
-tarefa, como qualquer pessoa que acabou de fazer algo naturalmente faria, eles
-apenas arquivam as conversas, sem ao menos explicarem o que foi feito, se
-realmente foi resolvido o problema".
-
-A lei já existia: **regra 9 do Padrão de Trabalho** ("Como entregar"), primeira
-seção do `CLAUDE.md`. O que não existia era quem a fizesse valer — e o próprio
-`ci/padrao_de_trabalho.py` diz isso com todas as letras: ele confere que o TEXTO
-da régua continua no lugar, e declara que **NÃO confere que alguém a tenha
-obedecido**. Das onze regras do Padrão, a 9 é a única cujo cumprimento é
-observável de fora, e era a única sem portão. Este arquivo fecha esse buraco.
-
-Garantia sem mecanismo é o padrão 2 da `docs/decisoes/RETROSPECTIVA-FASE-D.md`,
-e a doença-mãe desta casa (Lei 1). A regra 9 era o caso mais caro dela, porque
-quem pagava a conta era o mantenedor, uma pergunta repetida por vez.
-
-COMO O HARNESS O CHAMA (fiação em .claude/settings.json)
---------------------------------------------------------
-  --plano   UserPromptSubmit — recebe {prompt, ...}. O stdout de um exit 0 entra
-            no contexto do turno. É a ÚNICA janela em que dá para exigir o plano:
-            cobrar plano no fim, quando o trabalho já acabou, não serve para nada.
-
-  --contas  Stop — recebe {transcript_path, stop_hook_active, ...}. exit 2
-            RECUSA o fim do turno e devolve o stderr ao robô, que precisa
-            continuar. É esta recusa que torna impossível arquivar em silêncio.
-
-A SEGUNDA PASSADA (06/09/2026, armadilhas/368)
------------------------------------------------
-Depois de uma recusa o robô continua, escreve (ou não) o relatório, e o harness
-chama o Stop DE NOVO, com `stop_hook_active: true`. Esse campo diz só "já houve
-uma recusa neste fim de turno"; não diz se ela foi atendida. A primeira versão
-tratava o campo como prova de desobediência e devolvia exit 1 com "o robô foi
-cobrado e terminou assim mesmo" SEM abrir o transcript. Medido nos transcripts
-de 05 e 06/09/2026: 50 segundas passadas, 50 avisos, e em 32 delas o relatório
-válido estava na tela. O aviso saía também no caminho certo, e um aviso que sai
-sempre é um aviso que ninguém mais lê.
-
-A segunda passada mede o transcript com a MESMA régua da primeira: relatório
-presente e válido, exit 0 em silêncio; ainda faltando, exit 1 com o aviso.
-Nunca exit 2, que prenderia a sessão em laço.
-
-A RÉGUA, e por que ela não é "todo turno"
-------------------------------------------
-Cobrar prestação de contas em todo turno seria pior que não cobrar nenhuma.
-Medido no transcript real da sessão que motivou este portão: de 232 mensagens de
-usuário, **225 eram `<task-notification>`** — o harness reacordando o robô a
-cada batimento de uma espera. Um portão ingênuo pediria 225 relatórios e o
-mantenedor aprenderia a ignorar todos.
-
-O discriminador não é heurística de texto: é o campo estruturado
-`origin.kind` de cada entrada do transcript.
-
-    origin.kind == "human"              o mantenedor falou   → abre a janela
-    origin.kind == "task-notification"  a máquina acordou    → não abre nada
-    origin.kind == "peer"               outra sessão         → não abre nada
-
-A DÍVIDA, e por que ela atravessa as falas dele
------------------------------------------------
-A pergunta é uma só, e vale para a SESSÃO inteira:
-
-    houve mudança no mundo depois da última prestação de contas?
-
-Se houve, o turno não termina. Se não houve — turno de espera, pergunta
-respondida, leitura — o portão cala. É por isso que "Aguardando." continua
-barato e o trabalho feito continua caro.
-
-**A varredura é da sessão inteira, e não da janela aberta pela última fala
-dele.** A primeira versão olhava só para a janela, e o mantenedor mandou a tela
-que provou o erro: a sessão abriu o PR #1092, mergeou, e ficou esperando o
-deploy; no meio disso ele respondeu uma pergunta ("deixe assim: só admin pode
-ver, ler"); e a partir dali não houve mais nenhuma mudança no mundo. A dívida
-do trabalho já feito tinha sido apagada porque ELE digitou uma frase, e a
-conversa ia ser arquivada com "Aguardando." como última palavra. Dívida se paga
-com o relatório, nunca com o devedor falando outra coisa.
-
-O `origin.kind` continua servindo — só que para outra coisa: saber se o PLANO
-apareceu no pedido atual, e para o `--plano` calar nos acordares da máquina.
-
-O QUE TENTEI E NÃO FUNCIONOU, para ninguém refazer
----------------------------------------------------
-Adiar a cobrança até "não haver mais nada em voo", para o relatório sair com o
-veredito do deploy dentro. O sinal não existe de forma confiável: medido no
-transcript real daquela sessão, **4 tarefas de fundo tinham terminado** (o `✅`
-do desfecho está lá, no último evento de cada uma) e **nenhuma recebeu a
-notificação com `<status>completed</status>`**. Um portão que dependesse disso
-ficaria mudo justamente no caso reclamado. Sinal que some sem avisar não vira
-guarda.
-
-O que sobra, dito na cara: a cobrança cai no fim do turno que FEZ o trabalho, e
-não depois do deploy. O veredito do deploy segue sendo obrigação de texto
-(`CLAUDE.md`), sem mecanismo.
-
-O QUE CONTA COMO MUDAR O MUNDO
--------------------------------
-Ferramenta que escreve (`Edit`, `Write`, `NotebookEdit`), publicação
-(`Artifact`) e `Agent` que não seja de leitura (`Explore`/`Plan` não contam).
-Escrita no scratchpad da sessão não conta: arquivo temporário de análise não é
-entrega. Para `Bash`/`PowerShell` há uma lista de comandos que mudam o mundo —
-e ela é **LOMBADA, não muralha**, na mesma honestidade da regra 3 da
-`ci/muralha_da_espera.py`: "jeitos de mudar o mundo" é conjunto aberto, e um
-comando rebuscado que ela não reconheça passa. Ela pega os casos honestos, que
-são a esmagadora maioria — e é indispensável porque o modo automático deste
-harness manda escrever arquivo por heredoc de `Bash`, não pela ferramenta
-`Write`.
-
-O CHECKLIST, e por que ele é cobrado no fecho (05/09/2026, o mesmo dia)
-------------------------------------------------------------------------
-Pedido dele, com as palavras dele: "quero que toda e cada tarefa mostre um
-checklist e um roadmap claro de onde está e o que ainda precisa ser feito ao
-final de cada etapa, fase, parte, executada". O plano em caixinhas da abertura
-sumia da tela depois de vinte chamadas de ferramenta, e ele não sabia se a
-tarefa estava no passo 2 ou no 5.
-
-A lei tem três pontas (CLAUDE.md, "Plano na abertura, contas no fecho"): o
-checklist na abertura, o checklist reimpresso e marcado ao fim de CADA etapa, e
-o checklist no estado final abrindo a prestação de contas. Só a terceira é
-mensurável: "etapa" não existe para a máquina, e um portão que contasse
-reimpressões por chamada de ferramenta cobraria checklist a cada `ls`. Então o
-`Stop` exige a caixinha (`- [x]`/`- [ ]`) DENTRO da prestação de contas, e a
-recusa ensina as três pontas. A ponta do meio fica na lei, no `--plano` e na
-memória do robô — sem mecanismo, e dito aqui para ninguém tomar este portão
-por garantia dela.
-
-O QUE ELE **NÃO** MEDE, dito na cara
--------------------------------------
-Que a prestação de contas seja VERDADEIRA. Nenhum portão barato mede "isto foi
-mesmo verificado". O que ele torna impossível é o silêncio: os seis blocos
-aparecem, o checklist marcado aparece, o veredito PRONTO/NÃO PRONTO fica em
-cima da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável;
-ausência não é.
-
-Também não mede o PLANO de abertura. O `--plano` o exige, mas exigir é tudo o
-que dá para fazer com honestidade: no Stop o turno já acabou, e bloquear por
-algo que não tem mais conserto só produziria um robô travado. Quando o portão
-recusa, ele diz também se o plano faltou — conselho pendurado numa recusa que
-já ia acontecer, custo zero.
-
-FAIL-OPEN BARULHENTO, E POR QUÊ (armadilhas/176)
--------------------------------------------------
-As muralhas desta casa são fail-closed: "não consegui medir" nunca vira
-permissão. Aqui a escolha é outra, e deliberada: um Stop hook que trava por
-defeito interno prende a sessão do mantenedor sem saída. Então erro interno sai
-com **exit 1 e grito no stderr** — não bloqueia, mas também não cala. É a
-exigência da `armadilhas/176`: um hook fail-open que emudece ao quebrar é
-indistinguível de um hook correto, e foi assim que o sino nasceu morto.
-
-Uso (fora do harness, para depurar):
-
-    echo '{"transcript_path":"...","stop_hook_active":false}' | python ci/prestacao_de_contas.py --contas
-    echo '{"prompt":"conserte o login"}' | python ci/prestacao_de_contas.py --plano
-
-Exit codes: 0 permite/cala · 2 RECUSA o fim do turno (só no --contas) ·
-1 não consegui medir, ou segunda passada ainda sem relatório (barulhento,
-nunca silencioso).
+O Stop conserva apenas dívida, plano e contadores, sem reler o histórico.
+O relatório exige quatro blocos e checklist coerente. Erros de instrumento
+são avisados sem bloquear o turno; o molde completo permanece sob demanda.
+História da cobrança: armadilhas/368 e docs/decisoes/RETROSPECTIVA-FASE-D.md.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -173,15 +23,11 @@ import telemetria  # noqa: E402  (irmão de pasta; o insert acima é o que o per
 
 # ---------------------------------------------------------------- a régua ----
 
-# Os seis blocos. Os quatro primeiros são a regra 9 do Padrão, palavra por
-# palavra — mudar um título aqui é reescrever a lei do mantenedor, e tem de
-# aparecer no diff desta tupla. Os dois últimos ele pediu em 05/09/2026.
+# Quatro blocos aprovados no Plano-Mestre10X: três títulos e o veredito.
 BLOCOS = (
     ("**O que mudou**", "fatos, não adjetivos"),
-    ("**O que foi verificado e como**", "o comando e a saída real, não a promessa"),
-    ("**O que foi cortado e por quê**", '"nada" é resposta, e é comum'),
-    ("**O que eu preciso decidir**", 'se nada depende dele, a linha que diz isso'),
-    ("**Auditoria de qualidade**", "a Definição de Pronto item a item, e o que o crítico mais duro atacaria"),
+    ("**O que foi verificado**", "o comando e a saída real, não a promessa"),
+    ("**Pendências**", 'se nada depende dele, diga isso'),
 )
 
 # Reconhecer o BLOCO, não decorar a pontuação. `**O que mudou**` e
@@ -285,6 +131,62 @@ def _texto_do_bloco(bloco: object) -> str:
     return ""
 
 
+def _entrada_codex(entrada: dict) -> dict | None:
+    """Normaliza os eventos response_item e item_completed do transcript nativo."""
+    payload = entrada.get("payload") or {}
+    if entrada.get("type") == "event_msg":
+        if payload.get("type") != "item_completed":
+            return None
+        item = payload.get("item") or {}
+        if item.get("type") == "FileChange":
+            if item.get("status") not in {"completed", "Completed"}:
+                return None
+            return {"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "name": "Write", "input": {"file_path": caminho}}
+                for caminho in (item.get("changes") or {})
+            ]}}
+        if item.get("type") == "CommandExecution":
+            return {"type": "assistant", "message": {"content": [{
+                "type": "tool_use", "name": "Bash",
+                "input": {"command": item.get("command") or ""}, "id": item.get("id")
+            }]}}
+        return None
+    if entrada.get("type") != "response_item":
+        return None
+    tipo = payload.get("type")
+    if tipo == "message" and payload.get("role") in {"user", "assistant"}:
+        papel = payload["role"]
+        conteudo = [{"type": "text", "text": bloco.get("text", "")}
+                    for bloco in payload.get("content", [])
+                    if isinstance(bloco, dict) and bloco.get("type") in {"input_text", "output_text"}]
+        return {"type": papel, "origin": {"kind": "human" if papel == "user" else "assistant"},
+                "message": {"content": conteudo}}
+    if tipo in {"function_call", "custom_tool_call"}:
+        nome = payload.get("name", "").rsplit(".", 1)[-1]
+        bruto = payload.get("arguments") if tipo == "function_call" else payload.get("input")
+        try:
+            argumentos = json.loads(bruto) if isinstance(bruto, str) else bruto
+        except json.JSONDecodeError:
+            argumentos = {"command": bruto}
+        if not isinstance(argumentos, dict):
+            argumentos = {}
+        if nome == "apply_patch":
+            nome, argumentos = "Write", {"file_path": "(apply_patch)"}
+        elif nome in {"exec_command", "shell_command"}:
+            nome, argumentos = "Bash", {"command": argumentos.get("cmd") or argumentos.get("command") or ""}
+        elif nome == "spawn_agent":
+            nome, argumentos = "Agent", {"subagent_type": argumentos.get("agent_type") or "despacho"}
+        return {"type": "assistant", "message": {"content": [{
+            "type": "tool_use", "name": nome, "input": argumentos, "id": payload.get("call_id")
+        }]}}
+    if tipo in {"function_call_output", "custom_tool_call_output"}:
+        return {"type": "user", "message": {"content": [{
+            "type": "tool_result", "tool_use_id": payload.get("call_id"),
+            "content": payload.get("output") or ""
+        }]}}
+    return None
+
+
 def ler_transcript(caminho: Path) -> list[dict]:
     """As entradas do transcript, sem as de sub-agente.
 
@@ -302,7 +204,12 @@ def ler_transcript(caminho: Path) -> list[dict]:
         except json.JSONDecodeError:
             continue  # linha meio-escrita no fim do arquivo: o resto ainda serve
         if isinstance(entrada, dict) and not entrada.get("isSidechain"):
-            entradas.append(entrada)
+            if entrada.get("type") in {"response_item", "event_msg"}:
+                normalizada = _entrada_codex(entrada)
+                if normalizada is not None:
+                    entradas.append(normalizada)
+            else:
+                entradas.append(entrada)
     return entradas
 
 
@@ -312,6 +219,94 @@ def inicio_da_janela(entradas: list[dict]) -> int:
         if (entradas[i].get("origin") or {}).get("kind") == "human":
             return i
     return 0
+
+
+def ler_estado_incremental(caminho: Path) -> dict:
+    """Mantém somente dívida e contadores; o conteúdo antigo não volta à memória."""
+    cache = caminho.with_suffix(caminho.suffix + ".contas.json")
+    try:
+        estado = json.loads(cache.read_text(encoding="utf-8"))
+        if not isinstance(estado, dict) or estado.get("versao") != 1:
+            estado = {}
+    except (OSError, ValueError):
+        estado = {}
+    stat = caminho.stat()
+    identidade = [stat.st_dev, stat.st_ino]
+    offset = estado.get("offset", 0)
+    prefixo = estado.get("prefixo_bytes", 0)
+    if (type(offset) is not int or not 0 <= offset <= stat.st_size
+            or type(prefixo) is not int or not 0 <= prefixo <= 512
+            or estado.get("identidade") != identidade):
+        estado = {}
+        offset = prefixo = 0
+    with caminho.open("rb") as fonte:
+        assinatura = hashlib.sha256(fonte.read(prefixo)).hexdigest()
+        fonte.seek(max(0, offset - 512))
+        cauda = hashlib.sha256(fonte.read(min(offset, 512))).hexdigest()
+        if (estado and (assinatura != estado.get("prefixo_sha256")
+                or cauda != estado.get("cauda_sha256")
+                or (stat.st_size == offset and stat.st_mtime_ns != estado.get("mtime")))):
+            estado = {}
+            offset = 0
+        if not estado:
+            estado = {"versao": 1, "motivo": "", "teve_plano": False,
+                      "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0,
+                      "pr": 0, "ids_de_pr": [], "voo_cobrado": ""}
+        fonte.seek(offset)
+        while True:
+            inicio = fonte.tell()
+            linha = fonte.readline()
+            if not linha:
+                break
+            try:
+                entrada = json.loads(linha.decode("utf-8-sig"))
+            except (ValueError, UnicodeError):
+                if not linha.endswith(b"\n"):
+                    fonte.seek(inicio)
+                    break
+                continue
+            if not isinstance(entrada, dict) or entrada.get("isSidechain"):
+                continue
+            if entrada.get("type") in {"response_item", "event_msg"}:
+                entrada = _entrada_codex(entrada)
+                if entrada is None:
+                    continue
+            if (entrada.get("origin") or {}).get("kind") == "human":
+                estado["teve_plano"] = False
+            estado["teve_plano"] |= _teve_plano([entrada], 0)
+            motivo = _mudanca_na_entrada(entrada)
+            if motivo:
+                estado["motivo"] = motivo
+                estado["mudancas"] += 1
+            if _prestou_contas(entrada):
+                estado["motivo"] = ""
+            prs, despachos = contar_prs_e_despachos([entrada])
+            estado["prs"] += prs
+            estado["despachos"] += despachos
+            _seguir_o_pr(entrada, estado)
+        estado["offset"] = fonte.tell()
+        fonte.seek(max(0, estado["offset"] - 512))
+        cauda = hashlib.sha256(fonte.read(min(estado["offset"], 512))).hexdigest()
+        fonte.seek(0)
+        prefixo = fonte.read(min(512, estado["offset"]))
+    estado.update(identidade=identidade, mtime=stat.st_mtime_ns,
+                  prefixo_bytes=len(prefixo), prefixo_sha256=hashlib.sha256(prefixo).hexdigest(),
+                  cauda_sha256=cauda)
+    return estado
+
+
+def gravar_estado_incremental(caminho: Path, estado: dict) -> None:
+    cache = caminho.with_suffix(caminho.suffix + ".contas.json")
+    temporario = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=cache.parent,
+                                         prefix=cache.name, delete=False) as arquivo:
+            temporario = Path(arquivo.name)
+            json.dump(estado, arquivo, ensure_ascii=False)
+        os.replace(temporario, cache)
+    finally:
+        if temporario is not None:
+            temporario.unlink(missing_ok=True)
 
 
 def _mudanca_na_entrada(entrada: dict) -> str | None:
@@ -388,7 +383,7 @@ def contar_prs_e_despachos(entradas: list[dict]) -> tuple[int, int]:
 
 
 def _prestou_contas(entrada: dict) -> bool:
-    """Esta fala do robô tem os seis blocos? (cinco títulos + o veredito)"""
+    """Esta fala traz os quatro blocos e o checklist final?"""
     if entrada.get("type") != "assistant":
         return False
     conteudo = (entrada.get("message") or {}).get("content")
@@ -401,7 +396,16 @@ def _prestou_contas(entrada: dict) -> bool:
     if not texto.strip():
         return False
     veredito = VEREDITO.search(texto)
-    if not veredito or not all(t.search(texto) for t in TITULOS):
+    if not veredito:
+        return False
+    # Títulos sem fatos ou julgamento não constituem um relatório.
+    for padrao in TITULOS:
+        achado = padrao.search(texto)
+        if not achado:
+            return False
+        if not _tem_substancia(_corpo_apos(texto, achado.end())):
+            return False
+    if not _tem_substancia(_corpo_apos(texto, veredito.end())):
         return False
     if not CAIXINHA.search(texto):
         return False
@@ -410,6 +414,25 @@ def _prestou_contas(entrada: dict) -> bool:
     # roteiro final (achado do revisor, 05/09/2026).
     pronto_de_verdade = not veredito.group(1).lower().startswith("n")
     return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
+
+
+def _corpo_apos(texto: str, comeco: int) -> str:
+    """O que vem depois deste título, até o próximo título (ou o fim)."""
+    fim = len(texto)
+    for padrao in (*TITULOS, VEREDITO):
+        proximo = padrao.search(texto, comeco)
+        if proximo and proximo.start() < fim:
+            fim = proximo.start()
+    return texto[comeco:fim]
+
+
+def _tem_substancia(corpo: str) -> bool:
+    """Este bloco foi preenchido? "nada" é resposta legítima e a lei diz isso
+    com todas as letras, então a régua é baixa de propósito: três letras ou
+    algarismos, depois de descontar o rótulo do molde. Uma régua que exigisse
+    frase ensinaria o robô a encher linguiça, que é a outra forma de mentir."""
+    limpo = MARCA_DO_MOLDE.sub(" ", corpo)
+    return len(re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "", limpo)) >= 3
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -422,6 +445,494 @@ def _teve_plano(entradas: list[dict], comeco: int) -> bool:
         if PLANO.search(texto):
             return True
     return False
+
+
+# ---------------------------------------------- os fatos que a máquina sabe ----
+#
+# 06/09/2026. Medido na semana anterior: 140 emissões do molde de recusa e 286
+# entradas de sistema citando este gancho, em 22 sessões. Cada recusa custa uma
+# volta inteira no contexto MEDIANO do momento do relatório (302.996 tokens),
+# que é o instante mais caro da sessão — e o relatório em si tem mediana de
+# 3.917 caracteres. Quatro dos seis blocos têm os fatos prontos: no diff da
+# bancada, nos comandos do transcript, nos checks do PR e no plano da abertura.
+#
+# Decisão do mantenedor em 06/09/2026, em pergunta estruturada: "os papéis podem
+# nascer preenchidos pela máquina, com o robô escrevendo só o julgamento". Daí o
+# `--molde-com-fatos`: a máquina preenche o que ela sabe, ROTULADO como tal, e o
+# que sobra é exatamente o que nenhuma máquina pode saber.
+#
+# Este modo é FAIL-OPEN e silencioso quanto a erro de medição: git ausente, gh
+# quebrado ou transcript perdido viram "não medido" com o motivo escrito, e o
+# molde sai inteiro assim mesmo. Ele é conveniência, não muralha — um molde que
+# travasse o robô seria pior que molde nenhum. O `--contas` continua fail-closed.
+
+# Comandos que VERIFICAM: o que esta casa usa para provar que algo funciona.
+# Conjunto aberto, como o das mudanças — quem rodar um verificador exótico só
+# perde a linha pronta e escreve à mão.
+COMANDOS_QUE_VERIFICAM = (
+    re.compile(r"\bpytest\b"),
+    re.compile(r"\bci[/\\]ci\.py\b"),
+    re.compile(r"\bmake\b"),
+    re.compile(r"\bci[/\\](?:muralha|verificar_|travessao|indice_de_armadilhas)"),
+    re.compile(r"\bmuralha[-_][a-z_-]+\.(?:sh|py)\b"),
+    re.compile(r"\bnpm\s+(?:test|run\s+\S*test)"),
+)
+
+URL_DE_PR = re.compile(r"/pull/(\d+)\b")
+
+# Os rótulos do próprio molde. Se um deles sobrevive no relatório, o bloco foi
+# colado e não preenchido — e isso é o silêncio de volta, com moldura.
+MARCA_DO_MOLDE = re.compile(r"voc[êe]\s+escreve|fatos\s+da\s+m[áa]quina", re.I)
+
+# Pendências exigem julgamento; o veredito é conferido separadamente.
+JULGAMENTO = (2,)
+
+
+def _texto_da_fala(entrada: dict) -> str:
+    """O texto que o robô escreveu nesta entrada (vazio se não for fala)."""
+    if entrada.get("type") != "assistant":
+        return ""
+    conteudo = (entrada.get("message") or {}).get("content")
+    if isinstance(conteudo, str):
+        return conteudo
+    if isinstance(conteudo, list):
+        return "\n".join(_texto_do_bloco(b) for b in conteudo)
+    return ""
+
+
+def _usos_de_ferramenta(entrada: dict):
+    """(nome, bloco) de cada `tool_use` desta entrada."""
+    if entrada.get("type") != "assistant":
+        return
+    conteudo = (entrada.get("message") or {}).get("content")
+    if not isinstance(conteudo, list):
+        return
+    for bloco in conteudo:
+        if isinstance(bloco, dict) and bloco.get("type") == "tool_use":
+            yield str(bloco.get("name") or ""), bloco
+
+
+def _saidas_por_id(entradas: list[dict]) -> dict[str, str]:
+    """id do `tool_use` → texto inteiro que a ferramenta devolveu."""
+    saidas: dict[str, str] = {}
+    for entrada in entradas:
+        conteudo = (entrada.get("message") or {}).get("content")
+        if not isinstance(conteudo, list):
+            continue
+        for bloco in conteudo:
+            if not isinstance(bloco, dict) or bloco.get("type") != "tool_result":
+                continue
+            identificador = bloco.get("tool_use_id")
+            if not identificador:
+                continue
+            corpo = bloco.get("content")
+            if isinstance(corpo, list):
+                corpo = "\n".join(_texto_do_bloco(b) for b in corpo)
+            saidas[str(identificador)] = str(corpo or "")
+    return saidas
+
+
+# Teto de linhas por lista. A janela de uma sessão-maestro pode ter dezenas de
+# escritas de bancadas diferentes, e um molde de 60 linhas de ruído é um molde
+# que ninguém lê (medido na prova de fora deste PR: 31 comandos numa lista só).
+TETO_DA_LISTA = 12
+
+
+def _com_teto(itens: list[str]) -> list[str]:
+    if len(itens) <= TETO_DA_LISTA:
+        return itens
+    return itens[-TETO_DA_LISTA:] + [f"(+ {len(itens) - TETO_DA_LISTA} outros, mais antigos, no transcript)"]
+
+
+def _uma_linha(comando: str) -> str:
+    """A primeira linha do comando, curta. Heredoc inteiro não cabe num molde."""
+    linhas = comando.strip().splitlines()
+    primeira = linhas[0] if linhas else comando
+    cortou = len(primeira) > 120 or len(linhas) > 1
+    return primeira[:120] + (' …' if cortou else '')
+
+
+# Rodapé que o harness pendura em toda saída de shell. Sem esta peneira, a
+# "última linha" de todo comando desta casa seria "Shell cwd was reset to ...",
+# e o bloco de verificação nasceria inútil (medido na prova de fora deste PR).
+RUIDO_DO_HARNESS = re.compile(r"^(?:Shell cwd was reset|<system-reminder|</system-reminder)")
+
+
+def _ultima_linha(texto: str) -> str:
+    linhas = [linha.strip() for linha in texto.splitlines()
+              if linha.strip() and not RUIDO_DO_HARNESS.match(linha.strip())]
+    if not linhas:
+        return "(sem saída)"
+    return linhas[-1][:200]
+
+
+def linhas_do_plano(entradas: list[dict], comeco: int) -> list[str]:
+    """As caixinhas do plano, como o robô as deixou. Quem marca é ele."""
+    for entrada in reversed(entradas[comeco:]):
+        texto = _texto_da_fala(entrada)
+        if not texto or not PLANO.search(texto):
+            continue
+        caixinhas = [linha.rstrip() for linha in texto.splitlines() if CAIXINHA.match(linha)]
+        if caixinhas:
+            return caixinhas
+    return []
+
+
+def mudancas_do_turno(entradas: list[dict], comeco: int) -> list[str]:
+    motivos: list[str] = []
+    for entrada in entradas[comeco:]:
+        motivo = _mudanca_na_entrada(entrada)
+        if motivo and motivo not in motivos:
+            motivos.append(motivo)
+    return motivos
+
+
+def verificacoes_do_turno(entradas: list[dict], comeco: int) -> list[tuple[str, str]]:
+    """(comando de teste/portão, última linha da saída dele)."""
+    saidas = _saidas_por_id(entradas)
+    vistos: set[str] = set()
+    achados: list[tuple[str, str]] = []
+    for entrada in entradas[comeco:]:
+        for nome, bloco in _usos_de_ferramenta(entrada):
+            if nome not in ("Bash", "PowerShell"):
+                continue
+            comando = str((bloco.get("input") or {}).get("command") or "").strip()
+            if not comando or comando in vistos:
+                continue
+            if not any(padrao.search(comando) for padrao in COMANDOS_QUE_VERIFICAM):
+                continue
+            vistos.add(comando)
+            bruto = saidas.get(str(bloco.get("id") or ""), "")
+            achados.append((comando, _ultima_linha(bruto) if bruto else "(saída não encontrada no transcript)"))
+    return achados
+
+
+def pr_do_turno(entradas: list[dict], comeco: int) -> int | None:
+    """O número do PR aberto neste turno, lido da URL que o `gh` devolveu."""
+    saidas = _saidas_por_id(entradas)
+    achado = None
+    for entrada in entradas[comeco:]:
+        for nome, bloco in _usos_de_ferramenta(entrada):
+            if nome not in ("Bash", "PowerShell"):
+                continue
+            comando = str((bloco.get("input") or {}).get("command") or "")
+            if not PR_CRIADO.search(comando):
+                continue
+            numero = URL_DE_PR.search(saidas.get(str(bloco.get("id") or ""), ""))
+            if numero:
+                achado = int(numero.group(1))
+    return achado
+
+
+def _rodar(cwd: Path, *comando: str, teto: int = 30) -> tuple[bool, str]:
+    """(deu certo, saída ou motivo). Nunca levanta: este modo é fail-open."""
+    try:
+        proc = subprocess.run(
+            list(comando), capture_output=True, text=True, timeout=teto,
+            cwd=str(cwd), encoding="utf-8", errors="replace",
+        )
+    except Exception as erro:  # noqa: BLE001 — inclusive o executável ausente
+        return False, f"{type(erro).__name__}: {erro}"
+    if proc.returncode != 0:
+        motivo = (proc.stderr or proc.stdout or "").strip().splitlines()
+        return False, motivo[-1][:200] if motivo else f"saiu {proc.returncode}"
+    return True, proc.stdout
+
+
+def arquivos_tocados(cwd: Path, entradas: list[dict], comeco: int) -> tuple[list[str], str]:
+    """(as linhas do bloco, a fonte delas). O git é a fonte boa; o transcript
+    é a queda quando não há bancada por perto."""
+    # Contra a BASE COMUM, nunca contra a ponta de origin/main: a `main` anda
+    # enquanto a bancada trabalha, e `git diff origin/main` devolveria também os
+    # arquivos que OUTROS mergearam no meio-tempo. Medido na prova de fora deste
+    # próprio PR: 12 arquivos alheios no bloco "O que mudou".
+    deu, base = _rodar(cwd, "git", "merge-base", "origin/main", "HEAD")
+    if deu:
+        deu, saida = _rodar(cwd, "git", "diff", "--numstat", base.strip())
+    else:
+        saida = base
+    linhas: list[str] = []
+    if deu:
+        for linha in saida.splitlines():
+            partes = linha.split("\t")
+            if len(partes) == 3:
+                mais, menos, arquivo = partes
+                linhas.append(f"+{mais} -{menos}\t{arquivo}")
+        deu_novos, novos = _rodar(cwd, "git", "status", "--porcelain", "--untracked-files=all")
+        if deu_novos:
+            for linha in novos.splitlines():
+                if linha.startswith("?? "):
+                    linhas.append(f"novo\t{linha[3:].strip()}")
+        if linhas:
+            return linhas, "git diff --numstat contra a base comum com origin/main"
+        return [], "git: nenhuma mudança na bancada desde a base comum com origin/main"
+
+    for entrada in entradas[comeco:]:
+        for nome, bloco in _usos_de_ferramenta(entrada):
+            if nome not in FERRAMENTAS_QUE_ESCREVEM:
+                continue
+            campos = bloco.get("input") if isinstance(bloco.get("input"), dict) else {}
+            caminho = str(campos.get("file_path") or campos.get("notebook_path") or "")
+            if caminho and not RASCUNHO.search(caminho) and caminho not in linhas:
+                linhas.append(caminho)
+    return linhas, f"Edit/Write do transcript (git não medido: {saida})"
+
+
+def checks_do_pr(numero: int, cwd: Path) -> str:
+    deu, saida = _rodar(cwd, "gh", "pr", "view", str(numero), "--json", "statusCheckRollup", teto=30)
+    if not deu:
+        return f"não medido (o gh não respondeu: {saida})"
+    try:
+        rollup = (json.loads(saida) or {}).get("statusCheckRollup") or []
+    except json.JSONDecodeError as erro:
+        return f"não medido (não entendi a resposta do gh: {erro})"
+    if not rollup:
+        return "sem checks ainda"
+    verdes = vermelhos = pendentes = 0
+    nomes_vermelhos: list[str] = []
+    for check in rollup:
+        if not isinstance(check, dict):
+            continue
+        estado = str(check.get("conclusion") or check.get("state") or "").upper()
+        andamento = str(check.get("status") or "").upper()
+        if estado in ("SUCCESS", "NEUTRAL", "SKIPPED"):
+            verdes += 1
+        elif estado in ("FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "ERROR", "STARTUP_FAILURE"):
+            vermelhos += 1
+            nomes_vermelhos.append(str(check.get("name") or check.get("context") or "?"))
+        elif andamento in ("IN_PROGRESS", "QUEUED", "PENDING", "WAITING", "REQUESTED") or not estado:
+            pendentes += 1
+        else:
+            pendentes += 1
+    resumo = f"{verdes} verde(s), {vermelhos} vermelho(s), {pendentes} pendente(s)"
+    if nomes_vermelhos:
+        resumo += " — vermelhos: " + ", ".join(nomes_vermelhos[:5])
+    return resumo
+
+
+# --------------------------------------------------- a entrega em voo ----
+#
+# 17/09/2026, pedido do mantenedor depois de uma sessão do Codex que terminou
+# com o PR aberto, os checks rodando e o ambiente local quebrado, devolvendo
+# tudo isso como pendência dele. O `decidir` acima cobra o RELATÓRIO; ele nunca
+# soube olhar se o trabalho relatado chegou ao fim. Esta é a metade que faltava:
+# **PR aberto é estado intermediário, nunca entrega final**, e enquanto houver
+# ação técnica segura disponível o relatório é atualização, não fecho.
+#
+# POR QUE ISTO NÃO É A ESPERA EM LAÇO QUE A TRÍADE PROIBIU
+# (`docs/decisoes/DECISAO-triade-de-ias.md`, regra 2): o portão não espera. Ele
+# mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
+# que tem teto e morre sozinho (`ci/esperar.py`). Estourou o teto, o vermelho é
+# do instrumento ou a decisão é exclusiva do mantenedor: o fecho honesto é NÃO
+# PRONTO com a dívida no livro, e o portão aceita.
+#
+# O QUE FICOU DE FORA, de propósito: commit não enviado e ambiente local
+# quebrado. Os dois já caem no portão do relatório (trabalho de bancada nenhum
+# passa calado) e medi-los aqui cobraria a mesma dívida duas vezes, recusando a
+# cada turno quem editou, mediu e escreveu um NÃO PRONTO honesto. Continuam lei
+# de texto em CLAUDE.md, com o executor respondendo pela remediação.
+
+# `make pr` e `ci/pr.py` são a porta desta casa; `gh pr create` é a de fora.
+ABRE_PR = re.compile(r"\bmake\s+pr\b|\bci[/\\]pr\.py\b")
+
+ESTADOS_TERMINAIS = {"MERGED", "CLOSED"}
+CHECK_VERDE = {"SUCCESS", "NEUTRAL", "SKIPPED"}
+CHECK_VERMELHO = {"FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "ERROR", "STARTUP_FAILURE"}
+
+# O que fazer AGORA, por situação: recusa que não ensina só trava o robô de
+# outro jeito, a mesma lei do molde do relatório.
+ACAO_SEGURA = {
+    "rascunho": "gh pr ready {numero}   (rascunho não integra, nem é medido pela pista)",
+    "vermelho": ("leia o vermelho e conserte, no máximo 2 tentativas; ERROR é instrumento\n"
+                 "     quebrado: python ci/rerun_de_deploy.py --ultimo"),
+    "pendente": "python ci/esperar.py --checks {numero} --so-desfecho",
+    "aberto": "python ci/esperar.py --entrega {numero} --so-desfecho",
+}
+
+
+def situacao_do_pr(dados: dict) -> tuple[str, str]:
+    """(situação, motivo) a partir do JSON do `gh pr view`.
+
+    A régua inteira, testável sem rede e sem harness. Só `terminal` libera o
+    fecho: um PR aberto e verde ainda não integrou, e dar o trabalho por
+    encerrado porque o robô não tem mais o que fazer é exatamente o relatório
+    que o mantenedor recebeu e recusou.
+    """
+    estado = str(dados.get("state") or "").upper()
+    if estado in ESTADOS_TERMINAIS:
+        return "terminal", ""
+    if dados.get("isDraft"):
+        return "rascunho", "está em rascunho"
+    vermelhos: list[str] = []
+    pendentes = 0
+    for check in dados.get("statusCheckRollup") or []:
+        if not isinstance(check, dict):
+            continue
+        conclusao = str(check.get("conclusion") or check.get("state") or "").upper()
+        if conclusao in CHECK_VERDE:
+            continue
+        if conclusao in CHECK_VERMELHO:
+            vermelhos.append(str(check.get("name") or check.get("context") or "?"))
+        else:
+            pendentes += 1
+    if vermelhos:
+        return "vermelho", "está vermelho em " + ", ".join(vermelhos[:5])
+    if pendentes:
+        return "pendente", f"tem {pendentes} check(s) sem resultado"
+    return "aberto", "está aberto, ainda não integrado"
+
+
+def entrega_em_voo(numero: int, cwd: Path) -> tuple[str, str]:
+    """(situação, motivo). `nao_medido` NÃO é aprovação: é instrumento mudo."""
+    deu, saida = _rodar(cwd, "gh", "pr", "view", str(numero), "--json",
+                        "state,isDraft,statusCheckRollup")
+    if not deu:
+        return "nao_medido", f"o gh não respondeu: {saida}"
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
+        return "nao_medido", f"não entendi a resposta do gh: {erro}"
+    return situacao_do_pr(dados if isinstance(dados, dict) else {})
+
+
+def molde_do_voo(numero: int, situacao: str, motivo: str) -> str:
+    acao = ACAO_SEGURA.get(situacao, "confira o PR e conclua a entrega").format(numero=numero)
+    return "\n".join([
+        f"🛫 ENTREGA EM VOO: o PR #{numero} {motivo}.",
+        "   Pendência que VOCÊ ainda pode resolver faz do relatório uma",
+        "   atualização intermediária, não o fecho da sessão (CLAUDE.md).",
+        "   Ação segura, uma consulta com teto, sem laço:",
+        f"     {acao}",
+        "   Integrou ou o teto estourou: escreva o registro da entrega em",
+        "   painel/registros/ (com evidencia e verificado_em) e feche com o veredito.",
+        "   Só decisão exclusiva do mantenedor vira Pendências dele.",
+    ])
+
+
+def _seguir_o_pr(entrada: dict, estado: dict) -> None:
+    """Guarda o número do PR que ESTA sessão abriu, lido da saída de quem o abriu.
+
+    O PR que a sessão só consultou não entra: quem responde pela entrega é quem
+    a criou. Por isso a URL só vale quando vem no resultado do `make pr`, do
+    `ci/pr.py` ou do `gh pr create` desta mesma sessão.
+    """
+    for nome, bloco in _usos_de_ferramenta(entrada):
+        if nome not in ("Bash", "PowerShell"):
+            continue
+        comando = str((bloco.get("input") or {}).get("command") or "")
+        if PR_CRIADO.search(comando) or ABRE_PR.search(comando):
+            identificador = str(bloco.get("id") or "")
+            if identificador:
+                estado["ids_de_pr"] = [*estado.get("ids_de_pr", []), identificador][-8:]
+    conteudo = (entrada.get("message") or {}).get("content")
+    if not isinstance(conteudo, list):
+        return
+    for bloco in conteudo:
+        if not isinstance(bloco, dict) or bloco.get("type") != "tool_result":
+            continue
+        if str(bloco.get("tool_use_id") or "") not in estado.get("ids_de_pr", []):
+            continue
+        corpo = bloco.get("content")
+        if isinstance(corpo, list):
+            corpo = "\n".join(_texto_do_bloco(b) for b in corpo)
+        achado = URL_DE_PR.search(str(corpo or ""))
+        if achado:
+            estado["pr"] = int(achado.group(1))
+
+
+def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str:
+    comeco = inicio_da_janela(entradas) if entradas else 0
+    linhas = [
+        "================================================================",
+        "🧾 MOLDE DA PRESTAÇÃO DE CONTAS, com os fatos já preenchidos",
+        "================================================================",
+        "   FATOS DA MÁQUINA = medido agora. Confira, corte o que não interessa",
+        "                      e diga em português o que cada coisa significa.",
+        "   VOCÊ ESCREVE     = julgamento. Nenhuma máquina sabe isto por você, e",
+        "                      o portão do Stop recusa o bloco que ficar em branco.",
+        "",
+    ]
+
+    linhas.append("CHECKLIST — FATOS DA MÁQUINA (o plano da sua abertura; as caixinhas)")
+    caixinhas = linhas_do_plano(entradas, comeco) if entradas else []
+    if caixinhas:
+        linhas += caixinhas
+    elif sem_transcript:
+        linhas.append(f"   (não medido: {sem_transcript})")
+    else:
+        linhas.append("   (não medido: nenhum plano em caixinhas nesta janela — escreva o checklist)")
+    linhas += ["Onde estou: passo N de M — VOCÊ ESCREVE (marque as caixinhas acima)", ""]
+
+    lista, fonte = arquivos_tocados(cwd, entradas, comeco)
+    linhas.append(f"**O que mudou** — FATOS DA MÁQUINA ({fonte})")
+    if lista:
+        linhas += [f"   {item}" for item in _com_teto(lista)]
+    else:
+        linhas.append("   (nenhum arquivo medido)")
+    mudancas = mudancas_do_turno(entradas, comeco) if entradas else []
+    if mudancas:
+        linhas.append("   comandos que mudaram o mundo neste turno:")
+        linhas += [f"   · {motivo}" for motivo in _com_teto(mudancas)]
+    elif sem_transcript:
+        linhas.append(f"   comandos: não medido ({sem_transcript})")
+    linhas.append("")
+
+    linhas.append("**O que foi verificado** — FATOS DA MÁQUINA")
+    verificacoes = verificacoes_do_turno(entradas, comeco) if entradas else []
+    if verificacoes:
+        for comando, ultima in verificacoes[-TETO_DA_LISTA:]:
+            linhas.append(f"   · {_uma_linha(comando)}")
+            linhas.append(f"     → {ultima}")
+    elif sem_transcript:
+        linhas.append(f"   (não medido: {sem_transcript})")
+    else:
+        linhas.append("   (nenhum teste ou portão rodado neste turno — se rodou, diga qual)")
+    numero = pr_do_turno(entradas, comeco) if entradas else None
+    if numero:
+        linhas.append(f"   · PR #{numero} — checks: {checks_do_pr(numero, cwd)}")
+    elif sem_transcript:
+        linhas.append(f"   · PR: não medido ({sem_transcript})")
+    else:
+        linhas.append("   · nenhum PR neste turno")
+    linhas.append("")
+
+    for indice in JULGAMENTO:
+        titulo, dica = BLOCOS[indice]
+        linhas += [f"{titulo} — VOCÊ ESCREVE ({dica})", ""]
+    linhas += [
+        "**Veredito:** VOCÊ ESCREVE — PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê",
+        "",
+        "   PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga",
+        "   NÃO PRONTO. Ou rodou de verdade, ou escreve NÃO RODEI.",
+    ]
+    return "\n".join(linhas)
+
+
+def modo_molde_com_fatos(argumentos: list[str]) -> int:
+    caminho: Path | None = None
+    if "--transcript" in argumentos:
+        posicao = argumentos.index("--transcript")
+        if posicao + 1 < len(argumentos):
+            caminho = Path(argumentos[posicao + 1])
+    if caminho is None:
+        print(
+            "🧾 MOLDE COM FATOS RECUSADO: não sei de qual sessão sou.\n"
+            "   Informe o transcript desta sessão explicitamente com:\n"
+            "   python ci/prestacao_de_contas.py --molde-com-fatos "
+            "--transcript <caminho>\n"
+            "   Não escolhi o transcript mais recente da máquina.",
+            file=sys.stderr,
+        )
+        return 2
+    if not caminho.exists():
+        print(
+            f"🧾 MOLDE COM FATOS RECUSADO: o transcript informado não existe: {caminho}\n"
+            "   Confira o caminho da sessão e rode o comando de novo.",
+            file=sys.stderr,
+        )
+        return 2
+    print(molde_com_fatos(ler_transcript(caminho), Path.cwd(), ""))
+    return 0
 
 
 # ------------------------------------------------------------- a decisão ----
@@ -475,44 +986,59 @@ def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
     return True, ultima_mudanca[1], _teve_plano(entradas, inicio_da_janela(entradas))
 
 
-def molde(faltou_o_plano: bool) -> str:
+def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "") -> str:
     linhas = [
-        "🧾 PRESTAÇÃO DE CONTAS: há trabalho feito nesta sessão sem relatório nenhum.",
-        "",
-        "   O mantenedor é leigo em código e não lê o transcript. Se você parar aqui,",
-        "   ele vai ter que perguntar de novo o que foi feito — foi por isso que este",
-        "   portão nasceu (regra 9 do Padrão de Trabalho, 1ª seção do CLAUDE.md).",
-        "",
-        "   Escreva AGORA, em português, nesta ordem e sem enfeite:",
-        "",
-        "   O checklist do plano no estado final — `- [x]` no que caiu, `- [ ]` no",
-        "   que ficou, com o motivo — e a linha \"Onde estou: passo N de M\".",
-    ]
-    for titulo, dica in BLOCOS:
-        linhas.append(f"   {titulo} — {dica}")
-    linhas += [
-        "   **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê.",
-        "",
-        "   Regras que valem dentro do molde:",
-        "   · O checklist é o roteiro que ele pediu: sem caixinha, o relatório não vale.",
-        "   · PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga NÃO PRONTO.",
-        "   · Demonstre, não descreva: comando executado + saída real.",
-        "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
-        "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",
-        "   · Se algo depende dele, abra a caixa de pergunta (AskUserQuestion) junto.",
-        "   · NÃO PRONTO é resposta honesta e aceita. Verde inventado, não.",
+        "🧾 PRESTAÇÃO DE CONTAS: trabalho feito nesta sessão sem relatório. " + _uma_linha(motivo)[:180],
+        "## Plano",
+        "- [x] Indique os passos concluídos; use [ ] para o que falta.",
+        "Onde estou: passo N de M; diga o próximo passo se houver.",
+        "**O que mudou**: fatos.",
+        "**O que foi verificado**: comando e resultado, ou NÃO RODEI.",
+        "**Pendências**: o que falta, ou nada depende de ninguém.",
+        "**Veredito:** PRONTO ou NÃO PRONTO, com o motivo.",
+        f'Fatos: python ci/prestacao_de_contas.py --molde-com-fatos --transcript "{transcript or "caminho-da-sessao"}"',
     ]
     if faltou_o_plano:
-        linhas += [
-            "",
-            "   E o plano não apareceu no começo deste turno. Não dá para consertar",
-            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e é",
-            "   reimpresso marcado ao fim de CADA etapa, com onde você está.",
-        ]
+        linhas.append("Na próxima tarefa, apresente o plano antes de começar.")
     return "\n".join(linhas)
 
 
 # ------------------------------------------------------------- os dois modos ----
+
+
+def _portao_do_voo(entrada: dict, arquivo: Path, estado: dict, segunda_passada: bool) -> int:
+    """O segundo portão do Stop: as contas foram prestadas, mas a entrega chegou?
+
+    Só olha para o PR que a própria sessão abriu, uma medição por fim de turno,
+    e recusa uma única vez por situação (`1692:pendente`). Situação nova é fato
+    novo e merece nova recusa; a mesma situação duas vezes vira aviso, porque um
+    portão que recusa em laço é a espera em laço com outro nome.
+    """
+    numero = int(estado.get("pr") or 0)
+    if not numero or segunda_passada:
+        return 0
+    situacao, motivo = entrega_em_voo(numero, Path(entrada.get("cwd") or "."))
+    if situacao == "terminal":
+        return 0
+    if situacao == "nao_medido":
+        print(f"⚠️  ENTREGA EM VOO: não consegui medir o PR #{numero} ({motivo}). "
+              "Isto NÃO é 'está tudo certo': confira o PR antes de dar a tarefa por encerrada.",
+              file=sys.stderr)
+        return 1
+    assinatura = f"{numero}:{situacao}"
+    ja_cobrado = estado.get("voo_cobrado") == assinatura
+    estado["voo_cobrado"] = assinatura
+    try:
+        gravar_estado_incremental(arquivo, estado)
+    except OSError as erro:
+        print(f"ENTREGA EM VOO: não gravei o estado ({erro}); a recusa pode repetir.",
+              file=sys.stderr)
+    if ja_cobrado:
+        print(f"ENTREGA EM VOO: o PR #{numero} {motivo} e o robô encerrou assim mesmo; "
+              "a entrega continua sem resultado terminal, sem nova recusa.", file=sys.stderr)
+        return 1
+    print(molde_do_voo(numero, situacao, motivo), file=sys.stderr)
+    return 2
 
 
 def modo_contas(entrada: dict) -> int:
@@ -540,55 +1066,45 @@ def modo_contas(entrada: dict) -> int:
         )
         return 1
 
-    entradas = ler_transcript(arquivo)
-    recusar, motivo, teve_plano = decidir(entradas)
-
-    # Alavanca 3, em SOMBRA: só telemetria, roda na primeira passada de todo
-    # Stop — inclusive quando a prestação de contas já foi paga, porque a
-    # sessão pode ter aberto os PRs em série ANTES do relatório. A segunda
-    # passada do mesmo fim de turno não conta de novo: a série é uma só.
-    # registrar() já é fail-open (nunca lança), então isto não pode derrubar o
-    # exit code que `decidir()` já calculou.
-    if not segunda_passada:
-        prs_criados, despachos_de_verdade = contar_prs_e_despachos(entradas)
-        if prs_criados >= 2 and despachos_de_verdade == 0:
-            telemetria.registrar(
-                "serie_sem_despacho",
-                {"prs_criados": prs_criados, "despachos": despachos_de_verdade},
-                cwd=entrada.get("cwd"),
-                sessao=entrada.get("session_id"),
-            )
-
-    if not recusar:
-        return 0
-    if segunda_passada:
-        # Já recusei uma vez neste fim de turno e o relatório continua faltando.
-        # Recusar de novo prenderia a sessão em laço. Passo — mas GRITO, para o
-        # mantenedor ver que o robô foi cobrado e não trouxe as contas.
-        # (exit 1: barulhento, não bloqueia.)
-        print(
-            "⚠️  PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo.\n"
-            "   O que você tem na tela pode não ser o relatório da tarefa.",
-            file=sys.stderr,
-        )
+    try:
+        estado = ler_estado_incremental(arquivo)
+        recusar = bool(estado["motivo"])
+        ja_cobrada = segunda_passada or estado["cobrada"] == estado["mudancas"]
+        if recusar:
+            estado["cobrada"] = estado["mudancas"]
+        gravar_estado_incremental(arquivo, estado)
+    except (OSError, ValueError, TypeError, KeyError) as erro:
+        print(f"PRESTAÇÃO DE CONTAS: leitura incremental não conferida: {erro}. "
+              "Confira o acesso ao transcript e ao arquivo .contas.json; não bloqueei o turno.",
+              file=sys.stderr)
         return 1
-    print(molde(faltou_o_plano=not teve_plano), file=sys.stderr)
-    print(f"\n   (o que mudou o mundo neste turno: {motivo})", file=sys.stderr)
+
+    if not segunda_passada and estado["prs"] >= 2 and estado["despachos"] == 0:
+        telemetria.registrar(
+            "serie_sem_despacho",
+            {"prs_criados": estado["prs"], "despachos": estado["despachos"]},
+            cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
+        )
+    if not recusar:
+        return _portao_do_voo(entrada, arquivo, estado, segunda_passada)
+    if ja_cobrada:
+        print("PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo; "
+              "o relatório continua pendente, sem nova recusa. "
+              "Escreva os quatro blocos e o checklist para concluir as contas.", file=sys.stderr)
+        return 1
+    print(molde(faltou_o_plano=not estado["teve_plano"], transcript=str(arquivo),
+                motivo=estado["motivo"]), file=sys.stderr)
     return 2
 
 
-AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, ROTEIRO A CADA ETAPA, CONTAS DEPOIS (lei da casa, CLAUDE.md).
-   Se este pedido vai mudar o mundo — editar arquivo, rodar comando que altera
-   algo, abrir PR — a PRIMEIRA coisa da sua resposta é o plano em caixinhas
-   ("## Plano — <tarefa>", um "- [ ]" por passo). Ao FIM DE CADA ETAPA,
-   reimprima o checklist inteiro marcado ("- [x]" no que caiu, "- [ ]" no que
-   falta) e a linha "Onde estou: passo N de M", com o próximo passo dito —
-   ele não lê o transcript, e é assim que sabe onde a tarefa está.
-   A ÚLTIMA coisa é a prestação de contas, que começa pelo mesmo checklist no
-   estado final: O que mudou · O que foi verificado e como · O que foi cortado
-   e por quê · O que eu preciso decidir · Auditoria de qualidade · Veredito
-   PRONTO/NÃO PRONTO. O portão do Stop recusa terminar sem ela e sem a
-   caixinha — não é sugestão."""
+AVISO_DO_PLANO = """📋 PLANO PRIMEIRO: comece mudanças com ## Plano e - [ ] por passo.
+Etapa é só concluir ou bloquear um passo planejado, não uma chamada de ferramenta,
+leitura, mensagem automática ou nova tentativa. Reimprima o checklist apenas
+quando uma caixa mudou ou surgiu bloqueio; se não mudou, não o copie.
+No fecho: checklist final, O que mudou, O que foi verificado, Pendências e
+Veredito PRONTO/NÃO PRONTO com motivo. PRONTO não admite caixinha aberta.
+Fatos sob demanda: python ci/prestacao_de_contas.py --molde-com-fatos
+--transcript <caminho-da-sessao>. Não escolha o transcript de outra sessão."""
 
 
 def modo_plano(entrada: dict) -> int:
@@ -604,6 +1120,20 @@ def modo_plano(entrada: dict) -> int:
 def main(argv: list[str] | None = None) -> int:
     _utf8_na_saida()
     argumentos = list(sys.argv[1:] if argv is None else argv)
+
+    # Este modo é chamado PELO ROBÔ, num terminal: ler stdin aqui travaria a
+    # espera de uma entrada que ninguém vai digitar. E ele é fail-open com exit
+    # 0 — molde é conveniência, e conveniência que trava vira estorvo.
+    if "--molde-com-fatos" in argumentos:
+        try:
+            return modo_molde_com_fatos(argumentos)
+        except Exception as erro:  # noqa: BLE001
+            print(
+                f"🧾 MOLDE COM FATOS: não consegui montar ({type(erro).__name__}: {erro}).\n"
+                "   Escreva os quatro blocos à mão; o portão do Stop continua valendo."
+            )
+            return 0
+
     try:
         bruto = sys.stdin.read()
         entrada = json.loads(bruto) if bruto.strip() else {}

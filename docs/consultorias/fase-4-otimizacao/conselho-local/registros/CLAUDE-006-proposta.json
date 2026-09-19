@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-006",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "Tres pecas mentem para quem le. (a) ci/preco_da_conversa.py esta orfao: nenhum arquivo de configuracao o chama desde que PostToolUse esvaziou. (b) RITOS.md:195 cita uma frase do CLAUDE.md ('espere os checks concluirem') que nao existe mais na lei viva, que hoje diz o oposto. (c) Merge Queue aparece como pendencia sendo impossivel aqui.",
+  "titulo": "Tirar as tres coisas que dizem fazer o que nao fazem",
+  "baseline": "Contra origin/main=22a9bd26. `git show origin/main:.claude/settings.json` e `.codex/hooks.json` tem ambos PostToolUse vazio, e `grep -rn preco_da_conversa` nos arquivos de configuracao nao casa nada. `git show origin/main:CLAUDE.md | grep -n 'espere os checks'` nao casa nada, enquanto RITOS.md:195 segue citando. `gh api repos/abundanciabr/sitesdoreino --jq .owner.type` devolve \"User\", e Merge Queue exige organizacao.",
+  "aceite": "Depois: `grep -rn 'espere os checks' RITOS.md` nao casa nada e a linha corrigida cita a lei viva; preco_da_conversa.py OU volta a ser chamado por configuracao (mostrar a chamada) OU sai junto com seus testes (mostrar a suite verde sem ele), e a escolha vai escrita; e Merge Queue aparece como linha de 'impossivel: conta pessoal', nunca como pendencia. O ganho e de VERDADE, nao de velocidade: nao reivindico segundo nenhum. Sem regressao: suite completa verde."
+}

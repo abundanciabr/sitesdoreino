@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-037-corrigir-situacao-ao-salvar-cursos",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "Corrigir situação ao salvar cursos do aluno",
+  detalhe: "O formulário aplica a situação quando ela muda e depois sincroniza os cursos. Assim, marcar libera, desmarcar pausa e Ex-aluno encerra a ficha sem apagar o histórico.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1472",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

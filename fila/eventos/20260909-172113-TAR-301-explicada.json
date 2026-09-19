@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-172113-TAR-301-explicada",
+  "tarefa": "TAR-301",
+  "evento": "explicada",
+  "quando": "2026-09-09T17:21:13+00:00",
+  "quem": "Desdobramento da auditoria de encerramento, despacho da maestro após checkpoint TAR299 aa231f6",
+  "o_que_e": "Um pedido de exclusão pode parar depois de criar o ramo e a tentativa seguinte informa incorretamente que já há pedido aberto.",
+  "o_que_muda": "Repetir retoma o mesmo pedido comprovado, conserva o motivo e informa até qual etapa ele chegou.",
+  "exemplo": "A rede cai antes do evento; repetir completa evento e PR da mesma TAR, sem declarar que a tarefa já saiu da tela.",
+  "importancia": 85
+}

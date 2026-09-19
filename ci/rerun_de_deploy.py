@@ -147,6 +147,36 @@ responde essa segunda pergunta é `Decisao.precisa_de_alarme`, num canal própri
 (`$GITHUB_OUTPUT`), sem torcer o sentido do código de saída.
 
 --------------------------------------------------------------------------
+O QUINTO CASO — o commit chegou e a CÉLULA não (TAR-210, armadilhas/359)
+
+Todas as medidas acima respondem a mesma pergunta — *"o que está publicado
+contém o SHA deste run?"* —, e ela é de RUN, enquanto a doença é de CÉLULA. O
+`deploy-celula` monta a `matrix` por DETECÇÃO DE DIFF: célula que o push não
+tocou não entra, e está certo que não entre. Logo, um deploy verde mais novo
+pode carregar este commit por dentro e mesmo assim nunca ter construído a
+célula que morreu aqui.
+
+MEDIDO em 05-06/09/2026: o `deploy-celula` do PR #1145 (`mensageria`, sha
+497f0cb9) foi cancelado; a vacina decidiu NÃO repetir e saiu verde; os dois
+deploys verdes seguintes (#1146 e #1147) contêm 497f0cb9 e têm SÓ o job
+`deploy (admin)`. A `mensageria` nunca subiu, e três telas verdes disseram ao
+mantenedor que estava tudo certo — o mecanismo antifalso-verde participando do
+falso-verde.
+
+Desde a TAR-210 o ramo `head_ja_publicado` só dispensa o rerun depois de provar
+a COBERTURA: cada célula que aquele push precisava publicar tem de ter um
+`deploy (<célula>)` VERDE em algum run que contenha o SHA — o próprio run
+doente incluído, porque célula que ele subiu antes de morrer já está no ar.
+Faltando uma, repetir volta a ser a decisão certa, e o motivo NOMEIA a célula.
+
+Onde a matrix é lida: refeita de fora, do diff do push contra `celulas.yml`, e
+não dos `outputs` do job `detectar`. Os `outputs` não existem na API, e o
+cancelado da cadeira musical morre PENDENTE, sem um único job (medido: cinco de
+cinco). O preço de repetir aqui está escrito em `_porque_republicar` e é
+declarado no log: as células já cobertas voltam à versão daquele run até o
+próximo merge que as toque.
+
+--------------------------------------------------------------------------
 Uso:
     python ci/rerun_de_deploy.py --run <id>        # cuida deste run
     python ci/rerun_de_deploy.py --ultimo          # o último deploy-celula
@@ -171,7 +201,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _nucleo import configurar_saida, raiz_do_repo  # noqa: E402
+from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
+
+# O MAPA DAS CÉLULAS É O MESMO QUE O DEPLOY USA (TAR-210, armadilhas/359). A
+# matrix do `deploy-celula` sai de `ci/ci.py --detectar-celulas`, que pergunta a
+# `celulas.yml` de quem é cada arquivo. Se a vacina tivesse a própria tabela de
+# caminhos, bastaria alguém mover uma pasta para as duas discordarem sobre qual
+# célula um merge toca — e a discordância decidiria um deploy.
+import mapa_de_celulas  # noqa: E402
 
 # A MEDIÇÃO DA PORTA 22 MORA EM UM LUGAR SÓ (TAR-013, 30/08/2026). Desde que o
 # `deploy-celula.yml` passou a medir a porta de dentro do próprio deploy, a
@@ -209,6 +246,10 @@ RE_PATHS_EM_BLOCO = re.compile(r"^(?P<recuo>\s*)paths:\s*$", re.MULTILINE)
 RE_ITEM_DE_LISTA = re.compile(r"^\s*-\s*(?P<item>\S.*?)\s*$")
 # O `name:` do topo de um workflow — é ele que o `workflowName` de um run diz.
 RE_NOME_DO_WORKFLOW = re.compile(r"^name:\s*(?P<nome>\S.*?)\s*$", re.MULTILINE)
+# `deploy (mensageria)` — o nome que a matrix `celula:` dá a cada job do
+# `deploy-celula`. É a ÚNICA pista que a API do Actions dá sobre QUAL célula um
+# run construiu: os `outputs` do job `detectar` não são expostos por ela.
+RE_JOB_DE_CELULA = re.compile(r"^deploy \((?P<celula>[^)]+)\)$")
 
 
 class ErroDeMedicao(Exception):
@@ -241,6 +282,11 @@ class Fatos:
     head_ja_publicado: bool | None = None
     commits_de_fora: int | None = None
     commits_de_fora_tocam_o_deploy: bool | None = None
+    # A COBERTURA DE CÉLULA (armadilhas/359, TAR-210). As células que o push
+    # deste run precisava publicar e que NENHUM deploy publicou desde então.
+    # `()` = nada falta (ou a esteira não publica por célula, como o
+    # `deploy-infra`); `None` = NÃO MEDI, que nunca vira "já está no ar".
+    celulas_sem_publicacao: tuple[str, ...] | None = ()
 
 
 @dataclass
@@ -374,11 +420,44 @@ def decidir(fatos: Fatos) -> Decisao:
     return Decisao(
         "repetir", 0,
         "a porta 22 respondeu e o site está de pé: é o blip intermitente entre "
-        "o runner e a VPS (armadilhas/127), não a 017. E o que "
-        f"`{fatos.workflow or 'esta esteira'}` tem publicado "
-        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA deste run "
-        f"({_curto(fatos.head_sha)}): republicar só AVANÇA. Repetindo o deploy.",
+        "o runner e a VPS (armadilhas/127), não a 017. E "
+        + _porque_republicar(fatos) + " Repetindo o deploy.",
         recado=_recado_do_que_fica_de_fora(fatos),
+    )
+
+
+def _porque_republicar(fatos: Fatos) -> str:
+    """A metade da frase que diz por que repetir NÃO faz nada voltar.
+
+    São dois mundos diferentes, e chamar os dois de "republicar só avança"
+    seria escrever no log uma coisa que não aconteceu:
+
+    · O caso-base da `armadilhas/188` — o publicado é ancestral deste SHA, e o
+      rerun leva a esteira para a frente.
+    · O caso da `armadilhas/359` — o publicado é mais NOVO, e ainda assim se
+      repete, porque uma célula daquele push nunca foi construída por ninguém.
+      Aqui repetir de fato faz as células JÁ cobertas voltarem à versão deste
+      run, e essa frase precisa estar escrita: é um preço, não um detalhe. Ele
+      é menor que o outro lado (uma célula fora do ar para sempre, em
+      silêncio), e dura até o próximo merge que toque as células cobertas — que
+      neste projeto é o próximo merge qualquer, porque todo PR carrega um
+      registro em `painel/`, que é da `admin`.
+    """
+    if fatos.celulas_sem_publicacao:
+        faltam = ", ".join(fatos.celulas_sem_publicacao)
+        return (
+            f"o commit deste run ({_curto(fatos.head_sha)}) JÁ está contido no "
+            f"que essa esteira publicou ({_curto(fatos.sha_publicado)}), mas "
+            f"NENHUM deploy desde então construiu: {faltam}. O commit chegou, a "
+            "célula não (armadilhas/359) — cada run publica só as células que o "
+            "push DELE tocou. Repetir é o único jeito de pô-la no ar; as "
+            "células já cobertas voltam à versão deste run até o próximo merge "
+            "que as toque."
+        )
+    return (
+        f"o que `{fatos.workflow or 'esta esteira'}` tem publicado "
+        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA deste run "
+        f"({_curto(fatos.head_sha)}): republicar só AVANÇA, nada volta."
     )
 
 
@@ -447,10 +526,8 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
     return Decisao(
         "repetir", 0,
         f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) de "
-        f"`{fatos.workflow}` e o que essa esteira tem publicado "
-        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA "
-        f"deste run ({_curto(fatos.head_sha)}): republicar só AVANÇA, nada "
-        "volta. Repetindo o deploy.",
+        f"`{fatos.workflow}` e " + _porque_republicar(fatos) + " Repetindo o "
+        "deploy.",
         recado=_recado_do_que_fica_de_fora(fatos),
         rerun_apenas_falhados=False,
     )
@@ -471,13 +548,16 @@ def _a_republicacao_avanca(fatos: Fatos, o_que_houve: str) -> Decisao | None:
     humano o que aconteceu com AQUELE run, e um texto genérico foi exatamente o
     que fez um agente fechar a tarefa com o merge fora do ar (188).
 
-    O BURACO QUE ESTA FUNÇÃO NÃO FECHA, e não é ela que fecha: para o
+    O BURACO QUE ELA DEIXAVA ABERTO, E QUE A TAR-210 FECHOU: para o
     `deploy-celula`, "o publicado é ancestral do meu SHA" é uma resposta de RUN
     a uma pergunta de CÉLULA. Um verde mais novo pode conter este commit no Git
     e ainda assim não ter publicado a célula que morreu aqui, porque cada run
-    publica só as células que o push DELE tocou (armadilhas/215, e a 220 já
-    declara este buraco aberto). O ramo `head_ja_publicado` herda isso — dizer
-    "já está no ar" pode ser grosso demais. Declarado, não silencioso.
+    publica só as células que o push DELE tocou. Ficou declarado e sem
+    mecanismo até 07/09/2026, quando a `armadilhas/359` mediu o estrago em
+    produção: o ramo `head_ja_publicado` dizia "já está no ar" sobre a
+    `mensageria` do PR #1145, que nunca subiu. Hoje esse ramo só dispensa o
+    rerun depois de provar a COBERTURA — cada célula daquele push com um
+    `deploy (<célula>)` VERDE em algum run que contenha o SHA.
     """
     if not fatos.workflow:
         return Decisao(
@@ -511,6 +591,22 @@ def _a_republicacao_avanca(fatos: Fatos, o_que_houve: str) -> Decisao | None:
             "Sem essa medição, repetir seria apostar num rollback.",
         )
     if fatos.head_ja_publicado:
+        # ANCESTRALIDADE NÃO É COBERTURA (armadilhas/359). O commit chegou; a
+        # pergunta que decide é se a CÉLULA subiu, e ela tem resposta própria.
+        if fatos.celulas_sem_publicacao is None:
+            return Decisao(
+                "nada", 2,
+                f"o run {fatos.run} {o_que_houve} e o commit dele já está "
+                f"contido no que `{fatos.workflow}` publicou — mas eu não "
+                "consegui medir QUAIS células aquele push precisava publicar, "
+                "nem quais já subiram. Sem isso, 'o commit chegou' não prova "
+                "que a célula chegou (armadilhas/359), e 'não medi' nunca vira "
+                "'já está no ar' (INV-CI01). Confira à mão: "
+                f"gh run view {fatos.run} --json jobs "
+                "--jq '.jobs[] | \"\\(.name): \\(.conclusion)\"'",
+            )
+        if fatos.celulas_sem_publicacao:
+            return None  # falta célula: o motivo de repetir dirá qual
         iguais = fatos.publicado_e_ancestral
         return Decisao(
             "nada", 0,
@@ -522,7 +618,9 @@ def _a_republicacao_avanca(fatos: Fatos, o_que_houve: str) -> Decisao | None:
                 else f"a última publicação verde ({_curto(fatos.sha_publicado)}) "
                 f"já contém {_curto(fatos.head_sha)}."
             )
-            + " Nada a repetir — e repetir agora republicaria um mundo mais "
+            + " E cada célula daquele push tem um `deploy (<célula>)` VERDE "
+            "desde então (armadilhas/359): o commit chegou E a célula subiu. "
+            "Nada a repetir — e repetir agora republicaria um mundo mais "
             "VELHO, que é o rollback silencioso da armadilhas/188.",
         )
     if not fatos.publicado_e_ancestral:
@@ -847,6 +945,121 @@ def e_ancestral(anterior: str, posterior: str) -> bool | None:
     return None
 
 
+def celula_do_job(nome: str) -> str:
+    """`deploy (mensageria)` ⇒ `mensageria`. Qualquer outro job ⇒ `""`.
+
+    O `deploy-celula` nomeia os jobs da matrix `celula:`, e é daí — e só daí —
+    que se descobre, de fora, o que um run construiu. Os `outputs` do job
+    `detectar` não aparecem no `gh run view`, e um run expulso da vaga de
+    pendente morre sem job nenhum. O `deploy-infra` cai no `""` de propósito:
+    ele publica o compose da VPS, não imagem de célula.
+    """
+    casou = RE_JOB_DE_CELULA.match(nome.strip())
+    return casou.group("celula").strip() if casou else ""
+
+
+def jobs_do_run(run: str) -> list[dict]:
+    """Os jobs de um run, com nome e conclusão — a listagem da `armadilhas/359`.
+
+    É a mesma leitura que descobriu o incidente à mão: `gh run view <id> --json
+    jobs`. A cor do RESUMO do run não serve para esta pergunta — um deploy
+    verde que não lista `deploy (<sua célula>)` não subiu a sua célula.
+    """
+    codigo, saida = _rodar(["gh", "run", "view", run, "--json", "jobs"])
+    if codigo != 0:
+        raise ErroDeMedicao(f"gh run view {run} --json jobs falhou: "
+                            f"{saida.strip()[:200]}")
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
+        raise ErroDeMedicao(f"os jobs do run {run} não são JSON: {erro}") from erro
+    jobs = dados.get("jobs") if isinstance(dados, dict) else None
+    if not isinstance(jobs, list):
+        raise ErroDeMedicao(f"o run {run} não devolveu lista de jobs: {saida[:120]}")
+    return [job for job in jobs if isinstance(job, dict)]
+
+
+def celulas_do_push(sha: str, raiz: Path | None = None) -> tuple[str, ...]:
+    """As células que o push terminado em `sha` precisava publicar.
+
+    É a MESMA conta que o job `detectar` faz dentro do deploy — o diff do push
+    contra o mapa de `celulas.yml` —, refeita de fora porque a matrix daquele
+    run pode nunca ter existido: o cancelado da cadeira musical morre pendente,
+    sem um único job. MEDIDO em 07/09/2026 contra os 25 últimos runs do
+    `deploy-celula`: nos 24 que tinham jobs, esta conta devolveu exatamente a
+    matrix real, célula por célula.
+
+    `sha^...sha` é o intervalo do push: para o merge commit que a pista cria,
+    o primeiro pai é o topo anterior da `main`, ou seja, o `github.event.before`
+    que o workflow usa. Falha do Git é ERRO DE MEDIÇÃO, nunca lista vazia —
+    vazia diria "este push não toca célula nenhuma" e liberaria o desfecho.
+
+    O LIMITE, escrito porque ele erra para o lado errado: um push que levasse
+    VÁRIOS commits ao topo da `main` sem merge commit teria um `before` mais
+    antigo que `sha^`, e esta conta enxergaria só o último — de menos, nunca de
+    mais. Menos célula medida é cobertura mais fácil de satisfazer, ou seja, a
+    borda erra dispensando o rerun. Não é hipótese ociosa nem problema de hoje:
+    toda entrega desta casa entra pela pista, que faz merge commit, e nos 24
+    runs medidos a conta bateu exatamente. Se um dia alguém empurrar direto na
+    `main`, é aqui que se olha.
+    """
+    codigo, saida = _rodar(["git", "diff", "--name-only", f"{sha}^...{sha}"])
+    if codigo != 0:
+        raise ErroDeMedicao(
+            f"git diff {_curto(sha)}^...{_curto(sha)} falhou: "
+            f"{saida.strip()[:200]} — sem o diff do push não dá para saber "
+            "quais células aquele deploy precisava publicar"
+        )
+    arquivos = [linha.strip() for linha in saida.splitlines() if linha.strip()]
+    try:
+        mapa = mapa_de_celulas.carregar(raiz)
+    except ErroDeInstrumentacao as erro:
+        raise ErroDeMedicao(f"não consegui ler celulas.yml: {erro.resumo}") from erro
+    return tuple(mapa_de_celulas.celulas_do_diff(arquivos, mapa))
+
+
+def celulas_sem_publicacao(
+    sha: str, alvo: tuple[str, ...], workflow: str = WORKFLOW_DO_DEPLOY,
+    limite: int = RUNS_OLHADOS_ATRAS,
+) -> tuple[str, ...]:
+    """Das células de `alvo`, quais NENHUM deploy publicou desde `sha`.
+
+    A regra é uma só: uma célula está no ar quando existe um run desta esteira
+    com `deploy (<célula>)` VERDE cujo SHA contém `sha`. O próprio run doente
+    entra nessa conta — uma célula que ELE subiu antes de morrer não falta a
+    ninguém, e exigir que ela apareça de novo mais adiante mandaria a vacina
+    repetir um deploy que não interessa a nada.
+
+    Para assim que nada mais falta: cada run custa uma chamada de rede, e trinta
+    delas por cancelamento seria pagar caro para confirmar o que já se sabe.
+    """
+    codigo, saida = _rodar(
+        ["gh", "run", "list", "--workflow", workflow, "--branch", "main",
+         "--limit", str(limite), "--json", "databaseId,headSha"]
+    )
+    if codigo != 0:
+        raise ErroDeMedicao(f"gh run list falhou: {saida.strip()[:200]}")
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
+        raise ErroDeMedicao(f"resposta do gh não é JSON: {erro}") from erro
+    faltam = set(alvo)
+    for item in dados if isinstance(dados, list) else []:
+        if not faltam:
+            break
+        if not isinstance(item, dict):
+            continue
+        head = str(item.get("headSha") or "")
+        # Só os runs que CARREGAM este commit: um deploy anterior a ele não tem
+        # como ter publicado o que ele trouxe.
+        if not head or e_ancestral(sha, head) is not True:
+            continue
+        for job in jobs_do_run(str(item.get("databaseId") or "")):
+            if job.get("conclusion") == "success":
+                faltam.discard(celula_do_job(str(job.get("name") or "")))
+    return tuple(sorted(faltam))
+
+
 def _itens_em_bloco(texto: str) -> list[str]:
     """`paths:` seguido de `  - 'infra/...'` — a forma do `deploy-infra`.
 
@@ -1107,6 +1320,31 @@ def _colher_a_ancestralidade(fatos: Fatos) -> None:
     fatos.commits_de_fora, fatos.commits_de_fora_tocam_o_deploy = (
         commits_que_ficam_de_fora(fatos.head_sha, arquivo=arquivo)
     )
+    # SÓ QUANDO ELA PODE MUDAR A DECISÃO (armadilhas/359). A cobertura de célula
+    # custa um `gh run list` e uma chamada por run candidato; nos outros ramos a
+    # decisão já está tomada — ou se repete, ou se para por histórico divergente.
+    if fatos.head_ja_publicado:
+        fatos.celulas_sem_publicacao = _cobertura_de_celula(fatos, arquivo)
+
+
+def _cobertura_de_celula(fatos: Fatos, arquivo: Path | None) -> tuple[str, ...] | None:
+    """Quais células deste push ninguém publicou. `None` = não medi.
+
+    Fail-closed nas duas bordas: sem saber de qual esteira o run é, não dá para
+    dizer nem se ele publica por célula (TAR-029); e uma medição que estoura
+    vira "não medi", que a tabela transforma em ERROR — nunca em cobertura
+    completa, que é o desfecho que escondeu a `mensageria` por um dia inteiro.
+    """
+    if arquivo is None:
+        return None
+    if arquivo.name != WORKFLOW_DO_DEPLOY:
+        return ()  # o `deploy-infra` publica o compose da VPS, não célula
+    try:
+        return celulas_sem_publicacao(
+            fatos.head_sha, celulas_do_push(fatos.head_sha), arquivo.name
+        )
+    except ErroDeMedicao:
+        return None
 
 
 def esperar_o_run(run: str, teto_min: int) -> str:
@@ -1164,6 +1402,9 @@ def main(argv: list[str] | None = None) -> int:
                       f" · já-no-ar={fatos.head_ja_publicado}"
                       f" · ficam de fora={fatos.commits_de_fora}"
                       f" (tocam o deploy: {fatos.commits_de_fora_tocam_o_deploy})")
+                print("   armadilhas/359: células sem publicação="
+                      + ("NÃO MEDI" if fatos.celulas_sem_publicacao is None
+                         else ", ".join(fatos.celulas_sem_publicacao) or "nenhuma"))
             print(f"{decisao.acao.upper()}: {decisao.motivo}")
             if decisao.recado:
                 print(f"   ↳ {decisao.recado}")

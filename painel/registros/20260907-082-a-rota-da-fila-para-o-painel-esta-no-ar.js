@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-082-a-rota-da-fila-para-o-painel-esta-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "A porta por onde o painel busca a fila dos robos esta no ar: o deploy do PR 1340 terminou verde",
+  detalhe: "O merge do PR 1340 (a rota /admin/painel/fila.json, que entrega ao painel do dono so as tarefas abertas da fila, ja traduzidas e com a area do site de cada uma) disparou o deploy da celula admin, execucao 34145322587, e ele terminou com sucesso. Ate a aba Prioridades pousar (PR 1342), a rota existe sem quem a chame; nada quebra.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34145322587",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

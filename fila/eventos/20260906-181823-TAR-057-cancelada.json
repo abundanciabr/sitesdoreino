@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-181823-TAR-057-cancelada",
+  "tarefa": "TAR-057",
+  "evento": "cancelada",
+  "quando": "2026-09-06T18:18:23+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "Trancada em 31/08/2026 por descrever o desenho anterior a consultoria das sequencias de mensagens, que achou dez defeitos no plano copiado dentro dela. As substitutas TAR-071/072/073 apontam para o plano em vez de copia-lo, e ja estao concluidas: a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Construir por este despacho reproduziria os defeitos. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md"
+}

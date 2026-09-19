@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-225220-TAR-377-explicada",
+  "tarefa": "TAR-377",
+  "evento": "explicada",
+  "quando": "2026-09-12T22:52:20+00:00",
+  "quem": "decisão do mantenedor em 12/09/2026 (despacho 2b da retomada da maestro); executor Codex",
+  "o_que_e": "31 trabalhos já entraram no site, mas o quadro da fila ainda diz que estão em andamento, porque os PRs pousaram antes de a fila aprender a fechar sozinha no merge.",
+  "o_que_muda": "Cada um ganha no livro um recibo de aceite, com a prova de que foi publicado; é o papel que a fila exige para fechar a tarefa.",
+  "exemplo": "É carimbar entregue em 31 pedidos que já chegaram na casa do cliente mas seguem marcados como a caminho.",
+  "importancia": 40
+}

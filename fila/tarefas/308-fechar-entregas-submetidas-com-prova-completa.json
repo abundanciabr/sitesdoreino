@@ -1,0 +1,17 @@
+{
+  "arquivo": "308-fechar-entregas-submetidas-com-prova-completa",
+  "id": "TAR-308",
+  "titulo": "Fechar entregas submetidas com prova completa",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com testes de reconciliação verdes, mutações dos guardas reprovando e TAR-307 concluída pelo comando com o registro 008",
+  "despacho": "Criar o subcomando reconciliar da fila, provar revisão, árvore, integração, publicação, atestado e aceite no livro, e escrever a conclusão pelo mesmo ponto terminal do concluir.",
+  "origem": "recuperação do fechamento da TAR-307 após o PR #1517",
+  "criada_em": "2026-09-10"
+}

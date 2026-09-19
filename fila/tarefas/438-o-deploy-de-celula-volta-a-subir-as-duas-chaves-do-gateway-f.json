@@ -1,0 +1,20 @@
+{
+  "arquivo": "438-o-deploy-de-celula-volta-a-subir-as-duas-chaves-do-gateway-f",
+  "id": "TAR-438",
+  "titulo": "O deploy de célula volta a subir: as duas chaves do gateway faltavam",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste novo vermelho no código de hoje e verde no conserto, executando o script contra uma plataforma de mentira, mais a próxima execução verde do deploy-celula depois do merge",
+  "despacho": "Ver o despacho da sessão: exportar ALUNOS_API_TOKEN e TOKEN_CATALOGO em infra/deploy-celula-na-vps.sh antes do primeiro docker compose, e separar a falha de leitura do compose da célula sem serviço.",
+  "origem": "sessão Claude Code de 17/09/2026: o mantenedor escolheu Conserte agora entre as opções apresentadas pela maestro",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

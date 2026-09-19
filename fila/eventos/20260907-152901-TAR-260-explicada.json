@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-152901-TAR-260-explicada",
+  "tarefa": "TAR-260",
+  "evento": "explicada",
+  "quando": "2026-09-07T15:29:01+00:00",
+  "quem": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 17; destravado em 07/09/2026 pela entrega do degrau 13 (PR #1327)",
+  "o_que_e": "A escola quer levar as melhores alunas para estudios de fora, mas hoje nenhuma tela mostra isso. Nem quantas alunas foram escolhidas, nem quantos estudios aceitaram receber alguem, nem quantas alunas de fato comecaram um trabalho. O caminho inteiro existe so na cabeca de quem toca a escola.",
+  "o_que_muda": "Nasce uma tela onde esse caminho aparece desenhado do comeco ao fim, com o numero de cada etapa ao lado. As tres contagens que ninguem consegue medir sozinho a escola digita, e a tela devolve um bloco de texto para colar numa sessao de robo, que grava a contagem no livro. A etapa que ainda nao tem numero diz isso em portugues e diz o que precisa existir para ter.",
+  "exemplo": "A escola escolheu 4 alunas, falou com 2 estudios e 1 aluna comecou um trabalho. Hoje esses tres numeros nao existem em lugar nenhum e ninguem percebe se ficaram parados dois meses. Depois desta tarefa eles aparecem juntos, com a data em que foram contados, e a etapa parada fica visivel.",
+  "importancia": 45
+}

@@ -1,0 +1,18 @@
+{
+  "arquivo": "251-o-roteiro-que-instala-a-sala-de-aula-na-vps-se-recusa-a-roda",
+  "id": "TAR-251",
+  "titulo": "O roteiro que instala a sala de aula na VPS se recusa a rodar de novo depois que o roteiro dos pares roda",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: provisionar-cursos.sh volta a rodar depois do provisionar-pares-da-sala-de-aula.sh (as tres chaves preservadas por ler_de e declaradas na CHAVES_QUE_EU_GERO, ou nascendo em quem e dono delas); teste em ci/tests/ que reprove a sobra medida hoje; prova por MUTACAO; make ci verde.",
+  "despacho": "Achado da TAR-172 e MEDIDO no origin/main em 06/09/2026, lendo os dois scripts como texto. `infra/provisionar-pares-da-sala-de-aula.sh` grava SETE chaves em `env/cursos.env` (linhas 244 a 251); a trava de deriva de `infra/provisionar-cursos.sh` declara treze chaves em `CHAVES_QUE_EU_GERO` (linha 113), e TRES das sete nao estao nela: `TOKENS_ACEITOS_ADMIN`, `CATALOGO_API_URL` e `TOKEN_CATALOGO`. Consequencia: depois que o roteiro dos pares roda uma vez, `provisionar-cursos.sh` cai no bloco `SOBRANDO`, imprime PAROU POR SEGURANCA e sai 1 em TODA execucao seguinte. A recusa e fail-closed e barulhenta, nao apaga nada, e nisso ela esta certa: o script reescreve o arquivo inteiro e nao sabe gerar aquelas tres. O que esta errado e o cabecalho daquele script prometer \"IDEMPOTENTE: rodar de novo e seguro\", promessa que deixa de valer no instante em que o par e aberto. Duas curas possiveis, e quem pegar decide com o codigo na frente: (a) `provisionar-cursos.sh` passa a RELER as tres do arquivo vivo (`ler_de`) e a declara-las na `CHAVES_QUE_EU_GERO`, que e o desenho que `provisionar-admin.sh` ja usa para `TOKENS_ACEITOS_PAGES` e `GITHUB_TOKEN_FILA`; ou (b) as tres saem do roteiro dos pares e passam a nascer no proprio `provisionar-cursos.sh`. A (a) e a que segue o molde da casa. ATENCAO ao guarda novo que a TAR-172 deixou em `ci/tests/test_provisionamento_nao_escreve_chave_vazia.py`: releitura que grave em branco sem vir de lugar nenhum reprova la, e a conferencia de preservacao tem de comparar com a copia `.bak`, nunca com a variavel que escreveu a linha.",
+  "origem": "achado da TAR-172, medido linha a linha nos dois scripts em 06/09/2026",
+  "criada_em": "2026-09-07"
+}

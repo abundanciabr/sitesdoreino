@@ -27,6 +27,13 @@ from apps.core.clients import (
     NotificacoesClient,
 )
 from apps.core import ver_como
+from apps.core.middleware import limpar_cache_de_avisos
+from apps.core.notificacoes import (
+    buscar_avisos,
+    aviso_para_tela,
+    marcar_aviso,
+    marcar_todos,
+)
 from apps.core.enderecos import (
     url_de_entrada,
     url_de_entrada_por_senha,
@@ -387,6 +394,81 @@ def entrar(request):
     )
 
 
+def _login_para(request):
+    destino = caminho_publico(request.i18n, request.idioma, "/login")
+    return HttpResponseRedirect(f"{destino}?{urlencode({'next': request.path})}")
+
+
+@require_safe
+def notificacoes(request):
+    if getattr(request, "idioma", None) is None:
+        raise Http404("notificações só existem em site registrado no i18n")
+    ator = getattr(request, "ator", None)
+    if not ator or not ator.id:
+        return _login_para(request)
+    itens = buscar_avisos(ator.id, request.site["id"])
+    if itens is None:
+        return render(
+            request,
+            "funil/notificacoes.html",
+            {"falha": True, "avisos": []},
+            status=503,
+        )
+    avisos = [aviso_para_tela(item) for item in itens]
+    return render(
+        request,
+        "funil/notificacoes.html",
+        {
+            "falha": False,
+            "avisos": avisos,
+            "nao_lidos": sum(1 for aviso in avisos if not aviso["lido_em"]),
+        },
+    )
+
+
+@require_POST
+def marcar_notificacao_lida(request, aviso_id):
+    if getattr(request, "idioma", None) is None:
+        raise Http404("notificações só existem em site registrado no i18n")
+    ator = getattr(request, "ator", None)
+    if not ator or not ator.id:
+        return _login_para(request)
+    resultado = marcar_aviso(ator.id, request.site["id"], aviso_id)
+    if resultado is False:
+        raise Http404("aviso inexistente, ou de outra pessoa")
+    if resultado is None:
+        return render(
+            request,
+            "funil/notificacoes.html",
+            {"falha": True, "avisos": []},
+            status=503,
+        )
+    limpar_cache_de_avisos()
+    return HttpResponseRedirect(
+        caminho_publico(request.i18n, request.idioma, "/notificacoes")
+    )
+
+
+@require_POST
+def marcar_todas_notificacoes_lidas(request):
+    if getattr(request, "idioma", None) is None:
+        raise Http404("notificações só existem em site registrado no i18n")
+    ator = getattr(request, "ator", None)
+    if not ator or not ator.id:
+        return _login_para(request)
+    if marcar_todos(ator.id, request.site["id"]) is None:
+        return render(
+            request,
+            "funil/notificacoes.html",
+            {"falha": True, "avisos": []},
+            status=503,
+        )
+    limpar_cache_de_avisos()
+    return HttpResponseRedirect(
+        caminho_publico(request.i18n, request.idioma, "/notificacoes")
+    )
+
+
 @require_safe
 def sitemap_xml(request):
     """D6: rota de MÁQUINA — nunca se localiza. Desde a fase 4 ela PRECISA do
@@ -541,6 +623,7 @@ def manifesto_do_app(request):
 # frase daqui é verdadeira sozinha, sem depender de dado que talvez não venha.
 TEXTOS_DO_AVISO = {
     "sugestao.status-alterado": "sugestao",
+    "pages.portfolio-conferido": "portfolio",
     # O aviso de teste (Rito de Contrato de 03/09/2026): a pessoa clicou em
     # "Mandar um aviso de teste para mim" em /admin/avisos/, e este e o texto
     # que a tela do celular mostra. So existe para provar o canal, entao a

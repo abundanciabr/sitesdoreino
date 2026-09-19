@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-136-resposta-chave-da-ia-vps-conferida",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "A chave da IA já foi executada na VPS e conferida no container",
+  detalhe: "A pendência 20260908-113 aguardava a prova da execução na VPS. Essa prova já existe: o roteiro terminou em PRONTO, o container admin ficou saudável e a comparação confirmou a mesma chave usada pelo fórum. Este registro fecha somente o alerta antigo, sem editar o histórico e sem publicar o segredo.",
+  autoridade: "mantenedor",
+  evidencia: "saída do roteiro na VPS enviada pelo mantenedor em 2026-09-08; https://github.com/abundanciabr/sitesdoreino/pull/1421",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-113-a-chave-da-ia-aguarda-vps",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

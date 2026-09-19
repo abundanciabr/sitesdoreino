@@ -43,3 +43,10 @@ PyYAML==6.0.2
 # quatro comportamentos a depurar (`armadilhas/071`).
 huey==2.5.1
 redis==5.1.1
+# Só de teste, e entra AGORA porque é o degrau 12 que faz esta célula falar: é
+# com ele que `contracts/eventos/pages.portfolio.conferido.v1.json` deixa de ser
+# documentação e passa a REPROVAR o CI. O envelope real é validado contra o
+# arquivo do contrato congelado, nunca contra uma cópia do formato dentro do
+# teste, que seria uma segunda verdade sobre o contrato. Versão igual à das
+# vizinhas de propósito (`armadilhas/071`).
+jsonschema==4.23.0

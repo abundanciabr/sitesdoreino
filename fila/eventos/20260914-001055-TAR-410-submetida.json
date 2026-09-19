@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260914-001055-TAR-410-submetida",
+  "tarefa": "TAR-410",
+  "evento": "submetida",
+  "quando": "2026-09-14T00:10:55+00:00",
+  "quem": "agent/ci/codeowners-ganchos",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1641",
+  "revisao": "695782371f13d128e02658b186b50ed47705d566",
+  "arvore": "b1ae8f8b7f9629af5378c4da51429f9dca98c341"
+}

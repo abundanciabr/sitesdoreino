@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-215451-TAR-328-explicada",
+  "tarefa": "TAR-328",
+  "evento": "explicada",
+  "quando": "2026-09-10T21:54:51+00:00",
+  "quem": "Pedido do mantenedor em 10/09/2026 para encontrar o fio da meada e mostrar o estado real completo; tarefa Codex 01a08d31-9499-7082-be02-8ba0dfae73fb.",
+  "o_que_e": "O painel mistura estados antigos, entregas e planos, e o mantenedor nao consegue saber o que esta pronto ou parado.",
+  "o_que_muda": "Cada frente passa a mostrar o que existe, o que falta e o proximo passo com fonte e data de conferencia.",
+  "exemplo": "Um curso com 96 aulas cadastradas e nenhuma aberta aparece como estrutura preparada, sem ser confundido com curso pronto.",
+  "importancia": 100
+}

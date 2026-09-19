@@ -7,10 +7,12 @@
 de `tasks.py`. Sem ele, o worker sobe com o registro VAZIO, não executa nada e
 não reclama de nada (`armadilhas/030`, §4.11).
 
-O único trabalho de fundo desta casa hoje é a reconferência diária dos links
-das peças (critério AC-09, `apps/portfolio/tasks.py`). Ela roda aqui, em
-processo próprio e síncrono, e NUNCA dentro do ASGI: a razão está por extenso
-em `config/settings.py`, no bloco do `DATABASES` (`armadilhas/170`).
+São dois os trabalhos de fundo desta casa, os dois em `apps/portfolio/tasks.py`:
+a reconferência diária dos links das peças (critério AC-09) e a rede de
+segurança do relay da outbox, que republica de minuto em minuto o que o
+`on_commit` não conseguiu publicar (degrau 12, critério AC-12). Os dois rodam
+aqui, em processo próprio e síncrono, e NUNCA dentro do ASGI: a razão está por
+extenso em `config/settings.py`, no bloco do `DATABASES` (`armadilhas/170`).
 
 Fila intra-célula = Huey. Comunicação ENTRE células = eventos, nunca uma célula
 enfileirando task na outra. Molde: `services/cursos/config/huey.py`, copiado e

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-111440-TAR-341-explicada",
+  "tarefa": "TAR-341",
+  "evento": "explicada",
+  "quando": "2026-09-11T11:14:40+00:00",
+  "quem": "Capítulo 1 / PR #1514",
+  "o_que_e": "A Reunião salva um pedido privado com identidade e versão próprias antes de qualquer envio.",
+  "o_que_muda": "O pedido pode ser revisado e autorizado com prova do texto exato, sem a biblioteca expor ou alterar seu conteúdo e sem a autorização executar a tarefa.",
+  "exemplo": "Ao revisar a pauta salva, a equipe vê qual versão está autorizando, recebe o aviso de que a fila é pública e consulta o recibo sem publicar o texto por engano.",
+  "importancia": 85
+}

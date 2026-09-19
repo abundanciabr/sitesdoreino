@@ -1,0 +1,5 @@
+<!-- dados-admin:inicio --><aside aria-label="Origem dos dados" class="sub">
+{% if dados.motivo %}<strong>Você está vendo uma cópia alternativa.</strong> {{ dados.motivo }} Recarregue esta página após a publicação ser corrigida.<br>{% endif %}
+{% if dados.origem == "embutido" %}Dados da cópia que veio com esta versão do sistema.{% elif dados.origem == "checkout" %}Dados da cópia local de trabalho.{% else %}Dados da publicação conferida.{% endif %}
+{% if dados.sha %}<details><summary>Identificação da versão</summary>Revisão <code>{{ dados.sha }}</code>. Execução {{ dados.run_id }}. Preparada em {{ dados.gerado_em }}.</details>{% else %}<br>Cópia legada sem identificação de publicação. A atualidade dos dados não foi confirmada.{% endif %}
+</aside><!-- dados-admin:fim -->

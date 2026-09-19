@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015945-TAR-166-explicada",
+  "tarefa": "TAR-166",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:45+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando duas partes do site fecham um acordo, existe um congelamento que deveria ser conferido na hora. Ele so e conferido dias depois, quando alguem mexe naquela parte.",
+  "o_que_muda": "O robo que abrir a porta errada leva a bronca por algo que nao foi ele que fez, e perde a rodada consertando. Ja aconteceu seis vezes.",
+  "exemplo": "E a multa do carro chegando tres meses depois, no nome de quem pegou o carro emprestado ontem.",
+  "importancia": 58
+}

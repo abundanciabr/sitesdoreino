@@ -1,0 +1,19 @@
+{
+  "arquivo": "331-o-contrato-das-aulas-avulsas-permite-criar-e-compartilhar-vi",
+  "id": "TAR-331",
+  "titulo": "O contrato das aulas avulsas permite criar e compartilhar vídeos fora dos cursos",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR de contrato integrado com etiqueta contrato, revisão independente e contrato aditivo aprovado sem remoções.",
+  "despacho": "No Rito de Contrato, adicionar GET e POST /aulas-avulsas por site_id e GET por slug. POST recebe titulo, video_url e descricao; o serviço publica e gera slug imutável. Não tocar serviços neste PR.",
+  "origem": "pedido explícito da mantenedora em 10/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

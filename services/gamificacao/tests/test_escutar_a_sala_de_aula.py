@@ -42,7 +42,7 @@ from apps.eventos.management.commands.consume_eventos import (
     processar_envelope,
 )
 from apps.eventos.models import EventoProcessado
-from apps.gamificacao.handlers import HANDLERS, NAO_CREDITAM
+from apps.gamificacao.handlers import CONQUISTA_DO_BOSS, HANDLERS, NAO_CREDITAM
 from apps.gamificacao.interruptores import mudar
 from apps.gamificacao.models import (
     Concessao,
@@ -205,18 +205,7 @@ def test_o_mesmo_evento_reentregue_paga_uma_vez_so_nas_duas_camadas():
 # ------------------------------------------- 4. fechar um Bloco
 
 
-def test_fechar_um_bloco_paga_o_mesmo_xp_e_ainda_nao_concede_medalha():
-    """`e_boss` chega e HOJE não muda nada, e isso é deliberado.
-
-    A medalha "Fechou um Bloco" pediria uma palavra nova no vocabulário fechado
-    de critérios (`criterios.CONTAS`) e uma tabela-registro para contá-la, no
-    molde de `AjudaAceita`. As duas coisas são decisão do mantenedor (critério
-    de morte nº 1 da lei: nada de DSL). Quando ela existir, este teste quebra, e
-    é para quebrar: quem a construir troca esta asserção pela concessão.
-
-    Toda medalha semeada está LIGADA aqui, de propósito: a prova é que nenhuma
-    delas cai por um Bloco fechado, e não que não havia medalha para cair.
-    """
+def test_boss_concluido_concede_conquista_privada_sem_xp_extra():
     call_command("semear_economia", "--site", SITE, stdout=StringIO())
     mudar(
         site_id=SITE,
@@ -224,14 +213,56 @@ def test_fechar_um_bloco_paga_o_mesmo_xp_e_ainda_nao_concede_medalha():
         ativa=True,
         agora=timezone.now() - timedelta(days=1),
     )
-    ConquistaDefinicao.objects.filter(
-        site_id=SITE, classe=ConquistaDefinicao.Classe.MEDALHA
-    ).update(ativa=True)
+    ConquistaDefinicao.objects.filter(site_id=SITE, slug=CONQUISTA_DO_BOSS).update(
+        ativa=True
+    )
 
-    _entregar(_aula_concluida(data={"e_boss": True}))
+    evento = _aula_concluida(data={"e_boss": True})
+    _entregar(evento)
+    _entregar(evento)
 
     (lancamento,) = LancamentoDeXP.objects.all()
     assert lancamento.pontos == 50
+    concessao = Concessao.objects.get()
+    assert concessao.conquista.slug == CONQUISTA_DO_BOSS
+    assert concessao.consentimento == Concessao.Consentimento.PRIVADO
+    assert concessao.validador_papel == Concessao.PapelDoValidador.SISTEMA
+    assert (
+        LancamentoDeXP.objects.filter(regra_slug="conquista-boss-do-modulo").count()
+        == 0
+    )
+
+
+def test_boss_desligado_nao_concede_e_aula_comum_nao_concede():
+    call_command("semear_economia", "--site", SITE, stdout=StringIO())
+
+    _entregar(_aula_concluida(data={"e_boss": False}))
+    _entregar(_aula_concluida(data={"e_boss": True}))
+
+    assert Concessao.objects.count() == 0
+
+
+def test_aula_comum_nao_concede_boss_mesmo_com_a_conquista_ligada():
+    call_command("semear_economia", "--site", SITE, stdout=StringIO())
+    ConquistaDefinicao.objects.filter(site_id=SITE, slug=CONQUISTA_DO_BOSS).update(
+        ativa=True
+    )
+
+    _entregar(_aula_concluida(data={"e_boss": False}))
+
+    assert Concessao.objects.count() == 0
+
+
+@pytest.mark.parametrize("ator_id", [None, ""])
+def test_boss_sem_aluno_nao_cria_pessoa_nem_concede(ator_id):
+    call_command("semear_economia", "--site", SITE, stdout=StringIO())
+    ConquistaDefinicao.objects.filter(site_id=SITE, slug=CONQUISTA_DO_BOSS).update(
+        ativa=True
+    )
+
+    _entregar(_aula_concluida(ator_id=ator_id, data={"e_boss": True}))
+
+    assert Pessoa.objects.count() == 0
     assert Concessao.objects.count() == 0
 
 

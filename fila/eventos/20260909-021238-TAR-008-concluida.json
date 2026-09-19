@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-021238-TAR-008-concluida",
+  "tarefa": "TAR-008",
+  "evento": "concluida",
+  "quando": "2026-09-09T02:12:38+00:00",
+  "quem": "agent/ci/medicao-por-assunto",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1467",
+  "verificado_em": "2026-09-09"
+}

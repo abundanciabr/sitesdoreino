@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-065454-TAR-258-explicada",
+  "tarefa": "TAR-258",
+  "evento": "explicada",
+  "quando": "2026-09-07T06:54:54+00:00",
+  "quem": "tres defeitos medidos pelo simulador ampliado da TAR-135 (PR #1315) em 07/09/2026, declarados e nao consertados por cerca de sessao",
+  "o_que_e": "Quando um aluno pega um projeto no mural, o sistema nao o marca como ocupado. Ele continua aparecendo como livre e pode pegar um segundo trabalho.",
+  "o_que_muda": "A regra de um trabalho por vez esta de pe e o banco recusa o segundo, mas a recusa chega ao aluno como erro de servidor em vez de uma frase explicando. Alem disso, um projeto que entra em negociacao pela fila fica sem nenhum relogio e pode ficar parado para sempre.",
+  "exemplo": "O robo simulou oito dias de escola: sete alunos ficaram com dois trabalhos ao mesmo tempo e dez vezes alguem viu uma tela de erro em vez da mensagem que explica.",
+  "importancia": 85
+}

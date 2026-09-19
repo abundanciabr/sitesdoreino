@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-047-suite-ampla-bloqueada-pelo-wsl",
+  tipo: "incidente",
+  quando: "2026-09-08",
+  titulo: "A suíte ampla ficou vermelha porque o WSL não abriu o bash",
+  detalhe: "python -m pytest ci/tests -q terminou com 2234 testes aprovados, 11 pulados e 162 falhas em 462,75 segundos. Todas as falhas observadas nos testes afetados informaram que C:\\WINDOWS\\system32\\bash.EXE não conseguiu iniciar /bin/bash. A seleção da Fase 4 e das muralhas passou com 118 testes em 6,28 segundos. A entrega continua parcial e o vermelho ambiental não foi escondido.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

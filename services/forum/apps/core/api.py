@@ -39,10 +39,21 @@ olha porque "é só interna".
 
 from __future__ import annotations
 
+import logging
+from typing import Literal
+
+from django.conf import settings
+from django.db import DatabaseError
 from django.db.models import Count, Q
-from ninja import Router, Schema
+from ninja import Path, Query, Router, Schema
+from ninja.errors import HttpError
+from pydantic import Field
 
 from apps.forum.models import Area, Mensagem, Topico
+
+from . import galeria
+
+logger = logging.getLogger(__name__)
 
 router = Router()
 
@@ -90,6 +101,45 @@ class Resumo(Schema):
     areas_publicas: int
     topicos_publicos: int
     mensagens_publicas: int
+
+
+# O endereço do trabalho, já conferido pelo fórum antes de ser guardado. Sem
+# docstring de propósito: o pydantic a emitiria como `description` do schema, e
+# o contrato congelado não a tem — ruído cosmético reprova o freeze igual a uma
+# divergência real.
+class ReferenciaSeguraDaGaleria(Schema):
+    origem: Literal["forum", "lista_permitida"]
+    tipo: Literal["imagem", "link"]
+    url: str = Field(
+        description=(
+            "URL HTTPS validada pelo Forum. A origem e o proprio Forum ou um "
+            "dominio da lista permitida do provedor."
+        ),
+        pattern="^https://",
+        json_schema_extra={"format": "uri"},
+    )
+
+
+# O que sai por candidata, e nada além: sem texto integral, sem e-mail, sem
+# quem leu o quê. Sem docstring pela mesma razão da classe acima.
+class CandidataDaGaleria(Schema):
+    site_id: str = Field(
+        description=(
+            "Repete exatamente o site_id do pedido. Candidata de outro site "
+            "nunca aparece."
+        )
+    )
+    topico_id: str
+    titulo: str
+    referencia: ReferenciaSeguraDaGaleria
+    url_canonica: str = Field(
+        description=(
+            "Rota HTTPS canônica do Forum para o tópico. O Forum a gera e a "
+            "rota reaplica a permissão de leitura, não é destino externo."
+        ),
+        pattern="^https://[^/]+/forum/t/[^/?#]+$",
+        json_schema_extra={"format": "uri"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -185,3 +235,89 @@ def get_forum_summary(request):
             topico__in=topicos_publicos(), removida_em__isnull=True
         ).count(),
     )
+
+
+# ---------------------------------------------------------------------------
+# A ÚNICA EXCEÇÃO: as candidatas consentidas da própria autora
+# ---------------------------------------------------------------------------
+# Esta operação fala de área TRANCADA, e é a única aqui que faz isso. O que a
+# autoriza não é o token de quem chama, é o gesto de quem escreveu: o aluno
+# marcou o próprio trabalho para aparecer na Galeria. A regra inteira mora em
+# `apps/core/galeria.py`; aqui só se traduz a regra em HTTP.
+#
+# **O degrau a mais é conferido no handler**, contra `request.auth`, e não com
+# um segundo esquema de segurança: dobrar a superfície congelada diria pior o
+# que um 403 nomeado diz bem. Conjunto vazio ⇒ 403 para todo mundo, fail-closed
+# por construção, que é o mesmo desenho de `TOKENS_COMPLETOS` na `identidade`.
+@router.get(
+    "/galeria/candidatas/{pessoa_id}",
+    response=list[CandidataDaGaleria],
+    operation_id="listGalleryCandidatesForPerson",
+    summary="Os trabalhos consentidos de uma pessoa para a Galeria",
+    description=(
+        "Porta exclusiva do par gamificacao e forum para a pessoa ver as\n"
+        "proprias candidatas. O Forum so devolve topicos do autor indicado, no\n"
+        "site indicado, da area Mostre seu trabalho, moderados e com consentimento\n"
+        "expresso para a Galeria. Cada `CandidataDaGaleria.site_id` tem de ser\n"
+        "igual ao `site_id` pedido. Candidata de outro site e omitida, sem trocar\n"
+        "a resposta por erro que revele a sua existencia.\n"
+        "\n"
+        "O Bearer identifica o servico, nao o aluno. O Forum aceita apenas o par\n"
+        "gamificacao e confere que cada candidata tem `pessoa_id` como autora. A\n"
+        "gamificacao, usando a sessao, confere que o aluno consulta somente as\n"
+        "proprias candidatas; a equipe usa fluxo proprio e auditado.\n"
+        "\n"
+        "Esta operacao nao revela area de aluno, conversa, pessoa ou obra sem\n"
+        "consentimento e nao torna o topico original publico. Ela nao devolve\n"
+        "texto integral, e-mail, leitura, contagem, identidade local nem listagem\n"
+        "geral de area privada. `pessoa_id` fica no pedido porque identifica a\n"
+        "unica autora permitida; ele nao e repetido na resposta."
+    ),
+    openapi_extra={
+        "responses": {
+            200: {
+                "description": (
+                    "Lista de candidatas. Lista vazia significa que nao ha "
+                    "candidata para esta pessoa neste site, inclusive quando "
+                    "existe apenas em outro site."
+                )
+            },
+            401: {"description": "Bearer do par ausente ou invalido."},
+            403: {
+                "description": (
+                    "Pedido nao autorizado. A resposta nao informa se existe "
+                    "material privado."
+                )
+            },
+            503: {
+                "description": (
+                    "Fonte indisponivel. Esta resposta e distinta da lista "
+                    "vazia e nao informa se existe material privado."
+                )
+            },
+        }
+    },
+)
+def list_gallery_candidates_for_person(
+    request,
+    pessoa_id: str = Path(
+        ...,
+        description="O identificador opaco da pessoa que pede as proprias candidatas.",
+    ),
+    site_id: str = Query(
+        ...,
+        description=(
+            "O escopo da escola que limita a consulta e tem de coincidir com "
+            "cada candidata devolvida."
+        ),
+    ),
+):
+    if request.auth not in settings.TOKENS_DA_GALERIA:
+        raise HttpError(403, "este par nao esta autorizado a porta da Galeria")
+    try:
+        return galeria.candidatas(pessoa_id, site_id)
+    except DatabaseError as erro:
+        # 503 e NAO lista vazia, e a diferenca e o produto: lista vazia faria a
+        # Galeria dizer "voce ainda nao tem trabalhos" a um aluno que tem.
+        logger.warning("a fonte das candidatas nao respondeu: %s", erro)
+        raise HttpError(503, "a fonte das candidatas nao respondeu") from erro

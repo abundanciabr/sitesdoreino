@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015953-TAR-005-explicada",
+  "tarefa": "TAR-005",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:53+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando um robo espera a esteira, o limite dele e um numero escolhido no olho. O tempo real de cada etapa ja e medido e guardado, mas ninguem liga um no outro.",
+  "o_que_muda": "Chute curto faz o robo desistir de trabalho bom; chute longo faz ele esperar a toa. Os dois te custam tempo de tarefa.",
+  "exemplo": "E por 20 minutos no forno sem olhar a receita: as vezes o bolo sai cru, as vezes voce espera de graca.",
+  "importancia": 40
+}

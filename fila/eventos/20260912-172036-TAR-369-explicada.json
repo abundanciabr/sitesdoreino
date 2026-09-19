@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-172036-TAR-369-explicada",
+  "tarefa": "TAR-369",
+  "evento": "explicada",
+  "quando": "2026-09-12T17:20:36+00:00",
+  "quem": "conselho da Fase 4, recomendacao CLAUDE-010",
+  "o_que_e": "Quando um robo termina um trabalho, ele pede para o trabalho entrar no site e vai embora. Quem marca a tarefa como feita e ele — mas ele ja saiu.",
+  "o_que_muda": "A tarefa passa a se fechar sozinha no momento em que o trabalho entra. Ninguem mais precisa voltar para dizer que acabou, e a lista para de encher de coisa que ja ficou pronta.",
+  "exemplo": "E como o correio dar baixa na entrega na hora que o pacote e entregue, em vez de esperar o entregador voltar ao escritorio para anotar.",
+  "importancia": 70
+}

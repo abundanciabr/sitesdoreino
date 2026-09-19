@@ -33,6 +33,10 @@ O mantenedor pediu uma página onde ele guarda os textos do livro que escreve,
 7. **`Livro` agrupa capítulos, e a migração que o introduziu não perde
    ninguém.** Um capítulo pré-existente entra num `Livro` padrão sozinho;
    criar um segundo `Livro` não mexe no primeiro.
+
+8. **A porta da Biblioteca está na capa da Administração**, com o rótulo que o
+   mantenedor lê e o endereço com o prefixo público. Um cartão sem guarda some
+   no dia em que alguém reorganizar a grade, e ninguém fica sabendo.
 """
 
 import httpx
@@ -41,7 +45,7 @@ import respx
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
-from django.urls import get_resolver
+from django.urls import get_resolver, get_script_prefix, set_script_prefix
 
 from apps.auditoria.models import Registro
 from apps.core.livro import NOMES_RESERVADOS
@@ -135,10 +139,14 @@ def test_o_livro_nao_tem_nenhuma_rota_publica():
     só poderia ser engano — e este guarda o pega no PR, e não no site.
     """
     isentos = ("docs/", "mapa-ia/")
+    # `getattr` e nao `p.name`: desde 06/09/2026 o urlconf tem uma entrada que
+    # e um `URLResolver` (o `include` da porta de maquina, `path("interno/",
+    # api.urls)`), e resolvedor nao tem `name`. Ler o atributo cru derrubava
+    # este guarda com AttributeError, que e reprovar sem medir nada.
     do_livro = [
         str(p.pattern).lstrip("^")
         for p in get_resolver().url_patterns
-        if (p.name or "").startswith(("livro", "texto"))
+        if (getattr(p, "name", None) or "").startswith(("livro", "texto"))
     ]
     assert do_livro, "as rotas do livro sumiram do urlconf"
     for rota in do_livro:
@@ -624,42 +632,35 @@ def test_nenhuma_rota_publica_nova_para_a_leitura_ou_para_criar_livro():
         assert resposta.status_code in (302, 303), caminho
 
 
+@pytest.mark.django_db(transaction=connection.vendor == "sqlite")
 def test_a_migracao_associa_um_capitulo_preexistente_a_um_livro_padrao(db):
-    """Reconstrói o estado REAL de antes do PR: um `TextoDoLivro` sem `livro`
-    nenhum, no banco na forma de quando a coluna ainda não existia — mesmo
-    molde de `tests/test_reembolso_no_banco.py`, adaptado para uma migração
-    que muda o ESQUEMA, não só o dado.
+    """SQLite exige DDL fora de atomic; Postgres conserva rollback sem TRUNCATE."""
+    folhas = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        executor = MigrationExecutor(connection)
+        alvo_antes = [("core", "0011_semear_o_guia_do_portfolio")]
+        executor.migrate(alvo_antes)
+        executor.loader.build_graph()
 
-    **`transaction=True` NÃO entra aqui, e é de propósito** (`armadilhas/361`):
-    o Postgres roda DDL dentro de transação sem problema, então o `db` comum
-    (que embrulha o teste inteiro numa transação desfeita por `ROLLBACK`) já
-    basta para o `MigrationExecutor` andar para trás e para frente. Marcar
-    `transaction=True` trocaria o desmonte por um `flush` de verdade — e o
-    `flush` tenta `TRUNCATE auditoria_registro`, que o gatilho append-only da
-    tabela (`armadilhas/079`) recusa. O teste passava, e o erro estourava no
-    desmonte de um teste vizinho, sem relação nenhuma com esta migração.
-    """
-    executor = MigrationExecutor(connection)
-    alvo_antes = [("core", "0011_semear_o_guia_do_portfolio")]
-    executor.migrate(alvo_antes)
-    executor.loader.build_graph()
+        estado_antigo = executor.loader.project_state(alvo_antes)
+        TextoDoLivroAntigo = estado_antigo.apps.get_model("core", "TextoDoLivro")
+        TextoDoLivroAntigo.objects.using(connection.alias).create(
+            nome="cap-de-antes", titulo="Capítulo de antes", corpo="Já estava aqui."
+        )
 
-    estado_antigo = executor.loader.project_state(alvo_antes)
-    TextoDoLivroAntigo = estado_antigo.apps.get_model("core", "TextoDoLivro")
-    TextoDoLivroAntigo.objects.using(connection.alias).create(
-        nome="cap-de-antes", titulo="Capítulo de antes", corpo="Já estava aqui."
-    )
+        executor = MigrationExecutor(connection)
+        alvo_depois = [("core", "0012_o_livro_por_tras_dos_capitulos")]
+        executor.migrate(alvo_depois)
+        executor.loader.build_graph()
 
-    executor = MigrationExecutor(connection)
-    alvo_depois = [("core", "0012_o_livro_por_tras_dos_capitulos")]
-    executor.migrate(alvo_depois)
-    executor.loader.build_graph()
-
-    assert Livro.objects.count() == 1
-    livro = Livro.objects.get()
-    assert livro.slug == "meu-livro"
-    capitulo = TextoDoLivro.objects.get(nome="cap-de-antes")
-    assert capitulo.livro_id == livro.id
+        assert Livro.objects.count() == 1
+        livro = Livro.objects.get()
+        assert livro.slug == "meu-livro"
+        capitulo = TextoDoLivro.objects.get(nome="cap-de-antes")
+        assert capitulo.livro_id == livro.id
+    finally:
+        if connection.vendor == "sqlite":
+            MigrationExecutor(connection).migrate(folhas)
 
 
 def test_a_migracao_em_banco_vazio_nao_cria_livro_orfao(db):
@@ -667,3 +668,39 @@ def test_a_migracao_em_banco_vazio_nao_cria_livro_orfao(db):
     `TextoDoLivro`, e a migração não deve inventar um `Livro` sem capítulo."""
     assert not TextoDoLivro.objects.exists()
     assert Livro.objects.count() == 0
+
+
+# ------------------------------------------------------ 9. a porta na capa
+
+
+@pytest.fixture
+def sob_o_prefixo_publico():
+    """O regime de produção: a área inteira mora sob `/admin`.
+
+    Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
+    o prefixo de thread que `reverse()` lê (`armadilhas/081`). O `finally`
+    restaura o anterior: o prefixo vaza entre testes.
+    """
+    anterior = get_script_prefix()
+    set_script_prefix("/admin/")
+    try:
+        yield
+    finally:
+        set_script_prefix(anterior)
+
+
+@respx.mock
+def test_a_visao_geral_oferece_a_porta_do_livro(sob_o_prefixo_publico):
+    """Um botão que ninguém encontra é uma funcionalidade que não existe.
+
+    E o endereço tem de levar o prefixo público: `href="/livro/"` abriria no PC
+    de quem desenvolve e daria 404 só na tela dele (`armadilhas/081`).
+
+    O endereço é medido DENTRO do cartão, e não solto na página: o menu do topo
+    também aponta para a Biblioteca, e um `href` procurado na página inteira
+    continuaria verde com a capa vazia.
+    """
+    html = _dentro().get("/").content.decode()
+
+    assert "Guardar os textos do livro" in html
+    assert '<a class="cartao porta" href="/admin/livro/">' in html

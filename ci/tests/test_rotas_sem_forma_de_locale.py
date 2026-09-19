@@ -60,9 +60,13 @@ ROTAS = RAIZ / "infra" / "traefik" / "dynamic" / "plataforma.yml"
 SITES = RAIZ / "infra" / "sites.json"
 
 # Matchers que este guarda sabe julgar. `Host(...)` é inofensivo para caminho;
-# `PathPrefix(...)` é o que carrega o risco. Qualquer outro ⇒ AssertionError.
+# `PathPrefix(...)` é o que carrega o risco. `PathRegexp(...)` só é aceito para
+# o desvio legado fechado logo abaixo. Qualquer outro ⇒ AssertionError.
 MATCHER = re.compile(r"([A-Za-z]+)\(\s*`([^`]*)`\s*\)")
-CONHECIDOS = {"Host", "PathPrefix"}
+CONHECIDOS = {"Host", "PathPrefix", "PathRegexp"}
+PATHREGEXP_LEGADO_PERMITIDO = {
+    "aulas-avulsas-legadas": r"^/aulas/[A-Za-z0-9_-]+/?$",
+}
 # Sobra da regra depois de retirar os matchers: só operadores e espaço.
 COLA = re.compile(r"^[\s&|!()]*$")
 
@@ -120,6 +124,13 @@ def prefixos_de_caminho(nome: str, regra: str) -> list[str]:
             "a fase 5 no docs/i18n/PLANO-I18N.md e ensine este teste a julgar "
             "a forma nova. Se não é, use PathPrefix."
         )
+    for funcao, valor in achados:
+        if funcao == "PathRegexp" and PATHREGEXP_LEGADO_PERMITIDO.get(nome) != valor:
+            raise AssertionError(
+                f"router `{nome}`: PathRegexp `{valor}` que este guarda não "
+                "sabe julgar fora da única forma legada permitida. Ensine a "
+                "regra nova antes de usá-la (INV-CI01: não medir não é OK)."
+            )
     return [valor for funcao, valor in achados if funcao == "PathPrefix"]
 
 
@@ -278,6 +289,19 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # contrário é o que dói, e está fechado: um `PathPrefix(/es)` engoliria
     # `/estudio` junto. Por isso `/estudio` entrou também na prova adversarial
     # lá embaixo, ao lado de `/estatisticas`, que está lá pelo mesmo motivo.
+    # `encomendas` entrou com a Fila do Primeiro Dolar
+    # (`PathPrefix(/encomendas)`, `DECISAO-fila-do-primeiro-dolar.md`, degrau
+    # 2.10, 07/09/2026). Passei pelas duas regras, que e para isto que este
+    # inventario existe:
+    #   A (forma de locale): 10 letras, e a forma exige 2-3. Nao casa. O
+    #     tamanho nao e acaso: `infra/env/encomendas.env.exemplo` ja dizia, em
+    #     04/09/2026, que o prefixo tem dez letras "de proposito", porque um de
+    #     duas casaria com a forma e cairia aqui.
+    #   B (idioma declarado): `infra/sites.json` declara `en`, `es` e `pt-br`,
+    #     e `encomendas` nao esta la nem e codigo de idioma em lingua nenhuma.
+    # E o terceiro olhar, o do prefixo CRU: `/encomendasX` seria engolido por
+    # este roteador. Nao existe rota assim, e quem criar uma vai encontrar esta
+    # linha.
     assert segmentos == {
         "",
         "quiz",
@@ -294,6 +318,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "cursos",
         "pages",
         "estudio",
+        "encomendas",
     }
 
 
@@ -345,6 +370,35 @@ def test_todo_roteador_https_declara_o_cadeado():
         "do funil — 404 com o deploy verde. Acrescente `tls: {}` (é o que todos "
         "os outros fazem)."
     )
+
+
+def test_aula_avulsa_legada_desvia_somente_o_slug_esperado():
+    """O endereço compartilhado antes do conserto chega à página canônica."""
+    routers = _rotas_reais()["http"]["routers"]
+    config = routers["aulas-avulsas-legadas"]
+    assert config["rule"] == (
+        "Host(`meshcraft.top`) && PathRegexp(`^/aulas/[A-Za-z0-9_-]+/?$`)"
+    )
+    assert config["priority"] == 10
+    assert config["entryPoints"] == ["websecure"]
+    assert config["middlewares"] == ["seguranca", "aulas-avulsas-legadas-para-cursos"]
+    assert config["service"] == "funil"
+    assert config["tls"] == {}
+
+    desvio = _rotas_reais()["http"]["middlewares"]["aulas-avulsas-legadas-para-cursos"][
+        "redirectRegex"
+    ]
+    assert desvio == {
+        "regex": r"^https?://meshcraft\.top/aulas/([A-Za-z0-9_-]+)/?(\?.*)?$",
+        "replacement": "https://meshcraft.top/cursos/aulas/${1}${2}",
+        "permanent": True,
+    }
+    regex = re.compile(desvio["regex"])
+    assert regex.fullmatch(
+        "https://meshcraft.top/aulas/aula-de-testes/?origem=forum"
+    ).groups() == ("aula-de-testes", "?origem=forum")
+    assert regex.fullmatch("https://meshcraft.top/aulas/aula/de-testes") is None
+    assert regex.fullmatch("https://meshcraft.top/aulas/aula de testes/") is None
 
 
 @pytest.mark.parametrize(
@@ -433,6 +487,7 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
         # `infra/sites.json`. Ele tem de PASSAR: a regra B compara segmento
         # inteiro, e reprovar aqui seria o guarda comendo uma rota legítima.
         "/estudio",
+        "/encomendas",
     ],
 )
 def test_aprova_os_prefixos_legitimos_de_hoje(prefixo):

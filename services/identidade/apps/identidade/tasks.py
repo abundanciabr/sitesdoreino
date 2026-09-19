@@ -19,13 +19,12 @@ migração de infraestrutura, e o `v1` continuaria sendo emitido até o último
 consumidor migrar (RITOS §3) — dois streams para o mesmo fato.
 """
 
-import json
 import logging
 import os
 
-import redis
 from django.utils import timezone
 from huey import crontab
+from outbox_relay import publicar_pendentes
 
 from config.huey import huey
 
@@ -51,48 +50,12 @@ def relay_outbox() -> int:
     `KeyError` estoura só aqui, é engolido pelo `relay_apos_commit` e o evento
     fica pendente — nunca perdido.
     """
-    pendentes = list(
-        OutboxEvent.objects.filter(published_at__isnull=True).order_by("id")[:LOTE]
+    return publicar_pendentes(
+        modelo=OutboxEvent,
+        redis_url=os.environ["REDIS_STREAMS_URL"],
+        agora=timezone.now,
+        lote=LOTE,
     )
-    if not pendentes:
-        return 0
-    cliente = redis.from_url(os.environ["REDIS_STREAMS_URL"])
-    publicados = 0
-    for evento in pendentes:
-        envelope = {
-            "event": evento.event,
-            "version": evento.version,
-            "event_id": str(evento.event_id),
-            "occurred_at": evento.occurred_at.isoformat(),
-            "data": evento.payload,
-        }
-        # As chaves que ESTE evento declara no nível de cima — hoje o `ator_id`.
-        # Vêm de quem emitiu, que é quem conhece o próprio contrato; o relay não
-        # decide nada.
-        #
-        # O `if colisao` NÃO é zelo teatral: um `**extra` solto num dicionário
-        # literal sobrescreve o que veio antes, então um `envelope_extra` com a
-        # chave `event` ou `version` trocaria a IDENTIDADE do evento no fio, em
-        # silêncio, e o consumidor errado o receberia. Aqui isso é erro e para a
-        # publicação — nunca um evento com identidade trocada.
-        colisao = set(evento.envelope_extra) & set(envelope)
-        if colisao:
-            raise ValueError(
-                f"envelope_extra do evento {evento.event_id} tentou sobrescrever "
-                f"{sorted(colisao)} — o nível de cima do envelope é do relay. "
-                "Campo novo de contrato entra com nome próprio, nunca por cima."
-            )
-        envelope.update(evento.envelope_extra)
-        cliente.xadd(
-            f"eventos.{evento.event}",
-            {"json": json.dumps(envelope, ensure_ascii=False)},
-        )
-        # Marcar SÓ depois do xadd — inverter a ordem trocaria "republicar no
-        # pior caso" por "perder evento no pior caso".
-        evento.published_at = timezone.now()
-        evento.save(update_fields=["published_at"])
-        publicados += 1
-    return publicados
 
 
 def relay_apos_commit() -> None:

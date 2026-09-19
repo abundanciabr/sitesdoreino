@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-211111-TAR-459-explicada",
+  "tarefa": "TAR-459",
+  "evento": "explicada",
+  "quando": "2026-09-18T21:11:11+00:00",
+  "quem": "Pedido do mantenedor em 2026-09-18 após a TAR-455: detalhar como a entrega foi feita para instruir outros robôs",
+  "o_que_e": "O caso foi entregue e provado, mas o método continua espalhado entre conversa, comandos e leis.",
+  "o_que_muda": "Um robô novo passa a seguir um caminho curto e verificável desde a missão ampla até o documento privado, sem copiar ritos antigos.",
+  "exemplo": "Ao receber um pedido como compreender o sistema, o robô abre bancada, divide a leitura, costura fatos, valida no SHA, integra automaticamente e só grava no editor após confirmação.",
+  "importancia": 80
+}

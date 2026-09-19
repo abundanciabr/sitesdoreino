@@ -472,6 +472,34 @@ def test_o_aviso_da_sugestao_nao_mudou_uma_virgula(client, rede):
     }
 
 
+FRASES_DO_PORTFOLIO = {
+    "en": {
+        "titulo": "Your portfolio was checked",
+        "corpo": "The school checked your portfolio. Open your notices to see when.",
+    },
+    "pt-br": {
+        "titulo": "Seu portfólio foi conferido",
+        "corpo": "A escola conferiu seu portfólio. Abra os avisos para ver quando.",
+    },
+    "es": {
+        "titulo": "Tu portafolio fue revisado",
+        "corpo": "La escuela revisó tu portafolio. Abre tus avisos para ver cuándo.",
+    },
+}
+
+
+@pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
+def test_o_aviso_de_portfolio_diz_o_que_aconteceu_e_onde_ver_a_data(
+    client, rede, idioma
+):
+    configuracao = _configuracao_do_sw(client, idioma)
+
+    assert (
+        configuracao["textos"]["pages.portfolio-conferido"]
+        == FRASES_DO_PORTFOLIO[idioma]
+    )
+
+
 def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
     """A direção segura da cerca: o site nunca inventa um assunto que a
     plataforma não publica. A direção contrária NÃO se testa, de propósito:

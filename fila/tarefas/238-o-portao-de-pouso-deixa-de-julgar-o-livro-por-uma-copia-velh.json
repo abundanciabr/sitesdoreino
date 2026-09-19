@@ -1,0 +1,17 @@
+{
+  "arquivo": "238-o-portao-de-pouso-deixa-de-julgar-o-livro-por-uma-copia-velh",
+  "id": "TAR-238",
+  "titulo": "O portao de pouso deixa de julgar o livro por uma copia velha do repositorio",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: ci/divida_do_livro.py le os registros do origin/main, OU ci/mergear.py recusa julgar o livro quando a arvore esta atras do origin/main, fail-closed com frase que ensina; teste provando a recusa por asrcao com uma arvore atrasada de proposito; a mensagem diz o que fazer (arme a espera de uma bancada em dia)",
+  "despacho": "A ferramenta Monitor roda com o diretorio de trabalho no CLONE PRINCIPAL, que e espelho e envelhece calado. ci/divida_do_livro.py procura os numeros dos PRs em painel/registros/ DO DISCO LOCAL. Logo, numa sessao longa, o portao de pouso cobra divida ja paga e a instrucao dele (escreva um registro novo) leva a criar um segundo cobrador para a mesma conta, que e a corrida de 31/08/2026 (armadilhas/248). Medido: HEAD do clone principal 9d74eea6, origin/main 5e19a2a7, 83 commits atras, e os registros 094, 095 e 096 ausentes la. O mesmo mergear.py --conferir rodado de uma bancada em dia dava PASS. Escolha UMA das duas curas e diga por que: (a) divida_do_livro.py ler os registros do origin/main em vez do disco; (b) mergear.py medir se a arvore esta atras do origin/main e RECUSAR julgar o livro, fail-closed, com a frase que manda armar a espera de uma bancada. A (b) e mais honesta (nao finge medir o que nao pode) e mais barata; a (a) conserta o caso sem exigir nada de quem chama. Leia armadilhas/376 antes, que traz a medicao inteira. Caminho CODEOWNERS: ci/.",
+  "origem": "medido em 06/09/2026: o mesmo PR recusado tres vezes por divida ja paga, porque a espera roda do clone principal, que estava 83 commits atras e sem os registros 094, 095 e 096 (armadilhas/376)",
+  "criada_em": "2026-09-06"
+}

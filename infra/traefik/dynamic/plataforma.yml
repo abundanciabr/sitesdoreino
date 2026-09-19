@@ -58,6 +58,15 @@ http:
         replacement: 'https://meshcraft.top/${1}'
         permanent: true
 
+    aulas-avulsas-legadas-para-cursos:
+      # O painel publicou aulas avulsas sob `/aulas/<slug>/` antes de conhecer
+      # o SCRIPT_NAME da sala. Desvie só esse endereço ao canônico, sem criar
+      # uma segunda página nem capturar caminhos que não sejam um slug Django.
+      redirectRegex:
+        regex: '^https?://meshcraft\.top/aulas/([A-Za-z0-9_-]+)/?(\?.*)?$'
+        replacement: 'https://meshcraft.top/cursos/aulas/${1}${2}'
+        permanent: true
+
   routers:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
@@ -312,6 +321,18 @@ http:
       service: cursos
       tls: {}
 
+    aulas-avulsas-legadas:
+      # Este router só casa o caminho legado gerado pelo painel. Um endereço
+      # fora do formato de slug não chega a este middleware e segue no funil.
+      rule: "Host(`meshcraft.top`) && PathRegexp(`^/aulas/[A-Za-z0-9_-]+/?$`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca, aulas-avulsas-legadas-para-cursos]
+      # O serviço é obrigatório para o Traefik, mas o redirectRegex encerra a
+      # requisição antes que o funil seja consultado.
+      service: funil
+      tls: {}
+
     pages:
       # A casa das Paginas do aluno: a Prancheta do portfolio, para quem esta
       # logado (corredor CS-PAGES-0001; PLANO-PORTFOLIO-DO-ALUNO.md secao 4).
@@ -411,6 +432,46 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca]
       service: pages
+      tls: {}
+
+    encomendas:
+      # A Fila do Primeiro Dolar: o mural das encomendas 3D, a fila do aluno e
+      # o plantao de quem julga (DECISAO-fila-do-primeiro-dolar.md; degrau 2.10
+      # da escada §7, TAR-128). E este roteador que tira a celula do escuro: ate
+      # ele existir, a `encomendas` respondia so pela rede interna do Docker.
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, pela mesma razao do forum, da
+      # gamificacao, da sala de aula e das Paginas acima: o cookie
+      # `meshcraft_sessao` e de HOST, e esta celula depende de repassa-lo a
+      # identidade para saber quem e a pessoa. Em subdominio o cookie nao viaja
+      # e a fila exigiria um segundo login. Esta celula nem assina sessao
+      # ([INV-P12]).
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/encomendas` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`). Mover a area de endereco e
+      # editar esta linha e o env, nunca o `urls.py`.
+      #
+      # DEZ LETRAS, e o tamanho foi escolhido: prefixo de duas ou tres letras
+      # casaria com a FORMA de idioma do roteador de locale, e o inventario de
+      # `ci/tests/test_rotas_sem_forma_de_locale.py` reprovaria — ele entra no
+      # MESMO PR deste roteador (`armadilhas/089`).
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria a fila de encomendas.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: nada
+      # aqui e servido em iframe. Quem pode ver o que e decidido DENTRO da
+      # celula. E a porta de MAQUINA, que responde sob este mesmo prefixo em
+      # `/encomendas/api/encomendas/`, tem cadeado proprio e de DOIS graus —
+      # `TOKENS_ACEITOS_*` deixa ler e `TOKENS_ESCRITA_*` deixa gravar, os dois
+      # vazios por padrao (`armadilhas/186` e `/318`). A topologia nao fecha
+      # nada aqui, e escrever o contrario seria ensinar errado quem chegar
+      # depois.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/encomendas`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: encomendas
       tls: {}
 
     www-meshcraft:
@@ -520,3 +581,6 @@ http:
     pages:
       loadBalancer:
         servers: [ { url: "http://pages:8000" } ]
+    encomendas:
+      loadBalancer:
+        servers: [ { url: "http://encomendas:8000" } ]

@@ -35,6 +35,11 @@
   // impede "meio que deu certo" de virar uma categoria nova em silêncio.
   var CAMPOS_DO_EXPERIMENTO = ["problema", "hipotese", "metrica", "guarda"];
   var VEREDITOS = ["venceu", "perdeu", "nao-deu-para-saber"];
+  // OS PORTÕES (degrau 13): os oito que uma escola atravessa antes de escalar.
+  // A fase (achando, provando, escalando) é calculada da contagem dos provados,
+  // nunca digitada, e por isso o nome de cada um é vocabulário fechado.
+  var PORTOES = ["demanda", "conversao", "economia", "entrega", "resultado",
+    "retencao", "repeticao", "escala"];
   var FORMATO_DA_METRICA = /^[a-z0-9-]+$/;
   // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
   // primeiro, depois o produto, e vender por último — que é também a ordem em
@@ -65,9 +70,14 @@
   // Devolve lista de erros (vazia = válido). ERROR nunca vira PASS: quem chamar
   // com erros não-vazios NÃO pode renderizar como se estivesse tudo bem.
   // ---------------------------------------------------------------------------
-  function validarRegistros(registros) {
+  // `areas` (07/09/2026, a aba Prioridades) é a lista de painel/areas.json: é ela
+  // que diz se o campo `area` de um registro existe. Sem ela, `area` preenchida
+  // vira ERRO em vez de passar — não conferir não é aprovar, e um nome inventado
+  // poria o fato na parte errada do site.
+  function validarRegistros(registros, areas) {
     var erros = [];
     if (!Array.isArray(registros)) return ["REGISTROS não é uma lista — os arquivos de registro carregaram?"];
+    var celulasConhecidas = areas ? mapaDeCelulas(areas) : null;
     var vistos = {};
     registros.forEach(function (r, i) {
       var nome = (r && r.arquivo) ? r.arquivo : ("registro na posição " + i);
@@ -88,6 +98,19 @@
       // tem de ser uma das cinco, senão o fato cai num capítulo que não existe.
       if (r.frente != null && FRENTES.indexOf(r.frente) === -1) {
         erros.push(nome + ": 'frente' desconhecida '" + r.frente + "' — as cinco são: " + FRENTES.join(", "));
+      }
+      // A ÁREA é o nome do ramo em que o robô trabalhou (`agent/<area>/...`): em
+      // que parte do SITE o fato mexe, pergunta que a frente não responde.
+      // Opcional (registro antigo não a tem e não se edita); se vier, tem de
+      // estar em painel/areas.json, senão o fato cai numa área que não existe.
+      if (r.area != null) {
+        if (typeof r.area !== "string" || r.area.trim() === "") {
+          erros.push(nome + ": 'area' precisa ser o nome do ramo (texto), ou null");
+        } else if (!celulasConhecidas) {
+          erros.push(nome + ": não consigo conferir a área '" + r.area + "' sem painel/areas.json — quem valida precisa passar as áreas");
+        } else if (!celulasConhecidas[r.area]) {
+          erros.push(nome + ": 'area' desconhecida '" + r.area + "' — o nome tem de estar em painel/areas.json (é o nome do ramo, como em agent/" + r.area + "/...)");
+        }
       }
       // 'rumo' = para onde esta frente vai. Sem frente ele não tem capítulo onde
       // morar; e rumo NUNCA é verde, porque verde é prova conferida e ninguém
@@ -175,6 +198,24 @@
             "o resultado é um registro NOVO que aponta para o experimento");
         }
       }
+      // O PORTÃO da fase da escola (degrau 13). A fase é CALCULADA dos portões
+      // provados, e por isso o nome do portão não pode ser texto livre: um
+      // "converssão" escrito com dois esses não contaria para fase nenhuma e
+      // ninguém saberia. Vocabulário fechado aqui, na escrita, pelo mesmo
+      // desenho de `veredito`: o livro é JavaScript, a tela é Python, e um dos
+      // dois lados impõe as palavras.
+      if (r.portao !== undefined && r.portao !== null) {
+        if (PORTOES.indexOf(r.portao) === -1) {
+          erros.push(nome + ": 'portao' desconhecido '" + r.portao + "' — os oito são: " + PORTOES.join(", "));
+        }
+        // Declarar não é provar. Mesma lei do verde, logo abaixo, e pelo mesmo
+        // motivo: portão sem prova conferida promoveria a escola de fase por
+        // opinião de quem escreveu o registro.
+        if (!r.evidencia || !r.verificado_em) {
+          erros.push(nome + ": 'portao' exige evidencia E verificado_em — " +
+            "portão sem prova conferida não muda a fase da escola");
+        }
+      }
       if (r.arquivo) {
         if (vistos[r.arquivo]) erros.push(nome + ": arquivo duplicado (dois registros com o mesmo nome)");
         vistos[r.arquivo] = true;
@@ -229,6 +270,11 @@
       // mesma família do `precisa_do_dono` escrito com aspas, que fazia um
       // pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
       // ---------------------------------------------------------------------
+      ["porque_so_voce", "proximo_passo"].forEach(function (campo) {
+        if (r[campo] != null && (typeof r[campo] !== "string" || !r[campo].trim() || r.precisa_do_dono !== true)) {
+          erros.push(nome + ": '" + campo + "' exige texto com conteúdo e precisa_do_dono true; confira painel/LEIA-ME.md");
+        }
+      });
       if (r.se_eu_nao_decidir != null && (typeof r.se_eu_nao_decidir !== "string" || r.se_eu_nao_decidir.trim() === "")) {
         erros.push(nome + ": 'se_eu_nao_decidir' precisa ser texto com conteúdo, ou null");
       }
@@ -428,11 +474,192 @@
     var capitulos = meuMapa(registros, agora, prontos);
     return {
       capitulos: capitulos.length,
-      comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
+      comProvaConferida: capitulos.filter(function (c) {
+        if (!c.estado) return false;
+        if (!c.estado.evidencia) return false;
+        if (!c.estado.verificado_em) return false;
+        return c.estado.vence_em_dias == null ||
+          diasEntre(c.estado.verificado_em, agora) <= c.estado.vence_em_dias;
+      }).length,
       semRegistro: capitulos.filter(function (c) { return !c.estado; }).length,
       semRumo: capitulos.filter(function (c) { return c.rumos.length === 0; }).length,
       esperandoVoce: capitulos.reduce(function (n, c) { return n + c.esperando.length; }, 0)
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // PRIORIDADES POR ÁREA (07/09/2026) — "o que eu faço primeiro, e em que parte
+  // do site isso mexe". A capa ordena por idade e o Meu mapa agrupa pelos cinco
+  // capítulos do livro; nenhuma das duas responde essa pergunta. Aqui os MESMOS
+  // fatos são recortados por área do site (painel/areas.json) e, dentro dela,
+  // por tipo. As tarefas vêm de fora (a fila dos robôs, buscada pela página)
+  // porque não moram no livro; sem elas os grupos de registro continuam de pé.
+  // ---------------------------------------------------------------------------
+
+  // Registro sem `area` cai na frente dele. É aproximação, a tela a marca como
+  // tal, e existe para os registros escritos antes do campo, que não se editam.
+  var AREA_DA_FRENTE = { fabrica: "fabrica", curso: "cursos", site: "alunos", comunidade: "comunidade", vender: "vendas" };
+  var RANK_IMPACTO = { alto: 0, medio: 1, baixo: 2 };
+  // A MESMA escala do selo da fila (alta ≡ alto), para pedido e tarefa caberem
+  // na mesma lista. Os limiares que produzem o selo moram na fila e NÃO se
+  // reimplementam aqui: duas definições de "custa caro" divergem sozinhas
+  // (`armadilhas/379`).
+  var RANK_SELO = { alta: 0, media: 1, baixa: 2, "sem-nota": 3 };
+  var SEM_AREA = { id: null, nome: "❓ Sem área reconhecida", diz: "ninguém disse em que parte do site isto mexe" };
+
+  function mapaDeCelulas(areas) {
+    var m = {};
+    (areas || []).forEach(function (a) {
+      if (a && Array.isArray(a.celulas)) a.celulas.forEach(function (c) { m[c] = a.id; });
+    });
+    return m;
+  }
+
+  // Ids únicos, campos presentes, e cada célula em UMA área só: sem isso o mesmo
+  // trabalho apareceria em dois blocos, e a contagem do topo não fecharia com a
+  // soma deles.
+  function validarAreas(areas) {
+    var erros = [];
+    if (!Array.isArray(areas)) return ["painel/areas.json: 'areas' precisa ser uma lista"];
+    if (!areas.length) return ["painel/areas.json: a lista de áreas está vazia"];
+    var ids = {}, dona = {};
+    areas.forEach(function (a, i) {
+      var nome = (a && a.id) ? a.id : ("área na posição " + i);
+      ["id", "nome", "diz"].forEach(function (campo) {
+        if (!a || typeof a[campo] !== "string" || a[campo].trim() === "") {
+          erros.push(nome + ": campo '" + campo + "' ausente ou vazio");
+        }
+      });
+      if (!a) return;
+      if (ids[a.id]) erros.push(nome + ": id repetido — duas áreas com o mesmo id");
+      ids[a.id] = true;
+      if (!Array.isArray(a.celulas) || !a.celulas.length) {
+        erros.push(nome + ": 'celulas' precisa ser uma lista com ao menos um nome de célula ou de ramo");
+        return;
+      }
+      a.celulas.forEach(function (c) {
+        if (typeof c !== "string" || c.trim() === "") { erros.push(nome + ": nome de célula vazio"); return; }
+        if (dona[c]) {
+          erros.push("a célula '" + c + "' aparece em duas áreas ('" + dona[c] + "' e '" + a.id +
+            "') — cada nome pertence a uma só, senão o mesmo trabalho apareceria em dois lugares da tela");
+        } else { dona[c] = a.id; }
+      });
+    });
+    return erros;
+  }
+
+  // Compara chaves de ordenação (listas de números e textos), campo a campo.
+  function porOrdem(a, b) {
+    for (var i = 0; i < Math.max(a.ordem.length, b.ordem.length); i++) {
+      var x = a.ordem[i], y = b.ordem[i];
+      if (x === y) continue;
+      return x < y ? -1 : 1;
+    }
+    return 0;
+  }
+
+  // O roteamento é conservador: Luna só atende uma operação que o próprio
+  // texto declara mecânica e limitada por regra. Sem as duas provas, Terra
+  // recebe a tarefa cotidiana, pois adivinhar a natureza do trabalho custa
+  // mais do que usar o modelo geral.
+  function modeloParaTarefa(tarefa) {
+    tarefa = tarefa || {};
+    var texto = [tarefa.titulo, tarefa.o_que_muda, tarefa.prompt]
+      .concat(Array.isArray(tarefa.onde) ? tarefa.onde : [])
+      .filter(function (parte) { return typeof parte === "string"; })
+      .join(" ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    var eMecanica = /\b(extrac(?:ao|oes)|classificac(?:ao|oes)|formatac(?:ao|oes)|(?:alterac(?:ao|oes)|trabalh(?:o|os)|operac(?:ao|oes)) mecanic(?:a|as|o|os))\b/.test(texto);
+    var regraDeclarada = /\b(regra clara|regra (?:ja )?(?:definida|escrita)|criterio (?:ja )?definido|formato (?:ja )?definido)\b/.test(texto);
+    return eMecanica && regraDeclarada
+      ? { modelo: "Luna", raciocinio: "Low" }
+      : { modelo: "Terra", raciocinio: "Low" };
+  }
+
+  function prioridades(registros, agora, prontos, areas, tarefas) {
+    areas = areas || [];
+    tarefas = tarefas || [];
+    var deCelula = mapaDeCelulas(areas);
+    var resp = respondidos(registros, prontos);
+    var caixa = caixaDeEntrada(registros, agora, prontos);
+    var naCaixa = {};
+    caixa.forEach(function (x) { naCaixa[x.registro.arquivo] = true; });
+
+    function areaDoRegistro(r) {
+      if (r.area && deCelula[r.area]) return { id: deCelula[r.area], pelaFrente: false };
+      if (r.frente && AREA_DA_FRENTE[r.frente]) return { id: AREA_DA_FRENTE[r.frente], pelaFrente: true };
+      return { id: null, pelaFrente: false };
+    }
+
+    var itens = [];
+    // DECIDIR: pedidos do livro e tarefas paradas à espera dele, na mesma lista
+    // e na mesma escala. No empate, o registro vem antes, e o mais velho antes.
+    caixa.forEach(function (x) {
+      var r = x.registro, a = areaDoRegistro(r);
+      var peso = RANK_IMPACTO[r.impacto] == null ? 3 : RANK_IMPACTO[r.impacto];
+      itens.push({
+        grupo: "decidir", especie: "pedido", area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: x.aguardandoDias, cor: "gold",
+        ordem: [peso, 0, -x.aguardandoDias, r.arquivo]
+      });
+    });
+    // ALERTA: vermelho e âmbar sem conserto, MENOS o que já está na caixa. Um
+    // fato, um lugar: o pedido que também é âmbar mora só em Decidir.
+    problemasAbertos(registros, prontos).forEach(function (r) {
+      if (naCaixa[r.arquivo]) return;
+      var a = areaDoRegistro(r), d = diasEntre(r.quando, agora);
+      itens.push({
+        grupo: "alerta", especie: "alerta", area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: d, cor: r.gravidade === "vermelho" ? "red" : "gold",
+        ordem: [r.gravidade === "vermelho" ? 0 : 1, -d, r.arquivo]
+      });
+    });
+    // RUMOS E PROMESSAS. Compromisso vencido vira bolinha vermelha: o prazo é
+    // contado contra o relógio de quem abre a página, nunca congelado no build.
+    registros.forEach(function (r) {
+      if (r.tipo !== "rumo" && r.tipo !== "compromisso") return;
+      if (resp[r.arquivo]) return;
+      var a = areaDoRegistro(r), d = diasEntre(r.quando, agora);
+      var vence = r.vence_em_dias != null ? (r.vence_em_dias - d) : null;
+      itens.push({
+        grupo: "rumo", especie: r.tipo, area: a.id, pelaFrente: a.pelaFrente,
+        registro: r, dias: d, venceEm: vence,
+        cor: (vence != null && vence < 0) ? "red" : "blue",
+        ordem: [r.tipo === "compromisso" ? 0 : 1, d, r.arquivo]
+      });
+    });
+    // A FILA DOS ROBÔS: a área e o selo já vêm resolvidos por quem serve a fila.
+    tarefas.forEach(function (t) {
+      var paraODono = t.para_o_dono === true;
+      var classe = (t.selo && t.selo.classe) || "sem-nota";
+      var rank = RANK_SELO[classe] == null ? 3 : RANK_SELO[classe];
+      var peso = typeof t.importancia === "number" ? t.importancia : 0;
+      itens.push({
+        grupo: paraODono ? "decidir" : "robos", especie: "tarefa",
+        area: t.area || null, pelaFrente: false, tarefa: t,
+        cor: paraODono ? "gold" : (t.estado === "na fila" ? "blue" : "roxo"),
+        ordem: paraODono ? [rank, 1, 0, t.id] : [rank, -peso, t.id]
+      });
+    });
+
+    function areaVazia(a) {
+      return { id: a.id, nome: a.nome, diz: a.diz, total: 0,
+        grupos: { decidir: [], alerta: [], robos: [], rumo: [] } };
+    }
+    // TODAS as áreas aparecem, mesmo vazias: área que some se leria como "não
+    // existe", e não como "nada pendente hoje".
+    var saida = areas.map(areaVazia);
+    var porId = {};
+    saida.forEach(function (a) { porId[a.id] = a; });
+    var sem = areaVazia(SEM_AREA);
+    itens.forEach(function (i) {
+      var destino = porId[i.area] || sem;
+      destino.grupos[i.grupo].push(i);
+      destino.total++;
+    });
+    saida.concat([sem]).forEach(function (a) {
+      Object.keys(a.grupos).forEach(function (g) { a.grupos[g].sort(porOrdem); });
+    });
+    return { areas: saida, semArea: sem };
   }
 
   // ---------------------------------------------------------------------------
@@ -454,11 +681,78 @@
     };
   }
 
+  // Quantos registros COM PRAZO viajam no resumo. Era por esta porta que o
+  // tamanho da capa ainda podia crescer com a IDADE do projeto em vez de com o
+  // que está aberto: `montarResumo` carregava TODO registro com `vence_em_dias`,
+  // e essa lista só aumenta. Medido em 19/09/2026, com mil entregas fechadas que
+  // trouxessem prazo: o resumo ia a 436.165 bytes, quase o triplo do orçamento.
+  // No livro real de hoje são 26 registros, nenhum deles uma entrega — o buraco
+  // ainda não tinha sangrado, e um buraco que não sangrou hoje sangra na semana
+  // que vem.
+  //
+  // OS MAIS RECENTES, e a escolha foi medida antes de ser feita. A primeira
+  // versão deste teto ordenava pelo PRAZO, guardando quem vence primeiro, e o
+  // argumento parecia bom: o bloco que se serve desta porta é "O que está
+  // velho", então guarde quem já venceu. Medido no livro real, isso deixava de
+  // fora um compromisso com prazo em 2027 e guardava vencidos de janeiro.
+  //
+  // E aí a ordem se revelou invertida. O prazo mais curto de um livro que só
+  // cresce é sempre o registro mais antigo dele, vencido há meses, sobre o qual
+  // não há nada a fazer. Quem o dono precisa ver é a prova que saiu da validade
+  // AGORA, ou está para sair: essa é acionável, dá para ir conferir de novo. É a
+  // mesma razão já escrita em `PROBLEMAS_COM_DETALHE`, que recusou a ordem do
+  // bloco para não ficar com os incidentes mais velhos.
+  //
+  // E CONTINUA SEM RELÓGIO: a ordem é por `quando`, um campo gravado, e dá o
+  // mesmo resultado em qualquer máquina e a qualquer hora. Quem compara prazo
+  // com o agora continua sendo o navegador de quem abre.
+  var COM_PRAZO_NO_RESUMO = 20;
+
+  function comPrazo(registros) {
+    return registros.filter(function (r) { return r.vence_em_dias != null; })
+      .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+  }
+
+  // Quantas afirmações sem prova viajam no resumo. Este teto é de OUTRA natureza
+  // que `PROBLEMAS_COM_DETALHE` e `CAIXA_COM_DETALHE`: aqueles cortam TEXTO e
+  // nunca FATO, e podem, porque problema aberto e pedido sem resposta FECHAM —
+  // alguém responde e eles saem do bloco sozinhos.
+  //
+  // "Dito, mas não comprovado" não tem essa saída. Ele lista entrega e medição
+  // sem `evidencia` ou sem `verificado_em`, e registro é IMUTÁVEL por lei da
+  // casa: recibo que nasceu sem prova nunca ganha prova. Cada um que entra fica
+  // para sempre, e este era o único bloco da capa sem teto de espécie nenhuma.
+  //
+  // Medido em 19/09/2026, com a main em 2f8444e9: 80 afirmações sem prova, 77
+  // delas presas no resumo só por esta porta, 48.089 bytes, 31,3% do resumo
+  // inteiro, a mais velha de 28/08. A capa tinha 67 bytes de folga num orçamento
+  // de 153.600 e o recibo mediano de um PR pesa 868 bytes: nenhum PR da casa
+  // conseguia mais ficar verde, e junto com a muralha do painel caíam o
+  // `ci-celula (admin)` e o `ci-celula-gate`, porque a fixture daqueles testes
+  // roda o gerador.
+  //
+  // O QUE O CORTE NÃO PODE ESCONDER, e não esconde: quem sai daqui e ainda está
+  // ABERTO continua no resumo por outra porta, porque `montarResumo` leva
+  // inteiras a caixa "Precisa de você", "Atenção agora", os recentes e o Meu
+  // mapa. Sai só o que não espera ninguém.
+  //
+  // E É UMA CONTAGEM, NÃO UMA IDADE, pela razão escrita em `CAIXA_COM_DETALHE`:
+  // idade congelaria o relógio do build dentro do resumo. A ordem por data dá o
+  // mesmo resultado com qualquer relógio; a idade, não.
+  //
+  // O NÚMERO INTEIRO CONTINUA NA TELA: `confianca` conta as afirmações sem prova
+  // sobre o livro TODO, e é dele que a capa tira a linha que diz quantas ficaram
+  // para trás. Cortar a lista sem carregar o número seria trocar um bloco que
+  // grita por um que mente.
+  var SEM_PROVA_NO_RESUMO = 12;
+
   // Relato sem prova conferida — aparece como "não comprovado", jamais como fato.
+  // Mais RECENTE primeiro: é a ordem em que se vai atrás da prova que falta, e é
+  // ela que decide quem cabe no teto acima.
   function naoComprovados(registros) {
     return registros.filter(function (r) {
       return (r.tipo === "entrega" || r.tipo === "medicao") && (!r.evidencia || !r.verificado_em);
-    });
+    }).sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
   }
 
   // ---------------------------------------------------------------------------
@@ -488,7 +782,15 @@
     if (fresc.vencidos.length || (fresc.livroParadoHaDias != null && fresc.livroParadoHaDias > 3)) {
       blocos.push({ id: "frescor", titulo: "O que está velho", itens: fresc.vencidos, livroParadoHaDias: fresc.livroParadoHaDias });
     }
-    if (semProva.length) blocos.push({ id: "nao-comprovado", titulo: "Dito, mas não comprovado", itens: semProva });
+    // As mais RECENTES sem prova, e só elas (ver `SEM_PROVA_NO_RESUMO`). Quantas
+    // existem no livro inteiro é o que `confianca` conta, e a página escreve a
+    // diferença embaixo do bloco: lista curta, número honesto.
+    if (semProva.length) {
+      blocos.push({
+        id: "nao-comprovado", titulo: "Dito, mas não comprovado",
+        itens: semProva.slice(0, SEM_PROVA_NO_RESUMO)
+      });
+    }
 
     if (blocos.length > teto) {
       return {
@@ -538,10 +840,14 @@
     // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
     // sai daqui é a contagem e a mediana — nunca uma nota.
     var resp = respondidos(registros);
+    var entregasDeRumo = {};
+    registros.forEach(function (r) {
+      if (r.responde_a && r.relacao !== "substituicao") entregasDeRumo[r.responde_a] = r;
+    });
     var cumpridos = [];
     registros.forEach(function (r) {
       if (r.tipo !== "rumo") return;
-      var fecha = resp[r.arquivo];
+      var fecha = entregasDeRumo[r.arquivo];
       if (!fecha) return;
       cumpridos.push({
         rumo: r.arquivo,
@@ -673,10 +979,15 @@
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
     "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
     "frente", "vence_em_dias",
+    // A ÁREA vem no corte: sem ela, o registro que viaja só como título cairia
+    // em "sem área reconhecida" na aba Prioridades, e a tela mostraria o fato na
+    // parte errada do site tendo a resposta escrita no livro.
+    "area",
     // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
-    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
+    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto",
+    "porque_so_voce", "proximo_passo"];
   // Os campos do EXPERIMENTO ficam de fora desta lista de propósito (05/09/2026,
   // degrau 12). O painel do dono não desenha o laboratório em canto nenhum — a
   // tela dele é `/admin/placar/laboratorio/`, e ela lê os registros de origem,
@@ -755,7 +1066,10 @@
     marcar(apenasTitulo, blocos["nao-comprovado"]);
     marcar(apenasTitulo, blocos.frescor);
     marcar(apenasTitulo, recentes);
-    marcar(apenasTitulo, registros.filter(function (r) { return r.vence_em_dias != null; }));
+    // Os PRAZOS MAIS CURTOS do livro, e não todos (ver `COM_PRAZO_NO_RESUMO`).
+    // Esta era a última porta pela qual o tamanho da capa ainda podia crescer
+    // com a idade do projeto, e não com o que está aberto.
+    marcar(apenasTitulo, comPrazo(registros).slice(0, COM_PRAZO_NO_RESUMO));
     mapaS.forEach(function (c) { marcar(apenasTitulo, c.andou); marcar(apenasTitulo, c.esperando); });
     Object.keys(completo).forEach(function (id) { delete apenasTitulo[id]; });
 
@@ -763,10 +1077,22 @@
       return completo[r.arquivo] || apenasTitulo[r.arquivo];
     }).map(function (r) { return completo[r.arquivo] ? r : soTitulo(r); });
 
-    // O mapa de respostas viaja calculado sobre o livro INTEIRO: sem ele, um
-    // pedido cuja resposta ficou fora do resumo voltaria a aparecer como aberto.
+    // O mapa de respostas é CALCULADO sobre o livro inteiro e ENTREGUE só para
+    // quem viaja: sem o cálculo sobre o livro, um pedido cuja resposta ficou
+    // fora do resumo voltaria a aparecer como aberto; carregando o livro
+    // inteiro, o resumo ganhava um id novo a cada par encerrado, para sempre.
+    //
+    // Medido em 19/09/2026, e foi o furo que sobreviveu ao PR #1758: com 1, 100
+    // e 1.000 ocorrências já respondidas, o resumo pesava 1.008, 14.684 e 43.485
+    // bytes. Nada mais crescia com a história do projeto; isto crescia.
+    //
+    // POR QUE CORTAR AQUI É EXATO, e não uma aproximação: toda leitura deste
+    // mapa, nas seis funções que o consultam, é `resp[r.arquivo]` com `r`
+    // vindo da própria lista que se passou. No navegador essa lista é o resumo.
+    // Uma chave que não seja de um registro do resumo nunca chega a ser lida —
+    // e o que nunca é lido não precisa viajar.
     var respondidosIds = {};
-    Object.keys(prontos).forEach(function (k) { respondidosIds[k] = true; });
+    selecionados.forEach(function (r) { if (prontos[r.arquivo]) respondidosIds[r.arquivo] = true; });
 
     return {
       erro: null,
@@ -778,6 +1104,11 @@
       // O registro mais recente do livro TODO — é dele que sai "o livro está
       // parado há N dias", e ele precisa ser o do livro, não o do resumo.
       maisRecenteQuando: porData.length ? porData[0].quando : null,
+      // Quantos registros do livro TODO carregam prazo. O resumo leva só os
+      // `COM_PRAZO_NO_RESUMO` de prazo mais curto, e é com este número que a
+      // página diz quantos ficaram fora, em vez de a lista curta passar por
+      // completa.
+      comPrazoNoLivro: comPrazo(registros).length,
       totalNoLivro: registros.length
     };
   }
@@ -788,14 +1119,20 @@
     IMPACTOS: IMPACTOS,
     CAMPOS_DO_EXPERIMENTO: CAMPOS_DO_EXPERIMENTO,
     VEREDITOS: VEREDITOS,
+    PORTOES: PORTOES,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
+    SEM_PROVA_NO_RESUMO: SEM_PROVA_NO_RESUMO,
+    COM_PRAZO_NO_RESUMO: COM_PRAZO_NO_RESUMO,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
     montarResumo: montarResumo,
     confianca: confianca,
     validarRegistros: validarRegistros,
+    validarAreas: validarAreas,
+    modeloParaTarefa: modeloParaTarefa,
+    prioridades: prioridades,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,
     mudancasRecentes: mudancasRecentes,

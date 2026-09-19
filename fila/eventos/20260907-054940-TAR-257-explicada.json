@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-054940-TAR-257-explicada",
+  "tarefa": "TAR-257",
+  "evento": "explicada",
+  "quando": "2026-09-07T05:49:40+00:00",
+  "quem": "divergencia devolvida pelo robo da TAR-134 (PR #1312) em 07/09/2026, entre o paragrafo 4.2 do PLANO-AREA-DE-NEGOCIACAO.md e o gestos.aceitar da TAR-123",
+  "o_que_e": "Quando um aluno manda uma proposta para um projeto, o sistema ja o marca como se ele estivesse trabalhando, mesmo que o cliente ainda nao tenha respondido nada.",
+  "o_que_muda": "Enquanto o cliente pensa, que pode levar dias, o aluno fica fora da fila e nao recebe nenhum outro trabalho. Ele e punido pela demora de outra pessoa. O plano aprovado diz que isso nao pode acontecer: negociar nao e a mesma coisa que estar trabalhando.",
+  "exemplo": "Um aluno propoe um preco na segunda-feira. O cliente so olha na quinta. Nesses tres dias o aluno nao recebe nenhuma outra oferta, mesmo sem ter comecado trabalho nenhum.",
+  "importancia": 70
+}

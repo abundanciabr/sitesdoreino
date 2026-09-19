@@ -1,0 +1,19 @@
+{
+  "arquivo": "483-declarar-quem-responde-pela-biblioteca-de-codigo-compartilha",
+  "id": "TAR-483",
+  "titulo": "Declarar quem responde pela biblioteca de codigo compartilhada",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "pytest ci/tests/test_codeowners_ganchos.py verde, cobrindo os arquivos da pasta compartilhada",
+  "despacho": "Tarefa pequena e cirurgica no sitesdoreino: dar dono declarado ao pacote compartilhado no CODEOWNERS.\n\nAbra bancada: python ci/sessao.py --celula ci --tarefa dono-do-pacote-no-codeowners --sem-container\n\nO mantenedor concedeu mandato escrito em 19/09/2026, depois de ler a pendencia do PR 1742. Escreva na descricao do PR a linha Mandato-do-mantenedor com o pedido e o caminho .github/CODEOWNERS autorizado. Nao toque nenhum outro caminho sob CODEOWNERS; se precisar, pare e relate.\n\nO portao que confere as wheels vendorizadas de packages/outbox-relay ja foi mecanizado pela TAR-465. Falta o sentido literal de dar dono: uma linha em .github/CODEOWNERS para /packages/, com o alinhamento de colunas que o arquivo ja usa, conferindo que nenhuma regra posterior engole esse caminho, porque em CODEOWNERS vale a ultima regra que casa.\n\nEstenda ci/tests/test_codeowners_ganchos.py para exigir dono nos arquivos versionados de packages/, provando vermelho antes de verde, e rode tambem test_merge_automatico.py, test_vigia_do_pouso.py e test_mapa_de_execucao.py.\n\nEntregue por um unico PR pelo rito, com make pr ou ci/pr.py, e devolva o numero do PR a maestro.",
+  "origem": "pendencia do PR 1742, mandato do mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

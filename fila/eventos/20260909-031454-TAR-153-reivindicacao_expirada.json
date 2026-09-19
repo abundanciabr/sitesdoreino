@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260909-031454-TAR-153-reivindicacao_expirada",
+  "tarefa": "TAR-153",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-09T03:14:54+00:00",
+  "quem": "despacho-ci-verificador-maiusculas-fim-linha",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}

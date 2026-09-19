@@ -10,8 +10,8 @@ acompanhe o livro, três peças precisam concordar:
    (é ele quem monta a matriz do `deploy-celula` e o escopo do `ci-celula`);
 2. o `deploy-celula` escuta `painel/**` no `paths:`
    (sem isso o workflow nem começa, e a peça 1 nunca é consultada);
-3. o build da `admin` MONTA o painel e COPIA `painel/` para dentro do contexto
-   (sem isso a imagem sobe sem painel — e o deploy fica verde).
+3. o publicador de dados MONTA, VALIDA e ATIVA `painel/` fora do build da
+   imagem (sem isso a imagem seria reconstruída a cada registro).
 
 Desde 28/08/2026 (Onda 3 — escritor único) a peça 3 ganhou uma metade nova: os
 artefatos do painel não moram mais no Git, então o build precisa CONSTRUÍ-LOS
@@ -116,8 +116,7 @@ def test_a_cerca_de_largura_nao_volta():
     ]
     assert not linhas, (
         "a cerca de largura voltou — um PR passaria a ser recusado por tocar "
-        "mais de uma célula, sem que ninguém tivesse medido nada: "
-        + ", ".join(linhas)
+        "mais de uma célula, sem que ninguém tivesse medido nada: " + ", ".join(linhas)
     )
 
 
@@ -132,43 +131,58 @@ def test_o_deploy_escuta_a_pasta_do_painel():
     )
 
 
-def test_o_build_da_admin_embute_o_painel():
-    """A peça 3: a cópia para dentro do contexto do build.
+def test_o_publicador_prepara_o_painel_fora_do_build():
+    """A peça 3: publicação de dados, não rebuild da imagem.
 
-    O contexto é `services/admin`, que não alcança `painel/` na raiz. Sem o
-    passo de cópia a imagem é publicada sem o painel, a rota responde a tela
-    "o painel não veio nesta versão" — e o deploy fica VERDE, porque nada
-    falhou. Falso-verde é o padrão 1 da retrospectiva.
+    Registro novo no livro muda dados estáticos. Reconstruir a imagem da admin
+    para isso acopla o painel ao deploy da aplicação e devolve o custo que esta
+    fase existe para cortar.
     """
     texto = DEPLOY.read_text(encoding="utf-8")
-    assert (
-        "cp -R painel services/admin/painel_embutido" in texto
-    ), "o build da `admin` precisa copiar `painel/` para o contexto"
-    assert "test -f painel/painel.html" in texto, (
-        "a cópia precisa ser fail-closed: pasta ausente tem de PARAR o build, "
-        "nunca publicar uma imagem sem painel"
+    assert "python ci/preparar_dados_admin.py painel" in texto
+    assert "script_path: infra/publicar-dados-admin-na-vps.sh" in texto
+    assert "ADMIN-DADOS-(PUBLICADOS|ANTIGO-IGNORADO): tipo=painel" in texto
+    assert "cp -R painel services/admin/painel_embutido" not in texto
+
+
+def test_os_executaveis_da_publicacao_estao_no_indice_do_git():
+    """Workflow que chama arquivo fora do PR passa local e quebra na integracao."""
+    exigidos = [
+        "ci/preparar_dados_admin.py",
+        "ci/publicador_dados_admin.py",
+        "infra/publicar-dados-admin-na-vps.sh",
+        "services/admin/apps/core/admin_dados.py",
+    ]
+
+    resultado = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", *exigidos],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+    )
+
+    assert resultado.returncode == 0, (
+        "a publicacao de dados referencia arquivo que nao entra no PR: "
+        f"{resultado.stderr or resultado.stdout}"
     )
 
 
-def test_o_build_MONTA_o_painel_antes_de_copiar():
-    """A metade nova da peça 3: o deploy é o escritor único dos artefatos.
+def test_o_publicador_MONTA_o_painel_antes_de_enviar():
+    """A metade nova da peça 3: a publicação é o escritor único dos artefatos.
 
     `painel.html` e `livro-AAAAMM.js` deixaram de morar no Git em 28/08/2026 —
     eles eram a colisão diária entre robôs. Quem os constrói é a integração. Se
-    a linha do gerador sumir daqui, o `cp` copia uma pasta sem página, a rota do
-    painel responde "não veio nesta versão" e o deploy fica VERDE: exatamente o
-    falso-verde que esta suíte inteira existe para impedir.
-
-    A ORDEM importa e é medida: gerar depois de copiar não teria efeito nenhum
-    sobre a imagem, e passaria por uma verificação que só procurasse a linha.
+    a linha do gerador sumir daqui, o `scp` envia uma pasta sem página e a
+    publicação fica verde com painel velho no ar: exatamente o falso-verde que
+    esta suíte existe para impedir.
     """
     texto = DEPLOY.read_text(encoding="utf-8")
-    assert "node painel/gerar_manifesto.js" in texto, (
-        "o build da `admin` precisa MONTAR o painel — os artefatos não são "
+    assert "python ci/preparar_dados_admin.py painel" in texto, (
+        "a integração precisa MONTAR o painel — os artefatos não são "
         "mais commitados (Onda 3, escritor único)"
     )
-    assert texto.index("node painel/gerar_manifesto.js") < texto.index(
-        "cp -R painel services/admin/painel_embutido"
+    assert texto.index("python ci/preparar_dados_admin.py painel") < texto.index(
+        "Enviar dados do painel para staging na VPS"
     ), "montar o painel DEPOIS de copiar não põe nada dentro da imagem"
 
 
@@ -228,9 +242,37 @@ def test_a_celula_admin_serve_o_painel_da_raiz():
     fonte = (RAIZ / "services" / "admin" / "apps" / "core" / "painel.py").read_text(
         encoding="utf-8"
     )
+    assert "PASTA_DADOS_PAINEL_ATIVO" in fonte
+    assert "selecionar_dados" in fonte
+
+
+def test_mudanca_so_de_dados_nao_entra_na_matriz_de_imagem():
+    """O objetivo estrutural da Fase 2: publicar dados sem build da admin."""
+    fluxo = yaml.safe_load(DEPLOY.read_text(encoding="utf-8"))
+    detectar = fluxo["jobs"]["detectar"]["outputs"]
+    assert detectar["painel_dados"] == "${{ steps.d.outputs.painel_dados }}"
+    assert detectar["fila_dados"] == "${{ steps.d.outputs.fila_dados }}"
+    assert detectar["celulas_imagem"] == "${{ steps.d.outputs.celulas_imagem }}"
+
+    deploy = fluxo["jobs"]["deploy"]
+    assert "celulas_imagem != '[]'" in deploy["if"]
     assert (
-        'RAIZ_DA_CELULA / "painel_embutido"' in fonte
-    ), "o nome da pasta precisa bater com o `cp` do deploy-celula"
+        deploy["strategy"]["matrix"]["celula"]
+        == "${{ fromJSON(needs.detectar.outputs.celulas_imagem) }}"
+    )
+    texto = DEPLOY.read_text(encoding="utf-8")
+    assert "SOMENTE_DADOS_ADMIN=true" in texto
+    assert "JSON_IMAGEM='[]'" in texto
+
+
+def test_publicador_de_dados_nao_constroi_imagem_nem_reinicia_admin():
+    fluxo = yaml.safe_load(DEPLOY.read_text(encoding="utf-8"))
+    job = fluxo["jobs"]["publicar-dados-admin"]
+    corpo = str(job)
+    assert "docker build" not in corpo
+    assert "docker/login-action" not in corpo
+    assert "deploy-celula-na-vps.sh" not in corpo
+    assert "publicar-dados-admin-na-vps.sh" in corpo
 
 
 # ---------------------------------------------------------------------------
@@ -263,9 +305,9 @@ def _passos_de_ativacao() -> list[dict]:
         passo
         for passo in fluxo["jobs"]["deploy"]["steps"]
         if "ssh-action" in str(passo.get("uses", ""))
-        and (passo.get("with") or {}).get("script_path", "").endswith(
-            "deploy-celula-na-vps.sh"
-        )
+        and (passo.get("with") or {})
+        .get("script_path", "")
+        .endswith("deploy-celula-na-vps.sh")
     ]
 
 
@@ -404,7 +446,7 @@ def test_todas_as_tentativas_rodam_o_MESMO_script() -> None:
     É o motivo de o script ter saído do YAML: uma definição só do que a entrega
     faz, chamada N vezes.
     """
-    caminhos = {p["with"].get("script_file") for p in _passos_de_ativacao()}
+    caminhos = {p["with"].get("script_path") for p in _passos_de_ativacao()}
     assert len(caminhos) == 1, f"tentativas rodando scripts diferentes: {caminhos}"
 
 

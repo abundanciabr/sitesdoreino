@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-064-cadastra-primeiros-dolares-com-roblox",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "Primeiros Dólares com Roblox entrou na escola",
+  detalhe: "O Admin criou o curso sem duplicar produto: nome Primeiros Dólares com Roblox, slug primeiros-dolares, produto existente Primeiros Dolares com Roblox, progressão livre e nenhuma aula publicada. O catálogo público lista o cartão sem redirecionamento e informa que nenhuma aula está aberta. A sala específica, sem matrícula na sessão de conferência, informa que não há matrícula ativa.",
+  autoridade: "sessao",
+  evidencia: "https://meshcraft.top/admin/escola/cursos/ e https://meshcraft.top/cursos/. Testes: admin 39 passed; catálogo 17 passed; acesso pela matrícula 20 passed; sala por curso 19 passed; progressão livre 12 passed.",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "site",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

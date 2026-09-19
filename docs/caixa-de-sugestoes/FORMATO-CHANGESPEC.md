@@ -54,9 +54,26 @@ Um ChangeSpec não está pronto para um agente pegar enquanto:
 
 Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar durante a implementação, nasce `CS-PORTFOLIO-0001-v2`, com um campo `SUBSTITUI` apontando para o anterior — o mesmo princípio do histórico append-only da célula de sugestões, aplicado aqui.
 
-## 5. Gatilho no pipeline de status
+## 5. Gatilho no pipeline de status — REVOGADO em 06/09/2026
 
-`Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec com `APROVADO_POR` preenchido referenciando aquele `suggestion_id`. Isso não é regra de interface — é validação no `save()` ou no serializer da célula de sugestões. Ninguém, agente ou pessoa apressada, move o status sem o corredor existir primeiro.
+**A trava não existe mais, e esta seção fica aqui para dizer isso.** Até
+06/09/2026 `Sugestao.status` só saía de `PLANEJADO` para `EM_DESENVOLVIMENTO`
+com um ChangeSpec aprovado registrado, em três degraus (o ponto de
+estrangulamento da moderação, o `Sugestao.save()` e um trigger no Postgres).
+
+O mantenedor mandou tirar a trava, em pergunta estruturada, junto com a tela de
+assinatura de obra do Admin, que era a única chave dela — remover só a tela
+trancaria a fase para sempre. O motivo, medido na hora do pedido: nenhum
+workflow, nenhum robô e nenhuma tarefa da fila leem `em_desenvolvimento`, então
+a trava guardava um rótulo de roadmap, e não um gatilho de máquina. Quem
+despacha robô nesta casa é a fila (`ci/fila.py`), que não conhece a Caixa.
+
+**O que continua valendo:** registrar um ChangeSpec segue sendo de quem está em
+`SUGESTOES_APROVADORES`, e o registro segue append-only — o §4 inteiro está de
+pé. O que saiu foi a EXIGÊNCIA, nunca a memória do que foi autorizado. Religar é
+reaplicar o `reverse_sql` da migration
+`services/sugestoes/apps/sugestoes/migrations/0014_a_fase_anda_sem_assinatura.py`,
+e devolver os dois degraus Python.
 
 **Quem pode aprovar, decidido em 25/08/2026 — lei em [`DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`](DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md).** O `APROVADO_POR` do §1 deixou de ser só prosa: a célula reconhece como aprovador **apenas** quem estiver em `SUGESTOES_APROVADORES` (variável de ambiente da VPS, hoje só o mantenedor), e a lista vazia é **fail-closed** — ninguém aprova, nada entra em desenvolvimento. Ser da equipe (`SUGESTOES_STAFF_EMAILS`) **não basta**: moderar e autorizar desenvolvimento são papéis diferentes. E a célula **não lê o repositório em runtime**: ela guarda o registro do ChangeSpec (id, aprovador, data, link), não confere o documento — a garantia é "alguém autorizado afirmou, e ficou registrado quem e quando".
 

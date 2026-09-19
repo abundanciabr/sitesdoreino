@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-095143-TAR-283-concluida",
+  "tarefa": "TAR-283",
+  "evento": "concluida",
+  "quando": "2026-09-10T09:51:43+00:00",
+  "quem": "maestro-fase-1",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1500; revisao=2307e859e1880f90e7d2a5ca8dfffcf069106b5e; arvore=bb037fd6b339c705882598f6671ff30ac69e7bfb; head=09e2680a74af55f5e7b32947b9344a82535e0f7c; merge=cd201c495824c4fca16155031b5f87ad93cf05f1; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34456533118; atestado=atestado aprovado para 09e2680a74af55f5e7b32947b9344a82535e0f7c; aceite=painel/registros/20260910-027-scale-os-aceite-tar283.js",
+  "verificado_em": "2026-09-10"
+}

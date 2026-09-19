@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015941-TAR-210-explicada",
+  "tarefa": "TAR-210",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:41+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Quando uma publicacao e cancelada, existe um robo que decide se precisa repetir. Ele confere se o codigo ja esta la, e para por ai. Nao confere se a parte do site que ia ser publicada foi mesmo publicada.",
+  "o_que_muda": "Uma parte do site fica velha e ninguem percebe. O robo responde que ja esta no ar quando nao esta.",
+  "exemplo": "E conferir que a encomenda chegou ao predio e concluir que ela chegou ao seu apartamento.",
+  "importancia": 72
+}

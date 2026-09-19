@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-181849-TAR-063-cancelada",
+  "tarefa": "TAR-063",
+  "evento": "cancelada",
+  "quando": "2026-09-06T18:18:49+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md"
+}

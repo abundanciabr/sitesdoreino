@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-033222-TAR-202-concluida",
+  "tarefa": "TAR-202",
+  "evento": "concluida",
+  "quando": "2026-09-07T03:32:22+00:00",
+  "quem": "sessao-ci-espera-20260907",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1279 - ci/esperar.py confere via gh, antes do laco, que o numero de --checks/--pouso e um PR deste repositorio (e ABERTO, no --checks). Vermelho->verde: 5 testes novos, 3 falhavam antes do conserto e a suite fecha em 50 passed. Com o gh real: --checks 6 recusado (MESCLADO desde 2026-08-13), --checks 999999 recusado (nao existe), --checks 1224 aceito e medido (7 checks verdes em 24s). Registro 20260907-022 embarcado no mesmo ramo.",
+  "verificado_em": "2026-09-07"
+}

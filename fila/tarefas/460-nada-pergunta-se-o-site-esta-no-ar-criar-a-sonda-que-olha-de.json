@@ -1,0 +1,20 @@
+{
+  "arquivo": "460-nada-pergunta-se-o-site-esta-no-ar-criar-a-sonda-que-olha-de",
+  "id": "TAR-460",
+  "titulo": "Nada pergunta se o site esta no ar: criar a sonda que olha de fora",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Run do workflow mostrando o status recebido host a host, e um caso de falha provocado (host inexistente) produzindo o aviso. Guarda provado por mutacao.",
+  "despacho": "# Brief compilado\n\nobjetivo: Criar a sonda que pergunta de fora se cada host cadastrado responde, e avisa quando nao responder\ntipo: teste\nmodelo_recomendado: sonnet\nesforco_recomendado: high\nmotivo_do_modelo: guarda novo que precisa morder; a prova por mutacao e o coracao da tarefa\ncelula: ci\n\n## O achado que origina esta tarefa (medido em origin/main, 18/09/2026)\n\nNenhum mecanismo desta casa pergunta se o site responde.\n\n- `ci/vigia_do_cadeado.py` e o unico olho externo: ele so importa `ssl`, abre\n  um handshake e le `notAfter` do certificado. Nenhuma requisicao HTTP,\n  nenhum codigo de status. Roda uma vez por dia.\n- `git grep -niE \"autoheal|watchtower|uptime\" -- infra/ ci/ .github/` devolve\n  vazio.\n- O `healthcheck` do compose so e LIDO durante o `up -d --wait` do deploy. Em\n  regime, `restart: unless-stopped` reage a processo MORTO, nunca a processo\n  vivo e travado (uvicorn com pool esgotado, consumidor em deadlock, migrate\n  pendurado).\n\nConsequencia: um Traefik com certificado perfeito na frente de 18 celulas\nmortas passa no unico olho que existe hoje.\n\n## Arquivos-alvo\n\n- ci/vigia_do_site.py\n- .github/workflows/vigia-do-site.yml\n- ci/tests/test_vigia_do_site.py\n\n## Somente leitura\n\n- infra/sites.json (a lista de hosts; e dado, nao se edita aqui)\n- ci/vigia_do_cadeado.py (o molde a seguir: ele ja sabe descobrir os hosts)\n\n## Fora de mandato\n\n- infra/ e caminho CODEOWNERS: nao toque sem mandato escrito.\n- Nao crie dependencia nova: a casa ja faz HTTP com a biblioteca padrao.\n- Nao proponha servico pago de monitoramento: isso e dinheiro, e e do dono.\n\n## Como fazer\n\nSiga o molde do vigia do cadeado, que ja resolve a parte dificil (descobrir a\nlista de hosts e abrir a issue). Troque a pergunta: em vez de \"quando este\ncertificado vence\", pergunte \"este host responde agora\". Um GET na raiz de\ncada host cadastrado em `infra/sites.json`, com teto de tempo explicito, e o\nstatus recebido impresso host a host. Fail-closed: nao conseguir medir e\nERROR, nunca PASS (INV-CI01).\n\n## Prova exigida\n\n- O teste nasce vermelho e fica verde.\n- Mutacao: sabote a linha que compara o status e confirme que o teste REPROVA.\n  Guarda que continua verde sabotado nao testa nada.\n- Um caso de falha provocado (host que nao existe) precisa produzir o aviso,\n  nao passar em silencio.\n- FAIL corrige codigo; ERROR corrige instrumento ou ambiente.",
+  "origem": "Auditoria do mapa para IA de 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

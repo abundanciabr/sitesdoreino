@@ -3,6 +3,10 @@
 > **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
+> Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é a sessão que
+> recebe o pedido (Claude Code por regra; Codex quando o pedido é colado nele); o
+> agente de célula segue a ficha `despacho`, seja sub-agente ou Codex que pega tarefa
+> na fila; a verificação depois do merge é do Antigravity.
 >
 > Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
 > merge passou ao agente (PR #58, Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`)
@@ -15,7 +19,8 @@
 
 **Desde 05/09/2026 você não precisa pedir.** Todo pedido seu numa sessão é um
 lote: a sessão que o recebe divide em pedaços independentes, dispara um
-sub-agente por pedaço com as fichas de `.claude/agents/`, e só o que depende
+sub-agente por pedaço com as fichas de `.claude/agents/`, ou cria a tarefa na
+fila com o brief compilado inteiro no campo `despacho`, que o Codex executa, e só o que depende
 de outro pedaço fica em série (CLAUDE.md, "Todo pedido do mantenedor é um
 lote"; decisão sua no registro `20260905-013`). O texto abaixo continua
 valendo para quando você quer que a sessão tire o trabalho DA FILA em vez de
@@ -33,7 +38,7 @@ Variações que funcionam igual:
 - `...um lote menor (3 despachos)` (gasta a franquia mais devagar)
 - `...só o canário` (1 despacho, para ver a esteira rodar de ponta a ponta)
 
-Só isso. A sessão monta, dispara, vigia, **mergeia** e te reporta no fim. As únicas
+Só isso. A sessão monta, dispara, revisa, pede pouso e te reporta no fim. As únicas
 coisas que podem voltar para você são as do §7 (segredos, VPS, contrato) — e virão
 como **um bloco único de colar, com a janela rotulada** (CLAUDE.md).
 
@@ -46,12 +51,13 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 
 **1 lote = N despachos em PARALELO + 1 janela de merge serial no fim.**
 
-- Cada despacho em célula/área **distinta** (a cerca 1 PR = 1 célula é a proteção
-  real — CONSTITUICAO Lei 2.3); cada um em worktree próprio (RITOS §1).
+- Cada despacho tem alvos distintos e worktree próprio (RITOS §1). Prefira
+  uma célula por PR; CONSTITUICAO Lei 2.3 permite mais de uma, com as suítes
+  de todas as tocadas. O orçamento de 15 arquivos continua.
 - Duas tarefas na MESMA célula não rodam em paralelo: viram **fila interna**
   (uma atrás da outra, no mesmo agente ou em agentes sucessivos).
-- Os merges saem **serial, um a um, pelo portão** (RITOS §2 peça 4) — executados
-  pela maestro, nunca pedidos ao humano.
+- Os merges saem **serial, um a um, pela pista** (RITOS §2 peça 4). A maestro
+  encaminha o PR revisado e confere o resultado observado.
 
 ## §2 — Montagem (antes de disparar qualquer agente)
 
@@ -59,7 +65,7 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
    "Precisa de você" — que é CALCULADA dos registros, não uma lista mantida) >
    PLANO-10X (ondas). O pedido dele é o **mandato** —
    inclusive para os caminhos CODEOWNERS que o lote tocar (Lei 4).
-2. **Recorte pela cerca:** 1 PR = 1 célula. Conte os arquivos de cada despacho NO
+2. **Recorte por responsabilidade:** prefira uma célula por PR. Conte os arquivos NO
    PAPEL antes de escrever o brief (orçamento de 15 é portão mecânico — ARMADILHAS §5.1).
 3. **Brief fechado por despacho** (template em CAMINHO-DOURADO §2, que já
    carrega a linha do Padrão de Trabalho): célula, arquivos-
@@ -95,7 +101,8 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 
 - Dispare os agentes em paralelo, um por despacho, cada um com seu brief. Se o brief
   nomeia worktree, dispare **sem** isolamento de worktree do harness (ARMADILHAS §8.1)
-  — o agente cria o dele pelo RITOS §1.
+  — o agente cria o dele pelo RITOS §1. O Codex abre a própria bancada por
+  `make sessao` a partir da tarefa da fila.
 - **Regras anticolisão vão DENTRO de cada brief:** arquivo de texto compartilhado
   (ARMADILHAS, tabela do red-team, bloco `env:` do `ci-celula.yml`) ⇒ cada sessão
   escreve SÓ a própria entrada/linha e faz `git fetch origin && git rebase
@@ -103,20 +110,29 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
   sobrevivem, nunca se descarta a alheia.
 - **Agente parado ≠ lote parado.** A maestro segue com os demais e volta ao parado.
 - **Regra de parada vale dentro do lote:** 2 correções consecutivas falharam ⇒ o
-  agente faz `git reset --hard <último-verde>` e reporta (RITOS §2.2). A maestro
-  decide: re-briefar com diagnóstico melhor OU tirar o despacho do lote.
+  agente para. Nesse ponto, preserve os arquivos e commits e reporte o
+  diagnóstico (RITOS §2.2). A maestro decide se reformula o despacho ou o
+  retira do lote.
+- **Depois de `--pousar`, a maestro NÃO espera checks, merge ou deploy.** O veredito do
+  deploy é conferido por cron ou na próxima sessão. A maestro reporta o
+  estado dos PRs ao mantenedor e encerra. O deploy leva 3.2 min de mediana;
+  a pista reporta sozinha no PR.
 
-## §5 — A janela de merge (serial, um a um, na ordem do §3)
+## §5 — Encaminhamento à pista (na ordem do §3)
 
-Para cada PR verde, na ordem canário → comuns → dinheiro:
+Para cada PR com revisão independente e recibo, na ordem canário → comuns → dinheiro:
 
 ```bash
-python ci/mergear.py <N> --conferir     # os checks acabaram? tudo verde?
-python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
+python ci/mergear.py <N> --pousar
 ```
 
-- Vermelho, pendente, ausente ou ERROR ⇒ **não mergeia**: conserta ou fica fora do
-  lote. O botão do site não é caminho (Lei 4).
+O comando confere a etiqueta `pousar` e o SHA remoto antes de responder
+`ENFILEIRADO`. A maestro encerra; eventos do GitHub acionam a pista. A decisão vigente é a emenda da CONSTITUICAO Lei 4, registro
+`20260829-006`: só a pista executa o merge. `--confirmo` é reservado a ela.
+PR aberto, revisão aprovada, integração e publicação são estados distintos.
+
+- Vermelho ou erro de consulta recusa o pedido; checks pendentes ou ainda ausentes
+  aguardam na pista. Nenhum desses estados permite merge. O botão do site não é caminho (Lei 4).
 - **Merge que dispara deploy** (`services/**` ⇒ `deploy-celula`; `infra/**` ⇒
   `deploy-infra`): antes do PRÓXIMO merge, leia o veredito REAL do run —
   `gh run view <id> --json status,conclusion` — nunca o exit de um pipe (§5.10).
@@ -132,12 +148,16 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §6 — Fechamento (é parte do lote, não epílogo)
 
-1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`): um
-   registro NOVO por PR, por deploy e por incidente da janela — sem perguntar antes
-   (CLAUDE.md), seguido de `node painel/gerar_manifesto.js`. Registro nunca se edita:
+1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`):
+   `make pr` já reserva e embarca recibo, evento e metadados do fechamento;
+   não repita esses efeitos nem convoque escrivão para duplicá-los. Julgamento
+   de lições, deploy e incidente da janela continuam exigindo registro NOVO,
+   validado com `node painel/gerar_manifesto.js`. Registro nunca se edita:
    correção ou resposta é outro registro, com `responde_a`.
 2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
    a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
+   Depois do merge, a maestro lê a verificação da sentinela (Antigravity), que
+   mede o aceite da ficha, não o diff.
 3. **Relatório único, em linguagem de resultado** ("os leads invisíveis agora
    aparecem"), contendo: a tabela do placar (abaixo), os anúncios de fortaleza,
    o que ficou de fora e por quê, e o que sobrou para o humano (§7) — em bloco
@@ -147,7 +167,7 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 | Despacho | Célula | PR | Portão | Merge | Deploy | Resultado em 1 frase |
 |---|---|---|---|---|---|---|
-| ... | ... | #N | PASS | ✅ agente | run verde | ... |
+| ... | ... | #N | PASS | ✅ pista | run verde | ... |
 
 ## §7 — O que NUNCA entra num lote / o que fica com o humano
 
@@ -1012,6 +1032,6 @@ ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar c
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
-CLAUDE.md (merge pelo agente; deploy pós-merge), CAMINHO-DOURADO.md §2 (template de
+CLAUDE.md (pedido de pouso; deploy pós-merge), CAMINHO-DOURADO.md §2 (template de
 brief), PLANO-10X (Alavancas 1, 2 e 5; anti-metas), ARMADILHAS-OPERACAO.md (§5.9 — como
 se mergeia) e `armadilhas/` (§5.10, §7.6, §8.1 — abra pelo `armadilhas/INDICE.md`).*

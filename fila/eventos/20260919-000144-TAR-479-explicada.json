@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-000144-TAR-479-explicada",
+  "tarefa": "TAR-479",
+  "evento": "explicada",
+  "quando": "2026-09-19T00:01:44+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "bash ci/freeze-de-contrato.sh escolhe o primeiro Python do PATH que tenha versao >= 3.10, sem checar se tem Django instalado",
+  "o_que_muda": "documenta que o ERROR ModuleNotFoundError django nesse script e defeito de instrumento (Python errado escolhido), nao de contrato, para ninguem perseguir defeito inexistente",
+  "exemplo": "na maquina Windows do dono, python do PATH resolve para 3.14 sem Django; python ci/contract_freeze.py alunos direto pelo 3.12 da bancada devolve PASS com o mesmo contrato",
+  "importancia": 40
+}

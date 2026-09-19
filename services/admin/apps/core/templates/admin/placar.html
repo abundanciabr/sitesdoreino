@@ -216,6 +216,15 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     <p class="recado-fraco espaco-abaixo-10">
       <a href="{% url 'ciclo' %}">Ver o calendário do ciclo, semana a semana &rarr;</a>
     </p>
+    {% comment %}
+    A porta do FIM da mesma régua (07/09/2026, degrau 13). Ela fica colada no
+    calendário de propósito: as duas leem o mesmo cartão, uma pelo caminho e a
+    outra pelo destino. Sem este link a tela do fechamento seria um endereço
+    que só quem leu o plano saberia existir.
+    {% endcomment %}
+    <p class="recado-fraco espaco-abaixo-10">
+      <a href="{% url 'fechamento' %}">Ver o fechamento do ciclo, e o que a escola para de fazer &rarr;</a>
+    </p>
     <p class="lei">
       <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
       {% if placar.alvo is not None %}
@@ -414,6 +423,19 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <li><b>{{ e.cartao.pergunta }}</b> <span class="rotulo">sem dados</span> {{ e.cartao.sem_fonte_porque }}</li>
     {% endfor %}
   </ul>
+  {% comment %}
+  A REDE DE TALENTOS (07/09/2026, degrau 17) entra AQUI, dentro do bloco das
+  estrelas-guia, e não como um bloco novo da capa. A razão é a mesma do
+  laboratório mais abaixo: o laço de talentos TERMINA na primeira estrela
+  ("alunos com resultado profissional"), então ele mora ao lado do número que
+  pretende mover. E a capa tem teto de nove blocos (tests/test_capa.py), que já
+  usa nove: bloco novo aqui derrubaria o guarda.
+  {% endcomment %}
+  <p class="recado-fraco">
+    O caminho que faz a primeira estrela subir tem nome e tem tela:
+    <a href="{% url 'talentos' %}">a rede de talentos</a>, com as alunas
+    escolhidas, os estúdios parceiros e as alunas que já começaram um trabalho.
+  </p>
   {% endif %}
 
   {% if doze %}

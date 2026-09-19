@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-008",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "Em origin/main a muralha_pasta_compartilhada.py roda so no SessionStart, como aviso. Nada impede um robo de editar o clone principal compartilhado. Esta e a causa mecanica mais provavel da mutilacao do CLAUDE.md em 12/09 as 08:56: 219 linhas de lei apagadas soltas na arvore do espelho. Segundo furo: mesmo a configuracao antiga, que barrava Edit/Write, deixava passar escrita por shell.",
+  "titulo": "Devolver a trava de edicao do clone compartilhado, cobrindo tambem a escrita por shell",
+  "baseline": "Contra origin/main=22a9bd26, os ganchos sao: PreToolUse matcher=Monitor -> muralha_da_espera.py; SessionStart matcher=(todos) -> muralha_pasta_compartilhada.py. Nenhum PreToolUse em Edit/Write. A trava existia antes: `git show 5108e307:.claude/settings.json` tem matcher `Edit|Write|NotebookEdit|Bash|PowerShell` para essa muralha. Medido em 12/09 com a configuracao ANTIGA ativa: `Write` no clone principal devolveu exit 2, e um `cp` para o mesmo destino, no mesmo instante, gravou 16.701 bytes sem reclamar.",
+  "aceite": "Os DOIS caminhos fechados, com saida colada: tentativa de Edit/Write no clone principal devolve exit 2, E `cp`/redirecionamento de shell para o mesmo destino tambem e recusado. Sem regressao: escrita dentro de uma bancada wt-* continua livre (mostrar um Write verde la), e a suite da muralha 100% verde. Esta ficha anda CONTRA a otimizacao (custa 1 processo Python por edicao contra 0 hoje): a alternativa sem custo em tempo de robo e um guarda de CI que recuse PR cuja edicao veio do clone principal. A escolha entre pegar na hora e pegar depois e do mantenedor, e esta escrita na secao 6 do CONSENSO-FASE-4.md."
+}

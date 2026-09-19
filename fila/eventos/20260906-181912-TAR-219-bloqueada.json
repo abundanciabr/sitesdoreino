@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-181912-TAR-219-bloqueada",
+  "tarefa": "TAR-219",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T18:19:12+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "Separar quem LE o menu do site de quem pode REESCREVE-LO precisa mexer em contracts/ e services/catalogo/, duas pastas protegidas: nenhum robo entra nelas sem uma autorizacao sua por escrito. O quarto par de leitura ja entrou pelo desenho antigo; falta so a separacao dos graus (armadilhas/318).",
+  "espera": "mantenedor"
+}

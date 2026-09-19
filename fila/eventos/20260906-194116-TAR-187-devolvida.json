@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-194116-TAR-187-devolvida",
+  "tarefa": "TAR-187",
+  "evento": "devolvida",
+  "quando": "2026-09-06T19:41:16+00:00",
+  "quem": "despacho-pages-aviso-portfolio-20260906",
+  "detalhe": "As duas travas cairam com o mantenedor em 06/09/2026: o Rito de Contrato aprovou o assunto pages.portfolio-conferido no enum de notificacao.devida.v1, e ele liberou nominalmente a celula sugestoes so para a frase deste aviso. A tarefa volta a fila para ser construida."
+}

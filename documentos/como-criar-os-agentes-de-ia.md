@@ -16,7 +16,7 @@ Cada documento do projeto Meshcraft, lido inteiro e comparado com o código que 
 
 | # | Documento | Lido em | O veredito, em uma linha |
 |---|---|---|---|
-| 1 | Como começar a criar os agentes | 6 set 2026 | O método vale inteiro; **um dos sete agentes já está no ar** |
+| 1 | Como começar a criar os agentes | 6 set 2026 | O método vale inteiro; dos sete agentes, **só dois são de IA de verdade**, e um deles já está no ar |
 | 2 | Antes de como começar (onde entra no site) | 6 set 2026 | Superado em dois pontos, e acertou em cheio no terceiro |
 | 3 | Ajustar o que foi escrito ao que já existe | 6 set 2026 | **É o documento que fez o ajuste**: de 8 lotes, 6 já tinham dono |
 | 4 a 10 | *a chegar* | | |
@@ -75,11 +75,11 @@ Toda entrega termina com cinco linhas: **RESUMO · LACUNAS · A VERIFICAR · ORI
 
 | # | Agente | O que faz | Estado aqui |
 |---|---|---|---|
-| 1 | **Extrator** | lê um documento-fonte e o decompõe em dados, citando a origem | É a tela de colar o sumário. **Registrado, não construído** |
+| 1 | **Extrator** | lê um documento-fonte e o decompõe em dados, citando a origem | **Construído em duas telas, e nenhuma delas usa IA**: a que cola o sumário e a que cola o capítulo inteiro |
 | 2 | **Revisor de coerência** | confere remissões, nomes canônicos e números repetidos | Vira **código**, não IA. **Não construído** |
 | 3 | **Guardião de fidelidade** | compara um derivado com a fonte e aponta onde o sentido mudou | O segundo agente de IA. **Não construído** |
 | 4 | **Historiador** | registra tudo o que aconteceu | **Dissolvido**: já é o livro de ocorrências do painel |
-| 5 | **Gerador de derivados** | produz o Cartão de 1 página e o quiz a partir do capítulo | **Não construído** |
+| 5 | **Gerador de derivados** | produz o Cartão de 1 página e o quiz a partir do capítulo | **Dissolvido**: os textos já estão escritos, e as duas coisas chegam dentro do próprio capítulo |
 | 6 | **Plantador de arquivos** | produz os arquivos de prática do Blender | **Não é software**: é trabalho de modelagem |
 | 7 | **Assistente de laudo** | pré-preenche a avaliação de uma entrega, para a professora assinar | **No ar**, com a Ficha de oito campos e a Ficha de Série medida do dado |
 
@@ -94,6 +94,18 @@ Porque já existe, com outro nome, e ter dois seria a doença que esta casa mais
 ### Por que o Revisor de coerência vira código, e não IA
 
 As seis coisas que ele confere são todas mecânicas: a remissão aponta para uma encomenda que existe, o instrumento está com o nome canônico, o número que se repete é igual em todas as ocorrências. Isso é comparação de listas, e uma IA faria pior, mais caro e sem garantia. **Chamar de agente o que um teste resolve é o desperdício mais silencioso deste método.**
+
+### O mesmo aconteceu com o Extrator, e por isso o placar DIMINUIU
+
+O Extrator estava previsto como agente de IA e nasceu como duas telas de colar, nenhuma delas com uma linha de IA dentro. A primeira recebe o sumário do livro e enche as 34 encomendas de uma vez; a segunda recebe o capítulo inteiro de uma encomenda e o reparte nas 16 peças dela. As duas são interpretadores de texto, determinísticos e de custo zero, porque o formato que o mantenedor escreve é reconhecível pelo nome dos títulos. Medido no capítulo real dele, o da Encomenda 08: **16 de 16 peças reconhecidas**, nenhuma sobrando.
+
+**Esta é a frase que resume a leitura inteira: aqui o placar de agentes de IA de verdade diminuiu em vez de crescer.** Dos sete previstos, quatro deixaram de ser agentes de IA, cada um por um motivo diferente. O Historiador já era o livro de ocorrências; o Plantador de arquivos nunca foi software; o Revisor de coerência é comparação de listas; e o Extrator é leitura de texto. Um quinto, o Gerador de derivados, foi dissolvido pela razão escrita logo abaixo. Sobram **dois**: o Assistente de laudo, que está no ar, e o Guardião de fidelidade, que falta. Nesta casa, a maior parte do que um documento chama de "agente" é um interpretador ou um portão, e descobrir isso cedo é economia, nunca perda.
+
+### Por que o Gerador de derivados foi dissolvido
+
+Ele existia para produzir, a partir do capítulo, o Cartão de 1 página e o quiz. Em 6 de setembro de 2026 o mantenedor disse que os textos das 34 aulas já estão escritos, e que o que falta não é gerar nada: é o caminho de entrada. Não há o que gerar.
+
+E a prova não é só a palavra dele, está no código. O Cartão de 1 página é a 16ª peça da anatomia no contrato congelado, e o quiz é lido do próprio capítulo colado, pergunta por pergunta, pela tela nova. As duas coisas que este agente produziria já chegam prontas dentro do texto que ele receberia.
 
 ## O protocolo de aceitação, que é o mesmo para todos
 
@@ -211,16 +223,15 @@ Esse é exatamente o tipo de confusão que custa uma rodada de trabalho.
 
 # O que ainda não tem dono
 
-- **Os capítulos**, que só o mantenedor pode trazer. Sem eles, os verificadores não têm o que verificar.
-- **A tela de colar o sumário** (o Extrator), registrada e não construída.
-- **O Revisor de coerência** e o **Guardião de fidelidade**.
-- **O Gerador de derivados** (o Cartão de 1 página e o quiz).
+- **Os capítulos**, que só o mantenedor pode trazer. Ele **já os escreveu**: o que falta é enviá-los pelas duas telas de colar, não escrevê-los.
+- **O Revisor de coerência**, que é código e não IA, e o **Guardião de fidelidade**, que é o único agente de IA que ainda falta.
 - **A tabela de colisões de vocabulário**, que merece virar parte das leis da casa e hoje só existe naquele documento.
 
 # Como conferir o que esta página afirma
 
 | Afirmação | Como medir |
 |---|---|
+| O Extrator existe e não usa IA | abrir `services/admin/apps/core/capitulo.py` e `sumario.py` e procurar `anthropic`: não há nenhum |
 | A Ficha de oito campos está no agente que está no ar | procurar `A FICHA DO AGENTE` em `services/cursos/apps/cursos/agente.py` |
 | O bloco final de cinco chaves existe | procurar `BLOCO_FINAL` no mesmo arquivo |
 | A IA não tem onde guardar uma decisão | o invariante `INV-CUR-L4`, no arquivo de invariantes da raiz |
@@ -230,4 +241,4 @@ Esse é exatamente o tipo de confusão que custa uma rodada de trabalho.
 
 ---
 
-*Os documentos do Meshcraft, lidos contra o que existe · atualizado em 6 de setembro de 2026 · Três de dez lidos. Uma Ficha de oito campos, um agente por coisa, e a regra que atravessa tudo: a saída da máquina nunca chega sozinha a ninguém.*
+*Os documentos do Meshcraft, lidos contra o que existe · atualizado em 6 de setembro de 2026 · Três de dez lidos. De sete agentes previstos, dois são de IA de verdade, e a regra que atravessa tudo continua: a saída da máquina nunca chega sozinha a ninguém.*

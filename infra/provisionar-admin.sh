@@ -41,6 +41,13 @@
 # O que TEM de ser diferente é o token DESTE par em relação aos outros pares
 # (funil, sugestoes) — o script confere isso no fim.
 #
+# E ESTA CÉLULA TAMBÉM É PROVEDORA, desde 06/09/2026: a `pages` pergunta aqui
+# quem é administrador da escola, para abrir a fila da conferência do portfólio.
+# Quem prova quem chama é `TOKENS_ACEITOS_PAGES`, e este roteiro a RELÊ do
+# arquivo vivo em vez de regerar (o porquê está na trava de deriva, mais
+# abaixo). Quem abre esse par nos dois lados, sem rotacionar nada, é
+# `infra/provisionar-par-do-portfolio-com-a-admin.sh`.
+#
 # IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só
 # nasce se faltar, o env antigo vira `.bak-<epoch>` antes de ser reescrito, e
 # as linhas na identidade são ATUALIZADAS em vez de duplicadas — chave repetida
@@ -51,8 +58,13 @@ set -u
 
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
-cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
-[ -f docker-compose.yml ]  || parar "não achei docker-compose.yml em /opt/plataforma."
+# A pasta da plataforma, com o mesmo nome de variável dos roteiros mais novos
+# desta casa. O padrão continua sendo `/opt/plataforma`, e nada muda para quem
+# roda na VPS; o que ela permite é provar este roteiro numa VPS de mentira, que
+# é a evidência que esta casa exige de quem mexe em provisionamento.
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv…)"
+[ -f docker-compose.yml ]  || parar "não achei docker-compose.yml em $RAIZ."
 [ -f env/identidade.env ]  || parar "não achei env/identidade.env — a identidade precisa estar provisionada antes (é dela que eu herdo a lista de quem entra, e é nela que registro o token do par)."
 
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
@@ -86,7 +98,53 @@ esac
 # Por que a lista mora aqui em vez de ser derivada do heredoc: este script roda
 # na VPS, onde não há Python nem a suíte de testes — só shell puro.
 # ---------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+# A OITAVA CHAVE ENTROU EM 06/09/2026, e nela esta célula é o PROVEDOR, não o
+# consumidor. A `pages` passou a perguntar aqui quem é administrador da escola,
+# para abrir a fila da conferência do portfólio (`contracts/admin.openapi.yaml`,
+# operação `isAdministrator`), e quem prova quem chama é `TOKENS_ACEITOS_PAGES`,
+# lida por `config/settings.py`.
+#
+# ELA É A ÚNICA DA LISTA QUE ESTE ROTEIRO NÃO REGERA: o valor é RELIDO do
+# arquivo vivo e regravado igual. Regerar rotacionaria um token em uso, e a fila
+# do portfólio responderia 401 até a `pages` ser reprovisionada. Aprender a
+# chave sem relê-la seria a `armadilhas/111` com outro nome. Ela só nasce aqui
+# quando falta dos dois lados, como marcador, até
+# `infra/provisionar-par-do-portfolio-com-a-admin.sh` alinhar os dois envs.
+#
+# A NONA CHAVE ENTROU EM 06/09/2026, e é a SEGUNDA que este roteiro não gera.
+# `GITHUB_TOKEN_FILA` é a chave do GitHub com que a tela dos robôs grava a
+# exclusão de uma tarefa da fila, e quem a preenche é o mantenedor, na VPS, por
+# `infra/por-a-chave-do-github.sh`. Ela nasce aqui VAZIA de propósito: vazia, o
+# botão de excluir tarefa fica desligado dizendo o que fazer, e nada mais na
+# área administrativa muda.
+#
+# ELA TAMBÉM É RELIDA do arquivo vivo antes da reescrita, pelo motivo do
+# parágrafo acima e por um a mais, que a torna a pior desta lista para se
+# perder: uma chave do GitHub aparece UMA VEZ SÓ na tela de quem a cria. Apagá-la
+# aqui não custaria uma reprovisão, custaria uma ida do mantenedor ao navegador
+# para gerar outra, e o sintoma seria um botão que voltou a ficar desligado sem
+# ninguém ter mexido nele. É a `armadilhas/111` de novo, e é exatamente o defeito
+# que a TAR-172 tem aberto contra o `infra/provisionar-forum.sh`, que escreve a
+# lista de professores vazia sem relê-la. Este roteiro não nasce com ele.
+#
+# A DÉCIMA E A DÉCIMA PRIMEIRA CHAVES ENTRARAM EM 07/09/2026, e são a TERCEIRA e
+# a QUARTA que este roteiro não gera. `ANTHROPIC_API_KEY` e
+# `ANTHROPIC_WORKSPACE_ID` são a chave da IA (e o workspace dela) com que o robô
+# analista do painel de gestão lê o livro de ocorrências e escreve o que está
+# vendo. Elas não nascem aqui: são COPIADAS de `env/forum.env`, onde o
+# mantenedor colou a chave uma vez em 02/09/2026, por
+# `infra/por-a-chave-da-ia-do-admin.sh`.
+#
+# ELAS TAMBÉM SÃO RELIDAS do arquivo vivo antes da reescrita, e sem isso este
+# roteiro teria dois defeitos de uma vez: PARARIA a cada execução acusando duas
+# variáveis que não sabe gerar (a trava logo abaixo), e, ensinado pela metade,
+# apagaria a chave da IA da área administrativa, deixando o robô analista mudo
+# com o deploy verde. É a `armadilhas/111` pela terceira vez neste arquivo.
+#
+# VAZIAS SÃO RESULTADO LEGÍTIMO, como a chave do GitHub: sem elas o robô
+# analista fica desligado dizendo o que fazer, e nada mais na área
+# administrativa muda.
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID DATABASE_URL DEBUG DJANGO_SECRET_KEY GITHUB_TOKEN_FILA IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME TOKENS_ACEITOS_PAGES"
 
 if [ -f env/admin.env ]; then
   SOBRANDO=""
@@ -116,6 +174,39 @@ else echo "  env/admin.env ................ não existe"; fi
 if grep -q "^TOKENS_ACEITOS_ADMIN=" env/identidade.env
 then echo "  par admin na identidade ...... já existe (atualizo o valor)"
 else echo "  par admin na identidade ...... não existe"; fi
+# O par em que esta célula é PROVEDORA: quem pergunta é a `pages`, e o valor é
+# RELIDO do arquivo vivo em vez de regerado (ver a lista da trava, lá em cima).
+# Faltando dos dois lados, nasce um marcador, e o roteiro do par o adota.
+if [ -f env/admin.env ]; then T_PAGES="$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)"; else T_PAGES=""; fi
+if [ -n "$T_PAGES" ]
+then echo "  par pages na admin ........... já existe (releio e regravo igual, sem rotacionar)"
+else
+  T_PAGES="$(openssl rand -hex 32)"
+  echo "  par pages na admin ........... não existe (gravo um marcador; quem alinha os dois lados é o roteiro do par)"
+fi
+# A chave do GitHub do botão de excluir tarefa: RELIDA do arquivo vivo, nunca
+# gerada aqui (ver a lista da trava, lá em cima). Vazia é resposta legítima e o
+# roteiro não para por isso: quem a põe é `infra/por-a-chave-do-github.sh`, e
+# sem ela o botão apenas nasce desligado dizendo o que fazer.
+if [ -f env/admin.env ]; then TOKEN_FILA="$(ler_de env/admin.env GITHUB_TOKEN_FILA)"; else TOKEN_FILA=""; fi
+if [ -n "$TOKEN_FILA" ]
+then echo "  chave do GitHub da fila ...... já existe (releio e regravo igual, sem apagar)"
+else echo "  chave do GitHub da fila ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-do-github.sh)"; fi
+# A chave da IA do robô analista e o workspace dela: RELIDAS do arquivo vivo,
+# nunca geradas aqui (ver a lista da trava, lá em cima). Vazias são resposta
+# legítima e o roteiro não para por isso: quem as copia do fórum para cá é
+# `infra/por-a-chave-da-ia-do-admin.sh`, e sem elas o robô analista apenas nasce
+# desligado dizendo o que fazer.
+if [ -f env/admin.env ]; then
+  CHAVE_IA="$(ler_de env/admin.env ANTHROPIC_API_KEY)"
+  WORKSPACE_IA="$(ler_de env/admin.env ANTHROPIC_WORKSPACE_ID)"
+else
+  CHAVE_IA=""
+  WORKSPACE_IA=""
+fi
+if [ -n "$CHAVE_IA" ]
+then echo "  chave da IA do analista ...... já existe (releio e regravo igual, sem apagar)"
+else echo "  chave da IA do analista ...... não existe (gravo vazia; quem a põe é infra/por-a-chave-da-ia-do-admin.sh)"; fi
 echo "  lista de admins .............. herdada de env/identidade.env (não digitei nada)"
 echo
 
@@ -139,7 +230,17 @@ psql_super -c "REVOKE ALL ON DATABASE admin_db FROM PUBLIC" >/dev/null \
   || parar "não consegui fechar o banco ao público."
 
 umask 077
-[ -f env/admin.env ] && cp -a env/admin.env "env/admin.env.bak-$(date +%s)"
+# A CÓPIA GUARDA O NOME, e não é conveniência: é ela o único registro do que o
+# arquivo dizia ANTES desta execução, e a conferência de preservação lá embaixo
+# compara com ELA. Comparar com a variável que acabou de escrever a linha seria
+# a variável se conferindo a si mesma — apagar a releitura zeraria os dois lados
+# ao mesmo tempo e a conferência ficaria verde apagando a chave, que é
+# exatamente o defeito que ela existe para pegar.
+BAK=""
+if [ -f env/admin.env ]; then
+  BAK="env/admin.env.bak-$(date +%s)"
+  cp -a env/admin.env "$BAK" || parar "não consegui guardar a cópia de segurança de env/admin.env. Nada foi alterado."
+fi
 
 # O molde é infra/env/admin.env.exemplo — se aquele arquivo ganhar variável
 # nova, este bloco precisa ganhar junto, senão a célula sobe sem ela.
@@ -151,6 +252,10 @@ SCRIPT_NAME=/admin
 IDENTIDADE_API_URL=http://identidade:8000/interno
 IDENTIDADE_API_TOKEN=$TOKEN_ADMIN
 ADMIN_EMAILS=$STAFF
+TOKENS_ACEITOS_PAGES=$T_PAGES
+GITHUB_TOKEN_FILA=$TOKEN_FILA
+ANTHROPIC_API_KEY=$CHAVE_IA
+ANTHROPIC_WORKSPACE_ID=$WORKSPACE_IA
 ENV
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, em vez de escolhidos por mim:
@@ -177,7 +282,7 @@ por_linha env/identidade.env TOKENS_COMPLETOS_ADMIN "$TOKEN_ADMIN"
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... OK"; else echo "  banco admin_db ............... FALTANDO"; fi
-echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 7)"
+echo "  linhas em admin.env .......... $(wc -l < env/admin.env)  (esperado 11)"
 echo "  dono/modo do env ............. $(stat -c '%U:%G %a' env/admin.env) (igual ao identidade.env: $(stat -c '%U:%G %a' env/identidade.env))"
 
 faltou=0
@@ -189,6 +294,54 @@ for chave in IDENTIDADE_API_URL IDENTIDADE_API_TOKEN ADMIN_EMAILS; do
   if grep -q "^$chave=..*" env/admin.env
   then echo "  admin.env / $chave ... OK"
   else echo "  admin.env / $chave ... FALTANDO"; faltou=1; fi
+done
+
+# A CONFERÊNCIA nº 1b: o par em que esta célula é PROVEDORA sobreviveu à
+# reescrita, com o MESMO valor que estava na cópia de segurança. Se ele sumir
+# ou mudar, a fila da conferência do portfólio passa a responder 401 para todo
+# mundo, e o sintoma é indistinguível de "ninguém tem permissão"
+# (`armadilhas/111`). Na primeira execução não há cópia anterior, então não há
+# valor a preservar e a conferência aceita a criação do marcador.
+if [ -n "$BAK" ]; then ANTES_PAGES="$(ler_de "$BAK" TOKENS_ACEITOS_PAGES)"; else ANTES_PAGES=""; fi
+if [ -z "$BAK" ]; then
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK (não havia valor anterior)"
+elif [ -n "$ANTES_PAGES" ] && [ "$(ler_de env/admin.env TOKENS_ACEITOS_PAGES)" = "$ANTES_PAGES" ]; then
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... OK (preservada, o mesmo valor que estava em $BAK)"
+else
+  echo "  admin.env / TOKENS_ACEITOS_PAGES ... FALTANDO (o valor anterior está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"
+  faltou=1
+fi
+
+# A CONFERÊNCIA nº 1c: a chave do GitHub do botão de excluir tarefa sobreviveu
+# à reescrita, com o MESMO valor que estava no arquivo. VAZIA É RESULTADO
+# LEGÍTIMO e não reprova nada, porque quem a põe é
+# `infra/por-a-chave-do-github.sh` e ela pode simplesmente ainda não existir. O
+# que NÃO pode acontecer é ela existir antes e sumir aqui: uma chave do GitHub
+# aparece uma vez só na tela de quem a cria, e o mantenedor teria de gerar
+# outra (`armadilhas/111`, e o defeito que a TAR-172 acusa no fórum).
+if [ -n "$BAK" ]; then ANTES_FILA="$(ler_de "$BAK" GITHUB_TOKEN_FILA)"; else ANTES_FILA=""; fi
+if [ "$(ler_de env/admin.env GITHUB_TOKEN_FILA)" = "$ANTES_FILA" ]
+then
+  if [ -n "$ANTES_FILA" ]
+  then echo "  admin.env / GITHUB_TOKEN_FILA ... OK (preservada, o mesmo valor que estava em $BAK)"
+  else echo "  admin.env / GITHUB_TOKEN_FILA ... vazia, como já estava (o botão de excluir tarefa segue desligado)"; fi
+else echo "  admin.env / GITHUB_TOKEN_FILA ... PERDI A CHAVE QUE ESTAVA AQUI (ela está intacta em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
+
+# A CONFERÊNCIA nº 1d: a chave da IA do robô analista e o workspace dela
+# sobreviveram à reescrita, com o MESMO valor que estava no arquivo. VAZIAS SÃO
+# RESULTADO LEGÍTIMO e não reprovam nada, porque quem as põe é
+# `infra/por-a-chave-da-ia-do-admin.sh` e elas podem simplesmente ainda não
+# existir. O que NÃO pode acontecer é existirem antes e sumirem aqui: o robô
+# analista ficaria mudo em produção com o deploy verde, e o sintoma seria
+# indistinguível de "a IA está fora do ar" (`armadilhas/111`).
+for chave in ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID; do
+  if [ -n "$BAK" ]; then ANTES_IA="$(ler_de "$BAK" "$chave")"; else ANTES_IA=""; fi
+  if [ "$(ler_de env/admin.env "$chave")" = "$ANTES_IA" ]
+  then
+    if [ -n "$ANTES_IA" ]
+    then echo "  admin.env / $chave ... OK (preservada, o mesmo valor que estava em $BAK)"
+    else echo "  admin.env / $chave ... vazia, como já estava (o robô analista segue desligado)"; fi
+  else echo "  admin.env / $chave ... PERDI O VALOR QUE ESTAVA AQUI (ele está intacto em $BAK; NÃO rode mais nada e mande esta tela ao agente)"; faltou=1; fi
 done
 
 # nº 2: os dois degraus do par, do lado da identidade.

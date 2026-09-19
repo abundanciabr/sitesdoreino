@@ -1,11 +1,15 @@
-"""Teste-guarda [INV-CUR-P2]: a porta só abre por laudo (`aberto` ou
-`aberto_com_ajuste`), nunca por data, por XP ou por pagamento; o acesso ao
-curso é a matrícula, e só.
+"""Teste-guarda [INV-CUR-P2]: a porta abre por UMA de duas regras, e a regra
+é dado do curso. No curso por laudo (o padrão, e o do livro), só por laudo
+`aberto` ou `aberto_com_ajuste`; no curso de progressão livre, só pelo gesto
+do próprio aluno, com as pausas registradas. Em nenhum dos dois por data, por
+XP ou por pagamento; o acesso ao curso é a matrícula, e só.
 
 Lei: `PLANO-CELULA-CURSOS.md` §9 ("é o INV-GAM3 da gamificação visto do lado
 da aula"); missão da célula ("o checkpoint abre a porta; o calendário,
-nunca"). O `Laudo` como tabela nasce no degrau 2.2; aqui `progresso.concluir`
-já EXIGE um, e o guarda prova que não há outro caminho.
+nunca"); a segunda regra, `DECISAO-a-sala-serve-varios-cursos.md` §3
+(07/09/2026, TAR-270). `progresso.concluir` EXIGE um laudo, e
+`progresso.concluir_por_gesto` EXIGE o curso livre e as pausas; cada uma
+recusa o curso da outra, e as duas gravam pelo mesmo miolo.
 
 Os dentes, e o que cada um mede:
 
@@ -19,11 +23,18 @@ Os dentes, e o que cada um mede:
 5. **Nenhuma view grava `concluida`**: medido no código das telas.
 6. **A EB não tranca ninguém e não é trancada pela E32**: abre quando a E32
    conclui; a E32 abre quando a E31 conclui, sem olhar para a EB.
+7. **O gesto do curso livre**: recusa o curso por laudo (e o laudo recusa o
+   curso livre); recusa com pausa faltando; recusa a porta trancada; abre só
+   a `ordem + 1`; é idempotente e não emite duas vezes; emite
+   `aula.concluida.v1` dentro da transação; a assinatura não tem laudo, data,
+   XP nem pagamento.
 
 Provado por mutação em 05/09/2026: apagar a exigência do laudo em
 `progresso.concluir` deixa os oito casos do dente 1 vermelhos (8 failed, 15
 passed); trocar `ordem + 1` por `ordem + 2` deixa a vizinhança e a bônus
-vermelhas (6 failed, 17 passed). Restaurado, 23 passed.
+vermelhas (6 failed, 17 passed). Restaurado, 23 passed. Em 07/09/2026: apagar
+a exigência de `livre` em `concluir_por_gesto` deixa 1 vermelho; apagar a
+exigência das pausas deixa 1 vermelho (a contagem está no PR da TAR-270).
 """
 
 from __future__ import annotations
@@ -38,8 +49,16 @@ import pytest
 from django.urls import reverse
 
 from apps.cursos import progresso as portas
-from apps.cursos.models import Aula, Pessoa, Progresso
-from tests.conftest import COOKIE, publicar
+from apps.cursos.models import (
+    Aula,
+    Bloco,
+    Curso,
+    OutboxEvent,
+    Pessoa,
+    Progresso,
+    RegistroDePausa,
+)
+from tests.conftest import COOKIE, SITE, publicar
 
 pytestmark = pytest.mark.django_db
 
@@ -232,3 +251,131 @@ def test_a_eb_nao_tranca_ninguem_porque_nada_vem_depois_dela(esqueleto, ana):
     eb = porta(ana, aula(esqueleto, "EB"))
     portas.concluir(eb, laudo=ABERTO)
     assert Progresso.objects.filter(pessoa=ana).count() == 1
+
+
+# ------------------------------------------ 7. o gesto do curso livre
+@pytest.fixture
+def livre(db):
+    """Um curso de progressão livre com três aulas (a primeira com duas pausas)."""
+    curso = Curso.objects.create(
+        site_id=SITE,
+        slug="livre",
+        nome="Curso livre",
+        progressao=Curso.Progressao.LIVRE,
+    )
+    bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
+    for ordem, numero in enumerate(["1", "2", "3"]):
+        Aula.objects.create(
+            curso=curso, bloco=bloco, ordem=ordem, numero=numero, titulo_exibido=numero
+        )
+    publicar(curso.aulas.get(numero="1"))
+    return curso
+
+
+@pytest.fixture
+def bia(livre):
+    return Pessoa.objects.create(id_da_plataforma="p_bia", nome_exibido="Bia")
+
+
+def registrar_todas(progresso: Progresso) -> None:
+    for pausa in progresso.aula.pausas.all():
+        RegistroDePausa.objects.create(
+            pessoa=progresso.pessoa, pausa=pausa, respostas={"x": "y"}
+        )
+
+
+def test_o_gesto_recusa_o_curso_por_laudo(esqueleto, ana):
+    e00 = porta(ana, aula(esqueleto, "E00"))
+    with pytest.raises(portas.PortaRecusada, match="laudo da professora"):
+        portas.concluir_por_gesto(e00)
+    e00.refresh_from_db()
+    assert e00.estado == Progresso.Estado.EM_PRODUCAO
+    assert estado_de(ana, aula(esqueleto, "E01")) == Progresso.Estado.TRANCADA
+
+
+def test_o_laudo_recusa_o_curso_livre(livre, bia):
+    um = porta(bia, aula(livre, "1"))
+    registrar_todas(um)
+    with pytest.raises(portas.PortaRecusada, match="não tem entrega de checkpoint"):
+        portas.concluir(um, laudo=ABERTO)
+    um.refresh_from_db()
+    assert um.estado == Progresso.Estado.EM_PRODUCAO
+    assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.TRANCADA
+
+
+def test_o_gesto_recusa_com_pausa_faltando(livre, bia):
+    um = porta(bia, aula(livre, "1"))
+    RegistroDePausa.objects.create(
+        pessoa=bia, pausa=um.aula.pausas.get(ordem=1), respostas={"x": "y"}
+    )
+    with pytest.raises(portas.PortaRecusada, match="todas as pausas"):
+        portas.concluir_por_gesto(um)
+    um.refresh_from_db()
+    assert um.estado == Progresso.Estado.EM_PRODUCAO
+    assert um.concluida_em is None
+    assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.TRANCADA
+    assert OutboxEvent.objects.filter(event="aula.concluida").count() == 0
+
+
+def test_o_gesto_recusa_a_porta_trancada(livre, bia):
+    dois = porta(bia, aula(livre, "2"), Progresso.Estado.TRANCADA)
+    with pytest.raises(portas.PortaRecusada, match="trancada"):
+        portas.concluir_por_gesto(dois)
+    dois.refresh_from_db()
+    assert dois.estado == Progresso.Estado.TRANCADA
+
+
+def test_o_gesto_conclui_e_abre_so_a_ordem_mais_1(livre, bia):
+    um = porta(bia, aula(livre, "1"))
+    registrar_todas(um)
+    portas.concluir_por_gesto(um)
+    um.refresh_from_db()
+    assert um.estado == Progresso.Estado.CONCLUIDA
+    assert um.concluida_em is not None
+    assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.DISPONIVEL
+    assert estado_de(bia, aula(livre, "3")) == Progresso.Estado.TRANCADA
+
+
+def test_o_gesto_e_idempotente_e_emite_uma_vez_so(livre, bia):
+    um = porta(bia, aula(livre, "1"))
+    registrar_todas(um)
+    portas.concluir_por_gesto(um)
+    primeira = Progresso.objects.get(pk=um.pk).concluida_em
+    portas.concluir_por_gesto(um)
+    assert Progresso.objects.get(pk=um.pk).concluida_em == primeira
+    assert Progresso.objects.filter(pessoa=bia).count() == 2
+    assert OutboxEvent.objects.filter(event="aula.concluida").count() == 1
+
+
+def test_o_gesto_deixa_a_cerimonia_pendente_quando_a_aula_e_boss(livre, bia):
+    um = aula(livre, "1")
+    um.e_boss = True
+    um.save(update_fields=["e_boss"])
+    linha = porta(bia, um)
+    registrar_todas(linha)
+    portas.concluir_por_gesto(linha)
+    linha.refresh_from_db()
+    assert linha.cerimonia_pendente is True
+
+
+@pytest.mark.django_db(transaction=True)
+def test_o_gesto_emite_aula_concluida_dentro_da_transacao(livre, bia):
+    """Sem a transação do teste por cima, `eventos.emitir` recusa qualquer
+    emissão fora de `atomic()`: passar aqui é a prova de que o evento nasce
+    na mesma transação da porta ([INV-P6]). O envelope credita o ALUNO."""
+    um = porta(bia, aula(livre, "1"))
+    registrar_todas(um)
+    portas.concluir_por_gesto(um)
+    evento = OutboxEvent.objects.get(event="aula.concluida")
+    assert evento.payload == {
+        "site_id": SITE,
+        "curso_id": str(livre.pk),
+        "aula_id": str(um.aula.pk),
+        "e_boss": False,
+    }
+    assert evento.envelope_extra == {"ator_id": "p_bia"}
+
+
+def test_o_gesto_so_recebe_o_progresso():
+    parametros = inspect.signature(portas.concluir_por_gesto).parameters
+    assert list(parametros) == ["progresso"]

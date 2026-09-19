@@ -36,12 +36,24 @@ function montarCenario(registros, opcoes) {
     logica = logica.replace(/var ORCAMENTO_RESUMO_BYTES = [^;]+;/,
       "var ORCAMENTO_RESUMO_BYTES = " + opcoes.orcamentoResumo + ";");
   }
+  // Injeta uma linha ANTES da IIFE que abre o arquivo, sem mexer no logica.js
+  // real — só para o teste do TAR-274 provar que um "//" no MEIO de uma linha
+  // (uma URL numa string) sobrevive à limpeza.
+  if (opcoes.logicaExtra) logica = opcoes.logicaExtra + "\n" + logica;
   fs.writeFileSync(path.join(dir, "logica.js"), logica, "utf8");
   fs.copyFileSync(path.join(RAIZ_PAINEL, "gerar_manifesto.js"), path.join(dir, "gerar_manifesto.js"));
   if (!opcoes.semTemplate) {
     var tpl = fs.readFileSync(path.join(RAIZ_PAINEL, "painel.template.html"), "utf8");
     if (opcoes.templateSemMarcador) tpl = tpl.replace("__DADOS_DO_PAINEL__", "");
     fs.writeFileSync(path.join(dir, "painel.template.html"), tpl, "utf8");
+  }
+  // As áreas do site viajam com o cenário porque o gerador é fail-closed sem
+  // elas. `areas` troca o conteúdo (para o cenário do arquivo inválido) e
+  // `semAreas` não escreve o arquivo nenhum.
+  if (!opcoes.semAreas) {
+    fs.writeFileSync(path.join(dir, "areas.json"),
+      opcoes.areas !== undefined ? opcoes.areas
+        : fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8"), "utf8");
   }
   fs.mkdirSync(path.join(dir, "registros"));
   Object.keys(registros).forEach(function (nome) {
@@ -57,7 +69,7 @@ function roda(dir, args) {
 function leia(dir, nome) { return fs.readFileSync(path.join(dir, nome), "utf8"); }
 function existe(dir, nome) { return fs.existsSync(path.join(dir, nome)); }
 
-function registroBom(base, extra) {
+function camposDoRegistro(base, extra) {
   var campos = {
     arquivo: base, tipo: "nota", quando: "2026-08-26", titulo: "t", detalhe: "d",
     autoridade: "sessao", evidencia: null, verificado_em: null,
@@ -65,8 +77,11 @@ function registroBom(base, extra) {
     frente: null, vence_em_dias: null
   };
   Object.keys(extra || {}).forEach(function (k) { campos[k] = extra[k]; });
+  return campos;
+}
+function registroBom(base, extra) {
   return "(function(){ (window.REGISTROS = window.REGISTROS || []).push(" +
-    JSON.stringify(campos) + ");})();";
+    JSON.stringify(camposDoRegistro(base, extra)) + ");})();";
 }
 
 console.log("== o caminho verde ==");
@@ -77,6 +92,55 @@ caso("painel.html existe e traz o resumo embutido",
   existe(dir1, "painel.html") && leia(dir1, "painel.html").indexOf("var PAINEL = {") !== -1);
 caso("painel.html traz as REGRAS embutidas (a lógica deixou de ser um pedido)",
   leia(dir1, "painel.html").indexOf("montarResumo") !== -1);
+// A CONTA DE CONFIANÇA VIAJA NO BLOCO DE DADOS. Ela ficava de fora até
+// 19/09/2026, e a caixa "Posso confiar nisto?" desistia em silêncio: a única
+// vista que mede o próprio painel nunca chegou a desenhar. Desde o teto de
+// `SEM_PROVA_NO_RESUMO` ela é carga, e não enfeite — é dela que a capa tira
+// quantas afirmações sem prova existem no livro INTEIRO, agora que o bloco
+// "Dito, mas não comprovado" lista só as mais recentes. Sem esta linha a capa
+// mostraria uma lista curta com cara de lista completa.
+caso("painel.html traz a conta de confiança do livro inteiro",
+  leia(dir1, "painel.html").replace(/\\/g, "").indexOf('"confianca":{"afirmacoes":') !== -1);
+
+// ---------------------------------------------------------------------------
+// A RÉGUA É O EMBARCADO (19/09/2026) — o guarda byte a byte.
+//
+// Até hoje o gerador media uma coisa e embarcava outra: `resumoBytes` pesava
+// `resumo.registros`, e a página recebia um objeto MAIOR, com `respondidos`,
+// `confianca` e as contagens do livro. O orçamento cobrava um subconjunto do
+// que de fato viajava, e foi nessa fresta que o furo do PR #1758 morou:
+// `respondidos` crescia sem teto do lado de FORA da régua, e os checks ficaram
+// verdes sobre um resumo que crescia.
+//
+// A cura foi montar `resumoEmbarcado` uma vez só e usar o MESMO objeto nos dois
+// lugares. Este guarda é o que impede a fresta de voltar: ele não confere o
+// código, confere o RESULTADO. Lê do painel gerado o número declarado em
+// `orcamento.resumoBytes` e o texto que `PAINEL.resumo` de fato carrega, e
+// reprova se divergirem em UM byte.
+//
+// Lê o texto embarcado, e não um objeto reconstruído: o que a página custa é o
+// texto que viaja nela. Medir um objeto remontado seria inventar uma terceira
+// montagem para conferir as outras duas.
+function resumoEmbarcadoDe(html) {
+  var linha = html.split("\n").filter(function (l) {
+    return l.indexOf("  resumo: JSON.parse(") === 0;
+  });
+  if (linha.length !== 1) return null;
+  var literal = linha[0].slice("  resumo: JSON.parse(".length, -1);
+  try { return JSON.parse(literal); } catch (e) { return null; }
+}
+var htmlDoResumo = leia(dir1, "painel.html");
+var textoEmbarcado = resumoEmbarcadoDe(htmlDoResumo);
+var declarado = htmlDoResumo.match(/resumoBytes: (\d+)/);
+caso("o painel declara um resumoBytes e carrega um PAINEL.resumo legíveis",
+  !!textoEmbarcado && !!declarado);
+caso("o tamanho DECLARADO é, byte a byte, o tamanho do que PAINEL.resumo carrega",
+  !!textoEmbarcado && !!declarado &&
+  Number(declarado[1]) === Buffer.byteLength(textoEmbarcado, "utf8"));
+// E o texto embarcado é a forma canônica do objeto: se não fosse, o navegador
+// leria uma coisa e a régua teria medido outra, com os dois lados "certos".
+caso("...e esse texto é exatamente o que JSON.stringify devolve para o objeto",
+  !!textoEmbarcado && JSON.stringify(JSON.parse(textoEmbarcado)) === textoEmbarcado);
 caso("--conferir com o painel em dia passa (exit 0)", roda(dir1, ["--conferir"]).code === 0);
 caso("o passado vira um arquivo POR MÊS, com o conteúdo",
   existe(dir1, "livro-202608.js") && leia(dir1, "livro-202608.js").indexOf("window.LIVRO") !== -1);
@@ -328,6 +392,53 @@ try {
 caso("as ilhas de regras e de dados EXECUTAM", executou);
 caso("...e deixam LOGICA e PAINEL de pé",
   executou && typeof sandbox.window.LOGICA === "object" && typeof sandbox.PAINEL === "object");
+caso("a página gerada traz a indicação do modelo antes da cópia do prompt",
+  htmlGerado.indexOf("modelo-indicado") !== -1 && htmlGerado.indexOf("modeloParaTarefa") !== -1);
+
+// -----------------------------------------------------------------------------
+// TAR-274: o bloco embutido das regras (ilhas[0], acima) viaja SEM as linhas de
+// comentário — quem lê ali é o navegador, não gente, e cada `//` era peso morto
+// contra o orçamento. O arquivo em disco (logica.js) e o que ele CALCULA não
+// podem mudar nem uma vírgula: os dois lados têm de ler a MESMA regra.
+// -----------------------------------------------------------------------------
+console.log("== as regras embutidas viajam SEM os comentários, e continuam a MESMA regra (TAR-274) ==");
+caso("nenhuma linha do bloco embutido começa com // (sem os espaços da frente)",
+  ilhas[0].split("\n").every(function (l) { return l.trimStart().indexOf("//") !== 0; }));
+
+var logicaDoDisco = require(path.join(RAIZ_PAINEL, "logica.js"));
+var LOGICA_EMBUTIDA = sandbox.window.LOGICA;
+caso("o LOGICA embutido expõe EXATAMENTE as mesmas chaves da fonte completa",
+  !!LOGICA_EMBUTIDA &&
+  JSON.stringify(Object.keys(LOGICA_EMBUTIDA).sort()) === JSON.stringify(Object.keys(logicaDoDisco).sort()));
+
+var registrosDoLivro = [camposDoRegistro("20260826-001-a"), camposDoRegistro("20260826-002-b")];
+var areasReais = JSON.parse(fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8")).areas;
+var agoraFixo = new Date("2026-08-30T12:00:00");
+caso("...e prioridades(...) sobre o livro do cenário devolve o MESMO JSON que a cópia completa",
+  !!LOGICA_EMBUTIDA &&
+  JSON.stringify(logicaDoDisco.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)) ===
+  JSON.stringify(LOGICA_EMBUTIDA.prioridades(registrosDoLivro, agoraFixo, undefined, areasReais)));
+caso("...e capa(...) sobre o mesmo livro também devolve o MESMO JSON",
+  !!LOGICA_EMBUTIDA &&
+  JSON.stringify(logicaDoDisco.capa(registrosDoLivro, agoraFixo)) ===
+  JSON.stringify(LOGICA_EMBUTIDA.capa(registrosDoLivro, agoraFixo)));
+
+// Um "//" no MEIO de uma linha (uma URL dentro de uma string) não é comentário
+// — só a linha que COMEÇA com "//" sai. painel/logica.js de verdade não tem
+// nenhuma linha assim hoje (`grep -n '"[^"]*//' painel/logica.js`), então o
+// cenário injeta uma para provar a sobrevivência sem depender disso mudar.
+var dirUrl = montarCenario(
+  { "20260826-001-a.js": registroBom("20260826-001-a") },
+  { logicaExtra: 'var URL_DE_EXEMPLO = "veja https://meshcraft.top/admin para mais.";' }
+);
+roda(dirUrl);
+var ilhasUrl = [], achouUrl;
+var reIlhaUrl = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+var htmlUrl = leia(dirUrl, "painel.html");
+while ((achouUrl = reIlhaUrl.exec(htmlUrl))) ilhasUrl.push(achouUrl[1]);
+caso("uma linha com // NO MEIO (uma URL numa string) sobrevive intacta",
+  !!ilhasUrl[0] &&
+  ilhasUrl[0].indexOf('var URL_DE_EXEMPLO = "veja https://meshcraft.top/admin para mais.";') !== -1);
 
 
 console.log("== o painel declara quanto do orçamento ja ocupa ==");
@@ -353,7 +464,162 @@ caso("...e os dois tetos, para a barra ter denominador",
 caso("o marcador de largura fixa nao sobrou na pagina",
   htmlO.indexOf("__TAMANHO__") === -1);
 
+// -----------------------------------------------------------------------------
+// A FILA DELE, CARIMBADA NA PÁGINA (07/09/2026, degrau 1 da Central de
+// Pendências). A área administrativa lê este número de fora, sem executar
+// JavaScript, para dizer quantas decisões estão paradas esperando o
+// mantenedor. Por isso a propriedade travada aqui não é "o campo existe": é
+// que ele CONTA a mesma coisa que a caixa "Precisa de você" da tela dele, e
+// que ele REAGE — pedido respondido sai da conta.
+//
+// Sem o segundo caso, um gerador que carimbasse `quantidade: 0` para sempre
+// passaria neste arquivo, e a Central diria "nada esperando você" com a caixa
+// dele cheia. É a mentira mais cara que esta tela pode contar.
+// -----------------------------------------------------------------------------
+console.log("== a página carimba a fila do mantenedor, para quem não roda JavaScript ==");
+function filaCarimbada(html) {
+  var m = /pedidosDoDono: \{ quantidade: (\d+), maisAntigoQuando: (null|"[^"]*") \}/.exec(html);
+  return m ? { quantidade: parseInt(m[1], 10), maisAntigo: JSON.parse(m[2]) } : null;
+}
+
+var dirFila = montarCenario({
+  "20260826-001-pede.js": registroBom("20260826-001-pede", { precisa_do_dono: true, quando: "2026-08-26" }),
+  "20260827-001-pede.js": registroBom("20260827-001-pede", { precisa_do_dono: true, quando: "2026-08-27" }),
+  "20260828-001-calado.js": registroBom("20260828-001-calado")
+});
+roda(dirFila);
+var filaDois = filaCarimbada(leia(dirFila, "painel.html"));
+caso("a página carimba a fila em forma legível de fora", !!filaDois);
+caso("...e conta SÓ os pedidos que precisam dele (2 de 3 registros)",
+  !!filaDois && filaDois.quantidade === 2);
+caso("...dizendo a data do mais antigo, que é de onde sai 'espera há N dias'",
+  !!filaDois && filaDois.maisAntigo === "2026-08-26");
+
+// O MESMO livro, com o pedido mais velho respondido: a conta tem de cair para
+// 1 e o mais antigo tem de virar o outro. É a prova de que o número é
+// calculado pela regra do painel, e não um contador de campos `true`.
+var dirResp = montarCenario({
+  "20260826-001-pede.js": registroBom("20260826-001-pede", { precisa_do_dono: true, quando: "2026-08-26" }),
+  "20260827-001-pede.js": registroBom("20260827-001-pede", { precisa_do_dono: true, quando: "2026-08-27" }),
+  "20260829-001-responde.js": registroBom("20260829-001-responde", { responde_a: "20260826-001-pede" })
+});
+roda(dirResp);
+var filaUm = filaCarimbada(leia(dirResp, "painel.html"));
+caso("pedido respondido SAI da conta (2 vira 1)", !!filaUm && filaUm.quantidade === 1);
+caso("...e o mais antigo passa a ser o que sobrou",
+  !!filaUm && filaUm.maisAntigo === "2026-08-27");
+
+// Livro sem nenhum pedido aberto: zero é um resultado legítimo, e a data é
+// nula em vez de uma data inventada.
+var dirZero = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dirZero);
+var filaZero = filaCarimbada(leia(dirZero, "painel.html"));
+caso("livro sem pedido nenhum carimba zero, e não some", !!filaZero && filaZero.quantidade === 0);
+caso("...com a data do mais antigo em null, nunca uma data inventada",
+  !!filaZero && filaZero.maisAntigo === null);
+
+// ---------------------------------------------------------------------------
+// AS ÁREAS DO SITE (07/09/2026, a aba Prioridades). Elas viajam com a página
+// porque é delas que a tela tira a ORDEM, o nome que o dono lê e a que área
+// pertence cada fato. E o gerador é FAIL-CLOSED: sem o arquivo, o campo `area`
+// dos registros não teria contra o que ser conferido e a aba desenharia todo
+// mundo em "sem área reconhecida" — uma tela plausível e errada.
+console.log("== as áreas do site viajam na página, e sem elas o gerador PARA ==");
+var dirAreas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dirAreas);
+var htmlAreas = leia(dirAreas, "painel.html");
+var doArquivo = JSON.parse(fs.readFileSync(path.join(RAIZ_PAINEL, "areas.json"), "utf8")).areas;
+// Lida de dentro da página, executando o bloco embutido: prova que ela chega ao
+// navegador como DADO, e não só que o texto aparece em algum lugar do arquivo.
+var vmAreas = require("vm");
+var NL = String.fromCharCode(10);
+var caixaAreas = { window: {}, JSON: JSON };
+try {
+  var corpo = htmlAreas.split("var PAINEL = {")[1].split(NL + "};")[0];
+  vmAreas.runInNewContext("var PAINEL = {" + corpo + NL + "};", caixaAreas, { timeout: 5000 });
+} catch (e) { caixaAreas.PAINEL = null; }
+caso("a página traz PAINEL.areas", !!(caixaAreas.PAINEL && caixaAreas.PAINEL.areas));
+caso("...e é EXATAMENTE o que está em painel/areas.json (um lugar só)",
+  !!caixaAreas.PAINEL && JSON.stringify(caixaAreas.PAINEL.areas) === JSON.stringify(doArquivo));
+caso("...com a ordem do arquivo, que é a ordem da tela",
+  !!caixaAreas.PAINEL && caixaAreas.PAINEL.areas.map(function (a) { return a.id; }).join(",") ===
+    doArquivo.map(function (a) { return a.id; }).join(","));
+
+var dirSemAreas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") }, { semAreas: true });
+var rSemAreas = roda(dirSemAreas);
+caso("sem painel/areas.json o gerador RECUSA construir (exit 2 = ERROR)", rSemAreas.code === 2);
+caso("...dizendo o caminho do arquivo que falta", rSemAreas.out.indexOf("areas.json") !== -1);
+caso("...e NÃO escreve o painel", !existe(dirSemAreas, "painel.html"));
+
+var dirAreasTortas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") },
+  { areas: "{ isto nao e json" });
+caso("areas.json ilegível REPROVA (exit 2 = ERROR)", roda(dirAreasTortas).code === 2);
+
+// Uma célula em duas áreas faria o mesmo trabalho aparecer em dois blocos, e a
+// soma dos blocos deixaria de bater com a contagem do topo.
+var dirAreasRepetidas = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") }, {
+  areas: JSON.stringify({ areas: [
+    { id: "a", nome: "A", diz: "x", celulas: ["forum"] },
+    { id: "b", nome: "B", diz: "y", celulas: ["forum"] }
+  ] })
+});
+var rRepetidas = roda(dirAreasRepetidas);
+caso("a mesma célula em duas áreas REPROVA (exit 1)", rRepetidas.code === 1);
+caso("...e diz qual célula", rRepetidas.out.indexOf("forum") !== -1);
+caso("...e NÃO escreve o painel", !existe(dirAreasRepetidas, "painel.html"));
+
+// O campo `area` do registro é conferido contra este arquivo, no gerador, com a
+// mesma logica.js da página: nome inventado não entra no livro.
+var dirAreaBoa = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a", { area: "painel" })
+});
+caso("registro com 'area' de painel/areas.json passa", roda(dirAreaBoa).code === 0);
+var dirAreaMa = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a", { area: "celula-que-nao-existe" })
+});
+var rAreaMa = roda(dirAreaMa);
+caso("registro com 'area' inventada REPROVA (exit 1)", rAreaMa.code === 1);
+caso("...e diz qual nome não existe", rAreaMa.out.indexOf("celula-que-nao-existe") !== -1);
+
 console.log("");
+var templateDecisao = fs.readFileSync(path.join(RAIZ_PAINEL, "painel.template.html"), "utf8");
+var fonteFicha = templateDecisao.slice(templateDecisao.indexOf("function fichaDaDecisao(r)"),
+  templateDecisao.indexOf("  // ---------- a capa, calculada"));
+var contextoFicha = {
+  el: function (tag, classe, texto) {
+    return { texto: texto || "", filhos: [], appendChild: function (filho) { this.filhos.push(filho); } };
+  }
+};
+require("vm").runInNewContext(fonteFicha, contextoFicha);
+var fichaCompleta = contextoFicha.fichaDaDecisao({
+  porque_so_voce: "Só você pode autorizar essa despesa.",
+  proximo_passo: "Aprovar ou recusar a contratação.",
+  se_eu_nao_decidir: "O serviço atual continua ativo.",
+  recomendacao: "Manter o serviço atual.", reversivel: false, impacto: "alto"
+});
+var linhasFicha = fichaCompleta.filhos.map(function (linha) {
+  return linha.filhos.map(function (parte) { return parte.texto; }).join(": ");
+});
+caso("a ficha mostra a justificativa exclusiva do dono",
+  linhasFicha.indexOf("Por que só você: Só você pode autorizar essa despesa.") !== -1);
+caso("a ficha mostra o próximo passo concreto",
+  linhasFicha.indexOf("Próximo passo: Aprovar ou recusar a contratação.") !== -1);
+var fontePrioridade = templateDecisao.slice(templateDecisao.indexOf("function detalhesDePrioridade(i)"),
+  templateDecisao.indexOf("  function itemDePrioridade(i, posicao)"));
+require("vm").runInNewContext(fontePrioridade, contextoFicha);
+var detalhesPedido = contextoFicha.detalhesDePrioridade({especie: "pedido", registro: {
+  porque_so_voce: "Só você pode autorizar essa despesa.", proximo_passo: "Aprovar ou recusar."
+}});
+caso("a aba Prioridades mostra a justificativa exclusiva do dono",
+  detalhesPedido.some(function (linha) { return linha[0] === "Por que só você" && linha[1] === "Só você pode autorizar essa despesa."; }));
+caso("a aba Prioridades mostra o próximo passo concreto",
+  detalhesPedido.some(function (linha) { return linha[0] === "Próximo passo" && linha[1] === "Aprovar ou recusar."; }));
+var fichaAntiga = contextoFicha.fichaDaDecisao({});
+caso("pedido antigo informa a ausência da justificativa sem desaparecer",
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não explica por que esta decisão depende só de você."; }));
+caso("pedido antigo informa a ausência de próximo passo sem desaparecer",
+  fichaAntiga.filhos.some(function (linha) { return linha.filhos[1].texto === "O pedido antigo não registra um próximo passo claro."; }));
+
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");
   process.exit(1);

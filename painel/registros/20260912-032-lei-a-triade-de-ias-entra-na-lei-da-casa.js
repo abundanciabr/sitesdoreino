@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-032-lei-a-triade-de-ias-entra-na-lei-da-casa",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "lei: a tríade de IAs entra na lei da casa",
+  detalhe: "A tríade de IAs entrou na lei: Claude Code rege, Codex constrói, Antigravity audita e verifica; papel e limites em CLAUDE.md, AGENTS.md, CONSTITUICAO, RITOS, RUNBOOK, fichas e mapa para IA.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1605. Validação local: árvore cffa69336a77b084ad213d2cf051f06fb5c92cee; commit c9c9fc38ae11be3195265c3996307ca53635234f; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-372",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

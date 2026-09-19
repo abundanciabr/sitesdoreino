@@ -1,0 +1,19 @@
+{
+  "arquivo": "328-mostrar-o-estado-real-do-sistema-e-o-caminho-de-retomada",
+  "id": "TAR-328",
+  "titulo": "Mostrar o estado real do sistema e o caminho de retomada",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cinco frentes com estado e rumo conferidos no site; testes de prova, validade e substituicao; historico de entregas preservado; duas baixas com evidencia; revisao independente e publicacao verificadas.",
+  "despacho": "Confrontar fila, livro, planos, codigo, entregas e telas reais. Atualizar Meu mapa em /admin/painel/ com estado e proximo passo de cada frente. Corrigir somente as contagens que confundem prova com sucesso e substituicao com entrega. Preservar planos completos, autoria e decisoes adiadas. Nao duplicar a construcao da TAR-324. Validar, revisar e publicar o PR #1541.",
+  "origem": "Pedido do mantenedor em 10/09/2026 para encontrar o fio da meada e mostrar o estado real completo; tarefa Codex 01a08d31-9499-7082-be02-8ba0dfae73fb.",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

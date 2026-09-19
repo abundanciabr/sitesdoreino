@@ -72,7 +72,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient, CatalogoClient
-from .painel import CANDIDATOS
+from .painel import diretorio_do_painel
 
 #: A subpasta do painel onde moram os cartões. Viaja para a imagem junto com o
 #: resto de `painel/` (o `deploy-celula` copia a pasta inteira).
@@ -164,11 +164,11 @@ TETO_DE_BLOCOS = 9
 
 def diretorio_dos_cartoes() -> Path | None:
     """`painel/cartoes/`, embutida ou de checkout; `None` se não veio."""
-    for candidato in CANDIDATOS:
-        pasta = candidato / PASTA_DOS_CARTOES
-        if pasta.is_dir():
-            return pasta
-    return None
+    painel = diretorio_do_painel()
+    if painel is None:
+        return None
+    pasta = painel / PASTA_DOS_CARTOES
+    return pasta if pasta.is_dir() else None
 
 
 def validar(cartao: object) -> list[str]:
@@ -703,6 +703,14 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     trabalho = elo_.trabalho_por_cartao(a_fila)
     declaracao = elo_.resumo_da_declaracao(a_fila)
 
+    # FORA do `if meta`, e devolvido no contexto: o livro é caro de ler (uma
+    # varredura de `painel/registros/`, com um `read_text` por arquivo) e as
+    # telas que montam o placar E olham o livro pagariam essa conta duas vezes
+    # na mesma requisição. Quem quiser os registros já lidos os pega daqui, e
+    # `None` continua querendo dizer "o livro não chegou até esta imagem" para
+    # todo mundo, nunca "nenhum registro" (`armadilhas/271`).
+    registros = dir_.ler_registros()
+
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
@@ -712,7 +720,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         alunos = cliente.alunos()
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
-        registros = dir_.ler_registros()
         contagem = contar_compras(alunos, partida_em, hoje)
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
@@ -770,6 +777,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
 
     return {
         "medicao": med_.a_memoria(site_id, timezone.now()),
+        "registros": registros,
         "mudancas": mudancas,
         "latencias": latencias,
         "doze": os_doze,

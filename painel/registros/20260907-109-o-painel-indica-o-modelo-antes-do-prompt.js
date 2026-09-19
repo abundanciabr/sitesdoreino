@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-109-o-painel-indica-o-modelo-antes-do-prompt",
+  tipo: "entrega",
+  quando: "2026-09-07",
+  titulo: "O painel passou a dizer qual modelo toca cada tarefa antes da cópia",
+  detalhe: "A tarefa aberta agora mostra Luna ou Terra, sempre com raciocínio Low, antes do botão de copiar. Luna só entra quando o texto declara operação mecânica e regra definida. O prompt copiado leva esse destino e o rito completo de trabalho. Prompt vazio ou inválido explica como recuperar, sem botão quebrado.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1370",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: null,
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

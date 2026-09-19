@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-018-admin-maturacao-igual-para-as-ias",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: maturação igual para as IAs",
+  detalhe: "Coorte madura igual nos três índices. Conclusão embarca por rito; publicação externa não verificada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1694. Validação local: árvore 137eb3b7f6b09b6162aafa679eb3616664ae74e0; commit 024992f9b0f3a838598a5f038f245335dccbf107; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-443",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

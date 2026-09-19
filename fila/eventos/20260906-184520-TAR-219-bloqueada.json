@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-184520-TAR-219-bloqueada",
+  "tarefa": "TAR-219",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T18:45:20+00:00",
+  "quem": "sessao-fila-decisoes-do-dono-20260906",
+  "detalhe": "PERGUNTADO EM 06/09/2026, E ELE RESPONDEU 'AGORA NAO'. Nao e recusa: e adiamento, e a tarefa continua valida. Separar a chave que LE o menu da que REESCREVE o menu mexe em contracts/ e services/catalogo/, dois caminhos protegidos, e nada quebra hoje sem isso. O risco que fica de pe e o de sempre (armadilhas/318): se a chave unica vazar, quem a pegar pode reescrever o menu do site. Nao repergunte: ele reabre quando quiser.",
+  "espera": "mantenedor"
+}

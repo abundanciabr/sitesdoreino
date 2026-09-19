@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-020011-TAR-241-explicada",
+  "tarefa": "TAR-241",
+  "evento": "explicada",
+  "quando": "2026-09-07T02:00:11+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Na tela onde voce ve as tarefas dos robos, cada tarefa e descrita em linguagem de robo: nome de pasta, sigla e o prompt que o robo vai colar.",
+  "o_que_muda": "Voce abre a lista, nao entende nenhuma das 22 tarefas paradas e nao consegue decidir o que vem antes. Esta tarefa da a cada uma quatro campos escritos para voce: o que e, o que muda, um exemplo e o quanto pesa de 0 a 100.",
+  "exemplo": "A tarefa que hoje se chama esteira que desiste antes do fim passa a dizer: e a esteira do aeroporto parando dois minutos antes de a ultima mala sair.",
+  "importancia": 90
+}

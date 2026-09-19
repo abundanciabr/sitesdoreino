@@ -135,7 +135,7 @@ def caminho_do_alvo(entrada: dict) -> Path | None:
         return None
 
 
-def licoes_do_caminho(raiz: Path, relativo: str) -> tuple[str, list[dict]]:
+def licoes_do_caminho(raiz: Path, relativo: str, *, todos: bool = False) -> tuple[str, list[dict]]:
     """As lições declaradas para este caminho, e o padrão que as trouxe.
 
     O agrupamento é pelo PADRÃO, não pela armadilha: `painel/registros/*` tem
@@ -153,6 +153,8 @@ def licoes_do_caminho(raiz: Path, relativo: str) -> tuple[str, list[dict]]:
         return "", []
     # Mais específico primeiro: o padrão mais longo é o que fala do gesto exato.
     padrao = max(por_padrao, key=len)
+    if todos:
+        return padrao, [item for chave in sorted(por_padrao, key=len, reverse=True) for item in por_padrao[chave]]
     return padrao, por_padrao[padrao]
 
 

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163136-TAR-270-explicada",
+  "tarefa": "TAR-270",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:36+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "Hoje a proxima aula de qualquer curso so abre quando a professora escreve um laudo sobre a entrega do aluno. Essa e a regra do curso do livro.",
+  "o_que_muda": "O mantenedor decidiu em 07/09/2026 que no Primeiros Dolares com Roblox o aluno avanca sozinho: termina uma aula, a proxima abre. Sem isto, 132 alunos ficariam presos atras de uma fila de correcao de uma professora so.",
+  "exemplo": "Um aluno assiste a aula 3 no sabado a noite e aperta Concluir; a aula 4 abre na hora, sem esperar ninguem.",
+  "importancia": 90
+}

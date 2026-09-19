@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-152224-TAR-295-explicada",
+  "tarefa": "TAR-295",
+  "evento": "explicada",
+  "quando": "2026-09-09T15:22:24+00:00",
+  "quem": "Complemento administrativo do PR 1492, autorizado pela maestro.",
+  "o_que_e": "O analista escreve um pedido para o robô registrar, mas ainda orienta preencher apenas quatro informações da decisão.",
+  "o_que_muda": "O pedido passa a explicar também por que só o mantenedor pode decidir e qual é o próximo passo, sem exigir que ele complete campos técnicos.",
+  "exemplo": "Ao sugerir uma contratação, o robô leva a recomendação, o impacto, o motivo da autorização e a ação concreta para decidir.",
+  "importancia": 70
+}

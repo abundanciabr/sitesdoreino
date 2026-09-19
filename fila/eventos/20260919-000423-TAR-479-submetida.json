@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-000423-TAR-479-submetida",
+  "tarefa": "TAR-479",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:04:23+00:00",
+  "quem": "agent/armadilhas/freeze-escolhe-python-errado",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1744",
+  "revisao": "c8e05c3301916d741fcfcd6a1833c6c193756db9",
+  "arvore": "880e7ce9a89e92832c184cf53fd1d245c90d2678"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-059-ci-merge-automatico",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "ci: merge automatico",
+  detalhe: "Merge por evento preserva checks, SHA, contrato e mandato. Prova inicial: 12 falhas antes, 12 testes passando depois.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1636. Validação local: árvore 2f4234c07a9a97c5ebbebc36aeb0bc60608a102c; commit 9ea481a803499a0ee687d0bb50ddca3e50b97e93; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-406",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

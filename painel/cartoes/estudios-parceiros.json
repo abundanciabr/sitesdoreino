@@ -1,0 +1,22 @@
+{
+  "nome": "estudios-parceiros",
+  "tipo": "resultado",
+  "andar": 1,
+  "pergunta": "Quantos estúdios já são parceiros da escola?",
+  "definicao": "Os estúdios que aceitaram receber alunas da escola, com um combinado escrito, ainda que informal. Um estúdio que só respondeu uma mensagem não conta, e um que nunca recebeu ninguém continua contando enquanto o combinado valer.",
+  "formula": "a contagem que a escola digita na tela da rede de talentos, gravada no livro como medição",
+  "fonte": "o livro de ocorrências (painel/registros/): a última medição digitada com este nome, lida pela admin em apps/core/talentos.py",
+  "autoridade": "mantenedor",
+  "dono": "mantenedor",
+  "frequencia": "quando muda; a escola redigita a contagem na tela da rede de talentos",
+  "direcao": "subir",
+  "unidade": "estúdios",
+  "par": "encaixes-com-estudio",
+  "acao": "Sem estúdio nenhum o laço não começa. O gesto é falar com um estúdio por semana e contar aqui só os que aceitaram receber alunas.",
+  "frescor_maximo": 30,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-07",
+  "_por_que": "Terceiro passo do laço de talentos (Scale OS 2 §45), degrau 17 do PLANO-PAINEL-DE-GESTAO.md. O par são os encaixes porque assinar logotipo é fácil: um parceiro que nunca recebe ninguém é um nome numa lista, e o número que denuncia isso é o de encaixes."
+}

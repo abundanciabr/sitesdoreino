@@ -1,0 +1,17 @@
+{
+  "_doc": "As seis áreas do site nas palavras do dono, e que nomes de célula e de ramo (agent/<nome>/...) pertencem a cada uma. Um lugar só: a aba Prioridades do painel, a rota fila.json da admin e o portão do pouso leem daqui. Nome que não está aqui aparece como 'sem área reconhecida', nunca some.",
+  "areas": [
+    { "id": "alunos", "nome": "🎓 Alunos", "diz": "cadastro, login, área do aluno, portfólio, pontos e medalhas, avisos",
+      "celulas": ["alunos", "identidade", "escola", "pages", "gamificacao", "conquistas", "notificacoes", "push", "mensageria", "quiz", "app", "site", "i18n"] },
+    { "id": "cursos", "nome": "📚 Cursos", "diz": "aulas, capítulos, catálogo",
+      "celulas": ["cursos", "catalogo", "aulas", "livro", "capitulo", "obra"] },
+    { "id": "comunidade", "nome": "📮 Comunidade", "diz": "fórum e Caixa de Sugestões",
+      "celulas": ["forum", "sugestoes", "caixa"] },
+    { "id": "vendas", "nome": "💰 Vendas e encomendas", "diz": "páginas que vendem, pagamento, Fila do Primeiro Dólar",
+      "celulas": ["funil", "checkout", "pagamentos", "leads", "encomendas", "fiscal"] },
+    { "id": "painel", "nome": "🖥️ Seu painel e administração", "diz": "área administrativa, painel do sistema, documentos",
+      "celulas": ["admin", "painel", "documentos", "metricas", "placar", "paineis", "operacao", "mapa", "menu", "telas"] },
+    { "id": "fabrica", "nome": "🏭 Infra e fábrica", "diz": "servidor, esteira, robôs, leis da casa",
+      "celulas": ["infra", "ci", ".github", "contracts", "contrato", "contratos", "fila", "armadilhas", "docs", "decisoes", "decisao", "governanca", "lei", "leis", "pista", "escrita", "fabrica", "maestro", "consultoria", "licao", "licoes", "harness", "redteam", "e2e", "auditoria", "changespecs", "servicos", "RITOS.md", "INVARIANTES.md", "CLAUDE.md", "RUNBOOK-LOTES.md", ".claude", "constituicoes", "deploy", "vps", "robos", "runbook"] }
+  ]
+}

@@ -31,14 +31,9 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
 
       <div class="bancada">
         <div class="mesa">
-          <div class="mesa-topo{% if primeira.motivo == 'assinatura' %} sua{% endif %}">
+          <div class="mesa-topo">
             <span class="mesa-vez">
-              Decisão 1 de {{ total }} ·
-              {% if primeira.motivo == 'assinatura' %}
-                {% if pode_assinar %}só você pode tomar esta{% else %}espera a assinatura de quem aprova{% endif %}
-              {% else %}
-                ninguém da equipe leu esta ainda
-              {% endif %}
+              Decisão 1 de {{ total }} · ninguém da equipe leu esta ainda
             </span>
             <span class="mesa-relogio">
               {% if primeira.parada_ha == 0 %}parada desde hoje{% elif primeira.parada_ha == 1 %}parada há 1 dia{% else %}parada há {{ primeira.parada_ha }} dias{% endif %}
@@ -79,16 +74,9 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
             {% endif %}
 
             <p class="lei">
-              {% if primeira.motivo == 'assinatura' %}
-                <b>Assinar é o que libera a obra.</b>
-                Enquanto ninguém autorizado assinar, nada entra em construção — e isso é uma trava de
-                propósito, não um defeito.{% if not pode_assinar %} O seu acesso ao Admin permite moderar; autorizar
-                desenvolvimento é outro papel, e ele não vem junto.{% endif %}
-              {% else %}
-                <b>Esta subiu para a mesa pelo relógio.</b>
-                Ela está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem ninguém da equipe escrever
-                nada — e as {{ primeira.pessoas }} pessoas atrás dela não receberam notícia nenhuma nesse tempo.
-              {% endif %}
+              <b>Esta subiu para a mesa pelo relógio.</b>
+              Ela está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem ninguém da equipe escrever
+              nada, e as {{ primeira.pessoas }} pessoas atrás dela não receberam notícia nenhuma nesse tempo.
             </p>
           </div>
         </div>
@@ -101,7 +89,7 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
                 <div class="lado-item">
                   <a href="{% url 'caixa_ideia' d.id %}">{{ d.titulo }}</a>
                   <p class="nota">{{ d.votos }} votos · {{ d.pessoas }} pessoa{{ d.pessoas|pluralize:"s" }} · parada há {{ d.parada_ha }} dia{{ d.parada_ha|pluralize:"s" }}</p>
-                  <p class="nota">{% if d.motivo == 'assinatura' %}espera assinatura{% else %}ninguém da equipe leu ainda{% endif %}</p>
+                  <p class="nota">ninguém da equipe leu ainda</p>
                 </div>
               {% endfor %}
             </div>
@@ -127,7 +115,7 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
       <div class="bancada">
         <div class="mesa vazia">
           <div class="mesa-corpo">
-            <p class="texto-maior">Nenhuma ideia está parada esperando assinatura, e nenhuma está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem alguém da equipe escrever nada.</p>
+            <p class="texto-maior">Nenhuma ideia está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem alguém da equipe escrever nada.</p>
             <p class="nota">Isto é uma conta, não um relato: se aparecer uma ideia nessas condições, ela sobe para cá sozinha. Ninguém precisa lembrar de te avisar.</p>
           </div>
         </div>

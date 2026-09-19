@@ -1,0 +1,17 @@
+{
+  "arquivo": "264-medir-e-consertar-no-forum-a-mesma-falha-de-resposta-quebrad",
+  "id": "TAR-264",
+  "titulo": "Medir e consertar no forum a mesma falha de resposta quebrada ja consertada no analista",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "a saida da sonda com os oito cenarios contra o agente do forum, e PR com teste vermelho antes de verde para cada cenario que escapava cru",
+  "despacho": "CÉLULA: forum. Nenhum caminho CODEOWNERS.\nArquivos: services/forum/apps/core/agente.py e services/forum/tests/ (o teste do agente).\n\nO revisor da casa mediu, com o SDK anthropic==1.3.0 de verdade e uma sonda que troca\nhttpx2.HTTPTransport.handle_request, que o robô analista da admin deixava escapar\nerro cru em quatro cenários de HTTP 200. O conserto foi feito na admin (PR do\nTAR-263). O revisor viu que services/forum/apps/core/agente.py:579-613 tem a MESMA\nforma de código (stop_reason, content e usage lidos FORA do bloco _traduzindo_a_falha)\ne NÃO rodou a sonda contra ela. Esta tarefa é medir e consertar o fórum.\n\n1. Rode a mesma sonda contra o agente do fórum, com estes oito cenários, e anote\n   qual escapa cru: 500 do provedor, 529 sobrecarga, 200 com JSON malformado\n   (corpo truncado), 200 com JSON de forma errada (content nulo), 200 sem usage,\n   200 com corpo HTML (proxy ou portal cativo), RemoteProtocolError e PoolTimeout.\n2. Para cada um que escapar, o conserto é o mesmo que a admin já usa em\n   services/admin/apps/core/analista.py: um except anthropic.APIError e um\n   except (ValueError, TypeError, AttributeError) no fim da escada de traduções, e\n   o usage lido com getattr para que uma resposta BOA nunca seja jogada fora por\n   uma linha de registro. Atenção: anthropic.APIResponseValidationError NÃO herda\n   de APIStatusError nem de APIConnectionError, então ela escapa das duas.\n3. A frase de tela segue armadilhas/297: cada motivo distinto com a frase dele, e\n   nenhuma frase mandando esperar por algo que nunca vem.\n\nCenário real: alguém no fórum aperta \"Gerar resposta\", o proxy corta o corpo no meio,\ne em vez da frase em português aparece a página de erro do sistema.\n\nProve vermelho para verde por asserção antes de cada conserto, e prove por mutação\ndepois do verde. Rode cd services/forum && make ci.",
+  "origem": "revisão do PR #1334 pelo revisor da casa, 07/09/2026: mesma forma de código vista em services/forum/apps/core/agente.py:579-613, não medida",
+  "criada_em": "2026-09-07"
+}

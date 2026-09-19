@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-121-separacao-pr1506-versao-dados",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: separar versão dos dados do PR 1506",
+  detalhe: "A entrega da versão dos dados foi separada do lote grande do PR 1506 em um ramo próprio. A filha tem 14 arquivos de código medidos pelo portão e os testes e muralhas passaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1510. Validação local: 84 testes focados, muralhas, orçamento e mapa do site, todos com exit 0.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();

@@ -10,7 +10,9 @@ arquivo vira bomba-relógio no dia em que o relógio real a ultrapassar
 depois de o arquivo nascer).
 """
 
+import json
 from datetime import datetime, timezone as fuso
+from unittest import mock
 from urllib.parse import quote
 
 import httpx
@@ -29,7 +31,9 @@ OUTRO_SITE = "escola-b"
 # (`armadilhas/111`).
 IDENTIDADE = "http://identidade:8000/interno"
 ALUNOS = "http://alunos:8000/api/alunos"
+ADMIN = "http://admin:8000/interno"
 URL_DA_SESSAO = f"{IDENTIDADE}/sessao/completa"
+URL_DA_CONSULTA = f"{ADMIN}/administradores/consultar"
 
 # O cookie de sessão do site, OPACO para esta célula: o valor não significa
 # nada aqui, e é isso que o [INV-P12] exige. Quem prova que ele viaja intacto é
@@ -66,6 +70,8 @@ def env_dos_pares(monkeypatch):
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-pages-para-identidade")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-pages-para-alunos")
+    monkeypatch.setenv("ADMIN_API_URL", ADMIN)
+    monkeypatch.setenv("ADMIN_API_TOKEN", "token-pages-para-admin")
 
 
 @pytest.fixture
@@ -89,6 +95,21 @@ def dublar_matricula(rede, email: str, categoria: str = "aluno", *, status: int 
     """A `alunos` responde a categoria desta pessoa, no corpo do contrato."""
     corpo = {"categoria": categoria, "na_fila": None} if status == 200 else {}
     return rede.get(url_da_situacao(email)).mock(
+        return_value=httpx.Response(status, json=corpo)
+    )
+
+
+def dublar_administrador(
+    rede, e_administrador: bool = True, *, status: int = 200, corpo=None
+):
+    """A `admin` responde sim ou não pela operação `isAdministrator`.
+
+    `corpo` existe para o guarda da resposta fora do contrato: quem o passa
+    escolhe o que vem no lugar do booleano.
+    """
+    if corpo is None:
+        corpo = {"e_administrador": e_administrador} if status == 200 else {}
+    return rede.post(URL_DA_CONSULTA).mock(
         return_value=httpx.Response(status, json=corpo)
     )
 
@@ -186,3 +207,112 @@ def sem_site_declarado(monkeypatch):
     roteiro e diz, em português, por que a marcação não abre.
     """
     monkeypatch.delenv("SITE_ID", raising=False)
+
+
+# QUEM CONFERE O PORTFÓLIO (degrau 11, critério AC-11; a fonte da resposta mudou
+# em 06/09/2026). A equipe da escola NÃO é aluno: ela não tem matrícula ativa, e
+# é por isso que as duas fábricas abaixo não dublam a `alunos`. Se alguém puser a
+# fila da equipe atrás da pergunta da matrícula, o dublê de transporte levanta na
+# hora por causa de uma chamada a URL não registrada, e o teste fica vermelho no
+# lugar certo.
+#
+# Quem abre a fila é a `admin`, perguntada por E-MAIL: não há mais lista de ids
+# no env desta célula para uma fábrica escrever.
+BIA = {
+    "autenticado": True,
+    "id": "p_bia",
+    "email": "bia@exemplo.com",
+    "nome_exibido": "Bia",
+    "papel": "staff",
+}
+
+
+@pytest.fixture
+def da_equipe(env_dos_pares, rede, db):
+    """Bia, reconhecida pela `identidade`, e a `admin` diz que ela é administradora."""
+    dublar_sessao(rede, BIA)
+    dublar_administrador(rede, True)
+    return BIA
+
+
+@pytest.fixture
+def fora_da_equipe(env_dos_pares, rede, db):
+    """A mesma pessoa, e a `admin` diz que NÃO: é a resposta que quase todo mundo recebe.
+
+    `false` é resposta, e nunca erro. Quem não consegue nem perguntar é outro
+    caso, com outra fábrica e outra recusa (`admin_fora_do_ar`), porque *não deu
+    para perguntar* não é *perguntei e a resposta foi não*.
+    """
+    dublar_sessao(rede, BIA)
+    dublar_administrador(rede, False)
+    return BIA
+
+
+@pytest.fixture
+def admin_fora_do_ar(env_dos_pares, rede, db):
+    """A `admin` de pé mas sem responder o que promete: a fila não pode abrir.
+
+    Fail-CLOSED sem fail-hard, e a diferença aparece na tela: 503 com
+    `Retry-After`, e não o 403 que diria à pessoa uma frase falsa sobre ela.
+    """
+    dublar_sessao(rede, BIA)
+    rede.post(URL_DA_CONSULTA).mock(side_effect=httpx.ConnectError("recusou"))
+    return BIA
+
+
+@pytest.fixture
+def sem_o_par_da_admin(monkeypatch):
+    """O env da VPS de HOJE: `provisionar-pages.sh` ainda não escreve o par.
+
+    A linha mora em `infra/`, caminho CODEOWNERS, e o PR que troca a fonte da
+    resposta não tem mandato para tocá-la. Enquanto faltar, a casa inteira
+    responde e só a fila da equipe fica indisponível (`armadilhas/097`).
+    """
+    monkeypatch.delenv("ADMIN_API_URL", raising=False)
+    monkeypatch.delenv("ADMIN_API_TOKEN", raising=False)
+
+
+# ---------------------------------------------------------------------------
+# O FIO: o transporte do relay sob controle do teste (degrau 12)
+# ---------------------------------------------------------------------------
+
+
+class Fio:
+    """O que saiu no `xadd`. O Redis é dublado no TRANSPORTE (`redis.from_url`),
+    pelo mesmo motivo que a `identidade` e a `alunos` são dubladas acima: uma
+    suíte que precisa de container fica vermelha por motivo alheio, e a máquina
+    do mantenedor é Windows. O que se prova é o comportamento do relay e a FORMA
+    do que ele publica. Molde: `services/cursos/tests/conftest.py`."""
+
+    def __init__(self) -> None:
+        self.mensagens: list[tuple[str, dict]] = []
+        self.cliente = mock.Mock()
+        self.cliente.xadd.side_effect = self._xadd
+
+    def _xadd(self, stream: str, campos: dict) -> None:
+        # `json.loads` aqui de propósito: se o relay publicar algo que não é
+        # JSON, o teste morre no ponto exato em vez de comparar strings.
+        self.mensagens.append((stream, json.loads(campos["json"])))
+
+    @property
+    def streams(self) -> list[str]:
+        return [stream for stream, _ in self.mensagens]
+
+    def um_envelope(self, event: str) -> dict:
+        achados = [e for _, e in self.mensagens if e["event"] == event]
+        assert len(achados) == 1, f"esperava 1 {event} no fio, vieram {len(achados)}"
+        return achados[0]
+
+
+@pytest.fixture
+def fio(monkeypatch):
+    """O relay publicando contra o dublê, com `REDIS_STREAMS_URL` presente.
+
+    A variável é montada aqui, e não numa fixture `autouse`, de propósito: o
+    relay a lê NO PONTO DE USO (`armadilhas/097`), e o teste que prova "sem
+    endereço do fio o evento fica pendente" precisa poder tirá-la.
+    """
+    monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis.teste:6379/0")
+    linha = Fio()
+    monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
+    return linha

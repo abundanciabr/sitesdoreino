@@ -54,8 +54,8 @@ raro e mais enganoso: **houve**, sim, deploy posterior verde, com o SHA certo
 por dentro, e mesmo assim a célula ficou de fora. É exatamente o cenário que
 faz a vacina parecer ter funcionado.
 
-**Diagnóstico que funciona, hoje, à mão** (não há mecanismo ainda — ver
-`TAR-210`):
+**O diagnóstico à mão** — foi ele que achou o caso, e é a mesma leitura que a
+vacina passou a fazer sozinha desde a `TAR-210`:
 
 ```bash
 gh run view <id-do-deploy-posterior> --json jobs \
@@ -77,16 +77,25 @@ da 188. **Régua:** confira a esteira antes de redisparar
 (`gh run list --workflow=deploy-celula.yml --json status`) e dispare só
 quando não houver run em espera ou em execução.
 
-**Solução (não construída aqui — `TAR-210`, caminho CODEOWNERS, sem
-mandato).** A vacina precisa saber QUAIS células o run cancelado tinha na
-matrix (o job `detectar` daquele mesmo run já sabe) e, para cada deploy
-posterior candidato a ancestral, conferir se existe `deploy (<célula>)` com
-`conclusion: success` para **cada uma** delas. Faltando uma célula, a decisão
-continua sendo repetir, mesmo com o SHA já publicado por outro caminho. O
-teste-guarda existe: reproduzir o cenário exato de hoje (cancelado da
-`mensageria`, seguido de dois deploys verdes só de `admin`) e provar que a
-vacina de hoje diz "não precisa repetir" (vermelho) e a vacina corrigida diz
-"repetir" (verde).
+**Solução, construída na `TAR-210` (07/09/2026).** Antes de dispensar o rerun,
+a vacina prova a COBERTURA: para cada célula que aquele push precisava
+publicar, tem de existir um `deploy (<célula>)` com `conclusion: success` em
+algum run que contenha o SHA — incluindo o próprio run doente, porque célula
+que ele subiu antes de morrer não falta a ninguém. Faltando uma, a decisão
+volta a ser repetir, mesmo com o SHA já publicado por outro caminho. Guarda:
+`ci/tests/test_rerun_de_deploy.py`, no bloco "ancestralidade não é cobertura",
+com o cenário desta entrada montado célula por célula.
+
+**A frase que este parágrafo dizia e a medição desmentiu.** Ele mandava ler a
+matrix no *"job `detectar` daquele mesmo run"*. Medido em 07/09/2026 nos cinco
+últimos cancelados do `deploy-celula` (runs 34048495577, 34048245140,
+34047959407, 34047500383 e 34046876458): **todos com ZERO jobs**. O cancelado
+da cadeira musical morre enquanto está PENDENTE, antes de qualquer job nascer,
+e nesse caso a matrix nunca chegou a existir para ser lida. A vacina refaz a
+conta de fora, com a mesma fonte que o `detectar` usa — o diff do push contra
+`celulas.yml` (`git diff <sha>^...<sha>`, sendo o primeiro pai do merge o
+`github.event.before` daquele push). Conferido contra os 25 runs seguintes:
+nos 24 que tinham jobs, a conta devolveu exatamente a matrix real.
 
 **Origem.** 05-06/09/2026, maestro conferindo o desfecho do PR #1145 depois
 do pouso automático, ao notar que o resumo verde da vacina não batia com o

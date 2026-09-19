@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-017-admin-criar-aulas-avulsas-para-compartilhar",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: criar aulas avulsas para compartilhar",
+  detalhe: "Admin cria e lista aulas avulsas; o slug retorna da sala e o link fica pronto para compartilhar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1553. Validação local: árvore 035983d80a37dc49c7704efc5cee8ee44cc58e92; commit c0e03420200efe28bba15886829ce47df71acdd7; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-336",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

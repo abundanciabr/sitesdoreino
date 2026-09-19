@@ -1,0 +1,19 @@
+{
+  "arquivo": "342-editar-aulas-avulsas-sem-mudar-o-link-publico",
+  "id": "TAR-342",
+  "titulo": "Editar aulas avulsas sem mudar o link público",
+  "toca": [
+    "cursos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR da célula cursos com PUT autenticado, testes de validação e rota pública sob /cursos, revisão independente e deploy confirmado.",
+  "despacho": "Implementar somente services/cursos conforme o contrato integrado no PR #1560: PUT /aulas-avulsas/{slug}?site_id= recebe titulo, video_url e descricao, preserva slug e publicada_em, recusa corpo inválido com 422 e aula ausente no site com 404. Provar bearer, máquina e a rota pública em SCRIPT_NAME=/cursos. Não criar outra rota pública.",
+  "origem": "erro relatado pela mantenedora em 11/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

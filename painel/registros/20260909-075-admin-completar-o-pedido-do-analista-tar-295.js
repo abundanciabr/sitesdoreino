@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-075-admin-completar-o-pedido-do-analista-tar-295",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: completar o pedido do analista (TAR-295)",
+  detalhe: "O pedido do analista exige os seis campos da decisão. O robô justifica a intervenção do mantenedor e reaproveita o próximo passo da análise.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1497. Validação local: árvore 2017862880d5476d66aa690584be86f7f4ad60fb; commit fcdda73516cd239f88454cba1fae52a4afa8b6cf; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-295",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

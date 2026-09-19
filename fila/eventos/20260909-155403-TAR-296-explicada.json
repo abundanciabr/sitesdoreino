@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-155403-TAR-296-explicada",
+  "tarefa": "TAR-296",
+  "evento": "explicada",
+  "quando": "2026-09-09T15:54:03+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; Fase 2, separação do CRM humano da automação comercial",
+  "o_que_e": "O histórico comercial e a próxima ação ainda não estão organizados para uma pessoa acompanhar cada oportunidade.",
+  "o_que_muda": "A equipe passa a acompanhar cada oportunidade até o desfecho antes de qualquer automação conversar ou vender.",
+  "exemplo": "Um comprador sem acesso continua com o Comercial até confirmar o acesso, enquanto Operações trata a correção técnica vinculada.",
+  "importancia": 95
+}

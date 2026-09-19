@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone as fuso
 
 import pytest
 
-from apps.encomendas import motor
+from apps.encomendas import gestos, motor
 from apps.encomendas.models import Encomenda, Oferta, PerfilProfissional
 
 SITE = "escola-a"
@@ -34,7 +34,7 @@ REGRAS = motor.Regras(
 VAGA = motor.Vaga(encomenda_id="v", nivel="iniciante")
 
 
-def _candidato(disponibilidade):
+def _candidato(disponibilidade, *, tem_negociacao_viva=False):
     return motor.Candidato(
         perfil_id=1,
         titulo_banca="nivel_1",
@@ -42,6 +42,7 @@ def _candidato(disponibilidade):
         entregas_aprovadas=0,
         data_entrada_fila=AGORA - timedelta(days=10),
         tem_oferta_pendente=False,
+        tem_negociacao_viva=tem_negociacao_viva,
     )
 
 
@@ -63,6 +64,21 @@ def test_quem_esta_disponivel_passa():
     """O par verde: sem ele, um motor que recusasse todo mundo passaria acima."""
     disponivel = PerfilProfissional.Disponibilidade.DISPONIVEL
     assert motor.por_que_nao(VAGA, _candidato(disponivel), REGRAS, AGORA) == ""
+
+
+def test_quem_esta_disponivel_mas_negocia_e_recusado_com_razao_acionavel():
+    assert (
+        motor.por_que_nao(
+            VAGA,
+            _candidato(
+                PerfilProfissional.Disponibilidade.DISPONIVEL,
+                tem_negociacao_viva=True,
+            ),
+            REGRAS,
+            AGORA,
+        )
+        == motor.COM_NEGOCIACAO_VIVA
+    )
 
 
 def test_as_tres_disponibilidades_do_modelo_estao_medidas():
@@ -120,26 +136,35 @@ def test_uma_pessoa_nao_leva_a_fila_inteira(semeado, criar_perfil, criar_encomen
     assert list(rodada.desfechos.values()).count(motor.SEM_ELEGIVEL) == 4
 
 
-def test_quem_aceitou_e_virou_trabalhando_para_de_receber(
+def test_quem_aceitou_e_ficou_em_negociacao_para_de_receber(
     semeado, criar_perfil, criar_encomenda
 ):
-    """O ciclo completo: recebe, aceita, vira trabalhando, some das ofertas.
+    """O ciclo completo: recebe, aceita, negocia, e não recebe outra oferta.
 
     Aceitar é o gesto do aluno (degrau 2.5 e a tela da Fase 4); aqui ele é
     encenado à mão, com as mesmas peças que a tela vai usar. O que este guarda
-    mede é o depois: com a pessoa em `trabalhando`, a fila não a enxerga mais.
+    mede é o depois: a pessoa continua disponível, mas a negociação viva a
+    exclui da próxima oferta.
     """
     aluno = criar_perfil("pes-solo", entrada=AGORA - timedelta(days=5))
     primeira = criar_encomenda(cliente="cli-1")
     motor.rodar(AGORA, site_id=SITE)
 
-    Oferta.objects.get(aluno=aluno).responder(Oferta.Resultado.ACEITA, em=AGORA)
-    aluno.mudar_disponibilidade(PerfilProfissional.Disponibilidade.TRABALHANDO)
+    oferta = Oferta.objects.get(aluno=aluno)
+    gestos.aceitar(oferta.pk, aluno.id, AGORA, site_id=SITE)
     primeira.refresh_from_db()
-    primeira.mudar_status(Encomenda.Status.EM_NEGOCIACAO, motivo="o aluno aceitou")
+    aluno.refresh_from_db()
 
     segunda = criar_encomenda(cliente="cli-2")
     rodada = motor.rodar(AGORA, site_id=SITE)
 
     assert rodada.desfechos[segunda.pk] == motor.SEM_ELEGIVEL
     assert Oferta.objects.filter(aluno=aluno).count() == 1
+    assert aluno.disponibilidade == PerfilProfissional.Disponibilidade.DISPONIVEL
+    escolha = motor.escolher(
+        motor.Vaga(encomenda_id=segunda.pk, nivel=segunda.nivel),
+        motor.candidatos_do_banco(SITE),
+        motor.Regras.do_banco(AGORA, site_id=SITE),
+        AGORA,
+    )
+    assert escolha.recusas[aluno.id] == motor.COM_NEGOCIACAO_VIVA

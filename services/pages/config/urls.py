@@ -1,13 +1,20 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from apps.core.views import (
+    baixar_dossie,
+    decidir,
+    despublicar_vitrine,
+    fila_da_equipe,
     guardar_peca,
     healthz,
     marcar,
     mudar_peca,
     pecas,
+    pedir_conferencia,
     prancheta,
+    publicar_vitrine,
     responder_peca,
+    vitrine_publica,
 )
 from config.api import api
 
@@ -73,6 +80,59 @@ urlpatterns = [
     # uma ação de um clique só. Juntá-las faria cada botão de subir e descer
     # carregar o formulário inteiro das perguntas.
     path("pecas/responder", responder_peca, name="responder_peca"),
+    # A CONFERÊNCIA DA ESCOLA (degrau 11, critério AC-11). Três rotas, e a
+    # divisão delas é a divisão de quem as usa: `pecas/conferir` é o botão do
+    # ALUNO, e as duas de `equipe/` são da EQUIPE da escola.
+    #
+    # A separação não é cosmética: é ela que a porta lê. Tudo debaixo de
+    # `equipe` troca a pergunta da matrícula pela lista do env
+    # (`apps/core/porta.py`, `PREFIXO_DA_FILA_DA_EQUIPE`), porque quem confere o
+    # portfólio de um aluno não é aluno. Rota nova da equipe nasce debaixo desse
+    # prefixo, ou ela pede matrícula a um professor e fecha na cara dele.
+    path("pecas/conferir", pedir_conferencia, name="pedir_conferencia"),
+    path("equipe", fila_da_equipe, name="equipe"),
+    path("equipe/decidir", decidir, name="decidir"),
+    # A VITRINE PÚBLICA (degrau 13, critérios AC-13 a AC-15), e ela é a única
+    # rota desta casa que NÃO mora sob o prefixo da célula.
+    #
+    # `estudio/<apelido>` chega aqui por extenso porque o degrau 05 roteou
+    # `PathPrefix(/estudio)` para esta célula SEM `StripPrefix`
+    # (`infra/traefik/dynamic/plataforma.yml`), justamente para que a porta
+    # tivesse como distinguir os dois endereços públicos da casa. É o mesmo
+    # desenho que a `admin` já usa para servir `docs/` e `mapa-ia/` de fora do
+    # prefixo dela, e não contraria a `armadilhas/029`: o que aquela armadilha
+    # proíbe é o urlconf conhecer o PRÓPRIO ponto de montagem, e mudar `/pages`
+    # continua sendo editar env e Traefik.
+    #
+    # `re_path` com o formato exato do apelido gravado (`[a-z0-9-]+`, a mesma
+    # régua da restrição `apelido_e_endereco_web` no banco), e não `<slug:>`,
+    # que aceitaria maiúscula e sublinhado: endereço que casa a rota mas nunca
+    # casa uma linha do banco seria um 404 caro, resolvido no fim da consulta em
+    # vez de na porta da rota.
+    #
+    # O endereço que o ALUNO copia não sai de `{% url %}`. `reverse()` monta
+    # `/pages/estudio/…` porque `FORCE_SCRIPT_NAME` vale para a célula inteira,
+    # e a vitrine não mora sob `/pages` (`armadilhas/102`, medida na `admin` em
+    # 29/08/2026). Quem monta é `apps/portfolio/vitrine.py::endereco`, e o
+    # `name=` continua aqui porque toda rota desta casa leva um.
+    re_path(r"^estudio/(?P<apelido>[a-z0-9-]+)$", vitrine_publica, name="vitrine"),
+    # O INTERRUPTOR da vitrine, e ele é do ALUNO: mora sob o prefixo da área
+    # dele, atrás da porta, e é `POST` e só `POST`, pela mesma razão do `marcar`
+    # e do `guardar` acima. Publicar e despublicar são rotas separadas porque
+    # são dois gestos com consequências opostas, e um POST único com um campo
+    # escondido dizendo qual deles faria a auditoria depender de um valor de
+    # formulário.
+    path("vitrine/publicar", publicar_vitrine, name="publicar_vitrine"),
+    path("vitrine/despublicar", despublicar_vitrine, name="despublicar_vitrine"),
+    # O DOSSIÊ EM PDF (degrau 14, critério AC-16), e ele é do ALUNO LOGADO: o
+    # arquivo desce sob o prefixo da área dele, atrás da porta fail-closed, e
+    # nunca do endereço público da vitrine. Quem quer mostrar a obra ao mundo já
+    # tem `/estudio/<apelido>`; este endereço é o do dono da obra.
+    #
+    # É `GET`, e por isso NÃO leva `"gesto": true` no mapa do site
+    # (`armadilhas/330`): abrir este endereço no navegador entrega o arquivo,
+    # que é exatamente o que o aluno espera de um botão de baixar.
+    path("dossie", baixar_dossie, name="dossie"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
     # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por

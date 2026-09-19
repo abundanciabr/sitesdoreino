@@ -70,6 +70,30 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Product' }
+    post:
+      operationId: createProduct
+      summary: Cadastra um produto (um curso é um produto), sem duplicar pelo apelido
+      description: |-
+        Cria o produto e responde 201 com ele. Chamar de novo com o MESMO apelido e o MESMO nome responde 200 com o produto que já existe, sem criar duplicata: é o que deixa a tela ser reenviada (dois cliques, recarregar a página) sem nascerem dois cursos iguais. Apelido que já existe com nome DIFERENTE responde 409 e NADA é alterado, dizendo qual nome está no lugar; trocar o nome de um produto é gesto de quem opera a máquina, pelo comando `manage.py criar_curso <apelido> '<nome>' --renomear`. Apelido fora da forma, ou nome vazio, respondem 422 e nada é gravado. O produto nasce ATIVO e com preço ZERO, e isso não se escolhe aqui: quem cobra é a oferta, que é por site, então zero significa "não está à venda por este produto", nunca "de graça".
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NewProduct' }
+      responses:
+        '200':
+          description: Já existia com este mesmo nome; nada mudou
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '201':
+          description: Produto criado, com preço zero e ativo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '409': { description: Apelido já usado por um produto de OUTRO nome; nada foi alterado }
+        '422': { description: Apelido fora da forma ou nome vazio; nada foi gravado }
   /produtos/{product_id}:
     get:
       operationId: getProduct
@@ -347,6 +371,19 @@ components:
         name: { type: string }
         price_cents: { type: integer, minimum: 0 }
         active: { type: boolean }
+    NewProduct:
+      type: object
+      description: 'O que basta para cadastrar um produto: o apelido e o nome.'
+      required: [slug, name]
+      properties:
+        slug:
+          type: string
+          pattern: '^[a-z0-9-]{1,64}$'
+          description: 'Apelido do produto: minúsculas, números e hífen, até 64 caracteres. É a chave que faz o cadastro poder ser repetido sem criar duplicata, e por isso a forma é conferida aqui, não depois.'
+        name:
+          type: string
+          minLength: 1
+          description: O nome que a pessoa lê na lista de escolher. Os espaços das pontas são aparados antes de gravar.
     Offer:
       type: object
       required: [site_id, slug, version, product, price_cents]

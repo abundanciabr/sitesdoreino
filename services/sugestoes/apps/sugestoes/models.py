@@ -49,16 +49,6 @@ class RegistroImutavel(Exception):
     """
 
 
-class CorredorAusente(Exception):
-    """`planejado → em_desenvolvimento` sem ChangeSpec aprovado (EVO-40).
-
-    Mora AQUI, e não em `apps/core/changespecs.py`, porque quem a levanta é o
-    `Sugestao.save()` — o degrau que pega qualquer caminho Python, inclusive um
-    `manage.py` escrito daqui a seis meses que nunca ouviu falar da moderação.
-    `apps/sugestoes` não importa `apps/core`; é o contrário.
-    """
-
-
 class Identidade(models.Model):
     """Quem é a pessoa, para esta célula — cunhada na primeira entrada.
 
@@ -257,47 +247,6 @@ class Sugestao(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return self.titulo
-
-    def save(self, *args, **kwargs):
-        """[INV-SUG10] Degrau 2 da trava do ChangeSpec — o que pega TODO
-        caminho Python.
-
-        A `ESPECIFICACAO-CELULA.md` §8 pede a validação "no `save()` ou no
-        serializer", e é literalmente aqui. O degrau 1 é o ponto de
-        estrangulamento (`registrar_mudanca_de_status`, em
-        `apps/core/moderacao.py`), que recusa **antes de abrir a transação** e
-        com uma frase que ensina o caminho; este degrau existe para o dia em
-        que alguém escrever um SEGUNDO caminho — um comando de `manage.py`,
-        uma correção em massa, um `python manage.py shell` às onze da noite.
-
-        **Custa uma consulta por gravação de linha existente**, para saber o
-        status anterior. É a única forma de o guarda não depender de quem
-        chama: uma assinatura que recebesse `status_anterior` seria um guarda
-        com porta dos fundos do tamanho da confiança em cada chamador. O preço
-        é pago só em mudança de status (a criação de sugestão não passa por
-        aqui: `_state.adding` é `True`), que acontece algumas vezes por dia.
-
-        O que este degrau NÃO pega: `QuerySet.update(status=...)` e SQL cru —
-        eles não passam por `save()` (`armadilhas/023`). Quem os pega é o
-        degrau 3, o trigger `sugestoes_exige_changespec` da migration `0004`.
-        """
-        if not self._state.adding and self.status == self.Status.EM_DESENVOLVIMENTO:
-            anterior = (
-                Sugestao.objects.filter(pk=self.pk)
-                .values_list("status", flat=True)
-                .first()
-            )
-            if (
-                anterior == self.Status.PLANEJADO
-                and not ChangeSpecAprovado.objects.filter(sugestao_id=self.pk).exists()
-            ):
-                raise CorredorAusente(
-                    f"INV-SUG10: a sugestão {self.pk} não tem ChangeSpec "
-                    "aprovado registrado — 'planejado' não vira "
-                    "'em_desenvolvimento' sem o corredor existir primeiro "
-                    "(FORMATO-CHANGESPEC.md §5)."
-                )
-        return super().save(*args, **kwargs)
 
 
 class Voto(models.Model):

@@ -16,6 +16,7 @@ passaria em todos os testes vermelhos e seria arrancado na primeira urgência.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -35,14 +36,9 @@ Onde estou: passo 2 de 2, acabou.
 
 **O que mudou** — o webhook do Pix passou a ignorar evento repetido.
 
-**O que foi verificado e como** — `pytest services/pagamentos` → 41 passed.
+**O que foi verificado** — `pytest services/pagamentos` → 41 passed.
 
-**O que foi cortado e por quê** — nada.
-
-**O que eu preciso decidir** — nada depende de ninguém, ~8 min até o ar.
-
-**Auditoria de qualidade** — Definição de Pronto 7/7. O crítico atacaria o
-retry do provedor, que não tem teste de ponta a ponta.
+**Pendências** — nada depende de ninguém, ~8 min até o ar.
 
 **Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.
 """
@@ -97,10 +93,8 @@ def _recusa_que_ensina(proc: subprocess.CompletedProcess) -> None:
     # A recusa tem de ENTREGAR o molde: recusa que não ensina só trava o robô
     # de outro jeito. E o emoji/acento provam que a fala não morreu no cp1252.
     assert "🧾 PRESTAÇÃO DE CONTAS" in proc.stderr
-    for titulo, _ in (("**O que mudou**", 0), ("**O que foi verificado e como**", 0),
-                      ("**O que foi cortado e por quê**", 0),
-                      ("**O que eu preciso decidir**", 0),
-                      ("**Auditoria de qualidade**", 0)):
+    for titulo, _ in (("**O que mudou**", 0), ("**O que foi verificado**", 0),
+                      ("**Pendências**", 0)):
         assert titulo in proc.stderr, f"o molde não trouxe {titulo}"
     assert "PRONTO" in proc.stderr
     # E o roteiro que ele pediu em 05/09/2026: a recusa tem de ensinar a caixinha.
@@ -112,10 +106,50 @@ def _silencio(proc: subprocess.CompletedProcess) -> None:
     assert proc.stderr.strip() == "", proc.stderr
 
 
+def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:1074
+    transcript = tmp_path / "persistente.jsonl"
+    transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
+    carga = {"transcript_path": str(transcript), "stop_hook_active": False}
+    resultados = [_rodar(["--contas"], carga) for _ in range(3)]
+    assert [r.returncode for r in resultados] == [2, 1, 1]
+    assert len(resultados[0].stderr.splitlines()) <= 10
+
+
+def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:282
+    transcript = tmp_path / "incremental.jsonl"
+    transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
+    carga = {"transcript_path": str(transcript)}
+    assert _rodar(["--contas"], carga).returncode == 2
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(_humano("Como está?")) + "\n")
+    assert _rodar(["--contas"], carga).returncode == 1
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(_fala(CONTAS_COMPLETAS)) + "\n")
+    _silencio(_rodar(["--contas"], carga))
+    cache = json.loads(transcript.with_suffix(".jsonl.contas.json").read_text())
+    assert cache["offset"] == transcript.stat().st_size
+    assert not cache["motivo"]
+    assert "entradas" not in cache
+
+
+def test_incremental_rele_linha_parcial_que_foi_completada(tmp_path):
+    transcript = tmp_path / "parcial.jsonl"
+    linha = json.dumps(_ferramenta("Edit", {"file_path": "a.py"}))
+    transcript.write_text(linha[:20], encoding="utf-8")
+    carga = {"transcript_path": str(transcript)}
+    _silencio(_rodar(["--contas"], carga))
+    with transcript.open("a", encoding="utf-8") as f:
+        f.write(linha[20:] + "\n")
+    assert _rodar(["--contas"], carga).returncode == 2
+
+
 # ------------------------------------------- o caso que motivou o portão ----
 
 
 def test_turno_que_editou_arquivo_e_calou_e_recusado(tmp_path):
+    # guarda: ci/prestacao_de_contas.py:279
     proc = _decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
@@ -305,8 +339,8 @@ def test_subagente_de_leitura_nao_conta_mas_despacho_conta(tmp_path):
 
 
 def test_relatorio_sem_um_dos_blocos_e_recusado(tmp_path):
-    for titulo in ("**O que mudou**", "**Auditoria de qualidade**",
-                   "**O que eu preciso decidir**"):
+    for titulo in ("**O que mudou**", "**O que foi verificado**",
+                   "**Pendências**"):
         mutilado = CONTAS_COMPLETAS.replace(titulo, "**Alguma coisa**")
         _recusa_que_ensina(_decidir(tmp_path, [
             _humano("conserte"),
@@ -332,7 +366,7 @@ def test_pontuacao_natural_do_relatorio_nao_barra_o_robo(tmp_path):
         CONTAS_COMPLETAS.replace("**O que mudou**", "**O que mudou:**"),
         CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "**Veredito** — PRONTO"),
         CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "Veredito: **PRONTO**"),
-        CONTAS_COMPLETAS.replace("**Auditoria de qualidade**", "**AUDITORIA DE QUALIDADE**"),
+        CONTAS_COMPLETAS.replace("**Pendências**", "**PENDÊNCIAS**"),
     ):
         _silencio(_decidir(tmp_path, [
             _humano("conserte"),
@@ -471,6 +505,7 @@ def test_segunda_passada_sem_o_relatorio_grita_sem_prender(tmp_path):
     ], stop_hook_active=True)
     assert proc.returncode == 1, (proc.returncode, proc.stdout, proc.stderr)
     assert "cobrado e terminou assim mesmo" in proc.stderr
+    assert "Escreva os quatro blocos e o checklist" in proc.stderr
     assert "🧾" not in proc.stderr, "a segunda passada não recusa: a recusa já aconteceu"
 
 
@@ -520,8 +555,9 @@ def test_o_aviso_do_plano_sai_para_pedido_do_mantenedor():
     assert "PLANO PRIMEIRO" in proc.stdout
     assert "- [ ]" in proc.stdout
     assert "Veredito" in proc.stdout
-    # A ponta do meio (05/09/2026) só tem o aviso como mecanismo: ele tem de dizê-la.
-    assert "FIM DE CADA ETAPA" in proc.stdout and "Onde estou" in proc.stdout
+    # O aviso define etapa como marco real e impede cópia entre marcos.
+    assert "concluir ou bloquear um passo planejado" in proc.stdout
+    assert "se não mudou, não o copie" in proc.stdout
 
 
 def test_o_aviso_do_plano_cala_no_acordar_da_maquina():
@@ -740,3 +776,406 @@ def test_sombra_nao_muda_o_exit_code(tmp_path):
     assert any(e.get("evento") == "serie_sem_despacho" for e in eventos), (
         "a sombra tem de ter gravado mesmo com o turno calado"
     )
+
+
+# ------------------------------------------- o molde já vem com os fatos ----
+#
+# 06/09/2026. Medido na semana: 140 emissões de molde e 286 entradas de sistema
+# citando este gancho, em 22 sessões. Cada recusa é uma volta inteira no
+# contexto MEDIANO do relatório (302.996 tokens), que é o momento mais caro da
+# sessão. Quatro dos seis blocos têm os fatos no diff, nos checks e no plano da
+# abertura: a máquina pode preenchê-los, e o robô escreve só o julgamento.
+# Decisão do mantenedor, em pergunta estruturada: "os papéis podem nascer
+# preenchidos pela máquina, com o robô escrevendo só o julgamento".
+
+
+def _uso(nome: str, entrada: dict, identificador: str) -> dict:
+    """Um `tool_use` com id, para poder casar com o resultado dele."""
+    return {"type": "assistant",
+            "message": {"role": "assistant",
+                        "content": [{"type": "tool_use", "id": identificador,
+                                     "name": nome, "input": entrada}]}}
+
+
+def _resultado(identificador: str, texto: str) -> dict:
+    return {"type": "user",
+            "message": {"role": "user",
+                        "content": [{"type": "tool_result",
+                                     "tool_use_id": identificador,
+                                     "content": texto}]}}
+
+
+def _molde_com_fatos(tmp_path: Path, entradas: list[dict] | None,
+                     cwd: Path | None = None, env: dict | None = None):
+    argumentos = ["--molde-com-fatos"]
+    if entradas is not None:
+        transcript = tmp_path / "transcript.jsonl"
+        transcript.write_text(
+            "\n".join(json.dumps(e, ensure_ascii=False) for e in entradas),
+            encoding="utf-8",
+        )
+        argumentos += ["--transcript", str(transcript)]
+    return subprocess.run(
+        [sys.executable, str(PORTAO), *argumentos],
+        capture_output=True, text=True, timeout=120,
+        encoding="utf-8", errors="replace",
+        cwd=str(cwd) if cwd else None, env=env,
+        stdin=subprocess.DEVNULL,
+    )
+
+
+PLANO_DA_ABERTURA = """## Plano
+
+- [ ] achar o evento repetido no webhook
+- [ ] ignorá-lo, com teste vermelho→verde
+"""
+
+
+def _turno_de_trabalho() -> list[dict]:
+    return [
+        _humano("conserte o webhook"),
+        _fala(PLANO_DA_ABERTURA),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _uso("Bash", {"command": "python -m pytest services/pagamentos -q"}, "t1"),
+        _resultado("t1", "..........\n41 passed in 3.10s"),
+        _ferramenta("Bash", {"command": "git commit -m 'webhook ignora repetido'"}),
+    ]
+
+
+def test_molde_com_fatos_traz_o_checklist_do_plano(tmp_path):
+    """O checklist da abertura volta como estava: quem marca é o robô."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "FATOS DA MÁQUINA" in proc.stdout
+    assert "- [ ] achar o evento repetido no webhook" in proc.stdout
+    assert "- [ ] ignorá-lo, com teste vermelho→verde" in proc.stdout
+    assert "Onde estou" in proc.stdout
+
+
+def test_molde_com_fatos_traz_os_arquivos_e_os_comandos_do_turno(tmp_path):
+    """Sem git por perto, o bloco cai para os Edit/Write do transcript — e os
+    comandos que mudaram o mundo e os que verificaram vêm com a última linha
+    da saída real."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "webhook.py" in proc.stdout
+    assert "commit/push/merge" in proc.stdout
+    assert "pytest" in proc.stdout
+    assert "41 passed" in proc.stdout, "a última linha da saída do teste não veio"
+
+
+def test_o_rodape_do_harness_nao_e_a_saida_do_teste(tmp_path):
+    """O harness pendura "Shell cwd was reset to ..." no fim de toda saída de
+    shell. Sem peneira, a "última linha" de todo comando desta casa seria essa,
+    e o bloco de verificação nasceria inútil (medido na prova de fora)."""
+    entradas = [
+        _humano("rode os testes"),
+        _uso("Bash", {"command": "python -m pytest ci/tests -q"}, "t5"),
+        _resultado("t5", "59 passed in 51.03s" + chr(10) + "Shell cwd was reset to C:/x"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+    ]
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "59 passed in 51.03s" in proc.stdout
+    assert "Shell cwd was reset" not in proc.stdout
+
+
+def test_molde_com_fatos_le_o_diff_de_um_git_de_verdade(tmp_path):
+    """Com bancada de verdade, os arquivos saem do `git diff --numstat` contra
+    origin/main — que é o que a prestação de contas precisa dizer."""
+    casa = tmp_path / "bancada"
+    casa.mkdir()
+    def git(*args):
+        subprocess.run(["git", *args], cwd=str(casa), check=True,
+                       capture_output=True, text=True, timeout=60)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "robo@exemplo.invalido")
+    git("config", "user.name", "robo")
+    (casa / "a.py").write_text("print(1)\n", encoding="utf-8")
+    git("add", "a.py")
+    git("commit", "-qm", "primeiro")
+    git("update-ref", "refs/remotes/origin/main", "HEAD")
+    (casa / "a.py").write_text("print(1)\nprint(2)\n", encoding="utf-8")
+    (casa / "b.py").write_text("print(3)\n", encoding="utf-8")
+
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=casa)
+    assert proc.returncode == 0, proc.stderr
+    assert "a.py" in proc.stdout
+    assert "b.py" in proc.stdout, "arquivo novo não rastreado ficou de fora"
+
+
+def test_molde_com_fatos_tem_teto_de_linhas(tmp_path):
+    """Uma sessão-maestro tem dezenas de escritas de bancadas diferentes na
+    mesma janela. Molde de sessenta linhas de ruído é molde que ninguém lê:
+    a lista corta nas mais recentes e DIZ quantas ficaram de fora."""
+    entradas = [_humano("faça o lote"), _fala(PLANO_DA_ABERTURA)]
+    for numero in range(40):
+        entradas.append(_ferramenta("Write", {"file_path": f"servico/arquivo{numero}.py"}))
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "arquivo39.py" in proc.stdout, "as mudanças recentes têm de aparecer"
+    assert "arquivo0.py" not in proc.stdout, "a lista não tem teto"
+    assert "outros, mais antigos, no transcript" in proc.stdout
+
+
+def test_molde_com_fatos_sem_pr_no_turno_diz_que_nao_ha_pr(tmp_path):
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    assert "nenhum PR neste turno" in proc.stdout
+
+
+def test_molde_com_fatos_com_o_gh_quebrado_diz_nao_medido_e_nao_trava(tmp_path):
+    """Fail-open: o molde é conveniência, não muralha. Sem `gh` no caminho, o
+    bloco dos checks diz "não medido" com o motivo e o resto do molde sai
+    inteiro. Um molde que travasse seria pior que molde nenhum."""
+    entradas = _turno_de_trabalho() + [
+        _uso("Bash", {"command": "gh pr create --base main --title x --body-file c.md"}, "t9"),
+        _resultado("t9", "https://github.com/abundanciabr/sitesdoreino/pull/1234"),
+    ]
+    sem_caminho = dict(os.environ)
+    sem_caminho["PATH"] = ""
+    proc = _molde_com_fatos(tmp_path, entradas, cwd=tmp_path, env=sem_caminho)
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "PR #1234" in proc.stdout
+    assert "não medido" in proc.stdout
+    assert "**Veredito:**" in proc.stdout, "o resto do molde tem de sair inteiro"
+
+
+def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
+    """Os quatro blocos de julgamento saem marcados VOCÊ ESCREVE e vazios:
+    máquina nenhuma sabe o que foi cortado, o que depende dele, nem o veredito.
+    Preencher isso por conta própria seria fabricar prestação de contas."""
+    proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
+    assert proc.returncode == 0, proc.stderr
+    for titulo in ("**Pendências**", "**Veredito:**"):
+        assert titulo in proc.stdout, f"o molde não trouxe {titulo}"
+    corpo = proc.stdout.split("**Pendências**", 1)[1]
+    assert corpo.count("VOCÊ ESCREVE") == 2, corpo
+
+
+def test_molde_com_fatos_sem_identidade_recusa_escolher_transcript(tmp_path):
+    """Sem identidade, escolher o transcript mais recente seria fato alheio."""
+    proc = _molde_com_fatos(tmp_path, None, cwd=tmp_path,
+                            env={**os.environ, "USERPROFILE": str(tmp_path),
+                                 "HOME": str(tmp_path)})
+    assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
+    assert "não sei de qual sessão" in proc.stderr
+    assert "Não escolhi o transcript mais recente" in proc.stderr
+
+
+def test_molde_com_fatos_le_somente_o_transcript_informado(tmp_path):
+    sessao_a = tmp_path / "sessao-a.jsonl"
+    sessao_b = tmp_path / "sessao-b.jsonl"
+    sessao_a.write_text(
+        "\n".join(json.dumps(e, ensure_ascii=False) for e in [
+            _humano("sessão A"),
+            _ferramenta("Edit", {"file_path": "fato-da-sessao-A.txt"}),
+        ]),
+        encoding="utf-8",
+    )
+    sessao_b.write_text(
+        "\n".join(json.dumps(e, ensure_ascii=False) for e in [
+            _humano("sessão B"),
+            _ferramenta("Edit", {"file_path": "fato-da-sessao-B.txt"}),
+        ]),
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        [sys.executable, str(PORTAO), "--molde-com-fatos", "--transcript", str(sessao_a)],
+        cwd=str(tmp_path), capture_output=True, text=True, timeout=120,
+        encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL,
+    )
+    assert proc.returncode == 0, (proc.returncode, proc.stdout, proc.stderr)
+    assert "fato-da-sessao-A.txt" in proc.stdout
+    assert "fato-da-sessao-B.txt" not in proc.stdout
+
+
+# ------------------------- bloco de julgamento vazio não é prestar contas ----
+
+
+def test_bloco_de_julgamento_vazio_e_recusado(tmp_path):
+    """Título sem uma palavra embaixo é o silêncio de volta, com moldura. Este
+    teste nasceu VERMELHO contra o portão anterior, que só olhava se o título
+    estava escrito."""
+    vazio = CONTAS_COMPLETAS.replace(
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências**",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(vazio),
+    ]))
+
+
+def test_bloco_com_o_rotulo_do_molde_intocado_e_recusado(tmp_path):
+    """O molde colado sem preencher: o rótulo "VOCÊ ESCREVE" continua lá."""
+    intocado = CONTAS_COMPLETAS.replace(
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências** — VOCÊ ESCREVE",
+    )
+    assert "VOCÊ ESCREVE" in intocado
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(intocado),
+    ]))
+
+
+def test_veredito_sem_o_porque_e_recusado(tmp_path):
+    """A lei pede "PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê". A
+    palavra sozinha é rótulo, não veredito."""
+    pelado = CONTAS_COMPLETAS.replace(
+        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
+        "**Veredito:** PRONTO",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(pelado),
+    ]))
+
+
+def test_uma_palavra_basta_para_o_bloco(tmp_path):
+    """O par verde: "nada" é resposta legítima e a lei diz isso com todas as
+    letras. Uma régua que exigisse frase ensinaria o robô a encher linguiça."""
+    curto = CONTAS_COMPLETAS.replace(
+        "**O que foi cortado e por quê** — nada.",
+        "**O que foi cortado e por quê**: nada",
+    ).replace(
+        "**Pendências** — nada depende de ninguém, ~8 min até o ar.",
+        "**Pendências**: nada",
+    )
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(curto),
+    ]))
+
+
+def test_a_recusa_ensina_o_molde_com_fatos(tmp_path):
+    proc = _decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala("Pronto."),
+    ])
+    assert proc.returncode == 2
+    assert "--molde-com-fatos" in proc.stderr, (
+        "a recusa não diz que a máquina preenche os fatos"
+    )
+
+
+def test_o_aviso_do_plano_cita_o_molde_com_fatos():
+    proc = _rodar(["--plano"], {"prompt": "conserte o login"})
+    assert proc.returncode == 0
+    assert "--molde-com-fatos" in proc.stdout
+
+
+# ------------------------------------------------------ a entrega em voo ----
+#
+# O segundo portão do Stop (17/09/2026): o relatório saiu, mas o PR que esta
+# sessão abriu ainda não chegou a um resultado terminal. A régua é medida sem
+# rede; o fim de turno inteiro é medido em processo, com o `gh` substituído,
+# porque um `gh` de mentira no PATH não roda igual nos dois sistemas.
+
+import prestacao_de_contas as contas  # noqa: E402
+
+
+def _entrega(numero: int = 1692, comando: str = "make pr TITULO=x") -> list[dict]:
+    """Uma sessão que trabalhou, abriu o PR pelo rito e prestou contas."""
+    return [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _uso("Bash", {"command": comando}, "p1"),
+        _resultado("p1", f"PR aberto: https://github.com/abundanciabr/sitesdoreino/pull/{numero}"),
+        _fala(CONTAS_COMPLETAS),
+    ]
+
+
+def _stop(tmp_path: Path, entradas: list[dict], monkeypatch, situacao, motivo="está aberto"):
+    transcript = tmp_path / "voo.jsonl"
+    transcript.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in entradas),
+                          encoding="utf-8")
+    monkeypatch.setattr(contas, "entrega_em_voo", lambda numero, cwd: (situacao, motivo))
+    return lambda: contas.modo_contas({"transcript_path": str(transcript),
+                                       "stop_hook_active": False, "cwd": str(tmp_path)})
+
+
+# guarda: ci/prestacao_de_contas.py:763
+def test_a_regua_do_voo_separa_terminal_de_em_voo():
+    """Só merge e fechamento liberam o fecho. Verde e aberto ainda não integrou."""
+    assert contas.situacao_do_pr({"state": "MERGED"})[0] == "terminal"
+    assert contas.situacao_do_pr({"state": "CLOSED"})[0] == "terminal"
+    assert contas.situacao_do_pr({"state": "OPEN", "isDraft": True})[0] == "rascunho"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "conclusion": "FAILURE"}]})[0] == "vermelho"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "status": "IN_PROGRESS"}]})[0] == "pendente"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "conclusion": "SUCCESS"}]})[0] == "aberto"
+
+
+# guarda: ci/prestacao_de_contas.py:1041
+def test_relatorio_com_o_pr_ainda_pendente_nao_encerra_a_sessao(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 2 check(s) sem resultado")
+    assert rodar() == 2
+    erro = capsys.readouterr().err
+    assert "🛫 ENTREGA EM VOO" in erro and "#1692" in erro
+    assert "ci/esperar.py --checks 1692 --so-desfecho" in erro
+
+
+# guarda: ci/prestacao_de_contas.py:1022
+def test_pr_integrado_deixa_a_sessao_fechar_calada(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "terminal", "")
+    assert rodar() == 0
+    assert capsys.readouterr().err.strip() == ""
+
+
+# guarda: ci/prestacao_de_contas.py:1040
+def test_pr_em_rascunho_e_objetivo_incompleto(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "rascunho", "está em rascunho")
+    assert rodar() == 2
+    assert "gh pr ready 1692" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:1030
+def test_a_mesma_situacao_cobra_uma_vez_so(tmp_path, monkeypatch, capsys):
+    """Recusar em laço seria a espera em laço com outro nome: uma vez por fato."""
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 1 check(s) sem resultado")
+    assert [rodar(), rodar()] == [2, 1]
+    assert "sem nova recusa" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:799
+def test_situacao_nova_e_fato_novo_e_cobra_de_novo(tmp_path, monkeypatch, capsys):
+    entradas = _entrega()
+    assert _stop(tmp_path, entradas, monkeypatch, "pendente", "tem 1 check(s)")() == 2
+    assert _stop(tmp_path, entradas, monkeypatch, "vermelho", "está vermelho em muralhas")() == 2
+    assert "rerun_de_deploy" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:834
+def test_o_pr_que_a_sessao_so_consultou_nao_e_entrega_dela(tmp_path, monkeypatch, capsys):
+    """Quem responde pela entrega é quem a abriu; olhar o PR alheio não prende."""
+    rodar = _stop(tmp_path, _entrega(comando="gh pr view 1692 --json state"),
+                  monkeypatch, "pendente", "tem 2 check(s) sem resultado")
+    assert rodar() == 0
+    assert capsys.readouterr().err.strip() == ""
+
+
+# guarda: ci/prestacao_de_contas.py:1027
+def test_gh_mudo_grita_e_nao_prende_a_sessao(tmp_path):
+    """Instrumento mudo não aprova nada, e também não tranca o robô (INV-CI01)."""
+    transcript = tmp_path / "voo.jsonl"
+    transcript.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in _entrega()),
+                          encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(PORTAO), "--contas"],
+        input=json.dumps({"transcript_path": str(transcript), "stop_hook_active": False,
+                          "cwd": str(tmp_path)}),
+        capture_output=True, text=True, timeout=60, encoding="utf-8", errors="replace",
+        env={**os.environ, "PATH": ""},
+    )
+    assert proc.returncode == 1, (proc.returncode, proc.stderr)
+    assert "não consegui medir o PR #1692" in proc.stderr
+    assert "NÃO é 'está tudo certo'" in proc.stderr

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-135937-TAR-287-explicada",
+  "tarefa": "TAR-287",
+  "evento": "explicada",
+  "quando": "2026-09-09T13:59:37+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; reutiliza TAR-250, TAR-263 e jornadas existentes",
+  "o_que_e": "O analista, os experimentos e as jornadas existem em pontos separados e ainda não formam um fluxo único para decidir, aprovar e aprender.",
+  "o_que_muda": "A pessoa de Estratégia acompanha uma hipótese da evidência até a versão aprovada e o resultado medido.",
+  "exemplo": "O copiloto propõe mudar uma jornada, mostra a evidência, espera aprovação e depois compara a medida com a hipótese registrada.",
+  "importancia": 90
+}

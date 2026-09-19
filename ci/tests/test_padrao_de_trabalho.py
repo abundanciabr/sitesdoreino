@@ -1,24 +1,4 @@
-"""O PADRÃO DE TRABALHO — provas de que o portão pega cada jeito de perdê-lo.
-
-O mantenedor mandou o Padrão valer INTEGRALMENTE e ficar onde nenhum robô
-consiga ignorá-lo (04/09/2026). Um portão que só conferisse "a seção existe"
-daria PASS num texto reduzido a três bullets — e é exatamente assim que ela
-morreria: ninguém apaga uma lei, alguém a *resume* numa sessão apertada de
-contexto, com a melhor das intenções.
-
-Por isso cada teste aqui mutila o texto de um jeito DIFERENTE e exige vermelho:
-
-    regra apagada          — some um dos 11 títulos
-    exigência parafraseada — os títulos ficam, a frase que obriga some
-    seção rebaixada        — continua no arquivo, mas deixa de ser a primeira
-    costura apagada        — a conciliação com as leis da casa some
-    porta muda             — o texto está lá, mas nenhum caminho leva até ele
-    arquivo engordado      — a lei está inteira, e a história voltou para dentro
-
-E um teste garante o contrário: o aviso de abertura de sessão é DERIVADO do
-`CLAUDE.md`, não uma segunda cópia da lei. Duas cópias divergem, e a sessão
-passa a ler a errada.
-"""
+"""Prova que compactar expressão não apaga obrigações, portas ou tetos."""
 
 from __future__ import annotations
 
@@ -41,7 +21,7 @@ def _cenario(tmp_path: Path, **trocas: tuple[str, str]) -> Path:
     porque um teste que "mutila" sem mutilar dá verde e não prova nada.
     """
     raiz = tmp_path / "repo"
-    arquivos = ["CLAUDE.md", *padrao.PORTAS]
+    arquivos = ["CLAUDE.md", "AGENTS.md", *padrao.PORTAS]
     for nome in arquivos:
         destino = raiz / nome
         destino.parent.mkdir(parents=True, exist_ok=True)
@@ -80,7 +60,7 @@ def test_toda_porta_declarada_existe_em_disco():
     assert not sumidas, f"portas declaradas que não existem: {sumidas}"
 
 
-def test_o_aviso_de_sessao_lista_as_onze_regras(capsys):
+def test_o_aviso_de_sessao_lista_as_dez_regras(capsys):
     padrao.aviso(RAIZ)
     saida = capsys.readouterr().out
     for regra in padrao.REGRAS:
@@ -94,13 +74,13 @@ def test_o_aviso_de_sessao_lista_as_onze_regras(capsys):
 
 def test_regra_apagada_reprova(tmp_path):
     relatorio = padrao.conferir(
-        _cenario(tmp_path, **{"CLAUDE.md": ("#### 7. O passe de remoção", "#### 7. Limpeza")})
+        _cenario(tmp_path, **{"CLAUDE.md": ("#### 7. Faça o passe de remoção", "#### 7. Limpeza")})
     )
-    _falha(relatorio, "as 11 regras, íntegras")
+    _falha(relatorio, "as 10 regras, íntegras")
 
 
 def test_exigencia_parafraseada_reprova(tmp_path):
-    """Os 11 títulos intactos, e a lei esvaziada mesmo assim.
+    """Os 10 títulos intactos, e a lei esvaziada mesmo assim.
 
     Este é o modo de falha que o portão existe para pegar: "sempre teste antes
     de entregar" diz a mesma coisa em espírito e não obriga a nada. O que
@@ -111,7 +91,7 @@ def test_exigencia_parafraseada_reprova(tmp_path):
             tmp_path,
             **{
                 "CLAUDE.md": (
-                    'Você nunca diz "deve funcionar". Ou rodou, ou escreve "NÃO RODEI".',
+                    'Rodou de verdade, com comando e saída real, ou escreva "NÃO RODEI".',
                     "Sempre teste antes de entregar.",
                 )
             },
@@ -136,7 +116,7 @@ def test_costura_apagada_reprova(tmp_path):
     relatorio = padrao.conferir(
         _cenario(
             tmp_path,
-            **{"CLAUDE.md": ("vale para as decisões que são\nSUAS", "vale sempre")},
+            **{"CLAUDE.md": ("A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.", "O agente decide sempre.")},
         )
     )
     _falha(relatorio, "as 3 costuras conciliadas")
@@ -163,10 +143,10 @@ def test_arquivo_acima_do_teto_reprova(tmp_path):
     raiz = _cenario(tmp_path)
     caminho = raiz / "CLAUDE.md"
     caminho.write_text(
-        caminho.read_text(encoding="utf-8") + "\n" + "história " * (padrao.TETO_DE_CARACTERES // 8),
+        caminho.read_text(encoding="utf-8") + "\n" + "história " * (padrao.TETOS_EM_BYTES["CLAUDE.md"] // 8),
         encoding="utf-8",
     )
-    _falha(padrao.conferir(raiz), "cabe no teto de contexto")
+    _falha(padrao.conferir(raiz), "teto de CLAUDE.md")
 
 
 # ---------------------------------------------------------------------------
@@ -193,3 +173,38 @@ def test_o_aviso_nao_derruba_a_sessao_quando_nao_acha_o_texto(tmp_path, capsys):
     (raiz / "CLAUDE.md").write_text("# CLAUDE.md\n", encoding="utf-8")
     assert padrao.aviso(raiz) == 0
     assert "PADRÃO DE TRABALHO" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("nome,teto", padrao.TETOS_EM_BYTES.items())
+def test_teto_mede_bytes_utf8_e_nao_caracteres(tmp_path, nome, teto):
+    raiz = _cenario(tmp_path)
+    p = raiz / nome
+    conteudo = p.read_bytes()
+    p.write_bytes(conteudo + ("á" * ((teto - len(conteudo)) // 2 + 1)).encode())
+    _falha(padrao.conferir(raiz), f"teto de {nome}")
+
+
+@pytest.mark.parametrize("obrigacao", padrao.PEDRAS_ANGULARES)
+def test_obrigacao_removida_reprova(tmp_path, obrigacao):
+    import re
+    raiz = _cenario(tmp_path)
+    p = raiz / "CLAUDE.md"
+    texto = p.read_text(encoding="utf-8")
+    padrao_frase = r"\s+".join(re.escape(s) for s in obrigacao.split())
+    texto, n = re.subn(padrao_frase, "", texto)
+    assert n >= 1
+    p.write_text(texto, encoding="utf-8")
+    _falha(padrao.conferir(raiz), "as exigências literais")
+
+
+def test_constituicao_preserva_a_lei_canonica_compacta():
+    constituicao = (RAIZ / 'CONSTITUICAO.md').read_text(encoding='utf-8')
+    lei = constituicao.split('## Lei 10', 1)[1].split('## Definição de Pronto', 1)[0]
+    assert 'forma compacta, sem perda das obrigações' in lei
+    assert 'AGENTS.md' in lei
+    assert 'escrito por inteiro' not in lei
+
+
+def test_codex_sem_ponteiro_canonico_reprova(tmp_path):
+    raiz = _cenario(tmp_path, **{"AGENTS.md": ("Leia `CLAUDE.md` antes de agir", "Leia o resumo")})
+    _falha(padrao.conferir(raiz), "Codex aponta para a lei")

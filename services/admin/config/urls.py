@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
@@ -5,7 +6,6 @@ from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
 from apps.core.caixa import (
     apagar_ideia,
     arquivar_ideia,
-    assinar_obra,
     avaliar_ideia,
     corrigir_ideia,
     desarquivar_ideia,
@@ -17,13 +17,16 @@ from apps.core.caixa import (
     travessia,
 )
 from apps.core.divida import divida_json
+from apps.core.fila_do_painel import fila_json
 from apps.core.editor_de_documentos import (
     documento_apagar,
     documento_arquivar,
     documento_criar,
     documento_desarquivar,
+    documento_despublicar,
     documento_editar,
     documento_novo,
+    documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
@@ -50,7 +53,12 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.cursos import escola_curso_alterar, escola_curso_criar, escola_cursos
 from apps.core.escola_pontos import escola_pontos
+from apps.core.parametros_da_fila import (
+    parametros_da_fila,
+    parametros_da_fila_mudar,
+)
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -63,36 +71,56 @@ from apps.core.menu import (
     menu_versao_padrao,
 )
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
-from apps.core.planos_para_ia import plano_publico, planos_indice
+from apps.core.planos_para_ia import (
+    plano_mestre,
+    plano_mestre_documento,
+    plano_mestre_mtime,
+    plano_publico,
+    planos_indice,
+)
 from apps.core.painel import painel, painel_arquivo
+from apps.core.pendencias import pendencias
+from apps.core.ranking_das_ias import ranking_das_ias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
+from apps.core.fechamento import fechamento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
-from apps.core.reuniao import reuniao
-from apps.core.robos import robos
+from apps.core.reuniao import reuniao, pedido_reuniao
+from apps.core.robos import excluir_tarefa, robos
+from apps.core.radio import radio_api, radio_pagina, radio_script
+from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
     aula_publicar,
     aula_salvar,
+    aula_youtube,
     aulas,
     instrumento,
     instrumento_salvar,
 )
+from apps.core.aulas_avulsas import aula_avulsa_criar, aula_avulsa_editar, aulas_avulsas
 from apps.core.sequencias import (
     sequencia,
     sequencia_ligar,
     sequencia_publicar,
     sequencias,
 )
+from apps.core.capitulo import (
+    capitulo,
+    capitulo_importar,
+    capitulo_prever,
+)
+from apps.core.estrutura import estrutura, estrutura_importar, estrutura_prever
 from apps.core.sumario import (
     sumario,
     sumario_importar,
     sumario_prever,
 )
 from apps.core.views import (
+    acesso_local,
     escola,
     escola_admin_promover,
     escola_admin_remover,
@@ -117,6 +145,7 @@ from apps.core.views import (
     healthz,
     visao_geral,
 )
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
@@ -131,6 +160,20 @@ from apps.core.views import (
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
+    # A PORTA DE MAQUINA (06/09/2026), no mesmo endereco que o `forum`, a
+    # `identidade`, a `sugestoes` e a `pages` usam. Nesta celula esse caminho
+    # FICA DEBAIXO do prefixo roteado: `meshcraft.top/admin/interno/...` e
+    # alcancavel pela internet, porque o corte do prefixo e do Django, e nao do
+    # Traefik (`armadilhas/186`). Quem fecha a porta e o Bearer do par, e o
+    # guarda que importa e o teste de 401 em TODAS as operacoes
+    # (`tests/test_porta_de_maquina.py`); a topologia nao fecha nada aqui, e
+    # escrever o contrario neste comentario seria ensinar errado quem chegar
+    # depois.
+    #
+    # O middleware fail-closed desta celula ISENTA este prefixo de proposito
+    # (`apps/core/porta.py`): maquina nao tem cookie para apresentar, e passar
+    # por la trocaria o 401 do contrato por um 302 para a tela de login.
+    path("interno/", api.urls),
     # O PAINEL DO SISTEMA, vivo (`apps/core/painel.py`). A barra final é
     # ESTRUTURAL, não estilo: o HTML pede `manifesto.js` e `registros/*.js` por
     # caminho RELATIVO, e sem ela o navegador os buscaria um nível acima, na
@@ -149,6 +192,11 @@ urlpatterns = [
     # identidade, quantas estourou o tempo, quantas ela recusou, e a latência.
     # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
     path("painel/diag.json", diag_json, name="painel_diag"),
+    # Pelo mesmo motivo das duas linhas acima: a fila dos robôs chegando à aba
+    # "Prioridades" (`apps/core/fila_do_painel.py`, 07/09/2026) — medição do que
+    # o build já materializou, não arquivo em disco; a rota genérica abaixo
+    # responderia 404 por ela.
+    path("painel/fila.json", fila_json, name="painel_fila"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
     # O MAPA DO SITE (`apps/core/mapa_do_site.py`, 30/08/2026) — todo endereço
     # que a plataforma tem, numa página só, em português.
@@ -160,6 +208,29 @@ urlpatterns = [
     # Barra final pela convenção das outras telas; quem chega sem ela é
     # redirecionado pelo APPEND_SLASH, que já está na cadeia.
     path("mapa/", mapa_do_site, name="mapa_do_site"),
+    # A CENTRAL DE PENDENCIAS (`apps/core/pendencias.py`, 07/09/2026), degrau 1
+    # de `documentos/pendencias-e-conferencia-por-pares.md`. A portaria: tudo
+    # que espera pelo mantenedor numa tela so.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e do menu logo
+    # abaixo: a rota generica `painel/<qualquer coisa>` engoliria qualquer
+    # irmao dela. Esta e uma tela da area, nao uma peca do painel, ainda que
+    # LEIA um numero de dentro dele.
+    #
+    # Barra final pela convencao das outras telas; quem chega sem ela e
+    # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
+    path("pendencias/", pendencias, name="pendencias"),
+    # O PLACAR DAS IAS (`apps/core/ranking_das_ias.py`, 17/09/2026) — quanto cada
+    # IA da tríade publicou em `main` e quanto escreveu para publicar. Quem mede
+    # é `ci/ranking_das_ias.py`, contra `origin/main`; esta tela só ordena.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e da central acima: a
+    # rota genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela, e
+    # esta é uma tela da área, ainda que LEIA um arquivo publicado com o painel.
+    #
+    # Barra final pela convenção das outras telas; quem chega sem ela é
+    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
+    path("ranking-ias/", ranking_das_ias, name="ranking_das_ias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.
@@ -195,6 +266,22 @@ urlpatterns = [
     # no navegador do mantenedor com o servidor verde, e nao havia como saber
     # de qual lado sem entrar na VPS. Duas rotas, na mesma gramatica da
     # economia: a tela e o gesto.
+    # OS NUMEROS DA FILA DO PRIMEIRO DOLAR (`apps/core/parametros_da_fila.py`,
+    # 07/09/2026, degrau 2.14 da `DECISAO-fila-do-primeiro-dolar.md`). A tela
+    # existe pela MESMA razao da economia logo acima: a lei daquela celula
+    # (§3.8 e §9) chama de CRITERIO DE MORTE 5 o dia em que mudar um destes
+    # numeros passar a exigir PR de codigo. Duas rotas, na mesma gramatica da
+    # economia e do menu: a tela e o gesto.
+    path(
+        "encomendas/parametros/",
+        parametros_da_fila,
+        name="parametros_da_fila",
+    ),
+    path(
+        "encomendas/parametros/mudar",
+        parametros_da_fila_mudar,
+        name="parametros_da_fila_mudar",
+    ),
     path("avisos/", avisos, name="avisos"),
     path("avisos/testar", avisos_testar, name="avisos_testar"),
     # A segunda metade da mesma tela (01/09/2026): as medalhas e os marcos. Rota
@@ -263,6 +350,16 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+        documento_publicar,
+        name="documento_publicar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+        documento_despublicar,
+        name="documento_despublicar",
     ),
     # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
     # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
@@ -361,6 +458,13 @@ urlpatterns = [
     ),
     path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
     re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
+    path("plano-mestre/", plano_mestre, name="plano_mestre"),
+    path("plano-mestre/mtime.json", plano_mestre_mtime, name="plano_mestre_mtime"),
+    re_path(
+        r"^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
+        plano_mestre_documento,
+        name="plano_mestre_documento",
+    ),
     # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
     # acima. Os dois são "painéis" e é por isso que a separação precisa estar
     # no endereço, e não só no texto do link: `/painel/` mostra como a
@@ -383,12 +487,21 @@ urlpatterns = [
     # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
+    path("caixa/radio/", radio_pagina, name="radio_pagina"),
+    path("caixa/radio/api/", radio_api, name="radio_api"),
+    path("caixa/radio/radio.js", radio_script, name="radio_script"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
     # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    # O único gesto de escrita desta aba (06/09/2026): tirar uma tarefa da fila
+    # para sempre. Não apaga nada aqui — abre um PR no GitHub com o evento
+    # `cancelada`, e quem mergeia é a pista. O `TAR-NNN` viaja no CORPO do POST
+    # e é conferido contra o formato antes de virar nome de ramo
+    # (`armadilhas/047`): endereço nenhum desta rota carrega dado de formulário.
+    path("caixa/robos/excluir", excluir_tarefa, name="caixa_robos_excluir"),
     # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
     # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
     # análise das sugestões e o robô esbarrou no que o livro já registrava em
@@ -417,7 +530,6 @@ urlpatterns = [
     path("caixa/ideia/<int:ideia_id>/", ideia, name="caixa_ideia"),
     path("caixa/ideia/<int:ideia_id>/fase", mover_ideia, name="caixa_mover"),
     path("caixa/ideia/<int:ideia_id>/avaliacao", avaliar_ideia, name="caixa_avaliar"),
-    path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
     # [ARQUIVAR] `DECISAO-arquivar-ideia.md` (29/08/2026): some do quadro do
     # aluno, nada se perde no banco. Mesma gramática das três de cima — POST,
     # redireciona de volta para a ideia dizendo o que aconteceu.
@@ -502,7 +614,33 @@ urlpatterns = [
     # que ela deixa para trás é exatamente uma linha desta tabela. Como seção
     # própria do menu ela viveria longe do número de que é a memória.
     path("placar/coortes/", coortes, name="coortes"),
+    # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
+    # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
+    # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta
+    # seguinte, e a fase da escola calculada dos portões. É o degrau 13 do
+    # plano do painel de gestão.
+    #
+    # Sub-rota do placar pela mesma razão das quatro irmãs acima, e por uma
+    # quinta: esta tela julga o MESMO número da meta grande, no fim do prazo
+    # dele. Como seção própria do menu ela viveria longe do número que fecha, e
+    # o mantenedor teria de aprender que "fechamento" fala do placar.
+    #
+    # Aceita GET e POST, e o POST não escreve nada: ele calcula o pedido para o
+    # robô e devolve, como a reunião de segunda. Por isso a entrada dela no
+    # `painel/mapa-do-site.json` é `"gesto": false` — o endereço abre no
+    # navegador, e é para abrir mesmo (`armadilhas/330`).
+    path("placar/fechamento/", fechamento, name="fechamento"),
+    # A REDE DE TALENTOS (`apps/core/talentos.py`, 07/09/2026) — o laço de
+    # talentos do Scale OS desenhado inteiro, e as três contagens que só a
+    # escola sabe (alunas selecionadas, estúdios parceiros, encaixes). É o
+    # degrau 17 do plano do painel de gestão. Sub-rota do placar pela mesma
+    # razão das cinco irmãs acima: o laço termina na estrela-guia "alunos com
+    # resultado profissional", que É um número do placar. Aceita POST, e o
+    # POST não escreve nada (devolve o pedido para o robô), então a entrada
+    # dela no `painel/mapa-do-site.json` é `"gesto": false`.
+    path("placar/talentos/", talentos, name="talentos"),
     path("reuniao/", reuniao, name="reuniao"),
+    path("reuniao/pedidos/<uuid:identidade>/", pedido_reuniao, name="pedido_reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
@@ -567,6 +705,33 @@ urlpatterns = [
     # é o SLUG, resolvido pelo par site+slug do outro lado, e não mais "o
     # primeiro curso do site", que quebraria calado no dia do segundo curso.
     #
+    # [CURSOS] 07/09/2026 (TAR-271) A lista dos cursos da escola e o gesto
+    # Novo curso (`apps/core/cursos.py`), da
+    # `DECISAO-a-sala-serve-varios-cursos.md`. Ela vem ANTES das rotas do editor
+    # porque é por aqui que se entra nelas: até hoje o editor entrava por um
+    # curso escrito no código, e criar o segundo exigiria mexer no servidor.
+    #
+    # `escola/cursos/` não colide com `escola/<curso>/...`: aquelas exigem um
+    # sufixo (`aulas/`, `sumario/`), e esta termina aqui. Um curso apelidado
+    # `cursos` continua tendo as telas dele em `escola/cursos/aulas/`.
+    #
+    # Dois gestos, dois POST, porque script embutido nesta área exige hash na
+    # CSP (`armadilhas/199`). Trocar o produto e trocar a regra de avanço são o
+    # MESMO gesto para a porta (`putCourse`, campo ausente é não mexer), e por
+    # isso uma rota só: são dois formulários pequenos, cada um mandando o campo
+    # dele.
+    path("escola/cursos/", escola_cursos, name="escola_cursos"),
+    path("escola/cursos/criar", escola_curso_criar, name="escola_curso_criar"),
+    path("escola/cursos/alterar", escola_curso_alterar, name="escola_curso_alterar"),
+    path("escola/aulas-avulsas/", aulas_avulsas, name="escola_aulas_avulsas"),
+    path(
+        "escola/aulas-avulsas/criar", aula_avulsa_criar, name="escola_aula_avulsa_criar"
+    ),
+    path(
+        "escola/aulas-avulsas/<slug:slug>/editar/",
+        aula_avulsa_editar,
+        name="escola_aula_avulsa_editar",
+    ),
     # O `parte-N` é um trecho OPCIONAL do mesmo padrão, e por isso as quatro
     # rotas continuam sendo quatro, com um nome cada: o `reverse` do Django
     # expande o grupo opcional em dois endereços e escolhe pelo que você passa
@@ -587,6 +752,12 @@ urlpatterns = [
     ),
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/video-do-youtube/$",
+        aula_youtube,
+        name="escola_aula_youtube",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
         r"aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
         aula_salvar,
         name="escola_aula_salvar",
@@ -597,6 +768,34 @@ urlpatterns = [
         aula_publicar,
         name="escola_aula_publicar",
     ),
+    # [CAPITULO] 06/09/2026 (TAR-232) A tela que recebe o capitulo inteiro de
+    # UMA encomenda e o reparte nas 16 pecas dela (`apps/core/capitulo.py`).
+    # Ela mora DENTRO de `aulas/<numero>/`, e nao ao lado como a do sumario,
+    # porque o gesto e de uma encomenda so: o endereco diz qual, e e por esse
+    # numero que a tela recusa o capitulo de outra encomenda.
+    #
+    # `parte-N` opcional pelo mesmo motivo das quatro rotas acima: quem chega
+    # aqui vem do editor da encomenda, e o endereco de la carrega a Parte.
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/$",
+        capitulo,
+        name="escola_capitulo",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/prever$",
+        capitulo_prever,
+        name="escola_capitulo_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?"
+        r"aulas/(?P<numero>[A-Za-z0-9]+)/capitulo/importar$",
+        capitulo_importar,
+        name="escola_capitulo_importar",
+    ),
     # [SUMARIO] 06/09/2026 (TAR-213) A tela que enche as 34 encomendas de uma
     # vez, a partir do sumario do livro colado (`apps/core/sumario.py`). Sem
     # `parte-N`: o sumario e do curso INTEIRO, e uma Parte sozinha nele nao
@@ -604,6 +803,35 @@ urlpatterns = [
     # encomenda por vez, esta enche todas de uma vez, e sao gestos diferentes.
     # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
     # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    # [ESTRUTURA] 07/09/2026 (TAR-272) A tela que da a um curso a lista dos
+    # modulos e das aulas dele, colada num texto simples
+    # (`apps/core/estrutura.py`), da `DECISAO-a-sala-serve-varios-cursos.md`
+    # §4. Um curso novo nasce sem uma aula sequer, e sem esta tela enche-lo
+    # exigiria um bloco de colar no servidor.
+    #
+    # Vizinha de `sumario/`, e pelo mesmo motivo: as duas enchem o curso
+    # INTEIRO de uma vez, e nenhuma das duas leva `parte-N` porque uma Parte
+    # sozinha nao e uma estrutura. A diferenca entre elas e o que enchem: esta
+    # cria o ESQUELETO (modulos e aulas), aquela enche o TEXTO das encomendas
+    # que ja existem.
+    #
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/$",
+        estrutura,
+        name="escola_estrutura",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/prever$",
+        estrutura_prever,
+        name="escola_estrutura_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/estrutura/importar$",
+        estrutura_importar,
+        name="escola_estrutura_importar",
+    ),
     re_path(
         r"^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
         sumario,
@@ -722,3 +950,8 @@ urlpatterns = [
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
 ]
+
+if settings.ADMIN_LINK_TOKEN:
+    urlpatterns.append(
+        path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
+    )

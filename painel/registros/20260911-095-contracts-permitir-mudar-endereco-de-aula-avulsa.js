@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-095-contracts-permitir-mudar-endereco-de-aula-avulsa",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "contracts: permitir mudar endereço de aula avulsa",
+  detalhe: "O contrato deixa o painel pedir um novo endereço sem adivinhar colisões e devolve o slug final que a aula passou a usar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1582. Validação local: árvore e2650ad9eee9dd154fe58e8dd0a90e1e6672fa4c; commit d2df62509420c2e2fbb8d12bd6cbb9ff842191c5; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-351",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

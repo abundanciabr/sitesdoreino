@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-017-ci-corrigir-testes-windows-em-checkout-limpo",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: corrigir testes Windows em checkout limpo",
+  detalhe: "Painel isolado, Bash sem WSL e três processos antes do teste de prazo. Guardas sabotadas e restauradas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1597. Validação local: árvore c6e641de56d5248004179760c41bc0243712faa0; commit d13ded4c2b2f47a2f252c0e1e257d64f3c042de2; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-366",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

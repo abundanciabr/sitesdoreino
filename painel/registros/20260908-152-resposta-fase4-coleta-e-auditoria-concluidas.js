@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-152-resposta-fase4-coleta-e-auditoria-concluidas",
+  tipo: "resposta",
+  quando: "2026-09-08",
+  titulo: "A Fase 4 concluiu a coleta real e a auditoria independente",
+  detalhe: "O mantenedor confirmou a conclusão da Fase 4. A prova operacional registra TAR-280 concluída com uma tarefa real coletada, e TAR-281 concluída com auditoria independente no PR #1420. Este registro responde à pendência original sem editar o histórico. A análise continua inconclusiva, por isso esta resposta encerra coleta e auditoria, mas não declara ganho de eficiência nem libera expansão automaticamente.",
+  autoridade: "mantenedor",
+  evidencia: "decisão explícita do mantenedor nesta sessão em 2026-09-08; evento de conclusão da TAR-280 com testes e análise local; evento de conclusão da TAR-281; https://github.com/abundanciabr/sitesdoreino/pull/1420",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-060-fase4-aguarda-coleta-e-auditoria",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

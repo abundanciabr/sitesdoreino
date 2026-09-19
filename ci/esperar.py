@@ -1,115 +1,32 @@
 #!/usr/bin/env python3
-"""ESPERAR — a única forma autorizada de um robô esperar algo de fora.
+"""Espera com teto vivo e consulta única da entrega até publicação.
 
-O PROBLEMA (29/08/2026, nas palavras do mantenedor)
----------------------------------------------------
-"aparece que o robô está trabalhando, executando, fazendo algo, porém, passam
-horas e mais horas, e daí o robô vem e diz: AH EU ESTAVA ESPERANDO ALGO ME
-RESPONDER, MAS ESSE ALGO QUEBROU E DAÍ EU NÃO PUDE CONTINUAR". Espera sem fim
-é visualmente idêntica a trabalho. A cura não é prometer que o agente avisa —
-é usar uma espera QUE FALA SOZINHA e MORRE NO TETO. História: armadilhas/161.
+    python ci/esperar.py --checks PR --e-pousar
+    python ci/esperar.py --entrega PR
+    python ci/esperar.py --run ID
+    python ci/esperar.py --deploy SHA
 
-COMO USAR (pelo agente, dentro de uma sessão)
----------------------------------------------
-Rode pela ferramenta `Monitor` do harness — cada linha impressa aqui vira uma
-mensagem na conversa, AO VIVO, enquanto o agente segue trabalhando (medido em
-29/08/2026; um Bash em primeiro plano só entrega o stdout no fim, e o teto de
-um Bash é 10 min). O `timeout_ms` do Monitor deve ser MAIOR que o teto daqui,
-senão o harness mata o esperador antes da linha de morte — silêncio, a doença.
+`--entrega` retorna JSON sem laço; a maestro acompanha pelo mecanismo nativo
+ativo da sessão. Só PUBLICADO e SEM_PUBLICACAO retornam zero. Etiqueta não
+é integração, e merge não é publicação. Nova revisão, recusa, publicação
+pendente e falha devolvem diagnóstico acionável. Instrumento quebrado é ERROR.
 
-    python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
-    python ci/esperar.py --deploy <sha> --teto 20
-    python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
-    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro,
-        e o que acorda o robô UMA vez: --e-pousar já implica --so-desfecho)
-    python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
+As esperas usam a régua de `ci/tempos_esperados.json`, com voz e prazo finito.
+`--teto` é override explícito para espera sem régua. `--e-pousar` implica
+`--so-desfecho`: o bastidor vai ao stderr e ao log privado, o resultado sai
+uma vez no stdout. Pedir pouso não certifica a entrega nem encerra a
+responsabilidade pelo acompanhamento. `--pouso` permanece legado e recusa
+laços sem justificativa; use a consulta `--entrega` na retomada nativa.
 
-ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
-manda ter são o veredito do deploy (CLAUDE.md) e a conclusão dos checks UMA VEZ
-antes de pedir pouso (o portão recusa com check em andamento). Todo o resto é
-tempo morto.
-
-E DESDE 31/08/2026 ISSO TEM MECANISMO: `--pouso` RECUSA. A regra existia só em
-texto — aqui e no RITOS — e apodreceu como toda garantia sem mecanismo
-(RETROSPECTIVA-FASE-D §2): os robôs seguiam esperando o pouso, porque a opção
-estava listada ao lado das legítimas. O que custava, medido em 31/08/2026 sobre
-os 40 PRs do dia:
-
-    PR aberto até entrar (mediana) .................... 8,4 min
-    uma passagem da pista ............................. 34 s (máx 61 s)
-    o deploy chegar na VPS (mediana) .................. 3,2 min
-
-Depois que a etiqueta está posta, o robô não tem mais nada a fazer ali: a fila
-anda sozinha 326 vezes por hora e comenta no PR o desfecho. Ficar olhando não
-acelera um segundo, e enche a janela do mantenedor de batimento sem fato novo.
-A fila nunca precisou de plateia.
-
-Quem tem motivo real (depurar a própria pista) passa `--mesmo-assim "<motivo>"`;
-a recusa ensina o caminho e não se contorna por acidente.
-
-E DESDE 03/09/2026 O CAMINHO INTEIRO É UM COMANDO SÓ: `--checks N --e-pousar`.
-O rito tinha três passos (esperar os checks, conferir o portão, pedir pouso) e
-os dois últimos dependiam de o robô VOLTAR para executá-los. Numa sessão que
-terminou entre um passo e outro, o PR ficou verde e parado, e o mantenedor
-passou horas esperando um pouso que esperava por ele. Com `--e-pousar`, a
-própria espera, ao ver os checks verdes, chama `ci/mergear.py N --pousar` (o
-MESMO portão, sem cópia de regra) e pede o pouso. Vermelho, estouro ou
-medição impossível NUNCA viram pedido: o portão só é chamado no verde, e ele
-ainda recusa por conta própria (base velha, dívida do livro, registro ausente).
-
-AS TRÊS LINHAS DO CONTRATO
---------------------------
-    ▶ partida: o que vou esperar, o teto, e o que farei se estourar
-    ⏳ batimento (~60s): tempo decorrido E o estado OBSERVADO lá fora —
-       um relógio sem estado observado é silêncio com batimento bonito
-    🔴/✅ desfecho: SEMPRE barulhento — verde, reprovado, teto, ou
-       "não consegui medir" (que nunca, jamais, vira verde — INV-CI01)
-
-E DESDE 06/09/2026 AS TRÊS LINHAS SE DIVIDEM EM DOIS CANOS. Todas continuam
-existindo; muda quem escuta cada uma. Sob `--so-desfecho` (que `--e-pousar`
-liga sozinho), só o DESFECHO sai no stdout, numa impressão só; partida,
-batimento e placar vão para o stderr e para o log da espera.
-
-O motivo é dinheiro. Cada linha no stdout de uma espera rodada pelo agente
-vira uma notificação, e cada notificação REENVIA a conversa inteira ao modelo
-(97,7% de toda a entrada da semana era releitura). Medido em 06/09/2026: a
-espera dos checks sozinha custava de 18% a 21,8% da cota semanal, falando a
-cada mudança de placar com o contexto entre 372k e 401k. Um `--e-pousar` que
-acorda o robô cinco vezes cobra cinco releituras para dizer cinco vezes a
-mesma coisa — e o robô só tem o que fazer no fim.
-
-Isto NÃO é a espera muda da `armadilhas/161` voltando. Muda era a espera sem
-voz e sem teto, invisível de fora. O teto continua matando, o desfecho continua
-barulhento, o bastidor continua na tela (stderr) e no
-`~/.sitesdoreino/esperas.jsonl`. Quem não pede a flag segue com a voz de
-sempre, inteira no stdout: `--run`/`--deploy` pelo Monitor não mudaram nada.
-
-E O VERMELHO DIZ A CAUSA, NÃO O NOME (06/09/2026). Um desfecho que dizia só
-"checks REPROVADOS: muralhas" mandava o robô caçar; medido, isso custou 41
-chamadas de mediana em 32 episódios da semana (12% da cota) para achar um texto
-que o CI já tinha impresso. Agora o desfecho vermelho busca o log do job
-(`gh run view --log-failed`, teto de 30 s, UM job), recorta o bloco de falha e
-o casa com `armadilhas/SINAIS.json` pelo MESMO reconhecedor do sino. Tudo aí é
-fail-open: sem log, `gh` que falha ou que demora, o desfecho volta a dizer o de
-sempre. Lição não é muralha — na dúvida ela cala, em vez de recusar.
-
-Exit codes (o dialeto da casa): 0 concluiu verde · 1 concluiu REPROVADO ·
-2 estouro do teto ou medição impossível.
-
-A régua de "quanto isso costuma levar" vem de `ci/tempos_esperados.json`;
-sem régua a voz diz "não sei quanto isto costuma levar" — nunca inventa
-número. Cada espera concluída deixa uma linha em
-`~/.sitesdoreino/esperas.jsonl` (a casa única do fato "quanto durou"), de onde
-a régua futura come.
-
-Costura de teste: ESPERAR_GH (lista JSON do comando que faz as vezes do `gh`),
-no molde de PORTAO_GH.
+Exit das esperas: 0 verde, 1 reprovado, 2 teto ou instrumento. Costura offline:
+ESPERAR_GH contém a lista JSON do executável que substitui gh nos testes.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -142,7 +59,16 @@ from sino_das_armadilhas import (  # noqa: E402
 # travessia cp1252 → utf-8 no Windows (a remedição nasceu inerte na única
 # máquina onde roda), e reescrever a mensagem lá mataria a remedição aqui sem
 # nenhum teste ficar vermelho. `armadilhas/328`.
-from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
+#
+# `CHECKS_OBRIGATORIOS` vem pelo mesmo motivo (07/09/2026): a lista de checks
+# que TÊM de existir em todo PR é uma só, e ela mora no portão. Copiada aqui,
+# um check obrigatório novo lá nasceria invisível para a espera — e a espera
+# voltaria a chamar de verde um PR que o portão recusa.
+from mergear import (  # noqa: E402
+    CHECKS_OBRIGATORIOS,
+    MOTIVO_GITHUB_AINDA_CALCULANDO,
+    mais_recente_por_nome,
+)
 from espera import (  # noqa: E402
     FalhasSeguidas,
     GracaVencida,
@@ -159,6 +85,8 @@ GATILHOS = Path(__file__).resolve().parents[1] / "armadilhas" / "GATILHOS.json"
 LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
+FATOR_DE_FOLGA_DO_TETO = 2.0
+ARREDONDAMENTO_DO_TETO_S = 60.0
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
 
 # As esperas que a lei manda NÃO existir (RITOS.md §2 peça 6: "a melhor espera
@@ -169,7 +97,7 @@ DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infr
 # `checks` NÃO ESTÁ AQUI, e a tentação de pôr é forte — a peça 6 diz "checks de
 # PR não se esperam". Ela fala do LAÇO (atualizar → esperar → a main andou →
 # repetir, as oito voltas da armadilhas/156), não da única espera que o portão
-# EXIGE: `ci/mergear.py --pousar` recusa com check em andamento (ERROR), e o
+# EXIGE: `ci/mergear.py` recusa com check em andamento (ERROR), e o
 # `CLAUDE.md` manda "espere os checks concluírem" ANTES de pedir pouso. Proibir
 # `--checks` tornaria o rito da casa impossível de cumprir. Medido ao vivo no
 # PR #801, que quase entrou com esse defeito: 90s (p50) de espera obrigatória.
@@ -269,6 +197,24 @@ def acima_do_esperado(regua: dict | None, decorrido: float) -> bool:
     p90 = regua.get("p90_s") if amostra >= AMOSTRA_MINIMA else None
     limite = p90 or (regua.get("p50_s") or 0) * 1.5
     return bool(limite) and decorrido > limite
+
+
+def teto_da_regua(regua: dict | None) -> float | None:
+    """Calcula um teto em segundos a partir da régua, sem inventar prazo."""
+    if not regua:
+        return None
+    try:
+        p50 = float(regua.get("p50_s") or 0)
+        p90 = float(regua.get("p90_s") or 0)
+        amostra = int(regua.get("amostra") or 0)
+    except (TypeError, ValueError):
+        return None
+    if p50 <= 0:
+        return None
+    base = p90 if amostra >= AMOSTRA_MINIMA and p90 > 0 else p50 * 1.5
+    return math.ceil(
+        base * FATOR_DE_FOLGA_DO_TETO / ARREDONDAMENTO_DO_TETO_S
+    ) * ARREDONDAMENTO_DO_TETO_S
 
 
 # ------------------------------------------------------------ observadores ----
@@ -375,12 +321,124 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
     )
 
 
-def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
-    dados = _gh_json(
-        gh, ["pr", "view", pr, "--json", "statusCheckRollup,state", "-R", repo]
+# O que o `gh` responde quando o número não é um PR deste repositório. A
+# conferência só RECUSA quando reconhece uma destas: qualquer outra falha (rede,
+# credencial, `gh` ausente) a deixa calada e a espera segue. Ela é lição, não
+# muralha — impedir a espera legítima toda vez que o GitHub tossir seria pior
+# que a doença, e o laço continua fail-closed por conta própria.
+NAO_E_UM_PR_DAQUI = (
+    "could not resolve to a pullrequest",
+    "no pull requests found",
+)
+
+
+def conferir_o_pr(gh: list[str], repo: str, pr: str, flag: str, parser) -> None:
+    """O número é um PR daqui? E, no `--checks`, um PR ABERTO?
+
+    Medido em 05/09/2026 (armadilhas/354): dois robôs, sem saber um do outro,
+    passaram a QUANTIDADE de checks no lugar do número do PR. `--checks 6` foi
+    medir o PR #6, mesclado desde os primeiros dias do repositório, e
+    `--checks 13` o PR #13, mesclado desde agosto. O instrumento é fail-closed e
+    não pousou nada, mas cada um queimou as 20 tentativas ouvindo "não consegui
+    medir" — a frase certa para uma condição que jamais seria satisfeita.
+
+    A cura é perguntar uma vez, antes da partida da voz, e recusar na cara
+    dizendo QUE PR o número achou. Vem depois das recusas baratas de propósito:
+    é a única checagem daqui que custa uma ida ao GitHub.
+
+    `--pouso` exige só que o PR EXISTA, nunca que esteja aberto: o desfecho
+    verde dele É o PR mesclado, e exigir ABERTO ali recusaria o próprio sucesso.
+    """
+    licao = (
+        f"O que --{flag} quer é o NÚMERO DO PR — o que o `gh pr create` "
+        "devolveu, o que está na URL dele —, nunca uma CONTAGEM: a quantidade "
+        "de checks que o PR tem, por exemplo. Em 05/09/2026 dois robôs "
+        "trocaram uma coisa pela outra no mesmo dia, e cada um queimou o teto "
+        "inteiro medindo um PR alheio (armadilhas/354).\n\n"
+        "  O número do SEU PR:  gh pr view --json number -q .number   "
+        "(de dentro do ramo dele)"
     )
-    rollup = dados.get("statusCheckRollup") if isinstance(dados, dict) else None
-    if not isinstance(rollup, list) or not rollup:
+    try:
+        dados = _gh_json(
+            gh, ["pr", "view", str(pr), "--json", "state,title,mergedAt", "-R", repo]
+        )
+    except ErroDeInstrumentacao as erro:
+        if not any(m in f"{erro.resumo}\n{erro.detalhe}".lower() for m in NAO_E_UM_PR_DAQUI):
+            return
+        parser.error(
+            f"--{flag} recebeu {pr}, e o repositório {repo} não tem PR com esse "
+            "número.\n\n"
+            "Recuso agora, sem gastar uma tentativa sequer: esperar por um PR "
+            'que não existe nunca termina — o laço repetiria "não consegui '
+            'medir" até o teto morrer.\n\n' + licao
+        )
+
+    if flag != "checks" or not isinstance(dados, dict):
+        return
+    estado = str(dados.get("state") or "").upper()
+    if estado not in ("MERGED", "CLOSED"):
+        return
+    quando = str(dados.get("mergedAt") or "")[:10]
+    real = (
+        "está MESCLADO" + (f" desde {quando}" if quando else "")
+        if estado == "MERGED"
+        else "está FECHADO sem ter sido mesclado"
+    )
+    titulo = str(dados.get("title") or "").strip()
+    parser.error(
+        f"--checks recebeu {pr}, e o PR {pr} de {repo} NÃO está aberto: {real}"
+        + (f' ("{titulo}")' if titulo else "")
+        + ".\n\n"
+        "Recuso agora, sem gastar uma tentativa sequer: os checks de um PR que "
+        'já fechou não viram pouso nenhum — o laço repetiria "não consegui '
+        'medir" até o teto morrer.\n\n' + licao
+    )
+
+
+def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
+    """As DUAS perguntas do portão antes de qualquer verde (07/09/2026).
+
+    Até esta data esta função dizia "todos os N checks verdes" quando todos os
+    checks QUE EXISTIAM NAQUELE INSTANTE estavam verdes — e num PR em conflito
+    isso é verdade e é inútil. O GitHub só monta o merge ref (a fusão hipotética
+    do PR com a base) quando não há conflito, e sem ele NENHUM workflow de
+    `pull_request` nasce: os obrigatórios não ficam pendentes, eles não existem.
+    Sobram os de `pull_request_target`, que rodam a partir da base e ficam
+    verdes na hora (`armadilhas/198`).
+
+    Medido no PR #1020 em 04/09/2026: "todos os 1 checks verdes · levou 16s", e
+    em seguida o pedido de pouso. Quem salvou a rodada foi `ci/mergear.py`, que
+    é independente e mede outra coisa — o falso-verde estava aqui, no caminho
+    crítico, na única medição que muitos despachos olham.
+
+    A cura é fail-closed e são as mesmas duas perguntas do `--conferir`, nesta
+    ordem: o PR conflita com a base? os checks obrigatórios existem? Ausência de
+    evidência não é evidência de sucesso (INV-CI01).
+    """
+    dados = _gh_json(
+        gh,
+        ["pr", "view", pr, "--json", "statusCheckRollup,mergeable", "-R", repo],
+    )
+    if not isinstance(dados, dict):
+        dados = {}
+    # Pergunta 1. Só `CONFLICTING` para aqui, e de propósito: é o único valor
+    # que significa "conflita". `UNKNOWN` é o GitHub ainda calculando, e quem
+    # decide sobre ele é o portão, que já remede seis vezes antes de desistir —
+    # transformá-lo em espera aqui inventaria um segundo lugar para o mesmo PR
+    # morrer, com menos informação.
+    if str(dados.get("mergeable") or "").upper() == "CONFLICTING":
+        return Olhada(
+            pronta=True,
+            resumo=(
+                f"o PR {pr} CONFLITA com a base, e a saída é `git fetch origin "
+                "&& git merge origin/main`: sem merge ref nenhum workflow de "
+                "pull_request nasce, e os checks obrigatórios NUNCA vão aparecer "
+                "(armadilhas/198)"
+            ),
+            dados={"verde": False},
+        )
+    bruto = dados.get("statusCheckRollup")
+    if not isinstance(bruto, list) or not bruto:
         # armadilhas/150: "no checks reported" quase sempre é conflito com a main
         return Olhada(
             pronta=False,
@@ -390,6 +448,12 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
                 "é conflito com a main (armadilhas/150), não fila"
             ),
         )
+    # O rollup traz uma entrada por EXECUÇÃO, não por check: um PR fechado e
+    # reaberto (a receita da `armadilhas/077`) deixa a execução CANCELLED velha
+    # ao lado da SUCCESS nova, e lendo cru esta espera reprovava o que o portão
+    # aprovava no mesmo segundo. A regra é a do portão, importada e nunca
+    # copiada, para os dois não poderem discordar — `armadilhas/381`.
+    rollup = mais_recente_por_nome(bruto)
     pendentes = [
         c for c in rollup if str(c.get("status", "")).upper() != "COMPLETED"
     ]
@@ -410,6 +474,22 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
             pronta=True,
             resumo=f"checks REPROVADOS: {nomes}",
             dados={"verde": False, "run": runs[0] if runs else ""},
+        )
+    # Pergunta 2. Verde do que existe não é verde: um PR cujo workflow foi
+    # renomeado, desabilitado ou nem disparou tem exatamente esta cara. Enquanto
+    # o obrigatório não aparece o alvo NÃO apareceu, e é a graça que mata a
+    # espera — com a frase que já ensina o que investigar, em vez do teto mudo.
+    vistos = {str(c.get("name") or c.get("context") or "") for c in rollup}
+    faltando = [c for c in CHECKS_OBRIGATORIOS if c not in vistos]
+    if faltando:
+        return Olhada(
+            pronta=False,
+            apareceu=False,
+            resumo=(
+                f"os checks que existem no PR {pr} estão todos verdes e não "
+                "bastam, porque os OBRIGATÓRIOS não reportaram: "
+                + ", ".join(faltando)
+            ),
         )
     return Olhada(
         pronta=True,
@@ -757,6 +837,8 @@ def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     alvo = p.add_mutually_exclusive_group(required=False)
+    alvo.add_argument("--entrega", type=int, metavar="PR",
+                      help="consulta uma vez revisão, integração e publicação; saída JSON")
     alvo.add_argument("--run", help="id de um run do Actions (o veredito do deploy)")
     alvo.add_argument("--deploy", metavar="SHA",
                       help="sha na main — espera os runs de deploy dele")
@@ -769,7 +851,7 @@ def main(argv: list[str] | None = None) -> int:
     alvo.add_argument("--autoteste", action="store_true",
                       help="prova viva de que a espera fala e morre no teto")
     p.add_argument("--teto", type=float, metavar="MIN",
-                   help="teto em MINUTOS — obrigatório; ao estourar, a espera MORRE")
+                   help="teto manual em MINUTOS; sem ele, calculo pela régua viva")
     p.add_argument("--dizendo", default="", help="o que estou esperando, para leigo")
     p.add_argument("--voz", type=float, default=60.0,
                    help="segundos entre batimentos falados (padrão 60)")
@@ -782,7 +864,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="o plano Z — e 'continuar esperando' não é opção")
     p.add_argument("--pr", help="o PR do --ao-estourar pousar (se o alvo não for PR)")
     p.add_argument("--e-pousar", dest="e_pousar", action="store_true",
-                   help="ao ficar verde, passa pelo portão (ci/mergear.py --pousar) "
+                   help="ao ficar verde, passa pelo portão (ci/mergear.py) "
                         "e pede pouso sozinho — só com --checks")
     p.add_argument("--so-desfecho", dest="so_desfecho", action="store_true",
                    help="stdout recebe SÓ o desfecho (o robô acorda uma vez); "
@@ -793,17 +875,23 @@ def main(argv: list[str] | None = None) -> int:
                    help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
     args = p.parse_args(argv)
 
+    if args.entrega is not None:
+        from estado_da_entrega import consultar_entrega
+        from _nucleo import raiz_do_repo
+        try:
+            estado = consultar_entrega(raiz_do_repo(), args.entrega)
+            print(json.dumps(estado, ensure_ascii=False))
+            return 0 if estado["estado"] in {"PUBLICADO", "SEM_PUBLICACAO"} else 1
+        except Exception as erro:
+            print(json.dumps(dict(pr=args.entrega, estado="ERROR", terminal=False,
+                                  acao="Corrija a consulta antes de decidir: " + str(erro)), ensure_ascii=False))
+            return 2
     if args.autoteste:
         return autoteste()
     if not (args.run or args.deploy or args.checks or args.pouso or args.sonda):
         p.error("diga O QUE esperar: --run/--deploy/--checks/--pouso/--sonda")
-    if args.teto is None or args.teto <= 0:
-        p.error("--teto <minutos> é obrigatório — espera sem teto é a doença "
-                "que este script existe para curar (armadilhas/161)")
-
     gh = _gh()
     repo = _repo()
-    teto_s = args.teto * 60.0
     # `--e-pousar` é o caminho automático do rito, e ele existe justamente para
     # o robô não voltar: calar o bastidor ali é o ganho inteiro. Quem chama
     # `--run`/`--deploy` na mão pelo Monitor continua com a voz de sempre.
@@ -835,6 +923,19 @@ def main(argv: list[str] | None = None) -> int:
     dizendo = args.dizendo or rotulo
     chave_da_regua = args.regua or chave
     regua = carregar_regua(chave_da_regua)
+    if args.teto is not None:
+        if args.teto <= 0:
+            p.error("--teto precisa ser maior que zero")
+        teto_s = args.teto * 60.0
+    else:
+        teto_s = teto_da_regua(regua)
+        if teto_s is None:
+            p.error(
+                f"não consegui calcular o teto pela régua {chave_da_regua!r}. "
+                "Use --teto <minutos> para uma espera sem medição, ou "
+                "--regua <chave> quando existir uma entrada válida em "
+                "ci/tempos_esperados.json."
+            )
     pr_do_pouso = args.pr or args.checks or args.pouso
 
     # A ESPERA QUE NÃO DEVIA EXISTIR (31/08/2026) — ver o cabeçalho. A recusa
@@ -845,7 +946,7 @@ def main(argv: list[str] | None = None) -> int:
             f"esperar {rotulo} é a espera que a lei manda NÃO existir "
             "(RITOS.md §2 peça 6: \"a melhor espera é a que não acontece\"). "
             f"{ESPERAS_QUE_NAO_DEVIAM_EXISTIR[chave]}.\n\n"
-            f"  O caminho:  python ci/mergear.py {pr_do_pouso} --pousar\n"
+            f"  O caminho:  python ci/mergear.py {pr_do_pouso}\n"
             "              …e SIGA para a próxima tarefa.\n\n"
             "Medido em 31/08/2026, nos 40 PRs do dia: a fila entrega em 8,4 min "
             "(mediana) e uma passagem da pista leva 34s. Esperar aqui não "
@@ -861,6 +962,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.e_pousar and not args.checks:
         p.error("--e-pousar só faz sentido com --checks <PR>: é ao ficarem verdes "
                 "os checks que o portão é chamado e o pouso pedido")
+    # O NÚMERO É UM PR DAQUI? (07/09/2026, TAR-202 — armadilhas/354.) Aqui, e
+    # não mais cedo, porque é a única checagem que custa uma ida ao GitHub; e
+    # aqui, e não mais tarde, porque anunciar "vou esperar" e desistir em
+    # seguida ensina o oposto do que a lei quer — a mesma ordem da recusa acima.
+    if args.checks or args.pouso:
+        conferir_o_pr(gh, repo, args.checks or args.pouso,
+                      "checks" if args.checks else "pouso", p)
     plano_z = (
         f"peço pouso do PR {pr_do_pouso} e sigo"
         if args.ao_estourar == "pousar"
@@ -891,10 +999,18 @@ def main(argv: list[str] | None = None) -> int:
                          "estouro", str(falha), chave_da_regua, voz.linhas)
         return 2
     except GracaVencida as falha:
+        # A graça só morre com o alvo INCOMPLETO, e a última olhada é a única
+        # coisa que sabe o QUE faltava — o obrigatório que não nasceu, o run de
+        # deploy que não apareceu. Sob `--so-desfecho` (que o `--e-pousar` liga
+        # sozinho) esta é a ÚNICA linha que chega ao stdout: sem o que foi
+        # visto, ela manda investigar sem dizer o quê, e quem lê volta ao `gh`
+        # para descobrir um nome que a espera já tinha na mão.
+        visto = falha.olhada.resumo if falha.olhada else ""
         voz.desfecho(
             f"🔴 {dizendo}: o alvo nem APARECEU em {_fmt(args.graca)} — "
             "deletado, renomeado, nunca disparou, ou conflito com a main. "
             "Isso NÃO é fila: parei, investigue."
+            + (f" Última olhada: {visto}." if visto else "")
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
                          "nao-apareceu", str(falha), chave_da_regua, voz.linhas)
@@ -952,7 +1068,7 @@ SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDIC
 
 
 def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
-    """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N --pousar`).
+    """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N`).
 
     Chamado só no verde, de propósito: vermelho, estouro e medição impossível
     saem antes, pelos caminhos de sempre. O portão continua dono da decisão —
@@ -973,14 +1089,14 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     for volta in range(1, VOLTAS_DE_REMEDICAO + 1):
         try:
             proc = subprocess.run(
-                [*_mergear(), pr, "--pousar"],
+                [*_mergear(), pr],
                 capture_output=True, text=True, timeout=300,
                 encoding="utf-8", errors="replace",
             )
         except (OSError, subprocess.TimeoutExpired) as erro:
             voz.desfecho(
                 f"{linha_verde} 🔴 não consegui rodar o portão para o PR {pr} "
-                f"({erro}). Faça na mão: python ci/mergear.py {pr} --pousar".strip()
+                f"({erro}). Faça na mão: python ci/mergear.py {pr}".strip()
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")
@@ -1001,8 +1117,8 @@ def pousar_pelo_portao(pr: str, voz: Voz, linha_verde: str = "") -> int:
     if proc.returncode == 0:
         voz.desfecho(
             f"{prefixo}🛬 pedi pouso do PR {pr} pelo portão. A pista assume: "
-            "atualiza, confere e mergeia sozinha, e comenta no PR. Nada mais "
-            "depende de ninguém aqui."
+            "a integração e a publicação ainda não foram comprovadas. "
+            f"A maestro acompanha com python ci/esperar.py --entrega {pr}."
         )
         return 0
     # A recusa é o desfecho, e desfecho não se sussurra: o motivo do portão vem

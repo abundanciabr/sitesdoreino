@@ -152,6 +152,18 @@ CHAVE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_API_KEY)"
 # perde-lo faria a IA voltar a ser recusada com HTTP 400 sem ninguem entender.
 WORKSPACE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_WORKSPACE_ID)"
 
+# OS PROFESSORES DO FÓRUM, pela mesma razão das duas linhas acima, e este era o
+# buraco que a TAR-172 achou: até 06/09/2026 o heredoc gravava
+# `FORUM_PROFESSORES=` literalmente em branco, sem releitura nenhuma. Quem
+# reinstalasse o fórum apagava a lista que o mantenedor tinha escrito à mão, em
+# silêncio e com a publicação verde, e quem estava nela sem ser administrador
+# perdia o acesso sem ninguém entender por quê (`armadilhas/111` de novo, desta
+# vez dentro do próprio script que esta casa usa como MOLDE de preservação).
+# Ninguém aqui sabe INVENTAR essa lista: ela só pode ser preservada do arquivo
+# vivo. VAZIA é estado legítimo (a escola pode ainda não ter professor), e aí só
+# os administradores moderam, que é fail-closed.
+PROFESSORES="$(ler_de "$ENV_FORUM" FORUM_PROFESSORES)"
+
 BUSCA_CONFIG=""
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
@@ -208,7 +220,18 @@ fi
 # 5. O ENV DA CÉLULA — reescrito inteiro, com cópia do anterior.
 # -----------------------------------------------------------------------------
 umask 077
-[ -f "$ENV_FORUM" ] && cp -a "$ENV_FORUM" "$ENV_FORUM.bak-$(date +%s)"
+# A CÓPIA GUARDA O NOME, e não é conveniência: é ela o único registro do que o
+# arquivo dizia ANTES desta execução, e a conferência de preservação lá embaixo
+# compara com ELA. Comparar com a variável que acabou de escrever a linha seria
+# a variável se conferindo a si mesma: apagar a releitura zeraria os dois lados
+# ao mesmo tempo, e a conferência ficaria verde no exato instante em que a lista
+# fosse apagada. É a lição do PR #1267, que passou por isso com a chave do
+# GitHub.
+BAK=""
+if [ -f "$ENV_FORUM" ]; then
+  BAK="$ENV_FORUM.bak-$(date +%s)"
+  cp -a "$ENV_FORUM" "$BAK" || parar "não consegui guardar a cópia de segurança de $ENV_FORUM. Nada foi alterado."
+fi
 
 # O molde é infra/env/forum.env.exemplo — se aquele arquivo ganhar variável
 # nova, este bloco e a lista CHAVES_QUE_EU_GERO precisam ganhar junto.
@@ -223,7 +246,7 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
-FORUM_PROFESSORES=
+FORUM_PROFESSORES=$PROFESSORES
 ADMIN_EMAILS=$ADMINS
 FORUM_BUSCA_CONFIG=${BUSCA_CONFIG:-}
 ANTHROPIC_API_KEY=$CHAVE_DA_IA
@@ -320,12 +343,40 @@ echo "  banco forum_db ......... pronto, fechado ao público"
 echo "  $ENV_FORUM ....... escrito ($(grep -c '=' "$ENV_FORUM") variáveis)"
 echo "  pares abertos .......... forum->identidade (com degrau de e-mail), forum->alunos"
 for arq in $MEXIDOS; do echo "  tocado ................. $arq (cópia em $arq.bak-provisionar-forum)"; done
+
+# A CONFERÊNCIA QUE IMPORTA: a lista de professores sobreviveu à reescrita, com
+# o MESMO valor que estava no arquivo. O outro lado da comparação é a CÓPIA, e
+# nunca a variável `$PROFESSORES` que acabou de escrever a linha, pelo motivo
+# escrito lá em cima onde a cópia é feita.
+# VAZIA é resultado legítimo e não reprova nada. O que não pode acontecer é ela
+# existir antes e sumir aqui: essa lista é digitada à mão pelo mantenedor, não
+# há de onde recuperá-la, e quem estava nela perde o acesso em silêncio.
+PERDI_PROFESSORES=0
+if [ -n "$BAK" ]; then ANTES_PROFESSORES="$(ler_de "$BAK" FORUM_PROFESSORES)"; else ANTES_PROFESSORES=""; fi
+if [ "$(ler_de "$ENV_FORUM" FORUM_PROFESSORES)" = "$ANTES_PROFESSORES" ]
+then
+  if [ -n "$ANTES_PROFESSORES" ]
+  then echo "  professores do fórum ... OK (preservados, os mesmos que estavam em $BAK)"
+  else echo "  professores do fórum ... vazia, como já estava (só os administradores moderam)"; fi
+else
+  echo "  professores do fórum ... PERDI A LISTA DE PROFESSORES que estava aqui"
+  PERDI_PROFESSORES=1
+fi
 if [ -z "$ADMINS" ]; then
   echo
   echo "  AVISO: ADMIN_EMAILS ficou VAZIO (não achei em $ENV_ADMIN)."
   echo "  Isso é fail-closed: ninguém modera o fórum até a lista existir."
 fi
 echo
+# Dizer PRONTO depois de ter apagado a lista seria a mentira exata que esta
+# tarefa veio consertar. Aqui o roteiro fala alto e sai com erro.
+if [ "$PERDI_PROFESSORES" -eq 1 ]; then
+  echo "PAROU POR SEGURANÇA: a lista de professores do fórum sumiu nesta execução."
+  echo
+  echo "Ela está INTACTA na cópia $BAK, e nada mais precisa ser feito às pressas."
+  echo "NÃO rode mais nada nesta janela e mande esta tela inteira ao agente."
+  exit 1
+fi
 echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
 echo "O fórum ainda NÃO está no ar: falta a entrega que o põe no docker-compose"
 echo "e no roteador. O robô faz essa parte sozinho, depois desta tela."

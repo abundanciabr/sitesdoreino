@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-014-ci-comprovar-atualizacao-da-base",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: comprovar atualização da base",
+  detalhe: "A composição limpa conserva a revisão. O caso real #1589 passou. PRs #1587 e #1588 foram encerrados; histórico e branches preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1596. Validação local: árvore f9d54b5b0c5d4db91b86a0cf614b35167d819ebb; commit fb7ff67170098b50d18fbb647306a4c3fc8658b5; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-365",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

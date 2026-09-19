@@ -1,0 +1,19 @@
+{
+  "arquivo": "394-enfileirar-a-historia-da-manha-do-conselho",
+  "id": "TAR-394",
+  "titulo": "Enfileirar a história da manhã do conselho",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com a tarefa da história do conselho criada pelo balcão, dependente de TAR-379; python ci/fila.py validar PASS; nenhum registro ou armadilha da tarefa futura.",
+  "despacho": "Criar pelo balcão a tarefa futura que leva os quatro registros de 12/09 e a lição do conselho ao livro e ao índice. A tarefa futura depende de TAR-379 e não é executada nesta escrituração.",
+  "origem": "ordem da maestro em 13/09/2026, Trilha 1b da ordem da fila",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

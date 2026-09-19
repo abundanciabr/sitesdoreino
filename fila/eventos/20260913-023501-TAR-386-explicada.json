@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-023501-TAR-386-explicada",
+  "tarefa": "TAR-386",
+  "evento": "explicada",
+  "quando": "2026-09-13T02:35:01+00:00",
+  "quem": "Adendo dos capítulos 2 a 5 (11/09), capítulo 4, prompt seção 4; rumo 20260910-060",
+  "o_que_e": "Hoje a escola vê quantas aulas estão abertas (1 de 96 e 0 de 34 em 11/09), mas ninguém consegue dizer, aula por aula, o que existe e o que falta.",
+  "o_que_muda": "Uma tela no admin lista cada aula com vídeo, peças, versão, publicação e estado. É o mapa que permite reconciliar o material e abrir o curso inteiro sem chute.",
+  "exemplo": "A professora abre o inventário do Primeiros Dólares e vê que a aula 31 tem vídeo e falta descrição, e que o módulo 4 inteiro ainda não foi inspecionado.",
+  "importancia": 80
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-162303-TAR-265-explicada",
+  "tarefa": "TAR-265",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:23:03+00:00",
+  "quem": "pedido do mantenedor em 07/09/2026: /cursos/ redirecionava sozinho para o curso do livro e o curso dos 132 alunos ficou sem porta",
+  "o_que_e": "Hoje quem abre meshcraft.top/cursos/ e levado sozinho para o unico curso que tem sala no site, o do livro. Quem e aluno do curso dos 132 alunos nao ve porta nenhuma e nao entende por que foi parar no curso errado.",
+  "o_que_muda": "A pagina /cursos/ passa a ser um catalogo: um cartao por curso, com o nome, quantas aulas estao abertas e um botao para entrar. Quem e aluno ve o seu curso marcado; quem nao e ve o motivo, em portugues. Ninguem mais e redirecionado sem pedir.",
+  "exemplo": "E como a porta de uma escola: em vez de empurrar todo mundo para a unica sala aberta, mostra o corredor com o nome de cada sala e deixa a pessoa escolher a sua.",
+  "importancia": 80
+}

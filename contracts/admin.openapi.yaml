@@ -1,0 +1,213 @@
+# =============================================================================
+# CONTRATO DA CELULA `admin`: a PRIMEIRA porta de MAQUINA da area
+# administrativa.
+#
+# CONGELADO. Mudar este arquivo e o Rito de Contrato (RITOS.md secao 3): PR so
+# de `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores
+# em PRs seguintes. O portao que faz valer e `ci/contract_freeze.py`, que
+# compara este arquivo com o que a celula EXPORTA de verdade, e divergencia
+# reprova.
+#
+# A SESSAO DE ARQUITETURA COM O MANTENEDOR, que o ponto 1 do rito exige,
+# aconteceu em 06/09/2026. Ele pediu que "todo admin possa conferir os
+# portfolios, para agilizar", em vez de uma lista colada na VPS; recebeu numa
+# caixa de pergunta a objecao da fresta (administrador desta casa ve a economia
+# e os capitulos do livro nao lancado dele), com as duas saidas na mesa; e
+# escolheu "simplesmente todo admin confere", sem lista separada de
+# conferentes. Este contrato e a consequencia mecanica daquela escolha.
+#
+# POR QUE ELE NASCE AGORA: a propria linha desta celula no manifesto dizia
+# "contrato entra pelo RITOS.md secao 3 no dia em que alguem precisar
+# consumi-la". Hoje e esse dia. A celula `pages` precisa saber quem pode
+# conferir o portfolio do aluno, e hoje ela so sabe lendo um `IDS_DA_EQUIPE`
+# escrito a mao no env da VPS. Isso e uma segunda casa do mesmo fato: no dia em
+# que o mantenedor promove alguem pela tela de /admin/, a lista da VPS nao
+# muda, e as duas discordam sem ninguem perceber.
+#
+# NASCEU DO EXPORT, nao de cabeca. `armadilhas/243` e o comentario de
+# `contracts/pages.openapi.yaml` mandam montar o congelado a partir do
+# documento que o django-ninja emite, nunca escreve-lo a mao. Como o Rito
+# proibe `services/` neste PR, a porta foi montada num prototipo descartavel
+# (mesma NinjaAPI, mesmos Schema, mesma limpeza do `export_openapi` das outras
+# celulas), o OpenAPI vivo foi exportado, e ESTE arquivo e esse documento em
+# YAML. O PR do provedor tem de emitir exatamente isto, inclusive
+# `model_config = {"extra": "forbid"}` nos dois Schema, que e de onde vem o
+# `additionalProperties: false`.
+#
+# ATE O PROVEDOR CHEGAR, o `contrato/admin` termina em ERROR
+# ("Unknown command: 'export_openapi'"), e isso bloqueia qualquer PR que toque
+# `services/admin`. E o portao fazendo o trabalho dele, nao defeito
+# (`armadilhas/228`): o manifesto nao tem estado intermediario entre
+# "congelado" e "implementado". CONSEQUENCIA PRATICA: o proximo PR da celula
+# `admin` TEM de ser o da porta de maquina.
+#
+# E PARA ESTA CELULA A ORDEM INVERSA E IMPOSSIVEL, nao apenas cara. A `228` diz
+# que um PR so de `contracts/` e `ci/` nao aciona celula nenhuma, e isso e
+# verdade, mas `celulas.yml` atribui `painel/` e `fila/` a `admin` (as duas
+# entram na imagem dela no build). O registro do livro que o portao de pouso
+# EXIGE a bordo, e os eventos da fila, puxam a `admin` para a matriz do
+# `ci-celula`: `python ci/ci.py --detectar-celulas` responde `admin` para o
+# proprio PR do Rito. Medido em 06/09/2026, no PR #1238, que ficou vermelho por
+# isso e esperou a porta em vez de forcar. Junto veio um segundo buraco, o mesmo
+# que a `pages` topou: `PyYAML` faltava em `services/admin/requirements.txt`, e
+# a maquina de quem desenvolve tem PyYAML global, entao o `make ci` local mente
+# de verde (`armadilhas/096`). O PR da porta leva os dois consertos.
+#
+# UMA OPERACAO SO, E ELA SO LE. Nao ha verbo que promova nem que remova
+# administrador, e a ausencia e decisao: o conjunto de tokens desta casa e
+# plano (`TOKENS_ACEITOS`), entao todo par que ganha o token para ler ganharia
+# junto o poder de escrever (`armadilhas/318`). Nascendo somente-leitura, essa
+# conta nao existe. Acrescentar escrita aqui e Rito novo, e muda o calculo:
+# exigiria um segundo grau de token, como a `identidade` ja faz.
+#
+# A CHAVE E E-MAIL, e nao id de plataforma, porque as duas pontas ja falam
+# e-mail: a porta desta celula decide por e-mail normalizado
+# (`services/admin/apps/core/porta.py`), e quem pergunta ja tem o e-mail na mao
+# porque pediu `getSessionFull` a `identidade`. Traduzir para id no meio
+# custaria uma pergunta de rede a mais e uma segunda forma da mesma pessoa
+# existir.
+#
+# Lei do assunto: `docs/decisoes/DECISAO-celula-admin.md` (a porta fail-closed)
+# e `docs/decisoes/DECISAO-administradores-e-apagar.md` secao 3 (as duas fontes
+# da lista).
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Admin - API interna
+  version: 1.0.0
+  description: 'Superficie de MAQUINA da area administrativa.
+
+
+    Existe porque a permissao de conferir o trabalho do aluno mora numa
+
+    lista so, e essa lista e a desta celula. Antes desta porta, a `pages`
+
+    so sabia quem confere lendo um IDS_DA_EQUIPE escrito a mao no env da
+
+    VPS: uma segunda casa do mesmo fato, que ninguem atualiza no dia em que
+
+    o mantenedor promove alguem pela tela de /admin/escola/.
+
+
+    UMA OPERACAO SO, e ela so LE. Nao ha verbo que promova nem que remova
+
+    administrador: quem faz isso e o mantenedor, na tela desta casa, com
+
+    sessao. Todo par que tem token para ler tem o mesmo token, entao uma
+
+    operacao de escrita aqui daria poder de escrita a quem so precisava
+
+    desenhar uma tela de consulta (armadilhas/318). Por isso ela nasce sem
+
+    escrita nenhuma, e nao por esquecimento.
+
+
+    Entra e-mail, sai sim ou nao. Esta porta nunca devolve nome, papel, id
+
+    nem a lista inteira: quem pergunta ja conhece a pessoa por quem
+
+    perguntou, e cada campo a mais aqui e um campo a mais vazando por um
+
+    par de tokens.
+
+
+    Lei do assunto: docs/decisoes/DECISAO-celula-admin.md e
+
+    docs/decisoes/DECISAO-administradores-e-apagar.md.
+
+    '
+paths:
+  /administradores/consultar:
+    post:
+      operationId: isAdministrator
+      summary: Esta pessoa e da equipe da escola
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaDeConsulta'
+      description: 'Responde a UNICA pergunta que outra celula faz a area administrativa:
+
+        esta pessoa e da equipe da escola?
+
+
+        A resposta soma as duas fontes que a porta desta celula ja soma, e na
+
+        mesma ordem: os e-mails de ADMIN_EMAILS (o chao, que o servidor declara
+
+        e o botao de remover se recusa a tocar) e os administradores ativos que
+
+        a tela de /admin/ promoveu. E-mail comparado sem espacos e em
+
+        minusculas, exatamente como a porta compara.
+
+
+        POST e nao GET, e o motivo e o mesmo das duas irmas da `identidade`:
+
+        caminho de URL entra em log de servidor, em historico de proxy e em
+
+        rastro de erro; corpo, nao. E-mail nao viaja em URL nesta casa.
+
+
+        `e_administrador: false` e RESPOSTA, nunca erro: e o que a pergunta
+
+        devolve para todo aluno da escola, que e quase todo mundo. E-mail
+
+        desconhecido responde a mesma coisa, de proposito, porque um 404 aqui
+
+        diria a quem perguntou que aquele e-mail nao existe na plataforma, e
+
+        esta porta nao responde essa pergunta.
+
+
+        O QUE ELA DELIBERADAMENTE NAO DEVOLVE: nome, papel, id de plataforma,
+
+        data de promocao, e a lista de administradores. Quem precisa ver a
+
+        lista abre a tela de /admin/, com sessao e com o 404 fail-closed da
+
+        porta desta celula na frente. A resposta desta porta RECONHECE um grau,
+
+        e nunca AUTORIZA nada: quem decide o que fazer com o sim e a celula
+
+        dona do recurso, fail-closed, como manda
+
+        docs/decisoes/DECISAO-onde-mora-a-sessao.md secao 4.
+
+        '
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeConsulta'
+        required: true
+components:
+  schemas:
+    RespostaDeConsulta:
+      additionalProperties: false
+      description: Sim ou nao, e nada mais. Campo novo aqui e mudanca de contrato.
+      properties:
+        e_administrador:
+          type: boolean
+      required:
+      - e_administrador
+      type: object
+    PedidoDeConsulta:
+      additionalProperties: false
+      description: O e-mail de quem se pergunta. Comparado sem espacos e em minusculas.
+      properties:
+        email:
+          type: string
+      required:
+      - email
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://admin:8000/interno
+security:
+- bearerAuth: []

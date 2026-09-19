@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-041305-TAR-204-concluida",
+  "tarefa": "TAR-204",
+  "evento": "concluida",
+  "quando": "2026-09-07T04:13:05+00:00",
+  "quem": "sessao-ci-20260907",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1280 mergeado (639f7ed8) - ci/esperar.py importa mais_recente_por_nome de ci/mergear.py, sem copia da regra. 3 guardas em ci/tests/test_espera.py, incluindo o duble do rollup do #1136 com CANCELLED+SUCCESS do mesmo check. Mutacao (rollup cru): 1 failed com a frase exata do defeito. 48 passed em test_espera.py, 99 em test_mergear.py, 13 muralhas PASS, 4 guardas PASS. deploy-celula 34080745248 success. Registro 20260907-023 embarcado no mesmo PR.",
+  "verificado_em": "2026-09-07"
+}

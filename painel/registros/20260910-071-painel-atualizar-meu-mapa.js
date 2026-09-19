@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-071-painel-atualizar-meu-mapa",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "painel: atualizar Meu mapa",
+  detalhe: "Meu mapa registra cinco frentes e seus rumos atuais sem contar prova como sucesso ou substituição como entrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1541. Validação local: árvore 0574e2f783d4b1da7d7cd6b1d4602b50b7a2867e; commit 36a3df5f558c8d3c4fd51d874a1d73af6aa06184; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-328",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

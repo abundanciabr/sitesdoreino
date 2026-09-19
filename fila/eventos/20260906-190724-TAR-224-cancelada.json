@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-190724-TAR-224-cancelada",
+  "tarefa": "TAR-224",
+  "evento": "cancelada",
+  "quando": "2026-09-06T19:07:24+00:00",
+  "quem": "sessao-pages-aviso-do-selo-20260906",
+  "detalhe": "RITO DE CONTRATO com o mantenedor em 06/09/2026: perguntado se aprovava os DOIS assuntos de portfolio no enum de notificacao.devida.v1, ele aprovou SO 'pages.portfolio-conferido' e deixou 'pages.peca-quebrada' de fora. O aluno nao sera avisado pelo sininho quando uma peca do portfolio parar de abrir: ele descobre abrindo a pagina. A decisao e dele e esta escriturada; se mudar de ideia, nasce tarefa nova com outro Rito."
+}

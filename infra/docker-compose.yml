@@ -52,10 +52,20 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      # A entrada privada fica presa ao loopback do HOST: nenhuma outra máquina
+      # da rede alcança 8443, nem por IPv4 nem por IPv6. Quem entra vem pelo
+      # túnel SSH da fase 3, que desemboca aqui dentro da própria VPS.
+      - "127.0.0.1:8443:8443"
     volumes:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/dynamic:/etc/traefik/dynamic:ro
       - letsencrypt:/letsencrypt
+    # O gateway recebe DOIS valores, e só eles: os tokens que os roteadores da
+    # entrada privada injetam. Ele nunca recebe o `admin.env` inteiro. Quem os
+    # exporta é `sincronizar-infra-na-vps.sh`, lendo o env real da VPS.
+    environment:
+      ALUNOS_API_TOKEN: ${ALUNOS_API_TOKEN:?defina ALUNOS_API_TOKEN em env/admin.env}
+      TOKEN_CATALOGO: ${TOKEN_CATALOGO:?defina TOKEN_CATALOGO em env/admin.env}
     networks: [edge]
 
   postgres:
@@ -97,12 +107,43 @@ services:
         condition: service_started
 
   # O login do site (DECISAO-celula-de-identidade, 25/08/2026): Google, cookie
-  # de sessão e a resposta "quem é o dono desta sessão?". Sem auxiliar — não
-  # publica evento e não tem worker.
+  # de sessão e a resposta "quem é o dono desta sessão?".
+  #
+  # A célula ganhou voz em 31/08/2026: a cunhagem publica
+  # `identidade.pessoa-cadastrada` na outbox e tenta empurrar ao Redis depois do
+  # commit. As duas variáveis abaixo são topologia deste compose, não segredo de
+  # célula, como nos relays de `cursos`, `pages` e `encomendas`.
   identidade:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/12
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # A rede de segurança da outbox da `identidade`: se o publish depois do commit
+  # falhar, este worker recolhe a linha pendente no próximo tique. Banco 12
+  # porque os bancos 1 a 11 já são filas Huey de outras células neste compose.
+  identidade-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
+    env_file: [env/identidade.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/12
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      identidade:
+        condition: service_healthy
 
   # ORDEM DE ENTREGA — a lição que este bloco custou, escrita onde o próximo
   # agente vai olhar. Uma célula NOVA cujo PR traz o código E este compose
@@ -153,6 +194,8 @@ services:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-admin:${ADMIN_TAG:-main}
     env_file: [env/admin.env]
+    volumes:
+      - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
 
   quiz:
     <<: *celula
@@ -609,17 +652,164 @@ services:
   # #1117 a #1151, e o `deploy-celula` dela vem vermelho desde entao de
   # proposito (`armadilhas/088`): e ESTE arquivo que faltava.
   #
-  # SEM PROCESSO AUXILIAR, e a ausencia e o desenho de hoje, nao esquecimento:
-  # esta celula nao tem `management/commands/` nenhum, e o relay dos eventos
-  # `pages.portfolio.*` nasce junto com o degrau que os publicar. Auxiliar
-  # declarado com um `command:` que a imagem ainda nao tem sai do ar como
-  # `Unknown command`, e o passo de verificacao do `deploy-infra` exige TODOS
-  # os servicos declarados em `running`: um so que nao suba derruba a
-  # verificacao da plataforma inteira (`armadilhas/088`, passo 4).
+  # O PROCESSO AUXILIAR DESTA CELULA NASCEU EM 06/09/2026, logo abaixo. Ate
+  # aquele dia este paragrafo dizia que ela nao tinha nenhum, e a ausencia era
+  # o desenho: a celula nao publicava evento e nao tinha trabalho de fundo. O
+  # degrau 08 (a reconferencia diaria dos links) e o degrau 12 (o relay do selo)
+  # mudaram o presente, e a linha entrou atras do codigo que a exige. A condicao
+  # que o paragrafo velho impunha foi MEDIDA antes de este servico entrar:
+  # `python manage.py help` na imagem viva lista `run_huey` em `[djhuey]`, e a
+  # imagem `plataforma-pages:main` foi reconstruida as 20h31 UTC de 06/09/2026,
+  # depois do commit que pos `huey` no `requirements.txt`. Auxiliar declarado
+  # com um `command:` que a imagem nao tem sai do ar como `Unknown command`, e o
+  # passo de verificacao do `deploy-infra` exige TODOS os servicos declarados em
+  # `running`: um so que nao suba derruba a verificacao da plataforma inteira
+  # (`armadilhas/088`, passo 4).
   pages:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
     env_file: [env/pages.env]
+
+  # OS DOIS BATIMENTOS DE FUNDO DA CASA DAS PAGINAS, num processo so
+  # (`services/pages/apps/portfolio/tasks.py`, e o `config/huey.py` da celula
+  # explica por que os dois moram na mesma instancia):
+  #
+  #   1. O RELAY DA OUTBOX (degrau 12, criterio AC-12). A escola confere o
+  #      portfolio, a celula grava `pages.portfolio.conferido` na outbox, e e
+  #      ESTE processo que publica o fato no fio `eventos.pages.portfolio.conferido`.
+  #      Sem ele o fato nao se perde (fica na outbox com `published_at` nulo, e
+  #      ha teste provando), mas nunca chega a quem escuta: o selo da escola
+  #      morria dentro da celula.
+  #   2. A RECONFERENCIA DIARIA DOS LINKS (degrau 08, criterio AC-09). As 7h20
+  #      UTC o worker passa por todas as pecas do portfolio e MARCA quem parou
+  #      de abrir (e desmarca quem voltou). Ela nunca apaga peca.
+  #
+  # A SEGUNDA VEM DE CARONA, E ISSO PRECISA ESTAR ESCRITO. O mantenedor
+  # DISPENSOU a reconferencia diaria em 06/09/2026, as 18h45 UTC, perguntado
+  # numa caixa que descrevia a obra ("nao precisa disso"), e a TAR-223 esta
+  # `cancelada` por decisao dele. Este servico nao a ressuscita nem constroi
+  # nada para ela: o codigo dela ja estava na imagem desde o degrau 08, e
+  # `run_huey` e o worker da instancia UNICA de Huey desta celula, que executa
+  # todas as tarefas periodicas registradas nela. Separar as duas exigiria mexer
+  # em `services/pages`, e `--no-periodic` desligaria junto a rede de seguranca
+  # do relay, que e justamente o que este servico veio entregar. Quem sobe e o
+  # relay; a varredura vem no mesmo processo, sem custo de dinheiro nem de
+  # servico externo, e o efeito visivel dela e a Prancheta do aluno passar a
+  # dizer "o endereco parou de abrir" quando um link morrer. Se ele quiser a
+  # varredura DESLIGADA, isso e um degrau na celula `pages`: a TAR-240 existe,
+  # `bloqueada`, esperando a palavra dele.
+  #
+  # UM SERVICO SO PARA OS DOIS, e nao dois: um segundo processo sobre a mesma
+  # fila executaria as mesmas tarefas periodicas em duplicata.
+  #
+  # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/pages.env`, pela MESMA razao
+  # gravada nos blocos `gamificacao-consumer` e `cursos-relay`: o
+  # provisionamento (`infra/provisionar-pages.sh`) ja rodou na mao do mantenedor
+  # antes de esta celula ter trabalho de fundo, e acrescentar as chaves la agora
+  # custaria um SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha
+  # do banco e a chave do Django) para dois enderecos que nao sao segredo e
+  # valem igual em toda a plataforma. E topologia deste compose, nao
+  # configuracao da celula. O `infra/env/pages.env.exemplo` diz isso por
+  # escrito, para ninguem procurar as chaves la e concluir que sumiram.
+  #
+  # HUEY_REDIS_URL usa o banco 10: os bancos 1 a 9 ja sao de outras celulas
+  # (`infra/env/*.env.exemplo` e os blocos acima), e cada fila Huey precisa do
+  # PROPRIO banco, senao as tarefas de uma celula caem na fila da outra.
+  #
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `pages` e o que impede
+  # este processo de migrar em paralelo com o CMD do servidor HTTP contra o
+  # mesmo banco: um dos dois morreria com IntegrityError.
+  pages-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
+    env_file: [env/pages.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/10
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pages:
+        condition: service_healthy
+
+  # A Fila do Primeiro Dolar, o marketplace de encomendas 3D
+  # (DECISAO-fila-do-primeiro-dolar.md; degrau 2.10 da escada §7, TAR-128). O
+  # passo manual do mantenedor (infra/provisionar-encomendas.sh) ja rodou na
+  # VPS em 04/09/2026: e o PORTAO deste degrau, e e ele que faz
+  # `env/encomendas.env` existir com `DATABASE_URL`, `SCRIPT_NAME=/encomendas`
+  # e `SITE_ID` antes de o container tentar subir. Sem banco, `DATABASE_URL` e
+  # fail-hard e o container entra em crashloop (`armadilhas/088`, passo 2).
+  #
+  # ORDEM DE ENTREGA: este compose entra sozinho, sem tocar `services/`, pela
+  # mesma razao gravada nos blocos `identidade`, `cursos` e `pages` acima. PR de
+  # celula nova com codigo E compose juntos trava os DOIS deploys no mesmo
+  # commit, e nenhum rerun sai disso porque o vermelho e a cura moram no mesmo
+  # SHA (`armadilhas/134`). O codigo desta celula ja esta na `main` desde os PRs
+  # #946 a #1316, e o `deploy-celula` dela vem vermelho desde entao de proposito
+  # (`armadilhas/088`): e ESTE arquivo que faltava.
+  encomendas:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
+    env_file: [env/encomendas.env]
+
+  # O BATIMENTO DO TIQUE (degrau 2.4, `services/encomendas/config/huey.py`).
+  # De minuto em minuto ele expira oferta vencida, abre a encomenda que esperou
+  # demais na fila e oferece o que sobrou. Sem este servico a fila PARA no
+  # tempo: nada quebra, nenhuma tela reclama, e o relogio de toda oferta fica
+  # parado para sempre — que e o pior modo de falha de uma celula cuja promessa
+  # e "todo formado chega ao primeiro dolar".
+  #
+  # NAO E UM RELAY DE OUTBOX, e a diferenca esta escrita no `config/huey.py` da
+  # celula: nas vizinhas o Huey carrega o trabalho na fila do Redis; aqui ele so
+  # CHAMA, a cada minuto, uma funcao que pergunta ao banco o que esta vencido
+  # AGORA. Nada de estado da fila mora no Redis, entao o Redis cair por seis
+  # horas nao perde nada: a primeira passada quando ele voltar faz o que as seis
+  # perdidas fariam ([INV-ENC-J10], e rodar duas vezes no mesmo minuto e seguro).
+  #
+  # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/encomendas.env`, pela MESMA razao
+  # gravada nos blocos `cursos-relay` e `pages-relay`: o provisionamento ja
+  # rodou na mao do mantenedor, e acrescentar as chaves la agora custaria um
+  # SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha do banco e
+  # a chave do Django) para dois enderecos que nao sao segredo e valem igual em
+  # toda a plataforma. E topologia deste compose, nao configuracao da celula. O
+  # `infra/env/encomendas.env.exemplo` ja diz isso por escrito, para ninguem
+  # procurar as chaves la e concluir que sumiram.
+  #
+  # HUEY_REDIS_URL usa o banco 11: os bancos 1 a 10 ja sao de outras celulas
+  # (`infra/env/*.env.exemplo` e os blocos acima), e cada fila Huey precisa do
+  # PROPRIO banco, senao as tarefas de uma celula caem na fila da outra.
+  # `REDIS_STREAMS_URL` entra ja aqui, no banco 0 como todas: a celula ainda nao
+  # publica evento nenhum, e no dia em que publicar o endereco ja esta posto.
+  #
+  # `run_huey` EXISTE NESTA IMAGEM, e isso foi medido antes de a linha entrar:
+  # `huey==2.5.1` esta em `services/encomendas/requirements.txt` desde o degrau
+  # 2.4 e `huey.contrib.djhuey` esta em INSTALLED_APPS. Auxiliar declarado com um
+  # `command:` que a imagem nao tem sai do ar como `Unknown command`, e o passo
+  # de verificacao do `deploy-infra` exige TODOS os servicos declarados em
+  # `running`: um so que nao suba derruba a verificacao da plataforma inteira
+  # (`armadilhas/088`, passo 4).
+  #
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `encomendas` e o que
+  # impede este processo de migrar em paralelo com o CMD do servidor HTTP contra
+  # o mesmo banco: um dos dois morreria com IntegrityError.
+  encomendas-tique:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-encomendas:${ENCOMENDAS_TAG:-main}
+    env_file: [env/encomendas.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/11
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      encomendas:
+        condition: service_healthy
 
 volumes:
   pgdata: {}

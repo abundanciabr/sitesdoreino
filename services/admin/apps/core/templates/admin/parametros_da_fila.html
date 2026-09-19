@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A tela dos números da Fila do Primeiro Dólar. Formulários simples, sem script: o
+porquê está na docstring de apps/core/parametros_da_fila.py, e o resumo é que
+cada gesto é um POST que recarrega a página, então o que se vê é sempre o que
+está gravado do outro lado.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a tela.
+
+TODOS OS NÚMEROS E TODAS AS DESCRIÇÕES vêm da célula `encomendas`, pela porta de
+máquina. Nada aqui é cópia, e nenhum número está escrito neste arquivo: se a
+célula não responder, esta tela não tem o que mostrar e diz isso.
+{% endcomment %}
+{% block titulo %}Números da Fila | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Os números da Fila do Primeiro Dólar</h1>
+  <p class="subtitulo">
+    Cada linha é um número que a plataforma obedece: quanto tempo o aluno tem
+    para responder, quantos dias dura uma produção, quantas rodadas de conversa
+    de preço cada lado tem. Mudar um deles é escrever uma linha nova aqui, e ela
+    passa a valer na hora. Nada volta atrás: o que já foi combinado com um valor
+    antigo continua valendo com ele.
+  </p>
+
+  {% if sem_encomendas %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consigo falar com a Fila do Primeiro Dólar.</b>
+    Falta ligar a ligação entre esta área e o lugar onde os números ficam
+    guardados. É um passo de máquina, dentro do servidor, e está escrito no
+    relatório do robô que construiu esta tela. Nada do que está no ar mudou por
+    causa disso: os números continuam valendo exatamente como estão lá.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para gravar.</b> {{ erro }}</p>
+  {% endif %}
+  {% if recado == "gravado" %}
+  <p class="aviso borda-verde">
+    <b>Gravado.</b> O número novo vale a partir de agora. O que já estava
+    combinado antes deste momento continua com o número antigo, de propósito.
+  </p>
+  {% endif %}
+
+  {% if sem_numero %}
+  <h2 class="secao">Esperando um número seu</h2>
+  <p class="subtitulo">
+    {{ aviso_sem_numero }}
+  </p>
+  {% for item in sem_numero %}
+  <div class="cartao">
+    <h2>{{ item.descricao }}</h2>
+    <p class="estado"><b>Sem número.</b> <code>{{ item.chave }}</code></p>
+    {% include "admin/_gravar_parametro.html" with item=item %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <h2 class="secao">Os números que estão valendo</h2>
+  <p class="subtitulo">
+    <b>{{ com_numero|length }} de {{ total }}</b> já têm valor.
+  </p>
+
+  {% for item in com_numero %}
+  <div class="cartao">
+    <h2>{{ item.descricao }}</h2>
+    <p class="numeros">
+      <b>{{ item.valor }}</b> {{ item.unidade }}
+    </p>
+    <p class="estado">
+      <code>{{ item.chave }}</code> &middot; vale desde {{ item.desde }}
+      {% if item.quem %}&middot; mudado por {{ item.quem }}{% endif %}
+    </p>
+    {% if item.motivo %}
+    <p class="aviso">{{ item.motivo }}</p>
+    {% endif %}
+
+    {% if item.anteriores %}
+    <details>
+      <summary>O que este número já foi ({{ item.anteriores|length }} mudança{{ item.anteriores|length|pluralize:"s" }} antes desta)</summary>
+      {% for antiga in item.anteriores %}
+      <p class="historia">
+        <b>{{ antiga.valor }}</b>, desde {{ antiga.desde }}
+        {% if antiga.quem %}(por {{ antiga.quem }}){% endif %}<br>
+        {{ antiga.motivo }}
+      </p>
+      {% endfor %}
+    </details>
+    {% endif %}
+
+    {% include "admin/_gravar_parametro.html" with item=item %}
+  </div>
+  {% endfor %}
+
+  {% endif %}
+</div>
+{% endblock %}
