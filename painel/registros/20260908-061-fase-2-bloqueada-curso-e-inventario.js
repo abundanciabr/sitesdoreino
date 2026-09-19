@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-061-fase-2-bloqueada-curso-e-inventario",
+  tipo: "pendencia",
+  quando: "2026-09-08",
+  titulo: "A Fase 2 parou porque o curso e a lista canônica ainda não existem no estado real",
+  detalhe: "A tela do Admin lista somente o curso Profissional. A prévia sem gravação em /admin/escola/primeiros-dolares/estrutura/ respondeu: Não existe nenhum curso primeiros-dolares nesta escola. Nada foi gravado.\n\nTambém não há no projeto nem nas pastas locais uma fonte confiável para os cinco títulos que faltam: o resumo antigo informa 96 conteúdos, mas a lista referenciada soma 91, e o Módulo 4 informa 25 aulas enquanto mostra 20. Não inventei títulos e não importei uma lista incompleta.\n\nPara retomar, crie o curso primeiros-dolares na escola com progressão livre e forneça a lista corrigida dos 96 conteúdos. Depois disso, a sessão fará a prévia, conferirá apagamentos e importará apenas a estrutura vazia.",
+  autoridade: "sessao",
+  evidencia: "https://meshcraft.top/admin/escola/cursos/",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "A estrutura do curso não entra e os 132 alunos continuam sem a sala do curso Primeiros Dólares com Roblox.",
+  recomendacao: "Criar o curso com progressão livre e fornecer a lista canônica corrigida, incluindo os cinco títulos ausentes.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

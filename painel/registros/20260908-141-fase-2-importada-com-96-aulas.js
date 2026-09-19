@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-141-fase-2-importada-com-96-aulas",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "A estrutura do curso Primeiros Dólares com Roblox foi importada com 96 aulas",
+  detalhe: "A prévia mostrou 9 módulos, 96 aulas novas e zero apagamentos. Depois da confirmação do mantenedor, a tela informou: 9 módulo(s) novo(s), 96 aula(s) criada(s), 0 aula(s) que já existiam e ficaram com o conteúdo intacto, 0 aula(s) apagada(s).\n\nA lista de aulas do Admin mostra os blocos A até I, as aulas 01 até 96, todas em Rascunho, 0 de 96 publicadas e versão 1. Nenhum texto interno de aula foi escrito. Datas da imagem não foram importadas.",
+  autoridade: "sessao",
+  evidencia: "https://meshcraft.top/admin/escola/primeiros-dolares/aulas/",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: "20260908-117-curso-criado-mas-inventario-ainda-bloqueia-fase-2",
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
