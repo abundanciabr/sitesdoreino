@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-194659-TAR-508-explicada",
+  "tarefa": "TAR-508",
+  "evento": "explicada",
+  "quando": "2026-09-19T19:46:59+00:00",
+  "quem": "descoberto pelo despacho funil/identidade-do-visitante em 19/09/2026",
+  "o_que_e": "A vitrine do site e a unica parte da plataforma que nao avisa ao Django que o cadeado de HTTPS termina no porteiro da frente. Por causa disso ela acha que toda visita chegou sem cadeado, mesmo quando chegou com.",
+  "o_que_muda": "O cookie que a equipe usa para ver o site pelos olhos de um aluno sai de producao sem a marca que proibe o navegador de manda-lo por conexao aberta. Ele nao libera nada, mas e um cookie nosso trafegando em claro, e qualquer cookie novo da vitrine herda o mesmo defeito.",
+  "exemplo": "E como mandar a chave de casa num envelope transparente: a chave sozinha nao abre nada porque a fechadura foi trocada, mas todo mundo no caminho ve o que voce mandou.",
+  "importancia": 45
+}

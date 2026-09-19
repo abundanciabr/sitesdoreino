@@ -1997,22 +1997,22 @@
     },
     {
       "celula": "quiz",
-      "rota": "quiz/<slug:slug>/",
-      "endereco": "/quiz/quiz/<slug:slug>/",
+      "rota": "<slug:slug>/",
+      "endereco": "/quiz/<slug:slug>/",
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "Um quiz",
-      "descricao": "As perguntas de um quiz. Hoje nenhum quiz está publicado no site — a máquina existe, o conteúdo ainda não.",
-      "observacao": "O endereço tem 'quiz' duas vezes porque o prefixo do site e o caminho da célula se somam. Vale conferir isso no dia em que o primeiro quiz for publicado."
+      "descricao": "As perguntas de um quiz. Quem responde deixa nome, e-mail e telefone, e vê o resultado na tela seguinte.",
+      "observacao": "Até 19/09/2026 este endereço tinha 'quiz' duas vezes, porque o prefixo do site e o caminho da célula se somavam e só a forma dobrada respondia. O caminho de dentro perdeu o prefixo e o endereço público ficou com um só."
     },
     {
       "celula": "quiz",
-      "rota": "quiz/<slug:slug>/resultado",
-      "endereco": "/quiz/quiz/<slug:slug>/resultado",
+      "rota": "<slug:slug>/resultado",
+      "endereco": "/quiz/<slug:slug>/resultado",
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "O resultado de um quiz",
-      "descricao": "A tela que a pessoa vê depois de responder. A nota é calculada no servidor, nunca no navegador."
+      "descricao": "A tela que a pessoa vê depois de responder. A nota é calculada no servidor, nunca no navegador, e cada faixa de nota mostra o seu próprio botão de próximo passo."
     },
     {
       "celula": "quiz",

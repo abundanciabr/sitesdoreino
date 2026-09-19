@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-057-cookie-de-medicao-do-visitante-e-consentimento",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "A vitrine passou a dar um numero anonimo a cada visitante, e falta voce dizer se ela precisa pedir permissao",
+  detalhe: "A vitrine agora guarda no navegador de quem entra um numero sorteado, sem nada dentro dele: sem e-mail, sem endereco de rede, sem impressao digital do aparelho. Ele existe so para contar que a mesma pessoa voltou, que e o minimo sem o qual nenhuma medicao de funil fecha e nenhuma venda pode ser atribuida a uma origem.\n\nE o menor cookie possivel para esse fim: opaco, de primeira parte (nao vai para empresa nenhuma de fora), invisivel para o JavaScript da pagina e restrito ao caminho publico do site. O que sobra e uma pergunta de politica, nao de codigo: a LGPD trata cookie de medicao propria como interesse legitimo em muitos casos, mas quem decide se este site vai pedir permissao antes de guardar o numero, e se vai exibir um aviso de cookies, e voce.\n\nA entrega nao ficou bloqueada por isto, e a reversao e barata: apagar o cookie e uma linha na lista de middlewares da vitrine.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1774",
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "site",
+  area: "funil",
+  vence_em_dias: null,
+  porque_so_voce: "Pedir ou nao pedir permissao antes de medir e escolha de politica de privacidade e de produto, com efeito juridico sobre a empresa. Nenhum robo desta casa pode decidir por voce o que o site promete ao visitante.",
+  proximo_passo: "Responda uma das tres: (a) manter como esta, sem aviso, tratando medicao propria como interesse legitimo; (b) manter o numero e acrescentar um aviso de cookies informativo; (c) so guardar o numero depois de a pessoa aceitar.",
+  se_eu_nao_decidir: "O numero continua sendo guardado sem aviso nenhum, e os proximos passos da telemetria serao construidos em cima dessa suposicao. Quanto mais tarde a resposta vier, mais telas terao de mudar junto.",
+  recomendacao: "Manter como esta por ora e acrescentar uma linha sobre medicao propria na politica de privacidade. Cookie proprio, opaco, sem terceiro e sem dado pessoal e o caso mais defensavel que existe, e um aviso de cookies cobra atencao do visitante logo na porta da vitrine.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

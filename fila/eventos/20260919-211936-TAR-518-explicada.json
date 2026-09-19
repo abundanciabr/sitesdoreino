@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-211936-TAR-518-explicada",
+  "tarefa": "TAR-518",
+  "evento": "explicada",
+  "quando": "2026-09-19T21:19:36+00:00",
+  "quem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "o_que_e": "Quando o robo termina um trabalho, ele emite um comprovante que diz exatamente qual versao do codigo foi conferida. Se depois disso alguma conferencia automatica reprovar e ele precisar corrigir, o comprovante precisa ser refeito para a versao nova.",
+  "o_que_muda": "Hoje o robo nao consegue refazer o comprovante: o comando trava no meio e ainda deixa um arquivo quebrado para tras, que impede os comandos seguintes de rodar. Ou alguem destrava a mao, ou o comprovante fica falando de uma versao do codigo que nao e a que foi entregue.",
+  "exemplo": "E como o recibo da oficina ficar preso na primeira revisao: eles consertaram mais uma coisa depois, mas o papel que voce leva para casa so fala do primeiro conserto, e a impressora travou.",
+  "importancia": 60
+}

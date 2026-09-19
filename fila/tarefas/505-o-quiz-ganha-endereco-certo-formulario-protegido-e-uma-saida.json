@@ -1,0 +1,19 @@
+{
+  "arquivo": "505-o-quiz-ganha-endereco-certo-formulario-protegido-e-uma-saida",
+  "id": "TAR-505",
+  "titulo": "O quiz ganha endereço certo, formulário protegido e uma saída na tela de resultado",
+  "toca": [
+    "quiz"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "make ci da célula verde, e prova ao vivo em container com SCRIPT_NAME=/quiz: GET do formulário em /quiz/<slug>/, POST sem token recusado com 403, POST com token redirecionando, e a tela de resultado com o botão da faixa",
+  "despacho": "BRIEF FECHADO — célula `quiz`. Um PR só.\n\nALVOS (só `services/quiz/**`, mais `painel/mapa-do-site.json`, mais\n`ci/tests/test_mapa_do_site.py` sob mandato escrito do mantenedor):\n\n1. ENDEREÇO. Em `config/urls.py`, tirar o `quiz/` repetido: as rotas passam a\n   ser `<slug:slug>/` e `<slug:slug>/resultado`. O handler ASGI do Django 5.1.4\n   remove o SCRIPT_NAME do path_info antes de casar rota\n   (`path_info = scope[\"path\"].removeprefix(script_name)`), então rota escrita\n   com o prefixo por dentro só casa a URL dobrada `/quiz/quiz/<slug>/`.\n   Conferir que `healthz` continua casando e que `BarraNoFinal` não entra em\n   laço. Teste que meça o endereço público sob `FORCE_SCRIPT_NAME=\"/quiz\"`,\n   incluindo o Location do redirect do POST (`armadilhas/081`).\n\n2. CSRF. `settings.MIDDLEWARE` não tem `CsrfViewMiddleware` e o template emite\n   `{% csrf_token %}`: o formulário público aceita POST de qualquer origem.\n   Vermelho para verde. Conferir se `CSRF_TRUSTED_ORIGINS` é necessário atrás\n   do Traefik com HTTPS, sem inventar variável de ambiente nova.\n\n3. BOTÃO POR FAIXA. `ResultBand` ganha destino e rótulo do botão (vazio = sem\n   botão, e a tela trata esse estado). `resultado.html` mostra o botão da faixa.\n   Migration incluída.\n\n4. O SEED PLANTA OS BOTÕES. `seed_quiz` continua idempotente e planta os três.\n   O destino não pode ser inventado: descobrir o endereço público real do\n   checkout de uma oferta e decidir o desenho mais simples que serve QUALQUER\n   site. Documentar a escolha em `services/quiz/LICOES.md`.\n\nEVIDÊNCIA EXIGIDA: `make ci` da célula verde com a saída colada; prova ao vivo\nem container com `SCRIPT_NAME=/quiz` (GET do formulário no endereço novo, POST\ncompleto, Location do redirect, HTML do resultado COM o botão, e a linha do\nOutboxEvent); vermelho para verde do CSRF.\n\nARMADILHAS: `services/quiz/LICOES.md` inteiro e `armadilhas/081`. Rodar\n`python ci/indice_de_armadilhas.py` na bancada antes de consultar armadilhas.\n\nNÃO FAÇA: não toque em `infra/` nem em outra célula. Não invente conteúdo novo\nde perguntas. Não mexa no contrato `quiz.completado.v1`. Moldura, menu e rodapé\ndas telas ficam fora: o menu exige chamada de rede ao catálogo, que\n`AGENTS.quiz.md` proíbe, e apagar a linha de `ci/pecas-comuns-em-falta.txt`\nnão foi autorizado.",
+  "origem": "pedido do mantenedor em 19/09/2026: publicar um quiz real no site",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
