@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-024524-TAR-486-explicada",
+  "tarefa": "TAR-486",
+  "evento": "explicada",
+  "quando": "2026-09-19T02:45:24+00:00",
+  "quem": "Medicao da bancada da TAR-462, 19/09/2026",
+  "o_que_e": "O job que volta a imagem na VPS manda rodar um script do repositorio sem ter baixado o repositorio, e nada congela a celula depois que ela volta.",
+  "o_que_muda": "O job passa a baixar o repositorio antes de usar o script, e a congelar a celula assim que a imagem volta, com escrita concedida so a ele.",
+  "exemplo": "As 2h da manha alguem volta o checkout para a imagem de ontem, e a plataforma fica de pe ate a correcao chegar, sem ninguem digitar mais nada.",
+  "importancia": 95
+}
