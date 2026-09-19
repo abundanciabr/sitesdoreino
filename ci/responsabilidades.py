@@ -51,6 +51,9 @@ def carregar(raiz: Path) -> dict:
 
 
 def resolver_unidade(registro: dict, identificador: str) -> tuple[dict | None, list[str]]:
+    ids = [item.get("id") for item in registro.get("unidades", []) if isinstance(item, dict)]
+    if any(ids.count(item) > 1 for item in ids if isinstance(item, str)):
+        return None, ["identificador de responsabilidade duplicado; Corrija painel/responsabilidades.json"]
     unidades = {
         item["id"]: item
         for item in registro.get("unidades", [])
@@ -196,8 +199,13 @@ def validar_entrega(raiz: Path, identificador: str) -> list[str]:
 
 
 def auditar(raiz: Path) -> list[str]:
-    registro = carregar(raiz)
+    try:
+        registro = carregar(raiz)
+    except (OSError, ValueError) as erro:
+        return [f"cadastro de responsabilidades ilegível: {erro}. Corrija painel/responsabilidades.json"]
     erros = []
+    if not registro["unidades"]:
+        erros.append("cadastro de responsabilidades vazio; cadastre ao menos uma unidade")
     if set(registro.get("funcoes", {})) != FUNCOES:
         erros.append("o cadastro precisa conter exatamente as quatro funções")
     for identificador, funcao in registro.get("funcoes", {}).items():
@@ -270,11 +278,15 @@ def main() -> int:
     parser.add_argument("--entrega", metavar="RESPONSABILIDADE")
     parser.add_argument("--auditar", action="store_true")
     args = parser.parse_args()
-    erros = validar_entrega(args.raiz, args.entrega) if args.entrega and not args.auditar else auditar(args.raiz)
+    try:
+        erros = validar_entrega(args.raiz, args.entrega) if args.entrega and not args.auditar else auditar(args.raiz)
+    except (OSError, ValueError) as erro:
+        erros = [f"cadastro de responsabilidades ilegível: {erro}"]
     if erros:
         print("RESPONSABILIDADE NÃO COMPROVADA")
         for erro in erros:
             print(f"- {erro}")
+        print("Corrija painel/responsabilidades.json e repita a validação.")
         return 1
     print("RESPONSABILIDADE COMPROVADA")
     return 0
