@@ -176,7 +176,7 @@ paths:
         - name: site_id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
         - name: slug
           in: path
           required: true
@@ -188,7 +188,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PaginaPublicada' }
-        '404': { description: Site inexistente, ou página sem nenhuma versão publicada }
+        '404': { description: 'Site inexistente, ou página sem nenhuma versão publicada' }
   /sites/{site_id}/paginas/{slug}/rascunho:
     get:
       operationId: getPageDraft
@@ -201,7 +201,7 @@ paths:
         - name: site_id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
         - name: slug
           in: path
           required: true
@@ -212,7 +212,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RascunhoDaPagina' }
-        '404': { description: Site inexistente, ou página sem rascunho nenhum }
+        '404': { description: 'Site inexistente, ou página sem rascunho nenhum' }
     put:
       operationId: putPageDraft
       summary: Grava o rascunho de uma página, inteiro
@@ -225,7 +225,7 @@ paths:
         - name: site_id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
         - name: slug
           in: path
           required: true
@@ -234,19 +234,15 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [secoes]
-              properties:
-                secoes:
-                  type: array
-                  items: { $ref: '#/components/schemas/Secao' }
+            schema: { $ref: '#/components/schemas/CorpoDoRascunho' }
       responses:
         '200':
           description: O rascunho como ficou gravado, na forma canônica
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RascunhoDaPagina' }
+        '404': { description: 'Site inexistente' }
+        '422': { description: 'Rascunho incoerente; nada foi gravado' }
   /sites/{site_id}/paginas/{slug}/publicar:
     post:
       operationId: publishPage
@@ -263,7 +259,7 @@ paths:
         - name: site_id
           in: path
           required: true
-          schema: { type: string, format: uuid }
+          schema: { type: string }
         - name: slug
           in: path
           required: true
@@ -274,7 +270,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PaginaPublicada' }
-        '409': { description: Rascunho vazio; nada foi publicado }
+        '404': { description: 'Site inexistente' }
+        '409': { description: 'Rascunho vazio; nada foi publicado' }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -562,6 +559,18 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Secao' }
         atualizado_em: { type: string, format: date-time }
+    CorpoDoRascunho:
+      type: object
+      description: |-
+        O que a tela do `admin` manda ao gravar: as seções inteiras, de uma vez.
+        Existe como componente nomeado, e não solto dentro da operação, porque é
+        assim que o provedor consegue emitir uma referência só em vez de referência
+        e objeto ao mesmo tempo.
+      required: [secoes]
+      properties:
+        secoes:
+          type: array
+          items: { $ref: '#/components/schemas/Secao' }
     Secao:
       type: object
       description: |-
