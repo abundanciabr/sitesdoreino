@@ -1,0 +1,20 @@
+{
+  "arquivo": "514-registrar-no-livro-as-licoes-medidas-no-lote-da-pagina-real-",
+  "id": "TAR-514",
+  "titulo": "Registrar no livro as licoes medidas no lote da pagina real (19/09)",
+  "toca": [
+    "armadilhas",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "armadilhas 494 e 495 no repositorio, indice regenerado, registro tipo rumo no livro e PR mergeado",
+  "despacho": "Abra a bancada armadilhas/licoes-do-lote-da-pagina-real (ja aberta). Julgue as duas licoes reportadas pelo lote de 19/09/2026: (1) brief que nao varre documentos/ antes de especificar contradisse a especificacao escrita do mantenedor sobre a pagina de vendas; (2) o mecanismo do scratchpad compartilhado entre sub-agentes ja esta coberto por armadilhas existentes. Registre o que merecer armadilha nova (numero por ci/reservar.py, arquivo em armadilhas/, indice regenerado) e o registro tipo rumo correspondente no livro (numero por ci/reservar.py, gerar_manifesto.js verde). Feche por make pr.",
+  "origem": "despacho do escrivao pela maestro em 19/09/2026, sessao com cinco despachos em paralelo",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
