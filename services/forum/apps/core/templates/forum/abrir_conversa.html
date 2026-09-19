@@ -1,0 +1,37 @@
+{% extends "forum/base.html" %}
+{% block titulo %}Abrir uma conversa{% endblock %}
+{% block conteudo %}
+{% if areas %}
+  <form class="cartao escrever" method="post" action="{% url 'abrir_conversa' %}">
+    {% csrf_token %}
+    <div class="cabeca">{% include "forum/_mascote.html" %}<h2>Abrir uma conversa</h2></div>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <fieldset class="areas-para-escrever">
+      <legend>Escolha a área</legend>
+      {% for area in areas %}
+        <label>
+          <input type="radio" name="area" value="{{ area.slug }}" required {% if area.slug == area_digitada %}checked{% endif %}>
+          <strong>{{ area.nome }}</strong>
+          <span>{{ area.descricao }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+    <label for="titulo">Sua pergunta em uma linha</label>
+    <input id="titulo" name="titulo" maxlength="180" required value="{{ titulo_digitado }}"
+           placeholder="Ex.: como faço a textura não esticar no braço?">
+    <label for="texto">Conte com calma</label>
+    <textarea id="texto" name="texto" rows="6" required
+              placeholder="O que você tentou, o que aconteceu, e onde travou.">{{ texto_digitado }}</textarea>
+    <button type="submit">Publicar</button>
+  </form>
+{% elif motivo == "matricula" %}
+  <div class="cartao recado">
+    {% include "forum/_recado_matricula.html" %}
+  </div>
+{% else %}
+  <div class="cartao recado">
+    <strong>Nenhuma área está aberta para conversa agora.</strong>
+    <p><a href="{% url 'home' %}">Volte para a capa do fórum</a> para acompanhar as áreas disponíveis.</p>
+  </div>
+{% endif %}
+{% endblock %}
