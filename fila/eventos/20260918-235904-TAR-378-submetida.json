@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260918-235904-TAR-378-submetida",
+  "tarefa": "TAR-378",
+  "evento": "submetida",
+  "quando": "2026-09-18T23:59:04+00:00",
+  "quem": "agent/fila/fechar-as-entregues",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1735",
+  "revisao": "6d3281e9358f18a43ca351061c184ee26c6d329b",
+  "arvore": "c5d365a4f2486ccae202b10edaedc4f5a5f5e5c6"
+}

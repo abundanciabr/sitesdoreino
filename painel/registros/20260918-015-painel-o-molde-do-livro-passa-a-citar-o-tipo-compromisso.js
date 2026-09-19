@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-015-painel-o-molde-do-livro-passa-a-citar-o-tipo-compromisso",
+  tipo: "nota",
+  quando: "2026-09-18",
+  titulo: "painel: o molde do livro passa a citar o tipo compromisso",
+  detalhe: "O molde listava nove tipos e o validador aceita dez. Quem escrevesse um compromisso levava reprova sem motivo. So os moldes mudaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1729. Validação local: árvore f2ba90191aae038ea6146800871ab7c36a026afe; commit a67cb7e1f9e1e5c8c1ee5e0e657a3237f6ab70c1; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-471",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-025-a-volta-de-emergencia-nao-consegue-rodar-hoje",
+  tipo: "incidente",
+  quando: "2026-09-19",
+  titulo: "A volta de emergencia nao consegue rodar hoje",
+  detalhe: "O trabalho que entra no servidor para voltar a imagem manda executar um roteiro que mora no repositorio, mas nunca baixa o repositorio. O arquivo nao esta la. Todos os outros trabalhos que rodam roteiro assim baixam antes; so este nao.\n\nA data fecha o diagnostico: esse jeito de chamar o roteiro entrou em 28 de agosto, e a ultima vez que o trabalho de aplicar rodou foi em 24 de agosto. A resposta canonica a qualquer emergencia esta parada ha tres semanas sem nenhum sinal vermelho, porque ninguem dispara uma volta de emergencia sem emergencia.\n\nO conserto e uma linha, e vem junto com a automacao do congelamento. O guarda que prova isso ja esta escrito e reprovando. Falta permissao para editar o arquivo de configuracao da esteira: o classificador desta sessao recusou a edicao, e eu nao contorno recusa.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "vermelho",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: 2,
+  porque_so_voce: "Autorizar a escrita no arquivo de configuracao da esteira e sua; o mandato veio, a permissao tecnica nao.",
+  proximo_passo: "Libere a edicao de .github/workflows/rollback.yml para a sessao, ou passe a TAR-486 a uma sessao que ja a tenha.",
+  se_eu_nao_decidir: "Na proxima queda, o caminho mais rapido falha e sobra o acesso manual ao servidor, que e o que a Lei das 2h da manha existe para evitar.",
+  recomendacao: "Liberar. O conserto e pequeno e o guarda ja mede o antes e o depois.",
+  reversivel: true,
+  impacto: "alto",
+  portao: null
+}); })();

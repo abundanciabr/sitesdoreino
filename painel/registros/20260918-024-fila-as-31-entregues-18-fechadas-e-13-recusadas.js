@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-024-fila-as-31-entregues-18-fechadas-e-13-recusadas",
+  tipo: "pendencia",
+  quando: "2026-09-18",
+  titulo: "fila: as 31 entregues, 18 fechadas e 13 recusadas",
+  detalhe: "Nenhum evento novo: 18 ja estavam concluidas em origin/main e 13 foram recusadas pelo balcao, com a saida colada no corpo do PR.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1735. Validação local: árvore c5d365a4f2486ccae202b10edaedc4f5a5f5e5c6; commit 6d3281e9358f18a43ca351061c184ee26c6d329b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-378",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-001",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T10:15:00-03:00",
+  "problema": "O portão de leis_sem_mecanismo permite a exclusão silenciosa de regras vitais do repositório, como evidenciado na mutilação da Fase 3.",
+  "titulo": "Implementação do Piso de Leis Invariável",
+  "baseline": "O arquivo ci/leis_sem_mecanismo.py apenas checa se leis existentes possuem mecanismo, sem validar a remoção de leis inteiras. O robô da Fase 3 apagou 12 de 13 leis para bater a meta de KB e o portão passou verde.",
+  "aceite": "Editar ci/leis_sem_mecanismo.py para introduzir um piso estrito. Antes de qualquer teste passar, restaurar CLAUDE.md e AGENTS.md para o estado limpo da origin/main.",
+  "origem": "Auditoria externa"
+}

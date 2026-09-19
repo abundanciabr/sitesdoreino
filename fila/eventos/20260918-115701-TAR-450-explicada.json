@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-115701-TAR-450-explicada",
+  "tarefa": "TAR-450",
+  "evento": "explicada",
+  "quando": "2026-09-18T11:57:01+00:00",
+  "quem": "docs/decisoes/RELATORIO-LACO-DE-MELHORIA-CONTINUA.md",
+  "o_que_e": "Hoje a casa conta quantas vezes uma licao foi citada. Citacao nao e queda: a licao mais citada era a mais saudavel, e a que mais custou horas estava invisivel.",
+  "o_que_muda": "O site para de perder horas com a mesma falha repetida: a maquina passa a medir quanto tempo cada falha deixou uma parte do site sem publicar, e abre sozinha o trabalho de consertar a pior.",
+  "exemplo": "A falha 088 deixou celulas sem publicacao por 14.091 celula-minutos medidos em um mes, mais de cinco vezes o custo da segunda colocada, e ninguem tinha aberto tarefa para ela.",
+  "importancia": 72
+}

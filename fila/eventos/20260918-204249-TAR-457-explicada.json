@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-204249-TAR-457-explicada",
+  "tarefa": "TAR-457",
+  "evento": "explicada",
+  "quando": "2026-09-18T20:42:49+00:00",
+  "quem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Partes VIII e X",
+  "o_que_e": "O mapa usado pelos robôs ainda descreve ferramentas e regras antigas mesmo quando o código já mudou.",
+  "o_que_muda": "Uma mudança passa a acusar a explicação que ficou para trás, reduzindo instruções contraditórias antes de outra tarefa começar.",
+  "exemplo": "O mapa diz que uma ferramenta de orientação não existe, mas ela já está no projeto; a conferência deve apontar essa diferença.",
+  "importancia": 75
+}

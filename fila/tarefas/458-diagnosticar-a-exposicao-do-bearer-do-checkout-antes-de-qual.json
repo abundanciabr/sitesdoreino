@@ -1,0 +1,19 @@
+{
+  "arquivo": "458-diagnosticar-a-exposicao-do-bearer-do-checkout-antes-de-qual",
+  "id": "TAR-458",
+  "titulo": "Diagnosticar a exposição do bearer do checkout antes de qualquer ativação de venda",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Diagnóstico e teste local demonstram a fronteira no HTML, o alcance da credencial e uma alternativa imediata; nenhuma credencial real é lida ou reproduzida, nenhuma exploração de produção ou ativação de venda. Implementação, se necessária, vira tarefa separada com mandato específico para checkout.",
+  "despacho": "Brief gerado por ci/economia_da_fabrica.py brief --tipo arquitetura: modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Escopo estreito: diagnóstico, modelo de ameaça e teste local da exposição de bearer em services/checkout. Ler código e configurações somente nos pontos necessários, com credenciais sintéticas. Nunca ler/reproduzir token real, explorar produção, executar transação ou ativar venda. Contratos e pagamentos permanecem fora do escopo. A implementação em checkout é CODEOWNERS e somente começa com mandato específico do mantenedor em tarefa separada. Aceite: prova local do HTML e fronteira, alcance do token sintético, alternativa imediata com impacto/reversão e tarefa de implementação separada se necessária. Não modificar comportamento da aplicação nesta tarefa.",
+  "origem": "TAR-455: docs/consultorias/equipe-especialista/RELATORIO.md, Parte VIII; revisão independente exigiu encaminhamento do risco Alto",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

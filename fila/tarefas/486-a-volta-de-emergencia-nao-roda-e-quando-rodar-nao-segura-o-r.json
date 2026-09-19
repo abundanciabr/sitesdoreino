@@ -1,0 +1,19 @@
+{
+  "arquivo": "486-a-volta-de-emergencia-nao-roda-e-quando-rodar-nao-segura-o-r",
+  "id": "TAR-486",
+  "titulo": "A volta de emergencia nao roda, e quando rodar nao segura o rollback de pe",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guarda de forma sobre o workflow do rollback, vermelho antes: todo passo que roda script remoto tem checkout antes dele; o congelamento roda no job que aplica, com always e sem disparar quando o alvo e a linha principal; e o conjunto de jobs com escrita em TODA a pasta de workflows e exatamente o de antes mais esse job. Provado por mutacao.",
+  "despacho": "# Brief compilado\n\nobjetivo: Ligar o congelamento da celula no job que aplica o rollback, conceder escrita so a esse job, e consertar o checkout que falta e quebra a valvula de emergencia\ntipo: arquitetura\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: muda contrato, fronteira ou desenho de produto; erro aqui custa retrabalho amplo\ncelula: ci\n\n## Arquivos-alvo\n- .github/workflows/rollback.yml\n- RITOS.md\n- ci/tests/test_rollback_congela_ao_aplicar.py\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "Medicao da bancada da TAR-462, 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

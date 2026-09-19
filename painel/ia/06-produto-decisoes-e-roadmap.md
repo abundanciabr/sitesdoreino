@@ -85,8 +85,13 @@ emergência.
 **O que é:** inglês, pt-br e es hoje; outras variantes de português depois.
 
 **Decisão mais sensível a reabertura por engano:** o idioma **padrão** mora
-na raiz nua sem prefixo (`meshcraft.top` = inglês); todo outro idioma leva
-prefixo (`/pt-br/`, `/es/`); `/en/...` é 404 proposital, não redirecionamento.
+na raiz nua sem prefixo; todo outro idioma leva prefixo, e o prefixo do
+padrão é 404 proposital, não redirecionamento. **Qual é o padrão hoje:
+`pt-br`** (emenda de 27/08/2026, `infra/sites.json` com
+`default_language: "pt-br"`). Ou seja, `meshcraft.top/` abre em **português**,
+`/en/` e `/es/` respondem 200, e **`/pt-br/` é que é 404**. A versão anterior
+deste parágrafo dizia o inverso (raiz = inglês) e ficou 22 dias no ar: a regra
+não mudou, só trocou qual idioma ocupa a raiz.
 Isto **revogou** uma recomendação anterior unânime de 4 IAs consultadas (que
 mandava até o inglês levar prefixo, pelo argumento de que trocar o idioma
 padrão no futuro viraria "uma linha de dado"). O mantenedor decidiu
@@ -228,6 +233,9 @@ mergeado pelo botão, gerou deploy `skipped`; revertido, gerou deploy
     assine o Pro"; o portão de deploy já é a resposta arquitetural ao
     mesmo problema de fundo.
 14. **O congelamento arquitetural só o mantenedor reabre**, sessão a
-    sessão — já foi aberto deliberadamente três vezes (`sugestoes`,
-    `identidade`, `notificacoes`/`admin`); isso não o torna "regra que não
-    vale mais" para uma quarta vez sem pedido.
+    sessão — já foi aberto nominalmente **nove vezes** até 07/09/2026
+    (`sugestoes`, `identidade`, `notificacoes`, `admin`, `forum`,
+    `gamificacao`, `pages`, `cursos`, `encomendas`), cada uma com decisão
+    própria em `docs/decisoes/`. O número alto **não** o torna "regra que não
+    vale mais" para uma décima vez sem pedido: cada abertura custou uma
+    decisão dele. O repositório tem hoje **18 células** em `celulas.yml`.
