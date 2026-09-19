@@ -152,6 +152,10 @@ Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
 Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
 segurança são bloqueios reais.
 
+Escopo desde 19/09/2026: o site é `meshcraft.top`. `basileiatoutheou.org` está
+congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
+a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
+
 **Quem faz valer:** julgamento.
 
 ## Nenhum texto publicado sai com travessão
