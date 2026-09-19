@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-009-ci-mexer-na-biblioteca-compartilhada-sem-entregar-a-wheel-ag",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: mexer na biblioteca compartilhada sem entregar a wheel agora reprova",
+  detalhe: "Nasceu vermelho: sabotei o fonte e as duas wheels reprovaram; --reconstruir consertou e passou. Sabotei as 12 guardas do portao, as 12 morderam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1742. Validação local: árvore b244e13a49569418a952fe20814de412f5cec719; commit 86c65f72011c5701960ab8fcf4ca429b13f00404; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-465",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
