@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-204705-TAR-515-explicada",
+  "tarefa": "TAR-515",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:47:05+00:00",
+  "quem": "Brief fechado da maestro, 19/09/2026",
+  "o_que_e": "O documento que o mantenedor vai ler para escrever o texto de venda da pagina de oferta mapeia sete secoes que a casa inventou, e nao as onze que ele mesmo especificou em 05/09/2026.",
+  "o_que_muda": "Pelo texto de hoje ele escreveria frases para espacos que nao existem na pagina, e o trabalho seria jogado fora. Corrigido, cada pergunta do documento tem um lugar real na tela.",
+  "exemplo": "O documento pede uma ancora de preco, que e o valor riscado que ele proprio vetou na ferramenta 74. Responder essa pergunta seria escrever exatamente o que a lei da casa proibe.",
+  "importancia": 70
+}
