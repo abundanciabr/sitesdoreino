@@ -23,17 +23,17 @@
 # cada pergunta, em cada opção e em cada faixa). Disparar duas vezes não duplica
 # nada e não apaga resposta nenhuma.
 #
-# OS DOIS INPUTS VIAJAM POR `envs:`, NUNCA COSTURADOS NO CORPO DO SCRIPT:
-# `${{ inputs.* }}` dentro de `script:` é substituição de texto feita antes de o
-# shell existir, ou seja, injeção de comando na VPS (`armadilhas/047`). O script
-# lê `HOST_QUIZ` e `DESTINO_DO_BOTAO` do ambiente.
+# O HOST VIAJA POR `envs:`, NUNCA COSTURADO NO CORPO DO SCRIPT: `${{ inputs.* }}`
+# dentro de `script:` é substituição de texto feita antes de o shell existir, ou
+# seja, injeção de comando na VPS (`armadilhas/047`). O script lê `HOST_QUIZ` do
+# ambiente.
 #
-# O SEGUNDO INPUT FICA VAZIO HOJE, E ISSO É CORRETO. Outro PR está dando ao
-# `seed_quiz` um `--destino-do-botao` obrigatório: para onde vai quem termina o
-# quiz, ou seja, a oferta daquele site. Enquanto esse PR não entra, o comando
-# não tem o argumento e o script não o passa. Quando entrar, o script cobra o
-# valor e PARA se ninguém o disser, em vez de escolher uma oferta pelo dono.
-# Nenhum dos dois casos é adivinhado: a assinatura do comando é lida na hora.
+# O HOST É O ÚNICO INPUT, DE PROPÓSITO. O PR #1768 dá ao `seed_quiz` um
+# `--destino-do-botao` obrigatório: para onde vai quem termina o quiz. Esse
+# destino NÃO é um campo a preencher aqui, porque ele já é dado do site: o
+# catálogo guarda a oferta padrão de cada host, e o script monta
+# `/checkout/<oferta>/` na mesma consulta que já traz o número do site. Um campo
+# a mais seria uma segunda verdade, livre para divergir da primeira.
 #
 # GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`):
 # `cancel-in-progress: false` NÃO faz fila ilimitada — o GitHub guarda UM run
@@ -51,11 +51,6 @@ on:
         required: true
         type: string
         default: meshcraft.top
-      destino_do_botao:
-        description: 'Para onde o botão do resultado leva (ex.: /checkout/o-caminho/). Deixe vazio enquanto o quiz ainda não tiver botão; o script avisa se precisar.'
-        required: false
-        type: string
-        default: ''
 permissions:
   contents: read
 concurrency:
@@ -107,13 +102,12 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: HOST_QUIZ,DESTINO_DO_BOTAO
+          envs: HOST_QUIZ
           capture_stdout: true
           command_timeout: 10m
           script_path: infra/semear-quiz.sh
         env:
           HOST_QUIZ: ${{ inputs.host }}
-          DESTINO_DO_BOTAO: ${{ inputs.destino_do_botao }}
 
       # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa os
       # próprios inputs, e ler o eco como se fosse a execução já enganou este

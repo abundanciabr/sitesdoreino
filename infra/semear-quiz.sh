@@ -49,6 +49,15 @@
 # (`get_or_create` no site, no quiz, em cada pergunta, em cada opção e em cada
 # faixa). Rodar de novo não duplica nada e não apaga resposta nenhuma.
 #
+# O BOTÃO DA TELA DE RESULTADO VEM DO CATÁLOGO, NÃO DE UM CAMPO A PREENCHER.
+# O PR #1768 dá ao `seed_quiz` um `--destino-do-botao` obrigatório: para onde vai
+# quem termina o quiz. Esse destino é a oferta DAQUELE site, e o catálogo já a
+# guarda (`Site.default_offer_slug`); o checkout a publica em
+# `/checkout/<oferta>/`. Então o passo 2 traz a oferta na mesma consulta que traz
+# o número, e o passo 4 monta o destino. Pedir isso de novo a quem dispara seria
+# uma segunda verdade, livre para divergir da primeira. Site sem oferta padrão
+# não ganha botão chutado: o script para e diz onde cadastrar.
+#
 # O ENDEREÇO DO QUIZ É MEDIDO, NÃO ESCRITO AQUI. A célula sobe atrás do Traefik
 # com `SCRIPT_NAME=/quiz` e o gateway NÃO remove o prefixo (`armadilhas/197`),
 # então o endereço público depende do urlconf da célula, que é dela e pode
@@ -80,7 +89,7 @@ echo "== 2/6 — descobrindo o site no catálogo =="
 SITES=$(docker compose exec -T catalogo python manage.py shell -c \
   "from apps.sites.models import Site
 for s in Site.objects.filter(active=True).order_by('host'):
-    print(f'{s.id}\t{s.host}\t{s.name}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
+    print(f'{s.id}\t{s.host}\t{s.name}\t{s.default_offer_slug}')" 2>/dev/null | tr -d '\r' | grep -E '^[0-9a-fA-F-]{36}\s') \
   || parar "não consegui perguntar ao catálogo quais sites existem. NADA foi alterado."
 
 QUANTOS=$(printf '%s\n' "$SITES" | grep -c . || true)
@@ -97,10 +106,6 @@ listar_sites() {
 # entrega pelo `envs:` da ssh-action. `${{ inputs.* }}` dentro de `script:` é
 # injeção de comando na VPS (`armadilhas/047`).
 HOST_PEDIDO="${1:-${HOST_QUIZ:-}}"
-# Para onde o botão do resultado leva. Hoje o `seed_quiz` não tem esse
-# argumento e isto fica vazio; quando ele tiver, o passo 4 exige o valor em vez
-# de escolher um destino no lugar do dono da oferta.
-DESTINO="${2:-${DESTINO_DO_BOTAO:-}}"
 
 if [ -z "$HOST_PEDIDO" ]; then
   echo "  Os sites ativos no catálogo são:"
@@ -121,8 +126,22 @@ fi
 SITE_ID=$(printf '%s' "$LINHA" | cut -f1)
 SITE_HOST=$(printf '%s' "$LINHA" | cut -f2)
 SITE_NOME=$(printf '%s' "$LINHA" | cut -f3)
+OFERTA=$(printf '%s' "$LINHA" | cut -f4)
 [ -n "$SITE_ID" ] || parar "li a resposta do catálogo mas não consegui extrair o número do site."
 [ -n "$SITE_NOME" ] || SITE_NOME="$SITE_HOST"
+
+# Para onde o botão da tela de resultado leva. Não se pergunta a ninguém: a
+# oferta é dado DO SITE e mora no catálogo (`Site.default_offer_slug`), na mesma
+# consulta que já trouxe o número. O checkout publica a oferta em
+# `/checkout/<oferta>/`. Site sem oferta padrão não ganha botão chutado: o passo
+# 4 para e diz onde cadastrar.
+DESTINO=""
+if [ -n "$OFERTA" ]; then
+  case "$OFERTA" in
+    *[!a-z0-9-]*) parar "a oferta padrão de $SITE_HOST no catálogo ('$OFERTA') tem caractere que um endereço não tem. Corrija o cadastro do site antes. NADA foi alterado." ;;
+  esac
+  DESTINO="/checkout/$OFERTA/"
+fi
 # O host volta do catálogo, não do argumento, e ainda assim é conferido antes
 # de virar dado de consulta: número e host entram nos comandos por `-e`, nunca
 # emendados no corpo de um shell ou de um python.
@@ -132,6 +151,7 @@ esac
 echo "  site ...... $SITE_HOST"
 echo "  nome ...... $SITE_NOME"
 echo "  número .... $SITE_ID"
+echo "  oferta .... ${OFERTA:-nenhuma cadastrada}"
 
 echo
 echo "== 3/6 — conferindo o cadastro local do quiz contra o catálogo =="
@@ -209,10 +229,10 @@ echo "  o comando aceita --host, --site-id e --site-name ...... ok"
 echo "  e não exige nenhum outro argumento ................... ok"
 
 if [ "$ACEITA_DESTINO" = "1" ]; then
-  [ -n "$DESTINO" ] || parar "o comando seed_quiz agora pergunta para onde o botão do resultado leva, e ninguém disse. Isto é escolha sua, não minha: é para lá que vai quem terminar o quiz. Dispare de novo preenchendo o destino do botão, por exemplo /checkout/<slug-da-oferta>/. NADA foi alterado."
+  [ -n "$DESTINO" ] || parar "o comando seed_quiz agora planta o botão da tela de resultado, e $SITE_HOST não tem oferta padrão no catálogo. Botão sem destino levaria para lugar nenhum, e adivinhar a oferta de um site não é meu. O QUE FAZER: cadastre a oferta padrão desse site no catálogo (o campo que guarda o slug da oferta) e dispare de novo. NADA foi alterado."
   echo "  o botão de cada faixa vai levar para ...... $DESTINO"
 elif [ -n "$DESTINO" ]; then
-  parar "você disse para onde o botão do resultado deve levar ($DESTINO), e este seed_quiz não conhece '--destino-do-botao'. Semear assim jogaria a sua escolha fora em silêncio. É o que acontece enquanto o PR que cria o botão não entrou na main: dispare de novo sem o destino, ou espere aquele PR. NADA foi alterado."
+  echo "  este seed_quiz ainda não planta botão: a oferta $OFERTA fica para a próxima"
 fi
 
 # O que o comando aceita e este script deixa no padrão. Hoje é só o `--slug`.
