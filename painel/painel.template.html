@@ -631,7 +631,21 @@ try {
       }
       vistaCapa.appendChild(b);
     } else if (bloco.id === "nao-comprovado") {
-      vistaCapa.appendChild(blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); }));
+      var bSemProva = blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); });
+      // O bloco mostra as mais recentes (`SEM_PROVA_NO_RESUMO`), porque uma
+      // afirmação sem prova nunca ganha prova depois e a lista só crescia. O
+      // número do livro INTEIRO vem de `confianca`, contado no build, e é
+      // escrito aqui: lista curta e número honesto, nunca uma lista curta
+      // passando por completa.
+      var conf = PAINEL.resumo.confianca;
+      var semProvaNoLivro = conf ? conf.afirmacoes - conf.comProvaConferida : 0;
+      if (semProvaNoLivro > bloco.itens.length) {
+        bSemProva.appendChild(el("div", "item",
+          "São " + semProvaNoLivro + " afirmações sem prova no livro inteiro. Acima estão as " +
+          bloco.itens.length + " mais recentes; as outras continuam na aba Memória, e a caixa " +
+          "“Posso confiar nisto?”, logo abaixo, conta todas."));
+      }
+      vistaCapa.appendChild(bSemProva);
     }
   });
 

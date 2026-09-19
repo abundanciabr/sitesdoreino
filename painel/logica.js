@@ -681,11 +681,46 @@
     };
   }
 
+  // Quantas afirmações sem prova viajam no resumo. Este teto é de OUTRA natureza
+  // que `PROBLEMAS_COM_DETALHE` e `CAIXA_COM_DETALHE`: aqueles cortam TEXTO e
+  // nunca FATO, e podem, porque problema aberto e pedido sem resposta FECHAM —
+  // alguém responde e eles saem do bloco sozinhos.
+  //
+  // "Dito, mas não comprovado" não tem essa saída. Ele lista entrega e medição
+  // sem `evidencia` ou sem `verificado_em`, e registro é IMUTÁVEL por lei da
+  // casa: recibo que nasceu sem prova nunca ganha prova. Cada um que entra fica
+  // para sempre, e este era o único bloco da capa sem teto de espécie nenhuma.
+  //
+  // Medido em 19/09/2026, com a main em 2f8444e9: 80 afirmações sem prova, 77
+  // delas presas no resumo só por esta porta, 48.089 bytes, 31,3% do resumo
+  // inteiro, a mais velha de 28/08. A capa tinha 67 bytes de folga num orçamento
+  // de 153.600 e o recibo mediano de um PR pesa 868 bytes: nenhum PR da casa
+  // conseguia mais ficar verde, e junto com a muralha do painel caíam o
+  // `ci-celula (admin)` e o `ci-celula-gate`, porque a fixture daqueles testes
+  // roda o gerador.
+  //
+  // O QUE O CORTE NÃO PODE ESCONDER, e não esconde: quem sai daqui e ainda está
+  // ABERTO continua no resumo por outra porta, porque `montarResumo` leva
+  // inteiras a caixa "Precisa de você", "Atenção agora", os recentes e o Meu
+  // mapa. Sai só o que não espera ninguém.
+  //
+  // E É UMA CONTAGEM, NÃO UMA IDADE, pela razão escrita em `CAIXA_COM_DETALHE`:
+  // idade congelaria o relógio do build dentro do resumo. A ordem por data dá o
+  // mesmo resultado com qualquer relógio; a idade, não.
+  //
+  // O NÚMERO INTEIRO CONTINUA NA TELA: `confianca` conta as afirmações sem prova
+  // sobre o livro TODO, e é dele que a capa tira a linha que diz quantas ficaram
+  // para trás. Cortar a lista sem carregar o número seria trocar um bloco que
+  // grita por um que mente.
+  var SEM_PROVA_NO_RESUMO = 12;
+
   // Relato sem prova conferida — aparece como "não comprovado", jamais como fato.
+  // Mais RECENTE primeiro: é a ordem em que se vai atrás da prova que falta, e é
+  // ela que decide quem cabe no teto acima.
   function naoComprovados(registros) {
     return registros.filter(function (r) {
       return (r.tipo === "entrega" || r.tipo === "medicao") && (!r.evidencia || !r.verificado_em);
-    });
+    }).sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
   }
 
   // ---------------------------------------------------------------------------
@@ -715,7 +750,15 @@
     if (fresc.vencidos.length || (fresc.livroParadoHaDias != null && fresc.livroParadoHaDias > 3)) {
       blocos.push({ id: "frescor", titulo: "O que está velho", itens: fresc.vencidos, livroParadoHaDias: fresc.livroParadoHaDias });
     }
-    if (semProva.length) blocos.push({ id: "nao-comprovado", titulo: "Dito, mas não comprovado", itens: semProva });
+    // As mais RECENTES sem prova, e só elas (ver `SEM_PROVA_NO_RESUMO`). Quantas
+    // existem no livro inteiro é o que `confianca` conta, e a página escreve a
+    // diferença embaixo do bloco: lista curta, número honesto.
+    if (semProva.length) {
+      blocos.push({
+        id: "nao-comprovado", titulo: "Dito, mas não comprovado",
+        itens: semProva.slice(0, SEM_PROVA_NO_RESUMO)
+      });
+    }
 
     if (blocos.length > teto) {
       return {
@@ -1027,6 +1070,7 @@
     PORTOES: PORTOES,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
+    SEM_PROVA_NO_RESUMO: SEM_PROVA_NO_RESUMO,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,

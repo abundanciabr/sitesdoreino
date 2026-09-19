@@ -737,6 +737,142 @@ var pedidosAMais = muitosPedidos.length - (TETO_CAIXA + 2);
 caso("passado o teto, cada pedido a mais pesa um título e não um parágrafo",
   (pesoCheioCaixa - pesoBaseCaixa) / pedidosAMais < 800);
 
+
+// ---------------------------------------------------------------------------
+// O TETO DE "Dito, mas não comprovado" (19/09/2026).
+//
+// Os dois tetos acima cortam TEXTO e nunca FATO, e podem: problema aberto e
+// pedido sem resposta FECHAM quando alguém responde. Este bloco não tinha essa
+// saída. Ele lista entrega e medição sem prova conferida, e registro é imutável
+// por lei da casa: o que entra nunca sai. Medido no dia, com a main em 2f8444e9:
+// 80 afirmações sem prova, 77 delas presas no resumo só por esta porta, 48.089
+// bytes, 31,3% do resumo inteiro. A capa tinha 67 bytes de folga num orçamento
+// de 153.600 e o recibo mediano de um PR pesa 868: nenhum PR da casa ficava
+// verde, e com a muralha do painel caíam o `ci-celula (admin)` e o gate.
+//
+// Os casos travam as seis coisas que a cura precisa ser: o teto existe, corta a
+// LISTA, escolhe as mais RECENTES, não deixa NADA QUE ESPERA ALGUÉM cair fora do
+// resumo, mantém na tela o número do livro INTEIRO, e tem dentes.
+console.log("== teto de Dito, mas não comprovado ==");
+
+var TETO_SEM_PROVA = LOGICA.SEM_PROVA_NO_RESUMO;
+caso("o bloco tem um teto declarado", typeof TETO_SEM_PROVA === "number" && TETO_SEM_PROVA > 0);
+
+// Entregas sem prova em AGOSTO, e trinta notas de SETEMBRO depois delas: sem o
+// enchimento as entregas seriam os 30 mais recentes do livro e chegariam ao
+// resumo pela porta dos recentes, e o teto passaria sem ser exercido.
+var semProvaMuitas = [];
+for (var sp = 0; sp < TETO_SEM_PROVA + 8; sp++) {
+  var diaSp = String(sp + 1);
+  if (diaSp.length < 2) diaSp = "0" + diaSp;
+  // Nome e titulo de LARGURA FIXA: o caso dos dentes, lá embaixo, compara bytes
+  // entre dois livros em que o teto escolhe entregas DIFERENTES. Com o índice
+  // sem zero à esquerda, "entrega-9" e "entrega-19" pesariam diferente e o
+  // guarda mediria o comprimento do nome em vez do efeito do teto.
+  var nSp = ("0" + sp).slice(-2);
+  semProvaMuitas.push(reg({
+    arquivo: "202608" + diaSp + "-82" + (sp % 10) + "-entrega-" + nSp,
+    tipo: "entrega", quando: "2026-08-" + diaSp, titulo: "entrega sem prova " + nSp,
+    // `info`, e não verde: verde exige evidência conferida, que é justamente o
+    // que falta aqui. `frente: null` e `precisa_do_dono: false` de propósito —
+    // sem frente não há Meu mapa, sem pedido não há caixa, e este bloco fica
+    // sendo a ÚNICA porta delas para o resumo. É o que torna o corte visível.
+    gravidade: "info", evidencia: null, verificado_em: null,
+    frente: null, precisa_do_dono: false,
+    detalhe: "um paragrafo bem comprido ".repeat(40)
+  }));
+}
+var enchimentoSp = [];
+for (var es = 0; es < 30; es++) {
+  var diaEs = String(es + 1);
+  if (diaEs.length < 2) diaEs = "0" + diaEs;
+  enchimentoSp.push(reg({
+    arquivo: "202609" + diaEs + "-83" + (es % 10) + "-nota-" + es,
+    tipo: "nota", quando: "2026-09-" + diaEs, titulo: "nota " + es,
+    detalhe: "texto qualquer de enchimento "
+  }));
+}
+var livroSemProva = semProvaMuitas.concat(enchimentoSp);
+var resumoSemProva = LOGICA.montarResumo(livroSemProva);
+caso("montarResumo constrói com a pilha de afirmações sem prova", resumoSemProva.erro === null);
+
+// 1. A LISTA É QUE TEM TETO — a lista, e não só o texto, porque estas não fecham.
+var blocosSp = {};
+LOGICA.capa(livroSemProva, AGORA).blocos.forEach(function (b) { blocosSp[b.id] = b; });
+caso("o bloco para no teto (não cresce com a pilha)",
+  blocosSp["nao-comprovado"].itens.length === TETO_SEM_PROVA);
+
+// 2. QUEM FICA SÃO AS MAIS RECENTES. A ordem de chegada do livro é a mais velha
+//    primeiro; quem cortasse por ela acertaria a contagem e erraria a escolha.
+var idsNoBloco = {};
+blocosSp["nao-comprovado"].itens.forEach(function (r) { idsNoBloco[r.arquivo] = true; });
+caso("a afirmação sem prova mais RECENTE fica no bloco",
+  idsNoBloco[semProvaMuitas[semProvaMuitas.length - 1].arquivo] === true);
+caso("a mais ANTIGA sai do bloco", !idsNoBloco[semProvaMuitas[0].arquivo]);
+caso("...e sai também do resumo, que é o que devolve o orçamento",
+  !resumoSemProva.registros.some(function (r) { return r.arquivo === semProvaMuitas[0].arquivo; }));
+
+// 3. NADA QUE ESPERA ALGUÉM SAI DO RESUMO. Este é o caso que mede se o corte é
+//    seguro: uma entrega sem prova que também é pedido ao dono, ou que está
+//    vermelha sem resposta, continua no resumo por outra porta. É o que separa
+//    "envelhecer o que fechou" de "esconder o que está aberto".
+//
+//    As duas são as MAIS VELHAS do livro de propósito, e o livro leva junto as
+//    pilhas de pedidos e de problemas montadas acima. Sem elas as duas seriam os
+//    únicos itens dos seus blocos, ganhariam texto por `CAIXA_COM_DETALHE` e por
+//    `PROBLEMAS_COM_DETALHE`, e passariam neste teste carregadas por `completo`
+//    em vez de pelas portas que o teste diz medir. Medido em 19/09/2026: com o
+//    livro pequeno, arrancar `marcar(apenasTitulo, blocos.caixa)` deixava estes
+//    dois casos VERDES. Sendo as mais velhas, elas caem fora dos dois tetos de
+//    texto e fora dos 30 recentes, e sem frente não há Meu mapa: sobra uma porta
+//    só para cada uma, que é exatamente a que se quer provar.
+var pedindo = reg({
+  arquivo: "20260720-840-entrega-sem-prova-que-pede-decisao",
+  tipo: "entrega", quando: "2026-07-20", titulo: "sem prova e esperando você",
+  gravidade: "info", evidencia: null, verificado_em: null, frente: null,
+  precisa_do_dono: true, porque_so_voce: "só você tem a senha",
+  proximo_passo: "decidir", se_eu_nao_decidir: "fica parado",
+  recomendacao: "decidir", reversivel: true, impacto: "alto"
+});
+var vermelha = reg({
+  arquivo: "20260720-841-entrega-sem-prova-que-quebrou",
+  tipo: "entrega", quando: "2026-07-20", titulo: "sem prova e vermelha",
+  gravidade: "vermelho", evidencia: null, verificado_em: null, frente: null,
+  precisa_do_dono: false
+});
+var livroMisto = [pedindo, vermelha]
+  .concat(muitosPedidos).concat(muitosProblemas).concat(livroSemProva);
+var resumoMisto = LOGICA.montarResumo(livroMisto);
+var noResumoMisto = {};
+resumoMisto.registros.forEach(function (r) { noResumoMisto[r.arquivo] = r; });
+caso("a mais VELHA de todas, se for pedido ao dono, NÃO some do resumo",
+  !!noResumoMisto[pedindo.arquivo]);
+caso("a mais VELHA de todas, se estiver vermelha sem resposta, NÃO some do resumo",
+  !!noResumoMisto[vermelha.arquivo]);
+caso("...e a caixa 'Precisa de você' calculada do resumo tem a MESMA contagem do livro",
+  LOGICA.caixaDeEntrada(resumoMisto.registros, AGORA, resumoMisto.respondidos).length ===
+  LOGICA.caixaDeEntrada(livroMisto, AGORA).length);
+caso("...e 'Atenção agora' calculada do resumo tem a MESMA contagem do livro",
+  LOGICA.problemasAbertos(resumoMisto.registros, resumoMisto.respondidos).length ===
+  LOGICA.problemasAbertos(livroMisto).length);
+
+// 4. O NÚMERO DO LIVRO INTEIRO CONTINUA NA TELA. Sem isto o corte trocaria um
+//    bloco que grita por um que mente: lista curta com cara de lista completa.
+//    É deste número que a página escreve "são N sem prova no livro inteiro".
+var semProvaNoLivro = resumoSemProva.confianca.afirmacoes - resumoSemProva.confianca.comProvaConferida;
+caso("confianca conta TODAS as afirmações sem prova do livro, inclusive as que saíram",
+  semProvaNoLivro === semProvaMuitas.length);
+caso("...e esse número é maior que a lista, que é o que faz a página escrever a linha",
+  semProvaNoLivro > blocosSp["nao-comprovado"].itens.length);
+
+// 5. O GUARDA TEM DENTES. Passado o teto, uma afirmação sem prova a mais que não
+//    espera ninguém custa ZERO byte ao resumo. É o que faz o resumo parar de
+//    crescer com a idade do projeto, em vez de crescer mais devagar.
+var pesoBaseSp = pesoDoResumo(semProvaMuitas.slice(0, TETO_SEM_PROVA + 2).concat(enchimentoSp));
+var pesoCheioSp = pesoDoResumo(livroSemProva);
+caso("passado o teto, afirmação sem prova a mais não pesa NADA no resumo",
+  pesoCheioSp === pesoBaseSp);
+
 // ===========================================================================
 // PRIORIDADES POR ÁREA (07/09/2026) — o recorte que responde "o que eu faço
 // primeiro, e em que parte do site isso mexe".
