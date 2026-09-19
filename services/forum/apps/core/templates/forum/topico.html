@@ -69,6 +69,38 @@ botão nunca é a proteção.
   </details>
 {% endif %}
 
+{% comment %}
+MOSTRAR NA GALERIA. Quem decide se esta caixa aparece é `pode_decidir`
+(`apps/core/galeria.py`), o MESMO cálculo que a view de POST usa para responder
+404. Ela existe só para o DONO do trabalho, e só na área da vitrine: nem
+professor nem administrador a enxergam, porque consentimento dado por outra
+pessoa não é consentimento.
+
+Ela fica ANTES da conversa de propósito. O gesto é sobre a obra, não sobre o que
+foi respondido nela, e uma caixa no fim da página seria uma caixa que o dono do
+trabalho nunca encontra.
+{% endcomment %}
+{% if galeria %}
+  <form class="cartao escrever" method="post" action="{% url 'decidir_galeria' topico.pk %}">
+    {% csrf_token %}
+    <h2>Mostrar na Galeria</h2>
+    {% if galeria.erro %}<p class="erro">{{ galeria.erro }}</p>{% endif %}
+    {% if galeria.marca %}
+      <p class="sub">Você marcou este trabalho em {{ galeria.marca.concedido_em|date:"d/m/Y" }}, e ele pode aparecer na Galeria da escola. A conversa continua exatamente onde estava: marcar não a abre para quem é de fora.</p>
+      <input type="hidden" name="acao" value="tirar">
+      <button type="submit">Tirar da Galeria</button>
+      <p class="sub">Tirar da Galeria vale na hora, e não apaga nada da conversa.</p>
+    {% else %}
+      <p class="sub">A Galeria da escola mostra o trabalho de quem quis mostrar. Ponha aqui o endereço da sua criação no Roblox e ela poderá aparecer lá. Você tira quando quiser.</p>
+      <label for="referencia">Endereço do seu trabalho</label>
+      <input id="referencia" name="referencia" type="url" maxlength="400" required
+             placeholder="https://www.roblox.com/games/...">
+      <input type="hidden" name="acao" value="mostrar">
+      <button type="submit">Mostrar na Galeria</button>
+    {% endif %}
+  </form>
+{% endif %}
+
 {% for mensagem in mensagens %}
   <div class="cartao mensagem{% if mensagem.removida_em %} fora-do-ar{% endif %}" id="m{{ mensagem.pk }}">
     <span class="autor">{{ mensagem.assinatura }}</span>
