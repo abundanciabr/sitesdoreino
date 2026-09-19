@@ -1,0 +1,19 @@
+{
+  "arquivo": "478-dar-alcance-escrito-ao-token-que-o-checkout-publica-na-propr",
+  "id": "TAR-478",
+  "titulo": "Dar alcance escrito ao token que o checkout publica na propria pagina",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste-guarda versionado mostra vermelho antes e verde depois, e reprova quando uma operacao nova da API fica alcancavel pelo token publico. Credencial sintetica; nenhum token real lido, nenhuma ativacao de venda. Comeca somente com mandato escrito do mantenedor, porque services/checkout/ e CODEOWNERS.",
+  "despacho": "Brief gerado por ci/economia_da_fabrica.py brief --tipo arquitetura --celula checkout:\nmodelo_recomendado: opus; esforco_recomendado: high.\n\nMandato do mantenedor obrigatorio antes de comecar: services/checkout/ e\ncaminho CODEOWNERS. Sem a palavra escrita dele nos caminhos autorizados, a\ntarefa fica bloqueada e volta a maestro.\n\nLeia primeiro o diagnostico:\ndocs/consultorias/equipe-especialista/DIAGNOSTICO-TAR-458-bearer-do-checkout.md\n\nEscopo estreito. Hoje settings.TOKENS_ACEITOS do checkout e um conjunto\nplano: bearerAuth nao distingue qual par consumidor apresentou o token, entao o\nvalor publicado no HTML das paginas tem o mesmo alcance de um token servidor a\nservidor, e qualquer rota nova da API nasce alcancavel por visitante anonimo.\n\nFaca: montar um conjunto TOKENS_PUBLICOS a partir das variaveis conhecidamente\npublicadas no HTML, declarar por escrito as operacoes que um token publico\nalcanca (hoje createSession, placeOrder e getOrder) e responder 403 ao token\npublico em qualquer operacao fora dessa lista, mantendo o token servidor a\nservidor intacto. Copie o padrao de dois graus de services/identidade, nunca o\narquivo: nada de import cruzado.\n\nNao faca: novo esquema de seguranca no contrato congelado, mudanca nas tres\noperacoes existentes, token de curto prazo por sessao (e decisao de desenho do\nmantenedor, fica como divida declarada), nem qualquer ativacao de venda.\n\nAlvos provaveis: services/checkout/apps/core/auth.py,\nservices/checkout/config/settings.py, services/checkout/config/api.py,\nservices/checkout/tests/ e infra/env/checkout.env.exemplo.\n\nProva exigida: versione a sonda do diagnostico como teste-guarda, mostre-a\nvermelha antes e verde depois, e acrescente o guarda que reprova quando uma\noperacao nova da API fica alcancavel pelo token publico. Sabote cada guarda e\nconfirme que ele reprova. Credencial sintetica sempre; nunca leia token real.",
+  "origem": "TAR-458: docs/consultorias/equipe-especialista/DIAGNOSTICO-TAR-458-bearer-do-checkout.md",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
