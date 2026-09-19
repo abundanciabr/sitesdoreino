@@ -31,10 +31,34 @@ PERGUNTAS = [
     ),
 ]
 
+# O rótulo do botão é da FAIXA: o mesmo destino, dito com as palavras de quem
+# chegou ali. É isso que faz o botão ser diferente por faixa sem inventar três
+# ofertas que o site não tem.
 FAIXAS = [
-    ("iniciante", "Você está começando", "Foco em fundamentos primeiro.", 0, 9),
-    ("intermediario", "Você já tem base", "Hora de acelerar o que funciona.", 10, 19),
-    ("avancado", "Você está pronto para escalar", "Bora para o próximo nível.", 20, 30),
+    (
+        "iniciante",
+        "Você está começando",
+        "Foco em fundamentos primeiro.",
+        0,
+        9,
+        "Começar pelo básico",
+    ),
+    (
+        "intermediario",
+        "Você já tem base",
+        "Hora de acelerar o que funciona.",
+        10,
+        19,
+        "Destravar o próximo passo",
+    ),
+    (
+        "avancado",
+        "Você está pronto para escalar",
+        "Bora para o próximo nível.",
+        20,
+        30,
+        "Quero escalar agora",
+    ),
 ]
 
 
@@ -46,8 +70,32 @@ class Command(BaseCommand):
         parser.add_argument("--site-id", required=True)
         parser.add_argument("--site-name", required=True)
         parser.add_argument("--slug", default="crivo")
+        # O destino é ARGUMENTO, e não constante, porque o Crivo não conhece o
+        # checkout (AGENTS.quiz.md: "Consome: nada") e porque a oferta é de cada
+        # site — o mesmo seed roda em meshcraft.top e em basileiatoutheou.org.
+        # Um caminho relativo vale em QUALQUER host (o Traefik casa `/checkout`
+        # por caminho, em todos eles), então o valor usual é
+        # `/checkout/<oferta-do-site>/`; obrigatório para que ninguém publique
+        # sem querer a tela de resultado sem saída que este seed veio fechar.
+        parser.add_argument(
+            "--destino-do-botao",
+            required=True,
+            help=(
+                "para onde o botão da tela de resultado leva, por exemplo "
+                "/checkout/curso-teste/ (caminho relativo vale em qualquer site)"
+            ),
+        )
 
-    def handle(self, *, host: str, site_id: str, site_name: str, slug: str, **opts):
+    def handle(
+        self,
+        *,
+        host: str,
+        site_id: str,
+        site_name: str,
+        slug: str,
+        destino_do_botao: str,
+        **opts,
+    ):
         with transaction.atomic():
             site, _ = Site.objects.get_or_create(
                 id=site_id, defaults={"host": host.lower(), "name": site_name}
@@ -65,8 +113,14 @@ class Command(BaseCommand):
                         order=ordem_opt,
                         defaults={"text": texto_opt, "points": pontos},
                     )
-            for key, title, descricao, minimo, maximo in FAIXAS:
-                ResultBand.objects.get_or_create(
+            for key, title, descricao, minimo, maximo, rotulo in FAIXAS:
+                # `update_or_create`, e não `get_or_create`, SÓ nas faixas: elas
+                # já existem nos bancos semeados antes deste PR, sem botão, e um
+                # `get_or_create` acharia a linha, não escreveria nada e deixaria
+                # a tela de resultado no beco sem saída para sempre — sem erro
+                # nenhum para avisar. Idempotente continua sendo: rodar de novo
+                # converge a faixa para o que está escrito aqui.
+                ResultBand.objects.update_or_create(
                     quiz=quiz,
                     key=key,
                     defaults={
@@ -74,6 +128,8 @@ class Command(BaseCommand):
                         "description": descricao,
                         "min_score": minimo,
                         "max_score": maximo,
+                        "botao_destino": destino_do_botao,
+                        "botao_rotulo": rotulo,
                     },
                 )
         self.stdout.write(
