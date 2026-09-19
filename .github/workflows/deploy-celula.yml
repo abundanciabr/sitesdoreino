@@ -394,6 +394,12 @@ jobs:
       # repetição foi só o TRANSPORTE da imagem pronta, a única metade cujo
       # erro é de rede. Juntar os dois num passo só daria retry ao build de
       # graça, sem ninguém ter escolhido isso.
+      - name: Preparar imagem de leitura para retirar o painel da VPS
+        if: matrix.celula == 'admin'
+        run: |
+          IMG=ghcr.io/abundanciabr/plataforma-admin-leitura
+          docker build -f services/admin/Dockerfile.leitura -t "$IMG:${{ github.sha }}" -t "$IMG:main" services/admin
+          python3 ci/enviar_a_imagem.py "$IMG:${{ github.sha }}" "$IMG:main"
       - name: Build da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
