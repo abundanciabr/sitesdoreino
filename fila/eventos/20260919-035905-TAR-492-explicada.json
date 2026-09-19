@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-035905-TAR-492-explicada",
+  "tarefa": "TAR-492",
+  "evento": "explicada",
+  "quando": "2026-09-19T03:59:05+00:00",
+  "quem": "Prova operacional que a TAR-486 nao pode dar por construcao, 19/09/2026",
+  "o_que_e": "O conserto da volta de emergencia esta no codigo, mas ninguem provou que ela aplica: o job que entra no servidor sempre roda o roteiro da linha principal, entao so depois da integracao da para testar.",
+  "o_que_muda": "Um disparo real na linha principal prova que a celula volta mesmo para a imagem anterior, e que ela e devolvida a fila normal depois.",
+  "exemplo": "As 2h da manha alguem volta o checkout para a imagem de ontem, e desta vez a volta acontece de verdade, em vez de abortar.",
+  "importancia": 95
+}
