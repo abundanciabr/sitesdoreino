@@ -1,0 +1,20 @@
+(function(){(window.REGISTROS=window.REGISTROS||[]).push({
+arquivo: "20260918-004-ci-autorizar-a-chave-da-vps-num-environment-com-politica",
+tipo: "pendencia",
+quando: "2026-09-18",
+titulo: "Autorizar guardar a chave da VPS num Environment que so aceita a main",
+detalhe: "TAR-461, PR 1738. Dezesseis dos vinte e cinco programas do GitHub abrem conexao com o servidor, e treze deles nao conferiam nada antes. Este trabalho poe nos treze o passo que recusa disparo por qualquer ramo que nao seja a main, e o guarda que impede o proximo de nascer sem ele.\n\nFalta o que so voce pode fazer. Esse passo mora dentro do proprio ramo, entao quem empurra um ramo consegue apaga-lo no mesmo empurrao. O fecho de verdade e guardar a chave DEPLOY_SSH_KEY num Environment do GitHub com a politica de branch limitada a main: ai o proprio GitHub recusa entregar a chave para um trabalho que nasceu de outro ramo, e nenhum texto do ramo muda isso.",
+autoridade: "sessao",
+evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1738",
+verificado_em: "2026-09-18",
+precisa_do_dono: true,
+responde_a: null,
+gravidade: "ambar",
+area: "ci",
+porque_so_voce: "Criar Environment, mover segredo e definir politica de branch sao ajustes da configuracao do repositorio, fora do alcance de qualquer robo e fora do mandato desta tarefa.",
+proximo_passo: "Em Settings, Environments, criar o ambiente vps com Deployment branches limitado a main, mover DEPLOY_SSH_KEY para ele e avisar para os programas passarem a declarar esse ambiente.",
+se_eu_nao_decidir: "Fica valendo so o passo dentro do ramo, que para o disparo distraido mas nao para quem apaga o passo de proposito antes de disparar.",
+recomendacao: "Autorizar. E ajuste de configuracao, sem custo, e reversivel apagando o ambiente. Depois dele, abrir tarefa para os dezesseis programas declararem o ambiente.",
+reversivel: true,
+impacto: "alto"
+});})();
