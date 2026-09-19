@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-022-ci-fechar-as-entregas-que-o-balcao-da-fila-prendia-sem-motiv",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: fechar as entregas que o balcao da fila prendia sem motivo",
+  detalhe: "Duas causas medidas uma a uma: sete por atestado medido sem bancada, quatro por linhagem perdida. Onze fechadas, duas viram pendencia.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1751. Validação local: árvore 7f24a8913eba9acc8be012c32dc8479e631019cf; commit 7a9801c6dd6db01ec43a6effc316c46253a8574e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-485",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

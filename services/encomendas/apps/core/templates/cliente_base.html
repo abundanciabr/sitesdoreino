@@ -1,0 +1,58 @@
+{% comment %}
+A moldura das telas do cliente: o estilo mora aqui, e uma vez só.
+
+O estilo é inline, como na tela do plantão, e pela mesma razão: com DEBUG=0 o
+Django não serve estático e não há nginx nem CDN atrás do Traefik, então um
+arquivo de folha de estilo vira 404 em produção e só lá (armadilhas/083). No dia
+em que a rota `estatico` nascer, o `<link>` sai de `{% url 'estatico' %}` e nunca
+de `{% static %}` (armadilhas/102).
+{% endcomment %}<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block titulo %}Pedidos{% endblock %} | Meshcraft</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0 auto; padding: 24px 16px 64px; max-width: 42rem;
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    h2 { font-size: 1.1rem; margin: 32px 0 8px; }
+    p.abertura { margin: 0 0 28px; opacity: .8; }
+    a { color: inherit; }
+    label { display: block; margin: 18px 0 6px; font-weight: 600; }
+    input, select, textarea, button {
+      width: 100%; padding: 12px; font: inherit; border-radius: 8px;
+      border: 1px solid rgba(128,128,128,.5); background: transparent;
+      color: inherit; box-sizing: border-box;
+    }
+    textarea { min-height: 7rem; resize: vertical; }
+    button { margin-top: 20px; font-weight: 700; cursor: pointer; }
+    .caixa {
+      border: 1px solid rgba(128,128,128,.4); border-radius: 10px;
+      padding: 16px 18px; margin: 0 0 16px;
+    }
+    .caixa h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    .recado {
+      padding: 12px 14px; border-radius: 8px; margin-bottom: 24px;
+      border: 1px solid rgba(128,128,128,.5);
+    }
+    .recado.certo { border-color: #1a7f37; }
+    .ajuda { font-size: .9rem; opacity: .75; margin: 6px 0 0; }
+    ul.miuda { margin: 8px 0 0; padding-left: 20px; font-size: .92rem; opacity: .85; }
+    .marcar { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; font-weight: 400; }
+    .marcar input { width: auto; }
+    .estado { font-weight: 700; }
+    .rodape { margin-top: 40px; font-size: .9rem; opacity: .8; }
+  </style>
+</head>
+<body>
+  {% if recado %}
+    <p class="recado {% if deu_certo %}certo{% endif %}">{{ recado }}</p>
+  {% endif %}
+  {% block conteudo %}{% endblock %}
+</body>
+</html>

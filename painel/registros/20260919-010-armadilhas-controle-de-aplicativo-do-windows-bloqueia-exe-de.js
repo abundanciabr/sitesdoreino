@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-010-armadilhas-controle-de-aplicativo-do-windows-bloqueia-exe-de",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "armadilhas: Controle de Aplicativo do Windows bloqueia .exe de venv",
+  detalhe: "Terceira armadilha da familia instrumento-do-ambiente: black.exe morre e=4551 sob Controle de Aplicativo; python -m black funciona.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1748. Validação local: árvore 2f1ca9ee8e7afd1bafaa8a6add1b428c0cfd71e1; commit 8fc7f60aac7f83c382c4451e4fae0546177384d8; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-481",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
