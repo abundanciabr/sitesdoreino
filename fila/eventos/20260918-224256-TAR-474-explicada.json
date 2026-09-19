@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-224256-TAR-474-explicada",
+  "tarefa": "TAR-474",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:42:56+00:00",
+  "quem": "TAR-463, cujo recibo declarou integracao e publicacao nao verificadas",
+  "o_que_e": "A correcao do mapa para IA foi juntada e publicada, mas o livro ainda guarda so o comprovante escrito antes disso, que diz com todas as letras que integracao e publicacao nao foram verificadas.",
+  "o_que_muda": "O livro passa a dizer que o trabalho chegou ao ar, com a prova do commit e do run, em vez de parar no meio do caminho.",
+  "exemplo": "Quem abrir o livro amanha para saber se a correcao entrou hoje le apenas que ela nao foi verificada, e precisa ir ao GitHub conferir a mao.",
+  "importancia": 40
+}

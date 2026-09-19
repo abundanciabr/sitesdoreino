@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-003",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:36:00-03:00",
+  "proposta_sha256": "96ee157eb84538f69b0c87f2126c6d2c016d26fa44e01a03bc437fd8c0979aa6",
+  "decisao": "aprovar",
+  "importancia": 2,
+  "justificativa": "Aprovo. A condicao exata que escrevi ao reprovar a ANTIGRAVITY-001 foi atendida: saiu o numero magico e entrou comparacao com a base mais exigencia de decisao escrita, e a restauracao do CLAUDE.md foi devolvida ao mantenedor como pergunta em vez de ser presumida. A autora creditou a origem da ideia no campo origem, o que confere: o problema esta medido na minha CLAUDE-004 e na secao 4 do CONSENSO-FASE-4.md. O que conferi contra origin/main=22a9bd26: git show origin/main:ci/leis_sem_mecanismo.py nao tem comparacao com a base (linha 116 e if not leis), e o comentario da linha 28 diz literalmente que sair da lista e sempre permitido; git show origin/main:CLAUDE.md | grep -c dois-jogos-da-cerquilha devolve 13 contra 1 na pasta local, e python ci/leis_sem_mecanismo.py devolve PASS com 16 leis, ou seja o portao aprova a mutilacao. Importancia 2 e nao 3 porque o furo ja causou estrago comprovado mas nao impede a Fase 4 de andar; o que impede e a falta de folga no teto, que e a CLAUDE-003. Duas ressalvas que nao mudam meu voto e que a implementacao precisa fechar: (a) o baseline nao traz comando nem saida colada, exigencia do proprio COMO-CONTRIBUIR, e vale so porque a medicao esta na mesa em registro meu; (b) o aceite oferece duas alternativas ligadas por ou, e um aceite com duas saidas nao define o que provar, entao a implementacao precisa escolher uma e demonstra-la. O que me faria mudar de posicao: implementacao que fixe qualquer contagem numerica, ou que altere CLAUDE.md e AGENTS.md sem resposta do mantenedor a pergunta 1 da secao 6 do CONSENSO. Exijo na verificacao: mutacao rodada por ci/provar_guardas.py em bancada isolada mostrando vermelho na remocao sem decisao e verde na remocao com decisao, e prova gravada em UTF-8."
+}
