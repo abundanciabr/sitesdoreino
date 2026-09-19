@@ -1,0 +1,130 @@
+# =============================================================================
+# VIGIA DO SITE — a loja abre? Perguntado de fora, de 15 em 15 minutos.
+#
+# POR QUE ELE PRECISA DE UM RELÓGIO: um site não cai porque alguém mexeu no
+# código. Ele cai num pool esgotado, num consumidor em deadlock, num migrate
+# pendurado — em qualquer minuto, inclusive numa semana em que ninguém encosta
+# no repositório. Evento nenhum avisa isso, e era por isso que a pergunta "o
+# site está no ar?" não tinha dono até 18/09/2026 (TAR-460).
+#
+# POR QUE DE 15 EM 15 MINUTOS, e não uma vez por dia como o vigia do cadeado:
+# um certificado vence pelo calendário e dá 21 dias de folga; uma loja fechada
+# custa visitante a cada minuto. A cadência é a mesma da pista de pouso
+# (`pouso.yml`), que já roda `*/15` aqui, e este repositório é público, então o
+# minuto de runner é gratuito — isto não gasta dinheiro do mantenedor.
+#
+# O QUE ELE NÃO É: um portão. Ele não impede nada e não roda em PR — avisa
+# depois, como o `alarme-main`. O modo de falha dele é "não avisou", nunca
+# "aprovou o que não devia" (INV-CI01). A declaração dele em
+# `ci/portao_de_deploy.py` é parte do desenho: vermelho aqui NÃO pode barrar a
+# publicação, porque a publicação costuma ser justamente o conserto
+# (`armadilhas/180`).
+# =============================================================================
+name: vigia-do-site
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+# Grupo PRÓPRIO, nunca o `deploy`: naquele grupo o GitHub guarda um único run
+# pendente e CANCELA o anterior quando chega outro (armadilhas/173) — um vigia
+# cancelado em silêncio é pior que vigia nenhum, porque parece que rodou.
+concurrency:
+  group: vigia-do-site
+  cancel-in-progress: false
+jobs:
+  medir:
+    name: perguntar de fora se cada host responde
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Sem dependências: só a biblioteca padrão. Um vigia que depende de `pip
+      # install` ganha um modo de falha novo (o registro de pacotes fora do ar)
+      # justamente no dia em que ele precisa funcionar.
+      - name: Vigia do site
+        run: python ci/vigia_do_site.py
+
+  alarme:
+    name: alarme do site
+    needs: medir
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Abrir a issue do site fora do ar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Não empilhar issue, e não comentar na que já existe. O vigia acorda
+          # 96 vezes por dia: um comentário por run seriam 96 avisos diários do
+          # MESMO fato, e ruído se ignora — que é o mesmo que não avisar. Quem
+          # quiser o histórico abre a aba de runs do workflow.
+          EXISTENTE="$(gh issue list --label site-fora-do-ar --state open \
+            --json number --jq '.[0].number // empty')"
+          if [ -n "$EXISTENTE" ]; then
+            echo "Issue #$EXISTENTE já está aberta sobre o mesmo fato — não comento de novo."
+            echo "Medição desta rodada: $RUN_URL"
+            exit 0
+          fi
+
+          CORPO="$(cat <<EOF
+          O vigia perguntou **de fora**, pela internet pública, se a raiz de cada
+          endereço do projeto responde. Pelo menos um não respondeu como devia.
+
+          - execução (a medição crua, host a host): $RUN_URL
+
+          ## O que isto significa
+
+          Para o visitante, é a loja fechada: ou uma página de erro, ou o
+          navegador girando até desistir. O cadeado pode estar perfeito — o vigia
+          do cadeado mede outra coisa, e passaria mesmo assim. Abra a execução
+          acima: cada host tem uma linha com o status recebido, ou com o motivo
+          de não ter havido resposta.
+
+          ## Os três motivos possíveis, e o que fazer em cada um
+
+          1. **5xx (500, 502, 503)** — o Traefik está de pé e quem está atrás
+             dele não. Célula viva e TRAVADA não morre, então o
+             \`restart: unless-stopped\` do compose não reage: pool de conexões
+             esgotado, consumidor em deadlock, migrate pendurado. O empurrão é
+             republicar a célula (\`deploy-celula\`), que recria o container.
+          2. **404 na raiz** — o site perdeu a oferta padrão. O contrato de
+             \`infra/sites.json\` diz que todo site listado precisa de
+             \`default_offer_slug\` apontando para uma oferta sua; sem ela o funil
+             responde 404 e o smoke do \`deploy-infra\` reprova pelo mesmo motivo.
+          3. **Não consegui medir** — DNS, porta 443 ou o servidor inteiro fora
+             do ar. O vigia já insistiu 3 vezes antes de gritar, então não é
+             soluço de rede. Comece pela VPS, não pela aplicação.
+
+          ## Como conferir na mão
+
+          \`\`\`
+          python ci/vigia_do_site.py
+          python ci/vigia_do_site.py --host meshcraft.top
+          \`\`\`
+
+          Feche esta issue quando o vigia voltar ao verde.
+          EOF
+          )"
+
+          # A label pode não existir ainda. `|| true` aqui esconderia "não
+          # consegui criar" junto com "já existe", então distingo os dois.
+          if ! gh label list --json name --jq '.[].name' | grep -qx site-fora-do-ar; then
+            gh label create site-fora-do-ar \
+              --color B60205 \
+              --description "A raiz de um endereço do projeto não está respondendo"
+          fi
+          gh issue create \
+            --label site-fora-do-ar \
+            --title "Site fora do ar: um endereço do projeto não responde" \
+            --body "$CORPO"

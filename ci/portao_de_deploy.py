@@ -137,6 +137,26 @@ VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
 # este commit, e exigi-lo faria todo deploy esperar por um run que, na maioria
 # dos SHAs, não existe.
 VIGIA_DO_POUSO = ".github/workflows/vigia-do-pouso.yml"
+# DECLARADO POR ESCRITO pela mesma regra (TAR-460, 18/09/2026). O vigia do site
+# é o terceiro workflow desta casa a acordar pelo relógio, e é o caso em que a
+# `armadilhas/180` morde mais forte de todos:
+#
+#   - Ele não mede este commit. Ele mede se a raiz de cada host RESPONDE agora.
+#     "O site está fora do ar" não diz nada sobre se este código pode ir para
+#     produção.
+#   - E vermelho nele significa, quase sempre, que a produção precisa de uma
+#     PUBLICAÇÃO para voltar. Se ele barrasse a entrega, trancaria a porta por
+#     dentro exatamente no dia em que o conserto precisa passar — e o conserto
+#     é o próprio deploy que este portão liberaria.
+#   - Ele roda de 15 em 15 minutos na `main`, então o `head_sha` dele é o de um
+#     deploy com frequência alta: fora daqui, reprovaria a entrega de um commit
+#     que os checks obrigatórios já aprovaram.
+#
+# Fora de `exigidos` pelo mesmo par de razões dos outros dois vigias: ele não
+# mede este commit, e exigi-lo faria todo deploy esperar por um run que pode nem
+# existir para aquele SHA. Quem grita quando ele fica vermelho é a issue
+# `site-fora-do-ar` do próprio workflow, não este portão.
+VIGIA_DO_SITE = ".github/workflows/vigia-do-site.yml"
 # DECLARADA POR ESCRITO pela mesma regra, e pelo caso mais literal dela que este
 # repositório tem (TAR-029, 30/08/2026). A vacina do deploy acorda por
 # `workflow_run` quando um deploy termina `cancelled`, então ela roda NO MESMO
@@ -647,7 +667,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VIGIA_DO_POUSO, VACINA_DO_DEPLOY, REDE_DO_WINDOWS, DEPLOY_CELULA, DEPLOY_INFRA}
+        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VIGIA_DO_POUSO, VIGIA_DO_SITE, VACINA_DO_DEPLOY, REDE_DO_WINDOWS, DEPLOY_CELULA, DEPLOY_INFRA}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:
