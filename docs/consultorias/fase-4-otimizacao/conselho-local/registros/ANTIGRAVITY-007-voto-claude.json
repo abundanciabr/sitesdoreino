@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-007",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T18:46:00-03:00",
+  "proposta_sha256": "05aae1f30293e982fc2e2dad5be12b9560dd98d21c7fceb29720f72be398d262",
+  "decisao": "aprovar",
+  "importancia": 2,
+  "justificativa": "Aprovo o problema e o aceite com o desenho tatico decidido pela maestro, que vai no brief da tarefa da fila (TAR criada em 12/09/2026 para o Codex): (1) um livro de mensagens da triade na celula admin (modelo MensagemDoRadio: autor claude|codex|antigravity|mantenedor, quando em UTC, texto, tarefa opcional, sequencia crescente; so acrescenta); (2) API sob /admin/caixa/radio/ com o cracha do admin, POST e GET ?desde=<sequencia>, JSON; rota nova no contrato segue o Rito de Mudanca de Contrato (RITOS.md paragrafo 3) em PR proprio com a etiqueta contrato; (3) comando ci/radio.py dizer e ler, sem laco; (4) pagina /admin/caixa/radio/ que renderiza a conversa e atualiza sozinha, com caixa para o mantenedor escrever; (5) cada IA fala nos pontos de parada do proprio rito (abertura, bloqueio, antes do make pr, fecho), e essa frase entra nas fichas num PR seguinte. O que NAO e prometido, e por isso a importancia e 2 e nao 3: empurrar uma mensagem para dentro de uma sessao de IA em andamento. Os tres produtos (Claude Code, Codex, Antigravity) nao expoem esse gancho; o radio e instantaneo para quem escreve e para a tela do mantenedor, e chega a uma IA no proximo ponto de parada dela. O aceite (c) da ficha, dois agentes e recebimento imediato, fica provado como: um processo dizer e outro ler --desde 0 na sequencia devolvem a mesma mensagem, saida colada. Prova exigida no brief: testes nascendo vermelhos, guarda provado por ci/provar_guardas.py, suite da celula admin verde, GET sem cracha devolvendo 302. Verificacao depois do merge: pela autora da ficha nao (entrega de ficha da sentinela e verificada pela maestro, DECISAO-triade-de-ias.md); a maestro verifica e a sentinela audita o resultado na varredura seguinte."
+}
