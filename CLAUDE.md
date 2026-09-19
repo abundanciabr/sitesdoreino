@@ -152,6 +152,15 @@ Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
 Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
 segurança são bloqueios reais.
 
+Completo tem fronteira, e desde 19/09/2026 ela é decisão dele: o site é
+`meshcraft.top`. `basileiatoutheou.org` está congelado e não recebe página,
+conteúdo, funcionalidade nem campanha novas; tarefa pedida para ele não se
+executa, registra a recusa e oferece o equivalente no meshcraft.top. Congela o
+site, não o encanamento: a rota do webhook do Mercado Pago presa a esse host
+serve o pagamento do meshcraft.top e continua manutenível. Citação ao domínio
+antigo em documento velho é resíduo de molde, nunca permissão. Motivos e
+fronteiras em `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
+
 **Quem faz valer:** julgamento.
 
 ## Nenhum texto publicado sai com travessão
