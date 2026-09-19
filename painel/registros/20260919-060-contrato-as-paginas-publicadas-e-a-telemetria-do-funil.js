@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-060-contrato-as-paginas-publicadas-e-a-telemetria-do-funil",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "contrato: as paginas publicadas e a telemetria do funil",
+  detalhe: "Segui a casa onde o briefing divergia: site_id dentro de data, como a recepcao da metricas exige. O mandato ditado nao passa no portao; a pendencia 058 traz a linha.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1772. Validação local: árvore dffa15104a1e59ddcb33d1d2a09d3f2903ced981; commit 1cefbe35e458ee61fb4e3635b6597d19607058c8; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-510",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-195151-TAR-510-explicada",
+  "tarefa": "TAR-510",
+  "evento": "explicada",
+  "quando": "2026-09-19T19:51:51+00:00",
+  "quem": "sessao de arquitetura com o mantenedor em 19/09/2026",
+  "o_que_e": "Hoje a pagina de oferta tem titulo, preco e botao, e o site so comeca a contar alguma coisa quando alguem ja fez o pedido. Entre a pessoa abrir a pagina e comprar, ninguem enxerga nada.",
+  "o_que_muda": "Passa a existir a forma escrita de uma pagina de verdade, com secoes e textos que o mantenedor edita, e os quatro fatos que dizem quem abriu, ate onde desceu, onde clicou e quem deixou o contato.",
+  "exemplo": "Hoje da para saber que tres pessoas compraram na semana. Depois disto da para saber que duzentas abriram a pagina, oitenta chegaram ao preco, doze clicaram no botao e tres compraram, e qual versao do texto cada uma viu.",
+  "importancia": 90
+}
