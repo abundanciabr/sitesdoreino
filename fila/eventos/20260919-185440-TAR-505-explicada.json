@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-185440-TAR-505-explicada",
+  "tarefa": "TAR-505",
+  "evento": "explicada",
+  "quando": "2026-09-19T18:54:40+00:00",
+  "quem": "pedido do mantenedor em 19/09/2026: publicar um quiz real no site",
+  "o_que_e": "O quiz existe e funciona, mas nunca foi publicado: o endereço público sai com a palavra quiz duas vezes, o formulário aceita envio de qualquer origem, e a tela de resultado termina sem nenhum botão.",
+  "o_que_muda": "Quem responder o quiz passa a ter para onde ir no fim, o formulário deixa de aceitar envio forjado, e o endereço que vai no menu do site fica limpo.",
+  "exemplo": "Hoje a pessoa responde as três perguntas, lê o resultado e fecha a aba. Depois disto, ela lê o resultado e encontra um botão que leva ao checkout da oferta do site.",
+  "importancia": 85
+}
