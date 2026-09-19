@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-045-docs-o-retrato-de-como-o-site-funciona-hoje",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "docs: o retrato de como o site funciona hoje",
+  detalhe: "Um documento unico com o funcionamento do site de ponta a ponta, cada numero medido contra origin/main d56ceb68, mais dois achados novos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1766. Validação local: árvore ec3b5be8bad49765eaefd3be45f8af6b84a9dea8; commit 2a97755e2e5a787665d0e808a1f1bbda97c435eb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-502",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
