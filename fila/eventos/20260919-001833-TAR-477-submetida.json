@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-001833-TAR-477-submetida",
+  "tarefa": "TAR-477",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:18:33+00:00",
+  "quem": "agent/ci/comprovante-vira-commit",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1741",
+  "revisao": "ed76af2801156eaa0d3299a5b517521751e27c4c",
+  "arvore": "b13cdea201664f4b21ecd84df457dfac41db3eee"
+}

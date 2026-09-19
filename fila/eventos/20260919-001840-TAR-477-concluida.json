@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-001840-TAR-477-concluida",
+  "tarefa": "TAR-477",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:18:40+00:00",
+  "quem": "agent/ci/comprovante-vira-commit",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1741",
+  "verificado_em": "2026-09-19"
+}
