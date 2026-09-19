@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-017-ci-declarar-o-dono-do-pacote-compartilhado-no-codeowners",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: declarar o dono do pacote compartilhado no CODEOWNERS",
+  detalhe: "A pasta compartilhada packages/ ganhou dono no CODEOWNERS e o teste dos ganchos passou a cobri-la; sem a linha, a suite reprova.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1750. Validação local: árvore 08fcb62e0fa9f5ab6063b4c4072845571a9e7401; commit 888fc855d418dd84a67f00dd8c4210a08d045cd7; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-483",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
