@@ -1,0 +1,19 @@
+{
+  "arquivo": "481-registrar-que-o-controle-de-aplicativo-do-windows-bloqueia-e",
+  "id": "TAR-481",
+  "titulo": "Registrar que o Controle de Aplicativo do Windows bloqueia .exe de venv",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Armadilha nova em armadilhas/ com gatilho ci/ci.py, services/*/Makefile e ci/sessao.py, indice regenerado, PR aberto.",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: low\ntipo: escrita\n\nRegistrar armadilha nova em armadilhas/ documentando que o Controle de\nAplicativo do Windows bloqueia atalhos .exe de dentro de venvs (black.exe,\npytest.exe), derrubando make ci local com e=4551 mesmo com o pacote\ninstalado; python -m <ferramenta> contorna. Reservar numero por\nci/reservar.py numero armadilha, escrever o arquivo no molde da casa com\ngatilho e licao ligados a ci/ci.py, services/*/Makefile e ci/sessao.py,\nregenerar o indice com ci/indice_de_armadilhas.py. Nao editar ci/ nem\n.github/: sem mandato para CODEOWNERS.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

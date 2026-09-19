@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-002121-TAR-481-explicada",
+  "tarefa": "TAR-481",
+  "evento": "explicada",
+  "quando": "2026-09-19T00:21:21+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "no Windows com Controle de Aplicativo ativo, o atalho .exe de ferramentas dentro de um venv (black.exe, pytest.exe) morre com e=4551, e o mesmo pacote chamado por python -m funciona normalmente",
+  "o_que_muda": "documenta que o baseline da abertura de sessao nao deve ser lido como celula quebrada quando o passo de lint reprova com e=4551: e ERROR de instrumento desta maquina",
+  "exemplo": "make ci local reprova no passo lint com e=4551 sem mensagem de black; python -m black --check . roda normal com o mesmo pacote instalado",
+  "importancia": 45
+}
