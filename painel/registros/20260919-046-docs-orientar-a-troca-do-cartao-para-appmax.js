@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-046-docs-orientar-a-troca-do-cartao-para-appmax",
+  tipo: "decisao",
+  quando: "2026-09-19",
+  titulo: "docs: orientar a troca do cartão para Appmax",
+  detalhe: "Plano mestre executável para manter o Pix no Mercado Pago, migrar apenas o cartão para a Appmax e impedir avanço sem contrato, teste, evidência e portão concluído.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1767. Validação local: árvore b01205f44bae6e4c5238bd714be14337d8d61438; commit 4b09c419afdd977b6a905d8d254abc9cd3318dcb; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-503",
+  gravidade: "verde",
+  frente: "vender",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
