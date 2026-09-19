@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-063-funil-a-vitrine-reconhece-o-visitante-que-volta",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "funil: a vitrine reconhece o visitante que volta",
+  detalhe: "A vitrine da a cada navegador um numero sorteado, opaco, invisivel ao JavaScript e nunca reescrito para quem volta. Suite da celula: 580 para 603, 10 guardas provados por sabotagem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1774. Validação local: árvore 06e16279b82a1a2e708242dd09ba92adfe201fa8; commit 5209680168b1b821bf96fd510251834932541164; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-508",
+  gravidade: "info",
+  frente: "site",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
