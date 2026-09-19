@@ -66,7 +66,19 @@ class Option(models.Model):
 
 
 class ResultBand(models.Model):
-    """Faixa de pontuação -> resultado. Server-only: o cliente nunca vê pontos."""
+    """Faixa de pontuação -> resultado. Server-only: o cliente nunca vê pontos.
+
+    O BOTÃO É DA FAIXA, e não da tela. Quem termina o Crivo recebe um
+    diagnóstico e precisa de um passo seguinte — e o passo seguinte de quem
+    está começando não é o mesmo de quem está pronto para escalar. Sem isso a
+    tela de resultado é um beco sem saída: o lead chega ao fim e não tem para
+    onde ir.
+
+    `botao_destino` é um endereço OPACO para esta célula. O Crivo não sabe o
+    que é um checkout (AGENTS.quiz.md: "Consome: nada"); ele guarda e mostra o
+    link que o operador plantou, e um caminho relativo como `/checkout/<oferta>/`
+    vale em qualquer host da plataforma sem esta célula precisar saber por quê.
+    """
 
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name="bands")
     key = models.SlugField(max_length=100)
@@ -74,11 +86,24 @@ class ResultBand(models.Model):
     description = models.TextField(blank=True, default="")
     min_score = models.IntegerField()
     max_score = models.IntegerField()
+    botao_destino = models.CharField(max_length=500, blank=True, default="")
+    botao_rotulo = models.CharField(max_length=80, blank=True, default="")
 
     class Meta:
         ordering = ["min_score"]
         constraints = [
-            models.UniqueConstraint(fields=["quiz", "key"], name="band_quiz_key_unico")
+            models.UniqueConstraint(fields=["quiz", "key"], name="band_quiz_key_unico"),
+            # Os dois campos do botão andam juntos ou não andam. Destino sem
+            # rótulo é um link invisível; rótulo sem destino é um botão que não
+            # leva a lugar nenhum. A regra é do banco, e não do template, porque
+            # tela não é lugar de descobrir que o dado está pela metade.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(botao_destino="", botao_rotulo="")
+                    | (~models.Q(botao_destino="") & ~models.Q(botao_rotulo=""))
+                ),
+                name="band_botao_destino_e_rotulo_juntos",
+            ),
         ]
 
 
