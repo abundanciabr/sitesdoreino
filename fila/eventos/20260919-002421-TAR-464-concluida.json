@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-002421-TAR-464-concluida",
+  "tarefa": "TAR-464",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:24:21+00:00",
+  "quem": "agent/ci/guarda-das-fichas-novas",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1743",
+  "verificado_em": "2026-09-19"
+}

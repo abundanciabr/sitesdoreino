@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-002416-TAR-464-submetida",
+  "tarefa": "TAR-464",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:24:16+00:00",
+  "quem": "agent/ci/guarda-das-fichas-novas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1743",
+  "revisao": "24703a0e2df35d1c22fd22123778712ed88e8791",
+  "arvore": "c876d41f475e2c248ab72862ea8656dbb7b012bf"
+}
