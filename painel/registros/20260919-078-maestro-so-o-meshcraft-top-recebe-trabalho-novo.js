@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-078-maestro-so-o-meshcraft-top-recebe-trabalho-novo",
+  tipo: "decisao",
+  quando: "2026-09-19",
+  titulo: "maestro: só o meshcraft.top recebe trabalho novo",
+  detalhe: "O trabalho passa a ser todo no meshcraft.top e o basileiatoutheou.org fica congelado, menos a rota do webhook do Mercado Pago, que serve o meshcraft.top.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1783. Validação local: árvore 9791ccdc813c30296cf4e2d305d7ccce89d839b2; commit f42f56f1275d5c36bf4dc405e93e266c83a66807; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-519",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "maestro",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
