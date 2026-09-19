@@ -8,8 +8,8 @@ equipe saía do site ao vivo sem a marca `Secure` — ele não autoriza nada, ma
 era um cookie nosso trafegando em claro, e toda gravação de cookie futura desta
 célula herdaria o mesmo engano.
 
-O defeito era INVISÍVEL para as 603 provas da célula: nenhuma delas mandava o
-`X-Forwarded-Proto`, então nenhuma media a diferença entre "chegou por HTTPS" e
+O defeito era INVISÍVEL para a suíte inteira da célula: nenhuma prova mandava
+o `X-Forwarded-Proto`, então nenhuma media a diferença entre "chegou por HTTPS" e
 "o Django acha que não". É a mesma armadilha que a `identidade` trava no
 `test_inv_redirect_uri.py`, e pelo mesmo motivo: configuração que só tem efeito
 em produção precisa de um guarda que a exercite, senão apagar a linha deixa a

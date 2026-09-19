@@ -122,15 +122,11 @@ class IdentidadeDoVisitante:
                 max_age=VALIDADE_EM_SEGUNDOS,
                 httponly=True,
                 samesite="Lax",
-                # A MESMA régua do cookie de `ver_como` e do resto da casa,
-                # e ela diz a verdade porque `config/settings.py` declara
-                # `SECURE_PROXY_SSL_HEADER`. Este cookie nasceu em 19/09/2026
-                # decidindo por `not settings.DEBUG`, porque naquele dia a
-                # célula ainda não declarava a linha e `is_secure()` mentia em
-                # produção. Consertada a causa, o contorno saiu: duas respostas
-                # para "esta conexão é segura?" na mesma célula é uma delas
-                # divergir da outra mais tarde.
-                # Guarda: tests/test_inv_secure_nos_cookies.py.
+                # A MESMA régua do cookie de `ver_como`, e ela diz a
+                # verdade porque `config/settings.py` declara
+                # `SECURE_PROXY_SSL_HEADER`: duas respostas para "esta conexão
+                # é segura?" dentro de uma célula é uma delas divergir da outra
+                # mais tarde. Guarda: tests/test_inv_secure_nos_cookies.py.
                 secure=request.is_secure(),
             )
         return resposta
