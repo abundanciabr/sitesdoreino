@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-001533-TAR-480-explicada",
+  "tarefa": "TAR-480",
+  "evento": "explicada",
+  "quando": "2026-09-19T00:15:33+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "quando o exportador de OpenAPI de uma celula le o proprio contrato congelado para montar components.schemas, o portao de freeze compara a saida com a fonte de que ela derivou e nunca reprova",
+  "o_que_muda": "documenta a licao transversal (qualquer guarda cuja medicao venha do proprio artefato conferido fica cego) para nenhuma celula repetir esse padrao em exportadores futuros",
+  "exemplo": "medido pelo agente da TAR-420 (PR 1733) na celula leads: exportador lendo contracts/leads.openapi.yaml deixava o freeze sempre verde, mesmo com schema divergente do codigo",
+  "importancia": 55
+}
