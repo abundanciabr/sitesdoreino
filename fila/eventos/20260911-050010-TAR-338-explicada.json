@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-050010-TAR-338-explicada",
+  "tarefa": "TAR-338",
+  "evento": "explicada",
+  "quando": "2026-09-11T05:00:10+00:00",
+  "quem": "Execução do capítulo 1, auditoria real do instrumento Pareto no hash 3f70e888; armadilhas 400, 402, 411 e 424",
+  "o_que_e": "A fábrica registra tarefas para comparar o trabalho antes e depois, mas a auditoria encontrou caminhos que permitem misturar revisões, tentativas e evidências incompletas.",
+  "o_que_muda": "A medição passa a dizer com precisão o que foi observado e o que ainda falta, sem transformar ausência ou repetição em ganho.",
+  "exemplo": "Repetir a mesma tentativa ou avançar o commit não cria outra tarefa; mudar a revisão do instrumento impede um par; resultado sem prova fica estruturalmente válido, mas não confirmatório.",
+  "importancia": 94
+}

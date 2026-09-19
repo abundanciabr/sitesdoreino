@@ -84,7 +84,6 @@ def ideia(**campos) -> dict:
         "parada_desde": "2026-07-12T10:00:00+00:00",
         "ja_ouviram": False,
         "tem_avaliacao": False,
-        "tem_changespec": False,
         "motivo_da_saida": "",
         "avaliacao": None,
     }
@@ -95,7 +94,6 @@ def ideia(**campos) -> dict:
 def a_caixa_responde(ideias, **topo):
     corpo = {
         "quadro": "Meshcraft",
-        "pode_assinar": True,
         "pessoas_esperando": 0,
         "silencio_medio_em_dias": None,
         "pessoas_em_silencio_demais": 0,
@@ -196,34 +194,33 @@ def test_resposta_fora_do_contrato_nao_vira_tela_quebrada():
 
 
 def test_a_mesa_so_chama_o_que_espera_uma_pessoa():
-    """`planejado` sem assinatura, e `em_analise` esquecida — e nada mais."""
+    """`em_analise` esquecida há tempo demais, e nada mais.
+
+    Desde 06/09/2026 a mesa tem UM motivo só: a assinatura de obra saiu da
+    Caixa, e com ela o motivo "assinatura". Uma ideia em `planejado` não espera
+    mais por ninguém — ela já pode começar.
+    """
     ideias = [
         {
-            **ideia(id=1, status="planejado", tem_changespec=False),
-            "parada_ha": 3,
-            "coluna": "assinar",
+            **ideia(id=1, status="planejado"),
+            "parada_ha": 30,
+            "coluna": "pode-comecar",
             "pessoas": 176,
         },
         {
-            **ideia(id=2, status="planejado", tem_changespec=True),
-            "parada_ha": 3,
-            "coluna": "pode-comecar",
-            "pessoas": 10,
-        },
-        {
-            **ideia(id=3, status="em_analise"),
+            **ideia(id=2, status="em_analise"),
             "parada_ha": 20,
             "coluna": "chegando",
             "pessoas": 80,
         },
         {
-            **ideia(id=4, status="em_analise"),
+            **ideia(id=3, status="em_analise"),
             "parada_ha": 2,
             "coluna": "chegando",
             "pessoas": 90,
         },
         {
-            **ideia(id=5, status="em_desenvolvimento"),
+            **ideia(id=4, status="em_desenvolvimento"),
             "parada_ha": 1,
             "coluna": "construindo",
             "pessoas": 50,
@@ -232,16 +229,15 @@ def test_a_mesa_so_chama_o_que_espera_uma_pessoa():
 
     na_mesa = esperando(ideias)
 
-    assert [i["id"] for i in na_mesa] == [1, 3]
-    assert na_mesa[0]["motivo"] == "assinatura"
-    assert na_mesa[1]["motivo"] == "triagem"
+    assert [i["id"] for i in na_mesa] == [2]
+    assert na_mesa[0]["motivo"] == "triagem"
 
 
 def test_a_mesa_poe_mais_gente_na_frente():
     """Mais gente atrás vem primeiro, mesmo parada há menos tempo."""
     ideias = [
-        {**ideia(id=1), "parada_ha": 40, "coluna": "assinar", "pessoas": 4},
-        {**ideia(id=2), "parada_ha": 1, "coluna": "assinar", "pessoas": 200},
+        {**ideia(id=1), "parada_ha": 40, "coluna": "chegando", "pessoas": 4},
+        {**ideia(id=2), "parada_ha": 8, "coluna": "chegando", "pessoas": 200},
     ]
 
     assert [i["id"] for i in esperando(ideias)] == [2, 1]
@@ -249,14 +245,14 @@ def test_a_mesa_poe_mais_gente_na_frente():
 
 @respx.mock
 def test_a_travessia_parte_os_estados_em_colunas():
-    """Dois estados viram duas colunas cada — é a partição que diz de quem é a vez."""
+    """`em_analise` vira duas colunas — é a partição que diz de quem é a vez."""
     cliente = _dentro()
     a_caixa_responde(
         [
             ideia(id=1, status="em_analise", tem_avaliacao=False),
             ideia(id=2, status="em_analise", tem_avaliacao=True),
-            ideia(id=3, status="planejado", tem_changespec=False),
-            ideia(id=4, status="planejado", tem_changespec=True),
+            ideia(id=3, status="planejado"),
+            ideia(id=4, status="em_desenvolvimento"),
         ]
     )
 
@@ -264,8 +260,8 @@ def test_a_travessia_parte_os_estados_em_colunas():
 
     assert "Chegando" in pagina
     assert "A equipe está lendo" in pagina
-    assert "Esperando você assinar" in pagina
     assert "Pode começar" in pagina
+    assert "Robô construindo" in pagina
 
 
 @respx.mock
@@ -410,7 +406,7 @@ def quatro_ideias() -> list:
     ===== ====== ========= ======= ===== =============
     A     1º     2º        2º      2º    chegando
     B     2º     1º        4º      4º    lendo
-    C     3º     4º        3º      1º    assinar
+    C     3º     4º        3º      1º    construindo
     D     4º     3º        1º      3º    pode-comecar
     ===== ====== ========= ======= ===== =============
 
@@ -451,8 +447,7 @@ def quatro_ideias() -> list:
             votos=90,
             criada_em="2026-02-01T09:00:00+00:00",
             parada_desde="2026-05-15T09:00:00+00:00",
-            status="planejado",
-            tem_changespec=False,
+            status="em_desenvolvimento",
         ),
         ideia(
             id=4,
@@ -462,7 +457,6 @@ def quatro_ideias() -> list:
             criada_em="2026-04-01T09:00:00+00:00",
             parada_desde="2026-04-15T09:00:00+00:00",
             status="planejado",
-            tem_changespec=True,
         ),
     ]
 
@@ -570,7 +564,7 @@ def test_a_etapa_mostra_uma_e_esconde_as_outras():
     cliente = _dentro()
     a_caixa_responde(quatro_ideias(), pessoas_esperando=100)
 
-    pagina = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "assinar"}))
+    pagina = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "construindo"}))
 
     assert na_ordem_da_tela(pagina) == ["C"]
     assert "Mostrando 1 de 4 ideias em aberto." in pagina
@@ -588,14 +582,13 @@ def test_a_etapa_nao_mexe_nos_numeros_que_contam_a_espera_inteira():
     cliente = _dentro()
     a_caixa_responde(quatro_ideias(), pessoas_esperando=100)
 
-    peneirada = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "assinar"}))
+    peneirada = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "construindo"}))
 
     for rotulo, quantas in (
-        ("esperando você assinar", 1),
         ("ninguém da equipe olhou ainda", 1),
         ("na fila, andando normal", 1),
-        ("assinada, esperando um robô", 1),
-        ("robô construindo", 0),
+        ("aprovada, esperando um robô", 1),
+        ("robô construindo", 1),
     ):
         assert f'"fila-rotulo">{rotulo}</span><b>{quantas}</b>' in peneirada
     assert '<div class="hero-numero">100</div>' in peneirada
@@ -605,12 +598,14 @@ def test_a_etapa_nao_mexe_nos_numeros_que_contam_a_espera_inteira():
 def test_etapa_vazia_nao_e_a_mesma_frase_de_nao_haver_ideia_nenhuma():
     """Confundir as duas é o jeito mais fácil de esta tela mentir."""
     cliente = _dentro()
-    a_caixa_responde(quatro_ideias(), pessoas_esperando=100)
+    # Tres ideias em tres etapas, e a peneira pede a quarta: com as quatro
+    # etapas ocupadas nao existiria etapa vazia para medir.
+    a_caixa_responde(quatro_ideias()[:3], pessoas_esperando=100)
 
-    pagina = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "construindo"}))
+    pagina = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "pode-comecar"}))
 
     assert "Nenhuma ideia nesta etapa." in pagina
-    assert "Tem 4 ideias em aberto em outras etapas" in pagina
+    assert "Tem 3 ideias em aberto em outras etapas" in pagina
     assert "já recebeu uma resposta" not in pagina
 
 

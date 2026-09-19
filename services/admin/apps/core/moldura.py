@@ -87,10 +87,16 @@ from django.utils import timezone
 #     comentário de `visao_geral.html`.
 SECOES = (
     ("visao_geral", "Visão geral"),
+    # "Pendências", e vem logo depois da capa (07/09/2026): é a tela que diz o
+    # que espera por ele, e um item de "o que fazer agora" no fim de uma lista
+    # de treze é um item que ninguém vê. O nome é o da própria tela, e não
+    # "Fila" ou "Caixa de entrada", que já significam outra coisa nesta casa.
+    ("pendencias", "Pendências"),
     ("escola", "Escola"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
     ("documentos_admin", "Documentos"),
+    ("plano_mestre", "Plano mestre"),
     # "Livro", e não "Biblioteca": a tela guarda o livro que ele está
     # escrevendo, e é assim que ele fala dela. "Biblioteca" ao lado de
     # "Documentos" faria as duas parecerem a mesma coisa vista de dois ângulos
@@ -107,6 +113,11 @@ SECOES = (
     ("reuniao", "Reunião"),
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
+    # "Ranking das IAs", e nunca "Placar": já existe um item "Placar" nesta
+    # mesma barra, e ele é a meta de alunos. Dois "placar" lado a lado fariam o
+    # mantenedor clicar no errado, que é exatamente o atrito que renomeou
+    # "Abrir o painel da escola" em 28/08/2026 (17/09/2026).
+    ("ranking_das_ias", "Ranking das IAs"),
     ("painel", "Painel do sistema"),
 )
 

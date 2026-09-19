@@ -7,8 +7,10 @@ custa, se cair:
 
 1. **A lista mostra as 34 e diz quantas estão publicadas.** Sem a contagem, o
    mantenedor abre 34 telas para saber o que os alunos já veem.
-2. **As 18 peças saem NA ORDEM do contrato**, com as duas internas avisadas.
-   Peça fora de ordem é a aula lida na ordem errada pelo aluno.
+2. **As peças saem NA ORDEM do contrato**, cada uma com o aviso da sua
+   categoria: as duas internas ("o aluno nunca vê") e a vídeo-aula em texto ("o
+   aluno vê, mas fora da sequência"). Peça fora de ordem é a aula lida na ordem
+   errada pelo aluno; aviso trocado é a professora escrevendo para quem não é.
 3. **Salvar manda a encomenda INTEIRA** (as chaves obrigatórias do corpo do
    contrato, nem uma a mais) **e mostra a versão nova.** Corpo pela metade é
    422 em toda gravação; sem o número, a pessoa salva e não sabe se pegou.
@@ -16,8 +18,9 @@ custa, se cair:
    inteiro.** Um 500 ou uma frase geral perde o texto de uma aula que não existe
    em outro lugar.
 5. **Publicar chama `publishLesson` e mostra a data**, no fuso de quem lê.
-6. **O travessão conta, lista e NÃO impede salvar** (decisão do mantenedor de
-   04/09/2026): a obra se guarda como ele escreveu.
+6. **O travessão NÃO é assunto desta tela** (decisão do mantenedor de
+   06/09/2026): a obra dele saiu da lei do travessão, e nenhuma tela pede
+   reescrita nem conta riscas.
 7. **O instrumento lê e grava; nome e cartão só se leem**, e o corpo enviado
    é exatamente o do contrato (mandar `nome_canonico` seria 422).
 8. **Fail-OPEN na leitura, fail-CLOSED na escrita.** Sala fora do ar: a lista
@@ -28,6 +31,15 @@ custa, se cair:
     três Partes e nos blocos do livro, a Parte que não casa com a encomenda
     recusa com o endereço certo, e a tela nunca chama as operações que varrem o
     site inteiro sem saber de curso.
+11. **O botão "Conferir coerência" só pergunta quando é pedido**, mostra as
+    frases da `cursos` verbatim com o nome da peça em português, tem estado
+    vazio, e a recusa de publicar do [INV-CUR-C1] chega à tela como frase e não
+    como 500.
+12. **O botão "Conferir fidelidade" é o segundo conferente, e ele é IA e é
+    PAGO.** Um gesto, uma conferência: pedir a fidelidade não paga também a
+    coerência, e abrir o editor não paga nenhuma das duas. As recusas dele (sem
+    o que conferir, IA fora do ar) chegam à tela com a frase da `cursos`, e
+    nunca como 500 nem como "nenhum desvio".
 """
 
 import json
@@ -39,6 +51,7 @@ import pytest
 import respx
 from django.test import Client
 from django.urls import reverse
+from django.utils.html import escape
 
 from apps.auditoria.models import Registro
 from apps.core import aulas as editor
@@ -242,7 +255,9 @@ def _texto(resposta) -> str:
 
 def _formulario(**troca) -> dict:
     """O formulário do editor preenchido como a professora o mandaria: duas
-    perguntas do quiz, uma pausa, as 18 peças. As linhas vazias ficam vazias."""
+    perguntas do quiz, uma pausa, TODAS as peças que a tela conhece (a lista sai
+    de `editor.PECAS`, então peça nova entra aqui sozinha). As linhas vazias
+    ficam vazias."""
     dados = {
         "pedido": "Um capacete para o cliente Gulliver.",
         "cliente": "Gulliver",
@@ -341,9 +356,27 @@ def test_a_lista_mostra_as_34_encomendas_e_quantas_estao_publicadas():
 @pytest.mark.django_db
 @respx.mock
 def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
-    """As 18 na ordem canônica do contrato, com as duas internas avisadas. O
-    guarda lê o `TipoDePeca` do arquivo congelado: se o contrato mudar por
-    Rito e esta tela não, este teste fica vermelho, e não a aula do aluno."""
+    """Na ordem canônica do contrato, com as duas internas avisadas. O guarda lê
+    o `TipoDePeca` do arquivo congelado: se o contrato ganhar peça por Rito e
+    esta tela não, este teste fica vermelho, e não a aula do aluno.
+
+    POR QUE A COMPARAÇÃO NÃO É MAIS UMA IGUALDADE SIMPLES. No Rito de Contrato,
+    o consumidor entra ANTES do contrato: o PR do contrato roda a suíte desta
+    célula (a `admin` reivindica `painel/` em `celulas.yml`, e o registro do
+    livro de todo PR mora lá), então esta tela precisa já conhecer a peça nova
+    quando o contrato chega. Uma igualdade obriga os dois a entrarem no mesmo
+    instante, o que nenhuma ordem de merge consegue. As duas afirmações abaixo
+    valem nos dois mundos e continuam pegando o caso real:
+
+    - a ordem canônica da tela é a do contrato nas peças que os dois já têm, e é
+      isso que impede uma peça de trocar de lugar em silêncio;
+    - a tela mostra TUDO que o contrato declara, e é isso que reprova quando o
+      contrato ganhou peça e a tela não. Esta é a que o guarda existe para
+      fazer.
+
+    O que ela deixa de pegar, de propósito: peça que a tela mostra e o contrato
+    ainda não declara. É exatamente o intervalo entre este PR e o do contrato.
+    """
     _mock_site()
     _mock_aula()
     _mock_instrumentos()
@@ -353,11 +386,41 @@ def test_a_ordem_das_pecas_na_tela_e_a_do_contrato():
     )
 
     na_tela = re.findall(r'name="peca_([a-z_]+)"', html)
-    assert na_tela == _enum_do_contrato("TipoDePeca")
-    assert len(na_tela) == 18
+    do_contrato = _enum_do_contrato("TipoDePeca")
+    # 18: as peças que a tela e o contrato já tinham juntos quando esta prova
+    # foi escrita. É até onde a ORDEM está congelada dos dois lados.
+    assert na_tela[:18] == do_contrato[:18]
+    assert set(do_contrato) - set(na_tela) == set()
     assert html.count("o aluno nunca vê esta peça") == 2
     assert "Ficha do Guia do Mentor" in html and "Roteiro da aula" in html
     assert "E07: Encomenda 07" in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_videoaula_em_texto_tem_campo_proprio_e_aviso_que_nao_e_o_das_internas():
+    """A vídeo-aula é a TERCEIRA categoria de peça, e a tela precisa dizer isso.
+
+    As 16 da anatomia o aluno lê em sequência; as 2 internas ele nunca vê; esta
+    ele VÊ, só que fora da sequência, por um botão embaixo do capítulo. O aviso
+    das internas ("o aluno nunca vê esta peça") diria o contrário da verdade
+    aqui, e a professora escreveria a peça achando que é bastidor. Por isso o
+    aviso é outro, a caixa é outra, e a contagem do aviso interno segue em 2.
+    """
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+
+    html = _texto(
+        _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    )
+
+    assert 'name="peca_videoaula_em_texto"' in html
+    assert "A vídeo-aula, em texto" in html
+    assert "O aluno vê esta peça, mas fora da sequência." in html
+    assert "não é uma das 16 peças do capítulo" in html
+    # O aviso das internas não vazou para ela.
+    assert html.count("o aluno nunca vê esta peça") == 2
 
 
 # ---------------------------------------------------------------------------
@@ -404,8 +467,12 @@ def test_o_endereco_com_a_parte_pede_a_porta_so_aquela_parte():
 
     assert resposta.status_code == 200
     assert lista.calls.last.request.url.params["parte"] == "2"
+    # Sem o cabeçalho "Parte II": a lista filtrada tem UMA Parte só, e desde
+    # 07/09/2026 as seções de Parte só aparecem quando há mais de uma (a sala
+    # serve vários cursos, e as três Partes são o vocabulário do livro). Nada se
+    # perde: o aviso do alto da tela já diz "você está vendo só a Parte II" e
+    # leva ao curso inteiro, e é ele que a linha logo abaixo confere.
     assert re.findall(r'class="[^"]*(?:parte|bloco)-do-livro">([^<]+)<', html) == [
-        "Parte II",
         "Bloco E",
         "Bloco F",
         "Bloco G",
@@ -631,7 +698,7 @@ def test_salvar_manda_a_encomenda_inteira_e_mostra_a_versao_nova():
         "E07",
         Registro.OK,
     )
-    assert linha.detalhe == "versao 8; 0 frase(s) com travessao"
+    assert linha.detalhe == "versao 8"
 
 
 @pytest.mark.django_db
@@ -787,7 +854,19 @@ def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
-def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
+def test_o_editor_nao_cobra_travessao_da_obra():
+    """A obra do mantenedor saiu da lei do travessão em 06/09/2026, e esta tela
+    NÃO conta riscas nem pede reescrita.
+
+    Este guarda afirma uma AUSÊNCIA, e por isso ele existe: sem ele, a próxima
+    sessão traz o contador de volta achando que corrige um esquecimento. Num
+    capítulo real ele listava 67 frases, e o mantenedor veria essa parede 34
+    vezes, sobre uma regra que não vale no texto dele. O porquê está em
+    `docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`.
+
+    O que continua valendo, e é medido em `test_travessao.py`: a lei do
+    travessão nas telas, nos rótulos e nos documentos DA CASA.
+    """
     _mock_site()
     _mock_instrumentos()
     com_riscas = {
@@ -809,15 +888,17 @@ def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
 
     assert resposta.status_code == 302
     assert gravacao.call_count == 1
-    assert Registro.objects.get().detalhe == "versao 2; 2 frase(s) com travessao"
+    assert Registro.objects.get().detalhe == "versao 2"
 
     html = _texto(cliente.get(resposta["Location"]))
     assert "Encomenda salva" in html
-    assert "2 frases com travessão." in html
-    assert "Guardei do jeito que você escreveu." in html
-    assert "peça &quot;O pedido&quot;, linha 1" in html
-    assert "peça &quot;Recall&quot;, linha 1" in html
-    assert "travessão (—)" in html and "meia-risca (–)" in html
+    # A obra chegou intacta à tela...
+    assert "capacete — fechado" in html
+    # ...e nenhuma palavra do antigo cobrador sobrou.
+    assert "com travessão." not in html
+    assert "Guardei do jeito que você escreveu." not in html
+    assert "reescrever cada" not in html
+    assert "meia-risca" not in html
 
 
 # ---------------------------------------------------------------------------
@@ -903,10 +984,12 @@ def test_instrumento_com_json_torto_nao_vai_para_a_porta():
 def test_a_volta_do_instrumento_leva_a_lista_ate_quando_a_tela_e_um_erro():
     """O link de voltar é o de cima da tela, e vale nas TRÊS caras dela.
 
-    O instrumento não é de curso nenhum (o contrato não o escopa), então a
-    volta é para a lista do curso por onde se entra. Nas duas telas de erro
-    esse link fica fora de qualquer condição do gabarito: se o endereço não
-    chegar, ele vira `href=""` e recarrega a própria tela do erro.
+    O instrumento não é de curso nenhum (o contrato não o escopa), então a volta
+    é para a LISTA DE CURSOS. Ela era um curso escrito no código até 07/09/2026,
+    e isso levava ao curso errado em toda escola cujo primeiro curso não se
+    chamasse `profissional`. Nas duas telas de erro esse link fica fora de
+    qualquer condição do gabarito: se o endereço não chegar, ele vira `href=""`
+    e recarrega a própria tela do erro.
     """
     respx.get(f"{CURSOS}/instrumentos/studs").mock(
         side_effect=[
@@ -921,7 +1004,7 @@ def test_a_volta_do_instrumento_leva_a_lista_ate_quando_a_tela_e_um_erro():
 
     assert (nao_existe.status_code, caiu.status_code) == (404, 503)
     for resposta in (nao_existe, caiu):
-        assert 'href="/escola/profissional/aulas/"' in _texto(resposta)
+        assert f'href="{reverse("escola_cursos")}"' in _texto(resposta)
 
 
 # ---------------------------------------------------------------------------
@@ -1007,3 +1090,427 @@ def test_quem_nao_esta_na_lista_nao_ve_o_editor():
 
     assert resposta.status_code == 404
     assert porta.call_count == 0
+
+
+# ---------------------------------------------------------------------------
+# 11. O BOTÃO "CONFERIR COERÊNCIA" (TAR-245, degrau 3.1)
+# ---------------------------------------------------------------------------
+# O Revisor mora na `cursos` e é CÓDIGO, não IA. Esta tela só pergunta e mostra,
+# e as três coisas que ela não pode fazer são: perguntar sem ser pedida (uma ida
+# à porta em cada abertura do editor), reescrever a frase da outra célula, e
+# transformar a recusa de publicar num 500.
+
+
+def _mock_conferir(defeitos, numero="E07"):
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/{numero}/conferir", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=defeitos))
+
+
+DEFEITO_DA_REMISSAO = {
+    "codigo": "remissao_quebrada",
+    "peca": "erros_classicos",
+    "alvo": "E99",
+    "frase": "esta peca manda o aluno para a encomenda E99, e E99 nao existe neste curso",
+    "o_que_fazer": "troque pelo numero da encomenda certa, ou tire a remissao.",
+    "impede_publicar": True,
+}
+DEFEITO_SEM_PECA = {
+    "codigo": "nome_de_arquivo_divergente",
+    "peca": "",
+    "alvo": "capacete.blend",
+    "frase": "o mesmo arquivo aparece com nomes diferentes nesta aula",
+    "o_que_fazer": "escolha uma grafia e use a mesma em todas as pecas.",
+    "impede_publicar": False,
+}
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_abrir_o_editor_nao_confere_nada():
+    """Conferir custa uma ida à porta, e quem só veio ler a encomenda não pediu."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir([])
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"})
+    )
+
+    assert resposta.status_code == 200
+    assert conferencia.call_count == 0
+    assert "Conferir coerência desta encomenda" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_conferir_mostra_os_defeitos_com_o_nome_da_peca_em_portugues():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir([DEFEITO_DA_REMISSAO, DEFEITO_SEM_PECA])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "1"},
+        )
+    )
+
+    assert conferencia.call_count == 1
+    # A frase e o conserto saem VERBATIM: a regra é da `cursos`, e reescrevê-los
+    # aqui seria a mesma frase em dois lugares.
+    assert DEFEITO_DA_REMISSAO["frase"] in html
+    assert DEFEITO_DA_REMISSAO["o_que_fazer"] in html
+    # O único trabalho desta tela é dar nome à peça: o slug do contrato
+    # (`erros_classicos`) nunca aparece no defeito, só o nome que o editor usa.
+    assert '<span class="onde">Erros clássicos:</span>' in html
+    assert "Isto impede publicar." in html
+    # Defeito sem peça sai sem endereço, e não com um inventado.
+    assert DEFEITO_SEM_PECA["frase"] in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_encomenda_sem_defeito_tem_estado_vazio():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    _mock_conferir([])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "1"},
+        )
+    )
+
+    assert "Nenhum defeito de coerência nesta aula." in html
+    assert "Isto impede publicar." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_sala_fora_do_ar_na_conferencia_vira_frase_e_nao_500():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/conferir", params={"site_id": SITE_ID}
+    ).mock(side_effect=httpx.ConnectError("sem rede"))
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "1"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert "A sala de aula não respondeu." in html
+    assert "Nada mudou na encomenda." in html
+    # O editor continua na tela: a conferência falhou, a encomenda não sumiu.
+    assert "Um capacete para o cliente Gulliver." in html
+
+
+# ---------------------------------------------------------------------------
+# O GUARDIAO DE FIDELIDADE (TAR-246, degrau 3.2) tambem mora na `cursos`, e
+# tambem e IA. Esta tela pergunta pelo `modo`, mostra o que voltou e NUNCA
+# transforma uma recusa dele em 500. As tres coisas que ela nao pode fazer sao
+# as mesmas do Revisor, mais uma: perguntar sem ser pedida custaria uma chamada
+# PAGA em cada abertura do editor.
+
+
+def _mock_conferir_fidelidade(resposta, *, status: int = 200, numero: str = "E07"):
+    return respx.get(
+        f"{CURSOS}/cursos/{CURSO}/aulas/{numero}/conferir",
+        params={"site_id": SITE_ID, "modo": "fidelidade"},
+    ).mock(return_value=httpx.Response(status, json=resposta))
+
+
+DESVIO_DE_FIDELIDADE = {
+    "codigo": "regra_virou_sugestao",
+    "peca": "roteiro",
+    "alvo": "tente cumprir o comprimento",
+    "frase": (
+        "Na fonte: 'o pilar nao se alonga'. No roteiro: 'tente cumprir o "
+        "comprimento'."
+    ),
+    "o_que_fazer": (
+        "Volte às 16 peças desta encomenda e confira o trecho da fonte. Quem "
+        "decide o que fica é você: este agente aponta e nunca reescreve."
+    ),
+    "impede_publicar": False,
+}
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_abrir_o_editor_nao_confere_fidelidade():
+    """A conferência de fidelidade é PAGA. Rodá-la em cada abertura do editor
+    cobraria de quem só veio ler a encomenda."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    conferencia = _mock_conferir_fidelidade([DESVIO_DE_FIDELIDADE])
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"})
+    )
+
+    assert resposta.status_code == 200
+    assert conferencia.call_count == 0
+    assert "Conferir fidelidade desta encomenda" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_conferir_fidelidade_mostra_os_desvios_com_o_nome_da_peca_em_portugues():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    # A rota da fidelidade nasce PRIMEIRO de propósito: o dublê casa por
+    # subconjunto de parâmetros, e a rota da coerência (só `site_id`) casaria
+    # também o pedido que leva `modo`, escondendo qual das duas foi chamada.
+    conferencia = _mock_conferir_fidelidade([DESVIO_DE_FIDELIDADE])
+    coerencia = _mock_conferir([DEFEITO_DA_REMISSAO])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "fidelidade"},
+        )
+    )
+
+    assert conferencia.call_count == 1
+    # Um gesto, uma conferência: pedir a fidelidade não paga também a coerência.
+    assert coerencia.call_count == 0
+    # `escape` porque a frase do Guardião cita os dois trechos entre aspas
+    # simples, e o template as escapa: a comparação com o texto cru diria que a
+    # frase sumiu justamente quando ela apareceu inteira e segura.
+    assert escape(DESVIO_DE_FIDELIDADE["frase"]) in html
+    assert escape(DESVIO_DE_FIDELIDADE["o_que_fazer"]) in html
+    assert '<span class="onde">Roteiro da aula:</span>' in html
+    # O Guardião aponta e nunca veta: a linha da trava não existe nesta caixa.
+    assert "Isto impede publicar." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_encomenda_fiel_tem_estado_vazio_proprio():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    _mock_conferir_fidelidade([])
+
+    html = _texto(
+        _dentro().get(
+            reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+            {"conferir": "fidelidade"},
+        )
+    )
+
+    assert "Nenhum desvio de fidelidade nesta encomenda." in html
+    assert "Nenhum defeito de coerência nesta aula." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_ia_fora_do_ar_vira_a_frase_da_sala_de_aula_e_nao_500():
+    """A `cursos` diz POR QUE em português, e a frase dela sobe inteira: dizer
+    "a sala de aula não respondeu" mandaria a professora procurar um problema de
+    rede que não existe."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    sem_chave = (
+        "A IA ainda não está ligada neste servidor. Falta a chave de acesso da "
+        "Anthropic no arquivo de configuração da sala de aula."
+    )
+    _mock_conferir_fidelidade({"detail": sem_chave}, status=503)
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "fidelidade"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert sem_chave in html
+    assert "Nada mudou na encomenda." in html
+    assert "Um capacete para o cliente Gulliver." in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_nada_a_conferir_vira_frase_e_nunca_lista_vazia():
+    """422 é "esta encomenda não tem o que comparar", e não "está tudo certo".
+    Cair no estado vazio aqui seria a máquina aprovando um texto que não leu."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    nada = (
+        "Nada para conferir: esta encomenda ainda não tem roteiro, guia do "
+        "mentor nem vídeo-aula escrita."
+    )
+    _mock_conferir_fidelidade({"detail": nada}, status=422)
+
+    resposta = _dentro().get(
+        reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"conferir": "fidelidade"},
+    )
+
+    assert resposta.status_code == 200
+    html = _texto(resposta)
+    assert nada in html
+    assert "Nenhum desvio de fidelidade nesta encomenda." not in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_a_recusa_de_publicar_do_inv_c1_chega_a_tela_como_frase():
+    """A `cursos` recusa com 422 e UMA frase, não com a lista de erros de campo.
+    A tela mostra a frase inteira e não perde nada."""
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+    recusa = (
+        "esta encomenda manda o aluno para E99, que não existe neste curso. "
+        "Troque pelo número da encomenda certa, ou tire a remissão do texto."
+    )
+    respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(422, json={"detail": recusa}))
+
+    resposta = _dentro().post(
+        reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
+        {"confirmo": "1"},
+    )
+
+    assert resposta.status_code == 422
+    html = _texto(resposta)
+    assert recusa in html
+    assert Registro.objects.filter(acao=Registro.PUBLICAR_AULA).exists()
+
+
+# ---------------------------------------------------------------------------
+# 12. O MODELO VÍDEO DO YOUTUBE
+# ---------------------------------------------------------------------------
+@pytest.mark.django_db
+@respx.mock
+def test_o_modelo_youtube_troca_so_a_url_e_publica_a_aula():
+    _mock_site()
+    aula_inicial = _aula()
+    _mock_aula(aula_inicial)
+    url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula(versao=2) | {"video_url": url}))
+    publicacao = respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(
+        return_value=httpx.Response(
+            200, json=_aula(estado="publicada", versao=2) | {"video_url": url}
+        )
+    )
+
+    cliente = _dentro()
+    endereco = f"/escola/{CURSO}/aulas/E07/video-do-youtube/"
+    html = _texto(cliente.get(endereco))
+    resposta = cliente.post(endereco, {"video_url": url})
+
+    assert 'name="video_url"' in html
+    assert "Voltar ao editor completo" in html
+    assert "Os demais campos já existentes nesta aula são preservados." in html
+    assert resposta.status_code == 302
+    assert resposta["Location"] == f"{endereco}?recado=publicada&versao=2"
+    corpo = json.loads(gravacao.calls.last.request.content)
+    assert corpo["video_url"] == url
+    assert corpo["pedido"] == aula_inicial["pedido"]
+    assert corpo["cliente"] == aula_inicial["cliente"]
+    assert corpo["instrumento"] == aula_inicial["instrumento"]
+    assert corpo["minimo"] == aula_inicial["minimo"]
+    assert corpo["aceito_quando"] == aula_inicial["aceito_quando"]
+    assert corpo["quiz"] == aula_inicial["quiz"]
+    assert corpo["e_boss"] == aula_inicial["e_boss"]
+    assert corpo["banca_nivel"] == aula_inicial["banca_nivel"]
+    assert corpo["pecas"] == aula_inicial["pecas"]
+    assert corpo["pausas"] == aula_inicial["pausas"]
+    assert publicacao.call_count == 1
+    assert Registro.objects.filter(
+        acao=Registro.EDITAR_AULA, desfecho=Registro.OK
+    ).exists()
+    assert Registro.objects.filter(
+        acao=Registro.PUBLICAR_AULA, desfecho=Registro.OK
+    ).exists()
+
+
+@pytest.mark.django_db
+@respx.mock
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.youtube.com/",
+        "https://www.youtube.com/watch?v=curto",
+        "https://youtu.be:444/dQw4w9WgXcQ",
+    ],
+    ids=["pagina-generica", "id-curto", "porta-nao-padrao"],
+)
+def test_o_modelo_youtube_recusa_url_que_a_sala_nao_incorpora(url):
+    _mock_site()
+    _mock_aula()
+    gravacao = respx.put(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula()))
+    respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(200, json=_aula(estado="publicada")))
+
+    resposta = _dentro().post(
+        f"/escola/{CURSO}/aulas/E07/video-do-youtube/",
+        {"video_url": url},
+    )
+
+    assert resposta.status_code == 422
+    assert gravacao.call_count == 0
+    assert "Cole um link HTTPS de vídeo do YouTube" in _texto(resposta)
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_modelo_youtube_diz_que_a_url_salvou_quando_publicar_recusa():
+    _mock_site()
+    _mock_aula()
+    url = "https://youtu.be/dQw4w9WgXcQ"
+    respx.put(f"{CURSOS}/cursos/{CURSO}/aulas/E07", params={"site_id": SITE_ID}).mock(
+        return_value=httpx.Response(200, json=_aula(versao=2) | {"video_url": url})
+    )
+    publicar = respx.post(
+        f"{CURSOS}/cursos/{CURSO}/aulas/E07/publicar", params={"site_id": SITE_ID}
+    ).mock(return_value=httpx.Response(422, json={"detail": "falta uma regra"}))
+
+    resposta = _dentro().post(
+        f"/escola/{CURSO}/aulas/E07/video-do-youtube/",
+        {"video_url": url},
+    )
+
+    assert resposta.status_code == 422
+    assert publicar.call_count == 1
+    html = _texto(resposta)
+    assert "A URL foi salva, mas a aula não foi aberta para os alunos." in html
+    assert "Tentar publicar a aula de novo" in html
+    assert "falta uma regra" in html
+
+
+@pytest.mark.django_db
+@respx.mock
+def test_o_editor_completo_leva_ao_modelo_youtube():
+    _mock_site()
+    _mock_aula()
+    _mock_instrumentos()
+
+    html = _texto(
+        _dentro().get(reverse("escola_aula", kwargs={"curso": CURSO, "numero": "E07"}))
+    )
+
+    assert f"/escola/{CURSO}/aulas/E07/video-do-youtube/" in html

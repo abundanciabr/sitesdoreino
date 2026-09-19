@@ -59,7 +59,7 @@ import datetime as dt
 import re
 from pathlib import Path
 
-from .painel import CANDIDATOS
+from .painel import diretorio_do_painel
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, esperado_em
 
 #: Confirmar em até 48 horas: o mesmo limiar da restrição.
@@ -90,6 +90,14 @@ _CAMPO = {
         "metrica",
         "guarda",
         "veredito",
+        # Os três do fechamento (07/09/2026, degrau 13): `portao` diz qual dos
+        # oito portões da fase da escola o registro prova, e os dois seguintes
+        # são a PROVA que o plano exige (§6.5). Declarar sem provar não conta,
+        # e quem faz essa conta é `fechamento.portoes`. Entram aqui pelo mesmo
+        # motivo dos cinco de cima: o livro tem UM leitor nesta célula.
+        "portao",
+        "evidencia",
+        "verificado_em",
     )
 }
 
@@ -98,11 +106,11 @@ _CAMPO = {
 
 
 def diretorio_dos_registros() -> Path | None:
-    for candidato in CANDIDATOS:
-        pasta = candidato / "registros"
-        if pasta.is_dir():
-            return pasta
-    return None
+    painel = diretorio_do_painel()
+    if painel is None:
+        return None
+    pasta = painel / "registros"
+    return pasta if pasta.is_dir() else None
 
 
 def _campo(texto: str, nome: str):
@@ -145,6 +153,9 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "metrica": _campo(texto, "metrica"),
                 "guarda": _campo(texto, "guarda"),
                 "veredito": _campo(texto, "veredito"),
+                "portao": _campo(texto, "portao"),
+                "evidencia": _campo(texto, "evidencia"),
+                "verificado_em": _campo(texto, "verificado_em"),
             }
         )
     return registros

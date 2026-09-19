@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260908-194758-TAR-282-concluida",
+  "tarefa": "TAR-282",
+  "evento": "concluida",
+  "quando": "2026-09-08T19:47:58+00:00",
+  "quem": "teste-controlado-fase4",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1402; python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py -q: 17 passed in 0.72s",
+  "verificado_em": "2026-09-08"
+}

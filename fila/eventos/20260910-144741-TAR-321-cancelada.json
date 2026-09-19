@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260910-144741-TAR-321-cancelada",
+  "tarefa": "TAR-321",
+  "evento": "cancelada",
+  "quando": "2026-09-10T14:47:41+00:00",
+  "quem": "agent/painel/mapa-caminho-dourado",
+  "detalhe": "Associação indevida: o PR 1533 entrega o prompt e a escrituração, não implementa o GPS. A obra futura continua integralmente na sucessora TAR-324."
+}

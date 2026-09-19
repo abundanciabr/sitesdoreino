@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260917-232528-TAR-448-concluida",
+  "tarefa": "TAR-448",
+  "evento": "concluida",
+  "quando": "2026-09-17T23:25:28+00:00",
+  "quem": "agent/ci/aceite-do-voo-no-livro",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1707",
+  "verificado_em": "2026-09-17"
+}

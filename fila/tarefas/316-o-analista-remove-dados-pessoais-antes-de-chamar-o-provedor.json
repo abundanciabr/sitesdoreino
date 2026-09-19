@@ -1,0 +1,19 @@
+{
+  "arquivo": "316-o-analista-remove-dados-pessoais-antes-de-chamar-o-provedor",
+  "id": "TAR-316",
+  "titulo": "O analista remove dados pessoais antes de chamar o provedor",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste local com rede cortada prova que nome, e-mail e telefone sintéticos em títulos livres são minimizados, saneados ou recusados antes do payload; sabotagem do saneamento reprova e nenhuma chamada paga ocorre.",
+  "despacho": "GRAVIDADE: MÉDIO, preexistente e sem bloqueio adicional automático da Fase 1.\n\nREQUISITO: antes de chamar o provedor de IA, o analista precisa minimizar, sanear ou recusar dado pessoal presente em títulos e demais textos livres, mantendo o teste inteiramente local.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; services/admin/apps/core/analista.py, linhas 59 a 63 e 601 a 612.\n\nEVIDÊNCIA OBSERVADA: o prompt promete não enviar nomes e telefone, mas o dossiê concatena títulos livres íntegros e os entrega ao caminho que chama a Anthropic. Em teste local com Django, o título DADO SINTETICO: Pessoa Teste, pessoa-teste@example.invalid, telefone 00000000000 permaneceu integral no dossiê. Nenhuma chamada ao provedor foi executada.\n\nREPRODUÇÃO: crie localmente um título com nome, e-mail reservado example.invalid e telefone sintético; monte o dossiê e afirme que a sequência integral ainda está presente. Corte a rede e não configure chave real.\n\nESPERADO: dado pessoal é removido, reduzido ou recusado antes da fronteira externa, com mensagem que explica o que aconteceu e como corrigir. OBSERVADO: o payload local preserva o texto livre integral apesar da promessa do prompt.\n\nIMPACTO: existe possibilidade demonstrada de dado pessoal entrar no payload de uma chamada futura. Não há evidência de vazamento real nesta auditoria.\n\nCORREÇÃO MÍNIMA: minimizar e sanear os campos livres antes da chamada; quando o dado não puder ser removido sem perder sentido, recusar a análise e orientar a correção. Cobrir o caso com teste local e transporte bloqueado.\n\nCLASSIFICAÇÃO: falha preexistente, não atribuída ao PR 1500 e não usada como bloqueio adicional automático da Fase 1.\n\nPROVA DE FECHO: teste local nasce vermelho com os dados sintéticos, passa mostrando que nome, e-mail e telefone não chegam ao payload, e reprova novamente quando o saneamento é sabotado; nenhuma rede ou chamada paga é usada.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; possibilidade local demonstrada sem chamada ao provedor",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

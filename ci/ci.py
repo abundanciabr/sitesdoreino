@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import contract_freeze
+from resumo_de_teste import executar_pytest
 import mapa_de_celulas  # noqa: E402
 import guarda_dos_guardas  # noqa: E402
 from _nucleo import (  # noqa: E402
@@ -283,36 +284,11 @@ def _em_paralelo() -> list[str]:
 
 def rodar_testes_do_testador(raiz: Path) -> Resultado:
     """A suíte que prova que o próprio instrumento de medição funciona."""
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest", str(raiz / "ci" / "tests"), "-q",
-         *_em_paralelo()],
-        cwd=str(raiz),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=900,
-        check=False,
+    resultado, _ = executar_pytest(
+        raiz, [str(raiz / "ci" / "tests"), "-q", *_em_paralelo()]
     )
-    saida = (proc.stdout or "") + (proc.stderr or "")
-    if proc.returncode == 0:
-        ultima = [ln for ln in (proc.stdout or "").splitlines() if ln.strip()]
-        return Resultado(
-            "testar-o-testador", Estado.PASS, ultima[-1].strip() if ultima else "ok"
-        )
-    if proc.returncode == 1:
-        return Resultado(
-            "testar-o-testador",
-            Estado.FAIL,
-            "a suíte adversarial do próprio portão reprovou",
-            recortar(saida, 4000),
-        )
-    return Resultado(
-        "testar-o-testador",
-        Estado.ERROR,
-        f"pytest não conseguiu rodar (exit {proc.returncode})",
-        recortar(saida, 4000),
-    )
+    resultado.nome = "testar-o-testador"
+    return resultado
 
 
 # Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a

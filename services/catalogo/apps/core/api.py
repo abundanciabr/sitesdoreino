@@ -4,6 +4,7 @@
 # inline hacks abaixo) já era validada contra o contrato congelado na Fase 0 e
 # permanece intocada aqui (make contrato-check verde).
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from ninja import Field, Path, Router, Schema
 from ninja.errors import HttpError
 
@@ -250,6 +251,34 @@ class Product(Schema):
     active: bool
 
 
+# O corpo do cadastro tem só o que quem cadastra REALMENTE escolhe. Preço e
+# ativo não entram: eles nascem fixos (zero e ligado), pelo mesmo motivo do
+# comando `criar_curso`, e um campo aqui convidaria a tela do outro lado a
+# perguntar um preço que a oferta é quem manda. A docstring é curta de
+# propósito: o django-ninja a exporta como a `description` do componente, e o
+# contrato congelado não é lugar de ensaio.
+class NewProduct(Schema):
+    """O que basta para cadastrar um produto: o apelido e o nome."""
+
+    slug: str = Field(
+        ...,
+        pattern=r"^[a-z0-9-]{1,64}$",
+        description=(
+            "Apelido do produto: minúsculas, números e hífen, até 64 caracteres. "
+            "É a chave que faz o cadastro poder ser repetido sem criar duplicata, "
+            "e por isso a forma é conferida aqui, não depois."
+        ),
+    )
+    name: str = Field(
+        ...,
+        min_length=1,
+        description=(
+            "O nome que a pessoa lê na lista de escolher. Os espaços das pontas "
+            "são aparados antes de gravar."
+        ),
+    )
+
+
 def _inline_offer_product(schema: dict) -> None:
     """Produto embutido na oferta é objeto inline no contrato (não $ref para o
     componente Product) — sem isso o django-ninja extrai a submodel como schema
@@ -437,6 +466,84 @@ def list_products(request):
         }
         for produto in ProductModel.objects.filter(active=True).order_by("name")
     ]
+
+
+@router.post(
+    "/produtos",
+    # `response=Product` declara a forma do 200. O 201 sai por `JsonResponse`,
+    # que o django-ninja devolve como está: a alternativa (`response={200: ...,
+    # 201: ...}`) gera Schema dinâmico que pode vazar para `components.schemas`
+    # e quebrar o freeze de contrato (`armadilhas/021`). O corpo do 201 é o
+    # MESMO dicionário do 200, e o teste do 201 confere o conjunto EXATO das
+    # chaves, porque nesse caminho não há Schema filtrando nada.
+    response=Product,
+    operation_id="createProduct",
+    summary="Cadastra um produto (um curso é um produto), sem duplicar pelo apelido",
+    description=(
+        "Cria o produto e responde 201 com ele. Chamar de novo com o MESMO "
+        "apelido e o MESMO nome responde 200 com o produto que já existe, sem "
+        "criar duplicata: é o que deixa a tela ser reenviada (dois cliques, "
+        "recarregar a página) sem nascerem dois cursos iguais. Apelido que já "
+        "existe com nome DIFERENTE responde 409 e NADA é alterado, dizendo qual "
+        "nome está no lugar; trocar o nome de um produto é gesto de quem opera "
+        "a máquina, pelo comando `manage.py criar_curso <apelido> '<nome>' "
+        "--renomear`. Apelido fora da forma, ou nome vazio, respondem 422 e nada "
+        "é gravado. O produto nasce ATIVO e com preço ZERO, e isso não se "
+        "escolhe aqui: quem cobra é a oferta, que é por site, então zero "
+        'significa "não está à venda por este produto", nunca "de graça".'
+    ),
+    openapi_extra={
+        "responses": {
+            200: {"description": "Já existia com este mesmo nome; nada mudou"},
+            201: {
+                "description": "Produto criado, com preço zero e ativo",
+                "content": {
+                    "application/json": {
+                        "schema": {"$ref": "#/components/schemas/Product"}
+                    }
+                },
+            },
+            409: {
+                "description": (
+                    "Apelido já usado por um produto de OUTRO nome; nada foi alterado"
+                )
+            },
+            422: {
+                "description": "Apelido fora da forma ou nome vazio; nada foi gravado"
+            },
+        }
+    },
+)
+def create_product(request, payload: NewProduct):
+    """Cadastra um curso como produto, com as mesmas regras do `criar_curso`.
+
+    O apelido é a chave da repetibilidade, e é por isso que a recusa do nome
+    divergente é um 409 e não um remendo silencioso: o nome sai na lista de
+    escolher, e quem reenvia um formulário não está pedindo para renomear nada.
+    """
+    nome = payload.name.strip()
+    if not nome:
+        raise HttpError(422, "o nome do produto não pode ser só espaços")
+
+    produto, criado = ProductModel.objects.get_or_create(
+        slug=payload.slug,
+        defaults={"name": nome, "price_cents": 0, "active": True},
+    )
+    if not criado and produto.name != nome:
+        raise HttpError(
+            409,
+            f"o apelido '{produto.slug}' já é do produto '{produto.name}', e nada "
+            "foi alterado. Para trocar o nome mesmo, rode na máquina: "
+            f"manage.py criar_curso {produto.slug} '{nome}' --renomear",
+        )
+
+    corpo = {
+        "id": str(produto.id),
+        "name": produto.name,
+        "price_cents": produto.price_cents,
+        "active": produto.active,
+    }
+    return JsonResponse(corpo, status=201) if criado else corpo
 
 
 @router.get(

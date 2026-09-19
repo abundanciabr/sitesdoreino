@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-003-contracts-abrir-aulas-avulsas-para-compartilhar",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "contracts: abrir aulas avulsas para compartilhar",
+  detalhe: "Contrato aditivo para criar e listar aulas avulsas por site, com título, vídeo, descrição, publicação imediata e endereço estável gerado pelo serviço.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1548. Validação local: árvore d7438f820af3fb2295ec8e0eb2d789af63f2a29b; commit df4102c1707903b934686a9014294c4dac263458; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-331",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

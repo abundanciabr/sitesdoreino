@@ -1,0 +1,19 @@
+{
+  "arquivo": "279-canario-da-publicacao-de-dados-da-fase-2",
+  "id": "TAR-279",
+  "titulo": "Canario da publicacao de dados da Fase 2",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de dados puro mergeado, deploy-celula sem job deploy/admin, publicador ativando painel e fila, e tela admin consumindo a versao publicada.",
+  "despacho": "Executar o canario de dados puros da Fase 2: criar um PR que toque apenas painel/ e fila/, mergear pelo rito, conferir que o deploy-celula executa publicar-dados-admin para painel e fila, nao executa deploy/admin, e registrar a versao visivel consumida pela admin.",
+  "origem": "Retomada da Fase 2 em 2026-09-08",
+  "criada_em": "2026-09-08"
+}

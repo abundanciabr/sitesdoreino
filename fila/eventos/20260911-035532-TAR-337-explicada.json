@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-035532-TAR-337-explicada",
+  "tarefa": "TAR-337",
+  "evento": "explicada",
+  "quando": "2026-09-11T03:55:32+00:00",
+  "quem": "Capitulo 3, auditoria da linhagem de TAR-332 e TAR-325; correcao do instrumento excluida da amostra Pareto deste capitulo",
+  "o_que_e": "A conferencia confunde codigo recebido de outras entregas com mudancas feitas depois da prova.",
+  "o_que_muda": "Entregas corretas voltam a poder ser conferidas, mantendo a recusa de codigo novo sem prova.",
+  "exemplo": "Atualizar uma pasta com trabalho ja publicado nao pode parecer uma alteracao escondida da entrega.",
+  "importancia": 85
+}

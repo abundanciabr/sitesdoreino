@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-007-publicacao-bosses-falhou",
+  tipo: "incidente",
+  quando: "2026-09-10",
+  titulo: "Pedido 1454 entrou, mas a publicação dos Bosses falhou",
+  detalhe: "O PR #1454 foi integrado pela pista 34429320799 às 02:36 UTC, no SHA 6f4097fe84fb792e4dd3cc751b524bd3dd273aef. A publicação 34430133801 falhou: cursos procurou 'Modificador Bevel e Triangulate', mas a aula 31 se chama 'Comando Bevel e Triangulate'. O job de dados do painel passou, cursos falhou e admin foi cancelado. A correção ainda não foi publicada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34430133801",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260909-013-bosses-primeiros-dolares",
+  gravidade: "vermelho",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

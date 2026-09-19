@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-185513-TAR-280-explicada",
+  "tarefa": "TAR-280",
+  "evento": "explicada",
+  "quando": "2026-09-08T18:55:13+00:00",
+  "quem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "o_que_e": "A instrumentação existe, mas a análise encontrou zero tarefas confirmatórias válidas e nenhum par.",
+  "o_que_muda": "As tarefas reais passam a deixar uma unidade de comparação rastreável, incluindo falhas, retomadas e dados ausentes.",
+  "exemplo": "Uma tarefa legítima iniciada no fluxo normal é registrada antes da preparação e fechada quando o resultado exigido é verificado.",
+  "importancia": 100
+}

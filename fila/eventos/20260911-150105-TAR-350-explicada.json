@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-150105-TAR-350-explicada",
+  "tarefa": "TAR-350",
+  "evento": "explicada",
+  "quando": "2026-09-11T15:01:05+00:00",
+  "quem": "PLANO-CELULA-GAMIFICACAO degrau 19 e PLANO-LOTES-DA-GAMIFICACAO lote C; TAR-102 e PR #846 sao fundacao insuficiente",
+  "o_que_e": "A Galeria ainda nao pode consultar no Forum os trabalhos privados que uma pessoa autorizou.",
+  "o_que_muda": "A proxima entrega do Forum podera oferecer so as referencias consentidas, sem abrir uma area privada.",
+  "exemplo": "Quem autorizou uma obra ve sua candidata na Galeria; obra de outra escola ou sem consentimento nao aparece.",
+  "importancia": 82
+}

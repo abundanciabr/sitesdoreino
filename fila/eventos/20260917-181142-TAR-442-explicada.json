@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-181142-TAR-442-explicada",
+  "tarefa": "TAR-442",
+  "evento": "explicada",
+  "quando": "2026-09-17T18:11:42+00:00",
+  "quem": "pedido direto do mantenedor em 17/09/2026",
+  "o_que_e": "Um texto único para orientar o trabalho das três IAs do projeto.",
+  "o_que_muda": "O mantenedor poderá copiar regras de cooperação e avaliação com provas de entrega e custo, preservando os papéis da equipe.",
+  "exemplo": "Uma página só será contabilizada depois de publicada e conferida, e a mesma entrega poderá reconhecer contribuições comprovadas das três IAs.",
+  "importancia": 60
+}

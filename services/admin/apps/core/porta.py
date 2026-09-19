@@ -31,6 +31,7 @@ import hashlib
 import logging
 import re
 
+from django.core import signing
 from django.conf import settings
 from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
@@ -38,6 +39,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 
 from . import medidor
+from .admin_dados import dados_da_resposta
 from .clients import IdentidadeClient, IdentidadeIndisponivel
 from .models import Administrador
 
@@ -130,6 +132,33 @@ PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
 #: `tests/test_planos_para_ia.py::test_o_prefixo_dos_planos_tem_so_as_duas_rotas`.
 PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
 
+#: [PORTA DE MAQUINA] O prefixo que tem cadeado PROPRIO, e mais forte que este.
+#:
+#: `/interno/` responde a outra celula, maquina para maquina, e o que a fecha e
+#: o Bearer do par (`apps/core/auth.py`): conjunto de tokens vazio recusa todo
+#: mundo, e o guarda e o 401 em TODAS as operacoes
+#: (`tests/test_porta_de_maquina.py`). Uma maquina nao tem cookie de navegador
+#: para apresentar, entao passa-la por esta porta trocaria aquele 401 por um 302
+#: para a tela de login, afrouxando a porta e quebrando o contrato congelado no
+#: mesmo gesto.
+#:
+#: **Nao entrou em `CAMINHOS_ISENTOS`, e a diferenca e a razao de ser das duas.**
+#: Aquele conjunto e uma lista EXATA de caminhos que respondem ao publico sem
+#: cracha nenhum, e a exatidao dele e o que impede rota nova de escapar em
+#: silencio. Aqui e o inverso: tudo que nascer sob `/interno/` nasce atras do
+#: Bearer, que e um cadeado, e nao uma isencao. Prefixo, e nao `startswith` cru,
+#: pelo mesmo motivo que a `pages` escreveu: uma rota futura chamada
+#: `/internosecreto` nao herda nada daqui.
+PREFIXO_DA_PORTA_DE_MAQUINA = "/interno"
+PREFIXO_ACESSO_LOCAL = "/acesso-local/"
+
+
+def _sob_a_porta_de_maquina(caminho: str) -> bool:
+    """O caminho e `/interno`, ou esta debaixo dele?"""
+    return caminho == PREFIXO_DA_PORTA_DE_MAQUINA or caminho.startswith(
+        PREFIXO_DA_PORTA_DE_MAQUINA + "/"
+    )
+
 
 def _emails_autorizados() -> frozenset[str]:
     """A lista de quem entra, lida NO PONTO DE USO e normalizada.
@@ -205,8 +234,43 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
+        with dados_da_resposta():
+            return self._responder(request)
+
+    def _responder(self, request):
+        if _sob_a_porta_de_maquina(request.path_info):
+            # A porta de MAQUINA tem cadeado proprio (o Bearer) e nao usa a
+            # moldura de navegador: sai sem CSP e sem `Cache-Control` de tela,
+            # porque quem consome e outra celula, nunca um navegador.
+            return self.get_response(request)
+
+        if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
+            return self._com_seguranca(self.get_response(request))
+
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
             (PREFIXO_PUBLICO_DOS_DOCUMENTOS, PREFIXO_PUBLICO_DOS_PLANOS)
+        ):
+            return self._com_seguranca(self.get_response(request))
+
+        tem_cookie_local = settings.ADMIN_LOCAL_COOKIE_NAME in request.COOKIES
+        admin_local = self._admin_local_da_requisicao(request)
+        if admin_local:
+            request.admin = admin_local
+            _anota(medidor.registrar_resposta, "entrou")
+            return self._com_seguranca(self.get_response(request))
+        if tem_cookie_local:
+            return self._para_o_login(request)
+
+        if (
+            request.path_info == "/caixa/radio/api/"
+            or (
+                request.path_info == "/caixa/radio/"
+                and request.method == "POST"
+                and request.content_type == "application/json"
+            )
+        ) and (
+            request.headers.get("Authorization", "").startswith("Bearer ")
+            or request.headers.get("Accept") == "application/json"
         ):
             return self._com_seguranca(self.get_response(request))
 
@@ -250,6 +314,28 @@ class PortaAdministrativa:
         return self._com_seguranca(self.get_response(request))
 
     # ---------------------------------------------------------------- respostas
+
+    @staticmethod
+    def _admin_local_da_requisicao(request):
+        bruto = request.COOKIES.get(settings.ADMIN_LOCAL_COOKIE_NAME)
+        if not bruto:
+            return None
+        try:
+            admin = signing.TimestampSigner().unsign_object(
+                bruto, max_age=settings.ADMIN_LOCAL_COOKIE_MAX_AGE
+            )
+        except signing.BadSignature:
+            return None
+        email = (
+            admin.get("email", "").strip().lower() if isinstance(admin, dict) else ""
+        )
+        if not email or email not in _emails_autorizados():
+            return None
+        return {
+            "id": admin.get("id") or settings.ADMIN_LOCAL_ID,
+            "nome": admin.get("nome") or settings.ADMIN_LOCAL_NOME,
+            "email": email,
+        }
 
     def _para_o_login(self, request):
         _anota(medidor.registrar_resposta, "mandou_para_o_login")

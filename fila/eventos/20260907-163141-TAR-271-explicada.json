@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163141-TAR-271-explicada",
+  "tarefa": "TAR-271",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:41+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "O editor de aulas do Admin entra por um curso fixo escrito no codigo, e a pagina da escola tem um botao so. Nao existe tela para criar curso.",
+  "o_que_muda": "O mantenedor cria um curso na tela em um minuto: nome, produto e regra de avanco. E aqui que ele cria o Primeiros Dolares com Roblox e o liga ao produto que os 132 alunos ja tem.",
+  "exemplo": "Como criar uma turma nova num sistema de escola: um formulario, e a turma existe.",
+  "importancia": 92
+}

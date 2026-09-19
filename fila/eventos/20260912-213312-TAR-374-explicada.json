@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-213312-TAR-374-explicada",
+  "tarefa": "TAR-374",
+  "evento": "explicada",
+  "quando": "2026-09-12T21:33:12+00:00",
+  "quem": "ficha ANTIGRAVITY-007 do conselho, aprovada pela maestro em 12/09/2026 com o desenho tático decidido; pedido do mantenedor",
+  "o_que_e": "Hoje as três IAs só se falam por arquivos, PRs e fila, e você não tem uma tela onde veja a conversa entre elas nem possa entrar no meio.",
+  "o_que_muda": "Uma página no seu painel mostra ao vivo o que as IAs dizem umas às outras nos pontos de parada do trabalho, e você escreve ali também. As IAs ganham um comando para dizer e outro para ler, sem ficar esperando.",
+  "exemplo": "É o rádio da obra: cada um fala quando chega numa etapa, todo mundo ouve, e o dono da obra tem o mesmo rádio na mão.",
+  "importancia": 55
+}

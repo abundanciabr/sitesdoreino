@@ -20,6 +20,7 @@ feita à mão e está colada no PR que fez a fila nascer.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -27,7 +28,9 @@ from pathlib import Path
 import pytest
 
 import fila
-from _nucleo import ErroDeInstrumentacao
+import revisor_de_pouso
+import responsabilidades
+from _nucleo import ErroDeInstrumentacao, Estado, Resultado
 
 
 def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
@@ -40,6 +43,7 @@ def tarefa(numero="001", slug="exemplo", deps=(), **sobrescreve):
         "evidencia_exigida": "um PR mergeado",
         "despacho": "faça a coisa, com calma",
         "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
         "criada_em": "2026-08-29",
     }
     dados.update(sobrescreve)
@@ -87,6 +91,23 @@ def carregar(raiz):
 def test_fila_valida_passa(tmp_path):
     montar(tmp_path, [tarefa()], [evento()])
     assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_fila_recusa_classificacao_fase4_fora_do_contrato(tmp_path):
+    medicao = {
+        "piloto": "piloto-desconhecido", "condicao": "depois",
+        "tipo": "correcao", "complexidade": "media", "natureza": "codigo",
+        "componentes": "ci", "fronteiras_integracao": "nenhuma",
+        "migracao": "nao", "risco": "baixo", "escopo_publicacao": "sem-publicacao",
+        "revisao_instrumento": "nao-e-sha",
+    }
+    montar(tmp_path, [tarefa(medicao_fase4=medicao)], [evento()])
+
+    tarefas, _, erros = carregar(tmp_path)
+
+    assert "TAR-001" in tarefas
+    assert any("medicao_fase4.piloto" in erro for erro in erros)
+    assert any("medicao_fase4.revisao_instrumento" in erro for erro in erros)
 
 
 def test_fila_vazia_e_valida(tmp_path):
@@ -217,6 +238,7 @@ def test_criar_recusa_move_invalido_ANTES_de_gastar_numero(tmp_path, monkeypatch
         despacho="faça",
         despacho_arquivo="",
         origem="teste",
+        responsabilidade="medicao-de-esforco",
     )
     assert fila.cmd_criar(tmp_path, args) == 1
     saida = capsys.readouterr().out
@@ -268,6 +290,92 @@ def test_reivindicada_pelo_evento(tmp_path):
 def test_devolvida_volta_para_a_fila(tmp_path):
     eventos = [evento(hora="10:00:00"), evento(tipo="devolvida", hora="11:00:00")]
     assert estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]["estado"] == fila.NA_FILA
+
+
+def test_reivindicacao_expirada_volta_para_a_fila_com_a_marca_da_causa(tmp_path):
+    eventos = [
+        evento(hora="10:00:00"),
+        evento(
+            tipo="reivindicacao_expirada",
+            hora="11:00:00",
+            detalhe="a reserva venceu e não havia PR aberto",
+        ),
+    ]
+    estado = estados_de(tmp_path, [tarefa()], eventos)["TAR-001"]
+    assert estado["estado"] == fila.NA_FILA
+    assert estado["motivo"] == "a reserva venceu e não havia PR aberto"
+
+
+def test_zelador_rotula_reivindicacao_sem_reserva_e_sem_pr_sem_apagar(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={}, quem="zelador-de-teste"
+    )
+
+    assert len(escritos) == 1
+    assert "reivindicacao_expirada" in escritos[0].name
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["estado"] == fila.NA_FILA
+    assert "nenhum ramo ou PR foi apagado" in estado["motivo"]
+
+
+def test_zelador_preserva_reivindicacao_que_tem_pr_aberto(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={"TAR-001": "PR #77"}, quem="zelador-de-teste"
+    )
+
+    assert escritos == []
+    assert len(list((raiz / "fila" / "eventos").glob("*reivindicacao_expirada*"))) == 0
+
+
+def test_zelador_nao_rotula_tarefa_terminal(tmp_path):
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(),
+            evento(
+                tipo="concluida",
+                hora="11:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+        ],
+    )
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+
+    escritos = fila.rotular_orfaos(
+        raiz, tarefas, eventos, reservas=set(), prs={}, quem="zelador-de-teste"
+    )
+
+    assert escritos == []
+    assert not list((raiz / "fila" / "eventos").glob("*reivindicacao_expirada*"))
+
+
+def test_pegar_roda_o_zelador_antes_de_travar_a_proxima_tarefa(tmp_path, monkeypatch):
+    raiz = montar(
+        tmp_path,
+        [tarefa("001", "antiga"), tarefa("002", "nova")],
+        [evento("TAR-001")],
+    )
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+
+    args = argparse.Namespace(tarefa="TAR-002", quem="sessao-nova")
+    assert fila.cmd_pegar(raiz, args) == 0
+
+    assert len(list((raiz / "fila" / "eventos").glob("*TAR-001-reivindicacao_expirada.json"))) == 1
+    assert len(list((raiz / "fila" / "eventos").glob("*TAR-002-reivindicada.json"))) == 1
 
 
 def test_bloqueada_pelo_evento_carrega_o_motivo(tmp_path):
@@ -334,6 +442,7 @@ def test_pr_aberto_conta_como_em_execucao(tmp_path):
 
 
 def sem_rede(monkeypatch, reservas=frozenset(), prs=None):
+    monkeypatch.setattr(fila.reservar, "confirmar_intencao", lambda *a: False)
     monkeypatch.setattr(fila, "reservas_no_servidor", lambda raiz: set(reservas))
     monkeypatch.setattr(fila, "prs_citando_tarefas", lambda raiz: dict(prs or {}))
 
@@ -668,6 +777,45 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="PR #10", verificado_em="")
     assert fila.cmd_concluir(tmp_path, args) == 1
+
+
+@pytest.mark.parametrize("caminho", ["concluir", "reconciliar"])
+def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_path, monkeypatch, caminho):
+    t = tarefa(responsabilidade_obrigatoria=True)
+    montar(tmp_path, [t], [submissao()] if caminho == "reconciliar" else [evento()])
+    if caminho == "concluir":
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+        assert fila.cmd_concluir(tmp_path, args) == 1
+    else:
+        monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+        monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10"))
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js", retroativa="")
+        assert fila.cmd_reconciliar(tmp_path, args) == 1
+
+
+def test_guarda_comum_permite_concluir_tarefa_nova_com_cadastro_valido(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+            "unidades": [{
+            "id": "medicao-de-esforco", "tipo": "rotina",
+            "titular_funcao": "estrategia-conteudo", "finalidade": "medir",
+            "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa",
+            "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma",
+            "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova",
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="prova", verificado_em="2026-09-10")
+    assert fila.cmd_concluir(tmp_path, args) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -1151,3 +1299,2350 @@ def test_diff_que_nao_e_evento_da_fila_e_ignorado():
         {"filename": "fila/eventos/z.json", "patch": "-" + de_verdade},
     ]
     assert fila.eventos_no_diff(lixo) == []
+
+
+# ---------------------------------------------------------------------------
+# O VERBO `explicar` — a fila em português do mantenedor (06/09/2026)
+#
+# Encenados de verdade: cada guarda daqui foi visto REPROVANDO antes de o
+# código existir, e provado por sabotagem depois do verde.
+# ---------------------------------------------------------------------------
+
+
+def explicacao(**sobrescreve):
+    dados = {
+        "o_que_e": "A esteira que publica os trabalhos prontos espera um tempo fixo.",
+        "o_que_muda": "Trabalho pronto fica parado sem chegar no site.",
+        "exemplo": "É a esteira do aeroporto parando antes de a última mala sair.",
+        "importancia": 85,
+    }
+    dados.update(sobrescreve)
+    return dados
+
+
+def args_de_explicar(tid="TAR-001", quem="sessao-a", **sobrescreve):
+    return argparse.Namespace(tarefa=tid, quem=quem, **explicacao(**sobrescreve))
+
+
+def args_de_criar(**sobrescreve):
+    dados = {
+        "titulo": "uma tarefa",
+        "toca": ["ci"],
+        "depende_de": [],
+        "cria": [],
+        "move": ["manutencao"],
+        "evidencia_exigida": "um PR",
+        "despacho": "faça",
+        "despacho_arquivo": "",
+        "origem": "teste",
+        "responsabilidade": "medicao-de-esforco",
+        **explicacao(),
+    }
+    dados.update(sobrescreve)
+    return argparse.Namespace(**dados)
+
+
+def test_explicar_grava_o_evento_com_os_quatro_campos(tmp_path, monkeypatch):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    assert fila.cmd_explicar(raiz, args_de_explicar()) == 0
+    escritos = list((raiz / "fila" / "eventos").glob("*.json"))
+    assert len(escritos) == 1
+    dados = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert dados["evento"] == "explicada"
+    assert dados["importancia"] == 85
+    assert dados["o_que_e"].startswith("A esteira")
+    assert "-TAR-001-explicada" in dados["arquivo"]
+
+
+def test_importancia_fora_de_0_a_100_e_RECUSADA_no_balcao(tmp_path, monkeypatch, capsys):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    for fora in (101, -1, 1000):
+        assert fila.cmd_explicar(raiz, args_de_explicar(importancia=fora)) == 1
+    assert "0 a 100" in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*.json"))
+
+
+def test_explicacao_com_texto_vazio_e_RECUSADA_no_balcao(tmp_path, monkeypatch, capsys):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    for campo in ("o_que_e", "o_que_muda", "exemplo"):
+        assert fila.cmd_explicar(raiz, args_de_explicar(**{campo: "   "})) == 1
+        assert campo in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*.json"))
+
+
+def test_explicar_tarefa_que_nao_existe_e_RECUSADO(tmp_path, monkeypatch):
+    raiz = montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    assert fila.cmd_explicar(raiz, args_de_explicar(tid="TAR-777")) == 1
+
+
+def test_explicar_recusa_no_espelho_como_todo_gesto_que_escreve(espelho_e_bancada):
+    principal, _ = espelho_e_bancada
+    assert fila.cmd_explicar(principal, args_de_explicar()) == 1
+    assert not list((principal / "fila" / "eventos").glob("*.json"))
+
+
+def test_a_ULTIMA_explicacao_vence_e_e_assim_que_se_corrige(tmp_path):
+    """Explicar é o único verbo que repete: o arquivo da tarefa não se edita
+    (armadilhas/356), então texto ruim se conserta acrescentando."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(tipo="explicada", hora="10:00:00", **explicacao(o_que_e="texto ruim")),
+            evento(
+                tipo="explicada",
+                hora="12:00:00",
+                **explicacao(o_que_e="texto bom", importancia=42),
+            ),
+        ],
+    )
+    tarefas, eventos, erros = carregar(raiz)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["o_que_e"] == "texto bom"
+    assert estado["importancia"] == 42
+
+
+def test_explicar_tarefa_JA_TERMINADA_e_permitido(tmp_path):
+    """A exceção deliberada à regra do silêncio: a explicação descreve o que a
+    tarefa É, não o que aconteceu com ela."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(
+                tipo="concluida",
+                hora="10:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+            evento(tipo="explicada", hora="12:00:00", **explicacao()),
+        ],
+    )
+    _, _, erros = carregar(raiz)
+    assert erros == []
+
+
+def test_evento_de_CICLO_depois_do_fim_continua_reprovando(tmp_path):
+    """A exceção é só do `explicada` — a regra do silêncio segue de pé."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(
+                tipo="concluida",
+                hora="10:00:00",
+                evidencia="PR #1",
+                verificado_em="2026-08-29",
+            ),
+            evento(tipo="reivindicada", hora="12:00:00"),
+        ],
+    )
+    _, _, erros = carregar(raiz)
+    assert any("já terminou" in e for e in erros)
+
+
+def test_a_explicacao_NAO_muda_o_estado_calculado(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada", **explicacao())])
+    tarefas, eventos, _ = carregar(raiz)
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.NA_FILA
+
+
+def test_tarefa_SEM_explicacao_vem_sem_os_campos_nunca_com_desculpa(tmp_path):
+    """Ausente, não vazio: quem apresenta decide o que dizer no lugar."""
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    tarefas, eventos, _ = carregar(raiz)
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert not any(c in estado for c in fila.CAMPOS_DA_EXPLICACAO)
+
+
+def test_listar_json_entrega_a_explicacao_junto_do_estado(tmp_path, capsys):
+    """É este JSON que vira o `estados.json` que a célula admin lê no build."""
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada", **explicacao())])
+    fila.cmd_listar(raiz, argparse.Namespace(ao_vivo=False, json=True))
+    visao = json.loads(capsys.readouterr().out)["TAR-001"]
+    assert visao["estado"] == fila.NA_FILA
+    assert visao["titulo"] == "Uma tarefa de exemplo"
+    assert visao["importancia"] == 85
+    assert visao["exemplo"].startswith("É a esteira")
+
+
+def test_validar_reprova_explicada_sem_os_campos(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="explicada")])
+    _, _, erros = carregar(raiz)
+    assert any("o_que_e" in e for e in erros)
+
+
+def test_validar_reprova_importancia_fora_da_faixa_e_que_nao_e_inteira(tmp_path):
+    for valor in (101, -5, "85", 85.5, True):
+        raiz = montar(
+            tmp_path / str(valor).replace(".", "_"),
+            [tarefa()],
+            [evento(tipo="explicada", **explicacao(importancia=valor))],
+        )
+        _, _, erros = carregar(raiz)
+        assert any("importancia" in e for e in erros), valor
+
+
+def test_campo_de_explicacao_em_evento_que_nao_e_explicada_REPROVA(tmp_path):
+    """Mesma lei do `espera`: campo fora do evento a que pertence é história
+    escrita no lugar errado, e vira segunda definição no dia seguinte."""
+    raiz = montar(tmp_path, [tarefa()], [evento(tipo="reivindicada", importancia=90)])
+    _, _, erros = carregar(raiz)
+    assert any("importancia" in e for e in erros)
+
+
+def test_criar_SEM_explicacao_recusa_ANTES_de_gastar_numero(tmp_path, monkeypatch, capsys):
+    """Campo que nasce opcional no balcão nasce vazio — a lição do `--move`."""
+    montar(tmp_path, [])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+
+    def nunca(*a, **k):
+        raise AssertionError("não deveria ter pedido número sem a explicação")
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    assert fila.cmd_criar(tmp_path, args_de_criar(exemplo="   ")) == 1
+    assert "exemplo" in capsys.readouterr().out
+    assert fila.cmd_criar(tmp_path, args_de_criar(importancia=101)) == 1
+    assert "0 a 100" in capsys.readouterr().out
+    assert not list((tmp_path / "fila" / "tarefas").glob("*.json"))
+
+
+def test_criar_grava_a_tarefa_E_a_explicacao_dela(tmp_path, monkeypatch):
+    montar(tmp_path, [])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {nome: {"pessoa": "Pessoa", "substituto": "Substituto"} for nome in responsabilidades.FUNCOES},
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma", "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova"}],
+    }), encoding="utf-8")
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == []
+    assert fila.calcular_estados(tarefas, eventos)["TAR-099"]["importancia"] == 85
+
+
+URL_SUBMISSAO = "https://github.com/abundanciabr/sitesdoreino/pull/1494"
+URL_SUBSTITUTA = "https://github.com/abundanciabr/sitesdoreino/pull/1510"
+
+
+def submissao(**extra):
+    hora = extra.pop("hora", "11:00:00")
+    dados = {"pr": URL_SUBMISSAO, "revisao": "a" * 40, "arvore": "b" * 40}
+    dados.update(extra)
+    return evento(tipo="submetida", hora=hora, **dados)
+
+
+def args_de_submeter(**extra):
+    dados = {
+        "tarefa": "TAR-001", "quem": "sessao-a", "pr": URL_SUBMISSAO,
+        "revisao": "a" * 40, "arvore": "b" * 40, "substitui": "", "motivo": "",
+    }
+    dados.update(extra)
+    return argparse.Namespace(**dados)
+
+
+@pytest.mark.parametrize("fim_reserva", [None, "devolvida", "reivindicacao_expirada"])
+def test_submissao_persistida_nao_libera_tarefa_nem_dependencia(fim_reserva):
+    tarefas = {"TAR-001": tarefa(), "TAR-002": tarefa("002", deps=["TAR-001"])}
+    eventos = [evento(), submissao()]
+    if fim_reserva:
+        eventos.append(evento(tipo=fim_reserva, hora="12:00:00"))
+    estados = fila.calcular_estados(tarefas, eventos)
+    assert estados["TAR-001"]["estado"] == "em execução"
+    assert estados["TAR-001"]["pr"] == URL_SUBMISSAO
+    assert estados["TAR-001"]["revisao"] == "a" * 40
+    assert estados["TAR-002"]["estado"] == fila.BLOQUEADA
+
+
+@pytest.mark.parametrize("campo,valor", [("pr", "PR #1494"), ("revisao", "abc"), ("arvore", None)])
+def test_submissao_recusa_vinculo_incompleto(tmp_path, campo, valor):
+    ev = submissao()
+    ev[campo] = valor
+    montar(tmp_path, [tarefa()], [evento(), ev])
+    _, _, erros = carregar(tmp_path)
+    assert any(campo in erro for erro in erros), erros
+
+
+@pytest.mark.parametrize("estado_pr", ["OPEN", "MERGED", "CLOSED"])
+def test_zelador_consulta_pr_persistido_antes_de_rotular(tmp_path, monkeypatch, estado_pr):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    consultas = []
+    def consultar(raiz, url):
+        consultas.append(url)
+        return {"state": estado_pr, "url": url}
+    monkeypatch.setattr(fila, "consultar_pr_submetido", consultar)
+    assert fila.rotular_orfaos(tmp_path, tarefas, eventos, set(), {}, "zelador") == []
+    assert consultas == [URL_SUBMISSAO]
+    assert not list((tmp_path / "fila/eventos").glob("*expirada*"))
+
+
+def test_zelador_falha_fechado_quando_pr_persistido_nao_pode_ser_lido(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    tarefas, eventos, _ = carregar(tmp_path)
+    def indisponivel(*args):
+        raise ErroDeInstrumentacao("GitHub indisponível", "Não foi possível consultar o PR.")
+    monkeypatch.setattr(fila, "consultar_pr_submetido", indisponivel)
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.rotular_orfaos(tmp_path, tarefas, eventos, set(), {}, "zelador")
+    assert not list((tmp_path / "fila/eventos").glob("*expirada*"))
+
+
+def test_soltar_reserva_submetida_preserva_vinculo_sem_evento_de_devolucao(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda raiz, tid: liberadas.append(tid))
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="trabalho submetido")
+    assert fila.cmd_soltar(tmp_path, args) == 0
+    assert liberadas == ["TAR-001"]
+    assert not list((tmp_path / "fila/eventos").glob("*devolvida*"))
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == "em execução"
+
+
+def test_submeter_persiste_antes_de_soltar_e_retomada_nao_duplica(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento()])
+    def soltar(raiz, tid):
+        assert list((raiz / "fila/eventos").glob("*submetida*"))
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter()
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    escritos = list((tmp_path / "fila/eventos").glob("*submetida*"))
+    assert len(escritos) == 1
+    assert not list((tmp_path / "fila/eventos").glob("*concluida*"))
+
+
+def _instrumentar_substituicao(monkeypatch, *, anterior="CLOSED", merge=None,
+                               novo="OPEN", head="c" * 40, arvore="d" * 40):
+    consultas = []
+    def consultar(_raiz, url):
+        consultas.append(url)
+        if url == URL_SUBMISSAO:
+            return {"url": url, "state": anterior, "mergeCommit": merge,
+                    "headRefOid": "a" * 40}
+        return {"url": url, "state": novo, "mergeCommit": None,
+                "headRefOid": head}
+    monkeypatch.setattr(fila, "consultar_pr_submetido", consultar)
+    monkeypatch.setattr(fila, "_git_da_fila", lambda *args, **kwargs: arvore + "\n")
+    return consultas
+
+
+def test_submeter_substitui_pr_fechado_sem_merge_com_elo_auditavel(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    consultas = _instrumentar_substituicao(monkeypatch)
+    liberadas = []
+    def soltar(raiz, tid):
+        _, eventos, erros = carregar(raiz)
+        assert erros == []
+        atual = fila.ultima_submissao(eventos, tid)
+        assert atual["pr"] == URL_SUBSTITUTA
+        assert atual["substitui"] == URL_SUBMISSAO
+        assert atual["detalhe"] == "trabalho inteiro recuperado"
+        liberadas.append(tid)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo=" trabalho inteiro recuperado ",
+    )
+
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
+    assert liberadas == ["TAR-001"]
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == []
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["pr"] == URL_SUBSTITUTA
+    assert estado["revisao"] == "c" * 40
+    assert fila.ultima_submissao(eventos, "TAR-001")["substitui"] == URL_SUBMISSAO
+
+
+@pytest.mark.parametrize("mudanca,trecho", [
+    ({"substitui": ""}, "substitui"),
+    ({"substitui": "https://github.com/abundanciabr/sitesdoreino/pull/999"}, "última submissão"),
+    ({"motivo": "   "}, "motivo"),
+    ({"anterior": "OPEN"}, "anterior ainda está aberto"),
+    ({"anterior": "MERGED", "merge": {"oid": "f" * 40}}, "anterior foi integrado"),
+    ({"novo": "CLOSED"}, "novo PR não está aberto"),
+    ({"head": "e" * 40}, "revisão informada"),
+    ({"arvore_medida": "e" * 40}, "árvore informada"),
+])
+def test_submeter_substituicao_recusa_estado_ou_vinculo_sem_efeito(
+    tmp_path, monkeypatch, capsys, mudanca, trecho
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    opcoes = {chave: mudanca[chave] for chave in ("anterior", "merge", "novo", "head") if chave in mudanca}
+    _instrumentar_substituicao(
+        monkeypatch, arvore=mudanca.get("arvore_medida", "d" * 40), **opcoes,
+    )
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=mudanca.get("substitui", URL_SUBMISSAO),
+        motivo=mudanca.get("motivo", "trabalho recuperado"),
+    )
+
+    assert fila.cmd_submeter(tmp_path, args) == 1
+    assert trecho in capsys.readouterr().out
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+@pytest.mark.parametrize("instrumento", ["github", "git"])
+def test_submeter_substituicao_com_instrumento_quebrado_e_error_sem_efeito(
+    tmp_path, monkeypatch, instrumento
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    if instrumento == "github":
+        monkeypatch.setattr(fila, "consultar_pr_submetido", lambda *args: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("GitHub indisponível", "repita depois")
+        ))
+    else:
+        _instrumentar_substituicao(monkeypatch)
+        monkeypatch.setattr(fila, "_git_da_fila", lambda *args, **kwargs: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("git indisponível", "repita depois")
+        ))
+
+    nome = "GitHub" if instrumento == "github" else "git"
+    with pytest.raises(ErroDeInstrumentacao, match=f"{nome} indisponível"):
+        fila.cmd_submeter(tmp_path, args_de_submeter(
+            pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+            substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+        ))
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+@pytest.mark.parametrize("campo_ausente", ["mergeCommit", "headRefOid", "arvore"])
+def test_submeter_substituicao_recusa_medicao_ausente_com_error_sem_efeito(
+    tmp_path, monkeypatch, campo_ausente
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    liberadas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: liberadas.append(args))
+    def consultar(_raiz, url):
+        if url == URL_SUBMISSAO:
+            dados = {"url": url, "state": "CLOSED", "mergeCommit": None}
+        else:
+            dados = {"url": url, "state": "OPEN", "headRefOid": "c" * 40}
+        dados.pop(campo_ausente, None)
+        return dados
+    monkeypatch.setattr(fila, "consultar_pr_submetido", consultar)
+    monkeypatch.setattr(
+        fila, "_git_da_fila",
+        lambda *args, **kwargs: "" if campo_ausente == "arvore" else "d" * 40,
+    )
+
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.cmd_submeter(tmp_path, args_de_submeter(
+            pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+            substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+        ))
+    assert liberadas == []
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+def test_submeter_substituicao_repetida_e_idempotente(tmp_path, monkeypatch):
+    substituta = submissao(
+        hora="12:00:00", pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, detalhe="trabalho recuperado",
+    )
+    montar(tmp_path, [tarefa()], [evento(), submissao(), substituta])
+    monkeypatch.setattr(
+        fila, "consultar_pr_submetido",
+        lambda *args: pytest.fail("repetição idempotente não mede nem escreve"),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver",
+        lambda _raiz, tid: liberadas.append(tid),
+    )
+
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+    )) == 0
+    assert liberadas == ["TAR-001"]
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+
+def test_submeter_substituicao_retomada_libera_sem_duplicar_evento(
+    tmp_path, monkeypatch,
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    consultas = _instrumentar_substituicao(monkeypatch)
+    liberacoes = []
+
+    def soltar(_raiz, tid):
+        liberacoes.append(tid)
+        if len(liberacoes) == 1:
+            raise ErroDeInstrumentacao("reserva não liberada", "repita a submissão")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", soltar)
+    args = args_de_submeter(
+        pr=URL_SUBSTITUTA, revisao="c" * 40, arvore="d" * 40,
+        substitui=URL_SUBMISSAO, motivo="trabalho recuperado",
+    )
+
+    with pytest.raises(ErroDeInstrumentacao, match="reserva não liberada"):
+        fila.cmd_submeter(tmp_path, args)
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+    assert fila.cmd_submeter(tmp_path, args) == 0
+    assert consultas == [URL_SUBMISSAO, URL_SUBSTITUTA]
+    assert liberacoes == ["TAR-001", "TAR-001"]
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 2
+
+
+@pytest.mark.parametrize("eventos,trecho", [
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             detalhe="troca sem elo")], "sem elo"),
+    ([submissao(substitui=URL_SUBSTITUTA, detalhe="troca")], "primeira submissão"),
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             substitui=URL_SUBSTITUTA, detalhe="troca")], "última submissão"),
+    ([submissao(), submissao(hora="12:00:00", substitui=URL_SUBMISSAO,
+                             detalhe="troca")], "mesmo PR"),
+    ([submissao(), submissao(hora="12:00:00", pr=URL_SUBSTITUTA,
+                             substitui=URL_SUBMISSAO, detalhe="   ")], "motivo vazio"),
+])
+def test_validador_recusa_submissao_manual_que_quebra_a_cadeia(tmp_path, eventos, trecho):
+    montar(tmp_path, [tarefa()], [evento(), *eventos])
+    _, _, erros = carregar(tmp_path)
+    assert any(trecho in erro for erro in erros), erros
+
+
+def test_url_de_pr_nao_conclui_submissao_sem_prova_do_aceite(tmp_path, monkeypatch, capsys):
+    montar(tmp_path, [tarefa(evidencia_exigida="publicação e teste funcional")], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *args: pytest.fail("não solte sem prova"))
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia=URL_SUBMISSAO, verificado_em="2026-09-09")
+    assert fila.cmd_concluir(tmp_path, args) == 1
+    assert "comprovação" in capsys.readouterr().out
+    assert not list((tmp_path / "fila/eventos").glob("*concluida*"))
+
+
+
+@pytest.mark.parametrize("hora,esperado", [("10:30:00", "em execução"), ("12:00:00", "bloqueada")])
+def test_submissao_supera_bloqueio_anterior_e_preserva_bloqueio_posterior(hora, esperado):
+    cadeia = sorted([evento(), evento(tipo="bloqueada", hora=hora, detalhe="aguarda correção", espera="fila"), submissao()], key=lambda e: e["quando"])
+    estado = fila.calcular_estados({"TAR-001": tarefa()}, cadeia)["TAR-001"]
+    assert estado["estado"] == esperado
+
+
+@pytest.mark.parametrize("resposta", ["[]", "nao-json", '{"state":"MERGED","url":"https://outro"}', '{"state":"INVENTADO"}'])
+def test_consulta_submissao_recusa_resposta_incompativel(tmp_path, monkeypatch, resposta):
+    monkeypatch.setattr(fila.subprocess, "run", lambda *a, **k: argparse.Namespace(returncode=0, stdout=resposta))
+    with pytest.raises(ErroDeInstrumentacao, match="PR submetido"):
+        fila.consultar_pr_submetido(tmp_path, URL_SUBMISSAO)
+
+
+@pytest.mark.parametrize("estado", ["OPEN", "MERGED", "CLOSED"])
+def test_consulta_submissao_aceita_estados_do_pr(tmp_path, monkeypatch, estado):
+    consultas = []
+    def consultar(comando, **kwargs):
+        consultas.append(comando)
+        return argparse.Namespace(returncode=0, stdout=json.dumps({"state": estado, "url": URL_SUBMISSAO}))
+    monkeypatch.setattr(fila.subprocess, "run", consultar)
+    assert fila.consultar_pr_submetido(tmp_path, URL_SUBMISSAO)["state"] == estado
+    assert consultas[0][:4] == ["gh", "pr", "view", URL_SUBMISSAO]
+
+
+@pytest.mark.parametrize("mudanca", [{"pr": "PR #1"}, {"revisao": "invalida"}, {"arvore": "invalida"}, {"pr": URL_SUBMISSAO + "0"}])
+def test_submeter_recusa_vinculo_invalido_ou_outra_entrega_sem_efeitos(tmp_path, monkeypatch, mudanca):
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: pytest.fail("não solte reserva inválida"))
+    args = argparse.Namespace(**{"tarefa": "TAR-001", "quem": "sessao-a", "pr": URL_SUBMISSAO, "revisao": "a" * 40, "arvore": "b" * 40, **mudanca})
+    assert fila.cmd_submeter(tmp_path, args) == 1
+    assert len(list((tmp_path / "fila/eventos").glob("*submetida*"))) == 1
+
+
+
+def test_submissao_publicada_continua_visivel_nos_grupos_atuais_do_admin(tmp_path, capsys):
+    import ast
+
+    consumidor = Path(__file__).resolve().parents[2] / "services/admin/apps/core/robos.py"
+    fonte = ast.parse(consumidor.read_text(encoding="utf-8"))
+    nos = [no for no in fonte.body
+           if (isinstance(no, ast.Assign) and any(isinstance(alvo, ast.Name) and alvo.id == "COLUNAS" for alvo in no.targets))
+           or (isinstance(no, ast.FunctionDef) and no.name == "e_deste_grupo")]
+    assert len(nos) == 2
+    leitura = {}
+    exec(compile(ast.Module(body=nos, type_ignores=[]), str(consumidor), "exec"), leitura)
+    montar(tmp_path, [tarefa(), tarefa("002", deps=["TAR-001"])], [evento(), submissao()])
+    assert fila.cmd_listar(tmp_path, argparse.Namespace(ao_vivo=False, json=True)) == 0
+    estados = json.loads(capsys.readouterr().out)
+    cartao = estados["TAR-001"]
+    grupos = [g for g in leitura["COLUNAS"] if leitura["e_deste_grupo"](cartao, g)]
+    assert len(grupos) == 1, "a tarefa submetida sumiu dos grupos que a tela usa"
+    assert grupos[0]["estado"] == "em execução"
+    assert not grupos[0]["recolhida"]
+    assert cartao["motivo"] == "Entrega submetida; falta comprovar o aceite da tarefa."
+    assert cartao["pr"] == URL_SUBMISSAO
+    assert cartao["revisao"] == "a" * 40
+    assert cartao["arvore"] == "b" * 40
+    assert estados["TAR-002"]["estado"] == fila.BLOQUEADA
+    assert all(dados["estado"] != fila.CONCLUIDA for dados in estados.values())
+
+
+# ---------------------------------------------------------------------------
+# RECONCILIAR UMA ENTREGA SUBMETIDA
+#
+# A URL do PR não fecha a tarefa. Este caminho só escreve depois de conferir a
+# árvore revisada, o HEAD, o merge, a publicação, o atestado e o aceite que já
+# mora no livro.
+# ---------------------------------------------------------------------------
+
+
+REVISAO_RECONCILIADA = "1" * 40
+ARVORE_RECONCILIADA = "2" * 40
+HEAD_RECONCILIADO = "3" * 40
+MERGE_RECONCILIADO = "4" * 40
+RUN_RECONCILIADO = "https://github.com/abundanciabr/sitesdoreino/actions/runs/123"
+REGISTRO_DE_ACEITE = "painel/registros/20260910-008-bosses-no-ar.js"
+
+
+def submissao_reconciliavel(**extra):
+    return evento(
+        tipo="submetida",
+        hora="11:00:00",
+        pr=URL_SUBMISSAO,
+        revisao=REVISAO_RECONCILIADA,
+        arvore=ARVORE_RECONCILIADA,
+        **extra,
+    )
+
+
+def args_de_reconciliar(**extra):
+    return argparse.Namespace(
+        tarefa="TAR-001",
+        quem="maestro",
+        aceite_registro=REGISTRO_DE_ACEITE,
+        retroativa="",
+        **extra,
+    )
+
+
+def test_reconciliar_escreve_conclusao_com_evidencia_canonica(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa(responsabilidade_obrigatoria=True)], [evento(), submissao_reconciliavel()])
+    (tmp_path / "painel").mkdir()
+    (tmp_path / "painel" / "medicoes").mkdir()
+    (tmp_path / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            "estrategia-conteudo": {"pessoa": "Arameu", "sem_substituto": True},
+            "operacoes-trafego": {"pessoa": "Ryan", "sem_substituto": True},
+            "ensino-comunidade": {"pessoa": "Lívia", "sem_substituto": True},
+            "comercial-relacionamento": {"pessoa": "Maria", "sem_substituto": True},
+        },
+        "unidades": [{"id": "medicao-de-esforco", "tipo": "rotina", "titular_funcao": "estrategia-conteudo", "finalidade": "medir", "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json", "prepara": "Pessoa", "executa": "Pessoa", "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma", "autoridade": "Decide: revisa a medição. Escala para: mantenedor.", "evidencia": "prova"}],
+    }, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    evidencia = (
+        f"{URL_SUBMISSAO}; revisão {REVISAO_RECONCILIADA}; árvore {ARVORE_RECONCILIADA}; "
+        f"HEAD {HEAD_RECONCILIADO}; merge {MERGE_RECONCILIADO}; publicação {RUN_RECONCILIADO}; "
+        f"aceite {REGISTRO_DE_ACEITE}"
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (evidencia, "2026-09-10"),
+    )
+
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 0
+    escritos = list((tmp_path / "fila/eventos").glob("*-TAR-001-concluida.json"))
+    assert len(escritos) == 1
+    dados = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert dados["evidencia"] == evidencia
+    assert dados["verificado_em"] == "2026-09-10"
+
+
+def test_reconciliar_recusa_sem_submissao_e_terminal_sem_duplicar(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: pytest.fail("não mede entrega sem submissão viva"),
+    )
+    montar(tmp_path, [tarefa()], [evento()])
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 1
+
+    terminal = tmp_path / "terminal"
+    montar(
+        terminal,
+        [tarefa()],
+        [
+            evento(),
+            submissao_reconciliavel(),
+            evento(
+                tipo="concluida",
+                hora="12:00:00",
+                evidencia="prova",
+                verificado_em="2026-09-10",
+            ),
+        ],
+    )
+    assert fila.cmd_reconciliar(terminal, args_de_reconciliar()) == 1
+    assert len(list((terminal / "fila/eventos").glob("*-concluida.json"))) == 1
+
+
+@pytest.mark.parametrize(
+    "mudanca,trecho",
+    [
+        ({"arvore_medida": "9" * 40}, "árvore"),
+        ({"revisao_ancestral": False}, "revisão"),
+        ({"head_ancestral": False}, "HEAD"),
+        ({"caminhos_posteriores": ["services/cursos/models.py"]}, "código posterior"),
+    ],
+)
+def test_reconciliacao_recusa_arvore_linhagem_ou_codigo_posterior(mudanca, trecho):
+    medicao = {
+        "arvore_medida": ARVORE_RECONCILIADA,
+        "revisao_ancestral": True,
+        "head_ancestral": True,
+        "caminhos_posteriores": [
+            "fila/eventos/20260910-TAR-001-submetida.json",
+            "painel/registros/20260910-001-recibo.js",
+        ],
+    }
+    medicao.update(mudanca)
+    problemas = fila.problemas_da_linhagem(submissao_reconciliavel(), medicao)
+    assert any(trecho in problema for problema in problemas)
+
+
+@pytest.mark.parametrize(
+    "estado",
+    [
+        {"estado": "AGUARDANDO_PUBLICACAO", "terminal": False},
+        {"estado": "FALHA_PUBLICACAO", "terminal": False},
+        {"estado": "ENCERRADO_SEM_INTEGRAR", "terminal": True},
+    ],
+)
+def test_reconciliacao_recusa_entrega_sem_desfecho_publicado(estado):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="publicação|integrada"):
+        fila.provar_estado_terminal(estado)
+
+
+@pytest.mark.parametrize("campo", ["sha_atual", "sha_integrado"])
+def test_reconciliacao_exige_shas_terminais_completos(campo):
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+    }
+    estado[campo] = "curto"
+    with pytest.raises(ErroDeInstrumentacao, match="ausente"):
+        fila.provar_estado_terminal(estado)
+
+
+def test_reconciliacao_recusa_atestado_ausente_ou_de_outro_sha():
+    for resultado in (
+        Resultado("revisão", Estado.FAIL, "atestado ausente"),
+        Resultado("revisão", Estado.FAIL, "SHA mudou"),
+    ):
+        with pytest.raises(fila.RecusaDeReconciliacao, match="atestado"):
+            fila.provar_atestado(resultado)
+
+
+@pytest.mark.parametrize(
+    "registro,trecho",
+    [
+        (
+            {
+                "gravidade": "info",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "verde",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": True,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "pendência",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": "outro run",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-02-30",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "quando",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-9-10",
+                "evidencia": RUN_RECONCILIADO,
+            },
+            "quando",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "0",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/attempts/2",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "/jobs/9",
+            },
+            "publicação",
+        ),
+        (
+            {
+                "gravidade": "verde",
+                "precisa_do_dono": False,
+                "verificado_em": "2026-09-10",
+                "evidencia": RUN_RECONCILIADO + "?check_suite_focus=true",
+            },
+            "publicação",
+        ),
+    ],
+)
+def test_reconciliacao_recusa_registro_sem_aceite_da_publicacao(registro, trecho):
+    with pytest.raises(fila.RecusaDeReconciliacao, match=trecho):
+        fila.provar_conteudo_do_aceite(registro, [RUN_RECONCILIADO])
+
+
+def test_reconciliacao_aceita_url_canonica_com_pontuacao_textual():
+    fila.provar_conteudo_do_aceite(
+        {
+            "gravidade": "verde",
+            "precisa_do_dono": False,
+            "verificado_em": "2026-09-10",
+            "evidencia": f"Publicação conferida em {RUN_RECONCILIADO}.",
+        },
+        [RUN_RECONCILIADO],
+    )
+
+
+def test_recuperacao_usa_publicacoes_efetivas_e_nao_o_run_historico_falho():
+    estado = {
+        "estado": "PUBLICADO",
+        "runs": [
+            {
+                "url": "https://github.com/x/y/actions/runs/34430133801",
+                "conclusion": "failure",
+            }
+        ],
+        "publicacoes": [
+            {
+                "url": "https://github.com/x/y/actions/runs/34435534721",
+                "job": "publicar-dados-admin",
+            },
+            {
+                "url": "https://github.com/x/y/actions/runs/34433902392",
+                "job": "deploy (cursos)",
+            },
+        ],
+    }
+    assert fila.urls_da_publicacao_comprovada(estado, URL_SUBMISSAO) == [
+        "https://github.com/x/y/actions/runs/34433902392",
+        "https://github.com/x/y/actions/runs/34435534721",
+    ]
+
+
+def test_entrega_sem_publicacao_usa_o_pr_integrado_como_prova():
+    estado = {"estado": "SEM_PUBLICACAO", "runs": []}
+    assert fila.urls_da_publicacao_comprovada(estado, URL_SUBMISSAO) == [
+        URL_SUBMISSAO
+    ]
+
+
+def test_reconciliacao_confronta_a_url_com_o_repositorio_corrente(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "ler_pr",
+        lambda *a: {"url": "https://github.com/outro/projeto/pull/1494"},
+    )
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "consultar_entrega",
+        lambda *a: pytest.fail("não consulta publicação de outro repositório"),
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="deste repositório"):
+        fila.provar_reconciliacao(
+            tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
+        )
+
+
+def test_reconciliacao_exige_as_correcoes_de_publicacao_no_atestado(
+    tmp_path, monkeypatch
+):
+    pr = {
+        "url": URL_SUBMISSAO,
+        "headRefOid": HEAD_RECONCILIADO,
+        "mergeCommit": {"oid": MERGE_RECONCILIADO},
+        "body": "Corrige-publicacao: 34430133801",
+    }
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+        "runs": [{"url": RUN_RECONCILIADO}],
+    }
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", lambda *a, **k: [])
+    correcoes = []
+
+    def avaliar(*args, **kwargs):
+        correcoes.extend(kwargs["correcoes"])
+        return Resultado("revisão", Estado.PASS, "atestado aprovado")
+
+    monkeypatch.setattr(fila.revisor_de_pouso, "avaliar_atestado", avaliar)
+    monkeypatch.setattr(
+        fila,
+        "carregar_aceite",
+        lambda *a: {"verificado_em": "2026-09-10"},
+    )
+    fila.provar_reconciliacao(tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE)
+    assert correcoes == [34430133801]
+
+
+def test_aceite_precisa_existir_na_main_e_ser_posterior_ao_merge(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(
+        fila,
+        "_git_da_fila",
+        lambda *a, **k: "",
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não existe"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_aceite_local_precisa_ser_identico_a_main(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        fila,
+        "_git_da_fila",
+        lambda *a, **k: REGISTRO_DE_ACEITE + "\n",
+    )
+    monkeypatch.setattr(fila, "_git_predicado", lambda *a, **k: False)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="difere"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_aceite_precisa_ser_introduzido_depois_do_merge(tmp_path, monkeypatch):
+    def git_medido(_raiz, *args, **_kwargs):
+        if args[0] == "ls-tree":
+            return REGISTRO_DE_ACEITE + "\n"
+        if args[0] == "log":
+            return MERGE_RECONCILIADO + "\n"
+        raise AssertionError(args)
+
+    monkeypatch.setattr(fila, "_git_da_fila", git_medido)
+    monkeypatch.setattr(fila, "_git_predicado", lambda *a, **k: True)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="após o merge"):
+        fila.carregar_aceite(
+            tmp_path,
+            REGISTRO_DE_ACEITE,
+            MERGE_RECONCILIADO,
+            [RUN_RECONCILIADO],
+        )
+
+
+def test_reconciliacao_instrumento_quebrado_e_error_nao_fail(
+    tmp_path, monkeypatch, capsys
+):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "raiz_do_repo", lambda: tmp_path)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (_ for _ in ()).throw(ErroDeInstrumentacao("git indisponível")),
+    )
+    assert (
+        fila.main(
+            [
+                "reconciliar",
+                "TAR-001",
+                "--quem",
+                "maestro",
+                "--aceite-registro",
+                REGISTRO_DE_ACEITE,
+            ]
+        )
+        == 2
+    )
+    assert "PAROU POR SEGURANÇA" in capsys.readouterr().out
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_reconciliacao_recusada_nao_escreve_nem_libera(tmp_path, monkeypatch):
+    montar(tmp_path, [tarefa()], [evento(), submissao_reconciliavel()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: (_ for _ in ()).throw(
+            fila.RecusaDeReconciliacao("publicação pendente")
+        ),
+    )
+    assert fila.cmd_reconciliar(tmp_path, args_de_reconciliar()) == 1
+    assert liberadas == []
+    assert not list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+
+
+def test_conclusao_escreve_antes_de_liberar_e_falha_de_escrita_preserva_reserva(
+    tmp_path, monkeypatch
+):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "_escrever_evento",
+        lambda *a, **k: (_ for _ in ()).throw(
+            ErroDeInstrumentacao("disco recusou a escrita")
+        ),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="disco recusou"):
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert liberadas == []
+
+
+def test_falha_ao_liberar_explica_como_preservar_a_conclusao(tmp_path, monkeypatch):
+    (tmp_path / "fila/eventos").mkdir(parents=True)
+
+    def falhar(*args):
+        assert list((tmp_path / "fila/eventos").glob("*-concluida.json"))
+        raise ErroDeInstrumentacao("servidor recusou a soltura")
+
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", falhar)
+    with pytest.raises(ErroDeInstrumentacao, match="conclusão foi registrada") as erro:
+        fila._concluir_com_prova(
+            tmp_path, "TAR-001", "sessao", "prova", "2026-09-10"
+        )
+    assert "fila.py soltar TAR-001" in erro.value.detalhe
+    assert len(list((tmp_path / "fila/eventos").glob("*-concluida.json"))) == 1
+
+
+def _sha(cwd, revisao):
+    return subprocess.run(
+        ["git", "rev-parse", revisao],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def test_medir_linhagem_em_git_real_aceita_escritura_e_recusa_codigo(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+
+    codigo = repo / "services/cursos/codigo.py"
+    codigo.parent.mkdir(parents=True)
+    codigo.write_text("TITULO = 'real'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo validado", cwd=repo)
+    revisao = _sha(repo, "HEAD")
+    arvore = _sha(repo, "HEAD^{tree}")
+
+    evento = repo / "fila/eventos/submetida.json"
+    recibo = repo / "painel/registros/recibo.js"
+    evento.parent.mkdir(parents=True)
+    recibo.parent.mkdir(parents=True)
+    evento.write_text("{}\n", encoding="utf-8")
+    recibo.write_text("registro\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "escritura", cwd=repo)
+    head_valido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-1.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integração", cwd=repo)
+    merge_valido = _sha(repo, "HEAD")
+
+    codigo.write_text("TITULO = 'mudou depois'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo posterior", cwd=repo)
+    head_invalido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-2.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "segunda integração", cwd=repo)
+    merge_invalido = _sha(repo, "HEAD")
+    _git("revert", "--no-edit", head_invalido, cwd=repo)
+    head_revertido = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-3.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "terceira integração", cwd=repo)
+    merge_revertido = _sha(repo, "HEAD")
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "-u", "origin", "main", cwd=repo)
+
+    submetida = {"revisao": revisao, "arvore": arvore}
+    fila.medir_linhagem(repo, submetida, head_valido, merge_valido)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(repo, submetida, head_invalido, merge_invalido)
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(repo, submetida, head_revertido, merge_revertido)
+
+
+def test_medir_linhagem_ve_codigo_criado_na_resolucao_de_merge(tmp_path):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+
+    codigo = repo / "services/cursos/codigo.py"
+    codigo.parent.mkdir(parents=True)
+    codigo.write_text("TITULO = 'validado'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo validado", cwd=repo)
+    revisao = _sha(repo, "HEAD")
+    arvore = _sha(repo, "HEAD^{tree}")
+
+    _git("checkout", "-b", "metadados-a", cwd=repo)
+    evento_a = repo / "fila/eventos/a.json"
+    evento_a.parent.mkdir(parents=True)
+    evento_a.write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "evento a", cwd=repo)
+    ponta_a = _sha(repo, "HEAD")
+    _git("checkout", "-b", "metadados-b", revisao, cwd=repo)
+    recibo_b = repo / "painel/registros/b.js"
+    recibo_b.parent.mkdir(parents=True)
+    recibo_b.write_text("registro\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "recibo b", cwd=repo)
+
+    _git("checkout", "metadados-a", cwd=repo)
+    _git("merge", "--no-commit", "metadados-b", cwd=repo)
+    _git("commit", "-m", "merge somente de escritura", cwd=repo)
+    head_verde = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge-verde.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integracao da escritura", cwd=repo)
+    merge_verde = _sha(repo, "HEAD")
+
+    _git("checkout", "-b", "merge-com-codigo", ponta_a, cwd=repo)
+    _git("merge", "--no-commit", "metadados-b", cwd=repo)
+    codigo.write_text("TITULO = 'mudou no merge'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "merge com resolucao de codigo", cwd=repo)
+    head = _sha(repo, "HEAD")
+    (repo / "fila/eventos/merge.json").write_text("{}\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "integracao publicada", cwd=repo)
+    merge = _sha(repo, "HEAD")
+    _git("remote", "add", "origin", str(remoto), cwd=repo)
+    _git("push", "origin", "HEAD:main", cwd=repo)
+
+    fila.medir_linhagem(
+        repo,
+        {"revisao": revisao, "arvore": arvore},
+        head_verde,
+        merge_verde,
+    )
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        fila.medir_linhagem(
+            repo,
+            {"revisao": revisao, "arvore": arvore},
+            head,
+            merge,
+        )
+
+
+@pytest.mark.parametrize(
+    "cenario",
+    ["sincronizacao", "lateral", "resolucao", "conflito", "autoral", "revertida", "octopus"],
+)
+def test_medir_linhagem_separa_sincronizacao_de_autoria(tmp_path, cenario):
+    repo = tmp_path
+    _git("init", "-b", "main", cwd=repo)
+    _git("config", "user.email", "teste@teste", cwd=repo)
+    _git("config", "user.name", "Teste", cwd=repo)
+    codigo = repo / "codigo.py"
+    codigo.write_text("TITULO = 'base'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "base", cwd=repo)
+    _git("checkout", "-b", "entrega", cwd=repo)
+    codigo.write_text("TITULO = 'submetido'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo submetido", cwd=repo)
+    submetida = {"revisao": _sha(repo, "HEAD"), "arvore": _sha(repo, "HEAD^{tree}")}
+
+    _git("checkout", "main", cwd=repo)
+    if cenario == "lateral":
+        _git("checkout", "-b", "lateral", cwd=repo)
+    recebido = repo / "recebido.py"
+    recebido.write_text("VALOR = 'publicado'\n", encoding="utf-8")
+    if cenario == "conflito":
+        codigo.write_text("TITULO = 'mudou na main'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "codigo da outra entrega", cwd=repo)
+    pai_lateral = _sha(repo, "HEAD")
+    pais_laterais = [pai_lateral]
+    if cenario == "octopus":
+        _git("checkout", "-b", "segunda", "main^", cwd=repo)
+        (repo / "segundo.py").write_text("VALOR = 2\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "segunda entrega", cwd=repo)
+        pais_laterais.append(_sha(repo, "HEAD"))
+        _git("checkout", "main", cwd=repo)
+        _git("merge", "--no-ff", "segunda", "-m", "segunda publicada", cwd=repo)
+    _git("checkout", "entrega", cwd=repo)
+    sincronizacao = subprocess.run(
+        ["git", "merge", "--no-ff", "--no-commit", *pais_laterais],
+        cwd=repo, capture_output=True, text=True,
+    )
+    assert sincronizacao.returncode == (1 if cenario == "conflito" else 0)
+    if cenario in ("resolucao", "conflito", "octopus"):
+        codigo.write_text("TITULO = 'resolucao manual'\n", encoding="utf-8")
+    _git("add", ".", cwd=repo)
+    _git("commit", "-m", "sincronizacao", cwd=repo)
+    if cenario in ("autoral", "revertida"):
+        recebido.write_text("VALOR = 'autoral posterior'\n", encoding="utf-8")
+        _git("add", ".", cwd=repo)
+        _git("commit", "-m", "mudanca depois da sincronizacao", cwd=repo)
+        if cenario == "revertida":
+            _git("revert", "--no-edit", "HEAD", cwd=repo)
+    head = _sha(repo, "HEAD")
+    _git("checkout", "main", cwd=repo)
+    _git("merge", "--no-ff", "entrega", "-m", "integracao", cwd=repo)
+    merge = _sha(repo, "HEAD")
+
+    if cenario == "sincronizacao":
+        fila.medir_linhagem(repo, submetida, head, merge)
+    else:
+        caminho = "codigo.py" if cenario in ("resolucao", "conflito", "octopus") else "recebido.py"
+        with pytest.raises(fila.RecusaDeReconciliacao, match=caminho):
+            fila.medir_linhagem(repo, submetida, head, merge)
+
+
+def test_reconciliar_recusa_bancada_sem_conclusao_ja_publicada(
+    tmp_path, monkeypatch, capsys
+):
+    remoto = tmp_path / "remoto.git"
+    remoto.mkdir()
+    _git("init", "--bare", cwd=remoto)
+    primeira = tmp_path / "primeira"
+    primeira.mkdir()
+    _git("init", "-b", "main", cwd=primeira)
+    _git("config", "user.email", "teste@teste", cwd=primeira)
+    _git("config", "user.name", "Teste", cwd=primeira)
+    montar(primeira, [tarefa()], [evento(), submissao_reconciliavel()])
+    _git("add", ".", cwd=primeira)
+    _git("commit", "-m", "entrega submetida", cwd=primeira)
+    _git("remote", "add", "origin", str(remoto), cwd=primeira)
+    _git("push", "-u", "origin", "main", cwd=primeira)
+
+    atrasada = tmp_path / "atrasada"
+    _git("clone", "-b", "main", str(remoto), str(atrasada), cwd=tmp_path)
+    concluida = evento(
+        tipo="concluida",
+        hora="12:00:00",
+        evidencia="prova publicada",
+        verificado_em="2026-09-10",
+    )
+    caminho = primeira / "fila/eventos" / f"{concluida['arquivo']}.json"
+    caminho.write_text(json.dumps(concluida), encoding="utf-8")
+    _git("add", ".", cwd=primeira)
+    _git("commit", "-m", "conclusao publicada", cwd=primeira)
+    _git("push", "origin", "main", cwd=primeira)
+
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "provar_reconciliacao",
+        lambda *a: pytest.fail("não releia a fila antes de provar seu frescor"),
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+
+    assert fila.cmd_reconciliar(atrasada, args_de_reconciliar()) == 1
+    assert "merge de origin/main" in capsys.readouterr().out
+    assert liberadas == []
+    assert not list((atrasada / "fila/eventos").glob("*-concluida.json"))
+    assert _sha(atrasada, "origin/main") == _sha(primeira, "HEAD")
+
+
+def test_reconciliar_exige_bancada(espelho_e_bancada):
+    principal, _ = espelho_e_bancada
+    assert fila.cmd_reconciliar(principal, args_de_reconciliar()) == 1
+    assert not list((principal / "fila/eventos").glob("*-concluida.json"))
+
+
+# ---------------------------------------------------------------------------
+# O "FEITO" VIAJA NA ENTREGA (12/09/2026): a tarefa fecha no merge do PR,
+# porque push direto na `main` é recusado para todo mundo e a porta do pouso
+# não tem onde gravar.
+# ---------------------------------------------------------------------------
+
+def args_de_fechar(**extra):
+    dados = {"tarefa": "TAR-001", "quem": "agent/fila/tarefa", "pr": URL_SUBMISSAO}
+    dados.update(extra)
+    return argparse.Namespace(**dados)
+
+
+def test_entrega_escreve_o_feito_e_a_fila_mostra_concluida(tmp_path, monkeypatch):
+    """O PR de entrega submete e fecha, e o estado calculado vira concluída."""
+    # guarda: ci/fila.py:1724
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+    assert len(escrito) == 1
+    dados = json.loads(escrito[0].read_text(encoding="utf-8"))
+    assert dados["evidencia"] == URL_SUBMISSAO
+    assert dados["verificado_em"]
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert not erros
+    assert fila.calcular_estados(tarefas, eventos)["TAR-001"]["estado"] == fila.CONCLUIDA
+
+
+def test_fechar_pela_entrega_exige_a_submissao_daquele_pr(tmp_path, monkeypatch, capsys):
+    """Sem submissão registrada, nenhuma string fecha tarefa alheia.
+
+    A evidência de uma entrega é o PR que a fila JÁ registrou como submissão.
+    Sem esta amarra, `fechar-pela-entrega TAR-nnn --pr "qualquer coisa"`
+    encerraria a tarefa de outra pessoa com prova inventada, e a folga de
+    `cmd_submeter` reabriria a tarefa por essa mesma string.
+    """
+    # guarda: ci/fila.py:2376
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr="prova inventada")) == 1
+    assert "não é a entrega submetida" in capsys.readouterr().out
+    assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+
+
+def test_fechar_pela_entrega_recusa_pr_diferente_da_submissao(tmp_path, monkeypatch, capsys):
+    """Submissão existe, mas para outro PR: também não fecha."""
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar(pr=URL_SUBMISSAO + "9")) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))
+
+
+def test_entrega_nao_duplica_o_feito_no_continuar(tmp_path, monkeypatch, capsys):
+    """`--continuar` chama de novo e nada é repetido."""
+    # guarda: ci/fila.py:1695
+    montar(tmp_path, [tarefa()], [evento(), submissao()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    capsys.readouterr()
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 0
+    assert "já está no ramo" in capsys.readouterr().out
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
+
+
+def test_entrega_recusa_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
+    """Conclusão alheia não é sobrescrita nem acompanhada de uma segunda."""
+    # guarda: ci/fila.py:2382
+    alheia = evento(tipo="concluida", hora="12:00:00",
+                    evidencia="outro aceite", verificado_em="2026-09-11")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_fechar_pela_entrega(tmp_path, args_de_fechar()) == 1
+    assert "já terminou por outro fato" in capsys.readouterr().out
+    assert len(list((tmp_path / "fila" / "eventos").glob("*-TAR-001-concluida.json"))) == 1
+
+
+def test_submeter_segue_atualizando_a_entrega_que_fechou_a_tarefa(tmp_path, monkeypatch):
+    """O `--continuar` não pode bater no guarda terminal que ele mesmo criou."""
+    # guarda: ci/fila.py:1707
+    nossa = evento(tipo="concluida", hora="12:00:00",
+                   evidencia=URL_SUBMISSAO, verificado_em="2026-09-12")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), nossa])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(revisao="c" * 40)) == 0
+    submetidas = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-submetida.json"))
+    assert len(submetidas) == 2
+
+
+def test_submeter_continua_recusando_tarefa_encerrada_por_outro_fato(tmp_path, monkeypatch, capsys):
+    """A folga vale só para a conclusão desta entrega, e por PR exato."""
+    alheia = evento(tipo="concluida", hora="12:00:00",
+                    evidencia=URL_SUBMISSAO + "0", verificado_em="2026-09-11")
+    montar(tmp_path, [tarefa()], [evento(), submissao(), alheia])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    assert fila.cmd_submeter(tmp_path, args_de_submeter(revisao="c" * 40)) == 1
+    assert "já terminou" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# A CADEIA DA ARMADILHA — o trabalho que o termômetro cria, e que ninguém
+# fecha no grito (fase 5 do laço de melhoria contínua)
+#
+# Duas pontas do mesmo fio. Na CRIAÇÃO, a origem `ci/termometro.py:armadilhas/NNN`
+# é a IDENTIDADE da tarefa: rodar a medição de novo não pode gerar uma segunda
+# tarefa para a mesma reincidência, e duas medições simultâneas não podem deixar
+# duas. Na CONCLUSÃO, só fecha quem provar a guarda DAQUELA armadilha: prova de
+# outra é prova de nada, e `validar` refaz essa conta no SHA do PR.
+# ---------------------------------------------------------------------------
+
+ORIGEM_AUTOMATICA = "ci/termometro.py:armadilhas/088"
+ORIGEM_DE_OUTRA = "ci/termometro.py:armadilhas/203"
+GUARDA_DA_088 = "ci/tests/test_vacina_do_deploy.py"
+DETECTOR_DA_088 = "test_exemplo"
+NODE_DA_088 = f"{GUARDA_DA_088}::{DETECTOR_DA_088}"
+PROTEGIDO_DA_088 = "ci/vacina_do_deploy.py"
+LINHA_PROTEGIDA = 2
+
+
+def armadilha_com_guarda(raiz, numero="088", dono=GUARDA_DA_088, tipo="CI",
+                         detector=DETECTOR_DA_088):
+    """Uma armadilha de schema 2, com a guarda declarada e a bancada que ela aponta.
+
+    A bancada é de mentira, mas COERENTE: o teste traz o marcador
+    `# guarda: arquivo:linha` que a conferência de identidade relê, e o arquivo
+    protegido tem a linha executável que a sabotagem comentaria. Sem isso, nada
+    aqui mediria o que a muralha mede no SHA do PR.
+    """
+    pasta = raiz / "armadilhas"
+    pasta.mkdir(parents=True, exist_ok=True)
+    bloco = f"guarda:\n  tipo: {tipo}\n"
+    if dono:
+        bloco += f"  dono: {dono}\n"
+    if detector:
+        bloco += f"  detector: {detector}\n"
+    (pasta / f"{numero}-exemplo.md").write_text(
+        "---\n"
+        "schema_version: 2\n"
+        f"armadilha: {numero}\n"
+        "estado: guardada\n"
+        "degrau: 2\n"
+        "confianca: alta\n"
+        "custo_por_queda: baixo\n"
+        f"{bloco}"
+        "---\n\n# Uma armadilha de exemplo\n",
+        encoding="utf-8",
+    )
+    if dono:
+        alvo = raiz / dono
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        if dono.endswith(".py"):
+            protegido = raiz / PROTEGIDO_DA_088
+            protegido.parent.mkdir(parents=True, exist_ok=True)
+            protegido.write_text(
+                'def vacinar():\n    return "verde"\n', encoding="utf-8"
+            )
+            alvo.write_text(
+                f"def {DETECTOR_DA_088}():\n"
+                f"    # guarda: {PROTEGIDO_DA_088}:{LINHA_PROTEGIDA}\n"
+                f"    assert True\n",
+                encoding="utf-8",
+            )
+        else:
+            # Dono que não é teste Python não tem marcador para escrever, e
+            # precisa existir para provar que existir não basta.
+            alvo.write_text("#!/usr/bin/env bash\nexit 1\n", encoding="utf-8")
+    return raiz
+
+
+def sha_do_protegido(raiz):
+    """O sha256 que `provar_guardas.descobrir` mede do arquivo protegido."""
+    return hashlib.sha256((raiz / PROTEGIDO_DA_088).read_bytes()).hexdigest()
+
+
+def cadeia(raiz, numero="088", teste=NODE_DA_088, **sobrescreve):
+    """O que `provar_guardas` mediu, no tamanho que cabe dentro do evento."""
+    guarda = {
+        "teste": teste,
+        "protege": PROTEGIDO_DA_088,
+        "linha": LINHA_PROTEGIDA,
+        "sha256": sha_do_protegido(raiz),
+        "reprovou": True,
+        "baseline": "PASS",
+        "mutacao": "FAIL",
+        "restauracao": "PASS",
+    }
+    guarda.update(sobrescreve.pop("guarda", {}))
+    dados = {"armadilha": numero, "revisao": "a" * 40, "guardas": [guarda]}
+    dados.update(sobrescreve)
+    return dados
+
+
+def cadastro_para_criar(raiz):
+    """O mínimo que `criar` cobra antes de gastar número do almoxarife."""
+    (raiz / "painel" / "medicoes").mkdir(parents=True, exist_ok=True)
+    (raiz / "painel" / "medicoes" / "esforco.json").write_text("{}", encoding="utf-8")
+    (raiz / "painel" / "responsabilidades.json").write_text(json.dumps({
+        "funcoes": {
+            nome: {"pessoa": "Pessoa", "substituto": "Substituto"}
+            for nome in responsabilidades.FUNCOES
+        },
+        "unidades": [{
+            "id": "medicao-de-esforco", "tipo": "rotina",
+            "titular_funcao": "estrategia-conteudo", "finalidade": "medir",
+            "acompanhamento": "revisar", "fonte": "painel/medicoes/esforco.json",
+            "prepara": "Pessoa", "executa": "Pessoa",
+            "aprova": "Estratégia e Conteúdo", "excecoes": "nenhuma",
+            "autoridade": "Decide: revisa a medição. Escala para: mantenedor.",
+            "evidencia": "prova",
+        }],
+    }), encoding="utf-8")
+    return raiz
+
+
+def test_criar_com_origem_do_termometro_pede_o_numero_pela_CHAVE_da_origem(
+    tmp_path, monkeypatch
+):
+    """A identidade da tarefa é a origem, e o almoxarife já deduplica por chave."""
+    cadastro_para_criar(montar(tmp_path, []))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    pedidos = []
+
+    def alocar(raiz, superficie, *a, **k):
+        pedidos.append((superficie, k.get("chave")))
+        return "099"
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", alocar)
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
+    chave = fila.chave_da_origem(ORIGEM_AUTOMATICA)
+    assert pedidos == [("tarefa", chave)]
+    assert len(chave) == 64 and int(chave, 16) >= 0
+
+
+def test_criar_com_origem_comum_continua_sem_chave(tmp_path, monkeypatch):
+    """Tarefa de gente não vira chave: a dedupe é da medição, não do balcão."""
+    cadastro_para_criar(montar(tmp_path, []))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    pedidos = []
+
+    def alocar(raiz, superficie, *a, **k):
+        pedidos.append(k.get("chave"))
+        return "099"
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", alocar)
+    assert fila.cmd_criar(tmp_path, args_de_criar()) == 0
+    assert pedidos == [None]
+
+
+def test_segunda_medicao_da_mesma_origem_NAO_duplica_nem_pede_numero(
+    tmp_path, monkeypatch, capsys
+):
+    cadastro_para_criar(montar(tmp_path, []))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
+    capsys.readouterr()
+
+    def nunca(*a, **k):
+        raise AssertionError("não deveria pedir número para origem que já existe")
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
+    assert "TAR-099" in capsys.readouterr().out
+    assert len(list((tmp_path / "fila" / "tarefas").glob("*.json"))) == 1
+
+
+def test_origem_diferente_continua_criando_tarefa_nova(tmp_path, monkeypatch):
+    cadastro_para_criar(montar(tmp_path, []))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    numeros = iter(["099", "100"])
+    monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: next(numeros))
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_DE_OUTRA)) == 0
+    tarefas, _, erros = carregar(tmp_path)
+    assert erros == []
+    assert sorted(t["origem"] for t in tarefas.values()) == [
+        ORIGEM_AUTOMATICA,
+        ORIGEM_DE_OUTRA,
+    ]
+
+
+def test_duas_medicoes_concorrentes_deixam_UMA_origem_na_fila(
+    tmp_path, monkeypatch, capsys
+):
+    """A janela é entre conferir e gravar: quem chega segundo reconfere e desiste."""
+    cadastro_para_criar(montar(tmp_path, []))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+
+    def alocar_perdendo_a_corrida(raiz, superficie, *a, **k):
+        rival = tarefa(numero="098", slug="rival", origem=ORIGEM_AUTOMATICA)
+        (tmp_path / "fila" / "tarefas" / "098-rival.json").write_text(
+            json.dumps(rival, ensure_ascii=False), encoding="utf-8"
+        )
+        return "099"
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", alocar_perdendo_a_corrida)
+    assert fila.cmd_criar(tmp_path, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 0
+    assert "TAR-098" in capsys.readouterr().out
+    tarefas, _, erros = carregar(tmp_path)
+    assert erros == []
+    assert [
+        t["id"] for t in tarefas.values() if t["origem"] == ORIGEM_AUTOMATICA
+    ] == ["TAR-098"]
+
+
+def test_concluir_tarefa_da_medicao_SEM_guarda_provada_e_RECUSADO(
+    tmp_path, monkeypatch, capsys
+):
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    liberadas = []
+    monkeypatch.setattr(
+        fila, "_soltar_reserva_se_houver", lambda *a: liberadas.append(a)
+    )
+    monkeypatch.setattr(
+        fila,
+        "provar_guarda_da_armadilha",
+        lambda *a: (["a guarda sabotada continuou verde"], {}),
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "continuou verde" in saida
+    assert liberadas == []
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_concluir_com_prova_de_OUTRA_armadilha_e_RECUSADO_dizendo_qual_faltou(
+    tmp_path, monkeypatch, capsys
+):
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "provar_guarda_da_armadilha",
+        lambda *a: ([], cadeia(raiz, numero="203")),
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert GUARDA_DA_088 in saida
+    assert "088" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_concluir_com_a_prova_certa_grava_a_cadeia_dentro_do_evento(
+    tmp_path, monkeypatch
+):
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(
+        fila, "provar_guarda_da_armadilha", lambda *a: ([], cadeia(raiz))
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 0
+    escritos = list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+    assert len(escritos) == 1
+    gravado = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert gravado["prova_da_guarda"] == cadeia(raiz)
+    _, _, erros = carregar(raiz)
+    assert erros == []
+
+
+def test_tarefa_COMUM_nao_ganha_a_regra_da_cadeia(tmp_path, monkeypatch):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+
+    def nunca(*a, **k):
+        raise AssertionError("tarefa de gente não prova guarda de armadilha")
+
+    monkeypatch.setattr(fila, "provar_guarda_da_armadilha", nunca)
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 0
+    escritos = list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+    gravado = json.loads(escritos[0].read_text(encoding="utf-8"))
+    assert "prova_da_guarda" not in gravado
+    # E a muralha atravessa a mesma conclusão sem cobrar cadeia de ninguém.
+    assert fila.cmd_validar(raiz) == 0
+
+
+def test_origem_ja_concluida_sem_cadeia_para_a_medicao_com_ERROR(
+    tmp_path, monkeypatch, capsys
+):
+    """Nem recria nem passa batido: a medição não tem como saber se o laço fechou."""
+    raiz = armadilha_com_guarda(cadastro_para_criar(montar(
+        tmp_path,
+        [tarefa(origem=ORIGEM_AUTOMATICA)],
+        [evento(), evento(tipo="concluida", hora="12:00:00",
+                          evidencia="PR", verificado_em="2026-09-18")],
+    )))
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+
+    def nunca(*a, **k):
+        raise AssertionError("não deveria pedir número sobre uma conclusão falsa")
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    assert fila.cmd_criar(raiz, args_de_criar(origem=ORIGEM_AUTOMATICA)) == 2
+    assert "PAROU POR SEGURANÇA" in capsys.readouterr().out
+    assert len(list((raiz / "fila" / "tarefas").glob("*.json"))) == 1
+
+
+def medicao_fingida(estado, guardas):
+    """`provar_guardas.provar`, sem worktree nem pytest: aqui só a identidade importa."""
+    def provar(raiz, entradas, evidencia):
+        evidencia["revisao"] = "c" * 40
+        evidencia["guardas"] = [dict(g) for g in guardas]
+        return estado
+
+    return provar
+
+
+def guarda_medida(raiz, **sobrescreve):
+    dados = {
+        "teste": NODE_DA_088,
+        "protege": PROTEGIDO_DA_088,
+        "linha": LINHA_PROTEGIDA,
+        "sha256": sha_do_protegido(raiz),
+        "baseline": "PASS",
+        "mutacao": "FAIL",
+        "restauracao": "PASS",
+        "reprovou": True,
+        "log_baseline": {"gordo": "x" * 5000},
+    }
+    dados.update(sobrescreve)
+    return dados
+
+
+def test_prova_verde_vira_cadeia_enxuta_sem_os_logs_do_pytest(tmp_path, monkeypatch):
+    """O evento é arquivo que alguém abre: o JSON integral do pytest não cabe nele.
+
+    O que fica é o que a muralha precisa para refazer a conta sem pytest: node
+    ID, arquivo e linha sabotados, o sha256 de então e se a guarda mordeu.
+    """
+    raiz = armadilha_com_guarda(tmp_path)
+    monkeypatch.setattr(
+        fila.provar_guardas,
+        "provar",
+        medicao_fingida(Estado.PASS, [guarda_medida(raiz)]),
+    )
+    problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
+    assert problemas == []
+    assert prova == {
+        "armadilha": "088",
+        "revisao": "c" * 40,
+        "guardas": [{
+            "teste": NODE_DA_088,
+            "protege": PROTEGIDO_DA_088,
+            "linha": LINHA_PROTEGIDA,
+            "sha256": sha_do_protegido(raiz),
+            "reprovou": True,
+            "baseline": "PASS",
+            "mutacao": "FAIL",
+            "restauracao": "PASS",
+        }],
+    }
+
+
+def test_guarda_que_nao_reprova_sabotada_e_recusada_com_o_comando_do_conserto(
+    tmp_path, monkeypatch
+):
+    raiz = armadilha_com_guarda(tmp_path)
+    monkeypatch.setattr(
+        fila.provar_guardas,
+        "provar",
+        medicao_fingida(
+            Estado.FAIL, [guarda_medida(raiz, mutacao="PASS", reprovou=False)]
+        ),
+    )
+    problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
+    assert len(problemas) == 1
+    assert "PASS→FAIL→PASS" in problemas[0]
+    assert f"ci/provar_guardas.py {GUARDA_DA_088}" in problemas[0]
+    assert prova["guardas"][0]["mutacao"] == "PASS"
+
+
+def test_instrumento_da_prova_quebrado_vira_recusa_explicada(tmp_path, monkeypatch):
+    """Marcador torto não pode virar conclusão: vira frase que diz o que arrumar.
+
+    E a recusa vale para as TRÊS formas de o instrumento quebrar, não só para
+    `ProvaInvalida`: a bancada descartável é uma worktree do git e a sabotagem
+    de `.sh` chama o bash sondado da casa, e nenhum dos dois levanta
+    `ProvaInvalida`. Deixar qualquer uma subir trocaria a frase por traceback.
+    """
+    raiz = armadilha_com_guarda(tmp_path)
+
+    quebras = [
+        fila.provar_guardas.ProvaInvalida("nenhuma guarda declarada"),
+        OSError("git worktree add: index.lock existe"),
+        RuntimeError("bash nao encontrado no PATH"),
+    ]
+    for quebra in quebras:
+        def recusar(*a, _erro=quebra, **k):
+            raise _erro
+
+        monkeypatch.setattr(fila.provar_guardas, "provar", recusar)
+        problemas, prova = fila.provar_guarda_da_armadilha(raiz, ORIGEM_AUTOMATICA)
+        assert prova == {}
+        assert str(quebra) in problemas[0]
+        assert type(quebra).__name__ in problemas[0]
+        assert f"ci/provar_guardas.py {GUARDA_DA_088}" in problemas[0], (
+            "toda recusa diz o comando que mostra a mesma falha com o log inteiro"
+        )
+
+
+def test_guarda_sino_ou_nenhum_nao_fecha_a_tarefa_da_medicao(
+    tmp_path, monkeypatch, capsys
+):
+    """Sino avisa e 'nenhum' assume o buraco: nenhum dos dois reprova coisa alguma."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    for tipo in ("sino", "nenhum"):
+        raiz = armadilha_com_guarda(
+            montar(tmp_path / tipo, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+            tipo=tipo,
+            dono="",
+        )
+        assert fila._concluir_com_prova(
+            raiz, "TAR-001", "sessao", "PR", "2026-09-18"
+        ) == 1, tipo
+        saida = capsys.readouterr().out
+        assert tipo in saida, tipo
+        assert "guarda mecânica" in saida, tipo
+        assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_armadilha_sem_dono_ou_ausente_recusa_dizendo_o_que_corrigir(
+    tmp_path, monkeypatch, capsys
+):
+    """Cada recusa aponta o arquivo e o conserto: ninguém fica adivinhando."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+
+    sem_catalogo = montar(tmp_path / "sem-catalogo", [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    assert fila._concluir_com_prova(sem_catalogo, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "armadilhas/088, que não existe" in capsys.readouterr().out
+
+    sem_dono = armadilha_com_guarda(
+        montar(tmp_path / "sem-dono", [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        dono="",
+    )
+    assert fila._concluir_com_prova(sem_dono, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "sem 'dono'" in capsys.readouterr().out
+
+    dono_fantasma = armadilha_com_guarda(
+        montar(tmp_path / "dono-fantasma", [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    (dono_fantasma / GUARDA_DA_088).unlink()
+    assert fila._concluir_com_prova(dono_fantasma, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "que não existe nesta árvore" in capsys.readouterr().out
+
+    legado = montar(tmp_path / "legado", [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    (legado / "armadilhas").mkdir()
+    (legado / "armadilhas" / "088-legado.md").write_text(
+        "# Uma armadilha sem frontmatter\n", encoding="utf-8"
+    )
+    assert fila._concluir_com_prova(legado, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "entrada legada" in capsys.readouterr().out
+
+
+def test_o_detector_com_PROSA_colada_vira_node_ID_limpo(tmp_path, monkeypatch):
+    """Oito entradas vivas escrevem `detector: test_x: a explicacao`.
+
+    Colar o campo cru em `dono::detector` produziria um node ID com a prosa
+    dentro, e pytest nao coleta nada com esse nome. Quem separa o nome do
+    teste do resto e o indice, e a fila le dele: duas leituras do mesmo campo
+    divergiriam no primeiro dia em que alguem mexesse numa so.
+    """
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="test_exemplo: e a linha que impede o deploy sem chave",
+    )
+    problemas, node = fila.guarda_declarada(raiz, ORIGEM_AUTOMATICA)
+    assert problemas == []
+    assert node == f"{GUARDA_DA_088}::test_exemplo"
+
+
+def test_o_detector_que_so_repete_o_NOME_DO_ARQUIVO_e_recusado(
+    tmp_path, monkeypatch, capsys
+):
+    """`detector: test_vacina_do_deploy` com `dono: .../test_vacina_do_deploy.py`
+    nomeia o ARQUIVO, e provar o arquivo inteiro provaria qualquer teste dele.
+    """
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector=Path(GUARDA_DA_088).stem,
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "nao nomeia um teste" in saida.replace("ã", "a").replace("é", "e")
+    assert "grep -n 'def test_'" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_armadilha_sem_detector_recusa_dizendo_o_nome_que_falta_escrever(
+    tmp_path, monkeypatch, capsys
+):
+    """Sem o nome do detector, provar o arquivo provaria qualquer teste dele."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="",
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "sem 'detector'" in saida
+    assert "detector: test_" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_dono_que_aponta_o_arquivo_protegido_recusa_dizendo_onde_ele_mora(
+    tmp_path, monkeypatch, capsys
+):
+    """O defeito medido na 088 em 18/09/2026: 'dono' é o TESTE, e nada mais.
+
+    O arquivo protegido não entra em 'dono' nem quando existe: quem reprova
+    sabotada é pytest, e o protegido já se declara no marcador de dentro do teste.
+    """
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    protegido = "infra/deploy-celula-na-vps.sh"
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        dono=protegido,
+    )
+    assert (raiz / protegido).is_file()
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "não é um teste Python" in saida
+    assert f"# guarda: {protegido}:" in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_detector_que_nenhum_marcador_do_teste_declara_e_RECUSADO(
+    tmp_path, monkeypatch, capsys
+):
+    """Detector torto não pode gastar três execuções para provar outra guarda."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()]),
+        detector="test_que_ninguem_marcou",
+    )
+
+    def nunca(*a, **k):
+        raise AssertionError("prova de detector torto não pode nem começar")
+
+    monkeypatch.setattr(fila.provar_guardas, "provar", nunca)
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    saida = capsys.readouterr().out
+    assert "test_que_ninguem_marcou" in saida
+    assert NODE_DA_088 in saida
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def test_dois_marcadores_no_mesmo_teste_param_a_conferencia_em_vez_de_escolher(
+    tmp_path, monkeypatch, capsys
+):
+    """Escolher um dos dois em silêncio seria medir por sorteio, e sorteio não prova."""
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento()])
+    )
+    (raiz / PROTEGIDO_DA_088).write_text(
+        "def vacinar():\n    doses = 1\n    return doses\n", encoding="utf-8"
+    )
+    (raiz / GUARDA_DA_088).write_text(
+        f"def {DETECTOR_DA_088}():\n"
+        f"    # guarda: {PROTEGIDO_DA_088}:2\n"
+        f"    # guarda: {PROTEGIDO_DA_088}:3\n"
+        f"    assert True\n",
+        encoding="utf-8",
+    )
+    assert fila._concluir_com_prova(raiz, "TAR-001", "sessao", "PR", "2026-09-18") == 1
+    assert "2 marcadores" in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+def fila_com_cadeia(raiz, monta_prova):
+    """Fila com a tarefa da medição já concluída, e a cadeia que ela alega.
+
+    A bancada vem primeiro porque a cadeia se mede CONTRA ela: o marcador do
+    teste e o sha256 do arquivo protegido só existem depois que ela existe.
+    """
+    armadilha_com_guarda(raiz)
+    prova = monta_prova(raiz)
+    extra = {"prova_da_guarda": prova} if prova is not None else {}
+    montar(
+        raiz,
+        [tarefa(origem=ORIGEM_AUTOMATICA)],
+        [
+            evento(),
+            evento(
+                tipo="concluida",
+                hora="12:00:00",
+                evidencia="PR",
+                verificado_em="2026-09-18",
+                **extra,
+            ),
+        ],
+    )
+    return raiz
+
+
+def test_validar_reprova_cadeia_que_nao_se_reconstroi(tmp_path, capsys):
+    """Cada linha é uma prova falsa que já passou, ou passaria, escrita à mão."""
+    quebradas = {
+        "sem-prova": lambda raiz: None,
+        "de-outra-armadilha": lambda raiz: cadeia(raiz, numero="203"),
+        "teste-de-outro-arquivo": lambda raiz: cadeia(
+            raiz, teste="ci/tests/test_outra.py::test_x"
+        ),
+        "detector-inventado": lambda raiz: cadeia(
+            raiz, teste=f"{GUARDA_DA_088}::test_inventado"
+        ),
+        "mutacao-verde": lambda raiz: cadeia(raiz, guarda={"mutacao": "PASS"}),
+        "sabotagem-que-nao-mordeu": lambda raiz: cadeia(
+            raiz, guarda={"reprovou": False}
+        ),
+        "linha-que-o-marcador-nao-protege": lambda raiz: cadeia(
+            raiz, guarda={"linha": 999999}
+        ),
+        "arquivo-que-o-marcador-nao-protege": lambda raiz: cadeia(
+            raiz, guarda={"protege": "ci/outro_arquivo.py"}
+        ),
+        "sha256-de-antes-do-arquivo-mudar": lambda raiz: cadeia(
+            raiz, guarda={"sha256": "d" * 64}
+        ),
+        "sem-revisao": lambda raiz: cadeia(raiz, revisao=""),
+        "revisao-que-nao-e-sha": lambda raiz: cadeia(raiz, revisao="HEAD"),
+    }
+    for nome, monta_prova in quebradas.items():
+        raiz = fila_com_cadeia(tmp_path / nome, monta_prova)
+        assert fila.cmd_validar(raiz) == 1, nome
+        saida = capsys.readouterr().out
+        assert "FILA INVÁLIDA" in saida, nome
+        assert "088" in saida, nome
+
+
+def test_validar_aceita_a_cadeia_que_se_reconstroi(tmp_path, capsys):
+    raiz = fila_com_cadeia(tmp_path / "inteira", cadeia)
+    assert fila.cmd_validar(raiz) == 0
+    assert "Fila válida" in capsys.readouterr().out
+
+
+# A CAMPEÃ DE VERDADE: a 088 deste repositório, e não uma de mentira.
+# Sem os dois testes abaixo o laço seria uma engrenagem bonita girando no vazio:
+# o primeiro prova que a tarefa que o termômetro abre TEM como fechar, e o
+# segundo prova que uma cadeia inventada à mão NÃO fecha. Nenhum dos dois roda
+# pytest: os dois releem o marcador do teste, que é a fonte da verdade.
+
+
+def test_a_guarda_da_088_REAL_se_prova_pelo_marcador_que_o_teste_declara():
+    raiz = Path(__file__).resolve().parents[2]
+    problemas, node = fila.guarda_declarada(raiz, ORIGEM_AUTOMATICA)
+    assert problemas == []
+    assert node == (
+        "ci/tests/test_chaves_do_gateway_no_deploy.py"
+        "::test_celula_sem_servico_continua_dizendo_exatamente_isso"
+    )
+    marcador = fila.marcador_real_da_guarda(raiz, node)
+    assert marcador["protege"] == "infra/deploy-celula-na-vps.sh"
+    assert marcador["linha"] == 166
+    cadeia_da_bancada = {
+        "armadilha": "088",
+        "revisao": "e" * 40,
+        "guardas": [{
+            "teste": node,
+            "protege": marcador["protege"],
+            "linha": marcador["linha"],
+            "sha256": marcador["sha256"],
+            "reprovou": True,
+            "baseline": "PASS",
+            "mutacao": "FAIL",
+            "restauracao": "PASS",
+        }],
+    }
+    assert fila.problemas_da_cadeia_automatica(
+        raiz, {"origem": ORIGEM_AUTOMATICA}, cadeia_da_bancada
+    ) == []
+
+
+def test_cadeia_INVENTADA_para_a_088_REAL_e_RECUSADA():
+    """A reprodução da auditoria: node de mentira, arquivo que não existe, linha 999999."""
+    raiz = Path(__file__).resolve().parents[2]
+    inventada = {
+        "armadilha": "088",
+        "revisao": "e" * 40,
+        "guardas": [{
+            "teste": "infra/deploy-celula-na-vps.sh::test_inventado",
+            "protege": "infra/arquivo-que-nao-existe.sh",
+            "linha": 999999,
+            "sha256": "f" * 64,
+            "reprovou": True,
+            "baseline": "PASS",
+            "mutacao": "FAIL",
+            "restauracao": "PASS",
+        }],
+    }
+    problemas = fila.problemas_da_cadeia_automatica(
+        raiz, {"origem": ORIGEM_AUTOMATICA}, inventada
+    )
+    assert problemas
+    assert "test_inventado" in problemas[0]
+    assert "test_celula_sem_servico_continua_dizendo_exatamente_isso" in problemas[0]
+
+def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
+    tmp_path, monkeypatch, capsys
+):
+    """A terceira porta terminal, e a que roda de verdade hoje.
+
+    Quem escreve o feito é `ci/pr.py`, na submissão, e não `concluir` à mão. Ela
+    fecha por `fechar_pela_entrega`, que chama `_concluir_com_prova` de propósito
+    — e é por isso que o portão mora ali, e não em `cmd_concluir`.
+    """
+    raiz = armadilha_com_guarda(
+        montar(tmp_path, [tarefa(origem=ORIGEM_AUTOMATICA)], [evento(), submissao()])
+    )
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(
+        fila,
+        "provar_guarda_da_armadilha",
+        lambda *a: (["a guarda sabotada continuou verde"], {}),
+    )
+    with pytest.raises(ErroDeInstrumentacao, match="não pôde escrever a conclusão"):
+        fila.cmd_fechar_pela_entrega(raiz, args_de_fechar())
+    assert "continuou verde" in capsys.readouterr().out
+    assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+# ---------------------------------------------------------------------------
+# A MESMA RÉGUA DO POUSO, NO FECHO DA TAREFA
+#
+# `ci/mergear.py` mede o atestado com a bancada em mãos: quando o SHA revisado
+# não é o HEAD final, `comprovar_atualizacao_da_base` diz se a diferença é só
+# main recebida. A fila media o mesmo atestado SEM a bancada, então recusava
+# como "não revisado" toda entrega que ficou aberta tempo bastante para receber
+# a main. Sete tarefas entregues, integradas e publicadas ficaram presas assim.
+# ---------------------------------------------------------------------------
+
+
+def pr_e_estado_reconciliaveis():
+    pr = {
+        "url": URL_SUBMISSAO,
+        "headRefOid": HEAD_RECONCILIADO,
+        "mergeCommit": {"oid": MERGE_RECONCILIADO},
+        "body": "",
+    }
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+        "runs": [{"url": RUN_RECONCILIADO}],
+    }
+    return pr, estado
+
+
+def atestado_de_outro_sha(sha):
+    corpo = revisor_de_pouso.MARCA_ATESTADO + json.dumps({
+        "sha": sha,
+        "despacho": "despacho",
+        "revisor": "revisor",
+        "maestro": "maestro",
+        "veredito": "APROVADO",
+        "resumo": "entrega revisada",
+        "evidencia": "suíte verde",
+    })
+    return [{"id": 9, "author_association": "OWNER", "body": corpo}]
+
+
+def test_reconciliacao_mede_a_atualizacao_da_base_como_o_pouso_mede(
+    tmp_path, monkeypatch
+):
+    """Sem a bancada, o atestado de outro SHA é recusado sem sequer ser medido."""
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "_api",
+        lambda *a, **k: atestado_de_outro_sha(REVISAO_RECONCILIADA),
+    )
+    # tmp_path não é repositório: a composição não pode ser provada e o veredito
+    # vira ERRO de instrumento. O que este teste prova é que ela foi TENTADA.
+    with pytest.raises(
+        fila.RecusaDeReconciliacao, match="comprovar a atualização da base"
+    ):
+        fila.provar_reconciliacao(
+            tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
+        )
+
+
+# ---------------------------------------------------------------------------
+# O FECHAMENTO RETROATIVO
+#
+# A linhagem prova que o conteúdo entregue é o conteúdo que o despacho testou.
+# Entrega antiga cujo despacho seguiu trabalhando sem re-submeter perde essa
+# prova para sempre. O substituto não é perdão: são os checks que a proteção da
+# main exige, verdes no SHA exato que integrou — prova mais forte, porque é da
+# pista e não da palavra do despacho. Ela só existe declarada, com motivo, e
+# viaja dentro da evidência do evento `concluida`.
+# ---------------------------------------------------------------------------
+
+
+def checks_do_head(conclusao="success"):
+    corridas = [
+        {"name": nome, "conclusion": conclusao}
+        for nome in fila.CHECKS_DA_INTEGRACAO
+    ]
+    return {"total_count": len(corridas), "check_runs": corridas}
+
+
+def reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks, **extra):
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+
+    def recusar(*a):
+        raise fila.RecusaDeReconciliacao("há código posterior à revisão: app.py")
+
+    monkeypatch.setattr(fila, "medir_linhagem", extra.pop("linhagem", recusar))
+    monkeypatch.setattr(
+        fila.revisor_de_pouso,
+        "avaliar_atestado",
+        lambda *a, **k: Resultado("revisão", Estado.PASS, "atestado aprovado"),
+    )
+    monkeypatch.setattr(
+        fila,
+        "carregar_aceite",
+        lambda *a: {"verificado_em": "2026-09-10"},
+    )
+
+    def api(raiz, caminho, **k):
+        if "check-runs" in caminho:
+            assert HEAD_RECONCILIADO in caminho
+            return checks
+        return []
+
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", api)
+    return fila.provar_reconciliacao(
+        tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE, **extra
+    )
+
+
+def test_sem_declarar_retroativa_a_linhagem_recusada_continua_recusando(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks_do_head())
+
+
+def test_retroativa_troca_a_linhagem_pelos_checks_verdes_e_grava_o_motivo(
+    tmp_path, monkeypatch
+):
+    evidencia, verificado_em = reconciliar_com_linhagem_recusada(
+        tmp_path,
+        monkeypatch,
+        checks_do_head(),
+        retroativa="despacho seguiu sem re-submeter; PR 1540 integrado",
+    )
+    assert verificado_em == "2026-09-10"
+    assert "retroativa: despacho seguiu sem re-submeter" in evidencia
+    assert "há código posterior à revisão: app.py" in evidencia
+    for nome in fila.CHECKS_DA_INTEGRACAO:
+        assert nome in evidencia
+
+
+def test_retroativa_nao_fecha_entrega_com_check_obrigatorio_fora_do_verde(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não ficou verde"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path, monkeypatch, checks_do_head("failure"), retroativa="motivo"
+        )
+    vazio = {"total_count": 0, "check_runs": []}
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não existe no HEAD"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path, monkeypatch, vazio, retroativa="motivo"
+        )
+
+
+def test_retroativa_e_recusada_quando_a_linhagem_se_comprova_sozinha(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="linhagem já se comprova"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path,
+            monkeypatch,
+            checks_do_head(),
+            linhagem=lambda *a: None,
+            retroativa="motivo",
+        )

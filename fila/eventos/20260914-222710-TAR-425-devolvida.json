@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260914-222710-TAR-425-devolvida",
+  "tarefa": "TAR-425",
+  "evento": "devolvida",
+  "quando": "2026-09-14T22:27:10+00:00",
+  "quem": "despacho-fila-cancelar-tarefas-admin",
+  "detalhe": "O rascunho desta bancada foi fechado sem merge; a mesma escrituração será retomada em novo ramo, preservando commits e eventos."
+}

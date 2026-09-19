@@ -1,0 +1,20 @@
+{
+  "arquivo": "338-tornar-a-medicao-pareto-rastreavel-e-confirmatoria",
+  "id": "TAR-338",
+  "titulo": "Tornar a medição Pareto rastreável e confirmatória",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes vermelho para verde e mutações provam classificação prévia autorizada, eventos append-only, evidência verificável, métricas explícitas, unidade por tarefa, pares compatíveis por revisão, tentativas por identidade, completude separada da validade e auditoria ligada ao hash; a análise real permanece inconclusiva sem fabricar amostra.",
+  "despacho": "Corrigir o instrumento da Fase 4 conforme a auditoria do capítulo 1. A própria tarefa corretiva é excluída da amostra Pareto por circularidade e não recebe classificação Fase 4. Preservar os eventos privados existentes; não fabricar baseline, pares, zeros ou observações. Atualizar o relatório apenas como rodada diagnóstica no hash 3f70e888, sem alegar auditoria independente do código novo.",
+  "origem": "Execução do capítulo 1, auditoria real do instrumento Pareto no hash 3f70e888; armadilhas 400, 402, 411 e 424",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "medicao-de-esforco"
+}

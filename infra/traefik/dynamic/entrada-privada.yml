@@ -1,0 +1,103 @@
+# =============================================================================
+# ENTRADA PRIVADA — a porta pela qual o painel localhost do mantenedor LÊ os
+# dados reais desta VPS. Ela não é pública: o compose publica a porta 8443
+# apenas em 127.0.0.1, e quem chega aqui vem pelo túnel SSH da fase 3.
+#
+# LISTA POSITIVA, E SÓ ELA. São QUATRO operações, todas `GET`, uma por chamada
+# que a tela `/escola/alunos/` do painel faz. Método, caminho e, onde existe,
+# o VALOR da query fazem parte da permissão: o que não casa recebe 404 do
+# próprio Traefik e nunca chega à célula. `PathPrefix` amplo não substitui
+# estas regras, e escrita não entra aqui — ela é obra própria, depois das
+# fases 7 e 8 do plano da ponte.
+#
+# O SEGREDO NUNCA MORA NESTE ARQUIVO. O que está versionado é o NOME da
+# variável; o valor é injetado dentro da VPS, pelo ambiente do container, a
+# partir de `/opt/plataforma/env/admin.env`, que é escrito à mão pelo
+# mantenedor e nunca viaja no repositório.
+#
+# MEDIDO em 15/09/2026, com a imagem `traefik:v3.4` de verdade, fora da VPS,
+# antes desta entrega existir:
+#   - a injecao por variavel de ambiente funciona no provedor de arquivo,
+#     e o Bearer chega injetado. NAO escreva a sintaxe do template neste
+#     comentario: o Traefik renderiza o texto CRU, e uma chamada invalida
+#     aqui recusa o arquivo inteiro e derruba a borda publica;
+#   - o cliente NÃO consegue trocar o `Authorization`: mandando um Bearer
+#     próprio, o que chega do outro lado continua sendo o do middleware;
+#   - `Method` + `Path` exato: 200 no permitido, 404 em `POST` no MESMO
+#     caminho e 404 nos caminhos vizinhos;
+#   - `Query` fecha o VALOR: outro valor e ausência de query dão 404;
+#   - `StripPrefix` do catálogo entrega `/api/catalogo/produtos`, que é o
+#     caminho de `services/catalogo/config/urls.py`.
+#
+# POR QUE OS NOMES SÃO `ALUNOS_API_TOKEN` e `TOKEN_CATALOGO`, e não `PONTE_*`:
+# esses dois já existem no `admin.env` desta VPS (`infra/env/admin.env.exemplo`
+# linhas 55 e 71). Criar nomes novos exigiria o mantenedor editar um arquivo
+# dentro do servidor, que é justamente o que ele não faz. O que limita o poder
+# do token aqui é o roteador, que abre quatro leituras e mais nada, e não o
+# nome da variável. Um par de tokens dedicado, só de leitura, é endurecimento
+# posterior, no dia em que houver como provisioná-lo sem as mãos dele.
+# =============================================================================
+http:
+  middlewares:
+    # `customRequestHeaders` SOBRESCREVE um cabeçalho de mesmo nome, e foi isso
+    # que o ensaio provou: o Bearer do cliente é descartado. É o que impede a
+    # ponta local de escolher outra credencial.
+    bearer-da-ponte-alunos:
+      headers:
+        customRequestHeaders:
+          Authorization: 'Bearer {{ env "ALUNOS_API_TOKEN" }}'
+
+    bearer-da-ponte-catalogo:
+      headers:
+        customRequestHeaders:
+          Authorization: 'Bearer {{ env "TOKEN_CATALOGO" }}'
+
+    # A célula `catalogo` não tem `SCRIPT_NAME`, então o prefixo da ponte sai
+    # antes de a requisição chegar nela. `alunos` tem, e por isso recebe o
+    # caminho inteiro.
+    tira-o-prefixo-do-catalogo:
+      stripPrefix:
+        prefixes:
+          - "/catalogo"
+
+  routers:
+    # 1 e 2. A fila de quem espera decisão e os recusados recentes. São o MESMO
+    # caminho com valores de `status` diferentes, e cada valor é uma permissão.
+    ponte-alunos-pre-matriculas-aguardando:
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/pre-matriculas`) && Query(`status`, `aguardando`)"
+      entryPoints: [privada]
+      middlewares: [bearer-da-ponte-alunos]
+      service: ponte-alunos
+
+    ponte-alunos-pre-matriculas-recusada:
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/pre-matriculas`) && Query(`status`, `recusada`)"
+      entryPoints: [privada]
+      middlewares: [bearer-da-ponte-alunos]
+      service: ponte-alunos
+
+    # 3. A lista única de matrículas, de onde saem quatro dos seis cartões da
+    # tela: ativo, pausado, encerrado e reembolsado. Não há chamada por cartão.
+    ponte-alunos-matriculas:
+      rule: "Method(`GET`) && Path(`/alunos/api/alunos/matriculas`)"
+      entryPoints: [privada]
+      middlewares: [bearer-da-ponte-alunos]
+      service: ponte-alunos
+
+    # 4. Os nomes e a disponibilidade dos cursos, para a tela dizer em que
+    # curso cada pessoa entrou.
+    ponte-catalogo-produtos:
+      rule: "Method(`GET`) && Path(`/catalogo/api/catalogo/produtos`)"
+      entryPoints: [privada]
+      middlewares: [tira-o-prefixo-do-catalogo, bearer-da-ponte-catalogo]
+      service: ponte-catalogo
+
+  services:
+    ponte-alunos:
+      loadBalancer:
+        servers:
+          - url: "http://alunos:8000"
+
+    ponte-catalogo:
+      loadBalancer:
+        servers:
+          - url: "http://catalogo:8000"

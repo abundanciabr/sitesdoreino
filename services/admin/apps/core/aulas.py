@@ -1,7 +1,7 @@
 """`/admin/escola/<curso>/parte-N/aulas/` — o editor de encomendas do curso,
-onde o mantenedor e a professora escrevem as 34 aulas: as 16 peças, o roteiro e
-a ficha do Guia do Mentor, as pausas, o instrumento cabível, o "Aceito quando",
-o quiz, o vídeo por link, e o botão de publicar.
+onde o mantenedor e a professora escrevem as 34 aulas: as 16 peças, o roteiro,
+a ficha do Guia do Mentor, a vídeo-aula em texto, as pausas, o instrumento
+cabível, o "Aceito quando", o quiz, o vídeo por link, e o botão de publicar.
 
 Degrau 1.5 do `docs/decisoes/PLANO-CELULA-CURSOS.md` (§6, o editor).
 
@@ -38,16 +38,17 @@ o repositório é público, e o único caminho do texto para dentro do sistema �
 esta tela ([INV-CUR-C2], `armadilhas/331`). Nenhuma frase de aula existe em
 arquivo; nenhuma entra por migração.
 
-## O travessão AVISA, e não recusa
+## O TRAVESSÃO NÃO É ASSUNTO DESTA TELA
 
-Decisão do mantenedor em 04/09/2026, para a Biblioteca do Livro, e o plano da
-`cursos` (§6) a estende a este editor: a obra se guarda como ele escreveu. A lei
-do travessão vale na tela do ALUNO, e quem vai cobrá-la antes de publicar é o
-verificador de coerência do degrau 3.1, que ainda não existe. O que esta tela
-faz é o mecanismo de `apps/core/livro.py`: conta as riscas em todas as peças,
-lista as frases com o nome da peça e a linha, e salva mesmo assim. A contagem
-sai na LEITURA (toda vez que o editor abre), e por isso aparece logo depois de
-salvar sem que a tela precise guardar nada entre o POST e o GET.
+Em 06/09/2026 o mantenedor tirou a OBRA dele (o texto das aulas e o do livro) da
+lei do travessão: ela sai como ele escreveu, e nenhuma tela pede reescrita nem
+conta riscas. O porquê está em
+`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`, e a lei mudou no
+`CLAUDE.md` no mesmo PR. Antes desta data havia aqui um contador que listava
+cada frase; num capítulo real ele trazia 67 linhas, e o mantenedor veria essa
+parede 34 vezes, sobre uma regra que não vale neste texto. **Não traga o
+contador de volta**: o guarda que sustenta a ausência é
+`test_o_editor_nao_cobra_travessao_da_obra`.
 
 ## O 422 da porta vira frase ao lado do campo, nunca 500
 
@@ -71,6 +72,45 @@ A `cursos` não assina sessão. O crachá que vale é o desta área, que a porta
 no ponto de uso, `armadilhas/097`) prova só QUEM CHAMA. Mesmo desenho de
 `/admin/economia/` e `/admin/escola/jornadas/`.
 
+## O botão "Conferir coerência" (07/09/2026, degrau 3.1)
+
+O Revisor de coerência mora na `cursos` e é CÓDIGO, não inteligência
+artificial: ele lê a encomenda como ela está GRAVADA e devolve os defeitos, já
+em português. Esta tela só mostra o que ele respondeu, e mostra verbatim: a
+regra é da outra célula, e reescrever a redação dela aqui seria a mesma frase
+em dois lugares.
+
+**É um link, e não um formulário**, porque conferir é uma PERGUNTA: não muda
+nada, não sobe versão e pode ser repetida à vontade. O endereço fica
+`?conferir=1`, o que dá de graça uma coisa que um botão de POST não daria: a
+professora pode recarregar a página, ou mandar o link para alguém, e a
+conferência aparece igual.
+
+**Ele confere o que está GRAVADO, não o que está na tela.** Quem editou sem
+salvar precisa salvar antes, e a tela diz isso na frase do estado vazio: um
+revisor que conferisse o rascunho diria defeito de um texto que não existe em
+lugar nenhum.
+
+## O botão "Conferir fidelidade" (07/09/2026, degrau 3.2)
+
+O segundo conferente também mora na `cursos`, mas ele é IA: o Guardião de
+fidelidade compara cada peça derivada (o roteiro, a ficha do Guia do Mentor, a
+vídeo-aula em texto e a peça onde mora o Cartão de 1 página) com a fonte de que
+ela deriva, e aponta onde o sentido mudou.
+
+**É outro link, ao lado do primeiro**, e nunca os dois de uma vez: a coerência é
+código e sai de graça; a fidelidade chama a IA, custa dinheiro e demora minutos.
+Um botão só, que fizesse as duas, cobraria a cada clique de quem só queria a
+conferência barata.
+
+**Ele aponta e nunca veta.** Nenhum defeito de fidelidade impede publicar, e por
+isso a linha "Isto impede publicar" não aparece nesta caixa.
+
+**As recusas dele viram FRASE, e a frase é a da `cursos`.** Encomenda sem peça
+derivada escrita, texto maior que o teto e IA fora do ar chegam aqui já
+explicados em português, e esta tela os mostra verbatim pela mesma razão de
+sempre: a regra é da outra célula.
+
 ## Por que é formulário simples, sem script
 
 Cada gesto é um POST que recarrega a página, pelas três razões de sempre: o
@@ -83,55 +123,68 @@ nome do gesto escrito nele, não tem como ser mal entendido.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from apps.auditoria.models import Registro
 
-from . import travessao
 from .clients import CatalogoClient, CursosClient
 from .views import _auditar
 
 LISTA = "admin/escola_aulas.html"
 EDITOR = "admin/escola_aula.html"
+YOUTUBE = "admin/escola_aula_youtube.html"
 INSTRUMENTO = "admin/escola_instrumento.html"
 
 # ---------------------------------------------------------------------------
 # O DICIONÁRIO DA TELA — os vocabulários fechados do contrato, em português
 # ---------------------------------------------------------------------------
-# As 18 peças NA ORDEM CANÔNICA do contrato (`TipoDePeca`): as 16 da anatomia e
-# as duas internas, que o aluno nunca vê. A tela desenha as peças na ordem em
-# que a porta as devolve (promessa do contrato), e este mapa dá o nome de cada
-# uma; o formulário as devolve nesta mesma ordem. Um tipo que a porta mandar e
-# este mapa não conhecer aparece com o slug cru, que é feio mas honesto.
+# As peças NA ORDEM CANÔNICA do contrato (`TipoDePeca`), cada uma com a sua
+# CATEGORIA. As categorias são TRÊS, e não duas: as 16 da anatomia, que o aluno
+# lê em sequência; as 2 internas, que ele nunca vê; e a vídeo-aula em texto, que
+# ele vê FORA da sequência, por um botão embaixo do capítulo. O terceiro campo
+# era o booleano `interna` e virou o nome da categoria por um motivo só: um
+# booleano sabe dizer duas coisas, e agora são três.
+#
+# A tela desenha as peças na ordem em que a porta as devolve (promessa do
+# contrato), e este mapa dá o nome de cada uma; o formulário as devolve nesta
+# mesma ordem. Um tipo que a porta mandar e este mapa não conhecer aparece com o
+# slug cru, que é feio mas honesto.
 # `tests/test_editor_de_aulas.py` confere que esta ordem é a do contrato.
+SEQUENCIA, INTERNA, SOB_DEMANDA = "sequencia", "interna", "sob_demanda"
 PECAS = (
-    ("pedido", "O pedido", False),
-    ("em_jogo", "O que está em jogo", False),
-    ("voce_vai_conseguir", "Você vai conseguir", False),
-    ("recall", "Recall", False),
-    ("par_de_comparacao", "Par de comparação", False),
-    ("erro_produtivo", "Erro produtivo", False),
-    ("eu_faco", "Eu faço", False),
-    ("nos_fazemos", "Nós fazemos", False),
-    ("voce_faz", "Você faz", False),
-    ("drills", "Drills", False),
-    ("erros_classicos", "Erros clássicos", False),
-    ("regra_do_padrao", "Regra do Padrão", False),
-    ("critica_de_atelier", "Crítica de ateliê", False),
-    ("checkpoint", "Checkpoint", False),
-    ("pagina_do_portfolio", "Página do portfólio", False),
-    ("dicionario_cartao_respostas", "Dicionário, cartão e respostas", False),
-    ("roteiro", "Roteiro da aula", True),
-    ("guia_do_mentor", "Ficha do Guia do Mentor", True),
+    ("pedido", "O pedido", SEQUENCIA),
+    ("em_jogo", "O que está em jogo", SEQUENCIA),
+    ("voce_vai_conseguir", "Você vai conseguir", SEQUENCIA),
+    ("recall", "Recall", SEQUENCIA),
+    ("par_de_comparacao", "Par de comparação", SEQUENCIA),
+    ("erro_produtivo", "Erro produtivo", SEQUENCIA),
+    ("eu_faco", "Eu faço", SEQUENCIA),
+    ("nos_fazemos", "Nós fazemos", SEQUENCIA),
+    ("voce_faz", "Você faz", SEQUENCIA),
+    ("drills", "Drills", SEQUENCIA),
+    ("erros_classicos", "Erros clássicos", SEQUENCIA),
+    ("regra_do_padrao", "Regra do Padrão", SEQUENCIA),
+    ("critica_de_atelier", "Crítica de ateliê", SEQUENCIA),
+    ("checkpoint", "Checkpoint", SEQUENCIA),
+    ("pagina_do_portfolio", "Página do portfólio", SEQUENCIA),
+    ("dicionario_cartao_respostas", "Dicionário, cartão e respostas", SEQUENCIA),
+    ("roteiro", "Roteiro da aula", INTERNA),
+    ("guia_do_mentor", "Ficha do Guia do Mentor", INTERNA),
+    ("videoaula_em_texto", "A vídeo-aula, em texto", SOB_DEMANDA),
 )
 NOME_DA_PECA = {tipo: nome for tipo, nome, _ in PECAS}
-PECAS_INTERNAS = frozenset(tipo for tipo, _, interna in PECAS if interna)
+PECAS_INTERNAS = frozenset(t for t, _, categoria in PECAS if categoria == INTERNA)
+PECAS_SOB_DEMANDA = frozenset(
+    t for t, _, categoria in PECAS if categoria == SOB_DEMANDA
+)
 
 TIPOS_DE_PAUSA = (
     ("erro_produtivo", "Erro produtivo"),
@@ -149,16 +202,6 @@ PERGUNTAS_DO_QUIZ = 5
 #: Quantas linhas vazias de pausa a tela oferece além das que já existem. Três
 #: cabem numa aula normal sem virar uma tabela de vinte linhas em branco.
 LINHAS_DE_PAUSA_A_MAIS = 3
-
-#: O curso por onde se ENTRA no editor, vindo do painel da escola.
-#:
-#: O slug viaja no endereço de toda tela daqui, e é o par site+slug que resolve
-#: o curso do outro lado. Este valor existe só porque a porta não tem operação
-#: que LISTE os cursos de um site: para desenhar o primeiro link é preciso um
-#: slug, e hoje há um curso só. No dia do segundo, esta constante vira um
-#: seletor no painel da escola, e nenhuma outra linha desta tela muda, porque o
-#: slug já é dado do endereço em todas elas.
-CURSO_PADRAO = "profissional"
 
 #: As três Partes do livro, com o número que viaja no endereço e o algarismo
 #: romano com que o livro as chama. O mantenedor e a professora leem a tela com
@@ -309,6 +352,26 @@ def _endereco(nome: str, curso: str, parte: "int | None", numero: str = "") -> s
     return reverse(nome, kwargs=argumentos)
 
 
+def _defeito(bruto: dict) -> dict:
+    """Um defeito do `checkLesson`, pronto para a tela.
+
+    O único trabalho desta função é dar NOME à peça: a porta manda o slug
+    (`erros_classicos`) e o editor inteiro chama aquilo de "Erros clássicos".
+    A frase e o conserto passam intactos, e é de propósito.
+
+    Defeito sem peça (o mesmo arquivo escrito de dois jeitos não mora em peça
+    nenhuma, mora entre elas) sai com o nome vazio, e a tela o mostra sem
+    endereço em vez de inventar um.
+    """
+    tipo = str(bruto.get("peca") or "")
+    return {
+        "peca": NOME_DA_PECA.get(tipo, tipo),
+        "frase": str(bruto.get("frase") or ""),
+        "o_que_fazer": str(bruto.get("o_que_fazer") or ""),
+        "impede_publicar": bool(bruto.get("impede_publicar")),
+    }
+
+
 def _cabecalho(aula: dict) -> dict:
     """O que a tela mostra e NÃO edita: número, título, bloco, estado, versão."""
     estado = str(aula.get("estado") or "")
@@ -365,6 +428,7 @@ def _linha_de_peca(tipo: str, texto: str) -> dict:
         "tipo": tipo,
         "nome": NOME_DA_PECA.get(tipo, tipo),
         "interna": tipo in PECAS_INTERNAS,
+        "sob_demanda": tipo in PECAS_SOB_DEMANDA,
         "texto": texto,
         "erro": "",
     }
@@ -453,6 +517,34 @@ def _rascunho_do_formulario(request) -> dict:
     }
 
 
+def _e_url_de_video_youtube(url: str) -> bool:
+    """Só aceita formas HTTPS que a sala de aula incorpora como vídeo."""
+    try:
+        endereco = urlparse(url)
+        host = (endereco.hostname or "").lower()
+        porta = endereco.port
+    except ValueError:
+        return False
+    if endereco.scheme != "https" or porta not in (None, 443):
+        return False
+
+    partes = [parte for parte in endereco.path.split("/") if parte]
+    if host == "youtu.be" or host.endswith(".youtu.be"):
+        return len(partes) == 1 and bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", partes[0]))
+    if host != "youtube.com" and not host.endswith(".youtube.com"):
+        return False
+    if endereco.path == "/watch":
+        identificadores = parse_qs(endereco.query).get("v") or []
+        return len(identificadores) == 1 and bool(
+            re.fullmatch(r"[A-Za-z0-9_-]{11}", identificadores[0])
+        )
+    return (
+        len(partes) == 2
+        and partes[0] in {"embed", "shorts"}
+        and bool(re.fullmatch(r"[A-Za-z0-9_-]{11}", partes[1]))
+    )
+
+
 def _corpo(rascunho: dict) -> "tuple[dict, dict]":
     """O corpo de `putLesson` a partir do rascunho, e QUAIS linhas viajaram.
 
@@ -516,31 +608,6 @@ def _corpo(rascunho: dict) -> "tuple[dict, dict]":
         "pecas": list(range(len(rascunho["pecas"]))),
     }
     return corpo, enviados
-
-
-# ---------------------------------------------------------------------------
-# O TRAVESSÃO: conta e lista, nunca recusa
-# ---------------------------------------------------------------------------
-def _riscas(rascunho: dict) -> list:
-    """As frases com risca comprida em todas as peças e nos campos de texto,
-    cada uma dizendo ONDE está. O mesmo instrumento que recusa no editor de
-    documentos, aqui só avisa (ver o cabeçalho)."""
-    achados = []
-    for peca in rascunho["pecas"]:
-        for achado in travessao.problemas(peca["texto"]):
-            achado["onde"] = f"peça \"{peca['nome']}\", linha {achado['linha']}"
-            achados.append(achado)
-    for campo in ("pedido", "cliente", "minimo", "aceito_quando"):
-        for achado in travessao.problemas(rascunho[campo]):
-            achado["onde"] = f"{ROTULO_DO_CAMPO[campo]}, linha {achado['linha']}"
-            achados.append(achado)
-    for item in rascunho["quiz"]:
-        for achado in travessao.problemas(
-            item["pergunta"] + "\n" + item["resposta_modelo"]
-        ):
-            achado["onde"] = f"quiz, pergunta {item['n']}"
-            achados.append(achado)
-    return achados
 
 
 # ---------------------------------------------------------------------------
@@ -752,6 +819,7 @@ def _desenhar_lista(request, site: dict, curso: str, parte: "int | None"):
             status=503,
         )
     linhas = [_linha_da_lista(a, curso) for a in aulas if isinstance(a, dict)]
+    partes = _agrupar(linhas, curso)
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
@@ -762,7 +830,13 @@ def _desenhar_lista(request, site: dict, curso: str, parte: "int | None"):
             "parte": parte,
             "parte_romano": ROMANO.get(parte or 0, ""),
             "url_do_curso_inteiro": _endereco("escola_aulas", curso, None),
-            "partes": _agrupar(linhas, curso),
+            "partes": partes,
+            # As seções de Parte só aparecem quando o curso TEM mais de uma. Um
+            # curso novo, todo na Parte I, não ganha um cabeçalho "Parte I" e um
+            # link "ver só esta Parte" que levam à mesma lista que já está na
+            # tela: as três Partes são o vocabulário do livro, não de todo
+            # curso, e a sala serve vários cursos desde 07/09/2026.
+            "varias_partes": len(partes) > 1,
             # O que a porta mandar com Parte fora do vocabulário do contrato
             # (`ParteDoCurso` é 1, 2 ou 3) não cabe em nenhuma seção e SUMIRIA
             # da tela em silêncio, com a contagem do topo dizendo outro número.
@@ -817,6 +891,7 @@ def _desenhar_aula(
     erro: str = "",
     recado: str = "",
     versao: int = 0,
+    conferir: str = "",
     status: int = 200,
 ):
     """O editor de UMA encomenda.
@@ -857,7 +932,14 @@ def _desenhar_aula(
         "url_da_lista": _endereco("escola_aulas", curso, parte),
         "url_de_salvar": _endereco("escola_aula_salvar", curso, parte, numero),
         "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+        "url_do_modelo_youtube": _endereco("escola_aula_youtube", curso, parte, numero),
         "url_do_capitulo": _endereco("escola_capitulo", curso, parte, numero),
+        "url_de_conferir": (
+            _endereco("escola_aula", curso, parte, numero) + "?conferir=1"
+        ),
+        "url_de_conferir_fidelidade": (
+            _endereco("escola_aula", curso, parte, numero) + "?conferir=fidelidade"
+        ),
     }
     if desfecho != CursosClient.OK:
         contexto = {
@@ -883,6 +965,14 @@ def _desenhar_aula(
 
     if rascunho is None:
         rascunho = _rascunho_da_aula(aula)
+    # A conferência só acontece quando foi PEDIDA, e só a que foi pedida. Rodar
+    # as duas em toda abertura do editor custaria duas idas à porta em cada
+    # visita, e uma delas é paga: a de fidelidade chama a IA.
+    coerencia = fidelidade = None
+    if conferir == "1":
+        coerencia = _conferencia(cliente, site, curso, numero, parte, "coerencia")
+    elif conferir == "fidelidade":
+        fidelidade = _conferencia(cliente, site, curso, numero, parte, "fidelidade")
     lidos, instrumentos = cliente.instrumentos()
     return render(
         request,
@@ -893,7 +983,6 @@ def _desenhar_aula(
             "aula": _cabecalho(aula),
             "rascunho": rascunho,
             "gerais": gerais or [],
-            "riscas": _riscas(rascunho),
             "instrumentos": [
                 {
                     "slug": str(i.get("slug") or ""),
@@ -907,10 +996,54 @@ def _desenhar_aula(
             "erro": erro,
             "recado": recado,
             "versao_nova": versao,
+            "coerencia": coerencia,
+            "fidelidade": fidelidade,
         }
         | contexto_do_lugar,
         status=status,
     )
+
+
+def _conferencia(
+    cliente: CursosClient,
+    site: dict,
+    curso: str,
+    numero: str,
+    parte: "int | None",
+    modo: str,
+) -> dict:
+    """Uma conferência pedida, pronta para a tela: o que ela achou, ou por quê não.
+
+    Os dois conferentes cabem na mesma função porque a resposta é a mesma
+    (`list[DefeitoSchema]`) e a tela é a mesma. O que difere é a régua, e a
+    régua é do outro lado.
+
+    `falha` prefere a frase que a `cursos` mandou: ela sabe se faltou a chave da
+    IA, se a encomenda ainda não tem o que conferir ou se o texto passou do
+    teto, e escreveu isso em português para a professora. Só quando não veio
+    frase nenhuma (rede caída, par não provisionado) é que entra a genérica
+    desta tela.
+    """
+    desfecho, resposta = cliente.conferir_aula(
+        site["id"], curso, numero, parte, modo=modo
+    )
+    deu_certo = desfecho == CursosClient.OK
+    return {
+        "lida": deu_certo,
+        "falha": None if deu_certo else _falha_da_conferencia(desfecho, resposta),
+        "defeitos": (
+            [_defeito(bruto) for bruto in resposta if isinstance(bruto, dict)]
+            if deu_certo and isinstance(resposta, list)
+            else []
+        ),
+    }
+
+
+def _falha_da_conferencia(desfecho: str, detalhe) -> dict:
+    """A recusa da sala de aula virada em frase, com a explicação DELA quando veio."""
+    if isinstance(detalhe, str) and detalhe.strip():
+        return {"titulo": detalhe.strip(), "explicacao": ""}
+    return _falha(desfecho)
 
 
 def _rascunho_do_instrumento(instrumento: dict) -> dict:
@@ -944,11 +1077,13 @@ def _desenhar_instrumento(
     status: int = 200,
 ):
     # Os instrumentos são de plataforma inteira (o contrato não os escopa por
-    # curso), então esta tela não tem curso próprio: a volta é para a lista do
-    # curso por onde se entra. Ela vai nas TRÊS caras da tela porque o link
-    # mora no alto do gabarito, fora de toda condição: faltando numa delas, a
-    # volta vira `href=""` e recarrega o próprio erro.
-    volta = {"url_da_lista": _endereco("escola_aulas", CURSO_PADRAO, None)}
+    # curso), então esta tela não tem curso próprio: a volta é para a LISTA DE
+    # CURSOS. Ela era um curso escrito no código até 07/09/2026, e isso levava
+    # ao curso errado em toda escola cujo primeiro curso não se chamasse
+    # `profissional`. Ela vai nas TRÊS caras da tela porque o link mora no alto
+    # do gabarito, fora de toda condição: faltando numa delas, a volta vira
+    # `href=""` e recarrega o próprio erro.
+    volta = {"url_da_lista": reverse("escola_cursos")}
     desfecho, instrumento = CursosClient().instrumento(slug)
     if desfecho == CursosClient.NAO_EXISTE:
         return render(
@@ -1023,6 +1158,212 @@ def aula(request, curso: str, numero: str, parte: "str | None" = None):
         int(parte) if parte else None,
         recado=request.GET.get("recado", ""),
         versao=int(bruto) if bruto.isdigit() else 0,
+        conferir=request.GET.get("conferir", ""),
+    )
+
+
+def _desenhar_aula_youtube(
+    request,
+    site: dict,
+    curso: str,
+    numero: str,
+    parte: "int | None",
+    *,
+    video_url: str = "",
+    erro: str = "",
+    gerais: "list[str] | None" = None,
+    recado: str = "",
+    versao: int = 0,
+    url_salva: bool = False,
+    status: int = 200,
+):
+    """A tela curta do modelo: a aula existe antes, o único dado novo é a URL."""
+    cliente = CursosClient()
+    desfecho, aula_lida = cliente.aula(site["id"], curso, numero, parte)
+    contexto_do_lugar = {
+        "curso": curso,
+        "numero": numero,
+        "url_da_lista": _endereco("escola_aulas", curso, parte),
+        "url_do_editor": _endereco("escola_aula", curso, parte, numero),
+        "url_do_modelo": _endereco("escola_aula_youtube", curso, parte, numero),
+        "url_de_publicar": _endereco("escola_aula_publicar", curso, parte, numero),
+    }
+    if desfecho == CursosClient.NAO_EXISTE:
+        return render(
+            request,
+            YOUTUBE,
+            {"admin": request.admin, "nao_existe": True} | contexto_do_lugar,
+            status=404,
+        )
+    if desfecho != CursosClient.OK:
+        return render(
+            request,
+            YOUTUBE,
+            {"admin": request.admin, "falha_da_sala": _falha(desfecho)}
+            | contexto_do_lugar,
+            status=503,
+        )
+    return render(
+        request,
+        YOUTUBE,
+        {
+            "admin": request.admin,
+            "aula": _cabecalho(aula_lida or {}),
+            "video_url": video_url or str((aula_lida or {}).get("video_url") or ""),
+            "erro": erro,
+            "gerais": gerais or [],
+            "recado": recado,
+            "versao_nova": versao,
+            "url_salva": url_salva,
+        }
+        | contexto_do_lugar,
+        status=status,
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def aula_youtube(request, curso: str, numero: str, parte: "str | None" = None):
+    """Grava e publica uma encomenda usando somente uma URL de vídeo do YouTube."""
+    site = _site_desta_requisicao(request)
+    if site is None:
+        return _sem_site(request)
+    na_parte = int(parte) if parte else None
+    if request.method == "GET":
+        bruto = (request.GET.get("versao") or "").strip()
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            recado=request.GET.get("recado", ""),
+            versao=int(bruto) if bruto.isdigit() else 0,
+        )
+
+    video_url = (request.POST.get("video_url") or "").strip()
+    if not _e_url_de_video_youtube(video_url):
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro=(
+                "Cole um link HTTPS de vídeo do YouTube, no formato youtu.be/ID, "
+                "youtube.com/watch?v=ID, /embed/ID ou /shorts/ID. Nada foi salvo."
+            ),
+            status=422,
+        )
+
+    cliente = CursosClient()
+    leitura, aula_atual = cliente.aula(site["id"], curso, numero, na_parte)
+    if leitura != CursosClient.OK:
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro="Não foi possível ler a aula antes de trocar o vídeo. Nada foi salvo.",
+            status=503,
+        )
+    rascunho = _rascunho_da_aula(aula_atual or {})
+    rascunho["video_url"] = video_url
+    corpo, _ = _corpo(rascunho)
+    desfecho, resposta = cliente.gravar_aula(site["id"], curso, numero, corpo, na_parte)
+    if desfecho == CursosClient.OK:
+        versao = int((resposta or {}).get("versao") or 0)
+        _auditar(request, Registro.EDITAR_AULA, numero, Registro.OK, f"versao {versao}")
+        publicado, resposta_publicada = CursosClient().publicar_aula(
+            site["id"], curso, numero, na_parte
+        )
+        if publicado == CursosClient.OK:
+            versao_publicada = int((resposta_publicada or {}).get("versao") or versao)
+            _auditar(
+                request,
+                Registro.PUBLICAR_AULA,
+                numero,
+                Registro.OK,
+                f"versao {versao_publicada}",
+            )
+            destino = _endereco("escola_aula_youtube", curso, na_parte, numero)
+            return HttpResponseRedirect(
+                f"{destino}?recado=publicada&versao={versao_publicada}"
+            )
+        if publicado == CursosClient.RECUSADO:
+            _auditar(
+                request,
+                Registro.PUBLICAR_AULA,
+                numero,
+                Registro.RECUSADO_PELA_CELULA,
+                "recusou",
+            )
+            return _desenhar_aula_youtube(
+                request,
+                site,
+                curso,
+                numero,
+                na_parte,
+                video_url=video_url,
+                gerais=_pendurar(
+                    {"erros": {}, "pecas": [], "quiz": [], "pausas": []},
+                    {},
+                    resposta_publicada,
+                ),
+                erro="A URL foi salva, mas a aula não foi aberta para os alunos.",
+                url_salva=True,
+                status=422,
+            )
+        _auditar(
+            request, Registro.PUBLICAR_AULA, numero, Registro.NAO_RESPONDEU, publicado
+        )
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            erro=(
+                "A URL foi salva. Não consegui confirmar se a aula foi aberta para os "
+                "alunos; recarregue em um minuto e confira o estado dela."
+            ),
+            status=503,
+        )
+
+    if desfecho == CursosClient.RECUSADO:
+        _auditar(
+            request,
+            Registro.EDITAR_AULA,
+            numero,
+            Registro.RECUSADO_PELA_CELULA,
+            "recusou",
+        )
+        return _desenhar_aula_youtube(
+            request,
+            site,
+            curso,
+            numero,
+            na_parte,
+            video_url=video_url,
+            gerais=_pendurar(
+                {"erros": {}, "pecas": [], "quiz": [], "pausas": []}, {}, resposta
+            ),
+            erro="A sala de aula não aceitou a URL. Nada foi salvo.",
+            status=422,
+        )
+    _auditar(request, Registro.EDITAR_AULA, numero, Registro.NAO_RESPONDEU, desfecho)
+    return _desenhar_aula_youtube(
+        request,
+        site,
+        curso,
+        numero,
+        na_parte,
+        video_url=video_url,
+        erro="Não sei se a URL foi salva. Espere um minuto e confira a aula antes de tentar de novo.",
+        status=503,
     )
 
 
@@ -1060,7 +1401,6 @@ def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
     na_parte = int(parte) if parte else None
     rascunho = _rascunho_do_formulario(request)
     corpo, enviados = _corpo(rascunho)
-    riscas = len(_riscas(rascunho))
     desfecho, resposta = CursosClient().gravar_aula(
         site["id"], curso, numero, corpo, na_parte
     )
@@ -1072,7 +1412,7 @@ def aula_salvar(request, curso: str, numero: str, parte: "str | None" = None):
             Registro.EDITAR_AULA,
             numero,
             Registro.OK,
-            f"versao {versao}; {riscas} frase(s) com travessao",
+            f"versao {versao}",
         )
         destino = _endereco("escola_aula", curso, na_parte, numero)
         return HttpResponseRedirect(f"{destino}?recado=salva&versao={versao}")

@@ -1,0 +1,22 @@
+{
+  "arquivo": "269-rito-de-contrato-do-catalogo-cadastrar-produto-entra-no-cont",
+  "id": "TAR-269",
+  "titulo": "Rito de Contrato do catalogo: cadastrar produto entra no contrato congelado",
+  "toca": [
+    "contracts",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-267"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR so de contracts/ mergeado com etiqueta contrato; ci/contract_freeze.py catalogo PASS; ci/contrato_aditivo.py PASS; o PR do catalogo pousado em seguida",
+  "despacho": "Rito de Contrato conduzido pela maestro (RITOS.md secao 3): PR so de contracts/ com a etiqueta contrato, nascido do export do ramo do PR da tarefa do catalogo (TAR-267); provedor primeiro; leia a prosa do export antes de congelar (armadilhas/324). Depois do pouso, pousar o PR do catalogo.",
+  "origem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "criada_em": "2026-09-07"
+}

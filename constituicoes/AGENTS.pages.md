@@ -36,7 +36,8 @@ degrau ela vira código.
 - **PERMITIDO ESCREVER:** `services/pages/**`
 - **SOMENTE LEITURA:** `contracts/identidade.openapi.yaml` (é por ele que se
   pergunta quem é a pessoa), `contracts/alunos.openapi.yaml` (é por ele que se
-  sabe se ela tem matrícula ativa), `contracts/eventos/pages.portfolio.*` (o
+  sabe se ela tem matrícula ativa), `contracts/admin.openapi.yaml` (é por ele
+  que se sabe quem confere o portfólio, desde 06/09/2026), `contracts/eventos/pages.portfolio.*` (o
   que esta célula promete emitir, congelado no degrau 03) e
   `contracts/eventos/notificacao.devida.v1.json` (o sininho)
 - **PROIBIDO (nem ler):** as demais células, `infra/`, qualquer segredo de
@@ -70,7 +71,9 @@ degrau ela vira código.
   alcançável em `/pages/<caminho>` pela internet (`armadilhas/186`, provado em
   `tests/test_healthz_script_name.py`). Quem fecha a porta é o Bearer
 - **Consome:** `identidade` (quem é o dono do cookie) e `alunos` (matrícula
-  ativa), server-side, com timeout explícito, a partir do degrau 06. Na gênese
+  ativa), server-side, com timeout explícito, a partir do degrau 06; e `admin`
+  (esta pessoa é administradora da escola?), desde 06/09/2026, que é quem abre a
+  fila da conferência. Na gênese
   `celulas.yml` diz `consome: []`, com o comentário que explica a lista vazia
   (`armadilhas/224`); cada linha entra no PR do cliente que a lê
 - **Auth:** Bearer dedicado por par, `TOKENS_ACEITOS_<PAR>`. Env ausente ⇒
@@ -212,13 +215,28 @@ Registrado para ninguém achar que foi esquecimento:
    maioria high poly, não repetir o modelo da aula) são o que o degrau 07 lê do
    banco.
 3. ~~**Quem confere o portfólio na fila da equipe** e com que prazo.~~
-   **Resolvido no degrau 11**, pelo molde da fila de marcos, como a lei mandava:
-   quem confere é quem está em `IDS_DA_EQUIPE` no env desta célula
-   (`apps/core/equipe.py`, e a lista VAZIA é ninguém), o prazo é de cinco dias
-   ÚTEIS no fuso da escola (`apps/portfolio/conferencia.py`), e a devolução sai
-   de uma lista fechada de frases em português, nunca de texto livre. A porta
-   desta área é a porta da casa, com a régua trocada: `/equipe` não pergunta
-   matrícula, porque quem confere o portfólio de um aluno não é aluno.
+   **Resolvido no degrau 11 e mudado de fonte em 06/09/2026, a pedido do
+   mantenedor:** quem confere é **todo administrador da escola**, e a resposta
+   se PERGUNTA à célula `admin` (`isAdministrator`, em
+   `contracts/admin.openapi.yaml`), nunca se lê de uma lista no env. Ele pediu
+   assim para agilizar, recebeu a objeção da fresta numa caixa de pergunta e
+   escolheu "simplesmente todo admin confere", sem lista separada de
+   conferentes. Consequência prática: promover alguém em `/admin/escola/` abre
+   esta fila sozinho, e não há mais uma segunda casa do mesmo fato para
+   discordar em silêncio. O prazo continua de cinco dias ÚTEIS no fuso da escola
+   (`apps/portfolio/conferencia.py`), e a devolução sai de uma lista fechada de
+   frases em português, nunca de texto livre. A porta desta área é a porta da
+   casa, com a régua trocada: `/equipe` não pergunta matrícula, porque quem
+   confere o portfólio de um aluno não é aluno.
+
+   **A pergunta tem TRÊS respostas, e o código as separa** (`apps/core/equipe.py`
+   e `apps/core/porta.py`): `true` abre a fila; `false` fecha com 403 e uma frase
+   que manda pedir a promoção na área administrativa; **não conseguir perguntar
+   fecha com 503 e `Retry-After`, e nunca abre**. As duas variáveis do par
+   (`ADMIN_API_URL`, `ADMIN_API_TOKEN`) são lidas no ponto de uso: sem elas, só a
+   fila da equipe fica indisponível, e nenhuma tela do aluno quebra
+   (`armadilhas/097`). Enquanto o env da VPS não trouxer as duas linhas, é
+   exatamente esse o estado, e a linha mora em `infra/`, caminho CODEOWNERS.
 
 ## Estado da construção
 O estado de cada degrau se lê **no balcão** (`python ci/fila.py listar

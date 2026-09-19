@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260910-161240-TAR-322-concluida",
+  "tarefa": "TAR-322",
+  "evento": "concluida",
+  "quando": "2026-09-10T16:12:40+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1534; revisao=5c8c4961971d0a54704ef56e0964cbc802144a4e; arvore=bd94ace9fc448f157cd5206893ee651ce561c2d9; head=e038c1c7423a8255858b0431e466a7f329f9eae3; merge=0ba5310e3c73a5ee439b7a08e19f08df431315a7; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34493727068; atestado=atestado aprovado para e038c1c7423a8255858b0431e466a7f329f9eae3; aceite=painel/registros/20260910-047-publicacao-consultas-de-deploy.js",
+  "verificado_em": "2026-09-10"
+}

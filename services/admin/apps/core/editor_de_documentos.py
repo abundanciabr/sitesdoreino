@@ -6,12 +6,16 @@ https://meshcraft.top/docs/como-funciona-a-entrada"*.
 
 Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
 
-## Quatro rotas, quatro verbos
+## Um gesto por rota
 
 Mostrar o formulário vazio, criar, mostrar o formulário cheio, gravar. Um POST
 só com um campo escondido dizendo "o que fazer" faria a auditoria e o CSRF
 dependerem de um valor de formulário, e a leitura do `urls.py` deixaria de
 contar o que a tela faz. É a mesma gramática da tela do menu do topo.
+
+Criar e gravar texto nunca mudam a visibilidade. Publicar e tirar do público
+têm rotas e botões próprios, abaixo do documento já criado: revisão e exposição
+não cabem no mesmo clique.
 
 ## Formulário simples, sem script
 
@@ -37,6 +41,8 @@ próxima coisa que essa pessoa faria seria procurar como desligá-la.
 """
 
 from __future__ import annotations
+
+from datetime import date
 
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
@@ -69,16 +75,75 @@ def _inteiro(texto: str, padrao: int) -> int:
         return padrao
 
 
+def _data(texto: str) -> date | None:
+    """`AAAA-MM-DD` (o formato de `<input type="date">`) ou `None` se não é."""
+    try:
+        return date.fromisoformat((texto or "").strip())
+    except ValueError:
+        return None
+
+
 def _do_formulario(request) -> dict:
-    """O que o formulário mandou, já aparado. Nada de conferência aqui."""
+    """O que o formulário mandou, já aparado. Nada de conferência aqui.
+
+    `verificado_em` e `proxima_verificacao_em` ficam como TEXTO cru — é o que
+    faz o `<input type="date">` reabrir com o mesmo valor quando a tela volta
+    com erro; a conferência e a conversão são de `_erro_de_apendice_vivo` e
+    `_campos_de_apendice_vivo`, abaixo.
+    """
     return {
         "titulo": (request.POST.get("titulo") or "").strip(),
         "nome": (request.POST.get("nome") or "").strip().lower(),
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
         "ordem": _inteiro(request.POST.get("ordem"), documentos.ORDEM_PADRAO),
-        # Caixa não marcada não é enviada pelo navegador: a ausência do campo é
-        # o "não". É o que faz `publico` continuar fail-CLOSED do lado da tela.
-        "publico": request.POST.get("publico") == "sim",
+        "apendice_vivo": request.POST.get("apendice_vivo") == "sim",
+        "verificado_em": (request.POST.get("verificado_em") or "").strip(),
+        "proxima_verificacao_em": (
+            request.POST.get("proxima_verificacao_em") or ""
+        ).strip(),
+    }
+
+
+def _erro_de_apendice_vivo(rascunho: dict) -> str | None:
+    """A recusa da caixa de apêndice vivo, dita para leigo, ou `None`.
+
+    Documento comum (`apendice_vivo` desmarcado) nunca cai aqui — as duas
+    frases são só para quem marcou a caixa. A ORDEM importa: primeiro conferir
+    se as duas datas existem, só depois se a ordem entre elas está certa —
+    "a próxima antes da última" não faz sentido dizer quando uma delas nem foi
+    escrita.
+    """
+    if not rascunho["apendice_vivo"]:
+        return None
+    verificado = _data(rascunho["verificado_em"])
+    proxima = _data(rascunho["proxima_verificacao_em"])
+    if verificado is None or proxima is None:
+        return (
+            "Um apêndice vivo precisa das duas datas: quando foi verificado e "
+            "quando a verificação vence."
+        )
+    if proxima <= verificado:
+        return "A próxima verificação precisa ser depois da última."
+    return None
+
+
+def _campos_de_apendice_vivo(rascunho: dict) -> dict:
+    """Os três campos do modelo, prontos para `create(**...)` ou `setattr`.
+
+    Chamada só DEPOIS de `_erro_de_apendice_vivo` já ter aprovado o rascunho
+    (ou de `apendice_vivo` estar desmarcado, quando as datas não importam):
+    aqui as datas são convertidas sem checar de novo se são válidas.
+    """
+    if not rascunho["apendice_vivo"]:
+        return {
+            "apendice_vivo": False,
+            "verificado_em": None,
+            "proxima_verificacao_em": None,
+        }
+    return {
+        "apendice_vivo": True,
+        "verificado_em": _data(rascunho["verificado_em"]),
+        "proxima_verificacao_em": _data(rascunho["proxima_verificacao_em"]),
     }
 
 
@@ -128,6 +193,9 @@ def documento_novo(request):
             "corpo": "",
             "ordem": documentos.ORDEM_PADRAO,
             "publico": False,
+            "apendice_vivo": False,
+            "verificado_em": "",
+            "proxima_verificacao_em": "",
         },
         criando=True,
     )
@@ -175,6 +243,17 @@ def documento_criar(request):
             ),
             status=422,
         )
+    if nome.startswith(documentos.PREFIXO_PEDIDO_REUNIAO):
+        return _tela(
+            request,
+            rascunho,
+            criando=True,
+            erro=(
+                "Esse endereço é reservado aos pedidos da reunião. Escolha "
+                "outro endereço para o documento."
+            ),
+            status=422,
+        )
     if Documento.objects.filter(nome=nome).exists():
         return _tela(
             request,
@@ -191,7 +270,18 @@ def documento_criar(request):
     if riscas:
         return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
 
-    documento = Documento.objects.create(**rascunho)
+    erro_apendice = _erro_de_apendice_vivo(rascunho)
+    if erro_apendice:
+        return _tela(request, rascunho, criando=True, erro=erro_apendice, status=422)
+
+    documento = Documento.objects.create(
+        titulo=rascunho["titulo"],
+        nome=nome,
+        corpo=rascunho["corpo"],
+        ordem=rascunho["ordem"],
+        publico=False,
+        **_campos_de_apendice_vivo(rascunho),
+    )
     _guardar_versao(request, documento, "criou o documento")
     _auditar(
         request,
@@ -222,6 +312,15 @@ def documento_editar(request, nome):
             "corpo": documento.corpo,
             "ordem": documento.ordem,
             "publico": documento.publico,
+            "apendice_vivo": documento.apendice_vivo,
+            "verificado_em": (
+                documento.verificado_em.isoformat() if documento.verificado_em else ""
+            ),
+            "proxima_verificacao_em": (
+                documento.proxima_verificacao_em.isoformat()
+                if documento.proxima_verificacao_em
+                else ""
+            ),
         },
         criando=False,
     )
@@ -257,13 +356,29 @@ def documento_salvar(request, nome):
     if riscas:
         return _tela(request, rascunho, criando=False, riscas=riscas, status=422)
 
+    erro_apendice = _erro_de_apendice_vivo(rascunho)
+    if erro_apendice:
+        return _tela(request, rascunho, criando=False, erro=erro_apendice, status=422)
+
+    era_apendice_vivo = documento.apendice_vivo
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
-    documento.publico = rascunho["publico"]
+    for campo, valor in _campos_de_apendice_vivo(rascunho).items():
+        setattr(documento, campo, valor)
     documento.save()
 
-    _guardar_versao(request, documento, "editou o documento")
+    # O histórico é a única memória de quando o carimbo ligou ou desligou: as
+    # datas não entram na linha de versão (o carimbo não é texto), então o gesto
+    # é o que resta para contar essa história. Editar sem mexer no carimbo
+    # continua sendo "editou o documento".
+    if documento.apendice_vivo and not era_apendice_vivo:
+        gesto = "marcou como apêndice vivo"
+    elif era_apendice_vivo and not documento.apendice_vivo:
+        gesto = "desmarcou o apêndice vivo"
+    else:
+        gesto = "editou o documento"
+    _guardar_versao(request, documento, gesto)
     _auditar(
         request,
         Registro.EDITAR_DOCUMENTO,
@@ -273,6 +388,51 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
+    )
+
+
+# --------------------------------------------------------- publicar e retirar
+
+
+@require_POST
+def documento_publicar(request, nome):
+    """Expõe um documento já criado, num gesto separado de escrever."""
+    return _mudar_publicacao(
+        request, nome, publico=True, acao=Registro.PUBLICAR_DOCUMENTO
+    )
+
+
+@require_POST
+def documento_despublicar(request, nome):
+    """Torna o documento visível apenas para administradores."""
+    return _mudar_publicacao(
+        request, nome, publico=False, acao=Registro.DESPUBLICAR_DOCUMENTO
+    )
+
+
+def _mudar_publicacao(request, nome, *, publico: bool, acao: str):
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    if documento.arquivado:
+        return HttpResponseRedirect(
+            f"{reverse('documento_admin', args=[documento.nome])}?recado=arquivado"
+        )
+    if documento.publico == publico:
+        recado = "publicado" if publico else "despublicado"
+        return HttpResponseRedirect(
+            f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
+        )
+
+    documento.publico = publico
+    documento.save(update_fields=["publico", "atualizado_em"])
+    gesto = "publicou o documento" if publico else "tirou o documento do público"
+    _guardar_versao(request, documento, gesto)
+    _auditar(request, acao, documento.nome, Registro.OK)
+    recado = "publicado" if publico else "despublicado"
+    return HttpResponseRedirect(
+        f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
     )
 
 

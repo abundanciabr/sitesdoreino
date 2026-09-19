@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-022-painel-de-aulas-avulsas-publicado",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1553 publicou o painel de aulas avulsas",
+  detalhe: "O PR 1553 foi integrado em 11/09/2026 às 02:51 UTC, no commit 54306a3469543b7b580fa59ac1c8e0e3011b8136. O deploy da administração terminou com resultado success no run 34556224711, conferido no GitHub.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34556224711",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

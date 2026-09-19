@@ -104,7 +104,7 @@
           <input type="checkbox" name="alvo" value="{{ item.pessoa.id }}" checked>
           <span class="quem-e">
             <b>{{ item.pessoa.nome_completo }}</b>
-            <span class="nota">{{ item.pessoa.email }} &middot; {{ item.pessoa.whatsapp }}</span>
+            <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero_formatado }}</span>
             <span class="nota">
               {% if item.pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ item.pessoa.esperando_ha_dias }} dia{{ item.pessoa.esperando_ha_dias|pluralize }}{% endif %}
               {% if item.pessoa.ja_foi_aluno %} &middot; <b>já foi aluno</b>{% endif %}
@@ -139,8 +139,14 @@
             <span class="nota">{{ item.pessoa.email }} &middot; {{ item.pessoa.whatsapp }}</span>
             {% if item.talvez_o_numero %}
             <span class="nota">
-              <b>Talvez seja o seu número {{ item.talvez_o_numero }}</b>, porque os
+              <b>Talvez seja o seu número {{ item.talvez_o_numero_formatado }}</b>, porque os
               últimos dígitos são os mesmos e o começo não. Confira antes de marcar.
+            </span>
+            {% endif %}
+            {% if item.numeros_parecidos %}
+            <span class="nota">
+              Números parecidos na sua lista:
+              {% for numero in item.numeros_parecidos %}{{ numero }}{% if not forloop.last %}, {% endif %}{% endfor %}.
             </span>
             {% endif %}
             <span class="nota">
@@ -211,7 +217,7 @@
       <div class="linha-de-pessoa">
         <span class="quem-e">
           <b>{{ item.pessoa.nome_completo }}</b>
-          <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero }}</span>
+          <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero_formatado }}</span>
         </span>
       </div>
       {% endfor %}
@@ -230,7 +236,17 @@
       cadastrou. Dá para copiar a lista daqui e chamar essa gente.
     </p>
     <div class="cartao numeros-crus">
-      {% for numero in conferencia.sem_par %}<span>{{ numero }}</span>{% endfor %}
+      {% for item in conferencia.sem_par %}
+      <span>{{ item.numero_formatado }}</span>
+      {% if item.parecidos %}
+      <div class="nota">
+        Pode ser:
+        {% for pessoa in item.parecidos %}
+        {{ pessoa.nome }} ({{ pessoa.whatsapp }}){% if not forloop.last %}; {% endif %}
+        {% endfor %}.
+      </div>
+      {% endif %}
+      {% endfor %}
     </div>
     {% else %}
     <p class="nota">Nenhum. Todo número da sua lista achou alguém no site.</p>

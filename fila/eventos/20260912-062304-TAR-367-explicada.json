@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-062304-TAR-367-explicada",
+  "tarefa": "TAR-367",
+  "evento": "explicada",
+  "quando": "2026-09-12T06:23:04+00:00",
+  "quem": "Pedido de concluir Windows verde após PR #1594. Run 34677176889, merge d0ebbf2f4d00a8fd4820c60840f60ef949deff9f, test_o_livro_inteiro_de_volta_reprova excedeu120s em git add -A.",
+  "o_que_e": "O teste prepara todo o histórico do painel para conferir uma sabotagem pequena e estoura o prazo no Windows.",
+  "o_que_muda": "Cada cenário prepara apenas os registros e fontes necessários, mantendo a conferência independente e o teste do livro real completo.",
+  "exemplo": "Para conferir se um arquivo proibido é recusado, o teste usa seis registros conhecidos, não uma cópia de todo o histórico.",
+  "importancia": 95
+}

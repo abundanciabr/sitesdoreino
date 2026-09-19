@@ -5,7 +5,9 @@ O que este arquivo protege, e por que cada coisa:
 1. **O mapa** mostra as 34 portas em três Partes e doze Blocos, o estado de
    cada uma, e a próxima aberta em destaque.
 2. **A aula** mostra as 16 peças na ORDEM_CANONICA, renderizadas de Markdown,
-   e as duas internas NUNCA aparecem no HTML, nem quando têm texto.
+   e as duas internas NUNCA aparecem no HTML, nem quando têm texto. A
+   vídeo-aula em texto fica FORA dessa sequência: ela chega por um botão logo
+   abaixo do capítulo, e o botão só existe quando a peça tem texto.
 3. **Aula em rascunho é 404**; **porta trancada volta ao mapa** sem conteúdo;
    **abrir** leva `disponivel` a `em_producao`.
 4. **O vídeo** só é embutido quando é YouTube ou Vimeo; qualquer outro é link.
@@ -27,14 +29,17 @@ import re
 import httpx
 import pytest
 from django.urls import clear_script_prefix, reverse, set_script_prefix
+from django.utils import timezone
 
 from apps.core import menu as motor_do_menu
 from apps.cursos import progresso as portas
-from apps.cursos.models import Aula, Peca, Progresso, RegistroDePausa
+from apps.cursos.models import Aula, Bloco, Curso, Peca, Progresso, RegistroDePausa
 from tests.conftest import (
     ANA,
     CATALOGO,
     COOKIE,
+    PRODUTO_DE_OUTRO_CURSO,
+    SITE,
     URL_DO_MENU,
     dublar_matricula,
     dublar_sessao,
@@ -83,10 +88,87 @@ def test_a_porta_aberta_em_rascunho_e_dita_como_em_preparo(aluna, client):
     assert 'href="/E00"' not in corpo
 
 
+def test_o_proximo_passo_ignora_rascunho_e_destaca_aula_publicada_disponivel(
+    aluna, esqueleto, client
+):
+    primeira = publicar(esqueleto.aulas.get(numero="E00"))
+    rascunho = esqueleto.aulas.get(numero="E01")
+    publicada = publicar(esqueleto.aulas.get(numero="E02"))
+    publicar(esqueleto.aulas.get(numero="E03"))
+
+    abrir(client, reverse("curso", args=["profissional"]))
+    pessoa = Progresso.objects.get(aula=primeira).pessoa
+    Progresso.objects.filter(pessoa=pessoa, aula=primeira).update(
+        estado=Progresso.Estado.CONCLUIDA, concluida_em=timezone.now()
+    )
+    Progresso.objects.create(
+        pessoa=pessoa, aula=rascunho, estado=Progresso.Estado.DISPONIVEL
+    )
+    Progresso.objects.create(
+        pessoa=pessoa, aula=publicada, estado=Progresso.Estado.DISPONIVEL
+    )
+
+    corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
+    proximo_passo = corpo.split('<section class="proxima-porta">', 1)[1].split(
+        "</section>", 1
+    )[0]
+    assert rascunho.titulo_exibido not in proximo_passo
+    assert publicada.titulo_exibido in proximo_passo
+    assert ">Em preparo<" in corpo
+    assert "A escola está preparando esta aula." in corpo
+    assert "Conclua a aula anterior para abrir esta porta." in corpo
+    assert "Aula publicada e disponível para você." in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E01"]) not in corpo
+    assert reverse("aula-do-curso", args=["profissional", 1, "E03"]) not in corpo
+
+
+def test_o_proximo_passo_livre_ignora_rascunho_disponivel(aluna, rede, client):
+    curso = Curso.objects.create(
+        site_id=SITE,
+        slug="roblox",
+        nome="Primeiros Dólares com Roblox",
+        progressao=Curso.Progressao.LIVRE,
+        produto_id=PRODUTO_DE_OUTRO_CURSO,
+    )
+    bloco = Bloco.objects.create(
+        curso=curso, ordem=1, letra="A", parte=1, nome="Começando"
+    )
+    rascunho = Aula.objects.create(
+        curso=curso,
+        bloco=bloco,
+        ordem=1,
+        numero="1",
+        titulo_exibido="Rascunho primeiro",
+    )
+    publicada = publicar(
+        Aula.objects.create(
+            curso=curso,
+            bloco=bloco,
+            ordem=2,
+            numero="2",
+            titulo_exibido="Aula publicada depois",
+        )
+    )
+    dublar_matricula(rede, ANA["email"], produtos=[PRODUTO_DE_OUTRO_CURSO])
+
+    abrir(client, reverse("curso", args=[curso.slug]))
+    pessoa = Progresso.objects.get(aula=rascunho).pessoa
+    Progresso.objects.create(
+        pessoa=pessoa, aula=publicada, estado=Progresso.Estado.DISPONIVEL
+    )
+
+    corpo = corpo_de(abrir(client, reverse("curso", args=[curso.slug])))
+    proximo_passo = corpo.split('<section class="proxima-porta">', 1)[1].split(
+        "</section>", 1
+    )[0]
+    assert rascunho.titulo_exibido not in proximo_passo
+    assert publicada.titulo_exibido in proximo_passo
+
+
 def test_o_mapa_mostra_o_estado_de_cada_porta(aluna, aula_publicada, client):
     corpo = corpo_de(abrir(client, reverse("curso", args=["profissional"])))
     assert ">Disponível<" in corpo
-    assert corpo.count(">Trancada<") == 33
+    assert corpo.count(">Em preparo<") == 33
 
 
 # ---------------------------------------------------------------- 2. a aula
@@ -119,6 +201,98 @@ def test_peca_sem_texto_nao_vira_secao_vazia(aluna, aula_publicada, client):
     )
     assert 'id="peca-drills"' not in corpo
     assert corpo.count('class="peca"') == 15
+
+
+VERBATIM = (
+    "# A vídeo-aula\n\nOi, tudo bem? Hoje a gente vai **modelar o cubo** da vitrine."
+)
+
+
+def escrever_a_videoaula(aula, texto=VERBATIM):
+    return Peca.objects.create(
+        aula=aula, tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO, texto=texto
+    )
+
+
+def test_aula_sem_videoaula_escrita_nao_mostra_o_botao(aluna, aula_publicada, client):
+    """As 34 encomendas vão passar muito tempo sem este texto, e enquanto isso a
+    tela do aluno tem de ficar exatamente como estava: botão que abre um modal
+    vazio é defeito, não paciência."""
+    assert not aula_publicada.pecas.filter(tipo="videoaula_em_texto").exists()
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' not in corpo
+    assert "<dialog" not in corpo
+
+
+def test_videoaula_so_com_espacos_em_branco_tambem_nao_mostra_o_botao(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada, texto="   \n\n  ")
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' not in corpo
+    assert "<dialog" not in corpo
+
+
+def test_aula_com_videoaula_escrita_mostra_o_botao_e_o_texto_renderizado(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert 'id="abrir-videoaula"' in corpo
+    assert "A vídeo-aula, em texto" in corpo
+    # O MESMO renderizador das outras peças, e não um segundo: o `#` virou
+    # título e o `**` virou <strong>, como em toda peça da anatomia.
+    assert "<h1>A vídeo-aula</h1>" in corpo
+    assert "<strong>modelar o cubo</strong>" in corpo
+
+
+def test_o_botao_da_videoaula_fica_logo_abaixo_das_16_pecas(
+    aluna, aula_publicada, client
+):
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    ultima_peca = corpo.index('id="peca-dicionario_cartao_respostas"')
+    botao = corpo.index('id="abrir-videoaula"')
+    video = corpo.index('id="video"')
+    assert ultima_peca < botao < video
+
+
+def test_a_videoaula_nao_entra_na_sequencia_das_16(aluna, aula_publicada, client):
+    """O guarda da ANATOMIA, do lado da tela: com o texto escrito, a sequência
+    que o aluno lê continua tendo 16 seções, e a vídeo-aula não é uma delas."""
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert corpo.count('class="peca"') == 16
+    assert 'id="peca-videoaula_em_texto"' not in corpo
+
+
+def test_o_modal_da_videoaula_fecha_por_x_por_esc_e_por_clique_fora(
+    aluna, aula_publicada, client
+):
+    """As três saídas, e nenhuma biblioteca: o `<dialog>` do próprio navegador dá
+    o Esc e o foco de volta; o "Fechar" e o clique fora são o resto. Sem script,
+    o `:target` do CSS ainda abre e os dois links ainda fecham."""
+    escrever_a_videoaula(aula_publicada)
+    corpo = corpo_de(
+        abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
+    )
+    assert '<dialog class="videoaula" id="videoaula"' in corpo  # Esc e foco
+    assert 'class="videoaula-fechar" href="#abrir-videoaula"' in corpo  # o Fechar
+    assert 'class="videoaula-fundo" href="#abrir-videoaula"' in corpo  # clique fora
+    assert "caixa.showModal()" in corpo
+    assert "botao.focus()" in corpo
+    # Nada de fora: nenhum `<script src=...>` e nenhuma biblioteca.
+    assert "<script src" not in corpo
 
 
 def test_html_dentro_de_uma_peca_chega_escapado_na_pagina(
@@ -208,7 +382,9 @@ def test_youtube_e_vimeo_entram_embutidos(aluna, esqueleto, client, url, embutid
     corpo = corpo_de(
         abrir(client, reverse("aula-do-curso", args=["profissional", 1, "E00"]))
     )
-    assert f'<iframe src="{embutido}"' in corpo
+    assert (
+        f'<iframe src="{embutido}" ' 'referrerpolicy="strict-origin-when-cross-origin"'
+    ) in corpo
     assert "Abrir o vídeo em outra aba" in corpo
 
 
@@ -251,8 +427,20 @@ def test_cada_pausa_tem_o_segundo_e_um_formulario_proprio(
     )
     assert "Pausa 1 aos 1:30" in corpo
     assert "Pausa 2 aos 4:00" in corpo
-    assert corpo.count('action="' + reverse("registrar-pausa", args=["E00", 1])) == 1
-    assert corpo.count('action="' + reverse("registrar-pausa", args=["E00", 2])) == 1
+    assert (
+        corpo.count(
+            'action="'
+            + reverse("registrar-pausa-do-curso", args=["profissional", 1, "E00", 1])
+        )
+        == 1
+    )
+    assert (
+        corpo.count(
+            'action="'
+            + reverse("registrar-pausa-do-curso", args=["profissional", 1, "E00", 2])
+        )
+        == 1
+    )
     assert 'name="campo_0"' in corpo and 'name="campo_1"' in corpo
 
 
@@ -388,7 +576,10 @@ def test_o_checkpoint_tem_o_formulario_de_entrega_por_link(aluna, ana_pronta, cl
     )
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
-    assert f'action="{reverse("entregar-checkpoint", args=["E00"])}"' in checkpoint
+    assert (
+        f'action="{reverse("entregar-checkpoint-do-curso", args=["profissional", 1, "E00"])}"'
+        in checkpoint
+    )
     assert 'name="arquivo"' in checkpoint
     assert ">Entregar<" in checkpoint
     assert "as arestas estão suaves" in checkpoint
@@ -448,17 +639,26 @@ def test_todo_endereco_interno_sai_com_o_prefixo_publico(
         assert fora == [], f"links sem o prefixo público em {endereco}: {fora}"
 
 
-def test_o_301_do_endereco_antigo_sai_com_o_prefixo_publico(
+def test_o_301_do_endereco_antigo_da_aula_sai_com_o_prefixo_publico(
     aluna, aula_publicada, client, sob_prefixo
 ):
     """`armadilhas/029` e `/081` no cabeçalho `Location`, e não no corpo.
 
     O urlconf desta célula não conhece o prefixo público, e um 301 que
-    mandasse o aluno para `/profissional/` em vez de `/cursos/profissional/`
-    quebraria SÓ em produção: aqui, sem prefixo, o endereço estaria certo.
+    mandasse o aluno para `/profissional/parte-1/E00` em vez de
+    `/cursos/profissional/parte-1/E00` quebraria SÓ em produção: aqui, sem
+    prefixo, o endereço estaria certo. A raiz não entra mais aqui: ela é o
+    catálogo e não redireciona (07/09/2026).
     """
-    assert abrir(client, "/")["Location"] == "/cursos/profissional/"
     assert abrir(client, "/E00")["Location"] == "/cursos/profissional/parte-1/E00"
+
+
+def test_o_botao_do_catalogo_sai_com_o_prefixo_publico(aluna, client, sob_prefixo):
+    """A irmã do teste acima, para o link que substituiu o 301 da raiz: o
+    "Entrar no curso" do catálogo leva a `/cursos/profissional/`."""
+    resposta = abrir(client, "/")
+    assert resposta.status_code == 200
+    assert 'href="/cursos/profissional/"' in corpo_de(resposta)
 
 
 # ------------------------------------------------- 9. o menu e o rodapé

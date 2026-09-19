@@ -94,7 +94,9 @@ confirmou como o certo para toda decisão dele daqui em diante (`CLAUDE.md`).
    iframe de mesma origem. O erro já foi cometido no papel e pego na revisão
    (`armadilhas/109`).
 6. **UI só em PT-BR, sem rota com forma de idioma, sem página pública.** A
-   única rota que responde sem crachá é `/healthz`.
+   única rota de TELA que responde sem crachá é `/healthz`. Desde 06/09/2026
+   existe também uma porta de MÁQUINA, `/interno/`, que não é tela e tem
+   cadeado próprio: ver a emenda do §7.
 
 ## 5. O custo, declarado (para ninguém ser surpreendido)
 
@@ -113,3 +115,53 @@ confirmou como o certo para toda decisão dele daqui em diante (`CLAUDE.md`).
 **Aprovada e em execução desde 25/08/2026.** A escada de entrega, os mandatos
 de cada PR e as armadilhas do caminho estão no `PLANO-AREA-ADMIN.md` §6 e §7 —
 é de lá que cada despacho tira o próximo passo.
+
+## 7. Emenda de 06/09/2026 — a célula passa a expor UMA porta de máquina
+
+**O que mudou.** Até aqui esta lei descrevia uma célula que só consome API dos
+outros, e a linha dela no manifesto de contratos dizia, com todas as letras,
+que a `admin` "não expõe API de máquina". **Isso deixou de ser verdade.** A
+célula passa a servir uma operação em `/interno/`, de LEITURA:
+`POST /interno/administradores/consultar` responde `e_administrador: sim ou
+não` para um e-mail.
+
+**Quando, e por pedido de quem.** Sessão de arquitetura com o mantenedor em
+06/09/2026. Ele pediu que todo administrador possa conferir o portfólio do
+aluno, para agilizar, em vez de uma lista de conferentes colada à mão no
+servidor. Recebeu na mesma sessão a objeção da fresta (administrador desta casa
+enxerga a economia e os capítulos do livro não lançado dele), com as duas
+saídas na mesa, e escolheu "simplesmente todo admin confere", sem lista
+separada.
+
+**Por que isso obriga uma porta.** A permissão de conferir passa a ser
+calculada de quem é administrador, e quem sabe isso é esta célula. Sem a porta,
+a `pages` continuaria lendo um `IDS_DA_EQUIPE` escrito à mão no env da VPS:
+uma segunda casa do mesmo fato, que ninguém atualiza no dia em que o mantenedor
+promove alguém pela tela de `/admin/escola/`, e cuja divergência é invisível.
+
+**Os limites que nascem junto, e não se afrouxam sem sessão nova:**
+
+1. **Só leitura.** Nenhuma operação promove, remove ou lista administrador.
+   Quem faz isso é o mantenedor, na tela desta casa, com sessão. O motivo é
+   mecânico: o conjunto de tokens desta célula é plano (`TOKENS_ACEITOS`),
+   então todo par que ganhasse o token para ler ganharia de brinde o poder de
+   escrever (`armadilhas/318`). Escrita aqui é Rito de Contrato novo E um
+   segundo grau de token, como a `identidade` já faz.
+2. **A resposta é sim ou não, e nada mais.** Nome, papel, id de plataforma,
+   data de promoção e a lista inteira não saem. Cada campo a mais é um campo a
+   mais vazando por um par de tokens.
+3. **A resposta sai da MESMA função que a porta de gente usa**
+   (`apps/core/porta.py`), que soma `ADMIN_EMAILS` com os ativos da tabela. Um
+   segundo jeito de responder "esta pessoa é administradora?" seria uma segunda
+   resposta livre para discordar da primeira.
+4. **Quem fecha a porta é o Bearer do par, e só ele.** A célula roda sob
+   `SCRIPT_NAME=/admin`, e o corte do prefixo é do Django, não do Traefik:
+   `meshcraft.top/admin/interno/...` é alcançável pela internet
+   (`armadilhas/186`). Conjunto de tokens vazio recusa todo mundo, e o guarda é
+   o teste de 401 em todas as operações.
+5. **Reconhecer continua não sendo autorizar.** Esta porta diz um grau; quem
+   decide o que fazer com o sim é a célula dona do recurso, fail-closed
+   (`DECISAO-onde-mora-a-sessao.md` §4).
+
+Contrato congelado: `contracts/admin.openapi.yaml`, pelo Rito de Contrato
+(RITOS.md §3), em PR próprio.

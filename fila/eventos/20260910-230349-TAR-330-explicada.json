@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-230349-TAR-330-explicada",
+  "tarefa": "TAR-330",
+  "evento": "explicada",
+  "quando": "2026-09-10T23:03:49+00:00",
+  "quem": "Relato do mantenedor com captura do erro 153 na aula",
+  "o_que_e": "A aula mostra o player do YouTube com erro 153 e não entrega a capa do vídeo.",
+  "o_que_muda": "Quem estuda vê a capa do vídeo e consegue assisti-lo incorporado na aula, sem a tela de configuração recusada.",
+  "exemplo": "Como abrir uma aula e ver a capa do vídeo antes de apertar play, em vez de uma tela preta de erro.",
+  "importancia": 90
+}

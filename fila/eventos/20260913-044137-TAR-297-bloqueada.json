@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-044137-TAR-297-bloqueada",
+  "tarefa": "TAR-297",
+  "evento": "bloqueada",
+  "quando": "2026-09-13T04:41:37+00:00",
+  "quem": "despacho-fila-medicao-nao-e-decisao-do-mantenedor",
+  "detalhe": "TAR-297 continua bloqueada pelas dependencias da fila TAR-284 a TAR-289; nenhum dado ou decisao do mantenedor destrava esta etapa.",
+  "espera": "fila"
+}

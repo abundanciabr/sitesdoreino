@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015954-TAR-008-explicada",
+  "tarefa": "TAR-008",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:54+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "O painel conta quantas perguntas os robos te fizeram. Nao diz sobre qual assunto.",
+  "o_que_muda": "Voce e o gargalo mais caro da casa. Sabendo o assunto, da para decidir uma vez e parar de ser perguntado sobre aquilo.",
+  "exemplo": "Se oito das dez perguntas do mes forem sobre pagamento, uma decisao so te tira de oito interrupcoes.",
+  "importancia": 32
+}

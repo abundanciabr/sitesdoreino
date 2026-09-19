@@ -1,0 +1,19 @@
+{
+  "arquivo": "242-o-caminho-pelo-qual-a-chave-do-github-chega-na-vps-para-o-bo",
+  "id": "TAR-242",
+  "titulo": "O caminho pelo qual a chave do GitHub chega na VPS, para o botao de excluir tarefa funcionar",
+  "toca": [
+    "infra",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: infra/por-a-chave-do-github.sh no molde do por-a-chave-da-ia-do-forum.sh, com conferencia do token contra a API do GitHub antes de gravar; GITHUB_TOKEN_FILA preservada por releitura no provisionar-admin.sh e declarada no molde; bash -n limpo e as recusas provadas fora da VPS.",
+  "despacho": "CELULA: infra. A tela /admin/caixa/robos/ ganhou um botao de excluir tarefa, e para grava-lo o servidor precisa de um token do GitHub no ambiente da celula admin, com o nome GITHUB_TOKEN_FILA. Sem ele o botao nasce desligado dizendo o que fazer. Esta tarefa constroi o caminho pelo qual o token chega na VPS.\n\n1. infra/por-a-chave-do-github.sh, no molde EXATO de infra/por-a-chave-da-ia-do-forum.sh: recusa ao source, parar() com PAROU POR SEGURANCA, tudo conferido antes de pedir o segredo, digitacao invisivel (armadilhas/090), backup .bak-<epoch>, dono e permissao copiados de um env que ja funciona (armadilhas/091), idempotencia, estado ANTES e DEPOIS, e verificacao final de que a celula enxerga a variavel. O env e env/admin.env, a variavel e GITHUB_TOKEN_FILA e a celula a recarregar e a admin. Antes de gravar, confira o token chamando GET https://api.github.com/repos/abundanciabr/sitesdoreino e recuse se a resposta nao for 200.\n2. provisionar-admin.sh passa a PRESERVAR a chave por releitura, como TOKENS_ACEITOS_PAGES ja faz, e a declara em CHAVES_QUE_EU_GERO. Este e o defeito da TAR-172; nao nasca com ele.\n3. infra/env/admin.env.exemplo ganha a variavel, vazia, com o comentario dizendo de onde ela vem e o que acontece sem ela.\n\nCuidados: sem travessao em nada que o mantenedor leia; o repositorio e publico e nenhum token entra em arquivo nenhum; teste o que da para testar sem VPS (bash -n e as recusas encenadas).",
+  "origem": "brief do mantenedor de 06/09/2026, que aprovou criar a chave numa caixa de pergunta",
+  "criada_em": "2026-09-07"
+}

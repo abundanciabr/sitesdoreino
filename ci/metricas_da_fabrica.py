@@ -69,6 +69,213 @@ ETIQUETA_DE_POUSO = "pousar"
 TETO_DA_AMOSTRA = 40
 
 
+# Claude Code persiste Message.usage por bloco da mesma mensagem. Os snapshots
+# são cumulativos: https://platform.claude.com/docs/en/build-with-claude/streaming
+# input_tokens exclui os dois caches; cache_creation e iterations são detalhes,
+# não parcelas adicionais. A consolidação não audita cobrança nem assinatura.
+CAMPOS_USO = {
+    "entrada_nova": "input_tokens", "leitura_cache": "cache_read_input_tokens",
+    "escrita_cache": "cache_creation_input_tokens", "saida": "output_tokens",
+}
+
+
+def consolidar_uso(arquivos: list[Path]) -> dict:
+    """Reconstrói uso Claude Code por origem/sessão/mensagem/modelo, sem texto.
+
+    Caminho não participa da identidade: uma exportação sobreposta é a mesma
+    origem. Formatos incrementais, SSE cru e outras origens não são somados.
+    As somas são apenas da parcela conhecida; cobertura é por campo/mensagem.
+    """
+    mensagens = {}
+    ferramentas = set()
+    conteudos_observados = set()
+    cobertura = dict(arquivos=0, arquivos_ilegiveis=0, linhas_invalidas=0,
+                    registros=0, snapshots_consolidados=0, sem_identidade=0,
+                    incompativeis=0, campos_invalidos=0, ferramentas_sem_id=0,
+                    conteudos_invalidos=0)
+    for arquivo in sorted({Path(p).resolve() for p in arquivos}):
+        cobertura["arquivos"] += 1
+        try:
+            with arquivo.open(encoding="utf-8-sig") as entrada:
+                for linha in entrada:
+                    if not linha.strip():
+                        continue
+                    try:
+                        evento = json.loads(linha)
+                    except ValueError:
+                        cobertura["linhas_invalidas"] += 1
+                        continue
+                    if not isinstance(evento, dict):
+                        cobertura["linhas_invalidas"] += 1
+                        continue
+                    mensagem = evento.get("message")
+                    if not isinstance(mensagem, dict) or mensagem.get("role") != "assistant":
+                        if "usage" in evento or evento.get("type") in ("message_start", "message_delta", "event_msg"):
+                            cobertura["incompativeis"] += 1
+                        continue
+                    cobertura["registros"] += 1
+                    if evento.get("type") != "assistant" or evento.get("usage_mode", "cumulative") != "cumulative":
+                        cobertura["incompativeis"] += 1
+                        continue
+                    chave = ("claude-code", evento.get("sessionId"), mensagem.get("id"), mensagem.get("model"))
+                    if not all(isinstance(v, str) and v for v in chave):
+                        cobertura["sem_identidade"] += 1
+                        continue
+                    if chave in mensagens:
+                        cobertura["snapshots_consolidados"] += 1
+                    uso = mensagens.setdefault(chave, {c: None for c in CAMPOS_USO})
+                    bruto = mensagem.get("usage")
+                    if not isinstance(bruto, dict):
+                        cobertura["campos_invalidos"] += 1
+                        bruto = {}
+                    for campo, origem in CAMPOS_USO.items():
+                        valor = bruto.get(origem)
+                        if valor is None:
+                            continue
+                        if type(valor) is not int or valor < 0:
+                            cobertura["campos_invalidos"] += 1
+                            continue
+                        uso[campo] = max(uso[campo], valor) if uso[campo] is not None else valor
+                    conteudo = mensagem.get("content")
+                    if isinstance(conteudo, list):
+                        if all(isinstance(b, dict) and isinstance(b.get("type"), str) for b in conteudo):
+                            conteudos_observados.add(chave)
+                        else:
+                            cobertura["conteudos_invalidos"] += 1
+                        for bloco in conteudo:
+                            if not isinstance(bloco, dict) or bloco.get("type") != "tool_use":
+                                continue
+                            if not isinstance(bloco.get("id"), str) or not bloco["id"]:
+                                cobertura["ferramentas_sem_id"] += 1
+                                continue
+                            ferramentas.add((chave[0], chave[1], bloco["id"]))
+                    else:
+                        cobertura["conteudos_invalidos"] += 1
+        except (OSError, UnicodeError):
+            cobertura["arquivos_ilegiveis"] += 1
+    tokens = {}
+    cobertura["campos"] = {}
+    for campo in CAMPOS_USO:
+        valores = [m[campo] for m in mensagens.values() if m[campo] is not None]
+        tokens[campo] = sum(valores) if valores else None
+        cobertura["campos"][campo] = dict(conhecidas=len(valores), mensagens=len(mensagens))
+    cobertura["ferramentas"] = dict(
+        mensagens_observadas=len(conteudos_observados), mensagens=len(mensagens),
+        incompleta=not mensagens or len(conteudos_observados) < len(mensagens)
+        or bool(cobertura["conteudos_invalidos"] or cobertura["ferramentas_sem_id"]),
+    )
+    cobertura["incompleta"] = cobertura["ferramentas"]["incompleta"] or any(
+        cobertura[c] for c in ("arquivos_ilegiveis", "linhas_invalidas", "sem_identidade",
+                              "incompativeis", "campos_invalidos", "ferramentas_sem_id")
+    ) or any(c["conhecidas"] < len(mensagens) for c in cobertura["campos"].values())
+    return dict(metodo="reconstrução de snapshots cumulativos; não audita cobrança",
+                mensagens=len(mensagens), chamadas_modelo=None,
+                ferramentas=len(ferramentas) if conteudos_observados or ferramentas else None,
+                tokens=tokens, cobertura=cobertura)
+
+
+def cobertura_das_fases(eventos: list[dict]) -> dict:
+    from telemetria import FASES
+
+    cobertura = {}
+    for fase in FASES:
+        observados = [dict(e, quando=quando) for e in eventos if e["fase"] == fase
+                      for quando in e["observado_em"]]
+        recentes = []
+        if observados:
+            ultimo = max(e["quando"] for e in observados)
+            recentes = [e for e in observados if e["quando"] == ultimo]
+        resultados = {e["resultado"] for e in recentes}
+        cobertura[fase] = dict(
+            estado=next(iter(resultados)) if len(resultados) == 1 else
+                   "inconclusivo" if resultados else "sem_evidencia",
+            resultados_observados=sorted({e["resultado"] for e in observados}),
+            evidencias=[dict(commit=e["commit"], pr=e["pr"], quando=e["quando"],
+                            resultado=e["resultado"]) for e in observados],
+        )
+    return cobertura
+
+
+def cobertura_das_tentativas(eventos: list[dict]) -> list[dict]:
+    grupos = {}
+    for evento in eventos:
+        chave = tuple(evento[c] for c in ("tarefa", "tentativa", "branch"))
+        grupos.setdefault(chave, []).append(evento)
+    tentativas = []
+    for (tarefa, tentativa, branch), linhas in sorted(grupos.items()):
+        fases = cobertura_das_fases(linhas)
+        fechamento = fases["fechamento"]
+        ultimo_fechamento = max((e["quando"] for e in fechamento["evidencias"]), default="")
+        entregas = {(e["commit"], e["pr"]) for e in fechamento["evidencias"]
+                    if e["quando"] == ultimo_fechamento}
+        commit, pr = next(iter(entregas)) if len(entregas) == 1 else (None, None)
+        prova = [e for e in linhas if e["commit"] == commit and e["pr"] == pr]
+        validacao = cobertura_das_fases(prova)["validacao"]
+        ultimo_teste = max((e["quando"] for e in fases["validacao"]["evidencias"]), default="")
+        completo = (all(fases[f]["estado"] == "concluido" for f in ("abertura", "contexto", "execucao"))
+                    and fechamento["estado"] == "concluido" and pr is not None
+                    and validacao["estado"] == "concluido"
+                    and fases["validacao"]["estado"] == "concluido"
+                    and all(e["commit"] == commit for e in fases["validacao"]["evidencias"]
+                            if e["quando"] == ultimo_teste)
+                    and all(e["commit"] == commit for e in linhas
+                            if max(e["observado_em"]) > ultimo_fechamento))
+        tentativas.append(dict(
+            tarefa=tarefa, tentativa=tentativa, branch=branch, fases=fases,
+            revisao_entregue=commit, pr=pr, percurso_local_concluido=completo,
+            revisoes=[dict(commit=c, fases=cobertura_das_fases([e for e in linhas if e["commit"] == c]))
+                      for c in sorted({e["commit"] for e in linhas})],
+        ))
+    return tentativas
+
+
+def consolidar_percurso(eventos: list[dict]) -> dict:
+    """Observações distintas por tentativa e revisão, sem inferir aprovação."""
+    from telemetria import FASES, identidade_fase
+
+    unicos = {}
+    invalidos = 0
+    antigos = 0
+    campos = ("quando", "tarefa", "tentativa", "branch", "commit", "pr", "fase",
+              "resultado", "contexto_bytes")
+    for evento in eventos:
+        if not isinstance(evento, dict) or evento.get("evento") != "fase_operacional":
+            antigos += 1
+            continue
+        identidade = identidade_fase(evento)
+        if identidade is None or identidade != evento.get("id"):
+            invalidos += 1
+            continue
+        try:
+            if not isinstance(evento.get("quando"), str):
+                raise ValueError("timestamp não é texto")
+            quando = _quando(evento["quando"])
+            if quando.tzinfo is None:
+                raise ValueError("timestamp sem fuso")
+        except (ValueError, TypeError, KeyError):
+            invalidos += 1
+            continue
+        linha = {c: evento.get(c) for c in campos}
+        linha["quando"] = quando.astimezone(timezone.utc).isoformat()
+        anterior = unicos.setdefault(evento["id"], dict(linha, observado_em=[]))
+        anterior["observado_em"] = sorted(set(anterior["observado_em"]) | {linha["quando"]})
+        anterior["quando"] = anterior["observado_em"][0]
+    linhas = sorted(unicos.values(), key=lambda e: (e["quando"], e["tarefa"], e["tentativa"], e["fase"], e["resultado"], identidade_fase(e)))
+    entregas = []
+    for pr, commit in sorted({(e["pr"], e["commit"]) for e in linhas if e["pr"] is not None}):
+        vinculados = [e for e in linhas if e["pr"] == pr and e["commit"] == commit]
+        entregas.append(dict(pr=pr, commit=commit, fases=cobertura_das_fases(vinculados),
+            origens=[dict(tarefa=t, tentativa=s, branch=b) for t, s, b in sorted({
+                (e["tarefa"], e["tentativa"], e["branch"]) for e in vinculados})]))
+    return dict(tarefas=len({e["tarefa"] for e in linhas}),
+                tentativas=len({(e["tarefa"], e["tentativa"], e["branch"]) for e in linhas}),
+                eventos=linhas,
+                por_tentativa=cobertura_das_tentativas(linhas), por_entrega=entregas,
+                publicacoes_verificadas=sum(e["fase"] == "publicacao" and e["resultado"] == "verificado" for e in linhas),
+                cobertura=dict(escopo="presenca_global", eventos_invalidos=invalidos, eventos_sem_correlacao=antigos,
+                               fases_ausentes=[f for f in FASES if not any(e["fase"] == f for e in linhas)]))
+
+
 def _gh_json(args: list[str], raiz: Path, descricao: str):
     """Consulta o GitHub e devolve JSON — ou levanta. Nunca devolve [] por erro.
 
@@ -183,7 +390,7 @@ def coletar(raiz: Path, dias: int, agora: datetime | None = None) -> dict:
         "commits": commits,
         "na_fila": len(na_fila),
         "abertos": len(devolvidos),
-        "pedidos_ao_dono": pedidos_ao_dono(raiz),
+        **pedidos_da_fila_do_dono(raiz),
         "leis_sem_mecanismo": leis_sem_mecanismo(raiz),
     }
 
@@ -208,11 +415,18 @@ fs.readdirSync(dir).filter(function (n) { return n.slice(-3) === '.js'; })
     (caixa.window.REGISTROS || []).forEach(function (r) { regs.push(r); });
   });
 if (!regs.length) { throw new Error('nenhum registro carregado'); }
-process.stdout.write(String(LOGICA.caixaDeEntrada(regs, new Date()).length));
+var fila = LOGICA.caixaDeEntrada(regs, new Date());
+var porFrente = {};
+fila.forEach(function (r) {
+  var frente = r.registro && typeof r.registro.frente === 'string' && r.registro.frente.trim()
+    ? r.registro.frente : 'sem frente';
+  porFrente[frente] = (porFrente[frente] || 0) + 1;
+});
+process.stdout.write(JSON.stringify({total: fila.length, por_frente: porFrente}));
 """
 
 
-def pedidos_ao_dono(raiz: Path) -> int:
+def pedidos_da_fila_do_dono(raiz: Path) -> dict:
     """Pedidos do livro esperando resposta — a fila de UMA pessoa (B14).
 
     A regra é a do painel, e é a do painel LITERALMENTE: esta função chama
@@ -254,13 +468,42 @@ def pedidos_ao_dono(raiz: Path) -> int:
         descricao="contar a fila do mantenedor pela regra do painel",
         exigir_stdout=True,
     ).stdout.strip()
-    if not saida.isdigit():
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
         raise ErroDeInstrumentacao(
-            "o contador da fila não devolveu um número",
-            f"Recebido:\n  {saida!r}\n\nSem número não há medida, e 'não sei' "
-            "nunca vira zero.",
+            "o contador da fila não devolveu JSON",
+            f"Recebido:\n  {saida!r}\n\nSem medida não há divisão por frente, e "
+            "'não sei' nunca vira zero.",
+        ) from erro
+    total = dados.get("total")
+    por_frente = dados.get("por_frente")
+    if type(total) is not int or total < 0 or not isinstance(por_frente, dict):
+        raise ErroDeInstrumentacao(
+            "o contador da fila devolveu uma estrutura inválida",
+            f"Recebido:\n  {saida!r}",
         )
-    return int(saida)
+    if any(type(valor) is not int or valor < 0 for valor in por_frente.values()):
+        raise ErroDeInstrumentacao(
+            "a divisão por frente devolveu contagens inválidas",
+            f"Recebido:\n  {saida!r}",
+        )
+    if sum(por_frente.values()) != total:
+        raise ErroDeInstrumentacao(
+            "a divisão por frente não fecha com o total da fila",
+            f"Total: {total}; por frente: {por_frente}",
+        )
+    return {"pedidos_ao_dono": total, "pedidos_ao_dono_por_frente": por_frente}
+
+
+def pedidos_ao_dono(raiz: Path) -> int:
+    """Mantém a consulta antiga para quem só precisa do total."""
+    return pedidos_da_fila_do_dono(raiz)["pedidos_ao_dono"]
+
+
+def pedidos_ao_dono_por_frente(raiz: Path) -> dict[str, int]:
+    """Devolve a mesma fila do painel agrupada pela frente do registro."""
+    return pedidos_da_fila_do_dono(raiz)["pedidos_ao_dono_por_frente"]
 
 
 def leis_sem_mecanismo(raiz: Path) -> int:
@@ -283,7 +526,9 @@ def leis_sem_mecanismo(raiz: Path) -> int:
 
 def montar(dados: dict) -> str:
     """Rende o boletim de saúde. Sem dados, não inventa linha."""
-    faltando = [c for c in ("pousos", "minutos", "commits") if c not in dados]
+    faltando = [c for c in (
+        "pousos", "minutos", "commits", "pedidos_ao_dono_por_frente"
+    ) if c not in dados]
     if faltando:
         raise ErroDeInstrumentacao(
             "medida incompleta — não vou imprimir meia-verdade",
@@ -324,6 +569,13 @@ def montar(dados: dict) -> str:
         f"NA FILA DA PISTA      {dados['na_fila']} de {dados['abertos']} PR(s) abertos",
         f"PEDIDOS AO DONO       {dados['pedidos_ao_dono']} esperando resposta dele",
         "                      (é o único recurso do projeto que não escala)",
+        "POR FRENTE            " + " · ".join(
+            f"{frente}: {quantidade}"
+            for frente, quantidade in sorted(
+                dados["pedidos_ao_dono_por_frente"].items()
+            )
+        ) if dados["pedidos_ao_dono_por_frente"] else
+        "POR FRENTE            nenhuma pendência medida",
         f"LEIS SEM MECANISMO    {dados['leis_sem_mecanismo']} regra(s) que ninguém faz valer",
         "",
         "Este arquivo MEDE e não julga: nenhum destes números reprova nada.",
@@ -338,13 +590,28 @@ def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(description="Métricas da fábrica (Onda 6)")
     parser.add_argument("--dias", type=int, default=DIAS_PADRAO)
+    parser.add_argument("--local", action="store_true", help="percurso observado no Git comum, sem consultar GitHub")
+    parser.add_argument("--transcricoes", nargs="+", type=Path,
+                        help="JSONL Claude Code locais; consolida somente metadados de uso")
     args = parser.parse_args(argv)
     if args.dias < 1:
         print("ERROR: --dias precisa ser >= 1.")
         return 2
     try:
         raiz = raiz_do_repo()
-        print(montar(coletar(raiz, args.dias)))
+        if args.local or args.transcricoes:
+            from telemetria import dir_git_comum, ler_tudo
+            git = dir_git_comum(raiz)
+            leitura = {}
+            eventos = ler_tudo(git, cobertura=leitura) if git else []
+            dados = {"percurso": consolidar_percurso(eventos)}
+            dados["percurso"]["cobertura"]["git_disponivel"] = git is not None
+            dados["percurso"]["cobertura"]["leitura"] = leitura
+            if args.transcricoes:
+                dados["uso"] = consolidar_uso(args.transcricoes)
+            print(json.dumps(dados, ensure_ascii=False, indent=2))
+        else:
+            print(montar(coletar(raiz, args.dias)))
     except ErroDeInstrumentacao as erro:
         print("\nPAROU POR SEGURANÇA — as métricas NÃO foram impressas.\n")
         print(f"  {erro.resumo}")

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015949-TAR-239-explicada",
+  "tarefa": "TAR-239",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:49+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "As duas chaves que ligam a conferencia do portfolio estao escritas a mao em quatro arquivos. Se alguem mudar uma, as outras tres continuam com o nome velho.",
+  "o_que_muda": "A conferencia do portfolio do aluno para de funcionar em silencio, e ninguem sabe por que.",
+  "exemplo": "E o mesmo telefone anotado em quatro cadernos: voce troca de numero e tres cadernos continuam mentindo.",
+  "importancia": 48
+}

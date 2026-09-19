@@ -1,0 +1,18 @@
+{
+  "arquivo": "262-o-roteiro-que-leva-a-chave-da-ia-para-o-painel-nao-pode-dize",
+  "id": "TAR-262",
+  "titulo": "O roteiro que leva a chave da IA para o painel nao pode dizer PRONTO quando a chave nao chegou",
+  "toca": [
+    "infra",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "a suite ci/tests/test_por_a_chave_da_ia_do_admin.py verde, com casos que rodam a segunda metade do roteiro contra um docker de mentira e medem o codigo de saida real",
+  "despacho": "Conserte os onze defeitos que o revisor da casa achou em\ninfra/por-a-chave-da-ia-do-admin.sh e no guarda dele\n(ci/tests/test_por_a_chave_da_ia_do_admin.py), entregues no PR #1332.\n\nO grave: quando a chave NAO chega dentro do container, o roteiro imprime AVISO\ne termina com codigo 0, e o mantenedor conclui que o robo analista esta ligado\nquando ele esta desligado. Junto vao: o codigo de saida do \"docker compose up\"\njogado fora, a prova da chave feita pelo TAMANHO dela (duas chaves da Anthropic\ntem o mesmo comprimento), o guarda que nunca executa a segunda metade do\nroteiro porque a plataforma de mentira nao tem o servico admin no compose, o\n502 que imprime ATENCAO e PRONTO na mesma tela, o valor lido do arquivo que so\ne conferido DEPOIS de normalizado, o arquivo temporario com a chave sem trap, o\ncurl fixo para producao, o \"config\" que falha por env_file faltando e vira\ndiagnostico falso, e o fixture de env anterior ao proprio #1332.\n\nProve por mutacao cada guarda novo, e prove os tres primeiros com um docker de\nmentira medindo o codigo de saida real do roteiro. Reescreva o bloco de colar\npara o mantenedor dizendo quantos desfechos o roteiro tem e como cada um se\nparece na tela dele.\n\nMANDATO CODEOWNERS: infra/ e ci/tests/ (so o arquivo de teste deste roteiro).",
+  "origem": "revisão do PR #1332 pelo revisor da casa, 07/09/2026",
+  "criada_em": "2026-09-07"
+}

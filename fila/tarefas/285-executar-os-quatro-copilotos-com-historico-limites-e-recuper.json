@@ -1,0 +1,22 @@
+{
+  "arquivo": "285-executar-os-quatro-copilotos-com-historico-limites-e-recuper",
+  "id": "TAR-285",
+  "titulo": "Executar os quatro copilotos com histórico, limites e recuperação de falhas",
+  "toca": [
+    "admin",
+    "fila",
+    "contracts",
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-283"
+  ],
+  "cria": [],
+  "move": [
+    "latencia-de-execucao"
+  ],
+  "evidencia_exigida": "Escada de PRs por contrato e célula com evento versionado, execução persistente, histórico de tentativas, aprovação e limites, falha e nova tentativa seguras, custo por execução e prova de recuperação após reinício sem duplicar efeito.",
+  "despacho": "Construa a fundação comum dos quatro copilotos, após a TAR-283. Reuse Redis, outbox e Huey existentes; não crie uma segunda pilha. Cada pedido e resultado vira evento auditável com identidade, limite, aprovação exigida, tentativa, falha, nova tentativa e custo. A execução deve sobreviver a reinício sem repetir efeito. Primeiro registre as fatias de contrato, depois uma tarefa por célula e só então implemente. Nenhuma ação externa paga ou financeira fica ligada nesta frente.",
+  "origem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos, frente de execução persistente",
+  "criada_em": "2026-09-09"
+}

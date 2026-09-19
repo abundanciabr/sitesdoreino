@@ -1,0 +1,20 @@
+{
+  "arquivo": "311-a-medicao-de-esforco-recusa-duplicacao-e-separa-os-quatro-ve",
+  "id": "TAR-311",
+  "titulo": "A medição de esforço recusa duplicação e separa os quatro vereditos",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes vermelho para verde provam identidade única, rotina, período, elegibilidade, frequência e comparabilidade; duplicação e fonte sintética não criam maturidade, e funcionamento, economia, qualidade, capacidade e meta atingida saem separados.",
+  "despacho": "GRAVIDADE: ALTO, bloqueante da Fase 1.\n\nREQUISITO: a medição precisa identificar observações únicas e comparáveis de trabalho braçal elegível, separar validade da amostra de desempenho e emitir conclusões independentes para funcionamento, economia, qualidade e capacidade.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; ci/medir_esforco.py, linhas 45 a 85 e 96 a 119; painel/medicoes/esforco.json.\n\nEVIDÊNCIA OBSERVADA: o validador aceita rotina nula, data inválida e identificador duplicado. O resumo agrega natureza melhoria e julgamento estratégico, usa duas observações como limiar de maturidade e acopla quatro vereditos. produtividade_comprovada também exige economia_media maior que 80, confundindo comprovar uma economia real com atingir a meta.\n\nREPRODUÇÃO: no script C:\\Users\\davia\\AppData\\Local\\Temp\\meshcraft-auditoria-fase1-c0ac7bf8\\contraprovas.py, duplique a mesma observação sintética de 100 minutos antes e 1 minuto humano depois. validar retorna lista vazia, economia média de 99 por cento e produtividade_comprovada verdadeira; com uma observação fica falsa e com a cópia idêntica fica verdadeira. Duas observações distintas com 50 por cento de economia mantêm produtividade_comprovada falsa, enquanto alterar apenas o tempo humano para 81 por cento a torna verdadeira.\n\nESPERADO: identidade, rotina, período e elegibilidade válidos; frequência e minutos do trabalho braçal comparável agregados; maturidade sustentada por período, cobertura e comparabilidade; economia comprovada separada de meta atingida e dos demais vereditos. OBSERVADO: duplicação idêntica cria maturidade e um limiar arbitrário decide conclusões acopladas.\n\nIMPACTO: dados sintéticos ou duplicados podem fabricar economia e liberar uma conclusão de produtividade sem amostra real suficiente.\n\nCORREÇÃO MÍNIMA: validar identidade, unicidade, rotina e período; excluir naturezas inelegíveis; agregar frequência e minutos humanos do trabalho elegível; medir maturidade por cobertura temporal e comparabilidade; separar os quatro vereditos e a comprovação da economia do alcance da meta.\n\nCLASSIFICAÇÃO: falha da entrega da Fase 1; bloqueia o aceite técnico. Os dados atuais têm zero observações reais, baseline insuficiente e produtividade falsa, portanto esta tarefa não afirma economia real.\n\nPROVA DE FECHO: contraprovas de rotina nula, data inválida, duplicação, fonte sintética e natureza inelegível reprovam; uma amostra real comparável produz conclusões separadas, inclusive economia comprovada abaixo da meta sem declarar meta atingida.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; contraprovas locais e armadilhas 400, 411 e 402",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "medicao-de-esforco"
+}

@@ -14,7 +14,9 @@ O que se prova aqui, na ordem do que custou caro:
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -32,8 +34,14 @@ from espera import (  # noqa: E402
     TetoVencido,
     vigiar,
 )
-from esperar import ESPERAS_QUE_NAO_DEVIAM_EXISTIR  # noqa: E402
-from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
+from esperar import (  # noqa: E402
+    ESPERAS_QUE_NAO_DEVIAM_EXISTIR,
+    REGUA,
+)
+from mergear import (  # noqa: E402
+    CHECKS_OBRIGATORIOS,
+    MOTIVO_GITHUB_AINDA_CALCULANDO,
+)
 
 ESPERAR = RAIZ_DO_REPO / "ci" / "esperar.py"
 
@@ -150,11 +158,15 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 # ------------------------------------------------------------------- a CLI --
 
 
+PR_ABERTO = {"state": "OPEN", "title": "o PR desta bancada", "mergedAt": None}
+
+
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
            gh_exit: int = 0, mergear_exit: int | None = None,
            mergear_roteiro: list[dict] | None = None,
            gh_log: str | None = None,
-           teto_do_log_s: float | None = None) -> subprocess.CompletedProcess:
+           teto_do_log_s: float | None = None,
+           gh_pr: dict | None = None) -> subprocess.CompletedProcess:
     """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
 
     `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
@@ -164,6 +176,11 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     ele o dublê SAI 1 nesse subcomando, que é o caso "o log não veio" — onde o
     desfecho tem de cair para o texto de sempre. O texto `__DEMORA__` faz o
     dublê dormir, para medir o teto do log sem esperar o teto de verdade.
+
+    `gh_pr` é o que a CONFERÊNCIA do PR (a pergunta que antecede o laço)
+    recebe de volta; sem ele, um PR aberto qualquer. Um dicionário com
+    `__erro__` faz o dublê escrever essa linha no stderr e SAIR 1 — é assim que
+    o `gh` de verdade recusa um número que não é PR deste repositório.
 
     `mergear_roteiro` é o mesmo portão de mentira, com uma resposta DIFERENTE
     por chamada: uma lista de `{"exit": int, "saida": str}`. Serve para medir a
@@ -216,6 +233,8 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     if gh_respostas is not None:
         fita = tmp / "fita.json"
         fita.write_text(json.dumps(gh_respostas), encoding="utf-8")
+        ficha = tmp / "ficha-do-pr.json"
+        ficha.write_text(json.dumps(gh_pr or PR_ABERTO), encoding="utf-8")
         log = tmp / "log-do-gh.txt"
         if gh_log is not None:
             log.write_text(gh_log, encoding="utf-8")
@@ -241,6 +260,18 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
             "        codigo = 1\n"
             "    sys.stdout.buffer.write(corpo.encode('utf-8'))\n"
             "    sys.exit(codigo)\n"
+            # A conferência do PR (07/09/2026) é uma pergunta DIFERENTE da
+            # do laço, e o dublê responde a cada uma do seu lugar: lida da
+            # mesma fita, ela comeria a primeira resposta e todo teste daqui
+            # passaria a medir uma volta a menos do que declara.
+            f"ficha = pathlib.Path(r'{ficha}')\n"
+            "if 'state,title,mergedAt' in sys.argv:\n"
+            "    pr = json.loads(ficha.read_text(encoding='utf-8'))\n"
+            "    if '__erro__' in pr:\n"
+            "        print(pr['__erro__'], file=sys.stderr)\n"
+            "        sys.exit(1)\n"
+            "    print(json.dumps(pr))\n"
+            "    sys.exit(0)\n"
             f"fita = pathlib.Path(r'{fita}')\n"
             "respostas = json.loads(fita.read_text(encoding='utf-8'))\n"
             f"if {gh_exit} != 0 or not respostas:\n"
@@ -248,6 +279,8 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
             f"    sys.exit({gh_exit or 1})\n"
             "atual = respostas.pop(0)\n"
             "fita.write_text(json.dumps(respostas), encoding='utf-8')\n"
+            "if '--include' in sys.argv:\n"
+            "    print('HTTP/2.0 200 OK\\n')\n"
             "print(json.dumps(atual))\n",
             encoding="utf-8",
         )
@@ -267,11 +300,30 @@ def test_autoteste_fala_as_tres_linhas_e_morre_no_teto(tmp_path):
     assert "ESTOUREI o teto" in proc.stdout
 
 
-def test_sem_teto_a_cli_recusa_e_ensina(tmp_path):
-    proc = _rodar(["--run", "123"], tmp_path)
+def test_sem_teto_sem_regua_recusa_e_ensina(tmp_path):
+    proc = _rodar(["--sonda", "exit 0"], tmp_path)
     assert proc.returncode != 0
-    assert "teto" in (proc.stderr + proc.stdout)
-    assert "armadilhas/161" in (proc.stderr + proc.stdout)
+    saida = proc.stderr + proc.stdout
+    assert "teto" in saida
+    assert "--regua" in saida
+
+
+def test_sem_teto_da_cli_usa_o_teto_da_regua_viva(tmp_path):
+    dados = json.loads(REGUA.read_text(encoding="utf-8"))
+    entrada = dados["esperas"]["deploy-celula"]
+    base = entrada["p90_s"] if entrada["amostra"] >= 20 else entrada["p50_s"] * 1.5
+    esperado = math.ceil(base * 2 / 60) * 60
+    proc = _rodar(
+        ["--run", "9", "--intervalo", "0.05"],
+        tmp_path,
+        gh_respostas=[{"status": "completed", "conclusion": "success",
+                       "name": "deploy-celula", "html_url": "u"}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert f"teto {int(esperado // 60)}min" in proc.stdout
+    log = tmp_path / ".sitesdoreino" / "esperas.jsonl"
+    linha = json.loads(log.read_text(encoding="utf-8").strip().splitlines()[-1])
+    assert linha["teto_s"] == esperado
 
 
 @pytest.mark.parametrize("alvo", sorted(ESPERAS_QUE_NAO_DEVIAM_EXISTIR))
@@ -287,7 +339,7 @@ def test_a_espera_que_nao_devia_existir_recusa_e_ensina_o_caminho(alvo, tmp_path
     proc = _rodar([f"--{alvo}", "447", "--teto", "15"], tmp_path)
     saida = proc.stdout + proc.stderr
     assert proc.returncode != 0, saida
-    assert "--pousar" in saida, "a recusa precisa ENSINAR o caminho certo"
+    assert "ci/mergear.py" in saida, "a recusa precisa ENSINAR o caminho certo"
     assert "447" in saida, "a recusa precisa citar o PR de quem a leu"
     assert "RITOS" in saida
 
@@ -325,12 +377,12 @@ def test_o_veredito_do_deploy_continua_livre(tmp_path):
 
 
 def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
-    """`--checks` NÃO pode ser proibido — é pré-requisito do `--pousar`.
+    """`--checks` NÃO pode ser proibido — é pré-requisito do `--e-pousar`.
 
     Este teste existe por um erro que quase pousou (armadilhas/258): a primeira
     versão do PR #801 proibiu `--checks` apoiada na letra do RITOS §2 peça 6
     ("checks de PR não se esperam"). A peça fala do LAÇO da armadilhas/156, não
-    da espera única que o portão EXIGE: `ci/mergear.py --pousar` recusa com
+    da espera única que o portão EXIGE: `ci/mergear.py N` recusa com
     check em andamento (ERROR), e o CLAUDE.md manda esperá-los concluir antes
     de pedir pouso. Proibir aqui tornaria o rito da casa impossível de cumprir.
     """
@@ -341,9 +393,7 @@ def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
     proc = _rodar(
         ["--checks", "447", "--teto", "1", "--intervalo", "0.05"],
         tmp_path,
-        gh_respostas=[{"state": "OPEN", "statusCheckRollup": [
-            {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
-        ]}],
+        gh_respostas=list(VERDE),
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "verdes" in proc.stdout
@@ -430,10 +480,11 @@ def test_regua_ausente_diz_nao_sei_nunca_inventa_numero(tmp_path):
 # ---------------------------------------------------------------------------
 # --e-pousar: o caminho inteiro num comando (03/09/2026)
 # ---------------------------------------------------------------------------
-VERDE = [{"state": "OPEN", "statusCheckRollup": [
+VERDE = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "ci-celula-gate"},
 ]}]
-VERMELHO = [{"state": "OPEN", "statusCheckRollup": [
+VERMELHO = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas"},
 ]}]
 RAPIDO = ["--teto", "1", "--intervalo", "0.05"]
@@ -453,9 +504,10 @@ def test_checks_verdes_com_e_pousar_chamam_o_portao_e_pedem_pouso(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
-    assert chamado == "447 --pousar", chamado
+    assert chamado == "447", chamado
     assert "pedi pouso do PR 447 pelo portão" in proc.stdout
-    assert "Nada mais depende de ninguém" in proc.stdout
+    assert "publicação ainda não foram comprovadas" in proc.stdout
+    assert "--entrega 447" in proc.stdout
 
 
 def test_checks_reprovados_com_e_pousar_nunca_chamam_o_portao(tmp_path):
@@ -479,6 +531,174 @@ def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "portao de mentira: exit 1" in proc.stdout, "a recusa do portão tem de sair na voz"
+
+
+# ---------------------------------------------------------------------------
+# O número de --checks/--pouso é um PR daqui, ou a recusa é NA HORA
+# (07/09/2026, TAR-202 — armadilhas/354)
+# ---------------------------------------------------------------------------
+PR_MESCLADO = {"state": "MERGED", "title": "semear a fila e escrever a lei",
+               "mergedAt": "2026-08-14T12:00:00Z"}
+PR_SUMIDO = {"__erro__": "GraphQL: Could not resolve to a PullRequest with the "
+                         "number of 999999. (repository.pullRequest)"}
+
+
+def test_checks_com_pr_mesclado_recusa_na_hora_sem_gastar_tentativa(tmp_path):
+    """O defeito de 05/09/2026, encenado: dois robôs passaram a QUANTIDADE de
+    checks no lugar do número do PR (armadilhas/354). `--checks 6` foi medir o
+    PR #6, mesclado desde os primeiros dias, e queimou as 20 tentativas
+    repetindo "não consegui medir" — frase legítima para condição impossível.
+
+    A fita intocada no fim é a prova dura de que nenhuma tentativa foi gasta.
+    """
+    proc = _rodar(["--checks", "6", *RAPIDO], tmp_path,
+                  gh_respostas=VERDE, gh_pr=PR_MESCLADO)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "MESCLADO" in saida and "2026-08-14" in saida, "diga o estado REAL"
+    assert "semear a fila" in saida, "a recusa precisa mostrar QUE PR é esse"
+    assert "quantidade de checks" in saida, "a recusa precisa ensinar a troca"
+    assert "armadilhas/354" in saida
+    assert "▶ vou esperar" not in proc.stdout, "anunciou espera e depois desistiu"
+    assert json.loads((tmp_path / "fita.json").read_text(encoding="utf-8")) == VERDE, (
+        "a recusa gastou uma volta do laço — ela tem de vir ANTES dele"
+    )
+
+
+def test_checks_com_pr_inexistente_recusa_na_hora_e_ensina(tmp_path):
+    """Um número que não é PR nenhum: a espera nunca poderia terminar."""
+    proc = _rodar(["--checks", "999999", *RAPIDO], tmp_path,
+                  gh_respostas=VERDE, gh_pr=PR_SUMIDO)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "não tem PR com esse número" in saida
+    assert "999999" in saida
+    assert "quantidade de checks" in saida
+    assert "▶ vou esperar" not in proc.stdout
+
+
+def test_checks_de_um_pr_aberto_de_verdade_continua_sendo_medido(tmp_path):
+    """A conferência não pode custar o rito: PR aberto passa e a espera mede."""
+    proc = _rodar(["--checks", "447", *RAPIDO], tmp_path, gh_respostas=VERDE)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "checks verdes" in proc.stdout
+
+
+def test_gh_que_cai_na_conferencia_nao_impede_a_espera(tmp_path):
+    """SABOTAGEM: a conferência é lição, não muralha. Um `gh` que não responde
+    (rede caída, credencial vencida) não pode virar recusa de espera legítima —
+    na dúvida ela cala, e o laço, que é fail-closed, decide sozinho."""
+    proc = _rodar(["--checks", "447", *RAPIDO], tmp_path, gh_respostas=VERDE,
+                  gh_pr={"__erro__": "dial tcp: lookup api.github.com: no such host"})
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "checks verdes" in proc.stdout
+
+
+def test_pouso_com_pr_inexistente_recusa_na_hora(tmp_path):
+    """`--pouso` exige só que o PR EXISTA, nunca que esteja aberto: o desfecho
+    verde dele É o PR mesclado, e exigir ABERTO recusaria o próprio sucesso."""
+    proc = _rodar(
+        ["--pouso", "999999", *RAPIDO, "--mesmo-assim", "depurando a pista"],
+        tmp_path, gh_respostas=VERDE, gh_pr=PR_SUMIDO,
+    )
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 2, saida
+    assert "não tem PR com esse número" in saida
+    assert "▶ vou esperar" not in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# AS DUAS PERGUNTAS DO PORTÃO ANTES DE QUALQUER VERDE (TAR-141, 07/09/2026)
+#
+# Medido no PR #1020 em 04/09/2026: `--checks` anunciou "todos os 1 checks
+# verdes · levou 16s" num PR EM CONFLITO e seguiu para o pouso. PR em conflito
+# não tem merge ref, então nenhum workflow de `pull_request` nasce e os
+# obrigatórios não existem — só sobram os de `pull_request_target`, verdes na
+# hora (armadilhas/198). Quem salvou a rodada foi o portão, que é independente
+# e mede outra coisa. O falso-verde estava aqui, no caminho crítico.
+# ---------------------------------------------------------------------------
+
+# O retrato mais cruel do defeito: um PR que ESTAVA verde e ficou em conflito
+# porque a main andou. O head sha não mudou, então os obrigatórios continuam
+# pendurados nele, verdes e velhos — sem a pergunta do conflito, tudo aqui diz
+# "pode pousar".
+CONFLITADO_E_VERDE = [{"mergeable": "CONFLICTING", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "ci-celula-gate"},
+]}] * 40
+
+# O retrato do #1020: o único check que nasce num PR em conflito é o de
+# `pull_request_target`, e ele fica verde. Aqui o conflito está apagado de
+# propósito, para que a SEGUNDA pergunta (os obrigatórios existem?) fique
+# sozinha em cena.
+SO_O_CHECK_QUE_NAO_DECIDE = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS",
+     "name": "conferir o toca declarado"},
+]}] * 40
+
+
+def test_pr_em_conflito_nunca_e_verde_e_o_portao_nem_e_acordado(tmp_path):
+    """A guarda que a TAR-141 pediu, com o portão de mentira armado para PASSAR.
+
+    Se a pergunta do conflito sair de `observar_checks`, este PR vira "todos os
+    2 checks verdes", o portão é chamado e o arquivo-marca aparece: a mutação
+    fica vermelha aqui, não três camadas adiante.
+    """
+    proc = _rodar(
+        ["--checks", "1020", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=list(CONFLITADO_E_VERDE), mergear_exit=0,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert not (tmp_path / "portao-chamado.txt").exists(), (
+        "pediu pouso de um PR em conflito: " + proc.stdout
+    )
+    assert "verdes" not in proc.stdout, "chamou de verde um PR em conflito"
+    assert "CONFLITA" in proc.stdout, proc.stdout
+    assert "git merge origin/main" in proc.stdout, (
+        "a recusa precisa dizer O QUE FAZER, não só que parou: " + proc.stdout
+    )
+
+
+def test_sem_os_checks_obrigatorios_a_espera_nao_declara_verde(tmp_path):
+    """Verde do que existe não é verde (INV-CI01).
+
+    Um PR cujo workflow foi renomeado, desabilitado ou nem disparou tem esta
+    cara: um check só, de outro gatilho, verde. Sem a segunda pergunta isto
+    vira "todos os 1 checks verdes" e o pouso é pedido. Com ela, o alvo NÃO
+    apareceu, a graça mata a espera, e o desfecho nomeia o que falta.
+    """
+    proc = _rodar(
+        ["--checks", "1020", "--teto", "1", "--intervalo", "0.05",
+         "--graca", "0.2", "--e-pousar"],
+        tmp_path, gh_respostas=list(SO_O_CHECK_QUE_NAO_DECIDE), mergear_exit=0,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert not (tmp_path / "portao-chamado.txt").exists(), (
+        "pediu pouso sem os checks obrigatórios: " + proc.stdout
+    )
+    assert "nem APARECEU" in proc.stdout, proc.stdout
+    for obrigatorio in CHECKS_OBRIGATORIOS:
+        assert obrigatorio in proc.stderr, (
+            f"o batimento não nomeou o obrigatório que falta ({obrigatorio}): "
+            + proc.stderr
+        )
+        # E no DESFECHO também: com `--e-pousar` o batimento vai para o stderr,
+        # e sobra esta única linha no stdout — a que o robô lê e repassa. Sem o
+        # nome aqui, ela manda investigar sem dizer o quê.
+        assert obrigatorio in proc.stdout, (
+            f"o desfecho não nomeou o obrigatório que falta ({obrigatorio}): "
+            + proc.stdout
+        )
+
+
+def test_a_lista_de_obrigatorios_e_a_do_portao_importada_nunca_copiada():
+    """Uma lista só, no portão. Copiada aqui, um check obrigatório novo lá
+    nasceria invisível para a espera — e a espera voltaria a chamar de verde um
+    PR que o portão recusa. É a mesma lei da armadilhas/328."""
+    import esperar
+    import mergear
+
+    assert esperar.CHECKS_OBRIGATORIOS is mergear.CHECKS_OBRIGATORIOS
 
 
 # ---------------------------------------------------------------------------
@@ -566,7 +786,7 @@ def test_o_portao_que_nao_conseguiu_medir_e_remedido_e_o_pouso_sai(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 2, chamadas
+    assert chamadas.count("447") == 2, chamadas
     # A remedição é bastidor: desde 06/09/2026 ela fala no stderr sob
     # `--e-pousar`, para não acordar o robô por um fato que ainda não é
     # desfecho. Continua PROIBIDO esperar calada — só mudou o cano.
@@ -590,7 +810,7 @@ def test_o_portao_que_REPROVA_nao_e_remedido_nenhuma_vez(tmp_path):
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 1, "FAIL não se remede: " + repr(chamadas)
+    assert chamadas.count("447") == 1, "FAIL não se remede: " + repr(chamadas)
     assert "RECUSOU o pouso do PR 447" in proc.stdout
 
 
@@ -604,7 +824,7 @@ def test_o_ERROR_que_nao_para_de_vir_desiste_e_conta_a_recusa_inteira(tmp_path):
     )
     assert proc.returncode == 2, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 6, chamadas
+    assert chamadas.count("447") == 6, chamadas
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "calcula isso de forma assíncrona" in proc.stdout
 
@@ -636,7 +856,7 @@ def test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
-    assert chamadas.count("--pousar") == 2, (
+    assert chamadas.count("447") == 2, (
         "a recusa em cp1252 não foi reconhecida como 'não consegui medir' — "
         "a decisão voltou a depender de bytes: " + repr(chamadas)
     )
@@ -662,15 +882,16 @@ def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):
 # Partida, batimento e placar continuam existindo — mudam de cano (stderr) e
 # ficam guardados no log da espera, que é onde a auditoria os lê.
 # ---------------------------------------------------------------------------
-VERDE_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
+VERDE_COM_RUN = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
      "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "ci-celula-gate"},
 ]}]
-VERMELHO_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
+VERMELHO_COM_RUN = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas",
      "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
 ]}]
-PENDENTE = [{"state": "OPEN", "statusCheckRollup": [
+PENDENTE = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
     {"status": "IN_PROGRESS", "name": "muralhas"},
 ]}] * 40
 
@@ -720,7 +941,8 @@ def test_e_pousar_liga_o_modo_calado_e_o_pouso_cabe_na_mesma_linha(tmp_path):
     unica = _linhas(proc.stdout)[0]
     assert "verdes" in unica, "o desfecho da espera some se não vier junto"
     assert "pedi pouso do PR 447" in unica
-    assert "Nada mais depende de ninguém" in unica
+    assert "publicação ainda não foram comprovadas" in unica
+    assert "--entrega 447" in unica
     assert "passo pelo portão" in proc.stderr
 
 
@@ -889,3 +1111,107 @@ def test_o_bloco_de_falha_tem_teto_de_600_caracteres():
     assert TETO_DO_BLOCO == 600
     gordo = "\n".join("ERROR linha %d " % i + "x" * 200 for i in range(50))
     assert len(bloco_de_falha(gordo)) <= TETO_DO_BLOCO
+
+
+# ---------------------------------------------------------------------------
+# Um veredito por NOME de check — a espera não pode discordar do portão
+# (TAR-204, medido no PR #1136 em 05/09/2026)
+# ---------------------------------------------------------------------------
+# Fechar e reabrir o PR é a receita da `armadilhas/077` para a etiqueta que o
+# workflow não enxerga. Ela funciona e deixa rastro: a execução antiga fica
+# CANCELLED pendurada no rollup, ao lado da nova que passou. Lendo o rollup
+# cru, a espera anunciava "checks REPROVADOS" no mesmo segundo em que
+# `gh pr checks` dizia `pass` e `ci/mergear.py N`, a fonte de direito,
+# aprovava o pouso. Falso vermelho num portão ensina a ignorar o portão.
+REABERTO = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
+     "startedAt": "2026-09-05T23:44:14Z"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "ci-celula-gate",
+     "startedAt": "2026-09-05T23:44:14Z"},
+    {"status": "COMPLETED", "conclusion": "CANCELLED",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:05Z"},
+    {"status": "COMPLETED", "conclusion": "SUCCESS",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:14Z"},
+]}]
+
+# A mesma dupla com as horas trocadas: a execução CANCELADA é a ATUAL. Sem
+# este par, um conserto preguiçoso ("ignore o que estiver CANCELLED") passaria
+# no teste de cima e deixaria a espera cega para o cancelamento de verdade.
+CANCELADO_DE_VERDADE = [{"mergeable": "MERGEABLE", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:05Z"},
+    {"status": "COMPLETED", "conclusion": "CANCELLED",
+     "name": "conferir o toca declarado", "startedAt": "2026-09-05T23:44:14Z"},
+]}]
+
+
+def test_execucao_cancelada_do_pr_reaberto_nao_reprova_o_que_esta_verde(tmp_path):
+    """O caso medido no #1136: 4 entradas, 3 nomes, e o PR está verde."""
+    proc = _rodar(
+        ["--checks", "1136", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=REABERTO, mergear_exit=0,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "REPROVADO" not in proc.stdout, "falso vermelho: a cancelada é a velha"
+    assert "todos os 3 checks verdes" in proc.stdout, (
+        "o número também não pode mentir: são 3 checks, não 4 execuções"
+    )
+    chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
+    assert chamado == "1136", chamado
+
+
+def test_execucao_cancelada_que_e_a_ATUAL_continua_reprovando(tmp_path):
+    """O outro lado da mesma regra: cancelar por último é vermelho, e vermelho
+    nunca vira pedido de pouso."""
+    proc = _rodar(
+        ["--checks", "1136", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=CANCELADO_DE_VERDADE, mergear_exit=0,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "REPROVADO" in proc.stdout
+    assert not (tmp_path / "portao-chamado.txt").exists(), "chamou o portão no vermelho"
+
+
+def test_a_espera_e_o_portao_usam_a_MESMA_funcao_nunca_duas_copias():
+    """Duas leituras do mesmo fato é o defeito. Uma cópia da regra aqui
+    divergiria da do portão no dia em que alguém mexesse numa só — o mesmo
+    desenho das duas vacinas de deploy (`armadilhas/127`)."""
+    import esperar
+    import mergear
+
+    assert esperar.mais_recente_por_nome is mergear.mais_recente_por_nome
+
+
+# ---------------------------------------------------------------------------
+# O portão de mentira aceita qualquer argumento. O de verdade, não.
+#
+# Em 15/09/2026 o `--e-pousar` falhou em todo PR, com
+# `mergear.py: error: unrecognized arguments: --pousar`. A opção tinha saído
+# de `ci/mergear.py` e a chamada aqui ficou órfã, sem nenhum teste ver: todos
+# os testes acima trocam o portão por um script de mentira que engole qualquer
+# argumento. Este mede as flags contra o `--help` do portão DE VERDADE.
+# ---------------------------------------------------------------------------
+CHAMADA_DO_PORTAO = re.compile(r"\[\*_mergear\(\)(?P<argumentos>[^\]]*)\]", re.DOTALL)
+
+
+def test_as_flags_que_a_espera_passa_ao_portao_existem_no_portao():
+    espera = (RAIZ_DO_REPO / "ci" / "esperar.py").read_text(encoding="utf-8")
+    chamadas = CHAMADA_DO_PORTAO.findall(espera)
+    assert chamadas, "não achei nenhuma chamada ao portão em ci/esperar.py"
+
+    ajuda = subprocess.run(
+        [sys.executable, str(RAIZ_DO_REPO / "ci" / "mergear.py"), "--help"],
+        capture_output=True, text=True, timeout=60, encoding="utf-8", errors="replace",
+    ).stdout
+
+    orfas = sorted({
+        flag
+        for argumentos in chamadas
+        for flag in re.findall(r'"(--[a-z-]+)"', argumentos)
+        if flag not in ajuda
+    })
+    assert not orfas, (
+        f"ci/esperar.py passa ao portão flags que ci/mergear.py não tem: {orfas}. "
+        "O pouso automático falha em todo PR e ninguém vê, porque os testes daqui "
+        "usam um portão de mentira. Acerte a chamada ou devolva a opção ao portão."
+    )

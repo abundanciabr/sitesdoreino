@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-020825-TAR-336-explicada",
+  "tarefa": "TAR-336",
+  "evento": "explicada",
+  "quando": "2026-09-11T02:08:25+00:00",
+  "quem": "pedido explícito da mantenedora em 10/09/2026",
+  "o_que_e": "Hoje a equipe não tem no painel um lugar para criar e reencontrar aulas avulsas que podem ser compartilhadas fora de um curso.",
+  "o_que_muda": "A equipe passa a criar uma aula com nome, vídeo e descrição e recebe o link permanente para responder uma dúvida de aluno.",
+  "exemplo": "Ao responder um pedido no Fórum, a equipe cria uma explicação curta e copia o endereço da aula para enviar no grupo.",
+  "importancia": 78
+}

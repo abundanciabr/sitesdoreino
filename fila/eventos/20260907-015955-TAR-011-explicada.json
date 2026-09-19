@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015955-TAR-011-explicada",
+  "tarefa": "TAR-011",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:55+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Trabalhos que ninguem terminou ficam guardados para sempre, sem nada dizendo que morreram.",
+  "o_que_muda": "Quando voce ou um robo olham a lista, entulho e trabalho vivo aparecem iguais.",
+  "exemplo": "E a gaveta com contas pagas e contas a pagar no mesmo maco.",
+  "importancia": 28
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-143622-TAR-322-explicada",
+  "tarefa": "TAR-322",
+  "evento": "explicada",
+  "quando": "2026-09-10T14:36:22+00:00",
+  "quem": "Pedido do mantenedor em 10/09/2026: resolver limite de taxa nas consultas de deploy, com propostas de eventos, GraphQL e ETag.",
+  "o_que_e": "O acompanhamento das publicações repete consultas mesmo sem mudança e busca vários resultados separadamente.",
+  "o_que_muda": "O acompanhamento aproveita respostas sem mudança, reúne consultas e espera o prazo informado quando o GitHub limita o acesso.",
+  "exemplo": "Oito consultas de resultados passam a uma; uma publicação sem mudança é conferida sem consumir outra unidade da cota principal.",
+  "importancia": 85
+}

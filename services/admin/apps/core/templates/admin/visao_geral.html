@@ -29,6 +29,25 @@
   {% endcomment %}
   <h2 class="titulo-de-bloco">Os painéis</h2>
   <div class="cartoes">
+    {% comment %}
+    A PRIMEIRA porta da grade, e ela é a única que não é um lugar para olhar: é
+    a lista do que espera por você (07/09/2026, degrau 1 de
+    documentos/pendencias-e-conferencia-por-pares.md).
+
+    Vem na frente das outras porque foi exatamente por vir depois que uma fila
+    inteira ficou invisível: em 06/09/2026 o mantenedor abriu a fila de marcos
+    e disse "que eu nem sabia que isso existia". Uma fila que alguém precisa
+    lembrar de abrir é uma fila que não existe, e a cura de um esquecimento não
+    pode morar no fim de uma lista de onze cartões.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'pendencias' %}">
+      <div class="rotulo">Ver o que está esperando você &rarr;</div>
+      <div class="nota">
+        As filas do site num lugar só: quem quer entrar na escola, o que espera
+        a sua assinatura e as decisões paradas. Cada linha diz há quanto tempo
+        espera e leva para onde se resolve.
+      </div>
+    </a>
     <a class="cartao porta" href="{% url 'painel' %}">
       <div class="rotulo">Abrir o painel do sistema &rarr;</div>
       <div class="nota">
@@ -67,6 +86,23 @@
       <div class="nota">
         Todo endereço que o site tem hoje, agrupado por quem consegue abrir:
         visitante, aluno, você, e as portas que só as máquinas usam.
+      </div>
+    </a>
+    {% comment %}
+    O ranking das IAs (17/09/2026), a pedido dele. Vizinha do mapa do site
+    porque é o mesmo tipo de tela: não é acompanhamento do produto, é retrato
+    de como a casa está sendo construída, e por quem.
+
+    Entra na grade pela lição que o editor de documentos deixou logo abaixo: um
+    botão que ninguém encontra é uma funcionalidade que não existe. Esta aqui é
+    a tela que decide qual IA continua no projeto, e a decisão não pode depender
+    de alguém lembrar o endereço de cor.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'ranking_das_ias' %}">
+      <div class="rotulo">Ver o ranking das IAs &rarr;</div>
+      <div class="nota">
+        Quanto cada uma das três IAs publicou de verdade, e quanto escreveu para
+        publicar. Os números saem do Git, não do que cada uma diz de si.
       </div>
     </a>
     {% comment %}
@@ -119,6 +155,27 @@
       </div>
     </a>
     {% comment %}
+    A oitava porta (07/09/2026), do degrau 2.14 da Fila do Primeiro Dólar. Ela
+    não é conveniência, pela mesma razão da economia acima: a lei daquela célula
+    chama de CRITÉRIO DE MORTE 5 o dia em que mudar um destes números passar a
+    exigir PR de código. Enquanto trocar um prazo dependesse de um robô editar o
+    semeador e esperar uma publicação, a régua da fila era código com aparência
+    de dado.
+
+    Vem depois da economia na grade porque as duas são o mesmo gesto (mexer numa
+    régua que o motor obedece), e essa vizinhança ajuda quem procura.
+    Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §3.8 e §9.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'parametros_da_fila' %}">
+      <div class="rotulo">Mudar os números da Fila &rarr;</div>
+      <div class="nota">
+        Quanto tempo o aluno tem para responder, quantos dias dura cada tipo de
+        produção, quantas rodadas de conversa de preço cada lado tem. Mudar um
+        número vale da hora em diante: o que já foi combinado antes continua com
+        o valor antigo.
+      </div>
+    </a>
+    {% comment %}
     A sétima porta (02/09/2026), a pedido dele: "no painel do admin crie uma
     parte assim /admin/perpetuo onde iremos criar várias coisas sobre o
     lançamento perpétuo". Entra na mesma grade das outras pela mesma decisão de
@@ -162,6 +219,22 @@
       <div class="nota">
         Um botão que manda um aviso de teste para o seu próprio aparelho, e diz
         para quantos aparelhos ele chegou.
+      </div>
+    </a>
+    {% comment %}
+    A nona porta (17/09/2026). A Reunião existe desde o degrau 3 do plano do
+    painel de gestão — a pauta de segunda-feira que `apps/core/reuniao.py`
+    monta — mas não tinha porta nesta capa: quem não soubesse o endereço de
+    cor não chegava nela. Mesma lição das outras oito: um botão que ninguém
+    encontra é uma funcionalidade que não existe.
+    Lei: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'reuniao' %}">
+      <div class="rotulo">Abrir a pauta da reunião &rarr;</div>
+      <div class="nota">
+        Os oito passos da sua reunião de segunda-feira, lendo o mesmo placar
+        que a escola usa e terminando num pedido pronto para você mandar ao
+        robô.
       </div>
     </a>
   </div>

@@ -83,6 +83,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import mapa_de_celulas  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     Estado,
@@ -146,6 +147,79 @@ def conta_testes(texto: str) -> int:
 
 def conta_desligados(texto: str) -> int:
     return len(DESLIGADORES.findall(texto))
+
+
+def _arquivos_de_teste_atual(raiz: Path, mapa: dict) -> set[str]:
+    arquivos: set[str] = set()
+    for celula in mapa.values():
+        for base in celula.caminhos:
+            pasta = raiz / base
+            if not pasta.is_dir():
+                continue
+            for arquivo in pasta.rglob("*"):
+                if not arquivo.is_file():
+                    continue
+                relativo = arquivo.relative_to(raiz).as_posix()
+                if e_arquivo_de_teste(relativo):
+                    arquivos.add(relativo)
+    return arquivos
+
+
+def _arquivos_de_teste_na_base(raiz: Path, base: str, mapa: dict) -> set[str]:
+    saida = executar(
+        ["git", "ls-tree", "-r", "--name-only", base],
+        cwd=raiz,
+        descricao=f"listar os testes da base '{base}'",
+        exigir_stdout=False,
+    ).stdout
+    return {
+        caminho.replace("\\", "/")
+        for caminho in saida.splitlines()
+        if e_arquivo_de_teste(caminho)
+        and mapa_de_celulas.celula_do_caminho(caminho, mapa)
+    }
+
+
+def cobertura_das_celulas(raiz: Path, base: str) -> tuple[list[str], str]:
+    """Compara o total de testes coletáveis de cada célula, base contra PR."""
+    mapa = mapa_de_celulas.carregar(raiz)
+    antes = _arquivos_de_teste_na_base(raiz, base, mapa)
+    depois = _arquivos_de_teste_atual(raiz, mapa)
+    por_celula_antes: dict[str, set[str]] = {nome: set() for nome in mapa}
+    por_celula_depois: dict[str, set[str]] = {nome: set() for nome in mapa}
+    for caminho in antes:
+        nome = mapa_de_celulas.celula_do_caminho(caminho, mapa)
+        if nome:
+            por_celula_antes[nome].add(caminho)
+    for caminho in depois:
+        nome = mapa_de_celulas.celula_do_caminho(caminho, mapa)
+        if nome:
+            por_celula_depois[nome].add(caminho)
+
+    reducoes: list[str] = []
+    placar: list[str] = []
+    for nome in sorted(mapa):
+        total_antes = 0
+        for caminho in sorted(por_celula_antes[nome]):
+            texto = versao_da_base(raiz, base, caminho)
+            if texto is None:
+                raise ErroDeInstrumentacao(
+                    f"não consegui ler o teste {caminho} na base {base}",
+                    "O Git listou o arquivo e não entregou seu conteúdo. "
+                    "A cobertura não foi medida.",
+                )
+            total_antes += conta_testes(texto)
+        total_depois = sum(
+            conta_testes((raiz / caminho).read_text(encoding="utf-8"))
+            for caminho in sorted(por_celula_depois[nome])
+        )
+        placar.append(f"{nome}: {total_antes} antes · {total_depois} depois")
+        if total_depois < total_antes:
+            reducoes.append(
+                f"célula {nome}: {total_antes} → {total_depois} teste(s) "
+                "coletável(eis)"
+            )
+    return reducoes, " · ".join(placar)
 
 
 def mudancas_no_diff(raiz: Path, base: str) -> list[tuple[str | None, str | None]]:
@@ -337,7 +411,10 @@ def rodar(raiz: Path | None = None) -> Relatorio:
     relatorio = Relatorio(titulo="CATRACA DE TESTES — teste não some em silêncio")
 
     achados, antes, depois = perdas(raiz, base)
+    reducoes, placar = cobertura_das_celulas(raiz, base)
+    achados.extend(reducoes)
     print(f"TESTES nos arquivos tocados: {antes} antes · {depois} depois")
+    print(f"COBERTURA POR CÉLULA: {placar}")
 
     if not achados:
         relatorio.registrar(

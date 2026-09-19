@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-192843-TAR-416-explicada",
+  "tarefa": "TAR-416",
+  "evento": "explicada",
+  "quando": "2026-09-14T19:28:43+00:00",
+  "quem": "Pedido do mantenedor em 14/09/2026: canal automático comentado no PR #1655; entrega independente.",
+  "o_que_e": "As regras dos agentes ainda pedem que o dono leve mensagens de uma sessão para outra.",
+  "o_que_muda": "Registra o uso direto dos comentários e da caixa de correio já decidido pelo dono.",
+  "exemplo": "Ao abrir uma sessão, a sentinela lê a caixa e comenta no trabalho aberto sem pedir que o dono cole o texto.",
+  "importancia": 85
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015944-TAR-010-explicada",
+  "tarefa": "TAR-010",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:44+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Hoje um robo so anuncia o trabalho quando termina. Enquanto trabalha, ninguem sabe que ele esta naquilo.",
+  "o_que_muda": "Dois robos podem construir a mesma coisa e voce paga duas vezes. Aconteceu em 05/09 com o portfolio do aluno.",
+  "exemplo": "E dois pedreiros levantando a mesma parede em turnos diferentes porque nenhum deixou bilhete.",
+  "importancia": 62
+}

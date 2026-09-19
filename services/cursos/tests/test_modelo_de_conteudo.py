@@ -21,7 +21,7 @@ from io import StringIO
 import pytest
 from django.apps import apps
 from django.core.management import call_command
-from django.db import IntegrityError
+from django.db import IntegrityError, connection, transaction
 
 from apps.cursos.models import Aula, Bloco, Curso, Instrumento, Pausa, Peca
 
@@ -47,6 +47,7 @@ AS_16_PECAS_NA_ORDEM = (
     "dicionario_cartao_respostas",
 )
 AS_2_INTERNAS = ("roteiro", "guia_do_mentor")
+AS_SOB_DEMANDA = ("videoaula_em_texto",)
 
 # O despacho do degrau 1.2, transcrito: letra -> (parte, aulas).
 A_DISTRIBUICAO = {
@@ -138,14 +139,55 @@ def test_estado_de_curso_no_vocabulario_fechado(curso, estado):
         Curso.objects.filter(pk=curso.pk).update(estado=estado)
 
 
+def test_o_curso_nasce_por_laudo(curso):
+    """A regra do livro é o padrão: o curso que ninguém configurou avança pelo
+    laudo da professora, nunca sozinho."""
+    assert curso.progressao == "por_laudo"
+
+
+@pytest.mark.parametrize("progressao", ["por_data", "por_xp", "LIVRE", ""])
+def test_progressao_de_curso_no_vocabulario_fechado(curso, progressao):
+    """Só `por_laudo` e `livre` (`DECISAO-a-sala-serve-varios-cursos.md` §3.2).
+    Uma terceira regra de avanço precisa de decisão nova do mantenedor, e o
+    banco é quem impede que ela nasça por um `update()` distraído."""
+    with pytest.raises(
+        IntegrityError, match="progressao_de_curso_no_vocabulario_fechado"
+    ):
+        Curso.objects.filter(pk=curso.pk).update(progressao=progressao)
+
+
+def test_progressao_livre_e_aceita(curso):
+    Curso.objects.filter(pk=curso.pk).update(progressao="livre")
+    curso.refresh_from_db()
+    assert curso.progressao == "livre"
+
+
 # ---------------------------------------------------------------------------
 # 2. O bloco
 # ---------------------------------------------------------------------------
 
 
 def test_uma_ordem_por_bloco_por_curso(curso, bloco):
+    """A restrição é `DEFERRED` (o banco a confere quando a transação fecha, e
+    não na linha do `INSERT`), porque `putCourseStructure` reordena blocos em
+    lugar e a faixa 1..26 não tem onde estacionar. `connection.check_constraints()`
+    força a conferência aqui dentro: sem ele o teste passaria por engano
+    (`armadilhas/358`)."""
     with pytest.raises(IntegrityError, match="uma_ordem_por_bloco_por_curso"):
-        cria_bloco(curso, ordem=bloco.ordem, letra="B")
+        with transaction.atomic():
+            cria_bloco(curso, ordem=bloco.ordem, letra="B")
+            connection.check_constraints()
+
+
+def test_trocar_dois_blocos_de_lugar_cabe_numa_transacao(curso, bloco):
+    """O motivo de a unicidade da ordem ser adiada: A vai para 2 e B para 1
+    dentro da mesma transação, e o banco só confere no fim."""
+    outro = cria_bloco(curso, ordem=2, letra="B")
+    with transaction.atomic():
+        Bloco.objects.filter(pk=bloco.pk).update(ordem=2)
+        Bloco.objects.filter(pk=outro.pk).update(ordem=1)
+        connection.check_constraints()
+    assert sorted(Bloco.objects.values_list("letra", "ordem")) == [("A", 2), ("B", 1)]
 
 
 def test_uma_letra_por_bloco_por_curso(curso, bloco):
@@ -153,15 +195,21 @@ def test_uma_letra_por_bloco_por_curso(curso, bloco):
         cria_bloco(curso, ordem=2, letra=bloco.letra)
 
 
-@pytest.mark.parametrize("ordem", [0, 13])
-def test_ordem_de_bloco_entre_1_e_12(curso, ordem):
-    with pytest.raises(IntegrityError, match="ordem_de_bloco_entre_1_e_12"):
+@pytest.mark.parametrize("ordem", [0, 27])
+def test_ordem_de_bloco_entre_1_e_26(curso, ordem):
+    with pytest.raises(IntegrityError, match="ordem_de_bloco_entre_1_e_26"):
         cria_bloco(curso, ordem=ordem)
 
 
-@pytest.mark.parametrize("letra", ["M", "a", ""])
-def test_letra_de_bloco_entre_a_e_l(curso, letra):
-    with pytest.raises(IntegrityError, match="letra_de_bloco_entre_a_e_l"):
+def test_o_bloco_z_na_ordem_26_e_aceito(curso):
+    """A sala serve vários cursos, e um curso pode ter 26 blocos (era 12, o
+    tamanho do livro)."""
+    assert cria_bloco(curso, ordem=26, letra="Z").pk
+
+
+@pytest.mark.parametrize("letra", ["a", "1", ""])
+def test_letra_de_bloco_entre_a_e_z(curso, letra):
+    with pytest.raises(IntegrityError, match="letra_de_bloco_entre_a_e_z"):
         cria_bloco(curso, letra=letra)
 
 
@@ -217,10 +265,21 @@ def test_a_chave_composta_sobrevive_a_um_queryset_update(aula):
         Aula.objects.filter(pk=aula.pk).update(curso=outro_curso)
 
 
-@pytest.mark.parametrize("numero", ["E33", "e00", "E0", "EB2", ""])
-def test_numero_de_aula_no_vocabulario_fechado(curso, bloco, numero):
-    with pytest.raises(IntegrityError, match="numero_de_aula_no_vocabulario_fechado"):
+@pytest.mark.parametrize("numero", ["e00", "E-1", "A 1", ""])
+def test_numero_de_aula_de_1_a_3_letras_ou_digitos(curso, bloco, numero):
+    """O vocabulário fechado do livro (E00..E32, EB) deixou de ser o do banco em
+    07/09/2026: a sala serve vários cursos, cada um com a sua numeração. O que
+    o banco impõe é o padrão: de 1 a 3 letras maiúsculas ou dígitos."""
+    with pytest.raises(
+        IntegrityError, match="numero_de_aula_de_1_a_3_letras_ou_digitos"
+    ):
         cria_aula(curso, bloco, numero=numero)
+
+
+@pytest.mark.parametrize("numero", ["1", "A", "E33", "M12", "EB2"])
+def test_numero_de_aula_de_outro_curso_e_aceito(curso, bloco, numero):
+    """O que o livro não tem e outro curso pode ter."""
+    assert cria_aula(curso, bloco, numero=numero).pk
 
 
 @pytest.mark.parametrize("nivel", [0, 4])
@@ -252,7 +311,7 @@ def test_a_aula_aponta_para_um_instrumento_ou_para_nenhum(aula):
 
 
 # ---------------------------------------------------------------------------
-# 4. A peça: as 16 da anatomia, na ordem canônica, mais duas internas
+# 4. A peça: as 16 da anatomia, mais duas internas, mais uma sob demanda
 # ---------------------------------------------------------------------------
 
 
@@ -266,10 +325,28 @@ def test_as_duas_internas_ficam_fora_da_ordem_canonica():
     assert not set(Peca.TIPOS_INTERNOS) & set(Peca.ORDEM_CANONICA)
 
 
+def test_a_videoaula_em_texto_fica_fora_da_ordem_canonica():
+    """A ANATOMIA NÃO CRESCEU PARA 17, e este é o guarda que impede que cresça.
+
+    A vídeo-aula em texto é um TERCEIRO caso (`TIPOS_SOB_DEMANDA`): o aluno a vê,
+    mas fora da sequência, por um botão embaixo do capítulo. As 16 são a anatomia
+    que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    mudá-la é Rito, não conveniência de quem estiver passando por aqui.
+    """
+    assert tuple(Peca.TIPOS_SOB_DEMANDA) == AS_SOB_DEMANDA
+    assert len(Peca.ORDEM_CANONICA) == 16
+    assert "videoaula_em_texto" not in Peca.ORDEM_CANONICA
+    assert not set(Peca.TIPOS_SOB_DEMANDA) & set(Peca.ORDEM_CANONICA)
+    assert not set(Peca.TIPOS_SOB_DEMANDA) & set(Peca.TIPOS_INTERNOS)
+
+
 def test_o_vocabulario_de_peca_e_a_ordem_canonica_mais_as_internas():
-    """O `TextChoices` declara as 16 NA ORDEM, e depois as duas internas: a tela
-    que iterar `Peca.Tipo` mostra a anatomia na ordem certa sem segunda lista."""
-    assert tuple(Peca.Tipo.values) == AS_16_PECAS_NA_ORDEM + AS_2_INTERNAS
+    """O `TextChoices` declara as 16 NA ORDEM, depois as duas internas e por
+    último a sob demanda: a tela que iterar `Peca.Tipo` mostra a anatomia na
+    ordem certa sem segunda lista."""
+    assert (
+        tuple(Peca.Tipo.values) == AS_16_PECAS_NA_ORDEM + AS_2_INTERNAS + AS_SOB_DEMANDA
+    )
 
 
 def test_uma_peca_por_tipo_por_aula(aula):
@@ -284,10 +361,22 @@ def test_tipo_de_peca_no_vocabulario_fechado(aula, tipo):
         Peca.objects.create(aula=aula, tipo=tipo, texto="x")
 
 
-def test_uma_aula_recebe_as_18_pecas(aula):
+def test_uma_aula_recebe_as_19_pecas(aula):
     for tipo in Peca.Tipo:
         Peca.objects.create(aula=aula, tipo=tipo, texto=f"# {tipo.label}")
-    assert aula.pecas.count() == 18
+    assert aula.pecas.count() == 19
+
+
+def test_a_videoaula_em_texto_entra_e_sai_do_banco(aula):
+    """O vocabulário FECHADO do banco aprendeu a palavra nova: sem a migração
+    `0007`, este `create` seria IntegrityError com o `TextChoices` já certo."""
+    Peca.objects.create(
+        aula=aula,
+        tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO,
+        texto="Oi, tudo bem? Hoje a gente vai modelar o cubo da vitrine.",
+    )
+    lida = aula.pecas.get(tipo="videoaula_em_texto")
+    assert lida.texto.startswith("Oi, tudo bem?")
 
 
 # ---------------------------------------------------------------------------
@@ -484,11 +573,12 @@ def test_o_esqueleto_entra_inteiro_ou_nao_entra(db):
     # ele passou a tropeçar num campo que a reconciliação NÃO toca.
     curso = Curso.objects.create(site_id=SITE, slug="profissional", nome="Profissional")
     # O bloco A já na posição certa, para a reconciliação não ter o que mudar
-    # nele (a letra é limitada a A–L por `letra_de_bloco_entre_a_e_l`).
+    # nele.
     bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
-    # A E32 ocupando a ordem 0, que é da E00. O número precisa ser do
-    # vocabulário fechado (`numero_de_aula_no_vocabulario_fechado`), e o
-    # semeador só chega na E32 no fim: quando chegar, a E00 já terá tropeçado.
+    # A E32 ocupando a ordem 0, que é da E00. O semeador só chega na E32 no
+    # fim: quando chegar, a E00 já terá tropeçado. A unicidade da ordem da AULA
+    # é IMEDIATA (só a do bloco é adiada), e é isso que faz o tropeço acontecer
+    # na linha e este teste medir a transação única.
     Aula.objects.create(
         curso=curso, bloco=bloco, ordem=0, numero="E32", titulo_exibido="Fora do lugar"
     )

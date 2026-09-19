@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-041724-TAR-252-explicada",
+  "tarefa": "TAR-252",
+  "evento": "explicada",
+  "quando": "2026-09-07T04:17:24+00:00",
+  "quem": "medido pela sessao da TAR-204 em 07/09/2026, ao montar o proprio relatorio final",
+  "o_que_e": "Existe um comando que monta o relatorio final do robo ja com os fatos preenchidos: o que ele mudou, o que ele rodou, qual PR ele abriu. Ele foi feito para o robo nao inventar nada.",
+  "o_que_muda": "Hoje esse comando le a sessao errada. Numa maquina com dezenas de robos trabalhando ao mesmo tempo, ele entrega ao robo A o checklist, os testes e o numero de PR do robo B. O robo confia, porque a ferramenta se chama fatos da maquina, e conta a voce o trabalho de outro robo como se fosse o dele. A ferramenta que existe para impedir invencao passa a produzi-la.",
+  "exemplo": "Medido duas vezes seguidas em 07/09/2026, na sessao da TAR-204: na primeira chamada veio o checklist da TAR-226 e a frase nenhum PR neste turno, com o PR 1280 ja aberto; na segunda veio o checklist da TAR-210 e os arquivos editados por um terceiro robo. Duas chamadas, duas sessoes alheias.",
+  "importancia": 72
+}

@@ -627,7 +627,6 @@ def _padroes(ideias: list, mesas: list, familias: list) -> list:
     maior = familias[0] if familias else None
     obra = [i for i in analisadas if i["em_obra"]]
     ja_existe = [i for i in analisadas if i["ja_existe"]]
-    assinar = [i for i in ideias if i["coluna"] == "assinar"]
     sem_avaliacao = [i for i in ideias if not i.get("tem_avaliacao")]
 
     padroes = []
@@ -698,14 +697,9 @@ def _padroes(ideias: list, mesas: list, familias: list) -> list:
         padroes.append(
             (
                 "A Caixa coleta muito bem, e ainda não respondeu",
-                f"{len(sem_avaliacao)} das {len(ideias)} ideias não têm uma linha de avaliação escrita "
-                + (
-                    f", e {len(assinar)} esperam a sua assinatura. "
-                    if assinar
-                    else ". "
-                )
-                + "A coleta provou que funciona; o que sustenta o fluxo agora é a resposta. Turma que "
-                "vê ideia virar obra continua escrevendo.",
+                f"{len(sem_avaliacao)} das {len(ideias)} ideias não têm uma linha de avaliação "
+                "escrita. A coleta provou que funciona; o que sustenta o fluxo agora é a "
+                "resposta. Turma que vê ideia virar obra continua escrevendo.",
             )
         )
 
@@ -868,7 +862,6 @@ def analise(request):
             "recado": request.GET.get("recado", ""),
             "erro": request.GET.get("erro", ""),
             "padroes": _padroes(ideias, mesas, familias),
-            "esperando_assinatura": [i for i in ordenadas if i["coluna"] == "assinar"],
             "gerada_em": agora,
             "na_mesa": len(esperando(ideias)),
         },

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260907-035826-TAR-210-concluida",
+  "tarefa": "TAR-210",
+  "evento": "concluida",
+  "quando": "2026-09-07T03:58:26+00:00",
+  "quem": "despacho-ci-vacina-por-celula",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1287 — teste-guarda vermelho ('assert nada == repetir') e verde depois da cura: 98 passed em test_rerun_de_deploy.py + test_vacina_do_deploy_automatica.py. Prova de fora com o SHA 497f0cb9 do incidente: celulas_do_push devolveu ('admin','mensageria') e celulas_sem_publicacao devolveu ('mensageria',).",
+  "verificado_em": "2026-09-07"
+}

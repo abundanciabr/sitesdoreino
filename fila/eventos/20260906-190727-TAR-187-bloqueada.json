@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-190727-TAR-187-bloqueada",
+  "tarefa": "TAR-187",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T19:07:27+00:00",
+  "quem": "sessao-pages-aviso-do-selo-20260906",
+  "detalhe": "O RITO DE CONTRATO FOI FEITO em 06/09/2026: o mantenedor aprovou acrescentar 'pages.portfolio-conferido' ao enum de contracts/eventos/notificacao.devida.v1.json, carregando so id da peca e papel de quem conferiu, nunca texto. Esse mandato esta dado. FALTA UMA LIBERACAO SO: a frase que o aluno le nasce em services/sugestoes/apps/core/avisos.py, e a celula 'sugestoes' esta na lista de CELULAS PROIBIDAS do corredor CS-PAGES-0001 (docs/changespecs/CS-PAGES-0001.md, secao CELULAS PROIBIDAS). Sem ela, entregar so o enum daria ao aluno o cartao de aviso desconhecido, que e pior que nao entregar. Perguntado a ele no fecho de 06/09/2026.",
+  "espera": "mantenedor"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-046-fase4-medicao-parcial",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "A Fase 4 ganhou medição, mas ainda não tem amostra comparável",
+  detalhe: "O protocolo, a identidade de tarefa, o analisador e os testes da Fase 4 foram implementados no caminho existente de telemetria. A leitura real encontrou 2.183 eventos históricos e nenhuma tarefa com condição antes ou depois, então os três pilotos ficaram não avaliáveis. Nenhuma expansão foi liberada.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

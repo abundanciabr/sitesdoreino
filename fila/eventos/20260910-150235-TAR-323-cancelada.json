@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260910-150235-TAR-323-cancelada",
+  "tarefa": "TAR-323",
+  "evento": "cancelada",
+  "quando": "2026-09-10T15:02:35+00:00",
+  "quem": "agent/painel/mapa-caminho-dourado",
+  "detalhe": "Substituída pela TAR-325 para declarar corretamente o escopo documental na célula admin. O PR 1533 e os recibos anteriores permanecem como história; a obra futura segue na TAR-324."
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-013-ci-encaminhar-sem-espera",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "ci: encaminhar sem espera",
+  detalhe: "TAR-362: dependência aberta aguarda na pista; encerramento sem merge e falhas reais recusam o pouso.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1593. Validação local: árvore d409e48fec68687e9db13d89bf72718e4710a9bc; commit 35297d9276f3ea6214a2e33b4a15fae15daeda30; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-362",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

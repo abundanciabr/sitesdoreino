@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-234309-TAR-190-devolvida",
+  "tarefa": "TAR-190",
+  "evento": "devolvida",
+  "quando": "2026-09-06T23:43:09+00:00",
+  "quem": "despacho-gamificacao-marco-portfolio-0609",
+  "detalhe": "encadeamento falso: este degrau depende do evento do selo (TAR-187, PR #1228 mergeado), nao da TAR-189"
+}

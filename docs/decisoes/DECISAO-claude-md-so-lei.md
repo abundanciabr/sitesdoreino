@@ -73,6 +73,33 @@ história. Isso é julgamento de quem escreve, com a pergunta acima.
 
 ## A memória de cada lei
 
+### Reconciliação operacional da Fase 1, 08/09/2026
+
+A missão do mantenedor de 07/09/2026 exigiu confirmar o diagnóstico antes de
+implementar. Na base `c0a3fe2944c41331576742fb1a30edbae7654cc0`, o RUNBOOK e
+as fichas ainda descreviam procedimentos substituídos. A correção não cria
+governança: aplica a supremacia declarada na CONSTITUICAO.md e suas emendas.
+
+- Lei 2.3 e RITOS §1 remetem à Onda 5 do
+  `PLANO-MESTRE-ROBOS-SEM-COLISAO.md`: uma célula por PR é preferência;
+  todas as células tocadas precisam de testes, com teto de 15 arquivos.
+- Lei 4, emenda de 29/08/2026, registro `20260829-006`: só a pista mergeia.
+  O agente pede pouso; `--confirmo` não é receita de agente.
+- A abertura existente é `ci/sessao.py`, exposta por `make sessao`.
+  O modo sem container declara baseline não medido, exigindo os testes dos
+  alvos; retirar receitas manuais não retira essa obrigação.
+
+O PR 1216 estava aberto e continha o fechamento ainda ausente na base;
+o PR 1370 já estava integrado. Não se considera PR aberto como publicação.
+O teste `ci/tests/test_fichas_de_robo.py` reproduziu duas falhas antes da
+correção, relativas à receita de merge e à preparação manual. A leitura
+obrigatória do índice, do Padrão e das instruções por caminho foi preservada.
+
+Limite local observado: `AGENTS.md` e `.codex/agents/` do clone principal
+não eram rastreados pelo Git. O PR corrige as fontes versionadas, não altera
+esses arquivos alheios nem afirma que cópias locais foram sincronizadas.
+Nenhum tamanho de arquivo ou teste sintético comprova consumo ou ganho real.
+
 O texto abaixo é o `CLAUDE.md` como estava em 06/09/2026, no dia em que virou
 só lei, com as onze regras do Padrão retiradas (elas continuam íntegras lá).
 É história: não se edita, e lei nova acrescenta o próprio bloco no fim.

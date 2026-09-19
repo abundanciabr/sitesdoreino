@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-031654-TAR-250-explicada",
+  "tarefa": "TAR-250",
+  "evento": "explicada",
+  "quando": "2026-09-07T03:16:54+00:00",
+  "quem": "docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, degrau 16; destravado em 07/09/2026 ao medir que a chave da Anthropic esta instalada desde 02/09 (registros 20260902-046 e 20260902-048), o que o plano ainda nao sabia",
+  "o_que_e": "O painel de gestao tem 14 telas cheias de numero, e quem tem de olhar todas e ligar os pontos e voce, sozinho, na segunda de manha. A chave da Anthropic ja esta na maquina desde 02/09 e ja faz a IA do forum funcionar, mas nenhum robo le o painel.",
+  "o_que_muda": "Toda segunda o robo le o placar, a restricao, as latencias, o laboratorio e a fila, e escreve no seu livro um texto curto com a mesma forma sempre: o que ele afirma, a prova disso, o quanto confia, o que mais poderia ser, e o proximo passo. Quando o que ele achou depende de voce, vira pendencia na sua caixa. Ele nunca decide nada. Ele so evita que uma coisa importante fique tres semanas sem ninguem olhar.",
+  "exemplo": "Segunda de manha voce abre o painel e le: os pedidos de entrada cairam pela terceira semana seguida, e ao mesmo tempo as liberacoes em 48 horas subiram para 96 por cento; confianca alta, porque as duas medidas vem da mesma fonte ao vivo; pode ser sazonalidade de fim de mes; o proximo passo e olhar de onde vieram os pedidos das tres semanas boas. Voce leva 40 segundos para saber onde olhar, em vez de 20 minutos.",
+  "importancia": 71
+}

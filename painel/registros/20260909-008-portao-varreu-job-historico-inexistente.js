@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-008-portao-varreu-job-historico-inexistente",
+  tipo: "incidente",
+  quando: "2026-09-09",
+  titulo: "O portão de pouso varreu jobs históricos que ainda não existiam",
+  detalhe: "O portão do PR 1510 exigia publicar-dados-admin em execuções antigas do deploy-celula, embora esse job tenha sido criado depois. A consulta correta do endpoint respondia em 1 segundo, mas a varredura de páginas e jobs excedeu 300 segundos.\n\nA correção faz a busca histórica pelos deploys das células e deixa o workflow do SHA encontrado decidir os jobs exigidos. A primeira reserva de número devolveu 001, já ocupado no checkout, e a segunda devolveu 002, também ocupado.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1515",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: null,
+  area: "fabrica",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

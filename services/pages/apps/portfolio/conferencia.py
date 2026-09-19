@@ -39,14 +39,21 @@ todas as letras.
 de propósito (plano §7, decisão 7 da Sessão A). Quem acende é a `gamificacao`,
 no degrau 15, e ela só ESCUTA o evento.
 
+O ACEITE AVISA O ALUNO, E A DEVOLUÇÃO NÃO
+------------------------------------------
+Desde 06/09/2026 o sim manda uma carta ao sininho dele
+(`notificacao.devida.v1`, assunto `pages.portfolio-conferido`, acrescentado ao
+enum no Rito de Contrato com o mantenedor). Quem pediu a conferência esperou um
+prazo de cinco dias úteis, e antes disto só descobria a resposta reabrindo a
+página por conta própria.
+
+**A devolução continua muda de propósito.** O que a escola escreve ao devolver
+é uma lista fechada de motivos que o aluno lê NA ESTANTE, ao lado das peças que
+ele precisa arrumar, e é lá que a frase serve para alguma coisa. A mesma frase
+num sininho, longe das obras, viraria só a notícia de que não foi.
+
 O QUE ESTE MÓDULO AINDA NÃO FAZ
 --------------------------------
-**Não avisa o aluno pelo sininho.** Quem conta o que aconteceu é a TELA dele,
-que mostra o selo com a data e, quando o portfólio volta, o motivo por extenso.
-A carta no sininho é `notificacao.devida.v1`, cujo `assunto` é uma lista
-FECHADA no contrato congelado e não tem ramo para o portfólio: acrescentá-lo é
-Rito de Contrato, com o mantenedor, e nenhuma sessão o abre sozinha.
-
 **Não bloqueia quem ainda não cumpriu o roteiro.** A lista orienta, nunca
 tranca (plano §7): um aluno com o semáforo amarelo pode pedir a conferência, e
 é a equipe que diz o que falta. A única recusa é a do portfólio VAZIO, e ela
@@ -190,11 +197,18 @@ def _conferir_quem_responde(pedido: PedidoDeConferencia, conferido_por: str) -> 
 def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConferencia:
     """Alguém da escola olhou o portfólio e disse sim, e o SELO sai (AC-12).
 
-    Três escritas, e as três na MESMA transação: o pedido fecha, o selo é
-    carimbado no estado do aluno e o fato entra na outbox. Ou as três
-    acontecem, ou nenhuma. Um selo sem evento deixaria a trilha do aluno parada
-    para sempre com o portfólio já conferido; um evento sem selo faria a
-    plataforma acreditar num carimbo que a tela dele não mostra.
+    Quatro escritas, e as quatro na MESMA transação: o pedido fecha, o selo é
+    carimbado no estado do aluno, o fato entra na outbox e a carta do sininho
+    entra atrás dele. Ou as quatro acontecem, ou nenhuma. Um selo sem evento
+    deixaria a trilha do aluno parada para sempre com o portfólio já conferido;
+    um evento sem selo faria a plataforma acreditar num carimbo que a tela dele
+    não mostra; e uma carta fora da transação avisaria o aluno de um sim que um
+    erro seguinte tivesse desfeito.
+
+    **A carta cita o fato, então o fato nasce primeiro.** O `origem_event_id`
+    dela é o `event_id` dele, e é assim que de um aviso na tela se chega ao
+    acontecimento que o causou. A ordem das duas linhas é a única coisa que
+    garante isso.
 
     **A data do selo é a da conferência, e é a mesma do `respondido_em`**, lida
     uma vez só. Dois relógios lidos em linhas diferentes dariam ao selo e ao
@@ -227,7 +241,12 @@ def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConfe
         estado.selo_conferido_por = conferido_por
         estado.save(update_fields=["selo_conferido_em", "selo_conferido_por"])
 
-        eventos.fato_do_selo(pedido.portfolio, conferido_por=conferido_por)
+        fato = eventos.fato_do_selo(pedido.portfolio, conferido_por=conferido_por)
+        eventos.carta_do_selo(
+            pedido.portfolio,
+            conferido_por=conferido_por,
+            origem_event_id=fato.event_id,
+        )
 
     # DEPOIS do commit, e nunca dentro dele: publicar antes poria um evento no
     # fio para um sim que um erro seguinte tivesse revertido. Falhar aqui não

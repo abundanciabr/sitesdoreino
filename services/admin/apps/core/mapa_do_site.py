@@ -170,6 +170,13 @@ AREAS = (
         ("/pages",),
     ),
     (
+        "encomendas",
+        "A Fila do Primeiro Dólar",
+        "Onde o aluno recebe encomenda de verdade, combina o trabalho e entrega: "
+        "o caminho até o primeiro dinheiro dele.",
+        ("/encomendas",),
+    ),
+    (
         "conquistas",
         "Os pontos e as medalhas",
         "A gamificação da escola: o que o aluno ganha, e o que ele já conquistou.",
@@ -189,10 +196,10 @@ AREAS = (
     ),
     (
         "avisos",
-        "Os avisos no celular",
-        "Ligar e desligar o aviso que chega no telefone do aluno. Não tem tela "
-        "própria: são os dois botões da área do aluno.",
-        ("/avisos",),
+        "Os avisos do aluno",
+        "A central de notificações e os controles para ligar ou desligar o aviso "
+        "que chega no telefone do aluno.",
+        ("/avisos", "/notificacoes"),
     ),
     (
         "administracao",

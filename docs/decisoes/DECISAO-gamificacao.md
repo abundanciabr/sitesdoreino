@@ -64,6 +64,22 @@ Nascem como testes no PR 3 da escada e **nunca se flexibilizam**:
 3. **Aula nunca fica atrás de jogo.** Conteúdo educacional jamais trancado por
    XP, nível ou Cristal.
 
+> **EMENDA DE 06/09/2026 — o invariante 1 proíbe COMPRAR, não REGISTRAR.** O
+> guarda dele tinha uma frente que recusava qualquer campo portador de valor com
+> nome de dinheiro (real, dólar, centavo, preço). Ela nasceu contra o dinheiro
+> ENTRANDO na economia do jogo e barrava, sem querer, o dinheiro que o aluno
+> GANHA fora daqui: com ela de pé, a escada de marcos sabia QUEM chegou aos
+> primeiros dólares e nunca QUANTO, e a escola não conseguia somar o que os
+> alunos faturaram. A sessão parou pelo critério de morte nº 6 (§10) e o
+> mantenedor decidiu o alcance em pergunta estruturada: **toda quantia, em
+> qualquer tabela da célula.** Continuam de pé, e são o que sustenta a promessa:
+> Cristal não nasce de compra, débito só existe com o recibo do cosmético,
+> nenhum campo nomeia meio de cobrança e nenhum módulo importa SDK de pagamento.
+> O que se perdeu, dito sem maquiagem: uma coluna de preço em reais no cosmético
+> não fica mais vermelha sozinha. Guarda e história:
+> `services/gamificacao/tests/test_inv_economia_nada_por_dinheiro_real.py` e
+> `INVARIANTES.md` [INV-GAM1].
+
 ## 4. O endereço é lei
 
 A célula serve em **`meshcraft.top/conquistas` — caminho, NUNCA subdomínio**,

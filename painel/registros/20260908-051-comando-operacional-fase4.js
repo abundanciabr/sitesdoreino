@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-051-comando-operacional-fase4",
+  tipo: "medicao",
+  quando: "2026-09-08",
+  titulo: "A Fase 4 ganhou um comando operacional fail-closed para registrar tarefas reais",
+  detalhe: "O comando ci/registrar_tarefa_fase4.py valida manifesto, identidade, fuso, estado e todas as métricas antes de escrever no mesmo caderno privado da telemetria. Campos ausentes ou métricas omitidas são recusados. A seleção da medição passou com 124 testes. A coleta real continua vazia, sem expansão.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

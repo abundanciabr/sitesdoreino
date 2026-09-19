@@ -78,11 +78,40 @@ MIDDLEWARE = [
 # ADMIN_EMAILS e a UNICA fonte de "pode entrar" (DECISAO-celula-admin par.2).
 # Vazia ⇒ ninguem entra. Fail-closed por construcao.
 ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
+ADMIN_RADIO_TOKEN = os.environ.get("ADMIN_RADIO_TOKEN", "")
 
-# Para onde mandar quem nao tem sessao. E o mesmo endereco publico que o
-# `funil` usa — a tela de login mora la, nos tres idiomas, e esta celula nunca
-# serve caminho com forma de idioma.
+# O mantenedor entra pelo convite local assinado pelo lançador, nunca pelo site
+# público. O token só existe no ambiente da máquina local.
 URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+ADMIN_LINK_TOKEN = os.environ.get("ADMIN_LINK_TOKEN", "")
+ADMIN_LOCAL_ID = os.environ.get("ADMIN_LOCAL_ID", "mantenedor-local")
+ADMIN_LOCAL_NOME = os.environ.get("ADMIN_LOCAL_NOME", "Mantenedor")
+ADMIN_LOCAL_EMAIL = os.environ.get("ADMIN_LOCAL_EMAIL", "mantenedor@localhost")
+ADMIN_LOCAL_COOKIE_NAME = "admin_acesso_local"
+ADMIN_LOCAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
+
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_<PAR>
+# ---------------------------------------------------------------------------
+# Env ausente => conjunto VAZIO => toda chamada a `/interno` e recusada com 401.
+# Fail-closed por construcao, e sem derrubar o boot: a celula sobe, o `/healthz`
+# segue respondendo, e so a porta de maquina fica fechada ate o token existir no
+# env. E o mesmo desenho de `identidade`, `forum`, `cursos` e `pages`.
+#
+# **Aqui o conjunto vazio e o UNICO cadeado.** Esta celula roda sob
+# `SCRIPT_NAME=/admin`, e o corte do prefixo e do Django, nao do Traefik: a
+# porta e alcancavel pela borda publica em `meshcraft.top/admin/interno/...`
+# (`armadilhas/186`). Nao ha topologia por baixo para segurar o que este
+# conjunto deixar passar, e o middleware fail-closed de `apps/core/porta.py`
+# isenta `/interno` de proposito (`config/api.py` explica por que).
+#
+# O conjunto e PLANO porque a porta so LE (`armadilhas/318`). Operacao de
+# escrita aqui exigiria um segundo grau de token antes de nascer.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
 
 # ---------------------------------------------------------------------------
 # ESTA CÉLULA NÃO ASSINA SESSÃO — e a ausência é a decisão

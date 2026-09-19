@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-121428-TAR-256-concluida",
+  "tarefa": "TAR-256",
+  "evento": "concluida",
+  "quando": "2026-09-09T12:14:28+00:00",
+  "quem": "despacho-encomendas-tar-256",
+  "evidencia": "PR #1482 mergeado no commit 4e873a761cf3116b28f53fc174362206c2b73965; deploy-celula 34349313472 success; migração 0007 aplicada, revertida para 0006 e reaplicada em PostgreSQL 17; suíte completa 494 passed",
+  "verificado_em": "2026-09-09"
+}

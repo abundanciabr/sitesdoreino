@@ -1,0 +1,17 @@
+{
+  "arquivo": "295-o-pedido-do-analista-chega-completo-para-a-decisao",
+  "id": "TAR-295",
+  "titulo": "O pedido do analista chega completo para a decisão",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Pedido gerado exige seis campos, preserva o próximo passo e distingue trabalho técnico; testes do analista e check administrativo aprovados; publicação conferida.",
+  "despacho": "# Brief compilado\n\nobjetivo: Completar os seis campos obrigatórios no pedido gerado pelo analista, preservando o próximo passo já calculado e decisões exclusivas do mantenedor.\ntipo: texto\nmodelo_recomendado: gpt-5.6-sol\nesforco_recomendado: medium\nteto_de_contexto: 70000\nmotivo_do_modelo: reescreve superficie publicada sem decidir arquitetura\ncelula: admin\n\n## Arquivos-alvo\n- services/admin/apps/core/analista.py\n- services/admin/tests/test_analista.py\n\n## Armadilhas injetadas\n- armadilhas/422-validacao-do-pr-enxerga-artefatos-do-painel.md: 422: A validação do PR enxerga os artefatos ignorados do painel\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n## Limite\n- Não leia documentação ampla sem gatilho do erro, caminho ou contrato.\n- Ao passar do teto de contexto, devolva handoff curto e pare a expansão.",
+  "origem": "Complemento administrativo do PR 1492, autorizado pela maestro.",
+  "criada_em": "2026-09-09"
+}

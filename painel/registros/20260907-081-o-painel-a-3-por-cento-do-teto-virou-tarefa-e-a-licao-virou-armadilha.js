@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260907-081-o-painel-a-3-por-cento-do-teto-virou-tarefa-e-a-licao-virou-armadilha",
+  tipo: "nota",
+  quando: "2026-09-07",
+  titulo: "A pagina do painel chegou a 97% do teto de tamanho: virou a tarefa TAR-274",
+  detalhe: "A aba Prioridades (PR 1342) levou a pagina a 290,4 KB de um teto de 300 KB. No teto, o gerador recusa construir e a muralha reprova todo PR da casa. 25,2 KB sao comentarios do arquivo de regras, que o navegador nao le; a TAR-274 manda embutir as regras sem eles. Fica ambar ate ela terminar: quem a fechar responde a este registro. PR 1345.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1345",
+  verificado_em: "2026-09-07",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260909-135746-TAR-284-explicada",
+  "tarefa": "TAR-284",
+  "evento": "explicada",
+  "quando": "2026-09-09T13:57:46+00:00",
+  "quem": "https://meshcraft.top/admin/documentos/equipe-quatro-copilotos; amplia TAR-244 concluída",
+  "o_que_e": "A Central existente mostra alunos e decisões, e declara que ainda não conta portfólios, marcos e checkpoints.",
+  "o_que_muda": "Cada uma das quatro pessoas vê apenas as pendências sob sua responsabilidade e só consegue executar ações permitidas pelo servidor.",
+  "exemplo": "A pessoa de Ensino vê um checkpoint esperando revisão; a pessoa de Comercial não recebe esse botão nem consegue chamar a ação pela rede.",
+  "importancia": 94
+}

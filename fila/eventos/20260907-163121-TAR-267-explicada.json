@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163121-TAR-267-explicada",
+  "tarefa": "TAR-267",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:21+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "Um produto (um curso e um produto) so nasce hoje por um comando que o mantenedor cola no servidor. A tela do administrador nao tem como cadastrar.",
+  "o_que_muda": "A tela Novo curso do Admin vai poder cadastrar o produto sozinha. Sem isto, todo curso novo exige um bloco de colar no servidor.",
+  "exemplo": "E a diferenca entre pedir ao mantenedor que abra o terminal do servidor para cada curso novo e ele criar o curso na propria tela, em um minuto.",
+  "importancia": 80
+}

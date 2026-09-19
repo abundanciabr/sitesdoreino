@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260908-223758-TAR-228-cancelada",
+  "tarefa": "TAR-228",
+  "evento": "cancelada",
+  "quando": "2026-09-08T22:37:58+00:00",
+  "quem": "sessao-fabrica-fechar-duplicata",
+  "detalhe": "Duplicata da TAR-210. A correção já está em ci/rerun_de_deploy.py, com os testes test_o_deploy_posterior_que_nao_construiu_a_celula_NAO_a_cobre e test_a_regra_de_parada_vale_TAMBEM_quando_falta_celula; prova no PR #1210 e na armadilha 419."
+}

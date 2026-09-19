@@ -343,9 +343,29 @@ tem fonte ao vivo sobe primeiro para a capa; a célula de medição nasce em
 paralelo, e o que depende dela vem depois.** Itens ❄ estão congelados pela
 decisão de 22/08 e entram desenhados.
 
+**Nesta data, 07/09/2026, 18 dos 20 degraus abaixo já estão no ar** (os
+degraus 0 a 13, mais 15, 16, 17 e 19). Faltam só dois, por motivos diferentes:
+o degrau 14 (a matemática da venda) está congelado desde 22/08/2026, pela
+decisão do mantenedor de não vender ainda no site; e o degrau 18 (integrações
+de fora) espera credenciais e um plano pago que só ele pode contratar. A
+tabela abaixo ainda promete cada degrau no futuro porque assim nasceu em
+03/09/2026 e nunca foi reescrita: quem quiser conferir a verdade de hoje tem
+dois lugares. O código de cada degrau mora quase sempre num arquivo dentro de
+`services/admin/apps/core/` com um nome parecido com o do degrau (o 1 em
+`restricao.py`, o 2 em `direcao.py`, o 3 em `reuniao.py`, o 4 em `doze.py`, o
+5 em `latencias.py`, o 6 em `mudancas.py`, o 10 em `coortes.py`, o 11 em
+`confianca.py`, o 12 em `laboratorio.py`, o 13 em `fechamento.py`, o 16 em
+`analista.py`, o 17 em `talentos.py` e o 19 em `elo.py`); as exceções são o
+degrau 0 (`placar.py`, no mesmo lugar), o degrau 7, que é a própria célula
+`services/metricas/`, o degrau 8, cujo contrato mora em `contracts/eventos/`
+com o emissor dentro da célula `alunos`, o degrau 9, em
+`services/metricas/apps/fatos/marcos.py`, e o degrau 15, em
+`services/mensageria/apps/jornadas/proxima_acao.py`. E cada PR que trouxe um
+degrau ao ar está registrado no livro de ocorrências (`painel/registros/`).
+
 | Degrau | O que nasce | O que já existe | Depende de |
 |---|---|---|---|
-| **0. O placar** | A barra do mês e a meta do ciclo, contadas por `virou_aluno_em`; os cartões com `acao`, `direcao`, `alvo_do_mes`. | **FEITO**: PRs #924 (manhã), #933 e #934 (o rito), #936 (a reforma). | nada |
+| **0. O placar** | A barra do mês e a meta do ciclo, contadas por `virou_aluno_em`; os cartões com `acao`, `direcao`, `alvo_do_mes`. | PRs #924 (manhã), #933 e #934 (o rito), #936 (a reforma). | nada |
 | **1. A restrição desta semana** | O cartão `restricao-da-semana` e o bloco 2 da capa; as taxas cadastro → pedido → liberação medidas ao vivo de `leads` e `alunos`; "suspeita" calculada, "confirmada" por registro. | a jornada, as duas células | 0 |
 | **2. A direção da semana** | Os dois cartões de direção da **sala de espera** (`pedidos-de-entrada-por-semana`, `liberacoes-em-48h`) com a meta da semana e a sequência; o compromisso como registro com `vence_em_dias: 7`; o veredito da semana passada calculado; o bloco 3 da capa. Desde 05/09/2026 eles medem a venda feita FORA do site (quem chega já comprou e espera confirmação), e ao lado deles ficam os dois cartões do caminho da venda, desenhados e sem número enquanto o checkout estiver congelado. | o livro, `leads`, `alunos` | 0 |
 | **3. O modo reunião** | A pauta de segunda em `/admin/reuniao/`, oito passos, que termina escrevendo registros e tarefas pelos caminhos que existem; o atalho na capa. | o livro, a fila | 1, 2 |
@@ -361,8 +381,8 @@ decisão de 22/08 e entram desenhados.
 | **13. O fechamento do ciclo** | A tela do fechamento das 12 semanas: a meta e o porquê; as medidas de direção previram?; **o que paramos de fazer** (registro `decisao` obrigatório: sem ele o ciclo não fecha); a meta seguinte gravada no cartão e no livro; a fase da escola recalculada dos portões (§6.5). **O guarda deste degrau é o teste do laço inteiro** (quinto documento §81): um cenário automatizado que percorre ciclo ativo, meta, medidas de direção, medição, restrição detectada, experimento, semana aberta, tarefa gerada, tarefa executada, semana encerrada, aprendizado registrado e placar atualizado. Os pedaços já são testados; o laço, não. | 3, 10 | 3, 10 |
 | **14. A matemática** ❄ | A razão de receita (taxa, imposto, reembolso, custo variável) e as equações por camada; os oito cartões do placar de doze que dependem de venda acendem. Desenhado agora, aceso só quando o site vender. | contratos de pagamento | 7, e a ordem dele |
 | **15. A fila de próxima ação** | Regra por dimensão, versionada; roteador automação, humano ou robô; tarefas no balcão; "sucesso do aluno antes de venda" como guarda; tetos de contato como parâmetro com dono. | `mensageria/apps/jornadas`, `fila/` | 9, 3 |
-| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum vai usar. | o livro, a chave da Anthropic (pendência dele) | 5, 11, 12 |
-| **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | nada | 13 |
+| **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum JÁ usa. | PR #1334 (TAR-250), nas duas telas. O robô nasce desligado enquanto a chave da Anthropic, que já responde no fórum desde 02/09/2026, não chegar em `env/admin.env` na VPS, e a tela diz isso em português. | 5, 11, 12, os três no ar |
+| **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | PR #1333 (`/admin/placar/talentos/`, os seis passos do laço com o número de cada um; as três contagens entram como `medicao` com o campo `foto`, pelo bloco copiável, e os três cartões nasceram em `painel/cartoes/`). | 13 |
 | **18. Integrações de fora** | Gasto de anúncio e alcance por API em vez de digitado; WhatsApp pela API oficial. | nada | credenciais e plano pago: **passo do mantenedor** |
 | **19. O grafo causal** | A tarefa da fila passa a declarar QUE NÚMERO ela move (ou a declarar-se `manutencao`, o `whirlwind` do documento); o painel ganha o caminho de volta, de um número para as tarefas que trabalham nele. O guarda do degrau é o teste do §97 do quinto documento: de uma tarefa se chega ao número, e do número se volta às tarefas. | `fila/`, `ci/fila.py`, `painel/cartoes/`, `painel/logica.js` | 0 (não depende de célula nova nem de venda) |
 
@@ -406,15 +426,36 @@ número só e vira uma cabine na primeira semana.
 Cada item vira registro de `pendencia` no PR do degrau que o exige, e a caixa
 "precisa de você" o cobra. Nenhum é bloqueio dos degraus 1 a 6.
 
+**ESTA LISTA NÃO É A FONTE, e quem a ler precisa saber disso** (`armadilhas/388`,
+escrita depois que ela custou um pedido à toa ao mantenedor em 07/09/2026). A
+fonte do que espera por ele é o LIVRO: registro `pendencia` com
+`precisa_do_dono: true`, que se fecha sozinho quando chega a `resposta`. Esta
+lista aqui não se fecha sozinha, e por isso envelhece. **Antes de pedir
+qualquer coisa dela a ele, confira no livro se ele já fez:**
+`grep -rli "<a coisa>" painel/registros/`.
+
 1. **A meta do mês fixada à mão**, quando quiser (`alvo_do_mes` no cartão
    `compras-no-mes`); até lá a tela deriva da linha reta (setembro: 131;
    outubro: 151).
 2. **O nome definitivo da célula de medição** (nome de trabalho `metricas`).
    Degrau 7.
 3. **A restrição confirmada**, toda semana, por registro. Degrau 1.
-4. **"Como você conheceu a escola?"** no pedido de entrada é Rito de Contrato:
-   sessão com ele presente. Degrau 8.
-5. **A chave da Anthropic** (já pendente para o fórum). Degrau 16.
+4. ~~**"Como você conheceu a escola?"** no pedido de entrada~~ **MORTO, e não
+   volta.** Ele recusou em 05/09/2026 (a pergunta pertence ao checkout, que está
+   congelado) e reafirmou em 07/09: *"a pessoa nunca irá responder nada"*. Na
+   mesma sessão fechou também o substituto: o tráfego pago chega pela página de
+   venda, que responde 404, então **a Meta e o Google seguem contando campanha e
+   criativo, e o site não constrói medição de origem agora** (registro
+   `20260907-057`). O cartão `vindos-por-indicacao` só acende com um programa de
+   indicação em que cada aluna tenha o próprio link.
+5. ~~**A chave da Anthropic**~~ **JÁ FOI FEITA em 02/09/2026, não peça de
+   novo.** Registros `20260902-046` (o script imprimiu `== PRONTO ==` na VPS),
+   `20260902-048` (a IA respondeu de verdade, três `POST` com 200 em produção) e
+   `20260905-090` (a chave chegou também à célula `cursos`). Esta linha passou
+   cinco dias mentindo e escondeu que **o degrau 16 estava livre**. O que falta
+   para ele é de máquina, não do mantenedor: levar a mesma chave de
+   `env/forum.env` para `env/admin.env`, no molde de
+   `infra/abrir-a-sala-de-aula.sh`. Tarefa **TAR-250**.
 6. **A API oficial do WhatsApp** e as credenciais de anúncio. Degrau 18.
 7. **A ordem de vender**, que descongela o degrau 14. Sem prazo, por decisão dele.
 8. **A professora como leitora do painel** (com os mesmos poderes, ou só
@@ -468,3 +509,50 @@ Garantia escrita em prosa apodrece (`RETROSPECTIVA-FASE-D.md`, padrão 2).
 - **Latência da gestão:** quanto tempo passa entre um sinal e a decisão, entre a
   decisão e o começo do trabalho, e entre o fim de um experimento e o
   aprendizado incorporado.
+## Adendo de execução aprovado: Meshcraft Scale OS
+
+Em 09/09/2026, a direção foi consolidada em quatro fases. A gestão vem antes dos copilotos e continua usando as fontes, filas, registros e mecanismos já existentes.
+
+### Fases e critérios de conclusão
+
+1. **Fundação da gestão:** inventário conhecido com responsabilidade explícita ou herdada, quatro funções associadas a pessoas, titular e substituto aceitos, alçadas e fontes definidos, direção inicial registrada, medição de esforço iniciada e guarda contra entrega nova sem responsabilidade.
+2. **Gestão funcionando:** central existente com quatro visões, permissões no servidor, operação, melhoria e construção diferenciadas, CRM humano utilizável e revisão semanal conduzida sem depender de copiloto.
+3. **Copilotos e integrações:** execução persistente e auditável, seguida pelos quatro copilotos e integrações aplicáveis. Falha, repetição, tomada de controle humana, fonte ausente, custo e limites ficam visíveis. WhatsApp continua vinculado à TAR-080.
+4. **Validação integrada:** quatro conclusões separadas, funcionamento, economia de esforço, qualidade e capacidade. Ensaio concluído, meta atingida, produto funcionando no escopo e autorização para ampliar são estados diferentes.
+
+A TAR-296 é o CRM humano da Fase 2. A TAR-288 permanece a entrega do conjunto comercial e só pode ser concluída quando automação, controles, canais aplicáveis e intervenção humana estiverem comprovados. A evidência da TAR-296 será reaproveitada, sem criar outro histórico comercial.
+
+### Fundação de responsabilidades
+
+O cadastro versionado em `painel/responsabilidades.json` cobre processos, resultados, serviços, integrações, campanhas, cursos, documentos, rotinas financeiras e continuidade. Cada unidade informa finalidade, resultado acompanhado, função titular, pessoa ocupante, substituto, fonte oficial, regra de acompanhamento, preparação, execução, aprovação, exceções, alçada e evidência. Uma unidade subordinada pode declarar `herda_de`; exceções são explícitas.
+
+Responsabilidade de negócio, execução técnica e permissão de acesso permanecem separadas. Delegar execução não transfere o desfecho. Transferência só vale após aceite. Até lá, o titular anterior acompanha. Falta de pessoa, substituto, fonte ou capacidade é exceção visível. Publicar uma correção técnica não encerra o caso do comprador ou aluno sem evidência do resultado para a pessoa.
+
+O comando `ci/responsabilidades.py` audita a cobertura e verifica uma responsabilidade explícita ou herdada antes da conclusão de uma entrega nova. A fila exige esse vínculo ao criar uma tarefa nova e `ci/fila.py concluir` recusa pessoa ocupante ou substituto ausente. A fundação tem atribuição nominal definida para Arameu, Ryan, Lívia e Maria, sem substituto humano; a ausência de substituto escala ao titular e, se necessário, ao mantenedor.
+
+### Scale OS mínimo e cadências
+
+O acompanhamento preserva dois percursos. Operação registra necessidade, responsável, próxima ação, execução e resolução. Melhoria registra objetivo, hipótese, intervenção, resultado e decisão. Construção continua na fila técnica. O ciclo mantém horizonte aproximado de 12 semanas, com uma MCI principal, hipótese de gargalo fundamentada, evidências, medidas de direção, compromissos com responsável e prazo, limites de proteção, resultados observados e decisões.
+
+A revisão semanal trata compromissos, resultados, atrasos, impedimentos, medidas de direção e limites de proteção. A revisão mensal trata economia, coortes, qualidade, capacidade humana e maturidade das evidências. A revisão por ciclo trata objetivos, MCI, hipótese de gargalo e prioridades. A revisão semanal não cria uma nova MCI.
+
+Cada indicador declara definição, fonte, período, responsável e situação da medição. Fato observado, estimativa, dado imaturo e informação indisponível não são intercambiáveis. Falta de medição não é zero. Nenhuma lacuna técnica isolada é declarada como gargalo econômico principal sem prova.
+
+### Medição de esforço desde a Fase 1
+
+`painel/medicoes/esforco.json` iniciou a coleta em 09/09/2026. Cada observação registra rotina, natureza, volume, minutos de referência, tempo humano posterior, revisão, retrabalho, exceções, qualidade, reabertura, prazo, período e condições. O arquivo contém uma fixture identificada como teste, não uma observação real. A linha de base está iniciada, mas insuficiente para comparação; produtividade real ainda não foi comprovada.
+
+A meta de superar 80 por cento de redução vale para trabalho braçal e repetitivo elegível, ponderado por volume e minutos de referência. Ela inclui revisão, retrabalho, exceções e manutenção da automação e não exige o mesmo percentual de atividades de julgamento.
+
+### Rastreabilidade e validação da Fase 4
+
+As tarefas TAR-283 a TAR-289 e TAR-297 continuam ligadas ao documento privado e às fontes originais. A TAR-290 foi cancelada e preservada no histórico porque sua validação única foi substituída por quatro conclusões separadas. Permissões exigem conferência no servidor e recusa de ação não autorizada. Cobertura distingue fonte vazia, fonte indisponível e integração ausente. Persistência, identidade, aprovação, evidência, deduplicação, recuperação, tentativas, limites, falhas e encaminhamento humano pertencem à Fase 3. Fontes pedagógicas autorizadas, versão, referência de aula, falta de fonte, decisão humana e análise visual real permanecem critérios do Ensino. Nenhuma ação de gasto, campanha, cobrança ou publicação é autorizada só pela entrega da infraestrutura.
+
+A validação final produzirá quatro conclusões independentes:
+
+- funcionamento, com percursos completos, permissões, integrações, falhas, recuperação e intervenção humana;
+- economia de esforço, com minutos equivalentes antes e depois e custos humanos da automação;
+- qualidade, com resolução, reabertura, erros, adequação pedagógica e limites definidos;
+- capacidade, com carga técnica, filas, picos, custos, disponibilidade e capacidade humana.
+
+Resultados negativos ou inconclusivos são válidos quando têm evidência e consequência registrada. 500 vendas por dia e 50 mil alunos são alvos de ensaio, com perfis de uso representativos; 50 mil cadastros não significam 50 mil acessos simultâneos. A avaliação econômica e os resultados dos alunos permanecem, sem usar coortes imaturas como prova consolidada. Ensaios de escala não pertencem à Fase 1.

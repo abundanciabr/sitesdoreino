@@ -52,6 +52,7 @@ var PASTA = path.join(AQUI, "registros");
 var TEMPLATE = path.join(AQUI, "painel.template.html");
 var SAIDA_PAGINA = path.join(AQUI, "painel.html");
 var ARQUIVO_LOGICA = path.join(AQUI, "logica.js");
+var ARQUIVO_AREAS = path.join(AQUI, "areas.json");
 var LOGICA = require(path.join(AQUI, "logica.js"));
 var PADRAO_NOME = /^\d{8}-\d{3}-[a-z0-9-]+$/;
 
@@ -64,6 +65,27 @@ function falha(msgs) {
 }
 
 if (!fs.existsSync(PASTA)) erro("a pasta " + PASTA + " não existe. Isto NÃO é um livro vazio válido.");
+
+// -----------------------------------------------------------------------------
+// AS ÁREAS DO SITE (07/09/2026) — painel/areas.json, lido por três leitores: por
+// este gerador, pela rota fila.json da área administrativa e pelo portão do
+// pouso. FAIL-CLOSED de propósito: sem o arquivo, o campo `area` de um registro
+// não teria contra o que ser conferido e a aba Prioridades desenharia todo mundo
+// em "sem área reconhecida" — uma tela plausível e errada. Recusar é mais barato.
+// -----------------------------------------------------------------------------
+var AREAS;
+try { AREAS = JSON.parse(semBOM(fs.readFileSync(ARQUIVO_AREAS, "utf8"))).areas; }
+catch (e) {
+  erro("não consegui ler as áreas do site em " + ARQUIVO_AREAS + " (" + e.message +
+    "). Sem elas o painel não sabe em que parte do site cada fato mexe, e nada é escrito.");
+}
+var errosDeArea = LOGICA.validarAreas(AREAS);
+if (errosDeArea.length) {
+  console.error("❌ FAIL gerar_manifesto — " + ARQUIVO_AREAS + " está inválido:");
+  errosDeArea.forEach(function (m) { console.error("   - " + m); });
+  console.error("   Nada foi escrito. Conserte o arquivo das áreas; não contorne.");
+  process.exit(1);
+}
 
 var nomes;
 try { nomes = fs.readdirSync(PASTA).filter(function (n) { return n.slice(-3) === ".js"; }).sort(); }
@@ -99,7 +121,7 @@ nomes.forEach(function (nome) {
 });
 
 // A MESMA validação da página. Um contrato, dois guardiões, zero divergência.
-problemas = problemas.concat(LOGICA.validarRegistros(registros));
+problemas = problemas.concat(LOGICA.validarRegistros(registros, AREAS));
 if (problemas.length) falha(problemas);
 
 // -----------------------------------------------------------------------------
@@ -131,6 +153,26 @@ var resumo = LOGICA.montarResumo(registros);
 if (resumo.erro) falha([resumo.erro]);
 
 // -----------------------------------------------------------------------------
+// A FILA DELE, contada AQUI — e contada por `caixaDeEntrada`, que é a mesma
+// função que desenha a caixa "Precisa de você" na tela do mantenedor.
+//
+// Para que serve: a Central de Pendências (`/admin/pendencias/`) precisa dizer
+// quantas decisões estão paradas esperando por ele. A imagem da célula `admin`
+// não tem Node, e recontar isso em Python seria uma SEGUNDA definição de
+// "pedido sem resposta" — divergência que esta casa já mediu uma vez, com o
+// Python dizendo 6 e o painel dizendo 7
+// (`ci/metricas_da_fabrica.py::pedidos_ao_dono` conta o episódio). Aqui a
+// conta é uma só, e a área administrativa apenas LÊ o número desta página.
+//
+// E ISTO PODE VIAJAR EMBUTIDO SEM FOSSILIZAR NADA, apesar da regra do bloco
+// abaixo: o filtro de `caixaDeEntrada` não olha data nenhuma, e a ordem que
+// ela devolve é por `aguardandoDias` decrescente, que para QUALQUER instante
+// fixo é a mesma ordem de `quando` crescente. Por isso a sentinela de
+// `montarResumo` serve, e a IDADE em dias continua sendo contada no navegador
+// de quem abre, nunca aqui.
+var pedidosDoDono = LOGICA.caixaDeEntrada(registros, new Date("2000-01-01T12:00:00"));
+
+// -----------------------------------------------------------------------------
 // O PASSADO, em arquivos por mês. A chave é a data do NOME do arquivo (que é o
 // id, estável e único), e não o campo `quando` — um registro pode narrar um fato
 // antigo, e mudar de gaveta depois quebraria a promessa de que mês fechado nunca
@@ -149,6 +191,20 @@ var meses = Object.keys(porMes).sort();
 // o navegador nunca chega a ver uma tag.
 function comoTextoJS(valor) {
   return JSON.stringify(JSON.stringify(valor)).replace(/</g, "\\u003c");
+}
+
+// As regras (painel/logica.js) entram na página sem as linhas de comentário:
+// quem abre o painel não lê código, e cada linha de `//` é peso contra o
+// orçamento sem servir a ninguém. Só a linha INTEIRA que começa com `//` sai —
+// um `//` no meio (uma URL numa string) fica. O arquivo em disco não muda.
+function semComentarios(texto) {
+  var linhas = texto.split("\n").filter(function (l) { return l.trimStart().indexOf("//") !== 0; });
+  var semVazias = [];
+  linhas.forEach(function (l) {
+    if (l.trim() === "" && semVazias.length && semVazias[semVazias.length - 1].trim() === "") return;
+    semVazias.push(l);
+  });
+  return semVazias.join("\n");
 }
 
 var AVISO = [
@@ -225,19 +281,52 @@ if (template.indexOf("__DADOS_DO_PAINEL__") === -1) {
   erro("painel.template.html não tem o marcador __DADOS_DO_PAINEL__ — sem ele a página nasceria sem dados e sem regras.");
 }
 
+// -----------------------------------------------------------------------------
+// O RESUMO EMBARCADO — montado UMA vez, e é o MESMO objeto que a página recebe e
+// que a régua mede. Não são duas montagens que deveriam bater: é uma coisa só.
+//
+// POR QUE ISTO EXISTE. Até 19/09/2026 havia duas. A régua media
+// `resumo.registros` e a página recebia `{respondidos, confianca, registros,
+// maisRecenteQuando, comPrazoNoLivro, totalNoLivro}`. O orçamento cobrava um
+// subconjunto do que era realmente embarcado, e foi exatamente nessa fresta que
+// o furo do PR #1758 morou: `respondidos` carregava um id novo por par
+// encerrado, crescia sem teto e o portão não o via, porque ele estava do lado de
+// fora da régua. Os checks ficaram verdes sobre um resumo que crescia.
+//
+// Duas montagens que "deveriam" bater são o lugar onde a próxima fresta nasce.
+// Aqui a régua e o embarcado são o mesmo objeto, medido uma vez só, e um guarda
+// do teste do gerador confere byte a byte que o número declarado em
+// `orcamento.resumoBytes` é o tamanho do que `PAINEL.resumo` de fato carrega.
+// -----------------------------------------------------------------------------
+var resumoEmbarcado = {
+  respondidos: resumo.respondidos,
+  // Contada sobre o livro INTEIRO por `montarResumo`. Ficava de fora até
+  // 19/09/2026: a caixa "Posso confiar nisto?" lê `PAINEL.resumo.confianca`,
+  // não achava nada e desistia em silêncio, e a única vista que mede o próprio
+  // painel nunca chegou a desenhar. E ela é carga, não enfeite: é dela que a
+  // capa tira quantas afirmações sem prova existem no livro, agora que o bloco
+  // "Dito, mas não comprovado" mostra só as mais recentes.
+  confianca: resumo.confianca,
+  registros: resumo.registros,
+  maisRecenteQuando: resumo.maisRecenteQuando,
+  comPrazoNoLivro: resumo.comPrazoNoLivro,
+  totalNoLivro: resumo.totalNoLivro
+};
+
 // Montadas por concatenação para que este arquivo-fonte não contenha, ele
 // próprio, uma tag de fechamento solta.
 // Medido ANTES de montar o bloco de dados: é ele que a página carimba para
 // poder mostrar quanto do orçamento já foi usado.
-var bytesResumo = Buffer.byteLength(JSON.stringify(resumo.registros), "utf8");
+var bytesResumo = Buffer.byteLength(JSON.stringify(resumoEmbarcado), "utf8");
 
 var ABRE = "<" + "script>";
 var FECHA = "<" + "/script>";
 var dados = [
   ABRE,
   "/* GERADO — as regras do painel (painel/logica.js), embutidas para que abrir",
-  "   custe UM pedido. Edite painel/logica.js, nunca este bloco. */",
-  semBOM(logicaFonte).trimEnd(),
+  "   custe UM pedido. Edite painel/logica.js, nunca este bloco. Sem comentários:",
+  "   quem lê aqui não é gente, é o navegador. */",
+  semComentarios(semBOM(logicaFonte)).trimEnd(),
   FECHA,
   ABRE,
   "/* GERADO — o resumo: só o que a capa e o mapa desenham. O passado fica nos",
@@ -255,12 +344,19 @@ var dados = [
   "  orcamento: { resumoBytes: " + bytesResumo + ", resumoTeto: " + LOGICA.ORCAMENTO_RESUMO_BYTES +
     ", paginaBytes: __TAMANHO__, paginaTeto: " + LOGICA.ORCAMENTO_PAINEL_BYTES + " },",
   "  livro: { total: " + registros.length + ", meses: " + JSON.stringify(declaracaoDosMeses) + " },",
-  "  resumo: JSON.parse(" + comoTextoJS({
-    respondidos: resumo.respondidos,
-    registros: resumo.registros,
-    maisRecenteQuando: resumo.maisRecenteQuando,
-    totalNoLivro: resumo.totalNoLivro
-  }) + ")",
+  // As áreas do site viajam com a página: é delas que a aba Prioridades tira a
+  // ORDEM da tela, o nome que o dono lê e a que área pertence cada registro.
+  "  areas: JSON.parse(" + comoTextoJS(AREAS) + "),",
+  // A fila do mantenedor, em UMA linha de forma rígida: quem a lê de fora é a
+  // Central de Pendências da área administrativa, que não executa JavaScript.
+  // `maisAntigoQuando` é a data do pedido mais velho ainda sem resposta, e
+  // `null` quando não há nenhum — nunca uma data inventada.
+  "  pedidosDoDono: { quantidade: " + pedidosDoDono.length + ", maisAntigoQuando: " +
+    JSON.stringify(pedidosDoDono.length ? pedidosDoDono[0].registro.quando : null) + " },",
+  // O MESMO objeto que `bytesResumo` mediu, e não uma segunda montagem igual a
+  // ele. Trocar isto por um literal novo devolve a fresta que o guarda
+  // "o tamanho declarado é o tamanho do que a página carrega" existe para pegar.
+  "  resumo: JSON.parse(" + comoTextoJS(resumoEmbarcado) + ")",
   "};",
   FECHA
 ].join("\n");

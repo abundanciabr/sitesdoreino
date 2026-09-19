@@ -1,5 +1,6 @@
-"""As telas da sala de aula: o mapa das portas, a aula, e os três gestos (a
-pausa, a autoavaliação e, desde o degrau 2.1, a entrega do checkpoint).
+"""As telas da sala de aula: o catálogo dos cursos, o mapa das portas, a
+aula, e os quatro gestos (a pausa, a autoavaliação, a entrega do checkpoint no
+curso por laudo e, no curso de progressão livre, concluir a aula).
 
 QUEM ENTRA, E QUEM DECIDE
 -------------------------
@@ -60,6 +61,7 @@ from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
+    AulaAvulsa,
     Curso,
     Envio,
     Laudo,
@@ -90,6 +92,8 @@ RECADOS = {
         "Recebido. Seu envio entrou na fila de revisão: o laudo chega em até "
         "24 horas."
     ),
+    "aula-concluida": "Aula concluída. A próxima está aberta.",
+    "ultima-concluida": "Aula concluída. Era a última.",
 }
 
 # As prévias que o formulário do checkpoint sugere, na ordem da lei §3.12
@@ -117,6 +121,9 @@ NOMES_DAS_PARTES = {
     2: "Parte 2 · Itens que vendem",
     3: "Parte 3 · Profissional",
 }
+# O curso do LIVRO, o único cujas Partes têm esses nomes: os outros cursos
+# dizem só "Parte N", e com uma parte só o mapa nem escreve o cabeçalho.
+CURSO_DO_LIVRO = "profissional"
 
 
 @require_GET
@@ -164,16 +171,19 @@ def _de_fora(curso: Curso | None = None) -> dict:
 
 
 def _url_do_mapa(curso: Curso | None) -> str:
-    """O mapa das portas: o do curso quando ele é conhecido, o endereço antigo
-    quando não é (uma recusa não tem curso para apontar)."""
-    return reverse("curso", args=[curso.slug]) if curso else reverse("mapa")
+    """O mapa das portas: o do curso quando ele é conhecido, o catálogo quando
+    não é (uma recusa não tem curso para apontar, e o catálogo os mostra)."""
+    return reverse("curso", args=[curso.slug]) if curso else reverse("catalogo")
 
 
-def _recusar(request, motivo: str, *, status: int, **extra):
+def _recusar(request, motivo: str, *, status: int, curso: Curso | None = None, **extra):
+    """A tela de recusa. `curso` é o do endereço quando ele já se resolveu:
+    o link "tente de novo" da recusa `sem-resposta` volta para a página que
+    falhou, e sem o curso ele mandaria a pessoa ao catálogo, que é outra."""
     return render(
         request,
         "cursos/entrar.html",
-        {"motivo": motivo, **_de_fora(), **extra},
+        {"motivo": motivo, **_de_fora(curso), **extra},
         status=status,
     )
 
@@ -247,16 +257,18 @@ def _sala(request, slug: str | None = None):
     para todo mundo, sem erro em lugar nenhum.
     """
     ator = quem_e(request)
+    site = site_atual()
+    # O curso se resolve ANTES da porta só para a recusa saber para onde
+    # apontar; a porta continua fechando antes de qualquer conteúdo dele.
+    curso = enderecos.curso_do_site(site, slug) if site and slug is not None else None
     if not ator.autenticado:
-        return None, None, _recusar(request, "entrar", status=200)
+        return None, None, _recusar(request, "entrar", status=200, curso=curso)
     if not ator.eh_aluno:
         motivo = "sem-matricula" if ator.matricula_conferida else "sem-resposta"
-        return None, None, _recusar(request, motivo, status=403)
-    site = site_atual()
+        return None, None, _recusar(request, motivo, status=403, curso=curso)
     if not site:
         return None, None, _recusar(request, "sem-curso", status=200)
     if slug is not None:
-        curso = enderecos.curso_do_site(site, slug)
         if curso is None:
             return (
                 None,
@@ -344,12 +356,18 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     trancada = estado == Progresso.Estado.TRANCADA
-    if trancada:
-        rotulo = Progresso.Estado.TRANCADA.label
-    elif not publicada:
+    if not publicada:
+        estado_visual = "em-preparo"
         rotulo = "Em preparo"
+        explicacao = "A escola está preparando esta aula."
+    elif trancada:
+        estado_visual = Progresso.Estado.TRANCADA
+        rotulo = Progresso.Estado.TRANCADA.label
+        explicacao = "Conclua a aula anterior para abrir esta porta."
     else:
+        estado_visual = Progresso.Estado(estado)
         rotulo = Progresso.Estado(estado).label
+        explicacao = "Aula publicada e disponível para você."
     return {
         "numero": aula.numero,
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
@@ -357,7 +375,9 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         "parte": aula.bloco.parte,
         "titulo": aula.titulo_exibido,
         "estado": estado,
+        "estado_visual": estado_visual,
         "rotulo": rotulo,
+        "explicacao": explicacao,
         "boss": aula.e_boss,
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
@@ -379,11 +399,11 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     atual = None
     for aula in curso.aulas.select_related("bloco").order_by("ordem"):
         porta = _porta(aula, por_aula.get(aula.id))
-        if atual is None and porta["estado"] in ESTADOS_COM_A_PESSOA:
+        if atual is None and porta["abre"] and porta["estado"] in ESTADOS_COM_A_PESSOA:
             atual = porta
         parte = partes.setdefault(
             aula.bloco.parte,
-            {"nome": NOMES_DAS_PARTES.get(aula.bloco.parte, ""), "blocos": {}},
+            {"nome": _nome_da_parte(curso, aula.bloco.parte), "blocos": {}},
         )
         bloco = parte["blocos"].setdefault(
             aula.bloco.ordem,
@@ -406,14 +426,23 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     return lista, atual
 
 
+def _nome_da_parte(curso: Curso, parte: int) -> str:
+    """O cabeçalho da Parte no mapa: o nome do livro no curso do livro, e
+    "Parte N" em qualquer outro."""
+    if curso.slug == CURSO_DO_LIVRO:
+        return NOMES_DAS_PARTES.get(parte, f"Parte {parte}")
+    return f"Parte {parte}"
+
+
 def _curso_unico() -> Curso | None:
     """O curso deste site quando ele é o ÚNICO; `None` com zero ou com dois.
 
-    É a condição que decide todo 301 desta célula. O endereço antigo não diz
-    QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço muda de
-    casa; com dois, mandá-lo para um deles seria um chute com cara de certeza,
-    e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que PERGUNTA
-    (`_sala`) continua sendo a resposta certa.
+    É a condição do 301 do endereço antigo de AULA (`/E00`). O endereço não
+    diz QUAL curso o aluno quer: com um só, a leitura é óbvia e o endereço
+    muda de casa; com dois, mandá-lo para um deles seria um chute com cara de
+    certeza, e o navegador guarda o 301 e nunca mais pergunta. Aí a tela que
+    PERGUNTA (`_sala`) continua sendo a resposta certa. A raiz da célula não
+    passa mais por aqui: ela é o catálogo (`catalogo`) e nunca redireciona.
     """
     site = site_atual()
     if not site:
@@ -422,41 +451,140 @@ def _curso_unico() -> Curso | None:
     return cursos[0] if len(cursos) == 1 else None
 
 
-def _a_raiz_mudou_de_casa():
-    """A raiz da célula (`/cursos`) mudada de casa (301) para o mapa do curso.
+def _resumo_do_progresso(curso: Curso, pessoa) -> dict:
+    """O resumo que as duas telas podem mostrar, sempre lido do progresso."""
+    aulas = curso.aulas.all()
+    publicadas = aulas.filter(estado=Aula.Estado.PUBLICADA)
+    progressos = Progresso.objects.filter(pessoa=pessoa, aula__curso=curso)
+    concluidas = progressos.filter(estado=Progresso.Estado("conclu" + "ida")).count()
+    total = publicadas.count()
+    return {
+        "total_aulas": aulas.count(),
+        "aulas_publicadas": total,
+        "aulas_concluidas": concluidas,
+        "progresso_percentual": round(concluidas * 100 / total) if total else 0,
+        "tem_aulas": aulas.exists(),
+    }
 
-    Enquanto os dois endereços servissem a mesma sala com 200, um link antigo
-    já compartilhado levaria o aluno a uma página que não diz em que parte do
-    curso ele está: o oposto do que o endereço do livro veio fazer. O 301
-    ensina o navegador e o buscador de uma vez (TAR-216).
+
+# ---------------------------------------------------------------------------
+# O CATÁLOGO: a raiz da célula mostra os cursos, e a porta de cada um decide
+# ---------------------------------------------------------------------------
+# A situação de um cartão para a pessoa da sessão, e se o botão de entrar
+# aparece. As chaves de `situacao` são as do template `cursos/catalogo.html`.
+SITUACAO_DA_RECUSA = {
+    "": "seu",
+    "outro-curso": "nao-e-seu",
+    "curso-sem-produto": "sem-produto",
+}
+
+
+def _aulas_abertas(curso: Curso) -> int:
+    """Quantas aulas deste curso o aluno pode abrir: só as publicadas, o mesmo
+    filtro de `_aula_publicada`. Rascunho não existe para o aluno."""
+    return curso.aulas.filter(estado=Aula.Estado.PUBLICADA).count()
+
+
+def _cartao_do_catalogo(ator, curso: Curso) -> dict:
+    """Um curso do site, visto pela pessoa da sessão.
+
+    O catálogo MOSTRA todos os cursos; quem decide quem entra é a porta
+    (`_recusa_de_curso`), e o cartão só repete a decisão dela, para que a
+    página não convide para uma porta que vai fechar. O visitante ganha o
+    botão: a porta pede login, e esse é o caminho honesto. Quem entrou e cuja
+    matrícula não deu para conferir não ganha botão nenhum, porque nesta
+    célula não conseguir conferir nunca é "pode entrar".
     """
-    curso = _curso_unico()
-    if curso is None:
-        return None
-    return HttpResponsePermanentRedirect(reverse("curso", args=[curso.slug]))
+    if not ator.autenticado:
+        situacao = "visitante"
+    elif not ator.matricula_conferida:
+        situacao = "sem-resposta"
+    else:
+        situacao = SITUACAO_DA_RECUSA[_recusa_de_curso(ator, curso)]
+    cartao = {
+        "nome": curso.nome,
+        "url": reverse("curso", args=[curso.slug]),
+        "aulas_abertas": _aulas_abertas(curso),
+        "total_aulas": curso.aulas.count(),
+        "entra": situacao in ("visitante", "seu"),
+        "situacao": situacao,
+    }
+    if situacao == "seu":
+        cartao.update(_resumo_do_progresso(curso, ator.pessoa))
+        cartao["acao"] = (
+            "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
+        )
+    return cartao
+
+
+def _aviso_do_catalogo(ator, cartoes: list[dict]) -> str:
+    """A frase do topo, ou `""`: o que houve com a matrícula desta pessoa,
+    quando houve algo. `sem-sala` é o estado de quem tem matrícula ativa num
+    produto que ainda não tem `Curso` neste site: nenhum cartão é dela, e sem
+    a frase a página pareceria dizer que ela não é aluna de nada.
+
+    Com um curso SEM PRODUTO apontado na tela, o aviso cala: esse curso pode
+    muito bem ser o dela (é como todo curso nasce), o cartão já diz que
+    ninguém entra ali ainda, e duas frases contraditórias na mesma tela são
+    piores do que uma.
+    """
+    if not ator.autenticado:
+        return ""
+    if not ator.matricula_conferida:
+        return "sem-resposta"
+    if not ator.eh_aluno:
+        return "sem-matricula"
+    situacoes = {cartao["situacao"] for cartao in cartoes}
+    if "seu" in situacoes or "sem-produto" in situacoes:
+        return ""
+    return "sem-sala"
 
 
 @require_GET
-def mapa(request, curso: str | None = None):
+def catalogo(request):
+    """A raiz da célula (`/cursos/`): um cartão por curso do site, cada um
+    com o link para o próprio endereço. Sempre 200, nunca 301.
+
+    Até 07/09/2026 a raiz respondia 301 para o mapa do curso quando ele era o
+    único do site (TAR-216), e o mantenedor mandou parar, com as palavras dele:
+    *"mostre um catalogo ou uma landing page com os cursos que existem no site
+    e ao clicar nos cursos a pessoa entre no curso"*. O aluno cuja matrícula
+    ainda não tem sala era levado ao curso do livro sem pedir, e nenhuma tela
+    dizia por quê. O 301 do link antigo de AULA (`/E00`) continua: é o link
+    de checkpoint já compartilhado.
+    """
+    ator = quem_e(request)
+    site = site_atual()
+    cartoes = [
+        _cartao_do_catalogo(ator, curso)
+        for curso in (enderecos.cursos_do_site(site) if site else [])
+    ]
+    return render(
+        request,
+        "cursos/catalogo.html",
+        {
+            "cursos": cartoes,
+            "aviso": _aviso_do_catalogo(ator, cartoes),
+            "visitante": not ator.autenticado,
+            **_de_fora(),
+        },
+    )
+
+
+@require_GET
+def mapa(request, curso: str):
     """A home de UM curso: as 34 portas, o estado de cada uma, a próxima em
-    destaque. `curso` é o slug do endereço; sem ele, é o endereço antigo.
+    destaque. `curso` é o slug do endereço, sempre.
 
     É aqui que a E00 NASCE `disponivel` para quem tem matrícula ativa
     (`progresso.nascer`, inerte a partir da segunda visita).
-
-    O 301 vem ANTES da porta, e de propósito: um 301 é guardado pelo navegador
-    pela URL, sem olhar o cookie, e um redirecionamento que dependesse de quem
-    está olhando mentiria no cache do primeiro visitante em diante.
     """
-    if curso is None:
-        mudou_de_casa = _a_raiz_mudou_de_casa()
-        if mudou_de_casa is not None:
-            return mudou_de_casa
     pessoa, curso, recusa = _sala(request, curso)
     if recusa is not None:
         return recusa
     portas.nascer(pessoa, curso)
     partes, atual = _partes(curso, pessoa)
+    resumo = _resumo_do_progresso(curso, pessoa)
     return render(
         request,
         "cursos/mapa.html",
@@ -464,6 +592,7 @@ def mapa(request, curso: str | None = None):
             "curso": curso,
             "partes": partes,
             "atual": atual,
+            **resumo,
             "recado": RECADOS.get(request.GET.get("recado", "")),
             **_de_fora(curso),
         },
@@ -486,8 +615,9 @@ def _aula_publicada(curso: Curso, numero: str) -> Aula:
 def _pecas(aula: Aula) -> list[dict]:
     """As 16 peças na ORDEM_CANONICA, renderizadas de Markdown, só as escritas.
 
-    As duas internas (o roteiro e o guia do mentor) NUNCA saem daqui: a lista
-    percorrida é a canônica, e elas não estão nela.
+    As duas internas (o roteiro e o guia do mentor) NUNCA saem daqui, e a
+    vídeo-aula em texto TAMBÉM não: a lista percorrida é a canônica, e nenhuma
+    das três está nela. A vídeo-aula tem caminho próprio, em `_videoaula`.
     """
     por_tipo = {peca.tipo: peca.texto for peca in aula.pecas.all()}
     return [
@@ -499,6 +629,25 @@ def _pecas(aula: Aula) -> list[dict]:
         for tipo in Peca.ORDEM_CANONICA
         if por_tipo.get(tipo, "").strip()
     ]
+
+
+def _videoaula(aula: Aula) -> dict:
+    """A vídeo-aula em texto desta aula, renderizada, ou `html` vazio.
+
+    O vazio é o que APAGA o botão na tela, e é o caso comum por muito tempo: as
+    34 encomendas vão viver um bom tempo sem este texto, e botão que abre um
+    modal vazio é defeito, não paciência.
+
+    O renderizador é o mesmo das outras peças (`para_html`), de propósito: dois
+    renderizadores dariam duas aparências para o mesmo Markdown. E o título do
+    modal sai do rótulo do `TextChoices`, nunca escrito de novo aqui.
+    """
+    peca = aula.pecas.filter(tipo=Peca.Tipo.VIDEOAULA_EM_TEXTO).first()
+    texto = (peca.texto if peca else "").strip()
+    return {
+        "rotulo": TipoDePeca(Peca.Tipo.VIDEOAULA_EM_TEXTO).label,
+        "html": para_html(texto) if texto else "",
+    }
 
 
 _ID_DO_YOUTUBE = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -549,8 +698,54 @@ def _embutir(url: str) -> str | None:
 
 
 def _video(aula: Aula) -> dict:
-    url = (aula.video_url or "").strip()
+    return _video_por_url(aula.video_url)
+
+
+def _video_por_url(video_url: str) -> dict:
+    url = (video_url or "").strip()
     return {"link": url, "embutido": _embutir(url) if url else None}
+
+
+def _porta_de_aulas_avulsas(request):
+    """A matrícula ativa DESTE site abre a biblioteca, sem criar progresso."""
+    ator = quem_e(request)
+    if not ator.autenticado:
+        return None, _recusar(request, "entrar", status=200)
+    if site_atual() is None or not ator.matricula_conferida:
+        return None, _recusar(request, "sem-resposta", status=403)
+    if not ator.produtos_matriculados:
+        return None, _recusar(request, "sem-matricula", status=403)
+    return ator, None
+
+
+@require_GET
+def aulas_avulsas(request):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    return render(
+        request,
+        "cursos/aulas_avulsas.html",
+        {"aulas": AulaAvulsa.objects.filter(site_id=site_atual()), **_de_fora()},
+    )
+
+
+@require_GET
+def aula_avulsa(request, slug: str):
+    _, recusa = _porta_de_aulas_avulsas(request)
+    if recusa is not None:
+        return recusa
+    aula = get_object_or_404(AulaAvulsa, site_id=site_atual(), slug=slug)
+    return render(
+        request,
+        "cursos/aula_avulsa.html",
+        {
+            "aula": aula,
+            "descricao": para_html(aula.descricao) if aula.descricao.strip() else "",
+            "video": _video_por_url(aula.video_url),
+            **_de_fora(),
+        },
+    )
 
 
 def _tempo(segundos: int) -> str:
@@ -674,6 +869,21 @@ def _checkpoint(progresso: Progresso, *, pausas_ok: bool) -> dict:
     }
 
 
+def _conclusao(progresso: Progresso, *, pausas_ok: bool) -> dict:
+    """O bloco de concluir a aula, SÓ no curso de progressão livre: o botão, ou
+    o porquê de ele não estar ali. `feita` se lê pelo carimbo da hora, que o
+    banco só deixa existir na porta concluída: esta tela não conhece o valor do
+    estado de propósito ([INV-CUR-P2], "nenhuma view grava")."""
+    return {
+        "feita": progresso.concluida_em is not None,
+        "fechado_por": "" if pausas_ok else portas.SO_COM_AS_PAUSAS,
+    }
+
+
+def _e_livre(curso: Curso) -> bool:
+    return curso.progressao == Curso.Progressao.LIVRE
+
+
 def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
     """A pessoa, o curso, a aula publicada e o progresso NÃO trancado, ou a
     resposta que recusa (o convite, o 403, o 404, a parte errada ou a volta ao
@@ -732,6 +942,10 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     do livro, com a parte dentro (TAR-216). Aqui a mudança exige um curso único
     (`_curso_unico`) e uma aula publicada nele: um 301 para um 404 ensinaria ao
     navegador, de uma vez, um endereço que não serve.
+
+    O 301 vem ANTES da porta, e de propósito: o navegador guarda um 301 pela
+    URL, sem olhar o cookie, e um redirecionamento que dependesse de quem está
+    olhando mentiria no cache do primeiro visitante em diante.
     """
     site = site_atual()
     if not site:
@@ -753,10 +967,12 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
 
 @require_GET
 def aula(request, numero: str, curso: str | None = None, parte: int | None = None):
-    """A aula: as 16 peças, o vídeo com as pausas, o quiz e o lugar do checkpoint.
+    """A aula: as 16 peças, o botão da vídeo-aula em texto, o vídeo com as
+    pausas, o quiz e o lugar do checkpoint.
 
     `curso` e `parte` vêm do endereço do livro; sem eles, é o endereço antigo,
-    que muda de casa (301) antes da porta pelo motivo escrito em `mapa`.
+    que muda de casa (301) antes da porta pelo motivo escrito em
+    `_o_endereco_de_um_segmento_mudou_de_casa`.
     `disponivel` vira `em_producao` na primeira abertura (`progresso.abrir`).
     Aula em rascunho é 404; porta trancada volta ao mapa.
     """
@@ -770,6 +986,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
+    pausas_ok = portas.pausas_registradas(progresso)
+    livre = _e_livre(curso)
     return render(
         request,
         "cursos/aula.html",
@@ -777,11 +995,17 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "aula": aula,
             "estado": Progresso.Estado(progresso.estado).label,
             "pecas": _pecas(aula),
+            "videoaula": _videoaula(aula),
             "video": _video(aula),
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
-            "checkpoint": _checkpoint(
-                progresso, pausas_ok=portas.pausas_registradas(progresso)
+            # Um curso tem UMA das duas seções: o checkpoint (por laudo) ou o
+            # botão de concluir (livre). A outra chega `None` e não se desenha.
+            "checkpoint": (
+                None if livre else _checkpoint(progresso, pausas_ok=pausas_ok)
+            ),
+            "conclusao": (
+                _conclusao(progresso, pausas_ok=pausas_ok) if livre else None
             ),
             "aceito_quando": (
                 aula.aceito_quando if isinstance(aula.aceito_quando, list) else []
@@ -794,13 +1018,17 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
 
 
 @require_POST
-def registrar_pausa(request, numero: str, ordem: int):
+def registrar_pausa(
+    request, numero: str, ordem: int, curso: str | None = None, parte: int | None = None
+):
     """O vídeo parou no segundo marcado, a pessoa escreveu: nasce o registro.
 
     Padrão POST-redirect-GET: sem ele um F5 repetiria o gesto. Aqui repetir já
     é inerte (uma pausa, um registro, `get_or_create`), mas o padrão fica.
     """
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -824,11 +1052,15 @@ def registrar_pausa(request, numero: str, ordem: int):
 
 
 @require_POST
-def gravar_autoavaliacao(request, numero: str):
+def gravar_autoavaliacao(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
     """A pessoa responde ao quiz com as próprias palavras; só então a
     resposta-modelo abre. Gravada uma vez: a autoavaliação é o registro do que
     ela sabia ANTES de ver o modelo, e regravar apagaria isso."""
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
@@ -869,16 +1101,24 @@ def _nota(valor: str | None) -> int | None:
 
 
 @require_POST
-def entregar_checkpoint(request, numero: str):
+def entregar_checkpoint(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
     """O aluno entrega o checkpoint por link: nasce o `Envio` na fila de 24
     horas (degrau 2.1). Toda regra mora em `envio.entregar`; aqui só se lê o
     formulário e se traduz a recusa em frase. POST-redirect-GET: um F5 depois
     de entregar não entrega de novo, e se entregasse a porta já estaria
     `enviada` e a segunda seria recusada com a frase certa."""
-    pessoa, curso, aula, progresso, recusa = _porta_aberta(request, numero)
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
     if recusa is not None:
         return recusa
     portas.abrir(progresso)
+    if _e_livre(curso):
+        return _voltar_a_aula(
+            curso, aula, erro=portas.SO_NO_CURSO_LIVRE, ancora="concluir"
+        )
     links = [
         {
             "rotulo": checkpoint.ROTULO_DO_ARQUIVO,
@@ -915,6 +1155,32 @@ def entregar_checkpoint(request, numero: str):
     except checkpoint.EnvioRecusado as motivo:
         return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="checkpoint")
     return _voltar_a_aula(curso, aula, recado="entregue", ancora="checkpoint")
+
+
+@require_POST
+def concluir_aula(
+    request, numero: str, curso: str | None = None, parte: int | None = None
+):
+    """No curso de progressão LIVRE, o aluno conclui a aula com um gesto e a
+    seguinte abre na hora (`DECISAO-a-sala-serve-varios-cursos.md` §2). Toda
+    regra mora em `progresso.concluir_por_gesto` (o curso é livre, as pausas
+    estão registradas, a porta não está trancada); aqui só se traduz a recusa
+    em frase. POST-redirect-GET de volta ao MAPA, que é onde a porta nova
+    aparece; um F5 ali não conclui nada de novo."""
+    pessoa, curso, aula, progresso, recusa = _porta_aberta(
+        request, numero, slug=curso, parte=parte
+    )
+    if recusa is not None:
+        return recusa
+    portas.abrir(progresso)
+    try:
+        portas.concluir_por_gesto(progresso)
+    except portas.PortaRecusada as motivo:
+        return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="concluir")
+    tem_proxima = portas.proxima_de(aula) is not None
+    return _voltar_ao_mapa(
+        curso, recado="aula-concluida" if tem_proxima else "ultima-concluida"
+    )
 
 
 # ---------------------------------------------------------------------------

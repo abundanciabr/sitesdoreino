@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015948-TAR-202-explicada",
+  "tarefa": "TAR-202",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:48+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Dois robos confundiram a quantidade de testes com o numero do trabalho e ficaram vinte tentativas medindo um trabalho de agosto.",
+  "o_que_muda": "Tempo perdido, e a mensagem que aparece nao diz qual foi a confusao. O conserto e a mensagem apontar a causa provavel.",
+  "exemplo": "E o caixa eletronico dizendo apenas operacao invalida, em vez de dizer que voce digitou a agencia no lugar da conta.",
+  "importancia": 50
+}

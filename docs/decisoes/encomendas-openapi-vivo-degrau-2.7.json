@@ -1,0 +1,837 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Encomendas - API interna",
+    "version": "1.0.0",
+    "description": "Superficie de maquina da Fila do Primeiro Dolar. Quem consome: o Admin\n(parametros), a home e o Estudio (fila de uma pessoa, pecas aprovadas),\na celula de pagamentos (pagamento confirmado, Fase 3) e o worker de\nauditoria (resultado, Fase 5).\n\nO Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie aqui.\nPor isso nenhuma porta desta superficie ACEITA, PASSA, ENTREGA ou APROVA\nnada em nome de um aluno ou de um cliente. Esses gestos sao das telas,\nonde a pessoa esta atras do login.\n\nSAO DOIS GRAUS DE CRACHA, e o segundo existe porque esta porta ESCREVE.\nLer a fila de alguem (TOKENS_ACEITOS_<PAR>) e mudar um parametro do dono\nou confirmar dinheiro (TOKENS_ESCRITA_<PAR>) nao sao o mesmo poder: o par\nque so desenha tela recebe 403 nas tres operacoes que gravam.\n\nNao sai dado de contato do aluno por porta nenhuma (INV-ENC-S3), e so\nsaem pecas com autorizacao do cliente registrada (INV-ENC-S4).\n\nSITE_ID ausente no env desta celula e 503, nunca uma lista vazia com 200.\n\nLei do assunto: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md.\n"
+  },
+  "paths": {
+    "/parametros": {
+      "get": {
+        "operationId": "getParameters",
+        "summary": "Os parametros vigentes da fila, com o historico de cada um",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Parametro"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "O vocabul\u00e1rio fechado INTEIRO, e n\u00e3o s\u00f3 as chaves j\u00e1 semeadas.\n\nA tela do dono precisa mostrar a linha do piso de pre\u00e7o que ainda n\u00e3o tem\nn\u00famero, ou ele n\u00e3o descobre que pode grav\u00e1-lo. Chave sem linha vem com\n`vigente: null` e hist\u00f3rico vazio.\n\nO valor de agora sai de `Parametro.vigente_em`, a mesma fun\u00e7\u00e3o que o motor\nusa. Uma segunda express\u00e3o da mesma conta divergiria algum dia, e divergir\naqui significa a tela do dono mostrar um n\u00famero e o motor obedecer a outro."
+      }
+    },
+    "/parametros/{chave}": {
+      "put": {
+        "operationId": "setParameter",
+        "summary": "Muda um parametro acrescentando uma linha nova com motivo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "chave",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinhaDeParametro"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "Acrescenta uma linha. **Nunca reescreve a que est\u00e1 valendo.**\n\nO `UPDATE` \u00e9 recusado pelo PostgreSQL, por gatilho, ent\u00e3o \"nunca reescreve\"\nn\u00e3o \u00e9 uma promessa deste arquivo. O que este arquivo garante \u00e9 o resto: o\nmotivo escrito, o autor nomeado e o valor dentro do tipo da chave.\n\nChave desconhecida \u00e9 404: o vocabul\u00e1rio \u00e9 fechado e nasce no c\u00f3digo da\nc\u00e9lula, nunca pela porta.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MudancaDeParametro"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/perfis/{id}/fila": {
+      "get": {
+        "operationId": "getQueueStanding",
+        "summary": "Em que pe esta a fila de uma pessoa, para a home e o Estudio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilaDeUmaPessoa"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "200 com `existe: false` para quem n\u00e3o tem perfil profissional. Nunca 404.\n\n\"N\u00e3o conhe\u00e7o esta pessoa\" \u00e9 a resposta, e n\u00e3o um erro: um 404 obrigaria cada\nconsumidor a traduzir \"erro\" em \"ainda n\u00e3o entrou\", e o primeiro que tratasse\n404 como falha de rede mostraria a tela errada para todo visitante novo.\n\n**A ESPERA substitui a posi\u00e7\u00e3o** (plano \u00a75.4), e vem nula quando n\u00e3o h\u00e1 ritmo\npara medir. Ver `apps/encomendas/espera.py`.\n\n**Os tr\u00eas campos do Mural e da negocia\u00e7\u00e3o** respondem o que o aluno mais\nconsulta: tem prateleira para mim? peguei alguma coisa? tem proposta parada\nesperando resposta?"
+      }
+    },
+    "/perfis/{id}/pecas-aprovadas": {
+      "get": {
+        "operationId": "getApprovedPieces",
+        "summary": "As pecas aprovadas E autorizadas de uma pessoa, para o Estudio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PecasAprovadas"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "A \u00daNICA porta por onde uma pe\u00e7a sai desta c\u00e9lula.\n\nS\u00f3 encomendas `aprovada` ou `concluida` **e** com `autorizacao_portfolio`\nregistrada pelo cliente ([INV-ENC-S4]). Nada de briefing, nada de cliente,\nnada de contato ([INV-ENC-S3]): sai o nome que o cliente deu \u00e0 pe\u00e7a, e mais\nnada do que ele escreveu.\n\nLista vazia para quem n\u00e3o tem nada, nunca 404.\n\n`previa_url` \u00e9 nulo at\u00e9 a Fase 5 decidir onde moram os arquivos da entrega.\nEle existe desde j\u00e1 porque o Est\u00fadio desenha a moldura da imagem em volta\ndele, e um campo que aparece depois muda a tela de quem j\u00e1 consumia."
+      }
+    },
+    "/interno/pagamentos/confirmado": {
+      "post": {
+        "operationId": "confirmPayment",
+        "summary": "A celula de pagamentos avisa que a cobranca de uma encomenda foi confirmada",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoDaEncomenda"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not Implemented",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "Declarada e fechada: **responde 501 at\u00e9 a Fase 3**.\n\nEla existe hoje para que o contrato congelado do degrau 2.8 j\u00e1 a contenha, e\no dia em que a `pagamentos` entrar n\u00e3o seja um Rito de Contrato inteiro. N\u00e3o\nopera porque dinheiro \u00e9 a Fase 3, e a diretiva do mantenedor \u00e9 clara (lei\n\u00a73.4): at\u00e9 a Fase 3 a \u00fanica confirma\u00e7\u00e3o que existe \u00e9 a do plant\u00e3o, na tela,\ncom autor.\n\n**O grau de escrita \u00e9 conferido ANTES do 501**, e a ordem n\u00e3o \u00e9 detalhe: um\npar que n\u00e3o pode gravar n\u00e3o deve nem descobrir que esta porta existe e est\u00e1\ndesligada.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagamentoConfirmado"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/interno/auditoria/resultado": {
+      "post": {
+        "operationId": "reportAudit",
+        "summary": "O worker de auditoria devolve o veredito sobre uma entrega",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoDaEncomenda"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not Implemented",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          }
+        },
+        "description": "Declarada e fechada: **responde 501 at\u00e9 a Fase 5**.\n\nMesma raz\u00e3o da vizinha de cima. A auditoria autom\u00e1tica roda fora desta\nc\u00e9lula, e o que ela vai mover (`entregue` de volta a `em_producao`, com a\nfrase que o aluno l\u00ea) depende da Entrega, que esta c\u00e9lula ainda n\u00e3o tem.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultadoDaAuditoria"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LinhaDeParametro": {
+        "properties": {
+          "valor": {
+            "type": "string"
+          },
+          "desde": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "quem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "valor",
+          "desde",
+          "motivo",
+          "quem"
+        ],
+        "type": "object"
+      },
+      "Parametro": {
+        "description": "Uma chave do vocabul\u00e1rio fechado, com o valor de agora e o hist\u00f3rico.\n\n`vigente` \u00e9 nulo quando ainda n\u00e3o h\u00e1 linha valendo, e isso n\u00e3o \u00e9 falha: o\npiso de pre\u00e7o por n\u00edvel nasceu de prop\u00f3sito sem n\u00famero (lei \u00a77), porque ele\nsai do piloto de papel. Uma chave sem valor precisa aparecer na tela do dono,\nou ele n\u00e3o tem por onde gravar o primeiro.",
+        "properties": {
+          "chave": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "vigente": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinhaDeParametro"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "historico": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaDeParametro"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "chave",
+          "tipo",
+          "descricao",
+          "vigente",
+          "historico"
+        ],
+        "type": "object"
+      },
+      "Erro": {
+        "description": "O corpo de toda recusa desta porta. \u00c9 a forma que o django-ninja j\u00e1 emite\nem `HttpError`, declarada aqui para que ela entre no contrato congelado em\nvez de existir s\u00f3 na pr\u00e1tica.",
+        "properties": {
+          "detail": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "type": "object"
+      },
+      "MudancaDeParametro": {
+        "description": "`desde` n\u00e3o \u00e9 campo, e a aus\u00eancia \u00e9 decis\u00e3o: esta porta grava a linha\nvalendo agora. Mudan\u00e7a marcada para o futuro \u00e9 poder que ningu\u00e9m pediu, e\nquem o quisesse teria de explicar o que acontece com a oferta feita no\nmeio.",
+        "properties": {
+          "valor": {
+            "type": "string"
+          },
+          "motivo": {
+            "type": "string"
+          },
+          "quem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "valor",
+          "motivo",
+          "quem"
+        ],
+        "type": "object"
+      },
+      "FilaDeUmaPessoa": {
+        "description": "Em que p\u00e9 est\u00e1 a fila de uma pessoa, para a home e para o Est\u00fadio.\n\n**Os campos v\u00eam sempre, nulos quando `existe` \u00e9 falso**, e n\u00e3o ausentes como\no rascunho em papel previa: uma resposta que muda de forma obriga quem\nconsome a escrever dois desenhos de tela para o mesmo lugar.\n\nOS TRES ULTIMOS CAMPOS SAO A EMENDA DE 04/09/2026, e s\u00e3o a raz\u00e3o de esta\ntarefa ter esperado a negocia\u00e7\u00e3o existir. O contrato congela no degrau\nseguinte; congel\u00e1-lo antes do Mural faria a porta nascer cega justamente\npara o estado que o aluno mais consulta (`PLANO-AREA-DE-NEGOCIACAO.md` \u00a73\ne \u00a74).",
+        "properties": {
+          "existe": {
+            "type": "boolean"
+          },
+          "titulo_banca": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disponibilidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "na_fila_desde": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entregas_aprovadas": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "espera_estimada_dias": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "encomenda_ativa_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ve_o_mural": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reserva_no_mural": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReservaNoMural"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proposta_de_pe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PropostaDePe"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "existe",
+          "titulo_banca",
+          "disponibilidade",
+          "na_fila_desde",
+          "entregas_aprovadas",
+          "espera_estimada_dias",
+          "encomenda_ativa_id",
+          "ve_o_mural",
+          "reserva_no_mural",
+          "proposta_de_pe"
+        ],
+        "type": "object"
+      },
+      "PropostaDePe": {
+        "properties": {
+          "encomenda_id": {
+            "type": "string"
+          },
+          "de_quem": {
+            "type": "string"
+          },
+          "rodada": {
+            "type": "integer"
+          },
+          "valida_ate": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "encomenda_id",
+          "de_quem",
+          "rodada",
+          "valida_ate"
+        ],
+        "type": "object"
+      },
+      "ReservaNoMural": {
+        "properties": {
+          "encomenda_id": {
+            "type": "string"
+          },
+          "expira_em": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "encomenda_id",
+          "expira_em"
+        ],
+        "type": "object"
+      },
+      "PecaAprovada": {
+        "description": "`no_prazo` \u00e9 nulo quando n\u00e3o houve prazo prometido para medir contra.\nO rascunho em papel pedia um booleano, e um booleano aqui teria de escolher\nentre chamar de atrasado quem nunca teve prazo e chamar de pontual quem\nningu\u00e9m mediu. As duas seriam inven\u00e7\u00e3o.",
+        "properties": {
+          "encomenda_id": {
+            "type": "string"
+          },
+          "nome_da_peca": {
+            "type": "string"
+          },
+          "cartao": {
+            "type": "string"
+          },
+          "origem": {
+            "type": "string"
+          },
+          "aprovada_em": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no_prazo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previa_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "encomenda_id",
+          "nome_da_peca",
+          "cartao",
+          "origem",
+          "aprovada_em",
+          "no_prazo",
+          "previa_url"
+        ],
+        "type": "object"
+      },
+      "PecasAprovadas": {
+        "properties": {
+          "entregas": {
+            "type": "integer"
+          },
+          "no_prazo": {
+            "type": "integer"
+          },
+          "pecas": {
+            "items": {
+              "$ref": "#/components/schemas/PecaAprovada"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entregas",
+          "no_prazo",
+          "pecas"
+        ],
+        "type": "object"
+      },
+      "EstadoDaEncomenda": {
+        "properties": {
+          "encomenda_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "encomenda_id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "PagamentoConfirmado": {
+        "properties": {
+          "encomenda_id": {
+            "type": "string"
+          },
+          "pagamento_id": {
+            "type": "string"
+          },
+          "valor_pago_cents": {
+            "type": "integer"
+          },
+          "confirmado_em": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "chave_idempotencia": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "encomenda_id",
+          "pagamento_id",
+          "valor_pago_cents",
+          "confirmado_em",
+          "chave_idempotencia"
+        ],
+        "type": "object"
+      },
+      "ItemDaAuditoria": {
+        "properties": {
+          "codigo": {
+            "type": "string"
+          },
+          "mensagem": {
+            "type": "string"
+          },
+          "medido": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limite": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "codigo",
+          "mensagem"
+        ],
+        "type": "object"
+      },
+      "ResultadoDaAuditoria": {
+        "properties": {
+          "entrega_id": {
+            "type": "string"
+          },
+          "versao": {
+            "type": "integer"
+          },
+          "resultado": {
+            "type": "string"
+          },
+          "itens": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ItemDaAuditoria"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entrega_id",
+          "versao",
+          "resultado"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://encomendas:8000/api/encomendas"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

@@ -212,25 +212,26 @@ def test_matricula_de_outra_escola_nao_abre_a_sala_desta(
     assert A_FRASE_DE_OUTRO_CURSO in corpo_de(resposta)
 
 
-def test_sem_curso_nenhum_dela_a_recusa_manda_falar_com_a_escola(
+def test_sem_curso_nenhum_dela_o_catalogo_avisa_e_nao_convida(
     env_dos_pares, rede, esqueleto, client
 ):
-    """O endereço antigo, para quem não é aluna de curso nenhum DESTA escola.
+    """A raiz, para quem não é aluna de curso nenhum DESTA escola.
 
-    Não há para onde mandá-la, e a tela sem lista não pode virar uma tela muda:
-    a recusa diz o que houve (a compra chegou sem dizer qual curso) e o que
-    fazer (falar com a escola)."""
+    Não há sala para onde mandá-la, e a página não pode virar uma página muda:
+    o catálogo responde 200, o aviso diz o que houve (a matrícula é de um
+    curso que ainda não tem sala neste site) e nenhum cartão convida."""
     o_outro_curso()
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], site="escola-b")
 
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("catalogo"), HTTP_COOKIE=COOKIE)
 
-    assert resposta.status_code == 403
+    assert resposta.status_code == 200
     corpo = corpo_de(resposta)
-    assert A_FRASE_DE_OUTRO_CURSO in corpo
-    assert "fale com a escola" in corpo
+    assert "ainda não tem sala de aula neste site" in corpo
+    assert "Entrar no curso" not in corpo
     assert 'href="/profissional/"' not in corpo
+    assert 'href="/avancado/"' not in corpo
 
 
 # ---------------------------------- 6. o plantão não passa por esta porta
@@ -249,13 +250,17 @@ def test_o_professor_entra_no_plantao_sem_matricula_de_curso_nenhum(
 
 
 # ------------------- 7. a sala não OFERECE curso de que a pessoa não é aluna
-def test_a_tela_de_escolher_nao_oferece_curso_alheio(aluna, client):
-    """Com dois cursos no site e um só dela, não há o que escolher: oferecer o
-    outro seria a sala convidando para uma porta que ela mesma vai fechar."""
+def test_o_catalogo_mostra_o_curso_alheio_mas_nao_o_oferece(aluna, client):
+    """Com dois cursos no site e um só dela, o catálogo MOSTRA o outro pelo
+    nome (ele existe) e não o oferece: nem link, e a frase diz por quê.
+    Oferecer seria a sala convidando para uma porta que ela mesma vai fechar."""
     o_outro_curso()
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("catalogo"), HTTP_COOKIE=COOKIE)
     corpo = corpo_de(resposta)
+    assert "Avançado" in corpo
     assert 'href="/avancado/"' not in corpo
+    assert "Você não está matriculado neste curso." in corpo
+    assert 'href="/profissional/"' in corpo
 
 
 def test_o_endereco_desconhecido_mostra_os_cursos_dela_e_nao_os_da_escola(

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-205708-TAR-407-concluida",
+  "tarefa": "TAR-407",
+  "evento": "concluida",
+  "quando": "2026-09-13T20:57:08+00:00",
+  "quem": "agent/ci/pouso-por-evento",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1637",
+  "verificado_em": "2026-09-13"
+}

@@ -1,0 +1,22 @@
+{
+  "arquivo": "268-rito-de-contrato-da-sala-de-aula-as-quatro-operacoes-de-curs",
+  "id": "TAR-268",
+  "titulo": "Rito de Contrato da sala de aula: as quatro operacoes de curso entram no contrato congelado",
+  "toca": [
+    "contracts",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-266"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR so de contracts/ mergeado com etiqueta contrato; ci/contract_freeze.py cursos PASS identico ao congelado; ci/contrato_aditivo.py PASS; o PR da porta pousado em seguida com o freeze verde",
+  "despacho": "Rito de Contrato conduzido pela maestro (RITOS.md secao 3): PR so de contracts/ (e o manifesto, se preciso) com a etiqueta contrato, nascido do export do ramo do PR da tarefa da porta (TAR-266), nunca de cabeca; provedor primeiro; leia a prosa do export antes de congelar (armadilhas/324). Depois do pouso, pousar o PR da porta.",
+  "origem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "criada_em": "2026-09-07"
+}

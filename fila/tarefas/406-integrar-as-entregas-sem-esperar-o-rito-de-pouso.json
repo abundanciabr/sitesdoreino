@@ -1,0 +1,19 @@
+{
+  "arquivo": "406-integrar-as-entregas-sem-esperar-o-rito-de-pouso",
+  "id": "TAR-406",
+  "titulo": "Integrar as entregas sem esperar o rito de pouso",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste vermelho e verde; PR real integrado automaticamente com tempo medido.",
+  "despacho": "Mandato do mantenedor em 13/09/2026: retirar revisor, atestado, etiqueta pousar e maestro do merge. Preservar protecao da main, contrato congelado e mandato CODEOWNERS. Alvos CLAUDE.md, RITOS.md, AGENTS.md, ci/mergear.py, .github/workflows/pouso.yml, docs/decisoes/DECISAO-triade-de-ias.md e decisao nova; testes e consumidores necessarios.",
+  "origem": "pedido direto do mantenedor no Codex, 13/09/2026",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

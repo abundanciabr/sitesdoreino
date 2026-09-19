@@ -1,0 +1,171 @@
+# Texto da página única de notificações do site.
+
+titulo:
+  _fonte: "788011"
+  en: "Notifications"
+  pt-br: "Notificações"
+  es: "Notificaciones"
+
+falha_resumo:
+  _fonte: "e1fe9c"
+  en: "We could not load your notices right now."
+  pt-br: "Não conseguimos carregar seus avisos agora."
+  es: "No pudimos cargar tus avisos ahora."
+
+falha_titulo:
+  _fonte: "971dbc"
+  en: "Your notices are temporarily unavailable"
+  pt-br: "Seus avisos estão temporariamente indisponíveis"
+  es: "Tus avisos no están disponibles temporalmente"
+
+falha_corpo:
+  _fonte: "c1eac9"
+  en: "Try again in a few moments. If the problem continues, tell the technical team."
+  pt-br: "Tente novamente em alguns instantes. Se o problema continuar, avise a equipe técnica."
+  es: "Inténtalo de nuevo en unos momentos. Si el problema continúa, avisa al equipo técnico."
+
+nao_lidos:
+  _fonte: "816280"
+  en:
+    one: "You have {quantidade} unread notice."
+    other: "You have {quantidade} unread notices."
+  pt-br:
+    one: "Você tem {quantidade} aviso não lido."
+    many: "Você tem {quantidade} avisos não lidos."
+    other: "Você tem {quantidade} avisos não lidos."
+  es:
+    one: "Tienes {quantidade} aviso sin leer."
+    many: "Tienes {quantidade} avisos sin leer."
+    other: "Tienes {quantidade} avisos sin leer."
+
+todos_lidos:
+  _fonte: "cacf11"
+  en: "All your notices have been read."
+  pt-br: "Todos os seus avisos já foram lidos."
+  es: "Todos tus avisos ya fueron leídos."
+
+marcar_todas:
+  _fonte: "d75926"
+  en: "Mark all as read"
+  pt-br: "Marcar tudo como lido"
+  es: "Marcar todo como leído"
+
+nova:
+  _fonte: "18fdd5"
+  en: "New"
+  pt-br: "Novo"
+  es: "Nuevo"
+
+sugestao_titulo:
+  _fonte: "305c88"
+  en: "Your suggestion has a new update"
+  pt-br: "Sua sugestão teve uma novidade"
+  es: "Tu sugerencia tuvo una novedad"
+
+sugestao_corpo:
+  _fonte: "f34673"
+  en: "The team updated the status of an idea you interacted with."
+  pt-br: "A equipe atualizou o status de uma ideia com a qual você interagiu."
+  es: "El equipo actualizó el estado de una idea con la que interactuaste."
+
+status_mudou_inicio:
+  _fonte: "3e56be"
+  en: "The status changed from"
+  pt-br: "O status mudou de"
+  es: "El estado cambió de"
+
+status_mudou_para:
+  _fonte: "663ea1"
+  en: "to"
+  pt-br: "para"
+  es: "a"
+
+status_atual_inicio:
+  _fonte: "7fa440"
+  en: "The current status is"
+  pt-br: "O status atual é"
+  es: "El estado actual es"
+
+vinculo:
+  _fonte: "e34a3d"
+  en: "You are receiving this because you interacted with the idea as"
+  pt-br: "Você recebeu este aviso porque interagiu com a ideia como"
+  es: "Recibiste este aviso porque interactuaste con la idea como"
+
+vinculo_autor:
+  _fonte: "d04877"
+  en: "the author."
+  pt-br: "autor."
+  es: "autor."
+
+vinculo_comentario:
+  _fonte: "42c9f1"
+  en: "someone who commented."
+  pt-br: "alguém que comentou."
+  es: "alguien que comentó."
+
+vinculo_voto:
+  _fonte: "4e0860"
+  en: "someone who voted."
+  pt-br: "alguém que votou."
+  es: "alguien que votó."
+
+marcar_lida:
+  _fonte: "50c8b8"
+  en: "Mark as read"
+  pt-br: "Marcar como lido"
+  es: "Marcar como leído"
+
+generica_titulo:
+  _fonte: "0f322d"
+  en: "You have a new notice"
+  pt-br: "Você tem um aviso novo"
+  es: "Tienes un aviso nuevo"
+
+generica_corpo:
+  _fonte: "bdf8ac"
+  en: "This notice is from another part of Meshcraft. This page does not know how to show its details yet."
+  pt-br: "Este aviso veio de outra parte do Meshcraft. Esta página ainda não sabe mostrar os detalhes dele."
+  es: "Este aviso viene de otra parte de Meshcraft. Esta página todavía no sabe mostrar sus detalles."
+
+vazio:
+  _fonte: "689f44"
+  en: "You do not have any notices yet."
+  pt-br: "Você ainda não tem avisos."
+  es: "Todavía no tienes avisos."
+
+status_em_analise:
+  _fonte: "fca773"
+  en: "under review"
+  pt-br: "em análise"
+  es: "en análisis"
+
+status_planejado:
+  _fonte: "9b0f1b"
+  en: "planned"
+  pt-br: "planejado"
+  es: "planeado"
+
+status_em_desenvolvimento:
+  _fonte: "877bcb"
+  en: "in development"
+  pt-br: "em desenvolvimento"
+  es: "en desarrollo"
+
+status_implementado:
+  _fonte: "6842ca"
+  en: "implemented"
+  pt-br: "implementado"
+  es: "implementado"
+
+status_nao_planejado:
+  _fonte: "45d158"
+  en: "not planned"
+  pt-br: "não planejado"
+  es: "no planeado"
+
+status_mesclado:
+  _fonte: "3f8f09"
+  en: "merged"
+  pt-br: "mesclado"
+  es: "fusionado"

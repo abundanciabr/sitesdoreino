@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-185528-TAR-281-explicada",
+  "tarefa": "TAR-281",
+  "evento": "explicada",
+  "quando": "2026-09-08T18:55:28+00:00",
+  "quem": "docs/decisoes/RELATORIO-FASE4-MEDICAO.md",
+  "o_que_e": "A análise da Fase 4 ainda não foi examinada por um revisor com contexto e execução separados.",
+  "o_que_muda": "Uma pessoa independente poderá confirmar ou contestar método, dados, cálculo, qualidade e decisão de expansão.",
+  "exemplo": "O auditor recebe o conjunto autorizado, executa o analisador sem o resumo do implementador e compara seu resultado com a conclusão publicada.",
+  "importancia": 100
+}

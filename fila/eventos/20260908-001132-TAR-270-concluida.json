@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260908-001132-TAR-270-concluida",
+  "tarefa": "TAR-270",
+  "evento": "concluida",
+  "quando": "2026-09-08T00:11:32+00:00",
+  "quem": "maestro-lote-cursos-20260907",
+  "evidencia": "PR em preparo: concluir_por_gesto recusa curso por laudo, recusa pausa faltando, recusa porta trancada, abre apenas ordem + 1, e emite aula.concluida.v1; tela de curso livre mostra Concluir esta aula, esconde checkpoint, recusa entrega por checkpoint em portugues, e mapa de curso com uma parte nao mostra cabecalho. Testes focados: 44 passed em Postgres local.",
+  "verificado_em": "2026-09-08"
+}

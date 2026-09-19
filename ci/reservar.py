@@ -57,7 +57,9 @@ Exit codes: 0 alocado/reservado · 1 recusado (já é de outro) · 2 ERROR.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import os
 import subprocess
 import sys
@@ -140,11 +142,20 @@ def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
         ) from erro
 
 
-def criar_ref_atomica(raiz: Path, ref: str, corpo: dict) -> bool:
+def criar_ref_atomica(
+    raiz: Path, ref: str, corpo: dict, *, ref_chave: str | None = None, lease: str = ""
+) -> bool:
     """Tenta criar `ref` no servidor. True = ganhou, False = já era de outro.
 
     Levanta `ErroDeInstrumentacao` quando não deu para saber — que é diferente
     de perder, e precisa ser diferente no código também.
+
+    `lease` é o sha que a referência PRECISA ter neste instante para a escrita
+    valer; vazio significa "ela não pode existir", que é o caso de toda
+    alocação de número. Quem passa um sha é o congelamento de célula
+    (`ci/rollback.py`): renovar o prazo de um rollback ativo tem de ser UMA
+    operação, porque apagar para recriar deixaria a casa destravada justo no
+    meio do incidente que o congelamento existe para atravessar.
     """
     corpo = dict(corpo)
     # O nonce é o que torna o commit único e faz o lease ser conferido de
@@ -171,10 +182,12 @@ def criar_ref_atomica(raiz: Path, ref: str, corpo: dict) -> bool:
         exigir_stdout=True,
     ).stdout.strip()
 
-    resultado = _git(
-        raiz,
-        ["push", f"--force-with-lease={ref}:", "origin", f"{commit}:{ref}"],
-    )
+    comando = ["push", f"--force-with-lease={ref}:{lease}", "origin", f"{commit}:{ref}"]
+    if ref_chave:
+        comando = ["push", "--atomic", f"--force-with-lease={ref}:{lease}",
+                   f"--force-with-lease={ref_chave}:", "origin",
+                   f"{commit}:{ref}", f"{commit}:{ref_chave}"]
+    resultado = _git(raiz, comando)
     saida = f"{resultado.stdout}\n{resultado.stderr}"
 
     if resultado.returncode == 0:
@@ -270,7 +283,30 @@ def numeros_em_uso(raiz: Path, superficie: str, chave_do_dia: str) -> set[int]:
     return usados
 
 
-def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) -> str:
+def numero_da_chave(raiz: Path, superficie: str, chave: str) -> dict | None:
+    ref = f"refs/chaves-numero/{superficie}/{chave}"
+    bruto = executar(["git", "ls-remote", "origin", ref], cwd=raiz,
+                     descricao="conferir número já reservado pela operação").stdout.strip()
+    if not bruto:
+        return None
+    partes = bruto.split()
+    if len(partes) != 2 or partes[1] != ref or not re.fullmatch(r"[0-9a-f]{40}", partes[0]):
+        raise ErroDeInstrumentacao("resposta da reserva inválida", "Confira o acesso remoto antes de retomar.")
+    sha = partes[0]
+    executar(["git", "fetch", "origin", ref], cwd=raiz, descricao="ler reserva existente")
+    texto = executar(["git", "show", "-s", "--format=%B", sha], cwd=raiz,
+                     descricao="conferir identidade do número reservado").stdout
+    try:
+        dados = json.loads(texto)
+        if dados.get("chave") != chave or dados.get("superficie") != superficie or not re.fullmatch(r"\d{3}", dados.get("numero", "")):
+            raise ValueError("identidade incompatível")
+        datetime.strptime(dados["dia"], "%Y%m%d")
+        return dados
+    except (ValueError, KeyError, TypeError) as erro:
+        raise ErroDeInstrumentacao("reserva existente incompatível", "Confira a reserva; não aloque outro número para a mesma operação.") from erro
+
+
+def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None, *, chave: str | None = None, com_dia: bool = False) -> str:
     """Ganha um número no servidor e devolve ele. Nunca devolve um palpite."""
     if superficie not in ("registro", "armadilha", "tarefa"):
         raise ErroDeInstrumentacao(
@@ -280,6 +316,12 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) ->
         )
     agora = agora or datetime.now(timezone.utc)
     chave_do_dia = agora.strftime("%Y%m%d")
+    if chave:
+        if not re.fullmatch(r"[0-9a-f]{64}", chave):
+            raise ErroDeInstrumentacao("chave inválida", "Use o SHA-256 da identidade estável da operação.")
+        existente = numero_da_chave(raiz, superficie, chave)
+        if existente:
+            return f"{existente['dia']}-{existente['numero']}" if com_dia else existente["numero"]
     usados = numeros_em_uso(raiz, superficie, chave_do_dia)
 
     if superficie in ("armadilha", "tarefa"):
@@ -301,16 +343,13 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) ->
 
     for _ in range(TENTATIVAS):
         numero = str(candidato).zfill(3)
-        if criar_ref_atomica(
-            raiz,
-            f"{base}/{numero}",
-            {
-                "tipo": "numero",
-                "superficie": superficie,
-                "numero": numero,
-                "criado_em": agora.isoformat(),
-            },
-        ):
+        corpo = {"tipo": "numero", "superficie": superficie, "numero": numero,
+                 "criado_em": agora.isoformat()}
+        opcoes = {}
+        if chave:
+            corpo.update(chave=chave, dia=chave_do_dia)
+            opcoes["ref_chave"] = f"refs/chaves-numero/{superficie}/{chave}"
+        if criar_ref_atomica(raiz, f"{base}/{numero}", corpo, **opcoes):
             # Fail-open de propósito: `registrar` engole a própria falha, e um
             # recibo perdido só faz o gancho falar em sombra sem motivo. Perder
             # o NÚMERO por causa do caderninho é que seria inaceitável.
@@ -324,7 +363,11 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) ->
                 },
                 cwd=str(raiz),
             )
-            return numero
+            return f"{chave_do_dia}-{numero}" if com_dia else numero
+        if chave:
+            existente = numero_da_chave(raiz, superficie, chave)
+            if existente:
+                return f"{existente['dia']}-{existente['numero']}" if com_dia else existente["numero"]
         # Perdeu a corrida: outra sessão levou. Segue para o próximo.
         candidato = passo(candidato)
         while candidato in usados:
@@ -335,6 +378,33 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) ->
         "Ou há um lote enorme rodando agora, ou alguma reserva antiga ficou\n"
         "presa. Rode `python ci/reservar.py listar` para ver o que existe.",
     )
+
+
+def identidade_da_bancada(raiz: Path) -> str:
+    """Identidade da bancada sem publicar o caminho local no servidor."""
+    return hashlib.sha256(bancada(raiz).encode("utf-8")).hexdigest()
+
+
+def confirmar_intencao(raiz: Path, chave: str) -> bool:
+    """Confere posse e validade na referência remota; nunca usa recibo velho."""
+    ref = f"{NS_RESERVA}/{chave}"
+    leitura = executar(["git", "ls-remote", "origin", ref], cwd=raiz,
+                       descricao="conferir a reserva existente no servidor").stdout.strip()
+    if not leitura:
+        return False
+    sha = leitura.split()[0]
+    executar(["git", "fetch", "--no-tags", "origin", sha], cwd=raiz,
+             descricao="ler o comprovante remoto da reserva")
+    mensagem = executar(["git", "show", "-s", "--format=%B", sha], cwd=raiz,
+                        descricao="conferir o dono da reserva").stdout
+    try:
+        corpo = json.loads(mensagem)
+        expira = datetime.fromisoformat(corpo.get("expira_em", ""))
+        return (corpo.get("tipo") == "intencao" and corpo.get("chave") == chave
+                and corpo.get("dono") == identidade_da_bancada(raiz)
+                and expira > datetime.now(timezone.utc))
+    except (ValueError, TypeError, AttributeError):
+        return False
 
 
 def reservar_intencao(
@@ -358,6 +428,7 @@ def reservar_intencao(
         ref,
         {
             "tipo": "intencao",
+            "dono": identidade_da_bancada(raiz),
             "chave": chave,
             "objetivo": objetivo,
             "criado_em": agora.isoformat(),
@@ -394,6 +465,8 @@ def construir_parser() -> argparse.ArgumentParser:
 
     p_num = sub.add_parser("numero", help="aloca o próximo número de uma superfície")
     p_num.add_argument("superficie", choices=["registro", "armadilha", "tarefa"])
+    p_num.add_argument("--chave", help="SHA-256 estável da operação para retomada")
+    p_num.add_argument("--com-dia", action="store_true", help="devolve AAAAMMDD-NNN, preservando a data na retomada")
 
     p_int = sub.add_parser("intencao", help="anuncia que você vai fazer algo")
     p_int.add_argument("chave", help="slug curto e estável, ex.: onda2-reservar")
@@ -413,7 +486,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         raiz = raiz_do_repo()
         if args.acao == "numero":
-            print(alocar_numero(raiz, args.superficie))
+            print(alocar_numero(raiz, args.superficie, chave=args.chave, com_dia=args.com_dia))
             return 0
         if args.acao == "intencao":
             ganhou, recado = reservar_intencao(

@@ -1,0 +1,22 @@
+{
+  "arquivo": "246-sala-de-aula-degrau-3-2-o-guardiao-de-fidelidade-o-segundo-e",
+  "id": "TAR-246",
+  "titulo": "Sala de aula, degrau 3.2: o Guardiao de fidelidade, o segundo e ultimo agente de IA (compara a peca derivada com o capitulo e aponta os sete desvios)",
+  "toca": [
+    "cursos",
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-245"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: apps/cursos/fidelidade.py no molde de apps/cursos/agente.py com as sete regras herdadas, o modo fidelidade no checkLesson, o botao Conferir fidelidade no editor, os sete desvios do PLANO-CELULA-CURSOS §7 cada um com teste, o teste do desvio PLANTADO detectado antes de ser aceito, transporte dublado sem rede no CI, o custo medido de uma comparacao real dito no corpo do PR, e o veredito do deploy",
+  "despacho": "# Degrau 3.2 da sala de aula: o Guardião de fidelidade (o segundo e último agente de IA)\n\n## O que é\n\nO segundo agente de IA desta célula, e o último previsto no plano. Ele compara\numa peça DERIVADA com a FONTE (o roteiro com o capítulo; o Cartão de 1 página\ncom o capítulo; a ficha do Guia com o \"Aceito quando\") e aponta os sete\ndesvios: invenção, regra que virou sugestão, nome trocado, omissão, sentido\nalterado, decisão simplificada, comparação entre pessoas. **Ele aponta e nunca\ncorrige, e nunca aprova por simpatia.**\n\nLei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 (a linha \"Guardião de\nfidelidade\") e §10 (linha 3 | 3.2).\n\n## O molde é o primeiro agente, sem exceção\n\n`services/cursos/apps/cursos/agente.py` (o Assistente de laudo, degrau 2.3) já\ncarrega as sete regras herdadas do fórum, cada uma com o motivo escrito dentro\ndo arquivo: chave lida no ponto de uso, `ANTHROPIC_WORKSPACE_ID` só se existir,\nmodelo pelo id COM DATA, nenhum ajuste de esforço de raciocínio, o texto do\nautor é CONTEÚDO e nunca instrução, só rótulos saem da nossa infraestrutura,\ntravessão apontado e nunca corrigido em silêncio. Leia aquele arquivo antes de\nescrever uma linha deste.\n\n**Modelo:** o mesmo `claude-haiku-4-5-20251001` do Assistente de laudo e do\nfórum, que o mantenedor escolheu em 05/09/2026. O capítulo inteiro é entrada\nlonga: meça o custo de uma comparação real e diga o número no corpo do PR.\n\n## Alvos\n\n- `services/cursos/apps/cursos/fidelidade.py` — o agente, no molde de\n  `agente.py`.\n- `checkLesson` ganha o modo \"fidelidade\" (a operação nasce no degrau 3.1;\n  aqui ela cresce, e crescer contrato é Rito da maestro, nunca do robô).\n- O botão \"Conferir fidelidade\" no editor do admin, ao lado do de coerência.\n- Teste com **desvio plantado de propósito**: o §7 diz que a medida deste\n  agente é detectar o desvio plantado antes de ser aceito. Transporte dublado\n  (`respx`), sem rede no CI.\n\n## O que espera\n\nOs capítulos reais no editor. Sem fonte para comparar, este agente não tem\ntrabalho: ele existe para conferir o roteiro contra o capítulo. O teste com\ndesvio plantado roda sem eles; o valor, não.\n\n## Somente leitura\n\n`contracts/cursos.openapi.yaml` e `ci/manifesto-de-contratos.json`: Rito de\nContrato da maestro (RITOS §3). O texto das aulas é do mantenedor e mora no\nbanco (INV-CUR-C2).",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md (linha 3 | 3.2), lei aprovada pelo mantenedor em 04/09/2026; espera os capitulos reais no editor para ter fonte com que comparar",
+  "criada_em": "2026-09-07"
+}

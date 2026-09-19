@@ -1,0 +1,19 @@
+{
+  "arquivo": "312-a-direcao-da-semana-ganha-hipotese-fundamentada-e-compromiss",
+  "id": "TAR-312",
+  "titulo": "A direção da semana ganha hipótese fundamentada e compromisso acompanhado",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "restricao-da-semana"
+  ],
+  "evidencia_exigida": "Placar, reunião e livro apontam para a mesma hipótese sustentada, medida com limite e compromisso com responsável, prazo e acompanhamento, ou para proposta concreta ainda não aprovada, sem inventar direção confirmada.",
+  "despacho": "GRAVIDADE: ALTO, bloqueante da Fase 1.\n\nREQUISITO: a direção inicial do ciclo precisa apontar para uma hipótese fundamentada, uma medida com limite e um compromisso acompanhado, ou para uma proposta concreta de decisão humana quando a aprovação for insubstituível.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; painel/cartoes/restricao-da-semana.json, linha 16; produção nas telas de placar e reunião; painel/registros/20260907-067-a-chave-do-github-vence-em-07-09-2027.js.\n\nEVIDÊNCIA OBSERVADA: o cartão mantém confirmada igual a null; placar e reunião dizem Sem restrição medível nesta semana. O único compromisso real encontrado é a renovação da chave do GitHub, ligado à infraestrutura e sem vínculo com a medida crítica. MCI, medidas e cadências já existem, portanto não precisam ser reconstruídos.\n\nREPRODUÇÃO: gere o painel e abra as vistas de placar e reunião; confira o campo confirmada do cartão e procure no livro um compromisso que cite a restrição, responsável, prazo e acompanhamento. A busca não encontra compromisso ligado à direção do ciclo.\n\nESPERADO: hipótese fundamentada, medida e limite visíveis e compromisso com responsável, prazo e acompanhamento, ou proposta concreta aguardando decisão humana. OBSERVADO: há estrutura de direção, mas nenhuma hipótese fundamentada registrada ou proposta concreta ligada a ela.\n\nIMPACTO: a equipe pode executar o Scale OS sem uma direção inicial verificável, tornando atividade indistinguível de avanço do ciclo.\n\nCORREÇÃO MÍNIMA: registrar a hipótese fundamentada, a medida com limite e o compromisso nas estruturas atuais; se a escolha depender do mantenedor, registrar proposta concreta sem inventar aprovação. Não exigir novos campos nem o fluxo completo da Fase 2.\n\nCLASSIFICAÇÃO: ausência na entrega da Fase 1; bloqueia o aceite técnico desta fase.\n\nPROVA DE FECHO: placar, reunião e livro resolvem para a mesma hipótese, medida, limite e compromisso rastreável, ou mostram uma proposta decidível ainda não aprovada sem declarar direção confirmada.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; inspeção autenticada de placar e reunião",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

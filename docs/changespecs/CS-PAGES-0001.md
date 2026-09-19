@@ -117,6 +117,29 @@ Nenhum outro contrato novo. A tela que precisar de dado de duas células pergunt
 por HTTP com **falha aberta**, o mesmo desenho já usado entre o fórum e a
 gamificação, e nunca por chave estrangeira cruzando banco de célula.
 
+**EMENDA DE 06/09/2026: mais um contrato, `contracts/admin.openapi.yaml`.** A
+célula `pages` passou a consumir a operação `isAdministrator` da célula `admin`,
+e esta emenda registra o fato em vez de o contornar em silêncio. O parágrafo
+acima continua valendo para todo o resto.
+
+- **O pedido do mantenedor**, com as palavras dele: *"ao invés de colar isso na
+  VPS, podemos alterar para que todo admin possa fazer isso (conferir os
+  portfolios)? para agilizar"*.
+- **A objeção apresentada a ele**, numa caixa de pergunta, antes de qualquer
+  código: administrador desta casa enxerga a economia e os capítulos do livro
+  não lançado, então "todo admin confere" abre uma fresta para quem for
+  promovido só para conferir portfólio. A alternativa na mesa era um papel
+  separado de conferente.
+- **A escolha dele**: *"simplesmente todo admin confere"*, sem lista separada.
+- **A cobertura.** O critério AC-11 continua como está escrito, e o que muda é a
+  FONTE da permissão, não a tela nem a regra. A pergunta é de LEITURA, e quem
+  autoriza continua sendo a `admin`. A conferência segue fail-closed: não
+  conseguir perguntar fecha a fila com 503, e nunca responde "você não é da
+  equipe" a um professor de verdade.
+- **O que isso curou**: a lista de ids colada no env da VPS era uma segunda casa
+  do mesmo fato, e promover alguém pela tela de administradores não abria a
+  fila. As duas discordavam sem nada acusar.
+
 ## CÉLULAS PROIBIDAS
 
 Toda célula do sistema fora das autorizadas acima, nominalmente:

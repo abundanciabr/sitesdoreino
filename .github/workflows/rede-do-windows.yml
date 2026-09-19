@@ -97,7 +97,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Dependências dos portões
-        run: python -m pip install --quiet pytest pytest-xdist pyyaml
+        run: python -m pip install --quiet -r requirements-ci.txt
       # SEM forçar codepage nem `PYTHONUTF8` aqui: o console cru é exatamente a
       # condição que se quer medir. Quem precisa de UTF-8 pede em código, na
       # porta da casa (`_nucleo.configurar_saida`) — e é essa garantia que este

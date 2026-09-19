@@ -1,0 +1,724 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `encomendas`: a porta de MÁQUINA da Fila do Primeiro Dólar.
+#
+# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
+# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
+# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
+# este arquivo com o que a célula EXPORTA de verdade, e divergência reprova.
+#
+# NASCEU DO EXPORT, não de cabeça: `python manage.py export_openapi` em
+# `services/encomendas`, na porta que o PR #1314 mergeou (degrau 2.7 da escada
+# do §7 de `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md`). A saída daquele
+# dia está guardada em `docs/decisoes/encomendas-openapi-vivo-degrau-2.7.json`,
+# e o export rodado de novo nesta bancada bateu com ela documento a documento.
+# Congelar um arquivo escrito à mão que ninguém serve trava o `make ci` da
+# célula em todo PR seguinte (`armadilhas/228` e `243`).
+#
+# SÃO DOIS GRAUS DE CRACHÁ, e o segundo existe porque esta porta ESCREVE
+# (`armadilhas/318`). `TOKENS_ACEITOS_<PAR>` deixa LER; `TOKENS_ESCRITA_<PAR>`
+# deixa GRAVAR, e o grau alto contém o baixo. As três operações que gravam
+# (`setParameter`, `confirmPayment`, `reportAudit`) conferem o grau na PRIMEIRA
+# linha, antes do banco e antes do 501, e recusam com 403, nunca 401: 401 diz
+# "não sei quem você é" e manda conferir um token que está certo; 403 diz "sei
+# quem você é, e este par não tem esse grau". Essa separação não é um segundo
+# esquema de segurança aqui dentro (isso dobraria a superfície congelada): ela
+# está no `403` declarado em cada uma das três, e o guarda que a prova é
+# `services/encomendas/tests/test_porta_de_maquina.py`.
+#
+# DUAS OPERAÇÕES NASCEM DECLARADAS E FECHADAS, e isso é desenho, não pendência.
+# `confirmPayment` responde 501 até a Fase 3 e `reportAudit` até a Fase 5. Elas
+# entram no congelado agora para que o dia em que a `pagamentos` e o worker de
+# auditoria entrarem não seja outro Rito de Contrato inteiro.
+#
+# O CONTRATO EM PAPEL FICOU PARA TRÁS EM TRÊS PONTOS, e o código venceu, como
+# manda `armadilhas/243`. `docs/decisoes/CONTRATO-encomendas-v1-rascunho.md`
+# pedia `Parametro.vigente` sempre presente (aqui é nulo enquanto a chave não
+# tem linha valendo, porque o piso de preço nasceu de propósito sem número),
+# `PecaAprovada.no_prazo` booleano (aqui é nulo quando não houve prazo prometido
+# para medir) e 200 com lista vazia quando falta `SITE_ID` (aqui é 503, porque
+# "nenhum" e "não sei" não são a mesma resposta).
+#
+# O QUE NUNCA SAI DAQUI: nenhum dado de contato do aluno ([INV-ENC-S3]) e
+# nenhuma peça sem a autorização do cliente registrada ([INV-ENC-S4]). E o
+# Bearer prova QUEM CHAMA, nunca quem é a pessoa: não chega cookie nesta porta,
+# e por isso nada é aceito, passado, entregue ou aprovado aqui em nome de um
+# aluno ou de um cliente. Esses gestos são das telas, onde a pessoa está atrás
+# do login.
+#
+# Lei do assunto: `docs/decisoes/DECISAO-fila-do-primeiro-dolar.md`; o produto:
+# `docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md`.
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Encomendas - API interna
+  version: 1.0.0
+  description: 'Superficie de maquina da Fila do Primeiro Dolar. Quem consome: o Admin
+
+    (parametros), a home e o Estudio (fila de uma pessoa, pecas aprovadas),
+
+    a celula de pagamentos (pagamento confirmado, Fase 3) e o worker de
+
+    auditoria (resultado, Fase 5).
+
+
+    O Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie aqui.
+
+    Por isso nenhuma porta desta superficie ACEITA, PASSA, ENTREGA ou APROVA
+
+    nada em nome de um aluno ou de um cliente. Esses gestos sao das telas,
+
+    onde a pessoa esta atras do login.
+
+
+    SAO DOIS GRAUS DE CRACHA, e o segundo existe porque esta porta ESCREVE.
+
+    Ler a fila de alguem (TOKENS_ACEITOS_<PAR>) e mudar um parametro do dono
+
+    ou confirmar dinheiro (TOKENS_ESCRITA_<PAR>) nao sao o mesmo poder: o par
+
+    que so desenha tela recebe 403 nas tres operacoes que gravam.
+
+
+    Nao sai dado de contato do aluno por porta nenhuma (INV-ENC-S3), e so
+
+    saem pecas com autorizacao do cliente registrada (INV-ENC-S4).
+
+
+    SITE_ID ausente no env desta celula e 503, nunca uma lista vazia com 200.
+
+
+    Lei do assunto: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md.
+
+    '
+paths:
+  /parametros:
+    get:
+      operationId: getParameters
+      summary: Os parametros vigentes da fila, com o historico de cada um
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Parametro'
+                type: array
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: 'O vocabulário fechado INTEIRO, e não só as chaves já semeadas.
+
+
+        A tela do dono precisa mostrar a linha do piso de preço que ainda não tem
+
+        número, ou ele não descobre que pode gravá-lo. Chave sem linha vem com
+
+        `vigente: null` e histórico vazio.
+
+
+        O valor de agora sai de `Parametro.vigente_em`, a mesma função que o motor
+
+        usa. Uma segunda expressão da mesma conta divergiria algum dia, e divergir
+
+        aqui significa a tela do dono mostrar um número e o motor obedecer a outro.'
+  /parametros/{chave}:
+    put:
+      operationId: setParameter
+      summary: Muda um parametro acrescentando uma linha nova com motivo
+      parameters:
+      - in: path
+        name: chave
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinhaDeParametro'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: 'Acrescenta uma linha. **Nunca reescreve a que está valendo.**
+
+
+        O `UPDATE` é recusado pelo PostgreSQL, por gatilho, então "nunca reescreve"
+
+        não é uma promessa deste arquivo. O que este arquivo garante é o resto: o
+
+        motivo escrito, o autor nomeado e o valor dentro do tipo da chave.
+
+
+        Chave desconhecida é 404: o vocabulário é fechado e nasce no código da
+
+        célula, nunca pela porta.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MudancaDeParametro'
+        required: true
+  /perfis/{id}/fila:
+    get:
+      operationId: getQueueStanding
+      summary: Em que pe esta a fila de uma pessoa, para a home e o Estudio
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilaDeUmaPessoa'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: '200 com `existe: false` para quem não tem perfil profissional. Nunca 404.
+
+
+        "Não conheço esta pessoa" é a resposta, e não um erro: um 404 obrigaria cada
+
+        consumidor a traduzir "erro" em "ainda não entrou", e o primeiro que tratasse
+
+        404 como falha de rede mostraria a tela errada para todo visitante novo.
+
+
+        **A ESPERA substitui a posição** (plano §5.4), e vem nula quando não há ritmo
+
+        para medir. Ver `apps/encomendas/espera.py`.
+
+
+        **Os três campos do Mural e da negociação** respondem o que o aluno mais
+
+        consulta: tem prateleira para mim? peguei alguma coisa? tem proposta parada
+
+        esperando resposta?'
+  /perfis/{id}/pecas-aprovadas:
+    get:
+      operationId: getApprovedPieces
+      summary: As pecas aprovadas E autorizadas de uma pessoa, para o Estudio
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PecasAprovadas'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '503':
+          description: Service Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: 'A ÚNICA porta por onde uma peça sai desta célula.
+
+
+        Só encomendas `aprovada` ou `concluida` **e** com `autorizacao_portfolio`
+
+        registrada pelo cliente ([INV-ENC-S4]). Nada de briefing, nada de cliente,
+
+        nada de contato ([INV-ENC-S3]): sai o nome que o cliente deu à peça, e mais
+
+        nada do que ele escreveu.
+
+
+        Lista vazia para quem não tem nada, nunca 404.
+
+
+        `previa_url` é nulo até a Fase 5 decidir onde moram os arquivos da entrega.
+
+        Ele existe desde já porque o Estúdio desenha a moldura da imagem em volta
+
+        dele, e um campo que aparece depois muda a tela de quem já consumia.'
+  /interno/pagamentos/confirmado:
+    post:
+      operationId: confirmPayment
+      summary: A celula de pagamentos avisa que a cobranca de uma encomenda foi confirmada
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoDaEncomenda'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '501':
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: 'Declarada e fechada: **responde 501 até a Fase 3**.
+
+
+        Ela existe hoje para que o contrato congelado do degrau 2.8 já a contenha, e
+
+        o dia em que a `pagamentos` entrar não seja um Rito de Contrato inteiro. Não
+
+        opera porque dinheiro é a Fase 3, e a diretiva do mantenedor é clara (lei
+
+        §3.4): até a Fase 3 a única confirmação que existe é a do plantão, na tela,
+
+        com autor.
+
+
+        **O grau de escrita é conferido ANTES do 501**, e a ordem não é detalhe: um
+
+        par que não pode gravar não deve nem descobrir que esta porta existe e está
+
+        desligada.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PagamentoConfirmado'
+        required: true
+  /interno/auditoria/resultado:
+    post:
+      operationId: reportAudit
+      summary: O worker de auditoria devolve o veredito sobre uma entrega
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoDaEncomenda'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '501':
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+      description: 'Declarada e fechada: **responde 501 até a Fase 5**.
+
+
+        Mesma razão da vizinha de cima. A auditoria automática roda fora desta
+
+        célula, e o que ela vai mover (`entregue` de volta a `em_producao`, com a
+
+        frase que o aluno lê) depende da Entrega, que esta célula ainda não tem.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResultadoDaAuditoria'
+        required: true
+components:
+  schemas:
+    LinhaDeParametro:
+      properties:
+        valor:
+          type: string
+        desde:
+          format: date-time
+          type: string
+        motivo:
+          type: string
+        quem:
+          type: string
+      required:
+      - valor
+      - desde
+      - motivo
+      - quem
+      type: object
+    Parametro:
+      description: 'Uma chave do vocabulário fechado, com o valor de agora e o histórico.
+
+
+        `vigente` é nulo quando ainda não há linha valendo, e isso não é falha: o
+
+        piso de preço por nível nasceu de propósito sem número (lei §7), porque ele
+
+        sai do piloto de papel. Uma chave sem valor precisa aparecer na tela do dono,
+
+        ou ele não tem por onde gravar o primeiro.'
+      properties:
+        chave:
+          type: string
+        tipo:
+          type: string
+        descricao:
+          type: string
+        vigente:
+          anyOf:
+          - $ref: '#/components/schemas/LinhaDeParametro'
+          - type: 'null'
+        historico:
+          items:
+            $ref: '#/components/schemas/LinhaDeParametro'
+          type: array
+      required:
+      - chave
+      - tipo
+      - descricao
+      - vigente
+      - historico
+      type: object
+    Erro:
+      description: 'O corpo de toda recusa desta porta. É a forma que o django-ninja já emite
+
+        em `HttpError`, declarada aqui para que ela entre no contrato congelado em
+
+        vez de existir só na prática.'
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+      type: object
+    MudancaDeParametro:
+      description: '`desde` não é campo, e a ausência é decisão: esta porta grava a linha
+
+        valendo agora. Mudança marcada para o futuro é poder que ninguém pediu, e
+
+        quem o quisesse teria de explicar o que acontece com a oferta feita no
+
+        meio.'
+      properties:
+        valor:
+          type: string
+        motivo:
+          type: string
+        quem:
+          type: string
+      required:
+      - valor
+      - motivo
+      - quem
+      type: object
+    FilaDeUmaPessoa:
+      description: 'Em que pé está a fila de uma pessoa, para a home e para o Estúdio.
+
+
+        **Os campos vêm sempre, nulos quando `existe` é falso**, e não ausentes como
+
+        o rascunho em papel previa: uma resposta que muda de forma obriga quem
+
+        consome a escrever dois desenhos de tela para o mesmo lugar.
+
+
+        OS TRES ULTIMOS CAMPOS SAO A EMENDA DE 04/09/2026, e são a razão de esta
+
+        tarefa ter esperado a negociação existir. O contrato congela no degrau
+
+        seguinte; congelá-lo antes do Mural faria a porta nascer cega justamente
+
+        para o estado que o aluno mais consulta (`PLANO-AREA-DE-NEGOCIACAO.md` §3
+
+        e §4).'
+      properties:
+        existe:
+          type: boolean
+        titulo_banca:
+          anyOf:
+          - type: string
+          - type: 'null'
+        disponibilidade:
+          anyOf:
+          - type: string
+          - type: 'null'
+        na_fila_desde:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        entregas_aprovadas:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        espera_estimada_dias:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        encomenda_ativa_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+        ve_o_mural:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+        reserva_no_mural:
+          anyOf:
+          - $ref: '#/components/schemas/ReservaNoMural'
+          - type: 'null'
+        proposta_de_pe:
+          anyOf:
+          - $ref: '#/components/schemas/PropostaDePe'
+          - type: 'null'
+      required:
+      - existe
+      - titulo_banca
+      - disponibilidade
+      - na_fila_desde
+      - entregas_aprovadas
+      - espera_estimada_dias
+      - encomenda_ativa_id
+      - ve_o_mural
+      - reserva_no_mural
+      - proposta_de_pe
+      type: object
+    PropostaDePe:
+      properties:
+        encomenda_id:
+          type: string
+        de_quem:
+          type: string
+        rodada:
+          type: integer
+        valida_ate:
+          format: date-time
+          type: string
+      required:
+      - encomenda_id
+      - de_quem
+      - rodada
+      - valida_ate
+      type: object
+    ReservaNoMural:
+      properties:
+        encomenda_id:
+          type: string
+        expira_em:
+          format: date-time
+          type: string
+      required:
+      - encomenda_id
+      - expira_em
+      type: object
+    PecaAprovada:
+      description: '`no_prazo` é nulo quando não houve prazo prometido para medir contra.
+
+        O rascunho em papel pedia um booleano, e um booleano aqui teria de escolher
+
+        entre chamar de atrasado quem nunca teve prazo e chamar de pontual quem
+
+        ninguém mediu. As duas seriam invenção.'
+      properties:
+        encomenda_id:
+          type: string
+        nome_da_peca:
+          type: string
+        cartao:
+          type: string
+        origem:
+          type: string
+        aprovada_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        no_prazo:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+        previa_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+      required:
+      - encomenda_id
+      - nome_da_peca
+      - cartao
+      - origem
+      - aprovada_em
+      - no_prazo
+      - previa_url
+      type: object
+    PecasAprovadas:
+      properties:
+        entregas:
+          type: integer
+        no_prazo:
+          type: integer
+        pecas:
+          items:
+            $ref: '#/components/schemas/PecaAprovada'
+          type: array
+      required:
+      - entregas
+      - no_prazo
+      - pecas
+      type: object
+    EstadoDaEncomenda:
+      properties:
+        encomenda_id:
+          type: string
+        status:
+          type: string
+      required:
+      - encomenda_id
+      - status
+      type: object
+    PagamentoConfirmado:
+      properties:
+        encomenda_id:
+          type: string
+        pagamento_id:
+          type: string
+        valor_pago_cents:
+          type: integer
+        confirmado_em:
+          format: date-time
+          type: string
+        chave_idempotencia:
+          type: string
+      required:
+      - encomenda_id
+      - pagamento_id
+      - valor_pago_cents
+      - confirmado_em
+      - chave_idempotencia
+      type: object
+    ItemDaAuditoria:
+      properties:
+        codigo:
+          type: string
+        mensagem:
+          type: string
+        medido:
+          anyOf:
+          - type: string
+          - type: 'null'
+        limite:
+          anyOf:
+          - type: string
+          - type: 'null'
+      required:
+      - codigo
+      - mensagem
+      type: object
+    ResultadoDaAuditoria:
+      properties:
+        entrega_id:
+          type: string
+        versao:
+          type: integer
+        resultado:
+          type: string
+        itens:
+          default: []
+          items:
+            $ref: '#/components/schemas/ItemDaAuditoria'
+          type: array
+      required:
+      - entrega_id
+      - versao
+      - resultado
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://encomendas:8000/api/encomendas
+security:
+- bearerAuth: []

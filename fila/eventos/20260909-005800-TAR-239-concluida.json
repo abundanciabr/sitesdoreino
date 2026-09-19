@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260909-005800-TAR-239-concluida",
+  "tarefa": "TAR-239",
+  "evento": "concluida",
+  "quando": "2026-09-09T00:58:00+00:00",
+  "quem": "agent/ci/amarrar-nome-par-pages-admin",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1452",
+  "verificado_em": "2026-09-09"
+}

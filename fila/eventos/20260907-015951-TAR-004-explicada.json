@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-015951-TAR-004-explicada",
+  "tarefa": "TAR-004",
+  "evento": "explicada",
+  "quando": "2026-09-07T01:59:51+00:00",
+  "quem": "despacho-fila-20260906",
+  "o_que_e": "Hoje a senha do banco fica ao alcance de partes do sistema que nao precisam dela. A regra e confiar que ninguem vai usar.",
+  "o_que_muda": "Seguranca. A tarefa troca a confianca pela impossibilidade: quem nao deve rodar nao roda porque nao tem a senha, e nao porque leu um aviso.",
+  "exemplo": "E guardar a chave de casa no bolso, em vez de debaixo do tapete com um bilhete pedindo para nao usar.",
+  "importancia": 42
+}

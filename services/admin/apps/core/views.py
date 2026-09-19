@@ -15,10 +15,12 @@ preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
 import unicodedata
+import hmac
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
-from django.http import Http404, HttpResponseRedirect, JsonResponse
+from django.core import signing
+from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
@@ -34,6 +36,37 @@ from .models import Administrador
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
 from .turmas import conferir
+
+
+@require_GET
+def acesso_local(request, token=""):
+    """Cria a sessão local a partir do convite do lançador."""
+    esperado = settings.ADMIN_LINK_TOKEN
+    if not esperado or not hmac.compare_digest(token, esperado):
+        return HttpResponse(
+            "Este link local não é válido. Gere outro pelo lançador local.",
+            status=404,
+            content_type="text/plain; charset=utf-8",
+        )
+    conteudo = {
+        "id": settings.ADMIN_LOCAL_ID,
+        "nome": settings.ADMIN_LOCAL_NOME,
+        "email": settings.ADMIN_LOCAL_EMAIL.strip().lower(),
+    }
+    destino = request.GET.get("next") or reverse("plano_mestre")
+    if not destino.startswith("/") or destino.startswith("//"):
+        destino = reverse("plano_mestre")
+    resposta = HttpResponseRedirect(destino)
+    resposta.set_cookie(
+        settings.ADMIN_LOCAL_COOKIE_NAME,
+        signing.TimestampSigner().sign_object(conteudo),
+        max_age=settings.ADMIN_LOCAL_COOKIE_MAX_AGE,
+        httponly=True,
+        secure=settings.CSRF_COOKIE_SECURE,
+        samesite="Lax",
+        path=settings.FORCE_SCRIPT_NAME or "/",
+    )
+    return resposta
 
 
 @require_GET
@@ -118,6 +151,9 @@ def doc_publico(request, nome):
             # Ver `documentos.PREFIXO_PUBLICO`: aqui o endereço NÃO sai de
             # `{% url %}`, porque as páginas públicas não moram sob `/admin`.
             "prefixo_publico": documentos.PREFIXO_PUBLICO,
+            "cabecalho": documentos.cabecalho_de_apendice(
+                documento, timezone.localdate()
+            ),
         },
     )
 
@@ -169,6 +205,9 @@ def documento_admin(request, nome):
             # que ele mesmo escreve; qualquer outra coisa na querystring nao
             # imprime nada.
             "recado": request.GET.get("recado", ""),
+            "cabecalho": documentos.cabecalho_de_apendice(
+                documento, timezone.localdate()
+            ),
         },
     )
 
@@ -311,16 +350,8 @@ TIPOS_DE_ALUNO = (
 
 @require_GET
 def escola(request):
-    """A porta da escola: daqui se chega aos alunos."""
-    # O import é aqui dentro, e não no topo: `apps/core/aulas.py` importa
-    # `_auditar` DESTE módulo, e um import de módulo a módulo fecharia o ciclo.
-    from .aulas import CURSO_PADRAO
-
-    return render(
-        request,
-        "admin/escola.html",
-        {"admin": request.admin, "curso_do_editor": CURSO_PADRAO},
-    )
+    """A porta da escola: daqui se chega aos alunos e aos cursos."""
+    return render(request, "admin/escola.html", {"admin": request.admin})
 
 
 def tipos_com_contagem(contagens: dict) -> list[dict]:
@@ -717,6 +748,7 @@ def escola_alunos(request):
     # cartões contam a escola inteira, a lista mostra o que casou. Invertê-las
     # faria o cartão responder a busca do mantenedor como se fosse o tamanho da
     # escola. Guarda: `tests/test_busca_e_filtro.py`.
+    alunos = agrupar_alunos(alunos)
     procurado = (request.GET.get("q") or "").strip()[:120]
     estado_pedido = (request.GET.get("estado") or "").strip()
     estado = estado_pedido if estado_pedido in _estados_filtraveis() else ""
@@ -782,6 +814,24 @@ def escola_alunos(request):
             "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
+
+
+def agrupar_alunos(alunos: list[dict] | None) -> list[dict] | None:
+    """Mostra uma ficha por pessoa, reunindo as matrículas dela."""
+    if alunos is None:
+        return None
+    grupos = {}
+    for matricula in alunos:
+        chave = (matricula.get("site_id"), matricula.get("email"))
+        grupo = grupos.setdefault(chave, {**matricula, "matriculas": []})
+        grupo["matriculas"].append(matricula)
+    for grupo in grupos.values():
+        grupo["cursos_marcados"] = [
+            m.get("product_id")
+            for m in grupo["matriculas"]
+            if m.get("status") == "ativa"
+        ]
+    return list(grupos.values())
 
 
 @require_GET
@@ -1241,6 +1291,10 @@ RECADOS = {
     ),
     "nao-valeu": "A decisão não valeu.",
     "salvo": "Pronto: as mudanças foram salvas.",
+    "cursos-indisponiveis": (
+        "Não salvei os cursos: a lista de cursos não respondeu ou mudou. "
+        "Recarregue a página e tente de novo."
+    ),
     "promovido": "Pronto: essa pessoa agora é administradora desta área.",
     "despromovido": "Pronto: essa pessoa deixou de ser administradora.",
     "so-no-servidor": (
@@ -1446,11 +1500,7 @@ DESFECHO_NA_AUDITORIA = {
 
 @require_POST
 def escola_aluno_salvar(request):
-    """Salva o formulário de um aluno — e grava a auditoria SEMPRE.
-
-    Mesma disciplina de `escola_decidir`: a linha de auditoria é gravada depois
-    de saber o desfecho e antes de responder, inclusive quando deu errado.
-    """
+    """Salva os dados da pessoa e sincroniza os cursos marcados."""
     alvo = (request.POST.get("alvo") or "").strip()
     if not alvo:
         return HttpResponseRedirect(reverse("escola_alunos"))
@@ -1464,14 +1514,108 @@ def escola_aluno_salvar(request):
     # mandar `""` seria pedir para o outro lado gravar uma data vazia.
     if mudancas.get("comprou_em") == "":
         mudancas["comprou_em"] = None
-    if not mudancas:
-        return HttpResponseRedirect(reverse("escola_alunos"))
+    if "pessoa_email" not in request.POST:
+        if not mudancas:
+            return HttpResponseRedirect(reverse("escola_alunos"))
+        desfecho, detalhe = AlunosClient().atualizar_aluno(
+            alvo=alvo,
+            mudancas=mudancas,
+            decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
+        )
+        Registro.objects.create(
+            quem_email=request.admin.get("email") or "",
+            quem_id=request.admin.get("id") or "",
+            acao=Registro.EDITAR,
+            alvo=alvo,
+            desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+            detalhe=detalhe
+            or ", ".join(
+                (f"status={v}" if k == "status" else k)
+                for k, v in sorted(mudancas.items())
+            ),
+        )
+        recado = (
+            "salvo"
+            if desfecho == AlunosClient.OK
+            else ("nao-valeu" if desfecho == AlunosClient.RECUSADO else "nao-deu")
+        )
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+    cursos_marcados = [c.strip() for c in request.POST.getlist("curso") if c.strip()]
+    cursos, sem_catalogo = cursos_para_escolher()
+    ids_validos = {str(c.get("id")) for c in cursos}
+    if sem_catalogo or any(c not in ids_validos for c in cursos_marcados):
+        return HttpResponseRedirect(
+            f"{reverse('escola_alunos')}?resultado=cursos-indisponiveis"
+        )
 
-    desfecho, detalhe = AlunosClient().atualizar_aluno(
-        alvo=alvo,
-        mudancas=mudancas,
-        decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
-    )
+    cliente = AlunosClient()
+    todas = cliente.alunos()
+    email = (request.POST.get("pessoa_email") or "").strip().lower()
+    if todas is None:
+        desfecho = AlunosClient.NAO_RESPONDEU
+        detalhe = "não consegui ler as matrículas atuais; nada foi alterado"
+        matriculas = []
+        pessoa = {}
+    else:
+        matriculas = [
+            a
+            for a in todas
+            if (email and str(a.get("email", "")).lower() == email)
+            or a.get("id") == alvo
+        ]
+        pessoa = matriculas[0] if matriculas else {}
+    if todas is not None and not matriculas:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+    if todas is not None:
+        desfecho, detalhe = AlunosClient.OK, ""
+
+    def pessoa_mudou(campo, valor):
+        atual = pessoa.get(campo)
+        if campo == "comprou_em":
+            return valor != atual
+        return valor != str(atual or "")
+
+    mudancas_da_pessoa = {
+        campo: valor
+        for campo, valor in mudancas.items()
+        if campo != "status" and pessoa_mudou(campo, valor)
+    }
+    status_pedido = mudancas.get("status") or ""
+    status_atual = str(pessoa.get("status") or "")
+    status_mudou = bool(status_pedido and status_pedido != status_atual)
+    if todas is not None and status_mudou:
+        for matricula in matriculas:
+            desfecho, detalhe = cliente.atualizar_aluno(
+                alvo=str(matricula.get("id") or ""),
+                mudancas={"status": status_pedido},
+                decidido_por=request.admin.get("id")
+                or request.admin.get("email")
+                or "?",
+            )
+            if desfecho != AlunosClient.OK:
+                break
+            matricula["status"] = status_pedido
+    if todas is not None:
+        if desfecho == AlunosClient.OK:
+            desfecho, detalhe = cliente.sincronizar_cursos(
+                site_id=pessoa.get("site_id") or "",
+                email=pessoa.get("email") or "",
+                nome=mudancas.get("nome_completo") or pessoa.get("nome_completo") or "",
+                matriculas=matriculas,
+                cursos_marcados=cursos_marcados,
+                decidido_por=request.admin.get("id")
+                or request.admin.get("email")
+                or "?",
+            )
+    if desfecho == AlunosClient.OK and mudancas_da_pessoa:
+        desfecho, detalhe = cliente.atualizar_aluno(
+            alvo=alvo,
+            mudancas=mudancas_da_pessoa,
+            decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
+        )
+    if not status_mudou:
+        mudancas.pop("status", None)
+    mudancas["cursos"] = ", ".join(cursos_marcados) or "nenhum"
 
     Registro.objects.create(
         quem_email=request.admin.get("email") or "",
@@ -1479,16 +1623,6 @@ def escola_aluno_salvar(request):
         acao=Registro.EDITAR,
         alvo=alvo,
         desfecho=DESFECHO_NA_AUDITORIA[desfecho],
-        # QUAIS campos foram tocados — nunca os VALORES.
-        #
-        # Isto mudou em 28/08/2026, no mesmo dia em que foi escrito
-        # (`DECISAO-administradores-e-apagar` §4): esta tabela é append-only
-        # por trigger, e o painel ganhou um botão que apaga uma pessoa de vez.
-        # Guardando `nome_completo=Fulano` e `whatsapp=...`, apagar a pessoa
-        # seria impossível sem furar a própria trava.
-        #
-        # O `status` sai com o valor porque não é dado da pessoa: é a decisão
-        # do mantenedor, e sem ela a linha não diz o que ele fez.
         detalhe=detalhe
         or ", ".join(
             (f"status={v}" if k == "status" else k) for k, v in sorted(mudancas.items())

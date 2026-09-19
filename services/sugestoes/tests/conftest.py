@@ -4,7 +4,7 @@ Duas metades: o quadro mínimo do modelo de dados (EVO-11) e o **dublê do mundo
 lá fora** da porta — três células desde a Fase 3/4 do sininho: a `identidade`
 (quem é — `getSessionFull`, com e-mail), a `alunos` (se pode) e a
 `notificacoes` (a caixa central de avisos, `DECISAO-fase-2-do-sininho.md` §3 —
-`apps/core/avisos.py::sino`/`ver_avisos`/`marcar_lido` leem de lá desde
+`apps/core/avisos.py::ver_avisos`/`marcar_lido` leem de lá desde
 27/08/2026). O Google saiu daqui junto com o login.
 
 --------------------------------------------------------------------------
@@ -35,7 +35,6 @@ import respx
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core import avisos as avisos_mod
 from apps.core import sessao as ses
 from apps.sugestoes.models import (
     Aviso,
@@ -158,8 +157,8 @@ def ambiente(monkeypatch):
     # test_o_rosto, test_avisos_script_name...), então o padrão que serve à
     # maioria dos testes é "respondendo" — os poucos testes de falha (fail
     # aberta no sino, fail visível na tela) sobrescrevem a rota mockada
-    # correspondente (`rede.notificacoes_resumo`/`notificacoes_avisos`
-    # `.mock(...)` de novo, mesmo padrão de `Rede.central_responde`) ou tiram
+    # correspondente (`rede.notificacoes_avisos`.mock(...) de novo, mesmo
+    # padrão de `Rede.central_responde`) ou tiram
     # a variável com `monkeypatch.delenv`.
     monkeypatch.setenv("NOTIFICACOES_API_URL", NOTIFICACOES)
     monkeypatch.setenv("NOTIFICACOES_API_TOKEN", "token-do-par-sugestoes-notificacoes")
@@ -171,10 +170,8 @@ def ambiente(monkeypatch):
     # a produção não tem, e o guarda de fail-closed nunca reprovaria.
     monkeypatch.delenv("SUGESTOES_APROVADORES", raising=False)
     ses.limpar_caches()
-    avisos_mod.limpar_cache_de_resumo()
     yield
     ses.limpar_caches()
-    avisos_mod.limpar_cache_de_resumo()
 
 
 class Rede:
@@ -199,9 +196,6 @@ class Rede:
         # A caixa central de avisos, de mentira — ver as quatro rotas e o
         # comentário de `_notificacoes_avisos` logo abaixo para o porquê de
         # ela ESPELHAR o `Aviso` local em vez de guardar estado próprio.
-        self.notificacoes_resumo = mock.get(f"{NOTIFICACOES}/resumo").mock(
-            side_effect=self._notificacoes_resumo
-        )
         self.notificacoes_avisos = mock.get(f"{NOTIFICACOES}/avisos").mock(
             side_effect=self._notificacoes_avisos
         )
@@ -412,17 +406,6 @@ class Rede:
         if not destinatario_id:
             return None
         return Identidade.objects.filter(id_da_plataforma=destinatario_id).first()
-
-    def _notificacoes_resumo(self, request):
-        identidade = self._identidade_da_plataforma(
-            request.url.params.get("destinatario_id")
-        )
-        nao_lidas = (
-            Aviso.objects.filter(destinatario=identidade, lido_em__isnull=True).count()
-            if identidade
-            else 0
-        )
-        return httpx.Response(200, json={"nao_lidas": nao_lidas})
 
     def _carta_de(self, aviso: Aviso) -> dict:
         parametros = {

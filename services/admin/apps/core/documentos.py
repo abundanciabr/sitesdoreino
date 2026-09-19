@@ -40,6 +40,7 @@ import html
 import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 # `apps/core/documentos.py` → `apps/core` → `apps` → a raiz da célula (`/app` na
@@ -65,6 +66,11 @@ FORA_DA_LISTA = frozenset({"LEIA-ME"})
 #: rota — o nome NÃO chega aqui com barra, então não há caminho para escapar da
 #: pasta; mesmo assim `_arquivo` confere o resultado resolvido.
 RE_NOME = re.compile(r"^[a-z0-9-]+$")
+
+#: Pedidos da reunião usam a tabela de documentos como armazenamento privado,
+#: mas não pertencem à biblioteca editorial. O prefixo separa as duas famílias
+#: em toda porta de leitura e escrita da biblioteca.
+PREFIXO_PEDIDO_REUNIAO = "pedido-reuniao-"
 
 #: O maior endereço que as telas desta área aceitam. Casa com o `max_length` da
 #: coluna nas duas tabelas que o usam (`Documento` e `TextoDoLivro`), e o
@@ -211,7 +217,7 @@ def ler(nome: str) -> "Documento | None":
     `SlugField`, que aceita maiúscula e sublinhado, e um nome assim seria um
     documento inalcançável pela rota. Aqui ele simplesmente não existe.
     """
-    if not RE_NOME.match(nome):
+    if not RE_NOME.match(nome) or nome.startswith(PREFIXO_PEDIDO_REUNIAO):
         return None
     from .models import Documento
 
@@ -238,12 +244,62 @@ def listar(*, so_publicos: bool, com_arquivados: bool = False) -> "list[Document
     """
     from .models import Documento
 
-    consulta = Documento.objects.all()
+    consulta = Documento.objects.exclude(nome__startswith=PREFIXO_PEDIDO_REUNIAO)
     if so_publicos:
         consulta = consulta.filter(publico=True, arquivado=False)
     elif not com_arquivados:
         consulta = consulta.filter(arquivado=False)
     return list(consulta.order_by("ordem", "nome"))
+
+
+@dataclass(frozen=True)
+class CabecalhoDeApendice:
+    """O que a linha do apêndice vivo mostra — os textos já prontos.
+
+    Uma função só (`cabecalho_de_apendice`, abaixo) responde por ela, e as DUAS
+    telas (`doc_publico.html`, `documento_admin.html`) leem daqui: duas contas
+    do mesmo fato divergiriam no primeiro dia em que uma mudasse sozinha.
+    """
+
+    texto: str  # "Apêndice vivo · versão N · verificado em … · próxima …"
+    vencido: bool
+    #: `None` enquanto a verificação está em dia; o texto do aviso, vencida.
+    aviso: str | None
+
+
+def cabecalho_de_apendice(
+    documento: "Documento", hoje: date
+) -> CabecalhoDeApendice | None:
+    """O cabeçalho de apêndice vivo deste documento, ou `None` se ele não é um.
+
+    **A versão não é campo nenhum** — é `documento.versoes.count()`, e um
+    histórico vazio (documento criado direto, nunca salvo pelo editor) é
+    "versão 1": não existe "versão 0" nesta tela, porque o texto que está no
+    ar sempre é alguma versão, mesmo sem retrato guardado ainda.
+
+    **A borda do vencimento é o dia seguinte ao prazo.** No dia exato de
+    `proxima_verificacao_em` a verificação ainda está em dia; só a partir do
+    dia seguinte (`hoje > proxima_verificacao_em`) é que ela venceu. `hoje` é
+    sempre `timezone.localdate()` — o dia de São Paulo — passado por quem
+    chama, nunca calculado aqui: é o que deixa esta função testável sem
+    dublar relógio nenhum.
+    """
+    if not documento.apendice_vivo:
+        return None
+    versao = documento.versoes.count() or 1
+    texto = (
+        f"Apêndice vivo · versão {versao} · verificado em "
+        f"{documento.verificado_em:%d/%m/%Y} · próxima verificação em "
+        f"{documento.proxima_verificacao_em:%d/%m/%Y}"
+    )
+    vencido = hoje > documento.proxima_verificacao_em
+    aviso = None
+    if vencido:
+        aviso = (
+            f"Esta verificação venceu em {documento.proxima_verificacao_em:%d/%m/%Y}. "
+            "O texto continua no ar e pode estar desatualizado."
+        )
+    return CabecalhoDeApendice(texto=texto, vencido=vencido, aviso=aviso)
 
 
 def importar_da_pasta(modelo) -> int:

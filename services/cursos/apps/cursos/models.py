@@ -56,16 +56,26 @@ from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 
-# Os 34 números de aula, na ordem em que o aluno os encontra: "E00" a "E32" e a
-# bônus "EB". É o vocabulário fechado da coluna `Aula.numero`, e o banco recusa
-# qualquer outro.
+# Os 34 números de aula do LIVRO, na ordem em que o aluno os encontra: "E00" a
+# "E32" e a bônus "EB". É a estrutura que o `semear_esqueleto` grava para o
+# curso `profissional`, e os testes dele a medem por aqui.
 NUMEROS_DE_AULA = tuple(f"E{n:02d}" for n in range(33)) + ("EB",)
 
-# As 12 letras de bloco, A a L. A ordem do bloco (1 a 12) e a letra dizem a mesma
-# coisa por dois nomes, e o plano §4 pede as duas colunas.
-LETRAS_DE_BLOCO = tuple("ABCDEFGHIJKL")
+# O que a coluna `Aula.numero` aceita desde 07/09/2026: de 1 a 3 letras
+# maiúsculas ou dígitos, único por curso (`DECISAO-a-sala-serve-varios-cursos.md`
+# §3.4). A sala serve vários cursos, cada um com a sua numeração, e a lista
+# fechada acima deixou de ser o vocabulário do banco: ela é o do livro. O padrão
+# é um só e mora aqui, porque a porta de máquina o repete no corpo de
+# `putCourseStructure` (422 antes de tocar o banco) e o banco o impõe por
+# `CheckConstraint`; duas grafias divergiriam onde ninguém olha.
+PADRAO_DO_NUMERO_DE_AULA = r"^[A-Z0-9]{1,3}$"
 
-# As 3 partes em que os 12 blocos se dividem (plano §4). É o vocabulário fechado
+# As letras de bloco, A a Z (eram A a L até 07/09/2026: doze blocos era o
+# tamanho do livro, não o de qualquer curso). A ordem do bloco (1 a 26) e a
+# letra dizem a mesma coisa por dois nomes, e o plano §4 pede as duas colunas.
+LETRAS_DE_BLOCO = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+# As 3 partes em que os blocos se dividem (plano §4). É o vocabulário fechado
 # da coluna `Bloco.parte`, e desde 05/09/2026 ele também é ENDEREÇO: a parte
 # entra no link da aula, e a porta de máquina filtra e confere por ela. Mora
 # aqui, e não numa segunda lista dentro da porta, porque quem manda no
@@ -85,7 +95,16 @@ def id_do_site() -> models.CharField:
 
 
 class Curso(models.Model):
-    """Um curso por site no lançamento (plano §4). O slug do lançamento é `meshcraft`.
+    """Um curso da sala. Vários por site desde 07/09/2026
+    (`DECISAO-a-sala-serve-varios-cursos.md`), resolvidos sempre pelo par
+    site+slug; o do livro tem o slug `profissional`.
+
+    `progressao` é a REGRA DE AVANÇO do curso, escolhida pelo mantenedor no
+    cadastro: `por_laudo` (a regra do livro, a próxima aula abre com o laudo da
+    professora) ou `livre` (a próxima abre quando o próprio aluno conclui a
+    anterior). É a segunda regra do [INV-CUR-P2], assinada por ele: em nenhuma
+    das duas a porta abre por data, por XP ou por pagamento. O comportamento da
+    regra livre é da TAR-270; aqui mora só o dado.
 
     `produto_id` é O ELO com a matrícula, e é ele que decide quem entra na sala
     (`DECISAO-cursos-matriculas-e-alunos.md` §1: ninguém é aluno do site, todo
@@ -113,12 +132,19 @@ class Curso(models.Model):
         RASCUNHO = "rascunho", "Rascunho"
         PUBLICADO = "publicado", "Publicado"
 
+    class Progressao(models.TextChoices):
+        POR_LAUDO = "por_laudo", "Pelo laudo da professora"
+        LIVRE = "livre", "Livre, ao concluir a aula anterior"
+
     site_id = id_do_site()
     slug = models.SlugField(max_length=64)
     produto_id = models.CharField(max_length=64, blank=True, default="")
     nome = models.CharField(max_length=120)
     estado = models.CharField(
         max_length=10, choices=Estado.choices, default=Estado.RASCUNHO
+    )
+    progressao = models.CharField(
+        max_length=10, choices=Progressao.choices, default=Progressao.POR_LAUDO
     )
     versao = models.PositiveIntegerField(default=1)
 
@@ -132,6 +158,10 @@ class Curso(models.Model):
                 name="estado_de_curso_no_vocabulario_fechado",
             ),
             models.CheckConstraint(
+                condition=models.Q(progressao__in=["por_laudo", "livre"]),
+                name="progressao_de_curso_no_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
                 condition=models.Q(versao__gte=1), name="versao_de_curso_comeca_em_1"
             ),
         ]
@@ -141,13 +171,25 @@ class Curso(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# 2. O BLOCO: 12 por curso, A a L, em três partes
+# 2. O BLOCO: até 26 por curso, A a Z, em três partes
 # ---------------------------------------------------------------------------
 
 
 class Bloco(models.Model):
-    """Um dos 12 blocos do curso. `nome` e `boss_titulo` nascem vazios: são
-    conteúdo, e conteúdo entra pela tela (`armadilhas/331`)."""
+    """Um bloco do curso (o livro tem 12; a sala aceita até 26). `nome` e
+    `boss_titulo` nascem vazios: são conteúdo, e conteúdo entra pela tela
+    (`armadilhas/331`).
+
+    A UNICIDADE DA ORDEM É ADIADA (`DEFERRED`), E SÓ ELA. `putCourseStructure`
+    reordena os blocos em lugar, e uma troca de posições (A vai para 2, B vai
+    para 1) colide na primeira linha gravada se o banco conferir linha a linha.
+    A aula resolve isso estacionando a ordem acima do maior valor, porque a
+    faixa dela é aberta; a do bloco é fechada em 1..26 e não tem onde
+    estacionar. O banco confere no `COMMIT`, e quem prova a recusa em teste
+    força a conferência com `connection.check_constraints()`
+    (`armadilhas/358`). A da letra continua imediata: letra é identidade, não
+    posição.
+    """
 
     curso = models.ForeignKey(Curso, related_name="blocos", on_delete=models.PROTECT)
     ordem = models.PositiveSmallIntegerField()
@@ -160,7 +202,9 @@ class Bloco(models.Model):
         ordering = ["curso", "ordem"]
         constraints = [
             models.UniqueConstraint(
-                fields=["curso", "ordem"], name="uma_ordem_por_bloco_por_curso"
+                fields=["curso", "ordem"],
+                name="uma_ordem_por_bloco_por_curso",
+                deferrable=models.Deferrable.DEFERRED,
             ),
             models.UniqueConstraint(
                 fields=["curso", "letra"], name="uma_letra_por_bloco_por_curso"
@@ -173,12 +217,12 @@ class Bloco(models.Model):
                 fields=["id", "curso"], name="uniq_bloco_id_com_curso"
             ),
             models.CheckConstraint(
-                condition=models.Q(ordem__gte=1, ordem__lte=12),
-                name="ordem_de_bloco_entre_1_e_12",
+                condition=models.Q(ordem__gte=1, ordem__lte=len(LETRAS_DE_BLOCO)),
+                name="ordem_de_bloco_entre_1_e_26",
             ),
             models.CheckConstraint(
                 condition=models.Q(letra__in=list(LETRAS_DE_BLOCO)),
-                name="letra_de_bloco_entre_a_e_l",
+                name="letra_de_bloco_entre_a_e_z",
             ),
             models.CheckConstraint(
                 condition=models.Q(parte__in=list(PARTES_DO_CURSO)),
@@ -238,7 +282,9 @@ class Instrumento(models.Model):
 
 
 class Aula(models.Model):
-    """Uma encomenda do curso: "E00" a "E32" e a bônus "EB".
+    """Uma aula do curso. No livro, uma encomenda: "E00" a "E32" e a bônus "EB";
+    em qualquer curso, um número de 1 a 3 letras ou dígitos, único no curso
+    (`PADRAO_DO_NUMERO_DE_AULA`).
 
     `pedido`, `cliente`, `minimo`, `aceito_quando`, `quiz` e `video_url` nascem
     vazios e entram pela tela. `aceito_quando` é a lista de critérios que vira o
@@ -285,8 +331,8 @@ class Aula(models.Model):
                 fields=["curso", "numero"], name="um_numero_por_aula_por_curso"
             ),
             models.CheckConstraint(
-                condition=models.Q(numero__in=list(NUMEROS_DE_AULA)),
-                name="numero_de_aula_no_vocabulario_fechado",
+                condition=models.Q(numero__regex=PADRAO_DO_NUMERO_DE_AULA),
+                name="numero_de_aula_de_1_a_3_letras_ou_digitos",
             ),
             models.CheckConstraint(
                 condition=models.Q(banca_nivel__isnull=True)
@@ -306,13 +352,49 @@ class Aula(models.Model):
         return f"{self.numero} {self.titulo_exibido}"
 
 
+class AulaAvulsa(models.Model):
+    """Uma aula publicada para responder uma dúvida sem pertencer a um curso.
+
+    O endereço nasce do título na porta de máquina e pode mudar na edição. Não
+    há progresso, bloco, checkpoint ou avaliação.
+    """
+
+    class Estado(models.TextChoices):
+        PUBLICADA = "publicada", "Publicada"
+
+    site_id = id_do_site()
+    titulo = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140)
+    video_url = models.URLField(max_length=500)
+    descricao = models.TextField(blank=True, default="")
+    estado = models.CharField(
+        max_length=10, choices=Estado.choices, default=Estado.PUBLICADA
+    )
+    publicada_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-publicada_em", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "slug"], name="uma_aula_avulsa_por_slug_por_site"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(estado="publicada"),
+                name="aula_avulsa_nasce_publicada",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.titulo
+
+
 # ---------------------------------------------------------------------------
-# 5. A PEÇA: as 16 da anatomia, na ordem canônica, mais duas internas
+# 5. A PEÇA: as 16 da anatomia, duas internas e uma sob demanda
 # ---------------------------------------------------------------------------
 
 
 class TipoDePeca(models.TextChoices):
-    """As 16 peças da anatomia, declaradas NA ORDEM CANÔNICA, e as duas internas.
+    """As 16 peças da anatomia NA ORDEM CANÔNICA, as duas internas e a sob demanda.
 
     Mora no módulo, e não dentro de `Peca`, porque o corpo de uma `class Meta`
     aninhada não enxerga os nomes da classe que a contém, e a restrição do
@@ -340,6 +422,7 @@ class TipoDePeca(models.TextChoices):
     )
     ROTEIRO = "roteiro", "Roteiro da aula (interno)"
     GUIA_DO_MENTOR = "guia_do_mentor", "Guia do mentor (interno)"
+    VIDEOAULA_EM_TEXTO = "videoaula_em_texto", "A vídeo-aula, em texto"
 
 
 class Peca(models.Model):
@@ -349,6 +432,8 @@ class Peca(models.Model):
     que o verificador (`checkLesson`, degrau 1.6) confere se estão todas. Mora
     aqui, como tupla, para a tela e o verificador lerem dela e nunca de uma
     segunda lista. `TIPOS_INTERNOS` o aluno nunca vê.
+    `TIPOS_SOB_DEMANDA` o aluno vê, mas fora da sequência (a razão está na
+    tupla).
     """
 
     Tipo = TipoDePeca
@@ -372,6 +457,15 @@ class Peca(models.Model):
         Tipo.DICIONARIO_CARTAO_RESPOSTAS,
     )
     TIPOS_INTERNOS: tuple[str, ...] = (Tipo.ROTEIRO, Tipo.GUIA_DO_MENTOR)
+    # O TERCEIRO CASO, e ele é terceiro de propósito: o aluno VÊ esta peça, mas
+    # não na sequência. Ela é a mesma encomenda contada como numa vídeo-aula, e
+    # chega por um botão embaixo do capítulo, num modal (pedido do mantenedor em
+    # 06/09/2026). Por isso NÃO entra em `ORDEM_CANONICA`: as 16 são a anatomia
+    # que a lei da célula declara (`docs/decisoes/PLANO-CELULA-CURSOS.md` §4), e
+    # fazê-las virar 17 seria mudar a lei sem rito, além de pôr um texto inteiro
+    # no meio da leitura de quem só quer a aula. Guarda:
+    # `tests/test_modelo_de_conteudo.py::test_a_videoaula_em_texto_fica_fora_da_ordem_canonica`.
+    TIPOS_SOB_DEMANDA: tuple[str, ...] = (Tipo.VIDEOAULA_EM_TEXTO,)
 
     aula = models.ForeignKey(Aula, related_name="pecas", on_delete=models.PROTECT)
     tipo = models.CharField(max_length=30, choices=Tipo.choices)

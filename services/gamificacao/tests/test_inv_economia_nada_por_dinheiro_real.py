@@ -5,9 +5,11 @@ inteira, com as palavras dela: *"Nenhum item, moeda, proteção ou vantagem se
 compra. Cristais são earn-only por construção do banco (`CheckConstraint`), não
 por convenção."*
 
-**Este teste nunca se flexibiliza.** Se um dia ele precisar de exceção, isso não
-é um teste chato: é o critério de morte nº 2 e nº 6 da lei acontecendo, e a
-resposta certa é parar e reabrir a decisão com o mantenedor.
+**Este guarda não se afrouxa por agente, e não se afrouxou.** Ele perdeu uma
+frente em 06/09/2026, e perdeu pelo único caminho que a lei prevê: o critério de
+morte nº 6 (*"qualquer invariante do CI precisar de exceção"*) foi exercido, a
+sessão parou, e o mantenedor decidiu o alcance em pergunta estruturada. O que
+está escrito abaixo é o guarda que ele mandou existir.
 
 POR QUE ELE NASCE AQUI, NO PR DAS TABELAS
 ------------------------------------------
@@ -17,35 +19,42 @@ documento e a mesma frase conferida pelo PostgreSQL é a diferença entre uma
 intenção e uma garantia. Documento não sobrevive a seis meses e quatro sessões
 diferentes (`RETROSPECTIVA-FASE-D` §2); restrição de banco sobrevive.
 
-O QUE ELE MEDE, EM QUATRO FRENTES
-----------------------------------
+O QUE ELE MEDE, EM TRÊS FRENTES
+--------------------------------
 1. **Instrumento de pagamento** — nenhum campo, de tipo nenhum, nomeia cartão,
    boleto, Pix, gateway ou fatura. Não há razão legítima para esta célula
-   conhecer um.
-2. **Quantia em dinheiro** — nenhum campo que CARREGUE valor (número, texto,
-   decimal) nomeia real, dólar, centavo ou preço.
-3. **Import** — nenhum módulo desta célula conhece um SDK de cobrança.
-4. **O banco** — o PostgreSQL recusa o INSERT, venha ele de onde vier. É esta
+   COBRAR de alguém: quem cobra é o `checkout`.
+2. **Import** — nenhum módulo desta célula conhece um SDK de cobrança.
+3. **O banco** — o PostgreSQL recusa o INSERT, venha ele de onde vier. É esta
    frente que continua valendo numa madrugada de incidente, com alguém logado
    no `psql`.
 
-POR QUE A FRENTE 2 OLHA O TIPO DO CAMPO, E POR QUE ISSO NÃO É UMA BRECHA
--------------------------------------------------------------------------
-Existe um campo legítimo nesta célula com a palavra "dinheiro" no nome:
-`ConquistaDefinicao.envolve_dinheiro`. Ele não guarda dinheiro — é um booleano
-que diz *"este marco fala do aluno RECEBENDO dinheiro na vida real"*, e serve
-para o banco poder EXIGIR que só a equipe valide esse marco
-(`marco_de_dinheiro_so_a_equipe_valida`). Ou seja: é uma trava de qualidade no
-que a escola afirma, o oposto de uma violação.
+A FRENTE QUE CAIU EM 06/09/2026, E POR QUE ELA NÃO VOLTA SOZINHA
+------------------------------------------------------------------
+Havia uma quarta frente: nenhum campo que CARREGASSE valor podia nomear real,
+dólar, centavo ou preço. Ela mirava UMA direção do dinheiro — alguém pagando
+para levar vantagem no jogo — e barrava a outra por tabela: o dinheiro que o
+aluno GANHOU no mundo real, que é a espinha desta escola (o `marco` de carreira
+com `envolve_dinheiro`, a escada dos primeiros dólares). Com ela de pé, a escada
+sabia QUEM chegou ao degrau e nunca QUANTO, e a escola não conseguia somar o que
+os alunos dela faturaram.
 
-A régua honesta, então, não é a palavra — é o CARREGADOR. Um booleano não
-guarda quantia; uma coluna numérica ou de texto guarda. Por isso a frente 2 mede
-só os campos que poderiam segurar um valor, e a frente 1 (instrumento de
-pagamento) continua valendo para TODO campo, booleano incluído: um
-`aceita_cartao = BooleanField()` seria recusado na hora.
+O mantenedor reabriu o §3.1 e decidiu o alcance com estas palavras: **toda
+quantia, em qualquer tabela desta célula**. A promessa do invariante continua
+inteira, e é a do título dele: nada aqui se COMPRA. Quem a garante agora são as
+três frentes acima e as restrições do banco — Cristal não nasce de compra,
+débito só existe com o recibo do cosmético junto, e o vocabulário de origens é
+fechado no PostgreSQL.
 
-A alternativa seria uma lista de exceções ao lado do guarda — e lista de exceção
-é por onde guarda morre, uma linha de cada vez.
+**O que isso deixa possível, dito em voz alta:** uma coluna de preço em reais ao
+lado do `custo_em_cristais` não fica mais vermelha sozinha. O que impede a loja
+de aceitar dinheiro passou a ser o banco e a decisão de quem escreve o código, e
+não mais o nome do campo. Foi a troca que ele escolheu, sabendo dela.
+
+Se um dia a frente tiver de voltar, ela volta pelo mesmo caminho — decisão do
+mantenedor —, e não como "conserto" de uma sessão que achou o guarda
+incompleto. Está escrito aqui porque guarda que encolhe sem explicação é guarda
+que a próxima sessão restaura por engano.
 """
 
 import ast
@@ -87,30 +96,6 @@ INSTRUMENTO_DE_PAGAMENTO = (
     "assinatura",
 )
 
-# QUANTIA EM DINHEIRO — proibida em campo que CARREGUE valor. Note que
-# `cristais`, `custo` e `compra` não estão aqui, e não é descuido: comprar uma
-# moldura com Cristais ganhos é exatamente o que a loja existe para fazer. O
-# proibido é o real, o dólar, o centavo e o preço.
-QUANTIA_EM_DINHEIRO = (
-    "preco",
-    "precos",
-    "price",
-    "prices",
-    "real",
-    "reais",
-    "brl",
-    "centavo",
-    "centavos",
-    "cents",
-    "dinheiro",
-    "dolar",
-    "dolares",
-    "usd",
-    "valor",
-    "valores",
-    "moeda",
-)
-
 # Os SDKs e clientes que só existem para mover dinheiro. Um import destes dentro
 # desta célula é o primeiro passo de tudo o que a lei §8 veta.
 BIBLIOTECAS_DE_COBRANCA = (
@@ -143,11 +128,6 @@ def _palavras(nome: str) -> set:
     return set(nome.lower().split("_"))
 
 
-def _carrega_valor(campo) -> bool:
-    """O campo pode SEGURAR uma quantia? Booleano não segura; número e texto sim."""
-    return campo.get_internal_type() != "BooleanField"
-
-
 def test_nenhum_campo_desta_celula_nomeia_um_instrumento_de_pagamento():
     """Cartão, boleto, Pix, gateway, fatura. Em campo de tipo nenhum, jamais.
 
@@ -169,32 +149,21 @@ def test_nenhum_campo_desta_celula_nomeia_um_instrumento_de_pagamento():
     )
 
 
-def test_nenhum_campo_que_carrega_valor_nomeia_dinheiro_real():
-    """Não existe onde guardar um preço em reais. Nem por engano, nem por pressa.
+def test_o_detector_de_pagamento_morde_o_que_deve_e_so_o_que_deve():
+    """A prova de que a frente 1 continua mordendo depois da queda da frente 2.
 
-    A tentação concreta tem endereço: `ItemCosmetico`. No dia em que a escola
-    quiser faturar mais, o caminho de menor esforço é uma coluna
-    `preco_em_reais` ao lado do `custo_em_cristais`, e a partir dali a loja
-    aceita as duas moedas sem que ninguém precise decidir nada. Esta asserção é
-    o que transforma esse caminho de menor esforço numa CI vermelha.
+    Um portão que nunca fica vermelho é indistinguível de um portão desligado, e
+    o teste acima só olha os campos que existem HOJE: enquanto nenhum deles
+    nomear um meio de cobrança, ele passa sem jamais provar que morderia. Esta
+    asserção morde nomes de MENTIRA, que é como se prova o detector sem plantar
+    um campo de pagamento num modelo de verdade.
+
+    A terceira linha é a que impede o excesso: a régua é de TOKEN, e `pixel` não
+    é `pix`.
     """
-    achados = []
-    for modelo in _modelos():
-        for campo in _campos_concretos(modelo):
-            if not _carrega_valor(campo):
-                continue
-            for palavra in _palavras(campo.name) & set(QUANTIA_EM_DINHEIRO):
-                achados.append(
-                    f"{modelo.__name__}.{campo.name} "
-                    f"[{campo.get_internal_type()}] (por {palavra!r})"
-                )
-
-    assert sorted(achados) == [], (
-        "INVARIANTE 1 QUEBRADO: campo desta célula carrega dinheiro real.\n  "
-        + "\n  ".join(sorted(achados))
-        + "\n\nA lei §3.1 diz que nenhum item, moeda, proteção ou vantagem se "
-        "compra. Ver `DECISAO-gamificacao.md` §8 e o critério de morte nº 2."
-    )
+    assert _palavras("aceita_cartao") & set(INSTRUMENTO_DE_PAGAMENTO) == {"cartao"}
+    assert _palavras("pix_do_aluno") & set(INSTRUMENTO_DE_PAGAMENTO) == {"pix"}
+    assert _palavras("pixel_do_avatar") & set(INSTRUMENTO_DE_PAGAMENTO) == set()
 
 
 def test_nenhuma_escolha_declarada_nomeia_um_meio_de_pagamento():
@@ -205,7 +174,7 @@ def test_nenhuma_escolha_declarada_nomeia_um_meio_de_pagamento():
     "marco que envolve dinheiro". Valor é vocabulário de máquina, e é ele que um
     `INSERT` usaria.
     """
-    proibido = set(INSTRUMENTO_DE_PAGAMENTO) | set(QUANTIA_EM_DINHEIRO)
+    proibido = set(INSTRUMENTO_DE_PAGAMENTO)
     achados = []
     for modelo in _modelos():
         for campo in _campos_concretos(modelo):
@@ -217,7 +186,7 @@ def test_nenhuma_escolha_declarada_nomeia_um_meio_de_pagamento():
                     )
 
     assert sorted(achados) == [], (
-        "INVARIANTE 1 QUEBRADO: escolha de banco nomeia dinheiro real.\n  "
+        "INVARIANTE 1 QUEBRADO: escolha de banco nomeia meio de pagamento.\n  "
         + "\n  ".join(sorted(achados))
     )
 

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-096-painel-titulares-scale-os",
+  tipo: "resposta",
+  quando: "2026-09-09",
+  titulo: "painel: titulares Scale OS",
+  detalhe: "Titulares registrados, ausência de substituto explícita, IA limitada a tarefas autorizadas e medição ponderada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. Validação local: árvore 48148d5cddfb1f7bfc85fb147ef053cd43b9c96d; commit ffa9ed1207a3719822a6f284595cc6822ca23787; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

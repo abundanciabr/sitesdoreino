@@ -374,6 +374,10 @@ def test_o_catalogo_real_tem_gatilhos_e_eles_compilam():
         assert entrada.licao, f"{entrada.nome}: gatilho sem lição passou pela validação"
 
 
-def test_fiacao_no_settings_json():
-    texto = FIACAO.read_text(encoding="utf-8")
-    assert "licao_do_caminho.py" in texto
+def test_fiacao_substituida_por_consulta_de_caminho():
+    assert "licao_do_caminho.py" not in FIACAO.read_text(encoding="utf-8")
+    from consultar_armadilhas import consultar
+    resposta = consultar(RAIZ_DO_REPO, caminho="painel/registros/20260912-001-entrega.js")
+    assert resposta["estado"] == "PASS"
+    assert {item["id"] for item in resposta["resultados"]} >= {"179", "185"}
+    assert all(item["licao"] for item in resposta["resultados"])

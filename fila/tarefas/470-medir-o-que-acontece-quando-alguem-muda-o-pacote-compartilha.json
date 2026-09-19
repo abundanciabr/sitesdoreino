@@ -1,0 +1,19 @@
+{
+  "arquivo": "470-medir-o-que-acontece-quando-alguem-muda-o-pacote-compartilha",
+  "id": "TAR-470",
+  "titulo": "Medir o que acontece quando alguem muda o pacote compartilhado",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "As cinco perguntas respondidas com comando e saida real; muralhas e fila validas.",
+  "despacho": "# BRIEF: medir o que acontece quando alguem muda o pacote compartilhado\n\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: mede e descreve; a decisao de fronteira nao e sua\ncelula: ci (CELULA=ci TAREFA=dono-do-pacote-compartilhado SEM_CONTAINER=1)\n\n## Objetivo\n\nMedir exatamente o que acontece hoje quando alguem muda `packages/outbox-relay`,\ne registrar o achado como tarefa na fila com o despacho pronto para quem for\nconsertar. Esta tarefa NAO conserta: ela mede e documenta, porque o conserto\ntoca caminho CODEOWNERS.\n\n## O achado de partida, a conferir e aprofundar\n\n`packages/outbox-relay` e a UNICA biblioteca compartilhada entre celulas. E\nconsumida por `alunos` e `identidade` como wheel vendorizada declarada no\n`requirements.txt` de cada uma. Ela e a rede de seguranca do transporte de\neventos, ou seja, do elo que entrega a matricula depois que o pagamento e\naprovado.\n\nMedicoes de partida: `celulas.yml` nao cita `packages`; o `.github/CODEOWNERS`\nnao tem regra que case `packages/`; o gatilho do `deploy-celula.yml` nao inclui\n`packages/**`; `ci-celula.yml` e `ci/mapa_de_celulas.py` nao citam `packages`.\n\n## O que medir e responder, com comando e saida\n\n1. Uma mudanca em `packages/outbox-relay` dispara a suite de alguma celula?\n   Qual comando prova?\n2. Ela dispara deploy? Se nao, o que acontece com a versao vendorizada em\n   producao?\n3. As duas celulas consumidoras usam a MESMA versao do pacote? Compare os\n   `requirements.txt`.\n4. Existe algum teste que prove que o pacote e as duas copias vendorizadas nao\n   divergiram?\n5. Se alguem corrigir um bug no pacote hoje, qual e a sequencia exata de passos\n   ate aquilo chegar na producao? Escreva a sequencia, passo a passo, com o\n   comando de cada passo.\n\n## Arquivos-alvo\n\nNenhum arquivo de codigo. Esta tarefa produz uma tarefa nova na fila, com o\ndespacho pronto para quem for consertar, e uma entrada em `armadilhas/NNN` SE,\ne somente se, a medicao revelar um modo de falha com sintoma reconhecivel: o\ncampo `sinal` precisa ser a mensagem de erro CRUA como regex, casando a saida\nreal sem tocar a toa. Sem sintoma reconhecivel, nao invente armadilha.\n\n## Proibido\n\nTocar `celulas.yml`, `.github/`, `ci/`, `infra/` ou `packages/`. O conserto e de\nquem tiver mandato; decidir de QUEM e o pacote e decisao de fronteira do\nmantenedor. Propor que o pacote vire uma celula, ou que as duas copias sejam\nfundidas, sem apresentar o custo medido das duas alternativas.\n\n## Prova exigida\n\nCada uma das cinco respostas com o comando que a produziu e a saida real.\n`python ci/fila.py validar` e `python ci/ci.py --apenas muralhas` verdes.\nSe escrever armadilha, `python ci/indice_de_armadilhas.py` regenera sem erro e o\n`sinal` casa a saida real do erro e NAO casa saida comum.\n\n## Fecho\n\n`python ci/pr.py` com `--tipo medicao --gravidade info --frente fabrica`.\nO recibo precisa ficar abaixo de 1024 bytes e o `--detalhe` entra nele.\nDevolva numero do PR, ramo, arquivos, e as cinco respostas medidas.",
+  "origem": "Auditoria do mapa para IA de 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

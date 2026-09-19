@@ -45,7 +45,8 @@ recente (`completedAt` como reserva). E o desempate importa tanto quanto a regra
 * **sem hora, ou hora igual ⇒ fica a PIOR das empatadas.** "Não consegui saber
   qual é a atual" jamais pode virar "então considero a verde" ([INV-CI01]).
 
-Ver `_mais_recente_por_nome` em `ci/mergear.py`.
+Ver `mais_recente_por_nome` em `ci/mergear.py` — desde 07/09/2026 a espera
+dos checks importa esta MESMA função (`armadilhas/381`).
 
 **A mutação que quase passou despercebida, e a lição de teste que ela deixou.**
 Ao provar o conserto, três mutações ficaram vermelhas e uma **passou**: trocar a

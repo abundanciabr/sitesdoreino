@@ -1,0 +1,17 @@
+{
+  "arquivo": "276-o-portao-da-area-do-registro-promete-duas-coisas-que-nenhum-",
+  "id": "TAR-276",
+  "titulo": "O portao da area do registro promete duas coisas que nenhum teste prova, e a mensagem do ramo desconhecido nao da exemplo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python -m pytest ci/tests/test_area_do_registro.py ci/tests/test_mergear.py -q verde, com a saida das duas sabotagens (guardar leitura falha como sucesso; segunda sombra abrindo o proprio DiffDoPR) ficando VERMELHAS antes do conserto dos testes",
+  "despacho": "Achados do revisor no PR 1352 (ci/mergear.py e ci/divida_do_livro.py), com mandato CODEOWNERS ci/ a pedir a maestro: (1) DiffDoPR.ler: sabotar para guardar [] quando o gh estoura deixa a suite verde; escrever teste em que o gh cai na primeira leitura e responde na segunda, exigindo que a segunda ler devolva as remessas de verdade e conte 2 chamadas. (2) 'o diff e lido UMA vez por pouso' nao tem guarda pelo main(): trocar a segunda sombra para abrir o proprio DiffDoPR deixa a suite verde; medir pelo main() como os testes de test_mergear.py fazem (gh de mentira + chamadas), afirmando exatamente UMA chamada api .../pulls/N/files por pouso, e renomear ou refazer test_o_diff_e_lido_uma_vez_por_pouso_e_quem_le_diz_o_proprio_nome. (3) A mensagem do ramo fora das areas conhecidas manda usar 'o nome de uma celula que esteja la' sem citar nenhuma: imprimir 3 exemplos de celulas de painel/areas.json na propria linha (a funcao ja recebe celulas). (4) Em divida_do_livro.py o mesmo fato e guardado tres vezes (startswith('+'), o \\+ do padrao e o ^ com .match()): deixar so o padrao com .match(). Armadilhas 391 e 392 valem aqui.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-07"
+}

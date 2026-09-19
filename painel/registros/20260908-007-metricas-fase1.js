@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-007-metricas-fase1",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "Medição sem repetição e acompanhamento das fases",
+  detalhe: "PR 1376, TAR-277: uso consolidado por mensagem e modelo, com cobertura e ausência explícitas. Telemetria correlaciona tarefa, tentativa, fase e revisão. Baseline: 46 testes. Suíte ampliada: 238 passaram. Onze classes de mutação detectadas. Amostra real: 898 registros, 448 mensagens, 413 ferramentas. Não comprova ganho de eficiência nem publicação.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1376",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci"
+});})();

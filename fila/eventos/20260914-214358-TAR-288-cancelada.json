@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260914-214358-TAR-288-cancelada",
+  "tarefa": "TAR-288",
+  "evento": "cancelada",
+  "quando": "2026-09-14T21:43:58+00:00",
+  "quem": "migracao-admin-localhost-20260914-mandato-mantenedor",
+  "detalhe": "Cancelamento confirmado pelo mantenedor em 14/09/2026. A parte administrativa desta tarefa migrou ao localhost; o historico fica preservado. Codigo reconstruivel do Admin local permanece no Git. Eventual capacidade da VPS renasce em tarefa estreita de provedor ou ponte, sem tela administrativa na VPS."
+}

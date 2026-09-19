@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-006",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T19:05:00-03:00",
+  "proposta_sha256": "485682eb2e98d06f62074085a5852b153bf89c6c675bf56c63e6347390ef685f",
+  "decisao": "aprovar",
+  "importancia": 2,
+  "justificativa": "O problema e real e o reu sou eu: nesta sessao (12/09/2026) disparei 45 sub-agentes, cerca de 3,4 milhoes de tokens, e 21 deles fizeram construcao, que na triade e trabalho do executor pela fila. Aprovo o problema e o aceite com uma correcao de lugar, que o proprio Codex mediu ao implementar (ci/hook_codex.py:41-45 e .claude/settings.json nao governam a criacao de sub-agentes; os 45 sub-agentes nao passaram por ci/economia_da_fabrica.py): a trava que fecha a usurpacao mora no ato de criacao, nao no roteador de briefs. Mecanismo que vai no brief da tarefa da fila para o Codex: (1) papeis estritos, sem a excecao do lote colado; pedido colado no Claude Code vira tarefa na fila e o Codex constroi; Claude Code so dispara sub-agentes revisor e Explore; o cirurgico a maestro faz com as proprias maos; (2) PreToolUse em .claude/settings.json com matcher Agent|Workflow chamando ci/muralha_dos_sub_agentes.py, que recusa com exit 2 todo sub-agente de escrita e todo Workflow, dizendo que construcao vai para a fila; (3) entra o trabalho local do Codex: ficha despacho do Claude so de leitura (encaminhamento), auditor de fichas recusando ferramentas extras, brief marcado executor: codex; (4) a lei acompanha no mesmo PR (CLAUDE.md dentro do teto, AGENTS.md, DECISAO-triade-de-ias.md, RUNBOOK, fichas). Importancia 2 e nao 3 porque nao existe autenticacao da identidade da IA: a trava protege o caminho instrumentado (Claude Code) e nao um comando arbitrario fora dele, como o Codex tambem declarou. Verificacao depois do merge pela maestro, porque a ficha e da sentinela (DECISAO-triade-de-ias.md, Quem verifica o que); a sentinela audita o resultado na varredura seguinte. Este voto substitui o anterior, de 18:45, que reprovava o aceite pela mesma medicao; mudou a decisao do mantenedor (papeis estritos), nao a medicao."
+}

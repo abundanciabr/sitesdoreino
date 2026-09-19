@@ -1,0 +1,18 @@
+{
+  "arquivo": "293-separar-trabalho-submetido-de-conclusao-comprovada",
+  "id": "TAR-293",
+  "titulo": "Separar trabalho submetido de conclusão comprovada",
+  "toca": [
+    "fila",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com regressões da submissão persistente, reserva e dependências aprovadas",
+  "despacho": "Implementar submissão persistente TAR-PR-revisão no fechamento, sem conclusão prematura; conservar tarefas entregues no zelador.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-09"
+}

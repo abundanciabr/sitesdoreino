@@ -111,6 +111,8 @@ from apps.auditoria.models import Registro
 from .aulas import (
     NOME_DA_PECA,
     PECAS,
+    SEQUENCIA,
+    SOB_DEMANDA,
     CursosClient,
     _endereco,
     _falha,
@@ -204,14 +206,26 @@ NAO_SAO_PECA = (
     ),
 )
 
-#: As 16 da anatomia na ordem canônica do contrato, para a prévia numerar.
-PECAS_NUMERADAS = tuple(tipo for tipo, _, interna in PECAS if not interna)
+#: As 16 da anatomia na ordem canônica do contrato, para a prévia numerar. São
+#: as da categoria `SEQUENCIA`, e só elas.
+PECAS_NUMERADAS = tuple(t for t, _, categoria in PECAS if categoria == SEQUENCIA)
 
 #: Todo par (palavras, tipo) que o casamento tenta, com os apelidos por último.
 #: As duas peças internas (`roteiro`, `guia_do_mentor`) entram: elas quase nunca
 #: aparecem no capítulo, e quando aparecem pelo nome têm campo para onde ir.
+#:
+#: A VÍDEO-AULA EM TEXTO FICA DE FORA, e é o único tipo do contrato que fica.
+#: Ela é um documento SEPARADO do capítulo (desenho do mantenedor, 06/09/2026):
+#: o mesmo capítulo contado de outro jeito. Deixá-la entrar aqui faria o
+#: importador de capítulo escrever a peça que ele não tem como conhecer, e um
+#: título homônimo dentro do capítulo apagaria o texto da vídeo-aula que a
+#: professora já tivesse escrito à mão.
 _ALVOS = tuple(
-    [(_palavras(nome), tipo) for tipo, nome, _ in PECAS]
+    [
+        (_palavras(nome), tipo)
+        for tipo, nome, categoria in PECAS
+        if categoria != SOB_DEMANDA
+    ]
     + [(_palavras(apelido), tipo) for apelido, tipo in APELIDOS.items()]
 )
 

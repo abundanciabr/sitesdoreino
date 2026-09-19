@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260908-072-primeiros-dolares-fase-6-boss",
+  tipo: "entrega",
+  quando: "2026-09-08",
+  titulo: "gamificacao: fechamento de modulo Boss reconhecido",
+  detalhe: "A Fase 6 usa o evento aula.concluida.v1 já existente e reconhece e_boss true com a conquista boss-do-modulo. A conquista nasce desligada, sem XP extra, privada por padrão e idempotente. Aula comum, evento sem aluno e progressão livre continuam sem concessão ou cadeado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1404",
+  verificado_em: "2026-09-08",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: "entrega"
+}); })();

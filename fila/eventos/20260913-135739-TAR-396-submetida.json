@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-135739-TAR-396-submetida",
+  "tarefa": "TAR-396",
+  "evento": "submetida",
+  "quando": "2026-09-13T13:57:39+00:00",
+  "quem": "agent/ci/baseline-windows",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1626",
+  "revisao": "5eb500460e4f7768b97da4ec2b35f0c4177f5acb",
+  "arvore": "eefc5e582c03afd93a84e4a7a52d54ade79733f0"
+}

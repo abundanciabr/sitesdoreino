@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-071-painel-cobrir-recursos-das-responsabilidades",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "painel: cobrir recursos das responsabilidades",
+  detalhe: "A auditoria passa a cruzar o cadastro com as células e rotas conhecidas, recusa ausência ou ambiguidade e mantém os quatro titulares humanos sem criar substitutos nem titular de IA.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1579. Validação local: árvore 588540a281c9000128cc7c0b9d564dc2668fa36a; commit 74ce1b1c6c7e03af7a94bf76a63adbbdae07f370; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-309",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

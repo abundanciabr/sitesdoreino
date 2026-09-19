@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260907-163145-TAR-272-explicada",
+  "tarefa": "TAR-272",
+  "evento": "explicada",
+  "quando": "2026-09-07T16:31:45+00:00",
+  "quem": "DECISAO-a-sala-serve-varios-cursos.md, decisao do mantenedor em 07/09/2026 em pergunta estruturada",
+  "o_que_e": "Um curso novo nasce sem aulas, e hoje so o semeador do livro sabe criar a lista de aulas de um curso.",
+  "o_que_muda": "O mantenedor cola a lista de modulos e aulas do curso num campo de texto, confere a previa e importa. Depois disso cada aula recebe o link do video e o texto pelo editor que ja existe.",
+  "exemplo": "Ele cola a linha Modulo 1: Comecando e embaixo 01 Boas-vindas, 02 Instalando o Blender. Aperta Prever, le, aperta Importar, e as aulas existem.",
+  "importancia": 90
+}

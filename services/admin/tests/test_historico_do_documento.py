@@ -164,13 +164,13 @@ def test_voltar_atras_devolve_tambem_o_titulo_e_a_publicacao():
     """A versão é um RETRATO, não só o corpo: se voltar trouxesse o texto antigo
     com o título de hoje, o documento ficaria num estado que nunca existiu."""
     cliente = _dentro()
-    cliente.post(
-        "/documentos/criar", {"titulo": "Nome Antigo", "corpo": "x", "publico": "sim"}
-    )
+    cliente.post("/documentos/criar", {"titulo": "Nome Antigo", "corpo": "x"})
+    cliente.post("/documentos/nome-antigo/publicar")
     cliente.post(
         "/documentos/nome-antigo/salvar", {"titulo": "Nome Novo", "corpo": "y"}
     )
-    primeira = VersaoDoDocumento.objects.order_by("id").first()
+    cliente.post("/documentos/nome-antigo/despublicar")
+    primeira = VersaoDoDocumento.objects.filter(publico=True).order_by("id").first()
 
     cliente.post("/documentos/nome-antigo/restaurar", {"versao": primeira.id})
 

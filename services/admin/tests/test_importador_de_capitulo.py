@@ -291,6 +291,31 @@ def test_as_dezesseis_pecas_sao_reconhecidas_pelo_nome_e_nada_fica_de_fora():
     assert lido["nao_reconhecidos"] == []
 
 
+def test_o_importador_de_capitulo_nunca_escreve_a_videoaula_em_texto():
+    """A vídeo-aula é um documento SEPARADO do capítulo, e este importador só
+    sabe ler capítulo (desenho do mantenedor, 06/09/2026).
+
+    Ela existe como peça no contrato e no editor, então nada impediria este
+    importador de casar um título homônimo com ela. Se casasse, um capítulo com
+    a seção "A vídeo-aula, em texto" apagaria, calado, o texto que a professora
+    escreveu à mão na outra tela. Aqui o título vira "não reconhecido", que é a
+    resposta honesta: o importador não sabe o que fazer com ele.
+    """
+    lido = tela.interpretar(
+        CAPITULO
+        + """
+
+## A vídeo-aula, em texto
+
+Fala, gente. Hoje a gente modela um capacete.
+"""
+    )
+
+    assert "videoaula_em_texto" not in lido["pecas"]
+    assert [n["titulo"] for n in lido["nao_reconhecidos"]] == ["A vídeo-aula, em texto"]
+    assert "videoaula_em_texto" not in tela.PECAS_NUMERADAS
+
+
 def test_o_eu_faco_fica_inteiro_numa_peca_so_com_as_subsecoes_dentro():
     """`###` é subseção, não peça. Quebrar aqui picaria a maior peça em três."""
     eu_faco = tela.interpretar(CAPITULO)["pecas"]["eu_faco"]

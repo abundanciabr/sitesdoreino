@@ -1,0 +1,17 @@
+{
+  "arquivo": "273-consertar-a-tabela-do-8-do-plano-de-gestao-que-mente-sobre-s",
+  "id": "TAR-273",
+  "titulo": "Consertar a tabela do §8 do plano de gestao, que mente sobre si mesma",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com o paragrafo novo no §8 do PLANO-PAINEL-DE-GESTAO.md, datado, citando onde se confere cada degrau",
+  "despacho": "Escreva um paragrafo datado logo abaixo da abertura do §8 de docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, antes da tabela, dizendo quantos degraus estao no ar, quais dois faltam e por que (decisao do dono e credencial do dono), e onde se confere cada um (arquivo do degrau; livro de ocorrencias). Prefira remover os 3 FEITO da tabela para o paragrafo ser fonte unica. Sem travessao. So o arquivo do plano, mais registro e fila.",
+  "origem": "medição de 07/09/2026: a tabela do §8 marca 3 degraus como FEITO e 18 estão no ar",
+  "criada_em": "2026-09-07"
+}

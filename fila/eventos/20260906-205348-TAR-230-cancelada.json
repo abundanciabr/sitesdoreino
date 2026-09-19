@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-205348-TAR-230-cancelada",
+  "tarefa": "TAR-230",
+  "evento": "cancelada",
+  "quando": "2026-09-06T20:53:48+00:00",
+  "quem": "despacho-infra-cano-pages-admin-0609",
+  "detalhe": "Ficou sem objeto no mesmo dia em que nasceu: ela mandava corrigir o paragrafo do docstring de services/pages/apps/core/equipe.py que dizia quem escreve a lista de conferentes, e a decisao do mantenedor de 06/09/2026 (todo admin confere) apagou a lista. O arquivo foi reescrito inteiro pelo PR #1250, e o paragrafo que ela mandava corrigir nao existe mais. Nada a fazer."
+}

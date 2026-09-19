@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-141734-TAR-321-explicada",
+  "tarefa": "TAR-321",
+  "evento": "explicada",
+  "quando": "2026-09-10T14:17:34+00:00",
+  "quem": "Pedido do mantenedor de 10/09/2026 e docs/decisoes/PROMPT-EQUIPE-MAPA-DE-EXECUCAO.md",
+  "o_que_e": "Um mapa que lê as fontes atuais da casa e transforma cada pedido ou retomada no próximo passo seguro e em um prompt pronto para copiar.",
+  "o_que_muda": "O mantenedor deixa de reconstruir contexto e descobrir o estado da tarefa a cada conversa; a central e o terminal explicam a mesma ação com fontes e limites visíveis.",
+  "exemplo": "Ao informar uma tarefa interrompida, o mapa encontra o ramo, o PR, a última prova e entrega o prompt exato para continuar sem começar de novo.",
+  "importancia": 95
+}

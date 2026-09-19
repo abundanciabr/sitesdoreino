@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-006-painel-conferir-integracoes",
+  tipo: "nota",
+  quando: "2026-09-12",
+  titulo: "painel: conferir integrações",
+  detalhe: "Confere a Fase 1, cursos e seu deploy; mantém a Fase 2 aberta e a Fase 3 na fila TAR-359.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1591. Validação local: árvore 8f04fb5d988ded7b39a96e593ed75546b04a8c23; commit e7544c362b887b4eac75c597a546e60ebd921c24; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-358",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

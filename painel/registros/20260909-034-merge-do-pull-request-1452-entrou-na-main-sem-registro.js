@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-034-merge-do-pull-request-1452-entrou-na-main-sem-registro",
+  tipo: "incidente",
+  quando: "2026-09-09",
+  titulo: "Merge do pull request #1452 entrou na principal sem registro",
+  detalhe: "O pull request #1452 foi incorporado à principal pelo commit 942deb58e320917e358422d187926d63c505e379, mas não foi citado no livro pelo registro 20260909-033. Este registro paga somente essa dívida factual adicional.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1452",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: "baixo",
+  portao: null
+}); })();

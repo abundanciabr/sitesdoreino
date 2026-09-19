@@ -44,17 +44,14 @@ Por isso `avisar_os_interessados()` é chamada DENTRO do `transaction.atomic()` 
 evento é escrito na outbox. Um rollback leva os três juntos: status, histórico e
 **todos** os avisos.
 
-**Fora daqui, de propósito:** e-mail/WhatsApp (decisão acima) e o sininho fora da
-Caixa — o sino visível em qualquer página do site exige que o `funil` pergunte à
-`sugestoes` quantos avisos a pessoa tem, o que é operação nova num contrato
-CONGELADO. Isso não é decisão pendente, é **rito** pendente (RITOS §3, com o
-mantenedor presente, nunca dentro de um lote) — está escrito na §2 da decisão.
+**Fora daqui, de propósito:** e-mail/WhatsApp (decisão acima) e notificações
+fora da central da Caixa. A leitura desta célula fica na página de avisos; a
+central do site tem sua própria superfície pública e contrato.
 Um sistema de notificações que vai crescer merece plano próprio, não uma extensão
 improvisada desta tela.
 """
 
 import logging
-import time
 
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
@@ -65,7 +62,6 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.sugestoes.models import Aviso, Comentario, Identidade, Sugestao, Voto
 
-from . import sessao as ses
 from .clients import NotificacoesClient
 from .participacao import exige_sessao, quadro_atual
 
@@ -109,6 +105,17 @@ ASSUNTO_NIVEL = "gamificacao.nivel-alcancado"
 ASSUNTO_CONQUISTA = "gamificacao.conquista-concedida"
 ASSUNTO_MARCO = "gamificacao.marco-validado"
 ASSUNTO_DESTAQUE = "gamificacao.destaque-da-semana"
+
+# O SELO DA ESCOLA NO PORTFÓLIO (Rito de Contrato de 06/09/2026, degrau 12 do
+# corredor `CS-PAGES-0001`, critério AC-12). O aluno mandou o portfólio para a
+# fila da escola e esperou um prazo de cinco dias úteis: esta é a carta que
+# fecha essa espera.
+#
+# **Ela aprende a forma ANTES de a célula `pages` publicá-la**, e essa ordem é a
+# mesma lição escrita no bloco [ASSUNTOS] logo acima: uma tela que só aprende o
+# assunto depois é uma tela que mostra "ainda não sabe mostrar" para quem estava
+# esperando resposta.
+ASSUNTO_PORTFOLIO = "pages.portfolio-conferido"
 
 #: Os títulos dos níveis NA PALAVRA DE QUEM LÊ. Mesma forma, e mesmo motivo, do
 #: `SITUACAO_ROTULOS` logo abaixo: um mapa explícito, pequeno, com fallback
@@ -173,6 +180,21 @@ VALIDADOR_DE_MARCO_FRASES = {
     "monitor": "Quem conferiu foi um monitor da escola.",
     "par": "Quem conferiu foi outro aluno, com a mesma régua de sempre.",
     "sistema": "A conferência foi automática, feita pela própria plataforma.",
+}
+
+#: QUEM da escola conferiu o portfólio. Vocabulário menor que o do marco, e o
+#: contrato explica por quê: portfólio quem confere é sempre gente da escola,
+#: então não existe `par` nem `sistema` aqui. Mesmo desenho, mesmo fallback: sem
+#: o campo, o cartão não diz quem conferiu, e a frase que sobra continua inteira.
+#:
+#: **Hoje a `pages` não manda este campo**, e a razão está no contrato: ela
+#: reconhece a equipe por uma lista de ids e não sabe qual deles é professor.
+#: Este mapa existe porque a tela tem de saber desenhar a carta inteira antes de
+#: alguém publicá-la, e porque voltar aqui custa uma liberação nominal do
+#: mantenedor: a `sugestoes` é célula proibida pelo corredor daquela obra.
+PAPEL_DE_QUEM_CONFERIU_FRASES = {
+    "professor": "Quem olhou foi um professor da escola.",
+    "monitor": "Quem olhou foi um monitor da escola.",
 }
 
 #: As situações de matrícula NA PALAVRA DE QUEM LÊ — o aluno, não o mantenedor.
@@ -328,8 +350,8 @@ def avisar_os_interessados(
 def _meus(ator):
     """[INVARIANTE 2, histórico] O recorte por dono, num lugar só.
 
-    **Desde a Fase 3/4 do sininho, NENHUMA view lê mais por aqui** — `sino()`
-    e `ver_avisos()` passaram a ler de `NotificacoesClient` (a caixa central,
+    **Desde a Fase 3/4 do sininho, NENHUMA view lê mais por aqui** —
+    `ver_avisos()` passou a ler de `NotificacoesClient` (a caixa central,
     `contracts/notificacoes.openapi.yaml`; `DECISAO-fase-2-do-sininho.md`
     §3). A função continua existindo porque `avisar_os_interessados()` acima
     continua escrevendo o `Aviso` LOCAL — rollback de segurança durante a
@@ -345,95 +367,7 @@ def contar_nao_lidos(ator) -> int:
 
 
 # ---------------------------------------------------------------------------
-# O sino: fail ABERTA — a MESMA regra do sino do `funil` (Escolha 2,
-# `docs/decisoes/DECISAO-fase-4-do-sininho.md`). `notificacoes` fora do ar ⇒
-# sem número, página abre normal, nunca 500. É a ponta OPOSTA de
-# `ver_avisos()`, logo abaixo, que fail VISÍVEL — mesmo dado, duas telas,
-# regras deliberadamente diferentes.
-# ---------------------------------------------------------------------------
-
-TTL_DO_RESUMO = 30
-MAXIMO_EM_CACHE = 500
-_CACHE_DE_RESUMO: dict = {}
-
-
-def limpar_cache_de_resumo() -> None:
-    """`tests/conftest.py::ambiente` chama isto a cada teste — o mesmo
-    cuidado de `apps/core/sessao.py::limpar_caches` (armadilhas/026: cache de
-    módulo vaza entre testes)."""
-    _CACHE_DE_RESUMO.clear()
-
-
-def _site_id_da_requisicao() -> "str | None":
-    """O `site_id` desta requisição, pelo MESMO mecanismo que o resto da
-    célula já usa para resolver o site dela (`participacao.quadro_atual()`)
-    — nunca um segundo jeito de descobrir o site. `None` só quando o próprio
-    `quadro_atual()` não consegue decidir (zero ou dois quadros no banco):
-    problema de CADASTRO, não de rede — e o resto da célula já responde a
-    isso com `Http404` (`ver_quadro`, `nova_sugestao`); aqui, dentro do sino
-    fail-aberto, vira "sem número" em vez de derrubar a página.
-    """
-    try:
-        return quadro_atual().site_id
-    except Http404:
-        return None
-
-
-def sino(request):
-    """A contagem de não-lidos disponível em TODA página, sem view lembrar dela.
-
-    Context processor (e não um item que cada view acrescenta ao contexto) pela
-    Lei 1: um combinado de "não esqueça de pôr a contagem" seria esquecido pela
-    primeira view escrita depois desta. A contagem é **preguiçosa** — o valor no
-    contexto é um callable, que o Django só executa se o template pedir. Página
-    que não mostra o sino não paga consulta nenhuma; a `entrar.html`, que nem
-    estende a moldura, não paga nada.
-
-    O sino desenhado é do EVO-31 (Lote 3). **Desde a Fase 4 do sininho, o
-    dado vem de `GET /resumo`** (a caixa central), fail ABERTA: qualquer
-    tropeço (config ausente, rede, HTTP≠200, JSON fora do contrato — tudo
-    isso é `None` para `NotificacoesClient.obter_resumo`) vira "sem número",
-    nunca uma página quebrada. Cache curto por `(destinatario_id, site_id)`,
-    mesma ideia do `_CACHE_DE_AVISOS` do `funil` (PR #296): evita uma chamada
-    HTTP por página vista pela mesma pessoa numa rajada de cliques — e o
-    `None` (falha) também é cacheado, para uma `notificacoes` fora do ar não
-    virar uma tentativa de rede por página durante todo o TTL.
-    """
-
-    def contagem() -> int:
-        ator = ses.ator_atual(request)
-        if ator is None:
-            return 0
-        destinatario_id = ator.identidade.id_da_plataforma
-        if not destinatario_id:
-            # Ainda não "casou" com a plataforma (INV-SUG11): não há por
-            # quem perguntar à notificacoes. Mesma resposta do fail-open —
-            # sem número, nunca erro.
-            return 0
-        site_id = _site_id_da_requisicao()
-        if site_id is None:
-            return 0
-
-        agora = time.time()
-        chave = (destinatario_id, site_id)
-        hit = _CACHE_DE_RESUMO.get(chave)
-        if hit and hit[0] > agora:
-            return hit[1] or 0
-
-        valor = NotificacoesClient().obter_resumo(
-            destinatario_id=destinatario_id, site_id=site_id
-        )
-        if len(_CACHE_DE_RESUMO) >= MAXIMO_EM_CACHE:
-            _CACHE_DE_RESUMO.clear()
-        _CACHE_DE_RESUMO[chave] = (agora + TTL_DO_RESUMO, valor)
-        return valor or 0
-
-    return {"avisos_nao_lidos": contagem}
-
-
-# ---------------------------------------------------------------------------
-# A tela de avisos: fail VISÍVEL — a regra OPOSTA do sino (Escolha 2,
-# `DECISAO-fase-4-do-sininho.md`). Esta página É a função dela: esconder uma
+# A tela de avisos: fail VISÍVEL. Esta página É a função dela: esconder uma
 # falha em silêncio faria a pessoa achar que não tem avisos quando a caixa
 # central é que está fora do ar. Vazio de verdade e falha são estados
 # DIFERENTES, nunca o mesmo visual.
@@ -623,6 +557,26 @@ def _destaque_para_o_template(item: dict, parametros: dict) -> dict:
     return {"semana": semana}
 
 
+def _portfolio_para_o_template(item: dict, parametros: dict) -> dict:
+    """[PORTFÓLIO] A escola conferiu o portfólio, e o selo saiu.
+
+    Quem chega aqui pediu a conferência e esperou numa fila com prazo, então a
+    frase responde à pergunta que essa pessoa está fazendo há dias.
+
+    O `portfolio_id` **não vai para a tela**, pela mesma razão do `matricula_id`
+    e do `conquista_slug`: é identificador opaco, e o aluno não pode usá-lo para
+    nada. O que ele quer saber está na Prancheta dele, e é para lá que a frase o
+    manda, sem link (a Prancheta mora na célula `pages`, que esta tela não
+    consulta, e um endereço escrito à mão aqui seria a segunda verdade sobre
+    onde ela fica).
+    """
+    return {
+        "papel_frase": PAPEL_DE_QUEM_CONFERIU_FRASES.get(
+            parametros.get("conferido_por_papel") or "", ""
+        )
+    }
+
+
 #: [ASSUNTOS] Assunto → quem desenha o cartão dele. Uma tabela, e não uma escada
 #: de `if`, porque assunto novo passou a ser rotina: foram DOIS em 29/08, e mais
 #: QUATRO em 01/09. A tabela também é o que torna barato o teste que mais
@@ -633,6 +587,7 @@ _DESENHO_DO_CARTAO = {
     ASSUNTO_CONQUISTA: _conquista_para_o_template,
     ASSUNTO_MARCO: _marco_para_o_template,
     ASSUNTO_DESTAQUE: _destaque_para_o_template,
+    ASSUNTO_PORTFOLIO: _portfolio_para_o_template,
 }
 
 
@@ -699,7 +654,7 @@ def _item_para_o_template(item: dict, sugestoes: dict[str, dict]) -> dict:
 def ver_avisos(request, ator):
     """A lista dos avisos DESTA pessoa — lida da caixa central desde a Fase
     3/4 do sininho (`DECISAO-fase-2-do-sininho.md` §3), não mais do `Aviso`
-    local. Ver o bloco acima: fail VISÍVEL, a regra oposta do sino.
+    local. Ver o bloco acima: fail VISÍVEL.
     """
     destinatario_id = ator.identidade.id_da_plataforma
     site_id = quadro_atual().site_id

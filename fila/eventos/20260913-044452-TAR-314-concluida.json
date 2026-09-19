@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-044452-TAR-314-concluida",
+  "tarefa": "TAR-314",
+  "evento": "concluida",
+  "quando": "2026-09-13T04:44:52+00:00",
+  "quem": "agent/fila/medicao-nao-e-decisao-do-mantenedor",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1617",
+  "verificado_em": "2026-09-13"
+}

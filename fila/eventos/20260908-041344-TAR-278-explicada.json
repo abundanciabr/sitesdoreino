@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260908-041344-TAR-278-explicada",
+  "tarefa": "TAR-278",
+  "evento": "explicada",
+  "quando": "2026-09-08T04:13:44+00:00",
+  "quem": "Missão corretiva do mantenedor de 08/09/2026, complemento da TAR-277",
+  "o_que_e": "Correção das lacunas da abertura, instruções, prazo de validação e medição por tarefa",
+  "o_que_muda": "Impede declarar concluído um percurso com obrigação antiga ou prova incompleta",
+  "exemplo": "Duas tarefas incompletas não podem aparecer como um percurso completo",
+  "importancia": 95
+}
