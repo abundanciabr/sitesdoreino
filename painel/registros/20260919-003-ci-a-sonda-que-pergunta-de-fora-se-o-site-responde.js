@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-003-ci-a-sonda-que-pergunta-de-fora-se-o-site-responde",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: a sonda que pergunta de fora se o site responde",
+  detalhe: "A sonda nasceu vermelha e ficou verde; 8 sabotagens reprovaram uma a uma, e um host inexistente produziu o aviso com saida 1.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1740. Validação local: árvore 6a722c30bddf64d0b5934cb198773efb67db08c9; commit 834febab50884f67edec506a5b3c11f715e794ba; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-460",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

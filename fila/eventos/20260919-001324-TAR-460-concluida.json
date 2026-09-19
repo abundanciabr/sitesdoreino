@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-001324-TAR-460-concluida",
+  "tarefa": "TAR-460",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:13:24+00:00",
+  "quem": "agent/ci/sonda-o-site-responde",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1740",
+  "verificado_em": "2026-09-19"
+}
