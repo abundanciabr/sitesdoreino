@@ -281,11 +281,43 @@ if (template.indexOf("__DADOS_DO_PAINEL__") === -1) {
   erro("painel.template.html não tem o marcador __DADOS_DO_PAINEL__ — sem ele a página nasceria sem dados e sem regras.");
 }
 
+// -----------------------------------------------------------------------------
+// O RESUMO EMBARCADO — montado UMA vez, e é o MESMO objeto que a página recebe e
+// que a régua mede. Não são duas montagens que deveriam bater: é uma coisa só.
+//
+// POR QUE ISTO EXISTE. Até 19/09/2026 havia duas. A régua media
+// `resumo.registros` e a página recebia `{respondidos, confianca, registros,
+// maisRecenteQuando, comPrazoNoLivro, totalNoLivro}`. O orçamento cobrava um
+// subconjunto do que era realmente embarcado, e foi exatamente nessa fresta que
+// o furo do PR #1758 morou: `respondidos` carregava um id novo por par
+// encerrado, crescia sem teto e o portão não o via, porque ele estava do lado de
+// fora da régua. Os checks ficaram verdes sobre um resumo que crescia.
+//
+// Duas montagens que "deveriam" bater são o lugar onde a próxima fresta nasce.
+// Aqui a régua e o embarcado são o mesmo objeto, medido uma vez só, e um guarda
+// do teste do gerador confere byte a byte que o número declarado em
+// `orcamento.resumoBytes` é o tamanho do que `PAINEL.resumo` de fato carrega.
+// -----------------------------------------------------------------------------
+var resumoEmbarcado = {
+  respondidos: resumo.respondidos,
+  // Contada sobre o livro INTEIRO por `montarResumo`. Ficava de fora até
+  // 19/09/2026: a caixa "Posso confiar nisto?" lê `PAINEL.resumo.confianca`,
+  // não achava nada e desistia em silêncio, e a única vista que mede o próprio
+  // painel nunca chegou a desenhar. E ela é carga, não enfeite: é dela que a
+  // capa tira quantas afirmações sem prova existem no livro, agora que o bloco
+  // "Dito, mas não comprovado" mostra só as mais recentes.
+  confianca: resumo.confianca,
+  registros: resumo.registros,
+  maisRecenteQuando: resumo.maisRecenteQuando,
+  comPrazoNoLivro: resumo.comPrazoNoLivro,
+  totalNoLivro: resumo.totalNoLivro
+};
+
 // Montadas por concatenação para que este arquivo-fonte não contenha, ele
 // próprio, uma tag de fechamento solta.
 // Medido ANTES de montar o bloco de dados: é ele que a página carimba para
 // poder mostrar quanto do orçamento já foi usado.
-var bytesResumo = Buffer.byteLength(JSON.stringify(resumo.registros), "utf8");
+var bytesResumo = Buffer.byteLength(JSON.stringify(resumoEmbarcado), "utf8");
 
 var ABRE = "<" + "script>";
 var FECHA = "<" + "/script>";
@@ -321,21 +353,10 @@ var dados = [
   // `null` quando não há nenhum — nunca uma data inventada.
   "  pedidosDoDono: { quantidade: " + pedidosDoDono.length + ", maisAntigoQuando: " +
     JSON.stringify(pedidosDoDono.length ? pedidosDoDono[0].registro.quando : null) + " },",
-  "  resumo: JSON.parse(" + comoTextoJS({
-    respondidos: resumo.respondidos,
-    // Contada sobre o livro INTEIRO por `montarResumo`, e embarcada aqui.
-    // Ficava de fora até 19/09/2026: a caixa "Posso confiar nisto?" lê
-    // `PAINEL.resumo.confianca`, não achava nada e desistia em silêncio — a
-    // única vista que mede o próprio painel nunca chegou a desenhar. E ela
-    // passou a ser carga: é dela que a capa tira quantas afirmações sem prova
-    // existem no livro, agora que o bloco "Dito, mas não comprovado" mostra só
-    // as mais recentes (`SEM_PROVA_NO_RESUMO`).
-    confianca: resumo.confianca,
-    registros: resumo.registros,
-    maisRecenteQuando: resumo.maisRecenteQuando,
-    comPrazoNoLivro: resumo.comPrazoNoLivro,
-    totalNoLivro: resumo.totalNoLivro
-  }) + ")",
+  // O MESMO objeto que `bytesResumo` mediu, e não uma segunda montagem igual a
+  // ele. Trocar isto por um literal novo devolve a fresta que o guarda
+  // "o tamanho declarado é o tamanho do que a página carrega" existe para pegar.
+  "  resumo: JSON.parse(" + comoTextoJS(resumoEmbarcado) + ")",
   "};",
   FECHA
 ].join("\n");

@@ -101,6 +101,46 @@ caso("painel.html traz as REGRAS embutidas (a lógica deixou de ser um pedido)",
 // mostraria uma lista curta com cara de lista completa.
 caso("painel.html traz a conta de confiança do livro inteiro",
   leia(dir1, "painel.html").replace(/\\/g, "").indexOf('"confianca":{"afirmacoes":') !== -1);
+
+// ---------------------------------------------------------------------------
+// A RÉGUA É O EMBARCADO (19/09/2026) — o guarda byte a byte.
+//
+// Até hoje o gerador media uma coisa e embarcava outra: `resumoBytes` pesava
+// `resumo.registros`, e a página recebia um objeto MAIOR, com `respondidos`,
+// `confianca` e as contagens do livro. O orçamento cobrava um subconjunto do
+// que de fato viajava, e foi nessa fresta que o furo do PR #1758 morou:
+// `respondidos` crescia sem teto do lado de FORA da régua, e os checks ficaram
+// verdes sobre um resumo que crescia.
+//
+// A cura foi montar `resumoEmbarcado` uma vez só e usar o MESMO objeto nos dois
+// lugares. Este guarda é o que impede a fresta de voltar: ele não confere o
+// código, confere o RESULTADO. Lê do painel gerado o número declarado em
+// `orcamento.resumoBytes` e o texto que `PAINEL.resumo` de fato carrega, e
+// reprova se divergirem em UM byte.
+//
+// Lê o texto embarcado, e não um objeto reconstruído: o que a página custa é o
+// texto que viaja nela. Medir um objeto remontado seria inventar uma terceira
+// montagem para conferir as outras duas.
+function resumoEmbarcadoDe(html) {
+  var linha = html.split("\n").filter(function (l) {
+    return l.indexOf("  resumo: JSON.parse(") === 0;
+  });
+  if (linha.length !== 1) return null;
+  var literal = linha[0].slice("  resumo: JSON.parse(".length, -1);
+  try { return JSON.parse(literal); } catch (e) { return null; }
+}
+var htmlDoResumo = leia(dir1, "painel.html");
+var textoEmbarcado = resumoEmbarcadoDe(htmlDoResumo);
+var declarado = htmlDoResumo.match(/resumoBytes: (\d+)/);
+caso("o painel declara um resumoBytes e carrega um PAINEL.resumo legíveis",
+  !!textoEmbarcado && !!declarado);
+caso("o tamanho DECLARADO é, byte a byte, o tamanho do que PAINEL.resumo carrega",
+  !!textoEmbarcado && !!declarado &&
+  Number(declarado[1]) === Buffer.byteLength(textoEmbarcado, "utf8"));
+// E o texto embarcado é a forma canônica do objeto: se não fosse, o navegador
+// leria uma coisa e a régua teria medido outra, com os dois lados "certos".
+caso("...e esse texto é exatamente o que JSON.stringify devolve para o objeto",
+  !!textoEmbarcado && JSON.stringify(JSON.parse(textoEmbarcado)) === textoEmbarcado);
 caso("--conferir com o painel em dia passa (exit 0)", roda(dir1, ["--conferir"]).code === 0);
 caso("o passado vira um arquivo POR MÊS, com o conteúdo",
   existe(dir1, "livro-202608.js") && leia(dir1, "livro-202608.js").indexOf("window.LIVRO") !== -1);

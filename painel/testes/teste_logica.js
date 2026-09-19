@@ -959,6 +959,43 @@ function livroDaEscala(n, dimensao) {
 function bytesDoResumoInteiro(livro) {
   return Buffer.byteLength(JSON.stringify(LOGICA.montarResumo(livro)), "utf8");
 }
+// AS ÚNICAS DIFERENÇAS TOLERADAS, e cada uma tem nome. São as contagens sobre o
+// livro inteiro: elas PRECISAM crescer, porque são a verdade sobre o tamanho do
+// livro, e crescem só em algarismos (dez vezes mais registros acrescenta um
+// dígito). Zerá-las aqui não as esconde do resumo: a comparação abaixo troca só
+// o valor delas pelo mesmo número dos dois lados, e continua exigindo que as
+// CHAVES estejam lá e que TODO o resto seja idêntico.
+//
+// A versão anterior desta guarda aceitava "até 32 bytes de diferença" e não
+// perguntava de onde vinham. Tolerância de número redondo é um lugar onde um
+// furo cabe sem ninguém ver: 32 bytes dão para um id inteiro passar sem acusar.
+// Depois desta troca, a única diferença admitida é a que se sabe nomear, e
+// qualquer outra reprova.
+var CONTAGENS_DO_LIVRO = ["totalNoLivro", "comPrazoNoLivro"];
+var CONTAGENS_DA_CONFIANCA = ["afirmacoes", "comProvaConferida", "rumosCumpridos", "rumosAbertos"];
+function normalizado(resumo) {
+  var copia = JSON.parse(JSON.stringify(resumo));
+  CONTAGENS_DO_LIVRO.forEach(function (c) {
+    if (copia[c] === undefined) throw new Error("contagem sumiu do resumo: " + c);
+    copia[c] = 0;
+  });
+  CONTAGENS_DA_CONFIANCA.forEach(function (c) {
+    if (!copia.confianca || copia.confianca[c] === undefined) throw new Error("contagem sumiu da confianca: " + c);
+    copia.confianca[c] = 0;
+  });
+  // A SEGUNDA diferença com nome: QUAIS registros enchem a janela dos recentes
+  // muda, e tem de mudar — com mil fechados os trinta mais novos são outros. O
+  // que a propriedade afirma não é que sejam os mesmos, é que sejam QUANTOS e
+  // PESEM quanto. Então a lista entra na comparação pela contagem e pelos bytes,
+  // e a identidade dela fica para os casos que a cobrem: os bytes exatos, acima,
+  // e os três abertos que não podem sumir, abaixo.
+  copia.registros = {
+    quantos: resumo.registros.length,
+    bytes: Buffer.byteLength(JSON.stringify(resumo.registros), "utf8")
+  };
+  return JSON.stringify(copia);
+}
+
 function medirEscala(n, dimensao) {
   var r = LOGICA.montarResumo(livroDaEscala(n, dimensao));
   var ids = {};
@@ -966,19 +1003,12 @@ function medirEscala(n, dimensao) {
   return {
     bytes: Buffer.byteLength(JSON.stringify(r), "utf8"),
     bytesDosRegistros: Buffer.byteLength(JSON.stringify(r.registros), "utf8"),
+    normalizado: normalizado(r),
     pedido: !!ids[abertoPedido.arquivo],
     incidente: !!ids[abertoIncidente.arquivo],
     rumo: !!ids[abertoRumo.arquivo]
   };
 }
-
-// O único pedaço do resumo que PODE crescer com o total, e tem de poder: as
-// contagens honestas sobre o livro inteiro (`confianca`, `totalNoLivro`,
-// `comPrazoNoLivro`). Elas são numerais decimais — dez vezes mais registros
-// acrescenta UM algarismo a cada uma. Medido de cem para mil: 3 bytes. Zerar
-// isto seria mentir sobre o tamanho do livro; o que não se admite é o termo
-// linear, e é ele que os casos abaixo proíbem.
-var DIGITOS_DAS_CONTAGENS = 32;
 
 ["sem-prazo", "com-prazo", "par-encerrado"].forEach(function (dimensao) {
   var um = medirEscala(1, dimensao);
@@ -992,9 +1022,15 @@ var DIGITOS_DAS_CONTAGENS = 32;
   caso("cem e mil fechados (" + dimensao + ") levam a MESMA carga, byte a byte",
     cem.bytesDosRegistros === mil.bytesDosRegistros);
   // O resumo INTEIRO, e não só a lista: foi medindo meia coisa que a primeira
-  // versão desta guarda aprovou um resumo que crescia por `respondidos`.
-  caso("...e o resumo INTEIRO só cresce os algarismos das contagens (" + dimensao + ")",
-    mil.bytes - cem.bytes >= 0 && mil.bytes - cem.bytes <= DIGITOS_DAS_CONTAGENS);
+  // versão desta guarda aprovou um resumo que crescia por `respondidos`. E a
+  // comparação é de IGUALDADE EXATA depois de zerar as contagens nomeadas: sem
+  // tolerância, nenhum byte sem dono.
+  caso("...e o resumo INTEIRO é IDÊNTICO fora as contagens do livro (" + dimensao + ")",
+    cem.normalizado === mil.normalizado);
+  // E o que sobra de diferença nos bytes crus são só os algarismos dessas
+  // contagens — menos do que um único id ocuparia.
+  caso("...e o que resta de diferença crua são algarismos, não conteúdo (" + dimensao + ")",
+    mil.bytes - cem.bytes >= 0 && mil.bytes - cem.bytes < 16);
   // De um para cem as janelas fixas enchem, e é só elas que podem crescer.
   // Cheias, novecentos fechados a mais não movem a carga.
   caso("...e o crescimento de um para cem é a janela fixa, que então trava (" + dimensao + ")",
