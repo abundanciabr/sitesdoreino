@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-002215-TAR-481-concluida",
+  "tarefa": "TAR-481",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:22:15+00:00",
+  "quem": "agent/armadilhas/exe-de-venv-bloqueado-controle-de-app",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1748",
+  "verificado_em": "2026-09-19"
+}
