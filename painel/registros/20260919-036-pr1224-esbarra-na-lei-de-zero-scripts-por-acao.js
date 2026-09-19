@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-036-pr1224-esbarra-na-lei-de-zero-scripts-por-acao",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "O lembrete de checklist do PR 1224 esbarra na lei de zero scripts por acao",
+  detalhe: "O conflito do PR 1224 foi resolvido: os seis ganchos da main de hoje ficam intactos e entra so a entrada nova de PostToolUse.\\n\\nSo que em 11/09 voce decidiu, em DECISAO-contexto-sob-demanda.md, que nenhum script roda por acao comum e que so o Monitor mantem guarda por acao. O PR 1224 e de 06/09 e faz exatamente o que essa decisao passou a proibir: roda um script a cada Edit, Write, Bash e PowerShell, lendo o transcript. Dois testes da main travam isso (test_codex_nativo.py e test_guarda_declarada_e_sino.py, ambos exigindo PostToolUse vazio) e ficam vermelhos com a entrega.\\n\\nEsses dois arquivos estao fora dos tres caminhos do seu mandato, entao a sessao nao os altera.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1224",
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  porque_so_voce: "A decisao de 11/09 e sua e o PR 1224 a contraria de frente. So voce diz se o lembrete de checklist e a excecao que merece rodar por acao comum, ou se a decisao vale inteira e o PR morre.",
+  proximo_passo: "Responda uma das duas: (a) feche o PR 1224, ou (b) escreva o mandato tambem para ci/tests/test_codex_nativo.py e ci/tests/test_guarda_declarada_e_sino.py, abrindo a excecao nominal do lembrete de checklist nesses guardas.",
+  se_eu_nao_decidir: "O PR 1224 fica aberto e vermelho, sem integrar, e o checklist continua sem mecanismo no meio da tarefa.",
+  recomendacao: "Abrir a excecao nominal (b). O gancho nasce em sombra, so imprime uma linha a cada 8 mudancas no mundo, e o checklist no meio da tarefa foi pedido seu; mas a excecao precisa estar escrita nos guardas, senao a lei de 11/09 vira letra morta por descuido.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();
