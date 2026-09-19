@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260918-235913-TAR-378-concluida",
+  "tarefa": "TAR-378",
+  "evento": "concluida",
+  "quando": "2026-09-18T23:59:13+00:00",
+  "quem": "agent/fila/fechar-as-entregues",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1735",
+  "verificado_em": "2026-09-18"
+}

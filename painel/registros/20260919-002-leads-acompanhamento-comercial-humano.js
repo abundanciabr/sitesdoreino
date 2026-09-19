@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-002-leads-acompanhamento-comercial-humano",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "leads: acompanhamento comercial humano",
+  detalhe: "Contrato congelado virou código: dez operações, histórico imutável, transferência com aceite. 17 guardas sabotadas, 17 testes reprovaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1733. Validação local: árvore cec9082909452d8139518048d2f789f6b6989a2f; commit fe48e61a4ee950eec8b4d4962eae4f3ab7d8f483; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-420",
+  gravidade: "info",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
