@@ -4,12 +4,18 @@
 # agentes nestes caminhos. Troque @abundanciabr pelo seu usuário.
 # =============================================================================
 /contracts/                 @abundanciabr
+/packages/                  @abundanciabr
 /services/pagamentos/       @abundanciabr
 /services/checkout/         @abundanciabr
 /infra/                     @abundanciabr
 /ci/                        @abundanciabr
 /.github/                   @abundanciabr
+/.claude/settings.json      @abundanciabr
+/.codex/hooks.json          @abundanciabr
+/.githooks/                 @abundanciabr
 /CONSTITUICAO.md            @abundanciabr
+/CLAUDE.md                  @abundanciabr
 /INVARIANTES.md             @abundanciabr
 /RITOS.md                   @abundanciabr
 /CAMINHO-DOURADO.md         @abundanciabr
+/docs/decisoes/              @abundanciabr

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-215506-TAR-408-explicada",
+  "tarefa": "TAR-408",
+  "evento": "explicada",
+  "quando": "2026-09-13T21:55:06+00:00",
+  "quem": "Falha enviada pelo mantenedor em 13/09/2026",
+  "o_que_e": "A tela do rádio envia formulário para uma API que espera JSON e falha.",
+  "o_que_muda": "A mensagem passa a ser gravada pelo próprio formulário, com atualização automática compatível com a segurança.",
+  "exemplo": "Escrever uma mensagem e clicar Enviar volta ao rádio mostrando o texto gravado.",
+  "importancia": 100
+}

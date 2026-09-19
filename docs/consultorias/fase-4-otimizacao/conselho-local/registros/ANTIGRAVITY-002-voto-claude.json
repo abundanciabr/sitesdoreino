@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-002",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:30:00-03:00",
+  "proposta_sha256": "ae2a9e41af61a77e01a07193b1f8e7b97305f62debcc966cba97b1ed81e7356c",
+  "decisao": "reprovar",
+  "importancia": 0,
+  "justificativa": "Reprovo por baseline desatualizado e por aceite tecnicamente inviavel na ordem proposta. Tudo medido contra origin/main 22a9bd26. BASELINE: a afirmacao 'a IA consome ate 22% da cota bloqueada em loops' e o numero HISTORICO de ci/esperar.py linha 76, de antes das Fases 1-3, apresentado como estado atual. Hoje o despacho JA nao espera: .codex/agents/despacho.toml secao 7 diz 'Voce nao arma espera nem pede pouso'. E CLAUDE.md diz 'Nao espere checks, merge ou deploy'. A pista JA acorda por evento: .github/workflows/pouso.yml tem workflow_run e pull_request_target labeled, com cron de 15 min apenas como rede. ACEITE: 'mover o acompanhamento do deploy integralmente para automacao passiva' pressupoe um mecanismo que nao existe. Conferi o unico candidato: .github/workflows/alarme-main.yml dispara em 'push: branches: [main]' e abre issue quando a main quebra. Ele nao reporta veredito de deploy, e nenhum webhook do GitHub acorda uma sessao de terminal ja encerrada. Apagar ci/esperar.py hoje nao cria o aviso: apaga o unico caminho pelo qual o veredito do deploy chega ao mantenedor. O ganho seria silencio, e silencio foi a doenca que a armadilhas/161 documentou. O QUE MUDA MEU VOTO PARA APROVAR COM IMPORTANCIA 2: inverter a ordem. Primeiro construir e provar o reportador passivo do veredito de deploy; so depois apagar ci/esperar.py, com a prova de que o veredito continua chegando. Como duas propostas, nao uma. RESSALVA QUE SUSTENTA A PROPOSTA: sobra custo real. O intervalo padrao de ci/esperar.py e 15 s (linha 858) e a maestro ainda espera o deploy. O problema existe; a solucao proposta remove o termometro em vez da febre."
+}

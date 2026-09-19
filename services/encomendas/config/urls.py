@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.core import telas_do_cliente
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -29,9 +30,55 @@ from config.api import api
 # que importa é o teste de 401 em TODAS as operações. A topologia não fecha nada
 # aqui, e escrever o contrário no comentário seria ensinar errado quem chegar
 # depois.
+#
+# AS TELAS DO CLIENTE (Fase 3) ENTRAM AQUI, E UMA ROTA FALTA DE PROPÓSITO:
+# **não existe rota de pagar.** A pausa financeira de 22/08/2026 continua, e
+# uma rota que respondesse "ainda não" seria uma promessa com data. O que não
+# existe responde 404, e 404 não promete nada. O guarda que mede essa ausência é
+# `tests/test_cliente_nao_paga_nem_ve_contato.py`, e ele percorre os endereços
+# que alguém escreveria por instinto. Quem registra "pago pela escola" é o
+# plantão, com autor e data (lei §3.4).
 urlpatterns = [
     path("healthz", healthz),
     path("plantao", plantao, name="plantao"),
     path("plantao/titulo", dar_titulo, name="plantao_titulo"),
+    path("cardapio", telas_do_cliente.cardapio_do_cliente, name="cardapio_do_cliente"),
+    path("cardapio/<str:cartao>", telas_do_cliente.briefing, name="briefing"),
+    path(
+        "cardapio/<str:cartao>/pedir",
+        telas_do_cliente.abrir_pedido,
+        name="abrir_pedido",
+    ),
+    path("pedidos/<uuid:encomenda_id>", telas_do_cliente.pedido, name="pedido"),
+    path(
+        "pedidos/<uuid:encomenda_id>/aceitar",
+        telas_do_cliente.aceitar_proposta,
+        name="aceitar_proposta",
+    ),
+    path(
+        "pedidos/<uuid:encomenda_id>/contrapor",
+        telas_do_cliente.contrapor,
+        name="contrapor",
+    ),
+    path(
+        "pedidos/<uuid:encomenda_id>/desistir",
+        telas_do_cliente.desistir_da_negociacao,
+        name="desistir_da_negociacao",
+    ),
+    path(
+        "pedidos/<uuid:encomenda_id>/aprovar",
+        telas_do_cliente.aprovar_entrega,
+        name="aprovar_entrega",
+    ),
+    path(
+        "pedidos/<uuid:encomenda_id>/ajuste",
+        telas_do_cliente.pedir_ajuste,
+        name="pedir_ajuste",
+    ),
+    path(
+        "pedidos/<uuid:encomenda_id>/cancelar",
+        telas_do_cliente.cancelar_pedido,
+        name="cancelar_pedido",
+    ),
     path("api/encomendas/", api.urls),
 ]

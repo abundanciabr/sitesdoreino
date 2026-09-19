@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-057-admin-radio-da-triade",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: rádio da tríade",
+  detalhe: "Rádio append-only para o mantenedor, com leitura incremental, tela autenticada e CLI por token. Não empurra texto para sessão de IA.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1629. Validação local: árvore afb3cf01d2e219c93f84426e1513523ec0511540; commit 4790a871e5a56018463a8fd7e8b6355a55249132; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-374",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
@@ -22,8 +23,10 @@ from apps.core.editor_de_documentos import (
     documento_arquivar,
     documento_criar,
     documento_desarquivar,
+    documento_despublicar,
     documento_editar,
     documento_novo,
+    documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
@@ -68,9 +71,16 @@ from apps.core.menu import (
     menu_versao_padrao,
 )
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
-from apps.core.planos_para_ia import plano_publico, planos_indice
+from apps.core.planos_para_ia import (
+    plano_mestre,
+    plano_mestre_documento,
+    plano_mestre_mtime,
+    plano_publico,
+    planos_indice,
+)
 from apps.core.painel import painel, painel_arquivo
 from apps.core.pendencias import pendencias
+from apps.core.ranking_das_ias import ranking_das_ias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -80,6 +90,7 @@ from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao, pedido_reuniao
 from apps.core.robos import excluir_tarefa, robos
+from apps.core.radio import radio_api, radio_pagina, radio_script
 from apps.core.talentos import talentos
 from apps.core.aulas import (
     aula,
@@ -109,6 +120,7 @@ from apps.core.sumario import (
     sumario_prever,
 )
 from apps.core.views import (
+    acesso_local,
     escola,
     escola_admin_promover,
     escola_admin_remover,
@@ -208,6 +220,17 @@ urlpatterns = [
     # Barra final pela convencao das outras telas; quem chega sem ela e
     # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
     path("pendencias/", pendencias, name="pendencias"),
+    # O PLACAR DAS IAS (`apps/core/ranking_das_ias.py`, 17/09/2026) — quanto cada
+    # IA da tríade publicou em `main` e quanto escreveu para publicar. Quem mede
+    # é `ci/ranking_das_ias.py`, contra `origin/main`; esta tela só ordena.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e da central acima: a
+    # rota genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela, e
+    # esta é uma tela da área, ainda que LEIA um arquivo publicado com o painel.
+    #
+    # Barra final pela convenção das outras telas; quem chega sem ela é
+    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
+    path("ranking-ias/", ranking_das_ias, name="ranking_das_ias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.
@@ -328,6 +351,16 @@ urlpatterns = [
         documento_salvar,
         name="documento_salvar",
     ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+        documento_publicar,
+        name="documento_publicar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+        documento_despublicar,
+        name="documento_despublicar",
+    ),
     # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
     # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
     # aplica por GET e decisao que um pre-carregador de link, um antivirus
@@ -425,6 +458,13 @@ urlpatterns = [
     ),
     path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
     re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
+    path("plano-mestre/", plano_mestre, name="plano_mestre"),
+    path("plano-mestre/mtime.json", plano_mestre_mtime, name="plano_mestre_mtime"),
+    re_path(
+        r"^plano-mestre/documentos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
+        plano_mestre_documento,
+        name="plano_mestre_documento",
+    ),
     # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
     # acima. Os dois são "painéis" e é por isso que a separação precisa estar
     # no endereço, e não só no texto do link: `/painel/` mostra como a
@@ -447,6 +487,9 @@ urlpatterns = [
     # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
+    path("caixa/radio/", radio_pagina, name="radio_pagina"),
+    path("caixa/radio/api/", radio_api, name="radio_api"),
+    path("caixa/radio/radio.js", radio_script, name="radio_script"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
     # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),
@@ -907,3 +950,8 @@ urlpatterns = [
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
 ]
+
+if settings.ADMIN_LINK_TOKEN:
+    urlpatterns.append(
+        path("acesso-local/<str:token>/", acesso_local, name="acesso_local")
+    )

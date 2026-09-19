@@ -38,18 +38,40 @@ mutilado. Por isso a regra 1 abaixo é a primeira.
 
 ## Os papéis
 
+### Atualização de 17/09/2026: alocação externa de capacidade
+
+O mantenedor pediu regras de cooperação e eficiência para o procedimento futuro
+das três IAs. A política pretendida é alocar Premium 20x ao primeiro colocado,
+Médio 5x ao segundo e considerar a descontinuação do terceiro. Esses nomes
+descrevem alocação externa de capacidade, não sobrevivência literal ou autorização
+para uma IA agir contra outra. Os papéis fixos desta decisão continuam intactos.
+
+A régua considera participação comprovada de cada papel nas páginas publicadas
+validadas da tríade e custo comparável. Cada página conta uma vez no total da
+equipe; os artefatos de regência, construção e verificação identificam as
+participações, sem multiplicar páginas. Qualidade, segurança e prova externa
+antecedem a contagem. Ausência de dados não equivale a zero.
+
+O artefato operacional é
+[`PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md`](PROMPT-REGRAS-DE-COOPERACAO-E-EFICIENCIA-DAS-IAS.md),
+que define janela, suficiência, custo e resposta esperada de cada IA. Ele não
+implementa placar nem executa alterações de assinatura. A avaliação é diagnóstica:
+alocar planos ou descontinuar participação exige decisão humana escrita após
+evidência suficiente, preservando artefatos e passagem de trabalho. Nenhuma
+classificação muda papéis ou amplia o mandato dos agentes.
+
+### Divisão de trabalho preservada
+
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
-| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; revisa PR crítico e publica o atestado | espera check em laço; mergeia; delega arquitetura |
+| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
 | Executor | Codex | o PR pela ficha `despacho`, que grava o evento na fila e o registro no livro; a `implementacao` com prova, quando o brief a pedir | pergunta ao mantenedor; edita o clone principal; arma espera; amplia o mandato; audita; decide lei |
 | Sentinela | Antigravity | achados medidos contra `origin/main` (`proposta`) e a verificação independente de cada entrega alheia (`verificacao`) | edita código ou lei; escreve despacho; grava evento ou registro; mede a pasta local |
 
-Quem verifica o quê: a sentinela verifica toda entrega que não é de ficha
-dela; a entrega de ficha da sentinela é verificada pela maestro. A revisão
-independente que o portão de pouso exige antes do merge (`ci/mergear.py`,
-atestado de `docs/decisoes/DECISAO-revisao-e-publicacao.md`) continua sendo
-feita pelo revisor da casa e publicada pela maestro; a verificação da
-sentinela vem depois do merge e mede o aceite da ficha, não o diff.
+A sentinela verifica o aceite depois da entrega. Revisão adicional pode
+acontecer, mas não é condição de merge. A partir de 13/09/2026, o PR pronto
+integra automaticamente após os dois checks obrigatórios, preservados o
+mandato CODEOWNERS e o contrato congelado. A maestro não está no caminho do merge.
 
 ## O contrato, que já existia
 
@@ -61,7 +83,7 @@ outro nome:
 |---|---|---|
 | achado | `<AUTOR>-NNN-proposta.json`: `tipo`, `id`, `autor`, `registrado_em`, `problema`, `titulo`, `baseline` (comando e saída contra `origin/main`), `aceite`, `origem` | esta decisão |
 | decisão | `<ID>-voto-claude.json`: `tipo`, `proposta`, `autor`, `registrado_em`, `proposta_sha256`, `decisao` (`aprovar`, `reprovar`, `abster`), `importancia`, `justificativa`; a tarefa criada na fila é a decisão executável | esta decisão |
-| despacho | `fila/tarefas/NNN-slug.json`, cujo campo `despacho` recebe o brief compilado inteiro (`python ci/fila.py criar --despacho-arquivo <brief>`), com `modelo_recomendado`, `esforco_recomendado` e `teto_de_contexto` | `fila/LEIA-ME.md`, `CAMINHO-DOURADO.md` §2, `ci/economia_da_fabrica.py` |
+| despacho | `fila/tarefas/NNN-slug.json`, cujo campo `despacho` recebe o brief compilado inteiro (`python ci/fila.py criar --despacho-arquivo <brief>`), com `modelo_recomendado` e `esforco_recomendado` | `fila/LEIA-ME.md`, `CAMINHO-DOURADO.md` §2, `ci/economia_da_fabrica.py` |
 | resultado | evento `submetida` em `fila/eventos/` (PR, revisão, árvore), registro em `painel/registros/`, e `<ID>-implementacao.json` (`tipo`, `proposta`, `autor`, `registrado_em`, `proposta_sha256`, `prova`, `prova_sha256`, `resultado`, `minutos_totais`, `custo_reais`, `fonte_custo`) quando o brief pedir | `fila/LEIA-ME.md`, `painel/LEIA-ME.md`, esta decisão |
 | verificação | `<ID>-verificacao-<autor>.json`: `proposta`, `autor`, `registrado_em`, `implementacao_sha256`, `decisao` (`confirmar`, `recusar`, `abster`), `justificativa`, `prova`, `prova_sha256` | esta decisão |
 
@@ -82,15 +104,18 @@ mora lá deixa de classificar: ele lista.
 ## As três regras que não se negociam
 
 1. **Mede-se `origin/main`, nunca a pasta local.** Comando: `git fetch origin` e `git show origin/main:<caminho>` no PowerShell (no Git Bash, caminho começando por ponto quebra, `armadilhas/334`), ou uma bancada de leitura com `git worktree add ../wt-leitura --detach origin/main`.
-2. **Ninguém espera em laço.** Depois de `make pr`, o executor encerra; a maestro publica o atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra. A pista acorda por evento e mergeia. `python ci/esperar.py --entrega <N>` é consulta única, em JSON.
+2. **Ninguém espera em laço.** Depois de `make pr`, o executor encerra; a integração acontece por evento, sem revisor, atestado, etiqueta ou gesto da maestro. `python ci/esperar.py --entrega <N>` é consulta única, em JSON.
 3. **Piso de segurança.** Nenhum despacho remove guarda de CI nem lei do `CLAUDE.md`. Lei muda com decisão escrita em `docs/decisoes/`.
 
 ## O que a tríade não muda
 
 - A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
-- O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, revisor independente, atestado, pouso pela pista.
+- O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, integração automática pelos checks obrigatórios, com mandato CODEOWNERS e contrato congelado preservados.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
-- Pedido colado no Antigravity vira proposta medida contra `origin/main`, devolvida à maestro; ele não executa.
+
+Canal direto maestro-executor, sem o mantenedor levar e trazer texto. A maestro fala direto com o executor pelo comentário no PR aberto (gh pr comment), sem o mantenedor colar nada: pede correção, registra lei acordada, cobra prova, e o executor lê e responde no mesmo PR. Esse canal só existe para PR já aberto, nunca para abrir tarefa nova (isso continua exigindo fila.py criar, decisão e mandato do mantenedor).
+
+Canal automático da sentinela (Antigravity), decidido pelo mantenedor em 14/09/2026. O Antigravity tem schedule (cron próprio), run_command (PowerShell local, inclusive gh), escrita de arquivo fora de sessão interativa e leitura/escrita em qualquer pasta. A casa usa, por decisão do mantenedor, só a caixa de correio e o gh, sem cron: o Antigravity não acorda sozinho, mas quando alguém abre a sessão dele, ele lê a caixa e pode comentar em PR direto pelo gh, sem o mantenedor colar comando. A caixa mora em docs/consultorias/fase-4-otimizacao/conselho-local/correio/ (fora do Git, já criada, com para-antigravity/ e para-maestro/), um arquivo novo por mensagem, nunca editar mensagem alheia, nome AAAAMMDD-HHMMSS-remetente-assunto.md. Ele continua nunca editando código, lei, despacho, evento ou registro; proposta e verificação continuam sendo os únicos artefatos que ele grava como decisão. A regra 1 (medir origin/main, nunca a pasta local) continua valendo sem exceção.
 
 ## O primeiro lote, em 12/09/2026
 
@@ -129,6 +154,8 @@ digitando. O que ele sabe conferir é o rastro: tarefa na fila, brief roteado,
 PR com recibo, atestado com três identidades distintas.
 
 ## A memória
+
+- 17/09/2026: pedido direto do mantenedor estabelece a política pretendida de alocação externa por cooperação e eficiência. O prompt operacional explicita evidência e suficiência; os papéis fixos e a decisão humana sobre planos permanecem.
 
 - 12/09/2026, manhã: conselho local da Fase 4 (Codex propõe o regulamento; Claude Code e Antigravity escrevem fichas; 0 pontos).
 - 12/09/2026, tarde: o mantenedor pede a tríade. Claude Code escreve o protocolo e os dois convites na pasta de trabalho do mantenedor, fora do Git. Codex aceita às 16:49, Antigravity às 16:47; os aceites ficam gravados na mesma pasta. O protocolo é esta decisão.

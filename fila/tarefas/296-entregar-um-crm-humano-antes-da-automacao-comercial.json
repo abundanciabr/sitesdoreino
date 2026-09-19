@@ -9,7 +9,8 @@
     "fila"
   ],
   "depende_de": [
-    "TAR-283"
+    "TAR-283",
+    "TAR-284"
   ],
   "cria": [],
   "move": [

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-001-admin-documentos-privados",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "admin: documentos privados",
+  detalhe: "Documentos nascem privados; publicar exige ação explícita. Provas: 2043 testes, Black, migrações e contrato. Sem alterar contrato público.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1712. Validação local: árvore f33e0e23336608587e5abf9c31d39cd25734d6b8; commit 047ab16391e32767e2e9910e2872131bf3fd339a; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-451",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

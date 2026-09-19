@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-001",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "As 5 assinaturas de espera muda (watch de run, watch de checks, laco sem teto, soneca longa, soneca longa PS) so sao recusadas quando tool_name e Bash ou PowerShell. O gancho PreToolUse de origin/main tem matcher 'Monitor' apenas, e ci/muralha_da_espera.py:230 filtra por ('Bash','PowerShell'): nenhuma das 5 e barrada no unico ramo que chega ao gancho.",
+  "titulo": "Devolver visao a muralha da espera no ramo Monitor",
+  "baseline": "Contra origin/main=22a9bd26. `git show origin/main:.claude/settings.json` mostra PreToolUse com um unico matcher, \"Monitor\". `git show origin/main:ci/muralha_da_espera.py | sed -n '230p'` mostra `if ferramenta in (\"Bash\", \"PowerShell\")`. Rodando as 5 assinaturas contra o gancho variando so tool_name: Bash RECUSA, PowerShell RECUSA, Monitor PERMITE nas 5. Custo historico do que isso deixa passar, citado em ci/esperar.py:76: espera muda consumia de 18% a 21,8% da cota semanal.",
+  "aceite": "Rodar as 5 assinaturas com tool_name=Monitor e obter exit 2 (RECUSA) nas 5, colando a saida; e rodar `python -m pytest ci/tests/test_muralha_da_espera.py` com 100% verde para provar que nenhum caso legitimo passou a ser barrado. Sem regressao: nenhum dos 3 falsos positivos vistos na auditoria de 12/09 (comando legitimo cujo TEXTO cita uma assinatura) pode voltar; incluir um teste para cada um."
+}

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-005713-TAR-484-concluida",
+  "tarefa": "TAR-484",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:57:13+00:00",
+  "quem": "agent/ci/congelamento-sem-comprovante-inutil",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1752",
+  "verificado_em": "2026-09-19"
+}

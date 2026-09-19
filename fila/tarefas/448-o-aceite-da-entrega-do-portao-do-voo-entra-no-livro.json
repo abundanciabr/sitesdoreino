@@ -1,0 +1,19 @@
+{
+  "arquivo": "448-o-aceite-da-entrega-do-portao-do-voo-entra-no-livro",
+  "id": "TAR-448",
+  "titulo": "O aceite da entrega do portao do voo entra no livro",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro de aceite integrado citando merge 889ac7e9 e o run 35285927510 do deploy",
+  "despacho": "# Brief compilado\n\nobjetivo: Registrar no livro o aceite da TAR-446: merge e deploy conferidos de fora\ntipo: escrita\nmodelo_recomendado: sonnet\nesforco_recomendado: medium\nmotivo_do_modelo: preenche moldes de registro, fila e armadilha; criatividade aqui e risco\ncelula: ci\n\n## Arquivos-alvo\n- painel/registros\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "Lei nova da TAR-446: merge confirmado de fora exige registro na mesma resposta",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

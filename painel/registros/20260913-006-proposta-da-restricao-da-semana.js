@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-006-proposta-da-restricao-da-semana",
+  tipo: "decisao",
+  quando: "2026-09-13",
+  titulo: "Confirmar a restrição da semana antes de tratar a direção como definida",
+  detalhe: "A estrutura do placar e da reunião já mede a suspeita da semana, mas a restrição confirmada ainda depende de escolha do mantenedor. Proposta concreta: confirmar nesta semana a etapa 'pediu entrada, foi liberada' quando a fila tiver alguém há 2 dias ou mais; se não houver fila parada, manter a direção como proposta não aprovada e revisar na próxima reunião. O compromisso que acompanha a confirmação é abrir a fila todos os dias úteis e liberar quem já pagou em até 48 horas.",
+  autoridade: "mantenedor",
+  evidencia: "TAR-312: a auditoria mediu que painel/cartoes/restricao-da-semana.json segue com confirmada null e que placar e reunião mostram estrutura sem decisão confirmada.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "painel",
+  vence_em_dias: 7,
+  porque_so_voce: "A restrição confirmada é uma escolha de prioridade do ciclo, e a lei do painel separa suspeita calculada de confirmação do mantenedor.",
+  proximo_passo: "Na reunião, aprovar ou recusar a confirmação da etapa 'pediu entrada, foi liberada' como restrição da semana.",
+  se_eu_nao_decidir: "O painel continua mostrando proposta e suspeita, mas não declara direção confirmada nem fecha o aceite técnico da TAR-312.",
+  recomendacao: "Aprovar a etapa de liberação como restrição quando houver fila parada há 2 dias ou mais, porque cada pessoa ali já pagou e vira +1 na meta ao ser confirmada.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

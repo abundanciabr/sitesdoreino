@@ -1,0 +1,23 @@
+{
+  "arquivo": "421-expor-transferencia-humana-e-retomada-comercial-pelos-servic",
+  "id": "TAR-421",
+  "titulo": "Expor transferência humana e retomada comercial pelos serviços",
+  "toca": [
+    "leads",
+    "funil",
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-420"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Todos os critérios do aceite do despacho comprovados com comandos, testes e publicação quando houver; nenhum segredo, gasto, acesso cruzado a banco ou interface administrativa na VPS.",
+  "despacho": "# Brief compilado\n\nobjetivo: Expor transferência humana e retomada comercial pelos serviços\ntipo: contrato\nmodelo_recomendado: gpt-6-astra\nesforco_recomendado: high\nmotivo_do_modelo: muda promessa entre celulas; a economia errada aqui quebra consumidores\ncelula: leads\n\n## Arquivos-alvo\n- services/leads/\n- services/funil/\n- services/mensageria/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n## Objetivo\nDisponibilizar eventos e endpoints provedores de transferência humana e retomada comercial em leads, funil e mensageria. Depende do provedor CRM criado nesta migração; reutilizar suas transfers/accept/refuse, sem segundo modelo de responsabilidade.\n## Alvos\nservices/leads/, services/funil/, services/mensageria/ somente no provedor e testes correspondentes. Preferir PR por célula, com dependência explícita; esta tarefa representa a capacidade integrada e não autoriza ultrapassar o teto de arquivos.\n## Somente leitura\ncontracts/leads.openapi.yaml, contracts/funil.openapi.yaml, contracts/mensageria.openapi.yaml, contracts/eventos/ e services/admin/. A busca focal por handoff/retomada/transferencia nos eventos e provedores funil/mensageria não encontrou implementação; confirmar lacuna e nomes contratuais antes de editar.\n## Aceite\nContrato existente consumido sem drift; se faltarem eventos ou operação de retomada, apresentar lacuna e parar essa parte até Rito de Contrato em PR exclusivo. Provedor primeiro, consumidores por HTTP/eventos versionados. Testes de transferência aceita/recusada, parada da automação, retomada autorizada, reentrega idempotente, falha parcial e isolamento por site; sem mensagem real enviada, compra, desconto ou publicação automática. Suítes de todas as células tocadas verdes e prova da publicação.\n## Restrições\nNenhuma autorização para segredo, gasto, SSH manual, leitura ou escrita no banco de outra célula, tela administrativa na VPS, conteúdo ou copiloto. Contratos congelados ficam somente leitura; lacuna de contrato volta à maestro para Rito de Contrato em PR exclusivo, provedor antes de consumidor. CODEOWNERS exige mandato nominal do mantenedor no PR. Código reconstruível do Admin local permanece no Git; trabalho operacional vivo permanece no localhost. Não criar UI nesta tarefa.",
+  "origem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

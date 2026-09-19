@@ -24,8 +24,13 @@ nem verificação da sentinela, nunca cria despacho.
   `NNN`, e o dia do nome do arquivo é o UTC de hoje: `AAAAMMDD-NNN-slug.js`).
 - Molde: copie um registro existente e troque TODOS os campos. O `arquivo` é o
   nome sem `.js`. Tipos: `decisao | pendencia | resposta | entrega | incidente
-  | medicao | frente | rumo | nota`. Autoridade: `mantenedor | github | sonda |
-  rito | sessao`. Frente: `site | comunidade | curso | vender | fabrica`.
+  | medicao | frente | rumo | nota | compromisso`. Autoridade: `mantenedor |
+  github | sonda | rito | sessao`. Frente: `site | comunidade | curso | vender |
+  fabrica`.
+- `compromisso` é o que alguém promete fazer nesta semana. Ele exige
+  `vence_em_dias`, um número maior que zero, e quem o cumpre escreve outro
+  registro com `responde_a` apontando para ele: o veredito (cumprido, não
+  cumprido, em aberto) é calculado disso, nunca marcado à mão.
 - `area` é o nome do ramo em que o trabalho aconteceu (`agent/<area>/...`), um
   dos nomes de `painel/areas.json`; o portão do pouso já confere, em sombra.
 - Menos de 1 KB. Título para leigo, sem sigla, citando o número do PR.

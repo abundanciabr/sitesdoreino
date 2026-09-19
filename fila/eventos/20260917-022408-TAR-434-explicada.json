@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-022408-TAR-434-explicada",
+  "tarefa": "TAR-434",
+  "evento": "explicada",
+  "quando": "2026-09-17T02:24:08+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "A porta que entrega a lista de alunos do painel em pedacos, com os quatro contadores de situacao.",
+  "o_que_muda": "A tela de alunos deixa de baixar a escola inteira de uma vez, e passa a pedir uma pagina por vez.",
+  "exemplo": "Com 300 alunos, a tela hoje baixa os 300; depois disso baixa 25 e busca os proximos quando voce rolar.",
+  "importancia": 60
+}

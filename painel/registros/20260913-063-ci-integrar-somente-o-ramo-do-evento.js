@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-063-ci-integrar-somente-o-ramo-do-evento",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "ci: integrar somente o ramo do evento",
+  detalhe: "Cada evento atendia toda a fila e repetia bases e checks. A consulta agora atende apenas seu ramo, com concorrência por ramo; varredura periódica preserva recuperação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1637. Validação local: árvore 112343654b49dddc5f0643c08aa26ac3d71dc44e; commit 626a5482db22db1d3adeecb6e00aadf05c979c15; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-407",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
