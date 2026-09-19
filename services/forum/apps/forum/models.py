@@ -426,3 +426,86 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return f"{self.event} {self.event_id}"
+
+
+class ConsentimentoDaGaleria(models.Model):
+    """O aluno disse, com a própria mão, que este trabalho pode ir à Galeria.
+
+    **Por que existe uma tabela para isto, e não um `BooleanField` no tópico.**
+    O que a Galeria consome não é "está ligado", é uma AFIRMAÇÃO com autor e
+    data: quem consentiu, quando, em que escola, e qual endereço do trabalho
+    foi autorizado. Um booleano responde a primeira pergunta e perde as outras
+    quatro, e são elas que sustentam a promessa da lei da gamificação: *"Meu
+    Estúdio público é opt-in — ninguém tem a obra exposta sem ter pedido"*.
+
+    **Desmarcar não apaga a linha, preenche `revogado_em`.** Apagar deixaria o
+    sistema sem como responder "esta obra já esteve exposta, e até quando?" —
+    que é exatamente a pergunta que alguém faz depois, e nunca antes.
+
+    **`site_id` e `host_publico` são copiados no instante do gesto, de
+    propósito.** A porta de máquina é chamada pela rede interna
+    (`http://forum:8000/interno`), onde não existe host público nem escola a
+    resolver; e o fórum não tem como traduzir um `site_id` de volta num
+    endereço. O único instante em que as duas coisas são conhecidas é aquele em
+    que o aluno clica, na página dele. É o mesmo desenho que
+    `apps/core/moderacao.py` já usa para carimbar o `site_id` dos eventos.
+    """
+
+    topico = models.OneToOneField(
+        Topico, related_name="consentimento_da_galeria", on_delete=models.CASCADE
+    )
+    # A escola em que o gesto aconteceu (Lei 9: `site_id` acompanha toda
+    # entidade pública). A candidata só sai no pedido desta mesma escola.
+    site_id = models.CharField(max_length=64)
+    # O domínio em que o aluno estava. É o que monta a `url_canonica` do
+    # contrato, que precisa de um host de verdade e não pode inventar um.
+    host_publico = models.CharField(max_length=120)
+    # O endereço do trabalho: o que a Galeria mostra. Conferido contra a lista
+    # permitida ANTES de chegar aqui (`apps/core/galeria.py`).
+    referencia_url = models.URLField(max_length=400)
+
+    concedido_por = models.ForeignKey(
+        Pessoa, related_name="consentimentos_da_galeria", on_delete=models.PROTECT
+    )
+    concedido_em = models.DateTimeField()
+    revogado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name_plural = "consentimentos da galeria"
+        indexes = [
+            # A pergunta da porta de máquina, sempre a mesma: "o que esta
+            # escola tem em pé, do mais recente para o mais antigo?".
+            models.Index(fields=["site_id", "revogado_em", "-concedido_em"]),
+        ]
+        constraints = [
+            # ---------------------------------------------------------------
+            # UM CONSENTIMENTO QUE NÃO PODE SER SERVIDO NÃO CHEGA A EXISTIR
+            # ---------------------------------------------------------------
+            # Sem escola, sem host ou com endereço fora do `https`, esta linha
+            # seria uma promessa que a porta de máquina nunca consegue cumprir:
+            # ou some da resposta de todo mundo, ou sai numa forma que o
+            # contrato recusa.
+            #
+            # **Por que no BANCO.** É a mesma razão de
+            # `pagina_publica_so_a_escola_fala`, acima: um `QuerySet.update()`
+            # fura qualquer guarda escrito em `Model.save()`
+            # (`armadilhas/023`), e uma linha editada à mão no `psql` numa
+            # madrugada de incidente não passa por código nenhum. Aqui a
+            # combinação não fica proibida, fica impossível.
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(site_id="")
+                    & ~models.Q(host_publico="")
+                    & models.Q(referencia_url__startswith="https://")
+                ),
+                name="consentimento_com_escola_e_endereco_seguro",
+            ),
+        ]
+
+    @property
+    def em_pe(self) -> bool:
+        """O consentimento vale agora? Uma leitura só, para tela e porta."""
+        return self.revogado_em is None
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"galeria: tópico {self.topico_id} em {self.site_id}"
