@@ -4,6 +4,7 @@
 # agentes nestes caminhos. Troque @abundanciabr pelo seu usuário.
 # =============================================================================
 /contracts/                 @abundanciabr
+/packages/                  @abundanciabr
 /services/pagamentos/       @abundanciabr
 /services/checkout/         @abundanciabr
 /infra/                     @abundanciabr

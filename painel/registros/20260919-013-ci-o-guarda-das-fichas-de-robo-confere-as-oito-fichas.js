@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-013-ci-o-guarda-das-fichas-de-robo-confere-as-oito-fichas",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: o guarda das fichas de robô confere as oito fichas",
+  detalhe: "As cinco fichas novas passam a ser medidas pelo guarda. Cada asserção nova nasceu reprovando por sabotagem, e nenhuma ficha foi editada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1743. Validação local: árvore c876d41f475e2c248ab72862ea8656dbb7b012bf; commit 24703a0e2df35d1c22fd22123778712ed88e8791; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-464",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
