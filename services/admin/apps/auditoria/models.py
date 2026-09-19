@@ -292,6 +292,19 @@ class Registro(models.Model):
     # tipo, motivo curto demais) nada e escrito la, e sem esta linha o gesto de
     # mexer na regua da fila nao teria deixado rastro em lugar nenhum.
     MUDAR_PARAMETRO = "mudar_parametro"
+    # [PAGINA DE VENDA] 19/09/2026, a tela `/admin/paginas/`. DOIS verbos, e
+    # nao um, porque salvar e publicar tem consequencias diferentes no mundo:
+    # salvar nao muda o que o visitante ve, publicar muda e cria uma versao
+    # nova que nao se edita. Uma auditoria que os fundisse nao responderia
+    # "quando este texto entrou no ar?", que e a unica pergunta que alguem
+    # vai fazer a esta tabela.
+    #
+    # O TEXTO nao vem para ca, so a contagem de espacos e o numero da versao:
+    # a copy e obra dele, ela mora no catalogo com historico proprio, e esta
+    # tabela e append-only por gatilho (copiar texto de obra para dentro de
+    # uma tabela que nao se apaga e justamente o que `armadilhas/331` proibe).
+    SALVAR_RASCUNHO_DA_PAGINA = "salvar_rascunho_pagina"
+    PUBLICAR_PAGINA = "publicar_pagina"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -347,6 +360,8 @@ class Registro(models.Model):
         (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),
+        (SALVAR_RASCUNHO_DA_PAGINA, "salvar o texto da pagina de venda"),
+        (PUBLICAR_PAGINA, "por a pagina de venda no ar"),
     ]
 
     OK = "ok"

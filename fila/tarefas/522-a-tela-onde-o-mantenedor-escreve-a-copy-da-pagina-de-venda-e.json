@@ -1,0 +1,19 @@
+{
+  "arquivo": "522-a-tela-onde-o-mantenedor-escreve-a-copy-da-pagina-de-venda-e",
+  "id": "TAR-522",
+  "titulo": "A tela onde o mantenedor escreve a copy da pagina de venda e publica",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "Suite da celula admin verde, guardas novos provados por mutacao, e prova visual da tela em quatro estados (folha em branco, publicar vazio, salvo com o aviso da ferramenta 74, publicado)",
+  "despacho": "Celula admin. Construa a tela em que o mantenedor escreve o texto da pagina de\nvenda e a publica, consumindo as operacoes getPageDraft, putPageDraft e\npublishPage do contrato congelado contracts/catalogo.openapi.yaml.\n\nUm campo por espaco de texto, agrupado pelas onze secoes na ordem canonica, com\na frase que explica cada espaco transcrita de\ndocs/despachos/DESPACHO-COPY-DA-PAGINA-DE-OFERTA.md, palavra por palavra, com\nguarda que compara os dois. Dois gestos: salvar rascunho e publicar.\n\nA tela precisa dizer, sem ele contar, quantos espacos estao preenchidos e quais\nsecoes ficarao invisiveis por estarem vazias, e que isso e legitimo. A diferenca\nentre salvar e publicar fica escrita na tela, nao num tooltip.\n\nTrate todos os estados com texto que diz o que aconteceu E o que fazer: primeira\nvez sem rascunho (404 e folha em branco, nao erro), catalogo fora do ar,\npublicar com rascunho vazio (409), texto recusado pelo vocabulario (422) e\nsalvamento que falhou (ele nao pode perder o que digitou).\n\nAntes de publicar, a tela avisa se o texto contem os cinco padroes que ele\nproibiu na ferramenta 74 de documentos/ferramentas-do-projeto-meshcraft.md\n(linha 971): contagem regressiva, ultimas vagas, valor riscado, promessa de\nrenda ou de prazo, e superlativo. E aviso com a lista do que foi encontrado,\nnunca bloqueio: quem decide publicar e ele.\n\nToda escrita gera linha de auditoria, inclusive a que falhou.",
+  "origem": "brief fechado do mantenedor em 19/09/2026, a metade que ele opera da estrutura de paginas do catalogo",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
