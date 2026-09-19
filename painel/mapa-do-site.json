@@ -2745,6 +2745,105 @@
       "titulo": "Documento do plano mestre",
       "descricao": "Consulta dos documentos da administração, com acesso autorizado.",
       "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio",
+      "endereco": "/encomendas/cardapio",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Cardapio: encomendar uma peca, e ver os pedidos abertos",
+      "descricao": "A porta de entrada do cliente. Mostra os tres cartoes (item simples, vestivel ou veiculo, personagem) com o prazo de producao de cada um, e acima deles os pedidos que ja estao andando. Nao ha preco nenhum: o valor nasce da proposta do modelador.",
+      "observacao": "So abre para quem esta na lista IDS_DO_PLANTAO do env desta celula, porque hoje a cliente e a propria escola. A aprovacao de cliente de fora e tarefa propria."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio/<str:cartao>",
+      "endereco": "/encomendas/cardapio/<str:cartao>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Briefing: descrever a peca de um cartao",
+      "descricao": "O formulario blindado do cartao escolhido: nome da peca, onde ela vai ser usada, estilo, o que o cliente quer receber e as observacoes. Nao existe campo de contato, e o texto livre recusa e-mail, telefone, link e arroba de rede social."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "cardapio/<str:cartao>/pedir",
+      "endereco": "/encomendas/cardapio/<str:cartao>/pedir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Enviar o pedido descrito no briefing",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aperta o botao de enviar o briefing. Abrir este endereco no navegador nao mostra nada.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Acompanhar um pedido do comeco ao fim",
+      "descricao": "A tela em que o cliente ve o que aconteceu com o pedido dele e o que fazer agora, em cada estado: procurando modelador, em negociacao, aguardando a confirmacao da escola, em producao, pronta para avaliar, em ajuste, aprovada. E daqui que ele aceita a proposta, contrapoe, aprova a entrega ou pede um ajuste.",
+      "observacao": "Pedido de outra pessoa responde 404, igual a pedido que nao existe: distinguir os dois contaria a um curioso que aquele identificador e de alguem."
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/aceitar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/aceitar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aceitar a proposta do modelador",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aceita a proposta na tela do pedido. Valor, prazo, entregaveis e correcoes congelam nesse instante.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/contrapor",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/contrapor",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Responder com uma contraproposta",
+      "descricao": "Nao e uma pagina: e o envio do mesmo formulario de seis campos que o modelador preencheu, agora pelo lado do cliente. As rodadas sao contadas.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/desistir",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/desistir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Sair de uma negociacao",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente desiste antes do acordo. O pedido vai ao plantao da escola, e nunca ao proximo aluno da fila.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/aprovar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/aprovar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aprovar a entrega",
+      "descricao": "Nao e uma pagina: e o que acontece quando o cliente aprova a peca que passou pela revisao da escola. E o fim da jornada dele.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/ajuste",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/ajuste",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Pedir um ajuste na entrega",
+      "descricao": "Nao e uma pagina: e o envio do que precisa mudar na peca entregue. Quantos ajustes cabem e o que o acordo combinou; passando disso, o pedido vai ao plantao da escola.",
+      "gesto": true
+    },
+    {
+      "celula": "encomendas",
+      "rota": "pedidos/<uuid:encomenda_id>/cancelar",
+      "endereco": "/encomendas/pedidos/<uuid:encomenda_id>/cancelar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Cancelar um pedido",
+      "descricao": "Nao e uma pagina: e o cancelamento do pedido enquanto ninguem trabalhou nele. Depois que a escola confirma o pagamento ele nao se cancela por aqui, e a tela diz para falar com o plantao.",
+      "gesto": true
     }
   ]
 }
