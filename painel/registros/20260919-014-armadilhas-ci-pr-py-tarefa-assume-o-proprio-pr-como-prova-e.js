@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-014-armadilhas-ci-pr-py-tarefa-assume-o-proprio-pr-como-prova-e",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "armadilhas: ci/pr.py --tarefa assume o proprio PR como prova, e o portao do padrao le o disco",
+  detalhe: "Duas armadilhas: pr.py fecha tarde a fila; padrao_de_trabalho.py mede CRLF do disco.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1749. Validação local: árvore 701ce78759efe95e682c3925acb92ac3f552bf26; commit 3878ee6a58101c4c8956c41b7f400b1e94bb96e5; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-482",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
