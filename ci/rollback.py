@@ -454,23 +454,15 @@ def _mensagem_do_commit(raiz: Path, sha: str) -> str:
     ).stdout
 
 
-def _congelamento_no_servidor(raiz: Path, celula: str) -> tuple[str, dict] | None:
-    """O que já existe para esta célula: (sha, corpo). Corpo torto vira {}.
+def _sha_do_congelamento(raiz: Path, celula: str) -> str:
+    """O sha do congelamento que já existe para esta célula, ou "".
 
-    O sha é o que importa aqui: ele é o lease da renovação. Um corpo que não
-    decodifica não pode impedir alguém de congelar no meio de uma emergência;
-    quem recusa integrar nesse caso é o pouso, que já trata ilegível como ERROR.
+    Só o sha, e de propósito: ele é o lease da renovação, e o corpo não decide
+    nada aqui. Um congelamento ilegível não pode impedir alguém de congelar no
+    meio de uma emergência; quem recusa integrar nesse caso é o pouso, que já
+    trata ilegível como ERROR.
     """
-    sha = _sha_da_ref(raiz, f"{NS_CONGELAMENTO}/{celula}")
-    if not sha:
-        return None
-    try:
-        corpo = _decodificar(
-            f"{NS_CONGELAMENTO}/{celula}", _mensagem_do_commit(raiz, sha)
-        )
-    except ErroDeInstrumentacao:
-        corpo = {}
-    return sha, corpo
+    return _sha_da_ref(raiz, f"{NS_CONGELAMENTO}/{celula}")
 
 
 def congelar(raiz: Path, celula: str, motivo: str) -> tuple[bool, str]:
@@ -496,7 +488,7 @@ def congelar(raiz: Path, celula: str, motivo: str) -> tuple[bool, str]:
             "que está acontecendo, sem acordar ninguém para perguntar.",
         )
 
-    existente = _congelamento_no_servidor(raiz, celula)
+    existente = _sha_do_congelamento(raiz, celula)
     agora = agora_utc()
     expira = agora + timedelta(hours=HORAS_DE_CONGELAMENTO)
     ganhou = criar_ref_atomica(
@@ -509,7 +501,7 @@ def congelar(raiz: Path, celula: str, motivo: str) -> tuple[bool, str]:
             "criado_em": agora.isoformat(),
             "expira_em": expira.isoformat(),
         },
-        lease=existente[0] if existente else "",
+        lease=existente,
     )
     if not ganhou:
         return False, (
