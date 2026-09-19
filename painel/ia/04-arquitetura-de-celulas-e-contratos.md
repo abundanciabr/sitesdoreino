@@ -481,7 +481,12 @@ normal edita `contracts/` (mudança = Rito de Contrato, `RITOS.md` §3: PR só
 com `contracts/`, label `contrato`, aprovação do mantenedor, provedor
 implementa primeiro com retrocompatibilidade, consumidores em PRs
 seguintes); consumidor desenvolve contra mock Prism, nunca contra o código
-do provedor; eventos são versionados no nome do arquivo (`*.v1.json` →
+do provedor (**e aqui vale a nota medida em 18/09/2026: esta cláusula é o
+degrau "documento" da Lei 1, não portão. Não há `prism` em nenhum workflow,
+em nenhum compose ativo nem no `Makefile` da raiz; o alvo `make mocks` das
+células apenas IMPRIME a linha de comando que alguém teria de rodar à mão.
+Quem depender disso para provar isolamento vai provar nada**); eventos são
+versionados no nome do arquivo (`*.v1.json` →
 `*.v2.json` numa mudança breaking, com o `v1` continuando a ser emitido até
 o último consumidor migrar — hoje `sugestao.status-alterado.v1.json` e
 `.v2.json` **coexistem de verdade**, o v2 acrescentando `ator_id` ao
@@ -527,6 +532,32 @@ própria `sugestoes`, na mesma transação, gera `notificacao.devida.v1`
 que só ouve esse único stream e fica deliberadamente "burra" (grava uma
 linha, incrementa contador — não sabe montar leque de destinatários). Ver
 [06 — produto e decisões](06-produto-decisoes-e-roadmap.md) para o porquê.
+
+## `packages/outbox-relay`: o código compartilhado que nenhum mapa cobria
+
+**Acrescentado em 18/09/2026.** Esta casa proíbe importar código de outra
+célula (Lei 3, pecado 1) e prescreve que comportamento com uma casa só seja
+serviço **ou pacote versionado**. O pacote existe, e é um só:
+`packages/outbox-relay`, consumido por `alunos` e `identidade` como wheel
+vendorizada declarada no `requirements.txt` de cada uma. Ele é a rede de
+segurança do transporte de eventos, isto é, do elo que entrega a matrícula
+depois que o pagamento é aprovado.
+
+O problema não é o pacote existir: é que ele **não tem dono nem portão**.
+Medido em `origin/main`:
+
+| Pergunta | Resposta |
+|---|---|
+| Está em `celulas.yml`? | **Não.** Logo `ci/mapa_de_celulas.py` não sabe de quem ele é. |
+| Dispara `ci-celula`? | **Não.** Mudar o pacote não roda a suíte de nenhuma célula. |
+| Dispara deploy? | **Não.** O gatilho é `services/**`, `painel/**`, `fila/**`, `documentos/**`, `docs/decisoes/**`. |
+| Tem dono no CODEOWNERS? | **Não.** Nenhuma regra casa `packages/`. |
+
+O efeito combinado: uma mudança no relay comum atravessa a integração
+automática sem que a suíte de `alunos` ou de `identidade` rode, e sem que
+nada seja publicado. Quem for mexer ali precisa rodar as duas suítes à mão e
+saber que o deploy não vai acontecer sozinho. É a exceção viva à Lei 7, já em
+produção, e o primeiro item a mecanizar se alguém for endurecer esta fronteira.
 
 ## Isolamento entre células (`ci/cerca-de-celula.sh`)
 

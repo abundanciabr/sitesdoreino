@@ -19,6 +19,7 @@ transcrição do arquivo.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,19 @@ def wf() -> dict:
 
 
 @pytest.fixture(scope="module")
+def bruto() -> str:
+    """O arquivo COMO ESTÁ ESCRITO, comentários inclusive.
+
+    Quase tudo aqui se prova no YAML já interpretado, que é o que executa. Duas
+    perguntas não cabem lá: o que NÃO pode existir em lugar nenhum do arquivo
+    (um `push` para a `main`, um `cron`) e a identidade que o robô assina. Para
+    essas, a fonte é o texto cru, porque a proibição vale também para o
+    comentário que ensinaria o próximo a escrever a linha proibida.
+    """
+    return ARQUIVO.read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
 def gatilho(wf: dict) -> dict:
     # `on:` sem aspas é o booleano True em YAML 1.1 — a pegadinha clássica.
     return wf.get("on") or wf.get(True)
@@ -51,9 +65,16 @@ def gatilho(wf: dict) -> dict:
 
 @pytest.fixture(scope="module")
 def job(wf: dict) -> dict:
-    jobs = wf["jobs"]
-    assert len(jobs) == 1, f"esperava um job só; achei {sorted(jobs)}"
-    return next(iter(jobs.values()))
+    """A CURA. Quem guarda que não nasceu um terceiro job é
+    `test_sao_DOIS_jobs_e_so_dois`; aqui o nome é explícito para que uma
+    asserção sobre a cura nunca caia, por acidente de ordem, sobre a medição.
+    """
+    return wf["jobs"]["curar"]
+
+
+@pytest.fixture(scope="module")
+def medir(wf: dict) -> dict:
+    return wf["jobs"]["medir"]
 
 
 def test_acorda_com_o_FIM_das_DUAS_esteiras_de_deploy(gatilho):
@@ -217,6 +238,12 @@ def test_tem_as_permissoes_que_a_cura_e_o_sinal_exigem(job):
     assert permissoes.get("actions") == "write", "sem isto, `gh run rerun` é 403"
     assert permissoes.get("issues") == "write", "sem isto, o sinal não nasce"
     assert permissoes.get("contents") == "read"
+    # E a lista FECHADA, desde que o job irmão passou a escrever: a materialização
+    # da tarefa é a única que precisa de `contents: write`, e permissão que sobra
+    # num job que repete deploy é a que ninguém revisa quando enfim é usada.
+    assert set(permissoes) == {"actions", "issues", "contents"}, (
+        f"a cura não ganhou poder novo com a medição; veio: {sorted(permissoes)}"
+    )
 
 
 def test_o_checkout_e_FUNDO_porque_a_decisao_e_ancestralidade(job):
@@ -337,3 +364,400 @@ def test_a_escada_de_bracos_EXISTE_do_lado_de_ca(job):
         {"GH_TOKEN": "pat", "GH_TOKEN_RESERVA": "do-job"}
     )
     assert [t for _, t in bracos] == ["pat", "do-job"]
+
+
+# ---------------------------------------------------------------------------
+# A MEDIÇÃO — Fase 6 do laço de melhoria contínua.
+#
+# O gatilho terminal já existia e é o certo: `workflow_run`/`completed` responde
+# no instante em que o deploy acaba, e é a única fonte que enxerga a casa
+# inteira. O que faltava era um segundo consumidor dele.
+#
+# POR QUE NÃO COUBE NO JOB DA CURA. A cura só acorda no `cancelled` e no
+# `failure`, e essa porta não pode ser aberta: acordá-la no verde gastaria um
+# runner em cada um dos ~100 deploys saudáveis do dia para responder "nada a
+# fazer". A medição precisa exatamente do contrário — é o VERDE que fecha a
+# janela de indisponibilidade de uma célula, então um termômetro que só visse
+# doença mediria o começo de toda queda e o fim de nenhuma.
+#
+# Duas perguntas diferentes, dois jobs irmãos. Sem `needs` entre eles, porque
+# `needs` faria a medição esperar (e herdar) um veredito que não é dela.
+# ---------------------------------------------------------------------------
+def test_sao_DOIS_jobs_e_so_dois(wf):
+    """A unicidade que a fixture guardava até a Fase 6, agora explícita.
+
+    Dois é a conta inteira: um que cura a doença e um que mede a casa. Um
+    terceiro job neste arquivo é o sintoma de que alguém pendurou trabalho
+    novo no gatilho do deploy em vez de dar a ele o gatilho próprio.
+    """
+    assert set(wf["jobs"]) == {"curar", "medir"}, f"veio: {sorted(wf['jobs'])}"
+
+
+def test_o_VERDE_chega_a_MEDICAO_e_continua_barrado_na_CURA(wf):
+    """A separação inteira da Fase 6, escrita como um fato só.
+
+    Os dois lados são necessários e nenhum sozinho basta:
+
+    · a CURA tem de continuar fechada para o `success`. Afrouxar o `if:` dela
+      para medir seria acordar a vacina em ~100 deploys saudáveis por dia, e a
+      asserção do `'success'` existe desde a TAR-041 justamente contra isso.
+    · a MEDIÇÃO tem de acordar em TODA conclusão terminal. O `success` não é
+      opcional aqui: é ele que FECHA a janela de indisponibilidade de uma
+      célula. Medir só `failure` e `cancelled` daria um termômetro que registra
+      toda queda e nenhuma recuperação, o que é pior que não medir, porque
+      parece medido.
+
+    Por isso a medição não tem `if:` nenhum: `types: [completed]` já a entrega
+    nas três conclusões, e uma condição a mais só poderia tirar uma delas.
+    """
+    cura = " ".join(wf["jobs"]["curar"]["if"].split())
+    assert "'success'" not in cura, (
+        "a cura não pode acordar no deploy verde: ~100 runners por dia para "
+        "responder 'nada a fazer'"
+    )
+    assert "conclusion" in cura, "a cura filtra conclusão, e é essa a diferença"
+
+    medicao = wf["jobs"]["medir"]
+    assert "if" not in medicao, (
+        "qualquer `if:` aqui só pode SUBTRAIR conclusões, e a primeira a se "
+        f"perder é o `success`, que é o que fecha a janela (veio: {medicao.get('if')!r})"
+    )
+    assert "conclusion" not in str(medicao), (
+        "a medição não escolhe conclusão: as três terminais são dado dela"
+    )
+
+
+def test_o_YAML_da_medicao_nao_CLASSIFICA_nem_abre_tarefa(medir):
+    """Ambíguo e desconhecido são decididos no Python, nunca por `grep` aqui.
+
+    É a mesma lei anti-duplicação que já impede o YAML de medir ancestralidade:
+    uma classificação escrita em shell seria uma SEGUNDA regra sobre a mesma
+    pergunta, sem teste sem rede, e bastaria afinar uma delas para as duas
+    discordarem sobre o que é reincidência. Pior: um `grep` em log é
+    exatamente o instrumento que confunde "não casei" com "não há problema".
+
+    A abertura de tarefa também não mora aqui. `ci/fila.py` chamado de dentro
+    de um workflow que acorda em cada deploy da casa é uma tarefa nova por
+    evento repetido, e a idempotência da origem não teria onde existir.
+
+    As asserções leem o YAML JÁ INTERPRETADO — comentário não entra —, então
+    elas falam do que executa, e não do que está escrito ao lado explicando.
+    """
+    texto = str(medir)
+    assert "ci/fila.py" not in texto, (
+        "quem decide abrir tarefa é o Python, com a origem idempotente; "
+        "chamar a fila daqui criaria uma tarefa por evento repetido"
+    )
+    assert "armadilhas/" not in texto, (
+        "nomear a armadilha no YAML é classificar no YAML: o casamento tem "
+        "dono, e não é um passo de shell"
+    )
+    assert "gh issue" not in texto, (
+        "medir não alarma; o alarme desta casa é a issue da CURA, e duplicá-lo "
+        "aqui faria uma issue por deploy"
+    )
+    passo = next(p for p in medir["steps"] if p.get("id") == "termometro")
+    codigo = "\n".join(
+        ln for ln in str(passo["run"]).splitlines() if not ln.lstrip().startswith("#")
+    )
+    assert "python ci/termometro.py" in codigo, (
+        "a medição é uma chamada ao instrumento, não uma reimplementação dele"
+    )
+    assert "--run" in codigo, "o run terminal é o assunto; sem ele isto vira varredura"
+    assert "grep" not in codigo, (
+        "classificar por `grep` no log é o modo mais rápido de transformar "
+        "'não reconheci' em 'está tudo bem'"
+    )
+
+
+def test_erro_do_TERMOMETRO_nao_muda_o_veredito_do_DEPLOY(wf, medir):
+    """O instrumento pode quebrar; o deploy já aconteceu de qualquer jeito.
+
+    A medição roda no MESMO `head_sha` do deploy que ela mede. Sem
+    `continue-on-error`, um defeito do termômetro (uma chamada de API que
+    estourou, um campo que mudou de nome) pintaria de vermelho um run cujo
+    deploy foi verde, e `ci/portao_de_deploy.py::vermelhos_nao_previstos`
+    passaria a barrar deploys por causa do termômetro. O instrumento não pode
+    ter voto sobre o que ele observa.
+
+    `needs` é a outra metade da mesma ideia e vale nos DOIS sentidos: com
+    `needs`, a medição só começaria depois da cura (perdendo o `success`, onde
+    a cura nem roda) ou herdaria o veredito dela. São irmãos, não uma fila.
+    """
+    assert medir.get("continue-on-error") is True, (
+        "sem isto o termômetro vira eleitor do deploy que ele mede"
+    )
+    assert "needs" not in medir, (
+        "com `needs` a medição esperaria (e herdaria) um veredito que não é dela"
+    )
+    assert "needs" not in wf["jobs"]["curar"], (
+        "e a cura não pode passar a depender da medição: o rerun ficaria "
+        "atrás de um relatório"
+    )
+    assert medir["permissions"] == {
+        "contents": "write",
+        "pull-requests": "write",
+        "actions": "read",
+    }, (
+        "a medição LÊ o run e ESCREVE só a tarefa que nasceu dele: `contents` "
+        "empurra o ramo próprio (a `main` segue protegida) e `pull-requests` "
+        "abre o único PR. `issues` continua fora, porque seria um segundo "
+        f"alarme por deploy (veio: {medir.get('permissions')})"
+    )
+    assert isinstance(medir.get("timeout-minutes"), int), (
+        "job sem teto num gatilho que dispara ~100 vezes por dia é a conta "
+        "de runner que ninguém vê crescer"
+    )
+
+
+def test_o_codigo_do_TERMOMETRO_e_DITO_e_nao_engolido(medir):
+    """`continue-on-error` tira o VOTO do termômetro, não a VOZ dele.
+
+    A diferença é a armadilhas/211: um job que não pode reprovar o deploy e
+    também não conta que falhou é falso-verde puro — ninguém descobre que a
+    casa parou de ser medida. Por isso o passo termina em `exit "$CODIGO"`: o
+    step fica vermelho e o resumo diz o número, enquanto o `continue-on-error`
+    do job impede que isso alcance o veredito do deploy.
+
+    E a captura é `|| CODIGO=$?`, como na cura: `| tee`, `set +e` e `|| true`
+    fariam a falha sumir ANTES de virar valor, e os dois últimos já são
+    proibidos em YAML por
+    `test_contract_freeze.py::test_workflows_nao_escondem_erro`.
+    """
+    passo = next(p for p in medir["steps"] if p.get("id") == "termometro")
+    codigo = "\n".join(
+        ln for ln in str(passo["run"]).splitlines() if not ln.lstrip().startswith("#")
+    )
+    assert "|| CODIGO=$?" in codigo
+    assert 'exit "$CODIGO"' in codigo, (
+        "sem dizer o código, um termômetro quebrado fica indistinguível de um "
+        "termômetro que mediu e não achou nada"
+    )
+    assert "| tee" not in codigo, "o `$?` seria o do tee, que sai 0 sempre"
+    assert "set +e" not in codigo and "|| true" not in codigo
+    assert "GITHUB_STEP_SUMMARY" in codigo, (
+        "o resumo é onde o número aparece sem abrir o log de um run entre cem"
+    )
+
+
+def test_a_medicao_NAO_trouxe_cron_espera_nem_gatilho_em_push(wf, gatilho, bruto):
+    """Os três motores recusados por nome no relatório da Prioridade 8.
+
+    `push` ocorre ANTES de os workflows terminarem: medir ali é medir o começo
+    e chamar de fim. `schedule` varreria o histórico atrás do que o Actions já
+    entrega na hora. `ci/esperar.py` e `sleep` dependem de alguém invocar (ou
+    de um runner parado pagando para contar segundos), que é exatamente a
+    Classe 2 da retrospectiva: garantia sem mecanismo.
+
+    O relógio é conferido também no texto CRU, e a busca é pela CHAVE, não pela
+    palavra: o comentário do arquivo cita `schedule` para explicar por que ele
+    foi recusado, e um teste que proibisse a palavra apagaria a explicação. O
+    que não pode existir é a chave, inclusive comentada "para ligar depois",
+    que é a linha que alguém descomenta sem reabrir esta discussão.
+    """
+    assert set(gatilho) == {"workflow_run"}, (
+        f"o gatilho terminal é o motor inteiro; veio: {sorted(gatilho)}"
+    )
+    jobs = str(wf["jobs"])
+    assert "ci/esperar.py" not in jobs
+    assert "sleep" not in jobs
+    relogios = re.findall(r"(?m)^\s*#?\s*(?:schedule|cron)\s*:.*$", bruto)
+    assert not relogios, (
+        "relógio nenhum entra neste arquivo: o Actions já diz a hora exata em "
+        f"que o deploy terminou, e varrer histórico erra a janela; veio: {relogios}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# A MATERIALIZAÇÃO — seção 11 do relatório, e a outra metade do gatilho.
+#
+# O termômetro cria a tarefa no disco de um runner efêmero: sem este passo, o
+# arquivo em `fila/` existe por alguns minutos e some com a máquina. Medir sem
+# materializar é o defeito deste arquivo um andar acima — a campeã medida
+# ficaria escrita num log que ninguém abre, e a tarefa continuaria dependendo
+# de alguém lembrar de criá-la, que é a Classe 2 da retrospectiva de novo.
+#
+# O gesto para mudar a `main` nesta casa é sempre o mesmo, e é o daqui: ramo
+# próprio, commit do que nasceu, UM PR, e a integração de sempre decidindo.
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="module")
+def materializar(medir: dict) -> dict:
+    return next(p for p in medir["steps"] if p.get("id") == "materializar")
+
+
+@pytest.mark.parametrize("conclusao", ["success", "failure", "cancelled"])
+def test_a_matriz_das_TRES_conclusoes_separa_deploy_medicao_e_tarefa(
+    conclusao, gatilho, medir, materializar
+):
+    """O portão F6: três eixos independentes, provados conclusão a conclusão.
+
+    A matriz não é enfeite de relatório. Ela existe porque os três eixos se
+    confundem com facilidade e cada confusão tem um desfecho medido:
+
+    · se a MEDIÇÃO olhasse a conclusão, o `success` seria o primeiro a cair, e
+      com ele a única conclusão que FECHA a janela de indisponibilidade;
+    · se o VEREDITO DO DEPLOY dependesse da medição, um defeito do instrumento
+      barraria deploy saudável (item 14 do critério final de pronto);
+    · se a TAREFA nascesse da conclusão, todo deploy vermelho abriria tarefa, e
+      a idempotência da origem não teria o que impedir.
+
+    Por isso a asserção é a mesma nas três: nenhuma palavra de conclusão
+    aparece na medição nem na materialização. Quem escolhe é o instrumento.
+    """
+    assert gatilho["workflow_run"]["types"] == ["completed"], (
+        "as três conclusões terminais chegam por `completed`; filtrar tipo "
+        "aqui seria escolher conclusão pelo caminho de trás"
+    )
+    assert "if" not in medir and conclusao not in str(medir), (
+        f"a medição não pode distinguir `{conclusao}`: as três são dado dela"
+    )
+    assert medir.get("continue-on-error") is True, (
+        f"com `{conclusao}` no gatilho, um defeito do instrumento não pode "
+        "virar veredito do deploy que ele observa"
+    )
+    assert conclusao not in str(materializar), (
+        f"a tarefa nasce da medição, não de `{conclusao}`: condicioná-la à "
+        "conclusão abriria tarefa por evento, e não por reincidência medida"
+    )
+
+
+def test_a_tarefa_que_NASCEU_vira_UM_PR_em_ramo_proprio(materializar):
+    """O único caminho entre "medi" e "a casa tem a tarefa".
+
+    A linha que o instrumento imprime é o contrato inteiro entre os dois lados:
+    ela existe quando, e somente quando, uma tarefa nasceu. Ler qualquer outra
+    coisa (o código de saída, o tamanho de `fila/`, um `grep` no relatório)
+    seria uma segunda regra sobre o mesmo fato, e um dia as duas discordariam
+    sobre se houve tarefa.
+    """
+    codigo = "\n".join(
+        ln
+        for ln in str(materializar["run"]).splitlines()
+        if not ln.lstrip().startswith("#")
+    )
+    assert "TAREFA: " in codigo, (
+        "sem ler a linha declarada, o passo teria de adivinhar se nasceu "
+        "tarefa — e adivinhar aqui é abrir PR vazio ou perder a tarefa"
+    )
+    assert "git switch -c" in codigo, (
+        "ramo próprio: é ele que deixa a integração existente decidir, em vez "
+        "de uma medição publicar sozinha"
+    )
+    assert "gh pr create" in codigo and "--base main" in codigo
+    assert "--head" in codigo, "PR sem ramo declarado é PR que abre do lugar errado"
+
+
+def test_dois_deploys_no_mesmo_fato_nao_viram_DOIS_PRs(materializar):
+    """A idempotência tem duas travas, e as duas são necessárias.
+
+    A primeira é a origem, no balcão da fila, com teste sem rede: a mesma
+    reincidência não abre a segunda tarefa. A segunda é esta, o ramo: entre
+    medir e abrir o PR existe uma janela em que dois runs podem estar de pé ao
+    mesmo tempo (dois deploys vermelhos seguidos da mesma célula), e a fila só
+    protege o arquivo, não o PR.
+
+    `--state all` e não `--state open`: um PR já fechado ou já mergeado também
+    responde "esta tarefa já teve o PR dela". Procurar só entre os abertos
+    abriria o segundo PR no dia seguinte ao merge do primeiro.
+    """
+    codigo = "\n".join(
+        ln
+        for ln in str(materializar["run"]).splitlines()
+        if not ln.lstrip().startswith("#")
+    )
+    assert "gh pr list" in codigo and "--head" in codigo, (
+        "sem perguntar se o PR daquela tarefa já existe, dois runs simultâneos "
+        "abrem dois PRs para o mesmo fato"
+    )
+    assert "--state all" in codigo, (
+        "`--state open` deixaria o segundo PR nascer depois que o primeiro "
+        "fosse mergeado ou fechado"
+    )
+
+
+def test_o_commit_do_robo_toca_SOMENTE_a_fila(materializar):
+    """PR de robô com arquivo surpresa é o começo de ninguém mais ler PR de robô.
+
+    E não é hipótese: o runner tem workspace sujo por natureza (o relatório da
+    medição, o que uma ação deixa para trás). Um `git add -A` carregaria tudo
+    isso para dentro de um PR que o portão do livro isenta justamente por só
+    escriturar — e a isenção estreita viraria um buraco.
+    """
+    codigo = "\n".join(
+        ln
+        for ln in str(materializar["run"]).splitlines()
+        if not ln.lstrip().startswith("#")
+    )
+    adicoes = [ln.strip() for ln in codigo.splitlines() if "git add" in ln]
+    assert adicoes == ["git add fila/"], (
+        f"o commit do robô é só o que nasceu em `fila/`; veio: {adicoes}"
+    )
+    assert "git commit -a" not in codigo, (
+        "`commit -a` carrega todo arquivo rastreado que o runner tiver mexido"
+    )
+
+
+def test_a_BASE_da_medicao_e_buscada_antes_de_medir(medir):
+    """INV-R01 no runner: sem a ref, o termometro recusa a janela inteira.
+
+    O termometro fixa `origin/main` num SHA e le o catalogo DELE, nunca da
+    arvore de trabalho. O `checkout` traz a ref do evento, e depender de ela
+    POR ACASO ser `origin/main` deixaria toda a medicao nas maos de um detalhe
+    do runner: no dia em que mudasse, o job sairia 2 em todo deploy e ninguem
+    saberia por que.
+    """
+    passos = medir["steps"]
+    corpo = next(
+        p["run"] for p in passos if "ci/termometro.py" in str(p.get("run", ""))
+    )
+    linhas = corpo.splitlines()
+    busca = [i for i, l in enumerate(linhas) if l.strip().startswith("git fetch")]
+    medicao = [i for i, l in enumerate(linhas) if "ci/termometro.py" in l]
+    assert busca, "a base da medicao nao e buscada em lugar nenhum do passo"
+    assert "origin/main" in linhas[busca[0]], (
+        "a busca tem de trazer a ref que o termometro mede, e nao outra"
+    )
+    assert busca[0] < medicao[0], (
+        "buscar a base DEPOIS de medir nao ajuda a medicao que ja aconteceu"
+    )
+
+
+def test_a_MAIN_nunca_recebe_push_deste_arquivo(bruto):
+    """A recusa mais cara de afrouxar, porque ela só falha uma vez.
+
+    Uma medição que escreve direto na `main` publica sem ninguém medir a
+    medição: sem PR, sem checks, sem revisão, e sem jeito de desfazer antes de
+    a casa inteira já estar em cima. A proibição vale para o texto do arquivo,
+    e não só para o que executa, porque um `git push origin HEAD:main` escrito
+    num comentário é a linha que alguém descomenta com pressa.
+    """
+    empurroes = re.findall(r"git push[^\n]*", bruto)
+    assert empurroes, (
+        "sem `git push` nenhum, a tarefa medida nunca sai do runner e o laço "
+        "morre no log (seção 11 do relatório: materialização)"
+    )
+    for linha in empurroes:
+        assert "main" not in linha, (
+            f"push para a main neste arquivo: {linha.strip()!r}"
+        )
+
+
+def test_a_identidade_do_robo_e_a_que_a_casa_JA_usa(bruto):
+    """Um segundo nome de robô seria um segundo autor a decifrar no `git log`.
+
+    O `alarme-main` já commita nesta casa, e quem abrir o histórico precisa
+    reconhecer o mesmo autor, não descobrir que existem dois robôs com nomes
+    parecidos e origens diferentes.
+    """
+    daqui = set(re.findall(r'git config user\.name "([^"]+)"', bruto))
+    da_casa = set(
+        re.findall(
+            r'git config user\.name "([^"]+)"',
+            (ARQUIVO.parent / "alarme-main.yml").read_text(encoding="utf-8"),
+        )
+    )
+    assert da_casa, "o alarme-main deixou de commitar; confira qual é a identidade agora"
+    assert daqui and daqui <= da_casa, (
+        f"assine com a identidade que a casa já usa ({sorted(da_casa)}); "
+        f"veio: {sorted(daqui)}"
+    )

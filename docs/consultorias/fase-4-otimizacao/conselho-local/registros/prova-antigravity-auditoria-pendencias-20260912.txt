@@ -1,0 +1,1491 @@
+Fase 0 - Setup e Leitura
+
+Comando: powershell -Command Get-Date
+Saida:
+
+
+sábado, 12 de setembro de 2026 22:21:46
+
+
+
+
+
+
+Comando: git rev-parse HEAD
+Saida:
+9ca6a3b1fa00300551408b02cd67ff46a592cdf3
+
+Comando: git ls-remote origin main
+Saida:
+9ca6a3b1fa00300551408b02cd67ff46a592cdf3	refs/heads/main
+
+Fase 1 e 2 - Inventário e Estado no origin/main
+
+Comando: python ci/leis_sem_mecanismo.py
+Saida:
+CENSO: 28 leis · 24 com mecanismo · 4 em dívida
+
+  (sem mecanismo, declarado) CLAUDE.md::Como trabalhar com o mantenedor
+
+  (sem mecanismo, declarado) CLAUDE.md::Este projeto é para ser feito completo — nunca proponha a versão minimalista
+
+  (sem mecanismo, declarado) CLAUDE.md::O que você entrega para ele mora no site
+
+  (sem mecanismo, declarado) CONSTITUICAO.md::Lei 7 — Zonas Quentes Nascem Vazias
+
+LEIS SEM MECANISMO — quem faz valer cada regra
+
+
+
+  mecanismos citados existem         PASS   24 lei(s) com mecanismo declarado e presente
+
+  toda lei declara quem a faz valer  PASS   nenhuma lei fora da lei (4 na dívida declarada)
+
+
+
+RESULTADO  PASS
+
+
+Fase 3 - Verificacao Independente
+
+Comando: python -m pytest ci/tests/test_pouso_assincrono.py -q
+Saida:
+....................................                                     [100%]
+
+36 passed in 0.29s
+
+
+Comando: python -m pytest ci/tests/test_resumo_de_teste.py -q
+Saida:
+...........................                                              [100%]
+
+27 passed in 5.88s
+
+
+Comando: python -m pytest ci/tests/test_fila.py -q
+Saida:
+........................................................................ [ 34%]
+
+........................................................................ [ 69%]
+
+...............................................................          [100%]
+
+207 passed in 45.81s
+
+
+Comando: testes de mutacao da celula ci (bytes)
+Saida:
+NÃO MEDI (erro de ambiente)
+
+Fase 4 - Metricas
+
+Comando: gh pr list --state merged --limit 60 --json number,createdAt,mergedAt,author,title
+Saida:
+[{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T22:45:00Z","mergedAt":"2026-09-12T23:16:12Z","number":1609,"title":"fila: reconciliação e conselho enfileirados"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T21:29:17Z","mergedAt":"2026-09-12T22:06:50Z","number":1608,"title":"fila: rádio e Lei de Ferro enfileirados"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T21:12:53Z","mergedAt":"2026-09-12T21:55:50Z","number":1607,"title":"docs: a tríade nos documentos de regência"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T20:43:53Z","mergedAt":"2026-09-12T21:30:10Z","number":1605,"title":"lei: a tríade de IAs entra na lei da casa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T20:23:01Z","mergedAt":"2026-09-12T20:57:41Z","number":1604,"title":"fila: enfileirar o lote da tríade"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T17:24:02Z","mergedAt":"2026-09-12T21:19:03Z","number":1603,"title":"fila: o feito viaja dentro da entrega"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T07:11:39Z","mergedAt":"2026-09-12T07:32:18Z","number":1599,"title":"painel: registrar conclusão das fases"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T06:35:11Z","mergedAt":"2026-09-12T06:58:31Z","number":1598,"title":"ci: tornar deterministico o preparo dos testes do painel"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T04:23:16Z","mergedAt":"2026-09-12T05:03:22Z","number":1597,"title":"ci: corrigir testes Windows em checkout limpo"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T01:38:50Z","mergedAt":"2026-09-12T02:03:02Z","number":1596,"title":"ci: comprovar atualização da base"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T01:32:29Z","mergedAt":"2026-09-12T03:07:07Z","number":1595,"title":"ci: resumir resultados e comprovar guardas em bancada isolada"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T01:31:22Z","mergedAt":"2026-09-12T06:04:13Z","number":1594,"title":"ci: concluir contexto sob demanda e checkpoints"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T01:12:09Z","mergedAt":"2026-09-12T02:56:00Z","number":1593,"title":"ci: encaminhar sem espera"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T01:02:42Z","mergedAt":"2026-09-12T02:42:46Z","number":1592,"title":"ci: encerrar sem releitura"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-12T00:41:28Z","mergedAt":"2026-09-12T01:13:01Z","number":1591,"title":"painel: conferir integrações"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T18:38:08Z","mergedAt":"2026-09-11T22:08:49Z","number":1590,"title":"ci: Fase 1 - Otimização de hooks e governança"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T18:36:02Z","mergedAt":"2026-09-12T02:25:42Z","number":1589,"title":"ci: reutilizar ambientes e baseline isolado por tarefa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T15:41:11Z","mergedAt":"2026-09-11T16:00:35Z","number":1584,"title":"painel: registrar merge do PR #1570"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T15:37:02Z","mergedAt":"2026-09-12T00:09:25Z","number":1583,"title":"cursos: recusar slug nulo na edição"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T15:26:40Z","mergedAt":"2026-09-11T16:30:48Z","number":1582,"title":"contracts: permitir mudar endereço de aula avulsa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T14:31:01Z","mergedAt":"2026-09-11T14:42:56Z","number":1578,"title":"painel: registrar publicação do redirect de aulas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T14:21:38Z","mergedAt":"2026-09-11T15:41:00Z","number":1577,"title":"Painel: registrar a primeira reconciliação dos cursos"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T14:10:58Z","mergedAt":"2026-09-11T15:00:38Z","number":1574,"title":"fila: reconciliar aceites do capítulo 1"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T13:47:00Z","mergedAt":"2026-09-11T16:13:08Z","number":1572,"title":"painel: auditar a medição Pareto do capítulo 1"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T13:21:26Z","mergedAt":"2026-09-11T13:53:10Z","number":1570,"title":"rascunho: atualizar-painel-com-servico"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T13:00:26Z","mergedAt":"2026-09-11T14:17:26Z","number":1569,"title":"infra: redirecionar links legados de aulas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T12:49:18Z","mergedAt":"2026-09-11T13:28:22Z","number":1567,"title":"painel: registrar publicação dos pedidos privados"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T12:01:56Z","mergedAt":"2026-09-11T13:18:03Z","number":1566,"title":"TAR-345: painel: rota de edição"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:55:39Z","mergedAt":"2026-09-11T12:41:59Z","number":1565,"title":"cursos: editar aulas avulsas sem mudar o link"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:51:20Z","mergedAt":"2026-09-11T13:53:08Z","number":1564,"title":"admin: corrigir link e editar aulas avulsas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:38:39Z","mergedAt":"2026-09-11T11:50:46Z","number":1563,"title":"painel: registrar publicação do PR 1560"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:21:43Z","mergedAt":"2026-09-11T13:07:50Z","number":1561,"title":"ci: corrigir medição Pareto"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:13:30Z","mergedAt":"2026-09-11T11:35:15Z","number":1560,"title":"contracts: permitir edição de aulas avulsas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T11:11:08Z","mergedAt":"2026-09-11T11:25:21Z","number":1559,"title":"painel: registrar entrega do prompt do capítulo 4"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T05:15:30Z","mergedAt":"2026-09-11T15:23:09Z","number":1558,"title":"ci: mapa de execução"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T04:08:33Z","mergedAt":"2026-09-11T04:49:05Z","number":1557,"title":"ci: conferir entregas sem confundir sincronização com código novo"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T03:35:40Z","mergedAt":"2026-09-11T03:45:59Z","number":1556,"title":"painel: registrar incidente resolvido do deploy"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T02:56:50Z","mergedAt":"2026-09-11T03:28:12Z","number":1555,"title":"painel: registrar publicação das aulas avulsas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T02:44:45Z","mergedAt":"2026-09-11T03:01:58Z","number":1554,"title":"painel: registrar deploy das aulas avulsas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T02:20:08Z","mergedAt":"2026-09-11T02:51:24Z","number":1553,"title":"admin: criar aulas avulsas para compartilhar"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T01:58:42Z","mergedAt":"2026-09-11T11:15:37Z","number":1552,"title":"painel: registrar prompt do capítulo 3 e sua ordem"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T01:46:08Z","mergedAt":"2026-09-11T02:37:32Z","number":1551,"title":"cursos: publica aulas avulsas compartilháveis"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T01:24:59Z","mergedAt":"2026-09-11T01:36:35Z","number":1550,"title":"painel: registrar merge do contrato de aulas avulsas"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T00:54:35Z","mergedAt":"2026-09-11T02:25:51Z","number":1549,"title":"ci: preservar troca explícita de entrega"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T00:52:00Z","mergedAt":"2026-09-11T01:22:08Z","number":1548,"title":"contracts: abrir aulas avulsas para compartilhar"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-11T00:46:07Z","mergedAt":"2026-09-11T02:07:23Z","number":1547,"title":"painel: registrar entrega do prompt do capítulo 2"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T23:34:35Z","mergedAt":"2026-09-10T23:47:11Z","number":1546,"title":"painel: registrar deploy da correção da aula"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T23:13:47Z","mergedAt":"2026-09-11T00:52:56Z","number":1545,"title":"painel: registrar entrega do prompt do capítulo 1"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T23:05:46Z","mergedAt":"2026-09-10T23:26:10Z","number":1544,"title":"cursos: corrige erro 153 do YouTube"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T22:53:50Z","mergedAt":"2026-09-10T23:09:47Z","number":1543,"title":"painel: registrar publicação do mapa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T22:02:06Z","mergedAt":"2026-09-10T22:26:25Z","number":1542,"title":"painel: registrar publicação do vídeo do YouTube"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T21:28:31Z","mergedAt":"2026-09-10T22:52:34Z","number":1541,"title":"painel: atualizar Meu mapa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T21:25:10Z","mergedAt":"2026-09-10T21:56:04Z","number":1540,"title":"admin: criar modelo de vídeo do YouTube"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T16:20:42Z","mergedAt":"2026-09-10T16:46:58Z","number":1538,"title":"painel: registrar recusa no encerramento do guia"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T16:12:02Z","mergedAt":"2026-09-10T16:34:10Z","number":1537,"title":"fila: concluir entrega publicada da TAR-322"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T15:55:29Z","mergedAt":"2026-09-10T16:23:12Z","number":1536,"title":"painel: registrar publicação do prompt do mapa"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T15:31:15Z","mergedAt":"2026-09-10T16:10:43Z","number":1535,"title":"painel: registrar publicação das consultas de deploy"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T14:44:01Z","mergedAt":"2026-09-10T15:08:46Z","number":1534,"title":"ci: reduzir consultas de deploy"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T14:36:47Z","mergedAt":"2026-09-10T15:46:16Z","number":1533,"title":"docs: orientar mapa vivo"},{"author":{"id":"U_kgDOCO8wIA","is_bot":false,"login":"abundanciabr","name":""},"createdAt":"2026-09-10T13:36:22Z","mergedAt":"2026-09-10T14:06:12Z","number":1529,"title":"fila: concluir publicação do complemento"}]
+
+Comando: gh pr list e commits por GraphQL (refazimento pela maestro)
+Saida:
+Before 12/09 (00:00Z): Median 39.1 min (45 PRs)
+After 12/09 (00:00Z): Median 40.1 min (15 PRs)
+Commits Before 12/09: Median 3.0
+Commits After 12/09: Median 4.0
+
+RETRATAÇÃO: Os números '31.7 antes, 43.0 depois' e 'commits 4.0 para 5.0' não tinham script de prova. Retrato esses números e a frase 'tempo de merge piorou no dia 12'.
+
+Comando: gh run list --workflow muralhas --limit 30
+Saida:
+in_progress		feat(ci): impor lei de ferro na triade	muralhas	agent/ci/limites-da-triade	pull_request	34730321633	1m48s	2026-09-13T01:21:21Z
+completed	success	fix(ci): impedir encolhimento silencioso do censo de leis	muralhas	agent/ci/trava-de-lei	pull_request	34730224337	2m23s	2026-09-13T01:19:00Z
+completed	success	feat(ci): impor lei de ferro na triade	muralhas	agent/ci/limites-da-triade	pull_request	34728174303	2m20s	2026-09-13T00:31:09Z
+completed	success	fix(ci): impedir encolhimento silencioso do censo de leis	muralhas	agent/ci/trava-de-lei	pull_request	34728123997	2m27s	2026-09-13T00:30:09Z
+completed	success	feat(ci): impor lei de ferro na triade	muralhas	agent/ci/limites-da-triade	pull_request	34726710190	2m24s	2026-09-12T23:56:53Z
+completed	success	feat(ci): impor lei de ferro na triade	muralhas	agent/ci/limites-da-triade	pull_request	34726665465	2m23s	2026-09-12T23:55:46Z
+completed	success	fix(ci): impedir encolhimento silencioso do censo de leis	muralhas	agent/ci/trava-de-lei	pull_request	34726304829	1m54s	2026-09-12T23:46:56Z
+completed	success	fix(ci): impedir encolhimento silencioso do censo de leis	muralhas	agent/ci/trava-de-lei	pull_request	34726238046	2m25s	2026-09-12T23:45:21Z
+completed	success	fila: reconciliação e conselho enfileirados	muralhas	agent/fila/reconciliacao-e-conselho	pull_request	34724700392	2m29s	2026-09-12T23:10:13Z
+completed	success	fila: reconciliação e conselho enfileirados	muralhas	agent/fila/reconciliacao-e-conselho	pull_request	34724290784	2m17s	2026-09-12T23:01:15Z
+completed	success	fila: reconciliação e conselho enfileirados	muralhas	agent/fila/reconciliacao-e-conselho	pull_request	34724080019	2m30s	2026-09-12T22:56:27Z
+completed	success	fila: reconciliação e conselho enfileirados	muralhas	agent/fila/reconciliacao-e-conselho	pull_request	34724056340	2m25s	2026-09-12T22:55:55Z
+completed	success	fila: reconciliação e conselho enfileirados	muralhas	agent/fila/reconciliacao-e-conselho	pull_request	34723580359	2m28s	2026-09-12T22:45:04Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34721479415	2m25s	2026-09-12T21:59:26Z
+completed	success	docs: a tríade nos documentos de regência	muralhas	agent/ci/regencia-da-triade	pull_request	34721085469	2m9s	2026-09-12T21:50:29Z
+completed	success	docs: a tríade nos documentos de regência	muralhas	agent/ci/regencia-da-triade	pull_request	34720964443	2m25s	2026-09-12T21:47:52Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34720908622	2m30s	2026-09-12T21:46:39Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34720792480	2m39s	2026-09-12T21:44:12Z
+completed	success	docs: a tríade nos documentos de regência	muralhas	agent/ci/regencia-da-triade	pull_request	34720644153	2m22s	2026-09-12T21:40:55Z
+completed	success	docs: a tríade nos documentos de regência	muralhas	agent/ci/regencia-da-triade	pull_request	34720599531	2m28s	2026-09-12T21:40:02Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34720520225	2m29s	2026-09-12T21:38:15Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34720451754	2m31s	2026-09-12T21:36:53Z
+completed	success	fila: rádio e Lei de Ferro enfileirados	muralhas	agent/fila/radio-da-triade	pull_request	34720094202	2m32s	2026-09-12T21:29:20Z
+completed	success	lei: a tríade de IAs entra na lei da casa	muralhas	agent/ci/lei-da-triade	pull_request	34719769698	2m41s	2026-09-12T21:22:28Z
+completed	success	lei: a tríade de IAs entra na lei da casa	muralhas	agent/ci/lei-da-triade	pull_request	34719680039	2m22s	2026-09-12T21:20:40Z
+completed	success	docs: a tríade nos documentos de regência	muralhas	agent/ci/regencia-da-triade	pull_request	34719307476	1m54s	2026-09-12T21:12:56Z
+completed	success	lei: a tríade de IAs entra na lei da casa	muralhas	agent/ci/lei-da-triade	pull_request	34719253725	2m20s	2026-09-12T21:11:51Z
+completed	success	lei: a tríade de IAs entra na lei da casa	muralhas	agent/ci/lei-da-triade	pull_request	34719216498	1m52s	2026-09-12T21:11:05Z
+completed	success	fila: o feito viaja dentro da entrega	muralhas	agent/fila/pouso-fecha-tarefa	pull_request	34719202039	2m29s	2026-09-12T21:10:41Z
+completed	success	feat(ci): impor lei de ferro na triade	muralhas	agent/ci/limites-da-triade	pull_request	34719154143	2m25s	2026-09-12T21:09:42Z
+
+Comando: Script Python de calculo de Mediana (Muralhas)
+Saida:
+Muralhas Duration: Median 145.0s
+
+Fase 5 - Fichas Ausentes e Fila
+
+Comando: python ci/fila.py listar
+Saida:
+A FILA DE TRABALHO — 334 tarefa(s) · só arquivos (use --ao-vivo para reservas e PRs)
+
+
+
+  TAR-001  [concluída · sessao-fila-semeadura-2026-08-29] — https://github.com/abundanciabr/sitesdoreino/pull/516 (MERGED; semeadura + RITOS §5 + registro 20260829-037)
+
+         Semear a fila com as tarefas reais abertas e escrever a lei no RITOS  (toca: fila, RITOS.md, painel)
+
+  TAR-002  [concluída · sessao-aba-os-robos-2026-08-29] — https://github.com/abundanciabr/sitesdoreino/pull/520 (MERGED); deploy admin success (run 33278377042, gh run view --json); prova de fora: GET https://meshcraft.top/admin/caixa/robos/ -> 302 para o login (o cracha vem antes da aba)
+
+         Construir a aba "Os robôs" no painel de gestão do Admin, calculada da fila  (toca: admin, fila, painel)
+
+  TAR-003  [concluída · sessao-infra-backup-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/837
+
+         Backup automático do banco antes de toda migração  (toca: infra, ci)
+
+  TAR-004  [concluída · agent/infra/senha-so-publicacao] — https://github.com/abundanciabr/sitesdoreino/pull/1461
+
+         A senha do banco só existir dentro da publicação  (toca: infra)
+
+  TAR-005  [concluída · agent/ci/tetos-da-regua] — https://github.com/abundanciabr/sitesdoreino/pull/1463
+
+         Os tetos de espera calculados do tempo medido, não chutados  (toca: ci)
+
+  TAR-006  [concluída · sessao-ci-revisor-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/849
+
+         Um robô revisor com contexto fresco conferindo cada pouso  (toca: ci, .github)
+
+  TAR-007  [concluída · agent/ci/verificador-maiusculas-fim-linha] — https://github.com/abundanciabr/sitesdoreino/pull/1473
+
+         Verificador de maiúsculas e fim de linha  (toca: ci)
+
+  TAR-008  [concluída · agent/ci/medicao-por-assunto] — https://github.com/abundanciabr/sitesdoreino/pull/1467
+
+         Dividir por assunto a medição de perguntas ao mantenedor  (toca: ci, painel)
+
+  TAR-009  [concluída · agent/ci/trava-cobertura-celula] — https://github.com/abundanciabr/sitesdoreino/pull/1455
+
+         Trava de cobertura de teste por célula  (toca: ci)
+
+  TAR-010  [concluída · agent/fabrica/abrir-pr-rascunho-primeiro-minuto] — https://github.com/abundanciabr/sitesdoreino/pull/1447
+
+         Abrir o PR em rascunho no primeiro minuto, como anúncio  (toca: ci, RITOS.md)
+
+  TAR-011  [concluída · agent/ci/abandonar-sem-apagar] — https://github.com/abundanciabr/sitesdoreino/pull/1468
+
+         Marcar como abandonado o que ficou para trás, sem apagar  (toca: ci)
+
+  TAR-012  [concluída · agent/ci/versionado-conferir-nao-versionado] — https://github.com/abundanciabr/sitesdoreino/pull/1471
+
+         O versionado conferir se o não-versionado está instalado  (toca: ci)
+
+  TAR-013  [concluída · sessao-tar013-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/584
+
+         A vacina do deploy: medir a porta, repetir com pausa, parar na terceira  (toca: .github, ci)
+
+  TAR-014  [concluída · sessao-tar023-2026-08-30] — As CINCO rotas antigas aposentadas no PR https://github.com/abundanciabr/sitesdoreino/pull/596 (deploy-celula 33312825854 completed/success, lido por gh run view --json). Medido na internet publica ANTES e DEPOIS do deploy: /forms/sugestoes/moderacao 302->302, /moderacao/1 302->302, /moderacao/1/status 405->302, /moderacao/1/avaliacao 405->302, /moderacao/1/changespec 302->302 — todas para /forms/sugestoes/entrar (o cracha vem antes do redirecionamento, como projetado). A virada 405->302 nas duas de escrita e a prova de fora de que o codigo novo esta no ar. Nenhuma responde 404: nenhum endereco foi apagado. Nada se perdeu: a funcao que faltava (a ficha da assinatura) foi entregue antes, nos PRs #581, #588 e #589 — que e a condicao registrada em 20260830-019 e o mandato do mantenedor de 30/08/2026. Suite da celula 497 verdes.
+
+         Aposentar as telas antigas de moderação da Caixa  (toca: sugestoes)
+
+  TAR-015  [concluída · sessao-tar015-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/574 — a conferencia do toca em sombra. PROVA VERMELHO->VERDE sem rede: 30 testes em ci/tests/test_conferencia_do_toca.py; quatro sabotagens deliberadas deixam o teste vermelho (rename lido so pelo destino: 2 failed; area na granularidade grossa da celula: 8 failed; a regra nunca disparar: 3 failed; o rito isentar painel/ inteiro: 1 failed) e com o codigo no lugar: 30 passed. Suite inteira: 1091 passed. PROVA DE FORA: python ci/conferencia_do_toca.py --pr 574 --comentar publicou o alerta REAL no PR 574, apontando .github fora do toca declarado [ci, fila]; a segunda execucao nao repetiu. PR aberto, aguardando pouso.
+
+         Conferir o 'toca' declarado da tarefa contra o diff real do PR  (toca: ci, fila)
+
+  TAR-016  [concluída · sessao-tar016-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/571
+
+         Medir os tres numeros que decidem a porta de leitura da aba Os robos  (toca: admin, painel, ci)
+
+  TAR-017  [concluída · sessao-tar017-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/573
+
+         A vacina do deploy precisa tratar o deploy cancelado por push, nao so o falhado  (toca: ci)
+
+  TAR-018  [concluída · sessao-tar018-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/582
+
+         O robo que pega uma tarefa no balcao deixa o comprovante na pasta errada, e ninguem avisa  (toca: fila, ci)
+
+  TAR-019  [concluída · sessao-tar019-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/585
+
+         O forum passa a aceitar escrita: atras do login, so para aluno matriculado  (toca: forum)
+
+  TAR-020  [concluída · sessao-forum-semeadura-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/620 - vermelho por assercao sem o conserto: 'AssertionError: Topico.autor continua obrigatorio: para a escola publicar, alguem teria de criar uma Pessoa de mentira' + 'Topico nao sabe declarar autoria institucional' + 'Topico nao expoe assinatura' (5 failed). Com o conserto: 119 passed na suite da celula forum (eram 101). ci/travessao.py PASS, freeze de contrato PASS. A publicacao no ar espera a aprovacao do conteudo pelo mantenedor (workflow_dispatch semear-duvidas-do-forum), entao a evidencia de fora AINDA NAO foi medida.
+
+         Semear o forum com as duvidas reais da escola, em nome da escola  (toca: forum)
+
+  TAR-022  [concluída · sessao-tar022-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/580
+
+         O indice das armadilhas e gerado e viaja no Git - dois robos colidem nele sem ter escrito nada em comum  (toca: ci, armadilhas)
+
+  TAR-023  [concluída · sessao-tar023-2026-08-30] — Escada de 4 PRs, todos MERGEADOS (gh pr view --json state): https://github.com/abundanciabr/sitesdoreino/pull/581 contrato, 4a emenda (componente ChangeSpecAssinado + changespecs[] em IdeiaComHistorico), merge 1dfce1a4 · /588 a Caixa responde a ficha, 507 testes verdes, merge ecaa4742 · /589 o Admin mostra a ficha e recusa nota fora de 0-5, 370 testes verdes, merge 8e207975 · /596 as CINCO rotas antigas viram redirecionamento, 497 testes verdes, merge 6d3c3daf. Vermelho->verde por ASSERCAO em cada degrau (armadilhas/195), com a segunda medida no degrau 2: SEM O CONSERTO 'changespecs esta na resposta? False' / COM O CONSERTO 'True'. Freeze do contrato PASS (947 linhas, 9 operacoes com auth conferida na fonte); guarda_dos_guardas PASS (31 guardas em 22 invariantes). DEPLOYS, lidos por gh run view --json status,conclusion: sugestoes run 33312825854 completed/success; admin run 33312655853 completed/success no rerun (a 1a tentativa parou na sonda da porta 22 — armadilhas/127, intermitente: a porta respondeu SSH-2.0-OpenSSH_9.6p1 do PC durante a janela). PROVA DE FORA das 5 rotas, antes->depois do deploy: /moderacao 302->302, /moderacao/1 302->302, /moderacao/1/status 405->302, /moderacao/1/avaliacao 405->302, /moderacao/1/changespec 302->302, todas para /forms/sugestoes/entrar; a virada 405->302 e a diferenca observavel de fora. A ficha em si so e visivel atras do login do Admin — dela a prova sao os 370 testes e o deploy verde. Aprendizado: armadilhas/202 e services/sugestoes/LICOES.md.
+
+         O Admin passa a mostrar com base em qual documento assinado cada ideia virou obra  (toca: contracts, sugestoes, admin)
+
+  TAR-024  [concluída · sessao-tar024-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/602 — deploy-infra com a vacina da armadilhas/127: 3 tentativas, medicao da porta 22 por ci/sonda_da_vps.py (reusada, nao reescrita), pausas de 45s e 60s, parada antecipada com DUAS medicoes, e portao de conclusao contra o falso-verde que a repeticao criava. Guarda ci/tests/test_deploy_infra_sobrevive_ao_soluco.py: 22 verdes com o conserto, 17 vermelhos com o workflow antigo, todos na ASSERCAO (armadilhas/195). Suite 1166 -> 1188 passed; muralhas PASS nas 12.
+
+         O deploy de infraestrutura também precisa sobreviver ao soluço de rede  (toca: infra, ci)
+
+  TAR-025  [concluída · sessao-tar025-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/604
+
+         A main esta vermelha: o indice das armadilhas saiu do Git e nenhum workflow o gera  (toca: ci, .github)
+
+  TAR-026  [concluída · sessao-tar026-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/601
+
+         A sonda da VPS disse 'falha permanente' quando a VPS estava viva -- e esse veredito faz o deploy desistir  (toca: ci)
+
+  TAR-027  [concluída · sessao-escrita-20260830] — https://github.com/abundanciabr/sitesdoreino/pull/603
+
+         Trocar os 125 travessoes que ja estavam publicados no site  (toca: funil, sugestoes, checkout, quiz, forum, admin, documentos)
+
+  TAR-028  [concluída · sessao-ci-tar028-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/619 — apagados os tres gerados de armadilhas/, 'python -m pytest ci/tests/test_guarda_declarada_e_sino.py' devolve '26 passed in 1.33s' com a fixture unica (contra '2 failed, 24 passed' sem fixture nenhuma); a suite ci/tests/ inteira, tambem da arvore sem os gerados, fecha '1284 passed in 371.85s'
+
+         Duas fixtures fazem a mesma coisa no conftest da suite dos portoes  (toca: ci)
+
+  TAR-029  [concluída · sessao-ci-tar029-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/622 — vacina-do-deploy.yml acorda no cancelled das duas esteiras; vermelho->verde por assercao (a vacina perguntava a ['deploy-celula.yml'] num run do deploy-infra; e devolvia acao='repetir' codigo=0 sem saber a esteira); 1305 testes verdes; passo do aviso EXECUTADO com gh duble; run real 33317249576 diagnosticado com a esteira certa. Gatilho real so vale depois do merge (workflow_run so dispara do ramo padrao) — dito em texto.
+
+         Um deploy cancelado pela cadeira musical fica fora do ar em silencio, e nada o recupera sozinho  (toca: ci, .github)
+
+  TAR-033  [concluída · sessao-painel-mapa-gamificacao-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/626 - painel/ia/04 ganhou a secao da celula gamificacao (o que e, o que consome, o que oferece, tabela do que NAO faz) e o INDICE passou a cita-la; ci/tests/test_painel_ia_atualizado.py 2 passed
+
+         O mapa do projeto para IA passa a citar a celula da gamificacao que nasce  (toca: painel)
+
+  TAR-034  [concluída · sessao-gamificacao-genese-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/629 - a celula services/gamificacao existe, com /healthz nas duas formas e os tres guardas provados por MUTACAO, vermelho na ASSERCAO (armadilhas/195). (a) Instalando sessao na celula: 4 failed em test_inv_gamificacao_nao_assina_sessao.py, todas em linha de assert - :37 SessionMiddleware, :45 django.contrib.sessions, :64 SESSION_ENGINE, :79 assert 'csrftoken' == 'gamificacao_csrf'. (b) Apagando TIME_ZONE: 3 failed em test_fuso_horario.py, com o template acusando assert '24/08/2026 23:00' == '25/08/2026 01:00' (o DIA errado). (c) Cravando 'conquistas/' no urls.py: 4 failed em test_healthz_script_name.py, incluindo assert 200 != 200. Desfeitas as sabotagens: 12 passed in 0.08s e black --check 11 files unchanged. celulas.yml, ci/manifesto-de-contratos.json (not-applicable), .github/workflows/rollback.yml e painel/mapa-do-site.json no lugar; DECISAO-gamificacao.md e AGENTS.gamificacao.md escritas. Portoes locais verdes (mapa-de-celulas PASS, mapa-do-site PASS, guarda-dos-guardas PASS com divida em 37, testador 1307 passed). Deploy vermelho ate o PR de infra e ESPERADO (armadilhas/088).
+
+         A genese da celula da gamificacao: esqueleto, saude, volta-atras e a lei da celula  (toca: gamificacao, ci, .github)
+
+  TAR-035  [concluída · sessao-gamificacao-modelos-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/636 - as tabelas do §3 migradas num PostgreSQL 17 de verdade, semeadura com TUDO ativa=False (37 linhas), e os TRES testes-invariante provados por sabotagem com vermelho na ASSERCAO (armadilhas/195): (1) ItemCosmetico.preco_em_reais -> AssertionError 'INVARIANTE 1 QUEBRADO: campo desta celula carrega dinheiro real / ItemCosmetico.preco_em_reais [PositiveIntegerField] (por preco) (por reais)'; e removendo a restricao cristal_positivo_nunca_vem_de_compra -> 'Failed: DID NOT RAISE IntegrityError'; (2) ItemCosmetico.multiplicador_de_xp -> AssertionError 'INVARIANTE 2 QUEBRADO: um cosmetico ganhou campo de vantagem (por xp) (por multiplicador)'; (3) NivelDefinicao.aulas_desbloqueadas -> tres asserções vermelhas: 'INVARIANTE 3 QUEBRADO: esta celula passou a nomear conteudo educacional (por aula)', 'nasceu um portao nesta celula (desbloque + aula)' e 'a forma do NivelDefinicao mudou / sobrou: aulas_desbloqueadas'. Desfeitas: 10, 5 e 4 passed. make ci verde (65 passed, black OK) e ci/ci.py --apenas muralhas RESULTADO PASS.
+
+         As tabelas da gamificacao e os tres testes que a proibem de trair o aluno  (toca: gamificacao)
+
+  TAR-036  [concluída · sessao-catalogo-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/640 — vermelho na assercao (assert 'ci/reservar.py numero armadilha' in erro; 1 failed) e verde depois: 33 passed nos testes do indice+reservas, testador 1309 passed, muralhas RESULTADO PASS
+
+         Dois guardas se contradizem sobre o numero de uma armadilha nova, e ja custou duas rodadas de CI  (toca: ci, armadilhas)
+
+  TAR-037  [concluída · sessao-forum-moderacao-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/627 — 34 testes novos em services/forum/tests/test_moderacao.py; suite da celula 119 -> 153 passed. Vermelho->verde com a segunda medida do armadilhas/195: SEM O CONSERTO a tela do administrador nao tinha 'Ferramentas do administrador' (False) nem botao 'Tirar do ar' (False) e os quatro enderecos davam NoReverseMatch; COM O CONSERTO os dois marcadores dao True e os quatro enderecos EXISTEM. Contra o codigo de origin/main os testes novos dao 32 failed, 2 passed (os 2 que passam sao os que exigem AUSENCIA de botao para aluno e visitante). black --check PASS, ci/travessao.py PASS, ci/mapa_do_site.py PASS com as 4 rotas novas no mapa. Falta o veredito do deploy-celula depois do pouso.
+
+         As opcoes que so o administrador ve no forum: editar, tirar do ar, deixar privado, arquivar  (toca: forum)
+
+  TAR-038  [concluída · sessao-tar038-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/642 - o sinal da 185 ancora so na FALHA (`d[iI]vida do livro +FAIL` e `merge\(s\) sem registro`); o segundo sinal antigo foi REMOVIDO por so existir em docstring, nunca em saida de comando. CORPUS_FELIZ ganhou a TABELA do mergear.py --conferir (o rodape ja estava la; faltavam as linhas de cima, e era por esse buraco que o gerador aceitava assinatura ancorada em rotulo de sucesso), mais a linha de isencao, o unico SKIP permitido e o balcao da fila. As linhas do corpus sairam do Relatorio.render() e do como_pagar() de producao, nao foram escritas a mao. VARREDURA dos 41 sinais declarados contra as duas saidas felizes de rotina: a 185 era a unica infratora. PROVA VERMELHO->VERDE POR ASSERCAO (armadilhas/195), sem rede: (a) com o corpus novo e o sinal velho o gerador reprova nomeando o arquivo - 'ERROR indice-de-armadilhas: 185-registro-sem-o-numero-do-pr-vira-divida-real.md: o sinal \'d[iI]vida do livro\' casa saida BENIGNA do dia a dia / Casou: \'MERGE GUARDADO - PR #640\\n\\n  estado do PR          PASS   aberto e pron\'' EXIT=2; (b) o teste novo fica vermelho NA ASSERCAO - 'AssertionError: sinal casando saida de sucesso - o sino tocaria em dia normal: 185-registro-sem-o-numero-do-pr-vira-divida-real.md: o sinal \'d[iI]vida do livro\' casa saida FELIZ \'divida do livro\'' em test_guarda_declarada_e_sino.py:399 (a sabotagem desliga tambem o guarda do gerador, porque o fixture de sessao materializa o indice antes da suite e o sinal velho sozinho derruba tudo no setup; e justamente o cenario de prova de fora que o teste cobre); (c) desfeitas as sabotagens, 30 passed in 0.48s e o gerador PASS com 206 entradas; (d) o sino AINDA toca na falha real - relatorios montados com as funcoes de producao e passados pelo reconhecedor real do sino: PR verde 'armadilhas que tocaram: nenhuma', PR devedor 'armadilhas que tocaram: [185, 214]' casando 'divida do livro       FAIL' e 'merge(s) entraram na main e NINGUEM contou ao dono'; (e) mutacao do teste parametrizado: sem a tabela no corpus os 3 casos novos ficam vermelhos, repostos ficam verdes. PORTOES: ci/muralha-do-indice.sh PASS (reconstroi byte a byte, nenhum gerado no indice do Git), ci/travessao.py RESULTADO PASS, suite ci/tests 1311 passed. A unica vermelha e test_contrato_check_das_celulas.py::test_o_varredor_ignora_os_worktrees_de_outras_sessoes, que nao le nenhum arquivo deste PR: ela falha porque esta bancada foi criada em .claude/worktrees/, entao a propria raiz do repo tem .claude no caminho (a convencao do CLAUDE.md e worktree irma, ../wt-<area>-<tarefa>) - condicao de ambiente, pre-existente. APRENDIZADO: armadilhas/229. CERCA: editei o frontmatter da armadilhas/185 (excecao legitima - conserto de guarda, so o bloco `sinal:`, texto da licao intacto) e caminho CODEOWNERS ci/, com mandato do despacho.
+
+         O sino de alerta toca em cima de mensagem de sucesso, e ensina todo robo a ignora-lo  (toca: ci, armadilhas)
+
+  TAR-039  [concluída · sessao-forum-moderacao-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/633 — pode_moderar passou de eh_admin para eh_equipe. Vermelho->verde na ASSERCAO (armadilhas/195), medido contra origin/main: 'assert Ferramentas da escola in <html...>' (a tela do professor nao tinha a caixa) e 'assert False is True where False = pode_ler(area, Ator(eh_professor=True))' (o professor nao via a area arquivada). Com o conserto: 153 verdes na suite da celula, black --check PASS, ci/travessao.py PASS, ci/mapa_do_site.py PASS. O guarda antigo test_area_desativada_some_para_todo_mundo virou test_area_desativada_some_para_quem_nao_modera, com o porque escrito dentro dele: as duas negativas que importam (visitante e aluno) continuam intactas.
+
+         O professor tambem modera o forum, com os mesmos poderes do administrador  (toca: forum)
+
+  TAR-040  [concluída · sessao-contrato-gamificacao-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/644 : contrato congelado (gamificacao.openapi.yaml com getPublicProfiles e getMyStatus), os 4 eventos forum.* e o aditivo de notificacao.devida; muralhas PASS (13 portoes), testador PASS (1308 testes), contrato_aditivo PASS nos 6 arquivos, auditar_manifesto coerente com o disco. O freeze de gamificacao e ERROR ate a porta de maquina (PR 16) existir, e isso esta medido e escrito no PR e em armadilhas/228.
+
+         Congelar o contrato da gamificacao e os quatro eventos do forum (Sessao B)  (toca: contracts)
+
+  TAR-041  [concluída · sessao-ci-porta22-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/648 — medido: 14 dos 41 deploys vermelhos de 30 dias (13 dos 39 de 7 dias) morreram no timeout da porta 22; a escada interna salvou 1 de 18; a cascata entre esteiras reprovou 4x e as 4 eram esteira irma. A vacina passou a acordar no failure com o portao da 188 junto (antes/depois por assercao: divergiu repetir/0 -> parar/1). Registro 20260830-084.
+
+         A porta 22 da VPS falhou tres vezes num dia, e o proprio catalogo diz que isso deixou de ser azar  (toca: ci, .github)
+
+  TAR-042  [concluída · sessao-gamificacao-invariantes-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/641 - guarda_dos_guardas PASS com os tres declarados (35 guardas em 25 invariantes; 61 em disco: 24 declarados, 37 na divida - a divida NAO cresceu) e prova por ASSERCAO de que ele reclama: retirado o bloco [INV-GAM2] do INVARIANTES.md -> guardas/inverso FAIL nomeando test_inv_economia_cosmetico_e_so_estetica.py, EXIT=1 (FAIL da regra 5, nao ERROR de instrumento); retirados os tres -> FAIL nomeando os tres; desfeito -> PASS EXIT=0. Saidas cruas no corpo do PR e no registro 20260830-079. CODEOWNERS: INVARIANTES.md (mandato da lei da celula) e ci/tests/test_guarda_dos_guardas.py (o inventario exato exigido pelo proprio mecanismo).
+
+         As tres leis da gamificacao viram invariante declarado, e nao so teste que existe  (toca: gamificacao, INVARIANTES.md)
+
+  TAR-043  [concluída · sessao-ci-sino199-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/654 — vermelho->verde por assercao: (a) base: guarda passava COM o defeito (1 passed in 0.16s), pois nao havia cabecalho CSP no CORPUS_FELIZ; (b) VERMELHO com o corpus ampliado: 'AssertionError: sinal casando saida de sucesso: 199-...md: o sinal "style-src 'self'" casa saida FELIZ "style-src 'self'"'; (c) VERDE com o conserto: 'nenhum sinal do catalogo casa o corpus feliz' + 1 passed in 0.10s; (d) o sino AINDA toca na falha real, rodando ci/sino_das_armadilhas.py de verdade: SILENCIO no 302 saudavel e no 'style-src self sha256-...' (a cura), TOCA nomeando a 199 na mensagem do navegador (Casou: 'Applying inline style violates'); (e) o candidato do despacho (style-src sem sha256) foi REFUTADO medindo a producao: curl -sI https://meshcraft.top/admin/ devolve 'style-src 'self';' nu num dia saudavel, porque 302 sem corpo nao tem style para hashear; (f) ci/tests 1338 passed in 417.45s; gerador PASS com 211 entradas; licao nova armadilhas/233
+
+         O sino ainda toca em cima do cabecalho de estilo correto do painel — o mesmo defeito da TAR-038, na entrada vizinha  (toca: ci, armadilhas)
+
+  TAR-044  [concluída · sessao-gamificacao-porta-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/656 — freeze do contrato de ERROR (Unknown command: 'export_openapi', exit 2) para PASS (identico ao congelado, 263 linhas; seguranca conferida na fonte nas 2 operacoes); 31 guardas de porta em vermelho->verde por assercao; 96 passed na celula
+
+         A porta de maquina da gamificacao, antecipada para destravar a celula  (toca: gamificacao)
+
+  TAR-045  [concluída · sessao-ci-espelho-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/658 — vermelho->verde por assercao, sem rede: (1) espelho em dia => paragrafo da idade AUSENTE (calou); (2) 358 atras com CLAUDE.md mexido => 'IDADE DO ESPELHO: 358 commits atras de origin/main [...] parte das ordens que voce recebeu pode estar REVOGADA'; (3) sem origin/main no cache => 'IDADE DO ESPELHO: NAO MEDIDA (git rev-list falhou) [...] Nao medir nao e estar em dia (INV-CI01)'. 5 vermelhos por assert antes do conserto; guarda anti-barulho falsificada por mutacao (commits == 0 -> == -1) ficou vermelha acusando '0 commits atras'. 43 testes na muralha, 1345 em ci/tests.
+
+         O espelho velho entrega manual de instrucoes revogado para todo robo, e ninguem avisa  (toca: ci)
+
+  TAR-046  [concluída · sessao-forum-busca-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/653 — 14 testes novos, suite da celula 153 -> 167 verdes. deploy-celula run 33340706830 completed/success nas duas celulas, lido por gh run view --json. PROVA DE FORA, sem login: GET /forum/buscar 200, GET /forum/buscar?q=roblox 200 devolvendo '1 resultado para roblox' (so a area publica, que e o que visitante pode ler), e a caixa de busca presente na capa. O achado que mudou o teste esta em armadilhas/232: o ts_headline remove <script> mas devolve <img src=x onerror=alert(1)> inteiro, entao a prova de escape usa a carga que sobrevive.
+
+         A tela de busca do forum: achar a duvida ja respondida em vez de perguntar de novo  (toca: forum)
+
+  TAR-047  [concluída · sessao-forum-busca-2026-08-30] — https://github.com/abundanciabr/sitesdoreino/pull/667 — a configuracao portugues_sem_acento (unaccent + portuguese_stem) criada pelo provisionamento, o nome lido do env com padrao inofensivo, as duas pontas (indexar e procurar) na mesma funcao, e a migracao 0006 reindexando no boot. Suite da celula 167 -> 170 verdes, com o guarda dos buracos INVERTIDO: o do acento agora exige a cura nas duas direcoes. deploy-celula run 33342991511 completed/success nas duas celulas (gh run view --json). PROVA DE FORA, sem login, depois do deploy: /forum/buscar?q=duvida devolve '2 resultados' e /forum/buscar?q=duvida-com-acento devolve os MESMOS '2 resultados'. O mantenedor rodou o passo da VPS as 20:45 e a saida foi 'PRONTO. A busca do forum agora acha sem acento. FORUM_BUSCA_CONFIG=portugues_sem_acento'.
+
+         A busca do forum achar mesmo sem acento: quem procura chapeu tem de achar chapeu  (toca: forum, infra)
+
+  TAR-048  [concluída · sessao-ci-lote-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/972 + leitura de codigo-fonte com a assinatura: sino em silencio (9 formas + PowerShell); falha real com a mesma assinatura: toca (13 formas + 6 artefatos de saida); numero: 0 de 205 leituras de arquivo benigno tocam (antes 205 de 205; 43 armadilhas seguem casando o TEXTO, por desenho); vermelho no sino antigo 10 failed na assercao; 3 mutacoes pegas (6/8/6 failed); ci/tests 1613 passed; muralhas PASS
+
+         O sino toca quando alguem so LE o codigo que imprime a mensagem, e isso pega 21 das 45 assinaturas  (toca: ci)
+
+  TAR-049  [concluída · sessao-gamificacao-3108] — PR https://github.com/abundanciabr/sitesdoreino/pull/693 mergeado (commit 50a5978a). 33 testes verdes nos dois guardas (13 novos, que EXECUTAM o script), suite local completa 1361 verdes, bash -n limpo. Prova vermelho->verde por assercao: com as travas do SITE_ID comentadas o script sai 0 dizendo 'SITE_ID preenchido', e o guarda reprova. O script ja responde 200 em raw.githubusercontent.com/.../main/infra/provisionar-gamificacao.sh. O bloco de colar do passo H foi entregue ao mantenedor pela sessao principal.
+
+         O provisionamento da gamificacao, e o bloco de colar do passo manual do mantenedor  (toca: infra)
+
+  TAR-050  [concluída · sessao-ci-lote-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/973 + arvore atrasada fabricada (origin bare, HEAD parado): ANTES 2 assinaturas so da pasta, DEPOIS 3 com a origem e a entrada NOVA (so local) preservada; espelho real 195 commits atras: 151 -> 168 assinaturas, 272 -> 284 entradas, 12 so na origem, em 0,19s sem rede; 3 mutacoes pegas (4/2/2 failed); ci/tests 1582 passed; muralhas PASS
+
+         A maquinaria de vigilancia inteira roda do espelho velho, e consertos que ja entraram nao estao valendo  (toca: ci)
+
+  TAR-051  [concluída · sessao-ci-vacina-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/852
+
+         A vacina do deploy decide certo mas nao consegue redisparar: falta um token com forca  (toca: ci, .github)
+
+  TAR-052  [concluída · sessao-ci-lote-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/963 + sabotagem de cada lado reprova na assercao (1 failed / 2 failed), desfeito 6 passed; mutacao do normalizador 4 failed; ci/tests 1568 passed; muralhas PASS
+
+         O SQL da busca sem acento mora em dois lugares e nada impede que eles discordem  (toca: ci)
+
+  TAR-053  [concluída · sessao-forum-leitura-2026-08-31] — https://github.com/abundanciabr/sitesdoreino/pull/670 — 10 testes novos, suite da celula 170 -> 180 verdes. Vermelho->verde na ASSERCAO (armadilhas/195): contra origin/main os testes novos dao 9 failed / 1 passed, com 'assert 2 novidades in <html...>', 'assert 0 == 1' (abrir a conversa nao guardava leitura) e 'assert 0 == 30' (30 conversas abertas, nenhuma excecao). O teste-guarda de UMA linha por pessoa por area continua verde, e ha teste novo medindo a PODA: 30 excecoes viram 0 e a marca fica em 1. deploy-celula run 33344865619 completed/success nas duas celulas (gh run view --json). PROVA DE FORA, sem login: /forum/ 200 e /forum/a/avisos 200 com ZERO etiquetas de novidade e ZERO botoes 'Ja vi tudo' (visitante nao tem marca de leitura, como projetado); o estilo novo servido pelo site; e POST /forum/a/avisos/li-tudo respondendo 403 sem cracha.
+
+         O forum mostrar o que e novo desde a ultima visita  (toca: forum)
+
+  TAR-054  [concluída · sessao-mensageria-20260831] — Emenda em constituicoes/AGENTS.mensageria.md: a missao passa a permitir sequencias que esperam (jornadas), a regua de quem recebe entra nos invariantes com as quatro barreiras e o fail-closed, e a idempotencia existente fica declarada como intocavel. 13 muralhas PASS. PR citado no registro do livro.
+
+         Emendar a constituicao da mensageria para permitir sequencias que esperam  (toca: mensageria)
+
+  TAR-055  [concluída · sessao-plano-mensagens-2026-08-31] — https://github.com/abundanciabr/sitesdoreino/pull/688
+
+         Sessao de contrato com o dono: o cadastro vira um fato anunciado  (toca: contracts)
+
+  TAR-056  [concluída · sessao-identidade-20260831] — 20 testes novos verdes (115 na celula identidade, 447 no funil), com Postgres de bancada. Provas exigidas pelo despacho: emitir() fora de transacao levanta EventoForaDaTransacao e nao grava; o relay nao republica linha ja publicada (segunda passada devolve 0); e um guarda a mais, que encena a morte do processo no meio do xadd para provar que nada fica marcado como publicado. Sem PII no evento: so site_id e pessoa_id. 13 muralhas PASS.
+
+         Fazer o cadastro anunciar que alguem entrou (a identidade ganha voz)  (toca: identidade)
+
+  TAR-057  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por descrever o desenho anterior a consultoria das sequencias de mensagens, que achou dez defeitos no plano copiado dentro dela. As substitutas TAR-071/072/073 apontam para o plano em vez de copia-lo, e ja estao concluidas: a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Construir por este despacho reproduziria os defeitos. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         Criar o motor das sequencias dentro da mensageria (so as tabelas, sem enviar nada)  (toca: mensageria)
+
+  TAR-058  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por descrever o desenho anterior a consultoria das sequencias de mensagens, que achou dez defeitos no plano copiado dentro dela. As substitutas TAR-071/072/073 apontam para o plano em vez de copia-lo, e ja estao concluidas: a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Construir por este despacho reproduziria os defeitos. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         A regua que impede a chateacao: uma por pessoa, e ela se recusa na duvida  (toca: mensageria)
+
+  TAR-059  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por descrever o desenho anterior a consultoria das sequencias de mensagens, que achou dez defeitos no plano copiado dentro dela. As substitutas TAR-071/072/073 apontam para o plano em vez de copia-lo, e ja estao concluidas: a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Construir por este despacho reproduziria os defeitos. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         O motor: inscrever, agendar, reavaliar a condicao e desistir  (toca: mensageria)
+
+  TAR-060  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         A primeira sequencia no ar: boas-vindas chegando no sininho do aluno  (toca: mensageria)
+
+  TAR-061  [concluída · sessao-gamificacao-comemoracoes-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/811
+
+         Fazer a gamificacao comemorar: os quatro avisos que ja existem no contrato e nunca sairam  (toca: gamificacao)
+
+  TAR-062  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         A tela onde o dono ve e edita as sequencias sozinho  (toca: admin)
+
+  TAR-063  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         Fazer a mensageria enviar e-mail de verdade (hoje ela so finge)  (toca: mensageria)
+
+  TAR-064  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         Enderecos que devolvem: parar de insistir antes de queimar o dominio  (toca: mensageria)
+
+  TAR-065  [cancelada · sessao-admin-lista-dos-robos-20260906] — Trancada em 31/08/2026 por depender das TAR-057/058/059, que descreviam o desenho anterior a consultoria das sequencias de mensagens. O conteudo dela nao estava errado: o que quebrou foi a corrente, e no balcao so tarefa CONCLUIDA destrava quem depende dela. As substitutas ja foram criadas apontando para a corrente nova (TAR-071/072/073), e a jornada de boas-vindas esta LIGADA em producao desde 02/09/2026. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md
+
+         WhatsApp oficial, se e quando o dono quiser o segundo canal  (toca: mensageria)
+
+  TAR-066  [concluída · sessao-plano-mensagens-2026-08-31] — https://github.com/abundanciabr/sitesdoreino/pull/690 — e prova de fora: https://meshcraft.top/mapa-ia/planos/ responde 200 text/plain sem cookie, e um documento nao marcado responde 404
+
+         Uma area no site para as IAs lerem os planos, sem login  (toca: admin)
+
+  TAR-067  [concluída · sessao-gamificacao-3108] — PR #699 mergeado (commit 5eaf73bc). Deploy-celula run 33409669280 completed/success e deploy-infra run 33409669287 completed/success, lidos por gh run view --json. PROVA DE FORA: https://meshcraft.top/conquistas/healthz 404 antes -> 200 com corpo {status: ok} depois; /conquistas/api/gamificacao/eu responde 401 (conjunto de tokens vazio recusando, como projetado). Passo H feito pelo mantenedor, site meshcraft.top, SITE_ID cc06b8c3-043b-4c06-92c5-5ea624e00586.
+
+         Por a gamificacao no ar: o compose, a rota /conquistas e o mapa do site  (toca: infra, painel)
+
+  TAR-068  [concluída · sessao-gamificacao-3108] — PR #698: migracao 0002_escola_18_mais (remove PerfilJogador.modo e ConquistaDefinicao.faixa_etaria, renomeia exige_validador_adulto para exige_validador_da_equipe, troca a CheckConstraint). 96 testes verdes na celula, black limpo, contrato IDENTICO ao congelado (263 linhas), 13 muralhas PASS. Prova vermelho->verde: reintroduzido o campo de modo no modelo E na migracao, o guarda reprova com 'voltou um campo de modo por idade ao PerfilJogador'. Varredura por junior/13 anos/menor/crianca na celula: so restam as mencoes que EXPLICAM a remocao, mais a frase presa no contrato congelado, declarada como divida para o proximo Rito de Contrato.
+
+         O codigo da gamificacao ainda trata todo aluno como crianca, e a escola e 18+  (toca: gamificacao)
+
+  TAR-069  [concluída · sessao-menu-do-topo-2026-08-31] — ENTREGUE E MEDIDO NA INTERNET PUBLICA. Escada de 5 degraus, todos MERGEADOS: contrato #704, catalogo #714, funil #710, admin #713, forum #722 (mergeCommit 323f43ba); mais #718 (molde nao vira link), #725 e #726 (licoes das celulas). Deploys lidos por gh run view --json: catalogo run 33418134374 completed/success, funil run 33418368555 completed/success. PROVA DE FORA, depois do deploy: / responde 200 com 'Inicio Forum Cadastro'; /es/ 200 com 'Inicio Foro Registro'; /en/ 200 com 'Home Forum Sign up'; /cadastro 200 com menu; /login 200 SEM MENU (o pedido do mantenedor gravado no dado); /pt-br/ 404 (idioma padrao na raiz nua, D1). O R12 provado no HTML: em espanhol o link do cadastro vira /es/cadastro e o do forum continua /forum/, porque /es/forum seria 404. Tela de configuracao /admin/menu/ responde 302 para o login (o cracha vem antes). Registros no livro: 20260831-033, -036 (pendencia do passo do mantenedor) e -053. Aprendizado: armadilhas/243, services/catalogo/LICOES.md e services/funil/LICOES.md.
+
+         Um menu no topo do site publico, configuravel no painel: quais paginas tem menu e qual versao  (toca: funil, catalogo, admin, contracts, forum)
+
+  TAR-070  [concluída · sessao-funil-rodape-20260831] — https://github.com/abundanciabr/sitesdoreino/pull/705 MERGED (mergeCommit 12ef6323, lido por gh pr view --json state,mergedBy,mergeCommit); deploy-celula run 33411626311 completed/success (gh run view --json). PROVA DE FORA na internet publica, depois do deploy: / -> rodape-completo com 'Todos os direitos reservados'; /en/ -> rodape-completo com 'All rights reserved'; /es/ -> rodape-completo com 'Todos los derechos reservados'; /cadastro, /es/cadastro e /login -> rodape-enxuto, cada um no seu idioma. Suite da celula 356 -> 383 verdes.
+
+         O rodape do site publico, em todas as paginas e nos tres idiomas, com variantes por pagina  (toca: funil)
+
+  TAR-071  [concluída · sessao-mensageria-jornadas-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/845 - as 9 tabelas do §5 em services/mensageria/apps/jornadas/, com as travas no BANCO. 53 testes verdes na celula (eram 20; 33 novos), black limpo, makemigrations --check sem pendencia, 13 muralhas PASS. VERMELHO->VERDE POR SABOTAGEM DA MIGRACAO (armadilhas/195), cada uma rodada sozinha: (1) trava parcial virando TOTAL -> 'IntegrityError: duplicate key value violates unique constraint uniq_inscricao_andando_por_jornada', 2 failed; (2) sem a chave estrangeira composta -> 'DID NOT RAISE IntegrityError', 2 failed; (3) sem os tres gatilhos -> 'DID NOT RAISE DatabaseError', 2 failed. As tres provas exigidas pelo despacho: (a) a trava PERMITE segunda inscricao depois de concluida (test_a_pessoa_que_sumiu_duas_vezes_entra_duas_vezes) e RECUSA duas andando ao mesmo tempo (test_duas_inscricoes_andando_ao_mesmo_tempo_sao_recusadas_pelo_banco); (b) unique(inscricao, passo, canal) recusa duplicata (test_a_mesma_entrega_no_mesmo_canal_e_recusada) e tres canais sao tres linhas; (c) diff VAZIO em services/mensageria/apps/eventos/, mais um teste-guarda que confere nome, campos e ausencia de condicao da uniq_envio_por_order_tipo_canal todo dia. Aprendizado: armadilhas/274 e services/mensageria/LICOES.md. Registro do livro: 20260902-003.
+
+         Criar as tabelas do motor das sequencias (versao corrigida pela consultoria)  (toca: mensageria)
+
+  TAR-072  [concluída · sessao-mensageria-regua-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/851 - a regua do §6 em services/mensageria/apps/jornadas/regua.py. 68 testes verdes na celula (eram 53; 15 novos), black limpo, sem migracao pendente, 13 muralhas PASS. AS CINCO PROVAS EXIGIDAS: (a) test_a_medalha_da_manha_nao_barra_a_matricula_da_tarde, mais a CONTRAPROVA test_e_o_teto_estava_mesmo_ligado_naquele_dia (a mesma situacao com incentivo as 18h E barrada, entao (a) nao esta verde por o teto nao existir); (b) test_tres_jornadas_no_mesmo_dia_dao_uma_entrega_e_duas_reagendadas, com as duas barradas reagendadas para as 8h do dia seguinte e o motivo gravado; (c) test_o_passo_das_21h_nao_sai_e_espera_a_manha e test_o_passo_das_6h_nao_sai_e_espera_as_8h_do_MESMO_dia, mais a fronteira declarada em test_as_20h_em_ponto_a_janela_ja_fechou; (d) test_quem_ganha_a_vaga_do_dia_e_a_inscricao_mais_antiga, com a ordem TOTAL (criada_em, id) vindo de um lugar so, regua.ORDEM_DE_DESEMPATE; (e) test_regua_indisponivel_nao_envia_e_grava_o_motivo, com o motivo materializado na Entrega. VERMELHO->VERDE POR SABOTAGEM (armadilhas/195), cada uma sozinha: a classe deixando de isentar -> 2 failed (o cenario das 10h/18h volta); a janela perdendo a hora de abrir -> 1 failed; o teto sumindo -> 3 failed; a regua virando fail-open -> 1 failed com Veredito(libera=True, motivo='regua indisponivel, mando assim mesmo'). Aprendizado: armadilhas/276 e services/mensageria/LICOES.md. Registros: 20260902-007 (deploy verde do #845, run 33639556045) e 20260902-008.
+
+         A regua anti-chateacao com as classes de entrega (versao corrigida)  (toca: mensageria)
+
+  TAR-073  [concluída · sessao-mensageria-motor-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/854 - o motor em services/mensageria/apps/jornadas/motor.py e condicoes.py. 85 testes verdes na celula (eram 68; 17 novos), black limpo, 13 muralhas PASS. AS QUATRO PROVAS EXIGIDAS: (1) a condicao que deixa de valer ENTRE a inscricao e a varredura gera Entrega pulada -- test_a_condicao_que_deixa_de_valer_entre_a_inscricao_e_a_varredura_pula_o_passo, com a CONTRAPROVA test_a_condicao_que_CONTINUA_valendo_deixa_o_passo_sair (senao um motor que nunca entrega nada passaria); (2) o mesmo evento reentregue nao inscreve duas vezes -- test_o_mesmo_evento_reentregue_nao_inscreve_duas_vezes e o irmao depois do fim do episodio, mais a CONTRAPROVA test_um_fato_NOVO_abre_um_episodio_novo (senao a idempotencia seria a trava total disfarcada, o defeito que a consultoria achou); (3) o passo 3 sai em D+5 no cronograma ancorado mesmo com o passo 2 empurrado pela regua para D+3 -- test_o_passo_3_sai_em_D5_mesmo_com_o_passo_2_atrasado_pela_regua; (4) teto por passada -- test_a_varredura_respeita_o_teto_por_passada. VERMELHO->VERDE POR SABOTAGEM (armadilhas/195), cada uma sozinha: cronograma deixando de ser ancorado -> 1 failed; idempotencia por fato sumindo -> 1 failed com dois pk distintos; sem despacho gravando 'enviada' -> 1 failed (sem_despacho=0, entregues=1); teto sumindo -> 1 failed (examinadas=5 com lote=2); slug desconhecido virando fail-open -> 1 failed (puladas=0). DECISAO DECLARADA: o despacho e injetado e sem despachante NAO nasce linha de 'enviada' -- o envio real e o degrau 5, e marcar como enviada o que nao saiu seria falso-verde no banco contaminando o proprio teto diario. Aprendizado: armadilhas/280 e services/mensageria/LICOES.md. Registro: 20260902-013.
+
+         O motor: inscrever, agendar, desistir — com a projecao e o cronograma ancorado  (toca: mensageria)
+
+  TAR-074  [concluída · sessao-gamificacao-3108] — PR https://github.com/abundanciabr/sitesdoreino/pull/708 mergeado (commit 5ab960ae), deploy-celula run 33412064640 completed/success. 107 testes verdes na celula (11 novos), black limpo, contrato IDENTICO ao congelado, 13 muralhas PASS. PROVA DE FORA: https://meshcraft.top/conquistas/ responde 200 com <title>Conquistas | Meshcraft Academy</title> e o convite 'Suas conquistas ficam aqui'; https://meshcraft.top/conquistas/static/gamificacao.css responde 200 (as armadilhas 083 e 102 nao pegaram). Antes do PR o endereco era 404.
+
+         A primeira tela das conquistas: o aluno abre /conquistas e ve o nivel dele  (toca: gamificacao, painel)
+
+  TAR-075  [concluída · sessao-gamificacao-3108] — PR https://github.com/abundanciabr/sitesdoreino/pull/717 mergeado (commit e4975f37), com label 'arquitetural' (16 arquivos: um app novo custa 6 de estrutura, e a armadilhas/077 desaconselha encolher PR para caber). 130 testes verdes na celula, 23 novos. As quatro promessas com teste proprio: regra desligada NAO paga; o mesmo evento reentregue paga UMA vez (recusa do Unique do PostgreSQL, provada tambem com o EventoProcessado apagado, para medir a segunda camada isolada); o teto diario decresce 10-10-10-5-2 com piso 1 e monotonicidade conferida; a quarentena nasce pendente, NAO entra no perfil, e so vira definitiva depois do liberar_quarentena. Mais: versao da regra gravada no lancamento, evento sem beneficiario nao inventa dono, evento de outro site nao credita, perfil nunca fica negativo, e o reconciliar_perfis acha o perfil que mentiu. O processo consumidor entra no PR https://github.com/abundanciabr/sitesdoreino/pull/719 (compose sozinho, armadilhas/134).
+
+         O motor que conta os pontos: o XP deixa de ser zero  (toca: gamificacao)
+
+  TAR-076  [concluída · sessao-maestro-lote-2026-09-03] — PRs https://github.com/abundanciabr/sitesdoreino/pull/857 e https://github.com/abundanciabr/sitesdoreino/pull/859 mergeados (TAR-076 1/2 e 2/2); registro 20260902-023 'A sequencia de boas-vindas esta criada e LIGADA no site', evidencia run 33650113539. Fechada pela maestro do lote de 03/09 porque a sessao que construiu nao registrou a conclusao no balcao; a prova de fora (aviso na caixa de uma pessoa cadastrada) segue pendente do teste do mantenedor, registrada no livro.
+
+         A primeira sequencia no ar: boas-vindas chegando no sininho  (toca: mensageria)
+
+  TAR-077  [concluída · sessao-alunos-resolver-pendencias-painel-20260909] — PR https://github.com/abundanciabr/sitesdoreino/pull/1246 MERGED em 2026-09-06, commit a65ebd8a6fa703ec465b3f4fc1b5c5ffbfbcfe1f; registro 20260906-106 comprova e-mail real recebido fora do site com SPF, DKIM e DMARC aprovados.
+
+         Fazer a mensageria enviar e-mail de verdade (hoje ela so finge)  (toca: mensageria)
+
+  TAR-078  [concluída · sessao-admin-tar078-2026-09-04] — PR #1016: a tela /admin/escola/jornadas/ com a lista, o interruptor, o texto editavel por idioma, quem esta recebendo e O QUE FOI BARRADO com o motivo. 924 testes verdes na celula, 16 guardas provados por mutacao deliberada de uma linha. Falta o par de tokens na VPS (Lei 5), registrado como pendencia 20260904-082.
+
+         A tela onde o dono ve e edita as sequencias sozinho  (toca: admin)
+
+  TAR-079  [na fila] — ninguém pegou ainda
+
+         Enderecos que devolvem, e a regua de capacidade do provedor  (toca: mensageria)
+
+  TAR-080  [na fila] — ninguém pegou ainda
+
+         WhatsApp oficial, se e quando o dono quiser o segundo canal  (toca: mensageria)
+
+  TAR-081  [concluída · sessao-forum-rodape-20260831] — https://github.com/abundanciabr/sitesdoreino/pull/711 MERGED (mergeCommit 97b15639, lido por gh pr view --json state,mergedBy,mergeCommit); deploy-celula run 33412851789 completed/success (gh run view --json). PROVA DE FORA na internet publica, depois do deploy: /forum/ e /forum/buscar?q=roblox devolvem 200 com rodape-completo e a linha de direitos; /forum/static/forum.css devolve 200 com a regra .rodape. Suite da celula 184 -> 195 verdes.
+
+         O rodape do forum, em todas as paginas, com o mesmo desenho do site  (toca: forum)
+
+  TAR-082  [concluída · mantenedor] — Print enviado pelo mantenedor nesta sessão: celular Android Vivo, 08/09/2026 às 22:01, notificação Meshcraft de meshcraft.top com a mensagem 'It worked. This is the test you asked for.'
+
+         Aviso no celular (web push) para quem instalou o app  (toca: services/notificacoes, contracts, services/funil, infra)
+
+  TAR-084  [concluída · sessao-menu-do-topo-2026-08-31] — JA RESOLVIDA por outra sessao antes de esta comecar a construir: https://github.com/abundanciabr/sitesdoreino/pull/733 (commit 7ef0d51, 'o porteiro do livro dispensa quem so escritura, no livro E na fila'). Conferido na main de agora, caso a caso: so livro isento=True; livro+balcao isento=True; so balcao isento=True; balcao+CODIGO isento=False; so codigo isento=False; nenhum arquivo isento=False. A mira ficou certa: escrituracao pura passa, entrega continua devendo. Nao refiz o trabalho.
+
+         O porteiro do livro cobra registro de quem so fechou tarefa no balcao, e isso trava a fila de todos  (toca: ci)
+
+  TAR-085  [concluída · sessao-contrato-20260831] — https://github.com/abundanciabr/sitesdoreino/pull/788
+
+         Corrigir o nome e o texto de uma sugestao pela tela da Caixa, quando o aluno erra a digitacao  (toca: sugestoes, admin, contracts)
+
+  TAR-086  [concluída · sessao-sugestoes-20260831] — PR https://github.com/abundanciabr/sitesdoreino/pull/782 mergeado (commit 8538296d). deploy-celula run 33446494887, sha 8538296db: status completed, conclusion success (gh run view --json, nao por pipe). Conferido de FORA, no site publicado: a folha https://meshcraft.top/forms/sugestoes/static/sugestoes/caixa.css traz 8 ocorrencias das classes novas da legenda, e https://meshcraft.top/forms/sugestoes/ continua respondendo 302 para /entrar (o quadro segue exigindo login, como deve).
+
+         A Caixa passa a explicar ao aluno o que cada etapa da linha do tempo quer dizer  (toca: sugestoes)
+
+  TAR-087  [concluída · sessao-ci-20260831] — https://github.com/abundanciabr/sitesdoreino/pull/803
+
+         O portao do travessao passa a enxergar o texto do site que mora em codigo Python  (toca: ci, sugestoes, gamificacao)
+
+  TAR-088  [concluída · sessao-gamificacao-marcos-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/813
+
+         O pedido de validacao de um marco real: a fila com prazo, e a concessao que sai dela  (toca: gamificacao)
+
+  TAR-089  [concluída · sessao-gamificacao-telas-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/814
+
+         As duas telas dos marcos: o aluno envia a prova, e a equipe decide em um clique  (toca: gamificacao)
+
+  TAR-090  [concluída · sessao-gamificacao-medalhas-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/820
+
+         O motor de criterios: as medalhas que a escola concede sozinha, sem ninguem pedir  (toca: gamificacao)
+
+  TAR-091  [concluída · sessao-forum-voz-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/821
+
+         A voz do forum: os quatro eventos que ele congelou e nunca emitiu  (toca: forum)
+
+  TAR-092  [concluída · sessao-gamificacao-escuta-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/822
+
+         A gamificacao escuta o forum: os quatro avisos viram ponto  (toca: gamificacao)
+
+  TAR-093  [concluída · sessao-caixa-0109] — https://github.com/abundanciabr/sitesdoreino/pull/825 (pouso pedido; 7 checks verdes, muralhas locais PASS 13/13, guarda vermelho->verde em ci/tests/test_reconhecer.py)
+
+         O caminho de uma ideia da Caixa ate virar obra no ar, escrito e mecanizado  (toca: docs, ci)
+
+  TAR-094  [concluída · sessao-gamificacao-fundador-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/826
+
+         A medalha de Fundador para quem estava aqui no comeco  (toca: gamificacao)
+
+  TAR-095  [concluída · sessao-forum-etiqueta-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/828
+
+         A etiqueta de nivel ao lado de quem escreve no forum  (toca: forum, infra)
+
+  TAR-096  [concluída · sessao-funil-progresso-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/829
+
+         O quadrinho de progresso na home de quem entrou  (toca: funil, infra)
+
+  TAR-097  [concluída · sessao-sugestoes-cartas-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/827
+
+         As frases dos quatro avisos da gamificacao na tela do sininho  (toca: sugestoes)
+
+  TAR-098  [concluída · sessao-ponte-fundador-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/833
+
+         A ponte entre quem pediu entrada e a medalha de Fundador  (toca: alunos, gamificacao, infra)
+
+  TAR-099  [concluída · sessao-gamificacao-forja-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/836
+
+         A Forja: o medidor de tentativas por peca, e o selo que sai dele  (toca: gamificacao)
+
+  TAR-100  [concluída · sessao-funil-aviso-celular-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/835
+
+         O texto do aviso no celular para os quatro assuntos da gamificacao  (toca: funil)
+
+  TAR-101  [concluída · sessao-ci-cors-2026-09-01] — https://github.com/abundanciabr/sitesdoreino/pull/839
+
+         Erro de CORS de terceiro nao pode reprovar o painel no navegador  (toca: ci)
+
+  TAR-102  [concluída · sessao-gamificacao-galeria-base-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/846
+
+         A gamificacao passa a saber de quem e cada conversa, e a perguntar titulos ao forum  (toca: gamificacao, infra)
+
+  TAR-103  [concluída · sessao-admin-20260902] — https://github.com/abundanciabr/sitesdoreino/pull/850
+
+         A tela que exporta a Caixa inteira em texto, para o dono copiar de uma vez  (toca: admin)
+
+  TAR-104  [concluída · sessao-caixa-20260902] — https://github.com/abundanciabr/sitesdoreino/pull/861 (contrato, mergeado) + https://github.com/abundanciabr/sitesdoreino/pull/863 (provedor) + https://github.com/abundanciabr/sitesdoreino/pull/864 (consumidor)
+
+         O texto dos comentarios chega na exportacao da Caixa  (toca: sugestoes, admin)
+
+  TAR-105  [concluída · sessao-revisao-jornadas-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/866 - VERMELHO->VERDE medido com Postgres de bancada. Contra origin/main os 6 guardas novos dao '4 failed, 2 passed': FAILED test_um_passo_de_dois_canais_sai_pelos_dois (assert ['sino'] == ['email','sino']), FAILED test_quem_silenciou_avanca_a_jornada_em_vez_de_ficar_preso (estado='andando' passo_atual=0 depois de 11 dias), FAILED test_a_recusa_definitiva_libera_a_pessoa_para_entrar_de_novo, FAILED test_as_presas_nao_engolem_a_vaga_de_quem_chega_depois (assert 'aluno-novo' in [] - zero atendimentos em 14 passadas com lote=3). Os 2 que ja passam sao os guardas anti-afrouxamento (o teto continua barrando a 2a mensagem do dia; falha de despacho continua NAO avancando) e sao verdes dos dois lados de proposito. Com o conserto: 6 passed. Suite da celula 108 -> 114 verdes, black limpo (42 arquivos), 13 muralhas PASS. Conferido e NAO tocado: uniq_envio_por_order_tipo_canal com zero linhas de diff em apps/eventos/ nos tres PRs revisados. Aprendizado em armadilhas/283 e 284.
+
+         Consertar tres defeitos do motor das jornadas achados na revisao dos PRs #845/#851/#854  (toca: mensageria)
+
+  TAR-106  [concluída · sessao-revisao-jornadas-2026-09-02] — https://github.com/abundanciabr/sitesdoreino/pull/867 - VERMELHO->VERDE medido com Postgres de bancada. Contra origin/main os 2 guardas novos dao '2 failed, 6 passed': FAILED test_canal_que_a_plataforma_nao_entrega_nao_prende_a_pessoa (estado='andando' onde devia estar 'concluida'; a inscricao ficava presa) e FAILED test_o_canal_conhecido_sai_mesmo_com_um_desconhecido_ao_lado (faltava a linha 'email: pulada'). Com o conserto: 8 passed no arquivo, suite da celula 114 -> 116 verdes, black limpo, 13 muralhas PASS. O guarda do outro lado NAO foi afrouxado: test_falha_de_despacho_NAO_avanca_a_jornada segue verde, provando que False (Redis fora) continua sendo retentado. Aprendizado em armadilhas/285.
+
+         O canal que a plataforma ainda nao sabe entregar nao pode prender a pessoa na sequencia  (toca: mensageria)
+
+  TAR-107  [concluída · sessao-encomendas-fase0-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/946 (aberto; a lei, o plano sem edicao, a constituicao, o anexo do contrato v1, o mapa para IA e a escada TAR-108..118 na fila; muralhas PASS 13/13, travessao PASS, fila valida, test_painel_ia_atualizado 2 passed; o veredito do deploy da admin vira registro novo depois do pouso)
+
+         Fila do Primeiro Dolar, Fase 0: a lei da celula de encomendas, a constituicao dela e o contrato em papel  (toca: admin, constituicoes, fila, painel)
+
+  TAR-108  [concluída · sessao-encomendas-eventos-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/949 (aberto, etiquetas contrato + arquitetural, Depende-de #946 ja pousado): 20 esquemas *.v1.json em contracts/eventos/ (encomenda.* 11, oferta.* 3, entrega.* 2, aluno.* 2, portfolio.publicado, pedido-direto.criado), envelope canonico com ator_id nulavel quando e o relogio/motor, additionalProperties:false nos dois niveis, so ids opacos, dinheiro em centavos inteiros; validados por script (title = arquivo, event const, required = properties); contrato_aditivo so adicoes; registro 20260904-010 a bordo.
+
+         Fila do Primeiro Dolar, Fase 0: os vinte acontecimentos da encomenda ganham forma congelada em contratos  (toca: contracts)
+
+  TAR-109  [concluída · sessao-encomendas-genese-2026-09-03] — https://github.com/abundanciabr/sitesdoreino/pull/953 (aberto): services/encomendas com /healthz nas duas formas; 13 testes verdes e black limpo; os tres guardas provados por MUTACAO com vermelho na ASSERCAO (armadilhas/195): SessionMiddleware -> test_inv_encomendas_nao_assina_sessao.py:35 'assert not True' 1 failed; SESSION_ENGINE+csrftoken -> :62 e :77 "assert 'csrftoken' == 'encomendas_csrf'" 2 failed; TIME_ZONE apagado -> test_fuso_horario.py:67 'assert (18, 30) == (20, 30)' e :82 'assert 24/08/2026 23:00 == 25/08/2026 01:00' 4 failed; 'encomendas/' cravado no urls.py -> test_healthz_script_name.py:105 'assert 404 == 200' e :121 'assert 200 != 200' 4 failed; restaurados 4/4/5/4 passed. celulas.yml (consome: []), manifesto not-applicable, rollback.yml, mapa-do-site no lugar; muralhas 12/13 PASS (orcamento pela etiqueta), mapa-de-celulas PASS, mapa-do-site PASS, guarda_dos_guardas PASS, test_constituicoes 10 passed, test_rollback verde. Deploy vermelho ate o PR de infra e ESPERADO (armadilhas/088).
+
+         Fila do Primeiro Dolar, degrau 2.1: a genese da celula de encomendas, com saude, volta-atras e a lei da celula  (toca: encomendas, ci, .github, painel)
+
+  TAR-119  [concluída · sessao-painel-tar119-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/985 + medicao nova do gerador: o resumo caiu de 137,1 KB (91,4% do teto) para 132,6 KB (88,4%), ja com o registro 20260904-047 dentro e sem perder um registro sequer do resumo; regua nova CAIXA_COM_DETALHE em painel/logica.js com teste-guarda de dez casos e seis mutacoes deliberadas
+
+         O resumo do painel chegou ao teto: 15 pedidos ao dono sem resposta somam 39 KB e todo registro novo de tamanho normal reprova  (toca: painel)
+
+  TAR-120  [concluída · sessao-encomendas-tar120-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/990 - migracoes aplicadas, revertidas e reaplicadas num PostgreSQL 17 REAL (container postgres:17, o mesmo do ci-celula.yml): 'Applying encomendas.0001_initial... OK' / 'Unapplying encomendas.0001_initial... OK' / 'Applying encomendas.0001_initial... OK'. PerfilProfissional (sem responsavel_id, a escola e 18+), Encomenda com MudancaDeStatus (historico com autor, append-only por gatilho), Oferta (registro de primeira classe, duas travas de oferta pendente por indice unico parcial) e Parametro (chave, valor, desde, motivo, quem; UPDATE/DELETE/TRUNCATE recusados por gatilho com ERRCODE 23000). Semeadas 27 chaves, e nao 21: a evidencia exigida dizia 21, a tabela da lei secao 6 tem 19 LINHAS mas 27 CHAVES distintas (janela_inicio/janela_fim e prazo_producao.* juntam varias por linha); onde o despacho e a lei discordam, vence a lei, e o guarda conta 27. Maquinas de estado da secao 7.2 medidas por TRANSICAO PROIBIDA em Python (TransicaoProibida) e no PostgreSQL (gatilho encomendas_transicao_permitida), com test_o_python_e_o_postgres_concordam_nos_225_pares percorrendo os 15x15 pares. Guarda que le cada parametro DO BANCO depois do semeador (test_a_semente_grava_os_27_valores_da_lei) e guarda de constante magica por varredura ast (test_nenhuma_constante_magica_no_codigo_da_celula). Suite da celula 13 -> 76 verdes; black --check limpo; ci/ci.py --apenas muralhas PASS nas 13. 29 GUARDAS NOVOS PROVADOS POR MUTACAO, um por vez, depois do verde: os 29 ficaram vermelhos. Duas se declararam guarda cego e nao eram, e viraram a armadilhas/319 (RunSQL na MESMA migracao nao derruba indice parcial, porque UniqueConstraint com condition vai para o deferred_sql). O deploy (encomendas) fica vermelho ate o degrau 2.10 por o compose (armadilhas/088), e isso e esperado.
+
+         Fila do Primeiro Dolar, degrau 2.2: as tabelas da celula (perfil, encomenda, oferta) e a tabela de parametros que o dono edita  (toca: encomendas)
+
+  TAR-121  [concluída · sessao-encomendas-tar121-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/1011 + motor.py com miolo puro de (estado, agora); INV-ENC-J1 a J7 no INVARIANTES.md com guarda cada, os sete provados por mutacao no motor (J1 1 failed, J2 3, J3 4, J4 3, J5 4, J6 6, J7 4); 152 passed na celula; guarda_dos_guardas PASS (45 guardas em 33 invariantes); 13 muralhas PASS
+
+         Fila do Primeiro Dolar, degrau 2.3: o motor que escolhe o proximo da fila, e as sete regras de justica viram teste  (toca: encomendas, INVARIANTES.md)
+
+  TAR-122  [concluída · sessao-encomendas-tar122-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/1018
+
+         Fila do Primeiro Dolar, degrau 2.4: os relogios da oferta, as horas uteis de Sao Paulo e as tres regras de tempo viram teste  (toca: encomendas, INVARIANTES.md)
+
+  TAR-123  [concluída · despacho-encomendas-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1281
+
+         Fila do Primeiro Dolar, degrau 2.5: a pausa automatica por silencio, o interruptor do aluno e a chamada aberta  (toca: encomendas)
+
+  TAR-124  [concluída · despacho-encomendas-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1307
+
+         Fila do Primeiro Dolar, degrau 2.6: o simulador de cem alunos e trinta encomendas prova a justica da fila  (toca: encomendas)
+
+  TAR-125  [concluída · despacho-encomendas-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1314
+
+         Fila do Primeiro Dolar, degrau 2.7: a porta de maquina da celula (parametros do dono, fila de uma pessoa, pecas aprovadas) e o reconhecimento de quem chama  (toca: encomendas)
+
+  TAR-126  [concluída · despacho-contratos-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1316
+
+         Fila do Primeiro Dolar, degrau 2.8: congelar o contrato da celula de encomendas  (toca: contracts, ci)
+
+  TAR-127  [concluída · sessao-encomendas-provisionar-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/982 MERGED (mergeCommit d30ca94b2, lido por gh pr view --json state,mergeCommit,mergedBy). infra/provisionar-encomendas.sh + infra/env/encomendas.env.exemplo + a setima entrada do guarda ci/tests/test_provisionamento_nao_perde_variavel.py no MESMO PR. PROVA VERMELHO->VERDE por mutacao: tirar ALUNOS_API_TOKEN do heredoc e tirar SITE_ID da lista da trava deixam test_a_lista_da_trava_e_o_heredoc_nao_derivaram vermelho; tirar ALUNOS_API_URL do molde deixa test_tudo_que_o_script_escreve_esta_declarado_no_molde vermelho; restaurado, 23 passed. bash -n limpo, muralhas locais PASS 13/13. O passo do mantenedor na VPS esta registrado no livro como 20260904-046, com precisa_do_dono: true.
+
+         Fila do Primeiro Dolar, degrau 2.9: o roteiro de uma linha para o dono criar o banco da celula na maquina  (toca: infra)
+
+  TAR-128  [concluída · despacho-infra-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1318
+
+         Fila do Primeiro Dolar, degrau 2.10: a celula entra no ar (compose, Traefik em /encomendas e o inventario de rotas)  (toca: infra, ci)
+
+  TAR-133  [concluída · despacho-encomendas-mural-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1303
+
+         Fila do Primeiro Dolar, degrau 2.11: o Mural, a pista de quem ja entregou pelo menos uma vez  (toca: encomendas)
+
+  TAR-134  [concluída · despacho-encomendas-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1312
+
+         Fila do Primeiro Dolar, degrau 2.12: a Proposta e o Acordo, a negociacao por formulario com rodadas contadas  (toca: encomendas)
+
+  TAR-135  [concluída · despacho-encomendas-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1315
+
+         Fila do Primeiro Dolar, degrau 2.13: o simulador passa a provar tambem o Mural e a negociacao  (toca: encomendas)
+
+  TAR-136  [concluída · despacho-encomendas-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1319
+
+         Fila do Primeiro Dolar, degrau 2.14: os seis parametros da negociacao na semente e na tela do dono  (toca: encomendas, admin)
+
+  TAR-137  [concluída · sessao-mensageria-tar137-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/986 + saida crua de 'python manage.py export_openapi': 5 operacoes (listJourneys, getJourney, listEnrollments, listDeliveries, publishJourneyText), 12 componentes, securityScheme bearerAuth, servers http://mensageria:8000/api/mensageria
+
+         A porta de maquina da mensageria: a tela das sequencias precisa de onde ler  (toca: mensageria)
+
+  TAR-138  [concluída · sessao-mensageria-6d-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/1012
+
+         Rito de Contrato: nasce o contrato da mensageria, e a tela das sequencias destrava  (toca: contracts)
+
+  TAR-139  [concluída · sessao-ci-tar139-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/981 + sabotagem encenada: com return None em coletar_da_origem, o teste de origin/main (sem contraprova) deu '1 passed in 1.80s' e o teste com a contraprova deu '1 failed / AssertionError: contraprova: com origin/main no lugar, mede-se / assert None is not None' (linha 207); com return None em caminhos_da_origem, o antigo deu '1 passed in 2.39s' e o novo '1 failed / assert None is not None' (linha 210)
+
+         A contraprova do guarda de ausencia do espelho precisa morar dentro do teste  (toca: ci)
+
+  TAR-140  [concluída · sessao-encomendas-emenda-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/998 MERGED (mergeCommit c4a9722c5, lido por gh pr view --json). Quatro estados novos (no_mural, reservada, em_negociacao, acordada): eram 15, sao 19. A coluna pista e os cinco campos do acordo nascendo nulos. E o caixa SAIU do comeco do fluxo: aguardando_pagamento deixou de ser o estado inicial e passou a ficar entre acordada e em_producao, porque nao se cobra um valor que ainda nao foi combinado. Por tabela, oferecida e aberta deixaram de apontar para em_producao e passam por em_negociacao. Preservado inteiro o desenho da TAR-120: transicoes como DADO, gatilho do PostgreSQL, historico com autor; a CheckConstraint de vocabulario cresceu junto (o gatilho vigia a TRANSICAO, ela vigia o VALOR). PROVA VERMELHO->VERDE por mutacao, uma por vez: devolver o caixa ao inicio deixa test_o_caixa_nao_e_mais_a_porta_de_entrada vermelho; oferecida voltar a em_producao derruba test_aceitar_uma_oferta_leva_a_negociar_e_nao_a_produzir mais o teste dos pares; tirar o plantao das saidas da negociacao derruba os dois guardas do INV-ENC-N7; apagar um estado da lista canonica derruba os dois de vocabulario. Restaurado: 81 passed (eram 76). Migracao 0002 aplicada, revertida e reaplicada num PostgreSQL 17 real. black limpo, muralhas locais PASS 13/13, ci-celula (encomendas) verde no CI. A licao da colisao entre as duas sessoes virou armadilhas/321.
+
+         Fila do Primeiro Dolar: as tabelas aprendem a negociacao (o que a emenda acrescentou depois da TAR-120)  (toca: encomendas)
+
+  TAR-141  [concluída · sessao-ci-checks-em-conflito-0709] — https://github.com/abundanciabr/sitesdoreino/pull/1282
+
+         A espera de checks nao pode dizer verde quando o PR esta em conflito  (toca: ci)
+
+  TAR-142  [concluída · sessao-degrau-8-2026-09-05] — Ja estava feito, por um conserto MELHOR do que o que esta tarefa pediu: ci/tests/conftest.py ganhou os.environ.setdefault('PYTHONUTF8','1') em 04/09/2026, com comentario citando nominalmente o test_espera.py. Protege as ~90 fronteiras de subprocesso da suite, e nao so o duble deste teste. Medido hoje no Windows do mantenedor: python -m pytest ci/tests/test_espera.py -q devolve 32 passed. O guarda e o job windows-a-maquina-dos-robos, que roda a suite num console Windows real sem forcar codepage.
+
+         O dube do portao no teste da espera nao reproduz a codificacao do portao real  (toca: ci)
+
+  TAR-143  [concluída · sessao-admin-20260904] — https://github.com/abundanciabr/sitesdoreino/pull/1037
+
+         Biblioteca do Livro: uma tela no admin para guardar os textos do livro, com a formatacao intacta  (toca: admin)
+
+  TAR-144  [concluída · sessao-ci-20260904] — https://github.com/abundanciabr/sitesdoreino/pull/1040
+
+         O portao do mapa do site passa a exigir a marca de gesto em rota que so aceita POST  (toca: ci, painel)
+
+  TAR-145  [concluída · sessao-cursos-plano-2026-09-04] — https://github.com/abundanciabr/sitesdoreino/pull/1044 (aberto; o plano, a constituicao em papel, o mapa para IA e o registro da aprovacao; muralhas PASS 13/13; o veredito do deploy da admin vira registro novo depois do pouso)
+
+         A sala de aula da Meshcraft, fase 0: a lei da celula de cursos, a constituicao em papel e o mapa para IA  (toca: admin, fila, painel)
+
+  TAR-146  [concluída · sessao-cursos-genese-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1046 (aberto; services/cursos com /healthz nas duas formas; 13 testes verdes e black limpo; os guardas provados por MUTACAO com vermelho na assercao (armadilhas/195): SessionMiddleware -> test_sem_middleware_de_sessao, TIME_ZONE=Chicago -> 4 testes de test_fuso_horario.py, csrftoken -> test_o_cookie_de_csrf_tem_nome_proprio, prefixo no urls -> test_urlconf_nao_conhece_o_prefixo; celulas.yml consome: [], manifesto not-applicable, rollback.yml, mapa-do-site, AGENTS.cursos.md e DECISAO-celula-de-cursos.md no lugar; 45 testes-guarda do ci e muralhas PASS 13/13; deploy vermelho ate o degrau 1.7 e esperado, armadilhas/088)
+
+         A sala de aula da Meshcraft, degrau 1.1: a genese da celula de cursos, com saude, volta-atras e a lei da celula  (toca: cursos, ci, .github, painel, constituicoes)
+
+  TAR-147  [concluída · sessao-cursos-tabelas-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1052 (aberto; Curso, Bloco, Aula, Peca, Pausa e Instrumento com unicidades e vocabularios no PostgreSQL, FK composta bloco/curso (armadilhas/274); semear_esqueleto: 1 curso, 12 blocos, 34 aulas, 13 instrumentos, 0 pecas, 0 pedidos, idempotente; 74 testes verdes, black limpo, makemigrations --check limpo; guarda do INV-CUR-C2 provado por MUTACAO com vermelho na assercao; 13 muralhas PASS; deploy vermelho ate o degrau 1.7 e esperado, armadilhas/088)
+
+         Sala de aula, degrau 1.2: as tabelas de conteudo da celula cursos (curso, blocos, aulas com 16 pecas, pausas, instrumentos)  (toca: cursos, painel, fila)
+
+  TAR-148  [concluída · sessao-infra-provisionar-cursos-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1050
+
+         Sala de aula, degrau 1.6: o roteiro de provisionamento da celula cursos na VPS e o env de exemplo (o canario do lote)  (toca: infra, ci, painel, fila)
+
+  TAR-149  [concluída · sessao-contracts-eventos-cursos-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1049
+
+         Sala de aula, fase 0 tardia: os cinco eventos v1 da celula cursos em contracts/eventos (envio, laudo, aula concluida, devolvido, prazo estourado)  (toca: contracts, painel, fila)
+
+  TAR-150  [concluída · sessao-cursos-porta-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1055
+
+         Sala de aula, degrau 1.3: a porta de maquina do editor (listLessons, getLesson, putLesson, putInstrument, publishLesson, getStudentProgress) e a sessao repassada  (toca: cursos, painel, fila)
+
+  TAR-151  [concluída · sessao-maestro-contrato-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1061
+
+         Sala de aula, degrau 1.4: congelar o contrato contracts/cursos.openapi.yaml a partir do export (Rito de Contrato, fora de lote)  (toca: contracts, ci, painel, fila)
+
+  TAR-152  [concluída · sessao-admin-editor-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1063
+
+         Sala de aula, degrau 1.5: o editor de encomendas em /admin/escola/aulas/ (16 pecas, roteiro, guia do Mentor, pausas, instrumento, aceito quando, quiz, video por link, versoes, publicar)  (toca: admin, painel, fila)
+
+  TAR-153  [na fila · despacho-ci-verificador-maiusculas-fim-linha] — reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado.
+
+         Sala de aula, degrau 1.7: o compose e a rota /cursos no Traefik, com o inventario de rotas (PR sozinho); a celula responde /healthz pela internet  (toca: infra, ci, painel, fila)
+
+  TAR-154  [concluída · sessao-cursos-sala-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1062
+
+         Sala de aula, degrau 1.8: a sala do aluno (/cursos, /cursos/<numero>: pecas, video com pausas, registro de pausa, quiz com autoavaliacao, progresso, acesso pela matricula)  (toca: cursos, painel, fila)
+
+  TAR-155  [concluída · sessao-cursos-checkpoint-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1071
+
+         Sala de aula, degrau 2.1: o checkpoint (envio por link, a fila de revisao, o prazo de 24 h imutavel, o estouro registrado, outbox e os eventos envio.recebido e revisao.prazo-estourado)  (toca: cursos, painel, fila)
+
+  TAR-156  [concluída · sessao-cursos-laudo-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1084
+
+         Sala de aula, degrau 2.2: o laudo (o formulario do plantao, as regras como 422, os invariantes L1 L2 L5 L6 L7, os eventos laudo.emitido, aula.concluida e checkpoint.devolvido, a tela do laudo com a data antes do texto)  (toca: cursos, contracts, painel, fila)
+
+  TAR-157  [concluída · despacho-cursos-assistente-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1121
+
+         Sala de aula, degrau 2.3: o Assistente de laudo (o primeiro agente de IA da celula: agente.py no molde do forum, RascunhoDaIA, o botao Rascunhar laudo, L4 por sabotagem, a Ficha de Serie do agente medida do dado)  (toca: cursos, painel, fila)
+
+  TAR-158  [concluída · sessao-mensageria-silencio-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1054
+
+         Sala de aula, degrau 2.4: o silencio de 14 e 30 dias como jornada da mensageria (dispara em checkpoint.devolvido, cancela em envio.recebido, a frase fixa, nunca cobranca)  (toca: mensageria, painel, fila)
+
+  TAR-159  [concluída · sessao-gamificacao-tomada-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1053
+
+         Sala de aula, degrau 2.5: a gamificacao liga a tomada aula.concluida.v1 (XP por entrega, uma regra semeada; a medalha do Boss; o Marco #1 pela fila que ja existe)  (toca: gamificacao, painel, fila)
+
+  TAR-160  [concluída · sessao-orquestracao-0905] — https://github.com/abundanciabr/sitesdoreino/pull/1056
+
+         As fichas de robo em .claude/agents e a regra de que todo pedido do mantenedor e um lote  (toca: .claude, ci, CLAUDE.md, RUNBOOK-LOTES.md, docs, painel)
+
+  TAR-161  [concluída · sessao-maestro-instrumentos-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1057
+
+         Sala de aula, degrau 1.3b: a porta ganha a leitura de instrumentos (listInstruments e getInstrument) antes de congelar o contrato  (toca: cursos, painel, fila)
+
+  TAR-162  [concluída · sessao-infra-pares-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1066
+
+         Sala de aula, degrau 1.8b: as senhas de par que a sala do aluno precisa na VPS (identidade completa, alunos e menu do catalogo), em infra/  (toca: infra, painel, fila)
+
+  TAR-163  [concluída · sessao-maestro-relay-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1072
+
+         Sala de aula, degrau 2.1b: o relay do checkpoint no docker-compose (huey run_huey), sem ele os eventos ficam pendentes para sempre  (toca: infra, painel, fila)
+
+  TAR-164  [concluída · sessao-admin-classificar-2026-09-05] — https://github.com/abundanciabr/sitesdoreino/pull/1081 MERGED (commit 7ea71ead); deploy-celula run 33982581546 completed/success lido por gh run view --json; GET https://meshcraft.top/admin/caixa/esperando/ -> 302 para o login (o cracha vem antes da tela) e /admin/healthz -> 200
+
+         Classificar e peneirar a lista de quem esta esperando, na Caixa  (toca: admin)
+
+  TAR-165  [concluída · agent/fabrica/corrigir-teto-da-pista] — https://github.com/abundanciabr/sitesdoreino/pull/1424
+
+         A fome da pista voltou: o teto de espera nao acompanhou o check mais lento  (toca: ci, .github)
+
+  TAR-166  [concluída · agent/ci/eliminar-limbo-do-freeze] — https://github.com/abundanciabr/sitesdoreino/pull/1450
+
+         O limbo do freeze: a celula congela contrato e so quebra dias depois  (toca: ci)
+
+  TAR-167  [concluída · sessao-ci-vigia-do-pouso-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1284
+
+         O PR verde que ninguem pediu para pousar envelhece sem vigia  (toca: ci, .github)
+
+  TAR-168  [concluída · despacho-painel-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1112
+
+         Portfolio do aluno, degrau 00: o mapa para IA passa a citar a celula pages que vai nascer  (toca: painel)
+
+  TAR-169  [concluída · despacho-pages-genese-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1117
+
+         Portfolio do aluno, degrau 01: a genese da celula pages, com saude, volta-atras e a lei da casa  (toca: pages, ci, .github, painel, constituicoes)
+
+  TAR-170  [concluída · despacho-infra-sala-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1108
+
+         A sala de aula abre: um bloco de colar poe os admins e a chave da IA no env do curso e semeia as 34 aulas  (toca: infra, ci, painel, fila)
+
+  TAR-171  [concluída · despacho-cursos-plantao-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1107
+
+         O plantao do curso passa a aceitar quem ja e admin do site, e nao so uma lista propria de professores  (toca: cursos, infra, painel, fila)
+
+  TAR-172  [concluída · despacho-infra-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1298
+
+         O provisionamento do forum apaga em silencio a lista de professores que o dono escreveu a mao  (toca: infra, ci, painel, fila)
+
+  TAR-173  [concluída · despacho-admin-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1115
+
+         A tela da confianca: da para acreditar nos numeros do placar?  (toca: admin, painel)
+
+  TAR-174  [concluída · despacho-metricas-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1114
+
+         Guardar as conquistas de cada aluno (os marcos) dentro da medicao  (toca: metricas)
+
+  TAR-175  [concluída · despacho-contracts-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1116
+
+         Abrir a porta de leitura das conquistas no contrato da celula que guarda a historia  (toca: contracts, metricas)
+
+  TAR-177  [concluída · despacho-admin-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1120 - suite da admin 1083 -> 1114 passed (13 arquivos, dentro do orcamento). Vermelho antes do verde nos dois guardas novos: AttributeError CARTOES_DO_CAMINHO_DA_VENDA e assert 'O caminho da venda' in html, 2 failed 14 passed. Prova por mutacao, desfeita: texto antigo de volta no cartao -> 'nao nomeia a sala de espera'; fonte acesa em compras-pelo-checkout-por-semana -> 'acendeu venda sem ordem do mantenedor'; bloco apagado do template -> assert do html. ci/ci.py --apenas muralhas PASS nas 13, ci/travessao.py PASS, black limpo em 148 arquivos, node painel/gerar_manifesto.js 812 registros validos. Previa do bloco renderizada com os cartoes reais.
+
+         A regua da semana passa a apontar para a venda: a sala de espera diz a verdade e o caminho da venda nasce desenhado  (toca: admin, painel)
+
+  TAR-178  [concluída · despacho-pages-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1142
+
+         Portfolio do aluno, degrau 02: as tabelas da casa pages (portfolio, peca, item de conferencia e estado do aluno)  (toca: pages)
+
+  TAR-179  [concluída · despacho-contracts-pages-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1154
+
+         Portfolio do aluno, degrau 03: congelar o contrato da casa pages e os eventos pages.portfolio.*  (toca: pages, contracts, ci)
+
+  TAR-180  [concluída · despacho-infra-provisionar-pages-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1148
+
+         Portfolio do aluno, degrau 04: o roteiro de provisionamento do banco da casa pages, SOZINHO num PR  (toca: infra)
+
+  TAR-181  [concluída · despacho-infra-compose-pages-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1158
+
+         Portfolio do aluno, degrau 05: o compose e as rotas /pages e /estudio no Traefik, com o inventario de rotas no mesmo PR  (toca: infra, painel)
+
+  TAR-182  [concluída · despacho-pages-porta-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1161
+
+         Portfolio do aluno, degrau 06: a porta da casa pages (repassa o cookie a identidade, nunca assina) e a tela minima  (toca: pages)
+
+  TAR-183  [concluída · despacho-pages-prancheta-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1170
+
+         Portfolio do aluno, degrau 07: a Prancheta, com as cinco etapas e as listas de conferencia lidas do banco  (toca: pages)
+
+  TAR-184  [concluída · despacho-pages-pecas-por-link-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1180
+
+         Portfolio do aluno, degrau 08: as pecas entram por link colado, com legenda, ordem e destaque  (toca: pages)
+
+  TAR-185  [concluída · despacho-pages-semaforo-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1202
+
+         Portfolio do aluno, degrau 10: o semaforo por peca, calculado so das respostas objetivas do aluno  (toca: pages)
+
+  TAR-186  [concluída · despacho-pages-conferencia-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1223
+
+         Portfolio do aluno, degrau 11: o aluno pede a conferencia da escola e o pedido cai na fila da equipe  (toca: pages)
+
+  TAR-187  [concluída · sessao-maestro-portfolio-0609] — O selo da escola, a data e a frase do que ele vale entraram no PR https://github.com/abundanciabr/sitesdoreino/pull/1228, MERGED, deploy-celula 34050212713 completed/success, prova de fora em meshcraft.top/pages/ 200. O evento pages.portfolio.conferido v1 e publicado, provado por teste. A carta no sininho SAIU DO ESCOPO por decisao do mantenedor em 06/09/2026 (registro 20260906-093); a TAR-224 guarda esse pedaco. Fechada pela maestro porque a reserva de despacho-pages-aviso-portfolio-20260906 ficou orfa: reivindicada as 19:41Z, sem PR e sem ramo em mais de 4h, segurando tres degraus da escada.
+
+         Portfolio do aluno, degrau 12: o selo conferido pela escola, o evento e a carta no sininho  (toca: pages)
+
+  TAR-188  [concluída · despacho-pages-vitrine-0609c] — https://github.com/abundanciabr/sitesdoreino/pull/1261
+
+         Portfolio do aluno, degrau 13: a vitrine publica /estudio/<apelido>, opt-in, com noindex e versao de impressao  (toca: pages)
+
+  TAR-189  [concluída · despacho-pages-dossie-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1263
+
+         Portfolio do aluno, degrau 14: o dossie em PDF montado no servidor, na ordem que o aluno escolheu  (toca: pages)
+
+  TAR-190  [concluída · despacho-gamificacao-marco-portfolio-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1258
+
+         Portfolio do aluno, degrau 15: a gamificacao escuta o evento do selo e acende o marco do portfolio, sem pagar XP  (toca: gamificacao)
+
+  TAR-191  [concluída · despacho-admin-guias-portfolio-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1143
+
+         Portfolio do aluno, degrau 16: os guias do portfolio no editor de documentos, para o mantenedor editar sem abrir PR  (toca: admin, documentos)
+
+  TAR-192  [concluída · despacho-mensageria-convite-prancheta-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1169
+
+         Portfolio do aluno, degrau 17: a sequencia que convida para a Prancheta quem terminou as aulas  (toca: mensageria)
+
+  TAR-193  [concluída · despacho-funil-caminho-prancheta-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1230
+
+         Portfolio do aluno, degrau 18: o caminho para a Prancheta no menu e na home logada  (toca: funil)
+
+  TAR-194  [concluída · despacho-ci-rede-do-windows-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1128
+
+         A conferencia do Windows sai do caminho do PR e vira rede na main  (toca: ci, .github, painel, fila)
+
+  TAR-195  [concluída · despacho-ci-suite-uma-vez-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1130
+
+         A suite dos portoes roda uma vez por PR e o deploy nao espera o alarme da main  (toca: ci, .github, painel, fila)
+
+  TAR-196  [concluída · despacho-admin-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1127
+
+         O laboratório: onde uma aposta da escola vira aprendizado com data  (toca: admin, painel)
+
+  TAR-197  [concluída · despacho-armadilhas-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1131
+
+         Duas licoes do catalogo e uma linha da reuniao  (toca: armadilhas, admin)
+
+  TAR-200  [concluída · despacho-armadilhas-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1133
+
+         Catalogar e registrar: dois robôs confundiram o parâmetro --checks com quantidade de checks, não número do PR  (toca: armadilhas, fila, painel)
+
+  TAR-201  [concluída · despacho-admin-050926] — https://github.com/abundanciabr/sitesdoreino/pull/1134
+
+         Fechar tres dividas pequenas do dia no painel de gestao (pauta, licao, veredito do laboratorio)  (toca: armadilhas, admin, painel)
+
+  TAR-202  [concluída · sessao-ci-espera-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1279 - ci/esperar.py confere via gh, antes do laco, que o numero de --checks/--pouso e um PR deste repositorio (e ABERTO, no --checks). Vermelho->verde: 5 testes novos, 3 falhavam antes do conserto e a suite fecha em 50 passed. Com o gh real: --checks 6 recusado (MESCLADO desde 2026-08-13), --checks 999999 recusado (nao existe), --checks 1224 aceito e medido (7 checks verdes em 24s). Registro 20260907-022 embarcado no mesmo ramo.
+
+         Fazer o instrumento de espera recusar um número de PR errado, com uma frase que ensine  (toca: ci)
+
+  TAR-203  [concluída · maestro-porta-curso-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1135 — a porta ganhou as quatro operacoes com {curso} e a parte como guarda; destravado pelo Rito de Contrato do PR #1136, que pousou antes. Medido na base nova: ci/contract_freeze.py cursos -> contrato PASS (identico ao congelado, 976 linhas) e seguranca PASS (11 operacoes). Suite da celula 518 passed; mutacao do guarda da parte derruba 3 testes na assercao; devolver 'o primeiro curso do site' derruba 7.
+
+         A porta da sala de aula aprende o curso e a parte, antes de o endereco mudar  (toca: cursos, painel, fila)
+
+  TAR-204  [concluída · sessao-ci-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1280 mergeado (639f7ed8) - ci/esperar.py importa mais_recente_por_nome de ci/mergear.py, sem copia da regra. 3 guardas em ci/tests/test_espera.py, incluindo o duble do rollup do #1136 com CANCELLED+SUCCESS do mesmo check. Mutacao (rollup cru): 1 failed com a frase exata do defeito. 48 passed em test_espera.py, 99 em test_mergear.py, 13 muralhas PASS, 4 guardas PASS. deploy-celula 34080745248 success. Registro 20260907-023 embarcado no mesmo PR.
+
+         A espera automatica le execucao cancelada como reprovacao e mente vermelho num PR verde  (toca: ci, painel, fila)
+
+  TAR-205  [concluída · despacho-admin-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1146
+
+         A tela das coortes: quem entrou em cada mes e o que a memoria sabe de cada grupo  (toca: admin, painel)
+
+  TAR-206  [concluída · despacho-ci-guarda-da-fila-0509] — https://github.com/abundanciabr/sitesdoreino/pull/1156
+
+         O arquivo de tarefa da fila nao tem guarda: so o depende_de pode mudar, e nada mede isso  (toca: ci)
+
+  TAR-207  [concluída · despacho-mensageria-20260905] — https://github.com/abundanciabr/sitesdoreino/pull/1145
+
+         A fila de proxima acao: qual e o proximo gesto para cada pessoa, e quem o faz  (toca: mensageria, fila)
+
+  TAR-208  [concluída · maestro-livro-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1150 — COM_BOSS com as 12 encomendas do livro e BANCA_POR_AULA com E10/E21/E32; o semeador reconciliando bloco, ordem, e_boss, banca_nivel e o slug do curso (meshcraft -> profissional); guarda novo test_semeador_reconcilia_estrutura.py com 10 provas, incluindo a de que semear de novo nao toca em obra escrita. Suite da celula 528 passed, black limpo em 66 arquivos. A Bonus fora das Partes fica declarada como divergencia para decisao do mantenedor.
+
+         O esqueleto do curso passa a ter a estrutura do livro, e o semeador reconcilia o que ja existe  (toca: cursos, painel, fila)
+
+  TAR-209  [concluída · despacho-armadilhas-050926] — https://github.com/abundanciabr/sitesdoreino/pull/1152
+
+         Catalogar o furo da vacina do deploy: ela confere se o commit chegou, nao se a celula subiu  (toca: armadilhas, fila, painel)
+
+  TAR-210  [concluída · despacho-ci-vacina-por-celula] — https://github.com/abundanciabr/sitesdoreino/pull/1287 — teste-guarda vermelho ('assert nada == repetir') e verde depois da cura: 98 passed em test_rerun_de_deploy.py + test_vacina_do_deploy_automatica.py. Prova de fora com o SHA 497f0cb9 do incidente: celulas_do_push devolveu ('admin','mensageria') e celulas_sem_publicacao devolveu ('mensageria',).
+
+         A vacina do deploy passa a comparar celulas construidas, nao so ancestralidade de commit  (toca: ci, .github)
+
+  TAR-211  [concluída · despacho-admin-tela-curso-retomada] — https://github.com/abundanciabr/sitesdoreino/pull/1162
+
+         A tela de escrever as aulas passa a ter o curso e a parte no endereco  (toca: admin, painel, fila)
+
+  TAR-212  [concluída · despacho-cursos-sala-endereco-retomada] — https://github.com/abundanciabr/sitesdoreino/pull/1163
+
+         A sala do aluno passa a ter o curso e a parte no endereco, como no livro  (toca: cursos, painel, fila)
+
+  TAR-213  [concluída · despacho-admin-sumario-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1177
+
+         Uma tela para colar o sumario do livro e o curso ganhar a mesma estrutura  (toca: admin, painel, fila)
+
+  TAR-214  [concluída · despacho-contracts-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1159
+
+         A turma e o dono da matricula passam a viajar no fato da mudanca de situacao  (toca: contracts)
+
+  TAR-215  [concluída · despacho-pages-prancheta-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1166
+
+         Portfolio do aluno: os dois pares que abrem a porta da Prancheta no env da VPS (identidade e alunos)  (toca: infra)
+
+  TAR-216  [concluída · despacho-cursos-301-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1187
+
+         Os enderecos antigos da sala de aula passam a redirecionar, para nenhum link de aluno morrer  (toca: cursos, painel, fila)
+
+  TAR-217  [concluída · despacho-ci-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1176
+
+         O roteiro que liga as duas conversas da Prancheta ganha o guarda que o executa de verdade  (toca: ci)
+
+  TAR-218  [concluída · despacho-infra-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1173
+
+         Escrever SITE_ID no env da celula pages, para a marcacao da Prancheta abrir  (toca: infra)
+
+  TAR-219  [bloqueada · sessao-fila-decisoes-do-dono-20260906] — PERGUNTADO EM 06/09/2026, E ELE RESPONDEU 'AGORA NAO'. Nao e recusa: e adiamento, e a tarefa continua valida. Separar a chave que LE o menu da que REESCREVE o menu mexe em contracts/ e services/catalogo/, dois caminhos protegidos, e nada quebra hoje sem isso. O risco que fica de pe e o de sempre (armadilhas/318): se a chave unica vazar, quem a pegar pode reescrever o menu do site. Nao repergunte: ele reabre quando quiser.
+
+         Separar quem le o menu do site de quem pode reescrever o menu  (toca: contracts, catalogo)
+
+  TAR-220  [concluída · sessao-maestro-cursos-2026-09-06] — PR https://github.com/abundanciabr/sitesdoreino/pull/1178 MERGED. O bloqueio era o Rito de Contrato, e a maestro o conduziu: PR #1186 (etiqueta contrato) MERGED, com o congelado montado a partir do OpenAPI exportado das duas celulas. Depois do rito, o freeze da celula alunos voltou a bater: contrato/alunos PASS identico ao congelado (997 linhas), seguranca/alunos PASS 10 operacoes. Suite da celula: 200 passed em PostgreSQL real. O INV-ALU-C1 entrou no registro de invariantes (ci/tests/test_guarda_dos_guardas.py, 47 passed). A prosa da porta foi corrigida de CURSO para PRODUTO junto, porque o mantenedor emendou a lei no mesmo dia e prosa de contrato e pedra.
+
+         A matricula passa a dizer de qual curso o aluno e, e liberar exige escolher  (toca: alunos, painel, fila)
+
+  TAR-221  [concluída · despacho-cursos-titulo-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1233
+
+         A porta da sala de aula passa a aceitar o titulo da encomenda e o do Boss  (toca: cursos, painel, fila)
+
+  TAR-222  [concluída · sessao-maestro-cursos-2026-09-06] — PR https://github.com/abundanciabr/sitesdoreino/pull/1199 MERGED, em par com o #1178. O bloqueio (o catalogo nao sabia listar) foi desfeito pela maestro em dois degraus: rito de contrato #1186 com listProducts, e o codigo do catalogo no #1190 (freeze PASS identico ao congelado, 587 linhas). Suite da celula admin: 1240 passed em PostgreSQL real, contra linha de base de 1222. black --check 169 arquivos limpos. Muralha do travessao PASS. Previa visual renderizada pelo template real com o contexto real da view, nos tres estados (com a lista, catalogo fora do ar, nenhum curso publicado) e mandada ao mantenedor antes do deploy, como manda a lei de 03/09/2026. As DUAS portas foram fechadas: liberar um a um e liberar a turma pela lista de WhatsApp, esta ultima com uma escolha para o lote inteiro.
+
+         A tela de liberar ganha a lista de cursos, e so libera depois da escolha  (toca: admin, painel, fila)
+
+  TAR-223  [cancelada · sessao-fila-decisoes-do-dono-20260906] — O mantenedor decidiu em 06/09/2026, perguntado numa caixa que descrevia a obra e o que se perde sem ela: nao precisa da reconferencia diaria dos links do portfolio. A resposta dele foi 'nao precisa disso'. Os links continuam sendo conferidos quando alguem abre a pagina. Se ele mudar de ideia, nasce tarefa nova: cancelada nao volta.
+
+         O processo que roda a reconferencia diaria dos links do portfolio  (toca: infra)
+
+  TAR-224  [cancelada · sessao-pages-aviso-do-selo-20260906] — RITO DE CONTRATO com o mantenedor em 06/09/2026: perguntado se aprovava os DOIS assuntos de portfolio no enum de notificacao.devida.v1, ele aprovou SO 'pages.portfolio-conferido' e deixou 'pages.peca-quebrada' de fora. O aluno nao sera avisado pelo sininho quando uma peca do portfolio parar de abrir: ele descobre abrindo a pagina. A decisao e dele e esta escriturada; se mudar de ideia, nasce tarefa nova com outro Rito.
+
+         O sininho avisa o aluno quando uma peca do portfolio para de abrir  (toca: contracts)
+
+  TAR-225  [na fila · despacho-ci-verificador-maiusculas-fim-linha] — reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado.
+
+         O aviso da compra passa a carregar o produto, para ninguem virar aluno sem produto  (toca: contracts, alunos, painel, fila)
+
+  TAR-226  [concluída · sessao-ci-espera-obrigatorios] — https://github.com/abundanciabr/sitesdoreino/pull/1282
+
+         A espera dos checks so fica verde quando os obrigatorios nascerem  (toca: ci)
+
+  TAR-227  [concluída · despacho-cursos-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1201
+
+         A sala de aula passa a servir SO o curso em que a pessoa esta matriculada  (toca: cursos)
+
+  TAR-228  [cancelada · sessao-fabrica-fechar-duplicata] — Duplicata da TAR-210. A correção já está em ci/rerun_de_deploy.py, com os testes test_o_deploy_posterior_que_nao_construiu_a_celula_NAO_a_cobre e test_a_regra_de_parada_vale_TAMBEM_quando_falta_celula; prova no PR #1210 e na armadilha 419.
+
+         O repetidor de deploy confere a esteira, e precisa conferir a CELULA  (toca: ci)
+
+  TAR-229  [concluída · despacho-infra-equipe-portfolio-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1229
+
+         Escrever a lista de quem confere portfolio no env da celula pages, para a fila da equipe abrir  (toca: infra)
+
+  TAR-230  [cancelada · despacho-infra-cano-pages-admin-0609] — Ficou sem objeto no mesmo dia em que nasceu: ela mandava corrigir o paragrafo do docstring de services/pages/apps/core/equipe.py que dizia quem escreve a lista de conferentes, e a decisao do mantenedor de 06/09/2026 (todo admin confere) apagou a lista. O arquivo foi reescrito inteiro pelo PR #1250, e o paragrafo que ela mandava corrigir nao existe mais. Nada a fazer.
+
+         Corrigir o texto que diz que ninguem escreve a lista de quem confere portfolio  (toca: pages)
+
+  TAR-231  [cancelada · sessao-fila-decisoes-do-dono-20260906] — Cai junto com a TAR-223, na mesma decisao do mantenedor de 06/09/2026: ela so existia para amarrar o nome da lista de conferentes aos roteiros que a escrevem, e essa amarra era a segunda metade da reconferencia diaria que ele dispensou. Sozinha ela nao entrega nada a ninguem. Se a reconferencia voltar, esta volta com ela, como tarefa nova.
+
+         Amarrar o nome da lista de quem confere portfolio aos roteiros que a escrevem  (toca: ci)
+
+  TAR-232  [concluída · despacho-admin-importador-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1240
+
+         Uma tela para enviar um capitulo inteiro e ele virar as 16 pecas da encomenda  (toca: admin, painel, fila)
+
+  TAR-233  [concluída · despacho-cursos-videoaula-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1239
+
+         A video-aula escrita de cada encomenda, com botao e modal embaixo do capitulo  (toca: cursos, painel, fila)
+
+  TAR-234  [concluída · despacho-contracts-2026-09-06] — https://github.com/abundanciabr/sitesdoreino/pull/1238 — contrato montado A PARTIR do export do django-ninja (prototipo descartavel fora do repo): congelado identico ao vivo, 85 linhas normalizadas comparadas, e a sonda de autenticacao efetiva concorda ({'POST /administradores/consultar': True} nos dois lados). Muralhas 13/13 PASS com PR_LABELS=contrato; ci/ci.py --apenas testador 2024 passed; ci/travessao.py PASS. Portoes provados por sabotagem: sem a etiqueta 'contrato' a cerca reprova (exit 1); com o arquivo em disco e a celula not-applicable o manifesto da ERROR; renomear e_administrador para e_admin quebra a comparacao. contrato/admin da ERROR de proposito ate a porta de maquina existir (armadilhas/228): o proximo PR da celula admin TEM de ser ela.
+
+         Todo administrador da escola pode conferir o portfolio do aluno: o contrato da porta que responde isso  (toca: contracts, ci)
+
+  TAR-235  [concluída · despacho-admin-editor-videoaula-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1245
+
+         O editor de encomendas aprende a video-aula escrita, e destrava o contrato  (toca: admin, painel, fila)
+
+  TAR-236  [concluída · despacho-admin-doc-agentes-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1252
+
+         A pagina dos agentes de IA volta a dizer a verdade: o Extrator existe e o Gerador foi dissolvido  (toca: admin, documentos, painel, fila)
+
+  TAR-237  [concluída · despacho-pages-quem-confere-0609] — https://github.com/abundanciabr/sitesdoreino/pull/1250
+
+         A fila da conferencia do portfolio passa a perguntar quem e administrador, em vez de ler uma lista escrita a mao  (toca: pages)
+
+  TAR-238  [concluída · agent/fabrica/corrigir-portao-livro-velho] — https://github.com/abundanciabr/sitesdoreino/pull/1430
+
+         O portao de pouso deixa de julgar o livro por uma copia velha do repositorio  (toca: ci)
+
+  TAR-239  [concluída · agent/ci/amarrar-nome-par-pages-admin] — https://github.com/abundanciabr/sitesdoreino/pull/1452
+
+         Amarrar o nome do par entre a fila do portfolio e os roteiros que o escrevem  (toca: ci)
+
+  TAR-240  [bloqueada · despacho-infra-20260906] — so ele decide se a varredura diaria dos links fica ligada, e ele ja disse uma vez que nao precisa dela (TAR-223 cancelada). Volta a andar com: python ci/fila.py soltar TAR-240 --quem <nome>
+
+         Desligar a varredura diaria dos links do portfolio, se o mantenedor quiser  (toca: pages)
+
+  TAR-241  [concluída · despacho-fila-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1266
+
+         O balcao da fila ganha o verbo explicar, para o dono entender cada tarefa em portugues  (toca: ci, fila)
+
+  TAR-242  [concluída · despacho-infra-chave-do-github-20260906] — https://github.com/abundanciabr/sitesdoreino/pull/1267
+
+         O caminho pelo qual a chave do GitHub chega na VPS, para o botao de excluir tarefa funcionar  (toca: infra, painel, fila)
+
+  TAR-244  [concluída · sessao-admin-pendencias-2026-09-07] — https://github.com/abundanciabr/sitesdoreino/pull/1270 - 7 checks verdes em 1min49s, pouso pedido pelo portao. Suite da celula admin 1340 passed (era 1320); painel/testes/teste_gerador.js verde; 13 muralhas PASS com mapa do site 234=234. Vermelho->verde por sabotagem 4x. Registro 20260907-014 embarcado no mesmo ramo.
+
+         A Central de Pendencias: as tres filas que o Admin ja sabe perguntar, numa tela so  (toca: admin, painel)
+
+  TAR-245  [concluída · maestro-agentes-de-ia-20260907] — PR https://github.com/abundanciabr/sitesdoreino/pull/1276 MERGED (commit 72b72af81d3bb7e9925d81f2bdef0f48a084ed18, gh pr view --json state,mergedBy). O degrau precisou de dois PRs, na ordem da armadilhas/243: o contrato primeiro (https://github.com/abundanciabr/sitesdoreino/pull/1324, so contracts/cursos.openapi.yaml, etiqueta contrato, Rito de RITOS.md 3 com o mantenedor presente e autorizando nominalmente), o codigo depois. Freeze medido com as duas pecas na mesma arvore: 'contrato/cursos PASS identico ao congelado (1167 linhas comparadas)' e 'seguranca/cursos PASS 13 operacao(oes) com autenticacao conferida na fonte'; contrato_aditivo 'mudanca aditiva - nada removido'; nasceram ['checkLesson'], sumiram []. Os 8 checks do 1276 verdes em 2min05s. DEPLOY: gh run view 34131903431 --json status,conclusion devolve completed/success no sha 72b72af8. PROVA DE FORA depois do deploy: GET https://meshcraft.top/cursos/healthz -> 200 e GET https://meshcraft.top/cursos/ -> 301 para /cursos/profissional/, que responde 200. Licao da sessao: armadilhas/389 (https://github.com/abundanciabr/sitesdoreino/pull/1326, MERGED).
+
+         Sala de aula, degrau 3.1: o Revisor de coerencia (codigo, nao IA): checkLesson, o botao Conferir coerencia no editor, remissao quebrada recusa publicar (INV-CUR-C1)  (toca: cursos, admin, painel, fila)
+
+  TAR-246  [concluída · despacho-cursos-guardiao-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1357
+
+         Sala de aula, degrau 3.2: o Guardiao de fidelidade, o segundo e ultimo agente de IA (compara a peca derivada com o capitulo e aponta os sete desvios)  (toca: cursos, admin, painel, fila)
+
+  TAR-247  [concluída · despacho-admin-apendice-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1354
+
+         Sala de aula, degrau 3.3: o cabecalho de apendice vivo (versao, verificado em, proxima verificacao) e o aviso publico de verificacao vencida na area de documentos  (toca: admin, painel, fila)
+
+  TAR-248  [concluída · agent/infra/corrigir-conferencia-da-senha-admin] — https://github.com/abundanciabr/sitesdoreino/pull/1449
+
+         A senha da area administrativa pode trocar sozinha sem ninguem perceber, num roteiro de manutencao  (toca: infra, ci)
+
+  TAR-249  [concluída · despacho-admin-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1327
+
+         A tela que fecha o ciclo de 12 semanas e diz o que a escola para de fazer  (toca: admin, painel)
+
+  TAR-250  [concluída · despacho-admin-analista-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1334
+
+         O robo que le o painel toda segunda e escreve o que voce esta deixando passar  (toca: admin, painel)
+
+  TAR-251  [concluída · agent/infra/destravar-reprovisionamento-da-sala] — https://github.com/abundanciabr/sitesdoreino/pull/1451
+
+         O roteiro que instala a sala de aula na VPS se recusa a rodar de novo depois que o roteiro dos pares roda  (toca: infra, ci)
+
+  TAR-252  [concluída · agent/fabrica/corrigir-prestacao-outra-sessao] — https://github.com/abundanciabr/sitesdoreino/pull/1433
+
+         O molde da prestacao de contas entrega ao robo os fatos de OUTRA sessao  (toca: ci)
+
+  TAR-253  [cancelada · sessao-fabrica-fechar-teto-obsoleto] — Resolvida pela TAR-332: ci/ci.py usa pytest-xdist com -n auto quando disponível. Medição atual nesta máquina terminou em 256,8s, abaixo do teto de 900s, e devolveu FAIL real por /bin/bash ausente no WSL, não ERROR por timeout. O bloqueio do WSL é outro problema e não será escondido aumentando o relógio; prova na armadilha 421.
+
+         O teto do make ci nao cabe na maquina real do mantenedor e vira ERROR  (toca: ci)
+
+  TAR-254  [concluída · agent/encomendas/tar-254] — https://github.com/abundanciabr/sitesdoreino/pull/1462
+
+         A chamada aberta sem ninguem elegivel pode ficar presa para sempre, e o cliente nunca sabe  (toca: encomendas)
+
+  TAR-255  [concluída · despacho-encomendas-tar-255] — https://github.com/abundanciabr/sitesdoreino/pull/1477; deploy-celula 34311640966 success; suite 491 testes verdes
+
+         Corrigir seis defeitos que o revisor achou no Mural (encomendas): teste que falha no Windows, um guarda sem trava na passagem de bastão da reserva, comentario que promete protecao que nao existe, mensagem de erro que confunde o aluno, dois testes que se auto-verificam, e consultas repetidas demais na tela  (toca: encomendas)
+
+  TAR-256  [concluída · despacho-encomendas-tar-256] — PR #1482 mergeado no commit 4e873a761cf3116b28f53fc174362206c2b73965; deploy-celula 34349313472 success; migração 0007 aplicada, revertida para 0006 e reaplicada em PostgreSQL 17; suíte completa 494 passed
+
+         Decidir o destino da coluna pista no Mural (encomendas): ou ela passa a valer para todos os estados e alguem le de verdade, ou ela sai do banco  (toca: encomendas)
+
+  TAR-257  [concluída · despacho-encomendas-tar-257] — https://github.com/abundanciabr/sitesdoreino/pull/1475; deploy-celula 34308751309 success
+
+         O aluno que esta negociando fica travado na fila enquanto o cliente pensa  (toca: encomendas)
+
+  TAR-258  [concluída · despacho-encomendas-tar-258] — https://github.com/abundanciabr/sitesdoreino/pull/1478; merge 7e07bd5e66ff850c7ab155c22973707be4376e0a; deploy-celula 34314838446 success; suite 494 passed
+
+         O aluno pode pegar dois trabalhos ao mesmo tempo e leva erro de servidor na cara  (toca: encomendas)
+
+  TAR-260  [concluída · despacho-admin-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1333
+
+         A rede de talentos: contar a mao quantas alunas foram escolhidas, quantos estudios aceitaram e quantos encaixes ja aconteceram  (toca: admin, painel)
+
+  TAR-261  [concluída · despacho-admin-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1335
+
+         Consertar os defeitos que o revisor achou na tela da rede de talentos  (toca: admin)
+
+  TAR-262  [concluída · despacho-infra-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1338
+
+         O roteiro que leva a chave da IA para o painel nao pode dizer PRONTO quando a chave nao chegou  (toca: infra, admin)
+
+  TAR-263  [concluída · despacho-admin-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1336
+
+         Consertar sete defeitos do robo analista achados na revisao do PR 1334  (toca: admin)
+
+  TAR-264  [concluída · agent/forum/tar-264-resposta-quebrada] — https://github.com/abundanciabr/sitesdoreino/pull/1429
+
+         Medir e consertar no forum a mesma falha de resposta quebrada ja consertada no analista  (toca: forum)
+
+  TAR-265  [concluída · despacho-cursos-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1341
+
+         A porta /cursos/ passa a mostrar o catalogo dos cursos, e cada curso se entra pelo proprio endereco  (toca: cursos, painel, fila)
+
+  TAR-266  [concluída · despacho-cursos-varios-cursos-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1349
+
+         A sala de aula aprende a criar cursos: a porta ganha listar, criar e apontar curso, e receber a estrutura de qualquer curso  (toca: cursos, painel, fila)
+
+  TAR-267  [concluída · despacho-catalogo-create-product-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1343
+
+         O catalogo passa a cadastrar um produto pela porta de maquina, sem terminal  (toca: catalogo, painel, fila)
+
+  TAR-268  [concluída · maestro-lote-cursos-20260907] — Rito de Contrato da sala em dois PRs so de contracts/, etiqueta contrato: https://github.com/abundanciabr/sitesdoreino/pull/1351 MERGED (as quatro operacoes de curso) e https://github.com/abundanciabr/sitesdoreino/pull/1359 MERGED (a emenda do mesmo dia: nome do bloco vem da estrutura). Freeze com o congelado e o codigo na mesma arvore: contrato/cursos PASS identico ao congelado (1616 linhas), seguranca PASS (17 operacoes). O codigo da porta (PR 1349) pousou na main dentro do PR 1357 (MERGED), com o freeze verde
+
+         Rito de Contrato da sala de aula: as quatro operacoes de curso entram no contrato congelado  (toca: contracts, ci, painel, fila)
+
+  TAR-269  [concluída · maestro-rito-catalogo-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1347 MERGED (so contracts/, etiqueta contrato); ci/contract_freeze.py catalogo PASS identico ao congelado (651 linhas) e seguranca PASS (7 operacoes), rodado com o congelado e o codigo do PR 1343 na mesma arvore; o PR 1343 pousou em seguida com os 8 checks verdes, e o deploy-celula 34147356482 do catalogo terminou success (gh run view --json)
+
+         Rito de Contrato do catalogo: cadastrar produto entra no contrato congelado  (toca: contracts, ci, painel, fila)
+
+  TAR-270  [concluída · maestro-lote-cursos-20260907] — PR em preparo: concluir_por_gesto recusa curso por laudo, recusa pausa faltando, recusa porta trancada, abre apenas ordem + 1, e emite aula.concluida.v1; tela de curso livre mostra Concluir esta aula, esconde checkpoint, recusa entrega por checkpoint em portugues, e mapa de curso com uma parte nao mostra cabecalho. Testes focados: 44 passed em Postgres local.
+
+         O curso de progressao livre: o aluno conclui a aula e a proxima abre, sem laudo; o curso do livro continua por laudo  (toca: cursos, INVARIANTES.md, painel, fila)
+
+  TAR-271  [concluída · maestro-lote-cursos-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1362 MERGED: /admin/escola/cursos/ com a lista de cursos (produto, regra de avanco, aulas), Novo curso (createProduct + createCourse), trocar produto e progressao, CURSO_PADRAO removida, abas de Parte so com mais de uma parte, previa nos tres estados, mapa do site PASS (245 rotas), suite da admin 1601 passed, 12 sabotagens pegas; revisor: 3 achados corrigidos no commit 16ea582a; deploy-celula 34152028882 success (gh run view --json)
+
+         A escola ganha a lista de cursos e o botao Novo curso: nome, produto (existente ou novo) e regra de avanco, sem terminal  (toca: admin, painel, fila)
+
+  TAR-272  [concluída · maestro-lote-cursos-20260907] — PR em preparo: /admin/escola/<curso>/estrutura/ com caixa de colar, Prever sem gravar, Importar pela porta putCourseStructure, parser com linha do erro, recusa 422 em portugues, link na lista de cursos e auditoria propria. Teste focado: 41 passed.
+
+         A tela de colar a estrutura de um curso: modulos e aulas num texto simples, com prever e importar  (toca: admin, painel, fila)
+
+  TAR-273  [concluída · despacho-painel-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1344
+
+         Consertar a tabela do §8 do plano de gestao, que mente sobre si mesma  (toca: painel)
+
+  TAR-274  [concluída · despacho-painel-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1364
+
+         A pagina do painel esta a 3% do teto de tamanho, e ao encostar o gerador para todo PR da casa  (toca: painel)
+
+  TAR-275  [concluída · maestro-cursos-20260907] — https://github.com/abundanciabr/sitesdoreino/pull/1350
+
+         O catalogo dos cursos passa pelo revisor: aviso que nao contradiz o cartao e link tente de novo no mesmo curso  (toca: cursos, painel, fila)
+
+  TAR-276  [concluída · agent/ci/portao-area-registro] — https://github.com/abundanciabr/sitesdoreino/pull/1459
+
+         O portao da area do registro promete duas coisas que nenhum teste prova, e a mensagem do ramo desconhecido nao da exemplo  (toca: ci)
+
+  TAR-277  [concluída · maestro-fase1-20260908] — https://github.com/abundanciabr/sitesdoreino/pull/1380
+
+         Consolidar a abertura, a medição e o fechamento das tarefas  (toca: ci)
+
+  TAR-278  [concluída · agent/painel/encerramento-complemento-f1] — https://github.com/abundanciabr/sitesdoreino/pull/1384
+
+         Concluir as correções e a comprovação da primeira fase  (toca: ci, painel)
+
+  TAR-279  [concluída · agent/admin/fase-2-canario-dados] — https://github.com/abundanciabr/sitesdoreino/pull/1388
+
+         Canario da publicacao de dados da Fase 2  (toca: admin, painel, fila)
+
+  TAR-280  [concluída · sessao-ci-retomar-fase4-coleta-real] — TAR-280: python ci/registrar_tarefa_fase4.py PASS; python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py ci/tests/test_metricas_percurso.py -q PASS 63; python ci/analise_fase4.py --local reconhece 2 registros, consolida 1 tarefa, Fase 1 depois=1 antes=0 pares=0, avaliacao inconclusiva; docs/decisoes/RELATORIO-FASE4-MEDICAO.md atualizada
+
+         Coletar e analisar tarefas reais comparáveis da Fase 4  (toca: ci, painel)
+
+  TAR-281  [concluída · agent/fabrica/auditar-medicao-fase4] — https://github.com/abundanciabr/sitesdoreino/pull/1420
+
+         Auditar independentemente a medição da Fase 4  (toca: ci, painel)
+
+  TAR-282  [concluída · teste-controlado-fase4] — https://github.com/abundanciabr/sitesdoreino/pull/1402; python -m pytest ci/tests/test_analise_fase4.py ci/tests/test_registrar_tarefa_fase4.py -q: 17 passed in 0.72s
+
+         Executar cenário controlado da medição da Fase 4  (toca: ci)
+
+  TAR-283  [concluída · maestro-fase-1] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1500; revisao=2307e859e1880f90e7d2a5ca8dfffcf069106b5e; arvore=bb037fd6b339c705882598f6671ff30ac69e7bfb; head=09e2680a74af55f5e7b32947b9344a82535e0f7c; merge=cd201c495824c4fca16155031b5f87ad93cf05f1; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34456533118; atestado=atestado aprovado para 09e2680a74af55f5e7b32947b9344a82535e0f7c; aceite=painel/registros/20260910-027-scale-os-aceite-tar283.js
+
+         Definir quem responde por cada frente e quem assume quando essa pessoa falta  (toca: admin, painel, contracts, fila)
+
+  TAR-284  [na fila] — ninguém pegou ainda
+
+         Dar a cada pessoa a sua visão da Central de Pendências  (toca: admin, painel, fila)
+
+  TAR-285  [na fila] — ninguém pegou ainda
+
+         Executar os quatro copilotos com histórico, limites e recuperação de falhas  (toca: admin, fila, contracts, mensageria)
+
+  TAR-286  [bloqueada] — esperando TAR-285
+
+         Unir as ajudas de ensino num Copiloto do Especialista  (toca: cursos, forum, admin, painel, contracts)
+
+  TAR-287  [bloqueada] — esperando TAR-285
+
+         Dar à pessoa de Estratégia um copiloto de jornadas e experimentos  (toca: admin, painel, mensageria, fila)
+
+  TAR-288  [bloqueada] — esperando TAR-285, TAR-296
+
+         Construir o histórico comercial e o Copiloto Comercial  (toca: leads, funil, mensageria, admin, contracts)
+
+  TAR-289  [bloqueada] — esperando TAR-285
+
+         Dar a Operações um copiloto de saúde, incidentes e tráfego  (toca: admin, metricas, infra, funil, contracts)
+
+  TAR-290  [cancelada · agent/admin/fase-1-scale-os] — Substituída pela TAR-297: a validação agora separa funcionamento, economia de esforço, qualidade e capacidade e não transforma a meta de mais de 80 por cento em critério único. O histórico da TAR-290 permanece preservado.
+
+         Provar que a equipe economiza tempo e suporta a escala prometida  (toca: admin, painel, ci, metricas)
+
+  TAR-291  [concluída · despacho-admin-pr1506-retomada] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1510; revisao=bcb3e731a3a18727fd3304a3d6517288c8a3472a; arvore=9bd67eaab3d16f242fd62a920f7bcb0aa103e8d8; head=0fe2e5986e58716114410ed5255aba42f3470b79; merge=ffdecfc3604ec0c9b9dde040d0abb06d67207d37; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34557853243; atestado=atestado aprovado para 0fe2e5986e58716114410ed5255aba42f3470b79; aceite=painel/registros/20260911-023-versao-dos-dados-publicada.js
+
+         Mostrar a versão dos dados e avisar quando o painel usa uma cópia anterior  (toca: admin)
+
+  TAR-293  [em execução · agent/fila/conclusao-comprovada] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Separar trabalho submetido de conclusão comprovada  (toca: fila, ci)
+
+  TAR-295  [em execução · agent/admin/pergunta-completa-do-analista] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         O pedido do analista chega completo para a decisão  (toca: admin)
+
+  TAR-296  [na fila] — ninguém pegou ainda
+
+         Entregar um CRM humano antes da automação comercial  (toca: leads, funil, admin, fila)
+
+  TAR-297  [bloqueada · agent/admin/fase-1-scale-os] — TAR-297 valida a Fase 4 e não representa a fundação da Fase 1; aguarda fila própria após as dependências 284 a 289.
+
+         Medir funcionamento, economia, qualidade e capacidade do Scale OS  (toca: admin, painel, ci, metricas)
+
+  TAR-299  [concluída · agent/admin/pr1506-reuniao] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1512; revisao=d9287df56cb5409fb72c2302f37257db4a3c10b6; arvore=ab10928e7d28fb84ea40b62b9914cf728dd88d1e; head=92006e9e2c4ac552a83f425af6117b3b386e6fd7; merge=03e7c08b04aff239486b83d19a8f8253661aee59; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34561992574; atestado=atestado aprovado para 92006e9e2c4ac552a83f425af6117b3b386e6fd7; aceite=painel/registros/20260911-029-aceite-dos-estados-publicados.js
+
+         A Central e a aba de robôs mostram só o que foi comprovado  (toca: admin)
+
+  TAR-301  [concluída · maestro-capitulo-1] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1513; revisao=0a47115a0dba617f96cd06020bf2f39f812c1f4c; arvore=4d2a422aa3fe7e8856b984812ed816b75f7c0e66; head=ca1709924efe80c016fe97e27c5f3d5cca9d173e; merge=3307b8f3aee245aad0bcc42aaca413731899f4ff; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34567349081; atestado=atestado aprovado para ca1709924efe80c016fe97e27c5f3d5cca9d173e; aceite=painel/registros/20260911-033-aceite-da-retomada-do-pedido.js
+
+         Retomar o mesmo pedido dos robôs depois de uma interrupção  (toca: admin)
+
+  TAR-307  [concluída · /root] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1517; revisao=9998176f04fbee45432711fd6668875ce908a630; arvore=566433d36aca9ba299c990fd18368d7bf412ddf0; head=2611321a1bca1cf8851f8af1dbc36956749699d2; merge=34c6663e94157765c6daa709c83aa7dc9c5bc0a2; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34433902392; atestado=atestado aprovado para 2611321a1bca1cf8851f8af1dbc36956749699d2; aceite=painel/registros/20260910-008-bosses-no-ar.js
+
+         Corrigir a aula que impede a publicação dos Bosses de Primeiros Dólares  (toca: cursos)
+
+  TAR-308  [concluída · agent/ci/publicar-evento-tar-308] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1518; revisao=505b99b79f0566038aae6761f3cc0803c865f1a3; arvore=5190221afc4f892f5140ad19b75614c872475026; head=af6559196eb56ae7e94444f1843dd91682f76616; merge=f613b25a8d3add4ae9781c6ed5ba604a9cf5791c; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34441578586; atestado=atestado aprovado para af6559196eb56ae7e94444f1843dd91682f76616; aceite=painel/registros/20260910-014-pedido-1518-publicado.js
+
+         Fechar entregas submetidas com prova completa  (toca: ci)
+
+  TAR-309  [na fila] — ninguém pegou ainda
+
+         O cadastro de responsabilidades passa a cobrir os recursos reais  (toca: painel)
+
+  TAR-310  [na fila] — ninguém pegou ainda
+
+         A fila recusa tarefa sem responsabilidade e cadastro ambíguo  (toca: ci, fila, painel)
+
+  TAR-311  [na fila] — ninguém pegou ainda
+
+         A medição de esforço recusa duplicação e separa os quatro vereditos  (toca: ci, painel)
+
+  TAR-312  [na fila] — ninguém pegou ainda
+
+         A direção da semana ganha hipótese fundamentada e compromisso acompanhado  (toca: painel)
+
+  TAR-313  [na fila] — ninguém pegou ainda
+
+         A entrega do CRM e dos copilotos exige permissões comprovadas  (toca: fila)
+
+  TAR-314  [na fila] — ninguém pegou ainda
+
+         A medição deixa de aparecer como decisão do mantenedor  (toca: fila)
+
+  TAR-315  [bloqueada] — esperando TAR-288
+
+         A retomada comercial após controle humano volta a ser rastreável  (toca: leads, funil, mensageria, admin, contracts)
+
+  TAR-316  [na fila] — ninguém pegou ainda
+
+         O analista remove dados pessoais antes de chamar o provedor  (toca: admin)
+
+  TAR-317  [na fila] — ninguém pegou ainda
+
+         A tela das coortes deixa de pedir uma decisão já recusada  (toca: admin)
+
+  TAR-318  [concluída · maestro] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1523; revisao=9cc822be4efab57e11cf1a911af8b826f6ccd175; arvore=dff8532418a6d45c4b19a10ff462bb02540057a4; head=d676ed8223ecdfe5956b6b54ea59f4adcbc39cce; merge=dfb06e637b7dfc15282d9f9e05b08d1a663e8033; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34471938757; atestado=atestado aprovado para d676ed8223ecdfe5956b6b54ea59f4adcbc39cce; aceite=painel/registros/20260910-032-auditoria-independente-da-fase-1-publicada.js
+
+         Publicar a auditoria independente da Fase 1  (toca: painel, fila)
+
+  TAR-319  [na fila] — ninguém pegou ainda
+
+         Abrir corretamente os links das provas dos robôs  (toca: admin)
+
+  TAR-320  [concluída · maestro] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1526; revisao=8d3c950d1dce440252ca0298735aaf32bcd7229d; arvore=f88f125edb1e99fcfb8fc2063586007d4dcb3a86; head=9e4d1a30f81744390f77bf5b22d332ce0f4b150d; merge=5988697276fe3eea68de37f83eece3d5fd690319; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34480711696; atestado=atestado aprovado para 9e4d1a30f81744390f77bf5b22d332ce0f4b150d; aceite=painel/registros/20260910-035-complemento-da-auditoria-publicado.js
+
+         Publicar o achado complementar dos links de evidência  (toca: painel, fila, ci)
+
+  TAR-321  [cancelada · agent/painel/mapa-caminho-dourado] — Associação indevida: o PR 1533 entrega o prompt e a escrituração, não implementa o GPS. A obra futura continua integralmente na sucessora TAR-324.
+
+         O mapa vivo prepara o próximo passo e o prompt de cada tarefa  (toca: ci, admin, painel)
+
+  TAR-322  [concluída · maestro] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1534; revisao=5c8c4961971d0a54704ef56e0964cbc802144a4e; arvore=bd94ace9fc448f157cd5206893ee651ce561c2d9; head=e038c1c7423a8255858b0431e466a7f329f9eae3; merge=0ba5310e3c73a5ee439b7a08e19f08df431315a7; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34493727068; atestado=atestado aprovado para e038c1c7423a8255858b0431e466a7f329f9eae3; aceite=painel/registros/20260910-047-publicacao-consultas-de-deploy.js
+
+         Consultar publicações sem esgotar o limite do GitHub  (toca: ci)
+
+  TAR-323  [cancelada · agent/painel/mapa-caminho-dourado] — Substituída pela TAR-325 para declarar corretamente o escopo documental na célula admin. O PR 1533 e os recibos anteriores permanecem como história; a obra futura segue na TAR-324.
+
+         O guia do mapa vivo está publicado e verificável  (toca: painel, ci)
+
+  TAR-324  [na fila] — ninguém pegou ainda
+
+         O mapa vivo prepara o próximo passo e o prompt de cada tarefa  (toca: ci, admin, painel)
+
+  TAR-325  [em execução · agent/painel/mapa-caminho-dourado] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         O guia do mapa vivo está publicado e verificável  (toca: admin)
+
+  TAR-327  [em execução · agent/admin/aula-youtube-em-uma-hora] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         A aula por vídeo do YouTube nasce pronta com uma URL  (toca: admin, painel, fila)
+
+  TAR-328  [em execução · agent/painel/estado-real-frentes] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Mostrar o estado real do sistema e o caminho de retomada  (toca: painel)
+
+  TAR-330  [em execução · agent/cursos/corrigir-erro-153-capa-youtube] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         A aula do YouTube abre sem erro e mostra a capa  (toca: cursos)
+
+  TAR-331  [em execução · agent/contratos/aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         O contrato das aulas avulsas permite criar e compartilhar vídeos fora dos cursos  (toca: contracts)
+
+  TAR-332  [concluída · despacho-admin-pr1506-retomada] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1549; revisao=52bbcf708ac9ca9c70d4a27ae29156393dfd5800; arvore=311db662db1581fc630d82b91daa4afec6d4ae8e; head=f5ac594b4e9f62fc47422da814bca819520804f8; merge=38bc8dd26850fb5469cf4dadc366f27e190fb01b; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34554589959; atestado=atestado aprovado para f5ac594b4e9f62fc47422da814bca819520804f8; aceite=painel/registros/20260911-016-pr-1549-publicado.js
+
+         Trocar uma entrega recuperada sem apagar o comprovante anterior  (toca: ci, fila)
+
+  TAR-334  [em execução · agent/cursos/aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Aulas avulsas publicadas têm vídeo, descrição e link próprio  (toca: cursos)
+
+  TAR-336  [em execução · agent/admin/painel-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         O painel cria aulas avulsas com link para compartilhar  (toca: admin)
+
+  TAR-337  [concluída · maestro-capitulo-1] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1557; revisao=9184f8e5ab1883d8b7196507ef9988c2ebc034d6; arvore=8b01377d21026d6de4c95b4a14f160ceb92eb74b; head=02a6b5535e0e524d69f2393f77a29e2e0f8b147b; merge=2f4d66c0bbd54ad180b59838b41839daa13f66fb; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34563618018; atestado=atestado aprovado para 02a6b5535e0e524d69f2393f77a29e2e0f8b147b; aceite=painel/registros/20260911-034-aceite-da-correcao-de-linhagem.js
+
+         Conferir a entrega sem confundir atualizacao com codigo novo  (toca: ci)
+
+  TAR-338  [em execução · agent/ci/corrigir-instrumento-pareto-fase4] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Tornar a medição Pareto rastreável e confirmatória  (toca: ci, painel)
+
+  TAR-339  [em execução · agent/ci/mapa-tar324-nucleo] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         O mapa prepara o próximo passo para começar ou retomar trabalho  (toca: ci)
+
+  TAR-340  [em execução · agent/contracts/edicao-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Permitir editar aulas avulsas sem mudar o link  (toca: contracts)
+
+  TAR-341  [concluída · maestro-capitulo-1] — entrega=https://github.com/abundanciabr/sitesdoreino/pull/1514; revisao=88809a4449243a2be15488fa5cf2024b13439c6a; arvore=22e45008223c881c1b9bb69084e79ee709bc1c7e; head=b81c5215dab481a955c3971e8f23d0d18cfdbd81; merge=b203069077f80800b1b901f6ca4596b15da48e97; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34599284793; atestado=atestado aprovado para b81c5215dab481a955c3971e8f23d0d18cfdbd81; aceite=painel/registros/20260911-054-aceite-dos-pedidos-privados-da-reuniao.js
+
+         Autorizar o pedido privado da Reunião sem executá-lo nem publicá-lo  (toca: admin)
+
+  TAR-342  [em execução · agent/cursos/editar-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Editar aulas avulsas sem mudar o link público  (toca: cursos)
+
+  TAR-343  [em execução · agent/admin/editar-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Editar aulas avulsas sem mudar o link  (toca: admin)
+
+  TAR-345  [em execução · agent/painel/declarar-rota-editar-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Declarar no mapa a rota de edição das aulas avulsas  (toca: painel)
+
+  TAR-347  [em execução · agent/infra/redirecionar-links-legados-aulas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Links antigos de aulas avulsas passam a abrir  (toca: infra, ci)
+
+  TAR-348  [em execução · agent/painel/auditoria-pareto-capitulo1] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Auditar de forma independente a medição Pareto do capítulo 1  (toca: painel)
+
+  TAR-351  [em execução · agent/contracts/contrato-slug-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Permitir alterar o endereço de uma aula avulsa  (toca: contracts, fila)
+
+  TAR-354  [em execução · agent/cursos/editar-slug-aulas-avulsas] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Reservar endereço único ao editar aula avulsa  (toca: cursos, fila)
+
+  TAR-358  [em execução · agent/painel/conferir-fechamento-fases-um-dois] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Registrar a conferência das fases e a continuação da otimização  (toca: painel, ci)
+
+  TAR-359  [na fila] — ninguém pegou ainda
+
+         Concluir a economia de contexto dos robôs na Fase 3  (toca: ci)
+
+  TAR-360  [em execução · agent/ci/testes-json-mutacao] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Resumir testes e comprovar automaticamente suas proteções  (toca: ci)
+
+  TAR-361  [em execução · despacho-ci-recuperar-fase-dois-1589] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Reutilizar ambientes com isolamento entre tarefas  (toca: ci)
+
+  TAR-362  [em execução · agent/ci/encaminhamento-por-eventos] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Encaminhar a entrega sem manter o robô esperando  (toca: ci)
+
+  TAR-363  [em execução · agent/ci/economizar-fechamento] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Encerrar com relatório curto sem reler a conversa inteira  (toca: ci)
+
+  TAR-364  [em execução · agent/ci/contexto-sob-demanda] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Consultar lições quando necessário e preservar as regras com menos repetição  (toca: ci)
+
+  TAR-365  [em execução · agent/ci/revisao-na-atualizacao-da-base] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Preservar revisão após atualizar a base sem mudar o código  (toca: ci)
+
+  TAR-366  [em execução · agent/admin/rede-windows-checkout-limpo] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Corrigir rede do Windows em checkout limpo  (toca: ci/tests/test_verificar_painel.py, ci/tests/test_por_a_chave_da_ia_do_admin.py)
+
+  TAR-367  [em execução · agent/admin/painel-fixture-minima] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Tornar determinístico o preparo dos testes do painel no Windows  (toca: ci/tests/test_verificar_painel.py)
+
+  TAR-369  [concluída · agent/fila/pouso-fecha-tarefa] — https://github.com/abundanciabr/sitesdoreino/pull/1603
+
+         Fechar sozinha a tarefa quando o trabalho dela entra no site  (toca: ci, fila)
+
+  TAR-370  [em execução · agent/fila/lote-da-triade] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         Enfileirar o lote da tríade: as tarefas que Codex e Antigravity vão executar  (toca: fila)
+
+  TAR-371  [na fila] — ninguém pegou ainda
+
+         Trava contra apagamento silencioso de lei no portão das leis  (toca: ci)
+
+  TAR-372  [em execução · agent/ci/lei-da-triade] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         A tríade na lei: papel, trabalho, responsabilidades e limites de cada IA  (toca: ci, painel, CLAUDE.md, RITOS.md)
+
+  TAR-373  [em execução · agent/ci/regencia-da-triade] — Entrega submetida; falta comprovar o aceite da tarefa.
+
+         A tríade nos documentos de regência: quem faz o quê em cada roteiro  (toca: docs, fila, painel, CAMINHO-DOURADO.md, PLAYBOOK.md)
+
+  TAR-374  [na fila] — ninguém pegou ainda
+
+         O rádio da tríade: mensagens entre as IAs e o mantenedor, com página no admin  (toca: admin, ci)
+
+  TAR-375  [concluída · agent/fila/radio-da-triade] — https://github.com/abundanciabr/sitesdoreino/pull/1608
+
+         Enfileirar o rádio e a Lei de Ferro da tríade  (toca: fila)
+
+  TAR-376  [na fila] — ninguém pegou ainda
+
+         A Lei de Ferro da tríade: papéis estritos e trava contra sub-agente de escrita no Claude Code  (toca: ci, CLAUDE.md)
+
+  TAR-377  [na fila] — ninguém pegou ainda
+
+         Registrar no livro o aceite de 31 entregas que já entraram no site  (toca: painel)
+
+  TAR-378  [bloqueada] — esperando TAR-377
+
+         Fechar na fila as 31 tarefas cujo trabalho já entrou no site  (toca: fila)
+
+  TAR-379  [na fila] — ninguém pegou ainda
+
+         Publicar no repositório a pasta do conselho da Fase 4  (toca: docs)
+
+  TAR-380  [concluída · agent/fila/reconciliacao-e-conselho] — https://github.com/abundanciabr/sitesdoreino/pull/1609
+
+         Enfileirar a reconciliação das entregas presas e a publicação do conselho  (toca: fila)
+
+
+Comando: gh issue create (fichas faltantes)
+Saida:
+NÃO MEDI (não criei fichas, maestro redigirá os briefs)
+
+
+Fase 6 - Correções e Retratações (Conferência da Maestro)
+
+RETRATAÇÃO 2: 'Diamante 4 implementada: PRs 1589 a 1599 em commits únicos' é FALSO. Os 11 PRs têm de 1 a 17 commits e todo merge tem dois pais. A prova certa do Diamante 4 é: RITOS §2 e o commit de fechamento.
+
+RETRATAÇÃO 3: Na tabela, a classificação estava incorreta. Correções:
+- CLAUDE-002: corresponde à TAR-377 e TAR-378.
+- CLAUDE-011: (a) entra pelo PR #1606, (b) e (c) seguem adiadas pelo protocolo §4.
+- O Ouro: Retrato esta peça, pois não é peça de minha autoria confirmada.
+- Lacunas: Os briefs das lacunas já estão escritos pela maestro e entram na fila pelo Codex assim que o #1610 pousar.
+- TAR-371 e TAR-376: São fichas sob minha responsabilidade; quem as verifica é a maestro. Não gravarei voto nem implementação em nome de ninguém.

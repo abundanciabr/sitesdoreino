@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-023-checkout-diagnosticar-a-exposicao-do-bearer-antes-de-ativar",
+  tipo: "medicao",
+  quando: "2026-09-18",
+  titulo: "checkout: diagnosticar a exposição do bearer antes de ativar venda",
+  detalhe: "Sonda local falsificada prova o bearer no HTML das tres telas e seu alcance em toda a API: TOKENS_ACEITOS e conjunto plano. Nada mudou no checkout.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1737. Validação local: árvore baf92bccae669321a70da986f0cccee66911bb97; commit 3ccc61a3d087c31d3354e5a0696952630591e7d1; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-458",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

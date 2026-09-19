@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-020-docs-completar-provas-do-conselho",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "docs: completar provas do conselho",
+  detalhe: "Incluídas as cinco provas omitidas do conselho e o placar original de 149 bytes. Seis hashes conferidos com o espelho; o placar recusa cálculo conforme a decisão.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1624. Validação local: árvore 16ab156218fb0e9279553060ff84e92685b57d7f; commit 2a558ef1d4a5df86fb64d0889d3340b4844dd854; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-379",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

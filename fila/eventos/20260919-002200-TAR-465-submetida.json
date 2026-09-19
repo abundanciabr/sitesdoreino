@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-002200-TAR-465-submetida",
+  "tarefa": "TAR-465",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:22:00+00:00",
+  "quem": "agent/ci/dono-do-pacote-outbox-relay",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1742",
+  "revisao": "86c65f72011c5701960ab8fcf4ca429b13f00404",
+  "arvore": "b244e13a49569418a952fe20814de412f5cec719"
+}
