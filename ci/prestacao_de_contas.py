@@ -250,7 +250,8 @@ def ler_estado_incremental(caminho: Path) -> dict:
             offset = 0
         if not estado:
             estado = {"versao": 1, "motivo": "", "teve_plano": False,
-                      "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0}
+                      "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0,
+                      "pr": 0, "ids_de_pr": [], "voo_cobrado": ""}
         fonte.seek(offset)
         while True:
             inicio = fonte.tell()
@@ -282,6 +283,7 @@ def ler_estado_incremental(caminho: Path) -> dict:
             prs, despachos = contar_prs_e_despachos([entrada])
             estado["prs"] += prs
             estado["despachos"] += despachos
+            _seguir_o_pr(entrada, estado)
         estado["offset"] = fonte.tell()
         fonte.seek(max(0, estado["offset"] - 512))
         cauda = hashlib.sha256(fonte.read(min(estado["offset"], 512))).hexdigest()
@@ -708,6 +710,136 @@ def checks_do_pr(numero: int, cwd: Path) -> str:
     return resumo
 
 
+# --------------------------------------------------- a entrega em voo ----
+#
+# 17/09/2026, pedido do mantenedor depois de uma sessão do Codex que terminou
+# com o PR aberto, os checks rodando e o ambiente local quebrado, devolvendo
+# tudo isso como pendência dele. O `decidir` acima cobra o RELATÓRIO; ele nunca
+# soube olhar se o trabalho relatado chegou ao fim. Esta é a metade que faltava:
+# **PR aberto é estado intermediário, nunca entrega final**, e enquanto houver
+# ação técnica segura disponível o relatório é atualização, não fecho.
+#
+# POR QUE ISTO NÃO É A ESPERA EM LAÇO QUE A TRÍADE PROIBIU
+# (`docs/decisoes/DECISAO-triade-de-ias.md`, regra 2): o portão não espera. Ele
+# mede UMA vez, no fim do turno, recusa UMA vez por situação e devolve o comando
+# que tem teto e morre sozinho (`ci/esperar.py`). Estourou o teto, o vermelho é
+# do instrumento ou a decisão é exclusiva do mantenedor: o fecho honesto é NÃO
+# PRONTO com a dívida no livro, e o portão aceita.
+#
+# O QUE FICOU DE FORA, de propósito: commit não enviado e ambiente local
+# quebrado. Os dois já caem no portão do relatório (trabalho de bancada nenhum
+# passa calado) e medi-los aqui cobraria a mesma dívida duas vezes, recusando a
+# cada turno quem editou, mediu e escreveu um NÃO PRONTO honesto. Continuam lei
+# de texto em CLAUDE.md, com o executor respondendo pela remediação.
+
+# `make pr` e `ci/pr.py` são a porta desta casa; `gh pr create` é a de fora.
+ABRE_PR = re.compile(r"\bmake\s+pr\b|\bci[/\\]pr\.py\b")
+
+ESTADOS_TERMINAIS = {"MERGED", "CLOSED"}
+CHECK_VERDE = {"SUCCESS", "NEUTRAL", "SKIPPED"}
+CHECK_VERMELHO = {"FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "ERROR", "STARTUP_FAILURE"}
+
+# O que fazer AGORA, por situação: recusa que não ensina só trava o robô de
+# outro jeito, a mesma lei do molde do relatório.
+ACAO_SEGURA = {
+    "rascunho": "gh pr ready {numero}   (rascunho não integra, nem é medido pela pista)",
+    "vermelho": ("leia o vermelho e conserte, no máximo 2 tentativas; ERROR é instrumento\n"
+                 "     quebrado: python ci/rerun_de_deploy.py --ultimo"),
+    "pendente": "python ci/esperar.py --checks {numero} --so-desfecho",
+    "aberto": "python ci/esperar.py --entrega {numero} --so-desfecho",
+}
+
+
+def situacao_do_pr(dados: dict) -> tuple[str, str]:
+    """(situação, motivo) a partir do JSON do `gh pr view`.
+
+    A régua inteira, testável sem rede e sem harness. Só `terminal` libera o
+    fecho: um PR aberto e verde ainda não integrou, e dar o trabalho por
+    encerrado porque o robô não tem mais o que fazer é exatamente o relatório
+    que o mantenedor recebeu e recusou.
+    """
+    estado = str(dados.get("state") or "").upper()
+    if estado in ESTADOS_TERMINAIS:
+        return "terminal", ""
+    if dados.get("isDraft"):
+        return "rascunho", "está em rascunho"
+    vermelhos: list[str] = []
+    pendentes = 0
+    for check in dados.get("statusCheckRollup") or []:
+        if not isinstance(check, dict):
+            continue
+        conclusao = str(check.get("conclusion") or check.get("state") or "").upper()
+        if conclusao in CHECK_VERDE:
+            continue
+        if conclusao in CHECK_VERMELHO:
+            vermelhos.append(str(check.get("name") or check.get("context") or "?"))
+        else:
+            pendentes += 1
+    if vermelhos:
+        return "vermelho", "está vermelho em " + ", ".join(vermelhos[:5])
+    if pendentes:
+        return "pendente", f"tem {pendentes} check(s) sem resultado"
+    return "aberto", "está aberto, ainda não integrado"
+
+
+def entrega_em_voo(numero: int, cwd: Path) -> tuple[str, str]:
+    """(situação, motivo). `nao_medido` NÃO é aprovação: é instrumento mudo."""
+    deu, saida = _rodar(cwd, "gh", "pr", "view", str(numero), "--json",
+                        "state,isDraft,statusCheckRollup")
+    if not deu:
+        return "nao_medido", f"o gh não respondeu: {saida}"
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
+        return "nao_medido", f"não entendi a resposta do gh: {erro}"
+    return situacao_do_pr(dados if isinstance(dados, dict) else {})
+
+
+def molde_do_voo(numero: int, situacao: str, motivo: str) -> str:
+    acao = ACAO_SEGURA.get(situacao, "confira o PR e conclua a entrega").format(numero=numero)
+    return "\n".join([
+        f"🛫 ENTREGA EM VOO: o PR #{numero} {motivo}.",
+        "   Pendência que VOCÊ ainda pode resolver faz do relatório uma",
+        "   atualização intermediária, não o fecho da sessão (CLAUDE.md).",
+        "   Ação segura, uma consulta com teto, sem laço:",
+        f"     {acao}",
+        "   Integrou ou o teto estourou: escreva o registro da entrega em",
+        "   painel/registros/ (com evidencia e verificado_em) e feche com o veredito.",
+        "   Só decisão exclusiva do mantenedor vira Pendências dele.",
+    ])
+
+
+def _seguir_o_pr(entrada: dict, estado: dict) -> None:
+    """Guarda o número do PR que ESTA sessão abriu, lido da saída de quem o abriu.
+
+    O PR que a sessão só consultou não entra: quem responde pela entrega é quem
+    a criou. Por isso a URL só vale quando vem no resultado do `make pr`, do
+    `ci/pr.py` ou do `gh pr create` desta mesma sessão.
+    """
+    for nome, bloco in _usos_de_ferramenta(entrada):
+        if nome not in ("Bash", "PowerShell"):
+            continue
+        comando = str((bloco.get("input") or {}).get("command") or "")
+        if PR_CRIADO.search(comando) or ABRE_PR.search(comando):
+            identificador = str(bloco.get("id") or "")
+            if identificador:
+                estado["ids_de_pr"] = [*estado.get("ids_de_pr", []), identificador][-8:]
+    conteudo = (entrada.get("message") or {}).get("content")
+    if not isinstance(conteudo, list):
+        return
+    for bloco in conteudo:
+        if not isinstance(bloco, dict) or bloco.get("type") != "tool_result":
+            continue
+        if str(bloco.get("tool_use_id") or "") not in estado.get("ids_de_pr", []):
+            continue
+        corpo = bloco.get("content")
+        if isinstance(corpo, list):
+            corpo = "\n".join(_texto_do_bloco(b) for b in corpo)
+        achado = URL_DE_PR.search(str(corpo or ""))
+        if achado:
+            estado["pr"] = int(achado.group(1))
+
+
 def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str:
     comeco = inicio_da_janela(entradas) if entradas else 0
     linhas = [
@@ -874,6 +1006,41 @@ def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "")
 # ------------------------------------------------------------- os dois modos ----
 
 
+def _portao_do_voo(entrada: dict, arquivo: Path, estado: dict, segunda_passada: bool) -> int:
+    """O segundo portão do Stop: as contas foram prestadas, mas a entrega chegou?
+
+    Só olha para o PR que a própria sessão abriu, uma medição por fim de turno,
+    e recusa uma única vez por situação (`1692:pendente`). Situação nova é fato
+    novo e merece nova recusa; a mesma situação duas vezes vira aviso, porque um
+    portão que recusa em laço é a espera em laço com outro nome.
+    """
+    numero = int(estado.get("pr") or 0)
+    if not numero or segunda_passada:
+        return 0
+    situacao, motivo = entrega_em_voo(numero, Path(entrada.get("cwd") or "."))
+    if situacao == "terminal":
+        return 0
+    if situacao == "nao_medido":
+        print(f"⚠️  ENTREGA EM VOO: não consegui medir o PR #{numero} ({motivo}). "
+              "Isto NÃO é 'está tudo certo': confira o PR antes de dar a tarefa por encerrada.",
+              file=sys.stderr)
+        return 1
+    assinatura = f"{numero}:{situacao}"
+    ja_cobrado = estado.get("voo_cobrado") == assinatura
+    estado["voo_cobrado"] = assinatura
+    try:
+        gravar_estado_incremental(arquivo, estado)
+    except OSError as erro:
+        print(f"ENTREGA EM VOO: não gravei o estado ({erro}); a recusa pode repetir.",
+              file=sys.stderr)
+    if ja_cobrado:
+        print(f"ENTREGA EM VOO: o PR #{numero} {motivo} e o robô encerrou assim mesmo; "
+              "a entrega continua sem resultado terminal, sem nova recusa.", file=sys.stderr)
+        return 1
+    print(molde_do_voo(numero, situacao, motivo), file=sys.stderr)
+    return 2
+
+
 def modo_contas(entrada: dict) -> int:
     # `stop_hook_active` diz só "já houve uma recusa neste fim de turno". Se ela
     # foi atendida, só o transcript sabe — e ele é relido com a MESMA régua
@@ -919,7 +1086,7 @@ def modo_contas(entrada: dict) -> int:
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
     if not recusar:
-        return 0
+        return _portao_do_voo(entrada, arquivo, estado, segunda_passada)
     if ja_cobrada:
         print("PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo; "
               "o relatório continua pendente, sem nova recusa. "

@@ -737,6 +737,375 @@ var pedidosAMais = muitosPedidos.length - (TETO_CAIXA + 2);
 caso("passado o teto, cada pedido a mais pesa um título e não um parágrafo",
   (pesoCheioCaixa - pesoBaseCaixa) / pedidosAMais < 800);
 
+
+// ---------------------------------------------------------------------------
+// O TETO DE "Dito, mas não comprovado" (19/09/2026).
+//
+// Os dois tetos acima cortam TEXTO e nunca FATO, e podem: problema aberto e
+// pedido sem resposta FECHAM quando alguém responde. Este bloco não tinha essa
+// saída. Ele lista entrega e medição sem prova conferida, e registro é imutável
+// por lei da casa: o que entra nunca sai. Medido no dia, com a main em 2f8444e9:
+// 80 afirmações sem prova, 77 delas presas no resumo só por esta porta, 48.089
+// bytes, 31,3% do resumo inteiro. A capa tinha 67 bytes de folga num orçamento
+// de 153.600 e o recibo mediano de um PR pesa 868: nenhum PR da casa ficava
+// verde, e com a muralha do painel caíam o `ci-celula (admin)` e o gate.
+//
+// Os casos travam as seis coisas que a cura precisa ser: o teto existe, corta a
+// LISTA, escolhe as mais RECENTES, não deixa NADA QUE ESPERA ALGUÉM cair fora do
+// resumo, mantém na tela o número do livro INTEIRO, e tem dentes.
+console.log("== teto de Dito, mas não comprovado ==");
+
+var TETO_SEM_PROVA = LOGICA.SEM_PROVA_NO_RESUMO;
+caso("o bloco tem um teto declarado", typeof TETO_SEM_PROVA === "number" && TETO_SEM_PROVA > 0);
+
+// Entregas sem prova em AGOSTO, e trinta notas de SETEMBRO depois delas: sem o
+// enchimento as entregas seriam os 30 mais recentes do livro e chegariam ao
+// resumo pela porta dos recentes, e o teto passaria sem ser exercido.
+var semProvaMuitas = [];
+for (var sp = 0; sp < TETO_SEM_PROVA + 8; sp++) {
+  var diaSp = String(sp + 1);
+  if (diaSp.length < 2) diaSp = "0" + diaSp;
+  // Nome e titulo de LARGURA FIXA: o caso dos dentes, lá embaixo, compara bytes
+  // entre dois livros em que o teto escolhe entregas DIFERENTES. Com o índice
+  // sem zero à esquerda, "entrega-9" e "entrega-19" pesariam diferente e o
+  // guarda mediria o comprimento do nome em vez do efeito do teto.
+  var nSp = ("0" + sp).slice(-2);
+  semProvaMuitas.push(reg({
+    arquivo: "202608" + diaSp + "-82" + (sp % 10) + "-entrega-" + nSp,
+    tipo: "entrega", quando: "2026-08-" + diaSp, titulo: "entrega sem prova " + nSp,
+    // `info`, e não verde: verde exige evidência conferida, que é justamente o
+    // que falta aqui. `frente: null` e `precisa_do_dono: false` de propósito —
+    // sem frente não há Meu mapa, sem pedido não há caixa, e este bloco fica
+    // sendo a ÚNICA porta delas para o resumo. É o que torna o corte visível.
+    gravidade: "info", evidencia: null, verificado_em: null,
+    frente: null, precisa_do_dono: false,
+    detalhe: "um paragrafo bem comprido ".repeat(40)
+  }));
+}
+var enchimentoSp = [];
+for (var es = 0; es < 30; es++) {
+  var diaEs = String(es + 1);
+  if (diaEs.length < 2) diaEs = "0" + diaEs;
+  enchimentoSp.push(reg({
+    arquivo: "202609" + diaEs + "-83" + (es % 10) + "-nota-" + es,
+    tipo: "nota", quando: "2026-09-" + diaEs, titulo: "nota " + es,
+    detalhe: "texto qualquer de enchimento "
+  }));
+}
+var livroSemProva = semProvaMuitas.concat(enchimentoSp);
+var resumoSemProva = LOGICA.montarResumo(livroSemProva);
+caso("montarResumo constrói com a pilha de afirmações sem prova", resumoSemProva.erro === null);
+
+// 1. A LISTA É QUE TEM TETO — a lista, e não só o texto, porque estas não fecham.
+var blocosSp = {};
+LOGICA.capa(livroSemProva, AGORA).blocos.forEach(function (b) { blocosSp[b.id] = b; });
+caso("o bloco para no teto (não cresce com a pilha)",
+  blocosSp["nao-comprovado"].itens.length === TETO_SEM_PROVA);
+
+// 2. QUEM FICA SÃO AS MAIS RECENTES. A ordem de chegada do livro é a mais velha
+//    primeiro; quem cortasse por ela acertaria a contagem e erraria a escolha.
+var idsNoBloco = {};
+blocosSp["nao-comprovado"].itens.forEach(function (r) { idsNoBloco[r.arquivo] = true; });
+caso("a afirmação sem prova mais RECENTE fica no bloco",
+  idsNoBloco[semProvaMuitas[semProvaMuitas.length - 1].arquivo] === true);
+caso("a mais ANTIGA sai do bloco", !idsNoBloco[semProvaMuitas[0].arquivo]);
+caso("...e sai também do resumo, que é o que devolve o orçamento",
+  !resumoSemProva.registros.some(function (r) { return r.arquivo === semProvaMuitas[0].arquivo; }));
+
+// 3. NADA QUE ESPERA ALGUÉM SAI DO RESUMO. Este é o caso que mede se o corte é
+//    seguro: uma entrega sem prova que também é pedido ao dono, ou que está
+//    vermelha sem resposta, continua no resumo por outra porta. É o que separa
+//    "envelhecer o que fechou" de "esconder o que está aberto".
+//
+//    As duas são as MAIS VELHAS do livro de propósito, e o livro leva junto as
+//    pilhas de pedidos e de problemas montadas acima. Sem elas as duas seriam os
+//    únicos itens dos seus blocos, ganhariam texto por `CAIXA_COM_DETALHE` e por
+//    `PROBLEMAS_COM_DETALHE`, e passariam neste teste carregadas por `completo`
+//    em vez de pelas portas que o teste diz medir. Medido em 19/09/2026: com o
+//    livro pequeno, arrancar `marcar(apenasTitulo, blocos.caixa)` deixava estes
+//    dois casos VERDES. Sendo as mais velhas, elas caem fora dos dois tetos de
+//    texto e fora dos 30 recentes, e sem frente não há Meu mapa: sobra uma porta
+//    só para cada uma, que é exatamente a que se quer provar.
+var pedindo = reg({
+  arquivo: "20260720-840-entrega-sem-prova-que-pede-decisao",
+  tipo: "entrega", quando: "2026-07-20", titulo: "sem prova e esperando você",
+  gravidade: "info", evidencia: null, verificado_em: null, frente: null,
+  precisa_do_dono: true, porque_so_voce: "só você tem a senha",
+  proximo_passo: "decidir", se_eu_nao_decidir: "fica parado",
+  recomendacao: "decidir", reversivel: true, impacto: "alto"
+});
+var vermelha = reg({
+  arquivo: "20260720-841-entrega-sem-prova-que-quebrou",
+  tipo: "entrega", quando: "2026-07-20", titulo: "sem prova e vermelha",
+  gravidade: "vermelho", evidencia: null, verificado_em: null, frente: null,
+  precisa_do_dono: false
+});
+var livroMisto = [pedindo, vermelha]
+  .concat(muitosPedidos).concat(muitosProblemas).concat(livroSemProva);
+var resumoMisto = LOGICA.montarResumo(livroMisto);
+var noResumoMisto = {};
+resumoMisto.registros.forEach(function (r) { noResumoMisto[r.arquivo] = r; });
+caso("a mais VELHA de todas, se for pedido ao dono, NÃO some do resumo",
+  !!noResumoMisto[pedindo.arquivo]);
+caso("a mais VELHA de todas, se estiver vermelha sem resposta, NÃO some do resumo",
+  !!noResumoMisto[vermelha.arquivo]);
+caso("...e a caixa 'Precisa de você' calculada do resumo tem a MESMA contagem do livro",
+  LOGICA.caixaDeEntrada(resumoMisto.registros, AGORA, resumoMisto.respondidos).length ===
+  LOGICA.caixaDeEntrada(livroMisto, AGORA).length);
+caso("...e 'Atenção agora' calculada do resumo tem a MESMA contagem do livro",
+  LOGICA.problemasAbertos(resumoMisto.registros, resumoMisto.respondidos).length ===
+  LOGICA.problemasAbertos(livroMisto).length);
+
+// 4. O NÚMERO DO LIVRO INTEIRO CONTINUA NA TELA. Sem isto o corte trocaria um
+//    bloco que grita por um que mente: lista curta com cara de lista completa.
+//    É deste número que a página escreve "são N sem prova no livro inteiro".
+var semProvaNoLivro = resumoSemProva.confianca.afirmacoes - resumoSemProva.confianca.comProvaConferida;
+caso("confianca conta TODAS as afirmações sem prova do livro, inclusive as que saíram",
+  semProvaNoLivro === semProvaMuitas.length);
+caso("...e esse número é maior que a lista, que é o que faz a página escrever a linha",
+  semProvaNoLivro > blocosSp["nao-comprovado"].itens.length);
+
+// 5. O GUARDA TEM DENTES. Passado o teto, uma afirmação sem prova a mais que não
+//    espera ninguém custa ZERO byte ao resumo. É o que faz o resumo parar de
+//    crescer com a idade do projeto, em vez de crescer mais devagar.
+var pesoBaseSp = pesoDoResumo(semProvaMuitas.slice(0, TETO_SEM_PROVA + 2).concat(enchimentoSp));
+var pesoCheioSp = pesoDoResumo(livroSemProva);
+caso("passado o teto, afirmação sem prova a mais não pesa NADA no resumo",
+  pesoCheioSp === pesoBaseSp);
+
+
+// ---------------------------------------------------------------------------
+// A PROPRIEDADE (19/09/2026) — e ela é o que os quatro tetos existem para valer.
+//
+// Enunciado: **o tamanho do resumo INTEIRO é função do que está ABERTO, nunca do
+// total histórico.** O que fechou para de pesar na capa, para sempre, seja um ou
+// mil.
+//
+// Isto não é teste de caso, é teste de PROPRIEDADE: o mesmo livro é medido em
+// três escalas, e o tamanho não pode crescer com o número de coisas fechadas.
+// Um teto que devolvesse "folga para mais uns vinte PRs" passaria num teste de
+// caso e reprova aqui, que é a diferença entre margem e propriedade.
+//
+// MEDE O RESUMO INTEIRO, E NÃO `resumo.registros`. A primeira versão desta
+// guarda mediu só a lista de registros, e por isso deu VERDE num resumo que
+// crescia: `respondidos` carregava um id novo por par encerrado, para sempre, e
+// ficava fora da conta. Guarda que mede meia coisa aprova a outra metade. Aqui a
+// régua são os bytes que o gerador embarca de verdade.
+//
+// TRÊS DIMENSÕES, porque são três as formas de uma ocorrência fechar nesta casa,
+// e cada uma tinha a sua própria porta sem teto:
+//   1. recibo de PR que pousou (entrega verde, com prova, sem pedir nada);
+//   2. o mesmo recibo carregando `vence_em_dias`;
+//   3. par encerrado — um pedido e a resposta que o fecha.
+//
+// E a outra metade, com a mesma força: poda que esconde coisa aberta é PIOR que
+// o estouro, porque o estouro grita e o esconderijo não. Por isso as três
+// escalas carregam, no fundo do livro, um pedido de decisão aberto, um incidente
+// aberto e um rumo aberto — e os três têm de sobreviver a mil fechados por cima.
+console.log("== o resumo INTEIRO é função do que está ABERTO, nunca do total ==");
+
+// Os três que não podem sumir. São os MAIS VELHOS do livro de propósito: se
+// alguma porta os carregasse por serem recentes, a prova não valeria nada.
+var abertoPedido = reg({
+  arquivo: "20260701-001-pedido-aberto", tipo: "pendencia", quando: "2026-07-01",
+  titulo: "pedido aberto", precisa_do_dono: true, gravidade: "ambar", frente: null,
+  porque_so_voce: "só você decide", proximo_passo: "decidir",
+  se_eu_nao_decidir: "a frente fica parada", recomendacao: "decidir",
+  reversivel: true, impacto: "alto"
+});
+var abertoIncidente = reg({
+  arquivo: "20260701-002-incidente-aberto", tipo: "incidente", quando: "2026-07-01",
+  titulo: "incidente aberto", gravidade: "vermelho", frente: null
+});
+var abertoRumo = reg({
+  arquivo: "20260701-003-rumo-aberto", tipo: "rumo", quando: "2026-07-01",
+  titulo: "rumo aberto", frente: "fabrica"
+});
+
+// As três dimensões. `par` fabrica um pedido e a entrega que o responde: é assim
+// que uma ocorrência FECHA de verdade nesta casa, e era o caso que enchia
+// `respondidos`.
+function livroDaEscala(n, dimensao) {
+  var livro = [abertoPedido, abertoIncidente, abertoRumo];
+  for (var i = 0; i < n; i++) {
+    var id = ("000" + i).slice(-4);
+    var dia = ("0" + (1 + (i % 28))).slice(-2);
+    var base = {
+      arquivo: "202609" + dia + "-9" + id + "-fechado",
+      tipo: "entrega", quando: "2026-09-" + dia, titulo: "entrega fechada " + id,
+      gravidade: "verde", evidencia: "PR https://exemplo/pull/" + id,
+      verificado_em: "2026-09-18", frente: "fabrica",
+      detalhe: "um recibo de PR como os desta casa, com dois paragrafos ".repeat(6)
+    };
+    if (dimensao === "com-prazo") base.vence_em_dias = 30;
+    if (dimensao === "par-encerrado") {
+      // O pedido que fecha. Ele NÃO é dos mais recentes: a entrega que o
+      // responde é que é. Assim o par sai da janela dos recentes e só
+      // `respondidos` poderia segurá-lo.
+      livro.push(reg({
+        arquivo: "202607" + dia + "-8" + id + "-pedido-fechado",
+        tipo: "pendencia", quando: "2026-07-" + dia, titulo: "pedido fechado " + id,
+        precisa_do_dono: true, gravidade: "ambar", frente: null,
+        porque_so_voce: "só você", proximo_passo: "decidir",
+        se_eu_nao_decidir: "para", recomendacao: "decidir", reversivel: true, impacto: "alto"
+      }));
+      base.responde_a = "202607" + dia + "-8" + id + "-pedido-fechado";
+    }
+    livro.push(reg(base));
+  }
+  return livro;
+}
+// A RÉGUA: os bytes do resumo INTEIRO, que é o que o gerador embarca na página.
+function bytesDoResumoInteiro(livro) {
+  return Buffer.byteLength(JSON.stringify(LOGICA.montarResumo(livro)), "utf8");
+}
+// AS ÚNICAS DIFERENÇAS TOLERADAS, e cada uma tem nome. São as contagens sobre o
+// livro inteiro: elas PRECISAM crescer, porque são a verdade sobre o tamanho do
+// livro, e crescem só em algarismos (dez vezes mais registros acrescenta um
+// dígito). Zerá-las aqui não as esconde do resumo: a comparação abaixo troca só
+// o valor delas pelo mesmo número dos dois lados, e continua exigindo que as
+// CHAVES estejam lá e que TODO o resto seja idêntico.
+//
+// A versão anterior desta guarda aceitava "até 32 bytes de diferença" e não
+// perguntava de onde vinham. Tolerância de número redondo é um lugar onde um
+// furo cabe sem ninguém ver: 32 bytes dão para um id inteiro passar sem acusar.
+// Depois desta troca, a única diferença admitida é a que se sabe nomear, e
+// qualquer outra reprova.
+var CONTAGENS_DO_LIVRO = ["totalNoLivro", "comPrazoNoLivro"];
+var CONTAGENS_DA_CONFIANCA = ["afirmacoes", "comProvaConferida", "rumosCumpridos", "rumosAbertos"];
+function normalizado(resumo) {
+  var copia = JSON.parse(JSON.stringify(resumo));
+  CONTAGENS_DO_LIVRO.forEach(function (c) {
+    if (copia[c] === undefined) throw new Error("contagem sumiu do resumo: " + c);
+    copia[c] = 0;
+  });
+  CONTAGENS_DA_CONFIANCA.forEach(function (c) {
+    if (!copia.confianca || copia.confianca[c] === undefined) throw new Error("contagem sumiu da confianca: " + c);
+    copia.confianca[c] = 0;
+  });
+  // A SEGUNDA diferença com nome: QUAIS registros enchem a janela dos recentes
+  // muda, e tem de mudar — com mil fechados os trinta mais novos são outros. O
+  // que a propriedade afirma não é que sejam os mesmos, é que sejam QUANTOS e
+  // PESEM quanto. Então a lista entra na comparação pela contagem e pelos bytes,
+  // e a identidade dela fica para os casos que a cobrem: os bytes exatos, acima,
+  // e os três abertos que não podem sumir, abaixo.
+  copia.registros = {
+    quantos: resumo.registros.length,
+    bytes: Buffer.byteLength(JSON.stringify(resumo.registros), "utf8")
+  };
+  return JSON.stringify(copia);
+}
+
+function medirEscala(n, dimensao) {
+  var r = LOGICA.montarResumo(livroDaEscala(n, dimensao));
+  var ids = {};
+  r.registros.forEach(function (x) { ids[x.arquivo] = true; });
+  return {
+    bytes: Buffer.byteLength(JSON.stringify(r), "utf8"),
+    bytesDosRegistros: Buffer.byteLength(JSON.stringify(r.registros), "utf8"),
+    normalizado: normalizado(r),
+    pedido: !!ids[abertoPedido.arquivo],
+    incidente: !!ids[abertoIncidente.arquivo],
+    rumo: !!ids[abertoRumo.arquivo]
+  };
+}
+
+["sem-prazo", "com-prazo", "par-encerrado"].forEach(function (dimensao) {
+  var um = medirEscala(1, dimensao);
+  var cem = medirEscala(100, dimensao);
+  var mil = medirEscala(1000, dimensao);
+
+  // 1. A PROPRIEDADE. De cem para mil são NOVECENTAS ocorrências fechadas a
+  //    mais, e o resumo inteiro tem de sair do mesmo tamanho, byte a byte. Não
+  //    "parecido", não "dentro do teto": o mesmo. É a diferença entre parar de
+  //    crescer e crescer mais devagar.
+  caso("cem e mil fechados (" + dimensao + ") levam a MESMA carga, byte a byte",
+    cem.bytesDosRegistros === mil.bytesDosRegistros);
+  // O resumo INTEIRO, e não só a lista: foi medindo meia coisa que a primeira
+  // versão desta guarda aprovou um resumo que crescia por `respondidos`. E a
+  // comparação é de IGUALDADE EXATA depois de zerar as contagens nomeadas: sem
+  // tolerância, nenhum byte sem dono.
+  caso("...e o resumo INTEIRO é IDÊNTICO fora as contagens do livro (" + dimensao + ")",
+    cem.normalizado === mil.normalizado);
+  // E o que sobra de diferença nos bytes crus são só os algarismos dessas
+  // contagens — menos do que um único id ocuparia.
+  caso("...e o que resta de diferença crua são algarismos, não conteúdo (" + dimensao + ")",
+    mil.bytes - cem.bytes >= 0 && mil.bytes - cem.bytes < 16);
+  // De um para cem as janelas fixas enchem, e é só elas que podem crescer.
+  // Cheias, novecentos fechados a mais não movem a carga.
+  caso("...e o crescimento de um para cem é a janela fixa, que então trava (" + dimensao + ")",
+    mil.bytesDosRegistros > um.bytesDosRegistros &&
+    mil.bytesDosRegistros === cem.bytesDosRegistros);
+  caso("...e mil fechados cabem folgados no orçamento (" + dimensao + ")",
+    mil.bytes < LOGICA.ORCAMENTO_RESUMO_BYTES);
+
+  // 2. E NADA ABERTO FICOU ESCONDIDO, nas três escalas. Sem estes casos o teste
+  //    acima seria satisfeito por uma poda que apagasse a capa inteira.
+  caso("o pedido de decisão aberto sobrevive a mil fechados (" + dimensao + ")",
+    um.pedido && cem.pedido && mil.pedido);
+  caso("o incidente aberto sobrevive a mil fechados (" + dimensao + ")",
+    um.incidente && cem.incidente && mil.incidente);
+  caso("o rumo aberto sobrevive a mil fechados (" + dimensao + ")",
+    um.rumo && cem.rumo && mil.rumo);
+});
+
+// 3. O MAPA DE RESPOSTAS CONTINUA DIZENDO A VERDADE depois de encolher. Ele é a
+//    peça que impede um pedido já respondido de reaparecer como aberto, e cortar
+//    demais aqui devolveria a doença que ele cura (H18). A conta tem de bater
+//    entre o livro inteiro e o resumo, na maior das escalas.
+var livroMil = livroDaEscala(1000, "par-encerrado");
+var resumoMil = LOGICA.montarResumo(livroMil);
+caso("nenhum pedido já respondido reaparece como aberto no resumo",
+  LOGICA.caixaDeEntrada(resumoMil.registros, AGORA, resumoMil.respondidos).length ===
+  LOGICA.caixaDeEntrada(livroMil, AGORA).length);
+caso("...e o mapa de respostas só carrega quem viaja (é ele que crescia sem teto)",
+  Object.keys(resumoMil.respondidos).every(function (id) {
+    return resumoMil.registros.some(function (r) { return r.arquivo === id; });
+  }));
+// E o corte não pode ser "esvazie o mapa": num livro pequeno, em que o pedido
+// respondido ainda viaja, ele TEM de continuar marcado. Sem este caso, apagar o
+// mapa inteiro passaria nos dois acima.
+var resumoUm = LOGICA.montarResumo(livroDaEscala(1, "par-encerrado"));
+caso("...e num livro pequeno o pedido respondido viaja E continua marcado",
+  resumoUm.registros.some(function (r) { return r.arquivo.indexOf("-pedido-fechado") !== -1; }) &&
+  resumoUm.registros.filter(function (r) { return resumoUm.respondidos[r.arquivo]; }).length > 0);
+
+// 4. O TETO DOS PRAZOS GUARDA OS MAIS RECENTES, e a escolha foi medida antes de
+//    ser feita. Ordenar pelo prazo, guardando quem vence primeiro, soa certo e é
+//    o contrário: num livro que só cresce, o prazo mais curto é sempre o
+//    registro mais antigo dele, vencido há meses e sem nada a fazer. O que o
+//    dono precisa ver é a prova que saiu da validade agora.
+var prazoAntigo = reg({
+  arquivo: "20260101-860-prazo-antigo", tipo: "nota", quando: "2026-01-01",
+  titulo: "prazo antigo", vence_em_dias: 1, frente: null
+});
+var prazoRecente = reg({
+  arquivo: "20260831-861-prazo-recente", tipo: "nota", quando: "2026-08-31",
+  titulo: "prazo recente", vence_em_dias: 9000, frente: null
+});
+var comPrazos = [prazoAntigo, prazoRecente];
+for (var cp = 0; cp < LOGICA.COM_PRAZO_NO_RESUMO; cp++) {
+  var diaCp = ("0" + (1 + (cp % 28))).slice(-2);
+  comPrazos.push(reg({
+    arquivo: "202603" + diaCp + "-86" + (cp % 10) + "-prazo-" + ("0" + cp).slice(-2),
+    tipo: "nota", quando: "2026-03-" + diaCp, titulo: "prazo " + cp, vence_em_dias: 30, frente: null
+  }));
+}
+// Trinta recentes de setembro empurram os de prazo para fora da janela dos
+// recentes: sem isso eles chegariam ao resumo por outra porta e o teto passaria
+// sem ser exercido.
+var resumoPrazos = LOGICA.montarResumo(comPrazos.concat(enchimentoSp));
+var noResumoPrazos = {};
+resumoPrazos.registros.forEach(function (r) { noResumoPrazos[r.arquivo] = true; });
+caso("o registro com prazo mais RECENTE fica no resumo, mesmo com prazo longuissimo",
+  !!noResumoPrazos[prazoRecente.arquivo]);
+caso("o mais ANTIGO sai, mesmo sendo o de prazo mais curto (vencido velho nao e acionavel)",
+  !noResumoPrazos[prazoAntigo.arquivo]);
+caso("o número de registros com prazo do livro INTEIRO continua contado, para a página dizê-lo",
+  resumoPrazos.comPrazoNoLivro === comPrazos.length);
+caso("...e ele é maior que o teto, que é o que faz a página escrever a linha",
+  resumoPrazos.comPrazoNoLivro > LOGICA.COM_PRAZO_NO_RESUMO);
+
 // ===========================================================================
 // PRIORIDADES POR ÁREA (07/09/2026) — o recorte que responde "o que eu faço
 // primeiro, e em que parte do site isso mexe".

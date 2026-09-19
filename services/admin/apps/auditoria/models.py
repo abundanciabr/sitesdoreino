@@ -114,11 +114,13 @@ class Registro(models.Model):
     #
     # E ha um motivo a mais, que so vale para estes. Ao tirar o texto do Git, a
     # plataforma perdeu o `git log` dos documentos; a auditoria e o historico de
-    # versoes sao o que entra no lugar. CRIAR e EDITAR sao separados porque
-    # "este texto nasceu hoje" e "este texto mudou hoje" sao perguntas
-    # diferentes na hora de reconstruir o que aconteceu.
+    # versoes sao o que entra no lugar. CRIAR, EDITAR, PUBLICAR e DESPUBLICAR
+    # são separados porque nascer, mudar o texto e mudar quem pode lê-lo são
+    # perguntas diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    PUBLICAR_DOCUMENTO = "publicar_documento"
+    DESPUBLICAR_DOCUMENTO = "despublicar_documento"
     AUTORIZAR_PEDIDO = "autorizar_pedido"
     # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
     # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
@@ -312,6 +314,8 @@ class Registro(models.Model):
         (CRIAR_DOCUMENTO, "criar um documento do site"),
         (AUTORIZAR_PEDIDO, "autorizar uma versão do pedido da Reunião"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
+        (PUBLICAR_DOCUMENTO, "publicar um documento no site"),
+        (DESPUBLICAR_DOCUMENTO, "tirar um documento do público"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
         (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),

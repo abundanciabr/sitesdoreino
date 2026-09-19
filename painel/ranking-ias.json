@@ -1,0 +1,49 @@
+{
+  "base": "origin/main",
+  "commit_da_base": "de60ee569c7e680012bc34612174712734a64eb6",
+  "gerado_em": "2026-09-17T22:10:22+00:00",
+  "ias": [
+    {
+      "chave": "claude-code",
+      "dias_ativos": 27,
+      "entregas": 2309,
+      "linhas": 550054,
+      "nome": "Claude Code",
+      "paginas": 112,
+      "papel": "Maestro",
+      "retrabalho": 84,
+      "ultima_entrega": "2026-09-17T22:04:04+00:00"
+    },
+    {
+      "chave": "codex",
+      "dias_ativos": 10,
+      "entregas": 642,
+      "linhas": 56424,
+      "nome": "Codex",
+      "paginas": 10,
+      "papel": "Executor",
+      "retrabalho": 34,
+      "ultima_entrega": "2026-09-17T21:49:55+00:00"
+    },
+    {
+      "chave": "antigravity",
+      "dias_ativos": 0,
+      "entregas": 0,
+      "linhas": 0,
+      "nome": "Antigravity",
+      "paginas": 0,
+      "papel": "Sentinela",
+      "retrabalho": 0,
+      "ultima_entrega": null
+    }
+  ],
+  "sem_assinatura": {
+    "dias_ativos": 31,
+    "entregas": 437,
+    "linhas": 56679,
+    "paginas": 11,
+    "retrabalho": 68,
+    "ultima_entrega": "2026-09-17T15:41:41+00:00"
+  },
+  "versao": 1
+}

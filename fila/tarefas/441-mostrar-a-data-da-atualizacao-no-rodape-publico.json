@@ -1,0 +1,20 @@
+{
+  "arquivo": "441-mostrar-a-data-da-atualizacao-no-rodape-publico",
+  "id": "TAR-441",
+  "titulo": "Mostrar a data da atualização no rodapé público",
+  "toca": [
+    "funil",
+    "CAMINHO-DOURADO.md"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Texto solicitado visível em meshcraft.top após deploy, com SHA e execução comprovados.",
+  "despacho": "Adicionar a data fixa no rodapé da célula funil e completar a receita de entrega até prova pública em CAMINHO-DOURADO.md. modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Alvos: templates/funil/_rodape.html, templates/base_mobile.html, traducoes/rodape.yaml e CAMINHO-DOURADO.md. Testes existentes somente leitura. Sem alterações de infra ou CI.",
+  "origem": "Pedido direto do mantenedor em 17/09/2026",
+  "criada_em": "2026-09-17",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

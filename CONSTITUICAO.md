@@ -135,6 +135,20 @@ fim daquela seção, e é a leitura conciliada que vale.
 
 **Quem faz valer:** `ci/padrao_de_trabalho.py` · `ci/tests/test_padrao_de_trabalho.py`.
 
+## Lei 11 — A entrega termina no ar, não no relatório
+
+Quem abre a entrega responde por ela até o resultado terminal: integrada,
+fechada, ou dívida registrada no livro com o que falta e por quê. PR aberto é
+estado intermediário, nunca entrega final. A autoridade vem junto: o executor
+decide e executa toda ação técnica segura para chegar lá (repetir deploy
+cancelado, consertar ambiente local, retomar check parado) sem pedir licença, e
+não devolve como pendência do mantenedor o que ainda tem comando disponível.
+O que é dele continua dele: segredo, dinheiro, acesso, contrato, produto e o
+cancelamento explícito da entrega. Esperar em laço continua proibido: mede-se
+uma vez, com teto.
+
+**Quem faz valer:** `ci/prestacao_de_contas.py` · `ci/esperar.py` · `ci/tests/test_prestacao_de_contas.py`.
+
 ## Definição de Pronto Arquitetônica (da plataforma inteira)
 
 - Pix quebrado ⇒ cartão continua vendendo (e vice-versa)

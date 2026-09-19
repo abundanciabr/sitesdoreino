@@ -65,8 +65,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -146,6 +148,74 @@ GRUPOS_LOCAIS = (
 )
 
 VARIAVEL_DA_PASTA_LOCAL = "ADMIN_PLANOS_DIR"
+
+
+def estado_da_continuidade() -> dict:
+    """O estado que o motor autonomo deixa para a tela do plano mestre."""
+    pasta = diretorio_local_dos_planos()
+    ligado = _vigilia_ligada()
+    vazio = {
+        "existe": False,
+        "vigilia_ligada": ligado,
+        "mensagem": (
+            "Nenhuma sessão de continuidade rodou ainda. "
+            "Para ligar, dê duplo clique em administracao-local\\ligar-a-vigilia.cmd."
+        ),
+    }
+    if pasta is None or not pasta.is_dir():
+        vazio["mensagem"] = "A pasta do plano mestre não está disponível."
+        return vazio
+    arquivo = pasta / "estado-da-continuidade.json"
+    if not arquivo.is_file():
+        return vazio
+    try:
+        dados = json.loads(arquivo.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {
+            "existe": True,
+            "vigilia_ligada": ligado,
+            "erro": (
+                "O estado da continuidade não pôde ser lido. "
+                "Corrija o JSON em estado-da-continuidade.json."
+            ),
+        }
+    if not isinstance(dados, dict):
+        return {
+            "existe": True,
+            "vigilia_ligada": ligado,
+            "erro": (
+                "O estado da continuidade não é um objeto JSON. "
+                "Corrija estado-da-continuidade.json."
+            ),
+        }
+    bloqueios = dados.get("bloqueios")
+    if not isinstance(bloqueios, list):
+        bloqueios = []
+    return {
+        "existe": True,
+        "vigilia_ligada": ligado,
+        "ultima_sessao": dados.get("ultima_sessao") or "",
+        "sessoes_rodadas": int(dados.get("sessoes_rodadas") or 0),
+        "tarefa_corrente": dados.get("tarefa_corrente") or "sem tarefa em curso",
+        "bloqueios": len(bloqueios),
+        "ultimo_handoff": dados.get("ultimo_handoff") or "",
+    }
+
+
+def _vigilia_ligada() -> bool:
+    comando = os.environ.get("ADMIN_VIGILIA_LIGADA")
+    if comando is not None:
+        return comando.strip() == "1"
+    try:
+        resultado = subprocess.run(
+            ["schtasks", "/Query", "/TN", "Triade - vigilia do painel local"],
+            text=True,
+            capture_output=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return resultado.returncode == 0
 
 
 def diretorio_dos_planos() -> Path | None:
@@ -413,6 +483,7 @@ def plano_mestre(request) -> HttpResponse:
             ],
             "pasta": str(pasta) if pasta is not None else "",
             "recado": recado,
+            "continuidade": estado_da_continuidade(),
             "mtime": mtime_local(),
             "acompanhar_mudancas": settings.DEBUG,
         },

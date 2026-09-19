@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-214041-TAR-461-explicada",
+  "tarefa": "TAR-461",
+  "evento": "explicada",
+  "quando": "2026-09-18T21:40:41+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "A lei da casa diz que nenhum robo tem chave do servidor. Isso vale para a conversa do robo, nao para o codigo: 16 dos 25 programas automaticos carregam a chave e chegam ao servidor, e so tres passam por uma conferencia antes. Treze entram direto, e um deles apaga dados.",
+  "o_que_muda": "Fecha a maior distancia que existe hoje entre o que a lei promete e o que a maquina faz. Sem isso, a frase mais tranquilizadora do projeto esta errada e ninguem sabe.",
+  "exemplo": "Um programa novo que semeia dados nasce copiando um dos treze. Ele vai ao servidor sem passar por nenhuma conferencia, e nada no projeto reclama.",
+  "importancia": 95
+}

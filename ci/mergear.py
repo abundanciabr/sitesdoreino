@@ -28,6 +28,8 @@ from _nucleo import (  # noqa: E402
     recortar,
 )
 import fila  # noqa: E402
+import mapa_de_celulas  # noqa: E402
+import rollback  # noqa: E402
 import telemetria  # noqa: E402
 from divida_do_livro import (  # noqa: E402
     EMBARCADO,
@@ -942,6 +944,93 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
         )
 
 
+def congelamentos_no_servidor(raiz: Path) -> list[tuple[str, str]]:
+    """As referências de congelamento e o corpo de cada uma, lidos pelo `gh`.
+
+    Pelo `gh`, e não por `git ls-remote`, porque o checkout do `pouso.yml` usa
+    `persist-credentials: false`: neste processo o git não fala com o servidor,
+    e o único canal autenticado é o `GH_TOKEN` que todo o resto deste arquivo
+    já usa. Namespace vazio devolve `[]` com exit 0 (medido em 18/09/2026), e é
+    por isso que "nada congelado" não precisa passar por um 404.
+    """
+    prefixo = rollback.NS_CONGELAMENTO.split("/", 1)[1]
+    refs = json.loads(
+        _gh(
+            ["api", f"repos/{{owner}}/{{repo}}/git/matching-refs/{prefixo}"],
+            raiz,
+            "listar os congelamentos de célula",
+        )
+    )
+    pares = []
+    for ref in refs:
+        sha = ref["object"]["sha"]
+        commit = json.loads(
+            _gh(
+                ["api", f"repos/{{owner}}/{{repo}}/git/commits/{sha}"],
+                raiz,
+                f"ler o congelamento {ref['ref']}",
+            )
+        )
+        pares.append((ref["ref"], commit.get("message") or ""))
+    return pares
+
+
+def checar_congelamento(raiz: Path, pr: dict[str, Any]) -> Resultado:
+    """Rollback ativo vence a integração automática (RITOS §4).
+
+    Sem isto, o cron de 15 minutos do `pouso.yml` mergeia o PR da célula que
+    acabou de voltar, o `deploy-celula` republica `:main` por cima da imagem
+    antiga, e o rollback das 2h da manhã desaparece com o run verde. `infra/`
+    entra na mesma recusa para QUALQUER célula congelada: o `deploy-infra`
+    termina com `docker compose up -d` sem argumento e devolve todas de uma vez.
+    """
+    try:
+        vivos = rollback.congelamentos_vivos(congelamentos_no_servidor(raiz))
+        # O mapa das células só é aberto quando há congelamento: sem rollback
+        # ativo, saber de quem é cada arquivo não muda nada, e uma leitura a
+        # mais no caminho comum é uma forma a mais de o pouso inteiro parar.
+        mapa = mapa_de_celulas.carregar(raiz) if vivos else {}
+    except (ErroDeInstrumentacao, ValueError, KeyError, TypeError) as erro:
+        return Resultado(
+            "congelamento",
+            Estado.ERROR,
+            "não consegui saber se há rollback ativo",
+            f"{erro}\n\nNão saber NÃO é 'não há'. Enquanto isto não for medido, "
+            "integrar pode desfazer um rollback em silêncio.",
+        )
+    if not vivos:
+        return Resultado("congelamento", Estado.PASS, "nenhuma célula congelada")
+
+    arquivos = [
+        str(a.get("path", "")).replace("\\", "/") for a in pr.get("files") or []
+    ]
+    presas = sorted(set(mapa_de_celulas.celulas_do_diff(arquivos, mapa)) & set(vivos))
+    if not presas and any(a.startswith("infra/") for a in arquivos):
+        presas = sorted(vivos)
+        motivo = "este PR toca infra/, e o deploy de infra devolve TODAS as células ao :main"
+    else:
+        motivo = "este PR redeploya uma célula que está voltada para uma imagem anterior"
+    if not presas:
+        return Resultado(
+            "congelamento",
+            Estado.PASS,
+            f"congelada: {', '.join(sorted(vivos))}; este PR não a toca",
+        )
+    prazos = "\n".join(
+        f"  - {c}: até {vivos[c]['expira_em']} ({vivos[c].get('motivo', '')})"
+        for c in presas
+    )
+    return Resultado(
+        "congelamento",
+        Estado.FAIL,
+        f"rollback ativo em {', '.join(presas)}",
+        f"{motivo}.\n\n{prazos}\n\n"
+        "A correção viaja por PR e espera aqui até o incidente fechar. Quando "
+        "fechar, solte com `python ci/rollback.py descongelar <celula>`; o "
+        "congelamento também vence sozinho no prazo acima.",
+    )
+
+
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
     relatorio = Relatorio(f"MERGE GUARDADO — PR #{numero}")
     try:
@@ -972,6 +1061,7 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
     for resultado in checar_checks(obrigatorios):
         relatorio.registrar(resultado)
     relatorio.registrar(checar_mandato(raiz_real, pr))
+    relatorio.registrar(checar_congelamento(raiz_real, pr))
     return relatorio, pr
 
 

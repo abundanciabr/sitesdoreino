@@ -33,6 +33,10 @@ O mantenedor pediu uma página onde ele guarda os textos do livro que escreve,
 7. **`Livro` agrupa capítulos, e a migração que o introduziu não perde
    ninguém.** Um capítulo pré-existente entra num `Livro` padrão sozinho;
    criar um segundo `Livro` não mexe no primeiro.
+
+8. **A porta da Biblioteca está na capa da Administração**, com o rótulo que o
+   mantenedor lê e o endereço com o prefixo público. Um cartão sem guarda some
+   no dia em que alguém reorganizar a grade, e ninguém fica sabendo.
 """
 
 import httpx
@@ -41,7 +45,7 @@ import respx
 from django.db import connection
 from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
-from django.urls import get_resolver
+from django.urls import get_resolver, get_script_prefix, set_script_prefix
 
 from apps.auditoria.models import Registro
 from apps.core.livro import NOMES_RESERVADOS
@@ -664,3 +668,39 @@ def test_a_migracao_em_banco_vazio_nao_cria_livro_orfao(db):
     `TextoDoLivro`, e a migração não deve inventar um `Livro` sem capítulo."""
     assert not TextoDoLivro.objects.exists()
     assert Livro.objects.count() == 0
+
+
+# ------------------------------------------------------ 9. a porta na capa
+
+
+@pytest.fixture
+def sob_o_prefixo_publico():
+    """O regime de produção: a área inteira mora sob `/admin`.
+
+    Mexe no PREFIXO DE SCRIPT, e não em `settings.FORCE_SCRIPT_NAME`, porque é
+    o prefixo de thread que `reverse()` lê (`armadilhas/081`). O `finally`
+    restaura o anterior: o prefixo vaza entre testes.
+    """
+    anterior = get_script_prefix()
+    set_script_prefix("/admin/")
+    try:
+        yield
+    finally:
+        set_script_prefix(anterior)
+
+
+@respx.mock
+def test_a_visao_geral_oferece_a_porta_do_livro(sob_o_prefixo_publico):
+    """Um botão que ninguém encontra é uma funcionalidade que não existe.
+
+    E o endereço tem de levar o prefixo público: `href="/livro/"` abriria no PC
+    de quem desenvolve e daria 404 só na tela dele (`armadilhas/081`).
+
+    O endereço é medido DENTRO do cartão, e não solto na página: o menu do topo
+    também aponta para a Biblioteca, e um `href` procurado na página inteira
+    continuaria verde com a capa vazia.
+    """
+    html = _dentro().get("/").content.decode()
+
+    assert "Guardar os textos do livro" in html
+    assert '<a class="cartao porta" href="/admin/livro/">' in html

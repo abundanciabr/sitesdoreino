@@ -20,87 +20,87 @@
   "semanas": [
     {
       "n": 0,
-      "de": "2026-09-07",
-      "ate": "2026-09-11",
+      "de": "2026-09-14",
+      "ate": "2026-09-18",
       "alvo": 0,
       "rotulo": "Preparação"
     },
     {
       "n": 1,
-      "de": "2026-09-14",
-      "ate": "2026-09-18",
-      "alvo": 0
-    },
-    {
-      "n": 2,
       "de": "2026-09-21",
       "ate": "2026-09-25",
       "alvo": 0
     },
     {
-      "n": 3,
+      "n": 2,
       "de": "2026-09-28",
       "ate": "2026-10-02",
       "alvo": 0
     },
     {
-      "n": 4,
+      "n": 3,
       "de": "2026-10-05",
       "ate": "2026-10-09",
       "alvo": 0
     },
     {
-      "n": 5,
+      "n": 4,
       "de": "2026-10-12",
       "ate": "2026-10-16",
+      "alvo": 0
+    },
+    {
+      "n": 5,
+      "de": "2026-10-19",
+      "ate": "2026-10-23",
       "alvo": 20
     },
     {
       "n": 6,
-      "de": "2026-10-19",
-      "ate": "2026-10-23",
+      "de": "2026-10-26",
+      "ate": "2026-10-30",
       "alvo": 31
     },
     {
       "n": 7,
-      "de": "2026-10-26",
-      "ate": "2026-10-30",
+      "de": "2026-11-02",
+      "ate": "2026-11-06",
       "alvo": 45
     },
     {
       "n": 8,
-      "de": "2026-11-02",
-      "ate": "2026-11-06",
+      "de": "2026-11-09",
+      "ate": "2026-11-13",
       "alvo": 69
     },
     {
       "n": 9,
-      "de": "2026-11-09",
-      "ate": "2026-11-13",
+      "de": "2026-11-16",
+      "ate": "2026-11-20",
       "alvo": 103
     },
     {
       "n": 10,
-      "de": "2026-11-16",
-      "ate": "2026-11-20",
+      "de": "2026-11-23",
+      "ate": "2026-11-27",
       "alvo": 154
     },
     {
       "n": 11,
-      "de": "2026-11-23",
-      "ate": "2026-11-27",
+      "de": "2026-11-30",
+      "ate": "2026-12-04",
       "alvo": 231
     },
     {
       "n": 12,
-      "de": "2026-11-30",
-      "ate": "2026-12-04",
+      "de": "2026-12-07",
+      "ate": "2026-12-11",
       "alvo": 347
     },
     {
       "n": 13,
-      "de": "2026-12-07",
-      "ate": "2026-12-11",
+      "de": "2026-12-14",
+      "ate": "2026-12-15",
       "alvo": 0,
       "rotulo": "Recuperação"
     }
@@ -113,7 +113,7 @@
     "canal",
     "mes-de-entrada"
   ],
-  "versao": 4,
-  "desde": "2026-09-04",
-  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md. AJUSTE DA CURVA no mesmo dia, também dele, depois de ver a primeira proposta: mais tempo aprendendo antes de a meta começar a cobrar. As semanas em zero passaram de três para CINCO (setembro inteiro), a primeira venda esperada foi de 28/09 para 12/10, e o peso migrou para novembro em diante (93% da meta). É a curva reajustada por decisão dele, e não por conta nova: o desenho prevê exatamente isto, porque a régua mora num arquivo e ajustá-la é uma edição só. META DOBRADA para 1000 em 04/09/2026, decisão dele depois de ver a conta na tela: o alvo do ciclo passou de 500 para 1000 e a curva foi remontada por CRESCIMENTO PERCENTUAL, e não mais por números escolhidos à mão. A regra é 50% de aumento por semana sobre a semana anterior, nas 8 semanas que vendem. Ele escolheu 50% sabendo do que a conta dizia: com o total, o número de semanas e a taxa, só se escolhem DOIS, e o terceiro fica decidido. Manter setembro inteiro livre para aprender (a escolha dele de mais cedo no mesmo dia) deixa 8 semanas para chegar a 1000, e 8 semanas com esse total exigem 50%. Taxa MENOR exigiria primeira semana MAIOR, que é o contrário do que a intuição diz: a 10% por semana a primeira semana teria de ser 63. Crescimento por porcentagem também resolve o incômodo que ele apontou (duas semanas com o mesmo número): uma curva percentual nunca repete um valor."
+  "versao": 5,
+  "desde": "2026-09-17",
+  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md. AJUSTE DA CURVA no mesmo dia, também dele, depois de ver a primeira proposta: mais tempo aprendendo antes de a meta começar a cobrar. As semanas em zero passaram de três para CINCO (setembro inteiro), a primeira venda esperada foi de 28/09 para 12/10, e o peso migrou para novembro em diante (93% da meta). É a curva reajustada por decisão dele, e não por conta nova: o desenho prevê exatamente isto, porque a régua mora num arquivo e ajustá-la é uma edição só. META DOBRADA para 1000 em 04/09/2026, decisão dele depois de ver a conta na tela: o alvo do ciclo passou de 500 para 1000 e a curva foi remontada por CRESCIMENTO PERCENTUAL, e não mais por números escolhidos à mão. A regra é 50% de aumento por semana sobre a semana anterior, nas 8 semanas que vendem. Ele escolheu 50% sabendo do que a conta dizia: com o total, o número de semanas e a taxa, só se escolhem DOIS, e o terceiro fica decidido. Manter setembro inteiro livre para aprender (a escolha dele de mais cedo no mesmo dia) deixa 8 semanas para chegar a 1000, e 8 semanas com esse total exigem 50%. Taxa MENOR exigiria primeira semana MAIOR, que é o contrário do que a intuição diz: a 10% por semana a primeira semana teria de ser 63. Crescimento por porcentagem também resolve o incômodo que ele apontou (duas semanas com o mesmo número): uma curva percentual nunca repete um valor. DESLOCAMENTO DE UMA SEMANA em 17/09/2026, pedido dele: as 14 faixas andaram 7 dias, porque a semana de 07 a 11/09 passou sem que a preparação acontecesse, e um calendário que cobra venda numa semana que não existiu mede o mantenedor pelo que não foi feito. A Preparação passou a ser de 14 a 18/09, a semana 1 de 21 a 25/09, e a primeira venda esperada foi de 12/10 para 19/10. O prazo `ate` continua 15/12 porque a data é dele: quem encolheu foi a Recuperação, que virou 14 e 15/12, os dois dias úteis que sobram antes do prazo. Mover o prazo para 18/12 foi oferecido a ele e não foi decidido aqui. Meta 1000, cinco faixas em zero e oito semanas vendendo a 50% seguem intactas, e a soma das 14 continua sendo exatamente 1000."
 }

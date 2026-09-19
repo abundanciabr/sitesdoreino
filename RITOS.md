@@ -93,6 +93,18 @@ Decisão do mantenedor em 13/09/2026, registrada em
    Integração só se declara depois da confirmação remota. Publicação tem
    verificação própria e não é sinônimo de PR integrado.
 
+8. **O fecho é do executor, e acontece fora do laço.** Depois do `make pr`,
+   meça UMA vez: `python ci/esperar.py --checks <N> --so-desfecho` enquanto
+   houver check sem resultado; `--entrega <N> --so-desfecho` devolve revisão,
+   integração e publicação em JSON. Deploy cancelado ou recusado pela VPS
+   (`armadilhas/127` e `188`) é instrumento quebrado, não código:
+   `python ci/rerun_de_deploy.py --ultimo`. Integrado e publicado: registro com
+   `evidencia` e `verificado_em`, e `python ci/fila.py reconciliar TAR-NNN
+   --quem <voce> --aceite-registro painel/registros/<arquivo>` fecha a tarefa.
+   Teto estourado ou decisão exclusiva do mantenedor: dívida no livro e NÃO
+   PRONTO com o que falta. O Stop recusa o fecho enquanto o PR desta sessão não
+   tiver resultado terminal (`ci/prestacao_de_contas.py`, Lei 11).
+
 **Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`,
 `ci/tests/test_merge_automatico.py` e o ruleset da main.
 
@@ -147,12 +159,42 @@ revisado em produção (os dois workflows de deploy o recusam justamente por iss
 **Desfazer:** o mesmo comando com `alvo=main`. E o pin não persiste sozinho: o próximo
 deploy da célula já volta para `:main` — é o item 3 desta lista, mecanizado.
 
-> ⚠️ **O outro lado disso, que morde:** enquanto o rollback estiver ATIVO, **não mergeie
-> nada que toque `infra/`**. O `deploy-infra` termina com `docker compose up -d` sem
-> argumento, o que devolve TODAS as células ao `:main` — inclusive a que você acabou de
-> voltar, em silêncio e com o run verde. Se acontecer, redispare o rollback (é idempotente,
-> ~76s). Detalhe e as saídas definitivas na §5.16 de `armadilhas/`
+**O ROLLBACK SEGURA SOZINHO, DESDE 19/09/2026.** Quem volta uma imagem não precisa mais
+lembrar de nada: o job `congelar-ou-descongelar` do mesmo workflow cria
+`refs/congelamentos/<celula>` no servidor, e `ci/mergear.py::checar_congelamento` RECUSA
+integrar tanto o PR daquela célula quanto qualquer PR que toque `infra/`. O congelamento
+vale 6 horas e se renova com o mesmo disparo; a correção definitiva espera na pista até
+o incidente fechar.
+
+- **Congela** quando o alvo é um sha antigo, **e mesmo se a aplicação terminar incerta**
+  (SSH pela metade, marca de conclusão ausente, run cancelado). Célula em estado que
+  ninguém garante é exatamente o que não pode receber deploy automático.
+- **Descongela** quando o alvo é `main` **e só depois de a aplicação ter dado certo**.
+  Soltar a trava depois de uma volta incerta devolveria a integração automática a uma
+  célula que ninguém sabe onde está.
+- Fora do pipeline: `python ci/rollback.py congelados` mostra o que está travado, e
+  `python ci/rollback.py descongelar <celula>` solta à mão.
+
+**Separação de poderes dentro do próprio workflow:** o job que entra na VPS por SSH tem
+`contents: read` e NÃO escreve no repositório; o job que escreve a referência não recebe
+a chave de deploy. Nenhum passo desta esteira tem os dois poderes.
+
+> ⚠️ **Por que `infra/` entra na mesma recusa:** o `deploy-infra` termina com
+> `docker compose up -d` sem argumento, o que devolve TODAS as células ao `:main` —
+> inclusive a que você acabou de voltar, em silêncio e com o run verde. Até 19/09/2026
+> este parágrafo era um aviso que só uma pessoa podia cumprir, num caminho onde a
+> integração virou automática e não há mais pessoa: o cron do `pouso.yml` acorda a cada
+> 15 minutos. Se ainda assim acontecer, redispare o rollback (é idempotente, ~76s).
+> Detalhe e as saídas definitivas na §5.16 de `armadilhas/`
 > (`armadilhas/INDICE.md` leva ao arquivo).
+
+> 🔧 **E a válvula passou 22 dias morta sem ninguém saber.** Medido em 19/09/2026: o job
+> que aplica mandava rodar `infra/reverter-celula-na-vps.sh` por `script_path`, que lê um
+> arquivo do runner, e o job não fazia checkout. O `script_path` entrou em 28/08/2026
+> (c6f90bfe) e a última execução do job foi em 24/08/2026: ele nunca rodou depois de
+> quebrar, porque ninguém dispara um rollback sem incêndio, e run que não roda não fica
+> vermelho, fica invisível. Quem guarda isso agora é
+> `ci/tests/test_rollback_congela_ao_aplicar.py`, que mede a FORMA do workflow.
 
 > Até 23/08/2026 este rito era um bloco de `ssh deploy@…` para o mantenedor colar, e
 > isso violava a própria Lei das 2h da Manhã: o caminho mais rápido dependia de acordar
@@ -169,7 +211,9 @@ Depois do fogo apagado:
    assim que o deploy normal aplicar a correção — estado manual jamais persiste como
    fonte de verdade.
 
-**Quem faz valer:** `ci/rollback.py` · `.github/workflows/rollback.yml` · `ci/tests/test_rollback.py`.
+**Quem faz valer:** `ci/rollback.py` · `.github/workflows/rollback.yml` ·
+`ci/tests/test_rollback.py` · `ci/tests/test_rollback_congela_ao_aplicar.py` ·
+`ci/tests/test_rollback_congela_a_celula.py` · `ci/mergear.py::checar_congelamento`.
 
 
 ## §5 — Rito da Fila de Trabalho (tarefa se pega no balcão, nunca de memória)

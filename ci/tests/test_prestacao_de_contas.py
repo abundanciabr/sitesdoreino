@@ -107,7 +107,7 @@ def _silencio(proc: subprocess.CompletedProcess) -> None:
 
 
 def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:907
+    # guarda: ci/prestacao_de_contas.py:1074
     transcript = tmp_path / "persistente.jsonl"
     transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
     carga = {"transcript_path": str(transcript), "stop_hook_active": False}
@@ -117,7 +117,7 @@ def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
 
 
 def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:281
+    # guarda: ci/prestacao_de_contas.py:282
     transcript = tmp_path / "incremental.jsonl"
     transcript.write_text(json.dumps(_ferramenta("Edit", {"file_path": "a.py"})) + "\n")
     carga = {"transcript_path": str(transcript)}
@@ -149,7 +149,7 @@ def test_incremental_rele_linha_parcial_que_foi_completada(tmp_path):
 
 
 def test_turno_que_editou_arquivo_e_calou_e_recusado(tmp_path):
-    # guarda: ci/prestacao_de_contas.py:278
+    # guarda: ci/prestacao_de_contas.py:279
     proc = _decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
@@ -1069,3 +1069,113 @@ def test_o_aviso_do_plano_cita_o_molde_com_fatos():
     proc = _rodar(["--plano"], {"prompt": "conserte o login"})
     assert proc.returncode == 0
     assert "--molde-com-fatos" in proc.stdout
+
+
+# ------------------------------------------------------ a entrega em voo ----
+#
+# O segundo portão do Stop (17/09/2026): o relatório saiu, mas o PR que esta
+# sessão abriu ainda não chegou a um resultado terminal. A régua é medida sem
+# rede; o fim de turno inteiro é medido em processo, com o `gh` substituído,
+# porque um `gh` de mentira no PATH não roda igual nos dois sistemas.
+
+import prestacao_de_contas as contas  # noqa: E402
+
+
+def _entrega(numero: int = 1692, comando: str = "make pr TITULO=x") -> list[dict]:
+    """Uma sessão que trabalhou, abriu o PR pelo rito e prestou contas."""
+    return [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _uso("Bash", {"command": comando}, "p1"),
+        _resultado("p1", f"PR aberto: https://github.com/abundanciabr/sitesdoreino/pull/{numero}"),
+        _fala(CONTAS_COMPLETAS),
+    ]
+
+
+def _stop(tmp_path: Path, entradas: list[dict], monkeypatch, situacao, motivo="está aberto"):
+    transcript = tmp_path / "voo.jsonl"
+    transcript.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in entradas),
+                          encoding="utf-8")
+    monkeypatch.setattr(contas, "entrega_em_voo", lambda numero, cwd: (situacao, motivo))
+    return lambda: contas.modo_contas({"transcript_path": str(transcript),
+                                       "stop_hook_active": False, "cwd": str(tmp_path)})
+
+
+# guarda: ci/prestacao_de_contas.py:763
+def test_a_regua_do_voo_separa_terminal_de_em_voo():
+    """Só merge e fechamento liberam o fecho. Verde e aberto ainda não integrou."""
+    assert contas.situacao_do_pr({"state": "MERGED"})[0] == "terminal"
+    assert contas.situacao_do_pr({"state": "CLOSED"})[0] == "terminal"
+    assert contas.situacao_do_pr({"state": "OPEN", "isDraft": True})[0] == "rascunho"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "conclusion": "FAILURE"}]})[0] == "vermelho"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "status": "IN_PROGRESS"}]})[0] == "pendente"
+    assert contas.situacao_do_pr({"state": "OPEN", "statusCheckRollup": [
+        {"name": "muralhas", "conclusion": "SUCCESS"}]})[0] == "aberto"
+
+
+# guarda: ci/prestacao_de_contas.py:1041
+def test_relatorio_com_o_pr_ainda_pendente_nao_encerra_a_sessao(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 2 check(s) sem resultado")
+    assert rodar() == 2
+    erro = capsys.readouterr().err
+    assert "🛫 ENTREGA EM VOO" in erro and "#1692" in erro
+    assert "ci/esperar.py --checks 1692 --so-desfecho" in erro
+
+
+# guarda: ci/prestacao_de_contas.py:1022
+def test_pr_integrado_deixa_a_sessao_fechar_calada(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "terminal", "")
+    assert rodar() == 0
+    assert capsys.readouterr().err.strip() == ""
+
+
+# guarda: ci/prestacao_de_contas.py:1040
+def test_pr_em_rascunho_e_objetivo_incompleto(tmp_path, monkeypatch, capsys):
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "rascunho", "está em rascunho")
+    assert rodar() == 2
+    assert "gh pr ready 1692" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:1030
+def test_a_mesma_situacao_cobra_uma_vez_so(tmp_path, monkeypatch, capsys):
+    """Recusar em laço seria a espera em laço com outro nome: uma vez por fato."""
+    rodar = _stop(tmp_path, _entrega(), monkeypatch, "pendente", "tem 1 check(s) sem resultado")
+    assert [rodar(), rodar()] == [2, 1]
+    assert "sem nova recusa" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:799
+def test_situacao_nova_e_fato_novo_e_cobra_de_novo(tmp_path, monkeypatch, capsys):
+    entradas = _entrega()
+    assert _stop(tmp_path, entradas, monkeypatch, "pendente", "tem 1 check(s)")() == 2
+    assert _stop(tmp_path, entradas, monkeypatch, "vermelho", "está vermelho em muralhas")() == 2
+    assert "rerun_de_deploy" in capsys.readouterr().err
+
+
+# guarda: ci/prestacao_de_contas.py:834
+def test_o_pr_que_a_sessao_so_consultou_nao_e_entrega_dela(tmp_path, monkeypatch, capsys):
+    """Quem responde pela entrega é quem a abriu; olhar o PR alheio não prende."""
+    rodar = _stop(tmp_path, _entrega(comando="gh pr view 1692 --json state"),
+                  monkeypatch, "pendente", "tem 2 check(s) sem resultado")
+    assert rodar() == 0
+    assert capsys.readouterr().err.strip() == ""
+
+
+# guarda: ci/prestacao_de_contas.py:1027
+def test_gh_mudo_grita_e_nao_prende_a_sessao(tmp_path):
+    """Instrumento mudo não aprova nada, e também não tranca o robô (INV-CI01)."""
+    transcript = tmp_path / "voo.jsonl"
+    transcript.write_text("\n".join(json.dumps(e, ensure_ascii=False) for e in _entrega()),
+                          encoding="utf-8")
+    proc = subprocess.run(
+        [sys.executable, str(PORTAO), "--contas"],
+        input=json.dumps({"transcript_path": str(transcript), "stop_hook_active": False,
+                          "cwd": str(tmp_path)}),
+        capture_output=True, text=True, timeout=60, encoding="utf-8", errors="replace",
+        env={**os.environ, "PATH": ""},
+    )
+    assert proc.returncode == 1, (proc.returncode, proc.stderr)
+    assert "não consegui medir o PR #1692" in proc.stderr
+    assert "NÃO é 'está tudo certo'" in proc.stderr

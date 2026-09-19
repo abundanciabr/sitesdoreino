@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-040919-TAR-492-concluida",
+  "tarefa": "TAR-492",
+  "evento": "concluida",
+  "quando": "2026-09-19T04:09:19+00:00",
+  "quem": "agent/ci/provar-a-valvula-viva",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1762",
+  "verificado_em": "2026-09-19"
+}

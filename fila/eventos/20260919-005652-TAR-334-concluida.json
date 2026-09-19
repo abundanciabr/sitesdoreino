@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-005652-TAR-334-concluida",
+  "tarefa": "TAR-334",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:56:52+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1551; revisao=0553a13df288e71c6e001e5e44075a8b13dc946c; arvore=c27914fe61cd7ed6bdfd6cea1b2a78baf316a445; head=eb81fda5d4b23a0518fa529d62bbcd2626790a40; merge=aa0ceae4a3457d2188760b8c16906a8fce2cc638; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34555336881; linhagem=retroativa: fechamento retroativo autorizado pelo mantenedor em 19/09/2026: o despacho seguiu no mesmo PR sem re-submeter, e a revisao registrada na fila ficou para tras; a suite da pista mediu o HEAD que integrou; linhagem recusada (a revisão submetida não é ancestral do HEAD final; há código posterior à revisão: fila/tarefas/334-aulas-avulsas-publicadas-tem-video-descricao-e-link-proprio.json, painel/mapa-do-site.json, services/cursos/apps/core/api.py, services/cursos/apps/core/templates/cursos/aula_avulsa.html, services/cursos/apps/core/templates/cursos/aulas_avulsas.html, services/cursos/apps/core/views.py, services/cursos/apps/cursos/migrations/0009_aula_avulsa.py, services/cursos/apps/cursos/models.py, services/cursos/config/api.py, services/cursos/config/urls.py, services/cursos/tests/test_aulas_avulsas.py, services/cursos/tests/test_inv_p1_nenhuma_tela_compara_alunos.py, services/cursos/tests/test_porta_de_maquina.py, services/cursos/tests/test_porta_exige_bearer.py); suíte verde no HEAD entregue: muralhas=1x success, ci-celula-gate=1x success; atestado=atestado aprovado para eb81fda5d4b23a0518fa529d62bbcd2626790a40; aceite=painel/registros/20260913-025-aceite-tar-334.js",
+  "verificado_em": "2026-09-13"
+}
