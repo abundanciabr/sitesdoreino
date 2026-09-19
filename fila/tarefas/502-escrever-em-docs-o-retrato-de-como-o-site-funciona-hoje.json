@@ -1,0 +1,19 @@
+{
+  "arquivo": "502-escrever-em-docs-o-retrato-de-como-o-site-funciona-hoje",
+  "id": "TAR-502",
+  "titulo": "Escrever em docs o retrato de como o site funciona hoje",
+  "toca": [
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o PR desta entrega integrado na main, com docs/como-o-site-funciona-hoje.md presente em origin/main",
+  "despacho": "Commite docs/como-o-site-funciona-hoje.md e o registro num PR minimo.",
+  "origem": "pedido do mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
