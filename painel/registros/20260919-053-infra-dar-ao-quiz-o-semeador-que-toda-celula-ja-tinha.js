@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-053-infra-dar-ao-quiz-o-semeador-que-toda-celula-ja-tinha",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "infra: dar ao quiz o semeador que toda celula ja tinha",
+  detalhe: "O quiz está de pé desde a Fase D e nunca teve nada publicado. Agora tem botão: em Actions, \"semear-quiz\", escolhendo o site. NÃO RODEI na produção: o disparo é seu.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1769. Validação local: árvore 73a59e6071bbc92b8b0702faa8ab3944a1905d5a; commit 791b93ca4ccc35904697ac3b9f49fa15d1661ced; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-506",
+  gravidade: "ambar",
+  frente: "site",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
