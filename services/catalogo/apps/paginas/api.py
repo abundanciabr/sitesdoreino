@@ -125,14 +125,10 @@ class RascunhoDaPagina(Schema):
 
 
 class CorpoDoRascunho(Schema):
-    """O corpo do `putPageDraft`.
-
-    O django-ninja SEMPRE exporta o corpo como componente nomeado, e o
-    `openapi_extra` soma ao que ele gerou em vez de substituir (medido: o
-    `$ref` continua lá ao lado do objeto inline). Então o contrato precisa
-    citar este componente por `$ref`; declarar o corpo inline lá deixa o freeze
-    vermelho para sempre, e o conserto é no contrato, não aqui.
-    """
+    """O que a tela do `admin` manda ao gravar: as seções inteiras, de uma vez.
+    Existe como componente nomeado, e não solto dentro da operação, porque é
+    assim que o provedor consegue emitir uma referência só em vez de referência
+    e objeto ao mesmo tempo."""
 
     secoes: list[Secao]
 
@@ -259,6 +255,8 @@ def get_page_draft(request, site_id: str, slug: str):
     openapi_extra={
         "responses": {
             200: {"description": "O rascunho como ficou gravado, na forma canônica"},
+            404: {"description": "Site inexistente"},
+            422: {"description": "Rascunho incoerente; nada foi gravado"},
         }
     },
 )
@@ -297,6 +295,7 @@ def put_page_draft(request, site_id: str, slug: str, payload: CorpoDoRascunho):
     openapi_extra={
         "responses": {
             200: {"description": "A versão que acabou de ser publicada"},
+            404: {"description": "Site inexistente"},
             409: {"description": "Rascunho vazio; nada foi publicado"},
         }
     },
