@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-073-docs-a-copy-nas-onze-secoes-que-ele-especificou",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "docs: a copy nas onze secoes que ele especificou",
+  detalhe: "O despacho da copy mapeava sete secoes inventadas pela casa; agora usa as onze da ferramenta 73, com os nomes que vocabulario.py valida. Saiu o que a 74 proibe.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1780. Validação local: árvore 5a46b279d0b7472559f9a56dc50c60d23a9317f8; commit bd1dce397b2f0ae5439f4359073c409ac0af7fb6; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-515",
+  gravidade: "info",
+  frente: "vender",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
