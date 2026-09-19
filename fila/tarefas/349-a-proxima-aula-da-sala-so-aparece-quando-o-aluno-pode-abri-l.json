@@ -1,0 +1,19 @@
+{
+  "arquivo": "349-a-proxima-aula-da-sala-so-aparece-quando-o-aluno-pode-abri-l",
+  "id": "TAR-349",
+  "titulo": "A próxima aula da sala só aparece quando o aluno pode abri-la",
+  "toca": [
+    "cursos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR integrado, teste focal que prova que aula em rascunho não vira próxima porta, suíte da sala verde e mapa do aluno com estados distintos.",
+  "despacho": "objetivo: Corrigir a sala para nunca destacar uma aula em rascunho como próxima porta do aluno. Arquivos-alvo: services/cursos/apps/core/views.py; services/cursos/apps/core/templates/cursos/mapa.html; services/cursos/tests/test_telas_da_sala.py. Armadilhas: 408 e 364. Evidência: teste focal vermelho→verde, suíte da sala, mutação do guarda, revisão crítica e passe de remoção. Não incluir conteúdo autoral.",
+  "origem": "Revalidação do capítulo 4 em 11/09/2026, após comparar o PR #1400 com origin/main.",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

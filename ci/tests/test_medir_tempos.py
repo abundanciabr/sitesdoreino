@@ -61,6 +61,8 @@ def _gh_de_mentira(tmp_path, monkeypatch, respostas: list, exit_code: int = 0):
         f"    sys.exit({exit_code or 1})\n"
         "atual = respostas.pop(0)\n"
         "fita.write_text(json.dumps(respostas), encoding='utf-8')\n"
+        "if '--include' in sys.argv:\n"
+        "    print('HTTP/2.0 200 OK\\n')\n"
         "print(json.dumps(atual))\n",
         encoding="utf-8",
     )

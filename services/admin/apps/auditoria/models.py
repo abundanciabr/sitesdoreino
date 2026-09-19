@@ -114,11 +114,14 @@ class Registro(models.Model):
     #
     # E ha um motivo a mais, que so vale para estes. Ao tirar o texto do Git, a
     # plataforma perdeu o `git log` dos documentos; a auditoria e o historico de
-    # versoes sao o que entra no lugar. CRIAR e EDITAR sao separados porque
-    # "este texto nasceu hoje" e "este texto mudou hoje" sao perguntas
-    # diferentes na hora de reconstruir o que aconteceu.
+    # versoes sao o que entra no lugar. CRIAR, EDITAR, PUBLICAR e DESPUBLICAR
+    # são separados porque nascer, mudar o texto e mudar quem pode lê-lo são
+    # perguntas diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    PUBLICAR_DOCUMENTO = "publicar_documento"
+    DESPUBLICAR_DOCUMENTO = "despublicar_documento"
+    AUTORIZAR_PEDIDO = "autorizar_pedido"
     # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
     # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
     # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
@@ -247,6 +250,8 @@ class Registro(models.Model):
     # `LICOES.md` (28/08/2026).
     CRIAR_CURSO = "criar_curso"
     EDITAR_CURSO = "editar_curso"
+    CRIAR_AULA_AVULSA = "criar_aula_avulsa"
+    EDITAR_AULA_AVULSA = "editar_aula_avulsa"
     # [ESTRUTURA] 07/09/2026 (TAR-272): a tela que da ao curso a lista dos
     # modulos e das aulas dele, colada de uma vez. Verbo PROPRIO, e nao um
     # `editar_curso` reaproveitado: aquele troca o produto ou a regra de
@@ -307,7 +312,10 @@ class Registro(models.Model):
         (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
+        (AUTORIZAR_PEDIDO, "autorizar uma versão do pedido da Reunião"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
+        (PUBLICAR_DOCUMENTO, "publicar um documento no site"),
+        (DESPUBLICAR_DOCUMENTO, "tirar um documento do público"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
         (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),
@@ -334,6 +342,8 @@ class Registro(models.Model):
         (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
         (CRIAR_CURSO, "criar um curso novo na escola"),
         (EDITAR_CURSO, "trocar o produto ou a regra de avanco de um curso"),
+        (CRIAR_AULA_AVULSA, "criar uma aula avulsa para compartilhar"),
+        (EDITAR_AULA_AVULSA, "editar uma aula avulsa para compartilhar"),
         (IMPORTAR_ESTRUTURA, "colar os modulos e as aulas de um curso"),
         (CANCELAR_TAREFA, "tirar uma tarefa da fila de trabalho"),
         (MUDAR_PARAMETRO, "mudar um numero da Fila do Primeiro Dolar"),

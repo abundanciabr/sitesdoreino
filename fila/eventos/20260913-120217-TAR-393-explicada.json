@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-120217-TAR-393-explicada",
+  "tarefa": "TAR-393",
+  "evento": "explicada",
+  "quando": "2026-09-13T12:02:17+00:00",
+  "quem": "maestro Claude, 13/09/2026 11:50Z, portão de pouso do #1610 (comentário da pista às 04:32Z)",
+  "o_que_e": "O PR 1614 pousou na main em 13/09 às 02:48Z sem registro no livro, e o portão de pouso recusa todo PR com código enquanto essa dívida existir.",
+  "o_que_muda": "O livro conta ao dono o que o 1614 fez, e a pista de pouso volta a aceitar PRs com código.",
+  "exemplo": "É lançar no caixa a venda que entrou sem nota antes de fechar o dia.",
+  "importancia": 80
+}

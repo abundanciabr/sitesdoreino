@@ -49,13 +49,24 @@ não tem sigla (lei do CLAUDE.md).
   {% if fila_ausente %}
     <h1>Os robôs</h1>
     <p class="aviso espaco-16">
-      A fila de trabalho não veio nesta imagem. Isso não significa que não há
-      trabalho — significa que esta parte quebrou. O quadro vivo mora no
-      repositório (<code>fila/</code>); avise um robô com estas palavras:
-      "a fila embutida não chegou na imagem da admin".
+      Não consegui ler a fila desta publicação: os dados estão ausentes ou inválidos.
+      Isso não significa que não há trabalho. Peça a um robô para conferir a
+      exportação de <code>fila/estados.json</code> e a publicação dos dados da admin.
     </p>
+    {% include "admin/_pedido_de_cancelamento.html" %}
+    {% if rascunho %}
+      <form method="post" action="{% url 'caixa_robos_excluir' %}">
+        {% csrf_token %}
+        <input type="hidden" name="tarefa" value="{{ tarefa_do_resultado }}">
+        <label for="motivo-preservado">Motivo enviado, preservado para nova tentativa</label>
+        <textarea id="motivo-preservado" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+        <p>Se a fila puder ser conferida, este pedido e seu motivo serão enviados ao repositório público abundanciabr/sitesdoreino no GitHub.</p>
+        <button type="submit">Conferir a fila e retomar o pedido público</button>
+      </form>
+    {% endif %}
   {% else %}
     {% include "admin/_caixa_abas.html" %}
+    {% if dados %}{% include "admin/dados_do_painel.html" %}{% endif %}
 
     <style>
       /* O CARTÃO DE TAREFA. Fundo e borda são os DA CASA (`--painel`/`--linha`),
@@ -143,7 +154,7 @@ não tem sigla (lei do CLAUDE.md).
       dialog.confirmar-exclusao h2 { font-size: 16px; margin: 0 0 10px; }
       dialog.confirmar-exclusao p { font-size: 13.5px; color: var(--texto-2); margin: 0 0 12px; }
       dialog.confirmar-exclusao label { display: block; font-size: 13px; margin-bottom: 4px; }
-      dialog.confirmar-exclusao input {
+      dialog.confirmar-exclusao textarea {
         width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
         background: var(--fundo); color: var(--texto);
         border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 14px;
@@ -232,61 +243,7 @@ não tem sigla (lei do CLAUDE.md).
 
     <h1>Os robôs</h1>
 
-    {% comment %}
-    O DESFECHO DO ÚLTIMO CLIQUE no botão de excluir (padrão POST-redirect-GET,
-    como toda escrita desta área). Cada recusa diz o que aconteceu E o que
-    fazer: mensagem que só informa deixa o dono olhando para a tela sem saída.
-    O endereço do PR é montado aqui, do repositório que a página já conhece,
-    com um número que a view conferiu ser número. Nada que veio de fora é
-    ecoado como link.
-    {% endcomment %}
-    {% if resultado == "pedido_aberto" %}
-      <p class="desfecho deu-certo">
-        <b>Pedido aberto.</b> O trabalho nº {{ pr }} tira a {{ tarefa_do_resultado }} da fila.
-        Quem publica é a esteira, e ela costuma levar uns 8 minutos.
-        <a href="https://github.com/{{ repositorio }}/pull/{{ pr }}" target="_blank" rel="noopener">abrir o nº {{ pr }}</a>
-      </p>
-    {% elif resultado == "sem_motivo" %}
-      <p class="desfecho nao-deu">
-        Não excluí a {{ tarefa_do_resultado }} porque faltou o motivo. Ele é o que fica
-        no lugar da tarefa para sempre, então clique em Excluir de novo e escreva
-        por que ela não vai mais ser feita.
-      </p>
-    {% elif resultado == "motivo_longo" %}
-      <p class="desfecho nao-deu">
-        O motivo passou de 500 letras. Ele precisa caber numa frase, porque é o que
-        alguém vai ler daqui a meses no lugar da tarefa. Encurte e tente de novo.
-      </p>
-    {% elif resultado == "nao_existe" %}
-      <p class="desfecho nao-deu">
-        Essa tarefa não está na fila desta publicação. Recarregue a página, porque a
-        lista pode ter mudado desde que você a abriu.
-      </p>
-    {% elif resultado == "ja_terminou" %}
-      <p class="desfecho nao-deu">
-        A {{ tarefa_do_resultado }} já terminou, e a fila não aceita nenhum
-        acontecimento depois do fim. Não há o que excluir.
-      </p>
-    {% elif resultado == "sem_fila" %}
-      <p class="desfecho nao-deu">
-        A fila não veio nesta imagem do site, então não deu para conferir a tarefa
-        antes de excluí-la. Avise um robô com estas palavras: "a fila embutida não
-        chegou na imagem da admin".
-      </p>
-    {% elif resultado == "sem_token" %}
-      <p class="desfecho nao-deu">
-        O clique não abriu o pedido no GitHub, porque a chave {{ variavel_do_token }}
-        não está no env da admin agora. Ela pode nunca ter sido posta, mas o mais
-        provável, se o botão funcionava antes e parou agora, é que ela tenha vencido.
-        Avise um robô com estas palavras: "ponha (ou troque) a {{ variavel_do_token }}
-        no env da admin". O roteiro é o mesmo dos dois casos, criar ou trocar: infra/por-a-chave-do-github.sh.
-      </p>
-    {% elif resultado == "github_recusou" %}
-      <p class="desfecho nao-deu">
-        Não deu para abrir o pedido, porque {{ recado }} Tente de novo daqui a pouco;
-        se repetir, avise um robô com esta frase inteira.
-      </p>
-    {% endif %}
+    {% include "admin/_pedido_de_cancelamento.html" %}
 
     <div class="o-que-e-isto">
       <p>
@@ -301,6 +258,8 @@ não tem sigla (lei do CLAUDE.md).
           O resto da página é só para olhar: para pedir ou destravar qualquer coisa,
           fale comigo na conversa, como sempre.
         </p>
+      {% elif sem_responsavel %}
+        <p>Há tarefas sem responsável informado. O robô precisa classificar quem destrava antes de afirmar se dependem de você.</p>
       {% else %}
         <p>
           <b>Nada aqui depende de você agora.</b> Esta é a tela de olhar: ela responde
@@ -310,22 +269,24 @@ não tem sigla (lei do CLAUDE.md).
       {% endif %}
       {% if andamento.terminadas %}
         <p class="ritmo">
-          Até agora os robôs terminaram <b>{{ andamento.terminadas }} tarefa{{ andamento.terminadas|pluralize }}</b>
-          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} de trabalho,
+          Há <b>{{ andamento.terminadas }} conclusões registradas</b>
+          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} do histórico,
           uma média de <b>{{ andamento.por_dia }} por dia</b>.
         </p>
       {% endif %}
     </div>
     <p class="carimbo espaco-abaixo-20">
-      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo é de
-      agora, perguntada ao GitHub pelo seu navegador; o quadro depois dela é o retrato
+      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo traz a
+      consulta ao GitHub feita pelo seu navegador; o quadro depois dela é o retrato
       da última publicação do site.
     </p>
 
     <section class="ao-vivo-caixa" data-repo="{{ repositorio }}">
-      <h2>Agora, neste minuto</h2>
-      <p id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
+      <h2>Consulta ao GitHub</h2>
+      <p id="ao-vivo-estado" role="status">Consultando reservas e trabalhos abertos…</p>
+      <p id="ao-vivo-carimbo">Ainda sem leitura. A consulta se renova ao voltar a esta aba, no máximo uma vez a cada cinco minutos.</p>
       <ul class="ao-vivo" id="ao-vivo-lista"></ul>
+      <p><a href="https://github.com/{{ repositorio }}/pulls" target="_blank" rel="noopener">Ver todos os trabalhos no GitHub</a></p>
     </section>
 
     <div class="placar-robos">
@@ -448,11 +409,16 @@ não tem sigla (lei do CLAUDE.md).
         var REPO = document.querySelector(".ao-vivo-caixa").dataset.repo;
         var estado = document.getElementById("ao-vivo-estado");
         var lista = document.getElementById("ao-vivo-lista");
+        var carimbo = document.getElementById("ao-vivo-carimbo");
+        var ultimaTentativa = null;
+        var emConsulta = false;
+        var ultimaLeitura = null;
 
         function falhou() {
-          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou ele " +
-            "limitou as perguntas desta hora). O quadro abaixo continua valendo: é o retrato " +
-            "do último deploy.";
+          estado.textContent = "Não consegui atualizar a leitura do GitHub (consulta ou resposta inválida). " +
+            (ultimaLeitura ? "A lista conserva a última leitura, que pode ter mudado. " : "Ainda não há uma leitura válida. ") +
+            "Volte a esta aba daqui a cinco minutos ou abra os trabalhos direto no GitHub. " +
+            "O quadro abaixo continua sendo o retrato da última publicação.";
         }
 
         function linha(texto, endereco, rotuloDoLink) {
@@ -466,46 +432,89 @@ não tem sigla (lei do CLAUDE.md).
             a.textContent = rotuloDoLink;
             li.appendChild(a);
           }
-          lista.appendChild(li);
+          return li;
         }
 
-        Promise.all([
-          fetch("https://api.github.com/repos/" + REPO + "/git/matching-refs/reservas%2Ftarefa-").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          }),
-          fetch("https://api.github.com/repos/" + REPO + "/pulls?state=open&per_page=100").then(function (r) {
-            if (!r.ok) { throw new Error(r.status); } return r.json();
-          })
-        ]).then(function (respostas) {
-          var reservas = respostas[0] || [];
-          var prs = respostas[1] || [];
-          var vivos = 0;
-
-          reservas.forEach(function (ref) {
-            var id = (ref.ref || "").split("tarefa-").pop();
-            if (!id) { return; }
-            vivos++;
-            linha("🔒 " + id + ": um robô reservou esta tarefa e está com ela agora.");
-            var cartao = document.querySelector('[data-tarefa="' + id + '"]');
-            if (cartao) { cartao.classList.add("reservada-agora"); }
+        function consultar(caminho) {
+          return fetch("https://api.github.com/repos/" + REPO + caminho, {
+            signal: AbortSignal.timeout(15000)
+          }).then(function (r) {
+            if (!r.ok) { throw new Error(r.status); }
+            var parcial = /rel="next"/.test(r.headers.get("Link") || "");
+            return r.json().then(function (itens) {
+              if (!Array.isArray(itens) || itens.some(function (i) {
+                if (!i || typeof i !== "object" || Array.isArray(i)) { return true; }
+                if (caminho.indexOf("matching-refs") !== -1) {
+                  return typeof i.ref !== "string" || !/^refs\/reservas\/tarefa-TAR-\d{3,}$/.test(i.ref) || /\s/.test(i.ref);
+                }
+                return !Number.isSafeInteger(i.number) || i.number <= 0 ||
+                  (i.title != null && typeof i.title !== "string") ||
+                  (i.draft != null && typeof i.draft !== "boolean") ||
+                  (i.head != null && (typeof i.head !== "object" || Array.isArray(i.head) ||
+                    (i.head.ref != null && typeof i.head.ref !== "string")));
+              })) {
+                throw new Error("resposta inválida");
+              }
+              return {itens: itens, parcial: parcial || itens.length >= 100};
+            });
           });
+        }
 
-          prs.forEach(function (pr) {
-            var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
-            var casado = texto.match(/TAR-\d{3,}/);
-            vivos++;
-            linha(
-              "⚙ " + (casado ? casado[0] + ": " : "") + "trabalho pronto esperando conferência: " +
+        function atualizar() {
+          if (document.hidden || emConsulta ||
+              (ultimaTentativa !== null && Date.now() - ultimaTentativa < 300000)) { return; }
+          ultimaTentativa = Date.now();
+          emConsulta = true;
+          estado.textContent = "Consultando reservas e trabalhos abertos…";
+          Promise.all([
+            consultar("/git/matching-refs/reservas%2Ftarefa-"),
+            consultar("/pulls?state=open&per_page=100")
+          ]).then(function (respostas) {
+            var reservas = respostas[0].itens;
+            var prs = respostas[1].itens;
+            var novasLinhas = [];
+            var marcacoes = [];
+            reservas.forEach(function (ref) {
+              var id = ref.ref.slice("refs/reservas/tarefa-".length);
+              novasLinhas.push(linha("🔒 " + id + ": reserva registrada; atividade atual não comprovada."));
+              var cartao = document.querySelector('[data-tarefa="' + id + '"]');
+              if (cartao) {
+                marcacoes.push({cartao: cartao, etiqueta: cartao.querySelector(".agora")});
+              }
+            });
+            prs.forEach(function (pr) {
+              var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
+              var casado = texto.match(/TAR-\d{3,}/);
+              var fase = pr.draft === true ? "rascunho, em preparação" :
+                pr.draft === false ? "entrega aberta, aceite ainda não comprovado" : "fase não informada pelo GitHub";
+              novasLinhas.push(linha("⚙ " + (casado ? casado[0] + ": " : "") + fase + ": " +
                 (pr.title || "(sem título)") + " ",
-              pr.html_url,
-              "abrir o nº " + pr.number
-            );
-          });
-
-          estado.textContent = vivos
-            ? "É isto que o GitHub respondeu neste minuto:"
-            : "Neste minuto não há reserva viva nem trabalho aberto — nenhum robô está com a mão na massa agora.";
-        }).catch(falhou);
+                "https://github.com/" + REPO + "/pull/" + pr.number,
+                "abrir o nº " + pr.number));
+            });
+            var leitura = new Date();
+            var novoCarimbo = "Última leitura: " + leitura.toLocaleString("pt-BR") +
+              ". Renovação ao voltar à aba, no máximo a cada cinco minutos.";
+            var novoEstado = respostas.some(function (r) { return r.parcial; })
+              ? "Leitura parcial: " + prs.length + " trabalhos e " + reservas.length +
+                " reservas recebidos. Há limite ou outra página; estes números não são o total. Abra a lista completa no GitHub."
+              : reservas.length || prs.length ? "Reservas e trabalhos encontrados nesta leitura. Os testes e o aceite precisam de conferência." :
+                "Nenhuma reserva ou entrega aberta foi encontrada nesta leitura. Isso não comprova ausência de trabalho.";
+            var marcacoesAnteriores = document.querySelectorAll(".reservada-agora");
+            lista.replaceChildren.apply(lista, novasLinhas);
+            marcacoesAnteriores.forEach(function (cartao) { cartao.classList.remove("reservada-agora"); });
+            marcacoes.forEach(function (marcacao) {
+              marcacao.cartao.classList.add("reservada-agora");
+              if (marcacao.etiqueta) { marcacao.etiqueta.textContent = "🔒 reserva encontrada na última consulta"; }
+            });
+            ultimaLeitura = leitura;
+            carimbo.textContent = novoCarimbo;
+            estado.textContent = novoEstado;
+          }).catch(falhou).finally(function () { emConsulta = false; });
+        }
+        window.addEventListener("focus", atualizar);
+        document.addEventListener("visibilitychange", atualizar);
+        atualizar();
       })();
     </script>
 
@@ -524,18 +533,19 @@ não tem sigla (lei do CLAUDE.md).
       <dialog class="confirmar-exclusao" id="confirmar-exclusao">
         <form method="post" action="{% url 'caixa_robos_excluir' %}">
           {% csrf_token %}
-          <h2>Excluir esta tarefa para sempre?</h2>
+          <h2>Pedir a exclusão desta tarefa?</h2>
           <p id="qual-tarefa"></p>
+          {% if reabrir_formulario %}<p role="alert">{{ recado }} Confira o motivo preservado antes de repetir o pedido.</p>{% endif %}
           <p>
-            A tarefa some da fila e não volta. O histórico dela fica guardado, mas
-            ninguém vai fazê-la. Se você mudar de ideia depois, ela precisa nascer de novo.
+            O pedido será enviado para revisão no repositório público abundanciabr/sitesdoreino, no GitHub. O motivo escrito abaixo ficará público no evento e no PR. A tarefa só sai da fila depois da integração e da aplicação do cancelamento.
           </p>
-          <input type="hidden" name="tarefa" id="campo-da-tarefa">
+          <input type="hidden" name="tarefa" id="campo-da-tarefa" value="{{ tarefa_do_resultado }}">
           <label for="motivo-da-exclusao">Por que ela não vai mais ser feita?</label>
-          <input id="motivo-da-exclusao" name="motivo" maxlength="500" autocomplete="off" required>
+          <textarea id="motivo-da-exclusao" name="motivo" maxlength="500" required>{{ rascunho.motivo }}</textarea>
+          <p><a id="consultar-pedido" href="{% url 'caixa_robos' %}{% if tarefa_do_resultado %}?pedido={{ tarefa_do_resultado }}{% endif %}">Consultar o pedido existente desta tarefa</a></p>
           <div class="botoes">
-            <button type="button" id="deixar-na-fila">Deixar na fila</button>
-            <button type="submit" class="confirma">Sim, excluir</button>
+            <button type="button" id="deixar-na-fila">Voltar ao quadro</button>
+            <button type="submit" class="confirma">Enviar o pedido público</button>
           </div>
         </form>
       </dialog>
@@ -584,13 +594,20 @@ não tem sigla (lei do CLAUDE.md).
           if (botao.classList.contains("excluir") && !botao.disabled && caixa) {
             document.getElementById("qual-tarefa").textContent =
               "“" + botao.dataset.titulo + "” (" + botao.dataset.tarefa + ")";
+            if (document.getElementById("campo-da-tarefa").value !== botao.dataset.tarefa) {
+              document.getElementById("motivo-da-exclusao").value = "";
+            }
             document.getElementById("campo-da-tarefa").value = botao.dataset.tarefa;
-            document.getElementById("motivo-da-exclusao").value = "";
+            document.getElementById("consultar-pedido").href = "{% url 'caixa_robos' %}?pedido=" + encodeURIComponent(botao.dataset.tarefa);
             caixa.showModal();
           }
         });
 
         if (caixa) {
+          if ({{ reabrir_formulario|yesno:"true,false" }} && document.getElementById("campo-da-tarefa").value) {
+            document.getElementById("qual-tarefa").textContent = document.getElementById("campo-da-tarefa").value;
+            caixa.showModal();
+          }
           document.getElementById("deixar-na-fila").addEventListener("click", function () {
             caixa.close();
           });

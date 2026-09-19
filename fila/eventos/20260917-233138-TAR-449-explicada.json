@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-233138-TAR-449-explicada",
+  "tarefa": "TAR-449",
+  "evento": "explicada",
+  "quando": "2026-09-17T23:31:38+00:00",
+  "quem": "Pedido do mantenedor em 17/09/2026: registrar para nunca mais se repetir",
+  "o_que_e": "Uma hora de sessao foi gasta em atrito de portao e em insistencia num artefato acessorio, sem licao registrada",
+  "o_que_muda": "O catalogo passa a ensinar as duas licoes na hora da recusa, pelo sintoma",
+  "exemplo": "O robo leva 'tarefa ja encerrada por outro fato' e recebe a licao 485 junto",
+  "importancia": 60
+}

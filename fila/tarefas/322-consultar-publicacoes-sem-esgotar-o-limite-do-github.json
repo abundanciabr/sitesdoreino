@@ -1,0 +1,19 @@
+{
+  "arquivo": "322-consultar-publicacoes-sem-esgotar-o-limite-do-github",
+  "id": "TAR-322",
+  "titulo": "Consultar publicações sem esgotar o limite do GitHub",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes de cache condicional, limites de taxa, teto, isolamento de autenticação e jobs históricos agrupados; provas vermelho e verde com mutações; consultas reais 200 e 304 com cota constante e paridade REST e GraphQL em reexecução; checks obrigatórios aprovados e PR encaminhado à pista.",
+  "despacho": "Corrigir ci/espera.py e consumidores para revalidar GET com ETag, respeitar Retry-After, reset, intervalo e teto sem ocultar erros. Agrupar os oito jobs históricos de ci/estado_da_entrega.py em GraphQL preservando identidade, tentativa, ordenação e recusa de resposta incompleta. Adaptar dublês de teste ao protocolo HTTP, sem alterar as garantias de publicação. Abrir PR com armadilha 462 e recibo. Caminho ci autorizado nominalmente pelo pedido; demais células somente leitura.",
+  "origem": "Pedido do mantenedor em 10/09/2026: resolver limite de taxa nas consultas de deploy, com propostas de eventos, GraphQL e ETag.",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

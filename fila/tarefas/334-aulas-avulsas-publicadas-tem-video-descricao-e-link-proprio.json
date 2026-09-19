@@ -1,0 +1,19 @@
+{
+  "arquivo": "334-aulas-avulsas-publicadas-tem-video-descricao-e-link-proprio",
+  "id": "TAR-334",
+  "titulo": "Aulas avulsas publicadas têm vídeo, descrição e link próprio",
+  "toca": [
+    "cursos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-ativos-30d"
+  ],
+  "evidencia_exigida": "PR de cursos com testes de API, acesso e tela verde, revisão independente e deploy confirmado.",
+  "despacho": "Implementar aulas avulsas no serviço cursos conforme contracts/cursos.openapi.yaml, com dados, API autenticada e páginas protegidas.",
+  "origem": "pedido explícito da mantenedora em 10/09/2026",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

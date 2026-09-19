@@ -11,9 +11,16 @@ entrega como PR pronto para pousar. O brief que recebeu é a sua tarefa. O rito
 abaixo é fixo e não se negocia; o que muda de tarefa para tarefa é só o brief.
 Leia o Padrão de Trabalho integral em CLAUDE.md e a CONSTITUICAO.md; o pacote
 direcionado não dispensa essas regras nem as instruções dos caminhos tocados.
-O brief precisa trazer `modelo_recomendado`, `esforco_recomendado` e
-`teto_de_contexto`, gerados por `python ci/economia_da_fabrica.py brief`; sem
-isso, pare e devolva à maestro, porque herdar modelo caro não é decisão.
+O brief precisa trazer `modelo_recomendado` e `esforco_recomendado`, gerados por
+`python ci/economia_da_fabrica.py brief`; sem isso, pare e devolva à maestro,
+porque herdar modelo caro não é decisão.
+
+Este rito é a ficha do EXECUTOR da tríade (docs/decisoes/DECISAO-triade-de-ias.md),
+seguida pelo sub-agente despacho (pedido colado em sessão Claude Code ou Codex)
+ou pelo Codex que pega tarefa na fila: um PR por tarefa, com evento e registro a bordo pelo `make pr`.
+O executor nunca pergunta ao mantenedor, nunca edita o clone principal, nunca
+amplia o mandato, não audita nem decide lei. A maestro (Claude Code) decide e
+publica o atestado; a sentinela (Antigravity) verifica depois do merge.
 
 ## 1. A bancada primeiro, o balcão depois
 
@@ -46,9 +53,8 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
 - Se os alvos ou o sintoma exigirem nova busca: `python ci/sessao.py --contexto
   --sem-container --raiz . --celula <area> --tarefa <slug> --caminho <arquivo> --sintoma "<erro>"`.
   Repita `--caminho` para múltiplos alvos e informe `--aceite`, `--restricao`
-  e `--decisao` conforme o brief. Confira origens, ausências e truncamento;
-  amplie com `--limite-contexto` quando necessário. Confirme pessoalmente as
-  leituras exigidas; a saída automática não atesta que você leu.
+  e `--decisao` conforme o brief. Confira origens e ausências. Confirme
+  pessoalmente as leituras exigidas; a saída automática não atesta que você leu.
 - CONSTITUICAO.md, Lei 2: prefira uma célula por PR; mais de uma exige as
   suítes de todas as células tocadas. Orçamento de 15 arquivos. Estourou por
   coesão legítima: reporte à maestro, nunca esprema arquivos.
@@ -104,15 +110,11 @@ com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
 #1160, que ficou 12h30 assim (`armadilhas/364`).
 
 Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
-devolver o **número do PR** à maestro no relatório final. É ela, cuja sessão
-sobrevive, que arma a espera:
+devolver o **número do PR** à maestro no relatório final. A maestro publica o
+atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra; a pista
+mergeia.
 
-```bash
-# quem roda isto é a MAESTRO, na sessão dela, nunca você:
-python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR #<N>" --e-pousar
-```
-
-Vermelho, pendente ou ERROR nunca vira pedido de pouso: FAIL você conserta
+Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
 no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits
 e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no código.
 

@@ -22,9 +22,9 @@ import httpx
 import pytest
 import respx
 from django.test import Client
-from django.urls import reverse
+from django.urls import get_script_prefix, reverse, set_script_prefix
 
-from apps.core import mapa_do_site, robos
+from apps.core import mapa_do_site, painel, robos
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -157,6 +157,35 @@ def test_sem_cracha_a_pagina_nao_abre():
     )
     resposta = Client().get(reverse("mapa_do_site"))
     assert resposta.status_code != 200
+
+
+@pytest.fixture
+def sob_o_prefixo_publico():
+    """O regime de producao: a area inteira mora sob `/admin`.
+
+    Mexe no PREFIXO DE SCRIPT, e nao em `settings.FORCE_SCRIPT_NAME`, porque e
+    o prefixo de thread que `reverse()` le (`armadilhas/081`). O `finally`
+    restaura o anterior: o prefixo vaza entre testes.
+    """
+    anterior = get_script_prefix()
+    set_script_prefix("/admin/")
+    try:
+        yield
+    finally:
+        set_script_prefix(anterior)
+
+
+@respx.mock
+def test_a_visao_geral_oferece_a_porta_do_mapa_do_site(sob_o_prefixo_publico):
+    """Um botao que ninguem encontra e uma funcionalidade que nao existe.
+
+    E o endereco tem de levar o prefixo publico: `href="/mapa/"` abriria no
+    PC de quem desenvolve e daria 404 so na tela dele (`armadilhas/081`).
+    """
+    html = _dentro().get("/").content.decode()
+
+    assert "Ver o mapa do site" in html
+    assert 'href="/admin/mapa/"' in html
 
 
 # --------------------------------------------------------------------------
@@ -504,6 +533,12 @@ def _fila_de_mentira(tmp_path, monkeypatch):
         ),
         encoding="utf-8",
     )
+    mapa_original = mapa_do_site.arquivo_do_mapa()
+    painel_local = tmp_path / "painel_embutido"
+    painel_local.mkdir()
+    (painel_local / "painel.html").write_text("<html></html>", encoding="utf-8")
+    (painel_local / "mapa-do-site.json").write_bytes(mapa_original.read_bytes())
+    monkeypatch.setattr(painel, "CANDIDATOS", (painel_local,))
     monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
 
 

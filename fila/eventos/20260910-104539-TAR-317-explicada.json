@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104539-TAR-317-explicada",
+  "tarefa": "TAR-317",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:45:39+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; decisão registrada no plano e tela autenticada",
+  "o_que_e": "A tela ainda diz que precisa fazer uma pergunta que o dono já decidiu não usar.",
+  "o_que_muda": "A explicação das coortes passa a seguir a decisão existente e aponta para as fontes que a escola já escolheu.",
+  "exemplo": "Em vez de perguntar como a pessoa conheceu a escola, a tela explica que a origem virá de Meta, Google, link próprio e indicação.",
+  "importancia": 60
+}

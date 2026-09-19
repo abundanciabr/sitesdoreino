@@ -1,0 +1,19 @@
+{
+  "arquivo": "314-a-medicao-deixa-de-aparecer-como-decisao-do-mantenedor",
+  "id": "TAR-314",
+  "titulo": "A medição deixa de aparecer como decisão do mantenedor",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Novo evento append-only mantém TAR-297 bloqueada com espera da fila; calcular_estados e a caixa dos robôs deixam de mostrá-la como decisão do dono, sem editar o evento antigo nem liberar a tarefa.",
+  "despacho": "GRAVIDADE: MÉDIO, bloqueante do acompanhamento da Fase 1.\n\nREQUISITO: bloqueio que depende apenas de tarefas da fila precisa aparecer como espera da fila, sem pedir uma decisão do mantenedor.\n\nBASE AUDITADA: HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; fila/eventos/20260910-082026-TAR-297-bloqueada.json, linhas 7 e 8; produção em /admin/caixa/robos/.\n\nEVIDÊNCIA OBSERVADA: o motivo cita somente as dependências TAR-284 a TAR-289, mas o evento declara espera igual a mantenedor. A tela publica a TAR-297 em Esperando uma decisão sua e afirma que só o dono pode agir.\n\nREPRODUÇÃO: rode calcular_estados para TAR-297 e confira espera igual a mantenedor; abra a caixa dos robôs e localize o cartão da medição no bloco dirigido ao dono.\n\nESPERADO: a tarefa permanece bloqueada pelas dependências e aparece como espera da fila. OBSERVADO: o mesmo bloqueio é apresentado como ação exclusiva do mantenedor.\n\nIMPACTO: o dono recebe um pedido impossível de resolver e o trabalho que cabe aos robôs perde prioridade correta.\n\nCORREÇÃO MÍNIMA: acrescentar um novo evento de bloqueio da TAR-297 com espera igual a fila e motivo claro. Preservar o evento histórico; não editar nem apagar o arquivo antigo e não concluir ou liberar a TAR-297 nesta correção.\n\nCLASSIFICAÇÃO: falha da entrega da Fase 1; bloqueia o acompanhamento correto, sem criar bloqueio adicional de produto.\n\nPROVA DE FECHO: calcular_estados e a tela colocam TAR-297 no grupo que espera outra tarefa, mantêm as dependências abertas e não criam pedido ao mantenedor.",
+  "origem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; leitura autenticada de /admin/caixa/robos/",
+  "criada_em": "2026-09-10",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "medicao-de-esforco"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-043-ci-reduzir-consultas-de-deploy",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "ci: reduzir consultas de deploy",
+  detalhe: "ETag revalida deploys e respeita limites. Jobs históricos em lote preservam tentativa e cobertura.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1534. Validação local: árvore bd94ace9fc448f157cd5206893ee651ce561c2d9; commit 5c8c4961971d0a54704ef56e0964cbc802144a4e; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-322",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

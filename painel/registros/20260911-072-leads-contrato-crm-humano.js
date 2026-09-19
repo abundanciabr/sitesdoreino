@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-072-leads-contrato-crm-humano",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "leads: contrato CRM humano",
+  detalhe: "A revisão fecha os filtros, estados, permissões e eventos do CRM humano. A prova versionada recusa cada regressão exigida antes de aceitar o contrato corrigido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1530. Validação local: árvore f4bae0c5ed42735fa5e06dd06ece89b05ecbb849; commit 3b4ddb64aa0e8a696f961b0ad944045621c77749; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-296",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "leads",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

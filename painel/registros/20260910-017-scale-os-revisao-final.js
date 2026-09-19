@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-017-scale-os-revisao-final",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: revisão final da Fase 1",
+  detalhe: "Guardas endurecidas, conclusão e reconciliação protegidas, TAR-297 submetida no SHA final.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 7086be3bf324bf308e97b7c3831bbfa4699d3af2; árvore d0a865635368446af609d0cfb095e6360303d30b; 226 testes relacionados; muralhas local PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

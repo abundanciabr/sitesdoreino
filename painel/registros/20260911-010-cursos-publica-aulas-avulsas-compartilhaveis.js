@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-010-cursos-publica-aulas-avulsas-compartilhaveis",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "cursos: publica aulas avulsas compartilháveis",
+  detalhe: "Endereço estável, acesso por matrícula deste site, vídeo nocookie e descrição em Markdown.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1551. Validação local: árvore c27914fe61cd7ed6bdfd6cea1b2a78baf316a445; commit 0553a13df288e71c6e001e5e44075a8b13dc946c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-334",
+  gravidade: "info",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

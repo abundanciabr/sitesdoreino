@@ -1,0 +1,19 @@
+{
+  "arquivo": "343-editar-aulas-avulsas-sem-mudar-o-link",
+  "id": "TAR-343",
+  "titulo": "Editar aulas avulsas sem mudar o link",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Testes da célula admin cobrem criação, listagem, cópia do endereço /cursos/aulas/<slug>, edição e recusas; deploy da célula confirmado.",
+  "despacho": "Implementar exclusivamente em services/admin/** o endereço público /cursos/aulas/<slug> e a edição de aulas avulsas pelo contrato PUT, preservando slug e link. Cobrir estados de sucesso e falha e publicar um PR com recibo.",
+  "origem": "Pedido do mantenedor: erro no endereço compartilhado e necessidade de editar aulas já criadas.",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "ensino-e-avaliacao"
+}

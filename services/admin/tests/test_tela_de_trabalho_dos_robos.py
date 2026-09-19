@@ -28,9 +28,9 @@ E dois guardas que não vêm do pedido dele, e sim das leis da casa:
   não fala com o GitHub. Botão escondido seria pior: ele nunca saberia do gesto.
 """
 
-import base64
 import json
 import re
+from html.parser import HTMLParser
 
 import httpx
 import pytest
@@ -187,24 +187,11 @@ def numa_linha(texto: str) -> str:
 
 
 def github_responde_bem():
-    """As quatro chamadas do caminho feliz, e nada além delas.
+    from test_retomada_do_cancelamento import GitHubControlado
 
-    `respx` estoura em qualquer chamada não registrada, então este registro é
-    também a prova de que a view não fala com mais ninguém.
-    """
-    ref = respx.get(f"{REPO}/git/ref/heads/main").mock(
-        return_value=httpx.Response(200, json={"object": {"sha": SHA_DA_MAIN}})
-    )
-    ramo = respx.post(f"{REPO}/git/refs").mock(
-        return_value=httpx.Response(201, json={"ref": "refs/heads/x"})
-    )
-    arquivo = respx.route(
-        method="PUT", url__startswith=f"{REPO}/contents/fila/eventos/"
-    ).mock(return_value=httpx.Response(201, json={"content": {"name": "x.json"}}))
-    pr = respx.post(f"{REPO}/pulls").mock(
-        return_value=httpx.Response(201, json={"number": 1270})
-    )
-    return ref, ramo, arquivo, pr
+    remoto = GitHubControlado()
+    respx.route(url__startswith=REPO).mock(side_effect=remoto.responder)
+    return remoto
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +353,16 @@ def test_o_prompt_cita_a_tarefa_e_manda_ler_o_despacho():
     assert "mandato" not in texto, "inventou mandato para caminho que não é protegido"
 
 
+def test_o_prompt_preserva_a_tarefa_e_submete_sem_confundir_com_aceite():
+    texto = robos.prompt_para_tocar("TAR-100", ["admin"])
+    assert "--tar TAR-100" in texto
+    assert "TAR=TAR-100" in texto
+    assert "submeter TAR-100" in texto
+    assert "--revisao" in texto and "--arvore" in texto
+    assert "aceite" in texto
+    assert "Conclua a tarefa no balcão com a URL do PR" not in texto
+
+
 def test_o_prompt_da_mandato_nominal_em_caminho_codeowners():
     """Sem esta frase o robô PARA na primeira linha, e o botão entrega nada."""
     um = robos.prompt_para_tocar("TAR-102", ["ci"])
@@ -379,7 +376,7 @@ def test_o_prompt_da_mandato_nominal_em_caminho_codeowners():
         "índice de armadilhas",
         "teste que nasce vermelho",
         "registro do painel",
-        "Não faça o pouso automático",
+        "Devolva o resultado a mim",
     ):
         assert instrucao in dois
 
@@ -439,7 +436,7 @@ def test_com_a_senha_o_botao_fica_clicavel_e_a_confirmacao_existe(
 
     assert 'class="excluir" data-tarefa="TAR-101"' in pagina
     assert "Excluir (desligado)" not in pagina
-    assert "Excluir esta tarefa para sempre?" in pagina
+    assert "Pedir a exclusão desta tarefa?" in pagina
     assert 'name="motivo"' in pagina and "required" in pagina
     assert "csrfmiddlewaretoken" in pagina
 
@@ -449,42 +446,34 @@ def test_excluir_abre_um_pr_com_o_evento_da_fila_e_nao_toca_na_main(
     tmp_path, monkeypatch, com_token
 ):
     fila_com_ranking(tmp_path, monkeypatch)
-    _, ramo, arquivo, pr = github_responde_bem()
-
+    remoto = github_responde_bem()
     resposta = _dentro().post(
         reverse("caixa_robos_excluir"),
         {"tarefa": "TAR-102", "motivo": "é a mesma coisa que a TAR-101."},
     )
-
-    assert resposta.status_code == 302
-    assert "resultado=pedido_aberto" in resposta["Location"]
-    assert "pr=1270" in resposta["Location"]
-
-    # O ramo nasce a partir da main, e NUNCA é a main.
-    pedido_do_ramo = json.loads(ramo.calls.last.request.content)
-    assert pedido_do_ramo == {
-        "ref": "refs/heads/agent/fila/cancelar-TAR-102",
-        "sha": SHA_DA_MAIN,
-    }
-
-    # O arquivo é o evento da fila, no formato que `ci/fila.py validar` exige.
-    escrito = json.loads(arquivo.calls.last.request.content)
-    assert escrito["branch"] == "agent/fila/cancelar-TAR-102"
-    evento = json.loads(base64.b64decode(escrito["content"]).decode("utf-8"))
+    assert resposta.status_code == 200
+    assert resposta.context["resultado"] == "revisao"
+    assert resposta.context["pr"] == 1270
+    assert len(remoto.arquivos) == len(remoto.prs) == 1
+    evento = json.loads(next(iter(remoto.arquivos.values())))
     assert evento["tarefa"] == "TAR-102"
     assert evento["evento"] == "cancelada"
     assert evento["detalhe"] == "é a mesma coisa que a TAR-101."
     assert evento["arquivo"].endswith("-TAR-102-cancelada")
     assert set(evento) == {"arquivo", "tarefa", "evento", "quando", "quem", "detalhe"}
-
-    # E o PR aponta para a main, em vez de escrever nela.
-    aberto = json.loads(pr.calls.last.request.content)
-    assert aberto["base"] == "main"
-    assert aberto["head"] == "agent/fila/cancelar-TAR-102"
+    refs = [
+        json.loads(req.content)
+        for (metodo, path), req in remoto.chamadas
+        if metodo == "POST" and path == "/git/refs"
+    ]
+    assert refs[0]["ref"] == "refs/heads/agent/fila/cancelar-TAR-102"
+    assert refs[0]["sha"] != SHA_DA_MAIN
+    assert remoto.prs[0]["base"]["ref"] == "main"
+    assert remoto.prs[0]["head"]["ref"] == "agent/fila/cancelar-TAR-102"
 
 
 @respx.mock
-def test_a_tela_diz_o_numero_do_pr_e_o_prazo_da_esteira(
+def test_a_tela_confere_o_pedido_posterior_sem_inventar_publicacao(
     tmp_path, monkeypatch, com_token
 ):
     fila_com_ranking(tmp_path, monkeypatch)
@@ -497,12 +486,13 @@ def test_a_tela_diz_o_numero_do_pr_e_o_prazo_da_esteira(
     pagina = pagina_sem_estilo(
         cliente.get(
             reverse("caixa_robos"),
-            {"resultado": "pedido_aberto", "pr": "1270", "tarefa": "TAR-102"},
+            {"pedido": "TAR-102"},
         )
     )
-    assert "Pedido aberto." in pagina
+    assert "Pedido recebido, em revisão." in pagina
     assert "nº 1270" in pagina
-    assert "8 minutos" in pagina
+    assert "8 minutos" not in pagina
+    assert "A integração e a aplicação ainda precisam ser conferidas." in pagina
     assert f"https://github.com/{fila_no_github.REPOSITORIO}/pull/1270" in pagina
 
 
@@ -529,7 +519,7 @@ def test_sem_motivo_a_tela_recusa_e_nao_fala_com_o_github(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "   "}
     )
 
-    assert "resultado=sem_motivo" in resposta["Location"]
+    assert resposta.context["resultado"] == "sem_motivo"
     assert respx.calls.call_count == 1, "falou com o GitHub sem ter o motivo"
 
 
@@ -540,7 +530,7 @@ def test_motivo_longo_demais_e_recusado(tmp_path, monkeypatch, com_token):
         reverse("caixa_robos_excluir"),
         {"tarefa": "TAR-102", "motivo": "x" * (robos.MOTIVO_NO_MAXIMO + 1)},
     )
-    assert "resultado=motivo_longo" in resposta["Location"]
+    assert resposta.context["resultado"] == "motivo_longo"
 
 
 @respx.mock
@@ -572,7 +562,7 @@ def test_id_fora_do_formato_nunca_chega_a_virar_ramo(
         reverse("caixa_robos_excluir"), {"tarefa": id_torto, "motivo": "não serve."}
     )
 
-    assert "resultado=nao_existe" in resposta["Location"]
+    assert resposta.context["resultado"] == "nao_existe"
     assert respx.calls.call_count == 1, "um id torto chegou ao GitHub"
 
 
@@ -605,7 +595,7 @@ def test_id_torto_e_recusado_mesmo_estando_na_fila(tmp_path, monkeypatch, com_to
         {"tarefa": "../../fila/eventos", "motivo": "não deveria passar."},
     )
 
-    assert "resultado=nao_existe" in resposta["Location"]
+    assert resposta.context["resultado"] == "nao_existe"
     assert respx.calls.call_count == 1, "um id torto virou nome de ramo no GitHub"
 
 
@@ -615,7 +605,7 @@ def test_tarefa_que_nao_esta_na_fila_e_recusada(tmp_path, monkeypatch, com_token
     resposta = _dentro().post(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-999", "motivo": "sumiu."}
     )
-    assert "resultado=nao_existe" in resposta["Location"]
+    assert resposta.context["resultado"] == "nao_existe"
     assert respx.calls.call_count == 1
 
 
@@ -626,7 +616,7 @@ def test_tarefa_que_ja_terminou_e_recusada(tmp_path, monkeypatch, com_token):
     resposta = _dentro().post(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-105", "motivo": "tarde demais."}
     )
-    assert "resultado=ja_terminou" in resposta["Location"]
+    assert resposta.context["resultado"] == "ja_terminou"
     assert respx.calls.call_count == 1
 
 
@@ -639,12 +629,10 @@ def test_sem_a_senha_o_gesto_nao_fala_com_o_github_e_diz_o_que_fazer(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "repetida."}
     )
 
-    assert "resultado=sem_token" in resposta["Location"]
+    assert resposta.context["resultado"] == "sem_token"
     assert respx.calls.call_count == 1, "tentou falar com o GitHub sem senha"
 
-    pagina = pagina_sem_estilo(
-        _dentro().get(reverse("caixa_robos"), {"resultado": "sem_token"})
-    )
+    pagina = pagina_sem_estilo(resposta)
     linha = numa_linha(pagina)
     # Isolado do resto da página, porque o mesmo carregamento também mostra o
     # aviso PREVENTIVO do botão desligado (classe "desligado") — são dois
@@ -665,31 +653,20 @@ def test_sem_a_senha_o_gesto_nao_fala_com_o_github_e_diz_o_que_fazer(
 
 
 @respx.mock
-def test_o_github_recusando_o_ramo_diz_ao_dono_que_o_pedido_ja_existe(
+def test_ramo_existente_sem_pr_nao_e_chamado_de_pedido_aberto(
     tmp_path, monkeypatch, com_token
 ):
     fila_com_ranking(tmp_path, monkeypatch)
-    respx.get(f"{REPO}/git/ref/heads/main").mock(
-        return_value=httpx.Response(200, json={"object": {"sha": SHA_DA_MAIN}})
-    )
-    respx.post(f"{REPO}/git/refs").mock(return_value=httpx.Response(422, json={}))
-
+    remoto = github_responde_bem()
+    remoto.ramo = SHA_DA_MAIN
+    remoto.falhar = ("POST", "/git/trees")
     resposta = _dentro().post(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "de novo."}
     )
-    assert "resultado=github_recusou" in resposta["Location"]
-    assert "recado=" in resposta["Location"]
-
-    pagina = pagina_sem_estilo(
-        _dentro().get(
-            reverse("caixa_robos"),
-            {
-                "resultado": "github_recusou",
-                "recado": "já existe um pedido aberto para tirar a TAR-102 da fila.",
-            },
-        )
-    )
-    assert "já existe um pedido aberto" in pagina
+    assert resposta.context["resultado"] == "incerto"
+    assert not remoto.prs
+    assert "já existe um pedido aberto" not in pagina_sem_estilo(resposta)
+    assert resposta.context["rascunho"]["motivo"] == "de novo."
 
 
 @respx.mock
@@ -697,15 +674,13 @@ def test_a_internet_caindo_no_meio_nao_vira_pagina_de_erro(
     tmp_path, monkeypatch, com_token
 ):
     fila_com_ranking(tmp_path, monkeypatch)
-    respx.get(f"{REPO}/git/ref/heads/main").mock(
-        side_effect=httpx.ConnectError("sem rota")
-    )
+    respx.get(f"{REPO}/pulls").mock(side_effect=httpx.ConnectError("sem rota"))
 
     resposta = _dentro().post(
         reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "tentativa."}
     )
-    assert resposta.status_code == 302
-    assert "resultado=github_recusou" in resposta["Location"]
+    assert resposta.status_code == 200
+    assert resposta.context["resultado"] == "incerto"
 
 
 @respx.mock
@@ -725,7 +700,7 @@ def test_a_rota_de_excluir_so_aceita_post(tmp_path, monkeypatch, com_token):
 
 @respx.mock
 def test_cada_desfecho_deixa_uma_linha_de_auditoria(tmp_path, monkeypatch, com_token):
-    """Inclusive o RECUSADO: quando o GitHub diz não, nada é escrito lá."""
+    """A auditoria distingue a confirmação do PR da recusa local do formulário."""
     fila_com_ranking(tmp_path, monkeypatch)
     github_responde_bem()
     cliente = _dentro()
@@ -760,3 +735,202 @@ def test_as_duas_ilhas_entram_por_hash_e_unsafe_inline_nunca(
     assert script_src.count("'sha256-") == 2, "uma das ilhas ficaria bloqueada"
     assert "unsafe-inline" not in script_src
     assert "connect-src 'self' https://api.github.com" in csp
+
+
+@respx.mock
+def test_parametros_de_resultado_na_url_nao_sao_prova(tmp_path, monkeypatch):
+    fila_com_ranking(tmp_path, monkeypatch)
+    resposta = _dentro().get(
+        reverse("caixa_robos"),
+        {"resultado": "pedido_aberto", "pr": "1270", "tarefa": "TAR-102"},
+    )
+    assert resposta.context["resultado"] == ""
+    assert "Pedido recebido" not in pagina_sem_estilo(resposta)
+    assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_motivo_multilinha_sobrevive_ao_formulario_e_a_retomada(
+    tmp_path, monkeypatch, com_token
+):
+    class FormularioDeCancelamento(HTMLParser):
+        def __init__(self, resposta):
+            super().__init__(convert_charrefs=True)
+            self.dados = {}
+            self.campo = None
+            self.feed(
+                resposta.content.decode().replace("\r\n", "\n").replace("\r", "\n")
+            )
+
+        def handle_starttag(self, tag, attrs):
+            attrs = dict(attrs)
+            nome = attrs.get("name")
+            if nome not in {"tarefa", "motivo"}:
+                return
+            if tag == "input":
+                # O controle de linha única remove CR/LF antes de enviar.
+                self.dados[nome] = (
+                    attrs.get("value", "").replace("\r", "").replace("\n", "")
+                )
+            elif tag == "textarea":
+                self.campo = nome
+                self.dados[nome] = ""
+
+        def handle_data(self, data):
+            if self.campo:
+                # A submissão HTML serializa quebras de linha como CRLF.
+                self.dados[self.campo] += data.replace("\n", "\r\n")
+
+        def handle_endtag(self, tag):
+            if tag == "textarea":
+                self.campo = None
+
+    fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    remoto.falhar = ("POST", "/pulls")
+    remoto.resposta_perdida = True
+    cliente = _dentro()
+    motivo = (
+        'Primeira linha: "duplicada" & conferida.\r\n\r\nSegunda linha: <preservar>.'
+    )
+    resposta = cliente.post(
+        reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": motivo}
+    )
+    assert resposta.status_code == 200
+    assert resposta.context["resultado"] == "recebido"
+    originais = dict(remoto.arquivos)
+    assert json.loads(next(iter(originais.values())))["detalhe"] == motivo
+    assert len(remoto.prs) == len(originais) == 1
+    chamadas = len(remoto.chamadas)
+
+    for _ in range(2):
+        formulario = FormularioDeCancelamento(resposta)
+        resposta = cliente.post(reverse("caixa_robos_excluir"), formulario.dados)
+        assert resposta.status_code == 200
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert resposta.context["pr"] == 1270
+        resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+        assert resposta.context["resultado"] == "revisao"
+        assert resposta.context["rascunho"]["motivo"] == motivo
+        assert remoto.arquivos == originais
+        assert len(remoto.prs) == len(remoto.arquivos) == 1
+
+    assert all(chave[0] == "GET" for chave, _ in remoto.chamadas[chamadas:])
+
+
+@respx.mock
+def test_erro_preserva_motivo_no_html_sem_texto_livre_na_url(
+    tmp_path, monkeypatch, com_token
+):
+    fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    remoto.falhar = ("POST", "/pulls")
+    motivo = '  repetida <script>alert("não executar")</script> & mais  '
+    resposta = _dentro().post(
+        reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": motivo}
+    )
+    assert resposta.status_code == 200 and "Location" not in resposta
+    assert resposta.context["rascunho"]["motivo"] == motivo
+    assert resposta.context["resultado"] == "recebido"
+    assert "&lt;script&gt;" in pagina_sem_estilo(resposta)
+    assert "<script>alert(" not in pagina_sem_estilo(resposta)
+    registro = Registro.objects.get(acao=Registro.CANCELAR_TAREFA)
+    assert "não foi possível confirmar" in registro.detalhe.lower()
+    assert "nada foi salvo" not in registro.detalhe.lower()
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "estado,arquivo,aplicada",
+    [
+        ("na fila", "ausente", False),
+        ("cancelada", "ausente", False),
+        ("cancelada", "adulterado", False),
+        ("na fila", "exato", False),
+        ("cancelada", "exato", True),
+    ],
+    ids=[
+        "sem-provas",
+        "sem-arquivo",
+        "bytes-divergentes",
+        "estado-divergente",
+        "ambas-provas",
+    ],
+)
+def test_integracao_so_vira_aplicacao_com_evento_exato_na_fila(
+    tmp_path, monkeypatch, com_token, estado, arquivo, aplicada
+):
+    fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    cliente = _dentro()
+    cliente.post(
+        reverse("caixa_robos_excluir"), {"tarefa": "TAR-102", "motivo": "repetida."}
+    )
+    remoto.prs[0].update(state="closed", merged=True)
+    pasta = tmp_path / "fila_embutida"
+    estados = json.loads((pasta / "estados.json").read_text(encoding="utf-8"))
+    estados["TAR-102"]["estado"] = estado
+    (pasta / "estados.json").write_text(json.dumps(estados), encoding="utf-8")
+    if arquivo != "ausente":
+        for path, conteudo in remoto.arquivos.items():
+            if arquivo == "adulterado":
+                evento = json.loads(conteudo)
+                evento["detalhe"] = "Motivo diferente do pedido integrado."
+                conteudo = json.dumps(evento).encode("utf-8")
+            (pasta / path.removeprefix("fila/")).write_bytes(conteudo)
+    resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+    assert resposta.context["resultado"] == "integrado"
+    assert resposta.context["aplicacao_conferida"] is aplicada
+    assert (
+        "O cancelamento e o evento original estão presentes"
+        in pagina_sem_estilo(resposta)
+    ) is aplicada
+
+
+def test_prompt_da_sessao_do_dono_nao_depende_de_maestro_inexistente():
+    prompt = robos.prompt_para_tocar("TAR-102", ["admin"])
+    assert "Devolva o resultado a mim" in prompt
+    assert "maestro" not in prompt
+    assert "aplicação" in prompt and "aceite" in prompt
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "dados",
+    [[], {"TAR-102": None}, {"TAR-102": {}}, {"TAR-102": {"estado": "inválido"}}],
+)
+def test_fila_invalida_recusa_cancelamento_e_preserva_motivo(
+    tmp_path, monkeypatch, com_token, dados
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(json.dumps(dados), encoding="utf-8")
+    resposta = _dentro().post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Conservar este motivo."},
+    )
+    assert resposta.status_code == 400
+    assert resposta.context["resultado"] == "sem_fila"
+    assert resposta.context["rascunho"]["motivo"] == "Conservar este motivo."
+    assert "Conferir a fila e retomar o pedido público" in pagina_sem_estilo(resposta)
+    assert len(respx.calls) == 1
+
+
+@respx.mock
+def test_consulta_integrada_sem_fila_nao_afirma_aplicacao(
+    tmp_path, monkeypatch, com_token
+):
+    pasta = fila_com_ranking(tmp_path, monkeypatch)
+    remoto = github_responde_bem()
+    cliente = _dentro()
+    cliente.post(
+        reverse("caixa_robos_excluir"),
+        {"tarefa": "TAR-102", "motivo": "Motivo persistente."},
+    )
+    remoto.prs[0].update(state="closed", merged=True)
+    (pasta / "estados.json").unlink()
+    resposta = cliente.get(reverse("caixa_robos"), {"pedido": "TAR-102"})
+    assert resposta.context["resultado"] == "integrado"
+    assert resposta.context["aplicacao_conferida"] is False
+    assert resposta.context["rascunho"]["motivo"] == "Motivo persistente."
+    assert "ainda não foi confirmada" in pagina_sem_estilo(resposta)

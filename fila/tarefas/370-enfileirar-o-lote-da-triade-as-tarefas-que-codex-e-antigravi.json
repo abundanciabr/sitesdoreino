@@ -1,0 +1,19 @@
+{
+  "arquivo": "370-enfileirar-o-lote-da-triade-as-tarefas-que-codex-e-antigravi",
+  "id": "TAR-370",
+  "titulo": "Enfileirar o lote da tríade: as tarefas que Codex e Antigravity vão executar",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de escrituração integrado na main com a tarefa do despacho 1 criada e explicada; python ci/fila.py validar verde.",
+  "despacho": "Criar na fila, com o brief pronto no campo despacho, as tarefas do lote da tríade descrito em mapa-ia/planos/PROTOCOLO-DA-TRIADE.md, começando pelo canário (despacho 1). Só escrituração: nenhum código.",
+  "origem": "pedido do mantenedor em 12/09/2026: tríade de IAs em papéis fixos",
+  "criada_em": "2026-09-12",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

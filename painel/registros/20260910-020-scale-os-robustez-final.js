@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-020-scale-os-robustez-final",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: robustez final da Fase 1",
+  detalhe: "Cadastro ausente ou inválido gera recusa orientada, observações de teste também validam finitude e concluir e reconciliar têm caminho válido coberto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. commit 36fcbd89243dc158394889dfb17e2919d79a1125; árvore a4414cdaefd3861979bdec396e7022e35fb7dbdb; submissão b07e3398; 227 testes relacionados; muralhas local PASS.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-297",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

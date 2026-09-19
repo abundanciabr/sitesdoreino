@@ -405,7 +405,7 @@ def esperar_workflows(
     except TetoVencido as falha:
         if falha.erro is not None:
             raise ErroDeInstrumentacao(
-                f"timeout de {ctx.timeout:.0f}s consultando a API",
+                f"timeout de {ctx.timeout:.0f}s consultando a API; espere a recuperação e faça re-run deste workflow",
                 falha.erro.detalhe,
             ) from falha
         raise ErroDeInstrumentacao(

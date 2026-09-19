@@ -1,0 +1,20 @@
+{
+  "arquivo": "407-integrar-a-entrega-que-terminou-os-checks",
+  "id": "TAR-407",
+  "titulo": "Integrar a entrega que terminou os checks",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste vermelho e verde para evento restrito ao ramo; execução real no GitHub.",
+  "despacho": "Restringir a consulta de integração ao ramo do evento e separar concorrência por ramo; manter varredura periódica, checks, contrato e mandato. Provar vermelho e verde.",
+  "origem": "Pedido direto do mantenedor em 13/09/2026 para cortar a espera do pouso",
+  "criada_em": "2026-09-13",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

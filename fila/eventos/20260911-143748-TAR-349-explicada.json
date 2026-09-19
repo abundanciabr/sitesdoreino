@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260911-143748-TAR-349-explicada",
+  "tarefa": "TAR-349",
+  "evento": "explicada",
+  "quando": "2026-09-11T14:37:48+00:00",
+  "quem": "Revalidação do capítulo 4 em 11/09/2026, após comparar o PR #1400 com origin/main.",
+  "o_que_e": "Hoje a sala pode apontar uma próxima aula que ainda está em preparo e não abre para o aluno.",
+  "o_que_muda": "O aluno passa a ver como próximo passo somente uma aula que consegue abrir, e entende quando as outras estão em preparo ou bloqueadas pelo avanço.",
+  "exemplo": "É como uma porta destacada no corredor que só aparece quando a chave já funciona.",
+  "importancia": 90
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-025-scale-os-cadeia-corrigida",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Scale OS: cadeia da Fase 1 corrigida",
+  detalhe: "A entrega foi vinculada à TAR-283, fundação da gestão, e a TAR-297 foi bloqueada sem conclusão por pertencer à validação da Fase 4.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1500. TAR-283 submetida no commit 817ee8cd90d0dd442c9b008b34d32fb0f90e2607; TAR-297 bloqueada por escopo; herança efetiva e resultados inconclusivos cobertos nos testes.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "entrega",
+  tarefa: "TAR-283",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: true
+}); })();

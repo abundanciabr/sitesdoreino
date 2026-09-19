@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-143935-TAR-439-explicada",
+  "tarefa": "TAR-439",
+  "evento": "explicada",
+  "quando": "2026-09-17T14:39:35+00:00",
+  "quem": "brief da maestro, 17/09/2026",
+  "o_que_e": "Para mudar um arquivo protegido, o dono escreve uma autorizacao na descricao do pedido, e um robo confere se o arquivo citado esta la.",
+  "o_que_muda": "O robo so aceita o nome da pasta inteira ou o nome completo do arquivo. Quem escreve um pedaco do caminho e recusado sem aviso, e a entrega fica parada sem ninguem saber.",
+  "exemplo": "Escrever ci/tests em vez de ci/ quase deixou uma entrega parada em silencio no dia 17/09/2026.",
+  "importancia": 55
+}

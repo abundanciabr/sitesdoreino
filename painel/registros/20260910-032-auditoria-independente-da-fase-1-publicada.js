@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-032-auditoria-independente-da-fase-1-publicada",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "Auditoria independente da Fase 1 publicada",
+  detalhe: "Auditoria e nove achados chegaram ao painel e à fila. A Fase 1 continua NÃO PRONTA; TAR-309 a TAR-317 permanecem abertas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1523; merge dfb06e637b7dfc15282d9f9e05b08d1a663e8033; https://github.com/abundanciabr/sitesdoreino/actions/runs/34471938757; https://meshcraft.top/admin/painel/; https://meshcraft.top/admin/caixa/robos/",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-031-painel-registrar-auditoria-independente-da-fase-1",
+  relacao: "resposta",
+  tarefa: "TAR-318",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-232337-TAR-448-explicada",
+  "tarefa": "TAR-448",
+  "evento": "explicada",
+  "quando": "2026-09-17T23:23:37+00:00",
+  "quem": "Lei nova da TAR-446: merge confirmado de fora exige registro na mesma resposta",
+  "o_que_e": "A entrega da TAR-446 foi integrada e publicada, e o livro ainda nao tem o aceite conferido de fora",
+  "o_que_muda": "O livro passa a ter o merge e o run de deploy da entrega, com evidencia e verificado_em",
+  "exemplo": "Quem abre o painel ve que a lei do voo esta em producao, com o run que prova",
+  "importancia": 40
+}

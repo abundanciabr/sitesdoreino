@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-072-admin-identificar-e-manter-a-versao-dos-dados",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "admin: identificar e manter a versão dos dados",
+  detalhe: "A versão conferida fica fixa por resposta; cópia alternativa é identificada. O PR1494 integrado permite submeter TAR-291 sem declarar conclusão.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1493. Validação local: árvore 194e24c384397ca556d574d16af716b9ad8596ba; commit 1526894bb2acc6cd130604c756749fe6d0bc0b7e; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-291",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

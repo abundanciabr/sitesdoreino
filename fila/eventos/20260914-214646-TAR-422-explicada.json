@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-214646-TAR-422-explicada",
+  "tarefa": "TAR-422",
+  "evento": "explicada",
+  "quando": "2026-09-14T21:46:46+00:00",
+  "quem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "o_que_e": "O painel local precisa ler a saúde e os fatos operacionais que permanecem no servidor.",
+  "o_que_muda": "As informações chegam por portas de leitura autenticadas, com origem e horário da medição.",
+  "exemplo": "Se um serviço não responde, o painel recebe indisponibilidade com horário; não recebe um zero que parece sucesso.",
+  "importancia": 90
+}

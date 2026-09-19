@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-021-admin-separar-versao-dos-dados-do-pr-1506",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "admin: separar versão dos dados do PR 1506",
+  detalhe: "Recupera a entrega na main atual, preserva o PR #1541 e remove ci/sessao.py do diff efetivo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1510. Validação local: árvore 9bd67eaab3d16f242fd62a920f7bcb0aa103e8d8; commit bcb3e731a3a18727fd3304a3d6517288c8a3472a; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-291",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

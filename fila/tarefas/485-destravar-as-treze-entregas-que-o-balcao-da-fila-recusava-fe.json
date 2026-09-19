@@ -1,0 +1,19 @@
+{
+  "arquivo": "485-destravar-as-treze-entregas-que-o-balcao-da-fila-recusava-fe",
+  "id": "TAR-485",
+  "titulo": "Destravar as treze entregas que o balcao da fila recusava fechar",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guardas novos vermelhos antes e verdes depois, prova por mutacao de cada um, e os eventos de conclusao das tarefas que a prova permitiu fechar a bordo do PR",
+  "despacho": "Ver o mandato do mantenedor no PR.",
+  "origem": "mantenedor 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

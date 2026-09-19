@@ -1,0 +1,71 @@
+{% extends "cliente_base.html" %}
+
+{% block titulo %}Briefing{% endblock %}
+
+{% block conteudo %}
+  <h1>{{ cartao.titulo }}</h1>
+  <p class="abertura">{{ cartao.o_que_e }}</p>
+
+  <div class="caixa">
+    <h3>A letra miuda deste cartao</h3>
+    <ul class="miuda">
+      {% for linha in cartao.letra_miuda %}<li>{{ linha }}</li>{% endfor %}
+      <li>Prazo de producao: {{ prazo_dias }} dias.</li>
+    </ul>
+  </div>
+
+  <form method="post" action="{% url 'abrir_pedido' cartao.valor %}">
+    {% csrf_token %}
+
+    <label for="nome_da_peca">Nome da peca</label>
+    <input type="text" id="nome_da_peca" name="nome_da_peca" required
+           autocomplete="off" placeholder="Espada curta de guarda dourada">
+
+    <label for="onde_vai_ser_usada">Onde ela vai ser usada</label>
+    <select id="onde_vai_ser_usada" name="onde_vai_ser_usada" required>
+      {% for valor, rotulo in onde_vai_ser_usada %}
+        <option value="{{ valor }}">{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="estilo">Estilo</label>
+    <select id="estilo" name="estilo" required>
+      {% for valor, rotulo in estilos %}
+        <option value="{{ valor }}">{{ rotulo }}</option>
+      {% endfor %}
+    </select>
+
+    <label>O que voce quer receber</label>
+    {% for valor, rotulo in entregaveis %}
+      <label class="marcar" for="entregavel_{{ valor }}">
+        <input type="checkbox" id="entregavel_{{ valor }}" name="entregaveis" value="{{ valor }}">
+        <span>{{ rotulo }}</span>
+      </label>
+    {% endfor %}
+    <p class="ajuda">
+      Esta lista e fechada, e ela vira o checklist da entrega: o modelador so
+      pode propor o que voce marcar aqui.
+    </p>
+
+    <label for="observacoes">Observacoes</label>
+    <textarea id="observacoes" name="observacoes"
+              maxlength="{{ limite_das_observacoes }}"
+              placeholder="Referencias de estilo, detalhes que importam, o que evitar."></textarea>
+    <p class="ajuda">
+      Ate {{ limite_das_observacoes }} caracteres. Nao escreva e-mail, telefone,
+      link nem arroba de rede social: a conversa acontece dentro do site, e a
+      escola acompanha. E assim que voce e o modelador ficam protegidos.
+    </p>
+
+    <label class="marcar" for="autoriza_portfolio">
+      <input type="checkbox" id="autoriza_portfolio" name="autoriza_portfolio" value="sim">
+      <span>Autorizo mostrar esta peca no portfolio do modelador depois de aprovada.</span>
+    </label>
+
+    <button type="submit">Enviar o pedido</button>
+  </form>
+
+  <p class="rodape">
+    <a href="{% url 'cardapio_do_cliente' %}">Voltar ao cardapio</a>
+  </p>
+{% endblock %}

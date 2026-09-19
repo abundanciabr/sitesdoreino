@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-033-links-das-provas-dos-robos-nao-abrem",
+  tipo: "nota",
+  quando: "2026-09-10",
+  titulo: "Links das provas dos robôs não abrem",
+  detalhe: "PR #1525 publicado e TAR-318 concluída. Os atalhos incluem entrega= ou publicacao= no endereço. Achado complementar preexistente na TAR-319, sem novo bloqueio da Fase 1.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1525; merge 9e726020b68f45400459956a0e8ef1bfc689239a; https://github.com/abundanciabr/sitesdoreino/actions/runs/34476399743; https://meshcraft.top/admin/caixa/robos/; services/admin/apps/core/templates/admin/_cartao_robo.html:93,95",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-319",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

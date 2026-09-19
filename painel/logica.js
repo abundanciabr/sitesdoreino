@@ -474,7 +474,13 @@
     var capitulos = meuMapa(registros, agora, prontos);
     return {
       capitulos: capitulos.length,
-      comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
+      comProvaConferida: capitulos.filter(function (c) {
+        if (!c.estado) return false;
+        if (!c.estado.evidencia) return false;
+        if (!c.estado.verificado_em) return false;
+        return c.estado.vence_em_dias == null ||
+          diasEntre(c.estado.verificado_em, agora) <= c.estado.vence_em_dias;
+      }).length,
       semRegistro: capitulos.filter(function (c) { return !c.estado; }).length,
       semRumo: capitulos.filter(function (c) { return c.rumos.length === 0; }).length,
       esperandoVoce: capitulos.reduce(function (n, c) { return n + c.esperando.length; }, 0)
@@ -675,11 +681,78 @@
     };
   }
 
+  // Quantos registros COM PRAZO viajam no resumo. Era por esta porta que o
+  // tamanho da capa ainda podia crescer com a IDADE do projeto em vez de com o
+  // que está aberto: `montarResumo` carregava TODO registro com `vence_em_dias`,
+  // e essa lista só aumenta. Medido em 19/09/2026, com mil entregas fechadas que
+  // trouxessem prazo: o resumo ia a 436.165 bytes, quase o triplo do orçamento.
+  // No livro real de hoje são 26 registros, nenhum deles uma entrega — o buraco
+  // ainda não tinha sangrado, e um buraco que não sangrou hoje sangra na semana
+  // que vem.
+  //
+  // OS MAIS RECENTES, e a escolha foi medida antes de ser feita. A primeira
+  // versão deste teto ordenava pelo PRAZO, guardando quem vence primeiro, e o
+  // argumento parecia bom: o bloco que se serve desta porta é "O que está
+  // velho", então guarde quem já venceu. Medido no livro real, isso deixava de
+  // fora um compromisso com prazo em 2027 e guardava vencidos de janeiro.
+  //
+  // E aí a ordem se revelou invertida. O prazo mais curto de um livro que só
+  // cresce é sempre o registro mais antigo dele, vencido há meses, sobre o qual
+  // não há nada a fazer. Quem o dono precisa ver é a prova que saiu da validade
+  // AGORA, ou está para sair: essa é acionável, dá para ir conferir de novo. É a
+  // mesma razão já escrita em `PROBLEMAS_COM_DETALHE`, que recusou a ordem do
+  // bloco para não ficar com os incidentes mais velhos.
+  //
+  // E CONTINUA SEM RELÓGIO: a ordem é por `quando`, um campo gravado, e dá o
+  // mesmo resultado em qualquer máquina e a qualquer hora. Quem compara prazo
+  // com o agora continua sendo o navegador de quem abre.
+  var COM_PRAZO_NO_RESUMO = 20;
+
+  function comPrazo(registros) {
+    return registros.filter(function (r) { return r.vence_em_dias != null; })
+      .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+  }
+
+  // Quantas afirmações sem prova viajam no resumo. Este teto é de OUTRA natureza
+  // que `PROBLEMAS_COM_DETALHE` e `CAIXA_COM_DETALHE`: aqueles cortam TEXTO e
+  // nunca FATO, e podem, porque problema aberto e pedido sem resposta FECHAM —
+  // alguém responde e eles saem do bloco sozinhos.
+  //
+  // "Dito, mas não comprovado" não tem essa saída. Ele lista entrega e medição
+  // sem `evidencia` ou sem `verificado_em`, e registro é IMUTÁVEL por lei da
+  // casa: recibo que nasceu sem prova nunca ganha prova. Cada um que entra fica
+  // para sempre, e este era o único bloco da capa sem teto de espécie nenhuma.
+  //
+  // Medido em 19/09/2026, com a main em 2f8444e9: 80 afirmações sem prova, 77
+  // delas presas no resumo só por esta porta, 48.089 bytes, 31,3% do resumo
+  // inteiro, a mais velha de 28/08. A capa tinha 67 bytes de folga num orçamento
+  // de 153.600 e o recibo mediano de um PR pesa 868 bytes: nenhum PR da casa
+  // conseguia mais ficar verde, e junto com a muralha do painel caíam o
+  // `ci-celula (admin)` e o `ci-celula-gate`, porque a fixture daqueles testes
+  // roda o gerador.
+  //
+  // O QUE O CORTE NÃO PODE ESCONDER, e não esconde: quem sai daqui e ainda está
+  // ABERTO continua no resumo por outra porta, porque `montarResumo` leva
+  // inteiras a caixa "Precisa de você", "Atenção agora", os recentes e o Meu
+  // mapa. Sai só o que não espera ninguém.
+  //
+  // E É UMA CONTAGEM, NÃO UMA IDADE, pela razão escrita em `CAIXA_COM_DETALHE`:
+  // idade congelaria o relógio do build dentro do resumo. A ordem por data dá o
+  // mesmo resultado com qualquer relógio; a idade, não.
+  //
+  // O NÚMERO INTEIRO CONTINUA NA TELA: `confianca` conta as afirmações sem prova
+  // sobre o livro TODO, e é dele que a capa tira a linha que diz quantas ficaram
+  // para trás. Cortar a lista sem carregar o número seria trocar um bloco que
+  // grita por um que mente.
+  var SEM_PROVA_NO_RESUMO = 12;
+
   // Relato sem prova conferida — aparece como "não comprovado", jamais como fato.
+  // Mais RECENTE primeiro: é a ordem em que se vai atrás da prova que falta, e é
+  // ela que decide quem cabe no teto acima.
   function naoComprovados(registros) {
     return registros.filter(function (r) {
       return (r.tipo === "entrega" || r.tipo === "medicao") && (!r.evidencia || !r.verificado_em);
-    });
+    }).sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
   }
 
   // ---------------------------------------------------------------------------
@@ -709,7 +782,15 @@
     if (fresc.vencidos.length || (fresc.livroParadoHaDias != null && fresc.livroParadoHaDias > 3)) {
       blocos.push({ id: "frescor", titulo: "O que está velho", itens: fresc.vencidos, livroParadoHaDias: fresc.livroParadoHaDias });
     }
-    if (semProva.length) blocos.push({ id: "nao-comprovado", titulo: "Dito, mas não comprovado", itens: semProva });
+    // As mais RECENTES sem prova, e só elas (ver `SEM_PROVA_NO_RESUMO`). Quantas
+    // existem no livro inteiro é o que `confianca` conta, e a página escreve a
+    // diferença embaixo do bloco: lista curta, número honesto.
+    if (semProva.length) {
+      blocos.push({
+        id: "nao-comprovado", titulo: "Dito, mas não comprovado",
+        itens: semProva.slice(0, SEM_PROVA_NO_RESUMO)
+      });
+    }
 
     if (blocos.length > teto) {
       return {
@@ -759,10 +840,14 @@
     // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
     // sai daqui é a contagem e a mediana — nunca uma nota.
     var resp = respondidos(registros);
+    var entregasDeRumo = {};
+    registros.forEach(function (r) {
+      if (r.responde_a && r.relacao !== "substituicao") entregasDeRumo[r.responde_a] = r;
+    });
     var cumpridos = [];
     registros.forEach(function (r) {
       if (r.tipo !== "rumo") return;
-      var fecha = resp[r.arquivo];
+      var fecha = entregasDeRumo[r.arquivo];
       if (!fecha) return;
       cumpridos.push({
         rumo: r.arquivo,
@@ -981,7 +1066,10 @@
     marcar(apenasTitulo, blocos["nao-comprovado"]);
     marcar(apenasTitulo, blocos.frescor);
     marcar(apenasTitulo, recentes);
-    marcar(apenasTitulo, registros.filter(function (r) { return r.vence_em_dias != null; }));
+    // Os PRAZOS MAIS CURTOS do livro, e não todos (ver `COM_PRAZO_NO_RESUMO`).
+    // Esta era a última porta pela qual o tamanho da capa ainda podia crescer
+    // com a idade do projeto, e não com o que está aberto.
+    marcar(apenasTitulo, comPrazo(registros).slice(0, COM_PRAZO_NO_RESUMO));
     mapaS.forEach(function (c) { marcar(apenasTitulo, c.andou); marcar(apenasTitulo, c.esperando); });
     Object.keys(completo).forEach(function (id) { delete apenasTitulo[id]; });
 
@@ -989,10 +1077,22 @@
       return completo[r.arquivo] || apenasTitulo[r.arquivo];
     }).map(function (r) { return completo[r.arquivo] ? r : soTitulo(r); });
 
-    // O mapa de respostas viaja calculado sobre o livro INTEIRO: sem ele, um
-    // pedido cuja resposta ficou fora do resumo voltaria a aparecer como aberto.
+    // O mapa de respostas é CALCULADO sobre o livro inteiro e ENTREGUE só para
+    // quem viaja: sem o cálculo sobre o livro, um pedido cuja resposta ficou
+    // fora do resumo voltaria a aparecer como aberto; carregando o livro
+    // inteiro, o resumo ganhava um id novo a cada par encerrado, para sempre.
+    //
+    // Medido em 19/09/2026, e foi o furo que sobreviveu ao PR #1758: com 1, 100
+    // e 1.000 ocorrências já respondidas, o resumo pesava 1.008, 14.684 e 43.485
+    // bytes. Nada mais crescia com a história do projeto; isto crescia.
+    //
+    // POR QUE CORTAR AQUI É EXATO, e não uma aproximação: toda leitura deste
+    // mapa, nas seis funções que o consultam, é `resp[r.arquivo]` com `r`
+    // vindo da própria lista que se passou. No navegador essa lista é o resumo.
+    // Uma chave que não seja de um registro do resumo nunca chega a ser lida —
+    // e o que nunca é lido não precisa viajar.
     var respondidosIds = {};
-    Object.keys(prontos).forEach(function (k) { respondidosIds[k] = true; });
+    selecionados.forEach(function (r) { if (prontos[r.arquivo]) respondidosIds[r.arquivo] = true; });
 
     return {
       erro: null,
@@ -1004,6 +1104,11 @@
       // O registro mais recente do livro TODO — é dele que sai "o livro está
       // parado há N dias", e ele precisa ser o do livro, não o do resumo.
       maisRecenteQuando: porData.length ? porData[0].quando : null,
+      // Quantos registros do livro TODO carregam prazo. O resumo leva só os
+      // `COM_PRAZO_NO_RESUMO` de prazo mais curto, e é com este número que a
+      // página diz quantos ficaram fora, em vez de a lista curta passar por
+      // completa.
+      comPrazoNoLivro: comPrazo(registros).length,
       totalNoLivro: registros.length
     };
   }
@@ -1017,6 +1122,8 @@
     PORTOES: PORTOES,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
+    SEM_PROVA_NO_RESUMO: SEM_PROVA_NO_RESUMO,
+    COM_PRAZO_NO_RESUMO: COM_PRAZO_NO_RESUMO,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,

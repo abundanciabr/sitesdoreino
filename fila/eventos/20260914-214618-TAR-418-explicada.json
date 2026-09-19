@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-214618-TAR-418-explicada",
+  "tarefa": "TAR-418",
+  "evento": "explicada",
+  "quando": "2026-09-14T21:46:18+00:00",
+  "quem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "o_que_e": "A entrada da Administração ainda é publicada no domínio do site.",
+  "o_que_muda": "A operação administrativa passa a ser acessível no computador local, preservando o acesso público dos alunos e as portas de máquina autorizadas.",
+  "exemplo": "Uma pessoa na internet deixa de abrir a tela administrativa, enquanto a aula pública e o acesso do aluno continuam disponíveis.",
+  "importancia": 99
+}

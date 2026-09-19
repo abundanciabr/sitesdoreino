@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-060-admin-ligar-o-painel-local",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "admin: ligar o painel local",
+  detalhe: "Primeiro uso e repeticao do comando deram quatro HTTP 200. Mapa corrigido; teste de migracao conserva rollback no Postgres e usa DDL fora de atomic no SQLite.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1635. Validação local: árvore 582c24137f16ca9c8a94822dbdb4e029f008bc27; commit 17d79709ceb34f5a674c54bde79717bee804d922; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-405",
+  gravidade: "info",
+  frente: "site",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

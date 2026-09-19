@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260910-104346-TAR-314-explicada",
+  "tarefa": "TAR-314",
+  "evento": "explicada",
+  "quando": "2026-09-10T10:43:46+00:00",
+  "quem": "Auditoria independente da Fase 1 no HEAD c0ac7bf85f07afb4400ce2e50b08c293b453950c; leitura autenticada de /admin/caixa/robos/",
+  "o_que_e": "A medição está parada esperando outras tarefas, mas aparece na lista como se faltasse uma decisão do dono.",
+  "o_que_muda": "A caixa passa a mostrar essa espera no grupo certo, sem pedir ao mantenedor uma ação que pertence à fila.",
+  "exemplo": "Hoje o cartão diz que só o dono pode agir, embora o próprio motivo cite apenas as tarefas 284 a 289.",
+  "importancia": 85
+}

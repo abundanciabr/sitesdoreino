@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-058-pr-1565-edicao-de-aulas-avulsas-publicada",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1565 publicou a edição de aulas avulsas",
+  detalhe: "A edição preserva o endereço compartilhado da aula. O deploy da célula cursos terminou verde no commit 30fada012610e85de366e52bdddde15683d9ae99.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34600271755",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

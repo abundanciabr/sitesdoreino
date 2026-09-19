@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-201712-TAR-417-explicada",
+  "tarefa": "TAR-417",
+  "evento": "explicada",
+  "quando": "2026-09-14T20:17:12+00:00",
+  "quem": "Brief direto do mantenedor em 14/09/2026 para fechar a lacuna de mandato observada no PR 1658",
+  "o_que_e": "A lei principal e as decisões arquiteturais podem mudar sem o portão exigir autorização do mantenedor.",
+  "o_que_muda": "Toda mudança nesses caminhos passa a parar automaticamente até o mantenedor registrar a autorização no PR.",
+  "exemplo": "Um PR que altera somente CLAUDE.md ou docs/decisoes deixa de passar apenas na honra e recebe a mesma trava dos outros arquivos de lei.",
+  "importancia": 100
+}

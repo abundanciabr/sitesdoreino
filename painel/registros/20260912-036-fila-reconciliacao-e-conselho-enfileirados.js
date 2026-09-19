@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260912-036-fila-reconciliacao-e-conselho-enfileirados",
+  tipo: "entrega",
+  quando: "2026-09-12",
+  titulo: "fila: reconciliação e conselho enfileirados",
+  detalhe: "TAR-377 (aceites das 31 entregas presas), TAR-378 (reconciliação pelo balcão) e TAR-379 (publicar o conselho) criadas com brief para o Codex; TAR-380 é esta escrituração. Só fila.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1609. Validação local: árvore 9d6b36974ab5d336021039284707075d0dc8dc0f; commit 5df4a6ed80ffb36f8707484d5525d4d5f6c9170f; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-12",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-380",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

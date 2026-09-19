@@ -1,0 +1,8 @@
+{% extends "cursos/moldura.html" %}
+{% block titulo %}{{ aula.titulo }}{% endblock %}
+{% block faixa %}<a href="{% url 'aulas-avulsas' %}">Aulas avulsas</a><span class="onde">{{ aula.titulo }}</span>{% endblock %}
+{% block conteudo %}
+<header class="cabecalho-da-aula"><p class="rotulo">Aula avulsa</p><h1>{{ aula.titulo }}</h1></header>
+{% if descricao %}<section class="peca"><h2>Sobre esta aula</h2>{{ descricao|safe }}</section>{% endif %}
+<section class="video" id="video"><h2>O vídeo da aula</h2><div class="quadro"><iframe src="{{ video.embutido }}" referrerpolicy="strict-origin-when-cross-origin" title="Vídeo da aula" loading="lazy" allowfullscreen allow="fullscreen"></iframe></div><p class="miudo"><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir o vídeo em outra aba</a></p></section>
+{% endblock %}

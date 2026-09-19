@@ -1,0 +1,20 @@
+{
+  "arquivo": "432-a-plataforma-volta-sozinha-quando-a-atualizacao-da-infraestr",
+  "id": "TAR-432",
+  "titulo": "A plataforma volta sozinha quando a atualizacao da infraestrutura da errado",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste que executa a funcao de volta contra uma pasta de mentira e exige os arquivos restaurados, mais a suite de infra verde",
+  "despacho": "DESPACHO: a plataforma volta sozinha quando a troca da errado.\n\nCELULA: infra. ALVOS: infra/sincronizar-infra-na-vps.sh e o teste dele em ci/tests.\n\nPROBLEMA MEDIDO: o script imprimia o caminho de volta e nao o aplicava, com a\nfrase RESTAURACAO (voce, na VPS). O mantenedor nao usa terminal e o agente nao\ntem chave SSH, entao uma troca ruim deixava as portas 80 e 443 de toda a\nplataforma fora do ar por tempo indeterminado, porque o mesmo Traefik serve a\nborda publica inteira.\n\nO QUE CONSTRUIR: uma funcao de restauracao armada por trap de EXIT, que so age\ndepois que os arquivos em uso mudaram de verdade. Ela devolve docker-compose.yml,\ntraefik/ e sites.json do backup datado, sobe os servicos e recria o Traefik,\nporque o bind mount prende o inode.\n\nEVIDENCIA EXIGIDA: teste vermelho antes; teste que EXECUTA a funcao extraida do\nscript contra uma pasta de mentira, com docker dublado, exigindo os arquivos de\nvolta e as duas chamadas de subida; sabotagem que reprove esse teste; e a suite\nde infra vizinha continuando verde.\n\nFORA DE ESCOPO: qualquer acao na VPS e a entrada privada da ponte, que e obra\npropria logo depois desta.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-15",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

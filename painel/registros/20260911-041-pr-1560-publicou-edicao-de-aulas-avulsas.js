@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-041-pr-1560-publicou-edicao-de-aulas-avulsas",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1560 publicou a edição de aulas avulsas",
+  detalhe: "O PR 1560 foi integrado em 11/09/2026 às 11:35 UTC, no commit 69695530ea634e38951ddef8b9f05d75b1da49e8. Ele publicou o contrato que preserva o link da aula ao editar nome, vídeo e descrição. A alteração não aciona deploy.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1560",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260911-036-contracts-permitir-edicao-de-aulas-avulsas",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

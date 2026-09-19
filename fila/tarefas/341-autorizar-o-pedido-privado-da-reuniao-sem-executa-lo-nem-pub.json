@@ -1,0 +1,19 @@
+{
+  "arquivo": "341-autorizar-o-pedido-privado-da-reuniao-sem-executa-lo-nem-pub",
+  "id": "TAR-341",
+  "titulo": "Autorizar o pedido privado da Reunião sem executá-lo nem publicá-lo",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Identidade, versão e texto exatos; isolamento de leitura, edição, publicação, histórico, restauração, arquivamento e exclusão pela biblioteca; concorrência segura; aviso público explícito; autorização sem execução; recibo consultável; fluxo completo no navegador; testes vermelho para verde e mutações; merge, checks e publicação comprovados.",
+  "despacho": "Concluir no PR #1514 o fluxo privado do pedido da Reunião. Preservar a linhagem histórica dos PRs #1506, #1511 e #1513, as rotas atuais de YouTube e aulas avulsas e o registro 122 apenas no PR #1511. Salvar identidade, versão, autoria e auditoria de modo atômico e seguro contra concorrência. Exigir o texto visível exato e aviso explícito antes da autorização; autorizar não recebe, não executa e não publica a tarefa. Isolar integralmente o prefixo privado da biblioteca de documentos. Consultar recibo da fila sem promover resposta parcial a sucesso. Manter a migration 0029 somente em SeparateDatabaseAndState. Provar estados vazio, erro, carregamento síncrono, entrada inválida, navegador local, suíte focal, suíte admin, vermelho para verde e mutações. modelo_recomendado: modelo-de-cima; esforco_recomendado: high; teto_de_contexto: 180000.",
+  "origem": "Capítulo 1 / PR #1514",
+  "criada_em": "2026-09-11",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

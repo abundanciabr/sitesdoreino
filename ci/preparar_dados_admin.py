@@ -10,6 +10,8 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mapa_de_execucao import materializar_catalogo, validar_catalogo
+
 
 FORMATO = "admin-dados.v1"
 
@@ -91,6 +93,13 @@ def preparar_fila(raiz: Path, destino: Path) -> None:
         regua_json.get("esperas"), dict
     ):
         raise SystemExit("PAROU: fila/regua.json nao contem a regua de esperas")
+    catalogo = materializar_catalogo(raiz, agora=datetime.now(UTC))
+    validar_catalogo(catalogo)
+    temporario = destino / "mapa-de-execucao.json.tmp"
+    temporario.write_text(
+        json.dumps(catalogo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    temporario.replace(destino / "mapa-de-execucao.json")
 
 
 def escrever_manifesto(

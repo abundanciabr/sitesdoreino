@@ -1,0 +1,20 @@
+{
+  "arquivo": "411-conectar-a-leitura-automatica-do-radio-as-sessoes-da-triade",
+  "id": "TAR-411",
+  "titulo": "Conectar a leitura automática do rádio às sessões da tríade",
+  "toca": [
+    "admin",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Prova nativa da sessão nova recebendo a mensagem; testes focal e suíte admin verdes; diagnóstico sem credencial nova; PR vinculado e saída dos comandos registrada.",
+  "despacho": "CÉLULA: admin, com integração CI somente quando o caminho estiver comprovado. MODELO: gpt-5.6-sol. ESFORÇO: medium. TETO: 100000. MANDATO: executar a conexão da leitura automática do rádio às sessões, conforme o pedido do mantenedor nesta sessão e os caminhos autorizados do PR existente, sem ampliar para credenciais ou publicação externa. ALVOS: services/admin/apps/core/radio.py services/admin/apps/core/models.py services/admin/apps/core/migrations/0021_leitura_do_radio.py services/admin/tests/test_radio.py ci/radio.py ci/radio_gancho.py ci/hook_codex.py ci/sessao.py ci/tests/test_radio_cli.py ci/tests/test_radio_gancho.py ci/tests/test_codex_nativo.py ci/tests/test_sessao.py .claude/settings.json. SOMENTE-LEITURA: painel/; fila/; contracts/; .github/CODEOWNERS; estado e comentários do PR #1640; documentação da confiança nativa dos hooks. FORA DE ESCOPO: criar credencial, alterar permissões da máquina, aceitar Hooks need review, enviar mensagem por chamada manual, acordar sessão já em andamento, alterar contratos, alterar o rádio humano, merge, etiqueta pousar ou revisão independente. DOD COM PROVA EXECUTÁVEL: (1) python -m pytest services/admin/tests/test_radio.py -q, saída PASS com todos os testes; (2) python -m pytest ci/tests/test_radio_cli.py ci/tests/test_radio_gancho.py ci/tests/test_codex_nativo.py ci/tests/test_sessao.py -q, saída PASS; (3) python ci/radio.py ler --ajuda ou comando focal equivalente, saída sem laço; (4) prova nativa da sessão nova recebendo uma mensagem escrita no rádio, com palavra de verificação e saída crua; (5) se a confiança dos hooks impedir a prova, saída crua Hooks need review e tarefa bloqueada para a Maestro, sem declarar PRONTO; (6) git diff --name-only origin/main...HEAD demonstra que o lote não sobrepõe arquivos de outro lote. A tarefa só fecha com prova executável e estado explicitamente confirmado.",
+  "origem": "Retomada do Maestro, seções 2, 3 e 5, confrontada com /painel/ e /caixa/radio/ em localhost em 14/09/2026.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

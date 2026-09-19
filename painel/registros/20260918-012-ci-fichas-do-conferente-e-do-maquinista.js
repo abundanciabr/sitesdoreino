@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-012-ci-fichas-do-conferente-e-do-maquinista",
+  tipo: "nota",
+  quando: "2026-09-18",
+  titulo: "ci: fichas do conferente e do maquinista",
+  detalhe: "Duas fichas somente leitura: conferente mede duplicar-e-divergir, maquinista mede a esteira. Entram sem guarda proprio, e essa divida esta dita no PR.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1726. Validação local: árvore 7eb26096d6f7d0d572ea36183fa7d1c7b3a05590; commit e15fb7b9d63438ad6acf4aedf1058a101dfc367f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-469",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

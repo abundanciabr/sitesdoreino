@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260912-013402-TAR-364-submetida",
+  "tarefa": "TAR-364",
+  "evento": "submetida",
+  "quando": "2026-09-12T01:34:02+00:00",
+  "quem": "agent/ci/contexto-sob-demanda",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1594",
+  "revisao": "7e41bfd41ddce952a5bef5399fa2fc14ab6b2f62",
+  "arvore": "aff40127a1d36a77ff07f1f22646794cdeb8b5bf"
+}

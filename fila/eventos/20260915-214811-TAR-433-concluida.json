@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260915-214811-TAR-433-concluida",
+  "tarefa": "TAR-433",
+  "evento": "concluida",
+  "quando": "2026-09-15T21:48:11+00:00",
+  "quem": "agent/infra/entrada-privada",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1673",
+  "verificado_em": "2026-09-15"
+}

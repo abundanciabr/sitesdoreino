@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-121138-TAR-313-bloqueada",
+  "tarefa": "TAR-313",
+  "evento": "bloqueada",
+  "quando": "2026-09-13T12:11:38+00:00",
+  "quem": "despacho-fila-tar-313-permissoes-entregas",
+  "detalhe": "O balcão só bloqueia uma tarefa pelas dependências do próprio arquivo e não oferece vínculo de filha ou sucessora que impeça a tarefa histórica de concluir. Criar uma sucessora dependente de TAR-284 preservaria texto, mas TAR-286 a TAR-289 e TAR-296 continuariam concluíveis sem a Central. O mandato proíbe editar essas tarefas antigas; a fila precisa oferecer um vínculo exigível ou receber autorização específica para acrescentar TAR-284 ao campo depende_de delas.",
+  "espera": "fila"
+}

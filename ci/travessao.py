@@ -921,7 +921,53 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=f"a lista pronta para colar em {LISTA_DE_HERDADOS}",
     )
+    parser.add_argument(
+        "--verificar-staged", action="store_true", help="verifica apenas arquivos no stage (pre-commit)"
+    )
     args = parser.parse_args(argv)
+
+    if args.verificar_staged:
+        try:
+            import subprocess
+            raiz = raiz_do_repo()
+            staged_files = subprocess.check_output(
+                ["git", "diff", "--cached", "--name-only", "--diff-filter=AM"],
+                cwd=raiz, encoding="utf-8"
+            ).splitlines()
+            
+            falhou = False
+            for relativo in staged_files:
+                caminho = raiz / relativo
+                if not caminho.exists(): continue
+                # Verifica apenas se pertence à superfície de texto público
+                if not (relativo.startswith("documentos/") or relativo.startswith("services/") or "templates/" in relativo or "traducoes/" in relativo or "management/commands/" in relativo):
+                    continue
+                try:
+                    texto = subprocess.check_output(
+                        ["git", "show", f":{relativo}"],
+                        cwd=raiz, encoding="utf-8"
+                    )
+                except subprocess.CalledProcessError:
+                    continue
+                if not pertence_a_superficie(raiz, Path(relativo), texto):
+                    continue
+                
+                achados = achar(texto, modo_de_leitura(caminho, texto), relativo)
+                if achados:
+                    if not falhou:
+                        print("❌ BLOQUEADO: travessão encontrado em arquivo do stage.\n")
+                        falhou = True
+                    print(f"{relativo}  ({len(achados)})")
+                    for achado in achados:
+                        print(f"  linha {achado.linha}: {achado.trecho}")
+            
+            if falhou:
+                print(f"\n{COMO_TROCAR}")
+                return 1
+            return 0
+        except Exception as e:
+            print(f"Erro ao verificar staged: {e}", file=sys.stderr)
+            return 2
 
     if args.listar or args.herdados:
         try:

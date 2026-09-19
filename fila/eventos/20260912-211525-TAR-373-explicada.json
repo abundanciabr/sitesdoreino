@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260912-211525-TAR-373-explicada",
+  "tarefa": "TAR-373",
+  "evento": "explicada",
+  "quando": "2026-09-12T21:15:25+00:00",
+  "quem": "pedido do mantenedor em 12/09/2026: altere todos os documentos explicando o papel de cada IA da tríade",
+  "o_que_e": "A lei já diz o papel de cada IA, mas os roteiros que as sessões seguem no dia a dia ainda falam de um agente genérico, mandam ele mergear ou perguntar ao dono, e não dizem quem escreve o brief, quem constrói e quem confere.",
+  "o_que_muda": "Cada roteiro passa a nomear a IA certa em cada passo. Menos pergunta errada chegando ao dono e menos sessão fazendo trabalho que era de outra.",
+  "exemplo": "É atualizar o manual da oficina depois de mudar quem é o chefe de obra: o manual antigo mandava o pedreiro decidir o que só o chefe decide.",
+  "importancia": 50
+}

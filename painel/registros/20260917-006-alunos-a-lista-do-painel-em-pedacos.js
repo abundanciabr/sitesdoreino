@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-006-alunos-a-lista-do-painel-em-pedacos",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "alunos: a lista do painel em pedacos",
+  detalhe: "Passo 2 de 3: a porta que entrega a lista de alunos em pedacos, com os contadores. A tela ainda nao usa.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1683. Validação local: árvore 02c397528ba838c3b079c474fd1eb433edd148c8; commit 15a0ca507f0a819b5dfa632144e9cc83d369aafe; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-434",
+  gravidade: "info",
+  frente: "site",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-008-bosses-no-ar",
+  tipo: "resposta",
+  quando: "2026-09-10",
+  titulo: "Pedido 1517 publicou oito Bosses, um em cada módulo",
+  detalhe: "O 1517 integrou às 03:35 UTC. A publicação 34433902392 terminou verde na tentativa 2; cinco jobs passaram e cursos marcou os oito títulos. Às 03:43 UTC, a sala mostrou oito selos Boss, um por módulo. A aula 31 estava marcada, com título 'Comando Bevel e Triangulate' e ainda Rascunho. A primeira tentativa falhou só no envio do painel pela porta 22; a repetição resolveu.",
+  autoridade: "sonda",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34433902392",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: "20260910-007-publicacao-bosses-falhou",
+  gravidade: "verde",
+  frente: "curso",
+  area: "cursos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
