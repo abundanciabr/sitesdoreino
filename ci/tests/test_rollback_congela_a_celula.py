@@ -233,7 +233,7 @@ class _Saida:
 
 
 def _sem_congelamento(monkeypatch) -> None:
-    monkeypatch.setattr(rollback, "_congelamento_no_servidor", lambda raiz, celula: None)
+    monkeypatch.setattr(rollback, "_sha_do_congelamento", lambda raiz, celula: "")
 
 
 def test_congelar_cria_a_referencia_com_motivo_e_prazo(monkeypatch) -> None:
@@ -271,11 +271,7 @@ def test_congelar_de_novo_renova_o_prazo_sem_soltar_a_casa(monkeypatch) -> None:
         vistos.append((ref, corpo, lease))
         return True
 
-    monkeypatch.setattr(
-        rollback,
-        "_congelamento_no_servidor",
-        lambda raiz, celula: ("f" * 40, _corpo(celula)),
-    )
+    monkeypatch.setattr(rollback, "_sha_do_congelamento", lambda raiz, celula: "f" * 40)
     monkeypatch.setattr(rollback, "criar_ref_atomica", falso)
     monkeypatch.setattr(rollback, "agora_utc", lambda: AGORA + timedelta(hours=5))
 
