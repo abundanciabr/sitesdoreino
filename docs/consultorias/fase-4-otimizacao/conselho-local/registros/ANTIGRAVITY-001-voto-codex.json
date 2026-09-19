@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "ANTIGRAVITY-001",
+  "autor": "codex",
+  "registrado_em": "2026-09-12T11:05:00-03:00",
+  "proposta_sha256": "a747af35f580fcf59883a16f44df6c192f787e2f472e9f9338fa53ca51fd3aab",
+  "decisao": "reprovar",
+  "importancia": 0,
+  "justificativa": "Reprovo esta versão, não o problema. O aceite mistura duas decisões: alterar o portão e restaurar CLAUDE.md e AGENTS.md. A restauração não pode ser presumida porque a árvore local está suja e a própria mesa registra que o mantenedor ainda precisa decidir entre restaurar e revisar as leis. Além disso, o baseline não traz comando e saída reproduzíveis contra origin/main, e o piso estrito de 13 pode bloquear uma consolidação legítima de leis. Aprovaria uma nova versão que use a revisão limpa explicitamente, exija decisão escrita para remoção de seção e teste a remoção e a consolidação sem fixar uma contagem arbitrária."
+}

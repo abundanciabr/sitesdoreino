@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-001-armadilhas-freeze-de-contrato-sh-escolhe-o-python-errado-do",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "armadilhas: freeze-de-contrato.sh escolhe o Python errado do PATH",
+  detalhe: "ERROR de instrumento reproduzido e comparado com PASS pelo Python certo, na mesma sessao, antes de escrever a licao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1744. Validação local: árvore 880e7ce9a89e92832c184cf53fd1d245c90d2678; commit c8e05c3301916d741fcfcd6a1833c6c193756db9; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-479",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
