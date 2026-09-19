@@ -78,9 +78,21 @@ class Contrato:
     linha_do_primeiro_compose: int | None
 
 
+def _sem_comentarios(linhas: list[str]) -> list[str]:
+    """Linha comentada não é código, e o guarda não pode lê-la como se fosse.
+
+    Descoberto pelo `ci/provar_guardas.py`: ele sabota comentando a linha
+    protegida, e a primeira versão deste leitor continuava enxergando o texto
+    do comentário. O guarda passava verde com a leitura desligada, que é
+    exatamente a classe de falha que ele existe para impedir. As posições são
+    preservadas para os números de linha continuarem verdadeiros.
+    """
+    return ["" if l.lstrip().startswith("#") else l for l in linhas]
+
+
 def _ler(caminho: Path) -> Contrato:
-    texto = caminho.read_text(encoding="utf-8")
-    linhas = texto.splitlines()
+    linhas = _sem_comentarios(caminho.read_text(encoding="utf-8").splitlines())
+    texto = chr(10).join(linhas)
 
     lidas: set[str] = set()
     exportadas: set[str] = set()
