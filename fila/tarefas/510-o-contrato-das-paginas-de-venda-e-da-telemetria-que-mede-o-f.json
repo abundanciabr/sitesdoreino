@@ -1,0 +1,19 @@
+{
+  "arquivo": "510-o-contrato-das-paginas-de-venda-e-da-telemetria-que-mede-o-f",
+  "id": "TAR-510",
+  "titulo": "O contrato das paginas de venda e da telemetria que mede o funil",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "PR somente de contracts/ mergeado, com contrato_aditivo PASS nos cinco arquivos e um exemplo valido e um invalido validados por evento",
+  "despacho": "Rito de Mudanca de Contrato (RITOS.md secao 3). PR somente de contracts/, etiqueta contrato.\n\nAcrescente ao contrato do catalogo os quatro caminhos das paginas (ler a publicada, ler o rascunho, gravar o rascunho, publicar) e os schemas PaginaPublicada, RascunhoDaPagina e Secao. Crie os quatro contratos de evento do funil: funil.pagina-vista.v1, funil.secao-vista.v1, funil.cta-clicado.v1 e funil.lead-capturado.v1, com o envelope canonico da casa e site_id dentro de data.\n\nTudo aditivo. O corpo de cada evento carrega id e versao, nunca copy. Provedor primeiro: o catalogo implementa depois deste PR pousar; os consumidores vem em PRs seguintes.",
+  "origem": "sessao de arquitetura com o mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}
