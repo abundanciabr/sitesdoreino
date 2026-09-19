@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-004-forum-corrigir-revisao-da-porta-unica",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "forum: corrigir revisão da porta única",
+  detalhe: "Corrige o POST anônimo, compartilha o recado e prova os guardas de login e CSRF por mutação.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1613. Validação local: árvore 79675de1bb3fdffd90611f5d0e6eae32d94c03f0; commit 0fbb8a4631790848da9f90a5b1d0344f3cd363e5; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-390",
+  gravidade: "verde",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

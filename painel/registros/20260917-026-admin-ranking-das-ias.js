@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-026-admin-ranking-das-ias",
+  tipo: "entrega",
+  quando: "2026-09-17",
+  titulo: "admin: ranking das IAs",
+  detalhe: "A capa abre o ranking medido no Git. Dados incompletos ficam sem planos; a autoria ambígua não recebe crédito individual.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1698. Validação local: árvore f5558a6bbc9c8b3cff13d442935a855e4354f1f2; commit 655f044031856d6dd7ff0b8a86a5a98b54226816; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-445",
+  gravidade: "info",
+  frente: null,
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

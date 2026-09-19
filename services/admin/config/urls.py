@@ -23,8 +23,10 @@ from apps.core.editor_de_documentos import (
     documento_arquivar,
     documento_criar,
     documento_desarquivar,
+    documento_despublicar,
     documento_editar,
     documento_novo,
+    documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
@@ -78,6 +80,7 @@ from apps.core.planos_para_ia import (
 )
 from apps.core.painel import painel, painel_arquivo
 from apps.core.pendencias import pendencias
+from apps.core.ranking_das_ias import ranking_das_ias
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
@@ -217,6 +220,17 @@ urlpatterns = [
     # Barra final pela convencao das outras telas; quem chega sem ela e
     # redirecionado pelo APPEND_SLASH, que ja esta na cadeia.
     path("pendencias/", pendencias, name="pendencias"),
+    # O PLACAR DAS IAS (`apps/core/ranking_das_ias.py`, 17/09/2026) — quanto cada
+    # IA da tríade publicou em `main` e quanto escreveu para publicar. Quem mede
+    # é `ci/ranking_das_ias.py`, contra `origin/main`; esta tela só ordena.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa e da central acima: a
+    # rota genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela, e
+    # esta é uma tela da área, ainda que LEIA um arquivo publicado com o painel.
+    #
+    # Barra final pela convenção das outras telas; quem chega sem ela é
+    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
+    path("ranking-ias/", ranking_das_ias, name="ranking_das_ias"),
     # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
     # mantenedor decide o que aparece no alto de cada página do site, e em
     # quais páginas não aparece nada.
@@ -336,6 +350,16 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/publicar$",
+        documento_publicar,
+        name="documento_publicar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/despublicar$",
+        documento_despublicar,
+        name="documento_despublicar",
     ),
     # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
     # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se

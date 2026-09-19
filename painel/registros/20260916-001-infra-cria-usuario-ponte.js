@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260916-001-infra-cria-usuario-ponte",
+  tipo: "entrega",
+  quando: "2026-09-16",
+  titulo: "infra: cria usuario ponte",
+  detalhe: "Provisionador root-owned limita o sudo do deploy ao binário fixo; sshd -t ocorre antes do reload, com restauração em erro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1677. Validação local: árvore 3ac054cfcf53133666efda0168a135dc2c31b832; commit 87915c2101281d82e153459b09c52090f36b8df1; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-16",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-419",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

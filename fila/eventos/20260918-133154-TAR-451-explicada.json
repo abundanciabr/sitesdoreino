@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-133154-TAR-451-explicada",
+  "tarefa": "TAR-451",
+  "evento": "explicada",
+  "quando": "2026-09-18T13:31:54+00:00",
+  "quem": "Pedido direto do mantenedor em 2026-09-18",
+  "o_que_e": "O formulário permitia criar um documento e publicá-lo no mesmo envio.",
+  "o_que_muda": "Todo documento nasce visível apenas para administradores; publicar vira uma ação separada depois da revisão.",
+  "exemplo": "Mesmo com publico=sim forjado na criação, o endereço público responde 404 até o administrador clicar em Publicar no site.",
+  "importancia": 90
+}

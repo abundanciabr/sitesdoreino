@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-022-ci-dar-dono-ao-defeito-que-impede-a-abertura-pela-tarefa-da",
+  tipo: "pendencia",
+  quando: "2026-09-18",
+  titulo: "ci: dar dono ao defeito que impede a abertura pela tarefa da fila",
+  detalhe: "anunciar_pr adiciona o comprovante e nunca commita; o push sobe ramo vazio. Conserto na TAR-477, bloqueada por mandato.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1732. Validação local: árvore 25004eb2d055f31fcb0ab54fd3cbd88bfe804295; commit 3a6ccd0b8bcec4eb21903cbbc74e46ab91b869f0; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-476",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

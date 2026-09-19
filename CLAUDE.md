@@ -214,17 +214,18 @@ VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md
 
 ## Plano na abertura, contas no fecho
 
-Abra com `## Plano` e `- [ ]` por passo. **Etapa** significa somente a
-conclusão ou o bloqueio de um passo planejado, não uma chamada de ferramenta,
-uma leitura, uma mensagem automática ou uma nova tentativa do mesmo comando.
-Reimprima o checklist apenas quando uma caixa mudou ou quando surgiu um
-bloqueio; entre esses marcos, continue trabalhando sem copiar o plano.
-Se o gancho já exibiu o plano ou o checklist não mudou, não o repita.
-No fecho, publique uma única prestação de contas conforme a regra 9.
-PRONTO com caixa aberta é contradição; NÃO PRONTO honesto é aceito.
-Leitura, pergunta respondida e acordar de espera não geram dívida.
+Abra com `## Plano` e `- [ ]` por passo. **Etapa** é concluir ou bloquear passo
+planejado, nunca ferramenta, leitura, aviso automático ou retentativa.
+Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
+após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
+com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
+pergunta ou acordar não geram dívida.
+Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
+veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
+nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele
+(Lei 11).
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit e Stop)
+**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit, Stop, voo)
 e testes; checklist intermediário é julgamento.
 
 ## Mapa do projeto para IA

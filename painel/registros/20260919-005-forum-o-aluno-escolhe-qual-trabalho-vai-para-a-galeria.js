@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-005-forum-o-aluno-escolhe-qual-trabalho-vai-para-a-galeria",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "forum: o aluno escolhe qual trabalho vai para a Galeria",
+  detalhe: "Sem o gesto do aluno nao ha candidata: 11 guardas sabotados ficaram vermelhos e o contrato congelado bate com o codigo vivo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1736. Validação local: árvore 3533d9bd7c24b2434f868d445585a0d92a0f1c98; commit 8c75c6a804160beef0915778e4137eb9eeb328a4; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-391",
+  gravidade: "info",
+  frente: "comunidade",
+  area: "forum",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

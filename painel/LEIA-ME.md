@@ -146,7 +146,10 @@
 ```js
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
   arquivo: "20260826-001-exemplo",      // = nome do arquivo sem .js (o gerador confere)
-  tipo: "entrega",                      // decisao | pendencia | resposta | entrega | incidente | medicao | frente | rumo | nota
+  tipo: "entrega",                      // decisao | pendencia | resposta | entrega | incidente | medicao | frente | rumo | nota | compromisso
+                                        // ("compromisso" é o que alguém promete fazer nesta semana; quem o cumpre
+                                        // escreve outro registro com responde_a apontando para ele, e o veredito
+                                        // (cumprido, não cumprido, em aberto) é calculado disso, nunca marcado à mão)
   quando: "2026-08-26",                 // quando o FATO aconteceu (não quando você escreveu)
   titulo: "Uma linha, para leigo, sem sigla",
   detalhe: "Texto simples, sem HTML. Parágrafos separados por \\n\\n.",
@@ -164,6 +167,7 @@
                                         // recomendado em TODO registro novo: é ele que põe o fato na área certa
                                         // da aba Prioridades. Sem ele, a tela cai na `frente` e diz que caiu.
   vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
+                                        // obrigatório em "compromisso": o prazo da promessa, número maior que zero
 
   // DECISÃO: os seis campos são obrigatórios em pedidos NOVOS ao dono.
   // Registros antigos continuam imutáveis e visíveis até resposta explícita.

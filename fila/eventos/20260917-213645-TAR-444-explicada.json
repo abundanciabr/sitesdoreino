@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-213645-TAR-444-explicada",
+  "tarefa": "TAR-444",
+  "evento": "explicada",
+  "quando": "2026-09-17T21:36:45+00:00",
+  "quem": "Despacho do mantenedor em 17/09/2026: dos treze cartoes da capa, dez estao sem guarda",
+  "o_que_e": "A capa da area administrativa mostra treze cartoes, um para cada tela. So tres deles tem um teste automatico provando que continuam la.",
+  "o_que_muda": "No dia em que alguem reorganizar a grade e o cartao da Biblioteca do Livro sumir, o teste acusa no PR em vez de o mantenedor descobrir sozinho que a tela ficou inalcancavel.",
+  "exemplo": "E a campainha da porta: enquanto ninguem toca, ninguem sabe que ela parou de funcionar.",
+  "importancia": 35
+}

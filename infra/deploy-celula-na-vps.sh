@@ -54,8 +54,10 @@
 #
 # NENHUM SEGREDO SAI DAQUI. O `pg_dump` roda DENTRO do contêiner do Postgres,
 # pelo socket local, como o superusuário `postgres`: não há senha em linha de
-# comando, nem em variável, nem no nome do arquivo. Este script nunca abre um
-# `env/*.env`, e nunca imprime uma `DATABASE_URL`.
+# comando, nem em variável, nem no nome do arquivo, e este script nunca imprime
+# uma `DATABASE_URL`. Ele abre UM `env/`, e por um motivo só: as duas chaves do
+# gateway, lidas pelo nome no bloco logo abaixo da recusa de CELULA vazia. Nunca
+# o arquivo inteiro, nunca por `source`, e nunca com o valor na tela.
 # =============================================================================
 set -eu
 
@@ -83,16 +85,84 @@ if [ -z "${CELULA:-}" ]; then
   exit 1
 fi
 
+# =============================================================================
+# AS DUAS CHAVES DO GATEWAY, ANTES DA PRIMEIRA PALAVRA COM O COMPOSE.
+#
+# Desde 15/09/2026 (commit 67ccf0ed) o serviço `traefik` exige ALUNOS_API_TOKEN
+# e TOKEN_CATALOGO na forma `${VAR:?mensagem}`. A interpolação do Compose roda
+# ANTES de qualquer subcomando e sobre o arquivo INTEIRO, não só sobre o serviço
+# que a entrega toca: faltando uma delas no ambiente, TODO `docker compose`
+# nesta pasta reprova, inclusive o `config --services` logo abaixo, que nada tem
+# a ver com o Traefik. Sem este bloco a plataforma inteira para de receber
+# entrega, e foi o que aconteceu entre 15 e 17/09/2026.
+#
+# ESTE BLOCO DUPLICA O 0.1 DE `sincronizar-infra-na-vps.sh` DE PROPÓSITO, e não
+# por descuido: este arquivo é o único texto que chega à VPS no deploy de célula
+# (a `appleboy/ssh-action` envia o CONTEÚDO dele, e o `deploy-celula.yml` não
+# copia arquivo nenhum), então um trecho compartilhado não existiria em
+# /opt/plataforma na hora da entrega e o deploy pararia em toda execução. É o
+# mesmo motivo que mantém a cópia de segurança aqui dentro.
+#
+# NENHUM VALOR APARECE NA TELA: o log do run é lido por gente, e segredo nele é
+# incidente. Este é o único ponto do script que abre um `env/`.
+# =============================================================================
+ENV_DO_ADMIN="$RAIZ/env/admin.env"
+for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR_DO_GATEWAY=$(grep -m1 "^$CHAVE_DO_GATEWAY=" "$ENV_DO_ADMIN" | cut -d= -f2-) || VALOR_DO_GATEWAY=""
+  if [ -z "$VALOR_DO_GATEWAY" ]; then
+    echo "PAROU POR SEGURANÇA: $CHAVE_DO_GATEWAY está ausente ou vazia em $ENV_DO_ADMIN."
+    echo "O compose exige essa chave no serviço traefik, e sem ela nenhum comando"
+    echo "'docker compose' desta plataforma roda. Nada foi tocado: nenhuma imagem"
+    echo "subiu e nenhuma migração rodou."
+    echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
+    echo "na VPS, e peça um run novo. O valor não se descobre daqui, e este script"
+    echo "nunca o imprime."
+    exit 1
+  fi
+  export "$CHAVE_DO_GATEWAY=$VALOR_DO_GATEWAY"
+done
+unset VALOR_DO_GATEWAY
+
 # A célula não é mais UM container: os consumers de evento e o worker Huey vivem
 # em serviços "<celula>-<papel>" (infra/docker-compose.yml). Subir só "<celula>"
 # deixaria o auxiliar rodando a IMAGEM ANTIGA, em silêncio — duas versões do
 # mesmo código no ar, sem alarme nenhum. A lista sai do PRÓPRIO compose, não de
 # uma lista fixa aqui: a célula que ganhar um auxiliar amanhã já entra sozinha,
 # sem editar este arquivo.
-SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
+#
+# DUAS SITUAÇÕES DIFERENTES, DUAS MENSAGENS. Até 17/09/2026 as duas linhas
+# abaixo eram uma só, com um `|| true` no fim, e esse `|| true` engolia a falha
+# do `docker compose config`: a lista saía vazia e o script acusava a célula de
+# não ter serviço algum, o que é FALSO quando o que caiu foi a leitura do
+# compose. Quem lia o log ia caçar um defeito que não existia, e foi assim que o
+# defeito das chaves do gateway durou dois dias. A leitura do compose agora tem
+# veredito próprio; o `|| true` ficou só onde ele é verdade, no `grep`, porque
+# ali "nenhuma linha casou" é resposta legítima e não falha.
+#
+# O stderr do compose NÃO é capturado: ele cai direto no log do run, uma linha
+# antes da recusa abaixo, e é ele que NOMEIA a variável que falta. A variável
+# fica só com a saída padrão, porque uma lista de serviços tem de conter
+# serviços e mais nada.
+SERVICOS_DO_COMPOSE=$(docker compose config --services) || {
+  echo "PAROU POR SEGURANÇA: o 'docker compose config' não conseguiu LER $RAIZ/docker-compose.yml."
+  echo "A célula '$CELULA' não tem nada a ver com isto. A reclamação do próprio"
+  echo "compose está nas linhas logo acima desta, e ela nomeia o que falta: a causa"
+  echo "quase sempre é variável obrigatória (a forma \${VAR:?mensagem} no compose)"
+  echo "ausente em $RAIZ/env/ nesta VPS."
+  echo "Nada foi tocado: nenhuma imagem subiu e nenhuma migração rodou."
+  echo "O QUE FAZER: escreva na VPS, em $RAIZ/env/, a variável que a reclamação acima"
+  echo "nomeia, e peça um run novo."
+  exit 1
+}
+
+SERVICOS=$(printf '%s\n' "$SERVICOS_DO_COMPOSE" | grep -E "^${CELULA}(-|\$)" || true)
 if [ -z "$SERVICOS" ]; then
   echo "ERRO: '$CELULA' não tem serviço algum em $RAIZ/docker-compose.yml."
+  echo "O compose foi lido sem erro nenhum; a lista de serviços é que não tem nome"
+  echo "que comece por '$CELULA'."
   echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
+  echo "O QUE FAZER: confira o nome da célula pedida no run e o nome do serviço no"
+  echo "compose, e peça um run novo com os dois de acordo."
   exit 1
 fi
 echo "Serviços desta célula: $SERVICOS"

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-214016-TAR-460-explicada",
+  "tarefa": "TAR-460",
+  "evento": "explicada",
+  "quando": "2026-09-18T21:40:16+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "Hoje nenhum programa pergunta se o site responde. O unico olho de fora abre uma conexao segura uma vez por dia so para ler a validade do certificado, e o reinicio automatico do servidor so reage a programa morto, nunca a programa vivo e travado.",
+  "o_que_muda": "Se o site sair do ar de madrugada, alguem fica sabendo. Hoje o primeiro a descobrir seria um aluno tentando entrar, ou voce abrindo o navegador.",
+  "exemplo": "O servidor do forum trava com o banco esgotado. O programa continua vivo, entao nada reinicia e nada avisa. O forum fica fora do ar ate alguem reparar por acaso.",
+  "importancia": 92
+}

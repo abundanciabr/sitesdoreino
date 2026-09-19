@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-007",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "O ganho de '10x' das Fases 1 a 3 nunca foi medido de ponta a ponta. O PR que ia medir foi abandonado. Sem numero de antes nem de depois, '10x' e fe, e nenhuma das outras fichas pode ser priorizada por ganho real.",
+  "titulo": "Medir o ciclo inteiro de uma tarefa cobaia, antes e depois",
+  "baseline": "`gh pr view 1588 --json number,title,state,mergedAt` devolve {\"number\":1588,\"title\":\"rascunho: medir-ciclo-inteiro\",\"state\":\"CLOSED\",\"mergedAt\":null}. Nao existe arquivo de baseline de ciclo no repositorio: nenhum numero de antes foi capturado.",
+  "aceite": "Uma tarefa cobaia rodada de ponta a ponta (do brief ao merge) com tempo de relogio e tokens registrados em arquivo de prova, comparada com o mesmo TIPO de tarefa antes das fases, com a fonte do numero de antes declarada. Se o numero de antes nao existir, a ficha entrega a medicao de DEPOIS e diz explicitamente 'nao ha antes', jamais um multiplicador inventado. Sem regressao: nada e alterado, e medicao."
+}
