@@ -10,7 +10,16 @@ from .tasks import relay_apos_commit
 
 
 def _quiz_do_site(request, slug):
-    return get_object_or_404(Quiz, site_id=request.site["id"], slug=slug, active=True)
+    # `getattr` porque o atributo é LEGITIMAMENTE ausente nos caminhos que o
+    # SiteResolutionMiddleware isenta (`/healthz`, `/static/`). Desde que as
+    # páginas foram para a raiz do urlconf, a rota do formulário é um curinga de
+    # um segmento e `/healthz/` e `/static/` casam com ela: sem esta guarda a
+    # view leria o atributo inexistente e as duas formas virariam 500 no lugar
+    # do 404 que sempre foram. Não existe quiz chamado "healthz".
+    site = getattr(request, "site", None)
+    if site is None:
+        raise Http404("caminho isento de resolução de site")
+    return get_object_or_404(Quiz, site_id=site["id"], slug=slug, active=True)
 
 
 def formulario(request, slug):

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-054-admin-a-porta-do-quiz-no-perpetuo",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "admin: a porta do quiz no perpétuo",
+  detalhe: "A lista ETAPAS do perpetuo citava o endereco dobrado do quiz, que este PR desfez, e o guarda do mapa reprovou. Corrigido e provado por sabotagem; 2043 testes do admin verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768. Validação local: árvore 2a6ddb745c2d244ee775f92a4c1b56f50c655684; commit d93f7bc9d70f4914461d335f164b6f4080700222; suíte do admin 2043 passed. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-505",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

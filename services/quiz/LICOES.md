@@ -124,3 +124,161 @@ bugado o middleware consulta o `Site` local — sem a marca, o vermelho seria
 erro de acesso a banco em vez do 404 genuíno; e o teste de `/static/` afirma
 `django_assert_num_queries(0)` (aqui a resolução é query local, não chamada
 ao catálogo — o equivalente do `assert not rota.called` do checkout).
+
+### CORREÇÃO com medição nova (19/09/2026): quem corta o prefixo é o DJANGO
+
+O parágrafo acima está certo no diagnóstico e na cura, mas cala sobre o pedaço
+que mais importa, e esse silêncio custou um endereço público errado por quase
+um mês. Faltava dizer **quem** tira o prefixo, e quando.
+
+O Traefik de fato não remove nada (`PathPrefix(/quiz)` sem `stripPrefix`). Quem
+remove é o Django, dentro do processo, ANTES de casar rota. Lido no
+`django/core/handlers/asgi.py` do 5.1.4 instalado nesta célula:
+
+```python
+self.script_name = get_script_prefix(scope)   # = settings.FORCE_SCRIPT_NAME
+if self.script_name:
+    self.path_info = scope["path"].removeprefix(self.script_name)
+```
+
+Consequências que a lição antiga não deixava ver:
+
+1. **O roteamento de `/quiz/healthz` SEMPRE casou.** `path_info` chega
+   `/healthz` e a rota `path("healthz", ...)` é a mesma de sempre. O 404
+   medido em produção nunca foi de roteamento: era a isenção do middleware
+   escrita sobre `request.path`, e só isso.
+2. **Rota escrita COM o prefixo por dentro casa o endereço DOBRADO.** Enquanto
+   o urlconf dizia `path("quiz/<slug>/")`, o único endereço vivo era
+   `/quiz/quiz/<slug>/`, e `/quiz/<slug>/` — o que se divulga — respondia 404.
+   `reverse()` e o `Location` do POST eram coerentes com a URL dobrada, então
+   nada reclamava. Corrigido neste PR; o checkout já tinha passado por isto
+   (`services/checkout/config/urls.py`, mesma nota).
+3. **Nenhuma suíte via o erro** porque todas mediam o caminho INTERNO, onde os
+   dois lados se cancelam. O guarda que fecha isso é
+   `tests/test_superficie_publica.py`, e ele precisa de `set_script_prefix`
+   (`armadilhas/081`) para que `reverse()` devolva o caminho público.
+
+**A regra prática desta casa, em uma frase:** célula sob `SCRIPT_NAME` escreve o
+urlconf SEM o prefixo, compara `path_info` nos middlewares, e monta `Location` e
+links com `request.path` / `reverse()`.
+
+## O curinga que o endereço limpo cria (e o 500 que ele quase trouxe)
+
+Tirar o `quiz/` do urlconf põe a página do formulário na RAIZ da célula:
+`path("<slug:slug>/", formulario)`. Isso a transforma num curinga de um
+segmento, e `/healthz/` e `/static/` passam a casar com ela — justamente os dois
+caminhos que `SiteResolutionMiddleware` isenta da resolução de site.
+
+O resultado, sem conserto, seria a view lendo `request.site` que ninguém
+definiu: `AttributeError` e 500 onde antes havia 404. A suíte antiga não pegaria
+(o teste da sonda afirmava só `status_code != 200`, e 500 passa nisso).
+
+O conserto mora na view, num arquivo só: `_quiz_do_site` lê o site com `getattr`
+(o atributo é legitimamente ausente nos caminhos isentos, e quem documenta isso
+é o próprio middleware) e devolve 404 quando ele não veio. Guarda:
+`test_caminhos_isentos_de_site_nao_viram_500_no_curinga`.
+
+Efeito colateral aceito: `BarraNoFinal` deixou de agir sobre caminhos de um
+segmento só (eles resolvem agora, e a regra 1 o barra). O que ele ainda conserta
+é o caminho de dois segmentos, `/quiz/<slug>/resultado/`, que é exatamente o
+link que as pessoas copiam.
+
+### O segundo efeito: um slug pode nascer publicado e inalcançável
+
+Achado na revisão do PR. O mesmo curinga faz com que um quiz de slug `healthz`
+more em `/healthz/`, caia na isenção de resolução de site e responda 404 para
+sempre: publicado, inalcançável, e sem nada acusando na hora de semear.
+`seed_quiz` passa a recusar esses slugs, e a lista ele LÊ de `CAMINHOS_SEM_SITE`.
+
+**Ler a lista não é preciosismo, e a medição provou isso contra mim.** A
+comparação do middleware é `startswith`, então a isenção é mais larga do que os
+dois nomes sugerem: `healthz2` e `healthzinho` também começam por `/healthz` e
+também seriam isentos. A primeira versão do teste listava `healthzinho` como
+slug honesto, e foi o próprio código, ao recusá-lo, que corrigiu o teste. Uma
+conferência escrita à mão (`slug in ("healthz", "static")`) erraria essa borda
+exatamente como eu errei, e a sabotagem que reproduz isso está medida no PR.
+
+### E um teste que se autoconfirmava
+
+Também da revisão. O guarda do alcance do cookie de CSRF fazia
+`settings.CSRF_COOKIE_PATH = "/quiz"` e depois conferia que o cookie saía em
+`/quiz`: media se o Django obedece a configuração que o próprio teste acabou de
+escrever. Trocar a linha do `config/settings.py` por `CSRF_COOKIE_PATH = "/"`
+fixo deixava o teste VERDE.
+
+A causa é que `CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"` é calculado UMA vez,
+no import. Trocar `settings.FORCE_SCRIPT_NAME` em tempo de execução (o que a
+fixture `env_de_producao` faz, e é o certo para o resto do arquivo) não
+recalcula nada.
+
+**Valor derivado de outro no import do settings não se testa por `settings`
+sobrescrito: exercite o IMPORT**, com a variável de ambiente real, que é o que a
+fixture `settings_recarregavel` faz. Vale para qualquer célula desta casa que
+derive cookie, caminho ou URL do `SCRIPT_NAME`.
+
+## O botão da tela de resultado: destino é ARGUMENTO do seed, não constante
+
+A tela de resultado era um beco sem saída. O botão agora é da faixa
+(`ResultBand.botao_destino` e `.botao_rotulo`), e o `seed_quiz` exige
+`--destino-do-botao`.
+
+**Por que argumento, e não uma constante `/checkout/<oferta>/` no código:** o
+Crivo não sabe o que é um checkout (`AGENTS.quiz.md` → "Consome: nada"), e a
+oferta é dado de CADA site — o mesmo seed roda em meshcraft.top e
+basileiatoutheou.org, e quem sabe qual é a oferta de cada um é o catálogo, que
+esta célula não consulta. Guardar o endereço como dado opaco mantém a fronteira
+de pé e ainda serve para um destino que não seja checkout.
+
+**O que foi medido antes de decidir** (leitura de fatos públicos da plataforma,
+não dependência nova): o checkout publica a oferta em `path("<slug:offer_slug>/",
+...)` sob o router Traefik `PathPrefix(/checkout)`, que casa por CAMINHO em
+qualquer host da VPS. Logo um caminho RELATIVO como `/checkout/curso-teste/`
+vale em qualquer site sem esta célula saber por quê, e é esse o valor usual do
+argumento. A oferta padrão de cada site está em `infra/sites.json`
+(`default_offer_slug`) — hoje só `meshcraft.top`, com `curso-teste`.
+
+**Por que o argumento é obrigatório:** destino ausente é tela sem botão, que é o
+beco que este trabalho veio fechar. Falhar alto na hora de semear é melhor que
+publicar um funil mudo.
+
+**Por que as faixas passaram a `update_or_create`:** todo banco semeado antes
+deste PR já tem as três faixas, sem botão. `get_or_create` acharia a linha, não
+escreveria nada, imprimiria "✅" e deixaria o beco de pé para sempre. Guarda:
+`test_o_seed_poe_botao_em_faixa_que_ja_existia_sem_ele`.
+
+**Nomes em português no meio de um modelo em inglês** (`botao_destino` ao lado
+de `min_score`): escolha do despacho, pedida no brief. O modelo fica misto e
+isso é dívida declarada, não descuido.
+
+## CSRF: o token era decoração (corrigido em 19/09/2026)
+
+`formulario.html` emitia `{% csrf_token %}` desde o primeiro dia, e
+`settings.MIDDLEWARE` não tinha `CsrfViewMiddleware`. Qualquer página da
+internet podia mandar POST para `/quiz/<slug>/` e gravar `Submission` com e-mail
+e telefone escolhidos por quem publicou o formulário — e disparar
+`quiz.completado.v1` por lead que nunca existiu. Era a única célula pública da
+casa nessa situação.
+
+Duas coisas que a correção ensina, e valem para qualquer célula sob Traefik:
+
+- **`CSRF_TRUSTED_ORIGINS` não é necessário** e não entrou. Ele serve para
+  aceitar origens DIFERENTES do host da requisição; aqui formulário e POST são
+  sempre do mesmo host (Lei 9: um deploy, N domínios, cada um falando consigo
+  mesmo). Nenhuma das outras nove células com CSRF desta casa usa a lista.
+- **`SECURE_PROXY_SSL_HEADER` é**, e sem ele NENHUM envio honesto passaria. O
+  TLS termina no Traefik, o uvicorn vê `http`, o navegador manda
+  `Origin: https://<site>` e o Django compara com
+  `"%s://%s" % (request.scheme, request.get_host())`. Sem o header a comparação
+  é contra `http://<site>` e todo POST legítimo vira 403 — em produção, e só em
+  produção. Não custa variável de ambiente nova: o Traefik sempre emite
+  `X-Forwarded-Proto`. Guarda:
+  `test_https_atras_do_traefik_aceita_a_origem_do_proprio_site`.
+
+E o cookie tem nome próprio (`quiz_csrf`), com `CSRF_COOKIE_PATH` no prefixo da
+célula: num único domínio moram várias células sob prefixos, e duas publicando
+`csrftoken` deixam qual delas o servidor lê na mão da precedência por caminho.
+
+Detalhe de teste que não é opcional: o `client` do pytest-django nasce com
+`enforce_csrf_checks=False`. Um teste de CSRF escrito com ele passa de verde com
+o middleware DESLIGADO. O arquivo `tests/test_superficie_publica.py` usa
+`Client(enforce_csrf_checks=True)` por isso.

@@ -36,6 +36,15 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
     "apps.core.middleware.SiteResolutionMiddleware",
+    # O número opaco que diz "este navegador já esteve aqui" (19/09/2026). Vem
+    # DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: host não cadastrado
+    # morre em 404 lá em cima e nunca gasta um número, e o `path_info` já chega
+    # aqui sem o prefixo de idioma, que é a forma em que a isenção de rota de
+    # máquina casa (`armadilhas/086`). ANTES do `BarraNoFinal`, para que o
+    # visitante que pediu `/cadastro/` já leve o número no 302 — as duas ordens
+    # têm guarda em `tests/test_identidade_do_visitante.py`. O porquê de cada
+    # atributo do cookie está em `apps/core/visitante.py`.
+    "apps.core.visitante.IdentidadeDoVisitante",
     # Espelho do APPEND_SLASH: `/cadastro/` deixa de ser 404 e leva a
     # `/cadastro`. DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: ele
     # precisa que o `path_info` já esteja sem o prefixo de idioma para resolver
