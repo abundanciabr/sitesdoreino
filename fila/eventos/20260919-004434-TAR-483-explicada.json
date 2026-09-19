@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-004434-TAR-483-explicada",
+  "tarefa": "TAR-483",
+  "evento": "explicada",
+  "quando": "2026-09-19T00:44:34+00:00",
+  "quem": "pendencia do PR 1742, mandato do mantenedor em 19/09/2026",
+  "o_que_e": "A pasta que guarda o codigo usado por varios servicos ao mesmo tempo nao tem responsavel declarado no arquivo que a plataforma consulta antes de aceitar uma mudanca.",
+  "o_que_muda": "Mexer nessa pasta passa a exigir a palavra escrita do dono, do mesmo jeito que ja acontece com pagamentos e checkout, e um robo sozinho deixa de conseguir integrar a mudanca.",
+  "exemplo": "E a chave do almoxarifado: qualquer um pega peca do estoque, mas trocar a peca que todo mundo usa depende do dono autorizar.",
+  "importancia": 45
+}

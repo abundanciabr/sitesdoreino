@@ -1,0 +1,19 @@
+{
+  "arquivo": "461-treze-programas-entram-no-servidor-sem-nenhuma-conferencia-a",
+  "id": "TAR-461",
+  "titulo": "Treze programas entram no servidor sem nenhuma conferencia antes",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Guarda novo que deriva do repositorio a lista de workflows com chave de acesso ao servidor e reprova os que nao passam por conferencia; provado por mutacao. Diagnostico dos treze, classificados por le, escreve ou apaga.",
+  "despacho": "# Brief compilado\n\nobjetivo: Medir e fechar a fresta dos workflows que entram na VPS sem passar por portao\ntipo: diagnostico\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: mexe na fronteira entre agente e producao; errar aqui abre caminho para producao\ncelula: ci\n\n## O achado que origina esta tarefa (medido em origin/main, 18/09/2026)\n\nA CONSTITUICAO, Lei 5, diz que \"agentes nao possuem chave SSH da VPS: nao e\nproibicao, e inexistencia\". Isso e verdade para a SESSAO do agente e falso\npara o CAMINHO do codigo.\n\nMedido com PowerShell (no Git Bash caminho iniciado por ponto quebra,\n`armadilhas/334`):\n\n- 16 dos 25 workflows carregam `DEPLOY_SSH_KEY` e alcancam a VPS.\n- Apenas TRES passam por portao antes do SSH: `deploy-celula`,\n  `deploy-infra` (ambos por `ci/portao_de_deploy.py`) e `rollback`\n  (por `ci/rollback.py`).\n- Os outros TREZE entram sem portao nenhum: backfill-mensagens-do-forum,\n  backfill-pontos-do-forum, canario-fase-3-outbox, conferir-as-fichas,\n  esvaziar-caixa, ligar-os-degraus, limpar-avisos-orfaos, semear-areas-do-forum,\n  semear-boas-vindas, semear-caixa, semear-demo-caixa, semear-duvidas-do-forum,\n  semear-economia.\n- Um deles esvazia dado de producao.\n\n## O que esta tarefa faz, e o que ela NAO faz\n\nFAZ: medir cada um dos treze, classificar (le, escreve, apaga) e propor o\ndegrau minimo de portao para cada classe, com o guarda que impede o proximo\nworkflow de nascer sem ele.\n\nNAO FAZ: mudar o texto da Lei 5 (isso e do mantenedor), criar conta de\nmaquina, mexer no ruleset da main, nem apagar workflow que o mantenedor usa.\n\n## Arquivos-alvo\n\n- ci/tests/test_workflows_com_ssh_tem_portao.py (o guarda novo)\n- ci/portao_de_deploy.py (somente se a leitura mostrar que o degrau cabe la)\n\n## Mandato\n\n`.github/` e `ci/` sao caminhos CODEOWNERS. Esta tarefa NAO abre PR que os\ntoque sem `Mandato-do-mantenedor:` escrito pelo dono. Se a leitura concluir\nque a correcao exige tocar `.github/`, PARE, registre o bloqueio na fila e\ndevolva o diagnostico com impacto e reversao.\n\n## Prova exigida\n\n- O guarda novo nasce vermelho: escreva primeiro um caso que prove que um\n  workflow com `DEPLOY_SSH_KEY` e sem portao REPROVA.\n- Mutacao: remova o portao de `deploy-celula` no cenario de teste e confirme\n  que o guarda acusa.\n- A lista dos treze precisa ser DERIVADA do repositorio, nunca colada a mao:\n  uma lista fixa envelhece em silencio, que e a doenca Classe 8 desta casa.",
+  "origem": "Auditoria do mapa para IA de 18/09/2026",
+  "criada_em": "2026-09-18",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

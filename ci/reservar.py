@@ -142,11 +142,20 @@ def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
         ) from erro
 
 
-def criar_ref_atomica(raiz: Path, ref: str, corpo: dict, *, ref_chave: str | None = None) -> bool:
+def criar_ref_atomica(
+    raiz: Path, ref: str, corpo: dict, *, ref_chave: str | None = None, lease: str = ""
+) -> bool:
     """Tenta criar `ref` no servidor. True = ganhou, False = já era de outro.
 
     Levanta `ErroDeInstrumentacao` quando não deu para saber — que é diferente
     de perder, e precisa ser diferente no código também.
+
+    `lease` é o sha que a referência PRECISA ter neste instante para a escrita
+    valer; vazio significa "ela não pode existir", que é o caso de toda
+    alocação de número. Quem passa um sha é o congelamento de célula
+    (`ci/rollback.py`): renovar o prazo de um rollback ativo tem de ser UMA
+    operação, porque apagar para recriar deixaria a casa destravada justo no
+    meio do incidente que o congelamento existe para atravessar.
     """
     corpo = dict(corpo)
     # O nonce é o que torna o commit único e faz o lease ser conferido de
@@ -173,9 +182,9 @@ def criar_ref_atomica(raiz: Path, ref: str, corpo: dict, *, ref_chave: str | Non
         exigir_stdout=True,
     ).stdout.strip()
 
-    comando = ["push", f"--force-with-lease={ref}:", "origin", f"{commit}:{ref}"]
+    comando = ["push", f"--force-with-lease={ref}:{lease}", "origin", f"{commit}:{ref}"]
     if ref_chave:
-        comando = ["push", "--atomic", f"--force-with-lease={ref}:",
+        comando = ["push", "--atomic", f"--force-with-lease={ref}:{lease}",
                    f"--force-with-lease={ref_chave}:", "origin",
                    f"{commit}:{ref}", f"{commit}:{ref_chave}"]
     resultado = _git(raiz, comando)

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260918-222433-TAR-470-explicada",
+  "tarefa": "TAR-470",
+  "evento": "explicada",
+  "quando": "2026-09-18T22:24:33+00:00",
+  "quem": "Auditoria do mapa para IA de 18/09/2026",
+  "o_que_e": "O projeto tem uma unica biblioteca compartilhada entre duas partes do sistema, e ninguem sabe dizer o que acontece quando ela muda.",
+  "o_que_muda": "Passa a existir resposta escrita, com comando, para quem for mexer nela: o que roda, o que nao roda, e o que chega ao ar.",
+  "exemplo": "Alguem corrige um erro no transporte de eventos. Hoje ninguem sabe dizer se a correcao chegou a producao, nem quais testes rodaram.",
+  "importancia": 75
+}

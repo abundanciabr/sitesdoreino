@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-015-docs-publicar-conselho-fase-4",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "docs: publicar conselho Fase 4",
+  detalhe: "O conselho entra nas bancadas com 52 arquivos e preserva byte a byte os 35 JSON assinados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1624. Validação local: árvore cf0f6049fd72aee363f59010a3ac743112436a70; commit 68f22140065f2c70495b421e3ac3e1296174757b; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-379",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

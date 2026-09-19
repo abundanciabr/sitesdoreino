@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-004843-TAR-483-concluida",
+  "tarefa": "TAR-483",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:48:43+00:00",
+  "quem": "agent/ci/dono-do-pacote-no-codeowners",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1750",
+  "verificado_em": "2026-09-19"
+}

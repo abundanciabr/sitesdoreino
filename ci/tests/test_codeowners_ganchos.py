@@ -12,12 +12,15 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 def test_declaracoes_de_ganchos_e_codeowners_exigem_o_mantenedor():
     arquivos = subprocess.run(
-        ["git", "ls-files", "-z", "*.json", ".githooks/*"],
+        ["git", "ls-files", "-z", "*.json", ".githooks/*", "packages/"],
         cwd=RAIZ, check=True, capture_output=True, encoding="utf-8",
     ).stdout.split("\0")
     ganchos = set()
+    compartilhados = set()
     for arquivo in filter(None, arquivos):
-        if arquivo.startswith(".githooks/"):
+        if arquivo.startswith("packages/"):
+            compartilhados.add(arquivo)
+        elif arquivo.startswith(".githooks/"):
             ganchos.add(arquivo)
         else:
             texto = (RAIZ / arquivo).read_text(encoding="utf-8")
@@ -26,6 +29,8 @@ def test_declaracoes_de_ganchos_e_codeowners_exigem_o_mantenedor():
                 if isinstance(dados, dict) and "hooks" in dados:
                     ganchos.add(arquivo)
     assert {".claude/settings.json", ".codex/hooks.json"} <= ganchos
+    assert compartilhados, "packages/ esta vazio: confira o pacote compartilhado"
+    sob_guarda = ganchos | compartilhados | {".github/CODEOWNERS"}
 
     regras = []
     for linha in (RAIZ / ".github/CODEOWNERS").read_text(encoding="utf-8").splitlines():
@@ -38,7 +43,7 @@ def test_declaracoes_de_ganchos_e_codeowners_exigem_o_mantenedor():
             regras.append((padrao[1:], donos))
 
     descobertos = []
-    for arquivo in sorted(ganchos | {".github/CODEOWNERS"}):
+    for arquivo in sorted(sob_guarda):
         donos = []
         for padrao, candidatos in regras:
             if arquivo == padrao or (padrao.endswith("/") and arquivo.startswith(padrao)):
@@ -50,7 +55,7 @@ def test_declaracoes_de_ganchos_e_codeowners_exigem_o_mantenedor():
         + ". Cubra esses caminhos antes de integrar."
     )
 
-    for arquivo in sorted(ganchos | {".github/CODEOWNERS"}):
+    for arquivo in sorted(sob_guarda):
         resultado = mergear.checar_mandato(RAIZ, {
             "files": [{"path": arquivo}], "author": {"login": "abundanciabr"}, "body": "",
         })

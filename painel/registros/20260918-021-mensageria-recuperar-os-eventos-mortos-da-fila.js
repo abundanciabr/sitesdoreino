@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-021-mensageria-recuperar-os-eventos-mortos-da-fila",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "mensageria: recuperar os eventos mortos da fila",
+  detalhe: "A fila morta deixa de ser beco sem saída: o reprocesso passa pela dedup existente e a entrada só sai com o efeito conferido no banco.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1730. Validação local: árvore 088af20471cae384d8847a92bfd913c3e8fe791b; commit af780b474b9e51984cf8a695eb50887f14c643ce; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-456",
+  gravidade: "info",
+  frente: "site",
+  area: "mensageria",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
