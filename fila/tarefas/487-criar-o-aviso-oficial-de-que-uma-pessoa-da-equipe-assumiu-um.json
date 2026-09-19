@@ -1,0 +1,19 @@
+{
+  "arquivo": "487-criar-o-aviso-oficial-de-que-uma-pessoa-da-equipe-assumiu-um",
+  "id": "TAR-487",
+  "titulo": "Criar o aviso oficial de que uma pessoa da equipe assumiu um interessado",
+  "toca": [
+    "contratos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Os esquemas de evento novos em contracts/eventos/, com exemplo valido conferido por teste, num PR que contem somente contracts/ e traz o mandato nominal do mantenedor.",
+  "despacho": "# Brief compilado\n\nobjetivo: Criar os esquemas de evento do acompanhamento comercial humano\ntipo: contrato\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: muda promessa entre celulas; a economia errada aqui quebra consumidores\ncelula: contratos\n\n## Arquivos-alvo\n- contracts/eventos/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n\n## Objetivo\nDar aos fatos do acompanhamento comercial humano um esquema de evento versionado,\npara que a célula leads possa contá-los e as outras possam ouvi-los. Hoje esses\nfatos existem apenas dentro do banco de leads: `ls contracts/eventos/ | grep -Ei\n\"lead|oportunidade|transfer|retomad|comercial|crm\"` não devolve nada, e por isso\nnenhuma outra célula tem como saber que um humano assumiu uma pessoa da casa.\n\nTrês fatos precisam viajar, e só eles:\n\n1. um comercial passou a acompanhar esta pessoa (a automação precisa parar);\n2. a responsabilidade mudou de titular, com aceite do novo titular, ou a\n   transferência foi recusada e nada mudou;\n3. o acompanhamento humano terminou (a automação pode voltar).\n\nA autorização para voltar já está no provedor e não precisa de operação nova:\nquem encerra a oportunidade é o titular, e o provedor recusa qualquer outro\n(`services/leads/apps/core/oportunidades.py::_oportunidade_da_conta`). O evento\ndo encerramento é a autorização, e é por isso que não nasce um segundo modelo de\nresponsabilidade em nenhuma célula consumidora.\n\n## Alvos\n`contracts/eventos/` somente. Por `contracts/README.md` ponto 1, evento não exige\nmudança em `ci/manifesto-de-contratos.json`, que só existe para os `*.openapi.yaml`:\neste PR é de contrato puro.\n\n## Somente leitura\n`contracts/leads.openapi.yaml`, `contracts/mensageria.openapi.yaml`,\n`services/leads/apps/core/oportunidades.py` e `models.py`.\nMedido em 19/09/2026 (PR desta medição): o provedor de leads implementa 12 de 12\noperações do contrato, sem drift nos dois sentidos, e nenhuma delas publica\nevento. O vocabulário dos fatos já existe em\n`RegistroHistoricoOportunidade.TIPOS`: use os nomes de lá em vez de inventar\noutros.\n\n## Aceite\nEnvelope canônico `{event, version, event_id, occurred_at, data}` e nome\nversionado no arquivo, como manda `contracts/eventos/README.md` pontos 4 e 5.\nSó identificadores opacos viajam: nem nome, nem e-mail, nem telefone, nem texto\nde histórico. O `site_id` viaja em todos, porque o isolamento por site é o que\nimpede uma célula consumidora de cruzar pessoas de sites diferentes. Um exemplo\nválido por esquema, conferido contra o próprio esquema por teste. Nenhum código\nde célula neste PR.\n\n## Restrições\nRito de Contrato (RITOS.md §3): PR contendo só `contracts/`, etiqueta `contrato`,\nmandato nominal do mantenedor no corpo do PR. Sem isto o PR não integra, e com\nrazão. Provedor implementa primeiro (TAR seguinte), consumidores depois.",
+  "origem": "Medicao da TAR-421 em 19/09/2026: a pasta de avisos entre areas do site nao tem nenhum aviso sobre acompanhamento comercial humano, e sem ele nenhuma outra area pode obedecer.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

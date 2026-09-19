@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-026-falta-o-aviso-de-que-um-humano-assumiu-o-interessado",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "Falta o aviso oficial de que alguem da equipe assumiu um interessado",
+  detalhe: "A area dos interessados ja sabe tudo sobre o acompanhamento humano, e os 51 testes dela passam. Falta a voz: nao existe o aviso oficial que levaria esses fatos as outras areas, entao a mensagem automatica do site continua atropelando conversa humana.\n\nCriar o aviso mexe na pasta dos contratos entre areas, que so muda com autorizacao sua. Parei em vez de improvisar por fora. O caminho ficou na fila: TAR-487, TAR-488 e TAR-489.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1756",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  porque_so_voce: "A pasta dos contratos entre areas so muda com autorizacao nominal sua, porque um contrato errado ali quebra todas as areas que confiam nele.",
+  proximo_passo: "Escrever no PR da TAR-487 a linha Mandato-do-mantenedor autorizando mexer em contracts/eventos/, ou dizer que prefere outro desenho.",
+  se_eu_nao_decidir: "A mensagem automatica continua atropelando conversa humana, e as TAR-488 e TAR-489 ficam paradas.",
+  recomendacao: "Autorizar. Sao tres fatos, so identificadores viajam, e o PR contem somente a pasta dos contratos.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

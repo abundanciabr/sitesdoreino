@@ -1,0 +1,21 @@
+{
+  "arquivo": "488-fazer-a-area-de-interessados-avisar-as-outras-quando-alguem-",
+  "id": "TAR-488",
+  "titulo": "Fazer a area de interessados avisar as outras quando alguem da equipe assume",
+  "toca": [
+    "leads"
+  ],
+  "depende_de": [
+    "TAR-487"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Suite de leads verde, teste de falha parcial provando que o aviso e o fato nascem juntos ou nenhum dos dois nasce, e o freeze de contrato continuando verde.",
+  "despacho": "# Brief compilado\n\nobjetivo: Publicar em leads os eventos do acompanhamento comercial humano\ntipo: produto\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: cria ou muda comportamento de produto; precisa de julgamento semantico\ncelula: leads\n\n## Arquivos-alvo\n- services/leads/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n\n## Objetivo\nFazer a célula leads contar o que já sabe. O provedor do CRM humano está completo\n(12 de 12 operações do contrato, medido em 19/09/2026), e nenhuma delas publica\nevento: `grep -n \"Outbox\\|outbox\\|publicar\" services/leads/apps/core/models.py\nservices/leads/apps/core/*.py` não devolve nada. Enquanto isso não mudar, a\nmensageria continua mandando sequência automática para quem já está falando com\numa pessoa de verdade.\n\nPublicar os eventos criados pelo Rito de Contrato da tarefa da qual esta depende,\nnos mesmos pontos em que o provedor já escreve o histórico: abertura da\noportunidade, aceite da transferência, recusa da transferência, encerramento e\nreabertura.\n\n## Alvos\n`services/leads/apps/core/oportunidades.py`, `models.py`, migrations próprias,\n`services/leads/tests/` e `LICOES.md` se houver lição específica.\nReutilize `packages/outbox-relay` (`docs/decisoes/DECISAO-outbox-relay-comum.md`),\nque já é usado por alunos e identidade. Não escreva um segundo relay.\n\n## Somente leitura\n`contracts/leads.openapi.yaml`, `contracts/eventos/`, `packages/outbox-relay`,\n`services/mensageria/`.\n\n## Aceite\nOutbox transacional (INV-P6): o evento nasce na mesma transação do fato, ou\nnenhum dos dois nasce. Teste de falha parcial que prove isso. A superfície HTTP\nnão muda em nada, e o freeze de contrato continua verde, porque publicar evento\nnão é operação nova. Testes de transferência aceita e recusada, com a recusa\nprovando que nada além do registro de histórico mudou. Suíte de leads verde, e a\nprova por mutação em cada guarda novo.\n\n## Restrições\n`contracts/` permanece somente leitura: se algum campo do esquema não servir,\npare e devolva à maestro para outro Rito de Contrato, nunca ajuste o esquema aqui.\nNenhum segredo, gasto, SSH manual, leitura ou escrita no banco de outra célula.\nNão criar UI.",
+  "origem": "Medicao da TAR-421 em 19/09/2026: o provedor do CRM humano esta completo, 12 de 12 operacoes, e nenhuma delas publica evento.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}

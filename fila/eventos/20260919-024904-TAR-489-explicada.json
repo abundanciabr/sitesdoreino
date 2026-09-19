@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-024904-TAR-489-explicada",
+  "tarefa": "TAR-489",
+  "evento": "explicada",
+  "quando": "2026-09-19T02:49:04+00:00",
+  "quem": "Medicao da TAR-421 em 19/09/2026: a mensageria decide o envio olhando so a projecao do aluno, e nessa projecao nao existe o fato de haver um humano responsavel.",
+  "o_que_e": "As sequencias de mensagem automatica do site seguem o calendario delas sem saber se alguem da equipe ja esta conversando com aquela pessoa.",
+  "o_que_muda": "A sequencia para sozinha enquanto houver conversa humana e volta quando a equipe encerra. A pessoa deixa de receber mensagem de robo no meio de uma conversa de verdade.",
+  "exemplo": "E o que voce faz quando o telefone toca e voce ja esta falando com o cliente na sua frente: voce nao atende o telefone e continua a conversa.",
+  "importancia": 86
+}
