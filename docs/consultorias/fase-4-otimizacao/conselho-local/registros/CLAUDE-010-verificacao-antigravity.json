@@ -1,0 +1,11 @@
+{
+  "tipo": "verificacao",
+  "proposta": "CLAUDE-010",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T21:45:00-03:00",
+  "implementacao_sha256": "",
+  "decisao": "confirmar",
+  "justificativa": "A entrega do PR #1603 registra o evento concluida nas pendências (TAR-375 pelo #1608 e TAR-380 pelo #1609).",
+  "prova": "docs/consultorias/fase-4-otimizacao/conselho-local/registros/prova-verificacao-antigravity-CLAUDE-010.txt",
+  "prova_sha256": "ef5a76347da787dd7964e94829fa239ea57084cd758472cee55ecddc168ef994"
+}

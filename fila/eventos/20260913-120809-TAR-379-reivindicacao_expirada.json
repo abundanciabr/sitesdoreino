@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260913-120809-TAR-379-reivindicacao_expirada",
+  "tarefa": "TAR-379",
+  "evento": "reivindicacao_expirada",
+  "quando": "2026-09-13T12:08:09+00:00",
+  "quem": "despacho-docs-publicar-o-conselho",
+  "detalhe": "reivindicação órfã: a reserva venceu e não há PR aberto. A tarefa voltou à fila; nenhum ramo ou PR foi apagado."
+}
