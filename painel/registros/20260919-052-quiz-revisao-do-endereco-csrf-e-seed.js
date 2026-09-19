@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-052-quiz-revisao-do-endereco-csrf-e-seed",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "quiz: revisão do endereço, CSRF e seed",
+  detalhe: "Revisao do PR: o guarda do cookie de CSRF se autoconfirmava e o seed aceitava slug inalcancavel. Corrigidos e provados por quatro sabotagens.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768. Validação local: árvore 33e56d50ac5547017706d432fd6c1c949ef8beb0; commit 0f17af527b04f8c48612af5b45da1ccca562bf41; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-505",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "quiz",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
