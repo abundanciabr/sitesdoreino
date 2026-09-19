@@ -266,6 +266,26 @@ def test_o_preco_da_oferta_aparece_quando_a_copy_nao_escreveu_nenhum(client, red
     assert b"99,00" in resp.content  # price_cents 9900 da OFERTA_A
 
 
+def test_pagina_sem_uma_palavra_escrita_ainda_diz_o_que_esta_a_venda(client, rede):
+    """Nome e preco sao DADO, nao copy: sem eles sobraria um preco solto."""
+    resp = abrir(client, rede, [])
+    assert resp.status_code == 200
+    corpo = resp.content.decode()
+    assert f'<h2>{OFERTA_A["product"]["name"]}</h2>' in corpo
+    assert "99,00" in corpo
+    assert f'href="/checkout/{SLUG}/"' in corpo
+
+
+def test_a_headline_escrita_vence_o_nome_do_produto(client, rede):
+    resp = abrir(client, rede, SECOES_CHEIAS)
+    corpo = resp.content.decode()
+    assert "<h2>O que está incluído</h2>" in corpo
+    nome = OFERTA_A["product"]["name"]
+    assert (
+        f"<h2>{nome}</h2>" not in corpo
+    ), "o nome do produto roubou a headline escrita"
+
+
 def test_o_preco_escrito_na_copy_substitui_o_numero_e_nunca_soma_dois(client, rede):
     resp = abrir(client, rede, SECOES_CHEIAS)
     corpo = resp.content.decode()

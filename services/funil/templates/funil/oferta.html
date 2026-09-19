@@ -37,7 +37,11 @@
   <p>A página existe, e o que faltou foi o conteúdo dela, que vem de outro serviço. Atualize a página em alguns instantes.</p>
 </div>{% else %}{% for bloco in blocos %}{% if bloco.nome == "oferta" %}
 <section class="card oferta-secao" id="a-oferta" data-secao="oferta">
-  {% if bloco.headline %}<h2>{{ bloco.headline }}</h2>{% endif %}
+  {% if bloco.headline %}<h2>{{ bloco.headline }}</h2>{% elif oferta %}<h2>{{ oferta.product.name }}</h2>{% endif %}{% comment %}
+  O NOME DO PRODUTO entra no lugar da headline enquanto ela nao existe. O nome
+  e DADO, como o preco, e nao copy: uma pagina sem uma palavra escrita ainda
+  precisa dizer o que esta a venda, senao sobra um preco solto na tela.
+  {% endcomment %}
   {% if bloco.slots.o_que_recebe %}<p>{{ bloco.slots.o_que_recebe|linebreaksbr }}</p>{% endif %}{% comment %}
   O PRECO APARECE UMA VEZ (ferramenta 73, sem ancoragem). O numero cadastrado
   na oferta e a verdade; quando o mantenedor escreveu um `preco_texto`, e o
