@@ -1,0 +1,19 @@
+{
+  "arquivo": "508-vitrine-o-cookie-da-previa-da-equipe-viaja-sem-protecao-de-h",
+  "id": "TAR-508",
+  "titulo": "Vitrine: o cookie da previa da equipe viaja sem protecao de HTTPS",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste na celula funil provando que o cookie de ver_como sai com Secure quando a requisicao chega por HTTPS, com mutacao confirmada",
+  "despacho": "BRIEF FECHADO: Secure no cookie da vitrine.\n\n# Contexto\n`services/funil` e a unica celula Django sem `SECURE_PROXY_SSL_HEADER` no\n`config/settings.py`. Todas as outras (admin, cursos, encomendas, forum,\ngamificacao, identidade, metricas, pages, sugestoes) declaram\n`(\"HTTP_X_FORWARDED_PROTO\", \"https\")`. O TLS termina no Traefik, entao sem essa\nlinha `request.is_secure()` responde False em producao.\n\nConsequencia medida hoje: `apps/core/views.py::ver_como_view` grava o cookie de\nprevia com `secure=request.is_secure()`, e portanto sem `Secure` em producao.\nO cookie nao autoriza nada, mas viaja em claro, e toda gravacao de cookie futura\nnesta celula herda o mesmo engano.\n\n# Celula\n`funil`. Um PR, uma celula.\n\n# Alvos\n`services/funil/config/settings.py` e testes em `services/funil/tests/`.\n\n# Somente leitura\n`services/funil/apps/core/views.py`, `services/funil/apps/core/visitante.py`\n(ele ja contorna o problema usando `not settings.DEBUG`, e a decisao esta\nescrita na docstring), `services/identidade/config/settings.py` como modelo.\n\n# O que construir\nDeclare `SECURE_PROXY_SSL_HEADER = (\"HTTP_X_FORWARDED_PROTO\", \"https\")` na\ncelula, do mesmo jeito e no mesmo lugar em que as outras declaram. Confira o\nque muda junto: `request.is_secure()` passa a responder True atras do Traefik, e\nisso alcanca o cookie de `ver_como`. Nao ligue `SECURE_SSL_REDIRECT`: quem\nredireciona e o Traefik, e ligar aqui arrisca laco de redirecionamento.\n\nDepois disso, decida se `apps/core/visitante.py` deve voltar a\n`request.is_secure()` para ficar igual ao resto. Se voltar, o teste de atributos\ndo cookie de visitante tem de continuar verde, e a mutacao tem de continuar\nmordendo.\n\n# Prova exigida\n- Teste provando que o cookie de `ver_como` sai com `Secure` quando a\n  requisicao chega com `X-Forwarded-Proto: https`, e sem `Secure` quando chega\n  sem ele.\n- `python -m pytest` da celula funil, saida colada, sem regressao.\n- Guarda nova exige mutacao com vermelho confirmado antes do verde.",
+  "origem": "descoberto pelo despacho funil/identidade-do-visitante em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

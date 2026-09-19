@@ -1,0 +1,19 @@
+{
+  "arquivo": "512-vitrine-saber-que-a-mesma-pessoa-voltou",
+  "id": "TAR-512",
+  "titulo": "Vitrine: saber que a mesma pessoa voltou",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "PR com a suite da celula funil verde e os guardas do cookie provados por mutacao",
+  "despacho": "BRIEF FECHADO: a identidade do visitante.\n\n# Contexto\nAntes de `pedido.criado` a plataforma e cega: nao existe um evento de visita e\nnao existe forma de saber que a mesma pessoa voltou. Sem identidade estavel do\nvisitante anonimo nenhuma medicao de funil fecha e nenhuma atribuicao de venda\nfunciona. Esta tarefa entrega essa identidade, e so ela. Os eventos que a usam\nchegam em PRs seguintes, contra contratos escritos por outro despacho.\n\n# Celula\n`funil`. Um PR, uma celula.\n\n# Alvos\n`services/funil/apps/core/visitante.py` (novo), registro do middleware em\n`services/funil/config/settings.py`, testes em `services/funil/tests/`.\n\n# O que construir\nCookie de primeira parte com UUID4 opaco: sem dado pessoal, sem IP, sem\nimpressao digital. HttpOnly (o servidor entrega o numero a telemetria pelo\ncorpo da pagina, nunca o JavaScript lendo o cookie), SameSite=Lax, Secure em\nproducao, validade de um ano. Id existente nunca e sobrescrito. Nao encosta no\ncookie de sessao nem no fluxo de `ver_como`. Rota de maquina nao ganha cookie.\nExpor o id em `request` para quem vier depois.\n\n# Prova exigida\nPrimeira visita com Set-Cookie e id no request; segunda visita sem Set-Cookie e\ncom o mesmo id; atributos do cookie no regime de producao; rota de maquina e\nhost desconhecido sem cookie; cookie adulterado que nao derruba a pagina e nao\nvira identidade; sessao e `ver_como` intactos. Suite da celula colada. Guarda\nnova exige mutacao com vermelho confirmado antes do verde.",
+  "origem": "decisao do mantenedor em 19/09/2026: pagina real e telemetria do funil antes de experimentacao",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

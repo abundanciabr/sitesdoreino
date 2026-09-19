@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-062-docs-as-perguntas-da-pagina-de-oferta",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "docs: as perguntas da pagina de oferta",
+  detalhe: "26 perguntas, uma por espaco das sete secoes, cada fato com arquivo e linha. Ele ja especificou a pagina em 05/09, e o texto nao repede isso. Zero copy inventada. Muralhas PASS 13/13.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1776. Validação local: árvore e9ad1e7690602d7a9ddd010b436e264fe498a4a0; commit 7adcb3cdc529fc3bbf1cfb6e2b69cd0a53e57688; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-511",
+  gravidade: "info",
+  frente: "vender",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
