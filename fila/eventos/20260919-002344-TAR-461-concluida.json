@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-002344-TAR-461-concluida",
+  "tarefa": "TAR-461",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:23:44+00:00",
+  "quem": "agent/ci/portao-dos-workflows-com-ssh",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1738",
+  "verificado_em": "2026-09-19"
+}

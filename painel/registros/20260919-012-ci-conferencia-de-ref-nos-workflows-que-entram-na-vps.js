@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-012-ci-conferencia-de-ref-nos-workflows-que-entram-na-vps",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: conferencia de ref nos workflows que entram na VPS",
+  detalhe: "Treze programas entravam no servidor sem conferir de qual ramo vinham. Agora recusam ramo fora da main, e um guarda cobra o mesmo dos novos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1738. Validação local: árvore d28fdfe67c3ae8067f1ea5020c0cd503f479763b; commit 6d14db31ccaa81d69b4691cddc133a449d909557; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-461",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-002339-TAR-461-submetida",
+  "tarefa": "TAR-461",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:23:39+00:00",
+  "quem": "agent/ci/portao-dos-workflows-com-ssh",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1738",
+  "revisao": "6d14db31ccaa81d69b4691cddc133a449d909557",
+  "arvore": "d28fdfe67c3ae8067f1ea5020c0cd503f479763b"
+}
