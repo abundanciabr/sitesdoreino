@@ -1,7 +1,8 @@
 # apps/quiz/management/commands/seed_quiz.py  # [RECEITA:R9 v1]
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from apps.core.middleware import CAMINHOS_SEM_SITE
 from apps.quiz.models import Option, Question, Quiz, ResultBand, Site
 
 PERGUNTAS = [
@@ -62,6 +63,29 @@ FAIXAS = [
 ]
 
 
+def conferir_slug(slug: str) -> None:
+    """Recusa slug que nasceria publicado e inalcançável.
+
+    `SiteResolutionMiddleware` isenta alguns caminhos da resolução de site (a
+    sonda e os estáticos), e compara por PREFIXO. Desde que as páginas foram
+    para a raiz do urlconf, a rota do formulário é um curinga de um segmento:
+    um quiz de slug `healthz` mora em `/healthz/`, cai na isenção, e a view
+    responde 404 para sempre. Seria um quiz publicado que ninguém alcança, sem
+    nada acusando na hora de semear.
+
+    A lista vem do middleware, e não repetida aqui: dois nomes escritos à mão
+    divergiriam no dia em que alguém isentasse um terceiro caminho.
+    """
+    if f"/{slug}/".startswith(CAMINHOS_SEM_SITE):
+        reservados = ", ".join(caminho.strip("/") for caminho in CAMINHOS_SEM_SITE)
+        raise CommandError(
+            f"o slug {slug!r} nasceria inalcançável: /quiz/{slug}/ cai na isenção "
+            f"de resolução de site do middleware desta célula (caminhos que "
+            f"começam por {reservados}), e responderia 404 para sempre. "
+            f"Escolha outro slug."
+        )
+
+
 class Command(BaseCommand):
     help = "Dados fixos do Crivo (perguntas, opções, faixas de resultado): idempotente"
 
@@ -96,6 +120,7 @@ class Command(BaseCommand):
         destino_do_botao: str,
         **opts,
     ):
+        conferir_slug(slug)
         with transaction.atomic():
             site, _ = Site.objects.get_or_create(
                 id=site_id, defaults={"host": host.lower(), "name": site_name}

@@ -183,6 +183,39 @@ segmento só (eles resolvem agora, e a regra 1 o barra). O que ele ainda consert
 é o caminho de dois segmentos, `/quiz/<slug>/resultado/`, que é exatamente o
 link que as pessoas copiam.
 
+### O segundo efeito: um slug pode nascer publicado e inalcançável
+
+Achado na revisão do PR. O mesmo curinga faz com que um quiz de slug `healthz`
+more em `/healthz/`, caia na isenção de resolução de site e responda 404 para
+sempre: publicado, inalcançável, e sem nada acusando na hora de semear.
+`seed_quiz` passa a recusar esses slugs, e a lista ele LÊ de `CAMINHOS_SEM_SITE`.
+
+**Ler a lista não é preciosismo, e a medição provou isso contra mim.** A
+comparação do middleware é `startswith`, então a isenção é mais larga do que os
+dois nomes sugerem: `healthz2` e `healthzinho` também começam por `/healthz` e
+também seriam isentos. A primeira versão do teste listava `healthzinho` como
+slug honesto, e foi o próprio código, ao recusá-lo, que corrigiu o teste. Uma
+conferência escrita à mão (`slug in ("healthz", "static")`) erraria essa borda
+exatamente como eu errei, e a sabotagem que reproduz isso está medida no PR.
+
+### E um teste que se autoconfirmava
+
+Também da revisão. O guarda do alcance do cookie de CSRF fazia
+`settings.CSRF_COOKIE_PATH = "/quiz"` e depois conferia que o cookie saía em
+`/quiz`: media se o Django obedece a configuração que o próprio teste acabou de
+escrever. Trocar a linha do `config/settings.py` por `CSRF_COOKIE_PATH = "/"`
+fixo deixava o teste VERDE.
+
+A causa é que `CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"` é calculado UMA vez,
+no import. Trocar `settings.FORCE_SCRIPT_NAME` em tempo de execução (o que a
+fixture `env_de_producao` faz, e é o certo para o resto do arquivo) não
+recalcula nada.
+
+**Valor derivado de outro no import do settings não se testa por `settings`
+sobrescrito: exercite o IMPORT**, com a variável de ambiente real, que é o que a
+fixture `settings_recarregavel` faz. Vale para qualquer célula desta casa que
+derive cookie, caminho ou URL do `SCRIPT_NAME`.
+
 ## O botão da tela de resultado: destino é ARGUMENTO do seed, não constante
 
 A tela de resultado era um beco sem saída. O botão agora é da faixa

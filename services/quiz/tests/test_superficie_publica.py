@@ -50,9 +50,13 @@ linha que as outras nove células com CSRF desta casa já têm, e não custa
 variável de ambiente nenhuma (o Traefik sempre emite `X-Forwarded-Proto`).
 """
 
+import importlib
+import os
 import uuid
 
 import pytest
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.test import Client
 from django.urls import clear_script_prefix, reverse, set_script_prefix
 
@@ -72,6 +76,27 @@ def env_de_producao(settings):
     set_script_prefix(PREFIXO)
     yield
     clear_script_prefix()
+
+
+@pytest.fixture
+def settings_recarregavel(monkeypatch):
+    """Reimporta `config.settings` com um `SCRIPT_NAME` de verdade no ambiente.
+
+    Só assim dá para medir o que o módulo CALCULA no import. `django.conf.settings`
+    guarda uma cópia feita no arranque e não é tocada por isto, então o resto da
+    suíte não sente nada; ainda assim o módulo volta ao estado de origem no fim,
+    para nenhum teste seguinte herdar um `SCRIPT_NAME` que não é dele.
+    """
+    original = os.environ.get("SCRIPT_NAME", "")
+
+    def recarregar(script_name):
+        monkeypatch.setenv("SCRIPT_NAME", script_name)
+        return importlib.reload(importlib.import_module("config.settings"))
+
+    yield recarregar
+
+    os.environ["SCRIPT_NAME"] = original
+    importlib.reload(importlib.import_module("config.settings"))
 
 
 @pytest.fixture
@@ -251,14 +276,105 @@ def test_https_atras_do_traefik_aceita_a_origem_do_proprio_site(navegador, quiz_
     assert Submission.objects.count() == 1
 
 
-def test_o_cookie_de_csrf_tem_nome_e_alcance_desta_celula(
-    navegador, quiz_a, env_de_producao, settings
-):
+def test_o_cookie_de_csrf_sai_com_o_nome_desta_celula(navegador, quiz_a):
     """Um `csrftoken` genérico colide com o das outras células no MESMO domínio
-    (Lei 9: um host, N células sob prefixos). E o alcance é o prefixo da célula:
-    o token protege os formulários que moram aqui, não o site inteiro."""
-    settings.CSRF_COOKIE_PATH = PREFIXO
-
+    (Lei 9: um host, N células sob prefixos, e o navegador guarda cookie por
+    nome, domínio e caminho)."""
     navegador.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST)
 
-    assert navegador.cookies["quiz_csrf"]["path"] == PREFIXO
+    assert "quiz_csrf" in navegador.cookies
+    assert "csrftoken" not in navegador.cookies
+
+
+@pytest.mark.parametrize("script_name,alcance", [("/quiz", "/quiz"), ("", "/")])
+def test_o_alcance_do_cookie_de_csrf_sai_do_prefixo_da_celula(
+    settings_recarregavel, script_name, alcance
+):
+    """O `CSRF_COOKIE_PATH` do settings, medido do ENV, e não escrito pelo teste.
+
+    **A primeira versão deste teste não media nada**, e a revisão do PR pegou:
+    ela fazia `settings.CSRF_COOKIE_PATH = "/quiz"` e depois conferia que o
+    cookie saía em `/quiz`. Isso pergunta se o `CsrfViewMiddleware` do Django
+    obedece a configuração que o próprio teste acabou de escrever. Trocar a
+    linha do `config/settings.py` por `CSRF_COOKIE_PATH = "/"` fixo deixava o
+    teste VERDE, medido em 19/09/2026.
+
+    A causa de fundo: `CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"` é calculado
+    UMA vez, no import do settings. A fixture `env_de_producao` troca
+    `settings.FORCE_SCRIPT_NAME` em tempo de execução e nada recalcula: depois
+    do import os dois valores são independentes.
+
+    Então quem tem de ser exercitado é o IMPORT, com a variável de ambiente que
+    a VPS entrega de verdade.
+
+    O alcance importa porque o token protege os formulários que moram AQUI:
+    mandá-lo para "/" seria um cookie viajando em toda página do site para
+    proteger formulário que não está lá.
+    """
+    modulo = settings_recarregavel(script_name)
+
+    assert modulo.FORCE_SCRIPT_NAME == (script_name or None)
+    assert modulo.CSRF_COOKIE_PATH == alcance
+    assert modulo.CSRF_COOKIE_NAME == "quiz_csrf"
+
+
+# ---------------------------------------------------------------------------
+# 3. O endereço que o seed NÃO pode criar
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("slug", ["healthz", "healthz2", "healthzinho", "static"])
+def test_o_seed_recusa_slug_que_o_curinga_nunca_alcanca(db, slug):
+    """Quiz publicado e inalcançável para sempre, sem nada acusando na hora.
+
+    `SiteResolutionMiddleware` isenta `/healthz` e `/static/` da resolução de
+    site, e a comparação é por PREFIXO. Com as páginas na raiz do urlconf, a
+    rota do formulário é um curinga de um segmento: um quiz de slug `healthz`
+    mora em `/healthz/`, cai na isenção, a view nunca recebe `request.site` e
+    responde 404 para sempre.
+
+    **E a isenção é mais larga do que os dois nomes sugerem**, o que só se vê
+    medindo: `healthz2` e `healthzinho` também começam por `/healthz`, e o
+    middleware os isenta igual. Foi o próprio código que corrigiu a primeira
+    versão deste teste, que listava `healthzinho` como slug honesto. É por isso
+    que a regra se LÊ de `CAMINHOS_SEM_SITE` em vez de repetir nomes à mão:
+    escrita à mão, ela erraria essa borda exatamente como eu errei.
+
+    Semear é o único momento em que dá para avisar a tempo.
+    """
+    with pytest.raises(CommandError) as erro:
+        call_command(
+            "seed_quiz",
+            host=HOST,
+            site_id="site-publico",
+            site_name="Site Público",
+            destino_do_botao="/checkout/curso-teste/",
+            slug=slug,
+        )
+
+    recado = str(erro.value)
+    assert slug in recado
+    assert "/quiz/" in recado, "a mensagem não diz o que aconteceu"
+    assert "escolha outro" in recado.lower(), "a mensagem não diz o que fazer"
+    assert not Quiz.objects.exists()
+
+
+def test_o_seed_aceita_slug_comum(db):
+    """O outro lado, e ele importa tanto quanto: uma recusa larga demais tiraria
+    slug honesto do mapa. `estatico` não começa por `/static/`, e `saude` não
+    tem nada com a sonda apesar do assunto."""
+    for slug in ("crivo", "estatico", "saude"):
+        call_command(
+            "seed_quiz",
+            host=HOST,
+            site_id="site-publico",
+            site_name="Site Público",
+            destino_do_botao="/checkout/curso-teste/",
+            slug=slug,
+        )
+
+    assert set(Quiz.objects.values_list("slug", flat=True)) == {
+        "crivo",
+        "estatico",
+        "saude",
+    }
