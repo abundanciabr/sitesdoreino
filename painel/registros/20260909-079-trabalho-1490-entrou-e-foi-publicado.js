@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-079-trabalho-1490-entrou-e-foi-publicado",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "O trabalho 1490 entrou no projeto e foi publicado",
+  detalhe: "A pista integrou a versão revisada 841e5f758f2b8a76a47c0114daf83e1cae7e183a no commit 16e4beab8594dbd65973359f2926f739f1262bc0. A publicação 34373070111 terminou em verde nas quatro etapas. O novo controle foi exercitado no trabalho 1497: passou de AGUARDANDO_PUBLICACAO para PUBLICADO, com estado terminal e nenhuma etapa sem prova.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1490",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
