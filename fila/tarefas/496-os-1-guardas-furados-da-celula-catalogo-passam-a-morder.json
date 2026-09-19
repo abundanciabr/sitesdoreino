@@ -1,0 +1,19 @@
+{
+  "arquivo": "496-os-1-guardas-furados-da-celula-catalogo-passam-a-morder",
+  "id": "TAR-496",
+  "titulo": "Os 1 guardas furados da celula catalogo passam a morder",
+  "toca": [
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "para cada um de test_inv_p11_fronteira_site.py: a saida real do teste REPROVANDO com a sabotagem exata do despacho no lugar, e a saida do mesmo teste passando depois de desfazer pela copia de backup",
+  "despacho": "Os 1 guardas de invariante da celula catalogo listados abaixo foram provados MORTOS por mutacao real em bancada isolada, em 19/09/2026. Em cada um: linha de base verde, sabotagem de producao aplicada, teste rodado de novo e CONTINUOU VERDE, e desfazimento por copia de backup com a bancada conferida limpa. Nao e leitura, e execucao.\n\nALVO: services/catalogo/tests/test_inv_p11_fronteira_site.py\n  sabotagem aplicada: Em services/catalogo/apps/core/api.py, linha 428 (dentro de get_offer), troquei ` \"price_cents\": offer.price_cents,` por ` \"price_cents\": offer.product.price_cents,` (mutacao de um unico token; o select_related(\"product\") da linha 415 ja deixa o produto carregado, entao nem sequer surge query extra). Desfeito pela copia de backup em %TEMP%\\api.py.backup, nunca por git checkout.\n  saida real: INSTRUMENTO: o python padrao (3.14) nao tem Django; usei `py -3.12` (Django instalado) com DJANGO_SECRET_KEY=ci-apenas-nunca-em-producao e DATABASE_URL=sqlite:///<worktree>/services/catalogo/dev-mutation.sqlite3, rodando de C:\\Users\\davia\\abundanciabr\\sitesdoreino\\.claude\\worktrees\\wf_ab425699-fdd-199\\services\\catalogo (bancada isolada; o clone principal nao foi tocado). Nao foi preciso container. ANTES (base limpa): $ py -3.12 -m pytest tests/test_inv_p11_fronteira_site.py -q ... [100%] 3 passed, 6 warnings in 0.94s DEPOIS (com a sabotagem na linha 428): $ git diff --stat services/catalogo/apps/core/api.py | 2 +- 1 file changed, 1 insertion(+), 1 deletion(-) $ py -3.12 -m pytest tests/test_\n\nO QUE FAZER: para cada guarda acima, torne o teste capaz de reprovar com exatamente aquela sabotagem no lugar. Prove vermelho para verde: aplique a sabotagem, mostre o teste REPROVANDO, desfaca pela copia de backup e mostre o teste passando. Nao troque a promessa do guarda por outra mais facil de medir.\n\nARMADILHA: o python do PATH e 3.14 e nao tem django; use py -3.12. ci/ci.py --apenas testador estoura 900s no Windows, o que e ERROR de instrumento e nao FAIL.",
+  "origem": "varredura dos 101 invariantes, run wf_ab425699-fdd, 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
