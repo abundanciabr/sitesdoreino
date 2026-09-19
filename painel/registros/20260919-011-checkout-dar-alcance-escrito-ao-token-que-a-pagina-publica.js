@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-011-checkout-dar-alcance-escrito-ao-token-que-a-pagina-publica",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "checkout: dar alcance escrito ao token que a página publica",
+  detalhe: "Token da pagina vira par de alcada escrita: 403 fora de createSession, placeOrder e getOrder. 5 guardas sabotados reprovaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1745. Validação local: árvore d9367f4d62e671f1af1df7c46fb704b5568e863d; commit 2e78dadba903f09d725922d962caf9db2af4487c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-478",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

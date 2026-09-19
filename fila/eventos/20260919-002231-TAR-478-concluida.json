@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-002231-TAR-478-concluida",
+  "tarefa": "TAR-478",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:22:31+00:00",
+  "quem": "agent/checkout/alcance-do-token-publico",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1745",
+  "verificado_em": "2026-09-19"
+}
