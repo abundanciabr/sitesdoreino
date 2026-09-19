@@ -3,8 +3,8 @@
   "id": "TAR-507",
   "titulo": "Escrever a decisão que põe a página de venda real antes de qualquer teste A/B",
   "toca": [
-    "docs",
-    "decisoes"
+    "docs/decisoes",
+    "fila"
   ],
   "depende_de": [],
   "cria": [],
