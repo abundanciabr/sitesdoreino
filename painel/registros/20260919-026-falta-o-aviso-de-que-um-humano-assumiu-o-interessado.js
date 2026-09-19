@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-026-falta-o-aviso-de-que-um-humano-assumiu-o-interessado",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "Autorizar o aviso de que a equipe assumiu um interessado",
+  detalhe: "A area dos interessados ja sabe quando alguem da equipe assume uma pessoa, quem passou para quem e quando o atendimento terminou. Falta o aviso oficial que levaria esses fatos as outras areas: sem ele, a mensagem automatica do site continua escrevendo por cima de uma conversa humana.\n\nCriar esse aviso mexe na pasta dos contratos entre areas, que so muda com autorizacao sua. Parei em vez de improvisar um atalho, e deixei o caminho pronto na fila.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1756",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  porque_so_voce: "Contrato entre areas so muda com autorizacao sua.",
+  proximo_passo: "Autorizar a TAR-487 a mexer em contracts/eventos/.",
+  se_eu_nao_decidir: "O robo segue falando por cima da equipe.",
+  recomendacao: "Autorizar: o PR nao toca codigo.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();
