@@ -1292,6 +1292,13 @@ class Sessao:
                 cwd=self.plano.worktree,
                 timeout=120,
             )
+            self._exigir(
+                passo,
+                ["git", "commit", "-m",
+                 f"chore: embarcar o comprovante de {self.plano.tarefa_da_fila}"],
+                cwd=self.plano.worktree,
+                timeout=120,
+            )
         else:
             adiante = self._correr(
                 ["git", "rev-list", "--count", f"origin/main..{self.plano.branch}"],
