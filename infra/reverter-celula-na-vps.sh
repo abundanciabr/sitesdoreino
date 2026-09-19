@@ -34,6 +34,43 @@ if [ -z "${CELULA:-}" ] || [ -z "${VAR_TAG:-}" ] || [ -z "${TAG:-}" ]; then
   exit 1
 fi
 
+# =============================================================================
+# AS CHAVES DO GATEWAY, ANTES DE QUALQUER COMANDO COMPOSE.
+#
+# Este bloco é CÓPIA do contrato que `infra/deploy-celula-na-vps.sh` já cumpre,
+# e a cópia é obrigatória, não preguiça: a `appleboy/ssh-action` envia o
+# CONTEÚDO de um único arquivo, e /opt/plataforma não tem o repositório. Um
+# trecho compartilhado por `source` não existiria na VPS, e o rollback pararia
+# em toda execução. Quem impede as duas cópias de divergirem é o guarda de
+# paridade `ci/tests/test_paridade_das_chaves_do_gateway.py`.
+#
+# POR QUE ELE FALTAVA AQUI, medido em 19/09/2026 (TAR-486): sem estas duas
+# variáveis exportadas, a interpolação do compose falha, `docker compose config
+# --services` devolve VAZIO, e o script abortava logo abaixo com "não tem
+# serviço algum" — para TODA célula. O diagnóstico honesto custou uma noite: a
+# mensagem parecia dizer que faltava segredo na VPS, e o que faltava era este
+# bloco. Quatro smokes reais mostraram o mesmo sintoma nas quatro tentativas.
+#
+# NENHUM VALOR APARECE NA TELA: o log do run é lido por gente, e segredo nele é
+# incidente. Este é o único ponto do script que abre um `env/`.
+# =============================================================================
+ENV_DO_ADMIN="/opt/plataforma/env/admin.env"
+for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR_DO_GATEWAY=$(grep -m1 "^$CHAVE_DO_GATEWAY=" "$ENV_DO_ADMIN" | cut -d= -f2-) || VALOR_DO_GATEWAY=""
+  if [ -z "$VALOR_DO_GATEWAY" ]; then
+    echo "PAROU POR SEGURANÇA: $CHAVE_DO_GATEWAY está ausente ou vazia em $ENV_DO_ADMIN."
+    echo "O compose exige essa chave no serviço traefik, e sem ela nenhum comando"
+    echo "'docker compose' desta plataforma roda. Nada foi tocado: nenhuma imagem"
+    echo "subiu e a célula continua onde estava."
+    echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
+    echo "na VPS, e dispare o rollback de novo. O valor não se descobre daqui, e"
+    echo "este script nunca o imprime."
+    exit 1
+  fi
+  export "$CHAVE_DO_GATEWAY=$VALOR_DO_GATEWAY"
+done
+unset VALOR_DO_GATEWAY
+
 # A célula não é UM container: consumers de evento e worker Huey vivem em
 # "<celula>-<papel>". Voltar só "<celula>" deixaria o auxiliar na imagem nova,
 # em silêncio — duas versões do mesmo código no ar durante uma emergência. A
