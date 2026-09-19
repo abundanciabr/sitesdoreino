@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 import fila
+import revisor_de_pouso
 import responsabilidades
 from _nucleo import ErroDeInstrumentacao, Estado, Resultado
 
@@ -788,7 +789,7 @@ def test_guarda_comum_recusa_tarefa_nova_sem_cadastro_de_responsabilidades(tmp_p
     else:
         monkeypatch.setattr(fila, "bancada_contem_main_publicada", lambda *a: True)
         monkeypatch.setattr(fila, "provar_reconciliacao", lambda *a: ("prova", "2026-09-10"))
-        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js")
+        args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", aceite_registro="aceite.js", retroativa="")
         assert fila.cmd_reconciliar(tmp_path, args) == 1
 
 
@@ -1928,6 +1929,7 @@ def args_de_reconciliar(**extra):
         tarefa="TAR-001",
         quem="maestro",
         aceite_registro=REGISTRO_DE_ACEITE,
+        retroativa="",
         **extra,
     )
 
@@ -3478,3 +3480,169 @@ def test_o_feito_que_viaja_na_entrega_passa_pelo_MESMO_portao(
         fila.cmd_fechar_pela_entrega(raiz, args_de_fechar())
     assert "continuou verde" in capsys.readouterr().out
     assert not list((raiz / "fila" / "eventos").glob("*-concluida.json"))
+
+
+# ---------------------------------------------------------------------------
+# A MESMA RÉGUA DO POUSO, NO FECHO DA TAREFA
+#
+# `ci/mergear.py` mede o atestado com a bancada em mãos: quando o SHA revisado
+# não é o HEAD final, `comprovar_atualizacao_da_base` diz se a diferença é só
+# main recebida. A fila media o mesmo atestado SEM a bancada, então recusava
+# como "não revisado" toda entrega que ficou aberta tempo bastante para receber
+# a main. Sete tarefas entregues, integradas e publicadas ficaram presas assim.
+# ---------------------------------------------------------------------------
+
+
+def pr_e_estado_reconciliaveis():
+    pr = {
+        "url": URL_SUBMISSAO,
+        "headRefOid": HEAD_RECONCILIADO,
+        "mergeCommit": {"oid": MERGE_RECONCILIADO},
+        "body": "",
+    }
+    estado = {
+        "estado": "PUBLICADO",
+        "terminal": True,
+        "sha_atual": HEAD_RECONCILIADO,
+        "sha_integrado": MERGE_RECONCILIADO,
+        "runs": [{"url": RUN_RECONCILIADO}],
+    }
+    return pr, estado
+
+
+def atestado_de_outro_sha(sha):
+    corpo = revisor_de_pouso.MARCA_ATESTADO + json.dumps({
+        "sha": sha,
+        "despacho": "despacho",
+        "revisor": "revisor",
+        "maestro": "maestro",
+        "veredito": "APROVADO",
+        "resumo": "entrega revisada",
+        "evidencia": "suíte verde",
+    })
+    return [{"id": 9, "author_association": "OWNER", "body": corpo}]
+
+
+def test_reconciliacao_mede_a_atualizacao_da_base_como_o_pouso_mede(
+    tmp_path, monkeypatch
+):
+    """Sem a bancada, o atestado de outro SHA é recusado sem sequer ser medido."""
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+    monkeypatch.setattr(fila, "medir_linhagem", lambda *a: None)
+    monkeypatch.setattr(
+        fila.estado_da_entrega,
+        "_api",
+        lambda *a, **k: atestado_de_outro_sha(REVISAO_RECONCILIADA),
+    )
+    # tmp_path não é repositório: a composição não pode ser provada e o veredito
+    # vira ERRO de instrumento. O que este teste prova é que ela foi TENTADA.
+    with pytest.raises(
+        fila.RecusaDeReconciliacao, match="comprovar a atualização da base"
+    ):
+        fila.provar_reconciliacao(
+            tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE
+        )
+
+
+# ---------------------------------------------------------------------------
+# O FECHAMENTO RETROATIVO
+#
+# A linhagem prova que o conteúdo entregue é o conteúdo que o despacho testou.
+# Entrega antiga cujo despacho seguiu trabalhando sem re-submeter perde essa
+# prova para sempre. O substituto não é perdão: são os checks que a proteção da
+# main exige, verdes no SHA exato que integrou — prova mais forte, porque é da
+# pista e não da palavra do despacho. Ela só existe declarada, com motivo, e
+# viaja dentro da evidência do evento `concluida`.
+# ---------------------------------------------------------------------------
+
+
+def checks_do_head(conclusao="success"):
+    corridas = [
+        {"name": nome, "conclusion": conclusao}
+        for nome in fila.CHECKS_DA_INTEGRACAO
+    ]
+    return {"total_count": len(corridas), "check_runs": corridas}
+
+
+def reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks, **extra):
+    pr, estado = pr_e_estado_reconciliaveis()
+    monkeypatch.setattr(fila.estado_da_entrega, "ler_pr", lambda *a: pr)
+    monkeypatch.setattr(fila.estado_da_entrega, "consultar_entrega", lambda *a: estado)
+
+    def recusar(*a):
+        raise fila.RecusaDeReconciliacao("há código posterior à revisão: app.py")
+
+    monkeypatch.setattr(fila, "medir_linhagem", extra.pop("linhagem", recusar))
+    monkeypatch.setattr(
+        fila.revisor_de_pouso,
+        "avaliar_atestado",
+        lambda *a, **k: Resultado("revisão", Estado.PASS, "atestado aprovado"),
+    )
+    monkeypatch.setattr(
+        fila,
+        "carregar_aceite",
+        lambda *a: {"verificado_em": "2026-09-10"},
+    )
+
+    def api(raiz, caminho, **k):
+        if "check-runs" in caminho:
+            assert HEAD_RECONCILIADO in caminho
+            return checks
+        return []
+
+    monkeypatch.setattr(fila.estado_da_entrega, "_api", api)
+    return fila.provar_reconciliacao(
+        tmp_path, submissao_reconciliavel(), REGISTRO_DE_ACEITE, **extra
+    )
+
+
+def test_sem_declarar_retroativa_a_linhagem_recusada_continua_recusando(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="código posterior"):
+        reconciliar_com_linhagem_recusada(tmp_path, monkeypatch, checks_do_head())
+
+
+def test_retroativa_troca_a_linhagem_pelos_checks_verdes_e_grava_o_motivo(
+    tmp_path, monkeypatch
+):
+    evidencia, verificado_em = reconciliar_com_linhagem_recusada(
+        tmp_path,
+        monkeypatch,
+        checks_do_head(),
+        retroativa="despacho seguiu sem re-submeter; PR 1540 integrado",
+    )
+    assert verificado_em == "2026-09-10"
+    assert "retroativa: despacho seguiu sem re-submeter" in evidencia
+    assert "há código posterior à revisão: app.py" in evidencia
+    for nome in fila.CHECKS_DA_INTEGRACAO:
+        assert nome in evidencia
+
+
+def test_retroativa_nao_fecha_entrega_com_check_obrigatorio_fora_do_verde(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não ficou verde"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path, monkeypatch, checks_do_head("failure"), retroativa="motivo"
+        )
+    vazio = {"total_count": 0, "check_runs": []}
+    with pytest.raises(fila.RecusaDeReconciliacao, match="não existe no HEAD"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path, monkeypatch, vazio, retroativa="motivo"
+        )
+
+
+def test_retroativa_e_recusada_quando_a_linhagem_se_comprova_sozinha(
+    tmp_path, monkeypatch
+):
+    with pytest.raises(fila.RecusaDeReconciliacao, match="linhagem já se comprova"):
+        reconciliar_com_linhagem_recusada(
+            tmp_path,
+            monkeypatch,
+            checks_do_head(),
+            linhagem=lambda *a: None,
+            retroativa="motivo",
+        )

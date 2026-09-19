@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-007-armadilhas-exportador-que-le-o-proprio-contrato-cega-o-porta",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "armadilhas: exportador que le o proprio contrato cega o portao de freeze",
+  detalhe: "Licao transversal: guarda cuja medicao deriva do proprio artefato conferido nunca reprova; verificado no exportador de leads (PR 1733).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1747. Validação local: árvore 726b0089dd31f62316e39df9c551694ccbd7f7c7; commit 35b919c24f3f1dcab663add2082502c2fe2bc80d; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-480",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
