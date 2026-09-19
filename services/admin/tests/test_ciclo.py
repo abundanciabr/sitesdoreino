@@ -22,6 +22,7 @@ O que estes guardas protegem:
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 
 import httpx
 import pytest
@@ -37,6 +38,14 @@ COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 ALUNOS = "http://alunos:8000/api/alunos"
 ALUNOS_LISTA = f"{ALUNOS}/matriculas"
+
+#: A tela do calendário, lida como arquivo: três guardas medem a PROSA dela.
+TELA_DO_CICLO = Path(placar.__file__).parent / "templates" / "admin" / "ciclo.html"
+
+#: A frase da tela que repete, em português, um número que mora no cartão.
+#: Ela fica INTEIRA numa linha do template de propósito (armadilhas/394).
+FRASE_DAS_SEMANAS_EM_ZERO = "As {} primeiras semanas pedem zero venda de propósito"
+POR_EXTENSO = {1: "uma", 2: "duas", 3: "três", 4: "quatro", 5: "cinco", 6: "seis"}
 
 #: Um cartão de meta com curva, pequeno o bastante para a conta ser óbvia:
 #: duas semanas de 5 dias, alvo 30, partida 0.
@@ -78,6 +87,25 @@ def _dentro() -> Client:
     c = Client()
     c.defaults["HTTP_COOKIE"] = COOKIE
     return c
+
+
+def _cartao_de_verdade() -> dict:
+    """O cartão que está no repositório, o mesmo que a tela lê em produção."""
+    cartao, recusas = placar.ler_cartao(
+        placar.CARTAO_DA_META, placar.diretorio_dos_cartoes()
+    )
+    assert cartao is not None, f"o cartão da meta não abriu: {recusas}"
+    return cartao
+
+
+def _linhas_da_tabela(html: str) -> dict:
+    """Cada `<tr>` de semana da tela renderizada, achável pelo nome da linha."""
+    linhas = {}
+    for pedaco in html.split('<tr class="semana ')[1:]:
+        corpo = pedaco.split("</tr>")[0]
+        nome = corpo.split("<b>")[1].split("</b>")[0].strip()
+        linhas[nome] = corpo
+    return linhas
 
 
 # --------------------------------------------------------------- a régua
@@ -255,10 +283,68 @@ def test_o_placar_nao_fala_mais_em_linha_reta():
     Um número julgado pela curva e explicado como linha reta é a tela mentindo
     com todas as letras certas.
     """
-    from pathlib import Path
-
     caminho = Path(placar.__file__).parent / "templates" / "admin" / "placar.html"
     assert "linha reta" not in caminho.read_text(encoding="utf-8")
+
+
+@respx.mock
+def test_a_tela_mostra_o_calendario_do_cartao_e_marca_a_faixa_de_hoje(monkeypatch):
+    """A prova que só a tela renderizada dá: as datas certas, no lugar certo.
+
+    Em 17/09/2026 quem está andando é a PREPARAÇÃO (14 a 18/09), e a semana 1
+    ainda nem começou (21 a 25/09). Um guarda que só medisse o cartão ficaria
+    verde com a tela mostrando outra coisa, que foi exatamente o que aconteceu
+    entre o ajuste da curva e este PR.
+    """
+    monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 9, 17))
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
+    resposta = _dentro().get(reverse("ciclo"))
+    assert resposta.status_code == 200
+
+    linhas = _linhas_da_tabela(resposta.content.decode())
+    assert "14/09" in linhas["Preparação"] and "18/09" in linhas["Preparação"]
+    assert "é esta" in linhas["Preparação"]
+    assert "21/09" in linhas["Semana 1"] and "25/09" in linhas["Semana 1"]
+    assert "é esta" not in linhas["Semana 1"]
+    assert "14/12" in linhas["Recuperação"] and "15/12" in linhas["Recuperação"]
+
+
+def test_a_prosa_da_tela_conta_as_mesmas_semanas_em_zero_que_o_cartao():
+    """O número escrito por extenso na tela contra o número que o cartão tem.
+
+    É o guarda que faltava: a curva mudou em 04/09/2026 e a frase "as três
+    primeiras semanas" ficou treze dias no ar dizendo três onde o cartão já
+    dizia cinco. Nenhum portão via, porque prosa não é dado.
+    """
+    em_zero = 0
+    for semana in _cartao_de_verdade()["semanas"]:
+        if semana["alvo"]:
+            break
+        em_zero += 1
+    frase = FRASE_DAS_SEMANAS_EM_ZERO.format(POR_EXTENSO[em_zero])
+    assert frase in TELA_DO_CICLO.read_text(
+        encoding="utf-8"
+    ), f"o cartão tem {em_zero} faixas em zero e a tela não diz isso: {frase!r}"
+
+
+def test_a_tela_nao_chama_a_recuperacao_de_semana():
+    """Desde 17/09/2026 a recuperação são os dias que sobram até o prazo."""
+    assert (
+        "semana de recuperação" not in TELA_DO_CICLO.read_text(encoding="utf-8").lower()
+    )
+
+
+def test_a_ultima_faixa_do_ciclo_cabe_dentro_do_prazo():
+    """Recuperação depois do prazo é ficção: ninguém recupera fora do jogo.
+
+    O validador do cartão confere ordem, soma e sobreposição, mas não olha para
+    `ate`: sem este guarda, deslocar a curva empurra a última faixa para fora
+    do prazo sem nada ficar vermelho.
+    """
+    cartao = _cartao_de_verdade()
+    ultima = dt.date.fromisoformat(cartao["semanas"][-1]["ate"])
+    prazo = dt.date.fromisoformat(cartao["ate"])
+    assert ultima <= prazo, f"a última faixa termina em {ultima} e o prazo é {prazo}"
 
 
 @respx.mock

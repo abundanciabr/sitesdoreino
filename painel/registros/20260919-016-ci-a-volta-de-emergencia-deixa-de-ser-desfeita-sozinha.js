@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-016-ci-a-volta-de-emergencia-deixa-de-ser-desfeita-sozinha",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: a volta de emergencia deixa de ser desfeita sozinha",
+  detalhe: "Congelamento com prazo em referencia do GitHub, lido pelo pouso antes de integrar. Provado nos dois sentidos, por 7 mutacoes e no servidor real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1739. Validação local: árvore 98bb9ca116a42e198403684dfdf22c69ecd35d65; commit 332f9008a89818f34f5e22b64ed0929d050e6e61; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-462",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

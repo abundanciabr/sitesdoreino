@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-135903-TAR-437-explicada",
+  "tarefa": "TAR-437",
+  "evento": "explicada",
+  "quando": "2026-09-17T13:59:03+00:00",
+  "quem": "PR #1684: 19 minutos verde e pulado em silencio pela varredura do pouso",
+  "o_que_e": "A casa aprendeu tres coisas caras ao abrir o PR #1684 e nao tinha onde guardar: o formato que o portao do mandato aceita, o comando que revela um PR pulado, e o ambiente que o portao da raiz exige para dizer a verdade.",
+  "o_que_muda": "Quem for abrir um PR que toca caminho de dono acha a receita pronta no CAMINHO-DOURADO.md e o aviso na hora certa pelo indice das armadilhas, em vez de descobrir sozinho depois de horas de espera.",
+  "exemplo": "Um agente toca CAMINHO-DOURADO.md, cola o mandato de uma linha da receita R14, roda python ci/mergear.py 1690 --conferir, le PASS e entrega. Sem a receita, ele escreve o mandato em paragrafo e o PR fica verde e parado sem uma linha de log.",
+  "importancia": 55
+}

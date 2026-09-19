@@ -42,23 +42,24 @@ ele em 04/09/2026), repartida assim:
 
 | Semana | De | Até | Meta | Acumulado | Cresce |
 |---|---|---|---|---|---|
-| Preparação | 07/09 | 11/09 | 0 | 0 | |
-| 1 | 14/09 | 18/09 | 0 | 0 | |
-| 2 | 21/09 | 25/09 | 0 | 0 | |
-| 3 | 28/09 | 02/10 | 0 | 0 | |
-| 4 | 05/10 | 09/10 | 0 | 0 | |
-| 5 | 12/10 | 16/10 | 20 | 20 | |
-| 6 | 19/10 | 23/10 | 31 | 51 | +55% |
-| 7 | 26/10 | 30/10 | 45 | 96 | +45% |
-| 8 | 02/11 | 06/11 | 69 | 165 | +53% |
-| 9 | 09/11 | 13/11 | 103 | 268 | +49% |
-| 10 | 16/11 | 20/11 | 154 | 422 | +50% |
-| 11 | 23/11 | 27/11 | 231 | 653 | +50% |
-| 12 | 30/11 | 04/12 | 347 | 1000 | +50% |
-| Recuperação | 07/12 | 11/12 | 0 | 1000 | |
+| Preparação | 14/09 | 18/09 | 0 | 0 | |
+| 1 | 21/09 | 25/09 | 0 | 0 | |
+| 2 | 28/09 | 02/10 | 0 | 0 | |
+| 3 | 05/10 | 09/10 | 0 | 0 | |
+| 4 | 12/10 | 16/10 | 0 | 0 | |
+| 5 | 19/10 | 23/10 | 20 | 20 | |
+| 6 | 26/10 | 30/10 | 31 | 51 | +55% |
+| 7 | 02/11 | 06/11 | 45 | 96 | +45% |
+| 8 | 09/11 | 13/11 | 69 | 165 | +53% |
+| 9 | 16/11 | 20/11 | 103 | 268 | +49% |
+| 10 | 23/11 | 27/11 | 154 | 422 | +50% |
+| 11 | 30/11 | 04/12 | 231 | 653 | +50% |
+| 12 | 07/12 | 11/12 | 347 | 1000 | +50% |
+| Recuperação | 14/12 | 15/12 | 0 | 1000 | |
 
-As datas são as do mantenedor, conferidas: todas de segunda a sexta, cinco dias
-cada.
+As datas são as do mantenedor, deslocadas em uma semana por ele em 17/09/2026
+(§8) e conferidas: todas começam numa segunda, e todas terminam numa sexta,
+menos a recuperação, que termina no prazo.
 
 ### 3.1 A regra que gera os números, e por que ela não é escolha de gosto
 
@@ -175,6 +176,35 @@ docstring do `placar.py`), ele foi **retirado** em vez de atualizado. Cópia de
 número é o que envelhece em silêncio, e a terceira mudança de alvo não vai
 precisar de uma caçada por textos desatualizados.
 
+## 8. O deslocamento de uma semana (17/09/2026)
+
+Pedido dele, com a razão dita na mesma frase: *"a data da semana de preparação
+começou em 14/09 e a semana 1 começa na próxima semana dia 21/09 (ou seja,
+perdemos 1 semana com os problemas do Claude Code, mas tudo bem)"*.
+
+A semana de 07 a 11/09 passou sem que a preparação acontecesse. Um calendário
+que continuasse cobrando por ela mediria o mantenedor por uma semana que não
+existiu, e o placar diria "perdendo" com ele em dia. As 14 faixas andaram 7
+dias, e nada mais mudou: meta 1000, cinco faixas em zero, oito semanas vendendo
+a 50%, e a soma continua sendo exatamente `alvo` menos `partida`.
+
+**O prazo não andou junto, e essa é a decisão desta seção.** Deslocar tudo em 7
+dias jogaria a recuperação para 14 a 18/12, depois do `ate: 2026-12-15`. Semana
+de recuperação que termina depois do prazo é ficção: ninguém recupera fora do
+jogo. Como a data de 15/12 é dele e o calendário é nosso, **quem encolheu foi a
+recuperação**, que virou 14 e 15/12, os dois dias úteis que sobram. Mover o
+prazo para 18/12 foi oferecido a ele e continua sendo escolha dele, não nossa.
+
+A lição que este dia cobrou está em §7 e tinha sido escrita treze dias antes:
+**cópia de número é o que envelhece em silêncio.** A curva mudou em 04/09 e a
+tela continuou dizendo "as três primeiras semanas pedem zero venda" quando já
+eram cinco, porque prosa em português não é medida por portão nenhum. Agora é:
+`test_a_prosa_da_tela_conta_as_mesmas_semanas_em_zero_que_o_cartao` lê o cartão,
+conta as faixas em zero e exige o número por extenso na tela. A receita R13 do
+`CAMINHO-DOURADO.md` guarda o procedimento inteiro.
+
 **Quem faz valer:** `placar._validar_as_semanas` (a soma, a ordem e as datas) ·
 `services/admin/tests/test_ciclo.py` (a curva do cartão REAL soma a meta; o
-veredito do placar muda com a régua; "não sei" nunca vira zero).
+veredito do placar muda com a régua; "não sei" nunca vira zero; a tela mostra as
+datas do cartão e marca a faixa de hoje; a prosa da tela conta as mesmas semanas
+em zero que o cartão; a última faixa cabe dentro do prazo).

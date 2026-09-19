@@ -356,15 +356,18 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     trancada = estado == Progresso.Estado.TRANCADA
-    if not publicada and not trancada:
+    if not publicada:
         estado_visual = "em-preparo"
         rotulo = "Em preparo"
+        explicacao = "A escola está preparando esta aula."
     elif trancada:
         estado_visual = Progresso.Estado.TRANCADA
         rotulo = Progresso.Estado.TRANCADA.label
+        explicacao = "Conclua a aula anterior para abrir esta porta."
     else:
         estado_visual = Progresso.Estado(estado)
         rotulo = Progresso.Estado(estado).label
+        explicacao = "Aula publicada e disponível para você."
     return {
         "numero": aula.numero,
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
@@ -374,6 +377,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         "estado": estado,
         "estado_visual": estado_visual,
         "rotulo": rotulo,
+        "explicacao": explicacao,
         "boss": aula.e_boss,
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
@@ -395,7 +399,7 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     atual = None
     for aula in curso.aulas.select_related("bloco").order_by("ordem"):
         porta = _porta(aula, por_aula.get(aula.id))
-        if atual is None and porta["estado"] in ESTADOS_COM_A_PESSOA:
+        if atual is None and porta["abre"] and porta["estado"] in ESTADOS_COM_A_PESSOA:
             atual = porta
         parte = partes.setdefault(
             aula.bloco.parte,

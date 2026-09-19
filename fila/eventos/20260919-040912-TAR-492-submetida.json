@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-040912-TAR-492-submetida",
+  "tarefa": "TAR-492",
+  "evento": "submetida",
+  "quando": "2026-09-19T04:09:12+00:00",
+  "quem": "agent/ci/provar-a-valvula-viva",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1762",
+  "revisao": "26de16927ab949bf620155637ee326ee1cc72783",
+  "arvore": "b71d7ec685d214182680c4c7a506c853bf3ddbf2"
+}

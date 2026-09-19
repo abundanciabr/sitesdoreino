@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-026-fila-admin-local-e-ponte-vps",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "fila: Admin local e ponte VPS",
+  detalhe: "Onze cancelamentos autorizados e cinco tarefas VPS. Seis reconciliacoes recusadas, sem baixa inventada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1660. Validação local: árvore 27d979aba3ac650aef948726d8bf38618e9f4020; commit a2f1ac90d81838413530e5993c9be166b297a132; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-423",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

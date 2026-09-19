@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260916-003-infra-o-usuario-ponte-na-vps-com-uma-porta-so",
+  tipo: "entrega",
+  quando: "2026-09-16",
+  titulo: "infra: o usuario ponte na VPS, com uma porta so",
+  detalhe: "Conta ponte com uma porta so, ensaiada contra um sshd real antes de encostar na VPS: as oito provas do brief verdes, deploy entrando antes e depois do reload.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1678. Validação local: árvore f3feb5fb86fa123049210e46a25251cf706242a9; commit fad46cdaa0659c18d4ca19f4e7159871e38b7f4f; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-16",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-419",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

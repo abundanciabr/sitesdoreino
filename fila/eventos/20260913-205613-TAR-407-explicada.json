@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-205613-TAR-407-explicada",
+  "tarefa": "TAR-407",
+  "evento": "explicada",
+  "quando": "2026-09-13T20:56:13+00:00",
+  "quem": "Pedido direto do mantenedor em 13/09/2026 para cortar a espera do pouso",
+  "o_que_e": "Cada evento repete a fila inteira e multiplica testes.",
+  "o_que_muda": "Cada entrega avança quando seus próprios testes terminam.",
+  "exemplo": "O teste do lançador termina e somente seu ramo é atendido.",
+  "importancia": 100
+}

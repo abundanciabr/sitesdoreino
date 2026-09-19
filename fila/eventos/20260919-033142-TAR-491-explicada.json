@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-033142-TAR-491-explicada",
+  "tarefa": "TAR-491",
+  "evento": "explicada",
+  "quando": "2026-09-19T03:31:42+00:00",
+  "quem": "auditoria do PR 1758, que integrou pela metade",
+  "o_que_e": "O conserto anterior da capa do painel entrou pela metade. A capa parou de carregar as entregas antigas sem prova, mas continuou carregando duas outras coisas que so aumentam: todo registro que tem prazo, e o identificador de toda ocorrencia que ja foi respondida. A conferencia que devia pegar isso media so metade da pagina, entao passou verde.",
+  "o_que_muda": "A capa para de crescer com a idade do projeto, e nao so mais devagar. Mil trabalhos terminados passam a pesar o mesmo que cem. A fabrica deixa de ter data marcada para travar de novo.",
+  "exemplo": "E como uma agenda que apaga o compromisso passado mas guarda um bilhetinho dizendo que ele existiu. Em mil compromissos, os bilhetinhos enchem a agenda sozinhos.",
+  "importancia": 92
+}

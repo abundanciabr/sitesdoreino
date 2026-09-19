@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260913-132410-TAR-313-devolvida",
+  "tarefa": "TAR-313",
+  "evento": "devolvida",
+  "quando": "2026-09-13T13:24:10+00:00",
+  "quem": "despacho-fila-tar-313-permissoes-entregas",
+  "detalhe": "Devolução da maestro em 13/09/2026 autoriza corrigir somente depende_de das cinco entregas; bloqueio anterior preservado no histórico."
+}

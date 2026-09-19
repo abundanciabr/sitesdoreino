@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-116-conferencia-de-telefones-ficou-legivel",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "A conferencia por WhatsApp agora mostra telefones legiveis e candidatos parecidos",
+  detalhe: "Na tela de liberar pela lista de turmas, os numeros colados agora aparecem formatados para leitura. Quando um numero nao casa exatamente com ninguem, a tela faz uma segunda procura pelos ultimos quatro digitos e mostra os alunos ou pedidos que podem ser aquela pessoa. O casamento exato continua sendo o unico que nasce marcado para liberar.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1508; pytest services/admin/tests/test_telefone.py services/admin/tests/test_conferir_turmas.py services/admin/tests/test_liberar_pela_lista.py: 50 passed",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

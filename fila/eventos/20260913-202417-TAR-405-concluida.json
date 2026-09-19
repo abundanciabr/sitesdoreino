@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-202417-TAR-405-concluida",
+  "tarefa": "TAR-405",
+  "evento": "concluida",
+  "quando": "2026-09-13T20:24:17+00:00",
+  "quem": "agent/ci/ligar-administracao-local",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1635",
+  "verificado_em": "2026-09-13"
+}

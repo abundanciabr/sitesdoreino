@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260917-005-contrato-alunos-get-matriculas-pagina",
+  tipo: "decisao",
+  quando: "2026-09-17",
+  titulo: "contrato(alunos): GET /matriculas/pagina",
+  detalhe: "Passo 1 de 3: escreve o combinado de como a lista de alunos vem em pedacos, com os contadores. Nao muda nada que voce ve hoje.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1682. Validação local: árvore e1abfe2b85107be1d7f9586c67cf30bced45303d; commit a68fa562548475f32906ee85397197997a65ba6a; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-17",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-434",
+  gravidade: "info",
+  frente: "site",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

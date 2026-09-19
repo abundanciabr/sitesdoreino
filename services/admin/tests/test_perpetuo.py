@@ -28,7 +28,7 @@ import httpx
 import pytest
 import respx
 from django.test import Client
-from django.urls import reverse
+from django.urls import reverse, set_script_prefix
 
 from apps.core import perpetuo
 
@@ -87,10 +87,10 @@ def test_toda_porta_existe_no_mapa_do_site():
     """
     mapa = _mapa()
     orfas = [
-        (etapa["chave"], endereco)
+        (etapa["chave"], perpetuo._endereco_da_porta(endereco))
         for etapa in perpetuo.ETAPAS
         for endereco in etapa["portas"]
-        if endereco not in mapa
+        if perpetuo._endereco_da_porta(endereco) not in mapa
     ]
     assert not orfas, (
         f"endereços que a máquina do perpétuo cita e o mapa do site não tem: "
@@ -98,6 +98,14 @@ def test_toda_porta_existe_no_mapa_do_site():
         f"endereço novo (o certo está em painel/mapa-do-site.json), ou tire a "
         f"porta da peça se a tela deixou de existir."
     )
+
+
+def test_endereco_da_porta_nao_duplica_prefixo_da_admin():
+    set_script_prefix("/admin/")
+    try:
+        assert perpetuo._endereco_da_porta({"rota": "menu_do_topo"}) == "/admin/menu/"
+    finally:
+        set_script_prefix("/")
 
 
 def test_nenhuma_peca_fica_sem_porta():
@@ -144,10 +152,11 @@ def test_o_nome_de_cada_porta_vem_do_mapa_e_chega_a_tela():
     html = _dentro().get(reverse("perpetuo")).content.decode()
     mapa = _mapa()
     sumidos = [
-        mapa[endereco]["titulo"]
+        mapa[perpetuo._endereco_da_porta(endereco)]["titulo"]
         for etapa in perpetuo.ETAPAS
         for endereco in etapa["portas"]
-        if endereco in mapa and mapa[endereco]["titulo"] not in html
+        if perpetuo._endereco_da_porta(endereco) in mapa
+        and mapa[perpetuo._endereco_da_porta(endereco)]["titulo"] not in html
     ]
     assert not sumidos, f"portas que sumiram no caminho: {sumidos}"
 
@@ -332,7 +341,9 @@ def test_a_peca_que_faz_o_perpetuo_oferece_o_interruptor_dela():
     tela vem do mapa, nunca do código), só exige que a peça o cite.
     """
     aquecer = next(e for e in perpetuo.ETAPAS if e["chave"] == "aquecer")
-    assert "/admin/escola/jornadas/" in aquecer["portas"], (
+    assert "/admin/escola/jornadas/" in [
+        perpetuo._endereco_da_porta(porta) for porta in aquecer["portas"]
+    ], (
         "a peça que define o lançamento perpétuo precisa oferecer o "
         "interruptor das sequências de mensagens"
     )

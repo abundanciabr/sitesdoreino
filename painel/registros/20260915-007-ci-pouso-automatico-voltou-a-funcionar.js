@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260915-007-ci-pouso-automatico-voltou-a-funcionar",
+  tipo: "entrega",
+  quando: "2026-09-15",
+  titulo: "ci: o pouso automatico voltou a funcionar sozinho",
+  detalhe: "A espera chamava o portao com uma opcao que nao existe mais, e por isso todo pedido pronto ficava parado esperando alguem empurrar a mao.",
+  autoridade: "sonda",
+  evidencia: "Teste novo mede as flags contra o --help do portao de verdade: vermelho apontando ['--pousar'], verde depois. Suite ci/tests/test_espera.py: 58 passed. Duas licoes escritas, armadilhas 478 e 479, indice com 438 entradas. Integracao e publicacao ainda nao verificadas.",
+  verificado_em: "2026-09-15",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-433",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

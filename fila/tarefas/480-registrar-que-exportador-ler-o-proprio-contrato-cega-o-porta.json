@@ -1,0 +1,19 @@
+{
+  "arquivo": "480-registrar-que-exportador-ler-o-proprio-contrato-cega-o-porta",
+  "id": "TAR-480",
+  "titulo": "Registrar que exportador ler o proprio contrato cega o portao de freeze",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Armadilha nova em armadilhas/ com gatilho export_openapi.py e ci/contract_freeze.py, indice regenerado, PR aberto.",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: low\ntipo: escrita\n\nRegistrar armadilha nova em armadilhas/ documentando que um exportador de\nOpenAPI que le o proprio arquivo contracts/<celula>.openapi.yaml para montar\ncomponents.schemas faz o portao ci/contract_freeze.py comparar a saida com a\nfonte de que ela derivou, nunca reprovando. Reservar numero por\nci/reservar.py numero armadilha, escrever o arquivo no molde da casa com\ngatilho e licao ligados a services/*/apps/core/management/commands/export_openapi.py\ne ci/contract_freeze.py, regenerar o indice com ci/indice_de_armadilhas.py.\nNao editar ci/ nem .github/: sem mandato para CODEOWNERS.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

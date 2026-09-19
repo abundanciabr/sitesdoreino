@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260913-140739-TAR-397-explicada",
+  "tarefa": "TAR-397",
+  "evento": "explicada",
+  "quando": "2026-09-13T14:07:39+00:00",
+  "quem": "ficha CLAUDE-003 do conselho da Fase 4, despacho 7 do lote da tríade (mapa-ia/planos/PROTOCOLO-DA-TRIADE.md §4); brief da maestro em 13/09/2026",
+  "o_que_e": "O arquivo de regras que toda IA lê antes de trabalhar está a 5 bytes do limite de tamanho; nenhuma regra nova cabe.",
+  "o_que_muda": "Sobra espaço para regras novas sem apagar nenhuma das 13 que existem; o porquê de cada regra passa a morar num documento de decisão.",
+  "exemplo": "É como uma geladeira cheia: em vez de jogar comida fora, os potes vazios vão para o armário.",
+  "importancia": 80
+}

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-203351-TAR-406-submetida",
+  "tarefa": "TAR-406",
+  "evento": "submetida",
+  "quando": "2026-09-13T20:33:51+00:00",
+  "quem": "agent/ci/merge-automatico-sem-pouso",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1636",
+  "revisao": "9ea481a803499a0ee687d0bb50ddca3e50b97e93",
+  "arvore": "2f4234c07a9a97c5ebbebc36aeb0bc60608a102c"
+}

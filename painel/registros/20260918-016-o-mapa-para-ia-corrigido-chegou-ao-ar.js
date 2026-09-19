@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-016-o-mapa-para-ia-corrigido-chegou-ao-ar",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "O mapa do projeto para IA, corrigido, chegou ao ar",
+  detalhe: "O recibo do PR 1724 foi escrito antes do desfecho e dizia que integracao e publicacao nao estavam verificadas. Agora estao, e este registro guarda a prova. As 17 correcoes do mapa entraram na main e foram publicadas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/35402394486",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: "20260918-010-painel-ia-o-mapa-para-ia-volta-a-bater-com-a-lei-viva",
+  relacao: "comentario",
+  tarefa: "TAR-474",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();

@@ -1,0 +1,223 @@
+PROVA DA CLAUDE-011 | medido em 2026-09-12T12:45:05-0300 | origin/main=22a9bd26 | transcripts de ~/.claude/projects, 7 dias
+Scripts: prova-claude-011-medir_maestro_vs_despacho.py, prova-claude-011-anatomia_de_um_pr.py, prova-claude-011-peso_do_contexto.py (rodar com o argumento 7 na pasta registros/)
+
+== 0) fichas e configuracao em origin/main=22a9bd26 (snapshot exportado por git archive; git show com caminho iniciado por ponto quebra no Git Bash, armadilhas/334)
+--- .claude/agents/despacho.md, linhas 1-7:
+---
+name: despacho
+description: O construtor da casa. Use para todo pedaço de trabalho que produz um PR. Recebe um brief fechado (célula, alvos, o que é somente leitura, evidência exigida, armadilhas da tarefa) e faz o rito inteiro, da bancada ao registro que embarca no PR. Use proactively, um por pedaço independente de um pedido do mantenedor, em paralelo.
+disallowedTools: Agent, AskUserQuestion
+effort: high
+maxTurns: 150
+---
+--- .claude/agents/revisor.md, linhas 1-9:
+---
+name: revisor
+description: O crítico mais implacável da casa. Use para ler um PR (ou um diff) antes do pedido de pouso e devolver a lista do que ele reprovaria, com arquivo e linha. Só lê. Nunca edita. Use proactively para todo PR de um despacho enquanto os checks dele rodam.
+tools: Read, Grep, Glob, Bash
+disallowedTools: Edit, Write, NotebookEdit, Agent, AskUserQuestion
+model: sonnet
+effort: high
+maxTurns: 40
+---
+--- ocorrencias de "env" em .claude/settings.json:
+0
+0
+--- arquivos do repositorio com AUTO_COMPACT:
+0
+--- ocorrencias de CLAUDE_CODE_AUTO_COMPACT_WINDOW no claude.exe instalado:
+17
+--- claude --version:
+2.1.263 (Claude Code)
+--- ci/tests/test_fichas_de_robo.py, testes que exigem tools:
+36:    "name", "description", "tools", "disallowedTools", "model",
+87:        permitidas = _lista(campos.get("tools", ""))
+93:        assert not vazando, f"{nome}.md: tools permite {', '.join(sorted(vazando))}"
+139:    permitidas = _lista(campos.get("tools", ""))
+141:    assert permitidas, "revisor.md: sem lista `tools`, herdaria tudo, inclusive escrita"
+143:        f"revisor.md: tools permite escrita: {sorted(permitidas & FERRAMENTAS_DE_ESCRITA)}"
+
+== 1) medir_maestro_vs_despacho.py 7
+JANELA: ultimos 7 dias | pastas de projeto olhadas: 11
+
+== CONVERSAS DE TOPO (n=75) ==
+sessao   pasta                          chamadas  max_ctx   media  tokens(M)  PRs Agent modelo
+1e0bb664 eDrive-Documentos-sitesdoreino     1294   967136  473264      613.1   32    16 claude-opus-5
+b429ac37 eDrive-Documentos-sitesdoreino      607   646946  422956      257.0   12     7 claude-sonnet-5
+8e9df451 eDrive-Documentos-sitesdoreino      476   997624  523925      250.0   32     0 claude-fable-5-1
+7fc954ce eDrive-Documentos-sitesdoreino      626   543854  358814      224.9    6     0 claude-opus-5
+6e5cad4c eDrive-Documentos-sitesdoreino      467   669920  445078      208.2    9     0 claude-opus-5
+431cc4ff eDrive-Documentos-sitesdoreino      412   663285  423205      174.7   11     0 claude-opus-5
+992c322c eDrive-Documentos-sitesdoreino      366   562749  394393      144.6    5     6 claude-opus-5
+2296693f eDrive-Documentos-sitesdoreino      339   656799  389032      132.2    2    20 claude-opus-5
+b07831bb eDrive-Documentos-sitesdoreino      330   526061  350862      116.1    8     0 claude-opus-5
+0800f780 eDrive-Documentos-sitesdoreino      285   533639  391992      112.0    6     3 claude-fable-5-1
+de9facf3 eDrive-Documentos-sitesdoreino      340   500506  322950      110.0    8     0 claude-opus-5
+e3180ab4 eDrive-Documentos-sitesdoreino      330   508074  321958      106.5    5    13 claude-opus-5
+d5ebb9a1 eDrive-Documentos-sitesdoreino      283   397843  282519       80.1    3     0 claude-opus-5
+91a8335a eDrive-Documentos-sitesdoreino      234   491283  325520       76.4    6     5 claude-fable-5-1
+eb2d04cb eDrive-Documentos-sitesdoreino      259   465694  293031       76.1    6     1 claude-opus-5
+fea2b8d5 eDrive-Documentos-sitesdoreino      243   487364  303733       74.0    5    12 claude-opus-5
+aded2915 eDrive-Documentos-sitesdoreino      240   464716  303329       73.0    0    14 claude-opus-5
+9127acca eDrive-Documentos-sitesdoreino      125   775775  564999       70.9    3     0 claude-fable-5-1
+25cf3aae eDrive-Documentos-sitesdoreino      258   389509  246581       63.8    4     1 claude-opus-5
+e8178fc9 eDrive-Documentos-sitesdoreino      157   558142  399716       63.0    6    10 claude-fable-5-1
+7976450d eDrive-Documentos-sitesdoreino      184   429766  332309       61.3    4     1 claude-fable-5-1
+4bf39564 eDrive-Documentos-sitesdoreino      161   374757  309874       50.0    6     4 claude-fable-5-1
+5afbb194 eDrive-Documentos-sitesdoreino      174   430390  280889       49.1    0    17 claude-opus-5
+eaf36adc eDrive-Documentos-sitesdoreino      198   343621  237393       47.1    2     0 claude-opus-5
+b5d2ab6e eDrive-Documentos-sitesdoreino      186   350843  250886       46.8    5     1 claude-opus-5
+db2e0ca1 eDrive-Documentos-sitesdoreino      196   344005  234601       46.1    5     0 claude-opus-5
+8d6c91b0 eDrive-Documentos-sitesdoreino      197   322126  227015       44.8    2     0 claude-opus-5
+055d4cd1 eDrive-Documentos-sitesdoreino      184   341052  238494       44.0    4     0 claude-opus-5
+83d04c14 eDrive-Documentos-sitesdoreino      193   304377  223686       43.3    3     0 claude-opus-5
+0f8fea49 eDrive-Documentos-sitesdoreino      172   345306  246639       42.5    2     0 claude-opus-5
+fcd31da9 eDrive-Documentos-sitesdoreino      119   422960  350075       41.8    3     0 claude-fable-5-1
+82480ac1 eDrive-Documentos-sitesdoreino      153   449247  263594       40.5    4    13 claude-fable-5-1
+a4284aef eDrive-Documentos-sitesdoreino      154   379583  245456       38.0    0    14 claude-opus-5
+08c0fda6 entos-wt-admin-leitor-do-livro      135   351121  254966       34.5    1     2 claude-sonnet-5
+b88c1bf5 eDrive-Documentos-sitesdoreino      105   425724  324975       34.3    3     8 claude-fable-5-1
+85616960 eDrive-Documentos-sitesdoreino      149   310424  218430       32.7    1     0 claude-opus-5
+8ecfa8eb eDrive-Documentos-sitesdoreino      138   316880  231593       32.1    3     2 claude-fable-5-1
+4fcef88e eDrive-Documentos-sitesdoreino      159   287778  181625       29.0    2     0 claude-opus-5
+157e315d eDrive-Documentos-sitesdoreino      106   306361  206916       22.0    0    11 claude-opus-5
+57f3e932 eDrive-Documentos-sitesdoreino      125   256665  172535       21.7    2     0 claude-opus-5
+4cd197a7 eDrive-Documentos-sitesdoreino      106   261644  198874       21.2    2     0 claude-opus-5
+4a4ea33d eDrive-Documentos-sitesdoreino      128   228351  154862       19.9    3     0 claude-opus-5
+f3a38ee0 eDrive-Documentos-sitesdoreino       87   335695  210520       18.5    0     3 claude-opus-5
+4915ee91 eDrive-Documentos-sitesdoreino      102   243808  179914       18.4    2     0 claude-opus-5
+06223b26 eDrive-Documentos-sitesdoreino       72   308016  251565       18.2    1     0 claude-fable-5-1
+843bd99d eDrive-Documentos-sitesdoreino      105   246796  170607       18.0    2     0 claude-opus-5
+0237f30e eDrive-Documentos-sitesdoreino       83   260910  184749       15.4    2     0 claude-opus-5
+ae3829fe eDrive-Documentos-sitesdoreino       82   220187  172967       14.2    0     3 claude-opus-5
+50fe5e10 eDrive-Documentos-sitesdoreino       91   236146  152020       13.9    0     0 claude-opus-5
+21c62b37 eDrive-Documentos-sitesdoreino       83   207377  165535       13.8    2     0 claude-fable-5
+9ccbaeb4 eDrive-Documentos-sitesdoreino       66   263083  198089       13.1    0     6 claude-fable-5-1
+5603e49f eDrive-Documentos-sitesdoreino       72   219591  166825       12.1    1     0 claude-opus-5
+10673461 eDrive-Documentos-sitesdoreino       74   214892  160331       11.9    1     0 claude-opus-5
+8c988735 eDrive-Documentos-sitesdoreino       73   192624  135975       10.0    0     0 claude-opus-5
+f398a301 eDrive-Documentos-sitesdoreino       41   356086  232083        9.6    2     0 claude-fable-5-1
+1a5d0c88 eDrive-Documentos-sitesdoreino       67   164098  131023        8.8    3     0 claude-opus-5
+82926b15 eDrive-Documentos-sitesdoreino       56   185665  155307        8.7    1     1 claude-fable-5-1
+e3310dc5 ktrees-bold-brahmagupta-6646bf       42   217254  185435        7.9    2     0 claude-fable-5-1
+35a32cd8 eDrive-Documentos-sitesdoreino       51   160616  132037        6.8    1     0 claude-fable-5
+6efd4412 eDrive-Documentos-sitesdoreino       37   227892  169232        6.4    0     0 claude-opus-5
+6afbbaf3 ktrees-bold-brahmagupta-6646bf       57   141493  108586        6.2    1     0 claude-opus-5
+74c9957a eDrive-Documentos-sitesdoreino       40   157351  125818        5.1    0     0 claude-opus-5
+81fd45a6 eDrive-Documentos-sitesdoreino       35   169610  137191        4.8    0     0 claude-sonnet-5
+aed6c602 eDrive-Documentos-sitesdoreino       22   260767  210522        4.7    0     0 claude-fable-5-1
+d7040201 eDrive-Documentos-sitesdoreino       32   115293  101305        3.3    1     0 claude-opus-5
+a04a0360 eDrive-Documentos-sitesdoreino       23   129527   98012        2.3    0     0 claude-opus-5
+ef359850 eDrive-Documentos-sitesdoreino       19   106418   95645        1.8    0     0 claude-opus-5
+24e20187 eDrive-Documentos-sitesdoreino       13   161409  134718        1.8    0     0 claude-fable-5-1
+022be320 eDrive-Documentos-sitesdoreino       13   122796   98976        1.3    0     0 claude-opus-5
+a0dc2272 eDrive-Documentos-sitesdoreino       12    92020   81031        1.0    0     0 claude-opus-5
+c93db511 eDrive-Documentos-sitesdoreino        9   101332   92270        0.8    0     0 claude-opus-5
+1af7b2ff eDrive-Documentos-sitesdoreino        8   105363   95147        0.8    0     0 claude-opus-5
+93c0b146 eDrive-Documentos-sitesdoreino        5   165834  128970        0.7    0     0 claude-sonnet-5
+40b1996e eDrive-Documentos-sitesdoreino        5   136502  110834        0.6    0     0 claude-fable-5-1
+bb39ef8e ntos-wt-ci-prestacao-de-contas        1        0       0        0.0    0     0 <synthetic>
+
+conversas de topo que abriram PR: 52; dessas, SEM nenhum despacho disparado: 37
+PRs abertos por conversas de topo: 248; tokens dessas conversas: 3846M; tokens por PR (bruto): 15.5M
+mediana de chamadas por conversa com PR: 160.0
+mediana do contexto maximo: 350982.0
+
+== SUB-AGENTES (n=200) ==
+revisor   n= 19 chamadas mediana=23 max=125 | ctx max mediana=98465 | tokens mediana=1.7M media=4.7M max=23.2M | PRs=6 | modelos=[('claude-sonnet-5', 8), ('claude-opus-5', 7), ('claude-fable-5-1', 4)]
+despacho  n= 53 chamadas mediana=99 max=155 | ctx max mediana=213127 | tokens mediana=15.1M media=16.8M max=34.2M | PRs=44 | modelos=[('claude-opus-5', 41), ('claude-sonnet-5', 7), ('claude-fable-5-1', 5)]
+outro     n=128 chamadas mediana=68 max=274 | ctx max mediana=165778 | tokens mediana=8.6M media=12.0M max=102.6M | PRs=107 | modelos=[('claude-opus-5', 85), ('claude-sonnet-5', 34), ('claude-fable-5-1', 9)]
+
+despachos que abriram PR: 42; tokens por despacho-com-PR: mediana 16.7M, media 19.1M
+  agent-aaa03b84 eDrive-Documentos-sitesdoreino chamadas= 139 max_ctx= 348847 tokens=  34.2M PRs=1 claude-opus-5
+  agent-a893f2b7 eDrive-Documentos-sitesdoreino chamadas= 150 max_ctx= 328801 tokens=  33.2M PRs=1 claude-opus-5
+  agent-a3a8e608 eDrive-Documentos-sitesdoreino chamadas= 150 max_ctx= 343039 tokens=  33.2M PRs=1 claude-opus-5
+  agent-aff1c12f eDrive-Documentos-sitesdoreino chamadas= 146 max_ctx= 327609 tokens=  32.7M PRs=1 claude-opus-5
+  agent-a5f0e1c5 eDrive-Documentos-sitesdoreino chamadas= 155 max_ctx= 289371 tokens=  32.5M PRs=2 claude-opus-5
+  agent-aedb2f95 eDrive-Documentos-sitesdoreino chamadas= 150 max_ctx= 302366 tokens=  30.8M PRs=1 claude-opus-5
+  agent-a724df4a eDrive-Documentos-sitesdoreino chamadas= 149 max_ctx= 286979 tokens=  30.0M PRs=1 claude-sonnet-5
+  agent-a83e9b7f eDrive-Documentos-sitesdoreino chamadas= 147 max_ctx= 294119 tokens=  29.9M PRs=1 claude-opus-5
+  agent-aedb064d eDrive-Documentos-sitesdoreino chamadas= 141 max_ctx= 313060 tokens=  29.8M PRs=1 claude-sonnet-5
+  agent-a5f3f184 eDrive-Documentos-sitesdoreino chamadas= 142 max_ctx= 291613 tokens=  29.3M PRs=1 claude-opus-5
+  agent-a5e217aa eDrive-Documentos-sitesdoreino chamadas= 145 max_ctx= 296304 tokens=  28.7M PRs=1 claude-opus-5
+  agent-a1cd4d67 eDrive-Documentos-sitesdoreino chamadas= 134 max_ctx= 293265 tokens=  28.2M PRs=1 claude-opus-5
+
+== 2) anatomia_de_um_pr.py 7
+DESPACHOS analisados: 128
+
+chamadas de ferramenta por despacho (mediana): 78
+
+FERRAMENTA          chamadas   % do total   bytes de saida (% )
+Bash                    8176      78.8%       15.6MB (80.0%)
+Edit                     839       8.1%        0.2MB ( 0.9%)
+Write                    542       5.2%        0.1MB ( 0.7%)
+Read                     527       5.1%        3.5MB (17.8%)
+Monitor                   87       0.8%        0.0MB ( 0.1%)
+Grep                      61       0.6%        0.1MB ( 0.4%)
+ToolSearch                56       0.5%        0.0MB ( 0.0%)
+mcp__ccd_session__mark_chapter        43       0.4%        0.0MB ( 0.0%)
+PowerShell                12       0.1%        0.0MB ( 0.1%)
+StructuredOutput          12       0.1%        0.0MB ( 0.0%)
+TaskStop                   9       0.1%        0.0MB ( 0.0%)
+mcp__claude-in-chrome__tabs_context_mcp         3       0.0%        0.0MB ( 0.0%)
+mcp__claude-in-chrome__navigate         1       0.0%        0.0MB ( 0.0%)
+Skill                      1       0.0%        0.0MB ( 0.0%)
+Artifact                   1       0.0%        0.0MB ( 0.0%)
+
+CLASSE DO COMANDO DE SHELL   chamadas   por despacho (media)
+leitura_shell                   3325     26.0
+git                             1322     10.3
+teste                           1313     10.3
+fila_reg                         936      7.3
+gh                               497      3.9
+python                           358      2.8
+espera                           177      1.4
+consulta                         141      1.1
+outro_shell                       90      0.7
+sessao                            28      0.2
+make_pr                            1      0.0
+
+despachos que chegaram ao make pr / gh pr create: 88 de 128
+  chamadas ATE o primeiro pedido de PR: mediana 123
+  chamadas DEPOIS do primeiro pedido de PR: mediana 26, media 36
+
+despachos que bateram no teto de turnos (>=148 chamadas ou texto de max turns): 56 de 128
+resultados de ferramenta com cara de reprovacao/erro por despacho: mediana 16, media 17.2
+
+== 3) peso_do_contexto.py 7
+despachos: 127
+contexto na 1a chamada (sistema + ficha + brief): mediana 61372 tokens
+contexto maximo: mediana 181245 tokens
+crescimento (max - base): mediana 124083 tokens
+  saidas de ferramenta (bytes/4): mediana 35586 tokens
+  o que o robo escreveu (texto + Edit/Write/comandos, bytes/4): mediana 16291 tokens
+chamadas: mediana 131
+
+ARQUIVOS MAIS PESADOS NA RELEITURA (tokens lidos x chamadas que ainda faltavam ate 150), top 25:
+     6.9M  ( 2.3%)  lido  22x  docs/changespecs/CS-PAGES-0001.md
+     6.6M  ( 2.2%)  lido  36x  docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md
+     4.7M  ( 1.5%)  lido  17x  constituicoes/AGENTS.pages.md
+     4.6M  ( 1.5%)  lido  90x  painel/LEIA-ME.md
+     3.9M  ( 1.3%)  lido  23x  tests/conftest.py
+     3.8M  ( 1.2%)  lido  14x  ci/tests/test_provisionamento_nao_perde_variavel.py
+     3.7M  ( 1.2%)  lido  22x  services/encomendas/apps/encomendas/models.py
+     3.4M  ( 1.1%)  lido  41x  services/admin/apps/core/aulas.py
+     3.4M  ( 1.1%)  lido  16x  services/pages/apps/portfolio/models.py
+     3.3M  ( 1.1%)  lido   5x  91a8335a-120a-40d3-a2c1-409857dbcbb2/scratchpad/robo-guardiao/pr1357.diff
+     3.2M  ( 1.1%)  lido  29x  services/pages/apps/core/views.py
+     3.1M  ( 1.0%)  lido  28x  ci/fila.py
+     3.0M  ( 1.0%)  lido   9x  painel/painel.template.html
+     2.8M  ( 0.9%)  lido  13x  apps/core/api.py
+     2.7M  ( 0.9%)  lido  12x  fila/LEIA-ME.md
+     2.7M  ( 0.9%)  lido  33x  ci/mergear.py
+     2.6M  ( 0.9%)  lido   2x  5afbb194-dfa0-4e3d-89f7-dea20800d037/tool-results/brf6glm65.txt
+     2.6M  ( 0.9%)  lido  16x  services/pages/config/urls.py
+     2.5M  ( 0.8%)  lido  16x  services/pages/config/settings.py
+     2.5M  ( 0.8%)  lido  36x  .github/workflows/ci-celula.yml
+     2.5M  ( 0.8%)  lido   7x  services/encomendas/apps/encomendas/tique.py
+     2.5M  ( 0.8%)  lido  19x  infra/provisionar-pages.sh
+     2.4M  ( 0.8%)  lido   7x  infra/provisionar-cursos.sh
+     2.4M  ( 0.8%)  lido  26x  apps/core/views.py
+     2.3M  ( 0.8%)  lido  11x  services/admin/LICOES.md
+
+soma do peso de releitura de tudo que foi lido: 301M tokens em 127 despachos = 2.4M por despacho

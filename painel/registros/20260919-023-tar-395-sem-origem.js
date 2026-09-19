@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-023-tar-395-sem-origem",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "A manhã do conselho não tem de onde copiar",
+  detalhe: "A TAR-395 manda copiar cinco arquivos soltos de 12/09: os registros 015, 022, 024, 025 e a armadilha 475. Nenhum existe hoje no repositório, no espelho nem em ramo algum. Copiar o que sumiu seria inventar.",
+  autoridade: "sessao",
+  evidencia: "Busca por git log --all -S e no disco: nada.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "painel",
+  porque_so_voce: "O texto daquela manhã só volta se você tiver cópia.",
+  proximo_passo: "Procure os cinco arquivos no histórico do OneDrive, ou cancele a tarefa.",
+  se_eu_nao_decidir: "A tarefa fica parada e a manhã de 12/09 fica fora do livro.",
+  recomendacao: "Cancelar: a Fase 4 já entrou pelo PR 1624.",
+  reversivel: true,
+  impacto: "baixo"
+});})();

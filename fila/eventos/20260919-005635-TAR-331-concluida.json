@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-005635-TAR-331-concluida",
+  "tarefa": "TAR-331",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:56:35+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1548; revisao=df4102c1707903b934686a9014294c4dac263458; arvore=d7438f820af3fb2295ec8e0eb2d789af63f2a29b; head=199cb00f7f04950e3b1452bf562a23a3fa3aa5d1; merge=a0fc068a3315c7197709eeccd68aad53f5a26428; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34550381311; linhagem=retroativa: fechamento retroativo autorizado pelo mantenedor em 19/09/2026: o despacho seguiu no mesmo PR sem re-submeter, e a revisao registrada na fila ficou para tras; a suite da pista mediu o HEAD que integrou; linhagem recusada (a revisão submetida não é ancestral do HEAD final; há código posterior à revisão: contracts/cursos.openapi.yaml, fila/tarefas/331-o-contrato-das-aulas-avulsas-permite-criar-e-compartilhar-vi.json); suíte verde no HEAD entregue: muralhas=2x success, ci-celula-gate=1x success; atestado=atestado aprovado para 199cb00f7f04950e3b1452bf562a23a3fa3aa5d1; aceite=painel/registros/20260913-024-aceite-tar-331.js",
+  "verificado_em": "2026-09-13"
+}

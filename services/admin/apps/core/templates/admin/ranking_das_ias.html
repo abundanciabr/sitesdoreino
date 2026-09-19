@@ -1,0 +1,128 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Ranking das IAs{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Ranking das IAs</h1>
+  <p class="subtitulo">O que cada uma das três publicou em <code>main</code>, e quanto
+  escreveu para publicar. Os números saem do Git, não do que cada IA diz de si.</p>
+
+  {% if sem_retrato %}
+    <section class="cartao">
+      <p class="aviso borda-amarela">
+      {% if motivo_sem_retrato == "ausente" %}
+      <b>O ranking ainda não foi medido nesta publicação.</b>
+      O arquivo <code>ranking-ias.json</code> não está na publicação que esta
+      página serve.
+      {% elif motivo_sem_retrato == "incompativel" %}
+      <b>A versão do retrato não é compatível com esta página.</b>
+      Regenere o arquivo com o gerador desta versão e publique a atualização.
+      {% elif motivo_sem_retrato == "ilegivel" %}
+      <b>Não foi possível ler o retrato publicado.</b>
+      Confira o acesso ao arquivo na publicação e publique novamente.
+      {% else %}
+      <b>O retrato está inválido.</b>
+      O arquivo foi encontrado, mas seu conteúdo não permite conferir as medidas.
+      Regenere o retrato e publique a atualização.
+      {% endif %}
+      Nenhum pódio foi atribuído.</p>
+      <p class="nota">Para gerar o retrato, rode na bancada do repositório:</p>
+      <pre class="citacao">python ci/ranking_das_ias.py</pre>
+      <p class="nota">Ele lê <code>origin/main</code>, escreve
+      <code>painel/ranking-ias.json</code> e imprime as medidas no terminal.
+      A atualização só aparece aqui depois de passar pelo PR e pela publicação.</p>
+    </section>
+  {% else %}
+
+    {% if incompleto %}
+      <p class="aviso borda-amarela"><b>Ranking parcial.</b> Uma ou mais linhas do
+      retrato vieram incompletas ou estão ausentes. As medidas disponíveis estão
+      abaixo, sem posições nem planos. Regenere com <code>python ci/ranking_das_ias.py</code>
+      e publique a atualização para conferir o ranking completo.</p>
+    {% endif %}
+
+    <div class="rolagem-lateral espaco-abaixo-20">
+    <table class="tabela-ias">
+      <thead>
+        <tr>
+          {% if not incompleto %}<th>#</th>{% endif %}
+          <th>IA</th>
+          <th class="numero">Páginas publicadas</th>
+          <th class="numero">Linhas por página</th>
+          <th class="numero">Entregas em main</th>
+          <th class="numero">Linhas em main</th>
+          <th class="numero">Dias por página</th>
+          <th class="numero">Retrabalho</th>
+          <th>Última entrega</th>
+          {% if not incompleto %}<th>Plano</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ia in participantes %}
+          <tr class="ia{% if ia.posicao == 1 %} lidera{% endif %}{% if ia.sem_entrega %} parada{% endif %}">
+            {% if not incompleto %}<td class="numero">{{ ia.posicao }}º</td>{% endif %}
+            <td><b>{{ ia.nome }}</b><span class="papel">{{ ia.papel }}</span></td>
+            <td class="numero">{{ ia.paginas }}</td>
+            <td class="numero">{% if ia.custo_por_pagina is None %}<span class="nao-sei">sem página</span>{% else %}{{ ia.custo_por_pagina }}{% endif %}</td>
+            <td class="numero">{{ ia.entregas }}</td>
+            <td class="numero">{{ ia.linhas }}</td>
+            <td class="numero">{% if ia.dias_por_pagina is None %}<span class="nao-sei">sem página</span>{% else %}{{ ia.dias_por_pagina }}{% endif %}</td>
+            <td class="numero">{% if ia.retrabalho_por_cento is None %}<span class="nao-sei">sem entrega</span>{% else %}{{ ia.retrabalho_por_cento }}%{% endif %}</td>
+            <td>{% if ia.ultima_entrega %}{{ ia.ultima_entrega|date:"d/m/Y H:i" }}{% else %}<span class="nao-sei">nunca</span>{% endif %}</td>
+            {% if not incompleto %}<td>{{ ia.plano }}<span class="papel">{{ ia.consequencia }}</span></td>{% endif %}
+          </tr>
+        {% endfor %}
+        {% if sem_assinatura %}
+          <tr class="ia sem-dono">
+            {% if not incompleto %}<td class="numero"><span class="nao-sei">fora</span></td>{% endif %}
+            <td><b>Sem autoria única</b><span class="papel">fora da classificação</span></td>
+            <td class="numero">{{ sem_assinatura.paginas }}</td>
+            <td class="numero">{% if sem_assinatura.custo_por_pagina is None %}<span class="nao-sei">sem página</span>{% else %}{{ sem_assinatura.custo_por_pagina }}{% endif %}</td>
+            <td class="numero">{{ sem_assinatura.entregas }}</td>
+            <td class="numero">{{ sem_assinatura.linhas }}</td>
+            <td class="numero">{% if sem_assinatura.dias_por_pagina is None %}<span class="nao-sei">sem página</span>{% else %}{{ sem_assinatura.dias_por_pagina }}{% endif %}</td>
+            <td class="numero">{% if sem_assinatura.retrabalho_por_cento is None %}<span class="nao-sei">sem entrega</span>{% else %}{{ sem_assinatura.retrabalho_por_cento }}%{% endif %}</td>
+            <td>{% if sem_assinatura.ultima_entrega %}{{ sem_assinatura.ultima_entrega|date:"d/m/Y H:i" }}{% else %}<span class="nao-sei">nunca</span>{% endif %}</td>
+            {% if not incompleto %}<td><span class="nao-sei">fora do pódio</span></td>{% endif %}
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    </div>
+
+    <p class="recado-fraco"><b>O que conta como página publicada:</b> um template que
+    passou a existir em <code>main</code>, ou seja, um arquivo
+    <code>services/&lt;célula&gt;/.../templates/.../*.html</code> que não existia antes.
+    Mexer num template já existente conta como entrega, e não como página nova.
+    Um número de páginas alto com poucas linhas por página é a assinatura de quem
+    publicou casca vazia: os dois números ficam lado a lado de propósito.</p>
+
+    <p class="recado-fraco"><b>Como o pódio é decidido:</b> ganha quem publicou mais
+    páginas. Empate em páginas, ganha quem escreveu menos linhas para publicar cada
+    uma. Quem não publicou página fica atrás de quem publicou uma, por mais commits
+    que tenha, porque a medida é entrega e não movimento.</p>
+
+    {% if sem_assinatura and sem_assinatura.entregas %}
+      <p class="recado-fraco"><b>Por que existe a linha sem autoria única:</b>
+      {{ sem_assinatura.entregas }} entregas chegaram em <code>main</code> sem uma
+      única IA reconhecida nos trailers <code>Co-authored-by</code>: nenhuma
+      assinatura reconhecida ou assinaturas de mais de uma IA. Repartir esse bolo por palpite
+      inventaria o ranking; escondê-lo faria as somas não fecharem com o
+      repositório. Nenhuma IA recebe crédito individual por essas entregas.</p>
+    {% endif %}
+
+    <h2 class="titulo-de-bloco">O que este ranking não enxerga</h2>
+    <ul class="notas">
+      {% for lacuna in nao_enxergo %}<li>{{ lacuna }}</li>{% endfor %}
+    </ul>
+
+    <p class="nota">Medido em <code>{{ base }}</code>, commit
+    <code>{{ commit_da_base }}</code>{% if gerado_em %}, em
+    {{ gerado_em|date:"d/m/Y H:i" }}{% endif %}. Para atualizar:
+    <code>python ci/ranking_das_ias.py</code>.</p>
+
+    {% if dados_livro %}
+      <details{% if dados_livro.motivo %} open{% endif %}><summary>Dados do livro</summary>{% include "admin/dados_do_painel.html" with dados=dados_livro %}</details>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

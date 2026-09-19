@@ -19,11 +19,21 @@ melhorias com informação real em vez de suposição.
 O que ele não é: **não é a fonte de verdade, e não é um painel de status.**
 - Onde este mapa e um documento original (`CONSTITUICAO.md`, `RITOS.md`,
   código real, etc.) divergirem, **o original vence** — este mapa é um
-  resumo, originalmente escrito em 27/08/2026 e revisto em 10/09/2026 contra
-  a revisão `12101ba`; ele não é recalculado automaticamente como
-  `painel/painel.html` é. Se você encontrar uma
+  resumo, originalmente escrito em 27/08/2026, revisto em 10/09/2026 contra
+  a revisão `12101ba` e reconferido em 18/09/2026 contra `2c11ba2f`, quando
+  17 divergências foram corrigidas; ele não é recalculado automaticamente
+  como `painel/painel.html` é. Se você encontrar uma
   divergência, é sinal de que este mapa ficou velho: corrija-o no mesmo PR
   da sua mudança, ou abra um registro em `painel/registros/` apontando o quê.
+- **A data acima não vale arquivo a arquivo, e isso já mordeu.** Cada
+  documento deste diretório é editado por PRs diferentes, em datas
+  diferentes, e o carimbo do índice não acompanha. Antes de confiar num
+  número ou numa regra de qualquer documento daqui, rode
+  `git log -1 --format=%ad -- painel/ia/<arquivo>` e compare com a data da
+  fonte que ele resume. **A regra prática, medida em 18/09/2026: use este
+  mapa para ENTENDER (por que cada regra existe, como as peças se encaixam);
+  nunca para SABER o estado de hoje sem remedir.** Todo inventário aqui
+  envelhece para baixo.
 - Este mapa não guarda nenhum veredito sobre o estado atual do projeto
   (o que está pronto, o que está pendente, quem prometeu o quê). Isso é
   papel exclusivo do livro de ocorrências (`painel/registros/`) e do painel
@@ -137,7 +147,24 @@ documento deste repositório.
   ci/mapa_do_site.py --verificar`, com os limites declarados pelo verificador.
 - Estado de trabalho: `python ci/fila.py listar --ao-vivo --json`, eventos da
   fila, livro e GitHub.
-- Armadilhas: índice materializado por `python ci/indice_de_armadilhas.py`.
+- Armadilhas: índice materializado por `python ci/indice_de_armadilhas.py`
+  (o `armadilhas/INDICE.md` é gerado e **não mora no Git**; um clone novo não
+  o tem até rodar esse comando). Para o sintoma exato:
+  `python ci/consultar_armadilhas.py "<erro>"`.
+- Invariantes e a prova deles: `INVARIANTES.md` para o número real, e
+  `ci/provar_guardas.py` para saber quais guardas foram provados por mutação
+  de verdade. Um invariante ter teste declarado não significa que o teste
+  morda: veja o limite em [01](01-leis-ritos-e-invariantes.md).
+- **Deploy e portões de CI** (fonte acrescentada em 18/09/2026, porque a
+  ausência dela escondia um achado grave): `git ls-tree -r --name-only
+  origin/main .github/workflows` e `git grep -n DEPLOY_SSH_KEY --
+  .github/workflows`. Conte quantos alcançam a VPS e quantos passam por
+  portão antes do SSH; os dois números não batem.
+- **O que o portão de merge realmente checa** (idem): leia a lista de
+  chamadas DENTRO de `conferir()` em `ci/mergear.py`. Neste repositório,
+  função definida não é função chamada, e três documentos deste mapa já
+  ensinaram o contrário.
+- Estado da fábrica numa chamada: `python ci/resumo_maestro.py`.
 
 Se uma fonte não puder ser consultada, escreva `NÃO MEDIDO`. O teste de
 presença deste mapa não certifica seus fatos; `armadilhas/222` explica o limite.

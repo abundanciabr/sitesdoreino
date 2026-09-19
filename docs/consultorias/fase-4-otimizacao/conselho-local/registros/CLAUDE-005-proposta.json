@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "CLAUDE-005",
+  "autor": "claude",
+  "registrado_em": "2026-09-12T10:27:00-03:00",
+  "problema": "armadilhas/SINAIS.json, INDICE.md e GATILHOS.json sao gitignored e so o gancho SessionStart do Claude Code os gera. Em qualquer outro caminho (Codex, sub-agente, CI, bancada recem-criada) ci/consultar_armadilhas.py, a ferramenta central da Fase 3, falha com 'No such file or directory'. Um auditor bateu nisso na primeira chamada em 12/09.",
+  "titulo": "Semear os indices de armadilha na abertura da bancada, nao so no SessionStart",
+  "baseline": "`git check-ignore -v armadilhas/SINAIS.json` devolve `.gitignore:72`; as linhas 70, 72 e 73 do .gitignore cobrem os tres arquivos. Numa bancada criada com `git worktree add ../wt-leitura --detach origin/main`, sem SessionStart, os tres arquivos nao existem.",
+  "aceite": "Numa bancada recem-criada, sem SessionStart nenhum, `python ci/consultar_armadilhas.py <termo>` devolve PASS com resultado real, saida colada. Sem regressao: os arquivos continuam FORA do git (`git check-ignore -v armadilhas/SINAIS.json` segue casando), para nao criar ruido de merge; a semeadura acontece na criacao da bancada."
+}

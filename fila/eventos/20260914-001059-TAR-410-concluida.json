@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-001059-TAR-410-concluida",
+  "tarefa": "TAR-410",
+  "evento": "concluida",
+  "quando": "2026-09-14T00:10:59+00:00",
+  "quem": "agent/ci/codeowners-ganchos",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1641",
+  "verificado_em": "2026-09-14"
+}

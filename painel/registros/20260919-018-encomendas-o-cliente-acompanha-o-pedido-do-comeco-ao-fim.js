@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-018-encomendas-o-cliente-acompanha-o-pedido-do-comeco-ao-fim",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "encomendas: o cliente acompanha o pedido do comeco ao fim",
+  detalhe: "A jornada inteira roda no PostgreSQL pelas rotas reais; cinco guardas sabotadas ficaram vermelhas na assercao; nao existe rota de pagar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1734. Validação local: árvore 759d7386e0e1cfb540b48f2af339f0bf5f40824f; commit 2c616a6ce01500a7fe1cf3225907286cb85c1c67; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-387",
+  gravidade: "info",
+  frente: "vender",
+  area: "encomendas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

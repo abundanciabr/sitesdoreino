@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-005-fila-enfileirar-adendo-dos-capitulos-2-a-5",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "fila: enfileirar adendo dos capítulos 2 a 5",
+  detalhe: "O balcão passa a ter os quatro despachos do adendo com brief completo e dependências explícitas; a Galeria fica fora até o Fórum pousar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1612. Validação local: árvore 44d2f683158eb905451004089b134676c1381c3d; commit 7f6da8ff5adc19d5997511884f61457e8a864918; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-392",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

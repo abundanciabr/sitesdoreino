@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-003635-TAR-462-submetida",
+  "tarefa": "TAR-462",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:36:35+00:00",
+  "quem": "agent/ci/rollback-nao-e-desfeito",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1739",
+  "revisao": "332f9008a89818f34f5e22b64ed0929d050e6e61",
+  "arvore": "98bb9ca116a42e198403684dfdf22c69ecd35d65"
+}

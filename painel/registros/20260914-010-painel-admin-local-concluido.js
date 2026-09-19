@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-010-painel-admin-local-concluido",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "Painel de administração local concluído",
+  detalhe: "A frente local foi concluída com TAR-404 e TAR-405: o comando abre o plano mestre, lista e abre Markdown e recarrega após mudança na pasta.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1645",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: "20260914-008-lancador-explica-outra-bancada",
+  gravidade: "info",
+  frente: null,
+  area: "painel",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+}); })();
