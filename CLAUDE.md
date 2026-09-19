@@ -200,17 +200,11 @@ publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 ## O que você entrega para ele mora no site
 
 Entrega durável vai ao site: fatos em tela calculada, conteúdo no editor.
-Documento recebido é ordem de serviço: inventarie, compare, abra fila e
-execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
-
 **Quem faz valer:** julgamento.
 
-## Como trabalhar com o mantenedor
-
-Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
-VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
-
-**Quem faz valer:** julgamento.
+## A IA age, não manda o mantenedor agir
+A IA age. Só pede ao mantenedor o que só ele pode dar:
+credencial, dinheiro, lei, irreversibilidade ou acesso exclusivo. **Quem faz valer:** `ci/padrao_de_trabalho.py`.
 
 ## Plano na abertura, contas no fecho
 
