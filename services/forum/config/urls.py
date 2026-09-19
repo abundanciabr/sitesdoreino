@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from apps.core.busca import buscar
 from apps.core.moderacao import (
     criar_area,
+    decidir_galeria,
     gerar_resposta,
     gerar_resposta_ao_vivo,
     moderar_area,
@@ -68,6 +69,11 @@ urlpatterns = [
     path("a/<slug:slug>/moderar", moderar_area, name="moderar_area"),
     path("t/<int:topico_id>/moderar", moderar_topico, name="moderar_topico"),
     path("m/<int:mensagem_id>/moderar", moderar_mensagem, name="moderar_mensagem"),
+    # MOSTRAR NA GALERIA. Mesmo `require_POST` das de cima, e pela mesma razao:
+    # consentimento dado por GET seria consentimento que um `<img src>` de outro
+    # site arranca do aluno sem ele clicar em nada. Quem nao e o dono do
+    # trabalho recebe 404 aqui, como nas quatro rotas de moderacao.
+    path("t/<int:topico_id>/galeria", decidir_galeria, name="decidir_galeria"),
     # O RASCUNHO DA IA (02/09/2026, `apps/core/agente.py`). Mesma família
     # das quatro acima: 404 para quem não é da escola, e `require_POST`.
     # Aqui o POST pesa mais que nas outras: esta é a única rota do projeto
