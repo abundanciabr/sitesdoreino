@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260916-004-infra-ponte-provada-contra-a-vps",
+  tipo: "entrega",
+  quando: "2026-09-16",
+  titulo: "a ponte com a VPS abriu, e o painel ja le a producao",
+  detalhe: "O PC do mantenedor le as quatro leituras da VPS por um cano que so alcanca uma porta. Abre e fecha o cano sozinho; nenhuma outra maquina alcanca a 8443.",
+  autoridade: "medicao",
+  evidencia: "PR #1678 mergeado em 99d55b9c66af4750d6b1e7581ec494cadea09c05 por abundanciabr. deploy-infra run 35049886928 verde: infra sincronizada. Deste PC, por ssh -L do usuario ponte: 200 nas quatro leituras, 404 em caminho vizinho e em POST, 'administratively prohibited' em destino fora da lista, SFTP recusado, shell recusado, 8443 recusada de fora.",
+  verificado_em: "2026-09-16",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-419",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
