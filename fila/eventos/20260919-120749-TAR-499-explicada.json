@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-120749-TAR-499-explicada",
+  "tarefa": "TAR-499",
+  "evento": "explicada",
+  "quando": "2026-09-19T12:07:49+00:00",
+  "quem": "pedido de encerramento do mantenedor em 19/09/2026",
+  "o_que_e": "As decisoes que o mantenedor tomou em 19/09/2026 (fechar 22 PRs, aplicar 6 mandatos, cancelar a TAR-395) e os 12 guardas de invariante provados mortos por mutacao real ainda nao estao no livro nem na fila.",
+  "o_que_muda": "Quem abrir o painel amanha ve o que foi decidido e por que, e os 12 guardas furados viram trabalho com dono em vez de um achado perdido num journal.",
+  "exemplo": "e passar a limpo a ata da reuniao no mesmo dia, enquanto todo mundo ainda lembra do que foi combinado",
+  "importancia": 70
+}

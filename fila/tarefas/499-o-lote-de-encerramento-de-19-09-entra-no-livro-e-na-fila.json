@@ -1,0 +1,20 @@
+{
+  "arquivo": "499-o-lote-de-encerramento-de-19-09-entra-no-livro-e-na-fila",
+  "id": "TAR-499",
+  "titulo": "O lote de encerramento de 19/09 entra no livro e na fila",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o PR desta entrega integrado na main, com o registro 20260919-035, a TAR-395 cancelada e as TAR-494 a TAR-498 visiveis em python ci/fila.py listar",
+  "despacho": "Commite o registro 20260919-035, os eventos da fila e as tarefas TAR-494 a TAR-498 num PR minimo.",
+  "origem": "pedido de encerramento do mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
