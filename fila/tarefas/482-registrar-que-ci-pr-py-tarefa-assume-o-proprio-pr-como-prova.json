@@ -1,0 +1,19 @@
+{
+  "arquivo": "482-registrar-que-ci-pr-py-tarefa-assume-o-proprio-pr-como-prova",
+  "id": "TAR-482",
+  "titulo": "Registrar que ci/pr.py --tarefa assume o proprio PR como prova e que o portao do padrao le o disco",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Duas armadilhas novas em armadilhas/ (ci/pr.py e ci/tests/test_padrao_de_trabalho.py), indice regenerado, PR aberto.",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: low\ntipo: escrita\n\nRegistrar duas armadilhas novas em armadilhas/. A primeira documenta que\nci/pr.py --tarefa so aceita fechar a tarefa quando a evidencia e o proprio\nPR sendo aberto, travando (tarefa ja encerrada por outro fato / tarefa\nausente, ambigua ou fila invalida) depois de ja commitar e abrir o PR com\nrecibo; a recuperacao e git status + commit a mao do recibo ja gerado. A\nsegunda documenta que ci/padrao_de_trabalho.py (teste em\nci/tests/test_padrao_de_trabalho.py) mede o teto de CLAUDE.md lendo do\ndisco com read_bytes(), que no Windows cresce por causa do CRLF, e deveria\nler via git show. Reservar numeros por ci/reservar.py numero armadilha,\nescrever os arquivos no molde da casa com gatilho e licao, regenerar o\nindice com ci/indice_de_armadilhas.py. Nao editar ci/ nem .github/: sem\nmandato para CODEOWNERS.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-002521-TAR-482-explicada",
+  "tarefa": "TAR-482",
+  "evento": "explicada",
+  "quando": "2026-09-19T00:25:21+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "ci/pr.py --tarefa so aceita fechar a tarefa se a evidencia for o proprio PR, travando tarde quando a entrega ja aconteceu em outro PR; e ci/padrao_de_trabalho.py mede o teto do CLAUDE.md lendo do disco, que no Windows cresce por causa do CRLF",
+  "o_que_muda": "documenta as duas causas para ninguem perseguir defeito de codigo ou de conteudo que nao existe, e para quem chamar ci/pr.py --tarefa saber recuperar o recibo ja gerado quando o rito travar",
+  "exemplo": "PR 1746 travou com tarefa ja encerrada por outro fato ao fechar TAR-435 com evidencia do PR 1683; git show origin/main:CLAUDE.md da 11994 bytes mas wc -c do disco no Windows da 12230",
+  "importancia": 60
+}
