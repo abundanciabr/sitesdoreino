@@ -1,5 +1,10 @@
 # RUNBOOK DO LOTE — como reger vários despachos em paralelo
 
+Para preparar tarefas já escolhidas, use
+`python ci/preparar_regencia.py TAR-NNN TAR-NNN --saida <pasta-externa>`.
+O comando exporta os despachos integrais e um resumo da revisão capturada de
+`origin/main`. Veja [o uso e a medição](docs/despachos/maestro-enxuta.md).
+
 > **Para a SESSÃO-MAESTRO** — a janela raiz do Claude Code, a que conversa com o
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
