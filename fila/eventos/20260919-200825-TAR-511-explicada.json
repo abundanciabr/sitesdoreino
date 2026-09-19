@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-200825-TAR-511-explicada",
+  "tarefa": "TAR-511",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:08:25+00:00",
+  "quem": "brief fechado do mantenedor em 19/09/2026, a pagina de oferta antes do experimento",
+  "o_que_e": "A estrutura da pagina de oferta esta sendo construida, mas nenhuma frase de venda existe. A unica pagina de venda de hoje mostra o nome do produto, o preco e um botao.",
+  "o_que_muda": "O mantenedor passa a ter uma lista curta de perguntas especificas que ele responde de uma sentada, com tudo que a casa ja sabe preenchido e fora do caminho dele, em vez de encarar uma pagina em branco.",
+  "exemplo": "Em vez de pedir a ele que escreva a pagina inteira, o documento pergunta: qual e a promessa do curso em uma frase, e quanto custa. Cada pergunta cabe numa resposta de uma linha.",
+  "importancia": 80
+}
