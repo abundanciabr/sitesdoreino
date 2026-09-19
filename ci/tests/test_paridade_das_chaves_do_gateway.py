@@ -120,10 +120,18 @@ def _ler(caminho: Path) -> Contrato:
         if exportacao:
             exportadas.add(exportacao.group(1))
 
-    # Falha fechada: dentro das linhas da leitura, um teste de vazio que sai
-    # com erro. `exit 0` ali seria "segue sem a chave", que é o oposto.
+    # Falha fechada: dentro do BLOCO do contrato, um teste de vazio que sai com
+    # erro. `exit 0` ali seria "segue sem a chave", que é o oposto.
+    #
+    # A janela é o bloco, e não um número fixo de linhas: com trinta linhas ela
+    # alcançava o `exit 1` de OUTRA checagem do roteiro, e o guarda continuava
+    # verde com a parada do contrato desligada. Achado pelo `ci/provar_guardas.py`.
     inicio_janela = linha_da_leitura or 0
-    janela = "\n".join(linhas[inicio_janela : inicio_janela + 30])
+    fim_janela = next(
+        (n for n, l in enumerate(linhas[inicio_janela:], inicio_janela) if l.strip() == "done"),
+        inicio_janela,
+    )
+    janela = chr(10).join(linhas[inicio_janela : fim_janela + 1])
     falha_fechada = bool(re.search(r'-z\s+"\$\w+"', janela)) and "exit 1" in janela
 
     primeiro_compose = next(
