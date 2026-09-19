@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-120330-TAR-498-explicada",
+  "tarefa": "TAR-498",
+  "evento": "explicada",
+  "quando": "2026-09-19T12:03:30+00:00",
+  "quem": "varredura dos 101 invariantes, run wf_ab425699-fdd, 19/09/2026",
+  "o_que_e": "Testes de invariante da celula cursos que parecem guardar uma promessa e nao guardam: com a linha de producao sabotada eles continuam verdes. Sao 2, provados por mutacao real em 19/09/2026.",
+  "o_que_muda": "Sabotar aquelas linhas de cursos passa a derrubar o CI, entao o guarda volta a valer alguma coisa em vez de dar falsa seguranca.",
+  "exemplo": "e um alarme de incendio que nao toca: enquanto ninguem acende um fosforo debaixo dele, parece que esta funcionando",
+  "importancia": 80
+}

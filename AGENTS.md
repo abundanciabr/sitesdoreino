@@ -31,7 +31,8 @@ registro no livro a bordo (`make pr`). Nunca pergunta ao mantenedor, nunca
 edita o clone principal, nunca arma espera, nunca amplia o mandato; não
 audita nem decide lei. Claude Code rege; a integração é automática;
 Antigravity audita `origin/main` e verifica depois do merge. Pedido colado
-direto nesta sessão continua sendo lote regido por ela.
+direto nesta sessão é executado como um despacho; o que precisar dividir
+vira tarefa na fila, devolvida à maestro.
 
 Execute no PowerShell tudo que puder executar. Antes de passo manual ou
 decisão do mantenedor, leia `docs/guia-mantenedor.md`. Sempre PT-BR.
