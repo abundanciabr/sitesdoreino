@@ -65,6 +65,9 @@ concurrency:
 jobs:
   semear:
     name: inaugurar o quadro na produção
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

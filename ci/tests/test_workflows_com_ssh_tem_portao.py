@@ -31,12 +31,31 @@ arbitrario como `deploy`. Por isso o degrau minimo e identico para os treze,
 e e o que o `canario-fase-3-outbox` ja praticava sozinho: recusar ref que nao
 seja main, antes de qualquer passo que toque na chave.
 
-O QUE ESTE GUARDA NAO FECHA
----------------------------
-O passo de recusa mora no proprio ramo, entao um adversario que empurra um ramo
-tambem consegue apaga-lo. Fechar esse caso exige mover `DEPLOY_SSH_KEY` para um
-Environment do GitHub com politica de branch em `main`, que e configuracao do
-repositorio e decisao do mantenedor. Registro `pendencia` da TAR-461.
+O SEGUNDO DEGRAU, DECIDIDO PELO MANTENEDOR EM 19/09/2026
+---------------------------------------------------------
+O passo de recusa mora no proprio ramo, entao quem empurra um ramo tambem
+consegue apaga-lo no mesmo empurrao. So o GitHub fecha isso, e so o mantenedor
+configura o GitHub. Ele decidiu a ordem, e ela e esta:
+
+  1. todo job que usa a chave declara `environment: vps` (este guarda cobra)
+  2. ele cria o Environment `vps` com a trava de branch em `main` e a chave
+     dentro
+  3. depois de um deploy real terminar verde, ele apaga o segredo antigo do
+     repositorio
+
+Entre o passo 1 e o 2 nada quebra, e isso foi medido, nao suposto: o
+Environment `vps` ainda nao existe (`gh api repos/.../environments` devolveu
+`total_count: 0`), e a documentacao do GitHub diz que rodar um workflow que
+cita um environment inexistente cria esse environment, e que o environment
+assim criado nasce sem regra de protecao e sem segredo proprio. Sem segredo
+proprio, `secrets.DEPLOY_SSH_KEY` continua vindo do segredo do repositorio,
+porque o segredo do environment so vence quando existe. Sem regra de protecao,
+nenhum job fica pendurado esperando aprovacao humana.
+
+Declarar `environment:` nao exige `deployments: write` no GITHUB_TOKEN: os
+proprios workflows-modelo do GitHub (`actions/starter-workflows`, pasta
+`deployments/`) declaram o job de deploy com `permissions: contents: none` e
+`environment:`. Os dezessete jobs desta casa tem `contents: read`, que e mais.
 
 A LISTA E DERIVADA, NUNCA COLADA: lista fixa envelhece em silencio (Classe 8).
 """
@@ -54,6 +73,7 @@ WORKFLOWS = RAIZ / ".github" / "workflows"
 CHAVE = "DEPLOY_SSH_KEY"
 RECUSA_DE_REF = "github.ref != 'refs/heads/main'"
 PORTAO_DE_DEPLOY = "ci/portao_de_deploy.py"
+AMBIENTE = "vps"
 
 
 def _achatar(no) -> str:
@@ -104,6 +124,14 @@ def workflows_que_alcancam_a_vps() -> list[Path]:
     return [c for c in sorted(WORKFLOWS.glob("*.yml")) if alcanca_a_vps(c)]
 
 
+def _ambiente_do_job(job: dict) -> str:
+    """`environment: vps` e `environment: {name: vps}` sao a mesma declaracao."""
+    valor = (job or {}).get("environment")
+    if isinstance(valor, dict):
+        return str(valor.get("name") or "")
+    return str(valor or "")
+
+
 def faltas_de_conferencia(nome: str, doc: dict) -> list[str]:
     """As frestas de um workflow que alcanca a VPS. Lista vazia significa fechado."""
     jobs = doc.get("jobs") or {}
@@ -118,6 +146,11 @@ def faltas_de_conferencia(nome: str, doc: dict) -> list[str]:
             faltas.append(
                 f"{nome}: o job `{job}` abre conexao com a VPS sem que "
                 f"`{exigido}` tenha rodado antes"
+            )
+        if _ambiente_do_job(jobs[job]) != AMBIENTE:
+            faltas.append(
+                f"{nome}: o job `{job}` abre conexao com a VPS sem declarar "
+                f"`environment: {AMBIENTE}`, e fica fora da trava de branch do GitHub"
             )
     return faltas
 
@@ -164,8 +197,9 @@ def test_o_guarda_reprova_workflow_disparavel_que_nasce_sem_recusa_de_ref():
         """
     )
     faltas = faltas_de_conferencia("semear-qualquer-coisa", recem_nascido)
-    assert len(faltas) == 1
+    assert len(faltas) == 2
     assert RECUSA_DE_REF in faltas[0]
+    assert f"environment: {AMBIENTE}" in faltas[1]
 
 
 def test_o_guarda_acusa_quando_o_portao_sai_do_deploy_de_celula():
@@ -194,6 +228,73 @@ def test_o_guarda_acusa_quando_a_recusa_de_ref_sai_do_rollback():
 
     assert [f.split("`")[1] for f in faltas] == ["aplicar"]
     assert RECUSA_DE_REF in faltas[0]
+
+
+def test_o_guarda_acusa_quando_o_ambiente_sai_de_um_job_que_usa_a_chave():
+    """Mutacao sobre o workflow de verdade: sem o ambiente, o guarda reprova.
+
+    Sem ele o job fica fora da trava de branch que o mantenedor vai por no
+    Environment, e volta a receber a chave vindo de qualquer ramo.
+    """
+    caminho = WORKFLOWS / "deploy-celula.yml"
+    doc = yaml.safe_load(caminho.read_text(encoding="utf-8"))
+    assert faltas_de_conferencia("deploy-celula", doc) == []
+
+    del doc["jobs"]["deploy"]["environment"]
+    faltas = faltas_de_conferencia("deploy-celula", doc)
+
+    assert [f.split("`")[1] for f in faltas] == ["deploy"]
+    assert f"environment: {AMBIENTE}" in faltas[0]
+
+
+def test_ambiente_de_outro_nome_nao_serve():
+    """`environment: teste` passaria por qualquer busca de texto por environment."""
+    disfarcado = yaml.safe_load(
+        """
+        name: semear-disfarcada
+        on:
+          workflow_dispatch:
+        jobs:
+          semear:
+            runs-on: ubuntu-latest
+            environment: teste
+            steps:
+              - name: Recusar ref que nao seja main
+                if: github.ref != 'refs/heads/main'
+                run: exit 1
+              - uses: appleboy/ssh-action@v1
+                with:
+                  key: ${{ secrets.DEPLOY_SSH_KEY }}
+        """
+    )
+    faltas = faltas_de_conferencia("semear-disfarcada", disfarcado)
+    assert len(faltas) == 1
+    assert f"environment: {AMBIENTE}" in faltas[0]
+
+
+def test_ambiente_na_forma_longa_vale_igual():
+    """`environment: {name: vps, url: ...}` e a mesma declaracao, e passa."""
+    forma_longa = yaml.safe_load(
+        """
+        name: semear-forma-longa
+        on:
+          workflow_dispatch:
+        jobs:
+          semear:
+            runs-on: ubuntu-latest
+            environment:
+              name: vps
+              url: https://meshcraft.top
+            steps:
+              - name: Recusar ref que nao seja main
+                if: github.ref != 'refs/heads/main'
+                run: exit 1
+              - uses: appleboy/ssh-action@v1
+                with:
+                  key: ${{ secrets.DEPLOY_SSH_KEY }}
+        """
+    )
+    assert faltas_de_conferencia("semear-forma-longa", forma_longa) == []
 
 
 def test_a_recusa_de_ref_para_o_job_em_vez_de_apenas_avisar():

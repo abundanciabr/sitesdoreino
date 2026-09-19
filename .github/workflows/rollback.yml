@@ -146,6 +146,9 @@ jobs:
       needs.validar.outputs.celula != '' &&
       needs.validar.outputs.tag != '' &&
       needs.validar.outputs.var_tag != ''
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
