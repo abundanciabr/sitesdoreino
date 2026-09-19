@@ -191,6 +191,29 @@ def test_congelar_e_descongelar_nunca_rodam_no_mesmo_disparo() -> None:
     )
 
 
+def test_o_job_que_congela_configura_identidade_antes_de_assinar() -> None:
+    """`git commit-tree` EXIGE autor, e o runner do GitHub não tem nenhum.
+
+    Medido no smoke da TAR-486 (run 35417675479): sem esta linha o passo morre
+    com `fatal: empty ident name`, exit 128. A bancada de um agente tem
+    identidade e o runner não, então este é o defeito que só aparece às 2h da
+    manhã — e é por isso que ele tem guarda.
+    """
+    passos = _passos(JOB_QUE_ESCREVE)
+    indice_identidade = next(
+        (i for i, p in enumerate(passos) if "git config user.email" in (p.get("run") or "")),
+        None,
+    )
+    assert indice_identidade is not None, (
+        "o job que congela não configura identidade de git; `git commit-tree` "
+        "falha com `empty ident name` no runner."
+    )
+    indice_congelar = passos.index(_passo_que_roda(JOB_QUE_ESCREVE, "congelar"))
+    assert indice_identidade < indice_congelar, (
+        "a identidade precisa ser configurada ANTES do passo que assina."
+    )
+
+
 def test_celula_e_motivo_chegam_como_dados_nunca_costurados_no_shell() -> None:
     """Motivo é texto LIVRE: interpolado no `run:`, aspas e `;` viram comando."""
     for trecho in ("congelar", "descongelar"):

@@ -264,6 +264,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # IDENTIDADE, e ela não é burocracia: o congelamento grava a referência
+      # montando um commit com `git commit-tree`, e commit-tree EXIGE autor.
+      # A bancada de um agente tem identidade configurada; o runner do GitHub
+      # não tem nenhuma. Medido no smoke da TAR-486 (run 35417675479): o passo
+      # morreu com `fatal: empty ident name`, exit 128 — ou seja, sem esta
+      # linha o congelamento falharia exatamente às 2h da manhã, e só ali.
+      - name: Identidade de quem assina o congelamento
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
       # CONGELAR — alvo antigo, desfecho QUALQUER.
       # Se a aplicação terminou incerta, a célula pode estar na imagem antiga,
