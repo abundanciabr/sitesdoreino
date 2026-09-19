@@ -10,10 +10,11 @@ O `infra/deploy-celula-na-vps.sh` cumpria esse contrato. O
 qualquer célula. Medido em 19/09/2026 (TAR-486) em disparos reais do workflow.
 A mensagem parecia acusar a VPS de estar sem segredo; o que faltava era código,
 e essa confusão custou uma noite. A prova de que as chaves existiam lá: naquele
-mesmo dia houve QUATRO runs de deploy verdes, com CINCO ativações reais na VPS,
-rodando o código que lê essas duas chaves daquele mesmo arquivo. (Primeiro eu
-escrevi "sete deploys", contando workflows verdes em vez de runs: o número
-estava errado, a conclusão continua de pé.)
+mesmo dia foram examinadas SETE execuções verdes do workflow, QUATRO delas com
+job de deploy, somando CINCO ativações reais na VPS, todas rodando o código que
+lê essas duas chaves daquele mesmo arquivo. (Primeiro eu escrevi "sete deploys
+reais", contando execuções verdes como ativações: o número estava errado, a
+conclusão continua de pé.)
 
 POR QUE CÓPIA, E NÃO UM TRECHO COMPARTILHADO: a `appleboy/ssh-action` envia o
 CONTEÚDO de UM arquivo por SSH, e /opt/plataforma não tem o repositório. Um
