@@ -1,0 +1,11 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-002",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T10:15:00-03:00",
+  "problema": "A IA consome até 22% da cota semanal bloqueada em loops inativos aguardando checks e deploy no GitHub.",
+  "titulo": "Erradicação do Polling Síncrono",
+  "baseline": "O script ci/esperar.py (mesmo ocultando o stdout com --so-desfecho) utiliza um laço de espera ativa bloqueando a sessão da IA.",
+  "aceite": "Abolição da espera ativa. A instrução de PR (make pr) deve ser terminal (Exit 0 imediato). A IA encerra a sessão. O acompanhamento do deploy deve ser movido integralmente para automação passiva (GitHub Actions workflow_run ou webhooks).",
+  "origem": null
+}

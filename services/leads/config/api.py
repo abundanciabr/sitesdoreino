@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as leads_router
 from apps.core.auth import bearerAuth
+from apps.core.oportunidades import router as oportunidades_router
 
 api = NinjaAPI(
     title="Leads API",
@@ -16,3 +17,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", leads_router)
+api.add_router("", oportunidades_router)

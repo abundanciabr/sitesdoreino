@@ -364,6 +364,18 @@
     },
     {
       "celula": "forum",
+      "rota": "t/<int:topico_id>/galeria",
+      "endereco": "/forum/t/<int:topico_id>/galeria",
+      "exemplo": "/forum/t/1/galeria",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Mostrar o próprio trabalho na Galeria",
+      "descricao": "O que acontece quando o aluno aperta 'Mostrar na Galeria' ou 'Tirar da Galeria' na conversa dele da área Mostre seu trabalho. Fica guardado quem marcou e quando, e o endereço do trabalho que ele autorizou a escola a mostrar.",
+      "gesto": true,
+      "observacao": "Só o dono do trabalho enxerga essa caixa e só ele consegue usar este endereço: para todo o resto, inclusive professor e administrador, ele responde 'não existe'. Marcar não abre a conversa para quem é de fora, e tirar vale na hora."
+    },
+    {
+      "celula": "forum",
       "rota": "t/<int:topico_id>/gerar-resposta",
       "endereco": "/forum/t/<int:topico_id>/gerar-resposta",
       "exemplo": "/forum/t/1/gerar-resposta",
