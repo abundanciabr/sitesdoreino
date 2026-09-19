@@ -219,3 +219,37 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
   vêm primeiro). O redirect relativo de `dados.js` (`../pedido/...`) continua
   correto sem mudança — relativo sobrevive a mudança de prefixo, era o motivo
   de ele ser relativo.
+
+## Sessão: alcance do token que a página publica (TAR-478)
+
+- **O token público virou um par consumidor de alçada declarada, e a conferência
+  é CENTRAL.** `settings.TOKENS_PUBLICOS` diz quais tokens válidos a própria
+  célula publica no HTML; `ALCANCE_DO_TOKEN_PUBLICO`, em `apps/core/auth.py`,
+  lista por escrito o que um deles alcança (`createSession`, `placeOrder`,
+  `getOrder`). Qualquer outra operação responde 403 ao token da página e
+  continua aberta ao token servidor a servidor. Isso fecha a pendência de
+  arquitetura registrada acima no que ela tinha de pior, medido no
+  `DIAGNOSTICO-TAR-458-bearer-do-checkout.md`: a rota NOVA da API, que nascia
+  alcançável por visitante anônimo sem o autor da rota errar.
+- **O degrau é conferido no `bearerAuth`, e não no handler como em
+  `identidade`.** Lá o segundo grau protege UMA operação nomeada, e o handler é
+  o lugar certo. Aqui o modo de falha é justamente a operação que ninguém
+  escreveu ainda, então um degrau que dependesse de o autor da rota nova lembrar
+  de escrevê-lo não fecharia nada. O padrão de dois graus foi copiado; o ponto
+  de conferência, não. Contrato congelado intacto: nenhum securityScheme novo.
+- **Dúvida é negativa.** `_operacao_pedida` lê o `operation_id` do
+  `resolver_match` que o Django já resolveu, e devolve None quando não dá para
+  saber. None não está na alçada, então o token público é recusado. Guarda:
+  `test_operacao_que_nao_da_para_identificar_e_negada_ao_token_da_pagina`.
+- **`settings.TOKEN_DA_PAGINA` é a fonte única das duas pontas.** O que
+  `views.py` embute no HTML e o que a autenticação trata como público saem da
+  mesma linha, e `TOKENS_PUBLICOS` é DERIVADO dela (`{TOKEN_DA_PAGINA} &
+  TOKENS_ACEITOS`), nunca declarado numa variável de ambiente à parte: variável
+  nova esquecida num ambiente devolveria ali o alcance total sem ninguém
+  perceber. Efeito colateral bem-vindo: se alguém reusar o mesmo valor num
+  `TOKENS_ACEITOS_<OUTRO_PAR>`, é o par servidor a servidor que perde alcance,
+  nunca o contrário.
+- **O que continua sendo dívida declarada, e é decisão do mantenedor:** o valor
+  segue visível no código-fonte da página. O token de curto prazo emitido por
+  sessão, já cogitado na seção acima, é a resposta completa e muda o desenho da
+  página. Esta sessão reduziu o que passa pela porta; não fechou a porta.
