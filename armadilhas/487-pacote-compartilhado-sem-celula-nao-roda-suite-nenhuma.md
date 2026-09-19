@@ -1,7 +1,7 @@
 ---
 schema_version: 2
 armadilha: 487
-estado: documentada
+estado: guardada
 degrau: 2
 confianca: alta
 custo_por_queda: alto
@@ -10,13 +10,14 @@ gatilho:
   - services/alunos/vendor/*
   - services/identidade/vendor/*
 sinal:
+  - "test_as_wheels_vendorizadas_sao_as_wheels_deste_fonte"
   - "test_wheel_de_alunos_corresponde_ao_fonte_do_pacote"
   - "test_wheel_de_identidade_corresponde_ao_fonte_do_pacote"
 guarda:
-  tipo: sino
-  dono: ci/consultar_armadilhas.py
-  detector: gatilho por caminho (packages/outbox-relay, vendor de alunos e identidade)
-licao: "Mudou packages/outbox-relay? NENHUMA suite roda: celulas.yml nao mapeia packages/, o ci-celula-gate fica SKIP verde e o pouso automatico integra sem um unico teste. As duas guardas que comparam wheel e fonte moram em services/alunos/tests/ e services/identidade/tests/, entao so mordem no PROXIMO PR de outra pessoa. Reconstrua as duas wheels no MESMO PR."
+  tipo: CI
+  dono: ci/tests/test_portao_do_pacote_compartilhado.py
+  detector: test_as_wheels_vendorizadas_sao_as_wheels_deste_fonte
+licao: "Mudou packages/outbox-relay? celulas.yml nao mapeia packages/: o ci-celula-gate fica SKIP verde e o deploy-celula nem comeca. Quem fecha isso e o portao do pacote compartilhado, no muralhas de TODO PR, e ele reprova enquanto as wheels de alunos e identidade nao forem refeitas. Conserto: python ci/portao_do_pacote_compartilhado.py --reconstruir, que faz o diff tocar services/** e o deploy sair."
 ---
 
 # O pacote compartilhado nao e de celula nenhuma, e por isso nao roda suite nenhuma
@@ -63,12 +64,38 @@ Quem mexeu no pacote nunca as ve. Quem as ve e a proxima pessoa que mexer em
 `alunos` ou em `identidade` por um motivo sem relacao nenhuma, e vai receber
 uma falha que nao e dela, num arquivo que ela nao tocou.
 
-## O que fazer
+## O que guarda isto desde 18/09/2026 (TAR-465)
 
-Enquanto o pacote nao tiver dono declarado em `celulas.yml`, todo PR que mexer
-em `packages/outbox-relay` precisa, no MESMO PR: reconstruir a wheel,
-copia-la para `services/alunos/vendor/` e `services/identidade/vendor/`, e
-rodar as duas suites a mao. Assim o diff toca `services/**`, as duas guardas
-rodam e o deploy dispara.
+`ci/portao_do_pacote_compartilhado.py`, provado por
+`ci/tests/test_portao_do_pacote_compartilhado.py`. A suite `ci/tests/` roda no
+`muralhas.yml`, que e o unico workflow sem filtro de caminho, entao o portao ve
+o PR que so mexe em `packages/` (o SKIP verde do `ci-celula-gate` continua la, e
+deixou de ser suficiente para integrar).
 
-Conserto de verdade e decisao de fronteira do mantenedor, registrada na fila.
+O portao compara cada wheel de `services/*/vendor/` com
+`packages/outbox-relay/src/`, modulo a modulo, e confere que a versao do nome,
+a versao da METADATA e a versao do `pyproject.toml` sao a mesma, e que o
+`requirements.txt` da celula instala aquela wheel. Quem consome o pacote nao e
+lista escrita a mao: e quem tem a wheel na pasta `vendor/`.
+
+```
+$ python ci/portao_do_pacote_compartilhado.py
+  alunos/outbox_relay-0.3.1-py3-none-any.whl      FAIL   1 divergencia(s) entre a wheel e o fonte
+  identidade/outbox_relay-0.3.1-py3-none-any.whl  FAIL   1 divergencia(s) entre a wheel e o fonte
+RESULTADO  FAIL
+CONSERTO: python ci/portao_do_pacote_compartilhado.py --reconstruir
+```
+
+Fonte divergindo da wheel e FAIL; o que impede a MEDICAO (pacote fora do lugar,
+wheel ilegivel, zero consumidores) e ERROR, nunca PASS. Apagar a wheel nao e
+caminho para o verde.
+
+O conserto em um comando existe porque ate hoje esse passo nao tinha comando
+nenhum no repositorio: `--reconstruir` constroi a wheel do fonte e a entrega a
+todos os consumidores. Como so isso deixa o portao verde, o PR passa a tocar
+`services/**`, e ai as duas suites de celula rodam e o `deploy-celula` dispara.
+
+O pacote continua sem celula em `celulas.yml`: declarar uma so celula deixaria a
+outra sem testar, e criar uma celula `packages` pede entrada no manifesto,
+`make -C services/packages ci` e `docker build services/packages`, que nao
+existem. Isso continua sendo decisao de fronteira do mantenedor.
