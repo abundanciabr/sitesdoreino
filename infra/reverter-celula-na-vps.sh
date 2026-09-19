@@ -54,7 +54,8 @@ fi
 # NENHUM VALOR APARECE NA TELA: o log do run é lido por gente, e segredo nele é
 # incidente. Este é o único ponto do script que abre um `env/`.
 # =============================================================================
-ENV_DO_ADMIN="/opt/plataforma/env/admin.env"
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+ENV_DO_ADMIN="$RAIZ/env/admin.env"
 for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
   VALOR_DO_GATEWAY=$(grep -m1 "^$CHAVE_DO_GATEWAY=" "$ENV_DO_ADMIN" | cut -d= -f2-) || VALOR_DO_GATEWAY=""
   if [ -z "$VALOR_DO_GATEWAY" ]; then
