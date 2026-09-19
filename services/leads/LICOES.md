@@ -134,3 +134,35 @@ do loop de produção.
 **Origem:** despacho leads/reentrega-pel (lote 2, 22/08/2026) — a pendência era
 a linha "evento que faz o handler estourar fica pendente para sempre" do
 ARMADILHAS-OPERACAO.md §9.
+
+## O contrato congelado com `components` obriga o exportador a declarar componentes
+
+**Onde:** `apps/core/contrato_oportunidades.py`,
+`apps/core/management/commands/export_openapi.py`.
+
+Até o CRM humano, o congelado desta célula não tinha `components.schemas`: as
+duas portas de lead descrevem tudo inline, e o exportador apagava a chave vazia.
+O contrato do acompanhamento comercial nomeia 29 schemas, uma resposta
+reaproveitada (`AcaoNaoAutorizada`), `x-autorizacao` por operação e parâmetro de
+path declarado por ROTA, não por operação. O freeze compara os dois documentos
+byte a byte, então cada uma dessas quatro coisas precisou de um caminho:
+
+- **schemas nomeados:** escritos à mão em `contrato_oportunidades.py` e
+  injetados em `components` pelo exportador. Não use `ninja.Schema` para isto:
+  o pydantic decora o que gera (`title`, `const` com `type` junto, `anyOf` no
+  lugar de `oneOf`) e o congelado, escrito à mão, não tem nada disso.
+- **`x-autorizacao` e respostas:** entram por `openapi_extra` da operação, que o
+  django-ninja funde com `deep_dict_update` (dicionário funde, lista substitui).
+- **status sem 200 sobrando:** `response={201: None}` no decorador. Sem isso o
+  ninja emite um 200 padrão que o congelado não tem, e o freeze reprova.
+- **parâmetro de path por rota:** a operação manda `"parameters": []` (a chave
+  vazia some na poda que já existia) e o exportador reancora a lista no item de
+  caminho.
+
+**A tentação a recusar:** ler `contracts/leads.openapi.yaml` dentro do
+exportador. O documento vivo ficaria idêntico ao congelado para sempre, o
+portão passaria a medir a si mesmo e a única muralha de contrato desta célula
+viraria decoração.
+
+**Origem:** despacho leads/acompanhamento-comercial (TAR-420), ao implementar o
+provedor do contrato integrado pelo PR #1530.

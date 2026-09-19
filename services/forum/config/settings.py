@@ -175,14 +175,31 @@ TEMPLATES = [
 # do forum seguem servindo, e so a porta de maquina fica fechada ate o token
 # existir no env. E o mesmo desenho de `identidade` e `alunos`.
 #
-# Nao ha `TOKENS_COMPLETOS` aqui, e a ausencia e a decisao: aquele degrau existe
-# na `identidade` para liberar E-MAIL a pares autorizados. Esta porta nao
-# devolve dado pessoal nenhum (nem e-mail, nem quem leu o que), entao nao ha
-# segundo degrau a conceder — ver `apps/core/api.py`.
+# Esta porta nao devolve dado pessoal nenhum: nem e-mail, nem quem leu o que.
+# O segundo degrau que existe aqui (logo abaixo) nao e sobre dado pessoal, e sim
+# sobre a unica operacao que fala de area TRANCADA — ver `apps/core/api.py`.
 TOKENS_ACEITOS = {
     valor
     for chave, valor in os.environ.items()
     if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
+# O DEGRAU A MAIS, e ele nasceu com a porta da Galeria (TOKENS_DA_GALERIA_<PAR>).
+# A frase acima dizia que aqui nao havia segundo degrau porque nenhuma operacao
+# devolvia dado privado. `GET /galeria/candidatas/{pessoa_id}` mudou isso: ela e
+# a unica desta porta que fala de area TRANCADA, e por isso nao pode valer para
+# todo par da casa. Quem tem so o token comum recebe 403 nela, com as tres
+# operacoes publicas seguindo abertas para ele.
+#
+# Sao dois envs para o mesmo par, de proposito: `TOKENS_ACEITOS_GAMIFICACAO`
+# abre a porta e `TOKENS_DA_GALERIA_GAMIFICACAO` concede o degrau. E o desenho
+# de `TOKENS_COMPLETOS` na `identidade`, copiado como PADRAO (Lei 3).
+#
+# Env ausente => conjunto VAZIO => 403 para todo mundo. Fail-closed.
+TOKENS_DA_GALERIA = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_DA_GALERIA_") and valor
 }
 
 ROOT_URLCONF = "config.urls"
