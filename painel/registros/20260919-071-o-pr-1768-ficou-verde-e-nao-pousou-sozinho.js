@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-071-o-pr-1768-ficou-verde-e-nao-pousou-sozinho",
+  tipo: "incidente",
+  quando: "2026-09-19",
+  titulo: "O PR 1768 (célula quiz) ficou com todos os checks verdes e não pousou até o mandato virar uma linha só",
+  detalhe: "O PR 1768 entregou o endereco publico do quiz, o formulario protegido e a tela de resultado com saida, no ramo agent/quiz/endereco-csrf-botao. Os nove checks do pouso (muralhas, ci-celula quiz, ci-celula admin, ci-celula-gate, detectar, pousar, espelho-da-main, painel-no-navegador, conferir o toca declarado) ficaram verdes no SHA 59f076b6, mas a integracao automatica nao pousava o PR.\n\nA causa: a descricao trazia a linha Mandato-do-mantenedor quebrada em tres linhas, com o caminho autorizado entre crases. O portao ci/mergear.py casa ^Mandato-do-mantenedor: (.{20,})$ em modo MULTILINE (linha 903) e depois exige o caminho como palavra solta de um .split() da mesma linha (linhas 917 a 920). A quebra de linha e as crases fizeram o portao reprovar em mandato do mantenedor, silenciosamente: o PR sequer entrava em pode_aguardar_na_pista, entao a integracao automatica seguia pousando outros PRs verdes e passando por cima deste.\n\nReescrever o mandato como uma linha unica, com o caminho sem crases, fez o portao aprovar e o pouso aconteceu sozinho logo em seguida. O irmao deste PR, o 1769 (infra/semear-quiz.sh e o workflow de semeadura), ja tinha pousado antes, sem esse problema.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1768 conferido com gh pr view 1768 --json state,mergedBy,mergeCommit,mergedAt: state MERGED, mergeCommit 4d802c85f913ff2d7cd05213283a6ebf570f5990, mergedAt 2026-09-19T20:36:58Z, mergedBy abundanciabr",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "quiz",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
