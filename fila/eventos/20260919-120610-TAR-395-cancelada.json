@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260919-120610-TAR-395-cancelada",
+  "tarefa": "TAR-395",
+  "evento": "cancelada",
+  "quando": "2026-09-19T12:06:10+00:00",
+  "quem": "sessao-retomada-19set",
+  "detalhe": "Os cinco alvos exatos nao existem em lugar nenhum. A tarefa pede os registros 20260912-015, 20260912-022, 20260912-024, 20260912-025 e a armadilha 475. Busca feita em 19/09/2026: (1) git ls-tree -r origin/main nao devolve nenhum dos cinco; (2) git log --all --diff-filter=A nos cinco padroes devolve VAZIO, ou seja nenhum deles jamais foi acrescentado em nenhum commit de nenhum ramo; (3) controle do instrumento na mesma busca: os vizinhos 20260912-014, -016, -020, -029 e armadilhas 470 a 473 e 477 a 479 aparecem normalmente, entao a busca acha quando existe. Nao foram encontrados nos caminhos originais, nem na main, nem no historico do Git. Nao ha o que passar a limpo. Correcao de um relato anterior desta mesma sessao: a pasta OneDrive/Documentos/sitesdoreino-soltos-20260912 tem cinco arquivos, mas sao outros cinco (ci/consultar_armadilhas.py, seu teste, docs/guia-mantenedor.md, medir_eventos.py e run_baseline.py), e nao os alvos desta tarefa."
+}
