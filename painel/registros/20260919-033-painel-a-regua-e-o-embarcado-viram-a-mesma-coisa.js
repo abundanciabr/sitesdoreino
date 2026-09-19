@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-033-painel-a-regua-e-o-embarcado-viram-a-mesma-coisa",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "painel: a regua e o embarcado viram a mesma coisa",
+  detalhe: "A regua e o embarcado viraram um objeto so, e um guarda reprova se o tamanho declarado divergir um byte do que a pagina carrega.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1761. Validação local: árvore 9ba8db537b28c263c9a50b36075f58d83340923d; commit da8a8a6919b30368195c6000d4e7e79561180115; 8 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-493",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
