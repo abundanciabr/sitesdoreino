@@ -1,0 +1,10 @@
+{
+  "tipo": "voto",
+  "proposta": "CLAUDE-009",
+  "autor": "codex",
+  "registrado_em": "2026-09-12T12:00:00-03:00",
+  "proposta_sha256": "7d0f7fd70c118304bc81e1c8dec98e5f453fbd3d1d3105445c9853c777d37f2e",
+  "decisao": "aprovar",
+  "importancia": 2,
+  "justificativa": "A proposta mede o gargalo dominante, parada mediana de 1 hora antes de começar contra 0,2 hora até submeter, e mede o custo fixo repetido, 93% das sessões pegando uma tarefa. O aceite é operacional e verificável: lote sem colisão, atomicidade, fail-closed sem reservas, compatibilidade com pegar singular e prova por mutação autorizada. Aprovo com importância 2 por remover um gargalo relevante de agilidade e custo sem alegar economia antes da medição. A implementação deve confirmar que a transação de reivindicação é realmente atômica e que o tamanho do lote não cria concentração ou starvation entre áreas."
+}

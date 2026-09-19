@@ -1,0 +1,28 @@
+Conferência local, 2026-09-12T13:03:04.703370+00:00
+Sem consulta remota nesta execução.
+
+COMANDO: git rev-parse origin/main
+1: 22a9bd26d907e958946efbba7d430488daf814e3
+EXIT: 0
+
+COMANDO: git show origin/main:RITOS.md
+97:    (Conventional Commits). Não há obrigação de microcommits a cada teste verde.
+120:    python ci/mergear.py <PR> --pousar     # revisão e recibo conferidos: encaminha e encerra
+146:    python ci/mergear.py <N> --pousar      # encaminha e retorna JSON, sem espera
+EXIT: 0
+
+COMANDO: git show origin/main:CLAUDE.md
+195: etiqueta e SHA e encerra. Não espere checks, merge ou deploy.
+EXIT: 0
+
+COMANDO: git show origin/main:ci/ci.py
+50: from resumo_de_teste import executar_pytest
+287:     resultado, _ = executar_pytest(
+EXIT: 0
+
+COMANDO: git show origin/main:.claude/settings.json
+5:         "matcher": "Monitor",
+15:     "PostToolUse": [],
+38:     "SessionStart": [
+43:             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_pasta_compartilhada.py\" --aviso",
+EXIT: 0
