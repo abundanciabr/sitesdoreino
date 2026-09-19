@@ -681,6 +681,38 @@
     };
   }
 
+  // Quantos registros COM PRAZO viajam no resumo. Era por esta porta que o
+  // tamanho da capa ainda podia crescer com a IDADE do projeto em vez de com o
+  // que está aberto: `montarResumo` carregava TODO registro com `vence_em_dias`,
+  // e essa lista só aumenta. Medido em 19/09/2026, com mil entregas fechadas que
+  // trouxessem prazo: o resumo ia a 436.165 bytes, quase o triplo do orçamento.
+  // No livro real de hoje são 26 registros, nenhum deles uma entrega — o buraco
+  // ainda não tinha sangrado, e um buraco que não sangrou hoje sangra na semana
+  // que vem.
+  //
+  // OS MAIS RECENTES, e a escolha foi medida antes de ser feita. A primeira
+  // versão deste teto ordenava pelo PRAZO, guardando quem vence primeiro, e o
+  // argumento parecia bom: o bloco que se serve desta porta é "O que está
+  // velho", então guarde quem já venceu. Medido no livro real, isso deixava de
+  // fora um compromisso com prazo em 2027 e guardava vencidos de janeiro.
+  //
+  // E aí a ordem se revelou invertida. O prazo mais curto de um livro que só
+  // cresce é sempre o registro mais antigo dele, vencido há meses, sobre o qual
+  // não há nada a fazer. Quem o dono precisa ver é a prova que saiu da validade
+  // AGORA, ou está para sair: essa é acionável, dá para ir conferir de novo. É a
+  // mesma razão já escrita em `PROBLEMAS_COM_DETALHE`, que recusou a ordem do
+  // bloco para não ficar com os incidentes mais velhos.
+  //
+  // E CONTINUA SEM RELÓGIO: a ordem é por `quando`, um campo gravado, e dá o
+  // mesmo resultado em qualquer máquina e a qualquer hora. Quem compara prazo
+  // com o agora continua sendo o navegador de quem abre.
+  var COM_PRAZO_NO_RESUMO = 20;
+
+  function comPrazo(registros) {
+    return registros.filter(function (r) { return r.vence_em_dias != null; })
+      .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+  }
+
   // Quantas afirmações sem prova viajam no resumo. Este teto é de OUTRA natureza
   // que `PROBLEMAS_COM_DETALHE` e `CAIXA_COM_DETALHE`: aqueles cortam TEXTO e
   // nunca FATO, e podem, porque problema aberto e pedido sem resposta FECHAM —
@@ -1034,7 +1066,10 @@
     marcar(apenasTitulo, blocos["nao-comprovado"]);
     marcar(apenasTitulo, blocos.frescor);
     marcar(apenasTitulo, recentes);
-    marcar(apenasTitulo, registros.filter(function (r) { return r.vence_em_dias != null; }));
+    // Os PRAZOS MAIS CURTOS do livro, e não todos (ver `COM_PRAZO_NO_RESUMO`).
+    // Esta era a última porta pela qual o tamanho da capa ainda podia crescer
+    // com a idade do projeto, e não com o que está aberto.
+    marcar(apenasTitulo, comPrazo(registros).slice(0, COM_PRAZO_NO_RESUMO));
     mapaS.forEach(function (c) { marcar(apenasTitulo, c.andou); marcar(apenasTitulo, c.esperando); });
     Object.keys(completo).forEach(function (id) { delete apenasTitulo[id]; });
 
@@ -1042,10 +1077,22 @@
       return completo[r.arquivo] || apenasTitulo[r.arquivo];
     }).map(function (r) { return completo[r.arquivo] ? r : soTitulo(r); });
 
-    // O mapa de respostas viaja calculado sobre o livro INTEIRO: sem ele, um
-    // pedido cuja resposta ficou fora do resumo voltaria a aparecer como aberto.
+    // O mapa de respostas é CALCULADO sobre o livro inteiro e ENTREGUE só para
+    // quem viaja: sem o cálculo sobre o livro, um pedido cuja resposta ficou
+    // fora do resumo voltaria a aparecer como aberto; carregando o livro
+    // inteiro, o resumo ganhava um id novo a cada par encerrado, para sempre.
+    //
+    // Medido em 19/09/2026, e foi o furo que sobreviveu ao PR #1758: com 1, 100
+    // e 1.000 ocorrências já respondidas, o resumo pesava 1.008, 14.684 e 43.485
+    // bytes. Nada mais crescia com a história do projeto; isto crescia.
+    //
+    // POR QUE CORTAR AQUI É EXATO, e não uma aproximação: toda leitura deste
+    // mapa, nas seis funções que o consultam, é `resp[r.arquivo]` com `r`
+    // vindo da própria lista que se passou. No navegador essa lista é o resumo.
+    // Uma chave que não seja de um registro do resumo nunca chega a ser lida —
+    // e o que nunca é lido não precisa viajar.
     var respondidosIds = {};
-    Object.keys(prontos).forEach(function (k) { respondidosIds[k] = true; });
+    selecionados.forEach(function (r) { if (prontos[r.arquivo]) respondidosIds[r.arquivo] = true; });
 
     return {
       erro: null,
@@ -1057,6 +1104,11 @@
       // O registro mais recente do livro TODO — é dele que sai "o livro está
       // parado há N dias", e ele precisa ser o do livro, não o do resumo.
       maisRecenteQuando: porData.length ? porData[0].quando : null,
+      // Quantos registros do livro TODO carregam prazo. O resumo leva só os
+      // `COM_PRAZO_NO_RESUMO` de prazo mais curto, e é com este número que a
+      // página diz quantos ficaram fora, em vez de a lista curta passar por
+      // completa.
+      comPrazoNoLivro: comPrazo(registros).length,
       totalNoLivro: registros.length
     };
   }
@@ -1071,6 +1123,7 @@
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
     SEM_PROVA_NO_RESUMO: SEM_PROVA_NO_RESUMO,
+    COM_PRAZO_NO_RESUMO: COM_PRAZO_NO_RESUMO,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
