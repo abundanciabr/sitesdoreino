@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-151219-TAR-501-concluida",
+  "tarefa": "TAR-501",
+  "evento": "concluida",
+  "quando": "2026-09-19T15:12:19+00:00",
+  "quem": "agent/painel/fecho-rotacao-valvula",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1765",
+  "verificado_em": "2026-09-19"
+}
