@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-017-incidente-placar-do-espelho-regravado",
+  tipo: "incidente",
+  quando: "2026-09-13",
+  titulo: "O placar local do conselho foi regravado no espelho",
+  detalhe: "Ao medir o baseline da TAR-379, placar.py foi executado no espelho e regravou um arquivo não rastreado, alterando seu horário. Uma captura da maestro feita às 01:04:47Z prova o conteúdo anterior: 149 bytes e SHA-256 d2445f1a9972c0936068bb407f614435d4efc558d8edbcbcaa435a5241577065. O arquivo atual tem os mesmos bytes e hash; por isso nenhuma restauração de conteúdo foi feita.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1624",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-379",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

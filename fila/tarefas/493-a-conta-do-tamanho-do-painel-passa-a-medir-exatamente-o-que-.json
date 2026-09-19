@@ -1,0 +1,19 @@
+{
+  "arquivo": "493-a-conta-do-tamanho-do-painel-passa-a-medir-exatamente-o-que-",
+  "id": "TAR-493",
+  "titulo": "A conta do tamanho do painel passa a medir exatamente o que a pagina carrega",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "guarda no teste do gerador comparando byte a byte o tamanho declarado em orcamento.resumoBytes com o tamanho real de PAINEL.resumo no painel gerado",
+  "despacho": "Ver o PR: resumoEmbarcado unico em painel/gerar_manifesto.js.",
+  "origem": "pendencia declarada no PR 1760",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-014-ci-a-ficha-que-representa-quem-paga-e-quem-estuda",
+  tipo: "nota",
+  quando: "2026-09-18",
+  titulo: "ci: a ficha que representa quem paga e quem estuda",
+  detalhe: "A ficha que faltava mede o que ninguem mede: 11 de 26 cartoes apagados e a loja fechada ha 27 dias. Ela so le e nao decide produto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1727. Validação local: árvore 6788d5a93db3982d5d037aed669caa276acff4e2; commit d08e3be6626e6920e8f76d45830fda4d848a15e2; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-473",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

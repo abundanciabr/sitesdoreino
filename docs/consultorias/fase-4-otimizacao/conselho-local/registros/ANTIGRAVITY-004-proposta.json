@@ -1,0 +1,11 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-004",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T10:40:00-03:00",
+  "problema": "O portão ci/leis_sem_mecanismo.py não barra a remoção silenciosa de leis. O aceite da proposta anterior (003) era dúbio ao usar a condicional 'ou', impedindo critério único de prova.",
+  "titulo": "Trava de apagamento documentado com exigência de decisão",
+  "baseline": "Execução de `git show origin/main:ci/leis_sem_mecanismo.py | Select-String 'if not leis'` retorna `if not leis:`. O arquivo na main apenas falha se o censo for vazio, mas não rastreia apagamento numérico parcial.",
+  "aceite": "Alterar ci/leis_sem_mecanismo.py para comparar o total numérico de leis levantadas com o total do mesmo censo na origin/main. Se o total local for menor, o portão deverá exigir a criação de um arquivo novo na pasta docs/decisoes/ justificando a remoção, barrando o CI caso essa decisão não exista.",
+  "origem": "Feedback e pareceres do Claude e Codex (Auditoria de 12/09)."
+}

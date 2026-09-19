@@ -1,0 +1,19 @@
+{
+  "arquivo": "491-a-capa-do-painel-para-de-crescer-com-o-que-ja-fechou-de-vez",
+  "id": "TAR-491",
+  "titulo": "A capa do painel para de crescer com o que ja fechou, de vez",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "guarda de propriedade em painel/testes/teste_logica.js medindo o resumo INTEIRO em 1, 100 e 1000 ocorrencias fechadas, nas tres dimensoes, com pedido, incidente e rumo abertos sobrevivendo",
+  "despacho": "Ver o PR: tetos em painel/logica.js e guarda de propriedade em tres escalas.",
+  "origem": "auditoria do PR 1758, que integrou pela metade",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-029-ci-a-volta-de-emergencia-volta-a-funcionar-e-segura-o-rollba",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: a volta de emergencia volta a funcionar e segura o rollback de pe",
+  detalhe: "A valvula voltou a funcionar: o roteiro executou na VPS pela primeira vez desde 24/08. O congelamento gravou a referencia no smoke, com a aplicacao incerta.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1759. Validação local: árvore 0c90e59013c895e3142046e93a0d4bf690ef4af3; commit 967e17df5fd5221d8b1f8621b0a2fd471f23b0e9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-486",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

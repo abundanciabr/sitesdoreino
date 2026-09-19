@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-040000-TAR-493-explicada",
+  "tarefa": "TAR-493",
+  "evento": "explicada",
+  "quando": "2026-09-19T04:00:00+00:00",
+  "quem": "pendencia declarada no PR 1760",
+  "o_que_e": "O painel tem um limite de tamanho, e ate agora a conta que verificava esse limite media uma coisa e a pagina carregava outra, um pouco maior. A conta cobrava so um pedaco. Foi por essa fresta que o problema do PR 1758 passou verde: uma parte da pagina crescia sem limite do lado de fora da conta.",
+  "o_que_muda": "A conta passa a medir exatamente aquilo que a pagina carrega, e um conferidor novo reprova se os dois numeros divergirem em um unico byte. A fresta deixa de existir em vez de ficar dependendo de alguem lembrar dela.",
+  "exemplo": "E como pesar a mala so pelo que esta na parte de cima e declarar esse peso no balcao. Enquanto o de baixo era leve, ninguem notou.",
+  "importancia": 78
+}
