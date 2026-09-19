@@ -2254,6 +2254,36 @@
     },
     {
       "celula": "admin",
+      "rota": "paginas/",
+      "endereco": "/admin/paginas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Onde você escreve o texto da página de venda",
+      "descricao": "A tela em que você escreve, espaço por espaço, o que a pessoa lê na página que vende o curso: as onze seções que você especificou em 05/09/2026, com a frase que explica cada espaço nas mesmas palavras do despacho. Ela conta quantos espaços estão preenchidos, diz quais seções não vão aparecer por estarem vazias (o que é legítimo) e avisa quando o texto tem algum dos padrões que você proibiu. Salvar guarda aqui e não muda o site; publicar põe no ar e cria uma versão nova."
+    },
+    {
+      "celula": "admin",
+      "rota": "paginas/salvar",
+      "endereco": "/admin/paginas/salvar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar o texto da página de venda",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de salvar na tela da página de venda. O texto fica guardado e o site continua como estava."
+    },
+    {
+      "celula": "admin",
+      "rota": "paginas/publicar",
+      "endereco": "/admin/paginas/publicar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Pôr a página de venda no ar",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de publicar. O texto salvo vira a página que as pessoas veem, numa versão nova que fica guardada como está."
+    },
+    {
+      "celula": "admin",
       "rota": "perpetuo/",
       "endereco": "/admin/perpetuo/",
       "alcance": "publico",

@@ -912,20 +912,36 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
                     if padrao.endswith("/")
                     else caminho == padrao
                 ):
-                    if (
-                        not mandato
-                        or autor not in donos
-                        or not any(
-                            alvo in mandato.group(1).split()
-                            for alvo in (padrao, caminho)
+                    if autor not in donos:
+                        recusa = (
+                            f"o PR de {caminho} não saiu da conta do dono",
+                            f"Só a conta {donos[0]} abre PR neste caminho; "
+                            "reabra o PR por ela.",
                         )
-                    ):
-                        return Resultado(
-                            "mandato do mantenedor",
-                            Estado.FAIL,
+                    elif not mandato:
+                        recusa = (
                             f"falta mandato do dono para {caminho}",
-                            "Registre na descrição, pelo dono, Mandato-do-mantenedor: seguido do pedido e dos caminhos autorizados.",
+                            "Transcreva na descrição a autorização que o dono já "
+                            "deu: Mandato-do-mantenedor: seguido do pedido, dos "
+                            f"caminhos autorizados ({padrao}) e da origem. A "
+                            "autorização dita na sessão vale tanto quanto a "
+                            "digitada no site; se ainda não houver nenhuma, peça a "
+                            "ele na própria sessão.",
                         )
+                    elif not any(
+                        alvo in mandato.group(1).split() for alvo in (padrao, caminho)
+                    ):
+                        recusa = (
+                            f"o mandato do dono não alcança {caminho}",
+                            f"Acrescente {padrao} à linha Mandato-do-mantenedor: se "
+                            "a autorização dele cobre esse caminho; se não cobre, "
+                            "pergunte a ele na própria sessão.",
+                        )
+                    else:
+                        continue
+                    return Resultado(
+                        "mandato do mantenedor", Estado.FAIL, *recusa
+                    )
         if any(a["path"].startswith("contracts/") for a in pr.get("files") or []):
             if "contrato" not in {l["name"] for l in pr.get("labels") or []}:
                 return Resultado(
