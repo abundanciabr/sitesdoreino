@@ -151,9 +151,32 @@ jobs:
     environment: vps
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # ESTE JOB NÃO GANHA ESCRITA, E ISSO É DECISÃO, NÃO ESQUECIMENTO.
+    # Ele é o único lugar da casa que abre um SSH na produção com a chave de
+    # deploy. Somar a isso o direito de gravar no repositório juntaria os dois
+    # poderes num passo só. Quem congela é o job `congelamento`, que não tem a
+    # chave; quem entra na VPS é este, que não tem a caneta.
     permissions:
       contents: read
     steps:
+      # O CHECKOUT QUE FALTAVA, e cuja falta quebrava a válvula em silêncio.
+      #
+      # Medido em 19/09/2026: o passo do SSH manda rodar
+      # `script_path: infra/reverter-celula-na-vps.sh`, e `script_path` lê um
+      # arquivo DO RUNNER. Sem checkout esse arquivo não existe. O `script_path`
+      # entrou aqui em 28/08/2026 (c6f90bfe) e o job `aplicar-na-vps` não roda
+      # desde 24/08/2026: a resposta canônica a QUALQUER emergência passou 22
+      # dias quebrada sem um único run vermelho, porque ninguém dispara um
+      # rollback sem incêndio. Todo outro job da casa que usa `script_path`
+      # (deploy-celula, deploy-infra) começa por aqui.
+      #
+      # `ref: main` EXPLÍCITO, pelo mesmo peso do job que valida: o roteiro que
+      # entra na VPS vem da linha principal, nunca do ref de quem disparou.
+      # `workflow_dispatch` aceita ser disparado de qualquer ref, e sem esta
+      # linha um ramo de rascunho escolheria o que roda no servidor.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
       # O motivo é texto LIVRE — ele nunca entra no script do SSH. Interpolar
       # `${{ inputs.* }}` dentro de um `script:` é substituição de TEXTO: um
       # motivo com aspas e `;` viraria comando na VPS. Por env não vira: o
@@ -209,3 +232,83 @@ jobs:
             echo "   NÃO trate a emergência como resolvida."
             exit 1
           fi
+
+  # ===========================================================================
+  # CONGELAMENTO — o rollback continua de pé depois que o run termina.
+  #
+  # Voltar a imagem é metade do trabalho. A outra metade é o rollback SOBREVIVER
+  # aos 15 minutos seguintes: desde 13/09/2026 quem integra é
+  # `ci/mergear.py --automatico`, acordado por cron, e mergear um PR da célula
+  # dispara o `deploy-celula` dela, que republica `:main` por cima da imagem
+  # para a qual ela acabou de voltar. Com o run verde e ninguém no circuito.
+  # O PR #1739 deu à casa a referência `refs/congelamentos/<celula>` e o portão
+  # que a lê; este job é quem a liga e desliga, para ninguém precisar lembrar.
+  #
+  # JOB SEPARADO, E ESSA É A DECISÃO CENTRAL: a escrita no repositório mora
+  # aqui, e a chave SSH da produção mora no job de cima. Nenhum passo desta
+  # esteira tem os dois. Quem entra na VPS não escreve no repositório; quem
+  # escreve no repositório não entra na VPS.
+  # ===========================================================================
+  congelamento:
+    name: congelar-ou-descongelar
+    needs: [validar, aplicar]
+    # `always()` aqui é o coração da regra, e ele NÃO afrouxa o `if` do job que
+    # aplica: aquele continua exigindo o alvo provado. Este job só existe
+    # depois que a produção já foi tocada, e é justamente o desfecho INCERTO
+    # (SSH pela metade, marca de conclusão ausente, run cancelado no meio) que
+    # mais precisa de congelamento — a célula está num estado que ninguém
+    # garante E destravada para a integração automática. Congelar de menos
+    # custa um rollback desfeito em silêncio; congelar de mais custa um
+    # comando de seis palavras. A guarda de verdade está no `if` de cada passo.
+    if: ${{ always() && needs.validar.result == 'success' && needs.validar.outputs.celula != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # A ÚNICA escrita desta esteira, e ela não tem a chave da VPS.
+    # `ci/tests/test_rollback_congela_ao_aplicar.py` mede, em TODOS os
+    # workflows da casa, que nenhum outro job ganhou escrita e que o job do SSH
+    # não a tem.
+    permissions:
+      contents: write
+    steps:
+      # `ref: main` pelo mesmo peso dos outros dois: o `ci/rollback.py` que
+      # decide o congelamento vem da linha principal, nunca do ref do disparo.
+      # A credencial do checkout FICA (padrão), porque é o token deste job que
+      # o `git push` da referência usa; `persist-credentials: false` aqui faria
+      # o congelamento falhar calado no meio de uma emergência.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # IDENTIDADE, e ela não é burocracia: o congelamento grava a referência
+      # montando um commit com `git commit-tree`, e commit-tree EXIGE autor.
+      # A bancada de um agente tem identidade configurada; o runner do GitHub
+      # não tem nenhuma. Medido no smoke da TAR-486 (run 35417675479): o passo
+      # morreu com `fatal: empty ident name`, exit 128 — ou seja, sem esta
+      # linha o congelamento falharia exatamente às 2h da manhã, e só ali.
+      - name: Identidade de quem assina o congelamento
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      # CONGELAR — alvo antigo, desfecho QUALQUER.
+      # Se a aplicação terminou incerta, a célula pode estar na imagem antiga,
+      # na nova, ou no meio. Nenhum desses três estados é seguro para receber
+      # um deploy automático, então os três congelam.
+      - name: Segurar o rollback de pé (congelar a célula)
+        if: ${{ needs.validar.outputs.tag != 'main' }}
+        env:
+          CELULA: ${{ needs.validar.outputs.celula }}
+          MOTIVO: ${{ inputs.motivo }}
+        run: python ci/rollback.py congelar "$CELULA" --motivo "$MOTIVO"
+
+      # DESCONGELAR — `alvo=main` é o DESFAZER do RITOS §4, e só depois do
+      # SUCESSO. Um retorno à linha principal que terminou incerto não prova
+      # que a célula voltou ao normal, e soltar a trava ali devolveria a
+      # integração automática a uma célula que ninguém sabe onde está.
+      - name: Devolver a célula à fila normal (descongelar)
+        if: ${{ needs.validar.outputs.tag == 'main' && needs.aplicar.result == 'success' }}
+        env:
+          CELULA: ${{ needs.validar.outputs.celula }}
+        run: python ci/rollback.py descongelar "$CELULA"
