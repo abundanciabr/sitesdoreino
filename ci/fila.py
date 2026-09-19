@@ -244,6 +244,11 @@ RE_URL = re.compile(r"https?://[^\s<>\"']+")
 RE_ORIGEM_AUTOMATICA = re.compile(r"^ci/termometro\.py:armadilhas/(\d{3,})$")
 CAMINHOS_POSTERIORES_PERMITIDOS = ("fila/eventos/", "painel/registros/")
 
+# Os checks que a proteção da main exige para integrar (Lei 4). Verdes no SHA
+# exato que integrou, eles são a suíte medida pela pista sobre o conteúdo que
+# entrou — e é isso que o fechamento retroativo põe no lugar da linhagem.
+CHECKS_DA_INTEGRACAO = ("muralhas", "ci-celula-gate")
+
 
 class RecusaDeReconciliacao(ValueError):
     """A medição terminou e encontrou uma entrega que ainda não pode fechar."""
@@ -1186,6 +1191,40 @@ def provar_atestado(resultado) -> None:
         )
 
 
+def provar_suite_no_head(raiz: Path, head: str) -> list[str]:
+    """Os checks obrigatórios da integração, verdes no SHA que entrou na main.
+
+    É o substituto da linhagem no fechamento retroativo, e é prova mais forte:
+    a linhagem confia na revisão que o despacho declarou ter testado, esta lê
+    da pista o veredito da suíte sobre o conteúdo que realmente integrou.
+    """
+    resposta = estado_da_entrega._api(raiz, f"commits/{head}/check-runs?per_page=100")
+    corridas = resposta.get("check_runs") if isinstance(resposta, dict) else None
+    if not isinstance(corridas, list) or resposta.get("total_count") != len(corridas):
+        raise ErroDeInstrumentacao(
+            "os checks do HEAD entregue não foram medidos por inteiro",
+            f"Confira gh api repos/{{owner}}/{{repo}}/commits/{head}/check-runs "
+            "e repita a reconciliação.",
+        )
+    medidos = []
+    for nome in CHECKS_DA_INTEGRACAO:
+        dele = [c for c in corridas if isinstance(c, dict) and c.get("name") == nome]
+        if not dele:
+            raise RecusaDeReconciliacao(
+                f"o check {nome} não existe no HEAD entregue {head}"
+            )
+        fora = sorted(
+            {str(c.get("conclusion")) for c in dele if c.get("conclusion") != "success"}
+        )
+        if fora:
+            raise RecusaDeReconciliacao(
+                f"o check {nome} não ficou verde no HEAD entregue {head}: "
+                + ", ".join(fora)
+            )
+        medidos.append(f"{nome}={len(dele)}x success")
+    return medidos
+
+
 def provar_conteudo_do_aceite(registro: dict, provas_da_publicacao: list[str]) -> None:
     if registro.get("gravidade") != "verde":
         raise RecusaDeReconciliacao("o registro de aceite não tem veredito verde")
@@ -1329,6 +1368,7 @@ def provar_reconciliacao(
     raiz: Path,
     submissao: dict,
     aceite_registro: str,
+    retroativa: str = "",
 ) -> tuple[str, str]:
     numero = int(submissao["pr"].rsplit("/", 1)[1])
     pr = estado_da_entrega.ler_pr(raiz, numero)
@@ -1348,15 +1388,33 @@ def provar_reconciliacao(
             "as duas leituras do PR discordam",
             "HEAD ou merge mudou durante a reconciliação. Repita a medição.",
         )
-    medir_linhagem(raiz, submissao, head, merge)
+    try:
+        medir_linhagem(raiz, submissao, head, merge)
+    except RecusaDeReconciliacao as recusa:
+        if not retroativa:
+            raise
+        checks = provar_suite_no_head(raiz, head)
+        linhagem = (
+            f"retroativa: {retroativa}; linhagem recusada ({recusa}); "
+            f"suíte verde no HEAD entregue: {', '.join(checks)}"
+        )
+    else:
+        if retroativa:
+            raise RecusaDeReconciliacao(
+                "--retroativa não cabe numa entrega cuja linhagem já se comprova"
+            )
+        linhagem = "linhagem comprovada"
 
     comentarios = estado_da_entrega._api(  # uma leitura GitHub, sem segundo protocolo
         raiz, f"issues/{numero}/comments", paginas=True
     )
+    # A mesma régua do pouso: com a bancada em mãos, um atestado de outro SHA
+    # ainda passa quando a diferença é só a main recebida (`ci/mergear.py`).
     atestado = revisor_de_pouso.avaliar_atestado(
         head,
         comentarios,
         correcoes=estado_da_entrega.correcoes_declaradas(pr),
+        raiz=raiz,
     )
     provar_atestado(atestado)
 
@@ -1367,6 +1425,7 @@ def provar_reconciliacao(
         f"entrega={submissao['pr']}; revisao={submissao['revisao']}; "
         f"arvore={submissao['arvore']}; head={head}; merge={merge}; "
         f"estado={estado['estado']}; publicacao={publicacao}; "
+        f"linhagem={linhagem}; "
         f"atestado={atestado.resumo}; aceite={aceite_registro.replace('\\', '/')}"
     )
     return evidencia, registro["verificado_em"]
@@ -2849,7 +2908,7 @@ def cmd_reconciliar(raiz: Path, args) -> int:
         return 1
     try:
         evidencia, verificado_em = provar_reconciliacao(
-            raiz, submissao, args.aceite_registro
+            raiz, submissao, args.aceite_registro, args.retroativa or ""
         )
     except RecusaDeReconciliacao as erro:
         print(f"RECUSADO: {erro}.")
@@ -3240,6 +3299,16 @@ def construir_parser() -> argparse.ArgumentParser:
         "--aceite-registro",
         required=True,
         help="painel/registros/AAAAMMDD-NNN-slug.js já integrado após a entrega",
+    )
+    p.add_argument(
+        "--retroativa",
+        metavar="MOTIVO",
+        default="",
+        help=(
+            "fecha entrega antiga cuja linhagem se perdeu, trocando-a pelos "
+            "checks obrigatórios verdes no HEAD que integrou; o motivo vai "
+            "escrito na evidência do evento"
+        ),
     )
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
