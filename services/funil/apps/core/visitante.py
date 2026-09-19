@@ -126,7 +126,7 @@ class IdentidadeDoVisitante:
                 # verdade porque `config/settings.py` declara
                 # `SECURE_PROXY_SSL_HEADER`: duas respostas para "esta conexão
                 # é segura?" dentro de uma célula é uma delas divergir da outra
-                # mais tarde. Guarda: tests/test_inv_secure_nos_cookies.py.
+                # mais tarde. Guarda: tests/test_secure_nos_cookies.py.
                 secure=request.is_secure(),
             )
         return resposta

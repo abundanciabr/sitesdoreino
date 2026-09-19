@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ["*"]
 #
 # `SECURE_SSL_REDIRECT` fica de fora de propósito: quem manda o http para o
 # https é o entryPoint `web` do Traefik, e ligar aqui também é arriscar laço.
-# Guarda: tests/test_inv_secure_nos_cookies.py.
+# Guarda: tests/test_secure_nos_cookies.py.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
