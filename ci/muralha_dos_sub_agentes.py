@@ -57,8 +57,9 @@ def julgar(bruto: bytes) -> int:
     if tipo == LEITOR_EMBUTIDO:
         return 0
     pasta = pasta_das_fichas()
-    if not isinstance(tipo, str) or f"{tipo}.md" not in os.listdir(pasta):
-        return recusar(f"não existe ficha para {tipo!r} em {pasta.name}.")
+    nomes = {ficha.name for ficha in pasta.glob("*.md")}
+    if not isinstance(tipo, str) or f"{tipo}.md" not in nomes:
+        return recusar(f"não existe ficha para {tipo!r} em {pasta}.")
     if escreve(pasta / f"{tipo}.md"):
         return recusar(f"{tipo} pode escrever, e o Claude Code só rege.")
     return 0

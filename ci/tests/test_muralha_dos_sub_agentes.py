@@ -16,6 +16,7 @@ ficha ausente ou nome estranho são recusa, nunca passagem.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,7 +27,8 @@ RAIZ = Path(__file__).resolve().parents[2]
 GUARDA = RAIZ / "ci" / "muralha_dos_sub_agentes.py"
 
 
-def chamar(entrada: str) -> subprocess.CompletedProcess[str]:
+def chamar(entrada: str, raiz: Path | None = None) -> subprocess.CompletedProcess[str]:
+    ambiente = dict(os.environ, CLAUDE_PROJECT_DIR=str(raiz or RAIZ))
     return subprocess.run(
         [sys.executable, str(GUARDA)],
         input=entrada,
@@ -35,6 +37,7 @@ def chamar(entrada: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         check=False,
         cwd=RAIZ,
+        env=ambiente,
     )
 
 
@@ -44,7 +47,7 @@ def agente(tipo: str) -> subprocess.CompletedProcess[str]:
 
 @pytest.mark.parametrize("tipo", ["despacho", "escrivao", "provador"])
 def test_recusa_ficha_que_escreve(tipo: str) -> None:
-    # guarda: ci/muralha_dos_sub_agentes.py:63
+    # guarda: ci/muralha_dos_sub_agentes.py:64
     resultado = agente(tipo)
     assert resultado.returncode == 2, resultado.stdout + resultado.stderr
     assert "python ci/fila.py criar" in resultado.stderr
@@ -73,7 +76,7 @@ def test_recusa_ficha_inexistente() -> None:
 
 @pytest.mark.parametrize("tipo", ["../escrivao", "a/b", "..", ""])
 def test_recusa_nome_que_nao_e_ficha(tipo: str) -> None:
-    # guarda: ci/muralha_dos_sub_agentes.py:61
+    # guarda: ci/muralha_dos_sub_agentes.py:62
     assert agente(tipo).returncode == 2
 
 
@@ -88,3 +91,11 @@ def test_a_recusa_diz_o_que_fazer() -> None:
     erro = agente("despacho").stderr
     assert "python ci/fila.py criar" in erro
     assert "Explore" in erro
+
+
+def test_recusa_quando_a_pasta_das_fichas_some(tmp_path: Path) -> None:
+    """Sem a pasta, o guarda não pode medir ficha nenhuma, e recusa (INV-CI01)."""
+    entrada = json.dumps({"tool_name": "Agent", "tool_input": {"subagent_type": "revisor"}})
+    resultado = chamar(entrada, raiz=tmp_path)
+    assert resultado.returncode == 2, resultado.stdout + resultado.stderr
+    assert "não existe ficha" in resultado.stderr
