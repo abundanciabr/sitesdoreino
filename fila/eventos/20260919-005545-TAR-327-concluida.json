@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-005545-TAR-327-concluida",
+  "tarefa": "TAR-327",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:55:45+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1540; revisao=123e9a0fa2aa7d72219acdee4d385edd280d93cc; arvore=9fdac95db90229383824156b6dbfe8874e66a728; head=ef67c19e0754e42640253e014822ab8bf45ca807; merge=0d44f1bedac8cb43f427cd72e162c674e25a1ff7; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34534825997; linhagem=retroativa: fechamento retroativo autorizado pelo mantenedor em 19/09/2026: o despacho seguiu no mesmo PR sem re-submeter, e a revisao registrada na fila ficou para tras; a suite da pista mediu o HEAD que integrou; linhagem recusada (há código posterior à revisão: services/admin/apps/core/aulas.py, services/admin/apps/core/templates/admin/escola_aula_youtube.html, services/admin/tests/test_editor_de_aulas.py); suíte verde no HEAD entregue: muralhas=2x success, ci-celula-gate=1x success; atestado=atestado aprovado para ef67c19e0754e42640253e014822ab8bf45ca807; aceite=painel/registros/20260910-069-video-youtube-publicado.js",
+  "verificado_em": "2026-09-10"
+}
