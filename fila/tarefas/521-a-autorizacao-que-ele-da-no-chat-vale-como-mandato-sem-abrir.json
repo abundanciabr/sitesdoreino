@@ -3,9 +3,10 @@
   "id": "TAR-521",
   "titulo": "A autorizacao que ele da no chat vale como mandato, sem abrir o GitHub",
   "toca": [
-    "lei",
+    "CLAUDE.md",
     "ci",
-    "docs"
+    "docs/decisoes",
+    "fila"
   ],
   "depende_de": [],
   "cria": [],
