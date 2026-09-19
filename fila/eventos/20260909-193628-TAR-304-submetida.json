@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260909-193628-TAR-304-submetida",
+  "tarefa": "TAR-304",
+  "evento": "submetida",
+  "quando": "2026-09-09T19:36:28+00:00",
+  "quem": "agent/ci/explicar-falha-externa",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1504",
+  "revisao": "645fe62b99334fd20532b85ca66d452d0f21c270",
+  "arvore": "c21589e3c69f102194bbf0d47129d1b6f0d076ac"
+}

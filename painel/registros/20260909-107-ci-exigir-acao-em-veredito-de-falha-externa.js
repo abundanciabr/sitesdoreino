@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260909-107-ci-exigir-acao-em-veredito-de-falha-externa",
+  tipo: "entrega",
+  quando: "2026-09-09",
+  titulo: "ci: exigir ação em veredito de falha externa",
+  detalhe: "O veredito técnico agora carrega a consequência operacional quando o bloqueio é externo, para o mantenedor não precisar deduzir se age, espera ou se nada depende dele.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1504. Validação local: árvore c21589e3c69f102194bbf0d47129d1b6f0d076ac; commit 645fe62b99334fd20532b85ca66d452d0f21c270; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-09",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-304",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
