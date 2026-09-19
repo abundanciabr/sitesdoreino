@@ -1,0 +1,19 @@
+{
+  "arquivo": "479-registrar-que-freeze-de-contrato-sh-escolhe-o-python-errado-",
+  "id": "TAR-479",
+  "titulo": "Registrar que freeze-de-contrato.sh escolhe o Python errado do PATH",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Armadilha nova em armadilhas/ com gatilho ci/freeze-de-contrato.sh, indice regenerado, PR aberto.",
+  "despacho": "modelo_recomendado: sonnet\nesforco_recomendado: low\ntipo: escrita\n\nRegistrar armadilha nova em armadilhas/ documentando que ci/freeze-de-contrato.sh\nescolhe o primeiro Python do PATH (>= 3.10) sem checar Django instalado, o que\nproduz ERROR ModuleNotFoundError em maquina com mais de um Python no PATH mesmo\nquando o contrato esta correto. Reservar numero por ci/reservar.py numero\narmadilha, escrever o arquivo no molde da casa com gatilho e licao ligados a\nci/freeze-de-contrato.sh, regenerar o indice com ci/indice_de_armadilhas.py.\nNao editar ci/ nem .github/: sem mandato para CODEOWNERS.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
