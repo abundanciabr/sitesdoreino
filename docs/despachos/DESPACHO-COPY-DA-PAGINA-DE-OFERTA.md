@@ -8,6 +8,11 @@
 > Tudo que a casa já sabe sobre o produto está preenchido aqui, com o arquivo e
 > a linha de onde saiu. O que sobra são perguntas que só você pode responder,
 > porque as respostas viram afirmação pública e a casa não inventa afirmação.
+>
+> **A lista de seções e de espaços de texto usada aqui não é deste documento.**
+> Quem é dono dela é a célula `catalogo` (PR #1773), e o contrato que a publica
+> é o PR #1772. Este documento só pergunta o texto de cada espaço. Se a lista de
+> lá mudar, é a de lá que vale, e este documento acompanha.
 
 ---
 
@@ -118,7 +123,7 @@ Três fatos que pesam em quase todos os espaços abaixo:
 | --- | --- | --- | --- |
 | `eyebrow` | A linha curtinha logo acima do título grande, que diz para quem é a página. Três a seis palavras. | Nada ainda. | Para quem é este curso, em até seis palavras? |
 | `headline` | A frase maior da página, a primeira coisa que a pessoa lê. Diz o que ela sai sabendo ou conseguindo. | A home diz só "Meshcraft" (`services/funil/traducoes/landing.yaml:22`), que é o nome da marca, não uma promessa. Você já decidiu que esta seção é "o cubo" e que nenhuma afirmação entra sem prova ao lado, sem promessa de renda nem de prazo e sem superlativo (`documentos/ferramentas-do-projeto-meshcraft.md:961` e `:971`). | Qual é a promessa do curso em UMA frase, dentro dessa regra? Se "o cubo" já é a frase, escreva ela como ela aparece na tela. |
-| `subheadline` | Uma frase abaixo do título, que explica a de cima sem repetir as mesmas palavras. Costuma dizer para quem é, em quanto tempo, ou por qual caminho. | A casa sabe o caminho: 34 encomendas em 3 partes, com uma banca fechando cada parte (`semear_esqueleto.py:68-81` e `:102-105`). Prazo está fora: você proibiu promessa de prazo, e escreveu que "quanto tempo leva" admite que os números ainda não existem (`documentos/ferramentas-do-projeto-meshcraft.md:961` e `:971`). | A frase fala do caminho (34 encomendas, 3 partes, 3 bancas) ou de para quem o curso é? Escreva do jeito que você diria em voz alta. |
+| `subheadline` | Uma frase abaixo do título, que explica a de cima sem repetir as mesmas palavras. Costuma dizer para quem a coisa é, ou por qual caminho ela acontece. | A casa sabe o caminho: 34 encomendas em 3 partes, com uma banca fechando cada parte (`semear_esqueleto.py:68-81` e `:102-105`). Prazo está fora: você proibiu promessa de prazo, e escreveu que "quanto tempo leva" admite que os números ainda não existem (`documentos/ferramentas-do-projeto-meshcraft.md:961` e `:971`). | A frase fala do caminho (34 encomendas, 3 partes, 3 bancas) ou de para quem o curso é? Escreva do jeito que você diria em voz alta. |
 | `cta_texto` | O que está escrito dentro do botão. | A página de venda que ainda serve os domínios antigos usa "Quero comprar" (`services/funil/templates/funil/landing.html:19`). Não é texto seu, é o padrão que veio da montagem. | Mantém "Quero comprar" ou troca? Vale escrever o que a pessoa ganha ao clicar, e não o que ela faz. A palavra é sua. |
 | `cta_destino` | Para onde o botão leva. | O checkout existe e funciona em `/checkout/<apelido-da-oferta>/`, preservando de onde a pessoa veio (`services/funil/apps/core/views.py:141`). O cartão está sendo migrado para a Appmax e o Pix fica no Mercado Pago (`docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md:17-18`), e essa obra ainda não começou. Há um terceiro destino que você já desenhou e que ainda não existe: a conta gratuita com a Encomenda 00 aberta, na ferramenta 72 (`documentos/ferramentas-do-projeto-meshcraft.md:951`). | São três destinos possíveis, e você escolhe um: o pagamento direto, o pedido de entrada que a escola usa hoje (`documentos/como-funciona-a-entrada.md:21-33`), ou a conta gratuita da E00. O terceiro é o que você escreveu que quer, e ele ainda precisa ser construído. |
 | `imagem` | A imagem do topo. | Nada ainda. Não há nenhuma foto ou arte do produto no projeto. | Você tem uma imagem? Se sim, mande o arquivo. Se não, este espaço fica vazio e a seção abre só com texto. |
@@ -178,7 +183,7 @@ escrevesse qualquer uma delas estaria escrevendo mentira numa página pública.
 | --- | --- | --- | --- |
 | `headline` | O título da seção. | Nada ainda. | Uma frase. |
 | `texto` | O que você devolve, em que caso, e o que a pessoa precisa fazer para pedir. | Nenhuma promessa de devolução existe em nenhum lugar do projeto, e nenhum agente pode escrever uma, porque garantia é compromisso legal seu. O que já é lei aqui é a consequência: quem é reembolsado perde o acesso ao curso, ao fórum e à Caixa, e a ficha dela continua guardada (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`, 31/08/2026). A sua lista de onze seções não tinha seção de garantia (`documentos/ferramentas-do-projeto-meshcraft.md:961`). | Você devolve o dinheiro? Em que situação, e a pessoa precisa justificar? E a página diz, na mesma frase, que o reembolso encerra o acesso? Dizer isso agora evita a reclamação depois. |
-| `prazo` | Quantos dias vale a garantia. | Nada ainda. | Quantos dias? O Código de Defesa do Consumidor já obriga 7 dias em compra pela internet, então qualquer número seu abaixo disso não vale, e igual a 7 não é diferencial nenhum. |
+| `prazo` | Quantos dias a pessoa tem para pedir o dinheiro de volta. Este é o único prazo que a página pode dizer, e ele não é promessa de resultado: é o tempo em que você aceita desfazer a compra. | Nada ainda. | Quantos dias? O Código de Defesa do Consumidor já obriga 7 dias em compra pela internet, então qualquer número seu abaixo disso não vale, e igual a 7 não é diferencial nenhum. |
 
 ---
 
