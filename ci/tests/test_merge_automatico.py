@@ -39,13 +39,23 @@ def repo(tmp_path):
     return tmp_path
 
 
+def _gh_do_pouso(args, *resto, **kwargs):
+    """A ÚNICA consulta que `conferir` tem direito de fazer, além do próprio PR.
+
+    O congelamento de célula (TAR-462, 18/09/2026) pergunta ao servidor se há
+    um rollback ativo; aqui ele responde "nenhum". Qualquer outra ida à rede
+    continua reprovando na hora: atestado, livro e publicações saíram do
+    caminho do merge em 13/09/2026 e não voltam por uma porta lateral.
+    """
+    caminho = args[-1] if args else ""
+    if "/git/matching-refs/congelamentos" in caminho:
+        return "[]"
+    pytest.fail("nenhuma consulta a atestado, livro ou publicação")
+
+
 def conferir(monkeypatch, repo, pr):
     monkeypatch.setattr(mergear, "carregar_pr", lambda *a: pr)
-    monkeypatch.setattr(
-        mergear,
-        "_gh",
-        lambda *a, **k: pytest.fail("nenhuma consulta a atestado, livro ou publicação"),
-    )
+    monkeypatch.setattr(mergear, "_gh", _gh_do_pouso)
     return mergear.conferir(99, repo)[0]
 
 
