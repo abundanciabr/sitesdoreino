@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260913-008-tar-314-corrigir-espera-da-tar-297-para-a-fila",
+  tipo: "entrega",
+  quando: "2026-09-13",
+  titulo: "TAR-314: Corrigir espera da TAR-297 para a fila",
+  detalhe: "A TAR-297 permanece bloqueada pelas mesmas dependencias, mas deixa de aparecer como decisao do mantenedor porque o novo evento declara espera da fila.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1617. Validação local: árvore cea2e5c4b51f7e115c39dee2004985bbb3241ae4; commit 086fa4a757b25518732c99bbc10a9a87487a2519; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-13",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-314",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

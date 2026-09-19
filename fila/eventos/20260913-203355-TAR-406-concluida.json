@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260913-203355-TAR-406-concluida",
+  "tarefa": "TAR-406",
+  "evento": "concluida",
+  "quando": "2026-09-13T20:33:55+00:00",
+  "quem": "agent/ci/merge-automatico-sem-pouso",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1636",
+  "verificado_em": "2026-09-13"
+}

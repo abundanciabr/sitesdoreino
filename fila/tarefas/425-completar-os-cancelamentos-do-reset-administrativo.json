@@ -1,0 +1,19 @@
+{
+  "arquivo": "425-completar-os-cancelamentos-do-reset-administrativo",
+  "id": "TAR-425",
+  "titulo": "Completar os cancelamentos do reset administrativo",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "As quinze tarefas canceladas, fila.py validar verde e PR com os quatro eventos restantes e registro do motivo confirmado.",
+  "despacho": "# Brief compilado\n\nobjetivo: Publicar os quatro cancelamentos já preparados de TAR-219, TAR-316, TAR-319 e TAR-412, completando as quinze canceladas por ordem do mantenedor de 14/09/2026. Preservar os onze cancelamentos já integrados. Criar somente a identidade desta escrituração e publicar pelo make pr com o registro dos três avisos da maestro e da confirmação do mantenedor. Todo o restante é somente leitura.\ntipo: escrita\nmodelo_recomendado: gpt-5.6-sol\nesforco_recomendado: medium\nmotivo_do_modelo: preenche moldes de registro, fila e armadilha; criatividade aqui e risco\ncelula: fila\n\n## Arquivos-alvo\n- fila/eventos\n- fila/tarefas\n- painel/registros\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.",
+  "origem": "Maestro: identidade de escrituração do pedido explícito do mantenedor de 14/09/2026, autorizada para completar a entrega.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

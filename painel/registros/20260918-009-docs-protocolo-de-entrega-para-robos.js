@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260918-009-docs-protocolo-de-entrega-para-robos",
+  tipo: "entrega",
+  quando: "2026-09-18",
+  titulo: "docs: protocolo de entrega para robôs",
+  detalhe: "Protocolo reproduz o PR 1720 em quinze passos, com fontes, travas e provas executáveis.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1723. Validação local: árvore 56656be6eaa0c4dfd48ec00dd02355f941235e72; commit 5c1a2e845ad3f2758cc0425e6b6924bc0ffd9390; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-18",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-459",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

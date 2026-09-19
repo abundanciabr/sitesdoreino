@@ -1,0 +1,19 @@
+{
+  "arquivo": "490-a-capa-do-painel-deixa-de-carregar-afirmacoes-velhas-sem-pro",
+  "id": "TAR-490",
+  "titulo": "A capa do painel deixa de carregar afirmacoes velhas sem prova, e a pista volta a ficar verde",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "node painel/gerar_manifesto.js e ci/muralha-do-painel.sh verdes com um registro novo no livro, e a folga do resumo medida acima de 40 KB",
+  "despacho": "Ver docs no PR: teto de SEM_PROVA_NO_RESUMO em painel/logica.js.",
+  "origem": "bloqueio de pista medido em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

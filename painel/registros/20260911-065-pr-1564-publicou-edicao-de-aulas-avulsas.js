@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-065-pr-1564-publicou-edicao-de-aulas-avulsas",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "PR 1564 publicou a edição de aulas avulsas",
+  detalhe: "O PR 1564 foi integrado em 11/09/2026 no commit 47d7316ec92ab1b28f229f63a5fd9252110a70d8. A administração passou a entregar o endereço canônico da aula e permite editar nome, vídeo e descrição sem mudar o link compartilhado. O deploy da administração terminou com resultado success no run 34606877646, conferido no GitHub.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/34606877646",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: "20260911-046-admin-corrigir-link-e-editar-aulas-avulsas",
+  gravidade: "verde",
+  frente: "curso",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+}); })();

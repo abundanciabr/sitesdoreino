@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260910-040-admin-organizar-quatro-visoes-na-central",
+  tipo: "entrega",
+  quando: "2026-09-10",
+  titulo: "admin: organizar quatro visões na central",
+  detalhe: "Quatro visões leem o cadastro publicado e mostram indisponibilidade, nunca filas vazias.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1532. Validação local: árvore 6e03a74ed104711e9833b2479b391cb998a37618; commit 47330fb38624a302d7441c62e5c9643b294b8274; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-10",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-284",
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

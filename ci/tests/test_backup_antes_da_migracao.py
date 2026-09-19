@@ -377,10 +377,21 @@ def test_nenhum_segredo_passa_perto(arquivo: Path):
             "de senha nenhuma: o pg_dump roda dentro do contêiner do Postgres, "
             "pelo socket local. Se ela passou a precisar, o desenho regrediu"
         )
-    assert not re.search(r"env/[a-z]+\.env", texto), (
-        f"{arquivo.name} lê um arquivo de env. O nome da base sai da convenção "
-        "`<celula>_db` e é conferido no próprio Postgres, justamente para este "
-        "script nunca abrir um arquivo que contém senha"
+    # A cópia de segurança continua sem abrir env nenhum: o nome da base sai da
+    # convenção `<celula>_db` e é conferido no próprio Postgres. O script de
+    # deploy ganhou UMA exceção nominal em 17/09/2026, e não por gosto: o compose
+    # passou a exigir ALUNOS_API_TOKEN e TOKEN_CATALOGO no serviço `traefik`, e
+    # sem as duas exportadas nenhum `docker compose` daquela pasta roda, nem o
+    # `config --services`. A proibição total deixou de ser verdade; o que ela
+    # protegia são as quatro asserções acima, e essas seguem inteiras. Que a
+    # leitura seja nominal, fechada e sem `source` é medido por
+    # ci/tests/test_chaves_do_gateway_no_deploy.py.
+    envs_abertos = set(re.findall(r"env/[a-z]+\.env", texto))
+    permitidos = {"env/admin.env"} if arquivo == DEPLOY else set()
+    assert envs_abertos <= permitidos, (
+        f"{arquivo.name} lê {sorted(envs_abertos - permitidos)}. Um arquivo de env "
+        "contém senha, e a única licença que existe aqui é a das duas chaves do "
+        "gateway em env/admin.env"
     )
 
 

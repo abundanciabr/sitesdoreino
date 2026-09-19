@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260917-181420-TAR-442-explicada",
+  "tarefa": "TAR-442",
+  "evento": "explicada",
+  "quando": "2026-09-17T18:14:20+00:00",
+  "quem": "agent/admin/regras-cooperacao-eficiencia-ias",
+  "o_que_e": "Um prompt público de cooperação e eficiência para as três IAs, acompanhado da atualização canônica autorizada em 17/09/2026.",
+  "o_que_muda": "Adendo ao despacho: a maestro autorizou também docs/decisoes/DECISAO-triade-de-ias.md para registrar a política pretendida de alocação externa, mantendo papéis fixos. Ranking exige 10 páginas válidas, 5 participações por agente, desfecho de todas as tarefas e custo comparável integral; ausência resulta INCONCLUSIVO.",
+  "exemplo": "Uma página conta uma vez para a tríade; brief, construção e verificação podem comprovar três participações distintas, sem triplicar páginas. Planos exigem decisão humana escrita.",
+  "importancia": 60
+}

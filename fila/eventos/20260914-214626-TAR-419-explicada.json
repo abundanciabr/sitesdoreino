@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-214626-TAR-419-explicada",
+  "tarefa": "TAR-419",
+  "evento": "explicada",
+  "quando": "2026-09-14T21:46:26+00:00",
+  "quem": "Decisão do mantenedor de 14/09/2026: Admin no localhost; código reconstruível e pontes VPS permanecem no Git. Nova fila substitui capacidades VPS das tarefas canceladas.",
+  "o_que_e": "O painel local precisa consultar serviços que continuam rodando no servidor.",
+  "o_que_muda": "O computador passa a consumir as portas autorizadas dos serviços por uma conexão privada, sem abrir seus bancos ou a Administração na internet.",
+  "exemplo": "O painel local consulta uma aula pelo serviço de cursos; uma máquina sem autorização é recusada.",
+  "importancia": 99
+}

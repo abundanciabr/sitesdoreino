@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-032-painel-o-resumo-passa-a-ser-funcao-so-do-que-esta-aberto",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "painel: o resumo passa a ser funcao so do que esta aberto",
+  detalhe: "Fechei as duas portas que sobraram do PR 1758: registro com prazo e o id de toda ocorrencia respondida. A guarda mede o resumo INTEIRO em 1, 100 e 1000.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1760. Validação local: árvore 49c98021d8ad45691275c3965b664e3956ff687b; commit 6ba8737406ab05034215607fc0be960848904874; 8 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-491",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

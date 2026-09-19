@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-150245-TAR-240-explicada",
+  "tarefa": "TAR-240",
+  "evento": "explicada",
+  "quando": "2026-09-14T15:02:45+00:00",
+  "quem": "maestro",
+  "o_que_e": "A checagem diaria que confere se os links do portfolio dos alunos ainda funcionam esta rodando de carona junto com outro servico, o relay do selo, porque os dois moram no mesmo trabalhador de tarefas periodicas.",
+  "o_que_muda": "Voce ja tinha dispensado essa checagem diaria antes, TAR-223, mas ela voltou sem querer quando o relay do selo entrou no ar. Esta tarefa so anda se voce confirmar de novo que quer ela desligada.",
+  "exemplo": "E como desligar uma luz de um circuito que, sem voce saber, tambem alimenta a campainha: antes de desligar, alguem precisa confirmar que voce quer as duas coisas apagadas ou so uma.",
+  "importancia": 35
+}

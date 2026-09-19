@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-019-ci-o-congelamento-para-de-baixar-um-comprovante-que-ninguem",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: o congelamento para de baixar um comprovante que ninguem le",
+  detalhe: "Sobra do PR 1739: o congelamento baixava um comprovante que ninguem le. So o sha importa, e e o lease da renovacao. Mesmos 12 testes verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1752. Validação local: árvore 88297150178b2b78f3177c152b83da16b150e38a; commit cae0ddf9f838fee0d569da05223d23cc173da034; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-462",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

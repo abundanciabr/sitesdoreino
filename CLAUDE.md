@@ -97,8 +97,8 @@ ausências e truncamento; abra entradas citadas/recuperadas,
 Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
 JSON com até 3 lições de 500 caracteres e origens.
 Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
-de restrições. Para aprofundamento, use `--caminho`/`--sintoma`/`--limite-contexto`
-da sessão ou abra `armadilhas/INDICE.md` sob demanda, nunca a pasta inteira.
+de restrições. Para aprofundamento, use `--caminho`/`--sintoma` da sessão ou abra
+`armadilhas/INDICE.md` sob demanda.
 
 Lição nova: número por `python ci/reservar.py numero armadilha`, arquivo
 novo `armadilhas/NNN-slug.md`, índice regenerado. Não acrescente a
@@ -126,24 +126,21 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Tríade (`docs/decisoes/DECISAO-triade-de-ias.md`): Claude Code rege e atesta,
-nunca mergeia; Codex constrói pela ficha `despacho`, nunca pergunta ao
-mantenedor nem decide lei; Antigravity audita e verifica, nunca edita. Quem recebe o pedido rege o lote: confira PRs abertos; partes independentes em
-paralelo, dependências em série. Uma célula por PR; teto de 15 arquivos fora
-`painel/` e `fila/`; contrato congelado e CODEOWNERS exigem mandato escrito;
-dependência fora do brief volta à maestro com `Depende-de: #N`. Revisor lê o
-diff; `make pr` embarca reserva, recibo e eventos; escrivão não duplica.
-Subagente nunca pergunta ao mantenedor nem dispara subagente. Fichas em
-`.claude/agents/` e `.codex/agents/`; regência `RUNBOOK-LOTES.md`.
+Claude Code rege, nunca mergeia; Codex usa `despacho`, não pergunta ao mantenedor nem decide lei.
+Antigravity audita e verifica, nunca edita. Recebedor rege; confira PRs abertos.
+Independentes em paralelo; dependências em série. Uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
+Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.
+Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
+Subagente não pergunta ao mantenedor nem cria subagente. Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
+Maestro/executor: `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
+Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md#o-que-a-tríade-não-muda).
 
 **Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
 
 ## O que uma chamada custa
 
-Gere modelo, esforço e teto com `python ci/economia_da_fabrica.py brief`;
-nunca herde modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
-Acima de ~300k de contexto, sugira conversa nova. Economia não reduz ambição.
-Poupe tokens: extraia trechos com `sed -n` ou `grep`, nunca `cat` em arquivo grande.
+Gere modelo e esforço com `python ci/economia_da_fabrica.py brief`; nunca herde
+modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
 Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
@@ -187,17 +184,18 @@ são lápides. Sem tipo específico, use nota.
 
 **Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
 
-## O agente pede pouso; quem mergeia é a pista
+## Integração automática
 
-Um commit de fechamento substitui microcommits; preserve histórico e recibo automático.
-`git add` por arquivo, nunca `-A`; confira o staged.
-Despacho entrega número, ramo, SHA e provas. Maestro confere revisão e recibo,
-executa `python ci/mergear.py <N> --pousar`, confirma etiqueta/SHA e encerra.
-A pista acompanha checks e integra pelo portão. Não espere checks, merge ou deploy.
-FAIL admite duas correções; depois preserve e reporte. ERROR nunca aprova.
-Urgência segue alarme-main.
+PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
+atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
+passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
+exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
+descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
+Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
+não integram. Informe somente estados comprovados de validação, integração e
+publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
 
-**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml`, seus testes.
+**Quem faz valer:** `ci/mergear.py`, `.github/workflows/pouso.yml` e a proteção nativa da main.
 
 ## O que você entrega para ele mora no site
 
@@ -216,12 +214,18 @@ VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md
 
 ## Plano na abertura, contas no fecho
 
-Abra com `## Plano` e `- [ ]` por passo. Cada etapa reimprime checklist,
-`Onde estou: passo N de M` e próximo passo. Fecho segue regra 9.
-PRONTO com caixa aberta é contradição; NÃO PRONTO honesto é aceito.
-Leitura, pergunta respondida e acordar de espera não geram dívida.
+Abra com `## Plano` e `- [ ]` por passo. **Etapa** é concluir ou bloquear passo
+planejado, nunca ferramenta, leitura, aviso automático ou retentativa.
+Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
+após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
+com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
+pergunta ou acordar não geram dívida.
+Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
+veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
+nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele
+(Lei 11).
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit e Stop)
+**Quem faz valer:** `ci/prestacao_de_contas.py` (UserPromptSubmit, Stop, voo)
 e testes; checklist intermediário é julgamento.
 
 ## Mapa do projeto para IA

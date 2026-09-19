@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260911-084-admin-central-recebida",
+  tipo: "entrega",
+  quando: "2026-09-11",
+  titulo: "Central administrativa recebeu correções de responsabilidade",
+  detalhe: "PR #1532 entregue no SHA 49722abc57bfd20ac724d696543f6b5ee95e9ff6. A suíte administrativa passou com 1940 testes. O congelamento de contrato administrativo passou. No Windows, make ci parou em ERROR de instrumento no trecho if [ -f .importlinter ]; a suíte direta e o congelamento foram executados.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1532",
+  verificado_em: "2026-09-11",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: null,
+  area: "painel",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

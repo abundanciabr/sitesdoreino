@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-006",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T18:07:12-03:00",
+  "problema": "O Maestro (Claude Code) usurpa o papel do Executor (Codex) e lança sub-agentes de execução (ex: 13 agentes para mapas, 8 para edições em AGENTS.md/CONSTITUICAO), torrando milhões de tokens para trabalho que não é de sua responsabilidade. A lei da Tríade define papéis fixos, mas o sistema (especialmente a economia da fábrica que rege sub-agentes) falhou em prever e impedir programaticamente essa invasão de papéis.",
+  "titulo": "Lei de Ferro da Tríade: guarda arquitetural na economia da fábrica contra usurpação de papéis",
+  "baseline": "Contra origin/main. O comando `git show origin/main:ci/economia_da_fabrica.py | Select-String -Pattern \"maestro|executor\"` não retorna nada. O script que dita a criação de sub-agentes audita tamanho de contexto e fichas nativas, mas não possui qualquer trava que impeça o ambiente (Claude Code) de compilar briefs e disparar dezenas de agentes com o objetivo de escrever/executar (perfil de executor), permitindo o vazamento da lei para a prática.",
+  "aceite": "Implementar uma 'Lei de Ferro' estrutural. Como provar sem regressão:\n(a) O instrumento de criação de briefs/subagentes (em `ci/economia_da_fabrica.py` ou portão similar) deve inspecionar a intenção e rejeitar com FAIL (ex: ErroDeInstrumentacao) qualquer tentativa da Maestro de compilar tarefas de execução (ex: briefs que tocam no código-fonte em modo de escrita) ou do Codex de atuar como regente.\n(b) Em bancada isolada, um script simulando o Claude Code pedindo um brief de execução deve abortar e devolver a saída colada com a rejeição explícita da Lei de Ferro.\n(c) A suíte de testes de `test_economia_da_fabrica.py` 100% verde incluindo o novo cenário de usurpação de papéis repelido."
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260914-022820-TAR-412-explicada",
+  "tarefa": "TAR-412",
+  "evento": "explicada",
+  "quando": "2026-09-14T02:28:20+00:00",
+  "quem": "TAR-411, criada na retomada do Maestro após inspeção do painel local e do rádio.",
+  "o_que_e": "A tarefa de fila existe, mas o código que entrega mensagens do rádio às sessões ainda aguarda prova nativa e confiança dos hooks.",
+  "o_que_muda": "Uma sessão nova recebe a mensagem certa no ponto autorizado, ou o bloqueio aparece com ação exata sem fingir que a entrega ocorreu.",
+  "exemplo": "Publicar FAROL no rádio e abrir uma sessão nova mostra o recado recebido; Hooks need review interrompe a prova e devolve a decisão à Maestro.",
+  "importancia": 80
+}

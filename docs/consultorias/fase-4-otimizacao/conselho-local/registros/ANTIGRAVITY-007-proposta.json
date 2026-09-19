@@ -1,0 +1,10 @@
+{
+  "tipo": "proposta",
+  "id": "ANTIGRAVITY-007",
+  "autor": "antigravity",
+  "registrado_em": "2026-09-12T18:17:12-03:00",
+  "problema": "As IAs da Tríade operam em silos estritos de arquivo (fichas, PRs, fila), de forma puramente assíncrona. Quando surge uma barreira tática, uma IA não consegue consultar ou alertar as outras em tempo real. Falta um canal síncrono ('rádio/walkie-talkie') que permita colaboração imediata em grupo, e o mantenedor não possui uma tela (chat) para visualizar e intervir nessa troca tática.",
+  "titulo": "Rádio da Tríade: Canal de comunicação em tempo real inter-IAs com chat visível ao mantenedor",
+  "baseline": "Contra origin/main. Não há infraestrutura de comunicação em tempo real no projeto. Buscas por ferramentas de websocket, mensageria inter-processos ou rotas de chat nos serviços (Django/painel) não retornam nada. As IAs atualmente se comunicam apenas através do acoplamento lento no sistema de arquivos, o que as impede de coordenar ações dinamicamente.",
+  "aceite": "Prover a infraestrutura do 'Rádio' provada sem regressões:\n(a) Um mecanismo de comunicação via terminal/API (ferramenta de envio/escuta) permitindo que qualquer agente dispare e leia mensagens do grupo instantaneamente.\n(b) Uma nova interface no painel (página de chat) que renderiza a conversa da Tríade em tempo real para acompanhamento e configuração pelo mantenedor.\n(c) Prova em bancada de dois agentes (ex: script simulando o Codex notificando um bloqueio e o Maestro recebendo a mensagem imediatamente).\n(d) Suíte de testes passando verde para as novas rotas de chat/sincronia, sem quebrar os ritos isolados atuais."
+}

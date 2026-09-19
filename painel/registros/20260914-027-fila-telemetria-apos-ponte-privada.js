@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-027-fila-telemetria-apos-ponte-privada",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "fila: telemetria após ponte privada",
+  detalhe: "A telemetria depende da ponte privada. Corrigido só o encadeamento da fila; históricos preservados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1661. Validação local: árvore fb21053e79065ee1ee96a2e0df720a1fb42b18ba; commit 413e18f168d845981656c37b2eacadf7e9f7bb7e; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-424",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

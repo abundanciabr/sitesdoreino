@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-005708-TAR-343-concluida",
+  "tarefa": "TAR-343",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:57:08+00:00",
+  "quem": "maestro",
+  "evidencia": "entrega=https://github.com/abundanciabr/sitesdoreino/pull/1564; revisao=1fb445b74215a0280f498a5c5226baf383abef86; arvore=703f3d4d3ed03107ff73a94ea446338577f80915; head=9d1e9a64819f41a76f70b18b77971159219875e9; merge=47d7316ec92ab1b28f229f63a5fd9252110a70d8; estado=PUBLICADO; publicacao=https://github.com/abundanciabr/sitesdoreino/actions/runs/34606877646; linhagem=retroativa: fechamento retroativo autorizado pelo mantenedor em 19/09/2026: o despacho seguiu no mesmo PR sem re-submeter, e a revisao registrada na fila ficou para tras; a suite da pista mediu o HEAD que integrou; linhagem recusada (há código posterior à revisão: fila/tarefas/343-editar-aulas-avulsas-sem-mudar-o-link.json, fila/tarefas/345-declarar-no-mapa-a-rota-de-edicao-das-aulas-avulsas.json, painel/mapa-do-site.json, services/admin/LICOES.md, services/admin/apps/auditoria/models.py, services/admin/apps/core/aulas_avulsas.py, services/admin/apps/core/clients.py, services/admin/apps/core/templates/admin/escola_aula_avulsa_editar.html, services/admin/apps/core/templates/admin/escola_aulas_avulsas.html, services/admin/config/urls.py, services/admin/tests/test_aulas_avulsas.py); suíte verde no HEAD entregue: muralhas=1x success, ci-celula-gate=1x success; atestado=atestado aprovado para 9d1e9a64819f41a76f70b18b77971159219875e9; aceite=painel/registros/20260913-030-aceite-tar-343.js",
+  "verificado_em": "2026-09-13"
+}
