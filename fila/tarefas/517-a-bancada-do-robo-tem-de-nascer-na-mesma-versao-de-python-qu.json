@@ -1,0 +1,19 @@
+{
+  "arquivo": "517-a-bancada-do-robo-tem-de-nascer-na-mesma-versao-de-python-qu",
+  "id": "TAR-517",
+  "titulo": "A bancada do robo tem de nascer na mesma versao de Python que o site roda",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste provando que a bancada de uma celula que roda 3.12 nao nasce em outro minor, e que interpretador ausente para com mensagem propria, com mutacao confirmada",
+  "despacho": "BRIEF FECHADO: a bancada nasce no Python errado e nao instala as dependencias.\n\n# Contexto\n`ci/sessao.py` cria o venv com `[sys.executable, \"-m\", \"venv\", ...]`, ou seja,\ncom o interpretador que invocou o script. Nesta maquina o `python` do PATH e o\n3.14, e as celulas rodam em 3.12 (`services/<celula>/Dockerfile`:\n`FROM python:3.12-slim`).\n\nConsequencia medida em 19/09/2026 abrindo a bancada de\n`funil/cookie-seguro-atras-do-traefik`: `PyYAML==6.0.2` nao tem wheel para\ncp314, o pip tenta compilar da fonte e para em `error: Microsoft Visual C++\n14.0 or greater is required`. A sessao morre no passo 8 de 12 e a mensagem\nmanda \"conferir o acesso ao indice de pacotes\", que nao e o problema. O\ncontorno foi invocar `py -3.12 ci/sessao.py`, e nada no rito diz para fazer\nisso.\n\n# Celula\n`ci`. Um PR, uma celula.\n\n# Alvos\n`ci/sessao.py` e os testes dele em `ci/tests/`.\n\n# Somente leitura\n`services/*/Dockerfile`, que e onde a versao de producao de cada celula esta\nescrita hoje.\n\n# O que construir\nDecida de onde sai a versao do interpretador da bancada e faca o script\nobedece-la em vez de herdar o `sys.executable`. A fonte da verdade ja existe no\n`Dockerfile` da celula; inventar uma segunda lista de versoes seria duas fontes\ndivergindo (Lei 3). Se o interpretador pedido nao existir na maquina, pare com\na mensagem que diz qual versao falta e como instala-la, nunca com um erro de\npip.\n\n# Prova exigida\n- Teste provando que a bancada de uma celula que declara 3.12 nao nasce em\n  outro minor, e que a ausencia do interpretador para com mensagem propria.\n- Mutacao: voltar ao `sys.executable` tem de deixar o teste vermelho.\n- `python -m pytest ci/tests -q`, saida colada, sem regressao.",
+  "origem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
