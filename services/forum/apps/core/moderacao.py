@@ -49,7 +49,7 @@ from apps.forum import eventos
 from apps.forum.models import Area, Mensagem, Topico
 from apps.forum.tasks import relay_apos_commit
 
-from . import agente
+from . import agente, galeria
 from .menu import site_id_do_host
 from .permissoes import pode_moderar
 from .sessao import email_da_equipe, quem_e
@@ -774,3 +774,49 @@ def gerar_resposta_ao_vivo(request, topico_id: int):
     resposta["Cache-Control"] = "no-store"
     resposta["X-Accel-Buffering"] = "no"
     return resposta
+
+
+# ===========================================================================
+# MOSTRAR NA GALERIA — o gesto do DONO do trabalho, não da escola
+# ===========================================================================
+# Este arquivo é o das ferramentas da escola, e esta view não é uma delas: aqui
+# quem decide é o aluno, e nem professor nem administrador conseguem decidir por
+# ele. Ela mora aqui porque é onde já vivem TODOS os POST sobre uma conversa,
+# inclusive as duas ações que o autor da pergunta faz (a lista
+# `ACOES_DO_AUTOR_DA_PERGUNTA`, mais acima). Um segundo arquivo de POST sobre
+# tópico seria a segunda porta que alguém esquece de trancar.
+#
+# A regra do consentimento inteira mora em `apps/core/galeria.py`. Aqui só se
+# recebe o clique, e a recusa devolve a mesma página com o recado, nunca uma
+# tela de erro seca: perder o que a pessoa digitou é a pior forma de recusar.
+@require_POST
+def decidir_galeria(request, topico_id: int):
+    """Marcar e desmarcar este trabalho para a Galeria."""
+    topico = get_object_or_404(
+        Topico.objects.select_related("area", "autor"), pk=topico_id
+    )
+    ator = quem_e(request)
+    if not galeria.pode_decidir(ator, topico):
+        # 404 e não 403, como nas outras portas deste arquivo: o 403
+        # confirmaria que existe uma caixa da Galeria nesta conversa.
+        raise Http404("esta conversa não tem caixa da Galeria para você")
+
+    acao = (request.POST.get("acao") or "").strip()
+    if acao == "mostrar":
+        erro = galeria.mostrar(
+            request, ator, topico, request.POST.get("referencia") or ""
+        )
+    elif acao == "tirar":
+        galeria.tirar(topico)
+        erro = ""
+    else:
+        erro = galeria.ERRO_ACAO_DESCONHECIDA
+
+    if erro:
+        return render(
+            request,
+            "forum/topico.html",
+            contexto_do_topico(request, ator, topico, erro_galeria=erro),
+            status=400,
+        )
+    return redirect(reverse("topico", args=[topico.pk]))
