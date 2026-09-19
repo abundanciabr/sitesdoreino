@@ -22,13 +22,13 @@ def versao_publicada():
     return PageVersion.objects.create(
         page=pagina,
         version=1,
-        secoes=[{"nome": "hero", "ordem": 0, "slots": {"headline": "Titulo"}}],
+        secoes=[{"nome": "cubo", "ordem": 0, "slots": {"headline": "Titulo"}}],
     )
 
 
 def test_save_numa_versao_publicada_recusa(versao_publicada):
     versao_publicada.secoes = [
-        {"nome": "hero", "ordem": 0, "slots": {"headline": "Outro"}}
+        {"nome": "cubo", "ordem": 0, "slots": {"headline": "Outro"}}
     ]
 
     with pytest.raises(VersaoPublicadaImutavel) as erro:

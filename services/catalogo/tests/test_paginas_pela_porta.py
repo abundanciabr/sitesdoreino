@@ -44,19 +44,33 @@ def _post(client, token, url):
     return client.post(url, HTTP_AUTHORIZATION=f"Bearer {token}")
 
 
-def test_rascunho_de_pagina_recem_criada_e_200_vazio(client, token_valido, cenario):
+def test_rascunho_de_pagina_nunca_editada_e_404(client, token_valido, cenario):
     site, _, _ = cenario
 
     resp = _get(
         client, token_valido, f"/api/catalogo/sites/{site.id}/paginas/oferta/rascunho"
     )
 
-    # Toda pagina nasce com um rascunho, ainda que vazio: "ainda nao escrevi
-    # nada" e estado normal de quem vai configurar, nao erro, pela mesma regra
-    # do `getSiteMenu`.
-    assert resp.status_code == 200
-    assert resp.json()["secoes"] == []
-    assert resp.json()["base_version"] == 0
+    # Contrato: "folha em branco" e "texto pela metade" sao estados diferentes,
+    # e quem abre a tela precisa distinguir os dois. Por isso 404, e nao 200
+    # com a lista vazia.
+    assert resp.status_code == 404
+
+
+def test_o_rascunho_nasce_na_primeira_gravacao(client, token_valido, cenario):
+    site, _, _ = cenario
+    rota = f"/api/catalogo/sites/{site.id}/paginas/oferta/rascunho"
+
+    gravado = _put(
+        client,
+        token_valido,
+        rota,
+        {"secoes": [{"nome": "cubo", "ordem": 0, "slots": {"headline": "Curso Z"}}]},
+    )
+
+    assert gravado.status_code == 200
+    assert gravado.json()["base_version"] == 0
+    assert _get(client, token_valido, rota).status_code == 200
 
 
 def test_gravar_rascunho_devolve_as_secoes_na_ordem_canonica(
@@ -71,18 +85,18 @@ def test_gravar_rascunho_devolve_as_secoes_na_ordem_canonica(
         {
             "secoes": [
                 {"nome": "oferta", "ordem": 0, "slots": {"preco_texto": "R$ 9,90"}},
-                {"nome": "hero", "ordem": 0, "slots": {"headline": "Curso Z"}},
+                {"nome": "cubo", "ordem": 0, "slots": {"headline": "Curso Z"}},
             ]
         },
     )
 
     assert resp.status_code == 200
-    assert [secao["nome"] for secao in resp.json()["secoes"]] == ["hero", "oferta"]
+    assert [secao["nome"] for secao in resp.json()["secoes"]] == ["cubo", "oferta"]
 
     lido = _get(
         client, token_valido, f"/api/catalogo/sites/{site.id}/paginas/oferta/rascunho"
     )
-    assert [secao["nome"] for secao in lido.json()["secoes"]] == ["hero", "oferta"]
+    assert [secao["nome"] for secao in lido.json()["secoes"]] == ["cubo", "oferta"]
 
 
 def test_rascunho_com_secao_invalida_e_422_e_nada_e_gravado(
@@ -99,12 +113,13 @@ def test_rascunho_com_secao_invalida_e_422_e_nada_e_gravado(
 
     assert resp.status_code == 422
     assert "banner" in resp.json()["detail"]
-    assert "hero" in resp.json()["detail"]
+    assert "cubo" in resp.json()["detail"]
 
+    # Nada foi gravado: a gravacao recusada nem sequer faz nascer o rascunho.
     lido = _get(
         client, token_valido, f"/api/catalogo/sites/{site.id}/paginas/oferta/rascunho"
     )
-    assert lido.json()["secoes"] == []
+    assert lido.status_code == 404
 
 
 def test_publicar_congela_o_rascunho_e_a_versao_cresce(client, token_valido, cenario):
@@ -116,7 +131,7 @@ def test_publicar_congela_o_rascunho_e_a_versao_cresce(client, token_valido, cen
         client,
         token_valido,
         rascunho,
-        {"secoes": [{"nome": "hero", "ordem": 0, "slots": {"headline": "Um"}}]},
+        {"secoes": [{"nome": "cubo", "ordem": 0, "slots": {"headline": "Um"}}]},
     )
     primeira = _post(client, token_valido, publicar)
 
@@ -129,7 +144,7 @@ def test_publicar_congela_o_rascunho_e_a_versao_cresce(client, token_valido, cen
         client,
         token_valido,
         rascunho,
-        {"secoes": [{"nome": "hero", "ordem": 0, "slots": {"headline": "Dois"}}]},
+        {"secoes": [{"nome": "cubo", "ordem": 0, "slots": {"headline": "Dois"}}]},
     )
     segunda = _post(client, token_valido, publicar)
 
@@ -147,10 +162,10 @@ def test_publicada_serve_sempre_a_ultima_versao(client, token_valido, cenario):
     PageVersion.objects.create(
         page=pagina,
         version=1,
-        secoes=[{"nome": "hero", "slots": {"headline": "Velha"}}],
+        secoes=[{"nome": "cubo", "slots": {"headline": "Velha"}}],
     )
     PageVersion.objects.create(
-        page=pagina, version=2, secoes=[{"nome": "hero", "slots": {"headline": "Nova"}}]
+        page=pagina, version=2, secoes=[{"nome": "cubo", "slots": {"headline": "Nova"}}]
     )
 
     resp = _get(client, token_valido, f"/api/catalogo/sites/{site.id}/paginas/oferta")
@@ -187,14 +202,14 @@ def test_slug_e_unico_por_site_e_a_pagina_de_um_site_nao_vaza_para_outro(
     PageVersion.objects.create(
         page=pagina_a,
         version=1,
-        secoes=[{"nome": "hero", "slots": {"headline": "Do A"}}],
+        secoes=[{"nome": "cubo", "slots": {"headline": "Do A"}}],
     )
     # Mesma slug no site B: existir noutro site nao e existir aqui (INV-P11).
     pagina_b = Page.objects.create(site=site_b, slug="oferta")
     PageVersion.objects.create(
         page=pagina_b,
         version=1,
-        secoes=[{"nome": "hero", "slots": {"headline": "Do B"}}],
+        secoes=[{"nome": "cubo", "slots": {"headline": "Do B"}}],
     )
 
     resp_a = _get(
@@ -214,7 +229,7 @@ def test_pagina_que_so_existe_noutro_site_e_404(client, token_valido, cenario):
     PageVersion.objects.create(
         page=pagina_a,
         version=1,
-        secoes=[{"nome": "hero", "slots": {"headline": "Do A"}}],
+        secoes=[{"nome": "cubo", "slots": {"headline": "Do A"}}],
     )
 
     for rota in ("", "/rascunho"):
@@ -234,7 +249,7 @@ def test_site_desativado_nao_serve_pagina_publicada(client, token_valido):
     site = Site.objects.create(host="off.com.br", name="Off", active=False)
     pagina = Page.objects.create(site=site, slug="oferta")
     PageVersion.objects.create(
-        page=pagina, version=1, secoes=[{"nome": "hero", "slots": {"headline": "x"}}]
+        page=pagina, version=1, secoes=[{"nome": "cubo", "slots": {"headline": "x"}}]
     )
 
     resp = _get(client, token_valido, f"/api/catalogo/sites/{site.id}/paginas/oferta")
@@ -254,16 +269,20 @@ def test_slot_vazio_some_da_resposta_em_vez_de_virar_texto_de_mentira(
         {
             "secoes": [
                 {
-                    "nome": "hero",
+                    "nome": "cubo",
                     "ordem": 0,
                     "slots": {"headline": "Curso Z", "subheadline": ""},
                 },
-                {"nome": "prova", "ordem": 0, "slots": {"depoimento": ""}},
+                {
+                    "nome": "instrumentos",
+                    "ordem": 0,
+                    "slots": {"indice_de_estudios": ""},
+                },
             ]
         },
     )
 
-    assert [secao["nome"] for secao in resp.json()["secoes"]] == ["hero"]
+    assert [secao["nome"] for secao in resp.json()["secoes"]] == ["cubo"]
     assert resp.json()["secoes"][0]["slots"] == {"headline": "Curso Z"}
 
 

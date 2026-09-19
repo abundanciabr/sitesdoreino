@@ -12,7 +12,9 @@ chegar:
   propósito, porque a do ORM não alcança um `UPDATE` digitado num console e a
   do banco não explica nada a quem está programando.
 - **`PageDraft`** é onde se escreve, um por página, e é mutável: essa é a
-  natureza dele.
+  natureza dele. Ele nasce na primeira gravação, e não junto com a página,
+  porque o contrato distingue "nunca foi editada" (404) de "tem um texto pela
+  metade" (200), e criar um rascunho vazio de véspera apagaria essa diferença.
 
 Publicar é congelar o rascunho numa versão nova. Consequência aceita da
 imutabilidade: apagar uma página que já publicou é recusado, porque apagá-la
@@ -99,15 +101,6 @@ class Page(models.Model):
     def __str__(self) -> str:
         return f"{self.site_id}:{self.slug}"
 
-    def save(self, *args, **kwargs):
-        criando = self._state.adding
-        super().save(*args, **kwargs)
-        if criando:
-            # Toda página nasce com um rascunho, ainda que vazio: sem isso,
-            # "página sem rascunho" seria um segundo estado a tratar em cada
-            # leitura, e `atualizado_em` não teria valor honesto para devolver.
-            PageDraft.objects.create(page=self)
-
     @property
     def ultima_versao(self):
         """A versão publicada que está no ar, ou `None` se nunca publicou."""
@@ -119,8 +112,8 @@ class Page(models.Model):
         Rascunho vazio levanta `RascunhoVazio`: publicar uma página em branco
         poria no ar um endereço público sem nada dentro.
         """
-        rascunho = self.rascunho
-        if not rascunho.secoes:
+        rascunho = PageDraft.objects.filter(page=self).first()
+        if rascunho is None or not rascunho.secoes:
             raise RascunhoVazio(
                 "não há rascunho para publicar nesta página. Grave as seções no "
                 "rascunho e publique de novo"

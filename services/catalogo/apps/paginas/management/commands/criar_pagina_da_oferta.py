@@ -2,7 +2,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.ofertas.models import Offer
-from apps.paginas.models import Page
+from apps.paginas.models import Page, PageDraft
 from apps.paginas.vocabulario import SECOES
 from apps.sites.models import Site
 
@@ -18,10 +18,11 @@ class Command(BaseCommand):
 
     O rascunho nasce preenchido apenas pelos slots que se pode escrever com
     verdade a partir do que já existe no catálogo: o nome do produto e o preço
-    da oferta. Depoimento, números, autoridade e garantia nascem VAZIOS, e isso
-    não é falta de capricho: são afirmações que esta casa não tem como provar,
-    e o destino delas é uma página pública. Slot vazio não aparece na tela, e
-    página sem depoimento é página sem a seção de prova, o que é honesto.
+    da oferta. Os vilões, o método, os instrumentos, o percurso, o tempo, as
+    seis recusas e a carta nascem VAZIOS, e isso não é falta de capricho: são
+    afirmações que esta casa não tem como provar, e o destino delas é uma
+    página pública. Slot vazio não aparece na tela, e página sem o índice de
+    estúdios é página sem a seção de instrumentos, o que é honesto.
 
     Idempotente, e pela mesma regra do `criar_site` e do `criar_curso`: rodar
     de novo não duplica nada e não sobrescreve o que o dono escreveu. A partir
@@ -67,10 +68,10 @@ class Command(BaseCommand):
         pagina, criada = Page.objects.get_or_create(
             site=site, slug="oferta", defaults={"offer": oferta}
         )
-        rascunho = pagina.rascunho
+        rascunho, _ = PageDraft.objects.get_or_create(page=pagina)
 
         semeadas = {
-            "hero": {"headline": oferta.product.name},
+            "cubo": {"headline": oferta.product.name},
             "oferta": {
                 "headline": oferta.product.name,
                 "preco_texto": em_reais(oferta.price_cents),

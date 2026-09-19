@@ -1,7 +1,7 @@
 # tests/test_criar_pagina_da_oferta.py
-# O semeador so escreve o que os dados reais provam. Depoimento, numero e
-# promessa nascem VAZIOS porque a casa nao tem como prova-los, e isso iria
-# para uma pagina publica.
+# O semeador so escreve o que os dados reais provam. Viloes, metodo, prova,
+# recusas e carta nascem VAZIOS porque a casa nao tem como prova-los, e isso
+# iria para uma pagina publica.
 from io import StringIO
 
 import pytest
@@ -48,16 +48,16 @@ def test_o_rascunho_nasce_so_com_o_que_os_dados_reais_provam(site_com_oferta):
     rascunho = PageDraft.objects.get(page__site=site_com_oferta, page__slug="oferta")
     por_nome = {secao["nome"]: secao["slots"] for secao in rascunho.secoes}
 
-    assert por_nome["hero"]["headline"] == "Curso S"
+    assert por_nome["cubo"]["headline"] == "Curso S"
     assert por_nome["oferta"]["preco_texto"] == "R$ 1.990,00"
-    # Nada de depoimento, numero, autoridade ou promessa inventados.
-    assert set(por_nome) == {"hero", "oferta"}
+    # Nada de vilao, prova, recusa ou carta inventados.
+    assert set(por_nome) == {"cubo", "oferta"}
 
 
 def test_rodar_duas_vezes_nao_duplica_nem_sobrescreve(site_com_oferta):
     _rodar("semeado.com.br")
     rascunho = PageDraft.objects.get(page__site=site_com_oferta)
-    rascunho.secoes = [{"nome": "hero", "slots": {"headline": "Escrito pelo dono"}}]
+    rascunho.secoes = [{"nome": "cubo", "slots": {"headline": "Escrito pelo dono"}}]
     rascunho.save()
 
     _rodar("semeado.com.br")
