@@ -629,6 +629,16 @@ try {
       if (bloco.livroParadoHaDias != null && bloco.livroParadoHaDias > 3) {
         b.appendChild(el("div", "item", "⚠️ O livro inteiro não recebe registro há " + bloco.livroParadoHaDias + " dias. Painel parado não é painel verde."));
       }
+      // A capa acompanha só os prazos mais curtos do livro (ver
+      // `COM_PRAZO_NO_RESUMO`), porque carregar todos fazia a capa crescer com a
+      // idade do projeto. O número do livro inteiro vem contado do build, e é
+      // dito aqui para que a lista curta não passe por completa.
+      var comPrazoNoLivro = PAINEL.resumo.comPrazoNoLivro || 0;
+      if (comPrazoNoLivro > LOGICA.COM_PRAZO_NO_RESUMO) {
+        b.appendChild(el("div", "item",
+          "A capa acompanha os " + LOGICA.COM_PRAZO_NO_RESUMO + " prazos mais curtos do livro. " +
+          "Há " + comPrazoNoLivro + " registros com prazo no livro inteiro, e os outros continuam na aba Memória."));
+      }
       vistaCapa.appendChild(b);
     } else if (bloco.id === "nao-comprovado") {
       var bSemProva = blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); });
