@@ -20,6 +20,7 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 8 | Revise como crítico, corrija antes de entregar. |
 | 9 | Demonstre; checklist e quatro blocos finais, sem enchimento. |
 | 10 | Não substitua prova por promessa nem use as frases proibidas. |
+| 11 | Conversa é mudança real; interrompa loops e traga solução concreta. Sem informes de status de Git. |
 
 No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
 `python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
