@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-000432-TAR-479-concluida",
+  "tarefa": "TAR-479",
+  "evento": "concluida",
+  "quando": "2026-09-19T00:04:32+00:00",
+  "quem": "agent/armadilhas/freeze-escolhe-python-errado",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1744",
+  "verificado_em": "2026-09-19"
+}
