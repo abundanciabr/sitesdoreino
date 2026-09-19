@@ -153,10 +153,13 @@ caem no `Evento` como qualquer outro fato, e a tela é uma leitura.
 Estas seis coisas são baratas agora e caras depois. Elas entram nos PRs da
 escada acima, não numa fase futura.
 
-1. **Slots semânticos, nunca `div_47_text`.** O slot chama `promessa`,
-   `mecanismo`, `prova`, `objecao`, `garantia`, `faq`. Nome estrutural
-   sobrevive à troca de layout; nome posicional morre no primeiro redesenho e
-   leva junto todo histórico que apontava para ele.
+1. **Nomes semânticos, nunca `div_47_text`.** A seção diz o assunto
+   (`promessa`, `mecanismo`, `prova`, `objecao`, `garantia`, `faq`) e o slot
+   diz o papel do texto dentro dela (`headline`, `depoimento`, `preco_texto`).
+   Nome estrutural sobrevive à troca de layout; nome posicional morre no
+   primeiro redesenho e leva junto todo histórico que apontava para ele. A
+   lista canônica das duas coisas é fixada pelo PR 1 da escada, e este
+   documento não a congela.
 2. **Quatro coisas separadas, com nomes separados:** o template (a forma), a
    especificação (quais slots aquela forma tem), a versão (o conteúdo
    congelado) e a página renderizada (o que o visitante recebe). Fundir duas
