@@ -70,6 +70,11 @@ from apps.core.menu import (
     menu_remover_item,
     menu_versao_padrao,
 )
+from apps.core.paginas import (
+    pagina_de_venda,
+    pagina_de_venda_publicar,
+    pagina_de_venda_salvar,
+)
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import (
     plano_mestre,
@@ -254,6 +259,13 @@ urlpatterns = [
     path("menu/item/remover", menu_remover_item, name="menu_remover_item"),
     path("menu/item/mover", menu_mover_item, name="menu_mover_item"),
     path("menu/paginas", menu_regras_das_paginas, name="menu_regras_das_paginas"),
+    path("paginas/", pagina_de_venda, name="pagina_de_venda"),
+    path("paginas/salvar", pagina_de_venda_salvar, name="pagina_de_venda_salvar"),
+    path(
+        "paginas/publicar",
+        pagina_de_venda_publicar,
+        name="pagina_de_venda_publicar",
+    ),
     # A ECONOMIA (`apps/core/economia.py`, 31/08/2026) — a tela em que o
     # mantenedor liga e desliga cada regra de pontuacao da escola. Ela existe
     # porque a lei da gamificacao (§10.5) chama de CRITERIO DE MORTE o dia em
