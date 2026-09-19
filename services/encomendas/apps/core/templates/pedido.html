@@ -1,0 +1,121 @@
+{% extends "cliente_base.html" %}
+
+{% block titulo %}Pedido{% endblock %}
+
+{% block conteudo %}
+  <h1>{{ nome_da_peca }}</h1>
+  <p class="abertura">{{ cartao.titulo }}</p>
+
+  <div class="caixa">
+    <p class="estado">{{ aconteceu }}</p>
+    {% if fazer %}<p>{{ fazer }}</p>{% endif %}
+    {% if titulo_do_modelador %}
+      <p class="ajuda">O modelador deste pedido tem o titulo {{ titulo_do_modelador }}.</p>
+    {% endif %}
+  </div>
+
+  {% if pedido.acordado_em %}
+    <div class="caixa">
+      <h3>O acordo</h3>
+      <ul class="miuda">
+        <li>Valor: R$ {{ acordo_em_reais }}.</li>
+        <li>Prazo: {{ pedido.acordo_prazo_dias }} dias.</li>
+        <li>Correcoes inclusas: {{ pedido.acordo_correcoes_inclusas }}.</li>
+        <li>Correcoes que ainda cabem: {{ correcoes_restantes }}.</li>
+        {% for item in acordo_entregaveis %}<li>{{ item }}</li>{% endfor %}
+      </ul>
+      <p class="ajuda">
+        Valor, prazo, entregaveis e correcoes estao congelados. Mudar qualquer um
+        deles depende do plantao da escola, com motivo registrado.
+      </p>
+    </div>
+  {% endif %}
+
+  {% if proposta %}
+    <div class="caixa">
+      <h3>A proposta do modelador</h3>
+      <ul class="miuda">
+        <li>Valor: R$ {{ proposta_em_reais }}.</li>
+        <li>Prazo: {{ proposta.prazo_dias }} dias.</li>
+        <li>Correcoes inclusas: {{ proposta.correcoes_inclusas }}.</li>
+        <li>Vale ate {{ proposta_vale_ate }}.</li>
+      </ul>
+      {% if proposta.justificativa %}<p>{{ proposta.justificativa }}</p>{% endif %}
+    </div>
+  {% endif %}
+
+  {% if "aceitar" in gestos %}
+    <form method="post" action="{% url 'aceitar_proposta' pedido.id %}">
+      {% csrf_token %}
+      <button type="submit">Aceitar esta proposta</button>
+    </form>
+  {% endif %}
+
+  {% if "contrapor" in gestos %}
+    <h2>Responder com uma contraproposta</h2>
+    <form method="post" action="{% url 'contrapor' pedido.id %}">
+      {% csrf_token %}
+
+      <label for="valor_reais">Valor, em reais inteiros</label>
+      <input type="number" id="valor_reais" name="valor_reais" min="0" step="1" required>
+
+      <label for="prazo_dias">Prazo, em dias</label>
+      <input type="number" id="prazo_dias" name="prazo_dias" min="1" step="1" required>
+
+      <label for="correcoes_inclusas">Correcoes inclusas</label>
+      <input type="number" id="correcoes_inclusas" name="correcoes_inclusas" min="0" step="1" required>
+
+      <label>Entregaveis desta contraproposta</label>
+      {% for valor, rotulo in entregaveis_do_briefing %}
+        <label class="marcar" for="contra_{{ valor }}">
+          <input type="checkbox" id="contra_{{ valor }}" name="entregaveis" value="{{ valor }}">
+          <span>{{ rotulo }}</span>
+        </label>
+      {% endfor %}
+
+      <label for="justificativa">Por que</label>
+      <textarea id="justificativa" name="justificativa"
+                placeholder="O motivo do numero que voce esta propondo."></textarea>
+
+      <button type="submit">Enviar a contraproposta</button>
+    </form>
+  {% endif %}
+
+  {% if "aprovar" in gestos %}
+    <form method="post" action="{% url 'aprovar_entrega' pedido.id %}">
+      {% csrf_token %}
+      <button type="submit">Aprovar a entrega</button>
+    </form>
+
+    <h2>Ou pedir um ajuste</h2>
+    <form method="post" action="{% url 'pedir_ajuste' pedido.id %}">
+      {% csrf_token %}
+      <label for="o_que_ajustar">O que precisa mudar</label>
+      <textarea id="o_que_ajustar" name="o_que_ajustar" required
+                placeholder="Item a item, o que esta diferente do combinado."></textarea>
+      <p class="ajuda">
+        Este acordo ainda tem {{ correcoes_restantes }} ajuste(s) inclusos.
+        Passando disso, o pedido vai ao plantao da escola, que fala com voce.
+      </p>
+      <button type="submit">Pedir o ajuste</button>
+    </form>
+  {% endif %}
+
+  {% if "desistir" in gestos %}
+    <form method="post" action="{% url 'desistir_da_negociacao' pedido.id %}">
+      {% csrf_token %}
+      <button type="submit">Sair desta negociacao</button>
+    </form>
+  {% endif %}
+
+  {% if "cancelar" in gestos %}
+    <form method="post" action="{% url 'cancelar_pedido' pedido.id %}">
+      {% csrf_token %}
+      <button type="submit">Cancelar o pedido</button>
+    </form>
+  {% endif %}
+
+  <p class="rodape">
+    <a href="{% url 'cardapio_do_cliente' %}">Voltar aos meus pedidos</a>
+  </p>
+{% endblock %}

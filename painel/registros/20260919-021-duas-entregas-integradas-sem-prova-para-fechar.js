@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-021-duas-entregas-integradas-sem-prova-para-fechar",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "Duas tarefas entregues seguem abertas por falta de prova",
+  detalhe: "Das 13 que o balcão recusava fechar, 11 fecharam.\n\nTAR-354 (PR 1583): integrado, sem revisão independente publicada.\n\nTAR-345 (PR 1566): integrado, mas a consulta responde AGUARDANDO_PUBLICACAO e não há aceite.\n\nO fechamento retroativo troca só a linhagem, nunca a revisão nem a publicação.",
+  autoridade: "rito",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1583",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
