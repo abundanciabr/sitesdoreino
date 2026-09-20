@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-008-ci-a-abertura-de-sessao-pela-tarefa-da-fila-volta-a-abrir-o",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: a abertura de sessao pela tarefa da fila volta a abrir o PR",
+  detalhe: "O ramo com comprovante ia do add direto ao push e o gh recusava o PR. O commit fecha isso, e o teste reprova com a guarda sabotada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1741. Validação local: árvore b13cdea201664f4b21ecd84df457dfac41db3eee; commit ed76af2801156eaa0d3299a5b517521751e27c4c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-477",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

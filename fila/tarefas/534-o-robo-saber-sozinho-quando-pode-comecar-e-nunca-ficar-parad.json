@@ -1,0 +1,21 @@
+{
+  "arquivo": "534-o-robo-saber-sozinho-quando-pode-comecar-e-nunca-ficar-parad",
+  "id": "TAR-534",
+  "titulo": "O robo saber sozinho quando pode comecar, e nunca ficar parado esperando resposta",
+  "toca": [
+    "ci",
+    "docs/decisoes",
+    ".claude"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Quatro estados do teste-guarda vermelhos antes e verdes depois, mutacao provada por ci/provar_guardas.py, travessao limpo nos arquivos tocados",
+  "despacho": "# Despacho: mandato por faixa, estacionamento e a regra das 21h30\n\n## O que é\n\nA medição do ciclo de 20/09/2026 mostrou que 91,3% do tempo de um PR está na\nconstrução (T3), e que oito vãos de 30 minutos ou mais entre commits somam 7h36\ndas 11h22 medidas. Três desses vãos terminam com a máquina ligada: são cerca de\n3h12 de robô parado segurando o relógio à espera de decisão humana. Um PR sem\nvão longo custa de 28 a 45 minutos; um PR com vão longo custa 3h ou mais, para\no mesmo trabalho.\n\n## O que muda\n\nTrês alterações, num PR só:\n\n1. `docs/decisoes/MANDATO-POR-FAIXA.md`, arquivo novo, com as duas listas que o\n   mantenedor fechou em 20/09/2026. Lista A (mandato nominal sempre, antes de\n   tocar): pagamento e cobrança; servidor e infraestrutura; senhas e chaves.\n   Lista B (mandato prévio por faixa, concedido de uma vez): documentos,\n   painel, fila, testes e os arquivos normais da faixa da tarefa. Colisão: um\n   PR que toque qualquer caminho da Lista A é Lista A inteiro. Na dúvida sobre\n   um caminho, ele é Lista A, e quem resolve a dúvida é o mantenedor.\n   Os caminhos literais da Lista A são DERIVADOS de `celulas.yml` e da pasta\n   `infra/`, nunca colados.\n\n2. Protocolo de estacionamento nas fichas de `.claude/agents/` que constroem.\n   Um agente bloqueado não espera: leva o ramo a ponto seguro, escreve na fila\n   o que falta em uma frase com o caminho ou a decisão exata que destrava, e\n   encerra a sessão.\n\n3. Regra das 21h30 nas mesmas fichas: a partir das 21h30 locais nenhum agente\n   começa trecho novo; fecha o que tem pelo estacionamento e encerra. A máquina\n   fica desligada a partir de 22h ou 23h.\n\n## Caminhos\n\n`docs/decisoes/MANDATO-POR-FAIXA.md`, `ci/mandato_por_faixa.py`,\n`ci/tests/test_mandato_por_faixa.py` e as fichas de `.claude/agents/` que\nconstroem. Nada de workflow, `infra/`, `celulas.yml`, portão do pouso, revisor,\n`muralhas` ou `ci-celula-gate`.\n\nCODEOWNERS tocado: `/ci/`, `/docs/decisoes/`, `/.claude/`. Mandato do\nmantenedor dado na sessão de 20/09/2026, no próprio brief, e transcrito no PR.\n\n## Evidência exigida\n\nQuatro estados no teste-guarda, um por função, com o nome do estado no nome da\nfunção: Lista A sem linha de mandato reprova; Lista B citando faixa e documento\naprova; Lista A misturada com Lista B é tratada como Lista A; a tradução de\nitem da Lista A para caminhos é derivada de `celulas.yml` e de `infra/`, e o\nteste reprova se os caminhos estiverem colados como constante.\n\nOs quatro reprovam contra o estado atual e passam com a mudança, com a saída\ncrua das duas execuções no corpo do PR. Mutação por\n`python ci/provar_guardas.py ci/tests/test_mandato_por_faixa.py`, com o JSON no\nPR. `python ci/travessao.py --listar` sem ocorrência nos arquivos tocados.\n`muralhas` e `ci-celula-gate` verdes no SHA final.",
+  "origem": "brief do mantenedor na sessao de 20/09/2026, medicao do ciclo do mesmo dia",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

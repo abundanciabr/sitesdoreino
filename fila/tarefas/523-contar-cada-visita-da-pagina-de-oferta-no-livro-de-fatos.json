@@ -1,0 +1,19 @@
+{
+  "arquivo": "523-contar-cada-visita-da-pagina-de-oferta-no-livro-de-fatos",
+  "id": "TAR-523",
+  "titulo": "Contar cada visita da pagina de oferta no livro de fatos",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "docker compose config mostrando REDIS_STREAMS_URL resolvida no servico funil, e o evento funil.pagina-vista.v1 lido no fio depois de abrir /oferta",
+  "despacho": "Celula infra. Um PR, uma celula. Espere de 1 a 3 arquivos.\n\nCONTEXTO\nO PR #1784 pos a pagina de oferta em /oferta e ela publica o evento\nfunil.pagina-vista.v1 no fio de eventos. O servico `funil` em\ninfra/docker-compose.yml NAO declara REDIS_STREAMS_URL: a pagina abre\nnormalmente e nenhuma visita chega ao livro de fatos da `metricas`. Outros\nsete servicos do mesmo arquivo ja declaram\n`REDIS_STREAMS_URL: redis://redis:6379/0`. O comentario do bloco\n`gamificacao-consumer` explica por que essa variavel vem do compose e nao do\nenv da celula: e topologia da plataforma, nao segredo da celula, e escreve-la\nno env vivo custaria um passo manual do mantenedor na VPS.\n\nMANDATO\ninfra/ e caminho CODEOWNERS. O mantenedor autorizou em 19/09/2026,\nrespondendo a uma pergunta direta, acrescentar a linha que falta para as\nvisitas passarem a ser contadas. A maestro escreve a linha do mandato na\ndescricao do PR; o executor nunca a escreve.\n\nALVOS\n- infra/docker-compose.yml, bloco do servico `funil`\n- o arquivo de ambiente de exemplo, se ele precisar da nota companheira\n\nO QUE CONSTRUIR\nA linha que falta, na forma identica a das outras celulas. Nada alem disso:\nsem reorganizar o arquivo, sem mexer em outro servico, sem variavel nova.\n\nPROVA EXIGIDA\n- `docker compose config` verde, com a variavel resolvida no servico `funil`\n- diff minimo, de poucas linhas\n- o portao ou teste que a casa tiver para o arquivo\n- de ponta: subir o funil e o Redis, abrir /oferta e mostrar o evento\n  funil.pagina-vista.v1 no fio, ou escrever NAO RODEI e dizer o que impediu\n\nmodelo_recomendado: opus\nesforco_recomendado: high",
+  "origem": "brief da maestro em 19/09/2026, a partir do registro 20260919-081, com a autorizacao do mantenedor para o caminho de dono infra/",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

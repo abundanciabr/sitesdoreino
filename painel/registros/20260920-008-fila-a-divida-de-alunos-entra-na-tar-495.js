@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-008-fila-a-divida-de-alunos-entra-na-tar-495",
+  tipo: "incidente",
+  quando: "2026-09-20",
+  titulo: "fila: a divida de alunos entra na TAR-495",
+  detalhe: "O commit 15a0ca50 esta na main desde 17/09 e nao no servidor, e repetir a publicacao que falhou esta proibido. A TAR-495 toca services/alunos, entao o merge dela publica a celula.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1797. Validação local: árvore 973dcd308671b6adab415c521686f94bfe3b719b; commit 29b8bcadf082d741bda58fe7fd653241da186f5f; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-495",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

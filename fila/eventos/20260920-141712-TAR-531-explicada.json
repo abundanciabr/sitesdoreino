@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-141712-TAR-531-explicada",
+  "tarefa": "TAR-531",
+  "evento": "explicada",
+  "quando": "2026-09-20T14:17:12+00:00",
+  "quem": "sessao do mantenedor, 20/09/2026",
+  "o_que_e": "Todo relatorio de fim de tarefa passa a ter um bloco Instrucoes dizendo o que acontece agora",
+  "o_que_muda": "O mantenedor para de receber veredito sem continuacao e passa a saber sempre qual e o proximo passo e de quem e",
+  "exemplo": "Veredito NAO PRONTO seguido de: 1. O GitHub testa o PR e leva 8 minutos. 2. Passando, o site sobe sozinho e eu confirmo aqui.",
+  "importancia": 95
+}

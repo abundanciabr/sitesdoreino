@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-143655-TAR-532-explicada",
+  "tarefa": "TAR-532",
+  "evento": "explicada",
+  "quando": "2026-09-20T14:36:55+00:00",
+  "quem": "decisao do mantenedor na sessao, 20/09/2026",
+  "o_que_e": "Fechar os PRs 1502, 1504, 1713 e 1655, que pediam a mesma regra do fecho e apodreceram abertos",
+  "o_que_muda": "A fila de PRs para de mostrar quatro tentativas mortas da mesma regra, e fica escrito o que ainda falta do 1713",
+  "exemplo": "Quem abrir a lista de PRs ve so trabalho vivo, e o livro diz por que cada um dos quatro morreu",
+  "importancia": 60
+}

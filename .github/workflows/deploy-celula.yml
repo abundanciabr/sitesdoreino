@@ -179,6 +179,9 @@ jobs:
       needs.detectar.result == 'success' &&
       needs.detectar.outputs.deteccao == 'ok' &&
       (needs.detectar.outputs.painel_dados == 'true' || needs.detectar.outputs.fila_dados == 'true')
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -292,6 +295,9 @@ jobs:
       needs.detectar.result == 'success' &&
       needs.detectar.outputs.deteccao == 'ok' &&
       needs.detectar.outputs.celulas_imagem != '[]'
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     permissions:
       contents: read

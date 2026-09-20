@@ -10,7 +10,7 @@ O que estes guardas protegem:
 2. **A tela não guarda cópia de nome nem de explicação.** O que ela mostra de
    cada porta sai do mapa. Uma segunda cópia aqui dentro seria a duplicação que
    o `CLAUDE.md` proíbe, e envelheceria em silêncio.
-3. **Molde não vira link** (`/quiz/quiz/<slug:slug>/` não é um lugar).
+3. **Molde não vira link** (`/quiz/<slug:slug>/` não é um lugar).
 4. **Mapa ausente se DECLARA**, e a página abre mesmo assim: as seis peças são
    conceito, e continuam verdadeiras sem o arquivo. O que não pode é a tela
    ficar calada sobre os links que faltam.
@@ -29,6 +29,7 @@ import pytest
 import respx
 from django.test import Client
 from django.urls import reverse, set_script_prefix
+from django.utils.html import escape
 
 from apps.core import perpetuo
 
@@ -163,15 +164,19 @@ def test_o_nome_de_cada_porta_vem_do_mapa_e_chega_a_tela():
 
 @respx.mock
 def test_molde_nao_vira_link():
-    """`/quiz/quiz/<slug:slug>/` não é um lugar: é a forma de todos os quizzes.
+    """`/quiz/<slug:slug>/` não é um lugar: é a forma de todos os quizzes.
 
     Oferecê-lo como link manda o mantenedor para um 404, e ele conclui que o
     site quebrou. A regra de quando um endereço vira link é a do mapa do site,
     reusada e não copiada.
     """
     html = _dentro().get(reverse("perpetuo")).content.decode()
-    assert 'href="/quiz/quiz/' not in html
-    assert "/quiz/quiz/" in html, "mas o endereço continua à vista, como texto"
+    # O MOLDE, e não qualquer endereço que comece por `/quiz/`: o endereço do
+    # quiz deixou de dobrar o prefixo em 19/09/2026, e um `not in` largo passaria
+    # a proibir também um link legítimo para uma página concreta do quiz.
+    molde = escape("/quiz/<slug:slug>/")
+    assert f'href="{molde}"' not in html
+    assert molde in html, "mas o endereço continua à vista, como texto"
 
 
 @respx.mock

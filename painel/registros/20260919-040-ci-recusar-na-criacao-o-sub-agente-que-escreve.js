@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-040-ci-recusar-na-criacao-o-sub-agente-que-escreve",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "ci: recusar na criacao o sub-agente que escreve",
+  detalhe: "Trava nascida da propria ficha: quem nao renuncia a Edit, Write e NotebookEdit e recusado na criacao. Falta um caminho no mandato.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1764. Validação local: árvore 6dc2ba796c41631ea2e0cc4b948898403f11ead3; commit d011b0a1831972a1f366af44fea9b7d8b49110e6; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-376",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

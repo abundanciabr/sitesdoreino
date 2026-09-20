@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-082-catalogo-fora-do-ar-derruba-toda-pagina-do-site-antes-da-view",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "Com o catálogo fora do ar, toda página do site devolve erro de servidor",
+  detalhe: "Medido ao vivo hoje: com o catálogo desligado, /oferta respondeu 500. O defeito é anterior à página e atinge o site inteiro, porque quem descobre de qual site é o endereço pergunta ao catálogo e não trata a queda.\n\nA página de oferta já responde a indisponibilidade com uma tela honesta e 503; ela só nunca é alcançada. Conserto fora do alcance deste PR: mexe na resolução de site, que serve todas as rotas da célula.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1784",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

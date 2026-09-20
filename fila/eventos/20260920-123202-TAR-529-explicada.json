@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-123202-TAR-529-explicada",
+  "tarefa": "TAR-529",
+  "evento": "explicada",
+  "quando": "2026-09-20T12:32:02+00:00",
+  "quem": "Degrau A de docs/decisoes/PLANO-MESTRE-FILA-DE-DEPLOY.md (TAR-527); mandato do mantenedor dado na sessao de 20/09/2026.",
+  "o_que_e": "Hoje dois deploys que chegam perto disputam uma unica vaga de espera e o que perde e cancelado em silencio, com o codigo na main e fora do site.",
+  "o_que_muda": "Cada deploy passa a esperar a vez numa fila de verdade: nenhum merge fica fora do ar por ter chegado no momento errado, e o rollback manual deixa de morrer na espera.",
+  "exemplo": "E trocar o balcao com uma so cadeira, onde quem chega expulsa quem esperava, por uma fila com senha: todo mundo e atendido na ordem.",
+  "importancia": 85
+}

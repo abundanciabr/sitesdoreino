@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-066-o-recibo-do-pr-1774-apontou-a-tarefa-errada",
+  tipo: "incidente",
+  quando: "2026-09-19",
+  titulo: "O recibo do PR 1774 deu por resolvido um defeito que continua aberto",
+  detalhe: "O PR 1774 entregou a identidade do visitante na vitrine e foi integrado em 19/09/2026 as 20h24 UTC, commit b7da64832a95e5d42f27c75e3688da2b492e2892. A entrega esta correta e nada nela precisa voltar atras.\n\nO que saiu errado foi a etiqueta. Durante o trabalho o robo descobriu um segundo defeito, sem relacao com a entrega: a vitrine e a unica parte da plataforma que nao avisa ao Django que o cadeado de HTTPS termina no porteiro da frente, e por isso o cookie da previa da equipe viaja sem protecao. Ele registrou esse defeito como TAR-508 e citou o numero no texto do PR. O ci/pr.py le numeros de tarefa no corpo do PR para saber que tarefa a entrega fecha, encontrou esse, e escreveu no livro que o PR 1774 concluiu a TAR-508.\n\nResultado: o quadro passou a dizer que o defeito do cadeado estava resolvido. Ele nao esta. Como a fila nao reabre tarefa concluida, o defeito volta ao quadro com numero novo, TAR-513, e a entrega de verdade fica registrada na TAR-512, concluida pelo mesmo PR 1774.\n\nA causa e de ferramenta, nao de julgamento: citar o numero de uma tarefa no corpo de um PR faz o fechamento adotar aquela tarefa como a entregue. Enquanto o ci/pr.py nao distinguir tarefa citada de tarefa entregue, nenhum PR deve escrever TAR-NNN no corpo para falar de trabalho que ele nao faz.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1774 integrado em 2026-09-19T20:24:06Z por abundanciabr, commit de merge b7da64832a95e5d42f27c75e3688da2b492e2892, conferido com gh pr view 1774 --json state,mergedBy,mergeCommit",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: "20260919-063-funil-a-vitrine-reconhece-o-visitante-que-volta",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

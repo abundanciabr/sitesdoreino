@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-058-mandato-do-contrato-de-paginas-precisa-da-linha-do-dono",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "O contrato de páginas e telemetria espera uma linha de mandato escrita por você",
+  detalhe: "O PR do Rito de Contrato traz o mandato exatamente como o briefing o ditou. O portão de pouso lê a linha 'Mandato-do-mantenedor' com uma regra de UMA linha e compara os caminhos autorizados palavra por palavra: ele aceita o caminho exato do arquivo ou o padrão do CODEOWNERS terminado em barra. A linha ditada autoriza 'contracts/catalogo.openapi.yaml' por extenso e os quatro eventos por um curinga ('funil.*.v1.json'), e curinga o portão não lê. Resultado medido na leitura de ci/mergear.py: o arquivo do catálogo passa e os quatro arquivos de evento reprovam.\\n\\nNão inventei uma linha mais larga: mandato é palavra sua, e ampliar o alcance dele seria decidir no seu lugar. A recomendação abaixo tem o mesmo alcance da sua decisão de hoje, só escrita na forma que a máquina lê.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1772",
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "contratos",
+  vence_em_dias: null,
+  porque_so_voce: "Mandato do mantenedor é, por definição, palavra sua: o portão só o aceita escrito na descrição pela sua conta, e contracts/ é caminho com dono no CODEOWNERS. Nenhum agente pode escrever essa linha por você sem tornar a separação de poderes uma formalidade vazia.",
+  proximo_passo: "Na descrição do PR do contrato, troque a linha 'Mandato-do-mantenedor' por esta, em UMA linha só, com os caminhos soltos e sem ponto no fim: Mandato-do-mantenedor: decisão de 19/09/2026 em sessão de arquitetura com o mantenedor presente: construir página real e telemetria antes de experimentação. Caminhos autorizados: contracts/catalogo.openapi.yaml contracts/eventos/funil.pagina-vista.v1.json contracts/eventos/funil.secao-vista.v1.json contracts/eventos/funil.cta-clicado.v1.json contracts/eventos/funil.lead-capturado.v1.json",
+  se_eu_nao_decidir: "O PR fica aberto e verde nas provas, sem integrar. Como ele é a raiz das outras três frentes (a página real no catálogo, a tela de edição no admin e a telemetria no funil), as três ficam paradas esperando o contrato pousar.",
+  recomendacao: "Escrever a linha do próximo passo. Ela tem o mesmo alcance da decisão de hoje: os cinco arquivos deste PR, nomeados um a um, e nada além deles. A alternativa mais curta seria autorizar 'contracts/' inteiro numa palavra, e isso abriria a pasta toda, que é mais do que esta entrega precisa.",
+  reversivel: true,
+  impacto: "alto",
+  portao: null
+});})();
