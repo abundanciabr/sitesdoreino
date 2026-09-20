@@ -3,7 +3,7 @@
   "id": "TAR-564",
   "titulo": "Uma leitura independente tenta derrubar tudo antes de o dinheiro entrar",
   "toca": [
-    "auditoria"
+    "painel"
   ],
   "depende_de": [
     "TAR-563"
