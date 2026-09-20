@@ -50,6 +50,29 @@ class EventoProcessado(models.Model):
     processed_at = models.DateTimeField(auto_now_add=True)
 
 
+class FatoDePagamentoProcessado(models.Model):
+    """[INV-leads-dedup-entre-versoes] o mesmo pagamento pode chegar como
+    `pagamento.aprovado`/`pagamento.recusado` na v1 e depois na v2 (RITOS.md
+    §3: o v1 continua no ar até o último consumidor migrar). `event_id` não
+    serve de guarda aqui — cada entrega tem o seu, mesmo quando é o MESMO
+    fato relatado duas vezes. A unicidade É o guarda: (`evento`, `chave`)
+    derivados de `x-ponte-do-v1` de cada contrato (ver
+    `apps.core.handlers._chave_pagamento_aprovado` e `_chave_pagamento_recusado`)
+    identificam o fato, não a entrega, e a segunda tentativa de gravar a
+    mesma linha esbarra na constraint."""
+
+    evento = models.CharField(max_length=40)
+    chave = models.CharField(max_length=200)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["evento", "chave"], name="uniq_fato_pagamento_por_evento"
+            ),
+        ]
+
+
 class Oportunidade(models.Model):
     """O acompanhamento comercial humano de UMA pessoa já conhecida da casa.
 
