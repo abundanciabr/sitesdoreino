@@ -1245,17 +1245,21 @@ ci/tests/test_guarda_do_cartao.py`, 9 de 9).
 - **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
 
 ### [INV-CARD-A2] Dado de Cartão Não Existe no Nosso Código
-- **O quê:** número, validade e código de segurança nunca são nomeados em
-  `services/`, `contracts/` ou `infra/`, em arquivo nenhum, nem de servidor nem
-  de navegador. A tokenização acontece no navegador, pelo Appmax JS, e é a
-  biblioteca deles que cria e lê esses campos.
+- **O quê:** número, validade e código de segurança nunca são LIDOS, atribuídos,
+  acessados nem declarados como campo em `services/`, `contracts/` ou `infra/`,
+  nem no servidor nem no navegador. A tokenização acontece no navegador, pelo
+  Appmax JS, e é a biblioteca deles que cria e lê esses campos. A lei proíbe
+  manusear o dado, e não pronunciar o nome dele: a lista de campos PROIBIDOS
+  que uma célula escreve para nunca gravar o valor em claro é esta mesma lei
+  escrita em código, e reprová-la seria reprovar o acerto.
 - **Por quê:** tokenizar pelo nosso servidor jogaria a plataforma inteira
-  dentro do escopo PCI-DSS, e isso está proibido. O dado que nunca é nomeado
+  dentro do escopo PCI-DSS, e isso está proibido. O dado que nunca é manuseado
   não vaza em log, em evento, em banco nem em exceção, porque não há por onde.
-- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — árvore com
-  `pedido["card_number"]` e contrato com campo `cvv` saem `FAIL` na lei A2. A
-  medição é de nome de campo: linha só de comentário fica de fora, para que a
-  frase que ENSINA a lei não seja lida como a violação que ela descreve.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — `pedido["card_number"]`,
+  `cvv=`, `resposta.security_code` e o campo `cvv` declarado no contrato saem
+  `FAIL` na lei A2; a lista de campos proibidos sai `PASS`. Linha só de
+  comentário fica de fora, para que a frase que ENSINA a lei não seja lida como
+  a violação que ela descreve.
 - **Célula dona:** o repositório (`ci/`), com checkout e pagamentos servidas
 
 ### [INV-CARD-A3] Autorizado Não Significa Aprovado

@@ -75,12 +75,26 @@ CHAVE_QUE_ESCOLHE_PROVEDOR = re.compile(
     r"_(?:PIX|CARTAO|CARD|CREDITO|CREDIT)\b"
 )
 
-DADO_DO_CARTAO = re.compile(
-    r"\b(?:card_number|cardnumber|numero_do_cartao|numero_cartao|card_pan"
+# Os nomes do dado de cartao. A lei proibe MANUSEAR o dado, e nao pronunciar o
+# nome dele: a lista de campos PROIBIDOS que uma celula escreve para nunca
+# gravar o valor em claro e a mesma lei em codigo, e reprova-la seria reprovar
+# o acerto. Por isso o nome so conta quando aparece sendo lido, atribuido,
+# acessado ou declarado como campo.
+_NOME_DO_DADO = (
+    r"(?:card_number|cardnumber|numero_do_cartao|numero_cartao|card_pan"
     r"|cvv|cvc|card_cvv|security_code|codigo_de_seguranca"
     r"|exp_month|exp_year|expiry_month|expiry_year"
     r"|expiration_month|expiration_year|card_expiry|validade_do_cartao"
-    r"|tokenizar_cartao|tokenize_card|card_tokenization)\b",
+    r"|tokenizar_cartao|tokenize_card|card_tokenization)"
+)
+
+DADO_DO_CARTAO = re.compile(
+    rf"\[\s*[\"']{_NOME_DO_DADO}[\"']\s*\]"
+    rf"|\.\s*get\(\s*[\"']{_NOME_DO_DADO}[\"']"
+    rf"|\.{_NOME_DO_DADO}\b"
+    rf"|\b{_NOME_DO_DADO}\s*="
+    rf"|[\"']{_NOME_DO_DADO}[\"']\s*:"
+    rf"|\b{_NOME_DO_DADO}\s*:",
     re.IGNORECASE,
 )
 
