@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260914-224301-TAR-427-bloqueada",
+  "tarefa": "TAR-427",
+  "evento": "bloqueada",
+  "quando": "2026-09-14T22:43:01+00:00",
+  "quem": "codex-infra-retirar-admin-deploy",
+  "detalhe": "Depende da TAR-428: publicar a imagem admin-leitura antes da troca do compose; as esteiras compartilham concurrency deploy e precisam manter produção funcionando entre as entregas.",
+  "espera": "fila"
+}
