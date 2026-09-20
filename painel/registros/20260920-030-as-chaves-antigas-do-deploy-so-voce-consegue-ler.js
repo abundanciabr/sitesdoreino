@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-030-as-chaves-antigas-do-deploy-so-voce-consegue-ler",
+  tipo: "pendencia",
+  quando: "2026-09-20",
+  titulo: "Só você consegue ler quais chaves ainda abrem a porta da VPS",
+  detalhe: "A chave de deploy foi trocada em 19/09. Ninguém sabe quantas chaves ANTIGAS continuam autorizadas no usuário deploy da VPS, e cada uma delas é uma porta aberta que não sabemos de quem é.\n\nEu não tenho SSH para a VPS, não pedi senha e não inventei acesso. O que dá para fazer daqui está feito: o bloco abaixo está pronto e provado em três situações (usuário ausente, arquivo ausente, e arquivo com chaves, inclusive linha com opções na frente). Ele SÓ LÊ.\n\nAbra uma janela root na VPS e cole isto:\n\nUSUARIO=deploy\nPW=$(getent passwd \"$USUARIO\" 2>/dev/null) || PW=\"\"\nif [ -z \"$PW\" ]; then\n  echo \"PAROU POR SEGURANCA: nao existe o usuario '$USUARIO' nesta maquina.\"\n  echo \"O QUE FAZER: confira se entrou na VPS certa (prompt root@srv).\"\nelif AK=\"$(printf '%s' \"$PW\" | cut -d: -f6)/.ssh/authorized_keys\"; [ ! -r \"$AK\" ]; then\n  echo \"PAROU POR SEGURANCA: nao consigo ler $AK. Cole como root (sudo -i).\"\nelse\n  echo \"== arquivo: $AK\"\n  echo \"== linhas de chave: $(grep -cvE '^[[:space:]]*(#|$)' \"$AK\")\"\n  ssh-keygen -lf \"$AK\"\n  echo \"== fim. Este bloco so leu.\"\nfi\n\nMe devolva a saída inteira. O bloco não imprime chave nenhuma: só a impressão digital e o comentário da linha.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1813",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  porque_so_voce: "Só você tem o acesso de root na VPS. Nenhum agente desta casa tem SSH para 217.196.62.220, e pedir a senha seria pior que o problema.",
+  proximo_passo: "Colar o bloco numa janela root da VPS e me devolver a saída de ssh-keygen -lf. Com ela eu identifico o dono de cada impressão digital por prova, nunca pelo comentário da linha, e volto com a lista para você decidir chave por chave.",
+  se_eu_nao_decidir: "As chaves antigas continuam autorizadas. A rotação de 19/09 acrescentou a chave nova, mas não fechou nenhuma porta velha: quem tivesse acesso antes continua tendo.",
+  recomendacao: "Colar. São dez segundos, o bloco só lê e ele para sozinho se algo não bater. A remoção de qualquer chave fica para depois, com backup datado e a sua palavra, chave por chave.",
+  reversivel: true,
+  impacto: "alto",
+  portao: null
+});})();
