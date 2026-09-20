@@ -1,0 +1,19 @@
+{
+  "arquivo": "426-abrir-a-administracao-local-com-o-banco-real-por-tunel-segur",
+  "id": "TAR-426",
+  "titulo": "Abrir a administração local com o banco real por túnel seguro",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Launcher com sete páginas HTTP 200 usando Postgres real; consulta somente leitura confirma banco e esquema; testes focais, guardas por mutação e suíte admin verdes.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Mandato do mantenedor em 14/09/2026: implementar túnel SSH no lançador local, somente ci/ligar_administracao.py e testes focais; credenciais fora do Git; sem migração automática; preservar login local e navegador. Retirada do deploy em entrega irmã.",
+  "origem": "Pedido urgente do mantenedor em 14/09/2026, Brief 2, fatia launcher autorizada pela maestro nesta conversa.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
