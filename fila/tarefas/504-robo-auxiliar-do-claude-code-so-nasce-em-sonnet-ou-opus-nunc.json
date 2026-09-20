@@ -3,7 +3,6 @@
   "id": "TAR-504",
   "titulo": "Robô auxiliar do Claude Code só nasce em Sonnet ou Opus, nunca em Fable",
   "toca": [
-    "lei",
     "ci"
   ],
   "depende_de": [],
