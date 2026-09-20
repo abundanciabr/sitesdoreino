@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-019-o-mandato-por-faixa-pousou-conferido-de-fora",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "O mandato por faixa pousou, conferido de fora",
+  detalhe: "O PR 1804 integrou na main em 1d01bb4b as 17:20:04Z, com os 8 checks verdes e os 6 portoes do mergear passando, inclusive o do mandato.",
+  autoridade: "github",
+  evidencia: "gh pr view 1804: state MERGED, mergedBy abundanciabr, mergeCommit 1d01bb4b, mergedAt 2026-09-20T17:20:04Z. O registro 017 desta mesma entrega dizia integracao nao verificada, porque foi escrito antes do pouso.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-534",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
