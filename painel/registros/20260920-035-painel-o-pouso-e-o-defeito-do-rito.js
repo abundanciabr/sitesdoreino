@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-035-painel-o-pouso-e-o-defeito-do-rito",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "painel: o pouso e o defeito do rito",
+  detalhe: "O PR 1810 pousou em ce16b5da, e o rito adotou tarefa errada citada no corpo: pendência do mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1816. Validação local: árvore 9808dcf2e05aa8d293cd029855724337ec0f043b; commit bfb550a076b45e71b200945863b8e9d024375df8; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-541",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
