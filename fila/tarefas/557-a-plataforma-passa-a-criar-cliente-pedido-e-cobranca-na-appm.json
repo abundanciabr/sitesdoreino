@@ -1,0 +1,21 @@
+{
+  "arquivo": "557-a-plataforma-passa-a-criar-cliente-pedido-e-cobranca-na-appm",
+  "id": "TAR-557",
+  "titulo": "A plataforma passa a criar cliente, pedido e cobranca na Appmax",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-556"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Testes provando que escrita ambigua nao repete, que o roteamento errado e impossivel, e a matriz de erros; suite da celula pagamentos verde.",
+  "despacho": "Celula pagamentos. Implemente a escrita na Appmax e tire o cartao do Mercado Pago.\n\nAlvos: o provider Appmax, o servico de cartao e os testes.\n\n1. POST /v1/customers (exige o ip coletado pelo Appmax JS), POST /v1/orders com itens e valores vindos do SERVIDOR, e POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}.\n2. Escrita ambigua: se der timeout DEPOIS do envio, nao repita. Siga a matriz: para cliente e pedido, busca oficial pela referencia; sem consulta conclusiva, bloqueie e exija resolucao operacional. Para pagamento, consulte GET /v1/orders/{id}; sem conclusao, mantenha reconciliation_required e NAO cobre de novo. Ausencia de endpoint para procurar uma criacao ambigua nunca vira permissao para reenviar.\n3. Toda escrita persiste ANTES do envio: operation_id interno, tipo, tentativa, hash sanitizado do corpo e instante.\n4. REMOVA a operacao de cartao do cliente do Mercado Pago (criar_pagamento_card). Isso torna o roteamento errado impossivel por construcao, nao por disciplina. Nao toque em nada do Pix: se o Pix quebrar, o lote reprova.\n5. Escreva o guarda que prova que cartao nao pode sair pelo Mercado Pago, e mostre ele vermelho.\n\nTeste no transporte com respx. Somente leitura: services/checkout/.\n\nFatos medidos na documentacao oficial da Appmax em 20/09/2026: OAuth2 client_credentials em POST https://auth.sandboxappmax.com.br/oauth2/token, Bearer de 1 hora, SEM refresh token (renovar e repetir o POST); API em https://api.sandboxappmax.com.br; producao troca sandboxappmax por appmax. Sequencia: token, IP pelo Appmax JS, POST /v1/customers, POST /v1/orders, POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}, confirmacao por GET /v1/orders/{id}. Parcelas por POST /v1/payments/installments com {installments, total_value, settings}, ate 12x, modalidade PP (juros no comprador) escolhida pelo mantenedor. Webhook SEM assinatura HMAC e sem token: envelope {event, event_type, site_id, app_id, client_key, external_key, data, partner_merchant}, 40 eventos em 4 tipos, exige HTTP 200 em menos de 5 s, retry em 30 min, 2 h e 4 h. Limite: 5 req/s sustentado, 50 em rajada, 60/min por rota, 5/min em rotas de credencial, 100 mil/mes, headers X-RateLimit-Limit, X-RateLimit-Remaining e Retry-After. Nao invente endpoint: se precisar de um que nao esta aqui, pare e registre pendencia.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L4B; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

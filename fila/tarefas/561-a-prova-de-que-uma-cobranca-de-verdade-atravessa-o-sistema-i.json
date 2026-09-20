@@ -1,0 +1,21 @@
+{
+  "arquivo": "561-a-prova-de-que-uma-cobranca-de-verdade-atravessa-o-sistema-i",
+  "id": "TAR-561",
+  "titulo": "A prova de que uma cobranca de verdade atravessa o sistema inteiro",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-560"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Matriz oficial de cartoes executada contra o sandbox, webhook real recebido, reconciliacao provada sem webhook, e os IDs e timestamps sanitizados no corpo do PR.",
+  "despacho": "Celula pagamentos. Prove o caminho inteiro contra o sandbox real da Appmax.\n\nAlvos: testes ponta a ponta de API, sem navegador.\n\nPRIMEIRA COISA, e e um bloqueio de verdade: o plano mestre lista seis cartoes de teste (4000000000000010 e companhia) que NAO foram encontrados em nenhuma pagina oficial da Appmax. Eles sao o padrao generico de outro gateway. Antes de escrever qualquer teste, confirme a lista real com a documentacao ou com o suporte da Appmax. Se nao conseguir, PARE e registre pendencia com precisa_do_dono true. Nao invente cartao e nao use os seis do plano sem confirmar.\n\nCom a lista confirmada, cubra: aprovado (evento unico, pedido pago, matricula unica), autorizado em analise (NAO matricula), recusado (permite nova tokenizacao), erro transacional (nao queima o Intent), falha do pedido (nao vira pagamento interno) e indisponibilidade (sem retry cego, sem afetar o Pix).\n\nAlem da matriz: webhook real chegando de fora, reconciliacao fechando um pagamento cujo aviso nunca chegou, e os quatro consumidores recebendo o fato uma vez so.\n\nNenhum cartao real em documentacao, fixture ou evidencia. Nenhum segredo nos logs anexados.\n\nFatos medidos na documentacao oficial da Appmax em 20/09/2026: OAuth2 client_credentials em POST https://auth.sandboxappmax.com.br/oauth2/token, Bearer de 1 hora, SEM refresh token (renovar e repetir o POST); API em https://api.sandboxappmax.com.br; producao troca sandboxappmax por appmax. Sequencia: token, IP pelo Appmax JS, POST /v1/customers, POST /v1/orders, POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}, confirmacao por GET /v1/orders/{id}. Parcelas por POST /v1/payments/installments com {installments, total_value, settings}, ate 12x, modalidade PP (juros no comprador) escolhida pelo mantenedor. Webhook SEM assinatura HMAC e sem token: envelope {event, event_type, site_id, app_id, client_key, external_key, data, partner_merchant}, 40 eventos em 4 tipos, exige HTTP 200 em menos de 5 s, retry em 30 min, 2 h e 4 h. Limite: 5 req/s sustentado, 50 em rajada, 60/min por rota, 5/min em rotas de credencial, 100 mil/mes, headers X-RateLimit-Limit, X-RateLimit-Remaining e Retry-After. Nao invente endpoint: se precisar de um que nao esta aqui, pare e registre pendencia.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L9A; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214848-TAR-546-explicada",
+  "tarefa": "TAR-546",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:48:48+00:00",
+  "quem": "Plano mestre Appmax, lote L2A; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "O checkout so entende o aviso antigo, que exige um campo exclusivo do Mercado Pago.",
+  "o_que_muda": "Sem isso, um pagamento no cartao pela Appmax nunca vira pedido pago e o comprador fica olhando uma tela que nao muda.",
+  "exemplo": "E como um porteiro que so aceita um modelo de cracha: quem chega com o cracha novo fica na porta.",
+  "importancia": 90
+}

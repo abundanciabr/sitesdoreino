@@ -1,0 +1,19 @@
+{
+  "arquivo": "542-a-porta-publica-por-onde-a-appmax-fala-com-a-nossa-plataform",
+  "id": "TAR-542",
+  "titulo": "A porta publica por onde a Appmax fala com a nossa plataforma",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Rota respondendo no dominio de operacoes, provada de fora com curl mostrando o status, mais muralhas e ci-celula-gate verdes no SHA entregue.",
+  "despacho": "Celula infra. Abra a rota publica da Appmax e prepare o ambiente, sem ligar nada ainda.\n\nAlvos: infra/traefik/dynamic/plataforma.yml e infra/env/pagamentos.env.exemplo.\n\n1. Acrescente um router Traefik para PathPrefix(/api/pagamentos/appmax) no mesmo dominio de operacoes onde ja vive o router mp-webhooks, com prioridade 100 e service pagamentos. Siga exatamente a convencao do arquivo: o comentario de cada router explica por que a prioridade e aquela, e o seu tambem precisa explicar. Nao mexa em nenhum router existente.\n2. Em infra/env/pagamentos.env.exemplo acrescente, vazias e comentadas, APPMAX_AUTH_URL, APPMAX_API_URL, APPMAX_APP_ID, APPMAX_APP_CLIENT_ID, APPMAX_APP_CLIENT_SECRET, APPMAX_MERCHANT_CLIENT_ID, APPMAX_MERCHANT_CLIENT_SECRET, APPMAX_EXTERNAL_ID e APPMAX_CARD_ENABLED_SITES. A ultima e a unica trava nova do projeto e nasce VAZIA: lista vazia impede qualquer cobranca nova no cartao. Repita no cabecalho o aviso do INV-P8 que ja esta no arquivo: segredo de producao so existe em /opt/plataforma/env/pagamentos.env na VPS.\n3. Somente leitura: services/, contracts/, ci/.\n\nEvidencia: as muralhas verdes, e a rota provada de fora depois do deploy com curl -i mostrando que o caminho chega na celula pagamentos e nao cai no catch-all do funil. Se o deploy nao tiver saido quando voce fechar, diga isso em Pendencias com o numero do run, nunca declare publicado sem medir.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L0-INFRA; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

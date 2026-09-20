@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215120-TAR-567-explicada",
+  "tarefa": "TAR-567",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:51:20+00:00",
+  "quem": "Comando de inicio do mantenedor em 20/09/2026 sobre o plano mestre Appmax",
+  "o_que_e": "O plano do Appmax existe como documento desde 19/09/2026, mas nenhuma tarefa dele existia na fila, entao nada podia comecar.",
+  "o_que_muda": "Com os 25 lotes na fila e as dependencias ligadas, a obra passa a ter estado calculado em vez de estado lembrado, e quatro frentes podem comecar juntas.",
+  "exemplo": "E a diferenca entre ter a planta da casa e ter a ordem de servico de cada equipe, com quem entra antes de quem.",
+  "importancia": 96
+}

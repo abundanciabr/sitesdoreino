@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214942-TAR-554-explicada",
+  "tarefa": "TAR-554",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:42+00:00",
+  "quem": "Plano mestre Appmax, lote L3C; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "O sistema sabe aprovar e recusar. Ele nao sabe o que fazer quando o dinheiro volta.",
+  "o_que_muda": "Sem esta transicao, o aviso que corta o acesso do aluno nunca nasce, e a decisao do mantenedor sobre estorno fica so no papel.",
+  "exemplo": "E o caixa que registra entradas e nao registra devolucoes: no fim do mes as contas nao fecham.",
+  "importancia": 80
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214949-TAR-555-explicada",
+  "tarefa": "TAR-555",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:49+00:00",
+  "quem": "Plano mestre Appmax, lote L7; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "A tela do cartao tem 42 linhas e so fica perguntando ao servidor se o pedido mudou de estado. Ela nao pede numero de cartao e nao cobra ninguem.",
+  "o_que_muda": "Esta e a tela onde o dinheiro entra. Sem ela, todo o resto da obra nao e visto por nenhum comprador.",
+  "exemplo": "Hoje o comprador escolhe cartao e cai numa sala de espera que nunca acaba, porque nao existe nada do outro lado.",
+  "importancia": 80
+}

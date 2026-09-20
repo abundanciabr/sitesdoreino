@@ -1,0 +1,21 @@
+{
+  "arquivo": "564-uma-leitura-independente-tenta-derrubar-tudo-antes-de-o-dinh",
+  "id": "TAR-564",
+  "titulo": "Uma leitura independente tenta derrubar tudo antes de o dinheiro entrar",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-563"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Parecer com zero achado critico ou alto em aberto, e a prova de cada guarda quebrado de proposito ficando vermelho.",
+  "despacho": "Somente leitura. Nao edite nada: achado vira correcao no lote dono, nunca edicao do auditor.\n\nCompare diff, contratos, invariantes, testes, logs e evidencias de todos os lotes da escada Appmax contra o que o plano mestre exige.\n\n1. Quebre CADA guarda de proposito e prove que ele fica vermelho. Guarda que continua verde com o comportamento sabotado e um achado critico.\n2. Procure especificamente: segredo em log ou excecao, cartao bruto em qualquer lugar do nosso lado, aprovacao decidida pelo corpo do webhook, retry cego em escrita ambigua, aprovacao sem outbox, efeito duplicado entre v1 e v2, e vazamento entre sites.\n3. Faca o passe de remocao: o que pode sair sem quebrar nada.\n4. Entregue a lista com arquivo e linha. Cada achado critico ou alto volta ao lote dono como correcao.\n\nNao abra PR de codigo. O produto deste lote e o parecer.",
+  "origem": "Plano mestre Appmax, lote L10; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

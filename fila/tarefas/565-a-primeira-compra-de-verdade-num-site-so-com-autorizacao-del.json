@@ -1,0 +1,21 @@
+{
+  "arquivo": "565-a-primeira-compra-de-verdade-num-site-so-com-autorizacao-del",
+  "id": "TAR-565",
+  "titulo": "A primeira compra de verdade, num site so, com autorizacao dele",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-564"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Compra real aprovada, efeitos unicos conferidos, estorno autorizado conciliado, filas vazias, e as referencias batendo com o painel da Appmax.",
+  "despacho": "PARE E CONFIRME ANTES DE AGIR. Este lote gasta dinheiro real e exige tres autorizacoes explicitas do mantenedor, que ainda NAO foram dadas: o valor da compra real, a autorizacao da cobranca e a autorizacao do estorno. Sem as tres por escrito, registre pendencia com precisa_do_dono true e pare.\n\nPre-condicoes a conferir antes: auditoria sem achado critico ou alto, credenciais de PRODUCAO escritas pelo mantenedor em /opt/plataforma/env/pagamentos.env na VPS, app instalado em producao, e o preco real da oferta cadastrado (hoje o unico preco no sistema e R$ 9,90, que e peca de teste).\n\nCom as autorizacoes:\n1. Acrescente UM platform_site_id a APPMAX_CARD_ENABLED_SITES. Um so.\n2. Execute a compra real de baixo valor. Confirme aprovado, e confirme que autorizado nao liberou acesso e aprovado liberou uma vez.\n3. Execute o estorno autorizado e confirme que o acesso foi cortado, conforme a decisao do mantenedor de 20/09/2026.\n4. Confirme que o Pix continuou vendendo o tempo todo.\n5. Filas vazias e referencias batendo com o painel da Appmax.\n\nRegistre IDs, timestamps, SHA e runs sem nenhum dado pessoal. Rollback preparado e testado antes de comecar.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.",
+  "origem": "Plano mestre Appmax, lote L11; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

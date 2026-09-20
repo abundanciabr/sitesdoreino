@@ -1,0 +1,21 @@
+{
+  "arquivo": "558-o-aviso-que-a-appmax-manda-passa-a-ser-recebido-e-guardado-n",
+  "id": "TAR-558",
+  "titulo": "O aviso que a Appmax manda passa a ser recebido e guardado, nunca obedecido",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-557"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Teste provando que aviso forjado NAO aprova nada, resposta abaixo de 5 segundos medida, e evento duplicado ou fora de ordem com um efeito so; suite da celula pagamentos verde.",
+  "despacho": "Celula pagamentos. Receba o webhook da Appmax e guarde, sem deixar ele decidir nada.\n\nAlvos: pagamentos/api/webhooks.py, modelo de inbox, migration e testes.\n\nATENCAO, medido na documentacao oficial: a Appmax NAO envia assinatura HMAC nem token no webhook. Nao ha nada para validar criptograficamente. Qualquer codigo que tente conferir X-Appmax-Signature esta errado e rejeitaria 100 por cento dos avisos reais.\n\n1. O endpoint GRAVA o aviso numa inbox duravel e responde 200 em menos de 5 segundos. Nenhum trabalho pesado, nenhuma chamada externa dentro da requisicao. A Appmax repete em 30 min, 2 h e 4 h se nao receber 200 rapido.\n2. O corpo do aviso NUNCA decide dinheiro. Ele so acorda o trabalho. O estado financeiro so muda depois de GET /v1/orders/{id} autenticado. Escreva o guarda que prova isso: mande um aviso forjado dizendo aprovado e mostre que nada foi aprovado. Mostre o guarda vermelho com a regra sabotada.\n3. Valide app_id e site_id do envelope contra a instalacao registrada, e so entao resolva o pedido conhecido para achar o platform_site_id. Nenhum campo da Appmax e tratado como platform_site_id.\n4. Aviso duplicado e aviso fora de ordem produzem UM efeito.\n5. Meca o tempo de resposta num teste e prove que fica abaixo de 5 segundos.\n\nSomente leitura: services/checkout/, contracts/.\n\nFatos medidos na documentacao oficial da Appmax em 20/09/2026: OAuth2 client_credentials em POST https://auth.sandboxappmax.com.br/oauth2/token, Bearer de 1 hora, SEM refresh token (renovar e repetir o POST); API em https://api.sandboxappmax.com.br; producao troca sandboxappmax por appmax. Sequencia: token, IP pelo Appmax JS, POST /v1/customers, POST /v1/orders, POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}, confirmacao por GET /v1/orders/{id}. Parcelas por POST /v1/payments/installments com {installments, total_value, settings}, ate 12x, modalidade PP (juros no comprador) escolhida pelo mantenedor. Webhook SEM assinatura HMAC e sem token: envelope {event, event_type, site_id, app_id, client_key, external_key, data, partner_merchant}, 40 eventos em 4 tipos, exige HTTP 200 em menos de 5 s, retry em 30 min, 2 h e 4 h. Limite: 5 req/s sustentado, 50 em rajada, 60/min por rota, 5/min em rotas de credencial, 100 mil/mes, headers X-RateLimit-Limit, X-RateLimit-Remaining e Retry-After. Nao invente endpoint: se precisar de um que nao esta aqui, pare e registre pendencia.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L5A; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
