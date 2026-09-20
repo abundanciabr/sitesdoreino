@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-213141-TAR-500-bloqueada",
+  "tarefa": "TAR-500",
+  "evento": "bloqueada",
+  "quando": "2026-09-20T21:31:41+00:00",
+  "quem": "agent/infra/inventario-das-chaves-do-deploy",
+  "detalhe": "Trava: o inventario exige ler o authorized_keys do usuario deploy na VPS, e nenhum agente desta casa tem SSH para 217.196.62.220. O bloco de colar esta pronto e provado em tres cenarios. Destrava: o mantenedor cola o bloco numa janela root da VPS e devolve a saida de ssh-keygen -lf; so depois disso da para identificar dono por prova e so ele autoriza remover qualquer chave.",
+  "espera": "mantenedor"
+}
