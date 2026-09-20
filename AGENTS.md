@@ -15,7 +15,7 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 3 | Justifique adições, preserve o pedido inteiro e elimine excesso. |
 | 4 | Decida o que é seu; decisões exclusivas ou irreversíveis voltam ao mantenedor. |
 | 5 | Responda pelo caminho inteiro, do primeiro comando até a tela. |
-| 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. |
+| 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. Prometer o conserto não é consertar. |
 | 7 | Remova o que não faz falta ao pedido. |
 | 8 | Revise como crítico, corrija antes de entregar. |
 | 9 | Demonstre; checklist e cinco blocos finais, sem enchimento. |

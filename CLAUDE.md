@@ -53,6 +53,7 @@ explica o que aconteceu e o que fazer. Zero caminhos quebrados, placeholders
 ou "implementar depois". Nomes dizem o que são, renomeie quando necessário.
 Siga convenções existentes. Sem debug, código morto ou import sem uso.
 Todos os itens aplicáveis são obrigatórios; um item falhando impede PRONTO.
+Prometer o conserto não é consertar: PRONTO sobre medição vermelha é recusado.
 
 #### 7. Faça o passe de remoção
 
@@ -236,6 +237,8 @@ após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
 com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
 pergunta ou acordar não geram dívida. **Instruções** fecha toda prestação de
 contas e o gancho recusa sem ele: terminar no veredito deixa a tarefa parada.
+PRONTO sobre a última medição vermelha é a mesma contradição: conserte e meça
+de novo, ou diga NÃO PRONTO e explique nas Instruções.
 Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
 veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
 nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele
