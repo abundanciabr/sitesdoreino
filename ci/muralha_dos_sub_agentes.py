@@ -1,12 +1,17 @@
-"""Recusa, no ato da criação, todo sub-agente que possa escrever.
+"""Recusa, no ato da criação, o sub-agente que possa escrever ou que não nasça
+em `sonnet` ou `opus`.
 
 Gancho PreToolUse de `.claude/settings.json`, matcher `Agent|Workflow`. Lê a
 chamada em JSON pelo stdin e sai com 2 para barrar. Só o Claude Code executa
 este arquivo, porque só ele lê aquele arquivo de configuração.
 
-A régua é a própria ficha em `.claude/agents/`: passa quem declara `tools` sem
-ferramenta de escrita. Lista fixa de nomes envelheceria a cada ficha nova.
-Entrada ilegível, ficha ausente e nome estranho são recusa (INV-CI01).
+A régua da escrita é a própria ficha em `.claude/agents/`: passa quem declara
+`tools` sem ferramenta de escrita. Lista fixa de nomes envelheceria a cada
+ficha nova. Entrada ilegível, ficha ausente e nome estranho são recusa (INV-CI01).
+
+A régua do modelo é a chamada: `model` declarado, e só `sonnet` ou `opus`.
+Em 19/09/2026 uma sessão em Fable disparou 26 sub-agentes que herdaram o modelo
+dela e consumiram 163 milhões de tokens. Ausente, Fable ou outro é recusa.
 """
 from __future__ import annotations
 
@@ -16,10 +21,15 @@ import sys
 from pathlib import Path
 
 ESCRITA = {"Edit", "Write", "NotebookEdit"}
+MODELOS = {"sonnet", "opus"}
 LEITOR_EMBUTIDO = "Explore"
 COMO_PROSSEGUIR = (
     "Construção vai para a fila: python ci/fila.py criar --despacho-arquivo <brief>. "
     "Leitura em massa: Agent com Explore."
+)
+COMO_ESCOLHER_MODELO = (
+    "Repita a chamada com model: sonnet (rotina) ou model: opus (arquitetura, dúvida); "
+    "python ci/economia_da_fabrica.py brief escolhe."
 )
 
 
@@ -40,8 +50,8 @@ def escreve(ficha: Path) -> bool:
     return True
 
 
-def recusar(motivo: str) -> int:
-    print(f"RECUSADO: {motivo} {COMO_PROSSEGUIR}", file=sys.stderr)
+def recusar(motivo: str, como: str = COMO_PROSSEGUIR) -> int:
+    print(f"RECUSADO: {motivo} {como}", file=sys.stderr)
     return 2
 
 
@@ -49,11 +59,18 @@ def julgar(bruto: bytes) -> int:
     try:
         chamada = json.loads(bruto.decode("utf-8-sig"))
         ferramenta = chamada["tool_name"]
-        tipo = chamada["tool_input"].get("subagent_type")
+        entrada = chamada["tool_input"]
+        tipo = entrada.get("subagent_type")
+        modelo = entrada.get("model")
     except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError, AttributeError):
         return recusar("chamada de sub-agente ilegível.")
     if ferramenta != "Agent":
         return recusar(f"{ferramenta} não é sub-agente desta casa.")
+    if not isinstance(modelo, str) or modelo not in MODELOS:
+        return recusar(
+            f"modelo {modelo!r} não é sonnet nem opus, e sub-agente nunca herda o modelo da sessão.",
+            COMO_ESCOLHER_MODELO,
+        )
     if tipo == LEITOR_EMBUTIDO:
         return 0
     pasta = pasta_das_fichas()
