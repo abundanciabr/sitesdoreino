@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-024646-TAR-395-bloqueada",
+  "tarefa": "TAR-395",
+  "evento": "bloqueada",
+  "quando": "2026-09-19T02:46:46+00:00",
+  "quem": "despacho-painel",
+  "detalhe": "Os cinco arquivos de origem (registros 20260912-015, 022, 024, 025 e armadilhas/475) não existem mais no repositório, no espelho nem em ramo algum; destrava com a cópia do mantenedor ou com o cancelamento da tarefa.",
+  "espera": "mantenedor"
+}

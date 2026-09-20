@@ -75,6 +75,18 @@ célula, vai no `services/<celula>/LICOES.md`.
 - Teste o sinal: ele tem de casar a saída real do erro e NÃO casar saída
   comum. Sinal que toca à toa é ruído que ninguém mais lê.
 
+## 4. A hora de parar
+
+A partir das 21h30 em `America/Sao_Paulo` não comece registro, evento ou
+armadilha novos: termine o que está aberto e devolva à maestro. A máquina dele
+desliga por volta das 22h, e entre 21h e 24h em Brasília o almoxarife numera
+pelo dia seguinte em UTC (`armadilhas/158`), então o seu arquivo nasce com a
+data errada justamente nessa faixa. Confira a hora certa antes de começar:
+
+```bash
+python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo('America/Sao_Paulo')).strftime('%H:%M'))"
+```
+
 ## O que você devolve
 
 A lista dos arquivos escritos, o número de cada um, e a saída do

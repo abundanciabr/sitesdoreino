@@ -9,12 +9,21 @@
   main { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; text-align: center; }
   h1 { margin-bottom: .5rem; }
   .descricao { color: #444; }
+  .botao { display: block; margin-top: 1.5rem; padding: .8rem; font-size: 1rem;
+           border-radius: 8px; background: #111; color: #fff; text-decoration: none; }
 </style>
 </head>
 <body>
 <main>
   <h1>{{ banda.title|default:submissao.result_key }}</h1>
   {% if banda %}<p class="descricao">{{ banda.description }}</p>{% endif %}
+  {# O passo seguinte é da FAIXA: quem está começando e quem está pronto para
+     escalar não vão ao mesmo lugar. Faixa sem destino simplesmente não mostra
+     botão (o banco garante que destino e rótulo andam juntos), e a pessoa fica
+     com o diagnóstico — que é melhor que um botão para lugar nenhum. #}
+  {% if banda.botao_destino %}
+  <a class="botao" href="{{ banda.botao_destino }}">{{ banda.botao_rotulo }}</a>
+  {% endif %}
 </main>
 </body>
 </html>

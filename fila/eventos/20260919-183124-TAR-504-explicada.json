@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-183124-TAR-504-explicada",
+  "tarefa": "TAR-504",
+  "evento": "explicada",
+  "quando": "2026-09-19T18:31:24+00:00",
+  "quem": "Ordem direta do mantenedor em 19/09/2026, após sessão em Fable com 26 robôs auxiliares e 163 milhões de tokens.",
+  "o_que_e": "Hoje um robô do Claude Code pode criar robôs auxiliares herdando o modelo mais caro da sessão, sem ninguém barrar.",
+  "o_que_muda": "Cada robô auxiliar só nasce com modelo econômico declarado; a cota do plano deixa de evaporar numa tarde.",
+  "exemplo": "Em 19/09 uma única análise gastou 163 milhões de tokens, 70% em 26 robôs auxiliares herdando o modelo Fable.",
+  "importancia": 90
+}

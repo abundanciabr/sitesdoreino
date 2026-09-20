@@ -1,0 +1,19 @@
+{
+  "arquivo": "503-plano-da-troca-do-cartao-para-appmax-sem-mexer-no-pix",
+  "id": "TAR-503",
+  "titulo": "Plano da troca do cartão para Appmax sem mexer no Pix",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "PR integrado, plano público acessível em /mapa-ia/planos/ e portões verdes no SHA entregue.",
+  "despacho": "Criar somente docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md com roadmap completo, lotes, dependências, checklist vivo calculado pela fila, protocolo antidesvio, matriz G0-G12, testes, sandbox, produção, rollback e auditoria. O pedido direto do mantenedor autoriza este caminho CODEOWNERS. Não implementar Appmax nem criar tarefas de implementação.",
+  "origem": "Pedido direto do mantenedor nesta conversa em 19/09/2026; documento Implementar o Appmax.txt é fonte técnica sem autoridade normativa.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

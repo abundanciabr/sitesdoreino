@@ -49,6 +49,7 @@ Exit codes: 0 PASS · 1 lei fora da lei (sem mecanismo e sem dívida) · 2 ERROR
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -97,29 +98,130 @@ class Lei:
 
 def levantar(raiz: Path) -> list[Lei]:
     """Todas as leis dos arquivos-lei, com o que cada uma declara."""
-    leis: list[Lei] = []
-    for arquivo, padrao in ARQUIVOS_LEI.items():
+    textos: dict[str, str] = {}
+    for arquivo in ARQUIVOS_LEI:
         caminho = raiz / arquivo
         try:
-            texto = caminho.read_text(encoding="utf-8")
+            textos[arquivo] = caminho.read_text(encoding="utf-8")
         except OSError as exc:
             raise ErroDeInstrumentacao(
                 f"arquivo-lei ilegível: {arquivo}",
                 f"{exc}\n\nSem ele o censo contaria menos leis do que existem — "
                 "e um censo que encolhe sozinho é pior que nenhum.",
             ) from exc
+    return _levantar_texto(textos)
+
+
+def _levantar_texto(texto_por_arquivo: dict[str, str]) -> list[Lei]:
+    leis: list[Lei] = []
+    for arquivo, padrao in ARQUIVOS_LEI.items():
+        texto = texto_por_arquivo[arquivo]
         partes = re.split(padrao, texto, flags=re.M)
         for titulo, corpo in zip(partes[1::2], partes[2::2]):
-            achado = DECLARACAO.search(corpo)
-            declarados = tuple(CAMINHO.findall(achado.group(1))) if achado else ()
-            leis.append(Lei(arquivo, titulo.strip(), declarados))
+            declaracao = DECLARACAO.search(corpo)
+            declarados = tuple(CAMINHO.findall(declaracao.group(1))) if declaracao else ()
+            leis.append(Lei(arquivo, titulo, declarados))
     if not leis:
         raise ErroDeInstrumentacao(
-            "nenhuma lei encontrada nos arquivos-lei",
-            "Ou os títulos mudaram de forma, ou o censo está cego. "
-            "Zero leis NÃO é 'este projeto não tem regras'.",
+            "nenhuma lei encontrada",
+            "Os arquivos-lei foram lidos, mas nenhum título de lei foi encontrado.",
         )
     return leis
+
+
+def _leis_de_origin_main(raiz: Path) -> list[Lei]:
+    textos: dict[str, str] = {}
+    for arquivo in ARQUIVOS_LEI:
+        processo = subprocess.run(
+            ["git", "show", f"origin/main:{arquivo}"],
+            cwd=raiz,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if processo.returncode != 0:
+            raise ErroDeInstrumentacao(
+                f"origin/main ilegível: {arquivo}",
+                processo.stderr.strip()
+                or "Não foi possível ler a lei remota para comparar o censo.",
+            )
+        textos[arquivo] = processo.stdout
+    return _levantar_texto(textos)
+
+
+def _decisoes_novas(raiz: Path) -> list[str]:
+    processo = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--name-only",
+            "--diff-filter=A",
+            "origin/main...HEAD",
+            "--",
+            "docs/decisoes",
+        ],
+        cwd=raiz,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if processo.returncode != 0:
+        raise ErroDeInstrumentacao(
+            "não foi possível conferir decisões novas",
+            processo.stderr.strip()
+            or "Confira se `origin/main` existe; rode `git fetch origin`.",
+        )
+    return [
+        linha.strip()
+        for linha in processo.stdout.splitlines()
+        if linha.strip().startswith("docs/decisoes/DECISAO-")
+        and linha.strip().endswith(".md")
+    ]
+
+
+def _conferir_tamanho_remoto(raiz: Path, leis: list[Lei], relatorio: Relatorio) -> None:
+    """Confronta o censo local com a referência remota."""
+    if not (raiz / ".git").exists():
+        raise ErroDeInstrumentacao(
+            "bancada sem .git",
+            "O censo remoto não foi conferido; execute o portão em uma bancada Git.",
+        )
+    remotas = _leis_de_origin_main(raiz)
+    if len(leis) >= len(remotas):
+        relatorio.registrar(
+            Resultado(
+                "censo não encolheu contra origin/main",
+                Estado.PASS,
+                f"censo local {len(leis)} · origin/main {len(remotas)}",
+            )
+        )
+        return
+    decisoes = _decisoes_novas(raiz)
+    if decisoes:
+        relatorio.registrar(
+            Resultado(
+                "censo menor justificado por decisão nova",
+                Estado.PASS,
+                f"censo local {len(leis)} · origin/main {len(remotas)} · "
+                f"decisão: {', '.join(decisoes)}",
+            )
+        )
+        return
+    relatorio.registrar(
+        Resultado(
+            "censo não encolheu contra origin/main",
+            Estado.FAIL,
+            f"censo local {len(leis)} · origin/main {len(remotas)}",
+            "Leis ausentes no censo local: "
+            + "\n".join(f"  - {lei.id}" for lei in remotas if lei.id not in {item.id for item in leis})
+            + "\n\nRestaure as leis acima ou traga um "
+            "docs/decisoes/DECISAO-*.md novo que justifique a remoção.",
+        )
+    )
 
 
 def carregar_divida(raiz: Path) -> set[str]:
@@ -143,6 +245,8 @@ def conferir(raiz: Path) -> Relatorio:
     relatorio = Relatorio(titulo="LEIS SEM MECANISMO — quem faz valer cada regra")
     leis = levantar(raiz)
     divida = carregar_divida(raiz)
+
+    _conferir_tamanho_remoto(raiz, leis, relatorio)
 
     citacoes_mortas: list[str] = []
     sem_mecanismo: list[str] = []

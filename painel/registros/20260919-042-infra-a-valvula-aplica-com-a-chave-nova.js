@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-042-infra-a-valvula-aplica-com-a-chave-nova",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "infra: a valvula aplica com a chave nova",
+  detalhe: "Chave de deploy rotacionada, Environment vps com a main protegida,, e o rollback aplicando na main.",
+  autoridade: "mantenedor",
+  evidencia: "#1738 (9200b231) amarrou 16 workflows ao environment vps. Deploy posterior verde: 35449777295, 35449777315. Rollback admin alvo=main: 35450057117 ok, aplicar-na-vps com REVERSAO-CONCLUIDA e congelar-ou-descongelar verdes. Chave SHA256:+eKOcjlz6oewBUEzrJcLy/jDsNI9j3aOrT0B8WyrBu0 no deploy e no Environment; repositorio so com PISTA_TOKEN e VPS_HOST. Antigas: TAR-500.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  tarefa: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -60,8 +60,13 @@ medida (`armadilhas/323`); ausência de baseline não é aprovação.
   coesão legítima: reporte à maestro, nunca esprema arquivos.
 - Dependência fora dos alvos do brief volta à maestro para encadeamento com
   `Depende-de: #N`; não amplie o mandato nem altere contrato congelado.
-- Caminho CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
-  `.github/`, arquivos-lei da raiz) só com mandato escrito no brief.
+- Antes da PRIMEIRA edição, pergunte em que lista você caiu:
+  `python ci/mandato_por_faixa.py --arquivos <alvos> --faixa <celula>`. Lista A
+  (pagamento e cobrança, servidor e infraestrutura, senhas e chaves) só anda com
+  mandato nominal escrito no brief. Lista B já está autorizada por
+  `docs/decisoes/MANDATO-POR-FAIXA.md`, e a linha do PR cita a faixa, o
+  documento e a cerca de CODEOWNERS que o pouso vai cobrar. Caiu em Lista A sem
+  mandato no brief: não construa e não espere, bloqueie pela §5 no mesmo minuto.
 - Texto que alguém que não é o mantenedor lê sai sem travessão, reescrito em
   português correto (`python ci/travessao.py --listar` mostra frase a frase).
 - Evidência vermelho→verde: o teste que prova a mudança nasce reprovando.
@@ -73,13 +78,30 @@ linha que ele protege) e confirme que o teste correspondente REPROVA. Guarda
 que continua verde sabotado não testa nada (lição 3 do Lote A, RUNBOOK §9).
 Desfaça a sabotagem antes de commitar.
 
-## 5. Nunca pergunte. Bloqueie e registre.
+## 5. Nunca pergunte. Bloqueie, registre e explique.
 
 Você não fala com o mantenedor. Se a tarefa depender de uma decisão que é dele
 (contrato, produto, segredo, dinheiro, VPS), escreva o evento `bloqueada` no
 balcão com o motivo, deixe um registro com `precisa_do_dono: true` para o
 escrivão (ou escreva você pelo molde de `painel/LEIA-ME.md`) e devolva à
 maestro. Abrir exceção é o resultado esperado, não falha.
+
+Não perguntar nunca foi calar. O motivo que você escreve no balcão e devolve à
+maestro é o que ele vai ler na tela, então escreva para leigo: o que houve, o
+que trava, o que destrava e quanto leva. Bloqueio devolvido sem isso obriga a
+maestro a adivinhar, e ela vai errar.
+
+Antes de encerrar, leve o ramo a ponto seguro: commit e push do que existe, com
+os testes no estado em que estiverem, dito no relatório. Nunca desfaça trabalho
+para deixar a bancada limpa; ramo pela metade se preserva, não se apaga.
+
+O bloqueio se escreve no minuto em que aparece, nunca no fim: nos PRs de
+19/09/2026, quatro vãos entre commits somaram 320,6 minutos de ramo aberto
+(`docs/decisoes/MANDATO-POR-FAIXA.md`). E a partir das 21h30 em
+`America/Sao_Paulo` não comece caixa nova do plano; feche ou bloqueie a que está
+aberta e devolva à maestro. A máquina dele desliga por volta das 22h, e o
+contêiner da bancada marca UTC, então confira a hora certa antes de decidir:
+`python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo('America/Sao_Paulo')).strftime('%H:%M'))"`
 
 ## 6. Abra o PR e embarque o registro no mesmo ramo
 
@@ -122,7 +144,8 @@ e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no códig
 
 - **O que mudou** (fatos), **o que foi verificado e como** (comando + saída),
   **o que foi cortado e por quê**, **o que ficou bloqueado** (com o motivo
-  escrito no balcão).
+  escrito no balcão), e **Instruções**: o que acontece agora, em lista, para
+  quem é leigo. NÃO PRONTO sem essa lista é fecho incompleto e o gancho recusa.
 - O número do PR, o ramo exato, os arquivos tocados, e se o PR toca caminho
   CODEOWNERS (anunciado nominalmente).
 - Sem "deve funcionar", "provavelmente", "por enquanto". Ou rodou, ou escreve

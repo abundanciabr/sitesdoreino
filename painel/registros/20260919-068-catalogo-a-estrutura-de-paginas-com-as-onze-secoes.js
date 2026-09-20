@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-068-catalogo-a-estrutura-de-paginas-com-as-onze-secoes",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "catalogo: a estrutura de paginas com as onze secoes",
+  detalhe: "As ONZE secoes da ferramenta 73 entram no catalogo, nao as sete do brief. Sem ancora de preco e sem garantia: a 74 proibe, e um teste mede. 138 testes, 24 sabotagens reprovaram.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1773. Validação local: árvore a536881c8bedbddc39dad631b674de887e64e5d0; commit 1f4566ee8d245badf1f12abda83a42571e7b6130; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-509",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

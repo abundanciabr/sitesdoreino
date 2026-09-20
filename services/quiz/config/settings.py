@@ -27,6 +27,34 @@ FORCE_SCRIPT_NAME = (
 # (cadastro LOCAL — [INV-P11], ver LICOES.md), não esta lista.
 ALLOWED_HOSTS = ["*"]
 
+# O TLS termina no Traefik: para o uvicorn a requisição chega em http. Sem esta
+# linha o CSRF recusa TODO envio honesto do formulário — o navegador manda
+# `Origin: https://<site>`, o Django monta `http://<site>` para comparar, e as
+# duas diferem por uma letra. As outras nove células com CSRF desta casa já a
+# têm; ela não custa variável de ambiente nova (o Traefik sempre emite
+# `X-Forwarded-Proto`). Guarda: tests/test_superficie_publica.py.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# O formulário do Crivo coleta e-mail e telefone, e emite `{% csrf_token %}`
+# desde o primeiro dia — mas sem `CsrfViewMiddleware` (abaixo) o token era
+# decoração e qualquer página da internet podia gravar leads aqui.
+#
+# `CSRF_TRUSTED_ORIGINS` NÃO entra: ele existe para aceitar origens DIFERENTES
+# do host da requisição, e aqui formulário e POST são sempre do mesmo host
+# (Lei 9: um deploy, N domínios, cada um falando consigo mesmo).
+#
+# Nome próprio, e não o `csrftoken` de fábrica: no mesmo domínio moram várias
+# células sob prefixos, e o navegador guarda cookie por (nome, domínio,
+# caminho). Duas células publicando `csrftoken` deixam qual delas o servidor lê
+# na mão da precedência por caminho — mesma decisão da `sugestoes`.
+CSRF_COOKIE_NAME = "quiz_csrf"
+
+# Alcance = o prefixo desta célula. O token protege os formulários que moram
+# aqui; mandá-lo para "/" seria um cookie viajando em toda página do site para
+# proteger formulário que não está lá.
+CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
+CSRF_COOKIE_SECURE = not DEBUG
+
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
 INSTALLED_APPS = [
@@ -48,6 +76,11 @@ HUEY = _huey
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # Depois do CommonMiddleware e ANTES de tudo que é desta célula: o POST do
+    # formulário tem de ser recusado antes de a view gravar lead e enfileirar
+    # evento. Esta célula não tem sessão, e o CSRF do Django não precisa de uma
+    # — o token vai no cookie `quiz_csrf`.
+    "django.middleware.csrf.CsrfViewMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
     "apps.core.middleware.SiteResolutionMiddleware",
     # Espelho do APPEND_SLASH: `/quiz/<slug>/resultado/` deixa de ser 404 e leva

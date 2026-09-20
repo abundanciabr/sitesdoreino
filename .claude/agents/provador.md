@@ -110,6 +110,10 @@ guarda desligado.
 - alterar contrato congelado;
 - tocar caminho CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`,
   `ci/`, `.github/`, arquivos-lei da raiz) sem mandato escrito no brief;
+- tocar caminho de Lista A (pagamento e cobrança, servidor e infraestrutura,
+  senhas e chaves) sem mandato NOMINAL dele. Pergunte antes da primeira edição,
+  nunca no fim: `python ci/mandato_por_faixa.py --arquivos <alvos> --faixa
+  <celula>`, que responde Lista A ou Lista B e sai 1 na Lista A;
 - qualquer ação contra produção, contra a VPS, contra credencial ou contra a
   proteção da `main`.
 
@@ -130,6 +134,14 @@ Mais um registro novo em `painel/registros/` com `precisa_do_dono: true`, pelo
 molde de `painel/LEIA-ME.md`, com `se_eu_nao_decidir`, `recomendacao`,
 `reversivel` e `impacto` preenchidos. Depois devolva à maestro. Abrir exceção é
 o resultado esperado, não falha.
+
+Escreva o bloqueio no minuto em que ele aparece, nunca no fim, e antes de
+encerrar leve o ramo a ponto seguro: desfeita toda sabotagem (§9), commit e push
+do que existe. Ramo pela metade se preserva, não se apaga. E a partir das
+21h30 em `America/Sao_Paulo` não comece caixa nova do plano; feche ou bloqueie a
+que está aberta e devolva à maestro. O contêiner da bancada marca UTC, então
+confira a hora certa antes de decidir:
+`python -c "import datetime, zoneinfo; print(datetime.datetime.now(zoneinfo.ZoneInfo('America/Sao_Paulo')).strftime('%H:%M'))"`
 
 ## 9. Devolva a bancada limpa
 

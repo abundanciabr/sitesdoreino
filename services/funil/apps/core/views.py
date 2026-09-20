@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlencode
 
+import httpx
 from django import forms
 from django.conf import settings
 from django.http import (
@@ -20,13 +21,14 @@ from django.views.decorators.http import (
 from django.views.static import serve as serve_do_django
 
 from apps.core.clients import (
+    SEM_RESPOSTA,
     AlunosClient,
     CatalogoClient,
     IdentidadeClient,
     LeadsClient,
     NotificacoesClient,
 )
-from apps.core import ver_como
+from apps.core import telemetria, ver_como
 from apps.core.middleware import limpar_cache_de_avisos
 from apps.core.notificacoes import (
     buscar_avisos,
@@ -151,6 +153,239 @@ def landing(request):
             "utm": utm,
         },
     )
+
+
+#: O apelido da página de vendas dentro de cada site. Um nome só, e não uma
+#: configuração: o endereço `/oferta` e o slug `oferta` são a mesma coisa vista
+#: de dois lados, e separá-los num parâmetro criaria um jeito de eles
+#: discordarem.
+SLUG_DA_PAGINA_DE_OFERTA = "oferta"
+
+#: Os slots que esta página desenha num lugar PRÓPRIO, e que por isso não
+#: entram no corpo corrido da seção. O resto vira parágrafo ou lista.
+SLOTS_COM_LUGAR_PROPRIO = (
+    "headline",
+    "imagem",
+    "cta_texto",
+    "cta_destino",
+    "prova",
+    "assinatura",
+)
+
+#: Os slots de corpo que ABREM a seção quando existem; os outros parágrafos
+#: saem em ordem alfabética logo atrás. Duas palavras, e não uma segunda cópia
+#: da lista de slots do catálogo: lista repetida é lista que diverge no
+#: primeiro nome novo (Lei 3).
+SLOTS_QUE_ABREM_O_CORPO = ("subheadline", "texto")
+
+
+def _e_item_de_lista(slot: str) -> bool:
+    """`vilao_2` e `recusa_5` são itens de uma lista; `texto` é um parágrafo.
+
+    A forma decide, e não uma lista de nomes: as únicas famílias numeradas do
+    vocabulário são os três vilões e as seis recusas, e as duas existem
+    justamente porque a ferramenta 73 as pede enumeradas. Ler o número do nome
+    também dá a ORDEM de graça, que é o que impede `recusa_10` de aparecer
+    entre a primeira e a segunda.
+    """
+    prefixo, _, sufixo = slot.rpartition("_")
+    return bool(prefixo) and sufixo.isdigit()
+
+
+def _bloco_da_secao(secao) -> dict | None:
+    """Uma seção da API virada no que o template desenha, ou `None`.
+
+    Devolve `None` para seção sem NENHUM slot preenchido, e ignora todo slot
+    vazio: é a regra central desta página. Hoje quase toda seção está em
+    branco, porque a copy ainda não foi escrita, e uma moldura vazia na tela
+    seria pior do que a ausência dela.
+
+    O provedor já faz a mesma poda antes de responder. Refazê-la aqui não é
+    desconfiança: quem desenha a tela não pode depender de outra casa para
+    não desenhar um parágrafo em branco.
+    """
+    if not isinstance(secao, dict):
+        return None
+    nome = secao.get("nome")
+    slots = secao.get("slots")
+    if not isinstance(nome, str) or not isinstance(slots, dict):
+        return None
+
+    preenchidos = {
+        chave: valor.strip()
+        for chave, valor in slots.items()
+        if isinstance(valor, str) and valor.strip()
+    }
+    if not preenchidos:
+        return None
+
+    corridos = sorted(
+        (
+            chave
+            for chave in preenchidos
+            if chave not in SLOTS_COM_LUGAR_PROPRIO and not _e_item_de_lista(chave)
+        ),
+        key=lambda chave: (
+            (
+                SLOTS_QUE_ABREM_O_CORPO.index(chave)
+                if chave in SLOTS_QUE_ABREM_O_CORPO
+                else len(SLOTS_QUE_ABREM_O_CORPO)
+            ),
+            chave,
+        ),
+    )
+    numerados = sorted(
+        (chave for chave in preenchidos if _e_item_de_lista(chave)),
+        key=lambda chave: (chave.rpartition("_")[0], int(chave.rpartition("_")[2])),
+    )
+    return {
+        "nome": nome,
+        "headline": preenchidos.get("headline", ""),
+        "imagem": preenchidos.get("imagem", ""),
+        "cta_texto": preenchidos.get("cta_texto", ""),
+        "cta_destino": preenchidos.get("cta_destino", ""),
+        "prova": preenchidos.get("prova", ""),
+        "assinatura": preenchidos.get("assinatura", ""),
+        "paragrafos": [preenchidos[chave] for chave in corridos],
+        "itens": [preenchidos[chave] for chave in numerados],
+        "slots": preenchidos,
+    }
+
+
+def _bloco_vazio_da_oferta() -> dict:
+    """O cartão da oferta quando ainda não há copy nenhuma para ele."""
+    return {
+        "nome": "oferta",
+        "headline": "",
+        "imagem": "",
+        "cta_texto": "",
+        "cta_destino": "",
+        "prova": "",
+        "assinatura": "",
+        "paragrafos": [],
+        "itens": [],
+        "slots": {},
+    }
+
+
+@require_safe
+def pagina_de_oferta(request):
+    """`/oferta` — a página de vendas que o visitante finalmente vê.
+
+    **A raiz não muda.** Ela continua sendo a HOME, pela decisão de 27/08/2026
+    que a docstring de `landing` explica. Esta é um ENDEREÇO NOVO, e é por isso
+    que nada aqui reverte nada de lá.
+
+    **O conteúdo é do catálogo, o preço é da oferta.** As onze seções vêm de
+    `getPage` e saem na ordem em que a API as manda, que é a ordem canônica da
+    ferramenta 73. O preço não é copy: sai de `price_cents` da oferta, e só
+    cede o lugar quando o mantenedor escreveu um `preco_texto` — nesse caso é o
+    texto dele que aparece, uma vez só, porque a mesma ferramenta manda o preço
+    aparecer uma vez e sem ancoragem. Os dois juntos seriam a âncora de preço
+    que a ferramenta 74 proíbe.
+
+    **Três respostas, e cada uma diz o que fazer.** Página que não existe é
+    404, e é a resposta certa: "ainda não foi publicada" precisa levar a outro
+    lugar, nunca a uma tela em branco servida como se fosse a oferta. Catálogo
+    mudo é 503 com `Retry-After`, desenhando a MESMA página com uma linha
+    honesta: a página não cai por causa dele, e um 200 com o conteúdo ausente
+    convidaria o buscador a guardar a tela vazia como se fosse a oferta.
+    Página publicada sem uma palavra escrita é 200 e mostra o que existe de
+    verdade, que é a própria oferta.
+    """
+    site = request.site
+    catalogo = CatalogoClient()
+    pagina = catalogo.obter_pagina(site["id"], SLUG_DA_PAGINA_DE_OFERTA)
+
+    if pagina is SEM_RESPOSTA:
+        resposta = render(
+            request,
+            "funil/oferta.html",
+            {"site": site, "catalogo_mudo": True},
+            status=503,
+        )
+        # Meio minuto: o bastante para a outra célula voltar, curto o bastante
+        # para quem está esperando tentar de novo sem desistir da página.
+        resposta["Retry-After"] = "30"
+        return resposta
+    if pagina is None:
+        raise Http404("este site ainda não publicou a página de oferta")
+
+    blocos = [
+        bloco
+        for bloco in (_bloco_da_secao(secao) for secao in pagina["secoes"])
+        if bloco is not None
+    ]
+
+    offer_slug = pagina.get("offer_slug") or ""
+    oferta = None
+    if offer_slug:
+        try:
+            oferta = catalogo.obter_oferta(site["id"], offer_slug)
+        except httpx.HTTPError:
+            # A oferta é UM cartão; o resto da página já está em mãos.
+            # Derrubar a tela inteira por causa dele trocaria uma página sem
+            # preço por página nenhuma.
+            oferta = None
+
+    # O cartão da oferta existe SEMPRE que há oferta, mesmo sem uma palavra de
+    # copy escrita: o preço e o botão são dado, não texto. Quando o mantenedor
+    # ainda não escreveu a seção `oferta`, ela entra vazia no fim da página, no
+    # lugar que a ordem canônica lhe dá.
+    if oferta and not any(bloco["nome"] == "oferta" for bloco in blocos):
+        blocos.append(_bloco_vazio_da_oferta())
+
+    query = urlencode(_utm_da_requisicao(request))
+    resposta = render(
+        request,
+        "funil/oferta.html",
+        {
+            "site": site,
+            "blocos": blocos,
+            "oferta": oferta,
+            "preco_formatado": (
+                f"{oferta['price_cents'] / 100:.2f}".replace(".", ",") if oferta else ""
+            ),
+            "url_checkout": (
+                f"/checkout/{offer_slug}/" + (f"?{query}" if query else "")
+                if oferta
+                else ""
+            ),
+        },
+    )
+    _medir_visita(request, pagina, offer_slug)
+    return resposta
+
+
+def _medir_visita(request, pagina: dict, offer_slug: str) -> None:
+    """Publica `funil.pagina-vista.v1`. Nunca derruba nem segura a página.
+
+    ID e VERSÃO, nunca copy: é `pagina_version` que amarra o fato ao conteúdo
+    exato que esteve na tela, e texto dentro de evento apodrece no livro
+    imutável da `metricas`. Campo sem valor fica AUSENTE em vez de ir vazio —
+    visita direta não inventa um referrer, e navegador que não se identifica
+    não ganha um dispositivo adivinhado.
+    """
+    dados = {
+        # `site_id` DENTRO de `data`: é daqui que a recepção da `metricas` o lê.
+        "site_id": request.site["id"],
+        "visitor_id": getattr(request, "id_do_visitante", ""),
+        "pagina_slug": pagina["slug"],
+        "pagina_version": pagina["version"],
+        "offer_slug": offer_slug,
+    }
+    referrer = request.META.get("HTTP_REFERER", "")
+    if referrer:
+        dados["referrer"] = referrer
+    utm = telemetria.utm_sem_prefixo(request.GET)
+    if utm:
+        dados["utm"] = utm
+    dispositivo = telemetria.dispositivo_do_agente(
+        request.META.get("HTTP_USER_AGENT", "")
+    )
+    if dispositivo:
+        dados["dispositivo"] = dispositivo
+    telemetria.publicar("funil.pagina-vista", 1, dados)
 
 
 class FormularioDeCadastro(forms.Form):

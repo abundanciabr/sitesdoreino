@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260913-122321-TAR-310-submetida",
+  "tarefa": "TAR-310",
+  "evento": "submetida",
+  "quando": "2026-09-13T12:23:21+00:00",
+  "quem": "agent/ci/tar-310-responsabilidade-obrigatoria",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1622",
+  "revisao": "0b14c444c47ff90699152c11b44faeb316b704be",
+  "arvore": "c2b1e5b601611b527f615385dee512dda439850f"
+}
