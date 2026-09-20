@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-224713-TAR-543-concluida",
+  "tarefa": "TAR-543",
+  "evento": "concluida",
+  "quando": "2026-09-20T22:47:13+00:00",
+  "quem": "agent/pagamentos/endpoint-de-instalacao-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1818",
+  "verificado_em": "2026-09-20"
+}
