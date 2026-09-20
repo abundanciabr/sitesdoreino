@@ -49,6 +49,15 @@ nunca colados numa lista à parte. Lista colada envelhece em silêncio no dia em
 que uma célula muda de pasta, e um caminho de pagamento fora da lista é um
 caminho sem dono.
 
+Em 20/09/2026 os três nomes resolvem para 2 caminhos de pagamento e cobrança
+(`services/checkout/` e `services/pagamentos/`), 1 de servidor (`infra/`) e 41
+de senhas e chaves. Os 41 são os arquivos de ambiente do repositório mais os
+workflows de `.github/` que sacam do cofre de segredos. Essa última parte é
+deliberada e é apertada: mexer num workflow que lê `secrets.` passa a exigir a
+palavra dele. Um item chamado "senhas e chaves" que cobrisse só os moldes
+`.env.exemplo`, onde não há segredo nenhum, seria cobertura de mentira. A conta
+do dia sai no próprio comando.
+
 ## Lista B: mandato prévio por faixa, concedido de uma vez
 
 Documentos, painel, fila, testes, e os arquivos normais da faixa da tarefa.
