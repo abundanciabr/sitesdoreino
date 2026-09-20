@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-214300-TAR-520-explicada",
+  "tarefa": "TAR-520",
+  "evento": "explicada",
+  "quando": "2026-09-19T21:43:00+00:00",
+  "quem": "brief do mantenedor em 19/09/2026: a primeira entrega da escada que ele consegue abrir no navegador",
+  "o_que_e": "Hoje o site tem uma vitrine de 62 linhas com titulo, preco e botao. A pagina de vendas de verdade, com as onze secoes que ele especificou, nao existe em lugar nenhum que se possa abrir.",
+  "o_que_muda": "Ele digita /oferta no navegador e ve a pagina de vendas montada com o texto que escrever no editor. Sem isto, a copy que ele escrever nao tem onde aparecer, e a plataforma continua cega entre a visita e o pedido.",
+  "exemplo": "Hoje ele escreve a headline no editor e nada acontece. Depois desta tarefa, ele publica e abre meshcraft.top/oferta, e a headline esta la, com o preco e o botao de comprar embaixo.",
+  "importancia": 95
+}
