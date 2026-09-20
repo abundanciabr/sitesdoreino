@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-010944-TAR-525-explicada",
+  "tarefa": "TAR-525",
+  "evento": "explicada",
+  "quando": "2026-09-20T01:09:44+00:00",
+  "quem": "ordem do mantenedor em 20/09/2026, em cinco itens, depois de os dois disparos do semear-quiz falharem",
+  "o_que_e": "O botao que publica o quiz na producao esta mudo desde 15/09: o arquivo do Docker passou a exigir duas chaves sem valor padrao, e o semeador nunca aprendeu a carrega-las. A mensagem de erro dele nao diz isso, e por isso a causa levou uma investigacao inteira para aparecer.",
+  "o_que_muda": "O primeiro quiz do site pode ir ao ar. E quando o semeador parar, ele passa a dizer o que o Docker respondeu e o que fazer, em vez de uma frase que serve para tres problemas diferentes.",
+  "exemplo": "Ontem o mantenedor apertou o botao duas vezes e recebeu, nas duas, a mesma parada em tres segundos, com o site inteiro respondendo normalmente.",
+  "importancia": 95
+}
