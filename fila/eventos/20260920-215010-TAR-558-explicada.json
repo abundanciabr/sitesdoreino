@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215010-TAR-558-explicada",
+  "tarefa": "TAR-558",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:10+00:00",
+  "quem": "Plano mestre Appmax, lote L5A; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Nao existe endereco para a Appmax avisar que um pagamento mudou de estado.",
+  "o_que_muda": "A Appmax nao assina os avisos que manda. Qualquer um na internet pode forjar um. Se o aviso decidir dinheiro, qualquer um matricula de graca.",
+  "exemplo": "E receber um bilhete anonimo dizendo que a conta foi paga: voce guarda o bilhete e liga para o banco para conferir, nao libera a mercadoria.",
+  "importancia": 70
+}

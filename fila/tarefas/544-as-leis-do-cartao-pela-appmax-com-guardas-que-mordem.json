@@ -1,0 +1,19 @@
+{
+  "arquivo": "544-as-leis-do-cartao-pela-appmax-com-guardas-que-mordem",
+  "id": "TAR-544",
+  "titulo": "As leis do cartao pela Appmax, com guardas que mordem",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Cada guarda novo mostrado vermelho ao sabotar o comportamento que ele protege, e verde depois; inventario de invariantes atualizado; suite de ci verde.",
+  "despacho": "Celula ci. Este lote e o canario do lote: ele escreve lei e guardas sem mudar nada que roda em producao.\n\nAlvos: INVARIANTES.md, o inventario de invariantes e os testes-guarda.\n\nAcrescente os invariantes do cartao pela Appmax, seguindo a numeracao e o formato que o arquivo ja usa. Os comportamentos a proteger:\n1. Pix usa Mercado Pago e cartao usa Appmax, por construcao, nao por configuracao.\n2. Numero do cartao, validade e CVV nunca alcancam nosso servidor, banco, log ou evento. A tokenizacao acontece no navegador pelo Appmax JS; tokenizar pelo nosso backend exigiria escopo PCI-DSS e esta proibido.\n3. Autorizado nao significa aprovado, e so a consulta autenticada do pedido decide o estado financeiro.\n4. O webhook da Appmax e sinal nao confiavel: ele nunca decide dinheiro, porque a Appmax nao assina webhook nenhum.\n5. Escrita externa com resultado ambiguo nao recebe retry cego.\n6. Toda aprovacao cria outbox na mesma transacao.\n7. Segredo Appmax existe somente na celula pagamentos.\n8. Ausencia da Appmax afeta somente cartao; ausencia do Mercado Pago afeta somente Pix.\n9. Payload 2xx incompleto e erro, nunca sucesso parcial.\n\nPara CADA invariante novo escreva um teste-guarda que o faca morder. Guarda que nunca foi visto vermelho nao conta: no corpo do PR mostre a sabotagem e a saida vermelha de cada um, depois a verde. Um guarda que continua verde com o comportamento sabotado e um bug e reprova o lote.\n\nSomente leitura: services/, contracts/, infra/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L1A; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

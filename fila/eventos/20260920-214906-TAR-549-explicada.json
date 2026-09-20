@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214906-TAR-549-explicada",
+  "tarefa": "TAR-549",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:06+00:00",
+  "quem": "Plano mestre Appmax, lote L2D; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "A celula que dispara mensagens so entende o aviso antigo do Mercado Pago.",
+  "o_que_muda": "Sem isso, quem pagar no cartao nao recebe a mensagem de confirmacao. E se for aceito mal, recebe a mesma mensagem duas vezes.",
+  "exemplo": "E o cliente pagar e nao receber nenhum e-mail, ou receber dois iguais em seguida.",
+  "importancia": 90
+}

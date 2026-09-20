@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215018-TAR-560-explicada",
+  "tarefa": "TAR-560",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:18+00:00",
+  "quem": "Plano mestre Appmax, lote L8A; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "O worker e o reconciliador existem em codigo mas nao sobem em lugar nenhum.",
+  "o_que_muda": "Publicar o codigo com o cartao ligado sem ter provado no sandbox e apostar dinheiro real. Ele sobe desligado e so o canario abre.",
+  "exemplo": "E instalar a maquininha na loja com ela desligada da tomada: tudo no lugar, nada cobrando ainda.",
+  "importancia": 55
+}

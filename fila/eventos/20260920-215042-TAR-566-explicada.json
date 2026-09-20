@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215042-TAR-566-explicada",
+  "tarefa": "TAR-566",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:42+00:00",
+  "quem": "Plano mestre Appmax, lote L12; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Uma compra dar certo nao prova que o sistema aguenta o dia seguinte.",
+  "o_que_muda": "Falha financeira costuma aparecer horas depois, na conciliacao. Fechar antes de olhar e fechar no escuro.",
+  "exemplo": "E conferir o caixa no fim do expediente e de novo na manha seguinte, antes de dizer que o dia fechou.",
+  "importancia": 35
+}
