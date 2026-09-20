@@ -503,3 +503,39 @@ sites internos autorizados, mas ainda não existe quem os confira na hora de
 cobrar; `appmax_site_id` só é preenchido se o corpo trouxer `site_id` (a
 documentação lista só `app_id`, `client_id`, `client_secret`, `client_key` e
 `external_key`, e o envelope do webhook traz `site_id`).
+
+## Sessão E — o modelo de tentativa de pagamento (PaymentAttempt)
+
+**A regra do dinheiro está num índice, não numa checagem.** O índice único
+parcial `uma_tentativa_viva_por_intent` (`state IN (sending,
+reconciliation_required, approved)`) é quem garante que um duplo clique
+simultâneo vire UMA tentativa. Medido: sabotando a condição do índice na
+migration, o teste de duplo clique REPROVA mesmo com a checagem em Python
+intacta, ou seja, a checagem sozinha perde a corrida. Quem chega depois recebe
+`IntegrityError`, que `core/tentativas.py` traduz para `TentativaBloqueada`.
+
+**`transaction.atomic(durable=True)` é o guarda de "persistida ANTES do
+envio".** Ele levanta `RuntimeError` se já houver transação aberta, então
+nenhum chamador consegue embrulhar a chamada externa num `atomic()` e fazer o
+envio com a linha ainda invisível. Consequência prática para quem escrever
+testes aqui: o `django_db` padrão do pytest-django JÁ abre uma transação, então
+todo teste que passe por `executar_tentativa` precisa de
+`django_db(transaction=True)`. É por isso que o `pytestmark` de
+`tests/test_tentativa_de_pagamento.py` é transacional no arquivo inteiro.
+
+**Os cinco estados e por que dois deles liberam.** `sending`,
+`reconciliation_required` e `approved` bloqueiam um novo envio para o mesmo
+Intent. `rejected` e `failed` não bloqueiam, de propósito: recusa é terminal
+para a TENTATIVA, nunca para o comprador (ele tem direito a outro cartão), e
+`failed` significa que nada saiu da nossa máquina. Quem escrever o cliente da
+Appmax precisa levantar `EnvioNaoChegou` SÓ quando tiver certeza disso;
+qualquer outra exceção cai no padrão seguro e vira `reconciliation_required`.
+
+**Não existe reenvio automático.** A única saída de `reconciliation_required`
+é `fechar_reconciliacao()`, alimentada por uma CONSULTA ao provedor
+(`GET /v1/orders/{id}` no caso da Appmax). Fechar por suposição é o caminho
+que cobra a mesma pessoa duas vezes.
+
+**O que ficou para o próximo lote:** nada chama `executar_tentativa` ainda. O
+cliente Appmax entra como a função `enviar`, e é ele que traduz timeout depois
+do envio em `ResultadoAmbiguo` e conexão recusada em `EnvioNaoChegou`.
