@@ -11,13 +11,16 @@ from apps.matriculas.models import Matricula
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
+# O `data` na forma do v2, que é a que o handler lê desde 20/09/2026. A
+# tradução do v1 acontece na borda (`dados_na_forma_do_v2`), nunca aqui.
 EVENTO_DATA = {
-    "site_id": "site-1",
+    "platform_site_id": "site-1",
     "payment_id": "pay-1",
     "order_id": "order-concorrente",
     "amount_cents": 9900,
     "method": "pix",
-    "mp_payment_id": "mp-1",
+    "provider": "mercadopago",
+    "provider_reference_id": "mp-1",
     "customer": {"email": "aluno@example.com", "name": "Aluno Exemplo"},
 }
 

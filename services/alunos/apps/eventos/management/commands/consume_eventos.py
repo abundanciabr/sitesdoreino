@@ -25,10 +25,128 @@ IDLE_MS_REENTREGA = 60_000  # presa = pendente sem ACK há pelo menos isto
 MAX_ENTREGAS = 5  # contagem do PEL em que a mensagem vai para a fila morta
 LOTE_REENTREGA = 10  # quantas presas olhar por iteração (mesmo teto do xreadgroup)
 
+# As versões do contrato que esta célula sabe ler. Fechada de propósito: uma
+# versão nova pode renomear campo de novo, e tratá-la como se fosse a última
+# conhecida produziria identidade errada — matrícula duplicada sem erro nenhum.
+VERSOES_ACEITAS = (1, 2)
+
+# A ponte entre as duas versões, COPIADA do campo `x-ponte-do-v1` dos contratos
+# v2 (contracts/eventos/). Não é interpretação nossa: o contrato publica a regra
+# como DADO justamente para que as células consumidoras derivem a MESMA chave em
+# vez de cada uma inventar a sua. `chave_entre_versoes` são os campos de `data`
+# que, juntos e só juntos, identificam o fato; `no_v1` diz de onde tirar cada um
+# quando o evento chega na versão 1.
+#
+# A REGRA NÃO É A MESMA PARA TODOS OS AVISOS DA FAMÍLIA, e é por isso que ela
+# mora numa tabela por evento e não numa função só: no `pagamento.aprovado` o
+# fato é o par (`provider`, `provider_reference_id`), porque o `mp_payment_id`
+# do v1 é o mesmo valor com `provider` implícito igual a `mercadopago`; no
+# `pagamento.recusado` o v1 nunca carregou referência de provedor nenhuma, e
+# quem atravessa as versões é o `payment_id`. Quem acrescentar um evento aqui
+# copia a ponte DO CONTRATO daquele evento, nunca a da linha de cima.
+# Guardas: tests/test_o_mesmo_pagamento_nas_duas_versoes.py.
+PONTE_DO_V1 = {
+    "pagamento.aprovado": {
+        "chave_entre_versoes": ["provider", "provider_reference_id"],
+        "no_v1": {
+            "provider": "mercadopago",
+            "provider_reference_id": "data.mp_payment_id",
+        },
+    },
+}
+
+
+class VersaoDesconhecida(ValueError):
+    """Envelope numa versão que esta célula não sabe ler.
+
+    Sobe e mata o processamento do evento, que é o certo: a mensagem fica no
+    PEL, a reentrega tenta de novo e a fila morta a recolhe depois de
+    MAX_ENTREGAS. O contrário seria adivinhar o formato e matricular errado.
+    """
+
+
+class EventoSemPonte(LookupError):
+    """Evento consumido sem a ponte entre versões declarada em PONTE_DO_V1."""
+
+
+def dados_na_forma_do_v2(envelope: dict) -> dict:
+    """O `data` do evento na forma do v2, a única que esta célula lê.
+
+    A tradução mora AQUI, na borda, e não dentro do handler, porque é aqui que
+    o número da versão existe. Um handler que decidisse a versão pela presença
+    de um campo estaria adivinhando o que o envelope já diz. Quando o v1 parar
+    de ser emitido (RITOS.md §3), some esta função e nada mais muda.
+
+    O que o v2 renomeou, e por quê, está na descrição de
+    `contracts/eventos/pagamento.aprovado.v2.json`: `site_id` virou
+    `platform_site_id` para não se confundir com o `site_id` do fornecedor, e
+    `mp_payment_id` virou o par neutro `provider` mais `provider_reference_id`.
+    """
+    versao = envelope["version"]
+    if versao not in VERSOES_ACEITAS:
+        raise VersaoDesconhecida(
+            f"{envelope['event']} chegou na versão {versao!r}, e esta célula lê "
+            f"as versões {VERSOES_ACEITAS}. Leia o contrato dessa versão em "
+            "contracts/eventos/ e traduza aqui antes de consumi-la."
+        )
+    dados = envelope["data"]
+    if versao == 2:
+        return dados
+    traduzido = {
+        chave: valor
+        for chave, valor in dados.items()
+        if chave not in ("site_id", "mp_payment_id")
+    }
+    traduzido["platform_site_id"] = dados["site_id"]
+    traduzido["provider"] = "mercadopago"
+    traduzido["provider_reference_id"] = dados["mp_payment_id"]
+    return traduzido
+
+
+def identidade_do_fato(evento: str, dados: dict) -> str:
+    """A chave que diz "isto já aconteceu", igual nas duas versões do contrato.
+
+    Recebe o `data` JÁ traduzido para o v2, então os campos da chave têm o mesmo
+    nome venha o aviso de onde vier.
+
+    [INV-P11] A chave nasce ESCOPADA PELO SITE, e isso não é zelo: o
+    `provider_reference_id` é o id da cobrança na conta do fornecedor, e cada
+    escola tem a sua. Duas escolas podem receber a referência `12345` no mesmo
+    dia, de pagamentos que nada têm a ver um com o outro. Sem o site na chave, a
+    segunda compra seria lida como reentrega da primeira e descartada: a pessoa
+    pagou, e a matrícula nunca acontece. O mesmo vale para um aviso que chegue
+    com o site errado, que consumiria a identidade do fato verdadeiro.
+
+    A ordem das partes (site, evento, campos da chave) é a mesma das outras
+    células consumidoras deste lote, para que a chave de um fato seja legível do
+    mesmo jeito em qualquer uma.
+    """
+    ponte = PONTE_DO_V1.get(evento)
+    if ponte is None:
+        raise EventoSemPonte(
+            f"{evento} é consumido sem ponte entre versões declarada. Copie o "
+            "`x-ponte-do-v1` do contrato v2 desse evento para PONTE_DO_V1, e "
+            "não reaproveite a chave de outro evento: elas são diferentes."
+        )
+    return "|".join(
+        [
+            str(dados["platform_site_id"]),
+            evento,
+            *(str(dados[campo]) for campo in ponte["chave_entre_versoes"]),
+        ]
+    )
+
 
 def processar_envelope(envelope: dict, handlers: dict) -> None:
-    """Dedup por event_id: evento reentregue não dispara o handler de novo.
+    """Dedup pelo FATO: nem a mesma mensagem nem a outra versão dela rodam duas vezes.
     handlers mapeia envelope["event"] (ex.: "pagamento.aprovado") -> callable(data).
+
+    São DUAS unicidades no create, e elas medem coisas diferentes. O `event_id`
+    barra a MESMA mensagem chegando de novo (entrega at-least-once). A
+    `identidade_logica` barra o MESMO FATO chegando pela OUTRA versão do
+    contrato: desde 20/09/2026 o v1 e o v2 do aviso de pagamento convivem, cada
+    um com seu `event_id`, e para o dedup por envelope eles seriam dois eventos.
+    A pessoa viraria aluna duas vezes, sem erro, sem log e sem chamado.
 
     São DUAS transações aninhadas. Parecem redundantes; não são — cada uma fecha
     um modo de falha diferente, e remover qualquer uma reabre um bug silencioso.
@@ -54,14 +172,22 @@ def processar_envelope(envelope: dict, handlers: dict) -> None:
         nada tem a ver com event_id) seria lido como "já processado" e o evento
         seria descartado em silêncio: o mesmo bug de antes, só que mais difícil
         de enxergar.
+
+    A tradução e a identidade são calculadas ANTES da transação, de propósito:
+    envelope de versão desconhecida estoura sem abrir transação nenhuma e sem
+    gravar nada, e a mensagem segue no PEL para a fila morta.
     """
+    dados = dados_na_forma_do_v2(envelope)
+    identidade = identidade_do_fato(envelope["event"], dados)
     with transaction.atomic():  # (1) registro e efeito: vivem ou morrem juntos
         try:
             with transaction.atomic():  # (2) savepoint: SÓ o create
-                EventoProcessado.objects.create(event_id=envelope["event_id"])
+                EventoProcessado.objects.create(
+                    event_id=envelope["event_id"], identidade_logica=identidade
+                )
         except IntegrityError:
             return  # já processado: nada foi gravado, o handler não roda de novo
-        handlers[envelope["event"]](envelope["data"])
+        handlers[envelope["event"]](dados)
 
 
 def _mover_para_fila_morta(
