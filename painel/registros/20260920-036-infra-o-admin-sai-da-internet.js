@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-036-infra-o-admin-sai-da-internet",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "infra: o admin sai da internet",
+  detalhe: "O router humano de /admin sai da borda publica; /docs, /mapa-ia e a porta interna da pages continuam no ar.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1814. Validação local: árvore ce88af56fcdf3b215116fd4e372dc2633f6199b9; commit 1fbc4bb61922c4da6e01b68c9854625ae5f35617; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-418",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
