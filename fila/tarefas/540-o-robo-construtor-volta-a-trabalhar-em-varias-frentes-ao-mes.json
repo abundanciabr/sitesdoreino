@@ -1,0 +1,20 @@
+{
+  "arquivo": "540-o-robo-construtor-volta-a-trabalhar-em-varias-frentes-ao-mes",
+  "id": "TAR-540",
+  "titulo": "O robô construtor volta a trabalhar em várias frentes ao mesmo tempo",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "ci/provar_guardas.py em PASS com todos os guardas reprovando a sabotagem, suíte de ci/tests verde, e o gancho rodado à mão com despacho em opus passando e Workflow, modelo ausente e ficha sem auditoria barrados",
+  "despacho": "# DESPACHO: ci, o sub-agente construtor volta ao Claude Code\n\nCÉLULA: ci\nALVOS: ci/muralha_dos_sub_agentes.py, ci/tests/test_muralha_dos_sub_agentes.py,\nci/tests/test_codex_nativo.py, CLAUDE.md, PLAYBOOK.md, RUNBOOK-LOTES.md,\ndocs/decisoes/DECISAO-triade-de-ias.md,\ndocs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md,\nmapa-ia/planos/PROMPT-PADRAO-DO-MAESTRO.md,\nmapa-ia/planos/PROMPT-RAPIDO-DO-MAESTRO.md\n\n## O pedido\n\nO mantenedor mandou levantar, por inteiro e sem teto, o banimento de sub-agente\nde escrita que a TAR-376 tinha posto em 19/09/2026. A régua do modelo\n(sonnet ou opus declarado na chamada, nunca herdado) fica, porque foi ela que\napagou o incêndio dos 163 milhões de tokens. A recusa de Workflow fica, porque\no modelo dos agentes dele mora dentro do roteiro.\n\n## O que fazer\n\n1. Tirar de `ci/muralha_dos_sub_agentes.py` a constante `ESCRITA` e a função\n   `escreve()`, que recusavam a ficha capaz de editar.\n2. Tapar de propósito as três portas que o `escreve()` fechava por acidente:\n   a ficha precisa fechar `Agent` e `AskUserQuestion` por `tools` ou por\n   `disallowedTools`, porque o CLAUDE.md proíbe subagente que pergunta ao\n   mantenedor ou cria outro; erro inesperado precisa sair com 2, porque o\n   código 1 não barra; e o frontmatter precisa ser lido em `utf-8-sig`.\n3. Deixar cada recusa numa linha só, para `ci/provar_guardas.py` poder sabotá-la.\n4. Corrigir toda a lei que ainda diz o contrário, inclusive os dois prompts do\n   maestro, que reinstalariam a trava a cada sessão nova.\n\n## Evidência exigida\n\n`ci/provar_guardas.py` em PASS com todos os guardas reprovando a sabotagem,\nsuíte de `ci/tests/` verde, e o gancho rodado à mão mostrando `despacho` em\nopus passando e Workflow, modelo ausente e ficha sem auditoria barrados.\n\n## Armadilhas desta tarefa\n\n- Marcador `# guarda:` apontando para cabeçalho de `if` quebra a sintaxe quando\n  `provar_guardas` troca a linha por `pass`, e zera a prova do arquivo inteiro.\n- `except` fail-closed no `main` mascara a sabotagem de guardas mais abaixo: o\n  teste precisa medir a mensagem, não só o código de saída.\n- Citar uma TAR histórica no corpo do PR faz `ci/pr.py` achar que a entrega é\n  daquela tarefa.",
+  "origem": "pedido do mantenedor na sessão do Claude Code de 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

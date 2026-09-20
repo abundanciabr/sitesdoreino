@@ -137,7 +137,7 @@ def test_monitor_preserva_guarda_da_espera(monkeypatch):
 
 # Os ganchos por ação de cada lado, na ordem exata em que o arquivo os declara.
 # O Codex tem só a espera; o Claude Code tem também a trava que recusa o
-# sub-agente de escrita no ato da criação (TAR-376), e ela vive no arquivo que
+# sub-agente fora de sonnet ou opus no ato da criação, e ela vive no arquivo que
 # só o Claude Code lê. Lista exata dos dois lados: gancho a mais não passa
 # despercebido, e gancho a menos reprova.
 GANCHOS_POR_ACAO = {

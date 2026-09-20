@@ -159,33 +159,23 @@ http:
       service: identidade
       tls: {}
 
-    admin:
-      # A área administrativa (DECISAO-celula-admin, 25/08/2026): painéis,
-      # métricas e configuração. A célula conhece o prefixo por
-      # `SCRIPT_NAME=/admin` no env dela — o Traefik NÃO o remove.
-      #
-      # `Host(...)` explícito, e aqui a razão é ainda mais direta do que na
-      # `identidade`: sem ele, QUALQUER domínio apontado para esta VPS serviria
-      # a porta administrativa da plataforma. A porta é fail-closed e recusa
-      # quem não está em `ADMIN_EMAILS`, mas oferecer a tela de operação em
-      # domínio alheio é matéria-prima de golpe — e o custo de evitar é uma
-      # cláusula. **Domínio novo com área administrativa é DECISÃO nova** (§8.7
-      # da lei), nunca uma linha a menos aqui.
-      #
-      # Cadeia de middleware PRÓPRIA (`seguranca-admin`, no topo do arquivo):
-      # mesmos cabeçalhos da `seguranca`, com `SAMEORIGIN` no lugar de `DENY`
-      # para o iframe da galeria de painéis. A cadeia é separada para que a
-      # compartilhada — que protege `checkout` e `pagamentos` — não precise
-      # afrouxar por causa desta célula.
-      #
-      # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
-      # 1 do catch-all do funil.
-      rule: "Host(`meshcraft.top`) && PathPrefix(`/admin`)"
-      priority: 10
-      entryPoints: [websecure]
-      middlewares: [seguranca-admin]
-      service: admin
-      tls: {}
+    # A AREA ADMINISTRATIVA NAO TEM ROUTER, E ISSO E DE PROPOSITO (TAR-418,
+    # 20/09/2026). Ate aqui existia um `admin:` com
+    # Host(`meshcraft.top`) && PathPrefix(`/admin`), e `https://meshcraft.top/admin/`
+    # respondia 302 para o login: a porta era fail-closed, mas a tela de
+    # operacao era oferecida a internet inteira.
+    #
+    # Ela abre agora so no PC do mantenedor, por `python ci/ligar_administracao.py`
+    # (PR #1663), com o banco de producao por tunel SSH. O conteiner `admin`
+    # continua de pe, e continua servindo tres coisas que NAO sao tela humana:
+    # `/docs` e `/mapa-ia`, pelos routers proprios logo abaixo, e
+    # `/interno/administradores/consultar`, que a `pages` chama pela rede
+    # `interna` do Docker sem passar pela borda.
+    #
+    # REABRIR ESTE ROUTER REPROVA NO CI: as 133 entradas de `/admin` em
+    # `painel/mapa-do-site.json` estao declaradas `interno`, e
+    # `ci/mapa_do_site.py` mede os dois sentidos. Se a decisao mudar, o mapa
+    # muda no MESMO PR, nunca depois.
 
     mapa-ia:
       # O mapa técnico do projeto para IA (`painel/ia/`), pedido do
@@ -480,8 +470,8 @@ http:
       # sessão perdida na troca e conteúdo duplicado para busca.
       #
       # A priority 15 é a única faixa correta, e as duas bordas doem:
-      #   > 10 (prefixos de página) — sem isso, /checkout, /entrar, /admin,
-      #     /quiz e /forms/sugestoes seriam SERVIDOS no `www.` em vez de
+      #   > 10 (prefixos de página) — sem isso, /checkout, /entrar, /quiz
+      #     e /forms/sugestoes seriam SERVIDOS no `www.` em vez de
       #     desviados, que é o problema que este router existe para fechar.
       #   < 20 (checkout-api) — a compra NUNCA pode ser desviada: 301 num POST
       #     faz o navegador reemitir como GET e o pedido morre no caminho. É a

@@ -24,7 +24,7 @@ O que você entrega:
 - Resposta do Antigravity: confira cada afirmação contra origin/main e contra o manifesto SHA256 do dossiê (sitesdoreino-docs/conselho-fase-4/) antes de aceitar.
 - Pergunta a mim só o que é meu (irreversível, dinheiro, lei, papéis, contrato), com AskUserQuestion e a opção recomendada primeiro. O resto você decide e diz em uma linha por quê. Decisão da retomada não se reabre.
 
-O que você NUNCA faz: construir (ci/sessao.py, fila.py criar, pr.py, commit, edição de arquivo do repositório); sub-agente que escreva (despacho, escrivao, Workflow), só revisor e Explore; mergear; esperar check em laço; falar em nome do Codex ou do Antigravity (cada um recebe o bloco dele, em texto, e eu colo).
+O que você NUNCA faz: construir (ci/sessao.py, fila.py criar, pr.py, commit, edição de arquivo do repositório); Workflow; mergear; esperar check em laço; falar em nome do Codex ou do Antigravity (cada um recebe o bloco dele, em texto, e eu colo). Sub-agente construtor (despacho, escrivao) é permitido desde 20/09/2026, com model sonnet ou opus declarado na chamada.
 
 Otimize o tempo: chame o sub-agente (`Agent` ou `Explore`) e a medição no Bash (como `resumo_maestro.py`) na MESMA resposta para que rodem em paralelo.
 
