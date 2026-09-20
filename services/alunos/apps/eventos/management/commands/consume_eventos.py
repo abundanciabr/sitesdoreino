@@ -108,6 +108,18 @@ def identidade_do_fato(evento: str, dados: dict) -> str:
 
     Recebe o `data` JÁ traduzido para o v2, então os campos da chave têm o mesmo
     nome venha o aviso de onde vier.
+
+    [INV-P11] A chave nasce ESCOPADA PELO SITE, e isso não é zelo: o
+    `provider_reference_id` é o id da cobrança na conta do fornecedor, e cada
+    escola tem a sua. Duas escolas podem receber a referência `12345` no mesmo
+    dia, de pagamentos que nada têm a ver um com o outro. Sem o site na chave, a
+    segunda compra seria lida como reentrega da primeira e descartada: a pessoa
+    pagou, e a matrícula nunca acontece. O mesmo vale para um aviso que chegue
+    com o site errado, que consumiria a identidade do fato verdadeiro.
+
+    A ordem das partes (site, evento, campos da chave) é a mesma das outras
+    células consumidoras deste lote, para que a chave de um fato seja legível do
+    mesmo jeito em qualquer uma.
     """
     ponte = PONTE_DO_V1.get(evento)
     if ponte is None:
@@ -117,7 +129,11 @@ def identidade_do_fato(evento: str, dados: dict) -> str:
             "não reaproveite a chave de outro evento: elas são diferentes."
         )
     return "|".join(
-        [evento, *(str(dados[campo]) for campo in ponte["chave_entre_versoes"])]
+        [
+            str(dados["platform_site_id"]),
+            evento,
+            *(str(dados[campo]) for campo in ponte["chave_entre_versoes"]),
+        ]
     )
 
 

@@ -13,5 +13,10 @@ class EventoProcessado(models.Model):
     # diferentes: `event_id` barra a MESMA mensagem de novo, esta barra o MESMO
     # FATO chegando por outra versão. Guarda:
     # tests/test_o_mesmo_pagamento_nas_duas_versoes.py.
+    #
+    # [INV-P11] O valor nasce ESCOPADO PELO SITE (`platform_site_id|evento|...`).
+    # O `provider_reference_id` é o id da cobrança na conta do fornecedor, e cada
+    # escola tem a sua: sem o site, a compra de uma escola seria lida como
+    # reentrega da compra de outra e descartada. A pessoa pagou e não vira aluna.
     identidade_logica = models.CharField(max_length=255, unique=True)
     processed_at = models.DateTimeField(auto_now_add=True)

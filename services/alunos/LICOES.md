@@ -325,64 +325,161 @@ sabotagem não aconteceu" são indistinguíveis, e os dois se parecem com um ver
 
 É irmã da lição acima (uma rodada só não distingue causa de coincidência): as
 duas dizem que **o resultado de uma medição não vale sem a prova de que a
-medição mediu o que você acha que ela mediu.**
-
-## A identidade do fato não é a do envelope (20/09/2026)
-
-**Onde:** `PONTE_DO_V1`, `dados_na_forma_do_v2()` e `identidade_do_fato()` em
-`apps/eventos/management/commands/consume_eventos.py`; `EventoProcessado.
-identidade_logica`; guardas em `tests/test_o_mesmo_pagamento_nas_duas_versoes.py`.
-
-**O buraco:** `pagamento.aprovado.v1` e `pagamento.aprovado.v2` descrevem o
-MESMO fato com campos diferentes, e o v1 não sai do ar enquanto houver
-consumidor nele (RITOS.md §3). As duas versões chegam com `event_id` diferente,
-então o dedup por `event_id` vê dois eventos, roda o efeito duas vezes e não
-reclama de nada. É a falha mais cara desta célula e a mais silenciosa.
-
-**A regra vem do contrato, em forma de dado.** O campo `x-ponte-do-v1` do
-schema v2 publica `chave_entre_versoes` (os campos de `data` que identificam o
-fato) e `no_v1` (de onde tirar cada um num evento v1). `PONTE_DO_V1` é uma
-CÓPIA desse dado, e `test_a_ponte_e_copia_fiel_do_contrato` reprova quando as
-duas divergem. Nada aqui é interpretação nossa.
-
-**E ela NÃO é a mesma para os avisos da família, o que é o erro fácil de
-cometer:** no `pagamento.aprovado` o fato é o par (`provider`,
-`provider_reference_id`), porque o `mp_payment_id` do v1 é o mesmo valor com
-`provider` implícito igual a `mercadopago`. No `pagamento.recusado` o v1 NUNCA
-carregou referência de provedor nenhuma, e quem atravessa as versões é o
-`payment_id`. Copiar a chave de um para o outro deduplicaria recusas de
-pagamentos distintos como se fossem uma. Por isso a ponte é uma tabela por
-evento, e `test_todo_evento_consumido_declara_a_ponte` barra quem acrescentar
-handler sem declarar a dele.
-
-**Duas unicidades no mesmo `create`, e elas medem coisas diferentes:**
-`event_id` barra a MESMA mensagem de novo (entrega at-least-once);
-`identidade_logica` barra o MESMO FATO vindo pela outra versão. Tirar qualquer
-uma deixa um buraco que a outra não cobre, e sob concorrência a unicidade no
-banco é a única coisa que sobra: duas entregas simultâneas passam juntas pelo
-`SELECT`, e quem perde o `INSERT` volta sem rodar o efeito.
-
-**A tradução mora na BORDA, nunca no handler.** `dados_na_forma_do_v2()`
-converte o v1 para a forma do v2 antes de qualquer coisa, e `ao_pagamento_
-aprovado()` lê só nomes do v2 (`platform_site_id`). Um handler que decidisse a
-versão pela presença de um campo estaria adivinhando o que o envelope diz por
-escrito. Quando o v1 morrer, some a função e nada mais muda.
-
-**Versão fora de `VERSOES_ACEITAS` estoura.** Tratar um v3 como se fosse v2
-leria campos que podem ter mudado de nome e derivaria identidade errada:
-matrícula duplicada sem uma linha de log. A recusa sobe, a mensagem fica no PEL
-e a fila morta a recolhe depois de `MAX_ENTREGAS`.
-
-**O que a migração não conseguiu trazer.** As linhas de `EventoProcessado`
-anteriores a 20/09/2026 guardam só o `event_id`, e a identidade lógica daqueles
-fatos não existe em lugar nenhum. Elas foram preenchidas com o próprio
-`event_id`. Consequência aceita: um pagamento processado como v1 ANTES da
-migração, chegando como v2 DEPOIS, passa pelo dedup de evento. Quem segura esse
-caso é a idempotência de `matricular()` por `order_id`, a segunda tranca da
-célula.
-
-**Prova de mutação, e uma pegadinha nova:** seis sabotagens, seis vermelhos.
-A que falhou primeiro foi tirar `unique=True` do MODELO: a suíte seguiu verde
-porque o banco de teste nasce das MIGRAÇÕES, e o índice continuava lá. Sabotar
-constraint de banco é sabotar a migração, não o `models.py`. É a lição
+medição mediu o que você acha que ela mediu.**
+
+
+
+## A identidade do fato não é a do envelope (20/09/2026)
+
+
+
+**Onde:** `PONTE_DO_V1`, `dados_na_forma_do_v2()` e `identidade_do_fato()` em
+
+`apps/eventos/management/commands/consume_eventos.py`; `EventoProcessado.
+
+identidade_logica`; guardas em `tests/test_o_mesmo_pagamento_nas_duas_versoes.py`.
+
+
+
+**O buraco:** `pagamento.aprovado.v1` e `pagamento.aprovado.v2` descrevem o
+
+MESMO fato com campos diferentes, e o v1 não sai do ar enquanto houver
+
+consumidor nele (RITOS.md §3). As duas versões chegam com `event_id` diferente,
+
+então o dedup por `event_id` vê dois eventos, roda o efeito duas vezes e não
+
+reclama de nada. É a falha mais cara desta célula e a mais silenciosa.
+
+
+
+**A regra vem do contrato, em forma de dado.** O campo `x-ponte-do-v1` do
+
+schema v2 publica `chave_entre_versoes` (os campos de `data` que identificam o
+
+fato) e `no_v1` (de onde tirar cada um num evento v1). `PONTE_DO_V1` é uma
+
+CÓPIA desse dado, e `test_a_ponte_e_copia_fiel_do_contrato` reprova quando as
+
+duas divergem. Nada aqui é interpretação nossa.
+
+
+
+**E ela NÃO é a mesma para os avisos da família, o que é o erro fácil de
+
+cometer:** no `pagamento.aprovado` o fato é o par (`provider`,
+
+`provider_reference_id`), porque o `mp_payment_id` do v1 é o mesmo valor com
+
+`provider` implícito igual a `mercadopago`. No `pagamento.recusado` o v1 NUNCA
+
+carregou referência de provedor nenhuma, e quem atravessa as versões é o
+
+`payment_id`. Copiar a chave de um para o outro deduplicaria recusas de
+
+pagamentos distintos como se fossem uma. Por isso a ponte é uma tabela por
+
+evento, e `test_todo_evento_consumido_declara_a_ponte` barra quem acrescentar
+
+handler sem declarar a dele.
+
+
+
+**Duas unicidades no mesmo `create`, e elas medem coisas diferentes:**
+
+`event_id` barra a MESMA mensagem de novo (entrega at-least-once);
+
+`identidade_logica` barra o MESMO FATO vindo pela outra versão. Tirar qualquer
+
+uma deixa um buraco que a outra não cobre, e sob concorrência a unicidade no
+
+banco é a única coisa que sobra: duas entregas simultâneas passam juntas pelo
+
+`SELECT`, e quem perde o `INSERT` volta sem rodar o efeito.
+
+
+
+**A tradução mora na BORDA, nunca no handler.** `dados_na_forma_do_v2()`
+
+converte o v1 para a forma do v2 antes de qualquer coisa, e `ao_pagamento_
+
+aprovado()` lê só nomes do v2 (`platform_site_id`). Um handler que decidisse a
+
+versão pela presença de um campo estaria adivinhando o que o envelope diz por
+
+escrito. Quando o v1 morrer, some a função e nada mais muda.
+
+
+
+**Versão fora de `VERSOES_ACEITAS` estoura.** Tratar um v3 como se fosse v2
+
+leria campos que podem ter mudado de nome e derivaria identidade errada:
+
+matrícula duplicada sem uma linha de log. A recusa sobe, a mensagem fica no PEL
+
+e a fila morta a recolhe depois de `MAX_ENTREGAS`.
+
+
+
+**O que a migração não conseguiu trazer.** As linhas de `EventoProcessado`
+
+anteriores a 20/09/2026 guardam só o `event_id`, e a identidade lógica daqueles
+
+fatos não existe em lugar nenhum. Elas foram preenchidas com o próprio
+
+`event_id`. Consequência aceita: um pagamento processado como v1 ANTES da
+
+migração, chegando como v2 DEPOIS, passa pelo dedup de evento. Quem segura esse
+
+caso é a idempotência de `matricular()` por `order_id`, a segunda tranca da
+
+célula.
+
+
+
+**Prova de mutação, e uma pegadinha nova:** seis sabotagens, seis vermelhos.
+
+A que falhou primeiro foi tirar `unique=True` do MODELO: a suíte seguiu verde
+
+porque o banco de teste nasce das MIGRAÇÕES, e o índice continuava lá. Sabotar
+
+constraint de banco é sabotar a migração, não o `models.py`. É a lição
+
 "sabotagem que não foi aplicada parece guarda sem dentes" com roupa nova.
+
+## A identidade do fato nasce escopada pelo site (20/09/2026)
+
+**Onde:** `identidade_do_fato()` em
+`apps/eventos/management/commands/consume_eventos.py`; guardas
+`test_mesma_referencia_em_escolas_diferentes_sao_fatos_diferentes` e
+`test_o_aviso_do_site_errado_nao_consome_a_identidade_do_certo`.
+
+**O buraco, achado pela frente do checkout e conferido aqui.** A chave que o
+contrato publica em `x-ponte-do-v1` identifica o fato DENTRO de um tenant, e
+sozinha ela não basta. O `provider_reference_id` é o id da cobrança na conta do
+fornecedor, e cada escola tem a sua: duas escolas podem receber a referência
+`12345` no mesmo dia, de compras que nada têm a ver uma com a outra. Sem o site
+na identidade, a segunda é lida como reentrega da primeira e descartada. A
+pessoa pagou, o dinheiro entrou, e a matrícula nunca acontece, sem erro em
+lugar nenhum.
+
+**Pelo outro lado é a mesma falha:** um aviso que chegue com o site trocado
+grava a identidade do fato verdadeiro, e o aviso legítimo que chegar depois é
+descartado como duplicado.
+
+**A forma da chave é `platform_site_id|evento|campos da chave do contrato`**, a
+mesma das outras células consumidoras deste lote, para que um fato seja legível
+do mesmo jeito em qualquer uma.
+
+**Nenhuma migração acompanhou a correção, e isto foi medido, não suposto:** a
+coluna e a restrição não mudaram (o `unique` continua no mesmo campo), só o
+formato do valor gravado. `manage.py makemigrations --check --dry-run` responde
+"No changes detected". A migração `0002`, que cria o campo, nasceu neste mesmo
+PR e nunca rodou fora de banco de teste, então não existe dado no formato
+antigo em lugar nenhum para migrar.
+
+**Prova vermelho para verde:** com a sabotagem `identidade sem o escopo do
+site`, três guardas caem, dois deles dizendo a frase que descreve o dano
+("a compra da segunda escola foi descartada como duplicada da primeira" e "o
+aviso do site errado consumiu a identidade do fato certo"). Desfeita a
+sabotagem, 16 verdes no arquivo.

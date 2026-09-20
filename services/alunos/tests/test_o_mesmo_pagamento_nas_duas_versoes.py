@@ -45,6 +45,7 @@ from apps.eventos.management.commands.consume_eventos import (
     PONTE_DO_V1,
     VersaoDesconhecida,
     dados_na_forma_do_v2,
+    identidade_do_fato,
     processar_envelope,
 )
 from apps.eventos.models import EventoProcessado
@@ -59,7 +60,7 @@ PRODUTO = "22222222-2222-4222-8222-222222222222"
 COMPRADOR = {"email": "aluna@exemplo.com.br", "name": "Aluna Exemplo"}
 
 
-def _v1(*, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
+def _v1(*, site=SITE, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
     """A MESMA compra de `_v2`, na forma antiga. Validado contra o contrato em
     `test_os_envelopes_de_exemplo_batem_com_os_contratos` — sem isso o arquivo
     inteiro poderia estar medindo um evento que ninguém emite."""
@@ -69,7 +70,7 @@ def _v1(*, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
         "event_id": str(uuid.uuid4()),
         "occurred_at": "2026-09-20T12:00:00Z",
         "data": {
-            "site_id": SITE,
+            "site_id": site,
             "payment_id": f"pay-{pedido}",
             "order_id": pedido,
             "amount_cents": 19700,
@@ -81,14 +82,14 @@ def _v1(*, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
     }
 
 
-def _v2(*, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
+def _v2(*, site=SITE, pedido=PEDIDO, referencia=REFERENCIA_NO_PROVEDOR) -> dict:
     return {
         "event": "pagamento.aprovado",
         "version": 2,
         "event_id": str(uuid.uuid4()),
         "occurred_at": "2026-09-20T12:00:00Z",
         "data": {
-            "platform_site_id": SITE,
+            "platform_site_id": site,
             "payment_id": f"pay-{pedido}",
             "order_id": pedido,
             "amount_cents": 19700,
@@ -286,6 +287,76 @@ def test_pagamentos_diferentes_do_mesmo_provedor_nao_se_confundem():
     assert len(contador) == 2
     assert Matricula.objects.count() == 2
     assert EventoProcessado.objects.count() == 2
+
+
+# --------------------------------------------- [INV-P11] a fronteira do site
+
+OUTRA_ESCOLA = "escola-b"
+
+
+@pytest.mark.django_db
+def test_mesma_referencia_em_escolas_diferentes_sao_fatos_diferentes():
+    """[INV-P11] O `provider_reference_id` é o id da cobrança NA CONTA DO
+    FORNECEDOR, e cada escola tem a sua: duas podem receber a referência
+    `12345` no mesmo dia, de compras que nada têm a ver uma com a outra.
+
+    Sem o site na identidade, a segunda compra é lida como reentrega da
+    primeira e descartada. A pessoa pagou, o dinheiro entrou, e a matrícula
+    dela nunca acontece, sem erro em lugar nenhum.
+    """
+    contador = []
+    processar_envelope(
+        _v2(site=SITE, pedido="pedido-da-a", referencia="12345"), _contando(contador)
+    )
+    processar_envelope(
+        _v2(site=OUTRA_ESCOLA, pedido="pedido-da-b", referencia="12345"),
+        _contando(contador),
+    )
+
+    assert len(contador) == 2, (
+        "a compra da segunda escola foi descartada como duplicada da primeira. "
+        "A identidade do fato tem que nascer escopada pelo platform_site_id."
+    )
+    assert Matricula.objects.count() == 2
+    assert {m.site_id for m in Matricula.objects.all()} == {SITE, OUTRA_ESCOLA}
+    assert EventoProcessado.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_o_aviso_do_site_errado_nao_consome_a_identidade_do_certo():
+    """A mesma falha pelo outro lado, e atravessando as versões: um aviso que
+    chega com o site trocado (bug do publicador, ou mensagem injetada no
+    stream) não pode gravar a identidade do fato verdadeiro. Se gravasse, o
+    aviso legítimo que chegasse depois seria descartado como duplicado."""
+    contador = []
+    processar_envelope(
+        _v1(site=OUTRA_ESCOLA, pedido="pedido-errado", referencia="MP-REF-99"),
+        _contando(contador),
+    )
+    processar_envelope(
+        _v2(site=SITE, pedido="pedido-certo", referencia="MP-REF-99"),
+        _contando(contador),
+    )
+
+    assert len(contador) == 2, (
+        "o aviso do site errado consumiu a identidade do fato certo e o "
+        "legítimo foi descartado: quem pagou ficou sem matrícula."
+    )
+    matricula = Matricula.objects.get(order_id="pedido-certo")
+    assert matricula.site_id == SITE
+
+
+@pytest.mark.django_db
+def test_a_identidade_comeca_pelo_site():
+    """A forma da chave é combinada entre as células consumidoras deste lote
+    (site, evento, campos da chave do contrato), para que o mesmo fato seja
+    legível do mesmo jeito em qualquer uma."""
+    dados = dados_na_forma_do_v2(_v2())
+
+    assert (
+        identidade_do_fato("pagamento.aprovado", dados)
+        == f"{SITE}|pagamento.aprovado|mercadopago|{REFERENCIA_NO_PROVEDOR}"
+    )
 
 
 # ------------------------------------------------- concorrência, Redis real
