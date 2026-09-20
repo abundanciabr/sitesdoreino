@@ -54,6 +54,17 @@
     },
     {
       "celula": "funil",
+      "rota": "oferta",
+      "endereco": "/oferta",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A página de vendas",
+      "descricao": "A página que apresenta o curso por inteiro, com as seções que você escreve no editor, o preço e o botão de comprar. A raiz do site continua sendo a porta de entrada; esta é a página que vende.",
+      "observacao": "O texto dela não está no código: sai do que você publica no editor de páginas. Seção sem nenhum texto escrito não aparece na tela.",
+      "sonda": true
+    },
+    {
+      "celula": "funil",
       "rota": "login",
       "endereco": "/login",
       "alcance": "publico",
