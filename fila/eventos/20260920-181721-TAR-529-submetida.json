@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-181721-TAR-529-submetida",
+  "tarefa": "TAR-529",
+  "evento": "submetida",
+  "quando": "2026-09-20T18:17:21+00:00",
+  "quem": "agent/ci/fila-nativa-no-deploy",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1806",
+  "revisao": "af0f8aba60051c2e22818b2318da14a1cfec0b0a",
+  "arvore": "0430470cb90f4a2fb1888ce9720c9f3695c70d42"
+}
