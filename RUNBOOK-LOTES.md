@@ -4,8 +4,8 @@
 > mantenedor. Os agentes de célula **não** leem este documento: eles recebem briefs
 > fechados (§4), e carregá-lo neles seria desperdício de contexto (Alavanca 2).
 > Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), a maestro é o Claude Code; o
-> agente de célula segue a ficha `despacho` e é o Codex que pega a tarefa na fila,
-> porque o Claude Code não dispara sub-agente que escreva
+> agente de célula segue a ficha `despacho`, que o Codex pega na fila e que a
+> maestro também despacha em paralelo desde a emenda de 20/09/2026
 > (`ci/muralha_dos_sub_agentes.py`); a verificação depois do merge é do Antigravity.
 >
 > Nascido em 22/08/2026, no dia em que as duas trancas do throughput caíram: o
