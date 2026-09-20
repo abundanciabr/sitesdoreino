@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-046-o-resto-do-admin-no-localhost-foi-cancelado",
+  tipo: "decisao",
+  quando: "2026-09-20",
+  titulo: "O resto do admin no localhost foi cancelado",
+  detalhe: "Pedido do mantenedor em 20/09/2026: cancelar de vez toda tarefa e todo PR que ainda construam o painel do admin no localhost do PC.\n\nCanceladas: TAR-422 (saude e metricas para leitura no localhost) e TAR-427 (retirar administracao da VPS, ja entregue na TAR-418). O rascunho vazio PR 1771 (endereco-csrf-botao-admin) fecha junto.\n\nNao canceladas, de proposito: o lancador e o tunel que ja existem (TAR-405 e TAR-426); tarefas so de livro ou de guarda (TAR-284, TAR-296, TAR-309, TAR-345, TAR-393, TAR-494); a TAR-421 de transferencia comercial; o PR 1679, que so registra a prova da ponte e nao cria tela local.\n\nA maior parte dessa frente ja tinha morrido em 14/09. Nao havia fila escondida de 'criar admin no PC' alem dessas duas tarefas.",
+  autoridade: "mantenedor",
+  evidencia: null,
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
