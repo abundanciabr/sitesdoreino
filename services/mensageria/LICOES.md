@@ -644,3 +644,51 @@ não terminou.
 shell vazia) caía na listagem e saía com código zero, ou seja, um pedido de
 recuperação que virava relatório e parecia ter funcionado. A decisão é
 `alvo is not None`, e não a verdade do valor.
+
+## Dedup por `event_id` não pega o mesmo fato chegando em duas versões (TAR-549)
+
+**Contexto:** `pagamento.aprovado.v2` e `pagamento.recusado.v2` (TAR-545)
+trocam `mp_payment_id` pelo par `provider`+`provider_reference_id`, e o v1
+continua sendo emitido até o último consumidor migrar. O mesmo pagamento pode
+chegar como v1 e, depois, como v2 (replay, backfill, corte de migração) — dois
+`event_id` diferentes, então `EventoProcessado` (unicidade de `event_id`) não
+enxerga a repetição, e o handler rodaria duas vezes.
+
+**A armadilha do brief:** o texto do despacho generalizou "o par
+provider+provider_reference_id é a identidade lógica" para os DOIS eventos.
+Está certo para `pagamento.aprovado` e ERRADO para `pagamento.recusado`: o v1
+da recusa nunca carregou referência de provedor nenhuma, nem sob o nome
+`mp_payment_id`. A fonte de verdade não é o brief nem a Constituição — é o
+campo `x-ponte-do-v1` que o PRÓPRIO contrato v2 carrega (`chave_entre_versoes`
++ `no_v1`), e ele declara as duas pontes como REGRAS DIFERENTES:
+
+- `pagamento.aprovado`: `provider` + `provider_reference_id` (no v1 o par é
+  sempre implícito `mercadopago` + `mp_payment_id`).
+- `pagamento.recusado`: só `payment_id` — não existe par para tirar do v1.
+
+**A solução:** `identidade_do_fato()` em `consume_eventos.py` deriva a chave a
+partir do `event` e da `version` do envelope, lendo as DUAS regras acima (não
+uma função genérica "pega o campo X do contrato" — o contrato descreve a
+regra em prosa+dado, não em código executável, e traduzir errado uma vez
+bastaria). A chave é gravada em `FatoDeProvedorVisto` (unique em
+`evento`+`chave`), como uma TERCEIRA checagem dentro do mesmo
+`transaction.atomic()` de `processar_envelope` — mesmo desenho de savepoint
+que já protegia o `EventoProcessado`, e pelo mesmo motivo: precisa sobreviver
+a duas mensagens concorrentes disputando a MESMA linha sob Redis real.
+
+**O que NÃO virou a chave, e por quê:** `order_id` deduplicaria por
+coincidência hoje (o mesmo pedido tende a manter o mesmo `order_id` entre v1 e
+v2), mas não é a identidade que o contrato declara, e depender da coincidência
+é exatamente o tipo de garantia que quebra no primeiro caso em que ela não se
+sustentar. Os testes de `test_dedup_entre_versoes_de_pagamento.py` usam
+`order_id` DIFERENTE entre a v1 e a v2 do "mesmo fato" de propósito, para que
+a prova não dependa dessa coincidência.
+
+**Para as outras 3 células que ainda vão migrar (TAR-546/547/548):** a chave
+lógica não é um acordo implícito — está no `x-ponte-do-v1` de cada contrato,
+e as duas pontes de pagamento JÁ são diferentes uma da outra. Ler o contrato
+de novo em vez de copiar a regra desta célula é o que evita a mesma
+generalização errada se repetir.
+
+**Origem:** despacho mensageria/consome-o-evento-v2 (TAR-549), correção ao
+brief medida contra `contracts/eventos/pagamento.recusado.v2.json`.

@@ -11,6 +11,37 @@ class EventoProcessado(models.Model):
     processed_at = models.DateTimeField(auto_now_add=True)
 
 
+class FatoDeProvedorVisto(models.Model):
+    """Dedup ENTRE VERSÕES do mesmo fato de pagamento (TAR-549).
+
+    `EventoProcessado` só pega a reentrega do MESMO `event_id`. Quando o mesmo
+    pagamento chega uma vez como v1 e outra como v2, os dois envelopes têm
+    `event_id` diferente — a unicidade acima não enxerga a repetição, e o
+    handler rodaria duas vezes.
+
+    A chave aqui não é `order_id`: é a identidade lógica que os contratos
+    `contracts/eventos/pagamento.*.v2.json` declaram em `x-ponte-do-v1`, e as
+    duas versões do mesmo fato sempre derivam o MESMO valor de `chave`, em
+    qualquer ordem de chegada. Para `pagamento.aprovado` é o par
+    `provider`+`provider_reference_id` (no v1 o par implícito é sempre
+    `mercadopago`+`mp_payment_id`); para `pagamento.recusado` é só
+    `payment_id`, porque o v1 da recusa nunca carregou referência de
+    provedor. Ver `identidade_do_fato()` em `management/commands/consume_eventos.py`.
+    """
+
+    evento = models.CharField(max_length=100)
+    chave = models.CharField(max_length=255)
+    event_id = models.UUIDField()
+    visto_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["evento", "chave"], name="uniq_fato_por_evento_e_chave"
+            ),
+        ]
+
+
 class EnvioRegistrado(models.Model):
     """Auditoria + segunda camada de idempotência, por chave de negócio
     (order_id), já que o handler recebe só `envelope["data"]` — sem event_id."""
