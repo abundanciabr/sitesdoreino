@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-044-pagamentos-o-endereco-que-a-appmax-chama",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "pagamentos: o endereco que a Appmax chama",
+  detalhe: "C:/Users/davia/AppData/Local/Temp/claude/C--Users-davia-abundanciabr-sitesdoreino/9e9d2d61-9c2a-43da-9174-e2c20336457d/scratchpad/tar-543/detalhe.txt",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1818. Validação local: árvore b55efd6d00cbb7a64a39a66024c3f592062acc9f; commit d3e8dc8d7a3938d7c0b2e1c0d636ea47edb5a66e; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-543",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
