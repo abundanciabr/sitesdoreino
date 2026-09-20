@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pagamento.estornado.v2.json",
+  "title": "pagamento.estornado.v2",
+  "description": "O dinheiro de um pagamento aprovado voltou para o comprador, por devolução nossa ou por contestação no cartão. O fato não existia como contrato até aqui, e passa a existir porque o mantenedor decidiu em 20/09/2026 que estorno e contestação cortam o acesso do aluno na hora: sem carta, esse corte dependeria de alguém olhar o painel do fornecedor. Rito de Contrato de 20/09/2026, com o mantenedor presente (fila TAR-545). NASCE JÁ NA VERSÃO 2, e não tem v1: ele entra junto com `pagamento.aprovado.v2` e `pagamento.recusado.v2` como a mesma família de cartas sem nome de fornecedor, e criar um v1 só para ter um seria inventar uma versão que ninguém nunca emitiu. QUAL PAGAMENTO FOI ESTORNADO: o par (`provider`, `provider_reference_id`), que é o mesmo par do `pagamento.aprovado.v2` daquela compra. Quem só viu o aprovado na versão 1 casa pela equivalência declarada lá: um v1 vale como (`mercadopago`, valor de `mp_payment_id`).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pagamento.estornado" },
+    "version": { "const": 2 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform_site_id",
+        "provider",
+        "provider_reference_id",
+        "motivo",
+        "amount_cents"
+      ],
+      "properties": {
+        "platform_site_id": {
+          "type": "string",
+          "description": "O site (tenant) DESTA plataforma. O nome é longo pela mesma razão das outras duas cartas: o envelope do webhook da Appmax carrega um `site_id` que é da Appmax."
+        },
+        "provider": {
+          "type": "string",
+          "enum": ["mercadopago", "appmax"],
+          "description": "Quem devolveu o dinheiro. Enum FECHADO: provedor novo entra pelo Rito de Contrato."
+        },
+        "provider_reference_id": {
+          "type": "string",
+          "description": "O identificador, NO PROVEDOR, do pagamento que foi estornado. É o mesmo valor que veio no `pagamento.aprovado.v2` daquela compra, e é por ele que o consumidor encontra a matrícula a cortar."
+        },
+        "motivo": {
+          "type": "string",
+          "enum": ["estorno", "contestacao"],
+          "description": "Por que o dinheiro voltou. `estorno` é a devolução que a plataforma ou o provedor fez; `contestacao` é o comprador desconhecendo a compra junto à bandeira (o chargeback). O efeito sobre o acesso do aluno é o mesmo nos dois casos e imediato, e os dois estão separados porque o que a plataforma faz DEPOIS difere: contestação tem prazo de defesa e estorno não. Enum FECHADO: um motivo novo muda o que as células precisam fazer, então entra pelo Rito de Contrato."
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Quanto voltou, em centavos inteiros, como em todo contrato desta plataforma (contracts/README.md, ponto 7). Pode ser MENOR que o valor aprovado: estorno parcial existe, e quem consome não pode assumir igualdade com a compra."
+        }
+      }
+    }
+  }
+}

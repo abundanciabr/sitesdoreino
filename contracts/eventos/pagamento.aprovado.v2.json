@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pagamento.aprovado.v2.json",
+  "title": "pagamento.aprovado.v2",
+  "description": "O pagamento de um pedido foi aprovado. Diferença para o v1: o campo obrigatório `mp_payment_id` deixa de existir e dá lugar ao par neutro `provider` mais `provider_reference_id`, e `site_id` passa a se chamar `platform_site_id`. Rito de Contrato de 20/09/2026, com o mantenedor presente (fila TAR-545). O v1 NÃO sai do ar: ele continua sendo emitido até o último consumidor migrar (RITOS.md §3), e quem consome precisa aceitar as duas versões ao mesmo tempo. A PONTE ENTRE AS DUAS VERSÕES, que é a mesma para toda célula consumidora: a identidade lógica do fato é o PAR (`provider`, `provider_reference_id`), nunca um dos dois sozinho, e um evento v1 se traduz para esse par como (`mercadopago`, valor de `mp_payment_id`). É assim, e só assim, que a deduplicação funciona quando o mesmo pagamento chega uma vez como v1 e outra como v2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pagamento.aprovado" },
+    "version": { "const": 2 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform_site_id",
+        "payment_id",
+        "order_id",
+        "amount_cents",
+        "method",
+        "provider",
+        "provider_reference_id",
+        "customer"
+      ],
+      "properties": {
+        "platform_site_id": {
+          "type": "string",
+          "description": "O site (tenant) DESTA plataforma, e o motivo de o nome ser longo: o envelope do webhook da Appmax carrega um `site_id` que é da Appmax, e chamar os dois pelo mesmo nome curto convidaria a rotear um aluno pelo identificador do fornecedor. É o `site_id` do v1, renomeado, com o mesmo conteúdo. Atribuição opaca: pagamentos apenas ecoa o valor recebido na intent e nunca o interpreta."
+        },
+        "payment_id": {
+          "type": "string",
+          "description": "Id do pagamento dentro da célula pagamentos. Local, e não serve para deduplicar entre versões: para isso existe o par `provider` mais `provider_reference_id`."
+        },
+        "order_id": { "type": "string" },
+        "amount_cents": { "type": "integer", "minimum": 1 },
+        "method": { "enum": ["pix", "card"] },
+        "provider": {
+          "type": "string",
+          "enum": ["mercadopago", "appmax"],
+          "description": "Quem processou a cobrança. Enum FECHADO de propósito: um provedor novo entra pelo Rito de Contrato, nunca por uma string que aparece em produção. Junto com `provider_reference_id` forma a identidade lógica do fato."
+        },
+        "provider_reference_id": {
+          "type": "string",
+          "description": "O identificador da cobrança NO PROVEDOR, opaco para a plataforma. Num evento v1 o mesmo valor chegava em `mp_payment_id` com `provider` implícito igual a `mercadopago`: é essa equivalência que permite deduplicar o mesmo pagamento chegando nas duas versões."
+        },
+        "product_id": {
+          "type": "string",
+          "description": "O produto que a pessoa comprou, e é o que a matrícula guarda para dizer de qual curso ela é aluna (DECISAO-cursos-matriculas-e-alunos.md, [INV-ALU-C1]). OPCIONAL e AUSENTE quando o checkout não informou, nunca string vazia: ausência é 'não sei', e string vazia seria 'sei que é nada', que não existe. Atribuição, como o `platform_site_id`: pagamentos ecoa o que veio no metadata da intent e nunca interpreta."
+        },
+        "customer": {
+          "type": "object",
+          "required": ["email", "name"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
