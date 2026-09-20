@@ -68,9 +68,12 @@ permissions:
 # MESMO grupo dos dois deploys: um rollback disparado no meio de um deploy
 # seria intercalado no mesmo `docker compose`. O grupo os enfileira sem
 # cancelar — cancelar um deploy pela metade é pior que esperar por ele.
+# Com `queue: max` (TAR-529, 20/09/2026) ele passa a só esperar a vez: antes
+# esperava e ainda podia ser expulso da vaga única de pendente.
 concurrency:
   group: deploy
   cancel-in-progress: false
+  queue: max
 jobs:
   validar:
     name: validar-alvo
