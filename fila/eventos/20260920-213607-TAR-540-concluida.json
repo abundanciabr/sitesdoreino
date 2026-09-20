@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-213607-TAR-540-concluida",
+  "tarefa": "TAR-540",
+  "evento": "concluida",
+  "quando": "2026-09-20T21:36:07+00:00",
+  "quem": "agent/ci/sub-agente-que-escreve-volta",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1810",
+  "verificado_em": "2026-09-20"
+}
