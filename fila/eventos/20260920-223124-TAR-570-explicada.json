@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-223124-TAR-570-explicada",
+  "tarefa": "TAR-570",
+  "evento": "explicada",
+  "quando": "2026-09-20T22:31:24+00:00",
+  "quem": "medido em 20/09/2026 contra origin/main depois do merge do PR 1822",
+  "o_que_e": "A fila diz que uma tarefa esta feita quando ela nem comecou",
+  "o_que_muda": "Os tres restos do corte do admin voltam a aparecer como trabalho a fazer, em vez de sumirem do quadro",
+  "exemplo": "e como riscar um item da lista de compras antes de entrar no mercado",
+  "importancia": 50
+}
