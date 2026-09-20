@@ -1,0 +1,19 @@
+{
+  "arquivo": "541-anotar-no-livro-que-o-robo-construtor-pousou-e-o-defeito-que",
+  "id": "TAR-541",
+  "titulo": "Anotar no livro que o robô construtor pousou, e o defeito que apareceu no caminho",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/divida_do_livro.py sem dívida, e os dois registros abaixo de 1 KB",
+  "despacho": "# DESPACHO: painel, registrar o pouso e a pendência do rito\n\nCÉLULA: painel\nALVOS: painel/registros/\n\nDois registros no livro, nada de código.\n\n1. O pouso do PR 1810 (o robô construtor voltou), que responde ao registro\n   20260920-032, cuja evidência dizia \"integração não verificada\" porque foi\n   escrita antes do merge. Merge confirmado por\n   `gh pr view 1810 --json state,mergedBy,mergeCommit`: MERGED em ce16b5da.\n2. A pendência do `ci/pr.py`, que adotou a tarefa errada por causa de uma TAR\n   citada como história no corpo do PR, e gravou o engano na telemetria. Precisa\n   do mantenedor porque o conserto é em caminho com CODEOWNERS dele.\n\n## Evidência exigida\n\n`python ci/divida_do_livro.py` sem dívida e os dois registros abaixo de 1 KB.",
+  "origem": "fecho da entrega do PR 1810 na sessão do Claude Code de 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
