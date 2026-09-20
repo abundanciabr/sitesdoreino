@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-050-alunos-uma-matricula-so-nas-duas-versoes",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "alunos: uma matricula so nas duas versoes",
+  detalhe: "Dedup passa a ser pelo fato, com a chave do contrato: v1, v2, ordem invertida, reentrega e concorrencia dao uma matricula.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1827. Validação local: árvore af10e2ea3e1de74648990ea0e377cfbcdeaa0731; commit 47e2af7ab4e8e10ace2b5e7c5cda51ebfac54599; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-547",
+  gravidade: "info",
+  frente: "vender",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
