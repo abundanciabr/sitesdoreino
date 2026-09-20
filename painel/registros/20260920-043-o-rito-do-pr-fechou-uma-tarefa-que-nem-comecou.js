@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-043-o-rito-do-pr-fechou-uma-tarefa-que-nem-comecou",
+  tipo: "incidente",
+  quando: "2026-09-20",
+  titulo: "O rito do PR fechou sozinho uma tarefa que nem comecou",
+  detalhe: "A TAR-569 nasceu no PR 1822 para ser feita DEPOIS. Ela lista tres restos do corte do /admin, entre eles um roteiro que voce roda (infra/por-a-chave-do-github.sh) e que passou a dar alarme falso.\n\nO ci/pr.py recebeu --tarefa TAR-569 so para embarcar os eventos da fila no PR, e escreveu tambem submetida e concluida, do jeito que ele sempre faz (ci/pr.py:558-560 chama submeter e fechar-pela-entrega sem perguntar se a tarefa foi entregue). A fila passou a dizer que estava tudo feito, com o trabalho inteiro por fazer.\n\nPor que isso e perigoso: o estado da fila e calculado dos eventos, e ci/fila.py:815 para no PRIMEIRO evento terminal da cadeia. Um evento devolvida escrito depois nao desfaz nada. Se ninguem tivesse olhado, os tres restos sumiam do quadro e ninguem saberia.\n\nConserto: os dois eventos errados sairam neste PR, o explicada ficou, e a TAR-569 voltou a 'na fila'. Medido: ci/fila.py listar mostra TAR-569 [na fila], e ci/fila.py validar responde valida com 502 tarefas e 1437 eventos.\n\nLicao para a proxima sessao: PR que CRIA tarefa para depois nao pode passar --tarefa com o numero dela. E o mesmo defeito que aconteceu com a TAR-495 em 20/09 de manha.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1823",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
