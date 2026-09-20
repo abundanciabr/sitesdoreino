@@ -323,7 +323,7 @@ def test_a_matricula_que_o_pagamento_cria_hoje_tambem_e_alcancada():
     """
     ao_pagamento_aprovado(
         {
-            "site_id": "site-1",
+            "platform_site_id": "site-1",
             "order_id": "pedido-que-veio-do-evento",
             "customer": {"email": "comprou@example.com", "name": "Comprou"},
         }

@@ -7,7 +7,14 @@ logger = logging.getLogger(__name__)
 
 
 def ao_pagamento_aprovado(data: dict) -> None:
-    """[INV-P5] data é o campo `data` de pagamento.aprovado.v1 (contracts/eventos/).
+    """[INV-P5] data é o campo `data` de pagamento.aprovado, NA FORMA DO V2.
+
+    Esta função não conhece versão de contrato, e é assim de propósito. Desde
+    20/09/2026 o aviso chega em duas versões, e quem traduz é a borda que sabe o
+    número da versão (`dados_na_forma_do_v2`, em `consume_eventos.py`). Por isso
+    o tenant se lê em `platform_site_id`, o nome do v2: um evento v1 chega aqui
+    já traduzido, e adivinhar a versão pela presença de um campo seria ignorar o
+    que o envelope diz por escrito.
 
     **O produto vem no evento desde 06/09/2026** (Rito de Contrato do PR #1209),
     e é ele que faz a matrícula da compra dizer de qual curso a pessoa é aluna
@@ -38,7 +45,7 @@ def ao_pagamento_aprovado(data: dict) -> None:
         )
 
     matricular(
-        site_id=data["site_id"],
+        site_id=data["platform_site_id"],
         order_id=data["order_id"],
         product_id=produto,
         email=data["customer"]["email"],
