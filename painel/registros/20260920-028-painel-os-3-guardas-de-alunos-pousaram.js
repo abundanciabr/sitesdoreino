@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-028-painel-os-3-guardas-de-alunos-pousaram",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "painel: os 3 guardas de alunos pousaram",
+  detalhe: "O PR 1809 dos 3 guardas de alunos integrou na main em 46dbfe75 as 20:45:59Z, e o deploy da celula passou.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1811. Validação local: árvore df822f43fbbf509f0729c337f10d578c595ef5ed; commit 82453991acad9eb79d2580f24ebdc828b6d9da4d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-539",
+  gravidade: "verde",
+  frente: "curso",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
