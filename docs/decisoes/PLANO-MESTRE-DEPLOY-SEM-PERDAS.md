@@ -5,6 +5,7 @@ publico-para-ia: true
 Versão: 1.0
 Data: 20/09/2026
 Autoridade: pedido direto do mantenedor nesta conversa
+Tarefa deste documento: TAR-528
 Estado deste documento: plano fechado; implementação não iniciada
 Responsabilidade de execução: célula `ci`, com fatias de `infra`
 
