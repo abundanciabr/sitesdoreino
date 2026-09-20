@@ -34,9 +34,6 @@ def documento(nome: str) -> dict:
     return yaml.safe_load((AQUI / f"{nome}.openapi.yaml").read_text(encoding="utf-8"))
 
 
-def confirmacao_de_cartao(nome: str) -> dict:
-    return documento(nome)["components"]["schemas"]["ConfirmacaoDeCartao"]
-
 
 VALIDAS = {
     "pagamento.aprovado.v2": cartas.APROVADO_V2_VALIDA,
@@ -248,92 +245,18 @@ def test_o_valor_estornado_e_inteiro_em_centavos() -> None:
 
 
 # ---------------------------------------------------------------------------
-# A confirmação de cartão: a pública e a interna
+# A porta do cartão do Mercado Pago, que continua vendendo
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
-def test_a_confirmacao_de_cartao_aceita_a_carta_do_navegador(celula: str) -> None:
-    Draft202012Validator(confirmacao_de_cartao(celula)).validate(cartas.CARTAO_VALIDA)
-
-
-@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
-def test_a_confirmacao_de_cartao_recusa_dinheiro_vindo_do_navegador(celula: str) -> None:
-    """INV-P2 na fronteira: o navegador manda intenção, nunca valor.
-
-    `additionalProperties: false` é o que transforma a lei em recusa: total e
-    produto vêm do snapshot congelado no servidor, e uma página que os enviasse
-    seria a porta para escolher o próprio preço.
-    """
-    erros = list(
-        Draft202012Validator(confirmacao_de_cartao(celula)).iter_errors(
-            cartas.CARTAO_INVALIDA
-        )
-    )
-    assert erros, f"{celula} aceitou valor e produto vindos do navegador"
-
-
-@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
-def test_o_ip_do_comprador_e_obrigatorio_na_confirmacao(celula: str) -> None:
-    """Sem `ip` a criação do cliente na Appmax falha, e a venda não acontece.
-
-    A Appmax exige o IP do comprador e ele só é obtido pelo Appmax JS rodando no
-    navegador: não existe alternativa por API. Por isso ele é campo do contrato,
-    e obrigatório, em vez de algo que o servidor deduz.
-    """
-    schema = confirmacao_de_cartao(celula)
-    assert "ip" in schema["required"]
-    sem_ip = {k: v for k, v in cartas.CARTAO_VALIDA.items() if k != "ip"}
-    erros = list(Draft202012Validator(schema).iter_errors(sem_ip))
-    assert erros, f"{celula} aceitou uma confirmação de cartão sem o IP"
-
-
-@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
-def test_o_token_do_cartao_nao_pode_chegar_vazio(celula: str) -> None:
-    """Campo presente e vazio é o buraco que `required` sozinho não fecha."""
-    erros = list(
-        Draft202012Validator(confirmacao_de_cartao(celula)).iter_errors(
-            cartas.CARTAO_SEM_TOKEN
-        )
-    )
-    assert erros, f"{celula} aceitou uma confirmação com o token vazio"
-
-
-@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
-def test_as_parcelas_vao_de_uma_a_doze(celula: str) -> None:
-    parcelas = confirmacao_de_cartao(celula)["properties"]["installments"]
-    assert parcelas["type"] == "integer"
-    assert parcelas["minimum"] == 1
-    assert parcelas["maximum"] == 12
-
-
-def test_a_operacao_interna_espelha_a_publica() -> None:
-    """A mesma carta atravessa as duas portas, campo por campo.
-
-    O navegador entrega ao checkout e o checkout repassa à pagamentos. Duas
-    formas diferentes para a mesma carta obrigariam o checkout a traduzir, e
-    tradução entre fronteiras é onde o `ip` se perde.
-    """
-    assert confirmacao_de_cartao("checkout") == confirmacao_de_cartao("pagamentos")
-
-
-def test_a_confirmacao_publica_de_cartao_existe_no_checkout() -> None:
-    operacao = documento("checkout")["paths"]["/pedidos/{order_id}/cartao"]["post"]
-    corpo = operacao["requestBody"]["content"]["application/json"]["schema"]
-    assert corpo == {"$ref": "#/components/schemas/ConfirmacaoDeCartao"}
-    assert operacao["security"] == []
-
-
-def test_a_confirmacao_interna_de_cartao_existe_na_pagamentos() -> None:
-    operacao = documento("pagamentos")["paths"]["/intents/{intent_id}/cartao"]["post"]
-    corpo = operacao["requestBody"]["content"]["application/json"]["schema"]
-    assert corpo == {"$ref": "#/components/schemas/ConfirmacaoDeCartao"}
-
-
 def test_a_porta_do_cartao_do_mercado_pago_continua_de_pe() -> None:
-    """A rota antiga não sai: ela é o cartão pelo Mercado Pago, que ainda vende.
+    """Esta porta não sai: é o cartão pelo Mercado Pago, e ele ainda vende.
 
-    A porta neutra nasce ao lado, como o evento v2 nasce ao lado do v1.
+    A porta neutra saiu do contrato em 20/09/2026 porque foi congelada antes
+    de existir código que a atendesse, e o freeze reprovava as duas células
+    por isso. Ela volta a ser escrita no Rito de Contrato do lote que a
+    construir, provedor primeiro. Esta aqui nunca esteve em jogo, e o guarda
+    existe para que a remoção daquela jamais leve esta junto.
     """
     doc = documento("pagamentos")
     assert "/intents/{intent_id}/card" in doc["paths"]

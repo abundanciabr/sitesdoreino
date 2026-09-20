@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-230706-TAR-571-submetida",
+  "tarefa": "TAR-571",
+  "evento": "submetida",
+  "quando": "2026-09-20T23:07:06+00:00",
+  "quem": "agent/contracts/remover-operacoes-de-cartao-do-contrato",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1824",
+  "revisao": "bf78a6487407880cae3ea09b4876a5ee231b626d",
+  "arvore": "e42ea3a5419f5d14c67afeec0db56b1839c10468"
+}
