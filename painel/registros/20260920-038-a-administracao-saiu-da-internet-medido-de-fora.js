@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-038-a-administracao-saiu-da-internet-medido-de-fora",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "A administração saiu da internet, e eu medi de fora",
+  detalhe: "O PR 1814 integrou na main em 21:57:49Z (commit eaed4491), e o deploy-infra 35540216193 terminou success no mesmo SHA em 2min50s. O Traefik na VPS já está sem o router do admin.\n\nMedido de fora às 22:01Z, sem login e sem credencial nenhuma:\n\nSAIU (era 302 para o login, agora 404): /admin/, /admin/painel/, /admin/caixa/, /admin/escola/, /admin/livro/, /admin/documentos/, /admin/interno/, /admin/healthz.\n\nFICOU: / 200, /login 200, /forum/ 200, /forms/sugestoes/ 302 (login, como sempre), /docs/ 200, /mapa-ia/ 200, /mapa-ia/planos/ 200, /cursos/ 200, /cursos/healthz 200, /pages/ 200, /conquistas/ 200, /quiz/crivo/ 200.\n\nO contêiner admin continua de pé: /docs e /mapa-ia batem nele pelos routers próprios, e a célula pages continua consultando administradores por http://admin:8000/interno, pela rede interna do Docker, que nunca passou pela borda.\n\nO registro 036, escrito antes do pouso, dizia publicação não verificada. Este é o que verifica.\n\nPara abrir a administração agora: python ci/ligar_administracao.py, no seu PC, com o banco de produção por túnel SSH (PR 1663).",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1814 mergeado em eaed449198c1ccc36fd25ed303fae00e9929deb6; deploy-infra run 35540216193 success; curl de fora em 2026-09-20T22:01Z",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
