@@ -55,7 +55,11 @@ ter acabado; se a bola é dele ou sua; o que destrava e quanto leva. Vale igual
 quando NADA depende dele, e nesse caso diga o que está sendo esperado: ele
 precisa entender o que aconteceu com a tarefa que pediu, não receber trabalho.
 Terminar no veredito deixa a tarefa parada, e foi a falha que ele mandou
-consertar em 20/09/2026. Mudança anuncia CODEOWNERS
+consertar em 20/09/2026.
+
+PRONTO sobre a última medição vermelha é recusado pelo mesmo gancho: se a
+suíte ou o portão reprovou, conserte e meça de novo, ou diga NÃO PRONTO e
+explique. Prometer o conserto não é consertar. Mudança anuncia CODEOWNERS
 nominalmente; prova identifica comando e saída. Só declare integração ou
 publicação quando conferidas. Pendências explicam bloqueio, ação e dono;
 se não houver, diga isso. Cortes somente se houver, auditoria item a item

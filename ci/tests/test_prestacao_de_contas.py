@@ -685,6 +685,128 @@ def test_o_veredito_nao_engole_o_corpo_das_instrucoes(tmp_path):
     ]))
 
 
+# --------------------------------- PRONTO sobre medição vermelha ----
+#
+# A intenção do PR #1713, fechado em 20/09/2026, reconstruída contra a main de
+# hoje. Lá o robô via o check `muralhas` vermelho, escrevia "vou abrir o log
+# dessa falha e corrigir a causa" e encerrava o turno; o trabalho ficava pela
+# metade apesar do relatório bonito.
+#
+# Aquele PR caçava a FRASE, com uma pilha de regex de verbos e exceções
+# ajustadas aos próprios testes, e recusava em laço (ele testava que a segunda
+# passada não perdoava, o que prende a sessão). Aqui a régua é outra: mede-se o
+# VERMELHO, não a redação. Declarar PRONTO sobre a última medição vermelha é
+# contradição, do mesmo jeito que PRONTO com caixinha aberta já era.
+#
+# O que isto compra que a caça à frase não comprava: não dá para driblar
+# reescrevendo, e não briga com o bloco **Instruções**, cujas ações legítimas
+# usam exatamente os verbos que aquele portão proibia.
+
+
+def _medicao(comando: str, saida: str, identificador: str = "m1") -> list[dict]:
+    """O par que o transcript guarda: o comando de medição e o que ele imprimiu."""
+    return [
+        {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": identificador, "name": "Bash",
+             "input": {"command": comando}}]}},
+        {"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": identificador, "content": saida}]}},
+    ]
+
+
+VERMELHO = "1 failed, 82 passed in 7.59s"
+VERDE = "83 passed in 9.23s"
+
+
+def test_pronto_sobre_medicao_vermelha_e_recusado(tmp_path):
+    """O caso do #1713, medido em vez de adivinhado: a suíte reprovou e o robô
+    declarou PRONTO assim mesmo. Nasceu VERMELHO contra o portão anterior."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_COMPLETAS),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
+    assert "vermelh" in proc.stderr.lower(), proc.stderr
+
+
+def test_medicao_verde_depois_da_vermelha_libera(tmp_path):
+    """O par verde, e o laço normal de trabalho: reprovou, consertei, rodei de
+    novo. O portão olha a ÚLTIMA medição, não a pior."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO, "m1"),
+        *_medicao("python -m pytest ci/tests -q", VERDE, "m2"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_nao_pronto_sobre_vermelho_e_honestidade_e_passa(tmp_path):
+    """Este portão nunca obriga a mentir: a saída sempre disponível é dizer a
+    verdade. NÃO PRONTO sobre vermelho é exatamente o relatório certo, e o
+    bloco **Instruções** já obriga a explicar o que houve."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_NAO_PRONTO),
+    ]))
+
+
+def test_o_portao_do_vermelho_nao_recusa_em_laco(tmp_path):
+    """O defeito que fez este portão ser reescrito em vez de reaproveitado. O
+    #1713 recusava toda vez, e uma sessão que não achasse a redação boa ficava
+    presa. Recusa uma vez, depois avisa sem prender, como todos os outros."""
+    entradas = [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_COMPLETAS),
+    ]
+    primeira = _decidir(tmp_path, entradas)
+    assert primeira.returncode == 2, primeira.stderr
+    segunda = _decidir(tmp_path, entradas, stop_hook_active=True)
+    assert segunda.returncode == 1, (segunda.returncode, segunda.stderr)
+    assert segunda.stderr.strip(), "recusa virou silêncio: o fato some da tela"
+
+
+def test_medicao_sem_veredito_reconhecivel_nao_inventa_vermelho(tmp_path):
+    """Fail-open no que não dá para medir. Um comando cuja saída foi cortada
+    por um `grep` não diz se passou; supor vermelho aí seria o portão inventar
+    fato, que é o pecado que ele existe para punir."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", "ci/tests/test_webhook.py"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_comando_que_nao_e_medicao_nao_conta(tmp_path):
+    """`git status` imprimindo a palavra failed não é uma suíte reprovando.
+    Só os comandos que a casa reconhece como medição entram na conta."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("git log --oneline -3", "abc1234 conserta o deploy que failed"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_portao_de_celula_vermelho_tambem_conta(tmp_path):
+    """A medição da casa não é só pytest: `ci/ci.py` imprime RESULTADO FAIL, e
+    declarar PRONTO por cima disso é a mesma contradição."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python ci/ci.py --apenas muralhas", "RESULTADO  FAIL"),
+        _fala(CONTAS_COMPLETAS),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
+
+
 # ------------------------------------- nunca prender, nunca ficar mudo ----
 
 
