@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-010-docs-a-ordem-dos-degraus-da-fila-de-deploy",
+  tipo: "decisao",
+  quando: "2026-09-20",
+  titulo: "docs: a ordem dos degraus da fila de deploy",
+  detalhe: "Ordem de execução dos três primeiros degraus do programa deploy sem perdas, com prova, medição, reversão e auditoria por degrau.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1799. Validação local: árvore 2e6fae75c21f043f5dec4468d7d4e930db26f476; commit 9e3f3e036813884f9cb911b532eb59bedcd98b93; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-527",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

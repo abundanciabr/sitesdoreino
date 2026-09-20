@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-202046-TAR-512-explicada",
+  "tarefa": "TAR-512",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:20:46+00:00",
+  "quem": "decisao do mantenedor em 19/09/2026: pagina real e telemetria do funil antes de experimentacao",
+  "o_que_e": "Hoje o site nao tem como saber que a pessoa que abriu a pagina de venda ontem e a mesma que voltou hoje. Cada visita e um estranho.",
+  "o_que_muda": "A vitrine passa a guardar no navegador um numero sorteado, sem nada dentro, so para reconhecer quem volta. Sem isso e impossivel contar quantas pessoas de verdade viram a oferta, e impossivel dizer de onde veio uma venda.",
+  "exemplo": "E a diferenca entre uma loja que conta portas abertas e uma que reconhece o freguês que passou tres vezes antes de comprar.",
+  "importancia": 80
+}

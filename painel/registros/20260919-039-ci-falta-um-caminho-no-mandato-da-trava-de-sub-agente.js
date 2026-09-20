@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-039-ci-falta-um-caminho-no-mandato-da-trava-de-sub-agente",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "A trava que impede o Claude Code de criar robô que escreve precisa de um arquivo a mais",
+  detalhe: "A trava foi construída e provada, mas um teste antigo exige que o arquivo de ganchos do Claude Code tenha um gancho só, o da espera. Ligar a trava acrescenta um segundo gancho, e esse teste reprova.\n\nO arquivo do teste (ci/tests/test_codex_nativo.py) não está na lista de caminhos que o mandato autorizou, e mandato escrito não se estica. A correção é uma linha: a lista esperada passa de um gancho para dois.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1764",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: null,
+  vence_em_dias: 7,
+  porque_so_voce: "Só o mantenedor amplia um mandato que ele mesmo escreveu, e este cita doze caminhos por nome.",
+  proximo_passo: "Autorizar por escrito o caminho ci/tests/test_codex_nativo.py dentro da TAR-376.",
+  se_eu_nao_decidir: "A trava fica desligada e o Claude Code continua podendo criar robô que escreve.",
+  recomendacao: "Autorizar, porque sem o segundo gancho a trava é um arquivo que ninguém chama.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

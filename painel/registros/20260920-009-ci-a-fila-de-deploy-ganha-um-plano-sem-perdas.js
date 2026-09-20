@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-009-ci-a-fila-de-deploy-ganha-um-plano-sem-perdas",
+  tipo: "decisao",
+  quando: "2026-09-20",
+  titulo: "ci: a fila de deploy ganha um plano sem perdas",
+  detalhe: "Plano auditável para eliminar perda e regressão no deploy. Esta entrega documenta a execução e não altera produção.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1798. Validação local: árvore 38759efaeb96a294a1426a08dfff5557cca66391; commit 7c384776e94ac27ccc787711c860eeea12adb3cd; 5 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-528",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

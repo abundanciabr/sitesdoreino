@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-115737-TAR-527-explicada",
+  "tarefa": "TAR-527",
+  "evento": "explicada",
+  "quando": "2026-09-20T11:57:37+00:00",
+  "quem": "Pedido direto do mantenedor nesta conversa em 20/09/2026, depois das recomendacoes sobre as armadilhas 173, 183 e 188.",
+  "o_que_e": "Hoje dois deploys que chegam perto disputam uma unica vaga de espera e o que perde e cancelado em silencio: o codigo fica na main sem chegar ao site, e uma vacina corre atras do prejuizo.",
+  "o_que_muda": "Entrega o roteiro que faz cada deploy esperar a vez em fila, publicar tudo que a main deve ao site e provar isso com medicao antes de cada degrau seguinte.",
+  "exemplo": "E como trocar um balcao com uma so cadeira de espera, onde o segundo cliente expulsa o primeiro, por uma fila com senha: todo mundo e atendido na ordem e ninguem vai embora sem ser visto.",
+  "importancia": 80
+}

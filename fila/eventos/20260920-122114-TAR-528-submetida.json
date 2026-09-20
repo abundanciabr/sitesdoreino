@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-122114-TAR-528-submetida",
+  "tarefa": "TAR-528",
+  "evento": "submetida",
+  "quando": "2026-09-20T12:21:14+00:00",
+  "quem": "agent/ci/plano-mestre-deploy-sem-perdas",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1798",
+  "revisao": "7c384776e94ac27ccc787711c860eeea12adb3cd",
+  "arvore": "38759efaeb96a294a1426a08dfff5557cca66391"
+}

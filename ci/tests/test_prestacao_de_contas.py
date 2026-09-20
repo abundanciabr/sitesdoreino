@@ -41,6 +41,31 @@ Onde estou: passo 2 de 2, acabou.
 **Pendências** — nada depende de ninguém, ~8 min até o ar.
 
 **Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.
+
+**Instruções** — nada a fazer: o fix está no ar e o Pix continua vendendo.
+"""
+
+# O par de NÃO PRONTO. É o caso do pedido dele de 20/09/2026: quando a tarefa
+# não acabou, o fecho tem de dizer o que acontece agora, em ação, e não parar
+# no veredito deixando o mantenedor adivinhar a continuação.
+CONTAS_NAO_PRONTO = """Parei aqui.
+
+- [x] achar o evento repetido no webhook
+- [ ] ignorá-lo, com teste vermelho→verde
+Onde estou: passo 1 de 2.
+
+**O que mudou** — nada ainda; só a leitura do webhook do Pix.
+
+**O que foi verificado** — `pytest services/pagamentos` → 41 passed (baseline).
+
+**Pendências** — falta a chave de teste do provedor, e ela é sua.
+
+**Veredito:** NÃO PRONTO — sem a chave o teste de ponta a ponta não roda.
+
+**Instruções** — o que acontece agora:
+1. O provedor só emite chave de teste para o dono da conta, então esta parte é sua.
+2. Você entra no painel do provedor, gera a chave de teste e cola aqui na conversa.
+3. Com ela eu rodo o teste de ponta a ponta e abro o PR na mesma sessão, em ~20 min.
 """
 
 
@@ -88,13 +113,26 @@ def _rodar(argumentos: list[str], carga: dict) -> subprocess.CompletedProcess:
     )
 
 
+def _com_instrucoes(base: str, corpo: str) -> str:
+    """O mesmo relatório com outro bloco final de Instruções.
+
+    Corta no índice do título em vez de casar o texto do exemplo: assim melhorar
+    o exemplo canônico não quebra dez testes que só queriam trocar o fim.
+    """
+    return base[: base.index("**Instruções**")] + corpo + "\n"
+
+
+def _sem_instrucoes(base: str) -> str:
+    return base[: base.index("**Instruções**")]
+
+
 def _recusa_que_ensina(proc: subprocess.CompletedProcess) -> None:
     assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
     # A recusa tem de ENTREGAR o molde: recusa que não ensina só trava o robô
     # de outro jeito. E o emoji/acento provam que a fala não morreu no cp1252.
     assert "🧾 PRESTAÇÃO DE CONTAS" in proc.stderr
     for titulo, _ in (("**O que mudou**", 0), ("**O que foi verificado**", 0),
-                      ("**Pendências**", 0)):
+                      ("**Pendências**", 0), ("**Instruções**", 0)):
         assert titulo in proc.stderr, f"o molde não trouxe {titulo}"
     assert "PRONTO" in proc.stderr
     # E o roteiro que ele pediu em 05/09/2026: a recusa tem de ensinar a caixinha.
@@ -113,7 +151,11 @@ def test_mesma_divida_nao_bloqueia_repetidamente_sem_flag(tmp_path):
     carga = {"transcript_path": str(transcript), "stop_hook_active": False}
     resultados = [_rodar(["--contas"], carga) for _ in range(3)]
     assert [r.returncode for r in resultados] == [2, 1, 1]
-    assert len(resultados[0].stderr.splitlines()) <= 10
+    # Uma linha por bloco do relatório, e nada além. Subiu de 10 para 11 em
+    # 20/09/2026 porque o relatório ganhou o quinto bloco (**Instruções**), não
+    # porque a recusa passou a ter licença para crescer: recusa longa é ruído, e
+    # o ensino profundo mora no `--molde-com-fatos`, que ele pede quando quer.
+    assert len(resultados[0].stderr.splitlines()) <= 11
 
 
 def test_incremental_preserva_divida_e_processa_relatorio_novo(tmp_path):
@@ -340,7 +382,7 @@ def test_subagente_de_leitura_nao_conta_mas_despacho_conta(tmp_path):
 
 def test_relatorio_sem_um_dos_blocos_e_recusado(tmp_path):
     for titulo in ("**O que mudou**", "**O que foi verificado**",
-                   "**Pendências**"):
+                   "**Pendências**", "**Instruções**"):
         mutilado = CONTAS_COMPLETAS.replace(titulo, "**Alguma coisa**")
         _recusa_que_ensina(_decidir(tmp_path, [
             _humano("conserte"),
@@ -422,13 +464,10 @@ def test_caixinha_solta_na_prosa_nao_e_checklist(tmp_path):
 def test_checklist_com_caixa_aberta_e_aceito(tmp_path):
     """NÃO PRONTO honesto deixa `- [ ]` na tela. Um portão que só aceitasse
     `[x]` ensinaria a marcar o que não foi feito — o contrário do roteiro."""
-    honesto = CONTAS_COMPLETAS.replace(
+    honesto = CONTAS_NAO_PRONTO.replace(
         "- [x] achar o evento repetido no webhook",
         "- [ ] achar o evento repetido no webhook (o log de produção não chega aqui)",
-    ).replace(
-        "- [x] ignorá-lo, com teste vermelho→verde",
-        "- [ ] ignorá-lo, com teste vermelho→verde (o teste de ponta a ponta não roda aqui)",
-    ).replace("**Veredito:** PRONTO", "**Veredito:** NÃO PRONTO")
+    )
     assert "- [x]" not in honesto  # senão o teste não prova que `- [ ]` basta
     _silencio(_decidir(tmp_path, [
         _humano("conserte"),
@@ -466,16 +505,306 @@ def test_caixinha_quebrada_em_duas_linhas_nao_e_checklist(tmp_path):
 
 def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
     """NÃO PRONTO é honestidade, não falha. Um portão que só aceitasse PRONTO
-    ensinaria o robô a mentir — que é a doença que ele existe para curar."""
-    honesto = CONTAS_COMPLETAS.replace(
-        "**Veredito:** PRONTO — o guarda nasceu vermelho e ficou verde com o fix.",
-        "**Veredito:** NÃO PRONTO — o teste de ponta a ponta não roda nesta máquina.",
+    ensinaria o robô a mentir — que é a doença que ele existe para curar. O que
+    ele passou a exigir em 20/09/2026 não é o veredito bonito: é a continuação
+    escrita junto com o feio."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(CONTAS_NAO_PRONTO),
+    ]))
+
+
+# ------------------------------------------ o fecho diz o que vem depois ----
+#
+# Pedido dele em 20/09/2026, literal: "todo robô coloque após o VEREDITO, caso
+# a tarefa ainda esteja como NÃO PRONTO, uma parte de INSTRUÇÕES com as
+# próximas ações para o mantenedor", e "quero que isso seja obrigatório".
+#
+# Obrigatório aqui quer dizer ESTE portão, não mais uma frase na lei: a mesma
+# regra já tinha sido escrita três vezes em texto (PRs #1502, #1504 e #1713) e
+# as três apodreceram abertas sem nunca mudar um fecho. Texto que ninguém faz
+# valer não é regra, é intenção.
+
+
+def test_nao_pronto_sem_instrucoes_e_recusado(tmp_path):
+    """O caso exato do print que ele mandou: o veredito é a última palavra e a
+    tela acaba ali. Ele fica sem saber o que acontece agora, e a tarefa para de
+    andar — foi assim que ele descreveu o motivo de cancelar o projeto duas
+    vezes. Este teste nasceu VERMELHO contra o portão anterior."""
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(_sem_instrucoes(CONTAS_NAO_PRONTO)),
+    ]))
+
+
+def test_pronto_sem_instrucoes_tambem_e_recusado(tmp_path):
+    """O print dele é um PRONTO, e mesmo assim ele teve de digitar sozinho qual
+    era o próximo passo. Exigir o bloco só no NÃO PRONTO reproduziria a foto que
+    ele mandou. Em PRONTO a resposta honesta pode ser "nada a fazer" — o que não
+    pode é o silêncio."""
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(_sem_instrucoes(CONTAS_COMPLETAS)),
+    ]))
+
+
+def test_pronto_aceita_instrucao_sem_lista(tmp_path):
+    """O par verde do teste acima. Tarefa acabada não tem próxima ação, e exigir
+    uma lista aqui ensinaria o robô a inventar trabalho para satisfazer o
+    portão — que é a outra forma de mentir."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_nao_pronto_com_instrucoes_em_prosa_vaga_e_recusado(tmp_path):
+    """NÃO PRONTO quer dizer que existe um próximo passo, por definição. Um
+    parágrafo de consolo no lugar dele é o silêncio de antes com mais palavras:
+    a régua aqui é pelo menos UMA ação em lista."""
+    vago = _com_instrucoes(CONTAS_NAO_PRONTO, (
+        "**Instruções** — seguimos assim que der, sem previsão por enquanto; "
+        "assim que houver novidade sobre a chave do provedor eu te aviso por aqui."
+    ))
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(vago),
+    ]))
+
+
+def test_nao_pronto_aceita_acao_com_hifen(tmp_path):
+    """O par: a régua é a AÇÃO estar listada, não o robô decorar `1.`."""
+    com_hifen = CONTAS_NAO_PRONTO.replace("\n1. ", "\n- ").replace(
+        "\n2. ", "\n- ").replace("\n3. ", "\n- ")
+    assert "\n- O provedor" in com_hifen  # senão o teste não prova nada
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(com_hifen),
+    ]))
+
+
+def test_instrucoes_em_branco_nao_valem(tmp_path):
+    """Título sem corpo é o jeito barato de calar o portão, e é a mesma régua
+    dos outros blocos: três letras depois de descontar o rótulo do molde."""
+    oco = _com_instrucoes(CONTAS_COMPLETAS, "**Instruções** —")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(oco),
+    ]))
+
+
+def test_caixinha_do_checklist_nao_conta_como_proxima_acao(tmp_path):
+    """A caixinha aberta do plano fica ACIMA, no roteiro, e diz o que falta na
+    tarefa — não o que o mantenedor faz agora. Se ela contasse como ação, todo
+    NÃO PRONTO passaria pelo portão sem uma instrução sequer."""
+    so_caixinha = _com_instrucoes(CONTAS_NAO_PRONTO, (
+        "**Instruções** — o que ainda falta para esta tarefa ficar de pé, "
+        "listado do jeito que o plano lá de cima já mostrava:\n"
+        "- [ ] a chave de teste do provedor de pagamento\n"
+        "- [ ] o teste de ponta a ponta do webhook do Pix"
+    ))
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(so_caixinha),
+    ]))
+
+
+def test_nao_pronto_que_nao_depende_dele_ainda_precisa_explicar(tmp_path):
+    """Palavra dele em 20/09/2026: "mesmo que NÃO dependa dele, mesmo que algo
+    está sendo esperado, ele precisa entender o que está acontecendo para saber
+    o que houve com a tarefa que ele pediu". "- aguardando" é uma ação listada e
+    não presta contas de nada. Este teste nasceu VERMELHO contra a primeira
+    versão deste portão, que só exigia a lista."""
+    seco = _com_instrucoes(CONTAS_NAO_PRONTO, "**Instruções**\n- aguardando")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(seco),
+    ]))
+
+
+def test_nao_pronto_curto_e_completo_passa(tmp_path):
+    """O par do teste acima, e o que impede o piso de virar exigência de
+    linguiça: uma frase que diz o que houve, de quem é a bola e quanto leva
+    está completa, e o portão não tem o que reprovar nela. Medido antes de
+    escolher o piso: respostas curtas e completas ficam entre 54 e 63."""
+    curto = _com_instrucoes(CONTAS_NAO_PRONTO, (
+        "**Instruções**\n- Você cola a chave do provedor aqui e eu sigo; "
+        "sem ela o teste não roda."
+    ))
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(curto),
+    ]))
+
+
+def test_nao_pronto_fora_do_alcance_dele_passa_quando_explica(tmp_path):
+    """O par verde, e o caso que mais importa: a bola NÃO é dele e mesmo assim
+    ele fica sabendo o que houve, o que se espera e quanto leva. É isto que o
+    portão compra — não a transferência de trabalho para ele."""
+    espera = _com_instrucoes(CONTAS_NAO_PRONTO, (
+        "**Instruções** — nada depende de você agora:\n"
+        "1. O GitHub está rodando os testes do PR #1800; costuma levar 8 minutos.\n"
+        "2. Passando, o PR entra sozinho e o site sobe em seguida; eu confirmo aqui.\n"
+        "3. Se algum teste falhar, eu conserto na mesma sessão e te aviso."
+    )).replace(
+        "**Pendências** — falta a chave de teste do provedor, e ela é sua.",
+        "**Pendências** — nada depende de você.",
+    ).replace(
+        "**Veredito:** NÃO PRONTO — sem a chave o teste de ponta a ponta não roda.",
+        "**Veredito:** NÃO PRONTO — o PR está aberto e os checks ainda rodam.",
     )
     _silencio(_decidir(tmp_path, [
         _humano("conserte"),
         _ferramenta("Edit", {"file_path": "a.py"}),
-        _fala(honesto),
+        _fala(espera),
     ]))
+
+
+def test_o_veredito_nao_engole_o_corpo_das_instrucoes(tmp_path):
+    """O bloco vem DEPOIS do veredito, como ele pediu. Sem ensinar a fronteira
+    ao portão, o corpo do veredito passaria a incluir as instruções e um
+    veredito vazio seguido de instruções seria aceito como veredito cheio."""
+    veredito_oco = CONTAS_NAO_PRONTO.replace(
+        "**Veredito:** NÃO PRONTO — sem a chave o teste de ponta a ponta não roda.",
+        "**Veredito:** NÃO PRONTO",
+    )
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(veredito_oco),
+    ]))
+
+
+# --------------------------------- PRONTO sobre medição vermelha ----
+#
+# A intenção do PR #1713, fechado em 20/09/2026, reconstruída contra a main de
+# hoje. Lá o robô via o check `muralhas` vermelho, escrevia "vou abrir o log
+# dessa falha e corrigir a causa" e encerrava o turno; o trabalho ficava pela
+# metade apesar do relatório bonito.
+#
+# Aquele PR caçava a FRASE, com uma pilha de regex de verbos e exceções
+# ajustadas aos próprios testes, e recusava em laço (ele testava que a segunda
+# passada não perdoava, o que prende a sessão). Aqui a régua é outra: mede-se o
+# VERMELHO, não a redação. Declarar PRONTO sobre a última medição vermelha é
+# contradição, do mesmo jeito que PRONTO com caixinha aberta já era.
+#
+# O que isto compra que a caça à frase não comprava: não dá para driblar
+# reescrevendo, e não briga com o bloco **Instruções**, cujas ações legítimas
+# usam exatamente os verbos que aquele portão proibia.
+
+
+def _medicao(comando: str, saida: str, identificador: str = "m1") -> list[dict]:
+    """O par que o transcript guarda: o comando de medição e o que ele imprimiu."""
+    return [
+        {"type": "assistant", "message": {"role": "assistant", "content": [
+            {"type": "tool_use", "id": identificador, "name": "Bash",
+             "input": {"command": comando}}]}},
+        {"type": "user", "message": {"role": "user", "content": [
+            {"type": "tool_result", "tool_use_id": identificador, "content": saida}]}},
+    ]
+
+
+VERMELHO = "1 failed, 82 passed in 7.59s"
+VERDE = "83 passed in 9.23s"
+
+
+def test_pronto_sobre_medicao_vermelha_e_recusado(tmp_path):
+    """O caso do #1713, medido em vez de adivinhado: a suíte reprovou e o robô
+    declarou PRONTO assim mesmo. Nasceu VERMELHO contra o portão anterior."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_COMPLETAS),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
+    assert "vermelh" in proc.stderr.lower(), proc.stderr
+
+
+def test_medicao_verde_depois_da_vermelha_libera(tmp_path):
+    """O par verde, e o laço normal de trabalho: reprovou, consertei, rodei de
+    novo. O portão olha a ÚLTIMA medição, não a pior."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO, "m1"),
+        *_medicao("python -m pytest ci/tests -q", VERDE, "m2"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_nao_pronto_sobre_vermelho_e_honestidade_e_passa(tmp_path):
+    """Este portão nunca obriga a mentir: a saída sempre disponível é dizer a
+    verdade. NÃO PRONTO sobre vermelho é exatamente o relatório certo, e o
+    bloco **Instruções** já obriga a explicar o que houve."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_NAO_PRONTO),
+    ]))
+
+
+def test_o_portao_do_vermelho_nao_recusa_em_laco(tmp_path):
+    """O defeito que fez este portão ser reescrito em vez de reaproveitado. O
+    #1713 recusava toda vez, e uma sessão que não achasse a redação boa ficava
+    presa. Recusa uma vez, depois avisa sem prender, como todos os outros."""
+    entradas = [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", VERMELHO),
+        _fala(CONTAS_COMPLETAS),
+    ]
+    primeira = _decidir(tmp_path, entradas)
+    assert primeira.returncode == 2, primeira.stderr
+    segunda = _decidir(tmp_path, entradas, stop_hook_active=True)
+    assert segunda.returncode == 1, (segunda.returncode, segunda.stderr)
+    assert segunda.stderr.strip(), "recusa virou silêncio: o fato some da tela"
+
+
+def test_medicao_sem_veredito_reconhecivel_nao_inventa_vermelho(tmp_path):
+    """Fail-open no que não dá para medir. Um comando cuja saída foi cortada
+    por um `grep` não diz se passou; supor vermelho aí seria o portão inventar
+    fato, que é o pecado que ele existe para punir."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python -m pytest ci/tests -q", "ci/tests/test_webhook.py"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_comando_que_nao_e_medicao_nao_conta(tmp_path):
+    """`git status` imprimindo a palavra failed não é uma suíte reprovando.
+    Só os comandos que a casa reconhece como medição entram na conta."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("git log --oneline -3", "abc1234 conserta o deploy que failed"),
+        _fala(CONTAS_COMPLETAS),
+    ]))
+
+
+def test_portao_de_celula_vermelho_tambem_conta(tmp_path):
+    """A medição da casa não é só pytest: `ci/ci.py` imprime RESULTADO FAIL, e
+    declarar PRONTO por cima disso é a mesma contradição."""
+    proc = _decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        *_medicao("python ci/ci.py --apenas muralhas", "RESULTADO  FAIL"),
+        _fala(CONTAS_COMPLETAS),
+    ])
+    assert proc.returncode == 2, (proc.returncode, proc.stderr)
 
 
 # ------------------------------------- nunca prender, nunca ficar mudo ----
@@ -942,15 +1271,15 @@ def test_molde_com_fatos_com_o_gh_quebrado_diz_nao_medido_e_nao_trava(tmp_path):
 
 
 def test_molde_com_fatos_deixa_o_julgamento_em_branco(tmp_path):
-    """Os quatro blocos de julgamento saem marcados VOCÊ ESCREVE e vazios:
-    máquina nenhuma sabe o que foi cortado, o que depende dele, nem o veredito.
+    """Os blocos de julgamento saem marcados VOCÊ ESCREVE e vazios: máquina
+    nenhuma sabe o que depende dele, o veredito, nem o que ele faz agora.
     Preencher isso por conta própria seria fabricar prestação de contas."""
     proc = _molde_com_fatos(tmp_path, _turno_de_trabalho(), cwd=tmp_path)
     assert proc.returncode == 0, proc.stderr
-    for titulo in ("**Pendências**", "**Veredito:**"):
+    for titulo in ("**Pendências**", "**Veredito:**", "**Instruções**"):
         assert titulo in proc.stdout, f"o molde não trouxe {titulo}"
     corpo = proc.stdout.split("**Pendências**", 1)[1]
-    assert corpo.count("VOCÊ ESCREVE") == 2, corpo
+    assert corpo.count("VOCÊ ESCREVE") == 3, corpo
 
 
 def test_molde_com_fatos_sem_identidade_recusa_escolher_transcript(tmp_path):

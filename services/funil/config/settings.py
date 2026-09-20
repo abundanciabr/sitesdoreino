@@ -23,6 +23,21 @@ FORCE_SCRIPT_NAME = (
 # CONV-SITE, ainda não instanciado neste esqueleto (sem regra de negócio).
 ALLOWED_HOSTS = ["*"]
 
+# O TLS termina no Traefik: para o uvicorn, a requisição chega em http. Sem
+# esta linha `request.is_secure()` responde False em produção e todo cookie
+# desta célula sai sem `Secure`, que foi o que a prévia da equipe fez no site
+# ao vivo até 19/09/2026.
+#
+# Confiar no cabeçalho é seguro porque só o container do Traefik publica porta
+# (`infra/docker-compose.yml`): `funil:8000` não existe fora da rede interna, e
+# o router da célula é `entryPoints: [websecure]`. Ninguém de fora alcança o
+# uvicorn para forjar o cabeçalho.
+#
+# `SECURE_SSL_REDIRECT` fica de fora de propósito: quem manda o http para o
+# https é o entryPoint `web` do Traefik, e ligar aqui também é arriscar laço.
+# Guarda: tests/test_secure_nos_cookies.py.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
@@ -36,6 +51,15 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
     "apps.core.middleware.SiteResolutionMiddleware",
+    # O número opaco que diz "este navegador já esteve aqui" (19/09/2026). Vem
+    # DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: host não cadastrado
+    # morre em 404 lá em cima e nunca gasta um número, e o `path_info` já chega
+    # aqui sem o prefixo de idioma, que é a forma em que a isenção de rota de
+    # máquina casa (`armadilhas/086`). ANTES do `BarraNoFinal`, para que o
+    # visitante que pediu `/cadastro/` já leve o número no 302 — as duas ordens
+    # têm guarda em `tests/test_identidade_do_visitante.py`. O porquê de cada
+    # atributo do cookie está em `apps/core/visitante.py`.
+    "apps.core.visitante.IdentidadeDoVisitante",
     # Espelho do APPEND_SLASH: `/cadastro/` deixa de ser 404 e leva a
     # `/cadastro`. DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: ele
     # precisa que o `path_info` já esteja sem o prefixo de idioma para resolver

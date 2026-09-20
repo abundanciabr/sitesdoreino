@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-151030-TAR-501-explicada",
+  "tarefa": "TAR-501",
+  "evento": "explicada",
+  "quando": "2026-09-19T15:10:30+00:00",
+  "quem": "encerramento administrativo pedido pelo mantenedor em 19/09/2026",
+  "o_que_e": "A rotacao da chave de deploy, a protecao do Environment vps e a prova da valvula de rollback foram executadas pelo mantenedor em 19/09/2026 e ainda nao estao no livro de ocorrencias.",
+  "o_que_muda": "Quem abrir o painel amanha ve que a chave girou, que o ambiente protege e que a volta de emergencia aplica de verdade, com os runs que provam cada uma.",
+  "exemplo": "e assinar o laudo depois do conserto, para ninguem precisar perguntar se ficou de pe",
+  "importancia": 70
+}

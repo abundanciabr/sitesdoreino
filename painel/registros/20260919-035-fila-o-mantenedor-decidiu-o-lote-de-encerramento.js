@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-035-fila-o-mantenedor-decidiu-o-lote-de-encerramento",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "fila: o mantenedor decidiu o lote de encerramento de 19/09",
+  detalhe: "Ele mandou fechar 22 PRs, preservar o 1606 e o ramo do 1640, aplicar 6 mandatos e cancelar a TAR-395.",
+  autoridade: "mantenedor",
+  evidencia: "22 PRs CLOSED com SHA e motivo em comentario, 21 ramos apagados por gh api DELETE, ramo do 1640 preservado em 1ed5fac1; checar_mandato de ci/mergear.py em PASS nos 6 (1244, 1504, 1610, 1611, 1618, 1622) sem mudanca de SHA; TAR-395 cancelada; TAR-494 a TAR-498 criadas com 12 guardas mortos por mutacao real, run wf_ab425699-fdd.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

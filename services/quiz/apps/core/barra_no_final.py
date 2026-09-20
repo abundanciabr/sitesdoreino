@@ -23,15 +23,32 @@ Fora disso, nada acontece e o 404 segue seu caminho.
 **NESTA CÉLULA A REGRA 1 É A QUE SUSTENTA TUDO**, e é o que a torna diferente
 das outras três. O urlconf do quiz mistura as duas convenções, de propósito:
 
-    path("quiz/<slug>/",          formulario)   <- canônica COM barra
-    path("quiz/<slug>/resultado", resultado)    <- canônica SEM barra
+    path("<slug>/",          formulario)   <- canônica COM barra
+    path("<slug>/resultado", resultado)    <- canônica SEM barra
 
-Ou seja, `/quiz/crivo/` **é** o endereço certo do quiz, e o Django já
-redireciona `/quiz/crivo` para lá sozinho (`APPEND_SLASH`, com 301). Se este
-middleware agisse sobre a forma com barra, ele desfaria o redirecionamento do
-Django e os dois entrariam em **laço infinito** — `/quiz/crivo/` → `/quiz/crivo`
-→ `/quiz/crivo/` → … A regra 1 impede isso por construção (a forma com barra
-resolve, então ele nem começa), e há guarda medindo exatamente esse laço.
+O prefixo público `/quiz` NÃO está escrito aí: ele vem do `SCRIPT_NAME`, e o
+handler ASGI já o removeu do `path_info` antes do casamento de rotas. Por isso
+tudo neste módulo compara `path_info` (o caminho interno) e monta o `Location`
+com `request.path` (o caminho público, com prefixo) — as duas metades estão
+marcadas no código abaixo.
+
+Ou seja, `/quiz/crivo/` **é** o endereço certo do quiz (internamente `/crivo/`),
+e o Django já redireciona `/quiz/crivo` para lá sozinho (`APPEND_SLASH`, com
+301). Se este middleware agisse sobre a forma com barra, ele desfaria o
+redirecionamento do Django e os dois entrariam em **laço infinito** —
+`/quiz/crivo/` → `/quiz/crivo` → `/quiz/crivo/` → … A regra 1 impede isso por
+construção (a forma com barra resolve, então ele nem começa), e há guarda
+medindo exatamente esse laço.
+
+**O QUE MUDOU QUANDO O ENDEREÇO FOI LIMPO.** Enquanto o urlconf escrevia
+`quiz/<slug>/` por dentro, um caminho de um segmento só (`/nao-existe/`,
+`/healthz/`) não resolvia, e este middleware o redirecionava para a forma nua.
+Com a rota do formulário na raiz, `<slug>/` virou um CURINGA: quase todo
+caminho de um segmento passou a resolver, a regra 1 passa a barrar o
+redirecionamento, e quem responde é a view — 404 de quiz inexistente. O efeito
+visível para quem digita é o mesmo (404 continua 404, sonda continua sem gêmea),
+e o que este módulo ainda conserta de verdade é o caminho de DOIS segmentos,
+`/quiz/<slug>/resultado/`, que é o link que as pessoas copiam.
 
 **302, nunca 301.** O 301 fica cacheado no navegador de forma praticamente
 permanente, e uma rota que ganhe a forma com barra amanhã ficaria inalcançável

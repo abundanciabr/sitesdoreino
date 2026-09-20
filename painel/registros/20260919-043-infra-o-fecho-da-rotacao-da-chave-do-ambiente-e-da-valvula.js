@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-043-infra-o-fecho-da-rotacao-da-chave-do-ambiente-e-da-valvula",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "infra: o fecho da rotacao da chave, do ambiente e da valvula",
+  detalhe: "Registra a rotacao da chave, a protecao do Environment vps e a valvula provada no run 35450057117, e abre a TAR-500 do inventario.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1765. Validação local: árvore 59ebc29a7962a6abec31aa8313268fdfaf2bca98; commit 1df4699838981ca763176eefb1e39bdf121fb8ac; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-501",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
