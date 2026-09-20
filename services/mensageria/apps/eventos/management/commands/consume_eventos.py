@@ -59,24 +59,34 @@ def identidade_do_fato(event: str, version: int, data: dict) -> str | None:
 
     As duas pontes NÃO são a mesma regra, e misturá-las é o engano fácil:
 
-    - `pagamento.aprovado`: a chave é o par `provider`+`provider_reference_id`.
-      No v1 o par é sempre implícito `mercadopago`+`mp_payment_id` — era o
-      único provedor que existia. `payment_id` (o id local da célula
-      pagamentos) NUNCA entra aqui: o próprio schema v2 diz que ele "não
-      serve para deduplicar entre versões".
-    - `pagamento.recusado`: a chave é só `payment_id`. O v1 da recusa nunca
-      carregou referência de provedor — nem sob o nome `mp_payment_id` — então
-      não existe par para tirar de lá; `payment_id` é o único campo que os
-      dois lados sempre tiveram.
+    - `pagamento.aprovado`: o par `provider`+`provider_reference_id`. No v1 o
+      par é sempre implícito `mercadopago`+`mp_payment_id` — era o único
+      provedor que existia. `payment_id` (o id local da célula pagamentos)
+      NUNCA entra aqui: o próprio schema v2 diz que ele "não serve para
+      deduplicar entre versões".
+    - `pagamento.recusado`: só `payment_id`. O v1 da recusa nunca carregou
+      referência de provedor — nem sob o nome `mp_payment_id` — então não
+      existe par para tirar de lá; `payment_id` é o único campo que os dois
+      lados sempre tiveram.
+
+    A chave sempre nasce ESCOPADA pelo site (`platform_site_id` no v2,
+    `site_id` no v1) — [INV-P11], fronteira de site. Sem essa fronteira, dois
+    fatos de SITES DIFERENTES que por coincidência compartilhassem
+    `provider_reference_id` (opaco, do provedor, sem garantia nenhuma de ser
+    único ENTRE tenants) ou `payment_id` colidiriam na mesma linha de
+    `FatoDeProvedorVisto`: o aviso do site que chegasse por último seria
+    descartado como "já processado" — quem pagou não recebe a confirmação, e
+    nada denuncia, porque para o sistema o fato já tinha acontecido.
     """
+    site_id = data.get("platform_site_id") or data.get("site_id")
     if event == "pagamento.aprovado":
         if version == 1:
             provider, referencia = "mercadopago", data["mp_payment_id"]
         else:
             provider, referencia = data["provider"], data["provider_reference_id"]
-        return f"{provider}:{referencia}"
+        return f"{site_id}:{provider}:{referencia}"
     if event == "pagamento.recusado":
-        return data["payment_id"]
+        return f"{site_id}:{data['payment_id']}"
     return None
 
 

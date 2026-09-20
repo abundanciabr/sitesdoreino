@@ -26,7 +26,10 @@ class FatoDeProvedorVisto(models.Model):
     `provider`+`provider_reference_id` (no v1 o par implícito é sempre
     `mercadopago`+`mp_payment_id`); para `pagamento.recusado` é só
     `payment_id`, porque o v1 da recusa nunca carregou referência de
-    provedor. Ver `identidade_do_fato()` em `management/commands/consume_eventos.py`.
+    provedor. As duas SEMPRE nascem escopadas pelo site (`platform_site_id`
+    no v2, `site_id` no v1) — [INV-P11] — para que um fato de um site nunca
+    consuma, por coincidência de referência opaca, a identidade de outro. Ver
+    `identidade_do_fato()` em `management/commands/consume_eventos.py`.
     """
 
     evento = models.CharField(max_length=100)

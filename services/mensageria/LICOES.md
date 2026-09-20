@@ -690,5 +690,21 @@ e as duas pontes de pagamento JÁ são diferentes uma da outra. Ler o contrato
 de novo em vez de copiar a regra desta célula é o que evita a mesma
 generalização errada se repetir.
 
+**A segunda armadilha, achada por uma frente irmã (checkout, PR #1829) antes
+do pouso deste PR:** a primeira versão desta chave era só `provider`+
+`provider_reference_id` (ou só `payment_id`, na recusa) — sem o site.
+`provider_reference_id` é opaco e vem do PROVEDOR: nada garante que ele seja
+único ENTRE sites (tenants) desta plataforma, e uma colisão faria o aviso do
+segundo site ser descartado como "duplicado" do primeiro — quem pagou no
+site B nunca recebe confirmação, e nada denuncia, porque para o sistema o
+fato já tinha acontecido. **A chave agora nasce escopada pelo site**
+(`platform_site_id`/`site_id`, [INV-P11]), e os testes
+`test_identidade_do_fato_*_em_sites_diferentes_nao_e_igual` e
+`test_*_mesmo_fato_em_sites_diferentes_gera_dois_envios` provam isso por
+mutação: tirar o site da chave derruba os quatro. Multissítio é invariante de
+CÉLULA (`constituicoes/AGENTS.mensageria.md`: "e-mail de um site jamais sai
+com a marca de outro"), e qualquer chave de dedup nova nesta célula nasce
+escopada por site por padrão, nunca como exceção a lembrar depois.
+
 **Origem:** despacho mensageria/consome-o-evento-v2 (TAR-549), correção ao
 brief medida contra `contracts/eventos/pagamento.recusado.v2.json`.

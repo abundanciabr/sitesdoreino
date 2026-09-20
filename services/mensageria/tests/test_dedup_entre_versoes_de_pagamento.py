@@ -46,14 +46,16 @@ pytestmark = pytest.mark.django_db(transaction=True)
 # --------------------------------------------------------------------------
 
 
-def _envelope_aprovado_v1(*, mp_payment_id: str, order_id: str) -> dict:
+def _envelope_aprovado_v1(
+    *, mp_payment_id: str, order_id: str, site_id: str = "site-abc"
+) -> dict:
     return {
         "event": "pagamento.aprovado",
         "version": 1,
         "event_id": str(uuid4()),
         "occurred_at": "2026-09-20T12:00:00Z",
         "data": {
-            "site_id": "site-abc",
+            "site_id": site_id,
             "payment_id": f"pay-interno-{order_id}",
             "order_id": order_id,
             "amount_cents": 1000,
@@ -65,7 +67,11 @@ def _envelope_aprovado_v1(*, mp_payment_id: str, order_id: str) -> dict:
 
 
 def _envelope_aprovado_v2(
-    *, provider: str, provider_reference_id: str, order_id: str
+    *,
+    provider: str,
+    provider_reference_id: str,
+    order_id: str,
+    site_id: str = "site-abc",
 ) -> dict:
     return {
         "event": "pagamento.aprovado",
@@ -73,7 +79,7 @@ def _envelope_aprovado_v2(
         "event_id": str(uuid4()),
         "occurred_at": "2026-09-20T12:05:00Z",
         "data": {
-            "platform_site_id": "site-abc",
+            "platform_site_id": site_id,
             "payment_id": f"pay-interno-{order_id}",
             "order_id": order_id,
             "amount_cents": 1000,
@@ -85,14 +91,16 @@ def _envelope_aprovado_v2(
     }
 
 
-def _envelope_recusado_v1(*, payment_id: str, order_id: str) -> dict:
+def _envelope_recusado_v1(
+    *, payment_id: str, order_id: str, site_id: str = "site-abc"
+) -> dict:
     return {
         "event": "pagamento.recusado",
         "version": 1,
         "event_id": str(uuid4()),
         "occurred_at": "2026-09-20T12:00:00Z",
         "data": {
-            "site_id": "site-abc",
+            "site_id": site_id,
             "payment_id": payment_id,
             "order_id": order_id,
             "amount_cents": 1000,
@@ -109,6 +117,7 @@ def _envelope_recusado_v2(
     order_id: str,
     provider: str = "appmax",
     provider_reference_id: str = "ref-qualquer",
+    site_id: str = "site-abc",
 ) -> dict:
     return {
         "event": "pagamento.recusado",
@@ -116,7 +125,7 @@ def _envelope_recusado_v2(
         "event_id": str(uuid4()),
         "occurred_at": "2026-09-20T12:05:00Z",
         "data": {
-            "platform_site_id": "site-abc",
+            "platform_site_id": site_id,
             "payment_id": payment_id,
             "order_id": order_id,
             "amount_cents": 1000,
@@ -135,11 +144,17 @@ def _envelope_recusado_v2(
 
 
 def test_identidade_do_fato_aprovado_v1_e_v2_do_mesmo_pagamento_e_igual():
-    v1 = identidade_do_fato("pagamento.aprovado", 1, {"mp_payment_id": "mp-1"})
+    v1 = identidade_do_fato(
+        "pagamento.aprovado", 1, {"site_id": "site-a", "mp_payment_id": "mp-1"}
+    )
     v2 = identidade_do_fato(
         "pagamento.aprovado",
         2,
-        {"provider": "mercadopago", "provider_reference_id": "mp-1"},
+        {
+            "platform_site_id": "site-a",
+            "provider": "mercadopago",
+            "provider_reference_id": "mp-1",
+        },
     )
     assert v1 == v2
 
@@ -147,24 +162,75 @@ def test_identidade_do_fato_aprovado_v1_e_v2_do_mesmo_pagamento_e_igual():
 def test_identidade_do_fato_aprovado_v2_de_provedor_diferente_nao_e_igual_a_v1():
     """O par inteiro importa: um v2 da Appmax com a MESMA string de referência
     que um mp_payment_id do Mercado Pago não é o mesmo fato."""
-    v1 = identidade_do_fato("pagamento.aprovado", 1, {"mp_payment_id": "123"})
+    v1 = identidade_do_fato(
+        "pagamento.aprovado", 1, {"site_id": "site-a", "mp_payment_id": "123"}
+    )
     v2 = identidade_do_fato(
-        "pagamento.aprovado", 2, {"provider": "appmax", "provider_reference_id": "123"}
+        "pagamento.aprovado",
+        2,
+        {
+            "platform_site_id": "site-a",
+            "provider": "appmax",
+            "provider_reference_id": "123",
+        },
     )
     assert v1 != v2
+
+
+def test_identidade_do_fato_aprovado_mesmo_par_em_sites_diferentes_nao_e_igual():
+    """[INV-P11] A fronteira de site é PARTE da identidade: o mesmo
+    provider+provider_reference_id em dois sites são DOIS fatos, nunca um."""
+    site_a = identidade_do_fato(
+        "pagamento.aprovado",
+        2,
+        {
+            "platform_site_id": "site-a",
+            "provider": "appmax",
+            "provider_reference_id": "123",
+        },
+    )
+    site_b = identidade_do_fato(
+        "pagamento.aprovado",
+        2,
+        {
+            "platform_site_id": "site-b",
+            "provider": "appmax",
+            "provider_reference_id": "123",
+        },
+    )
+    assert site_a != site_b
 
 
 def test_identidade_do_fato_recusado_ignora_provider_so_o_payment_id_importa():
     """A ponte do recusado é OUTRA: não existe par provider+referência no v1,
     então a chave é só `payment_id` — mesmo que a v2 traga provider e
     provider_reference_id diferentes, o fato é o mesmo."""
-    v1 = identidade_do_fato("pagamento.recusado", 1, {"payment_id": "pay-9"})
+    v1 = identidade_do_fato(
+        "pagamento.recusado", 1, {"site_id": "site-a", "payment_id": "pay-9"}
+    )
     v2 = identidade_do_fato(
         "pagamento.recusado",
         2,
-        {"payment_id": "pay-9", "provider": "appmax", "provider_reference_id": "ref-x"},
+        {
+            "platform_site_id": "site-a",
+            "payment_id": "pay-9",
+            "provider": "appmax",
+            "provider_reference_id": "ref-x",
+        },
     )
-    assert v1 == v2 == "pay-9"
+    assert v1 == v2
+
+
+def test_identidade_do_fato_recusado_mesmo_payment_id_em_sites_diferentes_nao_e_igual():
+    """[INV-P11] Mesma fronteira para a ponte do recusado: `payment_id` sozinho
+    não é a identidade — o site escopa."""
+    site_a = identidade_do_fato(
+        "pagamento.recusado", 1, {"site_id": "site-a", "payment_id": "pay-9"}
+    )
+    site_b = identidade_do_fato(
+        "pagamento.recusado", 1, {"site_id": "site-b", "payment_id": "pay-9"}
+    )
+    assert site_a != site_b
 
 
 def test_identidade_do_fato_evento_sem_ponte_devolve_none():
@@ -214,7 +280,7 @@ def test_aprovado_v1_seguido_de_v2_do_mesmo_fato_gera_um_unico_envio():
     assert EnvioRegistrado.objects.filter(order_id="order-v2-a").count() == 0
     assert (
         FatoDeProvedorVisto.objects.filter(
-            evento="pagamento.aprovado", chave=f"mercadopago:{referencia}"
+            evento="pagamento.aprovado", chave=f"site-abc:mercadopago:{referencia}"
         ).count()
         == 1
     )
@@ -272,6 +338,44 @@ def test_aprovado_fatos_diferentes_nao_colidem():
     assert mock_enviar.call_count == 2
     assert (
         EnvioRegistrado.objects.filter(tipo="boas_vindas", canal="email").count() == 2
+    )
+
+
+def test_aprovado_mesmo_fato_em_sites_diferentes_gera_dois_envios():
+    """[INV-P11] `provider_reference_id` é opaco e vem do PROVEDOR: nada
+    garante que ele seja único ENTRE sites (tenants) desta plataforma. Sem o
+    site escopando a chave, o segundo site seria descartado como duplicado do
+    primeiro — e a pessoa que pagou no site B nunca receberia confirmação."""
+    referencia = f"ref-colisao-{uuid4().hex}"
+    do_site_a = _envelope_aprovado_v2(
+        provider="appmax",
+        provider_reference_id=referencia,
+        order_id="order-site-a",
+        site_id="site-a",
+    )
+    do_site_b = _envelope_aprovado_v2(
+        provider="appmax",
+        provider_reference_id=referencia,
+        order_id="order-site-b",
+        site_id="site-b",
+    )
+
+    with patch("apps.eventos.handlers.enviar_notificacao") as mock_enviar:
+        assert processar_envelope(do_site_a, ao_pagamento_aprovado) is True
+        assert processar_envelope(do_site_b, ao_pagamento_aprovado) is True
+
+    assert mock_enviar.call_count == 2
+    assert (
+        EnvioRegistrado.objects.filter(
+            order_id="order-site-a", site_id="site-a"
+        ).count()
+        == 1
+    )
+    assert (
+        EnvioRegistrado.objects.filter(
+            order_id="order-site-b", site_id="site-b"
+        ).count()
+        == 1
     )
 
 
@@ -351,6 +455,25 @@ def test_recusado_payment_id_diferente_nao_colide():
     with patch("apps.eventos.handlers.enviar_notificacao") as mock_enviar:
         assert processar_envelope(v1, ao_pagamento_recusado) is True
         assert processar_envelope(v2, ao_pagamento_recusado) is True
+
+    assert mock_enviar.call_count == 2
+
+
+def test_recusado_mesmo_payment_id_em_sites_diferentes_gera_dois_envios():
+    """[INV-P11] Mesma fronteira de site para a ponte do recusado: um
+    `payment_id` que colidisse entre dois sites não pode calar o segundo
+    aviso de recusa."""
+    payment_id = f"pay-colisao-{uuid4().hex}"
+    do_site_a = _envelope_recusado_v1(
+        payment_id=payment_id, order_id="order-rec-site-a", site_id="site-a"
+    )
+    do_site_b = _envelope_recusado_v1(
+        payment_id=payment_id, order_id="order-rec-site-b", site_id="site-b"
+    )
+
+    with patch("apps.eventos.handlers.enviar_notificacao") as mock_enviar:
+        assert processar_envelope(do_site_a, ao_pagamento_recusado) is True
+        assert processar_envelope(do_site_b, ao_pagamento_recusado) is True
 
     assert mock_enviar.call_count == 2
 
@@ -435,7 +558,7 @@ def test_concorrencia_real_v1_e_v2_do_mesmo_fato_produzem_um_unico_envio(r, stre
     )
     assert (
         FatoDeProvedorVisto.objects.filter(
-            evento="pagamento.aprovado", chave=f"mercadopago:{referencia}"
+            evento="pagamento.aprovado", chave=f"site-abc:mercadopago:{referencia}"
         ).count()
         == 1
     )
