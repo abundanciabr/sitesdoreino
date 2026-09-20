@@ -140,8 +140,9 @@ Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISA
 
 ## O que uma chamada custa
 
-Gere modelo e esforço com `python ci/economia_da_fabrica.py brief`; nunca herde
-modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
+Modelo e esforço: `python ci/economia_da_fabrica.py brief`; rotina usa
+econômico, arquitetura/dúvida usa superior. Sub-agente nasce só em `sonnet`
+ou `opus` declarado.
 Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
