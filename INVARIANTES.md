@@ -1219,6 +1219,148 @@ primeira oportunidade de violá-la.
 
 ---
 
+## Cartão pela Appmax
+
+Nove leis escritas ANTES da integração existir, como manda a abertura deste
+documento. O portão que as mede é `ci/guarda_do_cartao.py`, e ele lê
+`services/`, `contracts/` e `infra/` a cada rodada da suíte de `ci/`. Sete das
+nove medem a SUPERFÍCIE APPMAX (os arquivos que nomeiam a Appmax), hoje vazia;
+A2 e A7 medem a árvore inteira desde já. Cada uma das nove foi vista reprovando
+por mutação em 20/09/2026: a linha que decide a lei virou comentário numa cópia
+isolada e o teste dela reprovou (`python ci/provar_guardas.py
+ci/tests/test_guarda_do_cartao.py`, 9 de 9).
+
+### [INV-CARD-A1] Pix é Mercado Pago e Cartão é Appmax por Construção
+- **O quê:** a escolha do provedor por método de pagamento está no código, e
+  nenhum nome de ajuste ou de variável de ambiente pareia método com provedor.
+  A única trava prevista é `APPMAX_CARD_ENABLED_SITES`, que impede tentativas
+  novas de cartão e nunca troca de provedor.
+- **Por quê:** provedor de dinheiro escolhido por configuração é um interruptor
+  que alguém pode virar sem passar por revisão, em produção, às três da manhã,
+  mandando cobrança de cartão para o gateway do Pix. A escolha precisa aparecer
+  no diff.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — árvore com
+  `PIX_PROVIDER = "mercadopago"` sai `FAIL` na lei A1 e `PASS` nas outras oito.
+  O que a medição alcança: o nome do ajuste, não o despacho dinâmico.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A2] Dado de Cartão Não Existe no Nosso Código
+- **O quê:** número, validade e código de segurança nunca são LIDOS, atribuídos,
+  acessados nem declarados como campo em `services/`, `contracts/` ou `infra/`,
+  nem no servidor nem no navegador. A tokenização acontece no navegador, pelo
+  Appmax JS, e é a biblioteca deles que cria e lê esses campos. A lei proíbe
+  manusear o dado, e não pronunciar o nome dele: a lista de campos PROIBIDOS
+  que uma célula escreve para nunca gravar o valor em claro é esta mesma lei
+  escrita em código, e reprová-la seria reprovar o acerto.
+- **Por quê:** tokenizar pelo nosso servidor jogaria a plataforma inteira
+  dentro do escopo PCI-DSS, e isso está proibido. O dado que nunca é manuseado
+  não vaza em log, em evento, em banco nem em exceção, porque não há por onde.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — `pedido["card_number"]`,
+  `cvv=`, `resposta.security_code` e o campo `cvv` declarado no contrato saem
+  `FAIL` na lei A2; a lista de campos proibidos sai `PASS`. Linha só de
+  comentário fica de fora, para que a frase que ENSINA a lei não seja lida como
+  a violação que ela descreve.
+- **Célula dona:** o repositório (`ci/`), com checkout e pagamentos servidas
+
+### [INV-CARD-A3] Autorizado Não Significa Aprovado
+- **O quê:** na superfície Appmax, autorização e aprovação nunca aparecem na
+  mesma expressão. Quem decide o estado financeiro é a consulta autenticada do
+  pedido, e mais ninguém.
+- **Por quê:** autorização é reserva de limite no cartão, e ela cai sozinha,
+  é revertida por antifraude e é negada na captura. Tratar as duas palavras
+  como sinônimo libera acesso a quem não pagou, e o estorno chega depois da
+  aula assistida.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo Appmax com
+  `{"authorized": "aprovado"}` sai `FAIL` na lei A3. O que a medição alcança: a
+  conflação escrita numa linha; a que estiver espalhada por um `if` de cinco
+  linhas continua sendo trabalho da revisão.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A4] O Webhook da Appmax é Sinal, Nunca Decisão
+- **O quê:** o arquivo de webhook da Appmax não contém verbo que mexa em
+  dinheiro (aprovar, capturar, matricular, liberar acesso). Ele só agenda a
+  consulta autenticada do pedido.
+- **Por quê:** a Appmax não assina webhook nenhum. Sem assinatura, qualquer um
+  que descubra a URL escreve o estado financeiro que quiser, e o INV-P10, que
+  exige assinatura válida, não tem o que conferir. A única saída é o webhook
+  não decidir nada.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — webhook Appmax que
+  escreve `pedido.estado = "aprovado"` sai `FAIL` na lei A4.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A5] Escrita Ambígua Não Recebe Repetição Automática
+- **O quê:** a superfície Appmax não usa repetição genérica (`tenacity`,
+  `backoff`, `Retry(`, `@retry`, `max_retries`). Repetir é decisão por
+  operação, escrita à mão: GET seguro repete com limite; POST de cliente, de
+  pedido ou de pagamento que deu timeout depois do envio consulta e se resolve,
+  e nunca reenvia.
+- **Por quê:** repetição genérica não sabe distinguir leitura de cobrança. O
+  timeout depois do envio é justamente o caso em que a cobrança pode ter
+  acontecido, e reenviar cobra a pessoa duas vezes por um erro de rede nosso.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — cliente Appmax com
+  `http.Retry(total=3)` sai `FAIL` na lei A5.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A6] Toda Aprovação Cria Outbox na Mesma Transação
+- **O quê:** arquivo da superfície Appmax que CRIA linha de outbox o faz dentro
+  de `transaction.atomic()`. A medição é da escrita, nunca da palavra: citar a
+  outbox num comentário, na dependência de uma migração ou no nome do relay não
+  escreve nada, e publicar por `transaction.on_commit` DEPOIS de a linha existir
+  é o padrão certo do INV-P6, que esta lei não pode proibir.
+- **Por quê:** é o INV-P6 aplicado ao provedor novo. A linha que nasce fora da
+  transação reabre a janela em que o estado mudou e o evento se perdeu, que é a
+  diferença entre "pagou e matriculou" e "pagou e ficou de fora sem ninguém
+  saber".
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo Appmax que
+  chama `OutboxEvent.objects.create(` sem `transaction.atomic()` sai `FAIL` na
+  lei A6; o mesmo arquivo com a escrita dentro da transação e o relay chamado
+  por `transaction.on_commit` sai `PASS`, e a palavra outbox sem escrita
+  nenhuma também.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A7] O Segredo da Appmax Existe Somente em Pagamentos
+- **O quê:** nome de segredo Appmax (`APPMAX_CLIENT_SECRET`, `APPMAX_CLIENT_ID`
+  e os outros da mesma família) só aparece dentro de `services/pagamentos/`.
+  Em qualquer outra célula é violação.
+- **Por quê:** é o INV-P8 levado à credencial nova. Segredo que circula por
+  célula que não cobra amplia a superfície de vazamento sem entregar nada:
+  quem precisa do resultado chama pagamentos pelo contrato dela.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — `APPMAX_CLIENT_SECRET`
+  numa célula que não é pagamentos sai `FAIL` na lei A7, e o mesmo nome dentro
+  da célula pagamentos sai `PASS`. A medição é da árvore das células, que é onde
+  a lei fala de célula.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A8] A Queda de um Provedor Não Alcança o Método do Outro
+- **O quê:** nenhum arquivo do caminho do Pix nomeia a Appmax, e nenhum arquivo
+  do caminho da Appmax nomeia o Mercado Pago. A medição é do CÓDIGO de cada
+  caminho: contrato que ENUMERA os provedores aceitos, e teste que compara os
+  dois, são declaração e não acoplamento.
+- **Por quê:** é como a lei "ausência da Appmax afeta somente cartão, ausência
+  do Mercado Pago afeta somente Pix" vira mecanismo. O que derruba um método
+  junto com o outro é o módulo de um provedor chamando o outro, e o Pix é hoje
+  o caminho que fatura. É o INV-P9 estendido do módulo para o nome do provedor.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo do caminho do
+  Pix que importa a Appmax, e arquivo do caminho da Appmax que importa o
+  Mercado Pago, saem os dois `FAIL` na lei A8; o evento que enumera os dois
+  provedores e o teste que compara os dois saem `PASS`.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+### [INV-CARD-A9] Resposta 2xx Incompleta é Erro, Nunca Sucesso Parcial
+- **O quê:** campo obrigatório de resposta Appmax (id, status, referência do
+  pedido, token, valor) não é lido com leitura tolerante do tipo
+  `resposta.get("status")`. Ou a leitura estoura quando o campo falta, ou a
+  resposta inteira é validada antes de ser usada.
+- **Por quê:** leitura tolerante transforma resposta truncada em `None`, e
+  `None` segue adiante como se fosse resposta boa. O 2xx incompleto é o jeito
+  mais silencioso de um provedor mentir, e o preço é um pedido que ninguém
+  consegue reconciliar depois.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — cliente Appmax com
+  `resposta.get("status")` sai `FAIL` na lei A9.
+- **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
+
+---
+
 ## Invariantes da própria CI
 
 Os invariantes acima protegem a plataforma. Este protege o INSTRUMENTO que
