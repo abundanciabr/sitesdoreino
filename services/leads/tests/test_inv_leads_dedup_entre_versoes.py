@@ -36,13 +36,16 @@ def _envelope(evento: str, version: int, data: dict) -> dict:
 
 
 def _aprovado_v1(
-    mp_payment_id: str, order_id: str = "ord-1", payment_id: str = ""
+    mp_payment_id: str,
+    order_id: str = "ord-1",
+    payment_id: str = "",
+    site_id: str = "site-a",
 ) -> dict:
     return _envelope(
         "pagamento.aprovado",
         1,
         {
-            "site_id": "site-a",
+            "site_id": site_id,
             "payment_id": payment_id or f"pay-{order_id}",
             "order_id": order_id,
             "amount_cents": 990,
@@ -58,12 +61,13 @@ def _aprovado_v2(
     provider_reference_id: str,
     order_id: str = "ord-1",
     payment_id: str = "",
+    site_id: str = "site-a",
 ) -> dict:
     return _envelope(
         "pagamento.aprovado",
         2,
         {
-            "platform_site_id": "site-a",
+            "platform_site_id": site_id,
             "payment_id": payment_id or f"pay-{order_id}",
             "order_id": order_id,
             "amount_cents": 990,
@@ -75,12 +79,14 @@ def _aprovado_v2(
     )
 
 
-def _recusado_v1(payment_id: str, order_id: str = "ord-2") -> dict:
+def _recusado_v1(
+    payment_id: str, order_id: str = "ord-2", site_id: str = "site-a"
+) -> dict:
     return _envelope(
         "pagamento.recusado",
         1,
         {
-            "site_id": "site-a",
+            "site_id": site_id,
             "payment_id": payment_id,
             "order_id": order_id,
             "amount_cents": 990,
@@ -91,12 +97,14 @@ def _recusado_v1(payment_id: str, order_id: str = "ord-2") -> dict:
     )
 
 
-def _recusado_v2(payment_id: str, order_id: str = "ord-2") -> dict:
+def _recusado_v2(
+    payment_id: str, order_id: str = "ord-2", site_id: str = "site-a"
+) -> dict:
     return _envelope(
         "pagamento.recusado",
         2,
         {
-            "platform_site_id": "site-a",
+            "platform_site_id": site_id,
             "payment_id": payment_id,
             "order_id": order_id,
             "amount_cents": 990,
@@ -214,6 +222,39 @@ def test_aprovado_fatos_diferentes_nao_sao_confundidos():
     )
 
 
+def test_aprovado_site_diferente_e_um_fato_diferente_inv_p11():
+    """[INV-P11] A identidade do fato é escopada pelo site, não só o par
+    provider/provider_reference_id. Um aviso com o site ERRADO (bug do
+    publicador, ou mensagem injetada) não pode consumir a chave do aviso
+    LEGÍTIMO: se consumisse, o aviso certo chegaria depois, bateria na
+    unicidade e seria descartado como duplicado, sem erro em lugar nenhum, e a
+    timeline do site certo nunca receberia o fato. Mesmo `provider` mais
+    `provider_reference_id`, dois sites diferentes são dois fatos."""
+    processar_envelope(
+        _aprovado_v2("mercadopago", "mp-p11", site_id="site-errado"),
+        ao_pagamento_aprovado,
+    )
+    processar_envelope(
+        _aprovado_v2("mercadopago", "mp-p11", site_id="site-certo"),
+        ao_pagamento_aprovado,
+    )
+
+    lead_errado = Lead.objects.get(site_id="site-errado", email="ana@example.com")
+    lead_certo = Lead.objects.get(site_id="site-certo", email="ana@example.com")
+    assert (
+        TimelineEvent.objects.filter(
+            lead=lead_errado, event="pagamento.aprovado"
+        ).count()
+        == 1
+    )
+    assert (
+        TimelineEvent.objects.filter(
+            lead=lead_certo, event="pagamento.aprovado"
+        ).count()
+        == 1
+    )
+
+
 # ---------------------------------------------------------------- recusado --
 
 
@@ -293,6 +334,33 @@ def test_recusado_provider_reference_id_igual_nao_junta_pagamentos_diferentes():
     lead = Lead.objects.get(site_id="site-a", email="ana@example.com")
     assert (
         TimelineEvent.objects.filter(lead=lead, event="pagamento.recusado").count() == 2
+    )
+
+
+def test_recusado_site_diferente_e_um_fato_diferente_inv_p11():
+    """[INV-P11] Mesmo `payment_id`, dois `platform_site_id` diferentes são
+    dois fatos. Espelho de `test_aprovado_site_diferente_e_um_fato_diferente_inv_p11`
+    para o evento cuja identidade é só `payment_id`."""
+    processar_envelope(
+        _recusado_v2("pay-p11", site_id="site-errado"), ao_pagamento_recusado
+    )
+    processar_envelope(
+        _recusado_v2("pay-p11", site_id="site-certo"), ao_pagamento_recusado
+    )
+
+    lead_errado = Lead.objects.get(site_id="site-errado", email="ana@example.com")
+    lead_certo = Lead.objects.get(site_id="site-certo", email="ana@example.com")
+    assert (
+        TimelineEvent.objects.filter(
+            lead=lead_errado, event="pagamento.recusado"
+        ).count()
+        == 1
+    )
+    assert (
+        TimelineEvent.objects.filter(
+            lead=lead_certo, event="pagamento.recusado"
+        ).count()
+        == 1
     )
 
 

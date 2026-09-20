@@ -142,15 +142,21 @@ def _chave_pagamento_recusado(data: dict) -> str:
     return data["payment_id"]
 
 
-def _fato_ja_processado(evento: str, chave: str) -> bool:
+def _fato_ja_processado(evento: str, site_id: str, chave: str) -> bool:
     """Savepoint só em volta do INSERT, mesmo motivo do dedup por event_id em
     `processar_envelope`: sem ele, a colisão de unicidade aborta a transação
-    externa inteira. A unicidade em (evento, chave) É o guarda — real mesmo
-    sob corrida (ver test_inv_leads_dedup_entre_versoes.py, teste de
-    concorrência com threads e Postgres real)."""
+    externa inteira. A unicidade em (evento, site_id, chave) É o guarda — real
+    mesmo sob corrida (ver test_inv_leads_dedup_entre_versoes.py, teste de
+    concorrência com threads e Postgres real).
+
+    [INV-P11] `site_id` entra aqui, na identidade do fato — não só depois, na
+    leitura de `_upsert_lead`. Ver o docstring de `FatoDePagamentoProcessado`
+    para o buraco que isso fecha."""
     try:
         with transaction.atomic():
-            FatoDePagamentoProcessado.objects.create(evento=evento, chave=chave)
+            FatoDePagamentoProcessado.objects.create(
+                evento=evento, site_id=site_id, chave=chave
+            )
     except IntegrityError:
         return True
     return False
@@ -158,11 +164,14 @@ def _fato_ja_processado(evento: str, chave: str) -> bool:
 
 def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
     with transaction.atomic():
-        if _fato_ja_processado("pagamento.aprovado", _chave_pagamento_aprovado(data)):
+        site_id = _site_id_de(data)
+        if _fato_ja_processado(
+            "pagamento.aprovado", site_id, _chave_pagamento_aprovado(data)
+        ):
             return  # mesmo fato já registrado (v1 ou v2, entrega anterior)
         cliente = data["customer"]
         lead = _upsert_lead(
-            site_id=_site_id_de(data),
+            site_id=site_id,
             email=cliente["email"],
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),
@@ -174,11 +183,14 @@ def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
 
 def ao_pagamento_recusado(event_id: str, data: dict) -> None:
     with transaction.atomic():
-        if _fato_ja_processado("pagamento.recusado", _chave_pagamento_recusado(data)):
+        site_id = _site_id_de(data)
+        if _fato_ja_processado(
+            "pagamento.recusado", site_id, _chave_pagamento_recusado(data)
+        ):
             return  # mesmo fato já registrado (v1 ou v2, entrega anterior)
         cliente = data["customer"]
         lead = _upsert_lead(
-            site_id=_site_id_de(data),
+            site_id=site_id,
             email=cliente["email"],
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),

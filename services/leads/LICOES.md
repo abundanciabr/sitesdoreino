@@ -202,3 +202,45 @@ a fórmula de um evento vizinho porque "parece igual" não é.
 
 **Origem:** despacho leads-consome-o-evento-v2 (TAR-548), corrigindo um erro
 do próprio brief da tarefa antes de escrever código.
+
+## A identidade lógica entre versões também precisa do escopo de site (INV-P11)
+
+**Onde:** `apps/core/models.py::FatoDePagamentoProcessado`,
+`apps/core/handlers.py::_fato_ja_processado`.
+
+**O buraco (esteve no primeiro push da TAR-548, achado pela mesma classe de
+teste que a frente de checkout já tinha aplicado na dela):** a primeira versão
+de `FatoDePagamentoProcessado` deduplicava por (`evento`, `chave`), com `chave`
+sendo o par `provider`/`provider_reference_id` (aprovado) ou `payment_id`
+(recusado). `platform_site_id`/`site_id` só entrava depois, na leitura de
+`_upsert_lead` — nunca na identidade do fato.
+
+**A consequência, concreta:** um aviso com o site ERRADO (bug do publicador,
+ou mensagem injetada no stream) grava a identidade do fato verdadeiro sem
+produzir efeito nenhum no site certo — o lead daquele aviso nasce no site
+errado. Quando o aviso LEGÍTIMO chega depois, com o site certo mas a MESMA
+`chave` lógica, `_fato_ja_processado` o lê como "já processado" e descarta.
+A timeline do site certo nunca recebe o fato, para sempre, sem erro em lugar
+nenhum — sintoma idêntico ao buraco original de dedup por `event_id`
+(primeira lição deste arquivo), só que um nível acima.
+
+**A prova:** `tests/test_inv_leads_dedup_entre_versoes.py::test_aprovado_site_diferente_e_um_fato_diferente_inv_p11`
+e o par para o recusado. Dois avisos com a MESMA chave lógica e
+`platform_site_id` DIFERENTES têm que gerar dois leads, cada um com sua
+própria entrada de timeline — nunca um só.
+
+**O conserto:** `site_id` entra na `UniqueConstraint` (agora `evento`,
+`site_id`, `chave`), em migration aditiva (`0004`, não edita a `0003`). Provado
+por mutação nos dois níveis: sabotar o app para ignorar o `site_id` real ao
+gravar o fato, e sabotar a própria constraint no banco para não incluir
+`site_id` — os dois fazem os testes de site reprovarem.
+
+**Isto generaliza:** toda vez que um evento carrega `site_id`/`platform_site_id`
+(Lei 9 / INV-P11), qualquer identidade de dedup derivada de outros campos do
+`data` também precisa incluí-lo. Escrever a chave de dedup só a partir de
+`x-ponte-do-v1` (que descreve o fato NO PROVEDOR, não o tenant desta
+plataforma) esquece a segunda metade da identidade.
+
+**Origem:** correção pedida pela maestro em revisão do PR #1825 (TAR-548),
+depois de a frente de checkout medir o mesmo buraco na dela (PR #1829) e
+sabotar a identidade sem escopo de site para provar.
