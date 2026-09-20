@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-026-alunos-os-3-guardas-passam-a-morder",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "alunos: os 3 guardas passam a morder",
+  detalhe: "Os 3 guardas de invariante da celula alunos passavam verdes com a producao sabotada; agora os 3 reprovam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1809. Validação local: árvore 9c487e8b761c9886ed6ef98e80e393155f884661; commit 63dd024b2b79f009de66a19d78f8a4323d5fe665; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-495",
+  gravidade: "verde",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

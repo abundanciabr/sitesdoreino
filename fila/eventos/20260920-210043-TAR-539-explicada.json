@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-210043-TAR-539-explicada",
+  "tarefa": "TAR-539",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:00:43+00:00",
+  "quem": "pouso do PR 1809 confirmado de fora em 20/09/2026",
+  "o_que_e": "Uma nota no livro dizendo que a entrega dos 3 guardas de alunos entrou na main e chegou ao servidor.",
+  "o_que_muda": "Quem abrir o painel ve que a TAR-495 nao so foi entregue, ela pousou e publicou, e que a entrega de alunos parada desde 17/09 foi junto.",
+  "exemplo": "O registro 026 foi escrito antes do pouso e diz integracao nao verificada; este diz que o PR 1809 virou 46dbfe75 as 20:45:59Z e que o deploy passou.",
+  "importancia": 20
+}
