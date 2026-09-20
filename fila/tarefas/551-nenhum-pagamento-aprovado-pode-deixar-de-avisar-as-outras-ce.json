@@ -1,0 +1,21 @@
+{
+  "arquivo": "551-nenhum-pagamento-aprovado-pode-deixar-de-avisar-as-outras-ce",
+  "id": "TAR-551",
+  "titulo": "Nenhum pagamento aprovado pode deixar de avisar as outras celulas",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-550"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Teste que sabota a criacao do aviso e fica VERMELHO ao aprovar sem ele; suite da celula pagamentos verde.",
+  "despacho": "Celula pagamentos. Torne impossivel aprovar um pagamento sem gerar o aviso na mesma transacao.\n\nAlvos: o servico de transicao de estado, a outbox e os testes.\n\n1. Toda transicao para aprovado cria a linha de outbox DENTRO da mesma transacao de banco. Aprovacao sem outbox tem de ser impossivel por construcao, nao por disciplina.\n2. Escreva o guarda que prova isso: sabote o codigo para aprovar sem criar a outbox e mostre o teste vermelho no corpo do PR. Guarda que fica verde com a sabotagem reprova o lote.\n3. Transicoes financeiras sao monotonicas: aprovado nao volta para pendente.\n4. Vale para aprovacao, recusa, estorno e contestacao: cada uma muda o ledger UMA vez.\n\nSomente leitura: services/checkout/, contracts/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L3B; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

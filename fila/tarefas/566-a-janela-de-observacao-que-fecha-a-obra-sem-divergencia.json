@@ -1,0 +1,21 @@
+{
+  "arquivo": "566-a-janela-de-observacao-que-fecha-a-obra-sem-divergencia",
+  "id": "TAR-566",
+  "titulo": "A janela de observacao que fecha a obra sem divergencia",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-565"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Tres janelas medidas (15 min, 60 min e proximo dia util) com erros, latencia, tentativas presas, inbox, outbox, fila morta e divergencia zero, registradas no livro.",
+  "despacho": "Meca e feche. Este lote e observacao, nao construcao.\n\nNas janelas de 15 minutos, 60 minutos e no proximo dia util, meca: erros, latencia, tentativas presas, inbox, outbox, fila morta, duplicidade e divergencia.\n\nCriterios para fechar:\n1. Nenhuma cobranca sem referencia.\n2. Nenhum aprovado sem efeito.\n3. Toda tentativa nao terminal tem acao operacional registrada.\n4. A reconciliacao do proximo dia util fecha sem divergencia.\n\nSe qualquer criterio falhar, o lote NAO fecha: registre o que divergiu e devolva ao lote dono. Registre o resultado no livro, com os riscos encerrados e qualquer decisao restante.\n\nA janela do proximo dia util e tempo de relogio, nao hora ativa: se ela ainda nao passou, diga isso em Pendencias com a data, nunca declare fechado antes.",
+  "origem": "Plano mestre Appmax, lote L12; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

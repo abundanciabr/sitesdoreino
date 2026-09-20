@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214717-TAR-545-explicada",
+  "tarefa": "TAR-545",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:47:17+00:00",
+  "quem": "Plano mestre Appmax, lote L1B; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "O aviso de pagamento aprovado exige hoje um campo chamado mp_payment_id, que so existe no Mercado Pago. Um pagamento da Appmax nao consegue nem ser anunciado.",
+  "o_que_muda": "Com o contrato neutro, qualquer fornecedor cabe, e as quatro celulas que escutam pagamento passam a entender as duas versoes sem duplicar matricula nem cobranca.",
+  "exemplo": "E trocar um formulario que so aceita CPF por um que aceita CPF ou CNPJ, sem invalidar os formularios ja preenchidos.",
+  "importancia": 95
+}

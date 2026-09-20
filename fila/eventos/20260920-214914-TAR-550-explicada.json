@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214914-TAR-550-explicada",
+  "tarefa": "TAR-550",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:14+00:00",
+  "quem": "Plano mestre Appmax, lote L3A; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Hoje a intencao de pagar existe, mas cada tentativa individual no cartao nao. Uma recusa deixa o comprador travado sem poder tentar de novo.",
+  "o_que_muda": "Sem tentativa registrada, nao ha como saber se uma cobranca saiu, nao ha como tentar outro cartao, e nao ha como reconciliar um resultado ambiguo.",
+  "exemplo": "E a maquininha que registra cada passada do cartao, e nao so a venda: e por isso que da para saber se passou duas vezes.",
+  "importancia": 90
+}
