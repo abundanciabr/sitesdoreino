@@ -151,35 +151,3 @@ APROVADO_V2_SEM_REFERENCIA: dict = {
     **APROVADO_V2_VALIDA,
     "data": {**APROVADO_V2_VALIDA["data"], "provider_reference_id": ""},
 }
-
-# ---------------------------------------------------------------------------
-# Confirmação de cartão: a pública (checkout) e a interna (pagamentos)
-# ---------------------------------------------------------------------------
-
-CARTAO_VALIDA: dict = {
-    "token": "tok_appmax_9f31c0a4",
-    "ip": "191.53.14.202",
-    "holder_name": "MARIA DE SOUZA",
-    "holder_document_number": "39053344705",
-    "installments": 3,
-}
-
-#: O navegador mandando dinheiro. É o erro que INV-P2 existe para impedir:
-#: total e produto vêm do snapshot congelado no servidor, nunca da página, e
-#: uma página que os enviasse seria a porta para escolher o próprio preço. É a
-#: única lei que esta carta quebra; a exigência do `ip` tem prova própria, com
-#: a carta válida menos esse campo.
-CARTAO_INVALIDA: dict = {
-    "token": "tok_appmax_9f31c0a4",
-    "ip": "191.53.14.202",
-    "holder_name": "MARIA DE SOUZA",
-    "holder_document_number": "39053344705",
-    "installments": 3,
-    "amount_cents": 100,
-    "product_id": "curso-fundamentos",
-}
-
-#: O token do cartão vazio. Mesmo caso do `provider_reference_id`: a chave
-#: existe, o tipo está certo, e só `minLength` impede que uma confirmação sem
-#: token nenhum chegue ao provedor.
-CARTAO_SEM_TOKEN: dict = {**CARTAO_VALIDA, "token": ""}

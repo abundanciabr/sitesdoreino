@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-045-contracts-as-duas-portas-de-cartao-saem",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "contracts: as duas portas de cartão saem",
+  detalhe: "Removidas antes de existir código que as atendesse: o freeze reprovava pagamentos e checkout, e as duas pararam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1824. Validação local: árvore e42ea3a5419f5d14c67afeec0db56b1839c10468; commit bf78a6487407880cae3ea09b4876a5ee231b626d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-571",
+  gravidade: "verde",
+  frente: "vender",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
