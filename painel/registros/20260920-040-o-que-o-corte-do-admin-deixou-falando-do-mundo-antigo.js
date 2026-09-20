@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-040-o-que-o-corte-do-admin-deixou-falando-do-mundo-antigo",
+  tipo: "pendencia",
+  quando: "2026-09-20",
+  titulo: "Depois que o admin saiu do ar, tres textos e um guarda continuaram falando do mundo antigo",
+  detalhe: "A revisao adversarial do PR 1814, feita DEPOIS do merge e do deploy verde, achou tres restos. Nenhum deles deixa o CI vermelho, e e por isso que eu registro: o que nao fica vermelho e o que se perde.\n\n1) infra/por-a-chave-do-github.sh:281 mede https://meshcraft.top/admin/healthz de fora e espera 200. Agora recebe 404 e cai no ramo de ATENCAO, pedindo que voce mande a tela ao agente. O roteiro funcionou, e mesmo assim vai parecer quebrado. As linhas 259, 284, 298 e 310 do mesmo arquivo mandam voce abrir https://meshcraft.top/admin/ no navegador, que tambem e 404.\n\n2) services/admin/tests/test_mapa_do_site.py:128 (test_gesto_nao_vira_link) virou guarda MORTO. Ele existia para a armadilha 330 (rota que so aceita POST virando link clicavel). As 64 entradas gesto:true da celula admin agora estao alcance interno, e a funcao que monta o link so age quando o alcance e publico: a sabotagem passa verde. O guarda nao ficou vermelho, ficou inerte.\n\n3) Cinco lugares afirmam que a porta de maquina e alcancavel pela internet em meshcraft.top/admin/interno: services/admin/config/urls.py:170, apps/core/auth.py:31, config/api.py:13, config/settings.py:103 e infra/env/admin.env.exemplo:152. Deixou de ser verdade. O perigo aqui e o inverso do obvio: esse texto e a justificativa escrita do Bearer fail-closed, e um agente futuro pode ler que agora a topologia fecha a porta e concluir que a trava sobra.\n\nNada disso estava no mandato da TAR-418 (infra/ e caminho de dono, e services/admin/ era somente leitura naquela entrega). Virou TAR-569.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1814 mergeado em eaed4491; revisao adversarial de 20/09/2026; trechos conferidos em origin/main",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
