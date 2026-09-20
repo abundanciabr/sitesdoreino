@@ -84,10 +84,27 @@ def _sem_comentarios(codigo: str) -> str:
     )
 
 
+# As três grafias que, JUNTAS, são "o status desta página vem do servidor":
+# init() dispara o poll, o poll pergunta ao servidor, e o status exibido é o da
+# resposta. Faltando qualquer uma, a página fica presa em "Aguardando
+# confirmação do pagamento" para sempre, inclusive depois de pago.
+INIT_DISPARA_O_POLL = re.compile(r"""init\(\)\s*\{[^{}]*\bthis\.poll\(\)""")
 CHAMADA_AO_SERVIDOR = re.compile(
     r"""api\.get\(\s*[`'"]/pedidos/\$\{\s*this\.orderId\s*\}[`'"]\s*\)"""
 )
 STATUS_VEM_DA_RESPOSTA = re.compile(r"""this\.status\s*=\s*(?!["'])\w+\.status\b""")
+
+O_QUE_A_PAGINA_PRECISA_FAZER = (
+    (
+        INIT_DISPARA_O_POLL,
+        "init() não chama this.poll(), então a página nunca pergunta nada",
+    ),
+    (CHAMADA_AO_SERVIDOR, "poll() não consulta api.get(`/pedidos/${this.orderId}`)"),
+    (
+        STATUS_VEM_DA_RESPOSTA,
+        "this.status não recebe o status que o servidor respondeu",
+    ),
+)
 
 
 @pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
@@ -103,9 +120,10 @@ def test_paginas_derivam_status_de_get_pedidos(arquivo):
     # guarda verde e a página presa em "Aguardando confirmação do pagamento"
     # para sempre, inclusive depois do pagamento aprovado.
     codigo = _sem_comentarios((STATIC / arquivo).read_text(encoding="utf-8"))
-    assert CHAMADA_AO_SERVIDOR.search(codigo), (
-        f"{arquivo}: nenhuma chamada a GET /pedidos/{{id}} fora de comentário"
-    )
-    assert STATUS_VEM_DA_RESPOSTA.search(codigo), (
-        f"{arquivo}: o status exibido não vem da resposta do servidor"
-    )
+    for padrao, o_que_falta in O_QUE_A_PAGINA_PRECISA_FAZER:
+        assert padrao.search(codigo), (
+            f"{arquivo}: {o_que_falta}. Assim a página fica presa em "
+            '"Aguardando confirmação do pagamento" mesmo depois de pago. '
+            f"Se você refatorou e o comportamento continua certo, atualize o "
+            f"padrão {padrao.pattern} neste arquivo."
+        )

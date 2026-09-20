@@ -5,6 +5,7 @@ import json
 
 import pytest
 
+from apps.core import api as api_do_checkout
 from apps.pedidos.models import Order
 from tests.conftest import BUMP_A, OFERTA_A, PAGAMENTOS
 
@@ -53,19 +54,12 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     assert cobranca["amount_cents"] == esperado
 
 
-CHAVES_DE_DINHEIRO = frozenset(
-    {
-        "total_cents",
-        "price_cents",
-        "amount_cents",
-        "discount_cents",
-        "desconto_cents",
-        "shipping_cents",
-        "frete_cents",
-        "valor_cents",
-        "items",
-    }
-)
+# `place_order` lê do corpo exatamente três chaves, e as três são INTENÇÃO:
+# quem é o comprador, como quer pagar, quais bumps marcou. Lista BRANCA de
+# propósito: uma lista de nomes proibidos deixa passar o nome que ninguém
+# previu (um `cupom_cents` acrescentado amanhã), e a promessa do cabeçalho é
+# que nada além da intenção é lido, nem para conferência.
+INTENCAO_DO_COMPRADOR = frozenset({"customer", "method", "bump_ids"})
 
 
 class _CorpoEspiao(dict):
@@ -93,8 +87,6 @@ def test_o_servidor_nem_le_dinheiro_do_payload(api, rede, sessao_a, monkeypatch)
     # navegador NÃO É LIDO. Conferir só o total deixa passar qualquer nome de
     # campo novo (discount_cents, frete_cents) que o servidor resolva consultar,
     # porque um campo que o teste não manda vale zero e a subtração fica neutra.
-    from apps.core import api as api_do_checkout
-
     espioes = []
     corpo_original = api_do_checkout._corpo
 
@@ -128,12 +120,23 @@ def test_o_servidor_nem_le_dinheiro_do_payload(api, rede, sessao_a, monkeypatch)
     )
     assert resp.status_code == 201, resp.content
 
+    # Sem esta primeira linha o guarda passa VAZIO: se `place_order` deixar de
+    # usar `_corpo`, o espião nunca é chamado, `lidas` fica vazio e a asserção
+    # de baixo aprova sozinha, devolvendo este teste ao estado morto que a
+    # TAR-497 consertou.
+    assert espioes, (
+        "o espião não foi chamado: place_order não passa mais por "
+        "apps.core.api._corpo. Aponte o monkeypatch para a função que lê o "
+        "corpo hoje, senão este guarda aprova sem medir nada."
+    )
     lidas: set[str] = set()
     for espiao in espioes:
         lidas |= espiao.lidas
-    assert not (lidas & CHAVES_DE_DINHEIRO), (
-        "place_order LEU dinheiro do navegador: "
-        f"{sorted(lidas & CHAVES_DE_DINHEIRO)}"
+    assert lidas <= INTENCAO_DO_COMPRADOR, (
+        "place_order leu do navegador coisa que não é intenção do comprador: "
+        f"{sorted(lidas - INTENCAO_DO_COMPRADOR)}. Dinheiro é calculado no "
+        "servidor; se a chave nova é intenção legítima, acrescente-a a "
+        "INTENCAO_DO_COMPRADOR."
     )
 
     pedido = Order.objects.get(pk=resp.json()["order_id"])

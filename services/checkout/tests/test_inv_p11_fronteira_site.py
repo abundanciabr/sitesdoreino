@@ -88,7 +88,9 @@ def _post_com_cabecalhos(client, token, path, corpo, host, **cabecalhos):
     )
 
 
-def test_cabecalho_de_proxy_forjado_nao_troca_o_site_do_host(client, token_valido, rede):
+def test_cabecalho_de_proxy_forjado_nao_troca_o_site_do_host(
+    client, token_valido, rede
+):
     # O site vem do Host, e SÓ do Host. Nenhum cabeçalho que o cliente consiga
     # escrever redireciona a resolução, e X-Forwarded-Host é o clássico: quem
     # ler `(request.headers.get("X-Forwarded-Host") or request.get_host())`
