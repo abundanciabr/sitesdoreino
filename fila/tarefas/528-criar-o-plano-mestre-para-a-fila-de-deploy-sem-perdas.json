@@ -1,0 +1,19 @@
+{
+  "arquivo": "528-criar-o-plano-mestre-para-a-fila-de-deploy-sem-perdas",
+  "id": "TAR-528",
+  "titulo": "Criar o plano mestre para a fila de deploy sem perdas",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, muralhas e checks verdes, e o documento respondendo em /mapa-ia/planos/PLANO-MESTRE-DEPLOY-SEM-PERDAS.md com o título correto",
+  "despacho": "Criar somente o plano mestre auditável para eliminar as perdas da fila de deploy. Consolidar fatos medidos, arquitetura escolhida, fases seguras, testes, riscos, rollback, observabilidade e critérios de conclusão em docs/decisoes/PLANO-MESTRE-DEPLOY-SEM-PERDAS.md. Não implementar os workflows nesta tarefa.",
+  "origem": "Pedido direto do mantenedor nesta sessão em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -140,6 +140,9 @@ jobs:
     needs: portao
     # Explícito de propósito; NUNCA always()/failure().
     if: needs.portao.result == 'success'
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

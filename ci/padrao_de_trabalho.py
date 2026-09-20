@@ -63,6 +63,7 @@ PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  'Siga convenções existentes',
  'Sem debug, código morto ou import sem uso',
  'um item falhando impede PRONTO',
+ 'Prometer o conserto não é consertar',
  'se remover não quebra nada do pedido, remova',
  'liste o que reprovaria e corrija',
  'Mostre comando e saída real, tela ou artefato',
@@ -70,6 +71,8 @@ PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  '**O que foi verificado**',
  '**Pendências**',
  '**Veredito**',
+ '**Instruções**',
+ 'mesmo que nada dependa dele',
  'Cortes só se houver; auditoria item a item só quando relevante',
  'Sem elogio próprio, enchimento',
  '"deve funcionar", "provavelmente", "em teoria"',
@@ -92,7 +95,12 @@ PORTAS = {
     "painel/ia/01-leis-ritos-e-invariantes.md": "| 10 | O Padrão de Trabalho |",
 }
 
-TETOS_EM_BYTES = {"CLAUDE.md": 12_000, "AGENTS.md": 10_000}
+# O teto do CLAUDE.md subiu de 12_500 para 13_500 em 20/09/2026, quando a regra
+# 9 ganhou o bloco **Instruções**. O teto protege o contexto de TODA sessão, e
+# continua valendo: o que ele não pode virar é uma catraca que só deixa entrar
+# obrigação nova se outra sair em silêncio — o arquivo estava a 11 bytes do
+# limite e a alternativa era apagar lei que ninguém mandou apagar.
+TETOS_EM_BYTES = {"CLAUDE.md": 13_500, "AGENTS.md": 10_000}
 
 
 def _claude_md(raiz: Path) -> str:
@@ -227,9 +235,14 @@ def conferir(raiz: Path) -> Relatorio:
             conteudo = (raiz / nome).read_bytes()
         except OSError as erro:
             raise ErroDeInstrumentacao(f"{nome} ilegível", str(erro)) from erro
+        # O que conta é o BLOB, não o fim de linha do disco. Com core.autocrlf
+        # o Windows guarda CRLF e o Git guarda LF: medir o disco reprovava aqui
+        # e passava na CI pelos mesmos bytes (~242 no CLAUDE.md). Portão que
+        # mente em toda máquina do mantenedor é portão que se aprende a ignorar.
+        medido = len(conteudo.replace(b"\r\n", b"\n"))
         relatorio.registrar(Resultado(
-            f"teto de {nome}", Estado.PASS if len(conteudo) < teto else Estado.FAIL,
-            f"{len(conteudo)} de {teto} bytes",
+            f"teto de {nome}", Estado.PASS if medido < teto else Estado.FAIL,
+            f"{medido} de {teto} bytes",
             "Mova história para docs/decisoes, preservando obrigações e referências.",
         ))
     agentes = (raiz / "AGENTS.md").read_text(encoding="utf-8")

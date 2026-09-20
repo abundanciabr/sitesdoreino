@@ -1,0 +1,19 @@
+{
+  "arquivo": "500-inventariar-por-impressao-digital-as-chaves-antigas-do-usuar",
+  "id": "TAR-500",
+  "titulo": "Inventariar por impressao digital as chaves antigas do usuario deploy",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "a saida de ssh-keygen -lf no authorized_keys do usuario deploy, com dono identificado para CADA impressao digital, e a decisao escrita do mantenedor sobre remover ou manter cada uma",
+  "despacho": "Na VPS, como root: PW=$(getent passwd deploy); AK=$(printf '%s' \"$PW\" | cut -d: -f6)/.ssh/authorized_keys; ssh-keygen -lf \"$AK\". Para cada impressao digital que NAO for SHA256:+eKOcjlz6oewBUEzrJcLy/jDsNI9j3aOrT0B8WyrBu0, descubra o dono por prova, nunca pelo comentario da linha. Leve a lista ao mantenedor e so remova o que ele autorizar, sempre com backup datado antes.",
+  "origem": "rotacao da chave de deploy em 19/09/2026; a chave nova e SHA256:+eKOcjlz6oewBUEzrJcLy/jDsNI9j3aOrT0B8WyrBu0",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

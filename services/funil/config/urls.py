@@ -12,6 +12,7 @@ from apps.core.views import (
     marcar_todas_notificacoes_lidas,
     manifesto_do_app,
     notificacoes,
+    pagina_de_oferta,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -63,6 +64,12 @@ urlpatterns = [
         name="marcar_notificacao_lida",
     ),
     path("cadastro", cadastro, name="cadastro"),  # PLANO-I18N fase 2
+    # A pagina de vendas (19/09/2026). ENDERECO NOVO, e e por isso que a raiz
+    # nao muda: ela continua sendo a HOME pela decisao de 27/08/2026, que a
+    # docstring de `landing` explica. `oferta` tem 6 letras e nao tem FORMA de
+    # idioma, entao nao colide com a matriz do resolver
+    # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
+    path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
     # A previa da equipe ("ver como", 02/09/2026). Localizada como as
     # outras paginas da celula: a tarja e os rotulos sao texto de tela, e
     # uma rota crua faria a previa sair sempre no idioma padrao.

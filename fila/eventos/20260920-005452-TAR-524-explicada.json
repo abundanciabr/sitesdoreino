@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-005452-TAR-524-explicada",
+  "tarefa": "TAR-524",
+  "evento": "explicada",
+  "quando": "2026-09-20T00:54:52+00:00",
+  "quem": "medido em 20/09/2026: os dois disparos do semear-quiz falharam em 3 segundos com o guarda do Docker, enquanto o site respondia 200",
+  "o_que_e": "Os sete scripts que criam conteudo na producao pararam de funcionar em 15/09, quando o arquivo do Docker passou a exigir duas chaves que so o deploy e o rollback aprenderam a carregar. Nenhum deles roda hoje, e o erro que aparece nao diz que o problema sao as chaves.",
+  "o_que_muda": "Volta a ser possivel publicar conteudo na producao apertando um botao, em vez de alguem entrar na maquina a mao. Sem isto, o primeiro quiz do site nao vai ao ar e nenhuma outra area consegue ser semeada.",
+  "exemplo": "O mantenedor apertou o botao para publicar o quiz em dois sites hoje e recebeu, nos dois, a mesma mensagem de parada em tres segundos, com o site inteiro no ar e funcionando.",
+  "importancia": 90
+}

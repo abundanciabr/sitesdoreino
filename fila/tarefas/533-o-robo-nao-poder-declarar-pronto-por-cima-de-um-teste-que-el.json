@@ -1,0 +1,19 @@
+{
+  "arquivo": "533-o-robo-nao-poder-declarar-pronto-por-cima-de-um-teste-que-el",
+  "id": "TAR-533",
+  "titulo": "O robo nao poder declarar PRONTO por cima de um teste que ele mesmo viu reprovar",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O gancho do Stop rodado como processo recusa PRONTO sobre suite reprovada, aceita NAO PRONTO sobre a mesma suite, aceita apos medicao verde e nao recusa duas vezes seguidas",
+  "despacho": "# Despacho: PRONTO sobre medição vermelha é recusado\n\n## O que é\n\nReconstruir contra a main de hoje a intenção do PR #1713 (fechado em\n20/09/2026): impedir que o robô encerre o turno declarando vitória sobre uma\nfalha técnica que ele mesmo mediu.\n\n## O que muda em relação ao #1713\n\nO #1713 caçava a frase (\"vou abrir o log e corrigir\"), com regex de verbos e\nexceções ajustadas aos próprios testes, e recusava em laço. Aqui o portão mede\no **vermelho**, não a redação:\n\n- Declarar `PRONTO` sobre a última medição vermelha da sessão é recusado.\n- A medição é um comando de `COMANDOS_QUE_VERIFICAM`; o veredito sai da última\n  linha (`N failed` / `RESULTADO FAIL` contra `N passed` / `RESULTADO PASS`).\n- Vale a última medição, não a pior: consertar e medir de novo libera.\n- Saída não reconhecível não vira vermelho.\n- `NÃO PRONTO` sempre passa, e o bloco `Instruções` já obriga a explicar.\n- Recusa uma vez, depois avisa sem prender.\n\n## Caminhos\n\n`CLAUDE.md` (regra 6 e a seção do fecho), `AGENTS.md`,\n`ci/prestacao_de_contas.py`, `ci/padrao_de_trabalho.py`, os testes desses dois,\n`docs/guia-mantenedor.md` e `docs/decisoes/DECISAO-pronto-sobre-vermelho.md`.\n\nCODEOWNERS tocado: `/CLAUDE.md`, `/ci/`, `/docs/decisoes/`. Mandato do\nmantenedor dado na sessão de 20/09/2026 (\"faz o 1713\") e transcrito no PR.\n\n## Evidência exigida\n\nTeste vermelho antes do mecanismo e verde depois; o gancho rodado como processo\nrecusando `PRONTO` sobre suíte reprovada, aceitando `NÃO PRONTO` sobre a mesma\nsuíte, aceitando depois de uma medição verde, e não recusando duas vezes\nseguidas; muralhas e suíte inteira verdes.",
+  "origem": "decisao do mantenedor na sessao, 20/09/2026: faz o 1713",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-005-o-primeiro-quiz-do-site-esta-publicado",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "O primeiro quiz do site esta publicado",
+  detalhe: "O Crivo existe em meshcraft.top: 3 perguntas e 3 faixas, contadas no banco.",
+  autoridade: "sonda",
+  evidencia: "Run 35481021709: PRONTO. De fora: meshcraft.top/quiz/crivo/ 200.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: true,
+  impacto: "medio",
+  porque_so_voce: "O editor de menu exige sessao logada no admin, que so voce tem.",
+  proximo_passo: "Em /admin/menu/, item novo com endereco de fora /quiz/crivo/.",
+  recomendacao: "Por o link agora: o quiz responde e ninguem chega nele sem menu.",
+  se_eu_nao_decidir: "O quiz fica no ar sem porta de entrada e nao capta lead.",
+  tarefa: "TAR-525",
+  gravidade: "info",
+  frente: "vender",
+  area: "infra",
+  reversivel: true
+}); })();

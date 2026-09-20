@@ -1,0 +1,19 @@
+{
+  "arquivo": "531-o-fecho-de-toda-tarefa-dizer-o-que-acontece-agora-e-o-gancho",
+  "id": "TAR-531",
+  "titulo": "O fecho de toda tarefa dizer o que acontece agora, e o gancho cobrar",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O gancho do Stop rodado como processo recusa (exit 2) um fecho NAO PRONTO sem o bloco Instrucoes e aceita (exit 0) o mesmo fecho com ele; suite e muralhas verdes",
+  "despacho": "# Despacho: o fecho diz o que vem depois\n\n## O que é\n\nO relatório de fecho de toda tarefa ganha um quinto bloco, `**Instruções**`,\ncom o que acontece agora. O gancho do `Stop` (`ci/prestacao_de_contas.py`)\nrecusa o fim do turno de quem terminar no veredito.\n\n## A régua\n\n- Em **PRONTO**: presença e substância. \"Nada a fazer, a tarefa acabou\" basta.\n- Em **NÃO PRONTO**: pelo menos uma ação em lista, mais um piso de 50\n  caracteres. A lista diz, em português de leigo, o que houve, de quem é a\n  bola, o que destrava e o prazo. Vale igual quando nada depende do\n  mantenedor: nesse caso, o que está sendo esperado e quanto leva.\n- A caixinha do checklist (`- [ ]`) não conta como ação.\n\n## O segundo lado: perguntar não é instruir\n\n\"Nunca pergunte\", que vale para sub-agente, nunca quis dizer \"nunca informe\".\nA lei passa a separar as duas coisas em `CLAUDE.md`, `AGENTS.md`,\n`docs/guia-mantenedor.md`, `.claude/agents/LEIA-ME.md` e nas fichas do\ndespacho.\n\n## Caminhos\n\n`CLAUDE.md`, `AGENTS.md`, `ci/padrao_de_trabalho.py`,\n`ci/prestacao_de_contas.py`, os testes desses dois e do Codex nativo,\n`docs/guia-mantenedor.md`, `docs/decisoes/DECISAO-instrucoes-no-fecho.md`,\n`.claude/agents/LEIA-ME.md`, `.claude/agents/despacho.md`,\n`.codex/agents/despacho.toml`.\n\nCODEOWNERS tocado: `/CLAUDE.md`, `/ci/`, `/docs/decisoes/`. Mandato do\nmantenedor dado na sessão de 20/09/2026 e transcrito na descrição do PR.\n\n## Evidência exigida\n\nTeste vermelho antes do conserto e verde depois, em\n`ci/tests/test_prestacao_de_contas.py`; o gancho rodado como processo\nrecusando um fecho que termina no veredito e aceitando um que instrui; as 13\nmuralhas e a suíte inteira verdes.",
+  "origem": "sessao do mantenedor, 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

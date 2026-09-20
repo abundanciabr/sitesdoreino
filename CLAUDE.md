@@ -53,6 +53,7 @@ explica o que aconteceu e o que fazer. Zero caminhos quebrados, placeholders
 ou "implementar depois". Nomes dizem o que são, renomeie quando necessário.
 Siga convenções existentes. Sem debug, código morto ou import sem uso.
 Todos os itens aplicáveis são obrigatórios; um item falhando impede PRONTO.
+Prometer o conserto não é consertar: PRONTO sobre medição vermelha é recusado.
 
 #### 7. Faça o passe de remoção
 
@@ -67,8 +68,10 @@ de entregar. Código que causaria vergonha numa apresentação não está pronto
 #### 9. Demonstre e preste contas
 
 Mostre comando e saída real, tela ou artefato do jeito que o usuário vê.
-Checklist final e quatro blocos: **O que mudou**, **O que foi verificado**,
-**Pendências**, **Veredito** PRONTO ou NÃO PRONTO com motivo.
+Checklist final e cinco blocos: **O que mudou**, **O que foi verificado**,
+**Pendências**, **Veredito** PRONTO ou NÃO PRONTO com motivo, e **Instruções**
+com o que acontece agora. NÃO PRONTO exige lista em português de leigo: o que
+houve, de quem é a bola, o que destrava e o prazo, mesmo que nada dependa dele.
 Cortes só se houver; auditoria item a item só quando relevante.
 Sem elogio próprio, enchimento, repetir o que ele sabe ou "espero que ajude".
 
@@ -126,21 +129,23 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 
 ## Todo pedido do mantenedor é um lote
 
-Claude Code rege, nunca mergeia; Codex usa `despacho`, não pergunta ao mantenedor nem decide lei.
-Antigravity audita e verifica, nunca edita. Recebedor rege; confira PRs abertos.
-Independentes em paralelo; dependências em série. Uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
+Claude Code rege, nunca constrói nem mergeia; Codex usa `despacho`, não decide lei.
+Subagente de escrita é recusado na criação: construir é da fila, o cirúrgico é à mão, e nenhum subagente pergunta ao mantenedor ou cria outro.
+Antigravity audita e verifica, nunca edita; confira PRs abertos.
+Dependências em série; uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
 Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.
 Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
-Subagente não pergunta ao mantenedor nem cria subagente. Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
-Maestro/executor: `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
-Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md#o-que-a-tríade-não-muda).
+Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
+`gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
+Sentinela: correio na abertura, `gh`, sem cron. [Protocolo](docs/decisoes/DECISAO-triade-de-ias.md).
 
-**Quem faz valer:** `ci/pr.py`, `ci/fila.py` e testes das fichas; papéis são julgamento.
+**Quem faz valer:** `ci/pr.py`, `ci/fila.py`, `ci/muralha_dos_sub_agentes.py` e testes das fichas.
 
 ## O que uma chamada custa
 
-Gere modelo e esforço com `python ci/economia_da_fabrica.py brief`; nunca herde
-modelo. Rotina usa econômico; arquitetura/dúvida usa superior.
+Modelo e esforço: `python ci/economia_da_fabrica.py brief`; rotina usa
+econômico, arquitetura/dúvida usa superior. Sub-agente nasce só em `sonnet`
+ou `opus` declarado.
 Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 **Quem faz valer:** `ci/economia_da_fabrica.py`.
@@ -150,6 +155,10 @@ Meça estado numa chamada: `python ci/resumo_maestro.py`.
 Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
 Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
 segurança são bloqueios reais.
+
+Escopo desde 19/09/2026: o site é `meshcraft.top`. `basileiatoutheou.org` está
+congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
+a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
 
 **Quem faz valer:** julgamento.
 
@@ -189,8 +198,11 @@ são lápides. Sem tipo específico, use nota.
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
 atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
 passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
-exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
-descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
+exigem a palavra do mantenedor, e ela vale onde ele a deu: dita na sessão vale
+tanto quanto digitada no site. Quem a recebeu transcreve `Mandato-do-mantenedor:`
+na descrição com o pedido, os caminhos autorizados e a origem (sessão e data).
+Nunca invente mandato nem pare a tarefa para mandá-lo escrever no site o que
+já autorizou; sem autorização nenhuma, peça a ele na própria sessão.
 Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
 não integram. Informe somente estados comprovados de validação, integração e
 publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.
@@ -209,6 +221,10 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
+Poupar pergunta nunca foi poupar informação. Não perguntar é não transferir
+decisão sua; nunca dispensa instruir. Toda proibição de perguntar, inclusive a
+do subagente, obriga a dizer no fecho o que vem depois. Calar o próximo passo
+para não incomodar é falha, não cortesia.
 
 **Quem faz valer:** julgamento.
 
@@ -219,7 +235,10 @@ planejado, nunca ferramenta, leitura, aviso automático ou retentativa.
 Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
 após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
 com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
-pergunta ou acordar não geram dívida.
+pergunta ou acordar não geram dívida. **Instruções** fecha toda prestação de
+contas e o gancho recusa sem ele: terminar no veredito deixa a tarefa parada.
+PRONTO sobre a última medição vermelha é a mesma contradição: conserte e meça
+de novo, ou diga NÃO PRONTO e explique nas Instruções.
 Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
 veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
 nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele

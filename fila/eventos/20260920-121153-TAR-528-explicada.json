@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-121153-TAR-528-explicada",
+  "tarefa": "TAR-528",
+  "evento": "explicada",
+  "quando": "2026-09-20T12:11:53+00:00",
+  "quem": "Pedido direto do mantenedor nesta sessão em 20/09/2026",
+  "o_que_e": "A fila que publica mudanças no site guarda só uma espera e pode expulsar uma entrega sem executar nada.",
+  "o_que_muda": "A equipe passa a ter uma única ordem segura, mensurável e auditável para eliminar perdas, regressões e dívidas invisíveis no deploy.",
+  "exemplo": "É como trocar uma fila de uma cadeira por uma fila numerada, sem permitir que alguém mais velho volte a plataforma para uma versão anterior.",
+  "importancia": 95
+}

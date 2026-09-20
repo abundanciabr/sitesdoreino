@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-003-infra-o-semeador-do-quiz-carrega-as-chaves",
+  tipo: "incidente",
+  quando: "2026-09-20",
+  titulo: "infra: o semeador do quiz carrega as chaves",
+  detalhe: "O Compose exigia duas chaves que o semeador nao carregava, e nenhum quiz era publicado. Agora ele as carrega e mostra o erro real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1792. Validação local: árvore 0cd7a9013d326a71454e5f07058917c0ab7ea04a; commit 276ac6d188257d4899779039736442fa9949a67d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-525",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

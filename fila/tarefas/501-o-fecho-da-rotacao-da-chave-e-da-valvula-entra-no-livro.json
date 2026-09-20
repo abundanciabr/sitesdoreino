@@ -1,0 +1,20 @@
+{
+  "arquivo": "501-o-fecho-da-rotacao-da-chave-e-da-valvula-entra-no-livro",
+  "id": "TAR-501",
+  "titulo": "O fecho da rotacao da chave e da valvula entra no livro",
+  "toca": [
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o PR desta entrega integrado na main, com o registro 20260919-042 e a TAR-500 visiveis em python ci/fila.py listar",
+  "despacho": "Commite o registro 20260919-042, a TAR-500 e o evento dela num PR minimo.",
+  "origem": "encerramento administrativo pedido pelo mantenedor em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

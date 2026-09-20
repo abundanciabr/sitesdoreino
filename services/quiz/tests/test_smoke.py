@@ -48,7 +48,7 @@ def test_healthz_responde_200(client):
 
 @pytest.mark.django_db
 def test_host_desconhecido_e_404_nunca_um_site_padrao(client, quiz_a):
-    resp = client.get(f"/quiz/{quiz_a.slug}/", HTTP_HOST=HOST_DESCONHECIDO)
+    resp = client.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_DESCONHECIDO)
     assert resp.status_code == 404
 
 
@@ -58,12 +58,12 @@ def test_caminho_feliz_form_ate_resultado(client, quiz_a):
     pergunta = quiz_a.questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
 
-    formulario = client.get(f"/quiz/{quiz_a.slug}/", HTTP_HOST=HOST_A)
+    formulario = client.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST_A)
     assert formulario.status_code == 200
     assert b"Pergunta 1" in formulario.content
 
     resp = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {
             f"pergunta_{pergunta.id}": opcao_dez.id,
             "email": "lead@exemplo.com",
@@ -72,7 +72,7 @@ def test_caminho_feliz_form_ate_resultado(client, quiz_a):
         HTTP_HOST=HOST_A,
     )
     assert resp.status_code == 302
-    assert resp["Location"].startswith(f"/quiz/{quiz_a.slug}/resultado?lead=")
+    assert resp["Location"].startswith(f"/{quiz_a.slug}/resultado?lead=")
 
     submissao = Submission.objects.get()
     assert submissao.score == 10
