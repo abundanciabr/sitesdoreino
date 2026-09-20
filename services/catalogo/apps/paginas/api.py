@@ -7,11 +7,18 @@ import datetime as dt
 import uuid
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from ninja import Field, Path, Router, Schema
 from ninja.errors import HttpError
 
+from apps.ofertas.models import Offer
 from apps.paginas.models import Page, PageDraft, RascunhoVazio
 from apps.paginas.vocabulario import normalizar_secoes
+from apps.sites.models import Site
+
+#: O slug da página que vende. É o único que nasce amarrado a uma oferta, porque
+#: é o único cujo preço e botão saem do catálogo em vez do texto escrito à mão.
+SLUG_DA_OFERTA = "oferta"
 
 # A descrição do mapa de slots é a do contrato, palavra por palavra: ela é a
 # única lista do vocabulário que quem consome a API enxerga, e duas cópias
@@ -155,6 +162,76 @@ def _pagina(site_id: str, slug: str, publicada: bool = False) -> Page:
     return pagina
 
 
+def _site(site_id: str) -> Site:
+    """O site desta rota, ou 404.
+
+    Gravar rascunho pode CRIAR a página, então "não existe" deixou de ser uma
+    resposta só: site que não existe continua 404, e página que não existe
+    passa a nascer. Quem separa as duas coisas é esta consulta, e é por isso
+    que ela vem ANTES de qualquer escrita.
+
+    O `try` cobre o id sem forma de UUID pela mesma razão de `_pagina`.
+    """
+    try:
+        site = Site.objects.filter(id=site_id).first()
+    except (ValidationError, ValueError):
+        site = None
+    if site is None:
+        raise HttpError(404, "site inexistente")
+    return site
+
+
+def _oferta_padrao(site: Site) -> Offer:
+    """A oferta que a página de venda deste site anuncia, ou 422 que ensina.
+
+    Recusar aqui, antes de qualquer escrita, é o que impede a página de venda
+    de nascer sem nada para vender. As duas mensagens dizem o campo exato a
+    corrigir, porque quem lê está numa tela de administração, não num log.
+    """
+    if not site.default_offer_slug:
+        raise HttpError(
+            422,
+            f"o site '{site.host}' não tem default_offer_slug, e é dele que sai a "
+            "oferta da página de venda. Preencha o default_offer_slug do site com "
+            "o slug de uma oferta existente e grave de novo.",
+        )
+    oferta = (
+        Offer.objects.select_related("product")
+        .filter(site=site, slug=site.default_offer_slug)
+        .first()
+    )
+    if oferta is None:
+        raise HttpError(
+            422,
+            f"o site '{site.host}' aponta para a oferta '{site.default_offer_slug}', "
+            "que não existe neste site. Crie a oferta, ou corrija o "
+            "default_offer_slug do site, e grave de novo.",
+        )
+    return oferta
+
+
+def _criar_pagina(site: Site, slug: str) -> Page:
+    """Cria a página deste site, com o vínculo que o slug pede, uma vez só.
+
+    **A unicidade é do banco, nunca de uma checagem em Python:** entre um
+    `exists()` e um `create()` cabe a requisição inteira da outra thread, e o
+    resultado seriam duas páginas para o mesmo site e slug. `get_or_create`
+    apanha o `IntegrityError` da restrição e refaz a leitura, então a corrida
+    termina com uma página e dois 200.
+
+    A oferta é resolvida ANTES do `atomic`: um 422 no meio da transação não
+    deixaria página órfã, mas deixaria a mensagem dependente de rollback para
+    ser verdadeira, e o mantenedor merece a recusa antes de qualquer escrita.
+    """
+    oferta = _oferta_padrao(site) if slug == SLUG_DA_OFERTA else None
+    with transaction.atomic():
+        pagina, _ = Page.objects.get_or_create(
+            site=site, slug=slug, defaults={"offer": oferta}
+        )
+        PageDraft.objects.get_or_create(page=pagina)
+    return pagina
+
+
 def _corpo_publicada(versao) -> dict:
     return {
         "id": versao.id,
@@ -261,13 +338,22 @@ def get_page_draft(request, site_id: str, slug: str):
     },
 )
 def put_page_draft(request, site_id: str, slug: str, payload: CorpoDoRascunho):
-    pagina = _pagina(site_id, slug)
+    # A ordem destas quatro linhas é a entrega inteira, e nenhuma delas troca de
+    # lugar: o site existe, o texto é válido, e SÓ ENTÃO alguma coisa é escrita.
+    # Validar depois de criar deixaria `Page` órfã atrás de cada texto torto.
+    site = _site(site_id)
     try:
         secoes = normalizar_secoes([secao.model_dump() for secao in payload.secoes])
     except ValidationError as erro:
         # A mensagem do vocabulário é escrita para quem está montando a página
         # ler na tela, então ela atravessa a fronteira em vez de virar um 422 mudo.
         raise HttpError(422, "; ".join(erro.messages))
+
+    pagina = Page.objects.filter(site=site, slug=slug).first()
+    if pagina is None:
+        pagina = _criar_pagina(site, slug)
+    # Página que já existe não tem a oferta trocada: o vínculo é decisão de quem
+    # criou a página, e regravar texto não é motivo para mudar o que ela vende.
 
     versao = pagina.ultima_versao
     rascunho, _ = PageDraft.objects.get_or_create(page=pagina)
