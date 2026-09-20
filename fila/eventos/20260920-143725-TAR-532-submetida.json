@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-143725-TAR-532-submetida",
+  "tarefa": "TAR-532",
+  "evento": "submetida",
+  "quando": "2026-09-20T14:37:25+00:00",
+  "quem": "agent/fabrica/fechar-prs-superados",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1802",
+  "revisao": "a93819105210844728c20b6a9ca1623beffc8b7c",
+  "arvore": "9d935b940e2cc77babca839cd7b55d4707cd878f"
+}
