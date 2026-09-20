@@ -2,7 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.plataforma/eventos/pagamento.aprovado.v2.json",
   "title": "pagamento.aprovado.v2",
-  "description": "O pagamento de um pedido foi aprovado. Diferença para o v1: o campo obrigatório `mp_payment_id` deixa de existir e dá lugar ao par neutro `provider` mais `provider_reference_id`, e `site_id` passa a se chamar `platform_site_id`. Rito de Contrato de 20/09/2026, com o mantenedor presente (fila TAR-545). O v1 NÃO sai do ar: ele continua sendo emitido até o último consumidor migrar (RITOS.md §3), e quem consome precisa aceitar as duas versões ao mesmo tempo. A PONTE ENTRE AS DUAS VERSÕES, que é a mesma para toda célula consumidora: a identidade lógica do fato é o PAR (`provider`, `provider_reference_id`), nunca um dos dois sozinho, e um evento v1 se traduz para esse par como (`mercadopago`, valor de `mp_payment_id`). É assim, e só assim, que a deduplicação funciona quando o mesmo pagamento chega uma vez como v1 e outra como v2.",
+  "description": "O pagamento de um pedido foi aprovado. Diferença para o v1: o campo obrigatório `mp_payment_id` deixa de existir e dá lugar ao par neutro `provider` mais `provider_reference_id`, e `site_id` passa a se chamar `platform_site_id`. Rito de Contrato de 20/09/2026, com o mantenedor presente (fila TAR-545). O v1 NÃO sai do ar: ele continua sendo emitido até o último consumidor migrar (RITOS.md §3), e quem consome precisa aceitar as duas versões ao mesmo tempo. Como deduplicar o mesmo fato chegando nas duas versões está em `x-ponte-do-v1`, aqui embaixo, e é de lá que as células consumidoras tiram a regra, não daqui.",
+  "x-ponte-do-v1": {
+    "_leia": "A regra de deduplicação entre as duas versões, em forma de dado para que as quatro células consumidoras derivem a MESMA chave lógica em vez de cada uma inventar a sua. `chave_entre_versoes` são os campos de `data` que, juntos e só juntos, identificam o fato. `no_v1` diz de onde tirar cada um desses campos quando o evento chega na versão 1: um caminho dentro do evento v1, ou um valor literal quando o v1 não carregava a informação por ser de um provedor só.",
+    "versao_anterior": "pagamento.aprovado.v1",
+    "chave_entre_versoes": ["provider", "provider_reference_id"],
+    "no_v1": {
+      "provider": "mercadopago",
+      "provider_reference_id": "data.mp_payment_id"
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "required": ["event", "version", "event_id", "occurred_at", "data"],
@@ -27,6 +36,7 @@
       "properties": {
         "platform_site_id": {
           "type": "string",
+          "minLength": 1,
           "description": "O site (tenant) DESTA plataforma, e o motivo de o nome ser longo: o envelope do webhook da Appmax carrega um `site_id` que é da Appmax, e chamar os dois pelo mesmo nome curto convidaria a rotear um aluno pelo identificador do fornecedor. É o `site_id` do v1, renomeado, com o mesmo conteúdo. Atribuição opaca: pagamentos apenas ecoa o valor recebido na intent e nunca o interpreta."
         },
         "payment_id": {
@@ -43,6 +53,7 @@
         },
         "provider_reference_id": {
           "type": "string",
+          "minLength": 1,
           "description": "O identificador da cobrança NO PROVEDOR, opaco para a plataforma. Num evento v1 o mesmo valor chegava em `mp_payment_id` com `provider` implícito igual a `mercadopago`: é essa equivalência que permite deduplicar o mesmo pagamento chegando nas duas versões."
         },
         "product_id": {

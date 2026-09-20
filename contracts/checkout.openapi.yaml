@@ -9,9 +9,10 @@ info:
     Multissítio: o site NUNCA vem no payload — é resolvido do Host da requisição
     (middleware CONV-SITE); host desconhecido é 404 (INV-P11). Sessão, pedido e
     eventos carregam o site_id resolvido.
-    Rotas públicas via gateway: as páginas /checkout/*. Esta API JSON é interna
-    (usada pelas próprias páginas da célula) e não é consumida por outras células,
-    exceto GET /pedidos/{id} pela suíte E2E.
+    Rotas públicas via gateway: as páginas /checkout/* e a confirmação de cartão
+    POST /pedidos/{order_id}/cartao, que o navegador do comprador chama direto.
+    O resto desta API JSON é interno (usado pelas próprias páginas da célula) e
+    não é consumido por outras células, exceto GET /pedidos/{id} pela suíte E2E.
 servers:
   - url: http://checkout:8000/api/checkout
 security:
@@ -165,12 +166,14 @@ components:
       properties:
         token:
           type: string
+          minLength: 1
           description: >-
             Token de uso único do cartão, gerado no navegador pelo SDK do
             provedor (Appmax JS ou Card Payment Brick) e válido para uma
             cobrança. A plataforma nunca vê número, validade ou CVV.
         ip:
           type: string
+          minLength: 1
           description: >-
             O IP público do comprador, coletado pelo Appmax JS no navegador.
             OBRIGATÓRIO, e não é telemetria: a Appmax exige o IP para criar o
@@ -179,12 +182,14 @@ components:
             acontece.
         holder_name:
           type: string
+          minLength: 1
           description: >-
             Nome impresso no cartão, como o portador o digitou. Pode diferir do
             nome do comprador no pedido, e quem consome não pode assumir que os
             dois são iguais.
         holder_document_number:
           type: string
+          minLength: 1
           description: >-
             CPF ou CNPJ do portador do cartão, somente dígitos. Pode diferir do
             documento do comprador no pedido, pela mesma razão do nome.

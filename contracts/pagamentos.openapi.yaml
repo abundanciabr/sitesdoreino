@@ -185,12 +185,14 @@ components:
       properties:
         token:
           type: string
+          minLength: 1
           description: >-
             Token de uso único do cartão, gerado no navegador pelo SDK do
             provedor (Appmax JS ou Card Payment Brick) e válido para uma
             cobrança. A plataforma nunca vê número, validade ou CVV.
         ip:
           type: string
+          minLength: 1
           description: >-
             O IP público do comprador, coletado pelo Appmax JS no navegador.
             OBRIGATÓRIO, e não é telemetria: a Appmax exige o IP para criar o
@@ -199,12 +201,14 @@ components:
             acontece.
         holder_name:
           type: string
+          minLength: 1
           description: >-
             Nome impresso no cartão, como o portador o digitou. Pode diferir do
             nome do comprador no pedido, e quem consome não pode assumir que os
             dois são iguais.
         holder_document_number:
           type: string
+          minLength: 1
           description: >-
             CPF ou CNPJ do portador do cartão, somente dígitos. Pode diferir do
             documento do comprador no pedido, pela mesma razão do nome.

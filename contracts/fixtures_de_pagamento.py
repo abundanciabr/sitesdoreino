@@ -42,10 +42,11 @@ APROVADO_V2_VALIDA: dict = {
     },
 }
 
-#: Quebra as duas leis centrais do v2 de uma vez: volta a carregar o nome do
-#: fornecedor no campo (`mp_payment_id`) e não traz o par neutro que substitui
-#: esse nome. `additionalProperties: false` recusa o campo velho e `required`
-#: recusa a ausência do par.
+#: O nome do fornecedor voltando pela porta dos fundos: a carta está completa e
+#: correta, e ainda assim traz `mp_payment_id` de carona. Quem recusa é
+#: `additionalProperties: false`, e é só ele: a carta não quebra nenhuma outra
+#: lei, de propósito, para que sabotar essa linha do schema tenha de aparecer
+#: aqui como teste vermelho.
 APROVADO_V2_INVALIDA: dict = {
     "event": "pagamento.aprovado",
     "version": 2,
@@ -57,6 +58,8 @@ APROVADO_V2_INVALIDA: dict = {
         "order_id": "ord_01H9Z2",
         "amount_cents": 19700,
         "method": "card",
+        "provider": "appmax",
+        "provider_reference_id": "4471230",
         "mp_payment_id": "123456789",
         "customer": {"email": "aluno@example.com", "name": "Maria de Souza"},
     },
@@ -123,10 +126,9 @@ ESTORNADO_V2_VALIDA: dict = {
     },
 }
 
-#: Dinheiro em reais fracionados e um motivo que não existe. As duas coisas são
-#: o mesmo erro de fundo: tratar como texto livre o que decide se o acesso do
-#: aluno cai. `amount_cents` é inteiro em centavos em todo contrato desta
-#: plataforma (contracts/README.md, ponto 7).
+#: Um motivo que não existe. É a única lei que esta carta quebra: o enum de
+#: `motivo` decide se o acesso do aluno cai, e um valor livre ali faria cada
+#: uma das células consumidoras inventar o próprio critério.
 ESTORNADO_V2_INVALIDA: dict = {
     "event": "pagamento.estornado",
     "version": 2,
@@ -137,8 +139,17 @@ ESTORNADO_V2_INVALIDA: dict = {
         "provider": "appmax",
         "provider_reference_id": "4471230",
         "motivo": "arrependimento",
-        "amount_cents": 197.00,
+        "amount_cents": 19700,
     },
+}
+
+#: A referência do provedor vazia. `required` sozinho não pega isto: a chave
+#: existe e é do tipo certo, e só `minLength` a recusa. Duas compras diferentes
+#: com esta carta dividiriam a mesma chave de deduplicação, e a segunda sumiria
+#: em silêncio.
+APROVADO_V2_SEM_REFERENCIA: dict = {
+    **APROVADO_V2_VALIDA,
+    "data": {**APROVADO_V2_VALIDA["data"], "provider_reference_id": ""},
 }
 
 # ---------------------------------------------------------------------------
@@ -153,15 +164,22 @@ CARTAO_VALIDA: dict = {
     "installments": 3,
 }
 
-#: O navegador mandando dinheiro. É o erro que INV-P2 existe para impedir: total
-#: e produto vêm do snapshot congelado no servidor, nunca da página. A carta
-#: também omite o `ip`, que a Appmax exige para criar o cliente e que só o
-#: Appmax JS consegue coletar.
+#: O navegador mandando dinheiro. É o erro que INV-P2 existe para impedir:
+#: total e produto vêm do snapshot congelado no servidor, nunca da página, e
+#: uma página que os enviasse seria a porta para escolher o próprio preço. É a
+#: única lei que esta carta quebra; a exigência do `ip` tem prova própria, com
+#: a carta válida menos esse campo.
 CARTAO_INVALIDA: dict = {
     "token": "tok_appmax_9f31c0a4",
+    "ip": "191.53.14.202",
     "holder_name": "MARIA DE SOUZA",
     "holder_document_number": "39053344705",
     "installments": 3,
     "amount_cents": 100,
     "product_id": "curso-fundamentos",
 }
+
+#: O token do cartão vazio. Mesmo caso do `provider_reference_id`: a chave
+#: existe, o tipo está certo, e só `minLength` impede que uma confirmação sem
+#: token nenhum chegue ao provedor.
+CARTAO_SEM_TOKEN: dict = {**CARTAO_VALIDA, "token": ""}

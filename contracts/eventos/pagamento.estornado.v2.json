@@ -24,6 +24,7 @@
       "properties": {
         "platform_site_id": {
           "type": "string",
+          "minLength": 1,
           "description": "O site (tenant) DESTA plataforma. O nome é longo pela mesma razão das outras duas cartas: o envelope do webhook da Appmax carrega um `site_id` que é da Appmax."
         },
         "provider": {
@@ -33,6 +34,7 @@
         },
         "provider_reference_id": {
           "type": "string",
+          "minLength": 1,
           "description": "O identificador, NO PROVEDOR, do pagamento que foi estornado. É o mesmo valor que veio no `pagamento.aprovado.v2` daquela compra, e é por ele que o consumidor encontra a matrícula a cortar."
         },
         "motivo": {

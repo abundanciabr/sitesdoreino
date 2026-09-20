@@ -94,6 +94,21 @@ def test_a_carta_invalida_e_recusada_pelo_schema(nome: str) -> None:
     assert erros, f"{nome} aceitou uma carta que precisa recusar"
 
 
+def test_a_referencia_do_provedor_nao_pode_chegar_vazia() -> None:
+    """`required` aceita string vazia, e aqui isso seria pior que a ausência.
+
+    Duas compras com `provider_reference_id` vazio dividiriam a mesma chave de
+    deduplicação, e a segunda matrícula sumiria em silêncio. Quem recusa é o
+    `minLength`.
+    """
+    erros = list(
+        Draft202012Validator(evento("pagamento.aprovado.v2")).iter_errors(
+            cartas.APROVADO_V2_SEM_REFERENCIA
+        )
+    )
+    assert erros, "o aprovado v2 aceitou uma referência de provedor vazia"
+
+
 # ---------------------------------------------------------------------------
 # A lei que dá nome à tarefa: nenhum fornecedor dentro do nome do campo
 # ---------------------------------------------------------------------------
@@ -143,30 +158,61 @@ def test_o_site_da_plataforma_tem_nome_proprio_e_e_obrigatorio(nome: str) -> Non
     assert "site_id" not in dados["properties"]
 
 
-#: Qual campo do v1 atravessa para o v2, por evento que TEM um v1. As duas
-#: pontes são diferentes, e é por isso que elas estão escritas: o v1 do
-#: aprovado carrega `mp_payment_id`, que vale como (`mercadopago`, aquele
-#: valor); o v1 do recusado NUNCA carregou referência de provedor nenhuma, e
-#: nele o que atravessa as versões é o `payment_id`.
+#: A ponte que cada v2 declara para a sua versão anterior. As duas são
+#: DIFERENTES, e é exatamente por isso que elas precisam estar escritas em
+#: forma de dado: o v1 do aprovado carrega `mp_payment_id`, que vale como
+#: (`mercadopago`, aquele valor); o v1 do recusado nunca carregou referência de
+#: provedor nenhuma, e nele o que atravessa as versões é o `payment_id`. Quatro
+#: células vão ler isto, e uma que leia errado transforma um pagamento em duas
+#: matrículas.
 PONTES_ENTRE_VERSOES = {
-    "pagamento.aprovado.v2": "mp_payment_id",
-    "pagamento.recusado.v2": "payment_id",
+    "pagamento.aprovado.v2": {
+        "versao_anterior": "pagamento.aprovado.v1",
+        "chave_entre_versoes": ["provider", "provider_reference_id"],
+        "no_v1": {
+            "provider": "mercadopago",
+            "provider_reference_id": "data.mp_payment_id",
+        },
+    },
+    "pagamento.recusado.v2": {
+        "versao_anterior": "pagamento.recusado.v1",
+        "chave_entre_versoes": ["payment_id"],
+        "no_v1": {"payment_id": "data.payment_id"},
+    },
 }
 
 
-@pytest.mark.parametrize("nome,chave", sorted(PONTES_ENTRE_VERSOES.items()))
-def test_a_ponte_entre_as_duas_versoes_esta_escrita_no_contrato(
-    nome: str, chave: str
-) -> None:
-    """A regra de deduplicação entre v1 e v2 mora aqui, e em nenhum outro lugar.
+@pytest.mark.parametrize("nome", sorted(PONTES_ENTRE_VERSOES))
+def test_a_ponte_entre_as_duas_versoes_esta_escrita_no_contrato(nome: str) -> None:
+    """A regra de deduplicação entre v1 e v2 mora no contrato, e em forma de dado.
 
-    As quatro células consumidoras precisam derivar a MESMA chave lógica do
-    mesmo fato chegando nas duas versões. Se essa frase sair do contrato, cada
-    uma inventa a sua, e o mesmo pagamento vira duas matrículas.
+    Prosa não serve aqui: cada uma das quatro células consumidoras leria a sua
+    e derivaria a sua. Em forma de dado, as quatro derivam a MESMA chave.
     """
-    descricao = evento(nome)["description"]
-    assert "v1" in descricao
-    assert chave in descricao
+    ponte = {
+        chave: valor
+        for chave, valor in evento(nome)["x-ponte-do-v1"].items()
+        if not chave.startswith("_")
+    }
+    assert ponte == PONTES_ENTRE_VERSOES[nome]
+
+
+@pytest.mark.parametrize("nome", sorted(PONTES_ENTRE_VERSOES))
+def test_a_ponte_aponta_para_campos_que_existem_nas_duas_versoes(nome: str) -> None:
+    """A ponte não pode envelhecer em silêncio apontando para campo nenhum."""
+    ponte = evento(nome)["x-ponte-do-v1"]
+    campos_v2 = evento(nome)["properties"]["data"]["properties"]
+    for campo in ponte["chave_entre_versoes"]:
+        assert campo in campos_v2, f"{nome}: a ponte cita {campo}, que não existe"
+
+    campos_v1 = evento(ponte["versao_anterior"])["properties"]["data"]["properties"]
+    for campo, origem in ponte["no_v1"].items():
+        assert campo in ponte["chave_entre_versoes"]
+        if origem.startswith("data."):
+            assert origem.removeprefix("data.") in campos_v1, (
+                f"{nome}: a ponte tira {campo} de {origem}, "
+                f"que não existe em {ponte['versao_anterior']}"
+            )
 
 
 def test_o_estorno_nasce_na_versao_2_e_nao_tem_v1() -> None:
@@ -174,10 +220,13 @@ def test_o_estorno_nasce_na_versao_2_e_nao_tem_v1() -> None:
 
     O fato nasce com a família de cartas sem nome de fornecedor. Inventar um v1
     agora seria declarar uma versão que nenhum publicador jamais emitiu, e os
-    consumidores passariam a esperar por ela.
+    consumidores passariam a esperar por ela. Por isso ele também não declara
+    ponte: não há para onde.
     """
     assert not (EVENTOS / "pagamento.estornado.v1.json").exists()
-    assert evento("pagamento.estornado.v2")["properties"]["version"]["const"] == 2
+    estornado = evento("pagamento.estornado.v2")
+    assert estornado["properties"]["version"]["const"] == 2
+    assert "x-ponte-do-v1" not in estornado
 
 
 # ---------------------------------------------------------------------------
@@ -237,6 +286,17 @@ def test_o_ip_do_comprador_e_obrigatorio_na_confirmacao(celula: str) -> None:
     sem_ip = {k: v for k, v in cartas.CARTAO_VALIDA.items() if k != "ip"}
     erros = list(Draft202012Validator(schema).iter_errors(sem_ip))
     assert erros, f"{celula} aceitou uma confirmação de cartão sem o IP"
+
+
+@pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
+def test_o_token_do_cartao_nao_pode_chegar_vazio(celula: str) -> None:
+    """Campo presente e vazio é o buraco que `required` sozinho não fecha."""
+    erros = list(
+        Draft202012Validator(confirmacao_de_cartao(celula)).iter_errors(
+            cartas.CARTAO_SEM_TOKEN
+        )
+    )
+    assert erros, f"{celula} aceitou uma confirmação com o token vazio"
 
 
 @pytest.mark.parametrize("celula", ["checkout", "pagamentos"])
