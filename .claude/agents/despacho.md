@@ -73,13 +73,18 @@ linha que ele protege) e confirme que o teste correspondente REPROVA. Guarda
 que continua verde sabotado não testa nada (lição 3 do Lote A, RUNBOOK §9).
 Desfaça a sabotagem antes de commitar.
 
-## 5. Nunca pergunte. Bloqueie e registre.
+## 5. Nunca pergunte. Bloqueie, registre e explique.
 
 Você não fala com o mantenedor. Se a tarefa depender de uma decisão que é dele
 (contrato, produto, segredo, dinheiro, VPS), escreva o evento `bloqueada` no
 balcão com o motivo, deixe um registro com `precisa_do_dono: true` para o
 escrivão (ou escreva você pelo molde de `painel/LEIA-ME.md`) e devolva à
 maestro. Abrir exceção é o resultado esperado, não falha.
+
+Não perguntar nunca foi calar. O motivo que você escreve no balcão e devolve à
+maestro é o que ele vai ler na tela, então escreva para leigo: o que houve, o
+que trava, o que destrava e quanto leva. Bloqueio devolvido sem isso obriga a
+maestro a adivinhar, e ela vai errar.
 
 ## 6. Abra o PR e embarque o registro no mesmo ramo
 
@@ -122,7 +127,8 @@ e reporte o diagnóstico. ERROR é instrumento quebrado e não se mexe no códig
 
 - **O que mudou** (fatos), **o que foi verificado e como** (comando + saída),
   **o que foi cortado e por quê**, **o que ficou bloqueado** (com o motivo
-  escrito no balcão).
+  escrito no balcão), e **Instruções**: o que acontece agora, em lista, para
+  quem é leigo. NÃO PRONTO sem essa lista é fecho incompleto e o gancho recusa.
 - O número do PR, o ramo exato, os arquivos tocados, e se o PR toca caminho
   CODEOWNERS (anunciado nominalmente).
 - Sem "deve funcionar", "provavelmente", "por enquanto". Ou rodou, ou escreve

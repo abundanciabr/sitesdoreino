@@ -18,12 +18,13 @@ dos caminhos do brief; contexto direcionado não dispensa leis.
 | 6 | Prove com comando e saída real; sem prova escreva NÃO RODEI. |
 | 7 | Remova o que não faz falta ao pedido. |
 | 8 | Revise como crítico, corrija antes de entregar. |
-| 9 | Demonstre; checklist e quatro blocos finais, sem enchimento. |
+| 9 | Demonstre; checklist e cinco blocos finais, sem enchimento. |
 | 10 | Não substitua prova por promessa nem use as frases proibidas. |
 
 No Codex, as fichas ficam em `.codex/agents/`; modelo e esforço vêm de
 `python ci/economia_da_fabrica.py brief`. A maestro divide e delega;
-despacho não cria subagente nem pergunta ao mantenedor.
+despacho não cria subagente nem pergunta ao mantenedor, e devolve por escrito o
+que houve e o que destrava: não perguntar nunca dispensou prestar contas.
 
 Na tríade (`docs/decisoes/DECISAO-triade-de-ias.md`), o Codex é o EXECUTOR:
 constrói pela ficha `despacho`, um PR por tarefa, com evento na fila e
@@ -47,7 +48,10 @@ Consulte erros por `python ci/consultar_armadilhas.py "<mensagem>"` ou
 `--caminho <arquivo>`; abra somente origens pertinentes.
 
 No fecho, checklist atualizado e **O que mudou**, **O que foi verificado**,
-**Pendências**, **Veredito** PRONTO ou NÃO PRONTO. Auditoria item a item
+**Pendências**, **Veredito** PRONTO ou NÃO PRONTO, e **Instruções** com o que
+acontece agora. NÃO PRONTO exige lista em português de leigo: o que houve, de
+quem é a bola, o que destrava e o prazo, mesmo que nada dependa dele; o gancho
+recusa o fecho sem ela. Auditoria item a item
 somente quando relevante; cortes somente quando houver.
 Despacho devolve número do PR, ramo, SHA, arquivos, CODEOWNERS e provas.
 O PR pronto integra automaticamente quando muralhas e ci-celula-gate ficam

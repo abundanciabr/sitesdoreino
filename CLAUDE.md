@@ -67,8 +67,10 @@ de entregar. Código que causaria vergonha numa apresentação não está pronto
 #### 9. Demonstre e preste contas
 
 Mostre comando e saída real, tela ou artefato do jeito que o usuário vê.
-Checklist final e quatro blocos: **O que mudou**, **O que foi verificado**,
-**Pendências**, **Veredito** PRONTO ou NÃO PRONTO com motivo.
+Checklist final e cinco blocos: **O que mudou**, **O que foi verificado**,
+**Pendências**, **Veredito** PRONTO ou NÃO PRONTO com motivo, e **Instruções**
+com o que acontece agora. NÃO PRONTO exige lista em português de leigo: o que
+houve, de quem é a bola, o que destrava e o prazo, mesmo que nada dependa dele.
 Cortes só se houver; auditoria item a item só quando relevante.
 Sem elogio próprio, enchimento, repetir o que ele sabe ou "espero que ajude".
 
@@ -218,6 +220,10 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
+Poupar pergunta nunca foi poupar informação. Não perguntar é não transferir
+decisão sua; nunca dispensa instruir. Toda proibição de perguntar, inclusive a
+do subagente, obriga a dizer no fecho o que vem depois. Calar o próximo passo
+para não incomodar é falha, não cortesia.
 
 **Quem faz valer:** julgamento.
 
@@ -228,7 +234,8 @@ planejado, nunca ferramenta, leitura, aviso automático ou retentativa.
 Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
 após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
 com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
-pergunta ou acordar não geram dívida.
+pergunta ou acordar não geram dívida. **Instruções** fecha toda prestação de
+contas e o gancho recusa sem ele: terminar no veredito deixa a tarefa parada.
 Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
 veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
 nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele

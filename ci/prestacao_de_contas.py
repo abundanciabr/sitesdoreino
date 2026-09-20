@@ -46,6 +46,38 @@ TITULOS = tuple(
 # a régua é o veredito estar escrito, não a pontuação escolhida para escrevê-lo.
 VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
 
+# O quinto bloco, exigido por ele em 20/09/2026: depois do veredito, o que
+# acontece AGORA. Ele não lê o transcript e é leigo em código; sem esta linha o
+# fecho termina no julgamento e ele fica sem saber se a bola é dele, quando, e
+# o que destrava. Foi o motivo declarado de ele quase cancelar o projeto.
+#
+# Por que aqui e não só na lei: a mesma regra já tinha sido escrita três vezes
+# em texto (PRs #1502, #1504 e #1713) e as três apodreceram abertas sem mudar
+# um fecho sequer. Regra sem portão é intenção.
+#
+# Por que também no PRONTO, que ele não pediu: o print que ele mandou É um
+# PRONTO, e mesmo assim ele teve de digitar sozinho o próximo passo. Em PRONTO
+# "nada a fazer" é resposta completa; o que não é resposta é o silêncio.
+INSTRUCOES = re.compile(r"\*\*\s*instru[çc][õo]es\s*:?\s*\*\*", re.I)
+
+# Uma ação da lista, exigida só quando o veredito é NÃO PRONTO: não acabou,
+# logo existe um próximo passo, por definição. A caixinha do checklist fica
+# FORA de propósito — ela diz o que falta na tarefa, não o que ele faz agora, e
+# se contasse todo NÃO PRONTO passaria sem uma instrução sequer.
+ACAO = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(?!\[[ xX]\])\S", re.M)
+
+# E um piso de texto no NÃO PRONTO, palavra dele em 20/09/2026: "mesmo que NÃO
+# dependa dele, mesmo que algo está sendo esperado, ele precisa entender o que
+# está acontecendo". "- aguardando" é uma ação listada e não explica nada.
+#
+# O piso derruba o não-resposta de uma palavra, e só isso: nenhum portão julga
+# clareza. Medido contra respostas curtas e COMPLETAS antes de escolher o
+# número — "Nada depende de você: o GitHub testa o PR e leva uns 8 minutos; eu
+# confirmo aqui" dá 63, e "aguardando" dá 10. Em 120, como nasceu, ele
+# reprovaria as duas e ensinaria a encher linguiça, que é a outra forma de
+# mentir (mesma razão da régua baixa de `_tem_substancia`).
+PISO_DAS_INSTRUCOES_EM_NAO_PRONTO = 50
+
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
 
@@ -409,21 +441,39 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not CAIXINHA.search(texto):
         return False
+    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
+    # O que vem depois do veredito. NÃO PRONTO sem ação escrita é o fecho que
+    # ele fotografou: o julgamento é a última palavra e a tarefa para de andar.
+    instrucoes = INSTRUCOES.search(texto)
+    if not instrucoes:
+        return False
+    corpo = _corpo_apos(texto, instrucoes.end())
+    if not _tem_substancia(corpo):
+        return False
+    if not pronto_de_verdade:
+        if not ACAO.search(corpo):
+            return False
+        if _letras(corpo) < PISO_DAS_INSTRUCOES_EM_NAO_PRONTO:
+            return False
     # PRONTO com caixa aberta é contradição: ou a tarefa acabou, ou sobrou passo.
     # Sem esta linha o plano de abertura colado no fim, intocado, valia como
     # roteiro final (achado do revisor, 05/09/2026).
-    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
     return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
 
 
 def _corpo_apos(texto: str, comeco: int) -> str:
     """O que vem depois deste título, até o próximo título (ou o fim)."""
     fim = len(texto)
-    for padrao in (*TITULOS, VEREDITO):
+    for padrao in (*TITULOS, VEREDITO, INSTRUCOES):
         proximo = padrao.search(texto, comeco)
         if proximo and proximo.start() < fim:
             fim = proximo.start()
     return texto[comeco:fim]
+
+
+def _letras(corpo: str) -> int:
+    """Quanto texto de verdade tem aqui, descontado o rótulo do molde."""
+    return len(re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "", MARCA_DO_MOLDE.sub(" ", corpo)))
 
 
 def _tem_substancia(corpo: str) -> bool:
@@ -431,8 +481,7 @@ def _tem_substancia(corpo: str) -> bool:
     com todas as letras, então a régua é baixa de propósito: três letras ou
     algarismos, depois de descontar o rótulo do molde. Uma régua que exigisse
     frase ensinaria o robô a encher linguiça, que é a outra forma de mentir."""
-    limpo = MARCA_DO_MOLDE.sub(" ", corpo)
-    return len(re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "", limpo)) >= 3
+    return _letras(corpo) >= 3
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -904,6 +953,15 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
         "",
         "   PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga",
         "   NÃO PRONTO. Ou rodou de verdade, ou escreve NÃO RODEI.",
+        "",
+        "**Instruções** — VOCÊ ESCREVE (o que acontece agora, para um leigo)",
+        "",
+        "   Em PRONTO, \"nada a fazer\" é resposta completa.",
+        "   Em NÃO PRONTO é obrigatória uma lista, e ela responde três coisas:",
+        "   o que houve para a tarefa não ter acabado; se a bola é dele ou sua;",
+        "   e o que destrava, com o prazo se houver. Vale também quando NADA",
+        "   depende dele: diga o que está sendo esperado e quanto leva.",
+        "   Terminar no veredito é o fecho que ele mandou consertar em 20/09/2026.",
     ]
     return "\n".join(linhas)
 
@@ -996,6 +1054,8 @@ def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "")
         "**O que foi verificado**: comando e resultado, ou NÃO RODEI.",
         "**Pendências**: o que falta, ou nada depende de ninguém.",
         "**Veredito:** PRONTO ou NÃO PRONTO, com o motivo.",
+        "**Instruções**: para leigo, o que acontece agora. NÃO PRONTO exige lista: "
+        "o que houve, de quem é a bola, o que destrava e o prazo — mesmo se nada depende dele.",
         f'Fatos: python ci/prestacao_de_contas.py --molde-com-fatos --transcript "{transcript or "caminho-da-sessao"}"',
     ]
     if faltou_o_plano:

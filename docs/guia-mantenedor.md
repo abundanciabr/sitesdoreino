@@ -17,6 +17,8 @@ estruturada (AskUserQuestion), opções em português simples, porquê,
 consequência e recomendada marcada. Se fechar sem responder, é "não agora":
 pare a parte dependente e não repita. Despacho não pergunta: escreve bloqueada
 na fila, registra precisa_do_dono: true, devolve impacto e reversão à maestro.
+Não perguntar nunca foi calar: a maestro transforma esse retorno no bloco
+Instruções, e bloqueio devolvido sem o que houve e o que destrava não serve.
 Molde e reserva de registro em painel/LEIA-ME.md.
 
 ## Passo manual
@@ -43,8 +45,17 @@ mesma sessão. A página com o documento é subproduto.
 
 ## Fechamento
 
-Checklist final e quatro blocos: O que mudou; O que foi verificado; Pendências;
-Veredito PRONTO ou NÃO PRONTO com motivo. Mudança anuncia CODEOWNERS
+Checklist final e cinco blocos: O que mudou; O que foi verificado; Pendências;
+Veredito PRONTO ou NÃO PRONTO com motivo; Instruções com o que acontece agora.
+
+Instruções fecha toda prestação de contas, e o gancho recusa o fim do turno sem
+ele. Em PRONTO, "nada a fazer" é resposta completa. Em NÃO PRONTO é obrigatória
+uma lista, em português de leigo, que responde: o que houve para a tarefa não
+ter acabado; se a bola é dele ou sua; o que destrava e quanto leva. Vale igual
+quando NADA depende dele, e nesse caso diga o que está sendo esperado: ele
+precisa entender o que aconteceu com a tarefa que pediu, não receber trabalho.
+Terminar no veredito deixa a tarefa parada, e foi a falha que ele mandou
+consertar em 20/09/2026. Mudança anuncia CODEOWNERS
 nominalmente; prova identifica comando e saída. Só declare integração ou
 publicação quando conferidas. Pendências explicam bloqueio, ação e dono;
 se não houver, diga isso. Cortes somente se houver, auditoria item a item
