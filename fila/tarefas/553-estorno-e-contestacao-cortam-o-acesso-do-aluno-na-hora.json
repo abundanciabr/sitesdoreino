@@ -1,0 +1,22 @@
+{
+  "arquivo": "553-estorno-e-contestacao-cortam-o-acesso-do-aluno-na-hora",
+  "id": "TAR-553",
+  "titulo": "Estorno e contestacao cortam o acesso do aluno na hora",
+  "toca": [
+    "alunos"
+  ],
+  "depende_de": [
+    "TAR-547",
+    "TAR-545"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Testes provando suspensao no estorno e na contestacao, reentrega do mesmo evento suspendendo uma vez so, e que uma aprovacao posterior nao reabre sozinha; suite da celula alunos verde.",
+  "despacho": "Celula alunos. Consuma o evento de estorno e suspenda a matricula.\n\nAlvos: o consumer de eventos, o handler de matricula e os testes.\n\nO contrato pagamento.estornado.v2 ja esta congelado, com provider, provider_reference_id, motivo (enum estorno e contestacao) e valor em centavos.\n\n1. Ao receber o fato, suspenda a matricula ligada aquele pagamento. Decisao do mantenedor em 20/09/2026: os dois motivos cortam na hora, sem distincao.\n2. Reentrega do mesmo evento suspende UMA vez: suspender o ja suspenso nao e erro nem efeito novo.\n3. Suspensao NAO apaga dado do aluno: ela fecha o acesso e e reversivel por decisao humana.\n4. Uma aprovacao que chegue depois do estorno nao reabre o acesso sozinha. Transicao financeira e monotonica e reabrir e decisao operacional.\n5. Fato de estorno para matricula que nao existe nao derruba o consumidor: registra e segue.\n\nSomente leitura: contracts/, services/pagamentos/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L2E; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
