@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-221611-TAR-569-concluida",
+  "tarefa": "TAR-569",
+  "evento": "concluida",
+  "quando": "2026-09-20T22:16:11+00:00",
+  "quem": "agent/painel/divida-do-corte-do-admin",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1822",
+  "verificado_em": "2026-09-20"
+}
