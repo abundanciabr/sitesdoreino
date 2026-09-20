@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215034-TAR-564-explicada",
+  "tarefa": "TAR-564",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:34+00:00",
+  "quem": "Plano mestre Appmax, lote L10; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Quem constroi tem ponto cego. Nenhuma das provas anteriores foi feita por quem nao escreveu o codigo.",
+  "o_que_muda": "Guarda que nunca foi visto vermelho pode estar morto sem ninguem saber. E a ultima chance de descobrir isso sem custar dinheiro.",
+  "exemplo": "E o fiscal que visita a obra antes da inauguracao e tenta abrir cada porta que deveria estar trancada.",
+  "importancia": 40
+}

@@ -1,0 +1,21 @@
+{
+  "arquivo": "563-a-prova-de-que-um-fornecedor-cair-nao-derruba-o-outro",
+  "id": "TAR-563",
+  "titulo": "A prova de que um fornecedor cair nao derruba o outro",
+  "toca": [
+    "e2e"
+  ],
+  "depende_de": [
+    "TAR-562"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Cross-smoke provando os dois fornecedores, e cada um derrubado sem afetar o outro.",
+  "despacho": "Celula e2e. Prove a independencia dos dois fornecedores.\n\nAlvos: ci/cross-smoke.sh e os testes cruzados.\n\n1. Pix pelo Mercado Pago e cartao pela Appmax funcionando na mesma rodada.\n2. Derrube a Appmax: o Pix continua vendendo. Este e o caso que mais importa, porque o Pix e a unica coisa que vende hoje.\n3. Derrube o Mercado Pago: o cartao continua funcionando.\n4. Exercite o rollback: desligar a trava do cartao nao derruba o Pix, e as tentativas ja enviadas continuam sendo processadas ate um estado terminal.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L9C; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

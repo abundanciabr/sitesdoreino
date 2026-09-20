@@ -1,0 +1,22 @@
+{
+  "arquivo": "562-a-prova-de-que-o-comprador-consegue-comprar-da-tela-ate-a-ma",
+  "id": "TAR-562",
+  "titulo": "A prova de que o comprador consegue comprar, da tela ate a matricula",
+  "toca": [
+    "e2e"
+  ],
+  "depende_de": [
+    "TAR-555",
+    "TAR-561"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Trace do Playwright com rede sanitizada, cobrindo aprovado, recusado, em analise e retomada por refresh, em tela grande e de celular.",
+  "despacho": "Celula e2e. Prove a compra pelo navegador, da tela ate os efeitos.\n\nAlvos: os testes de navegador e o compose de e2e.\n\n1. Uma compra aprovada percorre: tela, tokenizacao pelo Appmax JS, nosso backend, Appmax, evento, pedido pago, matricula, lead e mensagem. Cada efeito acontece UMA vez.\n2. Cubra tambem recusado com nova tentativa, autorizado em analise (que NAO libera acesso), e refresh entre tokenizar e confirmar.\n3. Captura de rede sanitizada provando que numero e CVV nunca saem para o nosso dominio.\n4. Rode em tela de celular tambem.\n5. Nenhum cartao real. Nenhum segredo no trace anexado.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L9B; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
