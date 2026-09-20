@@ -78,16 +78,34 @@ def test_evento_de_outro_site_nao_move_o_pedido(api, rede, sessao_a):
     assert order.status == "aguardando_pagamento"
 
 
-@pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
-def test_front_nao_tem_transicao_local_para_pago(arquivo):
-    codigo = (STATIC / arquivo).read_text(encoding="utf-8")
-    sem_comentarios = "\n".join(
+def _sem_comentarios(codigo: str) -> str:
+    return "\n".join(
         linha for linha in codigo.splitlines() if not linha.strip().startswith("//")
     )
-    assert not re.search(r"""status\s*=(?!=)\s*["']pago["']""", sem_comentarios)
+
+
+CHAMADA_AO_SERVIDOR = re.compile(
+    r"""api\.get\(\s*[`'"]/pedidos/\$\{\s*this\.orderId\s*\}[`'"]\s*\)"""
+)
+STATUS_VEM_DA_RESPOSTA = re.compile(r"""this\.status\s*=\s*(?!["'])\w+\.status\b""")
+
+
+@pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
+def test_front_nao_tem_transicao_local_para_pago(arquivo):
+    codigo = _sem_comentarios((STATIC / arquivo).read_text(encoding="utf-8"))
+    assert not re.search(r"""status\s*=(?!=)\s*["']pago["']""", codigo)
 
 
 @pytest.mark.parametrize("arquivo", ["pix.js", "cartao.js"])
 def test_paginas_derivam_status_de_get_pedidos(arquivo):
-    codigo = (STATIC / arquivo).read_text(encoding="utf-8")
-    assert "/pedidos/" in codigo
+    # `"/pedidos/" in codigo` casava com o COMENTÁRIO do cabeçalho de cada
+    # arquivo: apagar as duas linhas que de fato consultam o servidor deixava o
+    # guarda verde e a página presa em "Aguardando confirmação do pagamento"
+    # para sempre, inclusive depois do pagamento aprovado.
+    codigo = _sem_comentarios((STATIC / arquivo).read_text(encoding="utf-8"))
+    assert CHAMADA_AO_SERVIDOR.search(codigo), (
+        f"{arquivo}: nenhuma chamada a GET /pedidos/{{id}} fora de comentário"
+    )
+    assert STATUS_VEM_DA_RESPOSTA.search(codigo), (
+        f"{arquivo}: o status exibido não vem da resposta do servidor"
+    )
