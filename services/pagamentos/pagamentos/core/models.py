@@ -31,6 +31,23 @@ STATUS_CHOICES = [
     ("refunded", "refunded"),
 ]
 METHOD_CHOICES = [("pix", "pix"), ("card", "card")]
+PROVIDER_CHOICES = [("appmax", "appmax"), ("mercadopago", "mercadopago")]
+
+ATTEMPT_STATE_CHOICES = [
+    ("sending", "sending"),
+    ("approved", "approved"),
+    ("rejected", "rejected"),
+    ("failed", "failed"),
+    ("reconciliation_required", "reconciliation_required"),
+]
+# Os tres estados que impedem um novo envio para o MESMO Intent, e o porque de
+# cada um: `sending` porque a chamada ainda esta em voo (duplo clique),
+# `reconciliation_required` porque o resultado e ambiguo e reenviar seria cobrar
+# duas vezes, e `approved` porque ja foi pago. Os que faltam liberam de
+# proposito: `rejected` (o comprador tem direito a tentar outro cartao) e
+# `failed` (nada saiu da nossa maquina, entao nao ha cobranca possivel la fora).
+ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO = ["sending", "reconciliation_required", "approved"]
+ESTADOS_EM_ABERTO = ["sending", "reconciliation_required"]
 
 
 class Intent(models.Model):
@@ -65,6 +82,65 @@ class Intent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.method}:{self.id}:{self.status}"
+
+
+class PaymentAttempt(models.Model):
+    """Uma linha por TENTATIVA de cobrar o cartão. O Intent diz o que se quer
+    cobrar; a tentativa diz o que de fato foi enviado ao provedor, quando, com
+    que corpo e com que resultado.
+
+    Ela nasce COMMITADA antes de qualquer chamada externa (ver
+    `core/tentativas.py`): uma cobrança que existe lá fora sem linha aqui é uma
+    cobrança órfã, e numa célula de dinheiro isso não se conserta depois.
+
+    A regra que evita a cobrança dupla não está escrita em prosa, e sim no
+    índice único parcial abaixo: enquanto existir uma tentativa em
+    `sending`, `reconciliation_required` ou `approved`, o Postgres RECUSA a
+    segunda linha para o mesmo Intent. Duplo clique simultâneo, portanto, não
+    depende de o código lembrar de checar.
+
+    [INV-P8] Nada de dado do portador aqui: do corpo enviado fica só
+    `request_hash`, e o motivo do provedor entra sanitizado como código.
+    """
+
+    intent = models.ForeignKey(
+        Intent, on_delete=models.PROTECT, related_name="tentativas"
+    )
+    # Copiado do Intent na abertura: a leitura isolada por site (Lei 9) não
+    # pode depender de um join para acontecer.
+    platform_site_id = models.CharField(max_length=255)
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    # Nosso identificador da operação, gerado ANTES do envio: é o que liga o
+    # que mandamos ao que o provedor responder depois.
+    operation_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    request_hash = models.CharField(max_length=64)
+
+    provider_reference_id = models.CharField(max_length=255, blank=True, default="")
+    external_order_id = models.CharField(max_length=255, blank=True, default="")
+    installments = models.PositiveSmallIntegerField(default=1)
+    amount_cents = models.PositiveIntegerField()  # dinheiro é inteiro sempre
+    state = models.CharField(
+        max_length=30, choices=ATTEMPT_STATE_CHOICES, default="sending"
+    )
+    reason = models.CharField(max_length=120, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["intent"],
+                condition=models.Q(state__in=ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO),
+                name="uma_tentativa_viva_por_intent",
+            )
+        ]
+        # O webhook chega com a referência do provedor e precisa achar a
+        # tentativa; sem índice isso é varredura na tabela de dinheiro.
+        indexes = [models.Index(fields=["provider_reference_id"])]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.operation_id}:{self.state}"
 
 
 class InstalacaoAppmax(models.Model):
