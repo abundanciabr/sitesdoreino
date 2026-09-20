@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260914-030-admin-preparar-leitura-na-vps",
+  tipo: "entrega",
+  quando: "2026-09-14",
+  titulo: "admin: preparar leitura na VPS",
+  detalhe: "Processo de leitura com rotas fechadas e Postgres sem escrita. A TAR-427 retira o admin após esta imagem ser publicada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1665. Validação local: árvore 3b46a904ba5f33832e2c08b8e952399e4f17b385; commit 672df44d5f12eed36a5f35ed266588d5abe1669b; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-14",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-428",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
