@@ -1,0 +1,19 @@
+{
+  "arquivo": "511-a-lista-de-perguntas-que-transforma-a-pagina-de-oferta-vazia",
+  "id": "TAR-511",
+  "titulo": "A lista de perguntas que transforma a pagina de oferta vazia em pagina com texto",
+  "toca": [
+    "docs"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "Documento em docs/despachos/ com uma linha por espaco de texto das sete secoes, cada fato citando arquivo e linha, e python ci/ci.py --apenas muralhas PASS",
+  "despacho": "Escreva a ordem de servico da copy da pagina de oferta, em docs/despachos/.\n\nSomente documentacao: nada de services/, nada de contracts/. Teto de 3 arquivos.\n\nO documento traz uma tabela por secao da pagina, na ordem canonica (hero,\nproblema, mecanismo, prova, oferta, garantia, faq), com uma linha por espaco de\ntexto e tres colunas: o que o espaco e em portugues claro e sem jargao; o que a\ncasa ja sabe, com arquivo e linha conferidos na fonte, ou \"nada ainda\"; e a\npergunta direta que so o mantenedor responde.\n\nZero copy inventada: nenhuma headline, nenhum depoimento, nenhum numero, nenhuma\ngarantia. Exemplo de formato so de outro mercado, marcado como exemplo.\n\nDiga em destaque que espaco vazio nao aparece na tela e e resposta legitima.\nRecomende o minimo viavel em vez de servir cardapio.\n\nPergunte em destaque em qual endereco a pagina vai morar, porque hoje a raiz de\nmeshcraft.top e a HOME por decisao de 27/08/2026 e isso muda a rota do PR\nseguinte. Nao decida por ele.\n\nLeituras: services/catalogo (produtos, ofertas, criar_curso, criar_site),\nservices/cursos (a grade), services/funil (landing.html, landing_i18n.html,\ntraducoes/landing.yaml, apps/i18n/catalogo.py), docs/guia-mantenedor.md,\ndocumentos/ (o que ele ja escreveu sobre o produto), infra/sites.json.",
+  "origem": "brief fechado do mantenedor em 19/09/2026, a pagina de oferta antes do experimento",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

@@ -1,0 +1,203 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A tela em que o mantenedor escreve o texto da página de venda. Sem script
+nenhum: cada gesto é um POST que recarrega a página, as gavetas são `details`
+nativo, e o porquê está na docstring de apps/core/paginas.py.
+
+As frases que explicam cada espaço são transcritas do despacho
+docs/despachos/DESPACHO-COPY-DA-PAGINA-DE-OFERTA.md, e quem as transcreve é
+apps/core/paginas.py. Aqui elas só são desenhadas: escrever uma frase à mão
+neste arquivo faria a tela e o documento discordarem, e o guarda de
+tests/test_pagina_de_venda.py não pegaria.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a
+tela.
+{% endcomment %}
+{% block titulo %}Página de venda | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro copy">
+  <h1>O texto da página de venda</h1>
+  <p class="subtitulo">
+    Aqui você escreve, espaço por espaço, o que a pessoa lê na página que vende
+    o curso. Cada campo tem, do lado, a frase que diz o que cabe nele.
+  </p>
+
+  {% if sem_catalogo %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consegui falar com o catálogo,</b> que é onde o texto desta
+    página fica guardado. Não abri o formulário de propósito: um campo que não
+    tem onde salvar faria você escrever e perder. Nada do que está no ar mudou
+    por isso. Tente de novo daqui a pouco, e se continuar assim é passo de
+    máquina no servidor, escrito no relatório do robô que construiu esta tela.
+  </p>
+
+  {% elif sem_leitura %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler o que você já escreveu nesta página.</b>
+    O catálogo respondeu, mas não com o texto. Não abri o formulário de
+    propósito: campos vazios aqui, salvos por engano, apagariam o que já está
+    guardado. Recarregue a página daqui a pouco.
+  </p>
+
+  {% else %}
+
+  {% comment %}
+  ── A diferença entre guardar e pôr no ar ────────────────────────────────
+  Ela vem antes de tudo, e não num aviso ao lado do botão: é a única coisa
+  desta tela que, mal entendida, muda o site sem ele querer.
+  {% endcomment %}
+  <p class="lei">
+    <b>Salvar guarda o texto aqui e não muda o site</b>, quantas vezes você
+    quiser. <b>Publicar põe no ar</b> o que está salvo, e cria uma versão nova
+    da página, que fica guardada como está e não se edita depois.
+    {% if sabe_do_ar %}
+      {% if nunca_publicada %}
+        Esta página <b>nunca esteve no ar</b>: só existe o que você escreve aqui.
+      {% else %}
+        No ar agora está a versão {{ versao_no_ar }}.
+      {% endif %}
+    {% endif %}
+  </p>
+
+  {% if recado == "salvo" %}
+  <p class="recado"><b>Salvei.</b> O site continua como estava: para mudar a
+    página que as pessoas veem, use o botão de publicar, no fim desta tela.</p>
+  {% elif recado == "publicado" %}
+  <p class="recado"><b>Publiquei.</b> A página no ar agora é esta.</p>
+  {% endif %}
+
+  {% if motivo == "recusado" %}
+  <p class="recado borda-vermelha">
+    <b>Não salvei: o catálogo recusou este texto.</b> {{ erro }}
+    <span class="nota">Nada do que você escreveu se perdeu: está tudo nos
+      campos abaixo, do jeito que você digitou.</span>
+  </p>
+  {% elif motivo == "nao_salvou" %}
+  <p class="recado borda-vermelha">
+    <b>Não consegui salvar agora.</b> {{ erro }}
+    <span class="nota">Nada do que você escreveu se perdeu: está tudo nos
+      campos abaixo. Aperte Salvar de novo daqui a pouco, e se ainda assim não
+      for, copie o texto para algum lugar seu antes de fechar esta janela.</span>
+  </p>
+  {% elif motivo == "sem_pagina" %}
+  <p class="recado borda-vermelha">
+    <b>Esta página ainda não existe no catálogo.</b> {{ erro }}
+    <span class="nota">Não é coisa que se resolva por esta tela: alguém precisa
+      criar a página lá antes de ela receber texto. Nada do que você escreveu se
+      perdeu, e está nos campos abaixo.</span>
+  </p>
+  {% elif motivo == "vazio" %}
+  <p class="recado borda-vermelha">
+    <b>Não publiquei: não há nada escrito para pôr no ar.</b>
+    <span class="nota">Para publicar, escreva pelo menos um espaço, aperte
+      Salvar, e só então Publicar. O site continua exatamente como estava.</span>
+  </p>
+  {% elif motivo == "nao_publicou" %}
+  <p class="recado borda-vermelha">
+    <b>Não consegui publicar agora.</b> {{ erro }}
+    <span class="nota">O que você tinha salvo continua salvo, e o site continua
+      como estava. Tente publicar de novo daqui a pouco.</span>
+  </p>
+  {% endif %}
+
+  {% comment %}
+  ── O que está preenchido e o que vai ficar de fora ──────────────────────
+  Ele não deveria precisar contar campo por campo para saber onde está, e
+  espaço vazio precisa ser dito como escolha legítima: senão a primeira
+  visita, com todos os campos em branco, parece defeito.
+  {% endcomment %}
+  <div class="cartao">
+    <div class="rotulo">Como está a página</div>
+    <div class="valor">{{ preenchidos }} de {{ total }} espaços preenchidos</div>
+    {% if invisiveis %}
+    <p class="nota">
+      Sem nenhum texto, estas seções <b>não vão aparecer</b> na página:
+      {% for e in invisiveis %}{{ e }}{% if not forloop.last %}; {% endif %}{% endfor %}.
+      <b>Espaço em branco é resposta legítima:</b> uma seção vazia não é erro,
+      é uma seção que a página não mostra.
+    </p>
+    {% else %}
+    <p class="nota">
+      Todas as onze seções têm pelo menos um texto, então todas vão aparecer.
+    </p>
+    {% endif %}
+  </div>
+
+  {% comment %}
+  ── A sentinela da ferramenta 74 ─────────────────────────────────────────
+  A lista é dele, escrita em 05/09/2026. A tela aponta e deixa publicar: quem
+  decide o que dizer no próprio site é o dono dele.
+  {% endcomment %}
+  {% if achados %}
+  <div class="cartao borda-vermelha">
+    <div class="rotulo">A sua regra de 05/09/2026 apontou isto</div>
+    <p class="nota">
+      Você escreveu que esta página nunca pode ter contagem regressiva,
+      "últimas vagas", valor riscado, promessa de renda ou de prazo, nem
+      superlativo. Encontrei o seguinte. <b>Isto é um aviso, não um
+      impedimento:</b> se você quiser publicar assim, o botão continua valendo.
+    </p>
+    <ul class="riscas">
+      {% for achado in achados %}
+      <li>
+        <b>{{ achado.padrao }}</b> em {{ achado.onde }}
+        <span class="frase">{{ achado.trecho }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% comment %}
+  ── Os campos, seção por seção, na ordem em que a página se lê ───────────
+  Uma gaveta por seção. Abre a que já tem texto (é onde ele parou) e, na
+  primeira visita, em que nenhuma tem, abre a primeira: uma tela de onze
+  gavetas fechadas não convida ninguém a começar.
+  {% endcomment %}
+  <form method="post" action="{% url 'pagina_de_venda_salvar' %}">
+    {% csrf_token %}
+    {% for secao in secoes %}
+    <details class="gaveta" {% if not secao.vazia or forloop.first %}open{% endif %}>
+      <summary>
+        {{ secao.e|capfirst }}
+        <span class="conta">{{ secao.preenchidos }} de {{ secao.total }} espaços</span>
+        {% if secao.vazia %}<span class="fora">não aparece na página</span>{% endif %}
+      </summary>
+      <div class="dentro">
+        {% for campo in secao.campos %}
+        <div class="espaco">
+          <label class="nome" for="c-{{ campo.campo }}">{{ campo.campo }}</label>
+          <p class="explica">{{ campo.explicacao }}</p>
+          {% if campo.de_uma_linha %}
+          <input type="text" id="c-{{ campo.campo }}" name="{{ campo.campo }}"
+                 value="{{ campo.valor }}">
+          {% else %}
+          <textarea id="c-{{ campo.campo }}" name="{{ campo.campo }}" rows="3">{{ campo.valor }}</textarea>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+
+    <div class="gestos">
+      <button type="submit">Salvar o que escrevi</button>
+      <span class="nota">Guarda aqui. O site não muda.</span>
+      <button type="submit" class="publicar" form="por-no-ar">Publicar esta página</button>
+      <span class="nota">Põe no ar <b>o que está salvo</b>. Salve primeiro.</span>
+    </div>
+  </form>
+
+  {% comment %}
+  O formulário de publicar é separado, e o botão dele vive na barra de cima
+  pelo atributo `form`. Um botão só, com dois destinos, publicaria sem salvar
+  e poria no ar um texto diferente do que está na tela.
+  {% endcomment %}
+  <form method="post" action="{% url 'pagina_de_venda_publicar' %}" id="por-no-ar">
+    {% csrf_token %}
+  </form>
+
+  {% endif %}
+</div>
+{% endblock %}

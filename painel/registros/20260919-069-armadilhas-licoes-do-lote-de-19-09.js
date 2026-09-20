@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-069-armadilhas-licoes-do-lote-de-19-09",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "armadilhas: licoes do lote de 19/09",
+  detalhe: "Registradas armadilhas/494 (brief nao varreu documentos/) e armadilhas/495\n(ci/pr.py fecha TAR so citada no corpo). Recusada a licao do scratchpad,\nja coberta por armadilhas/196 e 488.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1778. Validação local: árvore f6b8a047a35b442d1d8b51960373f9892d2e0283; commit 59838d2c251352d86a7a10ae0bddc6ad9b69be02; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-514",
+  gravidade: "info",
+  frente: "vender",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

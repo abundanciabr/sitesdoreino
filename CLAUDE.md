@@ -154,6 +154,10 @@ Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
 Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
 segurança são bloqueios reais.
 
+Escopo desde 19/09/2026: o site é `meshcraft.top`. `basileiatoutheou.org` está
+congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
+a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
+
 **Quem faz valer:** julgamento.
 
 ## Nenhum texto publicado sai com travessão
@@ -192,8 +196,11 @@ são lápides. Sem tipo específico, use nota.
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
 atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
 passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
-exigem a palavra do mantenedor. O dono registra `Mandato-do-mantenedor:` na
-descrição com o pedido e os caminhos autorizados. Nunca invente mandato.
+exigem a palavra do mantenedor, e ela vale onde ele a deu: dita na sessão vale
+tanto quanto digitada no site. Quem a recebeu transcreve `Mandato-do-mantenedor:`
+na descrição com o pedido, os caminhos autorizados e a origem (sessão e data).
+Nunca invente mandato nem pare a tarefa para mandá-lo escrever no site o que
+já autorizou; sem autorização nenhuma, peça a ele na própria sessão.
 Base atrasada é atualizada e medida novamente; rascunhos, forks e conflitos
 não integram. Informe somente estados comprovados de validação, integração e
 publicação. Veja `docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md`.

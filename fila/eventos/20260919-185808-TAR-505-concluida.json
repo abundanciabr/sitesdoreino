@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-185808-TAR-505-concluida",
+  "tarefa": "TAR-505",
+  "evento": "concluida",
+  "quando": "2026-09-19T18:58:08+00:00",
+  "quem": "agent/quiz/endereco-csrf-botao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1768",
+  "verificado_em": "2026-09-19"
+}
