@@ -67,6 +67,35 @@ class Intent(models.Model):
         return f"{self.method}:{self.id}:{self.status}"
 
 
+class InstalacaoAppmax(models.Model):
+    """Uma linha por instalação do nosso aplicativo numa conta Appmax.
+
+    Durante `POST /app/client/generate` a Appmax chama a nossa URL de validação
+    e só emite a credencial se a resposta for 200 com um `external_id` válido e
+    inédito. Por isso `app_id` é único e `external_id` nasce UMA vez: a segunda
+    chamada do mesmo `app_id` devolve o MESMO UUID, nunca um novo, que
+    derrubaria a instalação já existente.
+
+    [INV-P8] `client_secret`, `client_key` e `external_key` NUNCA são
+    persistidos. Do segredo fica no máximo `client_secret_recebido`, a marca de
+    que a credencial chegou a ser emitida para esta conta.
+    """
+
+    app_id = models.CharField(max_length=64, unique=True)  # ID NUMÉRICO, não UUID
+    appmax_site_id = models.CharField(max_length=64, blank=True, default="")
+    external_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    alias = models.CharField(max_length=255)  # nome da loja, vem da configuração
+    platform_site_ids = models.JSONField(
+        default=list, blank=True
+    )  # sites internos que esta instalação está autorizada a cobrar
+    client_secret_recebido = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"appmax:{self.app_id}:{self.alias}"
+
+
 class OutboxEvent(models.Model):
     """[RECEITA:R3 v1] Uma linha por evento emitido. `emitir()` grava SEMPRE na
     MESMA transação da mudança de estado que a justifica (INV-P6) — o relay
