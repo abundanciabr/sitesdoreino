@@ -6,8 +6,10 @@
 # Modo B (direto, Let's Encrypt) acrescenta UMA linha na lista `tls.domains`
 # do router "funil" abaixo. Host não cadastrado recebe 404 da própria
 # plataforma (middleware CONV-SITE — INV-P11), nunca um site padrão.
-# Única exceção presa a UM host: os webhooks do Mercado Pago, no DOMÍNIO DE
-# OPERAÇÕES (basileiatoutheou.org = o seu domínio principal/da operação).
+# Única exceção presa a UM host: os webhooks de pagamento (Mercado Pago e,
+# desde TAR-542, Appmax), no DOMÍNIO DE OPERAÇÕES (basileiatoutheou.org = o
+# seu domínio principal/da operação) — Lei 9: webhooks de pagamento vivem num
+# único domínio de operações, estável e independente dos sites.
 # =============================================================================
 http:
   middlewares:
@@ -71,6 +73,26 @@ http:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
       rule: "Host(`basileiatoutheou.org`) && PathPrefix(`/api/pagamentos/webhooks`)"
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pagamentos
+      tls: {}
+
+    appmax-webhooks:
+      # Segunda rota amarrada a um host, ao lado da `mp-webhooks` acima: a
+      # Appmax também precisa de um endereço estável neste MESMO domínio de
+      # operações (Lei 9) — primeiro para o POST server-to-server com que ela
+      # emite credencial (TAR-542), depois para as notificações de cobrança.
+      # A lógica que responde de verdade mora na célula pagamentos, e chega em
+      # outro lote da escada; esta linha só garante que a requisição CHEGA lá
+      # em vez de morrer no catch-all do funil.
+      # Mesma escala de prioridade do resto deste arquivo (comentário do
+      # router `sugestoes` abaixo): 100 = webhook amarrado a host — igual à
+      # `mp-webhooks`, porque as duas disputam o mesmo host e nunca o mesmo
+      # caminho (`/api/pagamentos/webhooks` contra `/api/pagamentos/appmax`),
+      # logo o empate de prioridade entre elas nunca chega a acontecer.
+      rule: "Host(`basileiatoutheou.org`) && PathPrefix(`/api/pagamentos/appmax`)"
       priority: 100
       entryPoints: [websecure]
       middlewares: [seguranca]
