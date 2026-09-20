@@ -9,9 +9,10 @@ info:
     Multissítio: o site NUNCA vem no payload — é resolvido do Host da requisição
     (middleware CONV-SITE); host desconhecido é 404 (INV-P11). Sessão, pedido e
     eventos carregam o site_id resolvido.
-    Rotas públicas via gateway: as páginas /checkout/*. Esta API JSON é interna
-    (usada pelas próprias páginas da célula) e não é consumida por outras células,
-    exceto GET /pedidos/{id} pela suíte E2E.
+    Rotas públicas via gateway: as páginas /checkout/* e a confirmação de cartão
+    POST /pedidos/{order_id}/cartao, que o navegador do comprador chama direto.
+    O resto desta API JSON é interno (usado pelas próprias páginas da célula) e
+    não é consumido por outras células, exceto GET /pedidos/{id} pela suíte E2E.
 servers:
   - url: http://checkout:8000/api/checkout
 security:
@@ -102,12 +103,105 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Order' }
         '404': { description: Pedido inexistente }
+  /pedidos/{order_id}/cartao:
+    post:
+      operationId: confirmOrderCard
+      security: []
+      summary: Confirma o pagamento no cartão com o token gerado no navegador
+      description: >-
+        Rota PÚBLICA via gateway: quem chama é a própria página do cartão, no
+        navegador do comprador, e por isso não há Bearer por par aqui. O que
+        autoriza a chamada é a posse do `order_id`, opaco e válido só para esta
+        compra. O corpo traz intenção e dado do portador: valor, produto e
+        total continuam vindo do snapshot congelado (INV-P2), e qualquer um
+        deles no corpo faz a requisição ser recusada com 422. A resposta
+        devolve o pedido no estado corrente; o status definitivo continua sendo
+        lido de GET /pedidos/{order_id} (INV-P7), a única fonte que o front
+        consulta.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmacaoDeCartao' }
+      responses:
+        '200':
+          description: >-
+            Tentativa registrada, com o pedido no estado corrente. Cartão
+            recusado também chega aqui, como status `recusado`: recusa é
+            resposta do provedor, não erro da requisição.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { description: Pedido inexistente }
+        '409': { description: "Pedido não está em estado confirmável (já pago ou expirado)" }
+        '422': { description: "Payload inválido: falta um campo exigido, ou o navegador enviou valor, produto ou total" }
+        '502':
+          description: >-
+            O provedor de pagamento não respondeu, ou respondeu algo que não
+            descreve a cobrança pedida. Está separada do 200 com status
+            `recusado` porque a ação do comprador é outra: aqui ele tenta de
+            novo, lá ele troca de cartão.
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
   schemas:
+    ConfirmacaoDeCartao:
+      type: object
+      additionalProperties: false
+      required: [token, ip, holder_name, holder_document_number, installments]
+      description: >-
+        A carta que o navegador entrega para cobrar no cartão. Ela carrega
+        INTENÇÃO e dado do portador, nunca dinheiro: valor, produto e total vêm
+        do snapshot congelado no servidor (INV-P2), e `additionalProperties:
+        false` é o que transforma essa lei em recusa. Dado de cartão (número,
+        validade, CVV) nunca toca a plataforma: o navegador o troca por um
+        `token` falando direto com o provedor.
+      properties:
+        token:
+          type: string
+          minLength: 1
+          description: >-
+            Token de uso único do cartão, gerado no navegador pelo SDK do
+            provedor (Appmax JS ou Card Payment Brick) e válido para uma
+            cobrança. A plataforma nunca vê número, validade ou CVV.
+        ip:
+          type: string
+          minLength: 1
+          description: >-
+            O IP público do comprador, coletado pelo Appmax JS no navegador.
+            OBRIGATÓRIO, e não é telemetria: a Appmax exige o IP para criar o
+            cliente e recusa a criação sem ele, e o valor só existe no
+            navegador, sem alternativa por API. Sem este campo a venda não
+            acontece.
+        holder_name:
+          type: string
+          minLength: 1
+          description: >-
+            Nome impresso no cartão, como o portador o digitou. Pode diferir do
+            nome do comprador no pedido, e quem consome não pode assumir que os
+            dois são iguais.
+        holder_document_number:
+          type: string
+          minLength: 1
+          description: >-
+            CPF ou CNPJ do portador do cartão, somente dígitos. Pode diferir do
+            documento do comprador no pedido, pela mesma razão do nome.
+        installments:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: >-
+            Número de parcelas, de 1 a 12. O teto é o do contrato com o
+            provedor. A modalidade escolhida pelo mantenedor em 20/09/2026 é a
+            PP, em que os juros ficam com o comprador, então o valor de cada
+            parcela é calculado pelo servidor e nunca enviado pelo navegador.
     Session:
       type: object
       required: [id, site_id, offer]

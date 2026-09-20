@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pagamento.recusado.v2.json",
+  "title": "pagamento.recusado.v2",
+  "description": "A tentativa de pagamento de um pedido foi recusada. Diferença para o v1: nasce o par neutro `provider` mais `provider_reference_id`, `site_id` passa a se chamar `platform_site_id` e `reason_code` deixa de ser descrito como campo do Mercado Pago. Rito de Contrato de 20/09/2026, com o mantenedor presente (fila TAR-545). O v1 NÃO sai do ar: continua sendo emitido até o último consumidor migrar (RITOS.md §3), e quem consome aceita as duas versões ao mesmo tempo. ATENÇÃO, A PONTE COM O V1 AQUI NÃO É A MESMA DO `pagamento.aprovado`, e isto precisa ser lido antes de escrever qualquer deduplicação: o v1 da recusa NUNCA carregou referência do provedor, nem sob o nome `mp_payment_id`, então o que atravessa as duas versões é o `payment_id`. A regra está em `x-ponte-do-v1`, aqui embaixo. O par (`provider`, `provider_reference_id`) é a identidade da tentativa NO PROVEDOR e existe só a partir do v2: serve para casar a recusa com o que o provedor reporta, e para alinhá-la com o estorno do mesmo pagamento.",
+  "x-ponte-do-v1": {
+    "_leia": "A regra de deduplicação entre as duas versões, em forma de dado para que as quatro células consumidoras derivem a MESMA chave lógica em vez de cada uma inventar a sua. `chave_entre_versoes` são os campos de `data` que, juntos e só juntos, identificam o fato. `no_v1` diz de onde tirar cada um desses campos quando o evento chega na versão 1: um caminho dentro do evento v1, ou um valor literal quando o v1 não carregava a informação por ser de um provedor só.",
+    "versao_anterior": "pagamento.recusado.v1",
+    "chave_entre_versoes": ["payment_id"],
+    "no_v1": {
+      "payment_id": "data.payment_id"
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pagamento.recusado" },
+    "version": { "const": 2 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform_site_id",
+        "payment_id",
+        "order_id",
+        "amount_cents",
+        "method",
+        "provider",
+        "provider_reference_id",
+        "reason_code",
+        "customer"
+      ],
+      "properties": {
+        "platform_site_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "O site (tenant) DESTA plataforma, e o motivo de o nome ser longo: o envelope do webhook da Appmax carrega um `site_id` que é da Appmax, e chamar os dois pelo mesmo nome curto convidaria a rotear um aluno pelo identificador do fornecedor. É o `site_id` do v1, renomeado, com o mesmo conteúdo."
+        },
+        "payment_id": {
+          "type": "string",
+          "description": "Id da tentativa dentro da célula pagamentos. Na recusa, é ele que atravessa as duas versões e é a chave de deduplicação entre v1 e v2."
+        },
+        "order_id": { "type": "string" },
+        "amount_cents": { "type": "integer", "minimum": 1 },
+        "method": { "enum": ["pix", "card"] },
+        "provider": {
+          "type": "string",
+          "enum": ["mercadopago", "appmax"],
+          "description": "Quem recusou a cobrança. Enum FECHADO de propósito: um provedor novo entra pelo Rito de Contrato, nunca por uma string que aparece em produção."
+        },
+        "provider_reference_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "O identificador da tentativa NO PROVEDOR, opaco para a plataforma. Só existe a partir do v2: o v1 da recusa não tinha equivalente."
+        },
+        "reason_code": {
+          "type": "string",
+          "description": "Código de recusa DO PROVEDOR, repassado sem tradução e opaco para a plataforma. O vocabulário é de quem recusou e muda de provedor para provedor, então ele serve para diagnóstico e para o texto que o comprador lê, nunca para lógica de decisão: quem decide qualquer coisa a partir dele precisa dizer, junto, de qual `provider` está falando."
+        },
+        "customer": {
+          "type": "object",
+          "required": ["email", "name"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
