@@ -1,0 +1,19 @@
+{
+  "arquivo": "570-reabrir-a-tar-569-que-o-rito-de-pr-fechou-sozinho",
+  "id": "TAR-570",
+  "titulo": "Reabrir a TAR-569, que o rito de PR fechou sozinho",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/fila.py listar mostrando TAR-569 de volta em 'na fila', e python ci/fila.py validar verde",
+  "despacho": "A TAR-569 nasceu no PR 1822 para ser feita DEPOIS: ela lista tres restos do corte do admin (um roteiro que da alarme falso, um guarda que ficou inerte e cinco premissas falsas). O ci/pr.py, que recebeu --tarefa TAR-569 para embarcar os eventos da fila, escreveu tambem submetida e concluida, e a fila passou a dizer que ela esta feita. Apague os dois eventos errados: fila/eventos/20260920-221605-TAR-569-submetida.json e fila/eventos/20260920-221611-TAR-569-concluida.json. Mantenha o explicada. Confira com ci/fila.py listar que ela voltou a 'na fila' e com ci/fila.py validar que a fila continua valida. Nao toque no registro 040, que esta certo.",
+  "origem": "medido em 20/09/2026 contra origin/main depois do merge do PR 1822",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

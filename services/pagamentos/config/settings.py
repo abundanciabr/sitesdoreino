@@ -1,6 +1,8 @@
 # config/settings.py — padrão fail-hard  # [RECEITA:CONV v1]
+import json
 import os
 from pathlib import Path
+from typing import Any
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
@@ -29,6 +31,49 @@ ALLOWED_HOSTS = ["*"]
 TOKENS_ACEITOS = {
     v for k, v in os.environ.items() if k.startswith("TOKENS_ACEITOS_") and v
 }
+
+
+def _instalacoes_appmax(bruto: str) -> dict[str, dict[str, Any]]:
+    """[INV-P8] Lê APPMAX_INSTALACOES do env: quais app_id da Appmax são
+    nossos, com que nome de loja responder a cada um e quais site_id internos
+    a instalação está autorizada a cobrar. Formato:
+
+        {"<app_id numérico>": {"alias": "Loja", "sites": ["site-a"]}}
+
+    Fail closed sem exceção: env ausente, JSON inválido, forma errada ou
+    entrada sem alias resultam em NENHUMA instalação autorizada, e a rota de
+    instalação recusa tudo. O contrário (aceitar qualquer app_id quando a
+    configuração falta) deixaria um desconhecido criar vínculo na célula do
+    dinheiro. Nada de client_secret entra aqui: o segredo fica só no env.
+    """
+    if not bruto:
+        return {}
+    try:
+        lido = json.loads(bruto)
+    except ValueError:
+        return {}
+    if not isinstance(lido, dict):
+        return {}
+    catalogo: dict[str, dict[str, Any]] = {}
+    for app_id, dados in lido.items():
+        if not isinstance(dados, dict):
+            continue
+        alias = str(dados.get("alias", "")).strip()
+        if not alias:
+            continue
+        sites = dados.get("sites", [])
+        catalogo[str(app_id)] = {
+            "alias": alias,
+            "sites": (
+                [str(s) for s in sites if str(s).strip()]
+                if isinstance(sites, list)
+                else []
+            ),
+        }
+    return catalogo
+
+
+APPMAX_INSTALACOES = _instalacoes_appmax(os.environ.get("APPMAX_INSTALACOES", ""))
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 

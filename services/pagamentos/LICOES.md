@@ -463,3 +463,43 @@ paga.
   for atacado, decidir o mapeamento de `cancelled` (e conferir os demais
   status reais: `in_process`, `refunded`, `charged_back`). Hoje um
   `cancelled` real é ignorado — não quebra nada, só não emite `pix.expirado`.
+
+## Sessão E — o endereço de instalação da Appmax (despacho endpoint-de-instalacao-appmax)
+
+**Rota nova PÚBLICA nasce fora do NinjaAPI, ou o freeze de contrato reprova.**
+`config/api.py` é o que `export_openapi` serializa e o que
+`contracts/pagamentos.openapi.yaml` congela; `ci/contract_freeze.py` ainda tem
+uma segunda sonda que conta as operações do objeto `api` e compara quem exige
+credencial (hoje 5). Uma rota que a Appmax chama não é promessa entre as nossas
+células: ela entrou como view Django simples em `config/urls.py`, o mesmo
+caminho de `simulate_webhook`. Resultado medido: contrato `PASS idêntico ao
+congelado (431 linhas)` e segurança `PASS 5 operação(ões)`, sem tocar
+`contracts/`. Se você precisar que a rota entre no contrato, isso é RITOS §3,
+não trabalho de célula.
+
+**Declare a rota ANTES de `path("api/pagamentos/", api.urls)`.** Com o prefixo
+casando e nenhuma subrota correspondendo, o resolvedor do Django segue para os
+padrões seguintes, mas isso vira detalhe de implementação alheia num caminho de
+dinheiro. Em cima da lista, o roteamento não depende disso.
+
+**A Appmax não assina a chamada de instalação: não há HMAC nem token.** O que
+fecha a porta é `settings.APPMAX_INSTALACOES`, um JSON no env da célula no
+formato `{"<app_id>": {"alias": "Loja", "sites": ["site-a"]}}`. Env ausente,
+JSON inválido ou entrada sem alias resultam em NENHUM app_id autorizado, nunca
+em porta aberta. Ela é lida sem `env()` de propósito: variável obrigatória nova
+em `config/settings.py` obriga a mexer no bloco `env:` de
+`.github/workflows/ci-celula.yml` (seção "CI real" acima), e este despacho
+tocava só `services/pagamentos/`.
+
+**O `external_id` é o campo que não pode mudar nunca.** A Appmax recusa a
+instalação inteira se ele voltar repetido ou diferente do que ela registrou, e
+devolve 500 sem emitir credencial. Por isso a atualização da linha existente
+lista os campos um a um em `update_fields` e deixa `external_id` de fora: um
+`save()` sem `update_fields` ali seria suficiente para derrubar uma instalação
+que já funciona.
+
+**O que ficou para o próximo lote da Appmax:** `platform_site_ids` guarda os
+sites internos autorizados, mas ainda não existe quem os confira na hora de
+cobrar; `appmax_site_id` só é preenchido se o corpo trouxer `site_id` (a
+documentação lista só `app_id`, `client_id`, `client_secret`, `client_key` e
+`external_key`, e o envelope do webhook traz `site_id`).

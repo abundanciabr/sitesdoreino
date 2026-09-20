@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260920-230833-TAR-422-cancelada",
+  "tarefa": "TAR-422",
+  "evento": "cancelada",
+  "quando": "2026-09-20T23:08:33+00:00",
+  "quem": "cancelar-admin-localhost-20260920-mandato-mantenedor",
+  "detalhe": "Pedido do mantenedor em 20/09/2026: cancelar definitivamente o que ainda constroi o painel do admin no localhost do PC. Esta tarefa criaria leitura de metricas para o admin local. Nao vai mais ser feita. O lancador e o tunel que ja existem permanecem."
+}
