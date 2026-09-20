@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-021-ci-fila-nativa-no-grupo-de-deploy",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "ci: fila nativa no grupo de deploy",
+  detalhe: "queue: max nos tres workflows do grupo deploy: o pendente deixa de ser expulso, com guarda derivado e armadilha.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1806. Validação local: árvore 0430470cb90f4a2fb1888ce9720c9f3695c70d42; commit af0f8aba60051c2e22818b2318da14a1cfec0b0a; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-529",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
