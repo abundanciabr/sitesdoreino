@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-113830-TAR-495-explicada",
+  "tarefa": "TAR-495",
+  "evento": "explicada",
+  "quando": "2026-09-20T11:38:30+00:00",
+  "quem": "levantamento de pendencias da VPS pedido pelo mantenedor, 20/09/2026",
+  "o_que_e": "Testes de invariante da celula alunos que parecem guardar uma promessa e nao guardam: com a linha de producao sabotada eles continuam verdes. Sao 3, provados por mutacao real em 19/09/2026. Junto disso, a celula alunos tem uma entrega parada desde 17/09, o commit 15a0ca50, que nunca chegou ao servidor porque a publicacao daquele dia falhou por duas senhas que faltavam no servidor.",
+  "o_que_muda": "Sabotar aquelas linhas de alunos passa a derrubar o CI, entao o guarda volta a valer alguma coisa em vez de dar falsa seguranca. E como este trabalho toca services/alunos, o envio dele leva ao servidor a entrega que esta parada ha tres dias, hoje o unico caminho aberto para publicar essa celula, porque o instrumento da casa proibiu repetir a publicacao que falhou.",
+  "exemplo": "e um alarme de incendio que nao toca: enquanto ninguem acende um fosforo debaixo dele, parece que esta funcionando. O caminhao que vai trocar os tres alarmes leva na mesma viagem a encomenda que ficou parada na doca desde quarta-feira.",
+  "importancia": 90
+}
