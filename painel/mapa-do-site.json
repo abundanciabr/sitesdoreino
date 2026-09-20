@@ -2064,6 +2064,16 @@
     },
     {
       "celula": "pagamentos",
+      "rota": "api/pagamentos/appmax/instalacao",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O endereco onde a Appmax instala o aplicativo",
+      "descricao": "A Appmax chama aqui na hora de criar a nossa credencial de cartao. Respondemos com um codigo unico da loja, e so entao ela emite a credencial.",
+      "observacao": "Hoje responde apenas pela rede interna. A porta publica que leva a Appmax ate ele e trabalho da celula de infraestrutura."
+    },
+    {
+      "celula": "pagamentos",
       "rota": "debug/simulate-webhook",
       "endereco": "-",
       "alcance": "interno",

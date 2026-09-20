@@ -18,13 +18,13 @@ import datetime as dt
 import json
 import logging
 import os
-import uuid
 from unittest import mock
 
 import pytest
 import redis as redis_lib
 
 from apps.pedidos.models import Order
+from conftest import aprovado_v1
 
 pytestmark = pytest.mark.django_db
 
@@ -114,12 +114,7 @@ def test_mensagem_presa_e_reivindicada_e_o_efeito_acontece(api, rede, sessao_a, 
     )
 
     order = _pedido(api, sessao_a)
-    envelope = {
-        "event": "pagamento.aprovado",
-        "version": 1,
-        "event_id": str(uuid.uuid4()),
-        "data": {"order_id": str(order.id), "site_id": order.site_id},
-    }
+    envelope = aprovado_v1(order, mp_payment_id="mp-presa")
     _publicar_presa(r, envelope, entregas_ja_feitas=1)
 
     reivindicar_e_reprocessar_presas(r)
@@ -142,12 +137,7 @@ def test_quinta_entrega_vai_para_a_fila_morta_sem_rodar_o_handler(
     )
 
     order = _pedido(api, sessao_a)
-    envelope = {
-        "event": "pagamento.aprovado",
-        "version": 1,
-        "event_id": str(uuid.uuid4()),
-        "data": {"order_id": str(order.id), "site_id": order.site_id},
-    }
+    envelope = aprovado_v1(order, mp_payment_id="mp-envenenada")
     # 4 entregas já falharam; o XAUTOCLAIM da passada abaixo é a 5ª.
     _publicar_presa(r, envelope, entregas_ja_feitas=MAX_ENTREGAS - 1)
 
