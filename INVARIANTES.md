@@ -1298,14 +1298,20 @@ ci/tests/test_guarda_do_cartao.py`, 9 de 9).
 - **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
 
 ### [INV-CARD-A6] Toda Aprovação Cria Outbox na Mesma Transação
-- **O quê:** arquivo da superfície Appmax que escreve outbox escreve dentro de
-  `transaction.atomic()`, e nunca por `transaction.on_commit`.
-- **Por quê:** é o INV-P6 aplicado ao provedor novo. Publicar depois do commit
-  reabre a janela em que o estado mudou e o evento se perdeu, que é a diferença
-  entre "pagou e matriculou" e "pagou e ficou de fora sem ninguém saber".
+- **O quê:** arquivo da superfície Appmax que CRIA linha de outbox o faz dentro
+  de `transaction.atomic()`. A medição é da escrita, nunca da palavra: citar a
+  outbox num comentário, na dependência de uma migração ou no nome do relay não
+  escreve nada, e publicar por `transaction.on_commit` DEPOIS de a linha existir
+  é o padrão certo do INV-P6, que esta lei não pode proibir.
+- **Por quê:** é o INV-P6 aplicado ao provedor novo. A linha que nasce fora da
+  transação reabre a janela em que o estado mudou e o evento se perdeu, que é a
+  diferença entre "pagou e matriculou" e "pagou e ficou de fora sem ninguém
+  saber".
 - **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo Appmax que
-  grava outbox sem `transaction.atomic()`, e o que grava por
-  `transaction.on_commit`, saem os dois `FAIL` na lei A6.
+  chama `OutboxEvent.objects.create(` sem `transaction.atomic()` sai `FAIL` na
+  lei A6; o mesmo arquivo com a escrita dentro da transação e o relay chamado
+  por `transaction.on_commit` sai `PASS`, e a palavra outbox sem escrita
+  nenhuma também.
 - **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
 
 ### [INV-CARD-A7] O Segredo da Appmax Existe Somente em Pagamentos
@@ -1322,16 +1328,18 @@ ci/tests/test_guarda_do_cartao.py`, 9 de 9).
 - **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
 
 ### [INV-CARD-A8] A Queda de um Provedor Não Alcança o Método do Outro
-- **O quê:** nenhum arquivo nomeia a Appmax e o Mercado Pago ao mesmo tempo, e
-  nenhum arquivo do caminho do Pix nomeia a Appmax.
+- **O quê:** nenhum arquivo do caminho do Pix nomeia a Appmax, e nenhum arquivo
+  do caminho da Appmax nomeia o Mercado Pago. A medição é do CÓDIGO de cada
+  caminho: contrato que ENUMERA os provedores aceitos, e teste que compara os
+  dois, são declaração e não acoplamento.
 - **Por quê:** é como a lei "ausência da Appmax afeta somente cartão, ausência
-  do Mercado Pago afeta somente Pix" vira mecanismo. Arquivo compartilhado é
-  exatamente o ponto por onde a queda de um provedor derruba o método do outro,
-  e o Pix é hoje o caminho que fatura. É o INV-P9 estendido do módulo para o
-  nome do provedor.
-- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo que importa
-  Appmax e Mercado Pago, e arquivo Appmax dentro do caminho do Pix, saem os
-  dois `FAIL` na lei A8.
+  do Mercado Pago afeta somente Pix" vira mecanismo. O que derruba um método
+  junto com o outro é o módulo de um provedor chamando o outro, e o Pix é hoje
+  o caminho que fatura. É o INV-P9 estendido do módulo para o nome do provedor.
+- **Teste-Guarda:** `ci/tests/test_guarda_do_cartao.py` — arquivo do caminho do
+  Pix que importa a Appmax, e arquivo do caminho da Appmax que importa o
+  Mercado Pago, saem os dois `FAIL` na lei A8; o evento que enumera os dois
+  provedores e o teste que compara os dois saem `PASS`.
 - **Célula dona:** o repositório (`ci/`), com pagamentos como célula servida
 
 ### [INV-CARD-A9] Resposta 2xx Incompleta é Erro, Nunca Sucesso Parcial

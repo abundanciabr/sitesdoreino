@@ -108,6 +108,12 @@ SEGREDO_APPMAX = re.compile(
     r"|API_KEY|TOKEN|PASSWORD)\b"
 )
 
+ESCRITA_NA_OUTBOX = re.compile(
+    r"\bOutbox\w*\.objects\.(?:create|bulk_create)\(|\bOutbox\w*\("
+)
+
+APPMAX_NOMEADO = re.compile(r"\bappmax\b", re.IGNORECASE)
+
 MERCADO_PAGO = re.compile(
     r"\bmercado[\s_-]?pago\b|\bmercadopago\b|\bmp_payment_id\b|\bMP_ACCESS_TOKEN\b",
     re.IGNORECASE,
@@ -245,20 +251,22 @@ def a5_sem_retry_cego(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
 
 
 def a6_outbox_na_mesma_transacao(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
-    """Quem escreve outbox na superfície Appmax escreve dentro da transação."""
+    """Quem CRIA linha de outbox na superfície Appmax o faz dentro da transação.
+
+    A medição é da escrita, nunca da palavra: o módulo que só cita a outbox num
+    comentário, na dependência de uma migração ou no nome do relay não escreve
+    nada. Publicar por `transaction.on_commit` DEPOIS de a linha existir é o
+    padrão certo do INV-P6, e por isso não entra aqui.
+    """
     achados: list[str] = []
     for arquivo in superficie:
-        baixo = arquivo.texto.lower()
-        if "outbox" not in baixo:
+        if "transaction.atomic" in arquivo.texto:
             continue
-        sem_transacao = "transaction.atomic" not in baixo
-        depois_do_commit = "transaction.on_commit" in baixo
-        if not sem_transacao and not depois_do_commit:
-            continue
-        motivo = "escreve outbox sem transaction.atomic" if sem_transacao else (
-            "escreve outbox por transaction.on_commit, fora da transação"
-        )
-        achados.append(_citar_arquivo(arquivo, motivo))
+        for numero, linha in arquivo.uteis:
+            if linha.lstrip().startswith("class "):
+                continue
+            for encontro in ESCRITA_NA_OUTBOX.finditer(linha):
+                achados.append(_citar(arquivo, numero, linha, encontro.group(0)))
     return achados
 
 
@@ -277,17 +285,25 @@ def a7_segredo_so_em_pagamentos(todos: list[Arquivo], _: list[Arquivo]) -> list[
 
 
 def a8_provedores_sem_destino_comum(_: list[Arquivo], superficie: list[Arquivo]) -> list[str]:
-    """Nenhum arquivo junta os dois provedores, e o caminho do Pix ignora a Appmax."""
+    """O caminho do Pix ignora a Appmax, e o caminho da Appmax ignora o outro.
+
+    A medição é do CÓDIGO de cada caminho. Contrato que ENUMERA os provedores
+    aceitos, e teste que compara os dois, são declaração, não acoplamento: o que
+    derruba um método junto com o outro é o módulo de um provedor chamando o
+    outro.
+    """
     achados: list[str] = []
     for arquivo in superficie:
-        motivo = ""
-        if MERCADO_PAGO.search(arquivo.texto):
-            motivo = "nomeia a Appmax e o Mercado Pago no mesmo arquivo"
-        elif CAMINHO_DO_PIX.search(arquivo.caminho.lower()):
-            motivo = "arquivo do caminho do Pix nomeia a Appmax"
-        if not motivo:
+        caminho = arquivo.caminho.lower()
+        if CAMINHO_DO_PIX.search(caminho):
+            proibido, lado = APPMAX_NOMEADO, "o caminho do Pix nomeia a Appmax"
+        elif "appmax" in caminho:
+            proibido, lado = MERCADO_PAGO, "o caminho da Appmax nomeia o Mercado Pago"
+        else:
             continue
-        achados.append(_citar_arquivo(arquivo, motivo))
+        for numero, linha in arquivo.uteis:
+            for encontro in proibido.finditer(linha):
+                achados.append(_citar(arquivo, numero, linha, f"{lado}: {encontro.group(0)}"))
     return achados
 
 
@@ -347,9 +363,9 @@ CHECAGENS = (
         "INV-CARD-A6",
         a6_outbox_na_mesma_transacao,
         "toda aprovação cria outbox na mesma transação",
-        "Escreva a linha de outbox dentro do mesmo transaction.atomic() da "
-        "mudança de estado. Publicar depois do commit reabre a janela entre "
-        "estado e evento.",
+        "Crie a linha de outbox dentro do mesmo transaction.atomic() da "
+        "mudança de estado. Publicar no Redis depois do commit continua certo; "
+        "o que não pode é a linha nascer fora da transação.",
     ),
     (
         "INV-CARD-A7",
@@ -361,9 +377,9 @@ CHECAGENS = (
     (
         "INV-CARD-A8",
         a8_provedores_sem_destino_comum,
-        "a queda de um provedor não alcança o método do outro",
-        "Separe os arquivos: um provedor por módulo. Arquivo que nomeia os "
-        "dois é o ponto por onde a queda de um derruba o outro.",
+        "o caminho de cada provedor ignora o outro",
+        "Separe os arquivos: um provedor por módulo. Módulo de um provedor que "
+        "chama o outro é o ponto por onde a queda de um derruba o método do outro.",
     ),
     (
         "INV-CARD-A9",

@@ -89,7 +89,7 @@ def test_repositorio_real_esta_verde():
 
 
 def test_a1_ajuste_que_escolhe_provedor_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:201
+    # guarda: ci/guarda_do_cartao.py:207
     raiz = arvore(tmp_path, {
         "services/pagamentos/ajustes.py": 'PIX_PROVIDER = "mercadopago"\n',
     })
@@ -97,7 +97,7 @@ def test_a1_ajuste_que_escolhe_provedor_reprova(tmp_path):
 
 
 def test_a2_dado_do_cartao_no_servidor_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:211
+    # guarda: ci/guarda_do_cartao.py:217
     raiz = arvore(tmp_path, {
         "services/checkout/formulario.py": 'numero = pedido["card_number"]\n',
     })
@@ -112,7 +112,7 @@ def test_a2_tambem_pega_o_codigo_de_seguranca_no_contrato(tmp_path):
 
 
 def test_a3_autorizado_tratado_como_aprovado_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:221
+    # guarda: ci/guarda_do_cartao.py:227
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/estado.py":
             "from appmax import cliente\n"
@@ -122,7 +122,7 @@ def test_a3_autorizado_tratado_como_aprovado_reprova(tmp_path):
 
 
 def test_a4_webhook_appmax_que_decide_dinheiro_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:233
+    # guarda: ci/guarda_do_cartao.py:239
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/webhook.py":
             "from appmax import contrato\n"
@@ -133,7 +133,7 @@ def test_a4_webhook_appmax_que_decide_dinheiro_reprova(tmp_path):
 
 
 def test_a5_repeticao_automatica_na_superficie_appmax_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:243
+    # guarda: ci/guarda_do_cartao.py:249
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/cliente.py":
             "from appmax import http\n"
@@ -143,29 +143,48 @@ def test_a5_repeticao_automatica_na_superficie_appmax_reprova(tmp_path):
 
 
 def test_a6_outbox_fora_da_transacao_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:261
+    # guarda: ci/guarda_do_cartao.py:269
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/saida.py":
             "from appmax import pedido\n"
             "def gravar(evento):\n"
-            "    outbox.create(evento=evento)\n",
+            "    return OutboxEvent.objects.create(event=evento)\n",
     })
     so_esta_reprovou(raiz, "INV-CARD-A6")
 
 
-def test_a6_outbox_depois_do_commit_tambem_reprova(tmp_path):
+def test_a6_escrita_na_transacao_com_relay_apos_commit_passa(tmp_path):
+    """O padrao certo do INV-P6: a linha nasce dentro da transacao e o relay
+    publica depois do commit. A6 nao pode reclamar disto, ou proibe o acerto."""
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/saida.py":
             "from appmax import pedido\n"
             "def gravar(evento):\n"
             "    with transaction.atomic():\n"
-            "        transaction.on_commit(lambda: outbox.create(evento=evento))\n",
+            "        linha = OutboxEvent.objects.create(event=evento)\n"
+            "        transaction.on_commit(relay_outbox)\n"
+            "    return linha\n",
     })
-    so_esta_reprovou(raiz, "INV-CARD-A6")
+    estados = vereditos(raiz)
+    assert set(estados.values()) == {Estado.PASS}, estados
+
+
+def test_a6_palavra_outbox_sem_escrita_nao_reprova(tmp_path):
+    """Comentario, dependencia de migracao e nome do relay nao escrevem nada."""
+    raiz = arvore(tmp_path, {
+        "services/pagamentos/appmax/migracao.py":
+            "from appmax import pedido\n"
+            "# a linha da outbox nasce em core, nao aqui\n"
+            'DEPENDENCIAS = [("core", "0002_outboxevent")]\n'
+            "def publicar():\n"
+            "    return relay_outbox()\n",
+    })
+    estados = vereditos(raiz)
+    assert set(estados.values()) == {Estado.PASS}, estados
 
 
 def test_a7_segredo_appmax_fora_de_pagamentos_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:275
+    # guarda: ci/guarda_do_cartao.py:283
     raiz = arvore(tmp_path, {
         "services/checkout/chaves.py":
             'SEGREDO = ambiente["APPMAX_CLIENT_SECRET"]\n',
@@ -182,22 +201,36 @@ def test_a7_o_mesmo_segredo_dentro_de_pagamentos_passa(tmp_path):
     assert set(estados.values()) == {Estado.PASS}, estados
 
 
-def test_a8_arquivo_com_os_dois_provedores_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:290
+def test_a8_caminho_do_pix_que_chama_a_appmax_reprova(tmp_path):
+    # guarda: ci/guarda_do_cartao.py:306
     raiz = arvore(tmp_path, {
-        "services/pagamentos/roteador.py":
-            "from appmax import cartao\n"
-            "from mercadopago import cobranca\n",
+        "services/pagamentos/pix/cobranca.py": "from appmax import cliente\n",
     })
     so_esta_reprovou(raiz, "INV-CARD-A8")
     outra = arvore(tmp_path / "segunda", {
-        "services/pagamentos/pix/cobranca.py": "from appmax import cliente\n",
+        "services/pagamentos/appmax/cliente.py":
+            "from appmax import http\n"
+            "from mercadopago import sdk\n",
     })
     so_esta_reprovou(outra, "INV-CARD-A8")
 
 
+def test_a8_contrato_que_enumera_os_dois_provedores_passa(tmp_path):
+    """Contrato que declara os provedores aceitos, e teste que compara os dois,
+    sao declaracao e nao acoplamento. A8 mede o CODIGO de cada caminho."""
+    raiz = arvore(tmp_path, {
+        "contracts/eventos/pagamento.aprovado.v2.json":
+            '{"provider": {"enum": ["appmax", "mercadopago"]}}\n',
+        "services/checkout/tests/test_aviso.py":
+            "def test_os_dois():\n"
+            '    assert provedores == ["appmax", "mercadopago"]\n',
+    })
+    estados = vereditos(raiz)
+    assert set(estados.values()) == {Estado.PASS}, estados
+
+
 def test_a9_campo_obrigatorio_lido_com_tolerancia_reprova(tmp_path):
-    # guarda: ci/guarda_do_cartao.py:300
+    # guarda: ci/guarda_do_cartao.py:316
     raiz = arvore(tmp_path, {
         "services/pagamentos/appmax/leitura.py":
             "from appmax import http\n"
