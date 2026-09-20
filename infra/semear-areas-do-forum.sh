@@ -24,8 +24,50 @@ set -u
 
 parar() { echo; echo "PAROU POR SEGURANÇA: $1"; echo "NADA foi alterado."; exit 1; }
 
-cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa? (o prompt precisa começar com deploy@srv… ou root@srv…, nunca PS C:\>)"
-[ -f docker-compose.yml ] || parar "não achei docker-compose.yml em /opt/plataforma."
+RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
+cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt precisa começar com deploy@srv… ou root@srv…, nunca PS C:\>)"
+[ -f docker-compose.yml ] || parar "não achei docker-compose.yml em $RAIZ."
+
+# =============================================================================
+# AS CHAVES DO GATEWAY, ANTES DO PRIMEIRO `docker compose`
+#
+# Este bloco é CÓPIA do contrato que `infra/deploy-celula-na-vps.sh`,
+# `infra/reverter-celula-na-vps.sh` e `infra/semear-quiz.sh` já cumprem, e a
+# cópia é obrigatória, não preguiça: a `appleboy/ssh-action` envia o CONTEÚDO de
+# UM arquivo, e /opt/plataforma não tem o repositório. Um trecho compartilhado
+# por `source` não existiria na VPS.
+#
+# POR QUE ELE FALTAVA AQUI, medido em 20/09/2026: `infra/docker-compose.yml`
+# exige `ALUNOS_API_TOKEN` e `TOKEN_CATALOGO` na forma `${VAR:?mensagem}` desde
+# 15/09 (`67ccf0ed`). A interpolação do Compose roda antes de qualquer subcomando
+# e sobre o arquivo inteiro, então sem as duas no ambiente TODO `docker compose`
+# nesta pasta reprova, mesmo com a plataforma inteira no ar. Os dois disparos do
+# `semear-quiz` (runs 35479761568 e 35479784690) morreram em três segundos na
+# linha logo abaixo deste bloco, enquanto `meshcraft.top` respondia 200.
+#
+# NENHUM VALOR APARECE NA TELA: o log do run é lido por gente, e segredo nele é
+# incidente. Este é o único ponto do script que abre um `env/`.
+#
+# Quem impede as cópias de divergirem, e quem obriga um semeador NOVO a nascer
+# com este bloco: ci/tests/test_paridade_das_chaves_do_gateway.py
+# =============================================================================
+ENV_DO_ADMIN="$RAIZ/env/admin.env"
+for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
+  VALOR_DO_GATEWAY=$(grep -m1 "^$CHAVE_DO_GATEWAY=" "$ENV_DO_ADMIN" | cut -d= -f2-) || VALOR_DO_GATEWAY=""
+  if [ -z "$VALOR_DO_GATEWAY" ]; then
+    echo "PAROU POR SEGURANÇA: $CHAVE_DO_GATEWAY está ausente ou vazia em $ENV_DO_ADMIN."
+    echo "O compose exige essa chave no serviço traefik, e sem ela nenhum comando"
+    echo "'docker compose' desta plataforma roda. NADA foi alterado: nenhuma"
+    echo "área foi criada e o fórum continua como estava."
+    echo "O QUE FAZER: escreva a linha $CHAVE_DO_GATEWAY=<o valor> em $ENV_DO_ADMIN,"
+    echo "na VPS, e dispare este semeador de novo. O valor não se descobre daqui,"
+    echo "e este script nunca o imprime."
+    exit 1
+  fi
+  export "$CHAVE_DO_GATEWAY=$VALOR_DO_GATEWAY"
+done
+unset VALOR_DO_GATEWAY
+
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
 echo "== 1/3 — conferindo se o fórum está de pé =="
