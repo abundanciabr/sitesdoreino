@@ -428,3 +428,61 @@ def test_rodar_de_novo_nao_muda_mais_nada():
     antiga.refresh_from_db()
     assert antiga.product_id == CURSO
     assert "Nenhuma matrícula precisa de acerto" in saida
+
+
+# Escrito à mão, e NÃO lido de `Matricula.STATUS_QUE_JA_DERAM_ACESSO`: se os
+# dois lados saíssem da mesma constante, acrescentar um status à lista de
+# permissão faria este guarda se ajustar sozinho, em silêncio. Alargar quem
+# recebe curso é decisão, e decisão se escreve aqui também.
+QUEM_PODE_RECEBER_CURSO = {"ativa", "reembolsada", "suspensa", "encerrada"}
+
+# Um status que ainda não existe. O modelo promete que "estado novo nasce
+# FORA", e `choices` não é conferido na escrita, então dá para fabricar hoje o
+# amanhã: é o único jeito de medir a promessa que separa uma lista de
+# PERMISSÃO de qualquer forma de exclusão.
+STATUS_QUE_NASCEU_DEPOIS = "inventado-amanha"
+
+
+@pytest.mark.django_db
+def test_o_comando_alcanca_exatamente_quem_ja_teve_acesso():
+    """A lista do comando é de PERMISSÃO, e toda forma de exclusão vaza.
+
+    Os testes acima medem um status por vez, e por isso qualquer exclusão
+    acerta todos eles. O que a exclusão erra são dois casos que nenhum teste
+    fabricava. Primeiro, quem a escola RECUSOU passa a receber curso: a mesma
+    escrita que a porta se recusa a fazer (regra 3 deste arquivo), agora em
+    massa, pelas costas e sem evento nenhum para auditar. Segundo, e é a
+    metade que nenhuma enumeração do vocabulário de hoje alcança, um status
+    inventado depois nasceria recebendo curso.
+
+    O comando também não pode aproveitar a passagem para mexer em mais nada:
+    um `update` que levasse `status` junto religaria em massa quem está
+    suspenso, encerrado ou reembolsado.
+    """
+    esperando = na_fila()
+    outros = {
+        status: ja_matriculada(f"{status}@example.com", status=status)
+        for status in ("ativa", "reembolsada", "suspensa", "encerrada", "recusada")
+    }
+    amanha = ja_matriculada("amanha@example.com", status=STATUS_QUE_NASCEU_DEPOIS)
+    todas = {**outros, STATUS_QUE_NASCEU_DEPOIS: amanha, "aguardando": esperando}
+
+    acertar(site="site-1", curso=CURSO, confirmar=True)
+
+    alcancados = set()
+    for status, matricula in todas.items():
+        matricula.refresh_from_db()
+        if matricula.product_id:
+            alcancados.add(status)
+        assert matricula.status == status, (
+            f"o comando mudou o status de {status} para {matricula.status}; "
+            "ele só pode escrever product_id"
+        )
+
+    assert alcancados == QUEM_PODE_RECEBER_CURSO, (
+        "o comando escreveu curso em quem nunca teve acesso: "
+        f"{sorted(alcancados - QUEM_PODE_RECEBER_CURSO)}; e deixou de escrever "
+        f"em: {sorted(QUEM_PODE_RECEBER_CURSO - alcancados)}. Se alargar quem "
+        "recebe curso é mesmo a decisão, mude STATUS_QUE_JA_DERAM_ACESSO e "
+        "QUEM_PODE_RECEBER_CURSO juntos, de propósito"
+    )

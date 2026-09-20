@@ -10,7 +10,7 @@
 import uuid
 
 import pytest
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 
 from apps.eventos.management.commands.consume_eventos import (
     HANDLERS,
@@ -92,3 +92,70 @@ def test_integrityerror_do_handler_nao_e_confundido_com_evento_ja_processado():
     processar_envelope(envelope, HANDLERS)
 
     assert Matricula.objects.filter(order_id=ORDER_ID).count() == 1
+
+
+def test_engasgo_do_banco_no_registro_de_dedup_nao_vira_evento_descartado(monkeypatch):
+    """O `except` existe para UMA coisa: o `event_id` duplicado DESTE create.
+
+    Os dois testes acima medem de onde a exceção VEM (handler fora do `try`), e
+    por isso sobrevivem a alargar o `except` para `Exception`: o handler
+    continua fora dele. O que ninguém media é o que o `except` ENXERGA. O
+    create também pode falhar por deadlock, conexão caída ou timeout, e esses
+    erros não são "já processado".
+
+    Engolir um deles é fatal, e em silêncio: `processar_envelope` volta limpo,
+    o consumer dá `xack` na mensagem logo em seguida, o handler nunca rodou e
+    nada ficou gravado. O evento deixa de existir. Cliente pago, aluno não
+    matriculado, e sem rastro para descobrir, que é exatamente o bug que as
+    duas transações fecham.
+    """
+    envelope = _envelope(str(uuid.uuid4()))
+    rodou = []
+
+    def handler(data: dict) -> None:
+        rodou.append(data)
+
+    def create_que_engasga(*args, **kwargs):
+        raise DatabaseError("deadlock detected")
+
+    monkeypatch.setattr(EventoProcessado.objects, "create", create_que_engasga)
+
+    with pytest.raises(DatabaseError):
+        processar_envelope(envelope, {"pagamento.aprovado": handler})
+
+    assert not rodou, (
+        "o handler rodou mesmo com o registro de dedup falhando; efeito e "
+        "registro têm que viver ou morrer juntos na transação externa"
+    )
+    assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 0
+
+
+def test_evento_ja_registrado_nao_dispara_o_handler_de_novo():
+    """A outra metade do dedup, a do caminho FELIZ, que nenhum teste media.
+
+    Os três testes acima entram todos por uma FALHA, e em todos o registro de
+    dedup acaba desfeito antes do fim. Nenhum chega ao estado normal do
+    sistema: evento registrado com sucesso, e a mesma mensagem chegando de novo
+    porque a entrega é at-least-once. Sem este caso, trocar o `return` do
+    `except` por um `pass` deixa o arquivo verde, e o handler volta a rodar em
+    TODA reentrega: a pessoa é matriculada duas vezes, e o fato sai duas vezes
+    para o resto da plataforma.
+    """
+    envelope = _envelope(str(uuid.uuid4()))
+    rodou = []
+
+    def handler(data: dict) -> None:
+        rodou.append(data)
+
+    processar_envelope(envelope, {"pagamento.aprovado": handler})
+    assert len(rodou) == 1, "o handler não rodou na primeira entrega"
+    assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
+
+    processar_envelope(envelope, {"pagamento.aprovado": handler})
+
+    assert len(rodou) == 1, (
+        f"o handler rodou {len(rodou)} vezes para o mesmo event_id. O `except "
+        "IntegrityError` do create tem que RETORNAR quando o evento já está "
+        "registrado, e não seguir para o handler"
+    )
+    assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
