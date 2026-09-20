@@ -166,3 +166,39 @@ viraria decoração.
 
 **Origem:** despacho leads/acompanhamento-comercial (TAR-420), ao implementar o
 provedor do contrato integrado pelo PR #1530.
+
+## A ponte v1↔v2 não é a mesma fórmula para `pagamento.aprovado` e `pagamento.recusado`
+
+**Onde:** `apps/core/handlers.py::_chave_pagamento_aprovado` e
+`_chave_pagamento_recusado`.
+
+**A armadilha:** os dois contratos ganharam v2 no mesmo Rito (RITOS.md §3,
+fila TAR-545) e os dois passaram a ter `provider`/`provider_reference_id`, o
+que convida a escrever UMA função de chave e reaproveitar para os dois
+eventos. É exatamente aí que o TAR-548 errava: seu próprio brief dizia que a
+identidade entre versões era sempre o par `provider`+`provider_reference_id`.
+
+**O que os contratos realmente dizem (`x-ponte-do-v1` de cada schema, não o
+brief):**
+- `pagamento.aprovado.v2.json`: `chave_entre_versoes = [provider,
+  provider_reference_id]`; no v1, `provider` é o literal `"mercadopago"` e
+  `provider_reference_id` vem de `data.mp_payment_id`.
+- `pagamento.recusado.v2.json`: `chave_entre_versoes = [payment_id]`, e o
+  próprio contrato avisa em letras maiúsculas: o v1 da recusa NUNCA carregou
+  referência do provedor (nem como `mp_payment_id`) — ali quem atravessa as
+  duas versões é `payment_id`, presente com o mesmo valor nas duas.
+
+**A prova de que a diferença importa:** dois testes negativos em
+`tests/test_inv_leads_dedup_entre_versoes.py`
+(`test_aprovado_payment_id_igual_nao_junta_fatos_diferentes` e
+`test_recusado_provider_reference_id_igual_nao_junta_pagamentos_diferentes`)
+mostram cada função de chave, aplicada ao evento errado, juntando dois
+pagamentos DE VERDADE diferentes na mesma linha de dedup.
+
+**Isto generaliza:** um contrato pode declarar `x-ponte-do-v1` para dois
+eventos com o mesmo shape de campos e ainda assim apontar chaves lógicas
+diferentes. Ler o dado do contrato, evento por evento, é obrigatório — herdar
+a fórmula de um evento vizinho porque "parece igual" não é.
+
+**Origem:** despacho leads-consome-o-evento-v2 (TAR-548), corrigindo um erro
+do próprio brief da tarefa antes de escrever código.
