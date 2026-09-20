@@ -18,5 +18,6 @@
   proximo_passo: "Autorizar tarefa que faça o rito pular tarefa concluída ao ler o texto, e a dita à mão vencer a lembrada.",
   se_eu_nao_decidir: "Todo PR que explique o que revoga cai na mesma cova e termina à mão.",
   recomendacao: "Autorizar: duas linhas e um teste, contra um custo pago em todo PR honesto.",
-  reversivel: true
+  reversivel: true,
+  impacto: "medio"
 }); })();
