@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-213523-TAR-524-concluida",
+  "tarefa": "TAR-524",
+  "evento": "concluida",
+  "quando": "2026-09-20T21:35:23+00:00",
+  "quem": "agent/infra/semeadores-exportam-as-chaves",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1812",
+  "verificado_em": "2026-09-20"
+}
