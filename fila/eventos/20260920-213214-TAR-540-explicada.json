@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-213214-TAR-540-explicada",
+  "tarefa": "TAR-540",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:32:14+00:00",
+  "quem": "pedido do mantenedor na sessão do Claude Code de 20/09/2026",
+  "o_que_e": "Hoje o robô que organiza o trabalho não pode acionar robôs ajudantes que escrevem código. Ele constrói tudo sozinho, uma coisa de cada vez, em fila.",
+  "o_que_muda": "O trabalho passa a andar em várias frentes ao mesmo tempo, então o que hoje leva uma tarde passa a levar o tempo da tarefa mais lenta.",
+  "exemplo": "Quatro vezes em um dia o mantenedor pediu frentes em paralelo e recebeu uma sessão sozinha construindo em série, enquanto a lista de espera passava de 460 tarefas.",
+  "importancia": 85
+}

@@ -112,7 +112,7 @@ O que você faz:
 5. Pergunta a mim só o que é meu (irreversível, dinheiro, lei, papéis, contrato), sempre com AskUserQuestion, opção recomendada primeiro. O resto você decide e diz em uma linha por quê.
 
 O que você NÃO faz, nunca:
-- Não constrói: nada de ci/sessao.py, fila.py criar, pr.py, commit, edição de arquivo do repositório. Sub-agente que escreva (despacho, escrivao, Workflow) é proibido; só revisor e Explore.
+- Não constrói: nada de ci/sessao.py, fila.py criar, pr.py, commit, edição de arquivo do repositório. Sub-agente construtor (despacho, escrivao) é permitido desde 20/09/2026, com model sonnet ou opus declarado na chamada; Workflow segue proibido.
 - Não mergeia, não espera check em laço, não mede a pasta principal: leia origin/main via worktree (git -C ../wt-leitura checkout --detach origin/main).
 - Não fala em nome do Codex nem do Antigravity: cada IA recebe o bloco dela, em texto, e eu colo.
 - Não afirma nada sem comando e saída. O que não mediu, escreve "NÃO MEDI".

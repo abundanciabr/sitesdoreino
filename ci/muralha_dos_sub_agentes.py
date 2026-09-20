@@ -1,17 +1,20 @@
-"""Recusa, no ato da criação, o sub-agente que possa escrever ou que não nasça
-em `sonnet` ou `opus`.
+"""Recusa, no ato da criação, o sub-agente que não nasça em `sonnet` ou `opus`,
+e a ficha que possa criar outro sub-agente ou perguntar ao mantenedor.
 
 Gancho PreToolUse de `.claude/settings.json`, matcher `Agent|Workflow`. Lê a
-chamada em JSON pelo stdin e sai com 2 para barrar. Só o Claude Code executa
-este arquivo, porque só ele lê aquele arquivo de configuração.
+chamada em JSON pelo stdin e sai com 2 para barrar. Erro inesperado também sai
+com 2: código 1 deixaria o sub-agente nascer (INV-CI01).
 
-A régua da escrita é a própria ficha em `.claude/agents/`: passa quem declara
-`tools` sem ferramenta de escrita. Lista fixa de nomes envelheceria a cada
-ficha nova. Entrada ilegível, ficha ausente e nome estranho são recusa (INV-CI01).
+O modelo vem declarado na chamada. Em 19/09/2026 uma sessão em Fable disparou 26
+sub-agentes que herdaram o modelo dela e consumiram 163 milhões de tokens.
+`Workflow` cai junto, porque o modelo dos agentes dele mora dentro do roteiro.
 
-A régua do modelo é a chamada: `model` declarado, e só `sonnet` ou `opus`.
-Em 19/09/2026 uma sessão em Fable disparou 26 sub-agentes que herdaram o modelo
-dela e consumiram 163 milhões de tokens. Ausente, Fable ou outro é recusa.
+A ficha precisa de frontmatter e precisa fechar `Agent` e `AskUserQuestion`, por
+`tools` ou por `disallowedTools`: herdar tudo é poder criar sub-agente e
+perguntar ao mantenedor, que o CLAUDE.md proíbe. `Explore` não tem ficha.
+
+O banimento da escrita, que a TAR-376 tinha posto, caiu em 20/09/2026; a emenda
+está em `docs/decisoes/DECISAO-triade-de-ias.md`.
 """
 from __future__ import annotations
 
@@ -20,16 +23,20 @@ import os
 import sys
 from pathlib import Path
 
-ESCRITA = {"Edit", "Write", "NotebookEdit"}
 MODELOS = {"sonnet", "opus"}
 LEITOR_EMBUTIDO = "Explore"
-COMO_PROSSEGUIR = (
-    "Construção vai para a fila: python ci/fila.py criar --despacho-arquivo <brief>. "
-    "Leitura em massa: Agent com Explore."
-)
+PROIBIDAS = {"Agent", "AskUserQuestion"}
 COMO_ESCOLHER_MODELO = (
     "Repita a chamada com model: sonnet (rotina) ou model: opus (arquitetura, dúvida); "
     "python ci/economia_da_fabrica.py brief escolhe."
+)
+COMO_CHAMAR_AGENT = (
+    "Chame Agent com um subagent_type que tenha ficha e model sonnet ou opus; "
+    f"{LEITOR_EMBUTIDO} é o leitor embutido."
+)
+COMO_FECHAR_A_FICHA = (
+    "Declare na ficha disallowedTools: Agent, AskUserQuestion, ou um tools sem os dois; "
+    ".claude/agents/despacho.md é o exemplo."
 )
 
 
@@ -38,19 +45,42 @@ def pasta_das_fichas() -> Path:
     return Path(raiz) / ".claude" / "agents"
 
 
-def escreve(ficha: Path) -> bool:
-    """Herdar tudo é poder escrever; só renuncia quem lista `tools` sem escrita."""
-    texto = ficha.read_text(encoding="utf-8")
-    if not texto.startswith("---\n") or "\n---" not in texto[4:]:
-        return True
-    for linha in texto[4:].split("\n---", 1)[0].splitlines():
+def frontmatter(caminho: Path) -> dict[str, str] | None:
+    """Ficha tem frontmatter fechado; `LEIA-ME.md` não tem. Ilegível não conta (INV-CI01)."""
+    try:
+        linhas = caminho.read_text(encoding="utf-8-sig").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not linhas or linhas[0].strip() != "---":
+        return None
+    campos: dict[str, str] = {}
+    for linha in linhas[1:]:
+        if linha.strip() == "---":
+            return campos
         chave, _, valor = linha.partition(":")
-        if chave.strip() == "tools":
-            return bool({item.strip() for item in valor.split(",")} & ESCRITA)
-    return True
+        campos[chave.strip()] = valor.strip()
+    return None
 
 
-def recusar(motivo: str, como: str = COMO_PROSSEGUIR) -> int:
+def itens(valor: str) -> set[str]:
+    return {item.strip() for item in valor.split(",") if item.strip()}
+
+
+def pode_criar_ou_perguntar(campos: dict[str, str]) -> bool:
+    """Sem `tools` e sem `disallowedTools` a ficha herda tudo, inclusive `Agent`."""
+    if "tools" in campos:
+        return bool(itens(campos["tools"]) & PROIBIDAS)
+    return not PROIBIDAS <= itens(campos.get("disallowedTools", ""))
+
+
+def onde_estao_as_fichas(fichas: dict[str, dict[str, str]]) -> str:
+    pasta = pasta_das_fichas()
+    if not fichas:
+        return f"Nenhuma ficha legível em {pasta}: a pasta sumiu, está vazia ou não abre."
+    return f"Fichas em {pasta}: {', '.join(sorted(fichas))}."
+
+
+def recusar(motivo: str, como: str) -> int:
     print(f"RECUSADO: {motivo} {como}", file=sys.stderr)
     return 2
 
@@ -63,28 +93,31 @@ def julgar(bruto: bytes) -> int:
         tipo = entrada.get("subagent_type")
         modelo = entrada.get("model")
     except (UnicodeDecodeError, json.JSONDecodeError, TypeError, KeyError, AttributeError):
-        return recusar("chamada de sub-agente ilegível.")
+        return recusar("chamada de sub-agente ilegível.", COMO_CHAMAR_AGENT)
     if ferramenta != "Agent":
-        return recusar(f"{ferramenta} não é sub-agente desta casa.")
+        return recusar(f"{ferramenta} não mostra o modelo dos agentes dele.", COMO_CHAMAR_AGENT)
     if not isinstance(modelo, str) or modelo not in MODELOS:
-        return recusar(
-            f"modelo {modelo!r} não é sonnet nem opus, e sub-agente nunca herda o modelo da sessão.",
-            COMO_ESCOLHER_MODELO,
-        )
+        return recusar(f"modelo {modelo!r} não é sonnet nem opus, e nunca se herda.", COMO_ESCOLHER_MODELO)
     if tipo == LEITOR_EMBUTIDO:
         return 0
-    pasta = pasta_das_fichas()
-    nomes = {ficha.name for ficha in pasta.glob("*.md")}
-    if not isinstance(tipo, str) or f"{tipo}.md" not in nomes:
-        return recusar(f"não existe ficha para {tipo!r} em {pasta}.")
-    if escreve(pasta / f"{tipo}.md"):
-        return recusar(f"{tipo} pode escrever, e o Claude Code só rege.")
+    fichas = {
+        ficha.stem: campos
+        for ficha in pasta_das_fichas().glob("*.md")
+        if (campos := frontmatter(ficha)) is not None
+    }
+    if not isinstance(tipo, str) or tipo not in fichas:
+        return recusar(f"não existe ficha para {tipo!r}.", onde_estao_as_fichas(fichas))
+    if pode_criar_ou_perguntar(fichas[tipo]):
+        return recusar(f"a ficha {tipo} herda Agent ou AskUserQuestion.", COMO_FECHAR_A_FICHA)
     return 0
 
 
 def main() -> int:
-    sys.stderr.reconfigure(encoding="utf-8")
-    return julgar(sys.stdin.buffer.read())
+    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
+    try:
+        return julgar(sys.stdin.buffer.read())
+    except Exception as erro:
+        return recusar(f"chamada ilegível ({type(erro).__name__}).", COMO_CHAMAR_AGENT)
 
 
 if __name__ == "__main__":
