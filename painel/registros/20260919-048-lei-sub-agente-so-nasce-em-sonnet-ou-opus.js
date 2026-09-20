@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-048-lei-sub-agente-so-nasce-em-sonnet-ou-opus",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "lei: sub-agente só nasce em sonnet ou opus",
+  detalhe: "Sub-agente só nasce com model sonnet ou opus declarado; ausente ou Fable é recusa, e Workflow segue barrado. Motivo: 26 sub-agentes em Fable, 163 milhões de tokens em 19/09.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1770. Validação local: árvore b7214ac3ac58bec1e5f245a15faa85f5ca0f5206; commit b34bdf17e38259f88a2da982989bda4fa163adc1; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-504",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "lei",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

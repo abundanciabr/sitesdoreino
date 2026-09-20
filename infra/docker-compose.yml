@@ -102,6 +102,8 @@ services:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-funil:${FUNIL_TAG:-main}
     env_file: [env/funil.env]
+    environment:
+      REDIS_STREAMS_URL: redis://redis:6379/0
     depends_on:
       redis:
         condition: service_started

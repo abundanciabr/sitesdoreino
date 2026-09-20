@@ -46,6 +46,54 @@ TITULOS = tuple(
 # a régua é o veredito estar escrito, não a pontuação escolhida para escrevê-lo.
 VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
 
+# O quinto bloco, exigido por ele em 20/09/2026: depois do veredito, o que
+# acontece AGORA. Ele não lê o transcript e é leigo em código; sem esta linha o
+# fecho termina no julgamento e ele fica sem saber se a bola é dele, quando, e
+# o que destrava. Foi o motivo declarado de ele quase cancelar o projeto.
+#
+# Por que aqui e não só na lei: a mesma regra já tinha sido escrita três vezes
+# em texto (PRs #1502, #1504 e #1713) e as três apodreceram abertas sem mudar
+# um fecho sequer. Regra sem portão é intenção.
+#
+# Por que também no PRONTO, que ele não pediu: o print que ele mandou É um
+# PRONTO, e mesmo assim ele teve de digitar sozinho o próximo passo. Em PRONTO
+# "nada a fazer" é resposta completa; o que não é resposta é o silêncio.
+INSTRUCOES = re.compile(r"\*\*\s*instru[çc][õo]es\s*:?\s*\*\*", re.I)
+
+# Uma ação da lista, exigida só quando o veredito é NÃO PRONTO: não acabou,
+# logo existe um próximo passo, por definição. A caixinha do checklist fica
+# FORA de propósito — ela diz o que falta na tarefa, não o que ele faz agora, e
+# se contasse todo NÃO PRONTO passaria sem uma instrução sequer.
+ACAO = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(?!\[[ xX]\])\S", re.M)
+
+# E um piso de texto no NÃO PRONTO, palavra dele em 20/09/2026: "mesmo que NÃO
+# dependa dele, mesmo que algo está sendo esperado, ele precisa entender o que
+# está acontecendo". "- aguardando" é uma ação listada e não explica nada.
+#
+# O piso derruba o não-resposta de uma palavra, e só isso: nenhum portão julga
+# clareza. Medido contra respostas curtas e COMPLETAS antes de escolher o
+# número — "Nada depende de você: o GitHub testa o PR e leva uns 8 minutos; eu
+# confirmo aqui" dá 63, e "aguardando" dá 10. Em 120, como nasceu, ele
+# reprovaria as duas e ensinaria a encher linguiça, que é a outra forma de
+# mentir (mesma razão da régua baixa de `_tem_substancia`).
+PISO_DAS_INSTRUCOES_EM_NAO_PRONTO = 50
+
+# O veredito que uma MEDIÇÃO imprime, lido da última linha da saída dela.
+# Vermelho é testado primeiro de propósito: "1 failed, 82 passed" casa com os
+# dois, e na ordem contrária a suíte reprovada passaria por verde.
+#
+# É o que sobrou do PR #1713, fechado em 20/09/2026 depois de a intenção dele
+# ser reconstruída aqui: lá o portão caçava a FRASE ("vou abrir o log e
+# corrigir"), com regex de verbos e exceções ajustadas aos próprios testes.
+# Frase se reescreve; medição vermelha, não. E caçar verbo brigava de frente
+# com o bloco **Instruções**, cujas ações legítimas usam os mesmos verbos.
+MEDICAO_VERMELHA = re.compile(r"\b\d+\s+(?:failed|errors?)\b|RESULTADO\s+(?:FAIL|ERROR)\b", re.I)
+MEDICAO_VERDE = re.compile(r"\b\d+\s+passed\b|RESULTADO\s+PASS\b", re.I)
+
+# Quantas medições sem resposta o estado carrega. A saída chega numa entrada
+# depois do comando, e sem teto a lista cresceria com a sessão inteira.
+TETO_DAS_MEDICOES_PENDENTES = 8
+
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
 
@@ -226,7 +274,7 @@ def ler_estado_incremental(caminho: Path) -> dict:
     cache = caminho.with_suffix(caminho.suffix + ".contas.json")
     try:
         estado = json.loads(cache.read_text(encoding="utf-8"))
-        if not isinstance(estado, dict) or estado.get("versao") != 1:
+        if not isinstance(estado, dict) or estado.get("versao") != 2:
             estado = {}
     except (OSError, ValueError):
         estado = {}
@@ -249,9 +297,11 @@ def ler_estado_incremental(caminho: Path) -> dict:
             estado = {}
             offset = 0
         if not estado:
-            estado = {"versao": 1, "motivo": "", "teve_plano": False,
+            estado = {"versao": 2, "motivo": "", "teve_plano": False,
                       "mudancas": 0, "cobrada": 0, "prs": 0, "despachos": 0,
-                      "pr": 0, "ids_de_pr": [], "voo_cobrado": ""}
+                      "pr": 0, "ids_de_pr": [], "voo_cobrado": "",
+                      "medicao": "", "medicoes_pendentes": [],
+                      "pronto_sobre_vermelho": False, "vermelho_cobrado": -1}
         fonte.seek(offset)
         while True:
             inicio = fonte.tell()
@@ -278,12 +328,14 @@ def ler_estado_incremental(caminho: Path) -> dict:
             if motivo:
                 estado["motivo"] = motivo
                 estado["mudancas"] += 1
-            if _prestou_contas(entrada):
+            prestou = _prestou_contas(entrada)
+            if prestou:
                 estado["motivo"] = ""
             prs, despachos = contar_prs_e_despachos([entrada])
             estado["prs"] += prs
             estado["despachos"] += despachos
             _seguir_o_pr(entrada, estado)
+            _seguir_a_medicao(entrada, estado, prestou)
         estado["offset"] = fonte.tell()
         fonte.seek(max(0, estado["offset"] - 512))
         cauda = hashlib.sha256(fonte.read(min(estado["offset"], 512))).hexdigest()
@@ -409,21 +461,39 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not CAIXINHA.search(texto):
         return False
+    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
+    # O que vem depois do veredito. NÃO PRONTO sem ação escrita é o fecho que
+    # ele fotografou: o julgamento é a última palavra e a tarefa para de andar.
+    instrucoes = INSTRUCOES.search(texto)
+    if not instrucoes:
+        return False
+    corpo = _corpo_apos(texto, instrucoes.end())
+    if not _tem_substancia(corpo):
+        return False
+    if not pronto_de_verdade:
+        if not ACAO.search(corpo):
+            return False
+        if _letras(corpo) < PISO_DAS_INSTRUCOES_EM_NAO_PRONTO:
+            return False
     # PRONTO com caixa aberta é contradição: ou a tarefa acabou, ou sobrou passo.
     # Sem esta linha o plano de abertura colado no fim, intocado, valia como
     # roteiro final (achado do revisor, 05/09/2026).
-    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
     return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
 
 
 def _corpo_apos(texto: str, comeco: int) -> str:
     """O que vem depois deste título, até o próximo título (ou o fim)."""
     fim = len(texto)
-    for padrao in (*TITULOS, VEREDITO):
+    for padrao in (*TITULOS, VEREDITO, INSTRUCOES):
         proximo = padrao.search(texto, comeco)
         if proximo and proximo.start() < fim:
             fim = proximo.start()
     return texto[comeco:fim]
+
+
+def _letras(corpo: str) -> int:
+    """Quanto texto de verdade tem aqui, descontado o rótulo do molde."""
+    return len(re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "", MARCA_DO_MOLDE.sub(" ", corpo)))
 
 
 def _tem_substancia(corpo: str) -> bool:
@@ -431,8 +501,7 @@ def _tem_substancia(corpo: str) -> bool:
     com todas as letras, então a régua é baixa de propósito: três letras ou
     algarismos, depois de descontar o rótulo do molde. Uma régua que exigisse
     frase ensinaria o robô a encher linguiça, que é a outra forma de mentir."""
-    limpo = MARCA_DO_MOLDE.sub(" ", corpo)
-    return len(re.sub(r"[^0-9A-Za-zÀ-ÿ]+", "", limpo)) >= 3
+    return _letras(corpo) >= 3
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -840,6 +909,60 @@ def _seguir_o_pr(entrada: dict, estado: dict) -> None:
             estado["pr"] = int(achado.group(1))
 
 
+def veredito_da_medicao(saida: str) -> str:
+    """"vermelho", "verde", ou "" quando a saída não diz.
+
+    O vazio é fail-open de propósito: um comando cortado por um `grep` não
+    informa se passou, e supor vermelho aí seria o portão inventando fato,
+    que é exatamente o pecado que ele existe para punir.
+    """
+    ultima = _ultima_linha(saida)
+    if MEDICAO_VERMELHA.search(ultima):
+        return "vermelho"
+    if MEDICAO_VERDE.search(ultima):
+        return "verde"
+    return ""
+
+
+def _declarou_pronto(entrada: dict) -> bool:
+    achado = VEREDITO.search(_texto_da_fala(entrada))
+    return bool(achado) and not achado.group(1).lower().startswith("n")
+
+
+def _seguir_a_medicao(entrada: dict, estado: dict, prestou: bool) -> None:
+    """Guarda o veredito da ÚLTIMA medição e se o robô declarou PRONTO sobre ela.
+
+    A ÚLTIMA, não a pior: reprovar, consertar e rodar de novo é o laço normal
+    de trabalho, e um portão que guardasse o pior vermelho da sessão puniria
+    justamente quem consertou.
+    """
+    pendentes = estado.setdefault("medicoes_pendentes", [])
+    for nome, bloco in _usos_de_ferramenta(entrada):
+        if nome not in ("Bash", "PowerShell"):
+            continue
+        comando = str((bloco.get("input") or {}).get("command") or "")
+        identificador = str(bloco.get("id") or "")
+        if identificador and any(p.search(comando) for p in COMANDOS_QUE_VERIFICAM):
+            pendentes.append(identificador)
+    del pendentes[:-TETO_DAS_MEDICOES_PENDENTES]
+
+    for identificador, saida in _saidas_por_id([entrada]).items():
+        if identificador not in pendentes:
+            continue
+        pendentes.remove(identificador)
+        veredito = veredito_da_medicao(saida)
+        if veredito:
+            estado["medicao"] = veredito
+        if veredito == "verde":
+            # Consertou e mediu: a contradição de antes deixou de existir.
+            estado["pronto_sobre_vermelho"] = False
+
+    if prestou:
+        estado["pronto_sobre_vermelho"] = (
+            _declarou_pronto(entrada) and estado.get("medicao") == "vermelho"
+        )
+
+
 def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str:
     comeco = inicio_da_janela(entradas) if entradas else 0
     linhas = [
@@ -904,6 +1027,15 @@ def molde_com_fatos(entradas: list[dict], cwd: Path, sem_transcript: str) -> str
         "",
         "   PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga",
         "   NÃO PRONTO. Ou rodou de verdade, ou escreve NÃO RODEI.",
+        "",
+        "**Instruções** — VOCÊ ESCREVE (o que acontece agora, para um leigo)",
+        "",
+        "   Em PRONTO, \"nada a fazer\" é resposta completa.",
+        "   Em NÃO PRONTO é obrigatória uma lista, e ela responde três coisas:",
+        "   o que houve para a tarefa não ter acabado; se a bola é dele ou sua;",
+        "   e o que destrava, com o prazo se houver. Vale também quando NADA",
+        "   depende dele: diga o que está sendo esperado e quanto leva.",
+        "   Terminar no veredito é o fecho que ele mandou consertar em 20/09/2026.",
     ]
     return "\n".join(linhas)
 
@@ -996,6 +1128,8 @@ def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "")
         "**O que foi verificado**: comando e resultado, ou NÃO RODEI.",
         "**Pendências**: o que falta, ou nada depende de ninguém.",
         "**Veredito:** PRONTO ou NÃO PRONTO, com o motivo.",
+        "**Instruções**: para leigo, o que acontece agora. NÃO PRONTO exige lista: "
+        "o que houve, de quem é a bola, o que destrava e o prazo — mesmo se nada depende dele.",
         f'Fatos: python ci/prestacao_de_contas.py --molde-com-fatos --transcript "{transcript or "caminho-da-sessao"}"',
     ]
     if faltou_o_plano:
@@ -1004,6 +1138,37 @@ def molde(faltou_o_plano: bool, transcript: str | None = None, motivo: str = "")
 
 
 # ------------------------------------------------------------- os dois modos ----
+
+
+def _portao_do_vermelho(arquivo: Path, estado: dict, segunda_passada: bool) -> int:
+    """PRONTO sobre a última medição vermelha é contradição, e ele diz qual.
+
+    Recusa UMA vez por dívida e depois só avisa. O PR #1713 recusava sempre, e
+    testava isso como virtude: uma sessão que não achasse a redação boa ficava
+    presa para sempre. Portão que recusa em laço é a espera em laço com outro
+    nome, e a saída honesta aqui sempre existiu: dizer NÃO PRONTO.
+    """
+    ja_cobrado = segunda_passada or estado.get("vermelho_cobrado") == estado["mudancas"]
+    estado["vermelho_cobrado"] = estado["mudancas"]
+    try:
+        gravar_estado_incremental(arquivo, estado)
+    except OSError as erro:
+        print(f"PRONTO SOBRE VERMELHO: não gravei o estado ({erro}); a recusa pode repetir.",
+              file=sys.stderr)
+    if ja_cobrado:
+        print("PRONTO SOBRE VERMELHO: o robô foi cobrado e encerrou assim mesmo; "
+              "a última medição desta sessão continua vermelha, sem nova recusa.",
+              file=sys.stderr)
+        return 1
+    print("🔴 PRONTO SOBRE MEDIÇÃO VERMELHA: a última medição desta sessão reprovou "
+          "e o relatório diz PRONTO.\n"
+          "Conserte e MEÇA de novo: o verde da nova medição desfaz esta recusa.\n"
+          "Se não dá para consertar agora, diga NÃO PRONTO e use o bloco "
+          "**Instruções** para explicar o que reprovou, de quem é a bola e o que "
+          "destrava.\nPrometer o conserto não é consertar, e declarar PRONTO por "
+          "cima do vermelho é o relatório que o mantenedor mandou acabar (PR #1713).",
+          file=sys.stderr)
+    return 2
 
 
 def _portao_do_voo(entrada: dict, arquivo: Path, estado: dict, segunda_passada: bool) -> int:
@@ -1086,6 +1251,10 @@ def modo_contas(entrada: dict) -> int:
             cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
         )
     if not recusar:
+        # A prova local vem antes da entrega em voo: não adianta perguntar ao
+        # GitHub se a suíte desta máquina reprovou.
+        if estado.get("pronto_sobre_vermelho"):
+            return _portao_do_vermelho(arquivo, estado, segunda_passada)
         return _portao_do_voo(entrada, arquivo, estado, segunda_passada)
     if ja_cobrada:
         print("PRESTAÇÃO DE CONTAS: o robô foi cobrado e terminou assim mesmo; "

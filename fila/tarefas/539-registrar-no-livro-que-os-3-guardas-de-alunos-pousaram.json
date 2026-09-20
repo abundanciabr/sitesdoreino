@@ -1,0 +1,19 @@
+{
+  "arquivo": "539-registrar-no-livro-que-os-3-guardas-de-alunos-pousaram",
+  "id": "TAR-539",
+  "titulo": "Registrar no livro que os 3 guardas de alunos pousaram",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro novo em painel/registros com o merge commit, o horario e o resultado do deploy conferidos por gh",
+  "despacho": "Escreva um registro tipo nota em painel/registros/ dizendo que o PR 1809 (os 3 guardas de alunos) integrou na main e que o deploy da celula passou. Confira de fora com gh pr view 1809 --json state,mergedBy,mergeCommit,mergedAt e gh run view do deploy. Cite que o registro 026, escrito antes do pouso, dizia integracao nao verificada, e que a entrega 15a0ca50 de 17/09 foi publicada junto. So painel/.",
+  "origem": "pouso do PR 1809 confirmado de fora em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

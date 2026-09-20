@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-194926-TAR-509-explicada",
+  "tarefa": "TAR-509",
+  "evento": "explicada",
+  "quando": "2026-09-19T19:49:26+00:00",
+  "quem": "Decisao do mantenedor em 19/09/2026: pagina real e telemetria primeiro, experimentacao depois. Brief fechado de despacho para a celula catalogo.",
+  "o_que_e": "Hoje a pagina de oferta do site e um arquivo de 62 linhas com um titulo, um preco e um botao. Nao existe em lugar nenhum da plataforma um jeito de dizer quais pedacos uma pagina tem nem de trocar o texto de um pedaco sem mexer em codigo.",
+  "o_que_muda": "A pagina passa a ser feita de pedacos com nome (chamada, problema, prova, oferta, garantia, perguntas), cada um com campos de texto proprios. Da para escrever, guardar como rascunho e publicar, e cada publicacao vira uma versao que ninguem reescreve. Sem isso, nunca sera possivel perguntar qual chamada vende mais.",
+  "exemplo": "Trocar a frase de chamada da pagina de venda hoje exige um programador e um deploy. Depois disto, e escrever no rascunho e publicar, e a frase antiga continua guardada para comparacao.",
+  "importancia": 80
+}

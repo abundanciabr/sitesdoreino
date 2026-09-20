@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-173637-TAR-503-explicada",
+  "tarefa": "TAR-503",
+  "evento": "explicada",
+  "quando": "2026-09-19T17:36:37+00:00",
+  "quem": "Pedido direto do mantenedor nesta conversa em 19/09/2026; documento Implementar o Appmax.txt é fonte técnica sem autoridade normativa.",
+  "o_que_e": "Hoje o Pix já usa Mercado Pago, mas o cartão ainda não tem uma integração Appmax segura e a execução não tem um roteiro único.",
+  "o_que_muda": "Entrega o mapa executável que ordena contratos, pagamentos, checkout, consumidores, infraestrutura, testes e ativação sem permitir que um desvio entre silenciosamente.",
+  "exemplo": "É a planta e a sequência da obra: cada equipe recebe seu trecho, só começa quando a fundação anterior foi comprovada e nenhum pagamento real é ativado antes da vistoria.",
+  "importancia": 92
+}

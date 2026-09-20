@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-194206-TAR-538-explicada",
+  "tarefa": "TAR-538",
+  "evento": "explicada",
+  "quando": "2026-09-20T19:42:06+00:00",
+  "quem": "pouso do PR 1807 confirmado de fora em 20/09/2026",
+  "o_que_e": "Uma nota no livro de ocorrencias dizendo que a entrega dos 4 guardas do checkout entrou na main de verdade.",
+  "o_que_muda": "Quem abrir o painel ve que a TAR-497 nao so foi entregue, ela pousou, com o merge commit e o horario conferidos fora do robo.",
+  "exemplo": "O registro 023 foi escrito antes do pouso e diz integracao nao verificada; este diz que o PR 1807 virou 668eaf5b as 19:36:03Z.",
+  "importancia": 20
+}
