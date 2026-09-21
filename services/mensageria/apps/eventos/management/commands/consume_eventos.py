@@ -17,7 +17,7 @@ from apps.eventos.handlers import (
     ao_pessoa_cadastrada,
     ao_pix_expirado,
 )
-from apps.eventos.models import EventoProcessado
+from apps.eventos.models import EventoProcessado, FatoDeProvedorVisto
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,50 @@ STREAMS = {
 # (não renomear nem "ajustar" só aqui):
 IDLE_MS_REENTREGA = 60_000  # pendente sem ack há >= isto ⇒ reivindicável
 MAX_ENTREGAS = 5  # entregas já feitas ⇒ fila morta, sem reprocessar
+
+
+def identidade_do_fato(event: str, version: int, data: dict) -> tuple[str, str] | None:
+    """O par (site_id, chave) que atravessa v1 e v2 do mesmo fato de
+    pagamento — tirado de `x-ponte-do-v1` em
+    `contracts/eventos/pagamento.aprovado.v2.json` e
+    `pagamento.recusado.v2.json` (TAR-549). `None` para qualquer outro
+    evento: a dedup entre versões só existe onde o contrato declarou a ponte.
+
+    As duas pontes NÃO são a mesma regra para `chave`, e misturá-las é o
+    engano fácil:
+
+    - `pagamento.aprovado`: o par `provider`+`provider_reference_id`. No v1 o
+      par é sempre implícito `mercadopago`+`mp_payment_id` — era o único
+      provedor que existia. `payment_id` (o id local da célula pagamentos)
+      NUNCA entra aqui: o próprio schema v2 diz que ele "não serve para
+      deduplicar entre versões".
+    - `pagamento.recusado`: só `payment_id`. O v1 da recusa nunca carregou
+      referência de provedor — nem sob o nome `mp_payment_id` — então não
+      existe par para tirar de lá; `payment_id` é o único campo que os dois
+      lados sempre tiveram.
+
+    `site_id` (`platform_site_id` no v2, `site_id` no v1) SEMPRE volta
+    separado de `chave`, nunca colado na mesma string — [INV-P11], fronteira
+    de site. Concatenar seria uma ambiguidade nova (`site_id="a:b"` + chave
+    `"c"` produz o mesmo texto que `site_id="a"` + chave `"b:c"`), e sem essa
+    fronteira dois fatos de SITES DIFERENTES que por coincidência
+    compartilhassem `provider_reference_id` (opaco, do provedor, sem garantia
+    nenhuma de ser único ENTRE tenants) ou `payment_id` colidiriam na mesma
+    linha de `FatoDeProvedorVisto`: o aviso do site que chegasse por último
+    seria descartado como "já processado" — quem pagou não recebe
+    confirmação, e nada denuncia, porque para o sistema o fato já tinha
+    acontecido.
+    """
+    site_id = data.get("platform_site_id") or data.get("site_id")
+    if event == "pagamento.aprovado":
+        if version == 1:
+            provider, referencia = "mercadopago", data["mp_payment_id"]
+        else:
+            provider, referencia = data["provider"], data["provider_reference_id"]
+        return site_id, f"{provider}:{referencia}"
+    if event == "pagamento.recusado":
+        return site_id, data["payment_id"]
+    return None
 
 
 def processar_envelope(envelope: dict, handler) -> bool:
@@ -85,6 +129,15 @@ def processar_envelope(envelope: dict, handler) -> bool:
 
     Com esta estrutura o `xack` no dedup volta a ser seguro: `False` agora só
     acontece quando o efeito daquele evento realmente commitou alguma vez.
+
+    (3) Uma TERCEIRA checagem, savepoint próprio, entra depois da de `event_id`
+        e antes do handler: a dedup ENTRE VERSÕES (TAR-549). `event_id` sozinho
+        não pega o mesmo pagamento chegando como v1 e depois como v2 — são dois
+        `event_id` diferentes. `identidade_do_fato()` deriva, a partir do
+        contrato, o MESMO (site_id, chave) nas duas versões; a segunda vez que
+        ele aparece colide em `uniq_fato_por_evento_site_e_chave` e devolve
+        `False`, com o mesmo efeito de "já processado" que o dedup por
+        `event_id` tem.
     """
     with transaction.atomic():  # (1) registro e efeito: vivem ou morrem juntos
         try:
@@ -94,6 +147,21 @@ def processar_envelope(envelope: dict, handler) -> bool:
                 )
         except IntegrityError:
             return False  # já processado: nada foi gravado, o handler não roda
+        identidade = identidade_do_fato(
+            envelope["event"], envelope.get("version"), envelope["data"]
+        )
+        if identidade is not None:
+            site_id, chave = identidade
+            try:
+                with transaction.atomic():  # (3) savepoint: SÓ este create
+                    FatoDeProvedorVisto.objects.create(
+                        evento=envelope["event"],
+                        site_id=site_id,
+                        chave=chave,
+                        event_id=envelope["event_id"],
+                    )
+            except IntegrityError:
+                return False  # mesmo fato, outra versão: já processado antes
         # O `event_id` chega ao handler desde 02/09/2026. Era limitação
         # conhecida desta célula (LICOES.md), e virou impedimento: a carta de um
         # passo de sequência exige `origem_event_id` no contrato, e sem ele o

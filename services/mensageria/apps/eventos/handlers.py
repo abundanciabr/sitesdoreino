@@ -82,6 +82,15 @@ def _resolver_template(tipo: str, site_id: str) -> dict:
     return TEMPLATES_POR_SITE.get(site_id, {}).get(tipo) or TEMPLATES_PADRAO[tipo]
 
 
+def _site_id_do_evento(data: dict) -> str:
+    """`site_id` no v1, `platform_site_id` no v2 (TAR-545/549): mesmo conteúdo,
+    nome novo porque o `site_id` do webhook da Appmax é de OUTRO dono (o
+    fornecedor, não esta plataforma) — ver a descrição do campo no contrato.
+    Cada schema tem `additionalProperties: false` e exige só um dos dois, nunca
+    os dois juntos."""
+    return data["platform_site_id"] if "platform_site_id" in data else data["site_id"]
+
+
 def _registrar_e_enfileirar(
     *,
     event: str,
@@ -116,11 +125,12 @@ def ao_pagamento_aprovado(
     data: dict, event_id: str | None = None, ator_id: str | None = None
 ) -> None:
     cliente = data["customer"]
-    tpl = _resolver_template("boas_vindas", data["site_id"])
+    site_id = _site_id_do_evento(data)
+    tpl = _resolver_template("boas_vindas", site_id)
     contexto = {"name": cliente["name"]}
     _registrar_e_enfileirar(
         event="pagamento.aprovado",
-        site_id=data["site_id"],
+        site_id=site_id,
         order_id=data["order_id"],
         tipo="boas_vindas",
         canal="email",
@@ -131,7 +141,7 @@ def ao_pagamento_aprovado(
     if cliente.get("phone"):
         _registrar_e_enfileirar(
             event="pagamento.aprovado",
-            site_id=data["site_id"],
+            site_id=site_id,
             order_id=data["order_id"],
             tipo="boas_vindas",
             canal="whatsapp",
@@ -174,11 +184,12 @@ def ao_pagamento_recusado(
     data: dict, event_id: str | None = None, ator_id: str | None = None
 ) -> None:
     cliente = data["customer"]
-    tpl = _resolver_template("recuperacao_recusado", data["site_id"])
+    site_id = _site_id_do_evento(data)
+    tpl = _resolver_template("recuperacao_recusado", site_id)
     contexto = {"name": cliente["name"], "reason_code": data["reason_code"]}
     _registrar_e_enfileirar(
         event="pagamento.recusado",
-        site_id=data["site_id"],
+        site_id=site_id,
         order_id=data["order_id"],
         tipo="recuperacao_recusado",
         canal="email",
@@ -189,7 +200,7 @@ def ao_pagamento_recusado(
     if cliente.get("phone"):
         _registrar_e_enfileirar(
             event="pagamento.recusado",
-            site_id=data["site_id"],
+            site_id=site_id,
             order_id=data["order_id"],
             tipo="recuperacao_recusado",
             canal="whatsapp",

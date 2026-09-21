@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-001151-TAR-549-submetida",
+  "tarefa": "TAR-549",
+  "evento": "submetida",
+  "quando": "2026-09-21T00:11:51+00:00",
+  "quem": "agent/mensageria/mensageria-consome-o-evento-v2",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1826",
+  "revisao": "c13f1d2c2dcc4a2ab9659a8a80688ea8ec73df3e",
+  "arvore": "1321c0e2c4ce78bed293af35ce9e9160048c6928"
+}
