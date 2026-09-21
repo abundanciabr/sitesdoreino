@@ -83,9 +83,16 @@ Frases proibidas: "deve funcionar", "provavelmente", "em teoria",
 
 #### 11. Conversa é mudança real; fim de loops inúteis
 
-Toda troca de mensagem deve levar a mudança, resultados, benefícios ou soluções CONCRETAS em direção ao resultado da tarefa proposta. É expressamente proibido repetir status sem agir, delegar repetidamente sem avanço ou entrar em loop de mensagens inúteis.
+Toda troca deve levar a mudança, resultado ou solução concreta na tarefa. É
+proibido repetir status sem agir, delegar sem avanço ou entrar em loop de
+mensagens inúteis.
 
-**Nenhuma IA deve perguntar ou informar à outra IA sobre estado do Git, PR, checks, branches ou pouso.** O Git já emite avisos de status automaticamente. Cada agente consulta diretamente a fonte estruturada (comandos, portões, scripts) e age sobre o resultado. Mensagem de status só existe quando traz uma mudança concreta, decisão necessária ou bloqueio novo. Todo loop ou perda de tempo deve ser imediatamente reconhecido, interrompido e redirecionado para ação.
+**Nenhuma IA pergunta ou informa à outra IA o estado de Git, PR, checks,
+branches ou pouso.** O Git já avisa sozinho. Cada agente consulta diretamente a
+fonte estruturada (comandos, portões, scripts) e age sobre o resultado. Status
+só existe com mudança concreta, decisão necessária ou bloqueio novo. Todo loop
+ou perda de tempo é imediatamente reconhecido, interrompido e redirecionado
+para ação.
 
 ### As três costuras
 
