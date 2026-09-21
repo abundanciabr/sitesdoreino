@@ -117,6 +117,7 @@
       "endereco": "/leads",
       "alcance": "publico",
       "para_quem": "maquina",
+      "gesto": true,
       "titulo": "Guardar o contato deixado",
       "descricao": "Não é uma página: é o que acontece quando alguém aperta o botão do formulário de contato. Abrir este endereço no navegador não mostra nada."
     },
