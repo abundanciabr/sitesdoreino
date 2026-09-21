@@ -384,7 +384,10 @@ def _inventario_da_rede(repo: str, gh: list[str]) -> list[dict[str, Any]]:
         "number,title,url,isDraft,createdAt,labels,files,statusCheckRollup",
     ]
     try:
-        saida = subprocess.run(comando, capture_output=True, text=True, timeout=180)
+        saida = subprocess.run(
+            comando, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=180,
+        )
     except (OSError, subprocess.SubprocessError) as erro:
         raise ErroDeInstrumentacao(
             "não consegui rodar o `gh` para listar os PRs abertos", str(erro)

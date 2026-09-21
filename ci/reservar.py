@@ -127,6 +127,7 @@ def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
             cwd=str(raiz),
             capture_output=True,
             text=True,
+            encoding="utf-8", errors="replace",
             timeout=120,
             stdin=subprocess.DEVNULL,
         )

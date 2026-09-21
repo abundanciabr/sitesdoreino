@@ -973,6 +973,7 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
         cwd=str(raiz),
         capture_output=True,
         text=True,
+        encoding="utf-8", errors="replace",
         timeout=120,
         stdin=subprocess.DEVNULL,
     )

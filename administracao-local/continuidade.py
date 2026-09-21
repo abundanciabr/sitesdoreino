@@ -11,6 +11,10 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ci"))
+
+from _nucleo import configurar_saida  # noqa: E402
+
 NOME_DA_VIGILIA = "Triade - vigilia do painel local"
 LIMITE_DE_ITERACOES = 10
 LIMITE_DE_TOKENS = 300_000
@@ -95,6 +99,8 @@ def _rodar_radio(argumentos: list[str]) -> subprocess.CompletedProcess:
         [sys.executable, "ci/radio.py", *argumentos],
         cwd=raiz_do_repositorio(),
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=30,
     )
@@ -270,6 +276,8 @@ def rodar_claude(prompt: str) -> subprocess.CompletedProcess:
         cwd=raiz_do_repositorio(),
         input=prompt,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=60 * 60,
     )
@@ -300,6 +308,7 @@ def parar_por_seguranca(mensagem: str, codigo: int = 2) -> int:
 
 
 def main() -> int:
+    configurar_saida()
     try:
         pasta = pasta_do_plano()
         if not pasta.exists():
