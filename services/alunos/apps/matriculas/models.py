@@ -171,6 +171,27 @@ class Matricula(models.Model):
         max_length=128, unique=True
     )  # [INV-P5] chave de idempotência
     product_id = models.CharField(max_length=64, blank=True, default="")
+
+    # [ESTORNO] QUAL PAGAMENTO PAGOU ESTA MATRICULA (20/09/2026).
+    # O par nasceu aqui porque `pagamento.estornado.v2` NAO carrega `order_id`:
+    # ele nomeia o dinheiro que voltou pelo par (`provider`,
+    # `provider_reference_id`), o MESMO par do `pagamento.aprovado.v2` daquela
+    # compra. Sem estas duas colunas nao ha caminho do estorno ate a pessoa cujo
+    # acesso fecha, e o corte dependeria de alguem olhar o painel do fornecedor.
+    #
+    # DUAS colunas, e nao uma so com os dois valores juntos: a busca do estorno
+    # vira um `filter` direto, sem convencao de concatenacao para manter igual
+    # dos dois lados (quem grava e quem le) — e convencao mantida a mao e o que
+    # diverge primeiro.
+    #
+    # VAZIAS quando ninguem disse qual pagamento foi, e isso e permanente: a
+    # matricula do reprocesso manual (`POST /matriculas`, contrato congelado que
+    # nao pede o par), a linha da fila e toda matricula nascida antes de
+    # 20/09/2026 ficam assim. Estorno nenhum as alcanca, e o guarda disso e
+    # `suspender_por_estorno()`, que recusa a busca com referencia vazia em vez
+    # de casar com todas elas de uma vez.
+    provider = models.CharField(max_length=32, blank=True, default="")
+    provider_reference_id = models.CharField(max_length=128, blank=True, default="")
     email = models.EmailField()
     name = models.CharField(max_length=255)
     status = models.CharField(
@@ -238,7 +259,16 @@ class Matricula(models.Model):
         return "comprou"
 
     class Meta:
-        indexes = [models.Index(fields=["email"])]
+        indexes = [
+            models.Index(fields=["email"]),
+            # [ESTORNO] A pergunta do estorno, e a unica que se faz por este
+            # par: "qual matricula este pagamento pagou?". A tabela so cresce, e
+            # sem o indice todo estorno varre a escola inteira para cortar uma
+            # linha. O site fica de fora do indice de proposito: a referencia do
+            # provedor ja e seletiva o bastante, e o filtro por site continua na
+            # consulta, onde ele decide a CORRECAO do casamento ([INV-P11]).
+            models.Index(fields=["provider", "provider_reference_id"]),
+        ]
         constraints = [
             # [FILA] Idempotência de `POST /pre-matriculas` com MECANISMO, não com
             # disciplina: sem esta constraint, duas requisições simultâneas da

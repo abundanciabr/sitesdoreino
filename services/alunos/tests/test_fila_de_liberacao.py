@@ -667,6 +667,11 @@ def test_evento_de_pagamento_com_prefixo_reservado_estoura(client, auth):
             {
                 "platform_site_id": "site-1",
                 "order_id": "pre:vindo-do-provedor",
+                # [ESTORNO] O par do pagamento e `required` no contrato v2, e um
+                # evento v1 chega ao handler ja traduzido com ele: um `data` sem
+                # o par nao e evento nenhum, e o teste mediria uma fantasia.
+                "provider": "appmax",
+                "provider_reference_id": "4471230",
                 "customer": {"email": "atacante@example.com", "name": "Atacante"},
             }
         )
