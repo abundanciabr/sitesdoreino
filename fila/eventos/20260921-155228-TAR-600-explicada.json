@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-155228-TAR-600-explicada",
+  "tarefa": "TAR-600",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:52:28+00:00",
+  "quem": "Pedido do mantenedor em 21/09/2026 para abrir a frente da area de documentos.",
+  "o_que_e": "O pedido do mantenedor virou quatro pedacos de trabalho e nenhum deles existia na fila.",
+  "o_que_muda": "Os quatro cartoes entram na fila com dependencia declarada, para que cada robo pegue o seu sem atropelar o outro.",
+  "exemplo": "O mantenedor abre a fila e ve exatamente o que falta para o documento virar pagina visual.",
+  "importancia": 40
+}

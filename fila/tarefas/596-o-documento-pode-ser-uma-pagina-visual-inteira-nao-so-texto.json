@@ -1,0 +1,19 @@
+{
+  "arquivo": "596-o-documento-pode-ser-uma-pagina-visual-inteira-nao-so-texto",
+  "id": "TAR-596",
+  "titulo": "O documento pode ser uma pagina visual inteira, nao so texto",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste provando que o corpo do formato pagina sai da moldura isolada sem acesso a sessao, que o formato texto continua escapando HTML, e captura da tela do documento de exemplo.",
+  "despacho": "Ver brief da maestro na sessao de 21/09/2026.",
+  "origem": "Pedido do mantenedor em 21/09/2026: o agente escolhe o formato do documento conforme a tarefa.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
