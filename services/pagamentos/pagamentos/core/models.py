@@ -4,20 +4,24 @@
 # isso NÃO viola INV-P9 (a independência é só entre os dois métodos, e entre método
 # e providers; método→core é permitido e é o padrão desta célula).
 #
-# Outbox (RECEITA:R3) e o helper de transição+dedup dos webhooks moram aqui também
-# — não em app Django separado. Decisão de orçamento (ver LICOES.md): core/models.py
-# é o ÚNICO app com models.py/migrations desta célula; um app "eventos" à parte
-# custaria outro migrations/__init__.py sem necessidade arquitetural real.
+# Outbox (RECEITA:R3) mora aqui também — não em app Django separado. Decisão de
+# orçamento (ver LICOES.md): core/models.py é o ÚNICO app com models.py/migrations
+# desta célula; um app "eventos" à parte custaria outro migrations/__init__.py sem
+# necessidade arquitetural real. A máquina de transição financeira, essa, mora em
+# core/ledger.py: aqui ficam só os modelos e a tranca que obriga a passar por lá.
 from __future__ import annotations
 
 import json
 import logging
 import uuid
+from collections.abc import Collection, Iterable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 import redis
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,52 @@ ATTEMPT_STATE_CHOICES = [
 ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO = ["sending", "reconciliation_required", "approved"]
 ESTADOS_EM_ABERTO = ["sending", "reconciliation_required"]
 
+# Os estados da Intent que SÃO um fato de dinheiro: a partir daqui existe algo a
+# contar para as outras células (matrícula a criar, acesso a cortar, cobrança a
+# reapresentar). Entrar num deles, ou sair dele, é o que esta célula chama de
+# transição financeira, e nenhuma acontece fora de `core/ledger.py`.
+ESTADOS_FINANCEIROS = frozenset({"approved", "rejected", "expired", "refunded"})
+
+
+class TransicaoForaDoLedger(RuntimeError):
+    """Alguém gravou um status financeiro direto na linha da Intent.
+
+    É a falha que este módulo passou a tornar impossível: era assim que a
+    confirmação de cartão aprovava o pagamento sem avisar ninguém. Quem pega
+    esta exceção não deve "tentar de outro jeito": deve chamar
+    `pagamentos.core.ledger.registrar_fato`, que grava o estado e o aviso na
+    mesma transação.
+    """
+
+
+# A autorização da transição e a coleta dos avisos são a MESMA marca de
+# contexto, de propósito: enquanto ela existe, o ledger está no meio de uma
+# transição, e toda linha de outbox que nascer nesse intervalo fica registrada
+# nela. É com essa lista que o ledger confere, antes de commitar, que a mudança
+# de estado produziu exatamente um aviso. Ela é por contexto de execução
+# (ContextVar), então duas requisições simultâneas nunca contam o aviso uma da
+# outra.
+_avisos_da_transicao: ContextVar[list[str] | None] = ContextVar(
+    "pagamentos_avisos_da_transicao", default=None
+)
+
+
+@contextmanager
+def transicao_do_ledger() -> Iterator[list[str]]:
+    """Abre a ÚNICA janela em que um status financeiro pode ser gravado.
+
+    Uso exclusivo de `pagamentos.core.ledger` (e o guarda
+    `tests/test_ledger_transicao_financeira.py::test_so_o_ledger_abre_a_janela_de_transicao`
+    varre o código de produção para que continue exclusivo). Devolve a lista dos
+    avisos gravados enquanto a janela esteve aberta.
+    """
+    avisos: list[str] = []
+    marca = _avisos_da_transicao.set(avisos)
+    try:
+        yield avisos
+    finally:
+        _avisos_da_transicao.reset(marca)
+
 
 class Intent(models.Model):
     """Uma linha por intenção de cobrança. `idempotency_key` é o que torna
@@ -77,11 +127,81 @@ class Intent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # O status que esta linha tinha no banco quando foi lida. É o que permite
+    # recusar também a transição para TRÁS (aprovado voltando a pendente) sem
+    # gastar uma consulta a cada gravação.
+    _status_no_banco: str | None = None
+
     class Meta:
         indexes = [models.Index(fields=["order_id"])]
 
     def __str__(self) -> str:
         return f"{self.method}:{self.id}:{self.status}"
+
+    @classmethod
+    def from_db(
+        cls, db: str | None, field_names: Collection[str], values: Collection[Any]
+    ) -> Intent:
+        intent = super().from_db(db, field_names, values)
+        if "status" in field_names:
+            intent._status_no_banco = intent.status
+        return intent
+
+    def refresh_from_db(
+        self,
+        using: str | None = None,
+        fields: Iterable[str] | None = None,
+        from_queryset: Any = None,
+    ) -> None:
+        """Reler a linha reposiciona também a marca do status no banco. Sem
+        isto, um objeto relido continuaria carregando o status anterior como se
+        fosse o do banco, e a tranca de `save()` julgaria pelo passado."""
+        campos = None if fields is None else list(fields)
+        # `from_queryset` só existe no Django 5.1+; repassar sempre quebraria na
+        # versão que esta célula roda. Repassado apenas quando quem chamou usou.
+        extra = {} if from_queryset is None else {"from_queryset": from_queryset}
+        super().refresh_from_db(using=using, fields=campos, **extra)
+        if campos is None or "status" in campos:
+            self._status_no_banco = self.status
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """[INV-P6] A tranca do dinheiro, no lugar onde ela não tem como ser
+        esquecida: gravar `status` financeiro só passa dentro da janela que
+        `core/ledger.py` abre, e lá o aviso da outbox nasce junto. Fora dela a
+        gravação levanta `TransicaoForaDoLedger` em vez de aprovar em silêncio.
+
+        Os dois lados são recusados: ENTRAR num estado financeiro (aprovar,
+        recusar, expirar, estornar) e SAIR de um (aprovado voltando a pendente),
+        porque transição financeira é de mão única. Gravar outros campos de uma
+        linha já aprovada continua livre: a tranca só olha para `status`.
+        """
+        campos = kwargs.get("update_fields")
+        grava_status = campos is None or "status" in campos
+        self._recusar_status_fora_do_ledger(grava_status)
+        super().save(*args, **kwargs)
+        if grava_status:
+            self._status_no_banco = self.status
+
+    def _recusar_status_fora_do_ledger(self, grava_status: bool) -> None:
+        if not grava_status or _avisos_da_transicao.get() is not None:
+            return
+        impedido = next(
+            (
+                status
+                for status in (self.status, self._status_no_banco)
+                if status in ESTADOS_FINANCEIROS
+            ),
+            None,
+        )
+        if impedido is None:
+            return
+        raise TransicaoForaDoLedger(
+            f"gravar status={self.status!r} na intent {self.pk} fora do ledger "
+            f"foi recusado ({impedido!r} e um estado de dinheiro). Estado "
+            "financeiro e aviso as outras celulas nascem juntos: chame "
+            "pagamentos.core.ledger.registrar_fato(), que grava a transicao e a "
+            "linha da outbox na mesma transacao."
+        )
 
 
 class PaymentAttempt(models.Model):
@@ -190,6 +310,18 @@ class OutboxEvent(models.Model):
     def __str__(self) -> str:
         return f"{self.event}:{self.event_id}"
 
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Toda linha de outbox que nasce durante uma transição do ledger se
+        anuncia para ela. É por esta anotação, e não por confiança no código de
+        quem emite, que o ledger consegue exigir um aviso por transição antes de
+        commitar: apagar a emissão deixa a lista vazia e a transação inteira
+        volta atrás."""
+        nova = self._state.adding
+        super().save(*args, **kwargs)
+        avisos = _avisos_da_transicao.get()
+        if nova and avisos is not None:
+            avisos.append(self.event)
+
 
 def emitir(event: str, data: dict[str, Any], *, version: int = 1) -> OutboxEvent:
     """[RECEITA:R3 v1] [INV-P6] Chame SEMPRE dentro da MESMA transaction.atomic()
@@ -230,7 +362,7 @@ def relay_outbox() -> int:
     return publicados
 
 
-def _relay_apos_commit() -> None:
+def relay_apos_commit() -> None:
     """Publica imediatamente após o commit. Uma falha aqui (ex.: Redis fora do
     ar) NUNCA perde o evento — ele já está persistido na outbox com
     `published_at=None` e será republicado na próxima chamada de
@@ -239,27 +371,3 @@ def _relay_apos_commit() -> None:
         relay_outbox()
     except Exception:  # noqa: BLE001 - defensivo por design, ver docstring
         logger.exception("relay_outbox falhou apos commit; evento fica pendente")
-
-
-def transicionar_e_emitir(
-    *, mp_payment_id: str, novo_status: str, evento: str, dados: dict[str, Any]
-) -> bool:
-    """[INV-P3] [INV-P6] Usado pelos webhook handlers de methods/pix e
-    methods/card. Idempotente por `mp_payment_id` + status alvo: se a Intent já
-    está no status alvo (replay do MP), é no-op — nenhuma transição, nenhum
-    evento novo. Senão, a transição de estado e a linha da outbox nascem na
-    MESMA transação; o `select_for_update()` fecha a corrida de duas entregas
-    concorrentes do mesmo webhook. Devolve True quando de fato transicionou."""
-    with transaction.atomic():
-        intent = (
-            Intent.objects.select_for_update()
-            .filter(provider_payment_id=mp_payment_id)
-            .first()
-        )
-        if intent is None or intent.status == novo_status:
-            return False
-        intent.status = novo_status
-        intent.save(update_fields=["status", "updated_at"])
-        emitir(evento, dados)
-    transaction.on_commit(_relay_apos_commit)
-    return True

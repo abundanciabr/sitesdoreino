@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-042339-TAR-551-submetida",
+  "tarefa": "TAR-551",
+  "evento": "submetida",
+  "quando": "2026-09-21T04:23:39+00:00",
+  "quem": "agent/pagamentos/outbox-na-mesma-transacao",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1843",
+  "revisao": "54236cbc2453f590c4100c1c87b8d25c84119d9b",
+  "arvore": "cdbc738168d48fabe1c3fe04d89318e68efce300"
+}
