@@ -1,0 +1,20 @@
+{
+  "arquivo": "594-escriturar-o-cartao-das-parcelas-que-faltou-e-a-licao-do-det",
+  "id": "TAR-594",
+  "titulo": "Escriturar o cartao das parcelas que faltou e a licao do --detalhe",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Cartao TAR-593 criado e validado por python ci/fila.py validar; armadilha 508 escrita e regenerada por python ci/indice_de_armadilhas.py; sem travessao novo.",
+  "despacho": "Lote de escrituracao fechando o trabalho da TAR-583 (PR #1853): criar o\ncartao de fila que faltava para a consulta de parcelas (deixada de fora de\nproposito do contrato do cartao) e lavrar a licao sobre --detalhe de\nci/pr.py receber texto, nao caminho, medida no proprio PR #1853. Sem\ncodigo de produto: so fila/ e armadilhas/.",
+  "origem": "Brief fechado da maestro em 21/09/2026 para fechar o rastro da TAR-583/PR#1853.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
