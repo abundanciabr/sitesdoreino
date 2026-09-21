@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-121047-TAR-582-concluida",
+  "tarefa": "TAR-582",
+  "evento": "concluida",
+  "quando": "2026-09-21T12:10:47+00:00",
+  "quem": "agent/ci/fichas-sem-pouso-morto",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1851",
+  "verificado_em": "2026-09-21"
+}
