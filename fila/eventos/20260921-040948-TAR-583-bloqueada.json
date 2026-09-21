@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-040948-TAR-583-bloqueada",
+  "tarefa": "TAR-583",
+  "evento": "bloqueada",
+  "quando": "2026-09-21T04:09:48+00:00",
+  "quem": "despacho-contrato-do-cartao-appmax",
+  "detalhe": "TRAVA: escrever estas operacoes e estes campos so no contrato deixa contrato/pagamentos e contrato/checkout VERMELHOS, porque o freeze compara o documento congelado com o schema que a celula exporta do codigo, e nao existe codigo atras da promessa. Medido nesta bancada: com so tres campos opcionais novos em CardConfirm, contrato/pagamentos FAIL; com a porta publica POST /pedidos/{order_id}/cartao, contrato/checkout FAIL e seguranca/checkout FAIL. Baseline antes e depois de reverter: PASS nos dois. Enquanto vermelhas, as duas celulas reprovam todo PR que as tocar. Foi exatamente esse estado que a TAR-571 desfez em 20/09/2026 (PR #1824, na main), com a decisao de que as portas do cartao voltam ao contrato no dia em que o codigo que as atende existir. DESTRAVA: a maestro decide o desenho. Ou o trabalho vira PRs por celula, com o codigo e o contrato no mesmo PR, e entao a cerca 'somente contracts/' cai; ou a escada aceita as duas celulas vermelhas ate o lote L6 pousar, e entao a evidencia exigida deixa de ser freeze verde. Ordem dos lotes nao e decisao do executor. PRAZO: uma sessao depois da decisao escrita.",
+  "espera": "fila"
+}

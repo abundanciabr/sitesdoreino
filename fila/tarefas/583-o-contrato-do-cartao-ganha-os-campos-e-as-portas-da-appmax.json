@@ -1,0 +1,19 @@
+{
+  "arquivo": "583-o-contrato-do-cartao-ganha-os-campos-e-as-portas-da-appmax",
+  "id": "TAR-583",
+  "titulo": "O contrato do cartao ganha os campos e as portas da Appmax",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "As conferencias 'python ci/contract_freeze.py pagamentos' e 'python ci/contract_freeze.py checkout' terminam verdes depois da mudanca, com o numero de linhas comparadas, e 'python ci/contrato_aditivo.py' passa sem autorizacao de remocao.",
+  "despacho": "Rito de Mudanca de Contrato (RITOS.md Sec.3), lote L1B de\ndocs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md.\n\nO contrato precisa ganhar, para o cartao da Appmax funcionar:\n\n1. Em contracts/pagamentos.openapi.yaml, o schema CardConfirm ganha ip,\n   holder_name e holder_document_number, campos novos e opcionais, e a\n   descricao de card_token deixa de citar o Card Payment Brick, que e\n   vocabulario de um fornecedor so.\n2. Em contracts/pagamentos.openapi.yaml, uma operacao nova que consulta as\n   parcelas e devolve os valores prontos para exibir, ate 12x.\n3. Em contracts/checkout.openapi.yaml, a operacao publica que confirma o\n   cartao de um pedido, e a consulta de parcelas que o navegador faz ao\n   checkout para nunca falar direto com o fornecedor.\n4. Fixtures validas e invalidas em contracts/, inclusive a que prova que um\n   corpo com valor ou total e recusado.\n\nORDEM OBRIGATORIA, medida e ja decidida pela TAR-571 (PR #1824, na main):\no codigo que atende cada promessa entra ANTES ou JUNTO da promessa. O freeze\nde contrato compara o documento congelado com o schema que a celula exporta,\nentao promessa escrita sem codigo atras dela deixa contrato/pagamentos e\ncontrato/checkout vermelhos, e isso reprova todo PR que tocar as duas\ncelulas. Foi exatamente por isso que estas mesmas operacoes sairam do\ncontrato em 20/09/2026.\n\nA maestro precisa decidir o desenho antes de despachar de novo: ou este\ntrabalho vira PRs por celula com codigo e contrato juntos, ou a escada\ninteira aceita as duas celulas vermelhas ate o L6 pousar. Nenhuma das duas\ne decisao do executor.",
+  "origem": "Brief da maestro em 21/09/2026, lote L1B de docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md, depois do bloqueio medido do PR #1841.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
