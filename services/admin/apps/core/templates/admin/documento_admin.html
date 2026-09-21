@@ -62,7 +62,11 @@ um dia alguém vai ler só um deles.
     {% endif %}
   </p>
 
+  {% if pagina_visual %}
+  {% include "admin/_documento_em_pagina.html" %}
+  {% else %}
   <div class="documento">{{ corpo|safe }}</div>
+  {% endif %}
   <style>
     .documento pre {
       overflow: auto; padding: 14px 16px; margin: 0 0 16px;

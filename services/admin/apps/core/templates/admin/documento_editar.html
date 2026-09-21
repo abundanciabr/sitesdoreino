@@ -96,6 +96,34 @@ renderizador escapa antes de formatar (documentos.para_html).
     </p>
     {% endif %}
 
+    {% comment %}
+    O FORMATO (TAR-596). Dois rádios, e não uma caixa de marcar: são duas
+    escolhas nomeadas, e uma caixa obrigaria a pessoa a deduzir o que acontece
+    quando ela fica desmarcada. A frase de cada um diz QUANDO usar, que é a
+    única pergunta que ele tem aqui.
+    {% endcomment %}
+    <span class="rotulo">O que este documento é</span>
+    <label class="marcar">
+      <input type="radio" name="formato" value="texto"
+             {% if rascunho.formato != "pagina" %}checked{% endif %}>
+      <span>Texto escrito</span>
+    </label>
+    <p class="nota">
+      Para quando você vai escrever. Eu cuido da aparência, e o texto sai com o
+      visual do site, igual a todos os outros documentos.
+    </p>
+    <label class="marcar">
+      <input type="radio" name="formato" value="pagina"
+             {% if rascunho.formato == "pagina" %}checked{% endif %}>
+      <span>Página visual</span>
+    </label>
+    <p class="nota">
+      Para quando você vai desenhar. A caixa de baixo vira uma folha em branco
+      que aceita HTML, CSS, SVG, gráfico e animação, e a página sai exatamente
+      como você escreveu. Ela abre isolada do resto do site, então nada dentro
+      dela alcança a sua sessão.
+    </p>
+
     <label class="rotulo" for="corpo">O texto</label>
     <textarea id="corpo" name="corpo" rows="24" spellcheck="true">{{ rascunho.corpo }}</textarea>
     <p class="nota">
@@ -107,6 +135,8 @@ renderizador escapa antes de formatar (documentos.para_html).
       <code>![legenda](figura:recepcionista)</code>.
       Linha em branco separa parágrafos. Bloco de código usa três crases.
       Imagem por endereço da internet ainda não entra.
+      Em <b>página visual</b> nada disso vale: ali você escreve a página
+      inteira, e ela sai como está.
     </p>
 
     <label class="rotulo" for="ordem">Posição na lista</label>

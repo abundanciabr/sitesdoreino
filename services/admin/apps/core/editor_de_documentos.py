@@ -96,12 +96,28 @@ def _do_formulario(request) -> dict:
         "nome": (request.POST.get("nome") or "").strip().lower(),
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
         "ordem": _inteiro(request.POST.get("ordem"), documentos.ORDEM_PADRAO),
+        "formato": _formato(request.POST.get("formato")),
         "apendice_vivo": request.POST.get("apendice_vivo") == "sim",
         "verificado_em": (request.POST.get("verificado_em") or "").strip(),
         "proxima_verificacao_em": (
             request.POST.get("proxima_verificacao_em") or ""
         ).strip(),
     }
+
+
+def _formato(texto: str | None) -> str:
+    """O formato que o formulário mandou, ou `texto` se ele mandou outra coisa.
+
+    FAIL-CLOSED, como `publico`: só os dois valores que a tela oferece gravam,
+    e qualquer outra coisa cai no formato que passa pelo renderizador que
+    escapa. Um POST montado à mão não consegue criar um documento com um
+    formato que nenhuma tela sabe desenhar, e um campo esquecido no formulário
+    também não muda o formato por acidente.
+    """
+    escolhido = (texto or "").strip()
+    if escolhido in Documento.Formato.values:
+        return escolhido
+    return Documento.Formato.TEXTO
 
 
 def _erro_de_apendice_vivo(rascunho: dict) -> str | None:
@@ -192,6 +208,7 @@ def documento_novo(request):
             "nome": "",
             "corpo": "",
             "ordem": documentos.ORDEM_PADRAO,
+            "formato": Documento.Formato.TEXTO,
             "publico": False,
             "apendice_vivo": False,
             "verificado_em": "",
@@ -279,6 +296,7 @@ def documento_criar(request):
         nome=nome,
         corpo=rascunho["corpo"],
         ordem=rascunho["ordem"],
+        formato=rascunho["formato"],
         publico=False,
         **_campos_de_apendice_vivo(rascunho),
     )
@@ -311,6 +329,7 @@ def documento_editar(request, nome):
             "nome": documento.nome,
             "corpo": documento.corpo,
             "ordem": documento.ordem,
+            "formato": documento.formato,
             "publico": documento.publico,
             "apendice_vivo": documento.apendice_vivo,
             "verificado_em": (
@@ -364,6 +383,7 @@ def documento_salvar(request, nome):
     documento.titulo = rascunho["titulo"]
     documento.corpo = rascunho["corpo"]
     documento.ordem = rascunho["ordem"]
+    documento.formato = rascunho["formato"]
     for campo, valor in _campos_de_apendice_vivo(rascunho).items():
         setattr(documento, campo, valor)
     documento.save()

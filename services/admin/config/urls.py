@@ -18,6 +18,10 @@ from apps.core.caixa import (
 )
 from apps.core.divida import divida_json
 from apps.core.fila_do_painel import fila_json
+from apps.core.documento_em_pagina import (
+    doc_publico_moldura,
+    documento_admin_moldura,
+)
 from apps.core.editor_de_documentos import (
     documento_apagar,
     documento_arquivar,
@@ -333,6 +337,22 @@ urlpatterns = [
     # segunda cerca esta em `documentos.py::_arquivo`, que resolve e confere.
     path("docs/", docs_publicos, name="docs_publicos"),
     re_path(r"^docs/(?P<nome>[a-z0-9-]+)$", doc_publico, name="doc_publico"),
+    # A MOLDURA (TAR-596, 21/09/2026) — o corpo CRU de um documento de formato
+    # `pagina`, que a pagina acima mostra dentro de um `<iframe>` cujo sandbox
+    # NAO tem `allow-same-origin`. O porque esta em
+    # `apps/core/documento_em_pagina.py`, e e a peca inteira: sem
+    # `allow-same-origin` o corpo tem origem OPACA, entao o script dele roda
+    # sem enxergar cookie de sessao, `localStorage` nem o DOM do meshcraft.
+    #
+    # Ela e a TERCEIRA rota sob o prefixo publico `/docs/`, e obedece a mesma
+    # lei que autoriza as outras duas a morar ali: confere `no_ar` antes de
+    # responder, e devolve 404 (nunca 403) para o privado. O guarda
+    # `test_o_prefixo_publico_tem_so_as_tres_rotas` mede a lista.
+    re_path(
+        r"^docs/(?P<nome>[a-z0-9-]+)/moldura$",
+        doc_publico_moldura,
+        name="doc_publico_moldura",
+    ),
     path("documentos/", documentos_admin, name="documentos_admin"),
     # AS QUATRO ROTAS DO EDITOR (`DECISAO-o-editor-de-documentos.md`,
     # 31/08/2026): mostrar o formulario vazio, criar, mostrar o formulario
@@ -350,6 +370,13 @@ urlpatterns = [
     path("documentos/criar", documento_criar, name="documento_criar"),
     re_path(
         r"^documentos/(?P<nome>[a-z0-9-]+)$", documento_admin, name="documento_admin"
+    ),
+    # A mesma moldura, atras da porta: serve o privado e o arquivado, porque e
+    # antes de publicar que o mantenedor precisa VER a pagina que escreveu.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/moldura$",
+        documento_admin_moldura,
+        name="documento_admin_moldura",
     ),
     # Estas duas nao disputam nada com a generica acima: o `/editar` e o
     # `/salvar` no fim as tornam caminhos diferentes.
