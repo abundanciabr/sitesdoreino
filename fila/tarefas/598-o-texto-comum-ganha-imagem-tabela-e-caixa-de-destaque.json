@@ -1,0 +1,22 @@
+{
+  "arquivo": "598-o-texto-comum-ganha-imagem-tabela-e-caixa-de-destaque",
+  "id": "TAR-598",
+  "titulo": "O texto comum ganha imagem, tabela e caixa de destaque",
+  "toca": [
+    "admin",
+    "cursos"
+  ],
+  "depende_de": [
+    "TAR-597"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de sabotagem provando que HTML escrito pelo autor continua virando texto na tela, e o mesmo desenho nas duas celulas no mesmo PR.",
+  "despacho": "Ver brief da maestro na sessao de 21/09/2026.",
+  "origem": "Pedido do mantenedor em 21/09/2026.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
