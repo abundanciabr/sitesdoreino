@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-018-ci-folga-no-claude-md-sem-perder-lei",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: folga no CLAUDE.md sem perder lei",
+  detalhe: "Movi o porque das secoes 2 a 13 para docs/decisoes: 626 bytes livres e a regra 11 do PR 1657 passa a caber sob o teto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1839. Validação local: árvore eacf597f23d06dd5530a4a52c89157c46aab637c; commit 74124c2ac789504bcab0e82488c44cc7c0bb7ce1; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-397",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
