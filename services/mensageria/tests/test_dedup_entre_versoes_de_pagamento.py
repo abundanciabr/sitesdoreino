@@ -280,7 +280,9 @@ def test_aprovado_v1_seguido_de_v2_do_mesmo_fato_gera_um_unico_envio():
     assert EnvioRegistrado.objects.filter(order_id="order-v2-a").count() == 0
     assert (
         FatoDeProvedorVisto.objects.filter(
-            evento="pagamento.aprovado", chave=f"site-abc:mercadopago:{referencia}"
+            evento="pagamento.aprovado",
+            site_id="site-abc",
+            chave=f"mercadopago:{referencia}",
         ).count()
         == 1
     )
@@ -558,7 +560,9 @@ def test_concorrencia_real_v1_e_v2_do_mesmo_fato_produzem_um_unico_envio(r, stre
     )
     assert (
         FatoDeProvedorVisto.objects.filter(
-            evento="pagamento.aprovado", chave=f"site-abc:mercadopago:{referencia}"
+            evento="pagamento.aprovado",
+            site_id="site-abc",
+            chave=f"mercadopago:{referencia}",
         ).count()
         == 1
     )

@@ -697,12 +697,20 @@ do pouso deste PR:** a primeira versão desta chave era só `provider`+
 único ENTRE sites (tenants) desta plataforma, e uma colisão faria o aviso do
 segundo site ser descartado como "duplicado" do primeiro — quem pagou no
 site B nunca recebe confirmação, e nada denuncia, porque para o sistema o
-fato já tinha acontecido. **A chave agora nasce escopada pelo site**
-(`platform_site_id`/`site_id`, [INV-P11]), e os testes
+fato já tinha acontecido.
+
+**A correção, e por que não é um prefixo colado na string:** a primeira
+tentativa foi `f"{site_id}:{chave}"`. Ela já resolvia a colisão do parágrafo
+acima, mas trocava por uma ambiguidade nova: `site_id="a:b"` + chave `"c"`
+produz o MESMO texto que `site_id="a"` + chave `"b:c"`. `FatoDeProvedorVisto`
+ganhou `site_id` como COLUNA PRÓPRIA — `identidade_do_fato()` devolve
+`(site_id, chave)`, e a `UniqueConstraint` é `(evento, site_id, chave)` — e
+aí a comparação é de TRÊS campos, sem interpretar string nenhuma. Os testes
 `test_identidade_do_fato_*_em_sites_diferentes_nao_e_igual` e
-`test_*_mesmo_fato_em_sites_diferentes_gera_dois_envios` provam isso por
-mutação: tirar o site da chave derruba os quatro. Multissítio é invariante de
-CÉLULA (`constituicoes/AGENTS.mensageria.md`: "e-mail de um site jamais sai
+`test_*_mesmo_fato_em_sites_diferentes_gera_dois_envios` provam a fronteira
+por mutação: tirar o `site_id` real (trocá-lo por uma constante) derruba os
+quatro. Multissítio é invariante de CÉLULA
+(`constituicoes/AGENTS.mensageria.md`: "e-mail de um site jamais sai
 com a marca de outro"), e qualquer chave de dedup nova nesta célula nasce
 escopada por site por padrão, nunca como exceção a lembrar depois.
 

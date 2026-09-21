@@ -26,13 +26,24 @@ class FatoDeProvedorVisto(models.Model):
     `provider`+`provider_reference_id` (no v1 o par implícito é sempre
     `mercadopago`+`mp_payment_id`); para `pagamento.recusado` é só
     `payment_id`, porque o v1 da recusa nunca carregou referência de
-    provedor. As duas SEMPRE nascem escopadas pelo site (`platform_site_id`
-    no v2, `site_id` no v1) — [INV-P11] — para que um fato de um site nunca
-    consuma, por coincidência de referência opaca, a identidade de outro. Ver
+    provedor.
+
+    `site_id` é COLUNA PRÓPRIA, fora de `chave` — [INV-P11], fronteira de
+    site — e não um prefixo colado na mesma string. Colar viraria uma
+    ambiguidade nova: `site_id="a:b"` + chave `"c:d"` produz o mesmo texto
+    `"a:b:c:d"` que `site_id="a"` + chave `"b:c:d"`, e a unicidade deixaria
+    de significar o que devia. Com colunas separadas a UniqueConstraint do
+    Postgres compara os TRÊS campos, sem interpretar string nenhuma: sem essa
+    fronteira, dois fatos de sites diferentes que por coincidência
+    compartilhassem `provider_reference_id` (opaco, do provedor, sem garantia
+    nenhuma de ser único ENTRE tenants) ou `payment_id` colidiriam na mesma
+    linha, e o aviso do site que chegasse por último seria descartado como
+    "já processado" — quem pagou não recebe confirmação, e nada denuncia. Ver
     `identidade_do_fato()` em `management/commands/consume_eventos.py`.
     """
 
     evento = models.CharField(max_length=100)
+    site_id = models.CharField(max_length=100)
     chave = models.CharField(max_length=255)
     event_id = models.UUIDField()
     visto_em = models.DateTimeField(auto_now_add=True)
@@ -40,7 +51,8 @@ class FatoDeProvedorVisto(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["evento", "chave"], name="uniq_fato_por_evento_e_chave"
+                fields=["evento", "site_id", "chave"],
+                name="uniq_fato_por_evento_site_e_chave",
             ),
         ]
 
