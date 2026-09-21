@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-006-fila-fechar-9-tarefas-ja-entregues",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "fila: fechar 9 tarefas já entregues",
+  detalhe: "As nove tarefas cujo PR já entrou na main saíram da tela de trabalho aberto, e as duas com PR aberto passam a citá-lo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1835. Validação local: árvore 03e3956b366c1b0b2d900d466f46f98521320f62; commit df3373c9d1da0d7f76cd1abc1cbc7183560828e8; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-575",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
