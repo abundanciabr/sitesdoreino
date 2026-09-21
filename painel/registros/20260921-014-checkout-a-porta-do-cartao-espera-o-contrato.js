@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-014-checkout-a-porta-do-cartao-espera-o-contrato",
+  tipo: "decisao",
+  quando: "2026-09-21",
+  titulo: "checkout: a porta do cartao espera contrato com voce",
+  detalhe: "A tela de cartao ia receber o cartao e mostrar cada parcela. Nao construi: os acordos congelados do sistema nao preveem essa porta nem as parcelas, e o portao reprova.",
+  autoridade: "sessao",
+  evidencia: null,
+  verificado_em: null,
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-552",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "checkout",
+  porque_so_voce: "Contrato congelado so muda com a sua palavra.",
+  proximo_passo: "Autorizar ampliar os contratos do checkout e de pagamentos com a porta do cartao e as parcelas.",
+  se_eu_nao_decidir: "Ninguem paga de cartao: a tela fica sem porta.",
+  recomendacao: "Autorizar tres PRs: contratos, pagamentos, checkout.",
+  reversivel: true,
+  impacto: "alto"
+}); })();
