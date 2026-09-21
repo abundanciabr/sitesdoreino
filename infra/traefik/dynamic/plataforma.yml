@@ -6,10 +6,12 @@
 # Modo B (direto, Let's Encrypt) acrescenta UMA linha na lista `tls.domains`
 # do router "funil" abaixo. Host não cadastrado recebe 404 da própria
 # plataforma (middleware CONV-SITE — INV-P11), nunca um site padrão.
-# Única exceção presa a UM host: os webhooks de pagamento (Mercado Pago e,
-# desde TAR-542, Appmax), no DOMÍNIO DE OPERAÇÕES (basileiatoutheou.org = o
-# seu domínio principal/da operação) — Lei 9: webhooks de pagamento vivem num
-# único domínio de operações, estável e independente dos sites.
+# Duas exceções presas a UM host, e elas apontam para hosts DIFERENTES de
+# propósito. O webhook do Mercado Pago fica em basileiatoutheou.org porque o
+# provedor já aponta para lá em produção e mudar isso exigiria mexer no
+# cadastro de quem está vendendo hoje. Todo o resto, incluindo o webhook da
+# Appmax, nasce em meshcraft.top: o mantenedor determinou em 20/09/2026 que
+# basileiatoutheou.org não recebe trabalho novo sem autorização expressa.
 # =============================================================================
 http:
   middlewares:
@@ -80,19 +82,24 @@ http:
       tls: {}
 
     appmax-webhooks:
-      # Segunda rota amarrada a um host, ao lado da `mp-webhooks` acima: a
-      # Appmax também precisa de um endereço estável neste MESMO domínio de
-      # operações (Lei 9) — primeiro para o POST server-to-server com que ela
-      # emite credencial (TAR-542), depois para as notificações de cobrança.
-      # A lógica que responde de verdade mora na célula pagamentos, e chega em
-      # outro lote da escada; esta linha só garante que a requisição CHEGA lá
-      # em vez de morrer no catch-all do funil.
-      # Mesma escala de prioridade do resto deste arquivo (comentário do
-      # router `sugestoes` abaixo): 100 = webhook amarrado a host — igual à
-      # `mp-webhooks`, porque as duas disputam o mesmo host e nunca o mesmo
-      # caminho (`/api/pagamentos/webhooks` contra `/api/pagamentos/appmax`),
-      # logo o empate de prioridade entre elas nunca chega a acontecer.
-      rule: "Host(`basileiatoutheou.org`) && PathPrefix(`/api/pagamentos/appmax`)"
+      # A Appmax fala com a plataforma por aqui: primeiro o POST
+      # server-to-server com que ela emite credencial, depois as notificações
+      # de cobrança. A lógica que responde de verdade mora na célula
+      # pagamentos; esta linha só garante que a requisição CHEGA lá em vez de
+      # morrer no catch-all do funil.
+      # O HOST é `meshcraft.top`, e não o domínio de operações que a
+      # `mp-webhooks` acima usa. Aquela rota é anterior à decisão de foco e
+      # continua onde está porque o Mercado Pago já aponta para ela em
+      # produção, e trocá-la exigiria mexer no cadastro de um provedor que
+      # está vendendo hoje. A Appmax é nova, nada aponta para ela ainda, e o
+      # mantenedor determinou em 20/09/2026 que trabalho novo nasce em
+      # `meshcraft.top`. A estabilidade que um webhook exige se resolve aqui
+      # tão bem quanto lá: `meshcraft.top` é o site ativo do catálogo.
+      # Prioridade 100 é a escala deste arquivo para webhook amarrado a host
+      # (veja o comentário do router `sugestoes` abaixo). Ela também vence os
+      # routers de página e de API do próprio `meshcraft.top`, que ficam em
+      # 10 e 20, e nenhum deles reivindica `/api/pagamentos`.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/api/pagamentos/appmax`)"
       priority: 100
       entryPoints: [websecure]
       middlewares: [seguranca]
