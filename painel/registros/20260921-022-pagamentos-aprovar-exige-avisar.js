@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-022-pagamentos-aprovar-exige-avisar",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "pagamentos: aprovar exige avisar",
+  detalhe: "Aprovacao de cartao nao avisava celula nenhuma; agora estado e aviso nascem juntos ou a transacao inteira volta atras.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1843. Validação local: árvore cdbc738168d48fabe1c3fe04d89318e68efce300; commit 54236cbc2453f590c4100c1c87b8d25c84119d9b; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-551",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
