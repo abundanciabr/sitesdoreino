@@ -79,8 +79,8 @@ PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  '"deve funcionar", "provavelmente", "em teoria"',
  '"bom o suficiente", "por enquanto", "depois a gente melhora"',
  '"solução temporária", "gambiarra", "quick fix"',
- 'proibido repetir status sem agir, delegar sem avanço',
- 'Nenhuma IA pergunta ou informa à outra IA o estado de Git, PR, checks, branches ou pouso.',
+ 'expressamente proibido repetir status sem agir, delegar repetidamente sem avanço',
+ 'Nenhuma IA deve perguntar ou informar à outra IA sobre estado do Git, PR, checks, branches ou pouso.',
  'consulta diretamente a fonte estruturada (comandos, portões, scripts)',
  'imediatamente reconhecido, interrompido e redirecionado para ação.')
 
