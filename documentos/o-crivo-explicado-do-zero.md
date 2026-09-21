@@ -1,6 +1,6 @@
 ---
 titulo: O Crivo explicado do zero
-publico: true
+publico: false
 ordem: 12
 ---
 

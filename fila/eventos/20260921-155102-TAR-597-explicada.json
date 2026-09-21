@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-155102-TAR-597-explicada",
+  "tarefa": "TAR-597",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:51:02+00:00",
+  "quem": "Pedido do mantenedor em 21/09/2026, com autorizacao expressa para guardar arquivo no disco da VPS.",
+  "o_que_e": "Hoje o sistema nao guarda arquivo nenhum: nao ha campo de arquivo nem pasta de midia em lugar algum do admin.",
+  "o_que_muda": "O editor de documentos passa a receber imagem e video, o arquivo fica no disco da VPS e o site o serve num endereco proprio.",
+  "exemplo": "A professora arrasta uma foto para dentro de um documento e ela aparece na pagina do aluno, sem hospedar nada fora de casa.",
+  "importancia": 65
+}
