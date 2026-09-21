@@ -263,6 +263,62 @@ class VersaoDoDocumento(models.Model):
         return f"{self.documento_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"
 
 
+class Midia(models.Model):
+    """Uma imagem ou um vídeo que o mantenedor enviou para dentro de um documento.
+
+    Nasceu em 21/09/2026 (TAR-597), no dia em que ele autorizou a plataforma a
+    guardar arquivo no disco da VPS. Até então não havia `FileField` nenhum
+    nesta casa, e um documento só podia falar de uma imagem hospedada fora.
+
+    **O arquivo mora no disco e esta linha é o catálogo dele** — não há
+    `FileField`, e a ausência é a decisão: um `FileField` guarda o caminho que
+    lhe entregaram, e aqui o caminho é montado a partir de duas colunas que a
+    borda de escrita escreveu (`sorteio` e `nome`), nunca de texto que veio de
+    fora. `apps/core/midia.py` explica a conferência inteira.
+
+    **Presa ao documento**, e não numa biblioteca solta: a pergunta que a tela
+    faz é "que imagens este documento tem", e apagar o documento precisa apagar
+    os arquivos dele junto — o que uma biblioteca sem dono deixaria órfãos no
+    disco para sempre.
+    """
+
+    documento = models.ForeignKey(
+        "Documento", on_delete=models.CASCADE, related_name="midias"
+    )
+
+    # O endereço: 32 dígitos sorteados. É ele que impede o arquivo de uma
+    # pessoa de ser encontrado por tentativa, e é ele que substitui o caminho
+    # de disco na URL — a rota procura esta coluna e lê o resto do banco.
+    sorteio = models.CharField(max_length=32, unique=True)
+
+    # O nome com que o arquivo foi gravado: o apelido aparado do original, com
+    # a extensão REESCRITA a partir do tipo lido no conteúdo. O nome que o
+    # navegador mandou não sobrevive à passagem.
+    nome = models.CharField(max_length=80)
+
+    # O `Content-Type` que NÓS conferimos lendo os primeiros bytes, e o único
+    # que a rota devolve. Guardado, e não recalculado a cada leitura, porque a
+    # conferência é da hora do ENVIO: é ali que existe alguém para avisar.
+    tipo = models.CharField(max_length=32)
+
+    tamanho = models.PositiveIntegerField()
+    enviado_por = models.EmailField(blank=True, default="")
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # A pergunta da tela do editor: os arquivos deste documento, do mais
+        # novo para o mais velho.
+        indexes = [models.Index(fields=["documento", "-enviado_em"])]
+
+    @property
+    def megabytes(self) -> str:
+        """O tamanho do jeito que uma pessoa lê, para a lista da tela."""
+        return f"{self.tamanho / (1024 * 1024):.1f} MB".replace(".", ",")
+
+    def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
+        return f"{self.sorteio}/{self.nome}"
+
+
 class Livro(models.Model):
     """Um livro do mantenedor. Um `TextoDoLivro` é um capítulo de um `Livro`.
 

@@ -25,12 +25,14 @@ from apps.core.editor_de_documentos import (
     documento_desarquivar,
     documento_despublicar,
     documento_editar,
+    documento_midia_enviar,
     documento_novo,
     documento_publicar,
     documento_restaurar,
     documento_salvar,
     documento_versoes,
 )
+from apps.core.midia import midia_servir
 from apps.core.livro import (
     livro,
     livro_baixar_tudo,
@@ -392,6 +394,35 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
         documento_apagar,
         name="documento_apagar",
+    ),
+    # IMAGEM E VIDEO NO DOCUMENTO (TAR-597, 21/09/2026), as duas rotas do
+    # assunto: uma recebe e a outra devolve.
+    #
+    # O ENVIO fica sob `documentos/<nome>/`, com os outros gestos do editor,
+    # porque um arquivo aqui e sempre de um documento — e apagar o documento
+    # apaga o arquivo junto.
+    #
+    # A ENTREGA fica na raiz, e nao sob `documentos/`, porque ela nao e um
+    # gesto do editor: e um endereco que vai dentro do texto de uma pagina. Sob
+    # `SCRIPT_NAME=/admin` ela responde em `meshcraft.top/admin/midia/...`, e
+    # ATRAS DA PORTA — nada nesta celula e publico sem uma decisao propria, e
+    # o renderizador que poria estas imagens numa pagina publica ainda nao
+    # existe (TAR-598). Abrir o prefixo antes disso seria abrir um buraco para
+    # nada.
+    #
+    # Os dois pedacos do endereco sao apertados de proposito: 32 digitos
+    # hexadecimais e um nome de arquivo sem barra nem ponto-ponto. Mesmo assim
+    # o disco NAO e alcancado por eles — `midia_servir` procura a linha no
+    # banco e le o caminho de la (`apps/core/midia.py`).
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/midia$",
+        documento_midia_enviar,
+        name="documento_midia_enviar",
+    ),
+    re_path(
+        r"^midia/(?P<sorteio>[0-9a-f]{32})/(?P<nome>[a-z0-9-]+\.[a-z0-9]{2,4})$",
+        midia_servir,
+        name="midia_servir",
     ),
     # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
     # lugar do `git log` que os documentos tinham enquanto moravam no
