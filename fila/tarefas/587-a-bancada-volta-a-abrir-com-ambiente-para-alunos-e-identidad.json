@@ -1,0 +1,19 @@
+{
+  "arquivo": "587-a-bancada-volta-a-abrir-com-ambiente-para-alunos-e-identidad",
+  "id": "TAR-587",
+  "titulo": "A bancada volta a abrir com ambiente para alunos e identidade",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "As duas celulas abrindo com ci/sessao.py SEM --sem-container, com baseline medido na declaracao de abertura, mais teste em ci/tests/ provando que o conteudo da wheel entra na identidade do venv.",
+  "despacho": "Faça `ci/sessao.py` voltar a abrir bancada COM ambiente para `alunos` e para\n`identidade`. Hoje as duas só abrem com `--sem-container`, ou seja, sem venv, sem\nserviços e sem baseline medido.\n\nCAUSA MEDIDA em 21/09/2026: `identidade_do_venv` (ci/sessao.py, linha 849; a\nrecusa está na linha 871) levanta `dependência local sem identidade imutável`\npara qualquer linha de requisito que termine em `.whl`, `.zip` ou `.tar.gz` sem\n`://`. As duas células vendorizam a wheel `outbox_relay-0.3.1-py3-none-any.whl`\nPOR DESENHO:\n\n  services/alunos/requirements.txt linha 10\n  services/identidade/requirements.txt linha 20\n\nEsse desenho é lei da casa, e `armadilhas/487` explica por quê (o pacote\ncompartilhado não é de célula nenhuma, e o portão do pacote compartilhado\nreconstrói as wheels). A wheel entrou em 08/09/2026; o guarda entrou em\n11/09/2026 no commit `70b6c733` (\"ci: reutilizar ambientes e medir a base\nisoladamente\"). Desde 11/09 essas duas células estão sem ambiente, e o despacho\nde hoje contornou montando venv, banco e Redis à mão.\n\nO guarda existe por um motivo legítimo: o hash do venv precisa mudar quando a\ndependência muda, e um caminho local qualquer não dá essa garantia. A wheel\nvendorizada DÁ: ela está versionada no Git, dentro da árvore, e o\n`identidade_do_venv` pode simplesmente somar o conteúdo do arquivo ao hash, como\njá faz com os próprios requirements. Esse é o conserto esperado: aceitar arquivo\nlocal que exista dentro do repositório lendo os bytes dele para dentro da\nidentidade, e continuar recusando o que estiver fora da árvore ou ausente.\n\nCAMINHOS: `ci/sessao.py` e os testes dele em `ci/tests/`.\n\nEVIDÊNCIA QUE FECHA: `py -3.12 ci/sessao.py --celula alunos --tarefa <slug>` e o\nmesmo para `identidade`, SEM `--sem-container`, abrindo até o fim, com a linha de\nbaseline medido na declaração de abertura, colada no PR. Mais um teste em\n`ci/tests/` que prove que trocar o conteúdo da wheel muda a identidade do venv, e\nque caminho fora da árvore continua recusado.",
+  "origem": "Medido em 21/09/2026; o guarda entrou em 11/09/2026 no commit 70b6c733 e a wheel em 08/09/2026.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

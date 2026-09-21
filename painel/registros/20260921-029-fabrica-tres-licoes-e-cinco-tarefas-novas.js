@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-029-fabrica-tres-licoes-e-cinco-tarefas-novas",
+  tipo: "nota",
+  quando: "2026-09-21",
+  titulo: "fábrica: três lições e cinco tarefas novas",
+  detalhe: "Tres licoes medidas hoje viram entrada permanente e cinco consertos viram cartao. A quarta ja estava em armadilhas/243.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1848. Validação local: árvore 5966e6c59f4df14b3c84581ecc43b608f06d854a; commit ab51b297c7cf16c0353cc72b4f28510cf71ca55e; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-585",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115559-TAR-587-explicada",
+  "tarefa": "TAR-587",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:55:59+00:00",
+  "quem": "Medido em 21/09/2026; o guarda entrou em 11/09/2026 no commit 70b6c733 e a wheel em 08/09/2026.",
+  "o_que_e": "Para trabalhar numa parte do sistema a pessoa abre uma bancada, que monta sozinha o ambiente e mede se tudo estava verde antes de ela comecar.",
+  "o_que_muda": "Duas partes do sistema, alunos e identidade, nao ganham mais esse ambiente: quem trabalha nelas monta tudo a mao e comeca sem saber se ja estava quebrado.",
+  "exemplo": "Isso dura desde 11 de setembro, e o despacho de hoje perdeu tempo montando banco e fila de mensagens na unha.",
+  "importancia": 75
+}
