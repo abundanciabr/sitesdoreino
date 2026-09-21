@@ -1256,6 +1256,7 @@
       "endereco": "/docs/(?P<nome>[a-z0-9-]+)/moldura$",
       "alcance": "publico",
       "para_quem": "visitante",
+      "gesto": true,
       "titulo": "A moldura do documento em página",
       "descricao": "A estrutura segura onde o corpo do documento em formato pagina é desenhado dentro de um iframe."
     },
@@ -1265,6 +1266,7 @@
       "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/moldura$",
       "alcance": "interno",
       "para_quem": "equipe",
+      "gesto": true,
       "titulo": "A moldura interna do documento em página",
       "descricao": "A estrutura interna usada pelo editor para renderizar documentos em formato pagina."
     },
