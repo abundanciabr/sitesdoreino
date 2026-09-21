@@ -615,8 +615,8 @@ Não criar subagente, não ampliar mandato, não editar clone principal.
 
 - ci/sessao.py cria worktree isolado;
 - fila.py pegar cria reserva atômica;
-- no Claude Code, ci/muralha_dos_sub_agentes.py recusa subagente com ferramenta
-  de escrita;
+- no Claude Code, ci/muralha_dos_sub_agentes.py recusa subagente que nasça fora
+  de sonnet ou opus;
 - no Codex, cada TAR autoriza exatamente um despacho escritor; exploradores e
   revisores permanecem somente leitura;
 - se o runtime vigente recusar o despacho escritor, o executor raiz assume a

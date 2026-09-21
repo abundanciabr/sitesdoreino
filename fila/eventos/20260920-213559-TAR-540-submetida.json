@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-213559-TAR-540-submetida",
+  "tarefa": "TAR-540",
+  "evento": "submetida",
+  "quando": "2026-09-20T21:35:59+00:00",
+  "quem": "agent/ci/sub-agente-que-escreve-volta",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1810",
+  "revisao": "1e57bc1010094a935e64a1f13f6268c0edf6cbd9",
+  "arvore": "ab801182333b3eb74bf15695776678e4b8a29abc"
+}

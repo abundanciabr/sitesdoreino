@@ -1,0 +1,21 @@
+{
+  "arquivo": "509-a-plataforma-ganha-estrutura-de-pagina-secoes-com-nome-rascu",
+  "id": "TAR-509",
+  "titulo": "A plataforma ganha estrutura de pagina: secoes com nome, rascunho e versao publicada",
+  "toca": [
+    "catalogo",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "PR aberto com a app paginas no catalogo: Page, PageVersion imutavel nas duas travas (ORM e banco) e PageDraft; vocabulario de secoes e slots recusando nome fora da lista e citando a lista valida; ordem canonica; as quatro rotas no export_openapi; semeador que so escreve nome do produto e preco; testes vermelho para verde e prova por mutacao; suite da celula verde. O freeze de contrato so fecha depois que o PR de contratos pousar.",
+  "despacho": "Construir o provedor da estrutura de paginas dentro da celula catalogo, onde\nOffer, Product e Site ja moram. App Django nova services/catalogo/apps/paginas/\ncom Page (identidade estavel, slug unica por site), PageVersion (imutavel\ndepois de publicada, com trava no ORM e gatilho no Postgres, como o Evento da\nmetricas) e PageDraft (um por pagina, mutavel).\n\nVocabulario de secoes e slots em vocabulario.py, validado no provedor: hero,\nproblema, mecanismo, prova, oferta, garantia e faq, cada uma com a lista de\nslots que aceita. Secao ou slot fora da lista recusa, e a recusa cita a lista\nvalida. Ordem canonica de hero a faq, derivada do nome da secao.\n\nSlot vazio nao e erro: e secao que nao aparece na tela. Semeador que preenche\nsomente o que os dados reais provam (nome do produto e preco); depoimento,\nnumeros, autoridade e garantia nascem vazios.\n\nQuatro rotas: ler a publicada, ler e gravar o rascunho, publicar. Depende do\nPR de contratos que acrescenta os caminhos em contracts/catalogo.openapi.yaml.",
+  "origem": "Decisao do mantenedor em 19/09/2026: pagina real e telemetria primeiro, experimentacao depois. Brief fechado de despacho para a celula catalogo.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

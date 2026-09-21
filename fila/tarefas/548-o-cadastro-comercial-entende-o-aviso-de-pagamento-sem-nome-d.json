@@ -1,0 +1,21 @@
+{
+  "arquivo": "548-o-cadastro-comercial-entende-o-aviso-de-pagamento-sem-nome-d",
+  "id": "TAR-548",
+  "titulo": "O cadastro comercial entende o aviso de pagamento sem nome de fornecedor",
+  "toca": [
+    "leads"
+  ],
+  "depende_de": [
+    "TAR-545"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Testes provando um efeito e uma linha do tempo nas duas versoes, com reentrega e ordem invertida; suite da celula leads verde.",
+  "despacho": "Celula leads. Faca o consumidor aceitar a versao 2 do aviso de pagamento.\n\nAlvos: o consumer de eventos, o handler e seus testes.\n\nO contrato v2 ja esta congelado: pagamento.aprovado.v2 e pagamento.recusado.v2 trocam o campo obrigatorio mp_payment_id por provider e provider_reference_id. Aceite as DUAS versoes. A identidade logica do fato NAO pode ser mp_payment_id nem provider_reference_id sozinho: e o par provider mais provider_reference_id, e a deduplicacao precisa funcionar ENTRE versoes, porque o mesmo pagamento pode chegar como v1 e como v2. Prove com teste: v1 sozinho, v2 sozinho, v1 seguido de v2 do mesmo fato, reentrega do mesmo evento, ordem invertida e concorrencia com Redis real. Em todos, o efeito acontece exatamente uma vez.\n\nSomente leitura: contracts/, services/pagamentos/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L2C; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

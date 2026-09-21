@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-031-infra-os-semeadores-exportam-as-chaves",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "infra: os semeadores exportam as chaves",
+  detalhe: "Os seis semeadores que faltavam exportam as chaves antes do compose, e o guarda varre infra/semear-*.sh por glob.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1812. Validação local: árvore 46e3f5408ea59817a722d8863eaa1e15de475deb; commit 3d2056f48f63499da9e71ae36ebd927781d2425e; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-524",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

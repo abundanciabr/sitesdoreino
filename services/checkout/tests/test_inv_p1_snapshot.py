@@ -44,6 +44,11 @@ def test_save_recusa_reescrever_campo_congelado(pedido, campo, valor):
     assert do_banco.customer["email"] == "cliente@exemplo.com"
 
 
+# O update MISTO é o caminho real: o consumer de eventos move `status`, e é
+# nesse mesmo update que um campo congelado pega carona. Medir só o campo
+# congelado sozinho deixa passar qualquer atalho que dispense a conferência
+# quando `status` está no kwargs.
+@pytest.mark.parametrize("acompanhamento", [{}, {"status": "pago"}])
 @pytest.mark.parametrize(
     "campo,valor",
     [
@@ -53,13 +58,14 @@ def test_save_recusa_reescrever_campo_congelado(pedido, campo, valor):
         ("site_id", "site-invasor"),
     ],
 )
-def test_queryset_update_recusa_campo_congelado(pedido, campo, valor):
+def test_queryset_update_recusa_campo_congelado(pedido, campo, valor, acompanhamento):
     # QuerySet.update() não passa por save() — o guarda tem que existir aqui também.
     with pytest.raises(SnapshotCongelado):
-        Order.objects.filter(pk=pedido.pk).update(**{campo: valor})
+        Order.objects.filter(pk=pedido.pk).update(**acompanhamento, **{campo: valor})
 
     do_banco = Order.objects.get(pk=pedido.pk)
     assert do_banco.total_cents == OFERTA_A["price_cents"] + BUMP_A["price_cents"]
+    assert do_banco.status == "aguardando_pagamento"
 
 
 def test_refechar_a_mesma_sessao_devolve_o_pedido_existente_sem_tocar_o_snapshot(

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-150104-TAR-533-explicada",
+  "tarefa": "TAR-533",
+  "evento": "explicada",
+  "quando": "2026-09-20T15:01:04+00:00",
+  "quem": "decisao do mantenedor na sessao, 20/09/2026: faz o 1713",
+  "o_que_e": "O fecho da tarefa nao poder dizer PRONTO quando a ultima medicao da sessao reprovou",
+  "o_que_muda": "O mantenedor para de receber PRONTO em cima de trabalho quebrado, e o robo tem de consertar ou dizer a verdade",
+  "exemplo": "A suite deu 1 failed e o robo escreveu PRONTO: o gancho devolve ele para a mesa em vez de encerrar",
+  "importancia": 85
+}

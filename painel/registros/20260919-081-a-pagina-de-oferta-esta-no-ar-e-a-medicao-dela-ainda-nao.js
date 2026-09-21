@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-081-a-pagina-de-oferta-esta-no-ar-e-a-medicao-dela-ainda-nao",
+  tipo: "pendencia",
+  quando: "2026-09-19",
+  titulo: "A página de oferta abre, mas a contagem de visitas precisa de uma linha que só você autoriza",
+  detalhe: "A página está pronta e o código que conta cada visita também. Falta o endereço do Redis no serviço do funil, e esse arquivo é da sua alçada.\n\nSem a linha, a página abre igual e a visita não é contada: nada quebra, e a plataforma segue cega entre a visita e a compra.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1784",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  porque_so_voce: "A linha entra em infra/docker-compose.yml, que é caminho de dono: nenhum agente escreve nele sem a sua palavra escrita.",
+  proximo_passo: "Autorizar acrescentar REDIS_STREAMS_URL: redis://redis:6379/0 ao serviço funil, do mesmo jeito que identidade já tem.",
+  se_eu_nao_decidir: "A página continua no ar e nenhuma visita é contada, então não há como saber quanta gente chegou nem qual versão do texto converte.",
+  recomendacao: "Autorizar: é uma linha, não mexe em dinheiro nem em segredo, e é o que acende a primeira medida do funil.",
+  reversivel: true,
+  impacto: "medio",
+  portao: null
+});})();

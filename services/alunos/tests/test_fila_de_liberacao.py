@@ -665,7 +665,7 @@ def test_evento_de_pagamento_com_prefixo_reservado_estoura(client, auth):
     with pytest.raises(OrderIdReservado):
         ao_pagamento_aprovado(
             {
-                "site_id": "site-1",
+                "platform_site_id": "site-1",
                 "order_id": "pre:vindo-do-provedor",
                 "customer": {"email": "atacante@example.com", "name": "Atacante"},
             }

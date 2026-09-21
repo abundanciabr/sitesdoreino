@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-141902-TAR-531-concluida",
+  "tarefa": "TAR-531",
+  "evento": "concluida",
+  "quando": "2026-09-20T14:19:02+00:00",
+  "quem": "agent/ci/instrucoes-no-fecho",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1801",
+  "verificado_em": "2026-09-20"
+}

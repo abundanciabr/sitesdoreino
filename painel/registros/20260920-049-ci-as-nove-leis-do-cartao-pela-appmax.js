@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-049-ci-as-nove-leis-do-cartao-pela-appmax",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "ci: as nove leis do cartão pela Appmax",
+  detalhe: "Nove invariantes do cartao pela Appmax e o portao que os mede; cada guarda visto reprovando por mutacao, 9 de 9.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1821. Validação local: árvore 601d190a4a772c2eb190940dfa0681213c6b1b28; commit 8252c00f260736e4960c7005dbb6e472ca133163; 6 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-544",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

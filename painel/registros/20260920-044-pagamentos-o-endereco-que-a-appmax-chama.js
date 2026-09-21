@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-044-pagamentos-o-endereco-que-a-appmax-chama",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "pagamentos: o endereco que a Appmax chama",
+  detalhe: "Rota fora do NinjaAPI para o contrato congelado nao mudar; 10 guardas provados por sabotagem. Falta pousar: ci-celula vermelho por divida herdada do PR 1819, que congelou POST /intents/{intent_id}/cartao sem o codigo na celula. Destravar e da maestro.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1818. Validacao local: arvore b55efd6d, commit d3e8dc8d, 4 comandos, exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-543",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

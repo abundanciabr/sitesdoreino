@@ -76,4 +76,10 @@ sub-agente que esbarra numa decisão dele escreve o bloqueio no balcão da fila,
 deixa o registro com `precisa_do_dono: true` e devolve. Por isso toda ficha
 nega `AskUserQuestion`. Abrir exceção assim é o resultado esperado, não falha.
 
+**Não falar com ele nunca foi não prestar contas a ele.** Negar
+`AskUserQuestion` tira do sub-agente a decisão, não a obrigação de explicar: o
+bloqueio que ele devolve vira o bloco **Instruções** da maestro, que é o que o
+mantenedor lê. Devolver "bloqueada" sem dizer o que houve, o que destrava e
+quanto leva é a falha que fez o trabalho dele parar (20/09/2026).
+
 Quem faz valer: `ci/tests/test_fichas_de_robo.py`.

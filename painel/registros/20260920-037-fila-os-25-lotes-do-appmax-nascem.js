@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-037-fila-os-25-lotes-do-appmax-nascem",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "fila: os 25 lotes do Appmax nascem",
+  detalhe: "Os 25 lotes da escada Appmax entram na fila com depende_de ligado, e a onda 0 abre quatro frentes em paralelo.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1815. Validação local: árvore 0b1b7d838c745195f7617ca61d20a2368a99a859; commit 47968b3c7d6800137655b57db7e1667d0c18077c; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-567",
+  gravidade: "verde",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

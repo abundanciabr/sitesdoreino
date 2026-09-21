@@ -1,0 +1,19 @@
+{
+  "arquivo": "527-plano-mestre-da-fila-de-deploy-sem-cancelamento-silencioso",
+  "id": "TAR-527",
+  "titulo": "Plano mestre da fila de deploy sem cancelamento silencioso",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado, plano acessivel em /mapa-ia/planos/ e portoes verdes no SHA entregue.",
+  "despacho": "Criar somente docs/decisoes/PLANO-MESTRE-FILA-DE-DEPLOY.md com a escada de tres PRs (queue max no grupo deploy; base pelo ultimo deploy verde com recusa de SHA ultrapassado e respeito ao congelamento; fecho com medicao), a prova exigida de cada degrau, o protocolo de auditoria antes, durante e depois do merge, a reversao e as decisoes do mantenedor. O pedido direto do mantenedor autoriza este caminho CODEOWNERS. Nao alterar workflows, ci/ nem abrir as tarefas de implementacao.",
+  "origem": "Pedido direto do mantenedor nesta conversa em 20/09/2026, depois das recomendacoes sobre as armadilhas 173, 183 e 188.",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

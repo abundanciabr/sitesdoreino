@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-200053-TAR-510-concluida",
+  "tarefa": "TAR-510",
+  "evento": "concluida",
+  "quando": "2026-09-19T20:00:53+00:00",
+  "quem": "agent/contratos/contrato-paginas-e-telemetria",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1772",
+  "verificado_em": "2026-09-19"
+}

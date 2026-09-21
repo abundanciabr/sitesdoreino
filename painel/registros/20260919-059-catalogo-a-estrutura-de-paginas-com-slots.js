@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-059-catalogo-a-estrutura-de-paginas-com-slots",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "catalogo: a estrutura de paginas com slots",
+  detalhe: "O provedor da estrutura de pagina: Page, PageVersion imutavel no ORM e no Postgres, e o vocabulario de slots. 132 testes, 20 sabotagens reprovaram. O freeze REPROVA por depender do PR 1772.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1773. Validação local: árvore 7819c928d6e47d02eac2edc8f4f3182056510e43; commit 09fe58e8b0b4956986b2494a92c783bdaf5e0336; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-509",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

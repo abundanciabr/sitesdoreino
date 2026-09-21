@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-221505-TAR-569-explicada",
+  "tarefa": "TAR-569",
+  "evento": "explicada",
+  "quando": "2026-09-20T22:15:05+00:00",
+  "quem": "revisao adversarial do PR 1814 em 20/09/2026, depois do merge e do deploy verde",
+  "o_que_e": "Depois que o admin saiu do ar, tres textos e um guarda continuaram falando do mundo antigo",
+  "o_que_muda": "Um roteiro que voce roda para de dar alarme falso, e o texto que justifica a trava da porta de maquina para de dizer o contrario do que vale",
+  "exemplo": "Voce roda o roteiro da chave do GitHub e ele diz ATENCAO sem nada de errado ter acontecido",
+  "importancia": 55
+}

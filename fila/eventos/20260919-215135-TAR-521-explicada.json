@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-215135-TAR-521-explicada",
+  "tarefa": "TAR-521",
+  "evento": "explicada",
+  "quando": "2026-09-19T21:51:35+00:00",
+  "quem": "pedido do mantenedor em 19/09/2026, depois de voltar do trabalho e encontrar a fabrica parada esperando ele digitar a linha no site",
+  "o_que_e": "Hoje, quando um PR toca um arquivo protegido, a fabrica para e espera o dono abrir o site do GitHub e digitar uma linha de autorizacao a mao.",
+  "o_que_muda": "A autorizacao que ele da conversando com o agente passa a valer, e o agente escreve a linha. Ele deixa de ser o gargalo de tarefas que ele mesmo pediu.",
+  "exemplo": "Ele pediu uma tarefa, saiu para trabalhar e voltou horas depois: nada tinha andado, porque tudo esperava um gesto de dez segundos que podia ter sido pedido no chat antes dele sair.",
+  "importancia": 70
+}

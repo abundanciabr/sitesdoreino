@@ -1,0 +1,19 @@
+{
+  "arquivo": "535-registrar-no-livro-que-o-mandato-por-faixa-pousou-de-verdade",
+  "id": "TAR-535",
+  "titulo": "Registrar no livro que o mandato por faixa pousou de verdade",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro novo em painel/registros com o merge commit e o horario conferidos por gh pr view",
+  "despacho": "Escreva um registro tipo nota em painel/registros/ dizendo que o PR 1804 (mandato por faixa) integrou na main. Confira de fora antes com gh pr view 1804 --json state,mergedBy,mergeCommit,mergedAt e ponha o merge commit e o horario na evidencia. Cite que o registro 017, escrito antes do pouso, dizia integracao nao verificada. Molde em painel/LEIA-ME.md, numero por python ci/reservar.py numero registro. So painel/. Evidencia: muralhas verdes e a saida crua do gh pr view no corpo do PR.",
+  "origem": "pouso do PR 1804 confirmado de fora em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

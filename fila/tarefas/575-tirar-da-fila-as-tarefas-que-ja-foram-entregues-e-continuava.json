@@ -1,0 +1,19 @@
+{
+  "arquivo": "575-tirar-da-fila-as-tarefas-que-ja-foram-entregues-e-continuava",
+  "id": "TAR-575",
+  "titulo": "Tirar da fila as tarefas que ja foram entregues e continuavam abertas",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/fila.py listar --json mostra as 9 tarefas como concluida e TAR-478 e TAR-421 em execucao apontando o PR aberto",
+  "despacho": "Abra a bancada da celula fila. Confirme com gh pr view <N> --json state,mergedAt,mergeCommit que os PRs 1532, 1530, 1579, 1566, 1580, 1581, 1583, 1585 e 1619 estao MERGED. Feche TAR-284, TAR-296, TAR-309, TAR-345, TAR-349, TAR-350, TAR-354, TAR-355 e TAR-393 com python ci/fila.py fechar-pela-entrega TAR-NNN --quem <sessao> --pr <URL exata da submissao>, nunca editando JSON a mao. Depois vincule TAR-478 ao PR 1745 e TAR-421 ao PR 1756 com python ci/fila.py submeter, usando o headRefOid do PR e a arvore desse commit. Escreva um registro menor que 1 KB em painel/registros/ pelo molde de painel/LEIA-ME.md, com numero reservado por python ci/reservar.py numero registro. Prove com python ci/fila.py listar --json, validar e imutabilidade.",
+  "origem": "medicao do mantenedor em 20/09/2026 sobre python ci/fila.py listar --json",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "continuidade-operacional"
+}

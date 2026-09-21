@@ -101,3 +101,19 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     class Meta:
         indexes = [models.Index(fields=["published_at"])]
+
+
+class FatoAplicado(models.Model):
+    """Um fato de pagamento que esta célula já aplicou, guardado pela
+    identidade lógica que o contrato publica no campo `x-ponte-do-v1` dos
+    schemas v2 (`contracts/eventos/pagamento.*.v2.json`).
+
+    A chave NÃO é o `event_id`: o mesmo pagamento chega como `pagamento.*.v1` e
+    como `pagamento.*.v2` enquanto o v1 não sai do ar, e cada versão traz o seu
+    próprio `event_id`. Deduplicar por ele deixaria o mesmo fato passar duas
+    vezes. O índice único desta chave é o que faz v1 e v2, a reentrega do
+    transporte e dois consumidores ao mesmo tempo renderem um efeito só.
+    """
+
+    chave = models.CharField(max_length=300, primary_key=True)
+    aplicado_em = models.DateTimeField(auto_now_add=True)

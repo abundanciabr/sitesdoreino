@@ -1056,6 +1056,17 @@ class CatalogoClient:
     # foi alterado. Tem nome próprio porque o conserto é do mantenedor (escolher
     # outro apelido) e não de quem opera a máquina.
     JA_EXISTE = "ja_existe"
+    # 404 de `getPageDraft`: esta página nunca foi editada. Tem nome próprio
+    # porque NÃO é falha — é folha em branco, e confundir as duas faria a tela
+    # oferecer campos vazios quando a leitura apenas não chegou, apagando no
+    # primeiro `Salvar` o texto que já estava lá.
+    SEM_RASCUNHO = "sem_rascunho"
+    # 404 de `putPageDraft`/`publishPage`: a página nem existe no catálogo. É
+    # outro desfecho porque o conserto é outro — alguém precisa criá-la lá —, e
+    # "o catálogo respondeu com erro" não conta isso a ninguém.
+    SEM_PAGINA = "sem_pagina"
+    # 409 de `publishPage`: o rascunho está vazio e nada foi publicado.
+    VAZIO = "vazio"
     NAO_RESPONDEU = "nao_respondeu"
 
     def _configuracao(self) -> "tuple[str, str] | None":
@@ -1231,6 +1242,136 @@ class CatalogoClient:
                 return self.RECUSADO, "o catálogo recusou, sem dizer o motivo"
         logger.error("menu: a gravação respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
+
+    # -- As páginas de venda (Rito de Contrato de 19/09/2026) ---------------
+    # `getPageDraft`, `putPageDraft` e `publishPage`. É por elas que a tela
+    # `/admin/paginas/` escreve o texto da página de oferta, e o contrato diz
+    # isso com todas as letras: *"É por aqui que a tela do `admin` salva o que
+    # o mantenedor escreve"*.
+
+    def _falar_da_pagina(
+        self,
+        metodo: str,
+        site_id: str,
+        slug: str,
+        sufixo: str,
+        *,
+        corpo: "dict | None" = None,
+        especiais: "tuple[tuple[int, str], ...]" = (),
+    ) -> "tuple[str, dict | str]":
+        """As três operações de página, que só diferem no verbo e no sufixo.
+
+        Uma peça só porque o encanamento é idêntico nas três (config, endereço,
+        timeout, corpo fora do contrato) e três cópias divergiriam no primeiro
+        conserto feito em uma delas. O que muda é declarado: `especiais` diz
+        quais status desta operação têm nome próprio, em vez de caírem no
+        "não respondeu" genérico.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "página de venda: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão "
+                "no env desta célula (par admin→catalogo não provisionado)"
+            )
+            return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
+        base, token = config
+        endereco = (
+            f"{base}/sites/{quote(str(site_id), safe='')}"
+            f"/paginas/{quote(str(slug), safe='')}{sufixo}"
+        )
+        try:
+            r = http().request(
+                metodo,
+                endereco,
+                json=corpo,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("página de venda: o catálogo não respondeu: %s", erro)
+            return self.NAO_RESPONDEU, "o catálogo não respondeu"
+
+        for status, desfecho in especiais:
+            if r.status_code == status:
+                return desfecho, self._recusa_do_catalogo(r)
+
+        if r.status_code != 200:
+            logger.error(
+                "página de venda: %s %s respondeu HTTP %s",
+                metodo,
+                sufixo or "/rascunho",
+                r.status_code,
+            )
+            return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
+
+        try:
+            lido = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA-FASE-D §4).
+            logger.error("página de venda: resposta fora do contrato: %s", erro)
+            return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+        if not isinstance(lido, dict):
+            logger.error("página de venda: o corpo não é um objeto")
+            return self.NAO_RESPONDEU, "o catálogo respondeu de um jeito estranho"
+        return self.OK, lido
+
+    @staticmethod
+    def _recusa_do_catalogo(resposta) -> str:
+        """A frase do catálogo, verbatim. Reescrevê-la daria dois "não"."""
+        try:
+            return (
+                str(resposta.json().get("detail", "")).strip()
+                or "o catálogo recusou, sem dizer o motivo"
+            )
+        except ValueError:
+            return "o catálogo recusou, sem dizer o motivo"
+
+    def rascunho_da_pagina(self, site_id: str, slug: str) -> "tuple[str, dict | str]":
+        """`getPageDraft`: o que está em edição, que não é o que está no ar.
+
+        404 devolve `SEM_RASCUNHO`, e isso NÃO é erro: é a página que ninguém
+        editou ainda, e a tela precisa saber disso para abrir uma folha em
+        branco em vez de um aviso de falha.
+        """
+        return self._falar_da_pagina(
+            "GET",
+            site_id,
+            slug,
+            "/rascunho",
+            especiais=((404, self.SEM_RASCUNHO),),
+        )
+
+    def gravar_rascunho_da_pagina(
+        self, site_id: str, slug: str, secoes: list
+    ) -> "tuple[str, dict | str]":
+        """`putPageDraft`: grava as seções inteiras. Não publica nada.
+
+        O documento inteiro de uma vez, e não espaço a espaço, porque a
+        coerência é do CONJUNTO — é a regra do próprio contrato, e é também o
+        que faz o botão `Salvar` significar uma coisa só.
+        """
+        return self._falar_da_pagina(
+            "PUT",
+            site_id,
+            slug,
+            "/rascunho",
+            corpo={"secoes": secoes},
+            especiais=((422, self.RECUSADO), (404, self.SEM_PAGINA)),
+        )
+
+    def publicar_pagina(self, site_id: str, slug: str) -> "tuple[str, dict | str]":
+        """`publishPage`: o rascunho vira a versão seguinte, que não se edita.
+
+        409 é rascunho vazio, e nada foi publicado: publicar página sem nada
+        seria pôr uma tela em branco no ar com a aparência de sucesso.
+        """
+        return self._falar_da_pagina(
+            "POST",
+            site_id,
+            slug,
+            "/publicar",
+            especiais=((409, self.VAZIO), (404, self.SEM_PAGINA)),
+        )
 
 
 class GamificacaoClient:

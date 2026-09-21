@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-172122-TAR-535-explicada",
+  "tarefa": "TAR-535",
+  "evento": "explicada",
+  "quando": "2026-09-20T17:21:22+00:00",
+  "quem": "pouso do PR 1804 confirmado de fora em 20/09/2026",
+  "o_que_e": "O livro de ocorrencias do site registrou a entrega do mandato por faixa dizendo que a integracao nao tinha sido verificada, porque o registro foi escrito antes de o PR pousar.",
+  "o_que_muda": "O livro passa a dizer que o trabalho chegou na main de verdade, com o numero do commit e a hora. Sem isso a tela dele mostra uma entrega eternamente em voo.",
+  "exemplo": "E a diferenca entre o recibo da encomenda postada e o comprovante de que ela foi entregue.",
+  "importancia": 35
+}

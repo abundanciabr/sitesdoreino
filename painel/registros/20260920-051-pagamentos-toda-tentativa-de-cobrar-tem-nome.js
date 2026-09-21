@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-051-pagamentos-toda-tentativa-de-cobrar-tem-nome",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "pagamentos: toda tentativa de cobrar tem nome",
+  detalhe: "Recusa deixa de travar o comprador, e resultado ambiguo bloqueia reenvio ate a consulta fechar o estado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1830. Validação local: árvore 53d5ee5025d12b9fdd360a90d75204383b71679e; commit b97c7486d907cebc8a9ad1a32ae2a296c5adaff2; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-550",
+  gravidade: "info",
+  frente: "vender",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

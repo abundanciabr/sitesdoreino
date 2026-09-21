@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-027-os-3-guardas-de-alunos-pousaram-e-o-deploy-saiu",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "Os 3 guardas de alunos pousaram, e o deploy saiu",
+  detalhe: "O PR 1809 integrou na main em 46dbfe75 as 20:45:59Z com os 9 checks verdes, e o deploy da celula alunos passou, levando ao servidor a entrega parada desde 17/09.",
+  autoridade: "github",
+  evidencia: "gh pr view 1809: MERGED, mergeCommit 46dbfe75, mergedAt 2026-09-20T20:45:59Z. Deploy run 35536588205: success, job deploy (alunos) success, 3min20s. 15a0ca50, a entrega de 17/09, e ancestral de 46dbfe75.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-495",
+  gravidade: "verde",
+  frente: "curso",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
