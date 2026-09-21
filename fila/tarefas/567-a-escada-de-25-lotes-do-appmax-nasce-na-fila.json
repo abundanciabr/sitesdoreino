@@ -1,0 +1,19 @@
+{
+  "arquivo": "567-a-escada-de-25-lotes-do-appmax-nasce-na-fila",
+  "id": "TAR-567",
+  "titulo": "A escada de 25 lotes do Appmax nasce na fila",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "25 tarefas validas na fila com depende_de sem ciclo, conferido por python ci/fila.py validar, e PR integrado",
+  "despacho": "Criar na fila os 25 lotes da escada do plano mestre Appmax, com depende_de ligando a ordem real e o brief fechado de cada um, incluindo os fatos medidos na documentacao oficial da Appmax em 20/09/2026. Somente fila/. Evidencia: python ci/fila.py validar verde e o mapa de lote para TAR no corpo do PR.",
+  "origem": "Comando de inicio do mantenedor em 20/09/2026 sobre o plano mestre Appmax",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

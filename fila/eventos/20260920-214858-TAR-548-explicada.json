@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214858-TAR-548-explicada",
+  "tarefa": "TAR-548",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:48:58+00:00",
+  "quem": "Plano mestre Appmax, lote L2C; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "A celula de leads so entende o aviso antigo do Mercado Pago.",
+  "o_que_muda": "Sem isso, a compra no cartao nao aparece na linha do tempo do contato e o acompanhamento comercial fica cego.",
+  "exemplo": "E a ficha do cliente nao registrar que ele comprou, mesmo com o dinheiro na conta.",
+  "importancia": 90
+}

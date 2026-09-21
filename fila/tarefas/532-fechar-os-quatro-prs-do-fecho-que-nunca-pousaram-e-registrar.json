@@ -1,0 +1,20 @@
+{
+  "arquivo": "532-fechar-os-quatro-prs-do-fecho-que-nunca-pousaram-e-registrar",
+  "id": "TAR-532",
+  "titulo": "Fechar os quatro PRs do fecho que nunca pousaram, e registrar o que ficou faltando",
+  "toca": [
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "gh pr view dos quatro devolvendo CLOSED e git ls-remote provando que os quatro ramos continuam no remoto",
+  "despacho": "# Despacho: fechar os quatro PRs do fecho que nunca pousaram\n\n## O que é\n\nRegistrar no livro o fechamento dos PRs #1502, #1504, #1713 e #1655, decidido\npelo mantenedor em 20/09/2026 depois de a regra do bloco `Instruções` entrar\nna main pelo PR #1801.\n\n## O que já aconteceu\n\nOs quatro foram fechados por `gh pr close`, cada um com o motivo escrito no\npróprio PR, e nenhum ramo foi apagado:\n\n- #1502 `agent/ci/sinalizacao-acao-pendente` — absorvido pelo #1801.\n- #1504 `agent/ci/explicar-falha-externa` — absorvido pelo #1801.\n- #1713 `agent/ci/fecho-sem-promessa` — **NÃO absorvido**; a regra dele\n  (proibir encerrar com promessa de fazer) continua faltando na main.\n- #1655 `agent/docs/ia-age-nao-manda` — o núcleo válido já é a Lei 11; a\n  leitura larga dele foi corrigida pelo #1801.\n\n## O que falta\n\nSó o registro no livro, com `precisa_do_dono: false`: a decisão já foi dada e\nexecutada. A dívida que sobra (reescrever a regra do #1713 contra a main de\nhoje, e recuperar as armadilhas 450, 451 e 453) fica declarada no detalhe.\n\n## Evidência exigida\n\n`gh pr view` dos quatro devolvendo CLOSED, e `git ls-remote --heads` provando\nque os quatro ramos continuam no remoto.",
+  "origem": "decisao do mantenedor na sessao, 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

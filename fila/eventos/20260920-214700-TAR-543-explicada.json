@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214700-TAR-543-explicada",
+  "tarefa": "TAR-543",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:47:00+00:00",
+  "quem": "Plano mestre Appmax, lote L0-PAG; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "A Appmax so entrega usuario e senha da integracao depois de bater num endereco nosso e receber uma resposta certa. Esse endereco nao existe.",
+  "o_que_muda": "Enquanto ele nao existir, nao ha credencial, nao ha sandbox e nenhuma das outras vinte e tres tarefas pode ser provada de verdade.",
+  "exemplo": "E o aperto de mao da instalacao: a Appmax bate na porta, a gente responde com um cracha unico da loja, e so entao ela entrega a chave.",
+  "importancia": 95
+}

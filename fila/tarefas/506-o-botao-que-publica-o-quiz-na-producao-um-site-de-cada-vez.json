@@ -1,0 +1,19 @@
+{
+  "arquivo": "506-o-botao-que-publica-o-quiz-na-producao-um-site-de-cada-vez",
+  "id": "TAR-506",
+  "titulo": "O botão que publica o quiz na produção, um site de cada vez",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-pelo-checkout-por-semana"
+  ],
+  "evidencia_exigida": "bash -n no script, os guardas de workflow com SSH verdes, e a prova por mutação de que sabotar o guarda de divergência faz o script semear o site errado dizendo que deu certo",
+  "despacho": "BRIEF FECHADO — pipeline de semeadura do quiz. Um PR só. Alvos: `infra/semear-quiz.sh` e `.github/workflows/semear-quiz.yml`.\n\nO PROBLEMA: a célula `quiz` está de pé em produção desde a Fase D (`infra/docker-compose.yml`, serviço `quiz` e worker `quiz-relay`) e nunca foi publicado um único quiz. Medido em 02/09/2026 e escrito em `ci/pecas-comuns-em-falta.txt` e em `armadilhas/286`. O comando `seed_quiz` existe e nunca foi invocado por script ou workflow nenhum.\n\nO MOLDE: `infra/semear-caixa.sh` + `.github/workflows/semear-caixa.yml`, e a variante `semear-boas-vindas`. Leia os dois inteiros antes de escrever. Repita: `workflow_dispatch` com `environment: vps`, `concurrency` com grupo próprio (nunca `deploy`, armadilhas/173), recusa de ref que não seja main, conferência de que o script existe e `bash -n` antes de abrir conexão (armadilhas/149), `appleboy/ssh-action` com `script_path`, argumentos por `envs:` e nunca interpolados no corpo do script (armadilhas/047), e uma linha `PRONTO:` exigida na saída, contada no banco por fora do comando que semeou (armadilhas/114).\n\nO CORAÇÃO: o quiz tem cadastro LOCAL de Site (`services/quiz/apps/quiz/models.py`), resolvido por Host sem chamar o catálogo (desvio deliberado, `services/quiz/LICOES.md`). O `id` do Site local precisa ser o MESMO uuid que o catálogo usa para aquele host, senão `quiz.completado.v1` não correlaciona com leads nem checkout e nada avisa. `seed_quiz` faz `get_or_create(id=site_id, ...)` com `host` unico: id errado com host existente estoura IntegrityError, mas host novo cria em silêncio um Site divergente. O script resolve o site PERGUNTANDO AO CATÁLOGO dentro da VPS, casa pelo host pedido, para se o host não existir, e confere a divergência nos dois sentidos antes de semear.\n\nMULTISSÍTIO É REQUISITO: o host é input, rodar para um site não mexe no outro, e rodar duas vezes não duplica.\n\nO BOTÃO DA TELA DE RESULTADO: o `seed_quiz` ganhou `--destino-do-botao` obrigatório (PR #1768). Não peça isso num campo: a oferta é dado do site e o catálogo a guarda em `Site.default_offer_slug`. Traga a oferta na mesma consulta que traz o número e monte `/checkout/<oferta>/`. Site sem oferta padrão PARA com a mensagem de onde cadastrar.\n\nEVIDÊNCIA EXIGIDA: `bash -n` no script; `ci/tests/test_workflows_com_ssh_tem_portao.py` e irmãos verdes; e a prova por mutação de que sabotar o guarda de divergência faz o script semear o site errado terminando com sucesso. Você NÃO tem SSH: escreva \"NÃO RODEI na VPS\" e deixe o disparo em Pendências.\n\nRito completo: bancada própria, PR pelo `make pr`, registro no painel.",
+  "origem": "pedido do mantenedor em 19/09/2026: publicar um quiz real no site",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

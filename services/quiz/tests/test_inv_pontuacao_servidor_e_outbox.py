@@ -27,7 +27,7 @@ def test_cliente_nao_pode_enviar_pontuacao_o_servidor_recalcula(client, quiz_a):
     opcao_zero = pergunta.options.get(points=0)
 
     resp = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {
             f"pergunta_{pergunta.id}": opcao_zero.id,
             "score": "999",  # tentativa de injetar pontuação direto no payload
@@ -50,7 +50,7 @@ def test_opcao_que_nao_pertence_a_pergunta_e_rejeitada(client, quiz_a, site_b):
 
     pergunta = quiz_a.questions.get(order=1)
     resp = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {f"pergunta_{pergunta.id}": opcao_de_fora.id, "email": "lead@exemplo.com"},
         HTTP_HOST=HOST_A,
     )
@@ -63,7 +63,7 @@ def test_evento_vai_para_outbox_na_mesma_transacao_do_resultado(client, quiz_a):
     opcao_dez = pergunta.options.get(points=10)
 
     resp = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {f"pergunta_{pergunta.id}": opcao_dez.id, "email": "lead@exemplo.com"},
         HTTP_HOST=HOST_A,
     )
@@ -85,7 +85,7 @@ def test_envelope_do_evento_valida_contra_o_contrato_congelado(client, quiz_a):
     opcao_dez = pergunta.options.get(points=10)
 
     resp = client.post(
-        f"/quiz/{quiz_a.slug}/",
+        f"/{quiz_a.slug}/",
         {
             f"pergunta_{pergunta.id}": opcao_dez.id,
             "email": "lead@exemplo.com",

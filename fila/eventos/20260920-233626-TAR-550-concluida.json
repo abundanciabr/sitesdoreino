@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-233626-TAR-550-concluida",
+  "tarefa": "TAR-550",
+  "evento": "concluida",
+  "quando": "2026-09-20T23:36:26+00:00",
+  "quem": "agent/pagamentos/modelo-de-tentativa-de-pagamento",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1830",
+  "verificado_em": "2026-09-20"
+}

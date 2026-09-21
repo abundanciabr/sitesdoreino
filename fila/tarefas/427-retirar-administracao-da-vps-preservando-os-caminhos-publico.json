@@ -1,0 +1,20 @@
+{
+  "arquivo": "427-retirar-administracao-da-vps-preservando-os-caminhos-publico",
+  "id": "TAR-427",
+  "titulo": "Retirar administração da VPS preservando os caminhos públicos",
+  "toca": [
+    "infra",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Composição e workflow sem admin publicado; rotas públicas preservadas; testes e PR com provas.",
+  "despacho": "modelo_recomendado: gpt-6-astra; esforco_recomendado: high. Retirar admin do deploy preservando rotas públicas, sem alterar contrato congelado; infra, workflows e configuração pública autorizados. Preparar dependências se necessário.",
+  "origem": "Pedido explícito do mantenedor em 14/09/2026, Brief 2 e delegação urgente da regência.",
+  "criada_em": "2026-09-14",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

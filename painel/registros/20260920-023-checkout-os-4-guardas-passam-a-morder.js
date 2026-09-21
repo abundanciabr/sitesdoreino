@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-023-checkout-os-4-guardas-passam-a-morder",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "checkout: os 4 guardas passam a morder",
+  detalhe: "Os 4 guardas de invariante do checkout passavam verdes com a producao sabotada; agora os 4 reprovam.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1807. Validação local: árvore 97351457b27268cc29c67ab91d33027eb433f721; commit 6119a2eab6fe9930f035fa116958854004a1b3d0; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-497",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-191915-TAR-506-explicada",
+  "tarefa": "TAR-506",
+  "evento": "explicada",
+  "quando": "2026-09-19T19:19:15+00:00",
+  "quem": "pedido do mantenedor em 19/09/2026: publicar um quiz real no site",
+  "o_que_e": "A célula do quiz está de pé na produção desde a Fase D e nunca teve um único quiz publicado, porque não existe nenhum jeito de criar o conteúdo dela lá dentro sem entrar por SSH na máquina.",
+  "o_que_muda": "O mantenedor passa a publicar o quiz num site apertando um botão no GitHub, e o script recusa publicar se o número do site divergir do catálogo, que é a falha que jogaria os leads dele num site fantasma sem ninguém perceber.",
+  "exemplo": "Hoje, para o quiz ir ao ar em meshcraft.top, alguém teria que abrir um terminal na VPS e digitar o comando com o UUID certo na mão. Depois disto, é escolher o host numa caixinha e apertar Run workflow.",
+  "importancia": 85
+}

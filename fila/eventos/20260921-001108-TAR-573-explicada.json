@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-001108-TAR-573-explicada",
+  "tarefa": "TAR-573",
+  "evento": "explicada",
+  "quando": "2026-09-21T00:11:08+00:00",
+  "quem": "Ordem do mantenedor em 20/09/2026: basileiatoutheou.org nao recebe trabalho novo sem autorizacao expressa, tudo nasce em meshcraft.top",
+  "o_que_e": "A porta por onde a Appmax fala com a plataforma nasceu no endereco antigo, que voce congelou. Ela funciona, mas esta no lugar errado.",
+  "o_que_muda": "Tudo que for novo passa a viver no site que voce escolheu. Como a Appmax ainda nao foi cadastrada, a troca sai de graca; depois do cadastro custaria renegociar com o fornecedor.",
+  "exemplo": "E mudar a placa do endereco antes de mandar imprimir os cartoes de visita, e nao depois.",
+  "importancia": 97
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/funil.lead-capturado.v1.json",
+  "title": "funil.lead-capturado.v1",
+  "description": "UMA PESSOA DEIXOU OS DADOS DELA NUMA PÁGINA DO FUNIL. É o degrau que liga a página medida ao lead que a célula `leads` já guarda: sem ele, o lead existe sem se saber de qual página e de qual versão ele nasceu. Publicado pela célula `funil` DEPOIS que o lead foi gravado, e por isso carrega o `lead_id` que a `leads` devolveu. Quem consome é a `metricas`, pelo trilho de eventos que já existe. LEI DESTE EVENTO: o corpo carrega ID e VERSÃO, nunca o texto da headline nem qualquer outra copy, e nunca os dados da pessoa. Texto dentro do evento apodrece, ocupa o livro imutável e impede comparar duas medições da mesma versão; dado pessoal dentro do livro imutável não se apaga depois. Quem precisar do detalhe do lead pergunta à célula `leads` pelo `lead_id`. É `pagina_version` que amarra o fato ao conteúdo exato que a pessoa viu. Rito de Contrato (RITOS.md §3) de 19/09/2026, em sessão de arquitetura com o mantenedor presente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "funil.lead-capturado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único DESTE fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila é contado uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante em que o lead foi gravado, com fuso. Sem fuso o DIA do fato é um chute e a recepção da `metricas` recusa o envelope."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "visitor_id",
+        "pagina_slug",
+        "pagina_version",
+        "lead_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma. Mora aqui, dentro de `data`, porque é daqui que a recepção da `metricas` o lê (`services/metricas/apps/fatos/recepcao.py`)."
+        },
+        "visitor_id": {
+          "type": "string",
+          "description": "Identificador OPACO de primeira parte, gerado pela célula `funil` e guardado no navegador de quem visita. É o mesmo valor de `funil.pagina-vista` da mesma sessão, e é ele que liga o lead à visita que o produziu. Não carrega dado pessoal dentro: nunca é e-mail, telefone, nome, IP nem hash de nenhum deles."
+        },
+        "pagina_slug": {
+          "type": "string",
+          "description": "Apelido da página dentro do site, o mesmo de `GET /sites/{site_id}/paginas/{slug}` no contrato do `catalogo`."
+        },
+        "pagina_version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A versão publicada que esta pessoa viu quando deixou os dados. Versão publicada nunca é reescrita, então este número é o que amarra o lead ao conteúdo exato da tela."
+        },
+        "lead_id": {
+          "type": "string",
+          "description": "Id OPACO do lead dentro da célula `leads`, devolvido por ela na gravação. É por ele que quem consome volta a perguntar, sem adivinhar. Nunca é o e-mail, o telefone nem o nome de ninguém."
+        }
+      }
+    }
+  }
+}

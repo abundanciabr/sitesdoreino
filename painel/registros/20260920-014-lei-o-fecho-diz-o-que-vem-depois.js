@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-014-lei-o-fecho-diz-o-que-vem-depois",
+  tipo: "decisao",
+  quando: "2026-09-20",
+  titulo: "lei: o fecho diz o que vem depois",
+  detalhe: "O fecho ganha o bloco Instrucoes e o gancho do Stop recusa quem terminar no veredito. Regra pedida tres vezes, agora com portao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1801. Validação local: árvore 0eea111648465920500e53ad514a59d7db68adc3; commit e5f8ea4eeb65cb76101e80035488de21e3f5b293; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-531",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

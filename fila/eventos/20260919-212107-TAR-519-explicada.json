@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-212107-TAR-519-explicada",
+  "tarefa": "TAR-519",
+  "evento": "explicada",
+  "quando": "2026-09-19T21:21:07+00:00",
+  "quem": "pedido do mantenedor em 19/09/2026",
+  "o_que_e": "O repositório serve dois sites, meshcraft.top e basileiatoutheou.org, e nada escrito diz qual dos dois recebe trabalho novo. Quem abre o projeto encontra o nome do domínio antigo em documentos velhos e pode achar que ele está em construção.",
+  "o_que_muda": "A lei que toda IA lê antes de trabalhar passa a dizer que o site é o meshcraft.top e que o outro está congelado. Nenhuma sessão gasta mais tempo construindo para um site que o dono não quer tocar agora.",
+  "exemplo": "Uma IA lê o runbook antigo, vê basileiatoutheou.org citado como endereço de produção e passa uma sessão inteira mexendo no site errado. Com a regra escrita, ela para na primeira linha e trabalha no meshcraft.top.",
+  "importancia": 70
+}

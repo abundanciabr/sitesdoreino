@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-150913-TAR-500-explicada",
+  "tarefa": "TAR-500",
+  "evento": "explicada",
+  "quando": "2026-09-19T15:09:13+00:00",
+  "quem": "rotacao da chave de deploy em 19/09/2026; a chave nova e SHA256:+eKOcjlz6oewBUEzrJcLy/jDsNI9j3aOrT0B8WyrBu0",
+  "o_que_e": "O authorized_keys do usuario deploy na VPS tem chaves anteriores a rotacao de 19/09/2026, e ninguem sabe de quem e cada uma. A rotacao acrescentou a chave nova e nao removeu nenhuma antiga, de proposito, porque comentario de chave nao e prova de identidade.",
+  "o_que_muda": "Cada chave que ainda abre a porta do servidor passa a ter dono conhecido, e o que sobrar sem dono pode ser removido com seguranca em vez de por chute.",
+  "exemplo": "e conferir quem ainda tem copia da chave de casa antes de trocar a fechadura",
+  "importancia": 75
+}

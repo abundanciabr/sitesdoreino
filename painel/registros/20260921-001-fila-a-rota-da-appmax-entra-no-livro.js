@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-001-fila-a-rota-da-appmax-entra-no-livro",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "fila: a rota da Appmax entra no livro",
+  detalhe: "A rota publica da Appmax pousou no PR 1820 e responde de fora com 405; a fila deixa de dizer que a obra segue em andamento.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1831. Validação local: árvore 8fcd2e852f6c1b3ba61ad9893c17b1e389cd28c8; commit 8acbd11ad2529beae57f991d2098b0242f841826; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-572",
+  gravidade: "verde",
+  frente: "vender",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -117,28 +117,47 @@ def test_toda_rota_do_site_tem_texto_para_uma_pessoa():
     assert not curtas, f"descrição de enfeite em: {curtas}"
 
 
-def test_o_endereco_duplo_da_biblioteca_e_medido_como_duplo():
-    """`/docs/` e `/admin/docs/` são a MESMA rota, e as duas respondem.
+def test_a_biblioteca_publica_sobreviveu_a_retirada_do_admin():
+    """`/docs/` continua no ar depois que `/admin` saiu da borda.
 
-    Medido na internet pública em 30/08/2026 (200 nas duas). Se um dia o
-    varredor deixar de enxergar o segundo endereço, o mapa passará a oferecer
-    só o caminho de dentro da área — e a biblioteca pública sumiria da vista.
+    Até 20/09/2026 a MESMA rota respondia nos dois endereços, e este guarda
+    exigia os dois (medido na internet em 30/08/2026, 200 nas duas). A
+    TAR-418 tirou o router de `/admin`, e com ele o endereço de dentro da
+    área. O que este guarda protege continua sendo o mesmo: a biblioteca
+    pública tem router próprio e NÃO pode sumir junto.
     """
     medido = mapa_do_site.medir(RAIZ)
     _, alcance = medido[("admin", "docs/")]
-    assert alcance.enderecos == ["/admin/docs/", "/docs/"]
+    assert alcance.enderecos == ["/docs/"]
 
 
-def test_o_prefixo_dobrado_do_quiz_nao_vira_endereco_curto():
-    """`/quiz/<slug>/` NÃO é oferecido: sob SCRIPT_NAME o prefixo é removido.
+def test_o_prefixo_do_quiz_entra_uma_vez_so_no_endereco():
+    """O endereço do quiz tem `quiz` UMA vez, e é o varredor que prova isso.
 
-    A rota do quiz é `quiz/<slug>/` e a célula vive sob `/quiz`, então o
-    endereço real dobra o prefixo. Oferecer o caminho curto seria mandar o dono
-    para um 404 — e é o tipo de erro que só aparece em produção.
+    **Este teste já afirmou o contrário**, e o contrário era verdade: até
+    19/09/2026 a rota da célula era `quiz/<slug>/` e a célula vivia sob
+    `SCRIPT_NAME=/quiz`, então o único endereço que respondia era o DOBRADO,
+    `/quiz/quiz/<slug>/`. O varredor media isso certo, e o teste guardava a
+    medição.
+
+    O que mudou não foi o varredor: foi a célula. Quem remove o `SCRIPT_NAME`
+    é o Django, dentro do processo, ANTES de casar rota — lido em
+    `django/core/handlers/asgi.py` do 5.1.4 que a célula instala:
+
+        self.script_name = get_script_prefix(scope)   # FORCE_SCRIPT_NAME
+        self.path_info = scope["path"].removeprefix(self.script_name)
+
+    Ou seja, rota escrita COM o prefixo por dentro só casava a URL dobrada, e
+    `/quiz/<slug>/` — o endereço que se divulga — respondia 404. O urlconf da
+    célula largou o prefixo, e o endereço público ficou com um `quiz` só.
+
+    O que continua sendo medido aqui é o que sempre importou: **o mapa oferece
+    ao dono o endereço que RESPONDE**, seja ele curto ou dobrado. Oferecer o
+    outro é mandá-lo a um 404, e é o tipo de erro que só aparece em produção.
     """
     medido = mapa_do_site.medir(RAIZ)
-    _, alcance = medido[("quiz", "quiz/<slug:slug>/")]
-    assert alcance.enderecos == ["/quiz/quiz/<slug:slug>/"]
+    _, alcance = medido[("quiz", "<slug:slug>/")]
+    assert alcance.enderecos == ["/quiz/<slug:slug>/"]
 
 
 def test_o_que_a_internet_nao_alcanca_e_medido_como_interno():
@@ -333,7 +352,9 @@ def test_as_portas_principais_estao_sondadas():
         for e in _mapa_real()["enderecos"]
         if e.get("sonda")
     }
-    for porta in ("/", "/login", "/forum/", "/forms/sugestoes/", "/admin/"):
+    # `/admin/` saiu em 20/09/2026 (TAR-418): sem router, não há porta de fora
+    # para acender. Quem quiser a administração abre `ci/ligar_administracao.py`.
+    for porta in ("/", "/login", "/forum/", "/forms/sugestoes/"):
         assert porta in sondadas, f"a porta {porta} deveria ter luz"
 
 

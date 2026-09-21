@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-017-ci-mandato-por-faixa-e-a-hora-de-parar",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "ci: mandato por faixa e a hora de parar",
+  detalhe: "O pre-voo cobra as mesmas cercas do pouso, entao Lista B aprovada aqui nao vira recusa la depois dos checks verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1804. Validação local: árvore c63897bded06ba8f0125fe98c95410d092111626; commit b7844c525f1b1f7ad0c8c1c5d5022db94219ff4e; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-534",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

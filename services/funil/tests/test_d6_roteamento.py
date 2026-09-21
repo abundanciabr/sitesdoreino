@@ -185,6 +185,11 @@ ROTAS_LOCALIZAVEIS = (
     # equipe nao muda isso — a classificacao aqui e sobre localizacao, nunca
     # sobre quem pode entrar.
     "/ver-como",
+    # A pagina de vendas (19/09/2026). E PAGINA: quem a abre e uma pessoa, e
+    # ela serve em /{idioma}/oferta como qualquer outra. Que a copy dela venha
+    # do catalogo num idioma so nao muda a classificacao, que e sobre
+    # LOCALIZACAO da rota, nunca sobre o idioma do texto que chega nela.
+    "/oferta",
 )
 
 # Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com

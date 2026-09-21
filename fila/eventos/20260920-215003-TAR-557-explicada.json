@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215003-TAR-557-explicada",
+  "tarefa": "TAR-557",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:03+00:00",
+  "quem": "Plano mestre Appmax, lote L4B; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Nada no sistema sabe criar uma cobranca de cartao fora do Mercado Pago.",
+  "o_que_muda": "E a chamada que tira dinheiro do cartao do comprador. Um erro aqui cobra duas vezes a mesma pessoa.",
+  "exemplo": "E o momento em que a maquininha realmente passa o cartao: se travar no meio, ninguem pode simplesmente passar de novo.",
+  "importancia": 75
+}

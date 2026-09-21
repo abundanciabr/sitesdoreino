@@ -220,7 +220,6 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "checkout-api",
         "sugestoes",
         "identidade",
-        "admin",
         "forum",
     } <= nomes
     segmentos = {
@@ -231,10 +230,11 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # `forms` entrou com a Caixa de Sugestões (`PathPrefix(/forms/sugestoes)`,
     # EVO-22). `entrar` entrou com a célula de identidade
     # (`PathPrefix(/entrar)`, DECISAO-celula-de-identidade, 25/08/2026).
-    # `admin` entrou com a área administrativa (`PathPrefix(/admin)`,
-    # DECISAO-celula-admin, 25/08/2026). `mapa-ia` entrou com o mapa técnico
-    # público (`PathPrefix(/mapa-ia)`, INV-P14, 28/08/2026), mesmo backend da
-    # `admin`. `forum` entrou com o fórum da escola
+    # `admin` SAIU em 20/09/2026 (TAR-418): a área administrativa deixou de
+    # ter router, e abre só no localhost do mantenedor. `mapa-ia` entrou com
+    # o mapa técnico público (`PathPrefix(/mapa-ia)`, INV-P14, 28/08/2026) e
+    # continua no ar, no mesmo backend que a `admin` usava.
+    # `forum` entrou com o fórum da escola
     # (`PathPrefix(/forum)`, DECISAO-forum-da-escola, 28/08/2026) — e ali o
     # caminho é LEI, não preferência: em subdomínio o cookie de sessão não
     # viaja e o fórum exigiria um segundo login (§2 daquela lei).
@@ -242,8 +242,8 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # uma regra de segurança: rota nova obriga quem a acrescenta a passar por
     # aqui e olhar as duas regras acima. As regras que julgam de fato (A: forma
     # de locale; B: colisão com idioma declarado) continuam medindo a tabela
-    # real e nada nelas foi afrouxado — `forms`, `entrar`, `admin`, `mapa-ia` e
-    # `docs` e `forum` têm 5, 6, 5, 7, 4 e 5 letras, logo nenhum casa a FORMA
+    # real e nada nelas foi afrouxado — `forms`, `entrar`, `mapa-ia`, `docs` e
+    # `forum` têm 5, 6, 7, 4 e 5 letras, logo nenhum casa a FORMA
     # (que exige 2-3). E nenhum deles é idioma declarado em `infra/sites.json`.
     #
     # `docs` entrou com a área PÚBLICA de documentos (`PathPrefix(/docs)`,
@@ -311,7 +311,6 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "mapa-ia",
         "forms",
         "entrar",
-        "admin",
         "docs",
         "forum",
         "conquistas",

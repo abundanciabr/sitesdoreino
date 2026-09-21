@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/funil.pagina-vista.v1.json",
+  "title": "funil.pagina-vista.v1",
+  "description": "ALGUÉM ABRIU UMA PÁGINA DO FUNIL. É o primeiro fato do funil: antes dele a plataforma só enxergava a partir de `pedido.criado`, e tudo o que acontece entre a visita e o pedido era invisível. Publicado pela célula `funil`, que renderiza a página lida do `catalogo` por `GET /sites/{site_id}/paginas/{slug}`. Quem consome: a célula `metricas`, pelo trilho de eventos que já existe, que guarda o fato no livro e conta visita, alcance de seção, clique e lead por versão de página. LEI DESTE EVENTO: o corpo carrega ID e VERSÃO, nunca o texto da headline nem qualquer outra copy. Texto dentro do evento apodrece, ocupa o livro imutável e impede comparar duas medições da mesma versão. É `pagina_version` que amarra o fato ao conteúdo exato que a pessoa viu; para ler a copy daquela versão, pergunte ao `catalogo`. Rito de Contrato (RITOS.md §3) de 19/09/2026, em sessão de arquitetura com o mantenedor presente: página real e telemetria primeiro, experimentação depois que houver tráfego.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "funil.pagina-vista"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único DESTE fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila é contado uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante da visita, com fuso. Sem fuso o DIA do fato é um chute e a recepção da `metricas` recusa o envelope."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "visitor_id",
+        "pagina_slug",
+        "pagina_version",
+        "offer_slug"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma. Mora aqui, dentro de `data`, porque é daqui que a recepção da `metricas` o lê (`services/metricas/apps/fatos/recepcao.py`); fato sem site não pode ser contado para nenhum."
+        },
+        "visitor_id": {
+          "type": "string",
+          "description": "Identificador OPACO de primeira parte, gerado pela própria célula `funil` e guardado no navegador de quem visita. Serve para ligar visita, seção, clique e lead da mesma pessoa numa sessão. Não carrega dado pessoal dentro: nunca é e-mail, telefone, nome, IP nem hash de nenhum deles."
+        },
+        "pagina_slug": {
+          "type": "string",
+          "description": "Apelido da página dentro do site, o mesmo de `GET /sites/{site_id}/paginas/{slug}` no contrato do `catalogo` (por exemplo `oferta`)."
+        },
+        "pagina_version": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "A versão publicada que esta pessoa viu. Versão publicada nunca é reescrita, então este número é o que amarra o fato ao conteúdo exato da tela. É por ele que duas medições da mesma página só se comparam quando são da mesma versão."
+        },
+        "offer_slug": {
+          "type": "string",
+          "description": "Apelido da oferta que esta página vende, para cruzar visita com pedido sem adivinhar. Texto vazio quando a página não vende nada (uma página de conteúdo, por exemplo)."
+        },
+        "referrer": {
+          "type": "string",
+          "description": "De onde a pessoa veio, como o navegador informou. AUSENTE significa visita direta ou origem que o navegador não entregou; nunca se inventa um valor para preencher."
+        },
+        "utm": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Parâmetros de campanha da URL (utm_source, utm_medium, utm_campaign, utm_content, utm_term), com o prefixo `utm_` já retirado da chave. AUSENTE ou vazio quando a URL não trouxe nenhum."
+        },
+        "dispositivo": {
+          "type": "string",
+          "description": "Formato da tela em que a página foi aberta. O vocabulário é FECHADO dentro do `funil`, que é quem publica: `celular`, `tablet` e `computador`. Fica aberto no contrato pelo mesmo motivo dos slots de seção: enumerar aqui faria um formato novo custar um Rito de Contrato, e quem valida é o provedor. AUSENTE quando não deu para decidir."
+        }
+      }
+    }
+  }
+}

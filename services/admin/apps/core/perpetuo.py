@@ -77,7 +77,7 @@ from .clients import AlunosClient, GamificacaoClient, MensageriaClient
 # `_preparar` é REUSADA, e não copiada, de propósito: é ela que decide quando
 # um endereço vira link clicável (endereço concreto, público, que não é gesto
 # de botão) e quando não vira. Uma segunda cópia dessa regra aqui ofereceria
-# link para um molde como `/quiz/quiz/<slug:slug>/`, que devolve 404.
+# link para um molde como `/quiz/<slug:slug>/`, que devolve 404.
 from .mapa_do_site import _preparar, arquivo_do_mapa
 
 # `site_de` é a MESMA leitura de host que a tela do placar usa para saber de
@@ -166,7 +166,7 @@ ETAPAS = (
             "fica sem como falar com ele de novo. Aqui a troca acontece: a "
             "pessoa recebe algo de valor e deixa nome, e-mail ou WhatsApp."
         ),
-        "portas": ("/cadastro", "/quiz/quiz/<slug:slug>/"),
+        "portas": ("/cadastro", "/quiz/<slug:slug>/"),
         "sem_fonte_porque": (
             "a parte que recebe os contatos guarda cada um, mas ainda não tem "
             "porta para dizer quantos são. É a mesma falta que a tela do "

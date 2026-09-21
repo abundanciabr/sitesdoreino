@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-215221-TAR-418-concluida",
+  "tarefa": "TAR-418",
+  "evento": "concluida",
+  "quando": "2026-09-20T21:52:21+00:00",
+  "quem": "agent/infra/admin-fora-da-internet",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1814",
+  "verificado_em": "2026-09-20"
+}

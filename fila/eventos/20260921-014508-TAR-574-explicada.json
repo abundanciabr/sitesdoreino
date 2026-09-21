@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-014508-TAR-574-explicada",
+  "tarefa": "TAR-574",
+  "evento": "explicada",
+  "quando": "2026-09-21T01:45:08+00:00",
+  "quem": "sessao de 20/09/2026, autorizacao do mantenedor: corta A e B",
+  "o_que_e": "Duas tarefas mortas saem da fila: uma reivindicacao orfa de 09/09 e um canal de mensagem que depende de decisao dele.",
+  "o_que_muda": "A fila para de mostrar como pendente o que ninguem vai fazer, e a contagem de trabalho aberto passa a ser verdadeira.",
+  "exemplo": "Ele abre o painel e nao ve mais a TAR-225 esperando alguem que nunca vem.",
+  "importancia": 40
+}
