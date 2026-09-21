@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-040638-TAR-581-concluida",
+  "tarefa": "TAR-581",
+  "evento": "concluida",
+  "quando": "2026-09-21T04:06:38+00:00",
+  "quem": "agent/ci/tirar-fantasma-da-esteira",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1844",
+  "verificado_em": "2026-09-21"
+}

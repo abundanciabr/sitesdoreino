@@ -1,0 +1,20 @@
+{
+  "arquivo": "582-as-fichas-dos-robos-param-de-ensinar-um-pedido-de-pouso-que-",
+  "id": "TAR-582",
+  "titulo": "As fichas dos robos param de ensinar um pedido de pouso que nao existe",
+  "toca": [
+    ".claude",
+    ".codex"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "grep -rn -- \"--pousar\" .claude/agents/ .codex/agents/ sem nenhuma linha, e os testes das fichas verdes",
+  "despacho": "Brief fechado: cinco fichas de agente ainda ensinam um rito de pouso que nao existe mais.\n\nFato medido hoje (21/09/2026): `py -3.12 ci/mergear.py 1840 --pousar` devolve:\n```\nusage: mergear.py [-h] [--automatico] [--conferir] [pr]\nmergear.py: error: unrecognized arguments: --pousar\n```\nO uso real e `mergear.py [-h] [--automatico] [--conferir] [pr]`. A lei mudou:\n`docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md` e a secao \"Integracao\nautomatica\" do CLAUDE.md dizem que PR pronto integra por `pouso.yml` e\n`ci/mergear.py --automatico`, sem revisor, atestado, etiqueta ou gesto da\nmaestro. O PR #1840 provou isso na pratica: bastou `gh pr ready 1840` e a\npista mergeou sozinha em poucos minutos.\n\nMesmo assim, cinco fichas mandam a maestro publicar atestado e pedir\n`--pousar`:\n- .claude/agents/despacho.md:136\n- .claude/agents/maquinista.md:106\n- .codex/agents/despacho.toml (developer_instructions, secao \"7. O pouso nao\n  e seu\" e o paragrafo final do Codex)\n- .codex/agents/maquinista.toml:100\n- .codex/agents/revisor.toml (paragrafo final do Codex)\n\n## Aceite\nReescrever o texto dessas cinco fichas para dizer o que de fato acontece: o\ndespacho devolve o numero do PR; a maestro confere que ele nao e rascunho\n(`gh pr view <N> --json isDraft`, e `gh pr ready <N>` se for); a pista integra\nsozinha por `ci/mergear.py --automatico` via `pouso.yml`. Nenhuma ficha volta\na mencionar `--pousar` nem \"atestado\" como gesto obrigatorio da maestro para\npousar.\n\n## Evidencia exigida\n`grep -rn -- \"--pousar\" .claude/agents/ .codex/agents/` sem nenhuma linha, e\nos testes das fichas (suite de .claude/agents e .codex/agents) verdes.\n\n## Restricoes\nNao mude o comportamento de `ci/mergear.py`; e so o texto das fichas. Sem\nsegredo, sem gasto, sem mudanca de contrato.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-035749-TAR-581-explicada",
+  "tarefa": "TAR-581",
+  "evento": "explicada",
+  "quando": "2026-09-21T03:57:49+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "O quadro da fila mostra tres mentiras: a TAR-421 aparece em execucao quando na verdade foi bloqueada esperando o mantenedor, a TAR-240 continua bloqueada mesmo depois de ele ja ter dito que nao quer aquilo, e a TAR-577 aparece na fila mesmo com o codigo dela ja pousado na main pelo PR #1840. Alem disso duas fichas do Codex (maquinista e procurador) nao declaram o modelo obrigatorio.",
+  "o_que_muda": "O mantenedor volta a confiar no quadro: o que espera decisao dele aparece bloqueado esperando ele, o que ele ja recusou some da fila, e o que ja foi entregue aparece concluido com o link da prova. As duas fichas do Codex passam a herdar o modelo certo em vez de herdar modelo caro por omissao.",
+  "exemplo": "E como uma lista de compras que ainda mostra leite pendente depois de voce ja ter comprado o leite: cedo ou tarde voce compra leite de novo por engano, ou nunca mais confia na lista.",
+  "importancia": 40
+}
