@@ -344,11 +344,23 @@ def _parse_card_confirm(body: bytes) -> dict[str, Any]:
     identificacao = data.get("payer_identification")
     if identificacao is not None and not isinstance(identificacao, dict):
         raise HttpError(422, "payer_identification deve ser objeto")
+    # Os três campos do titular são OPCIONAIS no contrato e só valem como texto:
+    # recusar tipo errado aqui evita que um número ou uma lista chegue ao provedor
+    # disfarçado de documento por causa de um `str()` complacente.
+    titular: dict[str, str] = {}
+    for campo in ("ip", "holder_name", "holder_document_number"):
+        valor = data.get(campo)
+        if valor is None:
+            continue
+        if not isinstance(valor, str) or not valor.strip():
+            raise HttpError(422, f"{campo} deve ser texto nao vazio")
+        titular[campo] = valor.strip()
     return {
         "card_token": str(data["card_token"]),
         "installments": installments,
         "payer_email": str(data["payer_email"]),
         "payer_identification": identificacao,
+        **titular,
     }
 
 
@@ -356,7 +368,7 @@ def _parse_card_confirm(body: bytes) -> dict[str, Any]:
     "/intents/{intent_id}/card",
     operation_id="confirmCard",
     summary=(
-        "Confirma pagamento com card_token do Card Payment Brick "
+        "Confirma pagamento com o card_token gerado no navegador "
         "(dado de cartão NUNCA toca a plataforma)"
     ),
     openapi_extra=_CONFIRM_CARD_OPENAPI,
@@ -371,6 +383,9 @@ def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonR
             installments=payload["installments"],
             payer_email=payload["payer_email"],
             payer_identification=payload["payer_identification"],
+            ip=payload.get("ip", ""),
+            holder_name=payload.get("holder_name", ""),
+            holder_document_number=payload.get("holder_document_number", ""),
         )
     except IntentNaoConfirmavel as exc:
         raise HttpError(

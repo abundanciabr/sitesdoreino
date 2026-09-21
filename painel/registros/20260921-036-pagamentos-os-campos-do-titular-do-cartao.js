@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-036-pagamentos-os-campos-do-titular-do-cartao",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "pagamentos: os campos do titular do cartao",
+  detalhe: "Campos do titular no cartao, tipos do mypy corrigidos, divida de travessao zerada e prova de mutacao em quatro guardas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1854. Validação local: árvore e570b73bf9d7a933129dd101a83710bec3ae8eef; commit bdf6ad26541e11613b07059bff1e53d5aa83a745; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-592",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "pagamentos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -38,6 +38,5 @@
 # que exporta o contrato da API — texto que so um programador le, e que nao
 # chega a tela de ninguem. Trocar tres riscas nao vale desobedecer a diretiva;
 # quando ele reabrir pagamentos, esta linha sai junto.
-services/pagamentos/pagamentos/api/management/commands/export_openapi.py :: 3
 
-# TOTAL: 3
+# TOTAL: 0

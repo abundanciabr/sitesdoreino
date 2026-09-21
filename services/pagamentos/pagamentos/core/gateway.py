@@ -81,7 +81,16 @@ def criar_pagamento_card(
     installments: int,
     payer_email: str,
     payer_identification: dict[str, str] | None,
+    ip: str = "",
+    holder_name: str = "",
 ) -> ResultadoCard:
+    """`ip` e `holder_name` entram aqui porque são vocabulário do DOMÍNIO (quem
+    está pagando, de onde), e não do provedor: é nesta costura que cada provedor
+    decide o que faz com eles. O provedor de cartão de hoje não tem onde
+    colocá-los, e dizer isso por extenso é melhor do que a assinatura fingir que
+    eles não existem: quem ler o corpo desta função vê, num lugar só, quais
+    campos do contrato este provedor consome e quais ele não consome."""
+    del ip, holder_name
     try:
         resposta = MercadoPagoClient().criar_pagamento_card(
             idempotency_key=idempotency_key,
