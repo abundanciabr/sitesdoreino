@@ -333,6 +333,7 @@ def listar_prs_mergeados(raiz: Path) -> list[dict[str, Any]]:
         cwd=raiz,
         capture_output=True,
         text=True,
+        encoding="utf-8", errors="replace",
     )
     if saida.returncode != 0:
         raise RuntimeError(

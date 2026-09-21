@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import ast
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -32,12 +33,15 @@ from pathlib import Path
 RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ_DO_REPO / "ci"))
 
+import auditar_medicao_fase4  # noqa: E402
 import esperar  # noqa: E402
 import mergear  # noqa: E402
 from _nucleo import configurar_saida  # noqa: E402
 from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
 
-FERRAMENTAS = sorted((RAIZ_DO_REPO / "ci").glob("*.py"))
+FERRAMENTAS = sorted(
+    (RAIZ_DO_REPO / "ci").glob("*.py"),
+) + sorted((RAIZ_DO_REPO / "administracao-local").glob("*.py"))
 CHAMADAS_DE_SUBPROCESSO = {
     "subprocess.run",
     "subprocess.Popen",
@@ -115,7 +119,11 @@ def esta_sem_a_porta(fonte: str) -> bool:
         if not ({k.arg for k in no.keywords if k.arg} & DECODIFICA_TEXTO):
             continue
         comando = ast.unparse(no.args[0]) if no.args else ""
-        if "sys.executable" in comando or "_mergear()" in comando:
+        # O nome nu cria o mesmo filho que `sys.executable`, e `["python", …]`
+        # escapava do detector: foi por essa fresta que a ferramenta 91 entrou
+        # de verdade (`ci/preparar_dados_admin.py`, medido em 20/09/2026).
+        if (re.search(r"\bpython\b", comando) or "sys.executable" in comando
+                or "_mergear()" in comando):
             cria_filho_python = True
     if not cria_filho_python:
         return False
@@ -152,6 +160,15 @@ def test_o_detector_reconhece_uma_ferramenta_doente():
     )
     curada = FERRAMENTA_DOENTE.replace(
         "def main():", "def main():\n    configurar_saida()"
+    )
+    pelo_nome_nu = FERRAMENTA_DOENTE.replace(
+        'sys.executable, "-c", "print(1)"', '"python", "-c", "print(1)"'
+    )
+    assert esta_sem_a_porta(pelo_nome_nu), (
+        "o detector voltou a exigir `sys.executable` para reconhecer um filho "
+        "Python. `[\"python\", ...]` e `\"python x.py\"` criam o mesmo filho, e "
+        "foi por essa fresta que `ci/preparar_dados_admin.py` passou anos sem "
+        "porta (medido em 20/09/2026)."
     )
     assert not esta_sem_a_porta(curada), (
         "o detector acusa até quem passa pela porta — assim ele reprovaria a "
@@ -215,3 +232,103 @@ def test_o_portao_realmente_imprime_a_marca_quando_nao_consegue_medir():
     )
     assert resultado.estado.value == "ERROR"
     assert MOTIVO_GITHUB_AINDA_CALCULANDO in resultado.detalhe
+
+
+# ---------------------------------------------------------------------------
+# O OUTRO LADO DO CANO: o pai que lê.
+#
+# Tudo acima cuida do FILHO. Nada disso diz o que o PAI faz com os bytes que
+# voltam: `text=True` sem `encoding=` decodifica pela codepage da região, que
+# nesta máquina é cp1252. Em 20/09/2026 foi assim que `ci/resumo_maestro.py`
+# morreu antes de imprimir a fila, lendo o utf-8 que `ci/fila.py` escreveu
+# justamente por ter passado pela porta:
+#
+#     UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d in position
+#     302180: character maps to <undefined>
+#
+# É a MESMA classe da metade de cima, na direção contrária, e mais barulhenta:
+# não é acento que se perde em silêncio, é a ferramenta que cai. Eram 14
+# chamadas assim em 10 arquivos de `ci/`, contra 34 que já declaravam a
+# codificação — a convenção da casa existia e ninguém a fazia valer.
+# ---------------------------------------------------------------------------
+
+
+def le_sem_declarar_a_codificacao(fonte: str) -> list[int]:
+    """Pede TEXTO ao filho e não diz em que língua o filho fala."""
+    linhas = []
+    for no in ast.walk(ast.parse(fonte)):
+        if not (isinstance(no, ast.Call)
+                and ast.unparse(no.func) in CHAMADAS_DE_SUBPROCESSO):
+            continue
+        argumentos = {k.arg for k in no.keywords if k.arg}
+        if (argumentos & {"text", "universal_newlines"}
+                and "encoding" not in argumentos):
+            linhas.append(no.lineno)
+    return sorted(linhas)
+
+
+# O leitor de número 15, escrito à mão: é o que o guarda abaixo existe para
+# pegar. `git` não passa pela porta (`PYTHONUTF8` não é chave dele), então aqui
+# só o pai pode decidir.
+LEITOR_DOENTE = '''
+import subprocess
+saida = subprocess.run(["git", "log", "-1"], capture_output=True, text=True)
+'''
+
+
+def test_o_detector_reconhece_um_leitor_sem_codificacao():
+    """O controle positivo, pelo mesmo motivo de `armadilhas/266` acima.
+
+    O guarda seguinte afirma uma AUSÊNCIA, e ausência tem duas causas: a casa
+    limpa e o detector cego. As duas ficam verdes iguais.
+    """
+    assert le_sem_declarar_a_codificacao(LEITOR_DOENTE) == [3], (
+        "o detector deixou de reconhecer uma chamada que pede texto ao filho "
+        "sem declarar a codificação. Enquanto ele estiver assim, o guarda "
+        "abaixo fica verde por não enxergar, não por não haver."
+    )
+    curado = LEITOR_DOENTE.replace("text=True", 'text=True, encoding="utf-8"')
+    assert le_sem_declarar_a_codificacao(curado) == [], (
+        "o detector acusa até quem declara a codificação — assim ele "
+        "reprovaria a casa inteira e seria desligado na primeira semana."
+    )
+
+
+def test_toda_ferramenta_que_le_texto_do_filho_declara_a_codificacao():
+    """O guarda que pega o leitor de número 15 antes de ele derrubar alguém.
+
+    Fora do alcance, e declarado em vez de escondido: os arquivos que
+    `ci/auditar_medicao_fase4.py` chama de INSTRUMENTO. O sha deles é a
+    identidade de uma revisão de medição, citada por nome em dois relatórios
+    já publicados (`docs/decisoes/RELATORIO-FASE4-MEDICAO.md` e a auditoria
+    independente de 11/09/2026). Mexer numa vírgula ali abre uma revisão nova
+    e desgruda o que foi medido do instrumento que mediu — preço alto demais
+    por uma palavra-chave. A lista não é escrita à mão aqui: ela é LIDA da
+    mesma constante que o protocolo usa, então o dia em que um arquivo sair
+    do instrumento, este guarda volta a cobri-lo sozinho.
+
+    Fora do alcance por outra razão: `services/`. Restam 4 leituras assim lá
+    (medidas em 20/09/2026), e a cerca de célula proíbe um PR de ferramenta
+    mexer em duas células. Vão por tarefa própria da fila.
+    """
+    congelados = {Path(c).name for c in auditar_medicao_fase4.ARQUIVOS_DO_INSTRUMENTO}
+    faltando = {
+        c.name: le_sem_declarar_a_codificacao(c.read_text(encoding="utf-8"))
+        for c in FERRAMENTAS
+        if c.name not in congelados
+        and le_sem_declarar_a_codificacao(c.read_text(encoding="utf-8"))
+    }
+    assert not faltando, (
+        "estas chamadas pedem texto ao filho e não declaram a codificação, "
+        f"então decodificam pela codepage da região: {faltando}\n"
+        'Conserto: acrescente `encoding="utf-8"` à chamada. Acrescente TAMBÉM\n'
+        '`errors="replace"` só quando um caractere trocado for melhor que a\n'
+        "ferramenta cair (saída de `git`, `gh`, `docker`, que ninguém promete\n"
+        "em utf-8). Onde o texto lido vira dado publicado, assinado ou\n"
+        "comparado, deixe estrito: `replace` ali certifica lixo com sha válido\n"
+        "(`ci/preparar_dados_admin.py`, o `estados.json` do painel).\n"
+        "Por que importa: no Windows a região é cp1252 e a leitura ESTOURA "
+        "com UnicodeDecodeError no primeiro byte alto — não é acento perdido, "
+        "é a ferramenta caindo. Já derrubou `ci/resumo_maestro.py` inteiro "
+        "(20/09/2026) e é a mesma classe de 04/09/2026, na direção do pai."
+    )

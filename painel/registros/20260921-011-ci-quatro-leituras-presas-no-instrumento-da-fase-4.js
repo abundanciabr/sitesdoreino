@@ -1,0 +1,22 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-011-ci-quatro-leituras-presas-no-instrumento-da-fase-4",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "Quatro leituras que quebram no Windows ficaram de fora do conserto, e sair delas é decisão sua",
+  detalhe: "Fechei a classe de defeito que derrubou o comando que resume a fábrica: um programa da casa que lê a resposta de outro sem dizer em que idioma ela vem. Quatro dessas leituras moram em ci/registrar_tarefa_fase4.py e eu NÃO as consertei.\n\nO motivo: esse arquivo é instrumento de medição. O código dele forma a identidade da revisão 8cdc4905, citada por nome em dois documentos já publicados (o relatório da Fase 4 e a auditoria independente de 11/09/2026). Mudar uma vírgula ali abre uma revisão nova e desgruda o que foi medido do instrumento que mediu.\n\nEscolhi preservar a medição e deixar o defeito, com a exceção declarada no guarda em vez de escondida. As quatro leituras só estouram no Windows e só se um caractere fora do padrão aparecer num nome de arquivo da fila; duas delas já caem dentro de um tratamento de erro.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1834",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  porque_so_voce: "É escolher entre duas coisas boas: a rastreabilidade de uma medição que você mandou fazer e publicou, ou um defeito latente numa ferramenta interna. Nenhuma das duas é obviamente mais valiosa, e a medição é sua.",
+  proximo_passo: "Se a medição da Fase 4 já cumpriu o papel dela, me diga e eu tiro ci/registrar_tarefa_fase4.py da constante ARQUIVOS_DO_INSTRUMENTO, conserto as quatro leituras e atualizo a revisão fixada. Se ela ainda vale, não faça nada: fica como está, declarado.",
+  se_eu_nao_decidir: "Nada quebra hoje. O defeito só aparece se alguém rodar a ferramenta no Windows com um caractere fora do padrão na fila, e aí ela devolve resultado vazio em vez de erro.",
+  recomendacao: "Deixar como está por enquanto. O custo de mexer é certo (dois documentos publicados perdem o vínculo com o instrumento) e o custo de não mexer é hipotético.",
+  reversivel: true,
+  impacto: "baixo"
+}); })();

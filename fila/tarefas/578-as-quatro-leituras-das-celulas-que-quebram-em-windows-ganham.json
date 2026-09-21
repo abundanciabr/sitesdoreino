@@ -1,0 +1,20 @@
+{
+  "arquivo": "578-as-quatro-leituras-das-celulas-que-quebram-em-windows-ganham",
+  "id": "TAR-578",
+  "titulo": "As quatro leituras das celulas que quebram em Windows ganham codificacao declarada",
+  "toca": [
+    "admin",
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o guarda test_toda_ferramenta_que_le_texto_do_filho_declara_a_codificacao passa a varrer services/ e fica verde; a suite de cada celula tocada verde no Windows",
+  "despacho": "LEIA ANTES: ci/tests/test_utf8_na_fronteira.py inteiro (o guarda e o porque), e o PR que o criou.\n\nO QUE FAZER: acrescente encoding=\"utf-8\" as quatro chamadas de subprocess que leem texto sem declarar codificacao:\n\n  services/admin/tests/test_admin_leitura.py:122\n  services/admin/tests/test_lancador_local.py:54\n  services/admin/tests/test_robos_no_admin.py:268\n  services/admin/apps/core/planos_para_ia.py:210\n  services/gamificacao/tests/test_makefile.py:33\n\nAcrescente errors=\"replace\" SO onde um caractere trocado for melhor que a ferramenta cair. Onde o texto lido vira dado publicado, assinado ou comparado, deixe estrito.\n\nDEPOIS: em ci/tests/test_utf8_na_fronteira.py, faca FERRAMENTAS varrer services/ tambem, e apague do docstring de test_toda_ferramenta_que_le_texto_do_filho_declara_a_codificacao o paragrafo que declara services/ fora do alcance. Sem isso a tarefa nao fecha: o conserto sem o guarda volta a apodrecer.\n\nPOR QUE ISTO NAO FOI FEITO NO PR DE ORIGEM: a cerca de celula proibe um PR de ferramenta mexer em duas celulas (admin e gamificacao).",
+  "origem": "achado pelo revisor adversarial no PR do guarda de codificacao, em 20/09/2026",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
