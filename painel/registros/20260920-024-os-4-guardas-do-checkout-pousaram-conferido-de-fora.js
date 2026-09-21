@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-024-os-4-guardas-do-checkout-pousaram-conferido-de-fora",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "Os 4 guardas do checkout pousaram, conferido de fora",
+  detalhe: "O PR 1807 integrou na main em 668eaf5b as 19:36:03Z, com os 9 checks verdes. A prova final tinha 7 sabotagens, as 4 do cartao mais 3 que a revisao achou, e todas reprovam.",
+  autoridade: "github",
+  evidencia: "gh pr view 1807: state MERGED, mergedBy abundanciabr, mergeCommit 668eaf5b, mergedAt 2026-09-20T19:36:03Z. O registro 023 desta mesma entrega dizia integracao nao verificada, porque foi escrito antes do pouso.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-497",
+  gravidade: "verde",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

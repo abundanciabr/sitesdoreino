@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214929-TAR-552-explicada",
+  "tarefa": "TAR-552",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:29+00:00",
+  "quem": "Plano mestre Appmax, lote L6; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Existe uma confirmacao de cartao dentro da celula de pagamentos, mas nada no checkout a chama, e o navegador nao pode falar com pagamentos direto.",
+  "o_que_muda": "Sem esta porta, o caminho do cartao continua cortado no meio: a tela tokeniza e nao tem para onde mandar.",
+  "exemplo": "E ter o cofre e a chave, e faltar a porta entre a recepcao e o cofre.",
+  "importancia": 85
+}

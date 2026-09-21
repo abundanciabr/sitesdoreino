@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-041-painel-o-resto-do-corte-do-admin",
+  tipo: "pendencia",
+  quando: "2026-09-20",
+  titulo: "painel: o resto do corte do admin",
+  detalhe: "Tres restos do corte do admin: um roteiro seu dando alarme falso, um guarda que ficou inerte e cinco premissas falsas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1822. Validação local: árvore bbf3b4563a9bffde0a05e457bbd17099ae8c049c; commit 2295f862b86775e1d57b94f170022f39605293ac; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-569",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

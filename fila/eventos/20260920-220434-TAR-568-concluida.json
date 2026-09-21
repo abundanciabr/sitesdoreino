@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-220434-TAR-568-concluida",
+  "tarefa": "TAR-568",
+  "evento": "concluida",
+  "quando": "2026-09-20T22:04:34+00:00",
+  "quem": "agent/painel/recibo-do-admin-fora-da-internet",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1817",
+  "verificado_em": "2026-09-20"
+}

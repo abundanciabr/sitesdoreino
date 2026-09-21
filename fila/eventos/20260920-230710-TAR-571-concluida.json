@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-230710-TAR-571-concluida",
+  "tarefa": "TAR-571",
+  "evento": "concluida",
+  "quando": "2026-09-20T23:07:10+00:00",
+  "quem": "agent/contracts/remover-operacoes-de-cartao-do-contrato",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1824",
+  "verificado_em": "2026-09-20"
+}

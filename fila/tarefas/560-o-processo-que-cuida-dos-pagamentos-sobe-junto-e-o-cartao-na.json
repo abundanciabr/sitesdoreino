@@ -1,0 +1,26 @@
+{
+  "arquivo": "560-o-processo-que-cuida-dos-pagamentos-sobe-junto-e-o-cartao-na",
+  "id": "TAR-560",
+  "titulo": "O processo que cuida dos pagamentos sobe junto, e o cartao nasce desligado",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-559",
+    "TAR-555",
+    "TAR-546",
+    "TAR-547",
+    "TAR-548",
+    "TAR-549"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Servicos saudaveis no compose, trava vazia provada, Pix funcionando antes e depois, e valores falsos no CI sem segredo real.",
+  "despacho": "Celula infra. Suba o worker dormente e prove que o cartao nasce desligado.\n\nAlvos: infra/docker-compose.yml e o env de exemplo.\n\n1. Acrescente worker e reconciliacao usando a MESMA imagem da celula pagamentos, seguindo o padrao dos dois tipos de processo que o arquivo ja documenta no cabecalho.\n2. Credenciais Appmax existem SOMENTE nos servicos de pagamentos. Nenhuma outra celula as enxerga.\n3. Healthchecks nos processos novos.\n4. APPMAX_CARD_ENABLED_SITES continua VAZIA. Lista vazia impede qualquer cobranca nova no cartao em todos os sites. Prove com teste que a lista vazia bloqueia.\n5. Prove que a ausencia da Appmax nao derruba o Pix: derrube os servicos Appmax e mostre o Pix respondendo.\n6. Valores falsos no CI, nunca segredo real no repositorio.\n\nSomente leitura: services/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L8A; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,19 @@
+{
+  "arquivo": "568-registrar-no-livro-que-a-administracao-saiu-da-internet",
+  "id": "TAR-568",
+  "titulo": "Registrar no livro que a administracao saiu da internet",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro novo em painel/registros com o merge commit, o run do deploy-infra conferido por gh, e os codigos HTTP medidos de fora nos enderecos que sairam e nos que ficaram",
+  "despacho": "Escreva um registro tipo entrega em painel/registros/ dizendo que o PR 1814 (TAR-418) integrou na main e que o deploy-infra publicou o Traefik sem o router do admin. Confira de fora com gh pr view 1814 e gh run view 35540216193. Cole os codigos HTTP medidos de fora: /admin/ e as telas irmas em 404, e /docs/, /mapa-ia/, /cursos/healthz, /, /login, /forum/ continuando a responder. Cite que o registro 036, escrito antes do pouso, dizia publicacao nao verificada. So painel/.",
+  "origem": "pouso do PR 1814 confirmado de fora em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

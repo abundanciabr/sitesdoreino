@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-233353-TAR-544-concluida",
+  "tarefa": "TAR-544",
+  "evento": "concluida",
+  "quando": "2026-09-20T23:33:53+00:00",
+  "quem": "agent/ci/invariantes-do-cartao-appmax",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1821",
+  "verificado_em": "2026-09-20"
+}

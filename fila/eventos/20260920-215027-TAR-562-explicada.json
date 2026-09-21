@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-215027-TAR-562-explicada",
+  "tarefa": "TAR-562",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:50:27+00:00",
+  "quem": "Plano mestre Appmax, lote L9B; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "A prova anterior fala com o sistema por dentro. Ninguem provou o caminho do jeito que o comprador vive.",
+  "o_que_muda": "O comprador nao usa a API, ele usa a tela. Falha que so aparece no navegador nao e vista por nenhum teste de servidor.",
+  "exemplo": "E sentar na cadeira do cliente e comprar de verdade, com o mouse, antes de abrir a loja.",
+  "importancia": 48
+}

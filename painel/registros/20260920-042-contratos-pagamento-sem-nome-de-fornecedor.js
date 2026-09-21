@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-042-contratos-pagamento-sem-nome-de-fornecedor",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "contratos: pagamento sem nome de fornecedor",
+  detalhe: "Rito de Contrato: os tres eventos de pagamento ganham v2 sem nome de fornecedor e o v1 fica intacto.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1819. Validação local: árvore 811c0f13423d0e66bacc64d3cc655b3bb0656c87; commit 288c4532fd16f4dfe6e9243d89ead51995720b62; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-545",
+  gravidade: "info",
+  frente: "vender",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

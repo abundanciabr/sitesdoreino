@@ -130,7 +130,7 @@ limpa são permitidos switch main e pull. A abertura atualiza o espelho quando s
 ## Todo pedido do mantenedor é um lote
 
 Claude Code rege, nunca constrói nem mergeia; Codex usa `despacho`, não decide lei.
-Subagente de escrita é recusado na criação: construir é da fila, o cirúrgico é à mão, e nenhum subagente pergunta ao mantenedor ou cria outro.
+Subagente constrói em paralelo, com model sonnet ou opus declarado; Workflow é recusado. Nenhum subagente pergunta ao mantenedor ou cria outro.
 Antigravity audita e verifica, nunca edita; confira PRs abertos.
 Dependências em série; uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
 Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.

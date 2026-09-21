@@ -34,6 +34,62 @@ não regridem o status.
 idempotente** (ex.: um evento que dispara envio de e-mail, sem tabela de destino
 única) — este atalho não serve. Volte ao receituário R4 com `EventoProcessado`.
 
+## Sessão: o consumer aceita as duas versões do aviso de pagamento
+
+### A idempotência por estado não bastava mais, e a tabela voltou
+
+A decisão registrada acima (idempotência por `Order.status`, sem tabela de
+eventos) resolvia reentrega e fora de ordem, e nada mais: ela não distingue
+"dois fatos diferentes no mesmo pedido" de "um fato só que chegou duas vezes".
+Enquanto existia uma versão só do contrato, a diferença não aparecia.
+
+Com `pagamento.aprovado.v2` e `pagamento.recusado.v2` o mesmo pagamento passa a
+chegar nas DUAS versões, cada uma com o seu `event_id`, e o plano mestre do
+Appmax nomeia a mitigação: dedup por identidade lógica, igual nas quatro células
+consumidoras. Por isso nasceu `FatoAplicado`, com a identidade como chave
+primária. O `UPDATE ... WHERE status=aguardando_pagamento` continua onde estava:
+ele é o que barra o evento atrasado, e os dois guardam coisas diferentes.
+
+### A chave de dedup é a que o contrato publica, e as duas cartas diferem
+
+`contracts/eventos/pagamento.*.v2.json` traz a regra como DADO, em
+`x-ponte-do-v1`, justamente para as quatro células derivarem a MESMA chave:
+
+- `pagamento.aprovado`: o par (`provider`, `provider_reference_id`); no v1 o
+  provider é o literal `mercadopago` e a referência vem de `mp_payment_id`.
+- `pagamento.recusado`: só o `payment_id`. A recusa v1 NUNCA teve referência de
+  fornecedor, nem sob outro nome, então o par não atravessa as versões ali.
+
+Assumir que as duas cartas usam a mesma ponte é o erro caro desta tarefa: com o
+par na recusa, todo v1 recusado vira um fato novo. A tabela `AVISOS` do consumer
+é transcrição literal do schema, e `test_a_ponte_com_o_v1_e_a_que_o_contrato_publica`
+compara as duas contra o arquivo em disco. Ler `contracts/` do teste funciona
+porque o CI roda `make -C services/<celula> ci` com o repositório inteiro em
+disco (`Path(__file__).resolve().parents[3]`).
+
+### Registrar o fato e aplicar o efeito na MESMA transação
+
+Marcar antes e aplicar depois deixa a reentrega encontrar o fato marcado e
+descartar o evento em silêncio (RETROSPECTIVA-FASE-D §4, três células). O
+`transaction.atomic()` em volta dos dois é o que faz o efeito que estoura
+derrubar o registro junto, e é o mesmo `atomic` que decide a corrida entre dois
+consumidores: o segundo bate no índice único e não aplica nada. Guarda:
+`test_efeito_que_estoura_nao_deixa_o_fato_marcado`.
+
+### Envelope de teste pela metade esconde a regressão
+
+Os testes antigos chamavam os handlers com `{"order_id": ..., "site_id": ...}`,
+sem `payment_id` nem `mp_payment_id`. Envelope pela metade passava enquanto o
+handler só lia dois campos, e nenhum deles teria notado o v2 chegando. Os
+envelopes agora moram em `tests/conftest.py`, com a forma completa dos schemas.
+
+### `freeze-de-contrato.sh` roda no Python do PATH, não no venv da sessão
+
+Sem o venv da sessão no `$PATH`, o script acha o Python 3.14 global, o
+`manage.py export_openapi` morre em `No module named 'django'` e o resultado é
+ERROR (instrumento), nunca FAIL. Exporte o `Scripts/` do venv em estilo MSYS
+antes de rodar, como já está registrado na seção de ambiente local abaixo.
+
 ### Auth do próprio front para a API interna: `TOKENS_ACEITOS_PAGINAS`
 
 `contracts/checkout.openapi.yaml` exige Bearer em toda a API, e a doutrina diz que

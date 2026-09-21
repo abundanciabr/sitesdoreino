@@ -1,17 +1,27 @@
 # =============================================================================
 # A VACINA DO DEPLOY, COM GATILHO — TAR-029 (30/08/2026)
 #
-# O PROBLEMA, medido três vezes em dois dias por robôs diferentes: o
-# `deploy-celula` e o `deploy-infra` dividem o grupo de concorrência `deploy`,
-# que guarda UM único run pendente. Quando dois merges chegam perto, o pendente
-# anterior é EXPULSO e termina `cancelled`. O merge fica na `main` sem estar em
-# produção — e `cancelled` não é `failure`: o `alarme-main` não dispara, nada
-# fica vermelho, nenhuma issue nasce. O deploy some em silêncio.
+# O PROBLEMA QUE ORIGINOU ESTE ARQUIVO, medido três vezes em dois dias por
+# robôs diferentes: o `deploy-celula` e o `deploy-infra` dividem o grupo de
+# concorrência `deploy`, que guardava UM único run pendente. Quando dois
+# merges chegavam perto, o pendente anterior era EXPULSO e terminava
+# `cancelled`. O merge ficava na `main` sem estar em produção, e `cancelled`
+# não é `failure`: o `alarme-main` não dispara, nada fica vermelho, nenhuma
+# issue nasce. O deploy sumia em silêncio.
 #
-# E não é azar: TODO PR deste projeto carrega um registro obrigatório em
-# `painel/registros/`, que casa o `paths:` do `deploy-celula`. Ou seja, todo PR
-# de infraestrutura dispara os DOIS deploys, e eles brigam pela mesma vaga.
-# Quanto mais robôs em paralelo, mais vezes por dia.
+# O QUE MUDOU EM 20/09/2026 (TAR-529): o grupo `deploy` passou a declarar
+# `queue: max`, que guarda até 100 runs pendentes em ordem de chegada. A
+# expulsão por disputa de vaga acabou, e com ela a causa mais comum do cinza.
+#
+# ESTE GATILHO CONTINUA NECESSÁRIO, com duas causas no lugar de uma: um
+# `cancelled` de push agora é fila cheia acima de 100 pendentes, ou
+# cancelamento à mão. Os dois deixam o merge na `main` sem chegar ao ar, os
+# dois seguem sem vermelho e sem alarme, e a decisão de repetir ou parar
+# continua sendo a de `ci/rerun_de_deploy.py`.
+#
+# E o volume não é azar: TODO PR deste projeto carrega um registro obrigatório
+# em `painel/registros/`, que casa o `paths:` do `deploy-celula`. Ou seja, todo
+# PR de infraestrutura dispara os DOIS deploys, e eles passam pela mesma fila.
 #
 # O QUE JÁ EXISTIA E NÃO BASTAVA: `ci/rerun_de_deploy.py` sabe decidir o caso
 # desde a TAR-017 — mede a ancestralidade e diz se repetir avança ou seria
@@ -282,9 +292,12 @@ jobs:
           if [ "$CONCLUSAO" = "cancelled" ]; then
             MANCHETE="Um deploy foi CANCELADO e a vacina não conseguiu curá-lo sozinha."
             ROTULO_DO_RUN="run cancelado"
-            PORQUE="Isto acontece porque \`deploy-celula\` e \`deploy-infra\` dividem uma única
-          vaga de espera (\`concurrency: deploy\`): quando dois merges chegam perto,
-          o que estava esperando é expulso (\`armadilhas/173\`, \`/183\`, \`/188\`)."
+            PORQUE="O grupo \`deploy\` roda com \`queue: max\` desde a TAR-529, então ninguém
+          mais é expulso da espera por um merge novo. Com a fila ligada, um \`cancelled\`
+          tem duas causas possíveis: ou a fila passou de 100 pendentes e o run que chegou
+          depois foi recusado, ou alguém cancelou o run à mão. Descubra qual das duas foi
+          antes de redisparar (as \`armadilhas/173\`, \`/183\` e \`/188\` descrevem o mundo da
+          vaga única, que acabou)."
           else
             MANCHETE="Um deploy FALHOU e a vacina não conseguiu curá-lo sozinha."
             ROTULO_DO_RUN="run vermelho"
