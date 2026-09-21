@@ -30,6 +30,21 @@ TOKENS_ACEITOS = {
     v for k, v in os.environ.items() if k.startswith("TOKENS_ACEITOS_") and v
 }
 
+# O token do par consumidor `paginas`: o único que a célula PUBLICA no HTML.
+# apps/pedidos/views.py o embute em dados/pix/cartão, então qualquer visitante
+# lê o valor em "ver código-fonte". As DUAS pontas (o que a página publica e o
+# que a autenticação trata como público) saem desta mesma linha, e é por isso
+# que não existe jeito de elas se separarem em silêncio. Não é fail-hard: sem
+# a variável as páginas ainda renderizam, e a chamada à API volta 401.
+TOKEN_DA_PAGINA = os.environ.get("TOKENS_ACEITOS_PAGINAS", "")
+
+# Os tokens válidos que são públicos, e por isso valem menos que os outros.
+# Derivado, nunca declarado à parte: uma variável de ambiente nova esquecida
+# num ambiente devolveria ali o alcance total sem ninguém perceber. O que um
+# token público ALCANÇA está escrito em apps/core/auth.py; fora daquela lista
+# a resposta é 403, inclusive para a rota que ainda nem existe.
+TOKENS_PUBLICOS = {TOKEN_DA_PAGINA} & TOKENS_ACEITOS
+
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
 INSTALLED_APPS = [

@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -939,9 +940,7 @@ def checar_mandato(raiz: Path, pr: dict) -> Resultado:
                         )
                     else:
                         continue
-                    return Resultado(
-                        "mandato do mantenedor", Estado.FAIL, *recusa
-                    )
+                    return Resultado("mandato do mantenedor", Estado.FAIL, *recusa)
         if any(a["path"].startswith("contracts/") for a in pr.get("files") or []):
             if "contrato" not in {l["name"] for l in pr.get("labels") or []}:
                 return Resultado(
@@ -1023,9 +1022,13 @@ def checar_congelamento(raiz: Path, pr: dict[str, Any]) -> Resultado:
     presas = sorted(set(mapa_de_celulas.celulas_do_diff(arquivos, mapa)) & set(vivos))
     if not presas and any(a.startswith("infra/") for a in arquivos):
         presas = sorted(vivos)
-        motivo = "este PR toca infra/, e o deploy de infra devolve TODAS as células ao :main"
+        motivo = (
+            "este PR toca infra/, e o deploy de infra devolve TODAS as células ao :main"
+        )
     else:
-        motivo = "este PR redeploya uma célula que está voltada para uma imagem anterior"
+        motivo = (
+            "este PR redeploya uma célula que está voltada para uma imagem anterior"
+        )
     if not presas:
         return Resultado(
             "congelamento",
@@ -1505,6 +1508,62 @@ def integrar(numero: int, raiz: Path, *, conferir_apenas=False) -> int:
     return 0
 
 
+# Quantas leituras do mesmo PR antes de aceitar `mergeable=UNKNOWN` como
+# resposta, e quanto esperar entre elas.
+TENTATIVAS_ATE_O_GITHUB_DECIDIR = 3
+PAUSA_ENTRE_AS_LEITURAS = 2.0
+
+
+def carregar_pr_com_reconsulta(raiz: Path, numero: int) -> dict[str, Any]:
+    """Lê o PR insistindo enquanto o GitHub devolver `mergeable=UNKNOWN`.
+
+    O GitHub recalcula a mergeabilidade de forma assíncrona e joga o cálculo
+    fora a cada movimento da `main`; enquanto ele não termina, a API responde
+    UNKNOWN (armadilhas/130). Numa `main` que recebe dezenas de merges por
+    dia, a PRIMEIRA leitura de cada varredura do pouso cai nessa janela fria.
+
+    Sem esta reconsulta, `integrar_abertos` não reconhecia o BEHIND, pulava o
+    `update-branch` e entregava o PR ao `integrar()`, que lia de novo, agora
+    com o cálculo pronto, e reprovava com "a base envelheceu". Duas leituras
+    do mesmo fato, a decisão tomada na pior. Medido na varredura 35549873294
+    (01:07 UTC de 21/09/2026): o #1745 estava BEHIND com os dois checks
+    obrigatórios verdes e mesmo assim não recebeu `update-branch`; em 8 horas
+    o `pouso.yml` rodou 411 vezes, mas só 3 foram varredura (`schedule`) --
+    as outras vieram presas a um ramo e nunca olham um PR parado.
+
+    O nome não promete calculado: UNKNOWN teimoso é devolvido como veio e
+    desce para o `integrar()`, que o reporta como ERROR. Não medir nunca vira
+    PASS ([INV-CI01]). Isto é o degrau 1 da armadilha 130 automatizado.
+    """
+    pr = carregar_pr(raiz, numero)
+    for _ in range(TENTATIVAS_ATE_O_GITHUB_DECIDIR - 1):
+        if pr.get("mergeable") != "UNKNOWN":
+            return pr
+        time.sleep(PAUSA_ENTRE_AS_LEITURAS)
+        pr = carregar_pr(raiz, numero)
+    if pr.get("mergeable") == "UNKNOWN":
+        # Sem esta linha o diagnóstico da varredura volta a sair por
+        # eliminação: o log não guarda nenhuma leitura própria dela.
+        print(
+            f"LEITURA FRIA — PR #{numero}: o GitHub devolveu mergeable=UNKNOWN "
+            f"em {TENTATIVAS_ATE_O_GITHUB_DECIDIR} leituras."
+        )
+    return pr
+
+
+def checks_obrigatorios_verdes(pr: dict[str, Any]) -> bool:
+    """Diz se `CHECKS_OBRIGATORIOS` estão todos verdes, pela regra do portão."""
+    so_obrigatorios = dict(
+        pr,
+        statusCheckRollup=[
+            c
+            for c in pr.get("statusCheckRollup") or []
+            if (c.get("name") or c.get("context")) in CHECKS_OBRIGATORIOS
+        ],
+    )
+    return all(r.estado is Estado.PASS for r in checar_checks(so_obrigatorios))
+
+
 def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
     prs = json.loads(
         _gh(
@@ -1530,12 +1589,18 @@ def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
         if item["isDraft"] or item["isCrossRepository"]:
             continue
         try:
-            pr = carregar_pr(raiz, item["number"])
+            pr = carregar_pr_com_reconsulta(raiz, item["number"])
             if checar_mandato(raiz, pr).estado is not Estado.PASS:
                 continue
+            # Só o PR que já está pronto ganha a base nova. Empurrar a main
+            # para dentro de um PR vermelho re-dispara o CI inteiro, não o
+            # deixa verde, e na próxima mexida da main ele volta a BEHIND: um
+            # laço perpétuo. O PR vermelho segue para o `integrar()`, que
+            # imprime o relatório com o check que reprovou.
             if (
                 pr.get("mergeStateStatus") == "BEHIND"
                 and pr.get("mergeable") == "MERGEABLE"
+                and checks_obrigatorios_verdes(pr)
             ):
                 _gh(
                     [
@@ -1549,6 +1614,11 @@ def integrar_abertos(raiz: Path, *, ramo: str = "") -> int:
                     raiz,
                     "atualizar base para os checks",
                     exigir_stdout=False,
+                )
+                print(
+                    f"BASE ATUALIZADA — PR #{item['number']}: a main entrou no "
+                    "ramo. Os checks medem o mundo novo; o pouso volta no "
+                    "próximo evento."
                 )
                 continue
             integrar(item["number"], raiz)

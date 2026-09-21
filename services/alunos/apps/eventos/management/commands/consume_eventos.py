@@ -9,14 +9,21 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 
 from apps.eventos.models import EventoProcessado
-from apps.matriculas.handlers import ao_pagamento_aprovado
+from apps.matriculas.handlers import ao_pagamento_aprovado, ao_pagamento_estornado
 
 logger = logging.getLogger(__name__)
 
 GRUPO = "alunos"  # nome DESTA célula
 CONSUMIDOR = "worker-1"
-STREAMS = ["eventos.pagamento.aprovado"]
-HANDLERS = {"pagamento.aprovado": ao_pagamento_aprovado}
+STREAMS = ["eventos.pagamento.aprovado", "eventos.pagamento.estornado"]
+HANDLERS = {
+    "pagamento.aprovado": ao_pagamento_aprovado,
+    # [ESTORNO] 20/09/2026: o dinheiro que volta fecha o acesso na hora. Sem
+    # este consumidor o corte dependeria de alguem olhar o painel do fornecedor
+    # e mexer na matricula a mao, que foi exatamente o motivo de o contrato
+    # `pagamento.estornado.v2` nascer.
+    "pagamento.estornado": ao_pagamento_estornado,
+}
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células
 # consumidoras (alunos, checkout, leads, mensageria). Guarda:
@@ -44,6 +51,14 @@ VERSOES_ACEITAS = (1, 2)
 # `pagamento.recusado` o v1 nunca carregou referência de provedor nenhuma, e
 # quem atravessa as versões é o `payment_id`. Quem acrescentar um evento aqui
 # copia a ponte DO CONTRATO daquele evento, nunca a da linha de cima.
+#
+# `no_v1: None` É UMA AFIRMAÇÃO, e não um campo que faltou preencher: aquele
+# evento NASCEU na versão 2 e não tem v1 nenhum para atravessar, então o
+# contrato dele não publica `x-ponte-do-v1` e não há o que copiar. Quem declara
+# isso ganha a recusa de `dados_na_forma_do_v2`: um envelope que se diga v1
+# daquele evento é aviso forjado, e traduzi-lo produziria uma identidade que não
+# é a do fato. `chave_entre_versoes` continua obrigatório em todos, porque é ele
+# que diz o que identifica o fato, exista v1 ou não.
 # Guardas: tests/test_o_mesmo_pagamento_nas_duas_versoes.py.
 PONTE_DO_V1 = {
     "pagamento.aprovado": {
@@ -52,6 +67,14 @@ PONTE_DO_V1 = {
             "provider": "mercadopago",
             "provider_reference_id": "data.mp_payment_id",
         },
+    },
+    # [ESTORNO] O par do pagamento outra vez, e pela MESMA razão do aprovado: é
+    # ele que o contrato aponta como "qual pagamento foi estornado". Coincidir
+    # com a linha de cima é coincidência de contratos, não herança: o
+    # `pagamento.recusado` da mesma família atravessa por outro campo.
+    "pagamento.estornado": {
+        "chave_entre_versoes": ["provider", "provider_reference_id"],
+        "no_v1": None,  # nasceu na v2 (Rito de Contrato de 20/09/2026)
     },
 }
 
@@ -69,6 +92,25 @@ class EventoSemPonte(LookupError):
     """Evento consumido sem a ponte entre versões declarada em PONTE_DO_V1."""
 
 
+def ponte_do_evento(evento: str) -> dict:
+    """A linha de PONTE_DO_V1 daquele evento, ou a recusa em nome dele.
+
+    As duas funções abaixo precisam da mesma linha, e por razões diferentes: uma
+    para saber se existe v1 a traduzir, outra para saber o que identifica o
+    fato. Buscar em dois lugares deixaria uma delas esquecer o `KeyError`, e o
+    evento consumido sem ponte voltaria a ser um `KeyError` cru no meio do laço.
+    """
+    ponte = PONTE_DO_V1.get(evento)
+    if ponte is None:
+        raise EventoSemPonte(
+            f"{evento} é consumido sem ponte entre versões declarada. Copie o "
+            "`x-ponte-do-v1` do contrato v2 desse evento para PONTE_DO_V1, e "
+            "não reaproveite a chave de outro evento: elas são diferentes. "
+            "Evento que nasceu na v2 declara `no_v1: None`."
+        )
+    return ponte
+
+
 def dados_na_forma_do_v2(envelope: dict) -> dict:
     """O `data` do evento na forma do v2, a única que esta célula lê.
 
@@ -81,6 +123,16 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
     `contracts/eventos/pagamento.aprovado.v2.json`: `site_id` virou
     `platform_site_id` para não se confundir com o `site_id` do fornecedor, e
     `mp_payment_id` virou o par neutro `provider` mais `provider_reference_id`.
+
+    **Nem todo evento desta célula tem v1.** `VERSOES_ACEITAS` é do CONSUMIDOR,
+    não de cada aviso: ele diz quais números esta célula sabe ler, e não que
+    todos os avisos existam nos dois. `pagamento.estornado` nasceu na versão 2
+    (Rito de Contrato de 20/09/2026), e um envelope que se diga v1 dele é aviso
+    forjado ou emissor com defeito. Traduzir esse envelope pelas regras do
+    `pagamento.aprovado` daria um `platform_site_id` e um par de pagamento
+    plausíveis, tirados dos campos errados, e o consumidor cortaria o acesso de
+    quem aquela identidade calhasse de apontar. Recusar é a única resposta
+    honesta, e a mensagem fica no PEL como qualquer versão desconhecida.
     """
     versao = envelope["version"]
     if versao not in VERSOES_ACEITAS:
@@ -92,6 +144,13 @@ def dados_na_forma_do_v2(envelope: dict) -> dict:
     dados = envelope["data"]
     if versao == 2:
         return dados
+    if ponte_do_evento(envelope["event"])["no_v1"] is None:
+        raise VersaoDesconhecida(
+            f"{envelope['event']} chegou na versão 1, e esse aviso nasceu na "
+            "versão 2: não existe v1 dele para traduzir. Confira quem publicou "
+            "este envelope, porque o contrato em contracts/eventos/ não tem "
+            "versão 1 nenhuma."
+        )
     traduzido = {
         chave: valor
         for chave, valor in dados.items()
@@ -121,13 +180,7 @@ def identidade_do_fato(evento: str, dados: dict) -> str:
     células consumidoras deste lote, para que a chave de um fato seja legível do
     mesmo jeito em qualquer uma.
     """
-    ponte = PONTE_DO_V1.get(evento)
-    if ponte is None:
-        raise EventoSemPonte(
-            f"{evento} é consumido sem ponte entre versões declarada. Copie o "
-            "`x-ponte-do-v1` do contrato v2 desse evento para PONTE_DO_V1, e "
-            "não reaproveite a chave de outro evento: elas são diferentes."
-        )
+    ponte = ponte_do_evento(evento)
     return "|".join(
         [
             str(dados["platform_site_id"]),

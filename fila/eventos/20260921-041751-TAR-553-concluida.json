@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-041751-TAR-553-concluida",
+  "tarefa": "TAR-553",
+  "evento": "concluida",
+  "quando": "2026-09-21T04:17:51+00:00",
+  "quem": "agent/alunos/estorno-suspende-a-matricula",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1842",
+  "verificado_em": "2026-09-21"
+}

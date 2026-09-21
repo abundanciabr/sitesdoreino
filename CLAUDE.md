@@ -1,7 +1,7 @@
 # CLAUDE.md | sitesdoreino
 
 Lei canônica: leia `CONSTITUICAO.md`, `RITOS.md` e instruções por caminho.
-Motivos: `docs/decisoes/DECISAO-claude-md-so-lei.md`.
+Motivos: `docs/decisoes/DECISAO-historia-das-leis-do-claude-md.md`.
 
 ## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa
 
@@ -110,8 +110,7 @@ Use o contexto direcionado da abertura `ci/sessao.py`: confira origens,
 ausências e truncamento; abra entradas citadas/recuperadas,
 `services/<celula>/LICOES.md` e uma vez por sessão os 8 padrões de
 `docs/decisoes/RETROSPECTIVA-FASE-D.md`. Leis globais e por caminho permanecem.
-Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`:
-JSON com até 3 lições de 500 caracteres e origens.
+Consulte `python ci/consultar_armadilhas.py "<erro>"` ou `--caminho <arquivo>`.
 Índices ausentes: `python ci/indice_de_armadilhas.py`; não suponha ausência
 de restrições. Para aprofundamento, use `--caminho`/`--sintoma` da sessão ou abra
 `armadilhas/INDICE.md` sob demanda.
@@ -135,7 +134,7 @@ alterações. Recusa exige conferir dono e ação segura, nunca forçar.
 Baseline da abertura é conferido antes de editar; sem contêiner, rode testes
 dos alvos. Falha herdada exige saída e revisão medida, ausência não aprova.
 No principal são livres leituras, fetch, worktree e gh; somente com árvore
-limpa são permitidos switch main e pull. A abertura atualiza o espelho quando seguro.
+limpa são permitidos switch main e pull.
 
 **Quem faz valer:** `ci/sessao.py`, `ci/muralha_pasta_compartilhada.py`
 (aviso SessionStart; a proibição de editar continua lei).
@@ -146,7 +145,7 @@ Claude Code rege, nunca constrói nem mergeia; Codex usa `despacho`, não decide
 Subagente constrói em paralelo, com model sonnet ou opus declarado; Workflow é recusado. Nenhum subagente pergunta ao mantenedor ou cria outro.
 Antigravity audita e verifica, nunca edita; confira PRs abertos.
 Dependências em série; uma célula/PR; 15 arquivos fora `painel/` e `fila/`.
-Contrato congelado/CODEOWNERS: mandato escrito. Dependência fora do brief: maestro, `Depende-de: #N`.
+Dependência fora do brief: maestro, `Depende-de: #N`.
 Revisão facultativa; `make pr`: reserva, recibo e eventos; escrivão não duplica.
 Fichas: `.claude/agents/`, `.codex/agents/`; `RUNBOOK-LOTES.md` rege.
 `gh pr comment` só em PR aberto; tarefa nova: `fila.py criar`, decisão e mandato.
@@ -165,11 +164,10 @@ Meça estado numa chamada: `python ci/resumo_maestro.py`.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
-Regra 3 vale mesmo em mais PRs/sessões; duração não desencoraja. Preserve
-Ritos e prova vermelho→verde. Serviço pago, credencial, limite legal e
-segurança são bloqueios reais.
+Regra 3 vale mesmo em mais PRs/sessões. Preserve Ritos e prova vermelho→verde.
+Serviço pago, credencial, limite legal e segurança são bloqueios reais.
 
-Escopo desde 19/09/2026: o site é `meshcraft.top`. `basileiatoutheou.org` está
+Escopo: o site é `meshcraft.top`. `basileiatoutheou.org` está
 congelado e não recebe trabalho, exceto a rota do webhook do Mercado Pago presa
 a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
 
@@ -178,15 +176,14 @@ a esse host. `docs/decisoes/DECISAO-foco-em-meshcraft.md`.
 ## Nenhum texto publicado sai com travessão
 
 Proíba `—`, `–`, `―` e entidades HTML em texto publicado.
-Reescreva em português: vírgula para explicação, parênteses para acessório,
-dois-pontos para fechamento, aspas para fala. Não separe verbo de complemento
-nem continuação direta com dois-pontos; use conectivo ou ponto. Leia em voz alta.
+Reescreva em português correto. Não separe verbo de complemento nem
+continuação direta com dois-pontos; use conectivo ou ponto.
 Hífen livre; título de aba usa barra: `Cadastro | Meshcraft`.
 Vale em templates, traducoes, documentos, management/commands, rótulos
 TextChoices fora de migrations e arquivos `ci:texto-publicado`.
 Exclua bastidor (`ci/texto-publico-bastidor.txt`), `painel/ia/`, não publicado
 e a obra dele (aulas/livro), sem contagem de riscas nem pedido de reescrita.
-O portão mede arquivos; texto semeado exige migração de dados (forum/0003).
+O portão mede arquivos; texto semeado exige migração de dados.
 Confira `python ci/travessao.py --listar`.
 
 **Quem faz valer:** `ci/travessao.py` no pre-commit (staged), CI e testes do editor.
@@ -201,8 +198,8 @@ por `python ci/reservar.py numero registro`. Nunca edite registro; correção
 Só registro é commitado; painel.html e livro-AAAAMM.js são gerados.
 Merge confirmado de fora: `gh pr view <N> --json state,mergedBy,mergeCommit`
 e registro na mesma resposta. Telas calculam o livro, sem lista paralela.
-Superfície muda em `painel/logica.js` por PR com guarda; painéis em arquivos/
-são lápides. Sem tipo específico, use nota.
+Superfície muda em `painel/logica.js` por PR com guarda.
+Sem tipo específico, use nota.
 
 **Quem faz valer:** `ci/divida_do_livro.py`, pre-commit e portão de pouso.
 
@@ -210,7 +207,7 @@ são lápides. Sem tipo específico, use nota.
 
 PR pronto integra por `pouso.yml` e `ci/mergear.py --automatico`, sem revisor,
 atestado, etiqueta ou gesto da maestro. `muralhas` e `ci-celula-gate` precisam
-passar no SHA atual; a main permanece protegida. Contrato congelado e CODEOWNERS
+passar no SHA atual. Contrato congelado e CODEOWNERS
 exigem a palavra do mantenedor, e ela vale onde ele a deu: dita na sessão vale
 tanto quanto digitada no site. Quem a recebeu transcreve `Mandato-do-mantenedor:`
 na descrição com o pedido, os caminhos autorizados e a origem (sessão e data).
@@ -234,10 +231,8 @@ execute. Antes dessas entregas, leia `docs/guia-mantenedor.md`.
 
 Sempre PT-BR. Execute o possível; ele entra no insubstituível. Sem SSH da
 VPS, use pipeline. Antes de passo manual/decisão, leia `docs/guia-mantenedor.md`.
-Poupar pergunta nunca foi poupar informação. Não perguntar é não transferir
-decisão sua; nunca dispensa instruir. Toda proibição de perguntar, inclusive a
-do subagente, obriga a dizer no fecho o que vem depois. Calar o próximo passo
-para não incomodar é falha, não cortesia.
+Toda proibição de perguntar, inclusive a do subagente, obriga a dizer no fecho
+o que vem depois.
 
 **Quem faz valer:** julgamento.
 
@@ -249,9 +244,9 @@ Reimprima o checklist só quando uma caixa mudou ou surgiu bloqueio, nunca
 após o gancho exibi-lo. No fecho, uma prestação de contas (regra 9): PRONTO
 com caixa aberta é contradição, NÃO PRONTO honesto é aceito, e leitura,
 pergunta ou acordar não geram dívida. **Instruções** fecha toda prestação de
-contas e o gancho recusa sem ele: terminar no veredito deixa a tarefa parada.
-PRONTO sobre a última medição vermelha é a mesma contradição: conserte e meça
-de novo, ou diga NÃO PRONTO e explique nas Instruções.
+contas e o gancho recusa sem ele.
+PRONTO sobre a última medição vermelha: conserte e meça de novo, ou diga
+NÃO PRONTO e explique nas Instruções.
 Entrega em voo não fecha sessão: PR aberto, rascunho, check ou deploy sem
 veredito é objetivo incompleto; meça com teto (`ci/esperar.py`),
 nunca em laço; remedeie o técnico, e só decisão dele vira pendência dele

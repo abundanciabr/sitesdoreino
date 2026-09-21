@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-024845-TAR-487-explicada",
+  "tarefa": "TAR-487",
+  "evento": "explicada",
+  "quando": "2026-09-19T02:48:45+00:00",
+  "quem": "Medicao da TAR-421 em 19/09/2026: a pasta de avisos entre areas do site nao tem nenhum aviso sobre acompanhamento comercial humano, e sem ele nenhuma outra area pode obedecer.",
+  "o_que_e": "Quando alguem da equipe comeca a conversar com um interessado, esse fato fica guardado so num canto do site. Nenhuma outra parte do site fica sabendo.",
+  "o_que_muda": "Passa a existir um aviso oficial, escrito de uma vez, que as outras partes do site podem ouvir. Sem ele, o site continua mandando mensagem automatica para quem ja esta conversando com uma pessoa de verdade.",
+  "exemplo": "E a folha de aviso que um atendente pendura no balcao dizendo eu ja estou atendendo esta pessoa. Enquanto ela nao existir, o outro atendente do outro guiche chama a mesma pessoa de novo.",
+  "importancia": 90
+}

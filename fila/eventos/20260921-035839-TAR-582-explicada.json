@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-035839-TAR-582-explicada",
+  "tarefa": "TAR-582",
+  "evento": "explicada",
+  "quando": "2026-09-21T03:58:39+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "Cinco fichas de agente (despacho e maquinista em .claude, despacho, maquinista e revisor em .codex) ainda instruem a maestro a publicar atestado e rodar mergear.py com --pousar, uma flag que nao existe mais no script.",
+  "o_que_muda": "Quem seguir a ficha ao pe da letra hoje bate num erro do argparse e perde tempo tentando pousar manualmente algo que a pista ja resolve sozinha desde a integracao automatica.",
+  "exemplo": "E como um manual de carro que ainda manda puxar o afogador num motor injetado: o gesto descrito nao existe mais no carro real.",
+  "importancia": 30
+}
