@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/oportunidade.transferencia-decidida.v1.json",
+  "title": "oportunidade.transferencia-decidida.v1",
+  "description": "O NOVO TITULAR RESPONDEU AO PEDIDO DE TRANSFERÊNCIA, E É A RESPOSTA DELE QUE MOVE A RESPONSABILIDADE. Dentro da `leads`, transferência não é troca: pedir deixa a responsabilidade onde está, e só o aceite a move (`services/leads/apps/core/oportunidades.py`). Este aviso publica a decisão, e só a decisão. O PEDIDO NÃO VIAJA de propósito, porque enquanto ninguém respondeu nada mudou, e um consumidor que ouvisse o pedido passaria a manter um segundo modelo de responsabilidade só para descobrir, depois, que ela não tinha saído do lugar. A recusa viaja porque é um fato e porque fecha a pergunta: quem ouviu o pedido por outro caminho precisa saber que ele morreu. Publicado pela `leads` em `POST /opportunities/{id}/transfers/{transfer_id}/accept` e em `.../refuse`. QUEM RESPONDE PELA PESSOA AGORA sai do par de titulares mais a decisão: em `aceita` é o `para_titular_id`, em `recusada` continua sendo o `de_titular_id`. Nenhum campo derivado é publicado, porque campo derivado dentro de evento imutável envelhece contra o próprio evento. LEI DESTE EVENTO: só identificador opaco viaja. O `motivo` do pedido e o `motivo_recusa` são escritos por gente e ficam na `leads`, junto com todo o resto do histórico. Rito de Contrato (RITOS.md §3) de 21/09/2026, com mandato nominal do mantenedor para `contracts/eventos/`. Provedor implementa primeiro, consumidores em PRs seguintes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "oportunidade.transferencia-decidida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único deste fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila move a responsabilidade uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante em que o novo titular respondeu, com fuso. Sem fuso, duas transferências do mesmo dia na mesma oportunidade não podem ser ordenadas, e quem consome fica com o titular errado."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "oportunidade_id",
+        "lead_id",
+        "transferencia_id",
+        "de_titular_id",
+        "para_titular_id",
+        "decisao"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Site (tenant) a que o interessado pertence, e chave de roteamento como em todo evento desta plataforma. Viaja nos três avisos do acompanhamento humano porque é ele que impede uma célula consumidora de cruzar pessoas de sites diferentes."
+        },
+        "oportunidade_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da oportunidade dentro da célula `leads`, o mesmo do `oportunidade.assumida` que abriu este acompanhamento. É ele que diz de qual acompanhamento esta decisão fala."
+        },
+        "lead_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO do interessado dentro da célula `leads`. Viaja aqui, e não só no `oportunidade.assumida`, para que quem consome não precise guardar a ligação entre oportunidade e pessoa só para ler esta carta. Nunca é o e-mail, o telefone nem o nome de ninguém."
+        },
+        "transferencia_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO do pedido de transferência que acaba de ser respondido, o `TransferenciaResponsabilidade.id` de `contracts/leads.openapi.yaml`. Uma oportunidade pode ter vários pedidos ao longo da vida, e é ele que diz qual deles morreu ou venceu."
+        },
+        "de_titular_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da conta comercial que respondia pela pessoa até esta decisão. Em `recusada`, continua respondendo."
+        },
+        "para_titular_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da conta comercial convidada a assumir, e quem tomou a decisão que este aviso publica. Em `aceita`, passa a responder pela pessoa."
+        },
+        "decisao": {
+          "type": "string",
+          "enum": [
+            "aceita",
+            "recusada"
+          ],
+          "description": "A resposta do novo titular, nas duas únicas palavras que a `leads` já usa em `RegistroHistoricoOportunidade.TIPOS` (`transferencia_aceita` e `transferencia_recusada`). `pendente` não aparece aqui de propósito: pedido sem resposta não é decisão e não vira aviso."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "event": "oportunidade.transferencia-decidida",
+      "version": 1,
+      "event_id": "5e8a1f60-7c3b-4d29-a8f4-2b6c9d1e0a35",
+      "occurred_at": "2026-09-21T14:32:47-03:00",
+      "data": {
+        "site_id": "meshcraft",
+        "oportunidade_id": "3f1c8a90-2b6d-4e5f-8a1c-7d9e0b3a5c62",
+        "lead_id": "c4e2a7b1-8d5f-4a3c-9b6e-1f0d2c8a4e93",
+        "transferencia_id": "a1b2c3d4-5e6f-4071-8293-a4b5c6d7e8f9",
+        "de_titular_id": "comercial-07",
+        "para_titular_id": "comercial-12",
+        "decisao": "aceita"
+      }
+    }
+  ]
+}
