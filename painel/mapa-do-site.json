@@ -1252,6 +1252,24 @@
     },
     {
       "celula": "admin",
+      "rota": "^docs/(?P<nome>[a-z0-9-]+)/moldura$",
+      "endereco": "/docs/(?P<nome>[a-z0-9-]+)/moldura$",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A moldura do documento em página",
+      "descricao": "A estrutura segura onde o corpo do documento em formato pagina é desenhado dentro de um iframe."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/moldura$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/moldura$",
+      "alcance": "interno",
+      "para_quem": "equipe",
+      "titulo": "A moldura interna do documento em página",
+      "descricao": "A estrutura interna usada pelo editor para renderizar documentos em formato pagina."
+    },
+    {
+      "celula": "admin",
       "rota": "documentos/",
       "endereco": "/admin/documentos/",
       "alcance": "interno",
