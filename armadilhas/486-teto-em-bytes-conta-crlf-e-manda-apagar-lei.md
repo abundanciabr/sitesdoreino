@@ -11,9 +11,6 @@ gatilho:
 guarda:
   tipo: teste
   detector: ci/tests/test_padrao_de_trabalho.py
-sinal:
-  - "teto de CLAUDE.md FAIL na bancada e PASS na CI"
-  - "Mova história para docs/decisoes com o arquivo dentro do teto"
 licao: Portão que mede tamanho de arquivo tem de normalizar CRLF antes de contar. No Windows com core.autocrlf=true o checkout ganha 1 byte por linha, e um teto medido em bytes crus reprova só na bancada de quem trabalha. Pior que o falso vermelho é o conselho dele, que manda apagar texto de verdade para consertar um fim de linha.
 ---
 
