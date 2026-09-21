@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/oportunidade.encerrada.v1.json",
+  "title": "oportunidade.encerrada.v1",
+  "description": "O ACOMPANHAMENTO HUMANO TERMINOU, E A AUTOMAÇÃO PODE VOLTAR. É o par do `oportunidade.assumida`, e sem ele aquele aviso seria uma ordem de silêncio sem prazo: a automação pararia e nunca mais saberia que pode falar. Publicado pela `leads` em `POST /opportunities/{opportunity_id}/close`. ESTE EVENTO É A PRÓPRIA AUTORIZAÇÃO para a automação voltar, e é por isso que ele carrega o `titular_id`: quem encerra é o titular, e o provedor recusa qualquer outro (`services/leads/apps/core/oportunidades.py::_oportunidade_da_conta`). A autorização já está provada na origem, então nenhuma célula consumidora precisa de um segundo modelo de responsabilidade para conferi-la de novo. Um acompanhamento encerrado pode ser reaberto, e a reabertura publica outro `oportunidade.assumida`, com `tipo` igual a `reabertura`. LEI DESTE EVENTO: só identificador opaco viaja. O `resultado` viaja porque é um valor fechado e é o que muda o que a automação deve dizer depois, mas o `motivo` e a `evidencia` do encerramento são escritos por gente e ficam na `leads`. Quem precisar deles pergunta pelo `oportunidade_id`. Rito de Contrato (RITOS.md §3) de 21/09/2026, com mandato nominal do mantenedor para `contracts/eventos/`. Provedor implementa primeiro, consumidores em PRs seguintes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "oportunidade.encerrada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único deste fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila libera a automação uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante em que o titular encerrou, com fuso. É ele que quem consome compara com o `occurred_at` do `oportunidade.assumida` para saber qual dos dois é o último, e sem fuso essa comparação erra."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "oportunidade_id",
+        "lead_id",
+        "titular_id",
+        "resultado"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Site (tenant) a que o interessado pertence, e chave de roteamento como em todo evento desta plataforma. Viaja nos três avisos do acompanhamento humano porque é ele que impede uma célula consumidora de cruzar pessoas de sites diferentes."
+        },
+        "oportunidade_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da oportunidade dentro da célula `leads`, o mesmo do `oportunidade.assumida` que abriu este acompanhamento. É ele que fecha o par, e é por ele que se pergunta o detalhe que não viaja."
+        },
+        "lead_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO do interessado dentro da célula `leads`. É este o campo que responde à pergunta que libera a automação: para quem eu já posso voltar a falar. Nunca é o e-mail, o telefone nem o nome de ninguém."
+        },
+        "titular_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da conta comercial que encerrou, e que era a titular. É o que torna este aviso uma autorização e não um palpite: o provedor já recusou o encerramento de qualquer outra conta antes de publicar. Nunca é o e-mail."
+        },
+        "resultado": {
+          "type": "string",
+          "enum": [
+            "ganha",
+            "perdida",
+            "desqualificada"
+          ],
+          "description": "Como terminou, nas três palavras que `DesfechoOportunidade.resultado` e `EtapaEncerradaOportunidade` já dizem em `contracts/leads.openapi.yaml`. Não se reinventa vocabulário na fronteira: um quarto valor, ou um sinônimo, obrigaria cada consumidor a manter uma tabela de tradução. Viaja porque muda o que a automação deve dizer depois, já que quem foi desqualificado não volta para a mesma esteira de quem foi perdido."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "event": "oportunidade.encerrada",
+      "version": 1,
+      "event_id": "0d4f6a83-9e21-4b57-bc08-3f5e7a1d2c46",
+      "occurred_at": "2026-09-24T16:05:11-03:00",
+      "data": {
+        "site_id": "meshcraft",
+        "oportunidade_id": "3f1c8a90-2b6d-4e5f-8a1c-7d9e0b3a5c62",
+        "lead_id": "c4e2a7b1-8d5f-4a3c-9b6e-1f0d2c8a4e93",
+        "titular_id": "comercial-12",
+        "resultado": "ganha"
+      }
+    }
+  ]
+}
