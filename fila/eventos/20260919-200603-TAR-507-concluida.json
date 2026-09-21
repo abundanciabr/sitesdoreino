@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-200603-TAR-507-concluida",
+  "tarefa": "TAR-507",
+  "evento": "concluida",
+  "quando": "2026-09-19T20:06:03+00:00",
+  "quem": "agent/docs/decisao-pagina-antes-do-experimento",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1775",
+  "verificado_em": "2026-09-19"
+}
