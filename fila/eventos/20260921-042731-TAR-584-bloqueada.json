@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-042731-TAR-584-bloqueada",
+  "tarefa": "TAR-584",
+  "evento": "bloqueada",
+  "quando": "2026-09-21T04:27:31+00:00",
+  "quem": "despacho",
+  "detalhe": "O que trava: o ramo agent/ci/lei-fim-dos-loops, onde esta a lei, esta reservado por outra sessao que ainda estava mexendo nele. Em 21/09/2026 as 01h04, vinte minutos antes desta medicao, o worktree wt-ci-lei-fim-dos-loops-fix tinha alteracoes nao salvas exatamente nos cinco arquivos desta tarefa. Tomar o ramo a forca apagaria o trabalho dessa sessao, entao nao tomei. O que destrava: esse worktree liberar o ramo. Quanto leva: o trabalho em si e curto, porque as contas ja estao feitas e conferidas, a main de hoje tem o arquivo da lei com 12672 bytes, o texto novo do mantenedor pesa 801, somam 13473 contra o limite de 13500 e sobram 27 bytes. O que a maestro precisa saber: a outra sessao esta partindo de uma copia velha da main, de antes do PR 1839 que encolheu o arquivo, e por isso esta encurtando o texto do mantenedor e subindo o limite de 13500 para 14000. Com o rebase na main de hoje nenhuma dessas duas coisas e necessaria.",
+  "espera": "fila"
+}

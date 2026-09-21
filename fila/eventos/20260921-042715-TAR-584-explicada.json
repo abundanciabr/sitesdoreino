@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-042715-TAR-584-explicada",
+  "tarefa": "TAR-584",
+  "evento": "explicada",
+  "quando": "2026-09-21T04:27:15+00:00",
+  "quem": "Brief da maestro em 21/09/2026, sobre o PR #1657 aberto em 14/09/2026",
+  "o_que_e": "Em 14 de setembro o mantenedor escreveu uma regra nova para o padrao de trabalho, proibindo que um robo pergunte ao outro como esta o Git, o pedido de mudanca, os testes ou o pouso. O texto ficou parado num pedido de mudanca aberto desde entao, por dois motivos de maquina: o arquivo da lei estourava o tamanho maximo permitido e o portao que confere as regras so conhecia dez delas.",
+  "o_que_muda": "Os robos param de gastar rodadas de conversa se informando sobre um estado que cada um consegue consultar sozinho, e passam a agir direto sobre o resultado. Enquanto a regra nao entra no arquivo da lei, ela nao vale para ninguem e o desperdicio continua todo dia.",
+  "exemplo": "Hoje um robo pergunta ao outro se o pedido de mudanca ja passou nos testes, espera a resposta e so depois age. Com a regra valendo, ele roda o proprio comando que responde isso e age no mesmo minuto.",
+  "importancia": 60
+}
