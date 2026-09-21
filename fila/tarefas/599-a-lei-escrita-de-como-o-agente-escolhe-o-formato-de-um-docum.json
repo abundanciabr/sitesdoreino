@@ -1,0 +1,21 @@
+{
+  "arquivo": "599-a-lei-escrita-de-como-o-agente-escolhe-o-formato-de-um-docum",
+  "id": "TAR-599",
+  "titulo": "A lei escrita de como o agente escolhe o formato de um documento",
+  "toca": [
+    "docs"
+  ],
+  "depende_de": [
+    "TAR-596"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Decisao escrita em docs/decisoes com mandato do mantenedor transcrito, sem travessao, e citada pelo codigo das duas pistas.",
+  "despacho": "Ver brief da maestro na sessao de 21/09/2026.",
+  "origem": "Pedido do mantenedor em 21/09/2026.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

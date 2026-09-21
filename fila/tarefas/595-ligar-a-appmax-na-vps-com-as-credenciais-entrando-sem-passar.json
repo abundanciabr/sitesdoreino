@@ -1,0 +1,20 @@
+{
+  "arquivo": "595-ligar-a-appmax-na-vps-com-as-credenciais-entrando-sem-passar",
+  "id": "TAR-595",
+  "titulo": "Ligar a Appmax na VPS, com as credenciais entrando sem passar por chat",
+  "toca": [
+    "infra",
+    "pagamentos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Execucao do script num alvo de teste mostrando as tres garantias: env preservado em .bak antes da edicao, segredo nao aparecendo em ps nem no historico, e a rota de instalacao respondendo 200 com external_id em UUID depois da configuracao. Teste provando que o exemplo de env documenta APPMAX_INSTALACOES e que nenhuma variavel Appmax morta sobrou. Suite de ci verde.",
+  "despacho": "Celula infra. O aplicativo da Meshcraft ja esta cadastrado na Appmax e a rota\nde instalacao ja esta no ar em https://meshcraft.top/api/pagamentos/appmax/instalacao.\nMedido em 21/09/2026: POST com app_id falso responde 403, ou seja, a rota vive e recusa\ncomo deve. Falta a VPS saber qual app_id e nosso, e hoje nao ha como dizer isso a ela sem\no segredo passar por chat.\n\nO buraco medido: services/pagamentos/config/settings.py le a variavel APPMAX_INSTALACOES,\num JSON no formato {\"<app_id numerico>\": {\"alias\": \"Loja\", \"sites\": [\"<site_id>\"]}}, e\ninfra/env/pagamentos.env.exemplo NAO documenta essa variavel. Ele documenta APPMAX_APP_ID,\nque nenhuma linha do codigo le. Quem configurar a VPS pelo exemplo preenche a variavel\nerrada, a rota segue respondendo 403 e ninguem descobre por que a instalacao falhou.\n\nAlvos:\n1. infra/ligar-a-appmax.sh, no molde exato de infra/por-a-chave-da-ia-do-forum.sh: rodado\n   dentro da VPS por curl, sem argumento nenhum, perguntando cada credencial com digitacao\n   invisivel. Nenhum segredo entra por linha de comando (armadilhas/090). Backup .bak-<epoch>\n   do env antes de qualquer edicao, idempotente, e recarga da celula pagamentos no fim.\n   Ele escreve no env de pagamentos: APPMAX_INSTALACOES (montado pelo proprio script a\n   partir do app_id e do alias perguntados), APPMAX_AUTH_URL, APPMAX_API_URL,\n   APPMAX_APP_CLIENT_ID, APPMAX_APP_CLIENT_SECRET.\n2. O valor de sites dentro do APPMAX_INSTALACOES e o site_id interno do catalogo, nao o\n   host. O script DESCOBRE esse id dentro da VPS, consultando a propria plataforma, e nunca\n   pede ao mantenedor um identificador que ele nao tem como saber. Se nao conseguir\n   descobrir, ele PARA com mensagem que diz o que houve e o que fazer, e nao escreve env\n   pela metade.\n3. infra/env/pagamentos.env.exemplo passa a documentar APPMAX_INSTALACOES com o formato\n   real e um exemplo. Se APPMAX_APP_ID nao for lido por nenhuma linha do codigo, remova a\n   linha em vez de deixar duas variaveis concorrentes; confira com git grep antes.\n4. Ao fim, o script IMPRIME o resultado de uma chamada real a rota de instalacao com o\n   app_id configurado, para o mantenedor ver na tela que a porta abriu. Nenhum segredo nessa\n   saida.\n\nEstado final exigido: o mantenedor roda uma linha dentro da VPS, responde as perguntas, e ve\na rota de instalacao deixar de responder 403.\n\nSomente leitura: services/pagamentos/, services/checkout/, contracts/.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos. Transcreva na\ndescricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que\neste lote toca, separados por espaco, e da origem.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente: prova vermelho para verde, nenhum\nplaceholder, nenhum travessao em texto publicado, mensagem de erro que diz o que houve e o\nque fazer. Abra a bancada por RITOS.md secao 1 com py -3.12 ci/sessao.py, nunca edite o\nclone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao\ncite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax; cadastro do aplicativo feito pelo mantenedor em 21/09/2026",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

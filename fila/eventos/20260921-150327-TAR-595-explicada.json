@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-150327-TAR-595-explicada",
+  "tarefa": "TAR-595",
+  "evento": "explicada",
+  "quando": "2026-09-21T15:03:27+00:00",
+  "quem": "despacho do mantenedor",
+  "o_que_e": "Um comando que o mantenedor roda dentro do servidor para entregar a ele as credenciais da Appmax, digitadas em tela invisivel, sem que nenhum segredo passe por conversa, print ou historico.",
+  "o_que_muda": "Hoje o servidor nao sabe qual aplicativo da Appmax e nosso, entao a porta de instalacao recusa a Appmax e a compra no cartao nao pode nem comecar. Depois disso a porta abre e o cartao fica a um passo de cobrar.",
+  "exemplo": "Ele cola uma linha no servidor, o comando pergunta as credenciais uma a uma sem mostrar o que ele digita, e no fim imprime na tela a porta da Appmax respondendo que aceitou a instalacao.",
+  "importancia": 80
+}
