@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-042-admin-o-crivo-explicado-fechou-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o Crivo explicado fechou no ar, so para administradores",
+  detalhe: "O PR 1863 pousou e o deploy da admin concluiu verde. De fora, meshcraft.top/docs/o-crivo-explicado-do-zero responde 404 e some da lista publica.",
+  autoridade: "github",
+  evidencia: "gh pr view 1863 --json state,mergedBy,mergeCommit: MERGED e7cbc727 by abundanciabr. deploy-celula run 35622832197 success. curl da URL publica: HTTP 404, sem titulo e sem slug. Lista /docs/: HTTP 200, sem o titulo.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: "20260921-041-admin-o-crivo-explicado-so-para-admins",
+  relacao: "baixa",
+  tarefa: null,
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
