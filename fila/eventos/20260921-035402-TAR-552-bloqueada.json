@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-035402-TAR-552-bloqueada",
+  "tarefa": "TAR-552",
+  "evento": "bloqueada",
+  "quando": "2026-09-21T03:54:02+00:00",
+  "quem": "despacho-checkout-porta-publica-do-cartao-tokenizado",
+  "detalhe": "A porta publica do cartao nao cabe nesta tarefa como escrita: ela exige mudar dois contratos congelados, e contrato muda por rito proprio com o mantenedor (RITOS.md secao 3), em PR que so pode conter contracts/ e leva a etiqueta contrato. Medido no worktree: com a rota nova no router, ci/contract_freeze.py checkout reprova em contrato/checkout e em seguranca/checkout. Fora isso, a rota que a celula pagamentos ja expoe (POST /intents/{intent_id}/card) recusa os campos que a Appmax exige (ip, holder_name, holder_document_number) porque o schema CardConfirm tem additionalProperties false, e nao existe rota nenhuma de consulta de parcelas em pagamentos. Destrava em tres passos nesta ordem: 1) PR so de contratos, com a etiqueta contrato, ampliando checkout.openapi.yaml com a porta publica do cartao e pagamentos.openapi.yaml com os campos da Appmax e a consulta de parcelas; 2) PR na celula pagamentos implementando a consulta de parcelas e os campos novos; 3) esta tarefa, na celula checkout, contra o contrato novo. Cada passo cabe numa sessao.",
+  "espera": "mantenedor"
+}
