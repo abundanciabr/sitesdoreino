@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-000334-TAR-572-concluida",
+  "tarefa": "TAR-572",
+  "evento": "concluida",
+  "quando": "2026-09-21T00:03:34+00:00",
+  "quem": "agent/fila/escriturar-a-rota-publica",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1831",
+  "verificado_em": "2026-09-21"
+}
