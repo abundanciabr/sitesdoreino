@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115548-TAR-586-explicada",
+  "tarefa": "TAR-586",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:55:48+00:00",
+  "quem": "Medido em 21/09/2026 por duas tarefas independentes, em pagamentos e em alunos.",
+  "o_que_e": "A fabrica tem um instrumento que testa os proprios testes: ele estraga o codigo de proposito e exige que o teste reclame.",
+  "o_que_muda": "Hoje esse instrumento so funciona nos testes da propria fabrica, entao cada equipe prova a mao e gasta tempo; consertado, a prova vira um comando.",
+  "exemplo": "Duas tarefas diferentes gastaram a mesma hora hoje descobrindo o mesmo defeito, cada uma por conta propria.",
+  "importancia": 70
+}
