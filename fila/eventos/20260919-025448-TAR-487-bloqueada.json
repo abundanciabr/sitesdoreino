@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260919-025448-TAR-487-bloqueada",
+  "tarefa": "TAR-487",
+  "evento": "bloqueada",
+  "quando": "2026-09-19T02:54:48+00:00",
+  "quem": "despacho-leads-transferencia-e-retomada-comercial",
+  "detalhe": "Mexe em contracts/, que e CODEOWNERS: o PR so integra com a linha Mandato-do-mantenedor autorizando contracts/eventos/. Sem essa palavra dele, nenhum robo fecha esta tarefa, e as TAR-488 e TAR-489 ficam esperando atras dela.",
+  "espera": "mantenedor"
+}

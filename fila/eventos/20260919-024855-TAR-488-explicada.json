@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-024855-TAR-488-explicada",
+  "tarefa": "TAR-488",
+  "evento": "explicada",
+  "quando": "2026-09-19T02:48:55+00:00",
+  "quem": "Medicao da TAR-421 em 19/09/2026: o provedor do CRM humano esta completo, 12 de 12 operacoes, e nenhuma delas publica evento.",
+  "o_que_e": "A area do site que guarda os interessados ja registra tudo o que a equipe faz com cada um deles, mas guarda so para si.",
+  "o_que_muda": "Ela passa a avisar as outras areas na hora em que alguem da equipe assume, passa adiante ou encerra o acompanhamento. E o que permite o site parar a mensagem automatica na hora certa.",
+  "exemplo": "E o atendente que, em vez de anotar so no caderno dele, fala em voz alta para o salao inteiro: esta pessoa e minha agora. Quem precisa ouvir, ouve.",
+  "importancia": 88
+}

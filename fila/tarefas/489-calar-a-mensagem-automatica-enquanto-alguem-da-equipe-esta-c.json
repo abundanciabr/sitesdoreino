@@ -1,0 +1,21 @@
+{
+  "arquivo": "489-calar-a-mensagem-automatica-enquanto-alguem-da-equipe-esta-c",
+  "id": "TAR-489",
+  "titulo": "Calar a mensagem automatica enquanto alguem da equipe esta conversando",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-488"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Suite de mensageria verde, com teste de parada, de retomada, de reentrega do mesmo aviso, de isolamento por site e de falha parcial, sem nenhuma mensagem real enviada.",
+  "despacho": "# Brief compilado\n\nobjetivo: Parar a sequencia quando um humano assume o lead e retomar quando ele encerra\ntipo: produto\nmodelo_recomendado: opus\nesforco_recomendado: high\nmotivo_do_modelo: cria ou muda comportamento de produto; precisa de julgamento semantico\ncelula: mensageria\n\n## Arquivos-alvo\n- services/mensageria/\n\n## Armadilhas injetadas\n- nenhuma citada\n\n## Prova exigida\n- Rode a suíte ou o teste focal que prova a mudança.\n- Se escrever guarda novo, faça a mutação e confirme vermelho.\n- FAIL corrige código; ERROR corrige instrumento ou ambiente.\n\n\n\n## Objetivo\nCalar a sequência automática quando um comercial assume a pessoa, e deixá-la\nvoltar quando ele encerra o acompanhamento. Hoje a mensageria não tem como saber\nnada disso: ela decide no instante do envio olhando só a projeção\n`EstadoDoAluno` (`services/mensageria/apps/jornadas/condicoes.py`), e nessa\nprojeção não existe o fato de haver um humano responsável.\n\nConsumir os eventos publicados pela célula leads, projetar o fato, e parar o\npasso no instante do envio, como toda condição desta célula já faz.\n\n## Alvos\n`services/mensageria/apps/eventos/handlers.py`, `services/mensageria/apps/jornadas/`\n(projeção, condição e motivo da não entrega), migrations próprias e\n`services/mensageria/tests/`.\n\n## Somente leitura\n`contracts/mensageria.openapi.yaml`, `contracts/eventos/`, `services/leads/`.\nMedido em 19/09/2026: `EntregaSaida.motivo` e `InscricaoSaida.estado` são\n`type: string` livres no contrato, sem enum. O motivo novo da não entrega cabe\nneles sem drift, e por isso esta tarefa não abre Rito de Contrato nenhum.\nConfira com `python ci/ci.py --apenas contrato` antes de fechar.\n\n## Aceite\nParada da automação provada: com o humano responsável, o passo é decidido como\nnão enviado, com motivo próprio, e nenhuma mensagem real sai. Retomada provada:\ndepois do evento de encerramento, o mesmo passo volta a ser enviável. Reentrega\nidempotente por `event_id`, que já é lei desta célula. Isolamento por site: o\nevento de um site nunca para a sequência de pessoa de outro. Falha parcial:\nevento cujo processamento quebra no meio não deixa projeção pela metade.\nA condição nova entra como função com nome próprio no dicionário `CONDICOES`,\nnunca como parâmetro no banco, que é o critério de morte §10.1 do plano.\nSuíte de mensageria verde, e prova por mutação em cada guarda novo.\n\n## Restrições\nNenhuma chamada síncrona a leads dentro da varredura: a projeção é a única\nleitura permitida, pela razão medida no §5 do plano das sequências. Nenhum\nsegredo, gasto, SSH manual, leitura ou escrita no banco de outra célula, nem\nmensagem real enviada nos testes. Não criar UI.",
+  "origem": "Medicao da TAR-421 em 19/09/2026: a mensageria decide o envio olhando so a projecao do aluno, e nessa projecao nao existe o fato de haver um humano responsavel.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "relacionamento-e-acesso"
+}
