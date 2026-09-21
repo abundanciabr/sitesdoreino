@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crivo explicado para iniciantes</title>
+  <style>
+    :root{
+      --tinta:#0f1117;
+      --tinta-2:#141826;
+      --painel:#171a27;
+      --painel-2:#1b2033;
+      --linha:rgba(255,255,255,.08);
+      --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33;
+      --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff;
+      --azul-fraco:rgba(76,141,255,.14);
+      --verde:#34d399;
+      --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c;
+      --vermelho-fraco:rgba(255,92,92,.14);
+      --ambar:#f2b234;
+      --ambar-fraco:rgba(242,178,52,.14);
+      --texto:#edeef2;
+      --texto-fraco:#9a9db0;
+      --texto-tenue:#5c5f70;
+      --f-body:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+      --f-titulo:"Space Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --f-mono:ui-monospace,Consolas,"Cascadia Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      background:var(--tinta);
+      color:var(--texto);
+      font-family:var(--f-body);
+      line-height:1.55;
+      background-image:
+        linear-gradient(var(--linha) 1px, transparent 1px),
+        linear-gradient(90deg, var(--linha) 1px, transparent 1px);
+      background-size:64px 64px;
+      background-position:center -1px;
+    }
+    a{color:var(--laranja);text-decoration:none;}
+    a:hover{color:#ffa06b;}
+    .wrap{
+      max-width:1080px;
+      margin:0 auto;
+      padding:42px 22px 90px;
+    }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:18px;
+      padding-bottom:18px;
+      border-bottom:1px solid var(--linha);
+    }
+    .brand{
+      display:flex;
+      gap:14px;
+      align-items:center;
+    }
+    .brand .mark{
+      width:46px;height:46px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(180deg, var(--painel-2), var(--painel));
+      border:1px solid var(--linha-forte);
+      flex-shrink:0;
+    }
+    h1{
+      margin:0;
+      font-family:var(--f-titulo);
+      font-weight:700;
+      letter-spacing:-.02em;
+      font-size:30px;
+      line-height:1.12;
+    }
+    .subtitle{
+      margin-top:8px;
+      color:var(--texto-fraco);
+      max-width:700px;
+      font-size:14px;
+    }
+    .meta{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:flex-end;
+      font-family:var(--f-mono);
+      font-size:12px;
+      color:var(--texto-tenue);
+    }
+    .pill{
+      border:1px solid var(--linha);
+      background:rgba(255,255,255,.03);
+      border-radius:999px;
+      padding:7px 12px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      white-space:nowrap;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:18px;
+      margin-top:22px;
+    }
+    @media (min-width: 980px){
+      .grid{grid-template-columns: 1.15fr .85fr;}
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+      border:1px solid var(--linha);
+      border-radius:14px;
+      padding:18px 16px;
+    }
+    .card h2{
+      margin:0 0 8px 0;
+      font-family:var(--f-titulo);
+      font-size:18px;
+      letter-spacing:-.01em;
+    }
+    .card p{margin:0 0 10px 0;color:var(--texto-fraco);}
+    .note{
+      background:var(--azul-fraco);
+      border:1px solid rgba(76,141,255,.35);
+      border-radius:12px;
+      padding:12px 12px;
+      color:#d6e3ff;
+      font-size:13px;
+    }
+    .warn{
+      background:var(--vermelho-fraco);
+      border:1px solid rgba(255,92,92,.35);
+      border-radius:12px;
+      padding:12px 12px;
+      color:#ffe0e0;
+      font-size:13px;
+    }
+    .kpi-row{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+    .kpi{
+      border:1px solid var(--linha);
+      background:rgba(255,255,255,.02);
+      border-radius:12px;
+      padding:12px 10px;
+    }
+    .kpi .n{
+      font-family:var(--f-mono);
+      font-size:18px;
+      font-weight:700;
+      color:var(--texto);
+    }
+    .kpi .l{
+      margin-top:6px;
+      font-size:12px;
+      color:var(--texto-fraco);
+    }
+    .section-title{
+      margin:30px 0 10px 0;
+      font-family:var(--f-titulo);
+      letter-spacing:-.01em;
+      font-size:20px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:14px;
+    }
+    @media (min-width: 920px){
+      .row{grid-template-columns:1fr 1fr;}
+    }
+    .triad{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    @media (min-width: 920px){
+      .triad{grid-template-columns:1fr 1fr 1fr;}
+    }
+    .step{
+      border:1px solid var(--linha);
+      border-radius:14px;
+      padding:14px 14px;
+      background:rgba(255,255,255,.02);
+      position:relative;
+      overflow:hidden;
+    }
+    .step .tag{
+      font-family:var(--f-mono);
+      font-size:12px;
+      color:var(--texto-tenue);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:var(--azul);
+      box-shadow:0 0 0 4px rgba(76,141,255,.14);
+    }
+    .dot.orange{background:var(--laranja); box-shadow:0 0 0 4px rgba(255,122,51,.14);}
+    .dot.green{background:var(--verde); box-shadow:0 0 0 4px rgba(52,211,153,.14);}
+    .step h3{
+      margin:0 0 8px 0;
+      font-family:var(--f-titulo);
+      font-size:16px;
+    }
+    .step p{margin:0;color:var(--texto-fraco);font-size:13.5px;}
+    .svg-wrap{
+      border:1px solid var(--linha);
+      border-radius:14px;
+      padding:12px;
+      background:rgba(255,255,255,.02);
+    }
+    .svg-caption{
+      margin-top:10px;
+      font-size:12.5px;
+      color:var(--texto-fraco);
+      font-family:var(--f-mono);
+    }
+    .table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid var(--linha);
+    }
+    .table th,.table td{
+      padding:12px 12px;
+      border-bottom:1px solid var(--linha);
+      vertical-align:top;
+      text-align:left;
+      font-size:13px;
+    }
+    .table th{
+      color:var(--texto);
+      background:rgba(255,255,255,.03);
+      font-family:var(--f-mono);
+      font-size:12px;
+    }
+    .table tr:last-child td{border-bottom:none;}
+    .ul{
+      margin:0;
+      padding-left:18px;
+      color:var(--texto-fraco);
+      font-size:13.5px;
+    }
+    .quote{
+      border-left:3px solid var(--laranja);
+      background:rgba(255,122,51,.08);
+      padding:12px 14px;
+      border-radius:12px;
+      color:#ffe2d1;
+    }
+    .quote b{color:#fff;}
+    .mini-hr{
+      height:1px;
+      background:var(--linha);
+      margin:18px 0;
+    }
+    .list-tight{
+      margin:0;
+      padding:0;
+      list-style:none;
+    }
+    .li{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px 10px;
+      border:1px solid var(--linha);
+      background:rgba(255,255,255,.02);
+      border-radius:12px;
+      margin-bottom:10px;
+    }
+    .bullet{
+      width:18px;height:18px;border-radius:7px;
+      border:1px solid var(--linha);
+      background:rgba(255,255,255,.04);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:var(--f-mono);
+      font-size:11px;
+      color:var(--texto-tenue);
+      flex-shrink:0;
+      margin-top:2px;
+    }
+    .li .t{font-weight:600;color:var(--texto);font-size:13px;}
+    .li .d{color:var(--texto-fraco);font-size:13px;margin-top:4px;}
+    .footer{
+      margin-top:30px;
+      padding-top:18px;
+      border-top:1px solid var(--linha);
+      color:var(--texto-tenue);
+      font-family:var(--f-mono);
+      font-size:12px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      justify-content:space-between;
+    }
+    .badge{
+      border:1px solid var(--linha);
+      border-radius:999px;
+      padding:6px 10px;
+      background:rgba(255,255,255,.02);
+      color:var(--texto-fraco);
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+    .badge b{color:var(--texto);}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14V8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6"></path>
+          <path d="M4 14h16"></path>
+          <path d="M12 10v14"></path>
+          <path d="M7 22h10"></path>
+        </svg>
+      </div>
+      <div>
+        <h1>O Crivo explicado do zero</h1>
+        <div class="subtitle">
+          Um guia para iniciantes em criação de sistemas tipo quiz. Aqui a ideia principal é simples: o quiz faz triagem, classifica e encaminha. Ele nao inventa mundo, so compara respostas com regras que ja vivem no servidor.
+        </div>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4c8dff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <path d="M12 15V3"></path>
+        </svg>
+        <span>Foco: andragogia e exemplos</span>
+      </div>
+      <div class="pill">
+        <span>Analogia unica: recepcionista de clinica</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Como ler esta pagina (para quem esta comecando)</h2>
+      <p>
+        Adultos aprendem melhor quando o conteudo parte do que ja sabem, usa exemplos do cotidiano e pede pratica curta.
+        Por isso esta pagina vai do “por que existe” para o “como funciona”, e sempre volta para uma historia concreta.
+      </p>
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="n">1</div>
+          <div class="l">Analogia fixa, do inicio ao fim</div>
+        </div>
+        <div class="kpi">
+          <div class="n">3</div>
+          <div class="l">Explicacoes curtas em blocos</div>
+        </div>
+        <div class="kpi">
+          <div class="n">7</div>
+          <div class="l">Ilustracoes (SVG embutido)</div>
+        </div>
+      </div>
+      <div class="mini-hr"></div>
+      <div class="note">
+        Objetivo pratico: ao final, voce conseguira desenhar um “crivo” para um quiz que classifica pessoas e encaminha pro proximo passo, sem deixar o cliente decidir pontuacao.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Uma promessa segura</h2>
+      <div class="quote">
+        <b>"O quiz nao sabe o que e um cartao de credito."</b>
+        <div style="margin-top:8px;color:rgba(255,255,255,.86);font-family:var(--f-mono);font-size:12px;">
+          Isso esta na constituicao da celula quiz e vira regra de engenharia: pontuacao e decisao vivem no servidor.
+        </div>
+      </div>
+      <p style="margin-top:10px;">
+        Leitura sugerida: <a href="../../constituicoes/AGENTS.quiz.md">constituicoes/AGENTS.quiz.md</a>.
+      </p>
+    </div>
+  </div>
+
+  <div class="section-title">1. A analogia mestra: o Crivo e uma recepcionista de clinica</div>
+  <div class="row">
+    <div class="svg-wrap">
+      <svg viewBox="0 0 900 240" width="100%" height="auto" role="img" aria-label="Ilustracao da recepcionista">
+        <defs>
+          <linearGradient id="g1" x1="0" x2="1">
+            <stop offset="0" stop-color="rgba(255,122,51,.9)"/>
+            <stop offset="1" stop-color="rgba(76,141,255,.9)"/>
+          </linearGradient>
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="rgba(0,0,0,.35)"/>
+          </filter>
+        </defs>
+        <rect x="18" y="22" width="864" height="196" rx="22" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.14)"/>
+        <rect x="54" y="62" width="250" height="120" rx="18" fill="rgba(255,122,51,.12)" stroke="rgba(255,122,51,.35)" filter="url(#shadow)"/>
+        <rect x="320" y="62" width="250" height="120" rx="18" fill="rgba(76,141,255,.12)" stroke="rgba(76,141,255,.35)" filter="url(#shadow)"/>
+        <rect x="586" y="62" width="250" height="120" rx="18" fill="rgba(52,211,153,.12)" stroke="rgba(52,211,153,.35)" filter="url(#shadow)"/>
+
+        <text x="180" y="115" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-size="20" font-weight="700">1. Perguntas</text>
+        <text x="180" y="145" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="13">ficha com opcoes</text>
+
+        <text x="445" y="115" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-size="20" font-weight="700">2. Classifica</text>
+        <text x="445" y="145" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="13">regras e pontos no servidor</text>
+
+        <text x="712" y="115" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-size="20" font-weight="700">3. Encaminha</text>
+        <text x="712" y="145" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="13">resultado e botao do proximo passo</text>
+
+        <path d="M300 122 C320 122 300 122 320 122" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" opacity=".75"/>
+        <path d="M566 122 C586 122 566 122 586 122" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" opacity=".75"/>
+
+        <circle cx="462" cy="50" r="10" fill="rgba(255,122,51,.9)"/>
+        <circle cx="512" cy="50" r="10" fill="rgba(76,141,255,.9)"/>
+        <circle cx="562" cy="50" r="10" fill="rgba(52,211,153,.9)"/>
+        <text x="462" y="50" text-anchor="middle" dominant-baseline="central" fill="#0f1117" font-family="ui-monospace,Consolas,monospace" font-size="10">1</text>
+        <text x="512" y="50" text-anchor="middle" dominant-baseline="central" fill="#0f1117" font-family="ui-monospace,Consolas,monospace" font-size="10">2</text>
+        <text x="562" y="50" text-anchor="middle" dominant-baseline="central" fill="#0f1117" font-family="ui-monospace,Consolas,monospace" font-size="10">3</text>
+      </svg>
+      <div class="svg-caption">Figura 1. A mesma receita em tres passos: pergunta, classifica, encaminha.</div>
+    </div>
+
+    <div class="triad">
+      <div class="step">
+        <div class="tag"><span class="dot"></span><span>Entrada</span></div>
+        <h3>O Crivo coleta informacoes</h3>
+        <p>Ele faz perguntas. Cada pergunta tem opcoes. Voce envia apenas as escolhas, como se fosse uma ficha na recepcao.</p>
+      </div>
+      <div class="step">
+        <div class="tag"><span class="dot orange"></span><span>Regra</span></div>
+        <h3>Ele soma pontos que ficam no servidor</h3>
+        <p>O browser nunca carrega o “valor” das opcoes. Pontuacao e calculada no back end, com regras que o usuario nao consegue adulterar.</p>
+      </div>
+      <div class="step">
+        <div class="tag"><span class="dot green"></span><span>Saida</span></div>
+        <h3>Ele encaminha para um proximo passo</h3>
+        <p>O resultado nao e so um texto. Ele inclui um botao. E esse botao vem de uma faixa de pontuacao, nao da pagina solta.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">2. O que esta acontecendo por tras, em termos simples</div>
+  <div class="row">
+    <div class="card">
+      <h2>Voce ja conhece o problema. Agora nomeie</h2>
+      <p>
+        Muitos quiz na internet parecem fichas de papel, mas na pratica viram um jogo de “o usuario manda a nota”.
+        Isso e tentador para quem esta com pressa, mas cria duas dores: fraude facil e manutencao confusa.
+      </p>
+      <div class="warn">
+        Problema classico: se o valor do resultado estiver visivel ou controlado pelo cliente, alguem consegue burlar.
+        O Crivo evita isso: pontuacao e decisoes vivem no servidor.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Uma analogia do dia a dia</h2>
+      <p>
+        Pense em um encaminhamento de clinica: a recepcionista nao prescreve medicamento.
+        Ela apenas decide para qual sala a pessoa vai, e registra que aquela ficha entrou no sistema.
+      </p>
+      <p style="margin-top:10px;">
+        O Crivo faz o mesmo: pega escolhas, aplica regras e mostra um proximo destino.
+      </p>
+      <div class="svg-wrap" style="margin-top:12px;">
+        <svg viewBox="0 0 760 160" width="100%" height="auto" role="img" aria-label="Mapa de separacao de responsabilidade">
+          <rect x="18" y="18" width="724" height="124" rx="18" fill="rgba(255,255,255,.03)" stroke="rgba(255,255,255,.14)"/>
+          <text x="55" y="56" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">O cliente envia apenas escolhas</text>
+          <text x="55" y="82" fill="rgba(255,255,255,.75)" font-family="ui-monospace,Consolas,monospace">exemplo: opcao_id por pergunta</text>
+          <rect x="430" y="40" width="270" height="80" rx="14" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.35)"/>
+          <text x="565" y="78" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-size="14" font-weight="700">Servidor decide pontuacao</text>
+          <path d="M390 80 L430 80" stroke="url(#g1)" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+        </svg>
+        <div class="svg-caption">Figura 2. Separacao de responsabilidades: escolhas vao para o servidor; a nota nao.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">3. As cinco pecas do Crivo (com nomes e a funcao de cada uma)</div>
+  <div class="row">
+    <div>
+      <table class="table" role="table" aria-label="Tabela das pecas do Crivo">
+        <thead>
+          <tr>
+            <th>Peça</th>
+            <th>O que voce imagina</th>
+            <th>O que ele faz no sistema</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-family:var(--f-mono);">Site</td>
+            <td>Qual porta da clinica</td>
+            <td>O Crivo pertence a um site e carrega um identificador de site em cada resultado.</td>
+          </tr>
+          <tr>
+            <td style="font-family:var(--f-mono);">Quiz</td>
+            <td>Qual especialidade</td>
+            <td>Tem slug e titulo. E o “endereco” da recepcionista.</td>
+          </tr>
+          <tr>
+            <td style="font-family:var(--f-mono);">Question</td>
+            <td>Pergunta da ficha</td>
+            <td>Define texto e ordem, para voce nao embaralhar.</td>
+          </tr>
+          <tr>
+            <td style="font-family:var(--f-mono);">Option</td>
+            <td>Resposta da ficha</td>
+            <td>A opcao tem pontos, e esses pontos nao devem vir do cliente.</td>
+          </tr>
+          <tr>
+            <td style="font-family:var(--f-mono);">ResultBand</td>
+            <td>Qual sala e o destino</td>
+            <td>Uma faixa transforma score em resultado e botao do proximo passo.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="svg-wrap" style="margin-top:12px;">
+        <svg viewBox="0 0 980 230" width="100%" height="auto" role="img" aria-label="Diagrama das cinco peças">
+          <defs>
+            <marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="rgba(255,255,255,.65)"/>
+            </marker>
+          </defs>
+          <rect x="24" y="24" width="932" height="182" rx="22" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+          <g font-family="ui-monospace,Consolas,monospace">
+            <rect x="60" y="64" width="170" height="70" rx="16" fill="rgba(255,122,51,.10)" stroke="rgba(255,122,51,.35)"/>
+            <text x="145" y="96" text-anchor="middle" fill="#edeef2" font-weight="700">Site</text>
+            <text x="145" y="114" text-anchor="middle" fill="rgba(255,255,255,.72)" font-size="12">porta</text>
+
+            <rect x="260" y="64" width="190" height="70" rx="16" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.35)"/>
+            <text x="355" y="96" text-anchor="middle" fill="#edeef2" font-weight="700">Quiz</text>
+            <text x="355" y="114" text-anchor="middle" fill="rgba(255,255,255,.72)" font-size="12">especialidade</text>
+
+            <rect x="476" y="64" width="170" height="70" rx="16" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.35)"/>
+            <text x="561" y="96" text-anchor="middle" fill="#edeef2" font-weight="700">Question</text>
+            <text x="561" y="114" text-anchor="middle" fill="rgba(255,255,255,.72)" font-size="12">ficha</text>
+
+            <rect x="668" y="64" width="170" height="70" rx="16" fill="rgba(52,211,153,.10)" stroke="rgba(52,211,153,.35)"/>
+            <text x="753" y="96" text-anchor="middle" fill="#edeef2" font-weight="700">Option</text>
+            <text x="753" y="114" text-anchor="middle" fill="rgba(255,255,255,.72)" font-size="12">resposta</text>
+
+            <rect x="60" y="148" width="420" height="44" rx="16" fill="rgba(242,178,52,.10)" stroke="rgba(242,178,52,.35)"/>
+            <text x="270" y="176" text-anchor="middle" fill="#edeef2" font-weight="700">ResultBand: faixa score -> destino</text>
+
+            <path d="M230 98 L260 98" stroke="rgba(255,255,255,.35)" stroke-width="5" marker-end="url(#arrow)"/>
+            <path d="M450 98 L476 98" stroke="rgba(255,255,255,.35)" stroke-width="5" marker-end="url(#arrow)"/>
+            <path d="M646 98 L668 98" stroke="rgba(255,255,255,.35)" stroke-width="5" marker-end="url(#arrow)"/>
+            <path d="M561 134 L561 148" stroke="rgba(255,255,255,.35)" stroke-width="5" marker-end="url(#arrow)"/>
+          </g>
+        </svg>
+        <div class="svg-caption">Figura 3. Tudo gira em torno da faixa ResultBand: ela decide o destino.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Andragogia: por que essa estrutura ajuda quem esta aprendendo</h2>
+        <p>
+          Quando voce nomeia pecas, voce cria “ganchos mentais”.
+          Depois, cada exemplo do proximo capitulo vira so um caso de uso desses nomes.
+          Isso reduz carga mental e evita “decorar codigo”.
+        </p>
+        <div class="note">
+          Dica: ao ler qualquer historia de bug, tente dizer “qual pec a quebrou?”.
+          Quase sempre a resposta vem.
+        </div>
+      </div>
+
+      <div class="svg-wrap" style="margin-top:14px;">
+        <svg viewBox="0 0 740 180" width="100%" height="auto" role="img" aria-label="Grafico de pontuação e faixas">
+          <defs>
+            <linearGradient id="bg" x1="0" x2="1">
+              <stop offset="0" stop-color="rgba(242,178,52,.16)"/>
+              <stop offset="1" stop-color="rgba(76,141,255,.10)"/>
+            </linearGradient>
+          </defs>
+          <rect x="16" y="18" width="708" height="144" rx="18" fill="url(#bg)" stroke="rgba(255,255,255,.14)"/>
+          <text x="40" y="50" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="14">
+            Score imaginario: 0 a 30 (exemplo)
+          </text>
+
+          <g font-family="ui-monospace,Consolas,monospace">
+            <rect x="60" y="78" width="620" height="18" rx="9" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.12)"/>
+            <rect x="60" y="78" width="220" height="18" rx="9" fill="rgba(255,122,51,.30)" />
+            <rect x="280" y="78" width="220" height="18" rx="9" fill="rgba(76,141,255,.28)" />
+            <rect x="500" y="78" width="180" height="18" rx="9" fill="rgba(52,211,153,.25)" />
+
+            <line x1="60" y1="116" x2="680" y2="116" stroke="rgba(255,255,255,.18)" stroke-width="2"/>
+            <text x="70" y="140" fill="rgba(255,255,255,.78)" font-size="12">0</text>
+            <text x="280" y="140" fill="rgba(255,255,255,.78)" font-size="12">10</text>
+            <text x="500" y="140" fill="rgba(255,255,255,.78)" font-size="12">20</text>
+            <text x="665" y="140" fill="rgba(255,255,255,.78)" font-size="12">30</text>
+
+            <circle cx="398" cy="87" r="10" fill="rgba(237,238,242,.9)" stroke="rgba(0,0,0,.25)"/>
+            <text x="398" y="165" text-anchor="middle" fill="#edeef2" font-size="12" font-weight="700">Score = 16</text>
+          </g>
+
+          <g>
+            <rect x="60" y="22" width="160" height="44" rx="14" fill="rgba(255,122,51,.14)" stroke="rgba(255,122,51,.35)"/>
+            <text x="140" y="46" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="12">0 a 9</text>
+            <text x="140" y="62" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="12">começando</text>
+
+            <rect x="280" y="22" width="160" height="44" rx="14" fill="rgba(76,141,255,.14)" stroke="rgba(76,141,255,.35)"/>
+            <text x="360" y="46" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="12">10 a 19</text>
+            <text x="360" y="62" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="12">base</text>
+
+            <rect x="500" y="22" width="190" height="44" rx="14" fill="rgba(52,211,153,.14)" stroke="rgba(52,211,153,.35)"/>
+            <text x="595" y="46" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="12">20 a 30</text>
+            <text x="595" y="62" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="12">escalar</text>
+          </g>
+        </svg>
+        <div class="svg-caption">Figura 4. Exemplificando faixas: o destino muda quando o score muda.</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Onde isso vive no sistema</h2>
+        <p>
+          Para conectar a imagem com o codigo: a estrutura acima corresponde a modelos em
+          <a href="../../services/quiz/apps/quiz/models.py">services/quiz/apps/quiz/models.py</a>.
+          Em especial, a faixa ResultBand decide o botao do proximo passo.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">4. Jornada completa (uma historia com cada etapa)</div>
+  <div class="row">
+    <div>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 980 290" width="100%" height="auto" role="img" aria-label="Timeline da jornada Marina">
+          <defs>
+            <marker id="arrow2" markerWidth="14" markerHeight="14" refX="10" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="rgba(255,255,255,.7)"/>
+            </marker>
+            <linearGradient id="c1" x1="0" x2="1">
+              <stop offset="0" stop-color="rgba(255,122,51,.9)"/>
+              <stop offset="1" stop-color="rgba(76,141,255,.9)"/>
+            </linearGradient>
+          </defs>
+          <rect x="16" y="18" width="948" height="250" rx="22" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+
+          <text x="40" y="52" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Personagem: Marina (exemplo)</text>
+
+          <g font-family="ui-monospace,Consolas,monospace" font-size="12" fill="rgba(255,255,255,.75)">
+            <text x="40" y="78">Colunas (simplificado):</text>
+            <text x="210" y="78">Navegador</text>
+            <text x="420" y="78">Servidor do quiz</text>
+            <text x="650" y="78">Resto da plataforma</text>
+          </g>
+
+          <line x1="200" y1="96" x2="200" y2="245" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+          <line x1="410" y1="96" x2="410" y2="245" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+          <line x1="640" y1="96" x2="640" y2="245" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+
+          <g>
+            <rect x="44" y="100" width="125" height="44" rx="14" fill="rgba(76,141,255,.12)" stroke="rgba(76,141,255,.35)"/>
+            <text x="106" y="127" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">1. Click no link</text>
+
+            <rect x="250" y="100" width="140" height="44" rx="14" fill="rgba(255,122,51,.12)" stroke="rgba(255,122,51,.35)"/>
+            <text x="320" y="127" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">GET /quiz</text>
+
+            <rect x="470" y="100" width="160" height="44" rx="14" fill="rgba(52,211,153,.12)" stroke="rgba(52,211,153,.35)"/>
+            <text x="550" y="127" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Resposta: formulario</text>
+
+            <path d="M370 122 L470 122" stroke="url(#c1)" stroke-width="6" marker-end="url(#arrow2)"/>
+          </g>
+
+          <g>
+            <rect x="44" y="154" width="250" height="44" rx="14" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.32)"/>
+            <text x="170" y="181" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">2. Responde 3 perguntas</text>
+
+            <rect x="420" y="154" width="170" height="44" rx="14" fill="rgba(255,122,51,.10)" stroke="rgba(255,122,51,.32)"/>
+            <text x="505" y="181" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">POST com respostas</text>
+
+            <rect x="650" y="154" width="250" height="44" rx="14" fill="rgba(52,211,153,.10)" stroke="rgba(52,211,153,.32)"/>
+            <text x="775" y="181" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Servidor: soma e escolhe faixa</text>
+            <path d="M590 176 L650 176" stroke="url(#c1)" stroke-width="6" marker-end="url(#arrow2)"/>
+          </g>
+
+          <g>
+            <rect x="300" y="208" width="210" height="44" rx="14" fill="rgba(242,178,52,.12)" stroke="rgba(242,178,52,.35)"/>
+            <text x="405" y="235" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">3. outbox: bilhete e registro</text>
+
+            <rect x="560" y="208" width="190" height="44" rx="14" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.32)"/>
+            <text x="655" y="235" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">4. Serve resultado</text>
+
+            <rect x="770" y="208" width="150" height="44" rx="14" fill="rgba(52,211,153,.10)" stroke="rgba(52,211,153,.32)"/>
+            <text x="845" y="235" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">5. Evento vai ao resto</text>
+            <path d="M515 230 L560 230" stroke="url(#c1)" stroke-width="6" marker-end="url(#arrow2)"/>
+          </g>
+        </svg>
+        <div class="svg-caption">Figura 5. Jornada resumida: formulario, respostas, faixa, bilhete e resultado.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Por que o caminho tem “duas partes” (salvar e avisar)</h2>
+        <p>
+          Quando Marina clica em “ver resultado”, o sistema precisa fazer duas coisas sem perder uma:
+          (1) guardar o que ela respondeu e (2) avisar o resto da plataforma que existe um novo lead.
+        </p>
+        <div class="note">
+          A parte importante para iniciantes: se voce fizer “guardar” e “avisar” em momentos diferentes sem cuidado,
+          pode acontecer um destes cenarios: avisar sem guardar ou guardar sem avisar.
+        </div>
+      </div>
+
+      <div class="svg-wrap" style="margin-top:14px;">
+        <svg viewBox="0 0 760 200" width="100%" height="auto" role="img" aria-label="Diagrama de transacao e outbox">
+          <defs>
+            <linearGradient id="qg" x1="0" x2="1">
+              <stop offset="0" stop-color="rgba(255,122,51,.9)"/>
+              <stop offset="1" stop-color="rgba(52,211,153,.9)"/>
+            </linearGradient>
+            <marker id="arr3" markerWidth="14" markerHeight="14" refX="10" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="rgba(255,255,255,.7)"/>
+            </marker>
+          </defs>
+          <rect x="18" y="16" width="724" height="168" rx="18" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+          <text x="40" y="48" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Outbox: entre perder e repetir, escolha repetir</text>
+
+          <rect x="60" y="72" width="250" height="58" rx="16" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.32)"/>
+          <text x="185" y="103" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">Transacao unica</text>
+          <text x="185" y="122" text-anchor="middle" fill="rgba(255,255,255,.76)" font-family="ui-monospace,Consolas,monospace" font-size="11">guardar resposta + bilhete</text>
+
+          <path d="M320 101 L360 101" stroke="url(#qg)" stroke-width="6" marker-end="url(#arr3)"/>
+
+          <rect x="390" y="72" width="310" height="58" rx="16" fill="rgba(242,178,52,.10)" stroke="rgba(242,178,52,.32)"/>
+          <text x="545" y="101" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">Entrega do bilhete</text>
+          <text x="545" y="120" text-anchor="middle" fill="rgba(255,255,255,.76)" font-family="ui-monospace,Consolas,monospace" font-size="11">tenta agora e depois de minuto em minuto</text>
+        </svg>
+        <div class="svg-caption">Figura 6. A ideia: guardar e avisar no mesmo “momento”, para evitar perda silenciosa.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">5. Seu quiz nao precisa ser “inteligente”. Precisa ser coerente</div>
+  <div class="row">
+    <div class="card">
+      <h2>O que as pessoas tentam fazer (e por que da errado)</h2>
+      <p>
+        Quando o assunto e quiz, o impulso e deixar tudo para o navegador:
+        “A resposta vem, o cliente calcula score, mostra resultado e pronto”.
+      </p>
+      <p>
+        Funciona para demos, mas quebra quando alguem clica errado, recarrega a pagina ou tenta burlar.
+      </p>
+      <div class="warn">
+        Regra de ouro para iniciantes: se for uma decisao que afeta destino, pontuacao e “o que acontece depois”, ela deve ser calculada no servidor.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Um exemplo prático: “faixa vira botao”</h2>
+      <p>
+        Voce pode se imaginar perguntando:
+        “por que nao colocar um botao fixo embaixo do texto do resultado?”
+      </p>
+      <p>
+        Porque o Crivo evita o beco sem saida: quem esta começando e quem esta pronto para escalar nao devem receber o mesmo convite.
+        Entao o botao nasce da faixa ResultBand.
+      </p>
+      <div class="svg-wrap" style="margin-top:12px;">
+        <svg viewBox="0 0 760 190" width="100%" height="auto" role="img" aria-label="Faixa define botão do próximo passo">
+          <rect x="16" y="16" width="728" height="158" rx="18" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+          <text x="40" y="48" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Botao e da faixa, nao do texto</text>
+          <rect x="60" y="76" width="210" height="54" rx="16" fill="rgba(255,122,51,.12)" stroke="rgba(255,122,51,.35)"/>
+          <text x="165" y="100" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">0 a 9</text>
+          <text x="165" y="118" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="11">começar pelo básico</text>
+          <rect x="300" y="76" width="210" height="54" rx="16" fill="rgba(76,141,255,.12)" stroke="rgba(76,141,255,.35)"/>
+          <text x="405" y="100" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">10 a 19</text>
+          <text x="405" y="118" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="11">destravar o próximo passo</text>
+          <rect x="540" y="76" width="160" height="54" rx="16" fill="rgba(52,211,153,.12)" stroke="rgba(52,211,153,.35)"/>
+          <text x="620" y="100" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">20 a 30</text>
+          <text x="620" y="118" text-anchor="middle" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="11">escalar agora</text>
+
+          <path d="M270 56 C300 56 340 56 360 56" stroke="rgba(255,255,255,.18)" stroke-width="6" stroke-linecap="round" fill="none"/>
+          <circle cx="360" cy="56" r="9" fill="rgba(242,178,52,.9)"/>
+          <text x="360" y="60" text-anchor="middle" dominant-baseline="central" fill="#0f1117" font-family="ui-monospace,Consolas,monospace" font-size="10" font-weight="700">B</text>
+          <text x="380" y="56" fill="rgba(255,255,255,.78)" font-family="ui-monospace,Consolas,monospace" font-size="12">destino</text>
+        </svg>
+        <div class="svg-caption">Figura 7. Mesma tela, mas convite diferente conforme o perfil classificado.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">6. Tres historias curtas (o aprendizado mais barato)</div>
+  <div class="row">
+    <div class="card">
+      <h2>Historia A. O endereco dobrado</h2>
+      <p>
+        Existe um erro que parece bobo:
+        o sistema funcionou por dentro, mas por fora o caminho correto deu 404.
+        Isso acontece quando o teste nao replica exatamente como o usuario entra.
+      </p>
+      <div class="note">
+        Conceito para iniciantes: sempre teste “a borda publica”.
+        Testar o motor e necessario, mas o carro precisa ir na rua.
+      </div>
+    </div>
+    <div class="card">
+      <h2>Historia B. O curinga quase virou erro 500</h2>
+      <p>
+        Quando uma rota aceita “qualquer coisa”, ela tambem aceita o caminho de health check e o caminho de arquivos estaticos.
+        Se voce nao filtra esses casos, voce pode tentar ler informacoes que nao existem.
+      </p>
+      <div class="warn">
+        Regra: quando uma informacao nao chegou, responda 404 de forma limpa.
+        Nao deixe o sistema explodir em 500 tentando “adivinhar” dados.
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;" class="row">
+    <div class="card">
+      <h2>Historia C. Um slug pode existir e ainda assim ser inalcançavel</h2>
+      <p>
+        Se voce permite cracao de qualquer slug, pode criar um quiz com nome que conflita com rotas reservadas.
+        Resultado: o quiz existe no banco, mas a rota publica nunca chega nele.
+      </p>
+      <div class="note">
+        Como evitar: recuse slugs proibidos por regra derivada da configuracao da rota.
+        Nao copie listas em um segundo lugar.
+      </div>
+    </div>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 760 210" width="100%" height="auto" role="img" aria-label="Mapa mental de erros comuns">
+        <rect x="16" y="16" width="728" height="178" rx="18" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+        <text x="40" y="48" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Mapa mental: borda publica e dados incompletos</text>
+        <g font-family="ui-monospace,Consolas,monospace" font-size="12" fill="rgba(255,255,255,.8)">
+          <rect x="40" y="74" width="210" height="48" rx="14" fill="rgba(255,92,92,.10)" stroke="rgba(255,92,92,.35)"/>
+          <text x="145" y="104" text-anchor="middle" font-weight="700" fill="#edeef2">Endereço dobrado</text>
+          <rect x="270" y="74" width="210" height="48" rx="14" fill="rgba(242,178,52,.10)" stroke="rgba(242,178,52,.35)"/>
+          <text x="375" y="104" text-anchor="middle" font-weight="700" fill="#edeef2">Informação ausente</text>
+          <rect x="500" y="74" width="220" height="48" rx="14" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.35)"/>
+          <text x="610" y="104" text-anchor="middle" font-weight="700" fill="#edeef2">Slug conflita</text>
+        </g>
+        <path d="M250 98 L270 98" stroke="rgba(255,255,255,.25)" stroke-width="6" stroke-linecap="round"/>
+        <path d="M480 98 L500 98" stroke="rgba(255,255,255,.25)" stroke-width="6" stroke-linecap="round"/>
+        <rect x="40" y="136" width="680" height="38" rx="14" fill="rgba(52,211,153,.10)" stroke="rgba(52,211,153,.35)"/>
+        <text x="60" y="160" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">
+          Solucao para aprendizes: teste o caminho que o usuario realmente usa.
+        </text>
+      </svg>
+      <div class="svg-caption">Figura 8. Um mapa que ajuda a diagnosticar bugs sem virar adivinhacao.</div>
+    </div>
+  </div>
+
+  <div class="section-title">7. Exercicios práticos (curtos, mas transformadores)</div>
+  <div class="row">
+    <div class="card">
+      <h2>Exercicio 1. Desenhe o fluxo da recepcionista</h2>
+      <ul class="ul">
+        <li>Escreva 3 caixas: Perguntas, Classifica, Encaminha.</li>
+        <li>Para cada caixa, diga o que e entrada e o que e saida.</li>
+        <li>Agora troque “encaminha” por “resultado com botao”.</li>
+      </ul>
+      <div class="note" style="margin-top:12px;">
+        Resultado esperado: voce consegue explicar seu quiz sem falar de frameworks, so de responsabilidade.
+      </div>
+    </div>
+    <div class="card">
+      <h2>Exercicio 2. Onde fica o score?</h2>
+      <ul class="ul">
+        <li>Pergunte a si mesmo: “o usuario consegue mandar pontuacao?”</li>
+        <li>Se a resposta for “sim” ou “talvez”, voce achou uma vulnerabilidade de produto.</li>
+        <li>Reescreva sua regra: “score e calculado no servidor”.</li>
+      </ul>
+      <div class="warn" style="margin-top:12px;">
+        Se voce esta construindo algo para lidar com dinheiro, leads ou destino, trate esse exercicio como prioridade maxima.
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;" class="row">
+    <div class="card">
+      <h2>Exercicio 3. Faixa define botao (e nao o texto)</h2>
+      <ul class="ul">
+        <li>Defina 3 faixas com exemplos reais do seu produto.</li>
+        <li>Para cada faixa, defina um destino claro.</li>
+        <li>Depois descreva a tela do resultado: ela mostra o texto, mas o botao e definido na faixa.</li>
+      </ul>
+      <div class="note" style="margin-top:12px;">
+        Essa separacao reduz risco de “beco sem saida”. Quem chega deve ter proximo passo.
+      </div>
+    </div>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 760 210" width="100%" height="auto" role="img" aria-label="Quadro de aprendizagem e prática">
+        <rect x="16" y="16" width="728" height="178" rx="18" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.12)"/>
+        <text x="40" y="48" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700">Andragogia em pratica: explicar, aplicar, refletir</text>
+        <g>
+          <rect x="40" y="74" width="210" height="58" rx="16" fill="rgba(76,141,255,.10)" stroke="rgba(76,141,255,.32)"/>
+          <text x="145" y="106" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">Explicar</text>
+          <text x="145" y="123" text-anchor="middle" fill="rgba(255,255,255,.76)" font-family="ui-monospace,Consolas,monospace" font-size="11">com analogia</text>
+
+          <rect x="270" y="74" width="210" height="58" rx="16" fill="rgba(255,122,51,.10)" stroke="rgba(255,122,51,.32)"/>
+          <text x="375" y="106" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">Aplicar</text>
+          <text x="375" y="123" text-anchor="middle" fill="rgba(255,255,255,.76)" font-family="ui-monospace,Consolas,monospace" font-size="11">com exercicio</text>
+
+          <rect x="500" y="74" width="220" height="58" rx="16" fill="rgba(52,211,153,.10)" stroke="rgba(52,211,153,.32)"/>
+          <text x="610" y="106" text-anchor="middle" fill="#edeef2" font-family="ui-monospace,Consolas,monospace" font-weight="700" font-size="13">Refletir</text>
+          <text x="610" y="123" text-anchor="middle" fill="rgba(255,255,255,.76)" font-family="ui-monospace,Consolas,monospace" font-size="11">e ajustar regra</text>
+        </g>
+        <path d="M250 103 L270 103" stroke="rgba(255,255,255,.22)" stroke-width="6" stroke-linecap="round"/>
+        <path d="M480 103 L500 103" stroke="rgba(255,255,255,.22)" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div class="svg-caption">Figura 9. Como aprender: voce precisa sempre voltar para a regra, depois para o exemplo.</div>
+    </div>
+  </div>
+
+  <div class="section-title">8. Referencias (para quem quer ver o “de onde veio”)</div>
+  <div class="card">
+    <h2>Onde conferir detalhes no projeto</h2>
+    <ul class="ul">
+      <li><a href="../../constituicoes/AGENTS.quiz.md">constituicoes/AGENTS.quiz.md</a> (missao, fronteiras e invariantes do quiz).</li>
+      <li><a href="../../services/quiz/apps/quiz/models.py">services/quiz/apps/quiz/models.py</a> (pecas: Site, Quiz, Question, Option, ResultBand, Submission).</li>
+      <li><a href="../../services/quiz/LICOES.md">services/quiz/LICOES.md</a> (historias reais de bugs e decisoes).</li>
+      <li><a href="../../contracts/eventos/quiz.completado.v1.json">contracts/eventos/quiz.completado.v1.json</a> (contrato do evento).</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <div class="badge"><b>Leigos</b> com apoio visual</div>
+    <div class="badge"><b>Analogia unica</b> para reduzir confusao</div>
+    <div class="badge"><b>Imagens</b> em SVG embutido</div>
+  </div>
+</div>
+</body>
+</html>
+
