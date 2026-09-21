@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-047-painel-registros-e-a-licao-da-appmax",
+  tipo: "nota",
+  quando: "2026-09-21",
+  titulo: "painel: registros e a licao da Appmax",
+  detalhe: "Registros da TAR-595 e do incidente do PR 1859 vazio, mais a licao 509 sobre checks verdes sem diff.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1868. Validação local: árvore 8a41263cb479d21ddb0e446c741ef4392a1e722e; commit f86f8b97f14c15b8ca08afff57fdbe765e21d872; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-595",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
