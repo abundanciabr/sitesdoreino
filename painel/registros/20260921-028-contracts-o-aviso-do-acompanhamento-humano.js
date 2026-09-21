@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-028-contracts-o-aviso-do-acompanhamento-humano",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "contracts: o aviso do acompanhamento humano",
+  detalhe: "Tres esquemas de evento novos, cada um com o exemplo dentro do proprio schema e 12 sabotagens mordidas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1849. Validação local: árvore dd159aeba76647b273ba3a29f460e671f01a3ba5; commit 17baadd38fbfe7585593caf2f1bae01df81bb16b; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-487",
+  gravidade: "info",
+  frente: "vender",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
