@@ -405,10 +405,8 @@ def test_o_documento_editado_muda_no_site_na_hora():
     assert "Antes" not in corpo
 
 
-def test_o_editor_nao_usa_markdown_que_o_site_nao_renderiza():
-    """A ajuda embaixo do campo promete só o que o renderizador cumpre. Uma
-    ajuda que ensinasse tabela produziria documento quebrado, e a culpa cairia
-    no mantenedor."""
+def test_o_editor_nao_promete_markdown_que_o_site_nao_renderiza():
+    """A ajuda embaixo do campo promete só o que o renderizador cumpre."""
     from pathlib import Path
 
     fonte = (
@@ -416,7 +414,10 @@ def test_o_editor_nao_usa_markdown_que_o_site_nao_renderiza():
         / "apps/core/templates/admin/documento_editar.html"
     ).read_text(encoding="utf-8")
 
-    assert "Tabela e imagem ainda não funcionam" in fonte
+    assert "figura:recepcionista" in fonte
+    assert "Imagem por endereço da internet ainda não entra" in fonte
+    saida = documentos.para_html("| a | b |\n| --- | --- |\n| c | d |")
+    assert "<table>" in saida
     assert documentos.para_html("| a | b |").startswith("<p>")
 
 

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-038-admin-o-crivo-explicado-do-zero",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o Crivo explicado do zero",
+  detalhe: "Pagina publica /docs/o-crivo-explicado-do-zero com 21 figuras, tabelas e historias para leigo. O renderizador ganhou tabela, bloco de codigo e figura nomeada. Semeadura pela migracao 0021.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1858. Validacao local: pytest da celula admin, 2106 passed, Black ok. Guardas de tabela e figura provados por sabotagem. Revisao, integracao e publicacao nao verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: null,
+  gravidade: "info",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

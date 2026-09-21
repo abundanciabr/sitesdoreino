@@ -473,6 +473,63 @@ def test_o_subconjunto_de_markdown_que_o_site_aceita():
         assert pedaco in saida, pedaco
 
 
+def test_tabela_vira_table_e_escapa_a_celula():
+    saida = documentos.para_html(
+        "| A | B |\n| --- | --- |\n| um | <script>x</script> |"
+    )
+    assert "<table>" in saida
+    assert "<th>A</th>" in saida
+    assert "<td>um</td>" in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+
+
+def test_linha_com_pipe_sem_separador_continua_paragrafo():
+    """Tabela exige o separador. Sem ele, o pipe é texto, não grade."""
+    assert documentos.para_html("| a | b |").startswith("<p>")
+
+
+def test_bloco_de_codigo_escapa_e_nao_formata():
+    saida = documentos.para_html("```\n**nao-negrito**\n<script>\n```")
+    assert "<pre><code>" in saida
+    assert "<strong>" not in saida
+    assert "<script>" not in saida
+    assert "&lt;script&gt;" in saida
+
+
+def test_figura_nomeada_entra_como_svg_com_legenda_escapada():
+    saida = documentos.para_html("![A <b>recepção</b>](figura:recepcionista)")
+    assert "<figure" in saida
+    assert "<svg" in saida
+    assert "<figcaption>" in saida
+    assert "<b>recepção</b>" not in saida
+    assert "&lt;b&gt;" in saida
+
+
+def test_figura_desconhecida_e_imagem_por_url_nao_viram_html():
+    for linha in (
+        "![x](figura:nao-existe)",
+        "![x](https://exemplo.com/x.png)",
+        "![x](javascript:alert(1))",
+    ):
+        saida = documentos.para_html(linha)
+        assert "<img" not in saida, linha
+        assert "<figure" not in saida, linha
+        assert "<svg" not in saida, linha
+
+
+def test_as_figuras_da_casa_nao_carregam_script():
+    from apps.core.figuras import FIGURAS, desenhar
+
+    proibidos = ("<script", "javascript:", "onerror=", "foreignObject")
+    for nome in FIGURAS:
+        svg = desenhar(nome)
+        assert svg is not None, nome
+        baixo = svg.lower()
+        for pedaco in proibidos:
+            assert pedaco not in baixo, f"{nome} contém {pedaco}"
+
+
 def test_paragrafo_de_varias_linhas_vira_um_paragrafo_so():
     """Quebra de linha no meio de uma frase é como se escreve markdown — e
     virar dois parágrafos deixaria todo documento cheio de buracos."""
