@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-048-admin-o-editor-recebe-imagem-e-video",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o editor recebe imagem e video",
+  detalhe: "O tipo sai dos primeiros bytes do arquivo, nunca do nome, e a entrega devolve esse mesmo tipo com nosniff.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1865. Validação local: árvore 689908e7bb7d24b1d3d6cc9b266ec44d82f2d773; commit 617927098abeaed6578bb492228b281a5a3e3e69; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-597",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

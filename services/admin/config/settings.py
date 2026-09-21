@@ -177,6 +177,26 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# ---------------------------------------------------------------------------
+# ONDE MORAM AS IMAGENS E OS VÍDEOS DOS DOCUMENTOS (21/09/2026, TAR-597)
+# ---------------------------------------------------------------------------
+# Autorização expressa do mantenedor para guardar arquivo no disco da VPS. Lá
+# o caminho é um VOLUME próprio (`infra/docker-compose.yml`), e nunca uma pasta
+# de dentro da imagem: o disco do contêiner é remontado a cada atualização da
+# plataforma, e um arquivo gravado dentro da imagem sumiria no deploy seguinte,
+# em silêncio — o mesmo defeito que tirou o texto dos documentos do disco e o
+# levou para o banco (ver o cabeçalho de `apps/core/models.py`).
+#
+# Lida com `.get()` e default inofensivo, NUNCA fail-hard no import
+# (`armadilhas/097`): env ausente na máquina de quem desenvolve grava numa
+# pasta ao lado do código, e o contêiner continua subindo.
+MEDIA_ROOT = os.environ.get("ADMIN_MIDIA_RAIZ") or str(BASE_DIR / "midia")
+# O prefixo público dos arquivos. Quem monta endereço na tela usa `{% url %}`
+# (`apps/core/midia.py::midia_servir`); esta linha existe porque é ela que
+# responde "onde isto é servido" para quem ler as settings, e porque o Django
+# a espera declarada quando há mídia.
+MEDIA_URL = "/midia/"
+
 USE_TZ = True
 
 # O fuso em que a área admin MOSTRA hora — o armazenamento continua em UTC.
