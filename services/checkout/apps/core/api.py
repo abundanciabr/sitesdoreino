@@ -475,3 +475,208 @@ def get_order(request, order_id: str):
             "created_at": pedido.created_at.isoformat(),
         }
     )
+
+
+# --------------------------------------------------------------------------
+# Confirmação do cartão
+# --------------------------------------------------------------------------
+# O que o navegador manda é o RESULTADO da tokenização e mais nada. Valor,
+# produto, item e total saem do snapshot congelado do pedido ([INV-P1]/[INV-P2]),
+# e é `_CAMPOS_DA_CONFIRMACAO` abaixo que torna isso mecânico: campo que não
+# está na lista é recusado com 422, em vez de ser ignorado em silêncio. Ignorar
+# em silêncio é o modo de falha caro aqui, porque um `total_cents` no corpo
+# passaria despercebido em revisão e ninguém saberia dizer se ele foi usado.
+
+_CAMPOS_DA_CONFIRMACAO = frozenset(
+    {"token", "ip", "holder_name", "holder_document_number", "installments"}
+)
+_ESTADO_QUE_ACEITA_CARTAO = "aguardando_pagamento"
+
+
+def _inline_card_confirmed_payment(schema: dict) -> None:
+    schema.clear()
+    schema.update(
+        {
+            "type": "object",
+            "required": ["method", "intent_id", "status"],
+            "properties": {
+                "method": {"type": "string", "enum": ["card"]},
+                "intent_id": {"type": "string"},
+                "status": {
+                    "type": "string",
+                    "enum": ["created", "pending", "approved", "rejected"],
+                    "description": (
+                        "Estado da tentativa no provedor. approved aqui é a "
+                        "resposta imediata dele, e não a liberação do pedido: "
+                        "quem move o pedido é o evento, lido em getOrder."
+                    ),
+                },
+                "reason_code": {
+                    "type": "string",
+                    "description": "Motivo sanitizado quando status é rejected",
+                },
+            },
+        }
+    )
+
+
+class CardConfirmed(Schema):
+    order_id: str
+    site_id: str
+    status: dict = Field(..., json_schema_extra=_inline_order_status)
+    payment: dict = Field(..., json_schema_extra=_inline_card_confirmed_payment)
+
+
+_CONFIRM_ORDER_CARD_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "token",
+                        "installments",
+                        "holder_name",
+                        "holder_document_number",
+                    ],
+                    "properties": {
+                        "token": {
+                            "type": "string",
+                            "description": (
+                                "Token de uso único gerado no navegador pela "
+                                "biblioteca do provedor de cartão."
+                            ),
+                        },
+                        "ip": {
+                            "type": "string",
+                            "description": (
+                                "IP do comprador, coletado no navegador pela "
+                                "biblioteca do provedor de cartão."
+                            ),
+                        },
+                        "holder_name": {"type": "string"},
+                        "holder_document_number": {
+                            "type": "string",
+                            "description": "CPF ou CNPJ do titular, somente dígitos.",
+                        },
+                        "installments": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 12,
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        200: {"description": "Tentativa concluída; o pedido segue pelo evento"},
+        404: {"description": "Pedido inexistente neste site"},
+        409: {
+            "description": (
+                "Pedido não aceita cartão agora (não é de cartão, ou já saiu de "
+                "aguardando_pagamento)"
+            )
+        },
+        422: {"description": "Payload inválido"},
+        502: {"description": "O provedor de pagamento não concluiu a tentativa"},
+    },
+}
+
+
+@router.post(
+    "/pedidos/{order_id}/cartao",
+    response={200: CardConfirmed},
+    operation_id="confirmOrderCard",
+    summary="Confirma o cartão de um pedido com o token gerado no navegador",
+    description=(
+        "Pela INV-P2, o corpo traz somente o resultado da tokenização e a "
+        "parcela escolhida. Valor, itens e total vêm do snapshot congelado do "
+        "pedido, e campo fora da lista é recusado com 422.\n"
+        "Dado de cartão nunca atravessa esta célula: o que chega é token.\n"
+    ),
+    openapi_extra=_CONFIRM_ORDER_CARD_OPENAPI,
+)
+def confirm_order_card(request, order_id: str):
+    site = request.site
+    try:
+        # [INV-P11] pedido de outro site é 404, como em getOrder.
+        pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=site["id"])
+    except (OrderModel.DoesNotExist, ValueError):
+        raise HttpError(404, "pedido inexistente neste site")
+    if pedido.method != "card":
+        raise HttpError(409, "este pedido não é de cartão")
+    if pedido.status != _ESTADO_QUE_ACEITA_CARTAO:
+        raise HttpError(
+            409, f"o pedido está em {pedido.status} e não aceita nova cobrança"
+        )
+
+    corpo = _corpo(request)
+    sobrando = sorted(set(corpo) - _CAMPOS_DA_CONFIRMACAO)
+    if sobrando:
+        raise HttpError(
+            422,
+            "o corpo só aceita "
+            + ", ".join(sorted(_CAMPOS_DA_CONFIRMACAO))
+            + "; valor, produto e total vêm do pedido. Campos recusados: "
+            + ", ".join(sobrando),
+        )
+    token = corpo.get("token")
+    if not isinstance(token, str) or not token.strip():
+        raise HttpError(422, "token é obrigatório")
+    parcelas = corpo.get("installments")
+    if (
+        not isinstance(parcelas, int)
+        or isinstance(parcelas, bool)
+        or not (1 <= parcelas <= 12)
+    ):
+        raise HttpError(422, "installments deve ser inteiro entre 1 e 12")
+    titular = {}
+    for campo in ("holder_name", "holder_document_number"):
+        valor = corpo.get(campo)
+        if not isinstance(valor, str) or not valor.strip():
+            raise HttpError(422, f"{campo} é obrigatório")
+        titular[campo] = valor.strip()
+    ip = corpo.get("ip")
+    if ip is not None and (not isinstance(ip, str) or not ip.strip()):
+        raise HttpError(422, "ip deve ser texto não vazio quando enviado")
+
+    status_http, resposta = PagamentosClient().confirmar_cartao(
+        intent_id=pedido.intent_id,
+        payload={
+            "card_token": token.strip(),
+            "installments": parcelas,
+            # O e-mail sai do snapshot, e não do corpo: quem paga é o comprador
+            # que fechou o pedido, e trocar isso pelo navegador seria cobrar em
+            # nome de outra pessoa.
+            "payer_email": pedido.customer["email"],
+            **({"ip": ip.strip()} if ip else {}),
+            **titular,
+        },
+    )
+    if status_http != 200:
+        raise HttpError(
+            status_http, str(resposta.get("detail") or "a tentativa não foi concluída")
+        )
+    pagamento = {
+        "method": "card",
+        "intent_id": pedido.intent_id,
+        "status": resposta["status"],
+    }
+    motivo = (resposta.get("card") or {}).get("reason_code")
+    if motivo:
+        pagamento["reason_code"] = motivo
+    return JsonResponse(
+        {
+            "order_id": str(pedido.id),
+            "site_id": pedido.site_id,
+            # [INV-P7] relido do banco: quem move o pedido é o evento, não esta
+            # resposta. A tela que mostrar "pago" por causa daqui mente.
+            "status": OrderModel.objects.values_list("status", flat=True).get(
+                pk=pedido.id
+            ),
+            "payment": pagamento,
+        }
+    )
