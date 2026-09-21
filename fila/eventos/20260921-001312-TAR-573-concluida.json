@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-001312-TAR-573-concluida",
+  "tarefa": "TAR-573",
+  "evento": "concluida",
+  "quando": "2026-09-21T00:13:12+00:00",
+  "quem": "agent/infra/rota-da-appmax-em-meshcraft",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1832",
+  "verificado_em": "2026-09-21"
+}

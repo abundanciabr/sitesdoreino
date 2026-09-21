@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-003-infra-a-porta-da-appmax-vai-para-meshcraft",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "infra: a porta da Appmax vai para meshcraft",
+  detalhe: "A rota da Appmax sai do dominio congelado e passa a viver em meshcraft.top, antes de o aplicativo ser cadastrado na Appmax.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1832. Validação local: árvore 46a7f6ef8f7bf7606eb278b07598cba00361363d; commit 1984880af151d10bfcb3e23aed6819ae0910d8bd; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-573",
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
