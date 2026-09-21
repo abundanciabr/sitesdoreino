@@ -1,0 +1,20 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-016-o-pouso-passou-a-atualizar-a-main-dentro-do-pr-verde",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: o pouso passou a atualizar a main dentro do PR verde",
+  detalhe: "O pouso passa a reler o PR quando o GitHub ainda nao sabe se da para mergear, e so empurra a main para dentro de PR que ja esta verde nos dois checks obrigatorios.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1840",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  tarefa: "TAR-577",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

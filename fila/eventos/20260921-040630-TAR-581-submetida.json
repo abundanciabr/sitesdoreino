@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-040630-TAR-581-submetida",
+  "tarefa": "TAR-581",
+  "evento": "submetida",
+  "quando": "2026-09-21T04:06:30+00:00",
+  "quem": "agent/ci/tirar-fantasma-da-esteira",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1844",
+  "revisao": "37726c162e1ecf6d74952c712270fcd34f02fa97",
+  "arvore": "a20d84a50af1fc867682f284e74f4cdc7f16e18e"
+}

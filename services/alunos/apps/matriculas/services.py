@@ -35,7 +35,14 @@ def matriculas_que_valem(email: str):
 
 
 def matricular(
-    *, site_id: str, order_id: str, product_id: str, email: str, name: str
+    *,
+    site_id: str,
+    order_id: str,
+    product_id: str,
+    email: str,
+    name: str,
+    provider: str = "",
+    provider_reference_id: str = "",
 ) -> tuple[Matricula, bool]:
     """[INV-P5] Matrícula sob select_for_update() + transaction.atomic(), idempotente
     por order_id. Chamada tanto pelo consumer do evento (R4) quanto pelo reprocesso
@@ -44,6 +51,18 @@ def matricular(
     select_for_update() não trava linha que ainda não existe, então a corrida de
     criação é fechada pela unicidade de order_id: quem perde o INSERT recebe
     IntegrityError e lê a linha do vencedor sob lock (bloqueia até o commit dele).
+
+    [ESTORNO] **O par do pagamento é OPCIONAL, e por isso tem default vazio.**
+    O evento de pagamento sempre o traz (é `required` nos dois contratos v2, e a
+    tradução do v1 o deriva), mas o reprocesso manual não: `POST /matriculas` é
+    contrato congelado e não pede provedor nenhum. Exigi-lo aqui fecharia a porta
+    de reprocesso para trocar um campo de auditoria por um 422, e quem paga a
+    conta é a pessoa que já pagou e não foi matriculada.
+
+    Quem chega pelo evento grava o par, e é ele que `suspender_por_estorno()` usa
+    para achar esta linha quando o dinheiro voltar. **Reenvio não regrava nada**:
+    a idempotência devolve a linha existente sem tocá-la, e é isso que impede um
+    aviso repetido de reescrever a história de uma matrícula já cortada.
     """
     # [FILA] Fail-closed na borda: este é o ÚNICO lugar por onde entra um
     # `order_id` vindo de fora (evento de pagamento e reprocesso manual). Sem a
@@ -69,6 +88,8 @@ def matricular(
                     product_id=product_id,
                     email=email,
                     name=name,
+                    provider=provider,
+                    provider_reference_id=provider_reference_id,
                 )
                 # [FATO] Nasceu ativa: e a matricula que a compra criou, e o
                 # unico caminho pelo qual uma VENDA chega ao livro de fatos.
@@ -76,6 +97,72 @@ def matricular(
             return nova, True
         except IntegrityError:
             return Matricula.objects.select_for_update().get(order_id=order_id), False
+
+
+def suspender_por_estorno(
+    *, site_id: str, provider: str, provider_reference_id: str
+) -> tuple[list[Matricula], list[Matricula]]:
+    """[ESTORNO] O dinheiro voltou: fecha o acesso que aquele pagamento abriu.
+
+    Devolve `(encontradas, suspensas)`. `encontradas` são as matrículas daquele
+    pagamento; `suspensas` são as que ESTE estorno cortou agora. As duas listas
+    existem porque o chamador precisa separar dois silêncios que parecem um só:
+    "não achei matrícula nenhuma" (o estorno órfão, que vira aviso no log) e "já
+    estava suspensa" (a reentrega, que é normal e não se anuncia).
+
+    **Suspende TODAS as matrículas daquele pagamento**, e não a primeira que
+    aparecer. Hoje é sempre uma; escolher uma entre várias exigiria um critério
+    que ninguém decidiu, e o fato do mundo é que aquele dinheiro voltou inteiro.
+
+    **`suspensa`, e não `reembolsada`.** Decisão do mantenedor em 20/09/2026: o
+    acesso fecha na hora e reabrir é decisão humana, pelo painel. `reembolsada`
+    carregaria junto uma segunda regra que ele não decidiu aqui (quem está nela
+    não pede para voltar pela fila, `DECISAO-reembolso-tira-o-acesso.md`).
+
+    **Estorno e contestação cortam igual.** O `motivo` nem chega nesta função: o
+    que difere entre os dois é o que a plataforma faz depois (contestação tem
+    prazo de defesa), e um `if` aqui seria a primeira pedra de um tratamento
+    diferente que ninguém pediu.
+
+    **Quem decide se houve mudança é `fato_de_situacao()`, não um `if` daqui.**
+    A função já é a juíza disso para os cinco outros caminhos que mexem em
+    status nesta célula, e um sexto juízo escrito à mão divergiria dela no
+    primeiro estado novo. Suspender o já suspenso reescreve o mesmo valor na
+    coluna e não produz fato: nem erro, nem efeito novo.
+    """
+    # Referência vazia casaria com TODA matrícula nascida antes deste par
+    # existir (elas ficam com os dois campos em branco, e é permanente): um
+    # emissor com defeito suspenderia a escola inteira num evento só, em
+    # silêncio. O contrato pede `minLength: 1` nos dois campos, mas o consumidor
+    # lê o envelope do fio e não o valida contra o schema, então a recusa mora
+    # aqui, onde o estrago aconteceria.
+    if not provider or not provider_reference_id:
+        return [], []
+
+    with transaction.atomic():
+        # [INV-P11] O site entra no casamento: `provider_reference_id` é o id da
+        # cobrança NA CONTA do fornecedor, e cada escola tem a sua. Duas escolas
+        # podem receber a mesma referência no mesmo dia, de pagamentos que nada
+        # têm a ver um com o outro, e sem o site o estorno de uma cortaria o
+        # acesso do aluno da outra.
+        encontradas = list(
+            Matricula.objects.select_for_update()
+            .filter(
+                site_id=site_id,
+                provider=provider,
+                provider_reference_id=provider_reference_id,
+            )
+            .order_by("pk")
+        )
+        suspensas = []
+        for linha in encontradas:
+            anterior = linha.status
+            linha.status = Matricula.STATUS_SUSPENSA
+            linha.save(update_fields=["status"])
+            fato = fato_de_situacao(linha, anterior=anterior)
+            if fato is not None:
+                suspensas.append(linha)
+        return encontradas, suspensas
 
 
 def entrar_na_fila(

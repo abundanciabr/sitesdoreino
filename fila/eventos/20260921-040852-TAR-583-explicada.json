@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-040852-TAR-583-explicada",
+  "tarefa": "TAR-583",
+  "evento": "explicada",
+  "quando": "2026-09-21T04:08:52+00:00",
+  "quem": "Brief da maestro em 21/09/2026, lote L1B de docs/decisoes/PLANO-MESTRE-APPMAX-NO-CARTAO.md, depois do bloqueio medido do PR #1841.",
+  "o_que_e": "Os dois documentos que descrevem como as partes do site conversam entre si ainda nao preveem nada do pagamento no cartao pela Appmax: faltam o endereco de internet do comprador, o nome e o documento de quem e dono do cartao, a consulta de em quantas vezes da para parcelar, e a porta pela qual a tela de compra confirma o cartao.",
+  "o_que_muda": "Enquanto esses documentos nao preverem essas coisas, nenhuma parte do site pode ser construida para cobrar no cartao, porque a conferencia automatica recusa qualquer programa que fale o que o documento nao promete. Com eles previstos, junto com o programa que os atende, a construcao do pagamento no cartao destrava.",
+  "exemplo": "E como o manual de uma loja que so descreve a venda no Pix. Enquanto ele nao descrever tambem a venda no cartao, o caixa nao pode aceitar cartao, mesmo com a maquininha em cima do balcao.",
+  "importancia": 94
+}

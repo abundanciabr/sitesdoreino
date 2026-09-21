@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-015-fila-tres-cartoes-mentiam-um-deles-ainda-espera-voce",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "fila: tres cartoes mentiam, um deles ainda espera voce",
+  detalhe: "TAR-421 dizia 'em execucao' quando o PR citado a bloqueou; ela passa a bloqueada, esperando voce autorizar mudar contracts/eventos/ (TAR-487). TAR-240 saiu da fila: voce ja tinha recusado a varredura diaria.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1844",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-421",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  porque_so_voce: "So voce pode autorizar mudar contracts/eventos/, a mudanca que a TAR-487 pede; sem essa palavra a TAR-421, a 488 e a 489 ficam paradas.",
+  proximo_passo: "Decidir a TAR-487: autorizar (ou recusar) mudar contracts/eventos/ para expor a transferencia humana e a retomada comercial.",
+  se_eu_nao_decidir: "TAR-421, TAR-488 e TAR-489 continuam bloqueadas indefinidamente.",
+  recomendacao: "Autorizar a TAR-487 se a transferencia humana entre leads, funil e mensageria ainda for prioridade; senao, cancelar as tres.",
+  reversivel: true,
+  impacto: "medio"
+}); })();
