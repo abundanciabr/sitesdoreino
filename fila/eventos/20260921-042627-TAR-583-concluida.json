@@ -1,9 +1,0 @@
-{
-  "arquivo": "20260921-042627-TAR-583-concluida",
-  "tarefa": "TAR-583",
-  "evento": "concluida",
-  "quando": "2026-09-21T04:26:27+00:00",
-  "quem": "agent/contracts/contrato-do-cartao-appmax",
-  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1845",
-  "verificado_em": "2026-09-21"
-}
