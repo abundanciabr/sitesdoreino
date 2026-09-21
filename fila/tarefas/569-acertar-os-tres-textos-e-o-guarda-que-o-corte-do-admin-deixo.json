@@ -1,0 +1,20 @@
+{
+  "arquivo": "569-acertar-os-tres-textos-e-o-guarda-que-o-corte-do-admin-deixo",
+  "id": "TAR-569",
+  "titulo": "Acertar os tres textos e o guarda que o corte do admin deixou para tras",
+  "toca": [
+    "infra",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "por-a-chave-do-github.sh rodado ou o trecho provado com 404 sem alarme falso; o teste test_gesto_nao_vira_link reprovando com a sabotagem do armadilhas/330 no lugar; e os comentarios de premissa reescritos com a data do corte",
+  "despacho": "O PR 1814 (TAR-418) tirou o router de /admin do Traefik em 20/09/2026, e tres coisas ficaram dizendo o mundo antigo. 1) infra/por-a-chave-do-github.sh:281 mede https://meshcraft.top/admin/healthz de fora e espera 200; agora recebe 404 e cai no ramo de ATENCAO, dando alarme falso num roteiro que funcionou. Troque a medicao por uma que continue verdadeira, ou tire a conferencia de fora dali. As linhas 259, 284, 298 e 310 mandam o mantenedor abrir https://meshcraft.top/admin/ no navegador, que agora e 404: mande abrir o admin local. 2) services/admin/tests/test_mapa_do_site.py:128 (test_gesto_nao_vira_link) virou guarda morto: as 64 entradas gesto:true da celula admin estao alcance interno, e _preparar so monta link quando alcance e publico, entao a sabotagem do armadilhas/330 passa verde. Refaca o guarda para medir a promessa sem depender do alcance. 3) Premissa envelhecida em services/admin/config/urls.py:170, services/admin/apps/core/auth.py:31, services/admin/config/api.py:13, services/admin/config/settings.py:103 e infra/env/admin.env.exemplo:152: todos afirmam que a porta de maquina e alcancavel pela internet em meshcraft.top/admin/interno. Nao e mais. O perigo e o inverso do obvio: esse texto justifica o Bearer fail-closed, e agora um agente pode ler que a topologia fecha a porta e afrouxar a trava. Reescreva dizendo que a porta so e alcancavel pela rede interna do Docker E que o Bearer continua sendo quem fecha. Tambem ci/mapa_do_site.py:54 e :113 usam /admin como exemplo de publico. Caminhos CODEOWNERS: infra/ exige mandato nominal.",
+  "origem": "revisao adversarial do PR 1814 em 20/09/2026, depois do merge e do deploy verde",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

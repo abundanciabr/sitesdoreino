@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-047-leads-pagamento-v2-entra-sem-duplicar-fato",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "leads: pagamento v2 entra sem duplicar fato",
+  detalhe: "Segui x-ponte-do-v1 dos contratos, nao o brief: acertava a chave do aprovado mas errava a do recusado (so payment_id).",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1825. Validação local: árvore 63a2208326eb373c03e21da9871bf68c62d10f60; commit a6dbd29bfdcc3fc60d3073363da376d2b05ec576; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-548",
+  gravidade: "info",
+  frente: "vender",
+  area: "leads",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

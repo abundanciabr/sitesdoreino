@@ -11,6 +11,16 @@ logger = logging.getLogger("funil.sessao")
 
 _cliente: httpx.Client | None = None
 
+#: O que `CatalogoClient.obter_pagina` devolve quando o catálogo NÃO respondeu:
+#: fora do ar, lento, ou respondendo coisa que não é uma página. É diferente de
+#: `None`, que é "perguntei e esta página não existe", e a distinção é a razão
+#: de este objeto existir. As duas situações levam o visitante a telas
+#: diferentes (404 honesto contra "volte em instantes"), e devolver `None` nas
+#: duas faria uma queda de rede virar um "esta página nunca existiu" — a mesma
+#: família do erro que o `obter_resumo` da `notificacoes` evita separando "zero"
+#: de "não sei".
+SEM_RESPOSTA = object()
+
 
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()`/`httpx.post()` a
@@ -53,6 +63,72 @@ class CatalogoClient:
             timeout=5.0,
         )
         return r.json() if r.status_code == 200 else None
+
+    def obter_pagina(self, site_id: str, slug: str):
+        """A versão PUBLICADA de uma página deste site (`getPage`).
+
+        Três respostas, e não duas, porque a página que as recebe leva o
+        visitante a três telas diferentes:
+
+        * o dicionário da `PaginaPublicada` — há o que desenhar;
+        * `None` — o catálogo respondeu 404, e "esta página não existe" é um
+          fato, não um erro (o próprio contrato o diz: página sem nenhuma
+          versão publicada responde 404, e não 200 com seções vazias);
+        * `SEM_RESPOSTA` — ninguém respondeu, ou o que veio não é uma página.
+
+        O timeout é 3s e não os 5s dos outros dois métodos porque esta chamada
+        está no caminho de quem está olhando a tela: um catálogo pendurado
+        precisa virar a tela de "volte em instantes" antes de o visitante ir
+        embora.
+
+        A CONFERÊNCIA DE FORMA É PARTE DO FAIL-OPEN, e não zelo: `version` é o
+        número que vai dentro de todo evento desta página, e um corpo sem ele
+        publicaria medição impossível de comparar. Corpo fora do contrato é
+        tratado como "não sei", nunca como uma página com campos adivinhados
+        (o bug mais caro da Fase D: *2xx não é sucesso*).
+        """
+        try:
+            r = http().get(
+                f"{self.base}/sites/{site_id}/paginas/{slug}",
+                headers=self._headers(),
+                timeout=3.0,
+            )
+        except httpx.HTTPError as erro:
+            logger.error(
+                "pagina %r: não deu para perguntar ao catálogo: %s", slug, erro
+            )
+            return SEM_RESPOSTA
+
+        if r.status_code == 404:
+            return None
+        if r.status_code != 200:
+            logger.error("pagina %r: o catálogo respondeu HTTP %s", slug, r.status_code)
+            return SEM_RESPOSTA
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # `json.JSONDecodeError` é `ValueError`, NÃO `httpx.HTTPError`.
+            logger.error(
+                "pagina %r: o catálogo respondeu fora do contrato: %s", slug, erro
+            )
+            return SEM_RESPOSTA
+
+        if (
+            not isinstance(corpo, dict)
+            or not isinstance(corpo.get("slug"), str)
+            or isinstance(corpo.get("version"), bool)
+            or not isinstance(corpo.get("version"), int)
+            or corpo["version"] < 1
+            or not isinstance(corpo.get("secoes"), list)
+        ):
+            logger.error(
+                "pagina %r: o catálogo respondeu 200 com corpo fora do contrato "
+                "(faltou slug, version >= 1 ou secoes)",
+                slug,
+            )
+            return SEM_RESPOSTA
+        return corpo
 
 
 class LeadsClient:

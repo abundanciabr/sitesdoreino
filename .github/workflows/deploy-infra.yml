@@ -100,12 +100,24 @@ permissions:
 # O preço — o expulso que fica fora do ar em silêncio — passou a ser coberto por
 # `.github/workflows/vacina-do-deploy.yml`, que acorda no `cancelled` das DUAS
 # esteiras, repete quando republicar só AVANÇA e abre issue quando não dá.
-# Se um dia alguém quiser acabar com a cadeira musical na raiz, o caminho não é
-# separar os grupos: é FUNDIR as duas esteiras numa só, que trate compose e
-# imagens no mesmo run, com uma ordem definida entre eles.
+#
+# -----------------------------------------------------------------------------
+# O PREÇO DO GRUPO ÚNICO ACABOU — TAR-529, 20/09/2026
+#
+# A conclusão de 30/08/2026 era que o expulso da vaga de pendente é o preço
+# certo, e que acabar com ele exigiria FUNDIR as duas esteiras numa só. Isso
+# deixou de valer: desde 07/05/2026 o `concurrency` aceita `queue: max`, que
+# guarda até 100 runs pendentes atendidos em ordem de chegada, no lugar do
+# `queue: single` que era o padrão. A fila nativa enfileira sem fundir nada e
+# sem separar nada, e o `cancelled` em silêncio das `armadilhas/183` e `/188`
+# deixa de nascer por disputa de vaga. A chave só é inválida junto com
+# `cancel-in-progress: true`, que este bloco não usa.
+#
+# O que ainda cancela: fila cheia acima de 100 pendentes, ou cancelamento à mão.
 concurrency:
   group: deploy
   cancel-in-progress: false
+  queue: max
 jobs:
   # O MESMO portão do deploy-celula (docs/decisoes/PROJETO-PORTAO-DEPLOY.md),
   # em modo infra: prova que ci-celula-gate, alarme-main e as muralhas do PR
@@ -140,6 +152,9 @@ jobs:
     needs: portao
     # Explícito de propósito; NUNCA always()/failure().
     if: needs.portao.result == 'success'
+    # A trava de branch do GitHub mora neste ambiente, nao no ramo (TAR-461).
+    # Guarda: ci/tests/test_workflows_com_ssh_tem_portao.py
+    environment: vps
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

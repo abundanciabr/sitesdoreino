@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-048-checkout-o-consumidor-entende-o-aviso-v2",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "checkout: o consumidor entende o aviso v2",
+  detalhe: "O schema venceu o despacho na ponte da recusa, e o guarda compara consumer e contrato a cada rodada.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1829. Validação local: árvore b96e05b4a71bbf225bd50aa5b3b5c0bc81620873; commit 5b3156076438a42390454b99bd4823cd6bcff662; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-546",
+  gravidade: "info",
+  frente: "vender",
+  area: "checkout",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

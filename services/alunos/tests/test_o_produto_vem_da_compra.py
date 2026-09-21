@@ -28,14 +28,16 @@ PRODUTO = "11111111-1111-4111-8111-111111111111"
 
 
 def _aviso_da_compra(*, pedido: str, produto: str | None) -> dict:
-    """O campo `data` do evento, na forma exata do contrato congelado."""
+    """O campo `data` do evento, na forma exata do contrato congelado v2, que é
+    a que o handler lê: um aviso v1 chega a ele já traduzido pela borda."""
     dados = {
-        "site_id": SITE,
+        "platform_site_id": SITE,
         "payment_id": f"pay-{pedido}",
         "order_id": pedido,
         "amount_cents": 19700,
         "method": "pix",
-        "mp_payment_id": f"mp-{pedido}",
+        "provider": "mercadopago",
+        "provider_reference_id": f"mp-{pedido}",
         "customer": {"email": "aluna@exemplo.com.br", "name": "Aluna Exemplo"},
     }
     if produto is not None:

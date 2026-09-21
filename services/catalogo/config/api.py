@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as catalogo_router
 from apps.core.auth import bearerAuth
+from apps.paginas.api import router as paginas_router
 
 api = NinjaAPI(
     title="Catalogo API",
@@ -18,3 +19,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", catalogo_router)
+api.add_router("", paginas_router)

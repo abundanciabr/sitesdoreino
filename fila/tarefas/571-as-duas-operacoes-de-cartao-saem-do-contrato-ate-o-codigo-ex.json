@@ -1,0 +1,19 @@
+{
+  "arquivo": "571-as-duas-operacoes-de-cartao-saem-do-contrato-ate-o-codigo-ex",
+  "id": "TAR-571",
+  "titulo": "As duas operações de cartão saem do contrato até o código existir",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "As conferências 'python ci/contract_freeze.py pagamentos' e 'python ci/contract_freeze.py checkout' saem do vermelho, medidas antes e depois.",
+  "despacho": "Rito de Contrato (RITOS.md §3). Desfaça a inversão de ordem: duas operações de\ncartão foram congeladas no contrato antes de qualquer código implementá-las, e\npor isso todo trabalho em services/pagamentos e services/checkout nasce reprovado.\n\nRemova dos contratos, e só dos contratos:\n1. `POST /intents/{intent_id}/cartao` (operationId `confirmarCartao`) em\n   `contracts/pagamentos.openapi.yaml`.\n2. `POST /pedidos/{order_id}/cartao` (operationId `confirmOrderCard`) em\n   `contracts/checkout.openapi.yaml`, junto do trecho da descrição do documento\n   que anuncia essa rota como pública.\n3. O schema `ConfirmacaoDeCartao` nos dois arquivos, que fica órfão.\n4. Em `contracts/fixtures_de_pagamento.py` e\n   `contracts/test_pagamento_sem_nome_de_fornecedor.py`, apenas o que fala das\n   operações removidas.\n\nPRESERVE intactos: `contracts/eventos/pagamento.aprovado.v2.json`,\n`pagamento.recusado.v2.json`, `pagamento.estornado.v2.json` e\n`POST /intents/{intent_id}/card` (`confirmCard`) com o schema `CardConfirm`,\nque é a confirmação do Mercado Pago e continua vendendo hoje.\n\nO PR contém somente `contracts/` e leva as etiquetas `contrato` e\n`contrato-remocao`, porque isto remove e `ci/contrato_aditivo.py` vai acusar\nquebra. Leia o cabeçalho desse arquivo antes.\n\nProva que fecha: `python ci/contract_freeze.py pagamentos` e\n`python ci/contract_freeze.py checkout` medidos antes (vermelho) e depois\n(verde). O exportador precisa das variáveis de ambiente que\n`.github/workflows/ci-celula.yml` declara; sem elas o resultado é ERROR de\ninstrumento, nunca um verde.",
+  "origem": "Decisão da maestro em 20/09/2026 sobre a dívida deixada pela mudança de contrato de 19/09/2026, que escreveu a promessa antes da construção.",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

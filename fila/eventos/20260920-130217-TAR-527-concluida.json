@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-130217-TAR-527-concluida",
+  "tarefa": "TAR-527",
+  "evento": "concluida",
+  "quando": "2026-09-20T13:02:17+00:00",
+  "quem": "agent/docs/plano-mestre-fila-de-deploy",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1799",
+  "verificado_em": "2026-09-20"
+}

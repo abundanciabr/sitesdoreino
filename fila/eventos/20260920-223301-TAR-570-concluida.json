@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-223301-TAR-570-concluida",
+  "tarefa": "TAR-570",
+  "evento": "concluida",
+  "quando": "2026-09-20T22:33:01+00:00",
+  "quem": "agent/fila/reabrir-a-tar-569",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1823",
+  "verificado_em": "2026-09-20"
+}

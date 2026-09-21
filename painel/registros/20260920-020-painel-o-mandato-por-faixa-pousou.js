@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-020-painel-o-mandato-por-faixa-pousou",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "painel: o mandato por faixa pousou",
+  detalhe: "O registro 017 saiu antes do pouso e dizia integracao nao verificada; este fecha o laco com o merge commit conferido.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1805. Validação local: árvore 7e7037d3f8207e82ed813b2a7340f2164d22fe8e; commit b74b82172b45a3c7c9e149dcf25992dd261b4229; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-535",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

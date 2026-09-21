@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-005-fila-cortar-o-lixo-velho-autorizado",
+  tipo: "decisao",
+  quando: "2026-09-21",
+  titulo: "fila: cortar o lixo velho autorizado",
+  detalhe: "TAR-225 e TAR-080 saem da fila no corte que ele autorizou. Os 7 PRs parados desde setembro ele mesmo fechou.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1833. Validação local: árvore 6cfa256a8358bdca3ea91f054248643fa3b5ba88; commit 6a84bb781a3160ba1e60d569bd03f684b95b404a; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-574",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -135,10 +135,21 @@ def test_monitor_preserva_guarda_da_espera(monkeypatch):
     assert chamadas == ["muralha_da_espera.py"]
 
 
+# Os ganchos por ação de cada lado, na ordem exata em que o arquivo os declara.
+# O Codex tem só a espera; o Claude Code tem também a trava que recusa o
+# sub-agente fora de sonnet ou opus no ato da criação, e ela vive no arquivo que
+# só o Claude Code lê. Lista exata dos dois lados: gancho a mais não passa
+# despercebido, e gancho a menos reprova.
+GANCHOS_POR_ACAO = {
+    ".codex/hooks.json": ["Monitor"],
+    ".claude/settings.json": ["Monitor", "Agent|Workflow"],
+}
+
+
 @pytest.mark.parametrize("config", [".codex/hooks.json", ".claude/settings.json"])
-def test_config_apenas_monitor_por_acao_e_checkpoints_preservados(config):
+def test_config_tem_os_ganchos_por_acao_e_checkpoints_preservados(config):
     hooks = json.loads((RAIZ / config).read_text(encoding="utf-8"))["hooks"]
-    assert [h["matcher"] for h in hooks["PreToolUse"]] == ["Monitor"]
+    assert [h["matcher"] for h in hooks["PreToolUse"]] == GANCHOS_POR_ACAO[config]
     assert hooks["PostToolUse"] == []
     for evento_hook in ["SessionStart", "UserPromptSubmit", "Stop"]:
         assert hooks[evento_hook]
@@ -175,7 +186,8 @@ def test_dispatcher_stop_cobra_e_aceita_relatorio(bancada):
             capture_output=True, text=True, encoding="utf-8")
     assert rodar().returncode == 2
     relatorio = "\n".join(titulo + " Alteração conferida com teste real." for titulo, _ in contas.BLOCOS)
-    relatorio += "\n- [x] Correção verificada.\n**Veredito:** PRONTO, os testes passaram."
+    relatorio += ("\n- [x] Correção verificada.\n**Veredito:** PRONTO, os testes passaram."
+                  "\n**Instruções** nada a fazer: a correção já está no ar.")
     registros.append({"type": "response_item", "payload": {"type": "message", "role": "assistant",
         "content": [{"type": "output_text", "text": relatorio}]}})
     assert rodar().returncode == 0

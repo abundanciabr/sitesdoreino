@@ -180,8 +180,32 @@ def test_teto_mede_bytes_utf8_e_nao_caracteres(tmp_path, nome, teto):
     raiz = _cenario(tmp_path)
     p = raiz / nome
     conteudo = p.read_bytes()
-    p.write_bytes(conteudo + ("á" * ((teto - len(conteudo)) // 2 + 1)).encode())
+    # A conta parte do que o portão MEDE (o blob, com CRLF normalizado), não do
+    # que está no disco: numa checkout Windows os dois diferem em centenas de
+    # bytes e o "á" a mais deixaria de estourar o teto justamente aqui.
+    medido = len(conteudo.replace(b"\r\n", b"\n"))
+    p.write_bytes(conteudo + ("á" * ((teto - medido) // 2 + 1)).encode())
     _falha(padrao.conferir(raiz), f"teto de {nome}")
+
+
+@pytest.mark.parametrize("nome,teto", padrao.TETOS_EM_BYTES.items())
+def test_teto_mede_o_blob_e_nao_o_fim_de_linha_do_disco(tmp_path, nome, teto):
+    """O mesmo arquivo com CRLF e com LF tem de dar a MESMA medida.
+
+    Com `core.autocrlf=true` o Windows guarda CRLF e o Git guarda LF: medir o
+    disco reprovava em toda máquina do mantenedor e passava na CI pelos mesmos
+    bytes. Portão que mente localmente é portão que se aprende a ignorar, e
+    este nasceu VERMELHO contra a versão que lia `read_bytes()` cru.
+    """
+    raiz = _cenario(tmp_path)
+    p = raiz / nome
+    lf = p.read_bytes().replace(b"\r\n", b"\n")
+    p.write_bytes(lf)
+    com_lf = next(r for r in padrao.conferir(raiz).resultados if r.nome == f"teto de {nome}")
+    p.write_bytes(lf.replace(b"\n", b"\r\n"))
+    com_crlf = next(r for r in padrao.conferir(raiz).resultados if r.nome == f"teto de {nome}")
+    assert com_lf.resumo == com_crlf.resumo, (com_lf.resumo, com_crlf.resumo)
+    assert com_lf.estado == com_crlf.estado
 
 
 @pytest.mark.parametrize("obrigacao", padrao.PEDRAS_ANGULARES)

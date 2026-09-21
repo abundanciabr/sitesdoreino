@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214922-TAR-551-explicada",
+  "tarefa": "TAR-551",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:49:22+00:00",
+  "quem": "Plano mestre Appmax, lote L3B; comando de inicio do mantenedor em 20/09/2026",
+  "o_que_e": "Hoje o cartao pode salvar um pagamento como aprovado na resposta imediata, e o aviso para as outras celulas nasce fora dessa transacao.",
+  "o_que_muda": "Se o aviso se perde, o dinheiro entra e o aluno nunca e matriculado. E o pior tipo de falha: silenciosa e a favor do caixa.",
+  "exemplo": "E registrar a venda no caixa mas esquecer de avisar o estoque: o cliente pagou e nunca recebe.",
+  "importancia": 85
+}

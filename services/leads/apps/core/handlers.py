@@ -1,7 +1,7 @@
 # apps/core/handlers.py  # [RECEITA:R4 v1]
 from django.db import IntegrityError, transaction
 
-from .models import EventoProcessado, Lead, TimelineEvent
+from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
 
 
 def processar_envelope(envelope: dict, handler) -> bool:
@@ -105,11 +105,73 @@ def ao_pedido_criado(event_id: str, data: dict) -> None:
         )
 
 
+def _site_id_de(data: dict) -> str:
+    """v1 chama a coluna `site_id`; v2 renomeia para `platform_site_id` com o
+    mesmo conteúdo (contracts/eventos/pagamento.*.v2.json). Nunca as duas
+    juntas: cada schema é `additionalProperties: false`."""
+    return data.get("platform_site_id", data.get("site_id"))
+
+
+def _chave_pagamento_aprovado(data: dict) -> str:
+    """Identidade lógica do fato para `pagamento.aprovado`, derivada de
+    `x-ponte-do-v1` em contracts/eventos/pagamento.aprovado.v2.json:
+    `chave_entre_versoes` é o par (`provider`, `provider_reference_id`). No v1
+    esse par não existe — `no_v1` manda tirar `provider` do literal
+    "mercadopago" (o v1 só falava com um provedor) e `provider_reference_id`
+    de `data.mp_payment_id`. NÃO é `payment_id`: o próprio v2 descreve esse
+    campo como local à célula pagamentos e explicitamente fora da
+    deduplicação entre versões."""
+    if "provider" in data:  # v2
+        provider = data["provider"]
+        referencia = data["provider_reference_id"]
+    else:  # v1
+        provider = "mercadopago"
+        referencia = data["mp_payment_id"]
+    return f"{provider}:{referencia}"
+
+
+def _chave_pagamento_recusado(data: dict) -> str:
+    """Identidade lógica do fato para `pagamento.recusado`, derivada de
+    `x-ponte-do-v1` em contracts/eventos/pagamento.recusado.v2.json — e ali a
+    regra é OUTRA da do aprovado, por escrito no próprio contrato: o v1 da
+    recusa nunca carregou referência do provedor (nem sob o nome
+    `mp_payment_id`), então `chave_entre_versoes` é só `payment_id`, presente
+    com o mesmo valor nas duas versões. Usar o par `provider` mais
+    `provider_reference_id` aqui, como no aprovado, deduplicaria errado: esse
+    par só existe a partir do v2."""
+    return data["payment_id"]
+
+
+def _fato_ja_processado(evento: str, site_id: str, chave: str) -> bool:
+    """Savepoint só em volta do INSERT, mesmo motivo do dedup por event_id em
+    `processar_envelope`: sem ele, a colisão de unicidade aborta a transação
+    externa inteira. A unicidade em (evento, site_id, chave) É o guarda — real
+    mesmo sob corrida (ver test_inv_leads_dedup_entre_versoes.py, teste de
+    concorrência com threads e Postgres real).
+
+    [INV-P11] `site_id` entra aqui, na identidade do fato — não só depois, na
+    leitura de `_upsert_lead`. Ver o docstring de `FatoDePagamentoProcessado`
+    para o buraco que isso fecha."""
+    try:
+        with transaction.atomic():
+            FatoDePagamentoProcessado.objects.create(
+                evento=evento, site_id=site_id, chave=chave
+            )
+    except IntegrityError:
+        return True
+    return False
+
+
 def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
     with transaction.atomic():
+        site_id = _site_id_de(data)
+        if _fato_ja_processado(
+            "pagamento.aprovado", site_id, _chave_pagamento_aprovado(data)
+        ):
+            return  # mesmo fato já registrado (v1 ou v2, entrega anterior)
         cliente = data["customer"]
         lead = _upsert_lead(
-            site_id=data["site_id"],
+            site_id=site_id,
             email=cliente["email"],
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),
@@ -121,9 +183,14 @@ def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
 
 def ao_pagamento_recusado(event_id: str, data: dict) -> None:
     with transaction.atomic():
+        site_id = _site_id_de(data)
+        if _fato_ja_processado(
+            "pagamento.recusado", site_id, _chave_pagamento_recusado(data)
+        ):
+            return  # mesmo fato já registrado (v1 ou v2, entrega anterior)
         cliente = data["customer"]
         lead = _upsert_lead(
-            site_id=data["site_id"],
+            site_id=site_id,
             email=cliente["email"],
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),

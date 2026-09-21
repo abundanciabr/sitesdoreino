@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-220255-TAR-568-explicada",
+  "tarefa": "TAR-568",
+  "evento": "explicada",
+  "quando": "2026-09-20T22:02:55+00:00",
+  "quem": "pouso do PR 1814 confirmado de fora em 20/09/2026",
+  "o_que_e": "O livro ainda nao sabe que a area administrativa saiu do ar publico",
+  "o_que_muda": "O painel passa a dizer, com os numeros medidos de fora, que ninguem mais alcanca /admin pela internet",
+  "exemplo": "Voce abre o painel e le que meshcraft.top/admin/ responde 404, e que /docs/ e /mapa-ia/ continuam em 200",
+  "importancia": 60
+}

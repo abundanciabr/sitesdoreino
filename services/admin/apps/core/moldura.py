@@ -103,6 +103,11 @@ SECOES = (
     # (04/09/2026).
     ("livro", "Livro"),
     ("menu_do_topo", "Menu do site"),
+    # "Página de venda", e não "Páginas": o que ele abre aqui é O texto que
+    # vende o curso, e é assim que ele fala da coisa. "Páginas", ao lado de
+    # "Menu do site", faria as duas parecerem configuração do mesmo assunto
+    # (19/09/2026).
+    ("pagina_de_venda", "Página de venda"),
     ("perpetuo", "Lançamento"),
     # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra
     # é o número contra o alvo, não uma lista (03/09/2026).

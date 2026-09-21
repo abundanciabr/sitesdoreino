@@ -1,0 +1,19 @@
+{
+  "arquivo": "520-a-pagina-de-oferta-que-o-visitante-abre-no-navegador",
+  "id": "TAR-520",
+  "titulo": "A pagina de oferta que o visitante abre no navegador",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "visitas-na-pagina-de-venda-por-semana"
+  ],
+  "evidencia_exigida": "suite da celula funil verde, prova por mutacao em cada guarda nova e a foto da tela de /oferta aberta no navegador",
+  "despacho": "Celula funil. Um PR, uma celula.\n\nConstrua a rota /oferta, que renderiza a pagina publicada do site atual lida do\ncatalogo por GET /sites/{site_id}/paginas/oferta. A raiz NAO muda: ela continua\nsendo a HOME pela decisao de 27/08/2026.\n\nRegra central: slot vazio nao aparece, e secao sem nenhum slot preenchido nao\naparece. A pagina precisa ficar bonita com tres secoes escritas e oito em\nbranco, que e o estado real de hoje.\n\nPreco: o que estiver cadastrado na Offer. Botao: o mesmo destino de checkout\nque a landing ja monta, com a UTM intacta na query string.\n\nTrate os tres estados, cada um com texto que diz o que fazer: site sem pagina\npublicada e 404 honesto; catalogo fora do ar ou lento nao derruba a pagina;\npagina publicada sem nenhum slot preenchido nao e erro de servidor.\n\nEmita funil.pagina-vista.v1 quando a pagina for servida, com site_id DENTRO de\ndata, sem nenhum texto de copy no corpo, e de um jeito que nunca derrube nem\natrase a pagina.\n\nProva: suite da celula verde com a saida colada, vermelho antes do verde,\nprova por mutacao em cada guarda nova, e a foto da tela de /oferta aberta no\nnavegador de verdade.\n\nAlvos: services/funil/apps/core/views.py, services/funil/apps/core/clients.py,\nservices/funil/config/urls.py, services/funil/templates/funil/oferta.html e\ntestes em services/funil/tests/.",
+  "origem": "brief do mantenedor em 19/09/2026: a primeira entrega da escada que ele consegue abrir no navegador",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "captacao-e-conteudo"
+}

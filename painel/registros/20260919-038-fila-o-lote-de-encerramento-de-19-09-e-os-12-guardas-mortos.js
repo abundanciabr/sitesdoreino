@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-038-fila-o-lote-de-encerramento-de-19-09-e-os-12-guardas-mortos",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "fila: o lote de encerramento de 19/09 e os 12 guardas mortos",
+  detalhe: "Registra o lote de encerramento de 19/09, cancela a TAR-395 com prova de busca e enfileira TAR-494 a 498 com 12 guardas mortos.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1763. Validação local: árvore 77227074126ed3fa703203f8671b49d1e18022fc; commit d15129a0b1073ce3d57d2771bd26094150469336; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-499",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

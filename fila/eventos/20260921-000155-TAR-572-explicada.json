@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-000155-TAR-572-explicada",
+  "tarefa": "TAR-572",
+  "evento": "explicada",
+  "quando": "2026-09-21T00:01:55+00:00",
+  "quem": "Rito interrompido da TAR-542: o codigo pousou no PR 1820 mas o ci/pr.py nunca fechou a escrituracao",
+  "o_que_e": "A rota publica da Appmax entrou no ar e funciona, mas a fila ainda diz que a tarefa dela esta em andamento, porque o rito que escreve o fecho morreu no meio.",
+  "o_que_muda": "Sem isso o quadro de tarefas mente sobre o que ja esta pronto, e quem olhar depois nao sabe que a porta da Appmax ja esta aberta.",
+  "exemplo": "E a obra terminada com o alvara na gaveta: a casa funciona, mas no papel ela ainda esta em construcao.",
+  "importancia": 90
+}

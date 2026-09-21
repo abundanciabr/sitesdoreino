@@ -17,6 +17,10 @@ responsabilidades e limites de cada uma das IAs da tríade".
 audita e verifica. O contrato entre elas é o que a casa já tinha (a fila, o
 livro e os registros do conselho); nenhum formato novo nasce.**
 
+Emendada em 20/09/2026: o sub-agente construtor voltou ao Claude Code. Os três
+papéis continuam; leia a "Emenda de 20/09/2026" no fim antes de aplicar a regra
+de quem dispara sub-agente.
+
 ## Por que
 
 O conselho da Fase 4 (regulamento na pasta de trabalho do mantenedor, fora do Git) foi desenhado como
@@ -30,7 +34,7 @@ A divisão segue a força de cada uma. Antigravity tem a maior janela de
 contexto e enxerga o todo: audita. Codex tem volume, paralelismo e custo
 baixo por PR em tarefa bem especificada: constrói. Claude Code segura
 constituições longas, traduz achado em brief sem ambiguidade e pega o bug
-sutil: rege, executa o cirúrgico e revisa o crítico.
+sutil: rege, executa o cirúrgico à mão e revisa o crítico.
 
 Duas fichas do conselho foram reprovadas por um único motivo: mediram a pasta
 local, que estava 82 commits atrás de `origin/main` e com o `CLAUDE.md`
@@ -64,7 +68,7 @@ classificação muda papéis ou amplia o mandato dos agentes.
 
 | Papel | Quem | Escreve | Nunca |
 |---|---|---|---|
-| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico por um despacho próprio; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
+| Maestro | Claude Code | a decisão sobre cada achado (`voto`), a tarefa na fila com o brief roteado por `ci/economia_da_fabrica.py brief`; executa o que é cirúrgico com as próprias mãos e despacha sub-agente construtor nas frentes que correm em paralelo; pode revisar PR crítico sem bloquear a integração | espera check em laço; mergeia; delega arquitetura |
 | Executor | Codex | o PR pela ficha `despacho`, que grava o evento na fila e o registro no livro; a `implementacao` com prova, quando o brief a pedir | pergunta ao mantenedor; edita o clone principal; arma espera; amplia o mandato; audita; decide lei |
 | Sentinela | Antigravity | achados medidos contra `origin/main` (`proposta`) e a verificação independente de cada entrega alheia (`verificacao`) | edita código ou lei; escreve despacho; grava evento ou registro; mede a pasta local |
 
@@ -109,7 +113,7 @@ mora lá deixa de classificar: ele lista.
 
 ## O que a tríade não muda
 
-- A lei do lote: pedido colado direto numa sessão continua sendo lote regido por aquela sessão, seja ela Claude Code ou Codex, com as fichas de `.claude/agents/` ou `.codex/agents/`.
+- A lei do lote: pedido colado no Claude Code vira tarefa na fila com brief, e o Codex constrói; pedido colado no Codex é executado como um despacho pela ficha, e o que precisar dividir vira tarefa na fila, devolvida à maestro. O Claude Code dispara sub-agente que escreve desde a emenda de 20/09/2026; `ci/muralha_dos_sub_agentes.py` recusa na criação quem nasce fora de `sonnet` ou `opus`, e recusa `Workflow` inteiro.
 - O rito do PR: bancada por `ci/sessao.py`, `make pr` com recibo e eventos a bordo, integração automática pelos checks obrigatórios, com mandato CODEOWNERS e contrato congelado preservados.
 - Tarefa que o executor descobre no caminho ele registra na fila (`RITOS.md` §5) e devolve à maestro, que decide se entra no lote.
 
@@ -152,6 +156,37 @@ independente e pouso pela pista) e os testes das fichas
 divisão de papéis em si é julgamento: nenhum portão sabe qual IA está
 digitando. O que ele sabe conferir é o rastro: tarefa na fila, brief roteado,
 PR com recibo, atestado com três identidades distintas.
+
+---
+
+## Emenda de 20/09/2026 — o sub-agente construtor volta ao Claude Code
+
+Esta decisão continua de pé no que ela resolveu: **três papéis fixos, e o
+contrato entre eles é a fila, o PR e o livro.** O que cai é uma frase só, a de
+que o Claude Code não dispara sub-agente que escreva.
+
+**O que a realidade mostrou em um dia.** A trava nasceu em 19/09/2026 na
+TAR-376 e, em 20/09, já tinha barrado a construção em quatro sessões do
+mantenedor: `Retomar fábrica` (00:26), `Publicar quiz no site` (01:29),
+`Pendências de envio para VPS` (11:51) e `Plano de retomada` (18:57). Nas
+quatro, ele tinha pedido frentes em paralelo. O que ele recebeu foi uma fila de
+467 tarefas e uma sessão construindo sozinha, em série.
+
+**Por que a trava errou o alvo.** O incêndio que ela citava, os 163 milhões de
+tokens de 19/09, teve uma causa medida: 26 sub-agentes herdaram o modelo de uma
+sessão em Fable. A régua que apagou esse incêndio é a do modelo, `sonnet` ou
+`opus` declarado na chamada. O banimento da escrita era política de papéis, não
+de custo, e só se pagava se o Codex estivesse puxando a fila em paralelo. Com o
+Claude Code dirigindo, ele não comprava nada e custava o paralelismo inteiro.
+
+**O que fica.** A régua do modelo, a recusa de `Workflow` (o modelo dos agentes
+dele mora dentro do roteiro, fora do alcance do gancho), a exigência de ficha em
+`.claude/agents/`, e a recusa por entrada ilegível (INV-CI01). A trava de edição
+do clone principal continua em `ci/muralha_pasta_compartilhada.py`, e nenhum
+sub-agente pergunta ao mantenedor nem cria outro.
+
+**O que o mantenedor decidiu.** Levantar por inteiro, sem teto de sub-agentes
+simultâneos, na sessão de 20/09/2026.
 
 ## A memória
 

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-086-funil-a-pagina-de-oferta-em-oferta",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "funil: a pagina de oferta em /oferta",
+  detalhe: "A pagina de vendas abre em /oferta, lida do catalogo. Slot vazio e secao vazia nao aparecem. Suite 606 para 661.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1784. Validação local: árvore 573bcbdeb28e21154e18869356ad7afc269c5784; commit 53d23e039a31160fe23737ae8c992caab70de8eb; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-520",
+  gravidade: "info",
+  frente: "vender",
+  area: "funil",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

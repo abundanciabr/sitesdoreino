@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-034-o-rito-adota-tarefa-errada-citada-no-pr",
+  tipo: "pendencia",
+  quando: "2026-09-20",
+  titulo: "O rito de publicar adota tarefa errada citada no texto",
+  detalhe: "No PR 1810 o rito adotou uma tarefa velha que o texto citava como história, gravou o engano, e daí toda tentativa morreu dizendo tarefa ambígua. Terminei à mão.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1810",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: true,
+  responde_a: null,
+  tarefa: "TAR-541",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: 14,
+  porque_so_voce: "O conserto é em ci/pr.py, CODEOWNERS seu; o mandato desta entrega era a trava dos robôs.",
+  proximo_passo: "Autorizar tarefa que faça o rito pular tarefa concluída ao ler o texto, e a dita à mão vencer a lembrada.",
+  se_eu_nao_decidir: "Todo PR que explique o que revoga cai na mesma cova e termina à mão.",
+  recomendacao: "Autorizar: duas linhas e um teste, contra um custo pago em todo PR honesto.",
+  reversivel: true,
+  impacto: "medio"
+}); })();

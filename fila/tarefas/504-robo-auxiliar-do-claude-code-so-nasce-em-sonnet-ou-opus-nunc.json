@@ -1,0 +1,19 @@
+{
+  "arquivo": "504-robo-auxiliar-do-claude-code-so-nasce-em-sonnet-ou-opus-nunc",
+  "id": "TAR-504",
+  "titulo": "Robô auxiliar do Claude Code só nasce em Sonnet ou Opus, nunca em Fable",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR integrado com o gancho recusando chamada sem model sonnet ou opus, testes verdes no SHA entregue.",
+  "despacho": "Estender ci/muralha_dos_sub_agentes.py para recusar chamada Agent sem model sonnet ou opus (ausente, Fable ou outro é recusa); registrar a lei em CLAUDE.md, seção O que uma chamada custa; testes vermelho para verde.",
+  "origem": "Ordem direta do mantenedor em 19/09/2026, após sessão em Fable com 26 robôs auxiliares e 163 milhões de tokens.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

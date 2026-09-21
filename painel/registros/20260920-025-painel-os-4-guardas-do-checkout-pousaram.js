@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-025-painel-os-4-guardas-do-checkout-pousaram",
+  tipo: "nota",
+  quando: "2026-09-20",
+  titulo: "painel: os 4 guardas do checkout pousaram",
+  detalhe: "O PR 1807 dos 4 guardas do checkout integrou na main em 668eaf5b as 19:36:03Z, com os 9 checks verdes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1808. Validação local: árvore de4f0d6840ffbb04e11f21d2b9e554631c5d3b41; commit 19199ff4ae7d423beda1374b2141e287782bd3a2; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-538",
+  gravidade: "verde",
+  frente: "vender",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

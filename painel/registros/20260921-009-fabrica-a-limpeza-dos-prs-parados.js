@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-009-fabrica-a-limpeza-dos-prs-parados",
+  tipo: "decisao",
+  quando: "2026-09-21",
+  titulo: "fabrica: a limpeza dos PRs parados, por ordem do mantenedor",
+  detalhe: "Ele mandou fechar todos os rascunhos e o PR 1715, que estava em conflito com a main desde 18/09 e por isso nao gerava check nenhum. Sobraram 5 PRs abertos, de 21. Nenhum ramo foi apagado: reabrir e um clique.",
+  autoridade: "mantenedor",
+  evidencia: "Fechados por gh pr close em 2026-09-21: 1837, 1836, 1834, 1791, 1781 e 1715. gh pr list confirma 5 abertos e 0 rascunhos. O portao do indice segue PASS na main com 456 entradas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-576",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260919-001316-TAR-460-submetida",
+  "tarefa": "TAR-460",
+  "evento": "submetida",
+  "quando": "2026-09-19T00:13:16+00:00",
+  "quem": "agent/ci/sonda-o-site-responde",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1740",
+  "revisao": "834febab50884f67edec506a5b3c11f715e794ba",
+  "arvore": "6a722c30bddf64d0b5934cb198773efb67db08c9"
+}

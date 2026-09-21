@@ -50,6 +50,40 @@ class EventoProcessado(models.Model):
     processed_at = models.DateTimeField(auto_now_add=True)
 
 
+class FatoDePagamentoProcessado(models.Model):
+    """[INV-leads-dedup-entre-versoes] o mesmo pagamento pode chegar como
+    `pagamento.aprovado`/`pagamento.recusado` na v1 e depois na v2 (RITOS.md
+    §3: o v1 continua no ar até o último consumidor migrar). `event_id` não
+    serve de guarda aqui — cada entrega tem o seu, mesmo quando é o MESMO
+    fato relatado duas vezes. A unicidade É o guarda: (`evento`, `site_id`,
+    `chave`) derivados de `x-ponte-do-v1` de cada contrato (ver
+    `apps.core.handlers._chave_pagamento_aprovado` e `_chave_pagamento_recusado`)
+    identificam o fato, não a entrega, e a segunda tentativa de gravar a
+    mesma linha esbarra na constraint.
+
+    [INV-P11] `site_id` entra na IDENTIDADE, não só na leitura: sem ele, um
+    aviso com o site errado (bug do publicador, ou mensagem injetada no
+    stream) gravaria a identidade do fato verdadeiro sem produzir efeito
+    nenhum de menção nele, e o aviso legítimo que chegasse depois seria
+    descartado como duplicado. O pagamento aconteceria e a timeline do site
+    certo nunca receberia nada, para sempre, sem erro em lugar nenhum. Ver
+    `tests/test_inv_leads_dedup_entre_versoes.py`, testes com sufixo
+    `_inv_p11`."""
+
+    evento = models.CharField(max_length=40)
+    site_id = models.CharField(max_length=100)
+    chave = models.CharField(max_length=200)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["evento", "site_id", "chave"],
+                name="uniq_fato_pagamento_por_site",
+            ),
+        ]
+
+
 class Oportunidade(models.Model):
     """O acompanhamento comercial humano de UMA pessoa já conhecida da casa.
 

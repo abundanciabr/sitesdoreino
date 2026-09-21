@@ -778,6 +778,24 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # próprio invariante: o aviso da compra não carrega o produto (TAR-225),
         # e por isso ele vale hoje na liberação e não no pagamento.
         "INV-ALU-C1",
+        # As nove leis do CARTÃO PELA APPMAX (20/09/2026), escritas antes da
+        # integração existir, como manda a abertura do documento. Guarda único
+        # para as nove: `ci/guarda_do_cartao.py`, medido por
+        # `ci/tests/test_guarda_do_cartao.py`. A1 provedor por construção, A2
+        # dado de cartão nunca nomeado, A3 autorizado não é aprovado, A4 o
+        # webhook sem assinatura não decide dinheiro, A5 escrita ambígua sem
+        # repetição automática, A6 outbox na mesma transação, A7 segredo só em
+        # pagamentos, A8 provedores sem arquivo comum, A9 resposta 2xx
+        # incompleta como erro. As nove foram vistas reprovando por mutação.
+        "INV-CARD-A1",
+        "INV-CARD-A2",
+        "INV-CARD-A3",
+        "INV-CARD-A4",
+        "INV-CARD-A5",
+        "INV-CARD-A6",
+        "INV-CARD-A7",
+        "INV-CARD-A8",
+        "INV-CARD-A9",
         # Os dois do CONTEÚDO da célula `cursos`: C1 (07/09/2026, TAR-245,
         # degrau 3.1) nenhuma aula publica com remissão para encomenda que não
         # existe, e C2 o conteúdo entra pela porta de máquina e nunca por

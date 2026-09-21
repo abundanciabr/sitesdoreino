@@ -644,3 +644,75 @@ não terminou.
 shell vazia) caía na listagem e saía com código zero, ou seja, um pedido de
 recuperação que virava relatório e parecia ter funcionado. A decisão é
 `alvo is not None`, e não a verdade do valor.
+
+## Dedup por `event_id` não pega o mesmo fato chegando em duas versões (TAR-549)
+
+**Contexto:** `pagamento.aprovado.v2` e `pagamento.recusado.v2` (TAR-545)
+trocam `mp_payment_id` pelo par `provider`+`provider_reference_id`, e o v1
+continua sendo emitido até o último consumidor migrar. O mesmo pagamento pode
+chegar como v1 e, depois, como v2 (replay, backfill, corte de migração) — dois
+`event_id` diferentes, então `EventoProcessado` (unicidade de `event_id`) não
+enxerga a repetição, e o handler rodaria duas vezes.
+
+**A armadilha do brief:** o texto do despacho generalizou "o par
+provider+provider_reference_id é a identidade lógica" para os DOIS eventos.
+Está certo para `pagamento.aprovado` e ERRADO para `pagamento.recusado`: o v1
+da recusa nunca carregou referência de provedor nenhuma, nem sob o nome
+`mp_payment_id`. A fonte de verdade não é o brief nem a Constituição — é o
+campo `x-ponte-do-v1` que o PRÓPRIO contrato v2 carrega (`chave_entre_versoes`
++ `no_v1`), e ele declara as duas pontes como REGRAS DIFERENTES:
+
+- `pagamento.aprovado`: `provider` + `provider_reference_id` (no v1 o par é
+  sempre implícito `mercadopago` + `mp_payment_id`).
+- `pagamento.recusado`: só `payment_id` — não existe par para tirar do v1.
+
+**A solução:** `identidade_do_fato()` em `consume_eventos.py` deriva a chave a
+partir do `event` e da `version` do envelope, lendo as DUAS regras acima (não
+uma função genérica "pega o campo X do contrato" — o contrato descreve a
+regra em prosa+dado, não em código executável, e traduzir errado uma vez
+bastaria). A chave é gravada em `FatoDeProvedorVisto` (unique em
+`evento`+`chave`), como uma TERCEIRA checagem dentro do mesmo
+`transaction.atomic()` de `processar_envelope` — mesmo desenho de savepoint
+que já protegia o `EventoProcessado`, e pelo mesmo motivo: precisa sobreviver
+a duas mensagens concorrentes disputando a MESMA linha sob Redis real.
+
+**O que NÃO virou a chave, e por quê:** `order_id` deduplicaria por
+coincidência hoje (o mesmo pedido tende a manter o mesmo `order_id` entre v1 e
+v2), mas não é a identidade que o contrato declara, e depender da coincidência
+é exatamente o tipo de garantia que quebra no primeiro caso em que ela não se
+sustentar. Os testes de `test_dedup_entre_versoes_de_pagamento.py` usam
+`order_id` DIFERENTE entre a v1 e a v2 do "mesmo fato" de propósito, para que
+a prova não dependa dessa coincidência.
+
+**Para as outras 3 células que ainda vão migrar (TAR-546/547/548):** a chave
+lógica não é um acordo implícito — está no `x-ponte-do-v1` de cada contrato,
+e as duas pontes de pagamento JÁ são diferentes uma da outra. Ler o contrato
+de novo em vez de copiar a regra desta célula é o que evita a mesma
+generalização errada se repetir.
+
+**A segunda armadilha, achada por uma frente irmã (checkout, PR #1829) antes
+do pouso deste PR:** a primeira versão desta chave era só `provider`+
+`provider_reference_id` (ou só `payment_id`, na recusa) — sem o site.
+`provider_reference_id` é opaco e vem do PROVEDOR: nada garante que ele seja
+único ENTRE sites (tenants) desta plataforma, e uma colisão faria o aviso do
+segundo site ser descartado como "duplicado" do primeiro — quem pagou no
+site B nunca recebe confirmação, e nada denuncia, porque para o sistema o
+fato já tinha acontecido.
+
+**A correção, e por que não é um prefixo colado na string:** a primeira
+tentativa foi `f"{site_id}:{chave}"`. Ela já resolvia a colisão do parágrafo
+acima, mas trocava por uma ambiguidade nova: `site_id="a:b"` + chave `"c"`
+produz o MESMO texto que `site_id="a"` + chave `"b:c"`. `FatoDeProvedorVisto`
+ganhou `site_id` como COLUNA PRÓPRIA — `identidade_do_fato()` devolve
+`(site_id, chave)`, e a `UniqueConstraint` é `(evento, site_id, chave)` — e
+aí a comparação é de TRÊS campos, sem interpretar string nenhuma. Os testes
+`test_identidade_do_fato_*_em_sites_diferentes_nao_e_igual` e
+`test_*_mesmo_fato_em_sites_diferentes_gera_dois_envios` provam a fronteira
+por mutação: tirar o `site_id` real (trocá-lo por uma constante) derruba os
+quatro. Multissítio é invariante de CÉLULA
+(`constituicoes/AGENTS.mensageria.md`: "e-mail de um site jamais sai
+com a marca de outro"), e qualquer chave de dedup nova nesta célula nasce
+escopada por site por padrão, nunca como exceção a lembrar depois.
+
+**Origem:** despacho mensageria/consome-o-evento-v2 (TAR-549), correção ao
+brief medida contra `contracts/eventos/pagamento.recusado.v2.json`.

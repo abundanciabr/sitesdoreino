@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-010-painel-registrar-a-limpeza-dos-prs-parados",
+  tipo: "decisao",
+  quando: "2026-09-21",
+  titulo: "painel: registrar a limpeza dos PRs parados",
+  detalhe: "O livro passa a contar quais PRs fecharam em 21/09, por ordem dele e por que. Nenhum ramo foi apagado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1838. Validação local: árvore b44bf425c28a8dc912726b2eb30b4c3ac353fa73; commit 9dba0d203c1185fb9ac944fd952a3f3d0c845bc0; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-576",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "armadilhas",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

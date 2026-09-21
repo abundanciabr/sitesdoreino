@@ -1,0 +1,22 @@
+{
+  "arquivo": "550-cada-tentativa-de-pagar-no-cartao-passa-a-existir-e-a-ter-no",
+  "id": "TAR-550",
+  "titulo": "Cada tentativa de pagar no cartao passa a existir e a ter nome",
+  "toca": [
+    "pagamentos"
+  ],
+  "depende_de": [
+    "TAR-545",
+    "TAR-543"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Migration aditiva rodando nos dois sentidos, teste de duplo clique gerando UMA tentativa, teste de nova tentativa apos recusa, suite da celula pagamentos verde.",
+  "despacho": "Celula pagamentos. Crie o modelo de tentativa de pagamento, que e a base de tudo que vem depois.\n\nAlvos: pagamentos/core/models.py, migration nova, o dominio e os testes.\n\nPaymentAttempt: ligada a um Intent, com provider, provider_reference_id, ordem externa quando existir, installments, valor em inteiro de centavos, estado, motivo sanitizado e platform_site_id. Regras:\n1. Uma tentativa recusada e TERMINAL, mas o Intent pode receber uma tentativa nova com token novo. Hoje um Intent recusado trava o comprador; isso acaba aqui.\n2. Uma tentativa com resultado ambiguo (timeout depois do envio) fica em reconciliation_required e BLOQUEIA novo envio ate uma consulta confiavel fechar o estado. Nunca reenvie por conta propria.\n3. Nenhuma chamada externa pode ocorrer sem tentativa persistida ANTES do envio, com operation_id interno e hash sanitizado do corpo.\n4. platform_site_id isola: uma tentativa de um site nunca pode ser lida por outro. Prove com teste.\n5. Duplo clique simultaneo resulta em UMA tentativa e UMA chamada externa.\n\nMigration ADITIVA: nada de alterar coluna existente nem apagar dado. Somente leitura: services/checkout/, contracts/.\n\nFatos medidos na documentacao oficial da Appmax em 20/09/2026: OAuth2 client_credentials em POST https://auth.sandboxappmax.com.br/oauth2/token, Bearer de 1 hora, SEM refresh token (renovar e repetir o POST); API em https://api.sandboxappmax.com.br; producao troca sandboxappmax por appmax. Sequencia: token, IP pelo Appmax JS, POST /v1/customers, POST /v1/orders, POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}, confirmacao por GET /v1/orders/{id}. Parcelas por POST /v1/payments/installments com {installments, total_value, settings}, ate 12x, modalidade PP (juros no comprador) escolhida pelo mantenedor. Webhook SEM assinatura HMAC e sem token: envelope {event, event_type, site_id, app_id, client_key, external_key, data, partner_merchant}, 40 eventos em 4 tipos, exige HTTP 200 em menos de 5 s, retry em 30 min, 2 h e 4 h. Limite: 5 req/s sustentado, 50 em rajada, 60/min por rota, 5/min em rotas de credencial, 100 mil/mes, headers X-RateLimit-Limit, X-RateLimit-Remaining e Retry-After. Nao invente endpoint: se precisar de um que nao esta aqui, pare e registre pendencia.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L3A; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

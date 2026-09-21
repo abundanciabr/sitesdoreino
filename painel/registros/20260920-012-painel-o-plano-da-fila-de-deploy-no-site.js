@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-012-painel-o-plano-da-fila-de-deploy-no-site",
+  tipo: "medicao",
+  quando: "2026-09-20",
+  titulo: "painel: o plano da fila de deploy no site",
+  detalhe: "Fecha o recibo 010: PR 1799 integrado pela pista, admin publicada pelo run do merge e o plano respondendo 200 no site.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1800. Validação local: árvore 9ee692f995eec24b0822a4916271336a2bbfbfd3; commit da37eea918c2bed3dc3ef00fae500ed52299fee9; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-530",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-006-catalogo-salvar-o-rascunho-cria-a-pagina",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "catalogo: salvar o rascunho cria a pagina",
+  detalhe: "Salvar o primeiro texto cria a pagina, em vez de recusar. Sem isto o mantenedor nao consegue por no ar nem a primeira palavra: a tela dele lia 404 e a pagina publica tambem.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1796. Validação local: árvore 2b74e52e8a1d7100e6a005339d4f4def255d88a7; commit c1798784a226ac9e8549fae09d71c1ec19855af7; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-526",
+  gravidade: "info",
+  frente: "vender",
+  area: "catalogo",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

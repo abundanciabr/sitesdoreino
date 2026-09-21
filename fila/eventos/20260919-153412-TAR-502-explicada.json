@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-153412-TAR-502-explicada",
+  "tarefa": "TAR-502",
+  "evento": "explicada",
+  "quando": "2026-09-19T15:34:12+00:00",
+  "quem": "pedido do mantenedor em 19/09/2026",
+  "o_que_e": "Nao existe no repositorio um documento unico que conte, em portugues de leigo, como o site funciona de ponta a ponta: o que esta no ar, como um PR vira site, quem depende de quem, como se volta atras, e onde estao os buracos conhecidos.",
+  "o_que_muda": "Quem chegar amanha, pessoa ou IA, le um arquivo so e entende o sistema inteiro, com cada numero amarrado ao comando que o mediu.",
+  "exemplo": "e a planta da casa pendurada na parede, em vez de ter que abrir cada parede para descobrir onde passa o cano",
+  "importancia": 65
+}
