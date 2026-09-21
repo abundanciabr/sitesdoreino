@@ -30,9 +30,9 @@ from django.conf import settings
 
 from apps.auditoria.models import Registro
 
-from . import documentos
+from . import documento_em_pagina, documentos
 from .clients import AlunosClient, CatalogoClient, IdentidadeClient
-from .models import Administrador
+from .models import Administrador, Documento
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
 from .turmas import conferir
@@ -142,12 +142,22 @@ def doc_publico(request, nome):
     documento = documentos.ler(nome)
     if documento is None or not documento.no_ar:
         raise Http404("documento não encontrado")
-    return render(
+    pagina_visual = documento.formato == Documento.Formato.PAGINA
+    resposta = render(
         request,
         "admin/doc_publico.html",
         {
             "documento": documento,
-            "corpo": documentos.para_html(documento.corpo),
+            # O corpo só passa pelo renderizador quando ele é TEXTO. Um
+            # documento de formato `pagina` não é desenhado aqui dentro: ele
+            # vem por um `<iframe>` de origem opaca, servido por
+            # `documento_em_pagina.doc_publico_moldura`.
+            "corpo": "" if pagina_visual else documentos.para_html(documento.corpo),
+            "pagina_visual": pagina_visual,
+            "tem_corpo": bool(documento.corpo.strip()),
+            "endereco_da_moldura": (
+                f"{documentos.PREFIXO_PUBLICO}/{documento.nome}/moldura"
+            ),
             # Ver `documentos.PREFIXO_PUBLICO`: aqui o endereço NÃO sai de
             # `{% url %}`, porque as páginas públicas não moram sob `/admin`.
             "prefixo_publico": documentos.PREFIXO_PUBLICO,
@@ -156,6 +166,13 @@ def doc_publico(request, nome):
             ),
         },
     )
+    if pagina_visual:
+        # Esta página traz o escutador da altura do iframe, e a política da
+        # porta (`script-src 'self'`) proibiria o script embutido.
+        resposta["Content-Security-Policy"] = documento_em_pagina.csp_da_pagina(
+            resposta
+        )
+    return resposta
 
 
 @require_GET
@@ -193,13 +210,22 @@ def documento_admin(request, nome):
     documento = documentos.ler(nome)
     if documento is None:
         raise Http404("documento não encontrado")
-    return render(
+    pagina_visual = documento.formato == Documento.Formato.PAGINA
+    resposta = render(
         request,
         "admin/documento_admin.html",
         {
             "admin": request.admin,
             "documento": documento,
-            "corpo": documentos.para_html(documento.corpo),
+            "corpo": "" if pagina_visual else documentos.para_html(documento.corpo),
+            "pagina_visual": pagina_visual,
+            "tem_corpo": bool(documento.corpo.strip()),
+            "endereco_da_moldura": reverse(
+                "documento_admin_moldura", args=[documento.nome]
+            ),
+            # Só esta tela oferece o caminho de escrever: quem está do lado de
+            # fora não tem para onde ir quando o documento está vazio.
+            "caminho_para_editar": reverse("documento_editar", args=[documento.nome]),
             # O recado do POST-redirect-GET, que e o que impede um F5 depois de
             # salvar de repetir a gravacao. O template so reconhece as palavras
             # que ele mesmo escreve; qualquer outra coisa na querystring nao
@@ -210,6 +236,11 @@ def documento_admin(request, nome):
             ),
         },
     )
+    if pagina_visual:
+        resposta["Content-Security-Policy"] = documento_em_pagina.csp_da_pagina(
+            resposta
+        )
+    return resposta
 
 
 # ---------------------------------------------------------------- a escola

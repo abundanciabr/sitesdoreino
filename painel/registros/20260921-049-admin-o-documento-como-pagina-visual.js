@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-049-admin-o-documento-como-pagina-visual",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o documento como pagina visual",
+  detalhe: "O editor escolhe entre texto escrito e pagina visual; na pagina visual o corpo desenha num iframe isolado da sessao.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1864. Validação local: árvore 4c3f77d897cd993ad2e8efbb71c092d5c76cae80; commit f93c55d9be5208c127cde52a44dcfd39629a9f32; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-596",
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

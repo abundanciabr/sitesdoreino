@@ -121,6 +121,22 @@ class MensagemDoRadio(models.Model):
 class Documento(models.Model):
     """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
 
+    class Formato(models.TextChoices):
+        """Como o corpo deste documento vira tela. Ver o campo `formato`.
+
+        Dois valores, e não uma lista que cresce: o formato não é um tema nem
+        um estilo, é a resposta a UMA pergunta com duas respostas possíveis.
+        Quem escreve prosa quer o renderizador que escapa; quem quer desenhar
+        uma página inteira quer a folha em branco, e a folha em branco só é
+        segura dentro do sandbox.
+
+        Os rótulos aparecem na tela do editor, então são texto publicado: sem
+        risca comprida, como manda `ci/travessao.py`.
+        """
+
+        TEXTO = "texto", "Texto escrito"
+        PAGINA = "pagina", "Página visual"
+
     # O endereço, e a chave: `como-funciona-a-entrada` sai em
     # `meshcraft.top/docs/como-funciona-a-entrada`. `unique` porque dois
     # documentos com o mesmo nome seriam dois textos disputando um endereço.
@@ -165,6 +181,24 @@ class Documento(models.Model):
     apendice_vivo = models.BooleanField(default=False)
     verificado_em = models.DateField(null=True, blank=True)
     proxima_verificacao_em = models.DateField(null=True, blank=True)
+
+    # O FORMATO (TAR-596, 21/09/2026). Pedido dele: *"o documento pode ser uma
+    # página visual inteira, não só texto"*.
+    #
+    # A saída NÃO foi ampliar o renderizador de Markdown — ele continua
+    # escapando o texto inteiro antes de aplicar qualquer regra, e é isso que
+    # mantém o `|safe` dos dois templates seguro. O que este campo escolhe é
+    # ONDE o corpo é desenhado: `texto` na própria página, pelo renderizador;
+    # `pagina` dentro de um `<iframe>` de origem opaca, servido cru pela rota
+    # da moldura (`apps/core/documento_em_pagina.py`).
+    #
+    # `default=TEXTO`, e o default é a regra: todo documento que já existe, e
+    # todo documento novo criado sem ninguém pensar nisto, continua passando
+    # pelo renderizador que escapa. Virar página é um gesto de propósito no
+    # editor, como publicar.
+    formato = models.CharField(
+        max_length=6, choices=Formato.choices, default=Formato.TEXTO
+    )
 
     class Meta:
         # A pergunta que a área pública faz a cada visita: os que estão no ar,
