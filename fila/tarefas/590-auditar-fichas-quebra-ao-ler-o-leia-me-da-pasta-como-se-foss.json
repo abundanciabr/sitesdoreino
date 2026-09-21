@@ -1,0 +1,19 @@
+{
+  "arquivo": "590-auditar-fichas-quebra-ao-ler-o-leia-me-da-pasta-como-se-foss",
+  "id": "TAR-590",
+  "titulo": "auditar-fichas quebra ao ler o leia-me da pasta como se fosse ficha",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "py -3.12 ci/economia_da_fabrica.py auditar-fichas PASS no harness Claude, CODEX_THREAD_ID=medicao py -3.12 ci/economia_da_fabrica.py auditar-fichas PASS no harness Codex, e py -3.12 -m pytest ci/tests/test_economia_da_fabrica.py verde",
+  "despacho": "Brief fechado: `py -3.12 ci/economia_da_fabrica.py auditar-fichas` está quebrado\npara o harness Claude, medido agora, sem nenhuma mudança nesta sessão:\n\n    py -3.12 ci/economia_da_fabrica.py auditar-fichas\n    ERROR economia-da-fabrica: ficha sem frontmatter\n    .claude\\agents\\LEIA-ME.md: a ficha precisa comecar com frontmatter YAML.\n\nNo harness Codex o mesmo comando passa:\n\n    CODEX_THREAD_ID=medicao py -3.12 ci/economia_da_fabrica.py auditar-fichas\n    PASS economia-fichas: fichas mecanicas declaram modelo e despacho exige\n    brief roteado.\n\nCausa, em `ci/economia_da_fabrica.py`, função `auditar_fichas` (linha 167 no\nmomento desta medição): quando o harness é `claude`, a função roda\n`pasta.glob(\"*.md\")` sobre `.claude/agents/` e chama `_frontmatter(caminho)`\nem todo `.md` que encontrar. `.claude/agents/LEIA-ME.md` não é uma ficha de\nagente, é o leia-me da pasta, e não tem frontmatter YAML porque não precisa\nter. A função derruba o comando inteiro em vez de ignorar esse arquivo.\n\n`grep -rn \"auditar-fichas\" ci/ci.py .github/workflows/` não devolve nenhuma\nlinha: nenhum portão de CI chama esse comando hoje, então a main segue verde.\nÉ um comando quebrado, não um incêndio.\n\n## Aceite\nFaça `auditar_fichas` ignorar o que não é ficha de agente em vez de exigir\nfrontmatter de um leia-me. `.claude/agents/LEIA-ME.md` (e qualquer arquivo\nde apoio que não seja ficha, se houver) não deve derrubar o comando.\n\n## Evidência exigida\n- `py -3.12 ci/economia_da_fabrica.py auditar-fichas` PASS no harness Claude\n  (sem `CODEX_THREAD_ID`).\n- `CODEX_THREAD_ID=medicao py -3.12 ci/economia_da_fabrica.py auditar-fichas`\n  continua PASS no harness Codex.\n- `py -3.12 -m pytest ci/tests/test_economia_da_fabrica.py` verde.\n\n## Restrições\nSó `ci/economia_da_fabrica.py` (e o teste que provar a mudança). Sem mudar o\nque a auditoria exige das fichas de verdade (modelo, effort, sandbox), só\nparar de tratar o leia-me como ficha. Evidência vermelho para verde: o teste\nnovo nasce reprovando com o bug atual.",
+  "origem": "maestro, sessao TAR-582, 2026-09-21",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

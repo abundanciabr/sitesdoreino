@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-120204-TAR-585-concluida",
+  "tarefa": "TAR-585",
+  "evento": "concluida",
+  "quando": "2026-09-21T12:02:04+00:00",
+  "quem": "agent/ci/licoes-e-cartoes-da-noite",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1848",
+  "verificado_em": "2026-09-21"
+}

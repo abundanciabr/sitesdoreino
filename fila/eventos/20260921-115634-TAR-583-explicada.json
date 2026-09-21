@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115634-TAR-583-explicada",
+  "tarefa": "TAR-583",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:56:34+00:00",
+  "quem": "escrivao",
+  "o_que_e": "O contrato e a promessa escrita do que cada parte do sistema oferece. Esta tarefa acrescenta a promessa do pagamento com cartao pela Appmax, e hoje ela esta parada porque o caminho escrito no despacho e recusado pela conferencia automatica.",
+  "o_que_muda": "A sequencia que funciona ja estava escrita em armadilhas/243 e foi confirmada hoje em dois casos reais da historia da casa, e e esta, em tres passos. Passo 1, na bancada: escrever primeiro o codigo do provedor, rodar python manage.py export_openapi, montar o contrato A PARTIR do documento exportado, nunca de cabeca, e rodar ci/contract_freeze.py <celula> com os dois na mesma arvore, guardando a saida PASS. Passo 2: abrir um PR que leve SO contracts/, com a etiqueta contrato e o mandato do mantenedor transcrito; ele nasce verde porque celulas.yml nao lista contracts/ em caminhos de celula nenhuma, entao a conferencia da celula nao roda nesse PR. Passo 3: depois que o passo 2 mergear, abrir um PR so com o codigo da celula, num ramo criado de origin/main ja com o contrato novo dentro; ali a conferencia roda e passa. Entre os dois merges qualquer PR que toque aquela celula nasce reprovado, e por isso a janela precisa ser curta e sem nenhum PR concorrente da mesma celula aberto.",
+  "exemplo": "Os dois precedentes medidos: catalogo/createProduct nos PRs 1347 e 1343, com 6 minutos entre um merge e o outro, e alunos no par 1682 e 1683, com 5 minutos.",
+  "importancia": 70
+}

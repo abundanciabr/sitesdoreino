@@ -1,0 +1,19 @@
+{
+  "arquivo": "588-o-estorno-que-chega-antes-da-aprovacao-da-mesma-compra",
+  "id": "TAR-588",
+  "titulo": "O estorno que chega antes da aprovacao da mesma compra",
+  "toca": [
+    "alunos"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Teste novo em services/alunos/tests/ que entrega o estorno ANTES da aprovacao da mesma compra e prova que nenhuma matricula ativa nasce, com a suite da celula verde e a saida colada no PR.",
+  "despacho": "Feche o buraco do estorno que chega ANTES da aprovação da mesma compra.\n\nFRONTEIRA DECLARADA em 21/09/2026, no PR #1842, no docstring de\n`ao_pagamento_estornado` (célula `alunos`): o corte da matrícula só alcança\nmatrícula que JÁ EXISTE.\n\nO BURACO, em uma frase: aprovação e estorno chegam por streams diferentes e um\npode atrasar; se o aviso de estorno for consumido primeiro, não há matrícula para\ncortar, o estorno vira apenas um aviso no log, e o aviso de aprovação que chega\ndepois cria matrícula ATIVA de um dinheiro que já voltou para o comprador.\n\nO que fecha: a célula `alunos` precisa guardar o fato \"este pagamento foi\nestornado\" mesmo sem matrícula nenhuma, e a criação de matrícula precisa consultar\nesse fato antes de ativar. Ou seja, o estorno deixa de ser um evento que só sabe\napagar e passa a ser um estado do pagamento. Decida o desenho (tabela própria de\npagamentos estornados ou campo no registro de pagamento) e justifique em uma\nlinha no PR.\n\nCAMINHOS: `services/alunos/`. Se o desenho exigir mudança de contrato, PARE e\ndevolva à maestro: contrato é rito próprio e caminho de CODEOWNERS.\nMudança de banco exige migration, e migration é decisão a confirmar antes.\n\nEVIDÊNCIA QUE FECHA: um teste novo em `services/alunos/tests/` que entregue o\naviso de estorno PRIMEIRO, depois o de aprovação da mesma compra, e prove que\nnenhuma matrícula ativa nasce. Mais o teste da ordem normal continuando verde, e\na suíte da célula verde, com a saída real colada no PR.",
+  "origem": "Fronteira declarada em 21/09/2026 no PR #1842, no docstring de ao_pagamento_estornado.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "financas-e-conciliacao"
+}

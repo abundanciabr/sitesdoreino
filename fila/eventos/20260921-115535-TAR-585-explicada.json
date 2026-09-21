@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115535-TAR-585-explicada",
+  "tarefa": "TAR-585",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:55:35+00:00",
+  "quem": "Brief da maestro em 21/09/2026, lote de escrituracao da noite.",
+  "o_que_e": "Hoje as licoes medidas por varios despachos ficam so no relatorio de cada um e somem quando a sessao fecha.",
+  "o_que_muda": "As licoes viram entrada permanente no livro de armadilhas e os consertos viram cartao na fila, entao ninguem repete o mesmo tropeco nem esquece o conserto.",
+  "exemplo": "Duas tarefas diferentes gastaram tempo hoje com o mesmo instrumento de prova quebrado, sem saber uma da outra.",
+  "importancia": 55
+}
