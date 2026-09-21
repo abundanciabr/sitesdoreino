@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-044-infra-o-comando-que-liga-a-appmax-sem-segredo-por-chat",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "TAR-595: o comando que liga a Appmax sem passar segredo por chat",
+  detalhe: "infra/ligar-a-appmax.sh passa a existir: o mantenedor roda uma linha dentro da VPS, digita as credenciais da Appmax em tela invisivel, e o roteiro grava APPMAX_INSTALACOES, APPMAX_AUTH_URL, APPMAX_API_URL, APPMAX_APP_CLIENT_ID e APPMAX_APP_CLIENT_SECRET no env da celula pagamentos, recarrega a celula e mostra a rota de instalacao aceitando. O exemplo de env passa a documentar APPMAX_INSTALACOES e perde APPMAX_APP_ID, que nenhuma linha do codigo lia.\n\nPublicacao na VPS nao verificada: o roteiro ainda nao foi rodado la.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1866 (merge c9a14a09d97f78a0735df4e32e5ca447d1737f53); py -3.12 -m pytest ci/tests/test_ligar_a_appmax.py -q: 33 passed",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "vender",
+  area: "infra",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
