@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-023-contracts-o-cartao-para-na-ordem-dos-lotes",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "contracts: o cartao para na ordem dos lotes",
+  detalhe: "Promessa de cartao so no contrato deixa pagamentos e checkout vermelhos, medido nas duas pontas. A maestro decide.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1845. Validação local: árvore 120b40b4fb37189d9655e353e3815e7b821c07b2; commit 72a74f021d99d2c78aad510940ac27ee2f3375fa; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-583",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
