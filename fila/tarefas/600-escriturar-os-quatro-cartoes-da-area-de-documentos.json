@@ -1,0 +1,19 @@
+{
+  "arquivo": "600-escriturar-os-quatro-cartoes-da-area-de-documentos",
+  "id": "TAR-600",
+  "titulo": "Escriturar os quatro cartoes da area de documentos",
+  "toca": [
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/fila.py validar verde com os cinco cartoes e seus eventos commitados.",
+  "despacho": "Ver brief da maestro na sessao de 21/09/2026.",
+  "origem": "Pedido do mantenedor em 21/09/2026 para abrir a frente da area de documentos.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
