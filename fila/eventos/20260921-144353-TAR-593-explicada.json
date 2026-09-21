@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-144353-TAR-593-explicada",
+  "tarefa": "TAR-593",
+  "evento": "explicada",
+  "quando": "2026-09-21T14:43:53+00:00",
+  "quem": "TAR-583 (PR #1853) entregou so metade do pedido: faltou a consulta de parcelas, deixada de fora de proposito ate a TAR-556/TAR-557 pousarem.",
+  "o_que_e": "Hoje o checkout so sabe cobrar o cartao a vista ou com parcelas fixas sem consultar o fornecedor; nao existe operacao no contrato para perguntar quanto fica cada parcela com juros.",
+  "o_que_muda": "O comprador passa a ver o valor de cada parcela, com os juros da modalidade PP, antes de escolher em quantas vezes pagar.",
+  "exemplo": "Como no checkout de qualquer loja online: ao escolher 'cartao de credito', aparecem as opcoes '1x de R$297' e '3x de R$105,60 (com juros)' antes de confirmar.",
+  "importancia": 55
+}
