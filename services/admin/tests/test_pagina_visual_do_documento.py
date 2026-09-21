@@ -274,6 +274,24 @@ def test_o_corpo_do_formato_pagina_sai_verbatim_e_com_os_cabecalhos_certos():
 
 
 @respx.mock
+def test_o_escutador_desfaz_a_altura_minima_ao_aplicar_a_altura_de_verdade():
+    """O `min-height` do CSS existe para o caso sem JavaScript. Quando a altura
+    de verdade chega, ele tem de sair do caminho.
+
+    Sem isto, um documento curto num navegador alto fica com uma faixa morta
+    embaixo, e a faixa tem a cor do documento: parece parte dele, e a página
+    sai com um rodapé vazio que ninguém escreveu. Medido em navegador de
+    verdade em 21/09/2026, com o iframe em `height: 359px` ocupando 434px.
+    """
+    _criar()
+
+    corpo = _fora().get("/docs/visual").content.decode()
+
+    assert 'style.minHeight = "0"' in corpo
+    assert corpo.index('style.minHeight = "0"') < corpo.index("style.height = altura")
+
+
+@respx.mock
 def test_a_pagina_de_fora_nao_desenha_o_corpo_cru_dentro_dela():
     """O corpo do documento visual NUNCA é interpolado na página do site — se
     fosse, o iframe seria enfeite e o script rodaria na nossa origem."""

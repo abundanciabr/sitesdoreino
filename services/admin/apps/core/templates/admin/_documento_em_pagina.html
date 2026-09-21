@@ -69,6 +69,11 @@ que hasheia todo `<style>` e todo `<script>` embutidos da página servida.
     // Um teto, para que um documento com erro de medida não empurre a página
     // para uma altura que o navegador não desenha.
     if (!altura || altura < 1 || altura > 40000) { return; }
+    // O `min-height` do CSS existe para o caso SEM script. Assim que a altura
+    // de verdade chega, ele precisa sair do caminho: um documento curto num
+    // navegador alto ficaria com uma faixa morta embaixo, e a faixa tem a cor
+    // do documento, então parece parte dele.
+    moldura.style.minHeight = "0";
     moldura.style.height = altura + "px";
   });
 })();
