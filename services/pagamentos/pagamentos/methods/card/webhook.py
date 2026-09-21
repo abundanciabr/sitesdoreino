@@ -1,6 +1,6 @@
 # pagamentos/methods/card/webhook.py  # [RECEITA:R1 v1]
 # [INV-P9] Não importa methods.pix nem providers.* — só core (modelo Intent,
-# outbox/transicionar_e_emitir, validação de assinatura, gateway). Guardado em
+# ledger/outbox, validação de assinatura, gateway). Guardado em
 # check-time por .importlinter.
 #
 # ENDURECIMENTO (despacho webhook-endurecimento): mesma lei do Pix — a
@@ -16,13 +16,10 @@ from django.http import HttpRequest
 from ninja.errors import HttpError
 
 from pagamentos.core.gateway import FalhaNoProvedor, consultar_status_do_pagamento
-from pagamentos.core.models import Intent, transicionar_e_emitir
+from pagamentos.core.ledger import transicionar_e_emitir
+from pagamentos.core.models import Intent
 from pagamentos.core.webhook_signature import assinatura_valida
-
-_EVENTO_POR_STATUS = {
-    "approved": "pagamento.aprovado",
-    "rejected": "pagamento.recusado",
-}
+from pagamentos.methods.card.service import EVENTO_POR_STATUS, montar_dados_do_evento
 
 
 def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
@@ -30,7 +27,7 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
     `data.id` do MANIFESTO ASSINADO (query param, nunca o corpo) → consulta o
     status na API do MP → dedup por mp_payment_id [INV-P3] → transição de
     estado → outbox NA MESMA transação [INV-P6] → relay (tudo delegado a
-    core.transicionar_e_emitir). Cartão não tem estado "expirado" (isso é
+    core.ledger). Cartão não tem estado "expirado" (isso é
     exclusivo do QR Pix) — status desconhecido é ignorado."""
     if not assinatura_valida(request):
         raise HttpError(403, "assinatura invalida")  # [INV-P10] zero efeito colateral
@@ -47,11 +44,13 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
         return {"ignorado": True}
 
     status_alvo, reason_code = _status_confiavel(request, mp_payment_id)
-    evento = _EVENTO_POR_STATUS.get(status_alvo)
+    evento = EVENTO_POR_STATUS.get(status_alvo)
     if evento is None:
         return {"ignorado": True}
 
-    dados_evento = _montar_dados(intent, evento, mp_payment_id, reason_code)
+    dados_evento = montar_dados_do_evento(
+        intent, evento=evento, mp_payment_id=mp_payment_id, reason_code=reason_code
+    )
     transicionar_e_emitir(
         mp_payment_id=mp_payment_id,
         novo_status=status_alvo,
@@ -92,40 +91,3 @@ def _parse(body: bytes) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise HttpError(422, "corpo deve ser um objeto JSON")
     return data
-
-
-def _customer(intent: Intent) -> dict[str, str]:
-    cliente = {
-        "email": str(intent.customer.get("email", "")),
-        "name": str(intent.customer.get("name", "")),
-    }
-    telefone = intent.customer.get("phone")
-    if telefone:
-        cliente["phone"] = str(telefone)
-    return cliente
-
-
-def _montar_dados(
-    intent: Intent, evento: str, mp_payment_id: str, reason_code: str
-) -> dict[str, Any]:
-    """Forma exata de contracts/eventos/<evento>.v1.json (contrato congelado,
-    additionalProperties: false). `reason_code` vem da fonte confiável
-    (status_detail da consulta à API; do corpo só com DEBUG=1)."""
-    base: dict[str, Any] = {
-        "site_id": intent.site_id,
-        "payment_id": str(intent.id),
-        "order_id": intent.order_id,
-        "amount_cents": intent.amount_cents,
-        "customer": _customer(intent),
-    }
-    if evento == "pagamento.aprovado":
-        # [TAR-225] `product_id` é OPACO — mesma disciplina do gêmeo em
-        # methods/pix/webhook.py (ver o comentário lá). Veio no `metadata` da
-        # criação da intent; pagamentos só repassa, nunca interpreta. Opcional
-        # no contrato: AUSENTE quando o checkout não informou, nunca vazio.
-        aprovado = {**base, "method": "card", "mp_payment_id": mp_payment_id}
-        produto = str(intent.metadata.get("product_id") or "")
-        if produto:
-            aprovado["product_id"] = produto
-        return aprovado
-    return {**base, "method": "card", "reason_code": reason_code}
