@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-042350-TAR-551-concluida",
+  "tarefa": "TAR-551",
+  "evento": "concluida",
+  "quando": "2026-09-21T04:23:50+00:00",
+  "quem": "agent/pagamentos/outbox-na-mesma-transacao",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1843",
+  "verificado_em": "2026-09-21"
+}
