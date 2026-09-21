@@ -525,7 +525,8 @@ def observar_pouso(gh: list[str], repo: str, pr: str) -> Olhada:
 
 def observar_sonda(comando: str) -> Olhada:
     proc = subprocess.run(
-        comando, shell=True, capture_output=True, text=True, timeout=60
+        comando, shell=True, capture_output=True, text=True,
+        encoding="utf-8", errors="replace", timeout=60,
     )
     if proc.returncode == 0:
         return Olhada(pronta=True, resumo="a sonda respondeu PRONTO (exit 0)",

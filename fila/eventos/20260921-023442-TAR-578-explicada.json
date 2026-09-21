@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-023442-TAR-578-explicada",
+  "tarefa": "TAR-578",
+  "evento": "explicada",
+  "quando": "2026-09-21T02:34:42+00:00",
+  "quem": "achado pelo revisor adversarial no PR do guarda de codificacao, em 20/09/2026",
+  "o_que_e": "Quatro trechos do site leem a saida de outro programa sem dizer em que idioma ela vem. No computador do mantenedor (Windows) isso derruba o programa inteiro no primeiro caractere com acento.",
+  "o_que_muda": "Hoje ninguem sente, porque esses quatro rodam quase sempre no servidor Linux. No dia em que alguem rodar no Windows, o programa cai com uma mensagem que nao explica nada. Custa quatro palavras consertar.",
+  "exemplo": "Foi exatamente assim que o resumo da fabrica morreu em 20/09/2026: UnicodeDecodeError no byte 0x8d, antes de imprimir a fila.",
+  "importancia": 25
+}

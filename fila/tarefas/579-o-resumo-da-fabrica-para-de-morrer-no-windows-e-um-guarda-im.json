@@ -1,0 +1,19 @@
+{
+  "arquivo": "579-o-resumo-da-fabrica-para-de-morrer-no-windows-e-um-guarda-im",
+  "id": "TAR-579",
+  "titulo": "O resumo da fabrica para de morrer no Windows, e um guarda impede a proxima",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "py -3.12 ci/resumo_maestro.py imprime as tres secoes no Windows; ci/tests/test_utf8_na_fronteira.py verde com o guarda novo; contraprova por mutacao devolvendo o UnicodeDecodeError do byte 0x8d; suite ci/tests inteira verde",
+  "despacho": "Defeito medido em 20/09/2026: py -3.12 ci/resumo_maestro.py morre com UnicodeDecodeError: 'charmap' codec can't decode byte 0x8d in position 302180, antes de imprimir a secao 3.\n\nA casa ja tinha meio mecanismo: ci/_nucleo.configurar_saida() garante que o FILHO escreva UTF-8, guardado por ci/tests/test_utf8_na_fronteira.py. Faltava o outro lado: o PAI que le com text=True sem encoding= decodifica pela codepage da regiao (cp1252 no Windows) e ESTOURA. Eram 14 chamadas assim em 10 arquivos de ci/, contra 34 que ja declaravam.\n\nO QUE FAZER: guarda novo em ci/tests/test_utf8_na_fronteira.py com controle positivo, e encoding declarado em toda chamada que le texto. errors=\"replace\" so onde um caractere trocado for melhor que a ferramenta cair; estrito onde o texto vira dado publicado ou assinado. Reescrever ci/resumo_maestro.py com main(), configurar_saida() e sys.executable no lugar do 'python' nu.",
+  "origem": "medido pelo mantenedor em 20/09/2026 no clone principal, com py -3.12 ci/resumo_maestro.py",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
