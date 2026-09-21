@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-040-fila-os-cinco-cartoes-da-area-de-documentos",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "fila: os cinco cartoes da area de documentos",
+  detalhe: "Cinco cartoes abrem o caminho para o documento virar pagina visual com imagem, video e grafico. So a fila muda aqui; nenhum codigo foi tocado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1862. Validação local: árvore 98ba1e1df924599e9abda58359f852f4358e525f; commit 8c97b4f8125723d1f2de0c84f9dd32c6ac279e0c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-600",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

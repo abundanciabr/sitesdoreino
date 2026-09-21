@@ -1,0 +1,19 @@
+{
+  "arquivo": "597-o-editor-recebe-imagem-e-video-e-o-site-os-serve",
+  "id": "TAR-597",
+  "titulo": "O editor recebe imagem e video, e o site os serve",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste de envio aceito e recusado por tipo e por tamanho conferidos no conteudo do arquivo, e captura do documento com a imagem na tela.",
+  "despacho": "Ver brief da maestro na sessao de 21/09/2026.",
+  "origem": "Pedido do mantenedor em 21/09/2026, com autorizacao expressa para guardar arquivo no disco da VPS.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
