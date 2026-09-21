@@ -132,9 +132,10 @@ com um relatório seu dizendo que o pouso estava armado. Aconteceu com o PR
 #1160, que ficou 12h30 assim (`armadilhas/364`).
 
 Também NÃO fique em laço olhando checks. O gesto que fecha o seu trabalho é
-devolver o **número do PR** à maestro no relatório final. A maestro publica o
-atestado, pede pouso com `python ci/mergear.py <N> --pousar` e encerra; a pista
-mergeia.
+devolver o **número do PR** à maestro no relatório final. A maestro confere
+que o PR não é rascunho (`gh pr view <N> --json isDraft`, e `gh pr ready <N>`
+se for) e encerra; a pista integra sozinha por `ci/mergear.py --automatico`
+via `pouso.yml`, sem revisor, atestado, etiqueta ou gesto seu.
 
 Vermelho ou ERROR nunca vira pedido de pouso (check pendente aguarda na pista): FAIL você conserta
 no máximo 2 tentativas. Atingido o teto, pare, preserve os arquivos e commits

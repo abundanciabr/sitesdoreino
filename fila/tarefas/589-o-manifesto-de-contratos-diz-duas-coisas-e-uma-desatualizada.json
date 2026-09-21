@@ -1,0 +1,19 @@
+{
+  "arquivo": "589-o-manifesto-de-contratos-diz-duas-coisas-e-uma-desatualizada",
+  "id": "TAR-589",
+  "titulo": "O manifesto de contratos diz duas coisas e uma desatualizada",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste novo em ci/tests/ que reprove chave repetida em qualquer objeto do manifesto, provado vermelho antes e verde depois, mais a saida de ci/contract_freeze.py admin depois da mudanca.",
+  "despacho": "Corrija `ci/manifesto-de-contratos.json`, que hoje diz duas coisas contraditórias\ne uma afirmação desatualizada. Dois defeitos medidos em 21/09/2026.\n\nDEFEITO 1, a chave repetida: a célula `admin` declara `\"freeze\"` DUAS VEZES no\nmesmo objeto, primeiro `\"not-applicable\"` e depois `\"required\"`. `json.loads`\nguarda calado a última e descarta a primeira, então o portão de contrato hoje\nfunciona por acidente: ninguém decidiu qual das duas vale, o analisador decidiu.\nApague a que não vale, e deixe a decisão explícita. Um leitor humano que abrisse\no arquivo leria o valor errado.\n\nDEFEITO 2, o `_nota` desatualizado: o `_nota` da `admin` afirma que a porta de\nmáquina ainda não existe e que `contrato/admin` termina em ERROR, bloqueando todo\nPR que toque `services/admin`. Isso não é mais verdade: `ci-celula (admin)` passou\nem TODO PR medido hoje, a saber #1347, #1682, #1841 e #1845. Reescreva o `_nota`\ncom o estado real, ou remova a nota se ela não descrever mais nada vivo.\n\nCAMINHOS: `ci/manifesto-de-contratos.json` e, se preciso, os testes de\n`ci/tests/`. Não toque em `contracts/` nem em `services/`.\n\nEVIDÊNCIA QUE FECHA:\n1. Um teste novo em `ci/tests/` que reprove QUALQUER chave repetida em qualquer\n   objeto do manifesto (use `json.load` com `object_pairs_hook` que levante ao ver\n   chave repetida), provado vermelho antes e verde depois, com a saída colada.\n2. A saída real de `python ci/contract_freeze.py admin` e do portão de contrato\n   depois da mudança, mostrando que o comportamento não mudou de fato, só deixou\n   de depender de acidente.",
+  "origem": "Dois defeitos medidos em 21/09/2026 durante a leitura do portao de contrato.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

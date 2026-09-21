@@ -1,0 +1,19 @@
+{
+  "arquivo": "591-o-teto-do-claude-md-sobe-para-16-000-bytes-decisao-do-manten",
+  "id": "TAR-591",
+  "titulo": "O teto do CLAUDE.md sobe para 16.000 bytes, decisao do mantenedor",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "py -3.12 ci/padrao_de_trabalho.py PASS com o teto de 16.000; py -3.12 -m pytest ci/tests/test_padrao_de_trabalho.py -q verde; prova vermelho para verde do portao com CLAUDE.md de teste acima e abaixo de 16.000; py -3.12 ci/leis_sem_mecanismo.py PASS",
+  "despacho": "Em 21/09/2026 o mantenedor decidiu, nesta sessao, subir o teto do CLAUDE.md de\n13.500 para 16.000 bytes: sabendo que isso da folga para varias leis novas de\numa vez e custa mais contexto gasto em toda sessao, com menos pressao para\nmanter a lei enxuta. O PR #1839 encolheu o CLAUDE.md de 13.298 para 12.672\nbytes movendo o porque das secoes 2 a 13 para docs/decisoes/. Em seguida o PR\n#1657 pousou com a regra 11, deixando a margem em 27 bytes contra o teto de\n13.500, sem porque nenhum restante para mover.\n\nO QUE FAZER: em ci/padrao_de_trabalho.py, na constante TETOS_EM_BYTES, trocar\n\"CLAUDE.md\": 13_500 por \"CLAUDE.md\": 16_000, sem tocar no teto do AGENTS.md\n(10_000). Atualizar o comentario acima da constante com a linha da subida\npara 16_000 em 21/09/2026. Em ci/tests/test_padrao_de_trabalho.py ha duas\nreferencias ao numero antigo: ajustar as duas, mantendo a prova de que um\nCLAUDE.md acima do teto novo reprova e abaixo dele passa.",
+  "origem": "decisao do mantenedor em 21/09/2026, nesta sessao, apos o PR #1839 e o PR #1657 deixarem a margem do CLAUDE.md em 27 bytes contra o teto de 13.500",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

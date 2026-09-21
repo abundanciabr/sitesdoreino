@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-121846-TAR-591-submetida",
+  "tarefa": "TAR-591",
+  "evento": "submetida",
+  "quando": "2026-09-21T12:18:46+00:00",
+  "quem": "agent/ci/teto-do-claude-md-em-16000",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1852",
+  "revisao": "709777888f6ab287df6825b67add13139442ac31",
+  "arvore": "08452dcb3ce3ad9c1da376c9068ec2b3125146f6"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-032-ci-teto-do-claude-md-sobe-para-16-000-bytes",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: teto do CLAUDE.md sobe para 16.000 bytes",
+  detalhe: "Teto do CLAUDE.md sobe de 13_500 para 16_000 bytes em padrao_de_trabalho.py; AGENTS.md intocado. Decisao do mantenedor.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1852. Validação local: árvore 08452dcb3ce3ad9c1da376c9068ec2b3125146f6; commit 709777888f6ab287df6825b67add13139442ac31; 4 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-591",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
