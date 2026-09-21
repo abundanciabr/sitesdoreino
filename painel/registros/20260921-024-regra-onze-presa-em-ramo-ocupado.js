@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-024-regra-onze-presa-em-ramo-ocupado",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "A regra nova do padrao de trabalho ficou parada porque duas sessoes pegaram o mesmo trabalho",
+  detalhe: "A regra que voce escreveu em 14 de setembro, proibindo um robo de perguntar ao outro o estado do Git, continua fora da lei. Nao entrou hoje porque duas sessoes foram mandadas para o mesmo servico ao mesmo tempo e uma delas ja estava com o ramo na mao, com trabalho ainda nao salvo. Tomar o ramo a forca apagaria o trabalho dela, entao parei.\n\nAs contas ficaram prontas e conferidas. O arquivo da lei tem hoje 12672 bytes, o seu texto novo pesa 801 e o limite e 13500, entao sobram 27 bytes. O seu texto cabe inteiro, palavra por palavra.\n\nIsso importa porque a outra sessao esta trabalhando sobre uma copia velha do projeto, de antes da limpeza que encolheu o arquivo, e por isso esta encurtando o seu texto e subindo o limite de 13500 para 14000. Nenhuma dessas duas coisas e necessaria. Quem terminar o servico depois do ramo livre deve refazer a base primeiro e manter o seu texto como voce escreveu.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1657",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: 7,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
