@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-120758-TAR-591-explicada",
+  "tarefa": "TAR-591",
+  "evento": "explicada",
+  "quando": "2026-09-21T12:07:58+00:00",
+  "quem": "decisao do mantenedor em 21/09/2026, nesta sessao, apos o PR #1839 e o PR #1657 deixarem a margem do CLAUDE.md em 27 bytes contra o teto de 13.500",
+  "o_que_e": "o CLAUDE.md tem um teto de tamanho em bytes que o portao ci/padrao_de_trabalho.py cobra; hoje o teto e 13.500 e a margem livre e de 27 bytes",
+  "o_que_muda": "com o teto em 16.000 a proxima lei nova cabe sem precisar apagar lei existente em silencio; sem essa folga, a proxima regra de qualquer tamanho reprovaria o portao",
+  "exemplo": "e como uma caixa de correio quase cheia: 27 bytes de folga e menos que uma linha de texto, e a proxima carta (lei) nem entra",
+  "importancia": 40
+}

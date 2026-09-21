@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-121852-TAR-591-concluida",
+  "tarefa": "TAR-591",
+  "evento": "concluida",
+  "quando": "2026-09-21T12:18:52+00:00",
+  "quem": "agent/ci/teto-do-claude-md-em-16000",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1852",
+  "verificado_em": "2026-09-21"
+}

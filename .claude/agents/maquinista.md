@@ -103,7 +103,9 @@ entrega o mesmo número que uma medição só entregaria.
 
 - **Não executa deploy nem rollback.** `ci/rollback.py`, `ci/rerun_de_deploy.py`
   e `ci/portao_de_deploy.py` você lê, não dispara.
-- **Não pede pouso nem mergeia.** `ci/mergear.py --pousar` é gesto da maestro.
+- **Não pede pouso nem mergeia.** A pista integra sozinha por
+  `ci/mergear.py --automatico` via `pouso.yml`; não é gesto seu nem da
+  maestro.
 - **Não muda required checks, ruleset, proteção da main nem `.github/`.** Esses
   caminhos são CODEOWNERS e exigem a palavra do mantenedor.
 - **Não gasta dinheiro**: nenhuma chamada paga, nenhum recurso novo na VPS,

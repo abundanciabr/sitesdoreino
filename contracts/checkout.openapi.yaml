@@ -102,6 +102,51 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Order' }
         '404': { description: Pedido inexistente }
+  /pedidos/{order_id}/cartao:
+    post:
+      operationId: confirmOrderCard
+      summary: Confirma o cartão de um pedido com o token gerado no navegador
+      description: |
+        Pela INV-P2, o corpo traz somente o resultado da tokenização e a parcela escolhida. Valor, itens e total vêm do snapshot congelado do pedido, e campo fora da lista é recusado com 422.
+        Dado de cartão nunca atravessa esta célula: o que chega é token.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, installments, holder_name, holder_document_number]
+              properties:
+                token:
+                  type: string
+                  description: Token de uso único gerado no navegador pela biblioteca do provedor de cartão.
+                ip:
+                  type: string
+                  description: IP do comprador, coletado no navegador pela biblioteca do provedor de cartão.
+                holder_name: { type: string }
+                holder_document_number:
+                  type: string
+                  description: CPF ou CNPJ do titular, somente dígitos.
+                installments: { type: integer, minimum: 1, maximum: 12 }
+      responses:
+        '200':
+          description: Tentativa concluída; o pedido segue pelo evento
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardConfirmed' }
+        '404': { description: Pedido inexistente neste site }
+        '409':
+          description: >-
+            Pedido não aceita cartão agora (não é de cartão, ou já saiu de
+            aguardando_pagamento)
+        '422': { description: Payload inválido }
+        '502': { description: O provedor de pagamento não concluiu a tentativa }
 components:
   securitySchemes:
     bearerAuth:
@@ -171,3 +216,28 @@ components:
               kind: { type: string, enum: [principal, bump, upsell] }
         total_cents: { type: integer }
         created_at: { type: string, format: date-time }
+    CardConfirmed:
+      type: object
+      required: [order_id, site_id, status, payment]
+      properties:
+        order_id: { type: string }
+        site_id: { type: string }
+        status:
+          type: string
+          enum: [aguardando_pagamento, pago, recusado, expirado, reembolsado]
+        payment:
+          type: object
+          required: [method, intent_id, status]
+          properties:
+            method: { type: string, enum: [card] }
+            intent_id: { type: string }
+            status:
+              type: string
+              enum: [created, pending, approved, rejected]
+              description: >-
+                Estado da tentativa no provedor. approved aqui é a resposta
+                imediata dele, e não a liberação do pedido: quem move o pedido é
+                o evento, lido em getOrder.
+            reason_code:
+              type: string
+              description: Motivo sanitizado quando status é rejected

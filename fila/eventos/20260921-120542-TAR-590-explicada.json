@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-120542-TAR-590-explicada",
+  "tarefa": "TAR-590",
+  "evento": "explicada",
+  "quando": "2026-09-21T12:05:42+00:00",
+  "quem": "maestro, sessao TAR-582, 2026-09-21",
+  "o_que_e": "O comando que confere se as fichas dos robos declaram o modelo certo quebra sozinho quando roda no harness Claude, porque tenta ler o leia-me da pasta de fichas como se fosse uma ficha.",
+  "o_que_muda": "Sem conserto, ninguem consegue rodar essa auditoria no harness Claude para pegar ficha com modelo errado; hoje nenhum portao de CI chama o comando, entao nao trava nada, mas a ferramenta fica cega.",
+  "exemplo": "Rodar py -3.12 ci/economia_da_fabrica.py auditar-fichas hoje devolve ERROR apontando para .claude/agents/LEIA-ME.md, um arquivo de texto explicativo, nao uma ficha de agente.",
+  "importancia": 20
+}

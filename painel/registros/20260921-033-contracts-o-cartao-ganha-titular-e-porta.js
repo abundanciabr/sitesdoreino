@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-033-contracts-o-cartao-ganha-titular-e-porta",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "contracts: o cartao ganha titular e porta",
+  detalhe: "C:/Users/davia/AppData/Local/Temp/claude/C--Users-davia-abundanciabr-sitesdoreino/06ebf173-e115-4bef-aefe-c171c7650e62/scratchpad/tar-583/detalhe.txt",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1853. Validação local: árvore 6b49288aafa9e02287171bc20c7eece98e58c268; commit 537c6f60fa1a131fc6dd76d9daaee2b776ac6846; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-583",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

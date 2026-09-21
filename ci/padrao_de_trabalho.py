@@ -103,12 +103,17 @@ PORTAS = {
 # O teto do CLAUDE.md subiu de 12_500 para 13_500 em 20/09/2026, quando a regra
 # 9 ganhou o bloco **Instruções**. O teto protege o contexto de TODA sessão, e
 # continua valendo: o que ele não pode virar é uma catraca que só deixa entrar
-# obrigação nova se outra sair em silêncio — o arquivo estava a 11 bytes do
+# obrigação nova se outra sair em silêncio: o arquivo estava a 11 bytes do
 # limite e a alternativa era apagar lei que ninguém mandou apagar.
-# A regra 11 entrou em 21/09/2026 sem mexer aqui: a mudança para
-# `docs/decisoes/DECISAO-historia-das-leis-do-claude-md.md` tinha acabado de
-# tirar história do arquivo, e ele fechou em 13_316 bytes.
-TETOS_EM_BYTES = {"CLAUDE.md": 13_500, "AGENTS.md": 10_000}
+# Em 21/09/2026 o PR #1839 encolheu o CLAUDE.md de 13_298 para 12_672 bytes,
+# movendo o porquê das seções 2 a 13 para
+# `docs/decisoes/DECISAO-historia-das-leis-do-claude-md.md`. Em seguida o PR
+# #1657 pousou com a regra 11, que pesa 801 bytes, e a margem contra o teto
+# de 13_500 caiu para 27 bytes, sem porquê nenhum restante para mover. Nesta
+# mesma data o mantenedor decidiu subir o teto para 16_000, sabendo que isso
+# dá folga para várias leis novas de uma vez e custa mais contexto gasto em
+# toda sessão, com menos pressão para manter a lei enxuta.
+TETOS_EM_BYTES = {"CLAUDE.md": 16_000, "AGENTS.md": 10_000}
 
 
 def _claude_md(raiz: Path) -> str:
