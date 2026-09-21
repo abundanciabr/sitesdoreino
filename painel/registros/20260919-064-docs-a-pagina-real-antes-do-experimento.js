@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-064-docs-a-pagina-real-antes-do-experimento",
+  tipo: "decisao",
+  quando: "2026-09-19",
+  titulo: "docs: a página real antes do experimento",
+  detalhe: "A ordem inverteu por conta: testar compra pede 21.109 visitantes por braço, e a casa não viu a primeira venda no cartão. Fixa a escada de sete PRs e o gatilho de cada adiado.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1775. Validação local: árvore 8de4bd3935e1f55d9b00403313d47a29a6a4b498; commit 3f4f44c667ca696edaf42fd7226ec3a5fb9960b6; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-507",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "docs",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

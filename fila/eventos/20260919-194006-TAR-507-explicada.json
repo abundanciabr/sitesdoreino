@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-194006-TAR-507-explicada",
+  "tarefa": "TAR-507",
+  "evento": "explicada",
+  "quando": "2026-09-19T19:40:06+00:00",
+  "quem": "Pedido do mantenedor em 19/09/2026, ao receber de fora uma proposta de arquitetura de experimentação.",
+  "o_que_e": "Hoje a página que vende o curso tem título, preço e um botão, e o site só registra que alguém existiu quando a pessoa já criou um pedido. Nada do caminho até ali fica guardado.",
+  "o_que_muda": "Fica escrito, num lugar só, que a casa constrói primeiro a página de verdade e a medição de cada passo do visitante, e só depois a máquina de testar versões. Sem esse papel, cada robô que chegar vai propor a ordem contrária e o trabalho vai andar em círculo.",
+  "exemplo": "Para saber se uma frase nova na página vende mais, seria preciso mostrar as duas versões para 42 mil visitantes. O site ainda não teve a primeira venda no cartão, então o teste mediria o nada. Medir o clique no botão pede 326 visitantes, e isso o site pode ter logo.",
+  "importancia": 80
+}
