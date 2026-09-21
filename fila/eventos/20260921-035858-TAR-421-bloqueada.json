@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-035858-TAR-421-bloqueada",
+  "tarefa": "TAR-421",
+  "evento": "bloqueada",
+  "quando": "2026-09-21T03:58:58+00:00",
+  "quem": "maestro-2026-09-21",
+  "detalhe": "A entrega submetida (evento 20260921-014534) apontava para o PR #1756, mas o #1756 nao entregou a TAR-421: ele a BLOQUEOU, criando as tarefas TAR-487, 488 e 489 e escrevendo o evento de bloqueio de 19/09. A TAR-421 espera o mantenedor autorizar mudar contracts/eventos/ (isso e a TAR-487); sem essa autorizacao, as TAR-488 e TAR-489 ficam paradas de proposito. Volta a andar com: python ci/fila.py soltar TAR-421 --quem <nome>, depois de o mantenedor decidir a TAR-487.",
+  "espera": "mantenedor"
+}

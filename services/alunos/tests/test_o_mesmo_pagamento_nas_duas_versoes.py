@@ -122,22 +122,66 @@ def _contando(contador: list):
 # ---------------------------------------------------------------- o contrato
 
 
-def _ponte_do_contrato(evento: str) -> dict:
-    schema = json.loads((CONTRATOS / f"{evento}.v2.json").read_text(encoding="utf-8"))
-    return schema["x-ponte-do-v1"]
+def _schema_do_v2(evento: str) -> dict:
+    return json.loads((CONTRATOS / f"{evento}.v2.json").read_text(encoding="utf-8"))
+
+
+def _ponte_do_contrato(evento: str) -> "dict | None":
+    """A ponte publicada pelo contrato, ou `None` quando o aviso nasceu na v2.
+
+    Ausência NÃO é omissão a corrigir: `pagamento.estornado` entrou na
+    plataforma já na versão 2 (Rito de Contrato de 20/09/2026) e não tem v1 para
+    atravessar. Um contrato assim não tem o que publicar em `x-ponte-do-v1`.
+    """
+    return _schema_do_v2(evento).get("x-ponte-do-v1")
 
 
 def test_a_ponte_e_copia_fiel_do_contrato():
     """A tabela do código é uma CÓPIA do contrato, e este guarda prova que ela
     não derivou. Quem alterar `x-ponte-do-v1` sem alterar o código (ou o
     contrário) reprova aqui, em vez de deduplicar pela chave errada em
-    produção."""
+    produção.
+
+    **Evento que nasceu na v2 declara `no_v1: None`, e o guarda cobra isso nos
+    dois sentidos.** Inventar uma tradução do v1 para um aviso que nunca teve v1
+    é o erro caro: ela seria aplicada a qualquer envelope que se dissesse v1
+    daquele evento, e produziria uma identidade de fato tirada dos campos
+    errados."""
     for evento in PONTE_DO_V1:
         do_contrato = _ponte_do_contrato(evento)
+        if do_contrato is None:
+            assert PONTE_DO_V1[evento]["no_v1"] is None, (
+                f"{evento} nasceu na v2 (o contrato não publica `x-ponte-do-v1`) "
+                "e o código declara uma tradução do v1 que ninguém escreveu. "
+                "Declare `no_v1: None`."
+            )
+            continue
         assert PONTE_DO_V1[evento] == {
             "chave_entre_versoes": do_contrato["chave_entre_versoes"],
             "no_v1": do_contrato["no_v1"],
         }, f"a ponte de {evento} no código não é a do contrato"
+
+
+def test_a_chave_do_fato_e_sempre_campo_obrigatorio_do_contrato():
+    """O que ancora a chave de um evento que nasceu na v2.
+
+    Para o `pagamento.aprovado` o contrato publica a chave inteira em
+    `x-ponte-do-v1`, e o guarda de cima a compara campo a campo. Para um aviso
+    sem v1 não há esse campo, e sem este guarda a `chave_entre_versoes` dele
+    seria a única linha da tabela que o contrato não sustenta: um
+    `provider_reference` sem o `_id` passaria, e a identidade do fato viraria
+    `KeyError` no meio do laço do consumidor, na primeira mensagem real.
+
+    Campo OBRIGATÓRIO, e não só declarado: identificar o fato por algo que o
+    emissor pode omitir é identificar o fato às vezes."""
+    for evento, ponte in PONTE_DO_V1.items():
+        dados = _schema_do_v2(evento)["properties"]["data"]
+        for campo in ponte["chave_entre_versoes"]:
+            assert campo in dados["required"], (
+                f"a chave do fato de {evento} usa {campo!r}, que não é campo "
+                f"obrigatório de `data` no contrato v2 (obrigatórios: "
+                f"{dados['required']})"
+            )
 
 
 def test_todo_evento_consumido_declara_a_ponte():
@@ -197,6 +241,34 @@ def test_versao_desconhecida_nao_e_processada_em_silencio():
     A recusa sobe, a mensagem fica no PEL e o caminho da fila morta a recolhe."""
     envelope = _v2()
     envelope["version"] = 3
+
+    with pytest.raises(VersaoDesconhecida):
+        dados_na_forma_do_v2(envelope)
+
+
+def test_aviso_que_nasceu_na_v2_recusa_envelope_que_se_diga_v1():
+    """`VERSOES_ACEITAS` é do CONSUMIDOR, não de cada aviso: ele diz quais
+    números esta célula sabe ler, e não que todo aviso exista nos dois.
+
+    O modo de falha que este guarda fecha é o pior possível nesta família. Sem a
+    recusa, um envelope `pagamento.estornado` marcado como v1 cairia na tradução
+    escrita para o `pagamento.aprovado`, que lê `site_id` e `mp_payment_id`. Com
+    esses dois campos presentes, a tradução funcionaria, produziria um par de
+    pagamento plausível tirado dos campos errados e o consumidor cortaria o
+    acesso de quem aquela identidade calhasse de apontar. Nada nisso pareceria
+    erro: nenhuma exceção, nenhum log, um aluno a menos."""
+    envelope = {
+        "event": "pagamento.estornado",
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-21T13:00:00Z",
+        "data": {
+            "site_id": SITE,
+            "mp_payment_id": REFERENCIA_NO_PROVEDOR,
+            "motivo": "estorno",
+            "amount_cents": 19700,
+        },
+    }
 
     with pytest.raises(VersaoDesconhecida):
         dados_na_forma_do_v2(envelope)

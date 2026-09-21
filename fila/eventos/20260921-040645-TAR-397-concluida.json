@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-040645-TAR-397-concluida",
+  "tarefa": "TAR-397",
+  "evento": "concluida",
+  "quando": "2026-09-21T04:06:45+00:00",
+  "quem": "agent/ci/folga-no-claude-md",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1839",
+  "verificado_em": "2026-09-21"
+}

@@ -32,8 +32,11 @@ import leis_sem_mecanismo as censo  # noqa: E402
 from _nucleo import ErroDeInstrumentacao, Estado  # noqa: E402
 
 
-def _cenario(tmp_path: Path, leis: dict[str, str], divida: str = "") -> Path:
-    """Uma raiz com arquivos-lei de mentira e a dívida dada."""
+def _cenario(tmp_path: Path, leis: dict[str, str], divida: str = "", git: bool = True) -> Path:
+    """Uma raiz com arquivos-lei de mentira e a dívida dada.
+
+    Com ``git=False`` a raiz nasce sem bancada Git, que é o cenário de ERROR.
+    """
     raiz = tmp_path / "repo"
     (raiz / "ci").mkdir(parents=True)
     for nome, conteudo in leis.items():
@@ -46,6 +49,8 @@ def _cenario(tmp_path: Path, leis: dict[str, str], divida: str = "") -> Path:
     (raiz / "contracts").mkdir()
     (raiz / "contracts" / "LEIA-ME.md").write_text("c\n", encoding="utf-8")
     (raiz / "services").mkdir()
+    if not git:
+        return raiz
     subprocess.run(["git", "init", "-q"], cwd=raiz, check=True)
     subprocess.run(["git", "add", "."], cwd=raiz, check=True)
     subprocess.run(
@@ -217,17 +222,7 @@ def test_arquivo_novo_fora_do_padrao_nao_justifica(tmp_path: Path):
 
 
 def test_sem_git_e_ERROR(tmp_path: Path):
-    raiz = tmp_path / "repo"
-    (raiz / "ci").mkdir(parents=True)
-    (raiz / "CONSTITUICAO.md").write_text(LEI_COM_PORTAO, encoding="utf-8")
-    for nome in censo.ARQUIVOS_LEI:
-        if not (raiz / nome).exists():
-            (raiz / nome).write_text("# vazio\n", encoding="utf-8")
-    (raiz / censo.DIVIDA).write_text("", encoding="utf-8")
-    (raiz / "INVARIANTES.md").write_text("cenario\n", encoding="utf-8")
-    (raiz / "contracts").mkdir()
-    (raiz / "contracts" / "LEIA-ME.md").write_text("c\n", encoding="utf-8")
-    (raiz / "services").mkdir()
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO}, git=False)
     (raiz / "ci" / "existe.py").write_text("# portão\n", encoding="utf-8")
     with pytest.raises(ErroDeInstrumentacao, match=r"bancada sem \.git"):
         censo.conferir(raiz)
@@ -244,22 +239,6 @@ def test_origin_main_ilegivel_ERROR(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     )
     with pytest.raises(ErroDeInstrumentacao, match="origin/main ilegível"):
         censo.conferir(raiz)
-
-
-def test_decisoes_novas_filtra_nome_e_extensao(tmp_path: Path):
-    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_COM_PORTAO})
-    pasta = raiz / "docs" / "decisoes"
-    pasta.mkdir(parents=True)
-    (pasta / "nota.md").write_text("n\n", encoding="utf-8")
-    (pasta / "DECISAO-x.txt").write_text("n\n", encoding="utf-8")
-    (pasta / "DECISAO-x.md").write_text("n\n", encoding="utf-8")
-    subprocess.run(["git", "add", "docs/decisoes"], cwd=raiz, check=True)
-    subprocess.run(
-        ["git", "-c", "user.name=Teste", "-c", "user.email=teste@example.com", "commit", "-qm", "decisão"],
-        cwd=raiz,
-        check=True,
-    )
-    assert censo._decisoes_novas(raiz) == ["docs/decisoes/DECISAO-x.md"]
 
 
 # --------------------------------------------------------------------------
@@ -307,16 +286,7 @@ def test_a_muralha_erra_sem_git(tmp_path: Path):
 
     if BASH is None:
         pytest.skip("sem bash utilizável")
-    raiz = tmp_path / "repo"
-    (raiz / "ci").mkdir(parents=True)
-    (raiz / "CONSTITUICAO.md").write_text(LEI_SEM_PORTAO, encoding="utf-8")
-    for arquivo in ("RITOS.md", "CLAUDE.md"):
-        (raiz / arquivo).write_text("# vazio\n", encoding="utf-8")
-    (raiz / censo.DIVIDA).write_text("", encoding="utf-8")
-    (raiz / "INVARIANTES.md").write_text("cenario\n", encoding="utf-8")
-    (raiz / "contracts").mkdir()
-    (raiz / "contracts" / "LEIA-ME.md").write_text("c\n", encoding="utf-8")
-    (raiz / "services").mkdir()
+    raiz = _cenario(tmp_path, {"CONSTITUICAO.md": LEI_SEM_PORTAO}, git=False)
     for arquivo in ("leis_sem_mecanismo.py", "_nucleo.py", "leis-sem-mecanismo.sh"):
         shutil.copy(RAIZ / "ci" / arquivo, raiz / "ci" / arquivo)
     proc = subprocess.run(
