@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-013-ci-pouso-rele-o-pr-de-mergeabilidade-unknown",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: pouso rele o PR de mergeabilidade UNKNOWN",
+  detalhe: "O pouso lia mergeable=UNKNOWN na janela fria e pulava o update-branch; agora rele com teto, exige check verde e loga.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1840. Validação local: árvore fc685d270c79823e0b90c62b8d9999364be6ab26; commit 73299919397c69d43991c535651c021cd04d3dac; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-577",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

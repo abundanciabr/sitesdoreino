@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-021135-TAR-577-explicada",
+  "tarefa": "TAR-577",
+  "evento": "explicada",
+  "quando": "2026-09-21T02:11:35+00:00",
+  "quem": "Pedido do mantenedor na sessao de 20/09/2026, com o run 35549873294 do pouso.yml medido",
+  "o_que_e": "Quando uma entrega fica pronta e verde, mas a main andou depois, o robo do pouso tinha que trazer a main para dentro dela antes de juntar. Ele nao estava fazendo isso.",
+  "o_que_muda": "Entrega pronta parava de dias sem ninguem perceber, esperando uma mao humana. Com o conserto ela anda sozinha, e o trabalho terminado chega ao site no mesmo dia.",
+  "exemplo": "Em 20 de setembro, cinco entregas prontas ficaram oito horas paradas enquanto o robo rodou quarenta vezes sem mexer em nenhuma delas.",
+  "importancia": 75
+}
