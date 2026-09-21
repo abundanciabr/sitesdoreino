@@ -1,0 +1,19 @@
+{
+  "arquivo": "585-lavrar-as-licoes-e-os-cartoes-medidos-nesta-sessao",
+  "id": "TAR-585",
+  "titulo": "Lavrar as licoes e os cartoes medidos nesta sessao",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O PR desta entrega integrado, com as armadilhas novas, os cartoes novos na fila e o registro do lote no livro.",
+  "despacho": "Escrever as armadilhas medidas, abrir os cartoes de conserto, lavrar o registro do lote. Nenhum conserto de codigo nesta tarefa.",
+  "origem": "Brief da maestro em 21/09/2026, lote de escrituracao da noite.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
