@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-023511-TAR-579-explicada",
+  "tarefa": "TAR-579",
+  "evento": "explicada",
+  "quando": "2026-09-21T02:35:11+00:00",
+  "quem": "medido pelo mantenedor em 20/09/2026 no clone principal, com py -3.12 ci/resumo_maestro.py",
+  "o_que_e": "O comando que mostra o estado da fabrica numa tela morria no meio, no computador do mantenedor, antes de listar a fila. A causa: ele lia a resposta de outro programa sem dizer em que idioma ela vem.",
+  "o_que_muda": "O comando volta a funcionar inteiro. E, mais importante, um guarda novo impede que a proxima ferramenta da casa nasca com o mesmo defeito: eram 14 leituras assim, escondidas em 10 arquivos.",
+  "exemplo": "Era como receber uma carta em portugues e insistir em le-la como se fosse alemao: na primeira palavra com acento, o leitor desiste e joga tudo fora.",
+  "importancia": 55
+}

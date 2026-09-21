@@ -156,6 +156,7 @@ def _empurrar(tag: str) -> tuple[int, str]:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8", errors="replace",
     )
     return processo.returncode, processo.stdout or ""
 

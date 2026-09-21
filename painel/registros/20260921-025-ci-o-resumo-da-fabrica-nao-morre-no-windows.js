@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-025-ci-o-resumo-da-fabrica-nao-morre-no-windows",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: o resumo da fabrica nao morre no Windows",
+  detalhe: "ci/resumo_maestro.py quebrava no Windows (cp1252). Guarda novo exige encoding utf-8; provado por sabotagem manual.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1834. Validação local: árvore c15ab9313bbd788b77ebc30c9fdba149eacd6056; commit 57051af0e87b3b10589791ce3c25a7ba1cc9d3f3; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-579",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

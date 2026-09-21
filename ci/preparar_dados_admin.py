@@ -7,9 +7,11 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
+from _nucleo import configurar_saida
 from mapa_de_execucao import materializar_catalogo, validar_catalogo
 
 
@@ -58,6 +60,7 @@ def preparar_painel(raiz: Path, destino: Path) -> None:
         check=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
         timeout=300,
     )
     if not (painel / "painel.html").is_file():
@@ -73,11 +76,15 @@ def preparar_fila(raiz: Path, destino: Path) -> None:
         raise SystemExit("PAROU: fila/tarefas/ nao existe")
     _copiar_arvore(fila, destino)
     resultado = subprocess.run(
-        ["python", "ci/fila.py", "listar", "--json"],
+        [sys.executable, "ci/fila.py", "listar", "--json"],
         cwd=raiz,
         check=True,
         capture_output=True,
         text=True,
+        # Estrito, sem `errors`: este texto vira `estados.json` publicado e
+        # entra no manifesto de integridade. Trocar um byte ruim por `?` aqui
+        # certificaria o lixo com um sha256 válido; melhor o deploy parar.
+        encoding="utf-8",
         timeout=300,
     )
     (destino / "estados.json").write_text(resultado.stdout, encoding="utf-8")
@@ -126,6 +133,7 @@ def escrever_manifesto(
 
 
 def main() -> int:
+    configurar_saida()
     parser = argparse.ArgumentParser()
     parser.add_argument("tipo", choices=("painel", "fila"))
     parser.add_argument("--saida", required=True)
