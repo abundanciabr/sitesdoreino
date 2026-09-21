@@ -129,7 +129,12 @@ primeira oportunidade de violá-la.
 - **Teste-Guarda:** `services/catalogo/tests/test_inv_p11_fronteira_site.py`
   (dois sites com o mesmo slug e preços distintos ⇒ cada host vê só o seu; host
   aleatório ⇒ 404) + `services/checkout/tests/test_inv_p11_fronteira_site.py`
-  (sessão criada no site A não fecha pedido com oferta do site B).
+  (sessão criada no site A não fecha pedido com oferta do site B) +
+  `services/leads/tests/test_inv_leads_dedup_entre_versoes.py` (a identidade
+  lógica de um fato de pagamento nasce escopada por site: o mesmo par
+  provider/referência em dois sites são dois fatos, e um aviso com o site
+  errado não consome a identidade do fato certo nem faz o legítimo ser
+  descartado como duplicado).
 - **Célula dona:** catalogo + checkout (padrão replicado em quiz, leads e alunos)
 
 ### [INV-P12] Um Único Assinante do Cookie de Sessão do Site
