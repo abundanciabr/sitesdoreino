@@ -1,0 +1,20 @@
+{
+  "arquivo": "572-escriturar-na-fila-a-rota-publica-da-appmax-que-ja-pousou",
+  "id": "TAR-572",
+  "titulo": "Escriturar na fila a rota publica da Appmax que ja pousou",
+  "toca": [
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Eventos submetida e concluida da TAR-542 apontando para o PR 1820 na main, e registro citando o merge e a prova da rota de fora",
+  "despacho": "Escrever na fila os eventos de submissao e conclusao da TAR-542 apontando para o PR 1820, e um registro no livro citando o merge 498e6937 e a prova da rota medida de fora. Somente fila/ e painel/.",
+  "origem": "Rito interrompido da TAR-542: o codigo pousou no PR 1820 mas o ci/pr.py nunca fechou a escrituracao",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
