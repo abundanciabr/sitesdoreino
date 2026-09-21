@@ -132,6 +132,25 @@ PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
 #: `tests/test_planos_para_ia.py::test_o_prefixo_dos_planos_tem_so_as_duas_rotas`.
 PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
 
+#: [MIDIA PUBLICA] O prefixo que entrega imagem e vídeo de documento no ar
+#: (TAR-598, 21/09/2026).
+#:
+#: A rota `midia_servir` nasceu ATRAS DA PORTA (TAR-597): a tela de operação
+#: não está na internet, e abrir `/midia/` antes de o renderizador existir
+#: seria abrir um buraco para nada. Agora o Markdown desenha
+#: `![legenda](/midia/sorteio/nome)`, e a página pública em `/docs/` precisa
+#: alcançar o arquivo sem login.
+#:
+#: **Prefixo, e não lista exata**, pelo mesmo motivo de `/docs/`: a decisão
+#: de "isto sai" mora no documento (`no_ar`), nunca nesta lista. Enumerar
+#: sorteios aqui criaria uma segunda lista sobre o mesmo fato.
+#:
+#: O que impede o prefixo de virar fresta: sob `/midia/` existe EXATAMENTE
+#: uma rota, de leitura, e ela devolve 404 (nunca 403) quando o documento
+#: dono não está no ar. Guarda:
+#: `tests/test_midia_dos_documentos.py::test_o_prefixo_publico_da_midia_tem_so_a_entrega`.
+PREFIXO_PUBLICO_DA_MIDIA = "/midia/"
+
 #: [PORTA DE MAQUINA] O prefixo que tem cadeado PROPRIO, e mais forte que este.
 #:
 #: `/interno/` responde a outra celula, maquina para maquina, e o que a fecha e
@@ -248,8 +267,20 @@ class PortaAdministrativa:
             return self._com_seguranca(self.get_response(request))
 
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
-            (PREFIXO_PUBLICO_DOS_DOCUMENTOS, PREFIXO_PUBLICO_DOS_PLANOS)
+            (
+                PREFIXO_PUBLICO_DOS_DOCUMENTOS,
+                PREFIXO_PUBLICO_DOS_PLANOS,
+                PREFIXO_PUBLICO_DA_MIDIA,
+            )
         ):
+            # `/midia/` é público, mas o editor local ainda precisa ver o
+            # arquivo de um documento que ainda não está no ar. O crachá local
+            # não chama a identidade: um aluno com cookie de sessão não pode
+            # derrubar a entrega da imagem se a identidade cair.
+            if request.path_info.startswith(PREFIXO_PUBLICO_DA_MIDIA):
+                admin_local = self._admin_local_da_requisicao(request)
+                if admin_local:
+                    request.admin = admin_local
             return self._com_seguranca(self.get_response(request))
 
         tem_cookie_local = settings.ADMIN_LOCAL_COOKIE_NAME in request.COOKIES

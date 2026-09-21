@@ -380,8 +380,11 @@ def _semear(modelo, caminho: Path) -> bool:
 #
 # HTML cru continua recusado. Tabela, bloco de código e figura NOMEADA
 # entraram em 21/09/2026 porque o documento do Crivo precisava deles para
-# ensinar: a conversa foi neste arquivo, nunca um contorno. Imagem por URL
-# continua recusada. Figura só existe se o nome estiver em `figuras.FIGURAS`.
+# ensinar: a conversa foi neste arquivo, nunca um contorno. Imagem por
+# endereço da internet continua recusada. Imagem e vídeo da casa entram
+# pelo endereço `/midia/<sorteio>/<nome>` (TAR-598), e a caixa de destaque
+# entra pela linha que começa com `>!`. Figura nomeada só existe se o nome
+# estiver em `figuras.FIGURAS`.
 #
 # **Um renderizador só, para os documentos e para o livro** (04/09/2026). A
 # Biblioteca do Livro (`apps/core/livro.py`) desenha o texto do mantenedor com
@@ -417,6 +420,14 @@ _ITEM_NUMERADO = re.compile(r"^\d{1,3}[.)]\s+(.*)$")
 #: O nome depois de `figura:` é o índice em `figuras.FIGURAS`. URL, `data:` e
 #: `javascript:` não passam por este padrão.
 _FIGURA = re.compile(r"^!\[([^\]]*)\]\(figura:([a-z0-9-]+)\)$")
+#: Imagem ou vídeo enviado (TAR-598): `![legenda](/midia/<32 hex>/<nome>)`.
+#: O endereço é o da casa, o mesmo que `midia_servir` entrega. `https://`,
+#: `javascript:` e `data:` não passam por este padrão.
+_MIDIA = re.compile(
+    r"^!\[([^\]]*)\]\((/midia/[0-9a-f]{32}/[a-z0-9-]+\.[a-z0-9]{2,4})\)$"
+)
+#: Caixa de destaque, uma linha que começa com `>! `: aviso amarelo no texto.
+_AVISO = re.compile(r"^>!\s+(.*)$")
 #: Célula de tabela: `| --- | :---: |` vira separador. Só hífen e dois-pontos.
 _SEP_CELULA = re.compile(r"^:?-+:?$")
 
@@ -465,6 +476,17 @@ def _figura_html(legenda: str, nome: str) -> str | None:
     )
 
 
+def _midia_html(legenda: str, endereco: str) -> str:
+    """Imagem ou vídeo da casa. O `src` já nasceu do padrão, não de texto livre."""
+    alt = html.escape(legenda, quote=True)
+    caption = _linha(legenda)
+    if endereco.endswith(".mp4"):
+        peca = f'<video controls src="{endereco}"></video>'
+    else:
+        peca = f'<img src="{endereco}" alt="{alt}">'
+    return f'<figure class="midia">{peca}<figcaption>{caption}</figcaption></figure>'
+
+
 def _linha(texto: str) -> str:
     """Escapa e aplica as marcas de dentro da linha. NUNCA o contrário."""
     seguro = html.escape(texto)
@@ -484,6 +506,7 @@ def para_html(markdown: str) -> str:
     # marcadores fechar a primeira em vez de continuar dentro dela.
     lista_aberta: str | None = None
     citacao_aberta = False
+    aviso_aberto = False
     paragrafo: list[str] = []
     linhas = markdown.splitlines()
     i = 0
@@ -506,11 +529,18 @@ def para_html(markdown: str) -> str:
             partes.append("</blockquote>")
             citacao_aberta = False
 
+    def fechar_aviso() -> None:
+        nonlocal aviso_aberto
+        if aviso_aberto:
+            partes.append("</aside>")
+            aviso_aberto = False
+
     def abrir_item(tag: str, conteudo: str) -> None:
         """Um item, abrindo a lista certa e fechando a errada, se houver."""
         nonlocal lista_aberta
         fechar_paragrafo()
         fechar_citacao()
+        fechar_aviso()
         if lista_aberta != tag:
             fechar_lista()
             partes.append(f"<{tag}>")
@@ -521,6 +551,7 @@ def para_html(markdown: str) -> str:
         fechar_paragrafo()
         fechar_lista()
         fechar_citacao()
+        fechar_aviso()
 
     while i < len(linhas):
         linha = linhas[i]
@@ -564,6 +595,13 @@ def para_html(markdown: str) -> str:
                 i += 1
                 continue
 
+        arquivo = _MIDIA.match(nua)
+        if arquivo:
+            fechar_blocos()
+            partes.append(_midia_html(arquivo.group(1), arquivo.group(2)))
+            i += 1
+            continue
+
         if not nua:
             fechar_blocos()
             i += 1
@@ -594,9 +632,22 @@ def para_html(markdown: str) -> str:
             i += 1
             continue
 
+        aviso = _AVISO.match(nua)
+        if aviso:
+            fechar_paragrafo()
+            fechar_lista()
+            fechar_citacao()
+            if not aviso_aberto:
+                partes.append('<aside class="caixa-destaque">')
+                aviso_aberto = True
+            partes.append(f"<p>{_linha(aviso.group(1))}</p>")
+            i += 1
+            continue
+
         if nua.startswith(">"):
             fechar_paragrafo()
             fechar_lista()
+            fechar_aviso()
             if not citacao_aberta:
                 partes.append("<blockquote>")
                 citacao_aberta = True
@@ -604,7 +655,7 @@ def para_html(markdown: str) -> str:
             i += 1
             continue
 
-        if lista_aberta or citacao_aberta:
+        if lista_aberta or citacao_aberta or aviso_aberto:
             # Linha solta depois de uma lista ou citação sem linha em branco no
             # meio: fecha o bloco e começa parágrafo. O contrário — continuar o
             # item anterior — exigiria adivinhar a intenção de quem escreveu.
