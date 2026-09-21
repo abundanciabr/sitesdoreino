@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115609-TAR-588-explicada",
+  "tarefa": "TAR-588",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:56:09+00:00",
+  "quem": "Fronteira declarada em 21/09/2026 no PR #1842, no docstring de ao_pagamento_estornado.",
+  "o_que_e": "Quando um pagamento e estornado, o sistema corta a matricula da aluna; quando e aprovado, cria a matricula.",
+  "o_que_muda": "Os dois avisos chegam por caminhos diferentes e um pode atrasar: se o estorno chega primeiro, nao ha matricula para cortar e a aprovacao atrasada matricula alguem cujo dinheiro ja voltou.",
+  "exemplo": "A compradora pede estorno em minutos, o aviso do estorno passa na frente, e ela fica com o curso liberado de graca.",
+  "importancia": 80
+}
