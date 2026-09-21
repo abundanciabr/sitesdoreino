@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-039-admin-o-crivo-explicado-esta-no-ar",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "admin: o Crivo explicado do zero esta no ar",
+  detalhe: "O PR 1858 pousou e o deploy da admin concluiu verde. De fora, meshcraft.top/docs/o-crivo-explicado-do-zero responde 200 com as 21 figuras e aparece na lista publica.",
+  autoridade: "github",
+  evidencia: "gh pr view 1858 --json state,mergedBy,mergeCommit: MERGED 8793ecda by abundanciabr. deploy-celula run 35616487574 success. curl da URL publica: HTTP 200, 21 figure, 21 svg, 6 table.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: "20260921-038-admin-o-crivo-explicado-do-zero",
+  relacao: "baixa",
+  tarefa: null,
+  gravidade: "verde",
+  frente: "site",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
