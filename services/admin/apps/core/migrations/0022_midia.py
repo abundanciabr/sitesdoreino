@@ -15,6 +15,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ("core", "0021_semear_o_crivo_explicado"),
         ("core", "0022_o_crivo_explicado_so_para_administradores"),
+        ("core", "0023_o_formato_do_documento"),
     ]
 
     operations = [
