@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-034-consulta-de-parcelas-fica-fora-do-contrato",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "A consulta de parcelas do cartao ficou fora do contrato, e falta um lote para ela entrar",
+  detalhe: "O contrato do cartao ganhou duas das quatro coisas que a tarefa pedia. Entraram os tres campos do titular (o IP, o nome e o documento de quem tem o cartao) e a porta publica pela qual o navegador entrega o cartao ja tokenizado. Nao entrou a consulta de parcelas, nem do lado de pagamentos nem o repasse pelo checkout.\n\nO motivo foi medido, e nao e opiniao. O valor de cada parcela, na modalidade que o mantenedor escolheu, so existe na resposta do fornecedor, atras de uma credencial. A plataforma ainda nao sabe se autenticar nesse fornecedor: isso e um lote proprio, que ainda nao pousou. Se a promessa entrasse no contrato hoje, as duas celulas envolvidas ficariam vermelhas ate esse lote entrar, e com elas todo trabalho que as tocasse. Foi exatamente esse estado que o PR 1824 desfez em 20/09/2026.\n\nO que destrava: os lotes que ensinam a plataforma a se autenticar no fornecedor e a criar cobranca nele. Quando eles pousarem, a consulta de parcelas volta ao contrato num segundo PR de contrato, pelo mesmo rito, e ai o freeze consegue medi-la.\n\nDuas correcoes de rumo neste mesmo registro. Primeira: o recibo 20260921-033 gravou no campo do detalhe o caminho de um arquivo em vez do texto dele; o julgamento que deveria estar la e este: mudanca aditiva medida com o codigo das duas celulas na mesma arvore, com freeze e seguranca passando nos dois lados antes de congelar a promessa. Segunda: o rito do PR fechou a tarefa da fila sozinho, porque ela aparecia nos eventos do ramo, e a tarefa NAO esta cumprida por inteiro enquanto a consulta de parcelas nao entrar.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1853",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: "20260921-033-contracts-o-cartao-ganha-titular-e-porta",
+  relacao: "comentario",
+  tarefa: "TAR-583",
+  gravidade: "ambar",
+  frente: "fabrica",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
