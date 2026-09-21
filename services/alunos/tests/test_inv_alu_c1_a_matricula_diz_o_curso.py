@@ -325,6 +325,10 @@ def test_a_matricula_que_o_pagamento_cria_hoje_tambem_e_alcancada():
         {
             "platform_site_id": "site-1",
             "order_id": "pedido-que-veio-do-evento",
+            # [ESTORNO] O par do pagamento e `required` no contrato v2: um
+            # `data` sem ele nao e evento nenhum.
+            "provider": "appmax",
+            "provider_reference_id": "4471231",
             "customer": {"email": "comprou@example.com", "name": "Comprou"},
         }
     )

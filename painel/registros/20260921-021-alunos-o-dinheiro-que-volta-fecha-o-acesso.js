@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-021-alunos-o-dinheiro-que-volta-fecha-o-acesso",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "alunos: o dinheiro que volta fecha o acesso",
+  detalhe: "Suspende, nao reembolsa: o acesso fecha e a ficha fica inteira para o painel reabrir. Sem backfill nas antigas.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1842. Validação local: árvore 5a77c5ec71a51ffdb286b9dc2e9f3ba4f9eebbdd; commit 41a60a078cd59be4d6c306154093d704096d9178; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-553",
+  gravidade: "info",
+  frente: "vender",
+  area: "alunos",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
