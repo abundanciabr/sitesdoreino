@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260921-115923-TAR-487-concluida",
+  "tarefa": "TAR-487",
+  "evento": "concluida",
+  "quando": "2026-09-21T11:59:23+00:00",
+  "quem": "agent/contracts/aviso-do-acompanhamento-humano",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1849",
+  "verificado_em": "2026-09-21"
+}

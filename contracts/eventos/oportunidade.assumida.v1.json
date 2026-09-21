@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/oportunidade.assumida.v1.json",
+  "title": "oportunidade.assumida.v1",
+  "description": "UMA PESSOA DA EQUIPE PASSOU A ACOMPANHAR ESTE INTERESSADO, E A AUTOMAÇÃO PRECISA PARAR. Até hoje esse fato vivia só dentro do banco da célula `leads`: quem recebia mensagem automática continuava recebendo, mesmo com um comercial já falando com a pessoa. Este aviso é o que faz o fato atravessar a fronteira. Publicado pela `leads` depois de a oportunidade estar gravada, nas duas portas que iniciam acompanhamento humano: a criação (`POST /opportunities`) e a reabertura (`POST /opportunities/{opportunity_id}/reopen`). As duas são o mesmo fato para quem consome, e por isso são o mesmo evento, porque reabrir é assumir de novo. Se a reabertura ficasse de fora, quem tivesse voltado a automatizar depois de um `oportunidade.encerrada` nunca saberia que precisa parar outra vez, e a pessoa receberia robô e comercial ao mesmo tempo. LEI DESTE EVENTO: só identificador opaco viaja, nunca nome, e-mail, telefone ou o texto que o comercial escreveu. O evento é imutável, então dado pessoal que entra nele não sai mais, e texto de humano apodrece dentro do livro. Quem precisar do detalhe pergunta à `leads` pelo `oportunidade_id`. Rito de Contrato (RITOS.md §3) de 21/09/2026, com mandato nominal do mantenedor para `contracts/eventos/`. Provedor implementa primeiro, consumidores em PRs seguintes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "oportunidade.assumida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id único deste fato, e a chave de idempotência de quem consome: o mesmo evento reentregue pela fila faz a automação parar uma vez só."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "O instante em que o acompanhamento humano começou, com fuso. Sem fuso o dia do fato é um chute, e quem consome não consegue ordenar este aviso contra o `oportunidade.encerrada` que vem depois."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "oportunidade_id",
+        "lead_id",
+        "titular_id",
+        "tipo"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Site (tenant) a que o interessado pertence, e chave de roteamento como em todo evento desta plataforma. Viaja nos três avisos do acompanhamento humano porque é ele que impede uma célula consumidora de cruzar pessoas de sites diferentes."
+        },
+        "oportunidade_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da oportunidade dentro da célula `leads`. É por ele que quem consome volta a perguntar, sem adivinhar, e é ele que liga este aviso ao `oportunidade.transferencia-decidida` e ao `oportunidade.encerrada` do mesmo acompanhamento."
+        },
+        "lead_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO do interessado dentro da célula `leads`, o mesmo de `funil.lead-capturado`. É este o campo que responde à pergunta que faz a automação parar: para quem eu devo calar a boca. Nunca é o e-mail, o telefone nem o nome de ninguém."
+        },
+        "titular_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Id OPACO da conta comercial que passou a acompanhar, o mesmo `TitularOportunidade.id` de `contracts/leads.openapi.yaml`. É local da célula `leads` de propósito: não existe hoje um id de plataforma para a conta comercial, e inventar um aqui seria prometer o que nenhum publicador consegue preencher. Nunca é o e-mail."
+        },
+        "tipo": {
+          "type": "string",
+          "enum": [
+            "abertura",
+            "reabertura"
+          ],
+          "description": "Como este acompanhamento começou. `reabertura` é a palavra que `RegistroHistoricoOportunidade.TIPOS` já usa dentro da `leads`, e `abertura` é o complemento que faltava lá porque a criação da oportunidade não gera registro de histórico. Quem só quer saber se deve parar de automatizar ignora este campo, já que os dois valores mandam parar. Ele existe para quem conta os fatos, porque um acompanhamento reaberto não é um acompanhamento novo."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "event": "oportunidade.assumida",
+      "version": 1,
+      "event_id": "9b7d3c2e-4f1a-4c8b-9e5d-6a2f8b1c4d70",
+      "occurred_at": "2026-09-21T09:14:02-03:00",
+      "data": {
+        "site_id": "meshcraft",
+        "oportunidade_id": "3f1c8a90-2b6d-4e5f-8a1c-7d9e0b3a5c62",
+        "lead_id": "c4e2a7b1-8d5f-4a3c-9b6e-1f0d2c8a4e93",
+        "titular_id": "comercial-07",
+        "tipo": "abertura"
+      }
+    }
+  ]
+}
