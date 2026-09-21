@@ -71,3 +71,25 @@ class PagamentosClient:
         )
         r.raise_for_status()
         return r.json()
+
+    def confirmar_cartao(self, *, intent_id: str, payload: dict) -> tuple[int, dict]:
+        """`confirmCard` do contrato congelado de pagamentos.
+
+        Devolve o status junto com o corpo, e não levanta em 4xx, porque as
+        recusas desta rota são respostas de negócio que o comprador precisa
+        VER: 409 é intent que já saiu do estado confirmável (duplo clique,
+        pedido já pago) e 422 é payload recusado. Um `raise_for_status` aqui
+        transformaria as duas num 500 mudo na tela de quem está pagando.
+
+        O timeout é maior que o de criar a intent porque esta chamada atravessa
+        o provedor de cartão, que só responde depois da análise dele.
+        """
+        r = http().post(
+            f"{self.base}/intents/{intent_id}/card",
+            json=payload,
+            headers=self._headers(),
+            timeout=30.0,
+        )
+        if r.status_code >= 500:
+            r.raise_for_status()
+        return r.status_code, r.json()
