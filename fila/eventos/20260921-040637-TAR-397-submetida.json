@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-040637-TAR-397-submetida",
+  "tarefa": "TAR-397",
+  "evento": "submetida",
+  "quando": "2026-09-21T04:06:37+00:00",
+  "quem": "agent/ci/folga-no-claude-md",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1839",
+  "revisao": "74124c2ac789504bcab0e82488c44cc7c0bb7ce1",
+  "arvore": "eacf597f23d06dd5530a4a52c89157c46aab637c"
+}

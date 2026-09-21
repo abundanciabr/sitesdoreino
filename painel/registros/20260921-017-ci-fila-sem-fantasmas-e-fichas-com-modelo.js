@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-017-ci-fila-sem-fantasmas-e-fichas-com-modelo",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: fila sem fantasmas e fichas com modelo",
+  detalhe: "TAR-421 e TAR-577 saem do estado errado, TAR-240 cancela decisao ja dada, e as fichas do Codex ganham model.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1844. Validação local: árvore a20d84a50af1fc867682f284e74f4cdc7f16e18e; commit 37726c162e1ecf6d74952c712270fcd34f02fa97; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-581",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -5,8 +5,19 @@ import mergear
 from _nucleo import Estado, ErroDeInstrumentacao, Resultado
 
 
-def configurar(monkeypatch, prs, bloqueados=()):
+VERDE = [
+    dict(name="muralhas", status="COMPLETED", conclusion="SUCCESS"),
+    dict(name="ci-celula-gate", status="COMPLETED", conclusion="SUCCESS"),
+]
+VERMELHO = [
+    dict(name="muralhas", status="COMPLETED", conclusion="FAILURE"),
+    dict(name="ci-celula-gate", status="COMPLETED", conclusion="SUCCESS"),
+]
+
+
+def configurar(monkeypatch, prs, bloqueados=(), rollup=None):
     chamadas = []
+    monkeypatch.setattr(mergear.time, "sleep", lambda segundos: None)
     monkeypatch.setattr(
         mergear,
         "_gh",
@@ -24,6 +35,7 @@ def configurar(monkeypatch, prs, bloqueados=()):
             headRefOid="a" * 40,
             mergeable="MERGEABLE",
             mergeStateStatus="BEHIND" if numero in bloqueados else "CLEAN",
+            statusCheckRollup=list(VERDE if rollup is None else rollup),
         ),
     )
     monkeypatch.setattr(
@@ -119,3 +131,66 @@ def test_workflow_nao_descarta_eventos_de_outros_prs():
     assert "workflow_run.head_branch" in grupo
     passos = fluxo["jobs"]["pousar"]["steps"]
     assert "RAMO_DO_EVENTO" in passos[-1]["env"]
+
+
+def leitor_que_esfria(monkeypatch, mergeaveis):
+    """Simula o GitHub calculando a mergeabilidade depois da primeira consulta.
+
+    `mergeaveis` é a resposta de cada leitura, na ordem; a última se repete.
+    Devolve a lista de leituras e a das pausas realmente pedidas.
+    """
+    leituras, pausas = [], []
+
+    def carregar(raiz, numero):
+        leituras.append(numero)
+        posicao = min(len(leituras), len(mergeaveis)) - 1
+        return dict(
+            number=numero,
+            headRefOid="a" * 40,
+            mergeable=mergeaveis[posicao],
+            mergeStateStatus="BEHIND",
+            statusCheckRollup=list(VERDE),
+        )
+
+    monkeypatch.setattr(mergear, "carregar_pr", carregar)
+    monkeypatch.setattr(mergear.time, "sleep", pausas.append)
+    return leituras, pausas
+
+
+def test_reconsulta_quando_o_github_ainda_nao_calculou(monkeypatch, tmp_path):
+    chamadas = configurar(monkeypatch, [pr(1)], bloqueados=(1,))
+    leituras, pausas = leitor_que_esfria(monkeypatch, ["UNKNOWN", "MERGEABLE"])
+    assert mergear.integrar_abertos(tmp_path) == 0
+    assert leituras == [1, 1]
+    # Sem a espera, as três leituras saem no mesmo segundo e o GitHub devolve
+    # UNKNOWN nas três: reler sem pausar é não reler.
+    assert pausas == [mergear.PAUSA_ENTRE_AS_LEITURAS]
+    assert chamadas[0][3] == "repos/{owner}/{repo}/pulls/1/update-branch"
+
+
+def test_desiste_de_reconsultar_e_entrega_o_pr_ao_relatorio(
+    monkeypatch, tmp_path, capsys
+):
+    chamadas = configurar(monkeypatch, [pr(1)], bloqueados=(1,))
+    leituras, pausas = leitor_que_esfria(monkeypatch, ["UNKNOWN"])
+    assert mergear.integrar_abertos(tmp_path) == 0
+    assert len(leituras) == mergear.TENTATIVAS_ATE_O_GITHUB_DECIDIR
+    assert len(pausas) == mergear.TENTATIVAS_ATE_O_GITHUB_DECIDIR - 1
+    assert chamadas == [1]
+    assert "LEITURA FRIA" in capsys.readouterr().out
+
+
+def test_atualizacao_da_base_fica_no_log(monkeypatch, tmp_path, capsys):
+    configurar(monkeypatch, [pr(1)], bloqueados=(1,))
+    assert mergear.integrar_abertos(tmp_path) == 0
+    assert "BASE ATUALIZADA" in capsys.readouterr().out
+
+
+def test_nao_atualiza_a_base_de_pr_com_check_obrigatorio_vermelho(
+    monkeypatch, tmp_path
+):
+    chamadas = configurar(monkeypatch, [pr(1)], bloqueados=(1,), rollup=VERMELHO)
+    assert mergear.integrar_abertos(tmp_path) == 0
+    # Nenhum `update-branch`: o PR desce inteiro para o relatório, que mostra
+    # o check reprovado. Atualizar a base aqui é CI gasto em laço.
+    assert chamadas == [1]

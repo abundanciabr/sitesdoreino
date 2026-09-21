@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260921-035910-TAR-240-cancelada",
+  "tarefa": "TAR-240",
+  "evento": "cancelada",
+  "quando": "2026-09-21T03:59:10+00:00",
+  "quem": "maestro-2026-09-21",
+  "detalhe": "O mantenedor ja respondeu que nao quer a varredura diaria dos links do portfolio (recusa registrada na TAR-223, cancelada em 06/09/2026 com o motivo 'nao precisa disso'). Manter a TAR-240 bloqueada esperando uma decisao que ele ja tomou e um fantasma na fila; se ele mudar de ideia no futuro, isso vira tarefa nova, nao a reabertura desta."
+}

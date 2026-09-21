@@ -1,0 +1,20 @@
+{
+  "arquivo": "581-tirar-da-fila-os-fantasmas-que-enganam-o-mantenedor",
+  "id": "TAR-581",
+  "titulo": "Tirar da fila os fantasmas que enganam o mantenedor",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "fila.py listar mostra TAR-421 bloqueada esperando o mantenedor, TAR-240 cancelada, TAR-577 concluida com evidencia, e a auditoria de fichas do Codex passa para maquinista.toml e procurador.toml",
+  "despacho": "Corrigir tres cartoes da fila que mentem sobre o estado real do trabalho e duas fichas do Codex sem modelo declarado. TAR-421 estava em execucao mas foi bloqueada pelo PR que a parou; TAR-240 continua bloqueada depois de o mantenedor ja ter recusado a varredura; TAR-577 aparece na fila com o codigo ja pousado. Sem risco de produto, apenas escrituracao.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
