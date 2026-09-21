@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-115619-TAR-589-explicada",
+  "tarefa": "TAR-589",
+  "evento": "explicada",
+  "quando": "2026-09-21T11:56:19+00:00",
+  "quem": "Dois defeitos medidos em 21/09/2026 durante a leitura do portao de contrato.",
+  "o_que_e": "Um arquivo do painel de controle diz, para cada parte do sistema, se ela precisa passar pela conferencia de contrato.",
+  "o_que_muda": "Nesse arquivo uma parte aparece duas vezes com respostas opostas, e o computador fica calado com a ultima: a regra hoje vale por acidente, nao por decisao.",
+  "exemplo": "Quem abrir o arquivo para saber a regra le a primeira resposta, que e justamente a que nao vale.",
+  "importancia": 45
+}

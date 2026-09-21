@@ -1,0 +1,19 @@
+{
+  "arquivo": "586-a-prova-de-sabotagem-passa-a-alcancar-teste-de-celula",
+  "id": "TAR-586",
+  "titulo": "A prova de sabotagem passa a alcancar teste de celula",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "A saida real de ci/provar_guardas.py terminando verde contra um teste de services/ e contra um de ci/tests/, mais teste novo em ci/tests/ que reprove o nodeid comparado cru e a sabotagem de entrada de dicionario.",
+  "despacho": "Conserte `ci/provar_guardas.py` para que ele alcance teste de célula, não só de `ci/tests/`.\n\nHoje o instrumento de prova por mutação que a lei exige (RITOS.md) não serve para\nnenhuma célula de produto, e todo despacho prova sabotagem à mão. Dois defeitos\nmedidos em 21/09/2026, em duas tarefas independentes: TAR-551 (pagamentos) e\nTAR-553 (alunos).\n\nDEFEITO 1: o nodeid nunca bate.\n`selecionados()` (ci/provar_guardas.py linha 209) compara `t[\"nodeid\"]` do\nrelatório JSON do pytest com o alvo que o despacho passou. O nodeid do relatório\nvem relativo ao rootdir do `pytest.ini` da célula, ou seja `tests/test_x.py::test_y`,\nenquanto o alvo é relativo à raiz do repositório, ou seja\n`services/alunos/tests/test_x.py::test_y`. Fora de `ci/tests/` eles nunca batem.\nO despacho de alunos mediu o campo `root` do relatório saindo como\n`...\\bancada\\services\\alunos`.\nO contorno que FUNCIONOU em pagamentos, e que serve de ponto de partida:\n`PYTEST_ADDOPTS=\"--rootdir=.\"` no ambiente da chamada, mais `pytest-json-report`\ninstalado no venv da célula (sem ele não há relatório nenhum). Decida se o\nconserto normaliza o nodeid pelo `root` do relatório ou fixa o rootdir; normalizar\npelo `root` não exige mexer no ambiente de quem chama e é o caminho preferido.\n\nDEFEITO 2: o dialeto de sabotagem só cobre instrução simples.\n`DIALETOS` (linha 63) sabota Python prefixando `pass  # `. Isso só é sintaxe\nválida quando a linha é uma instrução completa. Entrada de dicionário, argumento\nnomeado de chamada em várias linhas e linha de `if` viram erro de sintaxe e o\nteste reprova antes de rodar, o que faz a prova passar por motivo errado ou\nmorrer. O conserto precisa sabotar essas formas sem quebrar o arquivo.\n\nCAMINHOS: `ci/provar_guardas.py` e os testes dele em `ci/tests/`.\nNão toque em `services/` para consertar isto.\n\nEVIDÊNCIA QUE FECHA: a saída real do comando terminando verde duas vezes, uma\ncontra um teste de `services/` (use um guarda existente de `services/alunos` ou\n`services/pagamentos`) e outra contra um teste de `ci/tests/`, colada no PR. Mais\num teste novo em `ci/tests/` que reprove se o nodeid voltar a ser comparado cru, e\num que cubra a sabotagem de entrada de dicionário.",
+  "origem": "Medido em 21/09/2026 por duas tarefas independentes, em pagamentos e em alunos.",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

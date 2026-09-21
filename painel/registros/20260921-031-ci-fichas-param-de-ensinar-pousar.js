@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-031-ci-fichas-param-de-ensinar-pousar",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "ci: fichas param de ensinar --pousar",
+  detalhe: "5 fichas ensinavam mergear.py --pousar, flag que nao existe mais; texto ajustado para o pouso automatico real.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1851. Validação local: árvore 777ebe6908354e4f2dc379f7d20b6a135e81a00a; commit 3e4d024269873586eb47df8ca7df5f9e7abf014d; 3 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-582",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "ci",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
