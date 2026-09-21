@@ -1,0 +1,19 @@
+{
+  "arquivo": "577-o-pouso-passa-a-trazer-a-main-para-dentro-do-pr-verde-que-fi",
+  "id": "TAR-577",
+  "titulo": "O pouso passa a trazer a main para dentro do PR verde que ficou para tras",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Teste em ci/tests reproduzindo a leitura fria do GitHub, vermelho antes e verde depois, com sabotagem de cada guarda",
+  "despacho": "Em ci/mergear.py, integrar_abertos() nao alcancava o update-branch que ja existia porque a primeira leitura do PR devolvia mergeable=UNKNOWN. Reler com teto antes de decidir e registrar no log a atualizacao de base feita.",
+  "origem": "Pedido do mantenedor na sessao de 20/09/2026, com o run 35549873294 do pouso.yml medido",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}
