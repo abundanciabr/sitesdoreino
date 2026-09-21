@@ -227,7 +227,17 @@ conferir_credencial "$SEGREDO" "client_secret"
 #    (`armadilhas/091`).
 # -----------------------------------------------------------------------------
 echo "== 3/4: gravando e recarregando =="
+# A marca é o epoch em SEGUNDOS, e duas trocas de credencial dentro do mesmo
+# segundo dariam o mesmo nome: a segunda cópia sobrescreveria a primeira e o env
+# anterior sumiria justamente na hora em que ele mais importa, que é a de
+# desfazer uma troca errada. O sufixo só aparece quando a colisão acontece, para
+# que o caso normal continue sendo `.bak-<epoch>` puro.
 MARCA="$(date +%s)"
+REPETICAO=1
+while [ -e "$ENV_PAGAMENTOS.bak-$MARCA" ]; do
+  REPETICAO=$((REPETICAO + 1))
+  MARCA="$(date +%s)-$REPETICAO"
+done
 cp -a "$ENV_PAGAMENTOS" "$ENV_PAGAMENTOS.bak-$MARCA" \
   || parar "não consegui guardar a cópia de segurança do env. Nada foi alterado."
 

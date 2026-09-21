@@ -619,6 +619,33 @@ def test_rodar_de_novo_troca_e_nao_duplica_nenhuma_linha(tmp_path):
     assert len(_copias(raiz)) == 2, "cada execução guarda a sua cópia"
 
 
+def test_duas_trocas_no_mesmo_segundo_guardam_as_duas_copias(tmp_path):
+    """A marca da cópia é o epoch em SEGUNDOS, e o relógio não ajuda o guarda.
+
+    Numa máquina rápida as duas execuções caem no mesmo segundo e a segunda
+    cópia sobrescreve a primeira: o env anterior some justamente na hora em que
+    ele mais importa, que é a de desfazer uma troca errada. O `date` de mentira
+    congela o relógio para que a colisão aconteça sempre, em vez de depender de
+    o computador estar com pressa.
+    """
+    raiz = _plataforma(tmp_path)
+    ambiente = _ambiente(tmp_path, raiz)
+    congelado = Path(ambiente["PATH"].split(os.pathsep)[0]) / "date"
+    congelado.write_bytes(
+        b'#!/usr/bin/env bash\n'
+        b'if [ "$1" = "+%s" ]; then echo 1700000000; else exec /usr/bin/date "$@"; fi\n'
+    )
+    congelado.chmod(0o755)
+
+    assert _rodar(raiz, ambiente=ambiente).returncode == 0
+    segunda = f"{APP_ID}\n{SITE_NOME}\n{AUTH_URL}\n{API_URL}\n{CLIENT_ID}\noutro-segredo\n"
+    assert _rodar(raiz, digitado=segunda, ambiente=ambiente).returncode == 0
+
+    assert len(_copias(raiz)) == 2, "a segunda troca apagou a cópia da primeira"
+    guardados = {c.read_text(encoding="utf-8") for c in _copias(raiz)}
+    assert len(guardados) == 2, "as duas cópias guardaram o mesmo conteúdo"
+
+
 def test_env_com_a_chave_repetida_volta_a_ter_uma_linha_so(tmp_path):
     """O env que alguém já tentou configurar à mão antes deste roteiro existir.
     Duas linhas da mesma chave fazem o valor depender da ordem de leitura."""
