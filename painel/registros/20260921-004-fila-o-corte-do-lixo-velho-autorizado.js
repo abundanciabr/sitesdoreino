@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-004-fila-o-corte-do-lixo-velho-autorizado",
+  tipo: "decisao",
+  quando: "2026-09-21",
+  titulo: "fila: o corte do lixo velho, autorizado pelo mantenedor",
+  detalhe: "Auditoria achou 7 PRs parados desde 08 a 16/09 e 2 tarefas mortas. O mantenedor autorizou cortar os grupos A (trabalho ja entregue por outro caminho) e B (1570 linhas em conflito com a main). Os 7 PRs foram fechados por ele; TAR-225 e TAR-080 cancelaram aqui.",
+  autoridade: "mantenedor",
+  evidencia: "PRs 1668, 1507, 1496, 1679, 1491, 1611 e 1505 conferidos CLOSED por gh pr view em 2026-09-21T01:39. Eventos 20260921-014203-TAR-225-cancelada.json e 20260921-014210-TAR-080-cancelada.json.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-574",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fila",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
