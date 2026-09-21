@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-135322-TAR-592-explicada",
+  "tarefa": "TAR-592",
+  "evento": "explicada",
+  "quando": "2026-09-21T13:53:22+00:00",
+  "quem": "Metade da escada do lote de 19/09/2026: PR #1853 levou o contrato, este PR leva o codigo.",
+  "o_que_e": "Quando alguem paga uma matricula no cartao, a Appmax hoje recebe menos dados do titular do que o contrato da casa promete desde que o PR do contrato pousou na main.",
+  "o_que_muda": "Fecha a janela aberta: o codigo do servico de pagamentos passa a enviar o IP, o nome do titular e o numero do documento do titular na confirmacao do cartao, exatamente como o contrato ja descreve, e libera outros PRs de pagamentos para nascerem verdes de novo.",
+  "exemplo": "Uma aluna paga a matricula no cartao; a Appmax passa a receber o nome dela e o CPF dela junto da confirmacao, como qualquer gateway de cartao exige para reduzir fraude.",
+  "importancia": 90
+}

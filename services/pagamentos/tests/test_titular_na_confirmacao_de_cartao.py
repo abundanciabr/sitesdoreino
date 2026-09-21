@@ -32,7 +32,7 @@ CNPJ = "19131243000197"
 
 
 @pytest.fixture
-def token(settings):
+def token(settings: Any) -> str:
     settings.TOKENS_ACEITOS = {"token-de-teste"}
     return "token-de-teste"
 
@@ -59,7 +59,9 @@ def intent_de_cartao(client: Client, token: str) -> Intent:
     return Intent.objects.get(id=resp.json()["id"])
 
 
-def _confirmar(client: Client, token: str, intent: Intent, corpo: dict) -> Any:
+def _confirmar(
+    client: Client, token: str, intent: Intent, corpo: dict[str, Any]
+) -> Any:
     with respx.mock(assert_all_called=False) as mp:
         rota = mp.post(_URL_PAGAMENTOS).mock(
             return_value=httpx.Response(201, json=_RESPOSTA_APROVADA)
@@ -75,8 +77,9 @@ def _confirmar(client: Client, token: str, intent: Intent, corpo: dict) -> Any:
 
 
 def test_o_documento_do_titular_vira_a_identificacao_do_pagador(
-    client, token, intent_de_cartao
-):
+    client: Client, token: str, intent_de_cartao: Intent
+) -> None:
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:118
     resposta, enviado = _confirmar(
         client,
         token,
@@ -96,11 +99,12 @@ def test_o_documento_do_titular_vira_a_identificacao_do_pagador(
 
 
 def test_a_identificacao_escrita_por_extenso_vence_o_numero_solto(
-    client, token, intent_de_cartao
-):
+    client: Client, token: str, intent_de_cartao: Intent
+) -> None:
     """Os dois campos são o mesmo fato. Se os dois chegarem divergentes, quem
     vale tem de ser decidido por regra escrita, e não pela ordem do dicionário:
     cobrar no documento errado é cobrar em nome de outra pessoa."""
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:115
     resposta, enviado = _confirmar(
         client,
         token,
@@ -119,8 +123,8 @@ def test_a_identificacao_escrita_por_extenso_vence_o_numero_solto(
 
 
 def test_confirmacao_sem_os_campos_novos_continua_funcionando(
-    client, token, intent_de_cartao
-):
+    client: Client, token: str, intent_de_cartao: Intent
+) -> None:
     """Regressão: os três campos são OPCIONAIS, e quem já consome esta rota sem
     eles não pode ter sido quebrado pela mudança de contrato."""
     resposta, enviado = _confirmar(
@@ -148,10 +152,11 @@ def test_confirmacao_sem_os_campos_novos_continua_funcionando(
     ],
 )
 def test_campo_do_titular_que_nao_e_texto_e_recusado_com_422(
-    client, token, intent_de_cartao, campo, valor
-):
+    client: Client, token: str, intent_de_cartao: Intent, campo: str, valor: Any
+) -> None:
     """Sem esta recusa, um `str()` complacente mandaria `[...]` ou `42` ao
     provedor disfarçado de documento, e a cobrança sairia em nome de ninguém."""
+    # guarda: services/pagamentos/pagamentos/api/intents.py:356
     resposta, _ = _confirmar(
         client,
         token,
@@ -179,5 +184,8 @@ def test_campo_do_titular_que_nao_e_texto_e_recusado_com_422(
         ("", None),
     ],
 )
-def test_o_tipo_do_documento_sai_do_tamanho_e_a_pontuacao_nao_conta(numero, esperado):
+def test_o_tipo_do_documento_sai_do_tamanho_e_a_pontuacao_nao_conta(
+    numero: str, esperado: dict[str, str] | None
+) -> None:
+    # guarda: services/pagamentos/pagamentos/methods/card/service.py:116
     assert identificacao_do_titular(None, numero) == esperado
