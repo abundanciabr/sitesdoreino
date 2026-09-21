@@ -3,7 +3,7 @@
   "id": "TAR-487",
   "titulo": "Criar o aviso oficial de que uma pessoa da equipe assumiu um interessado",
   "toca": [
-    "contratos"
+    "contracts"
   ],
   "depende_de": [],
   "cria": [],
