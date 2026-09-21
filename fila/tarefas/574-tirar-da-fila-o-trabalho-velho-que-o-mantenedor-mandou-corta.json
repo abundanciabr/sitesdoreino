@@ -1,0 +1,20 @@
+{
+  "arquivo": "574-tirar-da-fila-o-trabalho-velho-que-o-mantenedor-mandou-corta",
+  "id": "TAR-574",
+  "titulo": "Tirar da fila o trabalho velho que o mantenedor mandou cortar",
+  "toca": [
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "python ci/fila.py validar em PASS e os dois eventos de cancelamento no diff",
+  "despacho": "Abra bancada na celula fila. Cancele TAR-225 e TAR-080 com\npython ci/fila.py cancelar, citando no motivo a autorizacao do\nmantenedor na sessao de 20/09/2026 (\"corta A e B\").\n\nTAR-225 e reivindicacao orfa de 09/09: a reserva venceu e nenhum PR\nfoi aberto. TAR-080 (WhatsApp oficial) nunca foi trabalho pego, e o\nproprio titulo diz que depende de decisao dele.\n\nEscreva um registro no livro com tipo decisao, autoridade mantenedor,\ncitando os 7 PRs que ele fechou por conta propria (1668, 1507, 1496,\n1679, 1491, 1611, 1505), todos conferidos CLOSED por gh pr view.\n\nEvidencia exigida: python ci/fila.py validar em PASS, e os dois\neventos de cancelamento no diff do PR.\n\nNao toque em nenhuma outra tarefa. Nao reabra nem feche PR.",
+  "origem": "sessao de 20/09/2026, autorizacao do mantenedor: corta A e B",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

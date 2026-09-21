@@ -1,0 +1,20 @@
+{
+  "arquivo": "507-escrever-a-decisao-que-poe-a-pagina-de-venda-real-antes-de-q",
+  "id": "TAR-507",
+  "titulo": "Escrever a decisão que põe a página de venda real antes de qualquer teste A/B",
+  "toca": [
+    "docs/decisoes",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "O arquivo docs/decisoes/DECISAO-a-pagina-real-antes-do-experimento.md existe em origin/main com os oito itens do despacho, os fatos de hoje conferidos por comando em origin/main, a conta de amostra rodada com código e saída colados, e sem travessão.",
+  "despacho": "Célula `docs`. Alvo único: `docs/decisoes/DECISAO-a-pagina-real-antes-do-experimento.md` (novo). Nada de `services/`, nada de `contracts/`.\n\nEm 19/09/2026 o mantenedor recebeu uma proposta externa de \"Experimentation & Conversion Architecture\" (control plane, data plane, analytics plane, camadas, SRM, teste sequencial, CUPED, bandits, knowledge graph, IA geradora de hipóteses) e decidiu inverter a ordem: página real e telemetria do funil primeiro, experimentação depois. Seis a sete PRs em quatro células saem dessa decisão, e a casa não admite mudança desse tamanho sem decisão escrita.\n\nO documento precisa conter, e nada além disso:\n1. A decisão em uma frase, no topo.\n2. O estado medido de hoje, conferido em `origin/main` com o comando ao lado de cada fato: a página de oferta tem 62 linhas; nenhum contrato de `contracts/eventos/` descreve a visita e o primeiro fato do funil é `pedido.criado`; não existe identidade de visitante; `services/metricas` já é livro de fatos imutável, append-only e idempotente; `Offer.version` mostra que versionamento imutável já é hábito da casa.\n3. A conta que decidiu: amostra por braço para duas proporções, alfa 0,05 bilateral, poder 80%, rodada de verdade, com o código e a saída colados.\n4. A escada de PRs com dependência explícita: contratos (aditivo de páginas no `catalogo` e quatro eventos novos do `funil`), `catalogo` (Page, PageVersion imutável, PageDraft, slots semânticos), `funil` (visitor_id), `funil` (página renderizada da estrutura), `admin` (tela da copy), `funil` (telemetria) e `admin` (o funil na tela).\n5. O que se guarda da proposta porque é barato agora e caro depois.\n6. O que fica adiado, cada item com o gatilho objetivo que o destrava.\n7. O que fica descartado até segunda ordem, com motivo em uma frase.\n8. A correção à proposta: a célula `experimentos` transversal tem destino aceito e começo recusado.\n\nLei do travessão: proibido `-`, e as entidades HTML equivalentes. Sem placeholder, sem TODO, sem \"a definir\".",
+  "origem": "Pedido do mantenedor em 19/09/2026, ao receber de fora uma proposta de arquitetura de experimentação.",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

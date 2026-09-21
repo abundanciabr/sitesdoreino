@@ -1,0 +1,19 @@
+{
+  "arquivo": "576-registrar-no-livro-a-limpeza-dos-prs-parados-que-o-mantenedo",
+  "id": "TAR-576",
+  "titulo": "Registrar no livro a limpeza dos PRs parados que o mantenedor mandou fazer",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "gh pr list mostrando 5 PRs abertos e nenhum rascunho",
+  "despacho": "Registre no livro a limpeza que o mantenedor mandou fazer em 21/09/2026:\nfechar todos os rascunhos abertos (1837, 1836, 1834, 1791, 1781) e o\nPR 1715.\n\nO 1715 estava parado desde 18/09 em conflito com CLAUDE.md e\nRUNBOOK-LOTES.md; enquanto o conflito durasse, o GitHub nao gerava\nnenhum check e o PR nunca poderia pousar.\n\nNenhum ramo foi apagado. O conserto do sinal da armadilha 486\n(commit 3c8794d2) continua no ramo agent/ci/fim-da-triade.\n\nEvidencia exigida: gh pr list mostrando 5 abertos e 0 rascunhos.\n\nNao reabra nenhum PR. Nao toque em armadilhas nem em lei.",
+  "origem": "sessao de 21/09/2026: resolve o conflito do 1715 E pode apagar TODOS OS RASCUNHOS, depois fecha o 1715",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "escala-do-ciclo"
+}

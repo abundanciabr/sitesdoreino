@@ -2,19 +2,13 @@
 # Páginas públicas dados/pix/cartão. Cada view só monta o contexto mínimo que o
 # template embute via json_script — a lógica de negócio vive na API interna
 # (apps/core/api.py), nunca aqui.
-import os
 import uuid
 
+from django.conf import settings
 from django.http import Http404
 from django.shortcuts import render
 
 from apps.pedidos.models import Order as OrderModel
-
-# Token do próprio front para chamar a API interna — par consumidor "paginas",
-# no mesmo padrão CONV de apps/core/auth.py (um TOKENS_ACEITOS_<NOME> por
-# consumidor). Lido no ponto de uso, não em settings.py: não é fail-hard porque
-# sem ele as páginas ainda renderizam (só a chamada à API falhará com 401).
-_API_TOKEN = os.environ.get("TOKENS_ACEITOS_PAGINAS", "")
 
 
 def _api_base(request) -> str:
@@ -32,7 +26,7 @@ def dados(request, offer_slug: str):
         "checkout/dados.html",
         {
             "offer_slug": offer_slug,
-            "api_token": _API_TOKEN,
+            "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
         },
     )
@@ -57,7 +51,7 @@ def pix(request, order_id: uuid.UUID):
         {
             "order_id": str(pedido.id),
             "pix_data": pedido.pix,
-            "api_token": _API_TOKEN,
+            "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
         },
     )
@@ -71,7 +65,7 @@ def cartao(request, order_id: uuid.UUID):
         {
             "order_id": str(pedido.id),
             "total_cents": pedido.total_cents,
-            "api_token": _API_TOKEN,
+            "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
         },
     )
