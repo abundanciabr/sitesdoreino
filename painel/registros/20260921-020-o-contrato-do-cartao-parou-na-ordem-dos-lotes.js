@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-020-o-contrato-do-cartao-parou-na-ordem-dos-lotes",
+  tipo: "pendencia",
+  quando: "2026-09-21",
+  titulo: "O contrato do cartão parou porque a promessa viria antes do programa",
+  detalhe: "TAR-583 pedia as portas do cartão num PR só de contrato. Medido: isso deixa pagamentos e checkout vermelhos, como antes do PR 1824. A maestro escolhe o desenho.",
+  autoridade: "sessao",
+  evidencia: "Base bf78a648. Antes: freeze pagamentos PASS 431 linhas, checkout PASS 382. Com 3 campos opcionais em CardConfirm: pagamentos FAIL. Com a porta pública do pedido: checkout FAIL e seguranca FAIL. Revertido, baseline PASS. Integração não verificada.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-583",
+  gravidade: "ambar",
+  frente: "vender",
+  area: "contracts",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();
