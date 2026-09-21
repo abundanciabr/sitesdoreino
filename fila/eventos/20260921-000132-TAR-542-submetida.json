@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260921-000132-TAR-542-submetida",
+  "tarefa": "TAR-542",
+  "evento": "submetida",
+  "quando": "2026-09-21T00:01:32+00:00",
+  "quem": "agent/infra/rota-publica-da-appmax",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1820",
+  "revisao": "74577bb43876ef309adf2c0bb69900707f1f6bd4",
+  "arvore": "088421e431944a98edb8eb854f998197040cc7f8"
+}

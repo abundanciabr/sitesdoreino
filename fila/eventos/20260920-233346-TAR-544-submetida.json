@@ -1,0 +1,10 @@
+{
+  "arquivo": "20260920-233346-TAR-544-submetida",
+  "tarefa": "TAR-544",
+  "evento": "submetida",
+  "quando": "2026-09-20T23:33:46+00:00",
+  "quem": "agent/ci/invariantes-do-cartao-appmax",
+  "pr": "https://github.com/abundanciabr/sitesdoreino/pull/1821",
+  "revisao": "8252c00f260736e4960c7005dbb6e472ca133163",
+  "arvore": "601d190a4a772c2eb190940dfa0681213c6b1b28"
+}
