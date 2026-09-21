@@ -60,7 +60,7 @@ def test_toda_porta_declarada_existe_em_disco():
     assert not sumidas, f"portas declaradas que não existem: {sumidas}"
 
 
-def test_o_aviso_de_sessao_lista_as_dez_regras(capsys):
+def test_o_aviso_de_sessao_lista_as_onze_regras(capsys):
     padrao.aviso(RAIZ)
     saida = capsys.readouterr().out
     for regra in padrao.REGRAS:
@@ -76,11 +76,11 @@ def test_regra_apagada_reprova(tmp_path):
     relatorio = padrao.conferir(
         _cenario(tmp_path, **{"CLAUDE.md": ("#### 7. Faça o passe de remoção", "#### 7. Limpeza")})
     )
-    _falha(relatorio, "as 10 regras, íntegras")
+    _falha(relatorio, "as 11 regras, íntegras")
 
 
 def test_exigencia_parafraseada_reprova(tmp_path):
-    """Os 10 títulos intactos, e a lei esvaziada mesmo assim.
+    """Os 11 títulos intactos, e a lei esvaziada mesmo assim.
 
     Este é o modo de falha que o portão existe para pegar: "sempre teste antes
     de entregar" diz a mesma coisa em espírito e não obriga a nada. O que

@@ -1,6 +1,6 @@
 # pagamentos/methods/pix/webhook.py  # [RECEITA:R1 v1]
 # [INV-P9] Não importa methods.card nem providers.* — só core (modelo Intent,
-# outbox/transicionar_e_emitir, validação de assinatura, gateway). Guardado em
+# ledger/outbox, validação de assinatura, gateway). Guardado em
 # check-time por .importlinter.
 #
 # ENDURECIMENTO (despacho webhook-endurecimento): a x-signature do MP assina o
@@ -19,7 +19,8 @@ from django.http import HttpRequest
 from ninja.errors import HttpError
 
 from pagamentos.core.gateway import FalhaNoProvedor, consultar_status_do_pagamento
-from pagamentos.core.models import Intent, transicionar_e_emitir
+from pagamentos.core.ledger import transicionar_e_emitir
+from pagamentos.core.models import Intent
 from pagamentos.core.webhook_signature import assinatura_valida
 
 _EVENTO_POR_STATUS = {
@@ -34,7 +35,7 @@ def processar_webhook_pix(request: HttpRequest) -> dict[str, Any]:
     `data.id` do MANIFESTO ASSINADO (query param, nunca o corpo) → consulta o
     status na API do MP → dedup por mp_payment_id [INV-P3] → transição de
     estado → outbox NA MESMA transação [INV-P6] → relay (tudo delegado a
-    core.transicionar_e_emitir)."""
+    core.ledger)."""
     if not assinatura_valida(request):
         raise HttpError(403, "assinatura invalida")  # [INV-P10] zero efeito colateral
 

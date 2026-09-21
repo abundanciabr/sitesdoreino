@@ -7,7 +7,7 @@ from typing import Any
 
 from django.db import transaction
 
-from pagamentos.core import gateway
+from pagamentos.core import gateway, ledger
 from pagamentos.core.models import Intent
 
 _STATUS_CONFIRMAVEL = "created"
@@ -17,9 +17,58 @@ _MP_PARA_STATUS = {
     "rejected": "rejected",
 }
 
+# O status do MP que não é fato financeiro nenhum: a análise ainda está
+# correndo. A intent fica pendente, sem aviso, e quem traz o desfecho é o
+# webhook (que passa pelo mesmo ledger).
+_STATUS_EM_ANALISE = "pending"
+
+EVENTO_POR_STATUS = {
+    "approved": "pagamento.aprovado",
+    "rejected": "pagamento.recusado",
+}
+
 
 class IntentNaoConfirmavel(Exception):
     """A intent não está em estado que aceite confirmação de cartão (409)."""
+
+
+def montar_dados_do_evento(
+    intent: Intent, *, evento: str, mp_payment_id: str, reason_code: str
+) -> dict[str, Any]:
+    """Forma exata de contracts/eventos/<evento>.v1.json (contrato congelado,
+    additionalProperties: false). Mora aqui, e não em cada chamador, porque os
+    DOIS caminhos do cartão anunciam o mesmo fato: a confirmação síncrona e o
+    webhook. Duas cópias desta função seriam duas versões do contrato esperando
+    para divergir."""
+    base: dict[str, Any] = {
+        "site_id": intent.site_id,
+        "payment_id": str(intent.id),
+        "order_id": intent.order_id,
+        "amount_cents": intent.amount_cents,
+        "customer": _customer(intent),
+    }
+    if evento == "pagamento.aprovado":
+        # [TAR-225] `product_id` é OPACO: veio no `metadata` da criação da
+        # intent (o checkout ecoa o produto que o cliente comprou) e pagamentos
+        # só repassa, nunca interpreta. Opcional no contrato (aditivo, Rito de
+        # Contrato): AUSENTE quando o checkout não informou, nunca string vazia.
+        aprovado = {**base, "method": "card", "mp_payment_id": mp_payment_id}
+        produto = str(intent.metadata.get("product_id") or "")
+        if produto:
+            aprovado["product_id"] = produto
+        return aprovado
+    return {**base, "method": "card", "reason_code": reason_code}
+
+
+def _customer(intent: Intent) -> dict[str, str]:
+    cliente = {
+        "email": str(intent.customer.get("email", "")),
+        "name": str(intent.customer.get("name", "")),
+    }
+    telefone = intent.customer.get("phone")
+    if telefone:
+        cliente["phone"] = str(telefone)
+    return cliente
 
 
 def criar_intent_card(
@@ -71,15 +120,33 @@ def confirmar_intent_card(
         payer_email=payer_email,
         payer_identification=payer_identification,
     )
-    intent.status = _MP_PARA_STATUS.get(resultado.status, "pending")
+    # O id do pagamento no provedor é gravado ANTES do fato financeiro: é por
+    # ele que o webhook encontra esta intent depois, e uma cobrança que existe
+    # no MP sem referência aqui é uma cobrança órfã.
     intent.provider_payment_id = resultado.payment_id
     intent.card_reason_code = resultado.reason_code
-    intent.save(
-        update_fields=[
-            "status",
-            "provider_payment_id",
-            "card_reason_code",
-            "updated_at",
-        ]
+    intent.save(update_fields=["provider_payment_id", "card_reason_code", "updated_at"])
+
+    status_alvo = _MP_PARA_STATUS.get(resultado.status)
+    if status_alvo is None:
+        intent.status = _STATUS_EM_ANALISE
+        intent.save(update_fields=["status", "updated_at"])
+        return intent
+    # [INV-P6] A aprovação (ou a recusa) que chega na RESPOSTA do provedor é um
+    # fato financeiro como o do webhook, e vai pelo mesmo ledger: estado e aviso
+    # na mesma transação. Enquanto ela era gravada direto na linha, quem pagava
+    # no cartão ficava aprovado aqui e sem matrícula nas outras células, porque
+    # o webhook seguinte encontrava a intent já aprovada e calava (INV-P3).
+    evento = EVENTO_POR_STATUS[status_alvo]
+    ledger.registrar_fato(
+        intent,
+        novo_status=status_alvo,
+        evento=evento,
+        dados=montar_dados_do_evento(
+            intent,
+            evento=evento,
+            mp_payment_id=resultado.payment_id,
+            reason_code=resultado.reason_code,
+        ),
     )
     return intent

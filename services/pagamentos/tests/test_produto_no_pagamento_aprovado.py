@@ -166,14 +166,9 @@ def test_montar_dados_produto_vazio_na_metadata_tambem_fica_ausente() -> None:
 def test_montar_dados_ecoa_o_product_id_sem_interpretar(
     metodo: str, modulo: str
 ) -> None:
-    """Unitário, sem HTTP: `_montar_dados` de pix E de card fazem a MESMA coisa
+    """Unitário, sem HTTP: o montador de evento de pix E o de card fazem a MESMA coisa
     — a duplicação entre os dois é arquitetural (INV-P9), não descuido; os dois
     precisam ecoar `product_id` do mesmo jeito."""
-    if modulo == "pix":
-        from pagamentos.methods.pix.webhook import _montar_dados
-    else:
-        from pagamentos.methods.card.webhook import _montar_dados
-
     intent = Intent(
         site_id="s1",
         order_id="o1",
@@ -182,7 +177,19 @@ def test_montar_dados_ecoa_o_product_id_sem_interpretar(
         customer={"email": "a@b.com", "name": "A"},
         metadata={"product_id": "PROD-XYZ", "outra_chave": "nao entra no evento"},
     )
-    dados = _montar_dados(intent, "pagamento.aprovado", "mp-1", "")
+    if modulo == "pix":
+        from pagamentos.methods.pix.webhook import _montar_dados
+
+        dados = _montar_dados(intent, "pagamento.aprovado", "mp-1", "")
+    else:
+        # No cartão, os dois caminhos que anunciam o fato (confirmação síncrona
+        # e webhook) montam o evento pela MESMA função, que por isso mora no
+        # serviço do método.
+        from pagamentos.methods.card.service import montar_dados_do_evento
+
+        dados = montar_dados_do_evento(
+            intent, evento="pagamento.aprovado", mp_payment_id="mp-1", reason_code=""
+        )
     assert dados["product_id"] == "PROD-XYZ"
     assert "outra_chave" not in dados
 

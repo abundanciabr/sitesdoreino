@@ -1,4 +1,4 @@
-"""Confere as dez regras compactas, obrigações, portas e teto em bytes.
+"""Confere as onze regras compactas, obrigações, portas e teto em bytes.
 
 Mudança semântica continua exigindo mandato; o portão não julga obediência.
 """
@@ -22,7 +22,7 @@ from _nucleo import (  # noqa: E402
 
 TITULO = "## O Padrão de Trabalho (Modelo Steve Jobs / Apple) — a régua de TODA tarefa"
 
-# As dez regras, com o título EXATO que o mantenedor escreveu. Renomear uma
+# As onze regras, com o título EXATO que o mantenedor escreveu. Renomear uma
 # regra é reescrever a lei dele — se for para acontecer, que apareça no diff
 # desta lista, e não em silêncio dentro de um parágrafo de 200 linhas.
 REGRAS = ('1. Resolva o problema real antes de escrever',
@@ -34,7 +34,8 @@ REGRAS = ('1. Resolva o problema real antes de escrever',
  '7. Faça o passe de remoção',
  '8. Revise com rigor',
  '9. Demonstre e preste contas',
- '10. Não substitua prova por promessa')
+ '10. Não substitua prova por promessa',
+ '11. Conversa é mudança real; fim de loops inúteis')
 
 PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  'Resolva o problema real',
@@ -77,7 +78,11 @@ PEDRAS_ANGULARES = ('Restrições operacionais para toda tarefa',
  'Sem elogio próprio, enchimento',
  '"deve funcionar", "provavelmente", "em teoria"',
  '"bom o suficiente", "por enquanto", "depois a gente melhora"',
- '"solução temporária", "gambiarra", "quick fix"')
+ '"solução temporária", "gambiarra", "quick fix"',
+ 'expressamente proibido repetir status sem agir, delegar repetidamente sem avanço',
+ 'Nenhuma IA deve perguntar ou informar à outra IA sobre estado do Git, PR, checks, branches ou pouso.',
+ 'consulta diretamente a fonte estruturada (comandos, portões, scripts)',
+ 'imediatamente reconhecido, interrompido e redirecionado para ação.')
 
 COSTURAS = ('A regra 3 proíbe adição não pedida, nunca subtração do pedido.',
  'A regra 4 distingue decisões do agente das decisões exclusivas do mantenedor.',
@@ -100,6 +105,9 @@ PORTAS = {
 # continua valendo: o que ele não pode virar é uma catraca que só deixa entrar
 # obrigação nova se outra sair em silêncio — o arquivo estava a 11 bytes do
 # limite e a alternativa era apagar lei que ninguém mandou apagar.
+# A regra 11 entrou em 21/09/2026 sem mexer aqui: a mudança para
+# `docs/decisoes/DECISAO-historia-das-leis-do-claude-md.md` tinha acabado de
+# tirar história do arquivo, e ele fechou em 13_316 bytes.
 TETOS_EM_BYTES = {"CLAUDE.md": 13_500, "AGENTS.md": 10_000}
 
 
@@ -156,13 +164,13 @@ def conferir(raiz: Path) -> Relatorio:
         )
     )
 
-    # 2. As dez regras, com o título exato.
+    # 2. As onze regras, com o título exato.
     achadas = regras_no_texto(bloco)
     faltando = [r for r in REGRAS if r not in achadas]
     sobrando = [r for r in achadas if r not in REGRAS]
     relatorio.registrar(
         Resultado(
-            "as 10 regras, íntegras",
+            "as 11 regras, íntegras",
             Estado.PASS if not (faltando or sobrando) else Estado.FAIL,
             f"{len(achadas)}/{len(REGRAS)} regras com o título exato"
             if not (faltando or sobrando)
@@ -249,9 +257,9 @@ def conferir(raiz: Path) -> Relatorio:
     aponta = "Leia `CLAUDE.md` antes de agir" in agentes
     resumo = re.findall(r"^\| (\d+) \|", agentes, re.M)
     relatorio.registrar(Resultado(
-        "Codex aponta para a lei", Estado.PASS if aponta and resumo == [str(n) for n in range(1, 11)] else Estado.FAIL,
-        "ponteiro canônico e dez referências",
-        "AGENTS.md precisa apontar para CLAUDE.md e listar as dez regras.",
+        "Codex aponta para a lei", Estado.PASS if aponta and resumo == [str(n) for n in range(1, 12)] else Estado.FAIL,
+        "ponteiro canônico e onze referências",
+        "AGENTS.md precisa apontar para CLAUDE.md e listar as onze regras.",
     ))
     return relatorio
 

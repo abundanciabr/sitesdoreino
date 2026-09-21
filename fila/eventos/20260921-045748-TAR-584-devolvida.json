@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260921-045748-TAR-584-devolvida",
+  "tarefa": "TAR-584",
+  "evento": "devolvida",
+  "quando": "2026-09-21T04:57:48+00:00",
+  "quem": "agent/ci/lei-fim-dos-loops",
+  "detalhe": "O que travava era o ramo ocupado, e quem o ocupava e esta sessao: a lei foi entregue no proprio ramo, com o texto do mantenedor palavra por palavra e o CLAUDE.md em 13473 de 13500 bytes."
+}
