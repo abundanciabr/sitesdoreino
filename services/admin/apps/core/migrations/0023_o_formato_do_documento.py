@@ -13,7 +13,7 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    dependencies = [("core", "0021_semear_o_crivo_explicado")]
+    dependencies = [("core", "0022_o_crivo_explicado_so_para_administradores")]
 
     operations = [
         migrations.AddField(
