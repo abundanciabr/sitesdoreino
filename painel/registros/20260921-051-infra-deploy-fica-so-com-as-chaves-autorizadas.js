@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-051-infra-deploy-fica-so-com-as-chaves-autorizadas",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "Infra: deploy fica só com as chaves autorizadas",
+  detalhe: "O mantenedor conferiu as quatro chaves do usuário deploy na VPS e autorizou retirar duas sem uso. A cópia de segurança foi criada antes da troca. Depois da retirada, o arquivo manteve somente a chave do CI e a chave do Environment VPS.",
+  autoridade: "mantenedor",
+  evidencia: "Conferência manual do mantenedor: cópia em /home/deploy/.ssh/authorized_keys.backup.j73rdc4D; ssh-keygen -lf confirmou as chaves do CI e do Environment VPS.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: "20260920-030-as-chaves-antigas-do-deploy-so-voce-consegue-ler",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "infra",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();
