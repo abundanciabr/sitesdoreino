@@ -33,7 +33,7 @@ nunca vence os documentos abaixo, na ordem:
 1. **`CONSTITUICAO.md`** — a lei suprema da plataforma inteira.
 2. **`constituicoes/AGENTS.<celula>.md`** — lei local de cada célula (onde existir).
 3. **`RITOS.md`**, **`INVARIANTES.md`**, **`CAMINHO-DOURADO.md`** — operacionais, subordinados à Constituição.
-4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, integral), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
+4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, em forma compacta, sem perda das obrigações), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
 5. **`armadilhas/`** e **`ARMADILHAS-OPERACAO.md`** — memória de campo, não lei.
 
 ## CONSTITUICAO.md — as 11 leis
@@ -49,7 +49,7 @@ nunca vence os documentos abaixo, na ordem:
 | 7 | Zonas Quentes Nascem Vazias | Nenhum arquivo "que toda rota toca"; cada célula tem seus próprios settings/urls/templates/static. Exceção deliberada: `services/pagamentos/core/` (congelado, somente-leitura). |
 | 8 | Jurisprudência Pré-Paga | Invariantes de dinheiro nascem com teste-guarda **antes** da primeira feature; testes-guarda são intocáveis. |
 | 9 | Multissítio | Um único deploy serve N domínios; "site" é dado no catálogo, nunca infraestrutura nova; host não cadastrado = 404, nunca site padrão; domínio novo entra pela receita R11. |
-| 10 | O Padrão de Trabalho | Toda tarefa obedece ao Padrão de Trabalho (Modelo Steve Jobs / Apple), escrito por inteiro na 1ª seção do `CLAUDE.md`: o problema real por trás do pedido, discordar antes e executar depois, decidir em vez de servir cardápio, o produto inteiro até a tela, e a Definição de "Pronto" da regra 6 ("rodou de verdade", ou escreve "NÃO RODEI"). Trazido de fora pelo mantenedor em 04/09/2026. |
+| 10 | O Padrão de Trabalho | Toda tarefa obedece ao Padrão de Trabalho (Modelo Steve Jobs / Apple), em forma compacta, sem perda das obrigações, na 1ª seção do `CLAUDE.md`: o problema real por trás do pedido, discordar antes e executar depois, decidir em vez de servir cardápio, o produto inteiro até a tela, a Definição de "Pronto" da regra 6 ("rodou de verdade", ou escreve "NÃO RODEI"), e a regra 11, que proíbe uma IA perguntar ou informar a outra o estado de Git, PR, checks, branches ou pouso. Trazido de fora pelo mantenedor em 04/09/2026; a regra 11 em 14/09/2026. |
 | 11 | A entrega termina no ar, não no relatório | Quem abre a entrega responde por ela até o estado terminal: integrada, fechada, ou dívida registrada no livro com o que falta e por quê. **PR aberto é estado intermediário, nunca entrega final.** A autoridade vem junto: o executor decide e executa toda ação técnica segura para chegar lá (repetir deploy cancelado, consertar ambiente local, retomar check parado) sem pedir licença. Segredo, dinheiro, acesso, contrato, produto e o cancelamento da entrega continuam sendo dele. Esperar em laço é proibido: mede-se uma vez, com teto (`ci/esperar.py`). |
 
 **Definição de Pronto Arquitetônica** (fecha o documento): Pix quebrado ⇒ cartão
