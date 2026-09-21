@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-011728-TAR-526-explicada",
+  "tarefa": "TAR-526",
+  "evento": "explicada",
+  "quando": "2026-09-20T01:17:28+00:00",
+  "quem": "decisao do mantenedor em 20/09/2026, nesta sessao do Claude Code",
+  "o_que_e": "A pagina de oferta ja esta publicada e responde no site, mas devolve 404 porque nao existe a linha dela no catalogo, e a tela onde o mantenedor escreve o texto tambem nao consegue cria-la: ela recusa antes de salvar.",
+  "o_que_muda": "O mantenedor abre a tela, escreve, salva e publica, e a pagina passa a existir. Sem isto ele nao consegue por no ar nem a primeira palavra, e a pagina fica 404 para todo visitante.",
+  "exemplo": "E como um caderno que so aceita ser escrito depois que alguem o cadastra num arquivo separado: hoje o mantenedor abre a tela, digita, clica em salvar e ouve que a pagina nao existe.",
+  "importancia": 95
+}

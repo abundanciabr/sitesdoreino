@@ -1,0 +1,19 @@
+{
+  "arquivo": "573-a-porta-da-appmax-muda-para-o-site-meshcraft",
+  "id": "TAR-573",
+  "titulo": "A porta da Appmax muda para o site meshcraft",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Rota provada de fora em meshcraft.top respondendo da celula pagamentos, e nenhuma rota nova no dominio antigo",
+  "despacho": "Trocar o host do router appmax-webhooks de basileiatoutheou.org para meshcraft.top em infra/traefik/dynamic/plataforma.yml, e corrigir o cabecalho do arquivo que afirmava que a Appmax vive no dominio de operacoes. A rota do Mercado Pago fica onde esta, porque o provedor ja aponta para ela em producao. Somente infra/.",
+  "origem": "Ordem do mantenedor em 20/09/2026: basileiatoutheou.org nao recebe trabalho novo sem autorizacao expressa, tudo nasce em meshcraft.top",
+  "criada_em": "2026-09-21",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

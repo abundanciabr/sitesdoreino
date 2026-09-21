@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-015-painel-fechar-os-quatro-prs-do-fecho",
+  tipo: "decisao",
+  quando: "2026-09-20",
+  titulo: "painel: fechar os quatro PRs do fecho",
+  detalhe: "Os quatro PRs do fecho fechados por ordem dele; a regra do 1713 nao foi absorvida e continua faltando na main.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1802. Validação local: árvore 9d935b940e2cc77babca839cd7b55d4707cd878f; commit a93819105210844728c20b6a9ca1623beffc8b7c; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-532",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

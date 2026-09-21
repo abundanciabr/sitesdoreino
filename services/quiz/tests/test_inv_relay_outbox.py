@@ -43,7 +43,7 @@ def _completar_quiz(client, quiz):
     pergunta = quiz.questions.get(order=1)
     opcao_dez = pergunta.options.get(points=10)
     return client.post(
-        f"/quiz/{quiz.slug}/",
+        f"/{quiz.slug}/",
         {
             f"pergunta_{pergunta.id}": opcao_dez.id,
             "email": "lead@exemplo.com",

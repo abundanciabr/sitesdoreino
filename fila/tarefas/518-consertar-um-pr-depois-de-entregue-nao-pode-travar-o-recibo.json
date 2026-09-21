@@ -1,0 +1,19 @@
+{
+  "arquivo": "518-consertar-um-pr-depois-de-entregue-nao-pode-travar-o-recibo",
+  "id": "TAR-518",
+  "titulo": "Consertar um PR depois de entregue nao pode travar o recibo",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "teste que roda a retomada com a tarefa ja concluida e codigo mudado, vermelho antes e verde depois, e outro provando que nenhum evento orfao fica no disco, com mutacao confirmada",
+  "despacho": "BRIEF FECHADO: depois do make pr, corrigir codigo deixa o recibo sem caminho.\n\n# Contexto\n`ci/pr.py::_submeter_fila` so e idempotente num caso estreito. Quando a tarefa\nja esta `concluida` por esta mesma entrega, ele reaproveita `revisao` e `arvore`\ndo evento `submetida` anterior APENAS se\n\n    git diff --name-only <revisao anterior> <revisao nova>\n\ndevolver somente caminhos em `painel/registros/` ou `fila/eventos/`. Qualquer\nmudanca de codigo depois do primeiro `make pr` cai fora dessa condicao, entao\nele chama `ci/fila.py submeter` com revisao nova, a fila recusa o evento\n(\"a tarefa TAR-NNN ja terminou — evento depois do fim reescreveria a historia\")\ne o rito para no meio.\n\nO que fica no disco quando isso acontece: um `fila/eventos/*-submetida.json`\norfao que deixa a fila INVALIDA para qualquer comando seguinte, mais um recibo\nnovo em `painel/registros/` sem embarque.\n\nMedido em 19/09/2026 no PR #1779: a muralha reprovou por um motivo legitimo\n(`guarda_dos_guardas` exige declaracao para `test_inv_*`), o conserto foi um\nrename mais a entrada da main no ramo, e o `--continuar` nao teve como refazer\no recibo. O contorno foi apagar o evento orfao e commitar o recibo a mao.\n\nIsto nao e caso raro: reprovacao de muralha depois do `make pr` e o fluxo\nnormal, e hoje ele nao tem saida mecanizada.\n\n# Celula\n`ci`. Um PR, uma celula.\n\n# Alvos\n`ci/pr.py` e os testes dele em `ci/tests/`.\n\n# Somente leitura\n`ci/fila.py`, cuja recusa esta CERTA: fila so acrescenta, e concluir duas vezes\nreescreveria a historia. O conserto e do lado de quem chama.\n\n# O que construir\nFaca o `--continuar` reconhecer que a tarefa ja foi concluida POR ESTA MESMA\nentrega (mesmo `pr`) e, nesse caso, embarcar o recibo novo sem tentar submeter\nde novo. O recibo novo tem de continuar citando a arvore e o commit realmente\nvalidados, nunca os antigos: e o recibo velho que fica desatualizado, e o livro\nso acrescenta. Nada deve ficar no disco quando o rito para: evento que a fila\nvai recusar nao deve chegar a ser escrito.\n\n# Prova exigida\n- Teste que roda `--continuar` com a tarefa ja concluida e codigo mudado desde\n  o recibo anterior, vermelho antes e verde depois.\n- Teste provando que nenhum evento orfao sobra quando a submissao e recusada.\n- Mutacao confirmada em cada guarda novo.\n- `python -m pytest ci/tests -q`, saida colada, sem regressao.",
+  "origem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260921-002-mensageria-consumidor-aceita-pagamento-v2",
+  tipo: "entrega",
+  quando: "2026-09-21",
+  titulo: "mensageria: consumidor aceita pagamento v2",
+  detalhe: "Dedup entre v1/v2 do pagamento, escopada por site (INV-P11); ordem invertida, reentrega e Redis real provados.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1826. Validação local: árvore 1321c0e2c4ce78bed293af35ce9e9160048c6928; commit c13f1d2c2dcc4a2ab9659a8a80688ea8ec73df3e; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-21",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-549",
+  gravidade: "info",
+  frente: "site",
+  area: "mensageria",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

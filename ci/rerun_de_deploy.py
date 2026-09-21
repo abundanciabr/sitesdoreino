@@ -505,10 +505,13 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
         return Decisao(
             "nada", 1,
             f"o run {fatos.run} terminou 'cancelled' e o disparo foi "
-            f"'{fatos.event or 'desconhecido'}', não 'push' — cancelamento de "
-            "disparo manual tem causa própria (armadilhas/173: a vaga de "
-            "pendente do grupo `deploy` é cadeira musical) e não se cura "
-            "repetindo. A cura é dar grupo de concorrência próprio ao workflow.",
+            f"'{fatos.event or 'desconhecido'}', não 'push'. Desde a TAR-529 o "
+            "grupo `deploy` roda com `queue: max` (até 100 pendentes, em ordem "
+            "de chegada), então a vaga de pendente já não é cadeira musical "
+            "(armadilhas/173 descreve o mundo anterior). Sobram duas causas "
+            "para este cancelamento: fila cheia acima de 100 pendentes, ou "
+            "cancelamento à mão. Nenhuma se cura repetindo no automático; "
+            "descubra qual foi antes de redisparar.",
             precisa_de_alarme=False,
         )
     barreira = _a_republicacao_avanca(fatos, o_que_houve="foi cancelado")
@@ -518,9 +521,12 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
         return Decisao(
             "parar", 1,
             f"{fatos.tentativas_feitas} tentativas e o deploy segue sendo "
-            "cancelado — a vaga de pendente do grupo `deploy` está sendo "
-            "tomada a cada volta (armadilhas/173+188). A regra de parada é a "
-            "mesma da 127: a quarta tentativa não é diagnóstico, é teimosia.",
+            "cancelado. Com `queue: max` no grupo `deploy` (TAR-529) a vaga "
+            "deixou de ser tomada a cada volta, então três cancelamentos "
+            "seguidos apontam fila cheia acima de 100 pendentes ou "
+            "cancelamento à mão, e nenhum dos dois se resolve repetindo. A "
+            "regra de parada é a mesma da 127: a quarta tentativa não é "
+            "diagnóstico, é teimosia.",
             pendencia=_pendencia_do_cancelado(fatos, divergente=False),
         )
     return Decisao(

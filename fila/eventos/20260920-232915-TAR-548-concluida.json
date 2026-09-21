@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-232915-TAR-548-concluida",
+  "tarefa": "TAR-548",
+  "evento": "concluida",
+  "quando": "2026-09-20T23:29:15+00:00",
+  "quem": "agent/leads/leads-consome-o-evento-v2",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1825",
+  "verificado_em": "2026-09-20"
+}

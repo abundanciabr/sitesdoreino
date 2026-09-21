@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-163355-TAR-534-explicada",
+  "tarefa": "TAR-534",
+  "evento": "explicada",
+  "quando": "2026-09-20T16:33:55+00:00",
+  "quem": "brief do mantenedor na sessao de 20/09/2026, medicao do ciclo do mesmo dia",
+  "o_que_e": "Hoje o robo so descobre que precisa da autorizacao do mantenedor quando ja construiu, e entao fica parado com o ramo aberto ate alguem responder. A medicao de 20/09/2026 achou tres paradas assim, somando mais de tres horas.",
+  "o_que_muda": "O robo passa a saber no primeiro minuto se o que vai tocar precisa da palavra dele ou ja esta autorizado por faixa. Quando precisa, ele nao espera: guarda o trabalho em ponto seguro, escreve o que falta e encerra. O trabalho que hoje custa tres horas volta a custar quarenta minutos.",
+  "exemplo": "E a diferenca entre o pedreiro que confere a planta antes de subir o andaime e o que sobe, descobre la em cima que falta a assinatura, e fica sentado no andaime a tarde inteira.",
+  "importancia": 80
+}

@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260920-039-painel-o-admin-saiu-da-internet-medido",
+  tipo: "entrega",
+  quando: "2026-09-20",
+  titulo: "painel: o admin saiu da internet, medido",
+  detalhe: "A administracao saiu do ar publico: /admin/ responde 404 de fora, e /docs/, /mapa-ia/ e o site continuam em 200.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1817. Validação local: árvore 287a9039d3ea5a7ee78f8e7417ec4b2f67631b3b; commit 31822eb6e48104b05a5b4c77575621348c5ec563; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-20",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-568",
+  gravidade: "verde",
+  frente: "fabrica",
+  area: "painel",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

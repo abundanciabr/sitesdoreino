@@ -1,0 +1,22 @@
+{
+  "arquivo": "552-a-porta-publica-que-recebe-o-cartao-tokenizado-do-navegador",
+  "id": "TAR-552",
+  "titulo": "A porta publica que recebe o cartao tokenizado do navegador",
+  "toca": [
+    "checkout"
+  ],
+  "depende_de": [
+    "TAR-550",
+    "TAR-546"
+  ],
+  "cria": [],
+  "move": [
+    "compras-no-mes"
+  ],
+  "evidencia_exigida": "Testes provando que valor e produto vem do snapshot e nunca do navegador, idempotencia sob duplo clique, isolamento por site, e a consulta de parcelas respondendo; suite da celula checkout verde.",
+  "despacho": "Celula checkout. Abra a porta publica da confirmacao de cartao e o proxy das parcelas.\n\nAlvos: services/checkout/apps/core/api.py, clients.py, o modelo de pedidos se precisar, migration se precisar, e testes.\n\n1. Endpoint publico que recebe {token, ip, holder_name, holder_document_number, installments} e delega para a celula pagamentos. O navegador NUNCA envia valor, produto nem total: tudo vem do snapshot server-side do pedido. Valor vindo do cliente reprova o lote.\n2. Valide: o pedido existe, pertence ao site que esta pedindo, esta em estado confirmavel, e installments esta entre 1 e 12.\n3. Idempotencia: duplo clique resulta em UMA chamada para pagamentos.\n4. Proxy da consulta de parcelas: o navegador precisa mostrar o valor real de cada parcela, e esse numero so existe em POST /v1/payments/installments, que exige Bearer. Logo o checkout consulta pela celula pagamentos e devolve os valores prontos. O navegador nunca fala com a Appmax para isso, nem ve credencial.\n5. O mantenedor escolheu 12x na modalidade PP, com juros no comprador: os valores exibidos ja vem com juros.\n\nSomente leitura: services/pagamentos/, contracts/.\n\nFatos medidos na documentacao oficial da Appmax em 20/09/2026: OAuth2 client_credentials em POST https://auth.sandboxappmax.com.br/oauth2/token, Bearer de 1 hora, SEM refresh token (renovar e repetir o POST); API em https://api.sandboxappmax.com.br; producao troca sandboxappmax por appmax. Sequencia: token, IP pelo Appmax JS, POST /v1/customers, POST /v1/orders, POST /v1/payments/credit-card com {order_id, customer_id, payment_data.credit_card.{token, holder_document_number, holder_name, installments, soft_descriptor}}, confirmacao por GET /v1/orders/{id}. Parcelas por POST /v1/payments/installments com {installments, total_value, settings}, ate 12x, modalidade PP (juros no comprador) escolhida pelo mantenedor. Webhook SEM assinatura HMAC e sem token: envelope {event, event_type, site_id, app_id, client_key, external_key, data, partner_merchant}, 40 eventos em 4 tipos, exige HTTP 200 em menos de 5 s, retry em 30 min, 2 h e 4 h. Limite: 5 req/s sustentado, 50 em rajada, 60/min por rota, 5/min em rotas de credencial, 100 mil/mes, headers X-RateLimit-Limit, X-RateLimit-Remaining e Retry-After. Nao invente endpoint: se precisar de um que nao esta aqui, pare e registre pendencia.\n\nO mantenedor autorizou na sessao de 20/09/2026 os caminhos protegidos: INVARIANTES.md ci/ contracts/ services/pagamentos/ services/checkout/ infra/ .github/workflows/. Transcreva na descricao do PR uma linha comecando com Mandato-do-mantenedor: seguida SO dos caminhos que este lote toca, separados por espaco, e da origem (sessao de 20/09/2026). Nunca cite caminho que este lote nao toca.\n\nPadrao de Trabalho do CLAUDE.md vale integralmente. Prova vermelho para verde obrigatoria: mostre o guarda falhando antes de existir o comportamento, e passando depois. Nada de placeholder, TODO ou 'implementar depois'. Nenhum travessao em texto publicado. Abra a bancada por RITOS.md secao 1 com python ci/sessao.py, nunca edite o clone principal. Arquivos de apoio do ci/pr.py em subdiretorio proprio desta tarefa. Nao cite outra TAR no corpo do PR.",
+  "origem": "Plano mestre Appmax, lote L6; comando de inicio do mantenedor em 20/09/2026",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

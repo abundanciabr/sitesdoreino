@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-214617-TAR-541-explicada",
+  "tarefa": "TAR-541",
+  "evento": "explicada",
+  "quando": "2026-09-20T21:46:17+00:00",
+  "quem": "fecho da entrega do PR 1810 na sessão do Claude Code de 20/09/2026",
+  "o_que_e": "O livro do painel ainda não sabe que a mudança dos robôs entrou no ar, e não registra o defeito que apareceu ao publicar.",
+  "o_que_muda": "Ele passa a ver, na tela dele, que a mudança já vale, e recebe na caixa de entrada a decisão que só ele pode tomar.",
+  "exemplo": "Sem isso, o registro anterior fica dizendo 'integração não verificada' para sempre, mesmo com a coisa já no ar.",
+  "importancia": 40
+}

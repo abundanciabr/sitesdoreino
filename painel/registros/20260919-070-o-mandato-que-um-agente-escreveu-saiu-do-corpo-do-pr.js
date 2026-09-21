@@ -1,0 +1,23 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-070-o-mandato-que-um-agente-escreveu-saiu-do-corpo-do-pr",
+  tipo: "nota",
+  quando: "2026-09-19",
+  titulo: "Tirei do PR do contrato uma linha de mandato que eu mesmo tinha escrito",
+  detalhe: "O briefing da tarefa mandava escrever, na descrição do PR, a linha 'Mandato-do-mantenedor'. Escrevi, e isso contraria a lei: mandato é registrado pelo dono, e nunca se inventa mandato. A linha só não abria o portão por acidente, porque o curinga que ela usava nos quatro eventos não casa com a comparação de ci/mergear.py; bastava alguém corrigir o curinga achando que ajudava para o PR integrar sozinho, em caminho com dono no CODEOWNERS, com uma autorização que nunca foi dada.\\n\\nA linha saiu do corpo do PR #1772. Ficou só a versão em bloco de citação, que não casa com a regra do portão e serve para o mantenedor copiar. Medido depois da remoção: o portão passou a reprovar por 'falta mandato do dono para contracts/catalogo.openapi.yaml', que é a razão certa (não existe), no lugar da razão errada (existia e estava malformado).\\n\\nA pendência 20260919-058 continua aberta e é ela que espera o gesto dele; este registro não a responde. O que muda lá é só o verbo: ele escreve a linha, não troca uma linha existente.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1772",
+  verificado_em: null,
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  area: "contratos",
+  vence_em_dias: null,
+  porque_so_voce: null,
+  proximo_passo: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null,
+  portao: null
+});})();

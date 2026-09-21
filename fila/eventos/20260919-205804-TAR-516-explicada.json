@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260919-205804-TAR-516-explicada",
+  "tarefa": "TAR-516",
+  "evento": "explicada",
+  "quando": "2026-09-19T20:58:04+00:00",
+  "quem": "descoberto pelo despacho funil/cookie-seguro-atras-do-traefik em 19/09/2026",
+  "o_que_e": "Quando um robo comeca a trabalhar, a primeira coisa que ele faz e avisar os outros: abre um aviso publico dizendo que pegou aquela tarefa, para ninguem fazer o mesmo trabalho duas vezes.",
+  "o_que_muda": "Esse aviso nao esta saindo quando o robo pega uma tarefa da lista. Ele para no meio, sem o ambiente montado, e so continua se alguem destravar a mao. Enquanto isso, outro robo pode comecar a mesma tarefa sem saber.",
+  "exemplo": "E como assinar a folha de ponto e esquecer de entregar: voce escreveu seu nome no papel, mas ele ficou na sua mesa, entao para a empresa voce nunca chegou.",
+  "importancia": 55
+}

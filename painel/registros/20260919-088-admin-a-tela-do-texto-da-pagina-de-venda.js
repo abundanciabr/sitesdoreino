@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-088-admin-a-tela-do-texto-da-pagina-de-venda",
+  tipo: "entrega",
+  quando: "2026-09-19",
+  titulo: "admin: a tela do texto da pagina de venda",
+  detalhe: "43 campos nas onze secoes, cada um com a frase do despacho da copy e um guarda comparando os dois. Salvar nao muda o site; publicar cria versao imutavel. A ferramenta 74 avisa e nao bloqueia.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1785. Validação local: árvore 5ecc1c41b4e664dbab20b87acc8c083a619f7ca9; commit 6034b8dc213fd668fb184ba725b421ddf4d33442; 1 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-522",
+  gravidade: "info",
+  frente: "vender",
+  area: "admin",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

@@ -1,4 +1,4 @@
-"""PARIDADE DO CONTRATO DAS CHAVES DO GATEWAY entre o deploy e o rollback.
+"""PARIDADE DO CONTRATO DAS CHAVES DO GATEWAY entre os roteiros da VPS.
 
 O compose da plataforma exige duas chaves no serviço `traefik`. Sem elas
 exportadas, NENHUM comando `docker compose` roda: a interpolação falha, e
@@ -21,14 +21,24 @@ CONTEÚDO de UM arquivo por SSH, e /opt/plataforma não tem o repositório. Um
 `source` de irmão não existiria na VPS e quebraria os dois roteiros. A cópia é
 imposta pelo transporte; este guarda é a defesa contra ela divergir.
 
-O QUE ESTE GUARDA MEDE, E NADA ALÉM: as quatro cláusulas do contrato, nos dois
-roteiros. Os dois fazem coisas diferentes e devem continuar podendo: aqui não
-se compara estrutura, tamanho nem texto fora do contrato.
+E ACONTECEU DE NOVO, no caminho que este guarda não enxergava: os sete
+`infra/semear-*.sh` nasceram sem o bloco e morriam em três segundos com "não
+consegui falar com o Docker Compose aqui", enquanto `meshcraft.top` respondia
+200 (runs 35479761568 e 35479784690, 20/09/2026, TAR-524). Três consertos no
+caminho que doía e um quarto chamador chegando sem o bloco: por isso a lista
+fixa de dois roteiros virou um glob. Um `infra/semear-*.sh` NOVO que nasça sem o
+contrato reprova sozinho, sem ninguém precisar lembrar de acrescentá-lo aqui.
+
+O QUE ESTE GUARDA MEDE, E NADA ALÉM: as cinco cláusulas do contrato, em todo
+roteiro que roda `docker compose` em /opt/plataforma. Eles fazem coisas
+diferentes e devem continuar podendo: aqui não se compara estrutura, tamanho
+nem texto fora do contrato.
 
     1. as duas chaves são LIDAS de `env/admin.env`
     2. falha FECHADA se qualquer uma estiver ausente ou vazia
     3. as duas são EXPORTADAS
     4. tudo isso ANTES do primeiro `docker compose`
+    5. `RAIZ` é definida ANTES da leitura, porque o bloco abre `$RAIZ/env/...`
 
 E a cláusula 1 é provada RODANDO o bloco recortado do roteiro de verdade, com a
 raiz apontada para um diretório de teste onde o arquivo existe em UM lugar só.
@@ -58,6 +68,10 @@ RAIZ = Path(__file__).resolve().parents[2]
 CHAVES_ESPERADAS = {"ALUNOS_API_TOKEN", "TOKEN_CATALOGO"}
 DEPLOY = RAIZ / "infra" / "deploy-celula-na-vps.sh"
 ROLLBACK = RAIZ / "infra" / "reverter-celula-na-vps.sh"
+# Glob, e não lista: lista fixa foi exatamente o que deixou os sete semeadores
+# nascerem sem o bloco enquanto o guarda passava verde.
+SEMEADORES = sorted((RAIZ / "infra").glob("semear-*.sh"))
+ROTEIROS = [DEPLOY, ROLLBACK, *SEMEADORES]
 
 # `for CHAVE_DO_GATEWAY in A B; do` — a forma que o deploy usa e que o rollback
 # copiou. Um bloco por chave também é aceito: o que vale é a chave ser lida do
@@ -75,6 +89,7 @@ class Contrato:
     lidas: set[str]
     exportadas: set[str]
     falha_fechada: bool
+    linha_da_raiz: int | None
     linha_da_leitura: int | None
     linha_do_primeiro_compose: int | None
 
@@ -143,18 +158,20 @@ def _ler(caminho: Path) -> Contrato:
         ),
         None,
     )
+    raiz = next((n for n, linha in enumerate(linhas) if linha.startswith("RAIZ=")), None)
     return Contrato(
         nome=caminho.name,
         lidas=lidas,
         exportadas=exportadas,
         falha_fechada=falha_fechada,
+        linha_da_raiz=raiz,
         linha_da_leitura=linha_da_leitura,
         linha_do_primeiro_compose=primeiro_compose,
     )
 
 
-def _contratos() -> tuple[Contrato, Contrato]:
-    return _ler(DEPLOY), _ler(ROLLBACK)
+def _contratos() -> list[Contrato]:
+    return [_ler(caminho) for caminho in ROTEIROS]
 
 
 def _bloco_do_contrato(caminho: Path) -> str:
@@ -164,8 +181,25 @@ def _bloco_do_contrato(caminho: Path) -> str:
     a cópia, e não o roteiro que vai para a VPS.
     """
     linhas = caminho.read_text(encoding="utf-8").splitlines()
-    inicio = next(i for i, l in enumerate(linhas) if l.startswith("ENV_DO_ADMIN="))
-    fim = next(i for i, l in enumerate(linhas[inicio:], inicio) if l.strip() == "done")
+    inicio = next(
+        (i for i, l in enumerate(linhas) if l.startswith("ENV_DO_ADMIN=")), None
+    )
+    assert inicio is not None, (
+        f"{caminho.name} não tem o bloco das chaves do gateway: nenhuma linha "
+        "começa com ENV_DO_ADMIN=. Sem esse bloco, TODO `docker compose` em "
+        "/opt/plataforma reprova na VPS, mesmo com a plataforma inteira no ar.\n"
+        "O QUE FAZER: copie o bloco de infra/semear-quiz.sh para este roteiro, "
+        "antes do primeiro `docker compose`."
+    )
+    fim = next(
+        (i for i, l in enumerate(linhas[inicio:], inicio) if l.strip() == "done"), None
+    )
+    assert fim is not None, (
+        f"{caminho.name} abre o bloco das chaves na linha {inicio + 1} e nunca o "
+        "fecha: não existe linha `done` depois dela.\n"
+        "O QUE FAZER: feche o laço `for CHAVE_DO_GATEWAY ...; do` com `done` "
+        "sozinho na linha, como em infra/semear-quiz.sh."
+    )
     cabeca = 'RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"'
     return "\n".join([cabeca, *linhas[inicio : fim + 1]])
 
@@ -192,26 +226,27 @@ def _rodar_o_contrato(caminho: Path, raiz: Path) -> subprocess.CompletedProcess:
 # ---------------------------------------------------------------------------
 
 
-def test_os_dois_roteiros_leem_exatamente_as_mesmas_chaves() -> None:
+def test_todos_os_roteiros_leem_exatamente_as_mesmas_chaves() -> None:
     """A cláusula que impede a PRÓXIMA divergência.
 
     Presença não basta: se alguém acrescentar uma terceira chave ao deploy e
-    esquecer do rollback, os conjuntos deixam de bater e este teste reprova.
-    Foi assim que este defeito nasceu.
+    esquecer de um semeador, os conjuntos deixam de bater e este teste reprova.
+    Foi assim que este defeito nasceu, duas vezes.
     """
     # guarda: infra/reverter-celula-na-vps.sh:60
-    deploy, rollback = _contratos()
+    deploy, *demais = _contratos()
     assert deploy.lidas, "o deploy deixou de ler chaves do gateway; o guarda cegou"
-    assert deploy.lidas == rollback.lidas, (
-        "os dois roteiros divergiram sobre as chaves do gateway.\n"
-        f"  {deploy.nome}:   {sorted(deploy.lidas)}\n"
-        f"  {rollback.nome}: {sorted(rollback.lidas)}\n\n"
-        "Sem uma chave exportada, a interpolação do compose falha e NENHUM "
-        "comando roda na VPS. Copie o contrato inteiro para os dois."
-    )
+    for contrato in demais:
+        assert contrato.lidas == deploy.lidas, (
+            f"{contrato.nome} divergiu do deploy sobre as chaves do gateway.\n"
+            f"  {deploy.nome}: {sorted(deploy.lidas)}\n"
+            f"  {contrato.nome}: {sorted(contrato.lidas)}\n\n"
+            "Sem uma chave exportada, a interpolação do compose falha e NENHUM "
+            "comando roda na VPS. Copie o contrato inteiro para todos."
+        )
 
 
-@pytest.mark.parametrize("caminho", [DEPLOY, ROLLBACK], ids=lambda p: p.name)
+@pytest.mark.parametrize("caminho", ROTEIROS, ids=lambda p: p.name)
 def test_o_roteiro_abre_mesmo_o_arquivo_de_ambiente_do_admin(caminho, tmp_path) -> None:
     """Prova o caminho ABERTO, não o caminho escrito no texto.
 
@@ -231,7 +266,7 @@ def test_o_roteiro_abre_mesmo_o_arquivo_de_ambiente_do_admin(caminho, tmp_path) 
         )
 
 
-@pytest.mark.parametrize("caminho", [DEPLOY, ROLLBACK], ids=lambda p: p.name)
+@pytest.mark.parametrize("caminho", ROTEIROS, ids=lambda p: p.name)
 def test_o_roteiro_para_quando_o_arquivo_aberto_nao_tem_a_chave(caminho, tmp_path) -> None:
     """Cláusula 2, provada rodando: ausente e vazia param igual."""
     (tmp_path / "env").mkdir()
@@ -253,7 +288,7 @@ def test_o_roteiro_para_quando_o_arquivo_aberto_nao_tem_a_chave(caminho, tmp_pat
 # ---------------------------------------------------------------------------
 
 
-def test_os_dois_param_quando_a_chave_esta_ausente_ou_vazia() -> None:
+def test_todos_param_quando_a_chave_esta_ausente_ou_vazia() -> None:
     """Seguir sem a chave deixaria o compose falhar depois, com outra cara."""
     # guarda: infra/reverter-celula-na-vps.sh:69
     for contrato in _contratos():
@@ -267,7 +302,7 @@ def test_os_dois_param_quando_a_chave_esta_ausente_ou_vazia() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_toda_chave_lida_e_exportada_nos_dois_roteiros() -> None:
+def test_toda_chave_lida_e_exportada_em_todos_os_roteiros() -> None:
     """Ler sem exportar é o defeito com roupa nova: o compose não a enxerga."""
     # guarda: infra/reverter-celula-na-vps.sh:71
     for contrato in _contratos():
@@ -275,6 +310,39 @@ def test_toda_chave_lida_e_exportada_nos_dois_roteiros() -> None:
         assert not faltando, (
             f"{contrato.nome} lê {sorted(faltando)} e NÃO exporta. O compose só "
             "enxerga o que está no ambiente; ler para o nada não interpola nada."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Cláusula 5: RAIZ existe antes da leitura
+# ---------------------------------------------------------------------------
+
+
+def test_todo_roteiro_define_a_raiz_antes_de_abrir_o_arquivo_de_ambiente() -> None:
+    """O buraco que nenhum outro teste daqui enxerga.
+
+    `_rodar_o_contrato` injeta a linha `RAIZ=` na frente do trecho recortado, e
+    por isso o bloco roda verde aqui mesmo quando o roteiro de verdade não a
+    tem. Na VPS, com `set -u`, o mesmo bloco morre em `RAIZ: unbound variable`.
+    Medido em 20/09/2026 (TAR-524): os seis semeadores usavam `cd
+    /opt/plataforma` cru e nenhum definia `RAIZ`.
+    """
+    # guarda: infra/semear-quiz.sh:74
+    for contrato in _contratos():
+        assert contrato.linha_da_raiz is not None, (
+            f"{contrato.nome} abre `$RAIZ/env/admin.env` sem nunca definir RAIZ. "
+            "Na VPS isso para com `RAIZ: unbound variable`, e nenhuma outra "
+            "cláusula deste guarda enxerga, porque o teste injeta a linha.\n"
+            "O QUE FAZER: acrescente `RAIZ=\"${PLATAFORMA_DIR:-/opt/plataforma}\"` "
+            "antes do `cd`, como em infra/semear-quiz.sh:74."
+        )
+        assert contrato.linha_da_leitura is not None, (
+            f"{contrato.nome} não lê chave nenhuma do gateway."
+        )
+        assert contrato.linha_da_raiz < contrato.linha_da_leitura, (
+            f"{contrato.nome} define RAIZ na linha {contrato.linha_da_raiz + 1}, "
+            f"DEPOIS de ler as chaves na linha {contrato.linha_da_leitura + 1}. "
+            "A leitura abriria um caminho vazio."
         )
 
 
@@ -307,9 +375,9 @@ def test_a_leitura_vem_antes_do_primeiro_comando_compose() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_nenhum_dos_dois_imprime_o_valor_da_chave() -> None:
+def test_nenhum_roteiro_imprime_o_valor_da_chave() -> None:
     """Log de run é lido por gente; segredo nele é incidente."""
-    for caminho in (DEPLOY, ROLLBACK):
+    for caminho in ROTEIROS:
         for numero, linha in enumerate(
             caminho.read_text(encoding="utf-8").splitlines(), 1
         ):

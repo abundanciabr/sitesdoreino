@@ -111,7 +111,7 @@ de 1 célula não afeta outra; raio de explosão de qualquer falha = 1 célula.
 
 ## INVARIANTES.md — os invariantes técnicos (o quê / por quê / teste-guarda / dono)
 
-**`INVARIANTES.md` tem hoje 63 invariantes** (medido em 18/09/2026:
+**`INVARIANTES.md` tem hoje 72 invariantes** (medido em 20/09/2026:
 `grep -cE '^### \[INV-' INVARIANTES.md`). O que segue é **um recorte** do
 money-path mais os estruturais, não a lista: famílias inteiras ficam de fora
 e precisam ser lidas na fonte, entre elas INV-GAM1/2/3 (gamificação),
@@ -140,6 +140,15 @@ Money-path (célula dona entre parênteses):
   `SUGESTOES_APROVADORES`); a EXIGÊNCIA de ChangeSpec para uma ideia entrar em
   desenvolvimento foi revogada pelo mantenedor em 06/09/2026.
 - **INV-NOT1/2** protegem o sistema de notificações ("sininho") — id de plataforma, dedup de cartas.
+
+Cartão pela Appmax (lei escrita antes da integração existir):
+
+- **INV-CARD-A1 a A9** as nove leis do cartão pela Appmax: provedor por
+  construção, dado de cartão nunca nomeado, autorizado não é aprovado,
+  webhook sem assinatura não decide dinheiro, escrita ambígua sem repetição
+  automática, outbox na mesma transação, segredo só em pagamentos, provedores
+  sem arquivo comum e resposta 2xx incompleta como erro. Guarda único:
+  `ci/guarda_do_cartao.py`, provado por mutação em 20/09/2026 (9 de 9).
 
 Estrutural (o mais importante para entender a própria CI):
 

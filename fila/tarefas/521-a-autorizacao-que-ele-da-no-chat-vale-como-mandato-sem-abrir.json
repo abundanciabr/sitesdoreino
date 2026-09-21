@@ -1,0 +1,22 @@
+{
+  "arquivo": "521-a-autorizacao-que-ele-da-no-chat-vale-como-mandato-sem-abrir",
+  "id": "TAR-521",
+  "titulo": "A autorizacao que ele da no chat vale como mandato, sem abrir o GitHub",
+  "toca": [
+    "CLAUDE.md",
+    "ci",
+    "docs/decisoes",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com a linha Mandato-do-mantenedor: transcrita pelo agente integrado pelo pouso automatico, e os tres testes novos de test_merge_automatico.py verdes",
+  "despacho": "Ler docs/decisoes/DECISAO-merge-sem-rito-de-pouso.md e ci/mergear.py::checar_mandato; alinhar CLAUDE.md, a decisao e a mensagem de recusa do portao a regra de que a autorizacao vale onde o mantenedor a deu.",
+  "origem": "pedido do mantenedor em 19/09/2026, depois de voltar do trabalho e encontrar a fabrica parada esperando ele digitar a linha no site",
+  "criada_em": "2026-09-19",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

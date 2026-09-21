@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260921-014607-TAR-575-explicada",
+  "tarefa": "TAR-575",
+  "evento": "explicada",
+  "quando": "2026-09-21T01:46:07+00:00",
+  "quem": "medicao do mantenedor em 20/09/2026 sobre python ci/fila.py listar --json",
+  "o_que_e": "Nove tarefas apareciam como trabalho em andamento na tela, mas o trabalho delas ja tinha entrado no site dias atras.",
+  "o_que_muda": "A tela de tarefas passa a mostrar so o que esta mesmo aberto, entao ninguem gasta tempo procurando dono para trabalho que ja acabou.",
+  "exemplo": "A tarefa da Central de Pendencias entrou no site em 13 de setembro e ainda figurava como alguem trabalhando nela uma semana depois.",
+  "importancia": 55
+}

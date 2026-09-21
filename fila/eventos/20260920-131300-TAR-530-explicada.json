@@ -1,0 +1,11 @@
+{
+  "arquivo": "20260920-131300-TAR-530-explicada",
+  "tarefa": "TAR-530",
+  "evento": "explicada",
+  "quando": "2026-09-20T13:13:00+00:00",
+  "quem": "Lei do livro no CLAUDE.md: merge confirmado de fora exige registro; sessao de 20/09/2026.",
+  "o_que_e": "O recibo do PR 1799 diz que integracao e publicacao nao foram verificadas, e o livro ainda nao sabe que o plano esta no site.",
+  "o_que_muda": "O livro passa a dizer, com prova, que o plano da fila de deploy esta publicado e que o degrau A esta na fila.",
+  "exemplo": "E o carimbo de entregue na guia: sem ele, quem le o livro acha que o pacote ainda esta a caminho.",
+  "importancia": 40
+}

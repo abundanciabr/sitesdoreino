@@ -126,6 +126,34 @@ def test_texto_de_terceiro_nao_concede_mandato(monkeypatch, repo, pr):
     assert conferir(monkeypatch, repo, pr).estado is Estado.FAIL
 
 
+def test_autor_sem_posse_nao_e_confundido_com_falta_de_mandato(repo, pr):
+    pr["files"] = [{"path": "ci/exemplo.py"}]
+    pr["body"] = "Mandato-do-mantenedor: modificar ci/ conforme pedido de 19/09/2026."
+    pr["author"]["login"] = "visitante"
+    resultado = mergear.checar_mandato(repo, pr)
+    assert resultado.estado is Estado.FAIL
+    assert resultado.resumo == "o PR de ci/exemplo.py não saiu da conta do dono"
+
+
+def test_mandato_que_nao_alcanca_o_caminho_diz_isso(repo, pr):
+    pr["files"] = [{"path": "ci/exemplo.py"}]
+    pr["body"] = "Mandato-do-mantenedor: mexer em painel/ conforme pedido de 19/09/2026."
+    resultado = mergear.checar_mandato(repo, pr)
+    assert resultado.estado is Estado.FAIL
+    assert resultado.resumo == "o mandato do dono não alcança ci/exemplo.py"
+
+
+def test_recusa_por_mandato_ausente_nao_manda_ninguem_ao_site(repo, pr):
+    """A recusa mandava escrever a linha no GitHub, e toda sessão parava ali.
+
+    Em 19/09/2026 o mantenedor decidiu que a autorização vale onde ele a deu.
+    O conserto agora aponta para o chat, que é onde ele está.
+    """
+    pr["files"] = [{"path": "ci/exemplo.py"}]
+    detalhe = mergear.checar_mandato(repo, pr).detalhe
+    assert "sessão" in detalhe and "GitHub" not in detalhe
+
+
 def test_workflow_nao_executa_codigo_do_pr_nem_pede_revisor():
     texto = (RAIZ / ".github/workflows/pouso.yml").read_text(encoding="utf-8")
     fluxo = yaml.safe_load(texto)

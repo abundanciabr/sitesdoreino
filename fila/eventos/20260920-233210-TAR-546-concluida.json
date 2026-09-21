@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-233210-TAR-546-concluida",
+  "tarefa": "TAR-546",
+  "evento": "concluida",
+  "quando": "2026-09-20T23:32:10+00:00",
+  "quem": "agent/checkout/checkout-consome-o-evento-v2",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1829",
+  "verificado_em": "2026-09-20"
+}

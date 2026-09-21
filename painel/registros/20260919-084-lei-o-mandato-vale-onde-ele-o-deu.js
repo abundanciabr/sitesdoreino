@@ -1,0 +1,21 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260919-084-lei-o-mandato-vale-onde-ele-o-deu",
+  tipo: "decisao",
+  quando: "2026-09-19",
+  titulo: "lei: o mandato vale onde ele o deu",
+  detalhe: "A lei mandava o dono digitar o mandato no site e uma tarefa ficou horas parada esperando isso. Agora a autorizacao vale onde ele a deu, e o agente transcreve.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1782. Validação local: árvore 621f7275b82d62df00c14d8460b3ad913cfdaa03; commit 7a2804f4a3cc98c4076f9bc8ca13cb5baa7f769d; 2 comando(s), exit 0. Revisão, integração e publicação não verificadas.",
+  verificado_em: "2026-09-19",
+  precisa_do_dono: false,
+  responde_a: null,
+  relacao: "comentario",
+  tarefa: "TAR-521",
+  gravidade: "info",
+  frente: "fabrica",
+  area: "lei",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null
+}); })();

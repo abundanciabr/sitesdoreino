@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260920-181726-TAR-529-concluida",
+  "tarefa": "TAR-529",
+  "evento": "concluida",
+  "quando": "2026-09-20T18:17:26+00:00",
+  "quem": "agent/ci/fila-nativa-no-deploy",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1806",
+  "verificado_em": "2026-09-20"
+}

@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260920-230835-TAR-427-cancelada",
+  "tarefa": "TAR-427",
+  "evento": "cancelada",
+  "quando": "2026-09-20T23:08:35+00:00",
+  "quem": "cancelar-admin-localhost-20260920-mandato-mantenedor",
+  "detalhe": "Pedido do mantenedor em 20/09/2026: parar a frente de admin no PC. A retirada da administracao da internet ja foi entregue na TAR-418 (PR 1814). Esta tarefa irma nao vai mais ser feita."
+}

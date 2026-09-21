@@ -1,0 +1,21 @@
+{
+  "arquivo": "530-registrar-no-livro-que-o-plano-da-fila-de-deploy-chegou-ao-s",
+  "id": "TAR-530",
+  "titulo": "Registrar no livro que o plano da fila de deploy chegou ao site",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-527"
+  ],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "Registro medicao em painel/registros respondendo ao recibo 010, com merge, run do deploy e URL 200, integrado pela pista.",
+  "despacho": "Commitar somente painel/registros/20260920-011-o-plano-da-fila-de-deploy-chegou-ao-site.js, que confirma de fora a integracao do PR 1799 (commit 96755bad), o deploy da admin (run 35512517656) e a URL /mapa-ia/planos/PLANO-MESTRE-FILA-DE-DEPLOY.md em 200. Nada mais.",
+  "origem": "Lei do livro no CLAUDE.md: merge confirmado de fora exige registro; sessao de 20/09/2026.",
+  "criada_em": "2026-09-20",
+  "responsabilidade_obrigatoria": true,
+  "responsabilidade": "operacao-tecnica"
+}

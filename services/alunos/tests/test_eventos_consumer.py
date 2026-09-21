@@ -13,7 +13,11 @@ from apps.matriculas.models import Matricula
 pytestmark = pytest.mark.django_db
 
 
-def _envelope(event_id: str) -> dict:
+def _envelope(event_id: str, *, pedido: str = "order-reentrega") -> dict:
+    """Um aviso na versão 1. O `mp_payment_id` acompanha o pedido porque ele é
+    a identidade do pagamento NO PROVEDOR: dois pedidos diferentes com a mesma
+    referência seriam o mesmo dinheiro cobrado duas vezes, e o dedup entre
+    versões (que lê essa referência) os trataria como um fato só."""
     return {
         "event": "pagamento.aprovado",
         "version": 1,
@@ -21,11 +25,11 @@ def _envelope(event_id: str) -> dict:
         "occurred_at": "2026-08-20T12:00:00Z",
         "data": {
             "site_id": "site-1",
-            "payment_id": "pay-1",
-            "order_id": "order-reentrega",
+            "payment_id": f"pay-{pedido}",
+            "order_id": pedido,
             "amount_cents": 9900,
             "method": "pix",
-            "mp_payment_id": "mp-1",
+            "mp_payment_id": f"mp-{pedido}",
             "customer": {"email": "aluno@example.com", "name": "Aluno Exemplo"},
         },
     }
@@ -43,8 +47,7 @@ def test_evento_reentregue_mesmo_event_id_gera_uma_matricula():
 
 def test_evento_de_site_diferente_nao_colide_com_outro_order_id():
     e1 = _envelope(str(uuid.uuid4()))
-    e2 = _envelope(str(uuid.uuid4()))
-    e2["data"] = {**e2["data"], "order_id": "order-outro"}
+    e2 = _envelope(str(uuid.uuid4()), pedido="order-outro")
 
     processar_envelope(e1, HANDLERS)
     processar_envelope(e2, HANDLERS)

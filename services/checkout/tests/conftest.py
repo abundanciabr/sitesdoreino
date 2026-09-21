@@ -6,6 +6,7 @@ operações não existe em lugar nenhum acessível ao CI.
 """
 
 import json
+import uuid
 
 import httpx
 import pytest
@@ -146,3 +147,106 @@ def sessao_a(api, rede):
     resp = api.post("/api/checkout/sessoes", {"offer_slug": SLUG})
     assert resp.status_code == 201, resp.content
     return resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Envelopes de aviso de pagamento, nas duas versões do contrato
+#
+# Ficam aqui porque dois módulos de teste os usam: o do consumer de eventos e
+# o do [INV-P7]. A forma é a dos schemas em contracts/eventos/ — v1 com
+# `site_id` e `mp_payment_id`, v2 com `platform_site_id` e o par do fornecedor.
+# ---------------------------------------------------------------------------
+
+
+def aprovado_v1(order, *, mp_payment_id, payment_id="pag-local-v1"):
+    return {
+        "event": "pagamento.aprovado",
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-20T12:00:00+00:00",
+        "data": {
+            "site_id": order.site_id,
+            "payment_id": payment_id,
+            "order_id": str(order.id),
+            "amount_cents": order.total_cents,
+            "method": "pix",
+            "mp_payment_id": mp_payment_id,
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+        },
+    }
+
+
+def aprovado_v2(
+    order, *, provider_reference_id, provider="mercadopago", payment_id="pag-local-v2"
+):
+    return {
+        "event": "pagamento.aprovado",
+        "version": 2,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-20T12:00:00+00:00",
+        "data": {
+            "platform_site_id": order.site_id,
+            "payment_id": payment_id,
+            "order_id": str(order.id),
+            "amount_cents": order.total_cents,
+            "method": "pix",
+            "provider": provider,
+            "provider_reference_id": provider_reference_id,
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+        },
+    }
+
+
+def recusado_v1(order, *, payment_id):
+    return {
+        "event": "pagamento.recusado",
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-20T12:00:00+00:00",
+        "data": {
+            "site_id": order.site_id,
+            "payment_id": payment_id,
+            "order_id": str(order.id),
+            "amount_cents": order.total_cents,
+            "method": "card",
+            "reason_code": "cc_rejected_insufficient_amount",
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+        },
+    }
+
+
+def recusado_v2(order, *, payment_id, provider_reference_id="ref-do-fornecedor"):
+    return {
+        "event": "pagamento.recusado",
+        "version": 2,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-20T12:00:00+00:00",
+        "data": {
+            "platform_site_id": order.site_id,
+            "payment_id": payment_id,
+            "order_id": str(order.id),
+            "amount_cents": order.total_cents,
+            "method": "card",
+            "provider": "appmax",
+            "provider_reference_id": provider_reference_id,
+            "reason_code": "recusado_pelo_emissor",
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+        },
+    }
+
+
+def pix_expirado_v1(order, *, payment_id):
+    return {
+        "event": "pix.expirado",
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-09-20T12:00:00+00:00",
+        "data": {
+            "site_id": order.site_id,
+            "payment_id": payment_id,
+            "order_id": str(order.id),
+            "amount_cents": order.total_cents,
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "recovery_url": "https://teste-a.exemplo.com/checkout/curso-esqueleto",
+        },
+    }
