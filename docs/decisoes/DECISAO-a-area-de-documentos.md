@@ -80,10 +80,13 @@ o lado caro — alguém tiraria o `publico: true` achando que bastava.
 
 O que impede o prefixo de virar fresta:
 
-1. sob `/docs/` existem **exatamente duas rotas**, as duas de leitura, e as duas
-   conferem `publico` antes de responder;
-2. um guarda varre o urlconf e **reprova o CI** se aparecer uma terceira
-   (`test_o_prefixo_publico_tem_so_as_duas_rotas`).
+1. sob `/docs/` só moram rotas de **leitura**, e todas conferem `no_ar` antes de
+   responder;
+2. um guarda varre o urlconf e **reprova o CI** se aparecer uma fora da lista
+   (`test_o_prefixo_publico_tem_so_as_tres_rotas`).
+
+Eram duas até 21/09/2026, quando a moldura entrou (§8). A terceira não abriu
+exceção: ela obedece às duas regras acima, e foi por isso que pôde entrar.
 
 ## §5 — Documento privado responde 404, nunca 403
 
@@ -106,6 +109,41 @@ dia alguém vai ler só um deles.
 Links são restritos a caminho interno ou `https://`. `javascript:` e `data:` não
 viram link — e a recusa é silenciosa, virando texto: um link morto numa página é
 melhor que um link que executa algo.
+
+## §8 — O documento pode ser uma página visual inteira
+
+Pedido dele em 21/09/2026: *"o documento pode ser uma página visual inteira, não
+só texto"*.
+
+**A saída não foi ampliar o Markdown.** Alargar o renderizador para caber HTML,
+CSS, SVG e Canvas trocaria uma regra mecânica (*"marcação não passa"*) por uma
+lista de tags permitidas, e lista de tags permitidas é coisa que se erra. O §6
+continua inteiro, e é ele que mantém o `|safe` dos dois templates seguro.
+
+O que mudou é **onde o HTML rico roda**. `Documento.formato` tem dois valores:
+
+- **`texto`** (o default, e o que todo documento existente é): desenhado na
+  própria página, pelo renderizador que escapa antes de formatar.
+- **`pagina`**: o corpo é servido **cru** por uma rota própria, a moldura
+  (`/docs/<nome>/moldura` e `/documentos/<nome>/moldura`), e a página do site o
+  mostra dentro de um `<iframe>`.
+
+**A peça inteira é o `sandbox` SEM `allow-same-origin`.** A moldura é servida
+pela nossa origem, então um iframe sem sandbox não isolaria nada: o que roda
+dentro dele seria código do meshcraft, na origem do meshcraft, com acesso ao
+cookie de sessão, ao `localStorage` e ao DOM da página de fora. Acrescentar
+`allow-same-origin` a um sandbox de mesma origem **desliga o sandbox**.
+
+Sem ele, o navegador dá ao documento uma **origem opaca**. O script roda, o
+Canvas desenha, o gráfico plota, e nada disso alcança um cookie, um
+armazenamento ou um nó do DOM desta casa. É o que permite dar a folha em branco
+sem dar a chave. Guardas: `tests/test_pagina_visual_do_documento.py`, que mede a
+ausência do atributo na página renderizada **e** em todo template desta área,
+incluindo o iframe que nascesse sem `sandbox` nenhum.
+
+**A moldura obedece ao §5 igualzinho:** documento privado responde 404, nunca
+403; documento de formato `texto` também responde 404, para que não exista um
+segundo endereço servindo sem escapar o que o outro serve escapado.
 
 ## §7 — Os dois primeiros documentos
 

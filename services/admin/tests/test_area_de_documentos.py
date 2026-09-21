@@ -16,8 +16,8 @@ descuido vira um texto interno no ar, e é isso que este arquivo trava.
 
 3. **Nenhuma rota nova escapa pelo prefixo público.** A porta isenta o prefixo
    `/docs/` inteiro (e o porquê está escrito lá). O que impede isso de virar
-   fresta é o guarda daqui: sob esse prefixo existem EXATAMENTE duas rotas, e
-   uma terceira reprova o CI.
+   fresta é o guarda daqui: sob esse prefixo existe uma lista EXATA de rotas, e
+   uma fora dela reprova o CI.
 
 4. **HTML dentro de um documento sai escapado.** O renderizador escapa o texto
    ANTES de formatar, então marcação escrita num `.md` chega à tela como texto.
@@ -290,12 +290,18 @@ def test_a_lista_do_admin_diz_qual_e_publico(pasta):
 # ------------------- 3. nenhuma rota nova escapa pelo prefixo público
 
 
-def test_o_prefixo_publico_tem_so_as_duas_rotas():
+def test_o_prefixo_publico_tem_so_as_tres_rotas():
     """O que impede a isenção por prefixo de virar uma fresta.
 
     A porta isenta `/docs/` inteiro — e isso só é seguro enquanto tudo que mora
-    ali confere `publico` antes de responder. Uma rota nova sob esse prefixo
+    ali confere `no_ar` antes de responder. Uma rota nova sob esse prefixo
     nasceria pública sem ninguém decidir isso; aqui ela reprova o CI.
+
+    Eram duas até 21/09/2026, quando a moldura do documento de formato `pagina`
+    entrou (TAR-596). O que autorizou a terceira NÃO foi mexer nesta lista: foi
+    ela obedecer à mesma regra das outras duas, conferindo `no_ar` e devolvendo
+    404 (nunca 403) para o privado — medido em
+    `test_pagina_visual_do_documento.py`.
 
     Se você chegou neste teste porque ele ficou vermelho: a pergunta não é como
     passar por ele, é se a rota nova deve mesmo responder sem sessão.
@@ -305,7 +311,11 @@ def test_o_prefixo_publico_tem_so_as_duas_rotas():
     sob_o_prefixo = {
         p.name for p in padroes if str(p.pattern).lstrip("^").startswith(prefixo + "/")
     }
-    assert sob_o_prefixo == {"docs_publicos", "doc_publico"}, sob_o_prefixo
+    assert sob_o_prefixo == {
+        "docs_publicos",
+        "doc_publico",
+        "doc_publico_moldura",
+    }, sob_o_prefixo
 
 
 def test_os_dois_enderecos_nao_colidem():

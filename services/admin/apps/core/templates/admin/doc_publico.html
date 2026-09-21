@@ -42,5 +42,5 @@ permite sem inventar cor.
   </div>
   {% endif %}
   <a class="volta" href="{{ prefixo_publico }}/">&larr; Todos os documentos</a>
-  {{ corpo|safe }}
+  {% if pagina_visual %}{% include "admin/_documento_em_pagina.html" %}{% else %}{{ corpo|safe }}{% endif %}
 {% endblock %}

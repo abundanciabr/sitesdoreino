@@ -45,7 +45,7 @@ from .models import Administrador
 
 logger = logging.getLogger("admin.porta")
 
-# O bloco `<style>` embutido do `admin/base.html`. Ver `_hashes_de_estilo`.
+# O bloco `<style>` embutido do `admin/base.html`. Ver `hashes_de_estilo`.
 _ESTILO_EMBUTIDO = re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNORECASE)
 
 # Os únicos caminhos que respondem sem crachá. É `frozenset` e é conferido por
@@ -375,12 +375,12 @@ class PortaAdministrativa:
         de terceiro, sem `object-src`, sem `<base>` sequestrado, e formulário
         que só posta para a própria origem.
 
-        **`style-src` leva o HASH do estilo da casa** — ver `_hashes_de_estilo`.
+        **`style-src` leva o HASH do estilo da casa** — ver `hashes_de_estilo`.
         """
         resposta.setdefault(
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self'; "
-            f"style-src 'self'{self._hashes_de_estilo(resposta)}; "
+            f"style-src 'self'{self.hashes_de_estilo(resposta)}; "
             "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
             "form-action 'self'; frame-ancestors 'self'",
         )
@@ -407,7 +407,7 @@ class PortaAdministrativa:
         return resposta
 
     @staticmethod
-    def _hashes_de_estilo(resposta) -> str:
+    def hashes_de_estilo(resposta) -> str:
         """O `sha256` de cada `<style>` embutido desta resposta, para o CSP.
 
         **O buraco que isto fecha, medido em produção em 30/08/2026.** O estilo
@@ -438,6 +438,13 @@ class PortaAdministrativa:
 
         Resposta sem corpo (302, 404 de redirecionamento) simplesmente não tem
         `<style>`: a política sai igual à de antes, sem hash nenhum.
+
+        **Público desde 21/09/2026**, e não por gosto de API: a página de um
+        documento de formato `pagina` manda CSP própria (ela traz o escutador
+        da altura do iframe, que precisa de hash) e mesmo assim tem de manter
+        o estilo da casa funcionando. Uma segunda conta desta mesma regra lá
+        divergiria desta no primeiro dia em que uma das duas mudasse, e o
+        sintoma seria de novo uma tela sem estilo nenhum.
         """
         if "text/html" not in resposta.get("Content-Type", ""):
             return ""
