@@ -378,8 +378,10 @@ def _semear(modelo, caminho: Path) -> bool:
 # desconfiança de quem escreve — os documentos passam por PR — é a diferença
 # entre "não deve acontecer" e "não pode acontecer".
 #
-# Tabela, imagem e HTML cru NÃO são suportados de propósito. Documento que
-# precisar deles é conversa sobre este arquivo, nunca sobre contornar.
+# HTML cru continua recusado. Tabela, bloco de código e figura NOMEADA
+# entraram em 21/09/2026 porque o documento do Crivo precisava deles para
+# ensinar: a conversa foi neste arquivo, nunca um contorno. Imagem por URL
+# continua recusada. Figura só existe se o nome estiver em `figuras.FIGURAS`.
 #
 # **Um renderizador só, para os documentos e para o livro** (04/09/2026). A
 # Biblioteca do Livro (`apps/core/livro.py`) desenha o texto do mantenedor com
@@ -411,6 +413,56 @@ _ITEM = re.compile(r"^[-*]\s+(.*)$")
 #: descartado de propósito — quem numera é o `<ol>`, e uma lista que começasse
 #: em 3 porque alguém apagou dois itens seria um erro difícil de ver.
 _ITEM_NUMERADO = re.compile(r"^\d{1,3}[.)]\s+(.*)$")
+#: Figura da casa, uma linha só: `![legenda](figura:recepcionista)`.
+#: O nome depois de `figura:` é o índice em `figuras.FIGURAS`. URL, `data:` e
+#: `javascript:` não passam por este padrão.
+_FIGURA = re.compile(r"^!\[([^\]]*)\]\(figura:([a-z0-9-]+)\)$")
+#: Célula de tabela: `| --- | :---: |` vira separador. Só hífen e dois-pontos.
+_SEP_CELULA = re.compile(r"^:?-+:?$")
+
+
+def _celulas(linha: str) -> list[str]:
+    nua = linha.strip()
+    if nua.startswith("|"):
+        nua = nua[1:]
+    if nua.endswith("|"):
+        nua = nua[:-1]
+    return [c.strip() for c in nua.split("|")]
+
+
+def _e_separador(linha: str) -> bool:
+    cells = _celulas(linha)
+    return bool(cells) and all(_SEP_CELULA.match(c) for c in cells)
+
+
+def _tabela(cabeca: list[str], corpo: list[list[str]]) -> str:
+    ths = "".join(f"<th>{_linha(c)}</th>" for c in cabeca)
+    linhas = []
+    for row in corpo:
+        cells = (row + [""] * len(cabeca))[: len(cabeca)]
+        linhas.append(
+            "<tr>" + "".join(f"<td>{_linha(c)}</td>" for c in cells) + "</tr>"
+        )
+    return (
+        '<div class="rolagem-tabela"><table>'
+        f"<thead><tr>{ths}</tr></thead>"
+        f"<tbody>{''.join(linhas)}</tbody>"
+        "</table></div>"
+    )
+
+
+def _figura_html(legenda: str, nome: str) -> str | None:
+    from .figuras import desenhar
+
+    svg = desenhar(nome)
+    if svg is None:
+        return None
+    return (
+        f'<figure class="figura">'
+        f'<div class="figura-desenho">{svg}</div>'
+        f"<figcaption>{_linha(legenda)}</figcaption>"
+        f"</figure>"
+    )
 
 
 def _linha(texto: str) -> str:
@@ -433,6 +485,8 @@ def para_html(markdown: str) -> str:
     lista_aberta: str | None = None
     citacao_aberta = False
     paragrafo: list[str] = []
+    linhas = markdown.splitlines()
+    i = 0
 
     def fechar_paragrafo() -> None:
         nonlocal paragrafo
@@ -468,15 +522,56 @@ def para_html(markdown: str) -> str:
         fechar_lista()
         fechar_citacao()
 
-    for linha in markdown.splitlines():
+    while i < len(linhas):
+        linha = linhas[i]
         nua = linha.strip()
+
+        if nua.startswith("```"):
+            fechar_blocos()
+            i += 1
+            bloco: list[str] = []
+            while i < len(linhas) and not linhas[i].strip().startswith("```"):
+                bloco.append(linhas[i])
+                i += 1
+            if i < len(linhas):
+                i += 1
+            partes.append(
+                "<pre><code>" + html.escape("\n".join(bloco)) + "</code></pre>"
+            )
+            continue
+
+        if (
+            nua.startswith("|")
+            and i + 1 < len(linhas)
+            and _e_separador(linhas[i + 1].strip())
+        ):
+            fechar_blocos()
+            cabeca = _celulas(nua)
+            i += 2
+            corpo: list[list[str]] = []
+            while i < len(linhas) and linhas[i].strip().startswith("|"):
+                corpo.append(_celulas(linhas[i].strip()))
+                i += 1
+            partes.append(_tabela(cabeca, corpo))
+            continue
+
+        figura = _FIGURA.match(nua)
+        if figura:
+            desenho = _figura_html(figura.group(1), figura.group(2))
+            if desenho is not None:
+                fechar_blocos()
+                partes.append(desenho)
+                i += 1
+                continue
 
         if not nua:
             fechar_blocos()
+            i += 1
             continue
         if nua == "---":
             fechar_blocos()
             partes.append("<hr>")
+            i += 1
             continue
 
         cabecalho = re.match(r"^(#{1,3})\s+(.*)$", nua)
@@ -484,16 +579,19 @@ def para_html(markdown: str) -> str:
             fechar_blocos()
             nivel = len(cabecalho.group(1))
             partes.append(f"<h{nivel}>{_linha(cabecalho.group(2))}</h{nivel}>")
+            i += 1
             continue
 
         item = _ITEM.match(nua)
         if item:
             abrir_item("ul", item.group(1))
+            i += 1
             continue
 
         numerado = _ITEM_NUMERADO.match(nua)
         if numerado:
             abrir_item("ol", numerado.group(1))
+            i += 1
             continue
 
         if nua.startswith(">"):
@@ -503,6 +601,7 @@ def para_html(markdown: str) -> str:
                 partes.append("<blockquote>")
                 citacao_aberta = True
             partes.append(f"<p>{_linha(nua.lstrip('> ').strip())}</p>")
+            i += 1
             continue
 
         if lista_aberta or citacao_aberta:
@@ -511,6 +610,7 @@ def para_html(markdown: str) -> str:
             # item anterior — exigiria adivinhar a intenção de quem escreveu.
             fechar_blocos()
         paragrafo.append(_linha(nua))
+        i += 1
 
     fechar_blocos()
     return "\n".join(partes)

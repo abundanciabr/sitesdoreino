@@ -14,8 +14,9 @@ precisa de rota própria de estático para não dar 404 só em produção
 (`armadilhas/083`), e a tag `static` monta endereço do prefixo errado nessa
 situação (`armadilhas/102`).
 
-Sem fonte remota, sem script, sem imagem: uma página de texto não precisa de
-nada disso, e cada peça de fora é uma dependência que pode cair sozinha.
+Sem fonte remota, sem script, sem imagem de URL: cada peça de fora é uma
+dependência que pode cair sozinha. Figura nomeada entra como SVG gerado nesta
+célula, nunca como arquivo de terceiro.
 {% endcomment %}
 <!doctype html>
 <html lang="pt-br">
@@ -46,11 +47,34 @@ nada disso, e cada peça de fora é uma dependência que pode cair sozinha.
     h3 { font-size: 16px; margin: 26px 0 8px; }
     p { margin: 0 0 16px; }
     ul { margin: 0 0 16px; padding-left: 22px; }
+    ol { margin: 0 0 16px; padding-left: 22px; }
     li { margin-bottom: 6px; }
     a { color: var(--azul); }
     code {
       background: var(--papel); border: 1px solid var(--linha);
       border-radius: 4px; padding: 1px 5px; font-size: 90%;
+    }
+    pre {
+      overflow: auto; padding: 14px 16px; margin: 0 0 16px;
+      border-radius: 8px; background: var(--papel); border: 1px solid var(--linha);
+      font-size: 13px; line-height: 1.45;
+    }
+    pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+    .rolagem-tabela { overflow-x: auto; margin: 0 0 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    th, td {
+      border: 1px solid var(--linha); padding: 8px 10px;
+      vertical-align: top; text-align: left;
+    }
+    th { background: var(--papel); color: var(--texto-2); font-size: 13px; }
+    figure.figura { margin: 0 0 22px; }
+    .figura-desenho {
+      background: var(--papel); border: 1px solid var(--linha);
+      border-radius: 12px; padding: 12px 8px 4px;
+    }
+    .figura-desenho svg { display: block; width: 100%; height: auto; }
+    figcaption {
+      margin-top: 8px; color: var(--texto-2); font-size: 14px; text-align: center;
     }
     blockquote {
       margin: 0 0 16px; padding: 2px 16px; border-left: 3px solid var(--linha);
