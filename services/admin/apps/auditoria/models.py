@@ -136,6 +136,18 @@ class Registro(models.Model):
     ARQUIVAR_DOCUMENTO = "arquivar_documento"
     DESARQUIVAR_DOCUMENTO = "desarquivar_documento"
     APAGAR_DOCUMENTO = "apagar_documento"
+    # [MIDIA] 21/09/2026 (TAR-597): o mantenedor passou a enviar imagem e video
+    # para dentro de um documento, e o arquivo passa a morar no disco da VPS.
+    # Verbo PROPRIO pelo motivo mais forte da lista: este e o unico gesto desta
+    # area que escreve FORA do banco, e o unico cujo efeito sobrevive a um
+    # `DELETE` na tabela. Quem ler esta tabela em meses procurando "de onde veio
+    # este arquivo no disco" nao tem outra linha para consultar.
+    #
+    # A tentativa RECUSADA e o caso que so aqui deixa rastro: um envio barrado
+    # por tipo ou por tamanho nao cria linha nenhuma em lugar nenhum, e e
+    # exatamente ele que alguem vai querer reconstruir quando o mantenedor
+    # disser "eu mandei a imagem e ela nao apareceu".
+    ENVIAR_MIDIA = "enviar_midia"
     # [ECONOMIA] 31/08/2026: ligar e desligar cada regra de pontuacao da escola
     # (/admin/economia/). DOIS verbos, e nao um "mudar_regra", porque ligar e
     # desligar sao perguntas diferentes na hora de reconstruir o que aconteceu:
@@ -333,6 +345,7 @@ class Registro(models.Model):
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
         (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),
         (APAGAR_DOCUMENTO, "apagar um documento definitivamente"),
+        (ENVIAR_MIDIA, "enviar uma imagem ou um video para um documento"),
         (LIGAR_REGRA, "ligar uma regra de pontuacao da escola"),
         (DESLIGAR_REGRA, "desligar uma regra de pontuacao da escola"),
         (LIGAR_CONQUISTA, "ligar uma medalha ou marco da escola"),
