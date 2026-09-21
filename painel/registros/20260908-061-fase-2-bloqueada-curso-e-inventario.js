@@ -15,6 +15,8 @@
   vence_em_dias: null,
   se_eu_nao_decidir: "A estrutura do curso não entra e os 132 alunos continuam sem a sala do curso Primeiros Dólares com Roblox.",
   recomendacao: "Criar o curso com progressão livre e fornecer a lista canônica corrigida, incluindo os cinco títulos ausentes.",
+  porque_so_voce: "Só você tem a lista canônica dos 96 conteúdos e o poder de criar o curso na escola; a sessão não inventa título de aula.",
+  proximo_passo: "Criar o curso primeiros-dolares com progressão livre e entregar a lista corrigida dos 96 conteúdos.",
   reversivel: true,
   impacto: "medio",
   portao: null

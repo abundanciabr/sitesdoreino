@@ -15,6 +15,8 @@
   vence_em_dias: null,
   se_eu_nao_decidir: "O curso permanece sem módulos e sem aulas para os alunos.",
   recomendacao: "Fornecer a lista canônica corrigida dos 96 conteúdos, incluindo os cinco títulos ausentes.",
+  porque_so_voce: "Só você tem a lista canônica dos 96 conteúdos; o projeto e as pastas locais não têm fonte confiável para os cinco títulos que faltam.",
+  proximo_passo: "Entregar a lista corrigida dos 96 conteúdos, com os cinco títulos ausentes.",
   reversivel: true,
   impacto: "medio",
   portao: null
